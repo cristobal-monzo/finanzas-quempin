@@ -36,3 +36,8 @@ def test_nombre_esperado_archivo_pdf_mantiene_extension():
 def test_nombre_esperado_archivo_sin_proveedor():
     nombre = acc.nombre_esperado_archivo("GGEN-001", "", "01/01/2026", ".jpg")
     assert nombre == "GGEN-001_SinProveedor_2026-01-01.jpg"
+
+
+def test_nombre_esperado_archivo_normaliza_extension_a_minusculas():
+    nombre = acc.nombre_esperado_archivo("CFLI-004", "Beckman", "10/05/2026", ".PDF")
+    assert nombre == "CFLI-004_Beckman_2026-05-10.pdf"
