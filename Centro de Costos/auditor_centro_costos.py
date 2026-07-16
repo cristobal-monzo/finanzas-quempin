@@ -700,6 +700,50 @@ def verificar_aritmetica(datos):
     return inconsistencias
 
 
+# ── RENOMBRADO Y CONVERSIÓN DE ARCHIVOS ─────────────────────────────────────
+# Renombra cada foto/PDF a "<N Ref>_<TagProveedor>_<Fecha ISO>.<ext>" y convierte
+# HEIC->JPG. Cubre documentos nuevos y, retroactivamente, los ya registrados en
+# Master (incluidos los del bootstrap via reconciliacion_archivos.json), con el
+# mismo mecanismo idempotente: se compara el nombre fisico actual contra el
+# esperado y solo se actua si difieren.
+
+CARACTERES_INVALIDOS_ARCHIVO = re.compile(r'[\\/:*?"<>|]')
+
+
+def sanitizar_nombre(texto):
+    """Reemplaza espacios y caracteres invalidos en nombres de archivo Windows
+    (\\ / : * ? " < > |) por '_'."""
+    limpio = CARACTERES_INVALIDOS_ARCHIVO.sub("_", texto)
+    limpio = re.sub(r"\s+", "_", limpio.strip())
+    return re.sub(r"_+", "_", limpio)
+
+
+def fecha_iso_desde_valor(valor):
+    """Convierte Master.Fecha (datetime/date, o string 'dd/mm/yyyy') a 'yyyy-mm-dd'.
+    Si no se puede interpretar, sanitiza el valor tal cual para no romper el nombre."""
+    if isinstance(valor, datetime):
+        return valor.strftime("%Y-%m-%d")
+    if hasattr(valor, "strftime"):
+        return valor.strftime("%Y-%m-%d")
+    if isinstance(valor, str):
+        try:
+            return datetime.strptime(valor, "%d/%m/%Y").strftime("%Y-%m-%d")
+        except ValueError:
+            return sanitizar_nombre(valor)
+    return "sin-fecha"
+
+
+def nombre_esperado_archivo(n_ref, proveedor_tag, fecha_valor, extension):
+    """Nombre de archivo esperado: '<N Ref>_<TagProveedor>_<Fecha ISO><ext>'.
+    Los .heic/.HEIC pasan a .jpg (se convierten); el resto conserva su extension."""
+    tag = sanitizar_nombre(proveedor_tag or "SinProveedor")
+    fecha = fecha_iso_desde_valor(fecha_valor)
+    ext = extension.lower()
+    if ext == ".heic":
+        ext = ".jpg"
+    return f"{n_ref}_{tag}_{fecha}{ext}"
+
+
 # --- MAIN ---------------------------------------------------------------------
 
 def main():
