@@ -32,6 +32,24 @@ sys.dont_write_bytecode = True
 import auditor_centro_costos as acc  # noqa: E402
 
 
+def mostrar_preview_renombrados(filas_master, reconciliacion):
+    """Preview de status (solo lectura): que archivos se renombrarian/
+    convertirian si se corriera 'run', sin tocar disco."""
+    reconciliacion_inversa = acc.construir_reconciliacion_inversa(reconciliacion)
+    planes = acc.planificar_renombrados(filas_master, reconciliacion_inversa)
+    a_renombrar = [p for p in planes if p["accion"] in ("renombrar", "convertir_heic")]
+    no_encontrados = [p for p in planes if p["accion"] == "archivo_no_encontrado"]
+
+    print(f"\nArchivos que se renombrarian/convertirian si corres 'run': {len(a_renombrar)}")
+    for p in a_renombrar:
+        print(f"  - {p['n_ref']}: {p['ruta_actual'].name} -> {p['nombre_nuevo']} ({p['accion']})")
+
+    if no_encontrados:
+        print(f"\n[WARN] {len(no_encontrados)} fila(s) sin archivo fisico encontrado para renombrar:")
+        for p in no_encontrados:
+            print(f"  - {p['n_ref']}")
+
+
 def cmd_status():
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
 
@@ -110,6 +128,8 @@ def cmd_status():
                   f"Neto={inc['neto']:,} IVA={inc['iva']:,} esperado={inc['iva_esperado']:,}")
     else:
         print("  Sin inconsistencias.")
+
+    mostrar_preview_renombrados(filas_master, reconciliacion)
 
     print("\n" + "=" * 70)
     print("  Nada fue escrito. Para ejecutar de verdad: python driver.py run")
