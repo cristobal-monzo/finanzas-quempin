@@ -13,6 +13,7 @@ No hay repositorio git aquí ni herramientas de build/lint/test a nivel raíz �
 | Módulo | Estado | Documentación |
 |---|---|---|
 | [Centro de Costos/](Centro%20de%20Costos/CLAUDE.md) | Implementado | `Centro de Costos/CLAUDE.md` |
+| [Cotizador Historico/](Cotizador%20Historico/CLAUDE.md) | Implementado | `Cotizador Historico/CLAUDE.md` |
 | Flujo de Caja | No iniciado | — |
 
 **Centro de Costos** registra el gasto por centro de costos: lee fotos de facturas/boletas depositadas en carpetas por proyecto más un `datos_extraidos.json` ya extraído (con desglose en ítems de línea), y mantiene `Centro de Costos.xlsx` (Master = 1 fila/documento con fórmulas, Detalle = 1 fila/ítem, una hoja de solo lectura por proyecto), de forma idempotente y con backup automático con timestamp antes de cada escritura. La arquitectura completa, el flujo del script, el esquema del JSON y el skill `/Registro_Centro_de_Costos` (comandos `status`/`run`) están documentados en su propio `CLAUDE.md` — léelo antes de tocar cualquier cosa bajo `Centro de Costos/`.
