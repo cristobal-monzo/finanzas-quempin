@@ -327,3 +327,51 @@ def test_aplicar_renombrados_conversion_fallida_genera_advertencia(tmp_path, mon
     assert len(advertencias) == 1
     assert advertencias[0]["n_ref"] == "UMAG-031"
     assert (tmp_path / "UMAG" / "corrupto.HEIC").exists()
+
+
+def test_ejecutar_plan_renombrado_renombrar_fallido_retorna_error(tmp_path, monkeypatch):
+    ruta_actual = tmp_path / "factura.pdf"
+    ruta_actual.write_bytes(b"contenido")
+    ruta_nueva = tmp_path / "CFLI-003_Beckman_2026-02-01.pdf"
+
+    def _rename_que_falla(self, target):
+        raise PermissionError("simulado: archivo bloqueado por sincronizacion")
+
+    monkeypatch.setattr(type(ruta_actual), "rename", _rename_que_falla)
+
+    item = {"accion": "renombrar", "ruta_actual": ruta_actual, "ruta_nueva": ruta_nueva}
+    ok, error = acc.ejecutar_plan_renombrado(item)
+
+    assert ok is False
+    assert error is not None
+    assert ruta_actual.exists()
+    assert not ruta_nueva.exists()
+
+
+def test_planificar_renombrado_fila_ruta_sin_carpeta_es_archivo_no_encontrado():
+    fila = {"fila": 7, "n_ref": "UMAG-040", "archivo_origen": "archivo_sin_carpeta.jpg",
+            "proveedor_tag": "Anwo", "fecha": "01/01/2026"}
+    item = acc.planificar_renombrado_fila(fila, {})
+    assert item["accion"] == "archivo_no_encontrado"
+
+
+def test_excel_esta_bloqueado_devuelve_false_si_no_existe(tmp_path):
+    ruta = tmp_path / "no_existe.xlsx"
+    assert acc.excel_esta_bloqueado(ruta) is False
+
+
+def test_excel_esta_bloqueado_devuelve_false_si_se_puede_abrir(tmp_path):
+    ruta = tmp_path / "Centro de Costos.xlsx"
+    ruta.write_bytes(b"contenido")
+    assert acc.excel_esta_bloqueado(ruta) is False
+
+
+def test_excel_esta_bloqueado_devuelve_true_si_permission_error(tmp_path, monkeypatch):
+    ruta = tmp_path / "Centro de Costos.xlsx"
+    ruta.write_bytes(b"contenido")
+
+    def _open_que_falla(*args, **kwargs):
+        raise PermissionError("simulado: archivo abierto en Excel")
+
+    monkeypatch.setattr("builtins.open", _open_que_falla)
+    assert acc.excel_esta_bloqueado(ruta) is True

@@ -779,6 +779,8 @@ def planificar_renombrado_fila(fila_dict, reconciliacion_inversa):
     ruta_relativa = resolver_ruta_actual(fila_dict, reconciliacion_inversa)
     if not ruta_relativa:
         return {**base, "accion": "archivo_no_encontrado"}
+    if "\\" not in ruta_relativa:
+        return {**base, "accion": "archivo_no_encontrado"}
 
     proyecto_fisico, nombre_archivo = ruta_relativa.split("\\", 1)
     ruta_actual = RAIZ_DOCS / proyecto_fisico / nombre_archivo
@@ -824,7 +826,10 @@ def ejecutar_plan_renombrado(item):
     hacen nada). Devuelve (ok, error) -- no toca Master, eso lo hace el
     llamador (Task 5)."""
     if item["accion"] == "renombrar":
-        item["ruta_actual"].rename(item["ruta_nueva"])
+        try:
+            item["ruta_actual"].rename(item["ruta_nueva"])
+        except Exception as e:
+            return False, str(e)
         return True, None
 
     if item["accion"] == "convertir_heic":
@@ -836,6 +841,24 @@ def ejecutar_plan_renombrado(item):
         return True, None
 
     return True, None
+
+
+def excel_esta_bloqueado(ruta_excel):
+    """True si ruta_excel existe y no se puede abrir para escritura (ej. porque
+    esta abierto en Excel). Se usa como chequeo previo a PASO 9 -- ese paso
+    renombra/borra archivos reales en disco sin poder deshacerse, asi que hay
+    que confirmar que el Excel es escribible ANTES de tocar ningun archivo,
+    no despues (si se descubriera recien al guardar en PASO 11, ya seria
+    tarde: las fotos ya estarian renombradas/borradas y el Master actualizado
+    solo en memoria, nunca persistido)."""
+    if not ruta_excel.exists():
+        return False
+    try:
+        with open(ruta_excel, "r+b"):
+            pass
+        return False
+    except PermissionError:
+        return True
 
 
 def aplicar_renombrados(ws_master, filas_master, reconciliacion_inversa):
@@ -1018,6 +1041,11 @@ def main():
             continue
         regenerar_hoja_proyecto(wb, proyecto, filas_de_este_proyecto, colores.get(proyecto))
         print(f"  [OK] Hoja '{proyecto}' regenerada ({len(filas_de_este_proyecto)} documento(s))")
+
+    if excel_esta_bloqueado(RUTA_EXCEL):
+        print("\n[ERROR] El archivo esta abierto en Excel (o bloqueado). Cierralo antes de continuar.")
+        print("        No se renombro ni convirtio ningun archivo; no se guardaron cambios.")
+        return
 
     print("\n--- PASO 9: Renombrar y convertir archivos ---")
     reconciliacion_inversa = construir_reconciliacion_inversa(reconciliacion)
