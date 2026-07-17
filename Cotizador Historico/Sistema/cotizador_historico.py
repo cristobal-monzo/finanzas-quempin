@@ -212,6 +212,15 @@ def calcular_precio_reajustado(precio_original, uf_fecha_compra, uf_hoy):
 def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
     """Orquesta una consulta completa: carga Detalle, busca por texto,
     reajusta cada compra encontrada por UF, y agrega promedio/rango.
+
+    Si la UF de una compra puntual no esta disponible (sin internet, o
+    mindicador.cl sin dato para esa fecha), esa compra se excluye del
+    resultado (contada en "sin_uf_count") sin abortar la consulta completa
+    -- solo si NINGUNA compra pudo reajustarse el resultado queda como "no
+    encontrado". La UF de "hoy" (unica para toda la consulta) si aborta la
+    consulta completa si falla, propagando UFNoDisponibleError -- sin ella
+    no se puede reajustar nada.
+
     fecha_hoy es inyectable para tests (default: date.today())."""
     hoy = fecha_hoy or date.today()
     items = cargar_items_detalle(ruta_excel)
@@ -227,13 +236,19 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
             "rango_maximo": None,
             "excluidos_count": excluidos_count,
             "sugerencias": sugerencias,
+            "sin_uf_count": 0,
         }
 
     uf_hoy = consultar_uf_api(hoy)
     cache_uf = cargar_cache_uf()
     compras = []
+    sin_uf_count = 0
     for item in coincidencias:
-        uf_compra = obtener_valor_uf(item["fecha"], cache_uf)
+        try:
+            uf_compra = obtener_valor_uf(item["fecha"], cache_uf)
+        except UFNoDisponibleError:
+            sin_uf_count += 1
+            continue
         precio_reajustado = calcular_precio_reajustado(
             item["precio_unitario_sin_iva"], uf_compra, uf_hoy,
         )
@@ -245,6 +260,18 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
         })
     guardar_cache_uf(cache_uf)
 
+    if not compras:
+        return {
+            "encontrado": False,
+            "compras": [],
+            "promedio_reajustado": None,
+            "rango_minimo": None,
+            "rango_maximo": None,
+            "excluidos_count": excluidos_count,
+            "sugerencias": [],
+            "sin_uf_count": sin_uf_count,
+        }
+
     reajustados = [c["precio_reajustado_hoy"] for c in compras]
     return {
         "encontrado": True,
@@ -254,4 +281,5 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
         "rango_maximo": max(reajustados),
         "excluidos_count": excluidos_count,
         "sugerencias": [],
+        "sin_uf_count": sin_uf_count,
     }

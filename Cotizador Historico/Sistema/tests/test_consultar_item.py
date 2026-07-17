@@ -52,6 +52,7 @@ def test_consultar_item_calcula_reajuste_y_agregados(monkeypatch, tmp_path):
     assert resultado["rango_maximo"] == max(esperado_1, esperado_2)
     assert resultado["excluidos_count"] == 0
     assert resultado["sugerencias"] == []
+    assert resultado["sin_uf_count"] == 0
 
 
 def test_consultar_item_persiste_uf_historica_en_cache_pero_no_la_de_hoy(monkeypatch, tmp_path):
@@ -102,3 +103,43 @@ def test_consultar_item_cuenta_excluidos(monkeypatch, tmp_path):
 
     resultado = ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17))
     assert resultado["excluidos_count"] == 1
+
+
+def _mapa_uf_con_fallo(fecha):
+    fecha_iso = fecha.strftime("%Y-%m-%d")
+    if fecha_iso == "2026-03-01":
+        raise ch.UFNoDisponibleError("simulado: sin dato de UF para esta fecha")
+    mapa = {"2026-01-01": 36000.0, "2026-07-17": 39000.0}
+    return mapa[fecha_iso]
+
+
+def test_consultar_item_excluye_solo_la_compra_sin_uf_disponible(monkeypatch, tmp_path):
+    items = [
+        _item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1)),
+        _item("UMAG-002", "Taladro", "Taladro inalambrico", 100000, datetime(2026, 3, 1)),
+    ]
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+    monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf_con_fallo)
+
+    resultado = ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17))
+
+    esperado = round(90000 * 39000 / 36000)
+    assert resultado["encontrado"] is True
+    assert resultado["compras"] == [
+        {"n_ref": "UMAG-001", "fecha": "2026-01-01", "precio_original_sin_iva": 90000, "precio_reajustado_hoy": esperado},
+    ]
+    assert resultado["sin_uf_count"] == 1
+
+
+def test_consultar_item_todas_sin_uf_disponible_devuelve_no_encontrado(monkeypatch, tmp_path):
+    items = [_item("UMAG-002", "Taladro", "Taladro inalambrico", 100000, datetime(2026, 3, 1))]
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+    monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf_con_fallo)
+
+    resultado = ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17))
+
+    assert resultado["encontrado"] is False
+    assert resultado["compras"] == []
+    assert resultado["sin_uf_count"] == 1

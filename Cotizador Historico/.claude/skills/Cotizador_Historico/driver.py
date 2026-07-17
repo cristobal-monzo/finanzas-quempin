@@ -87,11 +87,18 @@ def cmd_consultar(args):
         return 1
 
     if not resultado["encontrado"]:
-        print(f'No se encontraron compras para "{texto}".')
-        if resultado["sugerencias"]:
-            print("Quizas quisiste decir:")
-            for s in resultado["sugerencias"]:
-                print(f"  - {s}")
+        if resultado["sin_uf_count"]:
+            print(
+                f'Se encontraron {resultado["sin_uf_count"]} compra(s) para "{texto}", pero no '
+                "se pudo obtener la UF de ninguna de sus fechas (sin conexion, o mindicador.cl "
+                "no tiene dato para esas fechas)."
+            )
+        else:
+            print(f'No se encontraron compras para "{texto}".')
+            if resultado["sugerencias"]:
+                print("Quizas quisiste decir:")
+                for s in resultado["sugerencias"]:
+                    print(f"  - {s}")
         return 0
 
     print(f'Compras encontradas para "{texto}":\n')
@@ -109,6 +116,13 @@ def cmd_consultar(args):
         print(
             f"\n[INFO] {resultado['excluidos_count']} item(s) de Detalle excluido(s) "
             "del indice por no tener fecha resoluble via Master."
+        )
+
+    if resultado["sin_uf_count"]:
+        print(
+            f"\n[INFO] {resultado['sin_uf_count']} compra(s) encontrada(s) se excluyeron del "
+            "resultado por no poder obtener su UF (sin conexion, o mindicador.cl no tiene "
+            "dato para esa fecha)."
         )
     return 0
 
