@@ -883,9 +883,10 @@ def aplicar_renombrados(ws_master, filas_master, reconciliacion_inversa):
 
         ok, error = ejecutar_plan_renombrado(item)
         if not ok:
+            accion_desc = "la conversion HEIC" if item["accion"] == "convertir_heic" else "el renombrado"
             advertencias.append({
                 "n_ref": item["n_ref"],
-                "detalle": f"Fallo la conversion HEIC: {error}",
+                "detalle": f"Fallo {accion_desc}: {error}",
             })
             continue
 
