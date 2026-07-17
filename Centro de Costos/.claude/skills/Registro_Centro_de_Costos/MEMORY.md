@@ -49,6 +49,11 @@ módulos), no en este archivo.
   ítems) para Factura/Guía de Despacho, 0 para el resto.
 - **Extensiones válidas** de documentos: `.png .jpg .jpeg .heic .pdf`.
   Ignoradas: `.html .txt .ini .tmp` y `desktop.ini`.
+- **`n_documento` no puede empezar con "0"** (pedido 2026-07-17): si el N° de
+  Documento extraído de la factura/boleta parte con uno o más ceros a la
+  izquierda, hay que quitarlos hasta que el primer dígito sea distinto de
+  cero antes de registrarlo (ej. `"0456"` → `"456"`). Aplica al poblar
+  `datos_extraidos.json` y a cualquier corrección manual del campo.
 
 ## Criterios de clasificación
 
@@ -86,6 +91,17 @@ categorización no obvios, etc.)*
   `Proyecto` en `Master` y correr `run`; no hace falta tocar las hojas de
   proyecto a mano.
 
+### 2026-07-17 — renombrado retroactivo de los 24 documentos del bootstrap
+- `status` reportaba "24 fila(s) sin archivo fisico encontrado para
+  renombrar" pese a que los archivos físicos existían — bug en
+  `resolver_ruta_actual()`, corregido (ver `ERRORES.md`).
+- Tras el fix, `run` renombró/convirtió los 24: 22 en UMAG (HEIC→JPG) + 1 en
+  Cesfam Limache (CFLI-001) + 1 en Gastos Generales (GGEN-001), todos a
+  `<N° Ref.>_<TagProveedor>_<Fecha ISO>.<ext>`. `status` posterior confirmó
+  0 pendientes de renombrar y 0 "archivo no encontrado".
+- 0 documentos nuevos registrados en esta corrida (solo renombrado
+  retroactivo).
+
 ## Pendientes conocidos (requieren decisión del usuario, no son bugs)
 
 - **Corregir retroactivamente TODOS los ítems ya registrados en el
@@ -108,10 +124,12 @@ categorización no obvios, etc.)*
 
 - El pipeline anterior (perdido, corría en `Plantillas/`) tenía renombrado
   automático de fotos, conversión HEIC→JPG y detección automática de
-  duplicados (`rename.py`, `detectar_duplicados.py`). Ninguna de las tres
-  capacidades se reconstruyó — el script actual solo *avisa* de posibles
-  duplicados por N° Documento repetido, no renombra ni convierte ni
-  bloquea. Si se decide reconstruir alguna, anotar la decisión acá antes de
+  duplicados (`rename.py`, `detectar_duplicados.py`). El renombrado y la
+  conversión HEIC→JPG **sí se reconstruyeron** (2026-07-16, extendido a los
+  24 documentos del bootstrap el 2026-07-17, ver `ERRORES.md`). La
+  detección automática de duplicados sigue sin reconstruirse — el script
+  solo *avisa* de posibles duplicados por N° Documento repetido, no
+  bloquea. Si se decide reconstruirla, anotar la decisión acá antes de
   tocar `auditor_centro_costos.py`.
 - `Legado/datos_extraidos_legacy_umag.json` (22 documentos de UMAG, esquema
   sin ítems) no se ha migrado al esquema con ítems de línea. Esos 22

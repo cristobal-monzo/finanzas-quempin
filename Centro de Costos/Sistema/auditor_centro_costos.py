@@ -35,7 +35,7 @@ from openpyxl.utils import get_column_letter, column_index_from_string
 
 RAIZ = Path(__file__).resolve().parent
 RAIZ_MODULO = RAIZ.parent
-RAIZ_DOCS = RAIZ_MODULO / "Documentos Centro de Costos"
+RAIZ_DOCS = RAIZ_MODULO / "Facturas y Boletas"
 RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Centro de Costos.xlsx"
 RUTA_JSON = RAIZ / "datos_extraidos.json"
 RUTA_RECONCILIACION = RAIZ / "reconciliacion_archivos.json"
@@ -44,6 +44,7 @@ RUTA_BACKUPS = RAIZ_MODULO / "Excel" / "Respaldos"
 PREFIJOS_PROYECTO = {
     "UMAG": "UMAG",
     "Cesfam Limache": "CFLI",
+    "Cesfam Constitución": "CCON",
     "Gastos Generales": "GGEN",
 }
 
@@ -760,10 +761,28 @@ def resolver_ruta_actual(fila_dict, reconciliacion_inversa):
     OJO: la ubicacion fisica puede NO coincidir con Master.Proyecto (ver nota
     de UMAG-002 en reconciliacion_archivos.json) -- por eso se usa el Proyecto
     embebido en la propia ruta relativa (de Archivo origen o de la
-    reconciliacion), nunca fila_dict['proyecto']."""
+    reconciliacion), nunca fila_dict['proyecto'].
+
+    Prueba 'Archivo origen' primero, pero si esa ruta no existe en disco (caso
+    de los 24 documentos del bootstrap, cuyo 'Archivo origen' quedo con el
+    nombre que les daba un pipeline anterior ya perdido -- ver
+    reconciliacion_archivos.json) cae a la ruta de la reconciliacion, que
+    apunta al archivo fisico real."""
+    candidatos = []
     if fila_dict.get("archivo_origen"):
-        return str(fila_dict["archivo_origen"])
-    return reconciliacion_inversa.get(fila_dict["n_ref"])
+        candidatos.append(str(fila_dict["archivo_origen"]))
+    ruta_reconciliacion = reconciliacion_inversa.get(fila_dict["n_ref"])
+    if ruta_reconciliacion and ruta_reconciliacion not in candidatos:
+        candidatos.append(ruta_reconciliacion)
+
+    for candidato in candidatos:
+        if "\\" not in candidato:
+            continue
+        proyecto_fisico, nombre_archivo = candidato.split("\\", 1)
+        if (RAIZ_DOCS / proyecto_fisico / nombre_archivo).exists():
+            return candidato
+
+    return candidatos[0] if candidatos else None
 
 
 def planificar_renombrado_fila(fila_dict, reconciliacion_inversa):

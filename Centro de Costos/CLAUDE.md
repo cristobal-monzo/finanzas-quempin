@@ -69,7 +69,7 @@ registrarlos.
 ├── Excel/
 │   ├── Centro de Costos.xlsx              # libro maestro (Master + Detalle + hoja por proyecto)
 │   └── Respaldos/                         # backups automáticos con timestamp (generados por el script) + manuales
-├── Documentos Centro de Costos/           # documentos fuente (facturas/boletas), un subdirectorio por proyecto
+├── Facturas y Boletas/                    # documentos fuente (facturas/boletas), un subdirectorio por proyecto
 │   ├── UMAG/
 │   ├── Cesfam Limache/
 │   └── Gastos Generales/
@@ -90,22 +90,25 @@ registrarlos.
 
 Reorganizado el 2026-07-16 (ver `docs/superpowers/specs/2026-07-16-reorganizacion-carpetas-design.md`)
 para que la raíz sea navegable para un usuario no técnico: `Excel/` contiene
-el único archivo que se abre a mano (`Centro de Costos.xlsx`), `Documentos
-Centro de Costos/` son las fuentes, y `Sistema/` agrupa todo lo técnico
+el único archivo que se abre a mano (`Centro de Costos.xlsx`), `Facturas y
+Boletas/` son las fuentes, y `Sistema/` agrupa todo lo técnico
 (script, JSON de entrada, docs de formato, tests, legado).
 
-`Documentos Centro de Costos/<Proyecto>/` es la unidad de organización: cada subcarpeta de primer nivel es un **proyecto/centro de costos**. Agregar un proyecto nuevo es tan simple como crear la subcarpeta y dejar caer los documentos ahí — el script los detecta solo (aunque para que el `N° Ref.` tenga un prefijo elegido por ti, agrégalo a `PREFIJOS_PROYECTO` en `Sistema/auditor_centro_costos.py`; si no, usa uno derivado automático y avisa por consola).
+Renombrado el 2026-07-17: `Documentos Centro de Costos/` pasó a llamarse
+`Facturas y Boletas/` (mismo contenido, mismo rol).
+
+`Facturas y Boletas/<Proyecto>/` es la unidad de organización: cada subcarpeta de primer nivel es un **proyecto/centro de costos**. Agregar un proyecto nuevo es tan simple como crear la subcarpeta y dejar caer los documentos ahí — el script los detecta solo (aunque para que el `N° Ref.` tenga un prefijo elegido por ti, agrégalo a `PREFIJOS_PROYECTO` en `Sistema/auditor_centro_costos.py`; si no, usa uno derivado automático y avisa por consola).
 
 ## Módulo: Centro de Costos
 
 ### Qué hace
 
-`Sistema/auditor_centro_costos.py` mantiene `Excel/Centro de Costos.xlsx` sincronizado con los documentos (facturas/boletas) que se van agregando a `Documentos Centro de Costos/<Proyecto>/`. No hace OCR/extracción de datos por sí mismo: consume `Sistema/datos_extraidos.json`, que se asume ya poblado (por el usuario o por un paso de extracción previo, ej. IA leyendo las fotos de las facturas) con los datos estructurados de cada documento, **incluyendo el desglose en ítems de línea**.
+`Sistema/auditor_centro_costos.py` mantiene `Excel/Centro de Costos.xlsx` sincronizado con los documentos (facturas/boletas) que se van agregando a `Facturas y Boletas/<Proyecto>/`. No hace OCR/extracción de datos por sí mismo: consume `Sistema/datos_extraidos.json`, que se asume ya poblado (por el usuario o por un paso de extracción previo, ej. IA leyendo las fotos de las facturas) con los datos estructurados de cada documento, **incluyendo el desglose en ítems de línea**.
 
 Flujo de ejecución (`main()`):
 1. **Backup** — copia `Excel/Centro de Costos.xlsx` a `Excel/Respaldos/Centro de Costos - backup <fecha> <hora>.xlsx` antes de tocar nada.
 2. **Leer `Master`** — determina qué `N° Ref.` ya existen (y su secuencia máxima por proyecto), y qué archivos ya están cubiertos (columna "Archivo origen" de filas escritas por este script, más `Sistema/reconciliacion_archivos.json` para las filas preexistentes que no tienen esa columna poblada).
-3. **Inventariar archivos** — recorre `Documentos Centro de Costos/`, clasifica cada archivo como pendiente / omitido (ya registrado).
+3. **Inventariar archivos** — recorre `Facturas y Boletas/`, clasifica cada archivo como pendiente / omitido (ya registrado).
 4. **Cargar `Sistema/datos_extraidos.json`** y buscar la entrada de cada archivo pendiente (por `proyecto` + `archivo`).
 5. **Escribir en Excel** por cada documento con datos completos (con `items`): asigna el siguiente `N° Ref.` del proyecto, escribe un renglón en `Detalle` por cada ítem de línea, y una fila-resumen en `Master` (con fórmulas `SUMIF`/suma hacia `Detalle`).
 6. **Regenerar derivados** — los pies "TOTAL GENERAL" de `Master`/`Detalle` y las hojas de proyecto (100% fórmulas hacia `Master`, se recalculan completas cada corrida a partir de la columna `Proyecto` actual).
@@ -162,7 +165,7 @@ pipeline anterior perdido (ver "Historia" más arriba). Tres tipos de hoja:
 - **`N° Ref.`** es la clave: `<PREFIJO>-<secuencia>` (ej. `UMAG-001`, `CFLI-002`), con prefijo fijo por proyecto en `PREFIJOS_PROYECTO` (`Sistema/auditor_centro_costos.py`).
 - Cada proyecto tiene un color asignado de una paleta fija de 12 tonos pasteles, reutilizado de forma determinista (se lee de `Master` antes de asignar uno nuevo).
 - Convención de colores de fuente (documentada también en la leyenda al pie de cada hoja): cursiva = editable a mano, rojo = requiere revisión, azul marino = corregido a mano (no se sobreescribe). Códigos hex exactos en [MEMORY.md](.claude/skills/Registro_Centro_de_Costos/MEMORY.md#preferencias-de-formato-y-color); detalle completo del formato real (columnas, anchos, filtros, validaciones, y dónde el formato heredado del pipeline perdido no coincide con lo que hace hoy el script) en [Formato Centro de Costos.md](Sistema/Formato%20Centro%20de%20Costos.md) (el patrón genérico reutilizable por futuros módulos está en [Formato.md](Sistema/Formato.md)). El recoloreo rojo→azul marino oscuro al corregir algo a mano todavía no está implementado (ni automático ni manual) — hoy solo se registra la corrección en [ERRORES.md](.claude/skills/Registro_Centro_de_Costos/ERRORES.md) como bitácora, en pausa por decisión del usuario.
-- **No hay renombrado de fotos ni conversión HEIC→JPG** en esta versión (el pipeline perdido sí lo hacía). Los documentos nuevos guardan su nombre de archivo real en "Archivo origen".
+- **Sí hay renombrado de fotos y conversión HEIC→JPG** (agregado el 2026-07-16, después de la reconstrucción inicial): cada `run` compara el nombre físico actual de cada documento contra el esperado (`<N° Ref.>_<TagProveedor>_<Fecha ISO>.<ext>`, `.heic`→`.jpg`) y renombra/convierte en disco si difiere, actualizando "Archivo origen" en `Master` — cubre documentos nuevos y, retroactivamente, los ya registrados (excepción explícita a la regla de oro, igual que `migrar_columna_proveedor()`). `status` muestra un preview de qué se renombraría sin tocar disco. `resolver_ruta_actual()` prueba primero "Archivo origen"; si esa ruta no existe en disco (caso de los 24 documentos del bootstrap, cuyo "Archivo origen" quedó con el nombre que les daba el pipeline perdido) cae al mapeo de `reconciliacion_archivos.json`, que apunta al archivo físico real — corregido 2026-07-17, ver `ERRORES.md`. Los 24 documentos del bootstrap ya se renombraron con este fix (22 UMAG + 1 Cesfam Limache + 1 Gastos Generales) a la convención `<N° Ref.>_<TagProveedor>_<Fecha ISO>`.
 
 ### Archivos auxiliares
 
@@ -183,6 +186,6 @@ pipeline anterior perdido (ver "Historia" más arriba). Tres tipos de hoja:
 
 - **Esta carpeta (`Finanzas QUEMPIN/Centro de Costos/`) es la ubicación canónica única** desde 2026-07-16. Existen otras dos copias con datos desactualizados/parciales — `OneDrive - QUEMPIN SPA/Sitio de comunicación - Centro de costos/` (estructura simple antigua) y `OneDrive - QUEMPIN SPA/Plantillas/` (donde corrió el pipeline perdido) — no se les debe escribir ni confiar en su "estado actual"; si necesitas consultarlas, verifica primero con el usuario.
 - Esta carpeta igual vive dentro de OneDrive, sincronizada y potencialmente editada por más de una persona/dispositivo. Antes de sobrescribir el `.xlsx` principal, considera que puede haber cambios recientes hechos a mano fuera de este script (el propio script está diseñado para tolerarlo: nunca reescribe una fila de datos ya creada).
-- `Sistema/datos_extraidos.json` y los documentos en `Documentos Centro de Costos/` contienen **datos financieros reales de la empresa** (montos, proveedores, N° de documentos tributarios). El código (`Sistema/auditor_centro_costos.py`, tests, skill) sí está versionado en git; estos datos están explícitamente excluidos vía `.gitignore` en la raíz de `Finanzas QUEMPIN/` — verifica ese archivo antes de asumir que algo nuevo bajo este módulo quedará (o no) fuera de control de versiones.
+- `Sistema/datos_extraidos.json` y los documentos en `Facturas y Boletas/` contienen **datos financieros reales de la empresa** (montos, proveedores, N° de documentos tributarios). El código (`Sistema/auditor_centro_costos.py`, tests, skill) sí está versionado en git; estos datos están explícitamente excluidos vía `.gitignore` en la raíz de `Finanzas QUEMPIN/` — verifica ese archivo antes de asumir que algo nuevo bajo este módulo quedará (o no) fuera de control de versiones.
 - El script reconfigura `stdout`/`stderr` a UTF-8 explícitamente por errores de encoding típicos de consola en Windows — mantener esa línea si se toca `main()`.
 - Si aparece una carpeta `__pycache__/`, es caché de bytecode de Python (regenerable, seguro de borrar) — no es parte de la estructura intencional del módulo, no confundirla con datos.

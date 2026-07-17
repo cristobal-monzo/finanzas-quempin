@@ -53,8 +53,40 @@ son automáticos, no algo que el usuario deba llenar a mano:
 
 ## Historial de errores detectados
 
-*(sin entradas todavía — anotar acá, con fecha: inconsistencias aritméticas
-recurrentes entre IVA y Neto, N° Documento duplicados legítimos vs. errores
-de tipeo, proveedores con nombres inconsistentes entre documentos, archivos
-ilegibles frecuentes, celdas rojas que llevan mucho tiempo sin corregirse,
-etc.)*
+- **2026-07-17 — `resolver_ruta_actual` no encontraba los 24 documentos del
+  bootstrap para renombrar**: `CLAUDE.md` documentaba como "esperado" que
+  esos 24 documentos salieran como "archivo no encontrado" al renombrar,
+  porque su columna `Archivo origen` en `Master` quedó con el nombre que les
+  dio el pipeline perdido (ej. `UMAG\000164.jpg`, por N° Documento) y ese
+  archivo ya no existe en disco — el archivo real sigue con su nombre de
+  cámara (`IMG_7530.HEIC`). El bug real: `resolver_ruta_actual()`
+  (`Sistema/auditor_centro_costos.py`) probaba solo `Archivo origen` y nunca
+  caía al mapeo de `reconciliacion_archivos.json`, que sí apunta al archivo
+  físico real. Corregido: ahora prueba `Archivo origen` primero y, si esa
+  ruta no existe en disco, usa la de `reconciliacion_archivos.json`. Tras el
+  fix, los 24 documentos se renombraron/convirtieron correctamente en un
+  `run` (22 HEIC→JPG en UMAG + 1 en Cesfam Limache + 1 en Gastos Generales,
+  ver detalle de nombres nuevos en el historial de corridas de `MEMORY.md`).
+  `CLAUDE.md` §"Estructura de Centro de Costos.xlsx" ya no refleja esta
+  limitación — estaba describiendo el bug, no una limitación real.
+
+- **2026-07-17 — Duplicado `PRUE-001`/`PRUE-002` en proyecto "Prueba 1"**:
+  durante la sesión de reconstrucción del script del 2026-07-16 (corridas
+  entre las 10:12 y las 13:05), dos `run` consecutivos (~12:50 y ~12:53)
+  registraron el mismo archivo físico (`IMG_7364.JPEG`) dos veces — la
+  detección de "archivo ya cubierto" falló transitoriamente en esa ventana
+  de desarrollo (no se repitió en corridas posteriores ni afecta a ningún
+  otro proyecto, se verificó que las 26 filas restantes de `Master` no
+  tienen otro `Archivo origen` repetido). Al revisar el detalle, el
+  documento no era de prueba: es una factura real de Anwo (N° 1913507,
+  $2.255.194) cuyas notas indican obra "Cesfam Constitución" — quedó
+  guardada bajo una carpeta de prueba durante el desarrollo del pipeline.
+  Corrección aplicada: se eliminaron ambas filas duplicadas de
+  `Master`/`Detalle` y la hoja "Prueba 1" (edición manual directa sobre el
+  `.xlsx`, con backup manual previo en `Respaldos/`), se movió la foto a
+  `Documentos Centro de Costos/Cesfam Constitución/`, se corrigió el
+  `"proyecto"` en `datos_extraidos.json`, se agregó el prefijo
+  `"Cesfam Constitución": "CCON"` a `PREFIJOS_PROYECTO`, y se registró
+  limpio como `CCON-001` vía `run` (con renombrado automático de foto a
+  `CCON-001_Anwo_2026-06-04.jpeg`). "Cesfam Constitución" es un proyecto
+  nuevo, distinto de "Cesfam Limache".
