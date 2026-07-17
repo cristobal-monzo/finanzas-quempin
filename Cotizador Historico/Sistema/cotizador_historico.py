@@ -9,7 +9,7 @@ modo escritura ni lo modifica. Ver ../docs/superpowers/specs/
 2026-07-17-cotizador-historico-design.md para el diseno completo.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 import unicodedata
 from difflib import SequenceMatcher
@@ -202,3 +202,56 @@ def obtener_valor_uf(fecha, cache_uf):
     valor = consultar_uf_api(fecha)
     cache_uf[fecha_iso] = valor
     return valor
+
+
+def calcular_precio_reajustado(precio_original, uf_fecha_compra, uf_hoy):
+    factor = uf_hoy / uf_fecha_compra
+    return round(precio_original * factor)
+
+
+def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
+    """Orquesta una consulta completa: carga Detalle, busca por texto,
+    reajusta cada compra encontrada por UF, y agrega promedio/rango.
+    fecha_hoy es inyectable para tests (default: date.today())."""
+    hoy = fecha_hoy or date.today()
+    items = cargar_items_detalle(ruta_excel)
+    excluidos_count = sum(1 for it in items if it["excluido_motivo"] is not None)
+
+    coincidencias, sugerencias = buscar_items(items, texto_busqueda)
+    if not coincidencias:
+        return {
+            "encontrado": False,
+            "compras": [],
+            "promedio_reajustado": None,
+            "rango_minimo": None,
+            "rango_maximo": None,
+            "excluidos_count": excluidos_count,
+            "sugerencias": sugerencias,
+        }
+
+    uf_hoy = consultar_uf_api(hoy)
+    cache_uf = cargar_cache_uf()
+    compras = []
+    for item in coincidencias:
+        uf_compra = obtener_valor_uf(item["fecha"], cache_uf)
+        precio_reajustado = calcular_precio_reajustado(
+            item["precio_unitario_sin_iva"], uf_compra, uf_hoy,
+        )
+        compras.append({
+            "n_ref": item["n_ref"],
+            "fecha": item["fecha"].strftime("%Y-%m-%d"),
+            "precio_original_sin_iva": item["precio_unitario_sin_iva"],
+            "precio_reajustado_hoy": precio_reajustado,
+        })
+    guardar_cache_uf(cache_uf)
+
+    reajustados = [c["precio_reajustado_hoy"] for c in compras]
+    return {
+        "encontrado": True,
+        "compras": compras,
+        "promedio_reajustado": round(sum(reajustados) / len(reajustados)),
+        "rango_minimo": min(reajustados),
+        "rango_maximo": max(reajustados),
+        "excluidos_count": excluidos_count,
+        "sugerencias": [],
+    }
