@@ -105,6 +105,23 @@ def test_consultar_item_cuenta_excluidos(monkeypatch, tmp_path):
     assert resultado["excluidos_count"] == 1
 
 
+def test_consultar_item_no_crashea_con_precio_invalido_y_lo_excluye(monkeypatch, tmp_path):
+    items = [
+        _item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1)),
+        _item("UMAG-002", "Taladro", "Taladro sin precio", None, datetime(2026, 1, 1), excluido="precio_invalido"),
+    ]
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+    monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf)
+
+    resultado = ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17))
+
+    assert resultado["encontrado"] is True
+    assert len(resultado["compras"]) == 1
+    assert resultado["compras"][0]["n_ref"] == "UMAG-001"
+    assert resultado["excluidos_count"] == 1
+
+
 def _mapa_uf_con_fallo(fecha):
     fecha_iso = fecha.strftime("%Y-%m-%d")
     if fecha_iso == "2026-03-01":

@@ -36,6 +36,13 @@ def test_consultar_uf_api_sin_serie_lanza_error(monkeypatch):
         ch.consultar_uf_api(date(2026, 7, 15))
 
 
+def test_consultar_uf_api_serie_sin_campo_valor_lanza_error(monkeypatch):
+    payload = {"serie": [{"fecha": "2026-07-15T04:00:00.000Z"}]}  # falta "valor"
+    monkeypatch.setattr(ch.urllib.request, "urlopen", lambda url, timeout=10: _FakeRespuesta(payload))
+    with pytest.raises(ch.UFNoDisponibleError):
+        ch.consultar_uf_api(date(2026, 7, 15))
+
+
 def test_consultar_uf_api_sin_conexion_lanza_error(monkeypatch):
     def _falla(url, timeout=10):
         raise ch.urllib.error.URLError("sin conexion")

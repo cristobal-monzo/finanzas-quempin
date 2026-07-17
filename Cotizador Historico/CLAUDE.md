@@ -64,9 +64,10 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
 ## Funciones clave de `Sistema/cotizador_historico.py`
 
 - `cargar_items_detalle(ruta_excel=None)` — lee `Detalle`+`Master`, resuelve
-  la fecha de cada ítem vía `N° Ref.`; ítems sin `Master` correspondiente o
-  con fecha no parseable quedan con `excluido_motivo` poblado (`"sin_master"`
-  o `"fecha_invalida"`) y no entran a ninguna búsqueda ni agregación.
+  la fecha de cada ítem vía `N° Ref.`; ítems sin `Master` correspondiente,
+  con fecha no parseable, o cuya celda `P. Unitario sin IVA` no es un número,
+  quedan con `excluido_motivo` poblado (`"sin_master"`, `"fecha_invalida"` o
+  `"precio_invalido"`) y no entran a ninguna búsqueda ni agregación.
 - `buscar_items(items, texto_busqueda)` — búsqueda difusa contra `Nombre
   Ítem`/`Descripción`; devuelve `(coincidencias, sugerencias)`.
 - `obtener_valor_uf(fecha, cache_uf)` / `consultar_uf_api(fecha)` — UF

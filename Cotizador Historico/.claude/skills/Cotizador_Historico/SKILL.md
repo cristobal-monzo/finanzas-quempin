@@ -92,5 +92,5 @@ conversacionalmente.
 | `[ERROR] No existe .../Centro de Costos.xlsx` | Confirmar que `Centro de Costos/Excel/Centro de Costos.xlsx` existe y no se movió/renombró |
 | `UFNoDisponibleError` al consultar | Sin conexión a internet, o `mindicador.cl` no tiene dato para la fecha de HOY — este es el único caso que aborta toda la consulta, porque el reajuste necesita la UF de hoy para todas las compras por igual |
 | Algunas compras encontradas no aparecen en el resultado | Revisar el aviso `[INFO] N compra(s)... se excluyeron del resultado por no poder obtener su UF` al final de la salida — esa(s) fecha(s) específica(s) no se pudieron reajustar (sin conexión, o sin dato en mindicador.cl para esa fecha puntual), pero el resto de las compras encontradas sí se muestran |
-| Un ítem que sé que existe no aparece en `consultar` | Correr `status`: revisar el conteo de "Excluidos" — probablemente su `N° Ref.` no tiene fila en `Master`, o su `Fecha` no es una fecha válida |
+| Un ítem que sé que existe no aparece en `consultar` | Correr `status`: revisar el conteo de "Excluidos" — probablemente su `N° Ref.` no tiene fila en `Master`, su `Fecha` no es una fecha válida, o su celda de precio unitario está vacía/no es un número |
 | `ModuleNotFoundError: No module named 'openpyxl'` | `pip install openpyxl` |

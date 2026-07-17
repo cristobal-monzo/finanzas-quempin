@@ -8,8 +8,9 @@ modulo nunca lo escribe):
 
   status              -> Diagnostico: cuantos items indexables hay en
                           Detalle, cuantos quedan excluidos (sin fecha
-                          resoluble via Master), cuantas fechas hay en el
-                          cache de UF, y si hay conexion a mindicador.cl.
+                          resoluble via Master, o sin precio unitario
+                          valido), cuantas fechas hay en el cache de UF,
+                          y si hay conexion a mindicador.cl.
 
   consultar "<texto>" -> Busca el texto contra Nombre Item/Descripcion
                           (busqueda difusa) y muestra cada compra
@@ -54,7 +55,7 @@ def cmd_status():
 
     excluidos = [it for it in items if it["excluido_motivo"] is not None]
     print(f"\nItems indexables en Detalle: {len(items)}")
-    print(f"  Excluidos (sin fecha resoluble via Master): {len(excluidos)}")
+    print(f"  Excluidos (sin fecha resoluble via Master, o sin precio unitario valido): {len(excluidos)}")
 
     cache = ch.cargar_cache_uf()
     print(f"\nCache UF ({ch.RUTA_CACHE_UF.name}): {len(cache)} fecha(s) guardadas")
@@ -115,7 +116,8 @@ def cmd_consultar(args):
     if resultado["excluidos_count"]:
         print(
             f"\n[INFO] {resultado['excluidos_count']} item(s) de Detalle excluido(s) "
-            "del indice por no tener fecha resoluble via Master."
+            "del indice por no tener fecha resoluble via Master, o por no tener precio "
+            "unitario valido."
         )
 
     if resultado["sin_uf_count"]:

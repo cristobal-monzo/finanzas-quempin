@@ -93,3 +93,27 @@ def test_cargar_items_detalle_archivo_inexistente_lanza_error(tmp_path):
     ruta = tmp_path / "no existe.xlsx"
     with pytest.raises(ch.ExcelNoDisponibleError):
         ch.cargar_items_detalle(ruta)
+
+
+def test_cargar_items_detalle_excluye_precio_invalido(tmp_path):
+    ruta = _crear_excel_prueba(
+        tmp_path,
+        filas_detalle=[("UMAG-005", "Guante", "Guante de cuero", None)],
+        filas_master=[("UMAG-005", datetime(2026, 2, 1))],
+    )
+    items = ch.cargar_items_detalle(ruta)
+    assert items[0]["excluido_motivo"] == "precio_invalido"
+    assert items[0]["fecha"] is None
+
+
+def test_cargar_items_detalle_falta_hoja_master_lanza_error_claro(tmp_path):
+    wb = openpyxl.Workbook()
+    ws_detalle = wb.active
+    ws_detalle.title = "Detalle"
+    for c, h in enumerate(["N° Ref.", "Nombre Ítem", "Descripción", "P. Unitario sin IVA"], 1):
+        ws_detalle.cell(row=1, column=c, value=h)
+    ruta = tmp_path / "sin_master.xlsx"
+    wb.save(ruta)
+
+    with pytest.raises(ch.ExcelNoDisponibleError):
+        ch.cargar_items_detalle(ruta)

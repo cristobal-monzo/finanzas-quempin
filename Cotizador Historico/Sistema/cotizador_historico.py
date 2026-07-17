@@ -51,9 +51,10 @@ def cargar_items_detalle(ruta_excel=None):
     una lista de dicts, uno por item de linea de Detalle, con su fecha ya
     resuelta via Master (cruce por N Ref.).
 
-    Items cuyo N Ref. no tiene fila en Master, o cuya Fecha en Master no es
-    un datetime valido, quedan con excluido_motivo poblado ("sin_master" o
-    "fecha_invalida") y fecha=None -- no deben entrar a ninguna busqueda ni
+    Items cuyo N Ref. no tiene fila en Master, cuya Fecha en Master no es un
+    datetime valido, o cuyo precio unitario no es un numero, quedan con
+    excluido_motivo poblado ("sin_master", "fecha_invalida" o
+    "precio_invalido") y fecha=None -- no deben entrar a ninguna busqueda ni
     agregacion posterior."""
     ruta = Path(ruta_excel) if ruta_excel is not None else RUTA_EXCEL_CENTRO_COSTOS
     try:
@@ -64,14 +65,19 @@ def cargar_items_detalle(ruta_excel=None):
         raise ExcelNoDisponibleError(f"No se pudo abrir {ruta} para lectura: {exc}") from exc
 
     try:
-        ws_detalle = wb["Detalle"]
-        ws_master = wb["Master"]
-        fechas = _fechas_por_ref(ws_master)
-        cols = mapear_encabezados(ws_detalle)
-        col_ref = cols["N° Ref."]
-        col_nombre = cols["Nombre Ítem"]
-        col_desc = cols["Descripción"]
-        col_precio = cols["P. Unitario sin IVA"]
+        try:
+            ws_detalle = wb["Detalle"]
+            ws_master = wb["Master"]
+            fechas = _fechas_por_ref(ws_master)
+            cols = mapear_encabezados(ws_detalle)
+            col_ref = cols["N° Ref."]
+            col_nombre = cols["Nombre Ítem"]
+            col_desc = cols["Descripción"]
+            col_precio = cols["P. Unitario sin IVA"]
+        except KeyError as exc:
+            raise ExcelNoDisponibleError(
+                f"Estructura inesperada en {ruta}: falta hoja o columna {exc}"
+            ) from exc
 
         items = []
         for fila in ws_detalle.iter_rows(min_row=2):
@@ -85,11 +91,16 @@ def cargar_items_detalle(ruta_excel=None):
                 excluido_motivo = "fecha_invalida"
             else:
                 excluido_motivo = None
+
+            precio = fila[col_precio - 1].value
+            if excluido_motivo is None and not isinstance(precio, (int, float)):
+                excluido_motivo = "precio_invalido"
+
             items.append({
                 "n_ref": n_ref,
                 "nombre_item": fila[col_nombre - 1].value or "",
                 "descripcion": fila[col_desc - 1].value or "",
-                "precio_unitario_sin_iva": fila[col_precio - 1].value,
+                "precio_unitario_sin_iva": precio,
                 "fecha": fecha if excluido_motivo is None else None,
                 "excluido_motivo": excluido_motivo,
             })
@@ -172,7 +183,10 @@ def consultar_uf_api(fecha):
     serie = datos.get("serie") or []
     if not serie:
         raise UFNoDisponibleError(f"mindicador.cl no tiene valor de UF para {fecha}")
-    return serie[0]["valor"]
+    try:
+        return serie[0]["valor"]
+    except (KeyError, TypeError) as exc:
+        raise UFNoDisponibleError(f"Respuesta inesperada de mindicador.cl para {fecha}: {exc}") from exc
 
 
 def cargar_cache_uf(ruta_cache=None):
