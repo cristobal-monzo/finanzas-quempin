@@ -13,6 +13,9 @@ from datetime import datetime
 from pathlib import Path
 import unicodedata
 from difflib import SequenceMatcher
+import json
+import urllib.error
+import urllib.request
 
 import openpyxl
 
@@ -145,3 +148,57 @@ def buscar_items(items, texto_busqueda, umbral=UMBRAL_SIMILITUD, umbral_sugerenc
         if len(sugerencias) >= MAX_SUGERENCIAS:
             break
     return coincidencias, sugerencias
+
+
+class UFNoDisponibleError(Exception):
+    """No se pudo obtener el valor de la UF para una fecha desde mindicador.cl."""
+
+
+URL_MINDICADOR_UF = "https://mindicador.cl/api/uf/{fecha}"
+
+
+def consultar_uf_api(fecha):
+    """Llama a mindicador.cl y devuelve el valor UF (float) para 'fecha'
+    (date o datetime). Lanza UFNoDisponibleError si falla la conexion, la
+    respuesta no es JSON valido, o no trae serie de datos. Nunca cachea en
+    disco -- eso lo hace el llamador via obtener_valor_uf/guardar_cache_uf."""
+    url = URL_MINDICADOR_UF.format(fecha=fecha.strftime("%d-%m-%Y"))
+    try:
+        with urllib.request.urlopen(url, timeout=10) as respuesta:
+            datos = json.loads(respuesta.read().decode("utf-8"))
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        raise UFNoDisponibleError(f"No se pudo consultar mindicador.cl para {fecha}: {exc}") from exc
+
+    serie = datos.get("serie") or []
+    if not serie:
+        raise UFNoDisponibleError(f"mindicador.cl no tiene valor de UF para {fecha}")
+    return serie[0]["valor"]
+
+
+def cargar_cache_uf(ruta_cache=None):
+    ruta = Path(ruta_cache) if ruta_cache is not None else RUTA_CACHE_UF
+    if not ruta.exists():
+        return {}
+    with open(ruta, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def guardar_cache_uf(cache, ruta_cache=None):
+    ruta = Path(ruta_cache) if ruta_cache is not None else RUTA_CACHE_UF
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(cache, f, ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def obtener_valor_uf(fecha, cache_uf):
+    """Valor UF para una fecha HISTORICA (compra pasada), usando cache_uf
+    (dict fecha_iso->valor, mutado in-place) para no repetir llamadas a la
+    API. El llamador decide si persiste cache_uf con guardar_cache_uf. No
+    usar esta funcion para la UF de "hoy" -- ver consultar_item (Task 4),
+    que llama a consultar_uf_api directo para hoy, sin pasar por el cache
+    de archivo."""
+    fecha_iso = fecha.strftime("%Y-%m-%d")
+    if fecha_iso in cache_uf:
+        return cache_uf[fecha_iso]
+    valor = consultar_uf_api(fecha)
+    cache_uf[fecha_iso] = valor
+    return valor
