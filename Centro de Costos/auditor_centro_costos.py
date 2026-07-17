@@ -294,6 +294,8 @@ def leer_master(ws_master):
         filas.append({
             "fila": r, "n_ref": n_ref, "proyecto": proyecto,
             "archivo_origen": archivo_origen,
+            "proveedor_tag": ws_master.cell(row=r, column=7).value,
+            "fecha": ws_master.cell(row=r, column=4).value,
         })
 
     return filas, max_seq, docs_registrados
@@ -742,6 +744,25 @@ def nombre_esperado_archivo(n_ref, proveedor_tag, fecha_valor, extension):
     if ext == ".heic":
         ext = ".jpg"
     return f"{n_ref}_{tag}_{fecha}{ext}"
+
+
+def construir_reconciliacion_inversa(reconciliacion):
+    """{n_ref: ruta_relativa} a partir del mapeo 'ruta_relativa -> n_ref' de
+    reconciliacion_archivos.json."""
+    return {n_ref: ruta for ruta, n_ref in reconciliacion.items()}
+
+
+def resolver_ruta_actual(fila_dict, reconciliacion_inversa):
+    """Ruta relativa ('Proyecto\\archivo.ext') del archivo fisico actual para
+    una fila de Master, o None si no se puede determinar.
+
+    OJO: la ubicacion fisica puede NO coincidir con Master.Proyecto (ver nota
+    de UMAG-002 en reconciliacion_archivos.json) -- por eso se usa el Proyecto
+    embebido en la propia ruta relativa (de Archivo origen o de la
+    reconciliacion), nunca fila_dict['proyecto']."""
+    if fila_dict.get("archivo_origen"):
+        return str(fila_dict["archivo_origen"])
+    return reconciliacion_inversa.get(fila_dict["n_ref"])
 
 
 # --- MAIN ---------------------------------------------------------------------

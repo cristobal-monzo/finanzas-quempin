@@ -41,3 +41,34 @@ def test_nombre_esperado_archivo_sin_proveedor():
 def test_nombre_esperado_archivo_normaliza_extension_a_minusculas():
     nombre = acc.nombre_esperado_archivo("CFLI-004", "Beckman", "10/05/2026", ".PDF")
     assert nombre == "CFLI-004_Beckman_2026-05-10.pdf"
+
+
+def test_construir_reconciliacion_inversa():
+    reconciliacion = {
+        "UMAG\\IMG_7530.HEIC": "UMAG-001",
+        "UMAG\\IMG_7534.HEIC": "UMAG-002",
+    }
+    inversa = acc.construir_reconciliacion_inversa(reconciliacion)
+    assert inversa == {
+        "UMAG-001": "UMAG\\IMG_7530.HEIC",
+        "UMAG-002": "UMAG\\IMG_7534.HEIC",
+    }
+
+
+def test_resolver_ruta_actual_usa_archivo_origen_si_esta_poblado():
+    fila = {"n_ref": "UMAG-050", "archivo_origen": "UMAG\\IMG_9999.HEIC"}
+    assert acc.resolver_ruta_actual(fila, {}) == "UMAG\\IMG_9999.HEIC"
+
+
+def test_resolver_ruta_actual_usa_reconciliacion_si_archivo_origen_vacio():
+    fila = {"n_ref": "UMAG-002", "archivo_origen": None}
+    inversa = {"UMAG-002": "UMAG\\IMG_7534.HEIC"}
+    # Nota: UMAG-002 vive fisicamente en UMAG/ aunque Master.Proyecto diga
+    # "Gastos Generales" para esa fila (reasignacion manual) -- por eso
+    # resolver_ruta_actual NUNCA debe mirar fila["proyecto"].
+    assert acc.resolver_ruta_actual(fila, inversa) == "UMAG\\IMG_7534.HEIC"
+
+
+def test_resolver_ruta_actual_devuelve_none_si_no_hay_dato():
+    fila = {"n_ref": "UMAG-099", "archivo_origen": None}
+    assert acc.resolver_ruta_actual(fila, {}) is None
