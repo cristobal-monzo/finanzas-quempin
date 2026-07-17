@@ -233,3 +233,97 @@ def test_ejecutar_plan_renombrado_ya_correcto_no_hace_nada(tmp_path):
     assert ok is True
     assert error is None
     assert ruta.exists()
+
+
+class _WsFake:
+    """Reemplaza una worksheet de openpyxl para estos tests: solo soporta
+    cell(row, column, value=None), que basta para lo que aplicar_renombrados usa."""
+
+    def __init__(self):
+        self.valores = {}
+
+    def cell(self, row, column, value=None):
+        clave = (row, column)
+        if value is not None:
+            self.valores[clave] = value
+        return _CeldaFake(self, clave)
+
+
+class _CeldaFake:
+    def __init__(self, ws, clave):
+        self._ws = ws
+        self._clave = clave
+
+    @property
+    def value(self):
+        return self._ws.valores.get(self._clave)
+
+    @value.setter
+    def value(self, v):
+        self._ws.valores[self._clave] = v
+
+
+def test_aplicar_renombrados_renombra_y_actualiza_master(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "CFLI").mkdir()
+    (tmp_path / "CFLI" / "factura_original.pdf").write_bytes(b"contenido")
+
+    ws = _WsFake()
+    filas = [{"fila": 5, "n_ref": "CFLI-003", "archivo_origen": "CFLI\\factura_original.pdf",
+              "proveedor_tag": "Beckman", "fecha": "01/02/2026"}]
+
+    renombrados, advertencias = acc.aplicar_renombrados(ws, filas, {})
+
+    assert renombrados == 1
+    assert advertencias == []
+    assert ws.cell(row=5, column=15).value == "CFLI\\CFLI-003_Beckman_2026-02-01.pdf"
+    assert ws.cell(row=5, column=16).value is not None
+    assert (tmp_path / "CFLI" / "CFLI-003_Beckman_2026-02-01.pdf").exists()
+
+
+def test_aplicar_renombrados_ya_correcto_no_cuenta_ni_toca_master(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "UMAG").mkdir()
+    (tmp_path / "UMAG" / "UMAG-001_Shell_2026-07-15.jpg").write_bytes(b"contenido")
+
+    ws = _WsFake()
+    filas = [{"fila": 2, "n_ref": "UMAG-001", "archivo_origen": "UMAG\\UMAG-001_Shell_2026-07-15.jpg",
+              "proveedor_tag": "Shell", "fecha": "15/07/2026"}]
+
+    renombrados, advertencias = acc.aplicar_renombrados(ws, filas, {})
+
+    assert renombrados == 0
+    assert advertencias == []
+    assert ws.cell(row=2, column=15).value is None
+
+
+def test_aplicar_renombrados_archivo_no_encontrado_genera_advertencia(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "UMAG").mkdir()
+
+    ws = _WsFake()
+    filas = [{"fila": 3, "n_ref": "UMAG-030", "archivo_origen": "UMAG\\NoExiste.jpg",
+              "proveedor_tag": "Anwo", "fecha": "20/03/2026"}]
+
+    renombrados, advertencias = acc.aplicar_renombrados(ws, filas, {})
+
+    assert renombrados == 0
+    assert len(advertencias) == 1
+    assert advertencias[0]["n_ref"] == "UMAG-030"
+
+
+def test_aplicar_renombrados_conversion_fallida_genera_advertencia(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "UMAG").mkdir()
+    (tmp_path / "UMAG" / "corrupto.HEIC").write_bytes(b"no es un heic valido")
+
+    ws = _WsFake()
+    filas = [{"fila": 4, "n_ref": "UMAG-031", "archivo_origen": "UMAG\\corrupto.HEIC",
+              "proveedor_tag": "Anwo", "fecha": "20/03/2026"}]
+
+    renombrados, advertencias = acc.aplicar_renombrados(ws, filas, {})
+
+    assert renombrados == 0
+    assert len(advertencias) == 1
+    assert advertencias[0]["n_ref"] == "UMAG-031"
+    assert (tmp_path / "UMAG" / "corrupto.HEIC").exists()

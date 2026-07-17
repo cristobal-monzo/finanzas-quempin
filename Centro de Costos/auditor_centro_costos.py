@@ -838,6 +838,43 @@ def ejecutar_plan_renombrado(item):
     return True, None
 
 
+def aplicar_renombrados(ws_master, filas_master, reconciliacion_inversa):
+    """Recorre filas_master, ejecuta los renombrados/conversiones pendientes y
+    actualiza Master.Archivo origen (col 15) y Master.Fecha modificacion
+    (col 16, con el mtime real del archivo resultante) en las filas afectadas.
+    Excepcion deliberada a la regla de oro de "nunca tocar una fila ya
+    escrita" -- mismo tipo de excepcion que migrar_columna_proveedor().
+    Devuelve (cantidad_renombrados, advertencias)."""
+    renombrados = 0
+    advertencias = []
+
+    for item in planificar_renombrados(filas_master, reconciliacion_inversa):
+        if item["accion"] == "archivo_no_encontrado":
+            advertencias.append({
+                "n_ref": item["n_ref"],
+                "detalle": "Archivo fisico no encontrado para renombrar/convertir.",
+            })
+            continue
+        if item["accion"] == "ya_correcto":
+            continue
+
+        ok, error = ejecutar_plan_renombrado(item)
+        if not ok:
+            advertencias.append({
+                "n_ref": item["n_ref"],
+                "detalle": f"Fallo la conversion HEIC: {error}",
+            })
+            continue
+
+        proyecto_fisico = item["ruta_nueva"].parent.name
+        ws_master.cell(row=item["fila"], column=15, value=f"{proyecto_fisico}\\{item['nombre_nuevo']}")
+        mtime = datetime.fromtimestamp(item["ruta_nueva"].stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+        ws_master.cell(row=item["fila"], column=16, value=mtime)
+        renombrados += 1
+
+    return renombrados, advertencias
+
+
 # --- MAIN ---------------------------------------------------------------------
 
 def main():
@@ -982,7 +1019,17 @@ def main():
         regenerar_hoja_proyecto(wb, proyecto, filas_de_este_proyecto, colores.get(proyecto))
         print(f"  [OK] Hoja '{proyecto}' regenerada ({len(filas_de_este_proyecto)} documento(s))")
 
-    print("\n--- PASO 9: Formato final ---")
+    print("\n--- PASO 9: Renombrar y convertir archivos ---")
+    reconciliacion_inversa = construir_reconciliacion_inversa(reconciliacion)
+    filas_master_actual, _, _ = leer_master(ws_master)
+    renombrados, advertencias_renombrado = aplicar_renombrados(
+        ws_master, filas_master_actual, reconciliacion_inversa
+    )
+    print(f"  [OK] {renombrados} archivo(s) renombrado(s)/convertido(s).")
+    for adv in advertencias_renombrado:
+        print(f"  [WARN] {adv['n_ref']}: {adv['detalle']}")
+
+    print("\n--- PASO 10: Formato final ---")
     ajustar_anchos(ws_master)
     ajustar_anchos(ws_detalle)
     orden_deseado = ["Master", "Detalle"] + sorted(proyectos_tocados)
@@ -991,7 +1038,7 @@ def main():
             wb.move_sheet(nombre, offset=i - wb.sheetnames.index(nombre))
     print(f"  [OK] Hojas ordenadas: {wb.sheetnames}")
 
-    print("\n--- PASO 10: Guardar ---")
+    print("\n--- PASO 11: Guardar ---")
     try:
         wb.save(str(RUTA_EXCEL))
         print(f"  [OK] Excel guardado: {RUTA_EXCEL.name}")
@@ -999,7 +1046,7 @@ def main():
         print("  ERROR: El archivo esta abierto en Excel. Cierralo y vuelve a ejecutar.")
         return
 
-    print("\n--- PASO 11: Verificaciones aritmeticas (sobre todo el JSON) ---")
+    print("\n--- PASO 12: Verificaciones aritmeticas (sobre todo el JSON) ---")
     inconsistencias = verificar_aritmetica(datos_json)
 
     print("\n" + "=" * 70)
@@ -1038,6 +1085,13 @@ def main():
     else:
         print("   Sin hallazgos.")
 
+    print("\n5. RENOMBRADO/CONVERSION DE ARCHIVOS")
+    if advertencias_renombrado:
+        for adv in advertencias_renombrado:
+            print(f"   * {adv['n_ref']}: {adv['detalle']}")
+    else:
+        print("   Sin hallazgos.")
+
     print("\n" + "-" * 70)
     print("  RESUMEN FINAL")
     print("-" * 70)
@@ -1045,6 +1099,7 @@ def main():
     print(f"  {'Documentos omitidos (ya registrados):':<40} {len(omitidos)}")
     print(f"  {'Posibles duplicados:':<40} {len(posibles_duplicados)}")
     print(f"  {'Limitaciones (faltan datos en JSON):':<40} {len(limitaciones)}")
+    print(f"  {'Archivos renombrados/convertidos:':<40} {renombrados}")
     print("\n" + "=" * 70)
 
 
