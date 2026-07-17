@@ -805,6 +805,39 @@ def planificar_renombrados(filas_master, reconciliacion_inversa):
     return [planificar_renombrado_fila(fm, reconciliacion_inversa) for fm in filas_master]
 
 
+def convertir_heic_a_jpg(ruta_origen, ruta_destino):
+    """Decodifica un HEIC y lo guarda como JPG, respetando la orientacion EXIF
+    (las fotos de celular la traen y sin esto quedarian rotadas). Calidad 90,
+    sin redimensionar -- son documentos tributarios que pueden necesitar zoom."""
+    from PIL import Image, ImageOps
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+    with Image.open(ruta_origen) as imagen:
+        imagen = ImageOps.exif_transpose(imagen)
+        imagen.convert("RGB").save(str(ruta_destino), "JPEG", quality=90)
+
+
+def ejecutar_plan_renombrado(item):
+    """Ejecuta en disco la accion de un item de planificar_renombrado_fila
+    ('renombrar' o 'convertir_heic'; 'ya_correcto'/'archivo_no_encontrado' no
+    hacen nada). Devuelve (ok, error) -- no toca Master, eso lo hace el
+    llamador (Task 5)."""
+    if item["accion"] == "renombrar":
+        item["ruta_actual"].rename(item["ruta_nueva"])
+        return True, None
+
+    if item["accion"] == "convertir_heic":
+        try:
+            convertir_heic_a_jpg(item["ruta_actual"], item["ruta_nueva"])
+        except Exception as e:
+            return False, str(e)
+        item["ruta_actual"].unlink()
+        return True, None
+
+    return True, None
+
+
 # --- MAIN ---------------------------------------------------------------------
 
 def main():

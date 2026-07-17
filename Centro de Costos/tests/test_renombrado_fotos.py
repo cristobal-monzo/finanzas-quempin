@@ -157,3 +157,79 @@ def test_planificar_renombrados_procesa_varias_filas(tmp_path, monkeypatch):
     ]
     planes = acc.planificar_renombrados(filas, {})
     assert [p["accion"] for p in planes] == ["renombrar", "ya_correcto"]
+
+
+def _crear_heic_de_prueba(ruta, color=(200, 50, 50), size=(10, 10)):
+    from PIL import Image
+    import pillow_heif
+
+    img = Image.new("RGB", size, color=color)
+    heif_file = pillow_heif.from_pillow(img)
+    heif_file.save(str(ruta))
+
+
+def test_convertir_heic_a_jpg(tmp_path):
+    from PIL import Image
+
+    origen = tmp_path / "foto.heic"
+    destino = tmp_path / "foto.jpg"
+    _crear_heic_de_prueba(origen, color=(200, 50, 50))
+
+    acc.convertir_heic_a_jpg(origen, destino)
+
+    assert destino.exists()
+    with Image.open(destino) as img:
+        assert img.format == "JPEG"
+        assert img.size == (10, 10)
+
+
+def test_ejecutar_plan_renombrado_renombra_sin_convertir(tmp_path):
+    ruta_actual = tmp_path / "factura.pdf"
+    ruta_actual.write_bytes(b"contenido")
+    ruta_nueva = tmp_path / "CFLI-003_Beckman_2026-02-01.pdf"
+
+    item = {"accion": "renombrar", "ruta_actual": ruta_actual, "ruta_nueva": ruta_nueva}
+    ok, error = acc.ejecutar_plan_renombrado(item)
+
+    assert ok is True
+    assert error is None
+    assert ruta_nueva.exists()
+    assert not ruta_actual.exists()
+
+
+def test_ejecutar_plan_renombrado_convierte_heic_y_borra_original(tmp_path):
+    ruta_actual = tmp_path / "IMG_9999.HEIC"
+    _crear_heic_de_prueba(ruta_actual)
+    ruta_nueva = tmp_path / "UMAG-025_Anwo_2026-03-20.jpg"
+
+    item = {"accion": "convertir_heic", "ruta_actual": ruta_actual, "ruta_nueva": ruta_nueva}
+    ok, error = acc.ejecutar_plan_renombrado(item)
+
+    assert ok is True
+    assert error is None
+    assert ruta_nueva.exists()
+    assert not ruta_actual.exists()
+
+
+def test_ejecutar_plan_renombrado_conversion_fallida_no_borra_original(tmp_path):
+    ruta_actual = tmp_path / "corrupto.HEIC"
+    ruta_actual.write_bytes(b"esto no es un heic valido")
+    ruta_nueva = tmp_path / "UMAG-025_Anwo_2026-03-20.jpg"
+
+    item = {"accion": "convertir_heic", "ruta_actual": ruta_actual, "ruta_nueva": ruta_nueva}
+    ok, error = acc.ejecutar_plan_renombrado(item)
+
+    assert ok is False
+    assert error is not None
+    assert ruta_actual.exists()
+    assert not ruta_nueva.exists()
+
+
+def test_ejecutar_plan_renombrado_ya_correcto_no_hace_nada(tmp_path):
+    ruta = tmp_path / "UMAG-001_Shell_2026-07-15.jpg"
+    ruta.write_bytes(b"contenido")
+    item = {"accion": "ya_correcto", "ruta_actual": ruta, "ruta_nueva": ruta}
+    ok, error = acc.ejecutar_plan_renombrado(item)
+    assert ok is True
+    assert error is None
+    assert ruta.exists()
