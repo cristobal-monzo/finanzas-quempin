@@ -87,9 +87,13 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
   Costos/CLAUDE.md` documenta un cambio de esquema, revisar
   `mapear_encabezados`/`cargar_items_detalle` acá.
 - Requiere conexión a internet para fechas de UF que no estén ya en
-  `Sistema/uf_cache.json` (incluida siempre la UF de hoy). Sin conexión,
-  esas compras quedan fuera del resultado con un aviso claro — nunca se
-  inventa un valor de UF.
+  `Sistema/uf_cache.json`. Dos casos distintos: si falla la UF de una
+  compra puntual (fecha histórica sin caché ni conexión), esa compra se
+  excluye del resultado con un aviso claro y el resto sí se muestra — nunca
+  se inventa un valor de UF. Si falla la UF de **hoy** (necesaria para
+  reajustar cualquier compra por igual, se pide siempre fresca, nunca tiene
+  caché), la consulta completa aborta con un error — no hay resultado
+  parcial posible en ese caso.
 - `Sistema/uf_cache.json` contiene solo valores públicos de UF (no datos
   financieros de la empresa) — a diferencia de los datos de Centro de
   Costos, no es sensible.
