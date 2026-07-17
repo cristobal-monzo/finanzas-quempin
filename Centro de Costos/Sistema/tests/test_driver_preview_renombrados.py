@@ -5,7 +5,7 @@ from pathlib import Path
 import auditor_centro_costos as acc
 
 _DRIVER_PATH = (
-    Path(__file__).resolve().parent.parent
+    Path(__file__).resolve().parent.parent.parent
     / ".claude" / "skills" / "Registro_Centro_de_Costos" / "driver.py"
 )
 _spec = importlib.util.spec_from_file_location("driver_bajo_prueba", _DRIVER_PATH)

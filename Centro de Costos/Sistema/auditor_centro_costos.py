@@ -34,11 +34,12 @@ from openpyxl.utils import get_column_letter, column_index_from_string
 # ── CONFIGURACIÓN ────────────────────────────────────────────────────────────
 
 RAIZ = Path(__file__).resolve().parent
-RAIZ_DOCS = RAIZ / "Documentos Centro de Costos"
-RUTA_EXCEL = RAIZ / "Centro de Costos.xlsx"
+RAIZ_MODULO = RAIZ.parent
+RAIZ_DOCS = RAIZ_MODULO / "Documentos Centro de Costos"
+RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Centro de Costos.xlsx"
 RUTA_JSON = RAIZ / "datos_extraidos.json"
 RUTA_RECONCILIACION = RAIZ / "reconciliacion_archivos.json"
-RUTA_BACKUPS = RAIZ / "Respaldos"
+RUTA_BACKUPS = RAIZ_MODULO / "Excel" / "Respaldos"
 
 PREFIJOS_PROYECTO = {
     "UMAG": "UMAG",

@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "Sistema"))
 
 sys.dont_write_bytecode = True
 import auditor_centro_costos as acc  # noqa: E402
