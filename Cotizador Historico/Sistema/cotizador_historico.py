@@ -11,6 +11,8 @@ modo escritura ni lo modifica. Ver ../docs/superpowers/specs/
 
 from datetime import datetime
 from pathlib import Path
+import unicodedata
+from difflib import SequenceMatcher
 
 import openpyxl
 
@@ -91,3 +93,55 @@ def cargar_items_detalle(ruta_excel=None):
         return items
     finally:
         wb.close()
+
+
+UMBRAL_SIMILITUD = 0.6
+UMBRAL_SUGERENCIA = 0.4
+MAX_SUGERENCIAS = 5
+
+
+def normalizar_texto(texto):
+    texto = (texto or "").strip().lower()
+    texto = unicodedata.normalize("NFKD", texto)
+    return "".join(c for c in texto if not unicodedata.combining(c))
+
+
+def similitud(a, b):
+    """1.0 si uno es substring del otro (Nombre Item ya viene normalizado a
+    terminos genericos, ver Centro de Costos/CLAUDE.md); si no, ratio de
+    difflib para tolerar typos/variantes."""
+    if not a or not b:
+        return 0.0
+    if a in b or b in a:
+        return 1.0
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def buscar_items(items, texto_busqueda, umbral=UMBRAL_SIMILITUD, umbral_sugerencia=UMBRAL_SUGERENCIA):
+    """Busqueda difusa de texto_busqueda contra Nombre Item/Descripcion.
+    Devuelve (coincidencias, sugerencias): coincidencias son items (dicts
+    sin modificar) con similitud >= umbral, ordenados de mayor a menor;
+    sugerencias son hasta MAX_SUGERENCIAS nombre_item distintos con
+    similitud en [umbral_sugerencia, umbral), para cuando no hay match
+    directo. Items con excluido_motivo != None se ignoran siempre."""
+    consulta = normalizar_texto(texto_busqueda)
+    puntuadas = []
+    for item in items:
+        if item["excluido_motivo"] is not None:
+            continue
+        s = max(
+            similitud(consulta, normalizar_texto(item["nombre_item"])),
+            similitud(consulta, normalizar_texto(item["descripcion"])),
+        )
+        puntuadas.append((s, item))
+    puntuadas.sort(key=lambda par: -par[0])
+
+    coincidencias = [item for s, item in puntuadas if s >= umbral]
+
+    sugerencias = []
+    for s, item in puntuadas:
+        if umbral_sugerencia <= s < umbral and item["nombre_item"] not in sugerencias:
+            sugerencias.append(item["nombre_item"])
+        if len(sugerencias) >= MAX_SUGERENCIAS:
+            break
+    return coincidencias, sugerencias
