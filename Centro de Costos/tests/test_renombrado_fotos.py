@@ -72,3 +72,88 @@ def test_resolver_ruta_actual_usa_reconciliacion_si_archivo_origen_vacio():
 def test_resolver_ruta_actual_devuelve_none_si_no_hay_dato():
     fila = {"n_ref": "UMAG-099", "archivo_origen": None}
     assert acc.resolver_ruta_actual(fila, {}) is None
+
+
+def test_planificar_renombrado_fila_ya_correcto(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "UMAG").mkdir()
+    (tmp_path / "UMAG" / "UMAG-001_Shell_2026-07-15.jpg").write_bytes(b"contenido")
+
+    fila = {
+        "fila": 2, "n_ref": "UMAG-001",
+        "archivo_origen": "UMAG\\UMAG-001_Shell_2026-07-15.jpg",
+        "proveedor_tag": "Shell", "fecha": "15/07/2026",
+    }
+    item = acc.planificar_renombrado_fila(fila, {})
+    assert item["accion"] == "ya_correcto"
+    assert item["fila"] == 2
+    assert item["nombre_nuevo"] == "UMAG-001_Shell_2026-07-15.jpg"
+
+
+def test_planificar_renombrado_fila_renombrar_sin_conversion(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "CFLI").mkdir()
+    (tmp_path / "CFLI" / "factura_original.pdf").write_bytes(b"contenido")
+
+    fila = {
+        "fila": 5, "n_ref": "CFLI-003",
+        "archivo_origen": "CFLI\\factura_original.pdf",
+        "proveedor_tag": "Beckman", "fecha": "01/02/2026",
+    }
+    item = acc.planificar_renombrado_fila(fila, {})
+    assert item["accion"] == "renombrar"
+    assert item["nombre_nuevo"] == "CFLI-003_Beckman_2026-02-01.pdf"
+    assert item["ruta_actual"] == tmp_path / "CFLI" / "factura_original.pdf"
+    assert item["ruta_nueva"] == tmp_path / "CFLI" / "CFLI-003_Beckman_2026-02-01.pdf"
+
+
+def test_planificar_renombrado_fila_convertir_heic(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "UMAG").mkdir()
+    (tmp_path / "UMAG" / "IMG_9999.HEIC").write_bytes(b"contenido")
+
+    fila = {
+        "fila": 8, "n_ref": "UMAG-025",
+        "archivo_origen": "UMAG\\IMG_9999.HEIC",
+        "proveedor_tag": "Anwo", "fecha": "20/03/2026",
+    }
+    item = acc.planificar_renombrado_fila(fila, {})
+    assert item["accion"] == "convertir_heic"
+    assert item["nombre_nuevo"] == "UMAG-025_Anwo_2026-03-20.jpg"
+
+
+def test_planificar_renombrado_fila_archivo_no_existe_en_disco(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "UMAG").mkdir()
+
+    fila = {
+        "fila": 9, "n_ref": "UMAG-030",
+        "archivo_origen": "UMAG\\NoExiste.jpg",
+        "proveedor_tag": "Anwo", "fecha": "20/03/2026",
+    }
+    item = acc.planificar_renombrado_fila(fila, {})
+    assert item["accion"] == "archivo_no_encontrado"
+
+
+def test_planificar_renombrado_fila_sin_ruta_resoluble(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    fila = {"fila": 10, "n_ref": "UMAG-099", "archivo_origen": None,
+            "proveedor_tag": "Anwo", "fecha": "20/03/2026"}
+    item = acc.planificar_renombrado_fila(fila, {})
+    assert item["accion"] == "archivo_no_encontrado"
+
+
+def test_planificar_renombrados_procesa_varias_filas(tmp_path, monkeypatch):
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    (tmp_path / "UMAG").mkdir()
+    (tmp_path / "UMAG" / "a.jpg").write_bytes(b"x")
+    (tmp_path / "UMAG" / "UMAG-002_Shell_2026-01-01.jpg").write_bytes(b"x")
+
+    filas = [
+        {"fila": 2, "n_ref": "UMAG-001", "archivo_origen": "UMAG\\a.jpg",
+         "proveedor_tag": "Shell", "fecha": "01/01/2026"},
+        {"fila": 3, "n_ref": "UMAG-002", "archivo_origen": "UMAG\\UMAG-002_Shell_2026-01-01.jpg",
+         "proveedor_tag": "Shell", "fecha": "01/01/2026"},
+    ]
+    planes = acc.planificar_renombrados(filas, {})
+    assert [p["accion"] for p in planes] == ["renombrar", "ya_correcto"]

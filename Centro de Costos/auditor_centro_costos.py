@@ -765,6 +765,46 @@ def resolver_ruta_actual(fila_dict, reconciliacion_inversa):
     return reconciliacion_inversa.get(fila_dict["n_ref"])
 
 
+def planificar_renombrado_fila(fila_dict, reconciliacion_inversa):
+    """Calcula (sin tocar disco) que accion corresponde para una fila de Master:
+    {'n_ref', 'fila', 'accion', 'ruta_actual', 'ruta_nueva', 'nombre_nuevo'}.
+    'accion' es uno de: 'ya_correcto', 'renombrar', 'convertir_heic',
+    'archivo_no_encontrado'. Se usa tanto para el preview de status como,
+    antes de ejecutar, para el run real."""
+    base = {
+        "n_ref": fila_dict["n_ref"], "fila": fila_dict["fila"],
+        "ruta_actual": None, "ruta_nueva": None, "nombre_nuevo": None,
+    }
+
+    ruta_relativa = resolver_ruta_actual(fila_dict, reconciliacion_inversa)
+    if not ruta_relativa:
+        return {**base, "accion": "archivo_no_encontrado"}
+
+    proyecto_fisico, nombre_archivo = ruta_relativa.split("\\", 1)
+    ruta_actual = RAIZ_DOCS / proyecto_fisico / nombre_archivo
+    if not ruta_actual.exists():
+        return {**base, "accion": "archivo_no_encontrado", "ruta_actual": ruta_actual}
+
+    extension_actual = ruta_actual.suffix
+    nombre_nuevo = nombre_esperado_archivo(
+        fila_dict["n_ref"], fila_dict["proveedor_tag"], fila_dict["fecha"], extension_actual
+    )
+    ruta_nueva = ruta_actual.parent / nombre_nuevo
+
+    if ruta_actual.name == nombre_nuevo:
+        return {**base, "accion": "ya_correcto", "ruta_actual": ruta_actual,
+                "ruta_nueva": ruta_actual, "nombre_nuevo": nombre_nuevo}
+
+    accion = "convertir_heic" if extension_actual.lower() == ".heic" else "renombrar"
+    return {**base, "accion": accion, "ruta_actual": ruta_actual,
+            "ruta_nueva": ruta_nueva, "nombre_nuevo": nombre_nuevo}
+
+
+def planificar_renombrados(filas_master, reconciliacion_inversa):
+    """planificar_renombrado_fila() aplicado a cada fila de Master. No toca disco."""
+    return [planificar_renombrado_fila(fm, reconciliacion_inversa) for fm in filas_master]
+
+
 # --- MAIN ---------------------------------------------------------------------
 
 def main():
