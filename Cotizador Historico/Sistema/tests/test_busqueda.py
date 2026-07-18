@@ -42,7 +42,29 @@ def test_similitud_con_texto_vacio_es_0():
     assert ch.similitud("", "taladro") == 0.0
 
 
+def test_similitud_coincide_por_palabra_significativa_de_nombre_no_simplificado():
+    # Nombre Item real sin simplificar (ver Centro de Costos/CLAUDE.md): el
+    # primer termino calza con la consulta en plural, pero el string
+    # completo no es substring uno del otro.
+    assert ch.similitud("guantes", "guante de trabajo cuero spandex") == 1.0
+
+
+def test_similitud_ignora_palabras_cortas_para_evitar_ruido():
+    # "dab" (3 letras) no debe bastar para enganchar una consulta larga no
+    # relacionada solo por compartir esa palabra corta.
+    assert ch.similitud("caldera dab 150/280", "bomba dab circulacion en linea cp 50/2200 t-ie3") < 0.6
+
+
 # ── buscar_items ───────────────────────────────────────────────────────────
+
+def test_buscar_items_encuentra_nombre_no_simplificado_en_plural():
+    items = [
+        _item("A", "Guante", "Guante de cuero natural"),
+        _item("B", "Guante de trabajo cuero spandex", "Cod. 123"),
+    ]
+    coincidencias, _sugerencias = ch.buscar_items(items, "guantes")
+    assert {it["n_ref"] for it in coincidencias} == {"A", "B"}
+
 
 def test_buscar_items_encuentra_por_nombre_o_descripcion():
     items = [

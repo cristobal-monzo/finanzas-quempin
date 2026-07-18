@@ -120,14 +120,25 @@ def normalizar_texto(texto):
     return "".join(c for c in texto if not unicodedata.combining(c))
 
 
+LONGITUD_MINIMA_PALABRA_SIGNIFICATIVA = 4
+
+
 def similitud(a, b):
-    """1.0 si uno es substring del otro (Nombre Item ya viene normalizado a
-    terminos genericos, ver Centro de Costos/CLAUDE.md); si no, ratio de
-    difflib para tolerar typos/variantes."""
+    """1.0 si uno es substring del otro. Tambien 1.0 si alguna palabra
+    "significativa" (>=4 caracteres, para no engancharse con codigos/medidas
+    cortas como "1/2" o marcas de 3 letras) de b es substring de a o
+    viceversa -- cubre el caso de un Nombre Item real que no vino
+    simplificado (ver Centro de Costos/CLAUDE.md) donde el primer termino
+    calza con la consulta pero el string completo no (ej. consulta
+    "guantes" contra nombre_item "Guante de trabajo cuero spandex"). Si
+    nada de eso aplica, ratio de difflib para tolerar typos/variantes."""
     if not a or not b:
         return 0.0
     if a in b or b in a:
         return 1.0
+    for palabra in b.split():
+        if len(palabra) >= LONGITUD_MINIMA_PALABRA_SIGNIFICATIVA and (palabra in a or a in palabra):
+            return 1.0
     return SequenceMatcher(None, a, b).ratio()
 
 
