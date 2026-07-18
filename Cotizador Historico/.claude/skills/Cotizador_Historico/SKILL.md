@@ -36,8 +36,11 @@ python ".claude/skills/Cotizador_Historico/driver.py" status
 ```
 
 **`consultar "<texto>"`** — busca el texto contra `Nombre Ítem`/`Descripción`
-de `Detalle` (búsqueda difusa) y muestra cada compra encontrada con su
-precio original y su precio reajustado a hoy, más promedio y rango.
+de `Detalle` (búsqueda difusa) y muestra una tabla con cada compra
+encontrada (fecha, N° Ref., precio original sin IVA, ajuste actual sin IVA
+y ajuste actual con IVA — este último con la tasa real de IVA del
+documento original, no 19% fijo, igual que hace Centro de Costos), más una
+fila de promedio y el rango (sin IVA).
 
 ```
 python ".claude/skills/Cotizador_Historico/driver.py" consultar "taladro"
@@ -49,11 +52,13 @@ reales de Centro de Costos y la UF del día):
 ```
 Compras encontradas para "taladro":
 
-  UMAG-014 (2026-03-10): $90,000 -> $94,200 reajustado a hoy
-  UMAG-021 (2026-05-02): $85,000 -> $87,100 reajustado a hoy
+| Fecha | N° Ref. | Precio original (sin IVA) | Ajuste actual sin IVA | Ajuste actual con IVA |
+|---|---|---|---|---|
+| 2026-03-10 | UMAG-014 | $90,000 | $94,200 | $112,098 |
+| 2026-05-02 | UMAG-021 | $85,000 | $87,100 | $103,649 |
+| **Promedio** | | | $90,650 | $107,874 |
 
-Promedio reajustado: $90,650
-Rango: $87,100 - $94,200
+Rango (sin IVA): $87,100 - $94,200
 ```
 
 Si no hay match: `No se encontraron compras para "<texto>".`, con una lista

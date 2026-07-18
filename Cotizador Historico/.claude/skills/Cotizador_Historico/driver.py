@@ -13,9 +13,11 @@ modulo nunca lo escribe):
                           y si hay conexion a mindicador.cl.
 
   consultar "<texto>" -> Busca el texto contra Nombre Item/Descripcion
-                          (busqueda difusa) y muestra cada compra
-                          encontrada con su precio original y su precio
-                          reajustado a hoy por UF, mas promedio y rango.
+                          (busqueda difusa) y muestra una tabla con cada
+                          compra encontrada: fecha, N Ref., precio original
+                          sin IVA, ajuste actual sin IVA y ajuste actual con
+                          IVA (tasa real del documento, no 19% fijo) -- mas
+                          una fila de promedio y el rango sin IVA.
 
 Uso:
   python driver.py status
@@ -103,15 +105,22 @@ def cmd_consultar(args):
         return 0
 
     print(f'Compras encontradas para "{texto}":\n')
+    print("| Fecha | N° Ref. | Precio original (sin IVA) | Ajuste actual sin IVA | Ajuste actual con IVA |")
+    print("|---|---|---|---|---|")
     for c in resultado["compras"]:
         print(
-            f"  {c['n_ref']} ({c['fecha']}): "
-            f"${c['precio_original_sin_iva']:,.0f} -> "
-            f"${c['precio_reajustado_hoy']:,.0f} reajustado a hoy"
+            f"| {c['fecha']} | {c['n_ref']} | "
+            f"${c['precio_original_sin_iva']:,.0f} | "
+            f"${c['precio_reajustado_hoy']:,.0f} | "
+            f"${c['precio_reajustado_hoy_con_iva']:,.0f} |"
         )
+    print(
+        f"| **Promedio** | | | "
+        f"${resultado['promedio_reajustado']:,.0f} | "
+        f"${resultado['promedio_reajustado_con_iva']:,.0f} |"
+    )
 
-    print(f"\nPromedio reajustado: ${resultado['promedio_reajustado']:,.0f}")
-    print(f"Rango: ${resultado['rango_minimo']:,.0f} - ${resultado['rango_maximo']:,.0f}")
+    print(f"\nRango (sin IVA): ${resultado['rango_minimo']:,.0f} - ${resultado['rango_maximo']:,.0f}")
 
     if resultado["excluidos_count"]:
         print(

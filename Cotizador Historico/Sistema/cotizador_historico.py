@@ -49,7 +49,9 @@ def _fechas_por_ref(ws_master):
 def cargar_items_detalle(ruta_excel=None):
     """Lee Detalle+Master de Centro de Costos.xlsx (solo lectura) y devuelve
     una lista de dicts, uno por item de linea de Detalle, con su fecha ya
-    resuelta via Master (cruce por N Ref.).
+    resuelta via Master (cruce por N Ref.). Incluye "total_sin_iva"/
+    "total_con_iva" de esa misma fila (permiten derivar la tasa real de IVA
+    del documento, ver tasa_iva_real, sin asumir 19% fijo).
 
     Items cuyo N Ref. no tiene fila en Master, cuya Fecha en Master no es un
     datetime valido, o cuyo precio unitario no es un numero, quedan con
@@ -74,6 +76,8 @@ def cargar_items_detalle(ruta_excel=None):
             col_nombre = cols["Nombre Ítem"]
             col_desc = cols["Descripción"]
             col_precio = cols["P. Unitario sin IVA"]
+            col_total_sin_iva = cols["Total sin IVA (CLP)"]
+            col_total_con_iva = cols["Total con IVA (CLP)"]
         except KeyError as exc:
             raise ExcelNoDisponibleError(
                 f"Estructura inesperada en {ruta}: falta hoja o columna {exc}"
@@ -101,6 +105,8 @@ def cargar_items_detalle(ruta_excel=None):
                 "nombre_item": fila[col_nombre - 1].value or "",
                 "descripcion": fila[col_desc - 1].value or "",
                 "precio_unitario_sin_iva": precio,
+                "total_sin_iva": fila[col_total_sin_iva - 1].value,
+                "total_con_iva": fila[col_total_con_iva - 1].value,
                 "fecha": fecha if excluido_motivo is None else None,
                 "excluido_motivo": excluido_motivo,
             })
@@ -234,6 +240,20 @@ def calcular_precio_reajustado(precio_original, uf_fecha_compra, uf_hoy):
     return round(precio_original * factor)
 
 
+def tasa_iva_real(total_sin_iva, total_con_iva):
+    """Tasa real de IVA del documento (Total con IVA / Total sin IVA de esa
+    fila de Detalle) -- igual que hace Centro de Costos, nunca asume 19%
+    fijo, para que tambien sea correcta en documentos exentos o de Zona
+    Franca. Si cualquiera de los dos totales no es un numero utilizable, o
+    el total sin IVA es 0 (ej. items que figuran en $0 en la factura),
+    devuelve 1.0 (sin IVA adicional) como respaldo seguro."""
+    if not isinstance(total_sin_iva, (int, float)) or not total_sin_iva:
+        return 1.0
+    if not isinstance(total_con_iva, (int, float)):
+        return 1.0
+    return total_con_iva / total_sin_iva
+
+
 def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
     """Orquesta una consulta completa: carga Detalle, busca por texto,
     reajusta cada compra encontrada por UF, y agrega promedio/rango.
@@ -257,6 +277,7 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
             "encontrado": False,
             "compras": [],
             "promedio_reajustado": None,
+            "promedio_reajustado_con_iva": None,
             "rango_minimo": None,
             "rango_maximo": None,
             "excluidos_count": excluidos_count,
@@ -277,11 +298,13 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
         precio_reajustado = calcular_precio_reajustado(
             item["precio_unitario_sin_iva"], uf_compra, uf_hoy,
         )
+        tasa_iva = tasa_iva_real(item.get("total_sin_iva"), item.get("total_con_iva"))
         compras.append({
             "n_ref": item["n_ref"],
             "fecha": item["fecha"].strftime("%Y-%m-%d"),
             "precio_original_sin_iva": item["precio_unitario_sin_iva"],
             "precio_reajustado_hoy": precio_reajustado,
+            "precio_reajustado_hoy_con_iva": round(precio_reajustado * tasa_iva),
         })
     guardar_cache_uf(cache_uf)
 
@@ -290,6 +313,7 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
             "encontrado": False,
             "compras": [],
             "promedio_reajustado": None,
+            "promedio_reajustado_con_iva": None,
             "rango_minimo": None,
             "rango_maximo": None,
             "excluidos_count": excluidos_count,
@@ -298,10 +322,12 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
         }
 
     reajustados = [c["precio_reajustado_hoy"] for c in compras]
+    reajustados_con_iva = [c["precio_reajustado_hoy_con_iva"] for c in compras]
     return {
         "encontrado": True,
         "compras": compras,
         "promedio_reajustado": round(sum(reajustados) / len(reajustados)),
+        "promedio_reajustado_con_iva": round(sum(reajustados_con_iva) / len(reajustados_con_iva)),
         "rango_minimo": min(reajustados),
         "rango_maximo": max(reajustados),
         "excluidos_count": excluidos_count,

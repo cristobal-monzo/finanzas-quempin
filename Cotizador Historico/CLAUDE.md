@@ -19,7 +19,11 @@ consume.
   (fecha por documento) de `Centro de Costos/Excel/Centro de Costos.xlsx`,
   cruzadas por `N° Ref.`.
 - El precio base de cada ítem es `P. Unitario sin IVA` (comparable entre
-  compras de distinta cantidad).
+  compras de distinta cantidad). El ajuste con IVA se deriva de la tasa
+  real del documento (`Total con IVA` / `Total sin IVA` de esa fila de
+  `Detalle`), igual que hace Centro de Costos — nunca asume 19% fijo, para
+  ser correcto también en documentos exentos o de Zona Franca
+  (`tasa_iva_real`).
 - El reajuste es solo por UF (no IPC, no dólar) — valores obtenidos de la
   API pública `mindicador.cl`, con caché local de fechas históricas en
   `Sistema/uf_cache.json`. La UF del día de la consulta nunca se cachea
@@ -64,7 +68,8 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
 ## Funciones clave de `Sistema/cotizador_historico.py`
 
 - `cargar_items_detalle(ruta_excel=None)` — lee `Detalle`+`Master`, resuelve
-  la fecha de cada ítem vía `N° Ref.`; ítems sin `Master` correspondiente,
+  la fecha de cada ítem vía `N° Ref.` e incluye `total_sin_iva`/
+  `total_con_iva` de esa misma fila; ítems sin `Master` correspondiente,
   con fecha no parseable, o cuya celda `P. Unitario sin IVA` no es un número,
   quedan con `excluido_motivo` poblado (`"sin_master"`, `"fecha_invalida"` o
   `"precio_invalido"`) y no entran a ninguna búsqueda ni agregación.
@@ -73,9 +78,13 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
 - `obtener_valor_uf(fecha, cache_uf)` / `consultar_uf_api(fecha)` — UF
   histórica cacheada localmente; la UF de "hoy" se pide siempre fresca vía
   `consultar_uf_api` directo (no pasa por el caché de archivo).
+- `tasa_iva_real(total_sin_iva, total_con_iva)` — tasa real de IVA del
+  documento original; `1.0` (sin IVA adicional) como respaldo si los
+  totales no son numéricos o el total sin IVA es 0.
 - `consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None)` —
   orquesta todo lo anterior y devuelve el resultado completo: compras
-  individuales, promedio, rango, y sugerencias si no hubo match.
+  individuales (con su ajuste sin IVA y con IVA), promedio de ambos, rango
+  (sin IVA), y sugerencias si no hubo match.
 
 ## Precauciones
 
