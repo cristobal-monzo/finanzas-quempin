@@ -12,6 +12,7 @@ Flujo de Caja/**/*.json
 Cotizador Historico/**/*.xlsx
 Cotizador Historico/**/*.json
 */Visualizador Web/data/
+*/Visualizador Web/build/
 
 # Python
 __pycache__/
