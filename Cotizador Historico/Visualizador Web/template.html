@@ -336,6 +336,26 @@
   table.viz-table tbody tr.clickable-row:hover { background: var(--surface-1); }
   table.viz-table tbody tr.clickable-row:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
   table.viz-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .viz-searchsummary { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .viz-searchsummary b { color: var(--brand-orange-ink, var(--brand-orange)); }
+  .viz-cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-bottom: 12px; }
+  .viz-refcard { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .viz-refcard .rc-title { font-size: 14px; font-weight: 700; }
+  .viz-refcard .rc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .viz-refcard .rc-chip { font-size: 11px; font-weight: 700; background: rgba(255,81,0,0.12); color: var(--brand-orange-ink, var(--brand-orange)); border-radius: 20px; padding: 2px 9px; }
+  .viz-refcard .rc-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }
+  .viz-refcard .rc-meta { font-size: 11.5px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  .viz-refcard .rc-price { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--gridline); }
+  .viz-refcard .rc-price .rc-price-main { font-size: 21px; font-weight: 900; color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; }
+  .viz-refcard .rc-price .rc-price-sub { font-size: 11.5px; color: var(--text-muted); }
+  .viz-refcard .rc-original { font-size: 11px; color: var(--text-muted); }
+  .viz-refcard mark { background: rgba(255,81,0,0.28); color: inherit; border-radius: 2px; padding: 0 1px; }
+  .viz-refcard .rc-cartrow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .viz-refcard .rc-qty { width: 52px; font-family: inherit; font-size: 13px; text-align: center; padding: 5px; border-radius: 6px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
+  .viz-refcard .rc-addbtn { flex: 1; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 10px; border-radius: 7px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; }
+  .viz-refcard .rc-addbtn:hover { filter: brightness(1.1); }
+  .viz-refcard .rc-addbtn.added { background: var(--status-good); color: #fff; }
 </style>
 
 <div class="viz-gate" id="pwGate">
@@ -392,6 +412,34 @@
       </div>
       <div class="viz-empty-state" id="productEmptyState" style="display:none">Sin productos indexados.</div>
     </div>
+
+    <p class="viz-section-title">Buscar referencias</p>
+    <div class="viz-filterbar">
+      <div class="viz-field search">
+        <label for="fSearch">Buscar por palabra clave</label>
+        <input id="fSearch" type="text" placeholder="Ej. bomba, taladro, cemento…" />
+      </div>
+      <div class="viz-field">
+        <label for="fProyecto">Proyecto</label>
+        <select id="fProyecto"><option value="">Todos</option></select>
+      </div>
+      <div class="viz-field">
+        <label for="fCategoria">Categoría</label>
+        <select id="fCategoria"><option value="">Todas</option></select>
+      </div>
+      <div class="viz-field dates">
+        <div class="viz-field"><label for="fDesde">Desde</label><input id="fDesde" type="date" /></div>
+        <div class="viz-field"><label for="fHasta">Hasta</label><input id="fHasta" type="date" /></div>
+      </div>
+      <span class="viz-resultcount" id="searchResultCount"></span>
+    </div>
+
+    <div id="searchSummary" class="viz-searchsummary" style="display:none"></div>
+    <div id="searchResults" class="viz-cardgrid"></div>
+    <div id="searchMoreWrap" style="display:none;text-align:center;margin:12px 0 24px">
+      <button type="button" class="viz-clearbtn" id="btnVerTodas"></button>
+    </div>
+    <div id="searchEmptyState" class="viz-empty-state" style="display:none"></div>
 
     <p class="viz-footer">
       Cotizador Historico — datos reales de <strong>Centro de Costos.xlsx</strong>, reajustados a
@@ -689,6 +737,139 @@
     }
     return { marca: marca, modelo: modelo };
   }
+
+  // ---------- filtros de busqueda ----------
+  fillSelectFromValues('fProyecto', DATA.items.map(function (i) { return i.proyecto; }));
+  fillSelectFromValues('fCategoria', DATA.items.map(function (i) { return i.categoria_item; }));
+  function fillSelectFromValues(id, values) {
+    var uniq = Array.from(new Set(values.filter(Boolean))).sort();
+    var el = document.getElementById(id);
+    uniq.forEach(function (v) {
+      var opt = document.createElement('option');
+      opt.value = v; opt.textContent = v;
+      el.appendChild(opt);
+    });
+  }
+  function itemPasaFiltros(item) {
+    var proyecto = document.getElementById('fProyecto').value;
+    var categoria = document.getElementById('fCategoria').value;
+    var desde = document.getElementById('fDesde').value;
+    var hasta = document.getElementById('fHasta').value;
+    if (proyecto && item.proyecto !== proyecto) return false;
+    if (categoria && item.categoria_item !== categoria) return false;
+    if (desde && item.fecha < desde) return false;
+    if (hasta && item.fecha > hasta) return false;
+    return true;
+  }
+
+  // ---------- resultados de busqueda ----------
+  var PAGE_SIZE_RESULTADOS = 5;
+  var searchState = { texto: '', mostrarTodas: false };
+
+  function runSearch(texto) {
+    document.getElementById('fSearch').value = texto;
+    searchState.texto = texto;
+    searchState.mostrarTodas = false;
+    renderSearch();
+    document.querySelector('.viz-cardgrid').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function highlight(texto, consulta) {
+    if (!consulta) return esc(texto);
+    var idx = normalizeText(texto).indexOf(normalizeText(consulta));
+    if (idx === -1) return esc(texto);
+    var raw = String(texto || '');
+    return esc(raw.slice(0, idx)) + '<mark>' + esc(raw.slice(idx, idx + consulta.length)) + '</mark>' + esc(raw.slice(idx + consulta.length));
+  }
+
+  function renderRefCard(item, consulta) {
+    var specs = extraerSpecs(item.descripcion);
+    var marcaModelo = extraerMarcaModelo(item.descripcion);
+    var chips = [];
+    if (marcaModelo.marca) chips.push(marcaModelo.marca);
+    if (marcaModelo.modelo) chips.push(marcaModelo.modelo);
+    chips = chips.concat(specs);
+    var cardId = 'rc_' + item.n_ref + '_' + item.nombre_item.replace(/\W+/g, '_');
+    return '<div class="viz-refcard">' +
+      '<div class="rc-title">' + highlight(item.nombre_item, consulta) + '</div>' +
+      (chips.length ? '<div class="rc-chips">' + chips.map(function (c) { return '<span class="rc-chip">' + esc(c) + '</span>'; }).join('') + '</div>' : '') +
+      '<div class="rc-desc">' + highlight(item.descripcion, consulta) + '</div>' +
+      '<div class="rc-meta"><span>' + esc(item.n_ref) + '</span><span>' + esc(item.proyecto || '—') + '</span><span>' + esc(item.proveedor_tag || '—') + '</span><span>' + fmtDate(item.fecha) + '</span></div>' +
+      '<div class="rc-price">' +
+      '<div class="rc-price-main">' + fmt(item.precio_reajustado_hoy_con_iva) + '</div>' +
+      '<div class="rc-price-sub">c/IVA · ' + fmt(item.precio_reajustado_hoy) + ' s/IVA reajustado hoy</div>' +
+      '<div class="rc-original">Precio original: ' + fmt(item.precio_original_sin_iva) + ' (s/IVA, al momento de la compra)</div>' +
+      '</div>' +
+      '<div class="rc-cartrow">' +
+      '<input type="number" class="rc-qty" id="qty_' + cardId + '" value="1" min="1" step="1" aria-label="Cantidad" />' +
+      '<button type="button" class="rc-addbtn" data-cardid="' + cardId + '" data-nref="' + esc(item.n_ref) + '" data-nombre="' + esc(item.nombre_item) + '">Agregar al carrito</button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function renderSearch() {
+    var texto = searchState.texto;
+    var countEl = document.getElementById('searchResultCount');
+    var summaryEl = document.getElementById('searchSummary');
+    var resultsEl = document.getElementById('searchResults');
+    var moreWrapEl = document.getElementById('searchMoreWrap');
+    var emptyEl = document.getElementById('searchEmptyState');
+    var verTodasBtn = document.getElementById('btnVerTodas');
+
+    if (!texto) {
+      countEl.textContent = '';
+      summaryEl.style.display = 'none';
+      resultsEl.innerHTML = '';
+      moreWrapEl.style.display = 'none';
+      emptyEl.style.display = 'none';
+      return;
+    }
+
+    var candidatos = DATA.items.filter(itemPasaFiltros);
+    var resultado = buscarItems(candidatos, texto);
+    var coincidencias = resultado.coincidencias;
+
+    if (!coincidencias.length) {
+      summaryEl.style.display = 'none';
+      resultsEl.innerHTML = '';
+      moreWrapEl.style.display = 'none';
+      countEl.textContent = '0 referencias';
+      emptyEl.style.display = '';
+      emptyEl.innerHTML = 'No se encontraron referencias para "' + esc(texto) + '".' +
+        (resultado.sugerencias.length ? '<br>Quizás quisiste decir: ' + resultado.sugerencias.map(esc).join(', ') : '');
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    var precios = coincidencias.map(function (c) { return c.precio_reajustado_hoy_con_iva; });
+    var promedio = Math.round(precios.reduce(function (a, b) { return a + b; }, 0) / precios.length);
+    summaryEl.style.display = '';
+    summaryEl.innerHTML =
+      '<span>Referencias encontradas: <b>' + coincidencias.length + '</b></span>' +
+      '<span>Promedio reajustado (c/IVA): <b>' + fmt(promedio) + '</b></span>' +
+      '<span>Rango: <b>' + fmt(Math.min.apply(null, precios)) + ' – ' + fmt(Math.max.apply(null, precios)) + '</b></span>';
+
+    countEl.textContent = coincidencias.length + ' referencia' + (coincidencias.length === 1 ? '' : 's');
+
+    var mostrar = searchState.mostrarTodas ? coincidencias : coincidencias.slice(0, PAGE_SIZE_RESULTADOS);
+    resultsEl.innerHTML = mostrar.map(function (item) { return renderRefCard(item, texto); }).join('');
+    bindCartButtons(resultsEl);
+
+    if (coincidencias.length > PAGE_SIZE_RESULTADOS && !searchState.mostrarTodas) {
+      moreWrapEl.style.display = '';
+      verTodasBtn.textContent = 'Ver las ' + coincidencias.length + ' referencias';
+      verTodasBtn.onclick = function () { searchState.mostrarTodas = true; renderSearch(); };
+    } else {
+      moreWrapEl.style.display = 'none';
+    }
+  }
+
+  var debouncedRunSearchFromInput = debounce(function () { runSearch(document.getElementById('fSearch').value); }, 150);
+  document.getElementById('fSearch').addEventListener('input', debouncedRunSearchFromInput);
+  ['fProyecto', 'fCategoria', 'fDesde', 'fHasta'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function () { renderSearch(); });
+  });
+  function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
   function renderTopProductosChart() {
     var top10 = PRODUCT_INDEX.slice().sort(function (a, b) { return b.n_compras - a.n_compras; }).slice(0, 10);
