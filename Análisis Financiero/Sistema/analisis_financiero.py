@@ -170,3 +170,27 @@ def leer_filas_proyectos(ws_proyectos) -> tuple[list[dict], list[str]]:
         filas_validas.append({"fila": fila_idx, "tag": tag, "nombre": nombre})
 
     return filas_validas, avisos
+
+
+# ── CARPETAS DE PROYECTO ─────────────────────────────────────────────────────
+
+def asegurar_carpeta_proyecto(nombre_proyecto: str, raiz_facturas: Path) -> bool:
+    """Crea raiz_facturas/<nombre_proyecto>/ si no existe. Devuelve True si
+    la creó, False si ya existía. raiz_facturas debe ser la fuente REAL que
+    lee Centro de Costos hoy (Sitio de comunicación - Centro de Costos 1/
+    Facturas y Boletas/), nunca la carpeta legado."""
+    carpeta = raiz_facturas / nombre_proyecto
+    if carpeta.exists():
+        return False
+    carpeta.mkdir(parents=True)
+    return True
+
+
+def asegurar_carpetas_proyectos(filas_validas: list[dict], raiz_facturas: Path) -> list[str]:
+    """Aplica asegurar_carpeta_proyecto a cada fila válida. Devuelve los
+    nombres de las carpetas que se crearon (para el informe de consola)."""
+    creadas = []
+    for fila_info in filas_validas:
+        if asegurar_carpeta_proyecto(fila_info["nombre"], raiz_facturas):
+            creadas.append(fila_info["nombre"])
+    return creadas
