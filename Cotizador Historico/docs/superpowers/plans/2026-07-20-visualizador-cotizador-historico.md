@@ -15,7 +15,7 @@
 - Font: Lato, reused byte-for-byte from Centro de Costos' embedded base64 `@font-face` blocks — never re-encode or re-source it.
 - `Cotizador Historico/Sistema/cotizador_historico.py` and `build_visualizador.py` are **read-only** over `Centro de Costos/Excel/Centro de Costos.xlsx` — never open it in write mode, never call `wb.save()` on it.
 - The UF used for "costo revalorizado" is fixed at build time (fetched once from `mindicador.cl` by `build_visualizador.py`), never fetched by the published page at runtime — Artifacts have no generic external-fetch capability.
-- File downloads from the published page may only use extensions `gif png jpg jpeg webp mp4 webm txt json md` (the `downloads` capability's allowlist) — the cart export must be `.txt`, never `.xlsx`/`.csv`.
+- The cart's "export" is a read-only `<textarea>` with tab-separated content plus a "Copiar todo" clipboard button — never a file download. (Superseded design note, kept for context: an Artifact-published page can only offer file downloads through the `downloads` capability, whose extension allowlist — `gif png jpg jpeg webp mp4 webm txt json md` — excludes `.xlsx`/`.csv`; the user decided against a `.txt` download entirely and asked for copy-paste instead, which also sidesteps that constraint.)
 - The cart has **no persistence across sessions** — plain in-memory JS state only, never `localStorage`/`sessionStorage` for cart contents.
 - `*/Visualizador Web/data/` and `*/Visualizador Web/build/` are already gitignored repo-wide — never force-add files under those paths.
 - Spec: [`../specs/2026-07-20-visualizador-cotizador-historico-design.md`](../specs/2026-07-20-visualizador-cotizador-historico-design.md) — re-read it if a task below seems to contradict it.
@@ -1298,7 +1298,7 @@ git commit -m "feat(cotizador-historico): tarjetas de resultados de busqueda, to
 
 **Interfaces:**
 - Consumes: `.rc-addbtn`/`.rc-qty` DOM elements rendered by Task 6's `renderRefCard`, `fmt`, `esc`.
-- Produces: `bindCartButtons(container)` (resolves Task 6's forward reference), `cart` (in-memory array, module-scope inside `initApp`), consumed by Task 8's export.
+- Produces: `bindCartButtons(container)` (resolves Task 6's forward reference), `cart` (in-memory array, module-scope inside `initApp`), consumed by Task 8's `construirTextoExport()`. This task's own `renderCart()` calls `construirTextoExport()` (Task 8) to populate the `#exportText` textarea live — that function does not exist until Task 8 lands, so until then adding an item to the cart throws `ReferenceError: construirTextoExport is not defined` in the browser console. This is an intentional, temporary forward reference, the same pattern already used for `runSearch` (Task 4→6) and `bindCartButtons` (Task 6→7) — not a bug to fix within this task.
 
 - [ ] **Step 1: Add the floating cart button + drawer markup**
 
@@ -1316,8 +1316,10 @@ Insert right before the final `<div class="viz-tooltip" id="vizTooltip"></div>` 
     <div id="cartItemsList" class="viz-cart-items"></div>
     <div id="cartEmptyMsg" class="viz-cart-empty">El carrito está vacío. Agrega referencias desde los resultados de búsqueda.</div>
     <div class="viz-cart-totals" id="cartTotals"></div>
-    <button type="button" id="btnExportar" class="viz-cart-exportbtn" disabled>Exportar cotización</button>
-    <p class="viz-cart-note">Se descarga en formato .txt por una restricción de la plataforma — ábrelo con Excel (Archivo &gt; Abrir) o cambia la extensión a .csv.</p>
+    <label class="viz-cart-label" for="exportText">Texto para copiar a Excel</label>
+    <textarea id="exportText" class="viz-cart-textarea" readonly rows="6" placeholder="Agrega referencias al carrito para generar el texto…"></textarea>
+    <button type="button" id="btnCopiarTodo" class="viz-cart-copybtn" disabled>Copiar todo</button>
+    <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas).</p>
   </div>
 ```
 
@@ -1341,8 +1343,10 @@ Append this CSS right before the closing `</style>`:
   .viz-cart-line .cl-removebtn:hover { color: var(--brand-orange-ink, var(--brand-orange)); }
   .viz-cart-empty { font-size: 12.5px; color: var(--text-muted); text-align: center; padding: 20px 0; }
   .viz-cart-totals { font-size: 13px; font-weight: 700; padding: 10px 0; border-top: 1px solid var(--gridline); margin-top: 8px; }
-  .viz-cart-exportbtn { font-family: inherit; font-size: 13px; font-weight: 900; padding: 10px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; }
-  .viz-cart-exportbtn:disabled { opacity: 0.4; cursor: default; }
+  .viz-cart-label { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; display: block; }
+  .viz-cart-textarea { width: 100%; font-family: 'Lato', monospace; font-size: 11px; padding: 8px; border-radius: 7px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); resize: vertical; white-space: pre; }
+  .viz-cart-copybtn { font-family: inherit; font-size: 13px; font-weight: 900; padding: 10px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; margin-top: 8px; }
+  .viz-cart-copybtn:disabled { opacity: 0.4; cursor: default; }
   .viz-cart-note { font-size: 10.5px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.4; }
 ```
 
@@ -1410,17 +1414,20 @@ Insert into `initApp(DATA)`, right after `renderSearch`/the debounce helper bloc
     var listEl = document.getElementById('cartItemsList');
     var emptyEl = document.getElementById('cartEmptyMsg');
     var totalsEl = document.getElementById('cartTotals');
-    var exportBtn = document.getElementById('btnExportar');
+    var exportTextEl = document.getElementById('exportText');
+    var copyBtn = document.getElementById('btnCopiarTodo');
 
     if (!cart.length) {
       listEl.innerHTML = '';
       emptyEl.style.display = '';
       totalsEl.textContent = '';
-      exportBtn.disabled = true;
+      exportTextEl.value = '';
+      copyBtn.disabled = true;
       return;
     }
     emptyEl.style.display = 'none';
-    exportBtn.disabled = false;
+    exportTextEl.value = construirTextoExport();
+    copyBtn.disabled = false;
 
     listEl.innerHTML = cart.map(function (l) {
       var subtotal = l.cantidad * l.precio_reajustado_hoy_con_iva;
@@ -1469,21 +1476,23 @@ git commit -m "feat(cotizador-historico): carrito de cotizacion (solo en memoria
 
 ---
 
-### Task 8: Export to `.txt` (Materiales/Equipos/Otros)
+### Task 8: Cuadro de texto para copiar a Excel (Materiales/Equipos/Otros)
+
+**Decision change (2026-07-20, mid-implementation):** the original design for this task downloaded a `.txt` file via the Artifact `downloads` capability. The user reviewed the plan and asked for a different mechanism instead: a read-only `<textarea>` inside the cart drawer that always shows the current cart's export text, plus a "Copiar todo" button that copies it to the clipboard — **no file download at all**. This avoids the `downloads` capability's extension allowlist entirely (moot now) and is simpler: no capability to declare when publishing, no distinction between "inside the Artifact sandbox" vs. "opened locally" download paths.
 
 **Files:**
 - Modify: `Cotizador Historico/Visualizador Web/template.html`
 
 **Interfaces:**
-- Consumes: `cart` (Task 7), `fmt`, `DATA.uf_hoy`, `DATA.uf_fecha`.
-- Produces: nothing consumed by later tasks — this is the last template.html feature task.
+- Consumes: `cart` (Task 7), `fmt`, `DATA.uf_hoy`, `DATA.uf_fecha`, the `#exportText`/`#btnCopiarTodo` elements Task 7's markup already created.
+- Produces: `construirTextoExport()` (resolves Task 7's forward reference — Task 7's `renderCart()` already calls it on every cart change). Nothing else consumed by later tasks — this is the last template.html feature task.
 
-- [ ] **Step 1: Implement the export function and wire the button**
+- [ ] **Step 1: Implement `construirTextoExport` and the copy-to-clipboard wiring**
 
 Insert into `initApp(DATA)`, right after the cart drawer open/close listeners from Task 7:
 
 ```javascript
-  // ---------- exportar cotizacion (.txt -- .xlsx/.csv fuera del allowlist de downloads) ----------
+  // ---------- texto del carrito para copiar a Excel (Materiales/Equipos/Otros) ----------
   function seccionParaCategoria(categoriaItem) {
     if (categoriaItem === 'Materiales') return 'MATERIALES';
     if (categoriaItem === 'Equipos-Herramientas') return 'EQUIPOS';
@@ -1519,41 +1528,37 @@ Insert into `initApp(DATA)`, right after the cart drawer open/close listeners fr
     return lineas.join('\n');
   }
 
-  function descargarComoBlobLocal(filename, texto) {
-    var blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function exportarCotizacion() {
-    if (!cart.length) return;
-    var texto = construirTextoExport();
-    var filename = 'cotizacion-QUEMPIN-' + new Date().toISOString().slice(0, 10) + '.txt';
-    if (window.claude && window.claude.downloads) {
-      window.claude.downloads.save({ filename: filename, data: texto }).catch(function (err) {
-        if (err && err.code === 'declined') return;
-        descargarComoBlobLocal(filename, texto);
-      });
+  function copiarTextoExport() {
+    var textarea = document.getElementById('exportText');
+    var btn = document.getElementById('btnCopiarTodo');
+    function marcarCopiado() {
+      btn.textContent = '✓ Copiado';
+      setTimeout(function () { btn.textContent = 'Copiar todo'; }, 1200);
+    }
+    function fallbackCopy() {
+      textarea.focus();
+      textarea.select();
+      try { if (document.execCommand('copy')) marcarCopiado(); } catch (e) {}
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textarea.value).then(marcarCopiado, fallbackCopy);
     } else {
-      descargarComoBlobLocal(filename, texto);
+      fallbackCopy();
     }
   }
 
-  document.getElementById('btnExportar').addEventListener('click', exportarCotizacion);
+  document.getElementById('btnCopiarTodo').addEventListener('click', copiarTextoExport);
 ```
 
 - [ ] **Step 2: Manual verification**
 
-Rebuild, open, unlock, add at least two references from **different** categories to the cart if the real data allows it (check `DATA.items.map(i => i.categoria_item)` in the console to find one `"Materiales"` and one `"Equipos-Herramientas"` item — if the real dataset happens to only have one category represented, that's fine, just verify that section appears alone and the others don't). Click "Exportar cotización": since this is opened as a local file (not inside the Artifact sandbox), `window.claude` is undefined, so it takes the `descargarComoBlobLocal` path — confirm a `cotizacion-QUEMPIN-<fecha>.txt` file downloads. Open it in a text editor and confirm: header with generation date + UF used, one section per represented category with a tab-separated header row and one line per cart item, a subtotal per section, and a `TOTAL GENERAL` line. Open the same file with Excel (File > Open) and confirm the tab-separated columns import into cells (not all in one column with commas).
+Rebuild, open, unlock, add at least two references from **different** categories to the cart if the real data allows it (check `DATA.items.map(i => i.categoria_item)` in the console to find one `"Materiales"` and one `"Equipos-Herramientas"` item — if the real dataset happens to only have one category represented, that's fine, just verify that section appears alone and the others don't). Confirm the `#exportText` textarea already shows the generated text **without clicking anything** — it must update live on every cart change (add/remove/qty edit), since Task 7's `renderCart()` calls `construirTextoExport()` directly. Confirm the text has: a header with generation date + UF used, one section per represented category with a tab-separated header row and one line per cart item, a subtotal per section, and a `TOTAL GENERAL` line. Click "Copiar todo", confirm the button briefly shows "✓ Copiado" (clipboard permission may prompt in some browsers — accept it), then paste into a real spreadsheet (or a plain text editor first, to check the raw shape has literal tab characters between fields) and confirm the columns land in separate cells when pasted into Excel/Sheets, not all-in-one.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add "Cotizador Historico/Visualizador Web/template.html"
-git commit -m "feat(cotizador-historico): exportar carrito a .txt agrupado Materiales/Equipos/Otros"
+git commit -m "feat(cotizador-historico): cuadro de texto del carrito para copiar a Excel (Materiales/Equipos/Otros)"
 ```
 
 ---
@@ -1611,7 +1616,7 @@ a partir de `Centro de Costos.xlsx`: indexa todo el catálogo, pide la UF de
 hoy una sola vez, y la incrusta en el HTML junto con el resto del snapshot.
 Requiere conexión a internet (la UF de hoy nunca se cachea). Ver
 `../../../Visualizador Web/CLAUDE.md` para el diseño completo (buscador,
-carrito de cotización, export a .txt).
+carrito de cotización, texto para copiar a Excel).
 
 ```
 python ".claude/skills/Cotizador_Historico/driver.py" visualizador
@@ -1634,7 +1639,7 @@ git commit -m "feat(cotizador-historico): comando 'visualizador' en el driver de
 
 - [ ] **Step 1: Replace the scaffolding content with the real implementation doc**
 
-Read the current file first (`Read` tool) — it's still the generic scaffolding from before this feature existed. Replace its content with a doc mirroring the structure of `Centro de Costos/Visualizador Web/CLAUDE.md`'s "Implementación real" section: file tree (`template.html`/`build_visualizador.py`/`data/`/`build/`), the "un solo comando regenera todo" note (`python driver.py visualizador`), the UF-fixed-at-build-time decision and why (no generic fetch capability in Artifacts), the password/branding reuse note, the cart's no-persistence guarantee, the `.txt`-not-`.xlsx` export constraint and why, and a pointer to the full spec at `../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md`. Keep it factual and dated (2026-07-20), same tone as the Centro de Costos doc — this file is what a future Claude session reads before touching `template.html`/`build_visualizador.py` again, so it must state the non-obvious decisions (UF freshness, download extension allowlist, categoria→sección mapping) that aren't visible just from reading the code.
+Read the current file first (`Read` tool) — it's still the generic scaffolding from before this feature existed. Replace its content with a doc mirroring the structure of `Centro de Costos/Visualizador Web/CLAUDE.md`'s "Implementación real" section: file tree (`template.html`/`build_visualizador.py`/`data/`/`build/`), the "un solo comando regenera todo" note (`python driver.py visualizador`), the UF-fixed-at-build-time decision and why (no generic fetch capability in Artifacts), the password/branding reuse note, the cart's no-persistence guarantee, the copy-to-clipboard export design (textarea + "Copiar todo" button, no file download — this was a deliberate user decision made mid-implementation, superseding an earlier `.txt`-download design; note briefly why the earlier design was dropped, since a future reader might otherwise wonder why the `downloads` capability is never mentioned), the categoria→sección mapping (Materiales/Equipos-Herramientas/Otros), and a pointer to the full spec at `../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md` (note in this doc that the spec's "Exportación" section describes the superseded `.txt`-download design — this `CLAUDE.md` is the source of truth for what actually shipped). Keep it factual and dated (2026-07-20), same tone as the Centro de Costos doc.
 
 - [ ] **Step 2: Commit**
 
@@ -1720,7 +1725,7 @@ git commit -m "docs(cotizador-historico): registrar link del Artifact publicado 
 
 ## Self-Review Notes
 
-- **Spec coverage**: buscador con specs técnicas (Task 5-6), top-5/ver-todas (Task 6), UF destacada (Task 6's `.rc-price-main`), carrito sin persistencia (Task 7), export .txt Materiales/Equipos/Otros (Task 8), mismo branding/contraseña (Task 3), UF fija al build (Task 1-2), tabla+gráfico+filtros del mandato del maestro (Task 4, 6), driver command (Task 9), doc (Task 10), verificación con navegador real (Task 11), publicación con confirmación (Task 12). No section of the spec is left without a task.
+- **Spec coverage**: buscador con specs técnicas (Task 5-6), top-5/ver-todas (Task 6), UF destacada (Task 6's `.rc-price-main`), carrito sin persistencia (Task 7), texto para copiar a Excel agrupado Materiales/Equipos/Otros (Task 8 — updated 2026-07-20 to a textarea + "Copiar todo" clipboard button, per the user's direct request, superseding the spec's original `.txt`-download design), mismo branding/contraseña (Task 3), UF fija al build (Task 1-2), tabla+gráfico+filtros del mandato del maestro (Task 4, 6), driver command (Task 9), doc (Task 10), verificación con navegador real (Task 11), publicación con confirmación (Task 12). No section of the spec is left without a task.
 - **Placeholder scan**: no `TODO`/`TBD` in any step; the two forward references (`runSearch` in Task 4, `bindCartButtons` in Task 6) are explicitly called out as temporary `ReferenceError`s with the exact task that resolves them, not vague placeholders.
 - **Type/name consistency checked**: `reajustar_todos` output keys match what `build_visualizador.py` reads and what the JS cards/cart/export read (`n_ref, fecha, precio_original_sin_iva, precio_reajustado_hoy, precio_reajustado_hoy_con_iva, nombre_item, descripcion, categoria_item, proyecto, proveedor_tag`) — traced end to end from Task 1 through Task 8.
 - **Scope**: single cohesive feature (one visualizador), no unrelated refactors folded in beyond the minimal, backward-compatible `cargar_items_detalle` extension Task 1 needs.
