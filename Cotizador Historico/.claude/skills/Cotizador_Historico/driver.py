@@ -138,12 +138,23 @@ def cmd_consultar(args):
     return 0
 
 
+def cmd_visualizador():
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    raiz_modulo = Path(__file__).resolve().parents[3]
+    ruta_viz = raiz_modulo / "Visualizador Web"
+    sys.path.insert(0, str(ruta_viz))
+    import build_visualizador as bv  # noqa: E402
+    return bv.build()
+
+
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar"):
-        print('Uso: python driver.py [status|consultar "<texto>"]')
+    if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar", "visualizador"):
+        print('Uso: python driver.py [status|consultar "<texto>"|visualizador]')
         return 2
     if sys.argv[1] == "status":
         return cmd_status()
+    if sys.argv[1] == "visualizador":
+        return cmd_visualizador()
     return cmd_consultar(sys.argv[2:])
 
 

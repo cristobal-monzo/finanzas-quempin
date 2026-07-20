@@ -64,6 +64,17 @@ Rango (sin IVA): $87,100 - $94,200
 Si no hay match: `No se encontraron compras para "<texto>".`, con una lista
 de sugerencias si hubo coincidencias de similitud baja.
 
+**`visualizador`** — regenera el visualizador web (`Visualizador Web/build/index.html`)
+a partir de `Centro de Costos.xlsx`: indexa todo el catálogo, pide la UF de
+hoy una sola vez, y la incrusta en el HTML junto con el resto del snapshot.
+Requiere conexión a internet (la UF de hoy nunca se cachea). Ver
+`../../../Visualizador Web/CLAUDE.md` para el diseño completo (buscador,
+carrito de cotización, texto para copiar a Excel).
+
+```
+python ".claude/skills/Cotizador_Historico/driver.py" visualizador
+```
+
 ## Uso conversacional
 
 El agente puede responder la consulta directamente en el chat (ej. "¿cuánto
