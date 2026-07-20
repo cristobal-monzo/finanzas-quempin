@@ -821,7 +821,7 @@
     return esc(raw.slice(0, idx)) + '<mark>' + esc(raw.slice(idx, idx + consulta.length)) + '</mark>' + esc(raw.slice(idx + consulta.length));
   }
 
-  function renderRefCard(item, consulta) {
+  function renderRefCard(item, consulta, idx) {
     var specs = extraerSpecs(item.descripcion);
     var marcaModelo = extraerMarcaModelo(item.descripcion);
     var chips = [];
@@ -841,7 +841,7 @@
       '</div>' +
       '<div class="rc-cartrow">' +
       '<input type="number" class="rc-qty" id="qty_' + cardId + '" value="1" min="1" step="1" aria-label="Cantidad" />' +
-      '<button type="button" class="rc-addbtn" data-cardid="' + cardId + '" data-nref="' + esc(item.n_ref) + '" data-nombre="' + esc(item.nombre_item) + '">Agregar al carrito</button>' +
+      '<button type="button" class="rc-addbtn" data-cardid="' + cardId + '" data-idx="' + idx + '" data-nref="' + esc(item.n_ref) + '" data-nombre="' + esc(item.nombre_item) + '">Agregar al carrito</button>' +
       '</div>' +
       '</div>';
   }
@@ -891,7 +891,7 @@
     countEl.textContent = coincidencias.length + ' referencia' + (coincidencias.length === 1 ? '' : 's');
 
     var mostrar = searchState.mostrarTodas ? coincidencias : coincidencias.slice(0, PAGE_SIZE_RESULTADOS);
-    resultsEl.innerHTML = mostrar.map(function (item) { return renderRefCard(item, texto); }).join('');
+    resultsEl.innerHTML = mostrar.map(function (item) { return renderRefCard(item, texto, DATA.items.indexOf(item)); }).join('');
     try { bindCartButtons(resultsEl); } catch (e) { console.error('bindCartButtons failed:', e); }
 
     if (coincidencias.length > PAGE_SIZE_RESULTADOS && !searchState.mostrarTodas) {
@@ -913,10 +913,10 @@
   // ---------- carrito (solo en memoria -- nunca localStorage/sessionStorage) ----------
   var cart = [];
 
-  function cartKey(nRef, nombreItem) { return nRef + '|' + nombreItem; }
+  function cartKey(idx) { return String(idx); }
 
-  function addToCart(item, cantidad) {
-    var key = cartKey(item.n_ref, item.nombre_item);
+  function addToCart(item, cantidad, idx) {
+    var key = cartKey(idx);
     var existing = cart.filter(function (l) { return l.key === key; })[0];
     if (existing) {
       existing.cantidad += cantidad;
@@ -943,9 +943,10 @@
         var cardId = btn.dataset.cardid;
         var qtyInput = document.getElementById('qty_' + cardId);
         var cantidad = Math.max(1, parseInt(qtyInput.value, 10) || 1);
-        var item = DATA.items.filter(function (it) { return it.n_ref === btn.dataset.nref && it.nombre_item === btn.dataset.nombre; })[0];
+        var idx = parseInt(btn.dataset.idx, 10);
+        var item = DATA.items[idx];
         if (!item) return;
-        addToCart(item, cantidad);
+        addToCart(item, cantidad, idx);
         btn.textContent = '✓ Agregado';
         btn.classList.add('added');
         setTimeout(function () { btn.textContent = 'Agregar al carrito'; btn.classList.remove('added'); }, 1200);
