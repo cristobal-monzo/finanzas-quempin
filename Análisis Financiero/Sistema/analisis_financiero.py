@@ -81,3 +81,21 @@ def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
                 del wb[nombre_default]
 
     return wb
+
+
+# ── MAPEO DE CATEGORÍAS ──────────────────────────────────────────────────────
+
+MAPEO_CATEGORIA_BUCKET = {
+    "Materiales": "Materiales",
+    "Consumibles": "Materiales",
+    "Equipos-Herramientas": "Equipos",
+}
+
+
+def mapear_categoria_a_bucket(categoria_item: str | None) -> tuple[str, bool]:
+    """Devuelve (bucket, es_mapeo_explicito). Cualquier categoria_item que no
+    esté en MAPEO_CATEGORIA_BUCKET (incluyendo None) cae en "Otros" con
+    es_mapeo_explicito=False, para poder avisar sin perder el monto."""
+    if categoria_item in MAPEO_CATEGORIA_BUCKET:
+        return MAPEO_CATEGORIA_BUCKET[categoria_item], True
+    return "Otros", False
