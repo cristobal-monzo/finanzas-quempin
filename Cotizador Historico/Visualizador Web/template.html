@@ -285,7 +285,6 @@
   svg text { font-family: inherit; }
   .bar-rect { cursor: pointer; transition: opacity 0.1s; }
   .bar-rect:hover { opacity: 0.82; }
-  table.viz-itemtable tbody tr:last-child td { border-bottom: none; }
   .viz-empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
   .viz-pagination {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -412,7 +411,6 @@
 
   // ---------- app (runs only after a correct password) ----------
   function initApp(DATA) {
-  var DOCS = DATA.documentos;
   var root = document.getElementById('vizRoot');
   var tooltip = document.getElementById('vizTooltip');
 
@@ -495,7 +493,7 @@
       var x = padL + i * (bw + gap);
       var h = innerH * (it[valueKey] / max);
       var y = padT + innerH - h;
-      var color = colorMap ? fillFor(colorMap[it[labelKey]]) : 'var(--brand-orange)';
+      var color = 'var(--brand-orange)';
       svg += '<rect class="bar-rect" data-i="' + i + '" x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(h, 1) + '" rx="4" fill="' + color + '"/>';
       svg += '<text x="' + (x + bw / 2) + '" y="' + (H - padB + 16) + '" text-anchor="middle" font-size="10" fill="var(--text-secondary)">' + esc(truncateLabel(it[labelKey], 10)) + '</text>';
     });
