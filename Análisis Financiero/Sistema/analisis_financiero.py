@@ -305,3 +305,96 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
         ws.cell(row=fila_destino, column=15, value=f"=Proyectos!N{r}/Proyectos!I{r}-1")
         ws.cell(row=fila_destino, column=16, value=f"=Proyectos!M{r}/Proyectos!J{r}-1")
         fila_destino += 1
+
+
+# ── ORQUESTADOR ───────────────────────────────────────────────────────────
+
+def ejecutar(
+    ruta_excel_af: Path = RUTA_EXCEL,
+    ruta_excel_cc: Path = RUTA_EXCEL_CENTRO_COSTOS,
+    raiz_facturas_cc: Path = RAIZ_FACTURAS_CENTRO_COSTOS,
+    raiz_respaldos: Path = RAIZ_RESPALDOS,
+    dry_run: bool = False,
+) -> dict:
+    """Orquesta todo el flujo. Con dry_run=True no escribe nada -- ni backup,
+    ni carpetas, ni el Excel -- solo reporta qué pasaría (usado por el
+    comando 'status' del skill). Ningún paso levanta excepción hacia
+    afuera: los errores quedan en resumen['error']/['avisos'] para que un
+    caller externo (ej. el 'run' de Centro de Costos) nunca aborte por
+    esto."""
+    resumen = {"avisos": [], "carpetas_creadas": [], "categorias_no_mapeadas": [], "error": None}
+
+    wb = asegurar_estructura_workbook(ruta_excel_af)
+    ws_proyectos = wb[HOJA_PROYECTOS]
+    filas_validas, avisos_lectura = leer_filas_proyectos(ws_proyectos)
+    resumen["avisos"].extend(avisos_lectura)
+
+    if not ruta_excel_cc.exists():
+        resumen["avisos"].append(
+            f"No se encontró {ruta_excel_cc}, no se actualizan costos reales."
+        )
+        return resumen
+
+    items_detalle = leer_detalle_centro_costos(ruta_excel_cc)
+    agrupado = agrupar_por_proyecto_y_subcategoria(items_detalle)
+
+    if dry_run:
+        for fila_info in filas_validas:
+            if not (raiz_facturas_cc / fila_info["nombre"]).exists():
+                resumen["carpetas_creadas"].append(fila_info["nombre"])
+        categorias_no_mapeadas = set()
+        for _, subcategoria in agrupado:
+            _, es_explicito = mapear_categoria_a_bucket(subcategoria)
+            if not es_explicito:
+                categorias_no_mapeadas.add(subcategoria)
+        resumen["categorias_no_mapeadas"] = sorted(categorias_no_mapeadas)
+        return resumen
+
+    try:
+        hacer_backup(ruta_excel_af, raiz_respaldos)
+    except PermissionError as exc:
+        resumen["avisos"].append(f"No se pudo respaldar (¿archivo abierto?): {exc}")
+
+    try:
+        resumen["carpetas_creadas"] = asegurar_carpetas_proyectos(filas_validas, raiz_facturas_cc)
+    except OSError as exc:
+        resumen["avisos"].append(f"No se pudieron crear una o más carpetas de proyecto: {exc}")
+
+    avisos_detalle = regenerar_hoja_detalle_costos_reales(wb, agrupado)
+    resumen["avisos"].extend(avisos_detalle)
+    resumen["categorias_no_mapeadas"] = sorted({
+        aviso.split("'")[1] for aviso in avisos_detalle
+    })
+
+    asegurar_formulas_proyectos(ws_proyectos, filas_validas)
+    asegurar_hoja_indicadores(wb, filas_validas)
+
+    try:
+        wb.save(ruta_excel_af)
+    except PermissionError as exc:
+        resumen["error"] = f"No se pudo guardar {ruta_excel_af} (¿archivo abierto?): {exc}"
+
+    return resumen
+
+
+def main() -> None:
+    resumen = ejecutar()
+    print("=== Análisis Financiero ===")
+    if resumen["carpetas_creadas"]:
+        print(f"Carpetas de proyecto creadas: {', '.join(resumen['carpetas_creadas'])}")
+    if resumen["categorias_no_mapeadas"]:
+        print(
+            "Categorías sin mapeo explícito (van a 'Otros'): "
+            + ", ".join(resumen["categorias_no_mapeadas"])
+        )
+    for aviso in resumen["avisos"]:
+        print(f"[AVISO] {aviso}")
+    if resumen["error"]:
+        print(f"[ERROR] {resumen['error']}")
+
+
+if __name__ == "__main__":
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
+    main()
