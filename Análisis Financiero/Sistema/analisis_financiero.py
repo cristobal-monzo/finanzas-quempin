@@ -249,3 +249,27 @@ def regenerar_hoja_detalle_costos_reales(wb, agrupado: dict[tuple[str, str], flo
         fila += 1
 
     return avisos
+
+
+# ── FÓRMULAS DE LA HOJA "PROYECTOS" ──────────────────────────────────────────
+
+def asegurar_formulas_proyectos(ws_proyectos, filas_validas: list[dict]) -> None:
+    """Escribe las columnas derivadas (K/L/M = SUMIFS hacia 'Detalle Costos
+    Reales'; O/P/Q/R/S = totales/márgenes/desviación) para cada fila válida.
+    Nunca toca las columnas manuales (A-J, N)."""
+    for fila_info in filas_validas:
+        r = fila_info["fila"]
+        tag_ref = f"$A{r}"
+
+        for columna, bucket in ((11, "Materiales"), (12, "Equipos"), (13, "Otros")):
+            ws_proyectos.cell(row=r, column=columna, value=(
+                f"=SUMIFS('{HOJA_DETALLE_COSTOS_REALES}'!$D:$D,"
+                f"'{HOJA_DETALLE_COSTOS_REALES}'!$A:$A,{tag_ref},"
+                f"'{HOJA_DETALLE_COSTOS_REALES}'!$C:$C,\"{bucket}\")"
+            ))
+
+        ws_proyectos.cell(row=r, column=15, value=f"=G{r}+H{r}+I{r}+J{r}")
+        ws_proyectos.cell(row=r, column=16, value=f"=K{r}+L{r}+M{r}+N{r}")
+        ws_proyectos.cell(row=r, column=17, value=f"=F{r}-O{r}")
+        ws_proyectos.cell(row=r, column=18, value=f"=F{r}-P{r}")
+        ws_proyectos.cell(row=r, column=19, value=f"=P{r}/O{r}-1")
