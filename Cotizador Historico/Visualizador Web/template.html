@@ -356,6 +356,28 @@
   .viz-refcard .rc-addbtn { flex: 1; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 10px; border-radius: 7px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; }
   .viz-refcard .rc-addbtn:hover { filter: brightness(1.1); }
   .viz-refcard .rc-addbtn.added { background: var(--status-good); color: #fff; }
+  .viz-cart-fab { position: fixed; bottom: 20px; right: 20px; z-index: 900; width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--brand-orange); color: #000; font-size: 22px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+  .viz-cart-badge { position: absolute; top: -4px; right: -4px; background: #000; color: #fff; font-size: 11px; font-weight: 900; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+  .viz-cart-badge.bump { animation: cartBump 0.25s ease-out; }
+  @keyframes cartBump { 0% { transform: scale(1); } 50% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  .viz-cart-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 100vw); background: var(--surface-card); border-left: 1px solid var(--border-hairline); box-shadow: -8px 0 24px rgba(0,0,0,0.2); z-index: 950; display: flex; flex-direction: column; padding: 16px; }
+  .viz-cart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .viz-cart-header h3 { font-size: 15px; margin: 0; }
+  .viz-cart-header button { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-secondary); }
+  .viz-cart-items { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .viz-cart-line { border: 1px solid var(--border-hairline); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; }
+  .viz-cart-line .cl-title { font-weight: 700; margin-bottom: 4px; }
+  .viz-cart-line .cl-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .viz-cart-line input { width: 46px; font-family: inherit; font-size: 12.5px; text-align: center; padding: 3px; border-radius: 5px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
+  .viz-cart-line .cl-removebtn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; }
+  .viz-cart-line .cl-removebtn:hover { color: var(--brand-orange-ink, var(--brand-orange)); }
+  .viz-cart-empty { font-size: 12.5px; color: var(--text-muted); text-align: center; padding: 20px 0; }
+  .viz-cart-totals { font-size: 13px; font-weight: 700; padding: 10px 0; border-top: 1px solid var(--gridline); margin-top: 8px; }
+  .viz-cart-label { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; display: block; }
+  .viz-cart-textarea { width: 100%; font-family: 'Lato', monospace; font-size: 11px; padding: 8px; border-radius: 7px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); resize: vertical; white-space: pre; }
+  .viz-cart-copybtn { font-family: inherit; font-size: 13px; font-weight: 900; padding: 10px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; margin-top: 8px; }
+  .viz-cart-copybtn:disabled { opacity: 0.4; cursor: default; }
+  .viz-cart-note { font-size: 10.5px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.4; }
 </style>
 
 <div class="viz-gate" id="pwGate">
@@ -447,6 +469,23 @@
       Artifact privado, no publicado. La contraseña de acceso es una barrera simple del lado del
       cliente, no seguridad real — no compartas este link fuera del equipo.
     </p>
+  </div>
+
+  <button type="button" id="cartToggleBtn" class="viz-cart-fab" aria-label="Abrir carrito">
+    🛒<span id="cartBadge" class="viz-cart-badge" style="display:none">0</span>
+  </button>
+  <div id="cartDrawer" class="viz-cart-drawer" style="display:none">
+    <div class="viz-cart-header">
+      <h3>Carrito de cotización</h3>
+      <button type="button" id="cartCloseBtn" aria-label="Cerrar carrito">✕</button>
+    </div>
+    <div id="cartItemsList" class="viz-cart-items"></div>
+    <div id="cartEmptyMsg" class="viz-cart-empty">El carrito está vacío. Agrega referencias desde los resultados de búsqueda.</div>
+    <div class="viz-cart-totals" id="cartTotals"></div>
+    <label class="viz-cart-label" for="exportText">Texto para copiar a Excel</label>
+    <textarea id="exportText" class="viz-cart-textarea" readonly rows="6" placeholder="Agrega referencias al carrito para generar el texto…"></textarea>
+    <button type="button" id="btnCopiarTodo" class="viz-cart-copybtn" disabled>Copiar todo</button>
+    <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas).</p>
   </div>
 
   <div class="viz-tooltip" id="vizTooltip"></div>
@@ -870,6 +909,113 @@
     document.getElementById(id).addEventListener('change', function () { renderSearch(); });
   });
   function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
+
+  // ---------- carrito (solo en memoria -- nunca localStorage/sessionStorage) ----------
+  var cart = [];
+
+  function cartKey(nRef, nombreItem) { return nRef + '|' + nombreItem; }
+
+  function addToCart(item, cantidad) {
+    var key = cartKey(item.n_ref, item.nombre_item);
+    var existing = cart.filter(function (l) { return l.key === key; })[0];
+    if (existing) {
+      existing.cantidad += cantidad;
+    } else {
+      cart.push({
+        key: key, n_ref: item.n_ref, nombre_item: item.nombre_item, descripcion: item.descripcion,
+        categoria_item: item.categoria_item, proyecto: item.proyecto, fecha: item.fecha,
+        precio_reajustado_hoy: item.precio_reajustado_hoy,
+        precio_reajustado_hoy_con_iva: item.precio_reajustado_hoy_con_iva,
+        cantidad: cantidad,
+      });
+    }
+    renderCart();
+  }
+
+  function removeFromCart(key) {
+    cart = cart.filter(function (l) { return l.key !== key; });
+    renderCart();
+  }
+
+  function bindCartButtons(container) {
+    container.querySelectorAll('.rc-addbtn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var cardId = btn.dataset.cardid;
+        var qtyInput = document.getElementById('qty_' + cardId);
+        var cantidad = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+        var item = DATA.items.filter(function (it) { return it.n_ref === btn.dataset.nref && it.nombre_item === btn.dataset.nombre; })[0];
+        if (!item) return;
+        addToCart(item, cantidad);
+        btn.textContent = '✓ Agregado';
+        btn.classList.add('added');
+        setTimeout(function () { btn.textContent = 'Agregar al carrito'; btn.classList.remove('added'); }, 1200);
+      });
+    });
+  }
+
+  function renderCart() {
+    var badge = document.getElementById('cartBadge');
+    var totalItems = cart.reduce(function (s, l) { return s + l.cantidad; }, 0);
+    if (totalItems > 0) {
+      badge.style.display = '';
+      badge.textContent = totalItems;
+      badge.classList.remove('bump');
+      void badge.offsetWidth; // reinicia la animacion aunque el numero no cambie de digitos
+      badge.classList.add('bump');
+    } else {
+      badge.style.display = 'none';
+    }
+
+    var listEl = document.getElementById('cartItemsList');
+    var emptyEl = document.getElementById('cartEmptyMsg');
+    var totalsEl = document.getElementById('cartTotals');
+    var exportTextEl = document.getElementById('exportText');
+    var copyBtn = document.getElementById('btnCopiarTodo');
+
+    if (!cart.length) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = '';
+      totalsEl.textContent = '';
+      exportTextEl.value = '';
+      copyBtn.disabled = true;
+      return;
+    }
+    emptyEl.style.display = 'none';
+    try { exportTextEl.value = construirTextoExport(); } catch (e) { console.error('construirTextoExport failed:', e); }
+    copyBtn.disabled = false;
+
+    listEl.innerHTML = cart.map(function (l) {
+      var subtotal = l.cantidad * l.precio_reajustado_hoy_con_iva;
+      return '<div class="viz-cart-line" data-key="' + esc(l.key) + '">' +
+        '<div class="cl-title">' + esc(l.nombre_item) + '</div>' +
+        '<div class="cl-row"><span>' + esc(l.n_ref) + '</span><span>' + fmt(l.precio_reajustado_hoy_con_iva) + ' c/u</span></div>' +
+        '<div class="cl-row"><input type="number" class="cl-qty" min="1" step="1" value="' + l.cantidad + '" /><span>' + fmt(subtotal) + '</span>' +
+        '<button type="button" class="cl-removebtn" data-key="' + esc(l.key) + '">Quitar</button></div>' +
+        '</div>';
+    }).join('');
+
+    listEl.querySelectorAll('.cl-qty').forEach(function (input) {
+      input.addEventListener('change', function () {
+        var key = input.closest('.viz-cart-line').dataset.key;
+        var linea = cart.filter(function (l) { return l.key === key; })[0];
+        if (linea) { linea.cantidad = Math.max(1, parseInt(input.value, 10) || 1); renderCart(); }
+      });
+    });
+    listEl.querySelectorAll('.cl-removebtn').forEach(function (btn) {
+      btn.addEventListener('click', function () { removeFromCart(btn.dataset.key); });
+    });
+
+    var totalConIva = cart.reduce(function (s, l) { return s + l.cantidad * l.precio_reajustado_hoy_con_iva; }, 0);
+    var totalSinIva = cart.reduce(function (s, l) { return s + l.cantidad * l.precio_reajustado_hoy; }, 0);
+    totalsEl.textContent = 'Total: ' + fmt(totalConIva) + ' c/IVA (' + fmt(totalSinIva) + ' s/IVA)';
+  }
+
+  document.getElementById('cartToggleBtn').addEventListener('click', function () {
+    document.getElementById('cartDrawer').style.display = '';
+  });
+  document.getElementById('cartCloseBtn').addEventListener('click', function () {
+    document.getElementById('cartDrawer').style.display = 'none';
+  });
 
   function renderTopProductosChart() {
     var top10 = PRODUCT_INDEX.slice().sort(function (a, b) { return b.n_compras - a.n_compras; }).slice(0, 10);
