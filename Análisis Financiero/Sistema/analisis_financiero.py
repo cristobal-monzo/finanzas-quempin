@@ -99,3 +99,45 @@ def mapear_categoria_a_bucket(categoria_item: str | None) -> tuple[str, bool]:
     if categoria_item in MAPEO_CATEGORIA_BUCKET:
         return MAPEO_CATEGORIA_BUCKET[categoria_item], True
     return "Otros", False
+
+
+# ── LECTURA DE CENTRO DE COSTOS (SOLO LECTURA) ───────────────────────────────
+
+def prefijo_de_n_ref(n_ref: str) -> str:
+    """'UMAG-001' -> 'UMAG'. Mismo prefijo que PREFIJOS_PROYECTO en
+    Centro de Costos/Sistema/auditor_centro_costos.py."""
+    return n_ref.split("-")[0]
+
+
+def leer_detalle_centro_costos(ruta_excel_cc: Path) -> list[dict]:
+    """Lee la hoja 'Detalle' de Centro de Costos.xlsx -- SOLO LECTURA, este
+    módulo nunca escribe ese archivo. Filas sin N° Ref. o sin Total sin IVA
+    se ignoran (no se puede agrupar ni sumar sin esos dos datos)."""
+    wb = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+    ws = wb["Detalle"]
+    encabezados = [celda.value for celda in ws[1]]
+    col_n_ref = encabezados.index("N° Ref.") + 1
+    col_categoria = encabezados.index("Categoría Ítem") + 1
+    col_total_sin_iva = encabezados.index("Total sin IVA (CLP)") + 1
+
+    items = []
+    for fila in ws.iter_rows(min_row=2):
+        n_ref = fila[col_n_ref - 1].value
+        total = fila[col_total_sin_iva - 1].value
+        if n_ref is None or total is None:
+            continue
+        categoria = fila[col_categoria - 1].value
+        items.append({"n_ref": n_ref, "categoria_item": categoria, "total_sin_iva": float(total)})
+    return items
+
+
+def agrupar_por_proyecto_y_subcategoria(items_detalle: list[dict]) -> dict[tuple[str, str], float]:
+    """Suma total_sin_iva agrupado por (prefijo de proyecto, categoria_item
+    original -- sin colapsar a bucket todavía, eso lo hace la hoja 'Detalle
+    Costos Reales' al escribir, para no perder la subcategoría real)."""
+    agrupado: dict[tuple[str, str], float] = {}
+    for item in items_detalle:
+        prefijo = prefijo_de_n_ref(item["n_ref"])
+        clave = (prefijo, item["categoria_item"])
+        agrupado[clave] = agrupado.get(clave, 0.0) + item["total_sin_iva"]
+    return agrupado
