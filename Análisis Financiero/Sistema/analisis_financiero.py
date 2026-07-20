@@ -7,6 +7,8 @@ Reales, Indicadores). Ver docs/superpowers/specs/2026-07-20-analisis-
 financiero-design.md para el diseño completo.
 """
 
+import shutil
+from datetime import datetime
 from pathlib import Path
 
 import openpyxl
@@ -194,3 +196,28 @@ def asegurar_carpetas_proyectos(filas_validas: list[dict], raiz_facturas: Path) 
         if asegurar_carpeta_proyecto(fila_info["nombre"], raiz_facturas):
             creadas.append(fila_info["nombre"])
     return creadas
+
+
+# ── BACKUP ────────────────────────────────────────────────────────────────
+
+MESES_ES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre",
+    12: "Diciembre",
+}
+
+
+def hacer_backup(ruta_excel: Path, raiz_respaldos: Path) -> Path | None:
+    """Copia ruta_excel a raiz_respaldos/<Mes Año>/Análisis de Proyectos -
+    backup <fecha> <hora>.xlsx antes de escribir -- mismo patrón que
+    Centro de Costos. Devuelve None si ruta_excel todavía no existe (nada
+    que respaldar)."""
+    if not ruta_excel.exists():
+        return None
+    ahora = datetime.now()
+    carpeta_mes = raiz_respaldos / f"{MESES_ES[ahora.month]} {ahora.year}"
+    carpeta_mes.mkdir(parents=True, exist_ok=True)
+    marca_tiempo = ahora.strftime("%Y-%m-%d %H%M%S")
+    destino = carpeta_mes / f"Análisis de Proyectos - backup {marca_tiempo}.xlsx"
+    shutil.copy2(ruta_excel, destino)
+    return destino
