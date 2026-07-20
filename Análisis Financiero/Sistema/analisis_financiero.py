@@ -318,10 +318,9 @@ def ejecutar(
 ) -> dict:
     """Orquesta todo el flujo. Con dry_run=True no escribe nada -- ni backup,
     ni carpetas, ni el Excel -- solo reporta qué pasaría (usado por el
-    comando 'status' del skill). Ningún paso levanta excepción hacia
-    afuera: los errores quedan en resumen['error']/['avisos'] para que un
-    caller externo (ej. el 'run' de Centro de Costos) nunca aborte por
-    esto."""
+    comando 'status' del skill). Captura PermissionError/OSError de operaciones
+    de archivo (backup, carpetas, save); excepciones de lectura de datos
+    propagarán hacia afuera."""
     resumen = {"avisos": [], "carpetas_creadas": [], "categorias_no_mapeadas": [], "error": None}
 
     wb = asegurar_estructura_workbook(ruta_excel_af)
