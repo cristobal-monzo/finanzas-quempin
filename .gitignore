@@ -12,6 +12,7 @@ Flujo de Caja/**/*.json
 Cotizador Historico/**/*.xlsx
 Cotizador Historico/**/*.json
 */Visualizador Web/data/
+*/Visualizador Web/build/
 
 # Python
 __pycache__/
@@ -20,6 +21,7 @@ __pycache__/
 
 # Worktrees locales
 .worktrees/
+.claude/worktrees/
 
 # Estado de trabajo de skills (ledger de subagent-driven-development, etc.)
 .superpowers/
