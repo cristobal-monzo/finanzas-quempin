@@ -202,3 +202,37 @@ def test_consultar_item_todas_sin_uf_disponible_devuelve_no_encontrado(monkeypat
     assert resultado["encontrado"] is False
     assert resultado["compras"] == []
     assert resultado["sin_uf_count"] == 1
+
+
+# ── reajustar_item ───────────────────────────────────────────────────────
+
+def test_reajustar_item_calcula_precio_y_fecha_string():
+    item = _item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))
+    cache = {"2026-01-01": 36000.0}
+    compra = ch.reajustar_item(item, 39000.0, cache)
+    assert compra == {
+        "n_ref": "UMAG-001",
+        "fecha": "2026-01-01",
+        "precio_original_sin_iva": 90000,
+        "precio_reajustado_hoy": round(90000 * 39000 / 36000),
+        "precio_reajustado_hoy_con_iva": round(90000 * 39000 / 36000),
+    }
+
+
+def test_reajustar_item_aplica_tasa_iva_real():
+    item = _item("CCON-002", "Guante", "Guante de cuero natural", 2513, datetime(2026, 1, 1),
+                 total_sin_iva=2513, total_con_iva=2990)
+    cache = {"2026-01-01": 36000.0}
+    compra = ch.reajustar_item(item, 39000.0, cache)
+    esperado_sin_iva = ch.calcular_precio_reajustado(2513, 36000.0, 39000.0)
+    esperado_con_iva = round(esperado_sin_iva * ch.tasa_iva_real(2513, 2990))
+    assert compra["precio_reajustado_hoy"] == esperado_sin_iva
+    assert compra["precio_reajustado_hoy_con_iva"] == esperado_con_iva
+
+
+def test_reajustar_item_devuelve_none_si_uf_no_disponible(monkeypatch):
+    item = _item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))
+    def _falla(fecha, cache):
+        raise ch.UFNoDisponibleError("simulado")
+    monkeypatch.setattr(ch, "obtener_valor_uf", _falla)
+    assert ch.reajustar_item(item, 39000.0, {}) is None

@@ -279,6 +279,26 @@ def tasa_iva_real(total_sin_iva, total_con_iva):
     return total_con_iva / total_sin_iva
 
 
+def reajustar_item(item, uf_hoy, cache_uf):
+    """Reajusta un item de cargar_items_detalle a la UF de hoy. Devuelve el
+    dict de compra reajustada, o None si no se pudo obtener la UF de la
+    fecha de compra (UFNoDisponibleError) -- el llamador decide como contar
+    ese caso (ver consultar_item y reajustar_todos)."""
+    try:
+        uf_compra = obtener_valor_uf(item["fecha"], cache_uf)
+    except UFNoDisponibleError:
+        return None
+    precio_reajustado = calcular_precio_reajustado(item["precio_unitario_sin_iva"], uf_compra, uf_hoy)
+    tasa_iva = tasa_iva_real(item.get("total_sin_iva"), item.get("total_con_iva"))
+    return {
+        "n_ref": item["n_ref"],
+        "fecha": item["fecha"].strftime("%Y-%m-%d"),
+        "precio_original_sin_iva": item["precio_unitario_sin_iva"],
+        "precio_reajustado_hoy": precio_reajustado,
+        "precio_reajustado_hoy_con_iva": round(precio_reajustado * tasa_iva),
+    }
+
+
 def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
     """Orquesta una consulta completa: carga Detalle, busca por texto,
     reajusta cada compra encontrada por UF, y agrega promedio/rango.
@@ -315,22 +335,11 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
     compras = []
     sin_uf_count = 0
     for item in coincidencias:
-        try:
-            uf_compra = obtener_valor_uf(item["fecha"], cache_uf)
-        except UFNoDisponibleError:
+        compra = reajustar_item(item, uf_hoy, cache_uf)
+        if compra is None:
             sin_uf_count += 1
             continue
-        precio_reajustado = calcular_precio_reajustado(
-            item["precio_unitario_sin_iva"], uf_compra, uf_hoy,
-        )
-        tasa_iva = tasa_iva_real(item.get("total_sin_iva"), item.get("total_con_iva"))
-        compras.append({
-            "n_ref": item["n_ref"],
-            "fecha": item["fecha"].strftime("%Y-%m-%d"),
-            "precio_original_sin_iva": item["precio_unitario_sin_iva"],
-            "precio_reajustado_hoy": precio_reajustado,
-            "precio_reajustado_hoy_con_iva": round(precio_reajustado * tasa_iva),
-        })
+        compras.append(compra)
     guardar_cache_uf(cache_uf)
 
     if not compras:
