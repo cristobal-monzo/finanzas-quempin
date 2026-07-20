@@ -807,6 +807,8 @@
   function showTooltip(evt, title, lines) {
     tooltip.innerHTML = '<div class="tt-title">' + esc(title) + '</div>' + lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('');
     tooltip.classList.add('show');
+    tooltip.classList.remove('info-mode');
+    tooltip.dataset.infoKey = '';
     moveTooltip(evt);
   }
   function moveTooltip(evt) {
