@@ -828,7 +828,7 @@
     if (marcaModelo.marca) chips.push(marcaModelo.marca);
     if (marcaModelo.modelo) chips.push(marcaModelo.modelo);
     chips = chips.concat(specs);
-    var cardId = 'rc_' + item.n_ref + '_' + item.nombre_item.replace(/\W+/g, '_');
+    var cardId = 'rc_' + idx;
     return '<div class="viz-refcard">' +
       '<div class="rc-title">' + highlight(item.nombre_item, consulta) + '</div>' +
       (chips.length ? '<div class="rc-chips">' + chips.map(function (c) { return '<span class="rc-chip">' + esc(c) + '</span>'; }).join('') + '</div>' : '') +
