@@ -273,3 +273,35 @@ def asegurar_formulas_proyectos(ws_proyectos, filas_validas: list[dict]) -> None
         ws_proyectos.cell(row=r, column=17, value=f"=F{r}-O{r}")
         ws_proyectos.cell(row=r, column=18, value=f"=F{r}-P{r}")
         ws_proyectos.cell(row=r, column=19, value=f"=P{r}/O{r}-1")
+
+
+# ── FÓRMULAS DE LA HOJA "INDICADORES" (100% regenerada cada corrida) ────────
+
+def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
+    """Regenera 'Indicadores' completa: una fila compacta por proyecto
+    válido (sin huecos), pero cada fórmula referencia la fila REAL del
+    proyecto en 'Proyectos' (que sí puede tener huecos)."""
+    ws = wb[HOJA_INDICADORES]
+    if ws.max_row >= 2:
+        ws.delete_rows(2, ws.max_row - 1)
+
+    fila_destino = 2
+    for fila_info in filas_validas:
+        r = fila_info["fila"]
+        ws.cell(row=fila_destino, column=1, value=f"=Proyectos!A{r}")
+        ws.cell(row=fila_destino, column=2, value=f"=Proyectos!B{r}")
+        ws.cell(row=fila_destino, column=3, value=f"=Proyectos!R{r}/Proyectos!P{r}")
+        ws.cell(row=fila_destino, column=4, value=f"=Proyectos!R{r}/Proyectos!F{r}")
+        ws.cell(row=fila_destino, column=5, value=f"=Proyectos!F{r}/Proyectos!K{r}")
+        ws.cell(row=fila_destino, column=6, value=f"=Proyectos!F{r}/Proyectos!L{r}")
+        ws.cell(row=fila_destino, column=7, value=f"=Proyectos!F{r}/Proyectos!N{r}")
+        ws.cell(row=fila_destino, column=8, value=f"=Proyectos!F{r}/Proyectos!M{r}")
+        ws.cell(row=fila_destino, column=9, value=f"=Proyectos!K{r}/Proyectos!F{r}")
+        ws.cell(row=fila_destino, column=10, value=f"=Proyectos!L{r}/Proyectos!F{r}")
+        ws.cell(row=fila_destino, column=11, value=f"=Proyectos!N{r}/Proyectos!F{r}")
+        ws.cell(row=fila_destino, column=12, value=f"=Proyectos!M{r}/Proyectos!F{r}")
+        ws.cell(row=fila_destino, column=13, value=f"=Proyectos!K{r}/Proyectos!G{r}-1")
+        ws.cell(row=fila_destino, column=14, value=f"=Proyectos!L{r}/Proyectos!H{r}-1")
+        ws.cell(row=fila_destino, column=15, value=f"=Proyectos!N{r}/Proyectos!I{r}-1")
+        ws.cell(row=fila_destino, column=16, value=f"=Proyectos!M{r}/Proyectos!J{r}-1")
+        fila_destino += 1
