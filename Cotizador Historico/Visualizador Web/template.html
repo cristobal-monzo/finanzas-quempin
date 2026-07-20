@@ -302,6 +302,40 @@
 
   .viz-footer { font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 8px; line-height: 1.6; }
   .viz-footer strong { color: var(--text-secondary); }
+
+  /* Table */
+  .viz-tablewrap {
+    background: var(--surface-card);
+    border: 1px solid var(--border-hairline);
+    border-radius: 10px;
+    margin-bottom: 20px;
+  }
+  .viz-tablescroll { overflow-x: auto; overflow-y: hidden; border-radius: 10px; }
+  table.viz-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  table.viz-table thead th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gridline);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  table.viz-table thead th:hover { color: var(--text-primary); }
+  table.viz-table thead th .arrow { font-size: 9px; margin-left: 3px; opacity: 0.6; }
+  table.viz-table tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--gridline);
+    vertical-align: top;
+    font-variant-numeric: tabular-nums;
+  }
+  table.viz-table tbody tr.clickable-row { cursor: pointer; }
+  table.viz-table tbody tr.clickable-row:hover { background: var(--surface-1); }
+  table.viz-table tbody tr.clickable-row:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
+  table.viz-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
 </style>
 
 <div class="viz-gate" id="pwGate">
@@ -332,6 +366,32 @@
 
   <div class="viz-container">
     <div class="viz-kpis" id="kpiRow"></div>
+
+    <div class="viz-charts">
+      <div class="viz-chartcard">
+        <h3>Top 10 productos con más compras históricas</h3>
+        <div id="chartTopProductos" class="viz-chart-mount"></div>
+      </div>
+    </div>
+
+    <p class="viz-section-title">Índice de productos</p>
+    <div class="viz-tablewrap">
+      <div class="viz-tablescroll">
+        <table class="viz-table" id="productTable">
+          <thead>
+            <tr>
+              <th data-key="nombre_item" aria-sort="ascending">Producto <span class="arrow">▲</span></th>
+              <th data-key="n_compras" class="num" aria-sort="none">N° de compras <span class="arrow"></span></th>
+              <th data-key="rango_min" class="num" aria-sort="none">Precio reajustado mín. <span class="arrow"></span></th>
+              <th data-key="rango_max" class="num" aria-sort="none">Precio reajustado máx. <span class="arrow"></span></th>
+              <th>Proyectos</th>
+            </tr>
+          </thead>
+          <tbody id="productTableBody"></tbody>
+        </table>
+      </div>
+      <div class="viz-empty-state" id="productEmptyState" style="display:none">Sin productos indexados.</div>
+    </div>
 
     <p class="viz-footer">
       Cotizador Historico — datos reales de <strong>Centro de Costos.xlsx</strong>, reajustados a
@@ -530,7 +590,79 @@
       '<div class="viz-kpi accent"><div class="label">Referencias indexadas</div><div class="value">' + fmtNum(DATA.items.length) + '</div><div class="sub">disponibles para buscar</div></div>' +
       '<div class="viz-kpi"><div class="label">UF utilizada</div><div class="value">' + fmt(DATA.uf_hoy) + '</div><div class="sub">actualizada ' + esc(DATA.uf_fecha) + '</div></div>';
   }
-  function render() { renderKPIs(); }
+  // ---------- product index (grouped by nombre_item) ----------
+  function buildProductIndex(items) {
+    var byName = {};
+    items.forEach(function (it) {
+      var key = it.nombre_item;
+      if (!byName[key]) byName[key] = { nombre_item: key, compras: [], proyectos: {} };
+      byName[key].compras.push(it);
+      if (it.proyecto) byName[key].proyectos[it.proyecto] = true;
+    });
+    return Object.keys(byName).map(function (key) {
+      var g = byName[key];
+      var precios = g.compras.map(function (c) { return c.precio_reajustado_hoy; });
+      return {
+        nombre_item: key,
+        n_compras: g.compras.length,
+        rango_min: Math.min.apply(null, precios),
+        rango_max: Math.max.apply(null, precios),
+        proyectos: Object.keys(g.proyectos).sort(),
+      };
+    });
+  }
+  var PRODUCT_INDEX = buildProductIndex(DATA.items);
+  var productSort = { key: 'n_compras', dir: 'desc' };
+
+  function renderTopProductosChart() {
+    var top10 = PRODUCT_INDEX.slice().sort(function (a, b) { return b.n_compras - a.n_compras; }).slice(0, 10);
+    renderBarChart('chartTopProductos', top10, 'nombre_item', 'n_compras', null);
+  }
+
+  function renderProductTable() {
+    var sorted = PRODUCT_INDEX.slice().sort(function (a, b) {
+      var av = a[productSort.key], bv = b[productSort.key];
+      var cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+      return productSort.dir === 'asc' ? cmp : -cmp;
+    });
+    var body = document.getElementById('productTableBody');
+    var empty = document.getElementById('productEmptyState');
+    if (!sorted.length) {
+      body.innerHTML = '';
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+    body.innerHTML = sorted.map(function (p) {
+      return '<tr class="clickable-row" tabindex="0" data-nombre="' + esc(p.nombre_item) + '">' +
+        '<td>' + esc(p.nombre_item) + '</td>' +
+        '<td class="num">' + fmtNum(p.n_compras) + '</td>' +
+        '<td class="num">' + fmt(p.rango_min) + '</td>' +
+        '<td class="num">' + fmt(p.rango_max) + '</td>' +
+        '<td>' + esc(p.proyectos.join(', ')) + '</td>' +
+        '</tr>';
+    }).join('');
+    body.querySelectorAll('tr.clickable-row').forEach(function (tr) {
+      function activar() { runSearch(tr.dataset.nombre); }
+      tr.addEventListener('click', activar);
+      tr.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activar(); } });
+    });
+  }
+  document.querySelectorAll('#productTable thead th[data-key]').forEach(function (th) {
+    th.addEventListener('click', function () {
+      var key = th.dataset.key;
+      if (productSort.key === key) { productSort.dir = productSort.dir === 'asc' ? 'desc' : 'asc'; }
+      else { productSort.key = key; productSort.dir = key === 'nombre_item' ? 'asc' : 'desc'; }
+      document.querySelectorAll('#productTable thead th[data-key]').forEach(function (h) {
+        var arrow = h.querySelector('.arrow');
+        var active = h.dataset.key === productSort.key;
+        arrow.textContent = active ? (productSort.dir === 'asc' ? '▲' : '▼') : '';
+        h.setAttribute('aria-sort', active ? (productSort.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+      });
+      renderProductTable();
+    });
+  });
+  function render() { renderKPIs(); renderTopProductosChart(); renderProductTable(); }
   render();
   } // end initApp
 })();
