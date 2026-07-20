@@ -36,12 +36,21 @@ pipeline una vez más.
 |---|---|---|---|---|
 | `Master` | 1 fila/documento, con fórmulas | 25 antiguas + nuevas | A:P (16) | visible |
 | `Detalle` | 1 fila/ítem de línea | ~92 antiguas + nuevas | A:J (10) | visible |
-| `UMAG`, `Cesfam Limache`, `Gastos Generales` | hoja de proyecto, 100% fórmulas a `Master` | según docs del proyecto | A:M (13) | visible, se regenera completa en cada `run` |
-| `Prueba 1` | hoja de proyecto (mismo formato) | 2 documentos (`PRUE-001`, `PRUE-002`) | A:M (13) | visible — **no está en `PREFIJOS_PROYECTO` ni en la lista de proyectos de `CLAUDE.md`**; confirmar con el usuario si es un proyecto real o una prueba que debería limpiarse |
+| `UMAG`, `CFLI`, `CCON`, `GGEN`, `MLER` | hoja de proyecto, 100% fórmulas a `Master` (pestaña = **prefijo** del proyecto desde 2026-07-17, ver §3b; contenido interno sigue usando el nombre completo) | según docs del proyecto | A:M (13) | visible, se regenera completa en cada `run` |
 | `_Claude` | registro interno de una versión anterior del pipeline (perdida) | 1093 filas, 6 columnas | A:F | **oculta**, el script actual no la lee ni la escribe, se conserva intacta |
 
 Orden de hojas: `Master`, `Detalle`, luego proyectos en orden alfabético
-(lo fuerza `auditor_centro_costos.py` en cada `run`, PASO 9).
+(lo fuerza `auditor_centro_costos.py` en cada `run`, PASO 11).
+
+**Orden de filas dentro de `Master`/`Detalle`/hojas de proyecto** (desde
+2026-07-17, pedido del usuario): la fila 2 es el documento con la fecha más
+reciente, y el fondo de la tabla el más antiguo — orden cronológico
+descendente, no orden de registro. Lo aplica `reordenar_por_fecha()` en cada
+`run` (PASO 7), reubicando filas completas (valor + formato) sin reescribir
+su contenido; las fórmulas K/M de `Master` se regeneran para apuntar a la
+fila nueva. Documentos con fecha no interpretable quedan al final, en su
+orden original. Las hojas de proyecto heredan este orden automáticamente
+porque se arman filtrando `Master` en su orden de fila actual.
 
 > **Nota sobre `PRUE-002`**: el 2026-07-16 se registró un segundo documento
 > en `Prueba 1` (`IMG_7364.JPEG`) que el pipeline marcó como **posible
@@ -85,7 +94,7 @@ lo que antes era `H:O` se corrió una posición a la derecha (`I:P`).
 | O | Archivo origen | 31 | texto — no editar |
 | P | Fecha modificación | 21 | texto — no editar |
 
-### `Detalle` (A:J)
+### `Detalle` (A:K)
 
 | Col | Encabezado | Ancho actual | Formato número |
 |---|---|---|---|
@@ -99,9 +108,19 @@ lo que antes era `H:O` se corrió una posición a la derecha (`I:P`).
 | H | Cantidad | 10 | número |
 | I | P. Unitario sin IVA | 21 | dinero |
 | J | Total sin IVA (CLP) | default | dinero |
+| K | Total con IVA (CLP) | default (autoajuste, no fijado a mano todavía) | dinero |
 
 `Detalle` no tiene columna de proveedor — la migración de Razón Social solo
 aplica a `Master` y a las hojas de proyecto.
+
+**K (`Total con IVA (CLP)`, agregada 2026-07-17)**: a diferencia de J (valor
+fijo calculado en Python), K también es un valor fijo (no fórmula de Excel)
+= `J × (1 + IVA/Neto del documento en Master)` — usa la tasa real del
+documento, no 19% fijo, para que sea correcta también en documentos exentos
+o de Zona Franca. Se agregó al final de la hoja (no en medio), así que no
+desplazó ninguna columna existente. Migración retroactiva
+`migrar_columna_total_con_iva_detalle()` la rellenó para las filas ya
+escritas antes de esa fecha.
 
 ### Hojas de proyecto (A:M, 100% fórmulas `=Master!<col><fila>`)
 
@@ -113,34 +132,45 @@ Categoría, Resumen Ítems, Total sin IVA (CLP), Total con IVA (CLP), Estado.
 Anchos: patrón genérico de [Formato.md](Formato.md) §8 — solo se fijan la
 primera vez, no se recalculan si ya existen.
 
-## 3b. Prefijos de N° Ref. por proyecto
+## 3b. Prefijos de N° Ref. por proyecto (y nombre de pestaña desde 2026-07-17)
 
 Constante `PREFIJOS_PROYECTO` en `auditor_centro_costos.py`: UMAG → `UMAG`,
-Cesfam Limache → `CFLI`, Gastos Generales → `GGEN`. Un proyecto sin prefijo
-definido ahí usa uno derivado automático y el script avisa por consola para
-que se agregue a mano si el resultado no gusta (ver `Prueba 1` → `PRUE`,
-§13).
+Cesfam Limache → `CFLI`, Cesfam Constitución → `CCON`, Gastos Generales →
+`GGEN`, Microturbina LER → `MLER`. Un proyecto sin prefijo definido ahí usa
+uno derivado automático y el script avisa por consola para que se agregue a
+mano si el resultado no gusta.
+
+**Desde 2026-07-17** este mismo prefijo es también el **nombre de la
+pestaña** de la hoja de proyecto (antes era el nombre completo del
+proyecto) — pedido del usuario, para que las pestañas del Excel sean
+compactas. El nombre completo del proyecto sigue siendo el valor real en
+`Master!B` y el que se usa en el contenido interno de la hoja (ej. rótulo
+"TOTAL <proyecto>" del pie) — solo cambió el título de la pestaña.
+`regenerar_hoja_proyecto()` calcula el nombre de pestaña con
+`prefijo_para_proyecto(proyecto)`. Migración aplicada al `.xlsx` real
+renombrando las hojas existentes (`ws.title = ...`) antes de una corrida de
+`run` que regeneró contenido y reordenó pestañas — ver historial abajo.
 
 ## 4. Color de fondo por fila (paleta de proyecto)
 
-Usa la paleta genérica de [Formato.md](Formato.md) §3. Asignación actual
-real (leída del `tabColor` de cada hoja de proyecto, que el script
-sincroniza con el color de fila):
+Usa la paleta genérica de [Formato.md](Formato.md) §3. **Desde 2026-07-17**
+(ver "Historial" al final — migración de paleta), la paleta tiene 8 tonos
+espaciados uniformemente en el círculo de matices (antes 12, con varios
+casi idénticos entre sí) y ya no hay formato condicional heredado tapando
+el relleno directo — el `tabColor` de cada hoja de proyecto y el color de
+sus filas en `Master`/`Detalle`/la hoja de proyecto son ahora el mismo
+valor, confirmado leyendo el `.xlsx` real:
 
-| Proyecto | Color asignado por el script |
+| Proyecto | Color asignado |
 |---|---|
-| Cesfam Limache | `FCE4D6` |
-| Gastos Generales | `DDEBF7` |
-| Prueba 1 | `E2EFDA` |
-| UMAG | `FFF2CC` |
+| UMAG | `FFB7CE` (rosa) |
+| Cesfam Limache | `89DFFF` (celeste) |
+| Cesfam Constitución | `FFBE9D` (durazno) |
+| Gastos Generales | `B6DFA0` (verde) |
+| Microturbina LER | `E9CF87` (dorado) |
 
-> ⚠️ **Esta asignación NO es lo que se ve hoy al abrir el Excel** para
-> UMAG, Cesfam Limache y Gastos Generales — ver "Formato condicional
-> heredado" (§9): hay reglas de formato condicional del pipeline perdido
-> que pintan esas 3 hojas con OTROS colores y tienen prioridad visual sobre
-> el relleno directo de celda. Solo las filas de `Prueba 1` (el único
-> proyecto sin regla condicional) muestran el color de la tabla de arriba
-> tal cual.
+Libres para el próximo proyecto nuevo (en este orden): `86E6D3` (menta),
+`B9CFFF` (lavanda), `E9BFFC` (orquídea).
 
 ## 5. Fuente y color de texto
 
@@ -238,48 +268,21 @@ el desplegable (dependiendo de si la validación tiene "detener" o solo
 dentro de ese rango sí quedan cubiertos por la lista, a diferencia del
 autofiltro (§7).
 
-## 9. Formato condicional heredado (del pipeline perdido)
+## 9. Formato condicional heredado (del pipeline perdido) — eliminado 2026-07-17
 
-`Master!A2:P225` (antes `A2:O225` — extendido a `P` el 2026-07-16 al agregar
-la columna `H`, ver "Historial") y `Detalle!A2:J279` tienen reglas de formato
-condicional tipo "fórmula", tres reglas por hoja, todas comparando la
-columna Proyecto:
-
-| Prioridad | Fórmula | Color de relleno (dxf) |
-|---|---|---|
-| 1 | `$B2="UMAG"` | `D9E8FB` (celeste) |
-| 2 | `$B2="Cesfam Limache"` | `D9F0D9` (verde pálido) |
-| 3 | `$B2="Gastos Generales"` | `FCE4D6` (durazno) |
-
-**Estas reglas tienen prioridad visual sobre el relleno directo de celda**
-que aplica `auditor_centro_costos.py` (`pintar_fila`) — es una regla
-general de Excel: el formato condicional se muestra en vez del formato
-manual cuando su condición es verdadera. Por eso, hoy en la práctica:
-
-- Filas con Proyecto = UMAG se ven **celeste** (`D9E8FB`), no amarillo
-  pálido (`FFF2CC`, el color que le asignó el script en la tabla de §4).
-- Filas con Proyecto = Cesfam Limache se ven **verde pálido** (`D9F0D9`),
-  no durazno (`FCE4D6`).
-- Filas con Proyecto = Gastos Generales se ven **durazno** (`FCE4D6`), no
-  celeste (`DDEBF7`).
-- Filas con Proyecto = Prueba 1 sí muestran su color real de relleno
-  (`E2EFDA`), porque no hay regla condicional para ese proyecto.
-
-Comprobado directamente: las filas antiguas (pre-2026-07-16) de
-`Master`/`Detalle` no tienen ningún relleno directo de celda (`00000000` =
-sin relleno) — todo su color visible viene de estas reglas condicionales.
-Solo las filas nuevas (escritas desde la reconstrucción del script en
-adelante) tienen relleno directo real.
-
-**Implicación a futuro**: si se registra un documento nuevo de UMAG,
-Cesfam Limache o Gastos Generales, el script sí le va a asignar el color
-"correcto" de la paleta (§4) como relleno directo, pero como esas 3 reglas
-condicionales lo siguen tapando, se va a seguir viendo con el color viejo
-del pipeline perdido — no con el de `PALETA`. Solo notarías el color real
-de `PALETA` si el proyecto es nuevo (como `Prueba 1`) o si en algún momento
-se decide borrar estas 3 reglas condicionales. No se toca nada de esto sin
-que el usuario lo pida explícitamente — se deja registrado acá para que la
-próxima vez que algo "se vea mal" en colores, se sepa por qué.
+Hasta 2026-07-17, `Master!A2:P225` y `Detalle!A2:J279` tenían 3 reglas de
+formato condicional tipo "fórmula" heredadas del pipeline perdido (Proyecto
+= UMAG/Cesfam Limache/Gastos Generales, cada una con su propio color fijo),
+con prioridad visual sobre el relleno directo de celda que aplica
+`auditor_centro_costos.py` (`pintar_fila`) — por eso esas 3 hojas de
+proyecto se veían con un color distinto al `tabColor`/paleta real que el
+script les había asignado (ver §4 antes de esta fecha). Reportado por el
+usuario ("las hojas no coinciden con el color de las filas"), se eliminaron
+las 3 reglas y se repintaron todas las filas existentes de `Master`/
+`Detalle` con la paleta nueva — ver "Historial" al final. De aquí en
+adelante el relleno directo de celda es la única fuente de color de fila,
+para cualquier cantidad de proyectos (ya no depende de una regla hardcodeada
+por proyecto).
 
 ## 10. Bordes
 
@@ -320,16 +323,6 @@ recupera o se necesita para entender qué escribió el pipeline anterior.
 
 ## 13. Pendientes / inconsistencias detectadas (no son bugs del script actual, son estado heredado)
 
-- Hoja `Prueba 1`: proyecto con datos (`PRUE-001`, Comercial Anwo S.A.,
-  2026-06-04; `PRUE-002`, 2026-07-16, marcado posible duplicado — ver §1)
-  pero no está en `PREFIJOS_PROYECTO` ni mencionado en `CLAUDE.md` como
-  proyecto vigente — confirmar con el usuario si es un proyecto real que
-  falta documentar o una prueba que se debería limpiar.
-- Formato condicional heredado (§9) tapa el color de 3 de los 4 proyectos —
-  decidir en algún momento si se borran esas reglas para que el color de
-  `PALETA` se vea de verdad, o si se dejan así porque total el efecto
-  visual (colores distintos por proyecto) es el mismo aunque el hex no
-  coincida con lo que el script "cree" que pintó.
 - Autofiltro y freeze panes (§7) no se actualizan solos — quedaron fijos en
   el estado del pipeline perdido y no cubren filas/columnas agregadas
   después; con el layout nuevo de 16 columnas, el rango del autofiltro de
@@ -356,6 +349,69 @@ vuelve a ocultar, a diferencia de los anchos de columna (§3), que si se
 respetan entre corridas.
 
 ## Historial de actualizaciones de formato
+
+### 2026-07-17 — pestañas de hoja de proyecto renombradas a su prefijo (antes: nombre completo del proyecto)
+A pedido del usuario ("quiero que las hojas o pestañas del excel tengan el
+nombre del tag, por ejemplo: 'Cesfam Limache' -> 'CFLI'"): `Gastos
+Generales` → `GGEN`, `Cesfam Constitución` → `CCON`, `Cesfam Limache` →
+`CFLI`, `Microturbina LER` → `MLER` (`UMAG` no cambia, prefijo = nombre
+completo). `Master!B` (columna Proyecto) sigue con el nombre completo sin
+cambios — solo cambió el título de la pestaña. Código:
+`regenerar_hoja_proyecto()` ahora calcula el nombre de hoja con
+`prefijo_para_proyecto(proyecto)` en vez de usar `proyecto` directo (mismo
+cambio en el reordenamiento de pestañas del PASO 11 de `main()`); ver §3b.
+Migración sobre el `.xlsx` real: backup, `ws.title = ...` para las 4 hojas
+existentes, guardado, seguido de una corrida de `run` (0 documentos nuevos,
+0 inconsistencias) que regeneró el contenido de las 5 hojas de proyecto y
+reordenó las pestañas (`Master, Detalle, CCON, CFLI, GGEN, MLER, UMAG,
+_Claude`). De paso se quitó de la tabla de §1 la fila de la hoja `Prueba 1`,
+que ya no existe en el archivo real (quedó desactualizada en este
+documento, no es parte de este cambio).
+
+### 2026-07-17 — migración de paleta: colores casi idénticos + formato condicional heredado que tapaba el color real
+A pedido del usuario ("hay un error en los colores... las hojas no
+coinciden con el color de las filas, además hay proyectos con colores
+demasiado parecidos o los mismos colores"), se corrigieron dos problemas
+distintos:
+
+1. **Paleta casi indistinguible**: la `PALETA` vieja de 12 pasteles tenía
+   varios colores casi idénticos entre sí (verificado con la fórmula ΔE de
+   OKLab del skill `dataviz` — ej. `FCE4D6` vs `FBE5D6` medían ΔE 0.3 sobre
+   un mínimo recomendado de 15, prácticamente el mismo color). Se reemplazó
+   por una `PALETA` de 8 tonos espaciados uniformemente en el círculo de
+   matices OKLCH (`L≈0.86, C≈0.095`, ver §4) — no alcanza el piso de
+   separación de `dataviz` (que está calibrado para marcas de gráfico
+   contra una superficie clara, no para rellenos pasteles que SON la
+   superficie), pero el peor par pasó de ΔE 0.3 a ΔE 6.3, una mejora de
+   ~20x, suficiente para distinguir cada proyecto a simple vista.
+2. **Formato condicional heredado tapando el relleno real** (§9): 3 reglas
+   del pipeline perdido pintaban UMAG/Cesfam Limache/Gastos Generales con
+   colores fijos que no coincidían con el `tabColor` de esas hojas. Se
+   eliminaron las 3 reglas.
+
+Cambios en `auditor_centro_costos.py`: `PALETA` actualizada; función nueva
+`migrar_paleta_colores()` (migración única e idempotente, se detecta
+revisando si sigue existiendo alguna de las 3 reglas de formato condicional
+legado) que borra esas reglas y repinta todas las filas existentes de
+`Master`/`Detalle` con `REASIGNACION_COLORES_2026_07_17` — un mapeo a mano
+que preserva la identidad visual que cada proyecto ya tenía (ej. UMAG
+seguía siendo rosado, aunque tapado por la regla condicional) en vez de
+reasignar en orden alfabético. Corre al inicio de `main()`, junto a
+`migrar_columna_proveedor()`. Las hojas de proyecto se repintan solas en el
+mismo `run` porque `regenerar_hoja_proyecto()` ya lee el color desde
+`Master` (vía `asignar_colores_proyectos()`), que a esa altura ya quedó
+repintado.
+
+Verificado antes de tocar el archivo real: se probó primero sobre una copia
+de `Centro de Costos.xlsx` (no el original) comparando valores de celda
+antes/después (idénticos — solo cambió relleno) y confirmando que
+`tabColor` de cada hoja de proyecto coincide con el relleno de sus filas.
+Corrido después sobre el archivo real (`python driver.py run`, con `status`
+confirmando 0 documentos pendientes antes de correr, para que el único
+efecto de esa corrida fuera la migración de color) — backup automático en
+`Respaldos/Centro de Costos - backup 2026-07-17 1129.xlsx`. Asignación
+resultante: UMAG `FFB7CE`, Cesfam Limache `89DFFF`, Cesfam Constitución
+`FFBE9D`, Gastos Generales `B6DFA0`, Microturbina LER `E9CF87` — ver §4.
 
 ### 2026-07-16 — montos con signo de moneda (`MONEY_FORMAT` de `#,##0` a `"$"#,##0`)
 A pedido del usuario ("los montos monetarios van en formato moneda con el

@@ -62,12 +62,22 @@ documento):
   (el script lo respeta, no lo sobreescribe).
 - **Azul marino** (`1F4E79`) = color de encabezado / texto informativo de
   la leyenda — no es un marcador de estado de celda de datos.
-- **Fondo de color por fila** = categoría/proyecto, de una paleta fija de 12
+- **Fondo de color por fila** = categoría/proyecto, de una paleta fija de
   pasteles reutilizada de forma determinista: se reutiliza el color que ya
   tenga esa categoría en `Master`, y solo se toma uno libre de la lista para
-  categorías nuevas. Paleta sugerida (la que usa Centro de Costos):
-  `FCE4D6, DDEBF7, E2EFDA, FFF2CC, EAD1DC, D9E1F2, FBE5D6, D6DCE4, E4DFEC,
-  FDE9D9, DAEEF3, F2DCDB`.
+  categorías nuevas. **No usar formato condicional de Excel para esto** —
+  usar relleno directo de celda (`pintar_fila`), sincronizado con el
+  `tabColor` de la hoja de categoría; una regla de formato condicional tiene
+  prioridad visual sobre el relleno directo y puede terminar tapándolo (le
+  pasó a Centro de Costos con 3 reglas heredadas de un pipeline anterior —
+  ver `Formato Centro de Costos.md`, historial 2026-07-17).
+  Paleta sugerida (la que usa Centro de Costos desde 2026-07-17): 8 tonos
+  espaciados uniformemente en el círculo de matices OKLCH (`L≈0.86,
+  C≈0.095`, mismo método de color categórico que el skill `dataviz`) para
+  que sean distinguibles a simple vista — la versión anterior de 12 colores
+  tenía varios casi idénticos entre sí (ΔE de OKLab ~0.3, prácticamente el
+  mismo color; la nueva mejora eso a ΔE ~6.3 en el peor par):
+  `FFB7CE, FFBE9D, E9CF87, B6DFA0, 86E6D3, 89DFFF, B9CFFF, E9BFFC`.
 
 ## 4. Formato de números y fechas
 
@@ -140,6 +150,18 @@ código) y se actualiza con una entrada fechada en su propio historial cada
 vez que el formato real cambia.
 
 ## Historial de cambios a este patrón
+
+### 2026-07-17 — paleta de 8 tonos espaciados por matiz (antes: 12, varios casi idénticos) + regla contra formato condicional
+§3 cambió la paleta sugerida y agregó la regla explícita de no usar formato
+condicional de Excel para el color por categoría (usar relleno directo,
+sincronizado con `tabColor`). Origen: en Centro de Costos, 3 reglas de
+formato condicional heredadas de un pipeline anterior tapaban el relleno
+real de 3 de sus 5 proyectos (la hoja de esa categoría no coincidía con el
+color de sus filas), y la paleta vieja de 12 pasteles tenía colores casi
+indistinguibles entre sí. Detalle completo (verificación con la fórmula ΔE
+de OKLab del skill `dataviz`, migración aplicada, asignación resultante) en
+el historial de
+[Formato Centro de Costos.md](Formato%20Centro%20de%20Costos.md).
 
 ### 2026-07-16 — montos con signo de moneda (antes: sin signo)
 A pedido del usuario ("los montos monetarios van en formato moneda con el

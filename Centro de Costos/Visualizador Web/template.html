@@ -633,9 +633,14 @@
   // ---------- copiar nombre de archivo ----------
   var COPY_ICON_SVG = '<svg class="icon-copy" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
   var CHECK_ICON_SVG = '<svg class="icon-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  function nombreArchivoSinRutaNiExtension(archivo) {
+    var base = String(archivo).split(/[\\/]/).pop();
+    return base.replace(/\.[^.]+$/, '');
+  }
   function copyArchivoBtnHtml(archivo) {
     if (!archivo) return '';
-    return ' <button type="button" class="copy-archivo-btn" data-archivo="' + esc(archivo) + '" title="Copiar nombre de archivo" aria-label="Copiar nombre de archivo">' + COPY_ICON_SVG + CHECK_ICON_SVG + '</button>';
+    var nombre = nombreArchivoSinRutaNiExtension(archivo);
+    return ' <button type="button" class="copy-archivo-btn" data-archivo="' + esc(nombre) + '" title="Copiar nombre de archivo" aria-label="Copiar nombre de archivo">' + COPY_ICON_SVG + CHECK_ICON_SVG + '</button>';
   }
   function copyArchivoOrigen(btn) {
     var nombre = btn.dataset.archivo;
