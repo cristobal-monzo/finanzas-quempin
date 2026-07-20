@@ -3,12 +3,15 @@ Centro de Costos/Excel/Centro de Costos.xlsx
 Centro de Costos/Excel/Respaldos/
 Centro de Costos/Sistema/datos_extraidos.json
 Centro de Costos/Sistema/reconciliacion_archivos.json
+Centro de Costos/Sistema/correcciones_manuales.json
 Centro de Costos/Sistema/Legado/
-Centro de Costos/Documentos Centro de Costos/
+Centro de Costos/Facturas y Boletas/
+Centro de Costos/Sitio de comunicación - Centro de Costos 1/
 Flujo de Caja/**/*.xlsx
 Flujo de Caja/**/*.json
 Cotizador Historico/**/*.xlsx
 Cotizador Historico/**/*.json
+*/Visualizador Web/data/
 
 # Python
 __pycache__/
@@ -17,3 +20,6 @@ __pycache__/
 
 # Worktrees locales
 .worktrees/
+
+# Estado de trabajo de skills (ledger de subagent-driven-development, etc.)
+.superpowers/
