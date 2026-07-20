@@ -614,6 +614,86 @@
   var PRODUCT_INDEX = buildProductIndex(DATA.items);
   var productSort = { key: 'n_compras', dir: 'desc' };
 
+  // ---------- busqueda difusa (puerto de Sistema/cotizador_historico.py) ----------
+  function normalizeText(s) {
+    return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  }
+  var LONGITUD_MINIMA_PALABRA_SIGNIFICATIVA = 4;
+  function diceCoefficient(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    function bigrams(s) { var out = []; for (var i = 0; i < s.length - 1; i++) out.push(s.slice(i, i + 2)); return out; }
+    var ba = bigrams(a), bb = bigrams(b);
+    if (!ba.length || !bb.length) return 0;
+    var matches = 0;
+    ba.forEach(function (bg) { var idx = bb.indexOf(bg); if (idx !== -1) { matches++; bb.splice(idx, 1); } });
+    return (2 * matches) / (ba.length + bigrams(b).length);
+  }
+  function similitud(a, b) {
+    if (!a || !b) return 0;
+    if (a.indexOf(b) !== -1 || b.indexOf(a) !== -1) return 1;
+    var palabras = b.split(/\s+/);
+    for (var i = 0; i < palabras.length; i++) {
+      var palabra = palabras[i];
+      if (palabra.length >= LONGITUD_MINIMA_PALABRA_SIGNIFICATIVA && (a.indexOf(palabra) !== -1 || palabra.indexOf(a) !== -1)) return 1;
+    }
+    return diceCoefficient(a, b);
+  }
+  var UMBRAL_SIMILITUD = 0.6, UMBRAL_SUGERENCIA = 0.4, MAX_SUGERENCIAS = 5;
+  function buscarItems(items, textoBusqueda) {
+    var consulta = normalizeText(textoBusqueda);
+    var puntuadas = items.map(function (item) {
+      var s = Math.max(similitud(consulta, normalizeText(item.nombre_item)), similitud(consulta, normalizeText(item.descripcion)));
+      return { s: s, item: item };
+    });
+    puntuadas.sort(function (x, y) { return y.s - x.s; });
+    var coincidencias = puntuadas.filter(function (p) { return p.s >= UMBRAL_SIMILITUD; }).map(function (p) { return p.item; });
+    var sugerencias = [];
+    for (var i = 0; i < puntuadas.length; i++) {
+      var p = puntuadas[i];
+      if (p.s >= UMBRAL_SUGERENCIA && p.s < UMBRAL_SIMILITUD && sugerencias.indexOf(p.item.nombre_item) === -1) sugerencias.push(p.item.nombre_item);
+      if (sugerencias.length >= MAX_SUGERENCIAS) break;
+    }
+    return { coincidencias: coincidencias, sugerencias: sugerencias };
+  }
+
+  // ---------- parser heuristico de specs tecnicas (marca/modelo/potencia/etc.) ----------
+  var PATRONES_SPECS = [
+    /(\d+(?:[.,]\d+)?)\s?(hp|cv|kw|w)\b/gi,
+    /(\d+(?:[.,]\d+)?)\s?(l\/min|lt\/min|l\/h|gpm|m3\/h|m³\/h)\b/gi,
+    /(\d+(?:[.,]\d+)?)\s?v\b/gi,
+    /(\d+(?:[.,]\d+)?)\s?(bar|psi)\b/gi,
+    /(\d+(?:[.,]\d+)?)\s?(lt|litros|kg|gal)\b/gi,
+    /(\d+(?:[.,]\d+)?)\s?(mm|cm|pulg(?:adas)?)\b/gi
+  ];
+  function extraerSpecs(descripcion) {
+    var texto = String(descripcion || '');
+    var chips = [], vistos = {};
+    PATRONES_SPECS.forEach(function (patron) {
+      var m;
+      patron.lastIndex = 0;
+      while ((m = patron.exec(texto))) {
+        var chip = m[0].replace(/\s+/g, '');
+        if (!vistos[chip]) { vistos[chip] = true; chips.push(chip); }
+      }
+    });
+    return chips;
+  }
+  var PALABRAS_NO_MARCA = ['de', 'del', 'la', 'el', 'los', 'las', 'con', 'sin', 'para', 'por', 'y', 'o', 'a', 'en'];
+  function extraerMarcaModelo(descripcion) {
+    var tokens = String(descripcion || '').split(/\s+/);
+    var marca = null, modelo = null;
+    for (var i = 1; i < tokens.length; i++) {
+      var t = tokens[i].replace(/[.,;]+$/, '');
+      if (!t) continue;
+      var esCapitalizada = /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]*$/.test(t);
+      var esAlfanumericaMixta = /^[A-Za-z]+[0-9]+[A-Za-z0-9]*$/.test(t) || /^[0-9]+[A-Za-z]+[A-Za-z0-9]*$/.test(t);
+      if (!marca && esCapitalizada && PALABRAS_NO_MARCA.indexOf(t.toLowerCase()) === -1) { marca = t; continue; }
+      if (marca && !modelo && (esAlfanumericaMixta || /^[A-Z0-9]{2,}$/.test(t))) { modelo = t; break; }
+    }
+    return { marca: marca, modelo: modelo };
+  }
+
   function renderTopProductosChart() {
     var top10 = PRODUCT_INDEX.slice().sort(function (a, b) { return b.n_compras - a.n_compras; }).slice(0, 10);
     renderBarChart('chartTopProductos', top10, 'nombre_item', 'n_compras', null);
