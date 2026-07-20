@@ -141,3 +141,32 @@ def agrupar_por_proyecto_y_subcategoria(items_detalle: list[dict]) -> dict[tuple
         clave = (prefijo, item["categoria_item"])
         agrupado[clave] = agrupado.get(clave, 0.0) + item["total_sin_iva"]
     return agrupado
+
+
+# ── LECTURA DE LA HOJA "PROYECTOS" ───────────────────────────────────────────
+
+def leer_filas_proyectos(ws_proyectos) -> tuple[list[dict], list[str]]:
+    """Recorre la hoja 'Proyectos' desde la fila 2. Filas sin TAG o sin
+    Nombre se saltan con aviso. TAG duplicado: se queda con la primera
+    fila, avisa de las siguientes."""
+    filas_validas = []
+    avisos = []
+    tags_vistos = set()
+
+    for fila_idx in range(2, ws_proyectos.max_row + 1):
+        tag = ws_proyectos.cell(row=fila_idx, column=1).value
+        nombre = ws_proyectos.cell(row=fila_idx, column=2).value
+
+        if not tag or not nombre:
+            if tag or nombre:
+                avisos.append(f"Fila {fila_idx}: falta TAG o Nombre, se salta.")
+            continue
+
+        if tag in tags_vistos:
+            avisos.append(f"Fila {fila_idx}: TAG '{tag}' duplicado, se usa la primera fila.")
+            continue
+
+        tags_vistos.add(tag)
+        filas_validas.append({"fila": fila_idx, "tag": tag, "nombre": nombre})
+
+    return filas_validas, avisos
