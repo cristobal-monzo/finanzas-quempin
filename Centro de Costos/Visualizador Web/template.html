@@ -220,6 +220,27 @@
   .copy-archivo-btn.copied .icon-copy { display: none; }
   .copy-archivo-btn.copied .icon-check { display: inline; color: var(--status-good); }
 
+  /* Notas "i" explicativas junto a KPIs y títulos de gráficos */
+  .info-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    font-size: 9.5px;
+    font-weight: 700;
+    font-style: italic;
+    line-height: 1;
+    margin-left: 5px;
+    cursor: default;
+    user-select: none;
+    vertical-align: middle;
+  }
+  .info-badge:hover, .info-badge:focus-visible { border-color: var(--brand-orange-ink, var(--brand-orange)); color: var(--brand-orange-ink, var(--brand-orange)); outline: none; }
+
   /* Section headers */
   .viz-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin: 0 0 10px; }
 
@@ -298,6 +319,7 @@
   }
   .viz-tooltip.show { opacity: 1; }
   .viz-tooltip .tt-title { font-weight: 700; margin-bottom: 2px; }
+  .viz-tooltip.info-mode { white-space: normal; max-width: 230px; line-height: 1.35; }
 
   svg text { font-family: inherit; }
   .bar-rect { cursor: pointer; transition: opacity 0.1s; }
@@ -463,11 +485,11 @@
         <div id="chartCategoria" class="viz-chart-mount"></div>
       </div>
       <div class="viz-chartcard">
-        <h3>Gasto mensual acumulado</h3>
+        <h3>Gasto mensual acumulado <span class="info-badge" data-info="mensualAcumulado" tabindex="0" role="button" aria-label="Más información">i</span></h3>
         <div id="chartMensual" class="viz-chart-mount"></div>
       </div>
       <div class="viz-chartcard">
-        <h3>Top proveedores</h3>
+        <h3>Top proveedores <span class="info-badge" data-info="topProveedores" tabindex="0" role="button" aria-label="Más información">i</span></h3>
         <div id="chartProveedores" class="viz-chart-mount"></div>
       </div>
     </div>
@@ -793,7 +815,69 @@
     tooltip.style.left = (x + 14 > vw - 160 ? x - 160 : x + 14) + 'px';
     tooltip.style.top = (y + 14) + 'px';
   }
-  function hideTooltip() { tooltip.classList.remove('show'); }
+  function hideTooltip() {
+    tooltip.classList.remove('show');
+    tooltip.classList.remove('info-mode');
+    tooltip.dataset.infoKey = '';
+  }
+
+  // ---------- notas "i" ----------
+  var INFO_NOTES = {
+    pendientes: { title: 'Pendientes de revisión', text: 'Documentos con algún dato que no se pudo leer con certeza desde la foto original (ej. N° de documento). Se incluyen en los totales igual, marcados con ● en la tabla, hasta que alguien los revise.' },
+    gastoSinIva: { title: 'Gasto total (s/IVA)', text: 'Monto neto, sin el Impuesto al Valor Agregado. Es la base sobre la que se calcula el IVA de cada documento.' },
+    topProveedores: { title: 'Top proveedores', text: 'Los 8 proveedores con mayor gasto acumulado en el rango filtrado. El resto no se oculta: se resume en una nota aparte con el monto total fuera del top 8.' },
+    mensualAcumulado: { title: 'Gasto mensual acumulado', text: 'La línea muestra el acumulado corrido mes a mes, no el gasto de cada mes por separado. Pasa el mouse sobre un punto para ver ambos valores.' }
+  };
+  var HOVER_CAPABLE = window.matchMedia('(hover: hover)').matches;
+  function infoBadgeHtml(key) {
+    if (!key) return '';
+    return ' <span class="info-badge" data-info="' + key + '" tabindex="0" role="button" aria-label="Más información">i</span>';
+  }
+  function positionTooltipNear(el) {
+    var r = el.getBoundingClientRect();
+    var vw = window.innerWidth;
+    var x = r.left, y = r.bottom;
+    tooltip.style.left = (x + 230 > vw ? Math.max(8, vw - 240) : x) + 'px';
+    tooltip.style.top = (y + 8) + 'px';
+  }
+  function showInfoTooltip(el, key) {
+    var note = INFO_NOTES[key];
+    if (!note) return;
+    tooltip.innerHTML = '<div class="tt-title">' + esc(note.title) + '</div><div>' + esc(note.text) + '</div>';
+    tooltip.classList.add('show');
+    tooltip.classList.add('info-mode');
+    tooltip.dataset.infoKey = key;
+    positionTooltipNear(el);
+  }
+  function bindInfoBadges(container) {
+    container.querySelectorAll('.info-badge').forEach(function (b) {
+      var key = b.dataset.info;
+      if (!INFO_NOTES[key]) return;
+      if (HOVER_CAPABLE) {
+        b.addEventListener('mouseenter', function () { showInfoTooltip(b, key); });
+        b.addEventListener('mouseleave', hideTooltip);
+      } else {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (tooltip.dataset.infoKey === key && tooltip.classList.contains('show')) {
+            hideTooltip();
+          } else {
+            showInfoTooltip(b, key);
+          }
+        });
+      }
+      b.addEventListener('focus', function () { showInfoTooltip(b, key); });
+      b.addEventListener('blur', hideTooltip);
+      b.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showInfoTooltip(b, key); }
+      });
+    });
+  }
+  document.addEventListener('click', function (e) {
+    if (tooltip.dataset.infoKey && (!e.target.closest || !e.target.closest('.info-badge'))) {
+      hideTooltip();
+    }
+  });
 
   // ---------- KPI row ----------
   function renderKPIs(docs) {
@@ -803,19 +887,20 @@
     var nProy = new Set(docs.map(function (d) { return d.proyecto; })).size;
     var kpis = [
       { label: 'Gasto total (c/IVA)', value: fmt(totalConIva), sub: docs.length + ' documento' + (docs.length === 1 ? '' : 's'), accent: true },
-      { label: 'Gasto total (s/IVA)', value: fmt(totalSinIva), sub: 'Neto' },
+      { label: 'Gasto total (s/IVA)', value: fmt(totalSinIva), sub: 'Neto', info: 'gastoSinIva' },
       { label: 'Proyectos', value: fmtNum(nProy), sub: 'con gasto en el rango filtrado' },
       { label: 'Documentos', value: fmtNum(docs.length), sub: 'Master · 1 fila por documento' },
-      { label: 'Pendientes de revisión', value: fmtNum(nPend), sub: nPend > 0 ? 'requieren revisión manual' : 'todo validado', pill: nPend > 0 ? 'warn' : 'ok' }
+      { label: 'Pendientes de revisión', value: fmtNum(nPend), sub: nPend > 0 ? 'requieren revisión manual' : 'todo validado', pill: nPend > 0 ? 'warn' : 'ok', info: 'pendientes' }
     ];
     var row = document.getElementById('kpiRow');
     row.innerHTML = kpis.map(function (k) {
       return '<div class="viz-kpi' + (k.accent ? ' accent' : '') + '">' +
-        '<div class="label">' + esc(k.label) + '</div>' +
+        '<div class="label">' + esc(k.label) + infoBadgeHtml(k.info) + '</div>' +
         '<div class="value">' + k.value + '</div>' +
         (k.pill ? '<div class="pill ' + k.pill + '"><span class="dot"></span>' + esc(k.sub) + '</div>' : '<div class="sub">' + esc(k.sub) + '</div>') +
         '</div>';
     }).join('');
+    bindInfoBadges(row);
   }
 
   // ---------- SVG chart: vertical bars ----------
@@ -1179,6 +1264,7 @@
   window.addEventListener('resize', debounce(render, 200));
   function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
+  bindInfoBadges(document);
   render();
   } // end initApp
 })();
