@@ -14,6 +14,36 @@ de Costos ni le duplica lógica — solo lo lee.
 A futuro debería poder incorporar Flujo de Caja como fuente adicional, cuando ese
 módulo exista.
 
+## Rol del agente (no solo automatización — análisis)
+
+A diferencia de Centro de Costos (que es un pipeline de registro), este módulo
+también define un **rol consultivo**: cuando se invoque en esta carpeta, o se le
+pida análisis financiero de QUEMPIN en general, el agente actúa como **analista
+financiero experto para una PYME**, no solo como ejecutor de un script:
+
+- **Evalúa proyectos**: rentabilidad real vs. proyectada, riesgo, desviaciones que
+  ameritan atención — usando `Análisis de Proyectos.xlsx` + los datos fuente de
+  Centro de Costos.
+- **Propone y depura KPIs**: sugiere métricas nuevas cuando detecta una pregunta de
+  negocio sin métrica que la responda, y señala explícitamente cuándo un KPI
+  existente no aporta señal (vanity metrics, redundancias matemáticas entre dos
+  KPIs, promedios no ponderados que un outlier distorsiona) — nunca acumula
+  métricas por acumularlas. Ver "Playbook de KPIs" más abajo para el primer set.
+- **Decide cómo presentar**: para cada análisis, elige la forma más clara de
+  mostrarlo (tabla, resumen ejecutivo, o delegar a un gráfico) según la audiencia.
+  La forma de presentación pensada a mediano plazo es un **dashboard HTML** (mismo
+  patrón que ya existe para Centro de Costos en `Visualizador Web/`) — **no se
+  construye en v1**, pero el diseño de datos de este módulo (hoja "Indicadores"
+  100% fórmulas, un valor limpio por proyecto y KPI) ya queda listo para que un
+  futuro `build_visualizador.py` de este módulo lo consuma sin rediseñar el Excel.
+- **Análisis financiero total**: puede cruzar todos los módulos (Centro de Costos,
+  Cotizador Historico, y Flujo de Caja cuando exista) para dar una vista
+  consolidada de la empresa, no solo por módulo aislado.
+- Hereda el principio no negociable de rigurosidad numérica ya establecido para
+  QUEMPIN (ver `.claude/agents/analista-financiero-quempin.md`): nunca inventa
+  cifras, siempre trazable a la fuente, señala inconsistencias en vez de
+  ocultarlas o "arreglarlas" en silencio.
+
 ## Por qué
 
 El usuario ya tiene una carpeta `Análisis Financiero/` con un Excel en blanco
@@ -121,6 +151,70 @@ patrón que `PREFIJOS_PROYECTO` en Centro de Costos):
   consola (para decidir después si merece su propio mapeo, nunca se pierde en
   silencio)
 
+## Playbook de KPIs
+
+### Origen: análisis de un archivo de ejemplo (ya no existe en el repo)
+
+El 2026-07-20 el usuario dejó temporalmente `Ejemplo de indicadores.xlsx` en la
+raíz de `Finanzas QUEMPIN/` (un análisis real de proyectos anteriores de la
+empresa, con tablas dinámicas y referencias externas a RRHH/Órdenes de Compra) —
+**se elimina del repo, este módulo no depende de él**, solo se documentan aquí
+las fórmulas y hallazgos para no perderlos.
+
+Extraídas las fórmulas reales de esos 4 proyectos, se encontraron:
+
+1. **Bug real en el archivo**: para el proyecto "Academia Politécnica Naval", el
+   indicador "Productividad Materiales" estaba calculado como
+   `Ingreso / Costos TOTALES` en vez de `Ingreso / Costo Materiales` — los otros 3
+   proyectos del mismo archivo sí usaban el costo de materiales solo (error de
+   copiar/pegar la fórmula entre columnas). Este módulo implementa la definición
+   correcta y consistente para todos los proyectos.
+2. **"Rentabilidad por cliente (ROI)" está mal nombrado**: lo que calculaban
+   (Utilidad Neta / Costos Totales) es una **rentabilidad sobre costo** (markup),
+   no un ROI en sentido estricto (que divide por capital invertido, no por
+   costos). Se renombra a "Rentabilidad sobre costo" en este módulo — decisión
+   del usuario, 2026-07-20 — para no confundirlo con un ROI de inversión real.
+3. **Mezcla de bases IVA** en el archivo original: "Ingreso" estaba IVA incluido
+   contra costos (MO, materiales) que no lo llevan — infla los indicadores
+   ~19% de forma artificial. No aplica acá: `Análisis de Proyectos.xlsx` usa
+   "sin IVA" de forma consistente en todas sus columnas (ver más arriba), así
+   que los indicadores replicados quedan correctos por diseño, sin ese sesgo.
+4. **Redundancia matemática, dos veces**: "Costo de MO/Materiales por unidad de
+   ingreso" del archivo original es el recíproco exacto de "Productividad
+   MO/Materiales" (misma señal, forma inversa) — se mantienen ambas por
+   legibilidad (distintas audiencias leen mejor una u otra). Y al diseñar el
+   agregado de "estructura de costos como % de venta" propuesto en el
+   brainstorming, se detectó que es **el mismo número** que "costo por unidad de
+   ingreso" (Costo Categoría / Venta) — no se duplica esa columna, queda 1 sola.
+5. El archivo original solo cubría MO y Materiales, sin Equipos ni Otros. Este
+   módulo cubre las 4 categorías por consistencia (decisión del usuario,
+   2026-07-20) — igual tratamiento para las 4, no solo 2.
+
+### Hoja "Indicadores" (una fila por proyecto, 100% fórmulas sobre la hoja "Proyectos")
+
+| Columna | Fórmula (sobre hoja "Proyectos") |
+|---|---|
+| TAG proyecto | referencia directa |
+| Nombre del proyecto | referencia directa |
+| Rentabilidad sobre costo | Margen Real / Total Real |
+| Margen neto % | Margen Real / Monto de Venta |
+| Productividad Materiales | Monto de Venta / Costos Materiales Reales |
+| Productividad Equipos | Monto de Venta / Costos Equipos Reales |
+| Productividad MO | Monto de Venta / Mano de Obra Real |
+| Productividad Otros | Monto de Venta / Otros Costos Reales |
+| Costo Materiales % de venta | Costos Materiales Reales / Monto de Venta |
+| Costo Equipos % de venta | Costos Equipos Reales / Monto de Venta |
+| Costo MO % de venta | Mano de Obra Real / Monto de Venta |
+| Costo Otros % de venta | Otros Costos Reales / Monto de Venta |
+| Desviación % Materiales (Real vs. Proyectado) | Materiales Reales / Materiales Proyectados − 1 |
+| Desviación % Equipos (Real vs. Proyectado) | Equipos Reales / Equipos Proyectados − 1 |
+| Desviación % MO (Real vs. Proyectado) | MO Real / MO Proyectada − 1 |
+| Desviación % Otros (Real vs. Proyectado) | Otros Reales / Otros Proyectados − 1 |
+
+Todas fórmulas de Excel (no valores escritos por Python), mismo patrón que la
+hoja "Proyectos" — se recalculan solas si cambia cualquier dato de entrada
+(manual o automático), nunca se desincronizan entre hojas.
+
 ## Flujo de ejecución (`analisis_financiero.py`, llamado desde el `run` de Centro de Costos o desde su propio driver)
 
 1. **Backup** de `Análisis de Proyectos.xlsx` a `Respaldos/<Mes Año>/...` (si el
@@ -135,7 +229,9 @@ patrón que `PREFIJOS_PROYECTO` en Centro de Costos):
 5. **Asegurar fórmulas** de las columnas automáticas/derivadas en la hoja
    "Proyectos" (`SUMIFS`, totales, márgenes, desviación) para cada fila — sin tocar
    columnas manuales.
-6. **Informe en consola**: proyectos nuevos detectados (carpeta creada), categorías
+6. **Asegurar fórmulas de la hoja "Indicadores"** (una fila por proyecto,
+   referenciando la hoja "Proyectos" — ver "Playbook de KPIs" arriba).
+7. **Informe en consola**: proyectos nuevos detectados (carpeta creada), categorías
    no mapeadas caídas en "Otros", filas saltadas por datos incompletos.
 
 Ningún paso de este flujo aborta el `run` de Centro de Costos si falla (archivo
@@ -155,6 +251,9 @@ Visualizador Web (12c).
 
 ## Fuera de alcance v1 (explícito)
 
+- Dashboard HTML de presentación (ver "Rol del agente" arriba) — la hoja
+  "Indicadores" ya queda lista para alimentarlo, pero el build/publish es una
+  iteración posterior, análoga a `Visualizador Web/` de Centro de Costos.
 - Automatizar Mano de Obra Real (no hay fuente de datos hoy).
 - Integrar Flujo de Caja (módulo no iniciado todavía).
 - Validaciones de datos en Excel (dropdowns para "Estado", etc.) — se puede agregar
