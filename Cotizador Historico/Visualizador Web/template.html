@@ -505,10 +505,6 @@
     });
   }
 
-  function norm(s) {
-    return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  }
-
   var HATCH_DEFS = '';
   // ---------- tooltip ----------
   function showTooltip(evt, title, lines) {
