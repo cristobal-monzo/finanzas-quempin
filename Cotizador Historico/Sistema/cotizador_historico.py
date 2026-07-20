@@ -299,6 +299,44 @@ def reajustar_item(item, uf_hoy, cache_uf):
     }
 
 
+def reajustar_todos(items, uf_hoy, cache_uf=None):
+    """Reajusta TODOS los items indexables (excluido_motivo is None) a la
+    UF de hoy, sin filtrar por texto de busqueda -- lo usa el visualizador
+    web, que necesita el indice completo, no solo los resultados de una
+    consulta puntual. Devuelve (reajustados, sin_uf_count); cada dict de
+    reajustados trae ademas nombre_item/descripcion/categoria_item/
+    proyecto/proveedor_tag del item original, para no tener que volver a
+    cruzarlos despues.
+
+    Si cache_uf es None, carga y persiste el cache de disco el mismo que
+    usa consultar_item; si se pasa un dict ya cargado (tests, o un
+    llamador que quiere controlar el I/O), se muta in-place y no se
+    persiste aqui -- mismo contrato que obtener_valor_uf."""
+    propio_cache = cache_uf is None
+    if propio_cache:
+        cache_uf = cargar_cache_uf()
+
+    reajustados = []
+    sin_uf_count = 0
+    for item in items:
+        if item["excluido_motivo"] is not None:
+            continue
+        compra = reajustar_item(item, uf_hoy, cache_uf)
+        if compra is None:
+            sin_uf_count += 1
+            continue
+        compra["nombre_item"] = item["nombre_item"]
+        compra["descripcion"] = item["descripcion"]
+        compra["categoria_item"] = item.get("categoria_item")
+        compra["proyecto"] = item.get("proyecto")
+        compra["proveedor_tag"] = item.get("proveedor_tag")
+        reajustados.append(compra)
+
+    if propio_cache:
+        guardar_cache_uf(cache_uf)
+    return reajustados, sin_uf_count
+
+
 def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
     """Orquesta una consulta completa: carga Detalle, busca por texto,
     reajusta cada compra encontrada por UF, y agrega promedio/rango.
