@@ -203,6 +203,23 @@
   .viz-kpi .pill.warn { color: var(--status-warning); }
   .viz-kpi .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
 
+  /* Botón de copiar nombre de archivo (junto a N° Ref. en la tabla) */
+  .copy-archivo-btn {
+    background: none;
+    border: none;
+    padding: 2px;
+    margin-left: 4px;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+  }
+  .copy-archivo-btn:hover, .copy-archivo-btn:focus-visible { color: var(--brand-orange-ink, var(--brand-orange)); }
+  .copy-archivo-btn .icon-check { display: none; }
+  .copy-archivo-btn.copied .icon-copy { display: none; }
+  .copy-archivo-btn.copied .icon-check { display: inline; color: var(--status-good); }
+
   /* Section headers */
   .viz-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin: 0 0 10px; }
 
@@ -589,6 +606,40 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
+  }
+
+  // ---------- copiar nombre de archivo ----------
+  var COPY_ICON_SVG = '<svg class="icon-copy" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+  var CHECK_ICON_SVG = '<svg class="icon-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  function copyArchivoBtnHtml(archivo) {
+    if (!archivo) return '';
+    return ' <button type="button" class="copy-archivo-btn" data-archivo="' + esc(archivo) + '" title="Copiar nombre de archivo" aria-label="Copiar nombre de archivo">' + COPY_ICON_SVG + CHECK_ICON_SVG + '</button>';
+  }
+  function copyArchivoOrigen(btn) {
+    var nombre = btn.dataset.archivo;
+    function marcarCopiado() {
+      btn.classList.add('copied');
+      clearTimeout(btn._copyTimeout);
+      btn._copyTimeout = setTimeout(function () { btn.classList.remove('copied'); }, 1200);
+    }
+    function fallbackCopy() {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = nombre;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) marcarCopiado();
+      } catch (e) {}
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(nombre).then(marcarCopiado, fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
   }
   function norm(s) {
     return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -1001,7 +1052,7 @@
       rows.push(
         '<tr class="doc-row' + (expanded ? ' is-expanded' : '') + '" data-ref="' + esc(d.ref) + '">' +
         '<td><span class="expand-toggle" aria-hidden="true">' + (expanded ? '▾' : '▸') + '</span></td>' +
-        '<td>' + esc(d.ref) + (d.pendiente_revision ? ' <span title="Pendiente de revisión" style="color:var(--status-warning)">●</span>' : '') + '</td>' +
+        '<td>' + esc(d.ref) + (d.pendiente_revision ? ' <span title="Pendiente de revisión" style="color:var(--status-warning)">●</span>' : '') + copyArchivoBtnHtml(d.archivo_origen) + '</td>' +
         '<td><span class="proj-tag"><span class="proj-dot" style="' + pSwatchStyle + '"></span>' + esc(d.proyecto) + '</span></td>' +
         '<td>' + fmtDate(d.fecha) + '</td>' +
         '<td>' + esc(d.proveedor_tag) + '</td>' +
@@ -1049,6 +1100,12 @@
       tr.addEventListener('click', toggle);
       tr.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
+    tbody.querySelectorAll('.copy-archivo-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        copyArchivoOrigen(btn);
       });
     });
 
