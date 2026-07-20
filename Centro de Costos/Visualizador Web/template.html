@@ -854,9 +854,21 @@
       var key = b.dataset.info;
       if (!INFO_NOTES[key]) return;
       if (HOVER_CAPABLE) {
+        // En desktop, el foco por teclado y el mouseenter no compiten entre
+        // si (ninguno alterna estado, solo muestran/ocultan), asi que ambos
+        // pueden convivir en el mismo elemento sin conflicto.
         b.addEventListener('mouseenter', function () { showInfoTooltip(b, key); });
         b.addEventListener('mouseleave', hideTooltip);
+        b.addEventListener('focus', function () { showInfoTooltip(b, key); });
+        b.addEventListener('blur', hideTooltip);
       } else {
+        // En touch, un tap dispara tanto 'focus' como 'click' sobre este
+        // span (tabindex="0") en el mismo gesto. Si 'focus' tambien mostrara
+        // el tooltip de forma incondicional, alcanzaria a marcarlo como
+        // visible ANTES de que corra el click de abajo, y el toggle de click
+        // lo interpretaria como "ya estaba mostrado" y lo ocultaria de
+        // inmediato -- el primer tap quedaba sin efecto visible. Por eso el
+        // toggle por click es la unica fuente de verdad en este modo.
         b.addEventListener('click', function (e) {
           e.stopPropagation();
           if (tooltip.dataset.infoKey === key && tooltip.classList.contains('show')) {
@@ -866,8 +878,6 @@
           }
         });
       }
-      b.addEventListener('focus', function () { showInfoTooltip(b, key); });
-      b.addEventListener('blur', hideTooltip);
       b.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showInfoTooltip(b, key); }
       });
