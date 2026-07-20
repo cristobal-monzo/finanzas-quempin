@@ -221,3 +221,31 @@ def hacer_backup(ruta_excel: Path, raiz_respaldos: Path) -> Path | None:
     destino = carpeta_mes / f"Análisis de Proyectos - backup {marca_tiempo}.xlsx"
     shutil.copy2(ruta_excel, destino)
     return destino
+
+
+# ── HOJA "DETALLE COSTOS REALES" (100% regenerada cada corrida) ─────────────
+
+def regenerar_hoja_detalle_costos_reales(wb, agrupado: dict[tuple[str, str], float]) -> list[str]:
+    """Borra todas las filas de datos (fila 2 en adelante) y las reescribe
+    completas desde 'agrupado' -- mismo patrón que las hojas de proyecto de
+    Centro de Costos: se recalcula entera, nunca se acumula a mano. Devuelve
+    avisos de subcategorías sin mapeo explícito (caen en 'Otros')."""
+    ws = wb[HOJA_DETALLE_COSTOS_REALES]
+    if ws.max_row >= 2:
+        ws.delete_rows(2, ws.max_row - 1)
+
+    avisos = []
+    fila = 2
+    for (tag, subcategoria), total in sorted(agrupado.items()):
+        bucket, es_explicito = mapear_categoria_a_bucket(subcategoria)
+        if not es_explicito:
+            avisos.append(
+                f"Categoría '{subcategoria}' (proyecto {tag}) sin mapeo explícito, va a 'Otros'."
+            )
+        ws.cell(row=fila, column=1, value=tag)
+        ws.cell(row=fila, column=2, value=subcategoria)
+        ws.cell(row=fila, column=3, value=bucket)
+        ws.cell(row=fila, column=4, value=total)
+        fila += 1
+
+    return avisos
