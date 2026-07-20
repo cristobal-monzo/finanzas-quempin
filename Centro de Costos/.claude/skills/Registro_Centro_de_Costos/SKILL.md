@@ -1,6 +1,6 @@
 ---
 name: Registro_Centro_de_Costos
-description: Run, check status, audit, or dry-run the Centro de Costos cost-center pipeline for QUEMPIN SpA — inventories invoice/receipt files under "Documentos Centro de Costos/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup. Use when asked to run centro de costos, actualizar centro de costos, registrar facturas, ver estado del centro de costos, auditar facturas, or check for pending/unregistered invoices.
+description: Run, check status, audit, or dry-run the Centro de Costos cost-center pipeline for QUEMPIN SpA — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup. Also regenerates the web visualizer (Visualizador Web/build/index.html) from the current Excel via the 'visualizador' command. Use when asked to run centro de costos, actualizar centro de costos, registrar facturas, ver estado del centro de costos, auditar facturas, check for pending/unregistered invoices, actualizar el visualizador, or regenerar el visualizador web.
 ---
 
 # Registro: Centro de Costos
@@ -68,7 +68,7 @@ Documentos ya en Master: N
 N° Documento distintos ya registrados: N
 Archivos ya cubiertos (Master + reconciliación): N
 
-Inventario de Documentos Centro de Costos/:
+Inventario de Facturas y Boletas/:
   Pendientes (no registrados):            N
   Omitidos (ya registrados):               N
 
@@ -134,7 +134,7 @@ Dos fuentes, ambas obligatorias:
   registró en esta corrida (buscarlo por N° Documento o archivo en la
   columna correspondiente); si el documento **no** se registró
   (limitaciones), no tiene fila en Master todavía — poner la ruta
-  `Documentos Centro de Costos/<Proyecto>/<archivo>` en su lugar.
+  `Facturas y Boletas/<Proyecto>/<archivo>` en su lugar.
 - **Descripción**: el detalle concreto (el que da la consola, o lo que
   notó el agente al revisar el dato).
 - **Solución posible**: acción concreta y corta (ej. "revisar N° Documento
@@ -148,6 +148,61 @@ sola línea (no generar una tabla vacía). No es necesario tocar
 de consola más una revisión rápida del agente sobre los datos nuevos, es un
 paso posterior a `run`, no una función nueva del script.
 
+**Paso 4 — si `run` reporta "CAMBIOS MANUALES PENDIENTES DE CONFIRMAR"
+(sección 6 del informe)**, alguien corrigió a mano una celda que el script
+había marcado en rojo (ej. `N° Documento`: `"S/N (IMG_7533)"` → `"12345"`).
+Esto es distinto de la tabla del Paso 3: son ediciones manuales detectadas
+comparando contra el backup anterior, no errores del pipeline. El agente
+debe:
+
+1. Mostrarle al usuario la lista tal cual la imprime `run` (o
+   `driver.py confirmar` sin argumentos, que da el mismo preview de solo
+   lectura) — qué N° Ref., qué campo, de qué valor a qué valor.
+2. **Pedir confirmación explícita antes de aplicar** — nunca correr
+   `confirmar --todos` sin que el usuario haya confirmado el cambio en la
+   conversación. El script mismo nunca aplica el recoloreo/propagación por
+   su cuenta; siempre requiere este comando aparte.
+3. Una vez confirmado, aplicar con:
+   ```
+   python ".claude/skills/Registro_Centro_de_Costos/driver.py" confirmar --todos
+   ```
+   (o `confirmar <N_REF> ...` si el usuario solo quiere aplicar algunas).
+   Esto recolorea la celda de `Master` a azul marino oscuro (`1F3864`),
+   propaga el valor a las filas de `Detalle` con el mismo `N° Ref.` cuando
+   el campo se repite ahí (hoy: N° Documento), y marca la corrección como
+   "Aplicado" en `Sistema/correcciones_manuales.json` y en la tabla de
+   [ERRORES.md](ERRORES.md).
+
+Detalle completo del mecanismo (detección por comparación de backups,
+por qué no se auto-aplica, qué pasa si la celda se vuelve a editar antes de
+confirmar) en [ERRORES.md](ERRORES.md).
+
+## Visualizador web
+
+**Automático desde 2026-07-19: ya no hace falta correrlo aparte.** Tanto
+`run` del driver como `python auditor_centro_costos.py` directo regeneran
+`Visualizador Web/build/index.html` solos, como último paso de la corrida
+(PASO 12c, dentro de `main()` en `auditor_centro_costos.py` — cubre las dos
+rutas, agente y humana). Si falla (ej. `build_visualizador.py` movido o
+roto), no aborta el `run`: el Excel ya quedó guardado igual, solo imprime un
+`[WARN]` y hay que regenerar el visualizador a mano después.
+
+Para regenerarlo aparte sin correr todo el registrador (ej. solo cambió el
+diseño en `template.html`, no hay documentos nuevos):
+
+```
+python ".claude/skills/Registro_Centro_de_Costos/driver.py" visualizador
+```
+
+Ninguno de los dos caminos toca el Excel — ambos son de solo lectura sobre
+él. Ver [../../Visualizador Web/CLAUDE.md](../../Visualizador%20Web/CLAUDE.md)
+para la arquitectura completa (por qué está incrustado y no via fetch, el
+gate de contraseña, qué campos se sanean, y el bug de fórmulas de Excel sin
+recalcular que hay que recordar si se vuelve a tocar `build_visualizador.py`)
+y [MEMORY.md](MEMORY.md) para el link del Artifact publicado (siempre se
+actualiza el mismo, nunca uno nuevo — publicarlo sigue siendo manual, un
+agente de Claude Code tiene que subir el `build/index.html` nuevo).
+
 ## Run (ruta humana)
 
 Idéntico a `run` del driver, sin el wrapper:
@@ -157,6 +212,11 @@ python auditor_centro_costos.py
 ```
 
 ## Formato de `datos_extraidos.json` (esquema con ítems de línea)
+
+**`"items"` = CADA línea de la compra por separado, nunca 1 solo ítem
+resumen por el total del documento** — ver la excepción para partes
+ilegibles y el precedente `CCON-004` en `../../CLAUDE.md` → "Esquema de
+`datos_extraidos.json`" y en [MEMORY.md](MEMORY.md).
 
 Cada documento pendiente necesita una entrada así (ver detalle completo del
 esquema y las reglas de `N° Ref.`/categorías en `../../CLAUDE.md`):
@@ -202,7 +262,7 @@ inconsistencias = acc.verificar_aritmetica(datos)   # solo lee el JSON, no toca 
 
 - **El emparejamiento es por (proyecto, nombre exacto de archivo)** —
   `"archivo"` y `"proyecto"` en el JSON deben calzar con la ubicación real
-  en `Documentos Centro de Costos/<Proyecto>/<archivo>`. Si no calzan, el
+  en `Facturas y Boletas/<Proyecto>/<archivo>`. Si no calzan, el
   archivo queda "pendiente sin datos en el JSON" indefinidamente sin error
   explícito.
 - **Los 24 documentos ya registrados antes de julio 2026 no tienen su
@@ -218,15 +278,26 @@ inconsistencias = acc.verificar_aritmetica(datos)   # solo lee el JSON, no toca 
 - **`Master` y `Detalle` nunca reescriben una fila de datos ya creada** —
   solo se tocan sus pies de tabla (TOTAL GENERAL + leyenda), que se borran y
   reescriben en cada corrida porque son 100% derivados.
-- **No hay renombrado de fotos ni conversión HEIC→JPG ni detección
-  automática de duplicados en esta versión** (esas capacidades existían en
-  el pipeline anterior — `rename.py`/`detectar_duplicados.py` — que se
-  perdió; no se reconstruyeron todavía). El script sí avisa "posibles
-  duplicados" cuando un N° Documento nuevo coincide con uno ya registrado,
-  pero no bloquea el registro.
+- **Sí hay renombrado de fotos y conversión HEIC→JPG** (agregado el
+  2026-07-16): cada `run` renombra cada documento a
+  `<N° Ref.>_<TagProveedor>_<Fecha ISO>.<ext>` (`.heic`→`.jpg`) si el
+  nombre físico actual difiere del esperado, y actualiza "Archivo origen"
+  en `Master` — cubre documentos nuevos y, retroactivamente, los ya
+  registrados. `status` muestra un preview sin tocar disco. Detección
+  automática de duplicados **no** existe todavía (`build.py`/
+  `detectar_duplicados.py` del pipeline perdido, no reconstruidos): el
+  script solo avisa "posibles duplicados" cuando un N° Documento nuevo
+  coincide con uno ya registrado, pero no bloquea el registro — verificar
+  a mano contra `Master` si dos filas apuntan al mismo archivo físico
+  (pasó una vez, ver `ERRORES.md` 2026-07-17).
 - **Cada `run` crea un backup nuevo dentro de `Respaldos/`** (no en la raíz
   del módulo), incluso si no hay nada que escribir. Son desechables pero no
   se auto-limpian.
+- **`run` detecta correcciones manuales en celdas rojas pero nunca las
+  aplica solo** — las deja "Pendiente"; hace falta correr
+  `driver.py confirmar --todos` (con confirmación del usuario primero) para
+  que recoloree a azul marino y propague a `Detalle`. Ver Paso 4 más arriba
+  y [ERRORES.md](ERRORES.md).
 - **Si `Centro de Costos.xlsx` está abierto en Excel**, `run` falla al
   guardar con un `PermissionError` controlado — no corrompe el archivo,
   solo hay que cerrarlo y reintentar.

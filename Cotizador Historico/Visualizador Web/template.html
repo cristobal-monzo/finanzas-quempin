@@ -245,21 +245,6 @@
   .viz-clearbtn:hover { background: var(--surface-1); }
   .viz-resultcount { font-size: 12px; color: var(--text-muted); margin-left: auto; align-self: center; white-space: nowrap; }
 
-  /* Charts grid */
-  .viz-charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
-  @media (max-width: 760px) { .viz-charts { grid-template-columns: 1fr; } }
-  .viz-chartcard {
-    background: var(--surface-card);
-    border: 1px solid var(--border-hairline);
-    border-radius: 10px;
-    padding: 16px;
-  }
-  .viz-chartcard h3 { font-size: 13px; font-weight: 700; margin: 0 0 12px; color: var(--text-primary); }
-  .viz-chartcard .empty { font-size: 12.5px; color: var(--text-muted); padding: 24px 0; text-align: center; }
-  .viz-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
-  .viz-legend .item { display: inline-flex; align-items: center; gap: 5px; }
-  .viz-legend .swatch { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
-
   .viz-tooltip {
     /* Fondo fijo en negro oficial, NO ligado al tema — bug encontrado en la
        Iteración 1 del loop de mejora: usaba una variable que en modo oscuro
@@ -344,6 +329,8 @@
   .viz-refcard .rc-title { font-size: 14px; font-weight: 700; }
   .viz-refcard .rc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .viz-refcard .rc-chip { font-size: 11px; font-weight: 700; background: rgba(255,81,0,0.12); color: var(--brand-orange-ink, var(--brand-orange)); border-radius: 20px; padding: 2px 9px; }
+  .viz-refcard.is-cheapest { border-color: var(--status-good); box-shadow: 0 0 0 1px var(--status-good); }
+  .viz-refcard .rc-cheapest-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; color: var(--status-good); background: rgba(12,163,12,0.12); border-radius: 20px; padding: 2px 9px; align-self: flex-start; }
   .viz-refcard .rc-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }
   .viz-refcard .rc-meta { font-size: 11.5px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 4px 10px; }
   .viz-refcard .rc-price { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--gridline); }
@@ -374,6 +361,7 @@
   .viz-cart-empty { font-size: 12.5px; color: var(--text-muted); text-align: center; padding: 20px 0; }
   .viz-cart-totals { font-size: 13px; font-weight: 700; padding: 10px 0; border-top: 1px solid var(--gridline); margin-top: 8px; }
   .viz-cart-label { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; display: block; }
+  .viz-cart-meta { font-size: 10.5px; color: var(--text-muted); margin: 0 0 6px; line-height: 1.4; }
   .viz-cart-textarea { width: 100%; font-family: 'Lato', monospace; font-size: 11px; padding: 8px; border-radius: 7px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); resize: vertical; white-space: pre; }
   .viz-cart-copybtn { font-family: inherit; font-size: 13px; font-weight: 900; padding: 10px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; margin-top: 8px; }
   .viz-cart-copybtn:disabled { opacity: 0.4; cursor: default; }
@@ -409,32 +397,6 @@
   <div class="viz-container">
     <div class="viz-kpis" id="kpiRow"></div>
 
-    <div class="viz-charts">
-      <div class="viz-chartcard">
-        <h3>Top 10 productos con más compras históricas</h3>
-        <div id="chartTopProductos" class="viz-chart-mount"></div>
-      </div>
-    </div>
-
-    <p class="viz-section-title">Índice de productos</p>
-    <div class="viz-tablewrap">
-      <div class="viz-tablescroll">
-        <table class="viz-table" id="productTable">
-          <thead>
-            <tr>
-              <th data-key="nombre_item" aria-sort="ascending">Producto <span class="arrow">▲</span></th>
-              <th data-key="n_compras" class="num" aria-sort="none">N° de compras <span class="arrow"></span></th>
-              <th data-key="rango_min" class="num" aria-sort="none">Precio reajustado mín. <span class="arrow"></span></th>
-              <th data-key="rango_max" class="num" aria-sort="none">Precio reajustado máx. <span class="arrow"></span></th>
-              <th>Proyectos</th>
-            </tr>
-          </thead>
-          <tbody id="productTableBody"></tbody>
-        </table>
-      </div>
-      <div class="viz-empty-state" id="productEmptyState" style="display:none">Sin productos indexados.</div>
-    </div>
-
     <p class="viz-section-title">Buscar referencias</p>
     <div class="viz-filterbar">
       <div class="viz-field search">
@@ -463,6 +425,25 @@
     </div>
     <div id="searchEmptyState" class="viz-empty-state" style="display:none"></div>
 
+    <p class="viz-section-title">Índice de productos</p>
+    <div class="viz-tablewrap">
+      <div class="viz-tablescroll">
+        <table class="viz-table" id="productTable">
+          <thead>
+            <tr>
+              <th data-key="nombre_item" aria-sort="ascending">Producto <span class="arrow">▲</span></th>
+              <th data-key="n_compras" class="num" aria-sort="none">N° de compras <span class="arrow"></span></th>
+              <th data-key="rango_min" class="num" aria-sort="none">Precio reajustado mín. <span class="arrow"></span></th>
+              <th data-key="rango_max" class="num" aria-sort="none">Precio reajustado máx. <span class="arrow"></span></th>
+              <th>Proyectos</th>
+            </tr>
+          </thead>
+          <tbody id="productTableBody"></tbody>
+        </table>
+      </div>
+      <div class="viz-empty-state" id="productEmptyState" style="display:none">Sin productos indexados.</div>
+    </div>
+
     <p class="viz-footer">
       Cotizador Historico — datos reales de <strong>Centro de Costos.xlsx</strong>, reajustados a
       la UF vigente al generar este archivo. Snapshot generado el <span id="vizGeneratedFooter">—</span>.
@@ -471,8 +452,8 @@
     </p>
   </div>
 
-  <button type="button" id="cartToggleBtn" class="viz-cart-fab" aria-label="Abrir carrito">
-    🛒<span id="cartBadge" class="viz-cart-badge" style="display:none">0</span>
+  <button type="button" id="cartToggleBtn" class="viz-cart-fab" aria-label="Abrir cotizador">
+    🧾<span id="cartBadge" class="viz-cart-badge" style="display:none">0</span>
   </button>
   <div id="cartDrawer" class="viz-cart-drawer" style="display:none">
     <div class="viz-cart-header">
@@ -483,6 +464,7 @@
     <div id="cartEmptyMsg" class="viz-cart-empty">El carrito está vacío. Agrega referencias desde los resultados de búsqueda.</div>
     <div class="viz-cart-totals" id="cartTotals"></div>
     <label class="viz-cart-label" for="exportText">Texto para copiar a Excel</label>
+    <p class="viz-cart-meta" id="exportMeta"></p>
     <textarea id="exportText" class="viz-cart-textarea" readonly rows="6" placeholder="Agrega referencias al carrito para generar el texto…"></textarea>
     <button type="button" id="btnCopiarTodo" class="viz-cart-copybtn" disabled>Copiar todo</button>
     <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas).</p>
@@ -592,7 +574,6 @@
     });
   }
 
-  var HATCH_DEFS = '';
   // ---------- tooltip ----------
   function showTooltip(evt, title, lines) {
     tooltip.innerHTML = '<div class="tt-title">' + esc(title) + '</div>' + lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('');
@@ -613,64 +594,36 @@
     tooltip.dataset.infoKey = '';
   }
 
-  // ---------- SVG chart: vertical bars ----------
-  function renderBarChart(containerId, items, labelKey, valueKey, colorMap) {
-    var el = document.getElementById(containerId);
-    if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var W = el.clientWidth || 480, H = 220, padL = 46, padB = 34, padT = 10, padR = 10;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var max = Math.max.apply(null, items.map(function (i) { return i[valueKey]; })) || 1;
-    var total = items.reduce(function (s, i) { return s + i[valueKey]; }, 0) || 1;
-    var n = items.length;
-    var gap = 14;
-    var bw = Math.max(18, (innerW - gap * (n - 1)) / n);
-    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img">' + HATCH_DEFS;
-    // gridlines
-    var steps = 4;
-    for (var g = 0; g <= steps; g++) {
-      var gy = padT + innerH - (innerH * g / steps);
-      svg += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--gridline)" stroke-width="1"/>';
-      svg += '<text x="' + (padL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="10" fill="var(--text-muted)">' + fmtCompact(max * g / steps) + '</text>';
-    }
-    items.forEach(function (it, i) {
-      var x = padL + i * (bw + gap);
-      var h = innerH * (it[valueKey] / max);
-      var y = padT + innerH - h;
-      var color = 'var(--brand-orange)';
-      svg += '<rect class="bar-rect" data-i="' + i + '" x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(h, 1) + '" rx="4" fill="' + color + '"/>';
-      svg += '<text x="' + (x + bw / 2) + '" y="' + (H - padB + 16) + '" text-anchor="middle" font-size="10" fill="var(--text-secondary)">' + esc(truncateLabel(it[labelKey], 10)) + '</text>';
-    });
-    svg += '</svg>';
-    el.innerHTML = svg;
-    el.querySelectorAll('.bar-rect').forEach(function (rect) {
-      var it = items[+rect.dataset.i];
-      rect.addEventListener('mousemove', function (e) {
-        showTooltip(e, it[labelKey], [fmt(it[valueKey]), Math.round(it[valueKey] / total * 100) + '% del total filtrado']);
-      });
-      rect.addEventListener('mouseleave', hideTooltip);
-    });
-    fadeIn(el);
-  }
-  function truncateLabel(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
-  // Transición sutil al redibujar un gráfico (cada cambio de filtro
-  // reconstruye el SVG entero) — Web Animations API, no bloquea ni retrasa
-  // nada: la animación corre después de que el contenido y sus listeners ya
-  // quedaron montados, solo decora la aparición.
-  function fadeIn(el) {
-    if (el.animate) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
-  }
-  function fmtCompact(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
-    if (n >= 1000) return Math.round(n / 1000) + 'k';
-    return Math.round(n);
-  }
-
   document.getElementById('vizGenerated').innerHTML = 'UF utilizada <strong>' + fmt(DATA.uf_hoy) + '</strong> (actualizada ' + esc(DATA.uf_fecha) + ')';
   document.getElementById('vizGeneratedFooter').textContent = DATA.generado;
+  document.getElementById('exportMeta').textContent = 'Generado ' + new Date().toLocaleString('es-CL') + ' · UF utilizada ' + fmt(DATA.uf_hoy) + ' (actualizada ' + DATA.uf_fecha + ')';
+
+  // ---------- fittings: exigir medida (pulgadas/mm/cm), excluir si no se pudo extraer ----------
+  // Pedido del usuario: codos/coplas/etc. sin medida legible no aportan (no
+  // se puede cotizar un "codo" sin saber su diametro) -- se excluyen del
+  // dashboard entero (indice de productos y busqueda), no solo se ocultan
+  // visualmente. Los demas items (sin nombre de fitting reconocido) nunca
+  // se filtran por esta regla.
+  var PALABRAS_FITTING = ['codo', 'copla', 'coupling', 'tee', 'union', 'unión', 'neplo', 'niple',
+    'reduccion', 'reducción', 'adaptador', 'tapon', 'tapón', 'cruz', 'yee', 'curva', 'buje', 'bushing'];
+  function esFitting(nombreItem) {
+    var n = String(nombreItem || '').toLowerCase();
+    return PALABRAS_FITTING.some(function (p) { return n.indexOf(p) !== -1; });
+  }
+  var PATRON_MEDIDA_FITTING = /\d+(?:\s\d+\/\d+|\/\d+)?\s?"|\d+(?:[.,]\d+)?\s?(mm|cm|pulg(?:adas)?)\b/i;
+  function extraerMedidaFitting(descripcion) {
+    var m = PATRON_MEDIDA_FITTING.exec(String(descripcion || ''));
+    return m ? m[0].replace(/\s+/g, '') : null;
+  }
+  function esVisible(item) {
+    return !esFitting(item.nombre_item) || !!extraerMedidaFitting(item.descripcion);
+  }
+  var ITEMS_VISIBLES = DATA.items.filter(esVisible);
+
   function renderKPIs() {
     var row = document.getElementById('kpiRow');
     row.innerHTML =
-      '<div class="viz-kpi accent"><div class="label">Referencias indexadas</div><div class="value">' + fmtNum(DATA.items.length) + '</div><div class="sub">disponibles para buscar</div></div>' +
+      '<div class="viz-kpi accent"><div class="label">Referencias indexadas</div><div class="value">' + fmtNum(ITEMS_VISIBLES.length) + '</div><div class="sub">disponibles para buscar</div></div>' +
       '<div class="viz-kpi"><div class="label">UF utilizada</div><div class="value">' + fmt(DATA.uf_hoy) + '</div><div class="sub">actualizada ' + esc(DATA.uf_fecha) + '</div></div>';
   }
   // ---------- product index (grouped by nombre_item) ----------
@@ -685,16 +638,25 @@
     return Object.keys(byName).map(function (key) {
       var g = byName[key];
       var precios = g.compras.map(function (c) { return c.precio_reajustado_hoy; });
+      var preciosConIva = g.compras.map(function (c) { return c.precio_reajustado_hoy_con_iva; });
+      var masBarato = g.compras.reduce(function (min, c) {
+        return c.precio_reajustado_hoy_con_iva < min.precio_reajustado_hoy_con_iva ? c : min;
+      });
       return {
         nombre_item: key,
         n_compras: g.compras.length,
         rango_min: Math.min.apply(null, precios),
         rango_max: Math.max.apply(null, precios),
         proyectos: Object.keys(g.proyectos).sort(),
+        promedio_con_iva: Math.round(preciosConIva.reduce(function (a, b) { return a + b; }, 0) / preciosConIva.length),
+        precio_min_con_iva: masBarato.precio_reajustado_hoy_con_iva,
+        proveedor_min_con_iva: masBarato.proveedor_tag || null,
       };
     });
   }
-  var PRODUCT_INDEX = buildProductIndex(DATA.items);
+  var PRODUCT_INDEX = buildProductIndex(ITEMS_VISIBLES);
+  var MARKET_STATS = {};
+  PRODUCT_INDEX.forEach(function (p) { MARKET_STATS[p.nombre_item] = p; });
   var productSort = { key: 'n_compras', dir: 'desc' };
 
   // ---------- busqueda difusa (puerto de Sistema/cotizador_historico.py) ----------
@@ -778,8 +740,8 @@
   }
 
   // ---------- filtros de busqueda ----------
-  fillSelectFromValues('fProyecto', DATA.items.map(function (i) { return i.proyecto; }));
-  fillSelectFromValues('fCategoria', DATA.items.map(function (i) { return i.categoria_item; }));
+  fillSelectFromValues('fProyecto', ITEMS_VISIBLES.map(function (i) { return i.proyecto; }));
+  fillSelectFromValues('fCategoria', ITEMS_VISIBLES.map(function (i) { return i.categoria_item; }));
   function fillSelectFromValues(id, values) {
     var uniq = Array.from(new Set(values.filter(Boolean))).sort();
     var el = document.getElementById(id);
@@ -829,7 +791,10 @@
     if (marcaModelo.modelo) chips.push(marcaModelo.modelo);
     chips = chips.concat(specs);
     var cardId = 'rc_' + idx;
-    return '<div class="viz-refcard">' +
+    var stats = MARKET_STATS[item.nombre_item];
+    var esLaMasBarata = stats && stats.n_compras > 1 && item.precio_reajustado_hoy_con_iva === stats.precio_min_con_iva;
+    return '<div class="viz-refcard' + (esLaMasBarata ? ' is-cheapest' : '') + '">' +
+      (esLaMasBarata ? '<span class="rc-cheapest-badge">💲 Proveedor más barato entre ' + stats.n_compras + '</span>' : '') +
       '<div class="rc-title">' + highlight(item.nombre_item, consulta) + '</div>' +
       (chips.length ? '<div class="rc-chips">' + chips.map(function (c) { return '<span class="rc-chip">' + esc(c) + '</span>'; }).join('') + '</div>' : '') +
       '<div class="rc-desc">' + highlight(item.descripcion, consulta) + '</div>' +
@@ -841,7 +806,7 @@
       '</div>' +
       '<div class="rc-cartrow">' +
       '<input type="number" class="rc-qty" id="qty_' + cardId + '" value="1" min="1" step="1" aria-label="Cantidad" />' +
-      '<button type="button" class="rc-addbtn" data-cardid="' + cardId + '" data-idx="' + idx + '">Agregar al carrito</button>' +
+      '<button type="button" class="rc-addbtn" data-cardid="' + cardId + '" data-idx="' + idx + '">Agregar al cotizador</button>' +
       '</div>' +
       '</div>';
   }
@@ -864,7 +829,7 @@
       return;
     }
 
-    var candidatos = DATA.items.filter(itemPasaFiltros);
+    var candidatos = ITEMS_VISIBLES.filter(itemPasaFiltros);
     var resultado = buscarItems(candidatos, texto);
     var coincidencias = resultado.coincidencias;
 
@@ -949,7 +914,7 @@
         addToCart(item, cantidad, idx);
         btn.textContent = '✓ Agregado';
         btn.classList.add('added');
-        setTimeout(function () { btn.textContent = 'Agregar al carrito'; btn.classList.remove('added'); }, 1200);
+        setTimeout(function () { btn.textContent = 'Agregar al cotizador'; btn.classList.remove('added'); }, 1200);
       });
     });
   }
@@ -1018,41 +983,25 @@
     document.getElementById('cartDrawer').style.display = 'none';
   });
 
-  // ---------- texto del carrito para copiar a Excel (Materiales/Equipos/Otros) ----------
-  function seccionParaCategoria(categoriaItem) {
-    if (categoriaItem === 'Materiales') return 'MATERIALES';
-    if (categoriaItem === 'Equipos-Herramientas') return 'EQUIPOS';
-    return 'OTROS';
-  }
-
+  // ---------- texto del carrito para copiar a Excel ----------
+  // Solo la tabla comparativa va dentro del texto copiable -- fecha de
+  // generacion y UF utilizada se muestran aparte (#exportMeta), fuera de
+  // la caja de copia, a pedido del usuario.
   function limpiarParaTsv(s) { return String(s == null ? '' : s).replace(/[\t\n\r]+/g, ' '); }
 
   function construirTextoExport() {
-    var secciones = { MATERIALES: [], EQUIPOS: [], OTROS: [] };
-    cart.forEach(function (l) { secciones[seccionParaCategoria(l.categoria_item)].push(l); });
-
-    var lineas = [];
-    lineas.push('Cotización QUEMPIN — generada ' + new Date().toLocaleString('es-CL'));
-    lineas.push('UF utilizada: ' + fmt(DATA.uf_hoy) + ' (actualizada ' + DATA.uf_fecha + ')');
-    lineas.push('');
-
-    var totalGeneral = 0;
-    ['MATERIALES', 'EQUIPOS', 'OTROS'].forEach(function (nombreSeccion) {
-      var lineasSeccion = secciones[nombreSeccion];
-      if (!lineasSeccion.length) return;
-      lineas.push(nombreSeccion);
-      lineas.push(['Nombre Item', 'Descripcion', 'Cantidad', 'Precio unit. s/IVA', 'Precio unit. c/IVA', 'Subtotal c/IVA', 'N Ref.', 'Fecha', 'Proyecto'].join('\t'));
-      var subtotal = 0;
-      lineasSeccion.forEach(function (l) {
-        var sub = l.cantidad * l.precio_reajustado_hoy_con_iva;
-        subtotal += sub;
-        lineas.push([limpiarParaTsv(l.nombre_item), limpiarParaTsv(l.descripcion), l.cantidad, l.precio_reajustado_hoy, l.precio_reajustado_hoy_con_iva, sub, l.n_ref, l.fecha, l.proyecto || ''].join('\t'));
-      });
-      lineas.push('Subtotal ' + nombreSeccion + '\t\t\t\t\t' + subtotal);
-      lineas.push('');
-      totalGeneral += subtotal;
+    var encabezado = ['Elemento', 'Promedio de costo', 'Costo más barato', 'Proveedor más barato', 'Costo actualizado según UF'];
+    var lineas = [encabezado.join('\t')];
+    cart.forEach(function (l) {
+      var stats = MARKET_STATS[l.nombre_item] || {};
+      lineas.push([
+        limpiarParaTsv(l.nombre_item),
+        stats.promedio_con_iva != null ? stats.promedio_con_iva : '',
+        stats.precio_min_con_iva != null ? stats.precio_min_con_iva : '',
+        limpiarParaTsv(stats.proveedor_min_con_iva || ''),
+        l.precio_reajustado_hoy_con_iva,
+      ].join('\t'));
     });
-    lineas.push('TOTAL GENERAL\t\t\t\t\t' + totalGeneral);
     return lineas.join('\n');
   }
 
@@ -1076,11 +1025,6 @@
   }
 
   document.getElementById('btnCopiarTodo').addEventListener('click', copiarTextoExport);
-
-  function renderTopProductosChart() {
-    var top10 = PRODUCT_INDEX.slice().sort(function (a, b) { return b.n_compras - a.n_compras; }).slice(0, 10);
-    renderBarChart('chartTopProductos', top10, 'nombre_item', 'n_compras', null);
-  }
 
   function renderProductTable() {
     var sorted = PRODUCT_INDEX.slice().sort(function (a, b) {
@@ -1125,7 +1069,7 @@
       renderProductTable();
     });
   });
-  function render() { renderKPIs(); renderTopProductosChart(); renderProductTable(); }
+  function render() { renderKPIs(); renderProductTable(); }
   render();
   } // end initApp
 })();

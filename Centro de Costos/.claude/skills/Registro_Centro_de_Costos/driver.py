@@ -5,7 +5,7 @@ driver.py — arnés de ejecución para la skill Registro_Centro_de_Costos.
 No reimplementa el registrador: importa auditor_centro_costos.py desde la raíz
 del proyecto y expone dos comandos seguros de invocar desde un agente:
 
-  status  → SOLO LECTURA. Inventaria Documentos Centro de Costos/, dice qué
+  status  → SOLO LECTURA. Inventaria Facturas y Boletas/, dice qué
             se registraría (pendientes/omitidos), qué archivos no tienen
             datos (con items) en datos_extraidos.json, y corre la
             verificación aritmética sobre ese JSON. No crea backup ni
@@ -15,11 +15,30 @@ del proyecto y expone dos comandos seguros de invocar desde un agente:
             (backup + escritura). Idempotente: correrlo varias veces no
             duplica filas (las filas de datos ya escritas nunca se tocan;
             solo se regeneran los pies de tabla y las hojas de proyecto,
-            que son 100% derivadas).
+            que son 100% derivadas). También detecta ediciones manuales
+            hechas en celdas que el script había marcado en rojo y las deja
+            "Pendiente" en correcciones_manuales.json/ERRORES.md -- no las
+            aplica todavía.
+
+  confirmar → Sin argumentos: preview de solo lectura de las correcciones
+            manuales pendientes (detectadas por 'run'). Con '--todos' o una
+            lista de N° Ref: las aplica -- recolorea azul marino oscuro y
+            propaga el valor a Detalle donde corresponda. Requiere que el
+            usuario confirme antes de correr la variante que aplica.
+
+  visualizador → Regenera el visualizador web (Visualizador Web/build/index.html)
+            a partir del Excel actual: exporta un snapshot saneado a
+            Visualizador Web/data/centro-de-costos.json y lo incrusta en
+            Visualizador Web/template.html (versionado, sin datos). No
+            modifica el Excel. Ver Visualizador Web/CLAUDE.md.
 
 Uso:
   python driver.py status
   python driver.py run
+  python driver.py confirmar
+  python driver.py confirmar --todos
+  python driver.py confirmar UMAG-014 CFLI-002
+  python driver.py visualizador
 """
 
 import sys
@@ -97,7 +116,7 @@ def cmd_status():
     print(f"Archivos ya cubiertos (Master + reconciliación): {len(archivos_registrados)}")
 
     pendientes, omitidos = acc.inventariar_archivos(acc.RAIZ_DOCS, archivos_registrados)
-    print("\nInventario de Documentos Centro de Costos/:")
+    print("\nInventario de Facturas y Boletas/:")
     print(f"  Pendientes (no registrados):            {len(pendientes)}")
     print(f"  Omitidos (ya registrados):               {len(omitidos)}")
 
@@ -131,6 +150,20 @@ def cmd_status():
 
     mostrar_preview_renombrados(filas_master, reconciliacion)
 
+    print("\nCambios manuales detectados (preview, no se escribe nada):")
+    ruta_backup_anterior = acc.backup_mas_reciente()
+    if ruta_backup_anterior is not None and ws_master is not None:
+        wb_anterior = openpyxl.load_workbook(str(ruta_backup_anterior), data_only=False)
+        detectadas = acc.detectar_correcciones_manuales(wb_anterior, wb)
+        pendientes = acc.registrar_correcciones_pendientes(detectadas, escribir=False)
+        if pendientes:
+            for c in pendientes:
+                print(f"  - {c['n_ref']} / {c['campo']}: '{c['valor_anterior']}' -> '{c['valor_corregido']}'")
+        else:
+            print("  Ninguno.")
+    else:
+        print("  No hay backup anterior contra el cual comparar (primera corrida).")
+
     print("\n" + "=" * 70)
     print("  Nada fue escrito. Para ejecutar de verdad: python driver.py run")
     print("=" * 70)
@@ -142,13 +175,36 @@ def cmd_run():
     return 0
 
 
+def cmd_confirmar(args):
+    if not args:
+        acc.confirmar_correcciones(None)
+    elif args == ["--todos"]:
+        acc.confirmar_correcciones("TODOS")
+    else:
+        acc.confirmar_correcciones(args)
+    return 0
+
+
+def cmd_visualizador():
+    visualizador_dir = ROOT / "Visualizador Web"
+    sys.path.insert(0, str(visualizador_dir))
+    sys.dont_write_bytecode = True
+    import build_visualizador as bv  # noqa: E402
+    return bv.build()
+
+
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in ("status", "run"):
-        print("Uso: python driver.py [status|run]")
+    comandos = ("status", "run", "confirmar", "visualizador")
+    if len(sys.argv) < 2 or sys.argv[1] not in comandos:
+        print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador]")
         return 2
 
     if sys.argv[1] == "status":
         return cmd_status()
+    if sys.argv[1] == "confirmar":
+        return cmd_confirmar(sys.argv[2:])
+    if sys.argv[1] == "visualizador":
+        return cmd_visualizador()
     return cmd_run()
 
 
