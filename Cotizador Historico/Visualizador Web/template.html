@@ -841,7 +841,7 @@
       '</div>' +
       '<div class="rc-cartrow">' +
       '<input type="number" class="rc-qty" id="qty_' + cardId + '" value="1" min="1" step="1" aria-label="Cantidad" />' +
-      '<button type="button" class="rc-addbtn" data-cardid="' + cardId + '" data-idx="' + idx + '" data-nref="' + esc(item.n_ref) + '" data-nombre="' + esc(item.nombre_item) + '">Agregar al carrito</button>' +
+      '<button type="button" class="rc-addbtn" data-cardid="' + cardId + '" data-idx="' + idx + '">Agregar al carrito</button>' +
       '</div>' +
       '</div>';
   }
@@ -1025,6 +1025,8 @@
     return 'OTROS';
   }
 
+  function limpiarParaTsv(s) { return String(s == null ? '' : s).replace(/[\t\n\r]+/g, ' '); }
+
   function construirTextoExport() {
     var secciones = { MATERIALES: [], EQUIPOS: [], OTROS: [] };
     cart.forEach(function (l) { secciones[seccionParaCategoria(l.categoria_item)].push(l); });
@@ -1044,7 +1046,7 @@
       lineasSeccion.forEach(function (l) {
         var sub = l.cantidad * l.precio_reajustado_hoy_con_iva;
         subtotal += sub;
-        lineas.push([l.nombre_item, l.descripcion, l.cantidad, l.precio_reajustado_hoy, l.precio_reajustado_hoy_con_iva, sub, l.n_ref, l.fecha, l.proyecto || ''].join('\t'));
+        lineas.push([limpiarParaTsv(l.nombre_item), limpiarParaTsv(l.descripcion), l.cantidad, l.precio_reajustado_hoy, l.precio_reajustado_hoy_con_iva, sub, l.n_ref, l.fecha, l.proyecto || ''].join('\t'));
       });
       lineas.push('Subtotal ' + nombreSeccion + '\t\t\t\t\t' + subtotal);
       lineas.push('');
