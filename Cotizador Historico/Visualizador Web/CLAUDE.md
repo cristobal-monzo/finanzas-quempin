@@ -102,13 +102,16 @@ tiempo de uso. `template.html` porta a JS la lógica de
 `Sistema/cotizador_historico.py`:
 
 - `normalizeText` — minúsculas, sin tildes (Unicode NFD + strip de marcas
-  combinantes), igual criterio que `normalizar_texto` en Python.
+  combinantes); el Python original usa NFKD (`normalizar_texto`) — son
+  formas de normalización distintas, pero coinciden en el resultado para
+  los acentos españoles simples que efectivamente aparecen en estos datos.
 - `similitud` — match 1.0 si la consulta es substring del nombre/
-  descripción (o viceversa), o si alguna palabra de ≥4 caracteres de la
-  consulta calza como substring; si no hay match directo, cae a un
-  coeficiente de Dice sobre bigramas como aproximación tolerante a typos
-  (no es idéntico al `SequenceMatcher` de Python, solo sirve para generar
-  sugerencias de baja similitud, igual que hace el CLI).
+  descripción (o viceversa), o si alguna palabra de ≥4 caracteres del
+  nombre/descripción del ítem calza como substring de la consulta (o
+  viceversa); si no hay match directo, cae a un coeficiente de Dice sobre
+  bigramas como aproximación tolerante a typos (no es idéntico al
+  `SequenceMatcher` de Python, solo sirve para generar sugerencias de baja
+  similitud, igual que hace el CLI).
 - `buscarItems` — aplica `similitud` contra `nombre_item` y `descripcion`
   de cada ítem del índice, filtra por umbral (`UMBRAL_SIMILITUD = 0.6`) y
   devuelve hasta 5 sugerencias (`UMBRAL_SUGERENCIA = 0.4`) cuando no hay
