@@ -1018,6 +1018,63 @@
     document.getElementById('cartDrawer').style.display = 'none';
   });
 
+  // ---------- texto del carrito para copiar a Excel (Materiales/Equipos/Otros) ----------
+  function seccionParaCategoria(categoriaItem) {
+    if (categoriaItem === 'Materiales') return 'MATERIALES';
+    if (categoriaItem === 'Equipos-Herramientas') return 'EQUIPOS';
+    return 'OTROS';
+  }
+
+  function construirTextoExport() {
+    var secciones = { MATERIALES: [], EQUIPOS: [], OTROS: [] };
+    cart.forEach(function (l) { secciones[seccionParaCategoria(l.categoria_item)].push(l); });
+
+    var lineas = [];
+    lineas.push('Cotización QUEMPIN — generada ' + new Date().toLocaleString('es-CL'));
+    lineas.push('UF utilizada: ' + fmt(DATA.uf_hoy) + ' (actualizada ' + DATA.uf_fecha + ')');
+    lineas.push('');
+
+    var totalGeneral = 0;
+    ['MATERIALES', 'EQUIPOS', 'OTROS'].forEach(function (nombreSeccion) {
+      var lineasSeccion = secciones[nombreSeccion];
+      if (!lineasSeccion.length) return;
+      lineas.push(nombreSeccion);
+      lineas.push(['Nombre Item', 'Descripcion', 'Cantidad', 'Precio unit. s/IVA', 'Precio unit. c/IVA', 'Subtotal c/IVA', 'N Ref.', 'Fecha', 'Proyecto'].join('\t'));
+      var subtotal = 0;
+      lineasSeccion.forEach(function (l) {
+        var sub = l.cantidad * l.precio_reajustado_hoy_con_iva;
+        subtotal += sub;
+        lineas.push([l.nombre_item, l.descripcion, l.cantidad, l.precio_reajustado_hoy, l.precio_reajustado_hoy_con_iva, sub, l.n_ref, l.fecha, l.proyecto || ''].join('\t'));
+      });
+      lineas.push('Subtotal ' + nombreSeccion + '\t\t\t\t\t' + subtotal);
+      lineas.push('');
+      totalGeneral += subtotal;
+    });
+    lineas.push('TOTAL GENERAL\t\t\t\t\t' + totalGeneral);
+    return lineas.join('\n');
+  }
+
+  function copiarTextoExport() {
+    var textarea = document.getElementById('exportText');
+    var btn = document.getElementById('btnCopiarTodo');
+    function marcarCopiado() {
+      btn.textContent = '✓ Copiado';
+      setTimeout(function () { btn.textContent = 'Copiar todo'; }, 1200);
+    }
+    function fallbackCopy() {
+      textarea.focus();
+      textarea.select();
+      try { if (document.execCommand('copy')) marcarCopiado(); } catch (e) {}
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textarea.value).then(marcarCopiado, fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  }
+
+  document.getElementById('btnCopiarTodo').addEventListener('click', copiarTextoExport);
+
   function renderTopProductosChart() {
     var top10 = PRODUCT_INDEX.slice().sort(function (a, b) { return b.n_compras - a.n_compras; }).slice(0, 10);
     renderBarChart('chartTopProductos', top10, 'nombre_item', 'n_compras', null);
