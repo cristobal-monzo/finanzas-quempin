@@ -46,6 +46,25 @@ def _fechas_por_ref(ws_master):
     return fechas
 
 
+def _proyecto_proveedor_por_ref(ws_master):
+    """dict {n_ref: (proyecto, proveedor_tag)} -- ambas columnas son
+    opcionales (None si Master no las tiene), a diferencia de N Ref./Fecha
+    que _fechas_por_ref exige porque son estructurales."""
+    cols = mapear_encabezados(ws_master)
+    col_ref = cols["N° Ref."]
+    col_proyecto = cols.get("Proyecto")
+    col_proveedor = cols.get("Proveedor")
+    meta = {}
+    for fila in ws_master.iter_rows(min_row=2):
+        n_ref = fila[col_ref - 1].value
+        if n_ref:
+            meta[n_ref] = (
+                fila[col_proyecto - 1].value if col_proyecto else None,
+                fila[col_proveedor - 1].value if col_proveedor else None,
+            )
+    return meta
+
+
 def cargar_items_detalle(ruta_excel=None):
     """Lee Detalle+Master de Centro de Costos.xlsx (solo lectura) y devuelve
     una lista de dicts, uno por item de linea de Detalle, con su fecha ya
@@ -71,6 +90,7 @@ def cargar_items_detalle(ruta_excel=None):
             ws_detalle = wb["Detalle"]
             ws_master = wb["Master"]
             fechas = _fechas_por_ref(ws_master)
+            meta = _proyecto_proveedor_por_ref(ws_master)
             cols = mapear_encabezados(ws_detalle)
             col_ref = cols["N° Ref."]
             col_nombre = cols["Nombre Ítem"]
@@ -78,6 +98,7 @@ def cargar_items_detalle(ruta_excel=None):
             col_precio = cols["P. Unitario sin IVA"]
             col_total_sin_iva = cols["Total sin IVA (CLP)"]
             col_total_con_iva = cols["Total con IVA (CLP)"]
+            col_categoria = cols.get("Categoría Ítem")
         except KeyError as exc:
             raise ExcelNoDisponibleError(
                 f"Estructura inesperada en {ruta}: falta hoja o columna {exc}"
@@ -100,10 +121,14 @@ def cargar_items_detalle(ruta_excel=None):
             if excluido_motivo is None and not isinstance(precio, (int, float)):
                 excluido_motivo = "precio_invalido"
 
+            proyecto, proveedor_tag = meta.get(n_ref, (None, None))
             items.append({
                 "n_ref": n_ref,
                 "nombre_item": fila[col_nombre - 1].value or "",
                 "descripcion": fila[col_desc - 1].value or "",
+                "categoria_item": fila[col_categoria - 1].value if col_categoria else None,
+                "proyecto": proyecto,
+                "proveedor_tag": proveedor_tag,
                 "precio_unitario_sin_iva": precio,
                 "total_sin_iva": fila[col_total_sin_iva - 1].value,
                 "total_con_iva": fila[col_total_con_iva - 1].value,

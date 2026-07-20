@@ -129,3 +129,54 @@ def test_cargar_items_detalle_falta_hoja_master_lanza_error_claro(tmp_path):
 
     with pytest.raises(ch.ExcelNoDisponibleError):
         ch.cargar_items_detalle(ruta)
+
+
+def _crear_excel_prueba_enriquecido(tmp_path):
+    """Detalle con 'Categoría Ítem', Master con 'Proyecto'/'Proveedor' —
+    columnas que cargar_items_detalle debe leer si existen, sin exigirlas."""
+    wb = openpyxl.Workbook()
+    ws_detalle = wb.active
+    ws_detalle.title = "Detalle"
+    encabezados_d = [
+        "N° Ref.", "Nombre Ítem", "Descripción", "Categoría Ítem",
+        "P. Unitario sin IVA", "Total sin IVA (CLP)", "Total con IVA (CLP)",
+    ]
+    for c, h in enumerate(encabezados_d, 1):
+        ws_detalle.cell(row=1, column=c, value=h)
+    fila_d = ("UMAG-010", "Bomba", "Bomba centrífuga 1.5HP", "Equipos-Herramientas", 90000, 90000, 107100)
+    for c, v in enumerate(fila_d, 1):
+        ws_detalle.cell(row=2, column=c, value=v)
+
+    ws_master = wb.create_sheet("Master")
+    encabezados_m = ["N° Ref.", "Fecha", "Proyecto", "Proveedor"]
+    for c, h in enumerate(encabezados_m, 1):
+        ws_master.cell(row=1, column=c, value=h)
+    fila_m = ("UMAG-010", datetime(2026, 3, 10), "UMAG", "Ferretería XYZ")
+    for c, v in enumerate(fila_m, 1):
+        ws_master.cell(row=2, column=c, value=v)
+
+    ruta = tmp_path / "Centro de Costos.xlsx"
+    wb.save(ruta)
+    return ruta
+
+
+def test_cargar_items_detalle_incluye_categoria_proyecto_proveedor_si_existen(tmp_path):
+    ruta = _crear_excel_prueba_enriquecido(tmp_path)
+    items = ch.cargar_items_detalle(ruta)
+    assert items[0]["categoria_item"] == "Equipos-Herramientas"
+    assert items[0]["proyecto"] == "UMAG"
+    assert items[0]["proveedor_tag"] == "Ferretería XYZ"
+
+
+def test_cargar_items_detalle_categoria_proyecto_proveedor_none_si_no_existen(tmp_path):
+    # _crear_excel_prueba (la funcion original, ya existente en este archivo)
+    # NO tiene esas columnas -- deben quedar en None, nunca lanzar KeyError.
+    ruta = _crear_excel_prueba(
+        tmp_path,
+        filas_detalle=[("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, 90000, 107100)],
+        filas_master=[("UMAG-001", datetime(2026, 1, 15))],
+    )
+    items = ch.cargar_items_detalle(ruta)
+    assert items[0]["categoria_item"] is None
+    assert items[0]["proyecto"] is None
+    assert items[0]["proveedor_tag"] is None
