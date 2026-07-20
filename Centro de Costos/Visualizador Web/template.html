@@ -879,7 +879,18 @@
         });
       }
       b.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showInfoTooltip(b, key); }
+        // Toggle (no solo "mostrar") para que un usuario que navega solo con
+        // teclado en un dispositivo touch-classified (sin mouseenter/blur
+        // atados, ver rama de arriba) tambien pueda CERRAR el tooltip con
+        // Enter/Espacio, no solo abrirlo.
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (tooltip.dataset.infoKey === key && tooltip.classList.contains('show')) {
+            hideTooltip();
+          } else {
+            showInfoTooltip(b, key);
+          }
+        }
       });
     });
   }
