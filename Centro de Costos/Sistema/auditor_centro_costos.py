@@ -56,6 +56,7 @@ RUTA_BACKUPS = RAIZ_MODULO / "Excel" / "Respaldos"
 RUTA_CORRECCIONES = RAIZ / "correcciones_manuales.json"
 RUTA_ERRORES_MD = RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costos" / "ERRORES.md"
 RAIZ_VISUALIZADOR_WEB = RAIZ_MODULO / "Visualizador Web"
+RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Análisis Financiero"
 
 PREFIJOS_PROYECTO = {
     "UMAG": "UMAG",
@@ -1992,6 +1993,36 @@ def actualizar_visualizador():
             sys.path.remove(str(RAIZ_VISUALIZADOR_WEB))
 
 
+def actualizar_analisis_financiero():
+    """Actualiza Análisis Financiero/Análisis de Proyectos.xlsx (costos
+    reales por proyecto/categoría + hoja Indicadores) a partir del Excel
+    recien guardado -- mismo patron que actualizar_visualizador: corre al
+    final de cada 'run' (PASO 12d), solo lee Centro de Costos.xlsx (no lo
+    modifica), y si falla no aborta el run, solo advierte."""
+    ruta_script = RAIZ_ANALISIS_FINANCIERO / "Sistema" / "analisis_financiero.py"
+    if not ruta_script.exists():
+        print(f"  [WARN] No existe {ruta_script}, se omite este paso.")
+        return False
+    import sys
+    raiz_sistema_af = ruta_script.parent
+    ya_en_path = str(raiz_sistema_af) in sys.path
+    if not ya_en_path:
+        sys.path.insert(0, str(raiz_sistema_af))
+    try:
+        sys.modules.pop("analisis_financiero", None)
+        import analisis_financiero as af
+        resumen = af.ejecutar()
+        if resumen["error"]:
+            print(f"  [WARN] Análisis Financiero terminó con error: {resumen['error']}")
+            return False
+        return True
+    except Exception as e:
+        print(f"  [WARN] No se pudo actualizar Análisis Financiero ({e}).")
+        print("         El Excel de Centro de Costos si quedo guardado; correr manualmente "
+              "'python driver.py run' en Análisis Financiero despues.")
+        return False
+
+
 # --- MAIN ---------------------------------------------------------------------
 
 def main():
@@ -2202,6 +2233,9 @@ def main():
 
     print("\n--- PASO 12c: Actualizar visualizador web ---")
     actualizar_visualizador()
+
+    print("\n--- PASO 12d: Actualizar Análisis Financiero ---")
+    actualizar_analisis_financiero()
 
     print("\n--- PASO 13: Verificaciones aritmeticas (sobre todo el JSON) ---")
     inconsistencias = verificar_aritmetica(datos_json)
