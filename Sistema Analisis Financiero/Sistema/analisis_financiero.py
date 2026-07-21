@@ -12,8 +12,6 @@ from datetime import datetime
 from pathlib import Path
 
 import openpyxl
-from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.styles.colors import Color
 
 # ── CONFIGURACIÓN ────────────────────────────────────────────────────────────
 
@@ -36,8 +34,6 @@ RAIZ_FACTURAS_CENTRO_COSTOS = (
 HOJA_PROYECTOS = "Proyectos"
 HOJA_DETALLE_COSTOS_REALES = "Detalle Costos Reales"
 HOJA_INDICADORES = "Indicadores"
-HOJA_CLIENTES = "Clientes"
-HOJA_GLOSARIO_KPIS = "Glosario KPIs"
 
 HEADERS_PROYECTOS = [
     "TAG proyecto", "Nombre del proyecto", "Estado", "Fecha de inicio",
@@ -47,7 +43,7 @@ HEADERS_PROYECTOS = [
     "Costos Materiales Reales", "Costos Equipos Reales",
     "Otros Costos Reales", "Mano de Obra Real", "Total Proyectado",
     "Total Real", "Margen Proyectado", "Margen Real",
-    "Desviación % (Real vs Proyectado)", "Cliente",
+    "Desviación % (Real vs Proyectado)",
 ]
 HEADERS_DETALLE_COSTOS_REALES = ["TAG proyecto", "Subcategoría", "Bucket", "Total sin IVA"]
 HEADERS_INDICADORES = [
@@ -56,148 +52,8 @@ HEADERS_INDICADORES = [
     "Productividad MO", "Productividad Otros", "Costo Materiales % de venta",
     "Costo Equipos % de venta", "Costo MO % de venta", "Costo Otros % de venta",
     "Desviación % Materiales", "Desviación % Equipos", "Desviación % MO",
-    "Desviación % Otros", "Nota del Proyecto", "Evaluación",
+    "Desviación % Otros",
 ]
-HEADERS_CLIENTES = [
-    "Cliente", "AOV (Valor promedio de venta)",
-    "Vida del cliente (n° de proyectos)", "Meses activo",
-    "Frecuencia de compra (proyectos/año)", "Margen de utilidad %", "CLTV",
-    "Clasificación",
-]
-HEADERS_GLOSARIO_KPIS = [
-    "KPI", "Por qué importa", "Qué elementos usa", "Qué significa el resultado",
-]
-
-
-# ── ESTILO VISUAL ────────────────────────────────────────────────────────────
-# Formato que el usuario armó a mano en "Proyectos" (encabezado en negrita,
-# centrado, con wrap, relleno por color de theme según grupo de columna,
-# formato moneda/porcentaje) -- replicado acá para que se mantenga en cada
-# corrida y se extienda a "Detalle Costos Reales" e "Indicadores", que hasta
-# 2026-07-21 quedaban 100% regeneradas sin ningún estilo.
-
-ALTURA_FILA_ENCABEZADO = 46.2
-FUENTE_ENCABEZADO = Font(name="Calibri", size=11, bold=True)
-ALINEACION_ENCABEZADO = Alignment(vertical="center", wrap_text=True)
-
-FORMATO_MONEDA = '_ "$"* #,##0_ ;_ "$"* \\-#,##0_ ;_ "$"* "-"_ ;_ @_ '
-FORMATO_PORCENTAJE = "0.0%"
-FORMATO_RATIO = "0.00"
-
-
-def _color_tema(theme: int, tint: float) -> Color:
-    return Color(theme=theme, tint=tint)
-
-
-# Mismos 4 colores que ya usaba "Proyectos" a mano, uno por grupo semántico
-# de columna -- se reutilizan en las 3 hojas para que el libro se lea como
-# un solo sistema visual.
-COLOR_IDENTIFICACION = _color_tema(5, 0.3999755851924192)    # TAG/Nombre/Estado/fechas/venta
-COLOR_COSTO_PROYECTADO = _color_tema(8, 0.3999755851924192)  # columnas "...Proyectado(s)"
-COLOR_COSTO_REAL = _color_tema(9, 0.3999755851924192)        # columnas "...Real(es)"
-COLOR_DERIVADO = _color_tema(3, 0.499984740745262)           # totales, márgenes, KPIs finales
-
-# columna (letra) -> (color de encabezado, formato numérico o None, ancho sugerido)
-ESTILO_COLUMNAS_PROYECTOS = {
-    "A": (COLOR_IDENTIFICACION, None, 10),
-    "B": (COLOR_IDENTIFICACION, None, 22),
-    "C": (COLOR_IDENTIFICACION, None, 13),
-    "D": (COLOR_IDENTIFICACION, None, 13),
-    "E": (COLOR_IDENTIFICACION, None, 13),
-    "F": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
-    "G": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "H": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "I": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "J": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "K": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "L": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "M": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "N": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "O": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "P": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "Q": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "R": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "S": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
-    "T": (COLOR_IDENTIFICACION, None, 16),
-}
-
-ESTILO_COLUMNAS_DETALLE_COSTOS_REALES = {
-    "A": (COLOR_IDENTIFICACION, None, 10),
-    "B": (COLOR_COSTO_REAL, None, 22),
-    "C": (COLOR_COSTO_REAL, None, 13),
-    "D": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-}
-
-ESTILO_COLUMNAS_INDICADORES = {
-    "A": (COLOR_IDENTIFICACION, None, 10),
-    "B": (COLOR_IDENTIFICACION, None, 22),
-    "C": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
-    "D": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 14),
-    "E": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
-    "F": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
-    "G": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
-    "H": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
-    "I": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "J": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "K": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "L": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "M": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "N": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "O": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "P": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "Q": (COLOR_DERIVADO, None, 16),
-    "R": (COLOR_DERIVADO, None, 14),
-}
-
-ESTILO_COLUMNAS_CLIENTES = {
-    "A": (COLOR_IDENTIFICACION, None, 22),
-    "B": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
-    "C": (COLOR_DERIVADO, "0", 14),
-    "D": (COLOR_DERIVADO, "0", 14),
-    "E": (COLOR_DERIVADO, FORMATO_RATIO, 14),
-    "F": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 14),
-    "G": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "H": (COLOR_DERIVADO, None, 20),
-}
-
-ESTILO_COLUMNAS_GLOSARIO_KPIS = {
-    "A": (COLOR_IDENTIFICACION, None, 25),
-    "B": (COLOR_IDENTIFICACION, None, 30),
-    "C": (COLOR_IDENTIFICACION, None, 25),
-    "D": (COLOR_IDENTIFICACION, None, 30),
-}
-
-
-def aplicar_estilo_visual(wb) -> None:
-    """Aplica a las 3 hojas el mismo lenguaje visual que el usuario armó a
-    mano en 'Proyectos': encabezado en negrita, centrado y con wrap, alto de
-    fila 46.2, relleno por color de theme según grupo de columna, y formato
-    moneda/porcentaje/ratio en las columnas correspondientes. Solo toca
-    estilo, nunca valores; el ancho de columna se deja intacto si el usuario
-    ya lo fijó a mano (no se sobrescribe una vez seteado)."""
-    for nombre_hoja, estilo_columnas in (
-        (HOJA_PROYECTOS, ESTILO_COLUMNAS_PROYECTOS),
-        (HOJA_DETALLE_COSTOS_REALES, ESTILO_COLUMNAS_DETALLE_COSTOS_REALES),
-        (HOJA_INDICADORES, ESTILO_COLUMNAS_INDICADORES),
-        (HOJA_CLIENTES, ESTILO_COLUMNAS_CLIENTES),
-        (HOJA_GLOSARIO_KPIS, ESTILO_COLUMNAS_GLOSARIO_KPIS),
-    ):
-        ws = wb[nombre_hoja]
-        ws.row_dimensions[1].height = ALTURA_FILA_ENCABEZADO
-        for columna, (color, formato_numero, ancho) in estilo_columnas.items():
-            # ws.column_dimensions[columna] autovivifica la entrada con un
-            # width por defecto (13.0) apenas se accede -- por eso el "ya
-            # tiene ancho manual" se revisa ANTES de tocar la columna, con
-            # el operador "in" sobre el dict, no con ".width is None".
-            ya_tenia_ancho_manual = columna in ws.column_dimensions
-            celda_encabezado = ws[f"{columna}1"]
-            celda_encabezado.font = FUENTE_ENCABEZADO
-            celda_encabezado.alignment = ALINEACION_ENCABEZADO
-            celda_encabezado.fill = PatternFill(fgColor=color, fill_type="solid")
-            if formato_numero is not None:
-                ws.column_dimensions[columna].number_format = formato_numero
-            if not ya_tenia_ancho_manual:
-                ws.column_dimensions[columna].width = ancho
 
 
 def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
@@ -214,8 +70,6 @@ def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
         (HOJA_PROYECTOS, HEADERS_PROYECTOS),
         (HOJA_DETALLE_COSTOS_REALES, HEADERS_DETALLE_COSTOS_REALES),
         (HOJA_INDICADORES, HEADERS_INDICADORES),
-        (HOJA_CLIENTES, HEADERS_CLIENTES),
-        (HOJA_GLOSARIO_KPIS, HEADERS_GLOSARIO_KPIS),
     ):
         if nombre_hoja not in wb.sheetnames:
             ws = wb.create_sheet(nombre_hoja)
@@ -520,7 +374,6 @@ def ejecutar(
 
     asegurar_formulas_proyectos(ws_proyectos, filas_validas)
     asegurar_hoja_indicadores(wb, filas_validas)
-    aplicar_estilo_visual(wb)
 
     try:
         wb.save(ruta_excel_af)
