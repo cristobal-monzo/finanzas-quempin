@@ -1,0 +1,200 @@
+# Diseño: Reportes PDF de Análisis Financiero (Proyecto / Cliente / Categoría / Comparación ad-hoc)
+
+Fecha: 2026-07-21
+Estado: aprobado por el usuario (brainstorming), pendiente de plan de implementación.
+
+Extiende el módulo `Sistema Analisis Financiero/` (Excel en `Análisis
+Financiero/Análisis de Proyectos.xlsx`). Se apoya en dos specs previos del
+mismo módulo:
+
+- [`2026-07-20-analisis-financiero-design.md`](2026-07-20-analisis-financiero-design.md)
+  — esquema base (hojas Proyectos/Detalle Costos Reales/Indicadores, playbook
+  de KPIs original).
+- [`2026-07-21-analisis-financiero-nota-clientes-design.md`](2026-07-21-analisis-financiero-nota-clientes-design.md)
+  — Nota del Proyecto, columna "Cliente" + hoja "Clientes" (CLTV), Glosario
+  KPIs. **Ya tiene plan de implementación escrito y no ejecutado**
+  (`docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md`).
+
+**Prerrequisito explícito**: este spec depende de que el plan de
+Cliente/CLTV de arriba esté implementado — el reporte PDF "por cliente" usa
+la columna "Cliente" (con su derivación/fuzzy-match) y la hoja "Clientes"
+(CLTV, AOV, Vida, Frecuencia, Margen ponderado, Clasificación) como fuente de
+datos real, no un sustituto simplificado. Si al ejecutar el plan de este spec
+esas piezas todavía no existen en el código, hay que implementarlas primero
+(son un prerrequisito de secuencia, no una alternativa de diseño).
+
+## 1. Qué se pide
+
+Un PDF con análisis financiero especializado — indicadores clave, apoyo
+visual (tablas/gráficos siempre presentes, aunque no siempre haya
+comparación), y enfoque estratégico — para:
+
+1. **Cada proyecto.**
+2. **Cada cliente.**
+3. **Cada categoría de proyecto** (I+D+i, Mantenimiento, Gastos Generales,
+   etc.).
+4. **Comparaciones ad-hoc bajo demanda conversacional** (ej. "compara UMAG
+   con Cesfam Limache"), sin restringirse a las 3 vistas anteriores.
+
+Los PDF deben seguir el manual de marca oficial de QUEMPIN (logo, colores,
+tipografía). La estructura de cada reporte **no es fija** — varía según qué
+información es relevante para esa entidad específica.
+
+## 2. Arquitectura: kit de marca + agente redactor (no script determinístico)
+
+El **agente** (`analista-financiero-quempin`) redacta el contenido de cada
+reporte — decide qué KPIs destacar, qué comparación aporta señal, y el
+orden/foco de la página. Esto no es un script que arma reportes por reglas
+fijas: es la única forma de cumplir "la estructura no debe ser siempre la
+misma" y de soportar comparaciones ad-hoc arbitrarias pedidas en
+conversación.
+
+Dos piezas de infraestructura sí son código determinístico, reutilizado por
+cada reporte:
+
+- **Kit de marca** (`Sistema Analisis Financiero/Reportes/brand/`):
+  - CSS con los 4 colores oficiales (`#ff5100` Pantone Orange 021 C,
+    `#000000` Black C, `#98989a` Cool Gray 7 C, `#54565a` Cool Gray 11 C) y
+    Lato embebido en woff2→base64 — **reexportados desde
+    `Centro de Costos/Visualizador Web/template.html`** (ya extraídos ahí
+    del manual oficial), no re-derivados del PDF de marca de nuevo.
+  - Logo (`Material gráfico QUEMPIN/LOGO QUEMPIN.PNG`) para portada/header
+    de cada PDF.
+  - Componentes HTML reutilizables (fragmentos, no plantillas de página
+    fijas): tarjeta de KPI, tabla comparativa, contenedor de gráfico
+    (`<canvas>` + Chart.js embebido offline, mismo patrón que el
+    visualizador de Centro de Costos).
+- **`renderizar_pdf(html: str, ruta_salida: Path)`**
+  (`Sistema Analisis Financiero/Reportes/motor_reportes.py`): usa el paquete
+  Python `playwright` para imprimir el HTML a PDF vía Chromium headless.
+  Reutiliza el Chromium ya cacheado en este equipo
+  (`%LOCALAPPDATA%\ms-playwright\chromium-1228`, instalado previamente para
+  verificar el visualizador de Centro de Costos) — requiere
+  `pip install playwright`, sin necesitar una descarga nueva de navegador
+  (a validar en implementación: confirmar que la revisión que pide el
+  paquete Python coincide con la ya cacheada; si no coincide,
+  `playwright install chromium` descarga la que falte).
+- **`datos_reportes.py`**: helper de solo lectura que arma un "paquete de
+  datos" (dict) por proyecto/cliente/categoría/comparación arbitraria,
+  leyendo `Análisis de Proyectos.xlsx` (hojas Proyectos, Indicadores,
+  Detalle Costos Reales, Clientes). El agente consume este paquete — nunca
+  lee celdas de Excel directamente — para que cualquier cifra en el PDF sea
+  trazable a una función auditable, nunca inventada ni mal-leída a mano.
+
+## 3. Cambios al modelo de datos (además del prerrequisito de Cliente/CLTV)
+
+Se agrega **"Categoría"** como columna nueva de **solo lectura** en la hoja
+"Proyectos", leída automáticamente desde `Centro de Costos.xlsx` (columna
+"Tipo de Proyecto" de `Master`, agregada por proyecto) — mismo patrón que
+las columnas de Costos Reales (se regenera en cada corrida, nunca se edita a
+mano). Se agrega al final de `HEADERS_PROYECTOS`, después de "Cliente" (que
+agrega el prerrequisito), para no correr las letras de columna que ya usan
+los `ESTILO_COLUMNAS_*` existentes.
+
+Si los documentos de un mismo proyecto en Centro de Costos tienen
+`tipo_proyecto` inconsistente entre sí (no debería pasar según ese módulo,
+pero no está garantizado), se usa el valor más frecuente y se emite un aviso
+de consola — mismo tratamiento que categorías de ítem sin mapeo explícito
+hoy.
+
+**No se agrega ninguna otra columna de cliente** — el prerrequisito ya
+resuelve esa necesidad con su propia columna "Cliente" + hoja "Clientes".
+
+## 4. Detección de obsolescencia (sin regeneración automática no supervisada)
+
+Nuevo archivo `Reportes/estado_reportes.json`. Por cada reporte generado
+(clave: tipo + identificador, ej. `proyecto:UMAG`, `cliente:AGCID`,
+`categoria:I+D+i`) guarda:
+
+- Fecha/hora de generación.
+- Un hash de los datos de entrada usados (categoría, costos reales totales,
+  montos manuales relevantes de "Proyectos"/Indicadores/Clientes para esa
+  entidad).
+
+En cada corrida del pipeline existente (encadenado al PASO 12d ya vigente),
+se recalcula el hash actual de cada entidad y se compara contra el
+manifiesto:
+
+- Si difiere, o la entidad nunca generó reporte, queda marcada
+  **"desactualizado"**.
+- **No se dispara generación real** — el script solo detecta y deja la
+  lista disponible (evita costo/latencia de LLM automático dentro de un
+  pipeline no supervisado).
+
+El comando `status` del skill nuevo imprime la lista de reportes
+pendientes/desactualizados. La generación real ocurre cuando el usuario la
+pide (conversación, o `/Reportes_Analisis_Financiero run`, que en este caso
+significa "el agente revisa la lista y redacta/renderiza cada uno
+pendiente" — no un `run` 100% script).
+
+Las comparaciones ad-hoc **no** pasan por este manifiesto — se generan
+frescas cada vez que se piden, sin quedar registradas como "vigentes" u
+"obsoletas" (no hay una versión única "correcta" de una comparación
+puntual).
+
+## 5. Tipos de reporte y fuente de datos de cada uno
+
+| Reporte | Fuente principal | Foco sugerido (el agente decide caso a caso) |
+|---|---|---|
+| **Proyecto** | "Indicadores" (KPIs, Nota del Proyecto, Evaluación), "Proyectos" (montos, desviación), "Detalle Costos Reales" | Rentabilidad y control presupuestario de ESE proyecto; comparación contra el promedio de su categoría cuando aporte señal (no siempre necesaria) |
+| **Cliente** | Hoja "Clientes" (CLTV, AOV, Vida del cliente, Frecuencia, Margen ponderado, Clasificación) + sus proyectos asociados (join por "Proyectos"!Cliente) | Valor de la relación comercial completa, no solo ejecución operativa — recurrencia, tendencia de margen entre sus proyectos, por qué está en su tier de Clasificación |
+| **Categoría** | Agregado de "Proyectos"/"Indicadores" filtrado por la columna "Categoría" nueva | Rentabilidad promedio y dispersión de la categoría, cuál proyecto es outlier (mejor o peor) dentro de ella |
+| **Comparación ad-hoc** | Cualquier combinación de 2+ proyectos/clientes/categorías nombrados en la conversación | Las diferencias más relevantes entre las entidades comparadas — el agente elige qué destacar, no una plantilla fija de "todas las columnas una al lado de la otra" |
+
+Todas comparten los componentes de marca del kit (§2), pero ninguna tiene una
+estructura de página fija — el orden y el foco los decide el agente por
+reporte, según qué información es relevante para esa entidad específica.
+Todo reporte incluye al menos una tabla o un gráfico de apoyo, aunque no
+incluya comparación contra otras entidades.
+
+## 6. Salida y skill
+
+- PDFs en:
+  ```
+  Análisis Financiero/Reportes/
+  ├── Proyectos/
+  ├── Clientes/
+  ├── Categorías/
+  └── Comparativas/
+  ```
+- Nuevo skill `.claude/skills/Reportes_Analisis_Financiero/` (mismo patrón
+  `driver.py` con `status`/`run` que los demás módulos):
+  - `status`: corre la detección de obsolescencia (§4), imprime qué
+    reportes están pendientes/desactualizados. Solo lectura.
+  - `run`: contexto para que el agente regenere los reportes marcados
+    pendientes (no un script que genera contenido solo).
+  - `SKILL.md` documenta el flujo: armar paquete de datos
+    (`datos_reportes.py`) → redactar HTML con el kit de marca →
+    `renderizar_pdf` → actualizar `estado_reportes.json`.
+- El PASO 12d ya existente (que invoca este módulo desde Centro de Costos)
+  agrega un aviso de consola si quedaron reportes desactualizados tras la
+  corrida, sin disparar generación.
+
+## 7. Testing
+
+Infraestructura, no contenido redactado (no es determinístico):
+
+- Cálculo de "Categoría" por proyecto desde Centro de Costos (caso simple,
+  caso con `tipo_proyecto` inconsistente entre documentos del mismo
+  proyecto).
+- Detección de obsolescencia: hash cambia cuando cambian datos de entrada
+  relevantes, no cambia si los datos son iguales; entidad nueva sin reporte
+  previo queda marcada pendiente.
+- `datos_reportes.py`: estructura correcta del paquete para cada tipo de
+  entidad (proyecto/cliente/categoría/comparación arbitraria), valores
+  trazables a las hojas fuente.
+- `renderizar_pdf`: smoke test — HTML fijo de prueba produce un PDF válido
+  y no vacío.
+
+## 8. Fuera de alcance de este spec (explícito)
+
+- El prerrequisito de Cliente/CLTV/Nota del Proyecto/Glosario (§ arriba) —
+  ya tiene su propio spec y plan, se ejecuta como prerrequisito, no se
+  rediseña acá.
+- Dashboard HTML de presentación del módulo — sigue fuera de alcance como en
+  los specs anteriores de este módulo.
+- Envío automático de los PDFs (email, Slack, etc.) — se generan como
+  archivo local, la distribución queda fuera de este spec.
+- Ajuste fino del criterio exacto de qué comparación "aporta señal" para
+  cada tipo de reporte — es una decisión editorial del agente en cada
+  redacción, no una regla codificable de antemano.
