@@ -56,7 +56,7 @@ RUTA_BACKUPS = RAIZ_MODULO / "Excel" / "Respaldos"
 RUTA_CORRECCIONES = RAIZ / "correcciones_manuales.json"
 RUTA_ERRORES_MD = RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costos" / "ERRORES.md"
 RAIZ_VISUALIZADOR_WEB = RAIZ_MODULO / "Visualizador Web"
-RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Análisis Financiero"
+RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Sistema Analisis Financiero"
 
 PREFIJOS_PROYECTO = {
     "UMAG": "UMAG",
@@ -2019,7 +2019,7 @@ def actualizar_analisis_financiero():
     except Exception as e:
         print(f"  [WARN] No se pudo actualizar Análisis Financiero ({e}).")
         print("         El Excel de Centro de Costos si quedo guardado; correr manualmente "
-              "'python driver.py run' en Análisis Financiero despues.")
+              "'python driver.py run' en Sistema Analisis Financiero despues.")
         return False
 
 

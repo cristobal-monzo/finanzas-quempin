@@ -14,7 +14,7 @@ No hay repositorio git aquí ni herramientas de build/lint/test a nivel raíz �
 |---|---|---|
 | [Centro de Costos/](Centro%20de%20Costos/CLAUDE.md) | Implementado | `Centro de Costos/CLAUDE.md` |
 | [Cotizador Historico/](Cotizador%20Historico/CLAUDE.md) | Implementado | `Cotizador Historico/CLAUDE.md` |
-| [Análisis Financiero/](Análisis%20Financiero/CLAUDE.md) | Diseño aprobado (spec), sin implementar | `Análisis Financiero/CLAUDE.md` |
+| [Análisis Financiero/](Sistema%20Analisis%20Financiero/CLAUDE.md) | Implementado (2026-07-20) | `Sistema Analisis Financiero/CLAUDE.md` |
 | Flujo de Caja | No iniciado | — |
 | [Visualizador Web/](Visualizador%20Web/CLAUDE.md) | Centro de Costos implementado (2026-07-19); resto scaffolding | `Visualizador Web/CLAUDE.md` |
 
@@ -22,7 +22,7 @@ No hay repositorio git aquí ni herramientas de build/lint/test a nivel raíz �
 
 **Visualizador Web** es transversal a todos los módulos: cada uno tendrá, en su propia carpeta, una subcarpeta `Visualizador Web/` con un HTML publicado online (gráficos, tablas dinámicas, buscadores, filtros). El doc maestro compartido (marca, mandato de herramientas dinámicas, política de datos, hosting) vive en `Visualizador Web/CLAUDE.md` a nivel raíz; cada módulo tiene su propio `<Módulo>/Visualizador Web/CLAUDE.md` con el contenido específico a presentar. **Centro de Costos ya tiene una implementación real** (2026-07-19): `Centro de Costos/Visualizador Web/template.html` (estructura, versionada) + `build_visualizador.py` (export + build, corrible vía `driver.py visualizador` del skill `/Registro_Centro_de_Costos`) generan un `build/index.html` autocontenido con los datos incrustados, publicado como Claude Artifact privado (no GitHub Pages todavía — el punto de control de acceso del maestro sigue sin resolverse). Cotizador Historico y Flujo de Caja siguen solo con el scaffolding de `CLAUDE.md`, ver el spec original en `docs/superpowers/specs/2026-07-19-visualizador-web-design.md`.
 
-**Análisis Financiero** es distinto a los demás: no es solo un pipeline de registro, es un rol consultivo — actúa como analista financiero experto (evalúa proyectos, propone/depura KPIs, decide cómo presentar la información, cruza todos los módulos), sobre un Excel (`Análisis de Proyectos.xlsx`) que consolida costos reales de Centro de Costos contra ventas y proyecciones manuales por proyecto. Diseño completo en `Análisis Financiero/CLAUDE.md` y el spec referenciado ahí — el script y el skill todavía no están implementados.
+**Análisis Financiero** es distinto a los demás: no es solo un pipeline de registro, es un rol consultivo — actúa como analista financiero experto (evalúa proyectos, propone/depura KPIs, decide cómo presentar la información, cruza todos los módulos), sobre un Excel (`Análisis de Proyectos.xlsx`) que consolida costos reales de Centro de Costos contra ventas y proyecciones manuales por proyecto. **Reorganizado 2026-07-21**: `Análisis Financiero/` contiene únicamente el Excel de trabajo; el código, los tests y el skill viven en la carpeta hermana `Sistema Analisis Financiero/` (ver su `CLAUDE.md` para el diseño completo). Implementado y encadenado al `run` de Centro de Costos (PASO 12d) — ver `Sistema Analisis Financiero/CLAUDE.md`.
 
 Se espera que los módulos futuros (ej. Flujo de Caja) consuman datos que ya producen módulos anteriores (ej. totales por proyecto de Centro de Costos) en vez de construirse de forma aislada — revisa qué datos ya calculan los módulos existentes antes de duplicar esa lógica en uno nuevo.
 

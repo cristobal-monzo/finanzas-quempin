@@ -11,6 +11,8 @@ Flujo de Caja/**/*.xlsx
 Flujo de Caja/**/*.json
 Cotizador Historico/**/*.xlsx
 Cotizador Historico/**/*.json
+Análisis Financiero/*.xlsx
+Sistema Analisis Financiero/Respaldos/
 */Visualizador Web/data/
 */Visualizador Web/build/
 

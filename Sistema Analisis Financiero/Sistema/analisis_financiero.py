@@ -17,7 +17,12 @@ import openpyxl
 
 RAIZ = Path(__file__).resolve().parent
 RAIZ_MODULO = RAIZ.parent
-RUTA_EXCEL = RAIZ_MODULO / "Análisis de Proyectos.xlsx"
+# Reorganizado 2026-07-21: el código/skill vive en "Sistema Analisis
+# Financiero/" (esta carpeta), separado de "Análisis Financiero/" que
+# contiene solo el Excel de trabajo -- ambas son carpetas hermanas bajo la
+# raíz de Finanzas QUEMPIN/. RAIZ_DATOS apunta a la carpeta con el Excel.
+RAIZ_DATOS = RAIZ_MODULO.parent / "Análisis Financiero"
+RUTA_EXCEL = RAIZ_DATOS / "Análisis de Proyectos.xlsx"
 RAIZ_RESPALDOS = RAIZ_MODULO / "Respaldos"
 
 RAIZ_CENTRO_COSTOS = RAIZ_MODULO.parent / "Centro de Costos"

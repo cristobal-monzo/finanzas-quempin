@@ -7,9 +7,11 @@ description: Consolida los costos reales por proyecto y categoría desde Centro 
 
 Herramienta de línea de comandos (Python + openpyxl), **solo lectura** sobre
 `Centro de Costos/Excel/Centro de Costos.xlsx` -- nunca lo escribe. Todas las
-rutas de este documento son relativas a la raíz del módulo
-(`Análisis Financiero/`). El driver vive en
-`.claude/skills/Registro_Analisis_Financiero/driver.py`.
+rutas de este documento son relativas a la raíz de esta carpeta
+(`Sistema Analisis Financiero/`) -- el Excel que este skill mantiene
+(`Análisis de Proyectos.xlsx`) vive en la carpeta hermana
+`../Análisis Financiero/`, no acá (reorganizado 2026-07-21, ver `CLAUDE.md`).
+El driver vive en `.claude/skills/Registro_Analisis_Financiero/driver.py`.
 
 Ver `../../CLAUDE.md` para el rol del agente (analista financiero, no solo
 pipeline) y `docs/superpowers/specs/2026-07-20-analisis-financiero-design.md`

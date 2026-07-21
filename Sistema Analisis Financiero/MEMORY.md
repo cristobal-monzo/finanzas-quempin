@@ -33,6 +33,17 @@ brainstorming — más los pendientes reales que quedan tras la implementación.
   ejemplo original solo cubría Materiales y MO; se extendió por consistencia,
   a pedido del usuario.
 
+## Reorganización de carpetas (2026-07-21)
+
+El usuario pidió que `Análisis Financiero/` (carpeta hermana de esta) quede
+**solo** con el Excel de trabajo — todo el código, docs y skill se movieron
+acá, a `Sistema Analisis Financiero/`. `RAIZ_DATOS` en
+`Sistema/analisis_financiero.py` apunta explícitamente a la carpeta del
+Excel; `RAIZ_ANALISIS_FINANCIERO` en
+`Centro de Costos/Sistema/auditor_centro_costos.py` apunta a esta carpeta
+(la del código). Si en el futuro alguien busca el script "dentro de Análisis
+Financiero", no está ahí — está acá.
+
 ## Origen del playbook de KPIs
 
 El 2026-07-20 el usuario dejó temporalmente `Ejemplo de indicadores.xlsx` en la

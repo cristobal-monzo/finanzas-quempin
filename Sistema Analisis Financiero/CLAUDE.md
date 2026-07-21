@@ -69,14 +69,24 @@ tomadas al construir):
 
 ## Estructura del módulo (implementada — ver spec/plan para el detalle completo)
 
+**Reorganizado 2026-07-21**: el módulo vive repartido en dos carpetas
+hermanas bajo la raíz de `Finanzas QUEMPIN/`, a pedido del usuario — quiere
+que `Análisis Financiero/` contenga únicamente el Excel que abre a mano, y
+todo el código/docs quede en esta carpeta (`Sistema Analisis Financiero/`).
+`analisis_financiero.py` calcula ambas rutas por separado (`RAIZ_MODULO` =
+esta carpeta, `RAIZ_DATOS` = `Análisis Financiero/`, ambas derivadas de
+`Path(__file__)`) — nunca asumas que están juntas.
+
 ```
-Análisis Financiero/
-├── CLAUDE.md                              # este archivo
-├── MEMORY.md                              # decisiones, historial, pendientes
-├── Análisis de Proyectos.xlsx             # libro de trabajo (existe, sin proyectos cargados aún)
-├── Respaldos/                             # backups automáticos por mes (se crea en la primera corrida real)
-├── Sistema/                               # analisis_financiero.py + tests/ (34 tests)
-└── .claude/skills/Registro_Analisis_Financiero/  # SKILL.md + driver.py (status/run)
+Finanzas QUEMPIN/
+├── Análisis Financiero/                       # SOLO el Excel (lo que el usuario abre)
+│   └── Análisis de Proyectos.xlsx             # libro de trabajo (existe, sin proyectos cargados aún)
+└── Sistema Analisis Financiero/               # este archivo vive acá
+    ├── CLAUDE.md                              # este archivo
+    ├── MEMORY.md                              # decisiones, historial, pendientes
+    ├── Respaldos/                             # backups automáticos por mes (se crea en la primera corrida real)
+    ├── Sistema/                               # analisis_financiero.py + tests/ (34 tests)
+    └── .claude/skills/Registro_Analisis_Financiero/  # SKILL.md + driver.py (status/run)
 ```
 
 ## `Análisis de Proyectos.xlsx` — resumen del esquema (detalle completo en el spec)
@@ -126,8 +136,10 @@ desincronizarse.
   Boletas/<Nombre>/` (fuente real que lee Centro de Costos hoy) — **nunca** en
   `Centro de Costos/Facturas y Boletas/` (legado, el script ya no la lee desde
   2026-07-17).
-- Vive dentro de OneDrive, sincronizada — antes de sobrescribir
-  `Análisis de Proyectos.xlsx`, considerar que puede tener ediciones manuales
-  recientes hechas fuera de un script.
+- `Análisis de Proyectos.xlsx` vive en la carpeta hermana `../Análisis
+  Financiero/`, no acá — `RUTA_EXCEL` en `analisis_financiero.py` ya apunta
+  ahí, no asumir que está junto al código. Vive dentro de OneDrive,
+  sincronizada — antes de sobrescribirlo, considerar que puede tener
+  ediciones manuales recientes hechas fuera de un script.
 - Contiene datos financieros reales de la empresa (ventas, márgenes, costos por
   proyecto) — tratar como sensible, igual que el resto de `Finanzas QUEMPIN/`.
