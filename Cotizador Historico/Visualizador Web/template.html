@@ -633,6 +633,10 @@
   function pluralizar(s) {
     if (!s) return s;
     if (/s$/i.test(s)) return s; // ya viene plural en el nombre de origen (ej. "Bolsas") -- no duplicar
+    // Patron regular del espanol para palabras terminadas en "-ion" con
+    // tilde (union -> uniones, confeccion -> confecciones): pierden la
+    // tilde al pluralizar porque la solaba tonica deja de ser la ultima.
+    if (/ión$/i.test(s)) return s.slice(0, -3) + 'iones';
     return /[aeiouáéíóú]$/i.test(s) ? s + 's' : s + 'es';
   }
   var GRUPOS_PIPING = ['codo', 'copla', 'coupling', 'tee', 'union', 'unión', 'terminal', 'cañeria', 'cañería',
@@ -686,19 +690,69 @@
   var GRUPOS_SEGURIDAD = ['lente', 'guante', 'arnes', 'arnés', 'casco', 'chaleco', 'seguro de carga', 'overol'];
   var GRUPOS_HERRAMIENTA = GRUPOS_HERR_ELEC.concat(GRUPOS_HERR_MANUAL);
 
+  // La primera palabra del nombre casi nunca es el tipo real de producto
+  // cuando el nombre empieza con un cuantificador/contenedor generico (ej.
+  // "Set 16 pzas destornillador precision" -> la primera palabra es "Set",
+  // no "destornillador"). En vez de usar siempre la primera palabra,
+  // buscamos si el nombre (o la descripcion, si el nombre no trae nada
+  // reconocible) contiene alguna palabra ya conocida por el clasificador
+  // (la misma lista usada para asignar categoria) y usamos esa palabra
+  // real -- esto fusiona automaticamente "Set ... destornillador ..." con
+  // el resto de "Destornilladores", sin necesidad de un caso especial por
+  // cada combinacion de "Set/Kit/Compra de <tipo real>" que aparezca.
+  var PALABRAS_TIPO_CONOCIDAS = [].concat(GRUPOS_PIPING, GRUPOS_VALVULA, GRUPOS_BOMBA, GRUPOS_HERR_ELEC,
+    GRUPOS_HERR_MANUAL, GRUPOS_SOLDADURA, GRUPOS_CONSUMIBLE_MEDIDA, GRUPOS_CONSUMIBLE_OTRO, GRUPOS_SEGURIDAD)
+    .filter(function (p) { return p.indexOf(' ') === -1; });
+  function palabraQueContiene(texto, patrones) {
+    var palabras = String(texto || '').split(/\s+/);
+    for (var i = 0; i < palabras.length; i++) {
+      var limpia = palabras[i].replace(/^[.,;()]+|[.,;()]+$/g, '');
+      if (!limpia) continue;
+      var enMinuscula = limpia.toLowerCase();
+      for (var j = 0; j < patrones.length; j++) {
+        if (enMinuscula.indexOf(patrones[j]) !== -1) return limpia;
+      }
+    }
+    return null;
+  }
+  function capitalizar(s) {
+    s = String(s || '');
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
+  // Nombres de marca/termino tecnico que un usuario no reconoceria como
+  // "el mismo tipo de cosa" que ya existe -- investigados uno por uno
+  // (ej. "Alimat" via busqueda web, 2026-07-21: es una valvula de llenado
+  // automatico marca Watts ALM) y mapeados al mismo tipo generico ya usado
+  // por el resto del catalogo, para que se fusionen en la misma carpeta en
+  // vez de crear una carpeta de 1 solo item con el nombre de la marca.
+  var SINONIMOS_TIPO_GENERICO = { 'alimat': 'Valvula', 'flow control': 'Valvula' };
+  function resolverSinonimoTipo(texto) {
+    var t = String(texto || '').toLowerCase();
+    var claves = Object.keys(SINONIMOS_TIPO_GENERICO);
+    for (var i = 0; i < claves.length; i++) {
+      if (t.indexOf(claves[i]) !== -1) return SINONIMOS_TIPO_GENERICO[claves[i]];
+    }
+    return null;
+  }
+  function detectarTipoGenerico(generico, descripcion) {
+    // Capitalizado siempre -- la palabra detectada puede venir en minuscula
+    // si aparecio a mitad de frase (ej. "Set 16 pzas destornillador..."),
+    // y sin normalizar la carpeta "destornillador" (minuscula) quedaba
+    // separada de "Destornillador" (mayuscula) como dos subcategorias
+    // distintas en vez de una sola.
+    return resolverSinonimoTipo(generico + ' ' + (descripcion || '')) ||
+      capitalizar(palabraQueContiene(generico, PALABRAS_TIPO_CONOCIDAS) ||
+      palabraQueContiene(descripcion, PALABRAS_TIPO_CONOCIDAS) ||
+      generico.split(/\s+/)[0] || generico);
+  }
+
   function clasificarItem(item) {
     var nombreOriginal = item.nombre_item || 'Ítem';
     var texto = nombreOriginal + ' ' + (item.descripcion || '');
     var material = detectarMaterial(texto);
     var medida = extraerMedida(item.descripcion);
     var generico = limpiarGenericoDeMaterial(nombreOriginal, material);
-    // La subcategoria agrupa por la PRIMERA palabra del generico (el tipo
-    // de pieza/herramienta, ej. "Destornillador", "Llave") -- usar el
-    // nombre completo como subcategoria fragmentaba cada variante/medida
-    // en su propia carpeta de 1 solo item (ej. "Destornillador p/
-    // electricista PH1x80mm" y "Destornillador PL 1000V 4x100mm" quedaban
-    // en subcategorias distintas en vez de agruparse en "Destornilladores").
-    var tipoGenerico = generico.split(/\s+/)[0] || generico;
+    var tipoGenerico = detectarTipoGenerico(generico, item.descripcion);
     var base = { generico: generico, tipoGenerico: tipoGenerico, material: material, medida: medida };
 
     for (var i = 0; i < OVERRIDES_CATEGORIA.length; i++) {

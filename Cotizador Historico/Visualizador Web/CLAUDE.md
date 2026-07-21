@@ -220,6 +220,54 @@ Subcategoría → Hoja** — que reemplaza la sección "Índice de productos".
   para que el usuario distinga si el resultado es una carpeta para
   explorar o un ítem específico.
 
+## Política: ítems que el clasificador no reconoce (2026-07-21)
+
+La página publicada **nunca** busca en internet — es un HTML estático sin
+llamadas de red en tiempo de uso (ver "Por qué la UF se fija al momento
+del build" arriba, mismo motivo: los Artifacts no tienen una capability de
+fetch genérico). Cuando un ítem nuevo no calza bien con las reglas de
+`clasificarItem` (categoría/subcategoría genérica sin sentido, ej. un
+nombre de marca poco conocido), el flujo es: **en la próxima sesión de
+mantención, antes de reconstruir el visualizador, buscar en internet qué
+es el producto** (marca/modelo/término técnico) y ajustar
+`SINONIMOS_TIPO_GENERICO`, `OVERRIDES_CATEGORIA`, o los `GRUPOS_*`
+correspondientes según lo que se descubra — no es una función del HTML
+publicado, es un paso manual de mantenimiento del clasificador.
+
+- **`detectarTipoGenerico`** (agregado 2026-07-21, misma tarde) — antes la
+  subcategoría era siempre la primera palabra del nombre, lo que fallaba
+  cuando el nombre empieza con un cuantificador genérico (ej. "Set 16
+  pzas destornillador precision" generaba su propia carpeta "Setes" en
+  vez de unirse a "Destornilladores"). Ahora se busca, palabra por
+  palabra, si el nombre (o si no encuentra nada ahí, la descripción)
+  contiene alguna de las palabras ya conocidas por el clasificador
+  (`PALABRAS_TIPO_CONOCIDAS`, la unión de todos los `GRUPOS_*` de una sola
+  palabra) y se usa esa palabra real como subcategoría — fusiona
+  automáticamente accesorios/variantes/sets con el tipo de producto real,
+  sin necesitar un caso especial por cada combinación posible.
+- **`SINONIMOS_TIPO_GENERICO`** — nombres de marca/término técnico que un
+  usuario no reconocería como "lo mismo" que ya existe en el catálogo,
+  investigados uno por uno vía búsqueda web y mapeados al tipo genérico
+  correspondiente: `"alimat"` → `Valvula` (confirmado por búsqueda:
+  válvula de llenado automático, marca Watts ALM, con manómetro
+  integrado) y `"flow control"` → `Valvula` (una válvula de control de
+  flujo) — ambos se fusionan con la subcategoría "Valvulas" en vez de
+  crear una carpeta de 1 solo ítem con el nombre de la marca.
+- **Capitalización normalizada** — la palabra detectada por
+  `detectarTipoGenerico` puede venir en minúscula si apareció a mitad de
+  frase (ej. "destornillador" dentro de "Set 16 pzas destornillador...").
+  Sin normalizar, "destornillador" (minúscula) y "Destornillador"
+  (mayúscula, de otro ítem) quedaban como dos subcategorías distintas en
+  vez de fusionarse — `capitalizar()` resuelve esto.
+- **`pluralizar` ahora maneja el patrón "-ión" → "-iones"** (unión →
+  uniones, confección → confecciones — pierden la tilde porque la sílaba
+  tónica deja de ser la última al pluralizar, regla regular del español).
+  Sigue sin manejar plurales irregulares fuera de ese patrón específico
+  (ej. "Setes"/"Bushinges" para préstamos del inglés como "set"/"bushing"
+  quedarían mal pluralizados si volvieran a aparecer como primera palabra
+  reconocida sin sinónimo definido) — limitación conocida de una
+  heurística, no perseguida más allá de los casos reales encontrados.
+
 ## Ajustes visuales (2026-07-21, misma tarde)
 
 - `.viz-leafrow` pasó de `display:flex; justify-content:space-between` a
