@@ -43,28 +43,40 @@ módulo exista.
 
 ## Estado actual (2026-07-20)
 
-**Solo existe el charter (este archivo) + el Excel de trabajo, vacío.** El diseño
-completo está aprobado (ver spec) pero **el script `analisis_financiero.py` y el
-skill `/Registro_Analisis_Financiero` todavía no están implementados** — es la
-siguiente iteración, análoga a cómo "Flujo de Caja" queda documentado sin
-implementar hasta que se decida construirlo.
+**Implementado y probado.** Las 12 tareas del plan de implementación están
+completas, revisadas y commiteadas: `Sistema/analisis_financiero.py` (bootstrap
+del workbook, mapeo categoría→bucket, lectura solo-lectura de Centro de Costos,
+validación de la hoja "Proyectos", creación de carpetas de proyecto, backup con
+timestamp, regeneración de "Detalle Costos Reales", fórmulas de "Proyectos" e
+"Indicadores", y el orquestador `ejecutar()`/`main()` con modo `dry_run`),
+`Sistema/tests/` (34 tests, todos pasando) y el skill
+`.claude/skills/Registro_Analisis_Financiero/` (`SKILL.md` + `driver.py`, comandos
+`status`/`run`). Centro de Costos ya invoca este módulo automáticamente al final
+de su propio `run` (PASO 12d en `auditor_centro_costos.py`), envuelto para que
+nunca pueda abortar la corrida de Centro de Costos.
 
-Diseño completo, con todas las fórmulas, el playbook de KPIs (incluyendo hallazgos
-de un archivo de ejemplo del usuario que ya no existe en el repo) y las decisiones
-tomadas durante el brainstorming:
-[`docs/superpowers/specs/2026-07-20-analisis-financiero-design.md`](../docs/superpowers/specs/2026-07-20-analisis-financiero-design.md)
-(ruta relativa a la raíz de `Finanzas QUEMPIN/`).
+Lo que sigue pendiente de verdad: `Análisis de Proyectos.xlsx` todavía no tiene
+proyectos reales cargados, así que nada de esto se ha ejercitado contra datos
+reales de QUEMPIN SpA; y el dashboard HTML (Visualizador Web de este módulo)
+sigue fuera de alcance, como estaba planeado desde el inicio.
 
-## Estructura del módulo (planeada — ver spec para el detalle completo)
+Diseño original (fórmulas, playbook de KPIs, decisiones del brainstorming):
+[`docs/superpowers/specs/2026-07-20-analisis-financiero-design.md`](../docs/superpowers/specs/2026-07-20-analisis-financiero-design.md).
+Detalle e historial de la implementación (las 12 tareas, orden, decisiones
+tomadas al construir):
+[`docs/superpowers/plans/2026-07-20-analisis-financiero-implementacion.md`](../docs/superpowers/plans/2026-07-20-analisis-financiero-implementacion.md)
+(rutas relativas a la raíz de `Finanzas QUEMPIN/`).
+
+## Estructura del módulo (implementada — ver spec/plan para el detalle completo)
 
 ```
 Análisis Financiero/
 ├── CLAUDE.md                              # este archivo
 ├── MEMORY.md                              # decisiones, historial, pendientes
-├── Análisis de Proyectos.xlsx             # libro de trabajo (ya existe, hoy vacío)
-├── Respaldos/                             # (a crear) backups automáticos por mes
-├── Sistema/                               # (a crear) analisis_financiero.py + tests
-└── .claude/skills/Registro_Analisis_Financiero/  # (a crear) SKILL.md + driver.py
+├── Análisis de Proyectos.xlsx             # libro de trabajo (existe, sin proyectos cargados aún)
+├── Respaldos/                             # backups automáticos por mes (se crea en la primera corrida real)
+├── Sistema/                               # analisis_financiero.py + tests/ (34 tests)
+└── .claude/skills/Registro_Analisis_Financiero/  # SKILL.md + driver.py (status/run)
 ```
 
 ## `Análisis de Proyectos.xlsx` — resumen del esquema (detalle completo en el spec)

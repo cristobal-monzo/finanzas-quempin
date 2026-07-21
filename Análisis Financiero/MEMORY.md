@@ -2,7 +2,8 @@
 
 Memoria del módulo: decisiones tomadas, historial, y pendientes que dependen del
 usuario. El diseño técnico completo vive en el spec (ver `CLAUDE.md`); acá se
-registra lo que no está en el código porque el código todavía no existe.
+registra lo que no está en el código — decisiones de diseño, contexto de
+brainstorming — más los pendientes reales que quedan tras la implementación.
 
 ## Decisiones tomadas (brainstorming, 2026-07-20)
 
@@ -47,12 +48,15 @@ archivo con nombre parecido, no asumir que es el mismo ni que sigue vigente.
 
 ## Pendientes que dependen del usuario
 
+El script (`Sistema/analisis_financiero.py`, 34 tests), el skill
+(`.claude/skills/Registro_Analisis_Financiero/`) y el enganche automático al
+`run` de Centro de Costos (PASO 12d de `auditor_centro_costos.py`) ya están
+implementados — ver detalle e historial de las 12 tareas en
+`docs/superpowers/plans/2026-07-20-analisis-financiero-implementacion.md`
+(ruta relativa a la raíz de `Finanzas QUEMPIN/`). Lo que queda pendiente:
+
 - `Análisis de Proyectos.xlsx` está vacío — no hay proyectos cargados todavía,
-  así que nada de esto se ha probado contra datos reales.
-- El script (`Sistema/analisis_financiero.py`), el skill
-  (`.claude/skills/Registro_Analisis_Financiero/`) y los tests no están
-  implementados — falta decidir cuándo pasar de spec a plan de implementación
-  (`writing-plans`) y construirlo.
+  así que nada de esto se ha ejercitado contra datos reales de QUEMPIN SpA.
 - El dashboard HTML (Visualizador Web de este módulo) está fuera de alcance v1
   a propósito — el usuario ya indicó que esa es la forma de presentación a
   mediano plazo, pero no se construye hasta más adelante.

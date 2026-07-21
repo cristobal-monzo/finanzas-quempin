@@ -182,10 +182,9 @@ def asegurar_carpeta_proyecto(nombre_proyecto: str, raiz_facturas: Path) -> bool
     lee Centro de Costos hoy (Sitio de comunicación - Centro de Costos 1/
     Facturas y Boletas/), nunca la carpeta legado."""
     carpeta = raiz_facturas / nombre_proyecto
-    if carpeta.exists():
-        return False
-    carpeta.mkdir(parents=True)
-    return True
+    ya_existia = carpeta.exists()
+    carpeta.mkdir(parents=True, exist_ok=True)
+    return not ya_existia
 
 
 def asegurar_carpetas_proyectos(filas_validas: list[dict], raiz_facturas: Path) -> list[str]:
@@ -361,9 +360,12 @@ def ejecutar(
 
     avisos_detalle = regenerar_hoja_detalle_costos_reales(wb, agrupado)
     resumen["avisos"].extend(avisos_detalle)
-    resumen["categorias_no_mapeadas"] = sorted({
-        aviso.split("'")[1] for aviso in avisos_detalle
-    })
+    categorias_no_mapeadas = set()
+    for _, subcategoria in agrupado:
+        _, es_explicito = mapear_categoria_a_bucket(subcategoria)
+        if not es_explicito:
+            categorias_no_mapeadas.add(subcategoria)
+    resumen["categorias_no_mapeadas"] = sorted(categorias_no_mapeadas)
 
     asegurar_formulas_proyectos(ws_proyectos, filas_validas)
     asegurar_hoja_indicadores(wb, filas_validas)
