@@ -220,6 +220,86 @@ Subcategoría → Hoja** — que reemplaza la sección "Índice de productos".
   para que el usuario distinga si el resultado es una carpeta para
   explorar o un ítem específico.
 
+## Ajustes visuales (2026-07-21, misma tarde)
+
+- `.viz-leafrow` pasó de `display:flex; justify-content:space-between` a
+  `display:grid; grid-template-columns: 1fr 100px 120px` — con flex, la
+  columna "N compra(s)" no quedaba alineada entre filas cuando el nombre
+  de cada hoja tenía largo distinto (el espacio sobrante se repartía de
+  forma proporcional, no en columnas fijas). Con grid, las tres columnas
+  quedan alineadas verticalmente sin importar el largo del nombre.
+- `.viz-root` pasó de `min-height: 100%` a `min-height: 100vh` — al
+  navegar a una categoría/subcategoría con poco contenido (ej. 1-2
+  tarjetas), el fondo temático se encogía al alto del contenido y dejaba
+  visible el fondo blanco por defecto del documento debajo. `100%`
+  depende de que el padre (`html`/`body`) tenga una altura explícita, que
+  no la tiene; `100vh` se calcula contra el viewport directamente.
+
+## Reglas de clasificación ampliadas (2026-07-21, misma tarde)
+
+El usuario revisó la taxonomía inicial contra datos reales y pidió mover
+varias categorías/reglas específicas. `clasificarItem` quedó con este
+orden de prioridad (cada paso solo se evalúa si el anterior no calzó):
+
+1. **`OVERRIDES_CATEGORIA`** — excepciones de nombre completo a categoría
+   (y opcionalmente subcategoría forzada), revisadas primero porque una
+   palabra clave genérica clasificaría mal ese caso puntual: "adaptador
+   broca" → Herramientas Manuales (no Consumibles, aunque contenga
+   "broca"); "bolso" → Herramientas Manuales, subcategoría forzada
+   "Contenedores"; "ferreteria"/"ferretería" → Herramientas Manuales,
+   subcategoría forzada "Materiales de Ferretería" (sin forzarla, la
+   primera palabra de "Compra de materiales de ferretería..." producía
+   una subcarpeta sin sentido llamada "Compras").
+2. **Todo lo que diga inox/inoxidable va a "Piping Inoxidable", salvo que
+   sea una herramienta** (`GRUPOS_HERRAMIENTA` = eléctricas + manuales) —
+   tiene prioridad incluso sobre Válvulas y Control/Bombas (ej. un
+   manómetro inoxidable va a piping, no a "Válvulas y Control", porque un
+   manómetro no es una herramienta). Requiere medida igual que el resto
+   de piping.
+3. `GRUPOS_PIPING` (cobre/bronce/galvanizado/PPR — el inoxidable ya se
+   interceptó en el paso 2).
+4. **`GRUPOS_SOLDADURA`** (nueva categoría "Soldadura" 🔥): gas MAPP,
+   soldadura, fundente, electrodos, varillas — ya no exige medida (a
+   diferencia de cuando vivían dentro de Consumibles).
+5. Válvulas y Control, Bombas y Equipos Mecánicos, Herramientas
+   Eléctricas, Herramientas Manuales (extendida con huincha, cortatubos/
+   corta tubos, cuchillo, calafatera, dado, remachadora — "remachadora"
+   se revisa en este grupo antes de que "remache" la capture como
+   consumible, porque la contiene como substring).
+6. **`GRUPOS_MATERIALES_ELECTRICOS`** (nueva categoría "Materiales
+   Eléctricos" ⚡): "conduit" (casi cualquier ítem que diga conduit es
+   eléctrico, pedido del usuario), "eléctrico".
+7. **`GRUPOS_QUIMICOS`** (nueva categoría "Productos Químicos" 🧪):
+   Solutech, tapagotera(s).
+8. **`GRUPOS_TRANSPORTE`** (nueva categoría "Transporte" 🚚): flete,
+   arriendo, peaje, combustible/gasolina/bencina/petróleo/diesel/
+   parafina, pasaje, equipaje. La subcategoría se decide por
+   `subcategoriaTransporte`: Combustible (agrupa el ítem del combustible
+   con su impuesto específico asociado, pedido explícito del usuario),
+   Peajes, Arriendo de Vehículos, Pasajes y Equipaje, Fletes, o "Otros
+   Gastos de Transporte" si ninguna calza.
+9. Consumibles con medida obligatoria (pernos, tornillos, remaches,
+   autoperforantes, brocas) y sin medida (esmalte, pintura, rodillo,
+   brocha, aguarrás, espuma, cinta, lubricante, bolsas, libros,
+   marcadores).
+10. Seguridad (EPP) — extendida con "overol".
+11. "Otros / Servicios" como categoría de respaldo final.
+
+**Bugs reales encontrados probando con datos reales, ya corregidos**:
+- `PATRON_MEDIDA` no reconocía una fracción pelada sin comilla ni unidad
+  (ej. "1/2x1/2") — típico en catálogos que omiten el símbolo de pulgada.
+  Sin esto, ítems inoxidables reales quedaban invisibles (medida no
+  detectada → excluidos) y la regla del punto 2 nunca se veía en el
+  dashboard. Se agregó `\b\d+\/\d+\b` como alternativa final del regex.
+- `pluralizar` duplicaba el plural si el nombre de origen ya terminaba en
+  "s" (ej. "Bolsas" → "Bolsases"). Ahora si ya termina en "s" se devuelve
+  sin cambios.
+- Palabras clave que no calzaban por diferencias exactas de texto real:
+  "cortatubos" (el dato real decía "Corta tubos", con espacio — se agregó
+  esa variante) y "tapagoteras" (el dato real decía "Tapagotera", singular
+  — la clave plural nunca es substring de la singular; se cambió a la
+  raíz singular "tapagotera", que sí calza con ambas formas).
+
 ## Orden del dashboard (2026-07-21)
 
 El buscador (con sus filtros) se movió a la parte superior del panel,

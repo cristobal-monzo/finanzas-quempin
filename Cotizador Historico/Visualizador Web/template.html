@@ -307,11 +307,11 @@
   .viz-foldercard .fc-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
   .viz-foldercard .fc-count { font-size: 11px; color: var(--text-muted); }
   .viz-leaflist { display: flex; flex-direction: column; gap: 8px; }
-  .viz-leafrow { font-family: inherit; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 10px 14px; cursor: pointer; text-align: left; }
+  .viz-leafrow { font-family: inherit; display: grid; grid-template-columns: 1fr 100px 120px; align-items: center; gap: 12px; width: 100%; background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 10px 14px; cursor: pointer; text-align: left; }
   .viz-leafrow:hover { border-color: var(--brand-orange); }
   .viz-leafrow .lf-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-  .viz-leafrow .lf-count { font-size: 12px; color: var(--text-muted); }
-  .viz-leafrow .lf-price { font-size: 12.5px; font-weight: 700; color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; }
+  .viz-leafrow .lf-count { font-size: 12px; color: var(--text-muted); text-align: right; }
+  .viz-leafrow .lf-price { font-size: 12.5px; font-weight: 700; color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; text-align: right; }
 
   .viz-searchsummary { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; display: flex; gap: 24px; flex-wrap: wrap; }
   .viz-searchsummary b { color: var(--brand-orange-ink, var(--brand-orange)); }
@@ -583,7 +583,11 @@
   // material) son obligatorios: si no se pueden extraer, el item se excluye
   // de todo el dashboard (no solo se oculta) -- pedido explicito del usuario,
   // "una cañeria de cobre de 1/2 no es lo mismo que una de 2".
-  var PATRON_MEDIDA = /\d+(?:\s\d+\/\d+|\/\d+)?\s?"|\d+(?:[.,]\d+)?\s?(mm|cm|pulg(?:adas)?)\b/i;
+  // La ultima alternativa (fraccion pelada, sin comilla ni unidad, ej.
+  // "1/2x1/2") cubre catalogos que omiten la comilla de pulgada -- sin
+  // ella, items reales como "Conector macho inoxidable 1/2x1/2" quedaban
+  // sin medida detectable y por lo tanto invisibles en el dashboard.
+  var PATRON_MEDIDA = /\d+(?:\s\d+\/\d+|\/\d+)?\s?"|\d+(?:[.,]\d+)?\s?(mm|cm|pulg(?:adas)?)\b|\b\d+\/\d+\b/i;
   function extraerMedida(descripcion) {
     var m = PATRON_MEDIDA.exec(String(descripcion || ''));
     if (!m) return null;
@@ -628,6 +632,7 @@
   }
   function pluralizar(s) {
     if (!s) return s;
+    if (/s$/i.test(s)) return s; // ya viene plural en el nombre de origen (ej. "Bolsas") -- no duplicar
     return /[aeiouáéíóú]$/i.test(s) ? s + 's' : s + 'es';
   }
   var GRUPOS_PIPING = ['codo', 'copla', 'coupling', 'tee', 'union', 'unión', 'terminal', 'cañeria', 'cañería',
@@ -636,15 +641,50 @@
   var ICONOS_CATEGORIA = {
     'Piping Cobre': '🟠', 'Piping Bronce': '🟡', 'Piping Acero Galvanizado': '⚙️', 'Piping Inoxidable': '⚪', 'Piping PPR': '🔵',
     'Válvulas y Control': '🔧', 'Bombas y Equipos Mecánicos': '⚙️', 'Herramientas Eléctricas': '🔌', 'Herramientas Manuales': '🛠️',
-    'Consumibles': '📦', 'Seguridad (EPP)': '🦺', 'Otros / Servicios': '📋',
+    'Consumibles': '📦', 'Seguridad (EPP)': '🦺', 'Soldadura': '🔥', 'Materiales Eléctricos': '⚡',
+    'Productos Químicos': '🧪', 'Transporte': '🚚', 'Otros / Servicios': '📋',
   };
+  // Pedido del usuario 2026-07-21: excepciones puntuales de un nombre
+  // completo a una categoria (y opcionalmente una subcategoria forzada),
+  // revisadas ANTES de cualquier grupo generico -- resuelven casos donde
+  // una palabra clave generica clasificaria mal ese item puntual (ej.
+  // "Adaptador broca" iria a Consumibles por "broca" si no se revisa esto
+  // primero).
+  var OVERRIDES_CATEGORIA = [
+    { kw: ['adaptador broca'], categoria: 'Herramientas Manuales' },
+    { kw: ['bolso'], categoria: 'Herramientas Manuales', subcategoriaForzada: 'Contenedores' },
+    // "Compra de materiales de ferreteria..." como Nombre Item hace que la
+    // primera palabra ("Compra") se use como subcategoria -- sin forzarla
+    // aca, queda un subcarpeta sin sentido llamada "Compras".
+    { kw: ['ferreteria', 'ferretería'], categoria: 'Herramientas Manuales', subcategoriaForzada: 'Materiales de Ferretería' },
+  ];
   var GRUPOS_VALVULA = ['valvula', 'válvula', 'purga', 'flow control', 'alimat', 'anodo', 'ánodo', 'manometro', 'manómetro', 'abrazadera'];
   var GRUPOS_BOMBA = ['bomba', 'estanque', 'vacuometro', 'vacuómetro', 'arrestallama'];
   var GRUPOS_HERR_ELEC = ['hidrolavadora', 'taladro', 'esmeril', 'amoladora', 'soldadora'];
-  var GRUPOS_HERR_MANUAL = ['curvadora', 'llave', 'destornillador', 'martillo', 'sierra', 'alicate'];
-  var GRUPOS_CONSUMIBLE_MEDIDA = ['perno', 'tornillo', 'remache', 'autoperforante', 'soldadura', 'fundente', 'electrodo'];
-  var GRUPOS_CONSUMIBLE_OTRO = ['espuma', 'esmalte', 'pintura', 'rodillo', 'brocha', 'aguarras', 'cinta', 'lubricante'];
-  var GRUPOS_SEGURIDAD = ['lente', 'guante', 'arnes', 'arnés', 'casco', 'chaleco', 'seguro de carga'];
+  var GRUPOS_HERR_MANUAL = ['curvadora', 'llave', 'destornillador', 'martillo', 'sierra', 'alicate', 'huincha',
+    'cortatubos', 'corta tubos', 'cuchillo', 'calafatera', 'dado', 'remachadora'];
+  var GRUPOS_SOLDADURA = ['gas mapp', 'soldadura', 'fundente', 'electrodo', 'barilla', 'varilla'];
+  var GRUPOS_MATERIALES_ELECTRICOS = ['conduit', 'electrico', 'eléctrico'];
+  var GRUPOS_QUIMICOS = ['solutech', 'tapagotera'];
+  var GRUPOS_TRANSPORTE = ['flete', 'arriendo', 'peaje', 'combustible', 'gasolina', 'bencina', 'petroleo', 'petróleo',
+    'diesel', 'parafina', 'pasaje', 'equipaje'];
+  var SUBCATEGORIAS_TRANSPORTE = [
+    { kw: ['gasolina', 'bencina', 'petroleo', 'petróleo', 'diesel', 'parafina', 'combustible'], subcategoria: 'Combustible' },
+    { kw: ['peaje'], subcategoria: 'Peajes' },
+    { kw: ['arriendo'], subcategoria: 'Arriendo de Vehículos' },
+    { kw: ['pasaje', 'equipaje'], subcategoria: 'Pasajes y Equipaje' },
+    { kw: ['flete'], subcategoria: 'Fletes' },
+  ];
+  function subcategoriaTransporte(texto) {
+    for (var i = 0; i < SUBCATEGORIAS_TRANSPORTE.length; i++) {
+      if (contieneAlguna(texto, SUBCATEGORIAS_TRANSPORTE[i].kw)) return SUBCATEGORIAS_TRANSPORTE[i].subcategoria;
+    }
+    return 'Otros Gastos de Transporte';
+  }
+  var GRUPOS_CONSUMIBLE_MEDIDA = ['perno', 'tornillo', 'remache', 'autoperforante', 'broca'];
+  var GRUPOS_CONSUMIBLE_OTRO = ['espuma', 'esmalte', 'pintura', 'rodillo', 'brocha', 'aguarras', 'cinta', 'lubricante', 'bolsa', 'libro', 'marcador'];
+  var GRUPOS_SEGURIDAD = ['lente', 'guante', 'arnes', 'arnés', 'casco', 'chaleco', 'seguro de carga', 'overol'];
+  var GRUPOS_HERRAMIENTA = GRUPOS_HERR_ELEC.concat(GRUPOS_HERR_MANUAL);
 
   function clasificarItem(item) {
     var nombreOriginal = item.nombre_item || 'Ítem';
@@ -661,16 +701,33 @@
     var tipoGenerico = generico.split(/\s+/)[0] || generico;
     var base = { generico: generico, tipoGenerico: tipoGenerico, material: material, medida: medida };
 
+    for (var i = 0; i < OVERRIDES_CATEGORIA.length; i++) {
+      if (contieneAlguna(texto, OVERRIDES_CATEGORIA[i].kw)) {
+        return Object.assign(base, { requiereMaterial: false, requiereMedida: false }, OVERRIDES_CATEGORIA[i]);
+      }
+    }
+    // Pedido del usuario: todo lo que diga inox/inoxidable va a Piping
+    // Inoxidable, salvo que sea una herramienta -- se revisa temprano,
+    // antes de valvulas/bombas/etc., porque tiene prioridad sobre esas
+    // categorias tambien (ej. una valvula inoxidable va a piping, no a
+    // Valvulas y Control).
+    if (material === 'Inoxidable' && !contieneAlguna(texto, GRUPOS_HERRAMIENTA)) {
+      return Object.assign(base, { categoria: 'Piping Inoxidable', requiereMaterial: false, requiereMedida: true });
+    }
     if (contieneAlguna(texto, GRUPOS_PIPING)) {
       return Object.assign(base, {
         categoria: CATEGORIA_PIPING_POR_MATERIAL[material] || null,
         requiereMaterial: true, requiereMedida: true,
       });
     }
+    if (contieneAlguna(texto, GRUPOS_SOLDADURA)) return Object.assign(base, { categoria: 'Soldadura', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_VALVULA)) return Object.assign(base, { categoria: 'Válvulas y Control', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_BOMBA)) return Object.assign(base, { categoria: 'Bombas y Equipos Mecánicos', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_HERR_ELEC)) return Object.assign(base, { categoria: 'Herramientas Eléctricas', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_HERR_MANUAL)) return Object.assign(base, { categoria: 'Herramientas Manuales', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_MATERIALES_ELECTRICOS)) return Object.assign(base, { categoria: 'Materiales Eléctricos', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_QUIMICOS)) return Object.assign(base, { categoria: 'Productos Químicos', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_TRANSPORTE)) return Object.assign(base, { categoria: 'Transporte', subcategoriaForzada: subcategoriaTransporte(texto), requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_CONSUMIBLE_MEDIDA)) return Object.assign(base, { categoria: 'Consumibles', requiereMaterial: false, requiereMedida: true });
     if (contieneAlguna(texto, GRUPOS_CONSUMIBLE_OTRO)) return Object.assign(base, { categoria: 'Consumibles', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_SEGURIDAD)) return Object.assign(base, { categoria: 'Seguridad (EPP)', requiereMaterial: false, requiereMedida: false });
@@ -687,6 +744,7 @@
   var ITEMS_VISIBLES = DATA.items.filter(function (it) { return esVisible(it._clasif); });
 
   function subcategoriaDe(clasif) {
+    if (clasif.subcategoriaForzada) return clasif.subcategoriaForzada;
     var base = pluralizar(clasif.tipoGenerico);
     return clasif.material && CATEGORIA_PIPING_POR_MATERIAL[clasif.material] === clasif.categoria ? base + ' de ' + clasif.material : base;
   }
