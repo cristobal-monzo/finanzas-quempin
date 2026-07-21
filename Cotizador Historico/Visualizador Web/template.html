@@ -288,39 +288,25 @@
   .viz-footer { font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 8px; line-height: 1.6; }
   .viz-footer strong { color: var(--text-secondary); }
 
-  /* Table */
-  .viz-tablewrap {
-    background: var(--surface-card);
-    border: 1px solid var(--border-hairline);
-    border-radius: 10px;
-    margin-bottom: 20px;
-  }
-  .viz-tablescroll { overflow-x: auto; overflow-y: hidden; border-radius: 10px; }
-  table.viz-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
-  table.viz-table thead th {
-    text-align: left;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--text-muted);
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--gridline);
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-  }
-  table.viz-table thead th:hover { color: var(--text-primary); }
-  table.viz-table thead th .arrow { font-size: 9px; margin-left: 3px; opacity: 0.6; }
-  table.viz-table tbody td {
-    padding: 9px 12px;
-    border-bottom: 1px solid var(--gridline);
-    vertical-align: top;
-    font-variant-numeric: tabular-nums;
-  }
-  table.viz-table tbody tr.clickable-row { cursor: pointer; }
-  table.viz-table tbody tr.clickable-row:hover { background: var(--surface-1); }
-  table.viz-table tbody tr.clickable-row:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
-  table.viz-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  /* Explorador de carpetas */
+  .viz-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; font-size: 12.5px; }
+  .viz-breadcrumb .bc-sep { color: var(--text-muted); }
+  .viz-breadcrumb .bc-item { font-family: inherit; font-size: 12.5px; background: none; border: none; padding: 2px 4px; color: var(--brand-orange-ink, var(--brand-orange)); cursor: pointer; border-radius: 4px; }
+  .viz-breadcrumb .bc-item:hover:not(:disabled) { background: var(--surface-card); }
+  .viz-breadcrumb .bc-item:disabled { color: var(--text-primary); font-weight: 700; cursor: default; }
+  .viz-folderbrowser { margin-bottom: 24px; }
+  .viz-foldergrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .viz-foldercard { font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 18px 12px; cursor: pointer; text-align: center; }
+  .viz-foldercard:hover { border-color: var(--brand-orange); }
+  .viz-foldercard .fc-icon { font-size: 28px; line-height: 1; }
+  .viz-foldercard .fc-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .viz-foldercard .fc-count { font-size: 11px; color: var(--text-muted); }
+  .viz-leaflist { display: flex; flex-direction: column; gap: 8px; }
+  .viz-leafrow { font-family: inherit; display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 10px 14px; cursor: pointer; text-align: left; }
+  .viz-leafrow:hover { border-color: var(--brand-orange); }
+  .viz-leafrow .lf-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .viz-leafrow .lf-count { font-size: 12px; color: var(--text-muted); }
+  .viz-leafrow .lf-price { font-size: 12.5px; font-weight: 700; color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; }
 
   .viz-searchsummary { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; display: flex; gap: 24px; flex-wrap: wrap; }
   .viz-searchsummary b { color: var(--brand-orange-ink, var(--brand-orange)); }
@@ -418,6 +404,7 @@
       <span class="viz-resultcount" id="searchResultCount"></span>
     </div>
 
+    <div id="searchFolderMatches" class="viz-foldergrid" style="display:none;margin-bottom:14px"></div>
     <div id="searchSummary" class="viz-searchsummary" style="display:none"></div>
     <div id="searchResults" class="viz-cardgrid"></div>
     <div id="searchMoreWrap" style="display:none;text-align:center;margin:12px 0 24px">
@@ -425,24 +412,9 @@
     </div>
     <div id="searchEmptyState" class="viz-empty-state" style="display:none"></div>
 
-    <p class="viz-section-title">Índice de productos</p>
-    <div class="viz-tablewrap">
-      <div class="viz-tablescroll">
-        <table class="viz-table" id="productTable">
-          <thead>
-            <tr>
-              <th data-key="nombre_item" aria-sort="ascending">Producto <span class="arrow">▲</span></th>
-              <th data-key="n_compras" class="num" aria-sort="none">N° de compras <span class="arrow"></span></th>
-              <th data-key="rango_min" class="num" aria-sort="none">Precio reajustado mín. <span class="arrow"></span></th>
-              <th data-key="rango_max" class="num" aria-sort="none">Precio reajustado máx. <span class="arrow"></span></th>
-              <th>Proyectos</th>
-            </tr>
-          </thead>
-          <tbody id="productTableBody"></tbody>
-        </table>
-      </div>
-      <div class="viz-empty-state" id="productEmptyState" style="display:none">Sin productos indexados.</div>
-    </div>
+    <p class="viz-section-title">Explorar por categoría</p>
+    <div class="viz-breadcrumb" id="folderBreadcrumb"></div>
+    <div id="folderBrowser" class="viz-folderbrowser"></div>
 
     <p class="viz-footer">
       Cotizador Historico — datos reales de <strong>Centro de Costos.xlsx</strong>, reajustados a
@@ -598,27 +570,124 @@
   document.getElementById('vizGeneratedFooter').textContent = DATA.generado;
   document.getElementById('exportMeta').textContent = 'Generado ' + new Date().toLocaleString('es-CL') + ' · UF utilizada ' + fmt(DATA.uf_hoy) + ' (actualizada ' + DATA.uf_fecha + ')';
 
-  // ---------- fittings: exigir medida (pulgadas/mm/cm), excluir si no se pudo extraer ----------
-  // Pedido del usuario: codos/coplas/etc. sin medida legible no aportan (no
-  // se puede cotizar un "codo" sin saber su diametro) -- se excluyen del
-  // dashboard entero (indice de productos y busqueda), no solo se ocultan
-  // visualmente. Los demas items (sin nombre de fitting reconocido) nunca
-  // se filtran por esta regla.
-  var PALABRAS_FITTING = ['codo', 'copla', 'coupling', 'tee', 'union', 'unión', 'neplo', 'niple',
-    'reduccion', 'reducción', 'adaptador', 'tapon', 'tapón', 'cruz', 'yee', 'curva', 'buje', 'bushing'];
-  function esFitting(nombreItem) {
-    var n = String(nombreItem || '').toLowerCase();
-    return PALABRAS_FITTING.some(function (p) { return n.indexOf(p) !== -1; });
+  // ---------- taxonomia: categoria/subcategoria/hoja por palabras clave ----------
+  // Heuristica best-effort (mismo criterio que extraerSpecs/extraerMarcaModelo
+  // mas abajo) -- clasifica cada item en una carpeta de 3 niveles (categoria >
+  // subcategoria > hoja) a partir de nombre_item/descripcion. Para tuberias/
+  // fittings/pernos/tornillos/soldadura, la medida (y para piping, el
+  // material) son obligatorios: si no se pueden extraer, el item se excluye
+  // de todo el dashboard (no solo se oculta) -- pedido explicito del usuario,
+  // "una cañeria de cobre de 1/2 no es lo mismo que una de 2".
+  var PATRON_MEDIDA = /\d+(?:\s\d+\/\d+|\/\d+)?\s?"|\d+(?:[.,]\d+)?\s?(mm|cm|pulg(?:adas)?)\b/i;
+  function extraerMedida(descripcion) {
+    var m = PATRON_MEDIDA.exec(String(descripcion || ''));
+    if (!m) return null;
+    var texto = m[0];
+    // Para pulgadas, solo se compacta el espacio pegado a la comilla -- el
+    // espacio interno de una fraccion mixta ("1 1/2\"") debe conservarse, o
+    // "1 1/2" se leeria como "11/2" (once medios) al concatenar sin espacio.
+    if (texto.indexOf('"') !== -1) return texto.replace(/\s+"/, '"').trim();
+    return texto.replace(/\s+/g, '');
   }
-  var PATRON_MEDIDA_FITTING = /\d+(?:\s\d+\/\d+|\/\d+)?\s?"|\d+(?:[.,]\d+)?\s?(mm|cm|pulg(?:adas)?)\b/i;
-  function extraerMedidaFitting(descripcion) {
-    var m = PATRON_MEDIDA_FITTING.exec(String(descripcion || ''));
-    return m ? m[0].replace(/\s+/g, '') : null;
+  var MATERIALES = [
+    { kw: ['cobre'], nombre: 'Cobre' },
+    { kw: ['bronce'], nombre: 'Bronce' },
+    { kw: ['galvanizad'], nombre: 'Galvanizado' },
+    { kw: ['inox'], nombre: 'Inoxidable' },
+    { kw: ['ppr'], nombre: 'PPR' },
+  ];
+  function detectarMaterial(texto) {
+    var t = texto.toLowerCase();
+    for (var i = 0; i < MATERIALES.length; i++) {
+      for (var j = 0; j < MATERIALES[i].kw.length; j++) {
+        if (t.indexOf(MATERIALES[i].kw[j]) !== -1) return MATERIALES[i].nombre;
+      }
+    }
+    return null;
   }
-  function esVisible(item) {
-    return !esFitting(item.nombre_item) || !!extraerMedidaFitting(item.descripcion);
+  // El "Nombre Item" del Excel a veces ya trae el material incluido (ej.
+  // "Codo bronce", pese a que la convencion documentada del modulo pide que
+  // sea generico y sin material) -- sin esta limpieza, la subcarpeta/hoja
+  // terminaria diciendo "Codo bronces de Bronce" (material duplicado).
+  function limpiarGenericoDeMaterial(generico, material) {
+    if (!material) return generico;
+    var entry = MATERIALES.filter(function (m) { return m.nombre === material; })[0];
+    if (!entry) return generico;
+    var patron = new RegExp('\\b(' + entry.kw.join('|') + ')\\w*', 'i');
+    var limpio = generico.replace(patron, '').replace(/\s+/g, ' ').trim();
+    return limpio || generico;
   }
-  var ITEMS_VISIBLES = DATA.items.filter(esVisible);
+  function contieneAlguna(texto, lista) {
+    var t = texto.toLowerCase();
+    return lista.some(function (p) { return t.indexOf(p) !== -1; });
+  }
+  function pluralizar(s) {
+    if (!s) return s;
+    return /[aeiouáéíóú]$/i.test(s) ? s + 's' : s + 'es';
+  }
+  var GRUPOS_PIPING = ['codo', 'copla', 'coupling', 'tee', 'union', 'unión', 'terminal', 'cañeria', 'cañería',
+    'caneria', 'reduccion', 'reducción', 'niple', 'neplo', 'bushing', 'buje', 'curva', 'cruz', 'tapon', 'tapón', 'conector'];
+  var CATEGORIA_PIPING_POR_MATERIAL = { 'Cobre': 'Piping Cobre', 'Bronce': 'Piping Bronce', 'Galvanizado': 'Piping Acero Galvanizado', 'Inoxidable': 'Piping Inoxidable', 'PPR': 'Piping PPR' };
+  var ICONOS_CATEGORIA = {
+    'Piping Cobre': '🟠', 'Piping Bronce': '🟡', 'Piping Acero Galvanizado': '⚙️', 'Piping Inoxidable': '⚪', 'Piping PPR': '🔵',
+    'Válvulas y Control': '🔧', 'Bombas y Equipos Mecánicos': '⚙️', 'Herramientas Eléctricas': '🔌', 'Herramientas Manuales': '🛠️',
+    'Consumibles': '📦', 'Seguridad (EPP)': '🦺', 'Otros / Servicios': '📋',
+  };
+  var GRUPOS_VALVULA = ['valvula', 'válvula', 'purga', 'flow control', 'alimat', 'anodo', 'ánodo', 'manometro', 'manómetro', 'abrazadera'];
+  var GRUPOS_BOMBA = ['bomba', 'estanque', 'vacuometro', 'vacuómetro', 'arrestallama'];
+  var GRUPOS_HERR_ELEC = ['hidrolavadora', 'taladro', 'esmeril', 'amoladora', 'soldadora'];
+  var GRUPOS_HERR_MANUAL = ['curvadora', 'llave', 'destornillador', 'martillo', 'sierra', 'alicate'];
+  var GRUPOS_CONSUMIBLE_MEDIDA = ['perno', 'tornillo', 'remache', 'autoperforante', 'soldadura', 'fundente', 'electrodo'];
+  var GRUPOS_CONSUMIBLE_OTRO = ['espuma', 'esmalte', 'pintura', 'rodillo', 'brocha', 'aguarras', 'cinta', 'lubricante'];
+  var GRUPOS_SEGURIDAD = ['lente', 'guante', 'arnes', 'arnés', 'casco', 'chaleco', 'seguro de carga'];
+
+  function clasificarItem(item) {
+    var nombreOriginal = item.nombre_item || 'Ítem';
+    var texto = nombreOriginal + ' ' + (item.descripcion || '');
+    var material = detectarMaterial(texto);
+    var medida = extraerMedida(item.descripcion);
+    var generico = limpiarGenericoDeMaterial(nombreOriginal, material);
+    var base = { generico: generico, material: material, medida: medida };
+
+    if (contieneAlguna(texto, GRUPOS_PIPING)) {
+      return Object.assign(base, {
+        categoria: CATEGORIA_PIPING_POR_MATERIAL[material] || null,
+        requiereMaterial: true, requiereMedida: true,
+      });
+    }
+    if (contieneAlguna(texto, GRUPOS_VALVULA)) return Object.assign(base, { categoria: 'Válvulas y Control', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_BOMBA)) return Object.assign(base, { categoria: 'Bombas y Equipos Mecánicos', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_HERR_ELEC)) return Object.assign(base, { categoria: 'Herramientas Eléctricas', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_HERR_MANUAL)) return Object.assign(base, { categoria: 'Herramientas Manuales', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_CONSUMIBLE_MEDIDA)) return Object.assign(base, { categoria: 'Consumibles', requiereMaterial: false, requiereMedida: true });
+    if (contieneAlguna(texto, GRUPOS_CONSUMIBLE_OTRO)) return Object.assign(base, { categoria: 'Consumibles', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_SEGURIDAD)) return Object.assign(base, { categoria: 'Seguridad (EPP)', requiereMaterial: false, requiereMedida: false });
+    return Object.assign(base, { categoria: 'Otros / Servicios', requiereMaterial: false, requiereMedida: false });
+  }
+
+  function esVisible(clasif) {
+    if (clasif.requiereMaterial && !clasif.material) return false;
+    if (clasif.requiereMedida && !clasif.medida) return false;
+    return true;
+  }
+
+  DATA.items.forEach(function (it) { it._clasif = clasificarItem(it); });
+  var ITEMS_VISIBLES = DATA.items.filter(function (it) { return esVisible(it._clasif); });
+
+  function subcategoriaDe(clasif) {
+    var base = pluralizar(clasif.generico);
+    return clasif.material && CATEGORIA_PIPING_POR_MATERIAL[clasif.material] === clasif.categoria ? base + ' de ' + clasif.material : base;
+  }
+  function hojaDe(clasif) {
+    var partes = [clasif.generico];
+    if (clasif.material) partes.push('de ' + clasif.material);
+    if (clasif.medida) partes.push(clasif.medida);
+    return partes.join(' ');
+  }
+  ITEMS_VISIBLES.forEach(function (it) {
+    it._clasif.subcategoria = subcategoriaDe(it._clasif);
+    it._clasif.hoja = hojaDe(it._clasif);
+  });
 
   function renderKPIs() {
     var row = document.getElementById('kpiRow');
@@ -626,27 +695,26 @@
       '<div class="viz-kpi accent"><div class="label">Referencias indexadas</div><div class="value">' + fmtNum(ITEMS_VISIBLES.length) + '</div><div class="sub">disponibles para buscar</div></div>' +
       '<div class="viz-kpi"><div class="label">UF utilizada</div><div class="value">' + fmt(DATA.uf_hoy) + '</div><div class="sub">actualizada ' + esc(DATA.uf_fecha) + '</div></div>';
   }
-  // ---------- product index (grouped by nombre_item) ----------
-  function buildProductIndex(items) {
-    var byName = {};
+  // ---------- indice de hojas (agrupado por categoria > subcategoria > hoja) ----------
+  // La hoja combina generico+material+medida (ej. "Codo de Bronce 1/2"") --
+  // agrupar por hoja en vez de por nombre_item es a proposito: dos codos de
+  // bronce de distinta medida NUNCA deben promediarse/compararse como si
+  // fueran el mismo producto.
+  function buildLeafIndex(items) {
+    var byLeaf = {};
     items.forEach(function (it) {
-      var key = it.nombre_item;
-      if (!byName[key]) byName[key] = { nombre_item: key, compras: [], proyectos: {} };
-      byName[key].compras.push(it);
-      if (it.proyecto) byName[key].proyectos[it.proyecto] = true;
+      var key = it._clasif.categoria + '||' + it._clasif.subcategoria + '||' + it._clasif.hoja;
+      if (!byLeaf[key]) byLeaf[key] = { categoria: it._clasif.categoria, subcategoria: it._clasif.subcategoria, hoja: it._clasif.hoja, compras: [], proyectos: {} };
+      byLeaf[key].compras.push(it);
+      if (it.proyecto) byLeaf[key].proyectos[it.proyecto] = true;
     });
-    return Object.keys(byName).map(function (key) {
-      var g = byName[key];
-      var precios = g.compras.map(function (c) { return c.precio_reajustado_hoy; });
+    return Object.keys(byLeaf).map(function (key) {
+      var g = byLeaf[key];
       var preciosConIva = g.compras.map(function (c) { return c.precio_reajustado_hoy_con_iva; });
-      var masBarato = g.compras.reduce(function (min, c) {
-        return c.precio_reajustado_hoy_con_iva < min.precio_reajustado_hoy_con_iva ? c : min;
-      });
+      var masBarato = g.compras.reduce(function (min, c) { return c.precio_reajustado_hoy_con_iva < min.precio_reajustado_hoy_con_iva ? c : min; });
       return {
-        nombre_item: key,
+        categoria: g.categoria, subcategoria: g.subcategoria, hoja: g.hoja, compras: g.compras,
         n_compras: g.compras.length,
-        rango_min: Math.min.apply(null, precios),
-        rango_max: Math.max.apply(null, precios),
         proyectos: Object.keys(g.proyectos).sort(),
         promedio_con_iva: Math.round(preciosConIva.reduce(function (a, b) { return a + b; }, 0) / preciosConIva.length),
         precio_min_con_iva: masBarato.precio_reajustado_hoy_con_iva,
@@ -654,10 +722,23 @@
       };
     });
   }
-  var PRODUCT_INDEX = buildProductIndex(ITEMS_VISIBLES);
+  var LEAF_INDEX = buildLeafIndex(ITEMS_VISIBLES);
   var MARKET_STATS = {};
-  PRODUCT_INDEX.forEach(function (p) { MARKET_STATS[p.nombre_item] = p; });
-  var productSort = { key: 'n_compras', dir: 'desc' };
+  LEAF_INDEX.forEach(function (h) { MARKET_STATS[h.hoja] = h; });
+
+  function buildCategoryTree(hojas) {
+    var arbol = {};
+    hojas.forEach(function (h) {
+      if (!arbol[h.categoria]) arbol[h.categoria] = { nombre: h.categoria, subcategorias: {}, n_compras: 0 };
+      var cat = arbol[h.categoria];
+      cat.n_compras += h.n_compras;
+      if (!cat.subcategorias[h.subcategoria]) cat.subcategorias[h.subcategoria] = { nombre: h.subcategoria, hojas: [], n_compras: 0 };
+      cat.subcategorias[h.subcategoria].hojas.push(h);
+      cat.subcategorias[h.subcategoria].n_compras += h.n_compras;
+    });
+    return arbol;
+  }
+  var CATEGORY_TREE = buildCategoryTree(LEAF_INDEX);
 
   // ---------- busqueda difusa (puerto de Sistema/cotizador_historico.py) ----------
   function normalizeText(s) {
@@ -791,7 +872,7 @@
     if (marcaModelo.modelo) chips.push(marcaModelo.modelo);
     chips = chips.concat(specs);
     var cardId = 'rc_' + idx;
-    var stats = MARKET_STATS[item.nombre_item];
+    var stats = MARKET_STATS[item._clasif.hoja];
     var esLaMasBarata = stats && stats.n_compras > 1 && item.precio_reajustado_hoy_con_iva === stats.precio_min_con_iva;
     return '<div class="viz-refcard' + (esLaMasBarata ? ' is-cheapest' : '') + '">' +
       (esLaMasBarata ? '<span class="rc-cheapest-badge">💲 Proveedor más barato entre ' + stats.n_compras + '</span>' : '') +
@@ -811,6 +892,48 @@
       '</div>';
   }
 
+  // Busca el texto contra los nombres de categoria/subcategoria del arbol de
+  // carpetas -- se muestran aparte de las tarjetas de referencia (con icono
+  // de carpeta), para que el usuario distinga si el resultado es "un item" o
+  // "una categoria completa" a la que puede entrar a explorar.
+  function buscarCarpetas(texto) {
+    var q = normalizeText(texto);
+    if (!q) return [];
+    var resultados = [];
+    Object.keys(CATEGORY_TREE).forEach(function (c) {
+      if (normalizeText(c).indexOf(q) !== -1) {
+        resultados.push({ tipo: 'categoria', label: c, categoria: c, subcategoria: null, n_compras: CATEGORY_TREE[c].n_compras, icono: ICONOS_CATEGORIA[c] || '📁' });
+      }
+      Object.keys(CATEGORY_TREE[c].subcategorias).forEach(function (s) {
+        if (normalizeText(s).indexOf(q) !== -1) {
+          resultados.push({ tipo: 'subcategoria', label: s, categoria: c, subcategoria: s, n_compras: CATEGORY_TREE[c].subcategorias[s].n_compras, icono: ICONOS_CATEGORIA[c] || '📁' });
+        }
+      });
+    });
+    return resultados.slice(0, 6);
+  }
+
+  function renderFolderMatches(texto) {
+    var wrapEl = document.getElementById('searchFolderMatches');
+    var carpetas = buscarCarpetas(texto);
+    if (!carpetas.length) { wrapEl.style.display = 'none'; wrapEl.innerHTML = ''; return; }
+    wrapEl.style.display = '';
+    wrapEl.innerHTML = '<p class="viz-section-title" style="grid-column:1/-1;margin-bottom:2px">📁 Categorías encontradas</p>' +
+      carpetas.map(function (r) {
+        return '<button type="button" class="viz-foldercard" data-categoria="' + esc(r.categoria) + '"' + (r.subcategoria ? ' data-sub="' + esc(r.subcategoria) + '"' : '') + '>' +
+          '<span class="fc-icon">' + r.icono + '</span>' +
+          '<span class="fc-name">' + esc(r.label) + '</span>' +
+          '<span class="fc-count">' + r.n_compras + ' compra' + (r.n_compras === 1 ? '' : 's') + '</span>' +
+          '</button>';
+      }).join('');
+    wrapEl.querySelectorAll('.viz-foldercard').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.dataset.sub) { irACategoria(b.dataset.categoria); irASubcategoria(b.dataset.sub); }
+        else { irACategoria(b.dataset.categoria); }
+      });
+    });
+  }
+
   function renderSearch() {
     var texto = searchState.texto;
     var countEl = document.getElementById('searchResultCount');
@@ -826,8 +949,11 @@
       resultsEl.innerHTML = '';
       moreWrapEl.style.display = 'none';
       emptyEl.style.display = 'none';
+      document.getElementById('searchFolderMatches').style.display = 'none';
       return;
     }
+
+    renderFolderMatches(texto);
 
     var candidatos = ITEMS_VISIBLES.filter(itemPasaFiltros);
     var resultado = buscarItems(candidatos, texto);
@@ -889,6 +1015,7 @@
       cart.push({
         key: key, n_ref: item.n_ref, nombre_item: item.nombre_item, descripcion: item.descripcion,
         categoria_item: item.categoria_item, proyecto: item.proyecto, fecha: item.fecha,
+        hoja: item._clasif.hoja,
         precio_reajustado_hoy: item.precio_reajustado_hoy,
         precio_reajustado_hoy_con_iva: item.precio_reajustado_hoy_con_iva,
         cantidad: cantidad,
@@ -953,7 +1080,7 @@
     listEl.innerHTML = cart.map(function (l) {
       var subtotal = l.cantidad * l.precio_reajustado_hoy_con_iva;
       return '<div class="viz-cart-line" data-key="' + esc(l.key) + '">' +
-        '<div class="cl-title">' + esc(l.nombre_item) + '</div>' +
+        '<div class="cl-title">' + esc(l.hoja || l.nombre_item) + '</div>' +
         '<div class="cl-row"><span>' + esc(l.n_ref) + '</span><span>' + fmt(l.precio_reajustado_hoy_con_iva) + ' c/u</span></div>' +
         '<div class="cl-row"><input type="number" class="cl-qty" min="1" step="1" value="' + l.cantidad + '" /><span>' + fmt(subtotal) + '</span>' +
         '<button type="button" class="cl-removebtn" data-key="' + esc(l.key) + '">Quitar</button></div>' +
@@ -993,9 +1120,9 @@
     var encabezado = ['Elemento', 'Promedio de costo', 'Costo más barato', 'Proveedor más barato', 'Costo actualizado según UF'];
     var lineas = [encabezado.join('\t')];
     cart.forEach(function (l) {
-      var stats = MARKET_STATS[l.nombre_item] || {};
+      var stats = MARKET_STATS[l.hoja] || {};
       lineas.push([
-        limpiarParaTsv(l.nombre_item),
+        limpiarParaTsv(l.hoja || l.nombre_item),
         stats.promedio_con_iva != null ? stats.promedio_con_iva : '',
         stats.precio_min_con_iva != null ? stats.precio_min_con_iva : '',
         limpiarParaTsv(stats.proveedor_min_con_iva || ''),
@@ -1026,50 +1153,96 @@
 
   document.getElementById('btnCopiarTodo').addEventListener('click', copiarTextoExport);
 
-  function renderProductTable() {
-    var sorted = PRODUCT_INDEX.slice().sort(function (a, b) {
-      var av = a[productSort.key], bv = b[productSort.key];
-      var cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
-      return productSort.dir === 'asc' ? cmp : -cmp;
-    });
-    var body = document.getElementById('productTableBody');
-    var empty = document.getElementById('productEmptyState');
-    if (!sorted.length) {
-      body.innerHTML = '';
-      empty.style.display = '';
+  // ---------- explorador de carpetas (categoria > subcategoria > hoja) ----------
+  var folderState = { categoria: null, subcategoria: null, hoja: null };
+
+  function scrollToFolders() {
+    var el = document.getElementById('folderBrowser');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  function irARaizCarpetas() { folderState = { categoria: null, subcategoria: null, hoja: null }; renderFolderBrowser(); }
+  function irACategoria(categoria) { folderState = { categoria: categoria, subcategoria: null, hoja: null }; renderFolderBrowser(); scrollToFolders(); }
+  function irASubcategoria(subcategoria) { folderState.subcategoria = subcategoria; folderState.hoja = null; renderFolderBrowser(); scrollToFolders(); }
+  function irAHoja(hoja) { folderState.hoja = hoja; renderFolderBrowser(); scrollToFolders(); }
+
+  function renderBreadcrumb() {
+    var partes = [{ label: 'Categorías', onClick: irARaizCarpetas }];
+    if (folderState.categoria) partes.push({ label: folderState.categoria, onClick: function () { irACategoria(folderState.categoria); } });
+    if (folderState.subcategoria) partes.push({ label: folderState.subcategoria, onClick: function () { irASubcategoria(folderState.subcategoria); } });
+    if (folderState.hoja) partes.push({ label: folderState.hoja, onClick: null });
+    var el = document.getElementById('folderBreadcrumb');
+    el.innerHTML = partes.map(function (p, i) {
+      return (i > 0 ? '<span class="bc-sep">›</span>' : '') + '<button type="button" class="bc-item" data-i="' + i + '"' + (p.onClick ? '' : ' disabled') + '>' + esc(p.label) + '</button>';
+    }).join('');
+    el.querySelectorAll('.bc-item').forEach(function (btn, i) { if (partes[i].onClick) btn.addEventListener('click', partes[i].onClick); });
+  }
+
+  function renderFolderBrowser() {
+    renderBreadcrumb();
+    var el = document.getElementById('folderBrowser');
+
+    if (!folderState.categoria) {
+      var categorias = Object.keys(CATEGORY_TREE).sort(function (a, b) { return CATEGORY_TREE[b].n_compras - CATEGORY_TREE[a].n_compras; });
+      if (!categorias.length) { el.innerHTML = '<div class="viz-empty-state">Sin categorías indexadas.</div>'; return; }
+      el.innerHTML = '<div class="viz-foldergrid">' + categorias.map(function (c) {
+        var cat = CATEGORY_TREE[c];
+        return '<button type="button" class="viz-foldercard" data-categoria="' + esc(c) + '">' +
+          '<span class="fc-icon">' + (ICONOS_CATEGORIA[c] || '📁') + '</span>' +
+          '<span class="fc-name">' + esc(c) + '</span>' +
+          '<span class="fc-count">' + cat.n_compras + ' compra' + (cat.n_compras === 1 ? '' : 's') + '</span>' +
+          '</button>';
+      }).join('') + '</div>';
+      el.querySelectorAll('.viz-foldercard').forEach(function (b) { b.addEventListener('click', function () { irACategoria(b.dataset.categoria); }); });
       return;
     }
-    empty.style.display = 'none';
-    body.innerHTML = sorted.map(function (p) {
-      return '<tr class="clickable-row" tabindex="0" data-nombre="' + esc(p.nombre_item) + '">' +
-        '<td>' + esc(p.nombre_item) + '</td>' +
-        '<td class="num">' + fmtNum(p.n_compras) + '</td>' +
-        '<td class="num">' + fmt(p.rango_min) + '</td>' +
-        '<td class="num">' + fmt(p.rango_max) + '</td>' +
-        '<td>' + esc(p.proyectos.join(', ')) + '</td>' +
-        '</tr>';
-    }).join('');
-    body.querySelectorAll('tr.clickable-row').forEach(function (tr) {
-      function activar() { runSearch(tr.dataset.nombre); }
-      tr.addEventListener('click', activar);
-      tr.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activar(); } });
-    });
+
+    var cat = CATEGORY_TREE[folderState.categoria];
+    if (!cat) { irARaizCarpetas(); return; }
+
+    if (!folderState.subcategoria) {
+      var subs = Object.keys(cat.subcategorias).sort(function (a, b) { return cat.subcategorias[b].n_compras - cat.subcategorias[a].n_compras; });
+      el.innerHTML = '<div class="viz-foldergrid">' + subs.map(function (s) {
+        var sub = cat.subcategorias[s];
+        return '<button type="button" class="viz-foldercard" data-sub="' + esc(s) + '">' +
+          '<span class="fc-icon">' + (ICONOS_CATEGORIA[folderState.categoria] || '📁') + '</span>' +
+          '<span class="fc-name">' + esc(s) + '</span>' +
+          '<span class="fc-count">' + sub.n_compras + ' compra' + (sub.n_compras === 1 ? '' : 's') + '</span>' +
+          '</button>';
+      }).join('') + '</div>';
+      el.querySelectorAll('.viz-foldercard').forEach(function (b) { b.addEventListener('click', function () { irASubcategoria(b.dataset.sub); }); });
+      return;
+    }
+
+    var sub = cat.subcategorias[folderState.subcategoria];
+    if (!sub) { irACategoria(folderState.categoria); return; }
+
+    if (!folderState.hoja) {
+      var hojas = sub.hojas.slice().sort(function (a, b) { return b.n_compras - a.n_compras; });
+      el.innerHTML = '<div class="viz-leaflist">' + hojas.map(function (h) {
+        return '<button type="button" class="viz-leafrow" data-hoja="' + esc(h.hoja) + '">' +
+          '<span class="lf-name">' + esc(h.hoja) + '</span>' +
+          '<span class="lf-count">' + h.n_compras + ' compra' + (h.n_compras === 1 ? '' : 's') + '</span>' +
+          '<span class="lf-price">desde ' + fmt(h.precio_min_con_iva) + '</span>' +
+          '</button>';
+      }).join('') + '</div>';
+      el.querySelectorAll('.viz-leafrow').forEach(function (b) { b.addEventListener('click', function () { irAHoja(b.dataset.hoja); }); });
+      return;
+    }
+
+    var hoja = MARKET_STATS[folderState.hoja];
+    if (!hoja) { irASubcategoria(folderState.subcategoria); return; }
+    var compras = hoja.compras.slice().sort(function (a, b) { return a.precio_reajustado_hoy_con_iva - b.precio_reajustado_hoy_con_iva; });
+    el.innerHTML =
+      '<div class="viz-searchsummary">' +
+      '<span>Compras: <b>' + hoja.n_compras + '</b></span>' +
+      '<span>Promedio (c/IVA): <b>' + fmt(hoja.promedio_con_iva) + '</b></span>' +
+      '<span>Más barato: <b>' + fmt(hoja.precio_min_con_iva) + '</b> · ' + esc(hoja.proveedor_min_con_iva || 'proveedor no registrado') + '</span>' +
+      '</div>' +
+      '<div class="viz-cardgrid">' + compras.map(function (c) { return renderRefCard(c, '', DATA.items.indexOf(c)); }).join('') + '</div>';
+    try { bindCartButtons(el); } catch (e) { console.error('bindCartButtons failed:', e); }
   }
-  document.querySelectorAll('#productTable thead th[data-key]').forEach(function (th) {
-    th.addEventListener('click', function () {
-      var key = th.dataset.key;
-      if (productSort.key === key) { productSort.dir = productSort.dir === 'asc' ? 'desc' : 'asc'; }
-      else { productSort.key = key; productSort.dir = key === 'nombre_item' ? 'asc' : 'desc'; }
-      document.querySelectorAll('#productTable thead th[data-key]').forEach(function (h) {
-        var arrow = h.querySelector('.arrow');
-        var active = h.dataset.key === productSort.key;
-        arrow.textContent = active ? (productSort.dir === 'asc' ? '▲' : '▼') : '';
-        h.setAttribute('aria-sort', active ? (productSort.dir === 'asc' ? 'ascending' : 'descending') : 'none');
-      });
-      renderProductTable();
-    });
-  });
-  function render() { renderKPIs(); renderProductTable(); }
+
+  function render() { renderKPIs(); renderFolderBrowser(); }
   render();
   } // end initApp
 })();

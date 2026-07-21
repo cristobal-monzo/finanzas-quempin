@@ -9,8 +9,9 @@ módulo. Ver también [`../CLAUDE.md`](../CLAUDE.md) para el detalle completo
 de la lógica de búsqueda difusa y reajuste por UF que este visualizador
 expone.
 
-**Estado: implementación real (2026-07-20).** Este archivo documenta lo que
-efectivamente se construyó — no un borrador de contenido a definir.
+**Estado: implementación real (2026-07-20, ampliada 2026-07-21).** Este
+archivo documenta lo que efectivamente se construyó — no un borrador de
+contenido a definir.
 
 Diseño original completo:
 [`../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md`](../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md).
@@ -133,14 +134,89 @@ descripción dada, no se fuerza ningún chip — la descripción completa
 siempre queda visible como respaldo, nunca se oculta información detrás de
 un chip que no se pudo extraer.
 
-## Gráfico y tabla
+**Limitación conocida de `extraerMarcaModelo`**: al ser "primera palabra
+capitalizada que no sea preposición común", ocasionalmente confunde una
+palabra capitalizada por estar después de un punto (ej. "Precio" al inicio
+de una frase nueva dentro de la descripción) con una marca real. No se ha
+corregido — es la misma clase de imprecisión heurística ya documentada, el
+chip erróneo no oculta la descripción completa, que sigue visible debajo.
 
-- `renderBarChart` dibuja un gráfico de barras SVG hecho a mano (sin
-  librería externa, mismo criterio de "sin fetch" que el resto de la
-  página) para el Top 10 de productos con más compras históricas
-  (`renderTopProductosChart`, ordena `PRODUCT_INDEX` por `n_compras`).
-- `renderProductTable` construye una tabla ordenable por columna sobre
-  `PRODUCT_INDEX` (un ítem indexado agregado por `nombre_item`).
+## Taxonomía y explorador de carpetas (2026-07-21)
+
+El gráfico de Top 10 y la tabla plana "Índice de productos" de la versión
+2026-07-20 se **eliminaron** (pedido explícito del usuario) y se
+reemplazaron por un explorador de carpetas de 3 niveles — **Categoría →
+Subcategoría → Hoja** — que reemplaza la sección "Índice de productos".
+
+- `clasificarItem(item)` — heurística por palabras clave (mismo criterio
+  best-effort que `extraerSpecs`) que asigna a cada ítem: `categoria`
+  (dominio, ej. "Piping Bronce", "Herramientas Eléctricas", "Otros /
+  Servicios" como categoría de respaldo), `material` (Cobre/Bronce/
+  Galvanizado/Inoxidable/PPR, detectado por palabra clave en nombre+
+  descripción), `medida` (misma extracción que antes usaba solo
+  `extraerMedidaFitting`, ahora generalizada a `extraerMedida` — pulgadas
+  con fracción mixta, mm, cm), y las banderas `requiereMaterial`/
+  `requiereMedida` que gatillan la regla de visibilidad de abajo.
+- **`limpiarGenericoDeMaterial`**: el campo "Nombre Ítem" del Excel a veces
+  ya trae el material incluido (ej. "Codo bronce", pese a que la
+  convención documentada en `../CLAUDE.md` pide que sea genérico sin
+  material) — sin esta limpieza, la subcarpeta terminaba diciendo "Codo
+  bronces de Bronce" (duplicado). Se le quita la palabra de material
+  detectada antes de construir subcategoría/hoja.
+- `subcategoriaDe`/`hojaDe` construyen las etiquetas de carpeta: la
+  subcategoría es el genérico pluralizado (+ " de <Material>" si aplica,
+  ej. "Codos de Bronce"); la hoja agrega la medida (ej. "Codo de Bronce 1
+  1/2\""). `pluralizar` es un heurístico simple (vocal final → +s,
+  consonante → +es) — no maneja plurales irregulares del español
+  perfectamente (ej. "Unión americanas" en vez de "Uniones americanas"),
+  aceptado como limitación conocida de una heurística, no un bug a
+  perseguir.
+- **Regla de visibilidad ampliada** (antes solo cubría "fittings" por
+  nombre): tuberías/fittings (`GRUPOS_PIPING`) exigen **medida Y
+  material** — sin material no hay categoría de piping a la que asignarlo,
+  así que el ítem queda fuera del dashboard completo (no solo oculto)
+  hasta que se corrija el dato de origen. Pernos/tornillos/remaches/
+  autoperforantes/soldadura/fundente/electrodos (`GRUPOS_CONSUMIBLE_MEDIDA`)
+  exigen solo medida. El resto de las categorías no exige nada. Pedido
+  explícito del usuario: "una cañería de cobre de 1/2 no es lo mismo que
+  una de 2".
+- `buildLeafIndex`/`MARKET_STATS` agrupan por **hoja** (no por
+  `nombre_item` crudo) — dos codos de bronce de distinta medida nunca se
+  promedian/comparan como si fueran el mismo producto. Cada hoja trae
+  `n_compras`, `promedio_con_iva`, `precio_min_con_iva`,
+  `proveedor_min_con_iva` (con IVA, porque es lo que ve el comprador final
+  — el rango sin IVA de una versión anterior ya no se usa para esta
+  comparación).
+- `buildCategoryTree` arma el árbol navegable; el estado de navegación
+  (`folderState.categoria/subcategoria/hoja`) se renderiza con
+  `renderFolderBrowser` + `renderBreadcrumb` sobre `#folderBrowser`/
+  `#folderBreadcrumb`. Abrir una hoja muestra el resumen agregado
+  (promedio, más barato + proveedor) y reutiliza `renderRefCard` para cada
+  compra individual de esa hoja — incluyendo el "Agregar al cotizador" de
+  cada una.
+- **Iconos por categoría** (`ICONOS_CATEGORIA`) — un emoji plano por
+  categoría, reutilizado entre categorías de piping similares con solo el
+  color/tono cambiando (🟠 Cobre, 🟡 Bronce, ⚪ Inoxidable, ⚙️ Galvanizado),
+  para no inventar un ícono nuevo por cada combinación material/categoría.
+- **Destacado de proveedor más barato**: en cualquier tarjeta de
+  referencia (`renderRefCard`), si su hoja tiene más de una compra y esta
+  tarjeta es la de menor precio con IVA, se le agrega la clase
+  `is-cheapest` + una insignia "💲 Proveedor más barato entre N" — visible
+  tanto en resultados de búsqueda como dentro del detalle de una hoja.
+- **Buscador dual**: `buscarCarpetas(texto)` busca el texto contra los
+  nombres de categoría/subcategoría del árbol (no contra hojas
+  individuales, que ya cubre la búsqueda normal de ítems) y se muestra en
+  una sección aparte ("📁 Categorías encontradas", `#searchFolderMatches`)
+  con ícono de carpeta, claramente separada de "Referencias encontradas" —
+  para que el usuario distinga si el resultado es una carpeta para
+  explorar o un ítem específico.
+
+## Orden del dashboard (2026-07-21)
+
+El buscador (con sus filtros) se movió a la parte superior del panel,
+justo debajo del KPI row — antes estaba después de la tabla/gráfico
+eliminados. El explorador de carpetas quedó como herramienta secundaria de
+navegación, debajo de los resultados de búsqueda.
 
 ## Carrito de cotización — garantía de no-persistencia
 
@@ -153,34 +229,44 @@ a diferencia del tema visual (que sí usa `localStorage`) o del estado de
 nunca se escribe en ningún almacenamiento del navegador.
 
 - Cada tarjeta de resultado tiene un stepper de cantidad + botón "Agregar
-  al carrito" (`bindCartButtons`/`addToCart`); si la referencia ya está en
-  el carrito (`cartKey`, indexado por posición en `DATA.items`), la
-  cantidad se suma a la existente en vez de duplicar la línea.
+  al cotizador" (`bindCartButtons`/`addToCart`; texto del botón cambiado
+  desde "Agregar al carrito" el 2026-07-21, pedido del usuario) — si la
+  referencia ya está en el carrito (`cartKey`, indexado por posición en
+  `DATA.items`), la cantidad se suma a la existente en vez de duplicar la
+  línea. Cada línea guarda también su `hoja` (ver taxonomía arriba), usada
+  por la exportación.
+- El botón flotante que abre el panel usa el ícono 🧾 (recibo) en vez de
+  🛒 (pedido del usuario, 2026-07-21) — el título del panel ("Carrito de
+  cotización") no cambió, solo el ícono y el texto del botón de agregar.
 - El panel lateral (drawer) del carrito (`renderCart`) muestra una línea
   por ítem con cantidad editable, subtotal, botón de quitar
   (`removeFromCart`), y el total general con y sin IVA.
 
 ## Exportación a Excel — textarea + "Copiar todo" (no es descarga de archivo)
 
-El mecanismo real que se implementó es un `<textarea>` de solo lectura
-dentro del drawer del carrito que se actualiza en vivo en cada cambio del
-carrito (cada llamada a `renderCart()` reconstruye su contenido llamando a
+El mecanismo es un `<textarea>` de solo lectura dentro del drawer del
+carrito que se actualiza en vivo en cada cambio del carrito (cada llamada
+a `renderCart()` reconstruye su contenido llamando a
 `construirTextoExport()`), más un botón "Copiar todo" que copia ese texto
 al portapapeles (`navigator.clipboard.writeText`, con fallback a
 `document.execCommand('copy')` sobre el propio textarea si el navegador no
 soporta la API moderna) — **no hay descarga de archivo en ningún punto de
 este flujo.**
 
-`construirTextoExport()` agrupa las líneas del carrito en tres secciones,
-en este orden, cada una con su propio encabezado de columnas separado por
-tabulador y su subtotal: **MATERIALES**, **EQUIPOS**, **OTROS**. El mapeo
-(`seccionParaCategoria`) es: `"Materiales"` → MATERIALES,
-`"Equipos-Herramientas"` → EQUIPOS, cualquier otro valor de
-`categoria_item` (o ausencia de categoría) → OTROS — ninguna línea del
-carrito queda fuera. El texto incluye encabezado con fecha de generación y
-la UF utilizada (la misma fijada en el build), y termina con un
-`TOTAL GENERAL`. Al pegar en Excel/Sheets, los tabs hacen que cada columna
-caiga en su propia celda.
+**Formato de la tabla copiable (rediseñado 2026-07-21, pedido del
+usuario)**: ya no son secciones Materiales/Equipos/Otros con cantidad y
+subtotal — es una tabla comparativa de mercado, una fila por línea del
+carrito, con columnas `Elemento` (la `hoja`, ej. "Codo de Bronce 1
+1/2\""), `Promedio de costo`, `Costo más barato`, `Proveedor más barato`
+(los tres desde `MARKET_STATS[hoja]`, es decir contra **todas** las
+compras históricas de esa hoja exacta, no solo las que trajo la búsqueda
+que la agregó al carrito) y `Costo actualizado según UF` (el precio
+reajustado de la compra específica que el usuario eligió agregar — puede
+diferir del "costo más barato" si el usuario agregó una referencia que no
+es la más económica). La fecha de generación y la UF utilizada **ya no
+van dentro del texto copiable** — se muestran aparte, en `#exportMeta`
+(fuera de la caja de copia), pedido explícito del usuario para que la caja
+sea solo la tabla que se pega en Excel.
 
 ### Por qué no es una descarga de archivo
 
