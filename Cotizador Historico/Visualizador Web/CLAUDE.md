@@ -164,13 +164,22 @@ Subcategoría → Hoja** — que reemplaza la sección "Índice de productos".
   bronces de Bronce" (duplicado). Se le quita la palabra de material
   detectada antes de construir subcategoría/hoja.
 - `subcategoriaDe`/`hojaDe` construyen las etiquetas de carpeta: la
-  subcategoría es el genérico pluralizado (+ " de <Material>" si aplica,
-  ej. "Codos de Bronce"); la hoja agrega la medida (ej. "Codo de Bronce 1
-  1/2\""). `pluralizar` es un heurístico simple (vocal final → +s,
-  consonante → +es) — no maneja plurales irregulares del español
-  perfectamente (ej. "Unión americanas" en vez de "Uniones americanas"),
-  aceptado como limitación conocida de una heurística, no un bug a
-  perseguir.
+  subcategoría es la **primera palabra** del genérico, pluralizada (+ " de
+  <Material>" si aplica, ej. "Codos de Bronce", "Llaves", "Destornilladores")
+  — usar el nombre completo como subcategoría fue el primer intento
+  (2026-07-21) y fragmentaba cada variante en su propia carpeta de 1 ítem
+  (ej. "Destornillador p/electricista PH1x80mm" y "Destornillador PL
+  1000V 4x100mm" quedaban en subcarpetas distintas en vez de agruparse en
+  "Destornilladores"; "Llave francesa"/"Llave ajustable"/"Llave inglesa"
+  no se agrupaban en "Llaves") — corregido el mismo día tras que el
+  usuario lo detectara con datos reales. La hoja usa el genérico completo
+  (no solo la primera palabra) + material/medida, evitando duplicar el
+  material o la medida si ya están contenidos en el nombre (`contieneTexto`).
+  `pluralizar` es un heurístico simple (vocal final → +s, consonante →
+  +es) — no maneja plurales irregulares del español perfectamente (ej.
+  "Setes" en vez de "Sets", "Unión americanas" en vez de "Uniones
+  americanas"), aceptado como limitación conocida de una heurística, no
+  un bug a perseguir.
 - **Regla de visibilidad ampliada** (antes solo cubría "fittings" por
   nombre): tuberías/fittings (`GRUPOS_PIPING`) exigen **medida Y
   material** — sin material no hay categoría de piping a la que asignarlo,

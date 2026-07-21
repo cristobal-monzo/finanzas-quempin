@@ -94,7 +94,12 @@
     font-family: 'Lato', system-ui, -apple-system, "Segoe UI", sans-serif;
     background: var(--page-plane);
     color: var(--text-primary);
-    min-height: 100%;
+    /* 100vh en vez de 100% -- "100%" depende de que el padre (html/body)
+       tenga una altura explicita, que no la tiene. En pantallas de
+       contenido corto (ej. una subcategoria con 1-2 tarjetas) el fondo se
+       encogia al alto del contenido y dejaba una franja del fondo blanco
+       por defecto del documento visible debajo. */
+    min-height: 100vh;
     padding: 0 0 48px 0;
   }
   .viz-container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
@@ -647,7 +652,14 @@
     var material = detectarMaterial(texto);
     var medida = extraerMedida(item.descripcion);
     var generico = limpiarGenericoDeMaterial(nombreOriginal, material);
-    var base = { generico: generico, material: material, medida: medida };
+    // La subcategoria agrupa por la PRIMERA palabra del generico (el tipo
+    // de pieza/herramienta, ej. "Destornillador", "Llave") -- usar el
+    // nombre completo como subcategoria fragmentaba cada variante/medida
+    // en su propia carpeta de 1 solo item (ej. "Destornillador p/
+    // electricista PH1x80mm" y "Destornillador PL 1000V 4x100mm" quedaban
+    // en subcategorias distintas en vez de agruparse en "Destornilladores").
+    var tipoGenerico = generico.split(/\s+/)[0] || generico;
+    var base = { generico: generico, tipoGenerico: tipoGenerico, material: material, medida: medida };
 
     if (contieneAlguna(texto, GRUPOS_PIPING)) {
       return Object.assign(base, {
@@ -675,13 +687,16 @@
   var ITEMS_VISIBLES = DATA.items.filter(function (it) { return esVisible(it._clasif); });
 
   function subcategoriaDe(clasif) {
-    var base = pluralizar(clasif.generico);
+    var base = pluralizar(clasif.tipoGenerico);
     return clasif.material && CATEGORIA_PIPING_POR_MATERIAL[clasif.material] === clasif.categoria ? base + ' de ' + clasif.material : base;
+  }
+  function contieneTexto(haystack, needle) {
+    return String(haystack || '').toLowerCase().replace(/\s+/g, '').indexOf(String(needle || '').toLowerCase().replace(/\s+/g, '')) !== -1;
   }
   function hojaDe(clasif) {
     var partes = [clasif.generico];
-    if (clasif.material) partes.push('de ' + clasif.material);
-    if (clasif.medida) partes.push(clasif.medida);
+    if (clasif.material && !contieneTexto(clasif.generico, clasif.material)) partes.push('de ' + clasif.material);
+    if (clasif.medida && !contieneTexto(clasif.generico, clasif.medida)) partes.push(clasif.medida);
     return partes.join(' ');
   }
   ITEMS_VISIBLES.forEach(function (it) {
