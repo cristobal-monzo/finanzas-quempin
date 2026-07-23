@@ -804,6 +804,7 @@ def ejecutar(
     ruta_excel_cc: Path = RUTA_EXCEL_CENTRO_COSTOS,
     raiz_facturas_cc: Path = RAIZ_FACTURAS_CENTRO_COSTOS,
     raiz_respaldos: Path = RAIZ_RESPALDOS,
+    ruta_clientes_pendientes: Path = RUTA_CLIENTES_PENDIENTES,
     dry_run: bool = False,
 ) -> dict:
     """Orquesta todo el flujo. Con dry_run=True no escribe nada -- ni backup,
@@ -811,7 +812,10 @@ def ejecutar(
     comando 'status' del skill). Captura PermissionError/OSError de operaciones
     de archivo (backup, carpetas, save); excepciones de lectura de datos
     propagarán hacia afuera."""
-    resumen = {"avisos": [], "carpetas_creadas": [], "categorias_no_mapeadas": [], "error": None}
+    resumen = {
+        "avisos": [], "carpetas_creadas": [], "categorias_no_mapeadas": [],
+        "clientes_pendientes": [], "error": None,
+    }
 
     wb = asegurar_estructura_workbook(ruta_excel_af)
     ws_proyectos = wb[HOJA_PROYECTOS]
@@ -858,8 +862,14 @@ def ejecutar(
             categorias_no_mapeadas.add(subcategoria)
     resumen["categorias_no_mapeadas"] = sorted(categorias_no_mapeadas)
 
+    resumen["clientes_pendientes"] = asegurar_columna_cliente(
+        ws_proyectos, filas_validas, ruta_clientes_pendientes
+    )
+
     asegurar_formulas_proyectos(ws_proyectos, filas_validas)
     asegurar_hoja_indicadores(wb, filas_validas)
+    asegurar_hoja_clientes(wb, filas_validas, ws_proyectos)
+    asegurar_hoja_glosario_kpis(wb)
     aplicar_estilo_visual(wb)
 
     try:
@@ -879,6 +889,11 @@ def main() -> None:
         print(
             "Categorías sin mapeo explícito (van a 'Otros'): "
             + ", ".join(resumen["categorias_no_mapeadas"])
+        )
+    if resumen["clientes_pendientes"]:
+        print(
+            f"[AVISO] {len(resumen['clientes_pendientes'])} cliente(s) nuevo(s) parecido(s) "
+            "a uno existente -- revisar con 'python driver.py confirmar-cliente'."
         )
     for aviso in resumen["avisos"]:
         print(f"[AVISO] {aviso}")
