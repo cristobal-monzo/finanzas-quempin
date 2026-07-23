@@ -44,6 +44,27 @@ def test_no_toca_una_hoja_proyectos_que_ya_existe(tmp_path):
     assert ws.cell(row=2, column=1).value == "UMAG"
 
 
+def test_agrega_encabezados_nuevos_a_una_hoja_existente_sin_tocar_los_viejos(tmp_path):
+    ruta = tmp_path / "Análisis de Proyectos.xlsx"
+    wb_previo = openpyxl.Workbook()
+    ws_previo = wb_previo.active
+    ws_previo.title = af.HOJA_PROYECTOS
+    # Simula un archivo real creado ANTES de que existiera la columna
+    # "Cliente" -- solo tiene los 19 headers originales, no el 20.
+    for col, encabezado in enumerate(af.HEADERS_PROYECTOS[:19], start=1):
+        ws_previo.cell(row=1, column=col, value=encabezado)
+    ws_previo.cell(row=2, column=1, value="UMAG")
+    ws_previo.cell(row=2, column=2, value="UMAG")
+    wb_previo.save(ruta)
+
+    wb = af.asegurar_estructura_workbook(ruta)
+
+    ws = wb[af.HOJA_PROYECTOS]
+    assert ws.cell(row=1, column=1).value == "TAG proyecto"
+    assert ws.cell(row=1, column=20).value == "Cliente"
+    assert ws.cell(row=2, column=1).value == "UMAG"
+
+
 def test_hoja_proyectos_incluye_columna_cliente_al_final(tmp_path):
     ruta = tmp_path / "Análisis de Proyectos.xlsx"
     wb = af.asegurar_estructura_workbook(ruta)

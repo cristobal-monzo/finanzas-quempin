@@ -206,10 +206,14 @@ def aplicar_estilo_visual(wb) -> None:
 
 
 def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
-    """Abre ruta_excel si existe, o crea un libro nuevo. Garantiza que las 3
+    """Abre ruta_excel si existe, o crea un libro nuevo. Garantiza que las 5
     hojas existan con encabezados en la fila 1 -- si una hoja ya existe, no
-    la toca (regla de oro: no reescribir datos ya presentes). Elimina hojas
-    default vacías ("Hoja1"/"Sheet") si quedaron de un libro recién creado."""
+    toca sus datos (regla de oro: no reescribir datos ya presentes), pero sí
+    completa encabezados nuevos que se hayan agregado al final del esquema
+    en una versión más reciente del script (ej. "Cliente" en un archivo real
+    creado antes de que esa columna existiera) -- nunca pisa un encabezado ya
+    escrito, solo llena celdas de encabezado vacías. Elimina hojas default
+    vacías ("Hoja1"/"Sheet") si quedaron de un libro recién creado."""
     if ruta_excel.exists():
         wb = openpyxl.load_workbook(ruta_excel)
     else:
@@ -222,9 +226,9 @@ def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
         (HOJA_CLIENTES, HEADERS_CLIENTES),
         (HOJA_GLOSARIO_KPIS, HEADERS_GLOSARIO_KPIS),
     ):
-        if nombre_hoja not in wb.sheetnames:
-            ws = wb.create_sheet(nombre_hoja)
-            for col, encabezado in enumerate(headers, start=1):
+        ws = wb[nombre_hoja] if nombre_hoja in wb.sheetnames else wb.create_sheet(nombre_hoja)
+        for col, encabezado in enumerate(headers, start=1):
+            if ws.cell(row=1, column=col).value is None:
                 ws.cell(row=1, column=col, value=encabezado)
 
     for nombre_default in ("Hoja1", "Sheet"):
