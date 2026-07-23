@@ -501,18 +501,20 @@ def asegurar_categoria_proyectos(
     'columna' -- quien llama la calcula desde HEADERS_PROYECTOS, nunca
     hardcodeada acá) desde categoria_por_prefijo -- valor plano, no fórmula
     (no hay agregación posible, es un lookup 1 a 1). Si un proyecto no tiene
-    ningún documento en Centro de Costos todavía, no escribe nada y avisa."""
+    ningún documento en Centro de Costos todavía, limpia la celda y avisa."""
     avisos = []
     for fila_info in filas_validas:
         prefijo = fila_info["tag"]
         categoria = categoria_por_prefijo.get(prefijo)
+        cell = ws_proyectos.cell(row=fila_info["fila"], column=columna)
         if categoria is None:
             avisos.append(
                 f"Proyecto '{fila_info['nombre']}' ({prefijo}) sin documentos en "
                 f"Centro de Costos todavía -- Categoría queda vacía."
             )
+            cell.value = None
             continue
-        ws_proyectos.cell(row=fila_info["fila"], column=columna, value=categoria)
+        cell.value = categoria
     return avisos
 
 

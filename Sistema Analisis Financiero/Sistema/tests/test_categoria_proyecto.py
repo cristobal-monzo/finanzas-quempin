@@ -73,3 +73,31 @@ def test_asegurar_categoria_proyectos_escribe_valor_y_avisa_si_falta(tmp_path):
     assert ws.cell(row=3, column=col_categoria).value is None
     assert len(avisos) == 1
     assert "MLER" in avisos[0]
+
+
+def test_asegurar_categoria_proyectos_limpia_celda_obsoleta(tmp_path):
+    """Cuando un proyecto pierde sus documentos en Centro de Costos,
+    la celda Categoría debe limpiarse (None), no quedar con valor stale."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Proyectos"
+    ws.cell(row=1, column=1, value="TAG proyecto")
+    ws.cell(row=2, column=1, value="UMAG")
+    col_categoria = 5
+    # Simular una ejecución anterior donde UMAG tenía categoría
+    ws.cell(row=2, column=col_categoria, value="I+D+i")
+
+    filas_validas = [
+        {"fila": 2, "tag": "UMAG", "nombre": "UMAG"},
+    ]
+    # En esta ejecución, UMAG ya no aparece en categoria_por_prefijo
+    # (p. ej., todos sus documentos fueron eliminados o reclasificados)
+    avisos = af.asegurar_categoria_proyectos(
+        ws, filas_validas, {}, columna=col_categoria,
+    )
+
+    # La celda debe ser limpiada, no quedarse con el valor "I+D+i"
+    assert ws.cell(row=2, column=col_categoria).value is None
+    assert len(avisos) == 1
+    assert "UMAG" in avisos[0]
+    assert "Categoría queda vacía" in avisos[0]
