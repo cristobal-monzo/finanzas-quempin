@@ -36,6 +36,8 @@ RAIZ_FACTURAS_CENTRO_COSTOS = (
 HOJA_PROYECTOS = "Proyectos"
 HOJA_DETALLE_COSTOS_REALES = "Detalle Costos Reales"
 HOJA_INDICADORES = "Indicadores"
+HOJA_CLIENTES = "Clientes"
+HOJA_GLOSARIO_KPIS = "Glosario KPIs"
 
 HEADERS_PROYECTOS = [
     "TAG proyecto", "Nombre del proyecto", "Estado", "Fecha de inicio",
@@ -45,7 +47,7 @@ HEADERS_PROYECTOS = [
     "Costos Materiales Reales", "Costos Equipos Reales",
     "Otros Costos Reales", "Mano de Obra Real", "Total Proyectado",
     "Total Real", "Margen Proyectado", "Margen Real",
-    "Desviación % (Real vs Proyectado)",
+    "Desviación % (Real vs Proyectado)", "Cliente",
 ]
 HEADERS_DETALLE_COSTOS_REALES = ["TAG proyecto", "Subcategoría", "Bucket", "Total sin IVA"]
 HEADERS_INDICADORES = [
@@ -54,7 +56,16 @@ HEADERS_INDICADORES = [
     "Productividad MO", "Productividad Otros", "Costo Materiales % de venta",
     "Costo Equipos % de venta", "Costo MO % de venta", "Costo Otros % de venta",
     "Desviación % Materiales", "Desviación % Equipos", "Desviación % MO",
-    "Desviación % Otros",
+    "Desviación % Otros", "Nota del Proyecto", "Evaluación",
+]
+HEADERS_CLIENTES = [
+    "Cliente", "AOV (Valor promedio de venta)",
+    "Vida del cliente (n° de proyectos)", "Meses activo",
+    "Frecuencia de compra (proyectos/año)", "Margen de utilidad %", "CLTV",
+    "Clasificación",
+]
+HEADERS_GLOSARIO_KPIS = [
+    "KPI", "Por qué importa", "Qué elementos usa", "Qué significa el resultado",
 ]
 
 
@@ -180,6 +191,8 @@ def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
         (HOJA_PROYECTOS, HEADERS_PROYECTOS),
         (HOJA_DETALLE_COSTOS_REALES, HEADERS_DETALLE_COSTOS_REALES),
         (HOJA_INDICADORES, HEADERS_INDICADORES),
+        (HOJA_CLIENTES, HEADERS_CLIENTES),
+        (HOJA_GLOSARIO_KPIS, HEADERS_GLOSARIO_KPIS),
     ):
         if nombre_hoja not in wb.sheetnames:
             ws = wb.create_sheet(nombre_hoja)

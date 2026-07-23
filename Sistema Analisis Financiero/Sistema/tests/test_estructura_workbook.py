@@ -42,3 +42,41 @@ def test_no_toca_una_hoja_proyectos_que_ya_existe(tmp_path):
 
     ws = wb[af.HOJA_PROYECTOS]
     assert ws.cell(row=2, column=1).value == "UMAG"
+
+
+def test_hoja_proyectos_incluye_columna_cliente_al_final(tmp_path):
+    ruta = tmp_path / "Análisis de Proyectos.xlsx"
+    wb = af.asegurar_estructura_workbook(ruta)
+
+    ws = wb[af.HOJA_PROYECTOS]
+    assert ws.cell(row=1, column=20).value == "Cliente"
+
+
+def test_hoja_indicadores_incluye_nota_y_evaluacion(tmp_path):
+    ruta = tmp_path / "Análisis de Proyectos.xlsx"
+    wb = af.asegurar_estructura_workbook(ruta)
+
+    ws = wb[af.HOJA_INDICADORES]
+    assert ws.cell(row=1, column=17).value == "Nota del Proyecto"
+    assert ws.cell(row=1, column=18).value == "Evaluación"
+
+
+def test_crea_hoja_clientes_con_encabezados(tmp_path):
+    ruta = tmp_path / "Análisis de Proyectos.xlsx"
+    wb = af.asegurar_estructura_workbook(ruta)
+
+    assert af.HOJA_CLIENTES in wb.sheetnames
+    ws = wb[af.HOJA_CLIENTES]
+    assert ws.cell(row=1, column=1).value == "Cliente"
+    assert ws.cell(row=1, column=7).value == "CLTV"
+    assert ws.cell(row=1, column=8).value == "Clasificación"
+
+
+def test_crea_hoja_glosario_kpis_con_encabezados(tmp_path):
+    ruta = tmp_path / "Análisis de Proyectos.xlsx"
+    wb = af.asegurar_estructura_workbook(ruta)
+
+    assert af.HOJA_GLOSARIO_KPIS in wb.sheetnames
+    ws = wb[af.HOJA_GLOSARIO_KPIS]
+    assert ws.cell(row=1, column=1).value == "KPI"
+    assert ws.cell(row=1, column=4).value == "Qué significa el resultado"
