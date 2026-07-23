@@ -38,19 +38,30 @@ Chromium headless para HTML→PDF, reutiliza el binario ya cacheado en
   obsolescencia (`estado_reportes.py`) solo detecta y marca reportes
   pendientes — nunca dispara redacción ni renderizado por sí solo.
 - **PDFs se guardan en** `Análisis Financiero/Reportes/{Proyectos,Clientes,Categorías,Comparativas}/`.
-- **⚠️ Dependencia de sesión concurrente (2026-07-21):** las Tareas 1 y 4 de
-  este plan requieren que
-  [`docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md`](../plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md)
-  (columna "Cliente" real con derivación fuzzy-match, hoja "Clientes"/CLTV,
-  "Nota del Proyecto") esté **completamente** ejecutado en `master` — al
-  escribir este plan solo su Tarea 1 (esqueleto de columnas/hojas) estaba
-  commiteada (`283fd5e`), y **otra sesión del usuario lo está completando en
-  paralelo** en el worktree `.claude/worktrees/analisis-financiero-nota-clientes`.
-  Antes de dispatchar la Tarea 1 o la Tarea 4 de ESTE plan, correr
-  `git log --oneline -20 -- "Sistema Analisis Financiero/Sistema/analisis_financiero.py"`
-  en `master` y confirmar que ya existen fórmulas reales de CLTV/Nota del
-  Proyecto (no solo el esqueleto) — si no, esperar a que esa sesión termine
-  antes de tocar ese archivo, para no generar conflictos de merge.
+- **Sin reporte si faltan datos manuales**: un proyecto sin todos sus campos
+  manuales requeridos (`Estado`, `Fecha de inicio`, `Monto de Venta (sin
+  IVA)`, los 4 costos proyectados, `Mano de Obra Real`) no genera ningún
+  reporte propio y se excluye de los agregados de cliente/categoría —
+  `Fecha de cierre` queda explícitamente fuera de este chequeo (ver punto
+  siguiente).
+- **Proyectos "en desarrollo"**: sin `Fecha de cierre`, o con una fecha
+  posterior a la fecha real actual, el proyecto sí genera reporte (si el
+  resto de sus datos está completo) pero marcado `en_desarrollo: true` para
+  que el agente incluya un indicador visual explícito.
+- **✅ Prerrequisito resuelto (2026-07-21):** el plan de Cliente/CLTV
+  (`docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md`)
+  ya está completamente ejecutado y mergeado en `master` (commits
+  `db070a9`..`ff95f6d`). **Con una diferencia importante frente al spec
+  original**: la implementación real puso `"Cliente"` como **3ª columna**
+  de `HEADERS_PROYECTOS` (después de `"Nombre del proyecto"`, antes de
+  `"Estado"`), no al final como se planeaba — y agregó un dict
+  `LETRA_COL_PROYECTOS = {nombre_columna: letra}` (vía
+  `openpyxl.utils.get_column_letter`) que las fórmulas usan para no
+  hardcodear letras nunca. Las Tareas 1 y 4 de este plan ya están escritas
+  contra el orden real de columnas (verificado en `master` antes de
+  redactarlas) — sigue usando `HEADERS_PROYECTOS.index(nombre) + 1` o
+  `LETRA_COL_PROYECTOS[nombre]` en vez de números de columna hardcodeados,
+  igual que el resto del archivo.
 
 ---
 
@@ -62,7 +73,7 @@ Chromium headless para HTML→PDF, reutiliza el binario ya cacheado en
 
 **Interfaces:**
 - Consumes: `HOJA_PROYECTOS`, `RUTA_EXCEL_CENTRO_COSTOS`, `leer_filas_proyectos(ws) -> tuple[list[dict], list[str]]` (cada dict tiene claves `fila`, `tag`, `nombre`), `prefijo_de_n_ref(n_ref: str) -> str` — ya existentes en el archivo.
-- Produces: `leer_tipo_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]` (prefijo → tipo_proyecto más frecuente), `asegurar_categoria_proyectos(ws_proyectos, filas_validas: list[dict], categoria_por_prefijo: dict[str, str]) -> list[str]` (avisos). `HEADERS_PROYECTOS` con `"Categoría"` agregada al final (después de `"Cliente"`, columna 21 = U — asumiendo que la Tarea 1 del plan de Cliente/CLTV ya dejó `"Cliente"` como columna 20 = T; si no, ver la nota de dependencia en Global Constraints antes de empezar).
+- Produces: `leer_tipo_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]` (prefijo → tipo_proyecto más frecuente), `asegurar_categoria_proyectos(ws_proyectos, filas_validas: list[dict], categoria_por_prefijo: dict[str, str], columna: int) -> list[str]` (avisos). `HEADERS_PROYECTOS` con `"Categoría"` agregada **al final** de la lista real actual (verificado en `master`: 20 encabezados, terminando en `"Desviación % (Real vs Proyectado)"` — `"Cliente"` ya quedó como 3ª columna, no al final; `"Categoría"` sí se agrega al final porque es la única columna nueva que aporta este plan). Nunca hardcodear el número de columna — siempre `HEADERS_PROYECTOS.index("Categoría") + 1` (o el parámetro `columna` recibido).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -92,10 +103,6 @@ def _crear_excel_cc_con_tipo_proyecto(tmp_path, filas):
     ruta = tmp_path / "Centro de Costos.xlsx"
     wb.save(ruta)
     return ruta
-
-
-def test_leer_tipo_proyecto_toma_el_mas_frecuente_por_prefijo():
-    ruta = _crear_excel_cc_con_tipo_proyecto(None, []) if False else None
 
 
 def test_leer_tipo_proyecto_lee_un_solo_valor_por_proyecto(tmp_path):
@@ -134,7 +141,7 @@ def test_asegurar_categoria_proyectos_escribe_valor_y_avisa_si_falta(tmp_path):
     ws.cell(row=1, column=1, value="TAG proyecto")
     ws.cell(row=2, column=1, value="UMAG")
     ws.cell(row=3, column=1, value="MLER")
-    col_categoria = 21
+    col_categoria = 5  # columna arbitraria de prueba, no depende del archivo real
     filas_validas = [
         {"fila": 2, "tag": "UMAG", "nombre": "UMAG"},
         {"fila": 3, "tag": "MLER", "nombre": "Microturbina LER"},
@@ -148,15 +155,11 @@ def test_asegurar_categoria_proyectos_escribe_valor_y_avisa_si_falta(tmp_path):
     assert "MLER" in avisos[0]
 ```
 
-(La primera función `test_leer_tipo_proyecto_toma_el_mas_frecuente_por_prefijo`
-es un placeholder inerte de la extracción — bórrala, no la dejes en el
-archivo; quedó solo para mostrar el patrón del helper `_crear_excel_cc_con_tipo_proyecto`
-antes de los tests reales de abajo.)
-
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `cd "Sistema Analisis Financiero/Sistema" && python -m pytest tests/test_categoria_proyecto.py -v`
 Expected: FAIL — `AttributeError: module 'analisis_financiero' has no attribute 'leer_tipo_proyecto_centro_costos'`
+(4 tests en total: 3 de `leer_tipo_proyecto_centro_costos` + 1 de `asegurar_categoria_proyectos`)
 
 - [ ] **Step 3: Add `leer_tipo_proyecto_centro_costos` and `asegurar_categoria_proyectos`**
 
@@ -194,12 +197,13 @@ def leer_tipo_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]:
 
 def asegurar_categoria_proyectos(
     ws_proyectos, filas_validas: list[dict], categoria_por_prefijo: dict[str, str],
-    columna: int = 21,
+    columna: int,
 ) -> list[str]:
-    """Escribe la 'Categoría' (columna 21 = U por defecto) de cada fila válida
-    desde categoria_por_prefijo -- valor plano, no fórmula (no hay agregación
-    posible, es un lookup 1 a 1). Si un proyecto no tiene ningún documento en
-    Centro de Costos todavía, no escribe nada y avisa."""
+    """Escribe la 'Categoría' de cada fila válida (columna indicada por
+    'columna' -- quien llama la calcula desde HEADERS_PROYECTOS, nunca
+    hardcodeada acá) desde categoria_por_prefijo -- valor plano, no fórmula
+    (no hay agregación posible, es un lookup 1 a 1). Si un proyecto no tiene
+    ningún documento en Centro de Costos todavía, no escribe nada y avisa."""
     avisos = []
     for fila_info in filas_validas:
         prefijo = fila_info["tag"]
@@ -214,8 +218,10 @@ def asegurar_categoria_proyectos(
     return avisos
 ```
 
-Extender `HEADERS_PROYECTOS` (agregar `"Categoría"` al final de la lista,
-después de `"Cliente"` que ya agregó el plan de Cliente/CLTV).
+Extender `HEADERS_PROYECTOS` agregando `"Categoría"` al final de la lista
+real actual (después de `"Desviación % (Real vs Proyectado)"` — la lista
+real hoy tiene 20 encabezados con `"Cliente"` ya como 3ª columna, agregada
+por el plan de Cliente/CLTV; `"Categoría"` pasa a ser el 21°).
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -229,15 +235,16 @@ y antes de `asegurar_hoja_indicadores(wb, filas_validas)`, agregar:
 
 ```python
     tipos_por_prefijo = leer_tipo_proyecto_centro_costos(ruta_excel_cc)
+    col_categoria = HEADERS_PROYECTOS.index("Categoría") + 1
     resumen["avisos"].extend(
-        asegurar_categoria_proyectos(ws_proyectos, filas_validas, tipos_por_prefijo)
+        asegurar_categoria_proyectos(ws_proyectos, filas_validas, tipos_por_prefijo, col_categoria)
     )
 ```
 
 - [ ] **Step 6: Run the full test suite to check for regressions**
 
 Run: `cd "Sistema Analisis Financiero/Sistema" && python -m pytest -v`
-Expected: PASS — todos los tests existentes siguen pasando, más los 5 nuevos.
+Expected: PASS — todos los tests existentes siguen pasando, más los 4 nuevos.
 
 - [ ] **Step 7: Commit**
 
@@ -653,10 +660,6 @@ git commit -m "feat(analisis-financiero): motor de renderizado HTML a PDF via Ch
 
 ## Task 4: Paquetes de datos de reporte (proyecto/cliente/categoría/comparación)
 
-**⚠️ No empezar esta tarea sin antes verificar la nota de dependencia de
-Global Constraints** (columna "Cliente" real + hoja "Clientes"/CLTV deben
-estar completas en `master`, no solo el esqueleto).
-
 **Files:**
 - Create: `Sistema Analisis Financiero/Reportes/datos_reportes.py`
 - Test: `Sistema Analisis Financiero/Reportes/tests/test_datos_reportes.py` (create)
@@ -665,52 +668,73 @@ estar completas en `master`, no solo el esqueleto).
 - Consumes: `RUTA_EXCEL`, `HOJA_PROYECTOS`, `HOJA_INDICADORES`, `HOJA_CLIENTES`
   desde `analisis_financiero` (import cruzado vía `sys.path`, mismo patrón que
   `Centro de Costos/Sistema/auditor_centro_costos.py:actualizar_analisis_financiero`).
-- Produces: `paquete_datos_proyecto(ruta_excel: Path, tag: str) -> dict`,
+- Produces: `DatosIncompletosError` (subclase de `ValueError`),
+  `proyecto_tiene_datos_completos(proyecto: dict) -> bool`,
+  `proyecto_esta_en_desarrollo(proyecto: dict, hoy: date | None = None) -> bool`,
+  `paquete_datos_proyecto(ruta_excel: Path, tag: str) -> dict` (incluye clave
+  `"en_desarrollo": bool`; lanza `DatosIncompletosError` si el proyecto no
+  tiene todos sus campos manuales requeridos),
   `paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str) -> dict`,
-  `paquete_datos_categoria(ruta_excel: Path, categoria: str) -> dict`,
+  `paquete_datos_categoria(ruta_excel: Path, categoria: str) -> dict` (ambas
+  excluyen silenciosamente del agregado los proyectos incompletos, vía
+  `proyecto_tiene_datos_completos`),
   `paquete_datos_comparacion(ruta_excel: Path, entidades: list[tuple[str, str]]) -> dict`
   (cada tupla es `(tipo, identificador)` con `tipo` en `{"proyecto", "cliente", "categoria"}`).
   Task 5 (`estado_reportes.py`) consume los dicts que devuelven estas 4
-  funciones para calcular su hash; el agente los consume para redactar HTML.
+  funciones para calcular su hash; el agente los consume para redactar HTML
+  (incluyendo el indicador visual de `en_desarrollo`, ver spec §6).
 
 - [ ] **Step 1: Write the failing tests**
 
 ```python
 # -*- coding: utf-8 -*-
+from datetime import date
+
 import openpyxl
 import pytest
 
 import datos_reportes as dr
 
+HEADERS_PROYECTOS_TEST = [
+    "TAG proyecto", "Nombre del proyecto", "Cliente", "Estado",
+    "Fecha de inicio", "Fecha de cierre", "Monto de Venta (sin IVA)",
+    "Costos Materiales Proyectados", "Costos Equipos Proyectados",
+    "Mano de Obra Proyectada", "Otros Costos Proyectados",
+    "Costos Materiales Reales", "Costos Equipos Reales",
+    "Otros Costos Reales", "Mano de Obra Real", "Total Proyectado",
+    "Total Real", "Margen Proyectado", "Margen Real",
+    "Desviación % (Real vs Proyectado)", "Categoría",
+]  # mismo orden real que master (Cliente es la 3a columna, Categoria la ultima)
 
-def _crear_excel_af_minimo(tmp_path):
+
+def _fila_proyecto_completa(**overrides) -> dict:
+    """Fila 'feliz' con todos los campos manuales requeridos cargados --
+    los tests parten de esto y sobreescriben lo que quieran romper/variar."""
+    base = {
+        "TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "UMAG",
+        "Estado": "Activo", "Fecha de inicio": date(2026, 1, 10),
+        "Fecha de cierre": None, "Monto de Venta (sin IVA)": 1000000,
+        "Costos Materiales Proyectados": 100000, "Costos Equipos Proyectados": 100000,
+        "Mano de Obra Proyectada": 100000, "Otros Costos Proyectados": 100000,
+        "Costos Materiales Reales": 90000, "Costos Equipos Reales": 90000,
+        "Otros Costos Reales": 90000, "Mano de Obra Real": 90000,
+        "Total Proyectado": 400000, "Total Real": 360000,
+        "Margen Proyectado": 600000, "Margen Real": 640000,
+        "Desviación % (Real vs Proyectado)": -0.1, "Categoría": "I+D+i",
+    }
+    base.update(overrides)
+    return base
+
+
+def _crear_excel_af(tmp_path, filas_proyectos: list[dict], filas_clientes: list[dict] | None = None):
     wb = openpyxl.Workbook()
     ws_p = wb.active
     ws_p.title = "Proyectos"
-    headers_p = [
-        "TAG proyecto", "Nombre del proyecto", "Estado", "Fecha de inicio",
-        "Fecha de cierre", "Monto de Venta (sin IVA)",
-        "Costos Materiales Proyectados", "Costos Equipos Proyectados",
-        "Mano de Obra Proyectada", "Otros Costos Proyectados",
-        "Costos Materiales Reales", "Costos Equipos Reales",
-        "Otros Costos Reales", "Mano de Obra Real", "Total Proyectado",
-        "Total Real", "Margen Proyectado", "Margen Real",
-        "Desviación % (Real vs Proyectado)", "Cliente", "Categoría",
-    ]
-    for col, h in enumerate(headers_p, start=1):
+    for col, h in enumerate(HEADERS_PROYECTOS_TEST, start=1):
         ws_p.cell(row=1, column=col, value=h)
-    ws_p.cell(row=2, column=1, value="UMAG")
-    ws_p.cell(row=2, column=2, value="UMAG")
-    ws_p.cell(row=2, column=6, value=1000000)
-    ws_p.cell(row=2, column=18, value=200000)
-    ws_p.cell(row=2, column=20, value="UMAG")
-    ws_p.cell(row=2, column=21, value="I+D+i")
-    ws_p.cell(row=3, column=1, value="CFLI")
-    ws_p.cell(row=3, column=2, value="Cesfam Limache")
-    ws_p.cell(row=3, column=6, value=500000)
-    ws_p.cell(row=3, column=18, value=50000)
-    ws_p.cell(row=3, column=20, value="Cesfam Limache")
-    ws_p.cell(row=3, column=21, value="Mantenimiento")
+    for fila_idx, fila in enumerate(filas_proyectos, start=2):
+        for col, h in enumerate(HEADERS_PROYECTOS_TEST, start=1):
+            ws_p.cell(row=fila_idx, column=col, value=fila.get(h))
 
     ws_i = wb.create_sheet("Indicadores")
     headers_i = ["TAG proyecto", "Nombre del proyecto", "Rentabilidad sobre costo", "Margen neto %"]
@@ -724,33 +748,64 @@ def _crear_excel_af_minimo(tmp_path):
     headers_c = ["Cliente", "AOV (Valor promedio de venta)", "CLTV", "Clasificación"]
     for col, h in enumerate(headers_c, start=1):
         ws_c.cell(row=1, column=col, value=h)
-    ws_c.cell(row=2, column=1, value="UMAG")
-    ws_c.cell(row=2, column=2, value=1000000)
-    ws_c.cell(row=2, column=3, value=200000)
-    ws_c.cell(row=2, column=4, value="Clientes estratégicos")
+    for fila_idx, fila in enumerate(filas_clientes or [], start=2):
+        for col, h in enumerate(headers_c, start=1):
+            ws_c.cell(row=fila_idx, column=col, value=fila.get(h))
 
     ruta = tmp_path / "Análisis de Proyectos.xlsx"
     wb.save(ruta)
     return ruta
 
 
-def test_paquete_datos_proyecto_incluye_proyecto_e_indicadores(tmp_path):
-    ruta = _crear_excel_af_minimo(tmp_path)
+def test_paquete_datos_proyecto_incluye_proyecto_indicadores_y_en_desarrollo(tmp_path):
+    ruta = _crear_excel_af(
+        tmp_path,
+        [_fila_proyecto_completa()],  # Fecha de cierre = None -> en desarrollo
+        [{"Cliente": "UMAG", "AOV (Valor promedio de venta)": 1000000, "CLTV": 200000, "Clasificación": "Clientes estratégicos"}],
+    )
     paquete = dr.paquete_datos_proyecto(ruta, "UMAG")
     assert paquete["tipo"] == "proyecto"
-    assert paquete["proyecto"]["Nombre del proyecto"] == "UMAG"
     assert paquete["proyecto"]["Categoría"] == "I+D+i"
     assert paquete["indicadores"]["Margen neto %"] == 0.2
+    assert paquete["en_desarrollo"] is True
+
+
+def test_paquete_datos_proyecto_en_desarrollo_false_si_fecha_de_cierre_ya_paso(tmp_path):
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_proyecto_completa(**{"Fecha de cierre": date(2020, 1, 1)}),
+    ])
+    paquete = dr.paquete_datos_proyecto(ruta, "UMAG")
+    assert paquete["en_desarrollo"] is False
 
 
 def test_paquete_datos_proyecto_lanza_valueerror_si_no_existe(tmp_path):
-    ruta = _crear_excel_af_minimo(tmp_path)
+    ruta = _crear_excel_af(tmp_path, [_fila_proyecto_completa()])
     with pytest.raises(ValueError):
         dr.paquete_datos_proyecto(ruta, "NOEXISTE")
 
 
+def test_paquete_datos_proyecto_lanza_datosincompletos_si_falta_un_campo_manual(tmp_path):
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_proyecto_completa(**{"Mano de Obra Real": None}),
+    ])
+    with pytest.raises(dr.DatosIncompletosError):
+        dr.paquete_datos_proyecto(ruta, "UMAG")
+
+
+def test_paquete_datos_proyecto_no_requiere_fecha_de_cierre_para_estar_completo(tmp_path):
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_proyecto_completa(**{"Fecha de cierre": None}),
+    ])
+    paquete = dr.paquete_datos_proyecto(ruta, "UMAG")  # no lanza DatosIncompletosError
+    assert paquete["en_desarrollo"] is True
+
+
 def test_paquete_datos_cliente_incluye_cltv_y_sus_proyectos(tmp_path):
-    ruta = _crear_excel_af_minimo(tmp_path)
+    ruta = _crear_excel_af(
+        tmp_path,
+        [_fila_proyecto_completa()],
+        [{"Cliente": "UMAG", "AOV (Valor promedio de venta)": 1000000, "CLTV": 200000, "Clasificación": "Clientes estratégicos"}],
+    )
     paquete = dr.paquete_datos_cliente(ruta, "UMAG")
     assert paquete["tipo"] == "cliente"
     assert paquete["cltv"]["CLTV"] == 200000
@@ -759,21 +814,47 @@ def test_paquete_datos_cliente_incluye_cltv_y_sus_proyectos(tmp_path):
 
 
 def test_paquete_datos_categoria_agrupa_por_categoria(tmp_path):
-    ruta = _crear_excel_af_minimo(tmp_path)
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_proyecto_completa(),
+        _fila_proyecto_completa(**{
+            "TAG proyecto": "CFLI", "Nombre del proyecto": "Cesfam Limache",
+            "Cliente": "Cesfam Limache", "Categoría": "Mantenimiento",
+        }),
+    ])
     paquete = dr.paquete_datos_categoria(ruta, "Mantenimiento")
     assert paquete["tipo"] == "categoria"
     assert len(paquete["proyectos"]) == 1
     assert paquete["proyectos"][0]["TAG proyecto"] == "CFLI"
 
 
+def test_paquete_datos_categoria_excluye_proyectos_incompletos(tmp_path):
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_proyecto_completa(**{
+            "TAG proyecto": "CFLI", "Cliente": "Cesfam Limache", "Categoría": "Mantenimiento",
+        }),
+        _fila_proyecto_completa(**{
+            "TAG proyecto": "CCON", "Cliente": "Cesfam Constitución", "Categoría": "Mantenimiento",
+            "Monto de Venta (sin IVA)": None,  # incompleto -- se excluye del agregado
+        }),
+    ])
+    paquete = dr.paquete_datos_categoria(ruta, "Mantenimiento")
+    assert len(paquete["proyectos"]) == 1
+    assert paquete["proyectos"][0]["TAG proyecto"] == "CFLI"
+
+
 def test_paquete_datos_categoria_lanza_valueerror_si_no_hay_proyectos(tmp_path):
-    ruta = _crear_excel_af_minimo(tmp_path)
+    ruta = _crear_excel_af(tmp_path, [_fila_proyecto_completa()])
     with pytest.raises(ValueError):
         dr.paquete_datos_categoria(ruta, "Sin Categoria Real")
 
 
 def test_paquete_datos_comparacion_combina_entidades(tmp_path):
-    ruta = _crear_excel_af_minimo(tmp_path)
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_proyecto_completa(),
+        _fila_proyecto_completa(**{
+            "TAG proyecto": "CFLI", "Cliente": "Cesfam Limache", "Categoría": "Mantenimiento",
+        }),
+    ])
     paquete = dr.paquete_datos_comparacion(ruta, [("proyecto", "UMAG"), ("proyecto", "CFLI")])
     assert paquete["tipo"] == "comparacion"
     assert len(paquete["entidades"]) == 2
@@ -781,7 +862,7 @@ def test_paquete_datos_comparacion_combina_entidades(tmp_path):
 
 
 def test_paquete_datos_comparacion_rechaza_tipo_desconocido(tmp_path):
-    ruta = _crear_excel_af_minimo(tmp_path)
+    ruta = _crear_excel_af(tmp_path, [_fila_proyecto_completa()])
     with pytest.raises(ValueError):
         dr.paquete_datos_comparacion(ruta, [("no_existe", "UMAG")])
 ```
@@ -802,6 +883,7 @@ Análisis de Proyectos.xlsx.
 """
 
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 import openpyxl
@@ -812,6 +894,42 @@ if str(RAIZ_SISTEMA) not in sys.path:
     sys.path.insert(0, str(RAIZ_SISTEMA))
 
 from analisis_financiero import HOJA_CLIENTES, HOJA_INDICADORES, HOJA_PROYECTOS  # noqa: E402
+
+# Campos manuales que un proyecto debe tener cargados para generar reporte
+# (spec §6). "Fecha de cierre" queda deliberadamente FUERA -- su ausencia (o
+# una fecha futura) marca al proyecto como "en desarrollo", no incompleto.
+# "Cliente"/"Categoría" tampoco cuentan -- se resuelven automaticamente, no
+# son carga manual del usuario.
+CAMPOS_MANUALES_REQUERIDOS = [
+    "Estado", "Fecha de inicio", "Monto de Venta (sin IVA)",
+    "Costos Materiales Proyectados", "Costos Equipos Proyectados",
+    "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
+]
+
+
+class DatosIncompletosError(ValueError):
+    """Un proyecto no tiene todos sus campos manuales requeridos cargados."""
+
+
+def proyecto_tiene_datos_completos(proyecto: dict) -> bool:
+    return all(
+        proyecto.get(campo) not in (None, "") for campo in CAMPOS_MANUALES_REQUERIDOS
+    )
+
+
+def proyecto_esta_en_desarrollo(proyecto: dict, hoy: date | None = None) -> bool:
+    """Sin 'Fecha de cierre', o con una posterior a 'hoy' (fecha real actual
+    por defecto), el proyecto se considera en desarrollo. Un valor no
+    interpretable como fecha se trata igual (conservador: en desarrollo)."""
+    hoy = hoy or date.today()
+    fecha_cierre = proyecto.get("Fecha de cierre")
+    if not fecha_cierre:
+        return True
+    if isinstance(fecha_cierre, datetime):
+        fecha_cierre = fecha_cierre.date()
+    if not isinstance(fecha_cierre, date):
+        return True
+    return fecha_cierre > hoy
 
 
 def _mapa_encabezados(ws) -> dict[str, int]:
@@ -832,13 +950,20 @@ def _filas_por_columna(ws, mapa: dict[str, int], nombre_columna: str, valor):
 
 
 def paquete_datos_proyecto(ruta_excel: Path, tag: str) -> dict:
-    """Datos de 'Proyectos' + 'Indicadores' para un proyecto por su TAG."""
+    """Datos de 'Proyectos' + 'Indicadores' para un proyecto por su TAG.
+    Lanza DatosIncompletosError si le faltan campos manuales requeridos."""
     wb = openpyxl.load_workbook(ruta_excel, data_only=True)
     ws_p = wb[HOJA_PROYECTOS]
     mapa_p = _mapa_encabezados(ws_p)
     filas = _filas_por_columna(ws_p, mapa_p, "TAG proyecto", tag)
     if not filas:
         raise ValueError(f"TAG de proyecto '{tag}' no encontrado en '{HOJA_PROYECTOS}'.")
+    proyecto = filas[0]
+    if not proyecto_tiene_datos_completos(proyecto):
+        raise DatosIncompletosError(
+            f"Proyecto '{tag}' no tiene todos sus datos manuales cargados -- "
+            f"no se genera reporte hasta que se complete."
+        )
 
     indicadores = {}
     if HOJA_INDICADORES in wb.sheetnames:
@@ -848,15 +973,25 @@ def paquete_datos_proyecto(ruta_excel: Path, tag: str) -> dict:
         if filas_i:
             indicadores = filas_i[0]
 
-    return {"tipo": "proyecto", "tag": tag, "proyecto": filas[0], "indicadores": indicadores}
+    return {
+        "tipo": "proyecto",
+        "tag": tag,
+        "proyecto": proyecto,
+        "indicadores": indicadores,
+        "en_desarrollo": proyecto_esta_en_desarrollo(proyecto),
+    }
 
 
 def paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str) -> dict:
-    """CLTV de 'Clientes' + todos sus proyectos de 'Proyectos'."""
+    """CLTV de 'Clientes' + sus proyectos con datos completos de 'Proyectos'
+    -- los incompletos se excluyen del agregado, no bloquean el reporte."""
     wb = openpyxl.load_workbook(ruta_excel, data_only=True)
     ws_p = wb[HOJA_PROYECTOS]
     mapa_p = _mapa_encabezados(ws_p)
-    proyectos = _filas_por_columna(ws_p, mapa_p, "Cliente", nombre_cliente)
+    proyectos = [
+        p for p in _filas_por_columna(ws_p, mapa_p, "Cliente", nombre_cliente)
+        if proyecto_tiene_datos_completos(p)
+    ]
 
     cltv = {}
     if HOJA_CLIENTES in wb.sheetnames:
@@ -867,19 +1002,26 @@ def paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str) -> dict:
             cltv = filas_c[0]
 
     if not proyectos and not cltv:
-        raise ValueError(f"Cliente '{nombre_cliente}' no encontrado.")
+        raise ValueError(
+            f"Cliente '{nombre_cliente}' no encontrado, o ninguno de sus "
+            f"proyectos tiene datos completos."
+        )
 
     return {"tipo": "cliente", "cliente": nombre_cliente, "cltv": cltv, "proyectos": proyectos}
 
 
 def paquete_datos_categoria(ruta_excel: Path, categoria: str) -> dict:
-    """Todos los proyectos de 'Proyectos' cuya Categoría calza."""
+    """Proyectos con datos completos de 'Proyectos' cuya Categoría calza --
+    los incompletos se excluyen del agregado."""
     wb = openpyxl.load_workbook(ruta_excel, data_only=True)
     ws_p = wb[HOJA_PROYECTOS]
     mapa_p = _mapa_encabezados(ws_p)
-    proyectos = _filas_por_columna(ws_p, mapa_p, "Categoría", categoria)
+    proyectos = [
+        p for p in _filas_por_columna(ws_p, mapa_p, "Categoría", categoria)
+        if proyecto_tiene_datos_completos(p)
+    ]
     if not proyectos:
-        raise ValueError(f"Ningún proyecto con Categoría '{categoria}'.")
+        raise ValueError(f"Ningún proyecto con datos completos y Categoría '{categoria}'.")
     return {"tipo": "categoria", "categoria": categoria, "proyectos": proyectos}
 
 
@@ -904,7 +1046,7 @@ def paquete_datos_comparacion(ruta_excel: Path, entidades: list[tuple[str, str]]
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `cd "Sistema Analisis Financiero/Reportes" && python -m pytest tests/test_datos_reportes.py -v`
-Expected: PASS (7 tests)
+Expected: PASS (11 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -1066,45 +1208,78 @@ git commit -m "feat(analisis-financiero): manifiesto de obsolescencia de reporte
 
 **Interfaces:**
 - Consumes: `datos_reportes.paquete_datos_proyecto/cliente/categoria`,
+  `datos_reportes.proyecto_tiene_datos_completos`,
   `estado_reportes.cargar_estado/detectar_desactualizados`, `analisis_financiero.RUTA_EXCEL`,
   `analisis_financiero.HOJA_PROYECTOS`.
 - Produces: `listar_entidades(ruta_excel: Path) -> dict[str, tuple[str, str]]` (clave
   `"proyecto:UMAG"` → `(tipo, identificador)`, para las 3 entidades recurrentes —
-  no incluye comparaciones ad-hoc, esas no pasan por el manifiesto),
-  `calcular_reportes_pendientes(ruta_excel: Path, ruta_estado: Path) -> list[str]`
+  **excluye los proyectos sin datos completos** vía
+  `dr.proyecto_tiene_datos_completos`, así nunca llegan a figurar como
+  pendientes; no incluye comparaciones ad-hoc, esas no pasan por el
+  manifiesto), `calcular_reportes_pendientes(ruta_excel: Path, ruta_estado: Path) -> list[str]`
   (usado por `driver.py status`/`run` y por el aviso de PASO 12d en Task 7).
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
 # -*- coding: utf-8 -*-
+from datetime import date
+
 import openpyxl
 
 import driver as drv
 
+HEADERS_PROYECTOS_TEST = [
+    "TAG proyecto", "Nombre del proyecto", "Cliente", "Estado",
+    "Fecha de inicio", "Fecha de cierre", "Monto de Venta (sin IVA)",
+    "Costos Materiales Proyectados", "Costos Equipos Proyectados",
+    "Mano de Obra Proyectada", "Otros Costos Proyectados",
+    "Costos Materiales Reales", "Costos Equipos Reales",
+    "Otros Costos Reales", "Mano de Obra Real", "Total Proyectado",
+    "Total Real", "Margen Proyectado", "Margen Real",
+    "Desviación % (Real vs Proyectado)", "Categoría",
+]  # mismo orden real que master (ver Task 4)
 
-def _crear_excel_af_2_proyectos(tmp_path):
+
+def _fila_completa(**overrides) -> dict:
+    base = {
+        "TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "UMAG",
+        "Estado": "Activo", "Fecha de inicio": date(2026, 1, 10),
+        "Fecha de cierre": None, "Monto de Venta (sin IVA)": 1000000,
+        "Costos Materiales Proyectados": 100000, "Costos Equipos Proyectados": 100000,
+        "Mano de Obra Proyectada": 100000, "Otros Costos Proyectados": 100000,
+        "Costos Materiales Reales": 90000, "Costos Equipos Reales": 90000,
+        "Otros Costos Reales": 90000, "Mano de Obra Real": 90000,
+        "Total Proyectado": 400000, "Total Real": 360000,
+        "Margen Proyectado": 600000, "Margen Real": 640000,
+        "Desviación % (Real vs Proyectado)": -0.1, "Categoría": "I+D+i",
+    }
+    base.update(overrides)
+    return base
+
+
+def _crear_excel_af(tmp_path, filas_proyectos: list[dict]):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Proyectos"
-    headers = ["TAG proyecto", "Nombre del proyecto", "Cliente", "Categoría"]
-    for col, h in enumerate(headers, start=1):
+    for col, h in enumerate(HEADERS_PROYECTOS_TEST, start=1):
         ws.cell(row=1, column=col, value=h)
-    ws.cell(row=2, column=1, value="UMAG")
-    ws.cell(row=2, column=2, value="UMAG")
-    ws.cell(row=2, column=3, value="UMAG")
-    ws.cell(row=2, column=4, value="I+D+i")
-    ws.cell(row=3, column=1, value="CFLI")
-    ws.cell(row=3, column=2, value="Cesfam Limache")
-    ws.cell(row=3, column=3, value="Cesfam Limache")
-    ws.cell(row=3, column=4, value="Mantenimiento")
+    for fila_idx, fila in enumerate(filas_proyectos, start=2):
+        for col, h in enumerate(HEADERS_PROYECTOS_TEST, start=1):
+            ws.cell(row=fila_idx, column=col, value=fila.get(h))
     ruta = tmp_path / "Análisis de Proyectos.xlsx"
     wb.save(ruta)
     return ruta
 
 
 def test_listar_entidades_incluye_proyectos_clientes_y_categorias(tmp_path):
-    ruta = _crear_excel_af_2_proyectos(tmp_path)
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_completa(),
+        _fila_completa(**{
+            "TAG proyecto": "CFLI", "Nombre del proyecto": "Cesfam Limache",
+            "Cliente": "Cesfam Limache", "Categoría": "Mantenimiento",
+        }),
+    ])
     entidades = drv.listar_entidades(ruta)
     assert entidades["proyecto:UMAG"] == ("proyecto", "UMAG")
     assert entidades["cliente:UMAG"] == ("cliente", "UMAG")
@@ -1112,8 +1287,28 @@ def test_listar_entidades_incluye_proyectos_clientes_y_categorias(tmp_path):
     assert entidades["categoria:Mantenimiento"] == ("categoria", "Mantenimiento")
 
 
+def test_listar_entidades_excluye_proyectos_sin_datos_completos(tmp_path):
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_completa(),
+        _fila_completa(**{
+            "TAG proyecto": "CFLI", "Cliente": "Cesfam Limache",
+            "Monto de Venta (sin IVA)": None,  # incompleto
+        }),
+    ])
+    entidades = drv.listar_entidades(ruta)
+    assert "proyecto:CFLI" not in entidades
+    assert "cliente:Cesfam Limache" not in entidades
+    assert "proyecto:UMAG" in entidades
+
+
 def test_calcular_reportes_pendientes_marca_todo_la_primera_vez(tmp_path):
-    ruta = _crear_excel_af_2_proyectos(tmp_path)
+    ruta = _crear_excel_af(tmp_path, [
+        _fila_completa(),
+        _fila_completa(**{
+            "TAG proyecto": "CFLI", "Nombre del proyecto": "Cesfam Limache",
+            "Cliente": "Cesfam Limache", "Categoría": "Mantenimiento",
+        }),
+    ])
     ruta_estado = tmp_path / "estado_reportes.json"
     pendientes = drv.calcular_reportes_pendientes(ruta, ruta_estado)
     assert set(pendientes) == {
@@ -1185,34 +1380,37 @@ RUTA_ESTADO_REPORTES = RAIZ_REPORTES / "estado_reportes.json"
 
 def listar_entidades(ruta_excel: Path = RUTA_EXCEL) -> dict[str, tuple[str, str]]:
     """Recorre 'Proyectos' y arma la clave->tipo/identificador de cada
-    proyecto, cliente unico, y categoria unica presentes hoy."""
+    proyecto, cliente unico, y categoria unica presentes hoy. Excluye por
+    completo los proyectos sin datos manuales completos (spec §6) -- ni
+    generan su propia entrada 'proyecto:TAG', ni aportan a 'cliente:'/
+    'categoria:' salvo que OTRO proyecto completo ya la haya registrado."""
     wb = openpyxl.load_workbook(ruta_excel, data_only=True)
     ws = wb[HOJA_PROYECTOS]
-    encabezados = [celda.value for celda in ws[1]]
-    col_tag = encabezados.index("TAG proyecto") + 1
-    col_cliente = encabezados.index("Cliente") + 1 if "Cliente" in encabezados else None
-    col_categoria = encabezados.index("Categoría") + 1 if "Categoría" in encabezados else None
+    mapa = {celda.value: idx + 1 for idx, celda in enumerate(ws[1]) if celda.value}
+    col_tag = mapa.get("TAG proyecto")
 
     entidades: dict[str, tuple[str, str]] = {}
     clientes_vistos = set()
     categorias_vistas = set()
     for fila_idx in range(2, ws.max_row + 1):
-        tag = ws.cell(row=fila_idx, column=col_tag).value
+        tag = ws.cell(row=fila_idx, column=col_tag).value if col_tag else None
         if not tag:
             continue
+        fila = {h: ws.cell(row=fila_idx, column=c).value for h, c in mapa.items()}
+        if not dr.proyecto_tiene_datos_completos(fila):
+            continue
+
         entidades[f"proyecto:{tag}"] = ("proyecto", tag)
 
-        if col_cliente:
-            cliente = ws.cell(row=fila_idx, column=col_cliente).value
-            if cliente and cliente not in clientes_vistos:
-                clientes_vistos.add(cliente)
-                entidades[f"cliente:{cliente}"] = ("cliente", cliente)
+        cliente = fila.get("Cliente")
+        if cliente and cliente not in clientes_vistos:
+            clientes_vistos.add(cliente)
+            entidades[f"cliente:{cliente}"] = ("cliente", cliente)
 
-        if col_categoria:
-            categoria = ws.cell(row=fila_idx, column=col_categoria).value
-            if categoria and categoria not in categorias_vistas:
-                categorias_vistas.add(categoria)
-                entidades[f"categoria:{categoria}"] = ("categoria", categoria)
+        categoria = fila.get("Categoría")
+        if categoria and categoria not in categorias_vistas:
+            categorias_vistas.add(categoria)
+            entidades[f"categoria:{categoria}"] = ("categoria", categoria)
 
     return entidades
 
@@ -1273,7 +1471,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `cd "Sistema Analisis Financiero/Reportes" && python -m pytest tests/test_driver_reportes.py -v`
-Expected: PASS (2 tests)
+Expected: PASS (3 tests)
 
 - [ ] **Step 5: Write `SKILL.md`**
 
@@ -1313,13 +1511,20 @@ python ".claude/skills/Reportes_Analisis_Financiero/driver.py" run
 ## Como redactar y renderizar un reporte (flujo del agente)
 
 1. Armar el paquete de datos: `datos_reportes.paquete_datos_proyecto/cliente/categoria/comparacion(RUTA_EXCEL, ...)`.
-2. Redactar el `contenido_html` del reporte (KPIs relevantes, tablas, graficos
+   Si el proyecto no tiene todos sus datos manuales cargados, esta llamada
+   lanza `DatosIncompletosError` -- **no generar el reporte en ese caso**
+   (ni improvisar los datos que faltan).
+2. Si el paquete de un proyecto trae `en_desarrollo: true` (sin fecha de
+   cierre, o con una posterior a hoy), incluir un indicador visual explícito
+   ("EN DESARROLLO") en el reporte -- nunca presentarlo como un proyecto
+   cerrado y evaluado en forma definitiva.
+3. Redactar el `contenido_html` del reporte (KPIs relevantes, tablas, graficos
    via `graficos.grafico_barras_svg`/`grafico_dona_svg`) segun lo que aporte
    señal para esa entidad especifica -- la estructura no es fija.
-3. Envolver con `brand.construir_html(titulo, generado_el, contenido_html)`.
-4. Renderizar: `motor_reportes.renderizar_pdf(html, ruta_salida)` hacia
+4. Envolver con `brand.construir_html(titulo, generado_el, contenido_html)`.
+5. Renderizar: `motor_reportes.renderizar_pdf(html, ruta_salida)` hacia
    `Análisis Financiero/Reportes/{Proyectos,Clientes,Categorías,Comparativas}/`.
-5. Actualizar el manifiesto (solo para proyecto/cliente/categoria, NO para
+6. Actualizar el manifiesto (solo para proyecto/cliente/categoria, NO para
    comparaciones ad-hoc): `estado_reportes.marcar_generado(estado, clave, datos, fecha_de_hoy)`
    y `estado_reportes.guardar_estado(RUTA_ESTADO_REPORTES, nuevo_estado)`.
 
@@ -1329,6 +1534,13 @@ python ".claude/skills/Reportes_Analisis_Financiero/driver.py" run
   detectan y listan, la redaccion ocurre en conversacion.
 - **Comparaciones ad-hoc no pasan por el manifiesto de obsolescencia** -- se
   generan frescas cada vez, no se marcan como vigentes/desactualizadas.
+- **Proyectos sin datos manuales completos nunca aparecen como pendientes**
+  (`listar_entidades` los excluye) -- si el usuario pide el reporte de uno
+  igual, `paquete_datos_proyecto` lanza `DatosIncompletosError`: explicarle
+  qué campo falta, no inventarlo.
+- **`en_desarrollo: true` no es un defecto** -- es la señal de que el
+  proyecto sigue abierto (sin fecha de cierre, o con una futura); el reporte
+  se genera igual, solo con el indicador visual correspondiente.
 - **`playwright` debe estar instalado** (`pip install playwright && python -m playwright install chromium`) -- reutiliza el Chromium ya cacheado para Centro de Costos si la revision calza.
 ```
 
@@ -1459,7 +1671,10 @@ Expected: PASS en las 3 suites.
 
 En `CLAUDE.md`, agregar una sección `## Reportes PDF (implementado AAAA-MM-DD)`
 resumiendo: la carpeta `Reportes/` (brand/graficos/motor_reportes/datos_reportes/estado_reportes),
-el skill `Reportes_Analisis_Financiero`, y el enlace a
+el skill `Reportes_Analisis_Financiero`, las reglas de completitud/"en
+desarrollo" (spec §6 — sin datos manuales completos no hay reporte; sin
+fecha de cierre o con una futura, el proyecto es "en desarrollo" y su
+reporte lleva un indicador visual), y el enlace a
 `docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`
 y a este plan.
 

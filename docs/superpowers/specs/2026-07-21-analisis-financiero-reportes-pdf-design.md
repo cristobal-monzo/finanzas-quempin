@@ -147,7 +147,44 @@ reporte, según qué información es relevante para esa entidad específica.
 Todo reporte incluye al menos una tabla o un gráfico de apoyo, aunque no
 incluya comparación contra otras entidades.
 
-## 6. Salida y skill
+## 6. Completitud de datos y proyectos "en desarrollo"
+
+Reglas de negocio explícitas del usuario (2026-07-21), aplicadas en
+`datos_reportes.py` (§2) antes de que cualquier dato llegue al agente:
+
+- **Sin datos manuales completos → sin reporte.** Un proyecto sin todos sus
+  campos manuales cargados en "Proyectos" **no genera ningún reporte** (ni
+  propio, ni participa en los agregados de cliente/categoría) hasta que se
+  complete. Campos requeridos: `Estado`, `Fecha de inicio`, `Monto de Venta
+  (sin IVA)`, los 4 costos proyectados (`Costos Materiales/Equipos
+  Proyectados`, `Mano de Obra Proyectada`, `Otros Costos Proyectados`) y
+  `Mano de Obra Real`. **`Fecha de cierre` queda explícitamente fuera de
+  este chequeo** (ver punto siguiente) y `Cliente`/`Categoría` tampoco
+  cuentan (se resuelven automáticamente, no son carga manual). Esta lista
+  es una decisión de este spec, no un pedido literal del usuario columna
+  por columna — si al usar el sistema con datos reales alguna resulta de
+  más o de menos, se ajusta.
+- **Sin fecha de cierre, o fecha de cierre futura → proyecto "en
+  desarrollo", no incompleto.** Si `Fecha de cierre` está vacía, o tiene una
+  fecha posterior a la fecha real actual, el proyecto **sí genera reporte**
+  (asumiendo que el resto de sus datos manuales está completo), pero el
+  paquete de datos marca `en_desarrollo: true` para que el agente incluya un
+  indicador visual explícito (ej. una etiqueta "EN DESARROLLO" en el header
+  del reporte) — nunca se presenta como si fuera un proyecto cerrado y
+  evaluado en forma definitiva.
+- **Modificaciones → regeneración.** Ya cubierto mecánicamente por el
+  manifiesto de obsolescencia (§4): cualquier cambio en los datos de entrada
+  de un proyecto (incluyendo que pase de incompleto a completo, o que su
+  `Fecha de cierre` se cumpla y deje de estar "en desarrollo") cambia el
+  hash y lo marca desactualizado — no requiere lógica adicional aparte de
+  incluir `en_desarrollo` y el resultado de la validación de completitud
+  dentro del paquete que se hashea.
+- Un cliente o categoría con proyectos mixtos (algunos completos, algunos
+  no) igual genera su reporte agregado, **excluyendo silenciosamente** los
+  proyectos incompletos del agregado (no bloquea todo el reporte de cliente/
+  categoría por un solo proyecto a medio cargar).
+
+## 7. Salida y skill
 
 - PDFs en:
   ```
@@ -170,7 +207,7 @@ incluya comparación contra otras entidades.
   agrega un aviso de consola si quedaron reportes desactualizados tras la
   corrida, sin disparar generación.
 
-## 7. Testing
+## 8. Testing
 
 Infraestructura, no contenido redactado (no es determinístico):
 
@@ -182,11 +219,13 @@ Infraestructura, no contenido redactado (no es determinístico):
   previo queda marcada pendiente.
 - `datos_reportes.py`: estructura correcta del paquete para cada tipo de
   entidad (proyecto/cliente/categoría/comparación arbitraria), valores
-  trazables a las hojas fuente.
+  trazables a las hojas fuente; validación de completitud (proyecto
+  completo/incompleto) y de estado "en desarrollo" (sin fecha de cierre,
+  fecha de cierre futura, fecha de cierre pasada) — ver §6.
 - `renderizar_pdf`: smoke test — HTML fijo de prueba produce un PDF válido
   y no vacío.
 
-## 8. Fuera de alcance de este spec (explícito)
+## 9. Fuera de alcance de este spec (explícito)
 
 - El prerrequisito de Cliente/CLTV/Nota del Proyecto/Glosario (§ arriba) —
   ya tiene su propio spec y plan, se ejecuta como prerrequisito, no se
