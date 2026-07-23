@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 
 import openpyxl
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles.colors import Color
 
 # ── CONFIGURACIÓN ────────────────────────────────────────────────────────────
 
@@ -54,6 +56,114 @@ HEADERS_INDICADORES = [
     "Desviación % Materiales", "Desviación % Equipos", "Desviación % MO",
     "Desviación % Otros",
 ]
+
+
+# ── ESTILO VISUAL ────────────────────────────────────────────────────────────
+# Formato que el usuario armó a mano en "Proyectos" (encabezado en negrita,
+# centrado, con wrap, relleno por color de theme según grupo de columna,
+# formato moneda/porcentaje) -- replicado acá para que se mantenga en cada
+# corrida y se extienda a "Detalle Costos Reales" e "Indicadores", que hasta
+# 2026-07-21 quedaban 100% regeneradas sin ningún estilo.
+
+ALTURA_FILA_ENCABEZADO = 46.2
+FUENTE_ENCABEZADO = Font(name="Calibri", size=11, bold=True)
+ALINEACION_ENCABEZADO = Alignment(vertical="center", wrap_text=True)
+
+FORMATO_MONEDA = '_ "$"* #,##0_ ;_ "$"* \\-#,##0_ ;_ "$"* "-"_ ;_ @_ '
+FORMATO_PORCENTAJE = "0.0%"
+FORMATO_RATIO = "0.00"
+
+
+def _color_tema(theme: int, tint: float) -> Color:
+    return Color(theme=theme, tint=tint)
+
+
+# Mismos 4 colores que ya usaba "Proyectos" a mano, uno por grupo semántico
+# de columna -- se reutilizan en las 3 hojas para que el libro se lea como
+# un solo sistema visual.
+COLOR_IDENTIFICACION = _color_tema(5, 0.3999755851924192)    # TAG/Nombre/Estado/fechas/venta
+COLOR_COSTO_PROYECTADO = _color_tema(8, 0.3999755851924192)  # columnas "...Proyectado(s)"
+COLOR_COSTO_REAL = _color_tema(9, 0.3999755851924192)        # columnas "...Real(es)"
+COLOR_DERIVADO = _color_tema(3, 0.499984740745262)           # totales, márgenes, KPIs finales
+
+# columna (letra) -> (color de encabezado, formato numérico o None, ancho sugerido)
+ESTILO_COLUMNAS_PROYECTOS = {
+    "A": (COLOR_IDENTIFICACION, None, 10),
+    "B": (COLOR_IDENTIFICACION, None, 22),
+    "C": (COLOR_IDENTIFICACION, None, 13),
+    "D": (COLOR_IDENTIFICACION, None, 13),
+    "E": (COLOR_IDENTIFICACION, None, 13),
+    "F": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
+    "G": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "H": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "I": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "J": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "K": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "L": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "M": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "N": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "O": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "P": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "Q": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "R": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "S": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
+}
+
+ESTILO_COLUMNAS_DETALLE_COSTOS_REALES = {
+    "A": (COLOR_IDENTIFICACION, None, 10),
+    "B": (COLOR_COSTO_REAL, None, 22),
+    "C": (COLOR_COSTO_REAL, None, 13),
+    "D": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+}
+
+ESTILO_COLUMNAS_INDICADORES = {
+    "A": (COLOR_IDENTIFICACION, None, 10),
+    "B": (COLOR_IDENTIFICACION, None, 22),
+    "C": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
+    "D": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 14),
+    "E": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
+    "F": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
+    "G": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
+    "H": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
+    "I": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "J": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "K": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "L": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "M": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
+    "N": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
+    "O": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
+    "P": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
+}
+
+
+def aplicar_estilo_visual(wb) -> None:
+    """Aplica a las 3 hojas el mismo lenguaje visual que el usuario armó a
+    mano en 'Proyectos': encabezado en negrita, centrado y con wrap, alto de
+    fila 46.2, relleno por color de theme según grupo de columna, y formato
+    moneda/porcentaje/ratio en las columnas correspondientes. Solo toca
+    estilo, nunca valores; el ancho de columna se deja intacto si el usuario
+    ya lo fijó a mano (no se sobrescribe una vez seteado)."""
+    for nombre_hoja, estilo_columnas in (
+        (HOJA_PROYECTOS, ESTILO_COLUMNAS_PROYECTOS),
+        (HOJA_DETALLE_COSTOS_REALES, ESTILO_COLUMNAS_DETALLE_COSTOS_REALES),
+        (HOJA_INDICADORES, ESTILO_COLUMNAS_INDICADORES),
+    ):
+        ws = wb[nombre_hoja]
+        ws.row_dimensions[1].height = ALTURA_FILA_ENCABEZADO
+        for columna, (color, formato_numero, ancho) in estilo_columnas.items():
+            # ws.column_dimensions[columna] autovivifica la entrada con un
+            # width por defecto (13.0) apenas se accede -- por eso el "ya
+            # tiene ancho manual" se revisa ANTES de tocar la columna, con
+            # el operador "in" sobre el dict, no con ".width is None".
+            ya_tenia_ancho_manual = columna in ws.column_dimensions
+            celda_encabezado = ws[f"{columna}1"]
+            celda_encabezado.font = FUENTE_ENCABEZADO
+            celda_encabezado.alignment = ALINEACION_ENCABEZADO
+            celda_encabezado.fill = PatternFill(fgColor=color, fill_type="solid")
+            if formato_numero is not None:
+                ws.column_dimensions[columna].number_format = formato_numero
+            if not ya_tenia_ancho_manual:
+                ws.column_dimensions[columna].width = ancho
 
 
 def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
@@ -279,6 +389,31 @@ def asegurar_formulas_proyectos(ws_proyectos, filas_validas: list[dict]) -> None
         ws_proyectos.cell(row=r, column=19, value=f"=P{r}/O{r}-1")
 
 
+# ── NOTA DEL PROYECTO (hoja "Indicadores") ──────────────────────────────────
+# 0-100, aprobatorio >=55. Rentabilidad domina el peso (70/30) -- decision
+# del usuario en brainstorming, spec 2026-07-21 seccion 1. Constantes
+# separadas de la formula para que recalibrar el benchmark no implique
+# reescribir la logica, solo estos 3 valores.
+MARGEN_OBJETIVO_NOTA = 0.25
+PESO_RENTABILIDAD_NOTA = 0.7
+PESO_DESVIACION_NOTA = 0.3
+
+
+def _formula_nota(fila_proyectos: int) -> str:
+    r = fila_proyectos
+    score_margen = f"MIN(100,MAX(0,(Proyectos!R{r}/Proyectos!F{r})/{MARGEN_OBJETIVO_NOTA}*100))"
+    score_desviacion = f"MIN(100,MAX(0,100-ABS(Proyectos!S{r})*100))"
+    return f"=ROUND({PESO_RENTABILIDAD_NOTA}*{score_margen}+{PESO_DESVIACION_NOTA}*{score_desviacion},0)"
+
+
+def _formula_evaluacion(fila_destino: int) -> str:
+    q = f"Q{fila_destino}"
+    return (
+        f'=IF({q}>=85,"Excelente",IF({q}>=70,"Bueno",'
+        f'IF({q}>=55,"Aprobado","Requiere atención")))'
+    )
+
+
 # ── FÓRMULAS DE LA HOJA "INDICADORES" (100% regenerada cada corrida) ────────
 
 def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
@@ -308,6 +443,8 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
         ws.cell(row=fila_destino, column=14, value=f"=Proyectos!L{r}/Proyectos!H{r}-1")
         ws.cell(row=fila_destino, column=15, value=f"=Proyectos!N{r}/Proyectos!I{r}-1")
         ws.cell(row=fila_destino, column=16, value=f"=Proyectos!M{r}/Proyectos!J{r}-1")
+        ws.cell(row=fila_destino, column=17, value=_formula_nota(r))
+        ws.cell(row=fila_destino, column=18, value=_formula_evaluacion(fila_destino))
         fila_destino += 1
 
 
@@ -374,6 +511,7 @@ def ejecutar(
 
     asegurar_formulas_proyectos(ws_proyectos, filas_validas)
     asegurar_hoja_indicadores(wb, filas_validas)
+    aplicar_estilo_visual(wb)
 
     try:
         wb.save(ruta_excel_af)

@@ -57,6 +57,31 @@ costos) y las correcciones aplicadas quedan documentadas en el spec
 "Playbook de KPIs") y resumidas en `CLAUDE.md`. Si en el futuro aparece un
 archivo con nombre parecido, no asumir que es el mismo ni que sigue vigente.
 
+## Estilo visual replicado desde el Excel armado a mano (2026-07-21)
+
+El usuario había formateado a mano solo la hoja "Proyectos" (encabezado en
+negrita/centrado/wrap, alto de fila 46.2, relleno de color por grupo de
+columna usando 4 colores de theme, formato moneda en columnas de montos).
+"Detalle Costos Reales" e "Indicadores" quedaban sin ningún estilo porque se
+regeneran 100% en cada corrida. A pedido explícito del usuario ("utiliza un
+formato similar para todas las hojas"), se agregó `aplicar_estilo_visual(wb)`
+en `Sistema/analisis_financiero.py` que replica ese mismo lenguaje visual en
+las 3 hojas y se llama en `ejecutar()` justo antes de `wb.save()`.
+
+- Los 4 colores (`COLOR_IDENTIFICACION`/`COLOR_COSTO_PROYECTADO`/
+  `COLOR_COSTO_REAL`/`COLOR_DERIVADO`) son theme colors extraídos del archivo
+  original del usuario, reutilizados por grupo semántico de columna en las
+  3 hojas (no son una paleta inventada).
+- **Bug encontrado al implementar**: `ws.column_dimensions[col].width` NO es
+  `None` por defecto en openpyxl -- autovivifica a `13.0` apenas se accede.
+  Para detectar "el usuario ya fijó un ancho a mano" hay que revisar
+  `columna in ws.column_dimensions` **antes** de tocar esa columna, nunca
+  `.width is None` (eso nunca dispara y pisaría anchos por defecto sin
+  querer). Ver comentario en el código junto a `aplicar_estilo_visual`.
+- Solo se fija ancho de columna si no había uno manual ya guardado; el color
+  de encabezado y el formato numérico sí se reaplican siempre (son
+  estructurales, no datos del usuario).
+
 ## Pendientes que dependen del usuario
 
 El script (`Sistema/analisis_financiero.py`, 34 tests), el skill
