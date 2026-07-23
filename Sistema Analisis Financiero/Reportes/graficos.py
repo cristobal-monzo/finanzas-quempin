@@ -1,0 +1,68 @@
+# -*- coding: utf-8 -*-
+"""
+graficos.py -- Graficos SVG puros (sin JS, sin librerias externas) para
+incrustar en reportes PDF. Pensados para imprimirse via Chromium headless
+(motor_reportes.renderizar_pdf), no para interaccion.
+"""
+
+import math
+
+COLORES_POR_DEFECTO = ["#ff5100", "#000000", "#98989a", "#54565a"]
+
+
+def grafico_barras_svg(
+    etiquetas: list[str], valores: list[float], color: str = "#ff5100",
+    ancho: int = 480, alto: int = 220,
+) -> str:
+    """Grafico de barras horizontal simple. valores deben ser >= 0."""
+    if not etiquetas or len(etiquetas) != len(valores):
+        raise ValueError("etiquetas y valores deben tener la misma longitud y no estar vacios")
+
+    max_valor = max(valores) or 1.0
+    alto_barra = alto / len(valores)
+    partes = []
+    for i, (etiqueta, valor) in enumerate(zip(etiquetas, valores)):
+        y = i * alto_barra + alto_barra * 0.15
+        ancho_barra = (valor / max_valor) * (ancho - 160)
+        partes.append(
+            f'<text x="0" y="{y + alto_barra * 0.35:.1f}" font-size="11">{etiqueta}</text>'
+            f'<rect x="150" y="{y:.1f}" width="{ancho_barra:.1f}" height="{alto_barra * 0.7:.1f}" fill="{color}"/>'
+            f'<text x="{150 + ancho_barra + 6:.1f}" y="{y + alto_barra * 0.35:.1f}" font-size="11">{valor:,.0f}</text>'
+        )
+    return f'<svg viewBox="0 0 {ancho} {alto}" width="100%" xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'
+
+
+def grafico_dona_svg(
+    etiquetas: list[str], valores: list[float], colores: list[str] | None = None,
+    radio: int = 80,
+) -> str:
+    """Grafico de dona simple via arcos SVG calculados a mano. La suma de
+    valores debe ser mayor que 0."""
+    if not etiquetas or len(etiquetas) != len(valores):
+        raise ValueError("etiquetas y valores deben tener la misma longitud y no estar vacios")
+    total = sum(valores)
+    if total <= 0:
+        raise ValueError("la suma de valores debe ser mayor que 0")
+
+    colores = colores or COLORES_POR_DEFECTO
+    centro = radio + 10
+    tam = centro * 2
+    partes = []
+    angulo_acum = -90.0
+    for i, valor in enumerate(valores):
+        angulo = (valor / total) * 360.0
+        x1 = centro + radio * math.cos(math.radians(angulo_acum))
+        y1 = centro + radio * math.sin(math.radians(angulo_acum))
+        angulo_acum += angulo
+        x2 = centro + radio * math.cos(math.radians(angulo_acum))
+        y2 = centro + radio * math.sin(math.radians(angulo_acum))
+        gran_arco = 1 if angulo > 180 else 0
+        color = colores[i % len(colores)]
+        partes.append(
+            f'<path d="M{centro},{centro} L{x1:.2f},{y1:.2f} '
+            f'A{radio},{radio} 0 {gran_arco} 1 {x2:.2f},{y2:.2f} Z" fill="{color}"/>'
+        )
+    return (
+        f'<svg viewBox="0 0 {tam} {tam}" width="220" height="220" xmlns="http://www.w3.org/2000/svg">'
+        f'{"".join(partes)}<circle cx="{centro}" cy="{centro}" r="{radio * 0.55:.1f}" fill="white"/></svg>'
+    )
