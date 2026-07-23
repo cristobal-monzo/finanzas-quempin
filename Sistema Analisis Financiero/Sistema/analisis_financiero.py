@@ -7,6 +7,7 @@ Reales, Indicadores). Ver docs/superpowers/specs/2026-07-20-analisis-
 financiero-design.md para el diseño completo.
 """
 
+import json
 import shutil
 import unicodedata
 from datetime import datetime
@@ -28,6 +29,7 @@ RAIZ_MODULO = RAIZ.parent
 RAIZ_DATOS = RAIZ_MODULO.parent / "Análisis Financiero"
 RUTA_EXCEL = RAIZ_DATOS / "Análisis de Proyectos.xlsx"
 RAIZ_RESPALDOS = RAIZ_MODULO / "Respaldos"
+RUTA_CLIENTES_PENDIENTES = RAIZ / "clientes_pendientes.json"
 
 RAIZ_CENTRO_COSTOS = RAIZ_MODULO.parent / "Centro de Costos"
 RUTA_EXCEL_CENTRO_COSTOS = RAIZ_CENTRO_COSTOS / "Excel" / "Centro de Costos.xlsx"
@@ -284,6 +286,71 @@ def emparejar_cliente(candidato: str, clientes_existentes: list[str]) -> dict:
     if mejor_match is not None and mejor_similitud >= UMBRAL_SIMILITUD_CLIENTE:
         return {"cliente": mejor_match, "estado": "pendiente", "similitud": mejor_similitud}
     return {"cliente": candidato, "estado": "nuevo", "similitud": 0.0}
+
+
+# Mismos hex que Centro de Costos (auditor_centro_costos.py: ROJO="C00000",
+# NAVY_OSCURO="1F3864") -- mismo lenguaje visual "rojo = revisar, azul marino
+# = corregido a mano" en todo Finanzas QUEMPIN.
+FUENTE_PENDIENTE_REVISION_CLIENTE = Font(name="Calibri", size=11, color="C00000")
+FUENTE_CONFIRMADO_CLIENTE = Font(name="Calibri", size=11, color="1F3864")
+
+
+def leer_clientes_pendientes(ruta_pendientes: Path) -> list[dict]:
+    """Lee clientes_pendientes.json. Devuelve [] si el archivo no existe
+    todavía (primera corrida)."""
+    if not ruta_pendientes.exists():
+        return []
+    with open(ruta_pendientes, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def asegurar_columna_cliente(ws_proyectos, filas_validas: list[dict], ruta_pendientes: Path) -> list[dict]:
+    """Completa la columna 'Cliente' de las filas válidas que la tengan
+    vacía: deriva un candidato del nombre del proyecto y lo empareja contra
+    los clientes ya asignados (incluyendo los que se van asignando en esta
+    misma corrida). Si el emparejamiento queda 'pendiente', pinta la celda de
+    rojo y agrega una entrada a clientes_pendientes.json -- nunca pregunta en
+    vivo (este módulo corre encadenado y no bloqueante al run de Centro de
+    Costos). Devuelve solo las entradas pendientes NUEVAS de esta corrida."""
+    col_cliente = HEADERS_PROYECTOS.index("Cliente") + 1
+
+    clientes_existentes = []
+    for fila_info in filas_validas:
+        valor = ws_proyectos.cell(row=fila_info["fila"], column=col_cliente).value
+        if valor:
+            clientes_existentes.append(valor)
+
+    pendientes_nuevos = []
+    for fila_info in filas_validas:
+        r = fila_info["fila"]
+        celda = ws_proyectos.cell(row=r, column=col_cliente)
+        if celda.value:
+            continue
+
+        candidato = derivar_cliente(fila_info["nombre"])
+        resultado = emparejar_cliente(candidato, clientes_existentes)
+        celda.value = resultado["cliente"]
+
+        if resultado["estado"] == "pendiente":
+            celda.font = FUENTE_PENDIENTE_REVISION_CLIENTE
+            pendientes_nuevos.append({
+                "tag": fila_info["tag"],
+                "fila": r,
+                "nombre_proyecto": fila_info["nombre"],
+                "cliente_derivado": candidato,
+                "cliente_sugerido": resultado["cliente"],
+                "similitud": round(resultado["similitud"], 2),
+                "estado": "Pendiente",
+            })
+
+        clientes_existentes.append(resultado["cliente"])
+
+    if pendientes_nuevos:
+        pendientes_totales = leer_clientes_pendientes(ruta_pendientes) + pendientes_nuevos
+        with open(ruta_pendientes, "w", encoding="utf-8") as f:
+            json.dump(pendientes_totales, f, ensure_ascii=False, indent=2)
+
+    return pendientes_nuevos
 
 
 # ── LECTURA DE CENTRO DE COSTOS (SOLO LECTURA) ───────────────────────────────
