@@ -628,6 +628,46 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
         fila_destino += 1
 
 
+# ── HOJA "CLIENTES" (CLTV, 100% regenerada cada corrida) ────────────────────
+
+def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
+    """Regenera 'Clientes' completa: una fila por valor único de la columna
+    'Cliente' de 'Proyectos' (filas sin Cliente asignado se ignoran). Todas
+    las columnas son fórmulas que agregan sobre 'Proyectos' filtrando por
+    Cliente -- nunca valores calculados en Python -- para que un proyecto
+    nuevo del mismo cliente se sume solo la próxima vez que Excel recalcule."""
+    ws = wb[HOJA_CLIENTES]
+    if ws.max_row >= 2:
+        ws.delete_rows(2, ws.max_row - 1)
+
+    col_cliente = HEADERS_PROYECTOS.index("Cliente") + 1
+    clientes_unicos = []
+    vistos = set()
+    for fila_info in filas_validas:
+        cliente = ws_proyectos.cell(row=fila_info["fila"], column=col_cliente).value
+        if cliente and cliente not in vistos:
+            vistos.add(cliente)
+            clientes_unicos.append(cliente)
+
+    for i, cliente in enumerate(sorted(clientes_unicos), start=2):
+        ws.cell(row=i, column=1, value=cliente)
+        ws.cell(row=i, column=2, value=f"=AVERAGEIF(Proyectos!$T:$T,$A{i},Proyectos!$F:$F)")
+        ws.cell(row=i, column=3, value=f"=COUNTIF(Proyectos!$T:$T,$A{i})")
+        ws.cell(row=i, column=4, value=(
+            f"=MAX(1,(MAXIFS(Proyectos!$D:$D,Proyectos!$T:$T,$A{i})"
+            f"-MINIFS(Proyectos!$D:$D,Proyectos!$T:$T,$A{i}))/30)"
+        ))
+        ws.cell(row=i, column=5, value=f"=C{i}/(D{i}/12)")
+        ws.cell(row=i, column=6, value=(
+            f"=SUMIF(Proyectos!$T:$T,$A{i},Proyectos!$R:$R)/SUMIF(Proyectos!$T:$T,$A{i},Proyectos!$F:$F)"
+        ))
+        ws.cell(row=i, column=7, value=f"=B{i}*E{i}*C{i}*F{i}")
+        ws.cell(row=i, column=8, value=(
+            f'=IF(G{i}>=PERCENTILE(Clientes!$G:$G,0.67),"Clientes estratégicos",'
+            f'IF(G{i}>=PERCENTILE(Clientes!$G:$G,0.33),"Clientes potenciales","Clientes de oportunidad"))'
+        ))
+
+
 # ── ORQUESTADOR ───────────────────────────────────────────────────────────
 
 def ejecutar(
