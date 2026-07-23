@@ -353,6 +353,51 @@ def asegurar_columna_cliente(ws_proyectos, filas_validas: list[dict], ruta_pendi
     return pendientes_nuevos
 
 
+def confirmar_clientes_pendientes(
+    objetivo=None,
+    ruta_excel: Path | None = None,
+    ruta_pendientes: Path | None = None,
+    ruta_respaldos: Path | None = None,
+) -> list[dict]:
+    """objetivo=None -> preview de solo lectura (no toca nada). objetivo=
+    "TODOS" o lista de TAGs -> aplica: escribe cliente_sugerido en la celda,
+    recolorea azul marino, marca "Confirmado" en clientes_pendientes.json.
+    Mismo contrato que confirmar_correcciones de Centro de Costos."""
+    ruta_excel = ruta_excel or RUTA_EXCEL
+    ruta_pendientes = ruta_pendientes or RUTA_CLIENTES_PENDIENTES
+    ruta_respaldos = ruta_respaldos or RAIZ_RESPALDOS
+
+    pendientes = leer_clientes_pendientes(ruta_pendientes)
+    seleccion_pendiente = [p for p in pendientes if p["estado"] == "Pendiente"]
+
+    if objetivo is None:
+        return seleccion_pendiente
+
+    seleccion = (
+        seleccion_pendiente if objetivo == "TODOS"
+        else [p for p in seleccion_pendiente if p["tag"] in set(objetivo)]
+    )
+    if not seleccion:
+        return []
+
+    hacer_backup(ruta_excel, ruta_respaldos)
+    wb = openpyxl.load_workbook(ruta_excel)
+    ws_proyectos = wb[HOJA_PROYECTOS]
+    col_cliente = HEADERS_PROYECTOS.index("Cliente") + 1
+
+    for p in seleccion:
+        celda = ws_proyectos.cell(row=p["fila"], column=col_cliente)
+        celda.value = p["cliente_sugerido"]
+        celda.font = FUENTE_CONFIRMADO_CLIENTE
+        p["estado"] = "Confirmado"
+
+    wb.save(ruta_excel)
+    with open(ruta_pendientes, "w", encoding="utf-8") as f:
+        json.dump(pendientes, f, ensure_ascii=False, indent=2)
+
+    return seleccion
+
+
 # ── LECTURA DE CENTRO DE COSTOS (SOLO LECTURA) ───────────────────────────────
 
 def prefijo_de_n_ref(n_ref: str) -> str:

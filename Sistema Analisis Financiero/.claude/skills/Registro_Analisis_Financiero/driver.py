@@ -3,19 +3,27 @@
 driver.py -- arnes de ejecucion para la skill Registro_Analisis_Financiero.
 
 No reimplementa la logica: importa analisis_financiero.py desde Sistema/ y
-expone dos comandos:
+expone tres comandos:
 
-  status -> Solo lectura (dry_run=True): que carpetas de proyecto se
-            crearian, que categorias de Centro de Costos caen en "Otros"
-            por no tener mapeo explicito, sin tocar ningun archivo.
+  status           -> Solo lectura (dry_run=True): que carpetas de proyecto
+                      se crearian, que categorias de Centro de Costos caen
+                      en "Otros" por no tener mapeo explicito, sin tocar
+                      ningun archivo.
 
-  run    -> Ejecucion real: backup, crea carpetas de proyecto nuevas,
-            regenera "Detalle Costos Reales" y las formulas de "Proyectos"/
-            "Indicadores", guarda el Excel.
+  run              -> Ejecucion real: backup, crea carpetas de proyecto
+                      nuevas, regenera "Detalle Costos Reales" y las
+                      formulas de "Proyectos"/"Indicadores"/"Clientes"/
+                      "Glosario KPIs", guarda el Excel.
+
+  confirmar-cliente -> Sin argumentos: lista clientes pendientes de revision
+                      (columna "Cliente" en fuente roja). "--todos" o una
+                      lista de TAGs: aplica la sugerencia y recolorea azul
+                      marino.
 
 Uso:
   python driver.py status
   python driver.py run
+  python driver.py confirmar-cliente [--todos|TAG ...]
 """
 
 import sys
@@ -70,12 +78,42 @@ def cmd_run() -> int:
     return 0
 
 
+def cmd_confirmar_cliente(args: list[str]) -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+
+    if not args:
+        pendientes = af.confirmar_clientes_pendientes(None)
+        print(f"\nClientes pendientes de confirmar: {len(pendientes)}")
+        for p in pendientes:
+            print(
+                f"  - {p['tag']}: '{p['nombre_proyecto']}' -> sugerido "
+                f"'{p['cliente_sugerido']}' (similitud {p['similitud']})"
+            )
+        if pendientes:
+            print(
+                "\nPara aplicar: python driver.py confirmar-cliente --todos"
+                " (o 'python driver.py confirmar-cliente <TAG> ...' para solo algunos)"
+            )
+        return 0
+
+    objetivo = "TODOS" if args == ["--todos"] else args
+    aplicados = af.confirmar_clientes_pendientes(objetivo)
+    if not aplicados:
+        print("\nNo hay clientes pendientes que coincidan con lo pedido.")
+    for p in aplicados:
+        print(f"  [OK] {p['tag']} -> Cliente '{p['cliente_sugerido']}' confirmado (azul marino).")
+    return 0
+
+
 def main() -> int:
-    if len(sys.argv) != 2 or sys.argv[1] not in ("status", "run"):
-        print("Uso: python driver.py [status|run]")
+    comandos = ("status", "run", "confirmar-cliente")
+    if len(sys.argv) < 2 or sys.argv[1] not in comandos:
+        print("Uso: python driver.py [status|run|confirmar-cliente [--todos|TAG ...]]")
         return 2
     if sys.argv[1] == "status":
         return cmd_status()
+    if sys.argv[1] == "confirmar-cliente":
+        return cmd_confirmar_cliente(sys.argv[2:])
     return cmd_run()
 
 
