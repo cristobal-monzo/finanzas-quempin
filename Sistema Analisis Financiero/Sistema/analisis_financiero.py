@@ -8,7 +8,9 @@ financiero-design.md para el diseño completo.
 """
 
 import shutil
+import unicodedata
 from datetime import datetime
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import openpyxl
@@ -229,6 +231,59 @@ def mapear_categoria_a_bucket(categoria_item: str | None) -> tuple[str, bool]:
     if categoria_item in MAPEO_CATEGORIA_BUCKET:
         return MAPEO_CATEGORIA_BUCKET[categoria_item], True
     return "Otros", False
+
+
+# ── CLIENTE: DERIVACIÓN Y EMPAREJAMIENTO FUZZY ──────────────────────────────
+# "Cliente" no existe como dato separado en Centro de Costos ni en "Proyectos"
+# -- se deriva del "Nombre del proyecto" (que a veces mezcla cliente +
+# iteración/fecha, ej. "AGCID (I) FEBRERO") y se compara contra los clientes
+# ya registrados para detectar recurrencia. Nunca pregunta en vivo (ver
+# asegurar_columna_cliente): si hay duda, marca "pendiente" para revisión
+# posterior vía confirmar_clientes_pendientes.
+
+UMBRAL_SIMILITUD_CLIENTE = 0.6
+
+
+def derivar_cliente(nombre_proyecto: str) -> str:
+    """Corta el nombre del proyecto en el primer paréntesis (donde suele
+    empezar la iteración/fecha, ej. "AGCID (I) FEBRERO" -> "AGCID"). Sin
+    paréntesis, devuelve el nombre completo tal cual."""
+    candidato = nombre_proyecto.split("(")[0].strip()
+    return candidato if candidato else nombre_proyecto.strip()
+
+
+def normalizar_texto(texto: str) -> str:
+    """Mayúsculas, sin tildes, sin espacios repetidos -- para comparar
+    nombres de cliente sin que un tilde o un espacio extra genere un falso
+    "pendiente"."""
+    sin_tildes = "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
+    return " ".join(sin_tildes.upper().split())
+
+
+def emparejar_cliente(candidato: str, clientes_existentes: list[str]) -> dict:
+    """Compara candidato contra clientes_existentes. Devuelve un dict con
+    "cliente" (el valor final a escribir), "estado" ("exacto"/"pendiente"/
+    "nuevo") y "similitud". Coincidencia exacta tras normalizar -> "exacto"
+    (usa el nombre YA registrado, no el candidato, para no crear variantes de
+    capitalización del mismo cliente). Similar pero no exacta (>= umbral)
+    -> "pendiente", usa el existente como sugerencia. Sin parecido -> "nuevo",
+    usa el candidato tal cual."""
+    candidato_norm = normalizar_texto(candidato)
+    mejor_match = None
+    mejor_similitud = 0.0
+    for existente in clientes_existentes:
+        if normalizar_texto(existente) == candidato_norm:
+            return {"cliente": existente, "estado": "exacto", "similitud": 1.0}
+        similitud = SequenceMatcher(None, candidato_norm, normalizar_texto(existente)).ratio()
+        if similitud > mejor_similitud:
+            mejor_similitud = similitud
+            mejor_match = existente
+    if mejor_match is not None and mejor_similitud >= UMBRAL_SIMILITUD_CLIENTE:
+        return {"cliente": mejor_match, "estado": "pendiente", "similitud": mejor_similitud}
+    return {"cliente": candidato, "estado": "nuevo", "similitud": 0.0}
 
 
 # ── LECTURA DE CENTRO DE COSTOS (SOLO LECTURA) ───────────────────────────────
