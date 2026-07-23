@@ -10,6 +10,7 @@ financiero-design.md para el diseño completo.
 import json
 import shutil
 import unicodedata
+from collections import Counter
 from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -17,6 +18,7 @@ from pathlib import Path
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.styles.colors import Color
+from openpyxl.utils import get_column_letter
 
 # ── CONFIGURACIÓN ────────────────────────────────────────────────────────────
 
@@ -44,14 +46,14 @@ HOJA_CLIENTES = "Clientes"
 HOJA_GLOSARIO_KPIS = "Glosario KPIs"
 
 HEADERS_PROYECTOS = [
-    "TAG proyecto", "Nombre del proyecto", "Estado", "Fecha de inicio",
-    "Fecha de cierre", "Monto de Venta (sin IVA)",
+    "TAG proyecto", "Nombre del proyecto", "Cliente", "Estado",
+    "Fecha de inicio", "Fecha de cierre", "Monto de Venta (sin IVA)",
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados",
     "Costos Materiales Reales", "Costos Equipos Reales",
     "Otros Costos Reales", "Mano de Obra Real", "Total Proyectado",
     "Total Real", "Margen Proyectado", "Margen Real",
-    "Desviación % (Real vs Proyectado)", "Cliente",
+    "Desviación % (Real vs Proyectado)", "Categoría",
 ]
 HEADERS_DETALLE_COSTOS_REALES = ["TAG proyecto", "Subcategoría", "Bucket", "Total sin IVA"]
 HEADERS_INDICADORES = [
@@ -71,6 +73,13 @@ HEADERS_CLIENTES = [
 HEADERS_GLOSARIO_KPIS = [
     "KPI", "Por qué importa", "Qué elementos usa", "Qué significa el resultado",
 ]
+
+# Letra de columna de "Proyectos" por nombre de encabezado -- centraliza el
+# mapeo para que las fórmulas nunca hardcodeen letras directamente (si el
+# orden de HEADERS_PROYECTOS cambia, las fórmulas se recalculan solas).
+LETRA_COL_PROYECTOS = {
+    nombre: get_column_letter(idx) for idx, nombre in enumerate(HEADERS_PROYECTOS, start=1)
+}
 
 
 # ── ESTILO VISUAL ────────────────────────────────────────────────────────────
@@ -106,24 +115,24 @@ COLOR_DERIVADO = _color_tema(3, 0.499984740745262)           # totales, márgene
 ESTILO_COLUMNAS_PROYECTOS = {
     "A": (COLOR_IDENTIFICACION, None, 10),
     "B": (COLOR_IDENTIFICACION, None, 22),
-    "C": (COLOR_IDENTIFICACION, None, 13),
+    "C": (COLOR_IDENTIFICACION, None, 22),
     "D": (COLOR_IDENTIFICACION, None, 13),
     "E": (COLOR_IDENTIFICACION, None, 13),
-    "F": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
-    "G": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "F": (COLOR_IDENTIFICACION, None, 13),
+    "G": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
     "H": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
     "I": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
     "J": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "K": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "K": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
     "L": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
     "M": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
     "N": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "O": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "O": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
     "P": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
     "Q": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
     "R": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "S": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
-    "T": (COLOR_IDENTIFICACION, None, 22),
+    "S": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "T": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
 }
 
 ESTILO_COLUMNAS_DETALLE_COSTOS_REALES = {
@@ -456,6 +465,57 @@ def leer_detalle_centro_costos(ruta_excel_cc: Path) -> list[dict]:
     return items
 
 
+def leer_tipo_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]:
+    """Lee la hoja 'Master' de Centro de Costos.xlsx (SOLO LECTURA) y devuelve,
+    por prefijo de proyecto, el 'Tipo de Proyecto' más frecuente entre sus
+    documentos. Filas sin N° Ref. o sin Tipo de Proyecto se ignoran. Si la
+    hoja 'Master' no existe, devuelve dict vacío."""
+    wb = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+    if "Master" not in wb.sheetnames:
+        return {}
+    ws = wb["Master"]
+    encabezados = [celda.value for celda in ws[1]]
+    col_n_ref = encabezados.index("N° Ref.") + 1
+    col_tipo = encabezados.index("Tipo de Proyecto") + 1
+
+    tipos_por_prefijo: dict[str, Counter] = {}
+    for fila in ws.iter_rows(min_row=2):
+        n_ref = fila[col_n_ref - 1].value
+        tipo = fila[col_tipo - 1].value
+        if not n_ref or not tipo:
+            continue
+        prefijo = prefijo_de_n_ref(n_ref)
+        tipos_por_prefijo.setdefault(prefijo, Counter())[tipo] += 1
+
+    return {
+        prefijo: contador.most_common(1)[0][0]
+        for prefijo, contador in tipos_por_prefijo.items()
+    }
+
+
+def asegurar_categoria_proyectos(
+    ws_proyectos, filas_validas: list[dict], categoria_por_prefijo: dict[str, str],
+    columna: int,
+) -> list[str]:
+    """Escribe la 'Categoría' de cada fila válida (columna indicada por
+    'columna' -- quien llama la calcula desde HEADERS_PROYECTOS, nunca
+    hardcodeada acá) desde categoria_por_prefijo -- valor plano, no fórmula
+    (no hay agregación posible, es un lookup 1 a 1). Si un proyecto no tiene
+    ningún documento en Centro de Costos todavía, no escribe nada y avisa."""
+    avisos = []
+    for fila_info in filas_validas:
+        prefijo = fila_info["tag"]
+        categoria = categoria_por_prefijo.get(prefijo)
+        if categoria is None:
+            avisos.append(
+                f"Proyecto '{fila_info['nombre']}' ({prefijo}) sin documentos en "
+                f"Centro de Costos todavía -- Categoría queda vacía."
+            )
+            continue
+        ws_proyectos.cell(row=fila_info["fila"], column=columna, value=categoria)
+    return avisos
+
+
 def agrupar_por_proyecto_y_subcategoria(items_detalle: list[dict]) -> dict[tuple[str, str], float]:
     """Suma total_sin_iva agrupado por (prefijo de proyecto, categoria_item
     original -- sin colapsar a bucket todavía, eso lo hace la hoja 'Detalle
@@ -576,25 +636,47 @@ def regenerar_hoja_detalle_costos_reales(wb, agrupado: dict[tuple[str, str], flo
 # ── FÓRMULAS DE LA HOJA "PROYECTOS" ──────────────────────────────────────────
 
 def asegurar_formulas_proyectos(ws_proyectos, filas_validas: list[dict]) -> None:
-    """Escribe las columnas derivadas (K/L/M = SUMIFS hacia 'Detalle Costos
-    Reales'; O/P/Q/R/S = totales/márgenes/desviación) para cada fila válida.
-    Nunca toca las columnas manuales (A-J, N)."""
+    """Escribe las columnas derivadas (L/M/N = SUMIFS hacia 'Detalle Costos
+    Reales'; P/Q/R/S/T = totales/márgenes/desviación) para cada fila válida.
+    Nunca toca las columnas manuales (A-K, O)."""
+    col = {nombre: HEADERS_PROYECTOS.index(nombre) + 1 for nombre in HEADERS_PROYECTOS}
+    letra = LETRA_COL_PROYECTOS
+
     for fila_info in filas_validas:
         r = fila_info["fila"]
         tag_ref = f"$A{r}"
 
-        for columna, bucket in ((11, "Materiales"), (12, "Equipos"), (13, "Otros")):
-            ws_proyectos.cell(row=r, column=columna, value=(
+        for nombre, bucket in (
+            ("Costos Materiales Reales", "Materiales"),
+            ("Costos Equipos Reales", "Equipos"),
+            ("Otros Costos Reales", "Otros"),
+        ):
+            ws_proyectos.cell(row=r, column=col[nombre], value=(
                 f"=SUMIFS('{HOJA_DETALLE_COSTOS_REALES}'!$D:$D,"
                 f"'{HOJA_DETALLE_COSTOS_REALES}'!$A:$A,{tag_ref},"
                 f"'{HOJA_DETALLE_COSTOS_REALES}'!$C:$C,\"{bucket}\")"
             ))
 
-        ws_proyectos.cell(row=r, column=15, value=f"=G{r}+H{r}+I{r}+J{r}")
-        ws_proyectos.cell(row=r, column=16, value=f"=K{r}+L{r}+M{r}+N{r}")
-        ws_proyectos.cell(row=r, column=17, value=f"=F{r}-O{r}")
-        ws_proyectos.cell(row=r, column=18, value=f"=F{r}-P{r}")
-        ws_proyectos.cell(row=r, column=19, value=f"=P{r}/O{r}-1")
+        g, h, i, j = (letra[n] for n in (
+            "Costos Materiales Proyectados", "Costos Equipos Proyectados",
+            "Mano de Obra Proyectada", "Otros Costos Proyectados",
+        ))
+        l, m, n, o = (letra[n] for n in (
+            "Costos Materiales Reales", "Costos Equipos Reales",
+            "Otros Costos Reales", "Mano de Obra Real",
+        ))
+        venta = letra["Monto de Venta (sin IVA)"]
+        total_proy = letra["Total Proyectado"]
+        total_real = letra["Total Real"]
+
+        ws_proyectos.cell(row=r, column=col["Total Proyectado"], value=f"={g}{r}+{h}{r}+{i}{r}+{j}{r}")
+        ws_proyectos.cell(row=r, column=col["Total Real"], value=f"={l}{r}+{m}{r}+{n}{r}+{o}{r}")
+        ws_proyectos.cell(row=r, column=col["Margen Proyectado"], value=f"={venta}{r}-{total_proy}{r}")
+        ws_proyectos.cell(row=r, column=col["Margen Real"], value=f"={venta}{r}-{total_real}{r}")
+        ws_proyectos.cell(
+            row=r, column=col["Desviación % (Real vs Proyectado)"],
+            value=f"={total_real}{r}/{total_proy}{r}-1",
+        )
 
 
 # ── NOTA DEL PROYECTO (hoja "Indicadores") ──────────────────────────────────
@@ -609,8 +691,14 @@ PESO_DESVIACION_NOTA = 0.3
 
 def _formula_nota(fila_proyectos: int) -> str:
     r = fila_proyectos
-    score_margen = f"MIN(100,MAX(0,(Proyectos!R{r}/Proyectos!F{r})/{MARGEN_OBJETIVO_NOTA}*100))"
-    score_desviacion = f"MIN(100,MAX(0,100-ABS(Proyectos!S{r})*100))"
+    margen_real = LETRA_COL_PROYECTOS["Margen Real"]
+    venta = LETRA_COL_PROYECTOS["Monto de Venta (sin IVA)"]
+    desviacion = LETRA_COL_PROYECTOS["Desviación % (Real vs Proyectado)"]
+    score_margen = (
+        f"MIN(100,MAX(0,(Proyectos!{margen_real}{r}/Proyectos!{venta}{r})"
+        f"/{MARGEN_OBJETIVO_NOTA}*100))"
+    )
+    score_desviacion = f"MIN(100,MAX(0,100-ABS(Proyectos!{desviacion}{r})*100))"
     return f"=ROUND({PESO_RENTABILIDAD_NOTA}*{score_margen}+{PESO_DESVIACION_NOTA}*{score_desviacion},0)"
 
 
@@ -632,25 +720,38 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
     if ws.max_row >= 2:
         ws.delete_rows(2, ws.max_row - 1)
 
+    lp = LETRA_COL_PROYECTOS
+    tag, nombre = lp["TAG proyecto"], lp["Nombre del proyecto"]
+    venta = lp["Monto de Venta (sin IVA)"]
+    margen_real, total_real = lp["Margen Real"], lp["Total Real"]
+    mat_r, eq_r, mo_r, otros_r = (
+        lp["Costos Materiales Reales"], lp["Costos Equipos Reales"],
+        lp["Mano de Obra Real"], lp["Otros Costos Reales"],
+    )
+    mat_p, eq_p, mo_p, otros_p = (
+        lp["Costos Materiales Proyectados"], lp["Costos Equipos Proyectados"],
+        lp["Mano de Obra Proyectada"], lp["Otros Costos Proyectados"],
+    )
+
     fila_destino = 2
     for fila_info in filas_validas:
         r = fila_info["fila"]
-        ws.cell(row=fila_destino, column=1, value=f"=Proyectos!A{r}")
-        ws.cell(row=fila_destino, column=2, value=f"=Proyectos!B{r}")
-        ws.cell(row=fila_destino, column=3, value=f"=Proyectos!R{r}/Proyectos!P{r}")
-        ws.cell(row=fila_destino, column=4, value=f"=Proyectos!R{r}/Proyectos!F{r}")
-        ws.cell(row=fila_destino, column=5, value=f"=Proyectos!F{r}/Proyectos!K{r}")
-        ws.cell(row=fila_destino, column=6, value=f"=Proyectos!F{r}/Proyectos!L{r}")
-        ws.cell(row=fila_destino, column=7, value=f"=Proyectos!F{r}/Proyectos!N{r}")
-        ws.cell(row=fila_destino, column=8, value=f"=Proyectos!F{r}/Proyectos!M{r}")
-        ws.cell(row=fila_destino, column=9, value=f"=Proyectos!K{r}/Proyectos!F{r}")
-        ws.cell(row=fila_destino, column=10, value=f"=Proyectos!L{r}/Proyectos!F{r}")
-        ws.cell(row=fila_destino, column=11, value=f"=Proyectos!N{r}/Proyectos!F{r}")
-        ws.cell(row=fila_destino, column=12, value=f"=Proyectos!M{r}/Proyectos!F{r}")
-        ws.cell(row=fila_destino, column=13, value=f"=Proyectos!K{r}/Proyectos!G{r}-1")
-        ws.cell(row=fila_destino, column=14, value=f"=Proyectos!L{r}/Proyectos!H{r}-1")
-        ws.cell(row=fila_destino, column=15, value=f"=Proyectos!N{r}/Proyectos!I{r}-1")
-        ws.cell(row=fila_destino, column=16, value=f"=Proyectos!M{r}/Proyectos!J{r}-1")
+        ws.cell(row=fila_destino, column=1, value=f"=Proyectos!{tag}{r}")
+        ws.cell(row=fila_destino, column=2, value=f"=Proyectos!{nombre}{r}")
+        ws.cell(row=fila_destino, column=3, value=f"=Proyectos!{margen_real}{r}/Proyectos!{total_real}{r}")
+        ws.cell(row=fila_destino, column=4, value=f"=Proyectos!{margen_real}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=fila_destino, column=5, value=f"=Proyectos!{venta}{r}/Proyectos!{mat_r}{r}")
+        ws.cell(row=fila_destino, column=6, value=f"=Proyectos!{venta}{r}/Proyectos!{eq_r}{r}")
+        ws.cell(row=fila_destino, column=7, value=f"=Proyectos!{venta}{r}/Proyectos!{mo_r}{r}")
+        ws.cell(row=fila_destino, column=8, value=f"=Proyectos!{venta}{r}/Proyectos!{otros_r}{r}")
+        ws.cell(row=fila_destino, column=9, value=f"=Proyectos!{mat_r}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=fila_destino, column=10, value=f"=Proyectos!{eq_r}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=fila_destino, column=11, value=f"=Proyectos!{mo_r}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=fila_destino, column=12, value=f"=Proyectos!{otros_r}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=fila_destino, column=13, value=f"=Proyectos!{mat_r}{r}/Proyectos!{mat_p}{r}-1")
+        ws.cell(row=fila_destino, column=14, value=f"=Proyectos!{eq_r}{r}/Proyectos!{eq_p}{r}-1")
+        ws.cell(row=fila_destino, column=15, value=f"=Proyectos!{mo_r}{r}/Proyectos!{mo_p}{r}-1")
+        ws.cell(row=fila_destino, column=16, value=f"=Proyectos!{otros_r}{r}/Proyectos!{otros_p}{r}-1")
         ws.cell(row=fila_destino, column=17, value=_formula_nota(r))
         ws.cell(row=fila_destino, column=18, value=_formula_evaluacion(fila_destino))
         fila_destino += 1
@@ -677,17 +778,28 @@ def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
             vistos.add(cliente)
             clientes_unicos.append(cliente)
 
+    cliente_col = LETRA_COL_PROYECTOS["Cliente"]
+    venta_col = LETRA_COL_PROYECTOS["Monto de Venta (sin IVA)"]
+    fecha_inicio_col = LETRA_COL_PROYECTOS["Fecha de inicio"]
+    margen_real_col = LETRA_COL_PROYECTOS["Margen Real"]
+
     for i, cliente in enumerate(sorted(clientes_unicos), start=2):
         ws.cell(row=i, column=1, value=cliente)
-        ws.cell(row=i, column=2, value=f"=AVERAGEIF(Proyectos!$T:$T,$A{i},Proyectos!$F:$F)")
-        ws.cell(row=i, column=3, value=f"=COUNTIF(Proyectos!$T:$T,$A{i})")
+        ws.cell(row=i, column=2, value=(
+            f"=AVERAGEIF(Proyectos!${cliente_col}:${cliente_col},$A{i},"
+            f"Proyectos!${venta_col}:${venta_col})"
+        ))
+        ws.cell(row=i, column=3, value=f"=COUNTIF(Proyectos!${cliente_col}:${cliente_col},$A{i})")
         ws.cell(row=i, column=4, value=(
-            f"=MAX(1,(MAXIFS(Proyectos!$D:$D,Proyectos!$T:$T,$A{i})"
-            f"-MINIFS(Proyectos!$D:$D,Proyectos!$T:$T,$A{i}))/30)"
+            f"=MAX(1,(MAXIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
+            f"Proyectos!${cliente_col}:${cliente_col},$A{i})"
+            f"-MINIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
+            f"Proyectos!${cliente_col}:${cliente_col},$A{i}))/30)"
         ))
         ws.cell(row=i, column=5, value=f"=C{i}/(D{i}/12)")
         ws.cell(row=i, column=6, value=(
-            f"=SUMIF(Proyectos!$T:$T,$A{i},Proyectos!$R:$R)/SUMIF(Proyectos!$T:$T,$A{i},Proyectos!$F:$F)"
+            f"=SUMIF(Proyectos!${cliente_col}:${cliente_col},$A{i},Proyectos!${margen_real_col}:${margen_real_col})"
+            f"/SUMIF(Proyectos!${cliente_col}:${cliente_col},$A{i},Proyectos!${venta_col}:${venta_col})"
         ))
         ws.cell(row=i, column=7, value=f"=B{i}*E{i}*C{i}*F{i}")
         ws.cell(row=i, column=8, value=(
@@ -871,6 +983,11 @@ def ejecutar(
     )
 
     asegurar_formulas_proyectos(ws_proyectos, filas_validas)
+    tipos_por_prefijo = leer_tipo_proyecto_centro_costos(ruta_excel_cc)
+    col_categoria = HEADERS_PROYECTOS.index("Categoría") + 1
+    resumen["avisos"].extend(
+        asegurar_categoria_proyectos(ws_proyectos, filas_validas, tipos_por_prefijo, col_categoria)
+    )
     asegurar_hoja_indicadores(wb, filas_validas)
     asegurar_hoja_clientes(wb, filas_validas, ws_proyectos)
     asegurar_hoja_glosario_kpis(wb)
