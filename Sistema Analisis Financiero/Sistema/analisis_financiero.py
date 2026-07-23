@@ -668,6 +668,111 @@ def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
         ))
 
 
+# ── HOJA "GLOSARIO KPIS" (texto estatico, 100% regenerado cada corrida) ─────
+# Contenido fijo -- no depende de datos del usuario. Cubre el playbook
+# original (spec 2026-07-20) mas los KPIs de este spec (2026-07-21): Nota,
+# Evaluacion, y los 6 de la hoja Clientes.
+
+GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
+    (
+        "Rentabilidad sobre costo",
+        "Mide cuánto margen genera cada peso gastado en el proyecto — un markup, no un ROI de capital invertido.",
+        "Margen Real, Total Real",
+        "Valor alto = el proyecto generó mucho margen por cada peso de costo incurrido; sirve para comparar eficiencia entre proyectos de tamaños distintos.",
+    ),
+    (
+        "Margen neto %",
+        "El indicador de rentabilidad más directo y comparable entre proyectos de distinto tamaño.",
+        "Margen Real, Monto de Venta",
+        "20% significa que de cada $100 vendidos quedan $20 de utilidad tras cubrir todos los costos reales.",
+    ),
+    (
+        "Productividad (Materiales/Equipos/MO/Otros)",
+        "Mide cuántos pesos de venta genera cada peso gastado en esa categoría — permite ver qué categoría 'rinde' más por peso invertido.",
+        "Monto de Venta, Costo Real de la categoría",
+        "Productividad = 3 → cada $1 gastado en esa categoría generó $3 de venta; útil para priorizar dónde enfocar control de gasto.",
+    ),
+    (
+        "Costo % de venta (por categoría)",
+        "Muestra la estructura de costos del proyecto — qué parte de cada peso vendido se va en esa categoría.",
+        "Costo Real de la categoría, Monto de Venta",
+        "35% en Costo MO % de venta → un tercio de cada venta se destina a mano de obra; detecta categorías que consumen desproporcionadamente el margen.",
+    ),
+    (
+        "Desviación % (por categoría, Real vs Proyectado)",
+        "Mide qué tan preciso fue el presupuesto original para esa categoría — clave para mejorar futuras cotizaciones.",
+        "Costo Real, Costo Proyectado de la categoría",
+        "+15% = se gastó 15% más de lo presupuestado; negativo = se gastó menos de lo previsto.",
+    ),
+    (
+        "Nota del Proyecto",
+        "Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión.",
+        "Margen neto % (70%, contra objetivo de 25%) y Desviación % Total (30%)",
+        "≥55 = proyecto en rango aceptable; <55 = requiere revisión (rentabilidad baja y/o descontrol presupuestario).",
+    ),
+    (
+        "Evaluación",
+        "Traduce la nota a una etiqueta rápida de lectura para revisiones ejecutivas.",
+        "Nota del Proyecto",
+        "Excelente / Bueno / Aprobado / Requiere atención.",
+    ),
+    (
+        "AOV (Clientes)",
+        "Mide el tamaño promedio de una venta a ese cliente.",
+        "Monto de Venta de sus proyectos",
+        "AOV alto = cliente que trae proyectos grandes por transacción.",
+    ),
+    (
+        "Vida del cliente",
+        "Mide cuántas veces ha comprado el cliente en total — la base para saber si es recurrente.",
+        "Conteo de proyectos del cliente",
+        "Vida=1 → cliente de una sola compra hasta ahora; vida>1 → recurrente.",
+    ),
+    (
+        "Meses activo",
+        "Mide cuánto tiempo lleva comprando el cliente — el denominador para anualizar la frecuencia.",
+        "Fecha más antigua y más reciente entre sus proyectos",
+        "Meses activo alto + vida baja → cliente esporádico; meses activo bajo + vida alta → cliente muy activo recientemente.",
+    ),
+    (
+        "Frecuencia de compra (Clientes)",
+        "Mide qué tan seguido vuelve a comprar el cliente, anualizado — clave para proyectar ingresos futuros de ese cliente.",
+        "Vida del cliente, Meses activo",
+        "Frecuencia=2 → el cliente compra en promedio 2 veces al año.",
+    ),
+    (
+        "Margen de utilidad % (Clientes)",
+        "Mide qué tan rentable es la relación completa con ese cliente, ponderado por tamaño de proyecto.",
+        "Suma de Margen Real y de Monto de Venta de todos sus proyectos",
+        "Mismo significado que Margen neto % pero a nivel cliente.",
+    ),
+    (
+        "CLTV",
+        "Estima el valor total que el cliente representa para QUEMPIN a lo largo de su relación completa — la métrica central para decidir dónde invertir esfuerzo comercial.",
+        "AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad %",
+        "CLTV alto = cliente que ha generado y probablemente seguirá generando mucho valor; prioridad para retención.",
+    ),
+    (
+        "Clasificación (Clientes)",
+        "Traduce el CLTV a un tier accionable, relativo a la cartera actual de QUEMPIN, no a un corte fijo en pesos que quede obsoleto con el crecimiento de la empresa.",
+        "Percentil del CLTV entre todos los clientes registrados",
+        "'Clientes estratégicos' (top 33%) → atención prioritaria; 'Clientes de oportunidad' (bottom 33%) → candidatos a desarrollar o repensar la relación.",
+    ),
+]
+
+
+def asegurar_hoja_glosario_kpis(wb) -> None:
+    """Reescribe 'Glosario KPIs' completa desde la constante GLOSARIO_KPIS --
+    texto estático, no depende de datos del usuario ni de fórmulas."""
+    ws = wb[HOJA_GLOSARIO_KPIS]
+    if ws.max_row >= 2:
+        ws.delete_rows(2, ws.max_row - 1)
+
+    for i, fila in enumerate(GLOSARIO_KPIS, start=2):
+        for col, valor in enumerate(fila, start=1):
+            ws.cell(row=i, column=col, value=valor)
+
+
 # ── ORQUESTADOR ───────────────────────────────────────────────────────────
 
 def ejecutar(
