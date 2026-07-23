@@ -60,6 +60,12 @@ proyectos reales cargados, así que nada de esto se ha ejercitado contra datos
 reales de QUEMPIN SpA; y el dashboard HTML (Visualizador Web de este módulo)
 sigue fuera de alcance, como estaba planeado desde el inicio.
 
+**Extensión 2026-07-21**: agregadas Nota del Proyecto, columna "Cliente" +
+hoja "Clientes" (CLTV) y hoja "Glosario KPIs" — ver
+[`docs/superpowers/specs/2026-07-21-analisis-financiero-nota-clientes-design.md`](../docs/superpowers/specs/2026-07-21-analisis-financiero-nota-clientes-design.md)
+y el plan de implementación
+[`docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md`](../docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md).
+
 Diseño original (fórmulas, playbook de KPIs, decisiones del brainstorming):
 [`docs/superpowers/specs/2026-07-20-analisis-financiero-design.md`](../docs/superpowers/specs/2026-07-20-analisis-financiero-design.md).
 Detalle e historial de la implementación (las 12 tareas, orden, decisiones
@@ -85,26 +91,37 @@ Finanzas QUEMPIN/
     ├── CLAUDE.md                              # este archivo
     ├── MEMORY.md                              # decisiones, historial, pendientes
     ├── Respaldos/                             # backups automáticos por mes (se crea en la primera corrida real)
-    ├── Sistema/                               # analisis_financiero.py + tests/ (34 tests)
-    └── .claude/skills/Registro_Analisis_Financiero/  # SKILL.md + driver.py (status/run)
+    ├── Sistema/                               # analisis_financiero.py + tests/ (71 tests)
+    └── .claude/skills/Registro_Analisis_Financiero/  # SKILL.md + driver.py (status/run/confirmar-cliente)
 ```
 
 ## `Análisis de Proyectos.xlsx` — resumen del esquema (detalle completo en el spec)
 
-Tres hojas, todas dentro del mismo libro:
+Cinco hojas, todas dentro del mismo libro:
 
 - **"Proyectos"** (una fila por proyecto): TAG (= prefijo de Centro de Costos, ej.
   `UMAG`/`CFLI`/`CCON`/`GGEN`/`MLER`), Nombre, Estado, fechas, Monto de Venta
   **sin IVA**, costos proyectados por categoría (manual, las 4: Materiales,
   Equipos, Mano de Obra, Otros), costos reales por categoría (Materiales/Equipos/
   Otros = fórmula automática desde Centro de Costos; Mano de Obra Real = manual,
-  sin fuente automática hoy), y totales/márgenes/desviación derivados por fórmula.
+  sin fuente automática hoy), totales/márgenes/desviación derivados por fórmula, y
+  "Cliente" (última columna, se completa sola — ver más abajo).
 - **"Detalle Costos Reales"** (una fila por proyecto + subcategoría): preserva el
   detalle real de cada `categoria_item` de Centro de Costos (Consumibles,
   Equipos-Herramientas, Combustible si aparece, etc.) aunque "Proyectos" solo
   muestre 3 buckets agregados — nunca se pierde granularidad al resumir.
 - **"Indicadores"** (una fila por proyecto): los KPIs del playbook, 100% fórmulas
   sobre "Proyectos" — ver sección siguiente.
+- **"Clientes"** (una fila por cliente único, detectado desde la columna
+  "Cliente" de "Proyectos"): AOV, Vida del cliente, Meses activo, Frecuencia
+  de compra, Margen de utilidad %, CLTV y Clasificación (percentil) — 100%
+  fórmulas agregando sobre "Proyectos". La columna "Cliente" se completa
+  sola (derivación + fuzzy-match contra clientes ya registrados); si hay
+  duda queda "Pendiente de revisión" (fuente roja), confirmable con
+  `python driver.py confirmar-cliente`.
+- **"Glosario KPIs"** (una fila por KPI del libro): por qué importa, qué
+  elementos usa, qué significa el resultado — texto estático, se reescribe
+  completo en cada corrida.
 
 **Regla de oro heredada de Centro de Costos**: las columnas manuales nunca se
 tocan entre corridas; solo se regeneran "Detalle Costos Reales" y las fórmulas
@@ -119,6 +136,8 @@ derivadas de "Proyectos"/"Indicadores".
 | Productividad Materiales / Equipos / MO / Otros | Monto de Venta / Costo Real de esa categoría |
 | Costo Materiales / Equipos / MO / Otros % de venta | Costo Real de esa categoría / Monto de Venta |
 | Desviación % Materiales / Equipos / MO / Otros | Real / Proyectado − 1, por categoría |
+| Nota del Proyecto (0-100) | 70% margen neto % (vs. objetivo 25%) + 30% control de desviación total |
+| CLTV (hoja Clientes) | AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad % |
 
 Origen y hallazgos de rigor (por qué "ROI" se llama "Rentabilidad sobre costo",
 por qué no hay columnas duplicadas de "costo por unidad de ingreso" +

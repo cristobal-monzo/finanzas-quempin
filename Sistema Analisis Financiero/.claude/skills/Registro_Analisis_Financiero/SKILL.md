@@ -1,6 +1,6 @@
 ---
 name: Registro_Analisis_Financiero
-description: Consolida los costos reales por proyecto y categoría desde Centro de Costos hacia Análisis de Proyectos.xlsx (hojas Proyectos/Detalle Costos Reales/Indicadores), y crea la carpeta de facturas para proyectos nuevos agregados a mano en el Excel. Usar cuando el usuario pida actualizar Análisis Financiero, refrescar los indicadores de proyectos, ver el estado de Análisis de Proyectos.xlsx, o evaluar rentabilidad/KPIs de un proyecto.
+description: Consolida los costos reales por proyecto y categoría desde Centro de Costos hacia Análisis de Proyectos.xlsx (hojas Proyectos/Detalle Costos Reales/Indicadores/Clientes/Glosario KPIs), calcula la Nota del Proyecto (0-100) y el CLTV por cliente, y crea la carpeta de facturas para proyectos nuevos agregados a mano en el Excel. Usar cuando el usuario pida actualizar Análisis Financiero, refrescar los indicadores de proyectos, ver el estado de Análisis de Proyectos.xlsx, evaluar rentabilidad/KPIs de un proyecto, o revisar/confirmar un cliente detectado como similar a uno existente.
 ---
 
 # Registro Análisis Financiero
@@ -40,6 +40,21 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" run
 También corre automáticamente al final de cada `run` de
 `/Registro_Centro_de_Costos` (PASO 12d) -- no hace falta correrlo aparte
 salvo que se quiera refrescar sin correr todo Centro de Costos.
+
+**`confirmar-cliente`** -- confirma clientes marcados "Pendiente de revisión"
+(fuente roja en la columna "Cliente" de "Proyectos"): sin argumentos, solo
+lista los pendientes; `--todos` aplica la sugerencia de todos; una lista de
+TAGs aplica solo esos. Recolorea la celda a azul marino y marca la entrada
+como "Confirmado" en `Sistema/clientes_pendientes.json`.
+
+```
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" confirmar-cliente
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" confirmar-cliente --todos
+```
+
+Si la sugerencia automática no es el cliente correcto, edita
+`cliente_sugerido` en `Sistema/clientes_pendientes.json` antes de confirmar
+(mismo patrón que `correcciones_manuales.json` de Centro de Costos).
 
 ## Gotchas
 
