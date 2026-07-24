@@ -134,3 +134,66 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
         "total_real": total_real, "margen_real": margen_real, "desviacion_pct": desviacion_pct,
         "nota": nota, "evaluacion": evaluacion,
     }
+
+
+def percentil_inclusivo(valores: list[float], p: float) -> float:
+    """Replica PERCENTILE (legacy/inclusive) de Excel: interpolacion lineal
+    sobre la lista ordenada, rango 0-indexado = p*(n-1). Con un solo valor,
+    Excel tambien devuelve ese unico valor."""
+    ordenados = sorted(valores)
+    n = len(ordenados)
+    if n == 1:
+        return ordenados[0]
+    idx = p * (n - 1)
+    lo = int(idx)
+    hi = min(lo + 1, n - 1)
+    frac = idx - lo
+    return ordenados[lo] + (ordenados[hi] - ordenados[lo]) * frac
+
+
+def calcular_clientes(kpis_proyectos_completos: list[dict], proyectos_por_tag: dict) -> list[dict]:
+    """Agrupa kpis_proyectos_completos por 'cliente' y recomputa AOV/Vida/
+    Meses activo/Frecuencia/Margen%/CLTV -- mismas formulas que
+    asegurar_hoja_clientes en analisis_financiero.py, pero usando SOLO
+    proyectos completos (spec §3: un proyecto incompleto de un cliente no
+    contamina su CLTV, como si todavia no existiera)."""
+    por_cliente: dict[str, list[dict]] = {}
+    for kpi in kpis_proyectos_completos:
+        cliente = kpi["cliente"]
+        if not cliente:
+            continue
+        por_cliente.setdefault(cliente, []).append(kpi)
+
+    filas = []
+    for cliente, kpis in por_cliente.items():
+        n = len(kpis)
+        aov = sum(k["monto_venta"] for k in kpis) / n
+        vida = n
+        fechas = [proyectos_por_tag[k["tag"]]["fecha_inicio"] for k in kpis]
+        fechas = [f for f in fechas if f is not None]
+        if len(fechas) >= 2:
+            meses_activo = max(1.0, (max(fechas) - min(fechas)).days / 30)
+        else:
+            meses_activo = 1.0
+        frecuencia = vida / (meses_activo / 12)
+        suma_venta = sum(k["monto_venta"] for k in kpis)
+        suma_margen = sum(k["margen_real"] for k in kpis)
+        margen_pct = suma_margen / suma_venta if suma_venta else 0.0
+        cltv = aov * frecuencia * vida * margen_pct
+        filas.append({
+            "cliente": cliente, "aov": aov, "vida": vida, "meses_activo": meses_activo,
+            "frecuencia": frecuencia, "margen_pct": margen_pct, "cltv": cltv,
+        })
+
+    cltvs = [f["cltv"] for f in filas]
+    for f in filas:
+        p67 = percentil_inclusivo(cltvs, 0.67)
+        p33 = percentil_inclusivo(cltvs, 0.33)
+        if f["cltv"] >= p67:
+            f["clasificacion"] = "Clientes estratégicos"
+        elif f["cltv"] >= p33:
+            f["clasificacion"] = "Clientes potenciales"
+        else:
+            f["clasificacion"] = "Clientes de oportunidad"
+
+    return filas

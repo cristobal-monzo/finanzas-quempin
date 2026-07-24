@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import analisis_financiero as af
 import build_visualizador as bv
 
@@ -156,3 +158,80 @@ def test_calcular_kpis_proyecto_redondeo_estilo_excel_en_empate_exacto():
     assert valor_sin_redondear == 96.5
     assert round(96.5) == 96  # banker's rounding de Python -- lo que NO queremos
     assert kpis["nota"] == 97  # ROUND-half-away-from-zero de Excel
+
+
+def test_percentil_inclusivo_replica_percentile_excel():
+    valores = [10, 20, 30, 40, 50]
+    # PERCENTILE.INC(rango, 0.5) con 5 valores = el del medio (30).
+    assert bv.percentil_inclusivo(valores, 0.5) == 30
+    # PERCENTILE.INC(rango, 0) = minimo, PERCENTILE.INC(rango, 1) = maximo.
+    assert bv.percentil_inclusivo(valores, 0) == 10
+    assert bv.percentil_inclusivo(valores, 1) == 50
+
+
+def test_percentil_inclusivo_con_un_solo_valor_devuelve_ese_valor():
+    assert bv.percentil_inclusivo([42], 0.67) == 42
+
+
+def test_calcular_clientes_agrupa_y_calcula_cltv():
+    # 180 dias exactos entre las 2 fechas -- evita aritmetica de calendario
+    # ambigua (dias/mes no calzan limpio con /30) en la asercion.
+    fecha_a = datetime(2026, 1, 1)
+    fecha_b = fecha_a + timedelta(days=180)
+    kpis = [
+        {"tag": "AGCI1", "cliente": "AGCID", "monto_venta": 1_000_000, "margen_real": 250_000},
+        {"tag": "AGCI2", "cliente": "AGCID", "monto_venta": 2_000_000, "margen_real": 500_000},
+    ]
+    proyectos_por_tag = {
+        "AGCI1": {"fecha_inicio": fecha_a},
+        "AGCI2": {"fecha_inicio": fecha_b},
+    }
+
+    clientes = bv.calcular_clientes(kpis, proyectos_por_tag)
+
+    assert len(clientes) == 1
+    c = clientes[0]
+    assert c["cliente"] == "AGCID"
+    assert c["aov"] == 1_500_000
+    assert c["vida"] == 2
+    assert c["meses_activo"] == 6.0  # 180 dias / 30
+    assert c["frecuencia"] == 4.0  # 2 / (6.0 / 12)
+    assert c["margen_pct"] == 0.25  # (250000+500000)/(1000000+2000000)
+    assert c["cltv"] == 3_000_000.0  # 1500000 * 4.0 * 2 * 0.25
+
+
+def test_calcular_clientes_un_solo_proyecto_meses_activo_minimo_1():
+    kpis = [{"tag": "UMAG", "cliente": "UMAG", "monto_venta": 1_000_000, "margen_real": 200_000}]
+    proyectos_por_tag = {"UMAG": {"fecha_inicio": datetime(2026, 3, 1)}}
+
+    clientes = bv.calcular_clientes(kpis, proyectos_por_tag)
+
+    assert clientes[0]["meses_activo"] == 1.0
+
+
+def test_calcular_clientes_ignora_proyectos_sin_cliente_asignado():
+    kpis = [{"tag": "X", "cliente": None, "monto_venta": 1_000_000, "margen_real": 200_000}]
+    proyectos_por_tag = {"X": {"fecha_inicio": datetime(2026, 1, 1)}}
+
+    assert bv.calcular_clientes(kpis, proyectos_por_tag) == []
+
+
+def test_calcular_clientes_clasificacion_por_percentil_de_cltv():
+    # 3 clientes con CLTV muy distinto -- el de mayor CLTV debe caer en
+    # "Clientes estrategicos" (>=p67), el de menor en "Clientes de
+    # oportunidad" (<p33).
+    kpis = [
+        {"tag": "A", "cliente": "Bajo", "monto_venta": 100_000, "margen_real": 10_000},
+        {"tag": "B", "cliente": "Medio", "monto_venta": 1_000_000, "margen_real": 200_000},
+        {"tag": "C", "cliente": "Alto", "monto_venta": 10_000_000, "margen_real": 3_000_000},
+    ]
+    proyectos_por_tag = {
+        "A": {"fecha_inicio": datetime(2026, 1, 1)},
+        "B": {"fecha_inicio": datetime(2026, 1, 1)},
+        "C": {"fecha_inicio": datetime(2026, 1, 1)},
+    }
+
+    clientes = {c["cliente"]: c for c in bv.calcular_clientes(kpis, proyectos_por_tag)}
+
+    assert clientes["Alto"]["clasificacion"] == "Clientes estratégicos"
+    assert clientes["Bajo"]["clasificacion"] == "Clientes de oportunidad"
