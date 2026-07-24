@@ -2025,7 +2025,7 @@ def _avisar_reportes_pendientes() -> None:
     if not pendientes:
         return
     print(
-        f"  [AVISO] {len(pendientes)} reporte(s) PDF de Analisis Financiero "
+        f"  [AVISO] {len(pendientes)} reporte(s) PDF de Análisis Financiero "
         f"quedaron pendientes/desactualizados ({', '.join(pendientes)}) -- correr "
         f"'/Reportes_Analisis_Financiero status' para verlos."
     )
