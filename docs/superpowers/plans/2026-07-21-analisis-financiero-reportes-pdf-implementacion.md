@@ -1690,3 +1690,160 @@ tarea ya está en `master`).
 git add "Centro de Costos/Sistema/auditor_centro_costos.py" "Centro de Costos/Sistema/tests/" "Sistema Analisis Financiero/CLAUDE.md" "Sistema Analisis Financiero/MEMORY.md"
 git commit -m "feat(analisis-financiero): avisar reportes PDF pendientes al final del run de Centro de Costos + docs"
 ```
+
+## Tarea 8 (agregada 2026-07-24, hallazgo de la revisión final de rama)
+
+**Por qué existe esta tarea:** la revisión final de rama (whole-branch review,
+tras completar las Tareas 1-7) encontró que `openpyxl` **no cachea el
+resultado calculado** de una fórmula que él mismo escribe — solo guarda el
+texto `"=A1+B1"`. `analisis_financiero.py` reescribe TODAS las columnas
+derivadas de `Proyectos` (Costos Materiales/Equipos/Otros Reales, Total
+Proyectado/Real, Margen Proyectado/Real, Desviación %) y la hoja
+`Indicadores`/`Clientes` completas **en cada corrida**, sin excepción
+(`asegurar_formulas_proyectos`, `asegurar_hoja_indicadores`,
+`asegurar_hoja_clientes`). Se verificó empíricamente (script de prueba con
+`openpyxl.load_workbook(..., data_only=True)`) que tras cualquier `ejecutar()`,
+esas celdas quedan en `None` hasta que un humano abre el archivo en Excel/
+LibreOffice y lo guarda (recién ahí quedan cacheadas). Como
+`datos_reportes.py` (Tarea 4) lee con `data_only=True`, cualquier reporte PDF
+generado sin ese paso manual mostraría los KPIs principales (Margen Real,
+Nota del Proyecto, etc.) en blanco — justo en el momento en que el aviso de
+la Tarea 7 invita a generarlo. Decisión del usuario: **recalcular en Python**,
+replicando exactamente la misma lógica que ya está en `analisis_financiero.py`
+(mismos inputs, mismas fórmulas), para que el reporte nunca dependa de que
+alguien haya abierto el Excel.
+
+**Alcance:** solo `Sistema Analisis Financiero/Reportes/`. No toca
+`analisis_financiero.py` (las fórmulas de Excel siguen existiendo, son la
+fuente de verdad que este código replica), ni `estado_reportes.py`,
+`driver.py`, `motor_reportes.py`, `brand.py`, `graficos.py` (`driver.
+listar_entidades` solo usa campos manuales, no afectados por este bug).
+
+**Files:**
+- Create: `Sistema Analisis Financiero/Reportes/kpis_recalculados.py`
+- Create: `Sistema Analisis Financiero/Reportes/tests/test_kpis_recalculados.py`
+- Modify: `Sistema Analisis Financiero/Reportes/datos_reportes.py` (las 4
+  `paquete_datos_*` dejan de leer `Indicadores`/`Clientes` y las columnas
+  derivadas de `Proyectos` vía `data_only`; usan el recálculo en Python)
+- Modify: `Sistema Analisis Financiero/Reportes/tests/test_datos_reportes.py`
+  (los fixtures dejaban valores literales directamente en las celdas
+  derivadas — eso enmascaraba este mismo bug; hay que corregirlos para que
+  simulen el estado real post-`ejecutar()`: columnas derivadas de
+  `Proyectos` vacías/ausentes, `Detalle Costos Reales` con filas reales,
+  sin poblar `Indicadores`/`Clientes` a mano)
+
+**Interfaces:**
+- `kpis_recalculados.py` produce:
+  - `costos_reales_por_proyecto(filas_detalle: list[dict]) -> dict[str, dict[str, float]]`
+  - `recalcular_proyecto(proyecto: dict, costos_reales: dict[str, float]) -> tuple[dict, dict]`
+    (devuelve `(proyecto_actualizado, indicadores)`; ninguno de los dos muta
+    el `proyecto` de entrada)
+  - `calcular_cltv_clientes(proyectos_completos: list[dict]) -> dict[str, dict]`
+- `datos_reportes.py` importa estas 3 funciones y las usa dentro de las 4
+  `paquete_datos_*` en vez de leer `HOJA_INDICADORES`/`HOJA_CLIENTES` ni las
+  columnas derivadas de `Proyectos`.
+
+**Reglas de traducción fórmula→Python (ver `analisis_financiero.py` para el
+original exacto de cada una):**
+
+1. **Costos reales por bucket** (mirror de la fórmula
+   `SUMIFS('Detalle Costos Reales'!$D:$D,...$A:$A,tag,...$C:$C,bucket)`,
+   `analisis_financiero.py:656-660`): agrupar filas de `Detalle Costos
+   Reales` por `(TAG proyecto, Bucket)`, sumar `Total sin IVA`. Bucket sin
+   filas → 0.0 (SUMIFS sin coincidencias devuelve 0, no error).
+
+2. **División con propagación de error** (mirror de que una fórmula de Excel
+   con denominador 0 muestra `#DIV/0!`, no 0 ni un valor inventado — principio
+   de rigor numérico del repo, "nunca inventa cifras"): toda división debe
+   devolver `None` si el denominador es `None` o `0`, nunca un número
+   inventado. Cualquier KPI que dependa de un valor `None` (ej. Nota del
+   Proyecto depende de Margen neto % y Desviación % Total) también debe
+   quedar en `None` — igual que Excel propaga `#DIV/0!` en cascada.
+
+3. **`Proyectos` (`analisis_financiero.py:674-681`):**
+   - `Total Proyectado` = suma de los 4 costos proyectados (manuales, ya
+     completos por la validación de Tarea 4 — nunca `None` en un proyecto
+     completo)
+   - `Total Real` = Materiales+Equipos+Otros (del paso 1) + Mano de Obra Real
+     (manual)
+   - `Margen Proyectado` = Venta − Total Proyectado
+   - `Margen Real` = Venta − Total Real
+   - `Desviación % (Real vs Proyectado)` = Total Real / Total Proyectado − 1
+     (regla 2: `None` si Total Proyectado es 0)
+
+4. **`Indicadores` (`analisis_financiero.py:717-759`, `MARGEN_OBJETIVO_NOTA`/
+   `PESO_RENTABILIDAD_NOTA`/`PESO_DESVIACION_NOTA` en `analisis_financiero.py:689-691`
+   — importar esas 3 constantes desde `analisis_financiero`, no duplicarlas,
+   para que recalibrar el benchmark siga sin implicar tocar dos archivos):
+   - `Rentabilidad sobre costo` = Margen Real / Total Real
+   - `Margen neto %` = Margen Real / Venta
+   - `Productividad <Bucket>` = Venta / Costo Real de ese bucket (Materiales/
+     Equipos/MO/Otros)
+   - `Costo <Bucket> % de venta` = Costo Real de ese bucket / Venta
+   - `Desviación % <Bucket>` = Costo Real / Costo Proyectado de ese bucket − 1
+   - `Nota del Proyecto`: si Margen neto % o Desviación % Total son `None`,
+     Nota y Evaluación quedan en `None` (regla 2). Si no:
+     `score_margen = min(100, max(0, (margen_neto/MARGEN_OBJETIVO_NOTA)*100))`,
+     `score_desviacion = min(100, max(0, 100 - abs(desviacion_total)*100))`,
+     `nota = round_excel(PESO_RENTABILIDAD_NOTA*score_margen + PESO_DESVIACION_NOTA*score_desviacion)`.
+     **`round_excel` debe redondear "half away from zero" (como Excel
+     `ROUND`), NO "half to even" como el `round()` nativo de Python** (para
+     Nota, siempre no-negativa: `math.floor(x + 0.5)`).
+   - `Evaluación`: `Nota>=85` → "Excelente"; `>=70` → "Bueno"; `>=55` →
+     "Aprobado"; si no, "Requiere atención"; si Nota es `None`, `None`.
+
+5. **`Clientes`/CLTV (`analisis_financiero.py:764-810`) — debe calcularse
+   sobre TODOS los proyectos completos del libro a la vez** (no por cliente
+   aislado), porque `Clasificación` depende del percentil de CLTV entre
+   TODOS los clientes, igual que la fórmula Excel referencia `Clientes!$G:$G`
+   completa:
+   - `AOV` = promedio de Venta de los proyectos del cliente
+   - `Vida del cliente` = cantidad de proyectos del cliente
+   - `Meses activo` = `max(1, (fecha_inicio_max - fecha_inicio_min).days / 30)`
+     (coerce `datetime`→`date` igual que ya hace
+     `datos_reportes.proyecto_esta_en_desarrollo`)
+   - `Frecuencia de compra` = Vida / (Meses activo / 12)
+   - `Margen de utilidad %` = suma(Margen Real de sus proyectos) / suma(Venta
+     de sus proyectos) (regla 2 si la suma de Venta es 0)
+   - `CLTV` = AOV × Frecuencia × Vida × Margen de utilidad % (`None` si AOV o
+     Margen de utilidad % son `None`)
+   - `Clasificación`: percentil de CLTV entre los CLTV válidos (no `None`) de
+     TODOS los clientes, método `PERCENTILE.INC` de Excel (interpolación
+     lineal: `rank = p*(n-1)`, interpolar entre `sorted[floor(rank)]` y
+     `sorted[floor(rank)+1]`) — replicar exactamente, no usar un percentil
+     "estilo numpy" distinto sin verificar que coincide. `CLTV >= percentil
+     67` → "Clientes estratégicos"; `>= percentil 33` → "Clientes
+     potenciales"; si no, "Clientes de oportunidad". Un solo cliente válido
+     (n=1) → usar directamente su propio valor como ambos percentiles (se
+     clasifica "Clientes estratégicos" por definición, coincide con el
+     comportamiento de `PERCENTILE` de Excel con un solo dato).
+
+**Rediseño de `datos_reportes.py`:** las 4 `paquete_datos_*` deben construir
+la lista completa de proyectos recalculados UNA vez (`Proyectos` +
+`Detalle Costos Reales`, ambos leídos con `data_only=True` — `Detalle Costos
+Reales` sí contiene valores literales, nunca fórmulas, así que es seguro
+leerlo así, ver `analisis_financiero.py:612-635`), filtrar según lo que pida
+cada función, y NUNCA volver a leer `HOJA_INDICADORES`/`HOJA_CLIENTES`. El
+chequeo de completitud (`proyecto_tiene_datos_completos`) sigue funcionando
+igual porque los campos manuales no cambian con el recálculo — sigue
+corriendo sobre el diccionario de proyecto (recalculado o no da lo mismo,
+las claves manuales quedan intactas).
+
+**Tests:** valores de ejemplo con números redondos para verificar a mano
+(ver diseño arriba con Venta=1.000.000, costos proyectados=100.000 c/u,
+costos reales Materiales=60.000/Equipos=70.000/Otros=20.000/MO=90.000 →
+Total Real=240.000, Margen Real=760.000, Desviación=-40%, Nota=88,
+Evaluación="Excelente") + al menos un caso con denominador 0 (ej. un costo
+proyectado en 0) que debe devolver `None` en el KPI correspondiente, no un
+número inventado ni una excepción. `test_datos_reportes.py` debe dejar de
+poblar a mano las columnas derivadas de `Proyectos` y las hojas
+`Indicadores`/`Clientes` en sus fixtures — en su lugar, poblar `Detalle
+Costos Reales` con filas reales y verificar que el paquete resultante trae
+los valores recalculados correctamente (esto es lo que hubiera atrapado el
+bug original si hubiera estado así desde la Tarea 4).
+
+**Commit:**
+```bash
+git add "Sistema Analisis Financiero/Reportes/kpis_recalculados.py" "Sistema Analisis Financiero/Reportes/tests/test_kpis_recalculados.py" "Sistema Analisis Financiero/Reportes/datos_reportes.py" "Sistema Analisis Financiero/Reportes/tests/test_datos_reportes.py"
+git commit -m "fix(analisis-financiero): recalcular KPIs derivados en Python en vez de leer celdas de formula (openpyxl no cachea resultados)"
+```
