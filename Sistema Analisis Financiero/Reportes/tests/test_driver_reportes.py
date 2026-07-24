@@ -43,6 +43,15 @@ def _crear_excel_af(tmp_path, filas_proyectos: list[dict]):
     for fila_idx, fila in enumerate(filas_proyectos, start=2):
         for col, h in enumerate(HEADERS_PROYECTOS_TEST, start=1):
             ws.cell(row=fila_idx, column=col, value=fila.get(h))
+    # 'Detalle Costos Reales' -- Task 8 (kpis_recalculados.py) requiere esta
+    # hoja para recalcular los KPIs derivados; en el libro real siempre
+    # existe (se bootstrapea junto con 'Proyectos'), esta fixture solo
+    # simulaba 'Proyectos' antes de esa tarea. Sin filas: costos reales por
+    # bucket quedan en 0 -- este archivo no verifica montos, solo claves de
+    # entidad, asi que basta con que la hoja exista.
+    ws_d = wb.create_sheet("Detalle Costos Reales")
+    for col, h in enumerate(["TAG proyecto", "Subcategoría", "Bucket", "Total sin IVA"], start=1):
+        ws_d.cell(row=1, column=col, value=h)
     ruta = tmp_path / "Análisis de Proyectos.xlsx"
     wb.save(ruta)
     return ruta
