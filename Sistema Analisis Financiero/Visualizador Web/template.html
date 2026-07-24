@@ -676,6 +676,11 @@
   }
   function formatoCLP(n) { return '$' + Math.round(n).toLocaleString('es-CL'); }
   function formatoPct(n) { return (n * 100).toFixed(1) + '%'; }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
 
   // ---------- tooltip ----------
   function showTooltip(el, text) {
@@ -715,7 +720,7 @@
     banner.style.display = '';
     count.textContent = PENDIENTES.length;
     list.innerHTML = PENDIENTES.map(function (p) {
-      return '<li>' + p.mensaje + ' — <a href="' + p.link + '" target="_blank" rel="noopener">Abrir Análisis de Proyectos</a></li>';
+      return '<li>' + esc(p.mensaje) + ' — <a href="' + p.link + '" target="_blank" rel="noopener">Abrir Análisis de Proyectos</a></li>';
     }).join('');
   })();
   document.getElementById('pendientesToggle').addEventListener('click', function () {
