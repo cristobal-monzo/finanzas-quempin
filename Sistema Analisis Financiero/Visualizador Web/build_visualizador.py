@@ -16,7 +16,10 @@ design.md para el diseno completo.
 
 import math
 import sys
+from datetime import datetime
 from pathlib import Path
+
+import openpyxl
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Sistema"))
 import analisis_financiero as af  # noqa: E402
@@ -197,3 +200,54 @@ def calcular_clientes(kpis_proyectos_completos: list[dict], proyectos_por_tag: d
             f["clasificacion"] = "Clientes de oportunidad"
 
     return filas
+
+
+def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
+    """Arma el snapshot saneado completo: proyectos completos + sus KPIs,
+    clientes + su CLTV (excluyendo incompletos), y la lista de proyectos
+    pendientes de completar con el mensaje y link fijos (spec §1/§3).
+    `ruta_excel` es parametrizable para testear contra un workbook temporal,
+    nunca el Excel real de la empresa."""
+    wb = openpyxl.load_workbook(str(ruta_excel), data_only=True)
+    ws_proyectos = wb[af.HOJA_PROYECTOS]
+    ws_detalle = wb[af.HOJA_DETALLE_COSTOS_REALES]
+
+    proyectos = leer_proyectos(ws_proyectos)
+    proyectos_por_tag = {p["tag"]: p for p in proyectos}
+
+    completos = []
+    pendientes = []
+    for p in proyectos:
+        if es_proyecto_completo(p):
+            costos_reales = sumar_costos_reales_por_bucket(ws_detalle, p["tag"])
+            completos.append(calcular_kpis_proyecto(p, costos_reales))
+        else:
+            pendientes.append({
+                "tag": p["tag"],
+                "nombre": p["nombre"],
+                "mensaje": f"{p['nombre']} — Falta ingresar información en 'Análisis de Proyectos'",
+                "link": URL_PLANILLA_PENDIENTE,
+            })
+
+    clientes = calcular_clientes(completos, proyectos_por_tag)
+
+    pendientes_por_cliente: dict[str, int] = {}
+    for p in proyectos:
+        if not es_proyecto_completo(p) and p["cliente"]:
+            pendientes_por_cliente[p["cliente"]] = pendientes_por_cliente.get(p["cliente"], 0) + 1
+    for c in clientes:
+        c["proyectos_pendientes"] = pendientes_por_cliente.get(c["cliente"], 0)
+
+    n_completos = len(completos)
+    return {
+        "generado": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "kpis_proyectos": {
+            "n_completos": n_completos,
+            "margen_real_total": sum(k["margen_real"] for k in completos),
+            "nota_promedio": (sum(k["nota"] for k in completos) / n_completos) if n_completos else 0,
+            "n_requiere_atencion": sum(1 for k in completos if k["evaluacion"] == "Requiere atención"),
+        },
+        "proyectos": completos,
+        "clientes": clientes,
+        "pendientes": pendientes,
+    }

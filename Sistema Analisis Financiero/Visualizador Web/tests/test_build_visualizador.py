@@ -216,6 +216,81 @@ def test_calcular_clientes_ignora_proyectos_sin_cliente_asignado():
     assert bv.calcular_clientes(kpis, proyectos_por_tag) == []
 
 
+def _wb_con_proyectos(tmp_path, filas):
+    """filas: list[dict] con al menos tag/nombre/cliente + las columnas
+    manuales de _fila_proyecto_completa (usar overrides para omitir alguna
+    y simular un proyecto incompleto)."""
+    ruta = tmp_path / "Análisis de Proyectos.xlsx"
+    wb = af.asegurar_estructura_workbook(ruta)
+    ws = wb[af.HOJA_PROYECTOS]
+    for i, fila in enumerate(filas, start=2):
+        _fila_proyecto_completa(ws, i, **fila)
+    wb.save(ruta)
+    return ruta
+
+
+def test_extraer_datos_saneados_separa_completos_e_incompletos(tmp_path):
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+        {
+            "TAG proyecto": "CFLI", "Nombre del proyecto": "Cesfam Limache", "Cliente": "Cesfam",
+            "Monto de Venta (sin IVA)": None,
+        },
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    assert len(data["proyectos"]) == 1
+    assert data["proyectos"][0]["tag"] == "UMAG"
+    assert len(data["pendientes"]) == 1
+    pendiente = data["pendientes"][0]
+    assert pendiente["nombre"] == "Cesfam Limache"
+    assert pendiente["mensaje"] == "Cesfam Limache — Falta ingresar información en 'Análisis de Proyectos'"
+    assert pendiente["link"] == bv.URL_PLANILLA_PENDIENTE
+
+
+def test_extraer_datos_saneados_kpis_proyectos_resumen(tmp_path):
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    assert data["kpis_proyectos"]["n_completos"] == 1
+    assert data["kpis_proyectos"]["margen_real_total"] == data["proyectos"][0]["margen_real"]
+    assert data["kpis_proyectos"]["nota_promedio"] == data["proyectos"][0]["nota"]
+    assert data["kpis_proyectos"]["n_requiere_atencion"] == 0
+
+
+def test_extraer_datos_saneados_cliente_con_proyecto_pendiente_muestra_nota(tmp_path):
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "AGCI1", "Nombre del proyecto": "AGCID Febrero", "Cliente": "AGCID"},
+        {
+            "TAG proyecto": "AGCI2", "Nombre del proyecto": "AGCID Agosto", "Cliente": "AGCID",
+            "Monto de Venta (sin IVA)": None,
+        },
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    assert len(data["clientes"]) == 1
+    assert data["clientes"][0]["cliente"] == "AGCID"
+    assert data["clientes"][0]["proyectos_pendientes"] == 1
+
+
+def test_extraer_datos_saneados_cliente_100pct_incompleto_no_aparece(tmp_path):
+    ruta = _wb_con_proyectos(tmp_path, [
+        {
+            "TAG proyecto": "CFLI", "Nombre del proyecto": "Cesfam Limache", "Cliente": "Cesfam",
+            "Monto de Venta (sin IVA)": None,
+        },
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    assert data["clientes"] == []
+
+
 def test_calcular_clientes_clasificacion_por_percentil_de_cltv():
     # 3 clientes con CLTV muy distinto -- el de mayor CLTV debe caer en
     # "Clientes estrategicos" (>=p67), el de menor en "Clientes de
