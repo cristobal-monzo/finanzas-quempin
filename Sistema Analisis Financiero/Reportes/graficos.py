@@ -51,13 +51,22 @@ def grafico_dona_svg(
     angulo_acum = -90.0
     for i, valor in enumerate(valores):
         angulo = (valor / total) * 360.0
+        color = colores[i % len(colores)]
+        # Un unico arco SVG no puede describir un circulo completo: si un
+        # segmento cubre >= ~100% del total (start == end), el comando "A"
+        # degenera en una linea invisible. En ese caso dibujamos un circulo.
+        if angulo >= 359.99:
+            partes.append(
+                f'<circle cx="{centro}" cy="{centro}" r="{radio}" fill="{color}"/>'
+            )
+            angulo_acum += angulo
+            continue
         x1 = centro + radio * math.cos(math.radians(angulo_acum))
         y1 = centro + radio * math.sin(math.radians(angulo_acum))
         angulo_acum += angulo
         x2 = centro + radio * math.cos(math.radians(angulo_acum))
         y2 = centro + radio * math.sin(math.radians(angulo_acum))
         gran_arco = 1 if angulo > 180 else 0
-        color = colores[i % len(colores)]
         partes.append(
             f'<path d="M{centro},{centro} L{x1:.2f},{y1:.2f} '
             f'A{radio},{radio} 0 {gran_arco} 1 {x2:.2f},{y2:.2f} Z" fill="{color}"/>'
