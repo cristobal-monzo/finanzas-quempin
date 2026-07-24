@@ -124,6 +124,23 @@ def test_paquete_datos_cliente_incluye_cltv_y_sus_proyectos(tmp_path):
     assert paquete["proyectos"][0]["TAG proyecto"] == "UMAG"
 
 
+def test_paquete_datos_cliente_excluye_proyectos_incompletos(tmp_path):
+    ruta = _crear_excel_af(
+        tmp_path,
+        [
+            _fila_proyecto_completa(**{"TAG proyecto": "UMAG"}),
+            _fila_proyecto_completa(**{
+                "TAG proyecto": "UMAG2", "Nombre del proyecto": "UMAG Fase 2",
+                "Monto de Venta (sin IVA)": None,  # incompleto -- se excluye del agregado
+            }),
+        ],
+        [{"Cliente": "UMAG", "AOV (Valor promedio de venta)": 1000000, "CLTV": 200000, "Clasificación": "Clientes estratégicos"}],
+    )
+    paquete = dr.paquete_datos_cliente(ruta, "UMAG")
+    assert len(paquete["proyectos"]) == 1
+    assert paquete["proyectos"][0]["TAG proyecto"] == "UMAG"
+
+
 def test_paquete_datos_categoria_agrupa_por_categoria(tmp_path):
     ruta = _crear_excel_af(tmp_path, [
         _fila_proyecto_completa(),
