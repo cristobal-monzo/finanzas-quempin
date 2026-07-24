@@ -40,15 +40,15 @@ def test_formulas_agregan_sobre_proyectos_filtrando_por_columna_cliente(tmp_path
 
     ws_clientes = wb[af.HOJA_CLIENTES]
     assert ws_clientes.cell(row=2, column=1).value == "AGCID"
-    assert ws_clientes.cell(row=2, column=2).value == "=AVERAGEIF(Proyectos!$T:$T,$A2,Proyectos!$F:$F)"
-    assert ws_clientes.cell(row=2, column=3).value == "=COUNTIF(Proyectos!$T:$T,$A2)"
+    assert ws_clientes.cell(row=2, column=2).value == "=AVERAGEIF(Proyectos!$C:$C,$A2,Proyectos!$G:$G)"
+    assert ws_clientes.cell(row=2, column=3).value == "=COUNTIF(Proyectos!$C:$C,$A2)"
     assert ws_clientes.cell(row=2, column=4).value == (
-        "=MAX(1,(MAXIFS(Proyectos!$D:$D,Proyectos!$T:$T,$A2)"
-        "-MINIFS(Proyectos!$D:$D,Proyectos!$T:$T,$A2))/30)"
+        "=MAX(1,(MAXIFS(Proyectos!$E:$E,Proyectos!$C:$C,$A2)"
+        "-MINIFS(Proyectos!$E:$E,Proyectos!$C:$C,$A2))/30)"
     )
     assert ws_clientes.cell(row=2, column=5).value == "=C2/(D2/12)"
     assert ws_clientes.cell(row=2, column=6).value == (
-        "=SUMIF(Proyectos!$T:$T,$A2,Proyectos!$R:$R)/SUMIF(Proyectos!$T:$T,$A2,Proyectos!$F:$F)"
+        "=SUMIF(Proyectos!$C:$C,$A2,Proyectos!$S:$S)/SUMIF(Proyectos!$C:$C,$A2,Proyectos!$G:$G)"
     )
     assert ws_clientes.cell(row=2, column=7).value == "=B2*E2*C2*F2"
     assert ws_clientes.cell(row=2, column=8).value == (

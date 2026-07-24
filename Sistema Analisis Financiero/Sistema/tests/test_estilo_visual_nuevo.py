@@ -7,7 +7,7 @@ def test_columna_cliente_de_proyectos_tiene_estilo(tmp_path):
     af.aplicar_estilo_visual(wb)
 
     ws = wb[af.HOJA_PROYECTOS]
-    assert ws["T1"].fill.fgColor.theme == af.COLOR_IDENTIFICACION.theme
+    assert ws["C1"].fill.fgColor.theme == af.COLOR_IDENTIFICACION.theme
 
 
 def test_columnas_nota_y_evaluacion_de_indicadores_tienen_estilo(tmp_path):

@@ -8,8 +8,8 @@ def test_formula_nota_referencia_margen_y_desviacion_total(tmp_path):
     ws = wb[af.HOJA_INDICADORES]
     formula_nota = ws.cell(row=2, column=17).value
     assert formula_nota == (
-        "=ROUND(0.7*MIN(100,MAX(0,(Proyectos!R2/Proyectos!F2)/0.25*100))"
-        "+0.3*MIN(100,MAX(0,100-ABS(Proyectos!S2)*100)),0)"
+        "=ROUND(0.7*MIN(100,MAX(0,(Proyectos!S2/Proyectos!G2)/0.25*100))"
+        "+0.3*MIN(100,MAX(0,100-ABS(Proyectos!T2)*100)),0)"
     )
 
 

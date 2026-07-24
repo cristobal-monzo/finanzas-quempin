@@ -27,7 +27,7 @@ def test_ejecutar_completa_cliente_y_genera_hojas_clientes_y_glosario(tmp_path):
     ws = wb[af.HOJA_PROYECTOS]
     ws.cell(row=2, column=1, value="AGCI1")
     ws.cell(row=2, column=2, value="AGCID Febrero")
-    ws.cell(row=2, column=6, value=1_000_000)
+    ws.cell(row=2, column=7, value=1_000_000)
     wb.save(ruta_af)
 
     resumen = af.ejecutar(
