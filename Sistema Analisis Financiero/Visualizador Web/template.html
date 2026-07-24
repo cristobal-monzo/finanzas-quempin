@@ -730,7 +730,78 @@
     this.textContent = open ? 'Ver detalle' : 'Ocultar detalle';
   });
 
-  // Tasks 6-7 agregan aquí: pestaña Proyectos, pestaña Clientes.
+  // ---------- gráficos SVG genéricos (barras + donut) ----------
+  function renderBarChart(containerId, items, labelKey, valueKey) {
+    var el = document.getElementById(containerId);
+    var max = Math.max.apply(null, items.map(function (i) { return i[valueKey]; }).concat([1]));
+    var rows = items.map(function (i) {
+      var pct = Math.max(0, i[valueKey]) / max * 100;
+      return '<div class="bar-row">' +
+        '<div class="bar-label" title="' + esc(i[labelKey]) + '">' + esc(i[labelKey]) + '</div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="bar-value">' + i.valueLabel + '</div>' +
+        '</div>';
+    }).join('');
+    el.innerHTML = rows || '<p>Sin datos.</p>';
+  }
+
+  function renderDonutChart(containerId, items, labelKey, valueKey) {
+    var el = document.getElementById(containerId);
+    var total = items.reduce(function (s, i) { return s + i[valueKey]; }, 0);
+    var size = 160, r = 60, cx = size / 2, cy = size / 2, circ = 2 * Math.PI * r;
+    var offset = 0;
+    var colors = ['var(--brand-orange)', 'var(--brand-gray-11)', 'var(--brand-gray-7)', 'var(--brand-black)'];
+    var segs = items.map(function (i, idx) {
+      var frac = total ? i[valueKey] / total : 0;
+      var dash = frac * circ;
+      var seg = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' +
+        colors[idx % colors.length] + '" stroke-width="24" stroke-dasharray="' + dash + ' ' + (circ - dash) +
+        '" stroke-dashoffset="' + (-offset) + '"/>';
+      offset += dash;
+      return seg;
+    }).join('');
+    var legend = items.map(function (i, idx) {
+      return '<div class="donut-legend-row"><span class="donut-swatch" style="background:' +
+        colors[idx % colors.length] + '"></span>' + esc(i[labelKey]) + ' (' + i[valueKey] + ')</div>';
+    }).join('');
+    el.innerHTML = '<div class="donut-wrap"><svg viewBox="0 0 ' + size + ' ' + size +
+      '" width="160" height="160">' + segs + '</svg><div class="donut-legend">' + legend + '</div></div>';
+  }
+
+  // ---------- pestaña Proyectos ----------
+  document.getElementById('kpiNCompletos').textContent = KPIS.n_completos;
+  document.getElementById('kpiMargenTotal').textContent = formatoCLP(KPIS.margen_real_total);
+  document.getElementById('kpiNotaPromedio').textContent = Math.round(KPIS.nota_promedio);
+  document.getElementById('kpiRequiereAtencion').textContent = KPIS.n_requiere_atencion;
+
+  var proyectosOrdenados = PROYECTOS.slice().sort(function (a, b) { return b.nota - a.nota; });
+  renderBarChart('chartNotaProyectos', proyectosOrdenados.map(function (p) {
+    return { nombre: p.nombre, nota: p.nota, valueLabel: p.nota };
+  }), 'nombre', 'nota');
+
+  var porEvaluacion = {};
+  PROYECTOS.forEach(function (p) { porEvaluacion[p.evaluacion] = (porEvaluacion[p.evaluacion] || 0) + 1; });
+  renderDonutChart('chartEvaluacion', Object.keys(porEvaluacion).map(function (k) {
+    return { evaluacion: k, n: porEvaluacion[k] };
+  }), 'evaluacion', 'n');
+
+  function renderTablaProyectos(items) {
+    var tbody = document.getElementById('tablaProyectosBody');
+    tbody.innerHTML = items.map(function (p) {
+      return '<tr><td>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + esc(p.estado || '—') +
+        '</td><td>' + formatoCLP(p.monto_venta) + '</td><td>' + formatoCLP(p.margen_real) + '</td><td>' +
+        formatoPct(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + esc(p.evaluacion) + '</td></tr>';
+    }).join('');
+  }
+  renderTablaProyectos(proyectosOrdenados);
+  document.getElementById('buscarProyectos').addEventListener('input', debounce(function (evt) {
+    var q = evt.target.value.toLowerCase();
+    renderTablaProyectos(proyectosOrdenados.filter(function (p) {
+      return (p.nombre + ' ' + (p.cliente || '')).toLowerCase().indexOf(q) !== -1;
+    }));
+  }, 150));
+
+  // Task 7 agrega aquí: pestaña Clientes.
   } // end initApp
 })();
 </script>
