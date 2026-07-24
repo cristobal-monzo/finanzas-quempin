@@ -106,3 +106,53 @@ def test_calcular_kpis_proyecto_evaluacion_requiere_atencion_bajo_55():
 
     assert kpis["margen_real"] < 0
     assert kpis["evaluacion"] == "Requiere atención"
+
+
+def test_calcular_kpis_proyecto_monto_venta_cero_no_explota():
+    # monto_venta=0 es "completo" segun es_proyecto_completo (0 SI cuenta
+    # como cargado) -- calcular_kpis_proyecto debe manejarlo sin ZeroDivisionError,
+    # con score_margen=0 (no hay ratio de margen que calcular contra venta nula).
+    p = {
+        "tag": "ZERO", "nombre": "Proyecto Venta Cero", "cliente": "Cliente X", "estado": "En Proceso",
+        "monto_venta": 0, "materiales_proy": 100_000, "equipos_proy": 0,
+        "mo_proy": 0, "otros_proy": 0, "mo_real": 0,
+    }
+    costos_reales = {"Materiales": 0.0, "Equipos": 0.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    assert kpis["margen_real"] == 0
+    assert isinstance(kpis, dict)
+    assert kpis["nota"] >= 0
+
+
+def test_calcular_kpis_proyecto_redondeo_estilo_excel_en_empate_exacto():
+    # Construimos margen_real/monto_venta y desviacion_pct tal que
+    # 0.7*score_margen + 0.3*score_desviacion == 96.5 exactamente.
+    # score_margen = 100 (margen_real/monto_venta = 25% = MARGEN_OBJETIVO_NOTA).
+    # 0.7*100 = 70 -> falta 26.5 de 0.3*score_desviacion -> score_desviacion = 26.5/0.3 = 88.333...
+    # Para evitar decimales feos, usamos score_margen=95 y score_desviacion=100:
+    # 0.7*95 + 0.3*100 = 66.5 + 30 = 96.5 exacto.
+    # score_margen=95 -> margen_real/monto_venta = 0.95*0.25 = 0.2375
+    # score_desviacion=100 -> desviacion_pct = 0
+    monto_venta = 1_000_000
+    margen_real_objetivo = 0.2375 * monto_venta  # 237_500
+    total_real = monto_venta - margen_real_objetivo  # 762_500
+    total_proyectado = total_real  # desviacion_pct = 0 -> score_desviacion = 100
+    p = {
+        "tag": "TIE", "nombre": "Empate Redondeo", "cliente": "Cliente Y", "estado": "En Proceso",
+        "monto_venta": monto_venta,
+        "materiales_proy": total_proyectado, "equipos_proy": 0, "mo_proy": 0, "otros_proy": 0,
+        "mo_real": total_real,
+    }
+    costos_reales = {"Materiales": 0.0, "Equipos": 0.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    # Verificamos que efectivamente armamos el empate exacto en 96.5 antes de redondear.
+    score_margen = min(100, max(0, (kpis["margen_real"] / monto_venta) / af.MARGEN_OBJETIVO_NOTA * 100))
+    score_desviacion = min(100, max(0, 100 - abs(kpis["desviacion_pct"]) * 100))
+    valor_sin_redondear = af.PESO_RENTABILIDAD_NOTA * score_margen + af.PESO_DESVIACION_NOTA * score_desviacion
+    assert valor_sin_redondear == 96.5
+    assert round(96.5) == 96  # banker's rounding de Python -- lo que NO queremos
+    assert kpis["nota"] == 97  # ROUND-half-away-from-zero de Excel

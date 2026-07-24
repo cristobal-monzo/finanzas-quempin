@@ -14,6 +14,7 @@ Ver docs/superpowers/specs/2026-07-23-analisis-financiero-visualizador-web-
 design.md para el diseno completo.
 """
 
+import math
 import sys
 from pathlib import Path
 
@@ -92,6 +93,16 @@ def sumar_costos_reales_por_bucket(ws_detalle, tag: str) -> dict:
     return sumas
 
 
+def _round_excel(valor: float) -> int:
+    """round-half-away-from-zero, igual que ROUND() de Excel -- round() nativo
+    de Python usa banker's rounding (redondeo al par mas cercano) y puede
+    dejar la Nota en el bucket de evaluacion equivocado justo en un empate
+    exacto en .5 (ej. 96.5 -> 96 en Python vs 97 en Excel). `nota` siempre es
+    un valor 0-100 (no negativo) tras los MIN/MAX de los scores, asi que
+    floor(x+0.5) alcanza."""
+    return math.floor(valor + 0.5)
+
+
 def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     """Recomputa, en Python, las mismas formulas que asegurar_formulas_
     proyectos/_formula_nota/_formula_evaluacion escriben en el Excel."""
@@ -100,9 +111,14 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     margen_real = p["monto_venta"] - total_real
     desviacion_pct = (total_real / total_proyectado - 1) if total_proyectado else 0.0
 
-    score_margen = min(100, max(0, (margen_real / p["monto_venta"]) / MARGEN_OBJETIVO_NOTA * 100))
+    if p["monto_venta"]:
+        score_margen = min(100, max(0, (margen_real / p["monto_venta"]) / MARGEN_OBJETIVO_NOTA * 100))
+    else:
+        # Venta en 0 es un dato "completo" valido (ver es_proyecto_completo),
+        # pero no hay ratio de margen que calcular contra una venta nula.
+        score_margen = 0
     score_desviacion = min(100, max(0, 100 - abs(desviacion_pct) * 100))
-    nota = round(PESO_RENTABILIDAD_NOTA * score_margen + PESO_DESVIACION_NOTA * score_desviacion)
+    nota = _round_excel(PESO_RENTABILIDAD_NOTA * score_margen + PESO_DESVIACION_NOTA * score_desviacion)
     if nota >= 85:
         evaluacion = "Excelente"
     elif nota >= 70:
