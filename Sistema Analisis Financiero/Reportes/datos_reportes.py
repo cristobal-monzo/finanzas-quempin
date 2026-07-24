@@ -16,7 +16,11 @@ RAIZ_SISTEMA = RAIZ_REPORTES.parent / "Sistema"
 if str(RAIZ_SISTEMA) not in sys.path:
     sys.path.insert(0, str(RAIZ_SISTEMA))
 
-from analisis_financiero import HOJA_CLIENTES, HOJA_INDICADORES, HOJA_PROYECTOS  # noqa: E402
+from analisis_financiero import HOJA_DETALLE_COSTOS_REALES, HOJA_PROYECTOS  # noqa: E402
+
+from kpis_recalculados import (  # noqa: E402
+    calcular_cltv_clientes, costos_reales_por_proyecto, recalcular_proyecto,
+)
 
 # Campos manuales que un proyecto debe tener cargados para generar reporte
 # (spec §6). "Fecha de cierre" queda deliberadamente FUERA -- su ausencia (o
@@ -59,89 +63,99 @@ def _mapa_encabezados(ws) -> dict[str, int]:
     return {celda.value: idx + 1 for idx, celda in enumerate(ws[1]) if celda.value}
 
 
-def _filas_por_columna(ws, mapa: dict[str, int], nombre_columna: str, valor):
-    """Todas las filas (>=2) cuya columna nombre_columna == valor, como dicts
-    encabezado->valor."""
-    col = mapa.get(nombre_columna)
-    if col is None:
-        return []
-    resultado = []
-    for fila_idx in range(2, ws.max_row + 1):
-        if ws.cell(row=fila_idx, column=col).value == valor:
-            resultado.append({h: ws.cell(row=fila_idx, column=c).value for h, c in mapa.items()})
-    return resultado
+def _todas_las_filas(ws, mapa: dict[str, int]) -> list[dict]:
+    """Todas las filas (>=2), como dicts encabezado->valor."""
+    return [
+        {h: ws.cell(row=fila_idx, column=c).value for h, c in mapa.items()}
+        for fila_idx in range(2, ws.max_row + 1)
+    ]
+
+
+def _todos_los_proyectos_recalculados(wb) -> list[dict]:
+    """Lee 'Proyectos' + 'Detalle Costos Reales' (ambas data_only=True --
+    'Detalle Costos Reales' sí trae valores literales, nunca fórmulas,
+    analisis_financiero.py:612-635) y devuelve una entrada por proyecto con
+    TAG: {"proyecto": <dict recalculado>, "indicadores": <dict
+    recalculado>}. Nunca lee 'Indicadores'/'Clientes' -- openpyxl no
+    cachea el resultado de una fórmula que él mismo escribe, así que esas
+    hojas quedan en None hasta que alguien abre el Excel a mano (ver
+    kpis_recalculados.py)."""
+    ws_p = wb[HOJA_PROYECTOS]
+    mapa_p = _mapa_encabezados(ws_p)
+    ws_d = wb[HOJA_DETALLE_COSTOS_REALES]
+    mapa_d = _mapa_encabezados(ws_d)
+
+    costos_reales = costos_reales_por_proyecto(_todas_las_filas(ws_d, mapa_d))
+
+    entradas = []
+    for proyecto in _todas_las_filas(ws_p, mapa_p):
+        tag = proyecto.get("TAG proyecto")
+        if not tag:
+            continue
+        proyecto_actualizado, indicadores = recalcular_proyecto(
+            proyecto, costos_reales.get(tag, {})
+        )
+        entradas.append({"proyecto": proyecto_actualizado, "indicadores": indicadores})
+    return entradas
 
 
 def paquete_datos_proyecto(ruta_excel: Path, tag: str) -> dict:
-    """Datos de 'Proyectos' + 'Indicadores' para un proyecto por su TAG.
-    Lanza DatosIncompletosError si le faltan campos manuales requeridos."""
+    """Datos de 'Proyectos' + KPIs derivados (recalculados en Python, ver
+    kpis_recalculados.py) para un proyecto por su TAG. Lanza
+    DatosIncompletosError si le faltan campos manuales requeridos."""
     wb = openpyxl.load_workbook(ruta_excel, data_only=True)
-    ws_p = wb[HOJA_PROYECTOS]
-    mapa_p = _mapa_encabezados(ws_p)
-    filas = _filas_por_columna(ws_p, mapa_p, "TAG proyecto", tag)
-    if not filas:
+    entrada = next(
+        (e for e in _todos_los_proyectos_recalculados(wb) if e["proyecto"].get("TAG proyecto") == tag),
+        None,
+    )
+    if entrada is None:
         raise ValueError(f"TAG de proyecto '{tag}' no encontrado en '{HOJA_PROYECTOS}'.")
-    proyecto = filas[0]
+    proyecto = entrada["proyecto"]
     if not proyecto_tiene_datos_completos(proyecto):
         raise DatosIncompletosError(
             f"Proyecto '{tag}' no tiene todos sus datos manuales cargados -- "
             f"no se genera reporte hasta que se complete."
         )
 
-    indicadores = {}
-    if HOJA_INDICADORES in wb.sheetnames:
-        ws_i = wb[HOJA_INDICADORES]
-        mapa_i = _mapa_encabezados(ws_i)
-        filas_i = _filas_por_columna(ws_i, mapa_i, "TAG proyecto", tag)
-        if filas_i:
-            indicadores = filas_i[0]
-
     return {
         "tipo": "proyecto",
         "tag": tag,
         "proyecto": proyecto,
-        "indicadores": indicadores,
+        "indicadores": entrada["indicadores"],
         "en_desarrollo": proyecto_esta_en_desarrollo(proyecto),
     }
 
 
 def paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str) -> dict:
-    """CLTV de 'Clientes' + sus proyectos con datos completos de 'Proyectos'
-    -- los incompletos se excluyen del agregado, no bloquean el reporte."""
+    """CLTV (recalculado en Python) + proyectos con datos completos del
+    cliente -- los incompletos se excluyen del agregado, no bloquean el
+    reporte. El CLTV se calcula sobre TODOS los proyectos completos del
+    libro (la Clasificación depende del percentil entre todos los
+    clientes), luego se selecciona la entrada de este cliente."""
     wb = openpyxl.load_workbook(ruta_excel, data_only=True)
-    ws_p = wb[HOJA_PROYECTOS]
-    mapa_p = _mapa_encabezados(ws_p)
-    proyectos = [
-        p for p in _filas_por_columna(ws_p, mapa_p, "Cliente", nombre_cliente)
-        if proyecto_tiene_datos_completos(p)
+    completos = [
+        e["proyecto"] for e in _todos_los_proyectos_recalculados(wb)
+        if proyecto_tiene_datos_completos(e["proyecto"])
     ]
+    proyectos_cliente = [p for p in completos if p.get("Cliente") == nombre_cliente]
+    cltv = calcular_cltv_clientes(completos).get(nombre_cliente, {})
 
-    cltv = {}
-    if HOJA_CLIENTES in wb.sheetnames:
-        ws_c = wb[HOJA_CLIENTES]
-        mapa_c = _mapa_encabezados(ws_c)
-        filas_c = _filas_por_columna(ws_c, mapa_c, "Cliente", nombre_cliente)
-        if filas_c:
-            cltv = filas_c[0]
-
-    if not proyectos and not cltv:
+    if not proyectos_cliente and not cltv:
         raise ValueError(
             f"Cliente '{nombre_cliente}' no encontrado, o ninguno de sus "
             f"proyectos tiene datos completos."
         )
 
-    return {"tipo": "cliente", "cliente": nombre_cliente, "cltv": cltv, "proyectos": proyectos}
+    return {"tipo": "cliente", "cliente": nombre_cliente, "cltv": cltv, "proyectos": proyectos_cliente}
 
 
 def paquete_datos_categoria(ruta_excel: Path, categoria: str) -> dict:
-    """Proyectos con datos completos de 'Proyectos' cuya Categoría calza --
-    los incompletos se excluyen del agregado."""
+    """Proyectos con datos completos (recalculados en Python) cuya
+    Categoría calza -- los incompletos se excluyen del agregado."""
     wb = openpyxl.load_workbook(ruta_excel, data_only=True)
-    ws_p = wb[HOJA_PROYECTOS]
-    mapa_p = _mapa_encabezados(ws_p)
     proyectos = [
-        p for p in _filas_por_columna(ws_p, mapa_p, "Categoría", categoria)
-        if proyecto_tiene_datos_completos(p)
+        e["proyecto"] for e in _todos_los_proyectos_recalculados(wb)
+        if proyecto_tiene_datos_completos(e["proyecto"]) and e["proyecto"].get("Categoría") == categoria
     ]
     if not proyectos:
         raise ValueError(f"Ningún proyecto con datos completos y Categoría '{categoria}'.")
