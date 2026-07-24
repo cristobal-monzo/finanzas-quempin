@@ -677,8 +677,55 @@
   function formatoCLP(n) { return '$' + Math.round(n).toLocaleString('es-CL'); }
   function formatoPct(n) { return (n * 100).toFixed(1) + '%'; }
 
-  // Tasks 5-7 agregan aquí: tooltips + tabs + banner de pendientes,
-  // pestaña Proyectos, pestaña Clientes.
+  // ---------- tooltip ----------
+  function showTooltip(el, text) {
+    tooltip.textContent = text;
+    tooltip.classList.add('show', 'info-mode');
+    var r = el.getBoundingClientRect();
+    tooltip.style.left = (r.left + r.width / 2) + 'px';
+    tooltip.style.top = (r.top - 8 + window.scrollY) + 'px';
+  }
+  function hideTooltip() { tooltip.classList.remove('show'); }
+  document.querySelectorAll('.info-icon').forEach(function (el) {
+    el.addEventListener('mouseenter', function () { showTooltip(el, el.getAttribute('data-info')); });
+    el.addEventListener('mouseleave', hideTooltip);
+    el.addEventListener('click', function () {
+      if (tooltip.classList.contains('show')) hideTooltip(); else showTooltip(el, el.getAttribute('data-info'));
+    });
+  });
+
+  // ---------- tabs ----------
+  var tabButtons = document.querySelectorAll('.viz-tab-btn');
+  var tabPanels = document.querySelectorAll('.viz-tab-panel');
+  tabButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabButtons.forEach(function (b) { b.classList.remove('active'); });
+      tabPanels.forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(btn.getAttribute('data-tab')).classList.add('active');
+    });
+  });
+
+  // ---------- banner de pendientes ----------
+  (function renderPendientes() {
+    var banner = document.getElementById('pendientesBanner');
+    var count = document.getElementById('pendientesCount');
+    var list = document.getElementById('pendientesList');
+    if (!PENDIENTES.length) { banner.style.display = 'none'; return; }
+    banner.style.display = '';
+    count.textContent = PENDIENTES.length;
+    list.innerHTML = PENDIENTES.map(function (p) {
+      return '<li>' + p.mensaje + ' — <a href="' + p.link + '" target="_blank" rel="noopener">Abrir Análisis de Proyectos</a></li>';
+    }).join('');
+  })();
+  document.getElementById('pendientesToggle').addEventListener('click', function () {
+    var list = document.getElementById('pendientesList');
+    var open = list.style.display !== 'none';
+    list.style.display = open ? 'none' : '';
+    this.textContent = open ? 'Ver detalle' : 'Ocultar detalle';
+  });
+
+  // Tasks 6-7 agregan aquí: pestaña Proyectos, pestaña Clientes.
   } // end initApp
 })();
 </script>
