@@ -128,6 +128,33 @@ Diseño completo:
 [`docs/superpowers/specs/2026-07-21-analisis-financiero-nota-clientes-design.md`](../docs/superpowers/specs/2026-07-21-analisis-financiero-nota-clientes-design.md)
 (ruta relativa a la raíz de `Finanzas QUEMPIN/`).
 
+## Reportes PDF (implementación, 2026-07-24)
+
+- **El contenido de cada reporte lo redacta el agente, no un script** — a
+  diferencia del resto del módulo (Excel 100% generado por
+  `analisis_financiero.py`), `Reportes/` solo prepara los datos
+  (`datos_reportes.py`), el layout/marca (`brand.py`, `graficos.py`) y el
+  renderizado a PDF (`motor_reportes.py`); la redacción del análisis en sí
+  (qué destacar, cómo interpretar una desviación, el resumen ejecutivo) la
+  hace el agente en el momento de generar cada reporte, no está hardcodeada
+  en Python.
+- **El manifiesto de obsolescencia (`estado_reportes.py`) no dispara
+  generación automática** — `detectar_desactualizados` solo informa qué
+  entidades tienen datos más nuevos que su último reporte generado (o nunca
+  tuvieron uno); generar el PDF sigue siendo una acción explícita (`driver.py
+  run` del skill, o el aviso de Centro de Costos que solo recomienda correr
+  `status`). Decisión deliberada para no regenerar PDFs caros/costosos en
+  cada `run` de Centro de Costos sin que el usuario lo pida.
+- **Dependencia con el plan de Cliente/CLTV**: los reportes por cliente
+  (`paquete_datos_cliente`) necesitaban la columna "Cliente" y la hoja
+  "Clientes" (CLTV) del plan de nota-clientes. Esa dependencia ya estaba
+  resuelta en `master` antes de esta tarea — el plan de nota-clientes quedó
+  marcado completo en el commit `ccbeb05` ("docs(analisis-financiero): marcar
+  completado el plan de nota-clientes"), sobre la integración funcional
+  hecha en `b8717d1` ("feat(analisis-financiero): integrar Cliente/CLTV/
+  Glosario KPIs al flujo de ejecutar()"); ambos son ancestros del HEAD de
+  `master` al momento de implementar Reportes PDF.
+
 ## Pendientes que dependen del usuario
 
 El script (`Sistema/analisis_financiero.py`, 71 tests), el skill

@@ -64,6 +64,7 @@ PREFIJOS_PROYECTO = {
     "Cesfam Constitución": "CCON",
     "Gastos Generales": "GGEN",
     "Microturbina LER": "MLER",
+    "Fiscalía Quilpué y Quintero": "FQYQ",
 }
 
 PALETA = [
@@ -1993,6 +1994,43 @@ def actualizar_visualizador():
             sys.path.remove(str(RAIZ_VISUALIZADOR_WEB))
 
 
+def _reportes_pendientes_tras_run() -> list[str]:
+    """Best-effort: intenta calcular que reportes PDF quedaron pendientes tras
+    este run. Devuelve [] si el skill de reportes no existe todavia o falla
+    -- nunca aborta el run de Centro de Costos por esto."""
+    ruta_driver = (
+        RAIZ_ANALISIS_FINANCIERO / ".claude" / "skills"
+        / "Reportes_Analisis_Financiero" / "driver.py"
+    )
+    if not ruta_driver.exists():
+        return []
+    import sys
+    raiz_skill = ruta_driver.parent
+    ya_en_path = str(raiz_skill) in sys.path
+    if not ya_en_path:
+        sys.path.insert(0, str(raiz_skill))
+    try:
+        sys.modules.pop("driver", None)
+        import driver as driver_reportes
+        return driver_reportes.calcular_reportes_pendientes()
+    except Exception:
+        return []
+    finally:
+        if not ya_en_path and str(raiz_skill) in sys.path:
+            sys.path.remove(str(raiz_skill))
+
+
+def _avisar_reportes_pendientes() -> None:
+    pendientes = _reportes_pendientes_tras_run()
+    if not pendientes:
+        return
+    print(
+        f"  [AVISO] {len(pendientes)} reporte(s) PDF de Analisis Financiero "
+        f"quedaron pendientes/desactualizados ({', '.join(pendientes)}) -- correr "
+        f"'/Reportes_Analisis_Financiero status' para verlos."
+    )
+
+
 def actualizar_analisis_financiero():
     """Actualiza Análisis Financiero/Análisis de Proyectos.xlsx (costos
     reales por proyecto/categoría + hoja Indicadores) a partir del Excel
@@ -2015,6 +2053,7 @@ def actualizar_analisis_financiero():
         if resumen["error"]:
             print(f"  [WARN] Análisis Financiero terminó con error: {resumen['error']}")
             return False
+        _avisar_reportes_pendientes()
         return True
     except Exception as e:
         print(f"  [WARN] No se pudo actualizar Análisis Financiero ({e}).")
