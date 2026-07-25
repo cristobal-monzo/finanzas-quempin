@@ -107,3 +107,23 @@ def test_ejecutar_sin_centro_de_costos_avisa_y_no_falla(tmp_path):
 
     assert resumen["error"] is None
     assert any("no se encontr" in aviso.lower() for aviso in resumen["avisos"])
+
+
+def test_ejecutar_no_aborta_si_falla_el_visualizador(tmp_path, monkeypatch):
+    def _falla():
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(af, "actualizar_visualizador_af", _falla)
+
+    ruta_excel_af = tmp_path / "Análisis de Proyectos.xlsx"
+    ruta_excel_cc = _crear_excel_cc(tmp_path, [("UMAG-001", "Materiales", 50000.0)])
+
+    resumen = af.ejecutar(
+        ruta_excel_af=ruta_excel_af, ruta_excel_cc=ruta_excel_cc,
+        raiz_facturas_cc=tmp_path / "facturas", raiz_respaldos=tmp_path / "respaldos",
+        ruta_clientes_pendientes=tmp_path / "pendientes.json",
+    )
+
+    assert resumen["error"] is None
+    assert any("visualizador" in aviso.lower() for aviso in resumen["avisos"])
+    assert ruta_excel_af.exists()  # el Excel si quedo guardado

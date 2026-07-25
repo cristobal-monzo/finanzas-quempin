@@ -3,7 +3,7 @@
 driver.py -- arnes de ejecucion para la skill Registro_Analisis_Financiero.
 
 No reimplementa la logica: importa analisis_financiero.py desde Sistema/ y
-expone tres comandos:
+expone cuatro comandos:
 
   status           -> Solo lectura (dry_run=True): que carpetas de proyecto
                       se crearian, que categorias de Centro de Costos caen
@@ -13,17 +13,23 @@ expone tres comandos:
   run              -> Ejecucion real: backup, crea carpetas de proyecto
                       nuevas, regenera "Detalle Costos Reales" y las
                       formulas de "Proyectos"/"Indicadores"/"Clientes"/
-                      "Glosario KPIs", guarda el Excel.
+                      "Glosario KPIs", guarda el Excel, y regenera el
+                      visualizador web (ya encadenado dentro de ejecutar()).
 
   confirmar-cliente -> Sin argumentos: lista clientes pendientes de revision
                       (columna "Cliente" en fuente roja). "--todos" o una
                       lista de TAGs: aplica la sugerencia y recolorea azul
                       marino.
 
+  visualizador     -> Regenera solo el dashboard HTML (Visualizador Web/
+                      build/index.html) a partir del Excel actual, sin
+                      correr todo run.
+
 Uso:
   python driver.py status
   python driver.py run
   python driver.py confirmar-cliente [--todos|TAG ...]
+  python driver.py visualizador
 """
 
 import sys
@@ -105,15 +111,26 @@ def cmd_confirmar_cliente(args: list[str]) -> int:
     return 0
 
 
+def cmd_visualizador() -> int:
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    ya_en_path = str(ROOT / "Visualizador Web") in sys.path
+    if not ya_en_path:
+        sys.path.insert(0, str(ROOT / "Visualizador Web"))
+    import build_visualizador as bv
+    return bv.build()
+
+
 def main() -> int:
-    comandos = ("status", "run", "confirmar-cliente")
+    comandos = ("status", "run", "confirmar-cliente", "visualizador")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
-        print("Uso: python driver.py [status|run|confirmar-cliente [--todos|TAG ...]]")
+        print("Uso: python driver.py [status|run|confirmar-cliente [--todos|TAG ...]|visualizador]")
         return 2
     if sys.argv[1] == "status":
         return cmd_status()
     if sys.argv[1] == "confirmar-cliente":
         return cmd_confirmar_cliente(sys.argv[2:])
+    if sys.argv[1] == "visualizador":
+        return cmd_visualizador()
     return cmd_run()
 
 

@@ -30,8 +30,11 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" status
 carpetas de proyecto nuevas en
 `Centro de Costos/Sitio de comunicación - Centro de Costos 1/Facturas y
 Boletas/<Nombre>/`, regenera la hoja "Detalle Costos Reales" y las fórmulas
-de "Proyectos"/"Indicadores". Idempotente: correrlo sin cambios en Centro de
-Costos no altera nada.
+de "Proyectos"/"Indicadores", y al final regenera el visualizador web
+(`Visualizador Web/build/index.html`) -- si este último paso falla, no
+aborta el `run` ni pierde el Excel ya guardado, solo agrega un aviso al
+resumen. Idempotente: correrlo sin cambios en Centro de Costos no altera
+nada.
 
 ```
 python ".claude/skills/Registro_Analisis_Financiero/driver.py" run
@@ -55,6 +58,17 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" confirmar-cliente
 Si la sugerencia automática no es el cliente correcto, edita
 `cliente_sugerido` en `Sistema/clientes_pendientes.json` antes de confirmar
 (mismo patrón que `correcciones_manuales.json` de Centro de Costos).
+
+**`visualizador`** -- regenera solo el dashboard HTML
+(`Visualizador Web/build/index.html`) a partir del `Análisis de
+Proyectos.xlsx` actual, sin correr todo `run`. Ya se corre automáticamente
+al final de `run` -- usar este comando aparte solo para refrescar el
+dashboard sin tocar el Excel (por ejemplo tras un cambio manual en el
+Excel que no ameríta un `run` completo).
+
+```
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador
+```
 
 ## Gotchas
 

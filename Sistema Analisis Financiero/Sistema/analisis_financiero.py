@@ -9,6 +9,7 @@ financiero-design.md para el diseño completo.
 
 import json
 import shutil
+import sys
 import unicodedata
 from collections import Counter
 from datetime import datetime
@@ -38,6 +39,8 @@ RUTA_EXCEL_CENTRO_COSTOS = RAIZ_CENTRO_COSTOS / "Excel" / "Centro de Costos.xlsx
 RAIZ_FACTURAS_CENTRO_COSTOS = (
     RAIZ_CENTRO_COSTOS / "Sitio de comunicación - Centro de Costos 1" / "Facturas y Boletas"
 )
+
+RAIZ_VISUALIZADOR_WEB_AF = RAIZ_MODULO / "Visualizador Web"
 
 HOJA_PROYECTOS = "Proyectos"
 HOJA_DETALLE_COSTOS_REALES = "Detalle Costos Reales"
@@ -917,6 +920,28 @@ def asegurar_hoja_glosario_kpis(wb) -> None:
 
 # ── ORQUESTADOR ───────────────────────────────────────────────────────────
 
+def actualizar_visualizador_af() -> bool:
+    """Regenera el visualizador web (Visualizador Web/build/index.html) a
+    partir del Excel recien guardado -- mismo patron que actualizar_
+    visualizador() en Centro de Costos: corre al final de ejecutar(), solo
+    lee el Excel (no lo modifica), y si falla no aborta el run, solo
+    advierte -- el Excel ya quedo guardado igual. Ver Visualizador Web/
+    CLAUDE.md para la arquitectura del build."""
+    ruta_build_script = RAIZ_VISUALIZADOR_WEB_AF / "build_visualizador.py"
+    if not ruta_build_script.exists():
+        return False
+    ya_en_path = str(RAIZ_VISUALIZADOR_WEB_AF) in sys.path
+    if not ya_en_path:
+        sys.path.insert(0, str(RAIZ_VISUALIZADOR_WEB_AF))
+    try:
+        sys.modules.pop("build_visualizador", None)
+        import build_visualizador as bv
+        return bv.build() == 0
+    finally:
+        if not ya_en_path and str(RAIZ_VISUALIZADOR_WEB_AF) in sys.path:
+            sys.path.remove(str(RAIZ_VISUALIZADOR_WEB_AF))
+
+
 def ejecutar(
     ruta_excel_af: Path = RUTA_EXCEL,
     ruta_excel_cc: Path = RUTA_EXCEL_CENTRO_COSTOS,
@@ -999,6 +1024,15 @@ def ejecutar(
         wb.save(ruta_excel_af)
     except PermissionError as exc:
         resumen["error"] = f"No se pudo guardar {ruta_excel_af} (¿archivo abierto?): {exc}"
+
+    try:
+        if not actualizar_visualizador_af():
+            resumen["avisos"].append(
+                "No se pudo actualizar el visualizador web -- correr manualmente "
+                "'python driver.py visualizador' despues."
+            )
+    except Exception as exc:
+        resumen["avisos"].append(f"No se pudo actualizar el visualizador web: {exc}")
 
     return resumen
 
