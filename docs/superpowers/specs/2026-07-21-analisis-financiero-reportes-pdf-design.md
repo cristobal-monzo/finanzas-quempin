@@ -237,3 +237,95 @@ Infraestructura, no contenido redactado (no es determinístico):
 - Ajuste fino del criterio exacto de qué comparación "aporta señal" para
   cada tipo de reporte — es una decisión editorial del agente en cada
   redacción, no una regla codificable de antemano.
+
+## 10. Addendum 2026-07-24: estándar de contenido y layout de 2 páginas
+
+Refina §5 (tipos de reporte) y §7 (skill) tras brainstorming con el usuario.
+Aplica a los reportes de **Proyecto, Cliente y Categoría** — la comparación
+ad-hoc queda explícitamente fuera de este addendum (ver más abajo).
+
+**Elementos de contenido obligatorios** (siguen sin tener un orden de página
+fijo salvo por la división en 2 páginas de abajo; lo obligatorio es que
+existan, no cómo se redactan):
+
+1. Resumen ejecutivo (2-4 oraciones).
+2. Fortalezas — párrafo de prosa con cifras concretas del paquete de datos
+   como evidencia.
+3. Debilidades / riesgos — párrafo simétrico, igual con cifras.
+4. Análisis de KPIs — interpretación contra una referencia (objetivo del
+   playbook, promedio de categoría, u otra entidad similar), no solo el
+   valor desnudo.
+5. Al menos un gráfico dirigido a un punto específico del análisis (no
+   decorativo), con `graficos.grafico_barras_svg`/`grafico_dona_svg`.
+6. Notas de cierre con foco estratégico/financiero/empresarial —
+   implicancia para una decisión futura, no un resumen repetido.
+
+**Todos los KPIs, siempre.** Se elimina la discreción editorial sobre qué
+KPIs mostrar en la tabla de datos: todo reporte incluye la tabla **completa**
+de indicadores relevantes a esa entidad (todas las columnas de
+"Indicadores" para Proyecto; todas las métricas de la hoja "Clientes" para
+Cliente; el agregado completo para Categoría). La discreción editorial se
+mantiene solo para qué se **comenta** en prosa (fortalezas/debilidades/notas),
+no para qué se **muestra** en la tabla.
+
+**Layout fijo de 2 páginas** (HTML: dos `<div class="pdf-pagina">` dentro de
+`contenido_html`; CSS nuevo en `brand.py`, ver Tarea de implementación):
+
+- **Página 1 — panel de verificación, misma estructura en todo reporte**:
+  100% visual/tabular. Tabla completa de KPIs (punto anterior), datos clave
+  (montos, costos, desviación) y el/los gráfico(s) estándar de apoyo (ej.
+  dona de composición de costos). El *contenido* varía según el tipo de
+  entidad (qué KPIs/columnas trae), pero el *orden de secciones* de la
+  página es siempre el mismo — es el panel de "verificar los números", no
+  de análisis.
+- **Página 2 — el análisis, contenido variable**: resumen ejecutivo,
+  fortalezas, debilidades, notas de cierre (elementos 1-4 y 6 de la lista de
+  arriba). Puede incluir gráficos puntuales adicionales si el análisis
+  específico lo amerita — sin estructura fija acá, a discreción del agente.
+- El header (logo/título/fecha, e indicador "EN DESARROLLO" si aplica) va
+  completo arriba de la página 1; **se repite en versión compacta al
+  inicio de la página 2** (`brand.encabezado_html`, ver §10.1 — revisa la
+  regla original de "una sola vez" de este párrafo). El footer va una sola
+  vez, al final de la página 2.
+
+**Comparación ad-hoc: estructura pendiente, explícitamente diferida.** Este
+addendum NO define el layout de los reportes de comparación (§5, última
+fila de la tabla) — ni el de 2 páginas ni el checklist de contenido
+aplican todavía ahí. Cuando el usuario pida trabajar o generar una
+comparación, hay que definir su estructura antes de redactarla (no asumir
+que se reutiliza este addendum sin más). Ver nota correspondiente en
+`Sistema Analisis Financiero/MEMORY.md`.
+
+### 10.1 Addendum 2026-07-24 (revisión): feedback visual sobre el primer PDF real
+
+Tras generar y revisar visualmente `proyecto:UMAG` con el layout de §10, el
+usuario pidió 7 ajustes puntuales — todos implementados en `graficos.py` /
+`brand.py` como funciones reusables (no hardcodeados en un reporte):
+
+- **Encabezado repetido por página** (reemplaza la frase "una sola vez
+  arriba de la página 1" de más arriba): `brand.encabezado_html(titulo,
+  generado_el)` genera una versión compacta que el agente inserta al
+  inicio de cada `pdf-pagina` después de la primera.
+- **Leyenda de color obligatoria** en todo gráfico de dona o de barras por
+  categoría: `graficos.leyenda_html(etiquetas, colores)`.
+- **Color por categoría de gasto en gráficos de barras comparativos**:
+  `grafico_barras_svg(..., colores=[...], opacidades=[...])` — colores
+  distintos por categoría (mismo mapeo que la dona/leyenda), `opacidades`
+  para diferenciar Proyectado (translúcido) vs Real (sólido) sin perder el
+  color de categoría.
+- **KPIs fuera de lo esperado en negrita/naranjo**: clase CSS
+  `table.tabla-reporte td.alerta` en `brand.py`; qué califica como "fuera
+  de lo esperado" queda a criterio del agente (sin umbral fijo en código).
+- **Página 1 con densidad algo menos apretada** que la primera pasada
+  (radio de dona, alto de barras y tamaños de fuente ligeramente mayores)
+  — sigue siendo compacta y de 2 columnas, pero usa mejor el espacio
+  disponible.
+- **Página 2 prioriza listas escaneables** (`<ul>`/`<ol>` con `<strong>`
+  en cifras/conclusiones clave) por sobre párrafos largos, salvo en
+  resumen ejecutivo y análisis de KPIs (se mantienen en prosa corta), y
+  usa una tipografía de partida mayor (~13px) que la página 1 (~10.5px),
+  porque no compite por espacio con gráficos/tablas.
+
+El layout sigue en exactamente 2 páginas tras estos cambios (reverificado
+con `pypdf`) — detalle completo en `Sistema Analisis Financiero/MEMORY.md`,
+sección "Revisión de estándar tras feedback visual del PDF (2026-07-24)".

@@ -25,3 +25,16 @@ def test_construir_html_incluye_titulo_logo_y_contenido():
     assert "<p>contenido de prueba</p>" in html
     assert "@font-face" in html
     assert "#ff5100" in html
+
+
+def test_css_base_reporte_define_salto_de_pagina_para_pdf_pagina():
+    assert ".pdf-pagina { page-break-after: always; }" in brand.CSS_BASE_REPORTE
+    assert ".pdf-pagina:last-child { page-break-after: auto; }" in brand.CSS_BASE_REPORTE
+
+
+def test_encabezado_html_incluye_logo_titulo_y_fecha():
+    html = brand.encabezado_html(titulo="Reporte UMAG", generado_el="24/07/2026")
+    assert "data:image/png;base64," in html
+    assert "Reporte UMAG" in html
+    assert "24/07/2026" in html
+    assert "reporte-header--pagina" in html

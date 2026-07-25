@@ -188,8 +188,19 @@ cierre futura, se considera **"en desarrollo"**: sí genera reporte (no
 requiere fecha de cierre para estar completo), pero su reporte lleva un
 indicador visual explícito de que el proyecto sigue en curso, no cerrado.
 
+**Estándar de contenido y layout de 2 páginas (2026-07-24)**: para
+Proyecto/Cliente/Categoría, todo reporte va en exactamente 2
+`<div class="pdf-pagina">` (CSS de salto de página en `brand.py`) — página 1
+es un panel de verificación 100% visual/tabular con **todos** los KPIs de la
+entidad (sin selección editorial) y estructura de secciones fija; página 2
+es el análisis narrativo (resumen ejecutivo, fortalezas, debilidades,
+notas estratégicas), con estructura libre y gráficos puntuales adicionales
+si el agente los considera necesarios. La comparación ad-hoc queda
+explícitamente fuera de este estándar — ver "Pendientes" en `MEMORY.md`.
+
 Ver diseño completo:
 [`docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`](../docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md)
+(addendum §10 para este estándar)
 y el plan de implementación
 [`docs/superpowers/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md`](../docs/superpowers/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md)
 (rutas relativas a la raíz de `Finanzas QUEMPIN/`).

@@ -12,24 +12,54 @@ COLORES_POR_DEFECTO = ["#ff5100", "#000000", "#98989a", "#54565a"]
 
 def grafico_barras_svg(
     etiquetas: list[str], valores: list[float], color: str = "#ff5100",
+    colores: list[str] | None = None, opacidades: list[float] | None = None,
     ancho: int = 480, alto: int = 220,
 ) -> str:
-    """Grafico de barras horizontal simple. valores deben ser >= 0."""
+    """Grafico de barras horizontal simple. valores deben ser >= 0.
+
+    Si se pasa `colores` (misma longitud que valores), cada barra usa su
+    propio color -- util para diferenciar categorias de gasto en un grafico
+    comparativo (ej. Proyectado vs Real por categoria). Sin `colores`, todas
+    las barras usan `color`. `opacidades` (misma longitud) permite ademas
+    distinguir dentro de una misma categoria (ej. Proyectado mas translucido
+    que Real) sin cambiar el color base."""
     if not etiquetas or len(etiquetas) != len(valores):
         raise ValueError("etiquetas y valores deben tener la misma longitud y no estar vacios")
+    if colores is not None and len(colores) != len(valores):
+        raise ValueError("colores debe tener la misma longitud que valores")
+    if opacidades is not None and len(opacidades) != len(valores):
+        raise ValueError("opacidades debe tener la misma longitud que valores")
 
     max_valor = max(valores) or 1.0
     alto_barra = alto / len(valores)
     partes = []
     for i, (etiqueta, valor) in enumerate(zip(etiquetas, valores)):
+        color_barra = colores[i] if colores is not None else color
+        opacidad = f' fill-opacity="{opacidades[i]}"' if opacidades is not None else ""
         y = i * alto_barra + alto_barra * 0.15
         ancho_barra = (valor / max_valor) * (ancho - 160)
         partes.append(
             f'<text x="0" y="{y + alto_barra * 0.35:.1f}" font-size="11">{etiqueta}</text>'
-            f'<rect x="150" y="{y:.1f}" width="{ancho_barra:.1f}" height="{alto_barra * 0.7:.1f}" fill="{color}"/>'
+            f'<rect x="150" y="{y:.1f}" width="{ancho_barra:.1f}" height="{alto_barra * 0.7:.1f}" fill="{color_barra}"{opacidad}/>'
             f'<text x="{150 + ancho_barra + 6:.1f}" y="{y + alto_barra * 0.35:.1f}" font-size="11">{valor:,.0f}</text>'
         )
     return f'<svg viewBox="0 0 {ancho} {alto}" width="100%" xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'
+
+
+def leyenda_html(etiquetas: list[str], colores: list[str] | None = None) -> str:
+    """Leyenda HTML (swatch de color + etiqueta) para acompanar un grafico
+    de dona o de barras por categoria -- ninguno de los dos incluye leyenda
+    propia porque son SVG puro. Se inserta junto al grafico en el
+    contenido del reporte."""
+    if not etiquetas:
+        raise ValueError("etiquetas no puede estar vacio")
+    colores = colores or COLORES_POR_DEFECTO
+    items = "".join(
+        f'<span class="leyenda-item"><span class="leyenda-swatch" '
+        f'style="background:{colores[i % len(colores)]}"></span>{etiqueta}</span>'
+        for i, etiqueta in enumerate(etiquetas)
+    )
+    return f'<div class="leyenda-graficos">{items}</div>'
 
 
 def grafico_dona_svg(

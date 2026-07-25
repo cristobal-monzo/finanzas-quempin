@@ -37,6 +37,12 @@ body { font-family: 'Lato', system-ui, sans-serif; color: var(--brand-black); ma
 .reporte-titulos h1 { margin: 0; font-size: 22px; }
 .reporte-fecha { margin: 4px 0 0; color: var(--brand-gray-dark); font-size: 12px; }
 .reporte-contenido { padding: 24px 32px; }
+.pdf-pagina { page-break-after: always; }
+.pdf-pagina:last-child { page-break-after: auto; }
+.reporte-header--pagina { padding: 8px 0 14px; margin-bottom: 10px; border-bottom: 2px solid var(--brand-orange); }
+.reporte-header--pagina .reporte-logo { height: 30px; }
+.reporte-header--pagina h1 { font-size: 15px; }
+.reporte-header--pagina .reporte-fecha { font-size: 10px; }
 .kpi-fila { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
 .kpi-tarjeta { flex: 1 1 160px; border: 1px solid var(--brand-gray-light); border-radius: 8px; padding: 12px 16px; }
 .kpi-tarjeta .valor { font-size: 24px; font-weight: 900; color: var(--brand-orange); }
@@ -45,6 +51,10 @@ table.tabla-reporte { width: 100%; border-collapse: collapse; margin-bottom: 20p
 table.tabla-reporte th, table.tabla-reporte td { border: 1px solid var(--brand-gray-light); padding: 6px 10px; font-size: 12px; text-align: right; }
 table.tabla-reporte th { background: var(--brand-black); color: white; text-align: left; }
 table.tabla-reporte td:first-child, table.tabla-reporte th:first-child { text-align: left; }
+table.tabla-reporte td.alerta { font-weight: 900; color: var(--brand-orange); }
+.leyenda-graficos { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 10px; font-size: 11px; color: var(--brand-gray-dark); }
+.leyenda-item { display: inline-flex; align-items: center; gap: 4px; }
+.leyenda-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 .reporte-footer { padding: 12px 32px; font-size: 10px; color: var(--brand-gray-dark); border-top: 1px solid var(--brand-gray-light); }
 """
 
@@ -96,6 +106,22 @@ def cargar_logo_base64() -> str:
     inicio_src = texto.index('src="data:image/png;base64,', i) + len('src="')
     fin_src = texto.index('"', inicio_src)
     return texto[inicio_src:fin_src]
+
+
+def encabezado_html(titulo: str, generado_el: str) -> str:
+    """Bloque de encabezado (logo + titulo + fecha) reutilizable, en version
+    compacta (clase `reporte-header--pagina`). El documento ya trae su
+    propio encabezado completo antes de la pagina 1 (ver PLANTILLA_DOCUMENTO);
+    esta version la usa el agente para repetir el encabezado al inicio de
+    cada `pdf-pagina` siguiente, de forma que el PDF impreso lleve marca en
+    todas sus paginas fisicas, no solo en la primera."""
+    return f"""<header class="reporte-header reporte-header--pagina">
+  <img src="{cargar_logo_base64()}" alt="QUEMPIN" class="reporte-logo">
+  <div class="reporte-titulos">
+    <h1>{titulo}</h1>
+    <p class="reporte-fecha">Generado el {generado_el}</p>
+  </div>
+</header>"""
 
 
 def construir_html(titulo: str, generado_el: str, contenido_html: str) -> str:

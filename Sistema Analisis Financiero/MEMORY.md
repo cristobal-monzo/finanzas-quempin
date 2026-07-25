@@ -155,6 +155,86 @@ Diseño completo:
   Glosario KPIs al flujo de ejecutar()"); ambos son ancestros del HEAD de
   `master` al momento de implementar Reportes PDF.
 
+## Estándar de contenido y layout de 2 páginas (brainstorming, 2026-07-24)
+
+- **El contenido sigue redactándolo el agente** (sin cambios ahí), pero
+  ahora hay un checklist obligatorio (resumen ejecutivo, fortalezas,
+  debilidades, análisis de KPIs interpretado, ≥1 gráfico puntual, notas de
+  cierre estratégicas) y la tabla de KPIs **ya no es una selección
+  editorial — siempre van todos los indicadores relevantes de la entidad**.
+  Solo la prosa (qué se comenta) sigue siendo discreción del agente.
+- **Layout fijo de 2 páginas** vía `<div class="pdf-pagina">` (CSS nuevo en
+  `Reportes/brand.py`, `page-break-after: always` / `auto` en la última):
+  página 1 = panel de verificación 100% visual/tabular con estructura fija
+  (mismo orden de secciones siempre, aunque el contenido varíe por tipo de
+  entidad); página 2 = el análisis narrativo, con estructura libre y
+  gráficos puntuales adicionales si el agente los considera necesarios.
+- Aplica a Proyecto/Cliente/Categoría. **La comparación ad-hoc queda
+  explícitamente fuera** — no tiene layout definido todavía.
+  **Recordatorio pendiente**: la próxima vez que el usuario pida trabajar
+  o generar un reporte de comparación, hay que definir su estructura con
+  él antes de redactarlo — no reutilizar el layout de arriba sin más.
+- Diseño completo: addendum §10 de
+  [`docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`](../docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md).
+- **Verificado generando `proyecto:UMAG` real (2026-07-24)**: la primera
+  versión del contenido (tarjetas de KPI + 2 tablas + 2 gráficos en página 1,
+  5 párrafos en página 2, con el CSS base de `brand.py` sin más) se
+  desbordó a **3 páginas** (confirmado con `pypdf`, no solo a ojo). Hizo
+  falta agregar un `<style>` compacto al `contenido_html` (fuentes ~9.5-11px,
+  paddings de tabla reducidos a `2px 6px`, tarjetas de KPI más chicas, radio
+  de dona 48 en vez de 80, alto de barra 180 en vez de 220-280) y organizar
+  la página 1 en 2 columnas (`.fila-2-col`) en vez de todo apilado — recién
+  ahí quedó en 2 páginas exactas. **Al redactar cualquier reporte nuevo,
+  partir directamente con este nivel de densidad** (no con el tamaño de
+  fuente/padding por defecto de `CSS_BASE_REPORTE`, pensado para una sola
+  página de contenido liviano) y verificar el conteo de páginas con `pypdf`
+  antes de darlo por bueno, no asumir que "se ve como 2 páginas" en el HTML.
+
+## Revisión de estándar tras feedback visual del PDF (2026-07-24)
+
+Tras ver el PDF real de `proyecto:UMAG` (v1 del estándar de 2 páginas), el
+usuario pidió 7 ajustes concretos, todos ya implementados en `graficos.py`/
+`brand.py` (funciones nuevas, reusables por cualquier reporte futuro) y
+aplicados en el reproceso de `proyecto:UMAG`:
+
+- **Los gráficos de dona/barras ahora requieren leyenda de color** —
+  `graficos.leyenda_html(etiquetas, colores)` (función nueva) genera el
+  HTML de swatches; ninguno de los dos gráficos SVG trae leyenda propia.
+- **Las barras comparativas por categoría de gasto ya no son todas del
+  mismo color** — `grafico_barras_svg` acepta `colores` (una por barra) y
+  `opacidades` (para diferenciar Proyectado/Real dentro de la misma
+  categoría sin cambiar el color base). Paleta usada en UMAG: Materiales =
+  naranjo, Equipos = gris oscuro, Mano de Obra = negro, Otros = gris claro
+  — mismo mapeo color↔categoría en la dona y en las barras, para que una
+  sola leyenda sirva para ambas.
+- **Los KPIs fuera de lo esperado van en negrita/naranjo** — nueva clase
+  CSS `table.tabla-reporte td.alerta` en `brand.py`. Qué cuenta como "fuera
+  de lo esperado" es criterio del agente al redactar (en UMAG: desviaciones
+  ≥30% en cualquier sentido, y KPIs muy por sobre el objetivo del
+  playbook) — no hay un umbral hardcodeado en código.
+- **El encabezado (logo + título + fecha) ahora se repite en cada página
+  física, no solo en la 1ª** — función nueva `brand.encabezado_html(titulo,
+  generado_el)` (versión compacta, clase `reporte-header--pagina`) que el
+  agente inserta a mano al inicio de cada `pdf-pagina` siguiente a la
+  primera. **Esto reemplaza la regla anterior** ("el header va una sola vez
+  arriba de la página 1") — ver SKILL.md y el addendum del spec, ya
+  actualizados.
+- **Página 1 usa el espacio de forma menos apretada** que la v1 (que dejaba
+  bastante blanco abajo): radio de dona 48→58, alto de barras 180→210,
+  fuentes de tabla 9.5px→10px, tarjetas de KPI un poco más grandes — sigue
+  siendo un layout compacto de 2 columnas, pero menos al límite.
+- **Página 2 pasa de prosa densa a listas escaneables** (`<ul>`/`<ol>` con
+  `<strong>` en los datos clave de cada punto) para Fortalezas/Debilidades/
+  Notas estratégicas, en 2 columnas (Fortalezas | Debilidades) para
+  aprovechar el ancho; Resumen ejecutivo y Análisis de KPIs siguen en
+  prosa (son explicativos, no una lista de puntos). Tamaño de fuente subió
+  de ~10.5px a 13px — página 2 tiene más margen de espacio que página 1
+  porque ya no compite por altura con 2 gráficos + 2 tablas.
+- **Reverificado con `pypdf` tras todos los cambios**: sigue en exactamente
+  2 páginas pese a sumar el encabezado repetido y aumentar tamaños de
+  fuente — el ahorro de las listas (vs. párrafos largos) compensó el
+  espacio adicional que toma el encabezado + letra más grande en página 2.
+
 ## Pendientes que dependen del usuario
 
 El script (`Sistema/analisis_financiero.py`, 71 tests), el skill
