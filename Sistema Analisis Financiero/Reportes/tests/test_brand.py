@@ -38,3 +38,38 @@ def test_encabezado_html_incluye_logo_titulo_y_fecha():
     assert "Reporte UMAG" in html
     assert "24/07/2026" in html
     assert "reporte-header--pagina" in html
+
+
+def test_construir_html_sin_fecha_corte_no_agrega_nota_de_fuente():
+    html = brand.construir_html(
+        titulo="Reporte UMAG", generado_el="24/07/2026", contenido_html="<p></p>",
+    )
+    assert "Fuente: Centro de Costos" not in html
+
+
+def test_construir_html_con_fecha_corte_agrega_nota_de_fuente_al_footer():
+    html = brand.construir_html(
+        titulo="Reporte UMAG", generado_el="24/07/2026", contenido_html="<p></p>",
+        fecha_corte="23/07/2026",
+    )
+    assert "Datos al 23/07/2026" in html
+    assert "Fuente: Centro de Costos + registro manual" in html
+
+
+def test_es_kpi_fuera_de_rango_margen_neto_muy_por_sobre_objetivo():
+    assert brand.es_kpi_fuera_de_rango("Margen neto %", 0.60) is True
+    assert brand.es_kpi_fuera_de_rango("Margen neto %", 0.30) is False
+
+
+def test_es_kpi_fuera_de_rango_desviacion_grande_en_cualquier_sentido():
+    assert brand.es_kpi_fuera_de_rango("Desviación % Materiales", -0.744) is True
+    assert brand.es_kpi_fuera_de_rango("Desviación % Materiales", 0.05) is False
+
+
+def test_es_kpi_fuera_de_rango_kpi_sin_umbral_definido_da_false():
+    assert brand.es_kpi_fuera_de_rango("Productividad Materiales", 999) is False
+
+
+def test_referencia_kpi_devuelve_texto_para_kpi_conocido_y_vacio_para_desconocido():
+    assert "25%" in brand.referencia_kpi("Margen neto %")
+    assert brand.referencia_kpi("Productividad Materiales") == ""

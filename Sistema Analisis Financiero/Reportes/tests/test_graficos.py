@@ -80,3 +80,25 @@ def test_leyenda_html_produce_un_item_por_etiqueta():
 def test_leyenda_html_valida_lista_vacia():
     with pytest.raises(ValueError):
         graficos.leyenda_html([])
+
+
+def test_grafico_dona_svg_con_porcentaje_agrega_texto_por_segmento_grande():
+    svg = graficos.grafico_dona_svg(
+        ["Materiales", "Otros"], [90, 10], mostrar_porcentaje=True
+    )
+    assert "90%" in svg
+    # El segmento de 10% (justo bajo el umbral de 6%... en este caso 10%>=6%
+    # tambien se muestra) -- ambos etiquetados.
+    assert "10%" in svg
+
+
+def test_grafico_dona_svg_sin_porcentaje_no_agrega_texto():
+    svg = graficos.grafico_dona_svg(["A", "B"], [50, 50])
+    assert "<text" not in svg
+
+
+def test_grafico_dona_svg_segmento_muy_chico_no_muestra_porcentaje():
+    svg = graficos.grafico_dona_svg(
+        ["Grande", "Chico"], [99, 1], mostrar_porcentaje=True
+    )
+    assert svg.count("<text") == 1

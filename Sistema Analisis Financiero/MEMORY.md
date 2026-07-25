@@ -235,6 +235,45 @@ aplicados en el reproceso de `proyecto:UMAG`:
   fuente — el ahorro de las listas (vs. párrafos largos) compensó el
   espacio adicional que toma el encabezado + letra más grande en página 2.
 
+## 5 mejoras autónomas de calidad (financiera + visual, 2026-07-25)
+
+A pedido explícito del usuario ("realiza 5 loops buscando mejorar la
+calidad de los reportes, desde una perspectiva financiera profesional y
+visual, sin preguntar"), se hicieron 5 mejoras concretas al estándar
+vigente (no un rediseño — todas construyen sobre `graficos.py`/`brand.py`
+ya existentes) y se aplicaron a los 3 reportes reales generados hasta
+ahora:
+
+1. **CSS de página 1/2 centralizado en `brand.py`** (`.pdf-pagina.p1` /
+   `.pdf-pagina.p2` dentro de `CSS_BASE_REPORTE`) — antes cada script
+   ad-hoc copiaba su propio `<style>` inline, con riesgo de divergencia
+   visual entre reportes. Ahora los 3 scripts solo usan las clases.
+2. **Criterio "KPI fuera de rango" centralizado y con umbral explícito**:
+   `brand.es_kpi_fuera_de_rango(nombre_kpi, valor)` (margen neto muy sobre
+   objetivo o negativo, rentabilidad sobre costo fuera de [1x, 4x),
+   |desviación| ≥ 30%) reemplaza el `set` hardcodeado que se copiaba en
+   cada script. `brand.OBJETIVO_MARGEN_NETO` / `UMBRAL_DESVIACION_ALERTA`
+   documentan los umbrales en un solo lugar.
+3. **Columna "Referencia" en la tabla completa de KPIs**
+   (`brand.referencia_kpi(nombre_kpi)`) — cada fila muestra el
+   objetivo/rango esperado del playbook (ej. "Objetivo playbook: 25%"),
+   para que la tabla se explique sola sin depender de leer la página 2.
+4. **Porcentaje por segmento en la dona** (`grafico_dona_svg(...,
+   mostrar_porcentaje=True)`) — segmentos con ≥6% del total muestran su %
+   en texto blanco sobre el color, no solo diferenciación por color.
+5. **Pie de página con fecha de corte y fuente de los datos**
+   (`brand.construir_html(..., fecha_corte=...)` → "Datos al {fecha} --
+   Fuente: Centro de Costos + registro manual") — usa la fecha de cierre
+   real del proyecto (o la más reciente entre proyectos de un cliente/
+   categoría), distinta de `generado_el` (cuándo se generó el PDF).
+
+**Reverificado con `pypdf` tras las 5 mejoras**: los 3 reportes
+(`proyecto:UMAG`, `cliente:UMAG`, `categoria:I+D+i`) siguen en exactamente
+2 páginas, con la nota de fuente presente en el footer de la página 2.
+Suite de tests de `Reportes/`: 59 tests, todos pasando (9 nuevos: 3 sobre
+porcentaje en dona, 6 sobre `es_kpi_fuera_de_rango`/`referencia_kpi`/nota
+de fuente).
+
 ## Pendientes que dependen del usuario
 
 El script (`Sistema/analisis_financiero.py`, 71 tests), el skill

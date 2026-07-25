@@ -64,10 +64,13 @@ def leyenda_html(etiquetas: list[str], colores: list[str] | None = None) -> str:
 
 def grafico_dona_svg(
     etiquetas: list[str], valores: list[float], colores: list[str] | None = None,
-    radio: int = 80,
+    radio: int = 80, mostrar_porcentaje: bool = False,
 ) -> str:
     """Grafico de dona simple via arcos SVG calculados a mano. La suma de
-    valores debe ser mayor que 0."""
+    valores debe ser mayor que 0. Con `mostrar_porcentaje=True`, cada
+    segmento con al menos ~6% del total lleva su porcentaje como texto
+    encima del arco (segmentos mas chicos no alcanzan a mostrar el numero
+    sin solaparse)."""
     if not etiquetas or len(etiquetas) != len(valores):
         raise ValueError("etiquetas y valores deben tener la misma longitud y no estar vacios")
     total = sum(valores)
@@ -77,11 +80,13 @@ def grafico_dona_svg(
     colores = colores or COLORES_POR_DEFECTO
     centro = radio + 10
     tam = centro * 2
+    radio_texto = radio * 0.75
     partes = []
     angulo_acum = -90.0
     for i, valor in enumerate(valores):
         angulo = (valor / total) * 360.0
         color = colores[i % len(colores)]
+        angulo_medio = angulo_acum + angulo / 2
         # Un unico arco SVG no puede describir un circulo completo: si un
         # segmento cubre >= ~100% del total (start == end), el comando "A"
         # degenera en una linea invisible. En ese caso dibujamos un circulo.
@@ -89,6 +94,11 @@ def grafico_dona_svg(
             partes.append(
                 f'<circle cx="{centro}" cy="{centro}" r="{radio}" fill="{color}"/>'
             )
+            if mostrar_porcentaje:
+                partes.append(
+                    f'<text x="{centro}" y="{centro - radio_texto:.1f}" font-size="11" '
+                    f'fill="white" text-anchor="middle">100%</text>'
+                )
             angulo_acum += angulo
             continue
         x1 = centro + radio * math.cos(math.radians(angulo_acum))
@@ -101,6 +111,13 @@ def grafico_dona_svg(
             f'<path d="M{centro},{centro} L{x1:.2f},{y1:.2f} '
             f'A{radio},{radio} 0 {gran_arco} 1 {x2:.2f},{y2:.2f} Z" fill="{color}"/>'
         )
+        if mostrar_porcentaje and angulo / 360.0 >= 0.06:
+            tx = centro + radio_texto * math.cos(math.radians(angulo_medio))
+            ty = centro + radio_texto * math.sin(math.radians(angulo_medio))
+            partes.append(
+                f'<text x="{tx:.1f}" y="{ty:.1f}" font-size="11" fill="white" '
+                f'text-anchor="middle" dominant-baseline="middle">{angulo / 360.0 * 100:.0f}%</text>'
+            )
     return (
         f'<svg viewBox="0 0 {tam} {tam}" width="220" height="220" xmlns="http://www.w3.org/2000/svg">'
         f'{"".join(partes)}<circle cx="{centro}" cy="{centro}" r="{radio * 0.55:.1f}" fill="white"/></svg>'

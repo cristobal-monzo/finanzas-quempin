@@ -55,8 +55,77 @@ table.tabla-reporte td.alerta { font-weight: 900; color: var(--brand-orange); }
 .leyenda-graficos { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 10px; font-size: 11px; color: var(--brand-gray-dark); }
 .leyenda-item { display: inline-flex; align-items: center; gap: 4px; }
 .leyenda-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.leyenda-nota { font-size: 8.5px; color: var(--brand-gray-dark); margin: -4px 0 8px; font-style: italic; }
 .reporte-footer { padding: 12px 32px; font-size: 10px; color: var(--brand-gray-dark); border-top: 1px solid var(--brand-gray-light); }
+
+/* Panel de verificacion (pagina 1 del estandar de 2 paginas): compacto,
+   2 columnas -- ver SKILL.md de Reportes_Analisis_Financiero. */
+.pdf-pagina.p1 { padding: 4px 0 0; }
+.pdf-pagina.p1 h2 { font-size: 16px; margin: 0 0 8px; }
+.pdf-pagina.p1 h3 { font-size: 11.5px; margin: 10px 0 4px; text-transform: uppercase; color: var(--brand-gray-dark); }
+.pdf-pagina.p1 table.tabla-reporte { margin-bottom: 6px; }
+.pdf-pagina.p1 table.tabla-reporte td, .pdf-pagina.p1 table.tabla-reporte th { padding: 3px 7px; font-size: 10px; }
+.pdf-pagina.p1 table.tabla-reporte td.referencia { color: var(--brand-gray-dark); font-size: 9px; text-align: left; }
+.pdf-pagina.p1 .kpi-fila { gap: 10px; margin-bottom: 10px; }
+.pdf-pagina.p1 .kpi-tarjeta { padding: 6px 10px; flex-basis: 130px; }
+.pdf-pagina.p1 .kpi-tarjeta .valor { font-size: 16px; }
+.pdf-pagina.p1 .kpi-tarjeta .etiqueta { font-size: 9px; }
+.pdf-pagina.p1 .leyenda-graficos { font-size: 9.5px; margin: 2px 0 8px; }
+.pdf-pagina.p1 .fila-2-col { display: flex; gap: 20px; align-items: flex-start; }
+.pdf-pagina.p1 .fila-2-col > div { flex: 1 1 0; }
+
+/* Analisis narrativo (pagina 2): mas espacio, listas escaneables. */
+.pdf-pagina.p2 { padding: 4px 0 0; }
+.pdf-pagina.p2 h2 { font-size: 18px; margin: 4px 0 10px; }
+.pdf-pagina.p2 h3 { font-size: 13.5px; margin: 12px 0 5px; color: var(--brand-orange); }
+.pdf-pagina.p2 p { font-size: 13px; line-height: 1.45; margin: 0 0 8px; }
+.pdf-pagina.p2 .lista-analisis { font-size: 13px; line-height: 1.4; margin: 0 0 6px; padding-left: 18px; }
+.pdf-pagina.p2 .lista-analisis li { margin-bottom: 5px; }
+.pdf-pagina.p2 .fila-2-col { display: flex; gap: 24px; align-items: flex-start; }
+.pdf-pagina.p2 .fila-2-col > div { flex: 1 1 0; }
 """
+
+# Umbrales del criterio "KPI fuera de lo esperado" (se destaca en negrita/
+# naranjo en la tabla, clase CSS `alerta`). Mismos umbrales para todo
+# reporte -- si un caso concreto amerita otro criterio, es decision del
+# agente al redactar, pero el default vive aca para no repetirlo copiado
+# en cada script.
+OBJETIVO_MARGEN_NETO = 0.25          # objetivo del playbook (ver CLAUDE.md)
+UMBRAL_DESVIACION_ALERTA = 0.30      # |desviacion| >= 30% se destaca
+
+# Texto de referencia/objetivo del playbook por KPI, para la columna
+# "Referencia" de la tabla de Indicadores -- que la tabla se explique sola
+# sin depender de leer la pagina 2.
+REFERENCIA_KPI = {
+    "Rentabilidad sobre costo": "Referencia: > 1x (margen positivo)",
+    "Margen neto %": f"Objetivo playbook: {OBJETIVO_MARGEN_NETO:.0%}",
+    "Desviación % Materiales": "Ideal: cercano a 0%",
+    "Desviación % Equipos": "Ideal: cercano a 0%",
+    "Desviación % MO": "Ideal: cercano a 0%",
+    "Desviación % Otros": "Ideal: cercano a 0%",
+}
+
+
+def es_kpi_fuera_de_rango(nombre_kpi: str, valor: float) -> bool:
+    """Criterio centralizado de "KPI fuera de lo esperado" para destacarlo
+    en negrita/naranjo (clase `alerta`) en la tabla de un reporte. Cubre
+    los KPIs con umbral objetivo conocido (margen neto, desviaciones);
+    para el resto de los KPIs devuelve False -- no hay un umbral universal
+    razonable para Productividad o Costo % de venta sin contexto de
+    categoria/cliente."""
+    if nombre_kpi == "Margen neto %":
+        return valor >= OBJETIVO_MARGEN_NETO * 1.5 or valor < 0
+    if nombre_kpi == "Rentabilidad sobre costo":
+        return valor < 1.0 or valor >= 4.0
+    if nombre_kpi.startswith("Desviación %"):
+        return abs(valor) >= UMBRAL_DESVIACION_ALERTA
+    return False
+
+
+def referencia_kpi(nombre_kpi: str) -> str:
+    """Texto corto de referencia/objetivo del playbook para un KPI, o
+    cadena vacia si ese KPI no tiene una referencia fija definida."""
+    return REFERENCIA_KPI.get(nombre_kpi, "")
 
 PLANTILLA_DOCUMENTO = """<!doctype html>
 <html lang="es">
@@ -78,7 +147,7 @@ PLANTILLA_DOCUMENTO = """<!doctype html>
 <main class="reporte-contenido">
 {contenido}
 </main>
-<footer class="reporte-footer">QUEMPIN SpA -- Analisis Financiero</footer>
+<footer class="reporte-footer">QUEMPIN SpA -- Analisis Financiero{nota_fuente}</footer>
 </body>
 </html>"""
 
@@ -124,16 +193,29 @@ def encabezado_html(titulo: str, generado_el: str) -> str:
 </header>"""
 
 
-def construir_html(titulo: str, generado_el: str, contenido_html: str) -> str:
+def construir_html(
+    titulo: str, generado_el: str, contenido_html: str,
+    fecha_corte: str | None = None,
+) -> str:
     """Envuelve contenido_html (redactado por el agente) en el documento
     completo con marca QUEMPIN -- header con logo, tipografia y colores
     oficiales, footer. contenido_html debe ser HTML ya armado (tarjetas de
-    KPI, tablas, graficos SVG de graficos.py), no se procesa ni se valida."""
+    KPI, tablas, graficos SVG de graficos.py), no se procesa ni se valida.
+
+    `fecha_corte` (opcional) agrega al footer "Datos al {fecha} -- Fuente:
+    Centro de Costos + registro manual", para trazabilidad de cuando se
+    tomo el dato -- distinto de `generado_el` (cuando se genero el PDF),
+    que puede ser un dia despues del cierre de datos."""
     css = CSS_COLORES + cargar_font_face_lato() + CSS_BASE_REPORTE
+    nota_fuente = (
+        f" -- Datos al {fecha_corte} -- Fuente: Centro de Costos + registro manual"
+        if fecha_corte else ""
+    )
     return PLANTILLA_DOCUMENTO.format(
         titulo=titulo,
         css=css,
         logo=cargar_logo_base64(),
         generado_el=generado_el,
         contenido=contenido_html,
+        nota_fuente=nota_fuente,
     )

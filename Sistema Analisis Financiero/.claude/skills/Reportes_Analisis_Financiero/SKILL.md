@@ -59,10 +59,23 @@ python ".claude/skills/Reportes_Analisis_Financiero/driver.py" run
        perder el color de la categoria, usar `opacidades` (ej. Proyectado
        0.4, Real 1.0) en vez de un color distinto.
      - **Los KPIs fuera de lo esperado van en negrita/naranjo** en la tabla
-       (clase CSS `alerta` en el `<td>`, ya definida en `brand.py`) --
-       criterio del agente segun el caso (ej. desviaciones grandes en
-       cualquier sentido, KPIs muy por sobre/bajo el objetivo del playbook),
-       no hay umbral fijo en codigo.
+       (clase CSS `alerta` en el `<td>`) -- el criterio esta centralizado en
+       `brand.es_kpi_fuera_de_rango(nombre_kpi, valor)` (umbrales: margen
+       neto muy por sobre el objetivo o negativo, rentabilidad sobre costo
+       fuera de [1x, 4x), |desviacion| >= 30%). Usar esa funcion, no repetir
+       un set hardcodeado por script -- si un caso concreto amerita otro
+       criterio (ej. "Frecuencia de compra" es un artefacto de formula, no
+       un KPI con umbral fijo), marcar esa fila a mano y explicar por que en
+       la prosa de pagina 2.
+     - **La tabla completa de KPIs lleva una 3ra columna "Referencia"**
+       (`brand.referencia_kpi(nombre_kpi)`) con el objetivo/rango esperado
+       del playbook -- para que la tabla se explique sola sin depender de
+       leer la pagina 2. Vacia para KPIs sin referencia fija definida
+       (Productividad, Costo % de venta).
+     - **Todo grafico de dona lleva porcentaje por segmento**
+       (`grafico_dona_svg(..., mostrar_porcentaje=True)`) ademas de la
+       leyenda de color -- mas densidad de informacion sin depender solo
+       del color para leer la composicion.
    - **Pagina 2 -- el analisis, contenido variable**: resumen ejecutivo
      (2-4 oraciones), fortalezas (evidencia con cifras concretas),
      debilidades/riesgos (simetrico, igual con cifras), analisis de KPIs
@@ -86,7 +99,19 @@ python ".claude/skills/Reportes_Analisis_Financiero/driver.py" run
      `brand.encabezado_html(titulo, generado_el)` -- el PDF impreso debe
      llevar marca/identificacion en todas sus paginas fisicas, no solo en
      la primera. El footer si va una sola vez, al final de la pagina 2.
-4. Envolver con `brand.construir_html(titulo, generado_el, contenido_html)`.
+   - **La pagina 1 y la pagina 2 ya tienen su CSS compartido en
+     `brand.py`** (clases `.pdf-pagina.p1` / `.pdf-pagina.p2`, dentro de
+     `CSS_BASE_REPORTE`) -- usar `<div class="pdf-pagina p1">` /
+     `<div class="pdf-pagina p2">`, no copiar un `<style>` inline por
+     script. Si un reporte concreto necesita un ajuste puntual, extender
+     esas clases compartidas en `brand.py`, no duplicarlas.
+4. Envolver con `brand.construir_html(titulo, generado_el, contenido_html,
+   fecha_corte=...)`. `fecha_corte` (recomendado, no obligatorio) es la
+   fecha de cierre real de los datos (ej. fecha de cierre del proyecto, o
+   la mas reciente entre los proyectos de un cliente/categoria) -- agrega
+   al footer "Datos al {fecha} -- Fuente: Centro de Costos + registro
+   manual", distinto de `generado_el` (cuando se genero el PDF, que puede
+   ser posterior).
 5. Renderizar: `motor_reportes.renderizar_pdf(html, ruta_salida)` hacia
    `Análisis Financiero/Reportes/{Proyectos,Clientes,Categorías,Comparativas}/`.
 6. Actualizar el manifiesto (solo para proyecto/cliente/categoria, NO para
