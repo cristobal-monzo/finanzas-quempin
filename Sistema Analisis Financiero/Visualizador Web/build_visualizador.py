@@ -14,6 +14,9 @@ Ver docs/superpowers/specs/2026-07-23-analisis-financiero-visualizador-web-
 design.md para el diseno completo.
 """
 
+import base64
+import io
+import json
 import math
 import sys
 from datetime import datetime
@@ -251,3 +254,47 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
         "clientes": clientes,
         "pendientes": pendientes,
     }
+
+
+def build() -> int:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    except Exception:
+        pass
+    if not RUTA_EXCEL.exists():
+        print(f"[ERROR] No existe el Excel: {RUTA_EXCEL}")
+        return 1
+    if not RUTA_TEMPLATE.exists():
+        print(f"[ERROR] No existe la plantilla: {RUTA_TEMPLATE}")
+        return 1
+
+    data = extraer_datos_saneados(RUTA_EXCEL)
+
+    RUTA_DATA_JSON.parent.mkdir(parents=True, exist_ok=True)
+    with io.open(RUTA_DATA_JSON, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    data_json_text = json.dumps(data, ensure_ascii=False)
+    data_b64 = base64.b64encode(data_json_text.encode("utf-8")).decode("ascii")
+
+    with io.open(RUTA_TEMPLATE, "r", encoding="utf-8") as f:
+        template = f.read()
+    if "__AF_DATA_B64__" not in template:
+        print("[ERROR] template.html no tiene el placeholder __AF_DATA_B64__")
+        return 1
+    html = template.replace("__AF_DATA_B64__", data_b64)
+
+    RUTA_BUILD_HTML.parent.mkdir(parents=True, exist_ok=True)
+    with io.open(RUTA_BUILD_HTML, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    print(f"OK — {len(data['proyectos'])} proyecto(s) completo(s), "
+          f"{len(data['pendientes'])} pendiente(s), {len(data['clientes'])} cliente(s)")
+    print(f"Snapshot: {RUTA_DATA_JSON}")
+    print(f"Visualizador: {RUTA_BUILD_HTML}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    raise SystemExit(build())

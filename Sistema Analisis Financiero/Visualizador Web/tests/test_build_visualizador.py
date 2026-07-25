@@ -310,3 +310,29 @@ def test_calcular_clientes_clasificacion_por_percentil_de_cltv():
 
     assert clientes["Alto"]["clasificacion"] == "Clientes estratégicos"
     assert clientes["Bajo"]["clasificacion"] == "Clientes de oportunidad"
+
+
+def test_build_genera_html_no_vacio_con_snapshot_incrustado(tmp_path, monkeypatch):
+    ruta_excel = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+    ])
+    ruta_data = tmp_path / "data" / "analisis-financiero.json"
+    ruta_build = tmp_path / "build" / "index.html"
+
+    monkeypatch.setattr(bv, "RUTA_EXCEL", ruta_excel)
+    monkeypatch.setattr(bv, "RUTA_DATA_JSON", ruta_data)
+    monkeypatch.setattr(bv, "RUTA_BUILD_HTML", ruta_build)
+
+    resultado = bv.build()
+
+    assert resultado == 0
+    assert ruta_data.exists()
+    assert ruta_build.exists()
+    contenido = ruta_build.read_text(encoding="utf-8")
+    assert "__AF_DATA_B64__" not in contenido
+    assert len(contenido) > 1000
+
+
+def test_build_falla_si_no_existe_el_excel(tmp_path, monkeypatch):
+    monkeypatch.setattr(bv, "RUTA_EXCEL", tmp_path / "no-existe.xlsx")
+    assert bv.build() == 1
