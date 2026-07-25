@@ -801,7 +801,44 @@
     }));
   }, 150));
 
-  // Task 7 agrega aquí: pestaña Clientes.
+  // ---------- pestaña Clientes ----------
+  var clientesOrdenados = CLIENTES.slice().sort(function (a, b) { return b.cltv - a.cltv; });
+  document.getElementById('kpiTopCliente').textContent = clientesOrdenados.length ? clientesOrdenados[0].cliente : '—';
+  document.getElementById('kpiCltvPromedio').textContent = clientesOrdenados.length
+    ? formatoCLP(clientesOrdenados.reduce(function (s, c) { return s + c.cltv; }, 0) / clientesOrdenados.length)
+    : formatoCLP(0);
+
+  var porClasificacion = {};
+  CLIENTES.forEach(function (c) { porClasificacion[c.clasificacion] = (porClasificacion[c.clasificacion] || 0) + 1; });
+  document.getElementById('kpiClasificaciones').textContent = Object.keys(porClasificacion).map(function (k) {
+    return k + ': ' + porClasificacion[k];
+  }).join(' · ') || '—';
+
+  renderBarChart('chartTopClientes', clientesOrdenados.slice(0, 8).map(function (c) {
+    return { cliente: c.cliente, cltv: c.cltv, valueLabel: formatoCLP(c.cltv) };
+  }), 'cliente', 'cltv');
+  renderDonutChart('chartClasificacion', Object.keys(porClasificacion).map(function (k) {
+    return { clasificacion: k, n: porClasificacion[k] };
+  }), 'clasificacion', 'n');
+
+  function renderTablaClientes(items) {
+    var tbody = document.getElementById('tablaClientesBody');
+    tbody.innerHTML = items.map(function (c) {
+      var nota = c.proyectos_pendientes
+        ? '<div class="fila-nota">' + c.proyectos_pendientes + ' proyecto(s) pendiente(s) de completar</div>'
+        : '';
+      return '<tr><td>' + esc(c.cliente) + nota + '</td><td>' + formatoCLP(c.aov) + '</td><td>' + c.vida +
+        '</td><td>' + c.meses_activo.toFixed(1) + '</td><td>' + c.frecuencia.toFixed(2) + '</td><td>' +
+        formatoPct(c.margen_pct) + '</td><td>' + formatoCLP(c.cltv) + '</td><td>' + esc(c.clasificacion) + '</td></tr>';
+    }).join('');
+  }
+  renderTablaClientes(clientesOrdenados);
+  document.getElementById('buscarClientes').addEventListener('input', debounce(function (evt) {
+    var q = evt.target.value.toLowerCase();
+    renderTablaClientes(clientesOrdenados.filter(function (c) {
+      return c.cliente.toLowerCase().indexOf(q) !== -1;
+    }));
+  }, 150));
   } // end initApp
 })();
 </script>
