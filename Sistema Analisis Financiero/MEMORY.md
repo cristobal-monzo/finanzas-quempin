@@ -274,6 +274,52 @@ Suite de tests de `Reportes/`: 59 tests, todos pasando (9 nuevos: 3 sobre
 porcentaje en dona, 6 sobre `es_kpi_fuera_de_rango`/`referencia_kpi`/nota
 de fuente).
 
+## Corrección visual de página 1 tras revisión con imagen real (2026-07-26)
+
+El usuario pidió 3 ajustes sobre `proyecto:UMAG` — colores por categoría de
+gasto en las barras comparativas (ya estaba implementado desde el
+2026-07-24, pero lo repitió), que el valor numérico de cada barra sea
+**siempre** visible, y usar mejor el espacio de la página 1 (llenar la
+página completa). Esta vez, en vez de razonar sobre el HTML/CSS a ciegas,
+se renderizó la página 1 a PNG con PyMuPDF (`fitz`, ya estaba instalado) y
+se inspeccionó la imagen antes y después de cada cambio — reveló un bug
+real que el conteo de páginas de `pypdf` nunca iba a detectar:
+
+- **Bug encontrado**: la barra "Otros Proyectado" (el valor más grande,
+  3.720.000) llegaba justo al borde del `viewBox` de
+  `grafico_barras_svg` y su número quedaba cortado — la función escalaba
+  la barra más larga al 100% del ancho disponible sin reservar espacio
+  para el texto del valor. Fix: nuevo parámetro `margen_valor` (default 76)
+  que reserva ese espacio siempre; documentado en `graficos.py` y en el
+  Gotcha correspondiente de `SKILL.md` para que no se repita al ajustar
+  tamaños en un reporte futuro.
+- **Nuevo parámetro `decimales`/`sufijo`** en `grafico_barras_svg` — los
+  "Costo % de venta" (0,9%-6,9%) redondeados a entero perdían precisión
+  visible; ahora se puede pedir `decimales=1, sufijo="%"`.
+- **Página 1 ya no está sobre-comprimida**: la densidad de fuente/padding
+  del 2026-07-24 (pensada para garantizar que cupiera en 1 página) dejaba
+  casi la mitad de la página en blanco una vez renderizada — la página SÍ
+  tenía margen de sobra. Se relajó la densidad en `brand.py`
+  (`.pdf-pagina.p1`) y se agregó contenido que faltaba: gráfico nuevo
+  "Estructura de costos (% de venta)" (una serie por categoría, mismo
+  color que la dona/leyenda) que responde una pregunta que antes solo
+  estaba en la tabla como números sueltos. La dona y su leyenda ahora van
+  lado a lado (`div.dona-con-leyenda`, clase nueva en `brand.py`) en vez de
+  apiladas, para un uso más compacto de esa columna.
+- **Iteración de tamaño**: agrandar demasiado (radio de dona 85, alto de
+  barra 260, fuente de tabla 12px) volvió a desbordar a 3 páginas —
+  confirmado con `pypdf`, luego se ajustó hacia abajo (radio 64, alto 225,
+  fuente 11px) hasta volver a 2 páginas exactas, verificado de nuevo con
+  la imagen (ya no queda ~45% de blanco, sí un margen razonable ~10-15%).
+- **Aplicado a los 3 reportes reales** (`proyecto:UMAG`, `cliente:UMAG`,
+  `categoria:I+D+i`) — los 3 siguen en 2 páginas (`pypdf`) y se
+  inspeccionaron visualmente uno por uno.
+- **Lección para reportes futuros**: `pypdf` (conteo de páginas) y la
+  inspección visual con `fitz` cubren cosas distintas — usar ambos. El
+  conteo de páginas no detecta texto cortado en el borde de un SVG ni
+  espacio en blanco mal distribuido; la imagen no reemplaza verificar que
+  sigue siendo exactamente 2 páginas.
+
 ## Pendientes que dependen del usuario
 
 El script (`Sistema/analisis_financiero.py`, 71 tests), el skill

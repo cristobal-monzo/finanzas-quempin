@@ -58,21 +58,27 @@ table.tabla-reporte td.alerta { font-weight: 900; color: var(--brand-orange); }
 .leyenda-nota { font-size: 8.5px; color: var(--brand-gray-dark); margin: -4px 0 8px; font-style: italic; }
 .reporte-footer { padding: 12px 32px; font-size: 10px; color: var(--brand-gray-dark); border-top: 1px solid var(--brand-gray-light); }
 
-/* Panel de verificacion (pagina 1 del estandar de 2 paginas): compacto,
-   2 columnas -- ver SKILL.md de Reportes_Analisis_Financiero. */
+/* Panel de verificacion (pagina 1 del estandar de 2 paginas): 2 columnas,
+   pensado para llenar el alto completo de la pagina (no comprimir de mas)
+   -- ver SKILL.md de Reportes_Analisis_Financiero. */
 .pdf-pagina.p1 { padding: 4px 0 0; }
-.pdf-pagina.p1 h2 { font-size: 16px; margin: 0 0 8px; }
-.pdf-pagina.p1 h3 { font-size: 11.5px; margin: 10px 0 4px; text-transform: uppercase; color: var(--brand-gray-dark); }
-.pdf-pagina.p1 table.tabla-reporte { margin-bottom: 6px; }
-.pdf-pagina.p1 table.tabla-reporte td, .pdf-pagina.p1 table.tabla-reporte th { padding: 3px 7px; font-size: 10px; }
-.pdf-pagina.p1 table.tabla-reporte td.referencia { color: var(--brand-gray-dark); font-size: 9px; text-align: left; }
-.pdf-pagina.p1 .kpi-fila { gap: 10px; margin-bottom: 10px; }
-.pdf-pagina.p1 .kpi-tarjeta { padding: 6px 10px; flex-basis: 130px; }
-.pdf-pagina.p1 .kpi-tarjeta .valor { font-size: 16px; }
-.pdf-pagina.p1 .kpi-tarjeta .etiqueta { font-size: 9px; }
-.pdf-pagina.p1 .leyenda-graficos { font-size: 9.5px; margin: 2px 0 8px; }
-.pdf-pagina.p1 .fila-2-col { display: flex; gap: 20px; align-items: flex-start; }
-.pdf-pagina.p1 .fila-2-col > div { flex: 1 1 0; }
+.pdf-pagina.p1 h2 { font-size: 17px; margin: 0 0 10px; }
+.pdf-pagina.p1 h3 { font-size: 11.5px; margin: 10px 0 5px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--brand-gray-dark); }
+.pdf-pagina.p1 h3:first-child { margin-top: 0; }
+.pdf-pagina.p1 table.tabla-reporte { margin-bottom: 7px; }
+.pdf-pagina.p1 table.tabla-reporte td, .pdf-pagina.p1 table.tabla-reporte th { padding: 5.5px 9px; font-size: 11px; }
+.pdf-pagina.p1 table.tabla-reporte td.referencia { color: var(--brand-gray-dark); font-size: 9.5px; text-align: left; }
+.pdf-pagina.p1 .kpi-fila { gap: 12px; margin-bottom: 14px; }
+.pdf-pagina.p1 .kpi-tarjeta { padding: 10px 14px; flex-basis: 145px; }
+.pdf-pagina.p1 .kpi-tarjeta .valor { font-size: 19px; }
+.pdf-pagina.p1 .kpi-tarjeta .etiqueta { font-size: 9.5px; }
+.pdf-pagina.p1 .leyenda-graficos { font-size: 10.5px; margin: 3px 0 9px; }
+.pdf-pagina.p1 .leyenda-nota { font-size: 9px; margin: -4px 0 9px; }
+.pdf-pagina.p1 .fila-2-col { display: flex; gap: 24px; align-items: stretch; }
+.pdf-pagina.p1 .fila-2-col > div { flex: 1 1 0; display: flex; flex-direction: column; }
+.pdf-pagina.p1 .dona-con-leyenda { display: flex; align-items: center; gap: 16px; margin-bottom: 2px; }
+.pdf-pagina.p1 .dona-con-leyenda svg { flex-shrink: 0; }
+.pdf-pagina.p1 .dona-con-leyenda .leyenda-graficos { flex-direction: column; gap: 6px; margin: 0; }
 
 /* Analisis narrativo (pagina 2): mas espacio, listas escaneables. */
 .pdf-pagina.p2 { padding: 4px 0 0; }

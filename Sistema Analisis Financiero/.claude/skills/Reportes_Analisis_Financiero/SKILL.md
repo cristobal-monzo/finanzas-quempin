@@ -148,3 +148,32 @@ python ".claude/skills/Reportes_Analisis_Financiero/driver.py" run
   antes de redactarla hay que definir su estructura con él, no reutilizar el
   layout de Proyecto/Cliente/Categoría sin más. Recordárselo explícitamente
   si no lo menciona.
+- **`grafico_barras_svg` reserva espacio para el valor de la barra mas
+  larga via `margen_valor`** (default 76, en unidades del viewBox) -- si se
+  agranda `ancho`/se achica `ancho_etiqueta` sin ajustar `margen_valor`, el
+  numero de la barra que llega al 100% de `max_valor` puede quedar cortado
+  en el borde del grafico (paso justo por esto en la primera version del
+  panel de proyecto -- "Otros Proyectado" se cortaba). Verificar visualmente
+  (ver mas abajo) despues de cualquier cambio de tamaño, no asumir que un
+  numero mas grande de `ancho` alcanza.
+- **Para porcentajes chicos (Costo % de venta, ~0.9%-7%) usar
+  `decimales=1, sufijo="%"`** en `grafico_barras_svg` -- el formato entero
+  por defecto (".0f") redondea 2,3% a "2", perdiendo precision visible.
+- **Patron "Estructura de costos (% de venta)"**: un `grafico_barras_svg`
+  de una sola serie (no Proyectado/Real) con las 4 categorias de gasto y
+  sus colores, mostrando "Costo X % de venta" -- complementa la dona
+  (composicion del costo real) con la vista "cuanto de la venta se va en
+  cada categoria". Usar `graficos.leyenda_html`/dona en un
+  `<div class="dona-con-leyenda">` (clase ya definida en `brand.py`, pone
+  la leyenda al lado del grafico en vez de debajo) para un uso mas
+  compacto del espacio en la columna izquierda de la página 1.
+- **Verificar la página 1 visualmente, no solo el conteo de páginas** --
+  `pypdf` confirma que entra en 2 páginas, pero no detecta un valor de
+  barra cortado en el borde ni espacio en blanco mal distribuido. Renderizar
+  la página a PNG con PyMuPDF (`fitz`) y mirarla (`Read` la imagen) antes de
+  dar el reporte por bueno:
+  ```python
+  import fitz
+  doc = fitz.open(ruta_pdf)
+  doc[0].get_pixmap(matrix=fitz.Matrix(2, 2)).save(ruta_png)
+  ```

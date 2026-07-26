@@ -13,7 +13,8 @@ COLORES_POR_DEFECTO = ["#ff5100", "#000000", "#98989a", "#54565a"]
 def grafico_barras_svg(
     etiquetas: list[str], valores: list[float], color: str = "#ff5100",
     colores: list[str] | None = None, opacidades: list[float] | None = None,
-    ancho: int = 480, alto: int = 220,
+    ancho: int = 480, alto: int = 220, ancho_etiqueta: int = 150,
+    margen_valor: int = 76, decimales: int = 0, sufijo: str = "",
 ) -> str:
     """Grafico de barras horizontal simple. valores deben ser >= 0.
 
@@ -22,7 +23,15 @@ def grafico_barras_svg(
     comparativo (ej. Proyectado vs Real por categoria). Sin `colores`, todas
     las barras usan `color`. `opacidades` (misma longitud) permite ademas
     distinguir dentro de una misma categoria (ej. Proyectado mas translucido
-    que Real) sin cambiar el color base."""
+    que Real) sin cambiar el color base.
+
+    `margen_valor` reserva un espacio fijo a la derecha (en unidades del
+    viewBox) para que el numero de la barra mas larga (la del 100% de
+    `max_valor`) siempre quede completo dentro del grafico -- sin este
+    margen, esa barra llega justo al borde y el texto del valor se corta.
+    `decimales`/`sufijo` controlan el formato del valor mostrado (ej.
+    decimales=1, sufijo="%" para porcentajes chicos donde ".0f" pierde
+    precision perceptible, como 2,3% redondeado a 2%)."""
     if not etiquetas or len(etiquetas) != len(valores):
         raise ValueError("etiquetas y valores deben tener la misma longitud y no estar vacios")
     if colores is not None and len(colores) != len(valores):
@@ -32,16 +41,18 @@ def grafico_barras_svg(
 
     max_valor = max(valores) or 1.0
     alto_barra = alto / len(valores)
+    ancho_disponible = ancho - ancho_etiqueta - margen_valor
     partes = []
     for i, (etiqueta, valor) in enumerate(zip(etiquetas, valores)):
         color_barra = colores[i] if colores is not None else color
         opacidad = f' fill-opacity="{opacidades[i]}"' if opacidades is not None else ""
         y = i * alto_barra + alto_barra * 0.15
-        ancho_barra = (valor / max_valor) * (ancho - 160)
+        ancho_barra = (valor / max_valor) * ancho_disponible
+        texto_valor = f"{valor:,.{decimales}f}{sufijo}"
         partes.append(
             f'<text x="0" y="{y + alto_barra * 0.35:.1f}" font-size="11">{etiqueta}</text>'
-            f'<rect x="150" y="{y:.1f}" width="{ancho_barra:.1f}" height="{alto_barra * 0.7:.1f}" fill="{color_barra}"{opacidad}/>'
-            f'<text x="{150 + ancho_barra + 6:.1f}" y="{y + alto_barra * 0.35:.1f}" font-size="11">{valor:,.0f}</text>'
+            f'<rect x="{ancho_etiqueta}" y="{y:.1f}" width="{ancho_barra:.1f}" height="{alto_barra * 0.7:.1f}" fill="{color_barra}"{opacidad}/>'
+            f'<text x="{ancho_etiqueta + ancho_barra + 6:.1f}" y="{y + alto_barra * 0.35:.1f}" font-size="11" font-weight="700">{texto_valor}</text>'
         )
     return f'<svg viewBox="0 0 {ancho} {alto}" width="100%" xmlns="http://www.w3.org/2000/svg">{"".join(partes)}</svg>'
 
