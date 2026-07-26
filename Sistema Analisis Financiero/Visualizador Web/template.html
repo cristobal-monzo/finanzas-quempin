@@ -682,6 +682,13 @@
     });
   }
 
+  // Este módulo no distingue "última actualización de datos" de "snapshot
+  // generado" (a diferencia de Centro de Costos) — DATA.generado alimenta
+  // ambos.
+  document.getElementById('vizGenerated').textContent = 'Datos actualizados al ' + DATA.generado;
+  document.getElementById('vizUltimaFooter').textContent = DATA.generado;
+  document.getElementById('vizGeneratedFooter').textContent = DATA.generado;
+
   // ---------- tooltip ----------
   function showTooltip(el, text) {
     tooltip.textContent = text;

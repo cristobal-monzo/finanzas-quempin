@@ -45,11 +45,17 @@ Sistema Analisis Financiero/Visualizador Web/
 
 - **Pestaña Proyectos**: KPIs (N° completos, Margen Real total, Nota
   promedio, N° "Requiere atención"), ranking de Nota del Proyecto (barras),
-  distribución de Evaluación (donut), tabla buscable.
+  distribución de Evaluación (donut), tabla buscable (orden fijo por Nota
+  descendente).
 - **Pestaña Clientes**: KPIs (top CLTV, CLTV promedio, conteo por
   Clasificación), top 8 clientes por CLTV (barras), distribución de
   Clasificación (donut), tabla buscable con nota de proyectos pendientes
-  por cliente.
+  por cliente (orden fijo por CLTV descendente).
+- **Sin paginación ni orden de columnas clickeable** (a diferencia del
+  visualizador de Centro de Costos): con decenas de proyectos/clientes —no
+  cientos de documentos— el orden fijo (Nota/CLTV descendente) más el buscador
+  cubre la necesidad práctica. Descope deliberado, no un olvido — revisar si
+  el N° de proyectos crece lo suficiente para justificarlo.
 - Tooltips "i" con el texto de `GLOSARIO_KPIS` de `analisis_financiero.py`
   (hardcodeados en `template.html`, no viajan en el JSON — son texto
   estático, no dependen de datos del usuario).

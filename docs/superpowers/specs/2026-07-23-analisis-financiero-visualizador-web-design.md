@@ -136,13 +136,14 @@ escritura de fórmulas.
     de Evaluación (Excelente/Bueno/Aprobado/Requiere atención).
   - Tabla: Proyecto, Cliente, Estado, Monto de Venta, Margen Real,
     Desviación %, Nota, Evaluación — buscable/ordenable, paginada de a 25
-    (mismo patrón que Centro de Costos).
+    (mismo patrón que Centro de Costos). **Descope en implementación** (ver
+    nota al final de esta sección).
 - **Pestaña "Clientes"**:
   - KPIs: cliente top por CLTV, CLTV promedio, conteo por Clasificación.
   - Gráficos: top 8 clientes por CLTV (barras), donut de Clasificación.
   - Tabla: Cliente, AOV, Vida del cliente, Meses activo, Frecuencia, Margen
     de utilidad %, CLTV, Clasificación, nota de proyectos pendientes si
-    aplica (§3).
+    aplica (§3). Misma nota de descope que la tabla de Proyectos.
 - **Tooltips "i"**: en cada KPI/gráfico, reutilizando el texto ya escrito en
   la constante `GLOSARIO_KPIS` de `analisis_financiero.py` — no se redacta
   contenido nuevo ni se construye una sección "Glosario" aparte en el HTML.
@@ -153,6 +154,16 @@ escritura de fórmulas.
 - **Datos incrustados** (base64 dentro del HTML, no `fetch`) — mismo motivo
   que Centro de Costos: el canal de consumo es un Claude Artifact privado,
   cuyo sandbox no permite `fetch` a archivos locales.
+
+**Nota (post-implementación, revisión final de rama)**: la paginación de a
+25 y el orden de columnas clickeable descritos arriba para ambas tablas se
+descartaron deliberadamente durante la implementación — no fue un olvido.
+Los volúmenes de datos de este módulo son decenas de proyectos/clientes, no
+los cientos de documentos que justificaron ese patrón en Centro de Costos;
+buscador + orden fijo (Nota / CLTV descendente) cubren la necesidad
+práctica actual. Ver `Sistema Analisis Financiero/Visualizador Web/CLAUDE.md`
+§Contenido. Revisar si el N° de proyectos crece lo suficiente para
+justificar implementarlo.
 
 ## 6. Automatización
 

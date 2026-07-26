@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 
 import analisis_financiero as af
@@ -247,6 +248,7 @@ def test_extraer_datos_saneados_separa_completos_e_incompletos(tmp_path):
     assert pendiente["nombre"] == "Cesfam Limache"
     assert pendiente["mensaje"] == "Cesfam Limache — Falta ingresar información en 'Análisis de Proyectos'"
     assert pendiente["link"] == bv.URL_PLANILLA_PENDIENTE
+    assert re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", data["generado"])
 
 
 def test_extraer_datos_saneados_kpis_proyectos_resumen(tmp_path):
