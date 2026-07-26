@@ -351,12 +351,12 @@ de una misma categoría.
   el cambio a los 3 reportes.
 - **Aplicado a los 3 reportes** (proyecto/cliente/categoría), 64 tests
   pasando (6 nuevos para `grafico_barras_comparativo_svg`).
-- **Bloqueo de escritura final**: los 3 PDF reales seguían abiertos en el
-  visor (desde una revisión anterior en la misma conversación) y
-  `motor_reportes.renderizar_pdf` no pudo sobrescribirlos —
-  `PermissionError` de Windows/OneDrive, no un bug del código. Verificado
-  todo por imagen contra las copias temporales; falta correr los 3 scripts
-  una vez más sobre las rutas reales cuando el usuario cierre los PDF.
+- **Bloqueo de escritura final (resuelto)**: los 3 PDF reales estaban
+  abiertos en el visor y `motor_reportes.renderizar_pdf` no pudo
+  sobrescribirlos (`PermissionError` de Windows/OneDrive, no un bug del
+  código). Se verificó todo por imagen contra copias temporales primero;
+  una vez cerrados los PDF, se re-corrieron los 3 scripts sobre las rutas
+  reales sin problema.
 
 ## Pendientes que dependen del usuario
 
@@ -375,8 +375,3 @@ de la extensión de Nota/Clientes/Glosario en
 - El dashboard HTML (Visualizador Web de este módulo) está fuera de alcance v1
   a propósito — el usuario ya indicó que esa es la forma de presentación a
   mediano plazo, pero no se construye hasta más adelante.
-- **Los 3 PDF reales (proyecto/cliente/categoría UMAG e I+D+i) no tienen
-  todavía el gráfico comparativo rediseñado del 2026-07-26** — quedaron
-  bloqueados por estar abiertos en el visor. Verificado por imagen contra
-  copias temporales (ver sección de arriba); falta re-correr los 3 scripts
-  ad-hoc sobre las rutas reales una vez que el usuario los cierre.
