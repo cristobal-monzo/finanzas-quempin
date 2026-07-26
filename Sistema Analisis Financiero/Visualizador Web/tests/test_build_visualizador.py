@@ -81,6 +81,7 @@ def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
     # exactamente el objetivo) -> nota=98, "Excelente".
     p = {
         "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
     }
@@ -99,6 +100,7 @@ def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
 def test_calcular_kpis_proyecto_evaluacion_requiere_atencion_bajo_55():
     p = {
         "tag": "CFLI", "nombre": "Cesfam Limache", "cliente": "Cesfam", "estado": "En Proceso",
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 100_000, "equipos_proy": 100_000,
         "mo_proy": 100_000, "otros_proy": 100_000, "mo_real": 700_000,
     }
@@ -117,6 +119,7 @@ def test_calcular_kpis_proyecto_monto_venta_cero_no_explota():
     # con score_margen=0 (no hay ratio de margen que calcular contra venta nula).
     p = {
         "tag": "ZERO", "nombre": "Proyecto Venta Cero", "cliente": "Cliente X", "estado": "En Proceso",
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 0, "materiales_proy": 100_000, "equipos_proy": 0,
         "mo_proy": 0, "otros_proy": 0, "mo_real": 0,
     }
@@ -144,6 +147,7 @@ def test_calcular_kpis_proyecto_redondeo_estilo_excel_en_empate_exacto():
     total_proyectado = total_real  # desviacion_pct = 0 -> score_desviacion = 100
     p = {
         "tag": "TIE", "nombre": "Empate Redondeo", "cliente": "Cliente Y", "estado": "En Proceso",
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": monto_venta,
         "materiales_proy": total_proyectado, "equipos_proy": 0, "mo_proy": 0, "otros_proy": 0,
         "mo_real": total_real,
@@ -338,3 +342,82 @@ def test_build_genera_html_no_vacio_con_snapshot_incrustado(tmp_path, monkeypatc
 def test_build_falla_si_no_existe_el_excel(tmp_path, monkeypatch):
     monkeypatch.setattr(bv, "RUTA_EXCEL", tmp_path / "no-existe.xlsx")
     assert bv.build() == 1
+
+
+def test_leer_proyectos_incluye_fecha_cierre_y_categoria(tmp_path):
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    ws = wb[af.HOJA_PROYECTOS]
+    _fila_proyecto_completa(ws, 2, **{"Fecha de cierre": datetime(2026, 3, 15), "Categoría": "I+D+i"})
+
+    proyectos = bv.leer_proyectos(ws)
+
+    assert proyectos[0]["fecha_cierre"] == datetime(2026, 3, 15)
+    assert proyectos[0]["categoria"] == "I+D+i"
+
+
+def test_leer_proyectos_categoria_y_fecha_cierre_none_si_no_estan_cargadas(tmp_path):
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    ws = wb[af.HOJA_PROYECTOS]
+    _fila_proyecto_completa(ws, 2)  # sin overrides -- Categoría/Fecha de cierre quedan vacías
+
+    proyectos = bv.leer_proyectos(ws)
+
+    assert proyectos[0]["categoria"] is None
+    assert proyectos[0]["fecha_cierre"] is None
+
+
+def test_calcular_kpis_proyecto_incluye_desglose_de_costos_y_fechas():
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "fecha_inicio": datetime(2026, 1, 10), "fecha_cierre": datetime(2026, 3, 15),
+        "categoria": "I+D+i",
+        "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
+        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
+    }
+    costos_reales = {"Materiales": 250_000.0, "Equipos": 150_000.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    assert kpis["fecha_inicio"] == "2026-01-10"
+    assert kpis["fecha_cierre"] == "2026-03-15"
+    assert kpis["categoria"] == "I+D+i"
+    assert kpis["costos_proyectados"] == {
+        "materiales": 300_000, "equipos": 200_000, "mo": 200_000, "otros": 100_000,
+    }
+    assert kpis["costos_reales"] == {
+        "materiales": 250_000.0, "equipos": 150_000.0, "mo": 350_000, "otros": 0.0,
+    }
+
+
+def test_calcular_kpis_proyecto_fechas_none_si_no_hay_dato():
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
+        "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
+        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
+    }
+    costos_reales = {"Materiales": 250_000.0, "Equipos": 150_000.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    assert kpis["fecha_inicio"] is None
+    assert kpis["fecha_cierre"] is None
+    assert kpis["categoria"] is None
+
+
+def test_calcular_kpis_proyecto_fechas_son_json_serializables():
+    import json
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "fecha_inicio": datetime(2026, 1, 10), "fecha_cierre": datetime(2026, 3, 15),
+        "categoria": "I+D+i",
+        "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
+        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
+    }
+    costos_reales = {"Materiales": 250_000.0, "Equipos": 150_000.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    # build() usa json.dump SIN default=str -- un datetime sin convertir
+    # explotaria aca con TypeError al momento de escribir el snapshot real.
+    json.dumps(kpis, ensure_ascii=False)

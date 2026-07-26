@@ -68,6 +68,8 @@ def leer_proyectos(ws_proyectos) -> list[dict]:
             "cliente": _valor_columna(ws_proyectos, fila, "Cliente"),
             "estado": _valor_columna(ws_proyectos, fila, "Estado"),
             "fecha_inicio": _valor_columna(ws_proyectos, fila, "Fecha de inicio"),
+            "fecha_cierre": _valor_columna(ws_proyectos, fila, "Fecha de cierre"),
+            "categoria": _valor_columna(ws_proyectos, fila, "Categoría"),
             "monto_venta": _valor_columna(ws_proyectos, fila, "Monto de Venta (sin IVA)"),
             "materiales_proy": _valor_columna(ws_proyectos, fila, "Costos Materiales Proyectados"),
             "equipos_proy": _valor_columna(ws_proyectos, fila, "Costos Equipos Proyectados"),
@@ -109,6 +111,19 @@ def _round_excel(valor: float) -> int:
     return math.floor(valor + 0.5)
 
 
+def _fecha_str(valor):
+    """Convierte un valor de celda de fecha (datetime, o ya string, o None)
+    a 'YYYY-MM-DD' o None -- nunca deja pasar un datetime crudo hacia el
+    JSON del snapshot (json.dump en build() no usa default=str, un datetime
+    sin convertir explota con TypeError al escribir data/analisis-
+    financiero.json)."""
+    if valor is None:
+        return None
+    if hasattr(valor, "strftime"):
+        return valor.strftime("%Y-%m-%d")
+    return str(valor)
+
+
 def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     """Recomputa, en Python, las mismas formulas que asegurar_formulas_
     proyectos/_formula_nota/_formula_evaluacion escriben en el Excel."""
@@ -136,9 +151,19 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
 
     return {
         "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "estado": p["estado"],
+        "fecha_inicio": _fecha_str(p["fecha_inicio"]), "fecha_cierre": _fecha_str(p["fecha_cierre"]),
+        "categoria": p["categoria"],
         "monto_venta": p["monto_venta"], "total_proyectado": total_proyectado,
         "total_real": total_real, "margen_real": margen_real, "desviacion_pct": desviacion_pct,
         "nota": nota, "evaluacion": evaluacion,
+        "costos_proyectados": {
+            "materiales": p["materiales_proy"], "equipos": p["equipos_proy"],
+            "mo": p["mo_proy"], "otros": p["otros_proy"],
+        },
+        "costos_reales": {
+            "materiales": costos_reales["Materiales"], "equipos": costos_reales["Equipos"],
+            "mo": p["mo_real"], "otros": costos_reales["Otros"],
+        },
     }
 
 
