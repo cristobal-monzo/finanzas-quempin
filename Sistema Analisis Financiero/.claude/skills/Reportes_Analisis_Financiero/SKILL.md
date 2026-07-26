@@ -53,11 +53,17 @@ python ".claude/skills/Reportes_Analisis_Financiero/driver.py" run
      - **Todo grafico de dona o de barras por categoria lleva leyenda de
        color**: `graficos.leyenda_html(etiquetas, colores)`. Si hay mas de
        una categoria de gasto en un mismo grafico de barras, cada categoria
-       usa su propio color (parametro `colores` de `grafico_barras_svg`,
-       misma paleta que la leyenda) -- no todas las barras del mismo color.
-       Para diferenciar Proyectado vs Real dentro de una misma categoria sin
-       perder el color de la categoria, usar `opacidades` (ej. Proyectado
-       0.4, Real 1.0) en vez de un color distinto.
+       usa su propio color -- no todas las barras del mismo color.
+     - **Para comparar Proyectado vs Real por categoria, usar
+       `graficos.grafico_barras_comparativo_svg`** (no `grafico_barras_svg`
+       con `opacidades`, que se probo primero y en la practica costaba
+       distinguir a simple vista que barra era de que categoria -- mismo
+       tono, solo mas claro/oscuro). La variante comparativa agrupa cada
+       categoria con su nombre una sola vez, un cuadro de color + acento
+       vertical junto al nombre, Proyectado con relleno achurado y Real con
+       relleno solido (mismo color en ambos), banda de fondo alternada y
+       linea separadora entre categorias -- la categoria se identifica por
+       color+forma antes de leer cualquier etiqueta.
      - **Los KPIs fuera de lo esperado van en negrita/naranjo** en la tabla
        (clase CSS `alerta` en el `<td>`) -- el criterio esta centralizado en
        `brand.es_kpi_fuera_de_rango(nombre_kpi, valor)` (umbrales: margen

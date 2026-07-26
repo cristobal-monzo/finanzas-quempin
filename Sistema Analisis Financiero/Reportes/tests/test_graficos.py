@@ -102,3 +102,47 @@ def test_grafico_dona_svg_segmento_muy_chico_no_muestra_porcentaje():
         ["Grande", "Chico"], [99, 1], mostrar_porcentaje=True
     )
     assert svg.count("<text") == 1
+
+
+def test_grafico_barras_comparativo_svg_produce_un_par_de_barras_por_categoria():
+    svg = graficos.grafico_barras_comparativo_svg(
+        ["Materiales", "Equipos"], [100, 200], [50, 80],
+    )
+    # 4 barras (2 categorias x Proyectado+Real) + 2 rects de fondo blanco
+    # dentro de cada <pattern> + 1 banda de fondo tenue (categorias en
+    # indice impar, aca solo "Equipos") + 2 acentos verticales + 2 cuadros
+    # de color junto al nombre (1 de cada uno por categoria) -- ninguno de
+    # estos ultimos 7 es una barra de Proyectado/Real.
+    assert svg.count("<rect") == 11
+    assert svg.count("<pattern") == 2  # 1 patron achurado por categoria
+    assert svg.count("url(#") == 2  # 1 barra Proyectado achurada por categoria
+    assert svg.startswith("<svg")
+
+
+def test_grafico_barras_comparativo_svg_nombre_de_categoria_aparece_una_sola_vez():
+    svg = graficos.grafico_barras_comparativo_svg(["Materiales"], [100], [50])
+    assert svg.count(">Materiales<") == 1
+    assert ">Proyectado<" in svg
+    assert ">Real<" in svg
+
+
+def test_grafico_barras_comparativo_svg_agrega_linea_separadora_entre_categorias():
+    svg = graficos.grafico_barras_comparativo_svg(
+        ["Materiales", "Equipos", "Otros"], [100, 200, 50], [50, 80, 30],
+    )
+    # separadoras: stroke gris claro especifico, distinto de las lineas del
+    # patron achurado (que usan el color de cada categoria).
+    assert svg.count('stroke="#e2e2e2"') == 2  # entre categorias, no despues de la ultima
+
+
+def test_grafico_barras_comparativo_svg_valida_longitudes_distintas():
+    with pytest.raises(ValueError):
+        graficos.grafico_barras_comparativo_svg(["A", "B"], [1], [1, 2])
+
+
+def test_grafico_barras_comparativo_svg_ids_de_patron_no_colisionan_entre_llamadas():
+    svg1 = graficos.grafico_barras_comparativo_svg(["Materiales"], [100], [50])
+    svg2 = graficos.grafico_barras_comparativo_svg(["Materiales"], [100], [50])
+    id1 = svg1.split('pattern id="')[1].split('"')[0]
+    id2 = svg2.split('pattern id="')[1].split('"')[0]
+    assert id1 != id2

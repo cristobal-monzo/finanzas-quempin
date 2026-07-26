@@ -320,6 +320,44 @@ real que el conteo de páginas de `pypdf` nunca iba a detectar:
   espacio en blanco mal distribuido; la imagen no reemplaza verificar que
   sigue siendo exactamente 2 páginas.
 
+## Gráfico comparativo Proyectado vs Real rediseñado (2 iteraciones, 2026-07-26)
+
+El usuario insistió en que, pese al fix de recorte de valores del
+2026-07-26 anterior, seguía sin distinguirse bien la diferencia entre
+tipos de costo en el gráfico "Costos Proyectados vs. Reales por
+categoría" — pidió explícitamente 2 iteraciones de un `/loop` autónomo
+para resolverlo. Diagnóstico: el enfoque anterior (`grafico_barras_svg`
+con `opacidades`) usaba el mismo tono para Proyectado/Real de una
+categoría, solo más claro/oscuro — visualmente insuficiente para separar
+"Equipos" de "Otros" (ambos grises) o para agrupar el par Proyectado/Real
+de una misma categoría.
+
+- **Iteración 1**: función nueva `graficos.grafico_barras_comparativo_svg`
+  — agrupa por categoría (nombre una sola vez, no repetido en cada barra),
+  Proyectado con relleno **achurado** (patrón SVG diagonal, no opacidad) y
+  Real con relleno sólido, banda de fondo alternada por categoría, línea
+  separadora entre grupos. Reemplaza el patrón "opacidad" documentado en
+  `SKILL.md`/`MEMORY.md` del 2026-07-24 — ese patrón queda obsoleto para
+  este caso de uso (Proyectado vs Real), aunque `opacidades` sigue
+  existiendo en `grafico_barras_svg` para otros usos futuros.
+- **Iteración 2**: cuadro de color + acento vertical junto al nombre de
+  cada categoría, mismo color que sus barras — refuerza la identificación
+  por color incluso antes de leer el achurado/relleno o las etiquetas.
+- **Verificación por imagen, no solo `pypdf`**: como el bug de recorte
+  anterior no lo detectaba el conteo de páginas, se generó cada iteración
+  a una ruta temporal (`RUTA_SALIDA_OVERRIDE` vía variable de entorno en
+  los 3 scripts ad-hoc, para no pelear con el lock de OneDrive/visor de
+  PDF sobre el archivo real) y se inspeccionó con `fitz` antes de aplicar
+  el cambio a los 3 reportes.
+- **Aplicado a los 3 reportes** (proyecto/cliente/categoría), 64 tests
+  pasando (6 nuevos para `grafico_barras_comparativo_svg`).
+- **Bloqueo de escritura final**: los 3 PDF reales seguían abiertos en el
+  visor (desde una revisión anterior en la misma conversación) y
+  `motor_reportes.renderizar_pdf` no pudo sobrescribirlos —
+  `PermissionError` de Windows/OneDrive, no un bug del código. Verificado
+  todo por imagen contra las copias temporales; falta correr los 3 scripts
+  una vez más sobre las rutas reales cuando el usuario cierre los PDF.
+
 ## Pendientes que dependen del usuario
 
 El script (`Sistema/analisis_financiero.py`, 71 tests), el skill
@@ -337,3 +375,8 @@ de la extensión de Nota/Clientes/Glosario en
 - El dashboard HTML (Visualizador Web de este módulo) está fuera de alcance v1
   a propósito — el usuario ya indicó que esa es la forma de presentación a
   mediano plazo, pero no se construye hasta más adelante.
+- **Los 3 PDF reales (proyecto/cliente/categoría UMAG e I+D+i) no tienen
+  todavía el gráfico comparativo rediseñado del 2026-07-26** — quedaron
+  bloqueados por estar abiertos en el visor. Verificado por imagen contra
+  copias temporales (ver sección de arriba); falta re-correr los 3 scripts
+  ad-hoc sobre las rutas reales una vez que el usuario los cierre.
