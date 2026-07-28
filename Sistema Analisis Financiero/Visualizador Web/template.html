@@ -846,21 +846,86 @@
     return { evaluacion: k, n: porEvaluacion[k] };
   }), 'evaluacion', 'n');
 
+  var proyectoExpandido = null;
+
+  function detalleProyectoHtml(p) {
+    var pdfKey = 'proyecto:' + p.tag;
+    var pdfBtn = DATA.reportes_pdf[pdfKey]
+      ? '<button type="button" class="pendientes-toggle-btn" data-pdf-key="' + esc(pdfKey) + '">Ver/Descargar PDF</button>'
+      : '<span style="color:var(--text-muted);font-size:12px">Sin reporte generado</span>';
+    return '<div class="detail-panel">' +
+      '<div class="detail-grid">' +
+        '<div><div class="dk">Margen Real</div><div class="dv accent">' + formatoCLP(p.margen_real) + '</div></div>' +
+        '<div><div class="dk">Margen Proyectado</div><div class="dv">' + formatoCLP(p.monto_venta - p.total_proyectado) + '</div></div>' +
+        '<div><div class="dk">Desviación %</div><div class="dv">' + formatoPct(p.desviacion_pct) + '</div></div>' +
+        '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + p.nota + ' — ' + esc(p.evaluacion) + '</div></div>' +
+      '</div>' +
+      '<div id="chartComparativo-' + esc(p.tag) + '" style="margin-bottom:12px"></div>' +
+      '<table class="viz-itemtable"><thead><tr><th>Concepto</th><th>Proyectado</th><th>Real</th></tr></thead><tbody>' +
+        '<tr><td>Materiales</td><td class="num">' + formatoCLP(p.costos_proyectados.materiales) + '</td><td class="num">' + formatoCLP(p.costos_reales.materiales) + '</td></tr>' +
+        '<tr><td>Equipos</td><td class="num">' + formatoCLP(p.costos_proyectados.equipos) + '</td><td class="num">' + formatoCLP(p.costos_reales.equipos) + '</td></tr>' +
+        '<tr><td>Mano de Obra</td><td class="num">' + formatoCLP(p.costos_proyectados.mo) + '</td><td class="num">' + formatoCLP(p.costos_reales.mo) + '</td></tr>' +
+        '<tr><td>Otros</td><td class="num">' + formatoCLP(p.costos_proyectados.otros) + '</td><td class="num">' + formatoCLP(p.costos_reales.otros) + '</td></tr>' +
+        '<tr><td><strong>Total</strong></td><td class="num"><strong>' + formatoCLP(p.total_proyectado) + '</strong></td><td class="num"><strong>' + formatoCLP(p.total_real) + '</strong></td></tr>' +
+      '</tbody></table>' +
+      '<div class="detail-grid" style="margin-top:12px">' +
+        '<div><div class="dk">Monto de Venta</div><div class="dv">' + formatoCLP(p.monto_venta) + '</div></div>' +
+        '<div><div class="dk">Fecha de inicio</div><div class="dv">' + esc(p.fecha_inicio || '—') + '</div></div>' +
+        '<div><div class="dk">Fecha de cierre</div><div class="dv">' + esc(p.fecha_cierre || '—') + '</div></div>' +
+        '<div><div class="dk">Categoría</div><div class="dv">' + esc(p.categoria || 'Sin categoría') + '</div></div>' +
+      '</div>' +
+      pdfBtn +
+      '</div>';
+  }
+
+  function proyectosFiltrados() {
+    var q = document.getElementById('buscarProyectos').value.toLowerCase();
+    return proyectosOrdenados.filter(function (p) {
+      return (p.nombre + ' ' + (p.cliente || '')).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
   function renderTablaProyectos(items) {
     var tbody = document.getElementById('tablaProyectosBody');
     tbody.innerHTML = items.map(function (p) {
-      return '<tr><td>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + esc(p.estado || '—') +
+      var expandido = proyectoExpandido === p.tag;
+      var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0">' +
+        '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + esc(p.estado || '—') +
         '</td><td>' + formatoCLP(p.monto_venta) + '</td><td>' + formatoCLP(p.margen_real) + '</td><td>' +
         formatoPct(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + esc(p.evaluacion) + '</td></tr>';
+      if (expandido) {
+        fila += '<tr class="detail-row"><td colspan="8">' + detalleProyectoHtml(p) + '</td></tr>';
+      }
+      return fila;
     }).join('');
+    if (proyectoExpandido) {
+      var expandidoEnLista = items.filter(function (x) { return x.tag === proyectoExpandido; })[0];
+      if (expandidoEnLista) {
+        renderBarChartComparativo('chartComparativo-' + proyectoExpandido, [
+          { concepto: 'Materiales', proy: expandidoEnLista.costos_proyectados.materiales, real: expandidoEnLista.costos_reales.materiales },
+          { concepto: 'Equipos', proy: expandidoEnLista.costos_proyectados.equipos, real: expandidoEnLista.costos_reales.equipos },
+          { concepto: 'Mano de Obra', proy: expandidoEnLista.costos_proyectados.mo, real: expandidoEnLista.costos_reales.mo },
+          { concepto: 'Otros', proy: expandidoEnLista.costos_proyectados.otros, real: expandidoEnLista.costos_reales.otros },
+        ], 'concepto', 'proy', 'real', 'Proyectado', 'Real');
+      }
+    }
   }
   renderTablaProyectos(proyectosOrdenados);
-  document.getElementById('buscarProyectos').addEventListener('input', debounce(function (evt) {
-    var q = evt.target.value.toLowerCase();
-    renderTablaProyectos(proyectosOrdenados.filter(function (p) {
-      return (p.nombre + ' ' + (p.cliente || '')).toLowerCase().indexOf(q) !== -1;
-    }));
+  document.getElementById('buscarProyectos').addEventListener('input', debounce(function () {
+    renderTablaProyectos(proyectosFiltrados());
   }, 150));
+  document.getElementById('tablaProyectosBody').addEventListener('click', function (evt) {
+    var btnPdf = evt.target.closest('[data-pdf-key]');
+    if (btnPdf) {
+      abrirPdfBlob(DATA.reportes_pdf[btnPdf.getAttribute('data-pdf-key')], btnPdf.getAttribute('data-pdf-key').replace(':', '_') + '.pdf');
+      return;
+    }
+    var row = evt.target.closest('tr.doc-row');
+    if (!row) return;
+    var tag = row.getAttribute('data-tag');
+    proyectoExpandido = (proyectoExpandido === tag) ? null : tag;
+    renderTablaProyectos(proyectosFiltrados());
+  });
 
   // ---------- pestaña Clientes ----------
   var clientesOrdenados = CLIENTES.slice().sort(function (a, b) { return b.cltv - a.cltv; });
