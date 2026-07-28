@@ -51,6 +51,7 @@
     --brand-orange-ink: #b23a00;
     --status-good:    #0ca30c;
     --status-warning: #c98500;
+    --status-bad:     #d1282e;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) .viz-root {
@@ -69,6 +70,9 @@
       --brand-black:    #000000;
       --brand-gray-11:  #54565a;
       --brand-gray-7:   #98989a;
+      --status-good:    #3fb950;
+      --status-warning: #d29922;
+      --status-bad:     #f85149;
     }
   }
   :root[data-theme="dark"] .viz-root {
@@ -87,6 +91,9 @@
     --brand-black:    #000000;
     --brand-gray-11:  #54565a;
     --brand-gray-7:   #98989a;
+    --status-good:    #3fb950;
+    --status-warning: #d29922;
+    --status-bad:     #f85149;
   }
 
   * { box-sizing: border-box; }
@@ -326,6 +333,8 @@
   .bar-rect:hover { opacity: 0.82; }
   .donut-seg { cursor: pointer; transition: opacity 0.1s; }
   .donut-seg:hover { opacity: 0.82; }
+  .donut-seg-hover { cursor: default; transition: opacity 0.12s; }
+  .donut-seg-hover:hover { opacity: 0.78; }
   .line-dot { cursor: pointer; }
 
   /* Table */
@@ -438,9 +447,21 @@
   .pendientes-list a { color: var(--brand-orange); }
 
   .kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
-  .kpi-card { background: var(--surface-card); border-radius: 8px; padding: 14px 18px; min-width: 160px; flex: 1; }
+  .kpi-card {
+    background: var(--surface-card); border-radius: 8px; padding: 14px 18px 14px 16px;
+    min-width: 160px; flex: 1; border-left: 3px solid transparent; transition: border-color 0.15s;
+  }
   .kpi-label { font-size: 12px; color: var(--brand-gray-11); display: flex; align-items: center; gap: 5px; }
-  .kpi-value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .kpi-value { font-size: 24px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  /* Coloreado semántico: separado del acento de marca (naranjo), señala
+     estado del dato en vez de identidad visual — ver skill artifact-design
+     ("Semantic color... doesn't count as your accent"). */
+  .kpi-card.sem-good { border-left-color: var(--status-good); }
+  .kpi-card.sem-warn { border-left-color: var(--status-warning); }
+  .kpi-card.sem-bad { border-left-color: var(--status-bad); }
+  .kpi-value.sem-good { color: var(--status-good); }
+  .kpi-value.sem-warn { color: var(--status-warning); }
+  .kpi-value.sem-bad { color: var(--status-bad); }
 
   .chart-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
   .chart-card { background: var(--surface-card); border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 260px; }
@@ -502,23 +523,32 @@
 
     <section id="tabProyectos" class="viz-tab-panel active">
       <div class="kpi-row">
-        <div class="kpi-card">
-          <div class="kpi-label">Proyectos completos</div>
+        <div class="kpi-card" id="kpiCardNCompletos">
+          <div class="kpi-label">
+            Proyectos completos
+            <span class="info-icon" tabindex="0" data-info="Proyectos con los 6 campos manuales cargados en 'Análisis de Proyectos' (Monto de Venta + 4 costos proyectados + Mano de Obra Real). Solo estos entran en los KPIs, gráficos y tablas de esta pestaña.">i</span>
+          </div>
           <div class="kpi-value" id="kpiNCompletos"></div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Margen Real total</div>
+        <div class="kpi-card" id="kpiCardMargenTotal">
+          <div class="kpi-label">
+            Margen Real total
+            <span class="info-icon" tabindex="0" data-info="Suma de Margen Real (Monto de Venta − Total Real) de todos los proyectos completos — la utilidad efectivamente generada por la cartera, antes de impuestos.">i</span>
+          </div>
           <div class="kpi-value" id="kpiMargenTotal"></div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" id="kpiCardNotaPromedio">
           <div class="kpi-label">
             Nota promedio
-            <span class="info-icon" tabindex="0" data-info="Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión.">i</span>
+            <span class="info-icon" tabindex="0" data-info="Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión. ≥75 verde (excelente/bueno), 55-74 ámbar (aprobado), <55 rojo (requiere atención).">i</span>
           </div>
           <div class="kpi-value" id="kpiNotaPromedio"></div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Requiere atención</div>
+        <div class="kpi-card" id="kpiCardRequiereAtencion">
+          <div class="kpi-label">
+            Requiere atención
+            <span class="info-icon" tabindex="0" data-info="Proyectos con Evaluación 'Requiere atención' (Nota < 55) — rentabilidad baja y/o descontrol presupuestario; candidatos a revisión prioritaria.">i</span>
+          </div>
           <div class="kpi-value" id="kpiRequiereAtencion"></div>
         </div>
       </div>
@@ -538,18 +568,24 @@
     <section id="tabClientes" class="viz-tab-panel">
       <div class="kpi-row">
         <div class="kpi-card">
-          <div class="kpi-label">Top cliente por CLTV</div>
+          <div class="kpi-label">
+            Top cliente por CLTV
+            <span class="info-icon" tabindex="0" data-info="Cliente con el mayor Customer Lifetime Value estimado (ver CLTV promedio para la fórmula) — el que más valor ha generado y probablemente seguirá generando para QUEMPIN.">i</span>
+          </div>
           <div class="kpi-value" id="kpiTopCliente"></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">
             CLTV promedio
-            <span class="info-icon" tabindex="0" data-info="Estima el valor total que el cliente representa para QUEMPIN a lo largo de su relación completa — la métrica central para decidir dónde invertir esfuerzo comercial.">i</span>
+            <span class="info-icon" tabindex="0" data-info="Estima el valor total que el cliente representa para QUEMPIN a lo largo de su relación completa (AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad %) — la métrica central para decidir dónde invertir esfuerzo comercial.">i</span>
           </div>
           <div class="kpi-value" id="kpiCltvPromedio"></div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">Clasificación</div>
+          <div class="kpi-label">
+            Clasificación
+            <span class="info-icon" tabindex="0" data-info="Conteo de clientes por tier de CLTV, relativo al percentil de la cartera actual (no a un corte fijo en pesos): Estratégicos (top 33%), En desarrollo, De oportunidad (bottom 33%).">i</span>
+          </div>
           <div class="kpi-value" id="kpiClasificaciones"></div>
         </div>
       </div>
@@ -569,11 +605,17 @@
     <section id="tabCategoria" class="viz-tab-panel">
       <div class="kpi-row">
         <div class="kpi-card">
-          <div class="kpi-label">N° categorías</div>
+          <div class="kpi-label">
+            N° categorías
+            <span class="info-icon" tabindex="0" data-info="Cantidad de categorías de proyecto distintas (I+D+i, Mantenimiento, etc.) con al menos un proyecto completo — incluye 'Sin categoría' si algún proyecto completo no tiene la columna asignada.">i</span>
+          </div>
           <div class="kpi-value" id="kpiNCategorias"></div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">Categoría líder por Margen Real</div>
+          <div class="kpi-label">
+            Categoría líder por Margen Real
+            <span class="info-icon" tabindex="0" data-info="Categoría cuya suma de Margen Real de sus proyectos completos es la más alta — dónde se concentra hoy la rentabilidad real de la cartera.">i</span>
+          </div>
           <div class="kpi-value" id="kpiCategoriaLider"></div>
         </div>
       </div>
@@ -768,8 +810,8 @@
     var max = Math.max.apply(null, items.map(function (i) { return i[valueKey]; }).concat([1]));
     var rows = items.map(function (i) {
       var pct = Math.max(0, i[valueKey]) / max * 100;
-      return '<div class="bar-row">' +
-        '<div class="bar-label" title="' + esc(i[labelKey]) + '">' + esc(i[labelKey]) + '</div>' +
+      return '<div class="bar-row" title="' + esc(i[labelKey]) + ': ' + esc(String(i.valueLabel)) + '">' +
+        '<div class="bar-label">' + esc(i[labelKey]) + '</div>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
         '<div class="bar-value">' + i.valueLabel + '</div>' +
         '</div>';
@@ -786,15 +828,17 @@
     var segs = items.map(function (i, idx) {
       var frac = total ? i[valueKey] / total : 0;
       var dash = frac * circ;
+      var titulo = esc(i[labelKey]) + ': ' + i[valueKey] + ' (' + (frac * 100).toFixed(1) + '%)';
       var seg = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' +
         colors[idx % colors.length] + '" stroke-width="24" stroke-dasharray="' + dash + ' ' + (circ - dash) +
-        '" stroke-dashoffset="' + (-offset) + '"/>';
+        '" stroke-dashoffset="' + (-offset) + '" class="donut-seg-hover"><title>' + titulo + '</title></circle>';
       offset += dash;
       return seg;
     }).join('');
     var legend = items.map(function (i, idx) {
+      var frac = total ? i[valueKey] / total : 0;
       return '<div class="donut-legend-row"><span class="donut-swatch" style="background:' +
-        colors[idx % colors.length] + '"></span>' + esc(i[labelKey]) + ' (' + i[valueKey] + ')</div>';
+        colors[idx % colors.length] + '"></span>' + esc(i[labelKey]) + ' (' + i[valueKey] + ' · ' + (frac * 100).toFixed(0) + '%)</div>';
     }).join('');
     el.innerHTML = '<div class="donut-wrap"><svg viewBox="0 0 ' + size + ' ' + size +
       '" width="160" height="160">' + segs + '</svg><div class="donut-legend">' + legend + '</div></div>';
@@ -830,10 +874,26 @@
   }
 
   // ---------- pestaña Proyectos ----------
+  function marcarSemantica(valueId, cardId, nivel) {
+    var valueEl = document.getElementById(valueId);
+    var cardEl = document.getElementById(cardId);
+    ['sem-good', 'sem-warn', 'sem-bad'].forEach(function (c) {
+      valueEl.classList.remove(c);
+      if (cardEl) cardEl.classList.remove(c);
+    });
+    if (!nivel) return;
+    valueEl.classList.add(nivel);
+    if (cardEl) cardEl.classList.add(nivel);
+  }
+
   document.getElementById('kpiNCompletos').textContent = KPIS.n_completos;
   document.getElementById('kpiMargenTotal').textContent = formatoCLP(KPIS.margen_real_total);
+  marcarSemantica('kpiMargenTotal', 'kpiCardMargenTotal', KPIS.margen_real_total < 0 ? 'sem-bad' : 'sem-good');
   document.getElementById('kpiNotaPromedio').textContent = Math.round(KPIS.nota_promedio);
+  marcarSemantica('kpiNotaPromedio', 'kpiCardNotaPromedio',
+    KPIS.nota_promedio >= 75 ? 'sem-good' : (KPIS.nota_promedio >= 55 ? 'sem-warn' : 'sem-bad'));
   document.getElementById('kpiRequiereAtencion').textContent = KPIS.n_requiere_atencion;
+  marcarSemantica('kpiRequiereAtencion', 'kpiCardRequiereAtencion', KPIS.n_requiere_atencion > 0 ? 'sem-bad' : 'sem-good');
 
   var proyectosOrdenados = PROYECTOS.slice().sort(function (a, b) { return b.nota - a.nota; });
   renderBarChart('chartNotaProyectos', proyectosOrdenados.map(function (p) {
