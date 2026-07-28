@@ -383,6 +383,7 @@
   }
   .status-badge.ok { background: rgba(12,163,12,0.12); color: var(--status-good); }
   .status-badge.warn { background: rgba(201,133,0,0.14); color: var(--status-warning); }
+  .status-badge.bad { background: rgba(209,40,46,0.13); color: var(--status-bad); }
   .expand-toggle { color: var(--text-muted); font-size: 11px; display: inline-block; width: 14px; }
   tr.detail-row td { background: var(--surface-1); padding: 0; }
   .detail-panel {
@@ -742,6 +743,11 @@
     };
   }
   function formatoCLP(n) { return '$' + Math.round(n).toLocaleString('es-CL'); }
+  var NIVEL_EVALUACION = { 'Excelente': 'ok', 'Bueno': 'ok', 'Aprobado': 'warn', 'Requiere atención': 'bad' };
+  var NIVEL_CLASIFICACION = { 'Clientes estratégicos': 'ok', 'Clientes potenciales': 'warn', 'Clientes de oportunidad': 'bad' };
+  function badgePill(texto, nivel) {
+    return '<span class="status-badge ' + (nivel || 'warn') + '">' + esc(texto) + '</span>';
+  }
   function formatoPct(n) { return (n * 100).toFixed(1) + '%'; }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -819,18 +825,23 @@
     el.innerHTML = rows || '<p>Sin datos.</p>';
   }
 
-  function renderDonutChart(containerId, items, labelKey, valueKey) {
+  var COLOR_SEMANTICO = { 'ok': 'var(--status-good)', 'warn': 'var(--status-warning)', 'bad': 'var(--status-bad)' };
+  function renderDonutChart(containerId, items, labelKey, valueKey, nivelMap) {
     var el = document.getElementById(containerId);
     var total = items.reduce(function (s, i) { return s + i[valueKey]; }, 0);
     var size = 160, r = 60, cx = size / 2, cy = size / 2, circ = 2 * Math.PI * r;
     var offset = 0;
     var colors = ['var(--brand-orange)', 'var(--brand-gray-11)', 'var(--brand-gray-7)', 'var(--brand-black)'];
+    function colorPara(i, idx) {
+      if (nivelMap && nivelMap[i[labelKey]]) return COLOR_SEMANTICO[nivelMap[i[labelKey]]];
+      return colors[idx % colors.length];
+    }
     var segs = items.map(function (i, idx) {
       var frac = total ? i[valueKey] / total : 0;
       var dash = frac * circ;
       var titulo = esc(i[labelKey]) + ': ' + i[valueKey] + ' (' + (frac * 100).toFixed(1) + '%)';
       var seg = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' +
-        colors[idx % colors.length] + '" stroke-width="24" stroke-dasharray="' + dash + ' ' + (circ - dash) +
+        colorPara(i, idx) + '" stroke-width="24" stroke-dasharray="' + dash + ' ' + (circ - dash) +
         '" stroke-dashoffset="' + (-offset) + '" class="donut-seg-hover"><title>' + titulo + '</title></circle>';
       offset += dash;
       return seg;
@@ -838,7 +849,7 @@
     var legend = items.map(function (i, idx) {
       var frac = total ? i[valueKey] / total : 0;
       return '<div class="donut-legend-row"><span class="donut-swatch" style="background:' +
-        colors[idx % colors.length] + '"></span>' + esc(i[labelKey]) + ' (' + i[valueKey] + ' · ' + (frac * 100).toFixed(0) + '%)</div>';
+        colorPara(i, idx) + '"></span>' + esc(i[labelKey]) + ' (' + i[valueKey] + ' · ' + (frac * 100).toFixed(0) + '%)</div>';
     }).join('');
     el.innerHTML = '<div class="donut-wrap"><svg viewBox="0 0 ' + size + ' ' + size +
       '" width="160" height="160">' + segs + '</svg><div class="donut-legend">' + legend + '</div></div>';
@@ -904,7 +915,7 @@
   PROYECTOS.forEach(function (p) { porEvaluacion[p.evaluacion] = (porEvaluacion[p.evaluacion] || 0) + 1; });
   renderDonutChart('chartEvaluacion', Object.keys(porEvaluacion).map(function (k) {
     return { evaluacion: k, n: porEvaluacion[k] };
-  }), 'evaluacion', 'n');
+  }), 'evaluacion', 'n', NIVEL_EVALUACION);
 
   var proyectoExpandido = null;
 
@@ -918,7 +929,7 @@
         '<div><div class="dk">Margen Real</div><div class="dv accent">' + formatoCLP(p.margen_real) + '</div></div>' +
         '<div><div class="dk">Margen Proyectado</div><div class="dv">' + formatoCLP(p.monto_venta - p.total_proyectado) + '</div></div>' +
         '<div><div class="dk">Desviación %</div><div class="dv">' + formatoPct(p.desviacion_pct) + '</div></div>' +
-        '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + p.nota + ' — ' + esc(p.evaluacion) + '</div></div>' +
+        '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + p.nota + ' — ' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</div></div>' +
       '</div>' +
       '<div id="chartComparativo-' + esc(p.tag) + '" style="margin-bottom:12px"></div>' +
       '<table class="viz-itemtable"><thead><tr><th>Concepto</th><th>Proyectado</th><th>Real</th></tr></thead><tbody>' +
@@ -952,7 +963,7 @@
       var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0">' +
         '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + esc(p.estado || '—') +
         '</td><td>' + formatoCLP(p.monto_venta) + '</td><td>' + formatoCLP(p.margen_real) + '</td><td>' +
-        formatoPct(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + esc(p.evaluacion) + '</td></tr>';
+        formatoPct(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
       if (expandido) {
         fila += '<tr class="detail-row"><td colspan="8">' + detalleProyectoHtml(p) + '</td></tr>';
       }
@@ -1005,7 +1016,7 @@
   }), 'cliente', 'cltv');
   renderDonutChart('chartClasificacion', Object.keys(porClasificacion).map(function (k) {
     return { clasificacion: k, n: porClasificacion[k] };
-  }), 'clasificacion', 'n');
+  }), 'clasificacion', 'n', NIVEL_CLASIFICACION);
 
   function renderTablaClientes(items) {
     var tbody = document.getElementById('tablaClientesBody');
@@ -1015,7 +1026,7 @@
         : '';
       return '<tr><td>' + esc(c.cliente) + nota + '</td><td>' + formatoCLP(c.aov) + '</td><td>' + c.vida +
         '</td><td>' + c.meses_activo.toFixed(1) + '</td><td>' + c.frecuencia.toFixed(2) + '</td><td>' +
-        formatoPct(c.margen_pct) + '</td><td>' + formatoCLP(c.cltv) + '</td><td>' + esc(c.clasificacion) + '</td></tr>';
+        formatoPct(c.margen_pct) + '</td><td>' + formatoCLP(c.cltv) + '</td><td>' + badgePill(c.clasificacion, NIVEL_CLASIFICACION[c.clasificacion]) + '</td></tr>';
     }).join('');
   }
   renderTablaClientes(clientesOrdenados);
