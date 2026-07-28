@@ -800,6 +800,35 @@
       '" width="160" height="160">' + segs + '</svg><div class="donut-legend">' + legend + '</div></div>';
   }
 
+  function renderBarChartComparativo(containerId, items, labelKey, valorAKey, valorBKey, etiquetaA, etiquetaB) {
+    var el = document.getElementById(containerId);
+    var max = Math.max.apply(null, items.map(function (i) {
+      return Math.max(i[valorAKey], i[valorBKey]);
+    }).concat([1]));
+    var legend = '<div class="donut-legend-row"><span class="donut-swatch" style="background:var(--brand-orange)"></span>' +
+      esc(etiquetaA) + '</div><div class="donut-legend-row"><span class="donut-swatch" style="background:var(--brand-gray-11)"></span>' +
+      esc(etiquetaB) + '</div>';
+    var rows = items.map(function (i) {
+      var pctA = Math.max(0, i[valorAKey]) / max * 100;
+      var pctB = Math.max(0, i[valorBKey]) / max * 100;
+      return '<div class="bar-label" style="margin-top:8px;font-weight:600">' + esc(i[labelKey]) + '</div>' +
+        '<div class="bar-row"><div class="bar-track"><div class="bar-fill" style="width:' + pctA + '%"></div></div>' +
+        '<div class="bar-value">' + formatoCLP(i[valorAKey]) + '</div></div>' +
+        '<div class="bar-row"><div class="bar-track"><div class="bar-fill" style="width:' + pctB + '%;background:var(--brand-gray-11)"></div></div>' +
+        '<div class="bar-value">' + formatoCLP(i[valorBKey]) + '</div></div>';
+    }).join('');
+    el.innerHTML = rows ? ('<div class="donut-legend" style="margin-bottom:8px">' + legend + '</div>' + rows) : '<p>Sin datos.</p>';
+  }
+
+  function abrirPdfBlob(base64, nombreArchivo) {
+    var binario = atob(base64);
+    var bytes = new Uint8Array(binario.length);
+    for (var i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+    var blob = new Blob([bytes], { type: 'application/pdf' });
+    var url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }
+
   // ---------- pestaña Proyectos ----------
   document.getElementById('kpiNCompletos').textContent = KPIS.n_completos;
   document.getElementById('kpiMargenTotal').textContent = formatoCLP(KPIS.margen_real_total);
