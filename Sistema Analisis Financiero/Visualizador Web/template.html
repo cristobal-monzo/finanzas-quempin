@@ -1080,18 +1080,20 @@
       ? '<button type="button" class="pendientes-toggle-btn" data-pdf-key-cat="' + esc(pdfKey) + '">Ver/Descargar PDF</button>'
       : '<span style="color:var(--text-muted);font-size:12px">Sin reporte generado</span>';
     var proyectosDeCategoria = PROYECTOS.filter(function (p) { return c.tags_proyectos.indexOf(p.tag) !== -1; });
-    var filas = proyectosDeCategoria.map(function (p) {
+    var filas = proyectosDeCategoria.slice().sort(function (a, b) { return b.nota - a.nota; }).map(function (p) {
       return '<tr><td>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td class="num">' +
-        formatoCLP(p.margen_real) + '</td><td class="num">' + p.nota + '</td></tr>';
+        formatoCLP(p.margen_real) + '</td><td class="num">' + p.nota + '</td><td>' +
+        badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
     }).join('');
+    var nivelNota = c.nota_promedio >= 75 ? 'sem-good' : (c.nota_promedio >= 55 ? 'sem-warn' : 'sem-bad');
     return '<div class="detail-panel">' +
       '<div class="detail-grid">' +
         '<div><div class="dk">N° Proyectos</div><div class="dv">' + c.n_proyectos + '</div></div>' +
         '<div><div class="dk">Margen Real Total</div><div class="dv accent">' + formatoCLP(c.margen_real_total) + '</div></div>' +
-        '<div><div class="dk">Nota Promedio</div><div class="dv">' + c.nota_promedio.toFixed(1) + '</div></div>' +
+        '<div><div class="dk">Nota Promedio</div><div class="dv ' + nivelNota + '">' + c.nota_promedio.toFixed(1) + '</div></div>' +
       '</div>' +
       '<div id="chartProyectosCategoria-' + esc(c.categoria) + '" style="margin-bottom:12px"></div>' +
-      '<table class="viz-itemtable"><thead><tr><th>Proyecto</th><th>Cliente</th><th>Margen Real</th><th>Nota</th></tr></thead>' +
+      '<table class="viz-itemtable"><thead><tr><th>Proyecto</th><th>Cliente</th><th>Margen Real</th><th>Nota</th><th>Evaluación</th></tr></thead>' +
       '<tbody>' + filas + '</tbody></table>' +
       pdfBtn +
       '</div>';
