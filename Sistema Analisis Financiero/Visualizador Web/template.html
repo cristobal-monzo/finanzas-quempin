@@ -497,6 +497,7 @@
     <nav class="viz-tabs">
       <button class="viz-tab-btn active" data-tab="tabProyectos" type="button">Proyectos</button>
       <button class="viz-tab-btn" data-tab="tabClientes" type="button">Clientes</button>
+      <button class="viz-tab-btn" data-tab="tabCategoria" type="button">Categoría</button>
     </nav>
 
     <section id="tabProyectos" class="viz-tab-panel active">
@@ -562,6 +563,30 @@
           <tr><th>Cliente</th><th>AOV</th><th>Vida</th><th>Meses activo</th><th>Frecuencia</th><th>Margen %</th><th>CLTV</th><th>Clasificación</th></tr>
         </thead>
         <tbody id="tablaClientesBody"></tbody>
+      </table>
+    </section>
+
+    <section id="tabCategoria" class="viz-tab-panel">
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">N° categorías</div>
+          <div class="kpi-value" id="kpiNCategorias"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Categoría líder por Margen Real</div>
+          <div class="kpi-value" id="kpiCategoriaLider"></div>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>Margen Real por Categoría</h3><div id="chartMargenCategoria"></div></div>
+        <div class="chart-card"><h3>Distribución de Proyectos</h3><div id="chartDistribucionCategoria"></div></div>
+      </div>
+      <input type="text" id="buscarCategorias" class="viz-search" placeholder="Buscar categoría…">
+      <table class="viz-table">
+        <thead>
+          <tr><th>Categoría</th><th>N° Proyectos</th><th>Margen Real Total</th><th>Nota Promedio</th></tr>
+        </thead>
+        <tbody id="tablaCategoriasBody"></tbody>
       </table>
     </section>
 
@@ -844,6 +869,34 @@
     var q = evt.target.value.toLowerCase();
     renderTablaClientes(clientesOrdenados.filter(function (c) {
       return c.cliente.toLowerCase().indexOf(q) !== -1;
+    }));
+  }, 150));
+
+  // ---------- pestaña Categoría ----------
+  var CATEGORIAS = DATA.categorias;
+  var categoriasOrdenadas = CATEGORIAS.slice().sort(function (a, b) { return b.margen_real_total - a.margen_real_total; });
+  document.getElementById('kpiNCategorias').textContent = categoriasOrdenadas.length;
+  document.getElementById('kpiCategoriaLider').textContent = categoriasOrdenadas.length ? categoriasOrdenadas[0].categoria : '—';
+
+  renderBarChart('chartMargenCategoria', categoriasOrdenadas.map(function (c) {
+    return { categoria: c.categoria, margen_real_total: c.margen_real_total, valueLabel: formatoCLP(c.margen_real_total) };
+  }), 'categoria', 'margen_real_total');
+  renderDonutChart('chartDistribucionCategoria', categoriasOrdenadas.map(function (c) {
+    return { categoria: c.categoria, n_proyectos: c.n_proyectos };
+  }), 'categoria', 'n_proyectos');
+
+  function renderTablaCategorias(items) {
+    var tbody = document.getElementById('tablaCategoriasBody');
+    tbody.innerHTML = items.map(function (c) {
+      return '<tr><td>' + esc(c.categoria) + '</td><td>' + c.n_proyectos + '</td><td>' +
+        formatoCLP(c.margen_real_total) + '</td><td>' + c.nota_promedio.toFixed(1) + '</td></tr>';
+    }).join('');
+  }
+  renderTablaCategorias(categoriasOrdenadas);
+  document.getElementById('buscarCategorias').addEventListener('input', debounce(function (evt) {
+    var q = evt.target.value.toLowerCase();
+    renderTablaCategorias(categoriasOrdenadas.filter(function (c) {
+      return c.categoria.toLowerCase().indexOf(q) !== -1;
     }));
   }, 150));
   } // end initApp
