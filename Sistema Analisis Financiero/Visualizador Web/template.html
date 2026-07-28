@@ -366,6 +366,7 @@
     white-space: nowrap;
   }
   table.viz-table thead th:hover { color: var(--text-primary); }
+  table.viz-table thead th[title] { cursor: help; text-decoration: underline dotted; text-decoration-color: var(--baseline); text-underline-offset: 3px; }
   table.viz-table thead th .arrow { font-size: 9px; margin-left: 3px; opacity: 0.6; }
   table.viz-table tbody td {
     padding: 9px 12px;
@@ -564,7 +565,11 @@
       <input type="text" id="buscarProyectos" class="viz-search" placeholder="Buscar proyecto o cliente…">
       <table class="viz-table">
         <thead>
-          <tr><th>Proyecto</th><th>Cliente</th><th>Estado</th><th>Monto Venta</th><th>Margen Real</th><th>Desviación %</th><th>Nota</th><th>Evaluación</th></tr>
+          <tr><th>Proyecto</th><th>Cliente</th><th>Estado</th><th>Monto Venta</th>
+            <th title="Monto de Venta − Total Real: la utilidad efectivamente generada por el proyecto.">Margen Real</th>
+            <th title="Real / Proyectado − 1, sobre el total de costos. +15% o más = sobregasto relevante respecto al presupuesto original.">Desviación %</th>
+            <th title="0-100: 70% margen neto % (vs. objetivo 25%) + 30% control de desviación total. Resume rentabilidad y control de presupuesto en un número.">Nota</th>
+            <th title="Traduce la Nota a una etiqueta rápida: Excelente / Bueno / Aprobado / Requiere atención.">Evaluación</th></tr>
         </thead>
         <tbody id="tablaProyectosBody"></tbody>
       </table>
@@ -601,7 +606,14 @@
       <input type="text" id="buscarClientes" class="viz-search" placeholder="Buscar cliente…">
       <table class="viz-table">
         <thead>
-          <tr><th>Cliente</th><th>AOV</th><th>Vida</th><th>Meses activo</th><th>Frecuencia</th><th>Margen %</th><th>CLTV</th><th>Clasificación</th></tr>
+          <tr><th>Cliente</th>
+            <th title="Tamaño promedio de una venta a este cliente (Monto de Venta promedio de sus proyectos).">AOV</th>
+            <th title="Cuántas veces ha comprado el cliente en total. Vida=1 → una sola compra hasta ahora.">Vida</th>
+            <th title="Cuánto tiempo lleva comprando el cliente, desde su proyecto más antiguo hasta el más reciente.">Meses activo</th>
+            <th title="Qué tan seguido vuelve a comprar, anualizado. Frecuencia=2 → compra en promedio 2 veces al año.">Frecuencia</th>
+            <th title="Qué tan rentable es la relación completa con este cliente, ponderado por tamaño de proyecto.">Margen %</th>
+            <th title="Customer Lifetime Value: AOV × Frecuencia × Vida × Margen % — valor total estimado que el cliente representa para QUEMPIN.">CLTV</th>
+            <th title="Tier de CLTV relativo al percentil de la cartera actual: Estratégicos (top 33%) / Potenciales / De oportunidad (bottom 33%).">Clasificación</th></tr>
         </thead>
         <tbody id="tablaClientesBody"></tbody>
       </table>
@@ -631,7 +643,9 @@
       <input type="text" id="buscarCategorias" class="viz-search" placeholder="Buscar categoría…">
       <table class="viz-table">
         <thead>
-          <tr><th>Categoría</th><th>N° Proyectos</th><th>Margen Real Total</th><th>Nota Promedio</th></tr>
+          <tr><th>Categoría</th><th>N° Proyectos</th>
+            <th title="Suma de Margen Real de los proyectos completos de esta categoría.">Margen Real Total</th>
+            <th title="Promedio de la Nota del Proyecto (0-100) de los proyectos completos de esta categoría.">Nota Promedio</th></tr>
         </thead>
         <tbody id="tablaCategoriasBody"></tbody>
       </table>
