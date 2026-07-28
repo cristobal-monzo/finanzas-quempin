@@ -104,7 +104,11 @@ def _leer_memory(ruta_memory):
     texto = ruta_memory.read_text(encoding="utf-8")
     link = RE_LINK_ARTIFACT.search(texto)
     favicon = RE_FAVICON.search(texto)
-    return (link.group(0) if link else None), (favicon.group(1) if favicon else None)
+    # El emoji puede venir pegado al cierre de una negrita de markdown
+    # ("**Favicon del Artifact: X**"), asi que se limpian los signos de
+    # marcado y puntuacion que queden alrededor.
+    emoji = favicon.group(1).strip("*`_.,;:") if favicon else None
+    return (link.group(0) if link else None), (emoji or None)
 
 
 def _informe_tableros(momento_inicio):

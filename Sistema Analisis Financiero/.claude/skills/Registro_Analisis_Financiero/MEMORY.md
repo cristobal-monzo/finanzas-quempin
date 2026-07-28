@@ -9,6 +9,11 @@ memoria de diseño/decisiones del módulo completo).
 
 - Gate de contraseña: misma que Centro de Costos (decisión del usuario,
   2026-07-23) — ver `../../../Visualizador Web/template.html`.
+- Favicon del Artifact: 📊 (fijado 2026-07-28, elegido por el usuario).
+  Mantenerlo igual en cada republicación: un favicon distinto hace que la
+  pestaña se lea como si fuera otra página. El driver de
+  `/Actualizar_Finanzas` lo lee de esta línea, así que no cambies el formato
+  "Favicon del Artifact: <emoji>".
 - Link del Claude Artifact publicado (primera publicación, 2026-07-28):
   `https://claude.ai/code/artifact/70801be3-a58d-4424-b8cf-53d2b3630934`.
   **Regla explícita (mismo patrón que Centro de Costos): siempre actualizar

@@ -138,6 +138,11 @@ módulos), no en este archivo.
 
 ## Visualizador web
 
+- **Favicon del Artifact: 🏗️** (fijado 2026-07-28, elegido por el usuario).
+  Mantenerlo igual en cada republicación: un favicon distinto hace que la
+  pestaña se lea como si fuera otra página. El driver de
+  `/Actualizar_Finanzas` lo lee de esta línea, así que no cambies el formato
+  "Favicon del Artifact: <emoji>".
 - **Link del Artifact publicado**: `https://claude.ai/code/artifact/1b82085c-c63c-407c-8f03-e4db9f2b551e`.
   **Regla explícita del usuario (2026-07-19): siempre actualizar este mismo
   link, nunca generar uno nuevo.** Al republicar, pasar este URL como `url`
