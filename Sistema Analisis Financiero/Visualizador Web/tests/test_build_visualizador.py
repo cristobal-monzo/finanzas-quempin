@@ -421,3 +421,45 @@ def test_calcular_kpis_proyecto_fechas_son_json_serializables():
     # build() usa json.dump SIN default=str -- un datetime sin convertir
     # explotaria aca con TypeError al momento de escribir el snapshot real.
     json.dumps(kpis, ensure_ascii=False)
+
+
+def _kpi_proyecto(tag, categoria, margen_real, nota):
+    return {
+        "tag": tag, "nombre": tag, "cliente": "Cliente", "estado": "En Proceso",
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": categoria,
+        "monto_venta": 0, "total_proyectado": 0, "total_real": 0,
+        "margen_real": margen_real, "desviacion_pct": 0.0, "nota": nota, "evaluacion": "Bueno",
+        "costos_proyectados": {"materiales": 0, "equipos": 0, "mo": 0, "otros": 0},
+        "costos_reales": {"materiales": 0, "equipos": 0, "mo": 0, "otros": 0},
+    }
+
+
+def test_calcular_categorias_agrupa_y_suma_margen():
+    kpis = [
+        _kpi_proyecto("P1", "I+D+i", 100_000, 80),
+        _kpi_proyecto("P2", "I+D+i", 200_000, 90),
+        _kpi_proyecto("P3", "Mantención", 50_000, 60),
+    ]
+
+    categorias = bv.calcular_categorias(kpis)
+    por_nombre = {c["categoria"]: c for c in categorias}
+
+    assert por_nombre["I+D+i"]["n_proyectos"] == 2
+    assert por_nombre["I+D+i"]["margen_real_total"] == 300_000
+    assert por_nombre["I+D+i"]["nota_promedio"] == 85.0
+    assert por_nombre["I+D+i"]["tags_proyectos"] == ["P1", "P2"]
+    assert por_nombre["Mantención"]["n_proyectos"] == 1
+
+
+def test_calcular_categorias_proyecto_sin_categoria_va_a_bucket_sin_categoria():
+    kpis = [_kpi_proyecto("P1", None, 100_000, 80), _kpi_proyecto("P2", "", 50_000, 70)]
+
+    categorias = bv.calcular_categorias(kpis)
+
+    assert len(categorias) == 1
+    assert categorias[0]["categoria"] == "Sin categoría"
+    assert categorias[0]["n_proyectos"] == 2
+
+
+def test_calcular_categorias_lista_vacia_devuelve_lista_vacia():
+    assert bv.calcular_categorias([]) == []

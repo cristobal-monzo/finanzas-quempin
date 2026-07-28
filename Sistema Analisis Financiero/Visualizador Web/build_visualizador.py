@@ -230,6 +230,29 @@ def calcular_clientes(kpis_proyectos_completos: list[dict], proyectos_por_tag: d
     return filas
 
 
+def calcular_categorias(kpis_proyectos_completos: list[dict]) -> list[dict]:
+    """Agrupa kpis_proyectos_completos (ya filtrados a solo proyectos
+    completos, mismo criterio que calcular_clientes) por 'categoria'. Un
+    proyecto sin categoria asignada (None o cadena vacia) cae en el bucket
+    "Sin categoría" en vez de excluirse -- spec §3."""
+    por_categoria: dict[str, list[dict]] = {}
+    for kpi in kpis_proyectos_completos:
+        categoria = kpi["categoria"] or "Sin categoría"
+        por_categoria.setdefault(categoria, []).append(kpi)
+
+    filas = []
+    for categoria, kpis in por_categoria.items():
+        n = len(kpis)
+        filas.append({
+            "categoria": categoria,
+            "n_proyectos": n,
+            "margen_real_total": sum(k["margen_real"] for k in kpis),
+            "nota_promedio": sum(k["nota"] for k in kpis) / n,
+            "tags_proyectos": [k["tag"] for k in kpis],
+        })
+    return filas
+
+
 def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
     """Arma el snapshot saneado completo: proyectos completos + sus KPIs,
     clientes + su CLTV (excluyendo incompletos), y la lista de proyectos
