@@ -1,8 +1,18 @@
+import importlib.util
+import sys
 from datetime import date, datetime
+from pathlib import Path
 
 import openpyxl
 
-import build_visualizador as bv
+# Ver nota en Centro de Costos/Visualizador Web/tests/test_build_visualizador.py:
+# los 3 modulos tienen un "build_visualizador.py" y sys.modules cachea por
+# nombre, asi que hay que cargarlo por ruta bajo un nombre unico.
+_RUTA_BV = Path(__file__).resolve().parent.parent / "build_visualizador.py"
+_spec = importlib.util.spec_from_file_location("build_visualizador_ch", _RUTA_BV)
+bv = importlib.util.module_from_spec(_spec)
+sys.modules["build_visualizador_ch"] = bv
+_spec.loader.exec_module(bv)
 
 HEADERS_MASTER = ["N° Ref.", "Fecha", "Proyecto", "Proveedor"]
 HEADERS_DETALLE = [

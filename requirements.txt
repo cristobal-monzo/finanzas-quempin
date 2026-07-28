@@ -1,0 +1,24 @@
+# Dependencias de Finanzas QUEMPIN (todos los modulos).
+#
+# Instalar:
+#     py -3.14 -m pip install -r requirements.txt
+#     py -3.14 -m playwright install chromium
+#
+# OJO: en este equipo el "python" del PATH es 3.11 y NO tiene openpyxl --
+# usar siempre "py -3.14". Ver CLAUDE.md, seccion "Entorno".
+
+# Lectura/escritura de los libros .xlsx de todos los modulos.
+openpyxl>=3.1.5
+
+# Conversion HEIC -> JPG de las fotos de facturas (Centro de Costos,
+# convertir_heic_a_jpg en auditor_centro_costos.py).
+pillow>=12.0.0
+pillow-heif>=1.4.0
+
+# Render de los reportes PDF de Analisis Financiero via Chromium headless
+# (Reportes/motor_reportes.py). Requiere ademas el navegador:
+#     py -3.14 -m playwright install chromium
+playwright>=1.61.0
+
+# Tests.
+pytest>=8.0

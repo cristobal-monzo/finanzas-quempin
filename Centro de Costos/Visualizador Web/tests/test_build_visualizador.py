@@ -1,6 +1,19 @@
+import importlib.util
+import sys
+from pathlib import Path
+
 import openpyxl
 
-import build_visualizador as bv
+# Los 3 modulos financieros tienen su propio "build_visualizador.py". Como
+# sys.modules cachea por NOMBRE, un "import build_visualizador" le entrega a
+# los 3 el que se haya importado primero al correr la suite completa (y los
+# tests de los otros 2 fallan). Se carga por ruta bajo un nombre unico --
+# mismo patron que Sistema/tests/test_driver_preview_renombrados.py.
+_RUTA_BV = Path(__file__).resolve().parent.parent / "build_visualizador.py"
+_spec = importlib.util.spec_from_file_location("build_visualizador_cc", _RUTA_BV)
+bv = importlib.util.module_from_spec(_spec)
+sys.modules["build_visualizador_cc"] = bv
+_spec.loader.exec_module(bv)
 
 HEADERS_MASTER = [
     "N° Ref.", "Proyecto", "Tipo de Proyecto", "Fecha", "N° Documento",
