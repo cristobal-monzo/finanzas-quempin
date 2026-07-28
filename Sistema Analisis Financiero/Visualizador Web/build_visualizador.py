@@ -302,6 +302,8 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
             })
 
     clientes = calcular_clientes(completos, proyectos_por_tag)
+    categorias = calcular_categorias(completos)
+    reportes_pdf = embeber_reportes_pdf(completos, categorias)
 
     pendientes_por_cliente: dict[str, int] = {}
     for p in proyectos:
@@ -321,7 +323,9 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
         },
         "proyectos": completos,
         "clientes": clientes,
+        "categorias": categorias,
         "pendientes": pendientes,
+        "reportes_pdf": reportes_pdf,
     }
 
 

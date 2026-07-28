@@ -501,3 +501,26 @@ def test_embeber_reportes_pdf_devuelve_vacio_si_no_hay_carpeta_reportes(tmp_path
     reportes = bv.embeber_reportes_pdf([{"tag": "X"}], [{"categoria": "Y"}])
 
     assert reportes == {}
+
+
+def test_extraer_datos_saneados_incluye_categorias_y_reportes_pdf(tmp_path, monkeypatch):
+    ruta_excel = tmp_path / "Análisis de Proyectos.xlsx"
+    wb = af.asegurar_estructura_workbook(ruta_excel)
+    ws = wb[af.HOJA_PROYECTOS]
+    _fila_proyecto_completa(ws, 2, **{"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Categoría": "I+D+i"})
+    wb.save(ruta_excel)
+
+    raiz_reportes = tmp_path / "Reportes"
+    (raiz_reportes / "Proyectos").mkdir(parents=True)
+    (raiz_reportes / "Proyectos" / "UMAG.pdf").write_bytes(b"%PDF fake")
+    monkeypatch.setattr(bv, "RAIZ_REPORTES", raiz_reportes)
+
+    data = bv.extraer_datos_saneados(ruta_excel)
+
+    assert data["categorias"] == [{
+        "categoria": "I+D+i", "n_proyectos": 1,
+        "margen_real_total": data["proyectos"][0]["margen_real"],
+        "nota_promedio": data["proyectos"][0]["nota"],
+        "tags_proyectos": ["UMAG"],
+    }]
+    assert "proyecto:UMAG" in data["reportes_pdf"]
