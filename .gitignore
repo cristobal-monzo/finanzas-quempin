@@ -1,25 +1,62 @@
-# Datos financieros reales de QUEMPIN SpA -- nunca versionar (ver CLAUDE.md).
-Centro de Costos/Excel/Centro de Costos.xlsx
-Centro de Costos/Excel/Respaldos/
-Centro de Costos/Sistema/datos_extraidos.json
-Centro de Costos/Sistema/reconciliacion_archivos.json
-Centro de Costos/Sistema/correcciones_manuales.json
-Centro de Costos/Sistema/Legado/
+# ─────────────────────────────────────────────────────────────────────────────
+# DATOS FINANCIEROS REALES DE QUEMPIN SpA -- nunca versionar (ver CLAUDE.md).
+#
+# Las reglas van por PATRON (**/ y comodines), no por ruta exacta: una regla
+# como "Centro de Costos/Excel/Centro de Costos.xlsx" no cubre las copias
+# (backups manuales, carpetas de prueba, worktrees), y una auditoria del
+# 2026-07-28 encontro el libro maestro y datos_extraidos.json expuestos dentro
+# de "Centro de Costos/backup_centro_costos_original/". Si agregas una fuente
+# de datos nueva, agregala aca como patron, no como ruta.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Libros de Excel: NINGUNO se versiona, en ninguna ubicacion. Todos contienen
+# montos, proveedores y numeros de documentos tributarios reales.
+*.xlsx
+*.xlsm
+*.xlsb
+
+# JSON con datos extraidos de documentos tributarios / correcciones sobre ellos.
+**/datos_extraidos*.json
+**/correcciones_manuales.json
+**/reconciliacion_archivos.json
+**/clientes_pendientes.json
+
+# Cache regenerable de valores UF (publicos, no sensibles) -- se ignora solo
+# porque cambia en cada consulta y ensuciaria el diff, no por confidencialidad.
+**/uf_cache.json
+
+# Respaldos automaticos y carpetas de trabajo/scratch de cualquier modulo.
+**/Respaldos/
+**/backup_*/
+**/output_final_*/
+**/Legado/
+**/logs/
+
+# Documentos fuente (fotos de facturas/boletas) y la carpeta compartida.
 Centro de Costos/Facturas y Boletas/
 Centro de Costos/Sitio de comunicación - Centro de Costos 1/
-Flujo de Caja/**/*.xlsx
-Flujo de Caja/**/*.json
-Cotizador Historico/**/*.xlsx
-Cotizador Historico/**/*.json
-Análisis Financiero/*.xlsx
-Sistema Analisis Financiero/Respaldos/
-*/Visualizador Web/data/
-*/Visualizador Web/build/
+
+# Reportes PDF generados: contienen margenes por proyecto y CLTV por cliente.
+Análisis Financiero/Reportes/
+**/Reportes/Proyectos/
+**/Reportes/Clientes/
+**/Reportes/Categorías/
+
+# Visualizadores: el snapshot y el HTML final llevan los datos incrustados
+# (el template.html y el build_visualizador.py SI se versionan).
+**/Visualizador Web/data/
+**/Visualizador Web/build/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Ruido de entorno
+# ─────────────────────────────────────────────────────────────────────────────
 
 # Python
 __pycache__/
 *.pyc
 .pytest_cache/
+.venv/
+venv/
 
 # Worktrees locales
 .worktrees/
@@ -27,3 +64,11 @@ __pycache__/
 
 # Estado de trabajo de skills (ledger de subagent-driven-development, etc.)
 .superpowers/
+
+# OneDrive / Windows
+desktop.ini
+*.url
+~$*
+
+# Scratchpad de sesiones de Claude Code que quedo suelto en la raiz
+Usersquemp*scratchpad*
