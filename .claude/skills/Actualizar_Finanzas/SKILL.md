@@ -33,16 +33,45 @@ openpyxl (ver `requirements.txt`).
   2. Cotizador Histórico `visualizador` — el eslabón que faltaba.
   3. Reportes PDF `status` — lista los que quedaron desactualizados.
 
+## Paso obligatorio tras `run`: publicar los 3 tableros
+
+**Regenerar los `build/index.html` en disco NO cambia lo que ve la gente.**
+El canal real de consumo son tres Claude Artifacts privados con links fijos
+que los colegas tienen guardados. Si corres `run` y no publicas, el Excel
+queda al día y los tres tableros publicados siguen mostrando datos viejos —
+que es exactamente el problema que este skill existe para cerrar.
+
+Al final de `run` (y de `status`) el driver imprime la sección **"TABLEROS
+PARA PUBLICAR"** con, por cada tablero: si se regeneró en esta corrida, la
+ruta absoluta de su `index.html` y su link fijo. **Usa esos valores tal
+cual** — el driver los lee del `MEMORY.md` de cada skill, que es la fuente
+de verdad de los links.
+
+Para cada uno de los tres, llama al tool `Artifact` con:
+- `file_path` = la ruta que imprimió el driver
+- `url` = el link que imprimió el driver
+- `favicon` = **el mismo de siempre** para ese tablero (Cotizador: 🧾). Un
+  favicon distinto se lee como si fuera otra página.
+
+**Nunca generes un link nuevo** para un tablero que ya tiene uno. Si el tool
+pide ver la versión más reciente antes de sobrescribir, haz `WebFetch` de ese
+mismo URL primero y vuelve a publicar.
+
+Criterio de cuándo publicar cada uno:
+- Si el driver lo marcó **REGENERADO en esta corrida** → publicar.
+- Si lo marcó **sin cambios** y el usuario no pidió un refresco forzado → no
+  hace falta; dilo en una línea.
+- Si dice **SIN BUILD** → ese módulo nunca generó su tablero; no inventes un
+  Artifact, repórtalo.
+
 ## Qué NO hace (a propósito)
 
 - **No genera los reportes PDF.** Cada PDF lleva análisis redactado por el
   agente (página 2 del estándar de 2 páginas), no es una salida mecánica —
   se generan con `/Reportes_Analisis_Financiero run` cuando corresponda.
-- **No publica los Artifacts.** Regenera los tres `build/index.html` en
-  disco; publicarlos sigue siendo un paso aparte (`/Actualizar_CC` para
-  Centro de Costos; los otros dos a mano contra su link fijo, ver el
-  `MEMORY.md` de cada skill). Cerrar este hueco para los tres es el
-  siguiente paso natural de este skill.
+- **No publica solo.** El tool `Artifact` vive en el agente, no en el
+  proceso del driver: por eso el driver deja todo listo e impreso, y la
+  publicación la hace el agente siguiendo la sección de arriba.
 
 ## Cómo reportar al usuario
 

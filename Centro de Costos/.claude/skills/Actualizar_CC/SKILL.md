@@ -57,3 +57,9 @@ Si el usuario solo pide "corre el centro de costos" sin mencionar el
 dashboard/visualizador, usa `/Registro_Centro_de_Costos` directo — ese skill
 ya deja el HTML regenerado en disco por su cuenta. Reserva este skill para
 cuando además se espera que el link publicado quede al día.
+
+**Si el usuario pide actualizar TODO** ("actualiza las finanzas", "deja todo
+al día"), usa `/Actualizar_Finanzas` (raíz del repo) en vez de este: cubre
+los tres módulos y los tres tableros publicados, no solo Centro de Costos.
+Este skill sigue siendo el correcto cuando el usuario nombra explícitamente
+solo Centro de Costos.

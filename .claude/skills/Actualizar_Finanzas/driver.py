@@ -37,8 +37,10 @@ Uso:
   python driver.py run      # cadena completa
 """
 
+import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[3]
@@ -59,6 +61,82 @@ DRIVER_COTIZADOR = (
     RAIZ / "Cotizador Historico" / ".claude" / "skills"
     / "Cotizador_Historico" / "driver.py"
 )
+
+# Los 3 tableros: (nombre, build/index.html regenerado, MEMORY.md donde vive
+# su link fijo de Artifact). El link NO se hardcodea aca -- se lee del
+# MEMORY.md de cada skill, que es donde sus propios SKILL.md dicen que vive la
+# fuente de verdad. Duplicarlo abriria la puerta a publicar sobre un link
+# viejo, que es justo lo que el "nunca generar un link nuevo" quiere evitar.
+TABLEROS = (
+    (
+        "Centro de Costos",
+        RAIZ / "Centro de Costos" / "Visualizador Web" / "build" / "index.html",
+        RAIZ / "Centro de Costos" / ".claude" / "skills"
+        / "Registro_Centro_de_Costos" / "MEMORY.md",
+    ),
+    (
+        "Análisis Financiero",
+        RAIZ / "Sistema Analisis Financiero" / "Visualizador Web" / "build" / "index.html",
+        RAIZ / "Sistema Analisis Financiero" / ".claude" / "skills"
+        / "Registro_Analisis_Financiero" / "MEMORY.md",
+    ),
+    (
+        "Cotizador Histórico",
+        RAIZ / "Cotizador Historico" / "Visualizador Web" / "build" / "index.html",
+        RAIZ / "Cotizador Historico" / ".claude" / "skills"
+        / "Cotizador_Historico" / "MEMORY.md",
+    ),
+)
+
+RE_LINK_ARTIFACT = re.compile(r"https://claude\.ai/code/artifact/[0-9a-fA-F-]{36}")
+# "Favicon del Artifact: 🧾 (...)" -- convencion ya usada en el MEMORY.md del
+# Cotizador. El favicon debe mantenerse estable entre republicaciones: uno
+# distinto se lee como si fuera otra pagina.
+RE_FAVICON = re.compile(r"[Ff]avicon del Artifact:\s*(\S+)")
+
+
+def _leer_memory(ruta_memory):
+    """(link, favicon) declarados en el MEMORY.md de una skill. Cualquiera de
+    los dos puede ser None: el link falta si el tablero nunca se publico, y el
+    favicon si nadie lo dejo anotado al publicarlo."""
+    if not ruta_memory.exists():
+        return None, None
+    texto = ruta_memory.read_text(encoding="utf-8")
+    link = RE_LINK_ARTIFACT.search(texto)
+    favicon = RE_FAVICON.search(texto)
+    return (link.group(0) if link else None), (favicon.group(1) if favicon else None)
+
+
+def _informe_tableros(momento_inicio):
+    """Lista los 3 tableros con su ruta, si se regeneraron en esta corrida y
+    su link fijo -- todo lo que el agente necesita para publicarlos sin tener
+    que ir a buscar cada MEMORY.md. Publicar es lo unico que este driver no
+    puede hacer solo: el tool Artifact vive en el agente, no en el proceso."""
+    print("\n" + "=" * 72)
+    print("  TABLEROS PARA PUBLICAR")
+    print("=" * 72)
+
+    for nombre, ruta_build, ruta_memory in TABLEROS:
+        print(f"\n  {nombre}")
+        if not ruta_build.exists():
+            print("    [SIN BUILD] No existe todavia -- nada que publicar.")
+            print(f"    Esperado en: {ruta_build}")
+            continue
+
+        mtime = ruta_build.stat().st_mtime
+        regenerado = mtime >= momento_inicio
+        marca = datetime.fromtimestamp(mtime).strftime("%d-%m-%Y %H:%M:%S")
+        estado = "REGENERADO en esta corrida" if regenerado else f"sin cambios (del {marca})"
+        link, favicon = _leer_memory(ruta_memory)
+
+        print(f"    Estado : {estado}")
+        print(f"    Archivo: {ruta_build}")
+        print(f"    Link   : {link or '(sin link registrado en MEMORY.md -- primera publicacion)'}")
+        print(f"    Favicon: {favicon or '(no documentado -- anotalo en MEMORY.md al publicar)'}")
+
+    print("\n  Publicar = tool Artifact con file_path = el archivo de arriba y")
+    print("  url = su link. NUNCA generar un link nuevo para un tablero que ya")
+    print("  tiene uno: el link publicado es fijo y la gente lo tiene guardado.")
 
 
 def _ejecutar(titulo, ruta_driver, args, obligatorio):
@@ -113,6 +191,7 @@ def _resumir(resultados, mensaje_ok):
 def cmd_status():
     """Solo lectura en los 3 modulos: nadie escribe Excel, archivos ni
     tableros."""
+    momento_inicio = datetime.now().timestamp()
     resultados = []
     for titulo, driver in (
         ("Centro de Costos -- status", DRIVER_CENTRO_COSTOS),
@@ -123,11 +202,19 @@ def cmd_status():
         ok, _ = _ejecutar(titulo, driver, ["status"], obligatorio=False)
         resultados.append((titulo, ok))
 
+    # En 'status' ningun build se regenera, asi que todos saldran como "sin
+    # cambios" -- sirve igual para ver cual falta, cuando se genero cada uno y
+    # si tiene link registrado.
+    _informe_tableros(momento_inicio)
+
     print("\n  Nada fue escrito. Para ejecutar de verdad: python driver.py run")
     return _resumir(resultados, "Los 4 modulos respondieron. Nada fue escrito.")
 
 
 def cmd_run():
+    # Marca de tiempo previa a todo: sirve para distinguir que build/index.html
+    # se regenero de verdad en esta corrida y cual quedo igual que antes.
+    momento_inicio = datetime.now().timestamp()
     resultados = []
 
     # 1. Centro de Costos. Su propio 'run' ya encadena Analisis Financiero
@@ -160,12 +247,13 @@ def cmd_run():
     )
     resultados.append(("Estado de reportes PDF", ok_rep))
 
-    codigo = _resumir(resultados, "Todos los modulos y tableros quedaron al dia.")
+    _informe_tableros(momento_inicio)
 
-    print("\n  Siguiente paso manual (si corresponde):")
-    print("   - Publicar los tableros como Artifact: /Actualizar_CC para Centro de")
-    print("     Costos; los de Analisis Financiero y Cotizador se regeneraron en")
-    print("     disco pero se publican a mano (ver MEMORY.md de cada skill).")
+    codigo = _resumir(resultados, "Todos los modulos y tableros quedaron al dia en disco.")
+
+    print("\n  Falta para cerrar la actualizacion:")
+    print("   - PUBLICAR los 3 tableros de arriba (paso obligatorio: regenerarlos")
+    print("     en disco no cambia lo que ve la gente en el link publicado).")
     if "pendiente" in salida_rep.lower() or "desactualizad" in salida_rep.lower():
         print("   - Generar los reportes PDF pendientes: /Reportes_Analisis_Financiero run")
     return codigo
