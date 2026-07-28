@@ -1,6 +1,6 @@
 ---
 name: Registro_Centro_de_Costos
-description: Run, check status, audit, or dry-run the Centro de Costos cost-center pipeline for QUEMPIN SpA — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup. Also regenerates the web visualizer (Visualizador Web/build/index.html) from the current Excel via the 'visualizador' command. Use when asked to run centro de costos, actualizar centro de costos, registrar facturas, ver estado del centro de costos, auditar facturas, check for pending/unregistered invoices, actualizar el visualizador, or regenerar el visualizador web.
+description: Direct pipeline commands (status/run/confirmar/visualizador) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer locally. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; those should route to /Actualizar_CC instead, which runs this same pipeline and also republishes the dashboard. Use this skill directly for status checks, dry runs, audits, registering facturas, or confirming manual corrections when the user names it explicitly.
 ---
 
 # Registro: Centro de Costos
@@ -29,11 +29,11 @@ pipeline (`build.py`/`rename.py`/etc.) se perdió; la estructura actual se
 reconstruyó leyendo el `.xlsx` resultante.
 
 Este documento describe el procedimiento estable (comandos, esquema del
-JSON, troubleshooting). Ver [MEMORY.md](MEMORY.md) para preferencias
-(colores, formato), datos importantes de facturas e historial de corridas
-reales, y [ERRORES.md](ERRORES.md) para el historial de errores del
-pipeline y el registro de correcciones manuales hechas directo en el Excel
-— no dupliques ese contenido acá.
+JSON, troubleshooting). Ver [MEMORY.md](MEMORY.md) para reglas de negocio
+vigentes y datos importantes de facturas, [HISTORIAL.md](HISTORIAL.md) para
+el historial fechado de corridas reales, y [ERRORES.md](ERRORES.md) para el
+historial de errores del pipeline y el registro de correcciones manuales
+hechas directo en el Excel — no dupliques ese contenido acá.
 
 ## Prerequisitos
 
@@ -54,7 +54,7 @@ python ".claude/skills/Registro_Centro_de_Costos/driver.py" status
 ```
 
 Formato de salida (estructura estable; los números cambian en cada corrida —
-ver [MEMORY.md](MEMORY.md) para el historial de resultados reales por
+ver [HISTORIAL.md](HISTORIAL.md) para el historial de resultados reales por
 fecha):
 
 ```
@@ -99,7 +99,7 @@ GENERAL y las hojas de proyecto (100% fórmulas hacia `Master`, se
 reconstruyen completas en cada corrida) → imprime el informe de auditoría.
 
 Comportamiento confirmado en producción (ver historial detallado con cifras
-reales en [MEMORY.md](MEMORY.md)): si no hay documentos registrables, `run`
+reales en [HISTORIAL.md](HISTORIAL.md)): si no hay documentos registrables, `run`
 no toca ninguna fila de datos existente — solo crea el backup y regenera
 pies de tabla + hojas de proyecto. Las hojas de proyecto se recalculan desde
 la columna `Proyecto` actual de `Master` (no desde un estado guardado), así
@@ -179,16 +179,29 @@ confirmar) en [ERRORES.md](ERRORES.md).
 
 ## Visualizador web
 
-**Automático desde 2026-07-19: ya no hace falta correrlo aparte.** Tanto
-`run` del driver como `python auditor_centro_costos.py` directo regeneran
-`Visualizador Web/build/index.html` solos, como último paso de la corrida
-(PASO 12c, dentro de `main()` en `auditor_centro_costos.py` — cubre las dos
-rutas, agente y humana). Si falla (ej. `build_visualizador.py` movido o
-roto), no aborta el `run`: el Excel ya quedó guardado igual, solo imprime un
-`[WARN]` y hay que regenerar el visualizador a mano después.
+**Regeneración local automática desde 2026-07-19: no hace falta correrla
+aparte.** Tanto `run` del driver como `python auditor_centro_costos.py`
+directo regeneran `Visualizador Web/build/index.html` solos, como último
+paso de la corrida (PASO 12c, dentro de `main()` en
+`auditor_centro_costos.py` — cubre las dos rutas, agente y humana). Si falla
+(ej. `build_visualizador.py` movido o roto), no aborta el `run`: el Excel ya
+quedó guardado igual, solo imprime un `[WARN]` y hay que regenerar el
+visualizador a mano después.
 
-Para regenerarlo aparte sin correr todo el registrador (ej. solo cambió el
-diseño en `template.html`, no hay documentos nuevos):
+**Publicarlo como Artifact es obligatorio, no manual/opcional** (corregido
+2026-07-27 — antes este documento decía "sigue siendo manual", lo que
+contradecía la política real). Si `run` registró documentos nuevos (N > 0),
+el agente debe publicar el `build/index.html` recién regenerado como el
+mismo Claude Artifact de siempre inmediatamente después, sin esperar a que
+el usuario lo pida. Usar el tool `Artifact` con `file_path` apuntando a
+`Visualizador Web/build/index.html` y `url` igual al link fijo documentado
+en [MEMORY.md](MEMORY.md) § Visualizador web — nunca generar un link nuevo.
+`/Actualizar_CC` hace exactamente este paso extra sobre este mismo pipeline;
+si en cambio corriste `/Registro_Centro_de_Costos` directo por invocación
+explícita, el paso de publicar sigue siendo tuyo al terminar — no lo saltes.
+
+Para regenerar el HTML local aparte sin correr todo el registrador (ej. solo
+cambió el diseño en `template.html`, no hay documentos nuevos):
 
 ```
 python ".claude/skills/Registro_Centro_de_Costos/driver.py" visualizador
@@ -198,10 +211,7 @@ Ninguno de los dos caminos toca el Excel — ambos son de solo lectura sobre
 él. Ver [../../Visualizador Web/CLAUDE.md](../../Visualizador%20Web/CLAUDE.md)
 para la arquitectura completa (por qué está incrustado y no via fetch, el
 gate de contraseña, qué campos se sanean, y el bug de fórmulas de Excel sin
-recalcular que hay que recordar si se vuelve a tocar `build_visualizador.py`)
-y [MEMORY.md](MEMORY.md) para el link del Artifact publicado (siempre se
-actualiza el mismo, nunca uno nuevo — publicarlo sigue siendo manual, un
-agente de Claude Code tiene que subir el `build/index.html` nuevo).
+recalcular que hay que recordar si se vuelve a tocar `build_visualizador.py`).
 
 ## Run (ruta humana)
 
@@ -280,7 +290,9 @@ inconsistencias = acc.verificar_aritmetica(datos)   # solo lee el JSON, no toca 
   reescriben en cada corrida porque son 100% derivados.
 - **Sí hay renombrado de fotos y conversión HEIC→JPG** (agregado el
   2026-07-16): cada `run` renombra cada documento a
-  `<N° Ref.>_<TagProveedor>_<Fecha ISO>.<ext>` (`.heic`→`.jpg`) si el
+  `<N° Ref.>_<TagProveedor>_<Fecha DD-MM-AAAA>.<ext>` (`.heic`→`.jpg`,
+  formato de fecha con guiones desde 2026-07-28, antes `<Fecha ISO>`
+  `YYYY-MM-DD`) si el
   nombre físico actual difiere del esperado, y actualiza "Archivo origen"
   en `Master` — cubre documentos nuevos y, retroactivamente, los ya
   registrados. `status` muestra un preview sin tocar disco. Detección

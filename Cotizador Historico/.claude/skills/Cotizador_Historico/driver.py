@@ -35,6 +35,15 @@ sys.dont_write_bytecode = True
 import cotizador_historico as ch  # noqa: E402
 
 
+def _fmt_fecha(fecha_iso):
+    """'YYYY-MM-DD' -> 'DD-MM-YYYY' para mostrar (pedido del usuario
+    2026-07-28). ch.reajustar_item devuelve la fecha en ISO a proposito
+    (ver su docstring) -- este driver es el unico lugar donde se reformatea
+    para pantalla."""
+    anio, mes, dia = fecha_iso.split("-")
+    return f"{dia}-{mes}-{anio}"
+
+
 def cmd_status():
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
 
@@ -109,7 +118,7 @@ def cmd_consultar(args):
     print("|---|---|---|---|---|")
     for c in resultado["compras"]:
         print(
-            f"| {c['fecha']} | {c['n_ref']} | "
+            f"| {_fmt_fecha(c['fecha'])} | {c['n_ref']} | "
             f"${c['precio_original_sin_iva']:,.0f} | "
             f"${c['precio_reajustado_hoy']:,.0f} | "
             f"${c['precio_reajustado_hoy_con_iva']:,.0f} |"

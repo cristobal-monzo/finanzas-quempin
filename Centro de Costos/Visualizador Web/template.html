@@ -622,7 +622,7 @@
   function fmtDate(iso) {
     if (!iso) return '—';
     var parts = iso.split('-');
-    return parts[2] + '/' + parts[1] + '/' + parts[0];
+    return parts[2] + '-' + parts[1] + '-' + parts[0];
   }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -675,9 +675,12 @@
   var ultimaActualizacionFmt = DATA.ultima_actualizacion
     ? fmtDate(DATA.ultima_actualizacion.split(' ')[0]) + ' ' + DATA.ultima_actualizacion.split(' ')[1].slice(0, 5)
     : '—';
+  var generadoFmt = DATA.generado
+    ? fmtDate(DATA.generado.split(' ')[0]) + ' ' + DATA.generado.split(' ')[1].slice(0, 5)
+    : '—';
   document.getElementById('vizGenerated').innerHTML = 'Datos reales · última actualización <strong>' + esc(ultimaActualizacionFmt) + '</strong>';
   document.getElementById('vizUltimaFooter').textContent = ultimaActualizacionFmt;
-  document.getElementById('vizGeneratedFooter').textContent = DATA.generado;
+  document.getElementById('vizGeneratedFooter').textContent = generadoFmt;
 
   // ---------- categorical color assignment (fixed per entity, computed once from full dataset) ----------
   // El manual de marca solo define 4 colores oficiales (naranjo + negro + 2

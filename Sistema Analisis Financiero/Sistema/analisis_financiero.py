@@ -49,23 +49,44 @@ HOJA_CLIENTES = "Clientes"
 HOJA_GLOSARIO_KPIS = "Glosario KPIs"
 
 HEADERS_PROYECTOS = [
-    "TAG proyecto", "Nombre del proyecto", "Cliente", "Estado",
+    "TAG proyecto", "Nombre del proyecto", "Cliente", "Categoría", "Estado",
     "Fecha de inicio", "Fecha de cierre", "Monto de Venta (sin IVA)",
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados",
     "Costos Materiales Reales", "Costos Equipos Reales",
     "Otros Costos Reales", "Mano de Obra Real", "Total Proyectado",
     "Total Real", "Margen Proyectado", "Margen Real",
-    "Desviación % (Real vs Proyectado)", "Categoría",
+    "Desviación % (Real vs Proyectado)",
 ]
-HEADERS_DETALLE_COSTOS_REALES = ["TAG proyecto", "Subcategoría", "Bucket", "Total sin IVA"]
+HEADERS_DETALLE_COSTOS_REALES = [
+    "TAG proyecto", "Subcategoría", "Bucket", "Total sin IVA",
+    "% del Total Real del proyecto",
+]
+# Playbook depurado 2026-07-28: se eliminaron "Rentabilidad sobre costo" y las
+# 4 "Productividad" (Materiales/Equipos/MO/Otros) -- eran redundancias
+# matemáticas exactas de "Margen neto %" y de "Costo % de venta" (ver
+# CLAUDE.md, sección "Playbook de KPIs", y MEMORY.md 2026-07-28). Se agregaron
+# 4 KPIs nuevos: Estructura % del costo real (mix, suma 100%), Desviación %
+# Total (ya existía en "Proyectos", ahora también visible acá), y
+# Ahorro/Sobrecosto neto en $ por categoría y total.
 HEADERS_INDICADORES = [
-    "TAG proyecto", "Nombre del proyecto", "Rentabilidad sobre costo",
-    "Margen neto %", "Productividad Materiales", "Productividad Equipos",
-    "Productividad MO", "Productividad Otros", "Costo Materiales % de venta",
-    "Costo Equipos % de venta", "Costo MO % de venta", "Costo Otros % de venta",
+    "TAG proyecto", "Nombre del proyecto", "Margen neto %",
+    "Costo Materiales % de venta", "Costo Equipos % de venta",
+    "Costo MO % de venta", "Costo Otros % de venta",
+    "Estructura % Materiales", "Estructura % Equipos", "Estructura % MO",
+    "Estructura % Otros",
     "Desviación % Materiales", "Desviación % Equipos", "Desviación % MO",
-    "Desviación % Otros", "Nota del Proyecto", "Evaluación",
+    "Desviación % Otros", "Desviación % Total",
+    "Ahorro/Sobrecosto Materiales", "Ahorro/Sobrecosto Equipos",
+    "Ahorro/Sobrecosto MO", "Ahorro/Sobrecosto Otros",
+    "Ahorro/Sobrecosto Total",
+    "Nota del Proyecto", "Evaluación",
+    # 2 KPIs nuevos agregados 2026-07-28 (aprobados por el usuario; un
+    # tercero propuesto, "Cumplimiento de plazo", quedó fuera a propósito
+    # porque necesitaba un dato manual nuevo que el usuario decidió no
+    # agregar por ahora -- ver MEMORY.md).
+    "Peso del proyecto en la cartera de ventas (%)",
+    "Margen por día de ejecución",
 ]
 HEADERS_CLIENTES = [
     "Cliente", "AOV (Valor promedio de venta)",
@@ -82,6 +103,13 @@ HEADERS_GLOSARIO_KPIS = [
 # orden de HEADERS_PROYECTOS cambia, las fórmulas se recalculan solas).
 LETRA_COL_PROYECTOS = {
     nombre: get_column_letter(idx) for idx, nombre in enumerate(HEADERS_PROYECTOS, start=1)
+}
+# Mismo patrón para "Indicadores" -- las fórmulas de Nota/Evaluación
+# referencian columnas de esta misma hoja (no de "Proyectos") y no pueden
+# hardcodear la letra, para no romperse si el playbook de KPIs cambia de
+# nuevo (ya pasó una vez, 2026-07-28: se sacaron 5 columnas y se agregaron 9).
+LETRA_COL_INDICADORES = {
+    nombre: get_column_letter(idx) for idx, nombre in enumerate(HEADERS_INDICADORES, start=1)
 }
 
 
@@ -100,6 +128,9 @@ FORMATO_MONEDA = '_ "$"* #,##0_ ;_ "$"* \\-#,##0_ ;_ "$"* "-"_ ;_ @_ '
 FORMATO_PORCENTAJE = "0.0%"
 FORMATO_RATIO = "0.00"
 FORMATO_ENTERO = "0"
+# Formato fijo DD-MM-AAAA para columnas de fecha -- pedido del usuario 2026-07-28,
+# mismo estandar que Centro de Costos (ver DATE_FORMAT en auditor_centro_costos.py).
+FORMATO_FECHA = "DD-MM-YYYY"
 
 
 def _color_tema(theme: int, tint: float) -> Color:
@@ -114,28 +145,38 @@ COLOR_COSTO_PROYECTADO = _color_tema(8, 0.3999755851924192)  # columnas "...Proy
 COLOR_COSTO_REAL = _color_tema(9, 0.3999755851924192)        # columnas "...Real(es)"
 COLOR_DERIVADO = _color_tema(3, 0.499984740745262)           # totales, márgenes, KPIs finales
 
+# Por nombre de encabezado, no por letra -- se convierte a letra-keyed más
+# abajo vía LETRA_COL_PROYECTOS. Evita el bug real que ya pasó el 2026-07-28
+# al reordenar el playbook de Indicadores (ver asegurar_estructura_workbook):
+# un dict hardcodeado por letra queda mal alineado apenas cambia el orden de
+# HEADERS_PROYECTOS (ej. al mover "Categoría" junto a "Cliente").
+ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE = {
+    "TAG proyecto": (COLOR_IDENTIFICACION, None, 10),
+    "Nombre del proyecto": (COLOR_IDENTIFICACION, None, 22),
+    "Cliente": (COLOR_IDENTIFICACION, None, 22),
+    "Categoría": (COLOR_IDENTIFICACION, None, 16),
+    "Estado": (COLOR_IDENTIFICACION, None, 13),
+    "Fecha de inicio": (COLOR_IDENTIFICACION, FORMATO_FECHA, 13),
+    "Fecha de cierre": (COLOR_IDENTIFICACION, FORMATO_FECHA, 13),
+    "Monto de Venta (sin IVA)": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
+    "Costos Materiales Proyectados": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "Costos Equipos Proyectados": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "Mano de Obra Proyectada": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "Otros Costos Proyectados": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
+    "Costos Materiales Reales": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "Costos Equipos Reales": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "Otros Costos Reales": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "Mano de Obra Real": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "Total Proyectado": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "Total Real": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "Margen Proyectado": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "Margen Real": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
+    "Desviación % (Real vs Proyectado)": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
+}
 # columna (letra) -> (color de encabezado, formato numérico o None, ancho sugerido)
 ESTILO_COLUMNAS_PROYECTOS = {
-    "A": (COLOR_IDENTIFICACION, None, 10),
-    "B": (COLOR_IDENTIFICACION, None, 22),
-    "C": (COLOR_IDENTIFICACION, None, 22),
-    "D": (COLOR_IDENTIFICACION, None, 13),
-    "E": (COLOR_IDENTIFICACION, None, 13),
-    "F": (COLOR_IDENTIFICACION, None, 13),
-    "G": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
-    "H": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "I": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "J": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "K": (COLOR_COSTO_PROYECTADO, FORMATO_MONEDA, 14),
-    "L": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "M": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "N": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "O": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
-    "P": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "Q": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "R": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "S": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
-    "T": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
+    LETRA_COL_PROYECTOS[nombre]: estilo
+    for nombre, estilo in ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE.items()
 }
 
 ESTILO_COLUMNAS_DETALLE_COSTOS_REALES = {
@@ -143,27 +184,39 @@ ESTILO_COLUMNAS_DETALLE_COSTOS_REALES = {
     "B": (COLOR_COSTO_REAL, None, 22),
     "C": (COLOR_COSTO_REAL, None, 13),
     "D": (COLOR_COSTO_REAL, FORMATO_MONEDA, 14),
+    "E": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 18),
 }
 
+# Reordenado 2026-07-28 junto con HEADERS_INDICADORES: A/B identificación:
+# C margen neto; D-G costo % de venta; H-K estructura % del costo real
+# (mix, suma 100%); L-P desviación % (4 categorías + total); Q-U
+# ahorro/sobrecosto neto en $ (4 categorías + total); V/W nota/evaluación.
 ESTILO_COLUMNAS_INDICADORES = {
     "A": (COLOR_IDENTIFICACION, None, 10),
     "B": (COLOR_IDENTIFICACION, None, 22),
     "C": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
-    "D": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 14),
-    "E": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
-    "F": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
-    "G": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
-    "H": (COLOR_COSTO_REAL, FORMATO_RATIO, 14),
+    "D": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "E": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "F": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "G": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "H": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
     "I": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
     "J": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
     "K": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "L": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
+    "L": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
     "M": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
     "N": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
     "O": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "P": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "Q": (COLOR_DERIVADO, FORMATO_ENTERO, 12),
-    "R": (COLOR_DERIVADO, None, 20),
+    "P": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 16),
+    "Q": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
+    "R": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
+    "S": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
+    "T": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
+    "U": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
+    "V": (COLOR_DERIVADO, FORMATO_ENTERO, 12),
+    "W": (COLOR_DERIVADO, None, 20),
+    "X": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 18),
+    "Y": (COLOR_DERIVADO, FORMATO_MONEDA, 18),
 }
 
 ESTILO_COLUMNAS_CLIENTES = {
@@ -217,15 +270,119 @@ def aplicar_estilo_visual(wb) -> None:
                 ws.column_dimensions[columna].width = ancho
 
 
+# ── RESALTADO DE CELDAS DE INGRESO MANUAL ("Proyectos") ─────────────────────
+# Pedido del usuario (2026-07-28): que las celdas que se llenan a mano nunca
+# se confundan con las de fórmula/autocompletado. "Cliente" y "Categoría"
+# quedan afuera aunque viven en el mismo bloque que nunca se reescribe entre
+# corridas (asegurar_formulas_proyectos) -- se autocompletan solas
+# (asegurar_columna_cliente / asegurar_categoria_proyectos) y ya tienen su
+# propio lenguaje visual (rojo/azul marino). Las columnas L/M/N/P-T tampoco
+# entran: son 100% fórmula (Materiales/Equipos/Otros Reales, Total
+# Proyectado/Real, Margen Proyectado/Real, Desviación %).
+NOMBRES_COLUMNAS_MANUALES_PROYECTOS = [
+    "TAG proyecto", "Nombre del proyecto", "Estado", "Fecha de inicio",
+    "Fecha de cierre", "Monto de Venta (sin IVA)",
+    "Costos Materiales Proyectados", "Costos Equipos Proyectados",
+    "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
+]
+COLOR_RESALTADO_MANUAL = "FFF2CC"  # amarillo pastel -- no se reutiliza en ningún otro relleno del libro
+FUENTE_RESALTADO_MANUAL = Font(name="Calibri", size=11, italic=True)
+FILAS_MINIMAS_RESALTADO_MANUAL = 60  # deja filas vacías pre-formateadas como plantilla aunque el libro no tenga proyectos cargados todavía
+BUFFER_FILAS_RESALTADO_MANUAL = 20   # margen de filas nuevas pre-formateadas más allá de la última fila con datos reales
+LEYENDA_RESALTADO_MANUAL = (
+    "Relleno amarillo + cursiva = ingreso manual.\nSin relleno = fórmula o "
+    "autocompletado (Cliente, Categoría) -- no editar a mano."
+)
+
+
+def migrar_formato_fecha_proyectos(wb) -> None:
+    """Migracion de formato (idempotente, 2026-07-28, mismo patron que
+    migrar_formato_fecha_corta de Centro de Costos): fuerza FORMATO_FECHA
+    celda por celda en 'Fecha de inicio'/'Fecha de cierre' de TODAS las
+    filas ya escritas de 'Proyectos'. Necesario porque el number_format a
+    nivel de columna (aplicar_estilo_visual, via ws.column_dimensions) NO
+    pisa el formato que Excel ya asigno a una celda cuando el usuario
+    escribio la fecha a mano -- el formato por celda gana sobre el de
+    columna para cualquier celda que ya tenga uno propio. Es formato, no
+    contenido: no toca valores, misma excepcion a la regla de oro que el
+    resaltado de celdas manuales de abajo."""
+    ws = wb[HOJA_PROYECTOS]
+    col_tag = LETRA_COL_PROYECTOS["TAG proyecto"]
+    letras_fecha = [LETRA_COL_PROYECTOS["Fecha de inicio"], LETRA_COL_PROYECTOS["Fecha de cierre"]]
+
+    for fila in range(2, ws.max_row + 1):
+        if ws[f"{col_tag}{fila}"].value is None:
+            continue
+        for letra in letras_fecha:
+            ws[f"{letra}{fila}"].number_format = FORMATO_FECHA
+
+
+def aplicar_resaltado_celdas_manuales(wb) -> None:
+    """Rellena de amarillo + cursiva las columnas de ingreso manual de
+    'Proyectos' (ver NOMBRES_COLUMNAS_MANUALES_PROYECTOS), en un rango que
+    siempre cubre al menos FILAS_MINIMAS_RESALTADO_MANUAL filas (para que el
+    libro sirva de plantilla incluso sin proyectos cargados) y se extiende
+    BUFFER_FILAS_RESALTADO_MANUAL más allá de la última fila con TAG real --
+    calculado leyendo valores de la columna A, nunca ws.max_row a secas (que
+    quedaría inflado por el relleno ya aplicado en corridas previas y
+    crecería sin límite en cada corrida). Nunca toca valores, solo relleno/
+    fuente -- se reaplica en cada corrida igual que aplicar_estilo_visual."""
+    ws = wb[HOJA_PROYECTOS]
+    col_tag = LETRA_COL_PROYECTOS["TAG proyecto"]
+
+    ultima_fila_con_datos = 1
+    for fila in range(2, ws.max_row + 1):
+        if ws[f"{col_tag}{fila}"].value is not None:
+            ultima_fila_con_datos = fila
+
+    ultima_fila = max(
+        FILAS_MINIMAS_RESALTADO_MANUAL, ultima_fila_con_datos + BUFFER_FILAS_RESALTADO_MANUAL
+    )
+    relleno = PatternFill(fgColor=COLOR_RESALTADO_MANUAL, fill_type="solid")
+    letras = [LETRA_COL_PROYECTOS[nombre] for nombre in NOMBRES_COLUMNAS_MANUALES_PROYECTOS]
+
+    for letra in letras:
+        for fila in range(2, ultima_fila + 1):
+            celda = ws[f"{letra}{fila}"]
+            celda.fill = relleno
+            celda.font = FUENTE_RESALTADO_MANUAL
+
+    col_leyenda = len(HEADERS_PROYECTOS) + 1
+    celda_leyenda = ws.cell(row=1, column=col_leyenda)
+    celda_leyenda.value = LEYENDA_RESALTADO_MANUAL
+    celda_leyenda.font = Font(name="Calibri", size=9, italic=True, color="808080")
+    celda_leyenda.alignment = Alignment(wrap_text=True, vertical="center")
+    letra_leyenda = get_column_letter(col_leyenda)
+    if letra_leyenda not in ws.column_dimensions:
+        ws.column_dimensions[letra_leyenda].width = 45
+
+
 def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
     """Abre ruta_excel si existe, o crea un libro nuevo. Garantiza que las 5
-    hojas existan con encabezados en la fila 1 -- si una hoja ya existe, no
-    toca sus datos (regla de oro: no reescribir datos ya presentes), pero sí
-    completa encabezados nuevos que se hayan agregado al final del esquema
-    en una versión más reciente del script (ej. "Cliente" en un archivo real
-    creado antes de que esa columna existiera) -- nunca pisa un encabezado ya
-    escrito, solo llena celdas de encabezado vacías. Elimina hojas default
-    vacías ("Hoja1"/"Sheet") si quedaron de un libro recién creado."""
+    hojas existan con encabezados en la fila 1.
+
+    "Proyectos" es la única hoja con datos MANUALES del usuario: nunca se
+    pisa un encabezado ya escrito ahí, solo se completan columnas nuevas al
+    final del esquema (ej. "Cliente" en un archivo real creado antes de que
+    esa columna existiera) -- regla de oro del módulo.
+
+    Las otras 4 hojas ("Detalle Costos Reales"/"Indicadores"/"Clientes"/
+    "Glosario KPIs") son 100% regeneradas cada corrida -- sus DATOS ya se
+    reescriben completos en cada `ejecutar()` (ver regenerar_hoja_detalle_
+    costos_reales / asegurar_hoja_indicadores / etc.), así que su fila de
+    encabezados también se reescribe completa acá si no coincide con el
+    esquema actual (incluye borrar columnas sobrantes si el esquema nuevo
+    tiene menos columnas que el anterior). **Bug real encontrado y corregido
+    2026-07-28**: antes esta función usaba el mismo criterio "solo llenar
+    vacíos" para las 5 hojas -- al reordenar/depurar el playbook de KPIs de
+    "Indicadores" (quitar 5 columnas, agregar 9, reordenar el resto), los
+    encabezados viejos quedaron pisando columnas con fórmulas del esquema
+    NUEVO (ej. columna C decía "Rentabilidad sobre costo" pero tenía la
+    fórmula de "Margen neto %"), y aparecieron "Nota del Proyecto"/
+    "Evaluación" duplicados en las columnas nuevas del final -- un archivo
+    financiero real quedó con encabezados y datos desalineados. Se corrió
+    contra el Excel real antes de detectarse (restaurado desde backup) --
+    ver MEMORY.md 2026-07-28 para el detalle completo del incidente."""
     if ruta_excel.exists():
         wb = openpyxl.load_workbook(ruta_excel)
     else:
@@ -239,9 +396,18 @@ def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
         (HOJA_GLOSARIO_KPIS, HEADERS_GLOSARIO_KPIS),
     ):
         ws = wb[nombre_hoja] if nombre_hoja in wb.sheetnames else wb.create_sheet(nombre_hoja)
-        for col, encabezado in enumerate(headers, start=1):
-            if ws.cell(row=1, column=col).value is None:
-                ws.cell(row=1, column=col, value=encabezado)
+        if nombre_hoja == HOJA_PROYECTOS:
+            for col, encabezado in enumerate(headers, start=1):
+                if ws.cell(row=1, column=col).value is None:
+                    ws.cell(row=1, column=col, value=encabezado)
+            continue
+
+        max_col_previo = ws.max_column if ws.max_row >= 1 else 0
+        for col in range(1, max(max_col_previo, len(headers)) + 1):
+            nuevo_valor = headers[col - 1] if col <= len(headers) else None
+            celda = ws.cell(row=1, column=col)
+            if celda.value != nuevo_valor:
+                celda.value = nuevo_valor
 
     for nombre_default in ("Hoja1", "Sheet"):
         if nombre_default in wb.sheetnames:
@@ -616,10 +782,22 @@ def regenerar_hoja_detalle_costos_reales(wb, agrupado: dict[tuple[str, str], flo
     """Borra todas las filas de datos (fila 2 en adelante) y las reescribe
     completas desde 'agrupado' -- mismo patrón que las hojas de proyecto de
     Centro de Costos: se recalcula entera, nunca se acumula a mano. Devuelve
-    avisos de subcategorías sin mapeo explícito (caen en 'Otros')."""
+    avisos de subcategorías sin mapeo explícito (caen en 'Otros').
+
+    Columna E ("% del Total Real del proyecto", agregada 2026-07-28) = Total
+    sin IVA de la fila / suma de TODAS las filas de ese mismo proyecto EN
+    ESTA MISMA HOJA (no el Total Real de 'Proyectos', que además incluye
+    Mano de Obra Real manual -- esa categoría no tiene detalle por
+    subcategoría acá). Se calcula en Python, como el resto de esta hoja
+    (nunca fórmula), para que sume ~100% de forma verificable sin depender
+    de que Excel recalcule."""
     ws = wb[HOJA_DETALLE_COSTOS_REALES]
     if ws.max_row >= 2:
         ws.delete_rows(2, ws.max_row - 1)
+
+    total_por_proyecto: dict[str, float] = {}
+    for (tag, _), total in agrupado.items():
+        total_por_proyecto[tag] = total_por_proyecto.get(tag, 0.0) + total
 
     avisos = []
     fila = 2
@@ -629,10 +807,13 @@ def regenerar_hoja_detalle_costos_reales(wb, agrupado: dict[tuple[str, str], flo
             avisos.append(
                 f"Categoría '{subcategoria}' (proyecto {tag}) sin mapeo explícito, va a 'Otros'."
             )
+        total_proyecto = total_por_proyecto[tag]
+        porcentaje = (total / total_proyecto) if total_proyecto else None
         ws.cell(row=fila, column=1, value=tag)
         ws.cell(row=fila, column=2, value=subcategoria)
         ws.cell(row=fila, column=3, value=bucket)
         ws.cell(row=fila, column=4, value=total)
+        ws.cell(row=fila, column=5, value=porcentaje)
         fila += 1
 
     return avisos
@@ -641,9 +822,14 @@ def regenerar_hoja_detalle_costos_reales(wb, agrupado: dict[tuple[str, str], flo
 # ── FÓRMULAS DE LA HOJA "PROYECTOS" ──────────────────────────────────────────
 
 def asegurar_formulas_proyectos(ws_proyectos, filas_validas: list[dict]) -> None:
-    """Escribe las columnas derivadas (L/M/N = SUMIFS hacia 'Detalle Costos
-    Reales'; P/Q/R/S/T = totales/márgenes/desviación) para cada fila válida.
-    Nunca toca las columnas manuales (A-K, O)."""
+    """Escribe las columnas derivadas (Materiales/Equipos/Otros Reales =
+    SUMIFS hacia 'Detalle Costos Reales'; Total Proyectado/Real, Margen
+    Proyectado/Real, Desviación % = fórmulas sobre 'Proyectos') para cada
+    fila válida -- todas resueltas por nombre vía LETRA_COL_PROYECTOS, nunca
+    por letra fija, para no romperse si HEADERS_PROYECTOS cambia de orden.
+    Nunca toca las columnas de ingreso manual (ver
+    NOMBRES_COLUMNAS_MANUALES_PROYECTOS) ni Cliente/Categoría
+    (autocompletadas)."""
     col = {nombre: HEADERS_PROYECTOS.index(nombre) + 1 for nombre in HEADERS_PROYECTOS}
     letra = LETRA_COL_PROYECTOS
 
@@ -695,6 +881,16 @@ PESO_DESVIACION_NOTA = 0.3
 
 
 def _formula_nota(fila_proyectos: int) -> str:
+    """Corregido 2026-07-28 (aprobado por el usuario): el componente de
+    control de desviación (30%) ya NO usa ABS() -- antes penalizaba gastar
+    de menos igual que gastar de más, pese a que ahorrar ya sube el margen
+    (capturado en el 70% de rentabilidad), así que era un doble castigo
+    disfrazado de doble premio. Ahora MAX(0, desviación) anula el término
+    para cualquier proyecto en o bajo presupuesto (desviación <= 0): ese
+    componente da el puntaje máximo (100), sin restar ni sumar de más. Solo
+    resta puntos cuando Real > Proyectado (sobrecosto real, desviación
+    positiva). Ver MEMORY.md 2026-07-28 para la verificación a mano contra
+    UMAG (Nota pasó de 91 a 100)."""
     r = fila_proyectos
     margen_real = LETRA_COL_PROYECTOS["Margen Real"]
     venta = LETRA_COL_PROYECTOS["Monto de Venta (sin IVA)"]
@@ -703,15 +899,22 @@ def _formula_nota(fila_proyectos: int) -> str:
         f"MIN(100,MAX(0,(Proyectos!{margen_real}{r}/Proyectos!{venta}{r})"
         f"/{MARGEN_OBJETIVO_NOTA}*100))"
     )
-    score_desviacion = f"MIN(100,MAX(0,100-ABS(Proyectos!{desviacion}{r})*100))"
+    score_desviacion = (
+        f"MIN(100,MAX(0,100-MAX(0,Proyectos!{desviacion}{r})*100))"
+    )
     return f"=ROUND({PESO_RENTABILIDAD_NOTA}*{score_margen}+{PESO_DESVIACION_NOTA}*{score_desviacion},0)"
 
 
 def _formula_evaluacion(fila_destino: int) -> str:
-    q = f"Q{fila_destino}"
+    # Referencia a la columna "Nota del Proyecto" de esta misma hoja
+    # ("Indicadores"), calculada desde LETRA_COL_INDICADORES -- nunca
+    # hardcodeada, para no romperse si el playbook de KPIs vuelve a cambiar
+    # de orden/cantidad de columnas.
+    col_nota = LETRA_COL_INDICADORES["Nota del Proyecto"]
+    ref = f"{col_nota}{fila_destino}"
     return (
-        f'=IF({q}>=85,"Excelente",IF({q}>=70,"Bueno",'
-        f'IF({q}>=55,"Aprobado","Requiere atención")))'
+        f'=IF({ref}>=85,"Excelente",IF({ref}>=70,"Bueno",'
+        f'IF({ref}>=55,"Aprobado","Requiere atención")))'
     )
 
 
@@ -720,7 +923,12 @@ def _formula_evaluacion(fila_destino: int) -> str:
 def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
     """Regenera 'Indicadores' completa: una fila compacta por proyecto
     válido (sin huecos), pero cada fórmula referencia la fila REAL del
-    proyecto en 'Proyectos' (que sí puede tener huecos)."""
+    proyecto en 'Proyectos' (que sí puede tener huecos).
+
+    Orden de columnas (reordenado 2026-07-28, ver HEADERS_INDICADORES):
+    margen neto; costo % de venta (4); estructura % del costo real / mix,
+    suma 100% (4); desviación % por categoría (4) + desviación % total;
+    ahorro/sobrecosto neto en $ por categoría (4) + total; nota; evaluación."""
     ws = wb[HOJA_INDICADORES]
     if ws.max_row >= 2:
         ws.delete_rows(2, ws.max_row - 1)
@@ -728,7 +936,10 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
     lp = LETRA_COL_PROYECTOS
     tag, nombre = lp["TAG proyecto"], lp["Nombre del proyecto"]
     venta = lp["Monto de Venta (sin IVA)"]
-    margen_real, total_real = lp["Margen Real"], lp["Total Real"]
+    margen_real, total_real, total_proy = (
+        lp["Margen Real"], lp["Total Real"], lp["Total Proyectado"],
+    )
+    desviacion_total = lp["Desviación % (Real vs Proyectado)"]
     mat_r, eq_r, mo_r, otros_r = (
         lp["Costos Materiales Reales"], lp["Costos Equipos Reales"],
         lp["Mano de Obra Real"], lp["Otros Costos Reales"],
@@ -737,28 +948,54 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
         lp["Costos Materiales Proyectados"], lp["Costos Equipos Proyectados"],
         lp["Mano de Obra Proyectada"], lp["Otros Costos Proyectados"],
     )
+    fecha_inicio, fecha_cierre = lp["Fecha de inicio"], lp["Fecha de cierre"]
 
     fila_destino = 2
     for fila_info in filas_validas:
         r = fila_info["fila"]
-        ws.cell(row=fila_destino, column=1, value=f"=Proyectos!{tag}{r}")
-        ws.cell(row=fila_destino, column=2, value=f"=Proyectos!{nombre}{r}")
-        ws.cell(row=fila_destino, column=3, value=f"=Proyectos!{margen_real}{r}/Proyectos!{total_real}{r}")
-        ws.cell(row=fila_destino, column=4, value=f"=Proyectos!{margen_real}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=fila_destino, column=5, value=f"=Proyectos!{venta}{r}/Proyectos!{mat_r}{r}")
-        ws.cell(row=fila_destino, column=6, value=f"=Proyectos!{venta}{r}/Proyectos!{eq_r}{r}")
-        ws.cell(row=fila_destino, column=7, value=f"=Proyectos!{venta}{r}/Proyectos!{mo_r}{r}")
-        ws.cell(row=fila_destino, column=8, value=f"=Proyectos!{venta}{r}/Proyectos!{otros_r}{r}")
-        ws.cell(row=fila_destino, column=9, value=f"=Proyectos!{mat_r}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=fila_destino, column=10, value=f"=Proyectos!{eq_r}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=fila_destino, column=11, value=f"=Proyectos!{mo_r}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=fila_destino, column=12, value=f"=Proyectos!{otros_r}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=fila_destino, column=13, value=f"=Proyectos!{mat_r}{r}/Proyectos!{mat_p}{r}-1")
-        ws.cell(row=fila_destino, column=14, value=f"=Proyectos!{eq_r}{r}/Proyectos!{eq_p}{r}-1")
-        ws.cell(row=fila_destino, column=15, value=f"=Proyectos!{mo_r}{r}/Proyectos!{mo_p}{r}-1")
-        ws.cell(row=fila_destino, column=16, value=f"=Proyectos!{otros_r}{r}/Proyectos!{otros_p}{r}-1")
-        ws.cell(row=fila_destino, column=17, value=_formula_nota(r))
-        ws.cell(row=fila_destino, column=18, value=_formula_evaluacion(fila_destino))
+        f = fila_destino
+        ws.cell(row=f, column=1, value=f"=Proyectos!{tag}{r}")
+        ws.cell(row=f, column=2, value=f"=Proyectos!{nombre}{r}")
+        ws.cell(row=f, column=3, value=f"=Proyectos!{margen_real}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=f, column=4, value=f"=Proyectos!{mat_r}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=f, column=5, value=f"=Proyectos!{eq_r}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=f, column=6, value=f"=Proyectos!{mo_r}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=f, column=7, value=f"=Proyectos!{otros_r}{r}/Proyectos!{venta}{r}")
+        ws.cell(row=f, column=8, value=f"=Proyectos!{mat_r}{r}/Proyectos!{total_real}{r}")
+        ws.cell(row=f, column=9, value=f"=Proyectos!{eq_r}{r}/Proyectos!{total_real}{r}")
+        ws.cell(row=f, column=10, value=f"=Proyectos!{mo_r}{r}/Proyectos!{total_real}{r}")
+        ws.cell(row=f, column=11, value=f"=Proyectos!{otros_r}{r}/Proyectos!{total_real}{r}")
+        ws.cell(row=f, column=12, value=f"=Proyectos!{mat_r}{r}/Proyectos!{mat_p}{r}-1")
+        ws.cell(row=f, column=13, value=f"=Proyectos!{eq_r}{r}/Proyectos!{eq_p}{r}-1")
+        ws.cell(row=f, column=14, value=f"=Proyectos!{mo_r}{r}/Proyectos!{mo_p}{r}-1")
+        ws.cell(row=f, column=15, value=f"=Proyectos!{otros_r}{r}/Proyectos!{otros_p}{r}-1")
+        ws.cell(row=f, column=16, value=f"=Proyectos!{desviacion_total}{r}")
+        ws.cell(row=f, column=17, value=f"=Proyectos!{mat_p}{r}-Proyectos!{mat_r}{r}")
+        ws.cell(row=f, column=18, value=f"=Proyectos!{eq_p}{r}-Proyectos!{eq_r}{r}")
+        ws.cell(row=f, column=19, value=f"=Proyectos!{mo_p}{r}-Proyectos!{mo_r}{r}")
+        ws.cell(row=f, column=20, value=f"=Proyectos!{otros_p}{r}-Proyectos!{otros_r}{r}")
+        ws.cell(row=f, column=21, value=f"=Proyectos!{total_proy}{r}-Proyectos!{total_real}{r}")
+        ws.cell(row=f, column=22, value=_formula_nota(r))
+        ws.cell(row=f, column=23, value=_formula_evaluacion(f))
+        # X: Peso del proyecto en la cartera de ventas (%) -- venta del
+        # proyecto sobre la suma de TODA la columna "Monto de Venta (sin
+        # IVA)" de "Proyectos" (no solo la propia fila), incluyendo
+        # proyectos que no están "Terminado" -- SUM ignora celdas vacías/
+        # texto, así que un proyecto sin venta cargada no distorsiona el
+        # denominador solo, no hace falta filtrar por Estado.
+        ws.cell(row=f, column=24, value=(
+            f"=Proyectos!{venta}{r}/SUM(Proyectos!${venta}:${venta})"
+        ))
+        # Y: Margen por día de ejecución -- IF(Fecha de cierre vacía, "",
+        # ...) para que un proyecto "en desarrollo" (sin Fecha de cierre)
+        # quede vacío en vez de una fórmula con error/número sin sentido;
+        # el guard vive en la fórmula (se recalcula solo si el usuario
+        # completa la fecha después, sin correr el script de nuevo).
+        # MAX(1, días) evita #DIV/0! si Fecha de cierre = Fecha de inicio.
+        ws.cell(row=f, column=25, value=(
+            f'=IF(Proyectos!{fecha_cierre}{r}="","",'
+            f"Proyectos!{margen_real}{r}/MAX(1,Proyectos!{fecha_cierre}{r}-Proyectos!{fecha_inicio}{r}))"
+        ))
         fila_destino += 1
 
 
@@ -796,9 +1033,9 @@ def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
         ))
         ws.cell(row=i, column=3, value=f"=COUNTIF(Proyectos!${cliente_col}:${cliente_col},$A{i})")
         ws.cell(row=i, column=4, value=(
-            f"=MAX(1,(MAXIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
+            f"=MAX(1,(_xlfn.MAXIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
             f"Proyectos!${cliente_col}:${cliente_col},$A{i})"
-            f"-MINIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
+            f"-_xlfn.MINIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
             f"Proyectos!${cliente_col}:${cliente_col},$A{i}))/30)"
         ))
         ws.cell(row=i, column=5, value=f"=C{i}/(D{i}/12)")
@@ -820,28 +1057,22 @@ def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
 
 GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
     (
-        "Rentabilidad sobre costo",
-        "Mide cuánto margen genera cada peso gastado en el proyecto — un markup, no un ROI de capital invertido.",
-        "Margen Real, Total Real",
-        "Valor alto = el proyecto generó mucho margen por cada peso de costo incurrido; sirve para comparar eficiencia entre proyectos de tamaños distintos.",
-    ),
-    (
         "Margen neto %",
         "El indicador de rentabilidad más directo y comparable entre proyectos de distinto tamaño.",
         "Margen Real, Monto de Venta",
         "20% significa que de cada $100 vendidos quedan $20 de utilidad tras cubrir todos los costos reales.",
     ),
     (
-        "Productividad (Materiales/Equipos/MO/Otros)",
-        "Mide cuántos pesos de venta genera cada peso gastado en esa categoría — permite ver qué categoría 'rinde' más por peso invertido.",
-        "Monto de Venta, Costo Real de la categoría",
-        "Productividad = 3 → cada $1 gastado en esa categoría generó $3 de venta; útil para priorizar dónde enfocar control de gasto.",
-    ),
-    (
         "Costo % de venta (por categoría)",
-        "Muestra la estructura de costos del proyecto — qué parte de cada peso vendido se va en esa categoría.",
+        "Muestra qué parte de cada peso VENDIDO se va en esa categoría de costo — mide el impacto de la categoría sobre el precio de venta.",
         "Costo Real de la categoría, Monto de Venta",
         "35% en Costo MO % de venta → un tercio de cada venta se destina a mano de obra; detecta categorías que consumen desproporcionadamente el margen.",
+    ),
+    (
+        "Estructura % del costo real (mix, por categoría)",
+        "Muestra cómo se reparte el GASTO real entre categorías (no contra la venta, sino entre sí) — las 4 categorías suman 100%, a diferencia de 'Costo % de venta' que no suma 100%.",
+        "Costo Real de la categoría, Costos Totales Real",
+        "60% en Estructura % Otros → 6 de cada $10 gastados en el proyecto fueron en 'Otros'; útil para ver dónde se concentra el gasto real sin importar cuán rentable resultó el proyecto.",
     ),
     (
         "Desviación % (por categoría, Real vs Proyectado)",
@@ -850,16 +1081,46 @@ GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
         "+15% = se gastó 15% más de lo presupuestado; negativo = se gastó menos de lo previsto.",
     ),
     (
+        "Desviación % Total",
+        "Mismo concepto que la desviación por categoría, pero a nivel de todo el proyecto — el número que resume si el presupuesto completo se cumplió.",
+        "Costos Totales Real, Costos Totales Proyectado (columna ya existente en 'Proyectos', traída acá como columna visible)",
+        "-10% = el proyecto costó 10% menos que lo presupuestado en total; +10% = costó 10% más.",
+    ),
+    (
+        "Ahorro/Sobrecosto neto en $ (por categoría y total)",
+        "Traduce la desviación % a pesos concretos — más accionable para decisiones de gestión que un porcentaje solo, sobre todo en categorías con montos grandes.",
+        "Costo Proyectado − Costo Real, de cada categoría y del total",
+        "Positivo = ahorro (se gastó menos de lo presupuestado); negativo = sobrecosto (se gastó más). $800.000 en Ahorro MO → la mano de obra costó $800.000 menos que lo presupuestado.",
+    ),
+    (
         "Nota del Proyecto",
         "Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión.",
-        "Margen neto % (70%, contra objetivo de 25%) y Desviación % Total (30%)",
-        "≥55 = proyecto en rango aceptable; <55 = requiere revisión (rentabilidad baja y/o descontrol presupuestario).",
+        "Margen neto % (70%, contra objetivo de 25%) y Desviación % Total, solo penalizando sobrecosto (30%)",
+        "≥55 = proyecto en rango aceptable; <55 = requiere revisión (rentabilidad baja y/o descontrol presupuestario). Un proyecto que ahorra (Real ≤ Proyectado) obtiene el puntaje máximo del componente de control — no se penaliza gastar de menos, ese beneficio ya se refleja en el margen.",
     ),
     (
         "Evaluación",
         "Traduce la nota a una etiqueta rápida de lectura para revisiones ejecutivas.",
         "Nota del Proyecto",
         "Excelente / Bueno / Aprobado / Requiere atención.",
+    ),
+    (
+        "% del Total Real del proyecto (Detalle Costos Reales)",
+        "Muestra el peso de cada subcategoría real de Centro de Costos (ej. Consumibles, Equipos-Herramientas, Combustible, Servicios) dentro del gasto detallado del proyecto — más granular que 'Estructura %' de 'Indicadores', que solo agrupa en 4 buckets.",
+        "Total sin IVA de la fila, suma de todas las filas de ese proyecto en 'Detalle Costos Reales'",
+        "Suma ~100% por proyecto. No incluye Mano de Obra Real (es manual, sin detalle por subcategoría en Centro de Costos) -- el 100% es sobre el gasto SÍ trazado a documentos, no sobre el Total Real completo del proyecto.",
+    ),
+    (
+        "Peso del proyecto en la cartera de ventas (%)",
+        "Mide qué tan concentrado está el ingreso de la empresa en un solo proyecto -- riesgo de dependencia si un proyecto grande se cae o se retrasa.",
+        "Monto de Venta del proyecto, suma de Monto de Venta de todos los proyectos con venta cargada",
+        "25% significa que un cuarto de todo el ingreso de la cartera actual depende de ese único proyecto; valores altos ameritan revisar el riesgo de concentración.",
+    ),
+    (
+        "Margen por día de ejecución",
+        "Mide cuánto margen genera el proyecto por unidad de tiempo -- útil para priorizar proyectos que compiten por la misma capacidad de equipo/tiempo, no solo por margen total.",
+        "Margen Real, Fecha de cierre − Fecha de inicio (en días)",
+        "$50.000/día = el proyecto generó en promedio $50.000 de margen por cada día que duró su ejecución. Queda vacío si el proyecto todavía no tiene Fecha de cierre (en desarrollo) -- no se calcula sobre una duración que aún no terminó.",
     ),
     (
         "AOV (Clientes)",
@@ -1019,6 +1280,8 @@ def ejecutar(
     asegurar_hoja_clientes(wb, filas_validas, ws_proyectos)
     asegurar_hoja_glosario_kpis(wb)
     aplicar_estilo_visual(wb)
+    migrar_formato_fecha_proyectos(wb)
+    aplicar_resaltado_celdas_manuales(wb)
 
     try:
         wb.save(ruta_excel_af)

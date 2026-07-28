@@ -31,6 +31,6 @@ def test_mostrar_preview_renombrados_lista_pendientes_y_no_encontrados(tmp_path,
     salida = capsys.readouterr().out
     assert "renombrarian/convertirian si corres 'run': 1" in salida
     assert "CFLI-003" in salida
-    assert "factura_original.pdf -> CFLI-003_Beckman_2026-02-01.pdf" in salida
+    assert "factura_original.pdf -> CFLI-003_Beckman_01-02-2026.pdf" in salida
     assert "1 fila(s) sin archivo fisico encontrado" in salida
     assert "UMAG-030" in salida

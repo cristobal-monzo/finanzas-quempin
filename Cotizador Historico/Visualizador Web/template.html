@@ -543,7 +543,7 @@
   function fmtDate(iso) {
     if (!iso) return '—';
     var parts = iso.split('-');
-    return parts[2] + '/' + parts[1] + '/' + parts[0];
+    return parts[2] + '-' + parts[1] + '-' + parts[0];
   }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {

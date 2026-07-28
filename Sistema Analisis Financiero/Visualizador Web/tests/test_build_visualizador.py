@@ -253,7 +253,7 @@ def test_extraer_datos_saneados_separa_completos_e_incompletos(tmp_path):
     assert pendiente["nombre"] == "Cesfam Limache"
     assert pendiente["mensaje"] == "Cesfam Limache — Falta ingresar información en 'Análisis de Proyectos'"
     assert pendiente["link"] == bv.URL_PLANILLA_PENDIENTE
-    assert re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", data["generado"])
+    assert re.match(r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$", data["generado"])
 
 
 def test_extraer_datos_saneados_kpis_proyectos_resumen(tmp_path):
@@ -379,8 +379,8 @@ def test_calcular_kpis_proyecto_incluye_desglose_de_costos_y_fechas():
 
     kpis = bv.calcular_kpis_proyecto(p, costos_reales)
 
-    assert kpis["fecha_inicio"] == "2026-01-10"
-    assert kpis["fecha_cierre"] == "2026-03-15"
+    assert kpis["fecha_inicio"] == "10-01-2026"
+    assert kpis["fecha_cierre"] == "15-03-2026"
     assert kpis["categoria"] == "I+D+i"
     assert kpis["costos_proyectados"] == {
         "materiales": 300_000, "equipos": 200_000, "mo": 200_000, "otros": 100_000,
@@ -404,6 +404,140 @@ def test_calcular_kpis_proyecto_fechas_none_si_no_hay_dato():
     assert kpis["fecha_inicio"] is None
     assert kpis["fecha_cierre"] is None
     assert kpis["categoria"] is None
+
+
+def test_calcular_kpis_proyecto_kpis_por_categoria():
+    # Mismos numeros que test_calcular_kpis_proyecto_recomputa_igual_que_
+    # formula_excel: total_proyectado=800000, total_real=750000.
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
+        "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
+        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
+    }
+    costos_reales = {"Materiales": 250_000.0, "Equipos": 150_000.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    assert kpis["costo_pct_venta"] == {"materiales": 0.25, "equipos": 0.15, "mo": 0.35, "otros": 0.0}
+    estructura = kpis["estructura_pct"]
+    assert round(estructura["materiales"], 6) == round(250_000 / 750_000, 6)
+    assert round(sum(estructura.values()), 6) == 1.0  # las 4 categorias suman 100% del gasto real
+    desviacion = kpis["desviacion_pct_categoria"]
+    assert round(desviacion["materiales"], 4) == round(250_000 / 300_000 - 1, 4)
+    assert round(desviacion["otros"], 4) == -1.0  # otros_proy=100000, real=0
+    assert kpis["ahorro_sobrecosto"] == {"materiales": 50_000, "equipos": 50_000, "mo": -150_000, "otros": 100_000}
+    assert kpis["ahorro_sobrecosto_total"] == 50_000  # 800000 - 750000
+
+
+def test_calcular_kpis_proyecto_kpis_por_categoria_guardas_division_cero():
+    # venta=0, total_real=0 (todo en 0) y una categoria proyectada en 0 no
+    # deben explotar -- mismo principio que monto_venta=0 en
+    # calcular_kpis_proyecto (test ya existente).
+    p = {
+        "tag": "ZERO", "nombre": "Proyecto Venta Cero", "cliente": "Cliente X", "estado": "En Proceso",
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
+        "monto_venta": 0, "materiales_proy": 0, "equipos_proy": 0,
+        "mo_proy": 0, "otros_proy": 0, "mo_real": 0,
+    }
+    costos_reales = {"Materiales": 0.0, "Equipos": 0.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    assert kpis["costo_pct_venta"] == {"materiales": 0.0, "equipos": 0.0, "mo": 0.0, "otros": 0.0}
+    assert kpis["estructura_pct"] == {"materiales": 0.0, "equipos": 0.0, "mo": 0.0, "otros": 0.0}
+    assert kpis["desviacion_pct_categoria"] == {"materiales": 0.0, "equipos": 0.0, "mo": 0.0, "otros": 0.0}
+
+
+def test_calcular_kpis_proyecto_margen_por_dia_none_sin_fecha_cierre():
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "fecha_inicio": datetime(2026, 1, 10), "fecha_cierre": None, "categoria": None,
+        "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
+        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
+    }
+    costos_reales = {"Materiales": 250_000.0, "Equipos": 150_000.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    assert kpis["margen_por_dia"] is None  # proyecto "en desarrollo"
+
+
+def test_calcular_kpis_proyecto_margen_por_dia_calculado_con_ambas_fechas():
+    fecha_inicio = datetime(2026, 1, 10)
+    fecha_cierre = datetime(2026, 3, 15)
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "fecha_inicio": fecha_inicio, "fecha_cierre": fecha_cierre, "categoria": None,
+        "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
+        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
+    }
+    costos_reales = {"Materiales": 250_000.0, "Equipos": 150_000.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    dias = (fecha_cierre - fecha_inicio).days
+    assert kpis["margen_por_dia"] == kpis["margen_real"] / dias
+
+
+def test_calcular_kpis_proyecto_margen_por_dia_evita_div_cero_mismo_dia():
+    fecha = datetime(2026, 1, 10)
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "fecha_inicio": fecha, "fecha_cierre": fecha, "categoria": None,
+        "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
+        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
+    }
+    costos_reales = {"Materiales": 250_000.0, "Equipos": 150_000.0, "Otros": 0.0}
+
+    kpis = bv.calcular_kpis_proyecto(p, costos_reales)
+
+    assert kpis["margen_por_dia"] == kpis["margen_real"]  # MAX(1, 0 dias) = 1
+
+
+def test_calcular_peso_cartera_incluye_proyectos_incompletos_en_el_denominador():
+    proyectos = [
+        {"tag": "A", "monto_venta": 1_000_000},
+        {"tag": "B", "monto_venta": 3_000_000},  # incompleto en otros campos, pero venta cuenta
+    ]
+
+    pesos = bv.calcular_peso_cartera(proyectos)
+
+    assert pesos == {"A": 0.25, "B": 0.75}
+
+
+def test_calcular_peso_cartera_ignora_venta_none_y_no_explota_con_total_cero():
+    proyectos = [{"tag": "A", "monto_venta": None}, {"tag": "B", "monto_venta": None}]
+
+    pesos = bv.calcular_peso_cartera(proyectos)
+
+    assert pesos == {"A": 0.0, "B": 0.0}
+
+
+def test_leer_detalle_subcategorias_agrupa_por_tag_y_calcula_pct(tmp_path):
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    ws_detalle = wb[af.HOJA_DETALLE_COSTOS_REALES]
+    ws_detalle.cell(row=2, column=1, value="UMAG")
+    ws_detalle.cell(row=2, column=2, value="Consumibles")
+    ws_detalle.cell(row=2, column=3, value="Materiales")
+    ws_detalle.cell(row=2, column=4, value=250_000)
+    ws_detalle.cell(row=3, column=1, value="UMAG")
+    ws_detalle.cell(row=3, column=2, value="Equipos-Herramientas")
+    ws_detalle.cell(row=3, column=3, value="Equipos")
+    ws_detalle.cell(row=3, column=4, value=750_000)
+    ws_detalle.cell(row=4, column=1, value="CFLI")
+    ws_detalle.cell(row=4, column=2, value="Combustible")
+    ws_detalle.cell(row=4, column=3, value="Otros")
+    ws_detalle.cell(row=4, column=4, value=999_999)  # otro proyecto, no debe mezclarse
+
+    detalle = bv.leer_detalle_subcategorias(ws_detalle)
+
+    assert len(detalle["UMAG"]) == 2
+    assert detalle["UMAG"][0] == {
+        "subcategoria": "Consumibles", "bucket": "Materiales", "total": 250_000, "pct": 0.25,
+    }
+    assert detalle["UMAG"][1]["pct"] == 0.75
+    assert len(detalle["CFLI"]) == 1
 
 
 def test_calcular_kpis_proyecto_fechas_son_json_serializables():
@@ -524,3 +658,26 @@ def test_extraer_datos_saneados_incluye_categorias_y_reportes_pdf(tmp_path, monk
         "tags_proyectos": ["UMAG"],
     }]
     assert "proyecto:UMAG" in data["reportes_pdf"]
+
+
+def test_extraer_datos_saneados_incluye_peso_cartera_y_detalle_subcategorias(tmp_path):
+    ruta_excel = tmp_path / "Análisis de Proyectos.xlsx"
+    wb = af.asegurar_estructura_workbook(ruta_excel)
+    ws = wb[af.HOJA_PROYECTOS]
+    _fila_proyecto_completa(ws, 2, **{"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG"})
+    _fila_proyecto_completa(ws, 3, **{
+        "TAG proyecto": "CFLI", "Nombre del proyecto": "Cesfam Limache",
+        "Monto de Venta (sin IVA)": 3_000_000,
+    })
+    ws_detalle = wb[af.HOJA_DETALLE_COSTOS_REALES]
+    _fila_detalle(ws_detalle, 2, "UMAG", "Materiales", 250_000)
+    wb.save(ruta_excel)
+
+    data = bv.extraer_datos_saneados(ruta_excel)
+
+    por_tag = {p["tag"]: p for p in data["proyectos"]}
+    assert por_tag["UMAG"]["peso_cartera_pct"] == 0.25  # 1_000_000 / (1_000_000 + 3_000_000)
+    assert por_tag["UMAG"]["detalle_subcategorias"] == [
+        {"subcategoria": "Materiales", "bucket": "Materiales", "total": 250_000, "pct": 1.0},
+    ]
+    assert por_tag["CFLI"]["detalle_subcategorias"] == []  # sin filas en 'Detalle Costos Reales'

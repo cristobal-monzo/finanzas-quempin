@@ -283,7 +283,12 @@ def reajustar_item(item, uf_hoy, cache_uf):
     """Reajusta un item de cargar_items_detalle a la UF de hoy. Devuelve el
     dict de compra reajustada, o None si no se pudo obtener la UF de la
     fecha de compra (UFNoDisponibleError) -- el llamador decide como contar
-    ese caso (ver consultar_item y reajustar_todos)."""
+    ese caso (ver consultar_item y reajustar_todos). 'fecha' queda en ISO
+    'YYYY-MM-DD' a proposito (no DD-MM-AAAA): el visualizador web filtra/
+    compara este campo como string (item.fecha < desde en template.html),
+    lo que solo funciona en orden cronologico correcto en formato ISO;
+    cada consumidor (driver.py, visualizador) formatea a DD-MM-AAAA solo
+    para mostrarlo, nunca se reformatea en el origen."""
     try:
         uf_compra = obtener_valor_uf(item["fecha"], cache_uf)
     except UFNoDisponibleError:

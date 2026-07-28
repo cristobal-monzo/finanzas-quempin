@@ -27,9 +27,11 @@ Centro de Costos ya está formalizado como skill de Claude Code en
 La carpeta del skill también tiene dos archivos que complementan a
 `SKILL.md` (que documenta solo el procedimiento estable):
 - [MEMORY.md](.claude/skills/Registro_Centro_de_Costos/MEMORY.md) —
-  preferencias (colores, formato), datos importantes de facturas/
-  proveedores, historial de corridas reales y pendientes que dependen del
-  usuario.
+  reglas de negocio vigentes, datos importantes de facturas/proveedores y
+  pendientes que dependen del usuario (el historial fechado de corridas
+  reales se separó a
+  [HISTORIAL.md](.claude/skills/Registro_Centro_de_Costos/HISTORIAL.md) el
+  2026-07-27, para que MEMORY.md no crezca sin límite).
 - [ERRORES.md](.claude/skills/Registro_Centro_de_Costos/ERRORES.md) —
   historial de errores del pipeline (celdas rojas, inconsistencias) y
   bitácora de correcciones manuales hechas directo en el Excel (pensada
@@ -67,27 +69,25 @@ esta skill hay que correr `python driver.py reflejar`
 comunicación - Centro de Costos 1/` — a diferencia de `run`, `corregir`/
 `desglosar` no hacen ese reflejo por sí solos.
 
+### Skill: `/Actualizar_CC`
+
+Agregada 2026-07-27 en
+[.claude/skills/Actualizar_CC/](.claude/skills/Actualizar_CC/SKILL.md).
+Envoltorio sobre `/Registro_Centro_de_Costos`: corre su flujo `status`→`run`
+y, si se registraron documentos nuevos (o el usuario pide forzarlo),
+**publica** el `Visualizador Web/build/index.html` regenerado como el mismo
+Claude Artifact de siempre (link fijo en
+[MEMORY.md del registrador](.claude/skills/Registro_Centro_de_Costos/MEMORY.md)
+§ Visualizador web). Cierra el paso manual que quedaba pendiente tras cada
+`run`: el registrador ya regenera el HTML en disco solo (PASO 12c), pero
+subirlo como Artifact no era automático.
+
 ### Historia: reconstrucción de julio 2026
 
-Hasta el 2026-07-15 existió un pipeline más avanzado (`build.py`, `rename.py`,
-`detectar_duplicados.py`, `verify.py`, `revisar_ediciones.py`) que corría en una
-carpeta separada (`OneDrive - QUEMPIN SPA/Plantillas/`, fuera de este módulo) y
-producía una estructura de Excel mucho más rica que la que generaba entonces
-`auditor_centro_costos.py` aquí. Esos scripts se perdieron (no quedó copia en
-disco) antes de integrarse a este módulo; solo sobrevivió su resultado: el
-`Centro de Costos.xlsx` con la estructura rica, más un respaldo de las fotos
-originales.
-
-El 2026-07-16 se reconstruyó `auditor_centro_costos.py` desde cero, leyendo esa
-estructura rica directamente del `.xlsx` sobreviviente, para que el módulo
-pueda seguir alimentándola sin depender del pipeline perdido. Esta carpeta
-(`Finanzas QUEMPIN/Centro de Costos/`) quedó como la ubicación canónica única
-de aquí en adelante — `Sitio de comunicación - Centro de costos` y `Plantillas/`
-quedaron con copias desactualizadas/parciales, no se les debe escribir más.
-Ver "Estructura de `Centro de Costos.xlsx`" más abajo para el detalle de la
-estructura reconstruida, y `reconciliacion_archivos.json` para el mapeo de
-bootstrap que permitió reconocer los 24 documentos ya existentes sin volver a
-registrarlos.
+Movida a [HISTORIA.md](HISTORIA.md) (2026-07-27) — relato de cómo se perdió
+el pipeline anterior (`build.py`/`rename.py`/etc.) y cómo se reconstruyó
+`auditor_centro_costos.py` leyendo el `.xlsx` sobreviviente. Solo hace falta
+abrirlo para entender ese origen, no para trabajar en el módulo día a día.
 
 ## Estructura del repositorio
 
@@ -149,7 +149,7 @@ Excel actualizado sin necesitar acceso al PC del usuario.
   comunicación - Centro de Costos 1/Facturas y Boletas/` (antes apuntaba a la
   `Facturas y Boletas/` local). Es el único cambio de fuente: inventario,
   registro de documentos nuevos, y renombrado/conversión de fotos
-  (`<N° Ref.>_<TagProveedor>_<Fecha ISO>.<ext>`, HEIC→JPG) ahora operan sobre
+  (`<N° Ref.>_<TagProveedor>_<Fecha DD-MM-AAAA>.<ext>`, HEIC→JPG) ahora operan sobre
   esa carpeta compartida, no la local.
 - La `Facturas y Boletas/` local queda como **legado/histórico**: ya no la
   lee el script. No se borra (evita perder los documentos que ya tenía), pero
@@ -220,7 +220,7 @@ el documento completo en 1 ítem cuando alguna línea sí se puede leer (pedido
   "archivo": "IMG_9999.HEIC",
   "proyecto": "UMAG",
   "tipo_proyecto": "I+D+i",
-  "fecha": "15/07/2026",
+  "fecha": "15-07-2026",
   "n_documento": "12345",
   "tipo_documento": "Factura",
   "proveedor": "Proveedor SpA",
@@ -234,6 +234,7 @@ el documento completo en 1 ítem cuando alguna línea sí se puede leer (pedido
 }
 ```
 
+- **`"fecha"` va en formato `DD-MM-AAAA`** (guiones, orden día-mes-año — pedido del usuario 2026-07-28, reemplaza el `DD/MM/AAAA` con barras usado antes). El parser (`escribir_fila_master`/`fecha_ddmmaaaa_desde_valor` en `auditor_centro_costos.py`) sigue aceptando `DD/MM/AAAA` como fallback por si algo lo escribe a la antigua, pero las entradas nuevas deben usar guiones.
 - `"iva"` es opcional: si se omite, se calcula 19% del total sin IVA (suma de ítems) para Factura/Guía de Despacho, o 0 para el resto.
 - `"tipo_proyecto"` es una clasificación a nivel proyecto (ej. `I+D+i`, `Mantenimiento`, `Gastos Generales`), constante para ese proyecto salvo que cambie deliberadamente.
 - `"categoria"` es a nivel documento; `"categoria_item"` es a nivel ítem — pueden diferir si un documento mezcla categorías.
@@ -252,7 +253,7 @@ pipeline anterior perdido (ver "Historia" más arriba). Tres tipos de hoja:
 - **`N° Ref.`** es la clave: `<PREFIJO>-<secuencia>` (ej. `UMAG-001`, `CFLI-002`), con prefijo fijo por proyecto en `PREFIJOS_PROYECTO` (`Sistema/auditor_centro_costos.py`).
 - Cada proyecto tiene un color asignado de una paleta fija de 8 tonos pasteles (antes 12, varios casi idénticos entre sí — corregido 2026-07-17), reutilizado de forma determinista (se lee de `Master` antes de asignar uno nuevo). El color de fila y el `tabColor` de la hoja de cada proyecto se mantienen sincronizados por relleno directo de celda, sin formato condicional de Excel de por medio (una regla heredada de un pipeline anterior tapaba esa sincronía hasta 2026-07-17 — ver historial en `Formato Centro de Costos.md`).
 - Convención de colores de fuente (documentada también en la leyenda al pie de cada hoja): cursiva = editable a mano, rojo = requiere revisión, azul marino = corregido a mano (no se sobreescribe). Códigos hex exactos (fuente y paleta por proyecto) y detalle completo del formato real (columnas, anchos, filtros, validaciones, y dónde el formato heredado del pipeline perdido no coincide con lo que hace hoy el script) en [Formato Centro de Costos.md](Sistema/Formato%20Centro%20de%20Costos.md) (el patrón genérico reutilizable por futuros módulos está en [Formato.md](Sistema/Formato.md)). El recoloreo rojo→azul marino oscuro al corregir algo a mano está implementado desde 2026-07-17, **con confirmación explícita en dos pasos** (no automático al detectar): `run` compara el backup más reciente contra el estado actual, detecta qué celda roja cambió de valor, y la deja "Pendiente" en `Sistema/correcciones_manuales.json` + la tabla de [ERRORES.md](.claude/skills/Registro_Centro_de_Costos/ERRORES.md) (no toca el Excel todavía); `python driver.py confirmar --todos` (o con N° Ref puntuales) recién ahí recolorea la fuente a azul marino y propaga el valor corregido a `Detalle` si el campo se repite ahí (hoy: N° Documento). Ver el detalle del flujo en ERRORES.md.
-- **Sí hay renombrado de fotos y conversión HEIC→JPG** (agregado el 2026-07-16, después de la reconstrucción inicial): cada `run` compara el nombre físico actual de cada documento contra el esperado (`<N° Ref.>_<TagProveedor>_<Fecha ISO>.<ext>`, `.heic`→`.jpg`) y renombra/convierte en disco si difiere, actualizando "Archivo origen" en `Master` — cubre documentos nuevos y, retroactivamente, los ya registrados (excepción explícita a la regla de oro, igual que `migrar_columna_proveedor()`). `status` muestra un preview de qué se renombraría sin tocar disco. `resolver_ruta_actual()` prueba primero "Archivo origen"; si esa ruta no existe en disco (caso de los 24 documentos del bootstrap, cuyo "Archivo origen" quedó con el nombre que les daba el pipeline perdido) cae al mapeo de `reconciliacion_archivos.json`, que apunta al archivo físico real — corregido 2026-07-17, ver `ERRORES.md`. Los 24 documentos del bootstrap ya se renombraron con este fix (22 UMAG + 1 Cesfam Limache + 1 Gastos Generales) a la convención `<N° Ref.>_<TagProveedor>_<Fecha ISO>`.
+- **Sí hay renombrado de fotos y conversión HEIC→JPG** (agregado el 2026-07-16, después de la reconstrucción inicial): cada `run` compara el nombre físico actual de cada documento contra el esperado (`<N° Ref.>_<TagProveedor>_<Fecha DD-MM-AAAA>.<ext>`, `.heic`→`.jpg`) y renombra/convierte en disco si difiere, actualizando "Archivo origen" en `Master` — cubre documentos nuevos y, retroactivamente, los ya registrados (excepción explícita a la regla de oro, igual que `migrar_columna_proveedor()`). `status` muestra un preview de qué se renombraría sin tocar disco. `resolver_ruta_actual()` prueba primero "Archivo origen"; si esa ruta no existe en disco (caso de los 24 documentos del bootstrap, cuyo "Archivo origen" quedó con el nombre que les daba el pipeline perdido) cae al mapeo de `reconciliacion_archivos.json`, que apunta al archivo físico real — corregido 2026-07-17, ver `ERRORES.md`. Los 24 documentos del bootstrap ya se renombraron con este fix (22 UMAG + 1 Cesfam Limache + 1 Gastos Generales) a la convención `<N° Ref.>_<TagProveedor>_<Fecha>`. **Desde 2026-07-28 el sufijo de fecha del nombre de archivo pasó de `<Fecha ISO>` (`YYYY-MM-DD`) a `<Fecha DD-MM-AAAA>`** (pedido del usuario) — el primer `run` tras el cambio renombra en disco todos los documentos que aún tengan el sufijo viejo, igual que cualquier otra discrepancia de nombre.
 
 ### Archivos auxiliares
 

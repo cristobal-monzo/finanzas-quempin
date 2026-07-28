@@ -47,9 +47,9 @@ def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None):
     reajustados, sin_uf_count = ch.reajustar_todos(items, uf_hoy)
 
     return {
-        "generado": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
         "uf_hoy": uf_hoy,
-        "uf_fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "uf_fecha": datetime.now().strftime("%d-%m-%Y %H:%M"),
         "excluidos_count": excluidos_count,
         "sin_uf_count": sin_uf_count,
         "items": reajustados,

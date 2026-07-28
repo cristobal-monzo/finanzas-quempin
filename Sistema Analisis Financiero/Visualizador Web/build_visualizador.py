@@ -102,6 +102,47 @@ def sumar_costos_reales_por_bucket(ws_detalle, tag: str) -> dict:
     return sumas
 
 
+def leer_detalle_subcategorias(ws_detalle) -> dict[str, list[dict]]:
+    """Agrupa 'Detalle Costos Reales' por TAG con el detalle de subcategoria
+    -- recomputa '% del Total Real del proyecto' en Python en vez de confiar
+    en el valor ya escrito en la columna E, mismo principio que
+    sumar_costos_reales_por_bucket (nunca fiarse de un valor cacheado del
+    Excel, aunque acá sea un literal y no una fórmula)."""
+    filas_por_tag: dict[str, list[dict]] = {}
+    for fila in range(2, ws_detalle.max_row + 1):
+        tag = ws_detalle.cell(row=fila, column=1).value
+        total = ws_detalle.cell(row=fila, column=4).value
+        if not tag or total is None:
+            continue
+        filas_por_tag.setdefault(tag, []).append({
+            "subcategoria": ws_detalle.cell(row=fila, column=2).value,
+            "bucket": ws_detalle.cell(row=fila, column=3).value,
+            "total": total,
+        })
+
+    resultado: dict[str, list[dict]] = {}
+    for tag, filas in filas_por_tag.items():
+        total_proyecto = sum(f["total"] for f in filas)
+        resultado[tag] = [
+            dict(f, pct=(f["total"] / total_proyecto) if total_proyecto else None)
+            for f in filas
+        ]
+    return resultado
+
+
+def calcular_peso_cartera(proyectos: list[dict]) -> dict[str, float]:
+    """Peso del proyecto en la cartera de ventas (%) -- venta del proyecto
+    sobre la suma de Monto de Venta de TODOS los proyectos válidos (TAG y
+    Nombre presentes), no solo los completos, igual que la fórmula Excel
+    '=Proyectos!venta/SUM(Proyectos!$venta:$venta)' que suma toda la
+    columna sin filtrar por Estado ni completitud."""
+    total_venta = sum(p["monto_venta"] for p in proyectos if p["monto_venta"] is not None)
+    return {
+        p["tag"]: (p["monto_venta"] / total_venta if total_venta and p["monto_venta"] is not None else 0.0)
+        for p in proyectos
+    }
+
+
 def _round_excel(valor: float) -> int:
     """round-half-away-from-zero, igual que ROUND() de Excel -- round() nativo
     de Python usa banker's rounding (redondeo al par mas cercano) y puede
@@ -114,20 +155,68 @@ def _round_excel(valor: float) -> int:
 
 def _fecha_str(valor):
     """Convierte un valor de celda de fecha (datetime, o ya string, o None)
-    a 'YYYY-MM-DD' o None -- nunca deja pasar un datetime crudo hacia el
-    JSON del snapshot (json.dump en build() no usa default=str, un datetime
-    sin convertir explota con TypeError al escribir data/analisis-
-    financiero.json)."""
+    a 'DD-MM-AAAA' (pedido del usuario 2026-07-28, antes 'YYYY-MM-DD') o
+    None -- nunca deja pasar un datetime crudo hacia el JSON del snapshot
+    (json.dump en build() no usa default=str, un datetime sin convertir
+    explota con TypeError al escribir data/analisis-financiero.json). Estos
+    valores solo se usan para mostrarse en texto en el panel de detalle del
+    visualizador (template.html), nunca para ordenar/filtrar/agrupar --
+    a diferencia del 'fecha' de Centro de Costos, no hace falta mantener un
+    formato ISO ordenable en paralelo."""
     if valor is None:
         return None
     if hasattr(valor, "strftime"):
-        return valor.strftime("%Y-%m-%d")
+        return valor.strftime("%d-%m-%Y")
     return str(valor)
+
+
+def _kpis_por_categoria(p: dict, costos_reales: dict, total_real: float) -> dict:
+    """Recomputa, por categoria (Materiales/Equipos/MO/Otros), las mismas 4
+    formulas que escribe asegurar_hoja_indicadores (columnas D-U): Costo %
+    de venta, Estructura % (mix, suma 100% del gasto real), Desviacion % y
+    Ahorro/Sobrecosto en $. Guards de division por cero replican el patron
+    ya usado en calcular_kpis_proyecto (venta/total_real/proyectado en 0 no
+    debe explotar, solo dar 0)."""
+    reales = {
+        "materiales": costos_reales["Materiales"], "equipos": costos_reales["Equipos"],
+        "mo": p["mo_real"], "otros": costos_reales["Otros"],
+    }
+    proyectados = {
+        "materiales": p["materiales_proy"], "equipos": p["equipos_proy"],
+        "mo": p["mo_proy"], "otros": p["otros_proy"],
+    }
+    venta = p["monto_venta"]
+
+    costo_pct_venta = {k: (v / venta if venta else 0.0) for k, v in reales.items()}
+    estructura_pct = {k: (v / total_real if total_real else 0.0) for k, v in reales.items()}
+    desviacion_pct_categoria = {
+        k: (reales[k] / proyectados[k] - 1) if proyectados[k] else 0.0 for k in reales
+    }
+    ahorro_sobrecosto = {k: proyectados[k] - reales[k] for k in reales}
+
+    return {
+        "costo_pct_venta": costo_pct_venta,
+        "estructura_pct": estructura_pct,
+        "desviacion_pct_categoria": desviacion_pct_categoria,
+        "ahorro_sobrecosto": ahorro_sobrecosto,
+    }
+
+
+def _margen_por_dia(p: dict, margen_real: float):
+    """IF(Fecha de cierre vacia, "", margen_real/MAX(1, dias)) -- None si
+    falta Fecha de inicio o Fecha de cierre (proyecto "en desarrollo"),
+    mismo guard que la formula de Excel en asegurar_hoja_indicadores."""
+    fecha_inicio, fecha_cierre = p["fecha_inicio"], p["fecha_cierre"]
+    if fecha_inicio is None or fecha_cierre is None:
+        return None
+    dias = (fecha_cierre - fecha_inicio).days
+    return margen_real / max(1, dias)
 
 
 def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     """Recomputa, en Python, las mismas formulas que asegurar_formulas_
-    proyectos/_formula_nota/_formula_evaluacion escriben en el Excel."""
+    proyectos/_formula_nota/_formula_evaluacion/asegurar_hoja_indicadores
+    escriben en el Excel."""
     total_proyectado = p["materiales_proy"] + p["equipos_proy"] + p["mo_proy"] + p["otros_proy"]
     total_real = costos_reales["Materiales"] + costos_reales["Equipos"] + costos_reales["Otros"] + p["mo_real"]
     margen_real = p["monto_venta"] - total_real
@@ -150,7 +239,7 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     else:
         evaluacion = "Requiere atención"
 
-    return {
+    resultado = {
         "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "estado": p["estado"],
         "fecha_inicio": _fecha_str(p["fecha_inicio"]), "fecha_cierre": _fecha_str(p["fecha_cierre"]),
         "categoria": p["categoria"],
@@ -165,7 +254,11 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
             "materiales": costos_reales["Materiales"], "equipos": costos_reales["Equipos"],
             "mo": p["mo_real"], "otros": costos_reales["Otros"],
         },
+        "ahorro_sobrecosto_total": total_proyectado - total_real,
+        "margen_por_dia": _margen_por_dia(p, margen_real),
     }
+    resultado.update(_kpis_por_categoria(p, costos_reales, total_real))
+    return resultado
 
 
 def percentil_inclusivo(valores: list[float], p: float) -> float:
@@ -286,13 +379,18 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
 
     proyectos = leer_proyectos(ws_proyectos)
     proyectos_por_tag = {p["tag"]: p for p in proyectos}
+    peso_cartera_por_tag = calcular_peso_cartera(proyectos)
+    detalle_subcategorias_por_tag = leer_detalle_subcategorias(ws_detalle)
 
     completos = []
     pendientes = []
     for p in proyectos:
         if es_proyecto_completo(p):
             costos_reales = sumar_costos_reales_por_bucket(ws_detalle, p["tag"])
-            completos.append(calcular_kpis_proyecto(p, costos_reales))
+            kpi = calcular_kpis_proyecto(p, costos_reales)
+            kpi["peso_cartera_pct"] = peso_cartera_por_tag.get(p["tag"], 0.0)
+            kpi["detalle_subcategorias"] = detalle_subcategorias_por_tag.get(p["tag"], [])
+            completos.append(kpi)
         else:
             pendientes.append({
                 "tag": p["tag"],
@@ -314,7 +412,7 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
 
     n_completos = len(completos)
     return {
-        "generado": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
         "kpis_proyectos": {
             "n_completos": n_completos,
             "margen_real_total": sum(k["margen_real"] for k in completos),

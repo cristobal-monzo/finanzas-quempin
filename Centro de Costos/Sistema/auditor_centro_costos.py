@@ -35,7 +35,6 @@ from xml.etree import ElementTree as ET
 
 import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
-from openpyxl.styles.numbers import BUILTIN_FORMATS
 from openpyxl.utils import get_column_letter, column_index_from_string
 
 # ── CONFIGURACIÓN ────────────────────────────────────────────────────────────
@@ -55,6 +54,7 @@ RUTA_RECONCILIACION = RAIZ / "reconciliacion_archivos.json"
 RUTA_BACKUPS = RAIZ_MODULO / "Excel" / "Respaldos"
 RUTA_CORRECCIONES = RAIZ / "correcciones_manuales.json"
 RUTA_ERRORES_MD = RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costos" / "ERRORES.md"
+RUTA_LOGS = RAIZ / "logs"
 RAIZ_VISUALIZADOR_WEB = RAIZ_MODULO / "Visualizador Web"
 RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Sistema Analisis Financiero"
 
@@ -209,11 +209,9 @@ AZUL_MARINO_FONT = Font(name="Calibri", size=11, color=NAVY_OSCURO)
 # columna correspondiente de Detalle (una fila por cada item del N Ref).
 CAMPOS_PROPAGADOS_A_DETALLE = {5: 4}  # N Documento: Master col E -> Detalle col D
 MONEY_FORMAT = '"$"#,##0'
-# numFmtId 14 = "Fecha corta" nativo de Excel (Formato de celdas > Fecha > Fecha
-# corta): se adapta a la configuracion regional de quien abre el archivo, en vez
-# de fijar un orden de dia/mes/año como hacia el string "DD/MM/YYYY" anterior
-# -- pedido del usuario 2026-07-17.
-DATE_FORMAT = BUILTIN_FORMATS[14]
+# Formato fijo DD-MM-AAAA -- pedido del usuario 2026-07-28, reemplaza el numFmtId 14
+# ("Fecha corta" nativo, adaptable a la configuracion regional) usado desde 2026-07-17.
+DATE_FORMAT = "DD-MM-YYYY"
 THIN_BORDER = Border(
     left=Side(style="thin"), right=Side(style="thin"),
     top=Side(style="thin"), bottom=Side(style="thin"),
@@ -1091,14 +1089,14 @@ def migrar_paleta_colores(wb, ws_master, ws_detalle):
 
 
 def migrar_formato_fecha_corta(ws_master):
-    """Migracion de formato (idempotente, 2026-07-17): normaliza la columna Fecha
-    (D) de TODAS las filas ya escritas de Master al formato nativo 'Fecha corta'
-    de Excel (DATE_FORMAT = numFmtId 14), no solo las filas nuevas -- pedido del
-    usuario. Es formato, no contenido: no viola la regla de oro de no tocar filas
-    de datos ya escritas (mismo principio que reordenar_por_fecha, que tambien
-    toca solo donde/como se ve una fila, nunca su valor). Las hojas de proyecto
-    no necesitan esta migracion porque se regeneran completas en cada corrida
-    (ver regenerar_hoja_proyecto)."""
+    """Migracion de formato (idempotente, 2026-07-17, reformato fijo a DD-MM-AAAA
+    2026-07-28): normaliza la columna Fecha (D) de TODAS las filas ya escritas de
+    Master al DATE_FORMAT vigente, no solo las filas nuevas -- pedido del usuario.
+    Es formato, no contenido: no viola la regla de oro de no tocar filas de datos
+    ya escritas (mismo principio que reordenar_por_fecha, que tambien toca solo
+    donde/como se ve una fila, nunca su valor). Las hojas de proyecto no necesitan
+    esta migracion porque se regeneran completas en cada corrida (ver
+    regenerar_hoja_proyecto)."""
     ultima = ultima_fila_datos(ws_master)
     for r in range(2, ultima + 1):
         cell = ws_master.cell(row=r, column=4)
@@ -1431,10 +1429,13 @@ def escribir_fila_master(ws_master, fila, n_ref, dato, info_archivo, color):
     total_sin_iva = total_sin_iva_items(dato["items"])
     iva = calcular_iva_documento(dato, total_sin_iva)
 
-    try:
-        fecha_val = datetime.strptime(dato["fecha"], "%d/%m/%Y")
-    except (ValueError, KeyError):
-        fecha_val = dato.get("fecha", "")
+    fecha_val = dato.get("fecha", "")
+    for formato in ("%d-%m-%Y", "%d/%m/%Y"):
+        try:
+            fecha_val = datetime.strptime(dato["fecha"], formato)
+            break
+        except (ValueError, KeyError):
+            continue
 
     for c in range(1, len(ENCABEZADOS_MASTER) + 1):
         cell = ws_master.cell(row=fila, column=c)
@@ -1746,26 +1747,29 @@ def sanitizar_nombre(texto):
     return re.sub(r"_+", "_", limpio)
 
 
-def fecha_iso_desde_valor(valor):
-    """Convierte Master.Fecha (datetime/date, o string 'dd/mm/yyyy') a 'yyyy-mm-dd'.
+def fecha_ddmmaaaa_desde_valor(valor):
+    """Convierte Master.Fecha (datetime/date, o string 'dd/mm/yyyy' o 'dd-mm-yyyy')
+    a 'dd-mm-yyyy' (pedido del usuario 2026-07-28, reemplaza el 'yyyy-mm-dd' anterior).
     Si no se puede interpretar, sanitiza el valor tal cual para no romper el nombre."""
     if isinstance(valor, datetime):
-        return valor.strftime("%Y-%m-%d")
+        return valor.strftime("%d-%m-%Y")
     if hasattr(valor, "strftime"):
-        return valor.strftime("%Y-%m-%d")
+        return valor.strftime("%d-%m-%Y")
     if isinstance(valor, str):
-        try:
-            return datetime.strptime(valor, "%d/%m/%Y").strftime("%Y-%m-%d")
-        except ValueError:
-            return sanitizar_nombre(valor)
+        for formato in ("%d/%m/%Y", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(valor, formato).strftime("%d-%m-%Y")
+            except ValueError:
+                continue
+        return sanitizar_nombre(valor)
     return "sin-fecha"
 
 
 def nombre_esperado_archivo(n_ref, proveedor_tag, fecha_valor, extension):
-    """Nombre de archivo esperado: '<N Ref>_<TagProveedor>_<Fecha ISO><ext>'.
+    """Nombre de archivo esperado: '<N Ref>_<TagProveedor>_<Fecha DD-MM-AAAA><ext>'.
     Los .heic/.HEIC pasan a .jpg (se convierten); el resto conserva su extension."""
     tag = sanitizar_nombre(proveedor_tag or "SinProveedor")
-    fecha = fecha_iso_desde_valor(fecha_valor)
+    fecha = fecha_ddmmaaaa_desde_valor(fecha_valor)
     ext = extension.lower()
     if ext == ".heic":
         ext = ".jpg"
@@ -2064,6 +2068,26 @@ def actualizar_analisis_financiero():
 
 # --- MAIN ---------------------------------------------------------------------
 
+def _resumir_lineas_detalle(lineas, ruta_log, mantener=3):
+    """Escribe el detalle linea por linea en un log en disco y devuelve solo
+    un resumen truncado para la consola -- no cambia ningun dato del Excel,
+    solo cuanto texto se imprime cuando 'run' registra/regenera muchos items
+    de una vez."""
+    if not lineas:
+        return []
+    ruta_log.parent.mkdir(parents=True, exist_ok=True)
+    with open(ruta_log, "a", encoding="utf-8") as f:
+        f.write("\n".join(lineas) + "\n")
+    if len(lineas) <= mantener * 2:
+        return lineas
+    omitidas = len(lineas) - mantener * 2
+    return (
+        lineas[:mantener]
+        + [f"  ... ({omitidas} linea(s) mas, detalle completo en {ruta_log}) ..."]
+        + lineas[-mantener:]
+    )
+
+
 def main():
     import sys
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
@@ -2073,6 +2097,8 @@ def main():
     print("  REGISTRO CENTRO DE COSTOS - QUEMPIN SpA")
     print(f"  Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
+
+    ruta_log_run = RUTA_LOGS / f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
     if not RAIZ_DOCS.exists():
         print(f"ERROR: No existe la carpeta raiz: {RAIZ_DOCS}")
@@ -2167,6 +2193,8 @@ def main():
     limitaciones = []
     alertas_legibilidad = []
     posibles_duplicados = []
+    lineas_registro_ok = []
+    notas_documentos_nuevos = []
 
     print("\n--- PASO 6: Escribir documentos nuevos ---")
     for info in pendientes:
@@ -2197,6 +2225,11 @@ def main():
         n_ref = siguiente_n_ref(dato["proyecto"], max_seq)
         color = colores.get(dato["proyecto"])
 
+        if dato.get("notas"):
+            notas_documentos_nuevos.append({
+                "n_ref": n_ref, "archivo": info["archivo"], "notas": dato["notas"],
+            })
+
         fila_detalle = escribir_items_detalle(ws_detalle, fila_detalle, n_ref, dato, color)
         escribir_fila_master(ws_master, fila_master, n_ref, dato, info, color)
         docs_registrados.add(n_doc_str)
@@ -2204,8 +2237,10 @@ def main():
 
         proyectos_tocados.add(dato["proyecto"])
         registrados_ok += 1
-        print(f"  [OK] {info['proyecto']}\\{info['archivo']} -> {n_ref} "
-              f"(doc {dato['n_documento']}, {len(dato['items'])} item(s))")
+        lineas_registro_ok.append(
+            f"  [OK] {info['proyecto']}\\{info['archivo']} -> {n_ref} "
+            f"(doc {dato['n_documento']}, {len(dato['items'])} item(s))"
+        )
 
         if celda_requiere_revision(n_doc_str):
             alertas_legibilidad.append({
@@ -2213,6 +2248,9 @@ def main():
                 "detalle": "N Documento requiere revision manual.",
             })
         fila_master += 1
+
+    for linea in _resumir_lineas_detalle(lineas_registro_ok, ruta_log_run):
+        print(linea)
 
     print("\n--- PASO 7: Reordenar por fecha (mas reciente arriba) ---")
     reordenar_por_fecha(ws_master, ws_detalle, fila_master, fila_detalle)
@@ -2223,6 +2261,7 @@ def main():
 
     print("\n--- PASO 9: Regenerar hojas de proyecto ---")
     ultima_master = fila_master - 1
+    lineas_hojas_ok = []
     for proyecto in sorted(proyectos_tocados):
         filas_de_este_proyecto = [
             r for r in range(2, ultima_master + 1)
@@ -2231,8 +2270,12 @@ def main():
         if not filas_de_este_proyecto:
             continue
         regenerar_hoja_proyecto(wb, proyecto, filas_de_este_proyecto, colores.get(proyecto))
-        print(f"  [OK] Hoja '{prefijo_para_proyecto(proyecto)}' ({proyecto}) regenerada "
-              f"({len(filas_de_este_proyecto)} documento(s))")
+        lineas_hojas_ok.append(
+            f"  [OK] Hoja '{prefijo_para_proyecto(proyecto)}' ({proyecto}) regenerada "
+            f"({len(filas_de_este_proyecto)} documento(s))"
+        )
+    for linea in _resumir_lineas_detalle(lineas_hojas_ok, ruta_log_run):
+        print(linea)
 
     if excel_esta_bloqueado(RUTA_EXCEL):
         print("\n[ERROR] El archivo esta abierto en Excel (o bloqueado). Cierralo antes de continuar.")
@@ -2327,6 +2370,13 @@ def main():
         for c in correcciones_pendientes:
             print(f"   * {c['n_ref']} / {c['campo']}: '{c['valor_anterior']}' -> '{c['valor_corregido']}'")
         print("   Aplicar con: python driver.py confirmar --todos")
+    else:
+        print("   Sin hallazgos.")
+
+    print("\n7. NOTAS DEL JSON (documentos nuevos de esta corrida)")
+    if notas_documentos_nuevos:
+        for n in notas_documentos_nuevos:
+            print(f"   * {n['n_ref']} ({n['archivo']}): {n['notas']}")
     else:
         print("   Sin hallazgos.")
 
