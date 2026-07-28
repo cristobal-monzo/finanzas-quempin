@@ -979,20 +979,76 @@
     return { categoria: c.categoria, n_proyectos: c.n_proyectos };
   }), 'categoria', 'n_proyectos');
 
+  var categoriaExpandida = null;
+
+  function detalleCategoriaHtml(c) {
+    var pdfKey = 'categoria:' + c.categoria;
+    var pdfBtn = DATA.reportes_pdf[pdfKey]
+      ? '<button type="button" class="pendientes-toggle-btn" data-pdf-key-cat="' + esc(pdfKey) + '">Ver/Descargar PDF</button>'
+      : '<span style="color:var(--text-muted);font-size:12px">Sin reporte generado</span>';
+    var proyectosDeCategoria = PROYECTOS.filter(function (p) { return c.tags_proyectos.indexOf(p.tag) !== -1; });
+    var filas = proyectosDeCategoria.map(function (p) {
+      return '<tr><td>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td class="num">' +
+        formatoCLP(p.margen_real) + '</td><td class="num">' + p.nota + '</td></tr>';
+    }).join('');
+    return '<div class="detail-panel">' +
+      '<div class="detail-grid">' +
+        '<div><div class="dk">N° Proyectos</div><div class="dv">' + c.n_proyectos + '</div></div>' +
+        '<div><div class="dk">Margen Real Total</div><div class="dv accent">' + formatoCLP(c.margen_real_total) + '</div></div>' +
+        '<div><div class="dk">Nota Promedio</div><div class="dv">' + c.nota_promedio.toFixed(1) + '</div></div>' +
+      '</div>' +
+      '<div id="chartProyectosCategoria-' + esc(c.categoria) + '" style="margin-bottom:12px"></div>' +
+      '<table class="viz-itemtable"><thead><tr><th>Proyecto</th><th>Cliente</th><th>Margen Real</th><th>Nota</th></tr></thead>' +
+      '<tbody>' + filas + '</tbody></table>' +
+      pdfBtn +
+      '</div>';
+  }
+
+  function categoriasFiltradas() {
+    var q = document.getElementById('buscarCategorias').value.toLowerCase();
+    return categoriasOrdenadas.filter(function (c) {
+      return c.categoria.toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
   function renderTablaCategorias(items) {
     var tbody = document.getElementById('tablaCategoriasBody');
     tbody.innerHTML = items.map(function (c) {
-      return '<tr><td>' + esc(c.categoria) + '</td><td>' + c.n_proyectos + '</td><td>' +
+      var expandido = categoriaExpandida === c.categoria;
+      var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-categoria="' + esc(c.categoria) + '" tabindex="0">' +
+        '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(c.categoria) + '</td><td>' + c.n_proyectos + '</td><td>' +
         formatoCLP(c.margen_real_total) + '</td><td>' + c.nota_promedio.toFixed(1) + '</td></tr>';
+      if (expandido) {
+        fila += '<tr class="detail-row"><td colspan="4">' + detalleCategoriaHtml(c) + '</td></tr>';
+      }
+      return fila;
     }).join('');
+    if (categoriaExpandida) {
+      var expandidaEnLista = items.filter(function (x) { return x.categoria === categoriaExpandida; })[0];
+      if (expandidaEnLista) {
+        var proyectosDeCategoria = PROYECTOS.filter(function (p) { return expandidaEnLista.tags_proyectos.indexOf(p.tag) !== -1; });
+        renderBarChart('chartProyectosCategoria-' + categoriaExpandida, proyectosDeCategoria.map(function (p) {
+          return { nombre: p.nombre, margen_real: p.margen_real, valueLabel: formatoCLP(p.margen_real) };
+        }), 'nombre', 'margen_real');
+      }
+    }
   }
   renderTablaCategorias(categoriasOrdenadas);
-  document.getElementById('buscarCategorias').addEventListener('input', debounce(function (evt) {
-    var q = evt.target.value.toLowerCase();
-    renderTablaCategorias(categoriasOrdenadas.filter(function (c) {
-      return c.categoria.toLowerCase().indexOf(q) !== -1;
-    }));
+  document.getElementById('buscarCategorias').addEventListener('input', debounce(function () {
+    renderTablaCategorias(categoriasFiltradas());
   }, 150));
+  document.getElementById('tablaCategoriasBody').addEventListener('click', function (evt) {
+    var btnPdf = evt.target.closest('[data-pdf-key-cat]');
+    if (btnPdf) {
+      abrirPdfBlob(DATA.reportes_pdf[btnPdf.getAttribute('data-pdf-key-cat')], btnPdf.getAttribute('data-pdf-key-cat').replace(':', '_') + '.pdf');
+      return;
+    }
+    var row = evt.target.closest('tr.doc-row');
+    if (!row) return;
+    var categoria = row.getAttribute('data-categoria');
+    categoriaExpandida = (categoriaExpandida === categoria) ? null : categoria;
+    renderTablaCategorias(categoriasFiltradas());
+  });
   } // end initApp
 })();
 </script>
