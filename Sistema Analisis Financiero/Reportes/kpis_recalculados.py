@@ -6,12 +6,15 @@ Indicadores/Clientes). openpyxl no cachea el resultado de una fórmula que
 él mismo escribe -- solo el texto "=A1+B1" -- así que leerlas con
 data_only=True devuelve None hasta que un humano abre el archivo en Excel/
 LibreOffice y lo guarda. Este módulo replica exactamente esas mismas
-fórmulas para que los reportes PDF nunca dependan de ese paso manual. Ver
-'analisis_financiero.py' para el original de cada fórmula -- si esa lógica
-cambia, esta debe actualizarse en espejo.
+fórmulas para que los reportes PDF nunca dependan de ese paso manual.
+
+La Nota del Proyecto y la Evaluación NO se replican acá: se importan de
+'analisis_financiero', que es su único dueño. El resto de las fórmulas
+(divisiones, sumas, restas por categoría) sí se replican, pero son
+aritmética directa sin reglas de negocio: si cambian en
+'analisis_financiero.py', hay que actualizarlas acá en espejo.
 """
 
-import math
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -21,8 +24,14 @@ RAIZ_SISTEMA = RAIZ_REPORTES.parent / "Sistema"
 if str(RAIZ_SISTEMA) not in sys.path:
     sys.path.insert(0, str(RAIZ_SISTEMA))
 
-from analisis_financiero import (  # noqa: E402
-    MARGEN_OBJETIVO_NOTA, PESO_DESVIACION_NOTA, PESO_RENTABILIDAD_NOTA,
+# La Nota/Evaluacion NO se recalculan aca: se importan de analisis_financiero,
+# que es el unico dueño de esa regla (define a la vez la formula de Excel y su
+# equivalente Python). Duplicarla fue el origen de una divergencia real -- ver
+# la nota en analisis_financiero.py, seccion "NOTA / EVALUACION".
+from analisis_financiero import (  # noqa: E402,F401
+    # _redondear_excel se re-exporta aunque este modulo ya no lo llame
+    # directamente: es parte de la superficie publica que sus tests ejercitan.
+    _redondear_excel, calcular_nota, clasificar_evaluacion,
 )
 
 
@@ -44,14 +53,6 @@ def _restar(a, b):
     if a is None or b is None:
         return None
     return a - b
-
-
-def _redondear_excel(x: float) -> int:
-    """Excel ROUND redondea 'half away from zero', NO 'half to even' como
-    el round() nativo de Python (round(0.5)==0, round(2.5)==2). Los
-    valores que redondeamos con esto (Nota del Proyecto) son siempre no
-    negativos."""
-    return math.floor(x + 0.5) if x >= 0 else math.ceil(x - 0.5)
 
 
 def _a_fecha(valor):
@@ -120,42 +121,40 @@ def recalcular_proyecto(proyecto: dict, costos_reales: dict[str, float]) -> tupl
     })
 
     margen_neto = _dividir(margen_real, venta)
-    rentabilidad_costo = _dividir(margen_real, total_real)
 
     def _desviacion_bucket(real, proyectado):
         d = _dividir(real, proyectado)
         return None if d is None else d - 1
 
-    nota = None
-    evaluacion = None
-    if margen_neto is not None and desviacion_total is not None:
-        score_margen = min(100, max(0, (margen_neto / MARGEN_OBJETIVO_NOTA) * 100))
-        score_desviacion = min(100, max(0, 100 - abs(desviacion_total) * 100))
-        nota = _redondear_excel(
-            PESO_RENTABILIDAD_NOTA * score_margen + PESO_DESVIACION_NOTA * score_desviacion
-        )
-        evaluacion = (
-            "Excelente" if nota >= 85 else
-            "Bueno" if nota >= 70 else
-            "Aprobado" if nota >= 55 else
-            "Requiere atención"
-        )
+    nota = calcular_nota(margen_neto, desviacion_total)
+    evaluacion = clasificar_evaluacion(nota)
 
+    # Playbook depurado 2026-07-28 (ver analisis_financiero.HEADERS_INDICADORES):
+    # se eliminaron "Rentabilidad sobre costo" y las 4 "Productividad"
+    # (redundancias matemáticas de "Margen neto %" y "Costo % de venta"). Se
+    # agregaron: Estructura % del costo real (mix, sobre total_real), Desviación
+    # % Total (mismo valor que Proyectos, expuesto acá también) y
+    # Ahorro/Sobrecosto neto en $ (Proyectado - Real) por categoría y total.
     indicadores = {
-        "Rentabilidad sobre costo": rentabilidad_costo,
         "Margen neto %": margen_neto,
-        "Productividad Materiales": _dividir(venta, mat_r),
-        "Productividad Equipos": _dividir(venta, eq_r),
-        "Productividad MO": _dividir(venta, mo_r),
-        "Productividad Otros": _dividir(venta, otros_r),
         "Costo Materiales % de venta": _dividir(mat_r, venta),
         "Costo Equipos % de venta": _dividir(eq_r, venta),
         "Costo MO % de venta": _dividir(mo_r, venta),
         "Costo Otros % de venta": _dividir(otros_r, venta),
+        "Estructura % Materiales": _dividir(mat_r, total_real),
+        "Estructura % Equipos": _dividir(eq_r, total_real),
+        "Estructura % MO": _dividir(mo_r, total_real),
+        "Estructura % Otros": _dividir(otros_r, total_real),
         "Desviación % Materiales": _desviacion_bucket(mat_r, mat_p),
         "Desviación % Equipos": _desviacion_bucket(eq_r, eq_p),
         "Desviación % MO": _desviacion_bucket(mo_r, mo_p),
         "Desviación % Otros": _desviacion_bucket(otros_r, otros_p),
+        "Desviación % Total": desviacion_total,
+        "Ahorro/Sobrecosto Materiales": _restar(mat_p, mat_r),
+        "Ahorro/Sobrecosto Equipos": _restar(eq_p, eq_r),
+        "Ahorro/Sobrecosto MO": _restar(mo_p, mo_r),
+        "Ahorro/Sobrecosto Otros": _restar(otros_p, otros_r),
+        "Ahorro/Sobrecosto Total": _restar(total_proyectado, total_real),
         "Nota del Proyecto": nota,
         "Evaluación": evaluacion,
     }

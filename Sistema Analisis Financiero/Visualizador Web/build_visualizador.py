@@ -17,7 +17,6 @@ design.md para el diseno completo.
 import base64
 import io
 import json
-import math
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -39,13 +38,19 @@ URL_PLANILLA_PENDIENTE = (
     "IQB005ljfV3VQp6CNg8pSS0tAdjFPmF8jOcQOeU3y0vIaIE?e=kaFVjO"
 )
 
-MARGEN_OBJETIVO_NOTA = af.MARGEN_OBJETIVO_NOTA
-PESO_RENTABILIDAD_NOTA = af.PESO_RENTABILIDAD_NOTA
-PESO_DESVIACION_NOTA = af.PESO_DESVIACION_NOTA
-
-COLUMNAS_MANUALES_COMPLETITUD = (
-    "monto_venta", "materiales_proy", "equipos_proy", "mo_proy", "otros_proy", "mo_real",
-)
+# Clave corta usada en los dicts de este modulo -> encabezado real de la hoja
+# "Proyectos". Permite evaluar la completitud con la regla unica de
+# af.CAMPOS_MANUALES_REQUERIDOS sin renombrar todo el resto del snapshot.
+CLAVE_POR_ENCABEZADO = {
+    "Estado": "estado",
+    "Fecha de inicio": "fecha_inicio",
+    "Monto de Venta (sin IVA)": "monto_venta",
+    "Costos Materiales Proyectados": "materiales_proy",
+    "Costos Equipos Proyectados": "equipos_proy",
+    "Mano de Obra Proyectada": "mo_proy",
+    "Otros Costos Proyectados": "otros_proy",
+    "Mano de Obra Real": "mo_real",
+}
 
 
 def _valor_columna(ws, fila, nombre_columna):
@@ -82,10 +87,10 @@ def leer_proyectos(ws_proyectos) -> list[dict]:
 
 
 def es_proyecto_completo(p: dict) -> bool:
-    """Completo = las 6 columnas de carga manual que alimentan Total Real/
-    Margen/Nota tienen un valor no vacio -- 0 SI cuenta como cargado (un
-    costo real en cero es un dato, no un vacio todavia sin ingresar)."""
-    return all(p[campo] is not None for campo in COLUMNAS_MANUALES_COMPLETITUD)
+    """Aplica la regla unica de completitud (af.CAMPOS_MANUALES_REQUERIDOS),
+    la misma que decide si un proyecto genera reporte PDF. Ver la nota en
+    analisis_financiero.py, seccion "COMPLETITUD DE UN PROYECTO"."""
+    return af.tiene_datos_completos(lambda campo: p.get(CLAVE_POR_ENCABEZADO[campo]))
 
 
 def sumar_costos_reales_por_bucket(ws_detalle, tag: str) -> dict:
@@ -141,16 +146,6 @@ def calcular_peso_cartera(proyectos: list[dict]) -> dict[str, float]:
         p["tag"]: (p["monto_venta"] / total_venta if total_venta and p["monto_venta"] is not None else 0.0)
         for p in proyectos
     }
-
-
-def _round_excel(valor: float) -> int:
-    """round-half-away-from-zero, igual que ROUND() de Excel -- round() nativo
-    de Python usa banker's rounding (redondeo al par mas cercano) y puede
-    dejar la Nota en el bucket de evaluacion equivocado justo en un empate
-    exacto en .5 (ej. 96.5 -> 96 en Python vs 97 en Excel). `nota` siempre es
-    un valor 0-100 (no negativo) tras los MIN/MAX de los scores, asi que
-    floor(x+0.5) alcanza."""
-    return math.floor(valor + 0.5)
 
 
 def _fecha_str(valor):
@@ -222,22 +217,12 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     margen_real = p["monto_venta"] - total_real
     desviacion_pct = (total_real / total_proyectado - 1) if total_proyectado else 0.0
 
-    if p["monto_venta"]:
-        score_margen = min(100, max(0, (margen_real / p["monto_venta"]) / MARGEN_OBJETIVO_NOTA * 100))
-    else:
-        # Venta en 0 es un dato "completo" valido (ver es_proyecto_completo),
-        # pero no hay ratio de margen que calcular contra una venta nula.
-        score_margen = 0
-    score_desviacion = min(100, max(0, 100 - abs(desviacion_pct) * 100))
-    nota = _round_excel(PESO_RENTABILIDAD_NOTA * score_margen + PESO_DESVIACION_NOTA * score_desviacion)
-    if nota >= 85:
-        evaluacion = "Excelente"
-    elif nota >= 70:
-        evaluacion = "Bueno"
-    elif nota >= 55:
-        evaluacion = "Aprobado"
-    else:
-        evaluacion = "Requiere atención"
+    # Venta en 0 es un dato "completo" valido (ver es_proyecto_completo), pero
+    # no hay ratio de margen que calcular contra una venta nula -- 0.0 deja el
+    # componente de rentabilidad en 0 sin propagar None a calcular_nota.
+    margen_neto = (margen_real / p["monto_venta"]) if p["monto_venta"] else 0.0
+    nota = af.calcular_nota(margen_neto, desviacion_pct)
+    evaluacion = af.clasificar_evaluacion(nota)
 
     resultado = {
         "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "estado": p["estado"],

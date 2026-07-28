@@ -8,6 +8,7 @@ financiero-design.md para el diseño completo.
 """
 
 import json
+import math
 import shutil
 import sys
 import unicodedata
@@ -878,6 +879,91 @@ def asegurar_formulas_proyectos(ws_proyectos, filas_validas: list[dict]) -> None
 MARGEN_OBJETIVO_NOTA = 0.25
 PESO_RENTABILIDAD_NOTA = 0.7
 PESO_DESVIACION_NOTA = 0.3
+
+UMBRAL_EXCELENTE, UMBRAL_BUENO, UMBRAL_APROBADO = 85, 70, 55
+
+
+# ── COMPLETITUD DE UN PROYECTO: UNA SOLA DEFINICION ─────────────────────────
+# Un proyecto sin estos campos cargados a mano no recibe KPIs: ni reporte PDF
+# ni fila en el dashboard (aparece como "pendiente de completar"). "Fecha de
+# cierre" queda deliberadamente FUERA -- su ausencia marca al proyecto como
+# "en desarrollo", no como incompleto. "Cliente"/"Categoría" tampoco cuentan:
+# se autocompletan, no son carga del usuario.
+#
+# Hasta el 2026-07-28 esta regla estaba duplicada y los dos consumidores no
+# coincidian: los reportes exigian estos 8 campos, el visualizador solo 6
+# (sin "Estado" ni "Fecha de inicio") y ademas aceptaba la cadena vacia como
+# valor cargado. Resultado: un proyecto podia salir con KPIs completos en el
+# dashboard y a la vez ser rechazado con DatosIncompletosError al pedir su PDF.
+CAMPOS_MANUALES_REQUERIDOS = [
+    "Estado", "Fecha de inicio", "Monto de Venta (sin IVA)",
+    "Costos Materiales Proyectados", "Costos Equipos Proyectados",
+    "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
+]
+
+
+def tiene_datos_completos(valor_de_campo) -> bool:
+    """True si el proyecto tiene los 8 campos manuales cargados.
+    `valor_de_campo` es un callable que recibe el nombre de encabezado de
+    "Proyectos" y devuelve su valor -- asi sirve igual para un dict keyed por
+    encabezado (reportes) que para uno de claves cortas (visualizador), sin
+    que ninguno de los dos tenga que reimplementar la regla.
+
+    0 SI cuenta como cargado (un costo real en cero es un dato, no un vacio);
+    None y la cadena vacia no."""
+    return all(valor_de_campo(campo) not in (None, "") for campo in CAMPOS_MANUALES_REQUERIDOS)
+
+
+# ── NOTA / EVALUACION: UNA SOLA DEFINICION, DOS RENDERIZADOS ────────────────
+# La misma regla de negocio se expresa de dos formas: como formula de Excel
+# (_formula_nota, para que el libro recalcule solo) y como calculo en Python
+# (calcular_nota, para los consumidores que no pueden leer el resultado de una
+# formula -- openpyxl nunca la evalua). Las dos viven pegadas A PROPOSITO:
+# hasta el 2026-07-28 el calculo Python estaba duplicado en dos archivos
+# distintos (Reportes/kpis_recalculados.py y Visualizador Web/
+# build_visualizador.py) y se desincronizaron -- el visualizador siguio usando
+# ABS() despues de que la regla cambio, y el MISMO proyecto mostraba nota 94 en
+# el dashboard y 100 en el Excel/PDF. Si cambias una de las dos funciones de
+# abajo, cambia la otra en el mismo commit; test_contrato_kpis.py falla si no.
+
+
+def _redondear_excel(x: float) -> int:
+    """ROUND() de Excel: 'half away from zero'. El round() nativo de Python
+    usa banker's rounding (round(96.5) == 96), lo que puede dejar la Nota en
+    el bucket de Evaluacion equivocado justo en un empate exacto en .5."""
+    return math.floor(x + 0.5) if x >= 0 else math.ceil(x - 0.5)
+
+
+def calcular_nota(margen_neto: float | None, desviacion_total: float | None) -> int | None:
+    """Equivalente Python exacto de _formula_nota(). None si falta cualquiera
+    de los dos insumos (mismo significado que una celda vacia en Excel).
+
+    El componente de desviacion (30%) usa MAX(0, desviacion), NO ABS():
+    penaliza solo el sobrecosto real (Real > Proyectado). Un proyecto en o
+    bajo presupuesto obtiene el puntaje maximo de ese componente -- el
+    beneficio de haber ahorrado ya esta capturado en el 70% de rentabilidad,
+    asi que castigarlo aca ademas seria doble penalizacion (decision del
+    usuario, 2026-07-28)."""
+    if margen_neto is None or desviacion_total is None:
+        return None
+    score_margen = min(100, max(0, (margen_neto / MARGEN_OBJETIVO_NOTA) * 100))
+    score_desviacion = min(100, max(0, 100 - max(0, desviacion_total) * 100))
+    return _redondear_excel(
+        PESO_RENTABILIDAD_NOTA * score_margen + PESO_DESVIACION_NOTA * score_desviacion
+    )
+
+
+def clasificar_evaluacion(nota: int | None) -> str | None:
+    """Equivalente Python exacto de _formula_evaluacion()."""
+    if nota is None:
+        return None
+    if nota >= UMBRAL_EXCELENTE:
+        return "Excelente"
+    if nota >= UMBRAL_BUENO:
+        return "Bueno"
+    if nota >= UMBRAL_APROBADO:
+        return "Aprobado"
+    return "Requiere atención"
 
 
 def _formula_nota(fila_proyectos: int) -> str:

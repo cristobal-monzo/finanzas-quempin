@@ -1,15 +1,30 @@
 import base64 as _base64
+import importlib.util
 import re
+import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import analisis_financiero as af
-import build_visualizador as bv
+
+# Ver nota en Centro de Costos/Visualizador Web/tests/test_build_visualizador.py:
+# los 3 modulos tienen un "build_visualizador.py" y sys.modules cachea por
+# nombre, asi que hay que cargarlo por ruta bajo un nombre unico.
+_RUTA_BV = Path(__file__).resolve().parent.parent / "build_visualizador.py"
+_spec = importlib.util.spec_from_file_location("build_visualizador_af", _RUTA_BV)
+bv = importlib.util.module_from_spec(_spec)
+sys.modules["build_visualizador_af"] = bv
+_spec.loader.exec_module(bv)
 
 
 def _fila_proyecto_completa(ws, fila, **overrides):
     valores = {
         "TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID",
-        "Estado": "En Proceso", "Monto de Venta (sin IVA)": 1_000_000,
+        # "Estado" y "Fecha de inicio" son parte de la regla de completitud
+        # (af.CAMPOS_MANUALES_REQUERIDOS): sin ellos la fila no cuenta como
+        # completa y el proyecto no recibe KPIs.
+        "Estado": "En Proceso", "Fecha de inicio": datetime(2026, 1, 15),
+        "Monto de Venta (sin IVA)": 1_000_000,
         "Costos Materiales Proyectados": 300_000, "Costos Equipos Proyectados": 200_000,
         "Mano de Obra Proyectada": 200_000, "Otros Costos Proyectados": 100_000,
         "Mano de Obra Real": 350_000,
@@ -27,29 +42,41 @@ def _fila_detalle(ws, fila, tag, bucket, total):
     ws.cell(row=fila, column=4, value=total)
 
 
-def test_es_proyecto_completo_true_cuando_las_6_columnas_tienen_valor():
+def _proyecto_completo_dict(**overrides):
+    """Las 8 columnas de af.CAMPOS_MANUALES_REQUERIDOS, en las claves cortas
+    que usa este módulo."""
     p = {
+        "estado": "Terminado", "fecha_inicio": datetime(2026, 1, 15),
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
     }
-    assert bv.es_proyecto_completo(p) is True
+    p.update(overrides)
+    return p
+
+
+def test_es_proyecto_completo_true_cuando_las_8_columnas_tienen_valor():
+    assert bv.es_proyecto_completo(_proyecto_completo_dict()) is True
 
 
 def test_es_proyecto_completo_false_si_falta_mano_de_obra_real():
-    p = {
-        "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
-        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": None,
-    }
-    assert bv.es_proyecto_completo(p) is False
+    assert bv.es_proyecto_completo(_proyecto_completo_dict(mo_real=None)) is False
+
+
+def test_es_proyecto_completo_false_si_falta_estado_o_fecha_de_inicio():
+    """Ambas entraron a la regla al unificarla con la de los reportes PDF
+    (2026-07-28): antes el dashboard las ignoraba y un proyecto sin Estado
+    salía con KPIs acá pero era rechazado al pedir su PDF."""
+    assert bv.es_proyecto_completo(_proyecto_completo_dict(estado=None)) is False
+    assert bv.es_proyecto_completo(_proyecto_completo_dict(fecha_inicio=None)) is False
+
+
+def test_es_proyecto_completo_false_con_cadena_vacia():
+    assert bv.es_proyecto_completo(_proyecto_completo_dict(estado="")) is False
 
 
 def test_es_proyecto_completo_true_con_costo_en_cero():
     # 0 es un dato cargado, no un vacío -- no debe contar como incompleto.
-    p = {
-        "monto_venta": 1_000_000, "materiales_proy": 0, "equipos_proy": 200_000,
-        "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
-    }
-    assert bv.es_proyecto_completo(p) is True
+    assert bv.es_proyecto_completo(_proyecto_completo_dict(materiales_proy=0)) is True
 
 
 def test_leer_proyectos_salta_filas_sin_tag_o_nombre(tmp_path):
@@ -76,10 +103,17 @@ def test_sumar_costos_reales_por_bucket_agrupa_por_tag_y_bucket(tmp_path):
 
 
 def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
-    # Mismos numeros que documenta el spec (docs/superpowers/specs/2026-07-23-
-    # analisis-financiero-visualizador-web-design.md §2): total_proyectado=800000,
-    # total_real=750000 -> desviacion=-6.25%, margen_real=250000 (25% de venta,
-    # exactamente el objetivo) -> nota=98, "Excelente".
+    # Numeros del spec (docs/superpowers/specs/2026-07-23-analisis-financiero-
+    # visualizador-web-design.md §2): total_proyectado=800000, total_real=750000
+    # -> desviacion=-6.25%, margen_real=250000 (25% de venta, exactamente el
+    # objetivo).
+    #
+    # OJO: ese spec (y este test hasta el 2026-07-28) esperaba nota=98, porque
+    # el visualizador calculaba el componente de control con ABS(desviacion) y
+    # descontaba 6.25 puntos por haber gastado MENOS de lo presupuestado. La
+    # regla vigente usa MAX(0, desviacion): un proyecto bajo presupuesto no se
+    # penaliza, asi que la nota correcta es 100 -- el mismo valor que ya daban
+    # el Excel y el reporte PDF. Ver test_contrato_kpis.py.
     p = {
         "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
@@ -94,7 +128,7 @@ def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
     assert kpis["total_real"] == 750_000
     assert kpis["margen_real"] == 250_000
     assert round(kpis["desviacion_pct"], 4) == -0.0625
-    assert kpis["nota"] == 98
+    assert kpis["nota"] == 100
     assert kpis["evaluacion"] == "Excelente"
 
 

@@ -16,32 +16,24 @@ RAIZ_SISTEMA = RAIZ_REPORTES.parent / "Sistema"
 if str(RAIZ_SISTEMA) not in sys.path:
     sys.path.insert(0, str(RAIZ_SISTEMA))
 
-from analisis_financiero import HOJA_DETALLE_COSTOS_REALES, HOJA_PROYECTOS  # noqa: E402
+from analisis_financiero import (  # noqa: E402
+    HOJA_DETALLE_COSTOS_REALES, HOJA_PROYECTOS, tiene_datos_completos,
+)
 
 from kpis_recalculados import (  # noqa: E402
     calcular_cltv_clientes, costos_reales_por_proyecto, recalcular_proyecto,
 )
-
-# Campos manuales que un proyecto debe tener cargados para generar reporte
-# (spec §6). "Fecha de cierre" queda deliberadamente FUERA -- su ausencia (o
-# una fecha futura) marca al proyecto como "en desarrollo", no incompleto.
-# "Cliente"/"Categoría" tampoco cuentan -- se resuelven automaticamente, no
-# son carga manual del usuario.
-CAMPOS_MANUALES_REQUERIDOS = [
-    "Estado", "Fecha de inicio", "Monto de Venta (sin IVA)",
-    "Costos Materiales Proyectados", "Costos Equipos Proyectados",
-    "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
-]
-
 
 class DatosIncompletosError(ValueError):
     """Un proyecto no tiene todos sus campos manuales requeridos cargados."""
 
 
 def proyecto_tiene_datos_completos(proyecto: dict) -> bool:
-    return all(
-        proyecto.get(campo) not in (None, "") for campo in CAMPOS_MANUALES_REQUERIDOS
-    )
+    """Regla unica compartida con el visualizador web -- ver la nota en
+    analisis_financiero.py, seccion "COMPLETITUD DE UN PROYECTO". Los dicts
+    de este modulo vienen keyed por encabezado, asi que el accesor es un
+    .get() directo."""
+    return tiene_datos_completos(proyecto.get)
 
 
 def proyecto_esta_en_desarrollo(proyecto: dict, hoy: date | None = None) -> bool:
