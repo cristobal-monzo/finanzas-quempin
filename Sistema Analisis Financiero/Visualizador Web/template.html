@@ -49,8 +49,12 @@
        Pantone 021 C para que el texto pequeño cumpla contraste AA (4.5:1)
        sobre fondo claro; ver Iteración 1 del loop de mejora continua. */
     --brand-orange-ink: #b23a00;
-    --status-good:    #0ca30c;
-    --status-warning: #c98500;
+    /* #0ca30c/#c98500 originales dan 3.35:1 / 3.07:1 sobre --surface-card
+       blanco -- bajo el minimo WCAG AA de texto normal (4.5:1). Oscurecidos
+       manteniendo el mismo matiz hasta pasar AA con margen (Iteracion 3 del
+       loop de mejora continua). */
+    --status-good:    #087a08;
+    --status-warning: #8c5900;
     --status-bad:     #d1282e;
   }
   @media (prefers-color-scheme: dark) {
@@ -749,6 +753,10 @@
     return '<span class="status-badge ' + (nivel || 'warn') + '">' + esc(texto) + '</span>';
   }
   function formatoPct(n) { return (n * 100).toFixed(1) + '%'; }
+  function formatoPctDesviacion(n) {
+    var nivel = n <= 0 ? 'sem-good' : (n <= 0.15 ? 'sem-warn' : 'sem-bad');
+    return '<span class="' + nivel + '">' + formatoPct(n) + '</span>';
+  }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -928,7 +936,7 @@
       '<div class="detail-grid">' +
         '<div><div class="dk">Margen Real</div><div class="dv accent">' + formatoCLP(p.margen_real) + '</div></div>' +
         '<div><div class="dk">Margen Proyectado</div><div class="dv">' + formatoCLP(p.monto_venta - p.total_proyectado) + '</div></div>' +
-        '<div><div class="dk">Desviación %</div><div class="dv">' + formatoPct(p.desviacion_pct) + '</div></div>' +
+        '<div><div class="dk">Desviación %</div><div class="dv">' + formatoPctDesviacion(p.desviacion_pct) + '</div></div>' +
         '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + p.nota + ' — ' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</div></div>' +
       '</div>' +
       '<div id="chartComparativo-' + esc(p.tag) + '" style="margin-bottom:12px"></div>' +
@@ -963,7 +971,7 @@
       var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0">' +
         '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + esc(p.estado || '—') +
         '</td><td>' + formatoCLP(p.monto_venta) + '</td><td>' + formatoCLP(p.margen_real) + '</td><td>' +
-        formatoPct(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
+        formatoPctDesviacion(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
       if (expandido) {
         fila += '<tr class="detail-row"><td colspan="8">' + detalleProyectoHtml(p) + '</td></tr>';
       }
