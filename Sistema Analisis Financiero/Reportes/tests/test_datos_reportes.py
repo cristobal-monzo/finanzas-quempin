@@ -41,9 +41,11 @@ def _fila_proyecto_completa(**overrides) -> dict:
 def _filas_detalle(tag: str) -> list[dict]:
     """Detalle Costos Reales 'feliz' para un tag: Materiales=60.000,
     Equipos=70.000, Otros=20.000 -> Total Real=240.000 (+ Mano de Obra Real
-    manual), Margen Real=760.000, Desviación=-40%, Nota=88,
-    Evaluación='Excelente' (ver kpis_recalculados.py para la verificación
-    a mano completa)."""
+    manual), Margen Real=760.000, Desviación=-40% (ahorro, Real<Proyectado),
+    Nota=100 (con el fix 2026-07-28: sin ABS(), un proyecto que ahorra
+    obtiene el puntaje máximo del componente de desviación), Evaluación=
+    'Excelente' (ver kpis_recalculados.py para la verificación a mano
+    completa)."""
     return [
         {"TAG proyecto": tag, "Subcategoría": "Consumibles", "Bucket": "Materiales", "Total sin IVA": 60000},
         {"TAG proyecto": tag, "Subcategoría": "Equipos-Herramientas", "Bucket": "Equipos", "Total sin IVA": 70000},
@@ -82,7 +84,7 @@ def test_paquete_datos_proyecto_incluye_kpis_recalculados_y_en_desarrollo(tmp_pa
     assert paquete["proyecto"]["Margen Real"] == 760000
     assert paquete["proyecto"]["Desviación % (Real vs Proyectado)"] == pytest.approx(-0.4)
     assert paquete["indicadores"]["Margen neto %"] == pytest.approx(0.76)
-    assert paquete["indicadores"]["Nota del Proyecto"] == 88
+    assert paquete["indicadores"]["Nota del Proyecto"] == 100
     assert paquete["indicadores"]["Evaluación"] == "Excelente"
     assert paquete["en_desarrollo"] is True
 

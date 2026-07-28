@@ -11,11 +11,23 @@ import uuid
 COLORES_POR_DEFECTO = ["#ff5100", "#000000", "#98989a", "#54565a"]
 
 
+def formatear_valor(valor: float, decimales: int = 0, sufijo: str = "", moneda: bool = False) -> str:
+    """Formatea un numero con "." como separador de miles y "," como
+    separador decimal (convencion chilena) -- lo opuesto al formato ","/"."
+    que produce el especificador ",.Nf" de Python por defecto. Con
+    `moneda=True` antepone "$" (solo tiene sentido quitarlo para valores no
+    monetarios, ej. porcentajes con `sufijo="%"`)."""
+    texto = f"{valor:,.{decimales}f}"
+    texto = texto.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    prefijo = "$" if moneda else ""
+    return f"{prefijo}{texto}{sufijo}"
+
+
 def grafico_barras_svg(
     etiquetas: list[str], valores: list[float], color: str = "#ff5100",
     colores: list[str] | None = None, opacidades: list[float] | None = None,
     ancho: int = 480, alto: int = 220, ancho_etiqueta: int = 150,
-    margen_valor: int = 76, decimales: int = 0, sufijo: str = "",
+    margen_valor: int = 76, decimales: int = 0, sufijo: str = "", moneda: bool = False,
 ) -> str:
     """Grafico de barras horizontal simple. valores deben ser >= 0.
 
@@ -49,7 +61,7 @@ def grafico_barras_svg(
         opacidad = f' fill-opacity="{opacidades[i]}"' if opacidades is not None else ""
         y = i * alto_barra + alto_barra * 0.15
         ancho_barra = (valor / max_valor) * ancho_disponible
-        texto_valor = f"{valor:,.{decimales}f}{sufijo}"
+        texto_valor = formatear_valor(valor, decimales, sufijo, moneda)
         partes.append(
             f'<text x="0" y="{y + alto_barra * 0.35:.1f}" font-size="11">{etiqueta}</text>'
             f'<rect x="{ancho_etiqueta}" y="{y:.1f}" width="{ancho_barra:.1f}" height="{alto_barra * 0.7:.1f}" fill="{color_barra}"{opacidad}/>'
@@ -62,6 +74,7 @@ def grafico_barras_comparativo_svg(
     categorias: list[str], valores_proyectado: list[float], valores_real: list[float],
     colores: list[str] | None = None, ancho: int = 540, alto_por_categoria: int = 70,
     ancho_etiqueta: int = 130, margen_valor: int = 90, decimales: int = 0, sufijo: str = "",
+    moneda: bool = False,
 ) -> str:
     """Grafico de barras horizontal agrupado por categoria, para comparar
     Proyectado vs Real (ej. costos por categoria de gasto). Reemplaza la
@@ -83,7 +96,23 @@ def grafico_barras_comparativo_svg(
     max_valor = max(max(valores_proyectado), max(valores_real)) or 1.0
     ancho_disponible = ancho - ancho_etiqueta - margen_valor
     alto = alto_por_categoria * len(categorias)
-    alto_barra = alto_por_categoria * 0.28
+    # alto_barra despejado de la geometria vertical de cada grupo (no un
+    # porcentaje fijo de alto_por_categoria) -- con un porcentaje fijo, un
+    # alto_por_categoria mas chico que el default (70) angosta alto_barra
+    # menos de lo necesario y la barra "Real" invade el siguiente grupo
+    # (la linea separadora queda cruzando su texto). ENCABEZADO_OFFSET
+    # (espacio para el nombre de categoria) y GAP_BARRAS (separacion entre
+    # Proyectado y Real) son fijos porque dependen del font-size, no de
+    # alto_por_categoria; MARGEN_INFERIOR deja aire antes de la linea
+    # separadora del siguiente grupo.
+    ENCABEZADO_OFFSET, GAP_BARRAS, MARGEN_INFERIOR = 21, 5, 3
+    alto_barra = (alto_por_categoria - ENCABEZADO_OFFSET - GAP_BARRAS - MARGEN_INFERIOR) / 2
+    if alto_barra <= 0:
+        raise ValueError(
+            f"alto_por_categoria={alto_por_categoria} es muy chico para caber "
+            f"encabezado + 2 barras + separaciones (minimo > "
+            f"{ENCABEZADO_OFFSET + GAP_BARRAS + MARGEN_INFERIOR})"
+        )
 
     prefijo_id = f"hatch{uuid.uuid4().hex[:8]}"
     defs, partes = [], []
@@ -112,22 +141,25 @@ def grafico_barras_comparativo_svg(
             f'<text x="25" y="{y0 + 15:.1f}" font-size="12" font-weight="700">{categoria}</text>'
         )
 
-        y_proy = y0 + 21
+        # x="8" (no "0"): deja el label a la derecha del acento vertical
+        # (x=0, width=3) en vez de encima -- si no, el acento pinta encima
+        # de la primera letra de "Proyectado"/"Real".
+        y_proy = y0 + ENCABEZADO_OFFSET
         ancho_proy = (valores_proyectado[i] / max_valor) * ancho_disponible
-        texto_proy = f"{valores_proyectado[i]:,.{decimales}f}{sufijo}"
+        texto_proy = formatear_valor(valores_proyectado[i], decimales, sufijo, moneda)
         partes.append(
-            f'<text x="0" y="{y_proy + alto_barra * 0.7:.1f}" font-size="9.5" fill="#54565a">Proyectado</text>'
+            f'<text x="8" y="{y_proy + alto_barra * 0.7:.1f}" font-size="9.5" fill="#54565a">Proyectado</text>'
             f'<rect x="{ancho_etiqueta}" y="{y_proy:.1f}" width="{ancho_proy:.1f}" height="{alto_barra:.1f}" '
             f'fill="url(#{pattern_id})" stroke="{color}" stroke-width="1"/>'
             f'<text x="{ancho_etiqueta + ancho_proy + 6:.1f}" y="{y_proy + alto_barra * 0.7:.1f}" '
             f'font-size="10.5" font-weight="700">{texto_proy}</text>'
         )
 
-        y_real = y_proy + alto_barra + 5
+        y_real = y_proy + alto_barra + GAP_BARRAS
         ancho_real = (valores_real[i] / max_valor) * ancho_disponible
-        texto_real = f"{valores_real[i]:,.{decimales}f}{sufijo}"
+        texto_real = formatear_valor(valores_real[i], decimales, sufijo, moneda)
         partes.append(
-            f'<text x="0" y="{y_real + alto_barra * 0.7:.1f}" font-size="9.5" fill="#54565a">Real</text>'
+            f'<text x="8" y="{y_real + alto_barra * 0.7:.1f}" font-size="9.5" fill="#54565a">Real</text>'
             f'<rect x="{ancho_etiqueta}" y="{y_real:.1f}" width="{ancho_real:.1f}" height="{alto_barra:.1f}" fill="{color}"/>'
             f'<text x="{ancho_etiqueta + ancho_real + 6:.1f}" y="{y_real + alto_barra * 0.7:.1f}" '
             f'font-size="10.5" font-weight="700">{texto_real}</text>'

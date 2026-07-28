@@ -82,6 +82,88 @@ las 3 hojas y se llama en `ejecutar()` justo antes de `wb.save()`.
   de encabezado y el formato numérico sí se reaplican siempre (son
   estructurales, no datos del usuario).
 
+## Resaltado de celdas de ingreso manual en "Proyectos" (2026-07-28)
+
+A pedido explícito del usuario ("que se destaquen todas las casillas que
+requieren ingreso manual, para que nadie se confunda a la hora de ingresar
+datos"), se agregó `aplicar_resaltado_celdas_manuales(wb)` en
+`Sistema/analisis_financiero.py`, llamada en `ejecutar()` justo después de
+`aplicar_estilo_visual(wb)`.
+
+- **Rellena de amarillo (`FFF2CC`) + cursiva** las 11 columnas que el usuario
+  escribe a mano en "Proyectos": TAG, Nombre, Estado, Fecha de inicio, Fecha
+  de cierre, Monto de Venta, las 4 columnas "...Proyectado(s)" y "Mano de
+  Obra Real". Reutiliza la convención "cursiva = editable a mano" que ya
+  usa Centro de Costos, sumando relleno propio para que se note más.
+- **"Cliente" y "Categoría" quedan explícitamente afuera** aunque viven en
+  el mismo bloque que `asegurar_formulas_proyectos` nunca reescribe: ambas
+  se autocompletan solas (`asegurar_columna_cliente` /
+  `asegurar_categoria_proyectos`) y ya tienen su propio lenguaje visual
+  (rojo = pendiente de revisión, azul marino = confirmado). Las columnas de
+  fórmula (Materiales/Equipos/Otros Reales, Totales, Márgenes, Desviación %)
+  tampoco se resaltan — el contraste sin relleno hace evidente qué no se
+  debe tocar a mano.
+- **Pre-formatea un mínimo de 60 filas** aunque no haya proyectos cargados
+  todavía, para que el libro sirva de plantilla vacía; se extiende 20 filas
+  más allá de la última fila con TAG real. La última fila con datos se
+  calcula leyendo valores de la columna A, nunca `ws.max_row` a secas —
+  `ws.max_row` queda inflado por el propio relleno aplicado en corridas
+  anteriores (openpyxl cuenta cualquier celda con estilo, no solo con
+  valor) y usarlo directo habría hecho crecer el rango sin límite en cada
+  corrida.
+- Se agrega una celda de leyenda en la columna siguiente a la última
+  (`V1`, ancho 45, wrap) explicando la convención, mismo patrón que la
+  leyenda al pie de cada hoja de Centro de Costos.
+- Aplicado al archivo real (`Análisis de Proyectos.xlsx`, con backup previo
+  vía `hacer_backup`) el mismo día — 5 proyectos ya cargados (UMAG, CFLI,
+  CCON, GGEN, MLER) quedaron con sus columnas manuales resaltadas sin que
+  se tocara ningún valor.
+
+## Reordenamiento de "Categoría" y corrección de Cliente UMAG (2026-07-28)
+
+A pedido del usuario: (1) mover la columna "Categoría" de "Proyectos" para
+que quede inmediatamente a la derecha de "Cliente" (antes era la última
+columna), "siguiendo el formato visual"; (2) corregir el Cliente del
+proyecto UMAG, que había quedado como "UMAG" (auto-derivado del nombre del
+proyecto, que también es "UMAG") en vez de su nombre real, "Universidad de
+Magallanes".
+
+- **Código**: `HEADERS_PROYECTOS` reordenado. `ESTILO_COLUMNAS_PROYECTOS`
+  (hardcodeado por letra) se refactorizó a `ESTILO_COLUMNAS_PROYECTOS_POR_
+  NOMBRE` + conversión vía `LETRA_COL_PROYECTOS` — un dict por letra fija se
+  desalinea apenas cambia el orden de columnas, exactamente el tipo de bug
+  que ya causó el incidente real de Indicadores este mismo día (ver
+  `asegurar_estructura_workbook`, docstring). `NOMBRES_COLUMNAS_MANUALES_
+  PROYECTOS` (resaltado de celdas manuales, sección anterior) no necesitó
+  ningún cambio — ya estaba indexado por nombre, no por letra, así que el
+  reordenamiento fue gratis para esa función. Categoría entra al grupo
+  visual `COLOR_IDENTIFICACION` (mismo que Cliente/Estado/fechas).
+- **11 tests rotos por letras hardcodeadas** (`test_formulas_proyectos.py`,
+  `test_formulas_indicadores.py`, `test_nota_evaluacion.py`,
+  `test_hoja_clientes.py`, `test_ejecutar.py`, `test_estructura_workbook.py`,
+  `test_resaltado_manual.py`) — todos reescritos para resolver columnas por
+  nombre vía `af.HEADERS_PROYECTOS.index(...)` / `af.LETRA_COL_PROYECTOS`,
+  nunca por letra o índice fijo, para que un futuro reordenamiento no vuelva
+  a romperlos uno por uno.
+- **Migración del archivo real**: `asegurar_estructura_workbook` nunca pisa
+  un encabezado ya escrito en "Proyectos" (regla de oro) — cambiar el código
+  no reordena solo un archivo ya existente. Se migró a mano
+  `Análisis de Proyectos.xlsx` (con backup previo): se leyeron los valores
+  manuales de las 5 filas de proyecto (UMAG, CFLI, CCON, GGEN, MLER) en el
+  layout viejo, se recreó la hoja "Proyectos" en blanco, se regeneró con el
+  esquema nuevo (`asegurar_estructura_workbook` ya actualizado) y se
+  reescribieron los valores manuales en sus columnas nuevas. Categoría,
+  Materiales/Equipos/Otros Reales, Totales, Márgenes y Desviación % no se
+  preservaron a mano — se recalculan solos en el siguiente `ejecutar()`
+  (nunca son "manuales" en sentido estricto, ver sección anterior).
+- **Cliente de UMAG**: se escribió "Universidad de Magallanes" directo en la
+  celda al momento de reescribir los valores manuales, en vez de dejar que
+  `asegurar_columna_cliente` la auto-derivara (que habría vuelto a poner
+  "UMAG", igual al nombre del proyecto). Como esa función solo completa
+  celdas vacías (`if celda.value: continue`), el valor corregido queda a
+  salvo en corridas futuras sin necesitar el flujo de "pendiente"/
+  "confirmado".
+
 ## Nota de Proyecto, CLTV de Clientes y Glosario KPIs (brainstorming, 2026-07-21)
 
 - **"Nota" es 100% automática** (no manual, no híbrida) — decisión explícita
@@ -358,6 +440,154 @@ de una misma categoría.
   una vez cerrados los PDF, se re-corrieron los 3 scripts sobre las rutas
   reales sin problema.
 
+## Depuración del playbook de KPIs + fix de sesgo en la Nota (2026-07-28)
+
+A pedido explícito del usuario (3 decisiones de diseño ya aprobadas antes
+de implementar, tras un análisis previo del agente sobre el Excel real de
+QUEMPIN con 5 proyectos cargados, solo UMAG "Terminado" con datos
+completos):
+
+1. **Se eliminaron 5 KPIs redundantes de "Indicadores"/"Glosario KPIs"/
+   `brand.py`**: "Rentabilidad sobre costo" (= margen/(1-margen) de "Margen
+   neto %", misma información en otra escala) y las 4 "Productividad
+   Materiales/Equipos/MO/Otros" (= 1 / "Costo % de venta" de esa categoría,
+   invertidas). No aportaban señal nueva sobre lo que ya daban "Margen neto
+   %" y "Costo % de venta".
+2. **Se corrigió el sesgo de la Nota del Proyecto**: el componente de
+   control de desviación (30%) usaba `ABS(desviación total)`, penalizando
+   gastar de menos igual que gastar de más -- pese a que ahorrar ya sube el
+   margen (capturado en el 70% de rentabilidad), era una especie de doble
+   castigo. Ahora `MAX(0, desviación)` anula el término para cualquier
+   proyecto en o bajo presupuesto: ese componente da el puntaje máximo
+   (100) sin premio ni castigo extra. Solo resta puntos si Real >
+   Proyectado (sobrecosto real).
+   - **Verificación a mano contra UMAG** (Venta 14.563.245, Total Real
+     5.472.679, Total Proyectado 7.713.765, Margen Real 9.090.566, margen
+     neto 62.42%, desviación total -29.05% -- UMAG ahorró): con ABS(), Nota
+     = 91. Sin ABS(), Nota = **100** (score margen ya tope 100, score
+     desviación ahora también tope 100 al no penalizar el ahorro).
+3. **4 KPIs nuevos** (de los 6 que un análisis previo del agente había
+   propuesto como "útiles ya con 1 proyecto" -- se implementaron solo estos
+   4, no los otros 2 que quedaban para cuando haya más proyectos/clientes:
+   "Margen Real por mes de ejecución" e "Ingreso/Margen acumulado por
+   cliente"):
+   - **Ahorro/Sobrecosto neto en $** (Costo Proyectado − Costo Real, por
+     categoría y total) -- traduce la desviación % a pesos concretos.
+   - **Desviación % Total** como columna visible en "Indicadores" (ya
+     existía embebida en la fórmula de la Nota, referenciando
+     `Proyectos!T`, ahora también expuesta directamente).
+   - **Estructura % del costo real (mix)** por categoría (Costo Real de la
+     categoría / Costos Totales Real, suma 100%) -- distinto de "Costo %
+     de venta" (que no suma 100%, no se tocó).
+   - **% del Total Real del proyecto** en "Detalle Costos Reales" (Total
+     sin IVA de la subcategoría / suma de las filas de ese proyecto EN ESA
+     MISMA HOJA -- no el Total Real completo de "Proyectos", que incluye
+     Mano de Obra Real manual sin detalle por subcategoría). Verificado que
+     suma ~100% por proyecto (UMAG: 6 subcategorías, suma exacta 1.0).
+
+Valores nuevos verificados en UMAG tras correr el pipeline real: Ahorro
+Materiales $167.798, Equipos $396.259, MO $800.000, Otros $877.029, Total
+$2.241.086 (todo ahorro, ningún sobrecosto); Estructura % Materiales
+20.6%, Equipos 9.2%, MO 18.3%, Otros 51.9% (suma 100%); Desviación % Total
+-29.05% (columna nueva, mismo valor que ya tenía "Proyectos").
+
+- **Bug real encontrado y corregido durante la implementación**:
+  `asegurar_estructura_workbook` usaba el mismo criterio "solo llenar
+  encabezados vacíos, nunca pisar uno existente" para las 5 hojas -- correcto
+  para "Proyectos" (datos manuales del usuario), pero al reordenar/depurar
+  el esquema de columnas de "Indicadores" (18 → 23 columnas, con
+  eliminación y reordenamiento, no solo columnas nuevas al final), los
+  encabezados viejos se quedaron pisando columnas con fórmulas del esquema
+  NUEVO -- ej. la columna C decía "Rentabilidad sobre costo" pero tenía la
+  fórmula de "Margen neto %", y aparecieron "Nota del Proyecto"/
+  "Evaluación" duplicados en las columnas nuevas del final. **Esto se
+  corrió una vez contra el Excel real de la empresa** antes de detectarse
+  en la verificación posterior a la corrida -- se restauró desde el backup
+  automático inmediatamente anterior (`Respaldos/Julio 2026/Análisis de
+  Proyectos - backup 2026-07-28 104326.xlsx`) sin pérdida de datos, se
+  corrigió el código (`asegurar_estructura_workbook` ahora reescribe
+  completa la fila de encabezados de las 4 hojas 100%-regeneradas --
+  "Detalle Costos Reales"/"Indicadores"/"Clientes"/"Glosario KPIs" -- cada
+  vez que no coincide con el esquema actual, incluyendo limpiar columnas
+  sobrantes si el esquema nuevo es más corto; "Proyectos" mantiene el
+  comportamiento append-only original) y se re-corrió con éxito. Se agregó
+  un test de regresión (`test_hoja_indicadores_con_esquema_viejo_se_
+  reescribe_completa_al_esquema_nuevo` en `test_estructura_workbook.py`)
+  que simula exactamente este escenario. **Lección**: "no reescribir datos
+  ya presentes" es una regla que aplica a datos MANUALES del usuario, no a
+  hojas que el propio script regenera al 100% -- tratarlas igual fue el
+  error.
+- **Efecto colateral positivo, ya esperado**: al cambiar el set de KPIs,
+  `estado_reportes.py` marcó los 3 PDF ya generados (`proyecto:UMAG`,
+  `cliente:UMAG`, `categoria:I+D+i`) como desactualizados automáticamente
+  (cambia el hash de los datos de entrada) -- no se regeneraron, es una
+  tarea aparte que el usuario pedirá si quiere.
+- **Bug operativo de CLTV resuelto de paso**: el Excel real tenía
+  `_xludf.MAXIFS`/`_xludf.MINIFS` en la hoja "Clientes" (marca que deja
+  LibreOffice/Google Sheets al re-guardar el archivo fuera de Excel) --
+  no era un bug de código (el script siempre escribió `MAXIFS`/`MINIFS`
+  nativos), se resolvió solo al correr el pipeline real de nuevo, que
+  reescribe esas fórmulas. Confirmado con `zipfile` + búsqueda de texto
+  sobre el XML interno: cero ocurrencias de `_xludf` en el archivo tras la
+  corrida.
+- Suite completa tras los 3 cambios: 195 tests (93 `Sistema/` + 68
+  `Reportes/` + 33 `Visualizador Web/`), todos pasando.
+
+## Segunda tanda de KPIs nuevos: Peso en cartera + Margen por día (2026-07-28)
+
+Misma fecha que la depuración anterior, tras un nuevo análisis del agente
+que propuso 6 KPIs candidatos. El usuario aprobó 2 de 3 que ya estaban
+"listos con los datos actuales" (el tercero, "Cumplimiento de plazo",
+necesitaba un dato manual nuevo -- fecha de plazo comprometido -- que el
+usuario decidió NO agregar por ahora; los otros 3 candidatos ya habían
+quedado descartados en el análisis previo del 2026-07-28 por necesitar más
+proyectos/clientes cargados).
+
+- **Peso del proyecto en la cartera de ventas (%)**: `Monto de Venta del
+  proyecto / Σ Monto de Venta de TODOS los proyectos con venta cargada`
+  (cualquier Estado, no solo "Terminado" -- criterio explícito del
+  encargo). Columna X de "Indicadores". Mide riesgo de concentración de
+  ingresos en un solo proyecto.
+- **Margen por día de ejecución**: `Margen Real / (Fecha de cierre − Fecha
+  de inicio, en días)`. Columna Y. Si Fecha de cierre está vacía (proyecto
+  "en desarrollo"), la fórmula misma queda en `""` vía
+  `IF(Fecha de cierre="","",...)` -- no hay una rama de código Python que
+  decida "esta fila no lleva fórmula"; el guard vive dentro de la fórmula
+  de Excel para que se recalcule solo si el usuario completa la fecha
+  después. `MAX(1, días)` evita `#DIV/0!` si Fecha de cierre = Fecha de
+  inicio (mismo patrón que "Meses activo" en la hoja "Clientes").
+- **Ambas son columnas nuevas al final de "Indicadores"** (no reordenan ni
+  tocan ninguna de las 23 columnas existentes) -- decisión deliberada para
+  minimizar el riesgo de repetir el incidente de desalineación de
+  encabezados del punto anterior; con el fix de `asegurar_estructura_
+  workbook` ya en el código, un reordenamiento también habría sido seguro,
+  pero agregar al final es más simple de verificar.
+- Se agregaron ambas entradas a "Glosario KPIs" (mismo formato que las
+  existentes).
+- **No se tocó `Reportes/kpis_recalculados.py` ni `Reportes/brand.py`** --
+  fuera del alcance pedido explícitamente para esta tarea. Efecto: estos 2
+  KPIs no aparecen todavía en los reportes PDF (que leen del espejo
+  Python, no de las fórmulas de Excel). Si se quiere que los reportes los
+  incluyan, es una extensión aparte.
+
+**Precaución explícita seguida en esta tarea** (pedida por el coordinador
+tras un incidente): no se usó ningún recálculo externo (LibreOffice,
+Google Sheets, etc.) sobre el Excel real para "verificar valores" -- toda
+verificación fue por lectura de fórmulas con openpyxl (`data_only=False`,
+confirma que la fórmula está bien escrita) más aritmética manual en Python
+sobre los valores fuente leídos con `data_only=True`, nunca guardando el
+archivo con otra herramienta que no sea el propio `driver.py run`. Los
+valores en caché de las fórmulas quedan `None` hasta que el usuario abre
+el archivo en Excel real -- eso es esperado, no es un bug.
+
+Verificación a mano en UMAG (venta 14.563.245, Fecha de inicio 2026-01-01,
+Fecha de cierre 2026-02-01 = 31 días, Margen Real 9.090.566): Margen por
+día = 9.090.566 / 31 ≈ $293.244/día. Peso en cartera depende de la suma
+total de venta de los 5 proyectos cargados (solo UMAG tiene venta
+cargada hoy) -- con un solo proyecto con venta, su peso da 100%; se
+recalculará solo cuando se carguen ventas de otros proyectos, sin correr
+el script de nuevo.
+
 ## Pendientes que dependen del usuario
 
 El script (`Sistema/analisis_financiero.py`, 71 tests), el skill
@@ -375,3 +605,84 @@ de la extensión de Nota/Clientes/Glosario en
 - El dashboard HTML (Visualizador Web de este módulo) está fuera de alcance v1
   a propósito — el usuario ya indicó que esa es la forma de presentación a
   mediano plazo, pero no se construye hasta más adelante.
+
+## Fix: `#NOMBRE?` en hoja "Clientes" — MAXIFS/MINIFS sin prefijo `_xlfn.` (2026-07-28)
+
+Las columnas "Meses activo" y "Frecuencia de compra" (que depende de ella) daban
+`#NOMBRE?` en TODAS las filas de la hoja "Clientes", y eso se propagaba en
+cascada a CLTV/Clasificación. El usuario reportó "puede ser que la formula
+esta en ingles y el excel en español" — **el diagnóstico real no es
+traducción de idioma** (los `.xlsx` siempre guardan las fórmulas en inglés
+canónico internamente; Excel las traduce solo para mostrarlas en pantalla,
+sin importar el idioma de la UI). El bug real es un **gotcha conocido de
+openpyxl**: `MAXIFS`/`MINIFS` son funciones "nuevas" (Excel 2016+, parte de
+las "future functions" del spec OOXML) y openpyxl las escribe crudas en el
+XML — Excel exige el prefijo `_xlfn.` para reconocer esas funciones cuando
+se escriben así (no vía la UI de Excel); sin el prefijo, Excel las trata
+como función desconocida/definida por el usuario → `#NAME?`/`#NOMBRE?`.
+
+Fix en `asegurar_hoja_clientes` (columna "Meses activo",
+`analisis_financiero.py`): `MAXIFS(` → `_xlfn.MAXIFS(` y `MINIFS(` →
+`_xlfn.MINIFS(`. Excel sigue mostrando `MAXIFS`/`MINIFS` sin el prefijo al
+abrir el archivo — el prefijo es solo la representación interna que
+openpyxl necesita escribir. Test actualizado en
+`test_hoja_clientes.py::test_formulas_agregan_sobre_proyectos_filtrando_por_columna_cliente`.
+Si en el futuro se agregan otras funciones post-2007 (`IFS`, `SWITCH`,
+`TEXTJOIN`, `MODE.SNGL`, etc.) escritas directamente vía openpyxl, revisar
+si necesitan el mismo prefijo — `SUMIFS`/`AVERAGEIF`/`COUNTIF`/`PERCENTILE`
+son anteriores a 2007 y no lo necesitan.
+
+## Dashboard: Margen neto %, concentración de cartera, y fix de tablas angostas (2026-07-28)
+
+A pedido explícito del usuario, tras un análisis previo sobre qué KPIs del
+playbook depurado ese mismo día convenía graficar o faltaban en el
+dashboard (ver sección "Segunda tanda de KPIs nuevos" más arriba):
+
+- **Tile "Margen neto %"** en el panel de detalle de cada proyecto
+  (`detalleProyectoHtml`, `Visualizador Web/template.html`) — Margen Real /
+  Monto de Venta, calculado inline en JS (no requirió tocar
+  `build_visualizador.py`: ambos valores ya viajaban en el snapshot). Era
+  el único KPI del playbook que no se mostraba en ninguna parte del
+  dashboard pese a ser el componente de mayor peso (70%) de la Nota.
+- **Gráfico "Concentración de cartera (peso en ventas)"** — nueva 3ª
+  chart-card en la pestaña Proyectos (`chartPesoCartera`, ranking de barras
+  igual patrón que "Nota del Proyecto"), usando `peso_cartera_pct` que ya
+  calculaba `calcular_peso_cartera()` pero que antes solo se veía un
+  proyecto a la vez dentro de su propio panel de detalle — no había forma
+  de comparar la concentración de riesgo entre proyectos de un vistazo.
+  Tampoco requirió cambios en `build_visualizador.py`.
+- **Bug real encontrado con revisión visual en navegador** (Playwright,
+  viewport 480px — mismo método que ya encontró bugs reales en el
+  visualizador de Centro de Costos, ver su CLAUDE.md "Ciclo de mejora
+  continua"): las tablas angostas del panel de detalle (`tabla-costos-
+  categoria`, 7 columnas; `tabla-subcategorias`, 4 columnas; la tabla de
+  proyectos dentro del detalle de "Categoría") no tenían contenedor de
+  scroll horizontal propio ni `min-width` — con `table-layout:fixed` se
+  achicaban hasta que los encabezados de columnas vecinas se superponían
+  visualmente unos con otros (ilegible). Las 3 tablas principales
+  (Proyectos/Clientes/Categoría, `table.viz-table`) tenían el problema
+  inverso y más grave: la CSS ya traía `.viz-tablewrap`/`.viz-tablescroll`
+  y `min-width:640px` en `table.viz-table` (mismo patrón que Centro de
+  Costos), pero el HTML nunca envolvía el `<table>` en esos divs — el
+  `min-width` sin contenedor de scroll forzaba a **toda la página** a
+  desbordarse horizontalmente (764px de contenido en un viewport de 480px)
+  en vez de scrollear solo la tabla.
+  - Fix: se envolvieron los 3 `<table class="viz-table">` en
+    `<div class="viz-tablewrap"><div class="viz-tablescroll">` (mismo
+    patrón ya usado en Centro de Costos), y se agregó `min-width` (480px
+    base, 620px para `tabla-costos-categoria`) + su propio
+    `.viz-tablescroll` a las 3 tablas del panel de detalle. Verificado con
+    Playwright a 480px: `document.body.scrollWidth` volvió a igualar
+    `window.innerWidth` (sin overflow de página), y cada tabla ancha
+    scrollea dentro de su propio contenedor sin superposición de texto.
+  - De paso, la tabla de proyectos dentro del detalle de "Categoría"
+    (`tabla-proyectos-categoria`, nueva subclase CSS) heredaba anchos de
+    columna pensados para otra tabla de 3 columnas — se le dieron anchos
+    propios y se agregó `class="num"` a los `<th>` de Margen Real/Nota para
+    que alineen con sus `<td class="num">` (inconsistencia menor, ya
+    presente antes de esta tarea).
+- Suite completa (209 tests) sigue pasando — ninguno de estos cambios tocó
+  `build_visualizador.py` ni la forma del snapshot, solo `template.html`
+  (HTML/CSS/JS puro).
+- Republicado en el mismo Artifact (ver MEMORY.md del skill
+  `Registro_Analisis_Financiero`).

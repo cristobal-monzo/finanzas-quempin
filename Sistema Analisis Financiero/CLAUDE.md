@@ -41,37 +41,25 @@ Costos ni le duplica lógica — solo lo lee (igual que Cotizador Historico).
 A futuro debería poder incorporar Flujo de Caja como fuente adicional, cuando ese
 módulo exista.
 
-## Estado actual (2026-07-20)
+## Estado actual
 
-**Implementado y probado.** Las 12 tareas del plan de implementación están
-completas, revisadas y commiteadas: `Sistema/analisis_financiero.py` (bootstrap
-del workbook, mapeo categoría→bucket, lectura solo-lectura de Centro de Costos,
-validación de la hoja "Proyectos", creación de carpetas de proyecto, backup con
-timestamp, regeneración de "Detalle Costos Reales", fórmulas de "Proyectos" e
-"Indicadores", y el orquestador `ejecutar()`/`main()` con modo `dry_run`),
-`Sistema/tests/` (34 tests, todos pasando) y el skill
-`.claude/skills/Registro_Analisis_Financiero/` (`SKILL.md` + `driver.py`, comandos
-`status`/`run`). Centro de Costos ya invoca este módulo automáticamente al final
-de su propio `run` (PASO 12d en `auditor_centro_costos.py`), envuelto para que
-nunca pueda abortar la corrida de Centro de Costos.
+**Implementado y probado**: `Sistema/analisis_financiero.py` + `Sistema/tests/`
++ skill `.claude/skills/Registro_Analisis_Financiero/` (`status`/`run`),
+encadenado al `run` de Centro de Costos (PASO 12d en
+`auditor_centro_costos.py`, envuelto para que nunca pueda abortar esa
+corrida). Desde 2026-07-23 también tiene Visualizador Web propio (ver
+`Visualizador Web/CLAUDE.md`) y reportes PDF (skill
+`Reportes_Analisis_Financiero`).
 
-Lo que sigue pendiente de verdad: `Análisis de Proyectos.xlsx` todavía no tiene
-proyectos reales cargados, así que nada de esto se ha ejercitado contra datos
-reales de QUEMPIN SpA; y el dashboard HTML (Visualizador Web de este módulo)
-sigue fuera de alcance, como estaba planeado desde el inicio.
-
-**Extensión 2026-07-21**: agregadas Nota del Proyecto, columna "Cliente" +
-hoja "Clientes" (CLTV) y hoja "Glosario KPIs" — ver
-[`docs/superpowers/specs/2026-07-21-analisis-financiero-nota-clientes-design.md`](../docs/superpowers/specs/2026-07-21-analisis-financiero-nota-clientes-design.md)
-y el plan de implementación
-[`docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md`](../docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md).
-
-Diseño original (fórmulas, playbook de KPIs, decisiones del brainstorming):
-[`docs/superpowers/specs/2026-07-20-analisis-financiero-design.md`](../docs/superpowers/specs/2026-07-20-analisis-financiero-design.md).
-Detalle e historial de la implementación (las 12 tareas, orden, decisiones
-tomadas al construir):
-[`docs/superpowers/plans/2026-07-20-analisis-financiero-implementacion.md`](../docs/superpowers/plans/2026-07-20-analisis-financiero-implementacion.md)
-(rutas relativas a la raíz de `Finanzas QUEMPIN/`).
+Historial de extensiones (Nota del Proyecto, CLTV, Glosario KPIs, reportes
+PDF, Visualizador Web, etc.) y decisiones de diseño de cada una: comprimido
+acá el 2026-07-27 para que esta sección no quede desactualizada cada vez que
+se agrega una extensión — ver en vez de eso los archivos
+`*analisis-financiero*` en
+[`docs/superpowers/specs/`](../docs/superpowers/specs/) y
+[`docs/superpowers/plans/`](../docs/superpowers/plans/) (rutas relativas a
+la raíz de `Finanzas QUEMPIN/`), uno por extensión, orden cronológico por la
+fecha en el nombre del archivo.
 
 ## Estructura del módulo (implementada — ver spec/plan para el detalle completo)
 
@@ -99,13 +87,15 @@ Finanzas QUEMPIN/
 
 Cinco hojas, todas dentro del mismo libro:
 
-- **"Proyectos"** (una fila por proyecto): TAG (= prefijo de Centro de Costos, ej.
-  `UMAG`/`CFLI`/`CCON`/`GGEN`/`MLER`), Nombre, Estado, fechas, Monto de Venta
-  **sin IVA**, costos proyectados por categoría (manual, las 4: Materiales,
-  Equipos, Mano de Obra, Otros), costos reales por categoría (Materiales/Equipos/
-  Otros = fórmula automática desde Centro de Costos; Mano de Obra Real = manual,
-  sin fuente automática hoy), totales/márgenes/desviación derivados por fórmula, y
-  "Cliente" (última columna, se completa sola — ver más abajo).
+- **"Proyectos"** (una fila por proyecto), en este orden real de columnas: TAG
+  (= prefijo de Centro de Costos, ej. `UMAG`/`CFLI`/`CCON`/`GGEN`/`MLER`),
+  Nombre, **Cliente** (se completa sola, ver "Clientes" abajo), **Categoría**
+  (2026-07-28: movida junto a Cliente, antes vivía al final — también se
+  autocompleta, ver más abajo), Estado, fechas, Monto de Venta **sin IVA**,
+  costos proyectados por categoría (manual, las 4: Materiales, Equipos, Mano
+  de Obra, Otros), costos reales por categoría (Materiales/Equipos/Otros =
+  fórmula automática desde Centro de Costos; Mano de Obra Real = manual, sin
+  fuente automática hoy), totales/márgenes/desviación derivados por fórmula.
 - **"Detalle Costos Reales"** (una fila por proyecto + subcategoría): preserva el
   detalle real de cada `categoria_item` de Centro de Costos (Consumibles,
   Equipos-Herramientas, Combustible si aparece, etc.) aunque "Proyectos" solo
@@ -123,27 +113,76 @@ Cinco hojas, todas dentro del mismo libro:
   elementos usa, qué significa el resultado — texto estático, se reescribe
   completo en cada corrida.
 
+**Reordenamiento de "Categoría" (2026-07-28)**: a pedido del usuario, se
+movió del final de "Proyectos" a la columna inmediatamente después de
+"Cliente" — `HEADERS_PROYECTOS` cambió de orden y `ESTILO_COLUMNAS_PROYECTOS`
+se refactorizó a un dict por nombre (`ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE`,
+convertido a letra-keyed vía `LETRA_COL_PROYECTOS`) para no repetir el
+incidente real de header/columna desalineados que ya pasó una vez este mismo
+día (ver docstring de `asegurar_estructura_workbook`). El archivo real se
+migró a mano (ver MEMORY.md) porque `asegurar_estructura_workbook` nunca pisa
+encabezados ya escritos en "Proyectos" — cambiar el código solo no reordena
+un archivo existente.
+
+**Resaltado de celdas manuales (2026-07-28)**: las 11 columnas de ingreso
+manual de "Proyectos" (TAG, Nombre, Estado, fechas, Monto de Venta, las 4
+"...Proyectado(s)" y Mano de Obra Real) llevan relleno amarillo + cursiva —
+`aplicar_resaltado_celdas_manuales()`, llamada en `ejecutar()` junto a
+`aplicar_estilo_visual()`. "Cliente" y "Categoría" quedan afuera (se
+autocompletan solas, tienen su propio rojo/azul marino) igual que las
+columnas de fórmula. Detalle de la decisión y por qué no se puede usar
+`ws.max_row` para calcular el buffer de filas vacías: ver MEMORY.md.
+
 **Regla de oro heredada de Centro de Costos**: las columnas manuales nunca se
 tocan entre corridas; solo se regeneran "Detalle Costos Reales" y las fórmulas
 derivadas de "Proyectos"/"Indicadores".
 
 ## Playbook de KPIs (hoja "Indicadores")
 
+**Depurado 2026-07-28** (decisión aprobada por el usuario): se eliminaron 5
+KPIs redundantes ("Rentabilidad sobre costo" = margen/(1-margen) de "Margen
+neto %" en otra escala; las 4 "Productividad Materiales/Equipos/MO/Otros" =
+1 / "Costo % de venta" de esa categoría, invertidas) y se agregaron 4 KPIs
+nuevos. Ver MEMORY.md 2026-07-28 para la verificación a mano contra UMAG.
+
 | KPI | Fórmula |
 |---|---|
-| Rentabilidad sobre costo | Margen Real / Total Real |
 | Margen neto % | Margen Real / Monto de Venta |
-| Productividad Materiales / Equipos / MO / Otros | Monto de Venta / Costo Real de esa categoría |
 | Costo Materiales / Equipos / MO / Otros % de venta | Costo Real de esa categoría / Monto de Venta |
+| Estructura % Materiales / Equipos / MO / Otros (mix, nuevo) | Costo Real de esa categoría / Costos Totales Real — suma 100% |
 | Desviación % Materiales / Equipos / MO / Otros | Real / Proyectado − 1, por categoría |
-| Nota del Proyecto (0-100) | 70% margen neto % (vs. objetivo 25%) + 30% control de desviación total |
+| Desviación % Total (nuevo, ya existía en "Proyectos") | Costos Totales Real / Costos Totales Proyectado − 1, traída como columna visible |
+| Ahorro/Sobrecosto Materiales / Equipos / MO / Otros / Total (nuevo) | Costo Proyectado − Costo Real; positivo = ahorro, negativo = sobrecosto |
+| % del Total Real del proyecto (nuevo, hoja "Detalle Costos Reales") | Total sin IVA de la subcategoría / suma de las filas de ese proyecto en esa hoja |
+| Peso del proyecto en la cartera de ventas (%) (nuevo) | Monto de Venta del proyecto / Σ Monto de Venta de todos los proyectos con venta cargada (cualquier Estado, no solo "Terminado") |
+| Margen por día de ejecución (nuevo) | Margen Real / (Fecha de cierre − Fecha de inicio, en días) — vacío si el proyecto no tiene Fecha de cierre ("en desarrollo") |
+| Nota del Proyecto (0-100) | 70% margen neto % (vs. objetivo 25%) + 30% control de desviación total, **sin ABS()** — solo penaliza sobrecosto real (Real > Proyectado); un proyecto en o bajo presupuesto obtiene el puntaje máximo del componente |
 | CLTV (hoja Clientes) | AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad % |
 
-Origen y hallazgos de rigor (por qué "ROI" se llama "Rentabilidad sobre costo",
-por qué no hay columnas duplicadas de "costo por unidad de ingreso" +
-"estructura %", el bug de fórmula encontrado en el archivo de ejemplo del
-usuario): ver "Playbook de KPIs" en el spec — no se repite acá para no
-desincronizarse.
+**Segunda tanda de KPIs nuevos (2026-07-28, misma fecha, tras la
+depuración anterior)**: "Peso del proyecto en la cartera de ventas (%)" y
+"Margen por día de ejecución" — 2 de 3 KPIs que un análisis previo del
+agente había propuesto; el tercero ("Cumplimiento de plazo") quedó fuera a
+propósito porque requería un dato manual nuevo (fecha de plazo
+comprometido) que el usuario decidió no agregar por ahora. Ambos son
+columnas nuevas al final de "Indicadores" (X/Y) — no reordenan ni tocan
+ninguna columna existente. "Margen por día" usa un `IF(...="","",...)`
+dentro de la propia fórmula de Excel para quedar vacío en proyectos sin
+Fecha de cierre, en vez de una rama de código en Python — se recalcula
+solo si el usuario completa la fecha después, sin correr el script de
+nuevo. Ver MEMORY.md 2026-07-28 para el detalle y los valores verificados
+en UMAG. **Nota**: estos 2 KPIs no se agregaron al espejo Python de
+`Reportes/kpis_recalculados.py` (fuera del alcance pedido) — no aparecen
+todavía en los reportes PDF; es una extensión aparte si se pide.
+
+Origen y hallazgos de rigor (por qué "ROI" se llamó "Rentabilidad sobre
+costo" antes de eliminarse, por qué no hay columnas duplicadas de "costo
+por unidad de ingreso" + "estructura %", el bug de fórmula encontrado en el
+archivo de ejemplo del usuario): ver "Playbook de KPIs" en el spec original
+(2026-07-20) — no se repite acá para no desincronizarse. La depuración/
+extensión 2026-07-28 (incluyendo un bug real de desalineación de
+encabezados encontrado y corregido en `asegurar_estructura_workbook`) está
+en MEMORY.md, no en un spec nuevo.
 
 ## Reportes PDF (implementado 2026-07-24)
 

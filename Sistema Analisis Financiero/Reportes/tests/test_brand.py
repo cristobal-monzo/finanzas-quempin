@@ -67,9 +67,27 @@ def test_es_kpi_fuera_de_rango_desviacion_grande_en_cualquier_sentido():
 
 
 def test_es_kpi_fuera_de_rango_kpi_sin_umbral_definido_da_false():
-    assert brand.es_kpi_fuera_de_rango("Productividad Materiales", 999) is False
+    assert brand.es_kpi_fuera_de_rango("Estructura % Materiales", 999) is False
+
+
+def test_es_kpi_fuera_de_rango_ahorro_sobrecosto_negativo_es_sobrecosto():
+    assert brand.es_kpi_fuera_de_rango("Ahorro/Sobrecosto Materiales", -50000) is True
+    assert brand.es_kpi_fuera_de_rango("Ahorro/Sobrecosto Materiales", 50000) is False
+    assert brand.es_kpi_fuera_de_rango("Ahorro/Sobrecosto Total", -1) is True
+
+
+def test_es_kpi_fuera_de_rango_rentabilidad_sobre_costo_ya_no_existe():
+    # "Rentabilidad sobre costo" se eliminó del playbook 2026-07-28 (era
+    # margen/(1-margen) de "Margen neto %" en otra escala) -- ya no tiene
+    # umbral propio, cae en el caso genérico (False).
+    assert brand.es_kpi_fuera_de_rango("Rentabilidad sobre costo", 0.1) is False
 
 
 def test_referencia_kpi_devuelve_texto_para_kpi_conocido_y_vacio_para_desconocido():
     assert "25%" in brand.referencia_kpi("Margen neto %")
-    assert brand.referencia_kpi("Productividad Materiales") == ""
+    assert brand.referencia_kpi("Estructura % Materiales") == ""
+
+
+def test_referencia_kpi_ahorro_sobrecosto_y_desviacion_total():
+    assert "positivo" in brand.referencia_kpi("Ahorro/Sobrecosto Total")
+    assert "0%" in brand.referencia_kpi("Desviación % Total")

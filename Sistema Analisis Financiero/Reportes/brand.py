@@ -11,6 +11,8 @@ hardcodean acá (son valores triviales, ya usados en 2+ lugares del repo).
 
 from pathlib import Path
 
+from graficos import formatear_valor
+
 RAIZ = Path(__file__).resolve().parent
 RUTA_TEMPLATE_CC = (
     RAIZ.parent.parent / "Centro de Costos" / "Visualizador Web" / "template.html"
@@ -61,7 +63,7 @@ table.tabla-reporte td.alerta { font-weight: 900; color: var(--brand-orange); }
 /* Panel de verificacion (pagina 1 del estandar de 2 paginas): 2 columnas,
    pensado para llenar el alto completo de la pagina (no comprimir de mas)
    -- ver SKILL.md de Reportes_Analisis_Financiero. */
-.pdf-pagina.p1 { padding: 4px 0 0; }
+.pdf-pagina.p1 { padding: 4px 0 26px; }
 .pdf-pagina.p1 h2 { font-size: 17px; margin: 0 0 10px; }
 .pdf-pagina.p1 h3 { font-size: 11.5px; margin: 10px 0 5px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--brand-gray-dark); }
 .pdf-pagina.p1 h3:first-child { margin-top: 0; }
@@ -102,29 +104,54 @@ UMBRAL_DESVIACION_ALERTA = 0.30      # |desviacion| >= 30% se destaca
 # Texto de referencia/objetivo del playbook por KPI, para la columna
 # "Referencia" de la tabla de Indicadores -- que la tabla se explique sola
 # sin depender de leer la pagina 2.
+#
+# 2026-07-28: se quitó "Rentabilidad sobre costo" (KPI eliminado del
+# playbook, era margen/(1-margen) de "Margen neto %" en otra escala -- ver
+# CLAUDE.md/MEMORY.md). Se agregó "Desviación % Total" (mismo criterio que
+# las desviaciones por categoría) y las 5 entradas de "Ahorro/Sobrecosto"
+# (positivo = ahorro es el resultado deseado).
 REFERENCIA_KPI = {
-    "Rentabilidad sobre costo": "Referencia: > 1x (margen positivo)",
     "Margen neto %": f"Objetivo playbook: {OBJETIVO_MARGEN_NETO:.0%}",
     "Desviación % Materiales": "Ideal: cercano a 0%",
     "Desviación % Equipos": "Ideal: cercano a 0%",
     "Desviación % MO": "Ideal: cercano a 0%",
     "Desviación % Otros": "Ideal: cercano a 0%",
+    "Desviación % Total": "Ideal: cercano a 0%",
+    "Ahorro/Sobrecosto Materiales": "Ideal: positivo (ahorro)",
+    "Ahorro/Sobrecosto Equipos": "Ideal: positivo (ahorro)",
+    "Ahorro/Sobrecosto MO": "Ideal: positivo (ahorro)",
+    "Ahorro/Sobrecosto Otros": "Ideal: positivo (ahorro)",
+    "Ahorro/Sobrecosto Total": "Ideal: positivo (ahorro)",
 }
+
+
+def formatear_moneda(valor: float, decimales: int = 0) -> str:
+    """Formato monetario estandar de los reportes: "$" + "." como separador
+    de miles (ej. "$1.293.765") -- usar para TODO monto en pesos que
+    aparezca en un reporte (tablas de KPIs, prosa de pagina 2), no solo en
+    los graficos de graficos.py, para que el formato sea consistente en
+    todo el documento."""
+    return formatear_valor(valor, decimales, moneda=True)
 
 
 def es_kpi_fuera_de_rango(nombre_kpi: str, valor: float) -> bool:
     """Criterio centralizado de "KPI fuera de lo esperado" para destacarlo
     en negrita/naranjo (clase `alerta`) en la tabla de un reporte. Cubre
-    los KPIs con umbral objetivo conocido (margen neto, desviaciones);
-    para el resto de los KPIs devuelve False -- no hay un umbral universal
-    razonable para Productividad o Costo % de venta sin contexto de
-    categoria/cliente."""
+    los KPIs con umbral objetivo conocido (margen neto, desviaciones,
+    ahorro/sobrecosto); para el resto de los KPIs devuelve False -- no hay
+    un umbral universal razonable para Costo % de venta o Estructura % del
+    costo real sin contexto de categoria/cliente.
+
+    2026-07-28: se quitó la rama de "Rentabilidad sobre costo" (KPI
+    eliminado del playbook). Se agregó "Ahorro/Sobrecosto*" -- negativo
+    (sobrecosto) se marca fuera de rango, igual que el signo que ya usa
+    REFERENCIA_KPI ("Ideal: positivo")."""
     if nombre_kpi == "Margen neto %":
         return valor >= OBJETIVO_MARGEN_NETO * 1.5 or valor < 0
-    if nombre_kpi == "Rentabilidad sobre costo":
-        return valor < 1.0 or valor >= 4.0
     if nombre_kpi.startswith("Desviación %"):
         return abs(valor) >= UMBRAL_DESVIACION_ALERTA
+    if nombre_kpi.startswith("Ahorro/Sobrecosto"):
+        return valor < 0
     return False
 
 

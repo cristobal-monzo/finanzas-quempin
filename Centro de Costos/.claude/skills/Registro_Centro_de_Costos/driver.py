@@ -51,6 +51,16 @@ sys.dont_write_bytecode = True
 import auditor_centro_costos as acc  # noqa: E402
 
 
+def _imprimir_lista_truncada(items, formatear, limite=15):
+    """Imprime como maximo 'limite' items formateados; si hay mas, resume el
+    resto en 1 linea. No cambia ningun dato, solo cuanto texto se imprime."""
+    for item in items[:limite]:
+        print(formatear(item))
+    restantes = len(items) - limite
+    if restantes > 0:
+        print(f"  ... y {restantes} más.")
+
+
 def mostrar_preview_renombrados(filas_master, reconciliacion):
     """Preview de status (solo lectura): que archivos se renombrarian/
     convertirian si se corriera 'run', sin tocar disco."""
@@ -133,8 +143,7 @@ def cmd_status():
             sin_datos.append(info)
 
     print(f"\nPendientes SIN datos (o sin items) en el JSON (bloquean el registro): {len(sin_datos)}")
-    for info in sin_datos:
-        print(f"  - [{info['proyecto']}] {info['archivo']}")
+    _imprimir_lista_truncada(sin_datos, lambda info: f"  - [{info['proyecto']}] {info['archivo']}")
 
     escribibles = len(pendientes) - len(sin_datos)
     print(f"\nSi corres 'run' ahora se registrarían: {escribibles} documento(s).")
@@ -157,8 +166,10 @@ def cmd_status():
         detectadas = acc.detectar_correcciones_manuales(wb_anterior, wb)
         pendientes = acc.registrar_correcciones_pendientes(detectadas, escribir=False)
         if pendientes:
-            for c in pendientes:
-                print(f"  - {c['n_ref']} / {c['campo']}: '{c['valor_anterior']}' -> '{c['valor_corregido']}'")
+            _imprimir_lista_truncada(
+                pendientes,
+                lambda c: f"  - {c['n_ref']} / {c['campo']}: '{c['valor_anterior']}' -> '{c['valor_corregido']}'",
+            )
         else:
             print("  Ninguno.")
     else:

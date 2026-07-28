@@ -38,17 +38,31 @@ def test_formulas_agregan_sobre_proyectos_filtrando_por_columna_cliente(tmp_path
 
     af.asegurar_hoja_clientes(wb, filas_validas, ws)
 
+    l = af.LETRA_COL_PROYECTOS
+    cliente_col = l["Cliente"]
+    venta_col = l["Monto de Venta (sin IVA)"]
+    fecha_inicio_col = l["Fecha de inicio"]
+    margen_real_col = l["Margen Real"]
+
     ws_clientes = wb[af.HOJA_CLIENTES]
     assert ws_clientes.cell(row=2, column=1).value == "AGCID"
-    assert ws_clientes.cell(row=2, column=2).value == "=AVERAGEIF(Proyectos!$C:$C,$A2,Proyectos!$G:$G)"
-    assert ws_clientes.cell(row=2, column=3).value == "=COUNTIF(Proyectos!$C:$C,$A2)"
+    assert ws_clientes.cell(row=2, column=2).value == (
+        f"=AVERAGEIF(Proyectos!${cliente_col}:${cliente_col},$A2,"
+        f"Proyectos!${venta_col}:${venta_col})"
+    )
+    assert ws_clientes.cell(row=2, column=3).value == (
+        f"=COUNTIF(Proyectos!${cliente_col}:${cliente_col},$A2)"
+    )
     assert ws_clientes.cell(row=2, column=4).value == (
-        "=MAX(1,(MAXIFS(Proyectos!$E:$E,Proyectos!$C:$C,$A2)"
-        "-MINIFS(Proyectos!$E:$E,Proyectos!$C:$C,$A2))/30)"
+        f"=MAX(1,(_xlfn.MAXIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
+        f"Proyectos!${cliente_col}:${cliente_col},$A2)"
+        f"-_xlfn.MINIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
+        f"Proyectos!${cliente_col}:${cliente_col},$A2))/30)"
     )
     assert ws_clientes.cell(row=2, column=5).value == "=C2/(D2/12)"
     assert ws_clientes.cell(row=2, column=6).value == (
-        "=SUMIF(Proyectos!$C:$C,$A2,Proyectos!$S:$S)/SUMIF(Proyectos!$C:$C,$A2,Proyectos!$G:$G)"
+        f"=SUMIF(Proyectos!${cliente_col}:${cliente_col},$A2,Proyectos!${margen_real_col}:${margen_real_col})"
+        f"/SUMIF(Proyectos!${cliente_col}:${cliente_col},$A2,Proyectos!${venta_col}:${venta_col})"
     )
     assert ws_clientes.cell(row=2, column=7).value == "=B2*E2*C2*F2"
     assert ws_clientes.cell(row=2, column=8).value == (

@@ -50,6 +50,15 @@ python ".claude/skills/Reportes_Analisis_Financiero/driver.py" run
      `graficos.grafico_barras_svg`/`grafico_dona_svg`. El contenido (que
      KPIs/columnas) varia segun el tipo de entidad, pero el orden de
      secciones de esta pagina es siempre el mismo.
+     - **Todo monto en pesos (venta, costos, margen, CLTV, AOV, etc.) se
+       formatea con `brand.formatear_moneda(valor)`** -- da "$1.293.765"
+       ("$" + "." como separador de miles), tanto en la tabla de KPIs como
+       en la prosa de pagina 2. No armar el string a mano (`f"{valor:,.0f}"`
+       produce "1,293,765", con la coma como separador de miles al reves de
+       la convencion usada en QUEMPIN). Para valores dentro de un grafico de
+       `graficos.py` (barras/comparativo), pasar `moneda=True` en vez de
+       llamar a `formatear_moneda` aparte -- mismo formato, ya integrado en
+       la funcion del grafico.
      - **Todo grafico de dona o de barras por categoria lleva leyenda de
        color**: `graficos.leyenda_html(etiquetas, colores)`. Si hay mas de
        una categoria de gasto en un mismo grafico de barras, cada categoria

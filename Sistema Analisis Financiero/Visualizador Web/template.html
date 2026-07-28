@@ -402,7 +402,7 @@
   .detail-grid .dk { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; }
   .detail-grid .dv { color: var(--text-primary); margin-top: 1px; }
   .detail-grid .dv.accent { color: var(--brand-orange-ink, var(--brand-orange)); font-weight: 700; }
-  table.viz-itemtable { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; background: var(--surface-card); border-radius: 8px; overflow: hidden; }
+  table.viz-itemtable { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; background: var(--surface-card); border-radius: 8px; overflow: hidden; min-width: 480px; }
   table.viz-itemtable th { text-align: left; font-size: 10.5px; text-transform: uppercase; color: var(--text-muted); padding: 7px 10px; border-bottom: 1px solid var(--gridline); }
   table.viz-itemtable th:nth-child(1) { width: 18%; }
   table.viz-itemtable th:nth-child(2) { width: 34%; }
@@ -413,6 +413,21 @@
   table.viz-itemtable td { padding: 7px 10px; border-bottom: 1px solid var(--gridline); overflow-wrap: break-word; }
   table.viz-itemtable td.num { text-align: right; font-variant-numeric: tabular-nums; }
   table.viz-itemtable tbody tr:last-child td { border-bottom: none; }
+  /* Anchos propios para no heredar los nth-child pensados para la tabla
+     Concepto/Proyectado/Real de 3 columnas -- estas dos tienen 7 y 4. */
+  table.viz-itemtable.tabla-costos-categoria { min-width: 620px; }
+  table.viz-itemtable.tabla-costos-categoria th:nth-child(1) { width: 16%; }
+  table.viz-itemtable.tabla-costos-categoria th:nth-child(n+2) { width: 14%; }
+  table.viz-itemtable.tabla-subcategorias th:nth-child(1) { width: 32%; }
+  table.viz-itemtable.tabla-subcategorias th:nth-child(2) { width: 22%; }
+  table.viz-itemtable.tabla-subcategorias th:nth-child(3) { width: 22%; }
+  table.viz-itemtable.tabla-subcategorias th:nth-child(4) { width: 24%; }
+  table.viz-itemtable.tabla-proyectos-categoria th:nth-child(1) { width: 28%; }
+  table.viz-itemtable.tabla-proyectos-categoria th:nth-child(2) { width: 28%; }
+  table.viz-itemtable.tabla-proyectos-categoria th:nth-child(3) { width: 18%; }
+  table.viz-itemtable.tabla-proyectos-categoria th:nth-child(4) { width: 12%; }
+  table.viz-itemtable.tabla-proyectos-categoria th:nth-child(5) { width: 14%; }
+  .detail-subheading { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; margin: 14px 0 6px; }
   .viz-empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
   .viz-pagination {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -561,8 +576,10 @@
       <div class="chart-row">
         <div class="chart-card"><h3>Nota del Proyecto</h3><div id="chartNotaProyectos"></div></div>
         <div class="chart-card"><h3>Distribución de Evaluación</h3><div id="chartEvaluacion"></div></div>
+        <div class="chart-card"><h3 title="Monto de Venta de cada proyecto sobre la suma de Monto de Venta de todos los proyectos con venta cargada — cuanto más concentrada la cartera en pocos proyectos, mayor el riesgo si uno de ellos cae.">Concentración de cartera (peso en ventas)</h3><div id="chartPesoCartera"></div></div>
       </div>
       <input type="text" id="buscarProyectos" class="viz-search" placeholder="Buscar proyecto o cliente…">
+      <div class="viz-tablewrap"><div class="viz-tablescroll">
       <table class="viz-table">
         <thead>
           <tr><th>Proyecto</th><th>Cliente</th><th>Estado</th><th>Monto Venta</th>
@@ -573,6 +590,7 @@
         </thead>
         <tbody id="tablaProyectosBody"></tbody>
       </table>
+      </div></div>
     </section>
 
     <section id="tabClientes" class="viz-tab-panel">
@@ -604,6 +622,7 @@
         <div class="chart-card"><h3>Distribución de Clasificación</h3><div id="chartClasificacion"></div></div>
       </div>
       <input type="text" id="buscarClientes" class="viz-search" placeholder="Buscar cliente…">
+      <div class="viz-tablewrap"><div class="viz-tablescroll">
       <table class="viz-table">
         <thead>
           <tr><th>Cliente</th>
@@ -617,6 +636,7 @@
         </thead>
         <tbody id="tablaClientesBody"></tbody>
       </table>
+      </div></div>
     </section>
 
     <section id="tabCategoria" class="viz-tab-panel">
@@ -641,6 +661,7 @@
         <div class="chart-card"><h3>Distribución de Proyectos</h3><div id="chartDistribucionCategoria"></div></div>
       </div>
       <input type="text" id="buscarCategorias" class="viz-search" placeholder="Buscar categoría…">
+      <div class="viz-tablewrap"><div class="viz-tablescroll">
       <table class="viz-table">
         <thead>
           <tr><th>Categoría</th><th>N° Proyectos</th>
@@ -649,6 +670,7 @@
         </thead>
         <tbody id="tablaCategoriasBody"></tbody>
       </table>
+      </div></div>
     </section>
 
     <p class="viz-footer">
@@ -770,6 +792,10 @@
   function formatoPctDesviacion(n) {
     var nivel = n <= 0 ? 'sem-good' : (n <= 0.15 ? 'sem-warn' : 'sem-bad');
     return '<span class="' + nivel + '">' + formatoPct(n) + '</span>';
+  }
+  // Ahorro/Sobrecosto: signo opuesto a la desviacion -- positivo = ahorro (bueno).
+  function formatoMontoSigno(n) {
+    return '<span class="' + (n >= 0 ? 'sem-good' : 'sem-bad') + '">' + formatoCLP(n) + '</span>';
   }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -939,7 +965,61 @@
     return { evaluacion: k, n: porEvaluacion[k] };
   }), 'evaluacion', 'n', NIVEL_EVALUACION);
 
+  var proyectosPorPeso = PROYECTOS.slice().sort(function (a, b) { return b.peso_cartera_pct - a.peso_cartera_pct; });
+  renderBarChart('chartPesoCartera', proyectosPorPeso.map(function (p) {
+    return { nombre: p.nombre, peso: p.peso_cartera_pct, valueLabel: formatoPct(p.peso_cartera_pct) };
+  }), 'nombre', 'peso');
+
   var proyectoExpandido = null;
+  var CATEGORIAS_COSTO = [
+    { key: 'materiales', label: 'Materiales' },
+    { key: 'equipos', label: 'Equipos' },
+    { key: 'mo', label: 'Mano de Obra' },
+    { key: 'otros', label: 'Otros' },
+  ];
+
+  function tablaCostosCategoriaHtml(p) {
+    var filas = CATEGORIAS_COSTO.map(function (c) {
+      return '<tr><td>' + c.label + '</td>' +
+        '<td class="num">' + formatoCLP(p.costos_proyectados[c.key]) + '</td>' +
+        '<td class="num">' + formatoCLP(p.costos_reales[c.key]) + '</td>' +
+        '<td class="num">' + formatoPctDesviacion(p.desviacion_pct_categoria[c.key]) + '</td>' +
+        '<td class="num">' + formatoPct(p.estructura_pct[c.key]) + '</td>' +
+        '<td class="num">' + formatoPct(p.costo_pct_venta[c.key]) + '</td>' +
+        '<td class="num">' + formatoMontoSigno(p.ahorro_sobrecosto[c.key]) + '</td></tr>';
+    }).join('');
+    var costoPctVentaTotal = p.monto_venta ? (p.total_real / p.monto_venta) : 0;
+    var filaTotal = '<tr><td><strong>Total</strong></td>' +
+      '<td class="num"><strong>' + formatoCLP(p.total_proyectado) + '</strong></td>' +
+      '<td class="num"><strong>' + formatoCLP(p.total_real) + '</strong></td>' +
+      '<td class="num"><strong>' + formatoPctDesviacion(p.desviacion_pct) + '</strong></td>' +
+      '<td class="num"><strong>100.0%</strong></td>' +
+      '<td class="num"><strong>' + formatoPct(costoPctVentaTotal) + '</strong></td>' +
+      '<td class="num"><strong>' + formatoMontoSigno(p.ahorro_sobrecosto_total) + '</strong></td></tr>';
+    return '<div class="viz-tablescroll"><table class="viz-itemtable tabla-costos-categoria"><thead><tr>' +
+      '<th>Concepto</th><th class="num">Proyectado</th><th class="num">Real</th>' +
+      '<th class="num" title="Real / Proyectado − 1, por categoría. +15% o más = sobregasto relevante en esa categoría.">Desviación %</th>' +
+      '<th class="num" title="Costo Real de la categoría / Costos Totales Real — las 4 categorías suman 100% del gasto real, sin importar cuán rentable resultó el proyecto.">Estructura %</th>' +
+      '<th class="num" title="Costo Real de la categoría / Monto de Venta — qué parte de cada peso vendido se va en esa categoría.">Costo % venta</th>' +
+      '<th class="num" title="Costo Proyectado − Costo Real. Positivo = ahorro (se gastó menos de lo presupuestado); negativo = sobrecosto.">Ahorro/Sobrecosto</th>' +
+      '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>';
+  }
+
+  function tablaSubcategoriasHtml(p) {
+    if (!p.detalle_subcategorias.length) {
+      return '<p style="color:var(--text-muted);font-size:12px;margin-top:10px">' +
+        'Sin gasto detallado por documento en Centro de Costos (proyecto con solo Mano de Obra Real, ingresada a mano).</p>';
+    }
+    var filas = p.detalle_subcategorias.slice().sort(function (a, b) { return b.pct - a.pct; }).map(function (s) {
+      return '<tr><td>' + esc(s.subcategoria) + '</td><td>' + esc(s.bucket) + '</td>' +
+        '<td class="num">' + formatoCLP(s.total) + '</td>' +
+        '<td class="num">' + (s.pct == null ? '—' : formatoPct(s.pct)) + '</td></tr>';
+    }).join('');
+    return '<div class="viz-tablescroll"><table class="viz-itemtable tabla-subcategorias"><thead><tr>' +
+      '<th>Subcategoría</th><th>Bucket</th><th class="num">Total</th>' +
+      '<th class="num" title="Peso de esta subcategoría dentro del gasto detallado del proyecto en Centro de Costos — suma ~100% (no incluye Mano de Obra Real, manual y sin detalle por documento).">% del Total Real</th>' +
+      '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+  }
 
   function detalleProyectoHtml(p) {
     var pdfKey = 'proyecto:' + p.tag;
@@ -949,18 +1029,17 @@
     return '<div class="detail-panel">' +
       '<div class="detail-grid">' +
         '<div><div class="dk">Margen Real</div><div class="dv accent">' + formatoCLP(p.margen_real) + '</div></div>' +
+        '<div><div class="dk" title="Margen Real / Monto de Venta — componente de rentabilidad de la Nota del Proyecto (70% del puntaje, vs. objetivo 25%).">Margen neto %</div><div class="dv">' + (p.monto_venta ? formatoPct(p.margen_real / p.monto_venta) : '—') + '</div></div>' +
         '<div><div class="dk">Margen Proyectado</div><div class="dv">' + formatoCLP(p.monto_venta - p.total_proyectado) + '</div></div>' +
         '<div><div class="dk">Desviación %</div><div class="dv">' + formatoPctDesviacion(p.desviacion_pct) + '</div></div>' +
         '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + p.nota + ' — ' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</div></div>' +
+        '<div><div class="dk" title="Monto de Venta del proyecto sobre la suma de Monto de Venta de todos los proyectos con venta cargada — mide concentración de riesgo en la cartera.">Peso en cartera de ventas</div><div class="dv">' + formatoPct(p.peso_cartera_pct) + '</div></div>' +
+        '<div><div class="dk" title="Margen Real / días entre Fecha de inicio y Fecha de cierre. Vacío si el proyecto aún no tiene Fecha de cierre.">Margen por día</div><div class="dv">' + (p.margen_por_dia == null ? '— (en desarrollo)' : formatoCLP(p.margen_por_dia) + '/día') + '</div></div>' +
       '</div>' +
       '<div id="chartComparativo-' + esc(p.tag) + '" style="margin-bottom:12px"></div>' +
-      '<table class="viz-itemtable"><thead><tr><th>Concepto</th><th>Proyectado</th><th>Real</th></tr></thead><tbody>' +
-        '<tr><td>Materiales</td><td class="num">' + formatoCLP(p.costos_proyectados.materiales) + '</td><td class="num">' + formatoCLP(p.costos_reales.materiales) + '</td></tr>' +
-        '<tr><td>Equipos</td><td class="num">' + formatoCLP(p.costos_proyectados.equipos) + '</td><td class="num">' + formatoCLP(p.costos_reales.equipos) + '</td></tr>' +
-        '<tr><td>Mano de Obra</td><td class="num">' + formatoCLP(p.costos_proyectados.mo) + '</td><td class="num">' + formatoCLP(p.costos_reales.mo) + '</td></tr>' +
-        '<tr><td>Otros</td><td class="num">' + formatoCLP(p.costos_proyectados.otros) + '</td><td class="num">' + formatoCLP(p.costos_reales.otros) + '</td></tr>' +
-        '<tr><td><strong>Total</strong></td><td class="num"><strong>' + formatoCLP(p.total_proyectado) + '</strong></td><td class="num"><strong>' + formatoCLP(p.total_real) + '</strong></td></tr>' +
-      '</tbody></table>' +
+      tablaCostosCategoriaHtml(p) +
+      '<div class="detail-subheading">Detalle real por subcategoría (Centro de Costos)</div>' +
+      tablaSubcategoriasHtml(p) +
       '<div class="detail-grid" style="margin-top:12px">' +
         '<div><div class="dk">Monto de Venta</div><div class="dv">' + formatoCLP(p.monto_venta) + '</div></div>' +
         '<div><div class="dk">Fecha de inicio</div><div class="dv">' + esc(p.fecha_inicio || '—') + '</div></div>' +
@@ -1093,8 +1172,8 @@
         '<div><div class="dk">Nota Promedio</div><div class="dv ' + nivelNota + '">' + c.nota_promedio.toFixed(1) + '</div></div>' +
       '</div>' +
       '<div id="chartProyectosCategoria-' + esc(c.categoria) + '" style="margin-bottom:12px"></div>' +
-      '<table class="viz-itemtable"><thead><tr><th>Proyecto</th><th>Cliente</th><th>Margen Real</th><th>Nota</th><th>Evaluación</th></tr></thead>' +
-      '<tbody>' + filas + '</tbody></table>' +
+      '<div class="viz-tablescroll"><table class="viz-itemtable tabla-proyectos-categoria"><thead><tr><th>Proyecto</th><th>Cliente</th><th class="num">Margen Real</th><th class="num">Nota</th><th>Evaluación</th></tr></thead>' +
+      '<tbody>' + filas + '</tbody></table></div>' +
       pdfBtn +
       '</div>';
   }

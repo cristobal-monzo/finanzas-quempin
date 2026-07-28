@@ -46,7 +46,18 @@ Sistema Analisis Financiero/Visualizador Web/
 - **Pestaña Proyectos**: KPIs (N° completos, Margen Real total, Nota
   promedio, N° "Requiere atención"), ranking de Nota del Proyecto (barras),
   distribución de Evaluación (donut), tabla buscable (orden fijo por Nota
-  descendente).
+  descendente). El panel de detalle por proyecto (click en la fila) muestra
+  además los KPIs agregados 2026-07-28 al playbook de "Indicadores": **Peso
+  en cartera de ventas** y **Margen por día** (tarjetas junto a
+  Margen/Desviación/Nota); una tabla ampliada por categoría (Materiales/
+  Equipos/MO/Otros) con Proyectado, Real, Desviación %, Estructura % (mix),
+  Costo % de venta y Ahorro/Sobrecosto, con fila Total; y una subtabla
+  **Detalle real por subcategoría** (granularidad de "Detalle Costos
+  Reales" — Consumibles, Equipos-Herramientas, Combustible, etc. — con su
+  `% del Total Real del proyecto`). Todo recomputado en Python en
+  `build_visualizador.py` (`_kpis_por_categoria`, `calcular_peso_cartera`,
+  `leer_detalle_subcategorias`), nunca leído del cache de fórmulas del
+  Excel — mismo principio que el resto del snapshot.
 - **Pestaña Clientes**: KPIs (top CLTV, CLTV promedio, conteo por
   Clasificación), top 8 clientes por CLTV (barras), distribución de
   Clasificación (donut), tabla buscable con nota de proyectos pendientes

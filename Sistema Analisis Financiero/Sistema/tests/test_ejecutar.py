@@ -29,7 +29,8 @@ def _crear_excel_af_con_un_proyecto(tmp_path):
     ws = wb[af.HOJA_PROYECTOS]
     ws.cell(row=2, column=1, value="UMAG")
     ws.cell(row=2, column=2, value="UMAG")
-    ws.cell(row=2, column=7, value=1000000)
+    col_venta = af.HEADERS_PROYECTOS.index("Monto de Venta (sin IVA)") + 1
+    ws.cell(row=2, column=col_venta, value=1000000)
     wb.save(ruta)
     return ruta
 
@@ -50,7 +51,8 @@ def test_ejecutar_de_punta_a_punta_crea_carpeta_regenera_hojas_y_guarda(tmp_path
     ws_detalle = wb[af.HOJA_DETALLE_COSTOS_REALES]
     assert ws_detalle.cell(row=2, column=4).value == 50000.0
     ws_proyectos = wb[af.HOJA_PROYECTOS]
-    assert ws_proyectos.cell(row=2, column=12).value.startswith("=SUMIFS(")
+    col_mat_real = af.HEADERS_PROYECTOS.index("Costos Materiales Reales") + 1
+    assert ws_proyectos.cell(row=2, column=col_mat_real).value.startswith("=SUMIFS(")
     # el archivo AF ya existia en disco (lo creo el fixture) antes de ejecutar(),
     # asi que se respalda antes de sobrescribirlo -- regla de oro del modulo.
     assert len(list((raiz_respaldos).rglob("*.xlsx"))) == 1
