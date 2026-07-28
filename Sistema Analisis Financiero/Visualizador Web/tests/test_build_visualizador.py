@@ -1,3 +1,4 @@
+import base64 as _base64
 import re
 from datetime import datetime, timedelta
 
@@ -463,3 +464,40 @@ def test_calcular_categorias_proyecto_sin_categoria_va_a_bucket_sin_categoria():
 
 def test_calcular_categorias_lista_vacia_devuelve_lista_vacia():
     assert bv.calcular_categorias([]) == []
+
+
+def test_embeber_reportes_pdf_incluye_solo_proyectos_con_pdf_existente(tmp_path, monkeypatch):
+    raiz_reportes = tmp_path / "Reportes"
+    (raiz_reportes / "Proyectos").mkdir(parents=True)
+    (raiz_reportes / "Proyectos" / "UMAG.pdf").write_bytes(b"%PDF-1.4 contenido de prueba")
+    monkeypatch.setattr(bv, "RAIZ_REPORTES", raiz_reportes)
+
+    reportes = bv.embeber_reportes_pdf(
+        [{"tag": "UMAG"}, {"tag": "SINPDF"}], [],
+    )
+
+    assert "proyecto:UMAG" in reportes
+    assert "proyecto:SINPDF" not in reportes
+    assert _base64.b64decode(reportes["proyecto:UMAG"]) == b"%PDF-1.4 contenido de prueba"
+
+
+def test_embeber_reportes_pdf_incluye_categorias_con_pdf_existente(tmp_path, monkeypatch):
+    raiz_reportes = tmp_path / "Reportes"
+    (raiz_reportes / "Categorías").mkdir(parents=True)
+    (raiz_reportes / "Categorías" / "I+D+i.pdf").write_bytes(b"%PDF fake categoria")
+    monkeypatch.setattr(bv, "RAIZ_REPORTES", raiz_reportes)
+
+    reportes = bv.embeber_reportes_pdf(
+        [], [{"categoria": "I+D+i"}, {"categoria": "Sin categoría"}],
+    )
+
+    assert "categoria:I+D+i" in reportes
+    assert "categoria:Sin categoría" not in reportes
+
+
+def test_embeber_reportes_pdf_devuelve_vacio_si_no_hay_carpeta_reportes(tmp_path, monkeypatch):
+    monkeypatch.setattr(bv, "RAIZ_REPORTES", tmp_path / "esta-carpeta-no-existe")
+
+    reportes = bv.embeber_reportes_pdf([{"tag": "X"}], [{"categoria": "Y"}])
+
+    assert reportes == {}

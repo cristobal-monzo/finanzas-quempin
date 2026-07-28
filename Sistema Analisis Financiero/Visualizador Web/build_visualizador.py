@@ -32,6 +32,7 @@ RUTA_EXCEL = af.RUTA_EXCEL
 RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "analisis-financiero.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
+RAIZ_REPORTES = af.RAIZ_DATOS / "Reportes"
 
 URL_PLANILLA_PENDIENTE = (
     "https://quempinspa2020.sharepoint.com/:x:/g/"
@@ -251,6 +252,26 @@ def calcular_categorias(kpis_proyectos_completos: list[dict]) -> list[dict]:
             "tags_proyectos": [k["tag"] for k in kpis],
         })
     return filas
+
+
+def embeber_reportes_pdf(proyectos: list[dict], categorias: list[dict]) -> dict[str, str]:
+    """Escanea RAIZ_REPORTES/{Proyectos,Categorías}/*.pdf y embebe en base64
+    los que existen. La ausencia de una clave en el dict devuelto ES la
+    señal de "sin reporte" -- nunca se agrega una clave con valor None o
+    cadena vacia. Nunca escribe ni modifica ningun PDF, solo lee."""
+    reportes: dict[str, str] = {}
+
+    for p in proyectos:
+        ruta = RAIZ_REPORTES / "Proyectos" / f"{p['tag']}.pdf"
+        if ruta.exists():
+            reportes[f"proyecto:{p['tag']}"] = base64.b64encode(ruta.read_bytes()).decode("ascii")
+
+    for c in categorias:
+        ruta = RAIZ_REPORTES / "Categorías" / f"{c['categoria']}.pdf"
+        if ruta.exists():
+            reportes[f"categoria:{c['categoria']}"] = base64.b64encode(ruta.read_bytes()).decode("ascii")
+
+    return reportes
 
 
 def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
