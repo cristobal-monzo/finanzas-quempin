@@ -62,6 +62,32 @@ La carpeta `<Módulo>/Visualizador Web/data/` se agrega a `.gitignore` en
 cada módulo cuando se cree (el código que genera el export sí se
 versiona) — ver regla ya agregada en el `.gitignore` raíz.
 
+## Índice (hub) de los 3 tableros
+
+Agregado 2026-07-29: `Visualizador Web/index.html` (raíz, junto a este
+`CLAUDE.md`) es una página estática que **no muestra datos** — solo 3
+tarjetas, una por módulo, cada una con un botón que abre en pestaña nueva el
+Artifact publicado de ese módulo. Reutiliza el mismo sistema de marca que
+los 3 visualizadores de módulo (paleta oficial, Lato embebida, cabecera
+negra con filete naranjo, toggle de tema), reconstruido a mano a partir de
+`Centro de Costos/Visualizador Web/template.html` — no hay `build_visualizador.py`
+para este archivo porque no lee ningún Excel/JSON: los 3 links de destino se
+escriben directo en el HTML y solo cambian si se republica alguno de los 3
+tableros con una URL nueva (no debería pasar — la convención de cada módulo
+es actualizar siempre el mismo link).
+
+- **Sin gate de contraseña** (decisión explícita del usuario, 2026-07-29):
+  el hub no expone información financiera, cada tarjeta lleva a un sitio que
+  sí pide su propia contraseña.
+- **Publicado como Artifact privado**: `https://claude.ai/code/artifact/9b25869b-b1eb-4279-942b-97599d425a8d`,
+  favicon 🗂️ (distinto a los de los 3 módulos: 🏗️ Centro de Costos, 📊
+  Análisis Financiero, 🧾 Cotizador Histórico). Al republicar tras editar
+  `index.html`, pasar este mismo URL como `url` al tool `Artifact` — nunca
+  generar uno nuevo.
+- Si el link de Artifact de algún módulo cambia (republicación con URL
+  nueva, algo que hoy no debería ocurrir), hay que actualizar el `href`
+  correspondiente aquí y volver a publicar el hub.
+
 ## Hosting
 
 GitHub Pages recomendado: **un solo sitio** servido desde este repo, con
