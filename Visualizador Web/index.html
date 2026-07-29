@@ -85,11 +85,23 @@
   }
 
   * { box-sizing: border-box; }
+  /* El fondo del documento (html/body) se fija aparte de .viz-root: si el
+     contenido es más corto que el alto de la ventana, el navegador pinta
+     ese sobrante con el color por defecto del lienzo (blanco) en vez del
+     fondo de la página — sin esto se ve una franja blanca bajo el pie de
+     página. */
+  html { background: #f4f2ee; }
+  @media (prefers-color-scheme: dark) {
+    html:where(:not([data-theme="light"])) { background: #0d0d0d; }
+  }
+  html[data-theme="dark"] { background: #0d0d0d; }
+  html[data-theme="light"] { background: #f4f2ee; }
+  body { margin: 0; min-height: 100vh; background: inherit; }
   .viz-root {
     font-family: 'Lato', system-ui, -apple-system, "Segoe UI", sans-serif;
     background: var(--page-plane);
     color: var(--text-primary);
-    min-height: 100%;
+    min-height: 100vh;
     padding: 0 0 48px 0;
   }
   .viz-container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
