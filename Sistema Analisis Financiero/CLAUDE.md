@@ -218,12 +218,17 @@ al final de su propio `run` (PASO 12d, `auditor_centro_costos.py`,
 actualizar Análisis Financiero — best-effort: si el skill de reportes no
 existe o falla, no aborta el `run` de Centro de Costos, solo omite el aviso.
 
-**Reglas de completitud / "en desarrollo"** (spec §6): un proyecto sin todos
-sus datos manuales completos (Monto de Venta, costos proyectados por
-categoría, fechas) **no genera reporte** — se excluye de `listar_entidades` y
-de las agregaciones de cliente/categoría (`paquete_datos_proyecto` lanza
-`DatosIncompletos`). Un proyecto sin fecha de cierre, o con una fecha de
-cierre futura, se considera **"en desarrollo"**: sí genera reporte (no
+**Reglas de completitud / "en desarrollo"** (spec §6): un proyecto sin las 8
+columnas manuales de `CAMPOS_MANUALES_REQUERIDOS` (Estado, Fecha de inicio,
+Monto de Venta, los 4 Costos Proyectados, Mano de Obra Real) **no genera
+reporte** — se excluye de `listar_entidades` y de las agregaciones de
+cliente/categoría (`paquete_datos_proyecto` lanza `DatosIncompletos`). Esta
+es la única definición de completitud del módulo — hasta el 2026-07-28
+estaba duplicada y el dashboard usaba una versión más laxa (6 campos, sin
+"Estado" ni "Fecha de inicio"); unificadas en `tiene_datos_completos()`, con
+contrato cruzado en `Sistema/tests/test_contrato_kpis.py`. "Fecha de cierre"
+queda deliberadamente fuera de este requisito: un proyecto sin ella, o con
+una fecha de cierre futura, se considera **"en desarrollo"**: sí genera reporte (no
 requiere fecha de cierre para estar completo), pero su reporte lleva un
 indicador visual explícito de que el proyecto sigue en curso, no cerrado.
 

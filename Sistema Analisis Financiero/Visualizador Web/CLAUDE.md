@@ -31,11 +31,15 @@ Sistema Analisis Financiero/Visualizador Web/
   Clasificación directamente en Python a partir de las columnas manuales de
   "Proyectos" y de "Detalle Costos Reales" (100% valores). Ver spec §2 para
   el detalle y el precedente en Centro de Costos.
-- **Proyectos incompletos**: un proyecto sin las 6 columnas manuales
-  cargadas (Monto de Venta + 4 Costos Proyectados + Mano de Obra Real) nunca
-  recibe KPIs — aparece en el banner "Pendientes de completar" con un link a
-  la planilla real. Clientes con proyectos mixtos calculan su CLTV solo con
-  los proyectos completos. Ver spec §3.
+- **Proyectos incompletos**: un proyecto sin las 8 columnas manuales de
+  `af.CAMPOS_MANUALES_REQUERIDOS` cargadas (Estado, Fecha de inicio, Monto
+  de Venta, 4 Costos Proyectados, Mano de Obra Real) nunca recibe KPIs —
+  aparece en el banner "Pendientes de completar" con un link a la planilla
+  real. Clientes con proyectos mixtos calculan su CLTV solo con los
+  proyectos completos. Regla única desde 2026-07-28 (antes el dashboard
+  usaba solo 6 campos, distinto de los reportes PDF — ver
+  `analisis_financiero.CAMPOS_MANUALES_REQUERIDOS` y
+  `Sistema/tests/test_contrato_kpis.py`). Ver spec §3.
 - **Datos incrustados** (base64, no `fetch`) — mismo motivo que Centro de
   Costos: el canal de consumo es un Claude Artifact privado.
 - **Gate de contraseña**: misma contraseña que Centro de Costos (decisión

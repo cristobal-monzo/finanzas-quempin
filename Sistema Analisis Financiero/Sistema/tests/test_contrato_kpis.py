@@ -14,11 +14,19 @@ implementación (con su bug incluido) en vez de afirmar el resultado esperado.
 
 Estos tests comparan las salidas de los dos caminos Python entre sí y contra
 la fórmula de Excel, sobre casos donde la diferencia se manifiesta.
+
+Ampliado (auditoría de todo el repo) para cubrir el resto de los KPIs que
+también se recalculan por separado en cada camino y que hasta entonces no
+tenían este contrato: costo%/estructura%/desviación%/ahorro-sobrecosto por
+categoría, y CLTV/Clasificación de clientes.
 """
 
 import importlib.util
 import sys
+from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 import analisis_financiero as af
 
@@ -180,3 +188,97 @@ def test_cero_si_cuenta_como_dato_cargado():
             **{"Estado": "Terminado", "Fecha de inicio": "2026-01-01", "Mano de Obra Real": 0},
         )
     )
+
+
+# ── Cobertura ampliada: el resto de los KPIs por categoria tambien se ──────
+# recalculan por separado en cada camino (bv._kpis_por_categoria vs
+# kr.recalcular_proyecto) y, hasta acá, nada los comparaba entre sí -- solo
+# Nota/Evaluación tenían este contrato. El mismo tipo de divergencia que ya
+# ocurrió una vez con la Nota podría colarse en cualquiera de estos sin que
+# la suite lo note.
+_CATEGORIA_CORTA_A_LARGA = {"materiales": "Materiales", "equipos": "Equipos", "mo": "MO", "otros": "Otros"}
+
+
+def test_kpis_por_categoria_y_totales_coinciden_entre_visualizador_y_reportes():
+    for caso in (CASO_BAJO_PRESUPUESTO, CASO_SOBRE_PRESUPUESTO):
+        kpi_viz, indicadores = _notas_de_ambos_caminos(caso)
+        assert kpi_viz["desviacion_pct"] == pytest.approx(indicadores["Desviación % Total"])
+        assert kpi_viz["ahorro_sobrecosto_total"] == pytest.approx(indicadores["Ahorro/Sobrecosto Total"])
+        for corta, larga in _CATEGORIA_CORTA_A_LARGA.items():
+            assert kpi_viz["costo_pct_venta"][corta] == pytest.approx(
+                indicadores[f"Costo {larga} % de venta"]
+            )
+            assert kpi_viz["estructura_pct"][corta] == pytest.approx(
+                indicadores[f"Estructura % {larga}"]
+            )
+            assert kpi_viz["desviacion_pct_categoria"][corta] == pytest.approx(
+                indicadores[f"Desviación % {larga}"]
+            )
+            assert kpi_viz["ahorro_sobrecosto"][corta] == pytest.approx(
+                indicadores[f"Ahorro/Sobrecosto {larga}"]
+            )
+
+
+# ── Contrato de CLTV/Clientes: mismo problema, otro par de implementaciones ─
+# kr.calcular_cltv_clientes (reportes) y bv.calcular_clientes (dashboard)
+# recalculan AOV/Vida/Meses activo/Frecuencia/Margen%/CLTV/Clasificación cada
+# uno por su cuenta a partir de la hoja "Proyectos" -- tampoco tenían un test
+# que los comparara entre sí. 3 clientes (2 con 2 proyectos, 1 con uno solo)
+# para ejercitar tanto el promedio de fechas como el caso de un solo proyecto,
+# y que haya 3 valores de CLTV distintos para que la clasificación por
+# percentil (67/33) tenga los tres tramos posibles.
+def _proyecto_cliente(tag, cliente, fecha_inicio, venta, proy, real):
+    corto = {
+        "tag": tag, "nombre": tag, "cliente": cliente,
+        "estado": "Terminado", "fecha_inicio": fecha_inicio, "fecha_cierre": None,
+        "categoria": "I+D+i", "monto_venta": venta,
+        "materiales_proy": proy[0], "equipos_proy": proy[1],
+        "mo_proy": proy[2], "otros_proy": proy[3], "mo_real": real[3],
+    }
+    encabezados = {
+        "Cliente": cliente, "Fecha de inicio": fecha_inicio,
+        "Monto de Venta (sin IVA)": venta,
+        "Costos Materiales Proyectados": proy[0], "Costos Equipos Proyectados": proy[1],
+        "Mano de Obra Proyectada": proy[2], "Otros Costos Proyectados": proy[3],
+        "Mano de Obra Real": real[3],
+    }
+    reales = {"Materiales": real[0], "Equipos": real[1], "Otros": real[2]}
+    return corto, encabezados, reales
+
+
+_PROYECTOS_CLIENTES = [
+    _proyecto_cliente("A1", "Cliente A", datetime(2026, 1, 1), 5_000_000,
+                       (1_000_000, 500_000, 500_000, 200_000), (900_000, 450_000, 150_000, 480_000)),
+    _proyecto_cliente("A2", "Cliente A", datetime(2026, 4, 1), 6_000_000,
+                       (1_200_000, 600_000, 600_000, 300_000), (1_100_000, 550_000, 250_000, 580_000)),
+    _proyecto_cliente("B1", "Cliente B", datetime(2026, 2, 1), 10_000_000,
+                       (2_000_000, 1_000_000, 1_000_000, 500_000), (1_500_000, 800_000, 400_000, 900_000)),
+    _proyecto_cliente("B2", "Cliente B", datetime(2026, 8, 1), 12_000_000,
+                       (2_400_000, 1_200_000, 1_200_000, 600_000), (1_800_000, 900_000, 500_000, 1_000_000)),
+    _proyecto_cliente("C1", "Cliente C", datetime(2026, 5, 1), 2_000_000,
+                       (500_000, 300_000, 300_000, 100_000), (600_000, 350_000, 150_000, 350_000)),
+]
+
+
+def test_cltv_y_clasificacion_de_clientes_coinciden_entre_visualizador_y_reportes():
+    kpis_bv = [bv.calcular_kpis_proyecto(corto, reales) for corto, _, reales in _PROYECTOS_CLIENTES]
+    proyectos_por_tag = {corto["tag"]: corto for corto, _, _ in _PROYECTOS_CLIENTES}
+    clientes_bv = {c["cliente"]: c for c in bv.calcular_clientes(kpis_bv, proyectos_por_tag)}
+
+    proyectos_actualizados_kr = [
+        kr.recalcular_proyecto(encabezados, reales)[0] for _, encabezados, reales in _PROYECTOS_CLIENTES
+    ]
+    clientes_kr = kr.calcular_cltv_clientes(proyectos_actualizados_kr)
+
+    assert set(clientes_bv) == {"Cliente A", "Cliente B", "Cliente C"}
+    assert set(clientes_kr) == set(clientes_bv)
+
+    for nombre, c_bv in clientes_bv.items():
+        c_kr = clientes_kr[nombre]
+        assert c_bv["aov"] == pytest.approx(c_kr["AOV (Valor promedio de venta)"])
+        assert c_bv["vida"] == c_kr["Vida del cliente (n° de proyectos)"]
+        assert c_bv["meses_activo"] == pytest.approx(c_kr["Meses activo"])
+        assert c_bv["frecuencia"] == pytest.approx(c_kr["Frecuencia de compra (proyectos/año)"])
+        assert c_bv["margen_pct"] == pytest.approx(c_kr["Margen de utilidad %"])
+        assert c_bv["cltv"] == pytest.approx(c_kr["CLTV"])
+        assert c_bv["clasificacion"] == c_kr["Clasificación"]
