@@ -65,3 +65,41 @@ def test_extraer_datos_saneados_archivo_origen_ausente_es_none(tmp_path):
     ruta = _wb_con_un_documento(tmp_path, None)
     data = bv.extraer_datos_saneados(ruta)
     assert data["documentos"][0]["archivo_origen"] is None
+
+
+def test_pendiente_coincide_con_el_color_real_de_auditor_centro_costos(tmp_path):
+    """La deteccion de "celda roja" de este modulo es una reimplementacion
+    independiente de _celda_es_roja (Sistema/auditor_centro_costos.py) --
+    nada comparaba que las dos coincidieran sobre los mismos colores reales.
+    Encontro un bug real: el match exacto anterior nunca reconocia el ARGB
+    que openpyxl realmente devuelve ("00C00000", no "FFC00000") -- el
+    dashboard nunca marcaba ningun documento como "pendiente de revision".
+    Usa los Font() reales del modulo que sí escribe el Excel, no strings de
+    color adivinados, y siempre relee desde disco (como hacen ambos caminos
+    en producción) para que openpyxl normalice el ARGB igual que en un
+    archivo real."""
+    raiz_sistema = Path(__file__).resolve().parents[2] / "Sistema"
+    if str(raiz_sistema) not in sys.path:
+        sys.path.insert(0, str(raiz_sistema))
+    import auditor_centro_costos as acc
+
+    col_n_documento = HEADERS_MASTER.index("N° Documento") + 1
+    casos = (
+        (acc.ROJO_FONT, True),
+        (acc.AZUL_MARINO_FONT, False),
+        (acc.NORMAL_FONT, False),
+    )
+    for font, debe_marcar in casos:
+        ruta = _wb_con_un_documento(tmp_path, "TEST-001_Proveedor_2026-07-01.jpg")
+        wb = openpyxl.load_workbook(str(ruta))
+        wb["Master"].cell(row=2, column=col_n_documento).font = font
+        wb.save(str(ruta))
+
+        wb_verificacion = openpyxl.load_workbook(str(ruta))
+        cell_recargada = wb_verificacion["Master"].cell(row=2, column=col_n_documento)
+        assert acc._celda_es_roja(cell_recargada) is debe_marcar
+
+        data = bv.extraer_datos_saneados(ruta)
+        assert data["documentos"][0]["pendiente_revision"] is debe_marcar, (
+            f"build_visualizador y auditor_centro_costos discreparon para {font.color.rgb}"
+        )

@@ -164,6 +164,24 @@ Python, nunca fórmula, siempre confiable). Puede haber una diferencia de
 vez recalculada — mismo tipo de diferencia menor ya documentada en
 `../CLAUDE.md` para otros totales de este libro, no es un error nuevo.
 
+## Bug real corregido: "pendientes de revisión" nunca se marcaba (2026-08-05)
+
+`extraer_datos_saneados` detecta celdas rojas comparando el ARGB de la
+fuente contra un set fijo de strings (antes `{"FFFF0000", "FFC00000"}`),
+reimplementado por separado de `_celda_es_roja` en
+`Sistema/auditor_centro_costos.py` (que usa `endswith` sobre el sufijo
+`"C00000"`). Un test que cruza ambos caminos contra los `Font()` reales del
+módulo que sí escribe el Excel (`test_pendiente_coincide_con_el_color_real_
+de_auditor_centro_costos`) encontró que **ninguno de los dos colores del
+set coincidía con lo que openpyxl realmente devuelve** al releer un `.xlsx`
+guardado (`"00C00000"`, no `"FFC00000"`) — el dashboard nunca marcó ningún
+documento como pendiente de revisión, sin importar cuántas celdas rojas
+hubiera. Corregido reusando el mismo criterio `endswith("C00000")` que
+`_celda_es_roja`. **Cualquier tablero ya publicado antes de esta fecha
+tiene el conteo de "Pendientes de revisión" en 0 de forma incorrecta** —
+hay que regenerar (`python driver.py visualizador`) y republicar para que
+refleje los pendientes reales.
+
 ## Fuente de datos
 
 `Centro de Costos/Excel/Centro de Costos.xlsx`, hojas `Master` (una fila

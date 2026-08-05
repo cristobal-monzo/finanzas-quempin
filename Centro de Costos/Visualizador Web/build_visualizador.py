@@ -40,7 +40,17 @@ RUTA_DATA_JSON = RAIZ / "data" / "centro-de-costos.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
 REF_RE = re.compile(r"^[A-Z]+-\d+$")
-RED_FONT_COLORS = {"FFFF0000", "FFC00000"}  # variantes de rojo usadas para "requiere revisión"
+# Debe coincidir con ROJO ("C00000") en Sistema/auditor_centro_costos.py, el
+# unico lugar que realmente escribe esta fuente (ROJO_FONT) para marcar una
+# celda "requiere revision" -- si ese valor cambia, actualizar tambien aca.
+# Bug real encontrado por test_pendiente_coincide_con_el_color_real_de_
+# auditor_centro_costos: openpyxl NO siempre antepone "FF" de alpha al
+# releer un .xlsx guardado -- Font(color="C00000") vuelve como "00C00000",
+# no "FFC00000". El match exacto contra un set fijo (antes {"FFFF0000",
+# "FFC00000"}, ninguno de los dos el real) nunca detectaba una celda roja
+# de verdad. Mismo criterio "endswith" que ya usa _celda_es_roja en
+# auditor_centro_costos.py, que por eso nunca tuvo este bug.
+ROJO_SUFIJO = "C00000"
 
 
 def extraer_datos_saneados(ruta_excel=RUTA_EXCEL):
@@ -66,7 +76,7 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL):
         pendiente = False
         for cell in row:
             color = cell.font.color.rgb if (cell.font and cell.font.color) else None
-            if isinstance(color, str) and color in RED_FONT_COLORS:
+            if isinstance(color, str) and color.upper().endswith(ROJO_SUFIJO):
                 pendiente = True
                 break
 
