@@ -107,6 +107,26 @@ def test_cargar_items_detalle_archivo_inexistente_lanza_error(tmp_path):
         ch.cargar_items_detalle(ruta)
 
 
+def test_cargar_items_detalle_archivo_corrupto_lanza_error_claro(tmp_path):
+    # No es un .xlsx (zip) valido -- ej. quedo a medio escribir por un corte
+    # de OneDrive/energia durante un guardado de Centro de Costos.
+    ruta = tmp_path / "corrupto.xlsx"
+    ruta.write_bytes(b"esto no es un zip ni un xlsx valido")
+    with pytest.raises(ch.ExcelNoDisponibleError):
+        ch.cargar_items_detalle(ruta)
+
+
+def test_cargar_items_detalle_zip_valido_pero_no_es_xlsx_lanza_error_claro(tmp_path):
+    # Un zip real, pero sin las partes internas que openpyxl espera de un
+    # xlsx (ej. un .zip cualquiera renombrado a .xlsx por error).
+    import zipfile
+    ruta = tmp_path / "no_es_xlsx.xlsx"
+    with zipfile.ZipFile(ruta, "w") as zf:
+        zf.writestr("no_es_un_xlsx_real.txt", "contenido")
+    with pytest.raises(ch.ExcelNoDisponibleError):
+        ch.cargar_items_detalle(ruta)
+
+
 def test_cargar_items_detalle_excluye_precio_invalido(tmp_path):
     ruta = _crear_excel_prueba(
         tmp_path,

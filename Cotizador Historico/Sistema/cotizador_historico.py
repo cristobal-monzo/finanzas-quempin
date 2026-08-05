@@ -16,6 +16,7 @@ from difflib import SequenceMatcher
 import json
 import urllib.error
 import urllib.request
+import zipfile
 
 import openpyxl
 
@@ -95,6 +96,15 @@ def cargar_items_detalle(ruta_excel=None):
         raise ExcelNoDisponibleError(f"No existe {ruta}") from exc
     except PermissionError as exc:
         raise ExcelNoDisponibleError(f"No se pudo abrir {ruta} para lectura: {exc}") from exc
+    except (zipfile.BadZipFile, KeyError) as exc:
+        # zipfile.BadZipFile: el archivo no es un .xlsx valido (ej. quedo a
+        # medio escribir por un corte de OneDrive/energia durante un guardado
+        # de Centro de Costos). KeyError: es un zip valido pero le faltan las
+        # partes internas que openpyxl espera de un xlsx (mismo tipo de
+        # corrupcion parcial). Antes de este fix, cualquiera de las dos
+        # tumbaba con una traza cruda de zipfile/openpyxl en vez de un error
+        # claro y accionable, unico caso de este modulo sin ese tratamiento.
+        raise ExcelNoDisponibleError(f"{ruta} existe pero no es un .xlsx valido/legible: {exc}") from exc
 
     try:
         try:
