@@ -25,10 +25,13 @@ Reglas:
 - Backup siempre antes de escribir.
 """
 
+import importlib
 import json
 import re
 import shutil
+import sys
 import zipfile
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -602,8 +605,7 @@ def confirmar_correcciones(objetivo=None, ruta_excel=None, ruta_correcciones=Non
 
     if aplicadas:
         try:
-            wb.save(str(ruta_excel))
-            suprimir_aviso_numero_texto(ruta_excel, _hojas_columna_n_documento(wb))
+            _guardar_y_suprimir_aviso(wb, ruta_excel)
         except PermissionError:
             print("\n[ERROR] El archivo esta abierto en Excel. Cierralo y vuelve a confirmar.")
             return []
@@ -744,8 +746,7 @@ def corregir_valor_manual(n_ref, columna, valor_nuevo, ruta_excel=None,
             ws_detalle.cell(row=fila_d, column=col_detalle, value=valor_nuevo).font = AZUL_MARINO_FONT
 
     try:
-        wb.save(str(ruta_excel))
-        suprimir_aviso_numero_texto(ruta_excel, _hojas_columna_n_documento(wb))
+        _guardar_y_suprimir_aviso(wb, ruta_excel)
     except PermissionError:
         print("\n[ERROR] El archivo esta abierto en Excel. Cierralo y vuelve a intentar.")
         return None
@@ -893,8 +894,7 @@ def desglosar_item_agrupado(n_ref, items_nuevos, ruta_excel=None, ruta_correccio
     ws_master.cell(row=fila_master, column=10, value="; ".join(nombres_finales))
 
     try:
-        wb.save(str(ruta_excel))
-        suprimir_aviso_numero_texto(ruta_excel, _hojas_columna_n_documento(wb))
+        _guardar_y_suprimir_aviso(wb, ruta_excel)
     except PermissionError:
         print("\n[ERROR] El archivo esta abierto en Excel. Cierralo y vuelve a intentar.")
         return None
@@ -1286,6 +1286,33 @@ def suprimir_aviso_numero_texto(ruta_excel, hojas_columnas):
         for info in infos:
             zout.writestr(info, cambiados.get(info.filename, contenidos[info.filename]))
     shutil.move(ruta_tmp, str(ruta_excel))
+
+
+def _guardar_y_suprimir_aviso(wb, ruta_excel):
+    """Guarda wb en ruta_excel y post-procesa el aviso 'Numero almacenado
+    como texto' (suprimir_aviso_numero_texto). Un PermissionError de
+    wb.save() (archivo abierto en Excel) se deja propagar tal cual -- cada
+    llamador ya lo captura para abortar con un mensaje claro sobre ESE caso.
+
+    La supresion del aviso es puramente cosmetica (Excel abre el archivo
+    igual sin ella, solo con el triangulo verde de advertencia en la
+    columna) y hace cirugia directa de zip/XML -- a diferencia de wb.save(),
+    antes no tenia manejo de errores propio: cualquier falla ahi (zip
+    corrupto, XML inesperado, o el mismo PermissionError si OneDrive
+    bloquea el archivo un instante para sincronizar justo despues del save)
+    quedaba mal atribuida al mensaje de "wb.save() fallo" de cada llamador
+    y hacia perder el resultado ya guardado con exito. Ahora se advierte y
+    se sigue -- el dato real ya quedo en disco antes de este paso."""
+    wb.save(str(ruta_excel))
+    try:
+        suprimir_aviso_numero_texto(ruta_excel, _hojas_columna_n_documento(wb))
+    except Exception as e:
+        print(
+            f"  [WARN] No se pudo suprimir el aviso 'Numero almacenado como texto' "
+            f"({e}). El Excel si quedo guardado correctamente -- Excel solo "
+            f"mostrara el triangulo de advertencia en esa columna, sin efecto en "
+            f"los datos."
+        )
 
 
 def prefijo_para_proyecto(proyecto):
@@ -1968,6 +1995,32 @@ def reflejar_a_sitio_comunicacion(ruta_excel=None, ruta_sitio=None):
         return False
 
 
+@contextmanager
+def _modulo_hermano_fresco(directorio, nombre_modulo):
+    """Inserta 'directorio' en sys.path e importa 'nombre_modulo' fresco
+    (descartando cualquier cache previo en sys.modules) para la duracion del
+    bloque `with`, restaurando sys.path al salir -- se haya importado bien o
+    no. Los 3 modulos hermanos de Finanzas QUEMPIN comparten nombres de
+    archivo (build_visualizador.py, driver.py) y sys.modules cachea por
+    nombre, asi que importarlos por nombre plano sin este descarte entregaria
+    el modulo equivocado si ya se importo uno homonimo antes en el mismo
+    proceso. Unifica lo que antes era el mismo bloque copiado 3 veces
+    (actualizar_visualizador, _reportes_pendientes_tras_run,
+    actualizar_analisis_financiero) -- una de las 3 copias no restauraba
+    sys.path al fallar, dejando el directorio insertado para el resto del
+    proceso; este helper lo hace siempre, en un solo lugar."""
+    directorio = str(directorio)
+    ya_en_path = directorio in sys.path
+    if not ya_en_path:
+        sys.path.insert(0, directorio)
+    try:
+        sys.modules.pop(nombre_modulo, None)
+        yield importlib.import_module(nombre_modulo)
+    finally:
+        if not ya_en_path and directorio in sys.path:
+            sys.path.remove(directorio)
+
+
 def actualizar_visualizador():
     """Regenera el visualizador web (Visualizador Web/build/index.html) a partir
     del Excel recien guardado -- mismo patron que reflejar_a_sitio_comunicacion:
@@ -1980,22 +2033,14 @@ def actualizar_visualizador():
     if not ruta_build_script.exists():
         print(f"  [WARN] No existe {ruta_build_script}, se omite este paso.")
         return False
-    import sys
-    ya_en_path = str(RAIZ_VISUALIZADOR_WEB) in sys.path
-    if not ya_en_path:
-        sys.path.insert(0, str(RAIZ_VISUALIZADOR_WEB))
     try:
-        sys.modules.pop("build_visualizador", None)
-        import build_visualizador as bv
-        return bv.build() == 0
+        with _modulo_hermano_fresco(RAIZ_VISUALIZADOR_WEB, "build_visualizador") as bv:
+            return bv.build() == 0
     except Exception as e:
         print(f"  [WARN] No se pudo actualizar el visualizador web ({e}).")
         print("         El Excel si quedo guardado; correr manualmente "
               "'python driver.py visualizador' despues.")
         return False
-    finally:
-        if not ya_en_path and str(RAIZ_VISUALIZADOR_WEB) in sys.path:
-            sys.path.remove(str(RAIZ_VISUALIZADOR_WEB))
 
 
 def _reportes_pendientes_tras_run() -> list[str]:
@@ -2008,20 +2053,11 @@ def _reportes_pendientes_tras_run() -> list[str]:
     )
     if not ruta_driver.exists():
         return []
-    import sys
-    raiz_skill = ruta_driver.parent
-    ya_en_path = str(raiz_skill) in sys.path
-    if not ya_en_path:
-        sys.path.insert(0, str(raiz_skill))
     try:
-        sys.modules.pop("driver", None)
-        import driver as driver_reportes
-        return driver_reportes.calcular_reportes_pendientes()
+        with _modulo_hermano_fresco(ruta_driver.parent, "driver") as driver_reportes:
+            return driver_reportes.calcular_reportes_pendientes()
     except Exception:
         return []
-    finally:
-        if not ya_en_path and str(raiz_skill) in sys.path:
-            sys.path.remove(str(raiz_skill))
 
 
 def _avisar_reportes_pendientes() -> None:
@@ -2045,20 +2081,14 @@ def actualizar_analisis_financiero():
     if not ruta_script.exists():
         print(f"  [WARN] No existe {ruta_script}, se omite este paso.")
         return False
-    import sys
-    raiz_sistema_af = ruta_script.parent
-    ya_en_path = str(raiz_sistema_af) in sys.path
-    if not ya_en_path:
-        sys.path.insert(0, str(raiz_sistema_af))
     try:
-        sys.modules.pop("analisis_financiero", None)
-        import analisis_financiero as af
-        resumen = af.ejecutar()
-        if resumen["error"]:
-            print(f"  [WARN] Análisis Financiero terminó con error: {resumen['error']}")
-            return False
-        _avisar_reportes_pendientes()
-        return True
+        with _modulo_hermano_fresco(ruta_script.parent, "analisis_financiero") as af:
+            resumen = af.ejecutar()
+            if resumen["error"]:
+                print(f"  [WARN] Análisis Financiero terminó con error: {resumen['error']}")
+                return False
+            _avisar_reportes_pendientes()
+            return True
     except Exception as e:
         print(f"  [WARN] No se pudo actualizar Análisis Financiero ({e}).")
         print("         El Excel de Centro de Costos si quedo guardado; correr manualmente "
@@ -2067,6 +2097,21 @@ def actualizar_analisis_financiero():
 
 
 # --- MAIN ---------------------------------------------------------------------
+
+def _imprimir_lista_truncada(items, formatear, limite=15):
+    """Imprime como maximo 'limite' items formateados (via 'formatear', que
+    puede devolver texto multilinea); si hay mas, resume el resto en 1
+    linea. No cambia ningun dato, solo cuanto texto se imprime -- mismo
+    patron que el homonimo en .claude/skills/Registro_Centro_de_Costos/
+    driver.py, duplicado aca (no al reves) porque esa carpeta es quien
+    importa este modulo, nunca al reves. Antes el INFORME DE AUDITORIA de
+    'main()' era la unica salida larga del archivo sin este limite."""
+    for item in items[:limite]:
+        print(formatear(item))
+    restantes = len(items) - limite
+    if restantes > 0:
+        print(f"   ... y {restantes} mas.")
+
 
 def _resumir_lineas_detalle(lineas, ruta_log, mantener=3):
     """Escribe el detalle linea por linea en un log en disco y devuelve solo
@@ -2303,8 +2348,7 @@ def main():
 
     print("\n--- PASO 12: Guardar ---")
     try:
-        wb.save(str(RUTA_EXCEL))
-        suprimir_aviso_numero_texto(RUTA_EXCEL, _hojas_columna_n_documento(wb))
+        _guardar_y_suprimir_aviso(wb, RUTA_EXCEL)
         print(f"  [OK] Excel guardado: {RUTA_EXCEL.name}")
     except PermissionError:
         print("  ERROR: El archivo esta abierto en Excel. Cierralo y vuelve a ejecutar.")
@@ -2328,55 +2372,64 @@ def main():
 
     print("\n1. ALERTAS DE LEGIBILIDAD")
     if alertas_legibilidad:
-        for a in alertas_legibilidad:
-            print(f"   * {a['archivo']} | Proyecto: {a['proyecto']} | {a['detalle']}")
+        _imprimir_lista_truncada(
+            alertas_legibilidad,
+            lambda a: f"   * {a['archivo']} | Proyecto: {a['proyecto']} | {a['detalle']}",
+        )
     else:
         print("   Sin hallazgos.")
 
     print("\n2. INCONSISTENCIAS ARITMETICAS (Neto vs IVA 19%)")
     if inconsistencias:
-        for inc in inconsistencias:
-            print(f"   * Doc {inc['n_documento']} ({inc['archivo']}): "
-                  f"Neto={inc['neto']:,} | IVA registrado={inc['iva']:,} vs esperado={inc['iva_esperado']:,}")
+        def _fmt_inconsistencia(inc):
+            texto = (f"   * Doc {inc['n_documento']} ({inc['archivo']}): "
+                     f"Neto={inc['neto']:,} | IVA registrado={inc['iva']:,} vs esperado={inc['iva_esperado']:,}")
             if inc["nota"]:
-                print(f"     Nota: {inc['nota'][:120]}")
+                texto += f"\n     Nota: {inc['nota'][:120]}"
+            return texto
+        _imprimir_lista_truncada(inconsistencias, _fmt_inconsistencia)
     else:
         print("   Sin hallazgos.")
 
     print("\n3. POSIBLES DUPLICADOS (mismo N Documento que uno ya registrado)")
     if posibles_duplicados:
-        for dup in posibles_duplicados:
-            print(f"   * {dup['proyecto']}\\{dup['archivo']} | N Documento: {dup['n_documento']}")
+        _imprimir_lista_truncada(
+            posibles_duplicados,
+            lambda dup: f"   * {dup['proyecto']}\\{dup['archivo']} | N Documento: {dup['n_documento']}",
+        )
     else:
         print("   Sin hallazgos.")
 
     print("\n4. LIMITACIONES DE REGISTRO")
     if limitaciones:
-        for lim in limitaciones:
-            print(f"   * {lim['archivo']} | Proyecto: {lim['proyecto']}")
-            print(f"     {lim['detalle']} Accion: {lim['accion']}")
+        _imprimir_lista_truncada(
+            limitaciones,
+            lambda lim: f"   * {lim['archivo']} | Proyecto: {lim['proyecto']}\n     {lim['detalle']} Accion: {lim['accion']}",
+        )
     else:
         print("   Sin hallazgos.")
 
     print("\n5. RENOMBRADO/CONVERSION DE ARCHIVOS")
     if advertencias_renombrado:
-        for adv in advertencias_renombrado:
-            print(f"   * {adv['n_ref']}: {adv['detalle']}")
+        _imprimir_lista_truncada(advertencias_renombrado, lambda adv: f"   * {adv['n_ref']}: {adv['detalle']}")
     else:
         print("   Sin hallazgos.")
 
     print("\n6. CAMBIOS MANUALES PENDIENTES DE CONFIRMAR")
     if correcciones_pendientes:
-        for c in correcciones_pendientes:
-            print(f"   * {c['n_ref']} / {c['campo']}: '{c['valor_anterior']}' -> '{c['valor_corregido']}'")
+        _imprimir_lista_truncada(
+            correcciones_pendientes,
+            lambda c: f"   * {c['n_ref']} / {c['campo']}: '{c['valor_anterior']}' -> '{c['valor_corregido']}'",
+        )
         print("   Aplicar con: python driver.py confirmar --todos")
     else:
         print("   Sin hallazgos.")
 
     print("\n7. NOTAS DEL JSON (documentos nuevos de esta corrida)")
     if notas_documentos_nuevos:
-        for n in notas_documentos_nuevos:
-            print(f"   * {n['n_ref']} ({n['archivo']}): {n['notas']}")
+        _imprimir_lista_truncada(
+            notas_documentos_nuevos, lambda n: f"   * {n['n_ref']} ({n['archivo']}): {n['notas']}"
+        )
     else:
         print("   Sin hallazgos.")
 

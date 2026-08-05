@@ -70,13 +70,14 @@ def mostrar_preview_renombrados(filas_master, reconciliacion):
     no_encontrados = [p for p in planes if p["accion"] == "archivo_no_encontrado"]
 
     print(f"\nArchivos que se renombrarian/convertirian si corres 'run': {len(a_renombrar)}")
-    for p in a_renombrar:
-        print(f"  - {p['n_ref']}: {p['ruta_actual'].name} -> {p['nombre_nuevo']} ({p['accion']})")
+    _imprimir_lista_truncada(
+        a_renombrar,
+        lambda p: f"  - {p['n_ref']}: {p['ruta_actual'].name} -> {p['nombre_nuevo']} ({p['accion']})",
+    )
 
     if no_encontrados:
         print(f"\n[WARN] {len(no_encontrados)} fila(s) sin archivo fisico encontrado para renombrar:")
-        for p in no_encontrados:
-            print(f"  - {p['n_ref']}")
+        _imprimir_lista_truncada(no_encontrados, lambda p: f"  - {p['n_ref']}")
 
 
 def cmd_status():
