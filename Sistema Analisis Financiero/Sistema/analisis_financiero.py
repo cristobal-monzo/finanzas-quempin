@@ -678,9 +678,21 @@ def asegurar_categoria_proyectos(
         categoria = categoria_por_prefijo.get(prefijo)
         cell = ws_proyectos.cell(row=fila_info["fila"], column=columna)
         if categoria is None:
+            # Mismo prefijo que usa asegurar_formulas_proyectos para el SUMIFS
+            # de Materiales/Equipos/Otros Reales -- si nunca hay documentos con
+            # este TAG (por ser un proyecto nuevo, O por un TAG mal escrito en
+            # "Proyectos" que nunca calzara con ningun N° Ref real de Centro de
+            # Costos), tanto la Categoría como los 3 costos reales quedan en
+            # blanco/0 sin ningún error de Excel -- este aviso es la única
+            # señal de que algo puede estar mal escrito, no solo "aún sin
+            # facturas". Ver "Reglas de negocio" en SKILL.md.
             avisos.append(
                 f"Proyecto '{fila_info['nombre']}' ({prefijo}) sin documentos en "
-                f"Centro de Costos todavía -- Categoría queda vacía."
+                f"Centro de Costos todavía -- Categoría queda vacía y los costos "
+                f"reales (Materiales/Equipos/Otros) quedan en 0. Si el proyecto ya "
+                f"tiene facturas registradas, revisa que '{prefijo}' sea el TAG "
+                f"correcto (debe calzar exacto con el prefijo del N° Ref en Centro "
+                f"de Costos, ej. 'UMAG')."
             )
             cell.value = None
             continue

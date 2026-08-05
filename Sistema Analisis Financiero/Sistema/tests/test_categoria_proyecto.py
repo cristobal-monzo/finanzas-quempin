@@ -101,3 +101,8 @@ def test_asegurar_categoria_proyectos_limpia_celda_obsoleta(tmp_path):
     assert len(avisos) == 1
     assert "UMAG" in avisos[0]
     assert "Categoría queda vacía" in avisos[0]
+    # El mismo aviso debe advertir tambien el impacto en costos reales (SUMIFS
+    # por el mismo prefijo) -- antes solo mencionaba la Categoría, dejando el
+    # TAG mal escrito como un $0 silencioso sin pista de la causa real.
+    assert "costos reales" in avisos[0]
+    assert "0" in avisos[0]

@@ -80,7 +80,11 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador
 - **TAG proyecto debe calzar con el prefijo de Centro de Costos**
   (`PREFIJOS_PROYECTO` en `auditor_centro_costos.py`) -- si no calzan, los
   costos reales de ese proyecto quedan en $0 (el `SUMIFS` no encuentra
-  filas), no hay error explícito por ahora.
+  filas). Desde 2026-08-05 `run` avisa esto explícitamente (mismo aviso que
+  "Categoría queda vacía", ambos comparten el mismo lookup por prefijo --
+  ver `asegurar_categoria_proyectos`), pero solo lo detecta si el TAG no
+  tiene NINGÚN documento en Centro de Costos; revisar igual a mano si el
+  proyecto sí tiene facturas y aun así aparece en $0.
 
 ## Troubleshooting
 
