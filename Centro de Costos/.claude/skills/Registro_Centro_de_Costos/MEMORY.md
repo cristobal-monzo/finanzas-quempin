@@ -138,31 +138,26 @@ módulos), no en este archivo.
 
 ## Visualizador web
 
-- **Favicon del Artifact: 🏗️** (fijado 2026-07-28, elegido por el usuario).
-  Mantenerlo igual en cada republicación: un favicon distinto hace que la
-  pestaña se lea como si fuera otra página. El driver de
-  `/Actualizar_Finanzas` lo lee de esta línea, así que no cambies el formato
-  "Favicon del Artifact: <emoji>".
-- **Link del Artifact publicado**: `https://claude.ai/code/artifact/1b82085c-c63c-407c-8f03-e4db9f2b551e`.
-  **Regla explícita del usuario (2026-07-19): siempre actualizar este mismo
-  link, nunca generar uno nuevo.** Al republicar, pasar este URL como `url`
-  al tool `Artifact` (o, si la sesión que lo publicó originalmente sigue
-  abierta, redeployar con el mismo `file_path` — ambos casos apuntan al
-  mismo link; sin uno de los dos, una sesión nueva mintea un link distinto).
-- **Publicar el Artifact es obligatorio tras cada `run` que registre
-  documentos nuevos** (pedido explícito del usuario, 2026-07-23 — antes se
-  regeneraba el `build/index.html` local en PASO 12c pero no se subía,
-  dejando el dashboard publicado desactualizado). Regla: si el resumen final
-  de `run` reporta "Documentos nuevos registrados: N" con N > 0, el agente
-  debe publicar `Visualizador Web/build/index.html` como Artifact con el
-  `url` de arriba como paso final de la tarea, no solo dejarlo regenerado en
-  disco. Si el tool `Artifact` pide ver la versión más reciente primero,
-  hacer `WebFetch` del mismo URL una vez antes de publicar. No hace falta
-  este paso si `run` no registró documentos nuevos.
+- **Publicado en GitHub Pages desde 2026-08-05** (reemplaza al Claude
+  Artifact que se usaba antes — link viejo:
+  `https://claude.ai/code/artifact/1b82085c-c63c-407c-8f03-e4db9f2b551e`,
+  ya no se actualiza). URL fija actual:
+  `https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/`
+  — ver [`/Actualizar_CC`](../Actualizar_CC/SKILL.md) para los comandos
+  exactos de publicación y [`../../Visualizador Web/CLAUDE.md`](../../Visualizador%20Web/CLAUDE.md)
+  § Hosting para la arquitectura completa (rama `gh-pages`, trade-off de
+  control de acceso).
+- **Publicar es obligatorio tras cada `run` que registre documentos
+  nuevos** (pedido explícito del usuario, 2026-07-23): si el resumen final
+  de `run` reporta "Documentos nuevos registrados: N" con N > 0, copiar
+  `Visualizador Web/build/index.html` a
+  `.worktrees/gh-pages/centro-de-costos/index.html` y hacer
+  `git add`/`commit`/`push` desde ese worktree como paso final de la
+  tarea, no solo dejarlo regenerado en disco. No hace falta este paso si
+  `run` no registró documentos nuevos.
 - Flujo para actualizar: `python driver.py visualizador` (regenera
-  `Visualizador Web/build/index.html` desde el Excel actual) → publicar ese
-  archivo como Artifact con el `url` de arriba. Ver arquitectura completa en
-  [../../Visualizador Web/CLAUDE.md](../../Visualizador%20Web/CLAUDE.md).
+  `Visualizador Web/build/index.html` desde el Excel actual) → publicar
+  como arriba.
 - La contraseña de acceso del gate vive como constante en
   `Visualizador Web/template.html` (no se repite acá — ya es visible en el
   HTML publicado, ver nota de "no es seguridad real" en ese `CLAUDE.md`).

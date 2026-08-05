@@ -36,14 +36,17 @@ siempre es seguro y barato (salvo que falle `mindicador.cl`, ver abajo).
    Esto reescribe `Visualizador Web/build/index.html` en disco con el
    catálogo completo indexado y la UF vigente incrustada.
 
-3. **Publicar el Artifact**: usar el tool `Artifact` con `file_path`
-   apuntando a `Cotizador Historico/Visualizador Web/build/index.html` y
-   `url` igual al link fijo documentado en
-   [Cotizador_Historico/MEMORY.md](../Cotizador_Historico/MEMORY.md)
-   § Visualizador web (favicon 🧾, deliberadamente distinto al de Centro de
-   Costos — mantenerlo igual siempre) — **nunca generar un link nuevo**. Si
-   el tool pide ver la versión más reciente antes de sobrescribir, hacer un
-   `WebFetch` de ese mismo URL primero.
+3. **Publicar** (desde 2026-08-05, GitHub Pages reemplazó a Artifacts — ver
+   [`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
+   § Hosting):
+   ```
+   cp "Cotizador Historico/Visualizador Web/build/index.html" ".worktrees/gh-pages/cotizador-historico/index.html"
+   git -C ".worktrees/gh-pages" add cotizador-historico/index.html
+   git -C ".worktrees/gh-pages" commit -m "actualizar tablero de Cotizador Historico"
+   git -C ".worktrees/gh-pages" push
+   ```
+   URL pública (fija, no cambia entre corridas):
+   `https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/`.
 
 4. **Reportar al usuario en una respuesta corta**: cuántos ítems quedan
    indexados/excluidos (del `status`), que se publicó el Artifact, y el

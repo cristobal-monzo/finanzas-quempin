@@ -64,55 +64,81 @@ versiona) — ver regla ya agregada en el `.gitignore` raíz.
 
 ## Índice (hub) de los 3 tableros
 
-Agregado 2026-07-29: `Visualizador Web/index.html` (raíz, junto a este
-`CLAUDE.md`) es una página estática que **no muestra datos** — solo 3
-tarjetas, una por módulo, cada una con un botón que abre en pestaña nueva el
-Artifact publicado de ese módulo. Reutiliza el mismo sistema de marca que
-los 3 visualizadores de módulo (paleta oficial, Lato embebida, cabecera
-negra con filete naranjo, toggle de tema), reconstruido a mano a partir de
-`Centro de Costos/Visualizador Web/template.html` — no hay `build_visualizador.py`
-para este archivo porque no lee ningún Excel/JSON: los 3 links de destino se
-escriben directo en el HTML y solo cambian si se republica alguno de los 3
-tableros con una URL nueva (no debería pasar — la convención de cada módulo
-es actualizar siempre el mismo link).
+`Visualizador Web/index.html` (raíz, junto a este `CLAUDE.md`) es una
+página estática que **no muestra datos** — solo 3 tarjetas, una por
+módulo, cada una con un botón que abre en pestaña nueva el tablero de ese
+módulo. Reutiliza el mismo sistema de marca que los 3 visualizadores
+(paleta oficial, Lato embebida, cabecera negra con filete naranjo, toggle
+de tema). No hay `build_visualizador.py` para este archivo porque no lee
+ningún Excel/JSON: se edita a mano y se vuelve a copiar a
+`.worktrees/gh-pages/index.html` para republicar.
 
-- **Sin gate de contraseña** (decisión explícita del usuario, 2026-07-29):
-  el hub no expone información financiera, cada tarjeta lleva a un sitio que
-  sí pide su propia contraseña.
-- **Publicado como Artifact privado**: `https://claude.ai/code/artifact/9b25869b-b1eb-4279-942b-97599d425a8d`,
-  favicon 🗂️ (distinto a los de los 3 módulos: 🏗️ Centro de Costos, 📊
-  Análisis Financiero, 🧾 Cotizador Histórico). Al republicar tras editar
-  `index.html`, pasar este mismo URL como `url` al tool `Artifact` — nunca
-  generar uno nuevo.
-- Si el link de Artifact de algún módulo cambia (republicación con URL
-  nueva, algo que hoy no debería ocurrir), hay que actualizar el `href`
-  correspondiente aquí y volver a publicar el hub.
+- **Sin gate de contraseña** (decisión explícita del usuario, 2026-07-29,
+  sigue vigente): el hub no expone información financiera, cada tarjeta
+  lleva a un sitio que sí pide su propia contraseña.
+- Favicon 🗂️ del hub (distinto a los de los 3 módulos: 🏗️ Centro de
+  Costos, 📊 Análisis Financiero, 🧾 Cotizador Histórico) — aplica solo si
+  se sigue publicando alguna copia como Claude Artifact; en GitHub Pages no
+  hay favicon de "Artifact" que fijar, el `<link rel="icon">` del propio
+  HTML basta.
+- Las 3 URLs de destino son estructurales (`/centro-de-costos/`,
+  `/analisis-financiero/`, `/cotizador-historico/`) — no deberían cambiar
+  nunca, a diferencia de los links opacos de Artifact que sí podían
+  regenerarse por error.
 
-## Hosting
+## Hosting — GitHub Pages (decidido y migrado, 2026-08-05)
 
-GitHub Pages recomendado: **un solo sitio** servido desde este repo, con
-subrutas por módulo (`/centro-de-costos/`, `/cotizador-historico/`,
-`/flujo-de-caja/`) en vez de tres despliegues independientes. Migrar a otro
-host (Netlify, Vercel) más adelante no debería requerir rediseño, porque
-todo es HTML estático que lee un JSON local.
+Los 3 Claude Artifacts privados se reemplazaron por **un solo sitio en
+GitHub Pages**, repo público `cristobal-monzo/finanzas-quempin`, servido
+desde la rama huérfana `gh-pages` (separada de `master`: solo contiene los
+4 archivos estáticos publicados, nunca el código fuente ni
+`docs/superpowers/`):
 
-## Punto abierto — control de acceso (no bloqueante, pero obligatorio de resolver antes de publicar datos reales)
+```
+https://cristobal-monzo.github.io/finanzas-quempin/                     # hub
+https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/
+https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/
+https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/
+```
 
-GitHub Pages sobre un repositorio público sirve el sitio a cualquiera con el
-link (o indexable por buscadores). Los datos de origen son financieros
-reales de QUEMPIN SpA. **Antes de publicar el primer visualizador con datos
-reales** (no con datos de ejemplo), hay que decidir explícitamente con el
-usuario una de:
+**Cómo publicar (reemplaza "usar el tool `Artifact`" en toda la
+documentación vieja de cada módulo)**: copiar el `build/index.html` recién
+generado a `.worktrees/gh-pages/<subruta>/index.html` (worktree local ya
+creado para esto — `git worktree list` lo muestra), `git add`/`commit`/
+`push` desde ahí. Ya no hay un link opaco que "nunca hay que regenerar": la
+URL de cada tablero es estructural (depende solo de la subruta), así que
+tampoco hace falta guardar/leer un link en el `MEMORY.md` de cada skill.
 
-- Repositorio privado + GitHub Pages de pago (requiere plan Pro/Team/
-  Enterprise).
-- Alguna gate de acceso del lado del cliente (ej. contraseña simple) —
-  nota: esto es una barrera débil, no seguridad real, solo disuade acceso
-  casual.
-- Servir detrás de un proxy con autenticación real.
+## Punto de control de acceso — resuelto (2026-08-05), con este trade-off explícito
 
-No se debe publicar un visualizador con datos financieros reales sin haber
-resuelto este punto con el usuario primero.
+**GitHub Pages no ofrece un sitio realmente privado fuera de GitHub
+Enterprise Cloud**: un repositorio privado + plan Pro/Team sigue
+publicando el sitio de Pages *públicamente alcanzable* por cualquiera con
+el link — la visibilidad del repo protege el código fuente, no el sitio
+publicado (verificado 2026-08-05, ver fuentes abajo). Dado esto, decisión
+explícita del usuario: **repo público + el mismo gate de contraseña que ya
+tenían los 3 dashboards** (barrera débil, no seguridad real — ya se
+documentaba así antes de esta migración). Esto es objetivamente **menos
+privado** que los Artifacts anteriores (privados por defecto, no
+indexables); el usuario aceptó ese trade-off a cambio de un solo dominio y
+poder automatizar el deploy vía `git push` en vez de depender de que un
+agente llame al tool `Artifact` cada vez.
+
+Si en el futuro se necesita control de acceso real, las opciones que
+quedan (no implementadas): un proxy con autenticación real delante del
+sitio estático (ej. Cloudflare Access), o volver a Artifacts privados para
+el/los tableros que lo requieran.
+
+Fuentes: [GitHub Docs — Changing the visibility of your GitHub Pages site](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/changing-the-visibility-of-your-github-pages-site),
+[GitHub Community Discussion #58203](https://github.com/orgs/community/discussions/58203).
+
+## CI
+
+`.github/workflows/tests.yml` (raíz del repo) corre la suite completa de
+pytest en cada push/PR a `master` — ninguno de los tests toca datos
+financieros reales (todos usan workbooks sintéticos en `tmp_path`), así
+que el runner de GitHub no necesita ni puede acceder a los archivos reales
+de Centro de Costos (viven solo en el OneDrive local).
 
 ## Convenciones técnicas esperadas (cuando se construya el HTML real)
 

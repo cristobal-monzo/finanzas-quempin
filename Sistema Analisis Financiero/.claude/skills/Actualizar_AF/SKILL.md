@@ -43,13 +43,17 @@ para Centro de Costos.
      refresco forzado, no hay nada que publicar — decirlo en una línea y
      terminar ahí.
 
-   Para publicar: usar el tool `Artifact` con `file_path` apuntando a
-   `Sistema Analisis Financiero/Visualizador Web/build/index.html` y `url`
-   igual al link fijo documentado en
-   [Registro_Analisis_Financiero/MEMORY.md](../Registro_Analisis_Financiero/MEMORY.md)
-   § Visualizador Web (favicon 📊, mantenerlo igual siempre) — **nunca
-   generar un link nuevo**. Si el tool pide ver la versión más reciente
-   antes de sobrescribir, hacer un `WebFetch` de ese mismo URL primero.
+   Para publicar (desde 2026-08-05, GitHub Pages reemplazó a Artifacts —
+   ver [`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
+   § Hosting):
+   ```
+   cp "Sistema Analisis Financiero/Visualizador Web/build/index.html" ".worktrees/gh-pages/analisis-financiero/index.html"
+   git -C ".worktrees/gh-pages" add analisis-financiero/index.html
+   git -C ".worktrees/gh-pages" commit -m "actualizar tablero de Analisis Financiero"
+   git -C ".worktrees/gh-pages" push
+   ```
+   URL pública (fija, no cambia entre corridas):
+   `https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/`.
 
 4. **Reportar al usuario en una respuesta corta**: qué cambió (carpetas
    creadas, avisos relevantes), si se publicó el Artifact o no hacía

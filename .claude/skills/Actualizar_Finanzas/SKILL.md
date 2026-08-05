@@ -36,42 +36,45 @@ openpyxl (ver `requirements.txt`).
 ## Paso obligatorio tras `run`: publicar los 3 tableros
 
 **Regenerar los `build/index.html` en disco NO cambia lo que ve la gente.**
-El canal real de consumo son tres Claude Artifacts privados con links fijos
-que los colegas tienen guardados. Si corres `run` y no publicas, el Excel
-queda al día y los tres tableros publicados siguen mostrando datos viejos —
-que es exactamente el problema que este skill existe para cerrar.
+Desde 2026-08-05 el canal real de consumo es un sitio en GitHub Pages
+(repo público `cristobal-monzo/finanzas-quempin`, rama `gh-pages`) — ver
+[`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
+§ Hosting para el detalle completo y el trade-off de control de acceso ya
+decidido. Si corres `run` y no publicas, el Excel queda al día y los tres
+tableros publicados siguen mostrando datos viejos.
 
 Al final de `run` (y de `status`) el driver imprime la sección **"TABLEROS
 PARA PUBLICAR"** con, por cada tablero: si se regeneró en esta corrida, la
-ruta absoluta de su `index.html` y su link fijo. **Usa esos valores tal
-cual** — el driver los lee del `MEMORY.md` de cada skill, que es la fuente
-de verdad de los links.
+ruta absoluta de su `index.html`, su URL pública fija, y la ruta destino
+dentro del worktree `.worktrees/gh-pages/`.
 
-Para cada uno de los tres, llama al tool `Artifact` con:
-- `file_path` = la ruta que imprimió el driver
-- `url` = el link que imprimió el driver
-- `favicon` = **el mismo de siempre** para ese tablero (Cotizador: 🧾). Un
-  favicon distinto se lee como si fuera otra página.
-
-**Nunca generes un link nuevo** para un tablero que ya tiene uno. Si el tool
-pide ver la versión más reciente antes de sobrescribir, haz `WebFetch` de ese
-mismo URL primero y vuelve a publicar.
+Para cada uno que corresponda publicar:
+```
+cp "<Archivo de arriba>" "<Copiar a: de arriba>"
+git -C ".worktrees/gh-pages" add <subruta>/index.html
+git -C ".worktrees/gh-pages" commit -m "actualizar tablero de <módulo>"
+git -C ".worktrees/gh-pages" push
+```
+Las URLs son estructurales (no opacas como los links de Artifact) — no hay
+que "cuidar" nada especial entre publicaciones, solo confirmar que la
+subruta coincida con la que imprimió el driver.
 
 Criterio de cuándo publicar cada uno:
 - Si el driver lo marcó **REGENERADO en esta corrida** → publicar.
 - Si lo marcó **sin cambios** y el usuario no pidió un refresco forzado → no
   hace falta; dilo en una línea.
-- Si dice **SIN BUILD** → ese módulo nunca generó su tablero; no inventes un
-  Artifact, repórtalo.
+- Si dice **SIN BUILD** → ese módulo nunca generó su tablero; repórtalo, no
+  hay nada que copiar.
 
 ## Qué NO hace (a propósito)
 
 - **No genera los reportes PDF.** Cada PDF lleva análisis redactado por el
   agente (página 2 del estándar de 2 páginas), no es una salida mecánica —
   se generan con `/Reportes_Analisis_Financiero run` cuando corresponda.
-- **No publica solo.** El tool `Artifact` vive en el agente, no en el
-  proceso del driver: por eso el driver deja todo listo e impreso, y la
-  publicación la hace el agente siguiendo la sección de arriba.
+- **No publica solo.** `git push` es una acción visible/confirmable que
+  corre el agente (o el usuario) de forma explícita, no escondida dentro
+  del proceso del driver — por eso el driver deja todo listo e impreso, y
+  la publicación sigue la sección de arriba.
 
 ## Cómo reportar al usuario
 

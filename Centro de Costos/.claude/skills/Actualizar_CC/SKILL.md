@@ -39,13 +39,17 @@ corrido pero el link publicado desactualizado.
      forzado, no hay nada que publicar — decirlo en una línea y terminar
      ahí.
 
-   Para publicar: usar el tool `Artifact` con `file_path` apuntando a
-   `Centro de Costos/Visualizador Web/build/index.html` y `url` igual al
-   link fijo documentado en
-   [Registro_Centro_de_Costos/MEMORY.md](../Registro_Centro_de_Costos/MEMORY.md)
-   § Visualizador web — **nunca generar un link nuevo**. Si el tool pide ver
-   la versión más reciente antes de sobrescribir, hacer un `WebFetch` de ese
-   mismo URL primero.
+   Para publicar (desde 2026-08-05, GitHub Pages reemplazó a Artifacts —
+   ver [`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
+   § Hosting):
+   ```
+   cp "Centro de Costos/Visualizador Web/build/index.html" ".worktrees/gh-pages/centro-de-costos/index.html"
+   git -C ".worktrees/gh-pages" add centro-de-costos/index.html
+   git -C ".worktrees/gh-pages" commit -m "actualizar tablero de Centro de Costos"
+   git -C ".worktrees/gh-pages" push
+   ```
+   URL pública (fija, no cambia entre corridas):
+   `https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/`.
 
 4. **Reportar al usuario en una respuesta corta**: cuántos documentos
    nuevos se registraron (si alguno), si se publicó el Artifact o no hacía

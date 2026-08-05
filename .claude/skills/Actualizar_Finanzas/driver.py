@@ -37,7 +37,6 @@ Uso:
   python driver.py run      # cadena completa
 """
 
-import re
 import subprocess
 import sys
 from datetime import datetime
@@ -62,65 +61,43 @@ DRIVER_COTIZADOR = (
     / "Cotizador_Historico" / "driver.py"
 )
 
-# Los 3 tableros: (nombre, build/index.html regenerado, MEMORY.md donde vive
-# su link fijo de Artifact). El link NO se hardcodea aca -- se lee del
-# MEMORY.md de cada skill, que es donde sus propios SKILL.md dicen que vive la
-# fuente de verdad. Duplicarlo abriria la puerta a publicar sobre un link
-# viejo, que es justo lo que el "nunca generar un link nuevo" quiere evitar.
+# Los 3 tableros: (nombre, build/index.html regenerado, subruta fija dentro
+# de la rama gh-pages). Desde 2026-08-05 (migracion de Claude Artifacts a
+# GitHub Pages) la URL de cada uno es estructural -- ya no hay un link opaco
+# que leer de un MEMORY.md ni que cuidar de "no regenerar por error".
+RAIZ_GH_PAGES = RAIZ / ".worktrees" / "gh-pages"
 TABLEROS = (
     (
         "Centro de Costos",
         RAIZ / "Centro de Costos" / "Visualizador Web" / "build" / "index.html",
-        RAIZ / "Centro de Costos" / ".claude" / "skills"
-        / "Registro_Centro_de_Costos" / "MEMORY.md",
+        "centro-de-costos",
     ),
     (
         "Análisis Financiero",
         RAIZ / "Sistema Analisis Financiero" / "Visualizador Web" / "build" / "index.html",
-        RAIZ / "Sistema Analisis Financiero" / ".claude" / "skills"
-        / "Registro_Analisis_Financiero" / "MEMORY.md",
+        "analisis-financiero",
     ),
     (
         "Cotizador Histórico",
         RAIZ / "Cotizador Historico" / "Visualizador Web" / "build" / "index.html",
-        RAIZ / "Cotizador Historico" / ".claude" / "skills"
-        / "Cotizador_Historico" / "MEMORY.md",
+        "cotizador-historico",
     ),
 )
 
-RE_LINK_ARTIFACT = re.compile(r"https://claude\.ai/code/artifact/[0-9a-fA-F-]{36}")
-# "Favicon del Artifact: 🧾 (...)" -- convencion ya usada en el MEMORY.md del
-# Cotizador. El favicon debe mantenerse estable entre republicaciones: uno
-# distinto se lee como si fuera otra pagina.
-RE_FAVICON = re.compile(r"[Ff]avicon del Artifact:\s*(\S+)")
-
-
-def _leer_memory(ruta_memory):
-    """(link, favicon) declarados en el MEMORY.md de una skill. Cualquiera de
-    los dos puede ser None: el link falta si el tablero nunca se publico, y el
-    favicon si nadie lo dejo anotado al publicarlo."""
-    if not ruta_memory.exists():
-        return None, None
-    texto = ruta_memory.read_text(encoding="utf-8")
-    link = RE_LINK_ARTIFACT.search(texto)
-    favicon = RE_FAVICON.search(texto)
-    # El emoji puede venir pegado al cierre de una negrita de markdown
-    # ("**Favicon del Artifact: X**"), asi que se limpian los signos de
-    # marcado y puntuacion que queden alrededor.
-    emoji = favicon.group(1).strip("*`_.,;:") if favicon else None
-    return (link.group(0) if link else None), (emoji or None)
+URL_BASE_PAGES = "https://cristobal-monzo.github.io/finanzas-quempin"
 
 
 def _informe_tableros(momento_inicio):
     """Lista los 3 tableros con su ruta, si se regeneraron en esta corrida y
-    su link fijo -- todo lo que el agente necesita para publicarlos sin tener
-    que ir a buscar cada MEMORY.md. Publicar es lo unico que este driver no
-    puede hacer solo: el tool Artifact vive en el agente, no en el proceso."""
+    su URL fija -- todo lo que el agente necesita para publicarlos. Publicar
+    (copiar a .worktrees/gh-pages/<subruta>/index.html + git push) es lo
+    unico que este driver no hace solo: requiere git push, que el agente
+    corre de forma visible/confirmable, no escondido dentro de este script."""
     print("\n" + "=" * 72)
     print("  TABLEROS PARA PUBLICAR")
     print("=" * 72)
 
-    for nombre, ruta_build, ruta_memory in TABLEROS:
+    for nombre, ruta_build, subruta in TABLEROS:
         print(f"\n  {nombre}")
         if not ruta_build.exists():
             print("    [SIN BUILD] No existe todavia -- nada que publicar.")
@@ -131,16 +108,15 @@ def _informe_tableros(momento_inicio):
         regenerado = mtime >= momento_inicio
         marca = datetime.fromtimestamp(mtime).strftime("%d-%m-%Y %H:%M:%S")
         estado = "REGENERADO en esta corrida" if regenerado else f"sin cambios (del {marca})"
-        link, favicon = _leer_memory(ruta_memory)
 
         print(f"    Estado : {estado}")
         print(f"    Archivo: {ruta_build}")
-        print(f"    Link   : {link or '(sin link registrado en MEMORY.md -- primera publicacion)'}")
-        print(f"    Favicon: {favicon or '(no documentado -- anotalo en MEMORY.md al publicar)'}")
+        print(f"    URL    : {URL_BASE_PAGES}/{subruta}/")
+        print(f"    Copiar a: {RAIZ_GH_PAGES / subruta / 'index.html'}")
 
-    print("\n  Publicar = tool Artifact con file_path = el archivo de arriba y")
-    print("  url = su link. NUNCA generar un link nuevo para un tablero que ya")
-    print("  tiene uno: el link publicado es fijo y la gente lo tiene guardado.")
+    print("\n  Publicar = copiar cada archivo de arriba a su ruta dentro de")
+    print(f"  {RAIZ_GH_PAGES} y correr, desde ahi:")
+    print("    git add <subruta>/index.html && git commit -m '...' && git push")
 
 
 def _ejecutar(titulo, ruta_driver, args, obligatorio):

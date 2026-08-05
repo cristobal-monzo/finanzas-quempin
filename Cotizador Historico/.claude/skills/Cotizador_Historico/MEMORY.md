@@ -18,24 +18,22 @@ el promedio/rango hacia abajo. Arreglado en `cargar_items_detalle`
 
 ## Visualizador web
 
-- **Link del Artifact publicado**: `https://claude.ai/code/artifact/e589aa77-07bd-48c8-aa31-cb7c8fb1d0ab`.
-  **Regla explícita (mismo criterio que Centro de Costos, 2026-07-20):
-  siempre actualizar este mismo link, nunca generar uno nuevo.** Al
-  republicar, pasar este URL como `url` al tool `Artifact` (o, si la sesión
-  que lo publicó originalmente sigue abierta, redeployar con el mismo
-  `file_path` — ambos casos apuntan al mismo link; sin uno de los dos, una
-  sesión nueva mintea un link distinto).
+- **Publicado en GitHub Pages desde 2026-08-05** (reemplaza al Claude
+  Artifact usado antes — link viejo:
+  `https://claude.ai/code/artifact/e589aa77-07bd-48c8-aa31-cb7c8fb1d0ab`,
+  ya no se actualiza). URL fija actual:
+  `https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/`
+  — ver [`/Actualizar_Cotizador`](../Actualizar_Cotizador/SKILL.md) para
+  los comandos exactos de publicación y
+  [../../Visualizador Web/CLAUDE.md](../../Visualizador%20Web/CLAUDE.md)
+  § Hosting para la arquitectura completa.
 - Flujo para actualizar: `python driver.py visualizador` (regenera
   `Visualizador Web/build/index.html` a partir de `Centro de Costos.xlsx` y
-  la UF vigente) → publicar ese archivo como Artifact con el `url` de
-  arriba. Ver arquitectura completa en
-  [../../Visualizador Web/CLAUDE.md](../../Visualizador%20Web/CLAUDE.md).
+  la UF vigente) → publicar como arriba.
 - La contraseña de acceso del gate vive como constante en
   `Visualizador Web/template.html` (no se repite acá — ya es visible en el
   HTML publicado, ver nota de "no es seguridad real" en ese `CLAUDE.md`).
   Es la misma contraseña que usa el visualizador de Centro de Costos.
-- Favicon del Artifact: 🧾 (deliberadamente distinto al de Centro de Costos,
-  para poder distinguir ambas pestañas/galería a simple vista).
 - **`mindicador.cl` fue intermitente durante la implementación y la primera
   publicación (2026-07-20)** — timeouts, fallos de handshake TLS, y
   desconexiones remotas, todos transitorios (se recuperaba solo en minutos).

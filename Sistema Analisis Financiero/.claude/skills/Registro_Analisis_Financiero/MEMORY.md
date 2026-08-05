@@ -9,14 +9,11 @@ memoria de diseño/decisiones del módulo completo).
 
 - Gate de contraseña: misma que Centro de Costos (decisión del usuario,
   2026-07-23) — ver `../../../Visualizador Web/template.html`.
-- Favicon del Artifact: 📊 (fijado 2026-07-28, elegido por el usuario).
-  Mantenerlo igual en cada republicación: un favicon distinto hace que la
-  pestaña se lea como si fuera otra página. El driver de
-  `/Actualizar_Finanzas` lo lee de esta línea, así que no cambies el formato
-  "Favicon del Artifact: <emoji>".
-- Link del Claude Artifact publicado (primera publicación, 2026-07-28):
-  `https://claude.ai/code/artifact/70801be3-a58d-4424-b8cf-53d2b3630934`.
-  **Regla explícita (mismo patrón que Centro de Costos): siempre actualizar
-  este mismo link, nunca generar uno nuevo.** Al republicar, pasar este URL
-  como `url` al tool `Artifact` (o, si la sesión que lo publicó sigue
-  abierta, redeployar con el mismo `file_path`).
+- **Publicado en GitHub Pages desde 2026-08-05** (reemplaza al Claude
+  Artifact usado antes — link viejo:
+  `https://claude.ai/code/artifact/70801be3-a58d-4424-b8cf-53d2b3630934`,
+  ya no se actualiza). URL fija actual:
+  `https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/`
+  — ver [`/Actualizar_AF`](../Actualizar_AF/SKILL.md) para los comandos
+  exactos de publicación y [`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
+  § Hosting para la arquitectura completa.
