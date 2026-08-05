@@ -4,6 +4,18 @@ Bitácora de observaciones, preferencias y decisiones que surgen de **usar**
 este skill sobre datos reales. Complementa a [SKILL.md](SKILL.md) (el
 procedimiento estable: comandos, gotchas estructurales, troubleshooting).
 
+## Notas de Crédito — nunca entran al índice
+
+Pedido explícito del usuario (2026-07-28): las Notas de Crédito
+(devoluciones) **no deben ingresarse** al índice de este módulo. Se
+encontró `UMAG-025` (devolución a Danus) apareciendo como "el ítem más
+barato" en una consulta — no sirve para evaluar costos futuros, distorsiona
+el promedio/rango hacia abajo. Arreglado en `cargar_items_detalle`
+(`Sistema/cotizador_historico.py`): cualquier ítem de `Detalle` con
+`P. Unitario sin IVA` negativo queda excluido (`excluido_motivo =
+"precio_negativo"`), igual que ya pasaba con fecha/master/precio inválidos.
+**No revertir este filtro ni agregar Notas de Crédito de vuelta al índice.**
+
 ## Visualizador web
 
 - **Link del Artifact publicado**: `https://claude.ai/code/artifact/e589aa77-07bd-48c8-aa31-cb7c8fb1d0ab`.

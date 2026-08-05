@@ -90,7 +90,7 @@ def build():
 
     print(f"OK — {len(data['items'])} referencias indexadas, "
           f"UF utilizada ${data['uf_hoy']:,.2f}".replace(",", "."))
-    print(f"Excluidos (sin fecha/precio valido): {data['excluidos_count']}")
+    print(f"Excluidos (sin fecha/precio valido, o Notas de Credito/devoluciones): {data['excluidos_count']}")
     print(f"Sin UF disponible para su fecha de compra: {data['sin_uf_count']}")
     print(f"Snapshot: {RUTA_DATA_JSON}")
     print(f"Visualizador: {RUTA_BUILD_HTML}")

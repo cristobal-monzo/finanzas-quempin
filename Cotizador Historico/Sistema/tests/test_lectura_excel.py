@@ -118,6 +118,34 @@ def test_cargar_items_detalle_excluye_precio_invalido(tmp_path):
     assert items[0]["fecha"] is None
 
 
+def test_cargar_items_detalle_excluye_precio_negativo(tmp_path):
+    # Precio unitario negativo = devolucion/abono, nunca un costo real.
+    # Filtro por signo del precio en Detalle, no por "Tipo Documento" de
+    # Master (columna que existe en Centro de Costos pero que este modulo
+    # no lee) -- asi funciona igual si una devolucion llega sin tipificar
+    # como Nota de Credito en ese campo.
+    ruta = _crear_excel_prueba(
+        tmp_path,
+        filas_detalle=[("UMAG-006", "Válvula", "Devolución - Válvula 1/4", -52101, -260505, -310002)],
+        filas_master=[("UMAG-006", datetime(2026, 3, 10))],
+    )
+    items = ch.cargar_items_detalle(ruta)
+    assert items[0]["excluido_motivo"] == "precio_negativo"
+    assert items[0]["fecha"] is None
+
+
+def test_cargar_items_detalle_no_excluye_precio_cero(tmp_path):
+    # $0 si es un caso legitimo (items que la factura lista en $0), a
+    # diferencia de un precio negativo -- no confundir ambos.
+    ruta = _crear_excel_prueba(
+        tmp_path,
+        filas_detalle=[("UMAG-007", "Flete", "Despacho sin costo", 0, 0, 0)],
+        filas_master=[("UMAG-007", datetime(2026, 3, 10))],
+    )
+    items = ch.cargar_items_detalle(ruta)
+    assert items[0]["excluido_motivo"] is None
+
+
 def test_cargar_items_detalle_falta_hoja_master_lanza_error_claro(tmp_path):
     wb = openpyxl.Workbook()
     ws_detalle = wb.active

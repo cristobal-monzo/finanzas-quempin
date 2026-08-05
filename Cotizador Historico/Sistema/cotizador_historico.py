@@ -73,10 +73,21 @@ def cargar_items_detalle(ruta_excel=None):
     del documento, ver tasa_iva_real, sin asumir 19% fijo).
 
     Items cuyo N Ref. no tiene fila en Master, cuya Fecha en Master no es un
-    datetime valido, o cuyo precio unitario no es un numero, quedan con
-    excluido_motivo poblado ("sin_master", "fecha_invalida" o
-    "precio_invalido") y fecha=None -- no deben entrar a ninguna busqueda ni
-    agregacion posterior."""
+    datetime valido, cuyo precio unitario no es un numero, o cuyo precio
+    unitario es negativo, quedan con excluido_motivo poblado ("sin_master",
+    "fecha_invalida", "precio_invalido" o "precio_negativo") y fecha=None --
+    no deben entrar a ninguna busqueda ni agregacion posterior.
+
+    "precio_negativo" es la defensa contra Notas de Credito (devoluciones):
+    sus items de Detalle vienen con P. Unitario sin IVA negativo (ver
+    UMAG-025, ej. real), y promediarlos junto a compras reales produce un
+    "costo actual" mas barato que cualquier compra real -- no sirve para
+    evaluar costos futuros. Se filtra por signo del precio, no por "Tipo
+    Documento" de Master (que este modulo no lee), porque cargar_items_detalle
+    opera a nivel de Detalle y una devolucion siempre es negativa
+    independiente de como haya quedado tipificado el documento. Pedido
+    explicito del usuario 2026-07-28 -- no reintroducir Notas de Credito al
+    indice de este modulo."""
     ruta = Path(ruta_excel) if ruta_excel is not None else RUTA_EXCEL_CENTRO_COSTOS
     try:
         wb = openpyxl.load_workbook(str(ruta), data_only=True, read_only=True)
@@ -120,6 +131,8 @@ def cargar_items_detalle(ruta_excel=None):
             precio = fila[col_precio - 1].value
             if excluido_motivo is None and not isinstance(precio, (int, float)):
                 excluido_motivo = "precio_invalido"
+            elif excluido_motivo is None and precio < 0:
+                excluido_motivo = "precio_negativo"
 
             proyecto, proveedor_tag = meta.get(n_ref, (None, None))
             items.append({

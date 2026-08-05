@@ -28,8 +28,10 @@ fresca, nunca se cachea entre corridas).
 ## Comandos
 
 **`status`** — solo lectura: cuenta ítems indexables en `Detalle`, cuántos
-quedan excluidos (sin fecha resoluble vía `Master`), cuántas fechas hay en
-el caché de UF, y prueba la conexión a `mindicador.cl`.
+quedan excluidos (sin fecha resoluble vía `Master`, sin precio unitario
+válido, o por ser Notas de Crédito/devoluciones con precio negativo —
+ver "Gotchas"), cuántas fechas hay en el caché de UF, y prueba la conexión
+a `mindicador.cl`.
 
 ```
 python ".claude/skills/Cotizador_Historico/driver.py" status
@@ -100,6 +102,11 @@ conversacionalmente.
   `status` reporta cuántos son; si un ítem que debería aparecer no
   aparece en una búsqueda, revisar primero si está en ese conteo de
   excluidos.
+- **Notas de Crédito/devoluciones nunca entran al índice** (2026-07-28):
+  cualquier ítem de `Detalle` con `P. Unitario sin IVA` negativo queda
+  excluido (`excluido_motivo = "precio_negativo"`) — una devolución real
+  (`UMAG-025`) se coló antes como "el ítem más barato" de una consulta y
+  distorsionaba el promedio/rango hacia abajo. No revertir este filtro.
 
 ## Troubleshooting
 
@@ -108,5 +115,5 @@ conversacionalmente.
 | `[ERROR] No existe .../Centro de Costos.xlsx` | Confirmar que `Centro de Costos/Excel/Centro de Costos.xlsx` existe y no se movió/renombró |
 | `UFNoDisponibleError` al consultar | Sin conexión a internet, o `mindicador.cl` no tiene dato para la fecha de HOY — este es el único caso que aborta toda la consulta, porque el reajuste necesita la UF de hoy para todas las compras por igual |
 | Algunas compras encontradas no aparecen en el resultado | Revisar el aviso `[INFO] N compra(s)... se excluyeron del resultado por no poder obtener su UF` al final de la salida — esa(s) fecha(s) específica(s) no se pudieron reajustar (sin conexión, o sin dato en mindicador.cl para esa fecha puntual), pero el resto de las compras encontradas sí se muestran |
-| Un ítem que sé que existe no aparece en `consultar` | Correr `status`: revisar el conteo de "Excluidos" — probablemente su `N° Ref.` no tiene fila en `Master`, su `Fecha` no es una fecha válida, o su celda de precio unitario está vacía/no es un número |
+| Un ítem que sé que existe no aparece en `consultar` | Correr `status`: revisar el conteo de "Excluidos" — probablemente su `N° Ref.` no tiene fila en `Master`, su `Fecha` no es una fecha válida, su celda de precio unitario está vacía/no es un número, o es una Nota de Crédito/devolución (precio unitario negativo, excluida a propósito) |
 | `ModuleNotFoundError: No module named 'openpyxl'` | `pip install openpyxl` |

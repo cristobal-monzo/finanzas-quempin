@@ -70,9 +70,18 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
 - `cargar_items_detalle(ruta_excel=None)` — lee `Detalle`+`Master`, resuelve
   la fecha de cada ítem vía `N° Ref.` e incluye `total_sin_iva`/
   `total_con_iva` de esa misma fila; ítems sin `Master` correspondiente,
-  con fecha no parseable, o cuya celda `P. Unitario sin IVA` no es un número,
-  quedan con `excluido_motivo` poblado (`"sin_master"`, `"fecha_invalida"` o
-  `"precio_invalido"`) y no entran a ninguna búsqueda ni agregación.
+  con fecha no parseable, cuya celda `P. Unitario sin IVA` no es un número,
+  o cuyo `P. Unitario sin IVA` es negativo, quedan con `excluido_motivo`
+  poblado (`"sin_master"`, `"fecha_invalida"`, `"precio_invalido"` o
+  `"precio_negativo"`) y no entran a ninguna búsqueda ni agregación.
+  `"precio_negativo"` es la exclusión de Notas de Crédito/devoluciones
+  (pedido explícito del usuario 2026-07-28, tras encontrar una devolución
+  real —`UMAG-025`— colándose como "el ítem más barato" de una consulta):
+  se filtra por signo del precio unitario, no por `Tipo Documento` de
+  `Master` (que este módulo no lee), porque una devolución siempre viene
+  con precio negativo en `Detalle` independiente de cómo haya quedado
+  tipificado el documento. **No agregar más Notas de Crédito al índice de
+  este módulo.**
 - `buscar_items(items, texto_busqueda)` — búsqueda difusa contra `Nombre
   Ítem`/`Descripción`; devuelve `(coincidencias, sugerencias)`.
 - `obtener_valor_uf(fecha, cache_uf)` / `consultar_uf_api(fecha)` — UF
