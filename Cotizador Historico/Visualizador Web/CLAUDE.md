@@ -9,21 +9,23 @@ módulo. Ver también [`../CLAUDE.md`](../CLAUDE.md) para el detalle completo
 de la lógica de búsqueda difusa y reajuste por UF que este visualizador
 expone.
 
-**Estado: implementación real (2026-07-20, ampliada 2026-07-21).** Este
-archivo documenta lo que efectivamente se construyó — no un borrador de
-contenido a definir.
+**Estado: implementado.** Este archivo documenta el estado actual — qué se
+construyó y cómo funciona hoy, no un borrador ni un changelog. Para el
+recorrido de cómo se llegó acá (decisiones revertidas, bugs encontrados con
+datos reales, versiones anteriores) ver [`HISTORIA.md`](HISTORIA.md); solo
+hace falta abrirlo para entender el origen de una regla puntual, no para
+trabajar en el módulo día a día.
 
-Diseño original completo:
-[`../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md`](../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md).
-**Su sección "Exportación" quedó superada mid-implementación** (ver más
-abajo, "Exportación a Excel") — este `CLAUDE.md` es la fuente de verdad
-sobre qué se exporta y cómo, no ese spec.
+Diseño original: [`../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md`](../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md)
+— su sección "Exportación" quedó superada (ver `HISTORIA.md`); este
+`CLAUDE.md` es la fuente de verdad sobre qué se exporta y cómo.
 
 ## Estructura del módulo
 
 ```
 Cotizador Historico/Visualizador Web/
 ├── CLAUDE.md               # este archivo
+├── HISTORIA.md             # changelog/decisiones — no hace falta para el día a día
 ├── template.html           # estructura/CSS/JS + logo, SIN datos — versionado
 ├── build_visualizador.py   # export + build — versionado
 ├── data/                    # snapshot intermedio (cotizador-historico.json) — gitignored
@@ -138,64 +140,60 @@ un chip que no se pudo extraer.
 capitalizada que no sea preposición común", ocasionalmente confunde una
 palabra capitalizada por estar después de un punto (ej. "Precio" al inicio
 de una frase nueva dentro de la descripción) con una marca real. No se ha
-corregido — es la misma clase de imprecisión heurística ya documentada, el
-chip erróneo no oculta la descripción completa, que sigue visible debajo.
+corregido — el chip erróneo no oculta la descripción completa, que sigue
+visible debajo.
 
-## Taxonomía y explorador de carpetas (2026-07-21)
+## Taxonomía y explorador de carpetas
 
-El gráfico de Top 10 y la tabla plana "Índice de productos" de la versión
-2026-07-20 se **eliminaron** (pedido explícito del usuario) y se
-reemplazaron por un explorador de carpetas de 3 niveles — **Categoría →
-Subcategoría → Hoja** — que reemplaza la sección "Índice de productos".
+El dashboard organiza el catálogo en un explorador de carpetas de 3
+niveles — **Categoría → Subcategoría → Hoja** — en vez de una tabla plana o
+un ranking Top N.
 
-- `clasificarItem(item)` — heurística por palabras clave (mismo criterio
-  best-effort que `extraerSpecs`) que asigna a cada ítem: `categoria`
-  (dominio, ej. "Piping Bronce", "Herramientas Eléctricas", "Otros /
-  Servicios" como categoría de respaldo), `material` (Cobre/Bronce/
-  Galvanizado/Inoxidable/PPR, detectado por palabra clave en nombre+
-  descripción), `medida` (misma extracción que antes usaba solo
-  `extraerMedidaFitting`, ahora generalizada a `extraerMedida` — pulgadas
-  con fracción mixta, mm, cm), y las banderas `requiereMaterial`/
-  `requiereMedida` que gatillan la regla de visibilidad de abajo.
+- `clasificarItem(item)` — heurística por palabras clave que asigna a cada
+  ítem: `categoria` (dominio, ej. "Piping Bronce", "Herramientas
+  Eléctricas", "Otros / Servicios" como categoría de respaldo), `material`
+  (Cobre/Bronce/Galvanizado/Inoxidable/PPR, detectado por palabra clave en
+  nombre+descripción), `medida` (`extraerMedida` — pulgadas con fracción
+  mixta, mm, cm), y las banderas `requiereMaterial`/`requiereMedida` que
+  gatillan la regla de visibilidad de abajo.
 - **`limpiarGenericoDeMaterial`**: el campo "Nombre Ítem" del Excel a veces
   ya trae el material incluido (ej. "Codo bronce", pese a que la
   convención documentada en `../CLAUDE.md` pide que sea genérico sin
-  material) — sin esta limpieza, la subcarpeta terminaba diciendo "Codo
+  material) — sin esta limpieza, la subcarpeta terminaría diciendo "Codo
   bronces de Bronce" (duplicado). Se le quita la palabra de material
   detectada antes de construir subcategoría/hoja.
+- **`detectarTipoGenerico`** — busca, palabra por palabra, si el nombre (o
+  si no encuentra nada ahí, la descripción) contiene alguna palabra ya
+  conocida por el clasificador (`PALABRAS_TIPO_CONOCIDAS`, la unión de
+  todos los `GRUPOS_*` de una sola palabra) y usa esa palabra real como
+  subcategoría — fusiona automáticamente accesorios/variantes/sets con el
+  tipo de producto real (ej. "Set 16 pzas destornillador precision" se une
+  a "Destornilladores" en vez de generar su propia carpeta). La palabra
+  detectada se normaliza con `capitalizar()` para que no queden
+  subcategorías duplicadas por mayúscula/minúscula.
 - `subcategoriaDe`/`hojaDe` construyen las etiquetas de carpeta: la
-  subcategoría es la **primera palabra** del genérico, pluralizada (+ " de
-  <Material>" si aplica, ej. "Codos de Bronce", "Llaves", "Destornilladores")
-  — usar el nombre completo como subcategoría fue el primer intento
-  (2026-07-21) y fragmentaba cada variante en su propia carpeta de 1 ítem
-  (ej. "Destornillador p/electricista PH1x80mm" y "Destornillador PL
-  1000V 4x100mm" quedaban en subcarpetas distintas en vez de agruparse en
-  "Destornilladores"; "Llave francesa"/"Llave ajustable"/"Llave inglesa"
-  no se agrupaban en "Llaves") — corregido el mismo día tras que el
-  usuario lo detectara con datos reales. La hoja usa el genérico completo
-  (no solo la primera palabra) + material/medida, evitando duplicar el
-  material o la medida si ya están contenidos en el nombre (`contieneTexto`).
-  `pluralizar` es un heurístico simple (vocal final → +s, consonante →
-  +es) — no maneja plurales irregulares del español perfectamente (ej.
-  "Setes" en vez de "Sets", "Unión americanas" en vez de "Uniones
-  americanas"), aceptado como limitación conocida de una heurística, no
-  un bug a perseguir.
-- **Regla de visibilidad ampliada** (antes solo cubría "fittings" por
-  nombre): tuberías/fittings (`GRUPOS_PIPING`) exigen **medida Y
-  material** — sin material no hay categoría de piping a la que asignarlo,
-  así que el ítem queda fuera del dashboard completo (no solo oculto)
-  hasta que se corrija el dato de origen. Pernos/tornillos/remaches/
-  autoperforantes/soldadura/fundente/electrodos (`GRUPOS_CONSUMIBLE_MEDIDA`)
-  exigen solo medida. El resto de las categorías no exige nada. Pedido
-  explícito del usuario: "una cañería de cobre de 1/2 no es lo mismo que
-  una de 2".
+  subcategoría es la **primera palabra** del genérico (vía
+  `detectarTipoGenerico` si aplica), pluralizada (+ " de <Material>" si
+  aplica, ej. "Codos de Bronce", "Llaves", "Destornilladores"). La hoja usa
+  el genérico completo (no solo la primera palabra) + material/medida,
+  evitando duplicar el material o la medida si ya están contenidos en el
+  nombre (`contieneTexto`). `pluralizar` es un heurístico simple (vocal
+  final → +s, consonante → +es, "-ión" → "-iones") — no maneja plurales
+  irregulares del español perfectamente (ej. "Setes" en vez de "Sets"),
+  aceptado como limitación conocida de una heurística, no un bug a
+  perseguir.
+- **Regla de visibilidad**: tuberías/fittings (`GRUPOS_PIPING`, incluido
+  inoxidable) exigen **medida Y material** — sin material no hay categoría
+  de piping a la que asignarlo, así que el ítem queda fuera del dashboard
+  completo (no solo oculto) hasta que se corrija el dato de origen.
+  Pernos/tornillos/remaches/autoperforantes/brocas (`GRUPOS_CONSUMIBLE_MEDIDA`)
+  exigen solo medida. El resto de las categorías no exige nada.
 - `buildLeafIndex`/`MARKET_STATS` agrupan por **hoja** (no por
   `nombre_item` crudo) — dos codos de bronce de distinta medida nunca se
   promedian/comparan como si fueran el mismo producto. Cada hoja trae
   `n_compras`, `promedio_con_iva`, `precio_min_con_iva`,
-  `proveedor_min_con_iva` (con IVA, porque es lo que ve el comprador final
-  — el rango sin IVA de una versión anterior ya no se usa para esta
-  comparación).
+  `proveedor_min_con_iva` (con IVA, porque es lo que ve el comprador
+  final).
 - `buildCategoryTree` arma el árbol navegable; el estado de navegación
   (`folderState.categoria/subcategoria/hoja`) se renderiza con
   `renderFolderBrowser` + `renderBreadcrumb` sobre `#folderBrowser`/
@@ -205,8 +203,7 @@ Subcategoría → Hoja** — que reemplaza la sección "Índice de productos".
   cada una.
 - **Iconos por categoría** (`ICONOS_CATEGORIA`) — un emoji plano por
   categoría, reutilizado entre categorías de piping similares con solo el
-  color/tono cambiando (🟠 Cobre, 🟡 Bronce, ⚪ Inoxidable, ⚙️ Galvanizado),
-  para no inventar un ícono nuevo por cada combinación material/categoría.
+  color/tono cambiando (🟠 Cobre, 🟡 Bronce, ⚪ Inoxidable, ⚙️ Galvanizado).
 - **Destacado de proveedor más barato**: en cualquier tarjeta de
   referencia (`renderRefCard`), si su hoja tiene más de una compra y esta
   tarjeta es la de menor precio con IVA, se le agrega la clase
@@ -216,144 +213,64 @@ Subcategoría → Hoja** — que reemplaza la sección "Índice de productos".
   nombres de categoría/subcategoría del árbol (no contra hojas
   individuales, que ya cubre la búsqueda normal de ítems) y se muestra en
   una sección aparte ("📁 Categorías encontradas", `#searchFolderMatches`)
-  con ícono de carpeta, claramente separada de "Referencias encontradas" —
-  para que el usuario distinga si el resultado es una carpeta para
-  explorar o un ítem específico.
+  con ícono de carpeta, claramente separada de "Referencias encontradas".
+- **Layout**: el buscador (con sus filtros) va en la parte superior del
+  panel, justo debajo del KPI row; el explorador de carpetas es
+  herramienta secundaria de navegación, debajo de los resultados de
+  búsqueda.
 
-## Política: ítems que el clasificador no reconoce (2026-07-21)
+## Política: ítems que el clasificador no reconoce
 
 La página publicada **nunca** busca en internet — es un HTML estático sin
-llamadas de red en tiempo de uso (ver "Por qué la UF se fija al momento
-del build" arriba, mismo motivo: los Artifacts no tienen una capability de
-fetch genérico). Cuando un ítem nuevo no calza bien con las reglas de
-`clasificarItem` (categoría/subcategoría genérica sin sentido, ej. un
-nombre de marca poco conocido), el flujo es: **en la próxima sesión de
-mantención, antes de reconstruir el visualizador, buscar en internet qué
-es el producto** (marca/modelo/término técnico) y ajustar
+llamadas de red en tiempo de uso (mismo motivo que la UF: los Artifacts no
+tienen una capability de fetch genérico). Cuando un ítem nuevo no calza
+bien con las reglas de `clasificarItem` (categoría/subcategoría genérica
+sin sentido, ej. un nombre de marca poco conocido), el flujo es: **en la
+próxima sesión de mantención, antes de reconstruir el visualizador, buscar
+en internet qué es el producto** (marca/modelo/término técnico) y ajustar
 `SINONIMOS_TIPO_GENERICO`, `OVERRIDES_CATEGORIA`, o los `GRUPOS_*`
 correspondientes según lo que se descubra — no es una función del HTML
 publicado, es un paso manual de mantenimiento del clasificador.
 
-- **`detectarTipoGenerico`** (agregado 2026-07-21, misma tarde) — antes la
-  subcategoría era siempre la primera palabra del nombre, lo que fallaba
-  cuando el nombre empieza con un cuantificador genérico (ej. "Set 16
-  pzas destornillador precision" generaba su propia carpeta "Setes" en
-  vez de unirse a "Destornilladores"). Ahora se busca, palabra por
-  palabra, si el nombre (o si no encuentra nada ahí, la descripción)
-  contiene alguna de las palabras ya conocidas por el clasificador
-  (`PALABRAS_TIPO_CONOCIDAS`, la unión de todos los `GRUPOS_*` de una sola
-  palabra) y se usa esa palabra real como subcategoría — fusiona
-  automáticamente accesorios/variantes/sets con el tipo de producto real,
-  sin necesitar un caso especial por cada combinación posible.
-- **`SINONIMOS_TIPO_GENERICO`** — nombres de marca/término técnico que un
-  usuario no reconocería como "lo mismo" que ya existe en el catálogo,
-  investigados uno por uno vía búsqueda web y mapeados al tipo genérico
-  correspondiente: `"alimat"` → `Valvula` (confirmado por búsqueda:
-  válvula de llenado automático, marca Watts ALM, con manómetro
-  integrado) y `"flow control"` → `Valvula` (una válvula de control de
-  flujo) — ambos se fusionan con la subcategoría "Valvulas" en vez de
-  crear una carpeta de 1 solo ítem con el nombre de la marca.
-- **Capitalización normalizada** — la palabra detectada por
-  `detectarTipoGenerico` puede venir en minúscula si apareció a mitad de
-  frase (ej. "destornillador" dentro de "Set 16 pzas destornillador...").
-  Sin normalizar, "destornillador" (minúscula) y "Destornillador"
-  (mayúscula, de otro ítem) quedaban como dos subcategorías distintas en
-  vez de fusionarse — `capitalizar()` resuelve esto.
-- **`pluralizar` ahora maneja el patrón "-ión" → "-iones"** (unión →
-  uniones, confección → confecciones — pierden la tilde porque la sílaba
-  tónica deja de ser la última al pluralizar, regla regular del español).
-  Sigue sin manejar plurales irregulares fuera de ese patrón específico
-  (ej. "Setes"/"Bushinges" para préstamos del inglés como "set"/"bushing"
-  quedarían mal pluralizados si volvieran a aparecer como primera palabra
-  reconocida sin sinónimo definido) — limitación conocida de una
-  heurística, no perseguida más allá de los casos reales encontrados.
+## Reglas de clasificación (orden de prioridad de `clasificarItem`)
 
-## Ajustes visuales (2026-07-21, misma tarde)
-
-- `.viz-leafrow` pasó de `display:flex; justify-content:space-between` a
-  `display:grid; grid-template-columns: 1fr 100px 120px` — con flex, la
-  columna "N compra(s)" no quedaba alineada entre filas cuando el nombre
-  de cada hoja tenía largo distinto (el espacio sobrante se repartía de
-  forma proporcional, no en columnas fijas). Con grid, las tres columnas
-  quedan alineadas verticalmente sin importar el largo del nombre.
-- `.viz-root` pasó de `min-height: 100%` a `min-height: 100vh` — al
-  navegar a una categoría/subcategoría con poco contenido (ej. 1-2
-  tarjetas), el fondo temático se encogía al alto del contenido y dejaba
-  visible el fondo blanco por defecto del documento debajo. `100%`
-  depende de que el padre (`html`/`body`) tenga una altura explícita, que
-  no la tiene; `100vh` se calcula contra el viewport directamente.
-
-## Reglas de clasificación ampliadas (2026-07-21, misma tarde)
-
-El usuario revisó la taxonomía inicial contra datos reales y pidió mover
-varias categorías/reglas específicas. `clasificarItem` quedó con este
-orden de prioridad (cada paso solo se evalúa si el anterior no calzó):
+Cada paso solo se evalúa si el anterior no calzó:
 
 1. **`OVERRIDES_CATEGORIA`** — excepciones de nombre completo a categoría
-   (y opcionalmente subcategoría forzada), revisadas primero porque una
-   palabra clave genérica clasificaría mal ese caso puntual: "adaptador
-   broca" → Herramientas Manuales (no Consumibles, aunque contenga
-   "broca"); "bolso" → Herramientas Manuales, subcategoría forzada
-   "Contenedores"; "ferreteria"/"ferretería" → Herramientas Manuales,
-   subcategoría forzada "Materiales de Ferretería" (sin forzarla, la
-   primera palabra de "Compra de materiales de ferretería..." producía
-   una subcarpeta sin sentido llamada "Compras").
-2. **Todo lo que diga inox/inoxidable va a "Piping Inoxidable", salvo que
+   (y opcionalmente subcategoría forzada): "adaptador broca" → Herramientas
+   Manuales (no Consumibles, aunque contenga "broca"); "bolso" →
+   Herramientas Manuales, subcategoría forzada "Contenedores";
+   "ferreteria"/"ferretería" → Herramientas Manuales, subcategoría forzada
+   "Materiales de Ferretería".
+2. Todo lo que diga inox/inoxidable va a "Piping Inoxidable", **salvo que
    sea una herramienta** (`GRUPOS_HERRAMIENTA` = eléctricas + manuales) —
-   tiene prioridad incluso sobre Válvulas y Control/Bombas (ej. un
-   manómetro inoxidable va a piping, no a "Válvulas y Control", porque un
-   manómetro no es una herramienta). Requiere medida igual que el resto
-   de piping.
+   tiene prioridad incluso sobre Válvulas y Control/Bombas. Requiere medida
+   igual que el resto de piping.
 3. `GRUPOS_PIPING` (cobre/bronce/galvanizado/PPR — el inoxidable ya se
    interceptó en el paso 2).
-4. **`GRUPOS_SOLDADURA`** (nueva categoría "Soldadura" 🔥): gas MAPP,
-   soldadura, fundente, electrodos, varillas — ya no exige medida (a
-   diferencia de cuando vivían dentro de Consumibles).
-5. Válvulas y Control, Bombas y Equipos Mecánicos, Herramientas
-   Eléctricas, Herramientas Manuales (extendida con huincha, cortatubos/
-   corta tubos, cuchillo, calafatera, dado, remachadora — "remachadora"
-   se revisa en este grupo antes de que "remache" la capture como
-   consumible, porque la contiene como substring).
-6. **`GRUPOS_MATERIALES_ELECTRICOS`** (nueva categoría "Materiales
-   Eléctricos" ⚡): "conduit" (casi cualquier ítem que diga conduit es
-   eléctrico, pedido del usuario), "eléctrico".
-7. **`GRUPOS_QUIMICOS`** (nueva categoría "Productos Químicos" 🧪):
-   Solutech, tapagotera(s).
-8. **`GRUPOS_TRANSPORTE`** (nueva categoría "Transporte" 🚚): flete,
-   arriendo, peaje, combustible/gasolina/bencina/petróleo/diesel/
-   parafina, pasaje, equipaje. La subcategoría se decide por
-   `subcategoriaTransporte`: Combustible (agrupa el ítem del combustible
-   con su impuesto específico asociado, pedido explícito del usuario),
-   Peajes, Arriendo de Vehículos, Pasajes y Equipaje, Fletes, o "Otros
-   Gastos de Transporte" si ninguna calza.
+4. **`GRUPOS_SOLDADURA`** ("Soldadura" 🔥): gas MAPP, soldadura, fundente,
+   electrodos, varillas — no exige medida.
+5. Válvulas y Control, Bombas y Equipos Mecánicos, Herramientas Eléctricas,
+   Herramientas Manuales (incluye huincha, cortatubos/corta tubos,
+   cuchillo, calafatera, dado, remachadora — evaluada antes que "remache"
+   la capture como consumible, porque la contiene como substring).
+6. **`GRUPOS_MATERIALES_ELECTRICOS`** ("Materiales Eléctricos" ⚡):
+   "conduit" (casi cualquier ítem que diga conduit es eléctrico),
+   "eléctrico".
+7. **`GRUPOS_QUIMICOS`** ("Productos Químicos" 🧪): Solutech,
+   tapagotera(s).
+8. **`GRUPOS_TRANSPORTE`** ("Transporte" 🚚): flete, arriendo, peaje,
+   combustible/gasolina/bencina/petróleo/diesel/parafina, pasaje,
+   equipaje. La subcategoría la decide `subcategoriaTransporte`:
+   Combustible (agrupa el ítem del combustible con su impuesto específico
+   asociado), Peajes, Arriendo de Vehículos, Pasajes y Equipaje, Fletes, o
+   "Otros Gastos de Transporte".
 9. Consumibles con medida obligatoria (pernos, tornillos, remaches,
    autoperforantes, brocas) y sin medida (esmalte, pintura, rodillo,
    brocha, aguarrás, espuma, cinta, lubricante, bolsas, libros,
    marcadores).
-10. Seguridad (EPP) — extendida con "overol".
+10. Seguridad (EPP, incluye "overol").
 11. "Otros / Servicios" como categoría de respaldo final.
-
-**Bugs reales encontrados probando con datos reales, ya corregidos**:
-- `PATRON_MEDIDA` no reconocía una fracción pelada sin comilla ni unidad
-  (ej. "1/2x1/2") — típico en catálogos que omiten el símbolo de pulgada.
-  Sin esto, ítems inoxidables reales quedaban invisibles (medida no
-  detectada → excluidos) y la regla del punto 2 nunca se veía en el
-  dashboard. Se agregó `\b\d+\/\d+\b` como alternativa final del regex.
-- `pluralizar` duplicaba el plural si el nombre de origen ya terminaba en
-  "s" (ej. "Bolsas" → "Bolsases"). Ahora si ya termina en "s" se devuelve
-  sin cambios.
-- Palabras clave que no calzaban por diferencias exactas de texto real:
-  "cortatubos" (el dato real decía "Corta tubos", con espacio — se agregó
-  esa variante) y "tapagoteras" (el dato real decía "Tapagotera", singular
-  — la clave plural nunca es substring de la singular; se cambió a la
-  raíz singular "tapagotera", que sí calza con ambas formas).
-
-## Orden del dashboard (2026-07-21)
-
-El buscador (con sus filtros) se movió a la parte superior del panel,
-justo debajo del KPI row — antes estaba después de la tabla/gráfico
-eliminados. El explorador de carpetas quedó como herramienta secundaria de
-navegación, debajo de los resultados de búsqueda.
 
 ## Carrito de cotización — garantía de no-persistencia
 
@@ -366,15 +283,12 @@ a diferencia del tema visual (que sí usa `localStorage`) o del estado de
 nunca se escribe en ningún almacenamiento del navegador.
 
 - Cada tarjeta de resultado tiene un stepper de cantidad + botón "Agregar
-  al cotizador" (`bindCartButtons`/`addToCart`; texto del botón cambiado
-  desde "Agregar al carrito" el 2026-07-21, pedido del usuario) — si la
-  referencia ya está en el carrito (`cartKey`, indexado por posición en
-  `DATA.items`), la cantidad se suma a la existente en vez de duplicar la
-  línea. Cada línea guarda también su `hoja` (ver taxonomía arriba), usada
-  por la exportación.
-- El botón flotante que abre el panel usa el ícono 🧾 (recibo) en vez de
-  🛒 (pedido del usuario, 2026-07-21) — el título del panel ("Carrito de
-  cotización") no cambió, solo el ícono y el texto del botón de agregar.
+  al cotizador" (`bindCartButtons`/`addToCart`) — si la referencia ya está
+  en el carrito (`cartKey`, indexado por posición en `DATA.items`), la
+  cantidad se suma a la existente en vez de duplicar la línea. Cada línea
+  guarda también su `hoja` (ver taxonomía arriba), usada por la
+  exportación.
+- El botón flotante que abre el panel usa el ícono 🧾 (recibo).
 - El panel lateral (drawer) del carrito (`renderCart`) muestra una línea
   por ítem con cantidad editable, subtotal, botón de quitar
   (`removeFromCart`), y el total general con y sin IVA.
@@ -388,11 +302,11 @@ a `renderCart()` reconstruye su contenido llamando a
 al portapapeles (`navigator.clipboard.writeText`, con fallback a
 `document.execCommand('copy')` sobre el propio textarea si el navegador no
 soporta la API moderna) — **no hay descarga de archivo en ningún punto de
-este flujo.**
+este flujo** (los Artifacts de Claude solo permiten descargar extensiones
+de un allowlist que no incluye `.xlsx`/`.csv`; ver `HISTORIA.md` para el
+porqué completo de este diseño).
 
-**Formato de la tabla copiable (rediseñado 2026-07-21, pedido del
-usuario)**: ya no son secciones Materiales/Equipos/Otros con cantidad y
-subtotal — es una tabla comparativa de mercado, una fila por línea del
+La tabla copiable es comparativa de mercado: una fila por línea del
 carrito, con columnas `Elemento` (la `hoja`, ej. "Codo de Bronce 1
 1/2\""), `Promedio de costo`, `Costo más barato`, `Proveedor más barato`
 (los tres desde `MARKET_STATS[hoja]`, es decir contra **todas** las
@@ -400,29 +314,9 @@ compras históricas de esa hoja exacta, no solo las que trajo la búsqueda
 que la agregó al carrito) y `Costo actualizado según UF` (el precio
 reajustado de la compra específica que el usuario eligió agregar — puede
 diferir del "costo más barato" si el usuario agregó una referencia que no
-es la más económica). La fecha de generación y la UF utilizada **ya no
-van dentro del texto copiable** — se muestran aparte, en `#exportMeta`
-(fuera de la caja de copia), pedido explícito del usuario para que la caja
-sea solo la tabla que se pega en Excel.
-
-### Por qué no es una descarga de archivo
-
-El diseño original (ver spec, sección "Exportación") sí contemplaba
-descargar un archivo — primero se evaluó `.xlsx`/`.csv` vía la capability
-`downloads` de los Artifacts de Claude, pero esa capability solo acepta
-`gif png jpg jpeg webp mp4 webm txt json md` (`window.claude.downloads.save()`
-rechaza cualquier otra extensión); el diseño bajó entonces a un archivo
-`.txt` con columnas separadas por tabulador, abrible en Excel renombrando
-la extensión o vía "Archivo > Abrir". **Mid-implementación (2026-07-20),
-el usuario revisó el plan y pidió cambiar el mecanismo**: en vez de
-descargar cualquier archivo, un textarea que siempre muestra el texto
-actual del carrito más un botón para copiarlo al portapapeles. Esto evita
-por completo el allowlist de extensiones de `downloads` (ya no aplica) y
-es más simple de implementar: no hay que declarar ninguna capability al
-publicar el Artifact, ni distinguir el caso "dentro del sandbox del
-Artifact" del caso "abierto localmente fuera de un Artifact". Ver
-`../docs/superpowers/plans/2026-07-20-visualizador-cotizador-historico.md`,
-sección "Task 8", para el registro completo de ese cambio de decisión.
+es la más económica). La fecha de generación y la UF utilizada se muestran
+aparte, en `#exportMeta` (fuera de la caja de copia), para que la caja de
+copia sea solo la tabla que se pega en Excel.
 
 ## Publicación
 
@@ -442,4 +336,5 @@ seguridad real.
   explícitamente por el usuario (ver "Carrito de cotización" arriba).
 - Un archivo `.xlsx` real descargable — bloqueado hoy por el allowlist de
   `downloads`, y en cualquier caso superado por la decisión de copiar/
-  pegar en vez de descargar (ver "Exportación a Excel" arriba).
+  pegar en vez de descargar (ver "Exportación a Excel" arriba e
+  `HISTORIA.md`).
