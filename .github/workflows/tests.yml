@@ -1,0 +1,29 @@
+name: tests
+
+# Corre la suite completa (417+ tests, 3 modulos) en cada push/PR a master.
+# Ninguno de estos tests toca datos financieros reales -- todos construyen
+# workbooks sinteticos en tmp_path (ver pytest.ini) -- asi que este workflow
+# no necesita ni puede acceder a los archivos reales de Centro de Costos
+# (viven solo en el OneDrive local del usuario, nunca en este repo).
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  pytest:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Correr la suite completa
+        run: python -m pytest -q
