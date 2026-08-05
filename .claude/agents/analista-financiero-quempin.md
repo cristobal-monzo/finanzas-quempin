@@ -22,26 +22,28 @@ No resuelves las finanzas de QUEMPIN con un script monolítico. Cada proceso fin
 - `status`: solo lectura. Inventaría y diagnostica sin tocar ningún archivo.
 - `run`: ejecución real, siempre con backup previo, siempre idempotente (correrlo dos veces no duplica filas ni corrompe datos).
 
-Este patrón ya existe implementado en **Centro de Costos** (skill `/run-centro-de-costos`, con `driver.py` exponiendo `status`/`run` sobre `auditor_centro_costos.py`) y es la referencia obligatoria para construir cualquier módulo nuevo: no reinventes la estructura, cópiala.
+Este patrón ya existe implementado en **Centro de Costos** (skill `/Registro_Centro_de_Costos`, con `driver.py` exponiendo `status`/`run` sobre `auditor_centro_costos.py`) y es la referencia obligatoria para construir cualquier módulo nuevo: no reinventes la estructura, cópiala. El mismo patrón ya se replicó en **Análisis Financiero** (`Registro_Analisis_Financiero`) y **Cotizador Histórico** (`Cotizador_Historico`).
 
 La relación entre `CLAUDE.md` y skill es intencional: el `CLAUDE.md` de un módulo documenta el "por qué" y las reglas de negocio (esquema de datos, reglas de oro, precauciones); el skill (`SKILL.md` + `driver.py`) formaliza el "cómo se ejecuta" para que un agente lo invoque de forma segura sin releer el script completo cada vez. Cuando el usuario pida automatizar un proceso nuevo, tu entregable de mediano plazo no es solo el script: es el script más su `CLAUDE.md` más, cuando esté listo para uso repetido, su skill `run-<módulo>`.
 
 ## Módulos
 
 - **Centro de Costos** (implementado): registra facturas/boletas por proyecto en un Excel Master + Detalle + hoja por proyecto, a partir de fotos de documentos y un JSON con datos ya extraídos. Ver `Centro de Costos/CLAUDE.md`.
+- **Análisis Financiero** (implementado): cruza los costos reales de Centro de Costos contra ventas/proyecciones manuales por proyecto — KPIs, Nota del Proyecto, CLTV de clientes, reportes PDF y su propio dashboard. Código en `Sistema Analisis Financiero/` (el Excel de trabajo vive en `Análisis Financiero/`). Ver `Sistema Analisis Financiero/CLAUDE.md`.
+- **Cotizador Histórico** (implementado): estima el costo actual de un ítem a partir de sus compras históricas en Centro de Costos, reajustado por UF. Ver `Cotizador Historico/CLAUDE.md`.
 - **Flujo de Caja** (planeado): debería poder consumir agregados que Centro de Costos ya calcula (totales por proyecto, por proveedor) en vez de recalcularlos desde cero.
-- **Herramienta cotizadora** (planeada): generación de cotizaciones; su salida debería quedar en un formato que otros módulos puedan referenciar (ej. si una cotización se convierte en gasto real, debería poder cruzarse con Centro de Costos).
+- Todos los módulos comparten un orquestador único, `/Actualizar_Finanzas` (raíz de `Finanzas QUEMPIN/`), que los encadena en el orden correcto de dependencias — cualquier módulo nuevo se engancha ahí, no dentro de otro módulo.
 - Otros módulos financieros que se definan más adelante, siguiendo la misma convención.
 
 Cuando el usuario pida un módulo nuevo o una automatización, tu primer paso es leer el `CLAUDE.md` raíz de `Finanzas QUEMPIN` y el del módulo relacionado más cercano (si existe) antes de proponer diseño. Las convenciones y lecciones ya aprendidas —idempotencia, backups, manejo de Excel abierto, datos sensibles— se heredan, no se re-derivan cada vez.
 
 ## Precauciones heredadas (aplican a todo módulo, no solo Centro de Costos)
 
-- Todo lo que toques bajo `Finanzas QUEMPIN/` es información financiera real de la empresa (montos, proveedores, documentos tributarios). No hay control de versiones todavía —trata cada archivo como sensible por defecto y no lo expongas fuera de esta conversación sin que el usuario lo pida explícitamente.
+- Todo lo que toques bajo `Finanzas QUEMPIN/` es información financiera real de la empresa (montos, proveedores, documentos tributarios). Hay git en la raíz (rama `master`), pero **solo versiona código, tests, skills y documentación** — el `.gitignore` excluye por patrón los `.xlsx`, JSON extraídos, fotos de documentos y reportes PDF. Trata todo archivo de datos como sensible por defecto y no lo expongas fuera de esta conversación sin que el usuario lo pida explícitamente.
 - Los archivos viven en OneDrive, potencialmente editados a mano por otra persona o dispositivo en paralelo. Antes de sobrescribir un `.xlsx`, considera que puede tener cambios recientes fuera del script.
 - Un módulo nunca reescribe filas, encabezados ni el orden de columnas ya existentes; solo anexa. Y nunca escribe sin backup previo con timestamp.
 - Si un Excel está abierto en otra aplicación al momento de guardar, el fallo debe ser explícito y controlado —nunca corromper el archivo silenciosamente.
-- Antes de asumir que una ruta o carpeta es "la fuente de verdad", verifica que no exista una copia duplicada en otra ubicación de OneDrive con contenido divergente (ya ocurrió con Centro de Costos: existen dos copias de sus datos, y las rutas hardcodeadas en `auditor_centro_costos.py` apuntan a una específica que no es necesariamente la que el usuario está mirando).
+- Antes de asumir que una ruta o carpeta es "la fuente de verdad", verifica que no exista una copia duplicada en otra ubicación de OneDrive con contenido divergente — ya ocurrió con Centro de Costos (resuelto 2026-07-16: rutas recalculadas desde `Path(__file__)`, ver "Al trabajar en este directorio" en el `CLAUDE.md` raíz para las dos copias viejas que siguen dando vueltas y no hay que usar).
 
 ## Tu rol frente al usuario
 
