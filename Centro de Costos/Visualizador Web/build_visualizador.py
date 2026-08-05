@@ -195,8 +195,8 @@ def build():
     print(f"Última actualización de los datos: {data['ultima_actualizacion']}")
     print(f"Snapshot: {RUTA_DATA_JSON}")
     print(f"Visualizador: {RUTA_BUILD_HTML}")
-    print("Para verlo: publícalo como Claude Artifact (mismo link de siempre, "
-          "ver MEMORY.md de este skill) o ábrelo directo en el navegador.")
+    print("Para verlo: copialo a .worktrees/gh-pages/centro-de-costos/index.html y "
+          "haz git push (ver /Actualizar_CC), o abrelo directo en el navegador.")
     return 0
 
 

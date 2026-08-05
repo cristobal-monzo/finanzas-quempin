@@ -449,7 +449,7 @@
   .viz-tabs { display: flex; gap: 8px; margin: 20px 0 16px; border-bottom: 1px solid var(--gridline); }
   .viz-tab-btn {
     background: none; border: none; padding: 10px 16px; font: inherit; cursor: pointer;
-    color: var(--brand-gray-11); border-bottom: 2px solid transparent;
+    color: var(--text-secondary); border-bottom: 2px solid transparent;
   }
   .viz-tab-btn.active { color: var(--brand-orange); border-bottom-color: var(--brand-orange); font-weight: 700; }
   .viz-tab-panel { display: none; }
@@ -472,7 +472,7 @@
     background: var(--surface-card); border-radius: 8px; padding: 14px 18px 14px 16px;
     min-width: 160px; flex: 1; border-left: 3px solid transparent; transition: border-color 0.15s;
   }
-  .kpi-label { font-size: 12px; color: var(--brand-gray-11); display: flex; align-items: center; gap: 5px; }
+  .kpi-label { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
   .kpi-value { font-size: 24px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
   /* Coloreado semántico: separado del acento de marca (naranjo), señala
      estado del dato en vez de identidad visual — ver skill artifact-design
@@ -486,7 +486,7 @@
 
   .chart-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
   .chart-card { background: var(--surface-card); border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 260px; }
-  .chart-card h3 { font-size: 13px; margin: 0 0 10px; color: var(--brand-gray-11); }
+  .chart-card h3 { font-size: 13px; margin: 0 0 10px; color: var(--text-secondary); }
 
   .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
   .bar-label { width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -498,7 +498,7 @@
   .donut-legend-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 4px; }
   .donut-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 
-  .fila-nota { font-size: 11px; color: var(--brand-gray-11); font-style: italic; }
+  .fila-nota { font-size: 11px; color: var(--text-secondary); font-style: italic; }
 </style>
 
 <div class="viz-gate" id="pwGate">
@@ -547,7 +547,7 @@
         <div class="kpi-card" id="kpiCardNCompletos">
           <div class="kpi-label">
             Proyectos completos
-            <span class="info-icon" tabindex="0" data-info="Proyectos con los 6 campos manuales cargados en 'Análisis de Proyectos' (Monto de Venta + 4 costos proyectados + Mano de Obra Real). Solo estos entran en los KPIs, gráficos y tablas de esta pestaña.">i</span>
+            <span class="info-icon" tabindex="0" data-info="Proyectos con los 8 campos manuales cargados en 'Análisis de Proyectos' (Estado, Fecha de inicio, Monto de Venta, 4 costos proyectados y Mano de Obra Real). Solo estos entran en los KPIs, gráficos y tablas de esta pestaña.">i</span>
           </div>
           <div class="kpi-value" id="kpiNCompletos"></div>
         </div>
@@ -676,7 +676,7 @@
     <p class="viz-footer">
       <strong>Snapshot de prueba</strong> — datos reales de <strong>Análisis de Proyectos.xlsx</strong>. Última actualización de los datos:
       <span id="vizUltimaFooter">—</span> · snapshot generado el <span id="vizGeneratedFooter">—</span>.
-      Artifact privado, no publicado. Proveedor muestra tag corto; razón social completa disponible al expandir cada fila.
+      Publicado en GitHub Pages. Proveedor muestra tag corto; razón social completa disponible al expandir cada fila.
       La contraseña de acceso es una barrera simple del lado del cliente, no seguridad real — no compartas este link fuera del equipo.
     </p>
   </div>

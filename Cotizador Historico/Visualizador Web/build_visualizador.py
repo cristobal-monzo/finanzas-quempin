@@ -94,7 +94,8 @@ def build():
     print(f"Sin UF disponible para su fecha de compra: {data['sin_uf_count']}")
     print(f"Snapshot: {RUTA_DATA_JSON}")
     print(f"Visualizador: {RUTA_BUILD_HTML}")
-    print("Para verlo: publícalo como Claude Artifact o ábrelo directo en el navegador.")
+    print("Para verlo: copialo a .worktrees/gh-pages/cotizador-historico/index.html y "
+          "haz git push (ver /Actualizar_Cotizador), o abrelo directo en el navegador.")
     return 0
 
 
