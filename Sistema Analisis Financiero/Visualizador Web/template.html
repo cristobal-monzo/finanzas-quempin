@@ -101,6 +101,13 @@
   }
 
   * { box-sizing: border-box; }
+  /* El navegador aplica ~8px de margen a <body> por defecto -- sin este
+     reset, y como html/body no tienen fondo propio (heredan el blanco del
+     navegador), queda un marco blanco alrededor de TODO el contenido sin
+     importar min-height. No es lo mismo que el bug de min-height:100% (ya
+     corregido arriba): ese se notaba solo cuando el contenido era mas
+     corto que la ventana, este se ve siempre, en los 3 dashboards. */
+  html, body { margin: 0; padding: 0; background: #0d0d0d; }
   .viz-root {
     font-family: 'Lato', system-ui, -apple-system, "Segoe UI", sans-serif;
     background: var(--page-plane);
