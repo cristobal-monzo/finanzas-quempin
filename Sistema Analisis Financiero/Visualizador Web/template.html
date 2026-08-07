@@ -359,7 +359,11 @@
      vez de romper el layout de la página — el resto del visualizador es
      responsive, la tabla es lo único con columnas que no se pueden apilar. */
   .viz-tablescroll { overflow-x: auto; overflow-y: hidden; border-radius: 10px; }
-  table.viz-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  /* color:inherit es necesario -- <table> no hereda 'color' de un ancestro
+     por defecto en los navegadores (comportamiento del UA stylesheet, no
+     un bug de este CSS), asi que sin esto el texto de toda la tabla
+     quedaba negro sobre el fondo oscuro de la tarjeta, casi invisible. */
+  table.viz-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; color: inherit; }
   table.viz-table thead th {
     text-align: left;
     font-size: 11px;
@@ -409,7 +413,7 @@
   .detail-grid .dk { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; }
   .detail-grid .dv { color: var(--text-primary); margin-top: 1px; }
   .detail-grid .dv.accent { color: var(--brand-orange-ink, var(--brand-orange)); font-weight: 700; }
-  table.viz-itemtable { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; background: var(--surface-card); border-radius: 8px; overflow: hidden; min-width: 480px; }
+  table.viz-itemtable { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; background: var(--surface-card); border-radius: 8px; overflow: hidden; min-width: 480px; color: inherit; }
   table.viz-itemtable th { text-align: left; font-size: 10.5px; text-transform: uppercase; color: var(--text-muted); padding: 7px 10px; border-bottom: 1px solid var(--gridline); }
   table.viz-itemtable th:nth-child(1) { width: 18%; }
   table.viz-itemtable th:nth-child(2) { width: 34%; }
