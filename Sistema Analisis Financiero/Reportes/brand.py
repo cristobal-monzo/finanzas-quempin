@@ -46,7 +46,7 @@ body { font-family: 'Lato', system-ui, sans-serif; color: var(--brand-black); ma
 .reporte-header--pagina h1 { font-size: 15px; }
 .reporte-header--pagina .reporte-fecha { font-size: 10px; }
 .kpi-fila { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-.kpi-tarjeta { flex: 1 1 160px; border: 1px solid var(--brand-gray-light); border-radius: 8px; padding: 12px 16px; }
+.kpi-tarjeta { flex: 1 1 160px; border: 1px solid var(--brand-gray-light); border-radius: 8px; padding: 12px 16px; box-sizing: border-box; }
 .kpi-tarjeta .valor { font-size: 24px; font-weight: 900; color: var(--brand-orange); }
 .kpi-tarjeta .etiqueta { font-size: 12px; color: var(--brand-gray-dark); }
 table.tabla-reporte { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
@@ -63,12 +63,12 @@ table.tabla-reporte td.alerta { font-weight: 900; color: var(--brand-orange); }
 /* Panel de verificacion (pagina 1 del estandar de 2 paginas): 2 columnas,
    pensado para llenar el alto completo de la pagina (no comprimir de mas)
    -- ver SKILL.md de Reportes_Analisis_Financiero. */
-.pdf-pagina.p1 { padding: 4px 0 26px; }
+.pdf-pagina.p1 { padding: 4px 0 10px; }
 .pdf-pagina.p1 h2 { font-size: 17px; margin: 0 0 10px; }
-.pdf-pagina.p1 h3 { font-size: 11.5px; margin: 10px 0 5px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--brand-gray-dark); }
+.pdf-pagina.p1 h3 { font-size: 11.5px; margin: 7px 0 4px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--brand-gray-dark); }
 .pdf-pagina.p1 h3:first-child { margin-top: 0; }
 .pdf-pagina.p1 table.tabla-reporte { margin-bottom: 7px; }
-.pdf-pagina.p1 table.tabla-reporte td, .pdf-pagina.p1 table.tabla-reporte th { padding: 5.5px 9px; font-size: 11px; }
+.pdf-pagina.p1 table.tabla-reporte td, .pdf-pagina.p1 table.tabla-reporte th { padding: 3px 9px; font-size: 10.5px; }
 .pdf-pagina.p1 table.tabla-reporte td.referencia { color: var(--brand-gray-dark); font-size: 9.5px; text-align: left; }
 .pdf-pagina.p1 .kpi-fila { gap: 12px; margin-bottom: 14px; }
 .pdf-pagina.p1 .kpi-tarjeta { padding: 10px 14px; flex-basis: 145px; }
