@@ -112,8 +112,13 @@ def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
     # el visualizador calculaba el componente de control con ABS(desviacion) y
     # descontaba 6.25 puntos por haber gastado MENOS de lo presupuestado. La
     # regla vigente usa MAX(0, desviacion): un proyecto bajo presupuesto no se
-    # penaliza, asi que la nota correcta es 100 -- el mismo valor que ya daban
-    # el Excel y el reporte PDF. Ver test_contrato_kpis.py.
+    # penaliza, asi que el componente de control da el puntaje maximo (100).
+    #
+    # Margen neto = 25% = exactamente MARGEN_OBJETIVO_NOTA. Hasta el
+    # 2026-08-20 eso tambien topaba el componente de margen en 100 (nota=100).
+    # Con la curva nueva, llegar justo al objetivo vale SCORE_MARGEN_EN_OBJETIVO
+    # (70), no el tope -- nota = round(0.7*70 + 0.3*100) = 79. Ver
+    # test_contrato_kpis.py y test_nota_evaluacion.py::test_score_margen_*.
     p = {
         "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
@@ -128,8 +133,8 @@ def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
     assert kpis["total_real"] == 750_000
     assert kpis["margen_real"] == 250_000
     assert round(kpis["desviacion_pct"], 4) == -0.0625
-    assert kpis["nota"] == 100
-    assert kpis["evaluacion"] == "Excelente"
+    assert kpis["nota"] == 79
+    assert kpis["evaluacion"] == "Bueno"
 
 
 def test_calcular_kpis_proyecto_evaluacion_requiere_atencion_bajo_55():
@@ -169,16 +174,18 @@ def test_calcular_kpis_proyecto_monto_venta_cero_no_explota():
 
 def test_calcular_kpis_proyecto_redondeo_estilo_excel_en_empate_exacto():
     # Construimos margen_real/monto_venta y desviacion_pct tal que
-    # 0.7*score_margen + 0.3*score_desviacion == 96.5 exactamente.
-    # score_margen = 100 (margen_real/monto_venta = 25% = MARGEN_OBJETIVO_NOTA).
-    # 0.7*100 = 70 -> falta 26.5 de 0.3*score_desviacion -> score_desviacion = 26.5/0.3 = 88.333...
-    # Para evitar decimales feos, usamos score_margen=95 y score_desviacion=100:
-    # 0.7*95 + 0.3*100 = 66.5 + 30 = 96.5 exacto.
-    # score_margen=95 -> margen_real/monto_venta = 0.95*0.25 = 0.2375
-    # score_desviacion=100 -> desviacion_pct = 0
+    # 0.7*score_margen + 0.3*score_desviacion == 54.5 exactamente. Nos
+    # quedamos en la zona lineal de la curva de margen (margen <= 25% =
+    # MARGEN_OBJETIVO_NOTA, curva 2026-08-20) para que el cálculo sea
+    # aritmética racional exacta, sin EXP() de por medio (evita ruido de
+    # punto flotante al construir el empate).
+    # score_desviacion=100 -> desviacion_pct = 0.
+    # score_margen=35 (mitad del tramo lineal, 0->70) -> margen_real/monto_venta
+    # = 0.5 * MARGEN_OBJETIVO_NOTA = 0.125.
+    # 0.7*35 + 0.3*100 = 24.5 + 30 = 54.5 exacto.
     monto_venta = 1_000_000
-    margen_real_objetivo = 0.2375 * monto_venta  # 237_500
-    total_real = monto_venta - margen_real_objetivo  # 762_500
+    margen_real_objetivo = 0.125 * monto_venta  # 125_000
+    total_real = monto_venta - margen_real_objetivo  # 875_000
     total_proyectado = total_real  # desviacion_pct = 0 -> score_desviacion = 100
     p = {
         "tag": "TIE", "nombre": "Empate Redondeo", "cliente": "Cliente Y", "estado": "En Proceso",
@@ -191,13 +198,14 @@ def test_calcular_kpis_proyecto_redondeo_estilo_excel_en_empate_exacto():
 
     kpis = bv.calcular_kpis_proyecto(p, costos_reales)
 
-    # Verificamos que efectivamente armamos el empate exacto en 96.5 antes de redondear.
-    score_margen = min(100, max(0, (kpis["margen_real"] / monto_venta) / af.MARGEN_OBJETIVO_NOTA * 100))
-    score_desviacion = min(100, max(0, 100 - abs(kpis["desviacion_pct"]) * 100))
+    # Verificamos que efectivamente armamos el empate exacto en 54.5 antes de redondear.
+    ratio_margen = (kpis["margen_real"] / monto_venta) / af.MARGEN_OBJETIVO_NOTA
+    score_margen = ratio_margen * af.SCORE_MARGEN_EN_OBJETIVO
+    score_desviacion = min(100, max(0, 100 - max(0, kpis["desviacion_pct"]) * 100))
     valor_sin_redondear = af.PESO_RENTABILIDAD_NOTA * score_margen + af.PESO_DESVIACION_NOTA * score_desviacion
-    assert valor_sin_redondear == 96.5
-    assert round(96.5) == 96  # banker's rounding de Python -- lo que NO queremos
-    assert kpis["nota"] == 97  # ROUND-half-away-from-zero de Excel
+    assert valor_sin_redondear == 54.5
+    assert round(54.5) == 54  # banker's rounding de Python -- lo que NO queremos
+    assert kpis["nota"] == 55  # ROUND-half-away-from-zero de Excel
 
 
 def test_percentil_inclusivo_replica_percentile_excel():
@@ -214,10 +222,10 @@ def test_percentil_inclusivo_con_un_solo_valor_devuelve_ese_valor():
 
 
 def test_calcular_clientes_agrupa_y_calcula_cltv():
-    # 180 dias exactos entre las 2 fechas -- evita aritmetica de calendario
-    # ambigua (dias/mes no calzan limpio con /30) en la asercion.
+    # 450 dias exactos entre las 2 fechas -- por encima del piso de 12 meses
+    # (ver test siguiente), asi que el calculo usa el rango real observado.
     fecha_a = datetime(2026, 1, 1)
-    fecha_b = fecha_a + timedelta(days=180)
+    fecha_b = fecha_a + timedelta(days=450)
     kpis = [
         {"tag": "AGCI1", "cliente": "AGCID", "monto_venta": 1_000_000, "margen_real": 250_000},
         {"tag": "AGCI2", "cliente": "AGCID", "monto_venta": 2_000_000, "margen_real": 500_000},
@@ -234,19 +242,23 @@ def test_calcular_clientes_agrupa_y_calcula_cltv():
     assert c["cliente"] == "AGCID"
     assert c["aov"] == 1_500_000
     assert c["vida"] == 2
-    assert c["meses_activo"] == 6.0  # 180 dias / 30
-    assert c["frecuencia"] == 4.0  # 2 / (6.0 / 12)
+    assert c["meses_activo"] == 15.0  # 450 dias / 30
+    assert c["frecuencia"] == 1.6  # 2 / (15.0 / 12)
     assert c["margen_pct"] == 0.25  # (250000+500000)/(1000000+2000000)
-    assert c["cltv"] == 3_000_000.0  # 1500000 * 4.0 * 2 * 0.25
+    assert c["cltv"] == 1_200_000.0  # 1500000 * 1.6 * 2 * 0.25
 
 
-def test_calcular_clientes_un_solo_proyecto_meses_activo_minimo_1():
+def test_calcular_clientes_un_solo_proyecto_meses_activo_minimo_12():
+    # Con un unico proyecto no hay forma de observar un intervalo real entre
+    # compras -- el piso asume 1 año (12 meses), no 1 mes: un cliente de un
+    # solo proyecto da Frecuencia=1 (una compra al año), no 12.
     kpis = [{"tag": "UMAG", "cliente": "UMAG", "monto_venta": 1_000_000, "margen_real": 200_000}]
     proyectos_por_tag = {"UMAG": {"fecha_inicio": datetime(2026, 3, 1)}}
 
     clientes = bv.calcular_clientes(kpis, proyectos_por_tag)
 
-    assert clientes[0]["meses_activo"] == 1.0
+    assert clientes[0]["meses_activo"] == 12.0
+    assert clientes[0]["frecuencia"] == 1.0
 
 
 def test_calcular_clientes_ignora_proyectos_sin_cliente_asignado():
@@ -299,6 +311,8 @@ def test_extraer_datos_saneados_kpis_proyectos_resumen(tmp_path):
 
     assert data["kpis_proyectos"]["n_completos"] == 1
     assert data["kpis_proyectos"]["margen_real_total"] == data["proyectos"][0]["margen_real"]
+    assert data["kpis_proyectos"]["monto_venta_total"] == data["proyectos"][0]["monto_venta"]
+    assert data["kpis_proyectos"]["total_real_total"] == data["proyectos"][0]["total_real"]
     assert data["kpis_proyectos"]["nota_promedio"] == data["proyectos"][0]["nota"]
     assert data["kpis_proyectos"]["n_requiere_atencion"] == 0
 

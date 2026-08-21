@@ -5,7 +5,7 @@ Ver el doc maestro compartido en
 [`../../Visualizador Web/CLAUDE.md`](../../Visualizador%20Web/CLAUDE.md)
 (rol, manual de marca, mandato de herramientas dinámicas, política de datos,
 hosting). Ver también [`../CLAUDE.md`](../CLAUDE.md) para el esquema completo
-de `Análisis de Proyectos.xlsx`, y el spec de diseño
+de `Análisis de Proyectos 2026.xlsx`, y el spec de diseño
 [`docs/superpowers/specs/2026-07-23-analisis-financiero-visualizador-web-design.md`](../../docs/superpowers/specs/2026-07-23-analisis-financiero-visualizador-web-design.md).
 
 **Estado: implementado (2026-07-23).**
@@ -77,6 +77,9 @@ Sistema Analisis Financiero/Visualizador Web/
 
 ## Publicación
 
-Claude Artifact privado. El link real vive en
-[MEMORY.md de este skill](../.claude/skills/Registro_Analisis_Financiero/MEMORY.md)
-— no se regenera salvo pedido explícito del usuario.
+GitHub Pages, único canal desde la migración del 2026-08-05 — el Claude
+Artifact privado que se usaba antes ya no se actualiza (pedido explícito
+del usuario, 2026-08-19). Receta y comandos exactos en
+[`../../Visualizador Web/CLAUDE.md`](../../Visualizador%20Web/CLAUDE.md)
+§ Hosting; URL fija:
+`https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/`.

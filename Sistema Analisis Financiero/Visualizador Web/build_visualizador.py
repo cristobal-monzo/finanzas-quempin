@@ -34,8 +34,10 @@ RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 RAIZ_REPORTES = af.RAIZ_DATOS / "Reportes"
 
 URL_PLANILLA_PENDIENTE = (
-    "https://quempinspa2020.sharepoint.com/:x:/g/"
-    "IQB005ljfV3VQp6CNg8pSS0tAdjFPmF8jOcQOeU3y0vIaIE?e=kaFVjO"
+    "https://quempinspa2020.sharepoint.com/:x:/r/_layouts/15/Doc.aspx"
+    "?sourcedoc=%7BB2E1D086-F77F-4668-9CC8-39E0836CD0F5%7D"
+    "&file=An%C3%A1lisis%20de%20Proyectos%202026.xlsx"
+    "&action=default&mobileredirect=true"
 )
 
 # Clave corta usada en los dicts de este modulo -> encabezado real de la hoja
@@ -282,9 +284,9 @@ def calcular_clientes(kpis_proyectos_completos: list[dict], proyectos_por_tag: d
         fechas = [proyectos_por_tag[k["tag"]]["fecha_inicio"] for k in kpis]
         fechas = [f for f in fechas if f is not None]
         if len(fechas) >= 2:
-            meses_activo = max(1.0, (max(fechas) - min(fechas)).days / 30)
+            meses_activo = max(12.0, (max(fechas) - min(fechas)).days / 30)
         else:
-            meses_activo = 1.0
+            meses_activo = 12.0
         frecuencia = vida / (meses_activo / 12)
         suma_venta = sum(k["monto_venta"] for k in kpis)
         suma_margen = sum(k["margen_real"] for k in kpis)
@@ -401,6 +403,8 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
         "kpis_proyectos": {
             "n_completos": n_completos,
             "margen_real_total": sum(k["margen_real"] for k in completos),
+            "monto_venta_total": sum(k["monto_venta"] for k in completos),
+            "total_real_total": sum(k["total_real"] for k in completos),
             "nota_promedio": (sum(k["nota"] for k in completos) / n_completos) if n_completos else 0,
             "n_requiere_atencion": sum(1 for k in completos if k["evaluacion"] == "Requiere atención"),
         },
