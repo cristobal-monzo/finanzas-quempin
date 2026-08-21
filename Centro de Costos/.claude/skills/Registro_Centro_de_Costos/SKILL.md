@@ -192,7 +192,7 @@ Dos fuentes, ambas obligatorias:
   registró en esta corrida (buscarlo por N° Documento o archivo en la
   columna correspondiente); si el documento **no** se registró
   (limitaciones), no tiene fila en Master todavía — poner la ruta
-  `Facturas y Boletas/<Proyecto>/<archivo>` en su lugar.
+  `Facturas y Boletas/<Chile|Perú>/<Proyecto>/<archivo>` en su lugar.
 - **Descripción**: el detalle concreto (el que da la consola, o lo que
   notó el agente al revisar el dato).
 - **Solución posible**: acción concreta y corta (ej. "revisar N° Documento
@@ -338,7 +338,7 @@ inconsistencias = acc.verificar_aritmetica(datos)   # solo lee el JSON, no toca 
 
 - **El emparejamiento es por (proyecto, nombre exacto de archivo)** —
   `"archivo"` y `"proyecto"` en el JSON deben calzar con la ubicación real
-  en `Facturas y Boletas/<Proyecto>/<archivo>`. Si no calzan, el
+  en `Facturas y Boletas/<Chile|Perú>/<Proyecto>/<archivo>`. Si no calzan, el
   archivo queda "pendiente sin datos en el JSON" indefinidamente sin error
   explícito.
 - **Los 24 documentos ya registrados antes de julio 2026 no tienen su

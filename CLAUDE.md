@@ -18,7 +18,7 @@ Todo el repo corre con **un solo intérprete**: `py -3.14`.
 ```
 py -3.14 -m pip install -r requirements.txt
 py -3.14 -m playwright install chromium      # solo para los reportes PDF
-py -3.14 -m pytest                           # las 7 suites juntas (362 tests)
+py -3.14 -m pytest                           # las 7 suites juntas (471 tests)
 ```
 
 **No uses `python` a secas**: en este equipo el `python` del PATH es 3.11 y
