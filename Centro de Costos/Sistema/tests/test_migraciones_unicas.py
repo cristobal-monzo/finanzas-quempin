@@ -72,3 +72,23 @@ def test_migrar_paleta_colores_no_op_sin_formato_condicional_heredado():
     acc.migrar_paleta_colores(wb, ws_master, ws_detalle)
 
     assert ws_master.cell(row=2, column=2).fill.fgColor.rgb == relleno_previo_rgb
+
+
+# ── migrar_columna_total_con_iva_detalle ─────────────────────────────────
+
+def test_migrar_total_con_iva_es_no_op_si_encabezado_ya_es_el_del_pais_activo(tmp_path):
+    acc.configurar_pais("PE")
+    try:
+        wb = openpyxl.Workbook()
+        ws_master = wb.active
+        ws_master.title = "Master"
+        ws_detalle = wb.create_sheet("Detalle")
+        for c, h in enumerate(acc.ENCABEZADOS_DETALLE, 1):
+            ws_detalle.cell(row=1, column=c, value=h)
+
+        acc.migrar_columna_total_con_iva_detalle(ws_master, ws_detalle)
+
+        # Header sigue siendo el de Peru -- no se piso con el literal chileno.
+        assert ws_detalle.cell(row=1, column=11).value == "Total con IGV (PEN)"
+    finally:
+        acc.configurar_pais("CL")

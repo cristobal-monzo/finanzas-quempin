@@ -1268,11 +1268,12 @@ def migrar_columna_total_con_iva_detalle(ws_master, ws_detalle):
     texto de la formula, no el numero calculado por Excel; sumar Detalle!J
     directo da el mismo resultado sin depender de que el archivo se haya
     abierto en Excel antes."""
-    if ws_detalle.cell(row=1, column=11).value == "Total con IVA (CLP)":
+    encabezado_esperado = ENCABEZADOS_DETALLE[10]
+    if ws_detalle.cell(row=1, column=11).value == encabezado_esperado:
         return
 
-    print("  Migrando Detalle: agregando columna 'Total con IVA (CLP)'...")
-    header_cell = ws_detalle.cell(row=1, column=11, value="Total con IVA (CLP)")
+    print(f"  Migrando Detalle: agregando columna '{encabezado_esperado}'...")
+    header_cell = ws_detalle.cell(row=1, column=11, value=encabezado_esperado)
     header_cell.fill = HEADER_FILL
     header_cell.font = HEADER_FONT
     header_cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -1310,7 +1311,7 @@ def migrar_columna_total_con_iva_detalle(ws_master, ws_detalle):
             cell.fill = _copy(origen_fill)
         rellenadas += 1
 
-    print(f"  [OK] {rellenadas} fila(s) de Detalle con 'Total con IVA (CLP)' calculado.")
+    print(f"  [OK] {rellenadas} fila(s) de Detalle con '{encabezado_esperado}' calculado.")
 
 
 # ── SUPRESION DEL AVISO "NUMERO ALMACENADO COMO TEXTO" (N Documento) ────────
