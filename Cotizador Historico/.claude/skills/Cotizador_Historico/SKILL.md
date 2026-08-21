@@ -1,6 +1,6 @@
 ---
 name: Cotizador_Historico
-description: Estima el costo actual de un ítem (material, equipo, herramienta) a partir de sus compras históricas en Centro de Costos, reajustando el precio por la variación de la UF entre la fecha de compra y hoy. Usar cuando el usuario pregunte cuánto debería costar algo hoy, pida una cotización aproximada basada en compras anteriores, o quiera saber el precio histórico reajustado de un ítem ya comprado.
+description: Usar cuando el usuario escribe "/Cotizador_Historico" explícitamente. Si en cambio pregunta en lenguaje natural (sin el "/") cuánto debería costar algo hoy, pide una cotización aproximada basada en compras anteriores, o quiere saber el precio histórico reajustado de un ítem ya comprado, pedir confirmación antes de invocarlo (ver CLAUDE.md raíz § Invocación de skills; aplica también siendo de solo lectura) -- nunca activarlo automático. Estima el costo actual de un ítem (material, equipo, herramienta) a partir de sus compras históricas en Centro de Costos, reajustando el precio por la variación de la UF entre la fecha de compra y hoy.
 ---
 
 # Cotizador Historico
@@ -77,6 +77,19 @@ carrito de cotización, texto para copiar a Excel).
 python ".claude/skills/Cotizador_Historico/driver.py" visualizador
 ```
 
+**Fallback de UF si `mindicador.cl` no responde** (agregado 2026-08-20):
+tanto `visualizador` como `consultar` aceptan `--uf-manual VALOR --uf-fuente
+"<texto>"` — mindicador.cl se intenta siempre primero, y solo si falla se
+usa este valor. El agente debe obtenerlo buscando en internet (`WebSearch`)
+una fuente confiable (ej. Banco Central de Chile) **antes** de pasar estos
+flags, nunca inventarlo. Ver `../../CLAUDE.md` § Precauciones para el
+detalle del mecanismo y `../Actualizar_Cotizador/SKILL.md` para el
+procedimiento paso a paso dentro del flujo de publicación.
+
+```
+python ".claude/skills/Cotizador_Historico/driver.py" visualizador --uf-manual 39200.50 --uf-fuente "Banco Central de Chile, 20-08-2026"
+```
+
 ## Uso conversacional
 
 El agente puede responder la consulta directamente en el chat (ej. "¿cuánto
@@ -113,7 +126,7 @@ conversacionalmente.
 | Síntoma | Causa / fix |
 |---|---|
 | `[ERROR] No existe .../Centro de Costos.xlsx` | Confirmar que `Centro de Costos/Excel/Centro de Costos.xlsx` existe y no se movió/renombró |
-| `UFNoDisponibleError` al consultar | Sin conexión a internet, o `mindicador.cl` no tiene dato para la fecha de HOY — este es el único caso que aborta toda la consulta, porque el reajuste necesita la UF de hoy para todas las compras por igual |
+| `UFNoDisponibleError` al consultar | Sin conexión a internet, o `mindicador.cl` no tiene dato para la fecha de HOY — este es el único caso que aborta toda la consulta, porque el reajuste necesita la UF de hoy para todas las compras por igual. Buscar el valor en internet y reintentar con `--uf-manual`/`--uf-fuente` (ver arriba) en vez de simplemente reportar la falla |
 | Algunas compras encontradas no aparecen en el resultado | Revisar el aviso `[INFO] N compra(s)... se excluyeron del resultado por no poder obtener su UF` al final de la salida — esa(s) fecha(s) específica(s) no se pudieron reajustar (sin conexión, o sin dato en mindicador.cl para esa fecha puntual), pero el resto de las compras encontradas sí se muestran |
 | Un ítem que sé que existe no aparece en `consultar` | Correr `status`: revisar el conteo de "Excluidos" — probablemente su `N° Ref.` no tiene fila en `Master`, su `Fecha` no es una fecha válida, su celda de precio unitario está vacía/no es un número, o es una Nota de Crédito/devolución (precio unitario negativo, excluida a propósito) |
 | `ModuleNotFoundError: No module named 'openpyxl'` | `pip install openpyxl` |

@@ -85,8 +85,15 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
 - `buscar_items(items, texto_busqueda)` — búsqueda difusa contra `Nombre
   Ítem`/`Descripción`; devuelve `(coincidencias, sugerencias)`.
 - `obtener_valor_uf(fecha, cache_uf)` / `consultar_uf_api(fecha)` — UF
-  histórica cacheada localmente; la UF de "hoy" se pide siempre fresca vía
-  `consultar_uf_api` directo (no pasa por el caché de archivo).
+  histórica cacheada localmente; la UF de "hoy" se pide siempre fresca (no
+  pasa por el caché de archivo).
+- `obtener_uf_hoy(fecha, uf_manual=None, fuente_manual=None)` — la UF de
+  "hoy" con fallback (agregado 2026-08-20): intenta `consultar_uf_api`
+  primero; si `mindicador.cl` no responde y se pasó un valor manual (ver
+  "Precauciones" abajo), lo usa y devuelve `(valor, fuente)`. Sin valor
+  manual, relanza `UFNoDisponibleError` igual que siempre. `consultar_item`
+  y `build_visualizador.py::extraer_indice_saneado` llaman a esta función,
+  no a `consultar_uf_api` directo, para heredar el fallback.
 - `tasa_iva_real(total_sin_iva, total_con_iva)` — tasa real de IVA del
   documento original; `1.0` (sin IVA adicional) como respaldo si los
   totales no son numéricos o el total sin IVA es 0.
@@ -109,10 +116,27 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
   `Sistema/uf_cache.json`. Dos casos distintos: si falla la UF de una
   compra puntual (fecha histórica sin caché ni conexión), esa compra se
   excluye del resultado con un aviso claro y el resto sí se muestra — nunca
-  se inventa un valor de UF. Si falla la UF de **hoy** (necesaria para
-  reajustar cualquier compra por igual, se pide siempre fresca, nunca tiene
-  caché), la consulta completa aborta con un error — no hay resultado
-  parcial posible en ese caso.
+  se inventa un valor de UF para una fecha histórica, y este caso **no**
+  tiene fallback (ver siguiente punto, distinto). Si falla la UF de **hoy**
+  (necesaria para reajustar cualquier compra por igual, se pide siempre
+  fresca, nunca tiene caché) y no hay valor manual, la consulta completa
+  aborta con un error — no hay resultado parcial posible en ese caso.
+- **Fallback de la UF de "hoy" cuando `mindicador.cl` no responde**
+  (pedido explícito del usuario, 2026-08-20 — ocurrió en producción ese
+  mismo día): `mindicador.cl` sigue siendo la fuente prioritaria, se
+  intenta siempre primero. Solo si falla, el agente debe
+  buscar en internet (`WebSearch`) el valor de la UF del día en una fuente
+  confiable (ej. Banco Central de Chile, SII, o un sitio financiero
+  reconocido) y pasarlo explícitamente via `--uf-manual VALOR --uf-fuente
+  "<texto>"` a `driver.py visualizador`/`driver.py consultar` (o
+  `uf_manual=`/`fuente_manual=` si llama a `consultar_item` directo en
+  conversación) — nunca lo inventa ni lo asume del caché histórico. El
+  valor usado y su fuente quedan visibles: en el snapshot (`uf_fuente`), en
+  el aviso de consola (`[AVISO] mindicador.cl no respondio...`), y en el
+  visualizador publicado (sufijo "· fuente: ..." junto a "UF utilizada").
+  Detalle del mecanismo (`obtener_uf_hoy`) en "Funciones clave" arriba;
+  procedimiento paso a paso para el flujo de publicación en
+  `.claude/skills/Actualizar_Cotizador/SKILL.md`.
 - `Sistema/uf_cache.json` contiene solo valores públicos de UF (no datos
   financieros de la empresa) — a diferencia de los datos de Centro de
   Costos, no es sensible.

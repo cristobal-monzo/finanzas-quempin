@@ -1,5 +1,7 @@
 from datetime import date, datetime
 
+import pytest
+
 import cotizador_historico as ch
 
 
@@ -202,6 +204,53 @@ def test_consultar_item_todas_sin_uf_disponible_devuelve_no_encontrado(monkeypat
     assert resultado["encontrado"] is False
     assert resultado["compras"] == []
     assert resultado["sin_uf_count"] == 1
+
+
+# ── consultar_item: UF de "hoy" con fallback manual ─────────────────────
+
+def test_consultar_item_marca_fuente_mindicador_cuando_responde(monkeypatch, tmp_path):
+    items = [_item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))]
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+    monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf)
+
+    resultado = ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17))
+    assert resultado["uf_fuente"] == "mindicador.cl"
+
+
+def test_consultar_item_usa_uf_manual_si_mindicador_falla_hoy(monkeypatch, tmp_path):
+    items = [_item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))]
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+
+    def _falla_hoy(fecha):
+        if fecha == date(2026, 7, 17):
+            raise ch.UFNoDisponibleError("simulado: sin mindicador hoy")
+        return _mapa_uf(fecha)
+    monkeypatch.setattr(ch, "consultar_uf_api", _falla_hoy)
+
+    resultado = ch.consultar_item(
+        "taladro", fecha_hoy=date(2026, 7, 17),
+        uf_manual=39500.0, fuente_manual="Banco Central de Chile, 17-07-2026",
+    )
+
+    esperado = round(90000 * 39500.0 / 36000)
+    assert resultado["encontrado"] is True
+    assert resultado["compras"][0]["precio_reajustado_hoy"] == esperado
+    assert resultado["uf_fuente"] == "Banco Central de Chile, 17-07-2026"
+
+
+def test_consultar_item_sin_uf_manual_relanza_error_si_mindicador_falla_hoy(monkeypatch, tmp_path):
+    items = [_item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))]
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+
+    def _falla(fecha):
+        raise ch.UFNoDisponibleError("simulado")
+    monkeypatch.setattr(ch, "consultar_uf_api", _falla)
+
+    with pytest.raises(ch.UFNoDisponibleError):
+        ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17))
 
 
 # ── reajustar_item ───────────────────────────────────────────────────────

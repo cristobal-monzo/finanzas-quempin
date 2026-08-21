@@ -51,6 +51,36 @@ def test_consultar_uf_api_sin_conexion_lanza_error(monkeypatch):
         ch.consultar_uf_api(date(2026, 7, 15))
 
 
+# ── obtener_uf_hoy (mindicador.cl, con fallback manual) ─────────────────
+
+def test_obtener_uf_hoy_usa_mindicador_si_responde(monkeypatch):
+    monkeypatch.setattr(ch, "consultar_uf_api", lambda fecha: 39000.0)
+    valor, fuente = ch.obtener_uf_hoy(
+        date(2026, 8, 20), uf_manual=99999.0, fuente_manual="no deberia usarse"
+    )
+    assert valor == 39000.0
+    assert fuente == "mindicador.cl"
+
+
+def test_obtener_uf_hoy_usa_manual_si_mindicador_falla(monkeypatch):
+    def _falla(fecha):
+        raise ch.UFNoDisponibleError("timeout")
+    monkeypatch.setattr(ch, "consultar_uf_api", _falla)
+    valor, fuente = ch.obtener_uf_hoy(
+        date(2026, 8, 20), uf_manual=39500.25, fuente_manual="Banco Central de Chile, 20-08-2026"
+    )
+    assert valor == 39500.25
+    assert fuente == "Banco Central de Chile, 20-08-2026"
+
+
+def test_obtener_uf_hoy_sin_manual_relanza_error_si_mindicador_falla(monkeypatch):
+    def _falla(fecha):
+        raise ch.UFNoDisponibleError("timeout")
+    monkeypatch.setattr(ch, "consultar_uf_api", _falla)
+    with pytest.raises(ch.UFNoDisponibleError):
+        ch.obtener_uf_hoy(date(2026, 8, 20))
+
+
 # ── cargar_cache_uf / guardar_cache_uf ──────────────────────────────────
 
 def test_cargar_cache_uf_archivo_inexistente_devuelve_vacio(tmp_path):

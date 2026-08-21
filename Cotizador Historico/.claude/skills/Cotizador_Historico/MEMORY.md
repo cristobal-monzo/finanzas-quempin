@@ -45,3 +45,15 @@ el promedio/rango hacia abajo. Arreglado en `cargar_items_detalle`
   inusualmente alto, probablemente sea este mismo tipo de intermitencia,
   no un cambio real en los datos — vale la pena reintentar antes de
   investigar más a fondo.
+- **Fallback de UF de "hoy" agregado 2026-08-20**, tras un corte real de
+  `mindicador.cl` durante una corrida de `/Actualizar_Finanzas` (timeout en
+  dos intentos seguidos, se recuperó solo ~15 minutos después — mismo
+  patrón intermitente que arriba, pero esta vez con pedido explícito del
+  usuario de no limitarse a reportar la falla). Mecanismo: `mindicador.cl`
+  se sigue intentando siempre primero; solo si falla, el agente busca el
+  valor en internet (fuente confiable, ej. Banco Central de Chile) y lo
+  pasa via `--uf-manual`/`--uf-fuente`. Detalle completo en
+  `../../CLAUDE.md` § Precauciones y `../Actualizar_Cotizador/SKILL.md`
+  paso 2. El valor manual usado ese día real (verificado contra
+  calcular.cl/Banco Central, coincidió exacto con el que mindicador.cl
+  devolvió en un intento exitoso aparte): $40.859,28 para el 20-08-2026.

@@ -254,6 +254,21 @@ def consultar_uf_api(fecha):
         raise UFNoDisponibleError(f"Respuesta inesperada de mindicador.cl para {fecha}: {exc}") from exc
 
 
+def obtener_uf_hoy(fecha, uf_manual=None, fuente_manual=None):
+    """UF de 'hoy' con fallback manual: intenta mindicador.cl primero
+    (consultar_uf_api); si falla y se paso un valor manual -- buscado por
+    el agente en una fuente confiable cuando mindicador.cl no responde --
+    lo usa en su lugar. Devuelve (valor, fuente). Sin valor manual, relanza
+    UFNoDisponibleError igual que antes: nunca se inventa un valor de UF sin
+    que alguien lo haya provisto explicitamente."""
+    try:
+        return consultar_uf_api(fecha), "mindicador.cl"
+    except UFNoDisponibleError:
+        if uf_manual is None:
+            raise
+        return uf_manual, fuente_manual or "fuente manual (sin especificar)"
+
+
 def cargar_cache_uf(ruta_cache=None):
     ruta = Path(ruta_cache) if ruta_cache is not None else RUTA_CACHE_UF
     if not ruta.exists():
@@ -365,7 +380,7 @@ def reajustar_todos(items, uf_hoy, cache_uf=None):
     return reajustados, sin_uf_count
 
 
-def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
+def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=None, fuente_manual=None):
     """Orquesta una consulta completa: carga Detalle, busca por texto,
     reajusta cada compra encontrada por UF, y agrega promedio/rango.
 
@@ -373,9 +388,11 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
     mindicador.cl sin dato para esa fecha), esa compra se excluye del
     resultado (contada en "sin_uf_count") sin abortar la consulta completa
     -- solo si NINGUNA compra pudo reajustarse el resultado queda como "no
-    encontrado". La UF de "hoy" (unica para toda la consulta) si aborta la
-    consulta completa si falla, propagando UFNoDisponibleError -- sin ella
-    no se puede reajustar nada.
+    encontrado". La UF de "hoy" (unica para toda la consulta) se pide via
+    obtener_uf_hoy: mindicador.cl primero, y si falla y se paso un valor
+    manual (buscado en una fuente confiable), lo usa en su lugar -- sin
+    valor manual, sigue abortando la consulta completa (UFNoDisponibleError)
+    porque sin ella no se puede reajustar nada.
 
     fecha_hoy es inyectable para tests (default: date.today())."""
     hoy = fecha_hoy or date.today()
@@ -394,9 +411,10 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
             "excluidos_count": excluidos_count,
             "sugerencias": sugerencias,
             "sin_uf_count": 0,
+            "uf_fuente": None,
         }
 
-    uf_hoy = consultar_uf_api(hoy)
+    uf_hoy, uf_fuente = obtener_uf_hoy(hoy, uf_manual=uf_manual, fuente_manual=fuente_manual)
     cache_uf = cargar_cache_uf()
     compras = []
     sin_uf_count = 0
@@ -419,6 +437,7 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
             "excluidos_count": excluidos_count,
             "sugerencias": [],
             "sin_uf_count": sin_uf_count,
+            "uf_fuente": uf_fuente,
         }
 
     reajustados = [c["precio_reajustado_hoy"] for c in compras]
@@ -433,4 +452,5 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None):
         "excluidos_count": excluidos_count,
         "sugerencias": [],
         "sin_uf_count": sin_uf_count,
+        "uf_fuente": uf_fuente,
     }
