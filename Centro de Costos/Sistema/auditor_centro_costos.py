@@ -386,7 +386,8 @@ def carpeta_mes(ruta_backups, fecha):
     return ruta
 
 
-def hacer_backup(ruta_excel, ruta_backups=RUTA_BACKUPS):
+def hacer_backup(ruta_excel, ruta_backups=None):
+    ruta_backups = ruta_backups or RUTA_BACKUPS
     if not ruta_excel.exists():
         print(f"[WARN] El archivo {ruta_excel} no existe, se creara desde cero.")
         return None
@@ -470,10 +471,11 @@ def cargar_reconciliacion():
 #      propaga a Detalle (confirmar_correcciones). Nunca se aplica solo,
 #      sin que alguien lo pida explicitamente.
 
-def backup_mas_reciente(ruta_backups=RUTA_BACKUPS):
+def backup_mas_reciente(ruta_backups=None):
     """El backup mas reciente que YA existia (por mtime), antes de que esta
     corrida cree el suyo. Es el punto de comparacion para detectar ediciones
     manuales hechas desde la corrida anterior."""
+    ruta_backups = ruta_backups or RUTA_BACKUPS
     if not ruta_backups.exists():
         return None
     archivos = list(ruta_backups.rglob("*.xlsx"))
@@ -531,14 +533,16 @@ def detectar_correcciones_manuales(wb_anterior, wb_actual):
     return detectadas
 
 
-def cargar_correcciones_manuales(ruta=RUTA_CORRECCIONES):
+def cargar_correcciones_manuales(ruta=None):
+    ruta = ruta or RUTA_CORRECCIONES
     if not ruta.exists():
         return []
     with open(ruta, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def guardar_correcciones_manuales(correcciones, ruta=RUTA_CORRECCIONES):
+def guardar_correcciones_manuales(correcciones, ruta=None):
+    ruta = ruta or RUTA_CORRECCIONES
     with open(ruta, "w", encoding="utf-8") as f:
         json.dump(correcciones, f, ensure_ascii=False, indent=2)
 
@@ -546,11 +550,12 @@ def guardar_correcciones_manuales(correcciones, ruta=RUTA_CORRECCIONES):
 ENCABEZADO_TABLA_CORRECCIONES = "## Correcciones manuales pendientes de recolorear"
 
 
-def regenerar_tabla_errores_md(correcciones, ruta_errores=RUTA_ERRORES_MD):
+def regenerar_tabla_errores_md(correcciones, ruta_errores=None):
     """Reescribe SOLO la tabla bajo ENCABEZADO_TABLA_CORRECCIONES en
     ERRORES.md a partir de correcciones_manuales.json -- es 100% derivada
     (mismo espiritu que los pies de tabla de Master/Detalle), el resto del
     archivo (historial de errores en prosa) no se toca."""
+    ruta_errores = ruta_errores or RUTA_ERRORES_MD
     if not ruta_errores.exists():
         return
     texto = ruta_errores.read_text(encoding="utf-8")
