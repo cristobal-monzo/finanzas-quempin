@@ -72,3 +72,6 @@ desktop.ini
 
 # Scratchpad de sesiones de Claude Code que quedo suelto en la raiz
 Usersquemp*scratchpad*
+
+# Cache de salida del MCP de Playwright (logs de consola, snapshots de pagina)
+.playwright-mcp/
