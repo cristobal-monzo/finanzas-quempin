@@ -282,7 +282,9 @@ y el plan de implementación
   (`/Registro_Centro_de_Costos`), no este módulo.
 - Las carpetas de proyecto nuevas se crean en
   `Centro de Costos/Sitio de comunicación - Centro de Costos 1/Facturas y
-  Boletas/<Nombre>/` (fuente real que lee Centro de Costos hoy) — **nunca** en
+  Boletas/Chile/<Nombre>/` (fuente real que lee Centro de Costos hoy para
+  Chile — AF todavía no tiene país-conciencia propia, ver comentario junto a
+  `RAIZ_FACTURAS_CENTRO_COSTOS` en `analisis_financiero.py`) — **nunca** en
   `Centro de Costos/Facturas y Boletas/` (legado, el script ya no la lee desde
   2026-07-17).
 - `Análisis de Proyectos 2026.xlsx` vive en la carpeta hermana `../Análisis

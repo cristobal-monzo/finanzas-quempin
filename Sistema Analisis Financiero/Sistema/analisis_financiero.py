@@ -42,8 +42,14 @@ RUTA_CLIENTES_PENDIENTES = RAIZ / "clientes_pendientes.json"
 
 RAIZ_CENTRO_COSTOS = RAIZ_MODULO.parent / "Centro de Costos"
 RUTA_EXCEL_CENTRO_COSTOS = RAIZ_CENTRO_COSTOS / "Excel" / "Centro de Costos.xlsx"
+# Apunta a Chile/ porque Análisis Financiero todavía no tiene país-conciencia
+# propia (a diferencia de Centro de Costos, que desde su soporte de Perú lee
+# de ".../Facturas y Boletas/Chile" o "/Perú" según corresponda) -- AF sigue
+# siendo Chile-only por ahora. Cuando AF reciba su propio soporte de país
+# (sub-proyecto futuro, no iniciado), esta constante deberá volver a
+# actualizarse para resolver por país igual que auditor_centro_costos.py.
 RAIZ_FACTURAS_CENTRO_COSTOS = (
-    RAIZ_CENTRO_COSTOS / "Sitio de comunicación - Centro de Costos 1" / "Facturas y Boletas"
+    RAIZ_CENTRO_COSTOS / "Sitio de comunicación - Centro de Costos 1" / "Facturas y Boletas" / "Chile"
 )
 
 RAIZ_VISUALIZADOR_WEB_AF = RAIZ_MODULO / "Visualizador Web"
