@@ -50,6 +50,18 @@ de formato/color nueva, se agrega como entrada fechada en el historial de
 `Formato Centro de Costos.md` (o `Formato.md` si aplica a todos los
 módulos), no en este archivo.
 
+## Convenciones de `/Revision_de_Errores`
+
+- **Siempre abrir el documento fuente antes de preguntarle al usuario el
+  valor correcto** (confirmado 2026-08-20, durante un recorrido real):
+  aunque el driver `errores` ya imprime la ruta a la foto/PDF, el agente
+  debe leerla con la herramienta de archivos y comparar el valor propio
+  contra lo impreso en el documento **antes** de preguntar — no preguntar en
+  seco esperando que el usuario abra el archivo por su cuenta. Refuerza el
+  Paso 2 de [SKILL.md](../Revision_de_Errores/SKILL.md) (que ya lo pedía);
+  esta entrada lo deja explícito porque el usuario lo señaló como algo a no
+  olvidar. Aplica igual al recorrido de ítems agrupados (Paso 5).
+
 ## Reglas de negocio (no son formato)
 
 - **`Detalle` siempre lleva el desglose línea por línea de la compra, nunca
@@ -86,6 +98,124 @@ módulos), no en este archivo.
   régimen de Zona Franca. Al extraer/verificar `"iva"` de un documento de un
   proveedor de esa zona, no asumir automáticamente 19% del Neto — revisar si
   la factura realmente desglosa IVA o no antes de completar el campo.
+- **Cuando un archivo trae varios documentos distintos (varias boletas/
+  comprobantes en la misma foto/PDF), cada uno se registra como un N° Ref.
+  separado — nunca se mezclan sus ítems bajo 1 solo N° Ref.** (pedido
+  2026-08-20, corrigiendo un error real: `CCON-012` había juntado una carga
+  de diesel + una boleta de snack de Pronto como si fueran 1 documento, y
+  `CCON-013` había juntado un ticket de estacionamiento + un combo de
+  comida de fechas distintas — ambos casos detectados y corregidos vía
+  `/Revision_de_Errores`, ver `ERRORES.md`). Esto es más estricto que la
+  regla de duplicación física de abajo (que ya cubre el caso de *registrar*
+  documentos nuevos): aplica también al **corregir** un registro ya escrito
+  que mezcló documentos por error — hay que separarlo en N° Ref. distintos,
+  no dejarlo "arreglado" dentro de 1 solo N° Ref con 2+ documentos fuente
+  distintos (fechas/N° de documento/proveedor propios cada uno).
+- **Un PDF/foto subido con varias facturas/boletas se duplica físicamente,
+  nunca se referencia dos veces** (pedido 2026-08-18): si un solo archivo
+  contiene N documentos distintos, se crean N copias físicas en la carpeta
+  del proyecto (`Sitio de comunicación - Centro de Costos 1/Facturas y
+  Boletas/<Proyecto>/`) con sufijo numérico antes de la extensión —
+  `<nombre-original>_1.pdf`, `<nombre-original>_2.pdf`, etc. — y una entrada
+  de `datos_extraidos.json` por copia, cada una con su propio `"archivo"`.
+  El sufijo es temporal: el siguiente `run` le asigna N° Ref. a cada copia y
+  las renombra según la convención habitual
+  (`<N° Ref.>_<TagProveedor>_<Fecha>.<ext>`). Motivo: `buscar_dato_por_archivo()`
+  empareja por `(proyecto, archivo)` y devuelve solo la primera coincidencia
+  — si dos entradas del JSON compartieran el mismo nombre de archivo, la
+  segunda factura se perdería en silencio (nunca se escribe en Excel).
+  Duplicar preserva la regla implícita "1 archivo físico = 1 documento" que
+  ya usa todo el pipeline (inventario, columna "Archivo origen", renombrado),
+  sin tocar el código del script.
+- **Notas de Crédito SÍ se registran, como documento con montos negativos**
+  (confirmado explícitamente por el usuario 2026-08-18, formaliza un
+  precedente tácito que ya existía sin documentar — `UMAG-025`, Danus
+  Conexiones, `fecha_modificacion` 2026-07-24): `"tipo_documento":
+  "Nota de Crédito"` y `"estado": "Nota de Crédito"`; cada ítem lleva
+  `"cantidad"` **positiva** (la cantidad devuelta) y `"p_unitario_sin_iva"`
+  **negativo** (no al revés — no uses cantidad negativa), con
+  `"descripcion"` prefijada `"Devolución - "`; `"iva"` del documento también
+  negativo. El resultado es que `total_sin_iva`/`iva`/`total_con_iva`
+  quedan negativos y se restan solos del acumulado del proyecto vía las
+  fórmulas `SUMIF` de `Master` — no hace falta tocar el script (
+  `verificar_aritmetica`/el cálculo por defecto de IVA solo aplican a
+  `tipo_documento` Factura/Guía de Despacho con total positivo, así que una
+  Nota de Crédito con IVA explícito los evita automáticamente). Si la
+  factura original que corrige SÍ está en el mismo lote de pendientes,
+  regístrala también normal; si no está (caso típico), anótalo en
+  `"notas"` con el N° de la factura original y su fecha, no bloquea el
+  registro de la nota de crédito. **Distinto del criterio de Cotizador
+  Histórico** (ver `feedback_cotizador_no_notas_credito` en la memoria
+  global): ese módulo SÍ excluye estas líneas de su índice de precios (por
+  signo negativo, no por `tipo_documento`) porque ahí una devolución
+  distorsionaría la estimación de costo por ítem — pero en `Master`/
+  `Detalle` de este módulo sí deben quedar registradas, para que el gasto
+  neto del proyecto sea correcto.
+- **Compras de combustible (diésel/bencina): el campo "IVA 19% (CLP)" de
+  Master debe incluir el conjunto de impuestos de la boleta/factura, no solo
+  el IVA literal** (pedido 2026-08-19, durante un recorrido de
+  `/Revision_de_Errores`; extendido el mismo día — "cuando sea combustible,
+  aplica esta regla siempre que ingreses facturas, no me debes preguntar
+  cada vez"): esta es una regla **fija, aplicar sin pedir confirmación** al
+  usuario, tanto al poblar `"iva"` en `datos_extraidos.json` para un
+  documento de combustible nuevo como al resolver la celda roja después vía
+  `/Revision_de_Errores` — el desglose sale directo del propio documento
+  (siempre trae impresos IVA/IEF/IEV·FEPP y el TOTAL final), no es una
+  decisión que dependa del usuario. Estos documentos suelen traer, además del
+  "IVA (19%)", un **IEF** (Impuesto Específico a los Combustibles) y un
+  **IEV/FEPP** (mecanismo de estabilización, puede ser negativo) que también
+  forman parte de lo efectivamente cobrado. Como `Master` no tiene columnas
+  separadas para estos impuestos, el valor que va en "IVA 19% (CLP)" (columna
+  L, alimenta "Total con IVA" = K+L) debe ser la **suma de los tres**
+  (IVA + IEF + IEV/FEPP), de forma que "Total con IVA" cuadre con el "TOTAL"/
+  "TOTAL A PAGAR" real impreso en el documento — no con 19% del Neto a
+  secas. Ejemplo (factura Comercial La Punta Limitada, `CVAL-018`,
+  20-07-2026): Neto $37.831, IVA $7.188, IEF $4.111, IEV/FEPP -$2.500 → 
+  "IVA 19% (CLP)" = 7188+4111-2500 = **$8.799** (= Total $46.630 - Neto
+  $37.831). Esto hace que `verificar_aritmetica` siga marcando la celda en
+  rojo (no coincide con el 19% literal) — es esperado, no un bug: se
+  resuelve con `/Revision_de_Errores`, que además debe dejar el desglose
+  individual como nota de la celda (`corregir ... --nota "IVA: $X / IEF: $Y
+  / IEV/FEPP: $Z"`, agregado 2026-08-19 a `corregir_valor_manual()` — queda
+  como comentario de Excel en la celda + en la columna "Nota" de la tabla de
+  [ERRORES.md](.claude/skills/Registro_Centro_de_Costos/ERRORES.md)), ya que
+  el valor combinado por sí solo no es auto-explicativo.
+  **Cuando el IVA/IEF/IEV impresos no cuadran entre sí** (pedido 2026-08-19,
+  extiende la regla de arriba): en varios documentos reales el "IVA (19%)"
+  impreso SÍ coincide con el 19% del Neto (osea, IVA y Neto son
+  mutuamente consistentes), pero Neto + IVA + IEF + IEV impresos **no**
+  suman el "TOTAL"/"TOTAL A PAGAR" real del documento — la diferencia es
+  demasiado grande para ser redondeo (ver `CVAL-017`, `CCHI-005`,
+  `CCHI-008`, todos con este patrón, gaps de -$3.131 a -$5.498). En vez de
+  perseguir el motivo exacto (probablemente el IEF/IEV impreso no
+  corresponde a esta venta puntual, o el diseño de boleta no lo desglosa
+  bien), **el error se absorbe en el conjunto IEF+IEV/FEPP, tratado como
+  una sola incógnita**: se respeta el Neto ya registrado en `Detalle` y el
+  "TOTAL"/"TOTAL A PAGAR" real como ancla, y se calcula
+  `IEF+IEV/FEPP (combinado) = Total - Neto - IVA impreso` (puede dar
+  negativo). El valor final de "IVA 19% (CLP)" en `Master` sigue siendo
+  `Total - Neto` (no cambia), y la nota pasa a documentar el IVA impreso
+  por separado del combinado IEF+IEV/FEPP resultante, ej.: `"IVA: $7403 /
+  IEF+IEV-FEPP (combinado): $-5498 -- ajustado para que Neto + IVA +
+  Impuestos = Total pagado $40869"`. **Aplicar esto automáticamente
+  (sin preguntar) mientras el IEF+IEV/FEPP combinado resultante quede en un
+  rango similar a los ya vistos** (aprox. -$6.000 a +$6.000, mismo orden de
+  magnitud que los ejemplos de este módulo) — **consultar al usuario si el
+  valor sale mucho más alto, muy distinto en signo de lo esperado, o el IVA
+  impreso ni siquiera se acerca al 19% del Neto** (señal de que el problema
+  es otro, no solo IEF/IEV mal impresos).
+- **En comprobantes (vouchers de tarjeta, comprobantes de débito, etc.) sin
+  un N° de Documento como tal, usar el código de autorización** (pedido
+  2026-08-19, decidido durante un recorrido de `/Revision_de_Errores`): estos
+  comprobantes de venta con tarjeta traen "NUMERO DE OPERACION", "CODIGO DE
+  AUTORIZACION" y "NUM TRANSACCION" en vez de un número de factura/boleta —
+  usar el código de autorización como `n_documento`. Distinto de los
+  **comprobantes de peaje** (Concesionaria Temuco-Río Bueno, Ruta de la
+  Araucanía, Autopista Los Andes, etc.), que no traen ningún número
+  reutilizable como documento (solo un código de barras largo sin relación
+  clara con la transacción) — esos van como `"N/A"` (mismo pedido
+  2026-08-19; aplicado retroactivo a `CVAL-002`, `CVAL-003`, `CVAL-005` vía
+  `/Revision_de_Errores`).
 - **Pasajes de bus (transporte de pasajeros) están exentos de IVA**
   (confirmado por el usuario 2026-07-17): tanto servicios urbanos como
   rurales e interurbanos — el valor del pasaje no incluye el 19% de IVA. Al
@@ -143,18 +273,20 @@ módulos), no en este archivo.
   `https://claude.ai/code/artifact/1b82085c-c63c-407c-8f03-e4db9f2b551e`,
   ya no se actualiza). URL fija actual:
   `https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/`
-  — ver [`/Actualizar_CC`](../Actualizar_CC/SKILL.md) para los comandos
-  exactos de publicación y [`../../Visualizador Web/CLAUDE.md`](../../Visualizador%20Web/CLAUDE.md)
-  § Hosting para la arquitectura completa (rama `gh-pages`, trade-off de
-  control de acceso).
+  — ver [`../../../../Visualizador Web/CLAUDE.md`](../../../../Visualizador%20Web/CLAUDE.md)
+  § Hosting (raíz del repo) para los comandos exactos de publicación, la
+  arquitectura completa (rama `gh-pages`) y el trade-off de control de
+  acceso.
 - **Publicar es obligatorio tras cada `run` que registre documentos
   nuevos** (pedido explícito del usuario, 2026-07-23): si el resumen final
-  de `run` reporta "Documentos nuevos registrados: N" con N > 0, copiar
-  `Visualizador Web/build/index.html` a
-  `.worktrees/gh-pages/centro-de-costos/index.html` y hacer
-  `git add`/`commit`/`push` desde ese worktree como paso final de la
-  tarea, no solo dejarlo regenerado en disco. No hace falta este paso si
-  `run` no registró documentos nuevos.
+  de `run` reporta "Documentos nuevos registrados: N" con N > 0, hay que
+  publicar el `build/index.html` regenerado como paso final de la tarea, no
+  solo dejarlo regenerado en disco — receta exacta consolidada en
+  `../../../../Visualizador Web/CLAUDE.md` § Hosting (raíz del repo), no se
+  repite acá. No
+  hace falta este paso si `run` no registró documentos nuevos, ni si se
+  usó [`/Actualizar_Base_de_Datos`](../Actualizar_Base_de_Datos/SKILL.md)
+  a propósito para no publicar todavía.
 - Flujo para actualizar: `python driver.py visualizador` (regenera
   `Visualizador Web/build/index.html` desde el Excel actual) → publicar
   como arriba.

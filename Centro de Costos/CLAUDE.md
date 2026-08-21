@@ -75,12 +75,32 @@ Agregada 2026-07-27 en
 [.claude/skills/Actualizar_CC/](.claude/skills/Actualizar_CC/SKILL.md).
 Envoltorio sobre `/Registro_Centro_de_Costos`: corre su flujo `status`→`run`
 y, si se registraron documentos nuevos (o el usuario pide forzarlo),
-**publica** el `Visualizador Web/build/index.html` regenerado como el mismo
-Claude Artifact de siempre (link fijo en
-[MEMORY.md del registrador](.claude/skills/Registro_Centro_de_Costos/MEMORY.md)
-§ Visualizador web). Cierra el paso manual que quedaba pendiente tras cada
-`run`: el registrador ya regenera el HTML en disco solo (PASO 12c), pero
-subirlo como Artifact no era automático.
+**publica** el `Visualizador Web/build/index.html` regenerado en el sitio de
+GitHub Pages del proyecto (receta y URL fija en
+[`../Visualizador Web/CLAUDE.md`](../Visualizador%20Web/CLAUDE.md) §
+Hosting — hasta 2026-08-05 se publicaba como Claude Artifact, texto
+corregido acá el 2026-08-18 porque había quedado desactualizado tras esa
+migración). Cierra el paso manual que quedaba pendiente tras cada `run`: el
+registrador ya regenera el HTML en disco solo (PASO 12c), pero subirlo no
+era automático.
+
+### Skill: `/Actualizar_Base_de_Datos`
+
+Agregada 2026-08-18 en
+[.claude/skills/Actualizar_Base_de_Datos/](.claude/skills/Actualizar_Base_de_Datos/SKILL.md).
+Envoltorio sobre `/Registro_Centro_de_Costos` que corre `status`→`run` y se
+detiene ahí — a diferencia de `/Actualizar_CC`, deliberadamente **no**
+publica el dashboard (nunca toca el worktree `gh-pages`). Pensado para
+acumular varias corridas de registro de datos y publicar todo junto después
+con `/Actualizar_CC` o `/Actualizar_Finanzas`. Desde 2026-08-18, si `status`
+muestra documentos pendientes sin entrada en `datos_extraidos.json`, el
+agente los completa de forma interactiva antes de `run` (Paso 2 de
+`Registro_Centro_de_Costos/SKILL.md`: abre cada foto/PDF, extrae lo legible,
+y pregunta al usuario solo lo que el documento no resuelve por sí solo,
+agrupando por proyecto) — ningún documento nuevo queda sin registrar solo
+porque falte poblar el JSON. Mismo comportamiento heredado por `/Actualizar_CC`
+y (con una nota aparte, porque corre `run` como subproceso) por
+`/Actualizar_Finanzas`.
 
 ### Historia: reconstrucción de julio 2026
 
@@ -231,6 +251,7 @@ el documento completo en 1 ítem cuando alguna línea sí se puede leer (pedido
   "items": [
     {"nombre_item": "Taladro inalámbrico", "descripcion": "Taladro percutor 20V 13mm s/carbones DCD7781", "categoria_item": "Equipos-Herramientas", "cantidad": 1, "p_unitario_sin_iva": 90000}
   ],
+  "rotacion": 90,
   "notas": "opcional: aclaraciones, cálculos derivados, ambigüedades del documento original"
 }
 ```
@@ -241,6 +262,7 @@ el documento completo en 1 ítem cuando alguna línea sí se puede leer (pedido
 - `"categoria"` es a nivel documento; `"categoria_item"` es a nivel ítem — pueden diferir si un documento mezcla categorías.
 - **`"nombre_item"` = tipo de producto genérico, lo más simplificado posible** — sin marca ni adjetivos/variantes (ej. "Hidrolavadora", no "Hidrolavadora Karcher portátil"; "Taladro", no "Taladro inalámbrico") (pedido 2026-07-17, endurece la regla anterior). **`"descripcion"` = todo el detalle** (marca, modelo, medidas, especificaciones — ej. "Hidrolavadora Karcher portátil K3 120 bar", "Taladro percutor 20V 13mm s/carbones DCD7781"). **No anotar el código de producto** en ninguno de los dos campos (pedido 2026-07-16). "Resumen Ítems" en `Master` se arma uniendo los `nombre_item`, así que mantenerlo simplificado ahí también lo mantiene simple en `Master`.
 - Si no se pudo leer el N° de documento, usar `"S/N (<archivo o nombre del voucher>)"` — el script pinta esa celda de rojo automáticamente para revisión manual.
+- **`"rotacion"` es opcional** (agregado 2026-08-20): grados en **sentido horario** que hay que girar el archivo físico para que quede derecho (`90`, `180` o `270`). Un documento girado **nunca debe quedar fuera del JSON por ilegible solo por eso** — el agente lo lee igual (rotándolo mentalmente) y anota el ángulo aquí; `run` corrige el archivo en disco automáticamente al registrarlo (`rotar_si_corresponde` en `auditor_centro_costos.py`, ver PASO 6), una sola vez por documento — no hace falta rotarlo a mano antes. Se omite si el documento ya está bien orientado.
 - Ver `Sistema/Legado/datos_extraidos_legacy_umag.json` como referencia del esquema simple anterior (sin ítems) — ya no lo lee el script, solo queda como archivo histórico.
 
 ### Estructura de `Centro de Costos.xlsx`

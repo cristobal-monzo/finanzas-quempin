@@ -37,6 +37,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import openpyxl
+from openpyxl.comments import Comment
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter, column_index_from_string
 
@@ -68,6 +69,14 @@ PREFIJOS_PROYECTO = {
     "Gastos Generales": "GGEN",
     "Microturbina LER": "MLER",
     "Fiscalía Quilpué y Quintero": "FQYQ",
+    "ESFOCAR": "ESFO",
+    "CONAF Puerto Montt": "CPMO",
+    "Bomba Wilo Conchalí": "BWIL",
+    "CESFAM Chillán": "CCHI",
+    "Caldera Valdivia": "CVAL",
+    "Calderas Antofagasta": "CANT",
+    "Comisaría Conchalí": "COMC",
+    "Cremación Concepción": "CREM",
 }
 
 PALETA = [
@@ -460,18 +469,18 @@ def regenerar_tabla_errores_md(correcciones, ruta_errores=RUTA_ERRORES_MD):
 
     filas = sorted(correcciones, key=lambda c: (c["fecha_detectado"], c["n_ref"]))
     lineas = [
-        "| Fecha | Hoja | N° Ref. | Campo / Columna | Valor anterior (rojo) | Valor corregido | Estado |",
-        "|---|---|---|---|---|---|---|",
+        "| Fecha | Hoja | N° Ref. | Campo / Columna | Valor anterior (rojo) | Valor corregido | Estado | Nota |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     if filas:
         for c in filas:
             estado = c["estado"] if c["estado"] == "Pendiente" else f"Aplicado ({c.get('fecha_aplicado') or ''})"
             lineas.append(
                 f"| {c['fecha_detectado']} | {c['hoja']} | {c['n_ref']} | {c['campo']} | "
-                f"{c['valor_anterior']} | {c['valor_corregido']} | {estado} |"
+                f"{c['valor_anterior']} | {c['valor_corregido']} | {estado} | {c.get('nota') or ''} |"
             )
     else:
-        lineas.append("| *(sin entradas todavía)* | | | | | | |")
+        lineas.append("| *(sin entradas todavía)* | | | | | | | |")
 
     nuevo_bloque = ENCABEZADO_TABLA_CORRECCIONES + "\n\n" + "\n".join(lineas) + "\n"
     ruta_errores.write_text(texto[:inicio] + nuevo_bloque + texto[fin:], encoding="utf-8")
@@ -693,7 +702,7 @@ def listar_items_agrupados(ws_detalle):
 
 def corregir_valor_manual(n_ref, columna, valor_nuevo, ruta_excel=None,
                            ruta_correcciones=None, ruta_errores=None,
-                           ruta_backups=None):
+                           ruta_backups=None, nota=None):
     """Aplica UNA correccion manual directa (valor ya confirmado por el
     usuario en la conversacion, no detectado comparando backups): backup,
     escribe valor_nuevo en Master (fila de n_ref, columna dada), recolorea la
@@ -704,7 +713,14 @@ def corregir_valor_manual(n_ref, columna, valor_nuevo, ruta_excel=None,
 
     Solo opera sobre celdas actualmente en rojo: si la celda de
     (n_ref, columna) no esta en rojo, no toca nada y devuelve None (evita
-    pisar un dato ya bueno por un N Ref o columna equivocados)."""
+    pisar un dato ya bueno por un N Ref o columna equivocados).
+
+    `nota` (opcional): texto libre que queda como comentario de Excel sobre
+    la celda corregida en Master (ademas de guardarse en la entrada de
+    correcciones_manuales.json / la tabla de ERRORES.md) -- pensado para
+    documentar un desglose que no cabe en un solo valor, ej. IVA de compras
+    de combustible que incluye IEF/IEV-FEPP ademas del 19% (ver MEMORY.md de
+    Registro_Centro_de_Costos)."""
     ruta_excel = ruta_excel or RUTA_EXCEL
     ruta_correcciones = ruta_correcciones or RUTA_CORRECCIONES
     ruta_errores = ruta_errores or RUTA_ERRORES_MD
@@ -738,6 +754,8 @@ def corregir_valor_manual(n_ref, columna, valor_nuevo, ruta_excel=None,
     hacer_backup(ruta_excel, ruta_backups)
     cell.value = valor_nuevo
     cell.font = AZUL_MARINO_FONT
+    if nota:
+        cell.comment = Comment(nota, "Revision_de_Errores")
 
     ws_detalle = wb["Detalle"] if "Detalle" in wb.sheetnames else None
     col_detalle = CAMPOS_PROPAGADOS_A_DETALLE.get(columna)
@@ -763,6 +781,8 @@ def corregir_valor_manual(n_ref, columna, valor_nuevo, ruta_excel=None,
         "estado": "Aplicado", "fecha_detectado": entrada.get("fecha_detectado", hoy),
         "fecha_aplicado": hoy,
     })
+    if nota:
+        entrada["nota"] = nota
     guardar_correcciones_manuales(correcciones, ruta_correcciones)
     regenerar_tabla_errores_md(correcciones, ruta_errores)
 
@@ -1974,6 +1994,74 @@ def aplicar_renombrados(ws_master, filas_master, reconciliacion_inversa):
     return renombrados, advertencias
 
 
+# ── ROTACIÓN DE DOCUMENTOS GIRADOS 90/180/270° ──────────────────────────────
+# Corrige la orientacion fisica de un documento pendiente antes de registrarlo,
+# a partir del campo opcional "rotacion" (grados en sentido horario) que el
+# agente agrega a su entrada de datos_extraidos.json en el Paso 2 del skill al
+# notar que la foto/PDF esta girada. Se llama una sola vez, en PASO 6 de
+# main(), justo antes de escribir el documento en Master/Detalle -- una vez
+# registrado, inventariar_archivos() nunca lo vuelve a listar como pendiente,
+# asi que no hay riesgo de re-rotar un archivo ya corregido.
+
+EXTENSIONES_IMAGEN_ROTABLES = {".png", ".jpg", ".jpeg", ".heic"}
+
+
+def rotar_imagen(ruta, grados):
+    """Rota la imagen en 'ruta' 'grados' en sentido horario (90/180/270) y la
+    sobreescribe en el mismo formato (incluye HEIC, via pillow_heif -- se
+    registra aqui tambien por si se llama antes de convertir_heic_a_jpg)."""
+    from PIL import Image
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+    with Image.open(ruta) as imagen:
+        formato = imagen.format
+        rotada = imagen.rotate(-grados, expand=True)
+        if formato == "JPEG":
+            rotada = rotada.convert("RGB")
+        rotada.save(str(ruta), format=formato)
+
+
+def rotar_pdf(ruta, grados):
+    """Rota cada pagina del PDF en 'ruta' 'grados' en sentido horario
+    (90/180/270), escribiendo el /Rotate de cada pagina -- no re-renderiza el
+    contenido, es la forma estandar en que los lectores de PDF interpretan
+    paginas giradas."""
+    from pypdf import PdfReader, PdfWriter
+
+    lector = PdfReader(str(ruta))
+    escritor = PdfWriter()
+    escritor.append(lector)
+    for pagina in escritor.pages:
+        pagina.rotate(grados)
+    with open(ruta, "wb") as f:
+        escritor.write(f)
+
+
+def rotar_archivo(ruta, grados):
+    """Corrige la orientacion fisica de 'ruta' (imagen o PDF) 'grados' en
+    sentido horario (90/180/270). Despacha por extension."""
+    if ruta.suffix.lower() == ".pdf":
+        rotar_pdf(ruta, grados)
+    else:
+        rotar_imagen(ruta, grados)
+
+
+def rotar_si_corresponde(ruta, grados):
+    """Si 'grados' es truthy, corrige la orientacion fisica de 'ruta'. Best-
+    effort: devuelve el mensaje de error si la rotacion falla, o None si no
+    hacia falta rotar o si salio bien -- nunca lanza, para no bloquear el
+    registro del documento por un problema de rotacion (mismo patron que
+    ejecutar_plan_renombrado)."""
+    if not grados:
+        return None
+    try:
+        rotar_archivo(ruta, grados)
+        return None
+    except Exception as e:
+        return str(e)
+
+
 def reflejar_a_sitio_comunicacion(ruta_excel=None, ruta_sitio=None):
     """Copia (shutil.copy2) el Excel local encima de la copia de solo lectura
     en 'Sitio de comunicacion - Centro de Costos 1/' -- mismo paso que hace
@@ -2259,6 +2347,14 @@ def main():
                 "accion": "Agregar al menos un item con nombre_item/cantidad/p_unitario_sin_iva.",
             })
             continue
+
+        grados_rotacion = dato.get("rotacion")
+        error_rotacion = rotar_si_corresponde(Path(info["ruta_absoluta"]), grados_rotacion)
+        if error_rotacion:
+            print(f"  [WARN] No se pudo rotar {info['proyecto']}\\{info['archivo']}: {error_rotacion}")
+        elif grados_rotacion:
+            print(f"  [INFO] Rotado {grados_rotacion}° (sentido horario) antes de registrar: "
+                  f"{info['proyecto']}\\{info['archivo']}")
 
         n_doc_str = str(dato["n_documento"])
         n_doc_norm = normalizar_n_documento(n_doc_str)

@@ -148,6 +148,40 @@ def test_corregir_valor_manual_no_propaga_iva_a_detalle(tmp_path):
     assert wb["Detalle"].cell(row=2, column=4).value == 100
 
 
+def test_corregir_valor_manual_guarda_nota_como_comentario_y_en_json(tmp_path):
+    ruta_excel = _excel_master_detalle_rojo(tmp_path, columna=12, valor=100)
+    ruta_json = tmp_path / "correcciones_manuales.json"
+    ruta_md = _errores_md_de_prueba(tmp_path)
+    nota = "IVA: $7188 / IEF: $4111 / IEV/FEPP: $-2500"
+
+    resultado = acc.corregir_valor_manual(
+        "UMAG-014", 12, 8799, ruta_excel=ruta_excel, ruta_correcciones=ruta_json,
+        ruta_errores=ruta_md, ruta_backups=tmp_path / "Respaldos", nota=nota,
+    )
+
+    assert resultado["nota"] == nota
+    wb = openpyxl.load_workbook(str(ruta_excel))
+    assert wb["Master"].cell(row=2, column=12).comment.text == nota
+
+    guardadas = json.loads(ruta_json.read_text(encoding="utf-8"))
+    assert guardadas[0]["nota"] == nota
+    assert nota in ruta_md.read_text(encoding="utf-8")
+
+
+def test_corregir_valor_manual_sin_nota_no_agrega_comentario(tmp_path):
+    ruta_excel = _excel_master_detalle_rojo(tmp_path, valor="S/N (IMG_7533)")
+
+    resultado = acc.corregir_valor_manual(
+        "UMAG-014", 5, "12345", ruta_excel=ruta_excel,
+        ruta_correcciones=tmp_path / "correcciones_manuales.json",
+        ruta_errores=_errores_md_de_prueba(tmp_path), ruta_backups=tmp_path / "Respaldos",
+    )
+
+    assert "nota" not in resultado
+    wb = openpyxl.load_workbook(str(ruta_excel))
+    assert wb["Master"].cell(row=2, column=5).comment is None
+
+
 def test_corregir_valor_manual_no_toca_celda_que_no_esta_roja(tmp_path):
     ruta_excel = tmp_path / "Centro de Costos.xlsx"
     wb = openpyxl.Workbook()

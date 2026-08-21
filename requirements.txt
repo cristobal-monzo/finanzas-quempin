@@ -11,9 +11,14 @@
 openpyxl>=3.1.5
 
 # Conversion HEIC -> JPG de las fotos de facturas (Centro de Costos,
-# convertir_heic_a_jpg en auditor_centro_costos.py).
+# convertir_heic_a_jpg en auditor_centro_costos.py). Tambien usada para
+# rotar_imagen (documentos girados 90/180/270, ver mas abajo).
 pillow>=12.0.0
 pillow-heif>=1.4.0
+
+# Rotacion de paginas de PDF girados 90/180/270 (Centro de Costos,
+# rotar_pdf en auditor_centro_costos.py). Pura Python, sin binarios externos.
+pypdf>=6.0.0
 
 # Render de los reportes PDF de Analisis Financiero via Chromium headless
 # (Reportes/motor_reportes.py). Requiere ademas el navegador:

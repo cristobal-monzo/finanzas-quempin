@@ -1,6 +1,6 @@
 ---
 name: Registro_Centro_de_Costos
-description: Direct pipeline commands (status/run/confirmar/visualizador) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer locally. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; those should route to /Actualizar_CC instead, which runs this same pipeline and also republishes the dashboard. Use this skill directly for status checks, dry runs, audits, registering facturas, or confirming manual corrections when the user names it explicitly.
+description: Direct pipeline commands (status/run/confirmar/visualizador) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer locally. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; ask the user for confirmation instead, since they may mean this skill, /Actualizar_CC, or /Actualizar_Base_de_Datos (see root CLAUDE.md § Invocación de skills). Use this skill directly for status checks, dry runs, audits, registering facturas, or confirming manual corrections when the user names it explicitly.
 ---
 
 # Registro: Centro de Costos
@@ -83,8 +83,48 @@ Si corres 'run' ahora se registrarían: N documento(s).
 ======================================================================
 ```
 
-**Paso 2 — si `status` muestra "se registrarían: N > 0 documento(s)"**, correr
-la ejecución real:
+**Paso 2 — si `status` reporta "Pendientes SIN datos (o sin items) en el
+JSON: N > 0", completar esas entradas antes de seguir a `run`** (pedido del
+usuario, 2026-08-18): esos documentos no necesitan que el usuario prepare el
+JSON de antemano — el agente arma la entrada leyendo el documento y
+preguntando solo lo que la foto/PDF no resuelve por sí sola.
+
+Para cada documento pendiente sin datos (agrupando por proyecto cuando
+varios comparten la misma respuesta, ej. `tipo_proyecto`, para no repetir la
+misma pregunta N veces):
+
+1. Abrir la foto/PDF (`Sitio de comunicación - Centro de Costos 1/Facturas y
+   Boletas/<Proyecto>/<archivo>`) y extraer lo que se lea con claridad:
+   fecha, N° de documento, proveedor, tipo de documento, categoría, IVA, y
+   el desglose de ítems línea por línea (ver "Formato de
+   `datos_extraidos.json`" más abajo, y las reglas de `nombre_item`/
+   `descripción` y de partes ilegibles en `../../CLAUDE.md` y
+   [MEMORY.md](MEMORY.md) § Reglas de negocio). **Si el documento está girado
+   90/180/270°** (hay que ladear la cabeza o el archivo para leerlo), extraer
+   los datos igual (leyéndolo rotado mentalmente) — nunca marcarlo ilegible
+   solo por la rotación — y agregar `"rotacion"` a la entrada con los grados
+   en sentido horario necesarios para dejarlo derecho (ver "Formato de
+   `datos_extraidos.json`" más abajo). El siguiente `run` corrige el archivo
+   físico solo; no hace falta rotarlo a mano.
+2. Preguntar al usuario solo lo que el documento no resuelve por sí solo:
+   `tipo_proyecto` si el proyecto es nuevo, `estado` (Pagado/Pendiente, casi
+   nunca viene impreso), y cualquier monto/N° de documento/categoría
+   ilegible o ambiguo — aplicar también los criterios ya vigentes en
+   [MEMORY.md](MEMORY.md) § Criterios de clasificación (ej. asumir Factura
+   salvo sospecha clara de Boleta; confirmar si un equipo/herramienta >
+   $20.000 corresponde de verdad a ese proyecto o a Gastos Generales).
+3. Agregar la entrada a `Sistema/datos_extraidos.json` con el esquema
+   completo y seguir con el siguiente pendiente.
+4. Si un documento resulta ilegible al punto de no poder completarlo, o el
+   usuario no tiene la respuesta a mano, dejarlo fuera del JSON por ahora y
+   anotarlo en la tabla del Paso 4 en vez de bloquear el resto — `run` solo
+   registra los que quedaron con datos completos; el resto sigue apareciendo
+   como pendiente en el próximo `status`.
+
+Con las entradas que se pudieron completar ya en el JSON, seguir al Paso 3.
+
+**Paso 3 — correr la ejecución real** (el número de documentos registrables
+puede haber subido tras completar el Paso 2):
 
 ```
 python ".claude/skills/Registro_Centro_de_Costos/driver.py" run
@@ -106,7 +146,7 @@ la columna `Proyecto` actual de `Master` (no desde un estado guardado), así
 que una reasignación manual de proyecto hecha directo en `Master` se refleja
 sola en la hoja de proyecto la próxima vez que corra `run`.
 
-**Paso 3 — al terminar `run`, presentar siempre una tabla-resumen al usuario**
+**Paso 4 — al terminar `run`, presentar siempre una tabla-resumen al usuario**
 (pedido 2026-07-16, ampliado 2026-07-16). Debe registrar **errores,
 inconsistencias e imprecisiones** — no solo lo que el script marca
 automáticamente. Directa y simple, columnas fijas:
@@ -148,10 +188,10 @@ sola línea (no generar una tabla vacía). No es necesario tocar
 de consola más una revisión rápida del agente sobre los datos nuevos, es un
 paso posterior a `run`, no una función nueva del script.
 
-**Paso 4 — si `run` reporta "CAMBIOS MANUALES PENDIENTES DE CONFIRMAR"
+**Paso 5 — si `run` reporta "CAMBIOS MANUALES PENDIENTES DE CONFIRMAR"
 (sección 6 del informe)**, alguien corrigió a mano una celda que el script
 había marcado en rojo (ej. `N° Documento`: `"S/N (IMG_7533)"` → `"12345"`).
-Esto es distinto de la tabla del Paso 3: son ediciones manuales detectadas
+Esto es distinto de la tabla del Paso 4: son ediciones manuales detectadas
 comparando contra el backup anterior, no errores del pipeline. El agente
 debe:
 
@@ -188,14 +228,17 @@ paso de la corrida (PASO 12c, dentro de `main()` en
 quedó guardado igual, solo imprime un `[WARN]` y hay que regenerar el
 visualizador a mano después.
 
-**Publicarlo como Artifact es obligatorio, no manual/opcional** (corregido
+**Publicarlo en GitHub Pages es obligatorio, no manual/opcional** (corregido
 2026-07-27 — antes este documento decía "sigue siendo manual", lo que
 contradecía la política real). Si `run` registró documentos nuevos (N > 0),
-el agente debe publicar el `build/index.html` recién regenerado como el
-mismo Claude Artifact de siempre inmediatamente después, sin esperar a que
-el usuario lo pida. Usar el tool `Artifact` con `file_path` apuntando a
-`Visualizador Web/build/index.html` y `url` igual al link fijo documentado
-en [MEMORY.md](MEMORY.md) § Visualizador web — nunca generar un link nuevo.
+el agente debe publicar el `build/index.html` recién regenerado
+inmediatamente después, sin esperar a que el usuario lo pida. Receta y
+comandos exactos (subruta `centro-de-costos`) en
+[../../../Visualizador Web/CLAUDE.md](../../../Visualizador%20Web/CLAUDE.md)
+§ Hosting: copiar a `.worktrees/gh-pages/centro-de-costos/index.html` y
+`git add`/`commit`/`push` desde ese worktree. **Los Claude Artifacts ya no
+se actualizan** (pedido explícito del usuario, 2026-08-19) — GitHub Pages es
+el único canal de publicación desde la migración del 2026-08-05.
 `/Actualizar_CC` hace exactamente este paso extra sobre este mismo pipeline;
 si en cambio corriste `/Registro_Centro_de_Costos` directo por invocación
 explícita, el paso de publicar sigue siendo tuyo al terminar — no lo saltes.
@@ -208,7 +251,7 @@ python ".claude/skills/Registro_Centro_de_Costos/driver.py" visualizador
 ```
 
 Ninguno de los dos caminos toca el Excel — ambos son de solo lectura sobre
-él. Ver [../../Visualizador Web/CLAUDE.md](../../Visualizador%20Web/CLAUDE.md)
+él. Ver [../../../Visualizador Web/CLAUDE.md](../../../Visualizador%20Web/CLAUDE.md)
 para la arquitectura completa (por qué está incrustado y no via fetch, el
 gate de contraseña, qué campos se sanean, y el bug de fórmulas de Excel sin
 recalcular que hay que recordar si se vuelve a tocar `build_visualizador.py`).
@@ -246,6 +289,7 @@ esquema y las reglas de `N° Ref.`/categorías en `../../CLAUDE.md`):
   "items": [
     {"nombre_item": "Taladro inalámbrico", "descripcion": "Taladro percutor 20V 13mm s/carbones DCD7781", "categoria_item": "Equipos-Herramientas", "cantidad": 1, "p_unitario_sin_iva": 90000}
   ],
+  "rotacion": 90,
   "notas": "opcional"
 }
 ```
@@ -257,6 +301,10 @@ dos (pedido 2026-07-16, ver `CLAUDE.md`).
 `"iva"` es opcional (si se omite, se calcula 19% para Factura/Guía de
 Despacho y 0 para el resto). Si no se puede leer el N° de documento, usar
 `"S/N (<archivo>)"` — el script lo pinta rojo automáticamente para revisión.
+
+`"rotacion"` es opcional: grados en sentido horario (`90`, `180` o `270`)
+para dejar derecho un documento girado — ver Paso 2 más arriba. Se omite si
+ya está bien orientado.
 
 ## Invocación directa (para checks puntuales)
 

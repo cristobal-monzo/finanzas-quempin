@@ -1,6 +1,6 @@
 ---
 name: Revision_de_Errores
-description: Recorrido guiado, uno por uno, de (a) las celdas de "Centro de Costos.xlsx" marcadas en rojo (requieren revisión) y (b) las filas de Detalle que agrupan en 1 solo ítem una parte de una compra que no se pudo identificar línea por línea (ej. "Materiales varios") -- muestra la foto del documento asociado, pide al usuario el valor correcto o el desglose correcto, lo aplica en el Excel con fuente azul marino oscuro, actualiza el registro de correcciones, y refleja el resultado en ambas copias del libro. Usar cuando el usuario pida revisar errores, corregir datos ilegibles, resolver celdas rojas, desglosar ítems agrupados/no identificados, o repasar el registro de correcciones manuales del Centro de Costos.
+description: Usar cuando el usuario escribe "/Revision_de_Errores" explícitamente. Si en cambio pide en lenguaje natural (sin el "/") revisar errores, corregir datos ilegibles, resolver celdas rojas, desglosar ítems agrupados/no identificados, o repasar el registro de correcciones manuales del Centro de Costos, pedir confirmación antes de invocarlo (ver CLAUDE.md raíz § Invocación de skills) -- nunca activarlo automático. Recorrido guiado, uno por uno, de (a) las celdas de "Centro de Costos.xlsx" marcadas en rojo (requieren revisión) y (b) las filas de Detalle que agrupan en 1 solo ítem una parte de una compra que no se pudo identificar línea por línea (ej. "Materiales varios") -- muestra la foto del documento asociado, pide al usuario el valor correcto o el desglose correcto, lo aplica en el Excel con fuente azul marino oscuro, actualiza el registro de correcciones, y refleja el resultado en ambas copias del libro.
 ---
 
 # Revisión de errores: Centro de Costos
@@ -50,7 +50,13 @@ fotos reales de facturas/boletas de la empresa durante el recorrido.
 - **N° Documento** (columna E) ilegible o no leído -- queda como
   `"S/N (<archivo o voucher>)"`.
 - **IVA 19% (CLP)** (columna L) que no cuadra con el 19% del Neto (tolerancia
-  ±1 CLP) para Facturas/Guías de Despacho.
+  ±1 CLP) para Facturas/Guías de Despacho. **Compras de combustible**: el
+  valor correcto para esta columna es la suma de TODOS los impuestos del
+  documento (IVA + IEF + IEV/FEPP, este último puede ser negativo), no solo
+  el 19% -- ver regla y ejemplo en `MEMORY.md` de `Registro_Centro_de_Costos`
+  § Reglas de negocio. Como el valor combinado no coincide con 19% del Neto,
+  usar `corregir ... --nota "IVA: $X / IEF: $Y / IEV/FEPP: $Z"` para dejar el
+  desglose documentado (queda como comentario de Excel en la celda).
 
 **No** entran acá los hallazgos de la tabla "Posible error" que se arma tras
 cada `run` (legibilidad general, posibles duplicados, imprecisiones de dato
@@ -124,6 +130,11 @@ Para cada celda de la lista del Paso 1:
    ```
    python driver.py corregir UMAG-014 "N° Documento" 12345
    python driver.py corregir CFLI-002 IVA 190
+   ```
+   Para compras de combustible (IVA = IVA + IEF + IEV/FEPP, ver arriba),
+   agregar el desglose con `--nota`:
+   ```
+   python driver.py corregir CVAL-018 IVA 8799 --nota "IVA: $7188 / IEF: $4111 / IEV/FEPP: $-2500"
    ```
    Esto hace, en un solo paso: backup de `Centro de Costos.xlsx` →
    escribe el valor nuevo en `Master` → recolorea esa celda a azul marino

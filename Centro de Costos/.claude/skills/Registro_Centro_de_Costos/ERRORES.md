@@ -76,15 +76,52 @@ el valor — ver
 
 ## Correcciones manuales pendientes de recolorear
 
-| Fecha | Hoja | N° Ref. | Campo / Columna | Valor anterior (rojo) | Valor corregido | Estado |
-|---|---|---|---|---|---|---|
-| 2026-07-17 | Detalle | CCON-004 | Ítems agrupados (desglose) | Materiales varios (Resto de la factura: cañería de cobre recta 1 1/4" y 1 1/2" (cod. CAN2125, CAN2126), espuma aislante térmica 1 1/2x2mt (cod. CAN2276), soldadura de plata al 6% (cod. SOL2005), fundente para soldar plata (cod. SOL2018), tubo de gas MAPP (cod. GAS24548). Cantidades y precios individuales de estas 6 líneas NO son legibles: el timbre 'CANCELADO' del 19/06/2026 tapa la columna de cantidad/precio desde esta línea en adelante. Monto = saldo entre el Neto impreso ($174.118) y la suma de los 5 ítems sí legibles ($58.912) = $115.206.) | Cañería cobre; Cañería cobre; Espuma aislante; Soldadura plata; Fundente soldar; Tubo gas MAPP | Aplicado (2026-07-17) |
-| 2026-07-17 | Master | UMAG-003 | IVA 19% (CLP) | 718 | 719 | Aplicado (2026-07-17) |
-| 2026-07-17 | Master | UMAG-004 | N° Documento | 11111111 | 2222222 | Aplicado (2026-07-17) |
-| 2026-07-17 | Master | UMAG-005 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-07-17) |
-| 2026-07-17 | Master | UMAG-006 | N° Documento | 407866 | 407866 | Aplicado (2026-07-17) |
-| 2026-07-17 | Master | UMAG-009 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-07-17) |
-| 2026-07-17 | Master | UMAG-020 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-07-17) |
+| Fecha | Hoja | N° Ref. | Campo / Columna | Valor anterior (rojo) | Valor corregido | Estado | Nota |
+|---|---|---|---|---|---|---|---|
+| 2026-07-17 | Detalle | CCON-004 | Ítems agrupados (desglose) | Materiales varios (Resto de la factura: cañería de cobre recta 1 1/4" y 1 1/2" (cod. CAN2125, CAN2126), espuma aislante térmica 1 1/2x2mt (cod. CAN2276), soldadura de plata al 6% (cod. SOL2005), fundente para soldar plata (cod. SOL2018), tubo de gas MAPP (cod. GAS24548). Cantidades y precios individuales de estas 6 líneas NO son legibles: el timbre 'CANCELADO' del 19/06/2026 tapa la columna de cantidad/precio desde esta línea en adelante. Monto = saldo entre el Neto impreso ($174.118) y la suma de los 5 ítems sí legibles ($58.912) = $115.206.) | Cañería cobre; Cañería cobre; Espuma aislante; Soldadura plata; Fundente soldar; Tubo gas MAPP | Aplicado (2026-07-17) |  |
+| 2026-07-17 | Master | UMAG-003 | IVA 19% (CLP) | 718 | 719 | Aplicado (2026-07-17) |  |
+| 2026-07-17 | Master | UMAG-004 | N° Documento | 11111111 | 2222222 | Aplicado (2026-07-17) |  |
+| 2026-07-17 | Master | UMAG-005 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-07-17) |  |
+| 2026-07-17 | Master | UMAG-006 | N° Documento | 407866 | 407866 | Aplicado (2026-07-17) |  |
+| 2026-07-17 | Master | UMAG-009 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-07-17) |  |
+| 2026-07-17 | Master | UMAG-020 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-07-17) |  |
+| 2026-08-19 | Master | CCHI-005 | IVA 19% (CLP) | 1873 | 1873 | Aplicado (2026-08-19) | IVA: $7280 (confirmado) / IEF e IEV/FEPP: no legibles con precision -- combinado ajustado desde Total $40191 - Neto $38318 |
+| 2026-08-19 | Master | CCHI-006 | N° Documento | S/N (comprobante debito Dolce Luna 17-03-2026) | 800056347184 | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Detalle | CCHI-006 | Ítems agrupados (desglose) | Compra varios (Compra en Dolce Luna, sin desglose de boleta (solo vale de tarjeta débito)) | Alimentación | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Master | CCHI-008 | IVA 19% (CLP) | 1905 | 1905 | Aplicado (2026-08-19) | IVA: $7403 / IEF+IEV-FEPP (combinado): $-5498 -- ajustado para que Neto ($38964) + IVA + Impuestos = Total pagado $40869 |
+| 2026-08-19 | Master | COMC-006 | IVA 19% (CLP) | 3178 | 3178 | Aplicado (2026-08-19) | IVA: $725 / IEF: $2413 / IEV/FEPP: $40 |
+| 2026-08-19 | Master | COMC-007 | IVA 19% (CLP) | 10890 | 10890 | Aplicado (2026-08-19) | IVA: $2540 / IEF: $8190 / IEV/FEPP: $160 |
+| 2026-08-19 | Master | CPMO-019 | N° Documento | S/N (Comprobante 000510) | 6857 | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Master | CPMO-023 | IVA 19% (CLP) | 4399 | 4399 | Aplicado (2026-08-19) | IVA: $2014 / IEF: $1511 / IEV/FEPP: $874 |
+| 2026-08-19 | Master | CREM-006 | IVA 19% (CLP) | 1525 | 6973 | Aplicado (2026-08-19) | IVA: $1525 / IEF: $5238 / IEV/FEPP: $210 |
+| 2026-08-19 | Master | CREM-014 | IVA 19% (CLP) | 5925 | 14077 | Aplicado (2026-08-19) | IVA: $5925 / IEF (Impuesto Especifico): $8152 |
+| 2026-08-19 | Master | CREM-015 | IVA 19% (CLP) | 7231 | 17678 | Aplicado (2026-08-19) | IVA: $7231 / IEF: $5505 / IEV/FEPP: $4942 |
+| 2026-08-19 | Master | CVAL-002 | N° Documento | S/N (peajes Documento 10) | N/A | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Master | CVAL-003 | N° Documento | S/N (peajes Documento 11) | N/A | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Master | CVAL-004 | N° Documento | S/N (comprobante debito San Ignacio 08-07-2026) | 321782 | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Master | CVAL-005 | N° Documento | S/N (peajes Documento 13) | N/A | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Master | CVAL-011 | IVA 19% (CLP) | 13639 | 13699 | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Master | CVAL-014 | IVA 19% (CLP) | 7956 | 7956 | Aplicado (2026-08-19) | IVA: $6470 / IEF: $3791 / IEV/FEPP: $-2305 |
+| 2026-08-19 | Master | CVAL-015 | IVA 19% (CLP) | 10937 | 10937 | Aplicado (2026-08-19) | IVA: $8884 / IEF: $5241 / IEV/FEPP: $-3188 |
+| 2026-08-19 | Master | CVAL-016 | IVA 19% (CLP) | 5443 | 8896 | Aplicado (2026-08-19) |  |
+| 2026-08-19 | Master | CVAL-017 | IVA 19% (CLP) | 4767 | 4767 | Aplicado (2026-08-19) | IVA: $7898 / IEF: $1 / IEV/FEPP: $0 (según factura; total pagado $46.335 respetado como ancla) |
+| 2026-08-19 | Master | CVAL-018 | IVA 19% (CLP) | 8799 | 8799 | Aplicado (2026-08-19) | IVA: $7188 / IEF: $4111 / IEV/FEPP: $-2500 |
+| 2026-08-19 | Master | CVAL-020 | IVA 19% (CLP) | 11999 | 11999 | Aplicado (2026-08-19) | IVA: $7765 / IEF: $4226 / IEV/FEPP: $8 (no incluye propina $200) |
+| 2026-08-20 | Detalle | CCON-007 | P. Unitario/Total sin IVA (typo) | 96604 | 98604 | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Master | CCON-007 | IVA 19% (CLP) | 18735 | 18735 | Aplicado (2026-08-20) | IVA ya era correcto (18735, factura Anwo N 1913608); la celda estaba roja porque el item en Detalle tenia un typo (96604 en vez de 98604 = Neto real del documento). Corregido el item ademas de esta celda. |
+| 2026-08-20 | Master | CCON-008 | IVA 19% (CLP) | 3010 | 3010 | Aplicado (2026-08-20) | IVA ya era correcto (3010, factura Ferreteria El Experto N 144358: Neto 15840, IVA 3010, Total 18850). No se identifico ninguna inconsistencia real en Detalle. |
+| 2026-08-20 | Master | CCON-012 | N° Documento | S/N (Documento (17).pdf) | 2133669 | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Detalle | CCON-012 | Diesel: P.Unitario/Total sin IVA | 43513 | 31496 | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Master | CCON-012 | IVA 19% (CLP) | 0 | 12017 | Aplicado (2026-08-20) | IVA: $5984 / IEF: $3203 / IEV-FEPP: $2830 |
+| 2026-08-20 | Master/Detalle | CCON-012/013 | Restructuracion: documentos mezclados separados | CCON-012 (Diesel+Snack) y CCON-013 (Estacionamiento+Combo comida) mezclaban 2 documentos cada uno | CCON-012=Diesel, CCON-013=Estacionamiento, CCON-024=Snack, CCON-025=Combo Nuggets, CCON-026=Compra $65.673 (sin desglose) | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Master | CCON-013 | N° Documento | S/N (Documento (18).pdf) | 9669 | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Master | CCON-017 | IVA 19% (CLP) | 179869 | 179889 | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Detalle | CCON-019 | Ítems (descuento agregado + recalculo Total con IVA) | 4 items sin descuento, Total sin IVA=21854 | 5 items con Descuento(-4155), Total sin IVA=17699, tasa real=0.1900 | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Master | CCON-019 | IVA 19% (CLP) | 3363 | 3363 | Aplicado (2026-08-20) | IVA ya era correcto (3363, boleta Easy N 3011208173); la celda estaba roja porque Detalle no incluia el descuento de -4155 del documento. Se agrego la linea Descuento y se recalculo Total con IVA de los 5 items con la tasa real (~19.0%). |
+| 2026-08-20 | Detalle | MLER-004 | Items (descuento agregado + recalculo Total con IVA) | 3 items sin descuento, Total sin IVA=78908 | 4 items con Descuento(-7891), Total sin IVA=71017, tasa real=0.1900 | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Master | MLER-004 | N° Documento | S/N (Documento (2).pdf) | Ilegible | Aplicado (2026-08-20) |  |
+| 2026-08-20 | Master | MLER-004 | IVA 19% (CLP) | 13493 | 13493 | Aplicado (2026-08-20) | IVA ya era correcto (13493, factura Hojalateria Clinica del Hogar: Neto 71017 tras descuento de 7891, IVA 13493, Total 84510). Se agrego la linea Descuento a Detalle y se recalculo Total con IVA de los 3 items con la tasa real. |
+| 2026-08-20 | Master/Detalle | UMAG-028/029/030/031 | Restructuracion: documentos mezclados separados | UMAG-028 (7 docs), UMAG-029 (7 docs), UMAG-030 (2 docs) mezclaban varios documentos cada uno | UMAG-028=Tur Bus, UMAG-029=El Horreo(19-01), UMAG-030=Rendic(24-01), UMAG-031=El Horreo(21-01, ya estaba separado), UMAG-032..037=6 docs de UMAG-028, UMAG-038..043=6 docs de UMAG-029, UMAG-044=Rendic(20-01) de UMAG-030 | Aplicado (2026-08-20) |  |
 
 ## Historial de errores detectados
 

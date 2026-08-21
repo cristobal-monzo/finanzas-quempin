@@ -13,6 +13,11 @@ que el driver de Registro_Centro_de_Costos) y expone dos comandos:
                oscuro, propaga a Detalle si corresponde, y la registra como
                "Aplicado" en correcciones_manuales.json + ERRORES.md. Solo
                opera sobre celdas que están en rojo (si no, no hace nada).
+               Acepta un flag opcional --nota "<texto>" (en cualquier
+               posición tras el VALOR) que queda como comentario de Excel
+               sobre la celda corregida, además de en la tabla de
+               ERRORES.md -- para desgloses que no caben en un solo valor
+               (ej. IVA de combustible que incluye IEF/IEV-FEPP).
 
   agrupados  → SOLO LECTURA. Lista las filas de Detalle que agrupan en 1 sola
                línea una parte de la compra que no se pudo desglosar ítem por
@@ -42,6 +47,7 @@ Uso:
   python driver.py corregir UMAG-014 "N° Documento" 12345
   python driver.py corregir UMAG-014 5 12345
   python driver.py corregir CFLI-002 iva 190
+  python driver.py corregir CVAL-018 iva 8799 --nota "IVA: $7188 / IEF: $4111 / IEV/FEPP: $-2500"
   python driver.py desglosar CCON-004 "[{\"nombre_item\": \"Cañería cobre\", \"descripcion\": \"1 1/4 pulg\", \"categoria_item\": \"Materiales\", \"cantidad\": 2, \"p_unitario_sin_iva\": 30000}]"
 """
 
@@ -199,8 +205,17 @@ def cmd_reflejar():
 
 
 def cmd_corregir(args):
+    nota = None
+    if "--nota" in args:
+        idx = args.index("--nota")
+        if idx + 1 >= len(args):
+            print('[ERROR] --nota requiere un valor: --nota "<texto>"')
+            return 2
+        nota = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
+
     if len(args) < 3:
-        print('Uso: python driver.py corregir <N_REF> <CAMPO_O_COLUMNA> <VALOR>')
+        print('Uso: python driver.py corregir <N_REF> <CAMPO_O_COLUMNA> <VALOR> [--nota "<texto>"]')
         return 2
     n_ref, campo_o_num, valor_nuevo = args[0], args[1], " ".join(args[2:])
 
@@ -219,7 +234,7 @@ def cmd_corregir(args):
             except ValueError:
                 pass
 
-    resultado = acc.corregir_valor_manual(n_ref, columna, valor_nuevo)
+    resultado = acc.corregir_valor_manual(n_ref, columna, valor_nuevo, nota=nota)
     return 0 if resultado is not None else 1
 
 
