@@ -15,6 +15,10 @@ cuando el usuario quiere ir acumulando varias corridas de registro de datos
 (varios lotes de facturas/boletas a lo largo del día, por ejemplo) y publicar
 todo junto una sola vez al final.
 
+Acepta el mismo `--pais CL|PE` que expone `/Registro_Centro_de_Costos`
+(default `CL`) y lo pasa sin cambios al driver en el paso 1 — no cambia el
+comportamiento de este skill (nunca publica, sea cual sea el país).
+
 ## Pasos
 
 1. **`status`** (solo lectura) — usar el driver de `/Registro_Centro_de_Costos`:

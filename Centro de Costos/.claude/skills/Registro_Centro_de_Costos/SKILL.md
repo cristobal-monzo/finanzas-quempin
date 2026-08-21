@@ -35,6 +35,24 @@ el historial fechado de corridas reales, y [ERRORES.md](ERRORES.md) para el
 historial de errores del pipeline y el registro de correcciones manuales
 hechas directo en el Excel — no dupliques ese contenido acá.
 
+## Países
+
+Todos los comandos (`status`/`run`/`confirmar`/`visualizador`) aceptan un
+flag opcional `--pais CL|PE` (default `CL`, así que ninguna invocación
+existente cambia). `PE` (Perú) opera sobre un árbol de datos totalmente
+separado — su propio `Centro de Costos Perú.xlsx` (en `Peru/Centro de
+Costos/Excel/`), su propio `datos_extraidos_peru.json`, su propia carpeta de
+facturas (`Facturas y Boletas/Perú/`), IGV 18% en vez de IVA 19%, valores en
+soles. Perú no tiene visualizador web todavía (sub-proyecto 4 del spec de
+expansión) — `visualizador --pais PE` lo informa y no falla.
+
+```
+python ".claude/skills/Registro_Centro_de_Costos/driver.py" status --pais PE
+python ".claude/skills/Registro_Centro_de_Costos/driver.py" run --pais PE
+```
+
+Ver [`docs/superpowers/specs/2026-08-21-peru-expansion-design.md`](../../../../docs/superpowers/specs/2026-08-21-peru-expansion-design.md) (raíz de `Finanzas QUEMPIN/`) para la arquitectura completa.
+
 ## Prerequisitos
 
 ```

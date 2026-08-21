@@ -16,6 +16,13 @@ paso manual (ver `Registro_Centro_de_Costos/MEMORY.md` § Visualizador web).
 Este skill cierra ese hueco: nunca termines la tarea con el registrador
 corrido pero el link publicado desactualizado.
 
+Acepta el mismo `--pais CL|PE` que expone `/Registro_Centro_de_Costos`
+(default `CL`) y lo pasa sin cambios al driver en el paso 1. El paso 3
+(publicar en GitHub Pages) sigue aplicando solo a Chile: Perú todavía no
+tiene visualizador propio (sub-proyecto 4, fuera de alcance acá), así que
+con `--pais PE` este skill corre el registro igual pero no hay nada que
+publicar.
+
 ## Pasos
 
 1. **`status`** (solo lectura) — usar el driver de `/Registro_Centro_de_Costos`:
