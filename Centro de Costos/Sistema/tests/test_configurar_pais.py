@@ -14,6 +14,7 @@ def test_configurar_pais_cl_es_el_default_al_importar():
     assert acc.ENCABEZADOS_MASTER[10] == "Total sin IVA (CLP)"
     assert acc.ENCABEZADOS_MASTER[11] == "IVA 19% (CLP)"
     assert acc.ENCABEZADOS_DETALLE[8] == "P. Unitario sin IVA"
+    assert acc.RAZON_SOCIAL == "QUEMPIN SpA"
 
 
 def test_configurar_pais_pe_cambia_moneda_impuesto_y_rutas():
@@ -32,6 +33,7 @@ def test_configurar_pais_pe_cambia_moneda_impuesto_y_rutas():
         assert acc.ENCABEZADOS_MASTER[10] == "Total sin IGV (PEN)"
         assert acc.ENCABEZADOS_MASTER[11] == "IGV 18% (PEN)"
         assert acc.ENCABEZADOS_DETALLE[8] == "P. Unitario sin IGV"
+        assert acc.RAZON_SOCIAL == "QUEMPIN SAC"
     finally:
         acc.configurar_pais("CL")
 

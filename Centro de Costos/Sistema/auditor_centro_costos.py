@@ -92,6 +92,7 @@ PREFIJOS_PROYECTO = {
 # Costos/ (sin codigo propio, ver RAIZ_PERU) mas IGV 18% y soles.
 PAISES = {
     "CL": {
+        "razon_social": "QUEMPIN SpA",
         "moneda": "CLP", "simbolo": "$",
         "nombre_impuesto_corto": "IVA", "tasa_impuesto": 0.19,
         "ruta_excel": RUTA_EXCEL,
@@ -107,6 +108,9 @@ PAISES = {
         "prefijos_proyecto": PREFIJOS_PROYECTO,
     },
     "PE": {
+        # Razón social a la que van dirigidos los documentos de Perú (pedido
+        # del usuario 2026-08-21) -- entidad distinta a "QUEMPIN SpA" (Chile).
+        "razon_social": "QUEMPIN SAC",
         "moneda": "PEN", "simbolo": "S/",
         "nombre_impuesto_corto": "IGV", "tasa_impuesto": 0.18,
         "ruta_excel": RAIZ_PERU / "Excel" / "Centro de Costos Perú.xlsx",
@@ -143,10 +147,11 @@ def configurar_pais(pais="CL"):
     global RAIZ_VISUALIZADOR_WEB, RUTA_EXCEL_SITIO_COMUNICACION, PREFIJOS_PROYECTO
     global MONEDA, SIMBOLO_MONEDA, NOMBRE_IMPUESTO_CORTO, TASA_IMPUESTO, NOMBRE_IMPUESTO_PCT
     global ENCABEZADOS_MASTER, ENCABEZADOS_DETALLE, ENCABEZADOS_PROYECTO
-    global MONEY_FORMAT, LEYENDA_MASTER
+    global MONEY_FORMAT, LEYENDA_MASTER, RAZON_SOCIAL
 
     cfg = PAISES[pais]
     PAIS_ACTUAL = pais
+    RAZON_SOCIAL = cfg["razon_social"]
     RUTA_EXCEL = cfg["ruta_excel"]
     RAIZ_DOCS = cfg["ruta_docs"]
     RUTA_BACKUPS = cfg["ruta_backups"]
@@ -2338,7 +2343,7 @@ def main(pais="CL"):
     configurar_pais(pais)
 
     print("=" * 70)
-    print("  REGISTRO CENTRO DE COSTOS - QUEMPIN SpA")
+    print(f"  REGISTRO CENTRO DE COSTOS - {RAZON_SOCIAL}")
     print(f"  País: {pais} | Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
 
