@@ -17,8 +17,8 @@
 
 # JSON con datos extraidos de documentos tributarios / correcciones sobre ellos.
 **/datos_extraidos*.json
-**/correcciones_manuales.json
-**/reconciliacion_archivos.json
+**/correcciones_manuales*.json
+**/reconciliacion_archivos*.json
 **/clientes_pendientes.json
 
 # Cache regenerable de valores UF (publicos, no sensibles) -- se ignora solo
