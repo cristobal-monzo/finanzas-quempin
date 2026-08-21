@@ -50,7 +50,11 @@ RAIZ_MODULO = RAIZ.parent
 # donde suben facturas/boletas los colegas), no la carpeta local "Facturas y
 # Boletas/" -- ver CLAUDE.md seccion "Sitio de comunicacion".
 RAIZ_SITIO_COMUNICACION = RAIZ_MODULO / "Sitio de comunicación - Centro de Costos 1"
-RAIZ_DOCS = RAIZ_SITIO_COMUNICACION / "Facturas y Boletas"
+# Carpeta COMPARTIDA por ambos paises (desde 2026-08-21): contiene las
+# subcarpetas "Chile/" y "Perú/", cada una con sus carpetas de proyecto
+# adentro -- ver docs/superpowers/specs/2026-08-21-peru-expansion-design.md.
+# RAIZ_DOCS (mas abajo, mutable) es la version YA resuelta para el pais activo.
+RAIZ_DOCS_BASE = RAIZ_SITIO_COMUNICACION / "Facturas y Boletas"
 RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Centro de Costos.xlsx"
 RUTA_EXCEL_SITIO_COMUNICACION = RAIZ_SITIO_COMUNICACION / "Centro de Costos.xlsx"
 RUTA_JSON = RAIZ / "datos_extraidos.json"
@@ -61,6 +65,9 @@ RUTA_ERRORES_MD = RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costo
 RUTA_LOGS = RAIZ / "logs"
 RAIZ_VISUALIZADOR_WEB = RAIZ_MODULO / "Visualizador Web"
 RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Sistema Analisis Financiero"
+# Perú no tiene codigo propio (ver spec maestro): solo aloja Excel/respaldos/
+# JSON/dashboards. El codigo de arriba (este archivo) es compartido.
+RAIZ_PERU = RAIZ_MODULO.parent / "Peru" / "Centro de Costos"
 
 PREFIJOS_PROYECTO = {
     "UMAG": "UMAG",
@@ -78,6 +85,118 @@ PREFIJOS_PROYECTO = {
     "Comisaría Conchalí": "COMC",
     "Cremación Concepción": "CREM",
 }
+
+# Config por pais -- moneda/impuesto/rutas que varian entre Chile y Peru.
+# Los valores de "CL" son literalmente las constantes de arriba (cero cambio
+# de comportamiento); "PE" son las mismas rutas dentro de Peru/Centro de
+# Costos/ (sin codigo propio, ver RAIZ_PERU) mas IGV 18% y soles.
+PAISES = {
+    "CL": {
+        "moneda": "CLP", "simbolo": "$",
+        "nombre_impuesto_corto": "IVA", "tasa_impuesto": 0.19,
+        "ruta_excel": RUTA_EXCEL,
+        "ruta_docs": RAIZ_DOCS_BASE / "Chile",
+        "ruta_backups": RUTA_BACKUPS,
+        "ruta_json": RUTA_JSON,
+        "ruta_reconciliacion": RUTA_RECONCILIACION,
+        "ruta_correcciones": RUTA_CORRECCIONES,
+        "ruta_errores_md": RUTA_ERRORES_MD,
+        "ruta_logs": RUTA_LOGS,
+        "ruta_visualizador_web": RAIZ_VISUALIZADOR_WEB,
+        "ruta_excel_sitio_comunicacion": RUTA_EXCEL_SITIO_COMUNICACION,
+        "prefijos_proyecto": PREFIJOS_PROYECTO,
+    },
+    "PE": {
+        "moneda": "PEN", "simbolo": "S/",
+        "nombre_impuesto_corto": "IGV", "tasa_impuesto": 0.18,
+        "ruta_excel": RAIZ_PERU / "Excel" / "Centro de Costos Perú.xlsx",
+        "ruta_docs": RAIZ_DOCS_BASE / "Perú",
+        "ruta_backups": RAIZ_PERU / "Excel" / "Respaldos",
+        "ruta_json": RAIZ_PERU / "datos_extraidos_peru.json",
+        "ruta_reconciliacion": RAIZ_PERU / "reconciliacion_archivos_peru.json",
+        "ruta_correcciones": RAIZ_PERU / "correcciones_manuales_peru.json",
+        "ruta_errores_md": (
+            RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costos" / "ERRORES_PERU.md"
+        ),
+        "ruta_logs": RAIZ_PERU / "logs",
+        "ruta_visualizador_web": RAIZ_PERU / "Visualizador Web",
+        # Peru no tiene (todavia) un sitio de comunicacion SharePoint propio.
+        "ruta_excel_sitio_comunicacion": None,
+        "prefijos_proyecto": {},
+    },
+}
+
+
+def configurar_pais(pais="CL"):
+    """Reconfigura las rutas/constantes globales del modulo para operar sobre
+    el pais pedido -- 'CL' (Chile, default, preserva el comportamiento actual)
+    o 'PE' (Peru). Debe llamarse ANTES de cualquier otra funcion del modulo
+    que dependa de estas rutas -- main() ya lo hace como primer paso (ver
+    PASO 0), y cada comando de driver.py lo hace antes de tocar acc.* .
+    Lanza ValueError si 'pais' no esta en PAISES, sin dejar el modulo a medio
+    configurar (se valida antes de reasignar nada)."""
+    if pais not in PAISES:
+        raise ValueError(f"País desconocido: {pais!r}. Usar uno de {sorted(PAISES)}.")
+
+    global PAIS_ACTUAL, RUTA_EXCEL, RAIZ_DOCS, RUTA_BACKUPS, RUTA_JSON
+    global RUTA_RECONCILIACION, RUTA_CORRECCIONES, RUTA_ERRORES_MD, RUTA_LOGS
+    global RAIZ_VISUALIZADOR_WEB, RUTA_EXCEL_SITIO_COMUNICACION, PREFIJOS_PROYECTO
+    global MONEDA, SIMBOLO_MONEDA, NOMBRE_IMPUESTO_CORTO, TASA_IMPUESTO, NOMBRE_IMPUESTO_PCT
+    global ENCABEZADOS_MASTER, ENCABEZADOS_DETALLE, ENCABEZADOS_PROYECTO
+    global MONEY_FORMAT, LEYENDA_MASTER
+
+    cfg = PAISES[pais]
+    PAIS_ACTUAL = pais
+    RUTA_EXCEL = cfg["ruta_excel"]
+    RAIZ_DOCS = cfg["ruta_docs"]
+    RUTA_BACKUPS = cfg["ruta_backups"]
+    RUTA_JSON = cfg["ruta_json"]
+    RUTA_RECONCILIACION = cfg["ruta_reconciliacion"]
+    RUTA_CORRECCIONES = cfg["ruta_correcciones"]
+    RUTA_ERRORES_MD = cfg["ruta_errores_md"]
+    RUTA_LOGS = cfg["ruta_logs"]
+    RAIZ_VISUALIZADOR_WEB = cfg["ruta_visualizador_web"]
+    RUTA_EXCEL_SITIO_COMUNICACION = cfg["ruta_excel_sitio_comunicacion"]
+    PREFIJOS_PROYECTO = cfg["prefijos_proyecto"]
+
+    MONEDA = cfg["moneda"]
+    SIMBOLO_MONEDA = cfg["simbolo"]
+    NOMBRE_IMPUESTO_CORTO = cfg["nombre_impuesto_corto"]
+    TASA_IMPUESTO = cfg["tasa_impuesto"]
+    NOMBRE_IMPUESTO_PCT = f"{NOMBRE_IMPUESTO_CORTO} {round(TASA_IMPUESTO * 100)}%"
+
+    ENCABEZADOS_MASTER = [
+        "N° Ref.", "Proyecto", "Tipo de Proyecto", "Fecha", "N° Documento",
+        "Tipo Documento", "Proveedor", "Proveedor (Razón Social)", "Categoría",
+        "Resumen Ítems", f"Total sin {NOMBRE_IMPUESTO_CORTO} ({MONEDA})",
+        f"{NOMBRE_IMPUESTO_PCT} ({MONEDA})",
+        f"Total con {NOMBRE_IMPUESTO_CORTO} ({MONEDA})", "Estado", "Archivo origen",
+        "Fecha modificación",
+    ]
+    ENCABEZADOS_DETALLE = [
+        "N° Ref.", "Proyecto", "Tipo de Proyecto", "N° Documento", "Nombre Ítem",
+        "Descripción", "Categoría Ítem", "Cantidad",
+        f"P. Unitario sin {NOMBRE_IMPUESTO_CORTO}",
+        f"Total sin {NOMBRE_IMPUESTO_CORTO} ({MONEDA})",
+        f"Total con {NOMBRE_IMPUESTO_CORTO} ({MONEDA})",
+    ]
+    ENCABEZADOS_PROYECTO = [
+        "N° Ref.", "Proyecto", "Tipo de Proyecto", "Fecha", "N° Documento",
+        "Tipo Documento", "Proveedor", "Proveedor (Razón Social)", "Categoría",
+        "Resumen Ítems", f"Total sin {NOMBRE_IMPUESTO_CORTO} ({MONEDA})",
+        f"Total con {NOMBRE_IMPUESTO_CORTO} ({MONEDA})", "Estado",
+    ]
+    MONEY_FORMAT = f'"{SIMBOLO_MONEDA}"#,##0'
+    LEYENDA_MASTER = [
+        "Cursiva = celda editable a mano",
+        "Rojo = valor que requiere revisión (pasa el cursor por la celda para ver el motivo)",
+        "Azul marino = valor corregido a mano por ti (Claude lo respeta y no lo sobreescribe)",
+        "Fondo de color = proyecto (se pinta solo según la columna 'Proyecto'; si la cambias, "
+        "el color se actualiza) · la foto de cada documento lleva su N° como nombre de archivo",
+        f"⚠️ 'Total sin {NOMBRE_IMPUESTO_CORTO}' y 'Total con {NOMBRE_IMPUESTO_CORTO}' se calculan "
+        "desde Detalle. 'Archivo origen' y 'Fecha modificación' son el registro de lo ya "
+        "procesado: no editar.",
+    ]
 
 PALETA = [
     "FFB7CE", "FFBE9D", "E9CF87", "B6DFA0", "86E6D3", "89DFFF",
@@ -154,37 +273,11 @@ def generar_tag_proveedor(razon_social):
 EXTENSIONES_VALIDAS = {".png", ".jpg", ".jpeg", ".heic", ".pdf"}
 EXTENSIONES_IGNORAR = {".html", ".txt", ".ini", ".tmp"}
 
-ENCABEZADOS_MASTER = [
-    "N° Ref.", "Proyecto", "Tipo de Proyecto", "Fecha", "N° Documento",
-    "Tipo Documento", "Proveedor", "Proveedor (Razón Social)", "Categoría",
-    "Resumen Ítems", "Total sin IVA (CLP)", "IVA 19% (CLP)",
-    "Total con IVA (CLP)", "Estado", "Archivo origen", "Fecha modificación",
-]
-ENCABEZADOS_DETALLE = [
-    "N° Ref.", "Proyecto", "Tipo de Proyecto", "N° Documento", "Nombre Ítem",
-    "Descripción", "Categoría Ítem", "Cantidad", "P. Unitario sin IVA",
-    "Total sin IVA (CLP)", "Total con IVA (CLP)",
-]
-ENCABEZADOS_PROYECTO = [
-    "N° Ref.", "Proyecto", "Tipo de Proyecto", "Fecha", "N° Documento",
-    "Tipo Documento", "Proveedor", "Proveedor (Razón Social)", "Categoría",
-    "Resumen Ítems", "Total sin IVA (CLP)", "Total con IVA (CLP)", "Estado",
-]
-
 # Columna (1-indexada) de "Proveedor (Razón Social)" en Master y en las hojas
 # de proyecto -- se usa para ocultarla y para el mapeo de columnas al migrar.
 COL_PROVEEDOR_TAG_MASTER = 7
 COL_PROVEEDOR_RAZON_SOCIAL_MASTER = 8
 
-LEYENDA_MASTER = [
-    "Cursiva = celda editable a mano",
-    "Rojo = valor que requiere revisión (pasa el cursor por la celda para ver el motivo)",
-    "Azul marino = valor corregido a mano por ti (Claude lo respeta y no lo sobreescribe)",
-    "Fondo de color = proyecto (se pinta solo según la columna 'Proyecto'; si la cambias, "
-    "el color se actualiza) · la foto de cada documento lleva su N° como nombre de archivo",
-    "⚠️ 'Total sin IVA' y 'Total con IVA' se calculan desde Detalle. 'Archivo origen' y "
-    "'Fecha modificación' son el registro de lo ya procesado: no editar.",
-]
 LEYENDA_DETALLE = [
     "Cursiva = celda editable a mano",
     "Rojo = valor que requiere revisión (pasa el cursor por la celda para ver el motivo)",
@@ -220,7 +313,6 @@ AZUL_MARINO_FONT = Font(name="Calibri", size=11, color=NAVY_OSCURO)
 # confirmada toca una de estas columnas en Master, se propaga tambien a la
 # columna correspondiente de Detalle (una fila por cada item del N Ref).
 CAMPOS_PROPAGADOS_A_DETALLE = {5: 4}  # N Documento: Master col E -> Detalle col D
-MONEY_FORMAT = '"$"#,##0'
 # Formato fijo DD-MM-AAAA -- pedido del usuario 2026-07-28, reemplaza el numFmtId 14
 # ("Fecha corta" nativo, adaptable a la configuracion regional) usado desde 2026-07-17.
 DATE_FORMAT = "DD-MM-YYYY"
@@ -228,6 +320,8 @@ THIN_BORDER = Border(
     left=Side(style="thin"), right=Side(style="thin"),
     top=Side(style="thin"), bottom=Side(style="thin"),
 )
+
+configurar_pais("CL")  # valores por defecto al importar -- ver docstring de configurar_pais()
 
 
 # ── UTILIDADES DE FORMATO ────────────────────────────────────────────────────
