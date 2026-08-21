@@ -1524,7 +1524,10 @@ def calcular_iva_documento(dato, total_sin_iva):
     por item en Detalle), asi ambas hojas quedan siempre consistentes entre si."""
     iva = dato.get("iva")
     if iva is None:
-        iva = round(total_sin_iva * 0.19) if dato.get("tipo_documento") in ("Factura", "Guía de Despacho") else 0
+        iva = (
+            round(total_sin_iva * TASA_IMPUESTO)
+            if dato.get("tipo_documento") in ("Factura", "Guía de Despacho") else 0
+        )
     return iva
 
 
@@ -1609,7 +1612,7 @@ def escribir_fila_master(ws_master, fila, n_ref, dato, info_archivo, color):
     iva_cell = ws_master.cell(row=fila, column=12)
     iva_cell.number_format = MONEY_FORMAT
     if dato.get("tipo_documento") in ("Factura", "Guía de Despacho") and total_sin_iva > 0:
-        esperado = round(total_sin_iva * 0.19)
+        esperado = round(total_sin_iva * TASA_IMPUESTO)
         if abs(iva - esperado) > 1:
             iva_cell.font = ROJO_FONT
 
@@ -1860,7 +1863,7 @@ def verificar_aritmetica(datos):
         if iva is None:
             continue
         if d.get("tipo_documento") in ("Factura", "Guía de Despacho") and total_sin_iva > 0:
-            esperado = round(total_sin_iva * 0.19)
+            esperado = round(total_sin_iva * TASA_IMPUESTO)
             if abs(iva - esperado) > 1:
                 inconsistencias.append({
                     "archivo": d["archivo"], "n_documento": d["n_documento"],
@@ -2569,7 +2572,7 @@ def main():
     else:
         print("   Sin hallazgos.")
 
-    print("\n2. INCONSISTENCIAS ARITMETICAS (Neto vs IVA 19%)")
+    print(f"\n2. INCONSISTENCIAS ARITMETICAS (Neto vs {NOMBRE_IMPUESTO_PCT})")
     if inconsistencias:
         def _fmt_inconsistencia(inc):
             texto = (f"   * Doc {inc['n_documento']} ({inc['archivo']}): "
