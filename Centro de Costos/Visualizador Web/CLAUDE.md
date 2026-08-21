@@ -33,16 +33,16 @@ Centro de Costos/Visualizador Web/
   datos**, solo cuando cambie el diseño/estructura.
 - **Datos incrustados (embebidos), no via `fetch`** — a diferencia de lo que
   sugiere el maestro (`../../Visualizador Web/CLAUDE.md` § Datos) para un
-  eventual hosting en GitHub Pages, hoy el snapshot va **incrustado como
-  base64** dentro del propio HTML en vez de cargarse en runtime desde
-  `data/*.json`. Motivo: el canal de consumo real hoy es un **Claude
-  Artifact privado** (no GitHub Pages — el punto de control de acceso del
-  maestro sigue sin resolverse), y los Artifacts corren en un sandbox que no
-  permite `fetch` a archivos locales — necesitan un único archivo
-  autocontenido. Si más adelante se decide publicar en GitHub Pages, migrar
-  a `fetch` contra `data/centro-de-costos.json` es directo (el snapshot ya
-  existe con ese formato); por ahora el snapshot en `data/` es solo un
-  subproducto auditable del build, el HTML no lo lee.
+  hosting en GitHub Pages, el snapshot va **incrustado como base64** dentro
+  del propio HTML en vez de cargarse en runtime desde `data/*.json`.
+  Herencia de cuando el canal de consumo era un **Claude Artifact privado**:
+  su sandbox no permitía `fetch` a archivos locales, necesitaba un único
+  archivo autocontenido. La migración a GitHub Pages (2026-08-05) no cambió
+  este mecanismo, solo dónde se publica el archivo ya armado. Migrar a
+  `fetch` contra `data/centro-de-costos.json` sigue siendo directo (el
+  snapshot ya existe con ese formato) si en algún momento se decide
+  hacerlo; por ahora el snapshot en `data/` es solo un subproducto auditable
+  del build, el HTML no lo lee.
 - **Gate de contraseña** (pedido del usuario 2026-07-19): pantalla previa
   que pide contraseña antes de mostrar cualquier dato (acepta variantes de
   mayúsculas/tilde). Es una barrera del lado del cliente, **no seguridad
@@ -51,11 +51,12 @@ Centro de Costos/Visualizador Web/
   `template.html`; los datos van en base64 (no JSON plano) como capa extra
   liviana, pero siguen siendo recuperables por cualquiera con el HTML —
   no lo trates como control de acceso real.
-- **Publicación**: se sube como Claude Artifact (privado por defecto) desde
-  una sesión de Claude Code, apuntando siempre al **mismo link** — nunca se
-  genera uno nuevo (pedido explícito del usuario). El link real vive en
-  [MEMORY.md del skill](../.claude/skills/Registro_Centro_de_Costos/MEMORY.md),
-  no en este archivo.
+- **Publicación**: GitHub Pages, único canal desde la migración del
+  2026-08-05 — los Claude Artifacts privados que se usaban antes ya no se
+  actualizan (pedido explícito del usuario, 2026-08-19). Receta y comandos
+  exactos en [`../../Visualizador Web/CLAUDE.md`](../../Visualizador%20Web/CLAUDE.md)
+  § Hosting; URL fija:
+  `https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/`.
 - **Decisiones de saneado ya tomadas** (resuelven los puntos que este
   archivo dejaba abiertos):
   - Proveedor: tag corto en la tabla; razón social completa visible solo al
