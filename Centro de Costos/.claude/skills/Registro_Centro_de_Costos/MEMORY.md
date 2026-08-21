@@ -223,6 +223,23 @@ módulos), no en este archivo.
   similares), el valor correcto es 0, no 19% del Neto. Precedente: boleta
   Tur Bus N° 0000162354 (`UMAG-009`).
 
+## Perú (`--pais PE`)
+
+- **Los documentos de Perú están dirigidos a "QUEMPIN SAC"** (pedido del
+  usuario 2026-08-21) — entidad legal distinta de "QUEMPIN SpA" (Chile), que
+  sigue siendo la razón social por defecto. Al extraer/verificar un
+  documento para `datos_extraidos_peru.json`, confirmar que el destinatario
+  impreso en la factura/boleta sea "QUEMPIN SAC" — un documento dirigido a
+  otra razón social probablemente no corresponde a este centro de costos.
+  Ver `PAISES["PE"]["razon_social"]` en `auditor_centro_costos.py`, usado en
+  el banner de consola de `run --pais PE`.
+- Los documentos de Perú se guardan en
+  `Sitio de comunicación - Centro de Costos 1/Facturas y Boletas/Perú/<Proyecto>/`
+  (paralelo a `.../Chile/<Proyecto>/` para los documentos chilenos, ambos
+  dentro de la misma carpeta compartida) — ver
+  `docs/superpowers/specs/2026-08-21-peru-expansion-design.md` (raíz del
+  repo) para la arquitectura completa.
+
 ## Criterios de clasificación
 
 - **Por defecto, asumir Factura como `tipo_documento`** (pedido 2026-07-17):
