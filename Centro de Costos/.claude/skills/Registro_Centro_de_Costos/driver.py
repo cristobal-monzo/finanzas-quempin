@@ -51,6 +51,18 @@ sys.dont_write_bytecode = True
 import auditor_centro_costos as acc  # noqa: E402
 
 
+def _extraer_pais(argv):
+    """Busca '--pais VALOR' en cualquier posicion de argv y lo separa del
+    resto -- devuelve (pais, argv_sin_ese_flag). Default 'CL' si no aparece."""
+    argv = list(argv)
+    if "--pais" in argv:
+        idx = argv.index("--pais")
+        pais = argv[idx + 1]
+        del argv[idx:idx + 2]
+        return pais, argv
+    return "CL", argv
+
+
 def _imprimir_lista_truncada(items, formatear, limite=15):
     """Imprime como maximo 'limite' items formateados; si hay mas, resume el
     resto en 1 linea. No cambia ningun dato, solo cuanto texto se imprime."""
@@ -80,11 +92,12 @@ def mostrar_preview_renombrados(filas_master, reconciliacion):
         _imprimir_lista_truncada(no_encontrados, lambda p: f"  - {p['n_ref']}")
 
 
-def cmd_status():
+def cmd_status(pais="CL"):
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    acc.configurar_pais(pais)
 
     print("=" * 70)
-    print("  ESTADO CENTRO DE COSTOS (solo lectura, no escribe nada)")
+    print(f"  ESTADO CENTRO DE COSTOS - {pais} (solo lectura, no escribe nada)")
     print("=" * 70)
 
     print(f"\nRaíz documentos: {acc.RAIZ_DOCS}")
@@ -149,7 +162,7 @@ def cmd_status():
     escribibles = len(pendientes) - len(sin_datos)
     print(f"\nSi corres 'run' ahora se registrarían: {escribibles} documento(s).")
 
-    print("\nVerificación aritmética sobre TODO datos_extraidos.json (Neto vs IVA 19%):")
+    print(f"\nVerificación aritmética sobre TODO datos_extraidos.json (Neto vs {acc.NOMBRE_IMPUESTO_PCT}):")
     inconsistencias = acc.verificar_aritmetica(datos_json)
     if inconsistencias:
         for inc in inconsistencias:
@@ -161,7 +174,7 @@ def cmd_status():
     mostrar_preview_renombrados(filas_master, reconciliacion)
 
     print("\nCambios manuales detectados (preview, no se escribe nada):")
-    ruta_backup_anterior = acc.backup_mas_reciente()
+    ruta_backup_anterior = acc.backup_mas_reciente(ruta_backups=acc.RUTA_BACKUPS)
     if ruta_backup_anterior is not None and ws_master is not None:
         wb_anterior = openpyxl.load_workbook(str(ruta_backup_anterior), data_only=False)
         detectadas = acc.detectar_correcciones_manuales(wb_anterior, wb)
@@ -182,12 +195,13 @@ def cmd_status():
     return 0
 
 
-def cmd_run():
-    acc.main()
+def cmd_run(pais="CL"):
+    acc.main(pais=pais)
     return 0
 
 
-def cmd_confirmar(args):
+def cmd_confirmar(args, pais="CL"):
+    acc.configurar_pais(pais)
     if not args:
         acc.confirmar_correcciones(None)
     elif args == ["--todos"]:
@@ -197,8 +211,13 @@ def cmd_confirmar(args):
     return 0
 
 
-def cmd_visualizador():
-    visualizador_dir = ROOT / "Visualizador Web"
+def cmd_visualizador(pais="CL"):
+    acc.configurar_pais(pais)
+    visualizador_dir = acc.RAIZ_VISUALIZADOR_WEB
+    ruta_build_script = visualizador_dir / "build_visualizador.py"
+    if not ruta_build_script.exists():
+        print(f"[INFO] Visualizador Web de {pais} aún no implementado -- nada que regenerar.")
+        return 0
     sys.path.insert(0, str(visualizador_dir))
     sys.dont_write_bytecode = True
     import build_visualizador as bv  # noqa: E402
@@ -208,16 +227,19 @@ def cmd_visualizador():
 def main():
     comandos = ("status", "run", "confirmar", "visualizador")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
-        print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador]")
+        print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador] [--pais CL|PE]")
         return 2
 
-    if sys.argv[1] == "status":
-        return cmd_status()
-    if sys.argv[1] == "confirmar":
-        return cmd_confirmar(sys.argv[2:])
-    if sys.argv[1] == "visualizador":
-        return cmd_visualizador()
-    return cmd_run()
+    comando = sys.argv[1]
+    pais, resto = _extraer_pais(sys.argv[2:])
+
+    if comando == "status":
+        return cmd_status(pais=pais)
+    if comando == "confirmar":
+        return cmd_confirmar(resto, pais=pais)
+    if comando == "visualizador":
+        return cmd_visualizador(pais=pais)
+    return cmd_run(pais=pais)
 
 
 if __name__ == "__main__":
