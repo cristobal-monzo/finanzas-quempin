@@ -123,9 +123,11 @@ abrirlo para entender ese origen, no para trabajar en el módulo día a día.
 │   └── Gastos Generales/
 ├── Sitio de comunicación - Centro de Costos 1/  # acceso directo de OneDrive (SharePoint) — fuente oficial de documentos desde 2026-07-17
 │   ├── Facturas y Boletas/                #   el script LEE los documentos pendientes de aquí (RAIZ_DOCS), no de la carpeta local de arriba
-│   │   ├── UMAG/
-│   │   ├── Cesfam Limache/
-│   │   └── ...
+│   │   ├── Chile/                        #   split por país agregado 2026-08-21 — todos los proyectos actuales viven aquí
+│   │   │   ├── UMAG/
+│   │   │   ├── Cesfam Limache/
+│   │   │   └── ...
+│   │   └── Perú/                         #   nueva, para documentos de Perú (ver Peru/Centro de Costos/ más abajo en la raíz del repo)
 │   └── Centro de Costos.xlsx              #   reflejo de solo lectura: el script lo sobrescribe con una copia de Excel/Centro de Costos.xlsx en cada 'run'
 ├── Sistema/
 │   ├── auditor_centro_costos.py           # script principal del módulo Centro de Costos
@@ -154,6 +156,8 @@ Renombrado el 2026-07-17: `Documentos Centro de Costos/` pasó a llamarse
 `Facturas y Boletas/` (mismo contenido, mismo rol).
 
 `Facturas y Boletas/<Proyecto>/` es la unidad de organización: cada subcarpeta de primer nivel es un **proyecto/centro de costos**. Agregar un proyecto nuevo es tan simple como crear la subcarpeta y dejar caer los documentos ahí — el script los detecta solo (aunque para que el `N° Ref.` tenga un prefijo elegido por ti, agrégalo a `PREFIJOS_PROYECTO` en `Sistema/auditor_centro_costos.py`; si no, usa uno derivado automático y avisa por consola).
+
+**Split por país (2026-08-21)**: `Sitio de comunicación - Centro de Costos 1/Facturas y Boletas/` ahora tiene dos subcarpetas de primer nivel, `Chile/` y `Perú/` — el `<Proyecto>/` de arriba vive un nivel más adentro, dentro de la que corresponda. Este mismo script (parametrizado por `pais="CL"|"PE"`, ver `configurar_pais()` en `Sistema/auditor_centro_costos.py`) lee de una u otra según el país activo; Perú no tiene código propio, solo su propio Excel/JSON/respaldos en `Peru/Centro de Costos/` (carpeta hermana a esta, en la raíz de `Finanzas QUEMPIN/`). Ver `docs/superpowers/specs/2026-08-21-peru-expansion-design.md` (raíz del repo) para la arquitectura completa.
 
 ### Sitio de comunicación (fuente compartida, desde 2026-07-17)
 
