@@ -66,6 +66,33 @@ def test_extraer_indice_saneado_incluye_todos_los_items(tmp_path, monkeypatch):
     assert data["sin_uf_count"] == 0
 
 
+def test_extraer_indice_saneado_marca_fuente_mindicador_cuando_responde(tmp_path, monkeypatch):
+    ruta = _wb_con_dos_items(tmp_path)
+    monkeypatch.setattr(bv.ch, "consultar_uf_api", lambda fecha: 36000.0)
+    monkeypatch.setattr(bv.ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+
+    data = bv.extraer_indice_saneado(ruta, fecha_hoy=date(2026, 7, 20))
+
+    assert data["uf_fuente"] == "mindicador.cl"
+
+
+def test_extraer_indice_saneado_usa_uf_manual_si_mindicador_falla(tmp_path, monkeypatch):
+    ruta = _wb_con_dos_items(tmp_path)
+
+    def _falla(fecha):
+        raise bv.ch.UFNoDisponibleError("timeout")
+    monkeypatch.setattr(bv.ch, "consultar_uf_api", _falla)
+    monkeypatch.setattr(bv.ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+
+    data = bv.extraer_indice_saneado(
+        ruta, fecha_hoy=date(2026, 7, 20),
+        uf_manual=39200.5, fuente_manual="Banco Central de Chile, 20-07-2026",
+    )
+
+    assert data["uf_hoy"] == 39200.5
+    assert data["uf_fuente"] == "Banco Central de Chile, 20-07-2026"
+
+
 def test_extraer_indice_saneado_conserva_categoria_proyecto_proveedor(tmp_path, monkeypatch):
     ruta = _wb_con_dos_items(tmp_path)
     monkeypatch.setattr(bv.ch, "consultar_uf_api", lambda fecha: 36000.0)

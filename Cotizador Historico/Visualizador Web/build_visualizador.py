@@ -34,29 +34,32 @@ RUTA_DATA_JSON = RAIZ / "data" / "cotizador-historico.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
 
-def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None):
+def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None, uf_manual=None, fuente_manual=None):
     """Lee Detalle+Master (via cargar_items_detalle) y reajusta TODO el
     catalogo indexable a la UF de hoy (via reajustar_todos), pedida UNA
     sola vez -- nunca una por item. fecha_hoy es inyectable para tests
-    (default: date.today())."""
+    (default: date.today()). uf_manual/fuente_manual son el fallback cuando
+    mindicador.cl no responde (ver ch.obtener_uf_hoy) -- se ignoran si
+    mindicador.cl si responde."""
     hoy = fecha_hoy or date.today()
     items = ch.cargar_items_detalle(ruta_excel)
     excluidos_count = sum(1 for it in items if it["excluido_motivo"] is not None)
 
-    uf_hoy = ch.consultar_uf_api(hoy)
+    uf_hoy, uf_fuente = ch.obtener_uf_hoy(hoy, uf_manual=uf_manual, fuente_manual=fuente_manual)
     reajustados, sin_uf_count = ch.reajustar_todos(items, uf_hoy)
 
     return {
         "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
         "uf_hoy": uf_hoy,
         "uf_fecha": datetime.now().strftime("%d-%m-%Y %H:%M"),
+        "uf_fuente": uf_fuente,
         "excluidos_count": excluidos_count,
         "sin_uf_count": sin_uf_count,
         "items": reajustados,
     }
 
 
-def build():
+def build(uf_manual=None, fuente_manual=None):
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     except Exception:
@@ -68,7 +71,7 @@ def build():
         print(f"[ERROR] No existe la plantilla: {RUTA_TEMPLATE}")
         return 1
 
-    data = extraer_indice_saneado(RUTA_EXCEL)
+    data = extraer_indice_saneado(RUTA_EXCEL, uf_manual=uf_manual, fuente_manual=fuente_manual)
 
     RUTA_DATA_JSON.parent.mkdir(parents=True, exist_ok=True)
     with io.open(RUTA_DATA_JSON, "w", encoding="utf-8") as f:
@@ -90,6 +93,8 @@ def build():
 
     print(f"OK — {len(data['items'])} referencias indexadas, "
           f"UF utilizada ${data['uf_hoy']:,.2f}".replace(",", "."))
+    if data["uf_fuente"] != "mindicador.cl":
+        print(f"[AVISO] mindicador.cl no respondio -- se uso UF manual (fuente: {data['uf_fuente']}).")
     print(f"Excluidos (sin fecha/precio valido, o Notas de Credito/devoluciones): {data['excluidos_count']}")
     print(f"Sin UF disponible para su fecha de compra: {data['sin_uf_count']}")
     print(f"Snapshot: {RUTA_DATA_JSON}")

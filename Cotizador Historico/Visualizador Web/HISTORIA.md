@@ -94,3 +94,52 @@ reemplazaron por el explorador de carpetas de 3 niveles que documenta
   actualizado) — pedido explícito del usuario. La fecha de generación y la
   UF utilizada se sacaron del texto copiable a `#exportMeta` aparte, para
   que la caja de copia sea solo la tabla.
+
+## 2026-08-19 — Alimentos, Calefacción y Control, y fix de cobertura PPR/Transporte/Seguridad
+
+Pedido explícito del usuario: agrupar toda la comida/bebida en una sola
+categoría "Alimentos" y asegurar que los tubos PPR cayeran en "Piping PPR".
+Un análisis de los 348 ítems reales del catálogo (script puntual, no
+versionado) encontró que el clasificador ya sabía asignar "Piping PPR" a
+codos/tees/coplas PPR, pero **`GRUPOS_PIPING` nunca incluyó la palabra
+"tubería"** — así que los ítems reales `"Tubería PPR Beta ..."` (los tubos
+propiamente tales) y `"Tapagorro PPR ..."` caían en el catch-all "Otros /
+Servicios" en vez de "Piping PPR". Se agregaron `tuberia`/`tubería`/
+`tapagorro` a `GRUPOS_PIPING` — bug real, no solo cobertura nueva.
+
+El mismo análisis (revisando los 90 ítems que caían en el catch-all)
+encontró tres oportunidades más, aprobadas por el usuario junto con las dos
+anteriores como una sola restructura:
+
+- **Categoría nueva "Alimentos"** (`GRUPOS_ALIMENTOS`, ícono 🍽️): antes la
+  comida/bebida vivía repartida en dos etiquetas manuales del Excel
+  (`Alimentación` / `Viáticos-Alojamiento`, ninguna de las 5 categorías
+  oficiales del dropdown de Centro de Costos) y sin estructura propia en el
+  árbol — 11 ítems reales (sandwich, café, muffin, agua, leche, colación,
+  Red Bull, etc.) reclasificados. `agua` se agregó con espacio final
+  (`'agua '`) a propósito: sin el espacio matchea también "aguarrás"
+  (`GRUPOS_CONSUMIBLE_OTRO`), que no tiene nada que ver.
+- **Categoría nueva "Calefacción y Control"** (`GRUPOS_CALEFACCION`, ícono
+  🌡️): cluster real de 8 ítems (presostato, termostato, termocupla, sonda,
+  contactor, caldera, radiador) lo bastante grande y homogéneo para
+  justificar categoría propia en vez de forzarlo en Materiales Eléctricos u
+  Otros/Servicios.
+- **Cobertura ampliada de Transporte y Seguridad (EPP)**: ambas categorías
+  ya existían y el dato crudo de Centro de Costos ya marcaba esos ítems
+  como `Transporte`/`Despachos`/`Seguridad Industrial`, pero al
+  clasificador JS le faltaban las palabras clave reales — "transporte" (la
+  propia categoría no se detectaba a sí misma), "estacionamiento",
+  "despacho", "envío", "encomienda", "embarque" (7 ítems); "cofia", "cubre
+  calzado", "visor", "plantilla", "desinfectante" (5 ítems). La subcategoría
+  de Transporte "Fletes" se renombró a "Despachos y Fletes" (mismo grupo
+  conceptual) y se agregó "Estacionamiento" como subcategoría propia.
+
+El resto del catch-all (~25 ítems: policarbonato, moldura, silicona, lápiz,
+pilas, etc.) se dejó **sin tocar** a propósito — demasiado heterogéneo,
+forzar una categoría por 1-2 ítems sería ruido en vez de señal (mismo
+criterio que ya aplicaba la política de "ítems que el clasificador no
+reconoce" documentada en `CLAUDE.md`). Verificado con un script puntual que
+comparó clasificación vieja vs. nueva sobre los 334 ítems distintos del
+catálogo real: 40 cambios, todos saliendo del catch-all hacia la categoría
+correcta, cero regresiones (ningún ítem que era visible quedó oculto por
+`requiereMaterial`/`requiereMedida`).

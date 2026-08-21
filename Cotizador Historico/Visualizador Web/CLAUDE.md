@@ -81,6 +81,18 @@ DD-MM-AAAA HH:MM"). Refrescarla requiere volver a correr
 `driver.py visualizador` y republicar — mismo mecanismo que usa Centro de
 Costos para su "última actualización de los datos".
 
+**Fallback si `mindicador.cl` no responde al momento del build** (agregado
+2026-08-20, ver `../CLAUDE.md` § Precauciones para el mecanismo completo):
+`build_visualizador.py` acepta `uf_manual`/`fuente_manual` (el driver los
+expone como `--uf-manual`/`--uf-fuente`), un valor que el agente busca en
+internet solo cuando mindicador.cl falla — mindicador.cl sigue siendo la
+fuente prioritaria. Cuando se usa ese fallback, el snapshot trae
+`"uf_fuente"` con el texto de la fuente (en vez de `"mindicador.cl"`) y el
+header/KPI/pie de exportación del visualizador le agregan el sufijo
+"· fuente: &lt;texto&gt;" junto a "UF utilizada" (`ufFuenteSufijo()` en
+`template.html`) — transparencia obligatoria: quien vea el dashboard debe
+poder distinguir un valor manual de uno de mindicador.cl.
+
 ## Branding y gate — reutilizados de Centro de Costos
 
 - Mismos 4 colores oficiales del manual de marca QUEMPIN, verificados en
@@ -247,7 +259,10 @@ Cada paso solo se evalúa si el anterior no calzó:
    tiene prioridad incluso sobre Válvulas y Control/Bombas. Requiere medida
    igual que el resto de piping.
 3. `GRUPOS_PIPING` (cobre/bronce/galvanizado/PPR — el inoxidable ya se
-   interceptó en el paso 2).
+   interceptó en el paso 2). Incluye "tubería"/"tapagorro" desde 2026-08-19
+   — antes solo estaban ahí los accesorios (codo, tee, copla, etc.) y las
+   tuberías/tapagorros PPR reales caían en el catch-all "Otros / Servicios"
+   en vez de "Piping PPR" (bug real, no solo cobertura nueva).
 4. **`GRUPOS_SOLDADURA`** ("Soldadura" 🔥): gas MAPP, soldadura, fundente,
    electrodos, varillas — no exige medida.
 5. Válvulas y Control, Bombas y Equipos Mecánicos, Herramientas Eléctricas,
@@ -259,18 +274,35 @@ Cada paso solo se evalúa si el anterior no calzó:
    "eléctrico".
 7. **`GRUPOS_QUIMICOS`** ("Productos Químicos" 🧪): Solutech,
    tapagotera(s).
-8. **`GRUPOS_TRANSPORTE`** ("Transporte" 🚚): flete, arriendo, peaje,
-   combustible/gasolina/bencina/petróleo/diesel/parafina, pasaje,
-   equipaje. La subcategoría la decide `subcategoriaTransporte`:
-   Combustible (agrupa el ítem del combustible con su impuesto específico
-   asociado), Peajes, Arriendo de Vehículos, Pasajes y Equipaje, Fletes, o
-   "Otros Gastos de Transporte".
-9. Consumibles con medida obligatoria (pernos, tornillos, remaches,
-   autoperforantes, brocas) y sin medida (esmalte, pintura, rodillo,
-   brocha, aguarrás, espuma, cinta, lubricante, bolsas, libros,
-   marcadores).
-10. Seguridad (EPP, incluye "overol").
-11. "Otros / Servicios" como categoría de respaldo final.
+8. **`GRUPOS_CALEFACCION`** ("Calefacción y Control" 🌡️, agregada
+   2026-08-19): presostato, termostato, termocupla, sonda, contactor,
+   caldera, radiador — cluster real de 8 ítems, evaluada antes que
+   Transporte para no perder items que además dijeran algo transportable.
+9. **`GRUPOS_TRANSPORTE`** ("Transporte" 🚚): flete, arriendo, peaje,
+   combustible/gasolina/bencina/petróleo/diesel/parafina, pasaje, equipaje,
+   transporte, estacionamiento, despacho, envío, encomienda, embarque
+   (estas últimas seis agregadas 2026-08-19 — la categoría ya existía y el
+   dato crudo de Centro de Costos ya los marcaba como Transporte/Despachos,
+   pero al clasificador le faltaban las palabras). La subcategoría la
+   decide `subcategoriaTransporte`: Combustible (agrupa el ítem del
+   combustible con su impuesto específico asociado), Peajes, Arriendo de
+   Vehículos, Pasajes y Equipaje, Despachos y Fletes (flete/despacho/envío/
+   encomienda), Estacionamiento, o "Otros Gastos de Transporte" (incluye
+   "embarque", sin subcategoría propia).
+10. **`GRUPOS_ALIMENTOS`** ("Alimentos" 🍽️, agregada 2026-08-19): toda la
+    comida/bebida en una sola categoría — sandwich, café, muffin, agua
+    (con espacio final para no matchear "aguarrás"), leche, bebida,
+    colación, Red Bull, alimentación, ingrediente, almuerzo, desayuno,
+    restaurant(e), supermercado, panadería. Antes repartida sin estructura
+    propia entre las etiquetas manuales `Alimentación`/`Viáticos-
+    Alojamiento` del Excel de Centro de Costos.
+11. Consumibles con medida obligatoria (pernos, tornillos, remaches,
+    autoperforantes, brocas) y sin medida (esmalte, pintura, rodillo,
+    brocha, aguarrás, espuma, cinta, lubricante, bolsas, libros,
+    marcadores).
+12. Seguridad (EPP, incluye "overol", y desde 2026-08-19 cofia, cubre
+    calzado, visor, plantilla, desinfectante).
+13. "Otros / Servicios" como categoría de respaldo final.
 
 ## Carrito de cotización — garantía de no-persistencia
 
@@ -320,13 +352,16 @@ copia sea solo la tabla que se pega en Excel.
 
 ## Publicación
 
-Mismo mecanismo que Centro de Costos: publicar `build/index.html` como
-Claude Artifact privado, actualizando siempre el mismo link en corridas
-sucesivas (registrar el link en el `MEMORY.md` del skill
-`Cotizador_Historico` una vez publicado por primera vez). El punto abierto
-de control de acceso del doc maestro (`../../Visualizador Web/CLAUDE.md`)
-sigue sin resolverse — el gate de contraseña es una barrera débil, no
-seguridad real.
+Mismo mecanismo que Centro de Costos: GitHub Pages, único canal desde la
+migración del 2026-08-05 — el Claude Artifact privado que se usaba antes ya
+no se actualiza (pedido explícito del usuario, 2026-08-19). Receta y
+comandos exactos en [`../../Visualizador Web/CLAUDE.md`](../../Visualizador%20Web/CLAUDE.md)
+§ Hosting; URL fija:
+`https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/`.
+El punto de control de acceso quedó resuelto en esa misma migración (repo
+público + el mismo gate de contraseña, ver § "Punto de control de acceso"
+del doc maestro) — el gate sigue siendo una barrera débil, no seguridad
+real.
 
 ## Fuera de alcance de esta versión
 
