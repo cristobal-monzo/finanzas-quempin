@@ -1,6 +1,6 @@
 ---
 name: Actualizar_Finanzas
-description: Use when the user wants ALL of Finanzas QUEMPIN brought up to date at once — "actualiza las finanzas", "actualiza todo", "corre todo el pipeline", "deja todo al día" — or wants a single read-only status across every module. Runs Centro de Costos (which chains Análisis Financiero and the CC/AF dashboards), then regenerates the Cotizador Histórico dashboard (which nothing else invokes) and reports which PDF reports went stale. Use /Registro_Centro_de_Costos or /Actualizar_CC instead when the user explicitly names only Centro de Costos.
+description: Use when the user types "/Actualizar_Finanzas" explicitly. If the user instead describes the same intent in natural language without the leading "/" — "actualiza las finanzas", "actualiza todo", "corre todo el pipeline", "deja todo al día", or a read-only status across every module — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Runs Centro de Costos (which chains Análisis Financiero and the CC/AF dashboards), then regenerates the Cotizador Histórico dashboard (which nothing else invokes) and reports which PDF reports went stale. Use /Registro_Centro_de_Costos or /Actualizar_CC instead when the user explicitly names only Centro de Costos.
 ---
 
 # Actualizar Finanzas (orquestador de todos los módulos)
@@ -33,6 +33,17 @@ openpyxl (ver `requirements.txt`).
   2. Cotizador Histórico `visualizador` — el eslabón que faltaba.
   3. Reportes PDF `status` — lista los que quedaron desactualizados.
 
+  **Antes de correr este `run`**, si el `status` de arriba mostró
+  pendientes de Centro de Costos sin datos en `datos_extraidos.json`, este
+  driver los corre como subproceso y no puede preguntarle nada al usuario a
+  mitad de camino — completar esas entradas es responsabilidad del agente
+  primero, siguiendo el Paso 2 (interactivo, preguntas agrupadas por
+  proyecto/documento) de
+  [Registro_Centro_de_Costos/SKILL.md](../../../Centro%20de%20Costos/.claude/skills/Registro_Centro_de_Costos/SKILL.md)
+  (pedido 2026-08-18) — igual que hacen `/Actualizar_Base_de_Datos` y
+  `/Actualizar_CC`. Si se salta este paso, esos documentos simplemente
+  seguirán apareciendo como pendientes después de `run`.
+
 ## Paso obligatorio tras `run`: publicar los 3 tableros
 
 **Regenerar los `build/index.html` en disco NO cambia lo que ve la gente.**
@@ -48,13 +59,10 @@ PARA PUBLICAR"** con, por cada tablero: si se regeneró en esta corrida, la
 ruta absoluta de su `index.html`, su URL pública fija, y la ruta destino
 dentro del worktree `.worktrees/gh-pages/`.
 
-Para cada uno que corresponda publicar:
-```
-cp "<Archivo de arriba>" "<Copiar a: de arriba>"
-git -C ".worktrees/gh-pages" add <subruta>/index.html
-git -C ".worktrees/gh-pages" commit -m "actualizar tablero de <módulo>"
-git -C ".worktrees/gh-pages" push
-```
+Para cada uno que corresponda publicar, usa la receta de
+[`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
+§ Hosting (única copia de esos comandos) con los valores que imprimió el
+driver arriba (columnas "Archivo"/"Copiar a") — no repitas la receta acá.
 Las URLs son estructurales (no opacas como los links de Artifact) — no hay
 que "cuidar" nada especial entre publicaciones, solo confirmar que la
 subruta coincida con la que imprimió el driver.
@@ -75,6 +83,11 @@ Criterio de cuándo publicar cada uno:
   corre el agente (o el usuario) de forma explícita, no escondida dentro
   del proceso del driver — por eso el driver deja todo listo e impreso, y
   la publicación sigue la sección de arriba.
+- **No es la única forma de actualizar datos sin publicar.** Si el usuario
+  solo quiere Centro de Costos y quiere dejar la publicación para después,
+  [`/Actualizar_Base_de_Datos`](../../../Centro%20de%20Costos/.claude/skills/Actualizar_Base_de_Datos/SKILL.md)
+  es más directo — este orquestador de todas formas nunca publica solo,
+  pero sí corre y reporta los 3 módulos, no solo uno.
 
 ## Cómo reportar al usuario
 

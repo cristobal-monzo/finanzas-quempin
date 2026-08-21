@@ -109,6 +109,28 @@ creado para esto — `git worktree list` lo muestra), `git add`/`commit`/
 URL de cada tablero es estructural (depende solo de la subruta), así que
 tampoco hace falta guardar/leer un link en el `MEMORY.md` de cada skill.
 
+| Módulo | Subruta | Origen (`build/index.html`) |
+|---|---|---|
+| Centro de Costos | `centro-de-costos` | `Centro de Costos/Visualizador Web/build/index.html` |
+| Análisis Financiero | `analisis-financiero` | `Sistema Analisis Financiero/Visualizador Web/build/index.html` |
+| Cotizador Histórico | `cotizador-historico` | `Cotizador Historico/Visualizador Web/build/index.html` |
+
+```
+cp "<Origen de la tabla>" ".worktrees/gh-pages/<subruta>/index.html"
+git -C ".worktrees/gh-pages" add <subruta>/index.html
+git -C ".worktrees/gh-pages" commit -m "actualizar tablero de <módulo>"
+git -C ".worktrees/gh-pages" push
+```
+
+**Esta es la única copia de esta receta** (consolidado 2026-08-18 — antes
+estaba repetida casi textual en `Actualizar_CC`, `Actualizar_AF`,
+`Actualizar_Cotizador`, `Actualizar_Finanzas` y en el `MEMORY.md` de
+`Registro_Centro_de_Costos`, con el riesgo real de que una futura migración
+de hosting quedara aplicada a medias — ya pasó una vez, con la migración de
+Artifacts a GitHub Pages). Esos skills solo enlazan acá para el "cómo" —
+si necesitas cambiar la mecánica de publicación, cámbiala una sola vez,
+en esta sección.
+
 ## Punto de control de acceso — resuelto (2026-08-05), con este trade-off explícito
 
 **GitHub Pages no ofrece un sitio realmente privado fuera de GitHub

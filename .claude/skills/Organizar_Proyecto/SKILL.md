@@ -1,6 +1,6 @@
 ---
 name: Organizar_Proyecto
-description: Use when a project folder under this workspace (Centro de Costos, Flujo de Caja, Cotizador Historico, or any future module) has grown cluttered at its root and needs reorganizing into a navigable folder structure — e.g. "reorganiza las carpetas de X", "ordena esta carpeta", "quiero una carpeta exclusiva para el Excel". Also use before moving any files whose paths are referenced by code (imports, sys.path, hardcoded paths, .gitignore entries), since moving them blind breaks the scripts that use them.
+description: Use when the user types "/Organizar_Proyecto" explicitly. If the user instead describes the same intent in natural language without the leading "/" — e.g. "reorganiza las carpetas de X", "ordena esta carpeta", "quiero una carpeta exclusiva para el Excel" — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Applies when a project folder under this workspace (Centro de Costos, Flujo de Caja, Cotizador Historico, or any future module) has grown cluttered at its root and needs reorganizing into a navigable folder structure. Also use before moving any files whose paths are referenced by code (imports, sys.path, hardcoded paths, .gitignore entries), since moving them blind breaks the scripts that use them.
 ---
 
 # Organizar Proyecto
