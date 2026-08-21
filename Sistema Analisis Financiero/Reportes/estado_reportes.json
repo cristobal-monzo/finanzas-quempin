@@ -1,14 +1,58 @@
 {
   "categoria:I+D+i": {
-    "generado_el": "2026-07-26",
-    "hash": "20e291b31015a26eb61ba60b9ab8cce6f573ad42e01892840fb06d13be331944"
+    "generado_el": "2026-08-20",
+    "hash": "16eab6b18cad16cdfdb5eace49ea19dabef0ef1c2c0d28e7559a27936474b26e"
+  },
+  "categoria:Mantenimiento": {
+    "generado_el": "2026-08-20",
+    "hash": "8ee254abcc8f55ef12b83f5789290bf33a1f82b036068c090fd335a80f9d7423"
+  },
+  "categoria:Montaje": {
+    "generado_el": "2026-08-20",
+    "hash": "794f77560b7832456e7e205bd9da2c9ee8b5f825893f50b5b12c43a89eacde6b"
+  },
+  "cliente:Caldera Valdivia": {
+    "generado_el": "2026-08-20",
+    "hash": "2e85e0e6970146464a1a3199c90e5a7e7203795258e2f02d8eeaf0914a0de7cf"
+  },
+  "cliente:Cesfam Constitución": {
+    "generado_el": "2026-08-20",
+    "hash": "1d64b9d06f886a2818d500ab006355ab5f164e378d2cf5ce1bfb830667d1c9b1"
+  },
+  "cliente:Cremación Concepción": {
+    "generado_el": "2026-08-20",
+    "hash": "7d03007c67ea5d5882afbf184aa52f04f9ad706746e92e2ab46e0b2109188f6d"
+  },
+  "cliente:Microturbina LER": {
+    "generado_el": "2026-08-20",
+    "hash": "cba6a68641616272938c2c3d4473fd6d2c84a588f1fb0e47eb1e5ffc7ee51dc5"
   },
   "cliente:UMAG": {
     "generado_el": "2026-07-26",
     "hash": "e716a1f55e98ea5ef4af50128c5766c4132e75052d1b9c4de0c281ee4dc172bb"
   },
+  "cliente:Universidad de Magallanes": {
+    "generado_el": "2026-08-20",
+    "hash": "7cb0ec0d0746f154c877dc9e0c47be5ed9bc9d6c5a40da99b989d8f49b8a9964"
+  },
+  "proyecto:CCON": {
+    "generado_el": "2026-08-20",
+    "hash": "c8ecf5c7eb3cf6e6bbe698e18b5fe0337509008fe74889a7d7b5513d7ce48406"
+  },
+  "proyecto:CREM": {
+    "generado_el": "2026-08-20",
+    "hash": "ed55051093642eca76855a0f58ea06d874ec2447eeb5799a08c26ef37861465d"
+  },
+  "proyecto:CVAL": {
+    "generado_el": "2026-08-20",
+    "hash": "de0e7d4ac94c0392a1b5bb434582d7d5d816aa603011a349cf53963296d06000"
+  },
+  "proyecto:MLER": {
+    "generado_el": "2026-08-20",
+    "hash": "f5817a4e8a8216cfa4524818f7f72d705b8e72d3f7b20020f2d2efafa594195c"
+  },
   "proyecto:UMAG": {
-    "generado_el": "27-07-2026",
-    "hash": "8b3c7fe414e98a14e62e6e1987dda14f80ffd28f1c1afaf369f604c6ac3fe18c"
+    "generado_el": "2026-08-20",
+    "hash": "43078f488dda5def2f19c2ee7383729f74938aff80e9704dc37dd0f3bda094d2"
   }
 }

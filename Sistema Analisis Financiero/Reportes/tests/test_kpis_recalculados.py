@@ -51,8 +51,11 @@ def test_recalcular_proyecto_kpis_felices():
     assert "Rentabilidad sobre costo" not in indicadores  # eliminado del playbook 2026-07-28
     # Desviación total = -0.4 (Real < Proyectado, el proyecto ahorró) -> con
     # el fix de la Nota (sin ABS) el componente de desviación da el puntaje
-    # máximo (100), no se penaliza. Nota = round(0.7*100 + 0.3*100) = 100.
-    assert indicadores["Nota del Proyecto"] == 100
+    # máximo (100), no se penaliza. Margen neto 76% (muy por sobre el 25%
+    # objetivo) -> con la curva 2026-08-20 el score de margen se acerca a
+    # 100 sin tocarlo (93.95), ya no satura de golpe al cruzar el objetivo.
+    # Nota = round(0.7*93.95 + 0.3*100) = 96.
+    assert indicadores["Nota del Proyecto"] == 96
     assert indicadores["Evaluación"] == "Excelente"
     assert "Total Real" not in proyecto  # no muta el argumento original
 
@@ -90,11 +93,13 @@ def test_recalcular_proyecto_nota_penaliza_sobrecosto_real():
     # desviacion_total = 690000/400000 - 1 = 0.725 (sobrecosto)
     assert indicadores["Desviación % Total"] == pytest.approx(0.725)
     assert indicadores["Ahorro/Sobrecosto Total"] == pytest.approx(400000 - 690000)
-    # score_desviacion = max(0, 100 - 0.725*100) = 27.5 (sí penaliza)
+    # score_desviacion = max(0, 100 - 0.725*100) = 27.5 (sí penaliza).
+    # score_margen usa la curva de calcular_nota() (no un tope duro) --
+    # reusamos la función real en vez de reimplementar la fórmula acá, este
+    # test cubre que recalcular_proyecto() le pase los insumos correctos,
+    # no la forma de la curva (eso está en test_nota_evaluacion.py).
     margen_neto = (1000000 - 690000) / 1000000
-    score_margen = min(100, max(0, (margen_neto / 0.25) * 100))
-    score_desviacion = min(100, max(0, 100 - max(0, 0.725) * 100))
-    nota_esperada = round(0.7 * score_margen + 0.3 * score_desviacion)
+    nota_esperada = kr.calcular_nota(margen_neto, 0.725)
     assert indicadores["Nota del Proyecto"] == nota_esperada
     assert indicadores["Ahorro/Sobrecosto Total"] < 0  # confirma que es sobrecosto, no ahorro
 
@@ -130,9 +135,11 @@ def test_calcular_cltv_clientes_clasifica_por_percentil():
         {"Cliente": "C", "Monto de Venta (sin IVA)": 300000, "Margen Real": 150000, "Fecha de inicio": date(2026, 1, 1)},
     ]
     resultado = kr.calcular_cltv_clientes(proyectos)
-    assert resultado["A"]["CLTV"] == pytest.approx(600000)
-    assert resultado["B"]["CLTV"] == pytest.approx(1200000)
-    assert resultado["C"]["CLTV"] == pytest.approx(1800000)
+    # 1 proyecto por cliente -> vida=1, meses_activo piso de 12 (1 año),
+    # frecuencia=1 -> CLTV = aov * 1 * 1 * margen_pct(0.5) = aov * 0.5.
+    assert resultado["A"]["CLTV"] == pytest.approx(50000)
+    assert resultado["B"]["CLTV"] == pytest.approx(100000)
+    assert resultado["C"]["CLTV"] == pytest.approx(150000)
     assert resultado["A"]["Clasificación"] == "Clientes de oportunidad"
     assert resultado["B"]["Clasificación"] == "Clientes potenciales"
     assert resultado["C"]["Clasificación"] == "Clientes estratégicos"

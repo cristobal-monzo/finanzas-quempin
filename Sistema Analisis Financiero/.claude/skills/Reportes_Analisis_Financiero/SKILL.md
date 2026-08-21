@@ -1,6 +1,6 @@
 ---
 name: Reportes_Analisis_Financiero
-description: Genera y mantiene al dia los reportes PDF de Analisis Financiero (por proyecto, por cliente, por categoria, y comparaciones ad-hoc), con marca QUEMPIN. Usar cuando el usuario pida un reporte PDF de un proyecto/cliente/categoria, una comparacion entre proyectos/clientes, o ver que reportes quedaron desactualizados.
+description: Usar cuando el usuario escribe "/Reportes_Analisis_Financiero" explícitamente. Si en cambio pide en lenguaje natural (sin el "/") un reporte PDF de un proyecto/cliente/categoria, una comparacion entre proyectos/clientes, o ver que reportes quedaron desactualizados, pedir confirmación antes de invocarlo (ver CLAUDE.md raíz § Invocación de skills) -- nunca activarlo automático. Genera y mantiene al dia los reportes PDF de Analisis Financiero (por proyecto, por cliente, por categoria, y comparaciones ad-hoc), con marca QUEMPIN.
 ---
 
 # Reportes Analisis Financiero

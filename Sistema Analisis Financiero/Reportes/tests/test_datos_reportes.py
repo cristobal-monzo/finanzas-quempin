@@ -42,10 +42,11 @@ def _filas_detalle(tag: str) -> list[dict]:
     """Detalle Costos Reales 'feliz' para un tag: Materiales=60.000,
     Equipos=70.000, Otros=20.000 -> Total Real=240.000 (+ Mano de Obra Real
     manual), Margen Real=760.000, Desviación=-40% (ahorro, Real<Proyectado),
-    Nota=100 (con el fix 2026-07-28: sin ABS(), un proyecto que ahorra
-    obtiene el puntaje máximo del componente de desviación), Evaluación=
-    'Excelente' (ver kpis_recalculados.py para la verificación a mano
-    completa)."""
+    Nota=96 (con el fix 2026-07-28: sin ABS(), el componente de desviación
+    da el puntaje máximo; margen neto 76% muy por sobre el 25% objetivo ->
+    con la curva 2026-08-20 el score de margen se acerca a 100 sin tocarlo,
+    93.95, ya no satura de golpe), Evaluación='Excelente' (ver
+    kpis_recalculados.py para la verificación a mano completa)."""
     return [
         {"TAG proyecto": tag, "Subcategoría": "Consumibles", "Bucket": "Materiales", "Total sin IVA": 60000},
         {"TAG proyecto": tag, "Subcategoría": "Equipos-Herramientas", "Bucket": "Equipos", "Total sin IVA": 70000},
@@ -84,7 +85,7 @@ def test_paquete_datos_proyecto_incluye_kpis_recalculados_y_en_desarrollo(tmp_pa
     assert paquete["proyecto"]["Margen Real"] == 760000
     assert paquete["proyecto"]["Desviación % (Real vs Proyectado)"] == pytest.approx(-0.4)
     assert paquete["indicadores"]["Margen neto %"] == pytest.approx(0.76)
-    assert paquete["indicadores"]["Nota del Proyecto"] == 100
+    assert paquete["indicadores"]["Nota del Proyecto"] == 96
     assert paquete["indicadores"]["Evaluación"] == "Excelente"
     assert paquete["en_desarrollo"] is True
 
@@ -131,7 +132,8 @@ def test_paquete_datos_cliente_incluye_cltv_recalculado_y_sus_proyectos(tmp_path
     ruta = _crear_excel_af(tmp_path, [_fila_proyecto_completa()], _filas_detalle("UMAG"))
     paquete = dr.paquete_datos_cliente(ruta, "UMAG")
     assert paquete["tipo"] == "cliente"
-    assert paquete["cltv"]["CLTV"] == pytest.approx(9120000)
+    # 1 solo proyecto -> vida=1, meses_activo piso de 12 (1 año), frecuencia=1.
+    assert paquete["cltv"]["CLTV"] == pytest.approx(760000)
     assert paquete["cltv"]["Clasificación"] == "Clientes estratégicos"  # unico cliente valido
     assert len(paquete["proyectos"]) == 1
     assert paquete["proyectos"][0]["TAG proyecto"] == "UMAG"

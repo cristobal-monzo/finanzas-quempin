@@ -201,9 +201,9 @@ def calcular_cltv_clientes(proyectos_completos: list[dict]) -> dict[str, dict]:
         vida = len(proyectos)
         if fechas:
             rango_dias = (max(fechas) - min(fechas)).days
-            meses_activo = max(1, rango_dias / 30)
+            meses_activo = max(12, rango_dias / 30)
         else:
-            meses_activo = 1
+            meses_activo = 12
         frecuencia = vida / (meses_activo / 12)
         margen_pct = _dividir(total_margenes, total_ventas)
         cltv = None if (aov is None or margen_pct is None) else aov * frecuencia * vida * margen_pct
