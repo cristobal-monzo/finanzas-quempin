@@ -2168,9 +2168,15 @@ def reflejar_a_sitio_comunicacion(ruta_excel=None, ruta_sitio=None):
     skill Revision_de_Errores (corregir/desglosar solo tocan el Excel local;
     sin este paso aparte, la copia compartida queda desactualizada). No falla
     si el destino esta bloqueado, solo advierte -- igual que en 'run'.
-    Devuelve True si la copia se actualizo, False si no se pudo."""
+    Perú no tiene (todavía) un sitio de comunicación propio configurado
+    (ruta_sitio resuelve a None): en ese caso se omite con un [INFO], no se
+    intenta copiar a un destino inexistente. Devuelve True si la copia se
+    actualizo, False si no se pudo o no aplica."""
     ruta_excel = ruta_excel or RUTA_EXCEL
-    ruta_sitio = ruta_sitio or RUTA_EXCEL_SITIO_COMUNICACION
+    ruta_sitio = ruta_sitio if ruta_sitio is not None else RUTA_EXCEL_SITIO_COMUNICACION
+    if ruta_sitio is None:
+        print("  [INFO] Sin sitio de comunicación configurado para este país -- paso omitido.")
+        return False
     try:
         shutil.copy2(ruta_excel, ruta_sitio)
         print(f"  [OK] Copia actualizada: {ruta_sitio}")
@@ -2319,14 +2325,16 @@ def _resumir_lineas_detalle(lineas, ruta_log, mantener=3):
     )
 
 
-def main():
+def main(pais="CL"):
     import sys
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
 
+    configurar_pais(pais)
+
     print("=" * 70)
     print("  REGISTRO CENTRO DE COSTOS - QUEMPIN SpA")
-    print(f"  Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  País: {pais} | Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 70)
 
     ruta_log_run = RUTA_LOGS / f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
@@ -2339,8 +2347,8 @@ def main():
         return
 
     print("\n--- PASO 1: Backup ---")
-    ruta_backup_anterior = backup_mas_reciente()
-    hacer_backup(RUTA_EXCEL)
+    ruta_backup_anterior = backup_mas_reciente(ruta_backups=RUTA_BACKUPS)
+    hacer_backup(RUTA_EXCEL, ruta_backups=RUTA_BACKUPS)
 
     print("\n--- PASO 2: Abrir Excel ---")
     if RUTA_EXCEL.exists():
@@ -2552,10 +2560,16 @@ def main():
     reflejar_a_sitio_comunicacion()
 
     print("\n--- PASO 12c: Actualizar visualizador web ---")
-    actualizar_visualizador()
+    if RAIZ_VISUALIZADOR_WEB.exists():
+        actualizar_visualizador()
+    else:
+        print(f"  [INFO] Visualizador Web de {pais} aún no implementado -- paso omitido.")
 
     print("\n--- PASO 12d: Actualizar Análisis Financiero ---")
-    actualizar_analisis_financiero()
+    if pais == "CL":
+        actualizar_analisis_financiero()
+    else:
+        print(f"  [INFO] Análisis Financiero de {pais} aún no implementado -- paso omitido.")
 
     print("\n--- PASO 13: Verificaciones aritmeticas (sobre todo el JSON) ---")
     inconsistencias = verificar_aritmetica(datos_json)
@@ -2650,4 +2664,8 @@ if __name__ == "__main__":
         else:
             confirmar_correcciones(resto)
     else:
-        main()
+        _pais = "CL"
+        if "--pais" in _sys.argv:
+            _idx = _sys.argv.index("--pais")
+            _pais = _sys.argv[_idx + 1]
+        main(pais=_pais)
