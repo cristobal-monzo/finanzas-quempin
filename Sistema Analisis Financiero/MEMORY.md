@@ -114,7 +114,7 @@ datos"), se agregó `aplicar_resaltado_celdas_manuales(wb)` en
 - Se agrega una celda de leyenda en la columna siguiente a la última
   (`V1`, ancho 45, wrap) explicando la convención, mismo patrón que la
   leyenda al pie de cada hoja de Centro de Costos.
-- Aplicado al archivo real (`Análisis de Proyectos.xlsx`, con backup previo
+- Aplicado al archivo real (`Análisis de Proyectos 2026.xlsx`, con backup previo
   vía `hacer_backup`) el mismo día — 5 proyectos ya cargados (UMAG, CFLI,
   CCON, GGEN, MLER) quedaron con sus columnas manuales resaltadas sin que
   se tocara ningún valor.
@@ -148,7 +148,7 @@ Magallanes".
 - **Migración del archivo real**: `asegurar_estructura_workbook` nunca pisa
   un encabezado ya escrito en "Proyectos" (regla de oro) — cambiar el código
   no reordena solo un archivo ya existente. Se migró a mano
-  `Análisis de Proyectos.xlsx` (con backup previo): se leyeron los valores
+  `Análisis de Proyectos 2026.xlsx` (con backup previo): se leyeron los valores
   manuales de las 5 filas de proyecto (UMAG, CFLI, CCON, GGEN, MLER) en el
   layout viejo, se recreó la hoja "Proyectos" en blanco, se regeneró con el
   esquema nuevo (`asegurar_estructura_workbook` ya actualizado) y se
@@ -600,7 +600,7 @@ de la extensión de Nota/Clientes/Glosario en
 `docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md`
 (rutas relativas a la raíz de `Finanzas QUEMPIN/`). Lo que queda pendiente:
 
-- `Análisis de Proyectos.xlsx` está vacío — no hay proyectos cargados todavía,
+- `Análisis de Proyectos 2026.xlsx` está vacío — no hay proyectos cargados todavía,
   así que nada de esto se ha ejercitado contra datos reales de QUEMPIN SpA.
 - El dashboard HTML (Visualizador Web de este módulo) está fuera de alcance v1
   a propósito — el usuario ya indicó que esa es la forma de presentación a
@@ -686,3 +686,279 @@ dashboard (ver sección "Segunda tanda de KPIs nuevos" más arriba):
   (HTML/CSS/JS puro).
 - Republicado en el mismo Artifact (ver MEMORY.md del skill
   `Registro_Analisis_Financiero`).
+
+## Filas de proyecto nuevas se crean solas desde Centro de Costos (2026-08-19)
+
+- **Causa del reporte "no se ha actualizado el Excel de Análisis Financiero"**:
+  la hoja "Proyectos" es 100% manual — nada creaba una fila nueva cuando
+  aparecía un proyecto en Centro de Costos. El mismo día se habían agregado 9
+  proyectos nuevos a Centro de Costos (Cremación Concepción, CESFAM Chillán,
+  CONAF Puerto Montt, Bomba Wilo Conchalí, Caldera Valdivia, Calderas
+  Antofagasta, Comisaría Conchalí, ESFOCAR, Fiscalía Quilpué y Quintero), cada
+  uno con costos reales ya calculados en Centro de Costos, pero **ninguno**
+  tenía fila en "Proyectos" — por eso no aparecían en ningún lado de Análisis
+  Financiero, aunque el resto del Excel sí estaba al día (verificado a $0 de
+  diferencia contra Centro de Costos para los proyectos que sí tenían fila).
+  Se agregaron las 9 filas a mano esa vez (TAG + Nombre; Cliente/Categoría se
+  autocompletaron solos al correr `driver.py run`) y quedaron 2 clientes en
+  rojo pendientes de revisión (ver más abajo).
+- **Fix permanente, a pedido del usuario**: `ejecutar()` ahora detecta solo
+  los prefijos de proyecto que existen en `Master` de Centro de Costos
+  (`leer_nombres_proyecto_centro_costos()`, mismo patrón que
+  `leer_tipo_proyecto_centro_costos()`) y no tienen fila todavía en
+  "Proyectos", y crea la fila con **TAG + Nombre únicamente**
+  (`crear_filas_proyectos_nuevos()`) — el resto de columnas queda en blanco.
+  Como la fila nueva se agrega a `filas_validas` antes de que corra el resto
+  del pipeline, Cliente/Categoría/fórmulas de costos reales/resaltado
+  amarillo se aplican solos, igual que a cualquier fila preexistente — no
+  hizo falta duplicar esa lógica. `status` (dry_run) previsualiza qué
+  proyectos se crearían sin escribir nada; `run` los crea de verdad y lo
+  imprime en consola. Corre en los 4 caminos que llaman `ejecutar()`
+  (`Registro_Analisis_Financiero run`, `Actualizar_AF`, `Actualizar_CC`,
+  `Actualizar_Finanzas`), sin tocar ninguno de esos otros skills.
+- **Deliberadamente no se agregó** un fallback para "prefijo sin nombre en
+  Master" (contemplado en el diseño original) — al usar `Master` como única
+  fuente de qué proyectos existen, todo prefijo candidato tiene nombre por
+  construcción; ese caso no puede darse en la práctica, así que no había
+  nada que probar ni manejar (YAGNI).
+- **Los 2 clientes en rojo pendientes de esa corrida manual siguen
+  pendientes** (no los toca este fix, es a propósito): CESFAM Chillán quedó
+  sugerido como cliente "Cesfam Limache" y Comisaría Conchalí como "Bomba
+  Wilo Conchalí" — coincidencias por nombre de comuna/establecimiento, no por
+  ser el mismo cliente real. Corregir a mano en la columna Cliente, no con
+  `driver.py confirmar-cliente --todos`.
+- Tests nuevos: `Sistema/tests/test_proyectos_nuevos_desde_cc.py` (unitarios
+  de las 2 funciones nuevas) + casos en `test_ejecutar.py` (integración,
+  incluye dry_run) + `test_driver_registro_af.py` (preview en `status`).
+  Suite completa: 430 tests.
+- **Actualización el mismo día**: los 2 clientes en rojo de arriba ya se
+  corrigieron a mano (`cliente_derivado` en vez de `cliente_sugerido` --
+  ambos coincidían con el nombre del propio proyecto) y quedaron en azul
+  marino, "Confirmado" en `clientes_pendientes.json` con una nota explicando
+  por qué no se usó la sugerencia automática.
+
+## Archivo renombrado a "Análisis de Proyectos 2026.xlsx" (2026-08-19)
+
+- **Motivo**: el usuario reportó sincronización de OneDrive bloqueada en
+  `Análisis de Proyectos.xlsx` sin saber por qué. Al intentar el fix que pidió
+  (copiar + borrar el original) OneDrive generó un archivo de conflicto
+  (`Análisis de Proyectos-QUEMPIN.xlsx`, sufijo = nombre del equipo) y, en los
+  segundos siguientes, sobrescribió repetidamente cualquier contenido nuevo
+  escrito en esa ruta -- incluso con un nombre de archivo que nunca había
+  existido antes. Diagnóstico inicial (mal) fue "alguien lo tiene abierto en
+  vivo en otro dispositivo" (metadata interna mostraba `lastModifiedBy:
+  Cristobal Monzo`, guardado por Excel real, no por openpyxl). Diagnóstico
+  correcto, confirmado dejando pasar ~35s con chequeos de hash cada 5s: era
+  OneDrive/Office terminando de procesar la cola de cambios de toda la sesión
+  (creación del archivo + 9 filas nuevas + 3 corridas del registrador + fix
+  de Cliente + el propio experimento de copiar/borrar) -- no una edición en
+  vivo de otra persona. El archivo convergió solo a un estado correcto y
+  estable.
+- **No se perdió nada**: antes de tocar cualquier cosa se guardó un respaldo
+  verificado por hash SHA-256 **fuera de OneDrive** (scratchpad de la sesión);
+  cuando se detectó la reversión se restauró desde ahí antes de seguir. Los 2
+  archivos que quedaron con contenido viejo/de conflicto se movieron (no se
+  borraron) a `Análisis Financiero/_OBSOLETO no usar (conflicto OneDrive
+  2026-08-19)/` -- limpiar esa carpeta a mano cuando el usuario confirme que
+  ya no los necesita.
+- **Fix real**: en vez de pelear más por el mismo nombre de archivo, se creó
+  el libro con nombre nuevo (`Análisis de Proyectos 2026.xlsx`, nunca existió
+  antes en OneDrive, así que no hereda ningún historial de conflicto) y se
+  actualizó `RUTA_EXCEL` en `Sistema/analisis_financiero.py` -- único punto
+  del código que fija esa ruta, todo lo demás (`build_visualizador.py`,
+  `Reportes/datos_reportes.py`) ya importaba `RUTA_EXCEL` en vez de tener el
+  nombre hardcodeado. También se actualizaron las menciones en `CLAUDE.md`
+  (este módulo y `Visualizador Web/CLAUDE.md`), este `MEMORY.md`, y los 2
+  `SKILL.md` (`Registro_Analisis_Financiero`, `Actualizar_AF`) -- no se tocó
+  el nombre de archivo dentro de los tests (usan rutas de `tmp_path`
+  aisladas, el nombre literal ahí es arbitrario).
+- Verificado estable 35+ segundos sin cambiar de hash, contenido completo (14
+  proyectos, fórmulas de costos reales, las 5 hojas) y `driver.py status`
+  corriendo de punta a punta contra el archivo real sin errores. Suite
+  completa (430 tests) sigue pasando.
+
+## Fix del percentil de Clasificación (Clientes) + curva de la Nota del Proyecto (2026-08-20)
+
+El usuario reportó `#DIV/0!` en la columna "Clasificación" de la hoja
+"Clientes" para **todos** los clientes (captura de pantalla), y pidió
+además evaluar cómo se estaban calificando los proyectos ahora que hay más
+datos reales cargados (15 proyectos, 7 con datos completos).
+
+**Bug 1 — propagación de error en el percentil (root cause, no un fix
+superficial)**: `asegurar_hoja_clientes` (columna H, "Clasificación") usaba
+`PERCENTILE(Clientes!$G:$G,...)`. `PERCENTILE` de Excel devuelve error para
+**todo el rango** si una sola celda es un error — y 5 de los 15 clientes
+(Bomba Wilo Conchalí, CONAF Puerto Montt, Calderas Antofagasta, Comisaría
+Conchalí, Gastos Generales) tienen `#DIV/0!` en su propio CLTV por no tener
+"Monto de Venta" cargado todavía. Eso bastaba para romper la Clasificación
+de los otros 10 clientes con CLTV perfectamente válido. Fix: `PERCENTILE` →
+`_xlfn.AGGREGATE(16,6,...)` (PERCENTILE.INC con la opción 6, "ignorar
+errores") — contiene el error a la fila del cliente afectado, no lo
+propaga. Verificado contra el archivo real: los 5 clientes sin venta
+cargada son exactamente los de la captura del usuario. Test nuevo:
+`test_hoja_clientes.py::test_clasificacion_ignora_errores_de_otros_clientes_en_el_percentil`.
+El dashboard web y los reportes PDF nunca tuvieron este bug — ya excluían
+clientes con proyectos incompletos antes de calcular el percentil
+(`build_visualizador.calcular_clientes` / `kpis_recalculados.calcular_cltv_clientes`,
+que sí filtran `CLTV is not None` antes del percentil); solo la fórmula
+cruda del Excel lo tenía.
+
+**Hallazgo 2 — efecto techo en la Nota del Proyecto**: de los 7 proyectos
+completos, 6 sacaban Nota=100 y el séptimo (Cesfam Constitución) 90 — el
+100% caía en "Excelente". Causa: el componente de margen (70% de la Nota)
+usaba `MIN(100, margen/0.25*100)` — cualquier margen ≥25% (el objetivo)
+topaba en 100. Los márgenes reales de la cartera van de 22% a 99.8%
+(mediana ≈68%), muy por sobre el objetivo, así que casi todos saturaban.
+El componente de desviación (30%) tenía el mismo efecto por otro motivo
+(6 de 7 proyectos vienen 15%-99% bajo presupuesto) pero **no se tocó** --
+es una decisión deliberada del 2026-07-28 (no duplicar el premio por
+ahorrar, ya capturado en el margen), distinta del caso de margen que sí era
+un techo accidental.
+
+- **Propuesta discutida con el usuario antes de implementar** (3 opciones:
+  subir el objetivo fijo, curva no lineal, o separar "¿es rentable?" de
+  "¿es más rentable que el resto de la cartera?" al estilo percentil de
+  Clasificación) — eligió desarrollar la curva no lineal.
+- **Curva implementada** (`_score_margen_nota` en `analisis_financiero.py`,
+  espejo Excel en `_formula_nota`): lineal 0→`SCORE_MARGEN_EN_OBJETIVO` (70)
+  hasta `MARGEN_OBJETIVO_NOTA` (25%, sin cambios), luego
+  `70 + 30*(1-EXP(-(margen-0.25)/K))` con `K_MARGEN_NOTA_SOBRE_OBJETIVO =
+  0.3186` — asíntota hacia 100 que nunca la toca. K calibrado para que 60%
+  de margen (cerca de la mediana real) puntúe ~90.
+- **Un solo punto de cambio Python**: a diferencia del bug de Nota de
+  2026-07-28 (que estaba duplicado en 3 archivos y se desincronizó),
+  `Reportes/kpis_recalculados.py` y `Visualizador Web/build_visualizador.py`
+  ya no reimplementan la fórmula — ambos importan y llaman directamente
+  `calcular_nota`/`clasificar_evaluacion` de `analisis_financiero.py` (
+  refactor que salió de aquel mismo incidente). Solo hubo que tocar
+  `analisis_financiero.py`; `test_contrato_kpis.py` sigue verificando que
+  los 3 caminos (Excel/reportes/dashboard) coincidan.
+- **Valores verificados contra los 7 proyectos reales** (margen real →
+  Nota antes → Nota nueva): CCON 22.3%→90→**71**, CVAL 39.6%→100→**87**,
+  UMAG 61.5%→100→**93**, CREM 68.3%→100→**95**, MLER 77.8%→100→**96**, ESFO
+  80.6%→100→**96**, FQYQ 99.8%→100→**98**. Rango pasó de 90-100 (10 puntos,
+  6 empatados) a 71-98 (27 puntos, orden coherente con el margen real). Con
+  desviación perfecta (100), hace falta ~35.7% de margen para llegar a
+  "Excelente" (85+), contra 25% antes.
+- **Tests actualizados** (7 archivos tenían casos que asumían el tope
+  duro — todos fallaban por la razón correcta al escribir el test antes
+  del fix, confirmado con la suite antes de tocar `analisis_financiero.py`):
+  `test_nota_evaluacion.py` (fórmula + 4 tests nuevos de la forma de la
+  curva), `test_contrato_kpis.py` (constantes), `Reportes/tests/
+  test_kpis_recalculados.py`, `Reportes/tests/test_datos_reportes.py`,
+  `Visualizador Web/tests/test_build_visualizador.py` (2 tests, incluyendo
+  el de redondeo Excel-vs-Python que se reconstruyó con números limpios en
+  la zona lineal de la curva para evitar ruido de punto flotante de
+  `EXP()` al construir el empate exacto en .5).
+- **Glosario KPIs y CLAUDE.md actualizados** para describir la curva nueva
+  (antes decían "vs. objetivo de 25%" sin mencionar que por sobre el
+  objetivo seguía puntuando).
+- Suite completa: 448 tests, todos pasando.
+- **Pendiente que depende del usuario, resuelto el mismo día** (ver
+  siguiente entrada): el componente de desviación y "Gastos Generales"
+  como pseudo-cliente. También sigue pendiente: 8 de 15 proyectos (53%)
+  sin Nota por falta de datos manuales.
+
+## Aclaraciones sobre los 2 pendientes anteriores + exclusión de "Gastos Generales" (2026-08-20, mismo día)
+
+- **Desviación de presupuesto: NO se toca la fórmula**. El usuario confirmó
+  que "Costos Proyectados" es la cotización/presupuesto real manejado
+  *antes* de que empezara el proyecto, no una estimación rellenada al
+  cierre. Eso significa que el patrón real (6 de 7 proyectos completos
+  vinieron 15%-99% bajo presupuesto) es una señal de negocio genuina — ya
+  sea que QUEMPIN cotiza con colchón grande o que el control de costos en
+  terreno es muy bueno — y no un problema de calidad de dato. El diseño
+  actual de ese componente (MAX(0, desviación), no penalizar el ahorro,
+  decisión 2026-07-28) sigue siendo correcto tal cual; no se abrió ninguna
+  tarea de código nueva a partir de esto. Queda como hallazgo de negocio
+  para que el usuario decida si quiere indagar más (¿cuánto colchón es
+  intencional vs. cuánto es margen de mejora en la cotización?), no como
+  pendiente técnico.
+- **"Gastos Generales" excluido estructuralmente** de la hoja "Clientes" y
+  de Nota/Evaluación en "Indicadores" — el usuario eligió la opción
+  recomendada (filtrar por Categoría, no por la ausencia de venta que era
+  el mecanismo implícito anterior). Nueva constante
+  `CATEGORIA_GASTOS_GENERALES = "Gastos Generales"` en
+  `analisis_financiero.py`. Dos cambios:
+  1. `asegurar_hoja_clientes`: salta cualquier fila de "Proyectos" cuya
+     Categoría sea "Gastos Generales" al construir la lista de clientes
+     únicos — ya no aparece como pseudo-cliente aunque su columna "Cliente"
+     tenga un valor cargado (hoy coincide con el nombre de la categoría).
+  2. `asegurar_hoja_indicadores`: Nota y Evaluación quedan envueltas en
+     `IF(Proyectos!<col Categoría><fila>="Gastos Generales","",<fórmula
+     original>)`. El guard vive en el sitio de escritura (mismo patrón que
+     "Margen por día"), no dentro de `_formula_nota`/`_formula_evaluacion`
+     -- esas funciones y sus tests existentes quedaron intactos. **Detalle
+     no obvio**: Evaluación necesita su propio guard, no alcanza con vaciar
+     Nota -- si Nota quedara "" sin vaciar Evaluación también, la
+     comparación `""_>=85` de Excel evalúa TRUE (el texto siempre "gana"
+     al compararse con un número), y "Gastos Generales" mostraría
+     "Excelente" en vez de quedar vacío.
+  3. `Reportes/kpis_recalculados.py` y `Visualizador Web/
+     build_visualizador.py` no necesitaron cambios -- "Gastos Generales"
+     nunca tiene Monto de Venta ni las demás columnas de
+     `CAMPOS_MANUALES_REQUERIDOS`, así que ya estaba excluido de ambos por
+     la regla de completitud existente; el gap era solo en la hoja Excel
+     cruda (100% fórmulas, no gateada por completitud, mismo espíritu que
+     el resto del módulo de "nunca ocultar" -- pero un pseudo-cliente con
+     `#DIV/0!` no era "mostrar una inconsistencia real", era ruido de un
+     concepto que no aplica).
+- Tests nuevos: `test_hoja_clientes.py::test_categoria_gastos_generales_no_aparece_como_cliente`,
+  `test_formulas_indicadores.py::test_categoria_gastos_generales_deja_nota_y_evaluacion_vacias`,
+  más 2 tests existentes actualizados (`test_nota_evaluacion.py`, las
+  fórmulas ahora vienen envueltas en el guard). Suite completa: 450 tests.
+
+## Piso de "Meses activo" corregido de 1 mes a 12 (2026-08-20)
+
+Pedido del usuario: "arregla la frecuencia de compra... por lo general cada
+proyecto corresponde a una compra por año, no a 12". Root cause (systematic
+debugging): `Meses activo` (hoja Clientes) se calculaba como
+`MAX(1, (fecha más reciente − fecha más antigua)/30)` — un piso de **1
+mes**, pensado solo para evitar `#DIV/0!` cuando ambas fechas coinciden.
+Pero con un solo proyecto (el caso más común: `vida=1` → mismo fecha máx y
+mín → rango=0) ese piso de 1 mes hacía `Frecuencia = vida/(meses_activo/12)
+= 1/(1/12) = 12` compras/año — un cliente de una sola compra aparecía
+comprando mensualmente. El mismo piso distorsionaba también clientes con 2+
+proyectos muy juntos en el tiempo (ej. 2 proyectos en 20 días → 24/año).
+
+**Fix**: piso subido de 1 a **12 meses** (1 año) en las 3 implementaciones
+espejo (nunca se leen fórmulas de Excel, cada una recalcula por su cuenta —
+ver contrato en `Sistema/tests/test_contrato_kpis.py`):
+- `Sistema/analisis_financiero.py` (`asegurar_hoja_clientes`, fórmula Excel
+  de la columna "Meses activo"): `MAX(1,...)` → `MAX(12,...)`.
+- `Reportes/kpis_recalculados.py` (`calcular_cltv_clientes`): `max(1,
+  rango_dias/30)` → `max(12, rango_dias/30)`, default sin fechas `1` → `12`.
+- `Visualizador Web/build_visualizador.py` (`calcular_clientes`): mismo
+  cambio, `1.0` → `12.0`.
+
+Razonamiento del piso de 12 (no solo un parche para `vida=1`): no tiene
+sentido anualizar una frecuencia a partir de menos de un año real de
+historial de compras — con 2 proyectos en 3 meses, extrapolar a "8
+compras/año" es sobre-ajuste con un solo intervalo observado. El piso de 12
+meses hace que la frecuencia nunca se calcule sobre una ventana más corta
+que un año completo; con historial real ≥ 12 meses, el cálculo usa el
+rango real sin cambios (verificado con 450 días en
+`test_build_visualizador.py::test_calcular_clientes_agrupa_y_calcula_cltv`).
+
+**Efecto en CLTV**: al bajar la Frecuencia de clientes de un solo proyecto
+de 12 a 1, su CLTV también baja (factor ~12x) — es una corrección, no una
+regresión: el CLTV anterior sobrestimaba sistemáticamente a cualquier
+cliente nuevo/de una sola compra.
+
+Tests actualizados (ya no hardcodeaban el bug, lo verificaban):
+`test_hoja_clientes.py` (fórmula `MAX(1,...)` → `MAX(12,...)`),
+`test_build_visualizador.py` (`test_calcular_clientes_un_solo_proyecto_meses_activo_minimo_1`
+renombrado a `..._minimo_12`, más el caso de 450 días para no perder
+cobertura del cálculo con rango real), `test_kpis_recalculados.py::
+test_calcular_cltv_clientes_clasifica_por_percentil` y `test_datos_reportes.py::
+test_paquete_datos_cliente_incluye_cltv_recalculado_y_sus_proyectos` (CLTV
+esperado recalculado con el nuevo piso). `test_contrato_kpis.py` no
+necesitó cambios (solo compara consistencia entre las 3 implementaciones,
+no valores fijos). Suite completa: 458 tests, todos pasando.
+
+**Pendiente para la próxima corrida real**: el Excel de produción
+(`Análisis de Proyectos 2026.xlsx`) tiene la fórmula vieja escrita en la
+hoja "Clientes" hasta que corra `/Registro_Analisis_Financiero` o
+`/Actualizar_AF` de nuevo — esa hoja se regenera 100% en cada corrida, así
+que no requiere migración manual (a diferencia del reordenamiento de
+columnas de 2026-07-28).

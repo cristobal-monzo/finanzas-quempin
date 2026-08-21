@@ -8,7 +8,7 @@ general, actúa como **analista financiero experto para una PYME**, no solo como
 ejecutor de un script:
 
 - **Evalúa proyectos**: rentabilidad real vs. proyectada, riesgo, desviaciones que
-  ameritan atención — usando `Análisis de Proyectos.xlsx` + los datos fuente de
+  ameritan atención — usando `Análisis de Proyectos 2026.xlsx` + los datos fuente de
   Centro de Costos.
 - **Propone y depura KPIs**: sugiere métricas nuevas cuando detecta una pregunta de
   negocio sin métrica que la responda, y señala explícitamente cuándo un KPI
@@ -33,7 +33,7 @@ ejecutor de un script:
 
 Consolidador **cross-módulo**: toma los costos reales que ya calcula Centro de
 Costos (por proyecto, por categoría de ítem) y los cruza contra ventas y costos
-proyectados que el usuario carga a mano en `Análisis de Proyectos.xlsx`, para dar
+proyectados que el usuario carga a mano en `Análisis de Proyectos 2026.xlsx`, para dar
 una vista de rentabilidad por proyecto — margen, desviación real vs. proyectado, y
 un set de KPIs de productividad/estructura de costos. No reemplaza a Centro de
 Costos ni le duplica lógica — solo lo lee (igual que Cotizador Historico).
@@ -74,7 +74,7 @@ esta carpeta, `RAIZ_DATOS` = `Análisis Financiero/`, ambas derivadas de
 ```
 Finanzas QUEMPIN/
 ├── Análisis Financiero/                       # SOLO el Excel (lo que el usuario abre)
-│   └── Análisis de Proyectos.xlsx             # libro de trabajo (existe, sin proyectos cargados aún)
+│   └── Análisis de Proyectos 2026.xlsx             # libro de trabajo (existe, sin proyectos cargados aún)
 └── Sistema Analisis Financiero/               # este archivo vive acá
     ├── CLAUDE.md                              # este archivo
     ├── MEMORY.md                              # decisiones, historial, pendientes
@@ -83,7 +83,7 @@ Finanzas QUEMPIN/
     └── .claude/skills/Registro_Analisis_Financiero/  # SKILL.md + driver.py (status/run/confirmar-cliente)
 ```
 
-## `Análisis de Proyectos.xlsx` — resumen del esquema (detalle completo en el spec)
+## `Análisis de Proyectos 2026.xlsx` — resumen del esquema (detalle completo en el spec)
 
 Cinco hojas, todas dentro del mismo libro:
 
@@ -156,7 +156,7 @@ nuevos. Ver MEMORY.md 2026-07-28 para la verificación a mano contra UMAG.
 | % del Total Real del proyecto (nuevo, hoja "Detalle Costos Reales") | Total sin IVA de la subcategoría / suma de las filas de ese proyecto en esa hoja |
 | Peso del proyecto en la cartera de ventas (%) (nuevo) | Monto de Venta del proyecto / Σ Monto de Venta de todos los proyectos con venta cargada (cualquier Estado, no solo "Terminado") |
 | Margen por día de ejecución (nuevo) | Margen Real / (Fecha de cierre − Fecha de inicio, en días) — vacío si el proyecto no tiene Fecha de cierre ("en desarrollo") |
-| Nota del Proyecto (0-100) | 70% margen neto % (vs. objetivo 25%) + 30% control de desviación total, **sin ABS()** — solo penaliza sobrecosto real (Real > Proyectado); un proyecto en o bajo presupuesto obtiene el puntaje máximo del componente |
+| Nota del Proyecto (0-100) | 70% margen neto % (curva de 2 tramos: lineal 0→70 hasta el objetivo de 25%, luego asíntota hacia 100 sin tocarlo nunca — ver "Curva de la Nota" abajo) + 30% control de desviación total, **sin ABS()** — solo penaliza sobrecosto real (Real > Proyectado); un proyecto en o bajo presupuesto obtiene el puntaje máximo del componente |
 | CLTV (hoja Clientes) | AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad % |
 
 **Segunda tanda de KPIs nuevos (2026-07-28, misma fecha, tras la
@@ -175,6 +175,32 @@ en UMAG. **Nota**: estos 2 KPIs no se agregaron al espejo Python de
 `Reportes/kpis_recalculados.py` (fuera del alcance pedido) — no aparecen
 todavía en los reportes PDF; es una extensión aparte si se pide.
 
+**Curva de la Nota corregida (2026-08-20)**: con la cartera real de QUEMPIN
+(15 proyectos) el componente de margen tenía un tope duro (`MIN(100,...)`)
+que saturaba en 100 apenas `margen neto % >= 25%` (el objetivo) — 6 de los 7
+proyectos completos empataban en Nota=100, sin ninguna capacidad de
+distinguir un proyecto al 40% de margen de uno al 99.8%. Reemplazado por una
+curva de dos tramos (`_score_margen_nota` en `analisis_financiero.py`):
+lineal 0→70 hasta el objetivo, y una asíntota que sigue subiendo (cada vez
+más despacio) por sobre el objetivo sin tocar 100 nunca. La constante de la
+asíntota (`K_MARGEN_NOTA_SOBRE_OBJETIVO = 0.3186`) está calibrada para que
+60% de margen (cerca de la mediana real observada) puntúe ~90 — ajustable
+si la cartera cambia. Detalle completo, la propuesta discutida con el
+usuario y los valores verificados contra los 7 proyectos reales: ver
+MEMORY.md 2026-08-20.
+
+**Piso de "Meses activo" corregido de 1 a 12 meses (2026-08-20, mismo
+día)**: la Frecuencia de compra (hoja Clientes) se anualizaba dividiendo
+por un piso de solo 1 mes de historial, así que un cliente con un único
+proyecto (`vida=1`, sin rango real de fechas) daba `Frecuencia=12`
+compras/año en vez de 1. Piso subido a 12 meses (1 año) en las 3
+implementaciones espejo (`analisis_financiero.py`, `Reportes/
+kpis_recalculados.py`, `Visualizador Web/build_visualizador.py`) — con
+historial real ≥ 12 meses el cálculo no cambia. Baja también el CLTV de
+clientes nuevos/de una sola compra (~12x), que antes estaba sobrestimado
+por el mismo motivo. Detalle y tests actualizados: ver MEMORY.md
+2026-08-20.
+
 Origen y hallazgos de rigor (por qué "ROI" se llamó "Rentabilidad sobre
 costo" antes de eliminarse, por qué no hay columnas duplicadas de "costo
 por unidad de ingreso" + "estructura %", el bug de fórmula encontrado en el
@@ -187,7 +213,7 @@ en MEMORY.md, no en un spec nuevo.
 ## Reportes PDF (implementado 2026-07-24)
 
 Genera reportes PDF por proyecto/cliente/categoría y comparativas ad-hoc a
-partir de `Análisis de Proyectos.xlsx`, en la carpeta hermana `Reportes/`:
+partir de `Análisis de Proyectos 2026.xlsx`, en la carpeta hermana `Reportes/`:
 
 - **`brand.py`** — fuente Lato embebida (3 variantes) y logo en base64,
   `construir_html()` arma el HTML base (título + logo + contenido) que luego
@@ -198,7 +224,7 @@ partir de `Análisis de Proyectos.xlsx`, en la carpeta hermana `Reportes/`:
   (`renderizar_pdf`).
 - **`datos_reportes.py`** — arma el paquete de datos de cada reporte
   (`paquete_datos_proyecto` / `_cliente` / `_categoria` / `_comparacion`),
-  leyendo `Análisis de Proyectos.xlsx` de solo lectura, igual que el resto del
+  leyendo `Análisis de Proyectos 2026.xlsx` de solo lectura, igual que el resto del
   módulo.
 - **`estado_reportes.py`** — manifiesto de obsolescencia: calcula un hash de
   los datos relevantes de cada entidad (proyecto/cliente/categoría), lo
@@ -259,7 +285,7 @@ y el plan de implementación
   Boletas/<Nombre>/` (fuente real que lee Centro de Costos hoy) — **nunca** en
   `Centro de Costos/Facturas y Boletas/` (legado, el script ya no la lee desde
   2026-07-17).
-- `Análisis de Proyectos.xlsx` vive en la carpeta hermana `../Análisis
+- `Análisis de Proyectos 2026.xlsx` vive en la carpeta hermana `../Análisis
   Financiero/`, no acá — `RUTA_EXCEL` en `analisis_financiero.py` ya apunta
   ahí, no asumir que está junto al código. Vive dentro de OneDrive,
   sincronizada — antes de sobrescribirlo, considerar que puede tener

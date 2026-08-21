@@ -56,6 +56,12 @@ def cmd_status() -> int:
 
     resumen = af.ejecutar(dry_run=True)
 
+    if resumen["proyectos_nuevos"]:
+        print(
+            f"\nProyectos nuevos que SE CREARÍAN en 'Proyectos' (TAG + Nombre, "
+            f"el resto queda en blanco): {', '.join(resumen['proyectos_nuevos'])}"
+        )
+
     if resumen["carpetas_creadas"]:
         print(f"\nCarpetas de proyecto que SE CREARÍAN: {', '.join(resumen['carpetas_creadas'])}")
     else:

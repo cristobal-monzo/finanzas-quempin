@@ -31,7 +31,12 @@ RAIZ_MODULO = RAIZ.parent
 # contiene solo el Excel de trabajo -- ambas son carpetas hermanas bajo la
 # raíz de Finanzas QUEMPIN/. RAIZ_DATOS apunta a la carpeta con el Excel.
 RAIZ_DATOS = RAIZ_MODULO.parent / "Análisis Financiero"
-RUTA_EXCEL = RAIZ_DATOS / "Análisis de Proyectos.xlsx"
+# Renombrado 2026-08-19: "Análisis de Proyectos.xlsx" quedó con un conflicto
+# de sincronización de OneDrive sin resolver (generaba un "-QUEMPIN.xlsx" de
+# conflicto y revertía cualquier escritura a una versión vieja en la nube) --
+# se recreó con nombre nuevo para que OneDrive lo trate como un ítem sin
+# historial previo. Ver MEMORY.md.
+RUTA_EXCEL = RAIZ_DATOS / "Análisis de Proyectos 2026.xlsx"
 RAIZ_RESPALDOS = RAIZ_MODULO / "Respaldos"
 RUTA_CLIENTES_PENDIENTES = RAIZ / "clientes_pendientes.json"
 
@@ -48,6 +53,15 @@ HOJA_DETALLE_COSTOS_REALES = "Detalle Costos Reales"
 HOJA_INDICADORES = "Indicadores"
 HOJA_CLIENTES = "Clientes"
 HOJA_GLOSARIO_KPIS = "Glosario KPIs"
+
+# "Categoría" (= "Tipo de Proyecto" más frecuente en Centro de Costos, ver
+# leer_tipo_proyecto_centro_costos) que marca un bucket de gastos internos de
+# la empresa, no una venta a un cliente real -- nunca tiene Monto de Venta ni
+# tiene sentido evaluarlo por rentabilidad. Excluido de la hoja "Clientes"
+# (asegurar_hoja_clientes) y de Nota/Evaluación en "Indicadores"
+# (2026-08-20, a pedido del usuario: "Gastos Generales" aparecía como
+# pseudo-cliente con CLTV sin sentido).
+CATEGORIA_GASTOS_GENERALES = "Gastos Generales"
 
 HEADERS_PROYECTOS = [
     "TAG proyecto", "Nombre del proyecto", "Cliente", "Categoría", "Estado",
@@ -663,6 +677,57 @@ def leer_tipo_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]:
     }
 
 
+def leer_nombres_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]:
+    """Lee la hoja 'Master' de Centro de Costos.xlsx (SOLO LECTURA) y devuelve,
+    por prefijo de proyecto, el 'Proyecto' (nombre completo) más frecuente
+    entre sus documentos -- mismo patrón que leer_tipo_proyecto_centro_costos.
+    Filas sin N° Ref. o sin Proyecto se ignoran. Si la hoja 'Master' no
+    existe, devuelve dict vacío."""
+    wb = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+    if "Master" not in wb.sheetnames:
+        return {}
+    ws = wb["Master"]
+    encabezados = [celda.value for celda in ws[1]]
+    col_n_ref = encabezados.index("N° Ref.") + 1
+    col_proyecto = encabezados.index("Proyecto") + 1
+
+    nombres_por_prefijo: dict[str, Counter] = {}
+    for fila in ws.iter_rows(min_row=2):
+        n_ref = fila[col_n_ref - 1].value
+        nombre = fila[col_proyecto - 1].value
+        if not n_ref or not nombre:
+            continue
+        prefijo = prefijo_de_n_ref(n_ref)
+        nombres_por_prefijo.setdefault(prefijo, Counter())[nombre] += 1
+
+    return {
+        prefijo: contador.most_common(1)[0][0]
+        for prefijo, contador in nombres_por_prefijo.items()
+    }
+
+
+def crear_filas_proyectos_nuevos(
+    ws_proyectos, filas_validas: list[dict], nombres_nuevos: dict[str, str],
+) -> list[dict]:
+    """Escribe una fila nueva (solo TAG + Nombre, columnas 1 y 2) por cada
+    (prefijo, nombre) de 'nombres_nuevos' -- quien llama ya filtró los
+    prefijos que faltan en filas_validas. El resto de las columnas queda en
+    blanco: las autocompletadas (Cliente, Categoría, fórmulas de costos
+    reales) las llena el resto de ejecutar() al recibir la fila en su propio
+    filas_validas; las manuales (Estado, fechas, Monto de Venta, etc.) las
+    llena el usuario a mano. Devuelve las filas creadas, mismo formato que
+    leer_filas_proyectos, para que el llamador las sume a filas_validas."""
+    siguiente_fila = max((f["fila"] for f in filas_validas), default=1) + 1
+    nuevas = []
+    for prefijo in sorted(nombres_nuevos):
+        nombre = nombres_nuevos[prefijo]
+        ws_proyectos.cell(row=siguiente_fila, column=1, value=prefijo)
+        ws_proyectos.cell(row=siguiente_fila, column=2, value=nombre)
+        nuevas.append({"fila": siguiente_fila, "tag": prefijo, "nombre": nombre})
+        siguiente_fila += 1
+    return nuevas
+
+
 def asegurar_categoria_proyectos(
     ws_proyectos, filas_validas: list[dict], categoria_por_prefijo: dict[str, str],
     columna: int,
@@ -887,8 +952,20 @@ def asegurar_formulas_proyectos(ws_proyectos, filas_validas: list[dict]) -> None
 # 0-100, aprobatorio >=55. Rentabilidad domina el peso (70/30) -- decision
 # del usuario en brainstorming, spec 2026-07-21 seccion 1. Constantes
 # separadas de la formula para que recalibrar el benchmark no implique
-# reescribir la logica, solo estos 3 valores.
+# reescribir la logica, solo estos valores.
 MARGEN_OBJETIVO_NOTA = 0.25
+# Curva del componente de margen corregida 2026-08-20: antes el score topaba
+# en 100 apenas margen_neto cruzaba MARGEN_OBJETIVO_NOTA (MIN(100,...)) --
+# contra la cartera real de QUEMPIN (15 proyectos, margenes reales de
+# 22%-99.8%) eso dejaba 6 de 7 proyectos completos empatados en Nota=100, sin
+# ninguna capacidad de distinguir un proyecto al 40% de margen de uno al 99%.
+# Ahora es una curva de dos tramos (ver _score_margen_nota): lineal
+# 0->SCORE_MARGEN_EN_OBJETIVO hasta el objetivo, y una asintota que sigue
+# subiendo (cada vez mas despacio, sin tocar 100 nunca) por sobre el
+# objetivo. K_MARGEN_NOTA_SOBRE_OBJETIVO esta calibrada para que un margen de
+# 60% (cerca de la mediana real observada) puntue ~90.
+SCORE_MARGEN_EN_OBJETIVO = 70
+K_MARGEN_NOTA_SOBRE_OBJETIVO = 0.3186
 PESO_RENTABILIDAD_NOTA = 0.7
 PESO_DESVIACION_NOTA = 0.3
 
@@ -946,6 +1023,25 @@ def _redondear_excel(x: float) -> int:
     return math.floor(x + 0.5) if x >= 0 else math.ceil(x - 0.5)
 
 
+def _score_margen_nota(margen_neto: float) -> float:
+    """Curva del componente de margen de la Nota del Proyecto (corregida
+    2026-08-20). Lineal 0->SCORE_MARGEN_EN_OBJETIVO hasta MARGEN_OBJETIVO_NOTA
+    (llegar justo al objetivo vale SCORE_MARGEN_EN_OBJETIVO/100, no el tope);
+    por sobre el objetivo sigue subiendo -- cada vez mas despacio, asintota
+    hacia 100 sin tocarlo nunca -- en vez de aplanarse de golpe en el tope
+    (MIN(100,...) de antes). Ver comentario junto a las constantes para el
+    porque: con margenes reales de 22%-99.8%, un tope en el objetivo de 25%
+    dejaba casi toda la cartera empatada en el maximo."""
+    if margen_neto <= 0:
+        return 0.0
+    if margen_neto <= MARGEN_OBJETIVO_NOTA:
+        return (margen_neto / MARGEN_OBJETIVO_NOTA) * SCORE_MARGEN_EN_OBJETIVO
+    extra = 100 - SCORE_MARGEN_EN_OBJETIVO
+    return SCORE_MARGEN_EN_OBJETIVO + extra * (
+        1 - math.exp(-(margen_neto - MARGEN_OBJETIVO_NOTA) / K_MARGEN_NOTA_SOBRE_OBJETIVO)
+    )
+
+
 def calcular_nota(margen_neto: float | None, desviacion_total: float | None) -> int | None:
     """Equivalente Python exacto de _formula_nota(). None si falta cualquiera
     de los dos insumos (mismo significado que una celda vacia en Excel).
@@ -958,7 +1054,7 @@ def calcular_nota(margen_neto: float | None, desviacion_total: float | None) -> 
     usuario, 2026-07-28)."""
     if margen_neto is None or desviacion_total is None:
         return None
-    score_margen = min(100, max(0, (margen_neto / MARGEN_OBJETIVO_NOTA) * 100))
+    score_margen = _score_margen_nota(margen_neto)
     score_desviacion = min(100, max(0, 100 - max(0, desviacion_total) * 100))
     return _redondear_excel(
         PESO_RENTABILIDAD_NOTA * score_margen + PESO_DESVIACION_NOTA * score_desviacion
@@ -988,14 +1084,22 @@ def _formula_nota(fila_proyectos: int) -> str:
     componente da el puntaje máximo (100), sin restar ni sumar de más. Solo
     resta puntos cuando Real > Proyectado (sobrecosto real, desviación
     positiva). Ver MEMORY.md 2026-07-28 para la verificación a mano contra
-    UMAG (Nota pasó de 91 a 100)."""
+    UMAG (Nota pasó de 91 a 100).
+
+    Componente de margen corregido 2026-08-20: equivalente Excel exacto de
+    _score_margen_nota() -- ver esa función para el porqué (efecto techo real
+    contra la cartera de QUEMPIN). EXP() no necesita prefijo _xlfn. (función
+    anterior a 2007)."""
     r = fila_proyectos
     margen_real = LETRA_COL_PROYECTOS["Margen Real"]
     venta = LETRA_COL_PROYECTOS["Monto de Venta (sin IVA)"]
     desviacion = LETRA_COL_PROYECTOS["Desviación % (Real vs Proyectado)"]
+    margen = f"(Proyectos!{margen_real}{r}/Proyectos!{venta}{r})"
+    extra = 100 - SCORE_MARGEN_EN_OBJETIVO
     score_margen = (
-        f"MIN(100,MAX(0,(Proyectos!{margen_real}{r}/Proyectos!{venta}{r})"
-        f"/{MARGEN_OBJETIVO_NOTA}*100))"
+        f"IF({margen}<=0,0,IF({margen}<={MARGEN_OBJETIVO_NOTA},"
+        f"{margen}/{MARGEN_OBJETIVO_NOTA}*{SCORE_MARGEN_EN_OBJETIVO},"
+        f"{SCORE_MARGEN_EN_OBJETIVO}+{extra}*(1-EXP(-({margen}-{MARGEN_OBJETIVO_NOTA})/{K_MARGEN_NOTA_SOBRE_OBJETIVO}))))"
     )
     score_desviacion = (
         f"MIN(100,MAX(0,100-MAX(0,Proyectos!{desviacion}{r})*100))"
@@ -1073,8 +1177,19 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
         ws.cell(row=f, column=19, value=f"=Proyectos!{mo_p}{r}-Proyectos!{mo_r}{r}")
         ws.cell(row=f, column=20, value=f"=Proyectos!{otros_p}{r}-Proyectos!{otros_r}{r}")
         ws.cell(row=f, column=21, value=f"=Proyectos!{total_proy}{r}-Proyectos!{total_real}{r}")
-        ws.cell(row=f, column=22, value=_formula_nota(r))
-        ws.cell(row=f, column=23, value=_formula_evaluacion(f))
+        # V/W: Nota/Evaluación -- vacías para "Gastos Generales" (bucket de
+        # costos internos, nunca tiene Monto de Venta): evaluar "rentabilidad"
+        # de un gasto interno no tiene sentido. El guard vive acá, no dentro
+        # de _formula_nota/_formula_evaluacion, para no tocar esas funciones
+        # (y sus tests) -- mismo patrón que el guard de "Margen por día" más
+        # abajo. Evaluación también necesita su propio guard, no solo Nota:
+        # si Nota quedara vacía ("") sin vaciar Evaluación, "">=85 evalúa TRUE
+        # en Excel (el texto siempre "gana" al comparar con un número), y
+        # "Gastos Generales" mostraría "Excelente".
+        categoria_col = lp["Categoría"]
+        es_gastos_generales = f'Proyectos!{categoria_col}{r}="{CATEGORIA_GASTOS_GENERALES}"'
+        ws.cell(row=f, column=22, value=f'=IF({es_gastos_generales},"",{_formula_nota(r)[1:]})')
+        ws.cell(row=f, column=23, value=f'=IF({es_gastos_generales},"",{_formula_evaluacion(f)[1:]})')
         # X: Peso del proyecto en la cartera de ventas (%) -- venta del
         # proyecto sobre la suma de TODA la columna "Monto de Venta (sin
         # IVA)" de "Proyectos" (no solo la propia fila), incluyendo
@@ -1110,9 +1225,12 @@ def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
         ws.delete_rows(2, ws.max_row - 1)
 
     col_cliente = HEADERS_PROYECTOS.index("Cliente") + 1
+    col_categoria = HEADERS_PROYECTOS.index("Categoría") + 1
     clientes_unicos = []
     vistos = set()
     for fila_info in filas_validas:
+        if ws_proyectos.cell(row=fila_info["fila"], column=col_categoria).value == CATEGORIA_GASTOS_GENERALES:
+            continue
         cliente = ws_proyectos.cell(row=fila_info["fila"], column=col_cliente).value
         if cliente and cliente not in vistos:
             vistos.add(cliente)
@@ -1131,7 +1249,7 @@ def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
         ))
         ws.cell(row=i, column=3, value=f"=COUNTIF(Proyectos!${cliente_col}:${cliente_col},$A{i})")
         ws.cell(row=i, column=4, value=(
-            f"=MAX(1,(_xlfn.MAXIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
+            f"=MAX(12,(_xlfn.MAXIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
             f"Proyectos!${cliente_col}:${cliente_col},$A{i})"
             f"-_xlfn.MINIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
             f"Proyectos!${cliente_col}:${cliente_col},$A{i}))/30)"
@@ -1143,8 +1261,14 @@ def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
         ))
         ws.cell(row=i, column=7, value=f"=B{i}*E{i}*C{i}*F{i}")
         ws.cell(row=i, column=8, value=(
-            f'=IF(G{i}>=PERCENTILE(Clientes!$G:$G,0.67),"Clientes estratégicos",'
-            f'IF(G{i}>=PERCENTILE(Clientes!$G:$G,0.33),"Clientes potenciales","Clientes de oportunidad"))'
+            # AGGREGATE(16,6,...) = PERCENTILE.INC con la opcion 6 ("ignorar
+            # errores"). PERCENTILE a secas devuelve #DIV/0! para TODA la
+            # columna si una sola celda del rango es un error (ej. un
+            # cliente con proyectos sin Monto de Venta aun cargado) -- eso
+            # rompia la Clasificacion de todos los demas clientes, no solo
+            # la de ese cliente.
+            f'=IF(G{i}>=_xlfn.AGGREGATE(16,6,Clientes!$G:$G,0.67),"Clientes estratégicos",'
+            f'IF(G{i}>=_xlfn.AGGREGATE(16,6,Clientes!$G:$G,0.33),"Clientes potenciales","Clientes de oportunidad"))'
         ))
 
 
@@ -1193,8 +1317,8 @@ GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
     (
         "Nota del Proyecto",
         "Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión.",
-        "Margen neto % (70%, contra objetivo de 25%) y Desviación % Total, solo penalizando sobrecosto (30%)",
-        "≥55 = proyecto en rango aceptable; <55 = requiere revisión (rentabilidad baja y/o descontrol presupuestario). Un proyecto que ahorra (Real ≤ Proyectado) obtiene el puntaje máximo del componente de control — no se penaliza gastar de menos, ese beneficio ya se refleja en el margen.",
+        "Margen neto % (70% — curva: sube linealmente hasta el objetivo de 25% donde vale 70/100, y sigue subiendo por sobre el objetivo cada vez más despacio, sin techo fijo) y Desviación % Total, solo penalizando sobrecosto (30%)",
+        "≥55 = proyecto en rango aceptable; <55 = requiere revisión (rentabilidad baja y/o descontrol presupuestario). Un proyecto que ahorra (Real ≤ Proyectado) obtiene el puntaje máximo del componente de control — no se penaliza gastar de menos, ese beneficio ya se refleja en el margen. Llegar justo al objetivo de margen (25%) no basta para 'Excelente' por sí solo — hace falta ~36% de margen con presupuesto controlado.",
     ),
     (
         "Evaluación",
@@ -1235,7 +1359,7 @@ GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
     (
         "Meses activo",
         "Mide cuánto tiempo lleva comprando el cliente — el denominador para anualizar la frecuencia.",
-        "Fecha más antigua y más reciente entre sus proyectos",
+        "Fecha más antigua y más reciente entre sus proyectos, con un piso de 12 meses (no se anualiza una frecuencia con menos de un año de historial real de compras)",
         "Meses activo alto + vida baja → cliente esporádico; meses activo bajo + vida alta → cliente muy activo recientemente.",
     ),
     (
@@ -1316,7 +1440,7 @@ def ejecutar(
     propagarán hacia afuera."""
     resumen = {
         "avisos": [], "carpetas_creadas": [], "categorias_no_mapeadas": [],
-        "clientes_pendientes": [], "error": None,
+        "clientes_pendientes": [], "proyectos_nuevos": [], "error": None,
     }
 
     wb = asegurar_estructura_workbook(ruta_excel_af)
@@ -1333,7 +1457,15 @@ def ejecutar(
     items_detalle = leer_detalle_centro_costos(ruta_excel_cc)
     agrupado = agrupar_por_proyecto_y_subcategoria(items_detalle)
 
+    nombres_por_prefijo_cc = leer_nombres_proyecto_centro_costos(ruta_excel_cc)
+    tags_existentes = {f["tag"] for f in filas_validas}
+    prefijos_faltantes = {
+        prefijo: nombre for prefijo, nombre in nombres_por_prefijo_cc.items()
+        if prefijo not in tags_existentes
+    }
+
     if dry_run:
+        resumen["proyectos_nuevos"] = [prefijos_faltantes[p] for p in sorted(prefijos_faltantes)]
         for fila_info in filas_validas:
             if not (raiz_facturas_cc / fila_info["nombre"]).exists():
                 resumen["carpetas_creadas"].append(fila_info["nombre"])
@@ -1344,6 +1476,11 @@ def ejecutar(
                 categorias_no_mapeadas.add(subcategoria)
         resumen["categorias_no_mapeadas"] = sorted(categorias_no_mapeadas)
         return resumen
+
+    if prefijos_faltantes:
+        proyectos_nuevos = crear_filas_proyectos_nuevos(ws_proyectos, filas_validas, prefijos_faltantes)
+        resumen["proyectos_nuevos"] = [f["nombre"] for f in proyectos_nuevos]
+        filas_validas.extend(proyectos_nuevos)
 
     try:
         hacer_backup(ruta_excel_af, raiz_respaldos)
@@ -1401,6 +1538,12 @@ def ejecutar(
 def main() -> None:
     resumen = ejecutar()
     print("=== Análisis Financiero ===")
+    if resumen["proyectos_nuevos"]:
+        print(
+            f"Proyectos nuevos agregados desde Centro de Costos (TAG + Nombre; "
+            f"Cliente/Categoría autocompletados, el resto queda pendiente a mano): "
+            + ", ".join(resumen["proyectos_nuevos"])
+        )
     if resumen["carpetas_creadas"]:
         print(f"Carpetas de proyecto creadas: {', '.join(resumen['carpetas_creadas'])}")
     if resumen["categorias_no_mapeadas"]:

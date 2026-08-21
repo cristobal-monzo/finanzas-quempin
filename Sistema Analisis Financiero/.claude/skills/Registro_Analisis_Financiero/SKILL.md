@@ -1,6 +1,6 @@
 ---
 name: Registro_Analisis_Financiero
-description: Consolida los costos reales por proyecto y categoría desde Centro de Costos hacia Análisis de Proyectos.xlsx (hojas Proyectos/Detalle Costos Reales/Indicadores/Clientes/Glosario KPIs), calcula la Nota del Proyecto (0-100) y el CLTV por cliente, y crea la carpeta de facturas para proyectos nuevos agregados a mano en el Excel. Usar cuando el usuario pida actualizar Análisis Financiero, refrescar los indicadores de proyectos, ver el estado de Análisis de Proyectos.xlsx, evaluar rentabilidad/KPIs de un proyecto, o revisar/confirmar un cliente detectado como similar a uno existente.
+description: Usar cuando el usuario escribe "/Registro_Analisis_Financiero" explícitamente. Si en cambio pide en lenguaje natural (sin el "/") actualizar Análisis Financiero, refrescar los indicadores de proyectos, ver el estado de Análisis de Proyectos 2026.xlsx, evaluar rentabilidad/KPIs de un proyecto, o revisar/confirmar un cliente detectado como similar a uno existente, pedir confirmación antes de invocarlo -- puede que el usuario quiera /Actualizar_AF en vez de este (ver CLAUDE.md raíz § Invocación de skills). Consolida los costos reales por proyecto y categoría desde Centro de Costos hacia Análisis de Proyectos 2026.xlsx (hojas Proyectos/Detalle Costos Reales/Indicadores/Clientes/Glosario KPIs), calcula la Nota del Proyecto (0-100) y el CLTV por cliente, y crea la carpeta de facturas para proyectos nuevos agregados a mano en el Excel.
 ---
 
 # Registro Análisis Financiero
@@ -9,7 +9,7 @@ Herramienta de línea de comandos (Python + openpyxl), **solo lectura** sobre
 `Centro de Costos/Excel/Centro de Costos.xlsx` -- nunca lo escribe. Todas las
 rutas de este documento son relativas a la raíz de esta carpeta
 (`Sistema Analisis Financiero/`) -- el Excel que este skill mantiene
-(`Análisis de Proyectos.xlsx`) vive en la carpeta hermana
+(`Análisis de Proyectos 2026.xlsx`) vive en la carpeta hermana
 `../Análisis Financiero/`, no acá (reorganizado 2026-07-21, ver `CLAUDE.md`).
 El driver vive en `.claude/skills/Registro_Analisis_Financiero/driver.py`.
 
@@ -26,7 +26,7 @@ categorías de Centro de Costos caen en "Otros" por no tener mapeo explícito.
 python ".claude/skills/Registro_Analisis_Financiero/driver.py" status
 ```
 
-**`run`** -- ejecución real: backup de `Análisis de Proyectos.xlsx`, crea
+**`run`** -- ejecución real: backup de `Análisis de Proyectos 2026.xlsx`, crea
 carpetas de proyecto nuevas en
 `Centro de Costos/Sitio de comunicación - Centro de Costos 1/Facturas y
 Boletas/<Nombre>/`, regenera la hoja "Detalle Costos Reales" y las fórmulas

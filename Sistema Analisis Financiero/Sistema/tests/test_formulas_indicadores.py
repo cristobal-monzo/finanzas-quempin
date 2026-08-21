@@ -160,6 +160,28 @@ def test_fila_con_hueco_en_proyectos_queda_compacta_en_indicadores_pero_referenc
     assert ws.cell(row=3, column=16).value == f"=Proyectos!{desviacion_total}4"
 
 
+def test_categoria_gastos_generales_deja_nota_y_evaluacion_vacias(tmp_path):
+    """2026-08-20: 'Gastos Generales' (bucket de costos internos, sin Monto
+    de Venta) no debe recibir Nota/Evaluación -- ni el '#DIV/0!' que ya daba
+    antes (margen_neto indefinido sin venta) ni, peor, un '' interpretado
+    como "Excelente" por la comparación texto-vs-número de Excel si solo se
+    hubiera vaciado la Nota sin vaciar también la Evaluación."""
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    ws_p = wb[af.HOJA_PROYECTOS]
+    col_categoria = af.HEADERS_PROYECTOS.index("Categoría") + 1
+    ws_p.cell(row=2, column=col_categoria, value=af.CATEGORIA_GASTOS_GENERALES)
+
+    af.asegurar_hoja_indicadores(wb, [{"fila": 2, "tag": "GGEN", "nombre": "Gastos Generales"}])
+
+    ws = wb[af.HOJA_INDICADORES]
+    categoria_col = af.LETRA_COL_PROYECTOS["Categoría"]
+    es_gastos_generales = f'Proyectos!{categoria_col}2="Gastos Generales"'
+    formula_nota = ws.cell(row=2, column=22).value
+    formula_evaluacion = ws.cell(row=2, column=23).value
+    assert formula_nota == f'=IF({es_gastos_generales},"",{af._formula_nota(2)[1:]})'
+    assert formula_evaluacion == f'=IF({es_gastos_generales},"",{af._formula_evaluacion(2)[1:]})'
+
+
 def test_regenerar_borra_filas_de_la_corrida_anterior(tmp_path):
     wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
     af.asegurar_hoja_indicadores(wb, [{"fila": 2, "tag": "UMAG", "nombre": "UMAG"}])

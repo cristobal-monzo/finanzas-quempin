@@ -33,7 +33,10 @@ _spec.loader.exec_module(driver)
 # ── cmd_status ────────────────────────────────────────────────────────────
 
 def _resumen(**overrides):
-    base = {"carpetas_creadas": [], "categorias_no_mapeadas": [], "avisos": []}
+    base = {
+        "carpetas_creadas": [], "categorias_no_mapeadas": [], "avisos": [],
+        "proyectos_nuevos": [],
+    }
     base.update(overrides)
     return base
 
@@ -51,6 +54,13 @@ def test_status_lista_carpetas_que_se_crearian(capsys):
         driver.cmd_status()
     salida = capsys.readouterr().out
     assert "SE CREARÍAN: UMAG, CFLI" in salida
+
+
+def test_status_lista_proyectos_nuevos_que_se_crearian(capsys):
+    with patch.object(af, "ejecutar", return_value=_resumen(proyectos_nuevos=["Cesfam Limache"])):
+        driver.cmd_status()
+    salida = capsys.readouterr().out
+    assert "Cesfam Limache" in salida
 
 
 def test_status_lista_categorias_sin_mapeo(capsys):
