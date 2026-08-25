@@ -62,12 +62,13 @@ La carpeta `<Módulo>/Visualizador Web/data/` se agrega a `.gitignore` en
 cada módulo cuando se cree (el código que genera el export sí se
 versiona) — ver regla ya agregada en el `.gitignore` raíz.
 
-## Índice (hub) de los 3 tableros
+## Índice (hub) de los tableros
 
 `Visualizador Web/index.html` (raíz, junto a este `CLAUDE.md`) es una
-página estática que **no muestra datos** — solo 3 tarjetas, una por
-módulo, cada una con un botón que abre en pestaña nueva el tablero de ese
-módulo. Reutiliza el mismo sistema de marca que los 3 visualizadores
+página estática que **no muestra datos** — una tarjeta por tablero
+publicado (4 desde que se agregó Centro de Costos Perú, 2026-08-25),
+cada una con un botón que abre en pestaña nueva el tablero de ese
+módulo/país. Reutiliza el mismo sistema de marca que los visualizadores
 (paleta oficial, Lato embebida, cabecera negra con filete naranjo, toggle
 de tema). No hay `build_visualizador.py` para este archivo porque no lee
 ningún Excel/JSON: se edita a mano y se vuelve a copiar a
@@ -81,10 +82,10 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
   se sigue publicando alguna copia como Claude Artifact; en GitHub Pages no
   hay favicon de "Artifact" que fijar, el `<link rel="icon">` del propio
   HTML basta.
-- Las 3 URLs de destino son estructurales (`/centro-de-costos/`,
-  `/analisis-financiero/`, `/cotizador-historico/`) — no deberían cambiar
-  nunca, a diferencia de los links opacos de Artifact que sí podían
-  regenerarse por error.
+- Las URLs de destino son estructurales (`/centro-de-costos/`,
+  `/centro-de-costos-peru/`, `/analisis-financiero/`,
+  `/cotizador-historico/`) — no deberían cambiar nunca, a diferencia de los
+  links opacos de Artifact que sí podían regenerarse por error.
 
 ## Hosting — GitHub Pages (decidido y migrado, 2026-08-05)
 
@@ -97,6 +98,7 @@ desde la rama huérfana `gh-pages` (separada de `master`: solo contiene los
 ```
 https://cristobal-monzo.github.io/finanzas-quempin/                     # hub
 https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/
+https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/
 https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/
 https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/
 ```
@@ -112,6 +114,7 @@ tampoco hace falta guardar/leer un link en el `MEMORY.md` de cada skill.
 | Módulo | Subruta | Origen (`build/index.html`) |
 |---|---|---|
 | Centro de Costos | `centro-de-costos` | `Centro de Costos/Visualizador Web/build/index.html` |
+| Centro de Costos Perú | `centro-de-costos-peru` | `Peru/Centro de Costos/Visualizador Web/build/index.html` |
 | Análisis Financiero | `analisis-financiero` | `Sistema Analisis Financiero/Visualizador Web/build/index.html` |
 | Cotizador Histórico | `cotizador-historico` | `Cotizador Historico/Visualizador Web/build/index.html` |
 
