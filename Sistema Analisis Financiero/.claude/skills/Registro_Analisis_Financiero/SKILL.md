@@ -70,6 +70,21 @@ Excel que no ameríta un `run` completo).
 python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador
 ```
 
+## Perú (`--pais CL|PE`)
+
+Los 4 comandos aceptan `--pais CL|PE` (default `CL`, sin cambio de
+comportamiento si se omite). Con `--pais PE` leen/escriben
+`Peru/Análisis Financiero/Análisis de Proyectos Perú.xlsx` y
+`Peru/Centro de Costos/Excel/Centro de Costos Perú.xlsx` en vez de los
+Excel de Chile.
+
+```
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" status --pais PE
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" run --pais PE
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" confirmar-cliente --pais PE
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador --pais PE
+```
+
 ## Gotchas
 
 - **Mano de Obra Real es 100% manual** -- no hay categoría equivalente en
