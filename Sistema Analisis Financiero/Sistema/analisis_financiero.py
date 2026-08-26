@@ -42,17 +42,35 @@ RUTA_CLIENTES_PENDIENTES = RAIZ / "clientes_pendientes.json"
 
 RAIZ_CENTRO_COSTOS = RAIZ_MODULO.parent / "Centro de Costos"
 RUTA_EXCEL_CENTRO_COSTOS = RAIZ_CENTRO_COSTOS / "Excel" / "Centro de Costos.xlsx"
-# Apunta a Chile/ porque Análisis Financiero todavía no tiene país-conciencia
-# propia (a diferencia de Centro de Costos, que desde su soporte de Perú lee
-# de ".../Facturas y Boletas/Chile" o "/Perú" según corresponda) -- AF sigue
-# siendo Chile-only por ahora. Cuando AF reciba su propio soporte de país
-# (sub-proyecto futuro, no iniciado), esta constante deberá volver a
-# actualizarse para resolver por país igual que auditor_centro_costos.py.
 RAIZ_FACTURAS_CENTRO_COSTOS = (
     RAIZ_CENTRO_COSTOS / "Sitio de comunicación - Centro de Costos 1" / "Facturas y Boletas" / "Chile"
 )
 
 RAIZ_VISUALIZADOR_WEB_AF = RAIZ_MODULO / "Visualizador Web"
+
+# Config por pais -- solo lo que este modulo necesita (Excel de trabajo,
+# Excel/carpeta de facturas de Centro de Costos que lee, columna cuyo
+# nombre varia entre IVA/CLP y IGV/PEN, y carpeta del visualizador). Mismo
+# patron que PAISES en Cotizador Historico/Sistema/cotizador_historico.py.
+RAIZ_PERU = RAIZ_MODULO.parent / "Peru"
+PAISES = {
+    "CL": {
+        "ruta_excel_af": RUTA_EXCEL,
+        "ruta_excel_cc": RUTA_EXCEL_CENTRO_COSTOS,
+        "raiz_facturas_cc": RAIZ_FACTURAS_CENTRO_COSTOS,
+        "raiz_visualizador_web": RAIZ_VISUALIZADOR_WEB_AF,
+        "col_total_sin_iva_cc": "Total sin IVA (CLP)",
+    },
+    "PE": {
+        "ruta_excel_af": RAIZ_PERU / "Análisis Financiero" / "Análisis de Proyectos Perú.xlsx",
+        "ruta_excel_cc": RAIZ_PERU / "Centro de Costos" / "Excel" / "Centro de Costos Perú.xlsx",
+        "raiz_facturas_cc": (
+            RAIZ_CENTRO_COSTOS / "Sitio de comunicación - Centro de Costos 1" / "Facturas y Boletas" / "Perú"
+        ),
+        "raiz_visualizador_web": RAIZ_PERU / "Análisis Financiero" / "Visualizador Web",
+        "col_total_sin_iva_cc": "Total sin IGV (PEN)",
+    },
+}
 
 HOJA_PROYECTOS = "Proyectos"
 HOJA_DETALLE_COSTOS_REALES = "Detalle Costos Reales"
@@ -633,16 +651,20 @@ def prefijo_de_n_ref(n_ref: str) -> str:
     return n_ref.split("-")[0]
 
 
-def leer_detalle_centro_costos(ruta_excel_cc: Path) -> list[dict]:
+def leer_detalle_centro_costos(ruta_excel_cc: Path, pais: str = "CL") -> list[dict]:
     """Lee la hoja 'Detalle' de Centro de Costos.xlsx -- SOLO LECTURA, este
     módulo nunca escribe ese archivo. Filas sin N° Ref. o sin Total sin IVA
-    se ignoran (no se puede agrupar ni sumar sin esos dos datos)."""
+    se ignoran (no se puede agrupar ni sumar sin esos dos datos).
+
+    'pais' selecciona el nombre de la columna de total via PAISES -- "CL"
+    preserva exactamente el comportamiento anterior a este parametro."""
+    col_total_nombre = PAISES[pais]["col_total_sin_iva_cc"]
     wb = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
     ws = wb["Detalle"]
     encabezados = [celda.value for celda in ws[1]]
     col_n_ref = encabezados.index("N° Ref.") + 1
     col_categoria = encabezados.index("Categoría Ítem") + 1
-    col_total_sin_iva = encabezados.index("Total sin IVA (CLP)") + 1
+    col_total_sin_iva = encabezados.index(col_total_nombre) + 1
 
     items = []
     for fila in ws.iter_rows(min_row=2):
@@ -1409,41 +1431,59 @@ def asegurar_hoja_glosario_kpis(wb) -> None:
 
 # ── ORQUESTADOR ───────────────────────────────────────────────────────────
 
-def actualizar_visualizador_af() -> bool:
+def actualizar_visualizador_af(pais: str = "CL") -> bool:
     """Regenera el visualizador web (Visualizador Web/build/index.html) a
     partir del Excel recien guardado -- mismo patron que actualizar_
     visualizador() en Centro de Costos: corre al final de ejecutar(), solo
     lee el Excel (no lo modifica), y si falla no aborta el run, solo
     advierte -- el Excel ya quedo guardado igual. Ver Visualizador Web/
-    CLAUDE.md para la arquitectura del build."""
-    ruta_build_script = RAIZ_VISUALIZADOR_WEB_AF / "build_visualizador.py"
+    CLAUDE.md para la arquitectura del build.
+
+    'pais' resuelve la carpeta del visualizador via PAISES -- "CL" preserva
+    el comportamiento anterior a este parametro."""
+    raiz_viz = PAISES[pais]["raiz_visualizador_web"]
+    ruta_build_script = raiz_viz / "build_visualizador.py"
     if not ruta_build_script.exists():
         return False
-    ya_en_path = str(RAIZ_VISUALIZADOR_WEB_AF) in sys.path
+    ya_en_path = str(raiz_viz) in sys.path
     if not ya_en_path:
-        sys.path.insert(0, str(RAIZ_VISUALIZADOR_WEB_AF))
+        sys.path.insert(0, str(raiz_viz))
     try:
         sys.modules.pop("build_visualizador", None)
         import build_visualizador as bv
         return bv.build() == 0
     finally:
-        if not ya_en_path and str(RAIZ_VISUALIZADOR_WEB_AF) in sys.path:
-            sys.path.remove(str(RAIZ_VISUALIZADOR_WEB_AF))
+        if not ya_en_path and str(raiz_viz) in sys.path:
+            sys.path.remove(str(raiz_viz))
 
 
 def ejecutar(
-    ruta_excel_af: Path = RUTA_EXCEL,
-    ruta_excel_cc: Path = RUTA_EXCEL_CENTRO_COSTOS,
-    raiz_facturas_cc: Path = RAIZ_FACTURAS_CENTRO_COSTOS,
+    ruta_excel_af: Path | None = None,
+    ruta_excel_cc: Path | None = None,
+    raiz_facturas_cc: Path | None = None,
     raiz_respaldos: Path = RAIZ_RESPALDOS,
     ruta_clientes_pendientes: Path = RUTA_CLIENTES_PENDIENTES,
     dry_run: bool = False,
+    pais: str = "CL",
 ) -> dict:
     """Orquesta todo el flujo. Con dry_run=True no escribe nada -- ni backup,
     ni carpetas, ni el Excel -- solo reporta qué pasaría (usado por el
     comando 'status' del skill). Captura PermissionError/OSError de operaciones
     de archivo (backup, carpetas, save); excepciones de lectura de datos
-    propagarán hacia afuera."""
+    propagarán hacia afuera.
+
+    'pais' resuelve ruta_excel_af/ruta_excel_cc/raiz_facturas_cc via PAISES
+    cuando se omiten -- un valor explícito para cualquiera de los 3 sigue
+    ganando (mismo contrato que antes de este parámetro, con "CL" como
+    default transparente)."""
+    cfg = PAISES[pais]
+    if ruta_excel_af is None:
+        ruta_excel_af = cfg["ruta_excel_af"]
+    if ruta_excel_cc is None:
+        ruta_excel_cc = cfg["ruta_excel_cc"]
+    if raiz_facturas_cc is None:
+        raiz_facturas_cc = cfg["raiz_facturas_cc"]
+
     resumen = {
         "avisos": [], "carpetas_creadas": [], "categorias_no_mapeadas": [],
         "clientes_pendientes": [], "proyectos_nuevos": [], "error": None,
@@ -1460,7 +1500,7 @@ def ejecutar(
         )
         return resumen
 
-    items_detalle = leer_detalle_centro_costos(ruta_excel_cc)
+    items_detalle = leer_detalle_centro_costos(ruta_excel_cc, pais=pais)
     agrupado = agrupar_por_proyecto_y_subcategoria(items_detalle)
 
     nombres_por_prefijo_cc = leer_nombres_proyecto_centro_costos(ruta_excel_cc)
@@ -1530,7 +1570,7 @@ def ejecutar(
         resumen["error"] = f"No se pudo guardar {ruta_excel_af} (¿archivo abierto?): {exc}"
 
     try:
-        if not actualizar_visualizador_af():
+        if not actualizar_visualizador_af(pais=pais):
             resumen["avisos"].append(
                 "No se pudo actualizar el visualizador web -- correr manualmente "
                 "'python driver.py visualizador' despues."
@@ -1541,9 +1581,9 @@ def ejecutar(
     return resumen
 
 
-def main() -> None:
-    resumen = ejecutar()
-    print("=== Análisis Financiero ===")
+def main(pais: str = "CL") -> None:
+    resumen = ejecutar(pais=pais)
+    print(f"=== Análisis Financiero{' - ' + pais if pais != 'CL' else ''} ===")
     if resumen["proyectos_nuevos"]:
         print(
             f"Proyectos nuevos agregados desde Centro de Costos (TAG + Nombre; "

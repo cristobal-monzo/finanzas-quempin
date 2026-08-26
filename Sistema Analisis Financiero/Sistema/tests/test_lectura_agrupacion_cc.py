@@ -36,6 +36,36 @@ def test_leer_detalle_centro_costos_lee_las_3_columnas_relevantes(tmp_path):
     assert items == [{"n_ref": "UMAG-001", "categoria_item": "Materiales", "total_sin_iva": 50000.0}]
 
 
+def _wb_centro_costos_pe(tmp_path, filas_detalle):
+    """filas_detalle: lista de tuplas (n_ref, categoria_item, total_sin_igv).
+    Headers reales de Peru/Centro de Costos/Excel/Centro de Costos Perú.xlsx
+    (confirmados via openpyxl) -- IGV/PEN en vez de IVA/CLP."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Detalle"
+    headers = ["N° Ref.", "Categoría Ítem", "Total sin IGV (PEN)"]
+    for c, h in enumerate(headers, 1):
+        ws.cell(row=1, column=c, value=h)
+    for r, fila in enumerate(filas_detalle, 2):
+        for c, valor in enumerate(fila, 1):
+            ws.cell(row=r, column=c, value=valor)
+    ruta = tmp_path / "Centro de Costos Perú.xlsx"
+    wb.save(ruta)
+    return ruta
+
+
+def test_leer_detalle_centro_costos_pais_pe_lee_columna_igv_pen(tmp_path):
+    ruta = _wb_centro_costos_pe(tmp_path, [("LIMA-001", "Materiales", 300.0)])
+    items = af.leer_detalle_centro_costos(ruta, pais="PE")
+    assert items == [{"n_ref": "LIMA-001", "categoria_item": "Materiales", "total_sin_iva": 300.0}]
+
+
+def test_leer_detalle_centro_costos_pais_cl_no_cambia_con_el_parametro_default(tmp_path):
+    ruta = _crear_excel_cc_minimo(tmp_path, [("UMAG-001", "Materiales", 90000)])
+    items = af.leer_detalle_centro_costos(ruta, pais="CL")
+    assert items == [{"n_ref": "UMAG-001", "categoria_item": "Materiales", "total_sin_iva": 90000.0}]
+
+
 def test_leer_detalle_centro_costos_ignora_filas_sin_total(tmp_path):
     wb = openpyxl.Workbook()
     ws = wb.active
