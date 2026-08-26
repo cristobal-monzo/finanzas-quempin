@@ -90,6 +90,24 @@ procedimiento paso a paso dentro del flujo de publicación.
 python ".claude/skills/Cotizador_Historico/driver.py" visualizador --uf-manual 39200.50 --uf-fuente "Banco Central de Chile, 20-08-2026"
 ```
 
+## Perú (`--pais CL|PE`)
+
+Los 3 comandos (`status`/`consultar`/`visualizador`) aceptan `--pais CL|PE`
+(default `CL`, sin cambio de comportamiento si se omite). Con `--pais PE`
+leen `Peru/Centro de Costos/Excel/Centro de Costos Perú.xlsx` en vez del
+Excel de Chile, y **Perú nunca reajusta por índice** (decisión explícita
+del spec de expansión a Perú — no existe una fuente pública equivalente a
+la UF chilena): `consultar`/`visualizador` muestran el precio histórico
+nominal en soles tal cual, sin llamar nunca a `mindicador.cl` para ese
+país (`--uf-manual`/`--uf-fuente` no aplican con `--pais PE`, se ignoran
+si se pasan).
+
+```
+python ".claude/skills/Cotizador_Historico/driver.py" status --pais PE
+python ".claude/skills/Cotizador_Historico/driver.py" consultar "taladro" --pais PE
+python ".claude/skills/Cotizador_Historico/driver.py" visualizador --pais PE
+```
+
 ## Uso conversacional
 
 El agente puede responder la consulta directamente en el chat (ej. "¿cuánto
