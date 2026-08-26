@@ -143,6 +143,29 @@
   }
   .viz-theme-toggle:hover { background: rgba(255,255,255,0.2); }
 
+  /* Nav entre tableros — visible solo tras pasar el gate (dentro de
+     .viz-root), permite saltar a otro modulo sin re-ingresar la
+     contrasena (los 4 tableros comparten el mismo unlock, ver
+     'quempin_viz_unlocked' mas abajo). */
+  .viz-modnav {
+    border-top: 1px solid rgba(255,255,255,0.14);
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+  .viz-modnav-inner { display: flex; gap: 4px; flex-wrap: wrap; }
+  .viz-modnav-tab {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px 6px 0 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #98989a;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+  }
+  a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
+  .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
+
   /* Password gate */
   .viz-gate {
     /* Bug real encontrado en QA con navegador (Iteración 3): .viz-gate es
@@ -501,6 +524,14 @@
       </div>
       <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
     </div>
+    <nav class="viz-modnav">
+      <div class="viz-container viz-modnav-inner">
+        <span class="viz-modnav-tab is-active">Centro de Costos</span>
+        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/">Centro de Costos Perú</a>
+        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a>
+        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador Histórico</a>
+      </div>
+    </nav>
   </header>
 
   <div class="viz-container">
@@ -674,7 +705,7 @@
   function unlock() {
     gate.style.display = 'none';
     vizRootEl.style.display = '';
-    try { sessionStorage.setItem('cc_viz_unlocked', '1'); } catch (e) {}
+    try { localStorage.setItem('quempin_viz_unlocked', '1'); } catch (e) {}
     var b64 = document.getElementById('cc-data-b64').textContent;
     var DATA = JSON.parse(b64ToUtf8(b64));
     initApp(DATA);
@@ -692,7 +723,7 @@
   });
 
   var alreadyUnlocked = false;
-  try { alreadyUnlocked = sessionStorage.getItem('cc_viz_unlocked') === '1'; } catch (e) {}
+  try { alreadyUnlocked = localStorage.getItem('quempin_viz_unlocked') === '1'; } catch (e) {}
   if (alreadyUnlocked) {
     unlock();
   } else {
@@ -1153,7 +1184,7 @@
   function renderLineChart(containerId, items) {
     var el = document.getElementById(containerId);
     if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var W = el.clientWidth || 480, H = 220, padL = 52, padB = 30, padT = 14, padR = 16;
+    var W = el.clientWidth || 480, H = 220, padL = 56, padB = 34, padT = 14, padR = 16;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var max = Math.max.apply(null, items.map(function (i) { return i.acumulado; })) || 1;
     var n = items.length;
@@ -1172,8 +1203,8 @@
     svg += '<path d="' + pathD + '" fill="none" stroke="var(--brand-orange)" stroke-width="2"/>';
     items.forEach(function (it, i) {
       svg += '<circle class="line-dot" data-i="' + i + '" cx="' + xAt(i) + '" cy="' + yAt(it.acumulado) + '" r="4" fill="var(--brand-orange)" stroke="var(--surface-card)" stroke-width="1.5"/>';
-      svg += '<text x="' + xAt(i) + '" y="' + (H - padB + 16) + '" text-anchor="middle" font-size="10" fill="var(--text-secondary)">' + esc(mesLabel(it.mes)) + '</text>';
     });
+    svg += mesAxisTicksSvg(items, xAt, H - padB + 14);
     svg += '</svg>';
     el.innerHTML = svg;
     el.querySelectorAll('.line-dot').forEach(function (dot) {
@@ -1185,12 +1216,55 @@
   }
   var MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   function mesLabel(iso) { var p = iso.split('-'); return MESES[+p[1] - 1] + ' ' + p[0]; }
+  // El eje de meses crece cada vez que se registra un documento en un mes
+  // nuevo -- con muchos puntos las etiquetas horizontales chocan entre si
+  // (nunca deja de crecer, asi que truncar a un ancho fijo no alcanza). Se
+  // rotan en angulo (mas compacto que vertical, mismo alto de card) y se
+  // muestra un subconjunto parejo cuando hay mas de MAX_MES_TICKS meses --
+  // los puntos/barras se siguen dibujando todos, solo se etiqueta una
+  // fraccion legible; el resto sigue accesible via el tooltip al pasar el
+  // mouse.
+  var MAX_MES_TICKS = 7;
+  function mesTickIndices(n) {
+    if (n <= MAX_MES_TICKS) { var all = []; for (var i = 0; i < n; i++) all.push(i); return all; }
+    var step = (n - 1) / (MAX_MES_TICKS - 1), out = [], last = -1;
+    for (var k = 0; k < MAX_MES_TICKS; k++) {
+      var idx = Math.round(k * step);
+      if (idx !== last) { out.push(idx); last = idx; }
+    }
+    return out;
+  }
+  function mesAxisLabelSvg(x, y, text) {
+    // Angulo positivo (sentido horario en el espacio SVG, y crece hacia
+    // abajo) para que la etiqueta suba hacia la izquierda desde el punto
+    // de anclaje -- con angulo negativo el texto giraba hacia ABAJO, fuera
+    // del viewBox, y se recortaba por el borde inferior del grafico.
+    return '<text x="' + x + '" y="' + y + '" text-anchor="end" font-size="10" fill="var(--text-secondary)" transform="rotate(40 ' + x + ' ' + y + ')">' + esc(text) + '</text>';
+  }
+  // El primer tick mostrado siempre lleva el año completo; los siguientes
+  // lo omiten salvo que cambien de año respecto al tick anterior (ej. "Dic
+  // 2024, May, Jul, Feb 2026, Abr...") -- evita repetir el mismo año en
+  // cada etiqueta, que era lo que hacia que la primera (la mas larga, mas
+  // pegada al borde izquierdo del grafico) se recortara al rotarla.
+  function shortMesLabel(iso, prevIso) {
+    var full = mesLabel(iso);
+    if (!prevIso) return full;
+    return iso.split('-')[0] === prevIso.split('-')[0] ? full.split(' ')[0] : full;
+  }
+  function mesAxisTicksSvg(items, xForIndex, y) {
+    var ticks = mesTickIndices(items.length), svg = '';
+    ticks.forEach(function (i, k) {
+      var label = k === 0 ? mesLabel(items[i].mes) : shortMesLabel(items[i].mes, items[ticks[k - 1]].mes);
+      svg += mesAxisLabelSvg(xForIndex(i), y, label);
+    });
+    return svg;
+  }
 
   // ---------- SVG chart: monthly bars (gasto individual del mes, no acumulado) ----------
   function renderMensualBarChart(containerId, items) {
     var el = document.getElementById(containerId);
     if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var W = el.clientWidth || 480, H = 220, padL = 52, padB = 30, padT = 14, padR = 16;
+    var W = el.clientWidth || 480, H = 220, padL = 56, padB = 34, padT = 14, padR = 16;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var max = Math.max.apply(null, items.map(function (i) { return i.monto; })) || 1;
     var n = items.length;
@@ -1208,8 +1282,8 @@
       var h = innerH * (it.monto / max);
       var y = padT + innerH - h;
       svg += '<rect class="bar-rect" data-i="' + i + '" x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(h, 1) + '" rx="4" fill="var(--brand-orange)"/>';
-      svg += '<text x="' + (x + bw / 2) + '" y="' + (H - padB + 16) + '" text-anchor="middle" font-size="10" fill="var(--text-secondary)">' + esc(mesLabel(it.mes)) + '</text>';
     });
+    svg += mesAxisTicksSvg(items, function (i) { return padL + i * (bw + gap) + bw / 2; }, H - padB + 14);
     svg += '</svg>';
     el.innerHTML = svg;
     el.querySelectorAll('.bar-rect').forEach(function (rect) {

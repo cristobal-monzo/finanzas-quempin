@@ -143,6 +143,29 @@
   }
   .viz-theme-toggle:hover { background: rgba(255,255,255,0.2); }
 
+  /* Nav entre tableros — visible solo tras pasar el gate (dentro de
+     .viz-root), permite saltar a otro modulo sin re-ingresar la
+     contrasena (los 4 tableros comparten el mismo unlock, ver
+     'quempin_viz_unlocked' mas abajo). */
+  .viz-modnav {
+    border-top: 1px solid rgba(255,255,255,0.14);
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+  .viz-modnav-inner { display: flex; gap: 4px; flex-wrap: wrap; }
+  .viz-modnav-tab {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px 6px 0 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #98989a;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+  }
+  a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
+  .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
+
   /* Password gate */
   .viz-gate {
     /* Bug real encontrado en QA con navegador (Iteración 3): .viz-gate es
@@ -375,6 +398,14 @@
       </div>
       <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
     </div>
+    <nav class="viz-modnav">
+      <div class="viz-container viz-modnav-inner">
+        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/">Centro de Costos</a>
+        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/">Centro de Costos Perú</a>
+        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a>
+        <span class="viz-modnav-tab is-active">Cotizador Histórico</span>
+      </div>
+    </nav>
   </header>
 
   <div class="viz-container">
@@ -482,7 +513,7 @@
   function unlock() {
     gate.style.display = 'none';
     vizRootEl.style.display = '';
-    try { sessionStorage.setItem('ch_viz_unlocked', '1'); } catch (e) {}
+    try { localStorage.setItem('quempin_viz_unlocked', '1'); } catch (e) {}
     var b64 = document.getElementById('ch-data-b64').textContent;
     var DATA = JSON.parse(b64ToUtf8(b64));
     initApp(DATA);
@@ -500,7 +531,7 @@
   });
 
   var alreadyUnlocked = false;
-  try { alreadyUnlocked = sessionStorage.getItem('ch_viz_unlocked') === '1'; } catch (e) {}
+  try { alreadyUnlocked = localStorage.getItem('quempin_viz_unlocked') === '1'; } catch (e) {}
   if (alreadyUnlocked) {
     unlock();
   } else {
