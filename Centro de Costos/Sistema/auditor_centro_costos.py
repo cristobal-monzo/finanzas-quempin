@@ -84,6 +84,8 @@ PREFIJOS_PROYECTO = {
     "Calderas Antofagasta": "CANT",
     "Comisaría Conchalí": "COMC",
     "Cremación Concepción": "CREM",
+    "Junji's Valparaiso": "JUNJ",
+    "Putaendo Hospital Pinel": "HPIN",
 }
 
 # Config por pais -- moneda/impuesto/rutas que varian entre Chile y Peru.
@@ -2273,7 +2275,7 @@ def _avisar_reportes_pendientes() -> None:
     )
 
 
-def actualizar_analisis_financiero():
+def actualizar_analisis_financiero(pais="CL"):
     """Actualiza Análisis Financiero/Análisis de Proyectos.xlsx (costos
     reales por proyecto/categoría + hoja Indicadores) a partir del Excel
     recien guardado -- mismo patron que actualizar_visualizador: corre al
@@ -2285,11 +2287,17 @@ def actualizar_analisis_financiero():
         return False
     try:
         with _modulo_hermano_fresco(ruta_script.parent, "analisis_financiero") as af:
-            resumen = af.ejecutar()
+            resumen = af.ejecutar(pais=pais)
             if resumen["error"]:
                 print(f"  [WARN] Análisis Financiero terminó con error: {resumen['error']}")
                 return False
-            _avisar_reportes_pendientes()
+            # Los reportes PDF son un concepto Chile-only por ahora (ver
+            # Sistema Analisis Financiero/CLAUDE.md, seccion "Reportes PDF"
+            # -- nunca menciona Peru) -- avisar de "pendientes" durante un
+            # run de Peru solo reportaria sobre los reportes de Chile, ruido
+            # enganoso.
+            if pais == "CL":
+                _avisar_reportes_pendientes()
             return True
     except Exception as e:
         print(f"  [WARN] No se pudo actualizar Análisis Financiero ({e}).")
@@ -2576,10 +2584,7 @@ def main(pais="CL"):
         print(f"  [INFO] Visualizador Web de {pais} aún no implementado -- paso omitido.")
 
     print("\n--- PASO 12d: Actualizar Análisis Financiero ---")
-    if pais == "CL":
-        actualizar_analisis_financiero()
-    else:
-        print(f"  [INFO] Análisis Financiero de {pais} aún no implementado -- paso omitido.")
+    actualizar_analisis_financiero(pais=pais)
 
     print("\n--- PASO 13: Verificaciones aritmeticas (sobre todo el JSON) ---")
     inconsistencias = verificar_aritmetica(datos_json)
