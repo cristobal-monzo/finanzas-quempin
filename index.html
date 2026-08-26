@@ -142,11 +142,22 @@
   .hub-hero p { font-size: 13.5px; color: var(--text-secondary); max-width: 640px; margin: 0 auto; line-height: 1.6; }
 
   /* Cards */
+  .hub-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    margin: 0;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-hairline);
+  }
+  .hub-section-title:first-of-type { border-top: none; padding-top: 0; }
   .hub-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 20px;
-    padding: 28px 0 12px;
+    padding: 16px 0 12px;
   }
   .hub-card {
     background: var(--surface-card);
@@ -199,19 +210,13 @@
       <p>Cada tablero abre en una pestaña nueva y pide su propia contraseña antes de mostrar cualquier dato. Este índice no contiene información financiera — solo enlaza a los visualizadores ya publicados.</p>
     </div>
 
+    <h2 class="hub-section-title">🇨🇱 Chile</h2>
     <div class="hub-grid">
       <article class="hub-card">
         <div class="icon" aria-hidden="true">🏗️</div>
         <h3>Centro de Costos</h3>
         <p class="desc">Gasto real registrado por proyecto, categoría y proveedor a partir de facturas y boletas.</p>
         <a class="btn" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/" target="_blank" rel="noopener">Abrir tablero →</a>
-      </article>
-
-      <article class="hub-card">
-        <div class="icon" aria-hidden="true">🏗️ 🇵🇪</div>
-        <h3>Centro de Costos — Perú</h3>
-        <p class="desc">Gasto real registrado por proyecto, categoría y proveedor a partir de facturas y boletas de Perú (S/, IGV 18%).</p>
-        <a class="btn" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/" target="_blank" rel="noopener">Abrir tablero →</a>
       </article>
 
       <article class="hub-card">
@@ -226,6 +231,16 @@
         <h3>Cotizador Histórico</h3>
         <p class="desc">Historial de precios de materiales por proveedor para armar cotizaciones nuevas con un carrito.</p>
         <a class="btn" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/" target="_blank" rel="noopener">Abrir tablero →</a>
+      </article>
+    </div>
+
+    <h2 class="hub-section-title">🇵🇪 Perú</h2>
+    <div class="hub-grid">
+      <article class="hub-card">
+        <div class="icon" aria-hidden="true">🏗️</div>
+        <h3>Centro de Costos — Perú</h3>
+        <p class="desc">Gasto real registrado por proyecto, categoría y proveedor a partir de facturas y boletas de Perú (S/, IGV 18%).</p>
+        <a class="btn" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/" target="_blank" rel="noopener">Abrir tablero →</a>
       </article>
     </div>
 
