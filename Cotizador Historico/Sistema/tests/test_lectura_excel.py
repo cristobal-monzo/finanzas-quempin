@@ -35,6 +35,64 @@ def _crear_excel_prueba(tmp_path, filas_detalle, filas_master):
     return ruta
 
 
+def _crear_excel_prueba_pe(tmp_path, filas_detalle, filas_master):
+    """Mismo shape que _crear_excel_prueba, pero con los encabezados de
+    Peru (IGV/PEN en vez de IVA/CLP) -- ver Peru/Centro de Costos/Excel/
+    Centro de Costos Perú.xlsx, headers reales confirmados via openpyxl."""
+    wb = openpyxl.Workbook()
+    ws_detalle = wb.active
+    ws_detalle.title = "Detalle"
+    encabezados = [
+        "N° Ref.", "Nombre Ítem", "Descripción", "P. Unitario sin IGV",
+        "Total sin IGV (PEN)", "Total con IGV (PEN)",
+    ]
+    for c, h in enumerate(encabezados, 1):
+        ws_detalle.cell(row=1, column=c, value=h)
+    for r, fila in enumerate(filas_detalle, 2):
+        for c, valor in enumerate(fila, 1):
+            ws_detalle.cell(row=r, column=c, value=valor)
+
+    ws_master = wb.create_sheet("Master")
+    for c, h in enumerate(["N° Ref.", "Fecha"], 1):
+        ws_master.cell(row=1, column=c, value=h)
+    for r, fila in enumerate(filas_master, 2):
+        for c, valor in enumerate(fila, 1):
+            ws_master.cell(row=r, column=c, value=valor)
+
+    ruta = tmp_path / "Centro de Costos Perú.xlsx"
+    wb.save(ruta)
+    return ruta
+
+
+def test_cargar_items_detalle_pais_pe_lee_columnas_igv_pen(tmp_path):
+    ruta = _crear_excel_prueba_pe(
+        tmp_path,
+        filas_detalle=[("LIMA-001", "Taladro", "Taladro percutor 20V", 300, 300, 354)],
+        filas_master=[("LIMA-001", datetime(2026, 1, 15))],
+    )
+    items = ch.cargar_items_detalle(ruta, pais="PE")
+    assert len(items) == 1
+    item = items[0]
+    assert item["precio_unitario_sin_iva"] == 300
+    assert item["total_sin_iva"] == 300
+    assert item["total_con_iva"] == 354
+    assert item["excluido_motivo"] is None
+
+
+def test_cargar_items_detalle_pais_cl_no_cambia_con_el_parametro_default(tmp_path):
+    # Mismo test que test_cargar_items_detalle_resuelve_fecha_via_master,
+    # pero pasando pais="CL" explicito -- confirma que el default sigue
+    # siendo identico a antes de este cambio.
+    ruta = _crear_excel_prueba(
+        tmp_path,
+        filas_detalle=[("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, 90000, 107100)],
+        filas_master=[("UMAG-001", datetime(2026, 1, 15))],
+    )
+    items = ch.cargar_items_detalle(ruta, pais="CL")
+    assert items[0]["precio_unitario_sin_iva"] == 90000
+    assert items[0]["total_con_iva"] == 107100
+
+
 def test_mapear_encabezados_lee_fila_1(tmp_path):
     ruta = _crear_excel_prueba(tmp_path, filas_detalle=[], filas_master=[])
     wb = openpyxl.load_workbook(ruta, read_only=True)

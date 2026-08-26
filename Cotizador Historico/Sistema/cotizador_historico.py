@@ -24,6 +24,27 @@ RAIZ_MODULO = Path(__file__).resolve().parent.parent
 RUTA_EXCEL_CENTRO_COSTOS = RAIZ_MODULO.parent / "Centro de Costos" / "Excel" / "Centro de Costos.xlsx"
 RUTA_CACHE_UF = Path(__file__).resolve().parent / "uf_cache.json"
 
+RUTA_EXCEL_CENTRO_COSTOS_PERU = RAIZ_MODULO.parent / "Peru" / "Centro de Costos" / "Excel" / "Centro de Costos Perú.xlsx"
+
+# Config por pais -- solo lo que este modulo necesita (nombres de columna
+# que varian entre IVA/CLP y IGV/PEN, y la ruta del Excel por defecto).
+# Mismo patron que PAISES en Centro de Costos/Sistema/auditor_centro_costos.py,
+# a proposito no comparte esa tabla -- este modulo no importa ese archivo.
+PAISES = {
+    "CL": {
+        "ruta_excel": RUTA_EXCEL_CENTRO_COSTOS,
+        "col_precio_unitario": "P. Unitario sin IVA",
+        "col_total_sin_iva": "Total sin IVA (CLP)",
+        "col_total_con_iva": "Total con IVA (CLP)",
+    },
+    "PE": {
+        "ruta_excel": RUTA_EXCEL_CENTRO_COSTOS_PERU,
+        "col_precio_unitario": "P. Unitario sin IGV",
+        "col_total_sin_iva": "Total sin IGV (PEN)",
+        "col_total_con_iva": "Total con IGV (PEN)",
+    },
+}
+
 
 class ExcelNoDisponibleError(Exception):
     """El archivo Centro de Costos.xlsx no existe o no se pudo abrir para lectura."""
@@ -66,12 +87,16 @@ def _proyecto_proveedor_por_ref(ws_master):
     return meta
 
 
-def cargar_items_detalle(ruta_excel=None):
+def cargar_items_detalle(ruta_excel=None, pais="CL"):
     """Lee Detalle+Master de Centro de Costos.xlsx (solo lectura) y devuelve
     una lista de dicts, uno por item de linea de Detalle, con su fecha ya
     resuelta via Master (cruce por N Ref.). Incluye "total_sin_iva"/
     "total_con_iva" de esa misma fila (permiten derivar la tasa real de IVA
     del documento, ver tasa_iva_real, sin asumir 19% fijo).
+
+    'pais' ("CL" o "PE") selecciona los nombres de columna y la ruta por
+    defecto via PAISES -- "CL" preserva exactamente el comportamiento
+    anterior a este parametro.
 
     Items cuyo N Ref. no tiene fila en Master, cuya Fecha en Master no es un
     datetime valido, cuyo precio unitario no es un numero, o cuyo precio
@@ -89,7 +114,8 @@ def cargar_items_detalle(ruta_excel=None):
     independiente de como haya quedado tipificado el documento. Pedido
     explicito del usuario 2026-07-28 -- no reintroducir Notas de Credito al
     indice de este modulo."""
-    ruta = Path(ruta_excel) if ruta_excel is not None else RUTA_EXCEL_CENTRO_COSTOS
+    cfg = PAISES[pais]
+    ruta = Path(ruta_excel) if ruta_excel is not None else cfg["ruta_excel"]
     try:
         wb = openpyxl.load_workbook(str(ruta), data_only=True, read_only=True)
     except FileNotFoundError as exc:
@@ -116,9 +142,9 @@ def cargar_items_detalle(ruta_excel=None):
             col_ref = cols["N° Ref."]
             col_nombre = cols["Nombre Ítem"]
             col_desc = cols["Descripción"]
-            col_precio = cols["P. Unitario sin IVA"]
-            col_total_sin_iva = cols["Total sin IVA (CLP)"]
-            col_total_con_iva = cols["Total con IVA (CLP)"]
+            col_precio = cols[cfg["col_precio_unitario"]]
+            col_total_sin_iva = cols[cfg["col_total_sin_iva"]]
+            col_total_con_iva = cols[cfg["col_total_con_iva"]]
             col_categoria = cols.get("Categoría Ítem")
         except KeyError as exc:
             raise ExcelNoDisponibleError(
@@ -380,7 +406,49 @@ def reajustar_todos(items, uf_hoy, cache_uf=None):
     return reajustados, sin_uf_count
 
 
-def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=None, fuente_manual=None):
+def armar_compra_sin_reajuste(item):
+    """Version 'PE' de reajustar_item: sin UF ni reajuste por indice --
+    decision explicita del spec de expansion a Peru (no existe hoy una
+    fuente publica equivalente a la UF chilena, ver docs/superpowers/specs/
+    2026-08-21-peru-expansion-design.md decision 5). El precio historico se
+    muestra tal cual (factor implicito 1) -- mismo shape de salida que
+    reajustar_item para que consultar_item/build_visualizador.py/
+    template.html no necesiten dos formatos distintos. A diferencia de
+    reajustar_item, nunca devuelve None: no hay llamada de red que pueda
+    fallar."""
+    tasa_iva = tasa_iva_real(item.get("total_sin_iva"), item.get("total_con_iva"))
+    precio = item["precio_unitario_sin_iva"]
+    return {
+        "n_ref": item["n_ref"],
+        "fecha": item["fecha"].strftime("%Y-%m-%d"),
+        "precio_original_sin_iva": precio,
+        "precio_reajustado_hoy": precio,
+        "precio_reajustado_hoy_con_iva": round(precio * tasa_iva),
+    }
+
+
+def armar_indice_completo_sin_reajuste(items):
+    """Version 'PE' de reajustar_todos: aplica armar_compra_sin_reajuste a
+    TODOS los items indexables (excluido_motivo is None), agregando la
+    misma metadata de producto. sin_uf_count siempre 0 -- mismo contrato de
+    retorno (lista, sin_uf_count) que reajustar_todos, para que
+    build_visualizador.py de Peru pueda llamar a cualquiera de las dos sin
+    ramificar el resto de su logica."""
+    resultado = []
+    for item in items:
+        if item["excluido_motivo"] is not None:
+            continue
+        compra = armar_compra_sin_reajuste(item)
+        compra["nombre_item"] = item["nombre_item"]
+        compra["descripcion"] = item["descripcion"]
+        compra["categoria_item"] = item.get("categoria_item")
+        compra["proyecto"] = item.get("proyecto")
+        compra["proveedor_tag"] = item.get("proveedor_tag")
+        resultado.append(compra)
+    return resultado, 0
+
+
+def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=None, fuente_manual=None, pais="CL"):
     """Orquesta una consulta completa: carga Detalle, busca por texto,
     reajusta cada compra encontrada por UF, y agrega promedio/rango.
 
@@ -394,9 +462,13 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
     valor manual, sigue abortando la consulta completa (UFNoDisponibleError)
     porque sin ella no se puede reajustar nada.
 
-    fecha_hoy es inyectable para tests (default: date.today())."""
+    fecha_hoy es inyectable para tests (default: date.today()).
+
+    'pais'="PE" salta el reajuste por UF por completo (ver
+    armar_compra_sin_reajuste) -- nunca llama a mindicador.cl ni al cache
+    de disco para ese pais."""
     hoy = fecha_hoy or date.today()
-    items = cargar_items_detalle(ruta_excel)
+    items = cargar_items_detalle(ruta_excel, pais=pais)
     excluidos_count = sum(1 for it in items if it["excluido_motivo"] is not None)
 
     coincidencias, sugerencias = buscar_items(items, texto_busqueda)
@@ -414,17 +486,22 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
             "uf_fuente": None,
         }
 
-    uf_hoy, uf_fuente = obtener_uf_hoy(hoy, uf_manual=uf_manual, fuente_manual=fuente_manual)
-    cache_uf = cargar_cache_uf()
-    compras = []
-    sin_uf_count = 0
-    for item in coincidencias:
-        compra = reajustar_item(item, uf_hoy, cache_uf)
-        if compra is None:
-            sin_uf_count += 1
-            continue
-        compras.append(compra)
-    guardar_cache_uf(cache_uf)
+    if pais == "PE":
+        compras = [armar_compra_sin_reajuste(item) for item in coincidencias]
+        sin_uf_count = 0
+        uf_fuente = None
+    else:
+        uf_hoy, uf_fuente = obtener_uf_hoy(hoy, uf_manual=uf_manual, fuente_manual=fuente_manual)
+        cache_uf = cargar_cache_uf()
+        compras = []
+        sin_uf_count = 0
+        for item in coincidencias:
+            compra = reajustar_item(item, uf_hoy, cache_uf)
+            if compra is None:
+                sin_uf_count += 1
+                continue
+            compras.append(compra)
+        guardar_cache_uf(cache_uf)
 
     if not compras:
         return {

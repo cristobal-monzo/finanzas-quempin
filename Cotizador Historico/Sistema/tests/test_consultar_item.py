@@ -53,7 +53,7 @@ def test_consultar_item_calcula_reajuste_y_agregados(monkeypatch, tmp_path):
         _item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1)),
         _item("UMAG-002", "Taladro", "Taladro inalambrico", 100000, datetime(2026, 3, 1)),
     ]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
     monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf)
 
@@ -83,7 +83,7 @@ def test_consultar_item_aplica_tasa_iva_real_del_documento(monkeypatch, tmp_path
         "CCON-002", "Guante", "Guante de cuero natural", 2513, datetime(2026, 1, 1),
         total_sin_iva=2513, total_con_iva=2990,  # tasa real ~1.19
     )]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
     monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf)
 
@@ -101,7 +101,7 @@ def test_consultar_item_aplica_tasa_iva_real_del_documento(monkeypatch, tmp_path
 def test_consultar_item_persiste_uf_historica_en_cache_pero_no_la_de_hoy(monkeypatch, tmp_path):
     items = [_item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))]
     ruta_cache = tmp_path / "uf_cache.json"
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", ruta_cache)
     monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf)
 
@@ -113,7 +113,7 @@ def test_consultar_item_persiste_uf_historica_en_cache_pero_no_la_de_hoy(monkeyp
 
 def test_consultar_item_sin_match_devuelve_no_encontrado(monkeypatch):
     items = [_item("UMAG-001", "Cemento", "Saco 25kg", 5000, datetime(2026, 1, 1))]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
 
     resultado = ch.consultar_item("bicicleta", fecha_hoy=date(2026, 7, 17))
 
@@ -126,7 +126,7 @@ def test_consultar_item_sin_match_devuelve_no_encontrado(monkeypatch):
 
 def test_consultar_item_sin_match_no_llama_a_la_api_de_uf(monkeypatch):
     items = [_item("UMAG-001", "Cemento", "Saco 25kg", 5000, datetime(2026, 1, 1))]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
 
     def _falla_si_se_llama(fecha):
         raise AssertionError("no deberia consultar UF si no hubo match")
@@ -140,7 +140,7 @@ def test_consultar_item_cuenta_excluidos(monkeypatch, tmp_path):
         _item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1)),
         _item("UMAG-002", "Cemento", "Saco 25kg", 5000, None, excluido="sin_master"),
     ]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
 
@@ -153,7 +153,7 @@ def test_consultar_item_no_crashea_con_precio_invalido_y_lo_excluye(monkeypatch,
         _item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1)),
         _item("UMAG-002", "Taladro", "Taladro sin precio", None, datetime(2026, 1, 1), excluido="precio_invalido"),
     ]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
     monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf)
 
@@ -178,7 +178,7 @@ def test_consultar_item_excluye_solo_la_compra_sin_uf_disponible(monkeypatch, tm
         _item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1)),
         _item("UMAG-002", "Taladro", "Taladro inalambrico", 100000, datetime(2026, 3, 1)),
     ]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
     monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf_con_fallo)
 
@@ -195,7 +195,7 @@ def test_consultar_item_excluye_solo_la_compra_sin_uf_disponible(monkeypatch, tm
 
 def test_consultar_item_todas_sin_uf_disponible_devuelve_no_encontrado(monkeypatch, tmp_path):
     items = [_item("UMAG-002", "Taladro", "Taladro inalambrico", 100000, datetime(2026, 3, 1))]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
     monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf_con_fallo)
 
@@ -210,7 +210,7 @@ def test_consultar_item_todas_sin_uf_disponible_devuelve_no_encontrado(monkeypat
 
 def test_consultar_item_marca_fuente_mindicador_cuando_responde(monkeypatch, tmp_path):
     items = [_item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
     monkeypatch.setattr(ch, "consultar_uf_api", _mapa_uf)
 
@@ -220,7 +220,7 @@ def test_consultar_item_marca_fuente_mindicador_cuando_responde(monkeypatch, tmp
 
 def test_consultar_item_usa_uf_manual_si_mindicador_falla_hoy(monkeypatch, tmp_path):
     items = [_item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
 
     def _falla_hoy(fecha):
@@ -242,7 +242,7 @@ def test_consultar_item_usa_uf_manual_si_mindicador_falla_hoy(monkeypatch, tmp_p
 
 def test_consultar_item_sin_uf_manual_relanza_error_si_mindicador_falla_hoy(monkeypatch, tmp_path):
     items = [_item("UMAG-001", "Taladro", "Taladro percutor 20V", 90000, datetime(2026, 1, 1))]
-    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None: items)
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
     monkeypatch.setattr(ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
 
     def _falla(fecha):
@@ -285,3 +285,68 @@ def test_reajustar_item_devuelve_none_si_uf_no_disponible(monkeypatch):
         raise ch.UFNoDisponibleError("simulado")
     monkeypatch.setattr(ch, "obtener_valor_uf", _falla)
     assert ch.reajustar_item(item, 39000.0, {}) is None
+
+
+# ── Perú: sin reajuste por indice ────────────────────────────────────────
+
+def test_armar_compra_sin_reajuste_devuelve_precio_nominal():
+    item = _item("LIMA-001", "Taladro", "Taladro percutor 20V", 300, datetime(2026, 1, 15),
+                 total_sin_iva=300, total_con_iva=354)
+    compra = ch.armar_compra_sin_reajuste(item)
+    assert compra == {
+        "n_ref": "LIMA-001",
+        "fecha": "2026-01-15",
+        "precio_original_sin_iva": 300,
+        "precio_reajustado_hoy": 300,
+        "precio_reajustado_hoy_con_iva": 354,
+    }
+
+
+def test_armar_indice_completo_sin_reajuste_omite_excluidos_y_agrega_metadata():
+    items = [
+        _item("LIMA-001", "Bomba", "Bomba centrífuga 1.5HP", 900, datetime(2026, 1, 1),
+              total_sin_iva=900, total_con_iva=1062),
+        _item("LIMA-002", "Cemento", "Saco 25kg", 50, None, excluido="sin_master"),
+    ]
+    reajustados, sin_uf_count = ch.armar_indice_completo_sin_reajuste(items)
+    assert sin_uf_count == 0
+    assert len(reajustados) == 1
+    assert reajustados[0]["n_ref"] == "LIMA-001"
+    assert reajustados[0]["precio_reajustado_hoy"] == 900
+
+
+def test_consultar_item_pais_pe_no_llama_a_la_api_de_uf(monkeypatch, tmp_path):
+    items = [_item("LIMA-001", "Taladro", "Taladro percutor 20V", 300, datetime(2026, 1, 15),
+                    total_sin_iva=300, total_con_iva=354)]
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
+
+    def _falla_si_se_llama(fecha):
+        raise AssertionError("no deberia consultar UF para pais='PE'")
+    monkeypatch.setattr(ch, "consultar_uf_api", _falla_si_se_llama)
+
+    resultado = ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17), pais="PE")
+
+    assert resultado["encontrado"] is True
+    assert resultado["compras"] == [{
+        "n_ref": "LIMA-001", "fecha": "2026-01-15",
+        "precio_original_sin_iva": 300,
+        "precio_reajustado_hoy": 300, "precio_reajustado_hoy_con_iva": 354,
+    }]
+    assert resultado["sin_uf_count"] == 0
+    assert resultado["uf_fuente"] is None
+
+
+def test_consultar_item_pais_pe_promedia_precios_nominales(monkeypatch, tmp_path):
+    items = [
+        _item("LIMA-001", "Taladro", "Taladro percutor 20V", 300, datetime(2026, 1, 1),
+              total_sin_iva=300, total_con_iva=354),
+        _item("LIMA-002", "Taladro", "Taladro inalámbrico", 500, datetime(2026, 3, 1),
+              total_sin_iva=500, total_con_iva=590),
+    ]
+    monkeypatch.setattr(ch, "cargar_items_detalle", lambda ruta_excel=None, pais="CL": items)
+
+    resultado = ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17), pais="PE")
+
+    assert resultado["promedio_reajustado"] == round((300 + 500) / 2)
+    assert resultado["rango_minimo"] == 300
+    assert resultado["rango_maximo"] == 500
