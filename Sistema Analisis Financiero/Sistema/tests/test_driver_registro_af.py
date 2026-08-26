@@ -81,7 +81,7 @@ def test_status_lista_avisos(capsys):
 def test_status_llama_a_ejecutar_en_modo_dry_run():
     with patch.object(af, "ejecutar", return_value=_resumen()) as mock_ejecutar:
         driver.cmd_status()
-    mock_ejecutar.assert_called_once_with(dry_run=True)
+    mock_ejecutar.assert_called_once_with(dry_run=True, pais="CL")
 
 
 # ── cmd_confirmar_cliente ─────────────────────────────────────────────────
@@ -92,7 +92,7 @@ def test_confirmar_cliente_sin_args_lista_pendientes(capsys):
     ]
     with patch.object(af, "confirmar_clientes_pendientes", return_value=pendientes) as mock_fn:
         codigo = driver.cmd_confirmar_cliente([])
-    mock_fn.assert_called_once_with(None)
+    mock_fn.assert_called_once_with(None, ruta_excel=af.PAISES["CL"]["ruta_excel_af"])
     salida = capsys.readouterr().out
     assert codigo == 0
     assert "Clientes pendientes de confirmar: 1" in salida
@@ -111,13 +111,13 @@ def test_confirmar_cliente_sin_args_y_sin_pendientes_no_sugiere_todos(capsys):
 def test_confirmar_cliente_todos_pasa_el_literal_todos_a_la_funcion():
     with patch.object(af, "confirmar_clientes_pendientes", return_value=[]) as mock_fn:
         driver.cmd_confirmar_cliente(["--todos"])
-    mock_fn.assert_called_once_with("TODOS")
+    mock_fn.assert_called_once_with("TODOS", ruta_excel=af.PAISES["CL"]["ruta_excel_af"])
 
 
 def test_confirmar_cliente_con_tags_especificos_pasa_la_lista():
     with patch.object(af, "confirmar_clientes_pendientes", return_value=[]) as mock_fn:
         driver.cmd_confirmar_cliente(["UMAG-014", "CFLI-002"])
-    mock_fn.assert_called_once_with(["UMAG-014", "CFLI-002"])
+    mock_fn.assert_called_once_with(["UMAG-014", "CFLI-002"], ruta_excel=af.PAISES["CL"]["ruta_excel_af"])
 
 
 def test_confirmar_cliente_aplicados_se_imprimen_ok(capsys):
@@ -159,7 +159,7 @@ def test_main_confirmar_cliente_pasa_los_argumentos_restantes(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["driver.py", "confirmar-cliente", "--todos"])
     with patch.object(driver, "cmd_confirmar_cliente", return_value=0) as mock_fn:
         driver.main()
-    mock_fn.assert_called_once_with(["--todos"])
+    mock_fn.assert_called_once_with(["--todos"], pais="CL")
 
 
 def test_main_visualizador_llama_a_cmd_visualizador(monkeypatch):
