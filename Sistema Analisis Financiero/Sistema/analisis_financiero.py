@@ -1403,6 +1403,12 @@ GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
         "Positivo = ahorro (se gastó menos de lo presupuestado); negativo = sobrecosto (se gastó más). $800.000 en Ahorro MO → la mano de obra costó $800.000 menos que lo presupuestado.",
     ),
     (
+        "% Avance",
+        "Permite leer todo KPI de un proyecto en curso como resultado parcial y no como resultado final -- sin él, un proyecto recién empezado y uno casi terminado se veían idénticos. Reemplazó al campo de texto 'Estado' (Terminado / En Proceso) el 2026-08-28.",
+        "Ingreso manual en la hoja 'Proyectos' (celda amarilla en cursiva), como porcentaje de 0% a 100%",
+        "100% = ejecución terminada, los costos reales ya no deberían crecer. Bajo 100%, el Margen Real y la Desviación % de ese proyecto todavía pueden moverse: son el resultado de lo ejecutado hasta ahora, no el final.",
+    ),
+    (
         "Nota del Proyecto",
         "Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión.",
         "Margen neto % (70% — curva: sube linealmente hasta el objetivo de 25% donde vale 70/100, y sigue subiendo por sobre el objetivo cada vez más despacio, sin techo fijo) y Desviación % Total, solo penalizando sobrecosto (30%)",

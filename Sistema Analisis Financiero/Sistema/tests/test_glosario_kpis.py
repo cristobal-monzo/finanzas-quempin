@@ -139,3 +139,13 @@ def test_cada_concepto_del_mapa_de_cobertura_existe_de_verdad_en_el_glosario():
         assert concepto in nombres_glosario, (
             f"'{columna}' apunta a un concepto de glosario ('{concepto}') que no existe"
         )
+
+
+def test_glosario_documenta_avance_y_nota_parcial():
+    """El Excel se explica solo: todo KPI del libro tiene su fila en
+    'Glosario KPIs' (pedido explícito del usuario, spec 2026-07-21)."""
+    kpis = [fila[0] for fila in af.GLOSARIO_KPIS]
+    assert "% Avance" in kpis
+    assert "Nota Parcial" in kpis
+    assert all(len(fila) == 4 for fila in af.GLOSARIO_KPIS)
+    assert all(texto.strip() for fila in af.GLOSARIO_KPIS for texto in fila)
