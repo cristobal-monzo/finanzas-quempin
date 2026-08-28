@@ -530,6 +530,7 @@
         <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a>
         <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador Histórico</a>
         <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/">Centro de Costos 🇵🇪</a>
+        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero-peru/">Análisis Financiero 🇵🇪</a>
         <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/">Cotizador Histórico 🇵🇪</a>
       </div>
     </nav>
@@ -1185,7 +1186,7 @@
   function renderLineChart(containerId, items) {
     var el = document.getElementById(containerId);
     if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var W = el.clientWidth || 480, H = 220, padL = 56, padB = 34, padT = 14, padR = 16;
+    var W = el.clientWidth || 480, H = 220, padL = 56, padB = 48, padT = 14, padR = 16;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var max = Math.max.apply(null, items.map(function (i) { return i.acumulado; })) || 1;
     var n = items.length;
@@ -1205,7 +1206,7 @@
     items.forEach(function (it, i) {
       svg += '<circle class="line-dot" data-i="' + i + '" cx="' + xAt(i) + '" cy="' + yAt(it.acumulado) + '" r="4" fill="var(--brand-orange)" stroke="var(--surface-card)" stroke-width="1.5"/>';
     });
-    svg += mesAxisTicksSvg(items, xAt, H - padB + 14);
+    svg += mesAxisTicksSvg(items, xAt, H - padB + 8);
     svg += '</svg>';
     el.innerHTML = svg;
     el.querySelectorAll('.line-dot').forEach(function (dot) {
@@ -1236,11 +1237,13 @@
     return out;
   }
   function mesAxisLabelSvg(x, y, text) {
-    // Angulo positivo (sentido horario en el espacio SVG, y crece hacia
-    // abajo) para que la etiqueta suba hacia la izquierda desde el punto
-    // de anclaje -- con angulo negativo el texto giraba hacia ABAJO, fuera
-    // del viewBox, y se recortaba por el borde inferior del grafico.
-    return '<text x="' + x + '" y="' + y + '" text-anchor="end" font-size="10" fill="var(--text-secondary)" transform="rotate(40 ' + x + ' ' + y + ')">' + esc(text) + '</text>';
+    // Angulo negativo (sentido horario en el espacio SVG, y crece hacia
+    // abajo, es -angulo = antihorario visual) para que la etiqueta cuelgue
+    // hacia ABAJO y a la izquierda del punto de anclaje (pedido explicito:
+    // el texto no debe subir a cruzarse con la linea/barras del grafico).
+    // padB le da a esto suficiente aire abajo -- ver los dos renderX() que
+    // llaman a esta funcion.
+    return '<text x="' + x + '" y="' + y + '" text-anchor="end" font-size="10" fill="var(--text-secondary)" transform="rotate(-40 ' + x + ' ' + y + ')">' + esc(text) + '</text>';
   }
   // El primer tick mostrado siempre lleva el año completo; los siguientes
   // lo omiten salvo que cambien de año respecto al tick anterior (ej. "Dic
@@ -1265,7 +1268,7 @@
   function renderMensualBarChart(containerId, items) {
     var el = document.getElementById(containerId);
     if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var W = el.clientWidth || 480, H = 220, padL = 56, padB = 34, padT = 14, padR = 16;
+    var W = el.clientWidth || 480, H = 220, padL = 56, padB = 48, padT = 14, padR = 16;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var max = Math.max.apply(null, items.map(function (i) { return i.monto; })) || 1;
     var n = items.length;
@@ -1284,7 +1287,7 @@
       var y = padT + innerH - h;
       svg += '<rect class="bar-rect" data-i="' + i + '" x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(h, 1) + '" rx="4" fill="var(--brand-orange)"/>';
     });
-    svg += mesAxisTicksSvg(items, function (i) { return padL + i * (bw + gap) + bw / 2; }, H - padB + 14);
+    svg += mesAxisTicksSvg(items, function (i) { return padL + i * (bw + gap) + bw / 2; }, H - padB + 8);
     svg += '</svg>';
     el.innerHTML = svg;
     el.querySelectorAll('.bar-rect').forEach(function (rect) {
