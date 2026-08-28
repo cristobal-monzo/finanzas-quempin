@@ -140,8 +140,14 @@ def test_nota_parcial_vacia_si_falta_el_avance():
 
 
 def test_nota_parcial_vacia_si_no_hay_nota():
-    """Gastos Generales: la Nota ya viene vacía, la Parcial también."""
+    """Gastos Generales: la Nota ya viene vacía, la Parcial también. La
+    cadena vacía cuenta igual que None -- es como llega la Nota de ese
+    bucket desde Excel, y la fórmula espejo guarda contra ambas
+    (IF(OR(V2="",...))): un guard asimétrico entre las dos
+    implementaciones es exactamente la divergencia que este bloque
+    existe para evitar."""
     assert af.calcular_nota_parcial(None, 0.75) is None
+    assert af.calcular_nota_parcial("", 0.75) is None
 
 
 def test_nota_parcial_con_avance_cero_es_cero():

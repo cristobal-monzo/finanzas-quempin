@@ -1161,14 +1161,16 @@ def calcular_nota_parcial(nota: int | None, avance: float | None) -> int | None:
     numero final. Al 100% de avance ambas coinciden.
 
     None (celda vacia en Excel) si falta cualquiera de los dos insumos: la
-    cadena vacia cuenta como faltante porque la formula de Excel guarda con
-    ="" y la Nota de "Gastos Generales" llega justamente como "".
+    cadena vacia cuenta como faltante -- en LOS DOS parametros, no solo en
+    avance -- porque la formula de Excel guarda con ="" en ambos lados
+    (IF(OR(V2="",...))) y la Nota de "Gastos Generales" llega justamente
+    como "".
 
     NO acota el avance a [0, 1] -- la formula de Excel tampoco. Un
     acotamiento en un solo lado es exactamente la divergencia silenciosa que
     este bloque existe para evitar; un avance fuera de rango es un error de
     carga y debe verse como tal en los dos caminos."""
-    if nota is None or avance is None or avance == "":
+    if nota in (None, "") or avance in (None, ""):
         return None
     return _redondear_excel(nota * avance)
 
