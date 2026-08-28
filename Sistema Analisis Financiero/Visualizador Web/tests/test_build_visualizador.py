@@ -20,10 +20,10 @@ _spec.loader.exec_module(bv)
 def _fila_proyecto_completa(ws, fila, **overrides):
     valores = {
         "TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID",
-        # "Estado" y "Fecha de inicio" son parte de la regla de completitud
+        # "% Avance" y "Fecha de inicio" son parte de la regla de completitud
         # (af.CAMPOS_MANUALES_REQUERIDOS): sin ellos la fila no cuenta como
         # completa y el proyecto no recibe KPIs.
-        "Estado": "En Proceso", "Fecha de inicio": datetime(2026, 1, 15),
+        "% Avance": 0.5, "Fecha de inicio": datetime(2026, 1, 15),
         "Monto de Venta (sin IVA)": 1_000_000,
         "Costos Materiales Proyectados": 300_000, "Costos Equipos Proyectados": 200_000,
         "Mano de Obra Proyectada": 200_000, "Otros Costos Proyectados": 100_000,
@@ -46,7 +46,7 @@ def _proyecto_completo_dict(**overrides):
     """Las 8 columnas de af.CAMPOS_MANUALES_REQUERIDOS, en las claves cortas
     que usa este módulo."""
     p = {
-        "estado": "Terminado", "fecha_inicio": datetime(2026, 1, 15),
+        "avance": 1.0, "fecha_inicio": datetime(2026, 1, 15),
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
     }
@@ -62,16 +62,16 @@ def test_es_proyecto_completo_false_si_falta_mano_de_obra_real():
     assert bv.es_proyecto_completo(_proyecto_completo_dict(mo_real=None)) is False
 
 
-def test_es_proyecto_completo_false_si_falta_estado_o_fecha_de_inicio():
+def test_es_proyecto_completo_false_si_falta_avance_o_fecha_de_inicio():
     """Ambas entraron a la regla al unificarla con la de los reportes PDF
-    (2026-07-28): antes el dashboard las ignoraba y un proyecto sin Estado
+    (2026-07-28): antes el dashboard las ignoraba y un proyecto sin % Avance
     salía con KPIs acá pero era rechazado al pedir su PDF."""
-    assert bv.es_proyecto_completo(_proyecto_completo_dict(estado=None)) is False
+    assert bv.es_proyecto_completo(_proyecto_completo_dict(avance=None)) is False
     assert bv.es_proyecto_completo(_proyecto_completo_dict(fecha_inicio=None)) is False
 
 
 def test_es_proyecto_completo_false_con_cadena_vacia():
-    assert bv.es_proyecto_completo(_proyecto_completo_dict(estado="")) is False
+    assert bv.es_proyecto_completo(_proyecto_completo_dict(avance="")) is False
 
 
 def test_es_proyecto_completo_true_con_costo_en_cero():
@@ -120,7 +120,7 @@ def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
     # (70), no el tope -- nota = round(0.7*70 + 0.3*100) = 79. Ver
     # test_contrato_kpis.py y test_nota_evaluacion.py::test_score_margen_*.
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
@@ -139,7 +139,7 @@ def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
 
 def test_calcular_kpis_proyecto_evaluacion_requiere_atencion_bajo_55():
     p = {
-        "tag": "CFLI", "nombre": "Cesfam Limache", "cliente": "Cesfam", "estado": "En Proceso",
+        "tag": "CFLI", "nombre": "Cesfam Limache", "cliente": "Cesfam", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 100_000, "equipos_proy": 100_000,
         "mo_proy": 100_000, "otros_proy": 100_000, "mo_real": 700_000,
@@ -158,7 +158,7 @@ def test_calcular_kpis_proyecto_monto_venta_cero_no_explota():
     # como cargado) -- calcular_kpis_proyecto debe manejarlo sin ZeroDivisionError,
     # con score_margen=0 (no hay ratio de margen que calcular contra venta nula).
     p = {
-        "tag": "ZERO", "nombre": "Proyecto Venta Cero", "cliente": "Cliente X", "estado": "En Proceso",
+        "tag": "ZERO", "nombre": "Proyecto Venta Cero", "cliente": "Cliente X", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 0, "materiales_proy": 100_000, "equipos_proy": 0,
         "mo_proy": 0, "otros_proy": 0, "mo_real": 0,
@@ -188,7 +188,7 @@ def test_calcular_kpis_proyecto_redondeo_estilo_excel_en_empate_exacto():
     total_real = monto_venta - margen_real_objetivo  # 875_000
     total_proyectado = total_real  # desviacion_pct = 0 -> score_desviacion = 100
     p = {
-        "tag": "TIE", "nombre": "Empate Redondeo", "cliente": "Cliente Y", "estado": "En Proceso",
+        "tag": "TIE", "nombre": "Empate Redondeo", "cliente": "Cliente Y", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": monto_venta,
         "materiales_proy": total_proyectado, "equipos_proy": 0, "mo_proy": 0, "otros_proy": 0,
@@ -417,7 +417,7 @@ def test_leer_proyectos_categoria_y_fecha_cierre_none_si_no_estan_cargadas(tmp_p
 
 def test_calcular_kpis_proyecto_incluye_desglose_de_costos_y_fechas():
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
         "fecha_inicio": datetime(2026, 1, 10), "fecha_cierre": datetime(2026, 3, 15),
         "categoria": "I+D+i",
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
@@ -440,7 +440,7 @@ def test_calcular_kpis_proyecto_incluye_desglose_de_costos_y_fechas():
 
 def test_calcular_kpis_proyecto_fechas_none_si_no_hay_dato():
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
@@ -458,7 +458,7 @@ def test_calcular_kpis_proyecto_kpis_por_categoria():
     # Mismos numeros que test_calcular_kpis_proyecto_recomputa_igual_que_
     # formula_excel: total_proyectado=800000, total_real=750000.
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
@@ -483,7 +483,7 @@ def test_calcular_kpis_proyecto_kpis_por_categoria_guardas_division_cero():
     # deben explotar -- mismo principio que monto_venta=0 en
     # calcular_kpis_proyecto (test ya existente).
     p = {
-        "tag": "ZERO", "nombre": "Proyecto Venta Cero", "cliente": "Cliente X", "estado": "En Proceso",
+        "tag": "ZERO", "nombre": "Proyecto Venta Cero", "cliente": "Cliente X", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 0, "materiales_proy": 0, "equipos_proy": 0,
         "mo_proy": 0, "otros_proy": 0, "mo_real": 0,
@@ -499,7 +499,7 @@ def test_calcular_kpis_proyecto_kpis_por_categoria_guardas_division_cero():
 
 def test_calcular_kpis_proyecto_margen_por_dia_none_sin_fecha_cierre():
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
         "fecha_inicio": datetime(2026, 1, 10), "fecha_cierre": None, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
@@ -515,7 +515,7 @@ def test_calcular_kpis_proyecto_margen_por_dia_calculado_con_ambas_fechas():
     fecha_inicio = datetime(2026, 1, 10)
     fecha_cierre = datetime(2026, 3, 15)
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
         "fecha_inicio": fecha_inicio, "fecha_cierre": fecha_cierre, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
@@ -531,7 +531,7 @@ def test_calcular_kpis_proyecto_margen_por_dia_calculado_con_ambas_fechas():
 def test_calcular_kpis_proyecto_margen_por_dia_evita_div_cero_mismo_dia():
     fecha = datetime(2026, 1, 10)
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
         "fecha_inicio": fecha, "fecha_cierre": fecha, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
@@ -591,7 +591,7 @@ def test_leer_detalle_subcategorias_agrupa_por_tag_y_calcula_pct(tmp_path):
 def test_calcular_kpis_proyecto_fechas_son_json_serializables():
     import json
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "estado": "En Proceso",
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
         "fecha_inicio": datetime(2026, 1, 10), "fecha_cierre": datetime(2026, 3, 15),
         "categoria": "I+D+i",
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
@@ -608,7 +608,7 @@ def test_calcular_kpis_proyecto_fechas_son_json_serializables():
 
 def _kpi_proyecto(tag, categoria, margen_real, nota):
     return {
-        "tag": tag, "nombre": tag, "cliente": "Cliente", "estado": "En Proceso",
+        "tag": tag, "nombre": tag, "cliente": "Cliente", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": categoria,
         "monto_venta": 0, "total_proyectado": 0, "total_real": 0,
         "margen_real": margen_real, "desviacion_pct": 0.0, "nota": nota, "evaluacion": "Bueno",

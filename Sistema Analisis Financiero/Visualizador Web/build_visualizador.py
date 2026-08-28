@@ -44,7 +44,7 @@ URL_PLANILLA_PENDIENTE = (
 # "Proyectos". Permite evaluar la completitud con la regla unica de
 # af.CAMPOS_MANUALES_REQUERIDOS sin renombrar todo el resto del snapshot.
 CLAVE_POR_ENCABEZADO = {
-    "Estado": "estado",
+    "% Avance": "avance",
     "Fecha de inicio": "fecha_inicio",
     "Monto de Venta (sin IVA)": "monto_venta",
     "Costos Materiales Proyectados": "materiales_proy",
@@ -74,7 +74,7 @@ def leer_proyectos(ws_proyectos) -> list[dict]:
             "tag": tag,
             "nombre": nombre,
             "cliente": _valor_columna(ws_proyectos, fila, "Cliente"),
-            "estado": _valor_columna(ws_proyectos, fila, "Estado"),
+            "avance": _valor_columna(ws_proyectos, fila, "% Avance"),
             "fecha_inicio": _valor_columna(ws_proyectos, fila, "Fecha de inicio"),
             "fecha_cierre": _valor_columna(ws_proyectos, fila, "Fecha de cierre"),
             "categoria": _valor_columna(ws_proyectos, fila, "Categoría"),
@@ -142,7 +142,7 @@ def calcular_peso_cartera(proyectos: list[dict]) -> dict[str, float]:
     sobre la suma de Monto de Venta de TODOS los proyectos válidos (TAG y
     Nombre presentes), no solo los completos, igual que la fórmula Excel
     '=Proyectos!venta/SUM(Proyectos!$venta:$venta)' que suma toda la
-    columna sin filtrar por Estado ni completitud."""
+    columna sin filtrar por % Avance ni completitud."""
     total_venta = sum(p["monto_venta"] for p in proyectos if p["monto_venta"] is not None)
     return {
         p["tag"]: (p["monto_venta"] / total_venta if total_venta and p["monto_venta"] is not None else 0.0)
@@ -227,7 +227,7 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     evaluacion = af.clasificar_evaluacion(nota)
 
     resultado = {
-        "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "estado": p["estado"],
+        "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "avance": p["avance"],
         "fecha_inicio": _fecha_str(p["fecha_inicio"]), "fecha_cierre": _fecha_str(p["fecha_cierre"]),
         "categoria": p["categoria"],
         "monto_venta": p["monto_venta"], "total_proyectado": total_proyectado,

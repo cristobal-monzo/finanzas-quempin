@@ -150,9 +150,9 @@ def test_ejecutar_crea_fila_para_proyecto_nuevo_de_centro_de_costos(tmp_path):
     assert ws_proyectos.cell(row=3, column=1).value == "CFLI"
     assert ws_proyectos.cell(row=3, column=2).value == "Cesfam Limache"
     # Las columnas manuales de la fila nueva quedan en blanco (las llena el
-    # usuario a mano); Estado es la primera columna manual tras Categoría.
-    col_estado = af.HEADERS_PROYECTOS.index("Estado") + 1
-    assert ws_proyectos.cell(row=3, column=col_estado).value is None
+    # usuario a mano); % Avance es la primera columna manual tras Categoría.
+    col_avance = af.HEADERS_PROYECTOS.index("% Avance") + 1
+    assert ws_proyectos.cell(row=3, column=col_avance).value is None
     # La fila nueva sí queda enganchada al resto del pipeline: la formula de
     # costos reales se genera igual que para una fila preexistente.
     col_mat_real = af.HEADERS_PROYECTOS.index("Costos Materiales Reales") + 1

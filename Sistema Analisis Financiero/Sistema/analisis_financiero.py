@@ -88,7 +88,7 @@ HOJA_GLOSARIO_KPIS = "Glosario KPIs"
 CATEGORIA_GASTOS_GENERALES = "Gastos Generales"
 
 HEADERS_PROYECTOS = [
-    "TAG proyecto", "Nombre del proyecto", "Cliente", "Categoría", "Estado",
+    "TAG proyecto", "Nombre del proyecto", "Cliente", "Categoría", "% Avance",
     "Fecha de inicio", "Fecha de cierre", "Monto de Venta (sin IVA)",
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados",
@@ -179,7 +179,7 @@ def _color_tema(theme: int, tint: float) -> Color:
 # Mismos 4 colores que ya usaba "Proyectos" a mano, uno por grupo semántico
 # de columna -- se reutilizan en las 3 hojas para que el libro se lea como
 # un solo sistema visual.
-COLOR_IDENTIFICACION = _color_tema(5, 0.3999755851924192)    # TAG/Nombre/Estado/fechas/venta
+COLOR_IDENTIFICACION = _color_tema(5, 0.3999755851924192)    # TAG/Nombre/% Avance/fechas/venta
 COLOR_COSTO_PROYECTADO = _color_tema(8, 0.3999755851924192)  # columnas "...Proyectado(s)"
 COLOR_COSTO_REAL = _color_tema(9, 0.3999755851924192)        # columnas "...Real(es)"
 COLOR_DERIVADO = _color_tema(3, 0.499984740745262)           # totales, márgenes, KPIs finales
@@ -194,7 +194,7 @@ ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE = {
     "Nombre del proyecto": (COLOR_IDENTIFICACION, None, 22),
     "Cliente": (COLOR_IDENTIFICACION, None, 22),
     "Categoría": (COLOR_IDENTIFICACION, None, 16),
-    "Estado": (COLOR_IDENTIFICACION, None, 13),
+    "% Avance": (COLOR_IDENTIFICACION, FORMATO_PORCENTAJE, 13),
     "Fecha de inicio": (COLOR_IDENTIFICACION, FORMATO_FECHA, 13),
     "Fecha de cierre": (COLOR_IDENTIFICACION, FORMATO_FECHA, 13),
     "Monto de Venta (sin IVA)": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
@@ -319,7 +319,7 @@ def aplicar_estilo_visual(wb) -> None:
 # entran: son 100% fórmula (Materiales/Equipos/Otros Reales, Total
 # Proyectado/Real, Margen Proyectado/Real, Desviación %).
 NOMBRES_COLUMNAS_MANUALES_PROYECTOS = [
-    "TAG proyecto", "Nombre del proyecto", "Estado", "Fecha de inicio",
+    "TAG proyecto", "Nombre del proyecto", "% Avance", "Fecha de inicio",
     "Fecha de cierre", "Monto de Venta (sin IVA)",
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
@@ -742,7 +742,7 @@ def crear_filas_proyectos_nuevos(
     prefijos que faltan en filas_validas. El resto de las columnas queda en
     blanco: las autocompletadas (Cliente, Categoría, fórmulas de costos
     reales) las llena el resto de ejecutar() al recibir la fila en su propio
-    filas_validas; las manuales (Estado, fechas, Monto de Venta, etc.) las
+    filas_validas; las manuales (% Avance, fechas, Monto de Venta, etc.) las
     llena el usuario a mano. Devuelve las filas creadas, mismo formato que
     leer_filas_proyectos, para que el llamador las sume a filas_validas."""
     siguiente_fila = max((f["fila"] for f in filas_validas), default=1) + 1
@@ -1009,11 +1009,12 @@ UMBRAL_EXCELENTE, UMBRAL_BUENO, UMBRAL_APROBADO = 85, 70, 55
 #
 # Hasta el 2026-07-28 esta regla estaba duplicada y los dos consumidores no
 # coincidian: los reportes exigian estos 8 campos, el visualizador solo 6
-# (sin "Estado" ni "Fecha de inicio") y ademas aceptaba la cadena vacia como
-# valor cargado. Resultado: un proyecto podia salir con KPIs completos en el
-# dashboard y a la vez ser rechazado con DatosIncompletosError al pedir su PDF.
+# (sin "% Avance" -- entonces llamada "Estado" -- ni "Fecha de inicio") y ademas
+# aceptaba la cadena vacia como valor cargado. Resultado: un proyecto podia
+# salir con KPIs completos en el dashboard y a la vez ser rechazado con
+# DatosIncompletosError al pedir su PDF.
 CAMPOS_MANUALES_REQUERIDOS = [
-    "Estado", "Fecha de inicio", "Monto de Venta (sin IVA)",
+    "% Avance", "Fecha de inicio", "Monto de Venta (sin IVA)",
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
 ]
@@ -1223,7 +1224,7 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
         # IVA)" de "Proyectos" (no solo la propia fila), incluyendo
         # proyectos que no están "Terminado" -- SUM ignora celdas vacías/
         # texto, así que un proyecto sin venta cargada no distorsiona el
-        # denominador solo, no hace falta filtrar por Estado.
+        # denominador solo, no hace falta filtrar por % Avance.
         ws.cell(row=f, column=24, value=(
             f"=Proyectos!{venta}{r}/SUM(Proyectos!${venta}:${venta})"
         ))

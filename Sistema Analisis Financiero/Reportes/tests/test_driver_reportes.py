@@ -6,7 +6,7 @@ import openpyxl
 import driver as drv
 
 HEADERS_PROYECTOS_TEST = [
-    "TAG proyecto", "Nombre del proyecto", "Cliente", "Estado",
+    "TAG proyecto", "Nombre del proyecto", "Cliente", "% Avance",
     "Fecha de inicio", "Fecha de cierre", "Monto de Venta (sin IVA)",
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados",
@@ -20,7 +20,7 @@ HEADERS_PROYECTOS_TEST = [
 def _fila_completa(**overrides) -> dict:
     base = {
         "TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "UMAG",
-        "Estado": "Activo", "Fecha de inicio": date(2026, 1, 10),
+        "% Avance": 1.0, "Fecha de inicio": date(2026, 1, 10),
         "Fecha de cierre": None, "Monto de Venta (sin IVA)": 1000000,
         "Costos Materiales Proyectados": 100000, "Costos Equipos Proyectados": 100000,
         "Mano de Obra Proyectada": 100000, "Otros Costos Proyectados": 100000,

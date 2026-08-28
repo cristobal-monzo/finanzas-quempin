@@ -62,12 +62,13 @@ def _caso(venta, mat_p, eq_p, mo_p, otros_p, mat_r, eq_r, otros_r, mo_r):
     reportes)."""
     corto = {
         "tag": "TEST", "nombre": "Proyecto Test", "cliente": "Cliente X",
-        "estado": "Terminado", "fecha_inicio": None, "fecha_cierre": None,
+        "avance": 0.75, "fecha_inicio": None, "fecha_cierre": None,
         "categoria": "I+D+i", "monto_venta": venta,
         "materiales_proy": mat_p, "equipos_proy": eq_p,
         "mo_proy": mo_p, "otros_proy": otros_p, "mo_real": mo_r,
     }
     encabezados = {
+        "% Avance": 0.75,
         "Monto de Venta (sin IVA)": venta,
         "Costos Materiales Proyectados": mat_p,
         "Costos Equipos Proyectados": eq_p,
@@ -150,28 +151,28 @@ def test_umbrales_de_evaluacion_son_los_mismos_en_formula_y_en_python():
 
 
 def test_completitud_es_la_misma_regla_en_dashboard_y_en_reportes():
-    """Un proyecto sin 'Estado' no puede salir con KPIs en el dashboard y a la
-    vez ser rechazado por los reportes -- eran dos definiciones distintas."""
+    """Un proyecto sin '% Avance' no puede salir con KPIs en el dashboard y a
+    la vez ser rechazado por los reportes -- eran dos definiciones distintas."""
     corto, encabezados, _ = CASO_BAJO_PRESUPUESTO
 
-    assert bv.es_proyecto_completo(dict(corto, estado="Terminado", fecha_inicio="2026-01-01"))
+    assert bv.es_proyecto_completo(dict(corto, avance=1.0, fecha_inicio="2026-01-01"))
     assert dr.proyecto_tiene_datos_completos(
-        dict(encabezados, **{"Estado": "Terminado", "Fecha de inicio": "2026-01-01"})
+        dict(encabezados, **{"% Avance": 1.0, "Fecha de inicio": "2026-01-01"})
     )
 
-    sin_estado_corto = dict(corto, estado=None, fecha_inicio="2026-01-01")
-    sin_estado_encabezados = dict(
-        encabezados, **{"Estado": None, "Fecha de inicio": "2026-01-01"}
+    sin_avance_corto = dict(corto, avance=None, fecha_inicio="2026-01-01")
+    sin_avance_encabezados = dict(
+        encabezados, **{"% Avance": None, "Fecha de inicio": "2026-01-01"}
     )
-    assert not bv.es_proyecto_completo(sin_estado_corto)
-    assert not dr.proyecto_tiene_datos_completos(sin_estado_encabezados)
+    assert not bv.es_proyecto_completo(sin_avance_corto)
+    assert not dr.proyecto_tiene_datos_completos(sin_avance_encabezados)
 
 
 def test_cadena_vacia_cuenta_como_faltante_en_ambos_caminos():
     corto, encabezados, _ = CASO_BAJO_PRESUPUESTO
-    assert not bv.es_proyecto_completo(dict(corto, estado="", fecha_inicio="2026-01-01"))
+    assert not bv.es_proyecto_completo(dict(corto, avance="", fecha_inicio="2026-01-01"))
     assert not dr.proyecto_tiene_datos_completos(
-        dict(encabezados, **{"Estado": "", "Fecha de inicio": "2026-01-01"})
+        dict(encabezados, **{"% Avance": "", "Fecha de inicio": "2026-01-01"})
     )
 
 
@@ -180,12 +181,12 @@ def test_cero_si_cuenta_como_dato_cargado():
     proyecto como incompleto en ninguno de los dos caminos."""
     corto, encabezados, _ = CASO_BAJO_PRESUPUESTO
     assert bv.es_proyecto_completo(
-        dict(corto, estado="Terminado", fecha_inicio="2026-01-01", mo_real=0)
+        dict(corto, avance=1.0, fecha_inicio="2026-01-01", mo_real=0)
     )
     assert dr.proyecto_tiene_datos_completos(
         dict(
             encabezados,
-            **{"Estado": "Terminado", "Fecha de inicio": "2026-01-01", "Mano de Obra Real": 0},
+            **{"% Avance": 1.0, "Fecha de inicio": "2026-01-01", "Mano de Obra Real": 0},
         )
     )
 
@@ -230,7 +231,7 @@ def test_kpis_por_categoria_y_totales_coinciden_entre_visualizador_y_reportes():
 def _proyecto_cliente(tag, cliente, fecha_inicio, venta, proy, real):
     corto = {
         "tag": tag, "nombre": tag, "cliente": cliente,
-        "estado": "Terminado", "fecha_inicio": fecha_inicio, "fecha_cierre": None,
+        "avance": 1.0, "fecha_inicio": fecha_inicio, "fecha_cierre": None,
         "categoria": "I+D+i", "monto_venta": venta,
         "materiales_proy": proy[0], "equipos_proy": proy[1],
         "mo_proy": proy[2], "otros_proy": proy[3], "mo_real": real[3],

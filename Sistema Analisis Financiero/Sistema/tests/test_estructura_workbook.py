@@ -112,7 +112,7 @@ def test_hoja_proyectos_incluye_columna_cliente_entre_nombre_y_categoria(tmp_pat
     assert ws.cell(row=1, column=2).value == "Nombre del proyecto"
     assert ws.cell(row=1, column=3).value == "Cliente"
     assert ws.cell(row=1, column=4).value == "Categoría"
-    assert ws.cell(row=1, column=5).value == "Estado"
+    assert ws.cell(row=1, column=5).value == "% Avance"
 
 
 def test_hoja_indicadores_incluye_nota_y_evaluacion(tmp_path):
@@ -187,3 +187,31 @@ def test_crea_hoja_glosario_kpis_con_encabezados(tmp_path):
     ws = wb[af.HOJA_GLOSARIO_KPIS]
     assert ws.cell(row=1, column=1).value == "KPI"
     assert ws.cell(row=1, column=4).value == "Qué significa el resultado"
+
+
+def test_columna_5_es_porcentaje_de_avance(tmp_path):
+    """2026-08-28: 'Estado' (texto libre Terminado/En Proceso) pasó a ser un
+    porcentaje de avance manual, en la MISMA posición 5 -- no se reordenó
+    ninguna columna, así que ninguna letra ni fórmula existente cambia."""
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    ws = wb[af.HOJA_PROYECTOS]
+    assert ws.cell(row=1, column=5).value == "% Avance"
+    assert af.LETRA_COL_PROYECTOS["% Avance"] == "E"
+
+
+def test_porcentaje_de_avance_es_manual_y_requerido():
+    """Hereda los dos roles que tenía 'Estado': campo de ingreso manual
+    (resaltado amarillo + cursiva) y uno de los 8 campos que definen
+    completitud. 'Estado' no debe quedar en ninguna de las dos listas."""
+    assert "% Avance" in af.CAMPOS_MANUALES_REQUERIDOS
+    assert "% Avance" in af.NOMBRES_COLUMNAS_MANUALES_PROYECTOS
+    assert "Estado" not in af.CAMPOS_MANUALES_REQUERIDOS
+    assert "Estado" not in af.NOMBRES_COLUMNAS_MANUALES_PROYECTOS
+    assert "Estado" not in af.HEADERS_PROYECTOS
+
+
+def test_porcentaje_de_avance_lleva_formato_de_porcentaje():
+    """Se guarda como fracción 0-1: con la celda pre-formateada como
+    porcentaje, Excel convierte solo un '75' tecleado a 75,0%."""
+    _, formato, _ = af.ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE["% Avance"]
+    assert formato == af.FORMATO_PORCENTAJE
