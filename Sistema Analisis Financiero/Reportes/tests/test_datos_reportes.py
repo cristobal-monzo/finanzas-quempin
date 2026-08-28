@@ -4,8 +4,8 @@ from datetime import date
 import openpyxl
 import pytest
 
-import datos_reportes as dr
 import analisis_financiero as af
+import datos_reportes as dr
 
 HEADERS_PROYECTOS_TEST = [
     "TAG proyecto", "Nombre del proyecto", "Cliente", "% Avance",
