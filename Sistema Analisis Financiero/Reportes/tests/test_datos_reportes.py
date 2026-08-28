@@ -5,6 +5,7 @@ import openpyxl
 import pytest
 
 import datos_reportes as dr
+import analisis_financiero as af
 
 HEADERS_PROYECTOS_TEST = [
     "TAG proyecto", "Nombre del proyecto", "Cliente", "% Avance",
@@ -208,3 +209,47 @@ def test_paquete_datos_comparacion_rechaza_tipo_desconocido(tmp_path):
     ruta = _crear_excel_af(tmp_path, [_fila_proyecto_completa()], _filas_detalle("UMAG"))
     with pytest.raises(ValueError):
         dr.paquete_datos_comparacion(ruta, [("no_existe", "UMAG")])
+
+
+def test_indicadores_incluyen_nota_parcial(tmp_path):
+    """La Nota Parcial viaja en el mismo dict de indicadores que el resto del
+    playbook, para que la página 1 del PDF la muestre sin tocar plantilla."""
+    import kpis_recalculados as kr
+
+    proyecto = {
+        "TAG proyecto": "UMAG", "% Avance": 0.75,
+        "Monto de Venta (sin IVA)": 10_000_000,
+        "Costos Materiales Proyectados": 4_000_000,
+        "Costos Equipos Proyectados": 2_000_000,
+        "Mano de Obra Proyectada": 1_000_000,
+        "Otros Costos Proyectados": 1_000_000,
+        "Mano de Obra Real": 800_000,
+    }
+    reales = {"Materiales": 3_200_000, "Equipos": 1_600_000, "Otros": 800_000}
+
+    _, indicadores = kr.recalcular_proyecto(proyecto, reales)
+
+    assert indicadores["Nota Parcial"] == af.calcular_nota_parcial(
+        indicadores["Nota del Proyecto"], 0.75
+    )
+    assert indicadores["Nota Parcial"] < indicadores["Nota del Proyecto"]
+
+
+def test_nota_parcial_vacia_si_el_proyecto_no_tiene_avance_cargado(tmp_path):
+    import kpis_recalculados as kr
+
+    proyecto = {
+        "TAG proyecto": "UMAG", "% Avance": None,
+        "Monto de Venta (sin IVA)": 10_000_000,
+        "Costos Materiales Proyectados": 4_000_000,
+        "Costos Equipos Proyectados": 2_000_000,
+        "Mano de Obra Proyectada": 1_000_000,
+        "Otros Costos Proyectados": 1_000_000,
+        "Mano de Obra Real": 800_000,
+    }
+    reales = {"Materiales": 3_200_000, "Equipos": 1_600_000, "Otros": 800_000}
+
+    _, indicadores = kr.recalcular_proyecto(proyecto, reales)
+
+    assert indicadores["Nota del Proyecto"] is not None
+    assert indicadores["Nota Parcial"] is None

@@ -31,7 +31,7 @@ if str(RAIZ_SISTEMA) not in sys.path:
 from analisis_financiero import (  # noqa: E402,F401
     # _redondear_excel se re-exporta aunque este modulo ya no lo llame
     # directamente: es parte de la superficie publica que sus tests ejercitan.
-    _redondear_excel, calcular_nota, clasificar_evaluacion,
+    _redondear_excel, calcular_nota, calcular_nota_parcial, clasificar_evaluacion,
 )
 
 
@@ -128,6 +128,7 @@ def recalcular_proyecto(proyecto: dict, costos_reales: dict[str, float]) -> tupl
 
     nota = calcular_nota(margen_neto, desviacion_total)
     evaluacion = clasificar_evaluacion(nota)
+    nota_parcial = calcular_nota_parcial(nota, proyecto.get("% Avance"))
 
     # Playbook depurado 2026-07-28 (ver analisis_financiero.HEADERS_INDICADORES):
     # se eliminaron "Rentabilidad sobre costo" y las 4 "Productividad"
@@ -157,6 +158,7 @@ def recalcular_proyecto(proyecto: dict, costos_reales: dict[str, float]) -> tupl
         "Ahorro/Sobrecosto Total": _restar(total_proyectado, total_real),
         "Nota del Proyecto": nota,
         "Evaluación": evaluacion,
+        "Nota Parcial": nota_parcial,
     }
     return proyecto_actualizado, indicadores
 
