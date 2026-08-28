@@ -585,7 +585,7 @@
         <div class="kpi-card" id="kpiCardNCompletos">
           <div class="kpi-label">
             Proyectos completos
-            <span class="info-icon" tabindex="0" data-info="Proyectos con los 8 campos manuales cargados en 'Análisis de Proyectos' (Estado, Fecha de inicio, Monto de Venta, 4 costos proyectados y Mano de Obra Real). Solo estos entran en los KPIs, gráficos y tablas de esta pestaña.">i</span>
+            <span class="info-icon" tabindex="0" data-info="Proyectos con los 8 campos manuales cargados en 'Análisis de Proyectos' (% Avance, Fecha de inicio, Monto de Venta, 4 costos proyectados y Mano de Obra Real). Solo estos entran en los KPIs, gráficos y tablas de esta pestaña.">i</span>
           </div>
           <div class="kpi-value" id="kpiNCompletos"></div>
         </div>
@@ -620,7 +620,7 @@
       <div class="viz-tablewrap"><div class="viz-tablescroll">
       <table class="viz-table">
         <thead>
-          <tr><th>Proyecto</th><th>Cliente</th><th>Estado</th><th>Monto Venta</th>
+          <tr><th>Proyecto</th><th>Cliente</th><th title="Porcentaje de avance del proyecto, cargado a mano en la planilla. 100% = ejecución terminada; bajo 100% el Margen Real y la Desviación % todavía pueden moverse.">% Avance</th><th>Monto Venta</th>
             <th title="Monto de Venta − Total Real: la utilidad efectivamente generada por el proyecto.">Margen Real</th>
             <th title="Real / Proyectado − 1, sobre el total de costos. +15% o más = sobregasto relevante respecto al presupuesto original.">Desviación %</th>
             <th title="0-100: 70% margen neto % (vs. objetivo 25%) + 30% control de desviación total. Resume rentabilidad y control de presupuesto en un número.">Nota</th>
@@ -1115,7 +1115,7 @@
     tbody.innerHTML = items.map(function (p) {
       var expandido = proyectoExpandido === p.tag;
       var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0">' +
-        '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + esc(p.estado || '—') +
+        '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + (p.avance == null ? '—' : formatoPct(p.avance)) +
         '</td><td>' + formatoCLP(p.monto_venta) + '</td><td>' + formatoCLP(p.margen_real) + '</td><td>' +
         formatoPctDesviacion(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
       if (expandido) {
