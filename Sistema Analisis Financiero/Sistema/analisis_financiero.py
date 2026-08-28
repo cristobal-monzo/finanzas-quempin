@@ -1149,6 +1149,51 @@ def _formula_evaluacion(fila_destino: int) -> str:
     )
 
 
+def calcular_nota_parcial(nota: int | None, avance: float | None) -> int | None:
+    """Nota del Proyecto ponderada por el % de avance manual del proyecto
+    (2026-08-28). Equivalente Python exacto de _formula_nota_parcial().
+
+    Separa dos preguntas que la Nota sola mezclaba: la Nota mide QUE TAN BIEN
+    se esta ejecutando lo ejecutado hasta ahora (margen real vs venta,
+    desviacion real vs presupuesto); la Parcial mide CUANTO de ese resultado
+    esta confirmado. Un proyecto al 75% con Nota 88 tiene Parcial 66 -- la
+    ejecucion va bien, pero un cuarto del proyecto todavia puede mover el
+    numero final. Al 100% de avance ambas coinciden.
+
+    None (celda vacia en Excel) si falta cualquiera de los dos insumos: la
+    cadena vacia cuenta como faltante porque la formula de Excel guarda con
+    ="" y la Nota de "Gastos Generales" llega justamente como "".
+
+    NO acota el avance a [0, 1] -- la formula de Excel tampoco. Un
+    acotamiento en un solo lado es exactamente la divergencia silenciosa que
+    este bloque existe para evitar; un avance fuera de rango es un error de
+    carga y debe verse como tal en los dos caminos."""
+    if nota is None or avance is None or avance == "":
+        return None
+    return _redondear_excel(nota * avance)
+
+
+def _formula_nota_parcial(fila_proyectos: int, fila_indicadores: int) -> str:
+    """Equivalente Excel exacto de calcular_nota_parcial().
+
+    Necesita las DOS filas: el avance vive en 'Proyectos' (que puede tener
+    huecos) y la Nota en esta misma hoja 'Indicadores' (compacta, sin
+    huecos) -- mismo desfase que ya manejan _formula_evaluacion (fila de
+    Indicadores) y _formula_nota (fila de Proyectos).
+
+    La guarda vive DENTRO de la formula, no en Python, para que la celda se
+    recalcule sola cuando el usuario complete el avance sin necesidad de
+    correr el script (mismo patron que 'Margen por dia de ejecucion').
+    Cubre los dos casos vacios de una vez: la Nota de 'Gastos Generales'
+    (que ya llega como "" por su propio guard en asegurar_hoja_indicadores)
+    y un proyecto sin avance cargado."""
+    col_nota = LETRA_COL_INDICADORES["Nota del Proyecto"]
+    col_avance = LETRA_COL_PROYECTOS["% Avance"]
+    nota = f"{col_nota}{fila_indicadores}"
+    avance = f"Proyectos!{col_avance}{fila_proyectos}"
+    return f'=IF(OR({nota}="",{avance}=""),"",ROUND({nota}*{avance},0))'
+
+
 # ── FÓRMULAS DE LA HOJA "INDICADORES" (100% regenerada cada corrida) ────────
 
 def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:

@@ -114,3 +114,51 @@ def test_nota_umag_sube_con_el_fix_porque_ahorro_ya_no_se_penaliza():
     )
     assert nota_sin_abs == 100
     assert nota_sin_abs > nota_con_abs
+
+
+def test_nota_parcial_al_100_por_ciento_es_la_nota_completa():
+    assert af.calcular_nota_parcial(88, 1.0) == 88
+
+
+def test_nota_parcial_pondera_por_el_avance():
+    """88 x 0.75 = 66: la ejecución va bien, pero solo tres cuartos del
+    resultado están confirmados."""
+    assert af.calcular_nota_parcial(88, 0.75) == 66
+
+
+def test_nota_parcial_redondea_como_excel_no_como_python():
+    """90 x 0.75 = 67.5 -> 68 (half away from zero). El round() nativo de
+    Python daría 68 acá pero 66 para 66.5; se usa _redondear_excel para que
+    el empate exacto en .5 caiga siempre del mismo lado que la fórmula."""
+    assert af.calcular_nota_parcial(90, 0.75) == 68
+    assert af.calcular_nota_parcial(70, 0.95) == 67  # 66.5 -> 67
+
+
+def test_nota_parcial_vacia_si_falta_el_avance():
+    assert af.calcular_nota_parcial(88, None) is None
+    assert af.calcular_nota_parcial(88, "") is None
+
+
+def test_nota_parcial_vacia_si_no_hay_nota():
+    """Gastos Generales: la Nota ya viene vacía, la Parcial también."""
+    assert af.calcular_nota_parcial(None, 0.75) is None
+
+
+def test_nota_parcial_con_avance_cero_es_cero():
+    assert af.calcular_nota_parcial(88, 0.0) == 0
+
+
+def test_nota_parcial_no_acota_un_avance_fuera_de_rango():
+    """Ni Python ni Excel acotan: un avance >100% es un error de carga y
+    debe verse igual en ambos lados, no corregirse en silencio en uno solo."""
+    assert af.calcular_nota_parcial(80, 1.5) == 120
+
+
+def test_formula_nota_parcial_referencia_la_nota_y_el_avance_con_guardas():
+    formula = af._formula_nota_parcial(5, 2)
+    col_nota = af.LETRA_COL_INDICADORES["Nota del Proyecto"]
+    col_avance = af.LETRA_COL_PROYECTOS["% Avance"]
+    assert formula == (
+        f'=IF(OR({col_nota}2="",Proyectos!{col_avance}5=""),"",'
+        f'ROUND({col_nota}2*Proyectos!{col_avance}5,0))'
+    )

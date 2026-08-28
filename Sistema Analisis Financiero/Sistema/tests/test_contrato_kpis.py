@@ -283,3 +283,18 @@ def test_cltv_y_clasificacion_de_clientes_coinciden_entre_visualizador_y_reporte
         assert c_bv["margen_pct"] == pytest.approx(c_kr["Margen de utilidad %"])
         assert c_bv["cltv"] == pytest.approx(c_kr["CLTV"])
         assert c_bv["clasificacion"] == c_kr["Clasificación"]
+
+
+def test_formula_nota_parcial_y_espejo_python_usan_las_mismas_piezas():
+    """Mismo contrato que ya cubre Nota/Evaluación: si alguien cambia una de
+    las dos implementaciones de la Nota Parcial sin cambiar la otra, este
+    test falla antes de que el dashboard y el Excel se desincronicen."""
+    formula = af._formula_nota_parcial(5, 2)
+    assert "ROUND(" in formula, "el redondeo debe estar en la fórmula, no solo en Python"
+    assert f'{af.LETRA_COL_INDICADORES["Nota del Proyecto"]}2' in formula
+    assert f'Proyectos!{af.LETRA_COL_PROYECTOS["% Avance"]}5' in formula
+    assert 'OR(' in formula, "debe guardar contra Nota vacía Y avance vacío"
+    assert "MIN(" not in formula and "MAX(" not in formula, (
+        "la fórmula no acota el avance; calcular_nota_parcial tampoco debe hacerlo"
+    )
+    assert af.calcular_nota_parcial(80, 1.5) == 120
