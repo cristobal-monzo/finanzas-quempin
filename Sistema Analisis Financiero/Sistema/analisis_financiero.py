@@ -126,6 +126,10 @@ HEADERS_INDICADORES = [
     # agregar por ahora -- ver MEMORY.md).
     "Peso del proyecto en la cartera de ventas (%)",
     "Margen por día de ejecución",
+    # KPI nuevo 2026-08-28: Nota del Proyecto ponderada por el "% Avance"
+    # manual de "Proyectos". Al final, sin reordenar nada, igual que los 2
+    # KPIs agregados el 2026-07-28.
+    "Nota Parcial",
 ]
 HEADERS_CLIENTES = [
     "Cliente", "AOV (Valor promedio de venta)",
@@ -256,6 +260,7 @@ ESTILO_COLUMNAS_INDICADORES = {
     "W": (COLOR_DERIVADO, None, 20),
     "X": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 18),
     "Y": (COLOR_DERIVADO, FORMATO_MONEDA, 18),
+    "Z": (COLOR_DERIVADO, FORMATO_ENTERO, 14),
 }
 
 ESTILO_COLUMNAS_CLIENTES = {
@@ -1206,7 +1211,8 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
     Orden de columnas (reordenado 2026-07-28, ver HEADERS_INDICADORES):
     margen neto; costo % de venta (4); estructura % del costo real / mix,
     suma 100% (4); desviación % por categoría (4) + desviación % total;
-    ahorro/sobrecosto neto en $ por categoría (4) + total; nota; evaluación."""
+    ahorro/sobrecosto neto en $ por categoría (4) + total; nota; evaluación;
+    peso en cartera; margen por día; nota parcial."""
     ws = wb[HOJA_INDICADORES]
     if ws.max_row >= 2:
         ws.delete_rows(2, ws.max_row - 1)
@@ -1285,6 +1291,12 @@ def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
             f'=IF(Proyectos!{fecha_cierre}{r}="","",'
             f"Proyectos!{margen_real}{r}/MAX(1,Proyectos!{fecha_cierre}{r}-Proyectos!{fecha_inicio}{r}))"
         ))
+        # Z: Nota Parcial -- Nota del Proyecto (columna V de esta misma hoja)
+        # ponderada por el "% Avance" manual de "Proyectos". No necesita un
+        # guard propio de "Gastos Generales": la Nota ya llega como "" para
+        # ese bucket y la fórmula guarda contra eso, igual que contra un
+        # proyecto sin avance cargado.
+        ws.cell(row=f, column=26, value=_formula_nota_parcial(r, f))
         fila_destino += 1
 
 
@@ -1419,6 +1431,12 @@ GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
         "Mide cuánto margen genera el proyecto por unidad de tiempo -- útil para priorizar proyectos que compiten por la misma capacidad de equipo/tiempo, no solo por margen total.",
         "Margen Real, Fecha de cierre − Fecha de inicio (en días)",
         "$50.000/día = el proyecto generó en promedio $50.000 de margen por cada día que duró su ejecución. Queda vacío si el proyecto todavía no tiene Fecha de cierre (en desarrollo) -- no se calcula sobre una duración que aún no terminó.",
+    ),
+    (
+        "Nota Parcial",
+        "Separa dos preguntas que la Nota sola mezclaba: qué tan bien se está ejecutando lo ejecutado hasta ahora, y cuánto de ese resultado está confirmado -- un proyecto a mitad de camino puede tener una Nota alta que todavía tiene mucho margen para moverse.",
+        "Nota del Proyecto, % Avance (Proyectos)",
+        "Un proyecto al 75% de avance con Nota 88 tiene Parcial 66 -- la ejecución va bien, pero un cuarto del proyecto todavía puede mover el número final. Al 100% de avance, Nota Parcial y Nota del Proyecto coinciden. Vacío si falta el % Avance o si la Nota está vacía (caso de 'Gastos Generales').",
     ),
     (
         "AOV (Clientes)",

@@ -189,3 +189,41 @@ def test_regenerar_borra_filas_de_la_corrida_anterior(tmp_path):
 
     ws = wb[af.HOJA_INDICADORES]
     assert ws.max_row == 2
+
+
+def test_nota_parcial_es_la_ultima_columna_de_indicadores():
+    """Se agrega al FINAL (columna Z), sin reordenar ni tocar ninguna columna
+    existente -- mismo criterio que los 2 KPIs agregados el 2026-07-28."""
+    assert af.HEADERS_INDICADORES[-1] == "Nota Parcial"
+    assert af.LETRA_COL_INDICADORES["Nota Parcial"] == "Z"
+
+
+def test_columna_nota_parcial_lleva_la_formula_con_las_dos_filas(tmp_path):
+    """La fila de 'Indicadores' es compacta (2) y la de 'Proyectos' puede
+    tener huecos (4): la fórmula tiene que usar cada una donde corresponde."""
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    af.asegurar_hoja_indicadores(wb, [{"fila": 4, "tag": "UMAG", "nombre": "UMAG"}])
+
+    ws = wb[af.HOJA_INDICADORES]
+    assert ws.cell(row=2, column=26).value == af._formula_nota_parcial(4, 2)
+
+
+def test_nota_parcial_de_gastos_generales_queda_vacia_por_la_nota_vacia(tmp_path):
+    """No necesita su propio guard de 'Gastos Generales': la Nota (columna V)
+    ya llega como "" para ese bucket, y la fórmula guarda contra eso."""
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    ws_p = wb[af.HOJA_PROYECTOS]
+    col_categoria = af.HEADERS_PROYECTOS.index("Categoría") + 1
+    ws_p.cell(row=2, column=col_categoria, value=af.CATEGORIA_GASTOS_GENERALES)
+
+    af.asegurar_hoja_indicadores(wb, [{"fila": 2, "tag": "GGEN", "nombre": "Gastos Generales"}])
+
+    ws = wb[af.HOJA_INDICADORES]
+    col_nota = af.LETRA_COL_INDICADORES["Nota del Proyecto"]
+    assert f'{col_nota}2=""' in ws.cell(row=2, column=26).value
+
+
+def test_nota_parcial_tiene_formato_entero_como_la_nota():
+    color, formato, _ = af.ESTILO_COLUMNAS_INDICADORES["Z"]
+    assert color == af.COLOR_DERIVADO
+    assert formato == af.FORMATO_ENTERO

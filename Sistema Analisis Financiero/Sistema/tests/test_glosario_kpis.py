@@ -58,6 +58,14 @@ def test_incluye_los_2_kpis_nuevos_2026_07_28_segunda_tanda(tmp_path):
         assert esperado in nombres
 
 
+def test_incluye_nota_parcial_2026_08_28(tmp_path):
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    af.asegurar_hoja_glosario_kpis(wb)
+
+    nombres = [fila[0] for fila in af.GLOSARIO_KPIS]
+    assert "Nota Parcial" in nombres
+
+
 def test_se_reescribe_completa_sin_duplicar_entre_corridas(tmp_path):
     wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
     af.asegurar_hoja_glosario_kpis(wb)
@@ -102,6 +110,7 @@ COLUMNA_A_KPI_GLOSARIO = {
     "Evaluación": "Evaluación",
     "Peso del proyecto en la cartera de ventas (%)": "Peso del proyecto en la cartera de ventas (%)",
     "Margen por día de ejecución": "Margen por día de ejecución",
+    "Nota Parcial": "Nota Parcial",
     "AOV (Valor promedio de venta)": "AOV (Clientes)",
     "Vida del cliente (n° de proyectos)": "Vida del cliente",
     "Meses activo": "Meses activo",

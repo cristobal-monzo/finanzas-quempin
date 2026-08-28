@@ -157,7 +157,11 @@ def test_hoja_indicadores_incluye_los_2_kpis_nuevos_2026_07_28(tmp_path):
     ws = wb[af.HOJA_INDICADORES]
     assert ws.cell(row=1, column=24).value == "Peso del proyecto en la cartera de ventas (%)"
     assert ws.cell(row=1, column=25).value == "Margen por día de ejecución"
-    assert ws.cell(row=1, column=26).value is None
+    # 2026-08-28: columna 26 ("Nota Parcial") existe desde acá en adelante --
+    # el límite vacío se corre a la 27, ver test_nota_parcial_es_la_ultima_columna_de_indicadores
+    # en test_formulas_indicadores.py para la aserción dedicada a esta columna.
+    assert ws.cell(row=1, column=26).value == "Nota Parcial"
+    assert ws.cell(row=1, column=27).value is None
 
 
 def test_hoja_detalle_costos_reales_incluye_columna_de_porcentaje(tmp_path):
