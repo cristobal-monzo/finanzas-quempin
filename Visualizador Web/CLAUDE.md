@@ -100,7 +100,9 @@ https://cristobal-monzo.github.io/finanzas-quempin/                     # hub
 https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/
 https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/
 https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/
+https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero-peru/
 https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/
+https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/
 ```
 
 **Cómo publicar (reemplaza "usar el tool `Artifact`" en toda la
@@ -116,7 +118,9 @@ tampoco hace falta guardar/leer un link en el `MEMORY.md` de cada skill.
 | Centro de Costos | `centro-de-costos` | `Centro de Costos/Visualizador Web/build/index.html` |
 | Centro de Costos Perú | `centro-de-costos-peru` | `Peru/Centro de Costos/Visualizador Web/build/index.html` |
 | Análisis Financiero | `analisis-financiero` | `Sistema Analisis Financiero/Visualizador Web/build/index.html` |
+| Análisis Financiero Perú | `analisis-financiero-peru` | `Peru/Análisis Financiero/Visualizador Web/build/index.html` |
 | Cotizador Histórico | `cotizador-historico` | `Cotizador Historico/Visualizador Web/build/index.html` |
+| Cotizador Histórico Perú | `cotizador-historico-peru` | `Peru/Cotizador Historico/Visualizador Web/build/index.html` |
 
 ```
 cp "<Origen de la tabla>" ".worktrees/gh-pages/<subruta>/index.html"
