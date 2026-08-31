@@ -39,7 +39,7 @@ RAIZ_REPORTES = RAIZ.parent / "Reportes"
 URL_PLANILLA_PENDIENTE = None
 
 CLAVE_POR_ENCABEZADO = {
-    "Estado": "estado",
+    "% Avance": "avance",
     "Fecha de inicio": "fecha_inicio",
     "Monto de Venta (sin IVA)": "monto_venta",
     "Costos Materiales Proyectados": "materiales_proy",
@@ -67,7 +67,7 @@ def leer_proyectos(ws_proyectos) -> list[dict]:
             "tag": tag,
             "nombre": nombre,
             "cliente": _valor_columna(ws_proyectos, fila, "Cliente"),
-            "estado": _valor_columna(ws_proyectos, fila, "Estado"),
+            "avance": _valor_columna(ws_proyectos, fila, "% Avance"),
             "fecha_inicio": _valor_columna(ws_proyectos, fila, "Fecha de inicio"),
             "fecha_cierre": _valor_columna(ws_proyectos, fila, "Fecha de cierre"),
             "categoria": _valor_columna(ws_proyectos, fila, "Categoría"),
@@ -178,14 +178,18 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     margen_neto = (margen_real / p["monto_venta"]) if p["monto_venta"] else 0.0
     nota = af.calcular_nota(margen_neto, desviacion_pct)
     evaluacion = af.clasificar_evaluacion(nota)
+    # Nota Parcial: importada de analisis_financiero, nunca reimplementada
+    # aca -- mismo principio que el resto del snapshot (nunca reimplementar
+    # una formula que ya vive en el modulo compartido).
+    nota_parcial = af.calcular_nota_parcial(nota, p["avance"])
 
     resultado = {
-        "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "estado": p["estado"],
+        "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "avance": p["avance"],
         "fecha_inicio": _fecha_str(p["fecha_inicio"]), "fecha_cierre": _fecha_str(p["fecha_cierre"]),
         "categoria": p["categoria"],
         "monto_venta": p["monto_venta"], "total_proyectado": total_proyectado,
         "total_real": total_real, "margen_real": margen_real, "desviacion_pct": desviacion_pct,
-        "nota": nota, "evaluacion": evaluacion,
+        "nota": nota, "evaluacion": evaluacion, "nota_parcial": nota_parcial,
         "costos_proyectados": {
             "materiales": p["materiales_proy"], "equipos": p["equipos_proy"],
             "mo": p["mo_proy"], "otros": p["otros_proy"],
