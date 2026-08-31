@@ -729,3 +729,36 @@ def test_extraer_datos_saneados_incluye_peso_cartera_y_detalle_subcategorias(tmp
         {"subcategoria": "Materiales", "bucket": "Materiales", "total": 250_000, "pct": 1.0},
     ]
     assert por_tag["CFLI"]["detalle_subcategorias"] == []  # sin filas en 'Detalle Costos Reales'
+
+
+def test_snapshot_expone_avance_y_nota_parcial():
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.75,
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": "I+D+i",
+        "monto_venta": 10_000_000,
+        "materiales_proy": 4_000_000, "equipos_proy": 2_000_000,
+        "mo_proy": 1_000_000, "otros_proy": 1_000_000, "mo_real": 800_000,
+    }
+    reales = {"Materiales": 3_200_000, "Equipos": 1_600_000, "Otros": 800_000}
+
+    kpis = bv.calcular_kpis_proyecto(p, reales)
+
+    assert kpis["avance"] == 0.75
+    assert "estado" not in kpis
+    assert kpis["nota_parcial"] == af.calcular_nota_parcial(kpis["nota"], 0.75)
+
+
+def test_snapshot_deja_nota_parcial_vacia_sin_avance():
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": None,
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": "I+D+i",
+        "monto_venta": 10_000_000,
+        "materiales_proy": 4_000_000, "equipos_proy": 2_000_000,
+        "mo_proy": 1_000_000, "otros_proy": 1_000_000, "mo_real": 800_000,
+    }
+    reales = {"Materiales": 3_200_000, "Equipos": 1_600_000, "Otros": 800_000}
+
+    kpis = bv.calcular_kpis_proyecto(p, reales)
+
+    assert kpis["nota"] is not None
+    assert kpis["nota_parcial"] is None

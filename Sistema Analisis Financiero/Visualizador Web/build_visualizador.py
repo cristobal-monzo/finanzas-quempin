@@ -225,6 +225,10 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
     margen_neto = (margen_real / p["monto_venta"]) if p["monto_venta"] else 0.0
     nota = af.calcular_nota(margen_neto, desviacion_pct)
     evaluacion = af.clasificar_evaluacion(nota)
+    # Nota Parcial: importada de analisis_financiero, nunca reimplementada
+    # aca -- este archivo es uno de los dos que se desincronizaron del Excel
+    # en 2026-07-28 al copiar la formula de la Nota en vez de importarla.
+    nota_parcial = af.calcular_nota_parcial(nota, p["avance"])
 
     resultado = {
         "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "avance": p["avance"],
@@ -232,7 +236,7 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
         "categoria": p["categoria"],
         "monto_venta": p["monto_venta"], "total_proyectado": total_proyectado,
         "total_real": total_real, "margen_real": margen_real, "desviacion_pct": desviacion_pct,
-        "nota": nota, "evaluacion": evaluacion,
+        "nota": nota, "evaluacion": evaluacion, "nota_parcial": nota_parcial,
         "costos_proyectados": {
             "materiales": p["materiales_proy"], "equipos": p["equipos_proy"],
             "mo": p["mo_proy"], "otros": p["otros_proy"],

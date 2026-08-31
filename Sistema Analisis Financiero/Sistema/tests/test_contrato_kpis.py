@@ -298,3 +298,13 @@ def test_formula_nota_parcial_y_espejo_python_usan_las_mismas_piezas():
         "la fórmula no acota el avance; calcular_nota_parcial tampoco debe hacerlo"
     )
     assert af.calcular_nota_parcial(80, 1.5) == 120
+
+
+def test_nota_parcial_coincide_entre_visualizador_y_reportes():
+    """El tercer KPI que se recalcula por los dos caminos Python. Sin este
+    test, un cambio en uno solo repetiría el bug de 2026-07-28: el mismo
+    proyecto con dos notas distintas según dónde se lo mirara."""
+    kpi_viz, indicadores = _notas_de_ambos_caminos(CASO_BAJO_PRESUPUESTO)
+    assert kpi_viz["nota_parcial"] == indicadores["Nota Parcial"]
+    assert kpi_viz["nota_parcial"] is not None
+    assert kpi_viz["nota_parcial"] < kpi_viz["nota"], "el caso está al 75% de avance"
