@@ -962,3 +962,100 @@ hoja "Clientes" hasta que corra `/Registro_Analisis_Financiero` o
 `/Actualizar_AF` de nuevo — esa hoja se regenera 100% en cada corrida, así
 que no requiere migración manual (a diferencia del reordenamiento de
 columnas de 2026-07-28).
+
+## `Estado` → `% Avance` y KPI "Nota Parcial" (2026-08-31)
+
+A pedido del usuario: la hoja "Proyectos" solo distinguía `Terminado` /
+`En Proceso` (texto libre, con un typo real `Terminas` en un proyecto) —
+insuficiente para leer un KPI de un proyecto a medio camino como resultado
+parcial en vez de final. Se reemplazó `Estado` por `% Avance` (manual,
+fracción 0–1, formato `0.0%`) en la **misma posición 5** de
+`HEADERS_PROYECTOS` — ningún reordenamiento, así que ninguna letra ni
+fórmula preexistente se movió. Hereda los dos roles de `Estado`: celda de
+ingreso manual (amarillo + cursiva) y uno de los 8 campos de
+`CAMPOS_MANUALES_REQUERIDOS`.
+
+- **KPI nuevo, "Nota Parcial"** (columna Z de "Indicadores", al final, sin
+  reordenar nada): `Nota del Proyecto × % Avance`, redondeada. Separa dos
+  preguntas que la Nota sola mezclaba — qué tan bien se está ejecutando lo
+  ejecutado hasta ahora (la Nota) de cuánto de ese resultado ya está
+  confirmado (la Parcial). Doble implementación espejo, mismo patrón que el
+  resto del playbook: `calcular_nota_parcial(nota, avance)` en Python y
+  `_formula_nota_parcial(fila_proyectos, fila_indicadores)` en Excel,
+  contrato cruzado verificado en
+  `test_contrato_kpis.py::test_formula_nota_parcial_y_espejo_python_usan_las_mismas_piezas`
+  y `test_nota_parcial_coincide_entre_visualizador_y_reportes`.
+- **Guard simétrico, no solo sobre el avance**: `calcular_nota_parcial`
+  devuelve `None` (celda vacía en Excel) si `nota` **o** `avance` están en
+  `(None, "")` — no basta con guardar solo por avance faltante, porque la
+  Nota de "Gastos Generales" ya llega como `""` por su propio guard de
+  `asegurar_hoja_indicadores` (ver entrada 2026-08-20) y sin el guard
+  simétrico esa fila habría intentado `"" * avance`. La fórmula de Excel
+  cubre los dos casos de una vez con `IF(OR(V{f}="",Proyectos!E{fp}=""),"",
+  ROUND(...))` — "Gastos Generales" no necesitó un guard propio nuevo, el
+  existente ya lo cubre.
+- **Decisión explícita: `Evaluación` y el `Nota promedio` del dashboard NO
+  usan la Nota Parcial** — siguen clasificando/promediando la Nota
+  financiera, igual que antes de este cambio. No fue un descuido: la Nota
+  Parcial responde "¿cuánto de este resultado ya es firme?", una pregunta
+  distinta de "¿qué tan bien le está yendo al proyecto?", que es la que
+  responden `Evaluación` y el promedio de cabecera. Mezclar ambas en la
+  misma clasificación habría hecho que un proyecto excelente pero recién
+  empezado (ej. Nota 95, 10% de avance → Parcial 10) cayera de categoría por
+  poco avance, no por mal desempeño.
+- **Ninguna de las dos implementaciones acota el avance a `[0, 1]`** —
+  decisión deliberada, no un olvido: un avance fuera de rango (ej. 120%
+  cargado por error) es un error de carga que debe manifestarse igual en
+  Excel y en Python, no ser silenciosamente recortado en un solo lado. Un
+  acotamiento asimétrico es exactamente el tipo de divergencia silenciosa
+  que la auditoría del 2026-07-28 (ver CLAUDE.md raíz, sección "Entorno")
+  encontró entre el dashboard y el Excel/PDF para la Nota del Proyecto —
+  este KPI se diseñó para no repetir ese patrón.
+- **Reportes PDF**: a diferencia de los 2 KPIs agregados el 2026-07-28
+  (Peso en cartera, Margen por día), la Nota Parcial **sí** se agregó al
+  espejo Python de reportes — `kpis_recalculados.recalcular_proyecto` ahora
+  expone `indicadores["Nota Parcial"]`. `Reportes/datos_reportes.py` no
+  necesitó ningún cambio: lee los encabezados reales del paquete de datos,
+  no una lista fija de KPIs esperados.
+- **Dashboard**: `build_visualizador.py` expone `avance` y `nota_parcial`
+  en el snapshot de cada proyecto (recalculado en Python, nunca leído de la
+  fórmula de Excel — mismo principio que el resto del snapshot);
+  `template.html` agregó las columnas `% Avance` y `Nota Parcial` a la
+  tabla principal (7 → 9 columnas) y una tarjeta `Nota Parcial` al panel de
+  detalle. Ver `Visualizador Web/CLAUDE.md` para el detalle de columnas.
+- **Glosario KPIs**: 2 entradas nuevas (`% Avance`, `Nota Parcial`),
+  agregadas al mismo `GLOSARIO_KPIS` de siempre.
+
+### Migración del archivo real (2026-08-31, mismo día)
+
+`asegurar_estructura_workbook` nunca pisa un encabezado ya escrito en
+"Proyectos" (regla de oro) — cambiar el código no convierte solo la
+columna `Estado` existente en `% Avance` de un archivo ya cargado. Se
+migró a mano `Análisis de Proyectos 2026.xlsx`, con backup previo
+(`Respaldos/pre-migracion-avance-20260831-160945.xlsx`):
+
+- **17 filas migradas**: 16 quedaron en 100% (interpretando `Terminado`
+  como ejecución completa) y `GGEN` ("Gastos Generales") quedó **vacío a
+  propósito** — es un bucket de costos internos, sin Monto de Venta ni
+  Nota propia (ver exclusión estructural del 2026-08-20); "avance" no
+  significa nada ahí, y ya era una fila incompleta antes de esta migración.
+- **`CFLI` (Cesfam Limache) tenía `'Terminas'`** — un typo real de
+  `'Terminado'` en el valor cargado a mano, no una tercera categoría de
+  estado. Confirmado con el usuario que se trataba del mismo caso;
+  migró a 100% junto con el resto de los proyectos terminados.
+- **La completitud no cambió**: 7 proyectos completos antes y después de
+  la migración, los mismos 7 TAGs (UMAG, CCON, MLER, CREM, CVAL, HPIN,
+  JUNJ) — `% Avance` es uno de los 8 campos de
+  `CAMPOS_MANUALES_REQUERIDOS` igual que `Estado` antes, así que un
+  proyecto completo antes de migrar (con `Estado` cargado) sigue completo
+  después (con `% Avance` cargado).
+- **Verificación del caso parcial**, hecha sobre una copia del archivo, no
+  sobre el real: UMAG forzado a 75% de avance → Nota 93, Nota Parcial 70
+  (= `ROUND(93×0.75)`), `Evaluación` sigue en `'Excelente'` sin cambio (no
+  usa la Parcial, ver arriba).
+- **Dashboard verificado en navegador tras regenerarlo**: 7 filas, 9
+  `<th>` = 9 `<td>` por fila, `colspan` de detalle en 9, `% Avance` en
+  "100.0%" para los 7 proyectos completos, `Nota Parcial` == `Nota` (100%
+  de avance), consola sin errores.
+
+Suite completa tras el cambio: 510 tests (todas las 7 suites del repo).

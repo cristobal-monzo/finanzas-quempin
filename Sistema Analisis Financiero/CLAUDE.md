@@ -79,7 +79,7 @@ Finanzas QUEMPIN/
     ├── CLAUDE.md                              # este archivo
     ├── MEMORY.md                              # decisiones, historial, pendientes
     ├── Respaldos/                             # backups automáticos por mes (se crea en la primera corrida real)
-    ├── Sistema/                               # analisis_financiero.py + tests/ (71 tests)
+    ├── Sistema/                               # analisis_financiero.py + tests/ (167 tests, 2026-08-31)
     └── .claude/skills/Registro_Analisis_Financiero/  # SKILL.md + driver.py (status/run/confirmar-cliente)
 ```
 
@@ -91,11 +91,20 @@ Cinco hojas, todas dentro del mismo libro:
   (= prefijo de Centro de Costos, ej. `UMAG`/`CFLI`/`CCON`/`GGEN`/`MLER`),
   Nombre, **Cliente** (se completa sola, ver "Clientes" abajo), **Categoría**
   (2026-07-28: movida junto a Cliente, antes vivía al final — también se
-  autocompleta, ver más abajo), Estado, fechas, Monto de Venta **sin IVA**,
-  costos proyectados por categoría (manual, las 4: Materiales, Equipos, Mano
-  de Obra, Otros), costos reales por categoría (Materiales/Equipos/Otros =
-  fórmula automática desde Centro de Costos; Mano de Obra Real = manual, sin
+  autocompleta, ver más abajo), **% Avance**, fechas, Monto de Venta **sin
+  IVA**, costos proyectados por categoría (manual, las 4: Materiales, Equipos,
+  Mano de Obra, Otros), costos reales por categoría (Materiales/Equipos/Otros
+  = fórmula automática desde Centro de Costos; Mano de Obra Real = manual, sin
   fuente automática hoy), totales/márgenes/desviación derivados por fórmula.
+
+**`Estado` reemplazado por `% Avance` (2026-08-31)**: el campo de texto libre
+(`Terminado`/`En Proceso`, más un typo real `Terminas`) pasó a ser un
+porcentaje de avance manual, en la **misma posición 5** — no se reordenó
+ninguna columna, así que ninguna letra ni fórmula existente cambió. Hereda
+los dos roles de `Estado`: campo de ingreso manual (amarillo + cursiva) y uno
+de los 8 campos de `CAMPOS_MANUALES_REQUERIDOS`. Se guarda como fracción 0–1
+con formato `0.0%`. El archivo real se migró a mano (ver MEMORY.md): los 16
+proyectos terminados quedaron en 100% y `Gastos Generales` vacío.
 - **"Detalle Costos Reales"** (una fila por proyecto + subcategoría): preserva el
   detalle real de cada `categoria_item` de Centro de Costos (Consumibles,
   Equipos-Herramientas, Combustible si aparece, etc.) aunque "Proyectos" solo
@@ -157,6 +166,7 @@ nuevos. Ver MEMORY.md 2026-07-28 para la verificación a mano contra UMAG.
 | Peso del proyecto en la cartera de ventas (%) (nuevo) | Monto de Venta del proyecto / Σ Monto de Venta de todos los proyectos con venta cargada (cualquier Estado, no solo "Terminado") |
 | Margen por día de ejecución (nuevo) | Margen Real / (Fecha de cierre − Fecha de inicio, en días) — vacío si el proyecto no tiene Fecha de cierre ("en desarrollo") |
 | Nota del Proyecto (0-100) | 70% margen neto % (curva de 2 tramos: lineal 0→70 hasta el objetivo de 25%, luego asíntota hacia 100 sin tocarlo nunca — ver "Curva de la Nota" abajo) + 30% control de desviación total, **sin ABS()** — solo penaliza sobrecosto real (Real > Proyectado); un proyecto en o bajo presupuesto obtiene el puntaje máximo del componente |
+| Nota Parcial (nuevo 2026-08-31) | Nota del Proyecto × % Avance — cuánto del resultado ya está confirmado; al 100% coincide con la Nota. Vacía si falta el avance o si es "Gastos Generales" |
 | CLTV (hoja Clientes) | AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad % |
 
 **Segunda tanda de KPIs nuevos (2026-07-28, misma fecha, tras la
@@ -200,6 +210,17 @@ historial real ≥ 12 meses el cálculo no cambia. Baja también el CLTV de
 clientes nuevos/de una sola compra (~12x), que antes estaba sobrestimado
 por el mismo motivo. Detalle y tests actualizados: ver MEMORY.md
 2026-08-20.
+
+**Nota Parcial (2026-08-31)**: columna nueva al final de "Indicadores" (Z),
+sin reordenar nada. Separa "qué tan bien se está ejecutando" (la Nota) de
+"cuánto de eso está confirmado" (la Parcial). `Evaluación` y el `Nota
+promedio` del dashboard **siguen clasificando la Nota financiera**, no la
+Parcial — decisión explícita del usuario. Entra por el mismo carril de doble
+implementación que la Nota (`calcular_nota_parcial` + `_formula_nota_parcial`,
+contrato en `test_contrato_kpis.py`), y a diferencia de los 2 KPIs de
+2026-07-28 **sí** llega a los reportes PDF: viaja en el dict `indicadores` de
+`kpis_recalculados.recalcular_proyecto`, y la página 1 lleva todos los
+indicadores de la entidad sin selección editorial.
 
 Origen y hallazgos de rigor (por qué "ROI" se llamó "Rentabilidad sobre
 costo" antes de eliminarse, por qué no hay columnas duplicadas de "costo
@@ -245,7 +266,7 @@ actualizar Análisis Financiero — best-effort: si el skill de reportes no
 existe o falla, no aborta el `run` de Centro de Costos, solo omite el aviso.
 
 **Reglas de completitud / "en desarrollo"** (spec §6): un proyecto sin las 8
-columnas manuales de `CAMPOS_MANUALES_REQUERIDOS` (Estado, Fecha de inicio,
+columnas manuales de `CAMPOS_MANUALES_REQUERIDOS` (% Avance, Fecha de inicio,
 Monto de Venta, los 4 Costos Proyectados, Mano de Obra Real) **no genera
 reporte** — se excluye de `listar_entidades` y de las agregaciones de
 cliente/categoría (`paquete_datos_proyecto` lanza `DatosIncompletos`). Esta

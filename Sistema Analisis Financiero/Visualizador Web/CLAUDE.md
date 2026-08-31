@@ -32,7 +32,7 @@ Sistema Analisis Financiero/Visualizador Web/
   "Proyectos" y de "Detalle Costos Reales" (100% valores). Ver spec §2 para
   el detalle y el precedente en Centro de Costos.
 - **Proyectos incompletos**: un proyecto sin las 8 columnas manuales de
-  `af.CAMPOS_MANUALES_REQUERIDOS` cargadas (Estado, Fecha de inicio, Monto
+  `af.CAMPOS_MANUALES_REQUERIDOS` cargadas (% Avance, Fecha de inicio, Monto
   de Venta, 4 Costos Proyectados, Mano de Obra Real) nunca recibe KPIs —
   aparece en el banner "Pendientes de completar" con un link a la planilla
   real. Clientes con proyectos mixtos calculan su CLTV solo con los
@@ -62,6 +62,15 @@ Sistema Analisis Financiero/Visualizador Web/
   `build_visualizador.py` (`_kpis_por_categoria`, `calcular_peso_cartera`,
   `leer_detalle_subcategorias`), nunca leído del cache de fórmulas del
   Excel — mismo principio que el resto del snapshot.
+- **`% Avance` y `Nota Parcial` en la tabla (2026-08-31)**: la tabla
+  principal de la pestaña pasó de 7 a 9 columnas (Proyecto, Cliente,
+  **% Avance**, Monto Venta, Margen Real, Desviación %, Nota, **Nota
+  Parcial**, Evaluación — `colspan` del panel de detalle actualizado a 9 en
+  el mismo cambio); el panel de detalle suma una tarjeta **Nota Parcial**
+  junto a Margen/Desviación/Nota, con el % de avance entre paréntesis. Los
+  KPIs de cabecera de la pestaña (Nota promedio, N° "Requiere atención") y
+  el ranking/donut **siguen usando la Nota financiera, no la Parcial** —
+  mismo criterio que el resto del módulo (ver `CLAUDE.md`, "Nota Parcial").
 - **Pestaña Clientes**: KPIs (top CLTV, CLTV promedio, conteo por
   Clasificación), top 8 clientes por CLTV (barras), distribución de
   Clasificación (donut), tabla buscable con nota de proyectos pendientes
