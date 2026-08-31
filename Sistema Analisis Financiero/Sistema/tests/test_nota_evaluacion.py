@@ -154,6 +154,16 @@ def test_nota_parcial_con_avance_cero_es_cero():
     assert af.calcular_nota_parcial(88, 0.0) == 0
 
 
+def test_nota_parcial_con_nota_cero_no_la_confunde_con_nota_vacia():
+    """Nota=0 es un valor alcanzable (margen <= 0 y desviacion >= 100%), no
+    "sin dato" -- el guard real es `nota in (None, "")`, así que 0 pasa de
+    largo y se pondera igual que cualquier otra nota. Un refactor a `if not
+    nota` (0 es falsy en Python) volvería esto None en silencio sin que
+    ningún otro test lo note, porque el resto de los casos de "vacío" usan
+    None o "" explícitos, nunca 0."""
+    assert af.calcular_nota_parcial(0, 0.5) == 0
+
+
 def test_nota_parcial_no_acota_un_avance_fuera_de_rango():
     """Ni Python ni Excel acotan: un avance >100% es un error de carga y
     debe verse igual en ambos lados, no corregirse en silencio en uno solo."""
