@@ -624,6 +624,7 @@
             <th title="Monto de Venta − Total Real: la utilidad efectivamente generada por el proyecto.">Margen Real</th>
             <th title="Real / Proyectado − 1, sobre el total de costos. +15% o más = sobregasto relevante respecto al presupuesto original.">Desviación %</th>
             <th title="0-100: 70% margen neto % (vs. objetivo 25%) + 30% control de desviación total. Resume rentabilidad y control de presupuesto en un número.">Nota</th>
+            <th title="Nota del Proyecto × % Avance: cuánto del resultado ya está confirmado. Al 100% de avance coincide con la Nota.">Nota Parcial</th>
             <th title="Traduce la Nota a una etiqueta rápida: Excelente / Bueno / Aprobado / Requiere atención.">Evaluación</th></tr>
         </thead>
         <tbody id="tablaProyectosBody"></tbody>
@@ -1086,6 +1087,7 @@
         '<div><div class="dk">Margen Proyectado</div><div class="dv">' + formatoCLP(p.monto_venta - p.total_proyectado) + '</div></div>' +
         '<div><div class="dk">Desviación %</div><div class="dv">' + formatoPctDesviacion(p.desviacion_pct) + '</div></div>' +
         '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + p.nota + ' — ' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</div></div>' +
+        '<div><div class="dk" title="Nota del Proyecto × % Avance — cuánto del resultado ya está confirmado. Al 100% de avance coincide con la Nota.">Nota Parcial</div><div class="dv">' + (p.nota_parcial == null ? '—' : p.nota_parcial + (p.avance == null ? '' : ' (' + formatoPct(p.avance) + ' de avance)')) + '</div></div>' +
         '<div><div class="dk" title="Monto de Venta del proyecto sobre la suma de Monto de Venta de todos los proyectos con venta cargada — mide concentración de riesgo en la cartera.">Peso en cartera de ventas</div><div class="dv">' + formatoPct(p.peso_cartera_pct) + '</div></div>' +
         '<div><div class="dk" title="Margen Real / días entre Fecha de inicio y Fecha de cierre. Vacío si el proyecto aún no tiene Fecha de cierre.">Margen por día</div><div class="dv">' + (p.margen_por_dia == null ? '— (en desarrollo)' : formatoCLP(p.margen_por_dia) + '/día') + '</div></div>' +
       '</div>' +
@@ -1117,9 +1119,9 @@
       var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0">' +
         '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + (p.avance == null ? '—' : formatoPct(p.avance)) +
         '</td><td>' + formatoCLP(p.monto_venta) + '</td><td>' + formatoCLP(p.margen_real) + '</td><td>' +
-        formatoPctDesviacion(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
+        formatoPctDesviacion(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + (p.nota_parcial == null ? '—' : p.nota_parcial) + '</td><td>' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
       if (expandido) {
-        fila += '<tr class="detail-row"><td colspan="8">' + detalleProyectoHtml(p) + '</td></tr>';
+        fila += '<tr class="detail-row"><td colspan="9">' + detalleProyectoHtml(p) + '</td></tr>';
       }
       return fila;
     }).join('');
