@@ -90,7 +90,7 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador --pa
 - **Mano de Obra Real es 100% manual** -- no hay categoría equivalente en
   Centro de Costos hoy. No esperar que `run` la complete sola.
 - **Las columnas manuales de "Proyectos" nunca se tocan** (TAG, Nombre,
-  Estado, fechas, Venta, proyectados, Mano de Obra Real) -- si algo ahí se
+  % Avance, fechas, Venta, proyectados, Mano de Obra Real) -- si algo ahí se
   ve mal, es un dato cargado a mano, no un bug de este script.
 - **TAG proyecto debe calzar con el prefijo de Centro de Costos**
   (`PREFIJOS_PROYECTO` en `auditor_centro_costos.py`) -- si no calzan, los

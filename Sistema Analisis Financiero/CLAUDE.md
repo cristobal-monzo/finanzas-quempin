@@ -134,7 +134,7 @@ encabezados ya escritos en "Proyectos" — cambiar el código solo no reordena
 un archivo existente.
 
 **Resaltado de celdas manuales (2026-07-28)**: las 11 columnas de ingreso
-manual de "Proyectos" (TAG, Nombre, Estado, fechas, Monto de Venta, las 4
+manual de "Proyectos" (TAG, Nombre, % Avance, fechas, Monto de Venta, las 4
 "...Proyectado(s)" y Mano de Obra Real) llevan relleno amarillo + cursiva —
 `aplicar_resaltado_celdas_manuales()`, llamada en `ejecutar()` junto a
 `aplicar_estilo_visual()`. "Cliente" y "Categoría" quedan afuera (se
@@ -163,7 +163,7 @@ nuevos. Ver MEMORY.md 2026-07-28 para la verificación a mano contra UMAG.
 | Desviación % Total (nuevo, ya existía en "Proyectos") | Costos Totales Real / Costos Totales Proyectado − 1, traída como columna visible |
 | Ahorro/Sobrecosto Materiales / Equipos / MO / Otros / Total (nuevo) | Costo Proyectado − Costo Real; positivo = ahorro, negativo = sobrecosto |
 | % del Total Real del proyecto (nuevo, hoja "Detalle Costos Reales") | Total sin IVA de la subcategoría / suma de las filas de ese proyecto en esa hoja |
-| Peso del proyecto en la cartera de ventas (%) (nuevo) | Monto de Venta del proyecto / Σ Monto de Venta de todos los proyectos con venta cargada (cualquier Estado, no solo "Terminado") |
+| Peso del proyecto en la cartera de ventas (%) (nuevo) | Monto de Venta del proyecto / Σ Monto de Venta de todos los proyectos con venta cargada (sin filtrar por % Avance) |
 | Margen por día de ejecución (nuevo) | Margen Real / (Fecha de cierre − Fecha de inicio, en días) — vacío si el proyecto no tiene Fecha de cierre ("en desarrollo") |
 | Nota del Proyecto (0-100) | 70% margen neto % (curva de 2 tramos: lineal 0→70 hasta el objetivo de 25%, luego asíntota hacia 100 sin tocarlo nunca — ver "Curva de la Nota" abajo) + 30% control de desviación total, **sin ABS()** — solo penaliza sobrecosto real (Real > Proyectado); un proyecto en o bajo presupuesto obtiene el puntaje máximo del componente |
 | Nota Parcial (nuevo 2026-08-31) | Nota del Proyecto × % Avance — cuánto del resultado ya está confirmado; al 100% coincide con la Nota. Vacía si falta el avance o si es "Gastos Generales" |
