@@ -39,7 +39,7 @@ RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "centro-de-costos.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
-REF_RE = re.compile(r"^[A-Z]+-\d+$")
+REF_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 # Debe coincidir con ROJO ("C00000") en Sistema/auditor_centro_costos.py, el
 # unico lugar que realmente escribe esta fuente (ROJO_FONT) para marcar una
 # celda "requiere revision" -- si ese valor cambia, actualizar tambien aca.

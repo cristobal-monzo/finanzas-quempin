@@ -39,7 +39,7 @@ RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "centro-de-costos-peru.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
-REF_RE = re.compile(r"^[A-Z]+-\d+$")
+REF_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 # Debe coincidir con ROJO ("C00000") en Centro de Costos/Sistema/
 # auditor_centro_costos.py -- ver esa constante para el detalle del bug
 # real que este criterio "endswith" corrige (openpyxl no siempre antepone

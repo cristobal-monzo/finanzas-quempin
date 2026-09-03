@@ -86,6 +86,8 @@ PREFIJOS_PROYECTO = {
     "Cremación Concepción": "CREM",
     "Junji's Valparaiso": "JUNJ",
     "Putaendo Hospital Pinel": "HPIN",
+    "FACH2": "FCH2",
+    "FACH1": "FCH1",
 }
 
 # Config por pais -- moneda/impuesto/rutas que varian entre Chile y Peru.
@@ -302,7 +304,7 @@ LEYENDA_PROYECTO = [
     "⚠️ Vista de sólo lectura: ninguna celda es editable. Editar los ítems en la hoja Detalle.",
 ]
 
-PATRON_NREF = re.compile(r"^[A-Za-zÁÉÍÓÚÑ]+-\d+$")
+PATRON_NREF = re.compile(r"^[A-Za-zÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑ0-9]*-\d+$")
 
 NAVY = "1F4E79"
 NAVY_OSCURO = "1F3864"
@@ -1462,6 +1464,17 @@ def siguiente_n_ref(proyecto, max_seq):
 
 # ── INVENTARIO DE ARCHIVOS ──────────────────────────────────────────────────
 
+def normalizar_nombre_proyecto(nombre_carpeta):
+    """Si la carpeta tiene forma 'codigo separador Nombre' (ej. '259. FACH 2',
+    '1234_Nombre', '1234-Nombre'), devuelve solo 'Nombre' -- el codigo interno
+    (numero de proyecto/cliente) no aporta nada al usuario en dashboards/Excel.
+    Ademas, si 'Nombre' termina en 'palabra espacio numero' (ej. 'FACH 2'),
+    junta el espacio ('FACH2') -- pedido del usuario 2026-09-03."""
+    nombre = re.sub(r"^\d+[.\-_]\s*", "", nombre_carpeta).strip()
+    nombre = re.sub(r"^(\S.*\S|\S)\s+(\d+)$", r"\1\2", nombre)
+    return nombre or nombre_carpeta
+
+
 def inventariar_archivos(raiz, archivos_registrados):
     """archivos_registrados: set de 'Proyecto\\archivo.ext' ya cubiertos (Master + reconciliacion)."""
     pendientes = []
@@ -1470,7 +1483,7 @@ def inventariar_archivos(raiz, archivos_registrados):
     for subdir in sorted(raiz.iterdir()):
         if not subdir.is_dir() or subdir.name.startswith(("_", ".")):
             continue
-        proyecto = subdir.name
+        proyecto = normalizar_nombre_proyecto(subdir.name)
 
         for archivo in sorted(subdir.iterdir()):
             if not archivo.is_file():
