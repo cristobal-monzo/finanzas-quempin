@@ -122,6 +122,43 @@ el valor — ver
 | 2026-08-20 | Master | MLER-004 | N° Documento | S/N (Documento (2).pdf) | Ilegible | Aplicado (2026-08-20) |  |
 | 2026-08-20 | Master | MLER-004 | IVA 19% (CLP) | 13493 | 13493 | Aplicado (2026-08-20) | IVA ya era correcto (13493, factura Hojalateria Clinica del Hogar: Neto 71017 tras descuento de 7891, IVA 13493, Total 84510). Se agrego la linea Descuento a Detalle y se recalculo Total con IVA de los 3 items con la tasa real. |
 | 2026-08-20 | Master/Detalle | UMAG-028/029/030/031 | Restructuracion: documentos mezclados separados | UMAG-028 (7 docs), UMAG-029 (7 docs), UMAG-030 (2 docs) mezclaban varios documentos cada uno | UMAG-028=Tur Bus, UMAG-029=El Horreo(19-01), UMAG-030=Rendic(24-01), UMAG-031=El Horreo(21-01, ya estaba separado), UMAG-032..037=6 docs de UMAG-028, UMAG-038..043=6 docs de UMAG-029, UMAG-044=Rendic(20-01) de UMAG-030 | Aplicado (2026-08-20) |  |
+| 2026-08-26 | Master | HPIN-148 | IVA 19% (CLP) | 6883 | 6883 | Aplicado (2026-08-26) | IVA: $2492 / Impuesto Especifico: $4391 |
+| 2026-08-26 | Master | JUNJ-001 | IVA 19% (CLP) | 10661 | 10661 | Aplicado (2026-08-26) | IVA: $3674 / IEF: $9019 / IEV/FEPP: $-2032 |
+| 2026-08-26 | Master | JUNJ-002 | IVA 19% (CLP) | 9219 | 9219 | Aplicado (2026-08-26) | IVA: $3948 / IEF: $9019 / IEV/FEPP: $-3748 |
+| 2026-08-26 | Master | JUNJ-015 | IVA 19% (CLP) | 10661 | 10661 | Aplicado (2026-08-26) | IVA: $3674 / IEF: $9019 / IEV/FEPP: $-2032 |
+| 2026-08-26 | Master | JUNJ-018 | IVA 19% (CLP) | 2142 | 2142 | Aplicado (2026-08-26) | IVA correcto segun factura: Neto $11.275 x 19% = $2.142 |
+| 2026-08-26 | Master | JUNJ-020 | IVA 19% (CLP) | 10410 | 10410 | Aplicado (2026-08-26) | IVA correcto segun factura: Neto $54.789 x 19% = $10.410 |
+| 2026-08-26 | Master | JUNJ-022 | IVA 19% (CLP) | 7663 | 7663 | Aplicado (2026-08-26) | IVA: $2344 / IEF: $6012 / IEV/FEPP: $-693 |
+| 2026-08-26 | Master | JUNJ-023 | IVA 19% (CLP) | 10661 | 10661 | Aplicado (2026-08-26) | IVA: $3674 / IEF: $9019 / IEV/FEPP: $-2032 |
+| 2026-08-26 | Master | JUNJ-053 | IVA 19% (CLP) | 23149 | 23149 | Aplicado (2026-08-26) | IVA: $8081 / IEF: $17462 / IEV/FEPP: $-2394 |
+| 2026-09-03 | Master | FCH2-014 | IVA 19% (CLP) | 6956 | 12010 | Aplicado (2026-09-03) | IVA: $4.398 / IEF: $10.002 / IEV/FEPP: $-2.390. Total factura: $35.156. Propina de $300 excluida. |
+| 2026-09-03 | Master/Detalle | FCH2-014/FCH2-040 | Reestructuración: documentos mezclados separados | FCH2-014 mezclaba facturas 161847 (01-09-2026) y 233462 (28-08-2026) en un solo registro | FCH2-014=factura 233462; FCH2-040=factura 161847; archivos físicos duplicados | Aplicado (2026-09-03) |  |
+| 2026-09-03 | Master | FCH2-021 | IVA 19% (CLP) | 31438 | 26804 | Aplicado (2026-09-03) | Neto impreso $141.076; IVA $26.804; Total $167.880. |
+| 2026-09-03 | Master/Detalle | FCH2-021/FCH2-046 | Reestructuración: documentos mezclados separados | FCH2-021 mezclaba la factura Sodimac 149001852 y la boleta Aliservice 0002801098 en un solo registro | FCH2-021=factura Sodimac 149001852; FCH2-046=boleta Aliservice 2801098; archivos físicos duplicados | Aplicado (2026-09-03) |  |
+| 2026-09-03 | Master | FCH2-023 | IVA 19% (CLP) | 13599 | 10613 | Aplicado (2026-09-03) | IVA: $4.572 / Impuesto específico: $6.041. Total factura: $34.676. |
+| 2026-09-03 | Master/Detalle | FCH2-023/FCH2-044/FCH2-045 | Reestructuración: documentos mezclados separados | FCH2-023 mezclaba las facturas de combustible 289353, 290041 y 289928 en un solo registro | FCH2-023=factura 289353; FCH2-044=factura 290041; FCH2-045=factura 289928; archivos físicos duplicados | Aplicado (2026-09-03) |  |
+| 2026-09-03 | Master | FCH2-024 | IVA 19% (CLP) | 14840 | 13151 | Aplicado (2026-09-03) | IVA: $5.908 / Impuesto específico: $7.243. Total factura: $44.243. |
+| 2026-09-03 | Master/Detalle | FCH2-024/FCH2-047/FCH2-048 | Reestructuración: documentos mezclados separados | FCH2-024 mezclaba las facturas de combustible 289151, 289728 y 289532 en un solo registro | FCH2-024=factura 289151; FCH2-047=factura 289728; FCH2-048=factura 289532; archivos físicos duplicados | Aplicado (2026-09-03) |  |
+| 2026-09-03 | Master | FCH2-025 | IVA 19% (CLP) | 9377 | 5818 | Aplicado (2026-09-03) | Precios netos derivados de los importes con IVA por línea; Neto impreso $30.622; IVA $5.818; Total $36.440. |
+| 2026-09-03 | Master/Detalle | FCH2-025/FCH2-049 | Reestructuración: documentos mezclados separados | FCH2-025 mezclaba las facturas Easy 38729190 y Sodimac 149110252 en un solo registro; Easy usaba precios con IVA como netos | FCH2-025=factura Easy 38729190 con precios netos corregidos; FCH2-049=factura Sodimac 149110252; archivos físicos duplicados | Aplicado (2026-09-03) |  |
+| 2026-09-03 | Master | FCH2-028 | IVA 19% (CLP) | 6641 | 2453 | Aplicado (2026-09-03) | Precios unitarios netos derivados del Neto impreso ($12.907); IVA impreso $2.453; Total $15.360. |
+| 2026-09-03 | Master/Detalle | FCH2-028/FCH2-041 | Reestructuración: documentos mezclados separados | FCH2-028 mezclaba las facturas Easy 38877338 y Sodimac 149340471 en un solo registro | FCH2-028=factura Easy 38877338; FCH2-041=factura Sodimac 149340471; archivos físicos duplicados | Aplicado (2026-09-03) |  |
+| 2026-09-03 | Master | FCH2-030 | IVA 19% (CLP) | 14267 | 13945 | Aplicado (2026-09-03) | IVA: $5.062 / Impuesto específico: $8.883. Total factura: $40.585. |
+| 2026-09-03 | Master/Detalle | FCH2-030/FCH2-042/FCH2-043 | Reestructuración: documentos mezclados separados | FCH2-030 mezclaba las facturas de combustible 289726, 289448 y 289447 en un solo registro | FCH2-030=factura 289726; FCH2-042=factura 289448; FCH2-043=factura 289447; archivos físicos duplicados | Aplicado (2026-09-03) |  |
+| 2026-09-03 | Master | FCH2-031 | IVA 19% (CLP) | 7019 | 13239 | Aplicado (2026-09-03) | IVA impreso: $4.345 / IEF+IEV-FEPP combinado inferido: $8.894. Neto imponible inferido desde IVA/19%: $22.868; Total boleta: $36.107. |
+| 2026-09-03 | Master/Detalle | FCH2-031/FCH2-050/FCH2-051 | Reestructuración: documentos mezclados separados | FCH2-031 mezclaba la boleta Copec 3128047, la factura Librería Babu 42968 y registraba erróneamente un estacionamiento 0092226332; el tercer documento real es la boleta Donde Camilo 250241 | FCH2-031=boleta Copec 3128047; FCH2-050=factura Librería Babu 42968; FCH2-051=boleta Donde Camilo 250241; archivos físicos duplicados | Aplicado (2026-09-03) |  |
+| 2026-09-03 | Master | FCH2-040 | IVA 19% (CLP) | Nuevo registro separado | 7304 | Aplicado (2026-09-03) | IVA: $2.558 / IEF: $6.125 / IEV/FEPP: $-1.379. Total factura: $20.767. |
+| 2026-09-03 | Master | FCH2-041 | IVA 19% (CLP) | Nuevo registro separado | 4188 | Aplicado (2026-09-03) | Neto impreso $22.042; IVA $4.188; Total $26.230. |
+| 2026-09-03 | Master | FCH2-042 | IVA 19% (CLP) | Nuevo registro separado | 12230 | Aplicado (2026-09-03) | IVA: $4.245 / Impuesto específico: $7.985. Total factura: $34.572. Propina de $500 excluida. |
+| 2026-09-03 | Master | FCH2-043 | IVA 19% (CLP) | Nuevo registro separado | 13665 | Aplicado (2026-09-03) | IVA: $4.960 / Impuesto específico: $8.705. Total factura: $39.773. Propina de $500 excluida. |
+| 2026-09-03 | Master | FCH2-044 | IVA 19% (CLP) | Nuevo registro separado | 13853 | Aplicado (2026-09-03) | IVA: $4.454 / Impuesto específico: $9.399. Total factura: $37.292. |
+| 2026-09-03 | Master | FCH2-045 | IVA 19% (CLP) | Nuevo registro separado | 12598 | Aplicado (2026-09-03) | IVA: $4.573 / Impuesto específico: $8.025. Total factura: $36.667. Propina de $500 excluida. |
+| 2026-09-03 | Master | FCH2-046 | IVA 19% (CLP) | Nuevo registro separado | 4630 | Aplicado (2026-09-03) | Neto impreso $24.370; IVA correcto $4.630 (la extracción anterior registró $4.634); Total $29.000. |
+| 2026-09-03 | Master | FCH2-047 | IVA 19% (CLP) | Nuevo registro separado | 12192 | Aplicado (2026-09-03) | IVA: $4.232 / Impuesto específico: $7.960. Total factura: $34.464. |
+| 2026-09-03 | Master | FCH2-048 | IVA 19% (CLP) | Nuevo registro separado | 12948 | Aplicado (2026-09-03) | IVA: $4.700 / Impuesto específico: $8.248. Total factura: $37.685. Propina de $500 excluida. |
+| 2026-09-03 | Master | FCH2-049 | IVA 19% (CLP) | Nuevo registro separado | 3559 | Aplicado (2026-09-03) | Neto impreso $18.731; IVA $3.559; Total $22.290. |
+| 2026-09-03 | Master | FCH2-050 | IVA 19% (CLP) | Nuevo registro separado | 2323 | Aplicado (2026-09-03) | Precios netos derivados de los importes con IVA por línea; Neto impreso $12.227; IVA $2.323; Total $14.550. |
+| 2026-09-03 | Master | FCH2-051 | IVA 19% (CLP) | Nuevo registro separado | 3113 | Aplicado (2026-09-03) | Venta neta $16.387; IVA $3.113; subtotal $19.500. Propina de $1.950 excluida del total pagado de $21.450. |
 
 ## Historial de errores detectados
 
@@ -141,6 +178,28 @@ el valor — ver
   ver detalle de nombres nuevos en el historial de corridas de `MEMORY.md`).
   `CLAUDE.md` §"Estructura de Centro de Costos.xlsx" ya no refleja esta
   limitación — estaba describiendo el bug, no una limitación real.
+
+- **2026-09-07 — 8 documentos duplicados registrados en FACH2 (`FCH2-052`
+  a `FCH2-059`)**: un `run` de `/Actualizar_Finanzas` registró 8 archivos
+  nuevos (`FACH2\Documento (1).pdf` a `Documento (8).pdf`) que resultaron
+  ser las mismas 8 facturas ya registradas antes como `FCH2-001`, `FCH2-012`,
+  `FCH2-022`, `FCH2-033`, `FCH2-034`, `FCH2-035`, `FCH2-036` y `FCH2-037`
+  (mismo proveedor, misma fecha, mismo N° Documento) — alguien volvió a subir
+  esas fotos/PDF a la carpeta compartida con nombres genéricos, y el
+  inventario las vio como pendientes nuevas. El informe de auditoría del
+  propio `run` las marcó correctamente en "POSIBLES DUPLICADOS", lo que
+  permitió detectarlas antes de publicar. Duplicaron $672.592 CLP de gasto en
+  el proyecto FACH2. Corrección aplicada (backup manual previo, script
+  puntual reutilizando `capturar_fila`/`escribir_snapshot_fila`/
+  `escribir_formulas_master`/`regenerar_pie`/`regenerar_hoja_proyecto` de
+  `auditor_centro_costos.py` para eliminar las 8 filas de `Master`/`Detalle`
+  y regenerar correctamente las fórmulas y las 21 hojas de proyecto
+  afectadas por el corrimiento de filas): Master volvió a 542 documentos,
+  Detalle a 1220 ítems, gasto total con IVA de $49.266.831 a $48.594.239.
+  Los 3 tableros (Centro de Costos, Análisis Financiero, Cotizador Histórico)
+  se regeneraron después de la corrección. Los 8 archivos físicos duplicados
+  se movieron a `259. FACH 2/Duplicados/` (no se borraron) para que no se
+  vuelvan a registrar por error en un `run` futuro.
 
 - **2026-07-17 — Duplicado `PRUE-001`/`PRUE-002` en proyecto "Prueba 1"**:
   durante la sesión de reconstrucción del script del 2026-07-16 (corridas
