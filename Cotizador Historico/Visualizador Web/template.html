@@ -677,7 +677,8 @@
     'Piping Cobre': '🟠', 'Piping Bronce': '🟡', 'Piping Acero Galvanizado': '⚙️', 'Piping Inoxidable': '⚪', 'Piping PPR': '🔵',
     'Válvulas y Control': '🔧', 'Bombas y Equipos Mecánicos': '⚙️', 'Herramientas Eléctricas': '🔌', 'Herramientas Manuales': '🛠️',
     'Consumibles': '📦', 'Seguridad (EPP)': '🦺', 'Soldadura': '🔥', 'Materiales Eléctricos': '⚡',
-    'Productos Químicos': '🧪', 'Transporte': '🚚', 'Alimentos': '🍽️', 'Calefacción y Control': '🌡️', 'Otros / Servicios': '📋',
+    'Productos Químicos': '🧪', 'Transporte': '🚚', 'Alimentos': '🍽️', 'Calefacción y Control': '🌡️',
+    'Instrumentación': '🌡️', 'Otros / Servicios': '📋',
   };
   // Pedido del usuario 2026-07-21: excepciones puntuales de un nombre
   // completo a una categoria (y opcionalmente una subcategoria forzada),
@@ -698,20 +699,39 @@
     // otras bebidas envasadas (ej. Kem Piña).
     { kw: ['red bull'], categoria: 'Alimentos', subcategoriaForzada: 'Bebidas' },
   ];
-  var GRUPOS_VALVULA = ['valvula', 'válvula', 'purga', 'flow control', 'alimat', 'anodo', 'ánodo', 'manometro', 'manómetro', 'abrazadera'];
-  var GRUPOS_BOMBA = ['bomba', 'estanque', 'vacuometro', 'vacuómetro', 'arrestallama'];
+  var GRUPOS_VALVULA = ['valvula', 'válvula', 'purga', 'flow control', 'alimat', 'anodo', 'ánodo', 'abrazadera'];
+  var GRUPOS_BOMBA = ['bomba', 'estanque', 'arrestallama'];
   var GRUPOS_HERR_ELEC = ['hidrolavadora', 'taladro', 'esmeril', 'amoladora', 'soldadora'];
   var GRUPOS_HERR_MANUAL = ['curvadora', 'llave', 'destornillador', 'martillo', 'sierra', 'alicate', 'huincha',
     'cortatubos', 'corta tubos', 'cuchillo', 'calafatera', 'dado', 'remachadora'];
   var GRUPOS_SOLDADURA = ['gas mapp', 'soldadura', 'fundente', 'electrodo', 'barilla', 'varilla'];
   var GRUPOS_MATERIALES_ELECTRICOS = ['conduit', 'electrico', 'eléctrico'];
   var GRUPOS_QUIMICOS = ['solutech', 'tapagotera'];
-  // Presostato/termostato/termocupla/sonda/contactor/caldera/radiador: cluster
-  // real de equipos de calefaccion y control (8 items en el catalogo real,
+  // Presostato/termostato/contactor/caldera/radiador: cluster real de
+  // equipos de calefaccion y control (8 items en el catalogo real,
   // 2026-08-19) que antes caian en el catch-all "Otros / Servicios" por no
   // calzar con ninguna otra categoria -- lo bastante grande y homogeneo para
   // justificar categoria propia en vez de forzarlos en Materiales Electricos.
-  var GRUPOS_CALEFACCION = ['presostato', 'termostato', 'termocupla', 'sonda', 'contactor', 'caldera', 'radiador'];
+  // "termocupla"/"sonda" salieron de aqui el 2026-08-31 hacia
+  // GRUPOS_INSTRUMENTACION (son sensores/instrumentos de medicion, no
+  // equipos de control de calefaccion en si).
+  var GRUPOS_CALEFACCION = ['presostato', 'termostato', 'contactor', 'caldera', 'radiador'];
+  // Instrumentos de medicion (manometros, termocuplas y similares) --
+  // agregado 2026-08-31, pedido del usuario. "manometro"/"manómetro" salio
+  // de GRUPOS_VALVULA y "vacuometro"/"vacuómetro" de GRUPOS_BOMBA (eran
+  // instrumentos clasificados por error en la categoria del equipo que
+  // miden, no del instrumento en si); "sonda"/"termocupla" salieron de
+  // GRUPOS_CALEFACCION por el mismo motivo. Este chequeo corre DESPUES de
+  // GRUPOS_VALVULA (para que "Alimat ... con manometro intermedio", que es
+  // una valvula real con manometro incorporado, siga cayendo en Valvulas y
+  // Control via la palabra "alimat") y ANTES de GRUPOS_BOMBA/GRUPOS_CALEFACCION
+  // (para que "Sonda ST07-H Caldera Ivar" caiga en Instrumentacion, no en
+  // Calefaccion por la palabra "Caldera"). "medidor"/"indicador" son
+  // deliberadamente genericos (pedido explicito del usuario, con el riesgo
+  // aceptado de que algo no-instrumento los contenga en el futuro).
+  var GRUPOS_INSTRUMENTACION = ['manometro', 'manómetro', 'vacuometro', 'vacuómetro', 'termocupla', 'termopar',
+    'termometro', 'termómetro', 'multimetro', 'multímetro', 'caudalimetro', 'caudalímetro', 'sonda', 'medidor',
+    'indicador'];
   var GRUPOS_TRANSPORTE = ['flete', 'arriendo', 'peaje', 'combustible', 'gasolina', 'bencina', 'petroleo', 'petróleo',
     'diesel', 'parafina', 'pasaje', 'equipaje', 'transporte', 'estacionamiento', 'despacho', 'envio', 'envío',
     'encomienda', 'embarque'];
@@ -755,7 +775,8 @@
   // el resto de "Destornilladores", sin necesidad de un caso especial por
   // cada combinacion de "Set/Kit/Compra de <tipo real>" que aparezca.
   var PALABRAS_TIPO_CONOCIDAS = [].concat(GRUPOS_PIPING, GRUPOS_VALVULA, GRUPOS_BOMBA, GRUPOS_HERR_ELEC,
-    GRUPOS_HERR_MANUAL, GRUPOS_SOLDADURA, GRUPOS_CONSUMIBLE_MEDIDA, GRUPOS_CONSUMIBLE_OTRO, GRUPOS_SEGURIDAD)
+    GRUPOS_HERR_MANUAL, GRUPOS_SOLDADURA, GRUPOS_CONSUMIBLE_MEDIDA, GRUPOS_CONSUMIBLE_OTRO, GRUPOS_SEGURIDAD,
+    GRUPOS_INSTRUMENTACION)
     .filter(function (p) { return p.indexOf(' ') === -1; });
   function palabraQueContiene(texto, patrones) {
     var palabras = String(texto || '').split(/\s+/);
@@ -818,8 +839,12 @@
     // Inoxidable, salvo que sea una herramienta -- se revisa temprano,
     // antes de valvulas/bombas/etc., porque tiene prioridad sobre esas
     // categorias tambien (ej. una valvula inoxidable va a piping, no a
-    // Valvulas y Control).
-    if (material === 'Inoxidable' && !contieneAlguna(texto, GRUPOS_HERRAMIENTA)) {
+    // Valvulas y Control). Tambien excluye instrumentos de medicion desde
+    // 2026-08-31 (bug real encontrado al agregar Instrumentacion: 2
+    // "Manometro glic. ... inox." y 1 "Manovacuometro ... caja inox"
+    // caian en Piping Inoxidable solo por mencionar el material de su
+    // caja, no por ser piping).
+    if (material === 'Inoxidable' && !contieneAlguna(texto, GRUPOS_HERRAMIENTA) && !contieneAlguna(texto, GRUPOS_INSTRUMENTACION)) {
       return Object.assign(base, { categoria: 'Piping Inoxidable', requiereMaterial: false, requiereMedida: true });
     }
     if (contieneAlguna(texto, GRUPOS_PIPING)) {
@@ -830,6 +855,7 @@
     }
     if (contieneAlguna(texto, GRUPOS_SOLDADURA)) return Object.assign(base, { categoria: 'Soldadura', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_VALVULA)) return Object.assign(base, { categoria: 'Válvulas y Control', requiereMaterial: false, requiereMedida: false });
+    if (contieneAlguna(texto, GRUPOS_INSTRUMENTACION)) return Object.assign(base, { categoria: 'Instrumentación', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_BOMBA)) return Object.assign(base, { categoria: 'Bombas y Equipos Mecánicos', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_HERR_ELEC)) return Object.assign(base, { categoria: 'Herramientas Eléctricas', requiereMaterial: false, requiereMedida: false });
     if (contieneAlguna(texto, GRUPOS_HERR_MANUAL)) return Object.assign(base, { categoria: 'Herramientas Manuales', requiereMaterial: false, requiereMedida: false });
