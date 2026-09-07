@@ -159,6 +159,30 @@ el valor — ver
 | 2026-09-03 | Master | FCH2-049 | IVA 19% (CLP) | Nuevo registro separado | 3559 | Aplicado (2026-09-03) | Neto impreso $18.731; IVA $3.559; Total $22.290. |
 | 2026-09-03 | Master | FCH2-050 | IVA 19% (CLP) | Nuevo registro separado | 2323 | Aplicado (2026-09-03) | Precios netos derivados de los importes con IVA por línea; Neto impreso $12.227; IVA $2.323; Total $14.550. |
 | 2026-09-03 | Master | FCH2-051 | IVA 19% (CLP) | Nuevo registro separado | 3113 | Aplicado (2026-09-03) | Venta neta $16.387; IVA $3.113; subtotal $19.500. Propina de $1.950 excluida del total pagado de $21.450. |
+| 2026-09-07 | Master | FCH1-021 | IVA 19% (CLP) | 15491 | 13383 | Aplicado (2026-09-07) | IVA: $6.012 / IEF: $7.371. Total factura: $45.025. |
+| 2026-09-07 | Master/Detalle | FCH1-021/046/047 | Reestructuración: documentos mezclados separados | FCH1-021 mezclaba las facturas Copec 288946, 289533 y 289351 en un solo registro | FCH1-021=factura 288946; FCH1-046=factura 289533; FCH1-047=factura 289351; archivo físico duplicado | Aplicado (2026-09-07) |  |
+| 2026-09-07 | Master | FCH1-024 | IVA 19% (CLP) | 15830 | 10585 | Aplicado (2026-09-07) | IVA: $4.757 / IEF: $5.828. Total factura: $35.621. Propina de $500 excluida. |
+| 2026-09-07 | Master/Detalle | FCH1-024/048/049 | Reestructuración: documentos mezclados separados | FCH1-024 mezclaba las facturas Copec 288841, 289251 y 289258 en un solo registro | FCH1-024=factura 288841; FCH1-048=factura 289251; FCH1-049=factura 289258; archivo físico duplicado | Aplicado (2026-09-07) |  |
+| 2026-09-07 | Master | FCH1-026 | IVA 19% (CLP) | 10578 | 13355 | Aplicado (2026-09-07) | IVA: $5.867 / IEF: $12.779 / IEV-FEPP: $-5.291. Total factura: $44.231. |
+| 2026-09-07 | Master/Detalle | FCH1-026/050 | Reestructuración: documentos mezclados separados | FCH1-026 mezclaba la factura Valencia y Pacheco (diesel) 2147334 y la factura Comercial Silva (gasolina) 285726 en un solo registro | FCH1-026=factura 285726; FCH1-050=factura 2147334; archivo físico duplicado | Aplicado (2026-09-07) |  |
+| 2026-09-07 | Master | FCH1-027 | IVA 19% (CLP) | 7061 | 2844 | Aplicado (2026-09-07) | IVA: $2.310 / IEF: $1.362 / IEV-FEPP: $-828 (diesel). Total factura: $15.000. |
+| 2026-09-07 | Master/Detalle | FCH1-027/051 | Reestructuración: documentos mezclados separados | FCH1-027 mezclaba la factura Horta y Horta (diesel) 231680 y la factura Comercial Silva (gasolina) 286868 en un solo registro | FCH1-027=factura 231680; FCH1-051=factura 286868; archivo físico duplicado | Aplicado (2026-09-07) |  |
+| 2026-09-07 | Master | FCH1-028 | Categoría / IVA 19% (CLP) | Ferreteria / 8158 | Combustible / 20209 | Aplicado (2026-09-07) | IVA: $6.552 / IEF: $13.657. Total factura: $54.691. |
+| 2026-09-07 | Master/Detalle | FCH1-028/052 | Reestructuración: documentos mezclados separados | FCH1-028 mezclaba la factura ferretería Milan Fabjanovic 3415592 y la factura Comercial Silva (gasolina) 285811 en un solo registro | FCH1-028=factura 285811 (gasolina); FCH1-052=factura 3415592 (ferretería, 5 ítems); archivo físico duplicado | Aplicado (2026-09-07) |  |
+| 2026-09-07 | Master | FCH1-046 | IVA 19% (CLP) | Nuevo registro separado | 11752 | Aplicado (2026-09-07) | IVA: $4.079 / IEF: $7.673. Total factura: $33.224. |
+| 2026-09-07 | Master | FCH1-047 | IVA 19% (CLP) | Nuevo registro separado | 12021 | Aplicado (2026-09-07) | IVA: $5.400 / IEF: $6.621. Total factura: $40.444. |
+| 2026-09-07 | Master | FCH1-048 | IVA 19% (CLP) | Nuevo registro separado | 10917 | Aplicado (2026-09-07) | IVA: $4.703 / IEF: $6.214. Total factura: $35.668. |
+| 2026-09-07 | Master | FCH1-049 | IVA 19% (CLP) | Nuevo registro separado | 14180 | Aplicado (2026-09-07) | IVA: $6.370 / IEF: $7.810. Total factura: $47.704. |
+| 2026-09-07 | Master | FCH1-050 | IVA 19% (CLP) | Nuevo registro separado | 5796 | Aplicado (2026-09-07) | IVA: $4.711 / IEF: $1.085 (diesel). Total factura: $30.591. |
+| 2026-09-07 | Master | FCH1-051 | IVA 19% (CLP) | Nuevo registro separado | 10982 | Aplicado (2026-09-07) | IVA: $4.751 / IEF: $6.231. Total factura: $35.989. |
+| 2026-09-07 | Master | FCH1-052 | IVA 19% (CLP) | Nuevo registro separado | 1606 | Aplicado (2026-09-07) | IVA 19% puro (ferretería, sin impuesto específico). Total factura: $10.059. |
+| 2026-09-07 | Master | FCH2-017 | Categoría / IVA 19% (CLP) | Ferreteria / 67073 | Combustible / 18279 | Aplicado (2026-09-07) | IVA: $6.757 / IEF: $11.522. Total factura: $53.844. |
+| 2026-09-07 | Master/Detalle | FCH2-017/052 | Reestructuración: documentos mezclados separados | FCH2-017 mezclaba la factura ferretería Pernos KIM 771530 y la factura Comercial Silva (gasolina) 285135 en un solo registro | FCH2-017=factura 285135 (gasolina); FCH2-052=factura 771530 (ferretería, 3 ítems); archivo físico duplicado | Aplicado (2026-09-07) |  |
+| 2026-09-07 | Master | FCH2-029 | IVA 19% (CLP) | 12086 | 8447 | Aplicado (2026-09-07) | IVA 19% puro (ferretería, sin impuesto específico). Total factura: $52.908. |
+| 2026-09-07 | Master/Detalle | FCH2-029/053 | Reestructuración: documentos mezclados separados | FCH2-029 mezclaba la factura ferretería Pernos ZAP 101241 y la factura A y D Ltda. (gasolina) 358094 en un solo registro | FCH2-029=factura 101241 (ferretería, 4 ítems); FCH2-053=factura 358094 (gasolina); archivo físico duplicado | Aplicado (2026-09-07) |  |
+| 2026-09-07 | Master | FCH2-052 | IVA 19% (CLP) | Nuevo registro separado | 60316 | Aplicado (2026-09-07) | IVA 19% puro (ferretería, sin impuesto específico). Total factura: $377.766. |
+| 2026-09-07 | Master | FCH2-053 | IVA 19% (CLP) | Nuevo registro separado | 11051 | Aplicado (2026-09-07) | IVA: $3.639 / IEF: $8.497 / IEV-FEPP: $-1.085. Total factura: $30.202. |
+| 2026-09-07 | Master/Detalle | GGEN-002 | Signo de IVA / P.Unitario / Totales (AYRSA) | Negativo (IVA -13990; P.Unit -8386) | Positivo (IVA 13990; P.Unit 8386) | Aplicado (2026-09-07) | Factura Aislantes y Recubrimiento S.A. (AYRSA) N.35470 se habia registrado en negativo el 2026-08-20 interpretandola como reposicion de material a favor de la empresa; el usuario confirmo 2026-09-07 que es una factura normal (costo), se revierte el signo a positivo. |
 
 ## Historial de errores detectados
 
@@ -270,3 +294,37 @@ el valor — ver
   **todo** el libro existente el 2026-07-17: 42 celdas corregidas entre
   `Master` y `Detalle` (incluye las de todos los proyectos, no solo las
   mencionadas por el usuario).
+
+- **2026-09-07 — 7 documentos más de FCH1/FCH2 con facturas mezcladas
+  (`FCH1-021`, `FCH1-024`, `FCH1-026`, `FCH1-027`, `FCH1-028`, `FCH2-017`,
+  `FCH2-029`)**: durante una revisión completa de las 55 celdas rojas del
+  libro (`/Revision_de_Errores`, recorrido de todos los proyectos), 7
+  resultaron ser el mismo patrón ya visto el 2026-09-03 en FCH2 —el N°
+  Documento venía con 2-3 folios separados por coma ("288946, 289533 y
+  289351"), señal de que la foto/PDF escaneó varias facturas juntas bajo un
+  solo N° Ref, ocultando sus fechas reales. Se separó cada una en un N° Ref
+  propio (`FCH1-046` a `FCH1-052`, `FCH2-052`/`FCH2-053`), con su fecha real,
+  y se corrigió el IVA a la convención estándar del libro (Neto = neto
+  impreso puro, IVA = 19% + Impuesto Específico + IEV/FEPP combinado para
+  combustible) — 5 de los 7 documentos originales tenían el Neto ya
+  "plegado" con el Impuesto Específico adentro (convención inversa a la
+  estándar, usada solo en estos registros de FCH1/FCH2), lo que hacía que el
+  IVA registrado pareciera incorrecto frente al chequeo automático del 19%
+  aunque el Total (Neto+IVA) siempre cuadraba con el total pagado impreso.
+  3 de los 7 mezclaban además una factura de ferretería (Pernos KIM, Pernos
+  ZAP, Milan Fabjanovic) con una de combustible del mismo viaje a la
+  estación de servicio — se separaron en N° Ref distintos con su propia
+  categoría. Verificado con un diff exacto contra el backup previo a la
+  separación: el total del libro (`Detalle.Total con IVA` sumado por
+  documento) no cambió salvo $1 de redondeo en los 16 N° Ref involucrados
+  (7 originales + 9 nuevos). Bug propio encontrado y corregido en el mismo
+  proceso: el script de separación dejó `FCH2-029` con el IVA viejo (12086,
+  suma de ambas facturas) en vez del nuevo (8447, solo la ferretería) por
+  una línea de código faltante — corregido antes de reflejar/publicar.
+  De paso, comparando ese mismo diff se encontró que `GGEN-002` tenía un
+  ítem en negativo (-$87.619) heredado de antes de esta sesión, ya
+  corregido a positivo por el usuario el mismo día (ver fila de la tabla de
+  correcciones arriba) — confirmado como el único caso de signo negativo en
+  todo el libro que **no** corresponde a una Nota de Crédito legítima (se
+  revisaron los otros 17 ítems negativos del libro: todos pertenecen a
+  documentos con Tipo Documento "Nota de Crédito", signo esperado).
