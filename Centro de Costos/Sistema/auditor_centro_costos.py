@@ -1476,14 +1476,22 @@ def normalizar_nombre_proyecto(nombre_carpeta):
 
 
 def inventariar_archivos(raiz, archivos_registrados):
-    """archivos_registrados: set de 'Proyecto\\archivo.ext' ya cubiertos (Master + reconciliacion)."""
+    """archivos_registrados: set de 'Proyecto\\archivo.ext' (fisico) ya cubiertos
+    (Master + reconciliacion)."""
     pendientes = []
     omitidos = []
 
     for subdir in sorted(raiz.iterdir()):
         if not subdir.is_dir() or subdir.name.startswith(("_", ".")):
             continue
-        proyecto = normalizar_nombre_proyecto(subdir.name)
+        # proyecto_fisico = nombre real de la carpeta -- se usa SOLO para ubicar
+        # el archivo en disco (ruta_relativa/Archivo origen), nunca para mostrar.
+        # proyecto = nombre normalizado (sin codigo) -- va a Master/Detalle/JSON.
+        # Mismo split que resolver_ruta_actual() ya hacia por el motivo opuesto
+        # (bootstrap con Archivo origen desactualizado): la ruta fisica y el
+        # nombre mostrado no tienen por que coincidir.
+        proyecto_fisico = subdir.name
+        proyecto = normalizar_nombre_proyecto(proyecto_fisico)
 
         for archivo in sorted(subdir.iterdir()):
             if not archivo.is_file():
@@ -1494,7 +1502,7 @@ def inventariar_archivos(raiz, archivos_registrados):
             if ext not in EXTENSIONES_VALIDAS:
                 continue
 
-            ruta_rel = f"{proyecto}\\{archivo.name}"
+            ruta_rel = f"{proyecto_fisico}\\{archivo.name}"
             stat = archivo.stat()
             info = {
                 "archivo": archivo.name,

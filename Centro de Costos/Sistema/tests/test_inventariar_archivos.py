@@ -60,3 +60,35 @@ def test_ignora_archivos_sueltos_en_la_raiz_sin_carpeta_de_proyecto(tmp_path):
     pendientes, omitidos = acc.inventariar_archivos(tmp_path, archivos_registrados=set())
 
     assert [p["archivo"] for p in pendientes] == ["factura.jpg"]
+
+
+def test_normalizar_nombre_proyecto_quita_codigo_numerico():
+    assert acc.normalizar_nombre_proyecto("259. FACH 2") == "FACH2"
+    assert acc.normalizar_nombre_proyecto("261. FACH 1") == "FACH1"
+    assert acc.normalizar_nombre_proyecto("1234_Nombre") == "Nombre"
+    assert acc.normalizar_nombre_proyecto("1234-Nombre") == "Nombre"
+
+
+def test_normalizar_nombre_proyecto_sin_codigo_no_cambia():
+    assert acc.normalizar_nombre_proyecto("Cesfam Limache") == "Cesfam Limache"
+    assert acc.normalizar_nombre_proyecto("UMAG") == "UMAG"
+
+
+def test_proyecto_mostrado_usa_nombre_normalizado_pero_ruta_usa_carpeta_fisica(tmp_path):
+    _crear(tmp_path, "259. FACH 2", "factura.jpg")
+
+    pendientes, _ = acc.inventariar_archivos(tmp_path, archivos_registrados=set())
+
+    assert pendientes[0]["proyecto"] == "FACH2"
+    assert pendientes[0]["ruta_relativa"] == "259. FACH 2\\factura.jpg"
+
+
+def test_archivo_ya_registrado_con_ruta_fisica_se_omite_pese_a_nombre_normalizado(tmp_path):
+    _crear(tmp_path, "259. FACH 2", "factura.jpg")
+
+    pendientes, omitidos = acc.inventariar_archivos(
+        tmp_path, archivos_registrados={"259. FACH 2\\factura.jpg"}
+    )
+
+    assert pendientes == []
+    assert len(omitidos) == 1
