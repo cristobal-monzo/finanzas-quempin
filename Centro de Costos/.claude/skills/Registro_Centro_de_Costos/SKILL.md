@@ -124,10 +124,19 @@ misma pregunta N veces):
    en sentido horario necesarios para dejarlo derecho (ver "Formato de
    `datos_extraidos.json`" más abajo). El siguiente `run` corrige el archivo
    físico solo; no hace falta rotarlo a mano.
+   **Antes de fijar `"proveedor"`**, revisar si ya existe un proveedor
+   conocido con el mismo RUT (si viene legible) o un nombre parecido —
+   buscar en `TAGS_PROVEEDOR_CURADOS` y en la columna oculta "Proveedor
+   (Razón Social)" de `Master` — y si lo hay, reusar exactamente esa razón
+   social ya existente (ver [MEMORY.md](MEMORY.md) § Reglas de negocio,
+   regla agregada 2026-09-07).
 2. Preguntar al usuario solo lo que el documento no resuelve por sí solo:
    `tipo_proyecto` si el proyecto es nuevo, `estado` (Pagado/Pendiente, casi
-   nunca viene impreso), y cualquier monto/N° de documento/categoría
-   ilegible o ambiguo — aplicar también los criterios ya vigentes en
+   nunca viene impreso), cualquier monto/N° de documento/categoría
+   ilegible o ambiguo, y **si el proveedor parece similar a uno ya
+   registrado pero no calza exacto (nombre parecido, RUT no visible)** —
+   nunca asumir por cuenta propia si son el mismo proveedor o no — aplicar
+   también los criterios ya vigentes en
    [MEMORY.md](MEMORY.md) § Criterios de clasificación (ej. asumir Factura
    salvo sospecha clara de Boleta; confirmar si un equipo/herramienta >
    $20.000 corresponde de verdad a ese proyecto o a Gastos Generales).

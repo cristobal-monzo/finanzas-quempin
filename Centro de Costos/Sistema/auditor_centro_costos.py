@@ -236,9 +236,12 @@ TAGS_PROVEEDOR_CURADOS = {
     "Undurraga Tecnica y Comercial S.A. (UTECSA)": "UTECSA",
     "LATAM Airlines Group S.A.": "LATAM",
     "Ortuzar SpA (Dezar Rent a Car)": "Dezar",
+    "Ortuzar SpA": "Dezar",  # mismo proveedor que la entrada de arriba (pedido 2026-09-07)
     "Engas Chile SpA": "Engas",
     "Antonio Ruiz Ch. e Hijos Ltda.": "Antonio Ruiz",
     "Comercial Anwo S.A.": "Anwo",
+    "Comercial ANWO S.A.": "Anwo",  # variante en mayusculas del mismo proveedor (pedido 2026-09-07)
+    "ANWO S.A.": "Anwo",
 }
 
 _SUFIJOS_LEGALES_RE = re.compile(
@@ -269,7 +272,11 @@ def generar_tag_proveedor(razon_social):
     if m:
         contenido = m.group(1).strip()
         if contenido:
-            return contenido.split()[0]
+            # rstrip: la marca puede venir seguida de una coma antes del resto
+            # del descriptor (ej. "(Copec, por cuenta y orden de ...)") -- sin
+            # esto, "Copec," quedaba como tag distinto de "Copec" (mismo
+            # proveedor duplicado bajo dos tags, corregido 2026-09-07).
+            return contenido.split()[0].rstrip(",.;:")
 
     base = _SUFIJOS_LEGALES_RE.sub("", razon_social)
     palabras = [

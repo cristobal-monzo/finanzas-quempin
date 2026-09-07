@@ -93,6 +93,31 @@ módulos), no en este archivo.
   usado al escribir documentos nuevos y al aplicar correcciones manuales de
   esa columna; migración retroactiva `migrar_n_documento_sin_ceros()` corrió
   sobre todo `Master`/`Detalle` el 2026-07-17 (42 celdas corregidas).
+- **Reutilizar siempre el tag/razón social de un proveedor ya existente
+  cuando haya similitud de nombre o coincida el RUT/ID** (pedido del usuario
+  2026-09-07): antes de fijar `"proveedor"` (y, si viene legible,
+  `"rut_proveedor"` — ver `../../CLAUDE.md` → "Esquema de
+  `datos_extraidos.json`") al registrar un documento nuevo, revisar si ya
+  existe un proveedor conocido con el mismo RUT o un nombre parecido —
+  buscar en `TAGS_PROVEEDOR_CURADOS` (`Sistema/auditor_centro_costos.py`) y
+  en la columna oculta "Proveedor (Razón Social)" de `Master` (o en
+  entradas anteriores de `datos_extraidos.json`). Si hay coincidencia,
+  **reusar exactamente esa razón social ya existente** (no crear una
+  variante nueva del mismo proveedor, aunque el heurístico automático de
+  `generar_tag_proveedor()` fuera a producir un tag razonable por su
+  cuenta) para que ambos documentos queden bajo el mismo tag en `Master`.
+  **Si hay duda** (nombre parecido pero no idéntico, RUT no visible en el
+  documento nuevo, o cualquier caso ambiguo) — **preguntar al usuario antes
+  de decidir**, en vez de asumir que es el mismo proveedor o que es uno
+  distinto. Motivo/precedente: el 2026-09-07 se detectaron dos proveedores
+  duplicados bajo tags distintos porque la razón social exacta no calzaba
+  con la entrada curada — "Ortuzar SpA" (razón social sin el sufijo de
+  marca) vs "Ortuzar SpA (Dezar Rent a Car)", tags "Ortuzar"/"Dezar"; y
+  "Comercial ANWO S.A."/"ANWO S.A." (mayúsculas) vs "Comercial Anwo S.A.",
+  tags "ANWO"/"Anwo" — ambos casos fusionados retroactivamente y agregados
+  a `TAGS_PROVEEDOR_CURADOS` (ver `ERRORES.md`). Esta regla es para
+  prevenir que se repita hacia adelante, para proveedores que aún no están
+  en el diccionario curado.
 - **Proveedores de Punta Arenas / Patagonia (Zona Franca)** (pedido
   2026-07-17): el IVA puede **no** venir incluido en la factura por el
   régimen de Zona Franca. Al extraer/verificar `"iva"` de un documento de un

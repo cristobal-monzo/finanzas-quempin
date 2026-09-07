@@ -249,6 +249,7 @@ el documento completo en 1 ítem cuando alguna línea sí se puede leer (pedido
   "n_documento": "12345",
   "tipo_documento": "Factura",
   "proveedor": "Proveedor SpA",
+  "rut_proveedor": "76.123.456-7",
   "categoria": "Materiales",
   "estado": "Pagado",
   "iva": 190,
@@ -262,6 +263,7 @@ el documento completo en 1 ítem cuando alguna línea sí se puede leer (pedido
 
 - **`"fecha"` va en formato `DD-MM-AAAA`** (guiones, orden día-mes-año — pedido del usuario 2026-07-28, reemplaza el `DD/MM/AAAA` con barras usado antes). El parser (`escribir_fila_master`/`fecha_ddmmaaaa_desde_valor` en `auditor_centro_costos.py`) sigue aceptando `DD/MM/AAAA` como fallback por si algo lo escribe a la antigua, pero las entradas nuevas deben usar guiones.
 - `"iva"` es opcional: si se omite, se calcula 19% del total sin IVA (suma de ítems) para Factura/Guía de Despacho, o 0 para el resto.
+- `"rut_proveedor"` es opcional (agregado 2026-09-07): el RUT del proveedor, si viene legible en el documento. No se escribe en el Excel (no hay columna para esto en `Master`), es solo una ayuda para el agente al registrar: **antes de fijar `"proveedor"` de un documento nuevo, hay que revisar si ya existe un proveedor conocido con el mismo RUT o un nombre muy similar** (buscar en `TAGS_PROVEEDOR_CURADOS` y en la columna oculta "Proveedor (Razón Social)" de `Master`/en entradas anteriores de este JSON) y, si lo hay, reusar exactamente esa razón social ya existente — no crear una variante nueva del mismo proveedor. Ver la regla completa (con el precedente que la motivó) en [MEMORY.md](.claude/skills/Registro_Centro_de_Costos/MEMORY.md) § Reglas de negocio.
 - `"tipo_proyecto"` es una clasificación a nivel proyecto (ej. `I+D+i`, `Mantenimiento`, `Gastos Generales`), constante para ese proyecto salvo que cambie deliberadamente.
 - `"categoria"` es a nivel documento; `"categoria_item"` es a nivel ítem — pueden diferir si un documento mezcla categorías.
 - **`"nombre_item"` = tipo de producto genérico, lo más simplificado posible** — sin marca ni adjetivos/variantes (ej. "Hidrolavadora", no "Hidrolavadora Karcher portátil"; "Taladro", no "Taladro inalámbrico") (pedido 2026-07-17, endurece la regla anterior). **`"descripcion"` = todo el detalle** (marca, modelo, medidas, especificaciones — ej. "Hidrolavadora Karcher portátil K3 120 bar", "Taladro percutor 20V 13mm s/carbones DCD7781"). **No anotar el código de producto** en ninguno de los dos campos (pedido 2026-07-16). "Resumen Ítems" en `Master` se arma uniendo los `nombre_item`, así que mantenerlo simplificado ahí también lo mantiene simple en `Master`.
