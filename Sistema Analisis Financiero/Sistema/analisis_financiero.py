@@ -9,6 +9,7 @@ financiero-design.md para el diseño completo.
 
 import json
 import math
+import re
 import shutil
 import sys
 import unicodedata
@@ -841,15 +842,40 @@ def leer_filas_proyectos(ws_proyectos) -> tuple[list[dict], list[str]]:
 
 # ── CARPETAS DE PROYECTO ─────────────────────────────────────────────────────
 
+def normalizar_nombre_proyecto_carpeta(nombre_carpeta: str) -> str:
+    """Espejo de normalizar_nombre_proyecto() en auditor_centro_costos.py
+    (Centro de Costos) -- se duplica en vez de importar porque cada modulo
+    corre en su propio proceso (ver CLAUDE.md raiz). Debe cambiar en ambos
+    lugares a la vez si cambia la regla."""
+    nombre = re.sub(r"^\d+[.\-_]\s*", "", nombre_carpeta).strip()
+    nombre = re.sub(r"^(\S.*\S|\S)\s+(\d+)$", r"\1\2", nombre)
+    return nombre or nombre_carpeta
+
+
+def carpeta_proyecto_existe(nombre_proyecto: str, raiz_facturas: Path) -> bool:
+    """True si raiz_facturas ya tiene una carpeta para nombre_proyecto -- con
+    ese nombre exacto o con codigo (ej. '261. FACH 1' para 'FACH1'), para no
+    tratar como faltante un proyecto que ya tiene documentos registrados bajo
+    su nombre de carpeta fisico original."""
+    if (raiz_facturas / nombre_proyecto).exists():
+        return True
+    if raiz_facturas.exists():
+        for existente in raiz_facturas.iterdir():
+            if existente.is_dir() and normalizar_nombre_proyecto_carpeta(existente.name) == nombre_proyecto:
+                return True
+    return False
+
+
 def asegurar_carpeta_proyecto(nombre_proyecto: str, raiz_facturas: Path) -> bool:
-    """Crea raiz_facturas/<nombre_proyecto>/ si no existe. Devuelve True si
-    la creó, False si ya existía. raiz_facturas debe ser la fuente REAL que
-    lee Centro de Costos hoy (Sitio de comunicación - Centro de Costos 1/
-    Facturas y Boletas/), nunca la carpeta legado."""
-    carpeta = raiz_facturas / nombre_proyecto
-    ya_existia = carpeta.exists()
-    carpeta.mkdir(parents=True, exist_ok=True)
-    return not ya_existia
+    """Crea raiz_facturas/<nombre_proyecto>/ si no existe (ver
+    carpeta_proyecto_existe). Devuelve True si la creó, False si ya existía.
+    raiz_facturas debe ser la fuente REAL que lee Centro de Costos hoy (Sitio
+    de comunicación - Centro de Costos 1/Facturas y Boletas/), nunca la
+    carpeta legado."""
+    if carpeta_proyecto_existe(nombre_proyecto, raiz_facturas):
+        return False
+    (raiz_facturas / nombre_proyecto).mkdir(parents=True, exist_ok=True)
+    return True
 
 
 def asegurar_carpetas_proyectos(filas_validas: list[dict], raiz_facturas: Path) -> list[str]:
@@ -1585,7 +1611,7 @@ def ejecutar(
     if dry_run:
         resumen["proyectos_nuevos"] = [prefijos_faltantes[p] for p in sorted(prefijos_faltantes)]
         for fila_info in filas_validas:
-            if not (raiz_facturas_cc / fila_info["nombre"]).exists():
+            if not carpeta_proyecto_existe(fila_info["nombre"], raiz_facturas_cc):
                 resumen["carpetas_creadas"].append(fila_info["nombre"])
         categorias_no_mapeadas = set()
         for _, subcategoria in agrupado:

@@ -22,3 +22,20 @@ def test_asegurar_carpetas_proyectos_devuelve_solo_las_nuevas(tmp_path):
     creadas = af.asegurar_carpetas_proyectos(filas_validas, tmp_path)
     assert creadas == ["Cesfam Limache"]
     assert (tmp_path / "Cesfam Limache").is_dir()
+
+
+def test_asegurar_carpeta_proyecto_no_duplica_carpeta_con_codigo(tmp_path):
+    """La carpeta fisica de un proyecto puede seguir con su codigo original
+    (ej. '261. FACH 1') aunque el nombre mostrado en Analisis Financiero ya
+    se normalizo a 'FACH1' -- no debe crear una carpeta 'FACH1' vacia
+    duplicada."""
+    (tmp_path / "261. FACH 1").mkdir()
+    creada = af.asegurar_carpeta_proyecto("FACH1", tmp_path)
+    assert creada is False
+    assert not (tmp_path / "FACH1").exists()
+
+
+def test_carpeta_proyecto_existe_reconoce_carpeta_con_codigo(tmp_path):
+    (tmp_path / "259. FACH 2").mkdir()
+    assert af.carpeta_proyecto_existe("FACH2", tmp_path) is True
+    assert af.carpeta_proyecto_existe("FACH1", tmp_path) is False
