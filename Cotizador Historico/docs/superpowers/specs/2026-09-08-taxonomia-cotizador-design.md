@@ -242,3 +242,80 @@ completo e invisible.
   (Estanque 20x, Guante 15x) y la auditoría las marca. La gramática
   dimensional actual no las cubre porque su spec no es una longitud.
 - **Presentación/envase en la hoja** (unidad, caja de 100, pack de 10).
+
+
+---
+
+## 7. Afinamientos del 2026-09-09
+
+Cuatro pedidos del usuario después de usar el tablero publicado.
+
+### 7.1 Los equipos se identifican por su modelo
+
+> "Quiero que el título de las bombas sea tipo 'Bomba circuladora A 80/180
+> XM' o similar, mostrando el modelo."
+
+El problema era más amplio que las bombas: **todo equipo colapsaba a un
+genérico**. Medido sobre el catálogo real, una sola hoja "Caldera" contenía
+tres calderas distintas de $1,0M, $1,8M y $4,2M; "Estanque" contenía cinco
+capacidades (R18, R24, RV100, RV500, AV200); "Termostato" contenía hasta un
+presostato.
+
+`CATEGORIAS_CON_MODELO` marca las categorías donde el producto se identifica
+por su designación: bombas, calefacción, herramientas eléctricas,
+instrumentación y soldadura. Para ellas `titulo_modelo()` elige entre el
+nombre del ítem y su descripción el texto más informativo que mencione la
+familia, y le quita la cola administrativa (códigos, folios, descuentos).
+
+Soldadura entró en esta lista por el mismo motivo, verificado con precios:
+un electrodo 6010 y uno 7018 compartían hoja con 3,7x de diferencia, y una
+pinza porta electrodo se promediaba con electrodos a 5x.
+
+### 7.2 La soldadura de plata, subcategoría propia
+
+Separada de "Aportes". Un detalle que salió al revisar: la regla inicial
+usaba la palabra suelta "plata" y se llevaba también el "Fundente para
+plata", que es un fundente. Se corrigió exigiendo la frase completa y
+dándole prioridad a la regla de fundentes.
+
+### 7.3 El piping se separa por material
+
+> "Que se pueda diferenciar fácilmente entre PEX, Cobre, inoxidable, acero,
+> PPR, otros."
+
+La subcategoría de `Piping y Fittings` pasa a ser el material. Se evaluaron
+dos formas contra los datos:
+
+| Opción | Carpetas resultantes |
+|---|---|
+| Subcategoría = "Tipo de Material" (Codos de Cobre, Codos de PPR…) | 52, la mayoría de 1 o 2 compras |
+| **Subcategoría = material** | **9, de 3 a 52 compras** |
+
+Se eligió la segunda. El tipo de pieza no se pierde: encabeza el nombre de
+la hoja, y las hojas se ordenan alfabéticamente, así que dentro de "Cobre"
+quedan juntas todas las cañerías, después todos los codos, después todas las
+coplas.
+
+Al hacerlo se corrigió el orden de detección de materiales: los materiales
+de **sistema** (PPR, PEX, PVC) tienen prioridad sobre el metal del que está
+hecha la pieza. Un "Terminal DZR PEX" es un fitting de bronce DZR para
+tubería PEX, y quien lo busca lo busca como PEX. PEX pasó de 3 a 7 compras
+visibles y PVC de 14 a 16. También se agregó "cementada/cementar" como señal
+de PVC (es la unión por cemento solvente).
+
+### 7.4 Sección secundaria en el dashboard
+
+`CATEGORIAS_SECUNDARIAS` (transporte, alimentación, arriendos y servicios,
+sin clasificar) se renderiza en un bloque aparte bajo el listado principal,
+con una nota de por qué su precio unitario promedio no es comparable. Antes
+esas cuatro ocupaban los primeros lugares del árbol por volumen de compras y
+empujaban hacia abajo a los productos que sí se cotizan.
+
+### 7.5 Efecto sobre la métrica de agrupación
+
+"Compras con al menos otra con que compararse" **bajó de 72% a 66%**, y es
+lo correcto: esa métrica sube cuando se agrupa más, aunque se agrupe mal.
+Separar tres calderas distintas que estaban en una sola hoja crea tres hojas
+de una compra cada una y baja el número. Lo que mide bien el cambio es que
+ninguna hoja de Soldadura y Gases mezcla ya productos con dispersión de
+precio inexplicable, cuando antes eran cinco.

@@ -412,8 +412,13 @@ def agregar_taxonomia(compra):
     compra["medida"] = clasif["medida"]
     compra["medida_mm"] = clasif["medida_mm"]
     compra["cotizable"] = clasif["cotizable"]
+    compra["secundaria"] = clasif["secundaria"]
     compra["requiere_medida"] = clasif["requiere_medida"]
     compra["hoja"] = taxonomia.clave_hoja(clasif)
+    # La clave de agrupacion va aparte del texto que se muestra: el mismo
+    # producto puede venir escrito distinto ("Estanque R24 lts rojo 8 bar" y
+    # "Estanque R 24 LTS rojo 8 BAR"), y sin normalizar abriria dos hojas.
+    compra["hoja_clave"] = taxonomia.clave_agrupacion(clasif)
     return compra
 
 
@@ -428,15 +433,18 @@ def agrupar_por_hoja(compras):
     porque cada compra es de una cantidad distinta."""
     grupos = {}
     for compra in compras:
-        clave = compra.get("hoja") or compra.get("nombre_item") or "Sin nombre"
+        clave = (compra.get("hoja_clave") or compra.get("hoja")
+                 or compra.get("nombre_item") or "sin nombre")
         grupo = grupos.setdefault(clave, {
-            "hoja": clave,
+            "hoja": compra.get("hoja") or compra.get("nombre_item") or "Sin nombre",
+            "hoja_clave": clave,
             "categoria": compra.get("categoria"),
             "subcategoria": compra.get("subcategoria"),
             "familia": compra.get("familia"),
             "material": compra.get("material"),
             "medida": compra.get("medida"),
             "cotizable": compra.get("cotizable", True),
+            "secundaria": compra.get("secundaria", False),
             "compras": [],
         })
         grupo["compras"].append(compra)

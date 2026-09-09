@@ -39,7 +39,13 @@ def _catalogo_categorias():
     la categoria es cotizable). Va en el snapshot para que exista una sola
     fuente de verdad: Sistema/catalogo_taxonomia.py."""
     return {
-        nombre: {"icono": icono, "cotizable": cotizable}
+        nombre: {
+            "icono": icono,
+            "cotizable": cotizable,
+            # secundaria: se muestra en la seccion de abajo del explorador
+            # (gastos de operacion y la cola de "Sin Clasificar")
+            "secundaria": ch.taxonomia.es_secundaria(nombre),
+        }
         for nombre, (icono, cotizable) in ch.taxonomia.CATEGORIAS.items()
     }
 

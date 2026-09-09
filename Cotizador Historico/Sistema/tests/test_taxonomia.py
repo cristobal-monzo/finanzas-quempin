@@ -324,3 +324,123 @@ def test_el_marco_de_aluminio_no_convierte_un_visor_en_producto_de_aluminio():
     visor = tx.clasificar("Visor", "Visor policarbonato c/marco aluminio")
     lente = tx.clasificar("Lente", "Lente protección claro")
     assert tx.clave_hoja(visor) == tx.clave_hoja(lente)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Pedidos del usuario, 2026-09-09
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── 1. los equipos se identifican por su modelo ───────────────────────────
+
+def test_la_hoja_de_un_equipo_muestra_su_modelo():
+    c = tx.clasificar("Bomba", "Kit bomba DAB circuladora rotor húmedo A 80/180XM unión 1.1/4\" 220V")
+    assert "80/180XM" in tx.clave_hoja(c)
+
+
+def test_dos_modelos_distintos_del_mismo_equipo_no_comparten_hoja():
+    a = tx.clasificar("Caldera", "Caldera Anwo Agua Plus 2.0, 40/42 LPG, código NB2-40/42-LPG")
+    b = tx.clasificar("Caldera", "Caldera Baxi Luna Duo-Tec MP+ 1.60, código 0")
+    assert tx.clave_hoja(a) != tx.clave_hoja(b)
+
+
+def test_el_titulo_del_equipo_no_arrastra_el_texto_administrativo():
+    c = tx.clasificar("Caldera", "Caldera Anwo Agua Plus 2.0, 40/42 LPG, código NB2-40/42-LPG")
+    hoja = tx.clave_hoja(c)
+    assert "código" not in hoja.lower() and "cod." not in hoja.lower()
+
+
+def test_el_mismo_modelo_escrito_distinto_cae_en_la_misma_hoja():
+    a = tx.clasificar("Estanque de expansion", "Estanque de expansion R24 lts rojo 8 bar")
+    b = tx.clasificar("Estanque de expansión", "Estanque de expansión R 24 LTS rojo 8 BAR, código 00.151.03")
+    assert tx.clave_agrupacion(a) == tx.clave_agrupacion(b)
+
+
+def test_un_consumible_no_usa_titulo_de_modelo():
+    # un codo se compara por material y medida, no por su texto completo
+    c = tx.clasificar("Codo bronce", "Codo SO BR (05) 1.1/4 plg")
+    assert tx.clave_hoja(c) == 'Codo de Bronce 1.1/4"'
+
+
+# ── 2. la soldadura de plata es su propia subcategoría ────────────────────
+
+def test_soldadura_de_plata_tiene_subcategoria_propia():
+    plata = tx.clasificar("Soldadura plata", "Soldadura plata 15% display (2 barras)")
+    comun = tx.clasificar("Soldadura", "Soldadura estaño 50% (kg)")
+    assert plata["categoria"] == comun["categoria"] == "Soldadura y Gases"
+    assert plata["subcategoria"] == "Soldadura de Plata"
+    assert comun["subcategoria"] == "Aportes"
+
+
+def test_soldadura_de_plata_en_varilla_tambien():
+    c = tx.clasificar("Soldadura plata", "Soldadura plata al 6% en varilla, cod. SOL20")
+    assert c["subcategoria"] == "Soldadura de Plata"
+
+
+# ── 3. el piping se separa por material ───────────────────────────────────
+
+def test_la_subcategoria_de_piping_es_el_material():
+    assert tx.clasificar("Codo cobre", "Codo SO cobre 1/2 plg")["subcategoria"] == "Cobre"
+    assert tx.clasificar("Tee", "Tee PPR 32mm")["subcategoria"] == "PPR"
+    assert tx.clasificar("Terminal", "Terminal DZR PEX HE 32x1")["subcategoria"] == "PEX"
+
+
+def test_piping_sin_material_reconocible_cae_en_otros_materiales():
+    c = tx.clasificar("Niple", "Niple 3/4")
+    assert c["categoria"] == "Piping y Fittings"
+    assert c["subcategoria"] == "Otros materiales"
+
+
+def test_lo_cementado_es_pvc():
+    # "cementar/cementada" es la union por cemento solvente: PVC
+    assert tx.clasificar("Unión americana", "Unión americana cementada de 50 mm")["material"] == "PVC"
+
+
+def test_fuera_del_piping_la_subcategoria_sigue_siendo_el_tipo():
+    assert tx.clasificar("Guante", "Guante cabritilla")["subcategoria"] == "Guantes"
+
+
+# ── 4. categorías secundarias ─────────────────────────────────────────────
+
+def test_las_categorias_de_gasto_y_sin_clasificar_son_secundarias():
+    for cat in ("Transporte y Logística", "Alimentación", "Arriendos y Servicios", "Sin Clasificar"):
+        assert tx.es_secundaria(cat) is True, cat
+
+
+def test_las_categorias_de_producto_no_son_secundarias():
+    for cat in ("Piping y Fittings", "Herramientas Manuales", "Soldadura y Gases"):
+        assert tx.es_secundaria(cat) is False, cat
+
+
+def test_el_fundente_para_plata_no_es_soldadura_de_plata():
+    # "Fundente para plata" es un fundente: va en Fundentes, no en la
+    # subcategoría de soldadura de plata que se creó para el aporte.
+    c = tx.clasificar("Fundente para plata", "Fundente para plata 050 GR")
+    assert c["subcategoria"] == "Fundentes"
+
+
+def test_dos_leyes_de_plata_no_comparten_hoja():
+    # La soldadura al 6% y la al 15% cuestan 2,6x distinto: no son el mismo
+    # producto ni se promedian.
+    seis = tx.clasificar("Soldadura plata", "Soldadura plata al 6% en varilla, cod. SOL2005")
+    quince = tx.clasificar("Soldadura plata", "Soldadura plata 15% display (2 barras)")
+    assert tx.clave_agrupacion(seis) != tx.clave_agrupacion(quince)
+
+
+def test_dos_designaciones_de_electrodo_no_comparten_hoja():
+    # Un 6010 y un 7018 son electrodos distintos con precios distintos
+    a = tx.clasificar("Electrodo", "Electrodo 6010 1/8 1kg")
+    b = tx.clasificar("Electrodo", "Electrodo 7018 1/8 5kg Bauker")
+    assert tx.clave_agrupacion(a) != tx.clave_agrupacion(b)
+
+
+def test_la_pinza_porta_electrodo_no_se_promedia_con_los_electrodos():
+    pinza = tx.clasificar("Pinza", "Pinza porta electrodo 300a")
+    electrodo = tx.clasificar("Electrodo", "Electrodo 6010 1/8 1kg")
+    assert tx.clave_agrupacion(pinza) != tx.clave_agrupacion(electrodo)
+
+
+def test_las_abreviaturas_con_y_sin_no_abren_dos_hojas():
+    # "c/hilo amarillo" y "con hilo amarillo" son el mismo tubo de gas
+    a = tx.clasificar("Tubo de gas", "Tubo gas especial MAPP 400cc c/hilo amarillo")
+    b = tx.clasificar("Tubo de gas", "Tubo gas especial MAPP 400cc con hilo amarillo")
+    assert tx.clave_agrupacion(a) == tx.clave_agrupacion(b)

@@ -105,3 +105,32 @@ en restaurant.
 una longitud quedan con dispersión alta y la auditoría las marca — Estanque
 (se compara por litros, 20x), Caldera/Quemador (por kW), Guante (unidad vs
 pack de 10 pares, 15x).
+
+## Afinamientos de la taxonomía — 2026-09-09
+
+Cuatro pedidos del usuario tras usar el tablero publicado, todos
+implementados (detalle y mediciones en el § 7 del spec):
+
+1. **Equipos por modelo** (`CATEGORIAS_CON_MODELO`): la hoja de una bomba,
+   caldera, radiador, estanque, instrumento o aporte de soldadura es su
+   título con modelo, no un genérico. Descubierto al revisar: tres calderas
+   de $1,0M a $4,2M compartían una hoja llamada "Caldera".
+2. **Soldadura de plata**, subcategoría propia.
+3. **Piping por material**: la subcategoría de `Piping y Fittings` es el
+   material (9 carpetas), no el tipo de pieza. Se evaluó "Codos de Cobre"
+   estilo tipo+material y daba 52 carpetas casi todas de 1 compra.
+4. **Sección secundaria** en el dashboard para transporte, alimentación,
+   arriendos y servicios, y sin clasificar.
+
+**Decisiones de criterio que conviene no revertir sin pensarlo:**
+
+- Los materiales de **sistema** (PPR, PEX, PVC) ganan sobre el metal de la
+  pieza: un "Terminal DZR PEX" es un fitting de bronce para tubería PEX y se
+  busca como PEX.
+- La **clave de agrupación va aparte del texto mostrado**
+  (`clave_agrupacion` vs `clave_hoja`): normaliza tildes, mayúsculas,
+  "c/"→"con", "s/"→"sin" y "R 24"→"R24". Sin eso el mismo estanque escrito
+  de dos formas abría dos hojas.
+- La métrica "compras con otra con que compararse" **bajó de 72% a 66% a
+  propósito**: separar productos que no eran comparables la baja. No es una
+  regresión; no intentar subirla volviendo a agrupar equipos distintos.

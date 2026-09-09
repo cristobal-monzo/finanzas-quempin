@@ -33,7 +33,9 @@ import unicodedata
 from fractions import Fraction
 
 from catalogo_taxonomia import (CATEGORIAS, CATEGORIAS_CON_MATERIAL, CATEGORIAS_CON_MEDIDA,
-                                MATERIALES, REGLAS)
+                                CATEGORIAS_CON_MODELO, CATEGORIAS_SECUNDARIAS,
+                                CATEGORIAS_SUBCATEGORIA_POR_MATERIAL, MATERIALES, REGLAS,
+                                SUBCATEGORIA_SIN_MATERIAL)
 
 
 # ====================== 1-2. MEDIDAS ======================
@@ -424,6 +426,7 @@ def clasificar(nombre_item, descripcion):
                     break
 
     material = detectar_material(nombre, desc)
+    sub_forzada = False
     if mejor is None:
         cat, sub, familia, score, termino = 'Sin Clasificar', 'Sin Clasificar', (nombre.strip() or 'Ítem'), 0, None
     else:
@@ -433,6 +436,15 @@ def clasificar(nombre_item, descripcion):
     # comparan por medida aceptan el entero pelado como pulgadas.
     requiere_medida = cat in CATEGORIAS_CON_MEDIDA
     medida = medida_principal(nombre, desc, aceptar_entero=requiere_medida)
+
+    # En piping la subcategoria es el material, para poder distinguir de un
+    # vistazo cobre de PPR o de PEX; el tipo de pieza sigue al frente del
+    # nombre de la hoja.
+    if cat in CATEGORIAS_SUBCATEGORIA_POR_MATERIAL and not sub_forzada:
+        sub = material or SUBCATEGORIA_SIN_MATERIAL
+
+    usa_modelo = cat in CATEGORIAS_CON_MODELO
+    titulo = titulo_modelo(nombre, desc, familia) if usa_modelo else None
     return {
         'categoria': cat,
         'subcategoria': sub,
@@ -442,10 +454,75 @@ def clasificar(nombre_item, descripcion):
         'medida_mm': medida.mm if medida else None,
         'score': score,
         'termino': termino,
+        'titulo': titulo,
+        'usa_modelo': usa_modelo,
         'cotizable': CATEGORIAS.get(cat, ('', True))[1],
+        'secundaria': es_secundaria(cat),
         'requiere_medida': requiere_medida,
         'material_define': cat in CATEGORIAS_CON_MATERIAL,
     }
+
+
+# Texto administrativo que no forma parte del nombre de un equipo: todo lo
+# que sigue a estos marcadores se corta del titulo.
+_CORTE_TITULO = re.compile(
+    r'\s*[,.;(\-]?\s*\b(cod|cods|codigo|c[oó]d|c[oó]digo|factura|boleta|guia|gu[ií]a|doc|documento|'
+    r'folio|pedido|neto|precio de lista|venta mayorista|venta exenta|ingreso|serie|sku|ean|'
+    r'con descuento|c/descuento|marca)\b.*$', re.I)
+_PARENTESIS_FINAL = re.compile(r'\s*\([^)]*\)\s*$')
+# "R 24" y "R24" son el mismo modelo: se pegan para que no abran dos hojas.
+_MODELO_SEPARADO = re.compile(r'\b([A-Z]{1,3})\s+(\d)')
+
+
+def _limpiar_titulo(texto):
+    t = ' '.join(str(texto or '').split())
+    t = _CORTE_TITULO.sub('', t)
+    for _ in range(2):
+        t = _PARENTESIS_FINAL.sub('', t)
+    return t.strip(' ,.;:-')
+
+
+def titulo_modelo(nombre, descripcion, familia, limite=62):
+    """El titulo de un equipo tiene que mostrar su modelo.
+
+    Dos calderas de marcas distintas no son el mismo producto: en el catalogo
+    real habia tres, de $1,0M a $4,2M, compartiendo una hoja llamada
+    "Caldera". Elige entre el nombre del item y su descripcion el texto mas
+    informativo que mencione la familia, y le saca la cola administrativa
+    (codigos, folios, descuentos)."""
+    candidatos = [_limpiar_titulo(nombre), _limpiar_titulo(descripcion)]
+    raiz_familia = sin_tildes(str(familia or '').lower())[:6]
+    con_familia = [t for t in candidatos if t and raiz_familia in sin_tildes(t.lower())]
+    elegidos = con_familia or [t for t in candidatos if t]
+    if not elegidos:
+        return familia
+    titulo = max(elegidos, key=len)
+    titulo = _MODELO_SEPARADO.sub(r'\1\2', titulo)
+    if len(titulo) > limite:
+        titulo = titulo[:limite].rsplit(' ', 1)[0] + '…'
+    return titulo[0].upper() + titulo[1:]
+
+
+def es_secundaria(categoria):
+    """Las categorias de importancia menor para cotizar (gastos de operacion
+    y la cola de "Sin Clasificar") se muestran aparte, bajo el listado
+    principal -- pedido del usuario 2026-09-09."""
+    return categoria in CATEGORIAS_SECUNDARIAS
+
+
+def clave_agrupacion(c):
+    """La clave con la que se agrupan las compras: la hoja normalizada.
+
+    Se separa del texto que se muestra porque el mismo producto puede venir
+    escrito distinto ("Estanque R24 lts rojo 8 bar" y "Estanque R 24 LTS
+    rojo 8 BAR" son el mismo estanque). La hoja se muestra tal cual se leyo;
+    agrupar usa esta version sin tildes, sin mayusculas y sin espacios de
+    mas."""
+    clave = normalizar(clave_hoja(c))
+    # "c/hilo amarillo" y "con hilo amarillo" son lo mismo: el catalogo
+    # abrevia "con"/"sin" con "c/" y "s/" de forma inconsistente. Se
+    # normaliza solo en la clave; el texto se muestra tal cual se escribio.
+    return ' '.join('con' if t == 'c' else 'sin' if t == 's' else t for t in clave.split())
 
 
 def clave_hoja(c):
@@ -456,6 +533,8 @@ def clave_hoja(c):
     CATEGORIAS_CON_MATERIAL): en una herramienta o un EPP suele ser un
     detalle del texto (el marco de aluminio de un visor) y partiria la hoja
     sin motivo."""
+    if c.get('usa_modelo'):
+        return c['titulo']
     partes = [c['familia']]
     if c['material'] and c.get('material_define'):
         partes.append('de ' + c['material'])

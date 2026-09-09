@@ -321,6 +321,11 @@
   .viz-foldercard .fc-icon { font-size: 28px; line-height: 1; }
   .viz-foldercard .fc-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
   .viz-foldercard .fc-count { font-size: 11px; color: var(--text-muted); }
+  .viz-secundarias { margin-top: 26px; padding-top: 18px; border-top: 1px dashed var(--border-hairline); }
+  .viz-secundarias-titulo { margin: 0 0 2px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+  .viz-secundarias-nota { margin: 0 0 12px; font-size: 12px; color: var(--text-muted); }
+  .viz-secundarias .viz-foldercard { opacity: .82; }
+  .viz-secundarias .viz-foldercard:hover { opacity: 1; }
   .viz-leaflist { display: flex; flex-direction: column; gap: 8px; }
   .viz-leafrow { font-family: inherit; display: grid; grid-template-columns: 1fr 100px 120px; align-items: center; gap: 12px; width: 100%; background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 8px; padding: 10px 14px; cursor: pointer; text-align: left; }
   .viz-leafrow:hover { border-color: var(--brand-orange); }
@@ -628,7 +633,12 @@
       material: it.material,
       medida: it.medida,
       hoja: it.hoja || it.nombre_item,
+      // hoja_clave es la version normalizada con la que se agrupa: el mismo
+      // producto puede venir escrito distinto ("Estanque R24 lts rojo 8 bar"
+      // y "Estanque R 24 LTS rojo 8 BAR") y sin ella abriria dos hojas.
+      hoja_clave: it.hoja_clave || it.hoja || it.nombre_item,
       cotizable: it.cotizable !== false,
+      secundaria: it.secundaria === true,
     };
   });
   // Ningun item se oculta: el sistema anterior descartaba del dashboard
@@ -656,8 +666,8 @@
   function buildLeafIndex(items) {
     var byLeaf = {};
     items.forEach(function (it) {
-      var key = it._clasif.categoria + '||' + it._clasif.subcategoria + '||' + it._clasif.hoja;
-      if (!byLeaf[key]) byLeaf[key] = { categoria: it._clasif.categoria, subcategoria: it._clasif.subcategoria, hoja: it._clasif.hoja, compras: [], proyectos: {} };
+      var key = it._clasif.categoria + '||' + it._clasif.subcategoria + '||' + it._clasif.hoja_clave;
+      if (!byLeaf[key]) byLeaf[key] = { categoria: it._clasif.categoria, subcategoria: it._clasif.subcategoria, hoja: it._clasif.hoja, hoja_clave: it._clasif.hoja_clave, compras: [], proyectos: {} };
       byLeaf[key].compras.push(it);
       if (it.proyecto) byLeaf[key].proyectos[it.proyecto] = true;
     });
@@ -666,7 +676,8 @@
       var preciosConIva = g.compras.map(function (c) { return c.precio_reajustado_hoy_con_iva; });
       var masBarato = g.compras.reduce(function (min, c) { return c.precio_reajustado_hoy_con_iva < min.precio_reajustado_hoy_con_iva ? c : min; });
       return {
-        categoria: g.categoria, subcategoria: g.subcategoria, hoja: g.hoja, compras: g.compras,
+        categoria: g.categoria, subcategoria: g.subcategoria, hoja: g.hoja,
+        hoja_clave: g.hoja_clave, compras: g.compras,
         n_compras: g.compras.length,
         proyectos: Object.keys(g.proyectos).sort(),
         promedio_con_iva: Math.round(preciosConIva.reduce(function (a, b) { return a + b; }, 0) / preciosConIva.length),
@@ -677,7 +688,7 @@
   }
   var LEAF_INDEX = buildLeafIndex(ITEMS_VISIBLES);
   var MARKET_STATS = {};
-  LEAF_INDEX.forEach(function (h) { MARKET_STATS[h.hoja] = h; });
+  LEAF_INDEX.forEach(function (h) { MARKET_STATS[h.hoja_clave] = h; });
 
   function buildCategoryTree(hojas) {
     var arbol = {};
@@ -825,7 +836,7 @@
     if (marcaModelo.modelo) chips.push(marcaModelo.modelo);
     chips = chips.concat(specs);
     var cardId = 'rc_' + idx;
-    var stats = MARKET_STATS[item._clasif.hoja];
+    var stats = MARKET_STATS[item._clasif.hoja_clave];
     var esLaMasBarata = stats && stats.n_compras > 1 && item.precio_reajustado_hoy_con_iva === stats.precio_min_con_iva;
     return '<div class="viz-refcard' + (esLaMasBarata ? ' is-cheapest' : '') + '">' +
       (esLaMasBarata ? '<span class="rc-cheapest-badge">💲 Proveedor más barato entre ' + stats.n_compras + '</span>' : '') +
@@ -969,6 +980,7 @@
         key: key, n_ref: item.n_ref, nombre_item: item.nombre_item, descripcion: item.descripcion,
         categoria_item: item.categoria_item, proyecto: item.proyecto, fecha: item.fecha,
         hoja: item._clasif.hoja,
+        hoja_clave: item._clasif.hoja_clave,
         precio_reajustado_hoy: item.precio_reajustado_hoy,
         precio_reajustado_hoy_con_iva: item.precio_reajustado_hoy_con_iva,
         cantidad: cantidad,
@@ -1073,7 +1085,7 @@
     var encabezado = ['Elemento', 'Promedio de costo', 'Costo más barato', 'Proveedor más barato', 'Costo actualizado según UF'];
     var lineas = [encabezado.join('\t')];
     cart.forEach(function (l) {
-      var stats = MARKET_STATS[l.hoja] || {};
+      var stats = MARKET_STATS[l.hoja_clave || l.hoja] || {};
       lineas.push([
         limpiarParaTsv(l.hoja || l.nombre_item),
         stats.promedio_con_iva != null ? stats.promedio_con_iva : '',
@@ -1137,14 +1149,31 @@
     if (!folderState.categoria) {
       var categorias = Object.keys(CATEGORY_TREE).sort(function (a, b) { return CATEGORY_TREE[b].n_compras - CATEGORY_TREE[a].n_compras; });
       if (!categorias.length) { el.innerHTML = '<div class="viz-empty-state">Sin categorías indexadas.</div>'; return; }
-      el.innerHTML = '<div class="viz-foldergrid">' + categorias.map(function (c) {
+      // Las categorías secundarias (gastos de operación y la cola de "Sin
+      // Clasificar") van en su propia sección debajo: son de importancia
+      // menor para cotizar y competían de igual a igual con los productos,
+      // ocupando los primeros lugares por volumen de compras.
+      function esSecundaria(c) { return (CATEGORIAS_META[c] || {}).secundaria === true; }
+      function tarjeta(c) {
         var cat = CATEGORY_TREE[c];
         return '<button type="button" class="viz-foldercard" data-categoria="' + esc(c) + '">' +
           '<span class="fc-icon">' + (ICONOS_CATEGORIA[c] || '📁') + '</span>' +
           '<span class="fc-name">' + esc(c) + '</span>' +
           '<span class="fc-count">' + cat.n_compras + ' compra' + (cat.n_compras === 1 ? '' : 's') + '</span>' +
           '</button>';
-      }).join('') + '</div>';
+      }
+      var principales = categorias.filter(function (c) { return !esSecundaria(c); });
+      var secundarias = categorias.filter(esSecundaria);
+      el.innerHTML =
+        '<div class="viz-foldergrid">' + principales.map(tarjeta).join('') + '</div>' +
+        (secundarias.length
+          ? '<div class="viz-secundarias">' +
+            '<p class="viz-secundarias-titulo">Gastos de operación y pendientes</p>' +
+            '<p class="viz-secundarias-nota">No son productos que se coticen: su precio unitario ' +
+            'promedio no representa un costo comparable.</p>' +
+            '<div class="viz-foldergrid">' + secundarias.map(tarjeta).join('') + '</div>' +
+            '</div>'
+          : '');
       el.querySelectorAll('.viz-foldercard').forEach(function (b) { b.addEventListener('click', function () { irACategoria(b.dataset.categoria); }); });
       return;
     }
@@ -1170,9 +1199,12 @@
     if (!sub) { irACategoria(folderState.categoria); return; }
 
     if (!folderState.hoja) {
-      var hojas = sub.hojas.slice().sort(function (a, b) { return b.n_compras - a.n_compras; });
+      // Alfabetico y no por cantidad de compras: dentro de una carpeta de
+      // material esto deja juntos todos los codos, todas las coplas y todas
+      // las tees, que es como se busca una pieza.
+      var hojas = sub.hojas.slice().sort(function (a, b) { return a.hoja.localeCompare(b.hoja, 'es'); });
       el.innerHTML = '<div class="viz-leaflist">' + hojas.map(function (h) {
-        return '<button type="button" class="viz-leafrow" data-hoja="' + esc(h.hoja) + '">' +
+        return '<button type="button" class="viz-leafrow" data-hoja="' + esc(h.hoja_clave) + '">' +
           '<span class="lf-name">' + esc(h.hoja) + '</span>' +
           '<span class="lf-count">' + h.n_compras + ' compra' + (h.n_compras === 1 ? '' : 's') + '</span>' +
           '<span class="lf-price">desde ' + fmt(h.precio_min_con_iva) + '</span>' +
@@ -1182,7 +1214,7 @@
       return;
     }
 
-    var hoja = MARKET_STATS[folderState.hoja];
+    var hoja = MARKET_STATS[folderState.hoja];   // folderState.hoja guarda la clave
     if (!hoja) { irASubcategoria(folderState.subcategoria); return; }
     var compras = hoja.compras.slice().sort(function (a, b) { return a.precio_reajustado_hoy_con_iva - b.precio_reajustado_hoy_con_iva; });
     el.innerHTML =

@@ -54,13 +54,17 @@ CATEGORIAS = {
 # Materiales: (lemas, nombre canonico). El material es una FACETA, no una
 # categoria: entra a la hoja y al filtro, no al arbol de carpetas.
 MATERIALES = [
+    # Los materiales de SISTEMA (PPR, PEX, PVC) van primero a proposito: un
+    # "Terminal DZR PEX" es un fitting de bronce DZR para tuberia PEX, y
+    # quien lo busca lo busca como PEX, que es la instalacion de la que
+    # forma parte -- no como bronce, que es de lo que esta hecho.
+    (['ppr'], 'PPR'),
+    (['pex'], 'PEX'),
+    (['pvc', 'vinilit', 'cementada', 'cementado', 'cementar'], 'PVC'),
     (['inoxidable', 'inox', 'ss304', 'ss316', 'aisi'], 'Inoxidable'),
     (['cobre', 'cu'], 'Cobre'),
     (['bronce', 'br', 'dzr', 'latón', 'laton'], 'Bronce'),
     (['galvanizado', 'galvanizada', 'galv', 'zincado', 'zinc'], 'Galvanizado'),
-    (['ppr'], 'PPR'),
-    (['pex'], 'PEX'),
-    (['pvc', 'vinilit'], 'PVC'),
     (['hdpe', 'polipropileno', 'plastico', 'nylon'], 'Plástico'),
     (['aluminio'], 'Aluminio'),
     # 'negro'/'negra' sueltos NO van aca: en este catalogo son colores
@@ -83,6 +87,38 @@ CATEGORIAS_CON_MEDIDA = {'Piping y Fittings', 'Fijaciones', 'Válvulas y Control
 # de aluminio.
 CATEGORIAS_CON_MATERIAL = {'Piping y Fittings', 'Válvulas y Control de Flujo', 'Fijaciones',
                            'Perfilería y Maderas'}
+
+# Categorias cuya subcategoria es el MATERIAL en vez del tipo de pieza
+# (pedido del usuario 2026-09-09: "que se pueda diferenciar facilmente entre
+# PEX, Cobre, inoxidable, acero, PPR, otros"). El tipo de pieza no se pierde:
+# sigue al frente del nombre de la hoja ("Codo de Bronce 1.1/4"), y las hojas
+# se listan alfabeticamente para que todos los codos queden juntos.
+# Se eligio material-como-subcategoria y no "tipo de Material" (Codos de
+# Cobre, Codos de PPR...) porque sobre el catalogo real eso da 52 carpetas,
+# la mayoria de 1 o 2 compras, contra 9 carpetas de 3 a 52 compras asi.
+CATEGORIAS_SUBCATEGORIA_POR_MATERIAL = {'Piping y Fittings'}
+SUBCATEGORIA_SIN_MATERIAL = 'Otros materiales'
+
+# Categorias donde el producto se identifica por su MODELO, no por un
+# generico (pedido del usuario 2026-09-09: "quiero que el titulo de las
+# bombas sea tipo 'Bomba circuladora A 80/180 XM', mostrando el modelo").
+# Dos calderas de marcas distintas no son el mismo producto y su precio no
+# se promedia: en el catalogo real habia 3 calderas de $1,0M a $4,2M
+# compartiendo una sola hoja llamada "Caldera".
+CATEGORIAS_CON_MODELO = {'Bombas y Equipos Hidráulicos', 'Calefacción y Combustión',
+                         'Herramientas Eléctricas', 'Instrumentación y Medición',
+                         # Un electrodo 6010 y uno 7018 son productos
+                         # distintos (3,7x de diferencia medida), igual que
+                         # la soldadura de plata al 6% y la al 15% (2,6x), o
+                         # una pasta de soldar de 50gr y una de 500gr.
+                         'Soldadura y Gases'}
+
+# Categorias de importancia menor para un cotizador: se muestran aparte, en
+# una seccion secundaria debajo del listado principal (pedido del usuario
+# 2026-09-09). Son los gastos de operacion mas la cola de trabajo de lo que
+# todavia no se puede clasificar.
+CATEGORIAS_SECUNDARIAS = {'Transporte y Logística', 'Alimentación', 'Arriendos y Servicios',
+                          'Sin Clasificar'}
 
 # (terminos, categoria, subcategoria, familia, prioridad_extra)
 REGLAS = [
@@ -154,8 +190,15 @@ REGLAS = [
 
     # ---------------- Soldadura y gases ----------------
     (['electrodo'], 'Soldadura y Gases', 'Electrodos', 'Electrodo', 0),
+    # La soldadura de plata es su propia subcategoria (pedido del usuario
+    # 2026-09-09): cuesta un orden de magnitud mas que la de estano y
+    # mezclarlas en "Aportes" no dice nada util sobre ninguna de las dos.
+    (['soldadura plata', 'soldadura de plata', 'soldadura al plata', 'barra plata'],
+     'Soldadura y Gases', 'Soldadura de Plata', 'Soldadura de Plata', 12),
     (['soldadura', 'carrete soldadura', 'carrete de soldadura'], 'Soldadura y Gases', 'Aportes', 'Soldadura', 0),
-    (['fundente'], 'Soldadura y Gases', 'Fundentes', 'Fundente', 0),
+    # Prioridad sobre la regla de plata: un "Fundente para plata" es un
+    # fundente, no un aporte de plata.
+    (['fundente'], 'Soldadura y Gases', 'Fundentes', 'Fundente', 15),
     (['gas mapp', 'tubo gas', 'tubo de gas', 'oxigeno', 'argon', 'acetileno'], 'Soldadura y Gases', 'Gases', 'Gas', 5),
     (['soplete'], 'Soldadura y Gases', 'Sopletes', 'Soplete', 0),
     (['pasta soldar', 'pasta de soldar', 'pasta para soldar'], 'Soldadura y Gases', 'Fundentes', 'Pasta de Soldar', 10),

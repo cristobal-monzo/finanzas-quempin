@@ -77,6 +77,32 @@ sin tests, y la consulta por consola no la usaba.
    promedian si comparten hoja: **una cañería de cobre de 1/2 nunca se
    promedia con una de 2**.
 
+**Cuatro afinamientos pedidos el 2026-09-09**, todos en
+`catalogo_taxonomia.py`:
+
+1. **Los equipos se identifican por su modelo.** En las categorías de
+   `CATEGORIAS_CON_MODELO` (bombas, calefacción, herramientas eléctricas,
+   instrumentación, soldadura) la hoja no es un genérico sino el título del
+   producto con su modelo: "Bomba DAB circulación en línea CP50/2200 T-IE3".
+   Antes las tres calderas del catálogo, de $1,0M a $4,2M, compartían una
+   sola hoja llamada "Caldera".
+2. **La soldadura de plata es subcategoría propia**, separada de "Aportes":
+   cuesta un orden de magnitud más que la de estaño.
+3. **En piping la subcategoría es el material** (`CATEGORIAS_SUBCATEGORIA_POR_MATERIAL`),
+   no el tipo de pieza: Bronce, PPR, Galvanizado, Cobre, Inoxidable, PVC,
+   Acero Negro, PEX y "Otros materiales". El tipo no se pierde, sigue al
+   frente del nombre de la hoja, y las hojas se listan **alfabéticamente**
+   para que todos los codos queden juntos dentro de cada material.
+4. **Las categorías secundarias** (`CATEGORIAS_SECUNDARIAS`: transporte,
+   alimentación, arriendos y servicios, sin clasificar) se muestran en una
+   sección aparte bajo el listado principal del dashboard.
+
+**La hoja tiene dos formas**: `clave_hoja` es el texto que se muestra y
+`clave_agrupacion` es la clave con la que se agrupa (sin tildes, sin
+mayúsculas, con "c/" y "s/" expandidos a "con" y "sin", y el modelo pegado:
+"R 24" y "R24"). Sin esa separación, el mismo estanque escrito de dos formas
+abría dos hojas.
+
 **El material es una faceta, no una categoría.** Todo el piping vive en
 `Piping y Fittings` y el material entra a la hoja y al filtro. Antes cada
 material era su propia categoría, y los que no estaban en la lista (PVC,
