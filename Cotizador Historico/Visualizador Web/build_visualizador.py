@@ -34,6 +34,16 @@ RUTA_DATA_JSON = RAIZ / "data" / "cotizador-historico.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
 
+def _catalogo_categorias():
+    """El catalogo de categorias tal como lo consume el template (icono y si
+    la categoria es cotizable). Va en el snapshot para que exista una sola
+    fuente de verdad: Sistema/catalogo_taxonomia.py."""
+    return {
+        nombre: {"icono": icono, "cotizable": cotizable}
+        for nombre, (icono, cotizable) in ch.taxonomia.CATEGORIAS.items()
+    }
+
+
 def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None, uf_manual=None, fuente_manual=None):
     """Lee Detalle+Master (via cargar_items_detalle) y reajusta TODO el
     catalogo indexable a la UF de hoy (via reajustar_todos), pedida UNA
@@ -55,6 +65,7 @@ def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None, uf_manual=None, fuen
         "uf_fuente": uf_fuente,
         "excluidos_count": excluidos_count,
         "sin_uf_count": sin_uf_count,
+        "categorias": _catalogo_categorias(),
         "items": reajustados,
     }
 

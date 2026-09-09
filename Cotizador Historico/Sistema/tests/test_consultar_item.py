@@ -43,6 +43,17 @@ def test_tasa_iva_real_sin_datos_devuelve_1_como_respaldo():
 
 # ── consultar_item ─────────────────────────────────────────────────────
 
+PRECIO = ("n_ref", "fecha", "precio_original_sin_iva",
+          "precio_reajustado_hoy", "precio_reajustado_hoy_con_iva")
+
+
+def _solo_precio(compras):
+    """Los campos de precio de cada compra. Desde 2026-09-08 cada compra
+    trae ademas su clasificacion (categoria/familia/material/medida/hoja),
+    asi que estos tests comparan solo lo que estan verificando."""
+    return [{k: c[k] for k in PRECIO} for c in compras]
+
+
 def _mapa_uf(fecha):
     mapa = {"2026-01-01": 36000.0, "2026-03-01": 37000.0, "2026-07-17": 39000.0}
     return mapa[fecha.strftime("%Y-%m-%d")]
@@ -63,12 +74,13 @@ def test_consultar_item_calcula_reajuste_y_agregados(monkeypatch, tmp_path):
     esperado_2 = round(100000 * 39000 / 37000)
 
     assert resultado["encontrado"] is True
-    assert resultado["compras"] == [
+    assert _solo_precio(resultado["compras"]) == [
         {"n_ref": "UMAG-001", "fecha": "2026-01-01", "precio_original_sin_iva": 90000,
          "precio_reajustado_hoy": esperado_1, "precio_reajustado_hoy_con_iva": esperado_1},
         {"n_ref": "UMAG-002", "fecha": "2026-03-01", "precio_original_sin_iva": 100000,
          "precio_reajustado_hoy": esperado_2, "precio_reajustado_hoy_con_iva": esperado_2},
     ]
+    assert resultado["compras"][0]["categoria"] == "Herramientas Eléctricas"
     assert resultado["promedio_reajustado"] == round((esperado_1 + esperado_2) / 2)
     assert resultado["promedio_reajustado_con_iva"] == round((esperado_1 + esperado_2) / 2)
     assert resultado["rango_minimo"] == min(esperado_1, esperado_2)
@@ -186,7 +198,7 @@ def test_consultar_item_excluye_solo_la_compra_sin_uf_disponible(monkeypatch, tm
 
     esperado = round(90000 * 39000 / 36000)
     assert resultado["encontrado"] is True
-    assert resultado["compras"] == [
+    assert _solo_precio(resultado["compras"]) == [
         {"n_ref": "UMAG-001", "fecha": "2026-01-01", "precio_original_sin_iva": 90000,
          "precio_reajustado_hoy": esperado, "precio_reajustado_hoy_con_iva": esperado},
     ]
@@ -327,7 +339,7 @@ def test_consultar_item_pais_pe_no_llama_a_la_api_de_uf(monkeypatch, tmp_path):
     resultado = ch.consultar_item("taladro", fecha_hoy=date(2026, 7, 17), pais="PE")
 
     assert resultado["encontrado"] is True
-    assert resultado["compras"] == [{
+    assert _solo_precio(resultado["compras"]) == [{
         "n_ref": "LIMA-001", "fecha": "2026-01-15",
         "precio_original_sin_iva": 300,
         "precio_reajustado_hoy": 300, "precio_reajustado_hoy_con_iva": 354,

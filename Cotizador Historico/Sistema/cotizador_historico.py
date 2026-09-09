@@ -11,6 +11,7 @@ modo escritura ni lo modifica. Ver ../docs/superpowers/specs/
 
 from datetime import date, datetime
 from pathlib import Path
+import sys
 import unicodedata
 from difflib import SequenceMatcher
 import json
@@ -19,6 +20,13 @@ import urllib.request
 import zipfile
 
 import openpyxl
+
+# taxonomia.py vive junto a este archivo. Se asegura el directorio propio en
+# sys.path porque hay llamadores que importan este modulo por ruta (los
+# build_visualizador.py de Chile y Peru, y el driver de la skill).
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+import taxonomia  # noqa: E402
 
 RAIZ_MODULO = Path(__file__).resolve().parent.parent
 RUTA_EXCEL_CENTRO_COSTOS = RAIZ_MODULO.parent / "Centro de Costos" / "Excel" / "Centro de Costos.xlsx"
@@ -368,6 +376,71 @@ def reajustar_item(item, uf_hoy, cache_uf):
     }
 
 
+def agregar_taxonomia(compra):
+    """Agrega a una compra ya armada su clasificacion (categoria,
+    subcategoria, familia, material, medida y hoja).
+
+    La hoja es la unidad de comparacion de precios: dos compras solo se
+    promedian entre si si comparten hoja, es decir misma familia, mismo
+    material y misma medida -- "una caneria de cobre de 1/2 no es lo mismo
+    que una de 2" (pedido explicito del usuario). Se aplica en los dos
+    caminos (reajustar_todos para el dashboard, consultar_item para la
+    consulta puntual) para que ambos clasifiquen identico."""
+    clasif = taxonomia.clasificar(compra.get("nombre_item"), compra.get("descripcion"))
+    compra["categoria"] = clasif["categoria"]
+    compra["subcategoria"] = clasif["subcategoria"]
+    compra["familia"] = clasif["familia"]
+    compra["material"] = clasif["material"]
+    compra["medida"] = clasif["medida"]
+    compra["medida_mm"] = clasif["medida_mm"]
+    compra["cotizable"] = clasif["cotizable"]
+    compra["requiere_medida"] = clasif["requiere_medida"]
+    compra["hoja"] = taxonomia.clave_hoja(clasif)
+    return compra
+
+
+def agrupar_por_hoja(compras):
+    """Agrupa compras por hoja y calcula el precio de mercado de cada una.
+
+    Devuelve una lista de grupos ordenada por cantidad de compras. Un grupo
+    con una sola compra no tiene con que compararse: se informa igual, pero
+    su 'promedio' es esa unica compra (el consumidor decide como mostrarlo).
+    Los grupos no cotizables (peajes, combustible, alimentacion) se marcan
+    con cotizable=False: su precio unitario promedio no significa nada
+    porque cada compra es de una cantidad distinta."""
+    grupos = {}
+    for compra in compras:
+        clave = compra.get("hoja") or compra.get("nombre_item") or "Sin nombre"
+        grupo = grupos.setdefault(clave, {
+            "hoja": clave,
+            "categoria": compra.get("categoria"),
+            "subcategoria": compra.get("subcategoria"),
+            "familia": compra.get("familia"),
+            "material": compra.get("material"),
+            "medida": compra.get("medida"),
+            "cotizable": compra.get("cotizable", True),
+            "compras": [],
+        })
+        grupo["compras"].append(compra)
+
+    salida = []
+    for grupo in grupos.values():
+        sin_iva = [c["precio_reajustado_hoy"] for c in grupo["compras"]]
+        con_iva = [c["precio_reajustado_hoy_con_iva"] for c in grupo["compras"]]
+        grupo["n_compras"] = len(sin_iva)
+        grupo["promedio_reajustado"] = round(sum(sin_iva) / len(sin_iva))
+        grupo["promedio_reajustado_con_iva"] = round(sum(con_iva) / len(con_iva))
+        grupo["rango_minimo"] = min(sin_iva)
+        grupo["rango_maximo"] = max(sin_iva)
+        # dispersion: cuantas veces el mas caro al mas barato. Alta dispersion
+        # en una hoja cotizable es senal de que la hoja todavia mezcla
+        # productos distintos (o presentaciones distintas: unidad vs pack).
+        grupo["dispersion"] = round(grupo["rango_maximo"] / grupo["rango_minimo"], 1) if grupo["rango_minimo"] else None
+        salida.append(grupo)
+    salida.sort(key=lambda g: (-g["n_compras"], g["hoja"]))
+    return salida
+
+
 def reajustar_todos(items, uf_hoy, cache_uf=None):
     """Reajusta TODOS los items indexables (excluido_motivo is None) a la
     UF de hoy, sin filtrar por texto de busqueda -- lo usa el visualizador
@@ -399,7 +472,7 @@ def reajustar_todos(items, uf_hoy, cache_uf=None):
         compra["categoria_item"] = item.get("categoria_item")
         compra["proyecto"] = item.get("proyecto")
         compra["proveedor_tag"] = item.get("proveedor_tag")
-        reajustados.append(compra)
+        reajustados.append(agregar_taxonomia(compra))
 
     if propio_cache:
         guardar_cache_uf(cache_uf)
@@ -444,7 +517,7 @@ def armar_indice_completo_sin_reajuste(items):
         compra["categoria_item"] = item.get("categoria_item")
         compra["proyecto"] = item.get("proyecto")
         compra["proveedor_tag"] = item.get("proveedor_tag")
-        resultado.append(compra)
+        resultado.append(agregar_taxonomia(compra))
     return resultado, 0
 
 
@@ -466,16 +539,31 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
 
     'pais'="PE" salta el reajuste por UF por completo (ver
     armar_compra_sin_reajuste) -- nunca llama a mindicador.cl ni al cache
-    de disco para ese pais."""
+    de disco para ese pais.
+
+    Agrupacion por hoja (2026-09-08): cada compra vuelve clasificada (ver
+    agregar_taxonomia) y el resultado trae ademas "grupos", una entrada por
+    hoja (familia+material+medida) con su propio promedio y rango. El
+    promedio global sigue existiendo por compatibilidad, pero el que
+    responde la pregunta real es el del grupo: promediar un codo de 1/2 con
+    uno de 2 no estima el costo de ninguno de los dos.
+
+    Si el texto buscado incluye una medida ("codo bronce 1/2"), solo entran
+    al resultado las compras de esa misma medida; las demas se cuentan en
+    "descartadas_por_medida" y la medida detectada queda en
+    "medida_consultada". Sin medida en la consulta no se filtra nada."""
     hoy = fecha_hoy or date.today()
     items = cargar_items_detalle(ruta_excel, pais=pais)
     excluidos_count = sum(1 for it in items if it["excluido_motivo"] is not None)
+
+    medida_consultada = taxonomia.medida_canonica(texto_busqueda)
 
     coincidencias, sugerencias = buscar_items(items, texto_busqueda)
     if not coincidencias:
         return {
             "encontrado": False,
             "compras": [],
+            "grupos": [],
             "promedio_reajustado": None,
             "promedio_reajustado_con_iva": None,
             "rango_minimo": None,
@@ -484,6 +572,8 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
             "sugerencias": sugerencias,
             "sin_uf_count": 0,
             "uf_fuente": None,
+            "medida_consultada": medida_consultada,
+            "descartadas_por_medida": 0,
         }
 
     if pais == "PE":
@@ -503,10 +593,24 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
             compras.append(compra)
         guardar_cache_uf(cache_uf)
 
+    # Cada compra se lleva su clasificacion (el item original tiene el
+    # nombre/descripcion; la compra reajustada no los copiaba).
+    for compra, item in zip(compras, coincidencias):
+        compra["nombre_item"] = item["nombre_item"]
+        compra["descripcion"] = item["descripcion"]
+        agregar_taxonomia(compra)
+
+    descartadas_por_medida = 0
+    if medida_consultada:
+        del_tamano_pedido = [c for c in compras if c.get("medida") == medida_consultada]
+        descartadas_por_medida = len(compras) - len(del_tamano_pedido)
+        compras = del_tamano_pedido
+
     if not compras:
         return {
             "encontrado": False,
             "compras": [],
+            "grupos": [],
             "promedio_reajustado": None,
             "promedio_reajustado_con_iva": None,
             "rango_minimo": None,
@@ -515,6 +619,8 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
             "sugerencias": [],
             "sin_uf_count": sin_uf_count,
             "uf_fuente": uf_fuente,
+            "medida_consultada": medida_consultada,
+            "descartadas_por_medida": descartadas_por_medida,
         }
 
     reajustados = [c["precio_reajustado_hoy"] for c in compras]
@@ -522,6 +628,7 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
     return {
         "encontrado": True,
         "compras": compras,
+        "grupos": agrupar_por_hoja(compras),
         "promedio_reajustado": round(sum(reajustados) / len(reajustados)),
         "promedio_reajustado_con_iva": round(sum(reajustados_con_iva) / len(reajustados_con_iva)),
         "rango_minimo": min(reajustados),
@@ -530,4 +637,6 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
         "sugerencias": [],
         "sin_uf_count": sin_uf_count,
         "uf_fuente": uf_fuente,
+        "medida_consultada": medida_consultada,
+        "descartadas_por_medida": descartadas_por_medida,
     }

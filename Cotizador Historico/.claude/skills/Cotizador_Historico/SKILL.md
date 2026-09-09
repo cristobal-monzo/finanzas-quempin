@@ -44,6 +44,20 @@ y ajuste actual con IVA — este último con la tasa real de IVA del
 documento original, no 19% fijo, igual que hace Centro de Costos), más una
 fila de promedio y el rango (sin IVA).
 
+Desde 2026-09-08 muestra además una **tabla por hoja** (familia + material +
+medida) cuando la búsqueda cae en más de una: ese es el número que responde
+la pregunta real, porque el promedio global mezcla productos distintos. Y si
+el texto buscado trae una medida, **filtra a esa medida**:
+
+```
+python ".claude/skills/Cotizador_Historico/driver.py" consultar "codo bronce 1.1/4"
+```
+
+```
+Medida detectada en la consulta: 1.1/4" -- solo se muestran compras de esa
+medida (46 compra(s) de otra medida quedaron fuera).
+```
+
 ```
 python ".claude/skills/Cotizador_Historico/driver.py" consultar "taladro"
 ```
@@ -90,6 +104,27 @@ procedimiento paso a paso dentro del flujo de publicación.
 python ".claude/skills/Cotizador_Historico/driver.py" visualizador --uf-manual 39200.50 --uf-fuente "Banco Central de Chile, 20-08-2026"
 ```
 
+**`categorias [--detalle "<categoria>"] [--top N]`** — auditoría de la
+clasificación. **No usa la red** (no pide UF: revisar categorías no necesita
+reajustar precios) y no escribe nada. Reporta:
+
+- la distribución por categoría, separando catálogo cotizable de gastos de
+  operación;
+- la cola de **"Sin Clasificar"** — cada uno necesita una regla nueva en
+  `Sistema/catalogo_taxonomia.py`;
+- los ítems que **requieren medida y no la tienen** (siguen visibles y
+  contados, pero no se promedian con los que sí la tienen);
+- cuántas compras tienen al menos otra con que compararse.
+
+```
+python ".claude/skills/Cotizador_Historico/driver.py" categorias
+python ".claude/skills/Cotizador_Historico/driver.py" categorias --detalle "Piping"
+```
+
+**Corre este comando después de tocar `catalogo_taxonomia.py`** (y
+`py -3.14 -m pytest` antes), y compara que no se haya movido nada que ya
+estaba bien clasificado.
+
 ## Perú (`--pais CL|PE`)
 
 Los 3 comandos (`status`/`consultar`/`visualizador`) aceptan `--pais CL|PE`
@@ -129,6 +164,16 @@ conversacionalmente.
 - **Sin cotizaciones todavía**: este cotizador solo ve compras ya
   realizadas (Factura/Boleta/Guía de Despacho en Centro de Costos), no
   presupuestos. Ver "Alcance actual (v1)" en `../../CLAUDE.md`.
+- **La taxonomía se edita en `Sistema/catalogo_taxonomia.py`, nunca en
+  `template.html`** (2026-09-08). El HTML dejó de clasificar: solo lee lo que
+  el snapshot ya trae. Volver a clasificar en JavaScript reintroduce la
+  divergencia Chile/Perú que ese cambio eliminó (Perú se había quedado sin la
+  categoría Instrumentación durante 8 días sin que nadie lo notara).
+- **Ningún ítem se oculta por no tener medida** (2026-09-08). Antes el
+  dashboard descartaba en silencio cualquier fitting sin medida o material
+  detectable: 136 de 1193 compras (11,4%). Ahora quedan en una hoja marcada
+  `(sin medida)`, visibles, y salen listados en `categorias`. Si un ítem no
+  aparece donde debería, revisar ese comando antes de suponer un filtro.
 - **Ítems sin fecha resoluble quedan fuera silenciosamente del índice** —
   `status` reporta cuántos son; si un ítem que debería aparecer no
   aparece en una búsqueda, revisar primero si está en ese conteo de
@@ -148,3 +193,6 @@ conversacionalmente.
 | Algunas compras encontradas no aparecen en el resultado | Revisar el aviso `[INFO] N compra(s)... se excluyeron del resultado por no poder obtener su UF` al final de la salida — esa(s) fecha(s) específica(s) no se pudieron reajustar (sin conexión, o sin dato en mindicador.cl para esa fecha puntual), pero el resto de las compras encontradas sí se muestran |
 | Un ítem que sé que existe no aparece en `consultar` | Correr `status`: revisar el conteo de "Excluidos" — probablemente su `N° Ref.` no tiene fila en `Master`, su `Fecha` no es una fecha válida, su celda de precio unitario está vacía/no es un número, o es una Nota de Crédito/devolución (precio unitario negativo, excluida a propósito) |
 | `ModuleNotFoundError: No module named 'openpyxl'` | `pip install openpyxl` |
+| Un ítem quedó en la categoría equivocada | Correr `categorias --detalle "<categoria>"` para ver dónde cayó, y agregar/ajustar su regla en `Sistema/catalogo_taxonomia.py`. Si una palabra genérica se lo está llevando, la regla más específica gana subiéndole `prioridad_extra` o escribiendo la frase completa (el match es por palabra, y una frase de 2 palabras pesa más que una de 1) |
+| Una hoja mezcla productos que no son el mismo | Revisar la columna de dispersión en `consultar`: una hoja cotizable con dispersión alta suele ser presentación distinta (unidad vs pack) o una medida que no se pudo leer. Ver "Pendiente (fase 2)" en el spec de la taxonomía |
+| Aparece "Sin Clasificar" en el KPI del dashboard | Es una cola de trabajo, no un error: correr `categorias` para ver cuáles son y agregarles regla |

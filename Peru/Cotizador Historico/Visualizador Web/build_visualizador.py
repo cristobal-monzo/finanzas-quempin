@@ -36,6 +36,16 @@ RUTA_DATA_JSON = RAIZ / "data" / "cotizador-historico-peru.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
 
+def _catalogo_categorias():
+    """El catalogo de categorias tal como lo consume el template (icono y si
+    la categoria es cotizable). Va en el snapshot para que exista una sola
+    fuente de verdad: Sistema/catalogo_taxonomia.py."""
+    return {
+        nombre: {"icono": icono, "cotizable": cotizable}
+        for nombre, (icono, cotizable) in ch.taxonomia.CATEGORIAS.items()
+    }
+
+
 def extraer_indice_saneado(ruta_excel=None):
     """Lee Detalle+Master de Centro de Costos Peru.xlsx (pais="PE") y arma
     el indice completo SIN reajuste (ver ch.armar_indice_completo_sin_reajuste)
@@ -49,6 +59,7 @@ def extraer_indice_saneado(ruta_excel=None):
         "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
         "excluidos_count": excluidos_count,
         "sin_uf_count": sin_uf_count,
+        "categorias": _catalogo_categorias(),
         "items": reajustados,
     }
 

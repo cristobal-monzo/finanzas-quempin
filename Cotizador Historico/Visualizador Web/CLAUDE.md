@@ -161,51 +161,42 @@ El dashboard organiza el catálogo en un explorador de carpetas de 3
 niveles — **Categoría → Subcategoría → Hoja** — en vez de una tabla plana o
 un ranking Top N.
 
-- `clasificarItem(item)` — heurística por palabras clave que asigna a cada
-  ítem: `categoria` (dominio, ej. "Piping Bronce", "Herramientas
-  Eléctricas", "Otros / Servicios" como categoría de respaldo), `material`
-  (Cobre/Bronce/Galvanizado/Inoxidable/PPR, detectado por palabra clave en
-  nombre+descripción), `medida` (`extraerMedida` — pulgadas con fracción
-  mixta, mm, cm), y las banderas `requiereMaterial`/`requiereMedida` que
-  gatillan la regla de visibilidad de abajo.
-- **`limpiarGenericoDeMaterial`**: el campo "Nombre Ítem" del Excel a veces
-  ya trae el material incluido (ej. "Codo bronce", pese a que la
-  convención documentada en `../CLAUDE.md` pide que sea genérico sin
-  material) — sin esta limpieza, la subcarpeta terminaría diciendo "Codo
-  bronces de Bronce" (duplicado). Se le quita la palabra de material
-  detectada antes de construir subcategoría/hoja.
-- **`detectarTipoGenerico`** — busca, palabra por palabra, si el nombre (o
-  si no encuentra nada ahí, la descripción) contiene alguna palabra ya
-  conocida por el clasificador (`PALABRAS_TIPO_CONOCIDAS`, la unión de
-  todos los `GRUPOS_*` de una sola palabra) y usa esa palabra real como
-  subcategoría — fusiona automáticamente accesorios/variantes/sets con el
-  tipo de producto real (ej. "Set 16 pzas destornillador precision" se une
-  a "Destornilladores" en vez de generar su propia carpeta). La palabra
-  detectada se normaliza con `capitalizar()` para que no queden
-  subcategorías duplicadas por mayúscula/minúscula.
-- `subcategoriaDe`/`hojaDe` construyen las etiquetas de carpeta: la
-  subcategoría es la **primera palabra** del genérico (vía
-  `detectarTipoGenerico` si aplica), pluralizada (+ " de <Material>" si
-  aplica, ej. "Codos de Bronce", "Llaves", "Destornilladores"). La hoja usa
-  el genérico completo (no solo la primera palabra) + material/medida,
-  evitando duplicar el material o la medida si ya están contenidos en el
-  nombre (`contieneTexto`). `pluralizar` es un heurístico simple (vocal
-  final → +s, consonante → +es, "-ión" → "-iones") — no maneja plurales
-  irregulares del español perfectamente (ej. "Setes" en vez de "Sets"),
-  aceptado como limitación conocida de una heurística, no un bug a
-  perseguir.
-- **Regla de visibilidad**: tuberías/fittings (`GRUPOS_PIPING`, incluido
-  inoxidable) exigen **medida Y material** — sin material no hay categoría
-  de piping a la que asignarlo, así que el ítem queda fuera del dashboard
-  completo (no solo oculto) hasta que se corrija el dato de origen.
-  Pernos/tornillos/remaches/autoperforantes/brocas (`GRUPOS_CONSUMIBLE_MEDIDA`)
-  exigen solo medida. El resto de las categorías no exige nada.
-- `buildLeafIndex`/`MARKET_STATS` agrupan por **hoja** (no por
-  `nombre_item` crudo) — dos codos de bronce de distinta medida nunca se
-  promedian/comparan como si fueran el mismo producto. Cada hoja trae
+**La clasificación ya no se hace acá** (cambio del 2026-09-08). Hasta esa
+fecha este template tenía ~290 líneas de JavaScript con listas de palabras
+clave (`clasificarItem`, `GRUPOS_*`, `extraerMedida`, `detectarTipoGenerico`,
+`subcategoriaDe`/`hojaDe`), duplicadas en el template de Perú y **ya
+divergentes** entre ambos, sin ningún test, y que la consulta por consola no
+usaba. Todo eso se movió a `../Sistema/taxonomia.py` +
+`../Sistema/catalogo_taxonomia.py`; el motivo, las mediciones sobre el
+catálogo real y las decisiones de diseño están en
+[`../docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md`](../docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md)
+y resumidas en [`../CLAUDE.md`](../CLAUDE.md) § Taxonomía.
+
+Lo que hace hoy el template:
+
+- `build_visualizador.py` deja cada ítem del snapshot con `categoria`,
+  `subcategoria`, `familia`, `material`, `medida`, `hoja` y `cotizable` ya
+  resueltos, más un mapa `DATA.categorias` con el ícono y si la categoría es
+  cotizable.
+- El template solo copia esos campos a `it._clasif` (32 líneas) y arma el
+  árbol. **Para cambiar cómo se clasifica algo se edita
+  `catalogo_taxonomia.py` y se regenera el build; acá no hay nada que
+  tocar.**
+- `ITEMS_VISIBLES` es ahora `DATA.items` completo: **ningún ítem se oculta**.
+  La `esVisible` anterior descartaba del dashboard cualquier fitting sin
+  medida o material detectable — 136 de 1193 compras (11,4%), en silencio.
+  Ahora esos quedan en una hoja marcada `(sin medida)`, visibles y contados.
+- El filtro "Categoría" del buscador usa la categoría de la taxonomía, no la
+  columna `Categoría Ítem` del Excel (que tiene 16 valores con duplicados
+  por tilde: `Ferreteria`/`Ferretería`, `Alimentacion`/`Alimentación`).
+- Los KPIs muestran ahora **Catálogo cotizable** (productos vs gastos de
+  operación) y **Sin clasificar**, que es una cola de trabajo visible: si
+  crece, hay que agregarle reglas al catálogo.
+- `buildLeafIndex`/`MARKET_STATS` siguen agrupando por **hoja**
+  (`familia + material + medida`) — dos codos de bronce de distinta medida
+  nunca se promedian como si fueran el mismo producto. Cada hoja trae
   `n_compras`, `promedio_con_iva`, `precio_min_con_iva`,
-  `proveedor_min_con_iva` (con IVA, porque es lo que ve el comprador
-  final).
+  `proveedor_min_con_iva` (con IVA, porque es lo que ve el comprador final).
 - `buildCategoryTree` arma el árbol navegable; el estado de navegación
   (`folderState.categoria/subcategoria/hoja`) se renderiza con
   `renderFolderBrowser` + `renderBreadcrumb` sobre `#folderBrowser`/
@@ -213,23 +204,6 @@ un ranking Top N.
   (promedio, más barato + proveedor) y reutiliza `renderRefCard` para cada
   compra individual de esa hoja — incluyendo el "Agregar al cotizador" de
   cada una.
-- **Iconos por categoría** (`ICONOS_CATEGORIA`) — un emoji plano por
-  categoría, reutilizado entre categorías de piping similares con solo el
-  color/tono cambiando (🟠 Cobre, 🟡 Bronce, ⚪ Inoxidable, ⚙️ Galvanizado).
-- **Destacado de proveedor más barato**: en cualquier tarjeta de
-  referencia (`renderRefCard`), si su hoja tiene más de una compra y esta
-  tarjeta es la de menor precio con IVA, se le agrega la clase
-  `is-cheapest` + una insignia "💲 Proveedor más barato entre N" — visible
-  tanto en resultados de búsqueda como dentro del detalle de una hoja.
-- **Buscador dual**: `buscarCarpetas(texto)` busca el texto contra los
-  nombres de categoría/subcategoría del árbol (no contra hojas
-  individuales, que ya cubre la búsqueda normal de ítems) y se muestra en
-  una sección aparte ("📁 Categorías encontradas", `#searchFolderMatches`)
-  con ícono de carpeta, claramente separada de "Referencias encontradas".
-- **Layout**: el buscador (con sus filtros) va en la parte superior del
-  panel, justo debajo del KPI row; el explorador de carpetas es
-  herramienta secundaria de navegación, debajo de los resultados de
-  búsqueda.
 
 ## Política: ítems que el clasificador no reconoce
 

@@ -1,0 +1,459 @@
+# -*- coding: utf-8 -*-
+"""
+taxonomia.py -- clasifica cada item comprado en categoria > subcategoria >
+hoja, y extrae su medida normalizada. Es el MOTOR; los datos (categorias,
+materiales, reglas) viven en catalogo_taxonomia.py.
+
+Lo consumen los dos caminos del modulo, para que la consulta por consola y
+el dashboard web clasifiquen exactamente igual:
+  - cotizador_historico.consultar_item  (CLI y conversacion)
+  - Visualizador Web/build_visualizador.py  (dashboard, Chile y Peru)
+
+Cuatro etapas independientes y testeables por separado:
+
+  1. normalizar/raiz  -- texto comparable (sin tildes, sin plural)
+  2. parsear_medidas  -- gramatica de medidas: "1.1/4 plg" -> 1.1/4"
+  3. clasificar       -- categoria/subcategoria/familia por catalogo de reglas
+  4. clave_hoja       -- familia + material + medida = la unidad de comparacion
+                         de precios ("Codo de Bronce 1.1/4\"")
+
+Por que existe (2026-09-08): antes esta logica vivia en JavaScript dentro de
+Visualizador Web/template.html, duplicada y ya divergente entre Chile y Peru,
+sin tests, y sin que la consulta por consola la usara. Ademas leia mal las
+fracciones mixtas del catalogo chileno ("1.1/4" se leia "1/4"), asi que
+promediaba en una sola hoja productos de tamanos distintos. Ver
+docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md.
+
+REGLA DE ORO: ningun item se oculta. Si no se le puede extraer la medida, la
+hoja queda marcada "(sin medida)" y el item sigue visible y contable -- el
+sistema anterior descartaba 136 de 1193 compras (11,4%) sin avisar.
+"""
+import re
+import unicodedata
+from fractions import Fraction
+
+from catalogo_taxonomia import CATEGORIAS, CATEGORIAS_CON_MEDIDA, MATERIALES, REGLAS
+
+
+# ====================== 1-2. MEDIDAS ======================
+
+DENOM_VALIDOS = {2, 3, 4, 8, 16, 32, 64}
+
+# Angulos tipicos de un fitting ("Codo 90", "Curva 45"): nunca son el diametro.
+ANGULOS_DE_FITTING = {22, 45, 60, 90, 135, 180}
+
+# Ningun fitting del catalogo pasa de 24 pulgadas nominales.
+MAX_PULGADAS_NOMINAL = 24
+
+UNIDADES_PULGADA = {'"', "''", '”', '“', 'plg', 'plgs', 'pulg', 'pulgs', 'pulgada', 'pulgadas', 'pg', 'in', 'inch'}
+UNIDADES_MM = {'mm'}
+UNIDADES_CM = {'cm'}
+UNIDADES_M = {'m', 'mt', 'mts', 'metro', 'metros'}
+UNIDADES_LONGITUD = UNIDADES_PULGADA | UNIDADES_MM | UNIDADES_CM | UNIDADES_M
+
+CORTES_ADMIN = re.compile(
+    r'\b(cod|codigo|codigos|ref|factura|boleta|guia|doc|documento|folio|pedido|neto|ingreso|serie|sku|ean)\b\.?',
+    re.I)
+
+_ENTERO = r'\d+'
+_DEC = r'\d+[.,]\d+'
+_FRAC = r'\d+\s*/\s*\d+'
+_MIXTA = r'\d+\s*[.\-·]\s*\d+\s*/\s*\d+|\d+\s+\d+\s*/\s*\d+'
+_COMPONENTE = r'(?:' + _MIXTA + r'|' + _FRAC + r'|' + _DEC + r'|' + _ENTERO + r')'
+_UNIDAD = r'(?:"|\'\'|”|plgs?\.?|pulgs?\.?|pulgadas?|pg|in|inch|mm|cm|mts?|metros?)'
+
+# Un grupo dimensional: A [unidad] [x B [unidad]]... con la unidad opcional
+# en cada componente y/o una sola al final.
+PATRON_GRUPO = re.compile(
+    r'(?<![\w/])' + _COMPONENTE + r'\s*' + _UNIDAD + r'?' +
+    r'(?:\s*[x×]\s*' + _COMPONENTE + r'\s*' + _UNIDAD + r'?)*',
+    re.I)
+PATRON_COMP_UNIDAD = re.compile(r'(' + _COMPONENTE + r')\s*(' + _UNIDAD + r')?', re.I)
+
+
+class Medida(object):
+    """Una medida dimensional: uno o mas componentes que comparten unidad.
+
+    componentes: lista de Fraction (pulgadas) o float (mm)
+    unidad: 'plg' | 'mm'
+    """
+
+    __slots__ = ('componentes', 'unidad')
+
+    def __init__(self, componentes, unidad):
+        self.componentes = list(componentes)
+        self.unidad = unidad
+
+    @property
+    def principal(self):
+        return max(self.componentes)
+
+    @property
+    def mm(self):
+        v = float(self.principal)
+        return v * 25.4 if self.unidad == 'plg' else v
+
+    def canonico(self):
+        vistos = []
+        for c in self.componentes:
+            t = fraccion_a_texto(c) if self.unidad == 'plg' else ('%g' % float(c))
+            vistos.append(t)
+        # componentes todos iguales -> se muestra uno solo ("1/2x1/2" -> 1/2")
+        if len(set(vistos)) == 1:
+            vistos = vistos[:1]
+        suf = '"' if self.unidad == 'plg' else 'mm'
+        return 'x'.join(vistos) + suf
+
+    def __eq__(self, otro):
+        return (isinstance(otro, Medida) and self.unidad == otro.unidad
+                and self.componentes == otro.componentes)
+
+    def __hash__(self):
+        return hash((self.unidad, tuple(self.componentes)))
+
+    def __repr__(self):
+        return 'Medida(%s)' % self.canonico()
+
+
+def fraccion_a_texto(f):
+    """Fraction -> convencion chilena del catalogo: 1.1/4, 3/4, 2."""
+    f = Fraction(f)
+    entero = f.numerator // f.denominator
+    resto = f - entero
+    if resto == 0:
+        return str(entero)
+    frac = '%d/%d' % (resto.numerator, resto.denominator)
+    return frac if entero == 0 else '%d.%s' % (entero, frac)
+
+
+def parsear_numero(txt):
+    """'1.1/4' y '1 1/4' -> Fraction(5,4). '3/4' -> Fraction(3,4). '25' -> 25.
+
+    Devuelve (valor, es_fraccionario) o (None, False) si no es un numero
+    dimensional valido (denominador de codigo de modelo, fraccion impropia)."""
+    t = txt.strip()
+    pegada = re.match(r'^(\d+)\s*[.\-·]\s*(\d+)\s*/\s*(\d+)$', t)
+    m = pegada or re.match(r'^(\d+)\s+(\d+)\s*/\s*(\d+)$', t)
+    if m:
+        ent, num, den = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if den not in DENOM_VALIDOS or num >= den:
+            return None, False
+        # "Codo BR 90 3/4" es un codo de 90 grados y 3/4 de pulgada, no uno de
+        # noventa y tres cuartos: si la parte entera separada por espacio es un
+        # angulo tipico de fitting, no forma parte de la medida. Y ningun
+        # fitting del catalogo pasa de 24", asi que una parte entera mayor es
+        # otro numero pegado (un codigo, una cantidad).
+        # Se descarta solo la parte entera, no la medida completa: "Codo BR
+        # 90 3/4" sigue siendo un codo de 3/4 de pulgada.
+        if ent > MAX_PULGADAS_NOMINAL or (not pegada and ent in ANGULOS_DE_FITTING):
+            return Fraction(num, den), True
+        return Fraction(ent) + Fraction(num, den), True
+    t = t.replace(' ', '')
+    m = re.match(r'^(\d+)/(\d+)$', t)
+    if m:
+        num, den = int(m.group(1)), int(m.group(2))
+        if den not in DENOM_VALIDOS or num >= den * 8:
+            return None, False
+        return Fraction(num, den), True
+    m = re.match(r'^(\d+)[.,](\d+)$', t)
+    if m:
+        return Fraction(m.group(1) + '.' + m.group(2)), False
+    if re.match(r'^\d+$', t):
+        return Fraction(int(t)), False
+    return None, False
+
+
+def _unidad_canonica(txt):
+    u = (txt or '').strip().lower().rstrip('.')
+    if u in UNIDADES_PULGADA:
+        return 'plg'
+    if u in UNIDADES_MM:
+        return 'mm'
+    if u in UNIDADES_CM:
+        return 'cm'
+    if u in UNIDADES_M:
+        return 'm'
+    return None
+
+
+def texto_util(texto):
+    """Quita el texto administrativo (codigos, folios, facturas) donde los
+    numeros no son medidas."""
+    t = ' ' + str(texto or '') + ' '
+    m = CORTES_ADMIN.search(t)
+    if m:
+        t = t[:m.start()]
+    t = re.sub(r'\(\s*\d{1,3}\s*\)', ' ', t)                       # (04): codigo de catalogo
+    t = re.sub(r'\bN\s*[°º]\s*[\d.\-]+', ' ', t, flags=re.I)        # N°148985129
+    t = re.sub(r'\b[A-Za-z]{1,6}[\-]?\d{2,}[A-Za-z0-9\-/]*\b', ' ', t)  # SS316, A234, VFB50-A, NB2-40/42
+    t = re.sub(r'\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b', ' ', t)          # fechas (ano completo, para no comerse '2,5-3/32')
+    t = re.sub(r'\b\d{5,}\b', ' ', t)
+    # magnitudes que no son dimensiones
+    t = re.sub(r'\b\d+(?:[.,]\d+)?\s*(v|kv|w|kw|a|ma|kg|kgs|gr|grs|g|ml|cc|lt|lts|l|oz|psi|bar|hz|rpm|db|ah|'
+               r'octanos|micrones|micras|un|uds|unidades|pzs|piezas|hjs|hojas|dias|mts2|m2|m3|pcs|pack)\b',
+               ' ', t, flags=re.I)
+    t = re.sub(r'\b\d+\s*[°º]\s*(c|k)?\b', ' ', t, flags=re.I)      # 90°, 105C
+    return t
+
+
+def parsear_medidas(texto):
+    """Lista de Medida encontradas en el texto, en orden de aparicion."""
+    t = texto_util(texto)
+    salida = []
+    for g in PATRON_GRUPO.finditer(t):
+        crudo = g.group(0)
+        pares = [(c, u) for c, u in PATRON_COMP_UNIDAD.findall(crudo) if c.strip()]
+        if not pares:
+            continue
+        unidad_final = None
+        for _, u in pares:
+            cu = _unidad_canonica(u)
+            if cu:
+                unidad_final = cu
+        # cada componente: unidad propia > unidad del grupo > pulgada si es fraccion
+        por_unidad = {}
+        orden = []
+        for comp, u in pares:
+            valor, es_frac = parsear_numero(comp)
+            if valor is None:
+                continue
+            # Una fraccion es SIEMPRE pulgada en este catalogo, aunque el grupo
+            # traiga una unidad metrica al final ('2.1/2x10cm' = 2.1/2" de diametro
+            # por 10 cm de largo, no 2,5 cm).
+            cu = 'plg' if es_frac else (_unidad_canonica(u) or unidad_final)
+            if cu is None:
+                continue                      # entero pelado sin unidad: no es medida
+            if cu == 'cm':
+                valor, cu = valor * 10, 'mm'
+            elif cu == 'm':
+                valor, cu = valor * 1000, 'mm'
+            if cu not in por_unidad:
+                por_unidad[cu] = []
+                orden.append(cu)
+            por_unidad[cu].append(valor)
+        for cu in orden:
+            salida.append(Medida(por_unidad[cu], cu))
+    return salida
+
+
+# Palabras que convierten al numero que sigue en una cantidad, no en una
+# medida: "Pack 2 curva PVC" son dos curvas, no una curva de 2 pulgadas.
+CUANTIFICADORES = {'pack', 'set', 'juego', 'kit', 'caja', 'bolsa', 'par', 'pares',
+                   'unidad', 'unidades', 'cantidad', 'bulto', 'rollo', 'tira', 'barra'}
+
+_PATRON_ENTERO_SOLO = re.compile(
+    r'(?<![\w./-])(\d{1,2})(?![\w/."\u00b0\u00ba]|\s*[-/]\s*\d)')
+
+
+# "032" (con cero a la izquierda) es como el catalogo escribe las medidas
+# PPR/PVC en milimetros: 020, 025, 032, 040, 050, 063, 090. El cero inicial
+# es la firma que lo distingue de una cantidad.
+_PATRON_MM_CERO_IZQ = re.compile(r'(?<![\w.])0(\d{2})(?![\w/."])')
+
+# DN50 = diametro nominal 50 mm (norma ISO). PN16 es presion nominal, no
+# diametro: por eso el patron pide "dn" explicito y no "[a-z]{2}".
+_PATRON_DN = re.compile(r'\bDN\s*(\d{1,4})\b', re.I)
+
+
+def medida_metrica_por_convencion(textos):
+    """Las dos convenciones metricas del catalogo que no llevan unidad
+    escrita: 'DN50' y el '032' del PPR."""
+    for texto in textos:
+        t = str(texto or '')
+        m = _PATRON_DN.search(t)
+        if m:
+            return Medida([Fraction(int(m.group(1)))], 'mm')
+    for texto in textos:
+        m = _PATRON_MM_CERO_IZQ.search(texto_util(texto))
+        if m:
+            return Medida([Fraction(int(m.group(1)))], 'mm')
+    return None
+
+
+def entero_pelado_como_pulgada(textos):
+    """Un entero suelto leido como diametro nominal en pulgadas.
+
+    El catalogo escribe a veces el diametro sin unidad ("Copla cobre 2 SO",
+    "Tee galv. 1 NPT"). Fuera del piping un entero suelto NO es una medida
+    (una gasolina de 93 octanos no mide 93 pulgadas), por eso esto solo se
+    usa cuando la categoria del item la requiere -- ver clasificar().
+
+    Tres guardas, cada una por un error real encontrado al medirlo sobre el
+    catalogo (2026-09-08): no toma angulos de fitting ("Codo 90"), no toma
+    la cantidad de un envase ("Pack 2 curva"), y no toma el extremo de un
+    rango metrico ("abrazadera 8-12mm")."""
+    for texto in textos:
+        t = texto_util(texto)
+        palabras = t.split()
+        for i, palabra in enumerate(palabras):
+            m = _PATRON_ENTERO_SOLO.fullmatch(palabra)
+            if not m:
+                continue
+            valor = int(m.group(1))
+            if valor < 1 or valor > 24 or valor in ANGULOS_DE_FITTING:
+                continue
+            anterior = palabras[i - 1].lower().strip('.,') if i else ''
+            if anterior in CUANTIFICADORES:
+                continue
+            return Medida([Fraction(valor)], 'plg')
+    return None
+
+
+def medida_principal(*textos, aceptar_entero=False):
+    """La medida que identifica al producto entre todas las del nombre y la
+    descripcion. La pulgada manda sobre el metrico porque en este catalogo el
+    diametro nominal va en pulgadas y el largo en cm/mm.
+
+    aceptar_entero habilita el ultimo recurso de leer un entero suelto como
+    pulgadas (ver entero_pelado_como_pulgada); solo se usa en las familias
+    donde la medida es obligatoria."""
+    candidatas = []
+    for t in textos:
+        candidatas.extend(parsear_medidas(t))
+    if not candidatas:
+        if not aceptar_entero:
+            return None
+        return medida_metrica_por_convencion(textos) or entero_pelado_como_pulgada(textos)
+    pulg = [c for c in candidatas if c.unidad == 'plg']
+    if pulg:
+        return max(pulg, key=lambda c: (len(c.componentes), c.principal))
+    return candidatas[0]
+
+
+def medida_canonica(*textos, aceptar_entero=False):
+    m = medida_principal(*textos, aceptar_entero=aceptar_entero)
+    return m.canonico() if m else None
+
+
+# ============ 1b. NORMALIZACION Y 3-4. CLASIFICACION ============
+
+NEGADORES = {'sin', 's', 'no', 'excepto', 'salvo'}
+
+
+def sin_tildes(s):
+    return ''.join(c for c in unicodedata.normalize('NFD', str(s or '')) if unicodedata.category(c) != 'Mn')
+
+
+def normalizar(s):
+    s = sin_tildes(s).lower()
+    s = re.sub(r'[^a-z0-9ñ]+', ' ', s)
+    return re.sub(r'\s+', ' ', s).strip()
+
+
+def singular(p):
+    """Raiz para comparar: quita el plural y la 'e' final.
+
+    El espanol no permite deducir el singular desde el plural sin lexico
+    ('guantes'->guante pero 'tapones'->tapon, ambos con consonante antes de
+    '-es'), asi que no se intenta: se lleva ambas formas a la misma raiz
+    ('guante'/'guantes' -> 'guant', 'tapon'/'tapones' -> 'tapon').
+    """
+    if len(p) <= 3:
+        return p
+    if p.endswith('ces'):
+        p = p[:-3] + 'z'
+    elif p.endswith('s'):
+        p = p[:-1]
+    if len(p) > 3 and p.endswith('e'):
+        p = p[:-1]
+    return p
+
+
+# Palabras vacias: se descartan antes de comparar, para que "tapon para
+# oido" y "tapon oido" sean la misma secuencia, y una regla escrita como
+# "valvula de bola" matchee tambien "valvula bola". Los negadores (sin, s/,
+# no) NO son palabras vacias: se necesitan para descartar un match ("soplete
+# s/abrazadera" no es un fitting).
+VACIAS = {'de', 'del', 'la', 'el', 'los', 'las', 'lo', 'y', 'o', 'con', 'para',
+          'por', 'a', 'al', 'en', 'un', 'una', 'unos', 'unas', 'su'}
+
+
+def lemas(s):
+    return [singular(t) for t in normalizar(s).split() if t not in VACIAS]
+
+
+def _posiciones(lemas_texto, termino):
+    """Posiciones donde el termino (1..n palabras) aparece como secuencia
+    completa de lemas. Match por palabra: 'tee' NO matchea dentro de
+    'steelgen', y 'dado' no matchea 'dado que' porque se exige ademas que no
+    venga negado."""
+    pal = [singular(p) for p in normalizar(termino).split() if p not in VACIAS]
+    if not pal:
+        return []
+    n = len(pal)
+    out = []
+    for i in range(len(lemas_texto) - n + 1):
+        if lemas_texto[i:i + n] == pal:
+            out.append(i)
+    return out
+
+
+def _negado(lemas_texto, pos):
+    return pos > 0 and lemas_texto[pos - 1] in NEGADORES
+
+
+def detectar_material(nombre, descripcion):
+    lt = lemas(nombre) + lemas(descripcion)
+    for terminos, canonico in MATERIALES:
+        for t in terminos:
+            for p in _posiciones(lt, t):
+                if not _negado(lt, p):
+                    return canonico
+    return None
+
+
+def clasificar(nombre_item, descripcion):
+    """-> dict con categoria, subcategoria, familia, material, medida, score."""
+    nombre = nombre_item or ''
+    desc = descripcion or ''
+    lem_nombre = lemas(nombre)
+    lem_desc = lemas(desc)
+
+    mejor = None
+    for idx, (terminos, cat, sub, familia, extra) in enumerate(REGLAS):
+        for termino in terminos:
+            npal = len(normalizar(termino).split())
+            for lem, bono in ((lem_nombre, 30), (lem_desc, 0)):
+                for p in _posiciones(lem, termino):
+                    if _negado(lem, p):
+                        continue
+                    score = 100 + extra + bono + 10 * npal
+                    if mejor is None or score > mejor[0]:
+                        mejor = (score, cat, sub, familia, termino)
+                    break
+
+    material = detectar_material(nombre, desc)
+    if mejor is None:
+        cat, sub, familia, score, termino = 'Sin Clasificar', 'Sin Clasificar', (nombre.strip() or 'Ítem'), 0, None
+    else:
+        score, cat, sub, familia, termino = mejor
+
+    # La categoria se resuelve ANTES de medir: solo las familias que
+    # comparan por medida aceptan el entero pelado como pulgadas.
+    requiere_medida = cat in CATEGORIAS_CON_MEDIDA
+    medida = medida_principal(nombre, desc, aceptar_entero=requiere_medida)
+    return {
+        'categoria': cat,
+        'subcategoria': sub,
+        'familia': familia,
+        'material': material,
+        'medida': medida.canonico() if medida else None,
+        'medida_mm': medida.mm if medida else None,
+        'score': score,
+        'termino': termino,
+        'cotizable': CATEGORIAS.get(cat, ('', True))[1],
+        'requiere_medida': requiere_medida,
+    }
+
+
+def clave_hoja(c):
+    """La unidad de comparacion de precios: familia + material + medida.
+    Nunca mezcla un codo de 1/2 con uno de 2, ni cobre con bronce."""
+    partes = [c['familia']]
+    if c['material']:
+        partes.append('de ' + c['material'])
+    if c['medida']:
+        partes.append(c['medida'])
+    elif c['requiere_medida']:
+        partes.append('(sin medida)')
+    return ' '.join(partes)

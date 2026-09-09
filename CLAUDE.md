@@ -91,6 +91,18 @@ de `auditor_centro_costos.main()`.
 
 **Análisis Financiero** es distinto a los demás: no es solo un pipeline de registro, es un rol consultivo — actúa como analista financiero experto (evalúa proyectos, propone/depura KPIs, decide cómo presentar la información, cruza todos los módulos), sobre un Excel (`Análisis de Proyectos.xlsx`) que consolida costos reales de Centro de Costos contra ventas y proyecciones manuales por proyecto. **Reorganizado 2026-07-21**: `Análisis Financiero/` contiene únicamente el Excel de trabajo; el código, los tests y el skill viven en la carpeta hermana `Sistema Analisis Financiero/` (ver su `CLAUDE.md` para el diseño completo). Implementado y encadenado al `run` de Centro de Costos (PASO 12d) — ver `Sistema Analisis Financiero/CLAUDE.md`. Desde 2026-07-23 también tiene un Visualizador Web propio (`Sistema Analisis Financiero/Visualizador Web/`, mismo patrón que Centro de Costos: proyectos completos con sus KPIs + Clientes/CLTV, excluyendo del cálculo cualquier proyecto sin información manual completa).
 
+**Cotizador Histórico tiene su propia taxonomía de productos** (reestructurada
+2026-09-08): clasifica cada compra en categoría > subcategoría > hoja, donde la
+hoja (`familia + material + medida`) es la unidad de comparación de precios —
+una cañería de cobre de 1/2" nunca se promedia con una de 2". Vive en
+`Cotizador Historico/Sistema/taxonomia.py` + `catalogo_taxonomia.py` (Python,
+testeada, compartida por Chile y Perú y por la consulta de consola y el
+dashboard). **Antes vivía en JavaScript dentro de cada `template.html`**,
+duplicada por país y ya divergente — mismo tipo de hueco que la divergencia del
+KPI "Nota del Proyecto" de 2026-07-28. Si agregas un módulo que necesite
+clasificar ítems, reutiliza ese motor en vez de escribir otro. Auditoría:
+`py -3.14 "Cotizador Historico/.claude/skills/Cotizador_Historico/driver.py" categorias`.
+
 Se espera que los módulos futuros (ej. Flujo de Caja) consuman datos que ya producen módulos anteriores (ej. totales por proyecto de Centro de Costos) en vez de construirse de forma aislada — revisa qué datos ya calculan los módulos existentes antes de duplicar esa lógica en uno nuevo.
 
 ## Al trabajar en este directorio

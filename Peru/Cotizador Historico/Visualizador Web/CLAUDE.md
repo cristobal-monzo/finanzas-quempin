@@ -30,3 +30,19 @@ difiere para Perú.
 0 documentos al 2026-08-26 (Perú aún no tiene facturas/boletas
 registradas en Centro de Costos) — el dashboard se publica igual, vacío,
 listo para cuando empiecen a fluir documentos reales.
+
+## Taxonomía compartida con Chile (2026-09-08)
+
+Este template **ya no clasifica**: lee `categoria`/`subcategoria`/`familia`/
+`material`/`medida`/`hoja` que el snapshot trae calculadas por
+`../../../Cotizador Historico/Sistema/taxonomia.py`. Antes tenía su propia
+copia en JavaScript de las listas de palabras clave, y **había divergido**
+de la de Chile: nunca recibió la categoría Instrumentación agregada el
+2026-08-31 (los manómetros y termocuplas peruanos seguían cayendo en
+Válvulas y en Bombas). Ese es exactamente el problema que el cambio elimina
+por construcción — hay una sola fuente y los dos países la comparten.
+
+Para cambiar cómo se clasifica algo se edita
+`Cotizador Historico/Sistema/catalogo_taxonomia.py` (una vez, para ambos
+países) y se regeneran los dos builds. Ver
+`../../../Cotizador Historico/docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md`.

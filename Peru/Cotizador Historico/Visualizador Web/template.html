@@ -605,279 +605,49 @@
   document.getElementById('vizGeneratedFooter').textContent = DATA.generado;
   document.getElementById('exportMeta').textContent = 'Generado ' + new Date().toLocaleString('es-PE') + ' · precios históricos, sin reajuste';
 
-  // ---------- taxonomia: categoria/subcategoria/hoja por palabras clave ----------
-  // Heuristica best-effort (mismo criterio que extraerSpecs/extraerMarcaModelo
-  // mas abajo) -- clasifica cada item en una carpeta de 3 niveles (categoria >
-  // subcategoria > hoja) a partir de nombre_item/descripcion. Para tuberias/
-  // fittings/pernos/tornillos/soldadura, la medida (y para piping, el
-  // material) son obligatorios: si no se pueden extraer, el item se excluye
-  // de todo el dashboard (no solo se oculta) -- pedido explicito del usuario,
-  // "una cañeria de cobre de 1/2 no es lo mismo que una de 2".
-  // La ultima alternativa (fraccion pelada, sin comilla ni unidad, ej.
-  // "1/2x1/2") cubre catalogos que omiten la comilla de pulgada -- sin
-  // ella, items reales como "Conector macho inoxidable 1/2x1/2" quedaban
-  // sin medida detectable y por lo tanto invisibles en el dashboard.
-  var PATRON_MEDIDA = /\d+(?:\s\d+\/\d+|\/\d+)?\s?"|\d+(?:[.,]\d+)?\s?(mm|cm|pulg(?:adas)?)\b|\b\d+\/\d+\b/i;
-  function extraerMedida(descripcion) {
-    var m = PATRON_MEDIDA.exec(String(descripcion || ''));
-    if (!m) return null;
-    var texto = m[0];
-    // Para pulgadas, solo se compacta el espacio pegado a la comilla -- el
-    // espacio interno de una fraccion mixta ("1 1/2\"") debe conservarse, o
-    // "1 1/2" se leeria como "11/2" (once medios) al concatenar sin espacio.
-    if (texto.indexOf('"') !== -1) return texto.replace(/\s+"/, '"').trim();
-    return texto.replace(/\s+/g, '');
-  }
-  var MATERIALES = [
-    { kw: ['cobre'], nombre: 'Cobre' },
-    { kw: ['bronce'], nombre: 'Bronce' },
-    { kw: ['galvanizad'], nombre: 'Galvanizado' },
-    { kw: ['inox'], nombre: 'Inoxidable' },
-    { kw: ['ppr'], nombre: 'PPR' },
-  ];
-  function detectarMaterial(texto) {
-    var t = texto.toLowerCase();
-    for (var i = 0; i < MATERIALES.length; i++) {
-      for (var j = 0; j < MATERIALES[i].kw.length; j++) {
-        if (t.indexOf(MATERIALES[i].kw[j]) !== -1) return MATERIALES[i].nombre;
-      }
-    }
-    return null;
-  }
-  // El "Nombre Item" del Excel a veces ya trae el material incluido (ej.
-  // "Codo bronce", pese a que la convencion documentada del modulo pide que
-  // sea generico y sin material) -- sin esta limpieza, la subcarpeta/hoja
-  // terminaria diciendo "Codo bronces de Bronce" (material duplicado).
-  function limpiarGenericoDeMaterial(generico, material) {
-    if (!material) return generico;
-    var entry = MATERIALES.filter(function (m) { return m.nombre === material; })[0];
-    if (!entry) return generico;
-    var patron = new RegExp('\\b(' + entry.kw.join('|') + ')\\w*', 'i');
-    var limpio = generico.replace(patron, '').replace(/\s+/g, ' ').trim();
-    return limpio || generico;
-  }
-  function contieneAlguna(texto, lista) {
-    var t = texto.toLowerCase();
-    return lista.some(function (p) { return t.indexOf(p) !== -1; });
-  }
-  function pluralizar(s) {
-    if (!s) return s;
-    if (/s$/i.test(s)) return s; // ya viene plural en el nombre de origen (ej. "Bolsas") -- no duplicar
-    // Patron regular del espanol para palabras terminadas en "-ion" con
-    // tilde (union -> uniones, confeccion -> confecciones): pierden la
-    // tilde al pluralizar porque la solaba tonica deja de ser la ultima.
-    if (/ión$/i.test(s)) return s.slice(0, -3) + 'iones';
-    return /[aeiouáéíóú]$/i.test(s) ? s + 's' : s + 'es';
-  }
-  var GRUPOS_PIPING = ['codo', 'copla', 'coupling', 'tee', 'union', 'unión', 'terminal', 'cañeria', 'cañería',
-    'caneria', 'reduccion', 'reducción', 'niple', 'neplo', 'bushing', 'buje', 'curva', 'cruz', 'tapon', 'tapón', 'conector',
-    'tuberia', 'tubería', 'tapagorro'];
-  var CATEGORIA_PIPING_POR_MATERIAL = { 'Cobre': 'Piping Cobre', 'Bronce': 'Piping Bronce', 'Galvanizado': 'Piping Acero Galvanizado', 'Inoxidable': 'Piping Inoxidable', 'PPR': 'Piping PPR' };
-  var ICONOS_CATEGORIA = {
-    'Piping Cobre': '🟠', 'Piping Bronce': '🟡', 'Piping Acero Galvanizado': '⚙️', 'Piping Inoxidable': '⚪', 'Piping PPR': '🔵',
-    'Válvulas y Control': '🔧', 'Bombas y Equipos Mecánicos': '⚙️', 'Herramientas Eléctricas': '🔌', 'Herramientas Manuales': '🛠️',
-    'Consumibles': '📦', 'Seguridad (EPP)': '🦺', 'Soldadura': '🔥', 'Materiales Eléctricos': '⚡',
-    'Productos Químicos': '🧪', 'Transporte': '🚚', 'Alimentos': '🍽️', 'Calefacción y Control': '🌡️', 'Otros / Servicios': '📋',
-  };
-  // Pedido del usuario 2026-07-21: excepciones puntuales de un nombre
-  // completo a una categoria (y opcionalmente una subcategoria forzada),
-  // revisadas ANTES de cualquier grupo generico -- resuelven casos donde
-  // una palabra clave generica clasificaria mal ese item puntual (ej.
-  // "Adaptador broca" iria a Consumibles por "broca" si no se revisa esto
-  // primero).
-  var OVERRIDES_CATEGORIA = [
-    { kw: ['adaptador broca'], categoria: 'Herramientas Manuales' },
-    { kw: ['bolso'], categoria: 'Herramientas Manuales', subcategoriaForzada: 'Contenedores' },
-    // "Compra de materiales de ferreteria..." como Nombre Item hace que la
-    // primera palabra ("Compra") se use como subcategoria -- sin forzarla
-    // aca, queda un subcarpeta sin sentido llamada "Compras".
-    { kw: ['ferreteria', 'ferretería'], categoria: 'Herramientas Manuales', subcategoriaForzada: 'Materiales de Ferretería' },
-    // Sin forzar esto, "Red Bull" (Nombre Item) usa "Red" como primera
-    // palabra -> subcategoria "Redes" (suena a redes de computadores, nada
-    // que ver) -- se agrupa con la misma subcategoria "Bebidas" que ya usan
-    // otras bebidas envasadas (ej. Kem Piña).
-    { kw: ['red bull'], categoria: 'Alimentos', subcategoriaForzada: 'Bebidas' },
-  ];
-  var GRUPOS_VALVULA = ['valvula', 'válvula', 'purga', 'flow control', 'alimat', 'anodo', 'ánodo', 'manometro', 'manómetro', 'abrazadera'];
-  var GRUPOS_BOMBA = ['bomba', 'estanque', 'vacuometro', 'vacuómetro', 'arrestallama'];
-  var GRUPOS_HERR_ELEC = ['hidrolavadora', 'taladro', 'esmeril', 'amoladora', 'soldadora'];
-  var GRUPOS_HERR_MANUAL = ['curvadora', 'llave', 'destornillador', 'martillo', 'sierra', 'alicate', 'huincha',
-    'cortatubos', 'corta tubos', 'cuchillo', 'calafatera', 'dado', 'remachadora'];
-  var GRUPOS_SOLDADURA = ['gas mapp', 'soldadura', 'fundente', 'electrodo', 'barilla', 'varilla'];
-  var GRUPOS_MATERIALES_ELECTRICOS = ['conduit', 'electrico', 'eléctrico'];
-  var GRUPOS_QUIMICOS = ['solutech', 'tapagotera'];
-  // Presostato/termostato/termocupla/sonda/contactor/caldera/radiador: cluster
-  // real de equipos de calefaccion y control (8 items en el catalogo real,
-  // 2026-08-19) que antes caian en el catch-all "Otros / Servicios" por no
-  // calzar con ninguna otra categoria -- lo bastante grande y homogeneo para
-  // justificar categoria propia en vez de forzarlos en Materiales Electricos.
-  var GRUPOS_CALEFACCION = ['presostato', 'termostato', 'termocupla', 'sonda', 'contactor', 'caldera', 'radiador'];
-  var GRUPOS_TRANSPORTE = ['flete', 'arriendo', 'peaje', 'combustible', 'gasolina', 'bencina', 'petroleo', 'petróleo',
-    'diesel', 'parafina', 'pasaje', 'equipaje', 'transporte', 'estacionamiento', 'despacho', 'envio', 'envío',
-    'encomienda', 'embarque'];
-  var SUBCATEGORIAS_TRANSPORTE = [
-    { kw: ['gasolina', 'bencina', 'petroleo', 'petróleo', 'diesel', 'parafina', 'combustible'], subcategoria: 'Combustible' },
-    { kw: ['peaje'], subcategoria: 'Peajes' },
-    { kw: ['arriendo'], subcategoria: 'Arriendo de Vehículos' },
-    { kw: ['pasaje', 'equipaje'], subcategoria: 'Pasajes y Equipaje' },
-    { kw: ['flete', 'despacho', 'envio', 'envío', 'encomienda'], subcategoria: 'Despachos y Fletes' },
-    { kw: ['estacionamiento'], subcategoria: 'Estacionamiento' },
-  ];
-  // Comida/bebida: antes repartida en dos etiquetas manuales distintas del
-  // Excel (Alimentacion / Viaticos-Alojamiento, ninguna de las 5 categorias
-  // oficiales del dropdown) y sin estructura propia en el arbol de carpetas
-  // -- pedido explicito del usuario 2026-08-19, "todo lo que sea comida en
-  // una sola categoria". 'agua ' lleva espacio final a proposito: sin el
-  // espacio, matchea tambien "aguarras" (quimico de limpieza, nada que ver).
-  var GRUPOS_ALIMENTOS = ['sandwich', 'café', 'cafe', 'muffin', 'agua ', 'leche', 'bebida', 'colación', 'colacion',
-    'red bull', 'alimentación', 'alimentacion', 'ingrediente', 'almuerzo', 'desayuno', 'restaurant', 'restaurante',
-    'supermercado', 'panadería', 'panaderia'];
-  function subcategoriaTransporte(texto) {
-    for (var i = 0; i < SUBCATEGORIAS_TRANSPORTE.length; i++) {
-      if (contieneAlguna(texto, SUBCATEGORIAS_TRANSPORTE[i].kw)) return SUBCATEGORIAS_TRANSPORTE[i].subcategoria;
-    }
-    return 'Otros Gastos de Transporte';
-  }
-  var GRUPOS_CONSUMIBLE_MEDIDA = ['perno', 'tornillo', 'remache', 'autoperforante', 'broca'];
-  var GRUPOS_CONSUMIBLE_OTRO = ['espuma', 'esmalte', 'pintura', 'rodillo', 'brocha', 'aguarras', 'cinta', 'lubricante', 'bolsa', 'libro', 'marcador'];
-  var GRUPOS_SEGURIDAD = ['lente', 'guante', 'arnes', 'arnés', 'casco', 'chaleco', 'seguro de carga', 'overol',
-    'cofia', 'cubre calzado', 'visor', 'plantilla', 'desinfectante'];
-  var GRUPOS_HERRAMIENTA = GRUPOS_HERR_ELEC.concat(GRUPOS_HERR_MANUAL);
-
-  // La primera palabra del nombre casi nunca es el tipo real de producto
-  // cuando el nombre empieza con un cuantificador/contenedor generico (ej.
-  // "Set 16 pzas destornillador precision" -> la primera palabra es "Set",
-  // no "destornillador"). En vez de usar siempre la primera palabra,
-  // buscamos si el nombre (o la descripcion, si el nombre no trae nada
-  // reconocible) contiene alguna palabra ya conocida por el clasificador
-  // (la misma lista usada para asignar categoria) y usamos esa palabra
-  // real -- esto fusiona automaticamente "Set ... destornillador ..." con
-  // el resto de "Destornilladores", sin necesidad de un caso especial por
-  // cada combinacion de "Set/Kit/Compra de <tipo real>" que aparezca.
-  var PALABRAS_TIPO_CONOCIDAS = [].concat(GRUPOS_PIPING, GRUPOS_VALVULA, GRUPOS_BOMBA, GRUPOS_HERR_ELEC,
-    GRUPOS_HERR_MANUAL, GRUPOS_SOLDADURA, GRUPOS_CONSUMIBLE_MEDIDA, GRUPOS_CONSUMIBLE_OTRO, GRUPOS_SEGURIDAD)
-    .filter(function (p) { return p.indexOf(' ') === -1; });
-  function palabraQueContiene(texto, patrones) {
-    var palabras = String(texto || '').split(/\s+/);
-    for (var i = 0; i < palabras.length; i++) {
-      var limpia = palabras[i].replace(/^[.,;()]+|[.,;()]+$/g, '');
-      if (!limpia) continue;
-      var enMinuscula = limpia.toLowerCase();
-      for (var j = 0; j < patrones.length; j++) {
-        if (enMinuscula.indexOf(patrones[j]) !== -1) return limpia;
-      }
-    }
-    return null;
-  }
-  function capitalizar(s) {
-    s = String(s || '');
-    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-  }
-  // Nombres de marca/termino tecnico que un usuario no reconoceria como
-  // "el mismo tipo de cosa" que ya existe -- investigados uno por uno
-  // (ej. "Alimat" via busqueda web, 2026-07-21: es una valvula de llenado
-  // automatico marca Watts ALM) y mapeados al mismo tipo generico ya usado
-  // por el resto del catalogo, para que se fusionen en la misma carpeta en
-  // vez de crear una carpeta de 1 solo item con el nombre de la marca.
-  var SINONIMOS_TIPO_GENERICO = { 'alimat': 'Valvula', 'flow control': 'Valvula' };
-  function resolverSinonimoTipo(texto) {
-    var t = String(texto || '').toLowerCase();
-    var claves = Object.keys(SINONIMOS_TIPO_GENERICO);
-    for (var i = 0; i < claves.length; i++) {
-      if (t.indexOf(claves[i]) !== -1) return SINONIMOS_TIPO_GENERICO[claves[i]];
-    }
-    return null;
-  }
-  function detectarTipoGenerico(generico, descripcion) {
-    // Capitalizado siempre -- la palabra detectada puede venir en minuscula
-    // si aparecio a mitad de frase (ej. "Set 16 pzas destornillador..."),
-    // y sin normalizar la carpeta "destornillador" (minuscula) quedaba
-    // separada de "Destornillador" (mayuscula) como dos subcategorias
-    // distintas en vez de una sola.
-    return resolverSinonimoTipo(generico + ' ' + (descripcion || '')) ||
-      capitalizar(palabraQueContiene(generico, PALABRAS_TIPO_CONOCIDAS) ||
-      palabraQueContiene(descripcion, PALABRAS_TIPO_CONOCIDAS) ||
-      generico.split(/\s+/)[0] || generico);
-  }
-
-  function clasificarItem(item) {
-    var nombreOriginal = item.nombre_item || 'Ítem';
-    var texto = nombreOriginal + ' ' + (item.descripcion || '');
-    var material = detectarMaterial(texto);
-    var medida = extraerMedida(item.descripcion);
-    var generico = limpiarGenericoDeMaterial(nombreOriginal, material);
-    var tipoGenerico = detectarTipoGenerico(generico, item.descripcion);
-    var base = { generico: generico, tipoGenerico: tipoGenerico, material: material, medida: medida };
-
-    for (var i = 0; i < OVERRIDES_CATEGORIA.length; i++) {
-      if (contieneAlguna(texto, OVERRIDES_CATEGORIA[i].kw)) {
-        return Object.assign(base, { requiereMaterial: false, requiereMedida: false }, OVERRIDES_CATEGORIA[i]);
-      }
-    }
-    // Pedido del usuario: todo lo que diga inox/inoxidable va a Piping
-    // Inoxidable, salvo que sea una herramienta -- se revisa temprano,
-    // antes de valvulas/bombas/etc., porque tiene prioridad sobre esas
-    // categorias tambien (ej. una valvula inoxidable va a piping, no a
-    // Valvulas y Control).
-    if (material === 'Inoxidable' && !contieneAlguna(texto, GRUPOS_HERRAMIENTA)) {
-      return Object.assign(base, { categoria: 'Piping Inoxidable', requiereMaterial: false, requiereMedida: true });
-    }
-    if (contieneAlguna(texto, GRUPOS_PIPING)) {
-      return Object.assign(base, {
-        categoria: CATEGORIA_PIPING_POR_MATERIAL[material] || null,
-        requiereMaterial: true, requiereMedida: true,
-      });
-    }
-    if (contieneAlguna(texto, GRUPOS_SOLDADURA)) return Object.assign(base, { categoria: 'Soldadura', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_VALVULA)) return Object.assign(base, { categoria: 'Válvulas y Control', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_BOMBA)) return Object.assign(base, { categoria: 'Bombas y Equipos Mecánicos', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_HERR_ELEC)) return Object.assign(base, { categoria: 'Herramientas Eléctricas', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_HERR_MANUAL)) return Object.assign(base, { categoria: 'Herramientas Manuales', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_MATERIALES_ELECTRICOS)) return Object.assign(base, { categoria: 'Materiales Eléctricos', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_QUIMICOS)) return Object.assign(base, { categoria: 'Productos Químicos', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_CALEFACCION)) return Object.assign(base, { categoria: 'Calefacción y Control', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_TRANSPORTE)) return Object.assign(base, { categoria: 'Transporte', subcategoriaForzada: subcategoriaTransporte(texto), requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_ALIMENTOS)) return Object.assign(base, { categoria: 'Alimentos', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_CONSUMIBLE_MEDIDA)) return Object.assign(base, { categoria: 'Consumibles', requiereMaterial: false, requiereMedida: true });
-    if (contieneAlguna(texto, GRUPOS_CONSUMIBLE_OTRO)) return Object.assign(base, { categoria: 'Consumibles', requiereMaterial: false, requiereMedida: false });
-    if (contieneAlguna(texto, GRUPOS_SEGURIDAD)) return Object.assign(base, { categoria: 'Seguridad (EPP)', requiereMaterial: false, requiereMedida: false });
-    return Object.assign(base, { categoria: 'Otros / Servicios', requiereMaterial: false, requiereMedida: false });
-  }
-
-  function esVisible(clasif) {
-    if (clasif.requiereMaterial && !clasif.material) return false;
-    if (clasif.requiereMedida && !clasif.medida) return false;
-    return true;
-  }
-
-  DATA.items.forEach(function (it) { it._clasif = clasificarItem(it); });
-  var ITEMS_VISIBLES = DATA.items.filter(function (it) { return esVisible(it._clasif); });
-
-  function subcategoriaDe(clasif) {
-    if (clasif.subcategoriaForzada) return clasif.subcategoriaForzada;
-    var base = pluralizar(clasif.tipoGenerico);
-    return clasif.material && CATEGORIA_PIPING_POR_MATERIAL[clasif.material] === clasif.categoria ? base + ' de ' + clasif.material : base;
-  }
-  function contieneTexto(haystack, needle) {
-    return String(haystack || '').toLowerCase().replace(/\s+/g, '').indexOf(String(needle || '').toLowerCase().replace(/\s+/g, '')) !== -1;
-  }
-  function hojaDe(clasif) {
-    var partes = [clasif.generico];
-    if (clasif.material && !contieneTexto(clasif.generico, clasif.material)) partes.push('de ' + clasif.material);
-    if (clasif.medida && !contieneTexto(clasif.generico, clasif.medida)) partes.push(clasif.medida);
-    return partes.join(' ');
-  }
-  ITEMS_VISIBLES.forEach(function (it) {
-    it._clasif.subcategoria = subcategoriaDe(it._clasif);
-    it._clasif.hoja = hojaDe(it._clasif);
+  // ---------- taxonomia: viene precalculada en el snapshot ----------
+  // Hasta 2026-09-08 este archivo clasificaba por su cuenta, con ~290 lineas
+  // de listas de palabras clave que estaban duplicadas (y ya divergian) entre
+  // Chile y Peru, sin tests, y que la consulta por consola no usaba. Ahora la
+  // unica fuente es Sistema/taxonomia.py + Sistema/catalogo_taxonomia.py, que
+  // corre en build_visualizador.py y deja cada item con su categoria,
+  // subcategoria, familia, material, medida y hoja ya resueltas.
+  // Para cambiar como se clasifica algo se edita catalogo_taxonomia.py y se
+  // regenera el build; aca no hay nada que tocar.
+  var ICONOS_CATEGORIA = {};
+  var CATEGORIAS_META = DATA.categorias || {};
+  Object.keys(CATEGORIAS_META).forEach(function (c) {
+    ICONOS_CATEGORIA[c] = CATEGORIAS_META[c].icono || '\uD83D\uDCC1';
   });
+
+  DATA.items.forEach(function (it) {
+    it._clasif = {
+      categoria: it.categoria || 'Sin Clasificar',
+      subcategoria: it.subcategoria || 'Sin Clasificar',
+      familia: it.familia,
+      material: it.material,
+      medida: it.medida,
+      hoja: it.hoja || it.nombre_item,
+      cotizable: it.cotizable !== false,
+    };
+  });
+  // Ningun item se oculta: el sistema anterior descartaba del dashboard
+  // cualquier fitting al que no pudiera extraerle medida o material (136 de
+  // 1193 compras, 11,4%, sin aviso). Ahora esos quedan en una hoja marcada
+  // "(sin medida)", visibles y contables.
+  var ITEMS_VISIBLES = DATA.items;
 
   function renderKPIs() {
     var row = document.getElementById('kpiRow');
+    var sinClasificar = ITEMS_VISIBLES.filter(function (i) { return i._clasif.categoria === 'Sin Clasificar'; }).length;
+    var cotizables = ITEMS_VISIBLES.filter(function (i) { return i._clasif.cotizable; }).length;
     row.innerHTML =
       '<div class="viz-kpi accent"><div class="label">Referencias indexadas</div><div class="value">' + fmtNum(ITEMS_VISIBLES.length) + '</div><div class="sub">disponibles para buscar</div></div>' +
+      '<div class="viz-kpi"><div class="label">Catálogo cotizable</div><div class="value">' + fmtNum(cotizables) + '</div><div class="sub">' + fmtNum(ITEMS_VISIBLES.length - cotizables) + ' son gastos de operación</div></div>' +
+      '<div class="viz-kpi"><div class="label">Sin clasificar</div><div class="value">' + fmtNum(sinClasificar) + '</div><div class="sub">' + (sinClasificar ? 'faltan reglas en el catálogo' : 'todo el catálogo está clasificado') + '</div></div>' +
       '<div class="viz-kpi"><div class="label">Moneda</div><div class="value">S/ Soles</div><div class="sub">precios históricos, sin reajuste</div></div>';
   }
+
   // ---------- indice de hojas (agrupado por categoria > subcategoria > hoja) ----------
   // La hoja combina generico+material+medida (ej. "Codo de Bronce 1/2"") --
   // agrupar por hoja en vez de por nombre_item es a proposito: dos codos de
@@ -1005,7 +775,7 @@
 
   // ---------- filtros de busqueda ----------
   fillSelectFromValues('fProyecto', ITEMS_VISIBLES.map(function (i) { return i.proyecto; }));
-  fillSelectFromValues('fCategoria', ITEMS_VISIBLES.map(function (i) { return i.categoria_item; }));
+  fillSelectFromValues('fCategoria', ITEMS_VISIBLES.map(function (i) { return i.categoria; }));
   function fillSelectFromValues(id, values) {
     var uniq = Array.from(new Set(values.filter(Boolean))).sort();
     var el = document.getElementById(id);
@@ -1021,7 +791,7 @@
     var desde = document.getElementById('fDesde').value;
     var hasta = document.getElementById('fHasta').value;
     if (proyecto && item.proyecto !== proyecto) return false;
-    if (categoria && item.categoria_item !== categoria) return false;
+    if (categoria && item.categoria !== categoria) return false;
     if (desde && item.fecha < desde) return false;
     if (hasta && item.fecha > hasta) return false;
     return true;

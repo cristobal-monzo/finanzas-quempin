@@ -33,6 +33,9 @@ consume.
 - **Sin respaldo por categoría**: si no hay match de nombre, la respuesta es
   "no encontrado" (con sugerencias de baja similitud si las hay) — decisión
   explícita del usuario para v1, no un olvido.
+- **Taxonomía propia** (reestructurada 2026-09-08, ver sección siguiente):
+  cada compra se clasifica en categoría > subcategoría > hoja, y la **hoja**
+  (`familia + material + medida`) es la unidad de comparación de precios.
 - **No incluye cotizaciones** (presupuestos no comprados) — no existen hoy
   en un formato estructurado. Si aparecen más adelante, se integrarían como
   una fuente adicional junto a Centro de Costos, no reemplazándola (ver spec
@@ -40,6 +43,63 @@ consume.
 
 Diseño completo, incluyendo las alternativas consideradas:
 [`docs/superpowers/specs/2026-07-17-cotizador-historico-design.md`](docs/superpowers/specs/2026-07-17-cotizador-historico-design.md).
+
+## Taxonomía: cómo se categoriza cada ítem
+
+Reestructurada el **2026-09-08** a pedido del usuario ("hay elementos que son
+de 1.1/4" y que se indican como si fueran de 1/4""). Diseño completo, con
+las mediciones sobre las 1193 compras reales que lo justifican, en
+[`docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md`](docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md).
+
+**Vive en Python, no en el HTML.** `Sistema/taxonomia.py` (motor) +
+`Sistema/catalogo_taxonomia.py` (datos: categorías, materiales, reglas). La
+usan por igual `consultar_item` (consola y conversación) y los dos
+`build_visualizador.py` (Chile y Perú). Antes vivía en JavaScript dentro de
+`Visualizador Web/template.html`, duplicada por país y **ya divergente**
+(Perú nunca recibió la categoría Instrumentación agregada el 2026-08-31),
+sin tests, y la consulta por consola no la usaba.
+
+**Cuatro etapas** (cada una testeada por separado en `Sistema/tests/test_taxonomia.py`):
+
+1. `normalizar`/`raiz` — sin tildes, sin plural, sin palabras vacías, para
+   que `guantes`/`guante` y `Valvula`/`Válvula` sean lo mismo.
+2. `parsear_medidas` — gramática de medidas. Reconoce la fracción mixta
+   chilena en sus tres escrituras (`1.1/4`, `1-1/4`, `1 1/4`), la
+   abreviatura `plg`, las compuestas (`1.1/2x1.1/4`), y **rechaza** lo que
+   no es medida: modelos (`VA 65/180`), códigos (`NB2-40/42`), magnitudes
+   que no son longitud (220V, 280ml, 25kg) y ángulos de fitting
+   (`Codo 90 3/4` es de 3/4", no de noventa y tres cuartos).
+3. `clasificar` — categoría/subcategoría/familia con un catálogo de reglas.
+   El match es **por palabra completa**, nunca substring: así "S-tee-lgen"
+   no activa "tee" y "dado que" no activa "dado" (dos errores reales del
+   sistema anterior). Un término negado (`sin`, `s/`) no activa su regla.
+4. `clave_hoja` — `familia + material + medida`. Dos compras solo se
+   promedian si comparten hoja: **una cañería de cobre de 1/2 nunca se
+   promedia con una de 2**.
+
+**El material es una faceta, no una categoría.** Todo el piping vive en
+`Piping y Fittings` y el material entra a la hoja y al filtro. Antes cada
+material era su propia categoría, y los que no estaban en la lista (PVC,
+PEX, acero negro, y la abreviatura `BR` que el catálogo usa todo el tiempo)
+dejaban 76 fittings sin categoría y **ocultos**.
+
+**Los gastos de operación están separados de los productos.** Alimentación,
+Transporte y Logística, y Arriendos y Servicios quedan marcados
+`cotizable=False`: el precio unitario promedio de un peaje o un almuerzo no
+significa nada (dispersión medida de 101x y 78x contra ~1x en las hojas de
+producto). Siguen visibles y navegables, pero fuera de los KPIs de catálogo.
+
+**Regla de oro: ningún ítem se oculta.** Si no se le puede extraer la
+medida, la hoja queda marcada `(sin medida)` y el ítem sigue visible y
+contado. El sistema anterior descartaba 136 de 1193 compras (11,4%) sin
+avisar. Lo que no se puede clasificar cae en `Sin Clasificar`, que **no es
+un cajón de sastre sino una cola de trabajo**: aparece como KPI en el
+dashboard y como lista en `driver.py categorias`.
+
+**Para cambiar cómo se clasifica algo** se edita
+`Sistema/catalogo_taxonomia.py` (nunca el HTML), se corre
+`py -3.14 -m pytest` y después `driver.py categorias`, y se compara que no
+se haya movido nada que ya estaba bien.
 
 ## Estructura del módulo
 
@@ -49,13 +109,15 @@ Cotizador Historico/
 ├── docs/superpowers/                      # specs/plans de Claude Code
 ├── Sistema/
 │   ├── cotizador_historico.py             # lógica: leer Excel, indexar, fuzzy search, reajuste UF
+│   ├── taxonomia.py                       # motor: medidas + clasificación + clave de hoja
+│   ├── catalogo_taxonomia.py              # datos: categorías, materiales, reglas (esto es lo que se edita)
 │   ├── uf_cache.json                      # caché fecha ISO -> valor UF (se crea solo en la primera corrida)
 │   └── tests/                             # tests de pytest
 └── .claude/
     └── skills/
         └── Cotizador_Historico/
             ├── SKILL.md
-            └── driver.py                  # comandos: status | consultar "<texto>"
+            └── driver.py                  # comandos: status | consultar "<texto>" | visualizador | categorias
 ```
 
 ## Cómo se usa
@@ -97,10 +159,18 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
 - `tasa_iva_real(total_sin_iva, total_con_iva)` — tasa real de IVA del
   documento original; `1.0` (sin IVA adicional) como respaldo si los
   totales no son numéricos o el total sin IVA es 0.
+- `agregar_taxonomia(compra)` / `agrupar_por_hoja(compras)` — agregan la
+  clasificación a una compra y agrupan por hoja con su propio promedio,
+  rango y dispersión. Se aplican en los dos caminos (dashboard y consulta)
+  para que ambos clasifiquen idéntico.
 - `consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None)` —
   orquesta todo lo anterior y devuelve el resultado completo: compras
-  individuales (con su ajuste sin IVA y con IVA), promedio de ambos, rango
-  (sin IVA), y sugerencias si no hubo match.
+  individuales (cada una con su categoría/familia/material/medida/hoja),
+  promedio y rango globales, **`grupos`** (una entrada por hoja, con su
+  propio promedio: es el número que responde la pregunta real, el global
+  mezcla hojas distintas), y sugerencias si no hubo match. Si el texto
+  buscado trae una medida (`"codo bronce 1.1/4"`), solo entran las compras
+  de esa medida y las demás se cuentan en `descartadas_por_medida`.
 
 ## Precauciones
 
@@ -137,6 +207,13 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
   Detalle del mecanismo (`obtener_uf_hoy`) en "Funciones clave" arriba;
   procedimiento paso a paso para el flujo de publicación en
   `.claude/skills/Actualizar_Cotizador/SKILL.md`.
+- **La taxonomía no se edita en `template.html`.** Desde 2026-09-08 el
+  template solo lee lo que el snapshot ya trae calculado; si se vuelve a
+  clasificar en JavaScript reaparece la divergencia Chile/Perú que este
+  cambio eliminó. Editar `Sistema/catalogo_taxonomia.py` y regenerar.
+- **Ningún ítem se oculta por no tener medida** — si un fitting no aparece
+  donde debería, revisar `driver.py categorias` (cola de "requieren medida
+  y no la tienen"), no asumir que se filtró.
 - `Sistema/uf_cache.json` contiene solo valores públicos de UF (no datos
   financieros de la empresa) — a diferencia de los datos de Centro de
   Costos, no es sensible.

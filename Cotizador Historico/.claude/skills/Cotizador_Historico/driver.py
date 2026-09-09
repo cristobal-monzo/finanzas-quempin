@@ -24,6 +24,16 @@ modulo nunca lo escribe):
   visualizador [--uf-manual VALOR --uf-fuente "<texto>"]
                       -> Regenera el visualizador web.
 
+  categorias [--detalle "<categoria>"] [--top N]
+                      -> Auditoria de la clasificacion (no toca la UF ni la
+                         red): cuantas compras cae en cada categoria, que
+                         quedo en "Sin Clasificar" (la cola de trabajo para
+                         agregar reglas al catalogo), que items requieren
+                         medida y no la tienen, y que hojas tienen una
+                         dispersion de precio sospechosa (senal de que la
+                         hoja todavia mezcla productos distintos).
+                         Con --detalle lista las hojas de esa categoria.
+
   Los dos flags `--uf-manual`/`--uf-fuente` son el fallback para la UF de
   "hoy" (unica para toda la consulta/build, nunca cacheada): se pide a
   mindicador.cl primero, y solo si no responde y se pasaron estos dos flags
@@ -39,6 +49,8 @@ Uso:
   python driver.py consultar "taladro" --uf-manual 39200.50 --uf-fuente "Banco Central de Chile, 20-08-2026"
   python driver.py visualizador
   python driver.py visualizador --uf-manual 39200.50 --uf-fuente "Banco Central de Chile, 20-08-2026"
+  python driver.py categorias
+  python driver.py categorias --detalle "Piping"
 """
 
 import sys
@@ -156,6 +168,13 @@ def cmd_consultar(args, pais="CL"):
                     print(f"  - {s}")
         return 0
 
+    if resultado.get("medida_consultada"):
+        print(f'Medida detectada en la consulta: {resultado["medida_consultada"]} -- '
+              f'solo se muestran compras de esa medida'
+              + (f' ({resultado["descartadas_por_medida"]} compra(s) de otra medida quedaron fuera).'
+                 if resultado["descartadas_por_medida"] else '.'))
+        print()
+
     print(f'Compras encontradas para "{texto}":\n')
     if pais == "PE":
         print("| Fecha | N° Ref. | Precio (sin IGV) | Precio (con IGV) |")
@@ -189,6 +208,21 @@ def cmd_consultar(args, pais="CL"):
         )
         print(f"\nRango (sin IVA): ${resultado['rango_minimo']:,.0f} - ${resultado['rango_maximo']:,.0f}")
 
+    grupos = resultado.get("grupos") or []
+    if len(grupos) > 1:
+        print("\nPrecio por hoja (familia + material + medida) -- el promedio de arriba "
+              "mezcla hojas distintas:\n")
+        print("| Hoja | Compras | Promedio sin IVA | Promedio con IVA | Rango sin IVA |")
+        print("|---|---|---|---|---|")
+        for g in grupos:
+            aviso = "" if g["cotizable"] else "  (gasto, no cotizable)"
+            print(
+                f"| {g['hoja']}{aviso} | {g['n_compras']} | "
+                f"{simbolo}{g['promedio_reajustado']:,.0f} | "
+                f"{simbolo}{g['promedio_reajustado_con_iva']:,.0f} | "
+                f"{simbolo}{g['rango_minimo']:,.0f} - {simbolo}{g['rango_maximo']:,.0f} |"
+            )
+
     if resultado["excluidos_count"]:
         print(
             f"\n[INFO] {resultado['excluidos_count']} item(s) de Detalle excluido(s) "
@@ -205,6 +239,116 @@ def cmd_consultar(args, pais="CL"):
             )
         if resultado.get("uf_fuente") and resultado["uf_fuente"] != "mindicador.cl":
             print(f"\n[AVISO] mindicador.cl no respondio -- se uso UF manual (fuente: {resultado['uf_fuente']}).")
+    return 0
+
+
+def cmd_categorias(args, pais="CL"):
+    """Auditoria de la clasificacion. Solo lectura y sin red: no pide la UF,
+    porque para revisar categorias no hace falta reajustar ningun precio.
+
+    Es la herramienta de mantencion de la taxonomia: lo que aparezca en
+    "Sin Clasificar" o en "requieren medida y no la tienen" es la cola de
+    trabajo para agregar reglas a Sistema/catalogo_taxonomia.py."""
+    import collections
+
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    detalle = None
+    top = 15
+    i = 0
+    while i < len(args):
+        if args[i] == "--detalle" and i + 1 < len(args):
+            detalle = args[i + 1]
+            i += 2
+        elif args[i] == "--top" and i + 1 < len(args):
+            top = int(args[i + 1])
+            i += 2
+        else:
+            i += 1
+
+    try:
+        items = ch.cargar_items_detalle(pais=pais)
+    except ch.ExcelNoDisponibleError as exc:
+        print(f"[ERROR] {exc}")
+        return 1
+
+    indexables = [it for it in items if it["excluido_motivo"] is None]
+    clasificados = []
+    for it in indexables:
+        c = ch.taxonomia.clasificar(it["nombre_item"], it["descripcion"])
+        c["hoja"] = ch.taxonomia.clave_hoja(c)
+        c["_item"] = it
+        clasificados.append(c)
+
+    total = len(clasificados)
+    if not total:
+        print("No hay items indexables en Detalle.")
+        return 0
+
+    if detalle:
+        foco = [c for c in clasificados if detalle.lower() in c["categoria"].lower()]
+        if not foco:
+            print(f'Ninguna categoria coincide con "{detalle}".')
+            return 1
+        print("=" * 78)
+        print(f'  DETALLE DE "{detalle}" - {len(foco)} compras')
+        print("=" * 78)
+        por_sub = collections.defaultdict(collections.Counter)
+        for c in foco:
+            por_sub[c["subcategoria"]][c["hoja"]] += 1
+        for sub in sorted(por_sub, key=lambda x: -sum(por_sub[x].values())):
+            print(f'\n-- {sub} ({sum(por_sub[sub].values())} compras)')
+            for hoja, n in por_sub[sub].most_common():
+                print(f"     {n:3d}x  {hoja}")
+        return 0
+
+    print("=" * 78)
+    print(f"  AUDITORIA DE CATEGORIAS - {pais} ({total} compras indexables)")
+    print("=" * 78)
+
+    conteo = collections.Counter(c["categoria"] for c in clasificados)
+    cotizables = sum(n for cat, n in conteo.items() if ch.taxonomia.CATEGORIAS[cat][1])
+    print(f"\nCatalogo cotizable: {cotizables} compras "
+          f"({100.0 * cotizables / total:.1f}%) | "
+          f"Gastos de operacion: {total - cotizables} ({100.0 * (total - cotizables) / total:.1f}%)")
+    print("\n| Categoria | Compras | % | Tipo |")
+    print("|---|---|---|---|")
+    for cat, n in conteo.most_common():
+        tipo = "producto" if ch.taxonomia.CATEGORIAS[cat][1] else "gasto"
+        print(f"| {ch.taxonomia.CATEGORIAS[cat][0]} {cat} | {n} | {100.0 * n / total:.1f}% | {tipo} |")
+
+    sin_clasificar = [c for c in clasificados if c["categoria"] == "Sin Clasificar"]
+    print(f"\n--- SIN CLASIFICAR: {len(sin_clasificar)} compras "
+          f"({100.0 * len(sin_clasificar) / total:.1f}%) ---")
+    if sin_clasificar:
+        print("Cada uno necesita una regla nueva en Sistema/catalogo_taxonomia.py:")
+        vistos = collections.Counter(
+            (c["_item"]["nombre_item"], (c["_item"]["descripcion"] or "")[:58]) for c in sin_clasificar)
+        for (nombre, desc), n in vistos.most_common(top):
+            print(f"  {n:3d}x  {nombre}  |  {desc}")
+    else:
+        print("Ninguno: todas las compras cayeron en una categoria real.")
+
+    sin_medida = [c for c in clasificados if c["requiere_medida"] and not c["medida"]]
+    print(f"\n--- REQUIEREN MEDIDA Y NO LA TIENEN: {len(sin_medida)} compras ---")
+    print("Siguen visibles y contadas (nunca se ocultan), pero no se promedian "
+          "con las que si tienen medida.")
+    vistos = collections.Counter(
+        (c["_item"]["nombre_item"], (c["_item"]["descripcion"] or "")[:58]) for c in sin_medida)
+    for (nombre, desc), n in vistos.most_common(top):
+        print(f"  {n:3d}x  {nombre}  |  {desc}")
+
+    hojas = collections.defaultdict(list)
+    for c in clasificados:
+        hojas[c["hoja"]].append(c)
+    con_comparacion = sum(len(v) for v in hojas.values() if len(v) > 1)
+    print(f"\n--- AGRUPACION ---")
+    print(f"  {len(hojas)} hojas distintas | {con_comparacion} compras "
+          f"({100.0 * con_comparacion / total:.1f}%) tienen al menos otra compra con que compararse")
+
+    print("\n" + "=" * 78)
+    print("  Nada fue escrito. Para ver una categoria: "
+          'python driver.py categorias --detalle "Piping"')
+    print("=" * 78)
     return 0
 
 
@@ -249,16 +393,18 @@ def _extraer_flags_uf(args):
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar", "visualizador"):
+    if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar", "visualizador", "categorias"):
         print(
             'Uso: python driver.py [status|consultar "<texto>"|'
-            'visualizador] [--uf-manual VALOR --uf-fuente "<texto>"] [--pais CL|PE]'
+            'visualizador|categorias] [--uf-manual VALOR --uf-fuente "<texto>"] [--pais CL|PE]'
         )
         return 2
     comando = sys.argv[1]
     pais, resto = _extraer_pais(sys.argv[2:])
     if comando == "status":
         return cmd_status(pais=pais)
+    if comando == "categorias":
+        return cmd_categorias(resto, pais=pais)
     if comando == "visualizador":
         uf_manual, fuente_manual, _resto = _extraer_flags_uf(resto)
         return cmd_visualizador(pais=pais, uf_manual=uf_manual, fuente_manual=fuente_manual)
