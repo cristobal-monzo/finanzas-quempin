@@ -97,7 +97,7 @@ def build():
         f.write(html)
 
     print(f"OK — {len(data['items'])} referencias indexadas (sin reajuste, precios nominales en soles)")
-    print(f"Excluidos (sin fecha/precio valido, o Notas de Credito/devoluciones): {data['excluidos_count']}")
+    print(f"Excluidos (sin fecha/precio valido, Notas de Credito/devoluciones, o items en $0): {data['excluidos_count']}")
     print(f"Snapshot: {RUTA_DATA_JSON}")
     print(f"Visualizador: {RUTA_BUILD_HTML}")
     print("Para verlo: copialo a .worktrees/gh-pages/cotizador-historico-peru/index.html y "

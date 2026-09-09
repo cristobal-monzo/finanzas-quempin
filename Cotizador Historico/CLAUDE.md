@@ -132,10 +132,17 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
 - `cargar_items_detalle(ruta_excel=None)` — lee `Detalle`+`Master`, resuelve
   la fecha de cada ítem vía `N° Ref.` e incluye `total_sin_iva`/
   `total_con_iva` de esa misma fila; ítems sin `Master` correspondiente,
-  con fecha no parseable, cuya celda `P. Unitario sin IVA` no es un número,
-  o cuyo `P. Unitario sin IVA` es negativo, quedan con `excluido_motivo`
-  poblado (`"sin_master"`, `"fecha_invalida"`, `"precio_invalido"` o
-  `"precio_negativo"`) y no entran a ninguna búsqueda ni agregación.
+  con fecha no parseable, cuya celda `P. Unitario sin IVA` no es un número
+  finito, o cuyo `P. Unitario sin IVA` es negativo o **cero**, quedan con
+  `excluido_motivo` poblado (`"sin_master"`, `"fecha_invalida"`,
+  `"precio_invalido"`, `"precio_negativo"` o `"precio_cero"`) y no entran a
+  ninguna búsqueda ni agregación.
+  `"precio_cero"` (2026-09-08, pedido explícito del usuario tras ver una
+  "Bomba DAB circuladora" figurando en $0 en el cotizador): una línea en $0
+  es algo incluido sin cargo dentro de un documento, no una observación de
+  precio. **Se filtra el cero exacto, nunca un umbral mínimo**: el ítem más
+  barato del catálogo real es un remache de $29 y es legítimo. Revierte la
+  decisión del 2026-07-28 que trataba el $0 como caso válido.
   `"precio_negativo"` es la exclusión de Notas de Crédito/devoluciones
   (pedido explícito del usuario 2026-07-28, tras encontrar una devolución
   real —`UMAG-025`— colándose como "el ítem más barato" de una consulta):

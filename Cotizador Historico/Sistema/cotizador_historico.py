@@ -11,6 +11,7 @@ modo escritura ni lo modifica. Ver ../docs/superpowers/specs/
 
 from datetime import date, datetime
 from pathlib import Path
+import math
 import sys
 import unicodedata
 from difflib import SequenceMatcher
@@ -109,8 +110,18 @@ def cargar_items_detalle(ruta_excel=None, pais="CL"):
     Items cuyo N Ref. no tiene fila en Master, cuya Fecha en Master no es un
     datetime valido, cuyo precio unitario no es un numero, o cuyo precio
     unitario es negativo, quedan con excluido_motivo poblado ("sin_master",
-    "fecha_invalida", "precio_invalido" o "precio_negativo") y fecha=None --
-    no deben entrar a ninguna busqueda ni agregacion posterior.
+    "fecha_invalida", "precio_invalido", "precio_negativo" o "precio_cero")
+    y fecha=None -- no deben entrar a ninguna busqueda ni agregacion
+    posterior.
+
+    "precio_cero" es la defensa contra los items que la factura trae en $0
+    (pedido explicito del usuario 2026-09-08, tras ver una "Bomba DAB
+    circuladora" figurando en $0 en el cotizador): son lineas incluidas sin
+    cargo dentro de un documento, no una observacion de precio, y arrastran
+    hacia abajo el promedio de su hoja. Se filtra solo el cero exacto, no
+    los precios bajos: el item mas barato del catalogo real es un remache de
+    $29 y es perfectamente legitimo, asi que cualquier umbral minimo
+    arbitrario borraria datos buenos.
 
     "precio_negativo" es la defensa contra Notas de Credito (devoluciones):
     sus items de Detalle vienen con P. Unitario sin IVA negativo (ver
@@ -173,10 +184,17 @@ def cargar_items_detalle(ruta_excel=None, pais="CL"):
                 excluido_motivo = None
 
             precio = fila[col_precio - 1].value
-            if excluido_motivo is None and not isinstance(precio, (int, float)):
+            if excluido_motivo is None and (not isinstance(precio, (int, float))
+                                             or isinstance(precio, bool)
+                                             or not math.isfinite(precio)):
+                # isfinite descarta NaN e infinito: son "numeros" para
+                # isinstance pero envenenan cualquier promedio en silencio
+                # (NaN no es igual ni mayor ni menor a nada).
                 excluido_motivo = "precio_invalido"
             elif excluido_motivo is None and precio < 0:
                 excluido_motivo = "precio_negativo"
+            elif excluido_motivo is None and precio == 0:
+                excluido_motivo = "precio_cero"
 
             proyecto, proveedor_tag = meta.get(n_ref, (None, None))
             items.append({

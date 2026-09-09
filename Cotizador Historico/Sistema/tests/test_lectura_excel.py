@@ -212,16 +212,24 @@ def test_cargar_items_detalle_excluye_precio_negativo(tmp_path):
     assert items[0]["fecha"] is None
 
 
-def test_cargar_items_detalle_no_excluye_precio_cero(tmp_path):
-    # $0 si es un caso legitimo (items que la factura lista en $0), a
-    # diferencia de un precio negativo -- no confundir ambos.
+def test_cargar_items_detalle_excluye_precio_cero(tmp_path):
+    # Revierte la decision del 2026-07-28 ("$0 es un caso legitimo"), a
+    # pedido explicito del usuario el 2026-09-08 tras ver una "Bomba DAB
+    # circuladora" figurando en $0 dentro del cotizador. Una linea en $0 es
+    # algo incluido sin cargo en un documento, no una observacion de precio:
+    # no sirve para estimar cuanto cuesta algo y arrastra hacia abajo el
+    # promedio de su hoja.
+    #
+    # Lo que aquella decision protegia -- no confundir el cero con el
+    # negativo -- se sigue cumpliendo: cada uno tiene su propio motivo (ver
+    # test_precios_no_validos.py).
     ruta = _crear_excel_prueba(
         tmp_path,
         filas_detalle=[("UMAG-007", "Flete", "Despacho sin costo", 0, 0, 0)],
         filas_master=[("UMAG-007", datetime(2026, 3, 10))],
     )
     items = ch.cargar_items_detalle(ruta)
-    assert items[0]["excluido_motivo"] is None
+    assert items[0]["excluido_motivo"] == "precio_cero"
 
 
 def test_cargar_items_detalle_falta_hoja_master_lanza_error_claro(tmp_path):

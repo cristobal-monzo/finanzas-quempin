@@ -106,7 +106,7 @@ def build(uf_manual=None, fuente_manual=None):
           f"UF utilizada ${data['uf_hoy']:,.2f}".replace(",", "."))
     if data["uf_fuente"] != "mindicador.cl":
         print(f"[AVISO] mindicador.cl no respondio -- se uso UF manual (fuente: {data['uf_fuente']}).")
-    print(f"Excluidos (sin fecha/precio valido, o Notas de Credito/devoluciones): {data['excluidos_count']}")
+    print(f"Excluidos (sin fecha/precio valido, Notas de Credito/devoluciones, o items en $0): {data['excluidos_count']}")
     print(f"Sin UF disponible para su fecha de compra: {data['sin_uf_count']}")
     print(f"Snapshot: {RUTA_DATA_JSON}")
     print(f"Visualizador: {RUTA_BUILD_HTML}")

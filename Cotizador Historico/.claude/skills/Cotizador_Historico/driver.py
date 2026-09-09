@@ -114,7 +114,7 @@ def cmd_status(pais="CL"):
     print(f"\nItems indexables en Detalle: {len(items)}")
     print(
         f"  Excluidos (sin fecha resoluble via Master, sin precio unitario valido, "
-        f"o Notas de Credito/devoluciones con precio negativo): {len(excluidos)}"
+        f"Notas de Credito/devoluciones con precio negativo, o items en $0): {len(excluidos)}"
     )
 
     if pais == "CL":
@@ -227,7 +227,8 @@ def cmd_consultar(args, pais="CL"):
         print(
             f"\n[INFO] {resultado['excluidos_count']} item(s) de Detalle excluido(s) "
             "del indice por no tener fecha resoluble via Master, por no tener precio "
-            "unitario valido, o por ser Notas de Credito/devoluciones (precio negativo)."
+            "unitario valido, por ser Notas de Credito/devoluciones (precio negativo), "
+            "o por venir en $0 en el documento."
         )
 
     if pais == "CL":

@@ -29,9 +29,9 @@ fresca, nunca se cachea entre corridas).
 
 **`status`** — solo lectura: cuenta ítems indexables en `Detalle`, cuántos
 quedan excluidos (sin fecha resoluble vía `Master`, sin precio unitario
-válido, o por ser Notas de Crédito/devoluciones con precio negativo —
-ver "Gotchas"), cuántas fechas hay en el caché de UF, y prueba la conexión
-a `mindicador.cl`.
+válido, por ser Notas de Crédito/devoluciones con precio negativo, o por
+venir en $0 en el documento — ver "Gotchas"), cuántas fechas hay en el caché
+de UF, y prueba la conexión a `mindicador.cl`.
 
 ```
 python ".claude/skills/Cotizador_Historico/driver.py" status
@@ -178,6 +178,16 @@ conversacionalmente.
   `status` reporta cuántos son; si un ítem que debería aparecer no
   aparece en una búsqueda, revisar primero si está en ese conteo de
   excluidos.
+- **Los ítems en $0 nunca entran al índice** (2026-09-08, pedido explícito
+  del usuario tras ver una "Bomba DAB circuladora" figurando en $0 en el
+  cotizador): una línea en $0 es algo incluido sin cargo dentro de un
+  documento, no una observación de precio — no sirve para estimar cuánto
+  cuesta algo y arrastra hacia abajo el promedio de su hoja
+  (`excluido_motivo = "precio_cero"`). **Se filtra solo el cero exacto, no
+  los precios bajos**: el ítem más barato del catálogo real es un remache de
+  $29 y es legítimo, así que cualquier umbral mínimo arbitrario borraría
+  datos buenos. Esto revierte la decisión del 2026-07-28 que trataba el $0
+  como caso válido.
 - **Notas de Crédito/devoluciones nunca entran al índice** (2026-07-28):
   cualquier ítem de `Detalle` con `P. Unitario sin IVA` negativo queda
   excluido (`excluido_motivo = "precio_negativo"`) — una devolución real
