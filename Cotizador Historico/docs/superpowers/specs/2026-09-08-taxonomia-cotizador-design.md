@@ -171,6 +171,15 @@ Por qué el material dejó de ser categoría:
    siendo `familia + material + medida`, así que un codo de cobre de 1/2"
    nunca se promedia con uno de bronce ni con uno de 2".
 
+El material entra a la hoja **solo en las categorías donde define el
+producto** (`CATEGORIAS_CON_MATERIAL`: piping, válvulas, fijaciones,
+perfilería). Fuera de ahí se sigue detectando y sirve de filtro, pero no
+parte la hoja: sin esta restricción, un "Guante de plástico" quedaba
+separado de "Guante" y un visor con marco de aluminio se volvía un producto
+de aluminio. Por el mismo motivo `negro`/`negra` no son palabras de
+material — en este catálogo son colores ("Polerón térmico negro"); el acero
+negro se reconoce por la frase completa o por su norma (ASTM, SCH40, ERW).
+
 Por qué se separan los gastos: el precio unitario promedio de un peaje o de
 un almuerzo no significa nada (dispersión medida de 101x y 78x
 respectivamente, contra ~1x en las hojas de producto). Quedan visibles y
@@ -192,7 +201,7 @@ completo e invisible.
 | Cajón de sastre / sin clasificar | 287 (24,1%) | **1 (0,1%)** |
 | Medidas detectadas | 385 | **475** |
 | Medidas correctas (banco de 55 casos) | 15/55 | **55/55** |
-| Compras con al menos otra con que compararse | 60% | **70%** |
+| Compras con al menos otra con que compararse | 60% | **72%** |
 | Líneas de taxonomía duplicadas en JS (CL+PE) | 572 | **0** |
 | Tests de taxonomía | 0 | **57** |
 

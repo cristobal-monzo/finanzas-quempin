@@ -295,3 +295,32 @@ def test_el_angulo_no_es_la_parte_entera_de_una_fraccion_mixta():
 def test_la_parte_entera_de_una_medida_no_supera_las_24_pulgadas():
     # No existe fitting de 100 pulgadas: si aparece, es otro numero
     assert tx.medida_canonica("Pieza", "Pieza 100 1/2 codigo interno") != '100.1/2"'
+
+
+# ── el material es faceta solo donde define el producto ───────────────────
+
+def test_un_color_no_es_un_material():
+    # "Polerón térmico negro" es ropa negra, no acero negro
+    assert tx.clasificar("Poleron", "Polerón térmico negro talla L")["material"] is None
+
+
+def test_acero_negro_se_detecta_por_la_frase_no_por_el_color():
+    assert tx.clasificar("Canieria negra", "Cañería negra ASTM A-53 3/4 plg")["material"] == "Acero Negro"
+
+
+def test_el_material_no_parte_la_hoja_fuera_de_las_familias_donde_define():
+    # un guante de plastico y un guante son el mismo producto para comparar
+    # precio; un codo de cobre y uno de bronce no.
+    guante = tx.clasificar("Guante", "Guante de plástico desechable")
+    simple = tx.clasificar("Guante", "Guante cabritilla sin forro")
+    assert tx.clave_hoja(guante) == tx.clave_hoja(simple)
+
+    cobre = tx.clasificar("Codo cobre", "Codo SO cobre 1/2 plg")
+    bronce = tx.clasificar("Codo bronce", "Codo SO BR 1/2 plg")
+    assert tx.clave_hoja(cobre) != tx.clave_hoja(bronce)
+
+
+def test_el_marco_de_aluminio_no_convierte_un_visor_en_producto_de_aluminio():
+    visor = tx.clasificar("Visor", "Visor policarbonato c/marco aluminio")
+    lente = tx.clasificar("Lente", "Lente protección claro")
+    assert tx.clave_hoja(visor) == tx.clave_hoja(lente)

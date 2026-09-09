@@ -63,13 +63,26 @@ MATERIALES = [
     (['pvc', 'vinilit'], 'PVC'),
     (['hdpe', 'polipropileno', 'plastico', 'nylon'], 'Plástico'),
     (['aluminio'], 'Aluminio'),
-    (['acero negro', 'fierro negro', 'a53', 'astm', 'sch40', 'erw', 'a234', 'negra', 'negro'], 'Acero Negro'),
+    # 'negro'/'negra' sueltos NO van aca: en este catalogo son colores
+    # ("Poleron termico negro", "Sellante alta temperatura negro"). El acero
+    # negro se reconoce por la frase completa o por su norma.
+    (['acero negro', 'fierro negro', 'caneria negra', 'canieria negra', 'cañeria negra',
+      'punta negra', 'a53', 'astm', 'sch40', 'erw', 'a234'], 'Acero Negro'),
     (['acero'], 'Acero'),
 ]
 
 # Familias que se comparan por medida: sin medida no se promedian precios
 # (pero el item SIGUE VISIBLE, marcado "sin medida").
 CATEGORIAS_CON_MEDIDA = {'Piping y Fittings', 'Fijaciones', 'Válvulas y Control de Flujo'}
+
+# Categorias donde el material DEFINE el producto y por lo tanto entra a la
+# hoja: un codo de cobre y uno de bronce son productos distintos y su precio
+# no se promedia. Fuera de estas, el material se sigue detectando y sirve de
+# filtro, pero no parte la hoja -- si no, un "Guante de plastico" quedaba
+# separado de "Guante" y un visor con marco de aluminio se volvia un producto
+# de aluminio.
+CATEGORIAS_CON_MATERIAL = {'Piping y Fittings', 'Válvulas y Control de Flujo', 'Fijaciones',
+                           'Perfilería y Maderas'}
 
 # (terminos, categoria, subcategoria, familia, prioridad_extra)
 REGLAS = [

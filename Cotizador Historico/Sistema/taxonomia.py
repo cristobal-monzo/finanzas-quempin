@@ -32,7 +32,8 @@ import re
 import unicodedata
 from fractions import Fraction
 
-from catalogo_taxonomia import CATEGORIAS, CATEGORIAS_CON_MEDIDA, MATERIALES, REGLAS
+from catalogo_taxonomia import (CATEGORIAS, CATEGORIAS_CON_MATERIAL, CATEGORIAS_CON_MEDIDA,
+                                MATERIALES, REGLAS)
 
 
 # ====================== 1-2. MEDIDAS ======================
@@ -443,14 +444,20 @@ def clasificar(nombre_item, descripcion):
         'termino': termino,
         'cotizable': CATEGORIAS.get(cat, ('', True))[1],
         'requiere_medida': requiere_medida,
+        'material_define': cat in CATEGORIAS_CON_MATERIAL,
     }
 
 
 def clave_hoja(c):
     """La unidad de comparacion de precios: familia + material + medida.
-    Nunca mezcla un codo de 1/2 con uno de 2, ni cobre con bronce."""
+    Nunca mezcla un codo de 1/2 con uno de 2, ni cobre con bronce.
+
+    El material entra solo donde define el producto (ver
+    CATEGORIAS_CON_MATERIAL): en una herramienta o un EPP suele ser un
+    detalle del texto (el marco de aluminio de un visor) y partiria la hoja
+    sin motivo."""
     partes = [c['familia']]
-    if c['material']:
+    if c['material'] and c.get('material_define'):
         partes.append('de ' + c['material'])
     if c['medida']:
         partes.append(c['medida'])
