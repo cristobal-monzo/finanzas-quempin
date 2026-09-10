@@ -75,3 +75,14 @@ Usersquemp*scratchpad*
 
 # Cache de salida del MCP de Playwright (logs de consola, snapshots de pagina)
 .playwright-mcp/
+
+# Snapshot de datos previo a la optimizacion 2026-09-09 (borrar cuando ya no se necesite rollback)
+_backup_pre_optimizacion_*/
+
+# Carpetas de trabajo temporal de cada modulo: guardan specs con N de documento
+# tributario e importes reales, PDFs/PNG de facturas y stages de separacion de
+# documentos combinados. Por patron y no por ruta exacta (ver CLAUDE.md: la
+# auditoria del 2026-07-28 encontro datos expuestos justamente por reglas
+# apuntadas a rutas puntuales).
+tmp/
+**/tmp/
