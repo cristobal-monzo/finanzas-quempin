@@ -32,6 +32,16 @@ del proyecto y expone dos comandos seguros de invocar desde un agente:
             Visualizador Web/template.html (versionado, sin datos). No
             modifica el Excel. Ver Visualizador Web/CLAUDE.md.
 
+  separar   → Para un archivo PENDIENTE (sin registrar todavia) que trae mas
+            de 1 documento tributario distinto en el mismo encuadre (ej. 2-3
+            boletas fotografiadas juntas): genera '--cantidad' copias
+            identicas del archivo ('<nombre>_1.<ext>', '<nombre>_2.<ext>',
+            ...), respalda el original en Excel/Respaldos/<Mes Año>/ y lo
+            borra de la carpeta compartida. No toca el Excel ni
+            datos_extraidos.json -- despues de correrlo hay que agregar una
+            entrada propia al JSON por cada copia nueva (paso 2 del skill),
+            tratando cada una como un pendiente independiente.
+
 Uso:
   python driver.py status
   python driver.py run
@@ -39,6 +49,7 @@ Uso:
   python driver.py confirmar --todos
   python driver.py confirmar UMAG-014 CFLI-002
   python driver.py visualizador
+  python driver.py separar --proyecto "UMAG" --archivo "IMG_1234.jpg" --cantidad 3
 """
 
 import sys
@@ -211,6 +222,46 @@ def cmd_confirmar(args, pais="CL"):
     return 0
 
 
+def _extraer_flag(argv, nombre):
+    """Busca '--<nombre> VALOR' en argv y devuelve (valor, argv_sin_ese_flag).
+    Lanza ValueError si el flag no aparece o le falta el valor."""
+    argv = list(argv)
+    if nombre not in argv:
+        raise ValueError(f"Falta el flag --{nombre}")
+    idx = argv.index(nombre)
+    if idx + 1 >= len(argv):
+        raise ValueError(f"El flag --{nombre} requiere un valor")
+    valor = argv[idx + 1]
+    del argv[idx:idx + 2]
+    return valor, argv
+
+
+def cmd_separar(args, pais="CL"):
+    acc.configurar_pais(pais)
+    try:
+        proyecto, resto = _extraer_flag(args, "--proyecto")
+        archivo, resto = _extraer_flag(resto, "--archivo")
+        cantidad_str, resto = _extraer_flag(resto, "--cantidad")
+        cantidad = int(cantidad_str)
+    except ValueError as e:
+        print(f"[ERROR] {e}")
+        print("Uso: python driver.py separar --proyecto <Proyecto> --archivo <archivo> --cantidad N")
+        return 2
+
+    try:
+        destinos = acc.separar_documento_combinado(proyecto, archivo, cantidad)
+    except (ValueError, FileNotFoundError, FileExistsError) as e:
+        print(f"[ERROR] {e}")
+        return 1
+
+    print(f"[OK] '{archivo}' separado en {len(destinos)} archivo(s):")
+    for destino in destinos:
+        print(f"  - {destino.name}")
+    print("Agrega una entrada propia en datos_extraidos.json por cada archivo de arriba "
+          "(mismo 'proyecto', 'archivo' = nombre nuevo) antes de correr 'run'.")
+    return 0
+
+
 def cmd_visualizador(pais="CL"):
     acc.configurar_pais(pais)
     visualizador_dir = acc.RAIZ_VISUALIZADOR_WEB
@@ -225,9 +276,9 @@ def cmd_visualizador(pais="CL"):
 
 
 def main():
-    comandos = ("status", "run", "confirmar", "visualizador")
+    comandos = ("status", "run", "confirmar", "visualizador", "separar")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
-        print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador] [--pais CL|PE]")
+        print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador|separar --proyecto P --archivo A --cantidad N] [--pais CL|PE]")
         return 2
 
     comando = sys.argv[1]
@@ -239,6 +290,8 @@ def main():
         return cmd_confirmar(resto, pais=pais)
     if comando == "visualizador":
         return cmd_visualizador(pais=pais)
+    if comando == "separar":
+        return cmd_separar(resto, pais=pais)
     return cmd_run(pais=pais)
 
 

@@ -617,7 +617,12 @@ def registrar_correcciones_pendientes(detectadas, escribir=True,
     ruta_errores = ruta_errores or RUTA_ERRORES_MD
     hoy = datetime.now().strftime("%Y-%m-%d")
     correcciones = cargar_correcciones_manuales(ruta_correcciones)
-    indice = {(c["n_ref"], c["columna"]): c for c in correcciones}
+    # .get(): el archivo tambien guarda entradas de bitacora escritas a mano
+    # (arreglos que no caen en una sola celda de Master, ya "Aplicado", hoja
+    # "Master/Detalle") que no tienen "columna". Nunca colisionan con una
+    # candidata detectada -- esas siempre traen columna int -- y ningun otro
+    # uso de c["columna"] las alcanza, porque los demas filtran "Pendiente".
+    indice = {(c["n_ref"], c.get("columna")): c for c in correcciones}
 
     pendientes_para_reportar = []
     for d in detectadas:
@@ -1524,6 +1529,59 @@ def inventariar_archivos(raiz, archivos_registrados):
                 pendientes.append(info)
 
     return pendientes, omitidos
+
+
+# ── SEPARACIÓN DE DOCUMENTOS COMBINADOS (varias facturas/boletas en 1 archivo) ──
+
+def separar_documento_combinado(proyecto_fisico, archivo, cantidad, raiz_docs=None, ruta_backups=None):
+    """Cuando una foto/PDF pendiente trae mas de 1 documento tributario distinto
+    en el mismo encuadre (ej. 2-3 boletas fotografiadas juntas), genera 'cantidad'
+    copias identicas de ese archivo -- '<nombre>_1.<ext>', '<nombre>_2.<ext>', ...
+    -- para que cada una se registre como documento independiente en el siguiente
+    'run' (el emparejamiento con datos_extraidos.json es por (proyecto, archivo)
+    exacto, asi que basta con que cada copia tenga una entrada propia en el JSON).
+    Mismo sufijo numerico ya documentado como regla de negocio en MEMORY.md del
+    skill (pedido 2026-08-18) -- esta funcion formaliza en codigo (con tests) lo
+    que antes era un paso manual del agente.
+
+    Se duplica sin recortar -- pedido explicito del usuario, 2026-09-08: cada
+    copia conserva el archivo completo (todas las facturas visibles), nunca se
+    intenta aislar visualmente cada una. El archivo original se respalda en
+    Excel/Respaldos/<Mes Año>/ (mismo patron que hacer_backup) y se borra de la
+    carpeta compartida -- si no, quedaria "pendiente sin datos en el JSON" para
+    siempre, porque ningun archivo nuevo se llamara igual que el original.
+
+    Aborta sin tocar nada si el original no existe o si ya existe algun archivo
+    destino (mismo nombre '_N'), para no pisar un documento ya separado antes."""
+    raiz_docs = raiz_docs if raiz_docs is not None else RAIZ_DOCS
+    ruta_backups = ruta_backups if ruta_backups is not None else RUTA_BACKUPS
+    if cantidad < 2:
+        raise ValueError(f"cantidad debe ser 2 o mas (recibido: {cantidad})")
+
+    carpeta = raiz_docs / proyecto_fisico
+    ruta_original = carpeta / archivo
+    if not ruta_original.exists():
+        raise FileNotFoundError(f"No existe el documento a separar: {ruta_original}")
+
+    stem = ruta_original.stem
+    ext = ruta_original.suffix
+    destinos = [carpeta / f"{stem}_{n}{ext}" for n in range(1, cantidad + 1)]
+    ya_existentes = [d for d in destinos if d.exists()]
+    if ya_existentes:
+        nombres = ", ".join(d.name for d in ya_existentes)
+        raise FileExistsError(f"Ya existe(n) archivo(s) destino: {nombres}")
+
+    for destino in destinos:
+        shutil.copy2(ruta_original, destino)
+
+    ahora = datetime.now()
+    carpeta_respaldo = carpeta_mes(ruta_backups, ahora)
+    marca = ahora.strftime("%Y-%m-%d %H%M")
+    respaldo = carpeta_respaldo / f"{stem} - documento combinado - backup {marca}{ext}"
+    shutil.copy2(ruta_original, respaldo)
+    ruta_original.unlink()
+
+    return destinos
 
 
 # ── DATOS EXTRAÍDOS (JSON) ──────────────────────────────────────────────────

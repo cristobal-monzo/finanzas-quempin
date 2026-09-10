@@ -152,6 +152,17 @@ módulos), no en este archivo.
   Duplicar preserva la regla implícita "1 archivo físico = 1 documento" que
   ya usa todo el pipeline (inventario, columna "Archivo origen", renombrado),
   sin tocar el código del script.
+  **Automatizado el 2026-09-08** (pedido del usuario: que esto pase siempre,
+  sin depender de que el agente se acuerde de hacerlo a mano): ahora es el
+  Paso 2.0 de `SKILL.md`, respaldado por `separar_documento_combinado()`
+  (`Sistema/auditor_centro_costos.py`) y el subcomando
+  `driver.py separar --proyecto <P> --archivo <archivo> --cantidad N` — genera
+  las copias, respalda el original en `Excel/Respaldos/<Mes Año>/` y lo borra,
+  con tests en `Sistema/tests/test_separar_documento_combinado.py`. La
+  salvaguarda explícita en `SKILL.md` sigue siendo la misma que ya aplicaba
+  en la práctica: nunca separar un documento multipágina que en realidad es 1
+  sola factura (páginas de continuación, factura + su guía de despacho del
+  mismo N°) — solo cuando hay N° de Documento genuinamente distintos.
 - **Notas de Crédito SÍ se registran, como documento con montos negativos**
   (confirmado explícitamente por el usuario 2026-08-18, formaliza un
   precedente tácito que ya existía sin documentar — `UMAG-025`, Danus

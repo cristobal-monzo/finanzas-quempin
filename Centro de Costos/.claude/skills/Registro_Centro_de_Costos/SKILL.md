@@ -1,6 +1,6 @@
 ---
 name: Registro_Centro_de_Costos
-description: Direct pipeline commands (status/run/confirmar/visualizador) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer locally. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; ask the user for confirmation instead, since they may mean this skill, /Actualizar_CC, or /Actualizar_Base_de_Datos (see root CLAUDE.md § Invocación de skills). Use this skill directly for status checks, dry runs, audits, registering facturas, or confirming manual corrections when the user names it explicitly.
+description: Direct pipeline commands (status/run/confirmar/visualizador/separar) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer locally. Paso 2 also auto-splits any pending file that bundles more than 1 invoice/receipt in the same photo into 1 file per document before registering. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; ask the user for confirmation instead, since they may mean this skill, /Actualizar_CC, or /Actualizar_Base_de_Datos (see root CLAUDE.md § Invocación de skills). Use this skill directly for status checks, dry runs, audits, registering facturas, or confirming manual corrections when the user names it explicitly.
 ---
 
 # Registro: Centro de Costos
@@ -110,6 +110,31 @@ preguntando solo lo que la foto/PDF no resuelve por sí sola.
 Para cada documento pendiente sin datos (agrupando por proyecto cuando
 varios comparten la misma respuesta, ej. `tipo_proyecto`, para no repetir la
 misma pregunta N veces):
+
+0. **Antes de extraer nada, revisar si el archivo trae más de 1 documento
+   tributario distinto** (pedido del usuario, 2026-09-08 — ej. 2-3 boletas o
+   facturas fotografiadas juntas en el mismo encuadre, cada una con su propio
+   N° de Documento e ítems propios). **Salvaguarda: nunca separar un
+   documento multipágina que en realidad es 1 sola factura** (ej. factura +
+   su guía de despacho del mismo N°, o una página de continuación de ítems
+   del mismo documento) — solo aplica cuando hay N° de Documento
+   genuinamente distintos.
+
+   Si el archivo trae N documentos reales, correr (duplica sin recortar —
+   cada copia conserva la foto/PDF completo, no se intenta aislar
+   visualmente cada uno):
+   ```
+   python ".claude/skills/Registro_Centro_de_Costos/driver.py" separar --proyecto "<Proyecto>" --archivo "<archivo>" --cantidad N
+   ```
+   Esto genera `<archivo>_1.<ext>`, `<archivo>_2.<ext>`, ... en la misma
+   carpeta, respalda el original en `Excel/Respaldos/<Mes Año>/` y lo borra
+   (si no, quedaría "pendiente sin datos en el JSON" para siempre, porque
+   ningún archivo nuevo se llamaría igual que el original). A partir de acá,
+   tratar cada `_N` como un pendiente independiente: repetir los pasos 1-3
+   para cada uno por separado, con su propio N° de Documento, proveedor e
+   ítems — el siguiente `run` los registra como documentos separados (N° Ref.
+   propios) automáticamente, porque el emparejamiento ya es por
+   (proyecto, archivo) exacto.
 
 1. Abrir la foto/PDF (`Sitio de comunicación - Centro de Costos 1/Facturas y
    Boletas/<Proyecto>/<archivo>`) y extraer lo que se lea con claridad:
@@ -388,6 +413,14 @@ inconsistencias = acc.verificar_aritmetica(datos)   # solo lee el JSON, no toca 
 - **Si `Centro de Costos.xlsx` está abierto en Excel**, `run` falla al
   guardar con un `PermissionError` controlado — no corrompe el archivo,
   solo hay que cerrarlo y reintentar.
+- **`driver.py separar` es solo para archivos PENDIENTES (sin registrar
+  todavía)** — no reordena ni corrige nada en el Excel. Para separar un
+  documento que **ya** quedó registrado como 1 solo N° Ref. combinando varias
+  facturas/boletas, hace falta una reestructuración manual del Excel (mover
+  filas de `Master`/`Detalle`, asignar N° Ref. nuevos, dejar constancia en
+  `correcciones_manuales.json`/`ERRORES.md`) — no uses `separar` para ese
+  caso, terminarías con archivos físicos duplicados sin fila propia en
+  Master.
 
 ## Troubleshooting
 

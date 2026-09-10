@@ -191,6 +191,40 @@ def test_registrar_ignora_ya_aplicado_con_mismo_valor(tmp_path):
     assert guardadas[0]["estado"] == "Aplicado"
 
 
+def test_registrar_tolera_entradas_de_bitacora_sin_columna(tmp_path):
+    """correcciones_manuales.json guarda dos tipos de registro: la correccion
+    de celda que produce el propio codigo (siempre con 'columna', el indice de
+    columna de Master que hay que recolorear) y la entrada de bitacora que
+    escribe el agente para dejar constancia de un arreglo que no cae en una
+    sola celda (ej. la separacion de 7 facturas mezcladas de FCH1/FCH2 del
+    2026-09-07: hoja "Master/Detalle", ya "Aplicado", sin columna posible).
+    Esta segunda clase hacia estallar el indice con KeyError: 'columna' y
+    dejaba 'status' -- y por lo tanto toda la cadena de /Actualizar_Finanzas --
+    caido."""
+    ruta_json = tmp_path / "correcciones_manuales.json"
+    ruta_md = _errores_md_de_prueba(tmp_path)
+    ruta_json.write_text(json.dumps([{
+        "n_ref": "FCH1-021/046/047", "hoja": "Master/Detalle",
+        "campo": "Reestructuración: documentos mezclados separados",
+        "valor_anterior": "FCH1-021 mezclaba 3 facturas Copec en un solo registro",
+        "valor_corregido": "FCH1-021=288946; FCH1-046=289533; FCH1-047=289351",
+        "estado": "Aplicado", "fecha_detectado": "2026-09-07",
+        "fecha_aplicado": "2026-09-07", "nota": "",
+    }]), encoding="utf-8")
+
+    pendientes = acc.registrar_correcciones_pendientes(
+        [_correccion()], ruta_correcciones=ruta_json, ruta_errores=ruta_md,
+    )
+
+    assert len(pendientes) == 1
+    assert pendientes[0]["n_ref"] == "UMAG-014"
+    guardadas = json.loads(ruta_json.read_text(encoding="utf-8"))
+    assert len(guardadas) == 2  # la bitacora sigue ahi, intacta
+    assert guardadas[0]["n_ref"] == "FCH1-021/046/047"
+    assert "columna" not in guardadas[0]
+    assert "FCH1-021/046/047" in ruta_md.read_text(encoding="utf-8")
+
+
 def test_registrar_con_escribir_false_no_toca_archivos(tmp_path):
     ruta_json = tmp_path / "correcciones_manuales.json"
     ruta_md = _errores_md_de_prueba(tmp_path)
