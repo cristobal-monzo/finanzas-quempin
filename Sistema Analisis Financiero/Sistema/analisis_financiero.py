@@ -657,7 +657,7 @@ def prefijo_de_n_ref(n_ref: str) -> str:
     return n_ref.split("-")[0]
 
 
-def leer_detalle_centro_costos(ruta_excel_cc: Path, pais: str = "CL") -> list[dict]:
+def leer_detalle_centro_costos(ruta_excel_cc: Path, pais: str = "CL", wb=None) -> list[dict]:
     """Lee la hoja 'Detalle' de Centro de Costos.xlsx -- SOLO LECTURA, este
     módulo nunca escribe ese archivo. Filas sin N° Ref. o sin Total sin IVA
     se ignoran (no se puede agrupar ni sumar sin esos dos datos).
@@ -665,7 +665,7 @@ def leer_detalle_centro_costos(ruta_excel_cc: Path, pais: str = "CL") -> list[di
     'pais' selecciona el nombre de la columna de total via PAISES -- "CL"
     preserva exactamente el comportamiento anterior a este parametro."""
     col_total_nombre = PAISES[pais]["col_total_sin_iva_cc"]
-    wb = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+    wb = wb if wb is not None else openpyxl.load_workbook(ruta_excel_cc, data_only=True)
     ws = wb["Detalle"]
     encabezados = [celda.value for celda in ws[1]]
     col_n_ref = encabezados.index("N° Ref.") + 1
@@ -683,12 +683,12 @@ def leer_detalle_centro_costos(ruta_excel_cc: Path, pais: str = "CL") -> list[di
     return items
 
 
-def leer_tipo_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]:
+def leer_tipo_proyecto_centro_costos(ruta_excel_cc: Path, wb=None) -> dict[str, str]:
     """Lee la hoja 'Master' de Centro de Costos.xlsx (SOLO LECTURA) y devuelve,
     por prefijo de proyecto, el 'Tipo de Proyecto' más frecuente entre sus
     documentos. Filas sin N° Ref. o sin Tipo de Proyecto se ignoran. Si la
     hoja 'Master' no existe, devuelve dict vacío."""
-    wb = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+    wb = wb if wb is not None else openpyxl.load_workbook(ruta_excel_cc, data_only=True)
     if "Master" not in wb.sheetnames:
         return {}
     ws = wb["Master"]
@@ -711,13 +711,13 @@ def leer_tipo_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]:
     }
 
 
-def leer_nombres_proyecto_centro_costos(ruta_excel_cc: Path) -> dict[str, str]:
+def leer_nombres_proyecto_centro_costos(ruta_excel_cc: Path, wb=None) -> dict[str, str]:
     """Lee la hoja 'Master' de Centro de Costos.xlsx (SOLO LECTURA) y devuelve,
     por prefijo de proyecto, el 'Proyecto' (nombre completo) más frecuente
     entre sus documentos -- mismo patrón que leer_tipo_proyecto_centro_costos.
     Filas sin N° Ref. o sin Proyecto se ignoran. Si la hoja 'Master' no
     existe, devuelve dict vacío."""
-    wb = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+    wb = wb if wb is not None else openpyxl.load_workbook(ruta_excel_cc, data_only=True)
     if "Master" not in wb.sheetnames:
         return {}
     ws = wb["Master"]
@@ -1598,10 +1598,17 @@ def ejecutar(
         )
         return resumen
 
-    items_detalle = leer_detalle_centro_costos(ruta_excel_cc, pais=pais)
+    # Centro de Costos.xlsx se abre UNA sola vez y se comparte entre los tres
+    # lectores. Antes cada uno hacia su propio load_workbook del mismo archivo
+    # (dos de ellos sobre la misma hoja Master), y esas 3 lecturas repetidas
+    # eran ~1,6s de los 2,8s que tardaba ejecutar() -- el paso mas caro de
+    # toda la cadena de actualizacion. Solo lectura: este modulo nunca
+    # escribe ese libro.
+    wb_cc = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+    items_detalle = leer_detalle_centro_costos(ruta_excel_cc, pais=pais, wb=wb_cc)
     agrupado = agrupar_por_proyecto_y_subcategoria(items_detalle)
 
-    nombres_por_prefijo_cc = leer_nombres_proyecto_centro_costos(ruta_excel_cc)
+    nombres_por_prefijo_cc = leer_nombres_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc)
     tags_existentes = {f["tag"] for f in filas_validas}
     prefijos_faltantes = {
         prefijo: nombre for prefijo, nombre in nombres_por_prefijo_cc.items()
@@ -1650,7 +1657,7 @@ def ejecutar(
     )
 
     asegurar_formulas_proyectos(ws_proyectos, filas_validas)
-    tipos_por_prefijo = leer_tipo_proyecto_centro_costos(ruta_excel_cc)
+    tipos_por_prefijo = leer_tipo_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc)
     col_categoria = HEADERS_PROYECTOS.index("Categoría") + 1
     resumen["avisos"].extend(
         asegurar_categoria_proyectos(ws_proyectos, filas_validas, tipos_por_prefijo, col_categoria)
