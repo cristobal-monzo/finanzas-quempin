@@ -42,6 +42,17 @@ del proyecto y expone dos comandos seguros de invocar desde un agente:
             entrada propia al JSON por cada copia nueva (paso 2 del skill),
             tratando cada una como un pendiente independiente.
 
+  eliminar  → Saca del libro un documento registrado por error -- tipicamente
+            el mismo documento tributario registrado dos veces desde dos
+            escaneos distintos, que suma su costo dos veces en el proyecto,
+            en los KPIs de Analisis Financiero y en el indice de precios.
+            Borra sus items de Detalle y su fila de Master, regenera pies y
+            hojas de proyecto, y ARCHIVA el archivo fuente en
+            Excel/Respaldos/<Mes Año>/ sacandolo de la carpeta compartida
+            (si no, el proximo 'run' lo volveria a registrar). No renumera
+            los N Ref que quedan: el numero es historico y queda un hueco,
+            que es lo correcto. Sin '--aplicar' solo muestra que sacaria.
+
 Uso:
   python driver.py status
   python driver.py run
@@ -50,6 +61,8 @@ Uso:
   python driver.py confirmar UMAG-014 CFLI-002
   python driver.py visualizador
   python driver.py separar --proyecto "UMAG" --archivo "IMG_1234.jpg" --cantidad 3
+  python driver.py eliminar UMAG-042
+  python driver.py eliminar UMAG-042 --aplicar
 """
 
 import sys
@@ -173,14 +186,10 @@ def cmd_status(pais="CL"):
     escribibles = len(pendientes) - len(sin_datos)
     print(f"\nSi corres 'run' ahora se registrarían: {escribibles} documento(s).")
 
-    print(f"\nVerificación aritmética sobre TODO datos_extraidos.json (Neto vs {acc.NOMBRE_IMPUESTO_PCT}):")
-    inconsistencias = acc.verificar_aritmetica(datos_json)
-    if inconsistencias:
-        for inc in inconsistencias:
-            print(f"  * Doc {inc['n_documento']} ({inc['archivo']}): "
-                  f"Neto={inc['neto']:,} IVA={inc['iva']:,} esperado={inc['iva_esperado']:,}")
-    else:
-        print("  Sin inconsistencias.")
+    print(f"\nCuadre de impuesto sobre TODO datos_extraidos.json (Neto vs {acc.NOMBRE_IMPUESTO_PCT}):")
+    # Mismo formateo agrupado por severidad que usa el informe de 'run' -- lo
+    # provee el modulo, no se duplica aca.
+    acc._imprimir_cuadre_impuesto(acc.verificar_aritmetica(datos_json))
 
     mostrar_preview_renombrados(filas_master, reconciliacion)
 
@@ -262,6 +271,51 @@ def cmd_separar(args, pais="CL"):
     return 0
 
 
+def cmd_eliminar(args, pais="CL"):
+    """Saca del libro uno o varios documentos registrados por error. Sin
+    '--aplicar' solo muestra que sacaria: es la unica operacion que borra una
+    fila de datos ya escrita, asi que el default es no escribir."""
+    acc.configurar_pais(pais)
+    aplicar = "--aplicar" in args
+    n_refs = [a for a in args if a != "--aplicar"]
+    if not n_refs:
+        print("Uso: python driver.py eliminar <N_REF> [<N_REF> ...] [--aplicar]")
+        return 2
+
+    try:
+        previos, resultados = acc.ejecutar_eliminacion(n_refs, aplicar=aplicar)
+    except ValueError as e:
+        print(f"[ERROR] {e}")
+        return 1
+
+    print("=" * 70)
+    print(f"  {'ELIMINACION APLICADA' if aplicar else 'PREVIEW -- no se escribio nada'}")
+    print("=" * 70)
+    total = 0
+    for p in previos:
+        impuesto = p["impuesto"] if isinstance(p["impuesto"], (int, float)) else 0
+        total += p["neto"] + impuesto
+        print(f"\n  {p['n_ref']}  ({p['proyecto']})")
+        print(f"    Documento : {p['n_documento']} de {p['proveedor']}")
+        print(f"    Fecha     : {str(p['fecha'])[:10]}")
+        print(f"    Neto      : {p['neto']:,.0f}")
+        print(f"    Impuesto  : {impuesto:,.0f}")
+    print(f"\n  Total que sale del costo: {total:,.0f} {acc.MONEDA}")
+
+    if aplicar:
+        for r in resultados:
+            print(f"\n  [OK] {r['n_ref']}: {r['items_borrados']} item(s) de Detalle borrado(s)")
+            if r["archivo_archivado"]:
+                print(f"       Archivo movido a: {r['archivo_archivado']}")
+            elif r["archivo_origen"]:
+                print(f"       [AVISO] No se encontro el archivo {r['archivo_origen']} "
+                      f"-- si reaparece en la carpeta, el proximo 'run' lo registrara de nuevo.")
+        print("\n  Falta correr 'run' para propagar a Analisis Financiero y los tableros.")
+    else:
+        print("\n  Para aplicarlo de verdad, agrega --aplicar")
+    return 0
+
+
 def cmd_visualizador(pais="CL"):
     acc.configurar_pais(pais)
     visualizador_dir = acc.RAIZ_VISUALIZADOR_WEB
@@ -276,9 +330,11 @@ def cmd_visualizador(pais="CL"):
 
 
 def main():
-    comandos = ("status", "run", "confirmar", "visualizador", "separar")
+    comandos = ("status", "run", "confirmar", "visualizador", "separar", "eliminar")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
-        print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador|separar --proyecto P --archivo A --cantidad N] [--pais CL|PE]")
+        print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador|"
+              "separar --proyecto P --archivo A --cantidad N|eliminar N_REF ... [--aplicar]] "
+              "[--pais CL|PE]")
         return 2
 
     comando = sys.argv[1]
@@ -292,6 +348,8 @@ def main():
         return cmd_visualizador(pais=pais)
     if comando == "separar":
         return cmd_separar(resto, pais=pais)
+    if comando == "eliminar":
+        return cmd_eliminar(resto, pais=pais)
     return cmd_run(pais=pais)
 
 

@@ -300,6 +300,57 @@ pipeline anterior perdido (ver "Historia" más arriba). Tres tipos de hoja:
 - **`Excel/Respaldos/`**: copias de seguridad automáticas (una por cada `run`, incluso sin cambios), organizadas en una subcarpeta por mes (ej. `Julio 2026/`), más cualquier backup manual. Desechables, pero no borrar sin confirmar con el usuario.
 - **`Sistema/Legado/`**: archivos históricos que el script ya no lee, conservados solo por trazabilidad.
 
+## Cuadre de impuesto y duplicados: por qué hay severidades
+
+Reescrito en la auditoría del 2026-09-09. Las dos verificaciones que emitían
+alertas lo hacían comparando strings crudos, y el resultado era ruido que
+enterraba los hallazgos reales.
+
+**Tipo de documento — una sola fuente de verdad.** El tipo lo escribe un
+agente al extraer, así que la misma cosa entra con y sin tilde: el JSON tiene
+hoy 3 `Guía de Despacho` y 8 `Guia de Despacho`, 7 `Nota de Crédito` y 1
+`Nota de Credito`. Se comparaba contra la tupla literal
+`("Factura", "Guía de Despacho")` en **tres** lugares distintos, así que esas
+8 guías quedaban fuera de toda verificación — y `calcular_iva_documento` les
+habría puesto impuesto **0** de no venir con `iva` explícito. Ahora todo pasa
+por `es_documento_afecto()` / `clave_tipo_documento()`. **Si agregas una
+comparación por tipo de documento, usa esas funciones, nunca el literal.**
+
+**El campo `iva` es la bolsa de TODOS los impuestos, no solo el 19 %.** En
+las facturas de combustible el precio pagado lleva IVA más impuesto
+específico (IEC) y FEPP, y el campo los agrupa a propósito para que
+`Neto + iva` sea el total realmente pagado (las notas de esos documentos lo
+dicen). Asumir 19 % puro producía 100 alertas de las que **73 eran
+documentos correctos**, y dejaba 55 celdas de IVA pintadas de rojo que nadie
+iba a corregir nunca. `severidad_cuadre_impuesto()` clasifica en:
+
+| severidad | qué significa | acción |
+|---|---|---|
+| `error` | el impuesto es **menor** al IVA legal — imposible en un documento afecto | hay algo que corregir, sí o sí |
+| `revisar` | excede el 19 % en una categoría sin impuesto específico conocido | mirar el documento |
+| `estimado` | documento afecto **sin** `iva`: se calcula 19 %, que en combustible queda corto | verificar el total pagado |
+
+El exceso ya explicado por la categoría (`CATEGORIAS_CON_IMPUESTO_ESPECIFICO`
+= `Combustible`) no se reporta: es el comportamiento esperado. Solo `error`
+pinta la celda de rojo. `migrar_color_cuadre_impuesto()` repinta el libro ya
+escrito según esta regla (es idempotente en los dos sentidos).
+
+**La forma preferida de registrar un impuesto adicional es declararlo.** El
+campo opcional `otros_impuestos` dice cuánto del impuesto **no** es IVA. Con
+él, el cuadre deja de ser una heurística por categoría y pasa a ser una
+igualdad verificable: `iva == round(neto × tasa) + otros_impuestos`. Sirve
+para cualquier rubro, no solo combustible. Las 660 entradas existentes no lo
+declaran y siguen validándose por categoría, así que agregarlo es
+incremental: cada documento nuevo que lo traiga se valida exacto.
+
+**`N/A` y `S/N` no son números de documento.** 172 de las 660 entradas del
+JSON son peajes con `n_documento = "N/A"` y 34 son `S/N (archivo)`. El
+detector de duplicados comparaba el string crudo, así que **cada peaje era
+"duplicado" del peaje anterior**: la corrida del 2026-09-09 emitió 48 avisos
+y 47 eran peajes distintos. Ahora `es_n_documento_real()` filtra los
+marcadores antes de comparar. Un duplicado de verdad exige además el mismo
+emisor: un N° Documento es único **por emisor**, no globalmente.
+
 ## Precauciones
 
 - **Esta carpeta (`Finanzas QUEMPIN/Centro de Costos/`) es la ubicación canónica única para el código/Excel de trabajo** desde 2026-07-16. **¡Cuidado con el nombre!** Hay tres carpetas con nombres casi idénticos, y solo una es válida como fuente:

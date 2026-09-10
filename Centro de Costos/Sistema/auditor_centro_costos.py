@@ -30,6 +30,8 @@ import json
 import re
 import shutil
 import sys
+import time
+import unicodedata
 import zipfile
 from contextlib import contextmanager
 from datetime import datetime
@@ -313,6 +315,46 @@ LEYENDA_PROYECTO = [
 
 PATRON_NREF = re.compile(r"^[A-Za-zÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑ0-9]*-\d+$")
 
+# ── TIPO DE DOCUMENTO: UNA SOLA FUENTE DE VERDAD ────────────────────────────
+# El tipo lo escribe un agente al extraer el documento, asi que la misma cosa
+# entra con y sin tilde: datos_extraidos.json tiene hoy 3 "Guía de Despacho"
+# y 8 "Guia de Despacho", 7 "Nota de Crédito" y 1 "Nota de Credito".
+# Comparar el string crudo contra la tupla literal ("Factura", "Guía de
+# Despacho") -- que es lo que se hacia en 3 lugares distintos del archivo --
+# dejaba esas 8 guias de despacho fuera de TODA verificacion aritmetica, y
+# les habria calculado impuesto 0 si no hubieran traido 'iva' explicito.
+# Normalizar en un solo lugar cierra las tres puertas a la vez.
+TIPOS_AFECTOS = frozenset({"factura", "guia de despacho"})
+
+
+def clave_tipo_documento(valor):
+    """Forma comparable de un tipo de documento: sin tildes, en minusculas y
+    con los espacios colapsados. 'Guía de Despacho', 'Guia de despacho' y
+    '  GUIA  DE  DESPACHO ' colapsan todas al mismo valor."""
+    descompuesto = unicodedata.normalize("NFD", str(valor or ""))
+    sin_tildes = "".join(c for c in descompuesto if unicodedata.category(c) != "Mn")
+    return " ".join(sin_tildes.lower().split())
+
+
+def es_documento_afecto(tipo_documento):
+    """True si el documento paga impuesto sobre el neto (Factura o Guia de
+    Despacho). Las boletas ya vienen con el impuesto incluido en el precio y
+    las notas de credito son el reverso de una compra, no una compra."""
+    return clave_tipo_documento(tipo_documento) in TIPOS_AFECTOS
+
+
+# Tolerancia al cuadrar Neto contra impuesto declarado. El impuesto de un
+# documento real se calcula sobre el neto TOTAL, no item por item, asi que
+# sumar los items puede desviarse unos pesos por redondeo. El umbral anterior
+# (+-1) convertia diferencias de 5 pesos sobre 31.758 en "inconsistencia".
+TOLERANCIA_IMPUESTO = 2
+
+# Categorias donde el precio pagado lleva, ademas del IVA, un impuesto
+# especifico (en Chile: IEC + FEPP sobre combustibles). En esos documentos el
+# campo 'iva' agrupa los tres a proposito, para que Neto + iva sea el total
+# realmente pagado -- ver las notas de los propios documentos en el JSON.
+CATEGORIAS_CON_IMPUESTO_ESPECIFICO = frozenset({"combustible"})
+
 NAVY = "1F4E79"
 NAVY_OSCURO = "1F3864"
 ROJO = "C00000"
@@ -454,7 +496,7 @@ def leer_master(ws_master):
         proyecto = ws_master.cell(row=r, column=2).value
         archivo_origen = ws_master.cell(row=r, column=15).value
         n_doc = ws_master.cell(row=r, column=5).value
-        if n_doc:
+        if es_n_documento_real(n_doc):
             docs_registrados.add(str(n_doc))
             docs_registrados.add(normalizar_n_documento(n_doc))
 
@@ -1362,6 +1404,64 @@ _TAGS_DESPUES_DE_IGNORED_ERRORS = (
 )
 
 
+def migrar_color_cuadre_impuesto(ws_master, ws_detalle):
+    """Repinta la columna de impuesto de Master segun la regla vigente y
+    devuelve (limpiadas, marcadas).
+
+    Hace falta una migracion porque el color se escribe una sola vez, cuando
+    la fila se crea, y las filas de datos ya escritas no se vuelven a tocar.
+    La regla anterior pintaba de rojo cualquier desvio del 19%, asi que el
+    libro quedo con 55 celdas rojas de las que la gran mayoria son facturas
+    de combustible correctas (IVA + impuesto especifico en un solo campo).
+    Ese ruido es lo que recorre '/Revision_de_Errores' uno por uno, y no
+    habia nada que corregir en ellas.
+
+    El neto se recalcula sumando la hoja Detalle en vez de leer la columna
+    'Total sin IVA' de Master: esa columna es un SUMIF y openpyxl no ve un
+    valor cacheado (data_only devuelve None) salvo que Excel haya guardado
+    el archivo. Detalle, en cambio, guarda numeros literales.
+
+    Idempotente en los dos sentidos: limpia el rojo que sobra y lo pone donde
+    ahora corresponde, asi que correrla de nuevo no cambia nada.
+    """
+    cols_m = {h: i + 1 for i, h in enumerate(ENCABEZADOS_MASTER)}
+    cols_d = {h: i + 1 for i, h in enumerate(ENCABEZADOS_DETALLE)}
+    col_total_detalle = cols_d[f"Total sin {NOMBRE_IMPUESTO_CORTO} ({MONEDA})"]
+    col_iva_master = cols_m[f"{NOMBRE_IMPUESTO_PCT} ({MONEDA})"]
+
+    neto_por_n_ref = {}
+    for fila in range(2, ultima_fila_datos(ws_detalle) + 1):
+        n_ref = ws_detalle.cell(row=fila, column=cols_d["N° Ref."]).value
+        total = ws_detalle.cell(row=fila, column=col_total_detalle).value
+        if not n_ref or not isinstance(total, (int, float)) or isinstance(total, bool):
+            continue
+        neto_por_n_ref[n_ref] = neto_por_n_ref.get(n_ref, 0) + total
+
+    limpiadas = marcadas = 0
+    for fila in range(2, ultima_fila_datos(ws_master) + 1):
+        n_ref = ws_master.cell(row=fila, column=cols_m["N° Ref."]).value
+        if n_ref not in neto_por_n_ref:
+            continue
+        celda_iva = ws_master.cell(row=fila, column=col_iva_master)
+        iva = celda_iva.value
+        if not isinstance(iva, (int, float)) or isinstance(iva, bool):
+            continue
+        dato = {
+            "tipo_documento": ws_master.cell(row=fila, column=cols_m["Tipo Documento"]).value,
+            "categoria": ws_master.cell(row=fila, column=cols_m["Categoría"]).value,
+            "iva": iva,
+        }
+        debe_estar_roja = severidad_cuadre_impuesto(dato, neto_por_n_ref[n_ref], iva) == "error"
+        esta_roja = _celda_es_roja(celda_iva)
+        if esta_roja and not debe_estar_roja:
+            celda_iva.font = NORMAL_FONT
+            limpiadas += 1
+        elif debe_estar_roja and not esta_roja:
+            celda_iva.font = ROJO_FONT
+            marcadas += 1
+    return limpiadas, marcadas
+
+
 def _hojas_columna_n_documento(wb):
     """N Documento vive en E (col 5) en Master y en las hojas de proyecto, y en
     D (col 4) en Detalle."""
@@ -1584,6 +1684,146 @@ def separar_documento_combinado(proyecto_fisico, archivo, cantidad, raiz_docs=No
     return destinos
 
 
+def eliminar_documento(n_ref, ws_master, ws_detalle, raiz_docs=None, ruta_backups=None,
+                       archivar_fuente=True):
+    """Borra del libro un documento registrado por error (t�picamente el mismo
+    documento tributario registrado dos veces desde dos escaneos distintos) y
+    devuelve un resumen de lo que se saco.
+
+    Es la unica operacion del modulo que borra una fila de datos ya escrita, y
+    existe porque la alternativa es peor: un documento duplicado suma dos veces
+    su costo en el proyecto, en los KPIs de Analisis Financiero y en el indice
+    de precios del Cotizador, y ninguna de las tres cosas se puede corregir a
+    mano sin desalinear las otras.
+
+    Tres cosas, en este orden:
+      1. Borra las filas de Detalle de ese N Ref (los items).
+      2. Borra su fila de Master.
+      3. Archiva el archivo fuente en Excel/Respaldos/<Mes Año>/ y lo saca de
+         la carpeta compartida. Este paso NO es opcional en la practica: si el
+         archivo se queda, el proximo 'run' lo ve como pendiente y lo vuelve a
+         registrar con un N Ref nuevo, reponiendo el duplicado.
+
+    NO renumera los N Ref que quedan: el numero es historico y una fila
+    posterior puede estar referenciada en correcciones, notas o respaldos. Queda
+    un hueco en la secuencia, que es lo correcto.
+
+    Quien llama es responsable de haber hecho backup, de regenerar los pies y
+    las hojas de proyecto, y de guardar el libro."""
+    raiz_docs = raiz_docs if raiz_docs is not None else RAIZ_DOCS
+    ruta_backups = ruta_backups if ruta_backups is not None else RUTA_BACKUPS
+
+    filas_master = _mapa_filas_por_n_ref(ws_master)
+    if n_ref not in filas_master:
+        raise ValueError(f"No existe el documento {n_ref!r} en Master.")
+    fila_master = filas_master[n_ref]
+
+    archivo_origen = ws_master.cell(row=fila_master, column=15).value
+    proyecto = ws_master.cell(row=fila_master, column=2).value
+
+    filas_detalle = sorted(_n_ref_a_filas_detalle(ws_detalle, n_ref), reverse=True)
+    for fila in filas_detalle:
+        ws_detalle.delete_rows(fila)
+    ws_master.delete_rows(fila_master)
+
+    ruta_archivada = None
+    if archivar_fuente and archivo_origen:
+        # 'Archivo origen' guarda '<carpeta fisica>\<nombre>'.
+        relativo = str(archivo_origen).replace("\\", "/")
+        ruta_fuente = raiz_docs / relativo
+        if ruta_fuente.exists():
+            ahora = datetime.now()
+            destino_dir = carpeta_mes(ruta_backups, ahora)
+            marca = ahora.strftime("%Y-%m-%d %H%M")
+            ruta_archivada = destino_dir / (
+                f"{ruta_fuente.stem} - eliminado {n_ref} - {marca}{ruta_fuente.suffix}"
+            )
+            shutil.move(str(ruta_fuente), str(ruta_archivada))
+
+    return {
+        "n_ref": n_ref,
+        "proyecto": proyecto,
+        "archivo_origen": archivo_origen,
+        "items_borrados": len(filas_detalle),
+        "archivo_archivado": ruta_archivada,
+    }
+
+
+def ejecutar_eliminacion(n_refs, ruta_excel=None, aplicar=False):
+    """Orquesta la eliminacion de uno o varios documentos: backup, borrado,
+    regeneracion de todo lo derivado y guardado. Con aplicar=False no escribe
+    nada y solo describe lo que haria -- es el modo por defecto a proposito,
+    porque esto saca plata de la contabilidad.
+
+    Devuelve la lista de resumenes de eliminar_documento()."""
+    ruta_excel = ruta_excel if ruta_excel is not None else RUTA_EXCEL
+    wb = openpyxl.load_workbook(str(ruta_excel), data_only=False)
+    ws_master, ws_detalle = wb["Master"], wb["Detalle"]
+
+    # Previsualizacion: que se sacaria, con su monto, antes de tocar nada.
+    filas = _mapa_filas_por_n_ref(ws_master)
+    faltantes = [r for r in n_refs if r not in filas]
+    if faltantes:
+        raise ValueError(f"No estan en Master: {', '.join(faltantes)}")
+
+    previos = []
+    for n_ref in n_refs:
+        fila = filas[n_ref]
+        neto = sum(
+            ws_detalle.cell(row=f, column=10).value or 0
+            for f in _n_ref_a_filas_detalle(ws_detalle, n_ref)
+        )
+        previos.append({
+            "n_ref": n_ref,
+            "proyecto": ws_master.cell(row=fila, column=2).value,
+            "n_documento": ws_master.cell(row=fila, column=5).value,
+            "proveedor": ws_master.cell(row=fila, column=8).value,
+            "fecha": ws_master.cell(row=fila, column=4).value,
+            "neto": neto,
+            "impuesto": ws_master.cell(row=fila, column=12).value,
+        })
+
+    if not aplicar:
+        wb.close()
+        return previos, []
+
+    hacer_backup(ruta_excel, ruta_backups=RUTA_BACKUPS)
+
+    resultados = []
+    for n_ref in n_refs:
+        resultados.append(eliminar_documento(n_ref, ws_master, ws_detalle))
+
+    # Todo lo derivado se regenera igual que en PASO 7-9 de main(): pies,
+    # orden por fecha y hojas de proyecto. Sin esto el libro queda con totales
+    # que no cuadran con sus propias filas y con hojas de proyecto que siguen
+    # listando el documento borrado.
+    limpiar_pie(ws_detalle)
+    limpiar_pie(ws_master)
+    fila_master = ultima_fila_datos(ws_master) + 1
+    fila_detalle = ultima_fila_datos(ws_detalle) + 1
+    reordenar_por_fecha(ws_master, ws_detalle, fila_master, fila_detalle)
+    regenerar_pie(ws_detalle, len(ENCABEZADOS_DETALLE), [10, 11],
+                  "TOTAL GENERAL", fila_detalle, LEYENDA_DETALLE)
+    regenerar_pie(ws_master, len(ENCABEZADOS_MASTER), [11, 12, 13],
+                  "TOTAL GENERAL", fila_master, LEYENDA_MASTER)
+
+    ultima_master = fila_master - 1
+    proyectos = sorted({r["proyecto"] for r in previos if r["proyecto"]})
+    colores = asignar_colores_proyectos(wb, proyectos)
+    for proyecto in proyectos:
+        filas_de_este_proyecto = [
+            r for r in range(2, ultima_master + 1)
+            if ws_master.cell(row=r, column=2).value == proyecto
+        ]
+        if not filas_de_este_proyecto:
+            continue
+        regenerar_hoja_proyecto(wb, proyecto, filas_de_este_proyecto, colores.get(proyecto))
+
+    _guardar_y_suprimir_aviso(wb, ruta_excel)
+    reflejar_a_sitio_comunicacion(ruta_excel=ruta_excel)
+    return previos, resultados
+
+
 # ── DATOS EXTRAÍDOS (JSON) ──────────────────────────────────────────────────
 
 def cargar_datos_json(ruta_json):
@@ -1602,6 +1842,22 @@ def buscar_dato_por_archivo(datos, proyecto, archivo):
 
 def total_sin_iva_items(items):
     return sum(it["cantidad"] * it["p_unitario_sin_iva"] for it in items)
+
+
+# Marcadores de "este documento no trae numero": los peajes se registran con
+# 'N/A' y las boletas ilegibles con 'S/N (archivo)'. NO son numeros de
+# documento, y compararlos entre si convertia cada peaje en "posible
+# duplicado" del peaje anterior -- 172 de las 660 entradas del JSON son 'N/A',
+# y por eso la corrida del 2026-09-09 emitio 48 avisos de duplicado de los que
+# 47 eran peajes distintos.
+PLACEHOLDERS_N_DOCUMENTO = frozenset({"", "N/A", "NA", "NONE", "SIN NUMERO", "SIN NÚMERO"})
+
+
+def es_n_documento_real(valor):
+    """False si el 'numero' es solo un marcador de que el documento no lo
+    trae. Solo los numeros reales sirven para detectar duplicados."""
+    s = str(valor or "").strip().upper()
+    return bool(s) and s not in PLACEHOLDERS_N_DOCUMENTO and not s.startswith("S/N")
 
 
 def normalizar_n_documento(valor):
@@ -1625,7 +1881,7 @@ def calcular_iva_documento(dato, total_sin_iva):
     if iva is None:
         iva = (
             round(total_sin_iva * TASA_IMPUESTO)
-            if dato.get("tipo_documento") in ("Factura", "Guía de Despacho") else 0
+            if es_documento_afecto(dato.get("tipo_documento")) else 0
         )
     return iva
 
@@ -1710,10 +1966,13 @@ def escribir_fila_master(ws_master, fila, n_ref, dato, info_archivo, color):
 
     iva_cell = ws_master.cell(row=fila, column=12)
     iva_cell.number_format = MONEY_FORMAT
-    if dato.get("tipo_documento") in ("Factura", "Guía de Despacho") and total_sin_iva > 0:
-        esperado = round(total_sin_iva * TASA_IMPUESTO)
-        if abs(iva - esperado) > 1:
-            iva_cell.font = ROJO_FONT
+    # Rojo = "hay algo que corregir aca". Solo se pinta cuando el impuesto es
+    # MENOR al que corresponde por ley, que es imposible en un documento
+    # afecto. Un impuesto MAYOR al 19% es lo normal en combustibles (IEC +
+    # FEPP) y pintarlo dejaba 55 celdas rojas permanentes que nadie iba a
+    # corregir nunca -- ruido que enterraba las que si importan.
+    if severidad_cuadre_impuesto(dato, total_sin_iva, iva) == "error":
+        iva_cell.font = ROJO_FONT
 
     if color:
         pintar_fila(ws_master, fila, len(ENCABEZADOS_MASTER), color)
@@ -1954,22 +2213,86 @@ def asignar_colores_proyectos(wb, proyectos):
 
 # ── VERIFICACIONES ──────────────────────────────────────────────────────────
 
+def severidad_cuadre_impuesto(dato, total_sin_iva, iva):
+    """Clasifica el cuadre "Neto vs impuesto declarado" de UN documento.
+    Devuelve None si cuadra o si no aplica, o una de tres severidades.
+
+    Por que hay severidades y no una lista plana (auditoria 2026-09-09): la
+    version anterior emitia 100 alertas sobre datos_extraidos.json y 73 eran
+    documentos CORRECTOS. Son facturas de combustible: en Chile el precio
+    pagado lleva IVA 19% MAS impuesto especifico (IEC) y FEPP, y el campo
+    'iva' agrupa los tres a proposito para que Neto + iva sea el total
+    realmente pagado (las notas de esos documentos lo dicen explicitamente).
+    Reportarlas como error en cada corrida enterraba las 27 que si lo son y
+    dejaba 55 celdas de IVA pintadas de rojo que nadie iba a corregir nunca.
+
+      'error'    -> el impuesto es MENOR al IVA legal. Imposible en un
+                    documento afecto: o los items estan sobrevalorados, o el
+                    impuesto quedo mal leido. Siempre hay algo que corregir.
+      'revisar'  -> el impuesto EXCEDE el 19% en una categoria que no tiene
+                    impuesto especifico conocido. Puede ser legitimo (un
+                    tributo que no habiamos visto) o un error de lectura; no
+                    se puede afirmar sin mirar el documento.
+      'estimado' -> documento afecto SIN campo 'iva': se le calcula 19%.
+                    Correcto para la mayoria, pero subestima el total pagado
+                    si el documento lleva impuesto especifico.
+
+    El exceso ya explicado por la categoria (combustible) no se reporta: es
+    el comportamiento esperado, no un hallazgo.
+    """
+    if not es_documento_afecto(dato.get("tipo_documento")) or total_sin_iva <= 0:
+        return None
+
+    categoria = clave_tipo_documento(dato.get("categoria"))
+    tiene_impuesto_especifico = categoria in CATEGORIAS_CON_IMPUESTO_ESPECIFICO
+
+    if dato.get("iva") is None:
+        # Se le va a calcular 19% aunque el documento pueda llevar mas.
+        return "estimado" if tiene_impuesto_especifico else None
+
+    esperado = round(total_sin_iva * TASA_IMPUESTO)
+
+    # Si el documento DECLARA cuanto de su impuesto no es IVA, el cuadre deja
+    # de ser una heuristica por categoria y pasa a ser exacto: no hace falta
+    # adivinar si un exceso se explica o no. Es la forma preferida de
+    # registrar un combustible (IEC + FEPP) o cualquier tributo adicional.
+    otros = dato.get("otros_impuestos")
+    if otros is not None:
+        if abs(iva - (esperado + otros)) <= TOLERANCIA_IMPUESTO:
+            return None
+        return "error" if iva < esperado + otros else "revisar"
+
+    if iva < esperado - TOLERANCIA_IMPUESTO:
+        return "error"
+    if iva > esperado + TOLERANCIA_IMPUESTO and not tiene_impuesto_especifico:
+        return "revisar"
+    return None
+
+
 def verificar_aritmetica(datos):
-    inconsistencias = []
+    """Cuadra el impuesto de cada documento contra el 19% del neto y devuelve
+    los hallazgos con severidad (ver severidad_cuadre_impuesto). Ordenados
+    con los 'error' primero: son los unicos donde hay algo seguro que
+    corregir."""
+    hallazgos = []
     for d in datos:
         total_sin_iva = total_sin_iva_items(d["items"])
-        iva = d.get("iva")
-        if iva is None:
+        iva = calcular_iva_documento(d, total_sin_iva)
+        severidad = severidad_cuadre_impuesto(d, total_sin_iva, iva)
+        if severidad is None:
             continue
-        if d.get("tipo_documento") in ("Factura", "Guía de Despacho") and total_sin_iva > 0:
-            esperado = round(total_sin_iva * TASA_IMPUESTO)
-            if abs(iva - esperado) > 1:
-                inconsistencias.append({
-                    "archivo": d["archivo"], "n_documento": d["n_documento"],
-                    "neto": total_sin_iva, "iva": iva, "iva_esperado": esperado,
-                    "nota": d.get("notas", ""),
-                })
-    return inconsistencias
+        hallazgos.append({
+            "severidad": severidad,
+            "archivo": d["archivo"], "n_documento": d["n_documento"],
+            "categoria": d.get("categoria", ""),
+            "neto": total_sin_iva,
+            "iva": d.get("iva"),
+            "iva_esperado": round(total_sin_iva * TASA_IMPUESTO),
+            "nota": d.get("notas", ""),
+        })
+    orden = {"error": 0, "revisar": 1, "estimado": 2}
+    hallazgos.sort(key=lambda h: orden[h["severidad"]])
+    return hallazgos
 
 
 # ── RENOMBRADO Y CONVERSIÓN DE ARCHIVOS ─────────────────────────────────────
@@ -2409,6 +2732,91 @@ def _imprimir_lista_truncada(items, formatear, limite=15):
         print(f"   ... y {restantes} mas.")
 
 
+# ── CRONOMETRO DE ETAPAS ────────────────────────────────────────────────────
+# Cada PASO de main() se abre con _paso(), que ademas de imprimir el
+# encabezado cierra el paso anterior y anota cuanto duro. Sin esto, saber que
+# etapa domina una corrida obligaba a perfilar a mano por fuera (asi se
+# descubrio, el 2026-09-09, que guardar el libro se llevaba mas que registrar
+# los documentos). El costo es un time.perf_counter() por paso.
+_ETAPAS = []
+_ETAPA_ACTUAL = None
+
+
+def _paso(codigo, titulo):
+    """Abre una etapa de main(): imprime su encabezado y cierra la anterior."""
+    global _ETAPA_ACTUAL
+    ahora = time.perf_counter()
+    if _ETAPA_ACTUAL is not None:
+        _ETAPAS.append((_ETAPA_ACTUAL[0], _ETAPA_ACTUAL[1], ahora - _ETAPA_ACTUAL[2]))
+    _ETAPA_ACTUAL = (codigo, titulo, ahora)
+    print(f"\n--- {codigo}: {titulo} ---")
+
+
+def _cerrar_etapas():
+    global _ETAPA_ACTUAL
+    if _ETAPA_ACTUAL is not None:
+        _ETAPAS.append((_ETAPA_ACTUAL[0], _ETAPA_ACTUAL[1],
+                        time.perf_counter() - _ETAPA_ACTUAL[2]))
+        _ETAPA_ACTUAL = None
+
+
+def _informe_etapas(total, umbral=0.05):
+    """Etapas ordenadas por duracion. Se listan solo las que superan el
+    umbral: las 8 etapas de milisegundos solo agregarian ruido."""
+    _cerrar_etapas()
+    if not _ETAPAS:
+        return
+    print("\n" + "=" * 70)
+    print("  TIEMPO POR ETAPA")
+    print("=" * 70)
+    visibles = [e for e in _ETAPAS if e[2] >= umbral]
+    for codigo, titulo, duracion in sorted(visibles, key=lambda e: -e[2]):
+        print(f"   {duracion:7.2f}s  {100 * duracion / total:5.1f}%  {codigo}: {titulo}")
+    ocultas = len(_ETAPAS) - len(visibles)
+    if ocultas:
+        resto = sum(d for _, _, d in _ETAPAS if d < umbral)
+        print(f"   {resto:7.2f}s         (+{ocultas} etapas de menos de {umbral:.2f}s)")
+    print(f"   {total:7.2f}s  100.0%  TOTAL")
+
+
+ETIQUETA_SEVERIDAD = {
+    "error": "ERROR    (impuesto MENOR al que corresponde -- hay que corregir)",
+    "revisar": "REVISAR  (impuesto sobre el 19% sin impuesto especifico conocido)",
+    "estimado": "ESTIMADO (sin 'iva' en el JSON: se calcula 19%, puede quedar corto)",
+}
+
+
+def _imprimir_cuadre_impuesto(hallazgos, limite=15):
+    """Salida compartida por main() y por 'driver.py status' -- antes cada uno
+    formateaba la misma lista por su cuenta. Agrupa por severidad para que un
+    'error' real no quede sepultado entre avisos informativos."""
+    if not hallazgos:
+        print("   Cuadra todo. Sin hallazgos.")
+        return
+    por_severidad = {}
+    for h in hallazgos:
+        por_severidad.setdefault(h["severidad"], []).append(h)
+
+    for severidad in ("error", "revisar", "estimado"):
+        grupo = por_severidad.get(severidad)
+        if not grupo:
+            continue
+        print(f"\n   [{severidad.upper()}] {len(grupo)} documento(s) -- "
+              f"{ETIQUETA_SEVERIDAD[severidad]}")
+
+        def _fmt(h):
+            iva = h["iva"] if h["iva"] is not None else "(sin dato)"
+            iva_txt = f"{iva:,}" if isinstance(iva, (int, float)) else iva
+            texto = (f"   * Doc {h['n_documento']} ({h['archivo']}) [{h['categoria']}]: "
+                     f"Neto={h['neto']:,.0f} | impuesto={iva_txt} "
+                     f"vs 19%={h['iva_esperado']:,}")
+            if h["nota"]:
+                texto += f"\n     Nota: {h['nota'][:120]}"
+            return texto
+
+        _imprimir_lista_truncada(grupo, _fmt, limite=limite)
+
+
 def _resumir_lineas_detalle(lineas, ruta_log, mantener=3):
     """Escribe el detalle linea por linea en un log en disco y devuelve solo
     un resumen truncado para la consola -- no cambia ningun dato del Excel,
@@ -2434,6 +2842,13 @@ def main(pais="CL"):
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
 
+    inicio_run = time.perf_counter()
+    # El cronometro es global del modulo: si main() se llama dos veces en el
+    # mismo proceso (tests), las etapas de la corrida anterior contaminarian
+    # el informe.
+    _ETAPAS.clear()
+    globals()["_ETAPA_ACTUAL"] = None
+
     configurar_pais(pais)
 
     print("=" * 70)
@@ -2450,11 +2865,11 @@ def main(pais="CL"):
         print(f"ERROR: No existe el JSON de datos: {RUTA_JSON}")
         return
 
-    print("\n--- PASO 1: Backup ---")
+    _paso("PASO 1", "Backup")
     ruta_backup_anterior = backup_mas_reciente(ruta_backups=RUTA_BACKUPS)
     hacer_backup(RUTA_EXCEL, ruta_backups=RUTA_BACKUPS)
 
-    print("\n--- PASO 2: Abrir Excel ---")
+    _paso("PASO 2", "Abrir Excel")
     if RUTA_EXCEL.exists():
         wb = openpyxl.load_workbook(str(RUTA_EXCEL), data_only=False)
         print(f"  Excel abierto. Hojas existentes: {wb.sheetnames}")
@@ -2486,8 +2901,14 @@ def main(pais="CL"):
     migrar_formato_fecha_corta(ws_master)
     migrar_n_documento_sin_ceros(ws_master, ws_detalle)
     migrar_columna_total_con_iva_detalle(ws_master, ws_detalle)
+    # Segura antes de PASO 2B: detectar_correcciones_manuales mira el color en
+    # el BACKUP y compara VALORES, y esto solo cambia el color del libro actual.
+    limpiadas, marcadas = migrar_color_cuadre_impuesto(ws_master, ws_detalle)
+    if limpiadas or marcadas:
+        print(f"  [MIGRACION] Cuadre de impuesto: {limpiadas} celda(s) destacada(s) "
+              f"de más liberada(s), {marcadas} marcada(s) para revisar.")
 
-    print("\n--- PASO 2B: Detectar correcciones manuales (celdas rojas editadas a mano) ---")
+    _paso("PASO 2B", "Detectar correcciones manuales (celdas rojas editadas a mano)")
     correcciones_pendientes = []
     if ruta_backup_anterior is not None:
         wb_anterior = openpyxl.load_workbook(str(ruta_backup_anterior), data_only=False)
@@ -2505,7 +2926,7 @@ def main(pais="CL"):
     else:
         print("  [INFO] No hay backup anterior contra el cual comparar (primera corrida).")
 
-    print("\n--- PASO 3: Leer registros existentes ---")
+    _paso("PASO 3", "Leer registros existentes")
     filas_master, max_seq, docs_registrados = leer_master(ws_master)
     reconciliacion = cargar_reconciliacion()
     archivos_registrados = set(reconciliacion.keys())
@@ -2515,12 +2936,12 @@ def main(pais="CL"):
     print(f"  Documentos ya en Master: {len(filas_master)}")
     print(f"  Archivos ya cubiertos (Master + reconciliacion): {len(archivos_registrados)}")
 
-    print("\n--- PASO 4: Inventariar archivos ---")
+    _paso("PASO 4", "Inventariar archivos")
     pendientes, omitidos = inventariar_archivos(RAIZ_DOCS, archivos_registrados)
     print(f"  Pendientes: {len(pendientes)}")
     print(f"  Omitidos (ya registrados): {len(omitidos)}")
 
-    print("\n--- PASO 5: Cargar datos extraidos ---")
+    _paso("PASO 5", "Cargar datos extraidos")
     datos_json = cargar_datos_json(RUTA_JSON)
     print(f"  Entradas en {RUTA_JSON.name}: {len(datos_json)}")
 
@@ -2539,7 +2960,7 @@ def main(pais="CL"):
     lineas_registro_ok = []
     notas_documentos_nuevos = []
 
-    print("\n--- PASO 6: Escribir documentos nuevos ---")
+    _paso("PASO 6", "Escribir documentos nuevos")
     for info in pendientes:
         dato = buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"])
         if not dato:
@@ -2568,7 +2989,11 @@ def main(pais="CL"):
 
         n_doc_str = str(dato["n_documento"])
         n_doc_norm = normalizar_n_documento(n_doc_str)
-        if n_doc_str in docs_registrados or n_doc_norm in docs_registrados:
+        # Sin numero real no hay nada que comparar: dos peajes distintos
+        # comparten el literal 'N/A' y no son el mismo documento.
+        if es_n_documento_real(n_doc_str) and (
+            n_doc_str in docs_registrados or n_doc_norm in docs_registrados
+        ):
             posibles_duplicados.append({
                 "archivo": info["archivo"], "proyecto": info["proyecto"], "n_documento": n_doc_str,
             })
@@ -2583,8 +3008,9 @@ def main(pais="CL"):
 
         fila_detalle = escribir_items_detalle(ws_detalle, fila_detalle, n_ref, dato, color)
         escribir_fila_master(ws_master, fila_master, n_ref, dato, info, color)
-        docs_registrados.add(n_doc_str)
-        docs_registrados.add(n_doc_norm)
+        if es_n_documento_real(n_doc_str):
+            docs_registrados.add(n_doc_str)
+            docs_registrados.add(n_doc_norm)
 
         proyectos_tocados.add(dato["proyecto"])
         registrados_ok += 1
@@ -2603,14 +3029,14 @@ def main(pais="CL"):
     for linea in _resumir_lineas_detalle(lineas_registro_ok, ruta_log_run):
         print(linea)
 
-    print("\n--- PASO 7: Reordenar por fecha (mas reciente arriba) ---")
+    _paso("PASO 7", "Reordenar por fecha (mas reciente arriba)")
     reordenar_por_fecha(ws_master, ws_detalle, fila_master, fila_detalle)
 
-    print("\n--- PASO 8: Regenerar pies de Detalle/Master ---")
+    _paso("PASO 8", "Regenerar pies de Detalle/Master")
     regenerar_pie(ws_detalle, len(ENCABEZADOS_DETALLE), [10, 11], "TOTAL GENERAL", fila_detalle, LEYENDA_DETALLE)
     regenerar_pie(ws_master, len(ENCABEZADOS_MASTER), [11, 12, 13], "TOTAL GENERAL", fila_master, LEYENDA_MASTER)
 
-    print("\n--- PASO 9: Regenerar hojas de proyecto ---")
+    _paso("PASO 9", "Regenerar hojas de proyecto")
     ultima_master = fila_master - 1
     lineas_hojas_ok = []
     for proyecto in sorted(proyectos_tocados):
@@ -2633,7 +3059,7 @@ def main(pais="CL"):
         print("        No se renombro ni convirtio ningun archivo; no se guardaron cambios.")
         return
 
-    print("\n--- PASO 10: Renombrar y convertir archivos ---")
+    _paso("PASO 10", "Renombrar y convertir archivos")
     reconciliacion_inversa = construir_reconciliacion_inversa(reconciliacion)
     filas_master_actual, _, _ = leer_master(ws_master)
     renombrados, advertencias_renombrado = aplicar_renombrados(
@@ -2643,7 +3069,7 @@ def main(pais="CL"):
     for adv in advertencias_renombrado:
         print(f"  [WARN] {adv['n_ref']}: {adv['detalle']}")
 
-    print("\n--- PASO 11: Formato final ---")
+    _paso("PASO 11", "Formato final")
     ajustar_anchos(ws_master)
     ajustar_anchos(ws_detalle)
     orden_deseado = ["Master", "Detalle"] + [prefijo_para_proyecto(p) for p in sorted(proyectos_tocados)]
@@ -2652,7 +3078,7 @@ def main(pais="CL"):
             wb.move_sheet(nombre, offset=i - wb.sheetnames.index(nombre))
     print(f"  [OK] Hojas ordenadas: {wb.sheetnames}")
 
-    print("\n--- PASO 12: Guardar ---")
+    _paso("PASO 12", "Guardar")
     try:
         _guardar_y_suprimir_aviso(wb, RUTA_EXCEL)
         print(f"  [OK] Excel guardado: {RUTA_EXCEL.name}")
@@ -2660,19 +3086,19 @@ def main(pais="CL"):
         print("  ERROR: El archivo esta abierto en Excel. Cierralo y vuelve a ejecutar.")
         return
 
-    print("\n--- PASO 12b: Reflejar en Sitio de comunicacion ---")
+    _paso("PASO 12b", "Reflejar en Sitio de comunicacion")
     reflejar_a_sitio_comunicacion()
 
-    print("\n--- PASO 12c: Actualizar visualizador web ---")
+    _paso("PASO 12c", "Actualizar visualizador web")
     if RAIZ_VISUALIZADOR_WEB.exists():
         actualizar_visualizador()
     else:
         print(f"  [INFO] Visualizador Web de {pais} aún no implementado -- paso omitido.")
 
-    print("\n--- PASO 12d: Actualizar Análisis Financiero ---")
+    _paso("PASO 12d", "Actualizar Análisis Financiero")
     actualizar_analisis_financiero(pais=pais)
 
-    print("\n--- PASO 13: Verificaciones aritmeticas (sobre todo el JSON) ---")
+    _paso("PASO 13", "Verificaciones aritmeticas (sobre todo el JSON)")
     inconsistencias = verificar_aritmetica(datos_json)
 
     print("\n" + "=" * 70)
@@ -2688,17 +3114,8 @@ def main(pais="CL"):
     else:
         print("   Sin hallazgos.")
 
-    print(f"\n2. INCONSISTENCIAS ARITMETICAS (Neto vs {NOMBRE_IMPUESTO_PCT})")
-    if inconsistencias:
-        def _fmt_inconsistencia(inc):
-            texto = (f"   * Doc {inc['n_documento']} ({inc['archivo']}): "
-                     f"Neto={inc['neto']:,} | IVA registrado={inc['iva']:,} vs esperado={inc['iva_esperado']:,}")
-            if inc["nota"]:
-                texto += f"\n     Nota: {inc['nota'][:120]}"
-            return texto
-        _imprimir_lista_truncada(inconsistencias, _fmt_inconsistencia)
-    else:
-        print("   Sin hallazgos.")
+    print(f"\n2. CUADRE DE IMPUESTO (Neto vs {NOMBRE_IMPUESTO_PCT})")
+    _imprimir_cuadre_impuesto(inconsistencias)
 
     print("\n3. POSIBLES DUPLICADOS (mismo N Documento que uno ya registrado)")
     if posibles_duplicados:
@@ -2751,6 +3168,7 @@ def main(pais="CL"):
     print(f"  {'Limitaciones (faltan datos en JSON):':<40} {len(limitaciones)}")
     print(f"  {'Archivos renombrados/convertidos:':<40} {renombrados}")
     print(f"  {'Correcciones manuales pendientes de confirmar:':<40} {len(correcciones_pendientes)}")
+    _informe_etapas(time.perf_counter() - inicio_run)
     print("\n" + "=" * 70)
 
 
