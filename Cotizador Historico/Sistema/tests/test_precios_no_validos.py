@@ -8,7 +8,6 @@ arrastra hacia abajo el promedio de su hoja.
 from datetime import date, datetime
 
 import openpyxl
-import pytest
 
 import cotizador_historico as ch
 

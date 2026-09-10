@@ -31,6 +31,7 @@ sistema anterior descartaba 136 de 1193 compras (11,4%) sin avisar.
 import re
 import unicodedata
 from fractions import Fraction
+from functools import lru_cache
 
 from catalogo_taxonomia import (CATEGORIAS, CATEGORIAS_CON_MATERIAL, CATEGORIAS_CON_MEDIDA,
                                 CATEGORIAS_CON_MODELO, CATEGORIAS_SECUNDARIAS,
@@ -333,16 +334,28 @@ def medida_canonica(*textos, aceptar_entero=False):
 NEGADORES = {'sin', 's', 'no', 'excepto', 'salvo'}
 
 
+# Las 4 funciones de normalizacion son puras (str -> str) y se llaman sobre
+# un universo chico y repetido: los terminos del catalogo (constantes) y los
+# nombres/descripciones de los items (se repiten mucho, es el mismo producto
+# comprado varias veces). Sin cache, clasificar el catalogo completo llamaba
+# a normalizar() 2.116.803 veces para 1.374 items -- ~1.540 veces por item,
+# re-normalizando una y otra vez las MISMAS constantes del catalogo desde
+# _posiciones(). Memoizarlas es lo que baja reajustar_todos de ~6,7s a
+# decimas. maxsize=None es seguro: el universo de claves esta acotado por el
+# catalogo mas los items de una corrida.
+@lru_cache(maxsize=None)
 def sin_tildes(s):
     return ''.join(c for c in unicodedata.normalize('NFD', str(s or '')) if unicodedata.category(c) != 'Mn')
 
 
+@lru_cache(maxsize=None)
 def normalizar(s):
     s = sin_tildes(s).lower()
     s = re.sub(r'[^a-z0-9ñ]+', ' ', s)
     return re.sub(r'\s+', ' ', s).strip()
 
 
+@lru_cache(maxsize=None)
 def singular(p):
     """Raiz para comparar: quita el plural y la 'e' final.
 
@@ -371,8 +384,20 @@ VACIAS = {'de', 'del', 'la', 'el', 'los', 'las', 'lo', 'y', 'o', 'con', 'para',
           'por', 'a', 'al', 'en', 'un', 'una', 'unos', 'unas', 'su'}
 
 
+# Devuelve TUPLA (no lista) por dos motivos: es hashable, asi que la funcion
+# se puede memoizar; y permite comparar rebanadas contra el termino ya
+# lematizado sin construir una lista nueva en cada comparacion. Los llamadores
+# solo leen, concatenan e indexan el resultado -- ninguno lo muta.
+@lru_cache(maxsize=None)
 def lemas(s):
-    return [singular(t) for t in normalizar(s).split() if t not in VACIAS]
+    return tuple(singular(t) for t in normalizar(s).split() if t not in VACIAS)
+
+
+@lru_cache(maxsize=None)
+def n_palabras(termino):
+    """Cantidad de palabras del termino ANTES de descartar las vacias -- es el
+    peso que usa el score de clasificar(), y no coincide con len(lemas(t))."""
+    return len(normalizar(termino).split())
 
 
 def _posiciones(lemas_texto, termino):
@@ -380,15 +405,15 @@ def _posiciones(lemas_texto, termino):
     completa de lemas. Match por palabra: 'tee' NO matchea dentro de
     'steelgen', y 'dado' no matchea 'dado que' porque se exige ademas que no
     venga negado."""
-    pal = [singular(p) for p in normalizar(termino).split() if p not in VACIAS]
+    # lemas() es exactamente la lematizacion que esta funcion hacia inline, y
+    # ahora viene cacheada: el termino sale del catalogo, asi que se lematiza
+    # una vez en toda la corrida y no una vez por item.
+    pal = lemas(termino)
     if not pal:
         return []
     n = len(pal)
-    out = []
-    for i in range(len(lemas_texto) - n + 1):
-        if lemas_texto[i:i + n] == pal:
-            out.append(i)
-    return out
+    return [i for i in range(len(lemas_texto) - n + 1)
+            if lemas_texto[i:i + n] == pal]
 
 
 def _negado(lemas_texto, pos):
@@ -415,7 +440,7 @@ def clasificar(nombre_item, descripcion):
     mejor = None
     for idx, (terminos, cat, sub, familia, extra) in enumerate(REGLAS):
         for termino in terminos:
-            npal = len(normalizar(termino).split())
+            npal = n_palabras(termino)
             for lem, bono in ((lem_nombre, 30), (lem_desc, 0)):
                 for p in _posiciones(lem, termino):
                     if _negado(lem, p):
