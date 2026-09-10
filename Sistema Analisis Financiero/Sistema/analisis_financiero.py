@@ -43,6 +43,15 @@ RUTA_CLIENTES_PENDIENTES = RAIZ / "clientes_pendientes.json"
 
 RAIZ_CENTRO_COSTOS = RAIZ_MODULO.parent / "Centro de Costos"
 RUTA_EXCEL_CENTRO_COSTOS = RAIZ_CENTRO_COSTOS / "Excel" / "Centro de Costos.xlsx"
+# Snapshot saneado que produce el visualizador de Centro de Costos (PASO 12c,
+# justo antes de que corra este modulo en 12d). Trae exactamente los mismos
+# datos que se leian del .xlsx -- verificado: 1.406 items, 776 grupos
+# (N Ref, categoria) y el mismo total al centavo -- pero cuesta ~20 ms de
+# json.loads en vez de ~0,5 s de openpyxl. Se usa solo si esta al dia; si no,
+# se cae al Excel (ver cargar_datos_centro_costos).
+RUTA_SNAPSHOT_CENTRO_COSTOS = (
+    RAIZ_CENTRO_COSTOS / "Visualizador Web" / "data" / "centro-de-costos.json"
+)
 RAIZ_FACTURAS_CENTRO_COSTOS = (
     RAIZ_CENTRO_COSTOS / "Sitio de comunicación - Centro de Costos 1" / "Facturas y Boletas" / "Chile"
 )
@@ -738,6 +747,73 @@ def leer_nombres_proyecto_centro_costos(ruta_excel_cc: Path, wb=None) -> dict[st
         prefijo: contador.most_common(1)[0][0]
         for prefijo, contador in nombres_por_prefijo.items()
     }
+
+
+def _mas_frecuente_por_prefijo(documentos, campo):
+    """{prefijo de N Ref: valor mas frecuente de 'campo' entre sus documentos}.
+    Mismo criterio que usan leer_tipo_proyecto_centro_costos y
+    leer_nombres_proyecto_centro_costos sobre la hoja Master."""
+    por_prefijo: dict[str, Counter] = {}
+    for doc in documentos:
+        n_ref, valor = doc.get("ref"), doc.get(campo)
+        if not n_ref or not valor:
+            continue
+        por_prefijo.setdefault(prefijo_de_n_ref(n_ref), Counter())[valor] += 1
+    return {p: c.most_common(1)[0][0] for p, c in por_prefijo.items()}
+
+
+def snapshot_al_dia(ruta_snapshot=None, ruta_excel=None) -> bool:
+    """True si el snapshot de Centro de Costos refleja el libro actual.
+
+    El criterio es la fecha de modificacion: el snapshot lo escribe el
+    visualizador de Centro de Costos (PASO 12c) leyendo el .xlsx recien
+    guardado (PASO 12), asi que en una cadena normal queda mas nuevo. Si
+    alguien edito el Excel a mano despues -- o el visualizador fallo -- el
+    snapshot queda viejo y NO se puede usar: costos desactualizados en los
+    KPIs serian peores que unos decimos de segundo de mas.
+    """
+    ruta_snapshot = ruta_snapshot or RUTA_SNAPSHOT_CENTRO_COSTOS
+    ruta_excel = ruta_excel or RUTA_EXCEL_CENTRO_COSTOS
+    if not ruta_snapshot.exists() or not ruta_excel.exists():
+        return False
+    return ruta_snapshot.stat().st_mtime >= ruta_excel.stat().st_mtime
+
+
+def leer_centro_costos_desde_snapshot(ruta_snapshot=None, pais: str = "CL"):
+    """Las tres lecturas que este modulo necesita de Centro de Costos, sacadas
+    del snapshot JSON en vez del .xlsx. Devuelve
+    (items_detalle, tipos_por_prefijo, nombres_por_prefijo) o None si el
+    snapshot no sirve (no existe, esta corrupto o le falta alguna clave).
+
+    Equivalencia verificada contra la lectura por openpyxl sobre los datos
+    reales: 1.406 items, 776 grupos (N Ref, categoria item) y el mismo total
+    al centavo, mas los dos mapas por prefijo identicos. El snapshot ya viene
+    saneado por el visualizador, que descarta las mismas filas que
+    descartaba leer_detalle_centro_costos (sin N Ref o sin total).
+
+    'pais' se acepta por simetria con leer_detalle_centro_costos pero no
+    cambia nada: el snapshot solo existe para Chile (Peru tiene el suyo, con
+    su propio visualizador) y ya trae los montos en su moneda.
+    """
+    ruta_snapshot = ruta_snapshot or RUTA_SNAPSHOT_CENTRO_COSTOS
+    try:
+        datos = json.loads(ruta_snapshot.read_text(encoding="utf-8"))
+        documentos = datos["documentos"]
+        items = [
+            {
+                "n_ref": doc["ref"],
+                "categoria_item": item.get("categoria_item"),
+                "total_sin_iva": float(item["total_sin_iva"]),
+            }
+            for doc in documentos
+            for item in doc["items"]
+            if doc.get("ref") and item.get("total_sin_iva") is not None
+        ]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    return (items,
+            _mas_frecuente_por_prefijo(documentos, "tipo_proyecto"),
+            _mas_frecuente_por_prefijo(documentos, "proyecto"))
 
 
 def crear_filas_proyectos_nuevos(
@@ -1598,17 +1674,26 @@ def ejecutar(
         )
         return resumen
 
-    # Centro de Costos.xlsx se abre UNA sola vez y se comparte entre los tres
-    # lectores. Antes cada uno hacia su propio load_workbook del mismo archivo
-    # (dos de ellos sobre la misma hoja Master), y esas 3 lecturas repetidas
-    # eran ~1,6s de los 2,8s que tardaba ejecutar() -- el paso mas caro de
-    # toda la cadena de actualizacion. Solo lectura: este modulo nunca
-    # escribe ese libro.
-    wb_cc = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
-    items_detalle = leer_detalle_centro_costos(ruta_excel_cc, pais=pais, wb=wb_cc)
-    agrupado = agrupar_por_proyecto_y_subcategoria(items_detalle)
+    # Las tres lecturas de Centro de Costos salen del snapshot JSON que dejo
+    # su visualizador (PASO 12c, inmediatamente antes de este modulo), y solo
+    # si esta al dia. Antes cada lector abria el .xlsx por su cuenta -- tres
+    # load_workbook del mismo archivo, dos de ellos sobre la misma hoja
+    # Master -- y eso era ~1,6s de los 2,8s de ejecutar(), el paso mas caro de
+    # toda la cadena. Si el snapshot no sirve se cae al Excel, abriendolo una
+    # sola vez y compartiendo el wb. Solo lectura: nunca se escribe ese libro.
+    desde_snapshot = None
+    if snapshot_al_dia(ruta_excel=ruta_excel_cc):
+        desde_snapshot = leer_centro_costos_desde_snapshot(pais=pais)
 
-    nombres_por_prefijo_cc = leer_nombres_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc)
+    if desde_snapshot is not None:
+        items_detalle, tipos_por_prefijo, nombres_por_prefijo_cc = desde_snapshot
+    else:
+        wb_cc = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+        items_detalle = leer_detalle_centro_costos(ruta_excel_cc, pais=pais, wb=wb_cc)
+        nombres_por_prefijo_cc = leer_nombres_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc)
+        tipos_por_prefijo = leer_tipo_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc)
+
+    agrupado = agrupar_por_proyecto_y_subcategoria(items_detalle)
     tags_existentes = {f["tag"] for f in filas_validas}
     prefijos_faltantes = {
         prefijo: nombre for prefijo, nombre in nombres_por_prefijo_cc.items()
@@ -1657,7 +1742,8 @@ def ejecutar(
     )
 
     asegurar_formulas_proyectos(ws_proyectos, filas_validas)
-    tipos_por_prefijo = leer_tipo_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc)
+    # tipos_por_prefijo ya viene resuelto de arriba, junto con las otras dos
+    # lecturas de Centro de Costos -- sea del snapshot o del Excel.
     col_categoria = HEADERS_PROYECTOS.index("Categoría") + 1
     resumen["avisos"].extend(
         asegurar_categoria_proyectos(ws_proyectos, filas_validas, tipos_por_prefijo, col_categoria)
