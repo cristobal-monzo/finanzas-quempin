@@ -39,6 +39,8 @@ Uso:
 
 import subprocess
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -119,6 +121,13 @@ def _informe_tableros(momento_inicio):
     print("    git add <subruta>/index.html && git commit -m '...' && git push")
 
 
+# Cronometro de la corrida: cada _ejecutar() deja aca cuanto tardo su modulo.
+# Sin esto no habia forma de saber que paso domina el tiempo de una
+# actualizacion -- la auditoria de 2026-09-09 descubrio recien perfilando a
+# mano que el tablero del Cotizador se llevaba mas de un tercio del total.
+_TIEMPOS = []
+
+
 def _ejecutar(titulo, ruta_driver, args, obligatorio):
     """Corre un driver en su propio proceso. Devuelve (ok, salida).
 
@@ -135,6 +144,7 @@ def _ejecutar(titulo, ruta_driver, args, obligatorio):
         print(f"  [OMITIDO] No existe {ruta_driver}")
         return (not obligatorio), ""
 
+    inicio = time.perf_counter()
     proceso = subprocess.run(
         [sys.executable, str(ruta_driver), *args],
         cwd=str(ruta_driver.parent),
@@ -143,8 +153,12 @@ def _ejecutar(titulo, ruta_driver, args, obligatorio):
         encoding="utf-8",
         errors="replace",
     )
+    fin = time.perf_counter()
+    duracion = fin - inicio
+    _TIEMPOS.append((titulo, inicio, fin))
     salida = (proceso.stdout or "") + (proceso.stderr or "")
     print(salida.rstrip() or "  (sin salida)")
+    print(f"\n  [TIEMPO] {titulo}: {duracion:.2f}s")
 
     if proceso.returncode != 0:
         etiqueta = "ERROR" if obligatorio else "WARN"
@@ -152,6 +166,117 @@ def _ejecutar(titulo, ruta_driver, args, obligatorio):
               f"{proceso.returncode}.")
         return False, salida
     return True, salida
+
+
+def _ejecutar_varios(trabajos):
+    """Corre varios drivers EN PARALELO y devuelve [(titulo, ok, salida)] en
+    el mismo orden en que se pidieron.
+
+    Solo se pasan por aca pasos que no comparten archivos: el tablero del
+    Cotizador lee Centro de Costos.xlsx y escribe dentro de Cotizador
+    Historico/, y el status de Reportes lee el Excel de Analisis Financiero y
+    no escribe nada. Ninguno lee lo que el otro escribe, asi que el orden
+    entre ellos es irrelevante y esperarlos en serie era tiempo regalado.
+
+    La salida de cada uno se imprime junta al terminar todos, en orden fijo:
+    intercalar stdout de procesos concurrentes haria el log ilegible.
+    """
+    if len(trabajos) == 1:
+        titulo, driver, args, obligatorio = trabajos[0]
+        ok, salida = _ejecutar(titulo, driver, args, obligatorio)
+        return [(titulo, ok, salida)]
+
+    inicio = time.perf_counter()
+    with ThreadPoolExecutor(max_workers=len(trabajos)) as pool:
+        futuros = [
+            pool.submit(_correr_driver, driver, args)
+            for _titulo, driver, args, _obligatorio in trabajos
+        ]
+        crudos = [f.result() for f in futuros]
+
+    resultados = []
+    for (titulo, driver, args, obligatorio), (rc, salida, ini, fin) in zip(trabajos, crudos):
+        print("\n" + "=" * 72)
+        print(f"  {titulo}")
+        print("=" * 72)
+        if rc is None:
+            print(f"  [OMITIDO] No existe {driver}")
+            resultados.append((titulo, not obligatorio, ""))
+            continue
+        _TIEMPOS.append((titulo, ini, fin))
+        print(salida.rstrip() or "  (sin salida)")
+        print(f"\n  [TIEMPO] {titulo}: {fin - ini:.2f}s")
+        ok = rc == 0
+        if not ok:
+            print(f"  [{'ERROR' if obligatorio else 'WARN'}] '{driver.name} "
+                  f"{' '.join(args)}' termino con codigo {rc}.")
+        resultados.append((titulo, ok, salida))
+
+    print(f"\n  [PARALELO] {len(trabajos)} pasos en {time.perf_counter() - inicio:.2f}s "
+          f"(en serie habrian sido {sum(f - i for _, _, i, f in crudos):.2f}s)")
+    return resultados
+
+
+def _correr_driver(ruta_driver, args):
+    """Ejecuta un driver y devuelve (returncode, salida, t_inicio, t_fin).
+    Se devuelven los dos extremos y no la duracion porque el informe de
+    tiempos necesita saber que pasos se solaparon. rc=None si no existe."""
+    if not ruta_driver.exists():
+        return None, "", 0.0, 0.0
+    inicio = time.perf_counter()
+    proceso = subprocess.run(
+        [sys.executable, str(ruta_driver), *args],
+        cwd=str(ruta_driver.parent),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return (proceso.returncode,
+            (proceso.stdout or "") + (proceso.stderr or ""),
+            inicio, time.perf_counter())
+
+
+def _informe_tiempos(total):
+    """Desglose de donde se fue el tiempo. Es la unica forma de detectar que
+    un paso se degrado sin tener que perfilar a mano.
+
+    Los pasos que corren en paralelo se solapan, asi que la suma de sus
+    duraciones NO es el tiempo transcurrido: lo que se compara contra el
+    total es la UNION de sus intervalos. El porcentaje de cada paso es sobre
+    el total de pared, y por eso los porcentajes pueden sumar mas de 100 --
+    se marca con (P) cual se solapo con otro.
+    """
+    if not _TIEMPOS:
+        return
+    print("\n" + "=" * 72)
+    print("  TIEMPOS")
+    print("=" * 72)
+
+    # Union de intervalos: cuanto tiempo de pared estuvo corriendo ALGUN paso.
+    intervalos = sorted((ini, fin) for _, ini, fin in _TIEMPOS)
+    cubierto, tope = 0.0, None
+    for ini, fin in intervalos:
+        if tope is None or ini > tope:
+            cubierto += fin - ini
+            tope = fin
+        elif fin > tope:
+            cubierto += fin - tope
+            tope = fin
+
+    suma = sum(fin - ini for _, ini, fin in _TIEMPOS)
+    for titulo, ini, fin in sorted(_TIEMPOS, key=lambda t: -(t[2] - t[1])):
+        duracion = fin - ini
+        solapa = any(o != titulo and ini < ofin and oini < fin
+                     for o, oini, ofin in _TIEMPOS)
+        marca = " (P)" if solapa else ""
+        pct = 100 * duracion / total if total else 0
+        print(f"  {duracion:7.2f}s  {pct:5.1f}%  {titulo}{marca}")
+    print(f"  {'-' * 68}")
+    if suma - cubierto > 0.01:
+        print(f"  {cubierto:7.2f}s          en algun paso "
+              f"(suma de pasos {suma:.2f}s; {suma - cubierto:.2f}s ganados en paralelo)")
+    print(f"  {total:7.2f}s  100.0%  TOTAL (orquestacion: {total - cubierto:.2f}s)")
 
 
 def _resumir(resultados, mensaje_ok):
@@ -172,20 +297,24 @@ def cmd_status():
     """Solo lectura en los 3 modulos: nadie escribe Excel, archivos ni
     tableros."""
     momento_inicio = datetime.now().timestamp()
-    resultados = []
-    for titulo, driver in (
-        ("Centro de Costos -- status", DRIVER_CENTRO_COSTOS),
-        ("Analisis Financiero -- status", DRIVER_ANALISIS_FINANCIERO),
-        ("Reportes PDF -- status", DRIVER_REPORTES),
-        ("Cotizador Historico -- status", DRIVER_COTIZADOR),
-    ):
-        ok, _ = _ejecutar(titulo, driver, ["status"], obligatorio=False)
-        resultados.append((titulo, ok))
+    inicio = time.perf_counter()
+    # Los 4 status son de solo lectura y no dependen entre si: van en paralelo.
+    trabajos = [
+        (titulo, driver, ["status"], False)
+        for titulo, driver in (
+            ("Centro de Costos -- status", DRIVER_CENTRO_COSTOS),
+            ("Analisis Financiero -- status", DRIVER_ANALISIS_FINANCIERO),
+            ("Reportes PDF -- status", DRIVER_REPORTES),
+            ("Cotizador Historico -- status", DRIVER_COTIZADOR),
+        )
+    ]
+    resultados = [(titulo, ok) for titulo, ok, _ in _ejecutar_varios(trabajos)]
 
     # En 'status' ningun build se regenera, asi que todos saldran como "sin
     # cambios" -- sirve igual para ver cual falta, cuando se genero cada uno y
     # si tiene link registrado.
     _informe_tableros(momento_inicio)
+    _informe_tiempos(time.perf_counter() - inicio)
 
     print("\n  Nada fue escrito. Para ejecutar de verdad: python driver.py run")
     return _resumir(resultados, "Los 4 modulos respondieron. Nada fue escrito.")
@@ -195,6 +324,7 @@ def cmd_run():
     # Marca de tiempo previa a todo: sirve para distinguir que build/index.html
     # se regenero de verdad en esta corrida y cual quedo igual que antes.
     momento_inicio = datetime.now().timestamp()
+    inicio = time.perf_counter()
     resultados = []
 
     # 1. Centro de Costos. Su propio 'run' ya encadena Analisis Financiero
@@ -210,24 +340,26 @@ def cmd_run():
               "para no publicar tableros sobre datos a medio escribir.")
         return _resumir(resultados, "")
 
-    # 2. El eslabon que faltaba: el tablero del Cotizador lee el mismo
-    #    Centro de Costos.xlsx que acaba de cambiar, y nadie lo regeneraba.
-    ok_coti, _ = _ejecutar(
-        "Cotizador Historico -- visualizador (el que nadie regeneraba)",
-        DRIVER_COTIZADOR, ["visualizador"], obligatorio=False,
-    )
-    resultados.append(("Tablero Cotizador Historico", ok_coti))
-
-    # 3. Reportes PDF: se listan los que quedaron desactualizados. No se
-    #    generan solos a proposito -- cada PDF lleva analisis redactado, no
-    #    es una salida puramente mecanica (ver Reportes_Analisis_Financiero).
-    ok_rep, salida_rep = _ejecutar(
-        "Reportes PDF -- que quedo pendiente",
-        DRIVER_REPORTES, ["status"], obligatorio=False,
-    )
-    resultados.append(("Estado de reportes PDF", ok_rep))
+    # 2 y 3, EN PARALELO -- ninguno lee lo que el otro escribe:
+    #   - El tablero del Cotizador lee el mismo Centro de Costos.xlsx que
+    #     acaba de cambiar (era el eslabon que nadie regeneraba) y escribe
+    #     solo dentro de Cotizador Historico/.
+    #   - Reportes PDF solo LISTA los que quedaron desactualizados, leyendo el
+    #     Excel de Analisis Financiero. No se generan solos a proposito: cada
+    #     PDF lleva analisis redactado, no es una salida mecanica (ver
+    #     Reportes_Analisis_Financiero).
+    salidas = _ejecutar_varios([
+        ("Cotizador Historico -- visualizador (el que nadie regeneraba)",
+         DRIVER_COTIZADOR, ["visualizador"], False),
+        ("Reportes PDF -- que quedo pendiente",
+         DRIVER_REPORTES, ["status"], False),
+    ])
+    resultados.append(("Tablero Cotizador Historico", salidas[0][1]))
+    resultados.append(("Estado de reportes PDF", salidas[1][1]))
+    salida_rep = salidas[1][2]
 
     _informe_tableros(momento_inicio)
+    _informe_tiempos(time.perf_counter() - inicio)
 
     codigo = _resumir(resultados, "Todos los modulos y tableros quedaron al dia en disco.")
 
