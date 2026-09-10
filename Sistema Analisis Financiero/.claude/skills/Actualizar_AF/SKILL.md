@@ -5,64 +5,28 @@ description: Use when the user types "/Actualizar_AF" explicitly. If the user in
 
 # Actualizar AF (Análisis Financiero + dashboard publicado)
 
-Envoltorio de un solo comando sobre dos pasos que hoy existen por separado:
-correr el registrador de `/Registro_Analisis_Financiero` y luego **publicar**
-el dashboard regenerado en GitHub Pages (los Claude Artifacts que se usaban
-antes ya no se actualizan, pedido explícito del usuario 2026-08-19). El
-primer paso (`run`) ya regenera
-`Visualizador Web/build/index.html` en disco solo (encadenado dentro de
-`ejecutar()`), pero **no lo sube** — subirlo seguía siendo un paso manual
-(ver `Registro_Analisis_Financiero/MEMORY.md` § Visualizador Web). Este
-skill cierra ese hueco: nunca termines la tarea con el registrador corrido
-pero el link publicado desactualizado. Mismo patrón que `/Actualizar_CC`
-para Centro de Costos.
+Procedimiento común de los tres skills `/Actualizar_<módulo>` (por qué
+existen, los cuatro pasos, cuándo no aplica) en
+[`docs/actualizar-un-modulo.md`](../../../../docs/actualizar-un-modulo.md).
+Acá va solo lo propio de Análisis Financiero.
 
-## Pasos
+## Lo específico de este módulo
 
-1. **`status`** (solo lectura) — usar el driver de `/Registro_Analisis_Financiero`:
-   ```
-   python "Sistema Analisis Financiero/.claude/skills/Registro_Analisis_Financiero/driver.py" status
-   ```
-   Muestra qué carpetas de proyecto se crearían, categorías sin mapeo, y
-   avisos (incluye el de TAG sin match en Centro de Costos).
+**Driver**: `Sistema Analisis Financiero/.claude/skills/Registro_Analisis_Financiero/driver.py`
+**Subruta al publicar**: `analisis-financiero`
 
-2. **Si `status` muestra algo pendiente** (carpetas nuevas, avisos que
-   ameriten atención) **o el usuario pide un refresco explícito** (ej.
-   corrigió algo a mano en `Análisis de Proyectos 2026.xlsx`, confirmó un
-   cliente pendiente, o Centro de Costos acaba de correr), **correr `run`**
-   con el mismo driver:
-   ```
-   python "Sistema Analisis Financiero/.claude/skills/Registro_Analisis_Financiero/driver.py" run
-   ```
-   `run` ya deja `Visualizador Web/build/index.html` regenerado en disco
-   como parte de su propio flujo (`ejecutar()` encadena la regeneración) —
-   no hace falta correr `driver.py visualizador` aparte.
+**Paso 1 — `status`**: muestra qué carpetas de proyecto se crearían,
+categorías sin mapeo, y avisos (incluye el de TAG sin match en Centro de
+Costos).
 
-3. **Publicar en GitHub Pages** cuando corresponda:
-   - Si se corrió `run` en el paso anterior, publicar es obligatorio — el
-     build en disco ya cambió.
-   - Si `status` no mostró nada pendiente y el usuario no pidió un
-     refresco forzado, no hay nada que publicar — decirlo en una línea y
-     terminar ahí.
+**Paso 2 — `run`**: correr si `status` muestra algo pendiente (carpetas
+nuevas, avisos que ameriten atención) **o** si el usuario pide un refresco
+explícito — por ejemplo corrigió algo a mano en `Análisis de Proyectos
+2026.xlsx`, confirmó un cliente pendiente, o Centro de Costos acaba de
+correr.
 
-   Receta y comandos exactos (subruta de este módulo: `analisis-financiero`)
-   en [`../../../../Visualizador Web/CLAUDE.md`](../../../../Visualizador%20Web/CLAUDE.md)
-   § Hosting (raíz del repo, no el `Visualizador Web/CLAUDE.md` de este
-   módulo) — es la única copia de esta receta, no la dupliques acá.
+`run` ya deja `Visualizador Web/build/index.html` regenerado como parte de
+`ejecutar()`, así que no hace falta `driver.py visualizador` aparte.
 
-4. **Reportar al usuario en una respuesta corta**: qué cambió (carpetas
-   creadas, avisos relevantes), si se publicó en GitHub Pages o no hacía
-   falta, y el link (el mismo de siempre).
-
-## Cuándo NO aplica
-
-Si el usuario solo pide "corre análisis financiero" sin mencionar el
-dashboard/visualizador, usa `/Registro_Analisis_Financiero` directo — ese
-skill ya deja el HTML regenerado en disco por su cuenta. Reserva este
-skill para cuando además se espera que el link publicado quede al día.
-
-**Si el usuario pide actualizar TODO** ("actualiza las finanzas", "deja
-todo al día"), usa `/Actualizar_Finanzas` (raíz del repo) en vez de este:
-cubre los tres módulos y los tres tableros publicados, no solo Análisis
-Financiero. Este skill sigue siendo el correcto cuando el usuario nombra
-explícitamente solo Análisis Financiero.
+**Paso 3 — publicar**: obligatorio si se corrió `run`; el build en disco ya
+cambió.

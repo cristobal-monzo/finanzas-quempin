@@ -18,7 +18,7 @@ Todo el repo corre con **un solo intérprete**: `py -3.14`.
 ```
 py -3.14 -m pip install -r requirements.txt
 py -3.14 -m playwright install chromium      # solo para los reportes PDF
-py -3.14 -m pytest                           # las 7 suites juntas (510 tests)
+py -3.14 -m pytest                           # las 7 suites juntas (640 tests)
 ```
 
 **No uses `python` a secas**: en este equipo el `python` del PATH es 3.11 y
@@ -30,6 +30,36 @@ refieren a este intérprete.
 2026-07-28 solo se podía testear carpeta por carpeta, y por ese hueco se coló
 una divergencia real entre el KPI "Nota del Proyecto" del dashboard web y el
 del Excel/PDF — corre siempre la suite completa antes de dar algo por bueno.
+
+## Observabilidad: cada corrida dice dónde se fue el tiempo
+
+Desde la auditoría del 2026-09-09, `run` imprime dos desgloses que antes no
+existían y que son la forma de detectar una regresión de rendimiento sin
+tener que perfilar a mano:
+
+- **`/Actualizar_Finanzas`** cierra con una tabla `TIEMPOS` por módulo. Los
+  pasos que corren en paralelo se marcan `(P)`; lo que se compara contra el
+  total es la **unión** de sus intervalos, no la suma (por eso los
+  porcentajes pueden pasar de 100).
+- **Centro de Costos** cierra con `TIEMPO POR ETAPA` (los PASO 1..13 de
+  `auditor_centro_costos.main()`), ocultando las etapas de menos de 0,05 s.
+
+Reglas aprendidas midiendo, que conviene no reaprender a golpes:
+
+- **El cuello de botella casi nunca está donde uno cree.** El tablero del
+  Cotizador se llevaba más de un tercio del total por re-normalizar los
+  mismos términos del catálogo 2,1 millones de veces; Análisis Financiero se
+  llevaba otro 42 % de Centro de Costos por abrir `Centro de Costos.xlsx`
+  tres veces seguidas. Mide antes de optimizar.
+- **`load_workbook` de openpyxl cuesta ~0,3–0,8 s por apertura** de este
+  libro. Si un módulo necesita leerlo más de una vez, ábrelo una sola vez y
+  pasa el `wb`.
+- **No midas contra producción.** `main()` llama a `configurar_pais()` como
+  primera línea, que **reescribe todos los globals de ruta**: parchearlos
+  desde afuera no aísla nada. Para correr el pipeline sin tocar los datos
+  reales, registra un país ficticio en `acc.PAISES` y llama
+  `main(pais="<ese>")`, más un guard que aborte si alguna ruta de escritura
+  quedó fuera del sandbox.
 
 ## Invocación de skills: siempre con "/", nunca automática por lenguaje natural
 
@@ -87,7 +117,7 @@ de `auditor_centro_costos.main()`.
 
 **Visualizador Web** es transversal a todos los módulos: cada uno tendrá, en su propia carpeta, una subcarpeta `Visualizador Web/` con un HTML publicado online (gráficos, tablas dinámicas, buscadores, filtros). El doc maestro compartido (marca, mandato de herramientas dinámicas, política de datos, hosting) vive en `Visualizador Web/CLAUDE.md` a nivel raíz; cada módulo tiene su propio `<Módulo>/Visualizador Web/CLAUDE.md` con el contenido específico a presentar. **Centro de Costos ya tiene una implementación real** (2026-07-19): `Centro de Costos/Visualizador Web/template.html` (estructura, versionada) + `build_visualizador.py` (export + build, corrible vía `driver.py visualizador` del skill `/Registro_Centro_de_Costos`) generan un `build/index.html` autocontenido con los datos incrustados, publicado en GitHub Pages (único canal desde la migración del 2026-08-05 — los Claude Artifacts privados que se usaban antes ya no se actualizan, pedido explícito del usuario 2026-08-19). **Los tres módulos implementados ya tienen su visualizador real** (Centro de Costos 2026-07-19, Análisis Financiero 2026-07-23, Cotizador Historico); solo Flujo de Caja sigue con el scaffolding de `CLAUDE.md`. Ver el spec original en `docs/superpowers/specs/2026-07-19-visualizador-web-design.md`.
 
-**Los tres se regeneran en disco, y los tres tienen ahora su propio skill "run + publicar" en un solo paso** (2026-08-05): `/Actualizar_CC` (Centro de Costos), `/Actualizar_AF` (Análisis Financiero), `/Actualizar_Cotizador` (Cotizador Histórico) — cada uno corre su registrador/visualizador y republica el dashboard existente en GitHub Pages (URL estructural fija, nunca un link nuevo). Úsalos cuando el usuario nombra un solo módulo; para los tres a la vez sigue siendo `/Actualizar_Finanzas` (que no publica por sí solo — deja los 3 builds listos en disco y reporta cuáles se regeneraron, la publicación de cada uno la hace el agente siguiendo la sección de arriba de ese skill).
+**Los tres se regeneran en disco, y los tres tienen ahora su propio skill "run + publicar" en un solo paso** (2026-08-05): `/Actualizar_CC` (Centro de Costos), `/Actualizar_AF` (Análisis Financiero), `/Actualizar_Cotizador` (Cotizador Histórico) — cada uno corre su registrador/visualizador y republica el dashboard existente en GitHub Pages (URL estructural fija, nunca un link nuevo). Úsalos cuando el usuario nombra un solo módulo; para los tres a la vez sigue siendo `/Actualizar_Finanzas` (que no publica por sí solo — deja los 3 builds listos en disco y reporta cuáles se regeneraron, la publicación de cada uno la hace el agente siguiendo la sección de arriba de ese skill). **El procedimiento común de los tres vive una sola vez** en [`docs/actualizar-un-modulo.md`](docs/actualizar-un-modulo.md) (por qué existen, los cuatro pasos, cuándo no aplican); cada `SKILL.md` solo agrega lo propio de su módulo. Antes los tres repetían ese texto casi palabra por palabra, y había que acordarse de sincronizarlos a mano.
 
 **Análisis Financiero** es distinto a los demás: no es solo un pipeline de registro, es un rol consultivo — actúa como analista financiero experto (evalúa proyectos, propone/depura KPIs, decide cómo presentar la información, cruza todos los módulos), sobre un Excel (`Análisis de Proyectos.xlsx`) que consolida costos reales de Centro de Costos contra ventas y proyecciones manuales por proyecto. **Reorganizado 2026-07-21**: `Análisis Financiero/` contiene únicamente el Excel de trabajo; el código, los tests y el skill viven en la carpeta hermana `Sistema Analisis Financiero/` (ver su `CLAUDE.md` para el diseño completo). Implementado y encadenado al `run` de Centro de Costos (PASO 12d) — ver `Sistema Analisis Financiero/CLAUDE.md`. Desde 2026-07-23 también tiene un Visualizador Web propio (`Sistema Analisis Financiero/Visualizador Web/`, mismo patrón que Centro de Costos: proyectos completos con sus KPIs + Clientes/CLTV, excluyendo del cálculo cualquier proyecto sin información manual completa).
 
