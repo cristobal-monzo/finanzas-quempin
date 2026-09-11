@@ -184,6 +184,15 @@ def cmd_desglosar(args):
     if len(args) < 2:
         print("Uso: python driver.py desglosar <N_REF> '<ITEMS_JSON>'")
         return 2
+    fila_agrupada, args = _sacar_opcion(args, "--fila")
+    if len(args) < 2:
+        print("Uso: python driver.py desglosar <N_REF> '<ITEMS_JSON>' [--fila N]")
+        return 2
+    try:
+        fila_agrupada = None if fila_agrupada is None else int(fila_agrupada)
+    except ValueError:
+        print("[ERROR] --fila tiene que ser un numero.")
+        return 1
     n_ref, items_json = args[0], " ".join(args[1:])
 
     try:
@@ -195,8 +204,91 @@ def cmd_desglosar(args):
         print("[ERROR] ITEMS_JSON debe ser una lista no vacía de ítems.")
         return 1
 
-    resultado = acc.desglosar_item_agrupado(n_ref, items_nuevos)
+    resultado = acc.desglosar_item_agrupado(n_ref, items_nuevos,
+                                            fila_agrupada=fila_agrupada)
     return 0 if resultado is not None else 1
+
+
+def _sacar_opcion(args, nombre):
+    """Saca '--nombre <valor>' de args y devuelve (valor, args_sin_la_opcion)."""
+    if nombre not in args:
+        return None, args
+    i = args.index(nombre)
+    if i + 1 >= len(args):
+        return None, args[:i]
+    return args[i + 1], args[:i] + args[i + 2:]
+
+
+def cmd_items(args):
+    """SOLO LECTURA. Las filas de Detalle de un documento, con su numero de
+    fila -- que es lo que pide 'corregir-item'."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    if not args:
+        print("Uso: python driver.py items <N_REF>")
+        return 2
+    n_ref = args[0]
+    import openpyxl
+    wb = openpyxl.load_workbook(str(acc.RUTA_EXCEL), data_only=False)
+    if "Master" not in wb.sheetnames or "Detalle" not in wb.sheetnames:
+        print("[ERROR] Faltan hojas Master/Detalle.")
+        return 1
+    ws_m, ws_d = wb["Master"], wb["Detalle"]
+    fila_m = acc._mapa_filas_por_n_ref(ws_m).get(n_ref)
+    if fila_m is None:
+        print(f"[ERROR] {n_ref} no existe en Master.")
+        return 1
+    filas = acc.listar_items_documento(ws_d, n_ref)
+    print("=" * 74)
+    print(f"  ITEMS DE {n_ref} (solo lectura)")
+    print("=" * 74)
+    neto = sum((f["total_sin_iva"] or 0) for f in filas)
+    iva = ws_m.cell(row=fila_m, column=12).value or 0
+    print(f"  Neto {neto:,.0f} | Impuesto declarado {iva:,.0f} | Total {neto + iva:,.0f}")
+    print(f"  19% del neto seria {round(neto * acc.TASA_IMPUESTO):,}")
+    for f in filas:
+        print()
+        print(f"  fila {f['fila']}: {f['nombre_item']}")
+        print(f"     {f['cantidad']} x {f['p_unitario']} = {f['total_sin_iva']:,.0f}")
+        if f["descripcion"]:
+            print(f"     {str(f['descripcion'])[:100]}")
+    print()
+    print("  Corregir: python driver.py corregir-item <N_REF> <FILA> "
+          "[--cantidad N] [--precio N] [--nota TEXTO]")
+    return 0
+
+
+def cmd_corregir_item(args):
+    """Corrige cantidad/precio de una fila de Detalle dejando rastro auditado.
+    El neto vive en Detalle, no en Master: sin esto, un documento con el bruto
+    cargado como neto solo se podia arreglar editando el .xlsx a mano."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    nota, args = _sacar_opcion(args, "--nota")
+    cantidad, args = _sacar_opcion(args, "--cantidad")
+    precio, args = _sacar_opcion(args, "--precio")
+    if len(args) < 2:
+        print("Uso: python driver.py corregir-item <N_REF> <FILA> "
+              "[--cantidad N] [--precio N] [--nota TEXTO]")
+        return 2
+    n_ref = args[0]
+    try:
+        fila = int(args[1])
+        cantidad = None if cantidad is None else float(cantidad)
+        precio = None if precio is None else float(precio)
+    except ValueError:
+        print("[ERROR] FILA, --cantidad y --precio tienen que ser numeros.")
+        return 1
+    if cantidad is not None and cantidad == int(cantidad):
+        cantidad = int(cantidad)
+    if precio is not None and precio == int(precio):
+        precio = int(precio)
+
+    resultado = acc.corregir_item_detalle(n_ref, fila, cantidad=cantidad,
+                                          p_unitario=precio, nota=nota)
+    if resultado is None:
+        return 1
+    print()
+    print("  Correr 'python driver.py reflejar' al terminar el recorrido.")
+    return 0
 
 
 def cmd_reflejar():
@@ -249,15 +341,35 @@ def cmd_hallazgos(args):
     if args and args[0] in ("error", "revisar", "estimado"):
         severidad = args[0]
 
-    registro = acc.cargar_registro_errores()
+    # El registro se pone al dia aca mismo. Antes se exigia un 'run' previo,
+    # pero sobre un corpus ya registrado 'run' escribe 0 filas: se reescribia
+    # el libro, el sitio compartido, el visualizador y Analisis Financiero
+    # solamente para poder mirar la lista. Esto no toca el Excel ni ningun dato
+    # del negocio; solo actualiza Sistema/errores_detectados.json.
+    import openpyxl
+    if not acc.RUTA_EXCEL.exists():
+        print("\n[ERROR] No existe el Excel todavia; no hay contra que validar.")
+        return 1
+    wb = openpyxl.load_workbook(str(acc.RUTA_EXCEL), data_only=False)
+    if "Master" not in wb.sheetnames:
+        print("\n[ERROR] El Excel no tiene hoja Master.")
+        return 1
+    datos = acc.cargar_datos_json(acc.RUTA_JSON)
+    registro, resumen = acc.sincronizar_registro_errores(
+        wb["Master"], datos, ws_detalle=wb["Detalle"] if "Detalle" in wb.sheetnames else None)
     abiertos = acc.hallazgos_abiertos(registro, severidad=severidad)
 
     print("=" * 74)
-    print("  HALLAZGOS ABIERTOS (solo lectura, no escribe nada)")
+    print("  HALLAZGOS ABIERTOS (no toca el Excel; actualiza el registro)")
     print("=" * 74)
+    print(f"\n{resumen['vigentes']} vigente(s): {resumen['nuevos']} nuevo(s), "
+          f"{resumen['reabiertos']} reabierto(s), {resumen['desaparecidos']} cerrado(s) "
+          f"por dejar de aparecer.")
+    if resumen["ya_corregidos"]:
+        print(f"{resumen['ya_corregidos']} ya estaban corregidos a mano en Master: "
+              f"cerrados con su evidencia, no se vuelven a pedir.")
     if not registro["errores"]:
-        print("\nNo hay registro de errores todavia -- correr primero "
-              "'Registro_Centro_de_Costos/driver.py run'.")
+        print("\nNo hay hallazgos de ninguna clase.")
         return 0
     if not abiertos:
         print("\nNo hay hallazgos abiertos" + (f" con severidad '{severidad}'." if severidad else "."))
@@ -334,7 +446,8 @@ def cmd_descartar(args):
     return 0
 
 
-COMANDOS = ("errores", "corregir", "agrupados", "desglosar", "reflejar",
+COMANDOS = ("errores", "corregir", "agrupados", "desglosar", "reflejar", "items",
+            "corregir-item",
             "hallazgos", "resolver", "descartar")
 
 
@@ -350,6 +463,10 @@ def main():
         return cmd_agrupados()
     if comando == "desglosar":
         return cmd_desglosar(sys.argv[2:])
+    if comando == "items":
+        return cmd_items(sys.argv[2:])
+    if comando == "corregir-item":
+        return cmd_corregir_item(sys.argv[2:])
     if comando == "reflejar":
         return cmd_reflejar()
     if comando == "hallazgos":

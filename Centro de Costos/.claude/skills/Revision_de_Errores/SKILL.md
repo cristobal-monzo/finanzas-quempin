@@ -23,7 +23,8 @@ Tres tipos de hallazgo, con su comando de lectura y el de escritura -- ver
 |---|---|---|
 | **Hallazgo del registro** (cualquier clase) | `hallazgos` | `resolver <ID> "<VALOR>"` / `descartar <ID> "<motivo>"` |
 | Celda roja de Master | `errores` | `corregir <N_REF> <CAMPO> <VALOR>` |
-| Ítem agrupado de Detalle | `agrupados` | `desglosar <N_REF> '<ITEMS_JSON>'` |
+| Ítem agrupado de Detalle | `agrupados` | `desglosar <N_REF> '<ITEMS_JSON>' [--fila N]` |
+| **Neto mal cargado** (cantidad/precio de un ítem) | `items <N_REF>` | `corregir-item <N_REF> <FILA> --precio N` |
 
 **`hallazgos`/`resolver` es el camino preferido desde 2026-09-10** y cubre a
 `errores`/`corregir` (que siguen funcionando igual, para las dos columnas
@@ -81,6 +82,40 @@ py -3.14 ".claude/skills/Revision_de_Errores/driver.py" descartar <ID> "<motivo>
   datos_extraidos.json`, para que se corrija también ahí si el documento se
   va a re-extraer. Si el dato de origen cambia a **otro** valor, el hallazgo
   se reabre solo.
+
+### `items` / `corregir-item` — cuando el error está en el NETO, no en el impuesto
+
+```
+py -3.14 ".claude/skills/Revision_de_Errores/driver.py" items <N_REF>
+py -3.14 ".claude/skills/Revision_de_Errores/driver.py" corregir-item <N_REF> <FILA> [--cantidad N] [--precio N] [--nota "<texto>"]
+```
+
+El neto de un documento **no vive en `Master`**: es la suma de `cantidad ×
+precio unitario` de sus filas de `Detalle`. Hasta la revisión del 2026-09-10
+el único camino auditado escribía celdas de `Master`, así que un documento con
+el neto mal cargado solo se podía arreglar editando el `.xlsx` a mano — justo
+lo que `detectar_correcciones_manuales` existe para cazar. Casos reales que
+cerró este comando:
+
+- **el bruto cargado como neto** (`HPIN-017`, `JUNJ-077`): los precios traían
+  el IVA incluido, así que `Neto` quedaba igual al total y el impuesto no
+  cuadraba con su 19 %;
+- **una cantidad mal leída** (`HPIN-157`: 40 pernos en vez de 48 → faltaban
+  $4.792);
+- **los montos corridos una línea** (`JUNJ-072`: cada descripción llevaba el
+  monto del ítem siguiente → faltaban $10.473).
+
+`items` muestra el neto, el impuesto declarado y **cuánto sería el 19 %**, que
+es lo que dice de qué lado está el problema. `corregir-item` recalcula el
+"Total sin IVA" de la fila y el "Total con IVA" de **todas** las filas del
+documento (la tasa real es impuesto de `Master` / neto, así que cambiar un
+precio la mueve para todo el documento), deja la fila en azul marino y registra
+la corrección en `correcciones_manuales.json` y `ERRORES.md`.
+
+**No toca la columna de impuesto de `Master`.** Si el impuesto declarado era el
+correcto, arreglar el neto hace que el cuadre pase a dar exacto y el hallazgo
+se cierra solo. Si además hay que corregir el impuesto (combustible con
+específico), eso va por `resolver`.
 
 **Siempre, al terminar el recorrido (haya o no correcciones aplicadas en la
 sesión), correr `python driver.py reflejar`** -- copia
@@ -145,13 +180,14 @@ en la conversación.
 
 ## Procedimiento
 
-**Paso 0 -- listar los hallazgos abiertos (solo lectura, empieza por acá):**
+**Paso 0 -- listar los hallazgos abiertos (empieza por acá):**
 
 ```
 py -3.14 ".claude/skills/Revision_de_Errores/driver.py" hallazgos
 ```
 
-Es la vista completa y priorizada. Recórrela de arriba hacia abajo (primero
+Pone el registro al día y muestra la vista completa y priorizada; no toca el
+Excel ni ningún dato del negocio. Recórrela de arriba hacia abajo (primero
 los `error`, dentro de cada severidad primero los de mayor impacto en pesos),
 mostrando la foto del documento igual que en el Paso 2, y ciérralos con
 `resolver`/`descartar`. **Junta varios `<ID> "<VALOR>"` en una sola llamada a
@@ -303,8 +339,10 @@ nuevo la próxima vez que se corra `errores`/`agrupados`.
 - **`corregir` solo toca la celda si está en rojo** -- si el `N_REF`/campo ya
   no está en rojo (alguien ya lo corrigió, o el N° Ref no existe), no hace
   nada y no rompe nada; revisar el mensaje de consola.
-- **`desglosar` solo actúa si encuentra EXACTAMENTE 1 fila agrupada** para
-  ese `N_REF` -- si no encuentra ninguna (ya se desglosó, o el N° Ref no
+- **`desglosar` pide `--fila` si el documento tiene más de un ítem agrupado**
+  (pasa cuando una foto trae dos boletas, como `FCH1-031`): lista las opciones
+  y no toca nada hasta que se le diga cuál. Antes ese caso abortaba sin
+  alternativa. Si encuentra 0 filas agrupadas -- si no encuentra ninguna (ya se desglosó, o el N° Ref no
   existe) o encuentra más de una (un documento con 2+ ítems agrupados, no
   soportado hoy), no hace nada; revisar el mensaje de consola y resolver a
   mano si hace falta.
@@ -325,13 +363,31 @@ nuevo la próxima vez que se corra `errores`/`agrupados`.
 - **`resolver` no puede escribir una celda cualquiera**: solo actúa si hay un
   hallazgo ABIERTO en el registro que diga que esa celda está mal. Es a
   propósito -- la puerta de entrada es el hallazgo, no la celda.
-- **El registro lo escribe `run`**, no esta skill: si `hallazgos` dice "No hay
-  registro de errores todavía", corre primero
-  `Registro_Centro_de_Costos/driver.py run` (o `status`, que muestra la misma
-  validación sin escribir).
+- **`hallazgos` pone el registro al día por sí solo**, no hace falta un `run`
+  previo. Sobre un corpus ya registrado `run` escribe 0 filas, así que
+  exigirlo solo para poder mirar la lista significaba reescribir el libro, el
+  sitio compartido, el visualizador y Análisis Financiero sin cambiar un solo
+  dato. `hallazgos` lee el Excel pero no lo guarda; lo único que escribe es
+  `Sistema/errores_detectados.json`.
+- **Un hallazgo sin `N° Ref.` no se puede resolver por celda**, y eso pasa
+  cuando su `N° Documento` no identifica una única fila de Master: números
+  repetidos entre dos emisores, duplicados, los marcadores `N/A` de los
+  peajes, o entradas del JSON que traen varios números en el mismo campo
+  (`"288946, 289533 y 289351"`). El listado lo dice caso por caso. No es un
+  error: adjudicar cualquiera de las filas candidatas escribiría la
+  corrección en el documento equivocado. Se resuelven mirando el documento y
+  usando `corregir <N_REF>` directo, o arreglando el `N° Documento` primero.
+- **Lo que ya corregiste a mano no se vuelve a pedir.** La validación corre
+  sobre `datos_extraidos.json`, que es la entrada del pipeline y nunca se
+  reescribe, así que un documento arreglado hace meses seguía produciendo el
+  mismo hallazgo. Ahora, si esa celda de Master está en azul marino o figura
+  en `correcciones_manuales.json`, el hallazgo nace cerrado con esa evidencia
+  escrita. Si el dato de origen cambia a **otro** valor, se reabre igual.
 - Implementación del recorrido por registro: `validar_documento`,
-  `validar_corpus`, `fusionar_hallazgos`, `corregir_hallazgos`,
-  `descartar_hallazgo` en `Sistema/auditor_centro_costos.py`; tests en
+  `validar_corpus`, `fusionar_hallazgos`, `sincronizar_registro_errores`,
+  `mapa_documento_a_n_ref`, `cerrar_hallazgos_ya_corregidos`,
+  `corregir_hallazgos`, `descartar_hallazgo` en
+  `Sistema/auditor_centro_costos.py`; tests en `test_enlace_hallazgos.py`,
   `Sistema/tests/test_validacion_documentos.py`,
   `test_resolucion_hallazgos.py` y `test_pipeline_errores.py`.
 - Implementación del recorrido por celdas rojas: `listar_celdas_rojas`, `corregir_valor_manual`,

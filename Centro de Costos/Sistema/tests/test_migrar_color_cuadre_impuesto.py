@@ -48,8 +48,24 @@ def test_libera_el_rojo_de_una_factura_de_combustible_correcta():
     assert not acc._celda_es_roja(ws_m.cell(row=2, column=col))
 
 
-def test_mantiene_el_rojo_donde_el_impuesto_es_menor_al_legal():
+def test_libera_el_rojo_de_un_deficit_de_combustible():
+    """Actualizado el 2026-09-10: antes este caso mantenia el rojo, porque la
+    regla daba 'error' a cualquier impuesto bajo el 19%. En combustible el
+    FEPP/IEV puede ser negativo y dejarlo ahi legitimamente (JUNJ-238), asi
+    que pasa a 'revisar' y la celda deja de pedir a gritos una correccion que
+    no corresponde. El hallazgo sigue en el registro de errores."""
     ws_m, ws_d, col = _libro([("UMAG-1", "Factura", "Combustible", 1873, 38318, True)])
+
+    limpiadas, marcadas = acc.migrar_color_cuadre_impuesto(ws_m, ws_d)
+
+    assert (limpiadas, marcadas) == (1, 0)
+    assert not acc._celda_es_roja(ws_m.cell(row=2, column=col))
+
+
+def test_mantiene_el_rojo_en_un_deficit_sin_impuesto_especifico():
+    """El contrapeso: fuera de combustible, un impuesto bajo el 19% sigue
+    siendo algo seguro que corregir y la celda sigue roja."""
+    ws_m, ws_d, col = _libro([("UMAG-1", "Factura", "Ferreteria", 1873, 38318, True)])
 
     limpiadas, marcadas = acc.migrar_color_cuadre_impuesto(ws_m, ws_d)
 

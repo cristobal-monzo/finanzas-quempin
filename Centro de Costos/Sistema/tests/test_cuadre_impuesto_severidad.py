@@ -70,9 +70,50 @@ def test_combustible_con_impuesto_sobre_el_19_no_es_hallazgo():
     assert acc.verificar_aritmetica([doc]) == []
 
 
-def test_combustible_con_impuesto_bajo_el_19_sigue_siendo_error():
-    """El impuesto nunca puede ser MENOR al IVA legal, ni en combustible."""
-    doc = _doc(iva=1873, neto=38318, categoria="Combustible")
+def test_combustible_con_impuesto_bajo_el_19_es_revisar_no_error():
+    """Corregido el 2026-09-10 con el documento en la mano. Este test afirmaba
+    "el impuesto nunca puede ser MENOR al IVA legal, ni en combustible", y
+    JUNJ-238 (Copec, factura 94279) lo desmiente: neto 8.142, IVA 1.547,
+    IEV Diesel -3.463, IEF Diesel 774, TOTAL PAGADO 7.000. El impuesto
+    combinado es -1.142, muy por debajo del 19%, y el dato esta bien.
+
+    El FEPP/IEV es un mecanismo de estabilizacion: puede devolver plata. Por
+    eso el perdon por categoria no puede aplicarse solo del lado del exceso.
+    Sigue reportandose -- no se oculta ninguna -- pero como 'revisar'.
+    """
+    doc = _doc(iva=-1142, neto=8142, categoria="Combustible")
+    hallazgos = acc.verificar_aritmetica([doc])
+    assert len(hallazgos) == 1
+    assert hallazgos[0]["severidad"] == "revisar"
+
+
+def test_deficit_de_impuesto_fuera_de_combustible_sigue_siendo_error():
+    """El contrapeso: sin impuesto especifico que lo explique, un impuesto bajo
+    el 19% sigue siendo algo seguro que corregir."""
+    doc = _doc(iva=1873, neto=38318, categoria="Ferreteria")
+    hallazgos = acc.verificar_aritmetica([doc])
+    assert len(hallazgos) == 1
+    assert hallazgos[0]["severidad"] == "error"
+
+
+def test_el_deficit_en_combustible_no_se_llama_exceso():
+    """'revisar' significa dos cosas distintas segun de que lado del 19% cayo
+    el impuesto; el codigo del hallazgo tiene que decir cual."""
+    def _codigos_de_impuesto(doc):
+        return [h["codigo"] for h in acc.validar_documento(doc)
+                if h["codigo"].startswith("IMPUESTO_")]
+
+    assert _codigos_de_impuesto(
+        _doc(iva=-1142, neto=8142, categoria="Combustible")) == ["IMPUESTO_MENOR_ESPECIFICO"]
+    assert _codigos_de_impuesto(
+        _doc(iva=16527, neto=76520, categoria="Ferreteria")) == ["IMPUESTO_EXCESO"]
+
+
+def test_con_otros_impuestos_declarado_el_deficit_vuelve_a_ser_error():
+    """Si el documento DECLARA cuanto de su impuesto no es IVA, el cuadre deja
+    de ser una heuristica por categoria y pasa a ser exacto: quedarse corto
+    respecto de esa declaracion si es un error, tambien en combustible."""
+    doc = _doc(iva=5000, neto=19339, categoria="Combustible", otros_impuestos=6987)
     hallazgos = acc.verificar_aritmetica([doc])
     assert len(hallazgos) == 1
     assert hallazgos[0]["severidad"] == "error"

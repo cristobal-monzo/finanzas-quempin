@@ -1015,7 +1015,7 @@ def corregir_valor_manual(n_ref, columna, valor_nuevo, ruta_excel=None,
 
 
 def desglosar_item_agrupado(n_ref, items_nuevos, ruta_excel=None, ruta_correcciones=None,
-                             ruta_errores=None, ruta_backups=None):
+                             ruta_errores=None, ruta_backups=None, fila_agrupada=None):
     """Reemplaza la UNICA fila de Detalle 'agrupada' de n_ref (ver
     listar_items_agrupados) por una fila nueva por cada item de
     items_nuevos -- cada uno un dict {"nombre_item", "descripcion",
@@ -1034,10 +1034,11 @@ def desglosar_item_agrupado(n_ref, items_nuevos, ruta_excel=None, ruta_correccio
     reemplazan. Excepcion deliberada a la regla de oro de "nunca tocar una
     fila ya escrita" -- mismo tipo de excepcion que corregir_valor_manual.
 
-    Solo actua si encuentra EXACTAMENTE una fila agrupada para n_ref -- si no
-    encuentra ninguna, o mas de una, no toca nada y devuelve None (evita
-    adivinar cual fila reemplazar; un documento con mas de 1 fila agrupada
-    hoy no esta soportado por este comando, se resuelve a mano)."""
+    Si el documento trae mas de una fila agrupada (pasa cuando una foto trae
+    dos boletas, como FCH1-031), hay que decir cual con `fila_agrupada`; sin
+    eso no toca nada, porque adivinar cual reemplazar es justamente lo que no
+    debe hacer. Hasta la revision del 2026-09-10 ese caso abortaba sin
+    alternativa y no habia forma de desglosar ninguno de los dos."""
     from copy import copy as _copy
 
     ruta_excel = ruta_excel or RUTA_EXCEL
@@ -1062,9 +1063,25 @@ def desglosar_item_agrupado(n_ref, items_nuevos, ruta_excel=None, ruta_correccio
         return None
 
     agrupados = [f for f in listar_items_agrupados(ws_detalle) if f["n_ref"] == n_ref]
-    if len(agrupados) != 1:
-        print(f"\n[ERROR] Se esperaba exactamente 1 fila agrupada para {n_ref} en Detalle, "
-              f"se encontraron {len(agrupados)}.")
+    if not agrupados:
+        print(f"[ERROR] No hay ninguna fila agrupada para {n_ref} en Detalle.")
+        return None
+    if fila_agrupada is not None:
+        elegidas = [f for f in agrupados if f["fila"] == fila_agrupada]
+        if not elegidas:
+            print(f"[ERROR] La fila {fila_agrupada} no es una fila agrupada de {n_ref}. "
+                  f"Filas agrupadas: {[f['fila'] for f in agrupados]}.")
+            return None
+        agrupados = elegidas
+    elif len(agrupados) > 1:
+        # Un documento puede traer mas de un item agrupado (FCH1-031 tiene dos,
+        # uno por cada boleta que venia en la misma foto). Antes esto abortaba
+        # y no habia forma de desglosar ninguno de los dos; ahora se pide cual.
+        print(f"[ERROR] {n_ref} tiene {len(agrupados)} filas agrupadas; hay que decir cual "
+              f"con --fila. Opciones:")
+        for f in agrupados:
+            print(f"    --fila {f['fila']}  {f['nombre_item']} "
+                  f"({f['descripcion'] or 'sin descripcion'})")
         return None
     fila_vieja = agrupados[0]["fila"]
     nombre_item_anterior = agrupados[0]["nombre_item"]
@@ -1157,6 +1174,142 @@ def desglosar_item_agrupado(n_ref, items_nuevos, ruta_excel=None, ruta_correccio
 
     print(f"  [OK] {n_ref} / Ítems agrupados: '{nombre_item_anterior}' -> "
           f"{len(items_nuevos)} ítem(s) ({resumen_nuevo}) (azul marino).")
+    return entrada
+
+
+def listar_items_documento(ws_detalle, n_ref):
+    """Las filas de Detalle de un documento, con lo necesario para corregir una:
+    {fila, nombre_item, descripcion, cantidad, p_unitario, total_sin_iva}."""
+    filas = []
+    for r in range(2, ultima_fila_datos(ws_detalle) + 1):
+        if ws_detalle.cell(row=r, column=1).value != n_ref:
+            continue
+        filas.append({
+            "fila": r,
+            "nombre_item": ws_detalle.cell(row=r, column=5).value,
+            "descripcion": ws_detalle.cell(row=r, column=6).value,
+            "categoria_item": ws_detalle.cell(row=r, column=7).value,
+            "cantidad": ws_detalle.cell(row=r, column=8).value,
+            "p_unitario": ws_detalle.cell(row=r, column=9).value,
+            "total_sin_iva": ws_detalle.cell(row=r, column=10).value,
+        })
+    return filas
+
+
+def corregir_item_detalle(n_ref, fila_detalle, cantidad=None, p_unitario=None, nota=None,
+                          ruta_excel=None, ruta_correcciones=None, ruta_errores=None,
+                          ruta_backups=None):
+    """Corrige la cantidad y/o el precio unitario de UNA fila de Detalle,
+    dejando el mismo rastro que corregir_valor_manual deja sobre Master.
+
+    Existe porque habia un hueco: la revision del 2026-09-10 encontro tres
+    documentos donde el error NO esta en el impuesto sino en el neto -- se
+    registro el bruto como neto (HPIN-017 sobreestimado en 4.290, JUNJ-077 en
+    1.734) o el neto quedo corto (HPIN-157 en 4.792). El impuesto declarado era
+    el correcto en los tres. El unico camino auditado que existia escribia
+    celdas de Master, y el neto no vive ahi: es la suma de cantidad x precio de
+    Detalle. Sin esto, la unica salida era editar el .xlsx a mano, que es
+    justamente lo que detectar_correcciones_manuales existe para cazar.
+
+    Recalcula "Total sin IVA" de la fila y "Total con IVA" de TODAS las filas
+    del documento: la tasa real es IVA de Master / neto del documento, asi que
+    cambiar un precio la mueve para todo el documento. El IVA de Master no se
+    toca -- si estaba bien, corregir el neto hace que el cuadre pase a dar
+    exacto, que es el objetivo.
+    """
+    ruta_excel = ruta_excel or RUTA_EXCEL
+    ruta_correcciones = ruta_correcciones or RUTA_CORRECCIONES
+    ruta_errores = ruta_errores or RUTA_ERRORES_MD
+    ruta_backups = ruta_backups or RUTA_BACKUPS
+
+    if cantidad is None and p_unitario is None:
+        print("[ERROR] Hay que dar al menos --cantidad o --precio.")
+        return None
+    if excel_esta_bloqueado(ruta_excel):
+        print("[ERROR] El archivo esta abierto en Excel (o bloqueado). Cierralo y reintenta.")
+        return None
+
+    wb = openpyxl.load_workbook(str(ruta_excel), data_only=False)
+    if "Master" not in wb.sheetnames or "Detalle" not in wb.sheetnames:
+        print("[ERROR] Faltan hojas Master/Detalle.")
+        return None
+    ws_master, ws_detalle = wb["Master"], wb["Detalle"]
+
+    fila_master = _mapa_filas_por_n_ref(ws_master).get(n_ref)
+    if fila_master is None:
+        print(f"[ERROR] {n_ref} no existe en Master.")
+        return None
+    if ws_detalle.cell(row=fila_detalle, column=1).value != n_ref:
+        print(f"[ERROR] La fila {fila_detalle} de Detalle no pertenece a {n_ref}.")
+        return None
+
+    cantidad_ant = ws_detalle.cell(row=fila_detalle, column=8).value
+    precio_ant = ws_detalle.cell(row=fila_detalle, column=9).value
+    cantidad_nueva = cantidad_ant if cantidad is None else cantidad
+    precio_nuevo = precio_ant if p_unitario is None else p_unitario
+    if cantidad_nueva == cantidad_ant and precio_nuevo == precio_ant:
+        print(f"[WARN] {n_ref} fila {fila_detalle}: los valores son los mismos; no se toca nada.")
+        return None
+
+    hacer_backup(ruta_excel, ruta_backups)
+
+    # Azul marino SOLO en lo que de verdad cambio: en este modulo el color de
+    # una celda significa "una persona adjudico ESTE valor". Pintar el precio
+    # cuando lo unico corregido fue la cantidad diria algo que no paso.
+    total_item = cantidad_nueva * precio_nuevo
+    cambiadas = {10}
+    if cantidad_nueva != cantidad_ant:
+        cambiadas.add(8)
+    if precio_nuevo != precio_ant:
+        cambiadas.add(9)
+    for columna, valor in ((8, cantidad_nueva), (9, precio_nuevo), (10, total_item)):
+        celda = ws_detalle.cell(row=fila_detalle, column=columna, value=valor)
+        if columna in cambiadas:
+            celda.font = AZUL_MARINO_FONT
+        if columna in (9, 10):
+            celda.number_format = MONEY_FORMAT
+
+    # La tasa real del documento cambia al cambiar su neto, asi que el
+    # "Total con IVA" se rehace para todas sus filas, no solo para la tocada.
+    filas_doc = [f["fila"] for f in listar_items_documento(ws_detalle, n_ref)]
+    neto_doc = sum((ws_detalle.cell(row=r, column=10).value or 0) for r in filas_doc)
+    iva_doc = ws_master.cell(row=fila_master, column=12).value or 0
+    tasa = (iva_doc / neto_doc) if neto_doc else 0
+    for r in filas_doc:
+        bruto = round((ws_detalle.cell(row=r, column=10).value or 0) * (1 + tasa))
+        celda = ws_detalle.cell(row=r, column=11, value=bruto)
+        celda.number_format = MONEY_FORMAT
+        if r == fila_detalle:
+            celda.font = AZUL_MARINO_FONT
+
+    if nota:
+        ws_detalle.cell(row=fila_detalle, column=9).comment = Comment(nota, "Revision_de_Errores")
+
+    try:
+        _guardar_y_suprimir_aviso(wb, ruta_excel)
+    except PermissionError:
+        print("[ERROR] El archivo esta abierto en Excel. Cierralo y vuelve a intentar.")
+        return None
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    nombre = ws_detalle.cell(row=fila_detalle, column=5).value
+    correcciones = cargar_correcciones_manuales(ruta_correcciones)
+    entrada = {
+        "n_ref": n_ref, "hoja": "Detalle", "columna": 9,
+        "campo": f"Item '{nombre}' (cantidad x precio unitario)",
+        "valor_anterior": f"{cantidad_ant} x {valor_para_bitacora(precio_ant)}",
+        "valor_corregido": f"{cantidad_nueva} x {valor_para_bitacora(precio_nuevo)}",
+        "estado": "Aplicado", "fecha_detectado": hoy, "fecha_aplicado": hoy,
+    }
+    if nota:
+        entrada["nota"] = nota
+    correcciones.append(entrada)
+    guardar_correcciones_manuales(correcciones, ruta_correcciones)
+    regenerar_tabla_errores_md(correcciones, ruta_errores)
+
+    print(f"  [OK] {n_ref} fila {fila_detalle} / {nombre}: "
+          f"{entrada['valor_anterior']} -> {entrada['valor_corregido']} "
+          f"(neto del documento: {neto_doc:,.0f}) (azul marino).")
     return entrada
 
 
@@ -2287,9 +2440,11 @@ def severidad_cuadre_impuesto(dato, total_sin_iva, iva):
     Reportarlas como error en cada corrida enterraba las 27 que si lo son y
     dejaba 55 celdas de IVA pintadas de rojo que nadie iba a corregir nunca.
 
-      'error'    -> el impuesto es MENOR al IVA legal. Imposible en un
-                    documento afecto: o los items estan sobrevalorados, o el
+      'error'    -> el impuesto es MENOR al IVA legal en una categoria SIN
+                    impuesto especifico: o los items estan sobrevalorados, o el
                     impuesto quedo mal leido. Siempre hay algo que corregir.
+                    En combustible ese mismo deficit es 'revisar', porque el
+                    FEPP/IEV negativo lo explica sin que haya nada malo.
       'revisar'  -> el impuesto EXCEDE el 19% en una categoria que no tiene
                     impuesto especifico conocido. Puede ser legitimo (un
                     tributo que no habiamos visto) o un error de lectura; no
@@ -2324,7 +2479,16 @@ def severidad_cuadre_impuesto(dato, total_sin_iva, iva):
         return "error" if iva < esperado + otros else "revisar"
 
     if iva < esperado - TOLERANCIA_IMPUESTO:
-        return "error"
+        # Un impuesto MENOR al IVA legal es imposible... salvo justamente en
+        # las categorias que llevan impuesto especifico. En combustible el
+        # FEPP/IEV puede ser NEGATIVO (visto en JUNJ-238: neto 8.142, IVA
+        # 1.547, IEV -3.463, IEF 774 => total pagado 7.000, o sea impuesto
+        # combinado -1.142), asi que el total combinado queda bajo el 19% y el
+        # dato esta bien. Hasta la revision del 2026-09-10 esto era 'error' en
+        # los dos casos: 6 de los 8 'error' sobre los datos reales eran
+        # facturas de combustible correctamente registradas. Sigue reportandose
+        # -- no se oculta -- pero con la severidad que la evidencia soporta.
+        return "revisar" if tiene_impuesto_especifico else "error"
     if iva > esperado + TOLERANCIA_IMPUESTO and not tiene_impuesto_especifico:
         return "revisar"
     return None
@@ -2442,8 +2606,13 @@ TAXONOMIA_ERRORES = {
         "Leer el numero en la foto del documento y corregirlo.", 5),
     "IMPUESTO_MENOR": (
         "error", "Impuesto declarado menor al que corresponde",
-        "Imposible en un documento afecto: revisar el impuesto impreso o el precio "
-        "de los items.", 12),
+        "Imposible en un documento afecto sin impuesto especifico: revisar el "
+        "impuesto impreso o el precio de los items.", 12),
+    "IMPUESTO_MENOR_ESPECIFICO": (
+        "revisar", "Impuesto bajo el 19% en una categoria con impuesto especifico",
+        "Mirar el documento: en combustible el FEPP/IEV puede ser NEGATIVO y dejar "
+        "el impuesto total bajo el 19%, y entonces el dato esta bien. Para que el "
+        "cuadre deje de ser una heuristica, declarar 'otros_impuestos'.", 12),
     "IMPUESTO_EXCESO": (
         "revisar", "Impuesto sobre el 19% sin impuesto especifico conocido",
         "Mirar el documento: si lleva un tributo adicional, declararlo en "
@@ -2456,10 +2625,17 @@ TAXONOMIA_ERRORES = {
         "error", "El mismo documento cargado dos veces",
         "El mismo emisor, numero, fecha y neto: es la misma compra fotografiada dos "
         "veces. Se resuelve sola al registrar (no se escribe la segunda copia).", None),
+    # Declara la columna del N Documento (5) a proposito: la causa mas comun
+    # resulto ser justamente "una esta mal leida" -- una guia de despacho
+    # registrada con el numero de SU factura. Sin columna, el unico camino que
+    # ofrecia el sistema era borrar una fila, que es la accion mas destructiva
+    # de las tres y la equivocada cuando lo que sobra es un digito, no un
+    # documento.
     "DUPLICADO_AMBIGUO": (
         "error", "Mismo N Documento del mismo emisor, contenido distinto",
-        "Comparar ambas fotos: o una esta mal leida, o son documentos distintos. Si "
-        "sobra una fila ya registrada, borrarla con 'driver.py eliminar <N_REF>'.", None),
+        "Comparar ambas fotos. Si una quedo mal leida, corregir su numero con "
+        "'resolver <ID> \"<N correcto>\"'; si son el mismo documento y sobra una fila, "
+        "borrarla con 'driver.py eliminar <N_REF>'; si son distintos, 'descartar'.", 5),
     "ITEM_AGRUPADO": (
         "revisar", "Parte de la compra agrupada en un item 'varios'",
         "Si se consigue leer el detalle real, desglosarlo con "
@@ -2618,9 +2794,18 @@ def validar_documento(dato):
 
     severidad_impuesto = severidad_cuadre_impuesto(dato, neto, iva)
     if severidad_impuesto is not None:
-        codigo = {"error": "IMPUESTO_MENOR", "revisar": "IMPUESTO_EXCESO",
-                  "estimado": "IMPUESTO_ESTIMADO"}[severidad_impuesto]
         esperado = round(neto * TASA_IMPUESTO)
+        # El codigo depende del LADO del 19%, no solo de la severidad: un
+        # deficit en una categoria con impuesto especifico tambien es
+        # 'revisar', y llamarlo IMPUESTO_EXCESO diria justo lo contrario de lo
+        # que pasa.
+        if severidad_impuesto == "estimado":
+            codigo = "IMPUESTO_ESTIMADO"
+        elif dato.get("iva") is not None and iva < esperado:
+            codigo = ("IMPUESTO_MENOR" if severidad_impuesto == "error"
+                      else "IMPUESTO_MENOR_ESPECIFICO")
+        else:
+            codigo = "IMPUESTO_EXCESO"
         hallazgos.append(_hallazgo(
             codigo, dato, valor_actual=dato.get("iva"), valor_esperado=esperado,
             impacto=(iva - esperado) if dato.get("iva") is not None else 0,
@@ -3087,6 +3272,301 @@ def anotar_n_ref(registro, documento, n_ref):
             entrada["n_ref"] = n_ref
             tocados += 1
     return tocados
+
+
+def mapa_documento_a_n_ref(ws_master, datos, correcciones=None, ws_detalle=None):
+    """clave_documento -> N Ref, para los documentos que YA estan en Master.
+
+    anotar_n_ref() solo alcanza a los documentos que se escriben en la MISMA
+    corrida. Sobre un corpus ya registrado -- el caso real: 728 filas en Master
+    y 0 pendientes -- ningun hallazgo llegaba a tener N Ref, y por lo tanto
+    corregir_hallazgos() los rechazaba todos con "el documento todavia no tiene
+    fila en Master". El registro de errores quedaba completo y a la vez
+    inservible. El benchmark no lo vio porque su sandbox arranca vacio y
+    escribe todo en la corrida que mide.
+
+    El puente NO puede ser 'Archivo origen': el renombrado automatico reescribe
+    el nombre fisico a '<N Ref>_<Proveedor>_<Fecha>', y al medirlo ninguna de
+    las 681 claves del JSON calzaba contra Master. Se usa el N Documento, que
+    sobrevive al renombrado, y solo cuando identifica una unica fila Y un unico
+    documento de origen: un numero repetido (dos emisores distintos, un
+    duplicado real, o los marcadores 'N/A' de los peajes) no identifica nada y
+    se omite a proposito en vez de adjudicar cualquiera de los dos -- mismo
+    criterio que _mapa_n_documento_a_n_ref().
+
+    Los 'S/N (<archivo>)' si sirven de puente aunque es_n_documento_real() los
+    rechace: no son numeros, pero son textualmente unicos y es justamente la
+    clase con mas hallazgos abiertos.
+    """
+    def _agrupar(pares):
+        """pares: iterable de (valor_n_documento, destino).
+        Devuelve (unicos, repetidos): los valores que identifican UN destino y
+        los que identifican varios. Los repetidos no sirven para enlazar por si
+        solos, pero si como lista de candidatos a desempatar."""
+        todos = {}
+        for valor, destino in pares:
+            if valor is None or not str(valor).strip():
+                continue
+            todos.setdefault(normalizar_n_documento(valor), []).append(destino)
+        unicos = {k: v[0] for k, v in todos.items() if len(v) == 1}
+        repetidos = {k: v for k, v in todos.items() if len(v) > 1}
+        return unicos, repetidos
+
+    def _indice(pares):
+        return _agrupar(pares)[0]
+
+    def _filas_master():
+        for r in range(2, ultima_fila_datos(ws_master) + 1):
+            n_ref = ws_master.cell(row=r, column=1).value
+            if isinstance(n_ref, str) and PATRON_NREF.match(n_ref):
+                yield ws_master.cell(row=r, column=5).value, n_ref
+
+    por_master, por_master_repetidos = _agrupar(_filas_master())
+    por_json = _indice(
+        (d.get("n_documento"), clave_documento(d.get("proyecto"), d.get("archivo")))
+        for d in datos
+    )
+    mapa = {documento: por_master[numero]
+            for numero, documento in por_json.items() if numero in por_master}
+
+    # Segundo puente, para los documentos cuyo N Documento YA fue corregido a
+    # mano: Master tiene el valor bueno y el JSON el viejo, asi que el primer
+    # puente no los encuentra (al medirlo, 34 hallazgos quedaban huerfanos).
+    # correcciones_manuales.json guarda el par (valor_anterior -> N Ref) de esa
+    # misma celda, o sea el enlace exacto que se perdio, sin adivinar nada: es
+    # la bitacora de auditoria del propio modulo. Mismo criterio de unicidad.
+    if correcciones is None:
+        correcciones = cargar_correcciones_manuales()
+    por_bitacora = _indice(
+        (c.get("valor_anterior"), c.get("n_ref"))
+        for c in correcciones
+        if c.get("columna") == 5  # N Documento
+    )
+    for numero, documento in por_json.items():
+        if documento not in mapa and numero in por_bitacora:
+            mapa[documento] = por_bitacora[numero]
+
+    # Tercer puente, para los N Documento que identifican VARIAS filas: entre
+    # las candidatas, la que tiene exactamente el mismo neto en Detalle. No es
+    # una heuristica -- ese neto es la suma de los items que se escribieron
+    # desde esa misma entrada del JSON. Desempata los casos que mas importan:
+    # un numero mal leido que choca con otro documento real (1913313 apuntaba a
+    # tres filas de $65.930, $70.271 y $28.354) queda enlazado y por lo tanto
+    # corregible, en vez de quedar huerfano justo cuando hay algo que arreglar.
+    ambiguos = {}
+    for d in datos:
+        documento = clave_documento(d.get("proyecto"), d.get("archivo"))
+        numero_crudo = d.get("n_documento")
+        if documento in mapa or numero_crudo is None or not str(numero_crudo).strip():
+            continue
+        candidatas = por_master_repetidos.get(normalizar_n_documento(numero_crudo))
+        if candidatas:
+            ambiguos[documento] = (candidatas, round(total_sin_iva_items(d.get("items") or [])))
+    if ambiguos and ws_detalle is not None:
+        neto_por_n_ref = _neto_por_n_ref(ws_detalle)
+        for documento, (candidatas, objetivo) in ambiguos.items():
+            calzan = [n for n in candidatas if neto_por_n_ref.get(n) == objetivo]
+            if len(calzan) == 1:
+                mapa[documento] = calzan[0]
+    return mapa
+
+
+def _neto_por_n_ref(ws_detalle):
+    """N Ref -> neto sumado de sus items. Se recalcula desde cantidad x precio
+    porque la columna de total es una formula y openpyxl no la evalua."""
+    netos = {}
+    for r in range(2, ultima_fila_datos(ws_detalle) + 1):
+        n_ref = ws_detalle.cell(row=r, column=1).value
+        if not isinstance(n_ref, str) or not PATRON_NREF.match(n_ref):
+            continue
+        cantidad = ws_detalle.cell(row=r, column=8).value or 0
+        precio = ws_detalle.cell(row=r, column=9).value or 0
+        if isinstance(cantidad, (int, float)) and isinstance(precio, (int, float)):
+            netos[n_ref] = netos.get(n_ref, 0) + cantidad * precio
+    return {n: round(v) for n, v in netos.items()}
+
+
+def anotar_n_ref_desde_master(registro, ws_master, datos, ws_detalle=None):
+    """Completa el N Ref de los hallazgos cuyos documentos ya estaban en Master
+    antes de que existiera el registro. Complementa a anotar_n_ref(), que solo
+    cubre lo que se escribe en esta corrida. No pisa un N Ref ya anotado."""
+    mapa = mapa_documento_a_n_ref(ws_master, datos, ws_detalle=ws_detalle)
+    tocados = 0
+    for entrada in registro["errores"]:
+        if entrada.get("n_ref"):
+            continue
+        n_ref = mapa.get(entrada["documento"])
+        if n_ref:
+            entrada["n_ref"] = n_ref
+            tocados += 1
+    return tocados
+
+
+def _celda_es_azul_marino(cell):
+    """Azul marino = este valor lo adjudico una persona (ver CLAUDE.md del
+    modulo). Es la contraparte de _celda_es_roja()."""
+    font = cell.font
+    color = font.color.rgb if font and font.color else None
+    return isinstance(color, str) and color.upper().endswith(NAVY_OSCURO)
+
+
+# Hallazgos cuyo diagnostico es el cuadre "neto vs impuesto declarado". Su
+# evidencia no puede ser una sola celda: el neto vive en Detalle (suma de
+# cantidad x precio) y el impuesto en Master, asi que la correccion puede
+# haber entrado por cualquiera de los dos lados.
+# IMPUESTO_ESTIMADO queda FUERA a proposito: su celda de impuesto se escribio
+# calculando el 19%, asi que el libro cuadra por construccion y cerrarlo por
+# "ya cuadra" seria taparlo. Ese hallazgo dice "este dato se completo con un
+# supuesto, verificalo contra el documento", y solo lo cierra una persona.
+CODIGOS_DE_CUADRE = frozenset({
+    "IMPUESTO_MENOR", "IMPUESTO_MENOR_ESPECIFICO", "IMPUESTO_EXCESO",
+})
+
+
+def cuadre_en_el_libro(ws_master, ws_detalle, n_ref):
+    """Rehace el cuadre de impuesto de un documento con lo que dice el LIBRO
+    (neto sumado de Detalle, impuesto de Master), no con datos_extraidos.json.
+
+    Devuelve la severidad (o None si cuadra). Sirve para saber si un hallazgo
+    del cuadre sigue vivo en el sistema de registro o solo en la entrada vieja
+    del JSON, que no se reescribe nunca.
+    """
+    fila = _mapa_filas_por_n_ref(ws_master).get(n_ref)
+    if fila is None:
+        return None
+    neto = _neto_por_n_ref(ws_detalle).get(n_ref, 0)
+    iva = ws_master.cell(row=fila, column=12).value
+    dato = {
+        "tipo_documento": ws_master.cell(row=fila, column=6).value,
+        "categoria": ws_master.cell(row=fila, column=9).value,
+        "iva": iva,
+    }
+    return severidad_cuadre_impuesto(dato, neto, iva if iva is not None else round(neto * TASA_IMPUESTO))
+
+def cerrar_hallazgos_ya_corregidos(registro, ws_master, correcciones=None, hoy=None,
+                                   ws_detalle=None):
+    """Cierra los hallazgos abiertos cuya celda de Master YA fue adjudicada a
+    mano, y devuelve los que cerro.
+
+    La validacion corre sobre datos_extraidos.json, que es la ENTRADA del
+    pipeline y no se reescribe nunca: un documento corregido hace meses en el
+    Excel sigue teniendo el valor viejo en el JSON y vuelve a producir el mismo
+    hallazgo. Con el registro recien creado sobre un corpus con historial (105
+    correcciones aplicadas) eso significaba pedirle al operador que arreglara
+    de nuevo lo ya arreglado: al medirlo, 11 de los 36 hallazgos enlazables
+    estaban en ese estado.
+
+    La evidencia exigida es la que el modulo ya trata como prueba de
+    adjudicacion humana, y es por celda, no por documento: fuente azul marino
+    en ESA celda, o una entrada para ese (N Ref, columna) en
+    correcciones_manuales.json. No se oculta nada -- queda como 'resuelto' con
+    la evidencia escrita, y si el dato de origen cambia a otro valor
+    fusionar_hallazgos() lo reabre igual que a cualquier otro cierre.
+    """
+    if correcciones is None:
+        correcciones = cargar_correcciones_manuales()
+    # SOLO las correcciones sobre Master: la columna de una entrada de Detalle
+    # numera otra cosa (col 5 es "Nombre Item" en Detalle y "N Documento" en
+    # Master; col 9 es "P. Unitario" contra "Categoria"). Sin este filtro, 28
+    # de las correcciones reales cerrarian un hallazgo de la columna homonima
+    # de Master del mismo documento, que es un cierre falso.
+    en_bitacora = {(c.get("n_ref"), c.get("columna")) for c in correcciones
+                   if str(c.get("hoja", "Master")).startswith("Master")}
+    filas = _mapa_filas_por_n_ref(ws_master)
+
+    cerrados = []
+    for entrada in list(registro["errores"]):
+        if entrada["estado"] != "abierto":
+            continue
+        n_ref, columna = entrada.get("n_ref"), entrada.get("columna")
+        if not n_ref or n_ref not in filas:
+            continue
+        # La evidencia "celda azul marino / bitacora" necesita una columna; la
+        # del libro (cuadre, desglose) no -- ITEM_AGRUPADO no declara columna
+        # porque no se arregla escribiendo una celda de Master.
+        cell = ws_master.cell(row=filas[n_ref], column=columna) if columna else None
+        anotada = columna is not None and (n_ref, columna) in en_bitacora
+        cuadra = (entrada["codigo"] in CODIGOS_DE_CUADRE and ws_detalle is not None
+                  and cuadre_en_el_libro(ws_master, ws_detalle, n_ref) is None)
+        # Mismo principio para el item agrupado: la evidencia de que se
+        # desgloso esta en Detalle, no en una celda de Master.
+        desglosado = (entrada["codigo"] == "ITEM_AGRUPADO" and ws_detalle is not None
+                      and not [f for f in listar_items_agrupados(ws_detalle)
+                               if f["n_ref"] == n_ref])
+        por_celda = cell is not None and _celda_es_azul_marino(cell)
+        if not anotada and not cuadra and not desglosado and not por_celda:
+            continue
+        if desglosado:
+            evidencia = "ya no queda ningun item 'varios' en Detalle"
+        elif cuadra:
+            evidencia = "el libro ya cuadra (neto de Detalle contra impuesto de Master)"
+        elif anotada:
+            evidencia = "correcciones_manuales.json"
+        else:
+            evidencia = "fuente azul marino en la celda"
+        cerrar_hallazgo(
+            registro, entrada["id"], "resuelto",
+            f"Ya adjudicado en el libro ({evidencia}): {n_ref} / "
+            f"{entrada.get('campo')}"
+            + (f" = {valor_para_bitacora(cell.value)}." if cell is not None else "."),
+            hoy=hoy,
+        )
+        cerrados.append(entrada)
+    return cerrados
+
+
+def inventario_actual(ws_master):
+    """(pendientes, omitidos) con las mismas reglas de cobertura que usan run y
+    status: un archivo esta cubierto si aparece como 'Archivo origen' de alguna
+    fila de Master o como clave de reconciliacion_archivos.json."""
+    filas_master, _max_seq, _docs = leer_master(ws_master)
+    registrados = set(cargar_reconciliacion().keys())
+    for fm in filas_master:
+        if fm["archivo_origen"]:
+            registrados.add(str(fm["archivo_origen"]))
+    return inventariar_archivos(RAIZ_DOCS, registrados)
+
+
+def sincronizar_registro_errores(ws_master, datos, pendientes=None, hoy=None,
+                                 guardar=True, ruta_registro=None, ws_detalle=None):
+    """Deja el registro de errores al dia con el estado actual del corpus y lo
+    devuelve, junto con un resumen de lo que cambio.
+
+    Es el mismo encadenado que corre main() en su PASO 5B, en una sola funcion
+    para que la revision de errores no dependa de haber corrido un 'run'
+    completo: sobre un corpus ya registrado 'run' escribe 0 filas, asi que
+    exigirlo solo para poder mirar los hallazgos significaba reescribir el
+    libro, el sitio compartido, el visualizador y Analisis Financiero para no
+    cambiar ni un dato.
+
+    `pendientes` se pasa para poder reportar los archivos que estan en disco
+    sin entrada en el JSON (DOC_SIN_DATOS). Si se omite, se releva del disco:
+    pasar una lista vacia a proposito haria que fusionar_hallazgos() diera por
+    desaparecidos -- y cerrara -- los DOC_SIN_DATOS que siguen abiertos, que es
+    exactamente la clase de cierre falso que este registro existe para evitar.
+    """
+    if pendientes is None:
+        pendientes, _omitidos = inventario_actual(ws_master)
+    sin_datos = [
+        info for info in pendientes
+        if not (buscar_dato_por_archivo(datos, info["proyecto"], info["archivo"]) or {}).get("items")
+    ]
+    hallazgos, copias_exactas = validar_corpus(datos, archivos_sin_datos=sin_datos)
+
+    registro = cargar_registro_errores(ruta_registro)
+    nuevos, reabiertos, desaparecidos = fusionar_hallazgos(registro, hallazgos, hoy=hoy)
+    enlazados = anotar_n_ref_desde_master(registro, ws_master, datos, ws_detalle=ws_detalle)
+    ya_corregidos = cerrar_hallazgos_ya_corregidos(registro, ws_master, hoy=hoy,
+                                                  ws_detalle=ws_detalle)
+    if guardar:
+        guardar_registro_errores(registro, ruta_registro)
+
+    return registro, {
+        "vigentes": len(hallazgos), "nuevos": len(nuevos),
+        "reabiertos": len(reabiertos), "desaparecidos": len(desaparecidos),
+        "enlazados": enlazados, "ya_corregidos": len(ya_corregidos),
+        "copias_exactas": copias_exactas,
+    }
 
 
 # ── RENOMBRADO Y CONVERSIÓN DE ARCHIVOS ─────────────────────────────────────
@@ -3822,9 +4302,19 @@ def main(pais="CL"):
     hallazgos, copias_exactas = validar_corpus(datos_json, archivos_sin_datos=sin_datos_en_json)
     registro_errores = cargar_registro_errores()
     nuevos_hallazgos, reabiertos, desaparecidos = fusionar_hallazgos(registro_errores, hallazgos)
+    # Dos puentes que solo hacen falta sobre un corpus ya registrado, y que por
+    # eso el benchmark (sandbox vacio) no ejercitaba: pegarle su N Ref a los
+    # hallazgos de documentos que ya estaban en Master antes de que existiera
+    # el registro, y no volver a pedir lo que alguien ya adjudico a mano.
+    anotar_n_ref_desde_master(registro_errores, ws_master, datos_json, ws_detalle=ws_detalle)
+    ya_corregidos = cerrar_hallazgos_ya_corregidos(registro_errores, ws_master,
+                                                  ws_detalle=ws_detalle)
     print(f"  Hallazgos vigentes: {len(hallazgos)} "
           f"({len(nuevos_hallazgos)} nuevo(s), {len(reabiertos)} reabierto(s), "
           f"{len(desaparecidos)} cerrado(s) por dejar de aparecer)")
+    if ya_corregidos:
+        print(f"  {len(ya_corregidos)} ya estaban corregidos a mano en Master: "
+              f"cerrados con su evidencia, no se vuelven a pedir.")
 
     # Copias exactas todavia pendientes de registrar: son la MISMA compra
     # fotografiada dos veces (mismo emisor, numero, tipo, fecha y neto), asi

@@ -183,6 +183,38 @@ el valor — ver
 | 2026-09-07 | Master | FCH2-052 | IVA 19% (CLP) | Nuevo registro separado | 60316 | Aplicado (2026-09-07) | IVA 19% puro (ferretería, sin impuesto específico). Total factura: $377.766. |
 | 2026-09-07 | Master | FCH2-053 | IVA 19% (CLP) | Nuevo registro separado | 11051 | Aplicado (2026-09-07) | IVA: $3.639 / IEF: $8.497 / IEV-FEPP: $-1.085. Total factura: $30.202. |
 | 2026-09-07 | Master/Detalle | GGEN-002 | Signo de IVA / P.Unitario / Totales (AYRSA) | Negativo (IVA -13990; P.Unit -8386) | Positivo (IVA 13990; P.Unit 8386) | Aplicado (2026-09-07) | Factura Aislantes y Recubrimiento S.A. (AYRSA) N.35470 se habia registrado en negativo el 2026-08-20 interpretandola como reposicion de material a favor de la empresa; el usuario confirmo 2026-09-07 que es una factura normal (costo), se revierte el signo a positivo. |
+| 2026-09-10 | Detalle | FCH1-031 | Ítems agrupados (desglose) | Materiales varios (Trabavolante de tablero Datrak y set 10 sacos escombro 25kg 60x90cm, Factura N°38659653 (23-07-2026)) | Trabavolante tablero; Sacos escombro | Aplicado (2026-09-10) |  |
+| 2026-09-10 | Detalle | FCH1-031 | Ítems agrupados (desglose) | Materiales varios (Cinta Temflex 19mmx18m (2 colores) y martillo soldador 500W, Boleta N°271883989 (29-07-2026)) | Cinta Temflex negra; Cinta Temflex roja; Martillo soldador | Aplicado (2026-09-10) |  |
+| 2026-09-10 | Detalle | HPIN-017 | Item 'Sellante' (cantidad x precio unitario) | 1 x 10490 | 1 x 8815.126050420167 | Aplicado (2026-09-10) | Factura Electronica Easy N 373090 (03-03-2026) imprime NETO 22.580 + IVA 4.290 = TOTAL 26.870. Los tres items estaban cargados con el precio CON IVA incluido, por eso el neto del documento quedaba igual al bruto. Precio neto = precio con IVA / 1,19. |
+| 2026-09-10 | Detalle | HPIN-017 | Item 'Silicona' (cantidad x precio unitario) | 1 x 9490 | 1 x 7974.789915966387 | Aplicado (2026-09-10) | Factura Electronica Easy N 373090 (03-03-2026) imprime NETO 22.580 + IVA 4.290 = TOTAL 26.870. Los tres items estaban cargados con el precio CON IVA incluido, por eso el neto del documento quedaba igual al bruto. Precio neto = precio con IVA / 1,19. |
+| 2026-09-10 | Detalle | HPIN-017 | Item 'Cinta aluminio' (cantidad x precio unitario) | 1 x 6890 | 1 x 5789.915966386555 | Aplicado (2026-09-10) | Factura Electronica Easy N 373090 (03-03-2026) imprime NETO 22.580 + IVA 4.290 = TOTAL 26.870. Los tres items estaban cargados con el precio CON IVA incluido, por eso el neto del documento quedaba igual al bruto. Precio neto = precio con IVA / 1,19. |
+| 2026-09-10 | Detalle | HPIN-157 | Item 'Perno' (cantidad x precio unitario) | 40 x 599 | 48 x 599 | Aplicado (2026-09-10) | Factura Sodiper N 181734 (02-02-2026): la linea 'PS HEX ZIN G2 3/4 X 3 1/2' dice 48 x 599 = 28.752, no 40 x 599 = 23.960. Con 48 el neto del documento da 73.710 y el IVA declarado (14.005) pasa a ser exactamente su 19%. La diferencia eran 8 unidades = 4.792. |
+| 2026-09-10 | Master | HPIN-176 | Tipo Documento | Arriendo | Factura | Aplicado (2026-09-10) | El documento es una FACTURA ELECTRONICA de Teckup por 'TERMINO ARRIENDO SEGUN DEVOLUCION AL 05-03-2026'; neto 55.940 + IVA 19% 10.629 = 66.569. 'Arriendo' era el concepto de la compra, no el tipo de documento tributario. |
+| 2026-09-10 | Master | HPIN-180 | N° Documento | S/N (Documento (28).pdf) | 8597488 | Aplicado (2026-09-10) | Factura Electronica Esmax Red Ltda (RUT 79706120-4) N 8597488, 24-02-2026. Leida rotando el escaneo 270 grados. OJO: el neto registrado (21.291) tampoco calza con el documento -- Gasolina 95 neto 16.394 + Imp. Especifico 10.491 + IVA 3.115 = Total 30.000. |
+| 2026-09-10 | Detalle | HPIN-180 | Item 'Combustible' (cantidad x precio unitario) | 1 x 21291 | 1 x 16394 | Aplicado (2026-09-10) | Factura Esmax 8597488 (24-02-2026): Gasolina 95, 24,71 L, TOTAL NETO 16.394. El valor anterior (21.291) no corresponde a ninguna cifra del documento -- el escaneo estaba de cabeza y mal leido. El impuesto especifico (10.491) pasa a la columna de impuesto junto con el IVA, que es la convencion del modulo (Neto + iva = total pagado). |
+| 2026-09-10 | Master | HPIN-180 | IVA 19% (CLP) | 3115 | 13606 | Aplicado (2026-09-10) | IVA: $3.115 / Impuesto Especifico Gasolina: $10.491. Total pagado 16.394 + 13.606 = 30.000, que es el TOTAL impreso en la factura Esmax 8597488. |
+| 2026-09-10 | Detalle | JUNJ-004 | Item 'Diesel' (cantidad x precio unitario) | 1 x 21008.4034 | 1 x 18994 | Aplicado (2026-09-10) | Factura Comercial San Agustin N 509.413 del 05-03-2026: TOTAL NETO 18.994, IVA 19% 3.609, IE 2.733, IEV/FEPP -336, TOTAL 25.000. El neto registrado (21.008) era el total dividido por 1,19 porque la extraccion no trajo el IVA desglosado; el total ya era correcto. |
+| 2026-09-10 | Master | JUNJ-004 | IVA 19% (CLP) | 3992 | 6006 | Aplicado (2026-09-10) | IVA: $3.609 / Impuesto Especifico: $2.733 / IEV-FEPP: $-336. Neto 18.994 + 6.006 = 25.000, el TOTAL impreso en la factura San Agustin 509.413. |
+| 2026-09-10 | Detalle | JUNJ-009 | Item 'Gasolina' (cantidad x precio unitario) | 15.642 x 1050.3396 | 15.642 x 869.9655 | Aplicado (2026-09-10) | Factura Enex (V&P Estaciones de Servicio) N 16892 del 21-03-2026: Gasolina 93, 15,642 x 869,9655 = TOTAL NETO 13.608. El precio unitario registrado (1.050,3396) daba un neto de 16.429 y un total de 19.551, pero el documento dice Monto Total 18.551 -- en palabras: 'dieciocho mil quinientos cincuenta y un pesos'. Eran 1.000 pesos de mas. |
+| 2026-09-10 | Master | JUNJ-009 | IVA 19% (CLP) | 3122 | 4943 | Aplicado (2026-09-10) | IVA: $2.586 / Impuesto Especifico: $2.357. Neto 13.608 + 4.943 = 18.551, el Monto Total impreso en la factura Enex 16892. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Soplador' (cantidad x precio unitario) | 1 x 39990 | 1 x 33605.584138330756 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Compresor de aire' (cantidad x precio unitario) | 2 x 1390 | 1 x 25202.087229520865 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Cinta sella hilo' (cantidad x precio unitario) | 2 x 1090 | 2 x 1168.0860703245748 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Cinta sella hilo' (cantidad x precio unitario) | 1 x 2590 | 2 x 915.9811630602782 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Puntas torsion' (cantidad x precio unitario) | 1 x 1290 | 1 x 2176.505699381762 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Disco desbaste' (cantidad x precio unitario) | 9 x 550 | 1 x 1084.0511012364761 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Disco de corte' (cantidad x precio unitario) | 1 x 6990 | 9 x 462.192329984544 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Cuchilla' (cantidad x precio unitario) | 1 x 2990 | 1 x 5874.044339258115 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Panos' (cantidad x precio unitario) | 1 x 4290 | 1 x 2512.645575734158 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Set brochas' (cantidad x precio unitario) | 1 x 3490 | 1 x 3605.1001738794434 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Destornillador' (cantidad x precio unitario) | 1 x 1990 | 1 x 2932.8204211746524 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-072 | Item 'Destornillador' (cantidad x precio unitario) | 1 x 2990 | 1 x 1672.2958848531684 | Aplicado (2026-09-10) | Factura Easy Retail N 37918880 (20-04-2026): NETO 86.993 + IVA 16.527 = 103.520. En el libro los montos estaban CORRIDOS una linea (cada descripcion llevaba el monto del item siguiente) y ademas en precio bruto. Reconstruido segun el documento, en precio neto proporcional. |
+| 2026-09-10 | Detalle | JUNJ-077 | Item 'Guantes' (cantidad x precio unitario) | 1 x 2390 | 1 x 2008.4033613445379 | Aplicado (2026-09-10) | Boleta Easy Quilpue (14-04-2026) imprime NETO 9.126 + IVA 1.734 = TOTAL 10.860. Los items estaban cargados con el precio CON IVA incluido. Precio neto = precio con IVA / 1,19. |
+| 2026-09-10 | Detalle | JUNJ-077 | Item 'Esponja' (cantidad x precio unitario) | 1 x 2490 | 1 x 2092.436974789916 | Aplicado (2026-09-10) | Boleta Easy Quilpue (14-04-2026) imprime NETO 9.126 + IVA 1.734 = TOTAL 10.860. Los items estaban cargados con el precio CON IVA incluido. Precio neto = precio con IVA / 1,19. |
+| 2026-09-10 | Detalle | JUNJ-077 | Item 'Panos' (cantidad x precio unitario) | 2 x 2990 | 2 x 2512.6050420168067 | Aplicado (2026-09-10) | Boleta Easy Quilpue (14-04-2026) imprime NETO 9.126 + IVA 1.734 = TOTAL 10.860. Los items estaban cargados con el precio CON IVA incluido. Precio neto = precio con IVA / 1,19. |
+| 2026-09-10 | Master | JUNJ-080 | N° Documento | 1913313 | 1843273 | Aplicado (2026-09-10) | Guia de Despacho Anwo N 1843273 (leida del PDF). Estaba registrada con 1913313, que es el N de la FACTURA JUNJ-020. |
+| 2026-09-10 | Master | JUNJ-081 | N° Documento | 1913313 | 1843272 | Aplicado (2026-09-10) | Guia de Despacho Anwo N 1843272 (leida del PDF). Estaba registrada con 1913313, que es el N de la FACTURA JUNJ-020. |
+| 2026-09-10 | Master | JUNJ-082 | N° Documento | 1913014 | 1843044 | Aplicado (2026-09-10) | Guia de Despacho Anwo N 1843044 (leida del PDF). Estaba registrada con 1913014, que es el N de la FACTURA del mismo panel (JUNJ-024). |
 
 ## Historial de errores detectados
 
@@ -328,3 +360,41 @@ el valor — ver
   todo el libro que **no** corresponde a una Nota de Crédito legítima (se
   revisaron los otros 17 ítems negativos del libro: todos pertenecen a
   documentos con Tipo Documento "Nota de Crédito", signo esperado).
+
+- **2026-09-10 — sobreconteo de ~$138.322 neto en `Junji's Valparaiso` por
+  registrar guías de despacho junto a su factura (detectado, NO corregido
+  todavía)**: al procesar la carpeta `Junji V2` —que resultó ser en parte
+  una re-subida de `Junji's Valparaiso/Documento (15)`–`(26)`— se pudieron
+  comparar por primera vez las facturas originales contra lo que quedó
+  escrito en `Master`. Tres hallazgos, los tres sobre filas ya escritas:
+  1. **Factura ANWO 1913313 (28-05-2026) registrada 3 veces**: como factura
+     en `Documento (25).pdf` (Neto $65.930) y además como sus dos guías de
+     despacho en `Documento (26).pdf` (Neto $70.271) y `Documento (27).pdf`
+     (Neto $28.354), ambas **a precio de lista**. El Neto real impreso en la
+     factura es **$54.789** (IVA $10.410, Total $65.199) — o sea, además de
+     duplicarse, el Neto de la propia fila-factura quedó mal. Sobreconteo:
+     $164.555 registrados vs $54.789 reales = **+$109.766**.
+  2. **Factura ANWO 1913076 (20-05-2026)**: `Documento (23).pdf` quedó con
+     Neto $14.351; el impreso es **$11.275** (y $11.275 × 19% = $2.142, que
+     es exactamente el IVA ya registrado — por eso la celda estaba en rojo
+     en el cuadre de impuesto, la señal era correcta). Sobreconteo
+     **+$3.076**.
+  3. **Factura Treck 3082742 + su guía 2930582 (03-08-2026)**: registradas
+     las dos, `Documento (19).pdf` y `Documento (20).pdf`, con los mismos 4
+     ítems y el mismo monto (Neto $25.480 c/u). Sobreconteo **+$25.480**.
+
+  **Regla que se desprende (aplicada ya en esta corrida)**: cuando una guía
+  de despacho y su factura están las dos disponibles, se registra **solo la
+  factura** — la guía trae precios de lista sin descuento y el mismo
+  despacho, así que registrarla duplica el gasto y además lo infla. En la
+  corrida del 2026-09-10 las guías 1844884 y 1844885 se dejaron sin
+  registrar por esto y se movieron a `Junji V2/Duplicados/` (sí se registró
+  su factura, la ANWO 1936317, como `JUN2-005`). La excepción legítima es
+  cuando la factura NO está disponible en la carpeta y la guía es el único
+  respaldo del gasto (caso de `Documento (16).pdf`, guía ANWO 1842010).
+
+  **Pendiente de corregir**: las 5 filas afectadas siguen en `Master`/
+  `Detalle` tal cual. Corregirlas implica reescribir filas de datos ya
+  creadas (excepción deliberada a la regla de oro del módulo), así que
+  corresponde hacerlo vía `/Revision_de_Errores` y dejar constancia acá,
+  no en un `run` normal.

@@ -87,6 +87,15 @@ Lo que conviene no reaprender, medido con `Centro de Costos/Sistema/bench/`:
   escritura se eliminó (ignoraba el emisor y producía 2 falsos positivos sobre
   las 681 entradas reales).
 
+- **Un banco de pruebas que parte de cero no prueba un sistema que ya tiene
+  historial.** El benchmark daba 100 % de recall y 24 de 36 defectos cerrados, y
+  aun así la revisión de errores no podía cerrar **ni uno solo** sobre los datos
+  reales: su sandbox arranca vacío y registra todo en la corrida que mide, así
+  que ejercitaba un camino que en producción —728 filas ya escritas, 0
+  pendientes— nunca se recorre. Cuando midas un proceso incremental, mide
+  también la segunda vez: con los datos ya cargados y con correcciones previas
+  encima.
+
 **Si agregas un módulo que valide documentos, reutiliza `validar_documento()` /
 el registro de errores en vez de escribir otro** — mismo criterio que con el
 motor de taxonomía del Cotizador.

@@ -404,3 +404,158 @@ def test_corregir_valor_manual_actualiza_entrada_existente_sin_duplicar(tmp_path
     assert len(guardadas) == 1
     assert guardadas[0]["valor_corregido"] == "12345"
     assert guardadas[0]["valor_anterior"] == "S/N (IMG_7533)"
+
+
+# ── corregir_item_detalle / desglosar con varias filas agrupadas ───────────
+#
+# Agregados en la revision del 2026-09-10. El hueco que cierran: habia tres
+# documentos reales cuyo error NO estaba en el impuesto sino en el NETO (el
+# bruto cargado como neto en HPIN-017 y JUNJ-077; una cantidad mal leida en
+# HPIN-157, 40 pernos en vez de 48). El neto es la suma de cantidad x precio
+# de Detalle, y el unico canal auditado que existia escribia celdas de Master.
+
+def _rutas(tmp_path):
+    return {
+        "ruta_correcciones": tmp_path / "correcciones_manuales.json",
+        "ruta_errores": _errores_md_de_prueba(tmp_path),
+        "ruta_backups": tmp_path / "Respaldos",
+    }
+
+
+def test_corregir_item_recalcula_el_total_de_la_fila(tmp_path):
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+
+    entrada = acc.corregir_item_detalle("CCON-004", 2, p_unitario=7000,
+                                        ruta_excel=ruta_excel, **_rutas(tmp_path))
+
+    assert entrada is not None
+    ws = openpyxl.load_workbook(str(ruta_excel))["Detalle"]
+    assert ws.cell(row=2, column=9).value == 7000
+    assert ws.cell(row=2, column=10).value == 21000
+
+
+def test_corregir_item_acepta_corregir_la_cantidad(tmp_path):
+    """El caso HPIN-157: la factura decia 48 unidades y se habian cargado 40."""
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+
+    acc.corregir_item_detalle("CCON-004", 2, cantidad=5,
+                              ruta_excel=ruta_excel, **_rutas(tmp_path))
+
+    ws = openpyxl.load_workbook(str(ruta_excel))["Detalle"]
+    assert ws.cell(row=2, column=8).value == 5
+    assert ws.cell(row=2, column=10).value == 5 * 6546
+
+
+def test_corregir_item_deja_la_fila_en_azul_marino(tmp_path):
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+
+    acc.corregir_item_detalle("CCON-004", 2, p_unitario=7000,
+                              ruta_excel=ruta_excel, **_rutas(tmp_path))
+
+    ws = openpyxl.load_workbook(str(ruta_excel))["Detalle"]
+    assert acc._celda_es_azul_marino(ws.cell(row=2, column=9))
+    assert acc._celda_es_azul_marino(ws.cell(row=2, column=10))
+
+
+def test_corregir_item_rehace_el_total_con_iva_de_todo_el_documento(tmp_path):
+    """La tasa real del documento es IVA de Master / neto, asi que cambiar un
+    precio la mueve para TODAS las filas, no solo para la tocada."""
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+    antes = openpyxl.load_workbook(str(ruta_excel))["Detalle"].cell(row=3, column=11).value
+
+    acc.corregir_item_detalle("CCON-004", 2, p_unitario=7000,
+                              ruta_excel=ruta_excel, **_rutas(tmp_path))
+
+    ws = openpyxl.load_workbook(str(ruta_excel))["Detalle"]
+    neto = sum(ws.cell(row=r, column=10).value for r in (2, 3, 4))
+    tasa = 33082 / neto
+    assert ws.cell(row=3, column=11).value == round(14210 * (1 + tasa))
+    assert ws.cell(row=3, column=11).value != antes
+
+
+def test_corregir_item_queda_en_la_bitacora(tmp_path):
+    rutas = _rutas(tmp_path)
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+
+    acc.corregir_item_detalle("CCON-004", 2, p_unitario=7000,
+                              ruta_excel=ruta_excel, **rutas)
+
+    correcciones = acc.cargar_correcciones_manuales(rutas["ruta_correcciones"])
+    assert len(correcciones) == 1
+    assert correcciones[0]["n_ref"] == "CCON-004"
+    assert correcciones[0]["hoja"] == "Detalle"
+    assert correcciones[0]["estado"] == "Aplicado"
+    assert "3 x 6546" in correcciones[0]["valor_anterior"]
+    assert "CCON-004" in rutas["ruta_errores"].read_text(encoding="utf-8")
+
+
+def test_corregir_item_rechaza_una_fila_de_otro_documento(tmp_path):
+    """La puerta de entrada es el documento: escribir en la fila de otro seria
+    corregir la compra equivocada."""
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+    wb = openpyxl.load_workbook(str(ruta_excel))
+    wb["Detalle"].cell(row=3, column=1, value="OTRO-001")
+    wb.save(str(ruta_excel))
+
+    assert acc.corregir_item_detalle("CCON-004", 3, p_unitario=1,
+                                     ruta_excel=ruta_excel, **_rutas(tmp_path)) is None
+
+
+def test_corregir_item_exige_cantidad_o_precio(tmp_path):
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+    assert acc.corregir_item_detalle("CCON-004", 2,
+                                     ruta_excel=ruta_excel, **_rutas(tmp_path)) is None
+
+
+def test_corregir_item_no_hace_nada_si_el_valor_no_cambia(tmp_path):
+    rutas = _rutas(tmp_path)
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+
+    assert acc.corregir_item_detalle("CCON-004", 2, p_unitario=6546,
+                                     ruta_excel=ruta_excel, **rutas) is None
+    assert acc.cargar_correcciones_manuales(rutas["ruta_correcciones"]) == []
+
+
+def test_desglosar_elige_la_fila_agrupada_indicada(tmp_path):
+    """FCH1-031 traia dos boletas en la misma foto y por lo tanto dos items
+    agrupados; antes eso abortaba y no habia forma de desglosar ninguno."""
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+    wb = openpyxl.load_workbook(str(ruta_excel))
+    wb["Detalle"].cell(row=2, column=5, value="Insumos varios")  # segunda agrupada
+    wb.save(str(ruta_excel))
+
+    entrada = acc.desglosar_item_agrupado(
+        "CCON-004",
+        [{"nombre_item": "Codo real", "categoria_item": "Materiales",
+          "cantidad": 1, "p_unitario_sin_iva": 19638}],
+        ruta_excel=ruta_excel, fila_agrupada=2, **_rutas(tmp_path))
+
+    assert entrada is not None
+    ws = openpyxl.load_workbook(str(ruta_excel))["Detalle"]
+    assert ws.cell(row=2, column=5).value == "Codo real"
+    assert ws.cell(row=4, column=5).value == "Materiales varios"  # la otra sigue ahi
+
+
+def test_desglosar_rechaza_una_fila_que_no_esta_agrupada(tmp_path):
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+
+    assert acc.desglosar_item_agrupado(
+        "CCON-004",
+        [{"nombre_item": "X", "categoria_item": "Materiales",
+          "cantidad": 1, "p_unitario_sin_iva": 100}],
+        ruta_excel=ruta_excel, fila_agrupada=3, **_rutas(tmp_path)) is None
+
+
+def test_corregir_item_solo_pinta_de_azul_lo_que_cambio(tmp_path):
+    """El color de una celda significa "una persona adjudico ESTE valor".
+    Pintar el precio cuando lo unico corregido fue la cantidad (caso HPIN-157)
+    diria algo que no paso. El total siempre cambia, asi que siempre va."""
+    ruta_excel = _excel_con_item_agrupado(tmp_path)
+
+    acc.corregir_item_detalle("CCON-004", 2, cantidad=5,
+                              ruta_excel=ruta_excel, **_rutas(tmp_path))
+
+    ws = openpyxl.load_workbook(str(ruta_excel))["Detalle"]
+    assert acc._celda_es_azul_marino(ws.cell(row=2, column=8))       # cantidad
+    assert not acc._celda_es_azul_marino(ws.cell(row=2, column=9))   # precio intacto
+    assert acc._celda_es_azul_marino(ws.cell(row=2, column=10))      # total
