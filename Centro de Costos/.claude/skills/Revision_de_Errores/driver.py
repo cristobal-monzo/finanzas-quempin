@@ -238,7 +238,104 @@ def cmd_corregir(args):
     return 0 if resultado is not None else 1
 
 
-COMANDOS = ("errores", "corregir", "agrupados", "desglosar", "reflejar")
+def cmd_hallazgos(args):
+    """SOLO LECTURA. Lista el registro persistente de errores, priorizado.
+    A diferencia de 'errores' (que solo ve las 2 columnas que el script pinta
+    de rojo), aca aparece TODO lo que la validacion temprana detecto: fechas
+    ilegibles, proveedores/categorias en blanco, tipos de documento fuera del
+    vocabulario, notas de credito descuadradas, duplicados, etc."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    severidad = None
+    if args and args[0] in ("error", "revisar", "estimado"):
+        severidad = args[0]
+
+    registro = acc.cargar_registro_errores()
+    abiertos = acc.hallazgos_abiertos(registro, severidad=severidad)
+
+    print("=" * 74)
+    print("  HALLAZGOS ABIERTOS (solo lectura, no escribe nada)")
+    print("=" * 74)
+    if not registro["errores"]:
+        print("\nNo hay registro de errores todavia -- correr primero "
+              "'Registro_Centro_de_Costos/driver.py run'.")
+        return 0
+    if not abiertos:
+        print("\nNo hay hallazgos abiertos" + (f" con severidad '{severidad}'." if severidad else "."))
+        return 0
+
+    for e in abiertos:
+        print()
+        print(acc._linea_hallazgo(e))
+        if e.get("columna") is None:
+            print("     (no se arregla escribiendo una celda de Master)")
+        elif not e.get("n_ref"):
+            print("     (el documento todavia no tiene fila en Master)")
+        else:
+            print(f"     resolver: python driver.py resolver {e['id']} \"<valor correcto>\"")
+    print("\n" + "=" * 74)
+    print(f"  {len(abiertos)} hallazgo(s) abierto(s). Nada fue escrito.")
+    print("=" * 74)
+    return 0
+
+
+def _parsear_lote(args):
+    """<ID> <VALOR> [<ID> <VALOR> ...] con --nota opcional para el ultimo par."""
+    nota = None
+    if "--nota" in args:
+        idx = args.index("--nota")
+        if idx + 1 >= len(args):
+            print('[ERROR] --nota requiere un valor: --nota "<texto>"')
+            return None, None
+        nota = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
+    if len(args) < 2 or len(args) % 2 != 0:
+        print('Uso: python driver.py resolver <ID> "<VALOR>" [<ID> "<VALOR>" ...] '
+              '[--nota "<texto>"]')
+        return None, None
+    pares = [(args[i], args[i + 1]) for i in range(0, len(args), 2)]
+    if nota:
+        pares[-1] = pares[-1] + (nota,)
+    return pares, nota
+
+
+def cmd_resolver(args):
+    """Aplica el valor correcto a uno o VARIOS hallazgos de una sola vez.
+    Todo el lote comparte una apertura del libro, un respaldo y un guardado --
+    corregir de a uno cuesta eso por cada celda."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    pares, _ = _parsear_lote(args)
+    if pares is None:
+        return 2
+
+    aplicadas, rechazadas = acc.corregir_hallazgos(pares)
+    for entrada in aplicadas:
+        print(f"  [OK] {entrada['id']} / {entrada['n_ref']} / {entrada['campo']}: "
+              f"{entrada['resolucion']}")
+    for id_h, motivo in rechazadas:
+        print(f"  [WARN] {id_h}: {motivo}")
+    if aplicadas:
+        print(f"\n{len(aplicadas)} hallazgo(s) resuelto(s) en 1 apertura del libro. "
+              f"Correr 'python driver.py reflejar' al terminar el recorrido.")
+    return 0 if aplicadas or not rechazadas else 1
+
+
+def cmd_descartar(args):
+    """Cierra un hallazgo porque, mirando el documento, el dato esta bien.
+    Exige un motivo: descartar deja constancia, no borra."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    if len(args) < 2:
+        print('Uso: python driver.py descartar <ID> "<motivo>"')
+        return 2
+    entrada = acc.descartar_hallazgo(args[0], " ".join(args[1:]))
+    if entrada is None:
+        print(f"[ERROR] {args[0]} no existe en el registro de errores.")
+        return 1
+    print(f"  [OK] {entrada['id']} descartado: {entrada['resolucion']}")
+    return 0
+
+
+COMANDOS = ("errores", "corregir", "agrupados", "desglosar", "reflejar",
+            "hallazgos", "resolver", "descartar")
 
 
 def main():
@@ -255,6 +352,12 @@ def main():
         return cmd_desglosar(sys.argv[2:])
     if comando == "reflejar":
         return cmd_reflejar()
+    if comando == "hallazgos":
+        return cmd_hallazgos(sys.argv[2:])
+    if comando == "resolver":
+        return cmd_resolver(sys.argv[2:])
+    if comando == "descartar":
+        return cmd_descartar(sys.argv[2:])
     return cmd_corregir(sys.argv[2:])
 
 

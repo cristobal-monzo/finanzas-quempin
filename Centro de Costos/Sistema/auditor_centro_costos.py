@@ -90,6 +90,7 @@ PREFIJOS_PROYECTO = {
     "Putaendo Hospital Pinel": "HPIN",
     "FACH2": "FCH2",
     "FACH1": "FCH1",
+    "Junji V2": "JUN2",
 }
 
 # Config por pais -- moneda/impuesto/rutas que varian entre Chile y Peru.
@@ -510,11 +511,49 @@ def leer_master(ws_master):
     return filas, max_seq, docs_registrados
 
 
+def _mapa_n_documento_a_n_ref(ws_master):
+    """N Documento normalizado -> N Ref, SOLO para los numeros que aparecen una
+    unica vez en Master. Un N Documento es unico por emisor, no globalmente
+    (ver CLAUDE.md del modulo), asi que un numero repetido entre dos emisores
+    distintos no identifica una fila: esos se omiten a proposito en vez de
+    devolver cualquiera de las dos."""
+    mapa = {}
+    repetidos = set()
+    for r in range(2, ultima_fila_datos(ws_master) + 1):
+        n_ref = ws_master.cell(row=r, column=1).value
+        if not isinstance(n_ref, str) or not PATRON_NREF.match(n_ref):
+            continue
+        n_doc = ws_master.cell(row=r, column=5).value
+        if not es_n_documento_real(n_doc):
+            continue
+        clave = normalizar_n_documento(n_doc)
+        if clave in mapa:
+            repetidos.add(clave)
+        mapa[clave] = n_ref
+    for clave in repetidos:
+        mapa.pop(clave, None)
+    return mapa
+
+
 def cargar_reconciliacion():
     if not RUTA_RECONCILIACION.exists():
         return {}
     with open(RUTA_RECONCILIACION, "r", encoding="utf-8") as f:
         return json.load(f).get("mapeo", {})
+
+
+def guardar_reconciliacion(mapeo, ruta=None):
+    """Reescribe SOLO la clave 'mapeo' de reconciliacion_archivos.json,
+    conservando el resto del archivo (la descripcion y las notas escritas a
+    mano, que son la bitacora de por que existe cada entrada)."""
+    ruta = Path(ruta or RUTA_RECONCILIACION)
+    contenido = {}
+    if ruta.exists():
+        with open(ruta, "r", encoding="utf-8") as f:
+            contenido = json.load(f)
+    contenido["mapeo"] = mapeo
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(contenido, f, ensure_ascii=False, indent=2)
 
 
 # ── CORRECCIONES MANUALES (celda roja -> azul marino, con confirmacion) ────
@@ -702,6 +741,50 @@ def _n_ref_a_filas_detalle(ws_detalle, n_ref):
     ]
 
 
+def _aplicar_correccion_en_libro(ws_master, ws_detalle, fila_m, columna, valor_nuevo,
+                                  nota=None):
+    """Escribe UNA correccion ya decidida en el libro abierto: normaliza el
+    valor si la columna lo exige, lo escribe, recolorea la fuente a azul
+    marino oscuro y lo propaga a Detalle si la columna se repite ahi.
+
+    No abre, no respalda y no guarda el libro: eso es responsabilidad de
+    quien llama, que es justamente lo que permite aplicar N correcciones con
+    una sola apertura. Es el cuerpo comun de confirmar_correcciones() (que ya
+    trabajaba por lote) y de corregir_valor_manual() (que lo hacia de a una);
+    hasta la auditoria del 2026-09-10 eran dos copias del mismo bloque que
+    podian divergir -- de hecho ya divergian en si escribian o no un
+    comentario de Excel.
+
+    Devuelve (valor_anterior, valor_aplicado, columna_detalle_o_None).
+    """
+    cell = ws_master.cell(row=fila_m, column=columna)
+    valor_anterior = cell.value
+    valor_nuevo = coaccionar_valor_columna(columna, valor_nuevo)
+
+    cell.value = valor_nuevo
+    cell.font = AZUL_MARINO_FONT
+    if columna == 4 and isinstance(valor_nuevo, datetime):
+        cell.number_format = DATE_FORMAT
+    elif columna == 12:
+        cell.number_format = MONEY_FORMAT
+    elif columna == COL_PROVEEDOR_RAZON_SOCIAL_MASTER:
+        # El tag corto de la columna 7 es 100% derivado de la razon social: si
+        # se corrige una sin la otra, Master queda mostrando el proveedor viejo
+        # con la razon social nueva.
+        tag = ws_master.cell(row=fila_m, column=COL_PROVEEDOR_TAG_MASTER)
+        tag.value = generar_tag_proveedor(valor_nuevo) if valor_nuevo else ""
+        tag.font = AZUL_MARINO_FONT
+    if nota:
+        cell.comment = Comment(nota, "Revision_de_Errores")
+
+    col_detalle = CAMPOS_PROPAGADOS_A_DETALLE.get(columna)
+    if col_detalle and ws_detalle is not None:
+        for fila_d in _n_ref_a_filas_detalle(ws_detalle, ws_master.cell(row=fila_m, column=1).value):
+            ws_detalle.cell(row=fila_d, column=col_detalle, value=valor_nuevo).font = AZUL_MARINO_FONT
+
+    return valor_anterior, valor_nuevo, col_detalle
+
+
 def confirmar_correcciones(objetivo=None, ruta_excel=None, ruta_correcciones=None,
                             ruta_errores=None, ruta_backups=None):
     """objetivo=None -> preview de solo lectura (no toca el Excel).
@@ -752,21 +835,11 @@ def confirmar_correcciones(objetivo=None, ruta_excel=None, ruta_correcciones=Non
                   f"de nuevo para re-detectarlo.")
             continue
 
-        valor_aplicar = c["valor_corregido"]
-        if c["columna"] == 5 and isinstance(valor_aplicar, str):
-            # N Documento tampoco puede quedar con ceros a la izquierda cuando se
-            # corrige a mano (ver MEMORY.md "Reglas de negocio", pedido 2026-07-17):
-            # se valida contra lo que el usuario escribio tal cual (arriba), pero se
-            # escribe la version normalizada.
-            valor_aplicar = normalizar_n_documento(valor_aplicar)
-        cell.value = valor_aplicar
-        cell.font = AZUL_MARINO_FONT
-
-        col_detalle = CAMPOS_PROPAGADOS_A_DETALLE.get(c["columna"])
-        if col_detalle and ws_detalle is not None:
-            for fila_d in _n_ref_a_filas_detalle(ws_detalle, c["n_ref"]):
-                celda_d = ws_detalle.cell(row=fila_d, column=col_detalle, value=valor_aplicar)
-                celda_d.font = AZUL_MARINO_FONT
+        # El valor se valida arriba contra lo que el usuario escribio tal cual;
+        # el helper es quien escribe la version normalizada.
+        _, _, col_detalle = _aplicar_correccion_en_libro(
+            ws_master, ws_detalle, fila_m, c["columna"], c["valor_corregido"]
+        )
 
         c["estado"] = "Aplicado"
         c["fecha_aplicado"] = datetime.now().strftime("%Y-%m-%d")
@@ -907,23 +980,11 @@ def corregir_valor_manual(n_ref, columna, valor_nuevo, ruta_excel=None,
         print(f"\n[WARN] {n_ref} / columna {columna} no esta en rojo (no requiere revision); no se toca.")
         return None
 
-    if columna == 5 and isinstance(valor_nuevo, str):
-        # N Documento tampoco puede quedar con ceros a la izquierda cuando se
-        # corrige a mano (ver MEMORY.md "Reglas de negocio", pedido 2026-07-17).
-        valor_nuevo = normalizar_n_documento(valor_nuevo)
-
-    valor_anterior = cell.value
     hacer_backup(ruta_excel, ruta_backups)
-    cell.value = valor_nuevo
-    cell.font = AZUL_MARINO_FONT
-    if nota:
-        cell.comment = Comment(nota, "Revision_de_Errores")
-
     ws_detalle = wb["Detalle"] if "Detalle" in wb.sheetnames else None
-    col_detalle = CAMPOS_PROPAGADOS_A_DETALLE.get(columna)
-    if col_detalle and ws_detalle is not None:
-        for fila_d in _n_ref_a_filas_detalle(ws_detalle, n_ref):
-            ws_detalle.cell(row=fila_d, column=col_detalle, value=valor_nuevo).font = AZUL_MARINO_FONT
+    valor_anterior, valor_nuevo, col_detalle = _aplicar_correccion_en_libro(
+        ws_master, ws_detalle, fila_m, columna, valor_nuevo, nota=nota
+    )
 
     try:
         _guardar_y_suprimir_aviso(wb, ruta_excel)
@@ -2295,6 +2356,739 @@ def verificar_aritmetica(datos):
     return hallazgos
 
 
+# ── TAXONOMÍA DE ERRORES Y VALIDACIÓN TEMPRANA ──────────────────────────────
+#
+# Antes de esto (auditoria 2026-09-10) la deteccion de errores estaba repartida
+# en cuatro sitios de main() y no dejaba rastro: 'limitaciones' y
+# 'alertas_legibilidad' se armaban DENTRO del bucle de escritura (PASO 6),
+# 'posibles_duplicados' tambien, y el cuadre de impuesto corria en PASO 13,
+# DESPUES de guardar el libro (PASO 12), de reflejarlo al sitio compartido
+# (12b), de regenerar el visualizador (12c) y de recalcular Analisis
+# Financiero (12d). Consecuencias medidas:
+#
+#   * un documento con impuesto mal leido se publicaba en tres destinos antes
+#     de que nadie lo mirara;
+#   * si el Excel estaba bloqueado, main() hacia 'return' antes del PASO 13 y
+#     la corrida terminaba SIN informe: todo el trabajo de deteccion se perdia;
+#   * los hallazgos solo existian como texto en consola, asi que no habia forma
+#     de cerrarlos, priorizarlos ni evitar que se re-emitieran identicos en
+#     cada corrida (35 descuadres reales se reimprimian indefinidamente);
+#   * clases enteras de error no se miraban nunca: cantidad <= 0, documento de
+#     compra con neto negativo (el precedente real "Signo de IVA / P.Unitario /
+#     Totales (AYRSA)" de ERRORES.md), nota de credito con signo o impuesto
+#     incoherente, tipo de documento fuera del vocabulario (que ademas quedaba
+#     silenciosamente exento), fecha ilegible o futura, proveedor/categoria en
+#     blanco.
+#
+# validar_documento() concentra todos esos chequeos en una sola funcion pura,
+# que corre ANTES de escribir nada, y devuelve hallazgos tipados con causa,
+# contexto, accion recomendada e impacto en pesos.
+
+# codigo -> (severidad, titulo, accion recomendada, columna de Master corregible)
+#
+# severidad, de mas a menos accionable (mismo vocabulario que
+# severidad_cuadre_impuesto, para no inventar un segundo eje):
+#   'error'    -> hay algo seguro que corregir; el dato de hoy no puede ser bueno.
+#   'revisar'  -> puede ser legitimo o no; hay que mirar el documento.
+#   'estimado' -> el dato se completo con un supuesto; conviene verificarlo.
+#
+# La columna es la de Master donde vive el valor a corregir, o None si el
+# hallazgo no se arregla escribiendo una celda (falta una entrada del JSON,
+# hay que desglosar items, hay que borrar un documento entero...).
+TAXONOMIA_ERRORES = {
+    "DOC_SIN_DATOS": (
+        "error", "Documento sin entrada en el JSON",
+        "Agregar la entrada (con 'items') a datos_extraidos.json y volver a correr.", None),
+    "DOC_SIN_ITEMS": (
+        "error", "Entrada del JSON sin items",
+        "Agregar al menos un item con nombre_item/cantidad/p_unitario_sin_iva.", None),
+    "DOC_NETO_NO_POSITIVO": (
+        "error", "Documento de compra con neto <= 0",
+        "Revisar el signo de los precios: una compra no puede costar cero o menos "
+        "(precedente 'Signo de IVA / P.Unitario / Totales' en ERRORES.md).", None),
+    "ITEM_CANTIDAD_INVALIDA": (
+        "error", "Item con cantidad <= 0",
+        "Corregir la cantidad en datos_extraidos.json: un item con cantidad 0 no "
+        "aporta al total y descuadra el neto del documento.", None),
+    "NC_SIGNO": (
+        "error", "Nota de credito con neto positivo",
+        "Una nota de credito revierte una compra: sus items van en negativo. "
+        "Invertir el signo en datos_extraidos.json.", None),
+    "NC_IMPUESTO_DESCUADRADO": (
+        "error", "Nota de credito con impuesto que no cuadra",
+        "Verificar el impuesto impreso en la nota de credito y corregirlo.", 12),
+    "TIPO_DOC_DESCONOCIDO": (
+        "revisar", "Tipo de documento fuera del vocabulario conocido",
+        "Confirmar si es un documento afecto (Factura/Guia de Despacho) o exento: "
+        "hoy se le calcula impuesto 0 sin avisar.", 6),
+    "FECHA_INVALIDA": (
+        "error", "Fecha no interpretable",
+        "Corregir la fecha a DD-MM-AAAA: una fecha no interpretable se escribe como "
+        "texto y deja el documento al final del orden cronologico.", 4),
+    "FECHA_FUTURA": (
+        "revisar", "Fecha posterior a hoy",
+        "Confirmar la fecha contra el documento: una compra no puede estar fechada "
+        "en el futuro.", 4),
+    "PROVEEDOR_VACIO": (
+        "revisar", "Documento sin proveedor",
+        "Completar la razon social del proveedor (revisar antes si ya existe uno con "
+        "el mismo RUT, ver MEMORY.md).", 8),
+    "CATEGORIA_VACIA": (
+        "revisar", "Documento sin categoria",
+        "Asignar la categoria del documento: sin ella no entra en ningun corte por "
+        "categoria de Analisis Financiero.", 9),
+    "N_DOC_ILEGIBLE": (
+        "revisar", "N Documento ilegible",
+        "Leer el numero en la foto del documento y corregirlo.", 5),
+    "IMPUESTO_MENOR": (
+        "error", "Impuesto declarado menor al que corresponde",
+        "Imposible en un documento afecto: revisar el impuesto impreso o el precio "
+        "de los items.", 12),
+    "IMPUESTO_EXCESO": (
+        "revisar", "Impuesto sobre el 19% sin impuesto especifico conocido",
+        "Mirar el documento: si lleva un tributo adicional, declararlo en "
+        "'otros_impuestos' para que el cuadre pase a ser exacto.", 12),
+    "IMPUESTO_ESTIMADO": (
+        "estimado", "Documento afecto sin impuesto declarado",
+        "Se calcula 19% del neto; si el documento lleva impuesto especifico "
+        "(combustible), el total pagado queda subestimado. Declarar 'iva'.", 12),
+    "DUPLICADO_EXACTO": (
+        "error", "El mismo documento cargado dos veces",
+        "El mismo emisor, numero, fecha y neto: es la misma compra fotografiada dos "
+        "veces. Se resuelve sola al registrar (no se escribe la segunda copia).", None),
+    "DUPLICADO_AMBIGUO": (
+        "error", "Mismo N Documento del mismo emisor, contenido distinto",
+        "Comparar ambas fotos: o una esta mal leida, o son documentos distintos. Si "
+        "sobra una fila ya registrada, borrarla con 'driver.py eliminar <N_REF>'.", None),
+    "ITEM_AGRUPADO": (
+        "revisar", "Parte de la compra agrupada en un item 'varios'",
+        "Si se consigue leer el detalle real, desglosarlo con "
+        "'Revision_de_Errores/driver.py desglosar <N_REF>'.", None),
+}
+
+ORDEN_SEVERIDAD = {"error": 0, "revisar": 1, "estimado": 2}
+
+# Vocabulario de tipos de documento que el modulo sabe tratar. Todo lo demas
+# cae hoy en "no afecto" sin avisar (y por lo tanto con impuesto 0), que es
+# justamente lo que TIPO_DOC_DESCONOCIDO viene a hacer visible.
+TIPOS_DOCUMENTO_CONOCIDOS = frozenset({
+    "factura", "boleta", "guia de despacho", "nota de credito",
+})
+
+# Un documento fechado despues de hoy no existe. Se deja un dia de holgura
+# para no marcar como error una compra de hoy registrada con el reloj corrido.
+DIAS_HOLGURA_FECHA_FUTURA = 1
+
+
+def clave_documento(proyecto, archivo):
+    """Identidad estable de un documento a lo largo del tiempo. Se usa
+    (proyecto, archivo) del JSON y no el nombre fisico en disco porque el
+    renombrado automatico cambia el nombre fisico en la primera corrida: usar
+    ese nombre como clave haria que el mismo hallazgo cambiara de identidad
+    entre la corrida 1 y la 2 y se re-emitiera como nuevo. datos_extraidos.json
+    nunca se reescribe, asi que su 'archivo' es estable de por vida."""
+    return f"{proyecto or ''}\\{archivo or ''}"
+
+
+def id_hallazgo(codigo, documento, campo):
+    """Identificador corto y estable de un hallazgo. Mismo problema en el
+    mismo documento y campo => mismo id, corrida tras corrida: es lo que
+    permite deduplicar en vez de re-emitir."""
+    import hashlib
+    crudo = f"{codigo}|{documento}|{campo or ''}"
+    return hashlib.sha1(crudo.encode("utf-8")).hexdigest()[:12]
+
+
+def _fecha_documento(valor):
+    """(datetime, valida) del campo 'fecha' de un documento. Acepta los dos
+    formatos que ya acepta escribir_fila_master."""
+    if isinstance(valor, datetime):
+        return valor, True
+    for formato in ("%d-%m-%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(str(valor), formato), True
+        except (ValueError, TypeError):
+            continue
+    return None, False
+
+
+def _hallazgo(codigo, dato, campo=None, valor_actual=None, valor_esperado=None,
+              impacto=0, detalle=""):
+    severidad, titulo, accion, columna = TAXONOMIA_ERRORES[codigo]
+    documento = clave_documento(dato.get("proyecto"), dato.get("archivo"))
+    campo_nombre = campo
+    if campo_nombre is None and columna is not None:
+        campo_nombre = ENCABEZADOS_MASTER[columna - 1]
+    mensaje = titulo if not detalle else f"{titulo}: {detalle}"
+    return {
+        "id": id_hallazgo(codigo, documento, campo_nombre),
+        "codigo": codigo,
+        "severidad": severidad,
+        "documento": documento,
+        "proyecto": dato.get("proyecto", ""),
+        "archivo": dato.get("archivo", ""),
+        "campo": campo_nombre,
+        "columna": columna,
+        "valor_actual": valor_actual,
+        "valor_esperado": valor_esperado,
+        "impacto": abs(int(impacto or 0)),
+        "mensaje": mensaje,
+        "accion": accion,
+    }
+
+
+def validar_documento(dato):
+    """Todos los hallazgos de UN documento del JSON, sin tocar disco ni Excel.
+
+    Funcion pura: mismo documento => mismos hallazgos, en el mismo orden. No
+    cubre los hallazgos que solo existen mirando el corpus completo
+    (duplicados) ni los que dependen del inventario en disco (archivo sin
+    entrada en el JSON) -- esos los agrega validar_corpus().
+    """
+    hallazgos = []
+    items = dato.get("items") or []
+
+    if not items:
+        hallazgos.append(_hallazgo("DOC_SIN_ITEMS", dato))
+        return hallazgos  # sin items no hay neto ni impuesto que verificar
+
+    for i, item in enumerate(items, 1):
+        cantidad = item.get("cantidad")
+        if cantidad is None or cantidad <= 0:
+            hallazgos.append(_hallazgo(
+                "ITEM_CANTIDAD_INVALIDA", dato, campo=f"item {i}: cantidad",
+                valor_actual=cantidad,
+                detalle=f"'{item.get('nombre_item', '')}' quedo con cantidad {cantidad!r}"))
+
+    neto = total_sin_iva_items(items)
+    iva = calcular_iva_documento(dato, neto)
+    tipo = clave_tipo_documento(dato.get("tipo_documento"))
+    es_nota_credito = tipo.startswith("nota de cr")
+
+    if tipo not in TIPOS_DOCUMENTO_CONOCIDOS:
+        hallazgos.append(_hallazgo(
+            "TIPO_DOC_DESCONOCIDO", dato, valor_actual=dato.get("tipo_documento"),
+            detalle=f"'{dato.get('tipo_documento')}' no esta en "
+                    f"{sorted(TIPOS_DOCUMENTO_CONOCIDOS)}; se registra con impuesto 0"))
+
+    if es_nota_credito:
+        if neto > 0:
+            hallazgos.append(_hallazgo(
+                "NC_SIGNO", dato, campo="items", valor_actual=neto, impacto=neto * 2,
+                detalle=f"neto {neto:,.0f} en positivo: suma costo en vez de restarlo"))
+        elif dato.get("iva") is not None and neto < 0:
+            # Una nota de credito con impuesto declarado tiene que cuadrar
+            # igual que la factura que revierte. severidad_cuadre_impuesto()
+            # no la mira (para ella "afecto" es lo que PAGA impuesto sobre el
+            # neto), asi que hasta hoy el impuesto de las notas de credito no
+            # lo verificaba nadie.
+            esperado = round(neto * TASA_IMPUESTO)
+            otros = dato.get("otros_impuestos") or 0
+            if abs(iva - (esperado + otros)) > TOLERANCIA_IMPUESTO:
+                hallazgos.append(_hallazgo(
+                    "NC_IMPUESTO_DESCUADRADO", dato, valor_actual=iva,
+                    valor_esperado=esperado + otros, impacto=iva - (esperado + otros),
+                    detalle=f"neto {neto:,.0f} => impuesto esperado "
+                            f"{esperado + otros:,.0f}, declarado {iva:,.0f}"))
+    elif neto <= 0:
+        hallazgos.append(_hallazgo(
+            "DOC_NETO_NO_POSITIVO", dato, campo="items", valor_actual=neto,
+            impacto=neto, detalle=f"neto {neto:,.0f}"))
+
+    fecha, fecha_valida = _fecha_documento(dato.get("fecha"))
+    if not fecha_valida:
+        hallazgos.append(_hallazgo(
+            "FECHA_INVALIDA", dato, valor_actual=dato.get("fecha"),
+            detalle=f"'{dato.get('fecha')}' no es DD-MM-AAAA"))
+    elif (fecha - datetime.now()).days > DIAS_HOLGURA_FECHA_FUTURA:
+        hallazgos.append(_hallazgo(
+            "FECHA_FUTURA", dato, valor_actual=dato.get("fecha"),
+            detalle=f"{fecha.strftime('%d-%m-%Y')} es posterior a hoy"))
+
+    if not str(dato.get("proveedor") or "").strip():
+        hallazgos.append(_hallazgo("PROVEEDOR_VACIO", dato, valor_actual=""))
+    if not str(dato.get("categoria") or "").strip():
+        hallazgos.append(_hallazgo("CATEGORIA_VACIA", dato, valor_actual=""))
+
+    n_doc = str(dato.get("n_documento", ""))
+    if celda_requiere_revision(n_doc):
+        hallazgos.append(_hallazgo(
+            "N_DOC_ILEGIBLE", dato, valor_actual=n_doc,
+            detalle=f"quedo como '{n_doc}'"))
+
+    severidad_impuesto = severidad_cuadre_impuesto(dato, neto, iva)
+    if severidad_impuesto is not None:
+        codigo = {"error": "IMPUESTO_MENOR", "revisar": "IMPUESTO_EXCESO",
+                  "estimado": "IMPUESTO_ESTIMADO"}[severidad_impuesto]
+        esperado = round(neto * TASA_IMPUESTO)
+        hallazgos.append(_hallazgo(
+            codigo, dato, valor_actual=dato.get("iva"), valor_esperado=esperado,
+            impacto=(iva - esperado) if dato.get("iva") is not None else 0,
+            detalle=f"neto {neto:,.0f} => {NOMBRE_IMPUESTO_PCT} {esperado:,.0f}, "
+                    f"declarado {dato.get('iva')!r}"))
+
+    for item in items:
+        if PATRON_ITEM_AGRUPADO.search(str(item.get("nombre_item") or "")):
+            hallazgos.append(_hallazgo(
+                "ITEM_AGRUPADO", dato, campo="items",
+                valor_actual=item.get("nombre_item"),
+                impacto=(item.get("cantidad") or 0) * (item.get("p_unitario_sin_iva") or 0),
+                detalle=f"'{item.get('nombre_item')}' agrupa una parte no identificada"))
+            break
+
+    return hallazgos
+
+
+def _clave_emisor(dato):
+    """Un N Documento es unico POR EMISOR, no globalmente (ver CLAUDE.md del
+    modulo). Se prefiere el RUT; si no viene, la razon social normalizada."""
+    rut = str(dato.get("rut_proveedor") or "").strip()
+    if rut:
+        return re.sub(r"[^0-9kK]", "", rut).upper()
+    return clave_tipo_documento(dato.get("proveedor"))
+
+
+def _huella_documento(dato):
+    """Lo que tiene que coincidir para poder afirmar, sin mirar las fotos, que
+    dos entradas son el MISMO documento y no dos compras distintas."""
+    fecha, _ = _fecha_documento(dato.get("fecha"))
+    return (
+        clave_tipo_documento(dato.get("tipo_documento")),
+        fecha.strftime("%Y-%m-%d") if fecha else str(dato.get("fecha")),
+        round(total_sin_iva_items(dato.get("items") or [])),
+    )
+
+
+def detectar_duplicados(datos):
+    """Hallazgos de duplicado sobre el corpus completo. Devuelve
+    (hallazgos, copias_exactas), donde copias_exactas mapea la clave de la
+    copia sobrante -> clave del documento original que ya la cubre.
+
+    Distingue dos casos que hasta hoy se reportaban como uno solo:
+      * DUPLICADO_EXACTO  -- mismo emisor, numero, tipo, fecha y neto. Es la
+        misma compra cargada dos veces; se puede resolver sin preguntar.
+      * DUPLICADO_AMBIGUO -- mismo emisor y numero, algo mas distinto. Hay que
+        comparar las fotos.
+    """
+    hallazgos = []
+    copias_exactas = {}
+    vistos = {}
+    for dato in datos:
+        n_doc = str(dato.get("n_documento", ""))
+        if not es_n_documento_real(n_doc):
+            continue
+        clave = (_clave_emisor(dato), normalizar_n_documento(n_doc))
+        primero = vistos.get(clave)
+        if primero is None:
+            vistos[clave] = dato
+            continue
+        exacto = _huella_documento(primero) == _huella_documento(dato)
+        codigo = "DUPLICADO_EXACTO" if exacto else "DUPLICADO_AMBIGUO"
+        original = clave_documento(primero.get("proyecto"), primero.get("archivo"))
+        hallazgos.append(_hallazgo(
+            codigo, dato, campo="N° Documento", valor_actual=n_doc,
+            impacto=total_sin_iva_items(dato.get("items") or []),
+            detalle=f"mismo emisor y numero que {original}"))
+        hallazgos[-1]["documento_original"] = original
+        if exacto:
+            copias_exactas[clave_documento(dato.get("proyecto"), dato.get("archivo"))] = original
+    return hallazgos, copias_exactas
+
+
+def validar_corpus(datos, archivos_sin_datos=()):
+    """Todos los hallazgos del corpus: los de cada documento, los de duplicado
+    y los archivos que estan en disco pero no tienen entrada en el JSON.
+
+    `archivos_sin_datos`: iterable de dicts con 'proyecto' y 'archivo' (el
+    mismo shape que devuelve inventariar_archivos).
+
+    Devuelve (hallazgos ordenados por severidad e impacto, copias_exactas).
+    """
+    hallazgos = []
+    for dato in datos:
+        hallazgos.extend(validar_documento(dato))
+
+    dup, copias_exactas = detectar_duplicados(datos)
+    hallazgos.extend(dup)
+
+    for info in archivos_sin_datos:
+        hallazgos.append(_hallazgo("DOC_SIN_DATOS", {
+            "proyecto": info.get("proyecto"), "archivo": info.get("archivo"),
+        }))
+
+    hallazgos.sort(key=lambda h: (ORDEN_SEVERIDAD[h["severidad"]], -h["impacto"], h["documento"]))
+    return hallazgos, copias_exactas
+
+
+# ── REGISTRO PERSISTENTE DE ERRORES ─────────────────────────────────────────
+#
+# errores_detectados.json es al informe de auditoria lo que
+# correcciones_manuales.json es a las celdas rojas: la memoria que convierte
+# "lo que se imprimio esta vez" en "lo que sigue abierto". Sin el, cada
+# corrida re-emitia los mismos hallazgos sin forma de cerrarlos ni de saber
+# desde cuando estaban ahi.
+#
+# Vive junto a correcciones_manuales.json del pais activo (se deriva de
+# RUTA_CORRECCIONES a proposito, para que no pueda quedar apuntando al
+# registro de otro pais si alguien agrega un pais nuevo y olvida una clave).
+
+ESTADOS_HALLAZGO = ("abierto", "auto_resuelto", "resuelto", "descartado")
+ESTADOS_CERRADOS = frozenset({"auto_resuelto", "resuelto", "descartado"})
+
+# Centinela: distingue "se cerro sin anotar contra que valor de origen" (los
+# cierres viejos, que se reabren para volver a mirarlos) de "se cerro contra un
+# valor de origen que casualmente era None".
+_SIN_ADJUDICAR = object()
+
+
+def ruta_registro_errores(ruta_correcciones=None):
+    ruta_correcciones = ruta_correcciones or RUTA_CORRECCIONES
+    return Path(ruta_correcciones).parent / "errores_detectados.json"
+
+
+def cargar_registro_errores(ruta=None):
+    ruta = Path(ruta or ruta_registro_errores())
+    if not ruta.exists():
+        return {"version": 1, "errores": []}
+    with open(ruta, "r", encoding="utf-8") as f:
+        registro = json.load(f)
+    registro.setdefault("version", 1)
+    registro.setdefault("errores", [])
+    return registro
+
+
+def guardar_registro_errores(registro, ruta=None):
+    ruta = Path(ruta or ruta_registro_errores())
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(registro, f, ensure_ascii=False, indent=2)
+
+
+def fusionar_hallazgos(registro, hallazgos, hoy=None):
+    """Mezcla los hallazgos de esta corrida con el registro persistente.
+
+    - id nuevo                -> se agrega como 'abierto'.
+    - id ya abierto           -> se refresca (valor actual, mensaje, impacto) y
+                                 se le suma una corrida vista. NO se duplica.
+    - id ya cerrado y el dato de origen CAMBIO -> se REABRE: es un valor que
+      nadie adjudico todavia. Taparlo seria esconder un error para que las
+      metricas se vean mejor.
+    - id ya cerrado y el dato de origen sigue IGUAL -> queda cerrado y se
+      cuenta en 'origen_sin_corregir'. Es el caso normal de una correccion
+      hecha en el Excel: datos_extraidos.json es la entrada del pipeline y no
+      se reescribe nunca, asi que el valor viejo sigue ahi. Reabrir el
+      hallazgo en cada corrida era justamente lo que hacia que los mismos 35
+      descuadres se reimprimieran para siempre. No se oculta: el informe dice
+      cuantos son y que hay que corregir el JSON para que no reaparezcan si
+      alguna vez se re-extrae el documento.
+    - id que estaba abierto y ya no aparece -> se cierra como 'resuelto' con
+      la nota de que desaparecio solo (el dato de origen se corrigio).
+
+    Devuelve (nuevos, reabiertos, desaparecidos).
+    """
+    hoy = hoy or datetime.now().strftime("%Y-%m-%d")
+    por_id = {e["id"]: e for e in registro["errores"]}
+    vistos = set()
+    nuevos, reabiertos = [], []
+
+    for h in hallazgos:
+        vistos.add(h["id"])
+        existente = por_id.get(h["id"])
+        if existente is None:
+            entrada = dict(h)
+            entrada.update({
+                "estado": "abierto", "primera_deteccion": hoy, "ultima_deteccion": hoy,
+                "corridas_vistas": 1, "fecha_cierre": None, "resolucion": None,
+                "n_ref": None,
+            })
+            registro["errores"].append(entrada)
+            por_id[h["id"]] = entrada
+            nuevos.append(entrada)
+            continue
+
+        estaba_cerrado = existente["estado"] in ESTADOS_CERRADOS
+        origen_adjudicado = existente.get("valor_origen_al_cerrar", _SIN_ADJUDICAR)
+        origen_cambio = (origen_adjudicado is _SIN_ADJUDICAR
+                         or origen_adjudicado != h["valor_actual"])
+
+        if estaba_cerrado and not origen_cambio:
+            # Ya se adjudico exactamente este valor: se cuenta, no se reabre.
+            existente["ultima_deteccion"] = hoy
+            existente["origen_sin_corregir"] = True
+            continue
+
+        existente.update({
+            "severidad": h["severidad"], "valor_actual": h["valor_actual"],
+            "valor_esperado": h["valor_esperado"], "impacto": h["impacto"],
+            "mensaje": h["mensaje"], "accion": h["accion"],
+            "ultima_deteccion": hoy,
+            "corridas_vistas": existente.get("corridas_vistas", 0) + 1,
+        })
+        if estaba_cerrado:
+            existente.update({
+                "estado": "abierto", "fecha_cierre": None,
+                "origen_sin_corregir": False,
+                "resolucion": f"Reabierto el {hoy}: el dato de origen cambio a "
+                              f"{h['valor_actual']!r} despues de haberse cerrado.",
+            })
+            reabiertos.append(existente)
+
+    desaparecidos = []
+    for entrada in registro["errores"]:
+        if entrada["id"] in vistos or entrada["estado"] in ESTADOS_CERRADOS:
+            continue
+        entrada.update({
+            "estado": "resuelto", "fecha_cierre": hoy,
+            "resolucion": "Dejo de detectarse: el dato de origen ya no presenta el problema.",
+        })
+        desaparecidos.append(entrada)
+
+    return nuevos, reabiertos, desaparecidos
+
+
+def hallazgos_abiertos(registro, severidad=None):
+    abiertos = [e for e in registro["errores"] if e["estado"] == "abierto"]
+    if severidad:
+        abiertos = [e for e in abiertos if e["severidad"] == severidad]
+    abiertos.sort(key=lambda e: (ORDEN_SEVERIDAD[e["severidad"]], -e.get("impacto", 0),
+                                 e["documento"]))
+    return abiertos
+
+
+def cerrar_hallazgo(registro, id_hallazgo_, estado, resolucion, hoy=None):
+    """Cierra un hallazgo del registro. `estado` debe ser 'auto_resuelto',
+    'resuelto' o 'descartado'; 'descartado' es una decision humana explicita
+    ("mire el documento y no es un error") y por eso exige una justificacion
+    -- nunca se descarta solo para que el listado se vea corto."""
+    if estado not in ESTADOS_CERRADOS:
+        raise ValueError(f"estado de cierre invalido: {estado!r}")
+    if not str(resolucion or "").strip():
+        raise ValueError("cerrar un hallazgo exige dejar escrito como se resolvio")
+    hoy = hoy or datetime.now().strftime("%Y-%m-%d")
+    for entrada in registro["errores"]:
+        if entrada["id"] == id_hallazgo_:
+            entrada.update({
+                "estado": estado, "fecha_cierre": hoy, "resolucion": resolucion,
+                # Cerrar es adjudicar un valor concreto: se deja anotado cual
+                # era para que fusionar_hallazgos() sepa distinguir "el origen
+                # sigue igual" (queda cerrado) de "el origen cambio" (se
+                # reabre). Se estampa aca y no en cada llamador para que ningun
+                # camino de cierre se olvide -- el cierre automatico de copias
+                # exactas se olvidaba, y por eso el hallazgo se reabria en la
+                # corrida siguiente (lo encontro tests/test_pipeline_errores.py).
+                "valor_origen_al_cerrar": entrada.get("valor_actual"),
+            })
+            return entrada
+    return None
+
+
+# ── RESOLUCIÓN DE HALLAZGOS (canal unico, con trazabilidad) ────────────────
+#
+# Hasta la auditoria del 2026-09-10 el unico camino soportado para corregir un
+# dato dejando rastro era corregir_valor_manual(), y solo funcionaba sobre las
+# dos columnas que el script pinta de rojo (N Documento e impuesto). Si el
+# extractor dejaba la categoria en blanco, el proveedor vacio, la fecha
+# ilegible o un tipo de documento fuera del vocabulario, no habia forma
+# soportada de arreglarlo: habia que editar el .xlsx a mano y esperar que la
+# comparacion contra el backup lo notara -- y esa comparacion solo mira celdas
+# ROJAS, asi que no lo notaba nunca. El dato quedaba corregido sin ninguna
+# constancia de quien lo cambio ni por que.
+#
+# corregir_hallazgos() cierra ese hueco: cualquier hallazgo del registro cuya
+# clase declare una columna de Master se puede resolver por el mismo camino
+# auditado (respaldo -> valor -> fuente azul marino -> propagacion a Detalle ->
+# entrada en correcciones_manuales.json + ERRORES.md -> hallazgo cerrado).
+# Y lo hace por LOTE: una apertura del libro, un respaldo y un guardado para N
+# correcciones, en vez de uno por correccion.
+
+COLUMNAS_CORREGIBLES = tuple(sorted({
+    columna for _, _, _, columna in TAXONOMIA_ERRORES.values() if columna is not None
+}))
+
+
+def coaccionar_valor_columna(columna, valor):
+    """Lleva `valor` al tipo que espera la columna de Master. Un valor que no
+    se puede convertir se deja tal cual: Excel lo mostrara como texto y quedara
+    visible que hay que revisarlo, que es mejor que romper la correccion."""
+    if columna == 5 and isinstance(valor, str):
+        # N Documento nunca queda con ceros a la izquierda, tampoco al
+        # corregirlo a mano (MEMORY.md "Reglas de negocio", pedido 2026-07-17).
+        return normalizar_n_documento(valor)
+    if columna == 4:
+        fecha, valida = _fecha_documento(valor)
+        return fecha if valida else valor
+    if columna == 12 and isinstance(valor, str):
+        try:
+            return int(valor)
+        except ValueError:
+            try:
+                return float(valor)
+            except ValueError:
+                return valor
+    return valor
+
+
+def valor_para_bitacora(valor):
+    """Forma serializable y legible de un valor de celda para las bitacoras.
+    Las fechas de Master son datetime y json.dump no las sabe escribir: sin
+    esto, corregir la columna Fecha reventaba al guardar
+    correcciones_manuales.json (lo encontro
+    tests/test_resolucion_hallazgos.py). Se guardan en DD-MM-AAAA, el formato
+    fijo del modulo (pedido 2026-07-28)."""
+    if isinstance(valor, datetime):
+        return valor.strftime("%d-%m-%Y")
+    return valor
+
+
+def _registrar_correccion_auditada(correcciones, n_ref, columna, valor_anterior,
+                                    valor_nuevo, hoy, nota=None, id_hallazgo_=None):
+    """Deja la correccion en correcciones_manuales.json -- la misma bitacora
+    que ya usan 'confirmar' y corregir_valor_manual, para que todo cambio a
+    mano viva en un solo lugar sin importar por que canal entro."""
+    campo = ENCABEZADOS_MASTER[columna - 1]
+    valor_anterior = valor_para_bitacora(valor_anterior)
+    valor_nuevo = valor_para_bitacora(valor_nuevo)
+    entrada = next((c for c in correcciones
+                    if c["n_ref"] == n_ref and c.get("columna") == columna), None)
+    if entrada is None:
+        entrada = {"n_ref": n_ref, "hoja": "Master", "columna": columna, "campo": campo}
+        correcciones.append(entrada)
+    entrada.update({
+        "valor_anterior": valor_anterior, "valor_corregido": valor_nuevo,
+        "estado": "Aplicado", "fecha_detectado": entrada.get("fecha_detectado", hoy),
+        "fecha_aplicado": hoy,
+    })
+    if nota:
+        entrada["nota"] = nota
+    if id_hallazgo_:
+        entrada["id_hallazgo"] = id_hallazgo_
+    return entrada
+
+
+def corregir_hallazgos(correcciones_pedidas, ruta_excel=None, ruta_correcciones=None,
+                       ruta_errores=None, ruta_backups=None, ruta_registro=None):
+    """Resuelve uno o varios hallazgos del registro escribiendo el valor
+    correcto en Master.
+
+    `correcciones_pedidas`: lista de (id_hallazgo, valor_nuevo) o de
+    (id_hallazgo, valor_nuevo, nota).
+
+    Todo el lote comparte UNA apertura del libro, UN respaldo y UN guardado:
+    corregir 20 celdas de a una costaba 20 aperturas de openpyxl (~0,3-0,8 s
+    cada una segun CLAUDE.md raiz) mas 20 respaldos del libro completo.
+
+    Rechaza, sin escribir nada, un hallazgo que: no exista, ya este cerrado,
+    todavia no tenga N Ref (el documento aun no llego a Master), o cuya clase
+    no se arregle escribiendo una celda (falta la entrada del JSON, hay que
+    desglosar items, hay que borrar un documento). Ese rechazo es deliberado:
+    la puerta de entrada es "hay un hallazgo abierto que dice que esta celda
+    esta mal", no "escribeme cualquier celda".
+
+    Devuelve (aplicadas, rechazadas) donde cada rechazada es (id, motivo).
+    """
+    ruta_excel = ruta_excel or RUTA_EXCEL
+    ruta_correcciones = ruta_correcciones or RUTA_CORRECCIONES
+    ruta_errores = ruta_errores or RUTA_ERRORES_MD
+    ruta_backups = ruta_backups or RUTA_BACKUPS
+    ruta_registro = ruta_registro or ruta_registro_errores(ruta_correcciones)
+
+    registro = cargar_registro_errores(ruta_registro)
+    por_id = {e["id"]: e for e in registro["errores"]}
+
+    pedidos, rechazadas = [], []
+    for pedido in correcciones_pedidas:
+        id_h, valor = pedido[0], pedido[1]
+        nota = pedido[2] if len(pedido) > 2 else None
+        entrada = por_id.get(id_h)
+        if entrada is None:
+            rechazadas.append((id_h, "no existe en el registro de errores"))
+        elif entrada["estado"] != "abierto":
+            rechazadas.append((id_h, f"ya esta {entrada['estado']}"))
+        elif entrada.get("columna") not in COLUMNAS_CORREGIBLES:
+            rechazadas.append((id_h, f"'{entrada['codigo']}' no se arregla escribiendo "
+                                     f"una celda de Master: {entrada['accion']}"))
+        elif not entrada.get("n_ref"):
+            rechazadas.append((id_h, "el documento todavia no tiene fila en Master"))
+        else:
+            pedidos.append((entrada, valor, nota))
+
+    if not pedidos:
+        return [], rechazadas
+
+    if excel_esta_bloqueado(ruta_excel):
+        return [], rechazadas + [(e["id"], "el Excel esta abierto o bloqueado")
+                                 for e, _, _ in pedidos]
+
+    wb = openpyxl.load_workbook(str(ruta_excel), data_only=False)
+    if "Master" not in wb.sheetnames:
+        return [], rechazadas + [(e["id"], "no existe la hoja Master") for e, _, _ in pedidos]
+    ws_master = wb["Master"]
+    ws_detalle = wb["Detalle"] if "Detalle" in wb.sheetnames else None
+    filas = _mapa_filas_por_n_ref(ws_master)
+
+    hacer_backup(ruta_excel, ruta_backups)
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    correcciones = cargar_correcciones_manuales(ruta_correcciones)
+    aplicadas = []
+
+    for entrada, valor, nota in pedidos:
+        fila_m = filas.get(entrada["n_ref"])
+        if fila_m is None:
+            rechazadas.append((entrada["id"], f"{entrada['n_ref']} ya no existe en Master"))
+            continue
+        anterior, aplicado, col_detalle = _aplicar_correccion_en_libro(
+            ws_master, ws_detalle, fila_m, entrada["columna"], valor, nota=nota
+        )
+        _registrar_correccion_auditada(correcciones, entrada["n_ref"], entrada["columna"],
+                                       anterior, aplicado, hoy, nota=nota,
+                                       id_hallazgo_=entrada["id"])
+        cerrar_hallazgo(
+            registro, entrada["id"], "resuelto",
+            f"Corregido en Master ({entrada['campo']}): "
+            f"{valor_para_bitacora(anterior)!r} -> {valor_para_bitacora(aplicado)!r}"
+            + (f". Nota: {nota}" if nota else ""),
+            hoy=hoy)
+        entrada["propagado_a_detalle"] = bool(col_detalle)
+        aplicadas.append(entrada)
+
+    if aplicadas:
+        try:
+            _guardar_y_suprimir_aviso(wb, ruta_excel)
+        except PermissionError:
+            return [], rechazadas + [(e["id"], "el Excel esta abierto en Excel") for e in aplicadas]
+        guardar_correcciones_manuales(correcciones, ruta_correcciones)
+        regenerar_tabla_errores_md(correcciones, ruta_errores)
+        guardar_registro_errores(registro, ruta_registro)
+
+    return aplicadas, rechazadas
+
+
+def descartar_hallazgo(id_hallazgo_, motivo, ruta_correcciones=None, ruta_registro=None):
+    """Cierra un hallazgo como 'descartado': alguien miro el documento y
+    concluyo que el dato esta bien. Exige un motivo escrito y lo deja en el
+    registro -- descartar no es borrar, es dejar constancia de la decision."""
+    ruta_correcciones = ruta_correcciones or RUTA_CORRECCIONES
+    ruta_registro = ruta_registro or ruta_registro_errores(ruta_correcciones)
+    registro = cargar_registro_errores(ruta_registro)
+    entrada = cerrar_hallazgo(registro, id_hallazgo_, "descartado", motivo)
+    if entrada is None:
+        return None
+    guardar_registro_errores(registro, ruta_registro)
+    return entrada
+
+
+def anotar_n_ref(registro, documento, n_ref):
+    """Pega el N Ref recien asignado a los hallazgos de ese documento -- es lo
+    que permite corregirlos despues por celda, sin que el usuario tenga que
+    cruzar a mano nombre de archivo contra fila de Master."""
+    tocados = 0
+    for entrada in registro["errores"]:
+        if entrada["documento"] == documento and not entrada.get("n_ref"):
+            entrada["n_ref"] = n_ref
+            tocados += 1
+    return tocados
+
+
 # ── RENOMBRADO Y CONVERSIÓN DE ARCHIVOS ─────────────────────────────────────
 # Renombra cada foto/PDF a "<N Ref>_<TagProveedor>_<Fecha ISO>.<ext>" y convierte
 # HEIC->JPG. Cubre documentos nuevos y, retroactivamente, los ya registrados en
@@ -2521,9 +3315,6 @@ def aplicar_renombrados(ws_master, filas_master, reconciliacion_inversa):
 # main(), justo antes de escribir el documento en Master/Detalle -- una vez
 # registrado, inventariar_archivos() nunca lo vuelve a listar como pendiente,
 # asi que no hay riesgo de re-rotar un archivo ya corregido.
-
-EXTENSIONES_IMAGEN_ROTABLES = {".png", ".jpg", ".jpeg", ".heic"}
-
 
 def rotar_imagen(ruta, grados):
     """Rota la imagen en 'ruta' 'grados' en sentido horario (90/180/270) y la
@@ -2817,6 +3608,77 @@ def _imprimir_cuadre_impuesto(hallazgos, limite=15):
         _imprimir_lista_truncada(grupo, _fmt, limite=limite)
 
 
+def _linea_hallazgo(e):
+    donde = e.get("n_ref") or e["documento"]
+    plata = f" | impacto ${e['impacto']:,}" if e.get("impacto") else ""
+    veces = e.get("corridas_vistas", 1)
+    antiguedad = f" | visto {veces}x desde {e['primera_deteccion']}" if veces > 1 else ""
+    return (f"   * [{e['id']}] {donde} | {e['mensaje']}{plata}{antiguedad}\n"
+            f"     -> {e['accion']}")
+
+
+def imprimir_informe_hallazgos(registro, duplicados_evitados=(), limite_por_severidad=10):
+    """Informe priorizado a partir del registro persistente: primero los
+    'error' (hay algo seguro que corregir) y, dentro de cada severidad, los de
+    mayor impacto en pesos.
+
+    A diferencia del informe anterior -- que imprimia listas efimeras y
+    truncaba a 15 sin decir donde estaba el resto -- cada linea trae el id
+    estable del hallazgo (con el que se cierra), desde cuando esta abierto, y
+    la accion concreta; y el corte por severidad dice explicitamente cuantos
+    quedaron fuera y en que archivo verlos completos."""
+    abiertos = hallazgos_abiertos(registro)
+    cerrados = [e for e in registro["errores"] if e["estado"] in ESTADOS_CERRADOS]
+    auto = [e for e in cerrados if e["estado"] == "auto_resuelto"]
+
+    print("\n" + "=" * 70)
+    print("  HALLAZGOS ABIERTOS (registro persistente de errores)")
+    print("=" * 70)
+    print(f"  Abiertos: {len(abiertos)} | Cerrados historicos: {len(cerrados)} "
+          f"(de ellos {len(auto)} resueltos automaticamente)")
+    print(f"  Registro completo: {ruta_registro_errores().name}")
+
+    # Un hallazgo cerrado corrigiendo el Excel deja el valor viejo en
+    # datos_extraidos.json (que es entrada del pipeline y no se reescribe).
+    # No se reabre en cada corrida -- eso era el ruido -- pero tampoco se
+    # esconde: se dice cuantos son y que hacer.
+    origen_pendiente = [e for e in cerrados if e.get("origen_sin_corregir")]
+    if origen_pendiente:
+        print(f"  [OJO] {len(origen_pendiente)} hallazgo(s) cerrado(s) siguen con el dato "
+              f"viejo en {RUTA_JSON.name}: la correccion vive solo en el Excel. "
+              f"Corregir tambien el JSON si el documento se va a re-extraer.")
+
+    if duplicados_evitados:
+        print(f"\n  [AUTO] {len(duplicados_evitados)} copia(s) exacta(s) no se registraron "
+              f"(costo ya contabilizado):")
+        for d in duplicados_evitados[:limite_por_severidad]:
+            destino = d["n_ref_original"] or d["original"]
+            print(f"    * {d['proyecto']}\\{d['archivo']} == {destino}")
+
+    if not abiertos:
+        print("\n  Sin hallazgos abiertos.")
+        return
+
+    for severidad in ("error", "revisar", "estimado"):
+        grupo = [e for e in abiertos if e["severidad"] == severidad]
+        if not grupo:
+            continue
+        print(f"\n  [{severidad.upper()}] {len(grupo)} hallazgo(s) -- "
+              f"{ETIQUETA_SEVERIDAD_HALLAZGO[severidad]}")
+        for e in grupo[:limite_por_severidad]:
+            print(_linea_hallazgo(e))
+        if len(grupo) > limite_por_severidad:
+            print(f"   ... y {len(grupo) - limite_por_severidad} mas de esta severidad "
+                  f"(lista completa: 'Revision_de_Errores/driver.py hallazgos').")
+
+
+ETIQUETA_SEVERIDAD_HALLAZGO = {
+    "error": "el dato de hoy no puede ser bueno; hay algo seguro que corregir",
+    "revisar": "puede ser legitimo o no; hay que mirar el documento",
+    "estimado": "el dato se completo con un supuesto; conviene verificarlo",
+}
+
+
 def _resumir_lineas_detalle(lineas, ruta_log, mantener=3):
     """Escribe el detalle linea por linea en un log en disco y devuelve solo
     un resumen truncado para la consola -- no cambia ningun dato del Excel,
@@ -2945,6 +3807,38 @@ def main(pais="CL"):
     datos_json = cargar_datos_json(RUTA_JSON)
     print(f"  Entradas en {RUTA_JSON.name}: {len(datos_json)}")
 
+    # PASO 5B -- ANTES de escribir nada. Hasta la auditoria del 2026-09-10 el
+    # cuadre de impuesto corria en el PASO 13, o sea despues de guardar el
+    # libro, de copiarlo al sitio compartido, de regenerar el visualizador y de
+    # recalcular Analisis Financiero: un documento mal leido se publicaba en
+    # tres destinos antes de que nadie lo mirara, y si el Excel estaba
+    # bloqueado main() hacia 'return' antes de llegar al informe y la corrida
+    # terminaba sin reportar un solo hallazgo. Validar aca cierra las dos.
+    _paso("PASO 5B", "Validar documentos (antes de escribir)")
+    sin_datos_en_json = [
+        info for info in pendientes
+        if buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"]) is None
+    ]
+    hallazgos, copias_exactas = validar_corpus(datos_json, archivos_sin_datos=sin_datos_en_json)
+    registro_errores = cargar_registro_errores()
+    nuevos_hallazgos, reabiertos, desaparecidos = fusionar_hallazgos(registro_errores, hallazgos)
+    print(f"  Hallazgos vigentes: {len(hallazgos)} "
+          f"({len(nuevos_hallazgos)} nuevo(s), {len(reabiertos)} reabierto(s), "
+          f"{len(desaparecidos)} cerrado(s) por dejar de aparecer)")
+
+    # Copias exactas todavia pendientes de registrar: son la MISMA compra
+    # fotografiada dos veces (mismo emisor, numero, tipo, fecha y neto), asi
+    # que registrarlas duplicaria el costo. Se resuelven solas anotandolas en
+    # reconciliacion_archivos.json contra el N Ref del original -- exactamente
+    # el remedio que ya se aplico a mano en el incidente del 2026-08-19
+    # (CCON-005/CCON-011, ver notas_reconciliacion) -- y queda registrado como
+    # auto-resuelto. Es reversible: basta borrar la entrada del mapeo.
+    claves_pendientes = {clave_documento(i["proyecto"], i["archivo"]) for i in pendientes}
+    duplicados_autoresueltos = {
+        copia: original for copia, original in copias_exactas.items()
+        if copia in claves_pendientes
+    }
+
     limpiar_pie(ws_detalle)
     limpiar_pie(ws_master)
     fila_detalle = ultima_fila_datos(ws_detalle) + 1
@@ -2956,12 +3850,19 @@ def main(pais="CL"):
     registrados_ok = 0
     limitaciones = []
     alertas_legibilidad = []
-    posibles_duplicados = []
     lineas_registro_ok = []
     notas_documentos_nuevos = []
+    duplicados_evitados = []
+    # N Documento -> N Ref, solo para los numeros que aparecen UNA vez en
+    # Master: sirve para decir "esta copia es la misma compra que UMAG-014"
+    # sin arriesgarse a apuntar al documento equivocado si dos emisores
+    # distintos comparten numero.
+    docs_a_n_ref = _mapa_n_documento_a_n_ref(ws_master)
 
     _paso("PASO 6", "Escribir documentos nuevos")
+    reconciliacion_actualizada = False
     for info in pendientes:
+        clave = clave_documento(info["proyecto"], info["archivo"])
         dato = buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"])
         if not dato:
             limitaciones.append({
@@ -2979,6 +3880,29 @@ def main(pais="CL"):
             })
             continue
 
+        original = duplicados_autoresueltos.get(clave)
+        if original:
+            # Por definicion de copia exacta, el numero de esta copia es el
+            # mismo del original, asi que sirve para ubicar su fila en Master.
+            n_ref_original = docs_a_n_ref.get(normalizar_n_documento(str(dato["n_documento"])))
+            reconciliacion[info["ruta_relativa"]] = n_ref_original or original
+            reconciliacion_actualizada = True
+            for entrada in registro_errores["errores"]:
+                if entrada["documento"] == clave and entrada["codigo"] == "DUPLICADO_EXACTO":
+                    cerrar_hallazgo(
+                        registro_errores, entrada["id"], "auto_resuelto",
+                        f"No se registro: es la misma compra que {original}"
+                        f"{f' ({n_ref_original})' if n_ref_original else ''}. "
+                        f"El archivo quedo mapeado en {RUTA_RECONCILIACION.name}; "
+                        f"para deshacerlo, borrar esa entrada.")
+            duplicados_evitados.append({
+                "archivo": info["archivo"], "proyecto": info["proyecto"],
+                "original": original, "n_ref_original": n_ref_original,
+            })
+            print(f"  [AUTO] {info['proyecto']}\\{info['archivo']}: copia exacta de "
+                  f"{original}, no se registra (costo ya contabilizado).")
+            continue
+
         grados_rotacion = dato.get("rotacion")
         error_rotacion = rotar_si_corresponde(Path(info["ruta_absoluta"]), grados_rotacion)
         if error_rotacion:
@@ -2989,14 +3913,6 @@ def main(pais="CL"):
 
         n_doc_str = str(dato["n_documento"])
         n_doc_norm = normalizar_n_documento(n_doc_str)
-        # Sin numero real no hay nada que comparar: dos peajes distintos
-        # comparten el literal 'N/A' y no son el mismo documento.
-        if es_n_documento_real(n_doc_str) and (
-            n_doc_str in docs_registrados or n_doc_norm in docs_registrados
-        ):
-            posibles_duplicados.append({
-                "archivo": info["archivo"], "proyecto": info["proyecto"], "n_documento": n_doc_str,
-            })
 
         n_ref = siguiente_n_ref(dato["proyecto"], max_seq)
         color = colores.get(dato["proyecto"])
@@ -3008,9 +3924,15 @@ def main(pais="CL"):
 
         fila_detalle = escribir_items_detalle(ws_detalle, fila_detalle, n_ref, dato, color)
         escribir_fila_master(ws_master, fila_master, n_ref, dato, info, color)
+        # Los hallazgos de este documento nacieron antes de que existiera su
+        # fila en Master: recien ahora se les puede pegar el N Ref, que es lo
+        # que permite corregirlos por celda sin cruzar a mano nombre de
+        # archivo contra fila.
+        anotar_n_ref(registro_errores, clave, n_ref)
         if es_n_documento_real(n_doc_str):
             docs_registrados.add(n_doc_str)
             docs_registrados.add(n_doc_norm)
+            docs_a_n_ref.setdefault(n_doc_norm, n_ref)
 
         proyectos_tocados.add(dato["proyecto"])
         registrados_ok += 1
@@ -3028,6 +3950,18 @@ def main(pais="CL"):
 
     for linea in _resumir_lineas_detalle(lineas_registro_ok, ruta_log_run):
         print(linea)
+
+    if reconciliacion_actualizada:
+        guardar_reconciliacion(reconciliacion)
+        print(f"  [OK] {RUTA_RECONCILIACION.name} actualizado con "
+              f"{len(duplicados_evitados)} copia(s) exacta(s) evitada(s).")
+
+    # El registro de errores se persiste ACA, antes de guardar el Excel: si el
+    # libro esta bloqueado y la corrida aborta, los hallazgos de esta corrida
+    # (y las auto-resoluciones ya aplicadas) igual quedan asentados. Antes de
+    # la auditoria del 2026-09-10 un abort dejaba la corrida sin ningun
+    # informe.
+    guardar_registro_errores(registro_errores)
 
     _paso("PASO 7", "Reordenar por fecha (mas reciente arriba)")
     reordenar_por_fecha(ws_master, ws_detalle, fila_master, fila_detalle)
@@ -3054,9 +3988,20 @@ def main(pais="CL"):
     for linea in _resumir_lineas_detalle(lineas_hojas_ok, ruta_log_run):
         print(linea)
 
+    def _informe_parcial(motivo):
+        """El informe de hallazgos NO depende de haber podido guardar el
+        libro: se calculo entero en el PASO 5B. Antes de la auditoria del
+        2026-09-10 estos dos 'return' salian sin imprimir nada, asi que una
+        corrida con el Excel abierto se llevaba consigo todo el trabajo de
+        deteccion."""
+        print(f"\n[ERROR] {motivo}")
+        imprimir_informe_hallazgos(registro_errores, duplicados_evitados)
+        _informe_etapas(time.perf_counter() - inicio_run)
+
     if excel_esta_bloqueado(RUTA_EXCEL):
-        print("\n[ERROR] El archivo esta abierto en Excel (o bloqueado). Cierralo antes de continuar.")
-        print("        No se renombro ni convirtio ningun archivo; no se guardaron cambios.")
+        _informe_parcial(
+            "El archivo esta abierto en Excel (o bloqueado). Cierralo antes de continuar.\n"
+            "        No se renombro ni convirtio ningun archivo; no se guardaron cambios.")
         return
 
     _paso("PASO 10", "Renombrar y convertir archivos")
@@ -3083,7 +4028,7 @@ def main(pais="CL"):
         _guardar_y_suprimir_aviso(wb, RUTA_EXCEL)
         print(f"  [OK] Excel guardado: {RUTA_EXCEL.name}")
     except PermissionError:
-        print("  ERROR: El archivo esta abierto en Excel. Cierralo y vuelve a ejecutar.")
+        _informe_parcial("El archivo esta abierto en Excel. Cierralo y vuelve a ejecutar.")
         return
 
     _paso("PASO 12b", "Reflejar en Sitio de comunicacion")
@@ -3117,14 +4062,16 @@ def main(pais="CL"):
     print(f"\n2. CUADRE DE IMPUESTO (Neto vs {NOMBRE_IMPUESTO_PCT})")
     _imprimir_cuadre_impuesto(inconsistencias)
 
-    print("\n3. POSIBLES DUPLICADOS (mismo N Documento que uno ya registrado)")
-    if posibles_duplicados:
-        _imprimir_lista_truncada(
-            posibles_duplicados,
-            lambda dup: f"   * {dup['proyecto']}\\{dup['archivo']} | N Documento: {dup['n_documento']}",
-        )
-    else:
-        print("   Sin hallazgos.")
+    # Los duplicados se reportan en HALLAZGOS ABIERTOS (DUPLICADO_EXACTO /
+    # DUPLICADO_AMBIGUO). Aca habia un detector aparte, escrito dentro del
+    # bucle de escritura, que comparaba el N Documento GLOBALMENTE ignorando el
+    # emisor -- y un numero es unico POR EMISOR (ver CLAUDE.md del modulo).
+    # Sobre las 681 entradas reales emitia 8 avisos donde detectar_duplicados()
+    # emite 6: los 2 de mas eran emisores distintos que comparten numero. Solo
+    # miraba nuevo-contra-ya-registrado (nunca dos filas ya registradas) y era
+    # sensible al orden del inventario, asi que marcaba indistintamente a
+    # cualquiera de los dos miembros del par. Eliminado el 2026-09-10.
+    print("\n3. POSIBLES DUPLICADOS -- ver HALLAZGOS ABIERTOS (DUPLICADO_EXACTO/AMBIGUO)")
 
     print("\n4. LIMITACIONES DE REGISTRO")
     if limitaciones:
@@ -3159,15 +4106,23 @@ def main(pais="CL"):
     else:
         print("   Sin hallazgos.")
 
+    imprimir_informe_hallazgos(registro_errores, duplicados_evitados)
+
     print("\n" + "-" * 70)
     print("  RESUMEN FINAL")
     print("-" * 70)
-    print(f"  {'Documentos nuevos registrados:':<40} {registrados_ok}")
-    print(f"  {'Documentos omitidos (ya registrados):':<40} {len(omitidos)}")
-    print(f"  {'Posibles duplicados:':<40} {len(posibles_duplicados)}")
-    print(f"  {'Limitaciones (faltan datos en JSON):':<40} {len(limitaciones)}")
-    print(f"  {'Archivos renombrados/convertidos:':<40} {renombrados}")
-    print(f"  {'Correcciones manuales pendientes de confirmar:':<40} {len(correcciones_pendientes)}")
+    abiertos_ahora = hallazgos_abiertos(registro_errores)
+    print(f"  {'Documentos nuevos registrados:':<44} {registrados_ok}")
+    print(f"  {'Documentos omitidos (ya registrados):':<44} {len(omitidos)}")
+    print(f"  {'Copias exactas evitadas (auto-resueltas):':<44} {len(duplicados_evitados)}")
+    print(f"  {'Limitaciones (faltan datos en JSON):':<44} {len(limitaciones)}")
+    print(f"  {'Archivos renombrados/convertidos:':<44} {renombrados}")
+    print(f"  {'Correcciones manuales pendientes de confirmar:':<44} {len(correcciones_pendientes)}")
+    print(f"  {'Hallazgos abiertos (error/revisar/estimado):':<44} "
+          f"{len(abiertos_ahora)} "
+          f"({sum(1 for e in abiertos_ahora if e['severidad'] == 'error')}/"
+          f"{sum(1 for e in abiertos_ahora if e['severidad'] == 'revisar')}/"
+          f"{sum(1 for e in abiertos_ahora if e['severidad'] == 'estimado')})")
     _informe_etapas(time.perf_counter() - inicio_run)
     print("\n" + "=" * 70)
 

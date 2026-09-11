@@ -1,6 +1,6 @@
 ---
 name: Revision_de_Errores
-description: Usar cuando el usuario escribe "/Revision_de_Errores" explícitamente. Si en cambio pide en lenguaje natural (sin el "/") revisar errores, corregir datos ilegibles, resolver celdas rojas, desglosar ítems agrupados/no identificados, o repasar el registro de correcciones manuales del Centro de Costos, pedir confirmación antes de invocarlo (ver CLAUDE.md raíz § Invocación de skills) -- nunca activarlo automático. Recorrido guiado, uno por uno, de (a) las celdas de "Centro de Costos.xlsx" marcadas en rojo (requieren revisión) y (b) las filas de Detalle que agrupan en 1 solo ítem una parte de una compra que no se pudo identificar línea por línea (ej. "Materiales varios") -- muestra la foto del documento asociado, pide al usuario el valor correcto o el desglose correcto, lo aplica en el Excel con fuente azul marino oscuro, actualiza el registro de correcciones, y refleja el resultado en ambas copias del libro.
+description: Usar cuando el usuario escribe "/Revision_de_Errores" explícitamente. Si en cambio pide en lenguaje natural (sin el "/") revisar errores, corregir datos ilegibles, resolver celdas rojas, desglosar ítems agrupados/no identificados, o repasar el registro de correcciones manuales del Centro de Costos, pedir confirmación antes de invocarlo (ver CLAUDE.md raíz § Invocación de skills) -- nunca activarlo automático. Recorrido guiado, uno por uno, de (a) los hallazgos abiertos del registro de errores (cualquier clase: impuesto, fecha, proveedor, categoría, tipo de documento, duplicados), (b) las celdas de "Centro de Costos.xlsx" marcadas en rojo (requieren revisión) y (c) las filas de Detalle que agrupan en 1 solo ítem una parte de una compra que no se pudo identificar línea por línea (ej. "Materiales varios") -- muestra la foto del documento asociado, pide al usuario el valor correcto o el desglose correcto, lo aplica en el Excel con fuente azul marino oscuro, actualiza el registro de correcciones, y refleja el resultado en ambas copias del libro.
 ---
 
 # Revisión de errores: Centro de Costos
@@ -16,13 +16,71 @@ conversación** -- sin que el usuario tenga que abrir Excel y editar la celda
 propagada a Detalle/Master, registrada como "Aplicado"), solo cambia cómo se
 obtiene el valor.
 
-Dos tipos de hallazgo, dos comandos de lectura y dos de escritura -- ver
+Tres tipos de hallazgo, con su comando de lectura y el de escritura -- ver
 "Qué cuenta como..." de cada uno más abajo:
 
 | Tipo | Listar (solo lectura) | Aplicar |
 |---|---|---|
+| **Hallazgo del registro** (cualquier clase) | `hallazgos` | `resolver <ID> "<VALOR>"` / `descartar <ID> "<motivo>"` |
 | Celda roja de Master | `errores` | `corregir <N_REF> <CAMPO> <VALOR>` |
 | Ítem agrupado de Detalle | `agrupados` | `desglosar <N_REF> '<ITEMS_JSON>'` |
+
+**`hallazgos`/`resolver` es el camino preferido desde 2026-09-10** y cubre a
+`errores`/`corregir` (que siguen funcionando igual, para las dos columnas
+rojas). La diferencia es el alcance: `errores` solo ve las dos columnas que
+el script pinta de rojo (N° Documento e impuesto), mientras que `hallazgos`
+lee el **registro persistente** que `run` deja en
+`Sistema/errores_detectados.json` y que incluye todo lo que la validación
+temprana detecta: fechas ilegibles o futuras, proveedor o categoría en
+blanco, tipos de documento fuera del vocabulario, notas de crédito con signo
+o impuesto incoherente, compras con neto ≤ 0, cantidades ≤ 0, duplicados y
+documentos sin entrada en el JSON. Antes ninguno de esos tenía un camino de
+corrección que dejara rastro: había que editar el `.xlsx` a mano y la
+comparación contra el backup no los detectaba (solo mira celdas rojas).
+
+### `hallazgos` / `resolver` / `descartar`
+
+```
+py -3.14 ".claude/skills/Revision_de_Errores/driver.py" hallazgos            # todos
+py -3.14 ".claude/skills/Revision_de_Errores/driver.py" hallazgos error      # solo los seguros
+py -3.14 ".claude/skills/Revision_de_Errores/driver.py" resolver <ID> "<VALOR>"
+py -3.14 ".claude/skills/Revision_de_Errores/driver.py" descartar <ID> "<motivo>"
+```
+
+- **`hallazgos`** imprime, priorizado por severidad y por impacto en pesos:
+  el `<ID>` estable con el que se resuelve, el `N° Ref.`, el mensaje con
+  causa y contexto, la acción recomendada, y desde cuándo está abierto
+  (`visto 4x desde 2026-08-30`). Severidades: `error` (el dato de hoy no
+  puede ser bueno), `revisar` (hay que mirar el documento), `estimado` (el
+  dato se completó con un supuesto).
+- **`resolver` acepta varios pares `<ID> "<VALOR>"` en una sola llamada** y
+  los aplica con **una** apertura del libro, **un** respaldo y **un**
+  guardado. Resolver de a uno cuesta eso por cada celda (openpyxl tarda
+  ~0,3-0,8 s por apertura de este libro), así que si vas a cerrar varios,
+  júntalos:
+  ```
+  py -3.14 driver.py resolver a1b2c3 "Ferreteria" d4e5f6 "03-08-2026" 7g8h9i "Proveedor Real SpA"
+  ```
+  Hace lo mismo que `corregir` para cada celda (respaldo → valor → fuente
+  azul marino → propagación a `Detalle` → entrada en
+  `correcciones_manuales.json` + `ERRORES.md`) y además cierra el hallazgo
+  en el registro con el detalle del cambio. Acepta `--nota "<texto>"` para
+  el último par, que queda como comentario de Excel.
+- **`descartar`** cierra un hallazgo porque, mirando el documento, el dato
+  está bien. **Exige un motivo** y lo guarda: descartar deja constancia, no
+  borra. Nunca lo uses para acortar la lista.
+- `resolver` **rechaza** (sin escribir nada) un ID que no exista, uno ya
+  cerrado, uno cuyo documento todavía no tenga fila en `Master`, y uno cuya
+  clase no se arregle escribiendo una celda (falta la entrada del JSON, hay
+  que desglosar ítems, hay que borrar un documento duplicado). El mensaje de
+  rechazo dice cuál es la acción que sí corresponde.
+- Un hallazgo resuelto **no reaparece** en las corridas siguientes mientras
+  el dato de origen no cambie. `datos_extraidos.json` es entrada del
+  pipeline y no se reescribe, así que el valor viejo sigue ahí: el informe
+  lo dice con un `[OJO] N hallazgo(s) cerrado(s) siguen con el dato viejo en
+  datos_extraidos.json`, para que se corrija también ahí si el documento se
+  va a re-extraer. Si el dato de origen cambia a **otro** valor, el hallazgo
+  se reabre solo.
 
 **Siempre, al terminar el recorrido (haya o no correcciones aplicadas en la
 sesión), correr `python driver.py reflejar`** -- copia
@@ -86,6 +144,23 @@ que no incluya "varios", esta skill no lo va a encontrar solo con
 en la conversación.
 
 ## Procedimiento
+
+**Paso 0 -- listar los hallazgos abiertos (solo lectura, empieza por acá):**
+
+```
+py -3.14 ".claude/skills/Revision_de_Errores/driver.py" hallazgos
+```
+
+Es la vista completa y priorizada. Recórrela de arriba hacia abajo (primero
+los `error`, dentro de cada severidad primero los de mayor impacto en pesos),
+mostrando la foto del documento igual que en el Paso 2, y ciérralos con
+`resolver`/`descartar`. **Junta varios `<ID> "<VALOR>"` en una sola llamada a
+`resolver`** en vez de una llamada por celda.
+
+Los Pasos 1-3 de abajo son el recorrido histórico por celdas rojas: siguen
+siendo válidos y llegan al mismo resultado, pero solo cubren las dos columnas
+que el script pinta de rojo. Úsalos si el usuario pide explícitamente "las
+celdas rojas"; si no, el Paso 0 ya las incluye.
 
 **Paso 1 -- listar los errores (solo lectura):**
 
@@ -247,7 +322,19 @@ nuevo la próxima vez que se corra `errores`/`agrupados`.
   final de cada corrida, PASO 12b), `corregir`/`desglosar` NUNCA tocan la
   copia de Sitio de comunicación por sí mismos; es un paso aparte (Paso 6)
   que hay que correr siempre al terminar.
-- Implementación: `listar_celdas_rojas`, `corregir_valor_manual`,
+- **`resolver` no puede escribir una celda cualquiera**: solo actúa si hay un
+  hallazgo ABIERTO en el registro que diga que esa celda está mal. Es a
+  propósito -- la puerta de entrada es el hallazgo, no la celda.
+- **El registro lo escribe `run`**, no esta skill: si `hallazgos` dice "No hay
+  registro de errores todavía", corre primero
+  `Registro_Centro_de_Costos/driver.py run` (o `status`, que muestra la misma
+  validación sin escribir).
+- Implementación del recorrido por registro: `validar_documento`,
+  `validar_corpus`, `fusionar_hallazgos`, `corregir_hallazgos`,
+  `descartar_hallazgo` en `Sistema/auditor_centro_costos.py`; tests en
+  `Sistema/tests/test_validacion_documentos.py`,
+  `test_resolucion_hallazgos.py` y `test_pipeline_errores.py`.
+- Implementación del recorrido por celdas rojas: `listar_celdas_rojas`, `corregir_valor_manual`,
   `listar_items_agrupados`, `desglosar_item_agrupado` y
   `reflejar_a_sitio_comunicacion` en `Sistema/auditor_centro_costos.py`;
   tests en `Sistema/tests/test_revision_errores.py`.

@@ -186,10 +186,36 @@ def cmd_status(pais="CL"):
     escribibles = len(pendientes) - len(sin_datos)
     print(f"\nSi corres 'run' ahora se registrarían: {escribibles} documento(s).")
 
-    print(f"\nCuadre de impuesto sobre TODO datos_extraidos.json (Neto vs {acc.NOMBRE_IMPUESTO_PCT}):")
-    # Mismo formateo agrupado por severidad que usa el informe de 'run' -- lo
-    # provee el modulo, no se duplica aca.
-    acc._imprimir_cuadre_impuesto(acc.verificar_aritmetica(datos_json))
+    # 'status' corre EXACTAMENTE la misma validacion que 'run' (PASO 5B), no
+    # una version reducida: hasta la auditoria del 2026-09-10 'status' solo
+    # mostraba el cuadre de impuesto, asi que un documento con fecha ilegible,
+    # proveedor en blanco o tipo de documento desconocido pasaba el 'status'
+    # sin una sola senal y recien aparecia despues de escribirlo. Es el mismo
+    # tipo de hueco que la divergencia del KPI "Nota del Proyecto" (2026-07-28)
+    # y el de la taxonomia duplicada en JavaScript (2026-09-08): dos caminos
+    # calculando lo mismo terminan divergiendo.
+    print(f"\nValidacion sobre TODO datos_extraidos.json "
+          f"(lo mismo que hara 'run'; cuadre contra {acc.NOMBRE_IMPUESTO_PCT}):")
+    hallazgos, copias_exactas = acc.validar_corpus(datos_json, archivos_sin_datos=sin_datos)
+    if not hallazgos:
+        print("  Sin hallazgos.")
+    else:
+        for severidad in ("error", "revisar", "estimado"):
+            grupo = [h for h in hallazgos if h["severidad"] == severidad]
+            if not grupo:
+                continue
+            print(f"\n  [{severidad.upper()}] {len(grupo)} hallazgo(s) -- "
+                  f"{acc.ETIQUETA_SEVERIDAD_HALLAZGO[severidad]}")
+            por_codigo = {}
+            for h in grupo:
+                por_codigo.setdefault(h["codigo"], []).append(h)
+            for codigo, hs in sorted(por_codigo.items(), key=lambda kv: -len(kv[1])):
+                print(f"    * {codigo}: {len(hs)} documento(s) -- {hs[0]['accion']}")
+    if copias_exactas:
+        print(f"\n  [AUTO] {len(copias_exactas)} copia(s) exacta(s) que 'run' resolveria sola(s) "
+              f"(no las registraria dos veces).")
+    print("\n  Detalle hallazgo por hallazgo (con su id para resolverlo): "
+          "'Revision_de_Errores/driver.py hallazgos'.")
 
     mostrar_preview_renombrados(filas_master, reconciliacion)
 

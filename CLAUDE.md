@@ -61,6 +61,36 @@ Reglas aprendidas midiendo, que conviene no reaprender a golpes:
   `main(pais="<ese>")`, más un guard que aborte si alguna ruta de escritura
   quedó fuera del sandbox.
 
+## Errores: se validan antes de escribir y se cierran, no se reimprimen
+
+Desde la auditoría del 2026-09-10, Centro de Costos valida cada documento
+**antes** de escribirlo (PASO 5B) y lleva un registro persistente de errores
+con ciclo de vida (`Sistema/errores_detectados.json`, gitignoreado — lleva
+montos reales). Antes, el cuadre de impuesto corría en el PASO 13, después de
+publicar el libro en sus tres consumidores, y los hallazgos solo existían como
+texto de consola: no había forma de cerrarlos ni de evitar que se reimprimieran
+idénticos en cada corrida.
+
+Lo que conviene no reaprender, medido con `Centro de Costos/Sistema/bench/`:
+
+- **Un hallazgo que solo se imprime no es un hallazgo resuelto.** Sobre un
+  corpus con 36 defectos conocidos, el proceso anterior cerraba 10; el actual,
+  24. La diferencia no es mejor detección (eso también subió, de 61 % a 100 %
+  de recall) sino que existan canales de cierre auditados para más clases de
+  error.
+- **Resolver de a una celda cuesta una apertura de libro cada vez.** Corregir
+  por lote bajó el tiempo medio por resolución de 0,71 s a 0,14 s.
+- **Dos caminos calculando lo mismo terminan divergiendo** — ya pasó con el KPI
+  "Nota del Proyecto" (2026-07-28) y con la taxonomía duplicada en JavaScript
+  (2026-09-08). Por eso `status` y `run` corren ahora *la misma* función de
+  validación, y el detector de duplicados que vivía dentro del bucle de
+  escritura se eliminó (ignoraba el emisor y producía 2 falsos positivos sobre
+  las 681 entradas reales).
+
+**Si agregas un módulo que valide documentos, reutiliza `validar_documento()` /
+el registro de errores en vez de escribir otro** — mismo criterio que con el
+motor de taxonomía del Cotizador.
+
 ## Invocación de skills: siempre con "/", nunca automática por lenguaje natural
 
 Pedido explícito del usuario, 2026-08-18: todos los skills de `Finanzas

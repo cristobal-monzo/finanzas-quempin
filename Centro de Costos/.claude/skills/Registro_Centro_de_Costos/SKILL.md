@@ -208,9 +208,17 @@ automáticamente. Directa y simple, columnas fijas:
 
 Dos fuentes, ambas obligatorias:
 
-1. **Lo que ya reporta la consola** (secciones 1-4 del "INFORME DE
-   AUDITORIA": alertas de legibilidad, inconsistencias aritméticas, posibles
-   duplicados, limitaciones de registro).
+1. **Lo que ya reporta la consola**: desde 2026-09-10 la fuente principal es
+   el bloque **"HALLAZGOS ABIERTOS"**, que sale del registro persistente
+   (`Sistema/errores_detectados.json`) priorizado por severidad e impacto en
+   pesos, y trae el `<ID>` con el que cada hallazgo se cierra. Cubre todo lo
+   que antes estaba repartido en las secciones 1-4 del "INFORME DE AUDITORIA"
+   (legibilidad, cuadre de impuesto, duplicados, limitaciones) **más** las
+   clases que antes no miraba nadie: fecha ilegible o futura, proveedor o
+   categoría en blanco, tipo de documento fuera del vocabulario, nota de
+   crédito con signo o impuesto incoherente, compra con neto ≤ 0, cantidad
+   ≤ 0. Las secciones 5-7 (renombrado, cambios manuales pendientes, notas del
+   JSON) siguen siendo su propia fuente: no son hallazgos del registro.
 2. **Imprecisiones que el agente note al leer `datos_extraidos.json` y la
    fila escrita en Master/Detalle durante esta corrida**, aunque el script
    no las marque: campo `"notas"` con alguna ambigüedad, nombre de

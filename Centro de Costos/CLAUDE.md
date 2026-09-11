@@ -300,6 +300,91 @@ pipeline anterior perdido (ver "Historia" más arriba). Tres tipos de hoja:
 - **`Excel/Respaldos/`**: copias de seguridad automáticas (una por cada `run`, incluso sin cambios), organizadas en una subcarpeta por mes (ej. `Julio 2026/`), más cualquier backup manual. Desechables, pero no borrar sin confirmar con el usuario.
 - **`Sistema/Legado/`**: archivos históricos que el script ya no lee, conservados solo por trazabilidad.
 
+## El proceso de errores: validar antes de escribir, y poder cerrarlos
+
+Reescrito en la auditoría del 2026-09-10. Antes, la detección estaba repartida
+en cuatro sitios de `main()` y no dejaba rastro: `limitaciones` y
+`alertas_legibilidad` se armaban **dentro** del bucle de escritura (PASO 6),
+`posibles_duplicados` también, y el cuadre de impuesto corría en el **PASO 13**
+— o sea después de guardar el libro (PASO 12), de reflejarlo al sitio
+compartido (12b), de regenerar el visualizador (12c) y de recalcular Análisis
+Financiero (12d). Medido sobre un corpus con defectos conocidos, eso significaba
+que **el 100 % de los defectos detectados se publicaba en los tres consumidores
+antes de que nadie los mirara**, y que si el Excel estaba abierto la corrida
+hacía `return` antes del informe y **terminaba sin reportar un solo hallazgo**.
+
+Tres piezas nuevas:
+
+**1. `validar_documento()` / `validar_corpus()` — PASO 5B, antes de escribir.**
+Función pura que concentra todos los chequeos y devuelve hallazgos tipados con
+causa, contexto, acción recomendada e impacto en pesos. Además del cuadre de
+impuesto y el N° Documento ilegible (que ya existían), cubre clases que **antes
+no miraba nadie**: cantidad ≤ 0, compra con neto ≤ 0 (el precedente real
+"Signo de IVA / P.Unitario / Totales (AYRSA)"), nota de crédito con signo o
+impuesto incoherente (`severidad_cuadre_impuesto` no las mira, así que su
+impuesto no lo verificaba nadie), tipo de documento fuera del vocabulario (que
+además quedaba silenciosamente exento), fecha ilegible o futura, y
+proveedor/categoría en blanco. `driver.py status` corre **exactamente** la
+misma función, no una versión reducida.
+
+**Una línea de precio negativo en una factura NO es un error** — es un
+descuento, y hay varios reales en `ERRORES.md`. Lo que se marca es que el
+documento termine con neto ≤ 0. Verificado contra las 681 entradas reales: la
+validación nueva no produce **ningún** falso positivo (los mismos 35 hallazgos
+de impuesto y 34 de legibilidad que antes, más 1 tipo de documento desconocido
+que antes era invisible).
+
+**2. `Sistema/errores_detectados.json` — registro persistente con ciclo de
+vida.** Es al informe de auditoría lo que `correcciones_manuales.json` es a las
+celdas rojas: la memoria que convierte "lo que se imprimió esta vez" en "lo que
+sigue abierto". Cada hallazgo tiene un `id` estable
+(`sha1(codigo|proyecto\archivo|campo)`) y estados `abierto` → `auto_resuelto` /
+`resuelto` / `descartado`. La identidad usa el `archivo` del **JSON**, no el
+nombre físico: el renombrado automático cambia el nombre en disco en la primera
+corrida, y usar ese nombre haría que el mismo hallazgo cambiara de identidad
+entre corridas y se re-emitiera como nuevo. Está en `.gitignore`
+(`**/errores_detectados*.json`): lleva montos y números de documento reales.
+
+Un hallazgo cerrado **no se reabre** mientras el dato de origen no cambie.
+`datos_extraidos.json` es entrada del pipeline y no se reescribe nunca, así que
+corregir el Excel deja el valor viejo ahí; reabrirlo en cada corrida era
+justamente lo que hacía que los mismos 35 descuadres se reimprimieran para
+siempre. No se oculta: el informe dice cuántos son con un `[OJO]` y qué hacer.
+Si el origen cambia a **otro** valor, se reabre solo.
+
+**3. `corregir_hallazgos()` — un canal de resolución, auditado y por lote.**
+Antes, el único camino auditado para corregir un dato eran las dos columnas que
+el script pinta de rojo. Si el extractor dejaba la categoría en blanco, el
+proveedor vacío o la fecha ilegible, **no había forma soportada de arreglarlo**:
+había que editar el `.xlsx` a mano y esperar que la comparación contra el backup
+lo notara — y esa comparación solo mira celdas **rojas**, así que no lo notaba
+nunca. El dato quedaba corregido sin constancia de quién lo cambió.
+
+Ahora cualquier hallazgo cuya clase declare una columna de `Master`
+(`COLUMNAS_CORREGIBLES`) se resuelve por el mismo camino auditado, y **N
+correcciones comparten una apertura del libro, un respaldo y un guardado**.
+La puerta de entrada es "hay un hallazgo abierto que dice que esta celda está
+mal", no "escríbeme cualquier celda". Ver
+[Revision_de_Errores/SKILL.md](.claude/skills/Revision_de_Errores/SKILL.md) §
+`hallazgos`/`resolver`/`descartar`.
+
+**Copias exactas: se resuelven solas.** Dos entradas con el mismo emisor,
+número, tipo, fecha y neto son la misma compra fotografiada dos veces —
+registrarlas duplica el costo. La segunda no se escribe: se anota en
+`reconciliacion_archivos.json` contra el `N° Ref.` de la original y queda
+`auto_resuelto` en el registro. Es exactamente el remedio que ya se aplicó **a
+mano** en el incidente del 2026-08-19 (CCON-005/CCON-011, ver
+`notas_reconciliacion`), ahora automático y reversible (basta borrar la entrada
+del mapeo). Si algo difiere entre las dos, es `DUPLICADO_AMBIGUO` y lo resuelve
+una persona: hay que comparar las fotos.
+
+**Cómo se mide todo esto**: `Sistema/bench/` monta un Centro de Costos
+desechable con un corpus anonimizado de defectos conocidos y reporta recall,
+falsos positivos, tasa de errores sin resolver, resolución automática y tiempos.
+Ver [bench/README.md](Sistema/bench/README.md). Si tocas el proceso de errores,
+corre el benchmark antes y después — es la única forma de saber si mejoraste
+algo o solo moviste texto de consola.
+
 ## Cuadre de impuesto y duplicados: por qué hay severidades
 
 Reescrito en la auditoría del 2026-09-09. Las dos verificaciones que emitían
