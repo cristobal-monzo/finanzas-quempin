@@ -90,8 +90,11 @@ PREFIJOS_PROYECTO = {
     "Putaendo Hospital Pinel": "HPIN",
     "FACH2": "FCH2",
     "FACH1": "FCH1",
-    "Junji V2": "JUN2",
 }
+# "Junji V2" (JUN2) existio entre el 2026-09-10 y el 2026-09-11: era el
+# reingreso de facturas que en "Junji's Valparaiso" se habian cargado cortadas,
+# no un proyecto aparte. Se fusiono en JUNJ (JUN2-001..016 -> JUNJ-240..255),
+# asi que su prefijo ya no se asigna.
 
 # Config por pais -- moneda/impuesto/rutas que varian entre Chile y Peru.
 # Los valores de "CL" son literalmente las constantes de arriba (cero cambio
@@ -1665,6 +1668,14 @@ def migrar_color_cuadre_impuesto(ws_master, ws_detalle):
             "categoria": ws_master.cell(row=fila, column=cols_m["Categoría"]).value,
             "iva": iva,
         }
+        if _celda_es_azul_marino(celda_iva):
+            # Ya la adjudico una persona mirando el documento. Repintarla de
+            # rojo borra esa marca y vuelve a pedir una correccion que ya se
+            # hizo: es lo que paso con UMAG-005 entre el 2026-07-17 (se
+            # corrigio) y el 2026-09-14 (reaparecio en /Revision_de_Errores
+            # como si nadie la hubiera visto).
+            continue
+
         debe_estar_roja = severidad_cuadre_impuesto(dato, neto_por_n_ref[n_ref], iva) == "error"
         esta_roja = _celda_es_roja(celda_iva)
         if esta_roja and not debe_estar_roja:
@@ -2647,8 +2658,17 @@ ORDEN_SEVERIDAD = {"error": 0, "revisar": 1, "estimado": 2}
 # Vocabulario de tipos de documento que el modulo sabe tratar. Todo lo demas
 # cae hoy en "no afecto" sin avisar (y por lo tanto con impuesto 0), que es
 # justamente lo que TIPO_DOC_DESCONOCIDO viene a hacer visible.
+# "factura exenta": venta sin IVA. Caso real: las facturas de la Zona Franca
+# de Punta Arenas (Crosur, UMAG-005/020), que llevan el impuesto del Art. 11
+# de la Ley 18.211 -- 0,15% sobre el CIF, incluido en el precio -- y nunca el
+# 19%. Queda FUERA de TIPOS_AFECTOS a proposito: mientras se registraron como
+# "Factura", el cuadre las media contra el 19% del neto y su celda de
+# impuesto volvia a rojo en CADA corrida, corrigiera lo que corrigiera el
+# usuario (se corrigio a mano el 2026-07-17 y reaparecio igual el
+# 2026-09-14).
 TIPOS_DOCUMENTO_CONOCIDOS = frozenset({
-    "factura", "boleta", "guia de despacho", "nota de credito",
+    "factura", "factura exenta", "boleta", "guia de despacho",
+    "nota de credito",
 })
 
 # Un documento fechado despues de hoy no existe. Se deja un dia de holgura

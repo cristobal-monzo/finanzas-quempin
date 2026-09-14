@@ -198,3 +198,24 @@ def test_sin_otros_impuestos_sigue_la_regla_por_categoria():
     """Compatibilidad: las 660 entradas existentes no declaran el campo."""
     assert acc.verificar_aritmetica([_doc(iva=10661, neto=19339, categoria="Combustible")]) == []
     assert len(acc.verificar_aritmetica([_doc(iva=10661, neto=19339, categoria="Ferreteria")])) == 1
+
+
+def test_factura_exenta_no_cuadra_contra_el_19_por_ciento():
+    """Zona Franca (UMAG-005/020, Crosur Punta Arenas, 2026-09-14): la venta
+    es exenta y el documento solo lleva el impuesto Art. 11 Ley 18.211
+    (0,15% sobre el CIF, incluido en el precio), nunca el 19%. Sin un tipo
+    propio, toda "Factura" se cuadraba contra el 19% y la celda volvia a rojo
+    en cada corrida hiciera lo que hiciera el usuario.
+    """
+    assert not acc.es_documento_afecto("Factura Exenta")
+    assert acc.severidad_cuadre_impuesto(_doc("Factura Exenta", iva=0), 20800, 0) is None
+    assert acc.verificar_aritmetica([_doc("Factura Exenta", iva=0, neto=20800)]) == []
+
+
+def test_factura_exenta_esta_en_el_vocabulario():
+    """Si no esta, validar_documento la reporta como TIPO_DOC_DESCONOCIDO en
+    cada corrida: se cambia un hallazgo permanente por otro."""
+    assert "factura exenta" in acc.TIPOS_DOCUMENTO_CONOCIDOS
+    codigos = [h["codigo"] for h in acc.validar_documento(
+        _doc("Factura Exenta", iva=0, neto=20800, categoria="Materiales"))]
+    assert "TIPO_DOC_DESCONOCIDO" not in codigos

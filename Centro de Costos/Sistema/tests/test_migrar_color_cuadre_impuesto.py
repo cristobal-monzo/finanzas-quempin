@@ -125,3 +125,24 @@ def test_ignora_filas_sin_neto_en_detalle():
 
     assert acc.migrar_color_cuadre_impuesto(ws_m, ws_d) == (0, 0)
     assert acc._celda_es_roja(ws_m.cell(row=2, column=col))
+
+
+def test_respeta_una_celda_ya_corregida_a_mano():
+    """Azul marino = el valor lo adjudico una persona mirando el documento
+    (ver CLAUDE.md del modulo). Repintarlo de rojo borra esa marca y vuelve a
+    pedir una correccion que ya se hizo.
+
+    Caso real que lo destapo (2026-09-14): UMAG-005 y UMAG-020 son facturas
+    de Zona Franca de Punta Arenas, exentas de IVA. Se corrigieron a mano el
+    2026-07-17 y quedaron azules; una corrida posterior las volvio a pintar
+    de rojo porque su impuesto 0 nunca va a ser el 19% del neto, y en la
+    revision del 2026-09-14 reaparecieron como si nadie las hubiera visto.
+    """
+    ws_m, ws_d, col = _libro([("UMAG-1", "Factura", "Ferreteria", 0, 20800, False)])
+    ws_m.cell(row=2, column=col).font = acc.AZUL_MARINO_FONT
+
+    limpiadas, marcadas = acc.migrar_color_cuadre_impuesto(ws_m, ws_d)
+
+    assert (limpiadas, marcadas) == (0, 0)
+    assert acc._celda_es_azul_marino(ws_m.cell(row=2, column=col))
+    assert not acc._celda_es_roja(ws_m.cell(row=2, column=col))

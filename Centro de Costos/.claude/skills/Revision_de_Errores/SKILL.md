@@ -394,3 +394,40 @@ nuevo la próxima vez que se corra `errores`/`agrupados`.
   `listar_items_agrupados`, `desglosar_item_agrupado` y
   `reflejar_a_sitio_comunicacion` en `Sistema/auditor_centro_costos.py`;
   tests en `Sistema/tests/test_revision_errores.py`.
+
+## Cuando el dato no se puede leer: abrir el documento y pedirlo, no dejarlo pendiente
+
+**Pedido explícito del usuario (2026-09-14)**, aplicable a todo hallazgo de
+este recorrido: si tras agotar lo automático el dato sigue sin poder
+resolverse (ilegible o ambiguo), **no se cierra con un placeholder ni se deja
+como pendiente "para más adelante"**. Se procede así:
+
+1. **Abrir el documento y mandárselo** con `SendUserFile`: el PDF/foto
+   original **más** un recorte ampliado que marque dónde está el dato.
+2. **Presentar el error concreto**: qué parte sí se leyó y qué falta
+   exactamente (ej. "11 de los 12 dígitos son ciertos: `#1477268_7948`, falta
+   el octavo").
+3. **Pedir el ingreso manual** del valor y aplicarlo con `corregir` /
+   `resolver` cuando el usuario lo entregue.
+
+Si varios `N° Ref.` comparten la misma foto (pasa seguido: ver la nota de
+fotos sin recortar en HISTORIAL.md, 2026-09-14), decirlo y mandar el archivo
+una sola vez en vez de copias repetidas.
+
+**Antes de llegar acá, agotar lo automático** — en la revisión del 2026-09-14
+eso cerró 20 de 24 celdas. Vale la pena, en este orden:
+
+- extraer la **imagen embebida a resolución nativa** (`fitz` →
+  `extract_image`) en vez de renderizar la página: las fotos de este módulo
+  llegan a 2479x3229, y renderizar a 150 dpi las baja a 1240 px, perdiendo
+  detalle que sí está en el archivo;
+- si la imagen es RGB, **separar canales** (un pliegue o una sombra puede
+  desaparecer en uno de ellos);
+- **umbral** y **resta de fondo** (gaussiano de radio grande) para despegar
+  una marca de agua preimpresa del texto térmico;
+- buscar el mismo comprobante en **otra foto** del módulo (las fotos agrupan
+  varios documentos y uno puede repetirse en dos tomas).
+
+Lo que **no** recupera nada, comprobado: la tinta térmica perdida en una
+banda vertical, el papel doblado sobre el número, y el texto de ~10 px de
+alto bajo una marca de agua. Ahí se pasa directo a pedir el dato.
