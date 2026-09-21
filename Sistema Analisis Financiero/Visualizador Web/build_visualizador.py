@@ -95,6 +95,26 @@ def es_proyecto_completo(p: dict) -> bool:
     return af.tiene_datos_completos(lambda campo: p.get(CLAVE_POR_ENCABEZADO[campo]))
 
 
+def campos_faltantes(p: dict) -> list[str]:
+    """Que le falta a un proyecto pendiente, con los nombres de columna de la
+    planilla -- misma regla que es_proyecto_completo (af.campos_faltantes)."""
+    return af.campos_faltantes(lambda campo: p.get(CLAVE_POR_ENCABEZADO[campo]))
+
+
+def es_gastos_generales(p: dict) -> bool:
+    """El bucket de gastos internos nunca tiene venta (ver
+    af.CATEGORIA_GASTOS_GENERALES): no es un proyecto 'pendiente de
+    completar' ni cuenta en la cobertura del analisis."""
+    return p["categoria"] == af.CATEGORIA_GASTOS_GENERALES
+
+
+def _orden_pendiente(p: dict):
+    """Primero lo que mas venta deja fuera del analisis; los que ni siquiera
+    tienen venta cargada, al final. A igual venta, el que menos le falta."""
+    venta = p["monto_venta"]
+    return (venta is None, -(venta or 0), len(p["campos_faltantes"]), p["nombre"])
+
+
 def sumar_costos_reales_por_bucket(ws_detalle, tag: str) -> dict:
     """Recomputa las 3 sumas que en 'Proyectos' son SUMIFS hacia 'Detalle
     Costos Reales' -- lee esa hoja directo (100% valores) en vez de confiar
@@ -382,13 +402,16 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
             kpi["peso_cartera_pct"] = peso_cartera_por_tag.get(p["tag"], 0.0)
             kpi["detalle_subcategorias"] = detalle_subcategorias_por_tag.get(p["tag"], [])
             completos.append(kpi)
-        else:
+        elif not es_gastos_generales(p):
             pendientes.append({
                 "tag": p["tag"],
                 "nombre": p["nombre"],
                 "mensaje": f"{p['nombre']} — Falta ingresar información en 'Análisis de Proyectos'",
                 "link": URL_PLANILLA_PENDIENTE,
+                "campos_faltantes": campos_faltantes(p),
+                "monto_venta": p["monto_venta"],
             })
+    pendientes.sort(key=_orden_pendiente)
 
     clientes = calcular_clientes(completos, proyectos_por_tag)
     categorias = calcular_categorias(completos)
@@ -402,8 +425,22 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
         c["proyectos_pendientes"] = pendientes_por_cliente.get(c["cliente"], 0)
 
     n_completos = len(completos)
+    # Cuanto de la cartera real queda dentro del analisis: la regla de
+    # completitud es todo-o-nada, asi que sin este dato el tablero no deja
+    # ver que la mayor parte de la venta cargada puede estar afuera.
+    proyectos_de_venta = [p for p in proyectos if not es_gastos_generales(p)]
+    cobertura = {
+        "n_proyectos": len(proyectos_de_venta),
+        "n_completos": n_completos,
+        "venta_cargada_total": sum(p["monto_venta"] or 0 for p in proyectos_de_venta),
+        "venta_completos": sum(k["monto_venta"] for k in completos),
+    }
     return {
         "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
+        "umbrales": {
+            "excelente": af.UMBRAL_EXCELENTE, "bueno": af.UMBRAL_BUENO, "aprobado": af.UMBRAL_APROBADO,
+        },
+        "cobertura": cobertura,
         "kpis_proyectos": {
             "n_completos": n_completos,
             "margen_real_total": sum(k["margen_real"] for k in completos),

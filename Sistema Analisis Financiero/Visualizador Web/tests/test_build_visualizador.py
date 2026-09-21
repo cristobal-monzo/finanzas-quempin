@@ -302,6 +302,107 @@ def test_extraer_datos_saneados_separa_completos_e_incompletos(tmp_path):
     assert re.match(r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$", data["generado"])
 
 
+def test_pendientes_dicen_que_campo_falta_y_cuanta_venta_queda_fuera(tmp_path):
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+        {
+            "TAG proyecto": "ESFO", "Nombre del proyecto": "ESFOCAR", "Cliente": "ESFOCAR",
+            "Fecha de inicio": None, "Monto de Venta (sin IVA)": 4_000_000,
+        },
+        {
+            "TAG proyecto": "BWIL", "Nombre del proyecto": "Bomba Wilo", "Cliente": "Wilo",
+            "Monto de Venta (sin IVA)": None, "Mano de Obra Real": None,
+        },
+        {
+            "TAG proyecto": "FCH1", "Nombre del proyecto": "FACH1", "Cliente": "FACH",
+            "Monto de Venta (sin IVA)": 9_000_000, "Mano de Obra Real": None,
+        },
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    # Orden: mas venta fuera del analisis primero; sin venta cargada al final.
+    assert [p["tag"] for p in data["pendientes"]] == ["FCH1", "ESFO", "BWIL"]
+    por_tag = {p["tag"]: p for p in data["pendientes"]}
+    assert por_tag["ESFO"]["campos_faltantes"] == ["Fecha de inicio"]
+    assert por_tag["ESFO"]["monto_venta"] == 4_000_000
+    assert por_tag["BWIL"]["campos_faltantes"] == ["Monto de Venta (sin IVA)", "Mano de Obra Real"]
+    assert por_tag["BWIL"]["monto_venta"] is None
+
+
+def test_gastos_generales_no_aparece_como_pendiente(tmp_path):
+    """Gastos Generales nunca tiene venta: listarlo como 'falta completar'
+    pide un dato que por diseño no existe."""
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+        {
+            "TAG proyecto": "GGEN", "Nombre del proyecto": "Gastos Generales",
+            "Categoría": af.CATEGORIA_GASTOS_GENERALES, "Monto de Venta (sin IVA)": None,
+        },
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    assert data["pendientes"] == []
+    assert data["cobertura"]["n_proyectos"] == 1
+
+
+def test_cobertura_compara_lo_analizado_contra_toda_la_venta_cargada(tmp_path):
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+        {
+            "TAG proyecto": "FCH1", "Nombre del proyecto": "FACH1", "Cliente": "FACH",
+            "Monto de Venta (sin IVA)": 3_000_000, "Mano de Obra Real": None,
+        },
+        {
+            "TAG proyecto": "BWIL", "Nombre del proyecto": "Bomba Wilo", "Cliente": "Wilo",
+            "Monto de Venta (sin IVA)": None,
+        },
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    assert data["cobertura"] == {
+        "n_proyectos": 3,
+        "n_completos": 1,
+        "venta_cargada_total": 4_000_000,
+        "venta_completos": 1_000_000,
+    }
+
+
+def test_snapshot_trae_los_umbrales_de_evaluacion_del_modulo_compartido(tmp_path):
+    """El template colorea la Nota con estos umbrales: si viajan en el
+    snapshot, el JS no puede quedar con una copia desactualizada."""
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    assert data["umbrales"] == {
+        "excelente": af.UMBRAL_EXCELENTE, "bueno": af.UMBRAL_BUENO, "aprobado": af.UMBRAL_APROBADO,
+    }
+
+
+def test_template_declara_doctype_charset_y_viewport():
+    """Sin DOCTYPE el navegador renderiza en modo quirks; sin charset, un
+    servidor que no mande UTF-8 rompe la regex del gate y el tablero no abre;
+    sin viewport, un telefono lo dibuja a ancho de escritorio."""
+    template = bv.RUTA_TEMPLATE.read_text(encoding="utf-8")
+    assert template.lstrip().lower().startswith("<!doctype html>")
+    assert '<meta charset="utf-8">' in template.lower()
+    assert 'name="viewport"' in template
+
+
+def test_template_no_depende_del_encoding_para_la_regex_del_gate():
+    """La regex que quita tildes a la contraseña iba con los caracteres
+    combinantes literales -- leidos como Latin-1 forman un rango invalido y
+    tiran abajo todo el script. Con escapes \\u no depende del encoding."""
+    template = bv.RUTA_TEMPLATE.read_text(encoding="utf-8")
+    assert chr(0x300) not in template and chr(0x36F) not in template
+    assert "\\u0300-\\u036f" in template
+
+
 def test_extraer_datos_saneados_kpis_proyectos_resumen(tmp_path):
     ruta = _wb_con_proyectos(tmp_path, [
         {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},

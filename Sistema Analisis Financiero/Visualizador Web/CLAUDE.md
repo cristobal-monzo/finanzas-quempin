@@ -84,6 +84,52 @@ Sistema Analisis Financiero/Visualizador Web/
   (hardcodeados en `template.html`, no viajan en el JSON — son texto
   estático, no dependen de datos del usuario).
 
+## Fase 0 de la auditoría (2026-09-21)
+
+Arreglos de horas, sin tocar ningún KPI. Versión anterior guardada en el tag
+`checkpoint/af-antes-fase-0` (y el build de ese momento, con datos, en
+`build/index_antes_fase_0.html`, gitignoreado).
+
+- **Cabecera HTML real** (`<!DOCTYPE>`, `<meta charset>`, `<meta viewport>`)
+  y la regex del gate con escapes `\u0300-\u036f` en vez de los caracteres
+  combinantes literales. Antes el tablero corría en modo quirks y, servido
+  sin cabecera UTF-8 (o abierto como archivo local), la regex quedaba como un
+  rango inválido y **el script entero no corría**: el gate nunca abría.
+  GitHub Pages sí manda UTF-8, por eso publicado funcionaba. Tests:
+  `test_template_declara_doctype_charset_y_viewport`,
+  `test_template_no_depende_del_encoding_para_la_regex_del_gate`.
+- **Snapshot**: tres campos nuevos, todos calculados en Python.
+  - `umbrales`: los cortes de la Evaluación de `af` (nunca copiados en el JS).
+  - `cobertura`: proyectos y venta dentro del análisis contra toda la venta
+    cargada. La regla de completitud es todo-o-nada; sin este dato no se veía
+    que el 40 % de la venta estaba afuera.
+  - `pendientes[].campos_faltantes` / `monto_venta`: qué falta a cada
+    proyecto, vía `af.campos_faltantes`, que es ahora la base de
+    `af.tiene_datos_completos` (contrato en `test_contrato_kpis.py`). Los
+    pendientes vienen ordenados por venta, y **Gastos Generales ya no
+    aparece como pendiente**: por diseño nunca tiene venta.
+- **Template**:
+  - El aviso de pendientes pasó de N mensajes idénticos a una lista de qué
+    falta y cuánta venta queda afuera.
+  - Las clases `.info-icon` y `.viz-search` no tenían CSS (la regla vivía
+    como `.info-badge`, copiada de Centro de Costos).
+  - El color de la desviación usaba `sem-*`, que solo tiene regla bajo
+    `.kpi-card`, así que en tablas nunca se veía. Ahora es `tone-*`.
+  - Gráfico de Nota en escala fija 0-100 con los cortes marcados.
+  - Formato `es-CL` en todos los números.
+  - Tooltip en coordenadas de viewport (antes se corría con el scroll).
+  - Filas y tooltips operables con teclado.
+  - Nav de tableros en una sola fila en teléfono.
+  - Se sacó el CSS muerto heredado de Centro de Costos.
+- **Perú no recibió estos cambios**: su `template.html` y su
+  `build_visualizador.py` son copias completas de los de Chile. Portar la
+  Fase 0 duplicaría de nuevo la lógica; conviene primero unificarlos (un solo
+  template + un build parametrizado por país, como en el Cotizador).
+- **Pendiente de la Fase 0, a propósito**: cifrar los datos con la
+  contraseña. Solo protege si Centro de Costos y Cotizador dejan de
+  publicarla en texto plano (es la misma contraseña), así que es un cambio
+  de los tres módulos, no de este.
+
 ## Publicación
 
 GitHub Pages, único canal desde la migración del 2026-08-05 — el Claude

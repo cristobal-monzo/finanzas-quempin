@@ -191,6 +191,19 @@ def test_cero_si_cuenta_como_dato_cargado():
     )
 
 
+def test_campos_faltantes_es_la_misma_regla_que_la_completitud():
+    """El dashboard dice QUÉ falta en cada proyecto pendiente -- esa lista no
+    puede discrepar de la regla que decide si el proyecto está completo."""
+    _, encabezados, _ = CASO_BAJO_PRESUPUESTO
+    completo = dict(encabezados, **{"% Avance": 1.0, "Fecha de inicio": "2026-01-01"})
+    assert af.campos_faltantes(completo.get) == []
+    assert af.tiene_datos_completos(completo.get)
+
+    incompleto = dict(completo, **{"Fecha de inicio": None, "Mano de Obra Real": ""})
+    assert af.campos_faltantes(incompleto.get) == ["Fecha de inicio", "Mano de Obra Real"]
+    assert not af.tiene_datos_completos(incompleto.get)
+
+
 # ── Cobertura ampliada: el resto de los KPIs por categoria tambien se ──────
 # recalculan por separado en cada camino (bv._kpis_por_categoria vs
 # kr.recalcular_proyecto) y, hasta acá, nada los comparaba entre sí -- solo

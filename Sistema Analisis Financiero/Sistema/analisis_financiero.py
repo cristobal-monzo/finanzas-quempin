@@ -1127,16 +1127,23 @@ CAMPOS_MANUALES_REQUERIDOS = [
 ]
 
 
-def tiene_datos_completos(valor_de_campo) -> bool:
-    """True si el proyecto tiene los 8 campos manuales cargados.
-    `valor_de_campo` es un callable que recibe el nombre de encabezado de
-    "Proyectos" y devuelve su valor -- asi sirve igual para un dict keyed por
-    encabezado (reportes) que para uno de claves cortas (visualizador), sin
-    que ninguno de los dos tenga que reimplementar la regla.
+def campos_faltantes(valor_de_campo) -> list[str]:
+    """Los campos de CAMPOS_MANUALES_REQUERIDOS que el proyecto no tiene
+    cargados, en ese mismo orden. `valor_de_campo` es un callable que recibe
+    el nombre de encabezado de "Proyectos" y devuelve su valor -- asi sirve
+    igual para un dict keyed por encabezado (reportes) que para uno de claves
+    cortas (visualizador), sin que ninguno de los dos reimplemente la regla.
 
     0 SI cuenta como cargado (un costo real en cero es un dato, no un vacio);
     None y la cadena vacia no."""
-    return all(valor_de_campo(campo) not in (None, "") for campo in CAMPOS_MANUALES_REQUERIDOS)
+    return [campo for campo in CAMPOS_MANUALES_REQUERIDOS if valor_de_campo(campo) in (None, "")]
+
+
+def tiene_datos_completos(valor_de_campo) -> bool:
+    """True si el proyecto tiene los 8 campos manuales cargados -- definido
+    sobre campos_faltantes para que el dashboard, al decir QUE falta, nunca
+    discrepe de la regla que decide si falta algo."""
+    return not campos_faltantes(valor_de_campo)
 
 
 # ── NOTA / EVALUACION: UNA SOLA DEFINICION, DOS RENDERIZADOS ────────────────
