@@ -24,6 +24,14 @@ modulo nunca lo escribe):
   visualizador [--uf-manual VALOR --uf-fuente "<texto>"]
                       -> Regenera el visualizador web.
 
+  benchmark [--detalle]
+                      -> Mide el buscador sobre el catalogo real contra un
+                         set fijo de consultas con respuesta esperada
+                         (Success@5, P@5 y MRR), y compara con el buscador
+                         anterior. No toca la UF ni la red. Es la forma de
+                         comprobar que un cambio en Sistema/catalogo_busqueda.py
+                         mejoro y no empeoro.
+
   categorias [--detalle "<categoria>"] [--top N]
                       -> Auditoria de la clasificacion (no toca la UF ni la
                          red): cuantas compras cae en cada categoria, que
@@ -51,6 +59,8 @@ Uso:
   python driver.py visualizador --uf-manual 39200.50 --uf-fuente "Banco Central de Chile, 20-08-2026"
   python driver.py categorias
   python driver.py categorias --detalle "Piping"
+  python driver.py benchmark
+  python driver.py benchmark --detalle
 """
 
 import sys
@@ -353,6 +363,32 @@ def cmd_categorias(args, pais="CL"):
     return 0
 
 
+def cmd_benchmark(args, pais="CL"):
+    """Mide el buscador contra el set de consultas de referencia.
+
+    Solo lectura y sin red, igual que 'categorias': para saber si el buscador
+    encuentra lo que se le pide no hace falta reajustar ningun precio."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    import benchmark_busqueda as bench
+
+    try:
+        items = ch.cargar_items_detalle(pais=pais)
+    except ch.ExcelNoDisponibleError as exc:
+        print(f"[ERROR] {exc}")
+        return 1
+
+    indexables = [it for it in items if it["excluido_motivo"] is None]
+    if not indexables:
+        print("No hay items indexables en Detalle.")
+        return 1
+
+    bench.correr(indexables, detalle="--detalle" in args)
+    print()
+    print("Nada fue escrito. El set de consultas y su respuesta esperada viven en")
+    print("Sistema/benchmark_busqueda.py; los umbrales y pesos, en Sistema/catalogo_busqueda.py.")
+    return 0
+
+
 def cmd_visualizador(pais="CL", uf_manual=None, fuente_manual=None):
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     raiz_modulo = Path(__file__).resolve().parents[3]
@@ -394,10 +430,11 @@ def _extraer_flags_uf(args):
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar", "visualizador", "categorias"):
+    if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar", "visualizador",
+                                                "categorias", "benchmark"):
         print(
             'Uso: python driver.py [status|consultar "<texto>"|'
-            'visualizador|categorias] [--uf-manual VALOR --uf-fuente "<texto>"] [--pais CL|PE]'
+            'visualizador|categorias|benchmark] [--uf-manual VALOR --uf-fuente "<texto>"] [--pais CL|PE]'
         )
         return 2
     comando = sys.argv[1]
@@ -406,6 +443,8 @@ def main():
         return cmd_status(pais=pais)
     if comando == "categorias":
         return cmd_categorias(resto, pais=pais)
+    if comando == "benchmark":
+        return cmd_benchmark(resto, pais=pais)
     if comando == "visualizador":
         uf_manual, fuente_manual, _resto = _extraer_flags_uf(resto)
         return cmd_visualizador(pais=pais, uf_manual=uf_manual, fuente_manual=fuente_manual)

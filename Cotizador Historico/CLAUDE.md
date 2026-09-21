@@ -28,11 +28,19 @@ consume.
   API pública `mindicador.cl`, con caché local de fechas históricas en
   `Sistema/uf_cache.json`. La UF del día de la consulta nunca se cachea
   entre corridas — siempre se pide fresca.
-- Búsqueda de ítem por texto: difusa (`difflib`, stdlib) contra `Nombre
-  Ítem` y `Descripción` de `Detalle`, sin dependencias nuevas.
-- **Sin respaldo por categoría**: si no hay match de nombre, la respuesta es
-  "no encontrado" (con sugerencias de baja similitud si las hay) — decisión
-  explícita del usuario para v1, no un olvido.
+- Búsqueda de ítem por texto: **motor de relevancia propio**
+  (`Sistema/busqueda.py`, reescrito 2026-09-16, ver sección siguiente), sin
+  dependencias nuevas. Busca contra nombre, descripción, nombre canónico de
+  la taxonomía, categoría, material, marca, código, proveedor y proyecto, y
+  ordena por cobertura de la consulta, peso del campo y medida.
+- **Sin respaldo por categoría**: si ningún término de la consulta existe en
+  el catálogo, la respuesta es "no encontrado" (con sugerencias si las hay).
+  Si la consulta se cumple **a medias** ("válvula de compuerta" en un
+  catálogo que solo tiene de bola) sí se devuelven los resultados parciales,
+  pero declarando qué término no se encontró
+  (`Indice.terminos_sin_resultado`) — una pantalla vacía cuando existe un
+  pariente cercano no ayuda a nadie, y no avisar haría creer que el pariente
+  es lo que se pidió.
 - **Taxonomía propia** (reestructurada 2026-09-08, ver sección siguiente):
   cada compra se clasifica en categoría > subcategoría > hoja, y la **hoja**
   (`familia + material + medida`) es la unidad de comparación de precios.
@@ -127,6 +135,98 @@ dashboard y como lista en `driver.py categorias`.
 `py -3.14 -m pytest` y después `driver.py categorias`, y se compara que no
 se haya movido nada que ya estaba bien.
 
+## Búsqueda: cómo encuentra un ítem
+
+Reescrita el **2026-09-16**. Motor en `Sistema/busqueda.py`, datos en
+`Sistema/catalogo_busqueda.py` (sinónimos, marcas, pesos por campo,
+equivalencias DN↔pulgada, umbrales) — misma separación motor/datos que
+`taxonomia.py` + `catalogo_taxonomia.py`, y **el archivo que se edita cuando
+una búsqueda real no encontró lo que debía es el catálogo**.
+
+**Qué estaba roto.** El buscador anterior puntuaba con una función que
+devolvía `1.0` en cuanto el ítem compartía una palabra de ≥4 letras con la
+consulta. Medido sobre el catálogo real: `Válvula de bola de 2"` y `valvula`
+devolvían exactamente lo mismo —41 compras, **todas empatadas en 1.0**— y el
+desempate lo hacía el orden de las filas del Excel. La válvula de 1/2" salía
+segunda. No había ranking: había un filtro binario disfrazado de ranking.
+
+**Cómo puntúa ahora**, en orden de impacto:
+
+1. **Cobertura de la consulta.** Un ítem que calza los 3 términos vale mucho
+   más que uno que calza 1, y cada término pesa por IDF (cuánto discrimina).
+2. **Peso por campo.** El mismo término vale 12 en el código, 10 en el
+   `Nombre Ítem`, 9 en la hoja de la taxonomía, 4 en la descripción, 2 en el
+   proyecto. Más un descuento por campo largo: que "teflón" sea el nombre
+   completo de un ítem dice más que verlo dentro de una frase de 8 palabras.
+3. **La medida es un multiplicador, no un término.** 2" contra 2" multiplica
+   por 1,6; contra 1/2" por 0,18. **Una medida distinta es otro producto.**
+4. **Tolerancia**, resuelta antes de puntuar con las mismas funciones de la
+   taxonomía: tildes, mayúsculas, plurales, palabras vacías, orden de las
+   palabras, sinónimos y errores de tipeo (1 error desde 4 caracteres, 2
+   desde 7).
+
+**Medidas equivalentes.** `2"`, `2”`, `2 pulgadas`, `2 pulg`, `2 plg`,
+`2 in`, `Ø2"` y `DN50` son la misma medida; `2"`, `1/2"`, `3/4"` y `2.1/2"`
+son cuatro medidas distintas. Se resuelve con una **tabla de alias**
+generada desde `taxonomia.parsear_medidas` y validada contra él entrada por
+entrada (`tests/test_busqueda_medidas.py`) — así el dashboard no necesita
+reimplementar la gramática de medidas en JavaScript.
+
+**DN va en un solo sentido: DN50 significa 2".** No existe la conversión
+inversa ni `mm → pulgada` dividiendo por 25,4. Los milímetros de este
+catálogo son diámetros **exteriores** de PPR/PVC: un tubo PPR de 50mm es
+DN40 (1.1/2"), no DN50. Ligar `2"` con `50mm` mezclaría calibres distintos,
+justo lo que la taxonomía evita al separar las hojas por medida.
+
+**La comilla NO es un operador de frase exacta.** En este catálogo la
+comilla es la unidad de medida más frecuente. Soportar frases entre comillas
+rompería la consulta más común del módulo.
+
+**Dónde corre cada cosa (y por qué no hay dos buscadores).** El dashboard
+busca en el navegador y la consola en Python. Para que no diverjan —como ya
+pasó con la taxonomía duplicada en JavaScript (2026-09-08) y con el KPI
+"Nota del Proyecto" (2026-07-28)— se partió así:
+
+| | Dónde vive | Cómo llega al navegador |
+|---|---|---|
+| Términos y medidas de cada ítem | Python (`indexar_para_snapshot`) | precalculados en el snapshot (`_bt`, `_bm`) |
+| Tablas (sinónimos, alias, pesos) | `catalogo_busqueda.py` | `config_para_snapshot()` → `DATA.busqueda` |
+| Procesar la consulta y puntuar | escrito dos veces | `Visualizador Web/busqueda.js`, **un solo archivo** que los builds de Chile y Perú inyectan |
+
+Lo único escrito dos veces es el lado de la consulta, y está clavado por
+`tests/test_paridad_busqueda_js.py`: corre 28 consultas por los dos motores
+con Node y exige el **mismo orden**. Si ese test falla, no se ajusta el
+JavaScript hasta que pase — se averigua cuál de los dos tiene razón.
+
+**Cómo saber si un cambio mejoró o empeoró:**
+
+```
+py -3.14 ".claude/skills/Cotizador_Historico/driver.py" benchmark [--detalle]
+```
+
+48 consultas con respuesta esperada, definida como un predicado sobre la
+clasificación (familia + material + medida) y no como una lista de nombres
+escrita a mano, para que siga siendo válida cuando el catálogo crezca. Mide
+Success@5, P@5 y MRR contra el motor anterior. Estado al 2026-09-16:
+
+| Métrica | Antes | Ahora |
+|---|---|---|
+| Success@5 | 0,812 | **1,000** |
+| P@5 | 0,354 | **0,479** |
+| P@5 normalizada (sobre lo alcanzable) | 0,691 | **0,935** |
+| MRR | 0,689 | **1,000** |
+
+El P@5 crudo tiene techo bajo porque la mayoría de las consultas tiene **una
+sola** hoja correcta (hay un solo producto `Válvula de Bola 2"`): contra eso
+el P@5 no puede pasar de 0,2 por mucho que acierte. Por eso se informa
+también el normalizado.
+
+**Cuidado al agregar casos al benchmark**: dos de los casos iniciales
+(`amoladora`, `esmeril angular`) daban por esperado un producto que el
+catálogo real **no tiene**. Una consulta cuya respuesta no existe en los
+datos no mide al buscador, mide a quien escribió el test — pasaron a
+`CASOS_SIN_RESULTADO`.
+
 ## Estructura del módulo
 
 ```
@@ -137,13 +237,16 @@ Cotizador Historico/
 │   ├── cotizador_historico.py             # lógica: leer Excel, indexar, fuzzy search, reajuste UF
 │   ├── taxonomia.py                       # motor: medidas + clasificación + clave de hoja
 │   ├── catalogo_taxonomia.py              # datos: categorías, materiales, reglas (esto es lo que se edita)
+│   ├── busqueda.py                        # motor de búsqueda: normalizar, medidas, índice, ranking
+│   ├── catalogo_busqueda.py               # datos: sinónimos, marcas, pesos, DN↔pulgada (esto es lo que se edita)
+│   ├── benchmark_busqueda.py              # set de consultas con respuesta esperada + métricas
 │   ├── uf_cache.json                      # caché fecha ISO -> valor UF (se crea solo en la primera corrida)
 │   └── tests/                             # tests de pytest
 └── .claude/
     └── skills/
         └── Cotizador_Historico/
             ├── SKILL.md
-            └── driver.py                  # comandos: status | consultar "<texto>" | visualizador | categorias
+            └── driver.py                  # comandos: status | consultar "<texto>" | visualizador | categorias | benchmark
 ```
 
 ## Cómo se usa
@@ -177,8 +280,13 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
   con precio negativo en `Detalle` independiente de cómo haya quedado
   tipificado el documento. **No agregar más Notas de Crédito al índice de
   este módulo.**
-- `buscar_items(items, texto_busqueda)` — búsqueda difusa contra `Nombre
-  Ítem`/`Descripción`; devuelve `(coincidencias, sugerencias)`.
+- `buscar_items(items, texto_busqueda, aplicar_medida=True)` — búsqueda por
+  relevancia contra todos los campos del ítem (delega en `busqueda.Indice`);
+  devuelve `(coincidencias, sugerencias)` con las coincidencias ordenadas de
+  más a menos relevante. `aplicar_medida=False` apaga el ranking por medida
+  y devuelve las coincidencias de texto puras — lo usa `consultar_item`,
+  que necesita **todas** las compras de la familia para poder informar
+  cuántas descartó por ser de otro calibre.
 - `obtener_valor_uf(fecha, cache_uf)` / `consultar_uf_api(fecha)` — UF
   histórica cacheada localmente; la UF de "hoy" se pide siempre fresca (no
   pasa por el caché de archivo).
@@ -240,6 +348,14 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
   Detalle del mecanismo (`obtener_uf_hoy`) en "Funciones clave" arriba;
   procedimiento paso a paso para el flujo de publicación en
   `.claude/skills/Actualizar_Cotizador/SKILL.md`.
+- **El buscador no se edita en `template.html`.** Mismo criterio que la
+  taxonomía: el motor está en `Sistema/busqueda.py` + `catalogo_busqueda.py`
+  y el lado navegador en `Visualizador Web/busqueda.js`, **un solo archivo
+  compartido con Perú** que los builds inyectan. Perú no debe tener su
+  propia copia (hay un test que lo verifica). Para cambiar cómo encuentra
+  algo se edita `catalogo_busqueda.py`, se corre `py -3.14 -m pytest` y
+  después `driver.py benchmark`, comparando que no se haya movido nada que
+  ya estaba bien.
 - **La taxonomía no se edita en `template.html`.** Desde 2026-09-08 el
   template solo lee lo que el snapshot ya trae calculado; si se vuelve a
   clasificar en JavaScript reaparece la divergencia Chile/Perú que este

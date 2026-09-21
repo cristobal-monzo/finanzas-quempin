@@ -30,6 +30,7 @@ import cotizador_historico as ch  # noqa: E402
 
 RUTA_EXCEL = ch.RUTA_EXCEL_CENTRO_COSTOS
 RUTA_TEMPLATE = RAIZ / "template.html"
+RUTA_BUSQUEDA_JS = RAIZ / "busqueda.js"
 RUTA_DATA_JSON = RAIZ / "data" / "cotizador-historico.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
@@ -64,6 +65,14 @@ def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None, uf_manual=None, fuen
     uf_hoy, uf_fuente = ch.obtener_uf_hoy(hoy, uf_manual=uf_manual, fuente_manual=fuente_manual)
     reajustados, sin_uf_count = ch.reajustar_todos(items, uf_hoy)
 
+    # El indice de busqueda se calcula aca, una sola vez, sobre las ~1.400
+    # compras: cada item viaja con sus terminos (_bt) y sus medidas (_bm) ya
+    # resueltos. El navegador solo procesa lo que el usuario escribe. Ademas
+    # de ser mas rapido, es lo que evita una segunda implementacion del lado
+    # del documento en JavaScript (ver Sistema/busqueda.py).
+    ch.busqueda.indexar_para_snapshot(reajustados)
+    medidas_presentes = sorted({m for it in reajustados for m in it["_bm"]})
+
     return {
         "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
         "uf_hoy": uf_hoy,
@@ -72,6 +81,8 @@ def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None, uf_manual=None, fuen
         "excluidos_count": excluidos_count,
         "sin_uf_count": sin_uf_count,
         "categorias": _catalogo_categorias(),
+        "busqueda": ch.busqueda.config_para_snapshot(medidas_presentes),
+        "sugerencias": ch.busqueda.catalogo_sugerencias(reajustados),
         "items": reajustados,
     }
 
@@ -102,7 +113,18 @@ def build(uf_manual=None, fuente_manual=None):
     if "__CH_DATA_B64__" not in template:
         print("[ERROR] template.html no tiene el placeholder __CH_DATA_B64__")
         return 1
+    if "__CH_BUSQUEDA_JS__" not in template:
+        print("[ERROR] template.html no tiene el placeholder __CH_BUSQUEDA_JS__")
+        return 1
+    if not RUTA_BUSQUEDA_JS.exists():
+        print(f"[ERROR] No existe el motor de busqueda: {RUTA_BUSQUEDA_JS}")
+        return 1
     html = template.replace("__CH_DATA_B64__", data_b64)
+    # busqueda.js se INYECTA, no se copia dentro del template: es el mismo
+    # archivo que usa Peru. Cuando este codigo vivia dentro de cada
+    # template.html, Chile y Peru divergieron sin que nadie lo notara.
+    with io.open(RUTA_BUSQUEDA_JS, "r", encoding="utf-8") as f:
+        html = html.replace("__CH_BUSQUEDA_JS__", f.read())
 
     RUTA_BUILD_HTML.parent.mkdir(parents=True, exist_ok=True)
     with io.open(RUTA_BUILD_HTML, "w", encoding="utf-8") as f:

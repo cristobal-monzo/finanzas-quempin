@@ -27,6 +27,18 @@ fresca, nunca se cachea entre corridas).
 
 ## Comandos
 
+### `benchmark` — ¿el buscador encuentra lo que se le pide?
+
+```
+py -3.14 ".claude/skills/Cotizador_Historico/driver.py" benchmark [--detalle]
+```
+
+Solo lectura y sin red. Corre 48 consultas de referencia (el mismo producto
+escrito de todas las formas en que alguien lo escribiría: tildes, plurales,
+typos, sinónimos, medidas en pulgadas/DN) contra el catálogo real y reporta
+Success@5, P@5 y MRR, comparando con el buscador anterior. Es el comando que
+hay que correr después de tocar `Sistema/catalogo_busqueda.py`.
+
 **`status`** — solo lectura: cuenta ítems indexables en `Detalle`, cuántos
 quedan excluidos (sin fecha resoluble vía `Master`, sin precio unitario
 válido, por ser Notas de Crédito/devoluciones con precio negativo, o por
