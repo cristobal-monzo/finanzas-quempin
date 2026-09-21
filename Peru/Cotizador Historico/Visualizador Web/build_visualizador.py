@@ -32,6 +32,12 @@ import cotizador_historico as ch  # noqa: E402
 
 RUTA_EXCEL = ch.RUTA_EXCEL_CENTRO_COSTOS_PERU
 RUTA_TEMPLATE = RAIZ / "template.html"
+# El motor de busqueda es UNO SOLO para los dos paises y vive en el modulo de
+# Chile. Peru no tiene ni debe tener su propia copia: cuando la taxonomia
+# vivia duplicada en los dos templates, Peru se quedo sin una categoria que
+# Chile si tenia y nadie se entero hasta meses despues.
+RUTA_BUSQUEDA_JS = (RAIZ_MODULO.parent.parent / "Cotizador Historico" /
+                    "Visualizador Web" / "busqueda.js")
 RUTA_DATA_JSON = RAIZ / "data" / "cotizador-historico-peru.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
@@ -61,11 +67,18 @@ def extraer_indice_saneado(ruta_excel=None):
     excluidos_count = sum(1 for it in items if it["excluido_motivo"] is not None)
     reajustados, sin_uf_count = ch.armar_indice_completo_sin_reajuste(items)
 
+    # Mismo indice de busqueda que Chile: cada item viaja con sus terminos
+    # (_bt) y medidas (_bm) ya resueltos desde Python.
+    ch.busqueda.indexar_para_snapshot(reajustados)
+    medidas_presentes = sorted({m for it in reajustados for m in it["_bm"]})
+
     return {
         "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
         "excluidos_count": excluidos_count,
         "sin_uf_count": sin_uf_count,
         "categorias": _catalogo_categorias(),
+        "busqueda": ch.busqueda.config_para_snapshot(medidas_presentes),
+        "sugerencias": ch.busqueda.catalogo_sugerencias(reajustados),
         "items": reajustados,
     }
 
@@ -96,7 +109,15 @@ def build():
     if "__CH_DATA_B64__" not in template:
         print("[ERROR] template.html no tiene el placeholder __CH_DATA_B64__")
         return 1
+    if "__CH_BUSQUEDA_JS__" not in template:
+        print("[ERROR] template.html no tiene el placeholder __CH_BUSQUEDA_JS__")
+        return 1
+    if not RUTA_BUSQUEDA_JS.exists():
+        print(f"[ERROR] No existe el motor de busqueda compartido: {RUTA_BUSQUEDA_JS}")
+        return 1
     html = template.replace("__CH_DATA_B64__", data_b64)
+    with io.open(RUTA_BUSQUEDA_JS, "r", encoding="utf-8") as f:
+        html = html.replace("__CH_BUSQUEDA_JS__", f.read())
 
     RUTA_BUILD_HTML.parent.mkdir(parents=True, exist_ok=True)
     with io.open(RUTA_BUILD_HTML, "w", encoding="utf-8") as f:

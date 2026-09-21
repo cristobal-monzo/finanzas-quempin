@@ -14,7 +14,6 @@ from pathlib import Path
 import math
 import sys
 import unicodedata
-from difflib import SequenceMatcher
 import json
 import urllib.error
 import urllib.request
@@ -27,6 +26,7 @@ import openpyxl
 # build_visualizador.py de Chile y Peru, y el driver de la skill).
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+import busqueda  # noqa: E402
 import taxonomia  # noqa: E402
 
 RAIZ_MODULO = Path(__file__).resolve().parent.parent
@@ -215,67 +215,45 @@ def cargar_items_detalle(ruta_excel=None, pais="CL"):
         wb.close()
 
 
-UMBRAL_SIMILITUD = 0.6
-UMBRAL_SUGERENCIA = 0.4
-MAX_SUGERENCIAS = 5
-
-
 def normalizar_texto(texto):
+    """Minusculas y sin tildes. Se conserva porque es la normalizacion que
+    exponen el driver y los tests; la del buscador vive en busqueda.raiz y
+    hace bastante mas (plural, sinonimos, palabras vacias)."""
     texto = (texto or "").strip().lower()
     texto = unicodedata.normalize("NFKD", texto)
     return "".join(c for c in texto if not unicodedata.combining(c))
 
 
-LONGITUD_MINIMA_PALABRA_SIGNIFICATIVA = 4
+def buscar_items(items, texto_busqueda, indice=None, aplicar_medida=True):
+    """Busqueda por relevancia de texto_busqueda contra todos los campos del
+    item. Devuelve (coincidencias, sugerencias): coincidencias son los items
+    (dicts sin modificar) ordenados de mas a menos relevante; sugerencias son
+    nombres canonicos que escribir en su lugar cuando lo que se busco no
+    aparecio. Items con excluido_motivo != None se ignoran siempre.
+
+    La logica vive en busqueda.py -- la misma que usa el dashboard, para que
+    la consola y la web nunca respondan distinto a la misma consulta. Hasta
+    2026-09-15 esta funcion tenia su propio puntaje (difflib + "comparten una
+    palabra de 4 letras"), que devolvia 1.0 para cualquier item que
+    compartiera una palabra con la consulta: sobre el catalogo real, las 41
+    valvulas empataban y el orden lo terminaba decidiendo el Excel.
+
+    'indice' permite reutilizar un Indice ya construido entre varias
+    consultas; sin el, se arma uno por llamada. 'aplicar_medida' se pasa tal
+    cual a Indice.buscar (ver su docstring)."""
+    indexables = [it for it in items if it.get("excluido_motivo") is None]
+    if indice is None:
+        indice = busqueda.Indice(indexables)
+    resultados, sugerencias = indice.buscar(texto_busqueda, aplicar_medida=aplicar_medida)
+    return [r["item"] for r in resultados], sugerencias
 
 
-def similitud(a, b):
-    """1.0 si uno es substring del otro. Tambien 1.0 si alguna palabra
-    "significativa" (>=4 caracteres, para no engancharse con codigos/medidas
-    cortas como "1/2" o marcas de 3 letras) de b es substring de a o
-    viceversa -- cubre el caso de un Nombre Item real que no vino
-    simplificado (ver Centro de Costos/CLAUDE.md) donde el primer termino
-    calza con la consulta pero el string completo no (ej. consulta
-    "guantes" contra nombre_item "Guante de trabajo cuero spandex"). Si
-    nada de eso aplica, ratio de difflib para tolerar typos/variantes."""
-    if not a or not b:
-        return 0.0
-    if a in b or b in a:
-        return 1.0
-    for palabra in b.split():
-        if len(palabra) >= LONGITUD_MINIMA_PALABRA_SIGNIFICATIVA and (palabra in a or a in palabra):
-            return 1.0
-    return SequenceMatcher(None, a, b).ratio()
-
-
-def buscar_items(items, texto_busqueda, umbral=UMBRAL_SIMILITUD, umbral_sugerencia=UMBRAL_SUGERENCIA):
-    """Busqueda difusa de texto_busqueda contra Nombre Item/Descripcion.
-    Devuelve (coincidencias, sugerencias): coincidencias son items (dicts
-    sin modificar) con similitud >= umbral, ordenados de mayor a menor;
-    sugerencias son hasta MAX_SUGERENCIAS nombre_item distintos con
-    similitud en [umbral_sugerencia, umbral), para cuando no hay match
-    directo. Items con excluido_motivo != None se ignoran siempre."""
-    consulta = normalizar_texto(texto_busqueda)
-    puntuadas = []
-    for item in items:
-        if item["excluido_motivo"] is not None:
-            continue
-        s = max(
-            similitud(consulta, normalizar_texto(item["nombre_item"])),
-            similitud(consulta, normalizar_texto(item["descripcion"])),
-        )
-        puntuadas.append((s, item))
-    puntuadas.sort(key=lambda par: -par[0])
-
-    coincidencias = [item for s, item in puntuadas if s >= umbral]
-
-    sugerencias = []
-    for s, item in puntuadas:
-        if umbral_sugerencia <= s < umbral and item["nombre_item"] not in sugerencias:
-            sugerencias.append(item["nombre_item"])
-        if len(sugerencias) >= MAX_SUGERENCIAS:
-            break
-    return coincidencias, sugerencias
+def buscar_items_detallado(items, texto_busqueda):
+    """Igual que buscar_items pero devuelve los resultados completos del
+    motor (score y motivos de por que aparecio cada uno), sin perder el item.
+    Lo usa consultar_item para poder mostrar la explicacion."""
+    indexables = [it for it in items if it.get("excluido_motivo") is None]
+    return busqueda.Indice(indexables).buscar(texto_busqueda)
 
 
 class UFNoDisponibleError(Exception):
@@ -582,9 +560,17 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
     items = cargar_items_detalle(ruta_excel, pais=pais)
     excluidos_count = sum(1 for it in items if it["excluido_motivo"] is not None)
 
-    medida_consultada = taxonomia.medida_canonica(texto_busqueda)
+    # Las medidas equivalentes de la consulta: 2", 2 pulgadas, 2 plg, Ø2" y
+    # DN50 son la misma, y filtrar por cualquiera de ellas tiene que dar el
+    # mismo resultado. Antes se usaba taxonomia.medida_canonica, que lee una
+    # sola escritura y no conoce la equivalencia DN.
+    medidas_consultadas = busqueda.medidas_de_consulta(texto_busqueda)
+    medida_consultada = sorted(medidas_consultadas)[0] if medidas_consultadas else None
 
-    coincidencias, sugerencias = buscar_items(items, texto_busqueda)
+    # aplicar_medida=False: aca la medida NO ordena, filtra. Se quieren
+    # todas las compras de la familia para poder contar cuantas quedaron
+    # fuera por ser de otro calibre (descartadas_por_medida).
+    coincidencias, sugerencias = buscar_items(items, texto_busqueda, aplicar_medida=False)
     if not coincidencias:
         return {
             "encontrado": False,
@@ -603,32 +589,37 @@ def consultar_item(texto_busqueda, ruta_excel=None, fecha_hoy=None, uf_manual=No
         }
 
     if pais == "PE":
-        compras = [armar_compra_sin_reajuste(item) for item in coincidencias]
+        pares = [(armar_compra_sin_reajuste(item), item) for item in coincidencias]
         sin_uf_count = 0
         uf_fuente = None
     else:
         uf_hoy, uf_fuente = obtener_uf_hoy(hoy, uf_manual=uf_manual, fuente_manual=fuente_manual)
         cache_uf = cargar_cache_uf()
-        compras = []
+        pares = []
         sin_uf_count = 0
         for item in coincidencias:
             compra = reajustar_item(item, uf_hoy, cache_uf)
             if compra is None:
                 sin_uf_count += 1
                 continue
-            compras.append(compra)
+            pares.append((compra, item))
         guardar_cache_uf(cache_uf)
 
     # Cada compra se lleva su clasificacion (el item original tiene el
-    # nombre/descripcion; la compra reajustada no los copiaba).
-    for compra, item in zip(compras, coincidencias):
+    # nombre/descripcion; la compra reajustada no los copiaba). La compra va
+    # emparejada con SU item, no por posicion: cuando una compra se cae por
+    # no tener UF, un zip(compras, coincidencias) corre el resto una casilla
+    # y a partir de ahi cada compra queda con el nombre de otra.
+    compras = []
+    for compra, item in pares:
         compra["nombre_item"] = item["nombre_item"]
         compra["descripcion"] = item["descripcion"]
         agregar_taxonomia(compra)
+        compras.append(compra)
 
     descartadas_por_medida = 0
-    if medida_consultada:
-        del_tamano_pedido = [c for c in compras if c.get("medida") == medida_consultada]
+    if medidas_consultadas:
+        del_tamano_pedido = [c for c in compras if c.get("medida") in medidas_consultadas]
         descartadas_por_medida = len(compras) - len(del_tamano_pedido)
         compras = del_tamano_pedido
 

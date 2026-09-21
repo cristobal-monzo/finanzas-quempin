@@ -26,8 +26,9 @@ Diseño original: [`../docs/superpowers/specs/2026-07-20-visualizador-cotizador-
 Cotizador Historico/Visualizador Web/
 ├── CLAUDE.md               # este archivo
 ├── HISTORIA.md             # changelog/decisiones — no hace falta para el día a día
-├── template.html           # estructura/CSS/JS + logo, SIN datos — versionado
-├── build_visualizador.py   # export + build — versionado
+├── template.html           # estructura/CSS/JS de pantalla + logo, SIN datos — versionado
+├── busqueda.js             # motor de búsqueda del navegador — COMPARTIDO con Perú, versionado
+├── build_visualizador.py   # export + build (inyecta busqueda.js) — versionado
 ├── data/                    # snapshot intermedio (cotizador-historico.json) — gitignored
 └── build/                   # index.html final, autocontenido — gitignored
 ```
@@ -59,9 +60,10 @@ misma idea que el `driver.py visualizador` de Centro de Costos.
 3. Escribe el snapshot saneado en `data/cotizador-historico.json`
    (auditable, formato legible).
 4. Incrusta ese mismo JSON en base64 dentro de `template.html` (reemplazo
-   del placeholder `__CH_DATA_B64__`) para producir `build/index.html` —
-   un solo archivo autocontenido, sin servidor, sin llamadas de red en
-   tiempo de uso.
+   del placeholder `__CH_DATA_B64__`) **y el motor de búsqueda compartido**
+   (`busqueda.js` en el placeholder `__CH_BUSQUEDA_JS__`) para producir
+   `build/index.html` — un solo archivo autocontenido, sin servidor, sin
+   llamadas de red en tiempo de uso.
 
 Volver a generar el visualizador con documentos nuevos ya registrados en
 Centro de Costos, o simplemente para refrescar la UF del día, es correr
@@ -109,51 +111,71 @@ poder distinguir un valor manual de uno de mindicador.cl.
   (sesión y dispositivo respectivamente) y son casos distintos de la regla
   de no-persistencia del carrito, ver abajo.
 
-## Búsqueda difusa y extracción de specs
+## Búsqueda
 
-La búsqueda ocurre **100% en el navegador** contra el índice ya
-precalculado incrustado en el HTML — no hay ninguna llamada de red en
-tiempo de uso. `template.html` porta a JS la lógica de
-`Sistema/cotizador_historico.py`:
+La búsqueda ocurre **100% en el navegador** contra el índice ya precalculado
+incrustado en el HTML — no hay ninguna llamada de red en tiempo de uso.
 
-- `normalizeText` — minúsculas, sin tildes (Unicode NFD + strip de marcas
-  combinantes); el Python original usa NFKD (`normalizar_texto`) — son
-  formas de normalización distintas, pero coinciden en el resultado para
-  los acentos españoles simples que efectivamente aparecen en estos datos.
-- `similitud` — match 1.0 si la consulta es substring del nombre/
-  descripción (o viceversa), o si alguna palabra de ≥4 caracteres del
-  nombre/descripción del ítem calza como substring de la consulta (o
-  viceversa); si no hay match directo, cae a un coeficiente de Dice sobre
-  bigramas como aproximación tolerante a typos (no es idéntico al
-  `SequenceMatcher` de Python, solo sirve para generar sugerencias de baja
-  similitud, igual que hace el CLI).
-- `buscarItems` — aplica `similitud` contra `nombre_item` y `descripcion`
-  de cada ítem del índice, filtra por umbral (`UMBRAL_SIMILITUD = 0.6`) y
-  devuelve hasta 5 sugerencias (`UMBRAL_SUGERENCIA = 0.4`) cuando no hay
-  coincidencia directa.
+**El motor no vive acá.** Desde el rediseño del 2026-09-16 el buscador es
+`../Visualizador Web/busqueda.js`, **un solo archivo que comparten Chile y
+Perú**, inyectado por cada `build_visualizador.py` en el placeholder
+`__CH_BUSQUEDA_JS__`. Sus tablas (sinónimos, palabras vacías, pesos por
+campo, alias de medida, umbrales) llegan en el snapshot desde
+`../Sistema/catalogo_busqueda.py`, y los términos de cada ítem vienen ya
+calculados desde Python (`_bt`, `_bm`). El diseño completo y el porqué están
+en [`../CLAUDE.md`](../CLAUDE.md) § Búsqueda.
 
-Además, cada tarjeta de resultado extrae, a partir del texto libre de
-`descripcion`, chips de specs técnicas y marca/modelo:
+**Lo que había antes** (y por qué se cambió): ~60 líneas de JavaScript en
+este template —`normalizeText`, `diceCoefficient`, `similitud`,
+`buscarItems`— que devolvían `1.0` en cuanto el ítem compartía una palabra
+de 4 letras con la consulta. Sobre el catálogo real eso dejaba 41 válvulas
+empatadas y el orden lo decidía el Excel. Estaban además duplicadas en el
+template de Perú, el mismo patrón que ya había causado la divergencia de la
+taxonomía. Se eliminaron.
 
-- `extraerSpecs` — un set de expresiones regulares (`PATRONES_SPECS`)
-  reconoce potencia (HP/CV/kW/W), caudal (L/min, GPM, m³/h), voltaje (V),
-  presión (bar/psi), capacidad (L/kg/gal) y dimensión (mm/cm/pulgadas).
-- `extraerMarcaModelo` — heurística por posición y forma de palabra
-  (primera palabra capitalizada tras el inicio, que no sea una preposición
-  común, se toma como marca; el siguiente token alfanumérico mixto
-  adyacente se toma como modelo).
+**Lo que sí hace este template** es la pantalla:
 
-Ambos son **best-effort**: si el parser no reconoce nada en una
-descripción dada, no se fuerza ningún chip — la descripción completa
-siempre queda visible como respaldo, nunca se oculta información detrás de
-un chip que no se pudo extraer.
+- Campo de búsqueda con ejemplos reales, botón de limpiar y
+  **autocompletado** (`renderAutocomplete`) alimentado por `DATA.sugerencias`
+  — los nombres reales del catálogo (producto, familia, categoría, marca,
+  material, medida) calculados en Python, no una lista escrita a mano.
+  Navegable con flechas y Enter.
+- **Resultados agrupados por producto** (`agruparResultados` +
+  `renderGrupoCard`): una tarjeta por hoja con su promedio, su más barato y
+  su proveedor, desplegable a las compras individuales. Sin agrupar, las
+  tres compras idénticas de la misma válvula ocupaban tres de los cinco
+  primeros lugares.
+- **Por qué apareció cada resultado** (`chipsMotivos`): chips que dicen qué
+  término calzó en qué campo, con la medida destacada. Un match aproximado
+  se marca "(aprox.)".
+- **Resaltado por palabra** (`BUSCADOR.resaltar`): marca cada palabra que
+  calzó, incluyendo plurales, sinónimos y la medida. El resaltado anterior
+  buscaba la consulta completa como substring, así que en "valvula de bola
+  2" no marcaba nada.
+- **Filtros combinables y dependientes** (`opcionesDe`): Categoría,
+  Subcategoría, Material, Medida, Marca, Proveedor, Proyecto, rango de
+  fechas y rango de precio. Cada desplegable se calcula contra **lo que la
+  búsqueda actual encontró** más los otros filtros, con el conteo en cada
+  opción, así que nunca ofrece una combinación que da cero. Los filtros
+  activos se ven como chips y se quitan de a uno o con "Limpiar todo".
+- **Aviso de consulta a medias** (`#searchAviso`): si un término no existe
+  en el catálogo, se dice explícitamente en vez de dejar creer que los
+  resultados son lo que se pidió.
+- **Estado vacío útil** (`renderEstadoVacio`): qué término falló, qué
+  escribir en su lugar, un atajo para quitar los filtros y las categorías
+  para explorar.
+- **Historial de búsquedas** en `sessionStorage` (`ch_viz_recientes`, máximo
+  8): vive lo mismo que el desbloqueo del gate y se va al cerrar la pestaña.
+  No es `localStorage` a propósito — son consultas escritas por el usuario y
+  no hay razón para que sobrevivan a la sesión.
+- Ordenar por relevancia, precio (asc/desc) o compra más reciente.
 
-**Limitación conocida de `extraerMarcaModelo`**: al ser "primera palabra
-capitalizada que no sea preposición común", ocasionalmente confunde una
-palabra capitalizada por estar después de un punto (ej. "Precio" al inicio
-de una frase nueva dentro de la descripción) con una marca real. No se ha
-corregido — el chip erróneo no oculta la descripción completa, que sigue
-visible debajo.
+**La marca ya no se adivina.** `extraerMarcaModelo` ("la primera palabra
+capitalizada que no sea preposición") producía chips como "Precio" o "Cod".
+Se reemplazó por una lista curada en `../Sistema/catalogo_busqueda.py`
+(`MARCAS`), aplicada por palabra completa: si no está en la lista, el ítem
+simplemente no tiene marca. Una marca mal detectada no es solo un chip feo,
+es un filtro que promete agrupar y agrupa cualquier cosa.
 
 ## Taxonomía y explorador de carpetas
 

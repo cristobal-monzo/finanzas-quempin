@@ -133,6 +133,34 @@ KPI "Nota del Proyecto" de 2026-07-28. Si agregas un módulo que necesite
 clasificar ítems, reutiliza ese motor en vez de escribir otro. Auditoría:
 `py -3.14 "Cotizador Historico/.claude/skills/Cotizador_Historico/driver.py" categorias`.
 
+**El buscador del Cotizador es otro motor reutilizable** (reescrito
+2026-09-16): `Cotizador Historico/Sistema/busqueda.py` +
+`catalogo_busqueda.py` resuelven tildes, plurales, palabras vacías,
+sinónimos, errores de tipeo, códigos y **medidas equivalentes** (`2"` =
+`2 pulgadas` = `DN50`, pero nunca `1/2"`), y rankean por cobertura de la
+consulta y peso del campo. Si agregas un módulo que necesite buscar ítems,
+reutilízalo en vez de escribir otro `difflib`.
+
+Dos lecciones que dejó medirlo, y que valen para cualquier módulo:
+
+- **Un buscador que devuelve resultados no es un buscador que ordena.** El
+  anterior daba `1.0` a cualquier ítem que compartiera una palabra con la
+  consulta: sobre los datos reales, 41 válvulas empatadas y el orden lo
+  decidía el Excel. Eso no se ve mirando una consulta suelta, solo aparece
+  con un set fijo de consultas y una respuesta esperada
+  (`driver.py benchmark`: Success@5 0,81 → 1,00; MRR 0,69 → 1,00).
+- **Un caso de prueba cuya respuesta no existe en los datos no mide el
+  sistema, mide a quien escribió el test.** Dos casos del benchmark
+  esperaban encontrar un esmeril; el catálogo real no tiene ninguno.
+
+Cuando un módulo tenga que correr la misma lógica en Python y en el
+navegador, el patrón que quedó es: calcular en Python todo lo que dependa de
+los datos, mandar las tablas en el snapshot, escribir en JavaScript solo lo
+que dependa de lo que el usuario teclea, y **clavar la paridad con un test
+que corra las dos implementaciones y compare** (ver
+`Cotizador Historico/Sistema/tests/test_paridad_busqueda_js.py`). El archivo
+JavaScript es **uno solo** para Chile y Perú, inyectado por cada build.
+
 Se espera que los módulos futuros (ej. Flujo de Caja) consuman datos que ya producen módulos anteriores (ej. totales por proyecto de Centro de Costos) en vez de construirse de forma aislada — revisa qué datos ya calculan los módulos existentes antes de duplicar esa lógica en uno nuevo.
 
 ## Al trabajar en este directorio
