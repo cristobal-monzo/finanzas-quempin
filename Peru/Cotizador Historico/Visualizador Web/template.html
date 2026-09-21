@@ -52,6 +52,9 @@
        sobre fondo claro; ver Iteración 1 del loop de mejora continua. */
     --brand-orange-ink: #b23a00;
     --status-good:    #0ca30c;
+    /* Mismo criterio que --brand-orange-ink: el verde de estado, oscurecido
+       para que el texto chico cumpla contraste AA (4.5:1) sobre fondo claro. */
+    --status-good-ink: #087a08;
     --status-warning: #c98500;
   }
   @media (prefers-color-scheme: dark) {
@@ -68,6 +71,7 @@
       --border-hairline: rgba(255,255,255,0.12);
       --brand-orange:   #ff5100;
       --brand-orange-ink: #ff8a4d;
+      --status-good-ink: #5fd35f;
       --brand-black:    #000000;
       --brand-gray-11:  #54565a;
       --brand-gray-7:   #98989a;
@@ -86,12 +90,16 @@
     --border-hairline: rgba(255,255,255,0.12);
     --brand-orange:   #ff5100;
     --brand-orange-ink: #ff8a4d;
+    --status-good-ink: #5fd35f;
     --brand-black:    #000000;
     --brand-gray-11:  #54565a;
     --brand-gray-7:   #98989a;
   }
 
   * { box-sizing: border-box; }
+  /* El atributo hidden tiene que ganarle a cualquier display de estas reglas
+     (el panel de la cotizacion y el de filtros se abren y cierran con el). */
+  [hidden] { display: none !important; }
   /* El navegador aplica ~8px de margen a <body> por defecto -- sin este
      reset, y como html/body no tienen fondo propio (heredan el blanco del
      navegador), queda un marco blanco alrededor de TODO el contenido,
@@ -108,7 +116,7 @@
        encogia al alto del contenido y dejaba una franja del fondo blanco
        por defecto del documento visible debajo. */
     min-height: 100vh;
-    padding: 0 0 48px 0;
+    padding: 0 0 96px 0; /* espacio para que el boton flotante no tape el pie */
   }
   .viz-container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
 
@@ -129,7 +137,7 @@
   .viz-wordmark .in { color: #ff5100; }
   .viz-titleblock { flex: 1 1 auto; min-width: 200px; }
   .viz-titleblock h1 { font-size: 15px; font-weight: 700; margin: 0; color: #ffffff; }
-  .viz-titleblock p { font-size: 12.5px; color: #98989a; margin: 3px 0 0; }
+  .viz-titleblock p { font-size: 12.5px; color: #98989a; margin: 3px 0 0; overflow-wrap: anywhere; }
   .viz-titleblock p strong { color: #ffffff; font-weight: 700; }
   .viz-theme-toggle {
     background: rgba(255,255,255,0.12);
@@ -208,7 +216,7 @@
   .viz-gate-error { font-size: 12px; color: #ff8a4d; min-height: 16px; margin-top: 10px; }
 
   /* KPI row */
-  .viz-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .viz-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 8px; }
   .viz-kpi {
     background: var(--surface-card);
     border: 1px solid var(--border-hairline);
@@ -217,7 +225,7 @@
   }
   .viz-kpi .label { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 6px; }
   .viz-kpi .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .viz-kpi .sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+  .viz-kpi .sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; overflow-wrap: anywhere; }
   .viz-kpi.accent .value { color: var(--brand-orange-ink, var(--brand-orange)); }
   .viz-kpi .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
   .viz-kpi .pill.ok { color: var(--status-good); }
@@ -226,20 +234,9 @@
   /* Section headers */
   .viz-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin: 0 0 10px; }
 
-  /* Filter bar */
-  .viz-filterbar {
-    background: var(--surface-card);
-    border: 1px solid var(--border-hairline);
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 24px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: flex-end;
-  }
-  .viz-field { display: flex; flex-direction: column; gap: 4px; }
-  .viz-field label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+  /* Campos del panel de filtros */
+  .viz-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .viz-field label { font-size: 11.5px; color: var(--text-muted); font-weight: 700; }
   .viz-field input, .viz-field select {
     font-family: inherit;
     font-size: 13px;
@@ -248,23 +245,21 @@
     border: 1px solid var(--border-hairline);
     background: var(--surface-1);
     color: var(--text-primary);
-    min-width: 120px;
+    width: 100%;
+    min-width: 0;
   }
-  .viz-field.search { flex: 1 1 220px; min-width: 200px; }
-  .viz-field.search input { width: 100%; min-width: unset; }
-  .viz-field.dates { flex-direction: row; gap: 6px; align-items: flex-end; }
-  .viz-field.dates input { min-width: 128px; }
   .viz-clearbtn {
-    font-size: 12px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
     background: transparent;
-    border: 1px solid var(--border-hairline);
+    border: 1px solid var(--baseline);
     color: var(--text-secondary);
-    border-radius: 7px;
+    border-radius: 8px;
     padding: 7px 12px;
     cursor: pointer;
   }
-  .viz-clearbtn:hover { background: var(--surface-1); }
-  .viz-resultcount { font-size: 12px; color: var(--text-muted); margin-left: auto; align-self: center; white-space: nowrap; }
+  .viz-clearbtn:hover { background: var(--surface-1); border-color: var(--brand-orange); color: var(--text-primary); }
 
   .viz-tooltip {
     /* Fondo fijo en negro oficial, NO ligado al tema — bug encontrado en la
@@ -336,128 +331,253 @@
 
   .viz-searchsummary { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; display: flex; gap: 24px; flex-wrap: wrap; }
   .viz-searchsummary b { color: var(--brand-orange-ink, var(--brand-orange)); }
+
+  /* Texto solo para lectores de pantalla. */
+  .viz-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  /* ---------- tarjeta de una compra (vista "sin agrupar") ---------- */
   .viz-cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-bottom: 12px; }
-  .viz-refcard { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-  .viz-refcard .rc-title { font-size: 14px; font-weight: 700; }
-  .viz-refcard .rc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .viz-refcard .rc-chip { font-size: 11px; font-weight: 700; background: rgba(255,81,0,0.12); color: var(--brand-orange-ink, var(--brand-orange)); border-radius: 20px; padding: 2px 9px; }
+  .viz-refcard { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .viz-refcard .rc-hoja { font-size: 11.5px; color: var(--text-muted); font-weight: 700; }
+  .viz-refcard .rc-title { font-size: 14.5px; font-weight: 700; margin: 0; line-height: 1.3; }
+  .rc-chips, .gc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rc-chip { font-size: 11px; font-weight: 700; background: rgba(255,81,0,0.12); color: var(--brand-orange-ink, var(--brand-orange)); border-radius: 20px; padding: 2px 9px; }
   .viz-refcard.is-cheapest { border-color: var(--status-good); box-shadow: 0 0 0 1px var(--status-good); }
-  .viz-refcard .rc-cheapest-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; color: var(--status-good); background: rgba(12,163,12,0.12); border-radius: 20px; padding: 2px 9px; align-self: flex-start; }
+  .viz-refcard .rc-cheapest-badge, .tc-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 900; color: var(--status-good-ink); background: rgba(12,163,12,0.12); border-radius: 20px; padding: 2px 9px; align-self: flex-start; white-space: nowrap; }
   .viz-refcard .rc-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; }
   .viz-refcard .rc-meta { font-size: 11.5px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 4px 10px; }
-  .viz-refcard .rc-price { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--gridline); }
-  .viz-refcard .rc-price .rc-price-main { font-size: 21px; font-weight: 900; color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; }
-  .viz-refcard .rc-price .rc-price-sub { font-size: 11.5px; color: var(--text-muted); }
-  .viz-refcard .rc-original { font-size: 11px; color: var(--text-muted); }
-  .viz-refcard mark { background: rgba(255,81,0,0.28); color: inherit; border-radius: 2px; padding: 0 1px; }
-  .viz-refcard .rc-cartrow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-  .viz-refcard .rc-qty { width: 52px; font-family: inherit; font-size: 13px; text-align: center; padding: 5px; border-radius: 6px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
-  .viz-refcard .rc-addbtn { flex: 1; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 10px; border-radius: 7px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; }
-  .viz-refcard .rc-addbtn:hover { filter: brightness(1.1); }
-  .viz-refcard .rc-addbtn.added { background: var(--status-good); color: #fff; }
-  .viz-cart-fab { position: fixed; bottom: 20px; right: 20px; z-index: 900; width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--brand-orange); color: #000; font-size: 22px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
-  .viz-cart-badge { position: absolute; top: -4px; right: -4px; background: #000; color: #fff; font-size: 11px; font-weight: 900; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+  .viz-refcard .rc-price { margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--gridline); }
+  .viz-refcard .rc-price-main { font-size: 21px; font-weight: 900; color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; }
+  .viz-refcard .rc-price-iva { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+  .viz-refcard .rc-price-sub { font-size: 11.5px; color: var(--text-muted); }
+  .viz-refcard .viz-add { margin-top: 4px; }
+  .viz-refcard .viz-add .rc-addbtn { flex: 1; }
+  .viz-refcard mark, .viz-groupcard mark, .viz-compras mark { background: rgba(255,81,0,0.28); color: inherit; border-radius: 2px; padding: 0 1px; }
+
+  /* ---------- cantidad + agregar (compartido) ---------- */
+  .viz-add { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .viz-qty { display: inline-flex; align-items: stretch; border: 1px solid var(--baseline); border-radius: 8px; overflow: hidden; background: var(--surface-1); flex: 0 0 auto; }
+  .viz-qty button { font-family: inherit; width: 30px; border: none; background: transparent; color: var(--text-primary); font-size: 15px; font-weight: 700; cursor: pointer; padding: 0; }
+  .viz-qty button:hover { background: var(--gridline); }
+  .viz-qty input { width: 38px; border: none; border-left: 1px solid var(--border-hairline); border-right: 1px solid var(--border-hairline); text-align: center; font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums; background: transparent; color: var(--text-primary); padding: 6px 0; -moz-appearance: textfield; appearance: textfield; }
+  .viz-qty input::-webkit-outer-spin-button, .viz-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .rc-addbtn { font-family: inherit; font-size: 13px; font-weight: 900; padding: 8px 14px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; white-space: nowrap; }
+  .rc-addbtn:hover { filter: brightness(1.08); }
+  .rc-addbtn.added { background: var(--status-good-ink); color: #fff; }
+  .rc-incart { font-size: 11.5px; font-weight: 700; color: var(--status-good-ink); white-space: nowrap; }
+  .rc-incart:empty { display: none; }
+
+  /* ---------- boton y panel de la cotizacion ---------- */
+  /* Circulo compacto y no una pastilla con texto: con la etiqueta
+     "Cotizacion" medía ~130px y, en una pantalla de 1366px, tapaba el
+     boton "Agregar" del borde derecho de cada tarjeta. */
+  .viz-cart-fab { position: fixed; bottom: 20px; right: 20px; z-index: 900; display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; padding: 0; border-radius: 50%; border: none; background: var(--brand-orange); color: #000; font-family: inherit; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+  .viz-cart-fab:hover { filter: brightness(1.06); }
+  .viz-cart-fab .fab-icon { font-size: 22px; line-height: 1; }
+  .viz-cart-fab .fab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .viz-cart-badge { position: absolute; top: -4px; right: -4px; background: #000; color: #fff; font-size: 12px; font-weight: 900; border-radius: 12px; min-width: 22px; height: 22px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; border: 2px solid var(--brand-orange); }
   .viz-cart-badge.bump { animation: cartBump 0.25s ease-out; }
   @keyframes cartBump { 0% { transform: scale(1); } 50% { transform: scale(1.35); } 100% { transform: scale(1); } }
-  .viz-cart-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 100vw); background: var(--surface-card); border-left: 1px solid var(--border-hairline); box-shadow: -8px 0 24px rgba(0,0,0,0.2); z-index: 950; display: flex; flex-direction: column; padding: 16px; }
-  .viz-cart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .viz-cart-header h3 { font-size: 15px; margin: 0; }
-  .viz-cart-header button { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-secondary); }
-  .viz-cart-items { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-  .viz-cart-line { border: 1px solid var(--border-hairline); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; }
-  .viz-cart-line .cl-title { font-weight: 700; margin-bottom: 4px; }
-  .viz-cart-line .cl-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .viz-cart-line input { width: 46px; font-family: inherit; font-size: 12.5px; text-align: center; padding: 3px; border-radius: 5px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
-  .viz-cart-line .cl-removebtn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; }
-  .viz-cart-line .cl-removebtn:hover { color: var(--brand-orange-ink, var(--brand-orange)); }
-  .viz-cart-empty { font-size: 12.5px; color: var(--text-muted); text-align: center; padding: 20px 0; }
-  .viz-cart-totals { font-size: 13px; font-weight: 700; padding: 10px 0; border-top: 1px solid var(--gridline); margin-top: 8px; }
-  .viz-cart-label { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; display: block; }
+  .viz-cart-backdrop { position: fixed; inset: 0; z-index: 940; background: rgba(0,0,0,0.38); }
+  .viz-cart-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 100vw); background: var(--surface-card); color: var(--text-primary); border-left: 1px solid var(--border-hairline); box-shadow: -8px 0 24px rgba(0,0,0,0.2); z-index: 950; display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+  .viz-cart-header { display: flex; align-items: center; gap: 6px; }
+  .viz-cart-header h3 { font-size: 17px; font-weight: 900; margin: 0; flex: 1; }
+  .viz-cart-close { font-family: inherit; background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-secondary); padding: 6px 9px; border-radius: 7px; }
+  .viz-cart-close:hover { background: var(--gridline); color: var(--text-primary); }
+  .viz-cart-textbtn { font-family: inherit; font-size: 12.5px; font-weight: 700; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px 9px; border-radius: 7px; }
+  .viz-cart-textbtn:hover { color: var(--brand-orange-ink); background: var(--page-plane); }
+  .viz-cart-items { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .viz-cart-line { border: 1px solid var(--border-hairline); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; display: flex; flex-direction: column; gap: 6px; }
+  .viz-cart-line .cl-top { display: flex; align-items: flex-start; gap: 8px; }
+  .viz-cart-line .cl-title { font-weight: 700; flex: 1; line-height: 1.3; }
+  .viz-cart-line .cl-meta { font-size: 11.5px; color: var(--text-muted); }
+  .viz-cart-line .cl-row { display: flex; align-items: center; gap: 10px; }
+  .viz-cart-line .cl-unit { font-size: 11.5px; color: var(--text-muted); flex: 1; }
+  .viz-cart-line .cl-sub { font-weight: 900; font-variant-numeric: tabular-nums; }
+  .viz-cart-line .cl-removebtn { font-family: inherit; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 2px 7px; border-radius: 6px; }
+  .viz-cart-line .cl-removebtn:hover { color: var(--brand-orange-ink); background: var(--page-plane); }
+  .viz-cart-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 28px 12px; line-height: 1.5; }
+  .viz-cart-empty p { margin: 0 0 4px; }
+  .viz-cart-empty strong { color: var(--text-primary); }
+  .viz-cart-totals:empty { display: none; }
+  .viz-cart-totals { border-top: 1px solid var(--gridline); padding-top: 10px; display: flex; flex-direction: column; gap: 3px; }
+  .viz-cart-totals .ct-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .viz-cart-totals .ct-row.is-main { font-size: 14px; font-weight: 900; color: var(--text-primary); }
+  .viz-cart-totals .ct-row.is-main b { font-size: 21px; color: var(--brand-orange-ink); }
+  .viz-cart-export { border-top: 1px solid var(--gridline); padding-top: 10px; }
+  .viz-cart-label { font-size: 11.5px; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; display: block; }
   .viz-cart-meta { font-size: 10.5px; color: var(--text-muted); margin: 0 0 6px; line-height: 1.4; }
   .viz-cart-textarea { width: 100%; font-family: 'Lato', monospace; font-size: 11px; padding: 8px; border-radius: 7px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); resize: vertical; white-space: pre; }
-  .viz-cart-copybtn { font-family: inherit; font-size: 13px; font-weight: 900; padding: 10px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; margin-top: 8px; }
+  .viz-cart-copybtn { width: 100%; font-family: inherit; font-size: 13.5px; font-weight: 900; padding: 11px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; margin-top: 8px; }
   .viz-cart-copybtn:disabled { opacity: 0.4; cursor: default; }
   .viz-cart-note { font-size: 10.5px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.4; }
-  /* ---------- buscador (rediseño 2026-09-16) ---------- */
-  .viz-searchrow { margin-bottom: 10px; }
+
+  .viz-toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 960; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); background: #000; color: #fff; border-left: 3px solid #ff5100; border-radius: 10px; padding: 10px 10px 10px 14px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .viz-toast .toast-btn { font-family: inherit; font-size: 12.5px; font-weight: 900; background: #ff5100; color: #000; border: none; border-radius: 7px; padding: 7px 11px; cursor: pointer; white-space: nowrap; }
+
+  /* ---------- buscador (rediseño 2026-09-16, pantalla 2026-09-21) ---------- */
+  .viz-hero {
+    background: var(--surface-card); border: 1px solid var(--border-hairline);
+    border-radius: 12px; padding: 18px 20px 16px; margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .viz-hero-title { display: block; font-size: 19px; font-weight: 900; margin: 0 0 10px; color: var(--text-primary); }
   .viz-searchbox { position: relative; display: flex; align-items: center; }
-  .viz-searchbox .sb-icon { position: absolute; left: 10px; font-size: 14px; opacity: 0.7; pointer-events: none; }
+  .viz-searchbox .sb-icon { position: absolute; left: 14px; font-size: 16px; opacity: 0.7; pointer-events: none; }
+  /* 16px: con menos, Safari de iPhone hace zoom a la pagina al tocar el campo. */
   .viz-searchbox input {
-    width: 100%; font-family: inherit; font-size: 14px; padding: 10px 34px 10px 32px;
-    border-radius: 8px; border: 1px solid var(--border-hairline);
+    width: 100%; font-family: inherit; font-size: 16px; padding: 13px 48px 13px 42px;
+    border-radius: 10px; border: 1.5px solid var(--baseline);
     background: var(--surface-1); color: var(--text-primary);
   }
-  .viz-searchbox input:focus { outline: 2px solid var(--brand-orange); outline-offset: -1px; }
+  .viz-searchbox input::placeholder { color: var(--text-muted); }
+  .viz-searchbox input:focus { outline: none; border-color: var(--brand-orange); box-shadow: 0 0 0 3px rgba(255,81,0,0.22); }
   .viz-searchbox .sb-clear {
-    position: absolute; right: 8px; border: none; background: transparent; cursor: pointer;
-    color: var(--text-muted); font-size: 13px; padding: 4px 6px; border-radius: 4px;
+    position: absolute; right: 8px; border: none; background: transparent; cursor: pointer; font-family: inherit;
+    color: var(--text-muted); font-size: 14px; padding: 6px 9px; border-radius: 7px;
   }
   .viz-searchbox .sb-clear:hover { background: var(--gridline); color: var(--text-primary); }
-  .viz-hint { font-size: 11.5px; color: var(--text-muted); margin: 6px 0 0; line-height: 1.7; }
+  .viz-searchbox .sb-kbd {
+    position: absolute; right: 12px; font-family: inherit; font-size: 11px; font-weight: 700; line-height: 1.5;
+    color: var(--text-muted); border: 1px solid var(--baseline); border-bottom-width: 2px;
+    border-radius: 5px; padding: 0 7px; pointer-events: none;
+  }
+  .viz-searchbox.has-text .sb-kbd { display: none; }
+  .viz-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.9; }
   .viz-ejemplo {
-    font-family: inherit; font-size: 11.5px; border: 1px dashed var(--baseline);
+    font-family: inherit; font-size: 12px; border: 1px dashed var(--baseline);
     background: transparent; color: var(--text-secondary); border-radius: 20px;
-    padding: 2px 9px; margin: 0 2px; cursor: pointer;
+    padding: 2px 10px; margin: 0 2px; cursor: pointer;
   }
   .viz-ejemplo:hover { border-style: solid; border-color: var(--brand-orange); color: var(--brand-orange-ink, var(--brand-orange)); }
+
+  .viz-herotools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--gridline); }
+  .viz-filterbtn {
+    display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 13px; font-weight: 700;
+    background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--baseline);
+    border-radius: 8px; padding: 7px 12px; cursor: pointer;
+  }
+  .viz-filterbtn:hover { border-color: var(--brand-orange); }
+  .viz-filterbtn[aria-expanded="true"] { border-color: var(--brand-orange); background: rgba(255,81,0,0.08); }
+  .viz-filterbtn .fb-caret { font-size: 10px; transition: transform 0.15s; }
+  .viz-filterbtn[aria-expanded="true"] .fb-caret { transform: rotate(180deg); }
+  .viz-filterbtn .fb-count { background: var(--brand-orange); color: #000; font-size: 11px; font-weight: 900; border-radius: 10px; padding: 0 7px; line-height: 18px; }
+  .viz-filterpanel { margin-top: 12px; padding: 14px; border-radius: 10px; background: var(--page-plane); }
+  .viz-filtergrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px 12px; }
+  .viz-filtergrid.is-ranges { margin-top: 10px; }
+  .viz-filternote { font-size: 11.5px; color: var(--text-muted); margin: 10px 0 0; }
 
   .viz-autocomplete {
     position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 800;
     background: var(--surface-card); border: 1px solid var(--border-hairline);
-    border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); overflow: hidden;
-    max-height: 320px; overflow-y: auto;
+    border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+    max-height: 340px; overflow-y: auto;
   }
   .viz-autocomplete .ac-item {
     display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
-    font-family: inherit; font-size: 13px; padding: 8px 11px; border: none;
+    font-family: inherit; font-size: 14px; padding: 9px 12px; border: none;
     background: transparent; color: var(--text-primary); cursor: pointer;
   }
   .viz-autocomplete .ac-item:hover, .viz-autocomplete .ac-item.is-active { background: var(--page-plane); }
-  .viz-autocomplete .ac-texto { flex: 1; }
-  .viz-autocomplete .ac-n { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .viz-autocomplete .ac-item.is-active { box-shadow: inset 3px 0 0 var(--brand-orange); }
+  .viz-autocomplete .ac-texto { flex: 1; min-width: 0; }
+  .viz-autocomplete .ac-tipo { font-size: 11px; color: var(--text-muted); }
+  .viz-autocomplete .ac-n { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 22px; text-align: right; }
   .viz-autocomplete mark { background: rgba(255,81,0,0.28); color: inherit; border-radius: 2px; }
 
-  .viz-filterrow, .viz-toolsrow { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
-  .viz-filterrow { padding-top: 10px; border-top: 1px solid var(--gridline); }
-  .viz-toolsrow { padding-top: 10px; }
-  .viz-filterrow select { max-width: 190px; }
-  .viz-check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+  .viz-check { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+  .viz-check input { accent-color: var(--brand-orange); width: 15px; height: 15px; }
 
   .viz-chiprow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
-  .viz-chiprow .sr-label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-right: 2px; }
+  .viz-chiprow.is-inline { margin-bottom: 0; }
+  .sr-label { font-size: 11.5px; font-weight: 700; color: var(--text-muted); margin-right: 2px; }
   .viz-chip {
-    font-family: inherit; font-size: 12px; border-radius: 20px; padding: 4px 11px;
+    font-family: inherit; font-size: 12.5px; border-radius: 20px; padding: 4px 11px;
     border: 1px solid var(--border-hairline); background: var(--surface-card);
-    color: var(--text-secondary); cursor: pointer;
+    color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
   }
   .viz-chip:hover { border-color: var(--brand-orange); color: var(--brand-orange-ink, var(--brand-orange)); }
   .viz-chip.is-filter { background: rgba(255,81,0,0.10); border-color: transparent; color: var(--brand-orange-ink, var(--brand-orange)); font-weight: 700; }
-  .viz-chip .chip-x { opacity: 0.65; margin-left: 2px; }
-  .viz-chip.is-clear { font-weight: 700; }
+  .viz-chip .chip-x { opacity: 0.65; }
+  .viz-chip .chip-n { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .viz-chip:hover .chip-n { color: inherit; }
+  .viz-chip.is-clear { font-weight: 700; border-style: dashed; }
+  .viz-chip.is-folder { font-weight: 700; color: var(--text-primary); }
+  .viz-chip.is-more { border-style: dashed; }
 
   .viz-aviso {
     background: rgba(201,133,0,0.10); border: 1px solid var(--status-warning);
     border-radius: 8px; padding: 9px 13px; font-size: 12.5px; color: var(--text-secondary);
     margin-bottom: 12px;
   }
-  .viz-searchsummary .ss-ms { margin-left: auto; color: var(--text-muted); font-size: 11px; }
 
-  /* Un resultado por producto; las compras individuales se despliegan dentro. */
+  /* Barra de resultados: cuantos hay, en que rango de precio, y como se ordenan. */
+  .viz-resultsbar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+    margin: 0 0 10px; padding: 10px 14px; background: var(--surface-card);
+    border: 1px solid var(--border-hairline); border-radius: 10px;
+  }
+  .rb-summary { font-size: 13px; color: var(--text-secondary); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+  .rb-summary b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .rb-summary .rb-count { font-size: 15px; font-weight: 900; color: var(--text-primary); }
+  .rb-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+  .rb-label { font-size: 12px; color: var(--text-muted); font-weight: 700; }
+  .rb-tools select { font-family: inherit; font-size: 13px; padding: 6px 8px; border-radius: 7px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
+
+  .viz-refinar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 12px; }
+  .viz-refinar .rf-titulo { font-size: 11.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .viz-refinar .rf-grupo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+  .viz-more { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 14px 0 26px; font-size: 12.5px; color: var(--text-muted); }
+
+  /* ---------- tarjeta de producto: una por hoja ---------- */
   .viz-grouplist { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
   .viz-groupcard {
     background: var(--surface-card); border: 1px solid var(--border-hairline);
-    border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+    border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+    transition: border-color 0.15s, box-shadow 0.15s;
   }
-  .viz-groupcard.is-open { border-color: var(--brand-orange); }
-  .viz-groupcard .gc-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
-  .viz-groupcard .gc-title { font-size: 15px; font-weight: 800; }
-  .viz-groupcard .gc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .viz-groupcard .gc-stats { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13px; color: var(--text-secondary); }
-  .viz-groupcard .gc-stats b { color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; }
-  .viz-groupcard .gc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px; }
-  .viz-groupcard .gc-actions .rc-addbtn { flex: 0 0 auto; }
-  .viz-groupcard .gc-compras { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--gridline); }
-  .viz-groupcard mark { background: rgba(255,81,0,0.28); color: inherit; border-radius: 2px; padding: 0 1px; }
+  .viz-groupcard:hover { border-color: var(--baseline); }
+  .viz-groupcard.is-open { border-color: var(--brand-orange); box-shadow: 0 0 0 1px var(--brand-orange); }
+  .gc-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .gc-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .gc-path { font-size: 11.5px; color: var(--text-muted); }
+  .gc-title { font-size: 16.5px; font-weight: 900; margin: 0; line-height: 1.3; }
+  .gc-price { flex: 0 0 auto; text-align: right; }
+  .gc-price .gp-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .gc-price .gp-main { font-size: 25px; font-weight: 900; line-height: 1.15; color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; }
+  .gc-price .gp-sub { font-size: 12px; color: var(--text-secondary); }
+  .gc-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 12.5px; color: var(--text-secondary); }
+  .gc-stats b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .gc-range { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .gc-range .gr-bar { position: relative; display: inline-block; width: 150px; height: 16px; }
+  .gc-range .gr-bar::before { content: ''; position: absolute; left: 0; right: 0; top: 7px; height: 2px; border-radius: 2px; background: var(--baseline); }
+  .gc-range .gr-dot { position: absolute; top: 3px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--brand-gray-7); border: 2px solid var(--surface-card); cursor: default; }
+  .gc-range .gr-dot.is-min { background: var(--status-good); }
+  .gc-range .gr-avg { position: absolute; top: 0; width: 3px; height: 16px; margin-left: -1px; border-radius: 2px; background: var(--brand-orange); }
+  .gc-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--gridline); }
+  .gc-toggle .gc-caret { font-size: 10px; margin-left: 2px; }
+  .gc-compras { margin-top: 2px; }
+
+  /* Tabla comparativa de las compras de un producto. */
+  .viz-tablewrap { overflow-x: auto; }
+  /* color explicito: la pagina no declara <!DOCTYPE> y corre en modo quirks,
+     donde una <table> NO hereda el color del texto -- en modo oscuro las
+     celdas quedaban negras sobre fondo negro. */
+  .viz-compras { width: 100%; border-collapse: collapse; font-size: 12.5px; color: var(--text-primary); line-height: 1.35; }
+  .viz-compras th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); padding: 6px 8px; border-bottom: 1px solid var(--baseline); white-space: nowrap; }
+  .viz-compras td { padding: 9px 8px; border-bottom: 1px solid var(--gridline); vertical-align: middle; }
+  .viz-compras tbody tr:last-child td { border-bottom: none; }
+  .viz-compras tbody tr:hover { background: var(--page-plane); }
+  .viz-compras tr.is-cheapest { background: rgba(12,163,12,0.07); }
+  .viz-compras .tc-precio { white-space: nowrap; }
+  .viz-compras .tc-precio b { font-size: 15px; font-weight: 900; color: var(--brand-orange-ink, var(--brand-orange)); font-variant-numeric: tabular-nums; }
+  .viz-compras .tc-iva { font-size: 11px; color: var(--text-muted); }
+  .viz-compras .tc-sub { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .viz-compras .tc-fecha { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .viz-compras .tc-desc { color: var(--text-secondary); min-width: 200px; line-height: 1.35; }
+  .viz-compras .tc-accion { text-align: right; }
+  .viz-compras .tc-accion .viz-add { justify-content: flex-end; flex-wrap: nowrap; }
 
   /* Por que apareció cada resultado. */
   .rc-whys { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -470,17 +590,86 @@
   .rc-why.is-medida b { color: inherit; }
   .rc-why i { font-style: normal; opacity: 0.8; }
 
+  .viz-empty-state .es-icono { font-size: 30px; margin-bottom: 6px; opacity: 0.8; }
   .viz-empty-state .es-titulo { font-size: 15px; color: var(--text-primary); margin: 0 0 6px; }
   .viz-empty-state .es-nota { margin: 12px 0 6px; }
   .viz-empty-state .es-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .viz-searcharea .viz-empty-state { background: var(--surface-card); border: 1px dashed var(--baseline); border-radius: 12px; margin-bottom: 18px; }
 
-  /* Los chips y el boton de carrito estaban definidos solo bajo .viz-refcard;
-     la tarjeta de producto los reutiliza y necesita las mismas reglas. */
-  .viz-groupcard .rc-chip { font-size: 11px; font-weight: 700; background: rgba(255,81,0,0.12); color: var(--brand-orange-ink, var(--brand-orange)); border-radius: 20px; padding: 2px 9px; }
-  .viz-groupcard .rc-qty { width: 52px; font-family: inherit; font-size: 13px; text-align: center; padding: 5px; border-radius: 6px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
-  .viz-groupcard .rc-addbtn { font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 7px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; }
-  .viz-groupcard .rc-addbtn:hover { filter: brightness(1.1); }
-  .viz-groupcard .rc-addbtn.added { background: var(--status-good); color: #fff; }
+  /* Explorador: boton "Volver" y titulo de seccion como h2. */
+  .viz-breadcrumb .bc-back { font-family: inherit; font-size: 12.5px; font-weight: 700; background: var(--surface-card); border: 1px solid var(--border-hairline); color: var(--text-primary); border-radius: 7px; padding: 4px 10px; margin-right: 6px; cursor: pointer; }
+  .viz-breadcrumb .bc-back:hover { border-color: var(--brand-orange); }
+  #explorarTitulo { margin-top: 26px; }
+
+  /* Foco de teclado visible en todo lo que se puede operar (doc maestro:
+     "foco de teclado visible"). Antes solo el campo de busqueda lo tenia. */
+  .viz-root :focus-visible, .viz-gate :focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .viz-root *, .viz-root *::before, .viz-root *::after { transition: none !important; animation: none !important; }
+  }
+
+  @media (hover: none) {
+    .viz-searchbox .sb-kbd { display: none; }
+  }
+
+  /* ---------- celular ---------- */
+  @media (max-width: 720px) {
+    .viz-compras thead { display: none; }
+    .viz-compras, .viz-compras tbody, .viz-compras tr, .viz-compras td { display: block; width: 100%; }
+    .viz-compras tr { border: 1px solid var(--border-hairline); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; }
+    .viz-compras td { border: none; padding: 3px 0; }
+    .viz-compras td[data-label]::before { content: attr(data-label); display: inline-block; min-width: 76px; font-size: 11px; font-weight: 700; color: var(--text-muted); }
+    .viz-compras .tc-precio .tc-sub { padding-left: 76px; }
+    .viz-compras .tc-desc { min-width: 0; }
+    .viz-compras .tc-accion { text-align: left; padding-top: 8px; }
+    .viz-compras .tc-accion .viz-add { justify-content: flex-start; flex-wrap: wrap; }
+    .viz-compras tbody tr:hover { background: transparent; }
+    .viz-compras tr.is-cheapest { background: rgba(12,163,12,0.07); }
+  }
+  @media (max-width: 640px) {
+    .viz-container { padding: 0 16px; }
+    .viz-header { padding: 14px 0 0; margin-bottom: 16px; }
+    .viz-header .viz-container { gap: 10px 14px; }
+    .viz-logo img { height: 34px; }
+    .viz-wordmark { font-size: 18px; }
+    .viz-titleblock { order: 3; flex-basis: 100%; }
+    .viz-theme-toggle { margin-left: auto; }
+    .viz-modnav { margin-top: 10px; }
+    /* Una sola fila deslizable: con wrap, las 6 pestañas ocupaban 3 filas. */
+    .viz-header .viz-modnav-inner { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; gap: 4px; }
+    .viz-header .viz-modnav-inner::-webkit-scrollbar { display: none; }
+    .viz-modnav-tab { white-space: nowrap; }
+    .viz-hero { padding: 14px 14px 12px; }
+    .viz-hero-title { font-size: 17px; }
+    .viz-hint { line-height: 1.8; }
+    .viz-hint .hint-largo { display: none; }
+    /* Una fila deslizable por faceta: con wrap, Medida + Material ocupaban
+       cuatro filas antes del primer resultado. */
+    /* nowrap tambien en el contenedor: una columna flex CON wrap estira cada
+       fila al ancho de su contenido y no al de la pantalla. */
+    .viz-refinar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
+    .viz-refinar .rf-grupo { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; padding-bottom: 2px; }
+    .viz-refinar .rf-grupo::-webkit-scrollbar { display: none; }
+    .viz-refinar .viz-chip, .viz-refinar .sr-label { flex: 0 0 auto; white-space: nowrap; }
+    .viz-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .viz-kpi { padding: 10px 12px; }
+    .viz-kpi .value { font-size: 19px; }
+    .viz-resultsbar { padding: 10px 12px; }
+    .gc-main { flex-direction: column; gap: 8px; }
+    .gc-price { text-align: left; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px; }
+    .viz-groupcard { padding: 14px; }
+    .gc-actions { flex-direction: column; align-items: stretch; }
+    .gc-actions .viz-add { justify-content: space-between; }
+    .gc-actions .viz-add .rc-addbtn { flex: 1; }
+    .viz-foldergrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .viz-foldercard { padding: 14px 8px; }
+    .viz-leafrow { grid-template-columns: 1fr auto; row-gap: 2px; }
+    .viz-leafrow .lf-count { grid-column: 1; grid-row: 2; text-align: left; }
+    .viz-leafrow .lf-price { grid-column: 2; grid-row: 1 / span 2; }
+    .viz-cart-fab { right: 16px; bottom: 16px; }
+    .viz-toast { bottom: 76px; }
+  }
 </style>
 
 <div class="viz-gate" id="pwGate">
@@ -519,78 +708,92 @@
     </nav>
   </header>
 
-  <div class="viz-container">
-    <div class="viz-kpis" id="kpiRow"></div>
+  <main class="viz-container" id="vizMain">
+    <!-- La busqueda es la tarea principal de este tablero: va primero y
+         grande. Los KPIs del catalogo pasaron abajo y se ocultan mientras hay
+         una busqueda activa, para que los resultados queden a la vista sin
+         hacer scroll (en celular aparecian a mas de 1.300 px del inicio). -->
+    <section class="viz-hero" aria-labelledby="heroTitulo">
+      <label class="viz-hero-title" id="heroTitulo" for="fSearch">¿Qué necesitas cotizar?</label>
+      <div class="viz-searchbox">
+        <span class="sb-icon" aria-hidden="true">🔎</span>
+        <input id="fSearch" type="text" autocomplete="off" role="combobox" aria-autocomplete="list"
+               aria-controls="searchAutocomplete" aria-expanded="false" enterkeyhint="search"
+               placeholder="Producto, código o medida — ej. válvula de bola 2 pulgadas" />
+        <button type="button" id="btnLimpiarBusqueda" class="sb-clear" aria-label="Limpiar búsqueda" hidden>✕</button>
+        <kbd class="sb-kbd" aria-hidden="true" title="Atajo: tecla /">/</kbd>
+        <div id="searchAutocomplete" class="viz-autocomplete" role="listbox" style="display:none"></div>
+      </div>
+      <p class="viz-hint">
+        <span class="hint-largo">Entiende tildes, plurales, errores de tipeo y medidas equivalentes
+        (2" = 2 pulgadas = 2 plg = DN50).</span> Prueba:
+        <button type="button" class="viz-ejemplo" data-q="válvula de bola 2 pulgadas">válvula de bola 2 pulgadas</button>
+        <button type="button" class="viz-ejemplo" data-q="codo bronce 1.1/4">codo bronce 1.1/4</button>
+        <button type="button" class="viz-ejemplo" data-q="guantes">guantes</button>
+      </p>
 
-    <p class="viz-section-title">Buscar referencias</p>
-    <div class="viz-filterbar">
-      <div class="viz-searchrow">
-        <div class="viz-field search">
-          <label for="fSearch">Buscar por nombre, código, categoría o medida</label>
-          <div class="viz-searchbox">
-            <span class="sb-icon" aria-hidden="true">🔎</span>
-            <input id="fSearch" type="text" autocomplete="off" role="combobox" aria-autocomplete="list"
-                   aria-controls="searchAutocomplete" aria-expanded="false"
-                   placeholder="Ej. válvula de bola 2 pulgadas · codo bronce 1.1/4 · DCD7781" />
-            <button type="button" id="btnLimpiarBusqueda" class="sb-clear" aria-label="Limpiar búsqueda">✕</button>
-            <div id="searchAutocomplete" class="viz-autocomplete" role="listbox" style="display:none"></div>
-          </div>
-          <p class="viz-hint">
-            Entiende tildes, plurales, errores de tipeo y medidas equivalentes
-            (2" = 2 pulgadas = 2 plg = DN50). Prueba:
-            <button type="button" class="viz-ejemplo" data-q="válvula de bola 2 pulgadas">válvula de bola 2 pulgadas</button>
-            <button type="button" class="viz-ejemplo" data-q="codo bronce 1.1/4">codo bronce 1.1/4</button>
-            <button type="button" class="viz-ejemplo" data-q="guantes">guantes</button>
-          </p>
-        </div>
+      <div class="viz-herotools">
+        <button type="button" id="btnFiltros" class="viz-filterbtn" aria-expanded="false" aria-controls="filterPanel">
+          <span aria-hidden="true">⚙</span> Filtros <span id="filtrosCount" class="fb-count" hidden></span>
+          <span class="fb-caret" aria-hidden="true">▾</span>
+        </button>
+        <div id="searchActiveFilters" class="viz-chiprow is-inline" style="display:none"></div>
       </div>
 
-      <div class="viz-filterrow">
-        <div class="viz-field"><label for="fCategoria">Categoría</label><select id="fCategoria"></select></div>
-        <div class="viz-field"><label for="fSubcategoria">Subcategoría</label><select id="fSubcategoria"></select></div>
-        <div class="viz-field"><label for="fMaterial">Material</label><select id="fMaterial"></select></div>
-        <div class="viz-field"><label for="fMedida">Medida</label><select id="fMedida"></select></div>
-        <div class="viz-field"><label for="fMarca">Marca</label><select id="fMarca"></select></div>
-        <div class="viz-field"><label for="fProveedor">Proveedor</label><select id="fProveedor"></select></div>
-        <div class="viz-field"><label for="fProyecto">Proyecto</label><select id="fProyecto"></select></div>
-        <div class="viz-field dates">
-          <div class="viz-field"><label for="fDesde">Desde</label><input id="fDesde" type="date" /></div>
-          <div class="viz-field"><label for="fHasta">Hasta</label><input id="fHasta" type="date" /></div>
+      <div id="filterPanel" class="viz-filterpanel" hidden>
+        <div class="viz-filtergrid">
+          <div class="viz-field"><label for="fCategoria">Categoría</label><select id="fCategoria"></select></div>
+          <div class="viz-field"><label for="fSubcategoria">Subcategoría</label><select id="fSubcategoria"></select></div>
+          <div class="viz-field"><label for="fMaterial">Material</label><select id="fMaterial"></select></div>
+          <div class="viz-field"><label for="fMedida">Medida</label><select id="fMedida"></select></div>
+          <div class="viz-field"><label for="fMarca">Marca</label><select id="fMarca"></select></div>
+          <div class="viz-field"><label for="fProveedor">Proveedor</label><select id="fProveedor"></select></div>
+          <div class="viz-field"><label for="fProyecto">Proyecto</label><select id="fProyecto"></select></div>
         </div>
-        <div class="viz-field dates">
-          <div class="viz-field"><label for="fPrecioMin">Precio mín.</label><input id="fPrecioMin" type="number" min="0" step="1000" placeholder="$" /></div>
-          <div class="viz-field"><label for="fPrecioMax">Precio máx.</label><input id="fPrecioMax" type="number" min="0" step="1000" placeholder="$" /></div>
+        <div class="viz-filtergrid is-ranges">
+          <div class="viz-field"><label for="fDesde">Comprado desde</label><input id="fDesde" type="date" /></div>
+          <div class="viz-field"><label for="fHasta">Comprado hasta</label><input id="fHasta" type="date" /></div>
+          <div class="viz-field"><label for="fPrecioMin">Precio mín. (c/IVA)</label><input id="fPrecioMin" type="number" inputmode="numeric" min="0" step="1000" placeholder="S/" /></div>
+          <div class="viz-field"><label for="fPrecioMax">Precio máx. (c/IVA)</label><input id="fPrecioMax" type="number" inputmode="numeric" min="0" step="1000" placeholder="S/" /></div>
         </div>
+        <p class="viz-filternote">Cada lista muestra solo las opciones que existen en lo que encontró tu búsqueda, con cuántas compras hay de cada una.</p>
       </div>
+    </section>
 
-      <div class="viz-toolsrow">
-        <div class="viz-field"><label for="fOrden">Ordenar por</label>
+    <div id="searchRecientes" class="viz-chiprow" style="display:none"></div>
+
+    <div id="kpiWrap">
+      <div class="viz-kpis" id="kpiRow"></div>
+    </div>
+
+    <section id="searchArea" class="viz-searcharea" aria-label="Resultados de búsqueda">
+      <div id="searchAviso" class="viz-aviso" role="status" style="display:none"></div>
+      <div id="searchFolderMatches" class="viz-chiprow" style="display:none"></div>
+      <div id="searchToolbar" class="viz-resultsbar" style="display:none">
+        <div id="searchSummary" class="rb-summary" aria-live="polite"></div>
+        <div class="rb-tools">
+          <label class="rb-label" for="fOrden">Ordenar</label>
           <select id="fOrden">
-            <option value="relevancia">Relevancia</option>
+            <option value="relevancia">Más relevante</option>
             <option value="precio_asc">Precio: menor a mayor</option>
             <option value="precio_desc">Precio: mayor a menor</option>
             <option value="fecha">Compra más reciente</option>
           </select>
+          <label class="viz-check" for="fAgrupar">
+            <input type="checkbox" id="fAgrupar" checked /> Agrupar por producto
+          </label>
         </div>
-        <label class="viz-check" for="fAgrupar">
-          <input type="checkbox" id="fAgrupar" checked /> Agrupar por producto
-        </label>
-        <span class="viz-resultcount" id="searchResultCount"></span>
       </div>
-    </div>
+      <div id="searchRefinar" class="viz-refinar" style="display:none"></div>
+      <div id="searchResults" class="viz-grouplist"></div>
+      <div id="searchMoreWrap" class="viz-more" style="display:none">
+        <span id="searchMoreInfo"></span>
+        <button type="button" class="viz-clearbtn" id="btnVerTodas"></button>
+      </div>
+      <div id="searchEmptyState" class="viz-empty-state" style="display:none"></div>
+    </section>
 
-    <div id="searchActiveFilters" class="viz-chiprow" style="display:none"></div>
-    <div id="searchRecientes" class="viz-chiprow" style="display:none"></div>
-    <div id="searchAviso" class="viz-aviso" style="display:none"></div>
-    <div id="searchFolderMatches" class="viz-foldergrid" style="display:none;margin-bottom:14px"></div>
-    <div id="searchSummary" class="viz-searchsummary" style="display:none"></div>
-    <div id="searchResults" class="viz-grouplist"></div>
-    <div id="searchMoreWrap" style="display:none;text-align:center;margin:12px 0 24px">
-      <button type="button" class="viz-clearbtn" id="btnVerTodas"></button>
-    </div>
-    <div id="searchEmptyState" class="viz-empty-state" style="display:none"></div>
-
-    <p class="viz-section-title">Explorar por categoría</p>
+    <h2 class="viz-section-title" id="explorarTitulo">Explorar por categoría</h2>
     <div class="viz-breadcrumb" id="folderBreadcrumb"></div>
     <div id="folderBrowser" class="viz-folderbrowser"></div>
 
@@ -600,26 +803,36 @@
       Publicado en GitHub Pages. La contraseña de acceso es una barrera simple del lado del
       cliente, no seguridad real — no compartas este link fuera del equipo.
     </p>
-  </div>
+  </main>
 
-  <button type="button" id="cartToggleBtn" class="viz-cart-fab" aria-label="Abrir cotizador">
-    🧾<span id="cartBadge" class="viz-cart-badge" style="display:none">0</span>
+  <button type="button" id="cartToggleBtn" class="viz-cart-fab" aria-label="Abrir la cotización" aria-controls="cartDrawer" aria-expanded="false">
+    <span class="fab-icon" aria-hidden="true">🧾</span><span class="fab-label">Cotización</span><span id="cartBadge" class="viz-cart-badge" style="display:none">0</span>
   </button>
-  <div id="cartDrawer" class="viz-cart-drawer" style="display:none">
+  <div id="cartBackdrop" class="viz-cart-backdrop" hidden></div>
+  <!-- El carrito vive solo en memoria (var cart): nada de esto se guarda en
+       el navegador. Ver CLAUDE.md § Carrito de cotizacion. -->
+  <aside id="cartDrawer" class="viz-cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cartTitulo" hidden>
     <div class="viz-cart-header">
-      <h3>Carrito de cotización</h3>
-      <button type="button" id="cartCloseBtn" aria-label="Cerrar carrito">✕</button>
+      <h3 id="cartTitulo">Cotización</h3>
+      <button type="button" id="cartVaciarBtn" class="viz-cart-textbtn" hidden>Vaciar</button>
+      <button type="button" id="cartCloseBtn" class="viz-cart-close" aria-label="Cerrar la cotización">✕</button>
     </div>
     <div id="cartItemsList" class="viz-cart-items"></div>
-    <div id="cartEmptyMsg" class="viz-cart-empty">El carrito está vacío. Agrega referencias desde los resultados de búsqueda.</div>
+    <div id="cartEmptyMsg" class="viz-cart-empty">
+      <p><strong>Todavía no hay nada.</strong></p>
+      <p>Busca un producto y usa <b>Agregar</b> en la compra que quieras cotizar.</p>
+    </div>
     <div class="viz-cart-totals" id="cartTotals"></div>
-    <label class="viz-cart-label" for="exportText">Texto para copiar a Excel</label>
-    <p class="viz-cart-meta" id="exportMeta"></p>
-    <textarea id="exportText" class="viz-cart-textarea" readonly rows="6" placeholder="Agrega referencias al carrito para generar el texto…"></textarea>
-    <button type="button" id="btnCopiarTodo" class="viz-cart-copybtn" disabled>Copiar todo</button>
-    <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas).</p>
-  </div>
+    <div class="viz-cart-export">
+      <label class="viz-cart-label" for="exportText">Tabla para pegar en Excel</label>
+      <p class="viz-cart-meta" id="exportMeta"></p>
+      <textarea id="exportText" class="viz-cart-textarea" readonly rows="4" placeholder="Agrega referencias para generar la tabla…"></textarea>
+      <button type="button" id="btnCopiarTodo" class="viz-cart-copybtn" disabled>Copiar tabla para Excel</button>
+      <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas). La cotización no se guarda: se borra al recargar la página.</p>
+    </div>
+  </aside>
 
+  <div id="vizToast" class="viz-toast" role="status" aria-live="polite" hidden></div>
   <div class="viz-tooltip" id="vizTooltip"></div>
 </div>
 
@@ -712,6 +925,17 @@
     try { localStorage.setItem('ch_viz_theme', next); } catch (e) {}
   });
 
+  // En celular las pestañas de tableros son una fila deslizable: se centra la
+  // activa, que si no queda cortada contra el borde derecho.
+  var tabActiva = document.querySelector('.viz-modnav-tab.is-active');
+  if (tabActiva) {
+    var filaTabs = tabActiva.parentNode;
+    if (filaTabs.scrollWidth > filaTabs.clientWidth) {
+      filaTabs.scrollLeft += tabActiva.getBoundingClientRect().left - filaTabs.getBoundingClientRect().left -
+        (filaTabs.clientWidth - tabActiva.offsetWidth) / 2;
+    }
+  }
+
   // ---------- helpers ----------
   var CLP = new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 });
   function fmt(n) { return CLP.format(Math.round(n || 0)); }
@@ -771,7 +995,10 @@
     ICONOS_CATEGORIA[c] = CATEGORIAS_META[c].icono || '\uD83D\uDCC1';
   });
 
-  DATA.items.forEach(function (it) {
+  DATA.items.forEach(function (it, i) {
+    // Posicion en DATA.items: es la clave del carrito (cartKey) y la que
+    // lleva cada boton "Agregar". Antes se buscaba con indexOf en cada render.
+    it._idx = i;
     it._clasif = {
       categoria: it.categoria || 'Sin Clasificar',
       subcategoria: it.subcategoria || 'Sin Clasificar',
@@ -1016,6 +1243,10 @@
     producto: '📦', familia: '📦', categoria: '📁', subcategoria: '📂',
     marca: '🏷️', material: '🧱', medida: '📏'
   };
+  var ETIQUETA_TIPO = {
+    producto: 'producto', familia: 'producto', categoria: 'categoría', subcategoria: 'subcategoría',
+    marca: 'marca', material: 'material', medida: 'medida'
+  };
   var acState = { abierto: false, indice: -1, opciones: [] };
 
   function calcularSugerencias(texto) {
@@ -1041,12 +1272,17 @@
     acState.abierto = true;
     el.style.display = '';
     el.innerHTML = acState.opciones.map(function (s, i) {
-      return '<button type="button" class="ac-item' + (i === acState.indice ? ' is-active' : '') +
-        '" data-texto="' + esc(s.texto) + '" role="option">' +
-        '<span class="ac-icon">' + (ICONO_TIPO[s.tipo] || '🔎') + '</span>' +
+      return '<button type="button" tabindex="-1" id="acOpt' + i + '" class="ac-item' + (i === acState.indice ? ' is-active' : '') +
+        '" data-texto="' + esc(s.texto) + '" role="option" aria-selected="' + (i === acState.indice) + '">' +
+        '<span class="ac-icon" aria-hidden="true">' + (ICONO_TIPO[s.tipo] || '🔎') + '</span>' +
         '<span class="ac-texto">' + highlight(s.texto, texto) + '</span>' +
-        '<span class="ac-n">' + s.n + '</span></button>';
+        '<span class="ac-tipo">' + esc(ETIQUETA_TIPO[s.tipo] || '') + '</span>' +
+        '<span class="ac-n" title="compras">' + s.n + '</span></button>';
     }).join('');
+    var input = document.getElementById('fSearch');
+    input.setAttribute('aria-expanded', 'true');
+    if (acState.indice >= 0) input.setAttribute('aria-activedescendant', 'acOpt' + acState.indice);
+    else input.removeAttribute('aria-activedescendant');
     el.querySelectorAll('.ac-item').forEach(function (b) {
       b.addEventListener('mousedown', function (ev) {
         ev.preventDefault();
@@ -1059,10 +1295,24 @@
     var el = document.getElementById('searchAutocomplete');
     acState.abierto = false; acState.indice = -1; acState.opciones = [];
     el.style.display = 'none'; el.innerHTML = '';
+    var input = document.getElementById('fSearch');
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
   }
 
   // ---------- resultados ----------
   var PAGE_SIZE_RESULTADOS = 8;
+  var SIN_MOVIMIENTO = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var ES_TACTIL = !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
+
+  function plural(n, uno, varios) { return fmtNum(n) + ' ' + (n === 1 ? uno : varios); }
+  function precioDe(item) { return item.precio_reajustado_hoy_con_iva; }
+  function unicos(lista) {
+    var vistos = {}, salida = [];
+    lista.forEach(function (v) { if (v && !vistos[v]) { vistos[v] = true; salida.push(v); } });
+    return salida;
+  }
+  function chip(texto) { return '<span class="rc-chip">' + esc(texto) + '</span>'; }
 
   function runSearch(texto) {
     document.getElementById('fSearch').value = texto;
@@ -1071,52 +1321,177 @@
     cerrarAutocomplete();
     guardarReciente(texto);
     renderSearch();
-    var destino = document.getElementById('searchResults');
-    if (destino) destino.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    var destino = document.getElementById('searchArea');
+    if (destino) destino.scrollIntoView({ behavior: SIN_MOVIMIENTO ? 'auto' : 'smooth', block: 'nearest' });
   }
 
-  function chipsMotivos(motivos) {
+  // Del termino interno (la raiz: "bronc", "valvul") a la palabra que el
+  // usuario escribio ("bronce", "válvulas"). Los chips mostraban la raiz, que
+  // se lee como un error de tipeo.
+  function palabrasDeConsulta(consulta) {
+    var mapa = {};
+    String(consulta || '').split(/\s+/).forEach(function (p) {
+      var palabra = p.replace(/^[.,;:()\[\]¿?¡!]+|[.,;:()\[\]¿?¡!]+$/g, '');
+      if (!palabra) return;
+      BUSCADOR.terminos(palabra).forEach(function (t) { if (!mapa[t]) mapa[t] = palabra; });
+    });
+    return mapa;
+  }
+
+  function chipsMotivos(motivos, consulta) {
     // Por que aparecio este resultado. La medida va primera porque es el
     // criterio que mas manda en el orden.
     var vistos = {}, chips = [];
+    var palabras = palabrasDeConsulta(consulta);
     (motivos || []).forEach(function (m) {
-      var clave = m.etiqueta + '|' + m.coincidencia;
+      var texto = m.campo === 'medida' ? m.coincidencia : (palabras[m.termino] || m.coincidencia);
+      var clave = m.etiqueta + '|' + texto;
       if (vistos[clave]) return;
       vistos[clave] = true;
       var difuso = m.calidad < DATA.busqueda.calidad.prefijo;
       chips.push('<span class="rc-why' + (m.campo === 'medida' ? ' is-medida' : '') + '">' +
-        esc(m.etiqueta) + ': <b>' + esc(m.coincidencia) + '</b>' +
+        esc(m.etiqueta) + ': <b>' + esc(texto) + '</b>' +
         (difuso ? ' <i>(aprox.)</i>' : '') + '</span>');
     });
-    return chips.length ? '<div class="rc-whys">' + chips.slice(0, 5).join('') + '</div>' : '';
+    return chips.length ? '<div class="rc-whys" aria-label="Por qué aparece">' + chips.slice(0, 5).join('') + '</div>' : '';
   }
 
-  function renderRefCard(item, consulta, idx, motivos) {
-    var cardId = 'rc_' + idx;
+  // Cantidad + boton de agregar. Es el mismo bloque en la tarjeta de
+  // producto, en cada fila de la tabla de compras y en la vista sin agrupar;
+  // el clic lo atiende un solo listener delegado (ver "carrito" abajo), asi
+  // que no hace falta volver a enlazar nada despues de cada render.
+  function renderAgregar(idx, etiqueta) {
+    return '<div class="viz-add">' +
+      '<div class="viz-qty">' +
+      '<button type="button" data-step="-1" aria-label="Uno menos">−</button>' +
+      '<input type="number" class="rc-qty" value="1" min="1" step="1" inputmode="numeric" aria-label="Cantidad" />' +
+      '<button type="button" data-step="1" aria-label="Uno más">+</button>' +
+      '</div>' +
+      '<button type="button" class="rc-addbtn" data-idx="' + idx + '" data-label="' + esc(etiqueta) + '">' + esc(etiqueta) + '</button>' +
+      '<span class="rc-incart" data-idx="' + idx + '"></span>' +
+      '</div>';
+  }
+
+  // Resumen de precios de un conjunto de compras de la MISMA hoja. Lo usan la
+  // tarjeta de producto del buscador y la vista de hoja del explorador, para
+  // que las dos cuenten lo mismo.
+  function resumirCompras(items) {
+    var precios = items.map(precioDe);
+    var masBarato = items.reduce(function (m, it) { return precioDe(it) < precioDe(m) ? it : m; });
+    return {
+      n: items.length,
+      promedio: Math.round(precios.reduce(function (a, b) { return a + b; }, 0) / precios.length),
+      min: Math.min.apply(null, precios),
+      max: Math.max.apply(null, precios),
+      proveedorMin: masBarato.proveedor_tag || null,
+      idxMasBarato: masBarato._idx,
+      proveedores: unicos(items.map(function (i) { return i.proveedor_tag; })).length,
+      ultima: items.reduce(function (u, it) { return it.fecha && (!u || it.fecha > u) ? it.fecha : u; }, null),
+      marcas: unicos(items.map(function (i) { return i.marca; })),
+    };
+  }
+
+  // Cada compra como un punto sobre la linea que va del precio mas bajo al
+  // mas alto, con el promedio marcado. Muestra de un vistazo si hay una
+  // compra fuera de rango o si todas costaron parecido.
+  function renderRango(items, r) {
+    if (items.length < 2 || r.max <= r.min) return '';
+    function pos(p) { return ((p - r.min) / (r.max - r.min) * 100).toFixed(1); }
+    var puntos = items.map(function (it) {
+      var p = precioDe(it);
+      return '<span class="gr-dot' + (p === r.min ? ' is-min' : '') + '" style="left:' + pos(p) + '%"' +
+        ' data-tt="' + esc(fmt(p)) + '" data-ttl="' + esc((it.proveedor_tag || 'Proveedor no registrado') + '|' + fmtDate(it.fecha)) + '"></span>';
+    }).join('');
+    return '<span class="gc-range" role="img" aria-label="Precios entre ' + esc(fmt(r.min)) + ' y ' + esc(fmt(r.max)) + '">' +
+      '<span class="gr-lim">' + fmt(r.min) + '</span>' +
+      '<span class="gr-bar">' + puntos +
+      '<span class="gr-avg" style="left:' + pos(r.promedio) + '%" data-tt="Promedio" data-ttl="' + esc(fmt(r.promedio)) + '"></span></span>' +
+      '<span class="gr-lim">' + fmt(r.max) + '</span></span>';
+  }
+
+  function renderStats(items, r) {
+    return '<div class="gc-stats">' +
+      (r.n > 1 ? '<span>Promedio <b>' + fmt(r.promedio) + '</b></span>' : '') +
+      renderRango(items, r) +
+      '<span>' + plural(r.n, 'compra', 'compras') + (r.proveedores > 1 ? ' · ' + r.proveedores + ' proveedores' : '') + '</span>' +
+      (r.ultima ? '<span>Última compra <b>' + fmtDate(r.ultima) + '</b></span>' : '') +
+      '</div>';
+  }
+
+  function renderPrecioDestacado(r) {
+    return '<div class="gc-price">' +
+      '<div class="gp-label">' + (r.n > 1 ? 'Más barato' : 'Precio hoy') + '</div>' +
+      '<div class="gp-main">' + fmt(r.min) + '</div>' +
+      '<div class="gp-sub">c/IVA' + (r.proveedorMin ? ' · ' + esc(r.proveedorMin) : '') + '</div>' +
+      '</div>';
+  }
+
+  // Tabla comparativa de las compras de un producto. Reemplaza a la grilla de
+  // tarjetas, que repetia en cada compra el mismo titulo, los mismos chips y
+  // la misma explicacion: con 5 compras de la misma valvula habia que leer 5
+  // tarjetas para comparar 5 precios. Aca cada fila es una compra y lo que
+  // cambia (precio, proveedor, fecha, proyecto) queda en columna.
+  function ordenarCompras(items) {
+    var copia = items.slice();
+    if (searchState.orden === 'fecha') {
+      copia.sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0; });
+    } else if (searchState.orden === 'precio_desc') {
+      copia.sort(function (a, b) { return precioDe(b) - precioDe(a); });
+    } else {
+      copia.sort(function (a, b) { return precioDe(a) - precioDe(b); });
+    }
+    return copia;
+  }
+
+  // sinAccion: la tarjeta de un producto con UNA sola compra ya tiene su
+  // boton "Agregar"; repetirlo en la unica fila de la tabla confundia.
+  function renderTablaCompras(items, consulta, sinAccion) {
+    var lista = ordenarCompras(items);
+    var min = Math.min.apply(null, lista.map(precioDe));
+    var varias = lista.length > 1;
+    return '<div class="viz-tablewrap"><table class="viz-compras">' +
+      '<thead><tr><th scope="col">Precio hoy</th><th scope="col">Proveedor</th><th scope="col">Fecha</th>' +
+      '<th scope="col">Proyecto</th><th scope="col">Detalle de la compra</th>' +
+      (sinAccion ? '' : '<th scope="col"><span class="viz-sr">Agregar</span></th>') + '</tr></thead>' +
+      '<tbody>' + lista.map(function (it) {
+        var esMin = varias && precioDe(it) === min;
+        return '<tr' + (esMin ? ' class="is-cheapest"' : '') + '>' +
+          '<td class="tc-precio" data-label="Precio hoy"><b>' + fmt(precioDe(it)) + '</b> <span class="tc-iva">c/IVA</span>' +
+          (esMin ? ' <span class="tc-badge">Más barato</span>' : '') +
+          '<span class="tc-sub">' + fmt(it.precio_reajustado_hoy) + ' s/IVA · pagado ' + fmt(it.precio_original_sin_iva) + '</span></td>' +
+          '<td data-label="Proveedor">' + esc(it.proveedor_tag || '—') + '</td>' +
+          '<td data-label="Fecha" class="tc-fecha">' + fmtDate(it.fecha) + '</td>' +
+          '<td data-label="Proyecto">' + esc(it.proyecto || '—') + '</td>' +
+          '<td data-label="Detalle" class="tc-desc">' + highlight(it.descripcion || it.nombre_item, consulta) +
+          '<span class="tc-sub">' + esc(it.nombre_item) + ' · ' + esc(it.n_ref) + '</span></td>' +
+          (sinAccion ? '' : '<td class="tc-accion">' + renderAgregar(it._idx, 'Agregar') + '</td>') +
+          '</tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  function renderRefCard(item, consulta, motivos) {
     var stats = MARKET_STATS[item._clasif.hoja_clave];
     var esLaMasBarata = stats && stats.n_compras > 1 &&
-      item.precio_reajustado_hoy_con_iva === stats.precio_min_con_iva;
+      precioDe(item) === stats.precio_min_con_iva;
     var chips = [];
     if (item.marca) chips.push(item.marca);
     if (item.material) chips.push(item.material);
     if (item.medida) chips.push(item.medida);
-    return '<div class="viz-refcard' + (esLaMasBarata ? ' is-cheapest' : '') + '">' +
-      (esLaMasBarata ? '<span class="rc-cheapest-badge">💲 Proveedor más barato entre ' + stats.n_compras + '</span>' : '') +
-      '<div class="rc-title">' + highlight(item.nombre_item, consulta) + '</div>' +
-      (chips.length ? '<div class="rc-chips">' + chips.map(function (c) { return '<span class="rc-chip">' + esc(c) + '</span>'; }).join('') + '</div>' : '') +
+    return '<article class="viz-refcard' + (esLaMasBarata ? ' is-cheapest' : '') + '">' +
+      (esLaMasBarata ? '<span class="rc-cheapest-badge">Más barato de ' + stats.n_compras + ' compras</span>' : '') +
+      '<div class="rc-hoja">' + esc(item._clasif.hoja) + '</div>' +
+      '<h3 class="rc-title">' + highlight(item.nombre_item, consulta) + '</h3>' +
+      (chips.length ? '<div class="rc-chips">' + chips.map(chip).join('') + '</div>' : '') +
       '<div class="rc-desc">' + highlight(item.descripcion, consulta) + '</div>' +
-      chipsMotivos(motivos) +
-      '<div class="rc-meta"><span>' + esc(item.n_ref) + '</span><span>' + esc(item.proyecto || '—') + '</span><span>' + esc(item.proveedor_tag || '—') + '</span><span>' + fmtDate(item.fecha) + '</span></div>' +
+      chipsMotivos(motivos, consulta) +
+      '<div class="rc-meta"><span>' + esc(item.proveedor_tag || 'Proveedor no registrado') + '</span><span>' + fmtDate(item.fecha) +
+      '</span><span>' + esc(item.proyecto || '—') + '</span><span>' + esc(item.n_ref) + '</span></div>' +
       '<div class="rc-price">' +
-      '<div class="rc-price-main">' + fmt(item.precio_reajustado_hoy_con_iva) + '</div>' +
-      '<div class="rc-price-sub">c/IVA · ' + fmt(item.precio_reajustado_hoy) + ' s/IVA reajustado hoy</div>' +
-      '<div class="rc-original">Precio original: ' + fmt(item.precio_original_sin_iva) + ' (s/IVA, al momento de la compra)</div>' +
+      '<div class="rc-price-main">' + fmt(precioDe(item)) + ' <span class="rc-price-iva">c/IVA</span></div>' +
+      '<div class="rc-price-sub">' + fmt(item.precio_reajustado_hoy) + ' s/IVA reajustado hoy · pagado ' + fmt(item.precio_original_sin_iva) + ' s/IVA</div>' +
       '</div>' +
-      '<div class="rc-cartrow">' +
-      '<input type="number" class="rc-qty" id="qty_' + cardId + '" value="1" min="1" step="1" aria-label="Cantidad" />' +
-      '<button type="button" class="rc-addbtn" data-cardid="' + cardId + '" data-idx="' + idx + '">Agregar al cotizador</button>' +
-      '</div>' +
-      '</div>';
+      renderAgregar(item._idx, 'Agregar') +
+      '</article>';
   }
 
   // Un resultado por PRODUCTO (hoja), no por compra. El catalogo real tiene
@@ -1135,59 +1510,53 @@
       if (r.score > porHoja[clave].score) { porHoja[clave].score = r.score; porHoja[clave].mejor = r; }
     });
     orden.forEach(function (g) {
-      var precios = g.resultados.map(function (r) { return r.item.precio_reajustado_hoy_con_iva; });
-      g.n = precios.length;
-      g.promedio = Math.round(precios.reduce(function (a, b) { return a + b; }, 0) / precios.length);
-      g.min = Math.min.apply(null, precios);
-      g.max = Math.max.apply(null, precios);
-      var masBarato = g.resultados.reduce(function (m, r) {
-        return r.item.precio_reajustado_hoy_con_iva < m.item.precio_reajustado_hoy_con_iva ? r : m;
-      });
-      g.proveedorMin = masBarato.item.proveedor_tag;
-      g.idxMasBarato = DATA.items.indexOf(masBarato.item);
+      g.items = g.resultados.map(function (r) { return r.item; });
+      g.resumen = resumirCompras(g.items);
     });
     return orden;
   }
 
+  // Estado de cada tarjeta: true/false si el usuario la abrio o cerro. Sin
+  // entrada, una busqueda que encuentra UN solo producto lo muestra abierto
+  // -- no hay nada que elegir, lo que se quiere ver son sus compras.
   var gruposAbiertos = {};
 
-  function renderGrupoCard(g, consulta) {
-    var it = g.mejor.item;
+  function renderGrupoCard(g, consulta, abrirPorDefecto) {
+    var it = g.mejor.item, r = g.resumen;
     var chips = [];
-    if (it._clasif.categoria) chips.push(it._clasif.categoria);
     if (it.material) chips.push(it.material);
     if (it.medida) chips.push(it.medida);
-    if (it.marca) chips.push(it.marca);
-    var abierto = gruposAbiertos[g.clave];
-    return '<div class="viz-groupcard' + (abierto ? ' is-open' : '') + '">' +
-      '<div class="gc-head">' +
-      '<div class="gc-title">' + highlight(g.hoja, consulta) + '</div>' +
-      '<div class="gc-chips">' + chips.map(function (c) { return '<span class="rc-chip">' + esc(c) + '</span>'; }).join('') + '</div>' +
+    if (r.marcas.length === 1) chips.push(r.marcas[0]);
+    else if (r.marcas.length > 1) chips.push(r.marcas.length + ' marcas');
+    var abierto = gruposAbiertos.hasOwnProperty(g.clave) ? gruposAbiertos[g.clave] : abrirPorDefecto;
+    var textoToggle = abierto ? 'Ocultar las compras' : (r.n === 1 ? 'Ver la compra' : 'Comparar las ' + r.n + ' compras');
+    return '<article class="viz-groupcard' + (abierto ? ' is-open' : '') + '">' +
+      '<div class="gc-main">' +
+      '<div class="gc-info">' +
+      '<div class="gc-path">' + (ICONOS_CATEGORIA[it._clasif.categoria] || '📁') + ' ' + esc(it._clasif.categoria) +
+      ' <span aria-hidden="true">›</span> ' + esc(it._clasif.subcategoria) + '</div>' +
+      '<h3 class="gc-title">' + highlight(g.hoja, consulta) + '</h3>' +
+      (chips.length ? '<div class="gc-chips">' + chips.map(chip).join('') + '</div>' : '') +
+      chipsMotivos(g.mejor.motivos, consulta) +
       '</div>' +
-      chipsMotivos(g.mejor.motivos) +
-      '<div class="gc-stats">' +
-      '<span><b>' + fmt(g.promedio) + '</b> promedio c/IVA</span>' +
-      '<span>desde <b>' + fmt(g.min) + '</b>' + (g.proveedorMin ? ' · ' + esc(g.proveedorMin) : '') + '</span>' +
-      '<span>' + g.n + ' compra' + (g.n === 1 ? '' : 's') + '</span>' +
+      renderPrecioDestacado(r) +
       '</div>' +
+      renderStats(g.items, r) +
       '<div class="gc-actions">' +
-      '<button type="button" class="viz-clearbtn gc-toggle" data-clave="' + esc(g.clave) + '">' +
-      (abierto ? 'Ocultar las compras' : 'Ver las ' + g.n + ' compra' + (g.n === 1 ? '' : 's')) + '</button>' +
-      '<input type="number" class="rc-qty" id="qty_g_' + esc(g.clave) + '" value="1" min="1" step="1" aria-label="Cantidad" />' +
-      '<button type="button" class="rc-addbtn" data-cardid="g_' + esc(g.clave) + '" data-idx="' + g.idxMasBarato + '">Agregar el más barato</button>' +
+      '<button type="button" class="viz-clearbtn gc-toggle" data-clave="' + esc(g.clave) + '" aria-expanded="' + abierto + '">' +
+      textoToggle + ' <span class="gc-caret" aria-hidden="true">' + (abierto ? '▴' : '▾') + '</span></button>' +
+      renderAgregar(r.idxMasBarato, r.n > 1 ? 'Agregar el más barato' : 'Agregar') +
       '</div>' +
-      (abierto ? '<div class="gc-compras viz-cardgrid">' + g.resultados.map(function (r) {
-        return renderRefCard(r.item, consulta, DATA.items.indexOf(r.item), r.motivos);
-      }).join('') + '</div>' : '') +
-      '</div>';
+      (abierto ? '<div class="gc-compras">' + renderTablaCompras(g.items, consulta, r.n === 1) + '</div>' : '') +
+      '</article>';
   }
 
   function ordenarResultados(resultados) {
     var copia = resultados.slice();
     if (searchState.orden === 'precio_asc') {
-      copia.sort(function (a, b) { return a.item.precio_reajustado_hoy_con_iva - b.item.precio_reajustado_hoy_con_iva; });
+      copia.sort(function (a, b) { return precioDe(a.item) - precioDe(b.item); });
     } else if (searchState.orden === 'precio_desc') {
-      copia.sort(function (a, b) { return b.item.precio_reajustado_hoy_con_iva - a.item.precio_reajustado_hoy_con_iva; });
+      copia.sort(function (a, b) { return precioDe(b.item) - precioDe(a.item); });
     } else if (searchState.orden === 'fecha') {
       copia.sort(function (a, b) { return a.item.fecha < b.item.fecha ? 1 : a.item.fecha > b.item.fecha ? -1 : 0; });
     }
@@ -1217,20 +1586,20 @@
     return resultados.slice(0, 6);
   }
 
+  // Las carpetas que calzan con la consulta van como una fila de chips y no
+  // como tarjetas grandes: antes ocupaban una fila entera de la grilla por
+  // encima de los resultados, que son lo que se vino a buscar.
   function renderFolderMatches(texto) {
     var wrapEl = document.getElementById('searchFolderMatches');
-    var carpetas = buscarCarpetas(texto);
+    var carpetas = texto ? buscarCarpetas(texto) : [];
     if (!carpetas.length) { wrapEl.style.display = 'none'; wrapEl.innerHTML = ''; return; }
     wrapEl.style.display = '';
-    wrapEl.innerHTML = '<p class="viz-section-title" style="grid-column:1/-1;margin-bottom:2px">📁 Categorías encontradas</p>' +
+    wrapEl.innerHTML = '<span class="sr-label">Abrir la carpeta</span>' +
       carpetas.map(function (r) {
-        return '<button type="button" class="viz-foldercard" data-categoria="' + esc(r.categoria) + '"' + (r.subcategoria ? ' data-sub="' + esc(r.subcategoria) + '"' : '') + '>' +
-          '<span class="fc-icon">' + r.icono + '</span>' +
-          '<span class="fc-name">' + esc(r.label) + '</span>' +
-          '<span class="fc-count">' + r.n_compras + ' compra' + (r.n_compras === 1 ? '' : 's') + '</span>' +
-          '</button>';
+        return '<button type="button" class="viz-chip is-folder" data-categoria="' + esc(r.categoria) + '"' + (r.subcategoria ? ' data-sub="' + esc(r.subcategoria) + '"' : '') + '>' +
+          r.icono + ' ' + esc(r.label) + '<span class="chip-n">' + r.n_compras + '</span></button>';
       }).join('');
-    wrapEl.querySelectorAll('.viz-foldercard').forEach(function (b) {
+    wrapEl.querySelectorAll('.viz-chip').forEach(function (b) {
       b.addEventListener('click', function () {
         if (b.dataset.sub) { irACategoria(b.dataset.categoria); irASubcategoria(b.dataset.sub); }
         else { irACategoria(b.dataset.categoria); }
@@ -1238,10 +1607,60 @@
     });
   }
 
+  // "Refinar": las opciones de Medida, Material o Categoria que existen en
+  // lo que se encontro, como chips de un clic. Es el mismo calculo que los
+  // desplegables del panel de filtros (opcionesDe), solo que a la vista: el
+  // caso tipico -- buscar "codo" y quedarse con los de 1/2" -- ya no obliga a
+  // abrir el panel.
+  var FACETAS_RAPIDAS = ['medida', 'material', 'categoria'];
+  var MAX_CHIPS_FACETA = 8;
+
+  function renderRefinar(nProductos) {
+    var el = document.getElementById('searchRefinar');
+    var bloques = [];
+    if (nProductos > 1) {
+      FACETAS_RAPIDAS.forEach(function (clave) {
+        if (bloques.length >= 2 || searchState.filtros[clave]) return;
+        var f = FILTROS.filter(function (x) { return x.clave === clave; })[0];
+        var ops = opcionesDe(f);
+        if (ops.length < 2) return;
+        var visibles = ops.slice(0, MAX_CHIPS_FACETA);
+        bloques.push('<div class="rf-grupo"><span class="sr-label">' + esc(f.etiqueta) + '</span>' +
+          visibles.map(function (o) {
+            return '<button type="button" class="viz-chip is-refine" data-clave="' + clave + '" data-valor="' + esc(o.valor) + '"' +
+              ' aria-label="Filtrar ' + esc(f.etiqueta) + ': ' + esc(o.valor) + ' (' + o.n + ' compras)">' +
+              esc(o.valor) + '<span class="chip-n">' + o.n + '</span></button>';
+          }).join('') +
+          (ops.length > visibles.length
+            ? '<button type="button" class="viz-chip is-more" data-abrir="' + f.id + '">+' + (ops.length - visibles.length) + ' más</button>'
+            : '') +
+          '</div>');
+      });
+    }
+    if (!bloques.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.style.display = '';
+    el.innerHTML = '<span class="rf-titulo">Refinar</span>' + bloques.join('');
+    el.querySelectorAll('.is-refine').forEach(function (b) {
+      b.addEventListener('click', function () {
+        searchState.filtros[b.dataset.clave] = b.dataset.valor;
+        searchState.mostrarTodas = false;
+        renderSearch();
+      });
+    });
+    el.querySelectorAll('[data-abrir]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        abrirFiltros(true);
+        var sel = document.getElementById(b.dataset.abrir);
+        if (sel) sel.focus();
+      });
+    });
+  }
+
   function renderEstadoVacio(texto, respuesta) {
     var el = document.getElementById('searchEmptyState');
     el.style.display = '';
-    var partes = ['<p class="es-titulo">Sin resultados para <b>' + esc(texto) + '</b></p>'];
+    var partes = ['<div class="es-icono" aria-hidden="true">🔍</div>',
+      '<p class="es-titulo">Sin resultados para <b>' + esc(texto) + '</b></p>'];
     if (respuesta.desconocidos && respuesta.desconocidos.length) {
       partes.push('<p class="es-nota">No hay nada en el catálogo con ' +
         respuesta.desconocidos.map(function (t) { return '<b>' + esc(t) + '</b>'; }).join(' ni ') + '.</p>');
@@ -1254,9 +1673,13 @@
     }
     if (chipsFiltrosActivos().length) {
       partes.push('<p class="es-nota">Hay filtros activos: puede que el producto exista fuera de ellos.</p>' +
-        '<div class="es-chips"><button type="button" class="viz-chip" data-limpiar="1">Quitar todos los filtros</button></div>');
+        '<div class="es-chips"><button type="button" class="viz-chip is-filter" data-limpiar="1">Quitar todos los filtros</button></div>');
     }
-    var populares = SUGERENCIAS.filter(function (s) { return s.tipo === 'categoria'; }).slice(0, 6);
+    // Solo categorias que se cotizan: sugerir "Transporte y Logistica" o
+    // "Alimentacion" (gastos de operacion) no ayuda a encontrar un producto.
+    var populares = SUGERENCIAS.filter(function (s) {
+      return s.tipo === 'categoria' && !(CATEGORIAS_META[s.texto] || {}).secundaria;
+    }).slice(0, 6);
     if (populares.length) {
       partes.push('<p class="es-nota">O explora una categoría:</p><div class="es-chips">' +
         populares.map(function (s) {
@@ -1272,71 +1695,70 @@
     });
   }
 
+  // Chips de filtros activos: siempre visibles junto al boton "Filtros",
+  // aunque el panel este cerrado, y se quitan de a uno.
+  function renderChipsFiltros() {
+    var chipsEl = document.getElementById('searchActiveFilters');
+    var chips = chipsFiltrosActivos();
+    var contador = document.getElementById('filtrosCount');
+    contador.hidden = !chips.length;
+    contador.textContent = chips.length;
+    if (!chips.length) { chipsEl.style.display = 'none'; chipsEl.innerHTML = ''; return; }
+    chipsEl.style.display = '';
+    chipsEl.innerHTML = chips.map(function (c) {
+      return '<button type="button" class="viz-chip is-filter" data-clave="' + esc(c.clave) + '" aria-label="Quitar filtro ' + esc(c.texto) + '">' +
+        esc(c.texto) + ' <span class="chip-x" aria-hidden="true">✕</span></button>';
+    }).join('') + (chips.length > 1 ? '<button type="button" class="viz-chip is-clear" data-limpiar="1">Limpiar todo</button>' : '');
+    chipsEl.querySelectorAll('[data-clave]').forEach(function (b) {
+      b.addEventListener('click', function () { limpiarFiltro(b.dataset.clave); });
+    });
+    chipsEl.querySelectorAll('[data-limpiar]').forEach(function (b) {
+      b.addEventListener('click', limpiarTodo);
+    });
+  }
+
+  function mostrar(id, visible) { document.getElementById(id).style.display = visible ? '' : 'none'; }
+
   function renderSearch() {
     var texto = searchState.texto;
-    var countEl = document.getElementById('searchResultCount');
-    var summaryEl = document.getElementById('searchSummary');
+    var hayConsulta = String(texto || '').trim() !== '';
     var resultsEl = document.getElementById('searchResults');
-    var moreWrapEl = document.getElementById('searchMoreWrap');
     var emptyEl = document.getElementById('searchEmptyState');
-    var verTodasBtn = document.getElementById('btnVerTodas');
-    var chipsEl = document.getElementById('searchActiveFilters');
     var avisoEl = document.getElementById('searchAviso');
+    var valorInput = document.getElementById('fSearch').value;
+    document.querySelector('.viz-searchbox').classList.toggle('has-text', !!valorInput);
+    document.getElementById('btnLimpiarBusqueda').hidden = !valorInput;
 
     // La busqueda corre ANTES de pintar los filtros: sus resultados son la
     // base sobre la que se cuentan las opciones de cada faceta.
-    var respuesta = texto ? BUSCADOR.buscar(texto) : null;
+    var respuesta = hayConsulta ? BUSCADOR.buscar(texto) : null;
     BASE_FACETAS = respuesta
       ? respuesta.resultados.map(function (r) { return r.item; })
       : ITEMS_VISIBLES;
 
     renderFiltros();
     renderRecientes();
+    renderChipsFiltros();
+    // Con una busqueda activa los KPIs del catalogo no aportan y empujan los
+    // resultados hacia abajo; vuelven al limpiar la busqueda.
+    mostrar('kpiWrap', !hayConsulta);
 
-    // Chips de filtros activos: siempre visibles, se quitan de a uno.
-    var chips = chipsFiltrosActivos();
-    if (chips.length) {
-      chipsEl.style.display = '';
-      chipsEl.innerHTML = '<span class="sr-label">Filtros activos</span>' + chips.map(function (c) {
-        return '<button type="button" class="viz-chip is-filter" data-clave="' + esc(c.clave) + '">' +
-          esc(c.texto) + ' <span class="chip-x">✕</span></button>';
-      }).join('') + '<button type="button" class="viz-chip is-clear" data-limpiar="1">Limpiar todo</button>';
-      chipsEl.querySelectorAll('[data-clave]').forEach(function (b) {
-        b.addEventListener('click', function () { limpiarFiltro(b.dataset.clave); });
-      });
-      chipsEl.querySelectorAll('[data-limpiar]').forEach(function (b) {
-        b.addEventListener('click', limpiarTodo);
-      });
-    } else {
-      chipsEl.style.display = 'none';
-      chipsEl.innerHTML = '';
-    }
-
-    if (!texto) {
-      countEl.textContent = '';
-      summaryEl.style.display = 'none';
+    if (!hayConsulta) {
+      ['searchToolbar', 'searchRefinar', 'searchMoreWrap', 'searchEmptyState', 'searchAviso', 'searchFolderMatches']
+        .forEach(function (id) { mostrar(id, false); });
       resultsEl.innerHTML = '';
-      moreWrapEl.style.display = 'none';
-      emptyEl.style.display = 'none';
-      avisoEl.style.display = 'none';
-      document.getElementById('searchFolderMatches').style.display = 'none';
       return;
     }
 
     renderFolderMatches(texto);
 
-    var t0 = performance.now();
     var resultados = ordenarResultados(respuesta.resultados.filter(function (r) {
       return pasaFiltros(r.item);
     }));
-    var ms = performance.now() - t0;
 
     if (!resultados.length) {
-      summaryEl.style.display = 'none';
+      ['searchToolbar', 'searchRefinar', 'searchMoreWrap', 'searchAviso'].forEach(function (id) { mostrar(id, false); });
       resultsEl.innerHTML = '';
-      moreWrapEl.style.display = 'none';
-      avisoEl.style.display = 'none';
-      countEl.textContent = '0 referencias';
       renderEstadoVacio(texto, respuesta);
       return;
     }
@@ -1354,46 +1776,49 @@
     }
 
     var grupos = agruparResultados(resultados);
-    var precios = resultados.map(function (r) { return r.item.precio_reajustado_hoy_con_iva; });
-    var promedio = Math.round(precios.reduce(function (a, b) { return a + b; }, 0) / precios.length);
-    summaryEl.style.display = '';
-    summaryEl.innerHTML =
-      '<span>Productos: <b>' + grupos.length + '</b></span>' +
-      '<span>Compras: <b>' + resultados.length + '</b></span>' +
-      '<span>Promedio (c/IVA): <b>' + fmt(promedio) + '</b></span>' +
-      '<span>Rango: <b>' + fmt(Math.min.apply(null, precios)) + ' – ' + fmt(Math.max.apply(null, precios)) + '</b></span>' +
-      (respuesta.medidas.length ? '<span>Medida pedida: <b>' + esc(respuesta.medidas.join(' / ')) + '</b></span>' : '') +
-      '<span class="ss-ms">' + ms.toFixed(0) + ' ms</span>';
+    var precios = resultados.map(function (r) { return precioDe(r.item); });
+    var agrupar = searchState.agrupar;
+    // Sin promedio general: con varios productos distintos (valvulas de
+    // varias medidas, por ejemplo) ese numero no describe a ninguno. El
+    // promedio vive en cada tarjeta, que si es un solo producto.
+    document.getElementById('searchSummary').innerHTML =
+      '<span class="rb-count">' + (agrupar ? plural(grupos.length, 'producto', 'productos') : plural(resultados.length, 'compra', 'compras')) + '</span>' +
+      '<span>' + (agrupar ? plural(resultados.length, 'compra', 'compras') : plural(grupos.length, 'producto', 'productos')) + '</span>' +
+      (Math.min.apply(null, precios) === Math.max.apply(null, precios)
+        ? '<span><b>' + fmt(precios[0]) + '</b> c/IVA</span>'
+        : '<span>de <b>' + fmt(Math.min.apply(null, precios)) + '</b> a <b>' + fmt(Math.max.apply(null, precios)) + '</b> c/IVA</span>') +
+      (respuesta.medidas.length ? '<span>Medida <b>' + esc(respuesta.medidas.join(' / ')) + '</b></span>' : '');
+    mostrar('searchToolbar', true);
+    renderRefinar(grupos.length);
 
-    var lista = searchState.agrupar ? grupos : resultados;
-    countEl.textContent = searchState.agrupar
-      ? grupos.length + ' producto' + (grupos.length === 1 ? '' : 's')
-      : resultados.length + ' referencia' + (resultados.length === 1 ? '' : 's');
-
-    var mostrar = searchState.mostrarTodas ? lista : lista.slice(0, PAGE_SIZE_RESULTADOS);
-    if (searchState.agrupar) {
+    var lista = agrupar ? grupos : resultados;
+    var visibles = searchState.mostrarTodas ? lista : lista.slice(0, PAGE_SIZE_RESULTADOS);
+    if (agrupar) {
       resultsEl.className = 'viz-grouplist';
-      resultsEl.innerHTML = mostrar.map(function (g) { return renderGrupoCard(g, texto); }).join('');
+      resultsEl.innerHTML = visibles.map(function (g) { return renderGrupoCard(g, texto, grupos.length === 1); }).join('');
       resultsEl.querySelectorAll('.gc-toggle').forEach(function (b) {
         b.addEventListener('click', function () {
-          gruposAbiertos[b.dataset.clave] = !gruposAbiertos[b.dataset.clave];
+          gruposAbiertos[b.dataset.clave] = b.getAttribute('aria-expanded') !== 'true';
           renderSearch();
         });
       });
     } else {
       resultsEl.className = 'viz-cardgrid';
-      resultsEl.innerHTML = mostrar.map(function (r) {
-        return renderRefCard(r.item, texto, DATA.items.indexOf(r.item), r.motivos);
+      resultsEl.innerHTML = visibles.map(function (r) {
+        return renderRefCard(r.item, texto, r.motivos);
       }).join('');
     }
-    try { bindCartButtons(resultsEl); } catch (e) { console.error('bindCartButtons failed:', e); }
+    actualizarMarcasCarrito();
 
     if (lista.length > PAGE_SIZE_RESULTADOS && !searchState.mostrarTodas) {
-      moreWrapEl.style.display = '';
-      verTodasBtn.textContent = 'Ver los ' + lista.length + (searchState.agrupar ? ' productos' : ' resultados');
+      mostrar('searchMoreWrap', true);
+      document.getElementById('searchMoreInfo').textContent =
+        'Mostrando ' + PAGE_SIZE_RESULTADOS + ' de ' + fmtNum(lista.length) + (agrupar ? ' productos' : ' compras');
+      var verTodasBtn = document.getElementById('btnVerTodas');
+      verTodasBtn.textContent = 'Ver todos';
       verTodasBtn.onclick = function () { searchState.mostrarTodas = true; renderSearch(); };
     } else {
-      moreWrapEl.style.display = 'none';
+      mostrar('searchMoreWrap', false);
     }
   }
 
@@ -1406,6 +1831,10 @@
   }, 150);
 
   inputBusqueda.addEventListener('input', function () {
+    var caja = document.querySelector('.viz-searchbox');
+    caja.classList.toggle('has-text', !!inputBusqueda.value);
+    document.getElementById('btnLimpiarBusqueda').hidden = !inputBusqueda.value;
+    acState.indice = -1;
     renderAutocomplete(inputBusqueda.value);
     buscarDebounced();
   });
@@ -1414,7 +1843,13 @@
   inputBusqueda.addEventListener('keydown', function (ev) {
     if (ev.key === 'Escape') { cerrarAutocomplete(); return; }
     if (!acState.abierto || !acState.opciones.length) {
-      if (ev.key === 'Enter') { guardarReciente(inputBusqueda.value); }
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        runSearch(inputBusqueda.value);
+        // En el celular el teclado tapa la mitad de la pantalla: al buscar
+        // se esconde para que se vean los resultados.
+        if (ES_TACTIL) inputBusqueda.blur();
+      }
       return;
     }
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
@@ -1426,6 +1861,7 @@
       ev.preventDefault();
       var elegida = acState.indice >= 0 ? acState.opciones[acState.indice].texto : inputBusqueda.value;
       runSearch(elegida);
+      if (ES_TACTIL) inputBusqueda.blur();
     }
   });
 
@@ -1436,6 +1872,32 @@
     renderSearch();
     inputBusqueda.focus();
   });
+
+  // "/" lleva al buscador desde cualquier parte de la pagina (mismo atajo
+  // que GitHub o Gmail); Escape cierra la cotizacion si esta abierta.
+  document.addEventListener('keydown', function (ev) {
+    var enCampo = /^(INPUT|SELECT|TEXTAREA)$/.test((ev.target && ev.target.tagName) || '');
+    if (ev.key === '/' && !enCampo && !ev.ctrlKey && !ev.metaKey && !ev.altKey && document.getElementById('cartDrawer').hidden) {
+      ev.preventDefault();
+      inputBusqueda.focus();
+      inputBusqueda.select();
+    } else if (ev.key === 'Escape' && !document.getElementById('cartDrawer').hidden) {
+      cerrarCarrito();
+    } else if (ev.key === 'Tab' && !document.getElementById('cartDrawer').hidden) {
+      atraparFoco(ev);
+    }
+  });
+
+  // Panel de filtros: cerrado por defecto. Los 11 controles abiertos
+  // ocupaban media pantalla antes de haber buscado nada; los filtros activos
+  // se siguen viendo como chips junto al boton aunque el panel este cerrado.
+  var btnFiltros = document.getElementById('btnFiltros');
+  var panelFiltros = document.getElementById('filterPanel');
+  function abrirFiltros(abrir) {
+    panelFiltros.hidden = !abrir;
+    btnFiltros.setAttribute('aria-expanded', String(!!abrir));
+  }
+  btnFiltros.addEventListener('click', function () { abrirFiltros(panelFiltros.hidden); });
 
   FILTROS.forEach(function (f) {
     var el = document.getElementById(f.id);
@@ -1467,12 +1929,31 @@
     b.addEventListener('click', function () { runSearch(b.dataset.q); });
   });
 
+  // Tooltip de los puntos del rango de precios (y de cualquier elemento con
+  // data-tt): mismo tooltip negro del resto de los tableros.
+  document.addEventListener('mouseover', function (ev) {
+    var t = ev.target.closest && ev.target.closest('[data-tt]');
+    if (t) showTooltip(ev, t.dataset.tt, String(t.dataset.ttl || '').split('|').filter(Boolean));
+  });
+  document.addEventListener('mousemove', function (ev) {
+    if (tooltip.classList.contains('show')) moveTooltip(ev);
+  });
+  document.addEventListener('mouseout', function (ev) {
+    var t = ev.target.closest && ev.target.closest('[data-tt]');
+    if (t) hideTooltip();
+  });
+
   function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
   // ---------- carrito (solo en memoria -- nunca localStorage/sessionStorage) ----------
   var cart = [];
 
   function cartKey(idx) { return String(idx); }
+
+  function cantidadEnCarrito(idx) {
+    var linea = cart.filter(function (l) { return l.key === cartKey(idx); })[0];
+    return linea ? linea.cantidad : 0;
+  }
 
   function addToCart(item, cantidad, idx) {
     var key = cartKey(idx);
@@ -1483,6 +1964,7 @@
       cart.push({
         key: key, n_ref: item.n_ref, nombre_item: item.nombre_item, descripcion: item.descripcion,
         categoria_item: item.categoria_item, proyecto: item.proyecto, fecha: item.fecha,
+        proveedor_tag: item.proveedor_tag,
         hoja: item._clasif.hoja,
         hoja_clave: item._clasif.hoja_clave,
         precio_reajustado_hoy: item.precio_reajustado_hoy,
@@ -1498,34 +1980,70 @@
     renderCart();
   }
 
-  function bindCartButtons(container) {
-    container.querySelectorAll('.rc-addbtn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var cardId = btn.dataset.cardid;
-        var qtyInput = document.getElementById('qty_' + cardId);
-        var cantidad = Math.max(1, parseInt(qtyInput.value, 10) || 1);
-        var idx = parseInt(btn.dataset.idx, 10);
-        var item = DATA.items[idx];
-        if (!item) return;
-        addToCart(item, cantidad, idx);
-        btn.textContent = '✓ Agregado';
-        btn.classList.add('added');
-        setTimeout(function () { btn.textContent = 'Agregar al cotizador'; btn.classList.remove('added'); }, 1200);
-      });
+  // Marca, junto a cada boton "Agregar", cuantas unidades de esa compra ya
+  // estan en la cotizacion -- asi no se agrega dos veces sin querer.
+  function actualizarMarcasCarrito() {
+    document.querySelectorAll('.rc-incart').forEach(function (el) {
+      var n = cantidadEnCarrito(parseInt(el.dataset.idx, 10));
+      el.textContent = n ? '✓ ' + n + ' en la cotización' : '';
     });
   }
+
+  var toastTimer = null;
+  function mostrarToast(item, cantidad) {
+    var el = document.getElementById('vizToast');
+    el.innerHTML = '<span>Agregado: <b>' + esc(item._clasif.hoja || item.nombre_item) + '</b> × ' + cantidad + '</span>' +
+      '<button type="button" class="toast-btn">Ver cotización</button>';
+    el.hidden = false;
+    el.querySelector('.toast-btn').addEventListener('click', function () { el.hidden = true; abrirCarrito(); });
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, 4000);
+  }
+
+  // Un solo listener para todos los "Agregar" y los botones -/+ de cantidad,
+  // esten en el buscador, en el explorador o en la cotizacion.
+  document.addEventListener('click', function (ev) {
+    if (!ev.target.closest) return;
+    var paso = ev.target.closest('.viz-qty [data-step]');
+    if (paso) {
+      var input = paso.parentNode.querySelector('input');
+      input.value = Math.max(1, (parseInt(input.value, 10) || 1) + Number(paso.dataset.step));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+    var btn = ev.target.closest('.rc-addbtn');
+    if (!btn) return;
+    var qty = btn.parentNode.querySelector('.rc-qty');
+    var cantidad = Math.max(1, parseInt(qty && qty.value, 10) || 1);
+    var idx = parseInt(btn.dataset.idx, 10);
+    var item = DATA.items[idx];
+    if (!item) return;
+    addToCart(item, cantidad, idx);
+    if (qty) qty.value = 1;
+    btn.textContent = '✓ Agregado';
+    btn.classList.add('added');
+    clearTimeout(btn._restaurar);
+    btn._restaurar = setTimeout(function () {
+      btn.textContent = btn.dataset.label || 'Agregar';
+      btn.classList.remove('added');
+    }, 1400);
+    mostrarToast(item, cantidad);
+  });
 
   function renderCart() {
     var badge = document.getElementById('cartBadge');
     var totalItems = cart.reduce(function (s, l) { return s + l.cantidad; }, 0);
+    var fab = document.getElementById('cartToggleBtn');
     if (totalItems > 0) {
       badge.style.display = '';
       badge.textContent = totalItems;
       badge.classList.remove('bump');
       void badge.offsetWidth; // reinicia la animacion aunque el numero no cambie de digitos
       badge.classList.add('bump');
+      fab.setAttribute('aria-label', 'Abrir la cotización (' + totalItems + (totalItems === 1 ? ' unidad' : ' unidades') + ')');
     } else {
       badge.style.display = 'none';
+      fab.setAttribute('aria-label', 'Abrir la cotización (vacía)');
     }
 
     var listEl = document.getElementById('cartItemsList');
@@ -1533,11 +2051,13 @@
     var totalsEl = document.getElementById('cartTotals');
     var exportTextEl = document.getElementById('exportText');
     var copyBtn = document.getElementById('btnCopiarTodo');
+    document.getElementById('cartVaciarBtn').hidden = !cart.length;
+    actualizarMarcasCarrito();
 
     if (!cart.length) {
       listEl.innerHTML = '';
       emptyEl.style.display = '';
-      totalsEl.textContent = '';
+      totalsEl.innerHTML = '';
       exportTextEl.value = '';
       copyBtn.disabled = true;
       return;
@@ -1548,11 +2068,17 @@
 
     listEl.innerHTML = cart.map(function (l) {
       var subtotal = l.cantidad * l.precio_reajustado_hoy_con_iva;
+      var nombre = l.hoja || l.nombre_item;
       return '<div class="viz-cart-line" data-key="' + esc(l.key) + '">' +
-        '<div class="cl-title">' + esc(l.hoja || l.nombre_item) + '</div>' +
-        '<div class="cl-row"><span>' + esc(l.n_ref) + '</span><span>' + fmt(l.precio_reajustado_hoy_con_iva) + ' c/u</span></div>' +
-        '<div class="cl-row"><input type="number" class="cl-qty" min="1" step="1" value="' + l.cantidad + '" /><span>' + fmt(subtotal) + '</span>' +
-        '<button type="button" class="cl-removebtn" data-key="' + esc(l.key) + '">Quitar</button></div>' +
+        '<div class="cl-top"><div class="cl-title">' + esc(nombre) + '</div>' +
+        '<button type="button" class="cl-removebtn" data-key="' + esc(l.key) + '" aria-label="Quitar ' + esc(nombre) + '">✕</button></div>' +
+        '<div class="cl-meta">' + esc(l.proveedor_tag || 'Proveedor no registrado') + ' · ' + fmtDate(l.fecha) + ' · ' + esc(l.n_ref) + '</div>' +
+        '<div class="cl-row">' +
+        '<div class="viz-qty"><button type="button" data-step="-1" aria-label="Uno menos">−</button>' +
+        '<input type="number" class="cl-qty" min="1" step="1" inputmode="numeric" value="' + l.cantidad + '" aria-label="Cantidad de ' + esc(nombre) + '" />' +
+        '<button type="button" data-step="1" aria-label="Uno más">+</button></div>' +
+        '<span class="cl-unit">' + fmt(l.precio_reajustado_hoy_con_iva) + ' c/u</span>' +
+        '<span class="cl-sub">' + fmt(subtotal) + '</span></div>' +
         '</div>';
     }).join('');
 
@@ -1569,14 +2095,53 @@
 
     var totalConIva = cart.reduce(function (s, l) { return s + l.cantidad * l.precio_reajustado_hoy_con_iva; }, 0);
     var totalSinIva = cart.reduce(function (s, l) { return s + l.cantidad * l.precio_reajustado_hoy; }, 0);
-    totalsEl.textContent = 'Total: ' + fmt(totalConIva) + ' c/IVA (' + fmt(totalSinIva) + ' s/IVA)';
+    totalsEl.innerHTML =
+      '<div class="ct-row is-main"><span>Total c/IVA</span><b>' + fmt(totalConIva) + '</b></div>' +
+      '<div class="ct-row"><span>Neto s/IVA</span><span>' + fmt(totalSinIva) + '</span></div>' +
+      '<div class="ct-row"><span>' + plural(totalItems, 'unidad', 'unidades') + ' en ' + plural(cart.length, 'línea', 'líneas') + '</span></div>';
   }
 
-  document.getElementById('cartToggleBtn').addEventListener('click', function () {
-    document.getElementById('cartDrawer').style.display = '';
-  });
-  document.getElementById('cartCloseBtn').addEventListener('click', function () {
-    document.getElementById('cartDrawer').style.display = 'none';
+  // ---------- panel de la cotizacion ----------
+  var drawerEl = document.getElementById('cartDrawer');
+  var backdropEl = document.getElementById('cartBackdrop');
+  var fabEl = document.getElementById('cartToggleBtn');
+
+  function abrirCarrito() {
+    // El aviso "Agregado" apunta a la cotizacion: con el panel abierto sobra.
+    clearTimeout(toastTimer);
+    document.getElementById('vizToast').hidden = true;
+    drawerEl.hidden = false;
+    backdropEl.hidden = false;
+    fabEl.setAttribute('aria-expanded', 'true');
+    document.getElementById('cartCloseBtn').focus();
+  }
+  function cerrarCarrito() {
+    if (drawerEl.hidden) return;
+    drawerEl.hidden = true;
+    backdropEl.hidden = true;
+    fabEl.setAttribute('aria-expanded', 'false');
+    fabEl.focus();
+  }
+  // Con el panel abierto el Tab no se escapa a la pagina de atras (es un
+  // dialogo modal: aria-modal="true").
+  function atraparFoco(ev) {
+    var focos = Array.prototype.filter.call(
+      drawerEl.querySelectorAll('button, input, textarea'),
+      function (el) { return !el.disabled && el.offsetParent !== null; });
+    if (!focos.length) return;
+    var primero = focos[0], ultimo = focos[focos.length - 1];
+    if (ev.shiftKey && document.activeElement === primero) { ev.preventDefault(); ultimo.focus(); }
+    else if (!ev.shiftKey && document.activeElement === ultimo) { ev.preventDefault(); primero.focus(); }
+  }
+
+  fabEl.addEventListener('click', function () { if (drawerEl.hidden) abrirCarrito(); else cerrarCarrito(); });
+  document.getElementById('cartCloseBtn').addEventListener('click', cerrarCarrito);
+  backdropEl.addEventListener('click', cerrarCarrito);
+  document.getElementById('cartVaciarBtn').addEventListener('click', function () {
+    if (!cart.length) return;
+    if (!window.confirm('¿Vaciar la cotización? Se quitan ' + plural(cart.length, 'línea', 'líneas') + '.')) return;
+    cart = [];
+    renderCart();
   });
 
   // ---------- texto del carrito para copiar a Excel ----------
@@ -1605,8 +2170,8 @@
     var textarea = document.getElementById('exportText');
     var btn = document.getElementById('btnCopiarTodo');
     function marcarCopiado() {
-      btn.textContent = '✓ Copiado';
-      setTimeout(function () { btn.textContent = 'Copiar todo'; }, 1200);
+      btn.textContent = '✓ Copiada: pégala en Excel';
+      setTimeout(function () { btn.textContent = 'Copiar tabla para Excel'; }, 1600);
     }
     function fallbackCopy() {
       textarea.focus();
@@ -1626,8 +2191,8 @@
   var folderState = { categoria: null, subcategoria: null, hoja: null };
 
   function scrollToFolders() {
-    var el = document.getElementById('folderBrowser');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    var el = document.getElementById('explorarTitulo');
+    if (el) el.scrollIntoView({ behavior: SIN_MOVIMIENTO ? 'auto' : 'smooth', block: 'start' });
   }
   function irARaizCarpetas() { folderState = { categoria: null, subcategoria: null, hoja: null }; renderFolderBrowser(); }
   function irACategoria(categoria) { folderState = { categoria: categoria, subcategoria: null, hoja: null }; renderFolderBrowser(); scrollToFolders(); }
@@ -1635,20 +2200,27 @@
   function irAHoja(hoja) { folderState.hoja = hoja; renderFolderBrowser(); scrollToFolders(); }
 
   function renderBreadcrumb() {
-    var partes = [{ label: 'Categorías', onClick: irARaizCarpetas }];
+    var partes = [{ label: 'Todas las categorías', onClick: irARaizCarpetas }];
     if (folderState.categoria) partes.push({ label: folderState.categoria, onClick: function () { irACategoria(folderState.categoria); } });
     if (folderState.subcategoria) partes.push({ label: folderState.subcategoria, onClick: function () { irASubcategoria(folderState.subcategoria); } });
-    if (folderState.hoja) partes.push({ label: folderState.hoja, onClick: null });
+    if (folderState.hoja) partes.push({ label: (MARKET_STATS[folderState.hoja] || {}).hoja || folderState.hoja, onClick: null });
     var el = document.getElementById('folderBreadcrumb');
-    el.innerHTML = partes.map(function (p, i) {
-      return (i > 0 ? '<span class="bc-sep">›</span>' : '') + '<button type="button" class="bc-item" data-i="' + i + '"' + (p.onClick ? '' : ' disabled') + '>' + esc(p.label) + '</button>';
+    // En la raiz no hay a donde volver: la miga de pan sola ("Categorias")
+    // no decia nada.
+    if (partes.length === 1) { el.innerHTML = ''; el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.setAttribute('aria-label', 'Ubicación en el catálogo');
+    partes[partes.length - 1].onClick = null;
+    el.innerHTML = '<button type="button" class="bc-back" aria-label="Volver">‹ Volver</button>' + partes.map(function (p, i) {
+      return (i > 0 ? '<span class="bc-sep" aria-hidden="true">›</span>' : '') + '<button type="button" class="bc-item" data-i="' + i + '"' + (p.onClick ? '' : ' disabled aria-current="page"') + '>' + esc(p.label) + '</button>';
     }).join('');
     el.querySelectorAll('.bc-item').forEach(function (btn, i) { if (partes[i].onClick) btn.addEventListener('click', partes[i].onClick); });
+    el.querySelector('.bc-back').addEventListener('click', partes[partes.length - 2].onClick || irARaizCarpetas);
   }
 
   function renderFolderBrowser() {
-    renderBreadcrumb();
     var el = document.getElementById('folderBrowser');
+    renderBreadcrumb();
 
     if (!folderState.categoria) {
       var categorias = Object.keys(CATEGORY_TREE).sort(function (a, b) { return CATEGORY_TREE[b].n_compras - CATEGORY_TREE[a].n_compras; });
@@ -1661,9 +2233,9 @@
       function tarjeta(c) {
         var cat = CATEGORY_TREE[c];
         return '<button type="button" class="viz-foldercard" data-categoria="' + esc(c) + '">' +
-          '<span class="fc-icon">' + (ICONOS_CATEGORIA[c] || '📁') + '</span>' +
+          '<span class="fc-icon" aria-hidden="true">' + (ICONOS_CATEGORIA[c] || '📁') + '</span>' +
           '<span class="fc-name">' + esc(c) + '</span>' +
-          '<span class="fc-count">' + cat.n_compras + ' compra' + (cat.n_compras === 1 ? '' : 's') + '</span>' +
+          '<span class="fc-count">' + plural(cat.n_compras, 'compra', 'compras') + '</span>' +
           '</button>';
       }
       var principales = categorias.filter(function (c) { return !esSecundaria(c); });
@@ -1690,9 +2262,9 @@
       el.innerHTML = '<div class="viz-foldergrid">' + subs.map(function (s) {
         var sub = cat.subcategorias[s];
         return '<button type="button" class="viz-foldercard" data-sub="' + esc(s) + '">' +
-          '<span class="fc-icon">' + (ICONOS_CATEGORIA[folderState.categoria] || '📁') + '</span>' +
+          '<span class="fc-icon" aria-hidden="true">' + (ICONOS_CATEGORIA[folderState.categoria] || '📁') + '</span>' +
           '<span class="fc-name">' + esc(s) + '</span>' +
-          '<span class="fc-count">' + sub.n_compras + ' compra' + (sub.n_compras === 1 ? '' : 's') + '</span>' +
+          '<span class="fc-count">' + plural(sub.hojas.length, 'producto', 'productos') + ' · ' + plural(sub.n_compras, 'compra', 'compras') + '</span>' +
           '</button>';
       }).join('') + '</div>';
       el.querySelectorAll('.viz-foldercard').forEach(function (b) { b.addEventListener('click', function () { irASubcategoria(b.dataset.sub); }); });
@@ -1710,7 +2282,7 @@
       el.innerHTML = '<div class="viz-leaflist">' + hojas.map(function (h) {
         return '<button type="button" class="viz-leafrow" data-hoja="' + esc(h.hoja_clave) + '">' +
           '<span class="lf-name">' + esc(h.hoja) + '</span>' +
-          '<span class="lf-count">' + h.n_compras + ' compra' + (h.n_compras === 1 ? '' : 's') + '</span>' +
+          '<span class="lf-count">' + plural(h.n_compras, 'compra', 'compras') + '</span>' +
           '<span class="lf-price">desde ' + fmt(h.precio_min_con_iva) + '</span>' +
           '</button>';
       }).join('') + '</div>';
@@ -1720,18 +2292,23 @@
 
     var hoja = MARKET_STATS[folderState.hoja];   // folderState.hoja guarda la clave
     if (!hoja) { irASubcategoria(folderState.subcategoria); return; }
-    var compras = hoja.compras.slice().sort(function (a, b) { return a.precio_reajustado_hoy_con_iva - b.precio_reajustado_hoy_con_iva; });
+    // Misma tarjeta y misma tabla que el buscador: una hoja abierta desde el
+    // explorador y la misma hoja encontrada buscando se ven igual.
+    var r = resumirCompras(hoja.compras);
     el.innerHTML =
-      '<div class="viz-searchsummary">' +
-      '<span>Compras: <b>' + hoja.n_compras + '</b></span>' +
-      '<span>Promedio (c/IVA): <b>' + fmt(hoja.promedio_con_iva) + '</b></span>' +
-      '<span>Más barato: <b>' + fmt(hoja.precio_min_con_iva) + '</b> · ' + esc(hoja.proveedor_min_con_iva || 'proveedor no registrado') + '</span>' +
-      '</div>' +
-      '<div class="viz-cardgrid">' + compras.map(function (c) { return renderRefCard(c, '', DATA.items.indexOf(c)); }).join('') + '</div>';
-    try { bindCartButtons(el); } catch (e) { console.error('bindCartButtons failed:', e); }
+      '<article class="viz-groupcard is-open">' +
+      '<div class="gc-main"><div class="gc-info">' +
+      '<div class="gc-path">' + (ICONOS_CATEGORIA[hoja.categoria] || '📁') + ' ' + esc(hoja.categoria) +
+      ' <span aria-hidden="true">›</span> ' + esc(hoja.subcategoria) + '</div>' +
+      '<h3 class="gc-title">' + esc(hoja.hoja) + '</h3></div>' +
+      renderPrecioDestacado(r) + '</div>' +
+      renderStats(hoja.compras, r) +
+      '<div class="gc-compras">' + renderTablaCompras(hoja.compras, '') + '</div>' +
+      '</article>';
+    actualizarMarcasCarrito();
   }
 
-  function render() { renderKPIs(); renderFolderBrowser(); }
+  function render() { renderKPIs(); renderFolderBrowser(); renderSearch(); renderCart(); }
   render();
   } // end initApp
 })();

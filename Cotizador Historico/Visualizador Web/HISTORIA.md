@@ -143,3 +143,43 @@ comparó clasificación vieja vs. nueva sobre los 334 ítems distintos del
 catálogo real: 40 cambios, todos saliendo del catch-all hacia la categoría
 correcta, cero regresiones (ningún ítem que era visible quedó oculto por
 `requiereMaterial`/`requiereMedida`).
+
+## 2026-09-21 — La pantalla se reordena alrededor de la búsqueda
+
+El buscador se había rehecho el 2026-09-16 (motor, ranking, filtros), pero la
+pantalla seguía siendo la de antes con piezas agregadas: 4 KPIs de
+mantención arriba, 11 controles de filtro abiertos antes de haber escrito
+nada, y cada compra de un producto como una tarjeta completa. Medido con el
+catálogo real (1.437 compras) en Chrome, antes y después:
+
+| | Antes | Después |
+|---|---|---|
+| Celular 390px, "valvula de bola 2 pulgadas": dónde empieza el resumen de resultados | 1.349 px | 392 px (el primer precio, a 641 px, ya se ve sin scroll) |
+| Celular 390px: ancho del contenido | 407 px en 375 (scroll lateral) | 375 px |
+| Controles visibles antes de buscar | 11 filtros + orden + agrupar | 1 botón "Filtros" |
+| Comparar las 5 compras de una válvula | 5 tarjetas (~270 px c/u) | 1 tabla de 5 filas |
+| Render de "valvula" con los 31 productos | — | 10 ms |
+
+Bugs encontrados en el camino, todos invisibles en una consulta suelta:
+
+- **Los desplegables de filtros cargaban vacíos**: `renderFiltros` solo
+  corría dentro de `renderSearch`, y el render inicial no lo llamaba. Se
+  llenaban recién después de la primera búsqueda.
+- **El texto de la fuente de la UF desbordaba el celular** (una URL sin
+  espacios dentro de un KPI): era la causa del scroll lateral.
+- **"Agregar el más barato" pasaba a decir "Agregar al cotizador"** después
+  de usarlo: el reset del botón tenía el texto fijo.
+- **Tabla negra sobre negro en modo oscuro**: la página no declara
+  `<!DOCTYPE>` y en modo quirks una `<table>` no hereda el color del texto.
+- **Los chips de "por qué apareció" mostraban la raíz del motor** ("bronc",
+  "valvul"), que se lee como un error de tipeo.
+- **El botón flotante como pastilla con texto tapaba el "Agregar"** del
+  borde derecho en pantallas de 1366px; volvió a ser un círculo.
+- **Una columna flex con `flex-wrap: wrap` estiraba cada fila al ancho de su
+  contenido**: la primera versión de los chips de "Refinar" en celular
+  reintrodujo el scroll lateral (708 px en 375).
+
+Lo que no cambió: el motor (`busqueda.js` no se tocó, la paridad con Python
+sigue igual), la exportación a Excel, la regla de no persistir el carrito
+(ahora con un test que la vigila) y el explorador de carpetas, salvo que la
+vista de una hoja usa la misma tarjeta y tabla que el buscador.

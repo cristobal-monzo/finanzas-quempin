@@ -133,42 +133,92 @@ empatadas y el orden lo decidía el Excel. Estaban además duplicadas en el
 template de Perú, el mismo patrón que ya había causado la divergencia de la
 taxonomía. Se eliminaron.
 
-**Lo que sí hace este template** es la pantalla:
+**Lo que sí hace este template** es la pantalla. Su orden responde a una
+sola idea: **se viene a buscar un precio**, así que la búsqueda va primero y
+todo lo demás le deja espacio (rediseño del 2026-09-21, ver `HISTORIA.md`).
 
-- Campo de búsqueda con ejemplos reales, botón de limpiar y
-  **autocompletado** (`renderAutocomplete`) alimentado por `DATA.sugerencias`
-  — los nombres reales del catálogo (producto, familia, categoría, marca,
-  material, medida) calculados en Python, no una lista escrita a mano.
-  Navegable con flechas y Enter.
+- **Buscador arriba y grande** ("¿Qué necesitas cotizar?"), con ejemplos
+  reales, botón de limpiar, atajo de teclado `/` y **autocompletado**
+  (`renderAutocomplete`) alimentado por `DATA.sugerencias` — los nombres
+  reales del catálogo (producto, familia, categoría, marca, material,
+  medida) calculados en Python, no una lista escrita a mano. Navegable con
+  flechas y Enter, con el tipo de cada sugerencia a la vista. El campo usa
+  16px: con menos, Safari de iPhone hace zoom al tocarlo.
+- **Los KPIs del catálogo van debajo del buscador y se ocultan mientras hay
+  una búsqueda activa** (`#kpiWrap`): con una consulta escrita no aportan y
+  empujaban los resultados fuera de la pantalla.
+- **Filtros en un panel plegable** (`#btnFiltros` / `#filterPanel`, cerrado
+  por defecto) con el número de filtros activos en el botón. Los 11
+  controles abiertos ocupaban media pantalla antes de buscar nada. Son
+  combinables y dependientes (`opcionesDe`): Categoría, Subcategoría,
+  Material, Medida, Marca, Proveedor, Proyecto, rango de fechas y rango de
+  precio; cada desplegable se calcula contra **lo que la búsqueda actual
+  encontró** más los otros filtros, con el conteo en cada opción, así que
+  nunca ofrece una combinación que da cero. Los filtros activos se ven como
+  chips junto al botón aunque el panel esté cerrado, y se quitan de a uno o
+  con "Limpiar todo".
+- **Refinar en un clic** (`renderRefinar`): las opciones de Medida, Material
+  o Categoría que existen en lo encontrado, como chips con su conteo. Es el
+  mismo cálculo que los desplegables, a la vista: buscar "codo" y quedarse
+  con los de bronce ya no obliga a abrir el panel. En celular cada faceta es
+  una fila deslizable.
+- **Barra de resultados** (`#searchToolbar`): cuántos productos y compras,
+  el rango de precio y la medida pedida, más el orden (relevancia, precio
+  asc/desc, compra más reciente) y "Agrupar por producto". No muestra un
+  promedio general a propósito: con productos distintos (válvulas de varias
+  medidas) ese número no describe a ninguno.
 - **Resultados agrupados por producto** (`agruparResultados` +
-  `renderGrupoCard`): una tarjeta por hoja con su promedio, su más barato y
-  su proveedor, desplegable a las compras individuales. Sin agrupar, las
+  `renderGrupoCard`): una tarjeta por hoja con la ruta de categoría, el
+  precio **más barato** destacado con su proveedor, el promedio, cuántas
+  compras y proveedores hay, la última compra, y un **rango de precios**
+  (`renderRango`): cada compra como un punto sobre la línea del más barato al
+  más caro, con el promedio marcado y tooltip por punto. Sin agrupar, las
   tres compras idénticas de la misma válvula ocupaban tres de los cinco
-  primeros lugares.
+  primeros lugares. Si la búsqueda encuentra **un solo producto**, la
+  tarjeta se abre sola.
+- **Comparar las compras en una tabla** (`renderTablaCompras`): precio hoy
+  c/IVA y s/IVA, lo pagado, proveedor, fecha, proyecto y el detalle
+  resaltado, con la más barata marcada. Reemplazó a una grilla de tarjetas
+  que repetía en cada compra el mismo título y los mismos chips: con 5
+  compras había que leer 5 tarjetas para comparar 5 precios. En celular
+  (≤720px) cada fila se apila como tarjeta con sus etiquetas. La vista de
+  una hoja en el explorador usa **la misma tarjeta y la misma tabla**
+  (`resumirCompras` es la única cuenta de promedio/mínimo/proveedores).
 - **Por qué apareció cada resultado** (`chipsMotivos`): chips que dicen qué
-  término calzó en qué campo, con la medida destacada. Un match aproximado
-  se marca "(aprox.)".
+  término calzó en qué campo, con la medida destacada, usando **la palabra
+  que escribió el usuario** (`palabrasDeConsulta`) y no la raíz interna del
+  motor — "bronc" se leía como un error de tipeo. Un match aproximado se
+  marca "(aprox.)".
 - **Resaltado por palabra** (`BUSCADOR.resaltar`): marca cada palabra que
   calzó, incluyendo plurales, sinónimos y la medida. El resaltado anterior
   buscaba la consulta completa como substring, así que en "valvula de bola
   2" no marcaba nada.
-- **Filtros combinables y dependientes** (`opcionesDe`): Categoría,
-  Subcategoría, Material, Medida, Marca, Proveedor, Proyecto, rango de
-  fechas y rango de precio. Cada desplegable se calcula contra **lo que la
-  búsqueda actual encontró** más los otros filtros, con el conteo en cada
-  opción, así que nunca ofrece una combinación que da cero. Los filtros
-  activos se ven como chips y se quitan de a uno o con "Limpiar todo".
 - **Aviso de consulta a medias** (`#searchAviso`): si un término no existe
   en el catálogo, se dice explícitamente en vez de dejar creer que los
   resultados son lo que se pidió.
 - **Estado vacío útil** (`renderEstadoVacio`): qué término falló, qué
-  escribir en su lugar, un atajo para quitar los filtros y las categorías
-  para explorar.
+  escribir en su lugar, un atajo para quitar los filtros y categorías
+  cotizables para explorar (nunca las de gastos de operación).
 - **Historial de búsquedas** en `sessionStorage` (`ch_viz_recientes`, máximo
   8): vive lo mismo que el desbloqueo del gate y se va al cerrar la pestaña.
   No es `localStorage` a propósito — son consultas escritas por el usuario y
   no hay razón para que sobrevivan a la sesión.
-- Ordenar por relevancia, precio (asc/desc) o compra más reciente.
+- **Celular y accesibilidad**: las pestañas de tableros son una fila
+  deslizable con la activa centrada; ningún texto largo (ej. la fuente de la
+  UF) desborda el ancho de la pantalla; foco de teclado visible en todo lo
+  operable (`:focus-visible`); animaciones apagadas con
+  `prefers-reduced-motion`.
+
+**La página corre en modo quirks** (no declara `<!DOCTYPE>`, igual que los
+otros tableros). En ese modo una `<table>` no hereda el color del texto: por
+eso `.viz-compras` fija `color` explícito — sin eso, en modo oscuro las
+celdas quedaban negras sobre negro. Cualquier tabla nueva necesita lo mismo.
+
+**Chile y Perú comparten este template línea por línea**, salvo las ~14
+líneas propias del país (título, pestaña activa, moneda, pie, UF/soles y el
+`S/` de los rangos de precio). `tests/test_template.py` lo exige: un cambio
+de pantalla aplicado a un solo país hace fallar la suite. Para propagar un
+cambio, se edita el de Chile y se aplica igual al de Perú.
 
 **La marca ya no se adivina.** `extraerMarcaModelo` ("la primera palabra
 capitalizada que no sea preposición") producía chips como "Precio" o "Cod".
@@ -340,23 +390,35 @@ a diferencia del tema visual (que sí usa `localStorage`) o del estado de
 "gate desbloqueado" (que usa `sessionStorage`), el contenido del carrito
 nunca se escribe en ningún almacenamiento del navegador.
 
-- Cada tarjeta de resultado tiene un stepper de cantidad + botón "Agregar
-  al cotizador" (`bindCartButtons`/`addToCart`) — si la referencia ya está
-  en el carrito (`cartKey`, indexado por posición en `DATA.items`), la
-  cantidad se suma a la existente en vez de duplicar la línea. Cada línea
-  guarda también su `hoja` (ver taxonomía arriba), usada por la
-  exportación.
-- El botón flotante que abre el panel usa el ícono 🧾 (recibo).
-- El panel lateral (drawer) del carrito (`renderCart`) muestra una línea
-  por ítem con cantidad editable, subtotal, botón de quitar
-  (`removeFromCart`), y el total general con y sin IVA.
+- Cada tarjeta de producto, cada fila de la tabla de compras y cada
+  tarjeta de la vista sin agrupar tienen el mismo bloque cantidad (−/+) +
+  "Agregar" (`renderAgregar`), atendido por **un solo listener delegado**
+  sobre `document` (`addToCart`) — ya no hay que volver a enlazar botones
+  después de cada render. Si la referencia ya está en el carrito
+  (`cartKey`, indexado por `it._idx`, la posición en `DATA.items`), la
+  cantidad se suma a la existente en vez de duplicar la línea, y junto al
+  botón aparece "✓ N en la cotización" (`actualizarMarcasCarrito`). Cada
+  línea guarda también su `hoja` y su proveedor, usados por la exportación
+  y el panel.
+- Al agregar, un aviso abajo ("Agregado: … × N · Ver cotización",
+  `mostrarToast`) confirma qué entró y lleva al panel. El botón vuelve a su
+  texto original ("Agregar el más barato" o "Agregar") — antes volvía
+  siempre a "Agregar al cotizador", aunque dijera otra cosa.
+- El botón flotante (círculo 🧾 con el número de unidades) abre el panel.
+  Es un círculo compacto a propósito: como pastilla con texto tapaba el
+  "Agregar" del borde derecho en pantallas de 1366px.
+- El panel (`renderCart`) es un **diálogo modal**: fondo oscurecido que lo
+  cierra al tocarlo, Escape para cerrar, foco atrapado adentro y devuelto al
+  botón al cerrar. Muestra una línea por ítem con cantidad (−/+), proveedor,
+  fecha, subtotal y quitar (`removeFromCart`); "Vaciar" (con confirmación);
+  y el total c/IVA destacado con el neto s/IVA y las unidades.
 
 ## Exportación a Excel — textarea + "Copiar todo" (no es descarga de archivo)
 
 El mecanismo es un `<textarea>` de solo lectura dentro del drawer del
 carrito que se actualiza en vivo en cada cambio del carrito (cada llamada
 a `renderCart()` reconstruye su contenido llamando a
-`construirTextoExport()`), más un botón "Copiar todo" que copia ese texto
+`construirTextoExport()`), más un botón "Copiar tabla para Excel" que copia ese texto
 al portapapeles (`navigator.clipboard.writeText`, con fallback a
 `document.execCommand('copy')` sobre el propio textarea si el navegador no
 soporta la API moderna) — **no hay descarga de archivo en ningún punto de
