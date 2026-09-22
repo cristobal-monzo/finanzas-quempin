@@ -46,3 +46,13 @@ def test_emparejar_cliente_sin_parecido_es_nuevo():
 def test_emparejar_cliente_sin_existentes_es_siempre_nuevo():
     resultado = af.emparejar_cliente("Cualquier Cliente", [])
     assert resultado["estado"] == "nuevo"
+
+
+def test_derivar_cliente_quita_el_codigo_numerico_de_carpeta():
+    """2026-09-21: en la planilla real quedó un cliente "261. FACH 1",
+    heredado del nombre de carpeta con su código -- ningún otro proyecto del
+    mismo cliente lo iba a igualar nunca. Misma regla que
+    normalizar_nombre_proyecto_carpeta."""
+    assert af.derivar_cliente("261. FACH 1") == "FACH 1"
+    assert af.derivar_cliente("12- Hospital Talca (II) Mayo") == "Hospital Talca"
+    assert af.derivar_cliente("UMAG") == "UMAG"

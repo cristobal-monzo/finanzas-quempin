@@ -51,7 +51,7 @@ corrida). Desde 2026-07-23 también tiene Visualizador Web propio (ver
 `Visualizador Web/CLAUDE.md`) y reportes PDF (skill
 `Reportes_Analisis_Financiero`).
 
-Historial de extensiones (Nota del Proyecto, CLTV, Glosario KPIs, reportes
+Historial de extensiones (Nota del Proyecto, CLTV —ya reemplazado—, Glosario KPIs, reportes
 PDF, Visualizador Web, etc.) y decisiones de diseño de cada una: comprimido
 acá el 2026-07-27 para que esta sección no quede desactualizada cada vez que
 se agrega una extensión — ver en vez de eso los archivos
@@ -102,7 +102,7 @@ Cinco hojas, todas dentro del mismo libro:
 porcentaje de avance manual, en la **misma posición 5** — no se reordenó
 ninguna columna, así que ninguna letra ni fórmula existente cambió. Hereda
 los dos roles de `Estado`: campo de ingreso manual (amarillo + cursiva) y uno
-de los 8 campos de `CAMPOS_MANUALES_REQUERIDOS`. Se guarda como fracción 0–1
+de los campos de `CAMPOS_MANUALES_REQUERIDOS`. Se guarda como fracción 0–1
 con formato `0.0%`. El archivo real se migró a mano (ver MEMORY.md): los 16
 proyectos terminados quedaron en 100% y `Gastos Generales` vacío.
 - **"Detalle Costos Reales"** (una fila por proyecto + subcategoría): preserva el
@@ -112,12 +112,15 @@ proyectos terminados quedaron en 100% y `Gastos Generales` vacío.
 - **"Indicadores"** (una fila por proyecto): los KPIs del playbook, 100% fórmulas
   sobre "Proyectos" — ver sección siguiente.
 - **"Clientes"** (una fila por cliente único, detectado desde la columna
-  "Cliente" de "Proyectos"): AOV, Vida del cliente, Meses activo, Frecuencia
-  de compra, Margen de utilidad %, CLTV y Clasificación (percentil) — 100%
-  fórmulas agregando sobre "Proyectos". La columna "Cliente" se completa
-  sola (derivación + fuzzy-match contra clientes ya registrados); si hay
-  duda queda "Pendiente de revisión" (fuente roja), confirmable con
-  `python driver.py confirmar-cliente`.
+  "Cliente" de "Proyectos"): N° de proyectos, Venta acumulada, Margen
+  acumulado, Margen %, Cliente recurrente y Clasificación (percentil del
+  margen acumulado) — 100% fórmulas sobre "Indicadores", contando **solo
+  proyectos con "Datos completos" = Sí** (desde 2026-09-21; antes CLTV sobre
+  todo "Proyectos", ver "Fase 1 de la auditoría"). La columna "Cliente" se
+  completa sola (derivación + fuzzy-match contra clientes ya registrados); si
+  hay duda queda "Pendiente de revisión" (fuente roja), confirmable con
+  `python driver.py confirmar-cliente`. Lo que el usuario escriba a mano en
+  esa columna nunca se pisa.
 - **"Glosario KPIs"** (una fila por KPI del libro): por qué importa, qué
   elementos usa, qué significa el resultado — texto estático, se reescribe
   completo en cada corrida.
@@ -164,10 +167,14 @@ nuevos. Ver MEMORY.md 2026-07-28 para la verificación a mano contra UMAG.
 | Ahorro/Sobrecosto Materiales / Equipos / MO / Otros / Total (nuevo) | Costo Proyectado − Costo Real; positivo = ahorro, negativo = sobrecosto |
 | % del Total Real del proyecto (nuevo, hoja "Detalle Costos Reales") | Total sin IVA de la subcategoría / suma de las filas de ese proyecto en esa hoja |
 | Peso del proyecto en la cartera de ventas (%) (nuevo) | Monto de Venta del proyecto / Σ Monto de Venta de todos los proyectos con venta cargada (sin filtrar por % Avance) |
-| Margen por día de ejecución (nuevo) | Margen Real / (Fecha de cierre − Fecha de inicio, en días) — vacío si el proyecto no tiene Fecha de cierre ("en desarrollo") |
-| Nota del Proyecto (0-100) | 70% margen neto % (curva de 2 tramos: lineal 0→70 hasta el objetivo de 25%, luego asíntota hacia 100 sin tocarlo nunca — ver "Curva de la Nota" abajo) + 30% control de desviación total, **sin ABS()** — solo penaliza sobrecosto real (Real > Proyectado); un proyecto en o bajo presupuesto obtiene el puntaje máximo del componente |
-| Nota Parcial (nuevo 2026-08-31) | Nota del Proyecto × % Avance — cuánto del resultado ya está confirmado; al 100% coincide con la Nota. Vacía si falta el avance o si es "Gastos Generales" |
-| CLTV (hoja Clientes) | AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad % |
+| Margen por día de ejecución (nuevo) | Margen Real / (Fecha de cierre − Fecha de inicio, en días) — vacío si falta alguna fecha o si el cierre es futuro ("en desarrollo") |
+| Costo estimado al cierre (2026-09-21) | Costo Real + Costo Proyectado × (1 − % Avance acotado a 0–1) — lo que falta, a precio de presupuesto. Al 100% = costo real |
+| Margen estimado al cierre (y %) (2026-09-21) | Venta − Costo estimado al cierre (÷ Venta) |
+| Desviación estimada al cierre % (2026-09-21) | Costo estimado al cierre / Costo Proyectado − 1 |
+| Margen al cierre % (escenario índice de costo) (2026-09-21) | (Venta − Costo Real / % Avance) / Venta — pesimista, solo referencia, no entra en la Nota |
+| Nota del Proyecto (0-100) | 70% **margen estimado al cierre %** (curva de 2 tramos: lineal 0→70 hasta el objetivo de 25%, luego asíntota hacia 100 sin tocarlo nunca — ver "Curva de la Nota" abajo) + 30% control de **desviación estimada al cierre**, **sin ABS()** — solo penaliza sobrecosto; 100 puntos en o bajo presupuesto, **0 con +30%** (`SOBRECOSTO_NOTA_CERO`, desde 2026-09-21; antes +100%). Vacía si falta el avance |
+| Datos completos (2026-09-21, columna de apoyo) | Sí si están los 7 campos de `CAMPOS_MANUALES_REQUERIDOS` — filtra la hoja Clientes |
+| Clientes (hoja Clientes, 2026-09-21) | N° de proyectos, Venta y Margen acumulados (margen estimado al cierre), Margen %, Recurrente (≥2 proyectos), Clasificación por percentil 67/33 del margen acumulado. Reemplazan al CLTV |
 
 **Segunda tanda de KPIs nuevos (2026-07-28, misma fecha, tras la
 depuración anterior)**: "Peso del proyecto en la cartera de ventas (%)" y
@@ -211,7 +218,8 @@ clientes nuevos/de una sola compra (~12x), que antes estaba sobrestimado
 por el mismo motivo. Detalle y tests actualizados: ver MEMORY.md
 2026-08-20.
 
-**Nota Parcial (2026-08-31)**: columna nueva al final de "Indicadores" (Z),
+**Nota Parcial (2026-08-31, reemplazada el 2026-09-21 — ver "Fase 1 de la
+auditoría" abajo)**: columna nueva al final de "Indicadores" (Z),
 sin reordenar nada. Separa "qué tan bien se está ejecutando" (la Nota) de
 "cuánto de eso está confirmado" (la Parcial). `Evaluación` y el `Nota
 promedio` del dashboard **siguen clasificando la Nota financiera**, no la
@@ -230,6 +238,76 @@ archivo de ejemplo del usuario): ver "Playbook de KPIs" en el spec original
 extensión 2026-07-28 (incluyendo un bug real de desalineación de
 encabezados encontrado y corregido en `asegurar_estructura_workbook`) está
 en MEMORY.md, no en un spec nuevo.
+
+## Fase 1 de la auditoría (2026-09-21): KPIs correctos
+
+Auditoría completa del módulo el 2026-09-21 (Fase 0 = arreglos del
+dashboard, ver `Visualizador Web/CLAUDE.md`; Fase 1 = esto). Las cuatro
+decisiones las tomó el usuario, cada una con el impacto medido sobre la
+cartera real antes de elegir:
+
+- **Proyecto en curso = estimado al cierre.** La Nota evaluaba el costo
+  gastado a la fecha contra la venta completa: un proyecto al 75% de avance
+  con el 99% del presupuesto ya gastado salía "Excelente" (margen a la fecha
+  39,6%). Ahora la Nota usa el margen y la desviación **estimados al
+  cierre** (lo que falta, a precio de presupuesto) → 24,4%, "Requiere
+  atención". Se eligió esta estimación y no la de índice de costo (Real /
+  avance, más severa) porque no castiga a un proyecto que compró sus
+  materiales al inicio; la severa queda como columna de referencia. Reemplaza
+  a la Nota Parcial, que castigaba el avance y no el riesgo. Al 100% de
+  avance nada cambia.
+- **El sobrecosto pesa de verdad**: el componente de control llega a 0 con
+  +30% (antes +100%: un proyecto con +27,6% perdía solo 8 puntos y seguía
+  "Bueno").
+- **Mapeo de categorías ampliado** (`MAPEO_CATEGORIA_BUCKET`): Ferretería y
+  Reposición de Material → Materiales; Arriendo y Herramientas → Equipos.
+  Servicios (incluye mano de obra subcontratada) queda en Otros **a
+  propósito**: "Mano de Obra Real" es manual y podría ya incluirla. El resto
+  de los indirectos (Combustible, Transporte, Alimentación…) se declaró
+  "Otros" explícito para que el run no avise ~50 veces por corrida.
+- **CLTV → margen acumulado + recompra.** AOV × Frecuencia × Vida × Margen
+  contaba dos veces la cantidad de compras (AOV × Vida ya es la venta
+  total). Con todos los clientes en 1 proyecto no se notaba; el primer
+  cliente recurrente habría salido con el doble del margen que dejó.
+
+Correcciones sin decisión de por medio, en el mismo cambio:
+
+- **Una sola implementación Python** de los KPIs de proyecto y de cliente:
+  `calcular_kpis_proyecto()` / `calcular_clientes()` en
+  `analisis_financiero.py`, cada KPI keyed por el nombre de su columna. El
+  dashboard (`build_visualizador.py`) y los PDFs (`kpis_recalculados.py`)
+  solo traducen claves; antes cada uno recalculaba todo por su cuenta. Las
+  fórmulas de "Indicadores" salen de `formulas_indicadores()` (por nombre de
+  columna, no por posición) y `test_contrato_kpis.py` exige que las dos
+  cubran exactamente las mismas columnas.
+- **División por cero = vacío en los dos lados**: presupuesto o venta en 0
+  da celda vacía en el Excel y `None` en Python (antes `#DIV/0!` en el
+  Excel y un `0,0%` inventado en el dashboard, que se leía como "sin
+  desviación").
+- **"Fecha de inicio" ya no es requerida** (`CAMPOS_MANUALES_REQUERIDOS`
+  quedó en 7): solo la usa el Margen por día. Dejaba fuera a un proyecto con
+  todo lo demás cargado.
+- **Margen por día vacío con cierre futuro** (la regla "en desarrollo" de
+  los reportes; antes solo se miraba si la fecha estaba vacía).
+- **Alertas** (`alertas_proyecto()`, en la consola de `run`/`status` y en el
+  dashboard): % Avance fuera de 0–100%, avance 100% con cierre futuro,
+  cierre pasado con avance < 100%, terminado con menos del 80% del
+  presupuesto gastado (posibles costos sin registrar), sobrecosto (estimado)
+  al cierre > +10%, gasto real en una categoría sin presupuesto. No cambian
+  ningún KPI, solo avisan.
+- `derivar_cliente` quita el código numérico de carpeta ("261. FACH 1" →
+  "FACH 1"). Las celdas ya escritas no se tocan: corregirlas a mano.
+- Dashboard de Perú unificado con el de Chile (ver
+  `Visualizador Web/CLAUDE.md`).
+
+**Cómo se verificó**, reutilizable la próxima vez que cambien fórmulas:
+el engine se corrió sobre una **copia** del libro real registrando un país
+ficticio en `PAISES` (rutas de escritura en un sandbox, con guard de que los
+archivos reales no cambiaron), se recalculó esa copia con **Excel real vía
+COM** (`Excel.Application`, `CalculateFull`) y se comparó celda a celda
+contra `calcular_kpis_proyecto()` / `calcular_clientes()`: 240 celdas de
+"Indicadores" y los 8 clientes, 0 diferencias, 0 `#DIV/0!`. Los tests
+comparan el TEXTO de las fórmulas; solo esta prueba compara sus VALORES.
 
 ## Reportes PDF (implementado 2026-07-24)
 
@@ -265,10 +343,10 @@ al final de su propio `run` (PASO 12d, `auditor_centro_costos.py`,
 actualizar Análisis Financiero — best-effort: si el skill de reportes no
 existe o falla, no aborta el `run` de Centro de Costos, solo omite el aviso.
 
-**Reglas de completitud / "en desarrollo"** (spec §6): un proyecto sin las 8
-columnas manuales de `CAMPOS_MANUALES_REQUERIDOS` (% Avance, Fecha de inicio,
-Monto de Venta, los 4 Costos Proyectados, Mano de Obra Real) **no genera
-reporte** — se excluye de `listar_entidades` y de las agregaciones de
+**Reglas de completitud / "en desarrollo"** (spec §6): un proyecto sin las 7
+columnas manuales de `CAMPOS_MANUALES_REQUERIDOS` (% Avance, Monto de Venta,
+los 4 Costos Proyectados, Mano de Obra Real — "Fecha de inicio" salió el
+2026-09-21) **no genera reporte** — se excluye de `listar_entidades` y de las agregaciones de
 cliente/categoría (`paquete_datos_proyecto` lanza `DatosIncompletos`). Esta
 es la única definición de completitud del módulo — hasta el 2026-07-28
 estaba duplicada y el dashboard usaba una versión más laxa (6 campos, sin

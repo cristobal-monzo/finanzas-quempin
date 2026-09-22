@@ -18,7 +18,13 @@ la fórmula de Excel, sobre casos donde la diferencia se manifiesta.
 Ampliado (auditoría de todo el repo) para cubrir el resto de los KPIs que
 también se recalculan por separado en cada camino y que hasta entonces no
 tenían este contrato: costo%/estructura%/desviación%/ahorro-sobrecosto por
-categoría, y CLTV/Clasificación de clientes.
+categoría, y los KPIs de clientes.
+
+Desde 2026-09-21 (auditoría, fase 1) los dos caminos Python ya no calculan
+nada por su cuenta: delegan en analisis_financiero.calcular_kpis_proyecto /
+calcular_clientes. Este contrato sigue vigente igual -- un adaptador puede
+traducir mal una clave -- y suma uno nuevo: el conjunto de columnas de la
+fórmula de Excel y el del cálculo Python tienen que ser el mismo.
 """
 
 import importlib.util
@@ -199,9 +205,19 @@ def test_campos_faltantes_es_la_misma_regla_que_la_completitud():
     assert af.campos_faltantes(completo.get) == []
     assert af.tiene_datos_completos(completo.get)
 
-    incompleto = dict(completo, **{"Fecha de inicio": None, "Mano de Obra Real": ""})
-    assert af.campos_faltantes(incompleto.get) == ["Fecha de inicio", "Mano de Obra Real"]
+    incompleto = dict(completo, **{"% Avance": None, "Mano de Obra Real": ""})
+    assert af.campos_faltantes(incompleto.get) == ["% Avance", "Mano de Obra Real"]
     assert not af.tiene_datos_completos(incompleto.get)
+
+
+def test_fecha_de_inicio_ya_no_es_requerida_en_ningun_camino():
+    """2026-09-21: sin fecha de inicio el proyecto entra igual (solo queda
+    vacío su 'Margen por día'). Antes eso dejaba fuera un proyecto real
+    entero, con venta, presupuesto y costos cargados."""
+    corto, encabezados, _ = CASO_BAJO_PRESUPUESTO
+    assert "Fecha de inicio" not in af.CAMPOS_MANUALES_REQUERIDOS
+    assert bv.es_proyecto_completo(dict(corto, avance=1.0, fecha_inicio=None))
+    assert dr.proyecto_tiene_datos_completos(dict(encabezados, **{"% Avance": 1.0, "Fecha de inicio": None}))
 
 
 # ── Cobertura ampliada: el resto de los KPIs por categoria tambien se ──────
@@ -233,7 +249,7 @@ def test_kpis_por_categoria_y_totales_coinciden_entre_visualizador_y_reportes():
             )
 
 
-# ── Contrato de CLTV/Clientes: mismo problema, otro par de implementaciones ─
+# ── Contrato de Clientes: mismo problema, otro par de implementaciones ──────
 # kr.calcular_cltv_clientes (reportes) y bv.calcular_clientes (dashboard)
 # recalculan AOV/Vida/Meses activo/Frecuencia/Margen%/CLTV/Clasificación cada
 # uno por su cuenta a partir de la hoja "Proyectos" -- tampoco tenían un test
@@ -274,50 +290,73 @@ _PROYECTOS_CLIENTES = [
 ]
 
 
-def test_cltv_y_clasificacion_de_clientes_coinciden_entre_visualizador_y_reportes():
+def test_clientes_coinciden_entre_visualizador_y_reportes():
     kpis_bv = [bv.calcular_kpis_proyecto(corto, reales) for corto, _, reales in _PROYECTOS_CLIENTES]
-    proyectos_por_tag = {corto["tag"]: corto for corto, _, _ in _PROYECTOS_CLIENTES}
-    clientes_bv = {c["cliente"]: c for c in bv.calcular_clientes(kpis_bv, proyectos_por_tag)}
+    clientes_bv = {c["cliente"]: c for c in bv.calcular_clientes(kpis_bv)}
 
-    proyectos_actualizados_kr = [
-        kr.recalcular_proyecto(encabezados, reales)[0] for _, encabezados, reales in _PROYECTOS_CLIENTES
-    ]
-    clientes_kr = kr.calcular_cltv_clientes(proyectos_actualizados_kr)
+    entradas_kr = []
+    for _, encabezados, reales in _PROYECTOS_CLIENTES:
+        proyecto, indicadores = kr.recalcular_proyecto(dict(encabezados, **{"% Avance": 1.0}), reales)
+        entradas_kr.append({"proyecto": proyecto, "indicadores": indicadores})
+    clientes_kr = kr.calcular_clientes_reporte(entradas_kr)
 
     assert set(clientes_bv) == {"Cliente A", "Cliente B", "Cliente C"}
     assert set(clientes_kr) == set(clientes_bv)
 
     for nombre, c_bv in clientes_bv.items():
         c_kr = clientes_kr[nombre]
-        assert c_bv["aov"] == pytest.approx(c_kr["AOV (Valor promedio de venta)"])
-        assert c_bv["vida"] == c_kr["Vida del cliente (n° de proyectos)"]
-        assert c_bv["meses_activo"] == pytest.approx(c_kr["Meses activo"])
-        assert c_bv["frecuencia"] == pytest.approx(c_kr["Frecuencia de compra (proyectos/año)"])
-        assert c_bv["margen_pct"] == pytest.approx(c_kr["Margen de utilidad %"])
-        assert c_bv["cltv"] == pytest.approx(c_kr["CLTV"])
+        assert c_bv["n_proyectos"] == c_kr["N° de proyectos"]
+        assert c_bv["venta_acumulada"] == pytest.approx(c_kr["Venta acumulada (sin IVA)"])
+        assert c_bv["margen_acumulado"] == pytest.approx(c_kr["Margen acumulado"])
+        assert c_bv["margen_pct"] == pytest.approx(c_kr["Margen %"])
+        assert c_bv["recurrente"] == (c_kr["Cliente recurrente"] == "Sí")
         assert c_bv["clasificacion"] == c_kr["Clasificación"]
+    assert clientes_bv["Cliente A"]["recurrente"] and not clientes_bv["Cliente C"]["recurrente"]
 
 
-def test_formula_nota_parcial_y_espejo_python_usan_las_mismas_piezas():
-    """Mismo contrato que ya cubre Nota/Evaluación: si alguien cambia una de
-    las dos implementaciones de la Nota Parcial sin cambiar la otra, este
-    test falla antes de que el dashboard y el Excel se desincronicen."""
-    formula = af._formula_nota_parcial(5, 2)
-    assert "ROUND(" in formula, "el redondeo debe estar en la fórmula, no solo en Python"
-    assert f'{af.LETRA_COL_INDICADORES["Nota del Proyecto"]}2' in formula
-    assert f'Proyectos!{af.LETRA_COL_PROYECTOS["% Avance"]}5' in formula
-    assert 'OR(' in formula, "debe guardar contra Nota vacía Y avance vacío"
-    assert "MIN(" not in formula and "MAX(" not in formula, (
-        "la fórmula no acota el avance; calcular_nota_parcial tampoco debe hacerlo"
+def test_estimacion_al_cierre_coincide_entre_visualizador_y_reportes():
+    """El caso está al 75% de avance: la Nota se calcula sobre la
+    estimación al cierre en los dos caminos (reemplazó a la Nota Parcial,
+    2026-09-21)."""
+    for caso in (CASO_BAJO_PRESUPUESTO, CASO_SOBRE_PRESUPUESTO):
+        kpi_viz, indicadores = _notas_de_ambos_caminos(caso)
+        assert kpi_viz["en_curso"]
+        assert kpi_viz["costo_estimado_cierre"] == pytest.approx(indicadores["Costo estimado al cierre"])
+        assert kpi_viz["margen_estimado_cierre_pct"] == pytest.approx(indicadores["Margen estimado al cierre %"])
+        assert kpi_viz["desviacion_estimada_cierre_pct"] == pytest.approx(indicadores["Desviación estimada al cierre %"])
+        assert kpi_viz["margen_cierre_pct_indice"] == pytest.approx(
+            indicadores["Margen al cierre % (escenario índice de costo)"]
+        )
+        assert kpi_viz["nota"] == af.calcular_nota(
+            indicadores["Margen estimado al cierre %"], indicadores["Desviación estimada al cierre %"]
+        )
+
+
+def test_excel_y_python_calculan_exactamente_las_mismas_columnas():
+    """Cada columna de 'Indicadores' tiene su fórmula (formulas_indicadores)
+    Y su valor Python (calcular_kpis_proyecto), salvo el peso en cartera,
+    que depende de toda la cartera y se calcula aparte
+    (calcular_peso_cartera). Si alguien agrega una columna a un solo lado,
+    falla acá antes de que el Excel y el dashboard muestren cosas distintas."""
+    columnas = set(af.HEADERS_INDICADORES)
+    assert set(af.formulas_indicadores(2, 2)) == columnas
+    _, encabezados, reales = CASO_BAJO_PRESUPUESTO
+    calculadas = set(af.calcular_kpis_proyecto(encabezados, reales))
+    solo_de_cartera = {"Peso del proyecto en la cartera de ventas (%)"}
+    identidad = {"TAG proyecto", "Nombre del proyecto"}
+    assert columnas - solo_de_cartera - identidad <= calculadas
+
+
+def test_division_por_cero_da_vacio_en_python_y_en_la_formula():
+    """Presupuesto 0 en una categoría: Python da None y la fórmula "".
+    Antes el dashboard mostraba 0,0% (un número inventado, que se lee como
+    'sin desviación') y el Excel #DIV/0!."""
+    corto, encabezados, reales = _caso(
+        venta=10_000_000, mat_p=4_000_000, eq_p=0, mo_p=1_000_000, otros_p=1_000_000,
+        mat_r=3_000_000, eq_r=500_000, otros_r=800_000, mo_r=900_000,
     )
-    assert af.calcular_nota_parcial(80, 1.5) == 120
-
-
-def test_nota_parcial_coincide_entre_visualizador_y_reportes():
-    """El tercer KPI que se recalcula por los dos caminos Python. Sin este
-    test, un cambio en uno solo repetiría el bug de 2026-07-28: el mismo
-    proyecto con dos notas distintas según dónde se lo mirara."""
-    kpi_viz, indicadores = _notas_de_ambos_caminos(CASO_BAJO_PRESUPUESTO)
-    assert kpi_viz["nota_parcial"] == indicadores["Nota Parcial"]
-    assert kpi_viz["nota_parcial"] is not None
-    assert kpi_viz["nota_parcial"] < kpi_viz["nota"], "el caso está al 75% de avance"
+    kpi_viz, indicadores = bv.calcular_kpis_proyecto(corto, reales), kr.recalcular_proyecto(encabezados, reales)[1]
+    assert kpi_viz["desviacion_pct_categoria"]["equipos"] is None
+    assert indicadores["Desviación % Equipos"] is None
+    formula = af.formulas_indicadores(2, 2)["Desviación % Equipos"]
+    assert formula.startswith(f'=IF(Proyectos!{af.LETRA_COL_PROYECTOS["Costos Equipos Proyectados"]}2=0,""')

@@ -20,9 +20,9 @@ _spec.loader.exec_module(bv)
 def _fila_proyecto_completa(ws, fila, **overrides):
     valores = {
         "TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID",
-        # "% Avance" y "Fecha de inicio" son parte de la regla de completitud
-        # (af.CAMPOS_MANUALES_REQUERIDOS): sin ellos la fila no cuenta como
-        # completa y el proyecto no recibe KPIs.
+        # "% Avance" es parte de la regla de completitud
+        # (af.CAMPOS_MANUALES_REQUERIDOS); "Fecha de inicio" ya no (2026-09-21)
+        # pero se carga igual, como en la planilla real.
         "% Avance": 0.5, "Fecha de inicio": datetime(2026, 1, 15),
         "Monto de Venta (sin IVA)": 1_000_000,
         "Costos Materiales Proyectados": 300_000, "Costos Equipos Proyectados": 200_000,
@@ -43,8 +43,8 @@ def _fila_detalle(ws, fila, tag, bucket, total):
 
 
 def _proyecto_completo_dict(**overrides):
-    """Las 8 columnas de af.CAMPOS_MANUALES_REQUERIDOS, en las claves cortas
-    que usa este módulo."""
+    """Las columnas de af.CAMPOS_MANUALES_REQUERIDOS (más la fecha de
+    inicio, que ya no es requerida), en las claves cortas de este módulo."""
     p = {
         "avance": 1.0, "fecha_inicio": datetime(2026, 1, 15),
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
@@ -62,12 +62,12 @@ def test_es_proyecto_completo_false_si_falta_mano_de_obra_real():
     assert bv.es_proyecto_completo(_proyecto_completo_dict(mo_real=None)) is False
 
 
-def test_es_proyecto_completo_false_si_falta_avance_o_fecha_de_inicio():
-    """Ambas entraron a la regla al unificarla con la de los reportes PDF
-    (2026-07-28): antes el dashboard las ignoraba y un proyecto sin % Avance
-    salía con KPIs acá pero era rechazado al pedir su PDF."""
+def test_es_proyecto_completo_false_si_falta_avance_pero_no_por_la_fecha_de_inicio():
+    """% Avance entró a la regla al unificarla con la de los reportes PDF
+    (2026-07-28). Fecha de inicio salió el 2026-09-21: solo la usa el Margen
+    por día, y exigirla dejaba fuera proyectos con todo lo demás cargado."""
     assert bv.es_proyecto_completo(_proyecto_completo_dict(avance=None)) is False
-    assert bv.es_proyecto_completo(_proyecto_completo_dict(fecha_inicio=None)) is False
+    assert bv.es_proyecto_completo(_proyecto_completo_dict(fecha_inicio=None)) is True
 
 
 def test_es_proyecto_completo_false_con_cadena_vacia():
@@ -120,7 +120,7 @@ def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
     # (70), no el tope -- nota = round(0.7*70 + 0.3*100) = 79. Ver
     # test_contrato_kpis.py y test_nota_evaluacion.py::test_score_margen_*.
     p = {
-        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.5,
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 1.0,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": 1_000_000, "materiales_proy": 300_000, "equipos_proy": 200_000,
         "mo_proy": 200_000, "otros_proy": 100_000, "mo_real": 350_000,
@@ -155,8 +155,10 @@ def test_calcular_kpis_proyecto_evaluacion_requiere_atencion_bajo_55():
 
 def test_calcular_kpis_proyecto_monto_venta_cero_no_explota():
     # monto_venta=0 es "completo" segun es_proyecto_completo (0 SI cuenta
-    # como cargado) -- calcular_kpis_proyecto debe manejarlo sin ZeroDivisionError,
-    # con score_margen=0 (no hay ratio de margen que calcular contra venta nula).
+    # como cargado) -- calcular_kpis_proyecto debe manejarlo sin
+    # ZeroDivisionError. Desde 2026-09-21 no hay margen % contra una venta
+    # nula (None, como la celda vacía del Excel) y por lo tanto tampoco Nota:
+    # antes se inventaba un margen de 0% y salía una Nota.
     p = {
         "tag": "ZERO", "nombre": "Proyecto Venta Cero", "cliente": "Cliente X", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
@@ -168,8 +170,9 @@ def test_calcular_kpis_proyecto_monto_venta_cero_no_explota():
     kpis = bv.calcular_kpis_proyecto(p, costos_reales)
 
     assert kpis["margen_real"] == 0
-    assert isinstance(kpis, dict)
-    assert kpis["nota"] >= 0
+    assert kpis["margen_estimado_cierre_pct"] is None
+    assert kpis["nota"] is None
+    assert kpis["evaluacion"] is None
 
 
 def test_calcular_kpis_proyecto_redondeo_estilo_excel_en_empate_exacto():
@@ -188,7 +191,7 @@ def test_calcular_kpis_proyecto_redondeo_estilo_excel_en_empate_exacto():
     total_real = monto_venta - margen_real_objetivo  # 875_000
     total_proyectado = total_real  # desviacion_pct = 0 -> score_desviacion = 100
     p = {
-        "tag": "TIE", "nombre": "Empate Redondeo", "cliente": "Cliente Y", "avance": 0.5,
+        "tag": "TIE", "nombre": "Empate Redondeo", "cliente": "Cliente Y", "avance": 1.0,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": None,
         "monto_venta": monto_venta,
         "materiales_proy": total_proyectado, "equipos_proy": 0, "mo_proy": 0, "otros_proy": 0,
@@ -221,51 +224,46 @@ def test_percentil_inclusivo_con_un_solo_valor_devuelve_ese_valor():
     assert bv.percentil_inclusivo([42], 0.67) == 42
 
 
-def test_calcular_clientes_agrupa_y_calcula_cltv():
-    # 450 dias exactos entre las 2 fechas -- por encima del piso de 12 meses
-    # (ver test siguiente), asi que el calculo usa el rango real observado.
-    fecha_a = datetime(2026, 1, 1)
-    fecha_b = fecha_a + timedelta(days=450)
-    kpis = [
-        {"tag": "AGCI1", "cliente": "AGCID", "monto_venta": 1_000_000, "margen_real": 250_000},
-        {"tag": "AGCI2", "cliente": "AGCID", "monto_venta": 2_000_000, "margen_real": 500_000},
-    ]
-    proyectos_por_tag = {
-        "AGCI1": {"fecha_inicio": fecha_a},
-        "AGCI2": {"fecha_inicio": fecha_b},
+def _kpi_cliente(tag, cliente, venta, costo_real):
+    """Un proyecto terminado, por el mismo camino que el snapshot real."""
+    p = {
+        "tag": tag, "nombre": tag, "cliente": cliente, "avance": 1.0,
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": "Mantenimiento",
+        "monto_venta": venta, "materiales_proy": 0, "equipos_proy": 0,
+        "mo_proy": 0, "otros_proy": costo_real, "mo_real": 0,
     }
+    return bv.calcular_kpis_proyecto(p, {"Otros": costo_real})
 
-    clientes = bv.calcular_clientes(kpis, proyectos_por_tag)
+
+def test_calcular_clientes_suma_margen_y_venta_y_detecta_recompra():
+    """2026-09-21: el CLTV (AOV x Frecuencia x Vida x Margen) contaba dos
+    veces la cantidad de compras -- con 2 proyectos daba el doble del margen
+    realmente dejado. Ahora: venta y margen acumulados, y si volvió a
+    comprar."""
+    clientes = bv.calcular_clientes([
+        _kpi_cliente("AGCI1", "AGCID", 1_000_000, 750_000),
+        _kpi_cliente("AGCI2", "AGCID", 2_000_000, 1_500_000),
+    ])
 
     assert len(clientes) == 1
     c = clientes[0]
     assert c["cliente"] == "AGCID"
-    assert c["aov"] == 1_500_000
-    assert c["vida"] == 2
-    assert c["meses_activo"] == 15.0  # 450 dias / 30
-    assert c["frecuencia"] == 1.6  # 2 / (15.0 / 12)
-    assert c["margen_pct"] == 0.25  # (250000+500000)/(1000000+2000000)
-    assert c["cltv"] == 1_200_000.0  # 1500000 * 1.6 * 2 * 0.25
+    assert c["n_proyectos"] == 2
+    assert c["venta_acumulada"] == 3_000_000
+    assert c["margen_acumulado"] == 750_000  # 250.000 + 500.000, no el doble
+    assert c["margen_pct"] == 0.25
+    assert c["recurrente"] is True
+    assert "cltv" not in c
 
 
-def test_calcular_clientes_un_solo_proyecto_meses_activo_minimo_12():
-    # Con un unico proyecto no hay forma de observar un intervalo real entre
-    # compras -- el piso asume 1 año (12 meses), no 1 mes: un cliente de un
-    # solo proyecto da Frecuencia=1 (una compra al año), no 12.
-    kpis = [{"tag": "UMAG", "cliente": "UMAG", "monto_venta": 1_000_000, "margen_real": 200_000}]
-    proyectos_por_tag = {"UMAG": {"fecha_inicio": datetime(2026, 3, 1)}}
-
-    clientes = bv.calcular_clientes(kpis, proyectos_por_tag)
-
-    assert clientes[0]["meses_activo"] == 12.0
-    assert clientes[0]["frecuencia"] == 1.0
+def test_calcular_clientes_un_solo_proyecto_no_es_recurrente():
+    clientes = bv.calcular_clientes([_kpi_cliente("UMAG", "UMAG", 1_000_000, 800_000)])
+    assert clientes[0]["n_proyectos"] == 1
+    assert clientes[0]["recurrente"] is False
 
 
 def test_calcular_clientes_ignora_proyectos_sin_cliente_asignado():
-    kpis = [{"tag": "X", "cliente": None, "monto_venta": 1_000_000, "margen_real": 200_000}]
-    proyectos_por_tag = {"X": {"fecha_inicio": datetime(2026, 1, 1)}}
-
-    assert bv.calcular_clientes(kpis, proyectos_por_tag) == []
+    assert bv.calcular_clientes([_kpi_cliente("X", None, 1_000_000, 800_000)]) == []
 
 
 def _wb_con_proyectos(tmp_path, filas):
@@ -321,11 +319,13 @@ def test_pendientes_dicen_que_campo_falta_y_cuanta_venta_queda_fuera(tmp_path):
 
     data = bv.extraer_datos_saneados(ruta)
 
+    # ESFO solo no tenía Fecha de inicio: desde 2026-09-21 entra al análisis.
+    assert "ESFO" in [p["tag"] for p in data["proyectos"]]
     # Orden: mas venta fuera del analisis primero; sin venta cargada al final.
-    assert [p["tag"] for p in data["pendientes"]] == ["FCH1", "ESFO", "BWIL"]
+    assert [p["tag"] for p in data["pendientes"]] == ["FCH1", "BWIL"]
     por_tag = {p["tag"]: p for p in data["pendientes"]}
-    assert por_tag["ESFO"]["campos_faltantes"] == ["Fecha de inicio"]
-    assert por_tag["ESFO"]["monto_venta"] == 4_000_000
+    assert por_tag["FCH1"]["campos_faltantes"] == ["Mano de Obra Real"]
+    assert por_tag["FCH1"]["monto_venta"] == 9_000_000
     assert por_tag["BWIL"]["campos_faltantes"] == ["Monto de Venta (sin IVA)", "Mano de Obra Real"]
     assert por_tag["BWIL"]["monto_venta"] is None
 
@@ -381,6 +381,9 @@ def test_snapshot_trae_los_umbrales_de_evaluacion_del_modulo_compartido(tmp_path
 
     assert data["umbrales"] == {
         "excelente": af.UMBRAL_EXCELENTE, "bueno": af.UMBRAL_BUENO, "aprobado": af.UMBRAL_APROBADO,
+        "sobrecosto_nota_cero": af.SOBRECOSTO_NOTA_CERO,
+        "alerta_sobrecosto": af.UMBRAL_ALERTA_SOBRECOSTO,
+        "alerta_costo_incompleto": af.UMBRAL_ALERTA_COSTO_INCOMPLETO,
     }
 
 
@@ -410,12 +413,17 @@ def test_extraer_datos_saneados_kpis_proyectos_resumen(tmp_path):
 
     data = bv.extraer_datos_saneados(ruta)
 
-    assert data["kpis_proyectos"]["n_completos"] == 1
-    assert data["kpis_proyectos"]["margen_real_total"] == data["proyectos"][0]["margen_real"]
-    assert data["kpis_proyectos"]["monto_venta_total"] == data["proyectos"][0]["monto_venta"]
-    assert data["kpis_proyectos"]["total_real_total"] == data["proyectos"][0]["total_real"]
-    assert data["kpis_proyectos"]["nota_promedio"] == data["proyectos"][0]["nota"]
-    assert data["kpis_proyectos"]["n_requiere_atencion"] == 0
+    kp, proyecto = data["kpis_proyectos"], data["proyectos"][0]
+    assert kp["n_completos"] == 1
+    # Margen de la cartera = el estimado al cierre (el proyecto está al 50%).
+    assert kp["margen_estimado_total"] == proyecto["margen_estimado_cierre"]
+    assert kp["costo_estimado_total"] == proyecto["costo_estimado_cierre"]
+    assert kp["monto_venta_total"] == proyecto["monto_venta"]
+    assert kp["margen_ponderado_pct"] == proyecto["margen_estimado_cierre"] / proyecto["monto_venta"]
+    assert kp["n_en_curso"] == 1
+    assert kp["nota_promedio"] == proyecto["nota"]
+    assert kp["n_con_alertas"] == (1 if proyecto["alertas"] else 0)
+    assert "margen_real_total" not in kp
 
 
 def test_extraer_datos_saneados_cliente_con_proyecto_pendiente_muestra_nota(tmp_path):
@@ -447,25 +455,27 @@ def test_extraer_datos_saneados_cliente_100pct_incompleto_no_aparece(tmp_path):
     assert data["clientes"] == []
 
 
-def test_calcular_clientes_clasificacion_por_percentil_de_cltv():
-    # 3 clientes con CLTV muy distinto -- el de mayor CLTV debe caer en
-    # "Clientes estrategicos" (>=p67), el de menor en "Clientes de
-    # oportunidad" (<p33).
-    kpis = [
-        {"tag": "A", "cliente": "Bajo", "monto_venta": 100_000, "margen_real": 10_000},
-        {"tag": "B", "cliente": "Medio", "monto_venta": 1_000_000, "margen_real": 200_000},
-        {"tag": "C", "cliente": "Alto", "monto_venta": 10_000_000, "margen_real": 3_000_000},
-    ]
-    proyectos_por_tag = {
-        "A": {"fecha_inicio": datetime(2026, 1, 1)},
-        "B": {"fecha_inicio": datetime(2026, 1, 1)},
-        "C": {"fecha_inicio": datetime(2026, 1, 1)},
-    }
-
-    clientes = {c["cliente"]: c for c in bv.calcular_clientes(kpis, proyectos_por_tag)}
+def test_calcular_clientes_clasificacion_por_percentil_de_margen_acumulado():
+    # 3 clientes con margen acumulado muy distinto -- el mayor cae en
+    # "Clientes estrategicos" (>=p67), el menor en "de oportunidad" (<p33).
+    clientes = {c["cliente"]: c for c in bv.calcular_clientes([
+        _kpi_cliente("A", "Bajo", 100_000, 90_000),
+        _kpi_cliente("B", "Medio", 1_000_000, 800_000),
+        _kpi_cliente("C", "Alto", 10_000_000, 7_000_000),
+    ])}
 
     assert clientes["Alto"]["clasificacion"] == "Clientes estratégicos"
     assert clientes["Bajo"]["clasificacion"] == "Clientes de oportunidad"
+
+
+def test_snapshot_trae_resumen_de_recompra(tmp_path):
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "A1", "Nombre del proyecto": "A1", "Cliente": "A"},
+        {"TAG proyecto": "A2", "Nombre del proyecto": "A2", "Cliente": "A"},
+        {"TAG proyecto": "B1", "Nombre del proyecto": "B1", "Cliente": "B"},
+    ])
+    data = bv.extraer_datos_saneados(ruta)
+    assert data["clientes_resumen"] == {"n_clientes": 2, "n_recurrentes": 1, "tasa_recompra": 0.5}
 
 
 def test_build_genera_html_no_vacio_con_snapshot_incrustado(tmp_path, monkeypatch):
@@ -593,9 +603,13 @@ def test_calcular_kpis_proyecto_kpis_por_categoria_guardas_division_cero():
 
     kpis = bv.calcular_kpis_proyecto(p, costos_reales)
 
-    assert kpis["costo_pct_venta"] == {"materiales": 0.0, "equipos": 0.0, "mo": 0.0, "otros": 0.0}
-    assert kpis["estructura_pct"] == {"materiales": 0.0, "equipos": 0.0, "mo": 0.0, "otros": 0.0}
-    assert kpis["desviacion_pct_categoria"] == {"materiales": 0.0, "equipos": 0.0, "mo": 0.0, "otros": 0.0}
+    # Vacío (None -> "—" en el tablero), no 0,0 %: un cero inventado se lee
+    # como "sin desviación", que no es lo mismo que "sin presupuesto contra
+    # qué medirla" (2026-09-21, mismo criterio que la celda vacía del Excel).
+    vacio = {"materiales": None, "equipos": None, "mo": None, "otros": None}
+    assert kpis["costo_pct_venta"] == vacio
+    assert kpis["estructura_pct"] == vacio
+    assert kpis["desviacion_pct_categoria"] == vacio
 
 
 def test_calcular_kpis_proyecto_margen_por_dia_none_sin_fecha_cierre():
@@ -660,7 +674,7 @@ def test_calcular_peso_cartera_ignora_venta_none_y_no_explota_con_total_cero():
 
     pesos = bv.calcular_peso_cartera(proyectos)
 
-    assert pesos == {"A": 0.0, "B": 0.0}
+    assert pesos == {"A": None, "B": None}  # sin venta cargada no hay peso
 
 
 def test_leer_detalle_subcategorias_agrupa_por_tag_y_calcula_pct(tmp_path):
@@ -707,12 +721,13 @@ def test_calcular_kpis_proyecto_fechas_son_json_serializables():
     json.dumps(kpis, ensure_ascii=False)
 
 
-def _kpi_proyecto(tag, categoria, margen_real, nota):
+def _kpi_proyecto(tag, categoria, margen_estimado, nota, venta=1_000_000):
     return {
         "tag": tag, "nombre": tag, "cliente": "Cliente", "avance": 0.5,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": categoria,
-        "monto_venta": 0, "total_proyectado": 0, "total_real": 0,
-        "margen_real": margen_real, "desviacion_pct": 0.0, "nota": nota, "evaluacion": "Bueno",
+        "monto_venta": venta, "total_proyectado": 0, "total_real": 0,
+        "margen_real": margen_estimado, "margen_estimado_cierre": margen_estimado,
+        "desviacion_pct": 0.0, "nota": nota, "evaluacion": "Bueno",
         "costos_proyectados": {"materiales": 0, "equipos": 0, "mo": 0, "otros": 0},
         "costos_reales": {"materiales": 0, "equipos": 0, "mo": 0, "otros": 0},
     }
@@ -729,7 +744,9 @@ def test_calcular_categorias_agrupa_y_suma_margen():
     por_nombre = {c["categoria"]: c for c in categorias}
 
     assert por_nombre["I+D+i"]["n_proyectos"] == 2
-    assert por_nombre["I+D+i"]["margen_real_total"] == 300_000
+    assert por_nombre["I+D+i"]["margen_estimado_total"] == 300_000
+    assert por_nombre["I+D+i"]["venta_total"] == 2_000_000
+    assert por_nombre["I+D+i"]["margen_pct"] == 0.15  # ponderado por venta, no promedio de %
     assert por_nombre["I+D+i"]["nota_promedio"] == 85.0
     assert por_nombre["I+D+i"]["tags_proyectos"] == ["P1", "P2"]
     assert por_nombre["Mantención"]["n_proyectos"] == 1
@@ -800,10 +817,13 @@ def test_extraer_datos_saneados_incluye_categorias_y_reportes_pdf(tmp_path, monk
 
     data = bv.extraer_datos_saneados(ruta_excel)
 
+    proyecto = data["proyectos"][0]
     assert data["categorias"] == [{
         "categoria": "I+D+i", "n_proyectos": 1,
-        "margen_real_total": data["proyectos"][0]["margen_real"],
-        "nota_promedio": data["proyectos"][0]["nota"],
+        "venta_total": proyecto["monto_venta"],
+        "margen_estimado_total": proyecto["margen_estimado_cierre"],
+        "margen_pct": proyecto["margen_estimado_cierre"] / proyecto["monto_venta"],
+        "nota_promedio": proyecto["nota"],
         "tags_proyectos": ["UMAG"],
     }]
     assert "proyecto:UMAG" in data["reportes_pdf"]
@@ -832,7 +852,10 @@ def test_extraer_datos_saneados_incluye_peso_cartera_y_detalle_subcategorias(tmp
     assert por_tag["CFLI"]["detalle_subcategorias"] == []  # sin filas en 'Detalle Costos Reales'
 
 
-def test_snapshot_expone_avance_y_nota_parcial():
+def test_snapshot_expone_avance_y_estimacion_al_cierre():
+    """Reemplazó a la Nota Parcial (2026-09-21): al 75% de avance con 6,4M
+    gastados de 8M, lo que falta (25% de 8M) se estima a precio de
+    presupuesto -> 8,4M al cierre; la Nota se calcula sobre eso."""
     p = {
         "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.75,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": "I+D+i",
@@ -845,11 +868,15 @@ def test_snapshot_expone_avance_y_nota_parcial():
     kpis = bv.calcular_kpis_proyecto(p, reales)
 
     assert kpis["avance"] == 0.75
-    assert "estado" not in kpis
-    assert kpis["nota_parcial"] == af.calcular_nota_parcial(kpis["nota"], 0.75)
+    assert kpis["en_curso"] is True
+    assert "nota_parcial" not in kpis
+    assert kpis["costo_estimado_cierre"] == 8_400_000
+    assert kpis["margen_estimado_cierre"] == 1_600_000
+    assert kpis["nota"] == af.calcular_nota(0.16, 8_400_000 / 8_000_000 - 1)
+    assert kpis["margen_real"] == 3_600_000  # a la fecha: sigue disponible, no se pierde
 
 
-def test_snapshot_deja_nota_parcial_vacia_sin_avance():
+def test_snapshot_sin_avance_no_tiene_estimacion_ni_nota():
     p = {
         "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": None,
         "fecha_inicio": None, "fecha_cierre": None, "categoria": "I+D+i",
@@ -861,5 +888,67 @@ def test_snapshot_deja_nota_parcial_vacia_sin_avance():
 
     kpis = bv.calcular_kpis_proyecto(p, reales)
 
-    assert kpis["nota"] is not None
-    assert kpis["nota_parcial"] is None
+    assert kpis["en_curso"] is False
+    assert kpis["costo_estimado_cierre"] is None
+    assert kpis["nota"] is None
+
+
+def test_snapshot_trae_las_alertas_del_proyecto():
+    """Al 75% con el 99% del presupuesto gastado: sobrecosto estimado al
+    cierre de +24%, sobre el umbral de alerta."""
+    p = {
+        "tag": "JX", "nombre": "JX", "cliente": "X", "avance": 0.75,
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": "Mantenimiento",
+        "monto_venta": 160.0, "materiales_proy": 40.0, "equipos_proy": 20.0,
+        "mo_proy": 30.0, "otros_proy": 10.0, "mo_real": 30.0,
+    }
+    kpis = bv.calcular_kpis_proyecto(p, {"Materiales": 50.0, "Equipos": 9.0, "Otros": 10.0})
+    assert any("Sobrecosto estimado al cierre" in a for a in kpis["alertas"])
+
+
+def test_pendientes_traen_las_alertas_de_fechas(tmp_path):
+    """Avance 100% con fecha de cierre futura: aunque le falten datos, la
+    inconsistencia de fechas se avisa."""
+    from datetime import date, timedelta as td
+    ruta = _wb_con_proyectos(tmp_path, [{
+        "TAG proyecto": "CFLI", "Nombre del proyecto": "Cesfam Limache", "Cliente": "Cesfam",
+        "% Avance": 1.0, "Fecha de cierre": datetime.combine(date.today() + td(days=400), datetime.min.time()),
+        "Mano de Obra Real": None,
+    }])
+    data = bv.extraer_datos_saneados(ruta)
+    assert any("fecha de cierre futura" in a for a in data["pendientes"][0]["alertas"])
+
+
+def test_build_de_peru_usa_el_mismo_template_con_su_titulo_y_moneda(tmp_path, monkeypatch):
+    """Perú no tiene template propio desde 2026-09-21: el mismo build lo
+    genera con PAISES_VIZ["PE"]."""
+    ruta_excel = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "LIMA", "Nombre del proyecto": "LIMA", "Cliente": "ACME"},
+    ])
+    cfg = dict(bv.PAISES_VIZ["PE"])
+    cfg.update({
+        "ruta_excel": ruta_excel,
+        "ruta_data_json": tmp_path / "pe" / "data.json",
+        "ruta_build_html": tmp_path / "pe" / "index.html",
+        "raiz_reportes": tmp_path / "pe" / "Reportes",
+    })
+    monkeypatch.setitem(bv.PAISES_VIZ, "PE", cfg)
+
+    assert bv.build("PE") == 0
+    html = (tmp_path / "pe" / "index.html").read_text(encoding="utf-8")
+    assert "<title>Análisis Financiero Perú — Visualizador</title>" in html
+    assert 'data-nav-activo="analisis-financiero-peru"' in html
+    assert "__AF_" not in html
+    data = bv.extraer_datos_saneados(ruta_excel, pais="PE")
+    assert data["moneda"] == {"simbolo": "S/", "locale": "es-PE"}
+    assert data["pendientes"] == [] and data["proyectos"][0]["tag"] == "LIMA"
+
+
+def test_template_no_tiene_restos_del_esquema_anterior():
+    """El template lee exactamente las claves del snapshot nuevo: ninguna
+    referencia a CLTV, Nota Parcial o al margen a la fecha como total."""
+    template = bv.RUTA_TEMPLATE.read_text(encoding="utf-8")
+    for resto in ("nota_parcial", ".cltv", "margen_real_total", "c.aov", "meses_activo"):
+        assert resto not in template, resto
+    for marcador in ("__AF_DATA_B64__", "__AF_TITULO__", "__AF_NAV_ACTIVO__"):
+        assert marcador in template

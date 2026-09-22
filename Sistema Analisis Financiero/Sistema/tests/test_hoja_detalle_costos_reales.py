@@ -8,7 +8,7 @@ def test_regenerar_escribe_una_fila_por_clave_con_bucket_calculado(tmp_path):
     agrupado = {
         ("UMAG", "Materiales"): 70000.0,
         ("UMAG", "Equipos-Herramientas"): 90000.0,
-        ("CFLI", "Combustible"): 45000.0,
+        ("CFLI", "Capacitación"): 45000.0,
     }
 
     avisos = af.regenerar_hoja_detalle_costos_reales(wb, agrupado)
@@ -21,10 +21,10 @@ def test_regenerar_escribe_una_fila_por_clave_con_bucket_calculado(tmp_path):
     ]
     assert ("UMAG", "Materiales", "Materiales", 70000.0) in filas
     assert ("UMAG", "Equipos-Herramientas", "Equipos", 90000.0) in filas
-    assert ("CFLI", "Combustible", "Otros", 45000.0) in filas
+    assert ("CFLI", "Capacitación", "Otros", 45000.0) in filas
     assert len(filas) == 3
     assert len(avisos) == 1
-    assert "Combustible" in avisos[0]
+    assert "Capacitación" in avisos[0]
 
 
 def test_regenerar_borra_filas_de_la_corrida_anterior(tmp_path):

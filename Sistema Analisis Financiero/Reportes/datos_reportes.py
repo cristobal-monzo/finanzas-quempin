@@ -21,7 +21,7 @@ from analisis_financiero import (  # noqa: E402
 )
 
 from kpis_recalculados import (  # noqa: E402
-    calcular_cltv_clientes, costos_reales_por_proyecto, recalcular_proyecto,
+    calcular_clientes_reporte, costos_reales_por_proyecto, recalcular_proyecto,
 )
 
 class DatosIncompletosError(ValueError):
@@ -119,26 +119,33 @@ def paquete_datos_proyecto(ruta_excel: Path, tag: str) -> dict:
 
 
 def paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str) -> dict:
-    """CLTV (recalculado en Python) + proyectos con datos completos del
-    cliente -- los incompletos se excluyen del agregado, no bloquean el
-    reporte. El CLTV se calcula sobre TODOS los proyectos completos del
-    libro (la Clasificación depende del percentil entre todos los
-    clientes), luego se selecciona la entrada de este cliente."""
-    wb = openpyxl.load_workbook(ruta_excel, data_only=True)
-    completos = [
-        e["proyecto"] for e in _todos_los_proyectos_recalculados(wb)
-        if proyecto_tiene_datos_completos(e["proyecto"])
-    ]
-    proyectos_cliente = [p for p in completos if p.get("Cliente") == nombre_cliente]
-    cltv = calcular_cltv_clientes(completos).get(nombre_cliente, {})
+    """KPIs del cliente (hoja 'Clientes', recalculados en Python: N° de
+    proyectos, venta y margen acumulados, margen %, si es recurrente y su
+    Clasificación) + sus proyectos con datos completos -- los incompletos se
+    excluyen del agregado, no bloquean el reporte. Los KPIs se calculan
+    sobre TODOS los proyectos del libro (la Clasificación es un percentil
+    entre todos los clientes) y luego se toma la fila de este cliente.
 
-    if not proyectos_cliente and not cltv:
+    'kpis_cliente' reemplazó a la clave 'cltv' el 2026-09-21, junto con el
+    CLTV (ver analisis_financiero.calcular_clientes)."""
+    wb = openpyxl.load_workbook(ruta_excel, data_only=True)
+    entradas = _todos_los_proyectos_recalculados(wb)
+    proyectos_cliente = [
+        e["proyecto"] for e in entradas
+        if proyecto_tiene_datos_completos(e["proyecto"]) and e["proyecto"].get("Cliente") == nombre_cliente
+    ]
+    kpis_cliente = calcular_clientes_reporte(entradas).get(nombre_cliente, {})
+
+    if not proyectos_cliente and not kpis_cliente:
         raise ValueError(
             f"Cliente '{nombre_cliente}' no encontrado, o ninguno de sus "
             f"proyectos tiene datos completos."
         )
 
-    return {"tipo": "cliente", "cliente": nombre_cliente, "cltv": cltv, "proyectos": proyectos_cliente}
+    return {
+        "tipo": "cliente", "cliente": nombre_cliente,
+        "kpis_cliente": kpis_cliente, "proyectos": proyectos_cliente,
+    }
 
 
 def paquete_datos_categoria(ruta_excel: Path, categoria: str) -> dict:

@@ -14,7 +14,7 @@ import shutil
 import sys
 import unicodedata
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -136,16 +136,23 @@ HEADERS_INDICADORES = [
     # agregar por ahora -- ver MEMORY.md).
     "Peso del proyecto en la cartera de ventas (%)",
     "Margen por día de ejecución",
-    # KPI nuevo 2026-08-28: Nota del Proyecto ponderada por el "% Avance"
-    # manual de "Proyectos". Al final, sin reordenar nada, igual que los 2
-    # KPIs agregados el 2026-07-28.
-    "Nota Parcial",
+    # 2026-09-21 (auditoría, fase 1): la "Nota Parcial" (Nota x % Avance) se
+    # reemplazó por la estimación al cierre -- castigaba el avance, no el
+    # riesgo, y no avisaba de un proyecto a medio camino con el presupuesto ya
+    # agotado. La Nota del Proyecto se calcula ahora sobre estas columnas.
+    "Costo estimado al cierre", "Margen estimado al cierre",
+    "Margen estimado al cierre %", "Desviación estimada al cierre %",
+    "Margen al cierre % (escenario índice de costo)",
+    # Columnas de apoyo para que la hoja "Clientes" sume solo proyectos con
+    # los datos completos, igual que el dashboard y los reportes (antes el
+    # Excel sumaba también proyectos a medio cargar).
+    "Cliente", "Monto de Venta (sin IVA)", "Datos completos",
 ]
+# Reemplaza AOV/Vida/Meses activo/Frecuencia/CLTV (2026-09-21, ver
+# calcular_clientes para el porqué).
 HEADERS_CLIENTES = [
-    "Cliente", "AOV (Valor promedio de venta)",
-    "Vida del cliente (n° de proyectos)", "Meses activo",
-    "Frecuencia de compra (proyectos/año)", "Margen de utilidad %", "CLTV",
-    "Clasificación",
+    "Cliente", "N° de proyectos", "Venta acumulada (sin IVA)",
+    "Margen acumulado", "Margen %", "Cliente recurrente", "Clasificación",
 ]
 HEADERS_GLOSARIO_KPIS = [
     "KPI", "Por qué importa", "Qué elementos usa", "Qué significa el resultado",
@@ -240,48 +247,51 @@ ESTILO_COLUMNAS_DETALLE_COSTOS_REALES = {
     "E": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 18),
 }
 
-# Reordenado 2026-07-28 junto con HEADERS_INDICADORES: A/B identificación:
-# C margen neto; D-G costo % de venta; H-K estructura % del costo real
-# (mix, suma 100%); L-P desviación % (4 categorías + total); Q-U
-# ahorro/sobrecosto neto en $ (4 categorías + total); V/W nota/evaluación.
+# Por nombre de encabezado, no por letra (2026-09-21) -- mismo motivo que
+# ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE: la fase 1 de la auditoría sacó una
+# columna y agregó ocho, y un dict por letra habría quedado desalineado.
+_ESTILO_INDICADORES_POR_NOMBRE = {
+    "TAG proyecto": (COLOR_IDENTIFICACION, None, 10),
+    "Nombre del proyecto": (COLOR_IDENTIFICACION, None, 22),
+    "Margen neto %": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
+    **{f"Costo {c} % de venta": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14)
+       for c in ("Materiales", "Equipos", "MO", "Otros")},
+    **{f"Estructura % {c}": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14)
+       for c in ("Materiales", "Equipos", "MO", "Otros")},
+    **{f"Desviación % {c}": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14)
+       for c in ("Materiales", "Equipos", "MO", "Otros")},
+    "Desviación % Total": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 16),
+    **{f"Ahorro/Sobrecosto {c}": (COLOR_DERIVADO, FORMATO_MONEDA, 16)
+       for c in ("Materiales", "Equipos", "MO", "Otros", "Total")},
+    "Nota del Proyecto": (COLOR_DERIVADO, FORMATO_ENTERO, 12),
+    "Evaluación": (COLOR_DERIVADO, None, 20),
+    "Peso del proyecto en la cartera de ventas (%)": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 18),
+    "Margen por día de ejecución": (COLOR_DERIVADO, FORMATO_MONEDA, 18),
+    "Costo estimado al cierre": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
+    "Margen estimado al cierre": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
+    "Margen estimado al cierre %": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
+    "Desviación estimada al cierre %": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 16),
+    "Margen al cierre % (escenario índice de costo)": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 18),
+    "Cliente": (COLOR_IDENTIFICACION, None, 22),
+    "Monto de Venta (sin IVA)": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
+    "Datos completos": (COLOR_IDENTIFICACION, None, 12),
+}
 ESTILO_COLUMNAS_INDICADORES = {
-    "A": (COLOR_IDENTIFICACION, None, 10),
-    "B": (COLOR_IDENTIFICACION, None, 22),
-    "C": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
-    "D": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "E": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "F": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "G": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "H": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "I": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "J": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "K": (COLOR_COSTO_REAL, FORMATO_PORCENTAJE, 14),
-    "L": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "M": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "N": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "O": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 14),
-    "P": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 16),
-    "Q": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
-    "R": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
-    "S": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
-    "T": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
-    "U": (COLOR_DERIVADO, FORMATO_MONEDA, 16),
-    "V": (COLOR_DERIVADO, FORMATO_ENTERO, 12),
-    "W": (COLOR_DERIVADO, None, 20),
-    "X": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 18),
-    "Y": (COLOR_DERIVADO, FORMATO_MONEDA, 18),
-    "Z": (COLOR_DERIVADO, FORMATO_ENTERO, 14),
+    LETRA_COL_INDICADORES[nombre]: estilo
+    for nombre, estilo in _ESTILO_INDICADORES_POR_NOMBRE.items()
 }
 
 ESTILO_COLUMNAS_CLIENTES = {
-    "A": (COLOR_IDENTIFICACION, None, 22),
-    "B": (COLOR_DERIVADO, FORMATO_MONEDA, 18),
-    "C": (COLOR_DERIVADO, FORMATO_ENTERO, 14),
-    "D": (COLOR_DERIVADO, FORMATO_RATIO, 14),
-    "E": (COLOR_DERIVADO, FORMATO_RATIO, 14),
-    "F": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 14),
-    "G": (COLOR_DERIVADO, FORMATO_MONEDA, 18),
-    "H": (COLOR_DERIVADO, None, 22),
+    get_column_letter(HEADERS_CLIENTES.index(nombre) + 1): estilo
+    for nombre, estilo in {
+        "Cliente": (COLOR_IDENTIFICACION, None, 22),
+        "N° de proyectos": (COLOR_DERIVADO, FORMATO_ENTERO, 12),
+        "Venta acumulada (sin IVA)": (COLOR_DERIVADO, FORMATO_MONEDA, 18),
+        "Margen acumulado": (COLOR_DERIVADO, FORMATO_MONEDA, 18),
+        "Margen %": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 12),
+        "Cliente recurrente": (COLOR_DERIVADO, None, 12),
+        "Clasificación": (COLOR_DERIVADO, None, 22),
+    }.items()
 }
 
 ESTILO_COLUMNAS_GLOSARIO_KPIS = {
@@ -462,6 +472,11 @@ def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
             celda = ws.cell(row=1, column=col)
             if celda.value != nuevo_valor:
                 celda.value = nuevo_valor
+            if col > len(headers):
+                # Columna que el esquema nuevo ya no tiene: sin esto quedaba un
+                # encabezado vacío pero todavía pintado (ej. la 8ª columna de
+                # "Clientes" al pasar de 8 a 7 columnas, 2026-09-21).
+                celda.fill = PatternFill(fill_type=None)
 
     for nombre_default in ("Hoja1", "Sheet"):
         if nombre_default in wb.sheetnames:
@@ -479,10 +494,36 @@ def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
 
 # ── MAPEO DE CATEGORÍAS ──────────────────────────────────────────────────────
 
+# Ampliado 2026-09-21 (auditoría, fase 1 -- decisión del usuario): Ferretería
+# resultó ser casi todo material de obra (válvulas, cañerías, fittings) y
+# Arriendo casi todo arriendo de equipos (camiones, vehículos, andamios), pero
+# caían en "Otros" -- así la desviación por categoría comparaba el presupuesto
+# de Materiales/Equipos contra un real al que le faltaba parte de su gasto.
+# "Herramientas" es la misma cosa que "Equipos-Herramientas" escrita distinto.
+# "Servicios" (subcontratos, incluida mano de obra subcontratada) queda en
+# "Otros" a propósito: "Mano de Obra Real" es manual y moverlo ahí la contaría
+# dos veces si ya lo incluye. El total y el margen de cada proyecto no cambian,
+# solo su reparto entre categorías.
 MAPEO_CATEGORIA_BUCKET = {
     "Materiales": "Materiales",
     "Consumibles": "Materiales",
+    "Ferretería": "Materiales",
+    "Reposición de Material": "Materiales",
     "Equipos-Herramientas": "Equipos",
+    "Herramientas": "Equipos",
+    "Arriendo": "Equipos",
+    # "Otros" explícito (misma fecha): son gastos indirectos que ya caían ahí,
+    # y declararlos evita que cada corrida avise ~50 veces "sin mapeo
+    # explícito" -- el aviso queda solo para subcategorías nuevas de verdad.
+    "Servicios": "Otros",
+    "Combustible": "Otros",
+    "Transporte": "Otros",
+    "Alimentación": "Otros",
+    "Viáticos/Alojamiento": "Otros",
+    "Despachos": "Otros",
+    "Seguridad Industrial": "Otros",
+    "Oficina": "Otros",
+    "Descuento": "Otros",
 }
 
 
@@ -509,8 +550,14 @@ UMBRAL_SIMILITUD_CLIENTE = 0.6
 def derivar_cliente(nombre_proyecto: str) -> str:
     """Corta el nombre del proyecto en el primer paréntesis (donde suele
     empezar la iteración/fecha, ej. "AGCID (I) FEBRERO" -> "AGCID"). Sin
-    paréntesis, devuelve el nombre completo tal cual."""
+    paréntesis, devuelve el nombre completo tal cual.
+
+    Quita además el código numérico de carpeta ("261. FACH 1" -> "FACH 1"),
+    con la misma regla que normalizar_nombre_proyecto_carpeta: en la planilla
+    real quedó un cliente "261. FACH 1" heredado del nombre de carpeta, que
+    ningún otro proyecto del mismo cliente iba a igualar nunca."""
     candidato = nombre_proyecto.split("(")[0].strip()
+    candidato = re.sub(r"^\d+[.\-_]\s*", "", candidato).strip()
     return candidato if candidato else nombre_proyecto.strip()
 
 
@@ -1077,9 +1124,11 @@ def asegurar_formulas_proyectos(ws_proyectos, filas_validas: list[dict]) -> None
         ws_proyectos.cell(row=r, column=col["Total Real"], value=f"={l}{r}+{m}{r}+{n}{r}+{o}{r}")
         ws_proyectos.cell(row=r, column=col["Margen Proyectado"], value=f"={venta}{r}-{total_proy}{r}")
         ws_proyectos.cell(row=r, column=col["Margen Real"], value=f"={venta}{r}-{total_real}{r}")
+        # Presupuesto total en 0 (o vacío) -> celda vacía, no #DIV/0!: mismo
+        # significado que el None de calcular_kpis_proyecto (2026-09-21).
         ws_proyectos.cell(
             row=r, column=col["Desviación % (Real vs Proyectado)"],
-            value=f"={total_real}{r}/{total_proy}{r}-1",
+            value=f'=IF({total_proy}{r}=0,"",{total_real}{r}/{total_proy}{r}-1)',
         )
 
 
@@ -1103,6 +1152,12 @@ SCORE_MARGEN_EN_OBJETIVO = 70
 K_MARGEN_NOTA_SOBRE_OBJETIVO = 0.3186
 PESO_RENTABILIDAD_NOTA = 0.7
 PESO_DESVIACION_NOTA = 0.3
+# Sobrecosto con el que el componente de control (30%) llega a 0 puntos.
+# Hasta 2026-09-21 era implícitamente +100% (100 - desviacion*100): un
+# proyecto real con casi +28% de sobrecosto perdía solo 8 puntos y seguía
+# "Bueno". Decisión del usuario en la fase 1 de la auditoría:
+# +30% ya es un descontrol total del presupuesto.
+SOBRECOSTO_NOTA_CERO = 0.30
 
 UMBRAL_EXCELENTE, UMBRAL_BUENO, UMBRAL_APROBADO = 85, 70, 55
 
@@ -1120,8 +1175,15 @@ UMBRAL_EXCELENTE, UMBRAL_BUENO, UMBRAL_APROBADO = 85, 70, 55
 # aceptaba la cadena vacia como valor cargado. Resultado: un proyecto podia
 # salir con KPIs completos en el dashboard y a la vez ser rechazado con
 # DatosIncompletosError al pedir su PDF.
+#
+# "Fecha de inicio" salió de la lista el 2026-09-21 (auditoría, fase 1): solo
+# la usa "Margen por día de ejecución", que ya queda vacío si falta. Exigirla
+# dejaba proyectos enteros sin ningún KPI -- con venta, presupuesto y costos
+# cargados -- por un dato que no entra en su margen ni en su Nota.
+# Cada campo que queda acá sí entra en la Nota: venta y costos en el margen,
+# presupuesto en la desviación, % Avance en la estimación al cierre.
 CAMPOS_MANUALES_REQUERIDOS = [
-    "% Avance", "Fecha de inicio", "Monto de Venta (sin IVA)",
+    "% Avance", "Monto de Venta (sin IVA)",
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
 ]
@@ -1140,7 +1202,7 @@ def campos_faltantes(valor_de_campo) -> list[str]:
 
 
 def tiene_datos_completos(valor_de_campo) -> bool:
-    """True si el proyecto tiene los 8 campos manuales cargados -- definido
+    """True si el proyecto tiene los campos manuales requeridos cargados -- definido
     sobre campos_faltantes para que el dashboard, al decir QUE falta, nunca
     discrepe de la regla que decide si falta algo."""
     return not campos_faltantes(valor_de_campo)
@@ -1185,9 +1247,21 @@ def _score_margen_nota(margen_neto: float) -> float:
     )
 
 
+def _score_desviacion_nota(desviacion_total: float) -> float:
+    """Componente de control del presupuesto (30%) de la Nota: 100 en o bajo
+    presupuesto, 0 con SOBRECOSTO_NOTA_CERO o más de sobrecosto, lineal entre
+    medio. Equivalente Excel en _formula_nota()."""
+    return min(100, max(0, 100 - max(0, desviacion_total) / SOBRECOSTO_NOTA_CERO * 100))
+
+
 def calcular_nota(margen_neto: float | None, desviacion_total: float | None) -> int | None:
     """Equivalente Python exacto de _formula_nota(). None si falta cualquiera
     de los dos insumos (mismo significado que una celda vacia en Excel).
+
+    Desde 2026-09-21 los dos insumos son los ESTIMADOS AL CIERRE (ver
+    calcular_kpis_proyecto): en un proyecto terminado coinciden con los
+    reales; en uno en curso ya no se evalúa el costo gastado a la fecha
+    contra la venta completa, que inflaba el margen.
 
     El componente de desviacion (30%) usa MAX(0, desviacion), NO ABS():
     penaliza solo el sobrecosto real (Real > Proyectado). Un proyecto en o
@@ -1198,7 +1272,7 @@ def calcular_nota(margen_neto: float | None, desviacion_total: float | None) -> 
     if margen_neto is None or desviacion_total is None:
         return None
     score_margen = _score_margen_nota(margen_neto)
-    score_desviacion = min(100, max(0, 100 - max(0, desviacion_total) * 100))
+    score_desviacion = _score_desviacion_nota(desviacion_total)
     return _redondear_excel(
         PESO_RENTABILIDAD_NOTA * score_margen + PESO_DESVIACION_NOTA * score_desviacion
     )
@@ -1217,27 +1291,27 @@ def clasificar_evaluacion(nota: int | None) -> str | None:
     return "Requiere atención"
 
 
-def _formula_nota(fila_proyectos: int) -> str:
-    """Corregido 2026-07-28 (aprobado por el usuario): el componente de
+def _formula_nota(fila_indicadores: int) -> str:
+    """Equivalente Excel exacto de calcular_nota(), sobre las columnas de
+    estimación al cierre de esta misma hoja ('Indicadores').
+
+    Corregido 2026-07-28 (aprobado por el usuario): el componente de
     control de desviación (30%) ya NO usa ABS() -- antes penalizaba gastar
     de menos igual que gastar de más, pese a que ahorrar ya sube el margen
-    (capturado en el 70% de rentabilidad), así que era un doble castigo
-    disfrazado de doble premio. Ahora MAX(0, desviación) anula el término
-    para cualquier proyecto en o bajo presupuesto (desviación <= 0): ese
-    componente da el puntaje máximo (100), sin restar ni sumar de más. Solo
-    resta puntos cuando Real > Proyectado (sobrecosto real, desviación
-    positiva). Ver MEMORY.md 2026-07-28 para la verificación a mano contra
-    UMAG (Nota pasó de 91 a 100).
+    (capturado en el 70% de rentabilidad). MAX(0, desviación) anula el
+    término para cualquier proyecto en o bajo presupuesto.
 
     Componente de margen corregido 2026-08-20: equivalente Excel exacto de
-    _score_margen_nota() -- ver esa función para el porqué (efecto techo real
-    contra la cartera de QUEMPIN). EXP() no necesita prefijo _xlfn. (función
-    anterior a 2007)."""
-    r = fila_proyectos
-    margen_real = LETRA_COL_PROYECTOS["Margen Real"]
-    venta = LETRA_COL_PROYECTOS["Monto de Venta (sin IVA)"]
-    desviacion = LETRA_COL_PROYECTOS["Desviación % (Real vs Proyectado)"]
-    margen = f"(Proyectos!{margen_real}{r}/Proyectos!{venta}{r})"
+    _score_margen_nota() -- ver esa función para el porqué. EXP() no
+    necesita prefijo _xlfn. (función anterior a 2007).
+
+    2026-09-21 (auditoría, fase 1): los insumos pasan a ser el margen y la
+    desviación ESTIMADOS AL CIERRE, y el componente de control llega a 0 con
+    SOBRECOSTO_NOTA_CERO de sobrecosto en vez de +100%. Queda vacía si falta
+    cualquiera de los dos insumos, como el None de calcular_nota()."""
+    li = LETRA_COL_INDICADORES
+    margen = f"{li['Margen estimado al cierre %']}{fila_indicadores}"
+    desviacion = f"{li['Desviación estimada al cierre %']}{fila_indicadores}"
     extra = 100 - SCORE_MARGEN_EN_OBJETIVO
     score_margen = (
         f"IF({margen}<=0,0,IF({margen}<={MARGEN_OBJETIVO_NOTA},"
@@ -1245,178 +1319,500 @@ def _formula_nota(fila_proyectos: int) -> str:
         f"{SCORE_MARGEN_EN_OBJETIVO}+{extra}*(1-EXP(-({margen}-{MARGEN_OBJETIVO_NOTA})/{K_MARGEN_NOTA_SOBRE_OBJETIVO}))))"
     )
     score_desviacion = (
-        f"MIN(100,MAX(0,100-MAX(0,Proyectos!{desviacion}{r})*100))"
+        f"MIN(100,MAX(0,100-MAX(0,{desviacion})/{SOBRECOSTO_NOTA_CERO}*100))"
     )
-    return f"=ROUND({PESO_RENTABILIDAD_NOTA}*{score_margen}+{PESO_DESVIACION_NOTA}*{score_desviacion},0)"
+    return (
+        f'=IF(OR({margen}="",{desviacion}=""),"",'
+        f"ROUND({PESO_RENTABILIDAD_NOTA}*{score_margen}+{PESO_DESVIACION_NOTA}*{score_desviacion},0))"
+    )
 
 
 def _formula_evaluacion(fila_destino: int) -> str:
     # Referencia a la columna "Nota del Proyecto" de esta misma hoja
     # ("Indicadores"), calculada desde LETRA_COL_INDICADORES -- nunca
     # hardcodeada, para no romperse si el playbook de KPIs vuelve a cambiar
-    # de orden/cantidad de columnas.
+    # de orden/cantidad de columnas. Guarda contra Nota vacía: en Excel un
+    # texto "" siempre es >= que un número, así que sin el guard una Nota
+    # vacía salía "Excelente".
     col_nota = LETRA_COL_INDICADORES["Nota del Proyecto"]
     ref = f"{col_nota}{fila_destino}"
     return (
-        f'=IF({ref}>=85,"Excelente",IF({ref}>=70,"Bueno",'
-        f'IF({ref}>=55,"Aprobado","Requiere atención")))'
+        f'=IF({ref}="","",IF({ref}>={UMBRAL_EXCELENTE},"Excelente",IF({ref}>={UMBRAL_BUENO},"Bueno",'
+        f'IF({ref}>={UMBRAL_APROBADO},"Aprobado","Requiere atención"))))'
     )
 
 
-def calcular_nota_parcial(nota: int | None, avance: float | None) -> int | None:
-    """Nota del Proyecto ponderada por el % de avance manual del proyecto
-    (2026-08-28). Equivalente Python exacto de _formula_nota_parcial().
+# ── KPIS DE UN PROYECTO: UNA SOLA IMPLEMENTACIÓN PYTHON ─────────────────────
+# Hasta 2026-09-21 los KPIs de un proyecto se recalculaban en Python en TRES
+# lugares -- Reportes/kpis_recalculados.py (PDF), Visualizador Web/
+# build_visualizador.py (dashboard Chile) y su copia peruana -- además de las
+# fórmulas de Excel. Ya divergieron dos veces (la Nota el 2026-07-28, la copia
+# peruana el 2026-08-31). Ahora los tres consumidores llaman a
+# calcular_kpis_proyecto(), que devuelve cada KPI con el MISMO nombre que su
+# columna en "Proyectos"/"Indicadores"; las fórmulas de asegurar_hoja_
+# indicadores() son su espejo y test_contrato_kpis.py las compara.
+#
+# Convención de vacíos, igual en los dos lados: None en Python == celda vacía
+# en Excel. Una división por cero (venta 0, presupuesto 0) da vacío, nunca 0:
+# un 0 inventado se lee como "sin desviación", que no es lo mismo que "sin
+# presupuesto contra qué medirla".
 
-    Separa dos preguntas que la Nota sola mezclaba: la Nota mide QUE TAN BIEN
-    se esta ejecutando lo ejecutado hasta ahora (margen real vs venta,
-    desviacion real vs presupuesto); la Parcial mide CUANTO de ese resultado
-    esta confirmado. Un proyecto al 75% con Nota 88 tiene Parcial 66 -- la
-    ejecucion va bien, pero un cuarto del proyecto todavia puede mover el
-    numero final. Al 100% de avance ambas coinciden.
+# (sufijo de la columna en "Indicadores", columna proyectada, columna real)
+CATEGORIAS_KPI = (
+    ("Materiales", "Costos Materiales Proyectados", "Costos Materiales Reales"),
+    ("Equipos", "Costos Equipos Proyectados", "Costos Equipos Reales"),
+    ("MO", "Mano de Obra Proyectada", "Mano de Obra Real"),
+    ("Otros", "Otros Costos Proyectados", "Otros Costos Reales"),
+)
+NOMBRE_LEGIBLE_CATEGORIA = {
+    "Materiales": "Materiales", "Equipos": "Equipos", "MO": "Mano de Obra", "Otros": "Otros",
+}
 
-    None (celda vacia en Excel) si falta cualquiera de los dos insumos: la
-    cadena vacia cuenta como faltante -- en LOS DOS parametros, no solo en
-    avance -- porque la formula de Excel guarda con ="" en ambos lados
-    (IF(OR(V2="",...))) y la Nota de "Gastos Generales" llega justamente
-    como "".
 
-    NO acota el avance a [0, 1] -- la formula de Excel tampoco. Un
-    acotamiento en un solo lado es exactamente la divergencia silenciosa que
-    este bloque existe para evitar; un avance fuera de rango es un error de
-    carga y debe verse como tal en los dos caminos."""
-    if nota in (None, "") or avance in (None, ""):
+def _vacio(valor) -> bool:
+    return valor is None or valor == ""
+
+
+def _num(valor):
+    return None if _vacio(valor) else valor
+
+
+def _dividir(a, b):
+    """División de Excel con guard: denominador vacío o 0 -> None (celda
+    vacía), nunca un 0 inventado."""
+    if a is None or b is None or b == 0:
         return None
-    return _redondear_excel(nota * avance)
+    return a / b
 
 
-def _formula_nota_parcial(fila_proyectos: int, fila_indicadores: int) -> str:
-    """Equivalente Excel exacto de calcular_nota_parcial().
+def _sumar(*valores):
+    if any(v is None for v in valores):
+        return None
+    return sum(valores)
 
-    Necesita las DOS filas: el avance vive en 'Proyectos' (que puede tener
-    huecos) y la Nota en esta misma hoja 'Indicadores' (compacta, sin
-    huecos) -- mismo desfase que ya manejan _formula_evaluacion (fila de
-    Indicadores) y _formula_nota (fila de Proyectos).
 
-    La guarda vive DENTRO de la formula, no en Python, para que la celda se
-    recalcule sola cuando el usuario complete el avance sin necesidad de
-    correr el script (mismo patron que 'Margen por dia de ejecucion').
-    Cubre los dos casos vacios de una vez: la Nota de 'Gastos Generales'
-    (que ya llega como "" por su propio guard en asegurar_hoja_indicadores)
-    y un proyecto sin avance cargado."""
-    col_nota = LETRA_COL_INDICADORES["Nota del Proyecto"]
-    col_avance = LETRA_COL_PROYECTOS["% Avance"]
-    nota = f"{col_nota}{fila_indicadores}"
-    avance = f"Proyectos!{col_avance}{fila_proyectos}"
-    return f'=IF(OR({nota}="",{avance}=""),"",ROUND({nota}*{avance},0))'
+def _restar(a, b):
+    if a is None or b is None:
+        return None
+    return a - b
+
+
+def _desviacion(real, proyectado):
+    d = _dividir(real, proyectado)
+    return None if d is None else d - 1
+
+
+def _a_fecha(valor):
+    if isinstance(valor, datetime):
+        return valor.date()
+    if isinstance(valor, date):
+        return valor
+    return None
+
+
+def avance_acotado(avance):
+    """% Avance llevado a [0, 1] para estimar el cierre. Fuera de ese rango
+    es un error de carga: se estima con el valor acotado (un avance de 120%
+    no puede "des-gastar" presupuesto) y alertas_proyecto() lo avisa, para
+    que el error se vea en vez de quedar escondido en un número raro."""
+    if _vacio(avance):
+        return None
+    return min(1.0, max(0.0, avance))
+
+
+def costo_estimado_al_cierre(total_real, total_proyectado, avance):
+    """Costo al cierre = costo real a la fecha + lo que falta ejecutar a
+    precio de presupuesto: Real + Proyectado x (1 - avance). Es la
+    estimación elegida por el usuario (2026-09-21) para la Nota: no
+    extrapola el sobrecosto pasado a lo que falta, así que no castiga a un
+    proyecto que compró sus materiales al inicio. Al 100% de avance es
+    exactamente el costo real."""
+    a = avance_acotado(avance)
+    if a is None or total_real is None or total_proyectado is None:
+        return None
+    return total_real + total_proyectado * (1 - a)
+
+
+def costo_al_cierre_indice(total_real, avance):
+    """Escenario pesimista, solo informativo (no entra en la Nota): el
+    ritmo de gasto actual se mantiene hasta el final. Con índice de costo
+    CPI = (Proyectado x avance) / Real, el costo al cierre Proyectado / CPI
+    se simplifica a Real / avance. Sin avance (0%) no hay ritmo que
+    extrapolar."""
+    a = avance_acotado(avance)
+    if not a or total_real is None:
+        return None
+    return total_real / a
+
+
+def margen_por_dia(fecha_inicio, fecha_cierre, margen_real, hoy: date | None = None):
+    """Margen Real / días de ejecución. Vacío si falta alguna fecha o si el
+    proyecto sigue en desarrollo (fecha de cierre futura, misma regla que
+    los reportes PDF): no se divide un margen parcial por una duración que
+    todavía no terminó. MAX(1, días) evita dividir por 0."""
+    inicio, cierre = _a_fecha(fecha_inicio), _a_fecha(fecha_cierre)
+    if inicio is None or cierre is None or margen_real is None:
+        return None
+    if cierre > (hoy or date.today()):
+        return None
+    return margen_real / max(1, (cierre - inicio).days)
+
+
+def calcular_kpis_proyecto(valores: dict, costos_reales: dict, hoy: date | None = None) -> dict:
+    """Todos los KPIs de un proyecto, keyed por el nombre de su columna en
+    'Proyectos' (derivadas) o 'Indicadores'.
+
+    `valores`: columnas manuales/autocompletadas de 'Proyectos', keyed por
+    encabezado (TAG, Cliente, Categoría, % Avance, fechas, venta, los 4
+    proyectados y Mano de Obra Real). `costos_reales`: {'Materiales',
+    'Equipos', 'Otros'} -> suma de 'Detalle Costos Reales' (un bucket
+    ausente vale 0, igual que un SUMIFS sin coincidencias).
+
+    No incluye 'Peso del proyecto en la cartera de ventas (%)': depende de
+    toda la cartera, no del proyecto (ver calcular_peso_cartera)."""
+    v = lambda campo: _num(valores.get(campo))  # noqa: E731
+    venta = v("Monto de Venta (sin IVA)")
+    reales = {
+        "Costos Materiales Reales": costos_reales.get("Materiales", 0.0),
+        "Costos Equipos Reales": costos_reales.get("Equipos", 0.0),
+        "Otros Costos Reales": costos_reales.get("Otros", 0.0),
+        "Mano de Obra Real": v("Mano de Obra Real"),
+    }
+    total_proyectado = _sumar(*(v(col_p) for _, col_p, _ in CATEGORIAS_KPI))
+    total_real = _sumar(*(reales[col_r] for _, _, col_r in CATEGORIAS_KPI))
+    margen_real = _restar(venta, total_real)
+    desviacion_total = _desviacion(total_real, total_proyectado)
+
+    avance = v("% Avance")
+    costo_estimado = costo_estimado_al_cierre(total_real, total_proyectado, avance)
+    margen_estimado = _restar(venta, costo_estimado)
+    margen_estimado_pct = _dividir(margen_estimado, venta)
+    desviacion_estimada = _desviacion(costo_estimado, total_proyectado)
+    margen_indice_pct = _dividir(_restar(venta, costo_al_cierre_indice(total_real, avance)), venta)
+
+    # "Gastos Generales" es un bucket de costos internos: nunca se evalúa por
+    # rentabilidad (mismo guard que la fórmula de asegurar_hoja_indicadores).
+    es_gastos_generales = valores.get("Categoría") == CATEGORIA_GASTOS_GENERALES
+    nota = None if es_gastos_generales else calcular_nota(margen_estimado_pct, desviacion_estimada)
+
+    kpis = {
+        **reales,
+        "Total Proyectado": total_proyectado,
+        "Total Real": total_real,
+        "Margen Proyectado": _restar(venta, total_proyectado),
+        "Margen Real": margen_real,
+        "Desviación % (Real vs Proyectado)": desviacion_total,
+        "Margen neto %": _dividir(margen_real, venta),
+    }
+    for sufijo, col_p, col_r in CATEGORIAS_KPI:
+        real, proyectado = reales[col_r], v(col_p)
+        kpis[f"Costo {sufijo} % de venta"] = _dividir(real, venta)
+        kpis[f"Estructura % {sufijo}"] = _dividir(real, total_real)
+        kpis[f"Desviación % {sufijo}"] = _desviacion(real, proyectado)
+        kpis[f"Ahorro/Sobrecosto {sufijo}"] = _restar(proyectado, real)
+    kpis.update({
+        "Desviación % Total": desviacion_total,
+        "Ahorro/Sobrecosto Total": _restar(total_proyectado, total_real),
+        "Nota del Proyecto": nota,
+        "Evaluación": clasificar_evaluacion(nota),
+        "Margen por día de ejecución": margen_por_dia(
+            valores.get("Fecha de inicio"), valores.get("Fecha de cierre"), margen_real, hoy,
+        ),
+        "Costo estimado al cierre": costo_estimado,
+        "Margen estimado al cierre": margen_estimado,
+        "Margen estimado al cierre %": margen_estimado_pct,
+        "Desviación estimada al cierre %": desviacion_estimada,
+        "Margen al cierre % (escenario índice de costo)": margen_indice_pct,
+        "Cliente": valores.get("Cliente"),
+        "Categoría": valores.get("Categoría"),
+        "Monto de Venta (sin IVA)": venta,
+        "Datos completos": "Sí" if tiene_datos_completos(valores.get) else "No",
+    })
+    return kpis
+
+
+def calcular_peso_cartera(ventas_por_tag: dict) -> dict:
+    """Peso del proyecto en la cartera de ventas (%): venta del proyecto
+    sobre la suma de TODAS las ventas cargadas (completas o no), igual que
+    la fórmula de Excel, que suma la columna entera de 'Proyectos'. Sin
+    venta cargada -> None."""
+    total = sum(v for v in ventas_por_tag.values() if not _vacio(v))
+    return {
+        tag: (_dividir(venta, total) if not _vacio(venta) else None)
+        for tag, venta in ventas_por_tag.items()
+    }
+
+
+# ── ALERTAS DE UN PROYECTO (solo Python: consola del run + dashboard) ────────
+# Señales de que un dato manual está desactualizado o un proyecto se está
+# saliendo de presupuesto -- no cambian ningún KPI, solo lo avisan.
+UMBRAL_ALERTA_COSTO_INCOMPLETO = 0.80  # terminado con real < 80% del presupuesto
+UMBRAL_ALERTA_SOBRECOSTO = 0.10        # sobrecosto (estimado) al cierre > +10%
+
+
+def _pct_legible(x: float, signo: bool = False) -> str:
+    texto = f"{x * 100:+.1f}" if signo else f"{x * 100:.1f}"
+    return texto.replace(".", ",") + " %"
+
+
+def alertas_proyecto(valores: dict, kpis: dict | None = None, hoy: date | None = None) -> list[str]:
+    """Lista de alertas legibles de un proyecto. Las de fechas/avance se
+    evalúan siempre; las de costos, solo si el proyecto tiene los datos
+    completos (sin presupuesto o sin venta no hay contra qué comparar)."""
+    hoy = hoy or date.today()
+    alertas = []
+    avance = _num(valores.get("% Avance"))
+    cierre = _a_fecha(valores.get("Fecha de cierre"))
+
+    if avance is not None and not 0 <= avance <= 1:
+        alertas.append(
+            f"% Avance fuera de rango ({_pct_legible(avance)}): la estimación al cierre "
+            f"usa {_pct_legible(avance_acotado(avance))}."
+        )
+    if avance is not None and avance >= 1 and cierre and cierre > hoy:
+        alertas.append(
+            f"Avance 100 % pero con fecha de cierre futura ({cierre:%d-%m-%Y}): "
+            f"revisar cuál de los dos está desactualizado."
+        )
+    if avance is not None and avance < 1 and cierre and cierre < hoy:
+        alertas.append(
+            f"La fecha de cierre ({cierre:%d-%m-%Y}) ya pasó y el avance va en "
+            f"{_pct_legible(avance)}: actualizar el avance o la fecha."
+        )
+
+    if not kpis or kpis.get("Datos completos") != "Sí":
+        return alertas
+
+    total_real, total_proyectado = kpis["Total Real"], kpis["Total Proyectado"]
+    cobertura = _dividir(total_real, total_proyectado)
+    if avance >= 1 and cobertura is not None and cobertura < UMBRAL_ALERTA_COSTO_INCOMPLETO:
+        alertas.append(
+            f"Terminado con un costo real de solo {_pct_legible(cobertura)} del presupuesto: "
+            f"revisar si faltan facturas o Mano de Obra por registrar antes de leer su margen."
+        )
+    desviacion_estimada = kpis["Desviación estimada al cierre %"]
+    if desviacion_estimada is not None and desviacion_estimada > UMBRAL_ALERTA_SOBRECOSTO:
+        if avance < 1:
+            alertas.append(
+                f"Sobrecosto estimado al cierre de {_pct_legible(desviacion_estimada, signo=True)}: "
+                f"con {_pct_legible(avance)} de avance ya se gastó el "
+                f"{_pct_legible(cobertura)} del presupuesto."
+            )
+        else:
+            alertas.append(
+                f"Terminado con sobrecosto de {_pct_legible(desviacion_estimada, signo=True)} "
+                f"sobre el presupuesto."
+            )
+    for sufijo, col_p, col_r in CATEGORIAS_KPI:
+        real = kpis[col_r]
+        if _num(valores.get(col_p)) == 0 and real:
+            alertas.append(
+                f"{NOMBRE_LEGIBLE_CATEGORIA[sufijo]} tiene gasto real pero presupuesto 0: "
+                f"su desviación no se puede medir."
+            )
+    return alertas
+
+
+# ── CLIENTES: UNA SOLA IMPLEMENTACIÓN PYTHON ────────────────────────────────
+# Reemplaza al CLTV (2026-09-21, auditoría fase 1 -- decisión del usuario).
+# La fórmula anterior, AOV x Frecuencia x Vida x Margen %, contaba dos veces
+# la cantidad de compras (AOV x Vida ya es la venta total, y Frecuencia
+# vuelve a multiplicar por proyectos/año); con todos los clientes en 1
+# proyecto no se notaba, pero el primer cliente recurrente iba a aparecer con
+# un valor inflado. Con la cartera actual, lo que sí se puede afirmar es el
+# margen que cada cliente ya dejó y si volvió a comprar.
+
+CLASIFICACION_SIN_PROYECTOS = "Sin proyectos completos"
+
+
+def percentil_inclusivo(valores: list[float], p: float) -> float:
+    """PERCENTILE.INC de Excel (el que calcula AGGREGATE(16,...)):
+    interpolación lineal sobre la lista ordenada, rango 0-indexado =
+    p*(n-1). Con un solo valor devuelve ese valor."""
+    ordenados = sorted(valores)
+    n = len(ordenados)
+    if n == 1:
+        return ordenados[0]
+    rango = p * (n - 1)
+    inferior = int(rango)
+    superior = min(inferior + 1, n - 1)
+    return ordenados[inferior] + (ordenados[superior] - ordenados[inferior]) * (rango - inferior)
+
+
+def clasificar_cliente(margen_acumulado: float, margenes_de_la_cartera: list[float]) -> str:
+    """Tier relativo a la cartera actual (percentiles 67/33 del margen
+    acumulado), no un corte fijo en pesos que quede obsoleto al crecer."""
+    if margen_acumulado >= percentil_inclusivo(margenes_de_la_cartera, 0.67):
+        return "Clientes estratégicos"
+    if margen_acumulado >= percentil_inclusivo(margenes_de_la_cartera, 0.33):
+        return "Clientes potenciales"
+    return "Clientes de oportunidad"
+
+
+def calcular_clientes(kpis_proyectos: list[dict]) -> list[dict]:
+    """Espejo Python de la hoja 'Clientes' (asegurar_hoja_clientes). Recibe
+    salidas de calcular_kpis_proyecto -- de cualquier conjunto de
+    proyectos: solo cuentan los que tienen 'Datos completos' == 'Sí', igual
+    que el COUNTIFS/SUMIFS de la hoja. Devuelve una fila por cliente con al
+    menos un proyecto completo, keyed por las columnas de la hoja, ordenada
+    por nombre."""
+    por_cliente: dict[str, list[dict]] = {}
+    for k in kpis_proyectos:
+        if k.get("Datos completos") != "Sí" or not k.get("Cliente"):
+            continue
+        if k.get("Categoría") == CATEGORIA_GASTOS_GENERALES:
+            continue
+        por_cliente.setdefault(k["Cliente"], []).append(k)
+
+    filas = []
+    for cliente in sorted(por_cliente):
+        proyectos = por_cliente[cliente]
+        venta = sum(p["Monto de Venta (sin IVA)"] for p in proyectos)
+        margen = sum(p["Margen estimado al cierre"] for p in proyectos)
+        filas.append({
+            "Cliente": cliente,
+            "N° de proyectos": len(proyectos),
+            "Venta acumulada (sin IVA)": venta,
+            "Margen acumulado": margen,
+            "Margen %": _dividir(margen, venta),
+            "Cliente recurrente": "Sí" if len(proyectos) >= 2 else "No",
+        })
+
+    margenes = [f["Margen acumulado"] for f in filas]
+    for f in filas:
+        f["Clasificación"] = clasificar_cliente(f["Margen acumulado"], margenes)
+    return filas
+
+
+def tasa_recompra(clientes: list[dict]) -> float | None:
+    """Clientes que ya compraron 2 o más proyectos / clientes con al menos
+    un proyecto completo. None sin clientes."""
+    if not clientes:
+        return None
+    return sum(1 for c in clientes if c["Cliente recurrente"] == "Sí") / len(clientes)
 
 
 # ── FÓRMULAS DE LA HOJA "INDICADORES" (100% regenerada cada corrida) ────────
 
+def formulas_indicadores(r: int, f: int) -> dict[str, str]:
+    """Las fórmulas de una fila de 'Indicadores', keyed por encabezado: `r`
+    es la fila del proyecto en 'Proyectos' (puede tener huecos) y `f` su
+    fila compacta en 'Indicadores'. Espejo de calcular_kpis_proyecto(),
+    incluida la convención de vacíos: toda división guarda contra
+    denominador 0 o vacío y devuelve "" (== None en Python), nunca #DIV/0!.
+
+    Keyed por nombre (2026-09-21) en vez de escribir por número de columna:
+    así el orden de HEADERS_INDICADORES puede cambiar sin que una fórmula
+    quede bajo el encabezado equivocado (el incidente real del 2026-07-28)."""
+    lp, li = LETRA_COL_PROYECTOS, LETRA_COL_INDICADORES
+
+    def p(nombre):
+        return f"Proyectos!{lp[nombre]}{r}"
+
+    def i(nombre):
+        return f"{li[nombre]}{f}"
+
+    def dividir(a, b):
+        return f'IF({b}=0,"",{a}/{b})'
+
+    venta, total_real, total_proy = p("Monto de Venta (sin IVA)"), p("Total Real"), p("Total Proyectado")
+    avance = p("% Avance")
+    avance_acotado_xl = f"MIN(1,MAX(0,{avance}))"
+    es_gastos_generales = f'{p("Categoría")}="{CATEGORIA_GASTOS_GENERALES}"'
+    cargados = ",".join(f'{p(campo)}<>""' for campo in CAMPOS_MANUALES_REQUERIDOS)
+
+    formulas = {
+        "TAG proyecto": f"={p('TAG proyecto')}",
+        "Nombre del proyecto": f"={p('Nombre del proyecto')}",
+        "Margen neto %": f"={dividir(p('Margen Real'), venta)}",
+    }
+    for sufijo, col_p, col_r in CATEGORIAS_KPI:
+        real, proyectado = p(col_r), p(col_p)
+        formulas[f"Costo {sufijo} % de venta"] = f"={dividir(real, venta)}"
+        formulas[f"Estructura % {sufijo}"] = f"={dividir(real, total_real)}"
+        formulas[f"Desviación % {sufijo}"] = f'=IF({proyectado}=0,"",{real}/{proyectado}-1)'
+        formulas[f"Ahorro/Sobrecosto {sufijo}"] = f"={proyectado}-{real}"
+    formulas.update({
+        "Desviación % Total": f"={p('Desviación % (Real vs Proyectado)')}",
+        "Ahorro/Sobrecosto Total": f"={total_proy}-{total_real}",
+        # Nota/Evaluación vacías para "Gastos Generales" (bucket de costos
+        # internos, nunca tiene venta): evaluar su "rentabilidad" no tiene
+        # sentido. Mismo guard que calcular_kpis_proyecto().
+        "Nota del Proyecto": f'=IF({es_gastos_generales},"",{_formula_nota(f)[1:]})',
+        "Evaluación": f'=IF({es_gastos_generales},"",{_formula_evaluacion(f)[1:]})',
+        # Venta del proyecto sobre la suma de TODA la columna de venta de
+        # "Proyectos" -- SUM ignora celdas vacías, así que un proyecto sin
+        # venta cargada no distorsiona el denominador.
+        "Peso del proyecto en la cartera de ventas (%)": (
+            f'=IF({venta}="","",{venta}/SUM(Proyectos!${lp["Monto de Venta (sin IVA)"]}:'
+            f'${lp["Monto de Venta (sin IVA)"]}))'
+        ),
+        # Vacío si falta una fecha o si el proyecto sigue en desarrollo
+        # (cierre futuro). El guard vive en la fórmula: se recalcula solo
+        # cuando llega la fecha, sin correr el script. MAX(1, días) evita
+        # #DIV/0! si inicio == cierre.
+        "Margen por día de ejecución": (
+            f'=IF(OR({p("Fecha de cierre")}="",{p("Fecha de inicio")}="",{p("Fecha de cierre")}>TODAY()),"",'
+            f"{p('Margen Real')}/MAX(1,{p('Fecha de cierre')}-{p('Fecha de inicio')}))"
+        ),
+        # Estimación al cierre = real a la fecha + lo que falta a precio de
+        # presupuesto (ver costo_estimado_al_cierre).
+        "Costo estimado al cierre": (
+            f'=IF({avance}="","",{total_real}+{total_proy}*(1-{avance_acotado_xl}))'
+        ),
+        "Margen estimado al cierre": (
+            f'=IF({i("Costo estimado al cierre")}="","",{venta}-{i("Costo estimado al cierre")})'
+        ),
+        "Margen estimado al cierre %": (
+            f'=IF({i("Margen estimado al cierre")}="","",'
+            f'{dividir(i("Margen estimado al cierre"), venta)})'
+        ),
+        "Desviación estimada al cierre %": (
+            f'=IF(OR({i("Costo estimado al cierre")}="",{total_proy}=0),"",'
+            f'{i("Costo estimado al cierre")}/{total_proy}-1)'
+        ),
+        # Escenario pesimista: Real / avance (ver costo_al_cierre_indice).
+        "Margen al cierre % (escenario índice de costo)": (
+            f'=IF(OR({avance}="",{venta}=0),"",IF({avance_acotado_xl}=0,"",'
+            f"({venta}-{total_real}/{avance_acotado_xl})/{venta}))"
+        ),
+        "Cliente": f'=IF({p("Cliente")}="","",{p("Cliente")})',
+        "Monto de Venta (sin IVA)": f'=IF({venta}="","",{venta})',
+        # Misma regla que tiene_datos_completos(): "" y vacío faltan, 0 no.
+        "Datos completos": f'=IF(AND({cargados}),"Sí","No")',
+    })
+    return formulas
+
+
 def asegurar_hoja_indicadores(wb, filas_validas: list[dict]) -> None:
     """Regenera 'Indicadores' completa: una fila compacta por proyecto
     válido (sin huecos), pero cada fórmula referencia la fila REAL del
-    proyecto en 'Proyectos' (que sí puede tener huecos).
-
-    Orden de columnas (reordenado 2026-07-28, ver HEADERS_INDICADORES):
-    margen neto; costo % de venta (4); estructura % del costo real / mix,
-    suma 100% (4); desviación % por categoría (4) + desviación % total;
-    ahorro/sobrecosto neto en $ por categoría (4) + total; nota; evaluación;
-    peso en cartera; margen por día; nota parcial."""
+    proyecto en 'Proyectos' (que sí puede tener huecos). Las fórmulas salen
+    de formulas_indicadores() y se escriben bajo su encabezado por nombre."""
     ws = wb[HOJA_INDICADORES]
     if ws.max_row >= 2:
         ws.delete_rows(2, ws.max_row - 1)
 
-    lp = LETRA_COL_PROYECTOS
-    tag, nombre = lp["TAG proyecto"], lp["Nombre del proyecto"]
-    venta = lp["Monto de Venta (sin IVA)"]
-    margen_real, total_real, total_proy = (
-        lp["Margen Real"], lp["Total Real"], lp["Total Proyectado"],
-    )
-    desviacion_total = lp["Desviación % (Real vs Proyectado)"]
-    mat_r, eq_r, mo_r, otros_r = (
-        lp["Costos Materiales Reales"], lp["Costos Equipos Reales"],
-        lp["Mano de Obra Real"], lp["Otros Costos Reales"],
-    )
-    mat_p, eq_p, mo_p, otros_p = (
-        lp["Costos Materiales Proyectados"], lp["Costos Equipos Proyectados"],
-        lp["Mano de Obra Proyectada"], lp["Otros Costos Proyectados"],
-    )
-    fecha_inicio, fecha_cierre = lp["Fecha de inicio"], lp["Fecha de cierre"]
-
-    fila_destino = 2
-    for fila_info in filas_validas:
-        r = fila_info["fila"]
-        f = fila_destino
-        ws.cell(row=f, column=1, value=f"=Proyectos!{tag}{r}")
-        ws.cell(row=f, column=2, value=f"=Proyectos!{nombre}{r}")
-        ws.cell(row=f, column=3, value=f"=Proyectos!{margen_real}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=f, column=4, value=f"=Proyectos!{mat_r}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=f, column=5, value=f"=Proyectos!{eq_r}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=f, column=6, value=f"=Proyectos!{mo_r}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=f, column=7, value=f"=Proyectos!{otros_r}{r}/Proyectos!{venta}{r}")
-        ws.cell(row=f, column=8, value=f"=Proyectos!{mat_r}{r}/Proyectos!{total_real}{r}")
-        ws.cell(row=f, column=9, value=f"=Proyectos!{eq_r}{r}/Proyectos!{total_real}{r}")
-        ws.cell(row=f, column=10, value=f"=Proyectos!{mo_r}{r}/Proyectos!{total_real}{r}")
-        ws.cell(row=f, column=11, value=f"=Proyectos!{otros_r}{r}/Proyectos!{total_real}{r}")
-        ws.cell(row=f, column=12, value=f"=Proyectos!{mat_r}{r}/Proyectos!{mat_p}{r}-1")
-        ws.cell(row=f, column=13, value=f"=Proyectos!{eq_r}{r}/Proyectos!{eq_p}{r}-1")
-        ws.cell(row=f, column=14, value=f"=Proyectos!{mo_r}{r}/Proyectos!{mo_p}{r}-1")
-        ws.cell(row=f, column=15, value=f"=Proyectos!{otros_r}{r}/Proyectos!{otros_p}{r}-1")
-        ws.cell(row=f, column=16, value=f"=Proyectos!{desviacion_total}{r}")
-        ws.cell(row=f, column=17, value=f"=Proyectos!{mat_p}{r}-Proyectos!{mat_r}{r}")
-        ws.cell(row=f, column=18, value=f"=Proyectos!{eq_p}{r}-Proyectos!{eq_r}{r}")
-        ws.cell(row=f, column=19, value=f"=Proyectos!{mo_p}{r}-Proyectos!{mo_r}{r}")
-        ws.cell(row=f, column=20, value=f"=Proyectos!{otros_p}{r}-Proyectos!{otros_r}{r}")
-        ws.cell(row=f, column=21, value=f"=Proyectos!{total_proy}{r}-Proyectos!{total_real}{r}")
-        # V/W: Nota/Evaluación -- vacías para "Gastos Generales" (bucket de
-        # costos internos, nunca tiene Monto de Venta): evaluar "rentabilidad"
-        # de un gasto interno no tiene sentido. El guard vive acá, no dentro
-        # de _formula_nota/_formula_evaluacion, para no tocar esas funciones
-        # (y sus tests) -- mismo patrón que el guard de "Margen por día" más
-        # abajo. Evaluación también necesita su propio guard, no solo Nota:
-        # si Nota quedara vacía ("") sin vaciar Evaluación, "">=85 evalúa TRUE
-        # en Excel (el texto siempre "gana" al comparar con un número), y
-        # "Gastos Generales" mostraría "Excelente".
-        categoria_col = lp["Categoría"]
-        es_gastos_generales = f'Proyectos!{categoria_col}{r}="{CATEGORIA_GASTOS_GENERALES}"'
-        ws.cell(row=f, column=22, value=f'=IF({es_gastos_generales},"",{_formula_nota(r)[1:]})')
-        ws.cell(row=f, column=23, value=f'=IF({es_gastos_generales},"",{_formula_evaluacion(f)[1:]})')
-        # X: Peso del proyecto en la cartera de ventas (%) -- venta del
-        # proyecto sobre la suma de TODA la columna "Monto de Venta (sin
-        # IVA)" de "Proyectos" (no solo la propia fila), incluyendo
-        # proyectos que no están "Terminado" -- SUM ignora celdas vacías/
-        # texto, así que un proyecto sin venta cargada no distorsiona el
-        # denominador solo, no hace falta filtrar por % Avance.
-        ws.cell(row=f, column=24, value=(
-            f"=Proyectos!{venta}{r}/SUM(Proyectos!${venta}:${venta})"
-        ))
-        # Y: Margen por día de ejecución -- IF(Fecha de cierre vacía, "",
-        # ...) para que un proyecto "en desarrollo" (sin Fecha de cierre)
-        # quede vacío en vez de una fórmula con error/número sin sentido;
-        # el guard vive en la fórmula (se recalcula solo si el usuario
-        # completa la fecha después, sin correr el script de nuevo).
-        # MAX(1, días) evita #DIV/0! si Fecha de cierre = Fecha de inicio.
-        ws.cell(row=f, column=25, value=(
-            f'=IF(Proyectos!{fecha_cierre}{r}="","",'
-            f"Proyectos!{margen_real}{r}/MAX(1,Proyectos!{fecha_cierre}{r}-Proyectos!{fecha_inicio}{r}))"
-        ))
-        # Z: Nota Parcial -- Nota del Proyecto (columna V de esta misma hoja)
-        # ponderada por el "% Avance" manual de "Proyectos". No necesita un
-        # guard propio de "Gastos Generales": la Nota ya llega como "" para
-        # ese bucket y la fórmula guarda contra eso, igual que contra un
-        # proyecto sin avance cargado.
-        ws.cell(row=f, column=26, value=_formula_nota_parcial(r, f))
-        fila_destino += 1
+    columna = {nombre: idx for idx, nombre in enumerate(HEADERS_INDICADORES, start=1)}
+    for f, fila_info in enumerate(filas_validas, start=2):
+        formulas = formulas_indicadores(fila_info["fila"], f)
+        faltan = set(HEADERS_INDICADORES) - set(formulas)
+        if faltan:
+            raise ValueError(f"Columnas de 'Indicadores' sin fórmula: {sorted(faltan)}")
+        for nombre, formula in formulas.items():
+            ws.cell(row=f, column=columna[nombre], value=formula)
 
 
-# ── HOJA "CLIENTES" (CLTV, 100% regenerada cada corrida) ────────────────────
+# ── HOJA "CLIENTES" (100% regenerada cada corrida) ──────────────────────────
 
 def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
     """Regenera 'Clientes' completa: una fila por valor único de la columna
-    'Cliente' de 'Proyectos' (filas sin Cliente asignado se ignoran). Todas
-    las columnas son fórmulas que agregan sobre 'Proyectos' filtrando por
-    Cliente -- nunca valores calculados en Python -- para que un proyecto
-    nuevo del mismo cliente se sume solo la próxima vez que Excel recalcule."""
+    'Cliente' de 'Proyectos' (sin "Gastos Generales"). Todas las columnas
+    son fórmulas sobre 'Indicadores' que cuentan SOLO proyectos con 'Datos
+    completos' = "Sí" -- la misma regla que el dashboard y los reportes
+    (calcular_clientes es su espejo Python). Un cliente cuyos proyectos
+    están todos a medio cargar queda en la lista con 0 proyectos y
+    "Sin proyectos completos", fuera del cálculo de percentiles."""
     ws = wb[HOJA_CLIENTES]
     if ws.max_row >= 2:
         ws.delete_rows(2, ws.max_row - 1)
@@ -1433,39 +1829,32 @@ def asegurar_hoja_clientes(wb, filas_validas: list[dict], ws_proyectos) -> None:
             vistos.add(cliente)
             clientes_unicos.append(cliente)
 
-    cliente_col = LETRA_COL_PROYECTOS["Cliente"]
-    venta_col = LETRA_COL_PROYECTOS["Monto de Venta (sin IVA)"]
-    fecha_inicio_col = LETRA_COL_PROYECTOS["Fecha de inicio"]
-    margen_real_col = LETRA_COL_PROYECTOS["Margen Real"]
+    li = LETRA_COL_INDICADORES
+
+    def rango(nombre):
+        return f"Indicadores!${li[nombre]}:${li[nombre]}"
+
+    criterios = f'{rango("Cliente")},$A{{i}},{rango("Datos completos")},"Sí"'
+    ultima = 1 + len(clientes_unicos)
+    # Percentil solo entre clientes con al menos un proyecto completo: la
+    # división por (N° de proyectos > 0) da #DIV/0! en los demás, y la opción
+    # 6 de AGGREGATE ignora errores. AGGREGATE(16,...) = PERCENTILE.INC y
+    # acepta el arreglo sin Ctrl+Shift+Enter.
+    margenes_validos = f"$D$2:$D${ultima}/($B$2:$B${ultima}>0)"
 
     for i, cliente in enumerate(sorted(clientes_unicos), start=2):
+        crit = criterios.format(i=i)
         ws.cell(row=i, column=1, value=cliente)
-        ws.cell(row=i, column=2, value=(
-            f"=AVERAGEIF(Proyectos!${cliente_col}:${cliente_col},$A{i},"
-            f"Proyectos!${venta_col}:${venta_col})"
-        ))
-        ws.cell(row=i, column=3, value=f"=COUNTIF(Proyectos!${cliente_col}:${cliente_col},$A{i})")
-        ws.cell(row=i, column=4, value=(
-            f"=MAX(12,(_xlfn.MAXIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
-            f"Proyectos!${cliente_col}:${cliente_col},$A{i})"
-            f"-_xlfn.MINIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
-            f"Proyectos!${cliente_col}:${cliente_col},$A{i}))/30)"
-        ))
-        ws.cell(row=i, column=5, value=f"=C{i}/(D{i}/12)")
-        ws.cell(row=i, column=6, value=(
-            f"=SUMIF(Proyectos!${cliente_col}:${cliente_col},$A{i},Proyectos!${margen_real_col}:${margen_real_col})"
-            f"/SUMIF(Proyectos!${cliente_col}:${cliente_col},$A{i},Proyectos!${venta_col}:${venta_col})"
-        ))
-        ws.cell(row=i, column=7, value=f"=B{i}*E{i}*C{i}*F{i}")
-        ws.cell(row=i, column=8, value=(
-            # AGGREGATE(16,6,...) = PERCENTILE.INC con la opcion 6 ("ignorar
-            # errores"). PERCENTILE a secas devuelve #DIV/0! para TODA la
-            # columna si una sola celda del rango es un error (ej. un
-            # cliente con proyectos sin Monto de Venta aun cargado) -- eso
-            # rompia la Clasificacion de todos los demas clientes, no solo
-            # la de ese cliente.
-            f'=IF(G{i}>=_xlfn.AGGREGATE(16,6,Clientes!$G:$G,0.67),"Clientes estratégicos",'
-            f'IF(G{i}>=_xlfn.AGGREGATE(16,6,Clientes!$G:$G,0.33),"Clientes potenciales","Clientes de oportunidad"))'
+        ws.cell(row=i, column=2, value=f"=COUNTIFS({crit})")
+        ws.cell(row=i, column=3, value=f'=SUMIFS({rango("Monto de Venta (sin IVA)")},{crit})')
+        ws.cell(row=i, column=4, value=f'=SUMIFS({rango("Margen estimado al cierre")},{crit})')
+        ws.cell(row=i, column=5, value=f'=IF(C{i}=0,"",D{i}/C{i})')
+        ws.cell(row=i, column=6, value=f'=IF(B{i}>=2,"Sí","No")')
+        ws.cell(row=i, column=7, value=(
+            f'=IF(B{i}=0,"{CLASIFICACION_SIN_PROYECTOS}",'
+            f'IF(D{i}>=_xlfn.AGGREGATE(16,6,{margenes_validos},0.67),"Clientes estratégicos",'
+            f'IF(D{i}>=_xlfn.AGGREGATE(16,6,{margenes_validos},0.33),"Clientes potenciales",'
+            f'"Clientes de oportunidad")))'
         ))
 
 
@@ -1513,21 +1902,45 @@ GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
     ),
     (
         "% Avance",
-        "Permite leer todo KPI de un proyecto en curso como resultado parcial y no como resultado final -- sin él, un proyecto recién empezado y uno casi terminado se veían idénticos. Reemplazó al campo de texto 'Estado' (Terminado / En Proceso) el 2026-08-28.",
+        "Permite leer un proyecto en curso por lo que va a terminar costando, no por lo que lleva gastado -- sin él, un proyecto recién empezado y uno casi terminado se veían idénticos. Reemplazó al campo de texto 'Estado' (Terminado / En Proceso) el 2026-08-28.",
         "Ingreso manual en la hoja 'Proyectos' (celda amarilla en cursiva), como porcentaje de 0% a 100%",
-        "100% = ejecución terminada, los costos reales ya no deberían crecer. Bajo 100%, el Margen Real y la Desviación % de ese proyecto todavía pueden moverse: son el resultado de lo ejecutado hasta ahora, no el final.",
+        "100% = ejecución terminada, los costos reales ya no deberían crecer. Bajo 100%, el costo que falta se estima a precio de presupuesto (ver 'Costo estimado al cierre'). Un valor fuera de 0-100% se acota y se avisa como alerta.",
+    ),
+    (
+        "Costo estimado al cierre",
+        "Lo que el proyecto va a terminar costando si lo que falta se ejecuta a precio de presupuesto. Evita leer un proyecto en curso como si ya hubiera terminado: el costo gastado a la fecha contra la venta completa infla el margen.",
+        "Costos Totales Real, Costos Totales Proyectado, % Avance: Real + Proyectado × (1 − % Avance)",
+        "Al 100% de avance es igual al costo real. Un proyecto al 75% de avance que ya gastó el 99% de su presupuesto estima terminar en 124% del presupuesto (99% + el 25% que falta).",
+    ),
+    (
+        "Margen estimado al cierre (y %)",
+        "El margen con el que el proyecto va a terminar según la estimación de arriba -- es el margen que usa la Nota del Proyecto y la hoja 'Clientes'.",
+        "Monto de Venta − Costo estimado al cierre; el % se divide por el Monto de Venta",
+        "En un proyecto terminado es el Margen Real. En uno en curso puede quedar bastante bajo el margen a la fecha si el gasto va adelantado respecto del avance.",
+    ),
+    (
+        "Desviación estimada al cierre %",
+        "Si el proyecto va a terminar sobre o bajo presupuesto, incluyendo lo que falta -- el componente de control de la Nota.",
+        "Costo estimado al cierre / Costos Totales Proyectado − 1",
+        "+10% = va a terminar costando 10% más que lo presupuestado. En un proyecto terminado es igual a 'Desviación % Total'.",
+    ),
+    (
+        "Margen al cierre % (escenario índice de costo)",
+        "Escenario pesimista, solo de referencia (no entra en la Nota): supone que el ritmo de gasto actual se mantiene hasta el final.",
+        "Monto de Venta, Costos Totales Real, % Avance: costo al cierre = Real / % Avance",
+        "Si queda muy por debajo del 'Margen estimado al cierre %', el sobrecosto viene de un ritmo de gasto sostenido, no de una compra puntual al inicio. Al 100% de avance coincide con el Margen neto %.",
     ),
     (
         "Nota del Proyecto",
         "Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión.",
-        "Margen neto % (70% — curva: sube linealmente hasta el objetivo de 25% donde vale 70/100, y sigue subiendo por sobre el objetivo cada vez más despacio, sin techo fijo) y Desviación % Total, solo penalizando sobrecosto (30%)",
-        "≥55 = proyecto en rango aceptable; <55 = requiere revisión (rentabilidad baja y/o descontrol presupuestario). Un proyecto que ahorra (Real ≤ Proyectado) obtiene el puntaje máximo del componente de control — no se penaliza gastar de menos, ese beneficio ya se refleja en el margen. Llegar justo al objetivo de margen (25%) no basta para 'Excelente' por sí solo — hace falta ~36% de margen con presupuesto controlado.",
+        "Margen estimado al cierre % (70% — curva: sube linealmente hasta el objetivo de 25% donde vale 70/100, y sigue subiendo por sobre el objetivo cada vez más despacio, sin techo fijo) y Desviación estimada al cierre % (30% — solo penaliza sobrecosto: 100 puntos en o bajo presupuesto, 0 puntos con +30% o más)",
+        "≥55 = proyecto en rango aceptable; <55 = requiere revisión. Un proyecto en curso se evalúa por cómo va a terminar, no por lo gastado a la fecha. Un proyecto que ahorra obtiene el puntaje máximo del componente de control — ese beneficio ya se refleja en el margen. Llegar justo al objetivo de margen (25%) no basta para 'Excelente' — hace falta ~36% de margen con presupuesto controlado.",
     ),
     (
         "Evaluación",
         "Traduce la nota a una etiqueta rápida de lectura para revisiones ejecutivas.",
         "Nota del Proyecto",
-        "Excelente / Bueno / Aprobado / Requiere atención.",
+        "Excelente (≥85) / Bueno (≥70) / Aprobado (≥55) / Requiere atención.",
     ),
     (
         "% del Total Real del proyecto (Detalle Costos Reales)",
@@ -1545,55 +1958,43 @@ GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
         "Margen por día de ejecución",
         "Mide cuánto margen genera el proyecto por unidad de tiempo -- útil para priorizar proyectos que compiten por la misma capacidad de equipo/tiempo, no solo por margen total.",
         "Margen Real, Fecha de cierre − Fecha de inicio (en días)",
-        "$50.000/día = el proyecto generó en promedio $50.000 de margen por cada día que duró su ejecución. Queda vacío si el proyecto todavía no tiene Fecha de cierre (en desarrollo) -- no se calcula sobre una duración que aún no terminó.",
+        "$50.000/día = el proyecto generó en promedio $50.000 de margen por cada día que duró su ejecución. Queda vacío si falta alguna de las dos fechas o si la fecha de cierre todavía no llega (en desarrollo) -- no se calcula sobre una duración que aún no terminó.",
     ),
     (
-        "Nota Parcial",
-        "Separa dos preguntas que la Nota sola mezclaba: qué tan bien se está ejecutando lo ejecutado hasta ahora, y cuánto de ese resultado está confirmado -- un proyecto a mitad de camino puede tener una Nota alta que todavía tiene mucho margen para moverse.",
-        "Nota del Proyecto, % Avance (Proyectos)",
-        "Un proyecto al 75% de avance con Nota 88 tiene Parcial 66 -- la ejecución va bien, pero un cuarto del proyecto todavía puede mover el número final. Al 100% de avance, Nota Parcial y Nota del Proyecto coinciden. Vacío si falta el % Avance o si la Nota está vacía (caso de 'Gastos Generales').",
+        "Datos completos",
+        "Dice si el proyecto tiene cargados todos los datos manuales que necesita su Nota. Solo los proyectos completos entran en la hoja 'Clientes', el dashboard y los reportes.",
+        "% Avance, Monto de Venta, los 4 costos proyectados y Mano de Obra Real (hoja 'Proyectos')",
+        "'No' = falta al menos uno de esos datos; el dashboard lista cuáles. Un 0 cuenta como dato cargado; una celda vacía no.",
     ),
     (
-        "AOV (Clientes)",
-        "Mide el tamaño promedio de una venta a ese cliente.",
-        "Monto de Venta de sus proyectos",
-        "AOV alto = cliente que trae proyectos grandes por transacción.",
+        "N° de proyectos (Clientes)",
+        "Cuántos proyectos completos tiene el cliente -- la base para saber si es recurrente.",
+        "Proyectos de 'Indicadores' con ese Cliente y 'Datos completos' = Sí",
+        "1 = cliente de una sola compra hasta ahora; 2 o más = recurrente. 0 = el cliente existe pero ninguno de sus proyectos tiene los datos completos.",
     ),
     (
-        "Vida del cliente",
-        "Mide cuántas veces ha comprado el cliente en total — la base para saber si es recurrente.",
-        "Conteo de proyectos del cliente",
-        "Vida=1 → cliente de una sola compra hasta ahora; vida>1 → recurrente.",
+        "Venta acumulada y Margen acumulado (Clientes)",
+        "El valor que el cliente ya le dejó a QUEMPIN. Reemplazó al CLTV el 2026-09-21: la fórmula anterior (AOV × Frecuencia × Vida × Margen) contaba dos veces la cantidad de compras, y con clientes de un solo proyecto no hay historial para proyectar su valor futuro.",
+        "Suma de Monto de Venta y de Margen estimado al cierre de sus proyectos completos",
+        "Margen acumulado alto = cliente que ya generó mucho valor; prioridad para retención. En un proyecto en curso cuenta el margen estimado al cierre, no el de la fecha.",
     ),
     (
-        "Meses activo",
-        "Mide cuánto tiempo lleva comprando el cliente — el denominador para anualizar la frecuencia.",
-        "Fecha más antigua y más reciente entre sus proyectos, con un piso de 12 meses (no se anualiza una frecuencia con menos de un año de historial real de compras)",
-        "Meses activo alto + vida baja → cliente esporádico; meses activo bajo + vida alta → cliente muy activo recientemente.",
+        "Margen % (Clientes)",
+        "Qué tan rentable es la relación completa con ese cliente, ponderada por tamaño de proyecto.",
+        "Margen acumulado / Venta acumulada",
+        "Mismo significado que el Margen estimado al cierre % pero a nivel cliente.",
     ),
     (
-        "Frecuencia de compra (Clientes)",
-        "Mide qué tan seguido vuelve a comprar el cliente, anualizado — clave para proyectar ingresos futuros de ese cliente.",
-        "Vida del cliente, Meses activo",
-        "Frecuencia=2 → el cliente compra en promedio 2 veces al año.",
-    ),
-    (
-        "Margen de utilidad % (Clientes)",
-        "Mide qué tan rentable es la relación completa con ese cliente, ponderado por tamaño de proyecto.",
-        "Suma de Margen Real y de Monto de Venta de todos sus proyectos",
-        "Mismo significado que Margen neto % pero a nivel cliente.",
-    ),
-    (
-        "CLTV",
-        "Estima el valor total que el cliente representa para QUEMPIN a lo largo de su relación completa — la métrica central para decidir dónde invertir esfuerzo comercial.",
-        "AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad %",
-        "CLTV alto = cliente que ha generado y probablemente seguirá generando mucho valor; prioridad para retención.",
+        "Cliente recurrente / Tasa de recompra",
+        "La señal más directa de un cliente que vuelve -- lo que el CLTV intentaba proyectar sin tener todavía historial.",
+        "N° de proyectos del cliente (Sí con 2 o más); la tasa es recurrentes / clientes con al menos un proyecto completo",
+        "Una tasa de recompra baja con clientes grandes es riesgo de concentración: el ingreso depende de conseguir clientes nuevos.",
     ),
     (
         "Clasificación (Clientes)",
-        "Traduce el CLTV a un tier accionable, relativo a la cartera actual de QUEMPIN, no a un corte fijo en pesos que quede obsoleto con el crecimiento de la empresa.",
-        "Percentil del CLTV entre todos los clientes registrados",
-        "'Clientes estratégicos' (top 33%) → atención prioritaria; 'Clientes de oportunidad' (bottom 33%) → candidatos a desarrollar o repensar la relación.",
+        "Traduce el margen acumulado a un tier accionable, relativo a la cartera actual de QUEMPIN, no a un corte fijo en pesos que quede obsoleto con el crecimiento de la empresa.",
+        "Percentil del Margen acumulado entre los clientes con al menos un proyecto completo",
+        "'Clientes estratégicos' (top 33%) → atención prioritaria; 'Clientes de oportunidad' (bottom 33%) → candidatos a desarrollar o repensar la relación. Con pocos clientes el tier solo ordena por tamaño: leerlo junto al N° de proyectos.",
     ),
 ]
 
@@ -1608,6 +2009,51 @@ def asegurar_hoja_glosario_kpis(wb) -> None:
     for i, fila in enumerate(GLOSARIO_KPIS, start=2):
         for col, valor in enumerate(fila, start=1):
             ws.cell(row=i, column=col, value=valor)
+
+
+# ── ALERTAS DE TODA LA CARTERA (para la consola del run / status) ───────────
+
+# Columnas de "Proyectos" que calcular_kpis_proyecto necesita como entrada --
+# todas manuales o autocompletadas (valores, nunca fórmulas).
+COLUMNAS_ENTRADA_KPIS = [
+    "TAG proyecto", "Nombre del proyecto", "Cliente", "Categoría", "% Avance",
+    "Fecha de inicio", "Fecha de cierre", "Monto de Venta (sin IVA)",
+    "Costos Materiales Proyectados", "Costos Equipos Proyectados",
+    "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
+]
+
+
+def valores_fila_proyectos(ws_proyectos, fila: int) -> dict:
+    """Las COLUMNAS_ENTRADA_KPIS de una fila de 'Proyectos', keyed por
+    encabezado del esquema (no del archivo, que puede tener otro texto en
+    columnas de fórmula)."""
+    return {
+        nombre: ws_proyectos.cell(row=fila, column=HEADERS_PROYECTOS.index(nombre) + 1).value
+        for nombre in COLUMNAS_ENTRADA_KPIS
+    }
+
+
+def costos_por_bucket(agrupado: dict[tuple[str, str], float]) -> dict[str, dict[str, float]]:
+    """{tag: {bucket: total}} -- lo mismo que suman los SUMIFS de 'Proyectos'
+    sobre 'Detalle Costos Reales', calculado desde el agrupado en memoria."""
+    resultado: dict[str, dict[str, float]] = {}
+    for (tag, subcategoria), total in agrupado.items():
+        bucket, _ = mapear_categoria_a_bucket(subcategoria)
+        resultado.setdefault(tag, {})
+        resultado[tag][bucket] = resultado[tag].get(bucket, 0.0) + total
+    return resultado
+
+
+def alertas_de_cartera(ws_proyectos, filas_validas: list[dict], agrupado, hoy: date | None = None) -> list[str]:
+    """alertas_proyecto() de cada proyecto válido, prefijadas con su nombre."""
+    costos = costos_por_bucket(agrupado)
+    salida = []
+    for fila_info in filas_validas:
+        valores = valores_fila_proyectos(ws_proyectos, fila_info["fila"])
+        kpis = calcular_kpis_proyecto(valores, costos.get(fila_info["tag"], {}), hoy)
+        for alerta in alertas_proyecto(valores, kpis, hoy):
+            salida.append(f"{fila_info['nombre']} ({fila_info['tag']}): {alerta}")
+    return salida
 
 
 # ── ORQUESTADOR ───────────────────────────────────────────────────────────
@@ -1667,7 +2113,7 @@ def ejecutar(
 
     resumen = {
         "avisos": [], "carpetas_creadas": [], "categorias_no_mapeadas": [],
-        "clientes_pendientes": [], "proyectos_nuevos": [], "error": None,
+        "clientes_pendientes": [], "proyectos_nuevos": [], "alertas": [], "error": None,
     }
 
     wb = asegurar_estructura_workbook(ruta_excel_af)
@@ -1718,6 +2164,7 @@ def ejecutar(
             if not es_explicito:
                 categorias_no_mapeadas.add(subcategoria)
         resumen["categorias_no_mapeadas"] = sorted(categorias_no_mapeadas)
+        resumen["alertas"] = alertas_de_cartera(ws_proyectos, filas_validas, agrupado)
         return resumen
 
     if prefijos_faltantes:
@@ -1755,6 +2202,7 @@ def ejecutar(
     resumen["avisos"].extend(
         asegurar_categoria_proyectos(ws_proyectos, filas_validas, tipos_por_prefijo, col_categoria)
     )
+    resumen["alertas"] = alertas_de_cartera(ws_proyectos, filas_validas, agrupado)
     asegurar_hoja_indicadores(wb, filas_validas)
     asegurar_hoja_clientes(wb, filas_validas, ws_proyectos)
     asegurar_hoja_glosario_kpis(wb)
@@ -1802,6 +2250,8 @@ def main(pais: str = "CL") -> None:
         )
     for aviso in resumen["avisos"]:
         print(f"[AVISO] {aviso}")
+    for alerta in resumen["alertas"]:
+        print(f"[ALERTA] {alerta}")
     if resumen["error"]:
         print(f"[ERROR] {resumen['error']}")
 

@@ -91,6 +91,11 @@ def cmd_status(pais: str = "CL") -> int:
         for aviso in resumen["avisos"]:
             print(f"  [AVISO] {aviso}")
 
+    if resumen.get("alertas"):
+        print("\nAlertas de proyectos (datos a revisar o sobrecosto):")
+        for alerta in resumen["alertas"]:
+            print(f"  [ALERTA] {alerta}")
+
     print("\n" + "=" * 70)
     print("  Nada fue escrito. Para ejecutar de verdad: python driver.py run")
     print("=" * 70)

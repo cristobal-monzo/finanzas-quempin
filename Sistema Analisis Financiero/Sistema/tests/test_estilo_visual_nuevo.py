@@ -52,16 +52,17 @@ def test_columna_porcentaje_detalle_costos_reales_tiene_estilo(tmp_path):
     assert ws.column_dimensions["E"].number_format == af.FORMATO_PORCENTAJE
 
 
-def test_hoja_clientes_tiene_estilo_en_las_8_columnas(tmp_path):
+def test_hoja_clientes_tiene_estilo_en_sus_7_columnas(tmp_path):
     wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
 
     af.aplicar_estilo_visual(wb)
 
     ws = wb[af.HOJA_CLIENTES]
-    for columna in "ABCDEFGH":
+    for columna in "ABCDEFG":
         assert ws[f"{columna}1"].font.bold is True
-    assert ws.column_dimensions["G"].number_format == af.FORMATO_MONEDA
-    assert ws.column_dimensions["F"].number_format == af.FORMATO_PORCENTAJE
+    assert ws.column_dimensions["C"].number_format == af.FORMATO_MONEDA  # Venta acumulada
+    assert ws.column_dimensions["D"].number_format == af.FORMATO_MONEDA  # Margen acumulado
+    assert ws.column_dimensions["E"].number_format == af.FORMATO_PORCENTAJE  # Margen %
 
 
 def test_hoja_glosario_kpis_tiene_encabezado_en_negrita(tmp_path):

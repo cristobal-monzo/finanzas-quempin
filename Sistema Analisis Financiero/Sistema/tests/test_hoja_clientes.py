@@ -34,66 +34,83 @@ def test_una_fila_por_cliente_unico(tmp_path):
     assert sorted(valores_cliente) == ["AGCID", "Hospital Talca"]
 
 
-def test_formulas_agregan_sobre_proyectos_filtrando_por_columna_cliente(tmp_path):
+def test_formulas_suman_solo_proyectos_completos_desde_indicadores(tmp_path):
+    """2026-09-21 (auditoría, fase 1): la hoja agrega sobre 'Indicadores'
+    filtrando por Cliente Y por 'Datos completos' = Sí -- la misma regla que
+    el dashboard y los reportes. Antes sumaba sobre 'Proyectos' todo lo que
+    tuviera el cliente, incluidos proyectos a medio cargar (con costos pero
+    sin venta, que hundían el margen del cliente)."""
     wb, ws, filas_validas = _preparar(tmp_path, [
         {"fila": 2, "tag": "AGCI1", "nombre": "AGCID Febrero", "cliente": "AGCID"},
     ])
 
     af.asegurar_hoja_clientes(wb, filas_validas, ws)
 
-    l = af.LETRA_COL_PROYECTOS
-    cliente_col = l["Cliente"]
-    venta_col = l["Monto de Venta (sin IVA)"]
-    fecha_inicio_col = l["Fecha de inicio"]
-    margen_real_col = l["Margen Real"]
+    li = af.LETRA_COL_INDICADORES
 
+    def rango(nombre):
+        return f"Indicadores!${li[nombre]}:${li[nombre]}"
+
+    criterios = f'{rango("Cliente")},$A2,{rango("Datos completos")},"Sí"'
     ws_clientes = wb[af.HOJA_CLIENTES]
     assert ws_clientes.cell(row=2, column=1).value == "AGCID"
-    assert ws_clientes.cell(row=2, column=2).value == (
-        f"=AVERAGEIF(Proyectos!${cliente_col}:${cliente_col},$A2,"
-        f"Proyectos!${venta_col}:${venta_col})"
-    )
-    assert ws_clientes.cell(row=2, column=3).value == (
-        f"=COUNTIF(Proyectos!${cliente_col}:${cliente_col},$A2)"
-    )
-    assert ws_clientes.cell(row=2, column=4).value == (
-        f"=MAX(12,(_xlfn.MAXIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
-        f"Proyectos!${cliente_col}:${cliente_col},$A2)"
-        f"-_xlfn.MINIFS(Proyectos!${fecha_inicio_col}:${fecha_inicio_col},"
-        f"Proyectos!${cliente_col}:${cliente_col},$A2))/30)"
-    )
-    assert ws_clientes.cell(row=2, column=5).value == "=C2/(D2/12)"
-    assert ws_clientes.cell(row=2, column=6).value == (
-        f"=SUMIF(Proyectos!${cliente_col}:${cliente_col},$A2,Proyectos!${margen_real_col}:${margen_real_col})"
-        f"/SUMIF(Proyectos!${cliente_col}:${cliente_col},$A2,Proyectos!${venta_col}:${venta_col})"
-    )
-    assert ws_clientes.cell(row=2, column=7).value == "=B2*E2*C2*F2"
-    assert ws_clientes.cell(row=2, column=8).value == (
-        '=IF(G2>=_xlfn.AGGREGATE(16,6,Clientes!$G:$G,0.67),"Clientes estratégicos",'
-        'IF(G2>=_xlfn.AGGREGATE(16,6,Clientes!$G:$G,0.33),"Clientes potenciales","Clientes de oportunidad"))'
-    )
+    assert ws_clientes.cell(row=2, column=2).value == f"=COUNTIFS({criterios})"
+    assert ws_clientes.cell(row=2, column=3).value == f'=SUMIFS({rango("Monto de Venta (sin IVA)")},{criterios})'
+    assert ws_clientes.cell(row=2, column=4).value == f'=SUMIFS({rango("Margen estimado al cierre")},{criterios})'
+    assert ws_clientes.cell(row=2, column=5).value == '=IF(C2=0,"",D2/C2)'
+    assert ws_clientes.cell(row=2, column=6).value == '=IF(B2>=2,"Sí","No")'
 
 
-def test_clasificacion_ignora_errores_de_otros_clientes_en_el_percentil(tmp_path):
-    """Un cliente con proyectos sin Monto de Venta aun cargado produce
-    #DIV/0! en su propia columna G (CLTV) -- eso no debe romper la
-    Clasificacion de los demas clientes. PERCENTILE(rango) de Excel devuelve
-    error si CUALQUIER celda del rango es un error; AGGREGATE(16,6,...)
-    tiene la opcion 6 ("ignorar valores de error") para evitar justamente
-    esa propagacion."""
+def test_clasificacion_por_percentil_solo_entre_clientes_con_proyectos_completos(tmp_path):
+    """AGGREGATE(16,6,...) = PERCENTILE.INC ignorando errores: la división
+    por (N° de proyectos > 0) deja fuera del percentil a los clientes sin
+    ningún proyecto completo (dan #DIV/0!, que la opción 6 ignora). Esos
+    clientes quedan como 'Sin proyectos completos'. El rango es exacto
+    (filas de clientes), no la columna entera: el arreglo se evalúa celda a
+    celda."""
     wb, ws, filas_validas = _preparar(tmp_path, [
         {"fila": 2, "tag": "AGCI1", "nombre": "AGCID Febrero", "cliente": "AGCID"},
-        {"fila": 3, "tag": "GGEN1", "nombre": "Gastos Generales", "cliente": "Gastos Generales"},
+        {"fila": 3, "tag": "HTAL1", "nombre": "Hospital Talca", "cliente": "Hospital Talca"},
     ])
 
     af.asegurar_hoja_clientes(wb, filas_validas, ws)
 
     ws_clientes = wb[af.HOJA_CLIENTES]
     for r in (2, 3):
-        formula = ws_clientes.cell(row=r, column=8).value
-        assert "_xlfn.AGGREGATE(16,6,Clientes!$G:$G,0.67)" in formula
-        assert "_xlfn.AGGREGATE(16,6,Clientes!$G:$G,0.33)" in formula
+        formula = ws_clientes.cell(row=r, column=7).value
+        assert formula.startswith(f'=IF(B{r}=0,"{af.CLASIFICACION_SIN_PROYECTOS}",')
+        assert "_xlfn.AGGREGATE(16,6,$D$2:$D$3/($B$2:$B$3>0),0.67)" in formula
+        assert "_xlfn.AGGREGATE(16,6,$D$2:$D$3/($B$2:$B$3>0),0.33)" in formula
         assert "PERCENTILE(" not in formula
+
+
+def test_clientes_espejo_python_cuenta_solo_completos_y_clasifica_por_margen():
+    """calcular_clientes es el espejo de la hoja: mismo filtro, mismos
+    agregados, misma clasificación por percentil."""
+    def k(cliente, venta, margen, completo="Sí"):
+        return {"Cliente": cliente, "Categoría": "Mantenimiento", "Datos completos": completo,
+                "Monto de Venta (sin IVA)": venta, "Margen estimado al cierre": margen}
+
+    filas = af.calcular_clientes([
+        k("A", 100.0, 40.0), k("A", 50.0, 10.0),
+        k("B", 200.0, 20.0),
+        k("C", 80.0, 5.0),
+        k("C", 999.0, 999.0, completo="No"),  # a medio cargar: no cuenta
+    ])
+    por_cliente = {f["Cliente"]: f for f in filas}
+    assert list(por_cliente) == ["A", "B", "C"]
+    assert por_cliente["A"]["N° de proyectos"] == 2
+    assert por_cliente["A"]["Venta acumulada (sin IVA)"] == 150.0
+    assert por_cliente["A"]["Margen acumulado"] == 50.0
+    assert por_cliente["A"]["Margen %"] == 50.0 / 150.0
+    assert por_cliente["A"]["Cliente recurrente"] == "Sí"
+    assert por_cliente["C"]["N° de proyectos"] == 1
+    assert por_cliente["C"]["Cliente recurrente"] == "No"
+    assert por_cliente["A"]["Clasificación"] == "Clientes estratégicos"
+    assert por_cliente["B"]["Clasificación"] == "Clientes potenciales"
+    assert por_cliente["C"]["Clasificación"] == "Clientes de oportunidad"
+    assert af.tasa_recompra(filas) == 1 / 3
+    assert af.tasa_recompra([]) is None
 
 
 def test_filas_sin_cliente_asignado_se_ignoran(tmp_path):

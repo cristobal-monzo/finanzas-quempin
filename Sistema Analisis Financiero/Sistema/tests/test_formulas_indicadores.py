@@ -4,68 +4,59 @@ import pytest
 import analisis_financiero as af
 
 
-def test_una_fila_referencia_las_columnas_correctas_de_proyectos(tmp_path):
-    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
-    filas_validas = [{"fila": 2, "tag": "UMAG", "nombre": "UMAG"}]
+def _celda(ws, fila, encabezado):
+    """Por nombre de columna, no por número: el playbook ya cambió de orden
+    dos veces (2026-07-28 y 2026-09-21)."""
+    return ws.cell(row=fila, column=af.HEADERS_INDICADORES.index(encabezado) + 1).value
 
-    af.asegurar_hoja_indicadores(wb, filas_validas)
+
+def test_una_fila_referencia_las_columnas_correctas_de_proyectos(tmp_path):
+    """Toda división guarda contra denominador 0 o vacío y devuelve "" --
+    el mismo None que calcular_kpis_proyecto (2026-09-21). Antes daba
+    #DIV/0! en el Excel y 0 inventado en el dashboard."""
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    af.asegurar_hoja_indicadores(wb, [{"fila": 2, "tag": "UMAG", "nombre": "UMAG"}])
 
     ws = wb[af.HOJA_INDICADORES]
     l = af.LETRA_COL_PROYECTOS
-    tag, nombre = l["TAG proyecto"], l["Nombre del proyecto"]
-    venta, margen_real = l["Monto de Venta (sin IVA)"], l["Margen Real"]
-    total_real, total_proy = l["Total Real"], l["Total Proyectado"]
-    desviacion_total = l["Desviación % (Real vs Proyectado)"]
-    mat_r, eq_r, mo_r, otros_r = (
-        l["Costos Materiales Reales"], l["Costos Equipos Reales"],
-        l["Mano de Obra Real"], l["Otros Costos Reales"],
+
+    def p(nombre):
+        return f"Proyectos!{l[nombre]}2"
+
+    venta, total_real, total_proy = p("Monto de Venta (sin IVA)"), p("Total Real"), p("Total Proyectado")
+
+    assert _celda(ws, 2, "TAG proyecto") == f"={p('TAG proyecto')}"
+    assert _celda(ws, 2, "Nombre del proyecto") == f"={p('Nombre del proyecto')}"
+    assert _celda(ws, 2, "Margen neto %") == f'=IF({venta}=0,"",{p("Margen Real")}/{venta})'
+    for sufijo, col_p, col_r in af.CATEGORIAS_KPI:
+        real, proyectado = p(col_r), p(col_p)
+        assert _celda(ws, 2, f"Costo {sufijo} % de venta") == f'=IF({venta}=0,"",{real}/{venta})'
+        assert _celda(ws, 2, f"Estructura % {sufijo}") == f'=IF({total_real}=0,"",{real}/{total_real})'
+        assert _celda(ws, 2, f"Desviación % {sufijo}") == f'=IF({proyectado}=0,"",{real}/{proyectado}-1)'
+        assert _celda(ws, 2, f"Ahorro/Sobrecosto {sufijo}") == f"={proyectado}-{real}"
+    # Desviación % Total -- referencia directa a 'Proyectos' (no recalcula)
+    assert _celda(ws, 2, "Desviación % Total") == f"={p('Desviación % (Real vs Proyectado)')}"
+    assert _celda(ws, 2, "Ahorro/Sobrecosto Total") == f"={total_proy}-{total_real}"
+    # Peso en cartera: venta del proyecto sobre TODA la columna de venta.
+    assert _celda(ws, 2, "Peso del proyecto en la cartera de ventas (%)") == (
+        f'=IF({venta}="","",{venta}/SUM(Proyectos!${l["Monto de Venta (sin IVA)"]}:${l["Monto de Venta (sin IVA)"]}))'
     )
-    mat_p, eq_p, mo_p, otros_p = (
-        l["Costos Materiales Proyectados"], l["Costos Equipos Proyectados"],
-        l["Mano de Obra Proyectada"], l["Otros Costos Proyectados"],
+    # Margen por día: vacío si falta una fecha o si el cierre es futuro.
+    inicio, cierre = p("Fecha de inicio"), p("Fecha de cierre")
+    assert _celda(ws, 2, "Margen por día de ejecución") == (
+        f'=IF(OR({cierre}="",{inicio}="",{cierre}>TODAY()),"",'
+        f"{p('Margen Real')}/MAX(1,{cierre}-{inicio}))"
     )
 
-    assert ws.cell(row=2, column=1).value == f"=Proyectos!{tag}2"
-    assert ws.cell(row=2, column=2).value == f"=Proyectos!{nombre}2"
-    # C: Margen neto %
-    assert ws.cell(row=2, column=3).value == f"=Proyectos!{margen_real}2/Proyectos!{venta}2"
-    # D-G: Costo % de venta (Materiales/Equipos/MO/Otros)
-    assert ws.cell(row=2, column=4).value == f"=Proyectos!{mat_r}2/Proyectos!{venta}2"
-    assert ws.cell(row=2, column=5).value == f"=Proyectos!{eq_r}2/Proyectos!{venta}2"
-    assert ws.cell(row=2, column=6).value == f"=Proyectos!{mo_r}2/Proyectos!{venta}2"
-    assert ws.cell(row=2, column=7).value == f"=Proyectos!{otros_r}2/Proyectos!{venta}2"
-    # H-K: Estructura % del costo real (mix, sobre Total Real)
-    assert ws.cell(row=2, column=8).value == f"=Proyectos!{mat_r}2/Proyectos!{total_real}2"
-    assert ws.cell(row=2, column=9).value == f"=Proyectos!{eq_r}2/Proyectos!{total_real}2"
-    assert ws.cell(row=2, column=10).value == f"=Proyectos!{mo_r}2/Proyectos!{total_real}2"
-    assert ws.cell(row=2, column=11).value == f"=Proyectos!{otros_r}2/Proyectos!{total_real}2"
-    # L-O: Desviación % por categoría
-    assert ws.cell(row=2, column=12).value == f"=Proyectos!{mat_r}2/Proyectos!{mat_p}2-1"
-    assert ws.cell(row=2, column=13).value == f"=Proyectos!{eq_r}2/Proyectos!{eq_p}2-1"
-    assert ws.cell(row=2, column=14).value == f"=Proyectos!{mo_r}2/Proyectos!{mo_p}2-1"
-    assert ws.cell(row=2, column=15).value == f"=Proyectos!{otros_r}2/Proyectos!{otros_p}2-1"
-    # P: Desviación % Total -- referencia directa (no recalcula)
-    assert ws.cell(row=2, column=16).value == f"=Proyectos!{desviacion_total}2"
-    # Q-U: Ahorro/Sobrecosto neto en $ (Proyectado - Real, por categoría y total)
-    assert ws.cell(row=2, column=17).value == f"=Proyectos!{mat_p}2-Proyectos!{mat_r}2"
-    assert ws.cell(row=2, column=18).value == f"=Proyectos!{eq_p}2-Proyectos!{eq_r}2"
-    assert ws.cell(row=2, column=19).value == f"=Proyectos!{mo_p}2-Proyectos!{mo_r}2"
-    assert ws.cell(row=2, column=20).value == f"=Proyectos!{otros_p}2-Proyectos!{otros_r}2"
-    assert ws.cell(row=2, column=21).value == f"=Proyectos!{total_proy}2-Proyectos!{total_real}2"
-    # X: Peso del proyecto en la cartera de ventas (%) -- venta del proyecto
-    # sobre la suma de TODA la columna de venta en "Proyectos" (no solo su
-    # propia fila).
-    assert ws.cell(row=2, column=24).value == (
-        f"=Proyectos!{venta}2/SUM(Proyectos!${venta}:${venta})"
-    )
-    # Y: Margen por día de ejecución -- vacío ("") si Fecha de cierre no
-    # está cargada (proyecto "en desarrollo"), nunca un error/número sin
-    # sentido. MAX(1, dias) evita #DIV/0! si cierre e inicio caen el mismo día.
-    fecha_inicio, fecha_cierre = l["Fecha de inicio"], l["Fecha de cierre"]
-    assert ws.cell(row=2, column=25).value == (
-        f'=IF(Proyectos!{fecha_cierre}2="","",'
-        f"Proyectos!{margen_real}2/MAX(1,Proyectos!{fecha_cierre}2-Proyectos!{fecha_inicio}2))"
-    )
+
+def test_cada_columna_de_indicadores_tiene_su_formula(tmp_path):
+    wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
+    af.asegurar_hoja_indicadores(wb, [{"fila": 2, "tag": "UMAG", "nombre": "UMAG"}])
+    ws = wb[af.HOJA_INDICADORES]
+    for col, encabezado in enumerate(af.HEADERS_INDICADORES, start=1):
+        assert ws.cell(row=1, column=col).value == encabezado
+        valor = ws.cell(row=2, column=col).value
+        assert isinstance(valor, str) and valor.startswith("="), encabezado
 
 
 def test_peso_cartera_suma_toda_la_columna_no_solo_la_propia_fila(tmp_path):
@@ -100,41 +91,38 @@ def test_peso_cartera_suma_toda_la_columna_no_solo_la_propia_fila(tmp_path):
     # cálculo externo (LibreOffice/Google Sheets), solo aritmética Python.
     wb_leido = openpyxl.load_workbook(wb_path)
     ws_ind = wb_leido[af.HOJA_INDICADORES]
-    formula_umag = ws_ind.cell(row=2, column=24).value
+    formula_umag = _celda(ws_ind, 2, "Peso del proyecto en la cartera de ventas (%)")
     l = af.LETRA_COL_PROYECTOS
     venta_letra = l["Monto de Venta (sin IVA)"]
-    assert formula_umag == f"=Proyectos!{venta_letra}2/SUM(Proyectos!${venta_letra}:${venta_letra})"
+    assert formula_umag == (
+        f'=IF(Proyectos!{venta_letra}2="","",'
+        f"Proyectos!{venta_letra}2/SUM(Proyectos!${venta_letra}:${venta_letra}))"
+    )
     total_cartera = 100000 + 300000 + 600000
     assert 100000 / total_cartera == pytest.approx(0.1)
 
 
 def test_margen_por_dia_formula_identica_sin_importar_la_fila(tmp_path):
     """La fórmula de 'Margen por día de ejecución' es la misma estructura
-    (con el guard IF de Fecha de cierre vacía) para cualquier fila -- no hay
-    una rama de código en Python que decida 'este proyecto no tiene fecha,
-    no escribo fórmula'; el guard vive DENTRO de la fórmula de Excel, para
-    que se recalcule solo si el usuario completa la fecha después."""
+    (con el guard de fechas dentro) para cualquier fila -- no hay una rama
+    de código en Python que decida 'este proyecto no tiene fecha, no escribo
+    fórmula'; el guard vive DENTRO de la fórmula de Excel, para que se
+    recalcule solo si el usuario completa la fecha o si el cierre llega."""
     wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
     filas_validas = [
         {"fila": 2, "tag": "UMAG", "nombre": "UMAG"},
-        {"fila": 3, "tag": "MLER", "nombre": "Microturbina LER"},  # sin Fecha de cierre en la vida real
+        {"fila": 3, "tag": "MLER", "nombre": "Microturbina LER"},
     ]
     af.asegurar_hoja_indicadores(wb, filas_validas)
 
     ws = wb[af.HOJA_INDICADORES]
     l = af.LETRA_COL_PROYECTOS
-    margen_real = l["Margen Real"]
-    fecha_inicio, fecha_cierre = l["Fecha de inicio"], l["Fecha de cierre"]
-    esperado_umag = (
-        f'=IF(Proyectos!{fecha_cierre}2="","",'
-        f"Proyectos!{margen_real}2/MAX(1,Proyectos!{fecha_cierre}2-Proyectos!{fecha_inicio}2))"
-    )
-    esperado_mler = (
-        f'=IF(Proyectos!{fecha_cierre}3="","",'
-        f"Proyectos!{margen_real}3/MAX(1,Proyectos!{fecha_cierre}3-Proyectos!{fecha_inicio}3))"
-    )
-    assert ws.cell(row=2, column=25).value == esperado_umag
-    assert ws.cell(row=3, column=25).value == esperado_mler
+    for f in (2, 3):
+        inicio, cierre = f"Proyectos!{l['Fecha de inicio']}{f}", f"Proyectos!{l['Fecha de cierre']}{f}"
+        assert _celda(ws, f, "Margen por día de ejecución") == (
+            f'=IF(OR({cierre}="",{inicio}="",{cierre}>TODAY()),"",'
+            f"Proyectos!{l['Margen Real']}{f}/MAX(1,{cierre}-{inicio}))"
+        )
 
 
 def test_fila_con_hueco_en_proyectos_queda_compacta_en_indicadores_pero_referencia_la_fila_real(tmp_path):
@@ -156,8 +144,13 @@ def test_fila_con_hueco_en_proyectos_queda_compacta_en_indicadores_pero_referenc
 
     assert ws.cell(row=2, column=1).value == f"=Proyectos!{tag}2"
     assert ws.cell(row=3, column=1).value == f"=Proyectos!{tag}4"
-    assert ws.cell(row=3, column=3).value == f"=Proyectos!{margen_real}4/Proyectos!{venta}4"
-    assert ws.cell(row=3, column=16).value == f"=Proyectos!{desviacion_total}4"
+    assert _celda(ws, 3, "Margen neto %") == (
+        f'=IF(Proyectos!{venta}4=0,"",Proyectos!{margen_real}4/Proyectos!{venta}4)'
+    )
+    assert _celda(ws, 3, "Desviación % Total") == f"=Proyectos!{desviacion_total}4"
+    # Las columnas que se referencian dentro de la misma hoja usan la fila
+    # compacta (3), no la de 'Proyectos' (4).
+    assert f"{af.LETRA_COL_INDICADORES['Costo estimado al cierre']}3" in _celda(ws, 3, "Margen estimado al cierre")
 
 
 def test_categoria_gastos_generales_deja_nota_y_evaluacion_vacias(tmp_path):
@@ -191,39 +184,57 @@ def test_regenerar_borra_filas_de_la_corrida_anterior(tmp_path):
     assert ws.max_row == 2
 
 
-def test_nota_parcial_es_la_ultima_columna_de_indicadores():
-    """Se agrega al FINAL (columna Z), sin reordenar ni tocar ninguna columna
-    existente -- mismo criterio que los 2 KPIs agregados el 2026-07-28."""
-    assert af.HEADERS_INDICADORES[-1] == "Nota Parcial"
-    assert af.LETRA_COL_INDICADORES["Nota Parcial"] == "Z"
+def test_nota_parcial_ya_no_existe_y_la_estimacion_al_cierre_va_al_final():
+    """2026-09-21 (fase 1): la Nota Parcial se reemplazó por la estimación
+    al cierre. Las columnas nuevas van al final, detrás de 'Margen por día'."""
+    assert "Nota Parcial" not in af.HEADERS_INDICADORES
+    i = af.HEADERS_INDICADORES.index("Margen por día de ejecución")
+    assert af.HEADERS_INDICADORES[i + 1:i + 6] == [
+        "Costo estimado al cierre", "Margen estimado al cierre",
+        "Margen estimado al cierre %", "Desviación estimada al cierre %",
+        "Margen al cierre % (escenario índice de costo)",
+    ]
 
 
-def test_columna_nota_parcial_lleva_la_formula_con_las_dos_filas(tmp_path):
-    """La fila de 'Indicadores' es compacta (2) y la de 'Proyectos' puede
-    tener huecos (4): la fórmula tiene que usar cada una donde corresponde."""
+def test_estimacion_al_cierre_formulas(tmp_path):
+    """Costo al cierre = real + proyectado x (1 - avance acotado a [0,1]);
+    vacío si no hay avance. Las siguientes columnas encadenan sobre esa."""
     wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
     af.asegurar_hoja_indicadores(wb, [{"fila": 4, "tag": "UMAG", "nombre": "UMAG"}])
-
     ws = wb[af.HOJA_INDICADORES]
-    assert ws.cell(row=2, column=26).value == af._formula_nota_parcial(4, 2)
+    l, li = af.LETRA_COL_PROYECTOS, af.LETRA_COL_INDICADORES
+    avance, venta = f"Proyectos!{l['% Avance']}4", f"Proyectos!{l['Monto de Venta (sin IVA)']}4"
+    real, proy = f"Proyectos!{l['Total Real']}4", f"Proyectos!{l['Total Proyectado']}4"
+    acotado = f"MIN(1,MAX(0,{avance}))"
+    costo = f"{li['Costo estimado al cierre']}2"
+    margen = f"{li['Margen estimado al cierre']}2"
+
+    assert _celda(ws, 2, "Costo estimado al cierre") == f'=IF({avance}="","",{real}+{proy}*(1-{acotado}))'
+    assert _celda(ws, 2, "Margen estimado al cierre") == f'=IF({costo}="","",{venta}-{costo})'
+    assert _celda(ws, 2, "Margen estimado al cierre %") == f'=IF({margen}="","",IF({venta}=0,"",{margen}/{venta}))'
+    assert _celda(ws, 2, "Desviación estimada al cierre %") == f'=IF(OR({costo}="",{proy}=0),"",{costo}/{proy}-1)'
+    assert _celda(ws, 2, "Margen al cierre % (escenario índice de costo)") == (
+        f'=IF(OR({avance}="",{venta}=0),"",IF({acotado}=0,"",({venta}-{real}/{acotado})/{venta}))'
+    )
 
 
-def test_nota_parcial_de_gastos_generales_queda_vacia_por_la_nota_vacia(tmp_path):
-    """No necesita su propio guard de 'Gastos Generales': la Nota (columna V)
-    ya llega como "" para ese bucket, y la fórmula guarda contra eso."""
+def test_datos_completos_usa_la_misma_lista_que_tiene_datos_completos(tmp_path):
+    """La columna que filtra la hoja 'Clientes' sale de
+    CAMPOS_MANUALES_REQUERIDOS: si la regla de completitud cambia, cambia
+    acá sola (no hay una segunda lista que mantener)."""
     wb = af.asegurar_estructura_workbook(tmp_path / "Análisis de Proyectos.xlsx")
-    ws_p = wb[af.HOJA_PROYECTOS]
-    col_categoria = af.HEADERS_PROYECTOS.index("Categoría") + 1
-    ws_p.cell(row=2, column=col_categoria, value=af.CATEGORIA_GASTOS_GENERALES)
-
-    af.asegurar_hoja_indicadores(wb, [{"fila": 2, "tag": "GGEN", "nombre": "Gastos Generales"}])
-
+    af.asegurar_hoja_indicadores(wb, [{"fila": 2, "tag": "UMAG", "nombre": "UMAG"}])
     ws = wb[af.HOJA_INDICADORES]
-    col_nota = af.LETRA_COL_INDICADORES["Nota del Proyecto"]
-    assert f'{col_nota}2=""' in ws.cell(row=2, column=26).value
+    condiciones = ",".join(
+        f'Proyectos!{af.LETRA_COL_PROYECTOS[c]}2<>""' for c in af.CAMPOS_MANUALES_REQUERIDOS
+    )
+    assert _celda(ws, 2, "Datos completos") == f'=IF(AND({condiciones}),"Sí","No")'
 
 
-def test_nota_parcial_tiene_formato_entero_como_la_nota():
-    color, formato, _ = af.ESTILO_COLUMNAS_INDICADORES["Z"]
-    assert color == af.COLOR_DERIVADO
-    assert formato == af.FORMATO_ENTERO
+def test_estilo_de_indicadores_es_por_nombre_de_columna():
+    estilo = af.ESTILO_COLUMNAS_INDICADORES
+    li = af.LETRA_COL_INDICADORES
+    assert set(estilo) == set(li.values()), "cada columna con estilo, ninguna de más"
+    assert estilo[li["Nota del Proyecto"]][1] == af.FORMATO_ENTERO
+    assert estilo[li["Costo estimado al cierre"]][1] == af.FORMATO_MONEDA
+    assert estilo[li["Margen estimado al cierre %"]][1] == af.FORMATO_PORCENTAJE

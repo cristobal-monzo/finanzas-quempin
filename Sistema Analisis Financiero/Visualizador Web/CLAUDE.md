@@ -26,17 +26,18 @@ Sistema Analisis Financiero/Visualizador Web/
   la skill `Registro_Analisis_Financiero`). Correrlo tras cada `run` (o
   automáticamente, ya encadenado en `ejecutar()`) es lo único necesario.
 - **Nunca lee celdas de fórmula**: las hojas "Indicadores"/"Clientes" del
-  Excel son 100% fórmulas reescritas en cada corrida — `build_visualizador.py`
-  recomputa Total Real/Margen Real/Desviación %/Nota/Evaluación/CLTV/
-  Clasificación directamente en Python a partir de las columnas manuales de
-  "Proyectos" y de "Detalle Costos Reales" (100% valores). Ver spec §2 para
-  el detalle y el precedente en Centro de Costos.
-- **Proyectos incompletos**: un proyecto sin las 8 columnas manuales de
-  `af.CAMPOS_MANUALES_REQUERIDOS` cargadas (% Avance, Fecha de inicio, Monto
-  de Venta, 4 Costos Proyectados, Mano de Obra Real) nunca recibe KPIs —
-  aparece en el banner "Pendientes de completar" con un link a la planilla
-  real. Clientes con proyectos mixtos calculan su CLTV solo con los
-  proyectos completos. Regla única desde 2026-07-28 (antes el dashboard
+  Excel son 100% fórmulas reescritas en cada corrida. Desde 2026-09-21
+  `build_visualizador.py` tampoco recalcula nada por su cuenta: le pide cada
+  KPI a `af.calcular_kpis_proyecto()` / `af.calcular_clientes()` (la misma
+  implementación que usan los reportes PDF, espejo de las fórmulas del
+  Excel) a partir de las columnas manuales de "Proyectos" y de "Detalle
+  Costos Reales" (100% valores), y solo lo traduce a las claves cortas del
+  snapshot.
+- **Proyectos incompletos**: un proyecto sin las 7 columnas manuales de
+  `af.CAMPOS_MANUALES_REQUERIDOS` cargadas (% Avance, Monto de Venta, 4
+  Costos Proyectados, Mano de Obra Real) nunca recibe KPIs — aparece en el
+  aviso de pendientes con qué le falta y un link a la planilla real. Los
+  clientes suman solo sus proyectos completos. Regla única desde 2026-07-28 (antes el dashboard
   usaba solo 6 campos, distinto de los reportes PDF — ver
   `analisis_financiero.CAMPOS_MANUALES_REQUERIDOS` y
   `Sistema/tests/test_contrato_kpis.py`). Ver spec §3.
@@ -47,8 +48,9 @@ Sistema Analisis Financiero/Visualizador Web/
 
 ## Contenido
 
-- **Pestaña Proyectos**: KPIs (N° completos, Margen Real total, Nota
-  promedio, N° "Requiere atención"), ranking de Nota del Proyecto (barras),
+- **Pestaña Proyectos** (tarjetas y tabla rehechas en la Fase 1, ver abajo):
+  KPIs (N° completos, Margen al cierre de la cartera, Nota promedio, N°
+  "Requiere atención", N° con alertas), ranking de Nota del Proyecto (barras),
   distribución de Evaluación (donut), tabla buscable (orden fijo por Nota
   descendente). El panel de detalle por proyecto (click en la fila) muestra
   además los KPIs agregados 2026-07-28 al playbook de "Indicadores": **Peso
@@ -62,7 +64,8 @@ Sistema Analisis Financiero/Visualizador Web/
   `build_visualizador.py` (`_kpis_por_categoria`, `calcular_peso_cartera`,
   `leer_detalle_subcategorias`), nunca leído del cache de fórmulas del
   Excel — mismo principio que el resto del snapshot.
-- **`% Avance` y `Nota Parcial` en la tabla (2026-08-31)**: la tabla
+- **`% Avance` y `Nota Parcial` en la tabla (2026-08-31, la Nota Parcial
+  se reemplazó el 2026-09-21)**: la tabla
   principal de la pestaña pasó de 7 a 9 columnas (Proyecto, Cliente,
   **% Avance**, Monto Venta, Margen Real, Desviación %, Nota, **Nota
   Parcial**, Evaluación — `colspan` del panel de detalle actualizado a 9 en
@@ -71,13 +74,14 @@ Sistema Analisis Financiero/Visualizador Web/
   KPIs de cabecera de la pestaña (Nota promedio, N° "Requiere atención") y
   el ranking/donut **siguen usando la Nota financiera, no la Parcial** —
   mismo criterio que el resto del módulo (ver `CLAUDE.md`, "Nota Parcial").
-- **Pestaña Clientes**: KPIs (top CLTV, CLTV promedio, conteo por
-  Clasificación), top 8 clientes por CLTV (barras), distribución de
-  Clasificación (donut), tabla buscable con nota de proyectos pendientes
-  por cliente (orden fijo por CLTV descendente).
+- **Pestaña Clientes** (rehecha el 2026-09-21): KPIs (N° de clientes, tasa
+  de recompra, mayor margen acumulado, conteo por Clasificación), margen
+  acumulado por cliente (barras), distribución de Clasificación (donut, con
+  aviso si ningún cliente es recurrente todavía), tabla buscable (orden fijo
+  por margen acumulado descendente).
 - **Sin paginación ni orden de columnas clickeable** (a diferencia del
   visualizador de Centro de Costos): con decenas de proyectos/clientes —no
-  cientos de documentos— el orden fijo (Nota/CLTV descendente) más el buscador
+  cientos de documentos— el orden fijo (Nota/margen descendente) más el buscador
   cubre la necesidad práctica. Descope deliberado, no un olvido — revisar si
   el N° de proyectos crece lo suficiente para justificarlo.
 - Tooltips "i" con el texto de `GLOSARIO_KPIS` de `analisis_financiero.py`
@@ -121,14 +125,40 @@ Arreglos de horas, sin tocar ningún KPI. Versión anterior guardada en el tag
   - Filas y tooltips operables con teclado.
   - Nav de tableros en una sola fila en teléfono.
   - Se sacó el CSS muerto heredado de Centro de Costos.
-- **Perú no recibió estos cambios**: su `template.html` y su
-  `build_visualizador.py` son copias completas de los de Chile. Portar la
-  Fase 0 duplicaría de nuevo la lógica; conviene primero unificarlos (un solo
-  template + un build parametrizado por país, como en el Cotizador).
+- **Perú no recibió estos cambios** en la Fase 0 (era una copia completa);
+  los recibió en la Fase 1, al unificarse (ver abajo).
 - **Pendiente de la Fase 0, a propósito**: cifrar los datos con la
   contraseña. Solo protege si Centro de Costos y Cotizador dejan de
   publicarla en texto plano (es la misma contraseña), así que es un cambio
   de los tres módulos, no de este.
+
+## Fase 1 de la auditoría (2026-09-21)
+
+Cambian los KPIs (decisiones del usuario, ver `../CLAUDE.md`, "Fase 1 de la
+auditoría"); acá solo lo que toca al tablero.
+
+- **Proyectos**: la tabla muestra el margen **al cierre** (real si el avance
+  es 100%, estimado —marcado «est.»— si sigue en curso), su %, la
+  desviación al cierre, Nota y Evaluación; la "Nota Parcial" desapareció.
+  Cada fila con alertas lleva ⚠ n (texto completo en el `title` y en el
+  panel de detalle). El detalle de un proyecto en curso muestra además el
+  escenario pesimista, el margen a la fecha y el costo estimado al cierre.
+  Tarjeta nueva "Con alertas"; "Margen al cierre" reemplaza a "Margen Real
+  total" y lleva debajo el margen % ponderado de la cartera.
+- **Clientes**: margen y venta acumulados, recompra y clasificación por
+  margen acumulado, en vez del CLTV.
+- **Categoría**: margen al cierre, venta y margen % ponderado por venta.
+- **Snapshot**: cada KPI sale de `af`; nuevos `clientes_resumen`, `moneda`,
+  `titulo`, `pais`, `proyectos[].alertas`/`en_curso`/`*_estimado_*`,
+  `pendientes[].alertas` y umbrales de alerta/penalización en `umbrales`
+  (el texto de las "i" se arma con ellos, nunca con números copiados).
+  Vacío = `None` → "—" en el tablero, nunca un 0 inventado.
+- **Perú unificado**: un solo `template.html` y un solo
+  `build_visualizador.py` (`build(pais)`, config en `PAISES_VIZ`). El
+  template lleva `__AF_TITULO__` y `__AF_NAV_ACTIVO__` (la pestaña activa de
+  la navegación la marca el JS con `data-nav-activo`), y la moneda viaja en
+  el snapshot. `Peru/Análisis Financiero/Visualizador Web/build_visualizador.py`
+  quedó como envoltorio de 10 líneas y su `template.html` se borró.
 
 ## Publicación
 

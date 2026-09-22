@@ -35,6 +35,7 @@ def test_costos_reales_por_proyecto_agrupa_por_tag_y_bucket():
 
 def test_recalcular_proyecto_kpis_felices():
     proyecto = {
+        "% Avance": 1.0,
         "Monto de Venta (sin IVA)": 1000000,
         "Costos Materiales Proyectados": 100000, "Costos Equipos Proyectados": 100000,
         "Mano de Obra Proyectada": 100000, "Otros Costos Proyectados": 100000,
@@ -79,6 +80,7 @@ def test_recalcular_proyecto_nota_penaliza_sobrecosto_real():
     """Caso espejo del anterior pero con sobrecosto real (Real > Proyectado)
     -- el componente de desviación SÍ debe restar puntos."""
     proyecto = {
+        "% Avance": 1.0,
         "Monto de Venta (sin IVA)": 1000000,
         "Costos Materiales Proyectados": 100000, "Costos Equipos Proyectados": 100000,
         "Mano de Obra Proyectada": 100000, "Otros Costos Proyectados": 100000,
@@ -93,7 +95,8 @@ def test_recalcular_proyecto_nota_penaliza_sobrecosto_real():
     # desviacion_total = 690000/400000 - 1 = 0.725 (sobrecosto)
     assert indicadores["Desviación % Total"] == pytest.approx(0.725)
     assert indicadores["Ahorro/Sobrecosto Total"] == pytest.approx(400000 - 690000)
-    # score_desviacion = max(0, 100 - 0.725*100) = 27.5 (sí penaliza).
+    # +72,5% supera SOBRECOSTO_NOTA_CERO (+30%, 2026-09-21): el componente
+    # de control da 0 puntos.
     # score_margen usa la curva de calcular_nota() (no un tope duro) --
     # reusamos la función real en vez de reimplementar la fórmula acá, este
     # test cubre que recalcular_proyecto() le pase los insumos correctos,
@@ -101,6 +104,7 @@ def test_recalcular_proyecto_nota_penaliza_sobrecosto_real():
     margen_neto = (1000000 - 690000) / 1000000
     nota_esperada = kr.calcular_nota(margen_neto, 0.725)
     assert indicadores["Nota del Proyecto"] == nota_esperada
+    assert nota_esperada == kr._redondear_excel(0.7 * __import__("analisis_financiero")._score_margen_nota(margen_neto))
     assert indicadores["Ahorro/Sobrecosto Total"] < 0  # confirma que es sobrecosto, no ahorro
 
 
@@ -128,18 +132,55 @@ def test_recalcular_proyecto_costo_real_faltante_por_bucket_se_trata_como_cero()
     assert proyecto_actualizado["Total Real"] == 90000
 
 
-def test_calcular_cltv_clientes_clasifica_por_percentil():
-    proyectos = [
-        {"Cliente": "A", "Monto de Venta (sin IVA)": 100000, "Margen Real": 50000, "Fecha de inicio": date(2026, 1, 1)},
-        {"Cliente": "B", "Monto de Venta (sin IVA)": 200000, "Margen Real": 100000, "Fecha de inicio": date(2026, 1, 1)},
-        {"Cliente": "C", "Monto de Venta (sin IVA)": 300000, "Margen Real": 150000, "Fecha de inicio": date(2026, 1, 1)},
-    ]
-    resultado = kr.calcular_cltv_clientes(proyectos)
-    # 1 proyecto por cliente -> vida=1, meses_activo piso de 12 (1 año),
-    # frecuencia=1 -> CLTV = aov * 1 * 1 * margen_pct(0.5) = aov * 0.5.
-    assert resultado["A"]["CLTV"] == pytest.approx(50000)
-    assert resultado["B"]["CLTV"] == pytest.approx(100000)
-    assert resultado["C"]["CLTV"] == pytest.approx(150000)
+def test_recalcular_proyecto_en_curso_trae_la_estimacion_al_cierre():
+    """Al 50% de avance y con 300.000 gastados de 400.000: lo que falta
+    (50% de 400.000) se estima a precio de presupuesto -> 500.000 al cierre."""
+    proyecto = {
+        "% Avance": 0.5,
+        "Monto de Venta (sin IVA)": 1000000,
+        "Costos Materiales Proyectados": 100000, "Costos Equipos Proyectados": 100000,
+        "Mano de Obra Proyectada": 100000, "Otros Costos Proyectados": 100000,
+        "Mano de Obra Real": 90000,
+    }
+    costos_reales = {"Materiales": 100000, "Equipos": 60000, "Otros": 50000}
+    _, indicadores = kr.recalcular_proyecto(proyecto, costos_reales)
+    assert indicadores["Costo estimado al cierre"] == pytest.approx(500000)
+    assert indicadores["Margen estimado al cierre %"] == pytest.approx(0.5)
+    assert indicadores["Desviación estimada al cierre %"] == pytest.approx(0.25)
+    assert indicadores["Nota del Proyecto"] == kr.calcular_nota(0.5, 0.25)
+    assert "Nota Parcial" not in indicadores
+
+
+def test_indicadores_no_incluyen_columnas_de_apoyo():
+    """La página 1 del PDF lista todos los indicadores sin selección
+    editorial: las columnas de apoyo de 'Indicadores' (Cliente, venta,
+    Datos completos) no son indicadores del proyecto."""
+    _, indicadores = kr.recalcular_proyecto({"% Avance": 1.0}, {})
+    for columna in ("Cliente", "Monto de Venta (sin IVA)", "Datos completos",
+                    "TAG proyecto", "Peso del proyecto en la cartera de ventas (%)"):
+        assert columna not in indicadores
+
+
+def test_calcular_clientes_reporte_clasifica_por_percentil_de_margen_acumulado():
+    def entrada(cliente, venta, costo_real):
+        proyecto = {
+            "Cliente": cliente, "Categoría": "Mantenimiento", "% Avance": 1.0,
+            "Monto de Venta (sin IVA)": venta,
+            "Costos Materiales Proyectados": 0, "Costos Equipos Proyectados": 0,
+            "Mano de Obra Proyectada": 0, "Otros Costos Proyectados": costo_real,
+            "Mano de Obra Real": 0,
+        }
+        actualizado, indicadores = kr.recalcular_proyecto(proyecto, {"Otros": costo_real})
+        return {"proyecto": actualizado, "indicadores": indicadores}
+
+    resultado = kr.calcular_clientes_reporte([
+        entrada("A", 100000, 50000), entrada("B", 200000, 100000), entrada("C", 300000, 150000),
+    ])
+    assert resultado["A"]["Margen acumulado"] == pytest.approx(50000)
+    assert resultado["C"]["Margen %"] == pytest.approx(0.5)
+    assert resultado["A"]["N° de proyectos"] == 1
+    assert resultado["A"]["Cliente recurrente"] == "No"
     assert resultado["A"]["Clasificación"] == "Clientes de oportunidad"
     assert resultado["B"]["Clasificación"] == "Clientes potenciales"
     assert resultado["C"]["Clasificación"] == "Clientes estratégicos"
+    assert "CLTV" not in resultado["A"]

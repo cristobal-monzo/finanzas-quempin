@@ -157,11 +157,12 @@ def test_hoja_indicadores_incluye_los_2_kpis_nuevos_2026_07_28(tmp_path):
     ws = wb[af.HOJA_INDICADORES]
     assert ws.cell(row=1, column=24).value == "Peso del proyecto en la cartera de ventas (%)"
     assert ws.cell(row=1, column=25).value == "Margen por día de ejecución"
-    # 2026-08-28: columna 26 ("Nota Parcial") existe desde acá en adelante --
-    # el límite vacío se corre a la 27, ver test_nota_parcial_es_la_ultima_columna_de_indicadores
-    # en test_formulas_indicadores.py para la aserción dedicada a esta columna.
-    assert ws.cell(row=1, column=26).value == "Nota Parcial"
-    assert ws.cell(row=1, column=27).value is None
+    # 2026-09-21: detrás van la estimación al cierre y las columnas de apoyo
+    # de "Clientes" (la "Nota Parcial" de la columna 26 ya no existe).
+    assert ws.cell(row=1, column=26).value == "Costo estimado al cierre"
+    ultima = len(af.HEADERS_INDICADORES)
+    assert ws.cell(row=1, column=ultima).value == "Datos completos"
+    assert ws.cell(row=1, column=ultima + 1).value is None
 
 
 def test_hoja_detalle_costos_reales_incluye_columna_de_porcentaje(tmp_path):
@@ -178,9 +179,28 @@ def test_crea_hoja_clientes_con_encabezados(tmp_path):
 
     assert af.HOJA_CLIENTES in wb.sheetnames
     ws = wb[af.HOJA_CLIENTES]
-    assert ws.cell(row=1, column=1).value == "Cliente"
-    assert ws.cell(row=1, column=7).value == "CLTV"
-    assert ws.cell(row=1, column=8).value == "Clasificación"
+    # 2026-09-21: el CLTV se reemplazó por margen acumulado y recompra.
+    assert [c.value for c in ws[1]] == [
+        "Cliente", "N° de proyectos", "Venta acumulada (sin IVA)",
+        "Margen acumulado", "Margen %", "Cliente recurrente", "Clasificación",
+    ]
+
+
+def test_columna_que_el_esquema_nuevo_ya_no_tiene_queda_sin_pintar(tmp_path):
+    """Un libro creado con la hoja 'Clientes' vieja (8 columnas) no debe
+    quedar con un encabezado vacío pero todavía pintado en la 8ª."""
+    from openpyxl.styles import PatternFill
+
+    ruta = tmp_path / "Análisis de Proyectos.xlsx"
+    wb = af.asegurar_estructura_workbook(ruta)
+    ws = wb[af.HOJA_CLIENTES]
+    ws["H1"] = "Clasificación"
+    ws["H1"].fill = PatternFill(fgColor="FF0000", fill_type="solid")
+    wb.save(ruta)
+
+    wb = af.asegurar_estructura_workbook(ruta)
+    assert wb[af.HOJA_CLIENTES]["H1"].value is None
+    assert wb[af.HOJA_CLIENTES]["H1"].fill.fill_type is None
 
 
 def test_crea_hoja_glosario_kpis_con_encabezados(tmp_path):

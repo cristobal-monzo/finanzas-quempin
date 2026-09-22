@@ -1059,3 +1059,53 @@ migró a mano `Análisis de Proyectos 2026.xlsx`, con backup previo
   de avance), consola sin errores.
 
 Suite completa tras el cambio: 510 tests (todas las 7 suites del repo).
+
+## Auditoría 2026-09-21 — Fase 1: KPIs correctos
+
+Auditoría completa de KPIs y dashboard (pedida por el usuario el
+2026-09-21). Fase 0 = arreglos del tablero (commit `9d0bb28`, hecho en otra
+sesión; ver `Visualizador Web/CLAUDE.md`). Fase 1 = esto. Detalle técnico en
+`CLAUDE.md`, "Fase 1 de la auditoría"; acá lo que no está en el código.
+
+**Decisiones del usuario** (las 4 opciones recomendadas, elegidas con el
+impacto medido sobre la cartera real delante):
+
+1. Proyecto en curso → Nota sobre el **estimado al cierre, a precio de
+   presupuesto** (no el de índice de costo, que queda como escenario de
+   referencia). Reemplaza a la Nota Parcial.
+2. Sobrecosto → el componente de control llega a **0 con +30%**.
+3. Categorías → **Ferretería/Reposición a Materiales, Arriendo/Herramientas
+   a Equipos**; Servicios queda en Otros.
+4. Clientes → **margen acumulado + recompra** en vez del CLTV.
+
+**Efecto sobre la cartera real** (con los datos al 2026-09-21):
+Junji's pasa de 87 "Excelente" a 54 "Requiere atención" (al 75% de avance ya
+gastó el 98,9% del presupuesto; margen estimado al cierre 24,4%, pesimista
+19,5%). Hospital Pinel 83 → 64 (+27,6% de sobrecosto). Microturbina 88 → 82.
+ESFOCAR entra al análisis (solo le faltaba la fecha de inicio). Nota
+promedio de la cartera 84 → 78.
+
+**Verificación**: suite completa 869 tests; fórmulas del Excel recalculadas
+con Excel real (COM) sobre una copia y comparadas contra Python: 240 celdas
+de Indicadores + 8 clientes, 0 diferencias, 0 `#DIV/0!`; dashboard revisado
+en navegador (escritorio, 390px, sin errores de consola).
+
+**Pendientes que dependen del usuario**:
+
+- **Aplicar al Excel real y republicar**: el código ya está, pero el libro
+  real y el tablero publicado cambian recién con la próxima corrida
+  (`/Actualizar_AF`, o `/Actualizar_Finanzas`).
+- **Revisar las alertas que ya aparecen**: UMAG y ESFOCAR "terminados" con
+  72,9% y 55,2% del presupuesto gastado (¿facturas o Mano de Obra sin
+  registrar?); Hospital Pinel y Cesfam Limache al 100% con fecha de cierre
+  en 2027; Cesfam Constitución, Microturbina y ESFOCAR con gasto en una
+  categoría presupuestada en 0.
+- **Clientes FACH**: FACH1 y FACH2 tienen "261. FACH 1" en la columna
+  Cliente (el arreglo de `derivar_cliente` no pisa celdas ya escritas):
+  corregir a mano al nombre real del mandante.
+- **Mano de Obra Real**: sigue manual y con montos redondos (≈34% del costo
+  real). Si incluye o no los subcontratos que Centro de Costos registra como
+  "Servicios" decide si Servicios debe ir a Mano de Obra.
+- **Cifrado de los datos del tablero** (quedó fuera de la Fase 0): el repo de
+  publicación `cristobal-monzo/finanzas-quempin` es público y la contraseña
+  está en texto plano en los 3 tableros — decisión de los 3 módulos juntos.

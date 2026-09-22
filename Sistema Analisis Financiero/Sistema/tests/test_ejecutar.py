@@ -105,7 +105,7 @@ def test_ejecutar_dos_veces_es_idempotente(tmp_path):
 
 def test_ejecutar_dry_run_no_escribe_nada(tmp_path):
     ruta_af = _crear_excel_af_con_un_proyecto(tmp_path)
-    ruta_cc = _crear_excel_cc(tmp_path, [("UMAG-001", "Combustible", 10000.0)])
+    ruta_cc = _crear_excel_cc(tmp_path, [("UMAG-001", "Capacitación", 10000.0)])
     raiz_facturas = tmp_path / "Facturas y Boletas"
     raiz_respaldos = tmp_path / "Respaldos"
     contenido_antes = ruta_af.read_bytes()
@@ -115,7 +115,7 @@ def test_ejecutar_dry_run_no_escribe_nada(tmp_path):
     assert ruta_af.read_bytes() == contenido_antes
     assert not (raiz_facturas / "UMAG").exists()
     assert resumen["carpetas_creadas"] == ["UMAG"]  # lo que SE CREARIA, sin crearlo
-    assert resumen["categorias_no_mapeadas"] == ["Combustible"]
+    assert resumen["categorias_no_mapeadas"] == ["Capacitación"]
 
 
 def test_ejecutar_sin_centro_de_costos_avisa_y_no_falla(tmp_path):

@@ -45,8 +45,9 @@ def test_asegura_formulas_sumifs_y_derivadas_en_la_fila_del_proyecto(tmp_path):
     assert ws.cell(row=2, column=_col("Total Real")).value == f"={mat_r}2+{eq_r}2+{otros_r}2+{mo_r}2"
     assert ws.cell(row=2, column=_col("Margen Proyectado")).value == f"={venta}2-{total_proy}2"
     assert ws.cell(row=2, column=_col("Margen Real")).value == f"={venta}2-{total_real}2"
+    # Presupuesto 0 o vacío -> celda vacía, no #DIV/0! (== None en Python).
     assert ws.cell(row=2, column=_col("Desviación % (Real vs Proyectado)")).value == (
-        f"={total_real}2/{total_proy}2-1"
+        f'=IF({total_proy}2=0,"",{total_real}2/{total_proy}2-1)'
     )
 
 

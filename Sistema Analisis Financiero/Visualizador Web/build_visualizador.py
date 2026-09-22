@@ -1,24 +1,29 @@
 # -*- coding: utf-8 -*-
 """
-build_visualizador.py -- genera el visualizador web de Análisis Financiero.
+build_visualizador.py -- genera el visualizador web de Análisis Financiero,
+para Chile y para Perú (un solo build y un solo template.html, parametrizados
+por país -- unificado el 2026-09-21; antes Perú tenía una copia completa de
+los dos archivos y ya había divergido una vez, 2026-08-31).
 
 Las hojas "Indicadores"/"Clientes" de Análisis de Proyectos.xlsx son 100%
 formulas que analisis_financiero.py reescribe en cada corrida -- openpyxl
 nunca las calcula, asi que su valor cacheado queda obsoleto justo despues de
-guardar. Este script NUNCA lee esas celdas: recomputa las mismas formulas en
-Python a partir de las columnas manuales de "Proyectos" y de la hoja
-"Detalle Costos Reales" (100% valores, no formulas anidadas). Mismo patron ya
-resuelto en Centro de Costos/Visualizador Web/build_visualizador.py.
+guardar. Este script NUNCA lee esas celdas: toma las columnas manuales de
+"Proyectos" y la hoja "Detalle Costos Reales" (100% valores) y le pide cada
+KPI a analisis_financiero.calcular_kpis_proyecto() / calcular_clientes() --
+la misma implementación que usan los reportes PDF. Aquí solo se traduce el
+resultado a las claves cortas del snapshot y se agrega lo que depende de
+toda la cartera (peso en cartera, cobertura, totales).
 
 Ver docs/superpowers/specs/2026-07-23-analisis-financiero-visualizador-web-
-design.md para el diseno completo.
+design.md para el diseno original.
 """
 
 import base64
 import io
 import json
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import openpyxl
@@ -27,8 +32,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Sistema"))
 import analisis_financiero as af  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parent  # Sistema Analisis Financiero/Visualizador Web/
-RUTA_EXCEL = af.RUTA_EXCEL
 RUTA_TEMPLATE = RAIZ / "template.html"
+
+# Rutas de Chile como constantes de módulo (los tests las reemplazan con
+# monkeypatch); las de Perú viven en PAISES_VIZ["PE"].
+RUTA_EXCEL = af.RUTA_EXCEL
 RUTA_DATA_JSON = RAIZ / "data" / "analisis-financiero.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 RAIZ_REPORTES = af.RAIZ_DATOS / "Reportes"
@@ -40,12 +48,51 @@ URL_PLANILLA_PENDIENTE = (
     "&action=default&mobileredirect=true"
 )
 
-# Clave corta usada en los dicts de este modulo -> encabezado real de la hoja
-# "Proyectos". Permite evaluar la completitud con la regla unica de
-# af.CAMPOS_MANUALES_REQUERIDOS sin renombrar todo el resto del snapshot.
+_RAIZ_VIZ_PERU = af.PAISES["PE"]["raiz_visualizador_web"]
+# Lo único que cambia entre países. "nav_activo" es la subruta publicada del
+# tablero (la pestaña que se marca activa en la navegación entre tableros).
+PAISES_VIZ = {
+    "CL": {
+        "titulo": "Análisis Financiero",
+        "moneda": {"simbolo": "$", "locale": "es-CL"},
+        "nav_activo": "analisis-financiero",
+        "url_planilla": URL_PLANILLA_PENDIENTE,
+    },
+    "PE": {
+        "titulo": "Análisis Financiero Perú",
+        "moneda": {"simbolo": "S/", "locale": "es-PE"},
+        "nav_activo": "analisis-financiero-peru",
+        # Perú no tiene todavía un link de SharePoint para su planilla.
+        "url_planilla": None,
+        "ruta_excel": af.PAISES["PE"]["ruta_excel_af"],
+        "ruta_data_json": _RAIZ_VIZ_PERU / "data" / "analisis-financiero-peru.json",
+        "ruta_build_html": _RAIZ_VIZ_PERU / "build" / "index.html",
+        "raiz_reportes": _RAIZ_VIZ_PERU.parent / "Reportes",
+    },
+}
+
+
+def _rutas(pais: str) -> dict:
+    """Rutas de entrada/salida del país -- las de Chile se leen en el momento
+    de las constantes de módulo, para que el monkeypatch de los tests valga."""
+    if pais == "CL":
+        return {
+            "ruta_excel": RUTA_EXCEL, "ruta_data_json": RUTA_DATA_JSON,
+            "ruta_build_html": RUTA_BUILD_HTML, "raiz_reportes": RAIZ_REPORTES,
+        }
+    cfg = PAISES_VIZ[pais]
+    return {k: cfg[k] for k in ("ruta_excel", "ruta_data_json", "ruta_build_html", "raiz_reportes")}
+
+
+# Clave corta del snapshot -> encabezado real de la hoja "Proyectos".
 CLAVE_POR_ENCABEZADO = {
+    "TAG proyecto": "tag",
+    "Nombre del proyecto": "nombre",
+    "Cliente": "cliente",
+    "Categoría": "categoria",
     "% Avance": "avance",
     "Fecha de inicio": "fecha_inicio",
+    "Fecha de cierre": "fecha_cierre",
     "Monto de Venta (sin IVA)": "monto_venta",
     "Costos Materiales Proyectados": "materiales_proy",
     "Costos Equipos Proyectados": "equipos_proy",
@@ -53,11 +100,14 @@ CLAVE_POR_ENCABEZADO = {
     "Otros Costos Proyectados": "otros_proy",
     "Mano de Obra Real": "mo_real",
 }
+# Sufijo de categoría en 'Indicadores' -> clave corta del snapshot.
+CLAVE_CATEGORIA = {"Materiales": "materiales", "Equipos": "equipos", "MO": "mo", "Otros": "otros"}
 
 
-def _valor_columna(ws, fila, nombre_columna):
-    col = af.HEADERS_PROYECTOS.index(nombre_columna) + 1
-    return ws.cell(row=fila, column=col).value
+def _valores_por_encabezado(p: dict) -> dict:
+    """El dict de claves cortas de leer_proyectos, keyed por encabezado --
+    la entrada que espera af.calcular_kpis_proyecto."""
+    return {encabezado: p.get(clave) for encabezado, clave in CLAVE_POR_ENCABEZADO.items()}
 
 
 def leer_proyectos(ws_proyectos) -> list[dict]:
@@ -65,26 +115,12 @@ def leer_proyectos(ws_proyectos) -> list[dict]:
     con sus columnas manuales crudas -- solo lectura, nunca toca el Excel."""
     proyectos = []
     for fila in range(2, ws_proyectos.max_row + 1):
-        tag = _valor_columna(ws_proyectos, fila, "TAG proyecto")
-        nombre = _valor_columna(ws_proyectos, fila, "Nombre del proyecto")
-        if not tag or not nombre:
+        valores = af.valores_fila_proyectos(ws_proyectos, fila)
+        if not valores["TAG proyecto"] or not valores["Nombre del proyecto"]:
             continue
-        proyectos.append({
-            "fila": fila,
-            "tag": tag,
-            "nombre": nombre,
-            "cliente": _valor_columna(ws_proyectos, fila, "Cliente"),
-            "avance": _valor_columna(ws_proyectos, fila, "% Avance"),
-            "fecha_inicio": _valor_columna(ws_proyectos, fila, "Fecha de inicio"),
-            "fecha_cierre": _valor_columna(ws_proyectos, fila, "Fecha de cierre"),
-            "categoria": _valor_columna(ws_proyectos, fila, "Categoría"),
-            "monto_venta": _valor_columna(ws_proyectos, fila, "Monto de Venta (sin IVA)"),
-            "materiales_proy": _valor_columna(ws_proyectos, fila, "Costos Materiales Proyectados"),
-            "equipos_proy": _valor_columna(ws_proyectos, fila, "Costos Equipos Proyectados"),
-            "mo_proy": _valor_columna(ws_proyectos, fila, "Mano de Obra Proyectada"),
-            "otros_proy": _valor_columna(ws_proyectos, fila, "Otros Costos Proyectados"),
-            "mo_real": _valor_columna(ws_proyectos, fila, "Mano de Obra Real"),
-        })
+        p = {"fila": fila}
+        p.update({clave: valores[encabezado] for encabezado, clave in CLAVE_POR_ENCABEZADO.items()})
+        proyectos.append(p)
     return proyectos
 
 
@@ -92,13 +128,13 @@ def es_proyecto_completo(p: dict) -> bool:
     """Aplica la regla unica de completitud (af.CAMPOS_MANUALES_REQUERIDOS),
     la misma que decide si un proyecto genera reporte PDF. Ver la nota en
     analisis_financiero.py, seccion "COMPLETITUD DE UN PROYECTO"."""
-    return af.tiene_datos_completos(lambda campo: p.get(CLAVE_POR_ENCABEZADO[campo]))
+    return af.tiene_datos_completos(_valores_por_encabezado(p).get)
 
 
 def campos_faltantes(p: dict) -> list[str]:
     """Que le falta a un proyecto pendiente, con los nombres de columna de la
     planilla -- misma regla que es_proyecto_completo (af.campos_faltantes)."""
-    return af.campos_faltantes(lambda campo: p.get(CLAVE_POR_ENCABEZADO[campo]))
+    return af.campos_faltantes(_valores_por_encabezado(p).get)
 
 
 def es_gastos_generales(p: dict) -> bool:
@@ -157,29 +193,18 @@ def leer_detalle_subcategorias(ws_detalle) -> dict[str, list[dict]]:
     return resultado
 
 
-def calcular_peso_cartera(proyectos: list[dict]) -> dict[str, float]:
-    """Peso del proyecto en la cartera de ventas (%) -- venta del proyecto
-    sobre la suma de Monto de Venta de TODOS los proyectos válidos (TAG y
-    Nombre presentes), no solo los completos, igual que la fórmula Excel
-    '=Proyectos!venta/SUM(Proyectos!$venta:$venta)' que suma toda la
-    columna sin filtrar por % Avance ni completitud."""
-    total_venta = sum(p["monto_venta"] for p in proyectos if p["monto_venta"] is not None)
-    return {
-        p["tag"]: (p["monto_venta"] / total_venta if total_venta and p["monto_venta"] is not None else 0.0)
-        for p in proyectos
-    }
+def calcular_peso_cartera(proyectos: list[dict]) -> dict[str, float | None]:
+    """Peso del proyecto en la cartera de ventas (%) -- ver
+    af.calcular_peso_cartera: el denominador son TODOS los proyectos con
+    venta cargada, completos o no, igual que la fórmula de Excel."""
+    return af.calcular_peso_cartera({p["tag"]: p["monto_venta"] for p in proyectos})
 
 
 def _fecha_str(valor):
     """Convierte un valor de celda de fecha (datetime, o ya string, o None)
-    a 'DD-MM-AAAA' (pedido del usuario 2026-07-28, antes 'YYYY-MM-DD') o
-    None -- nunca deja pasar un datetime crudo hacia el JSON del snapshot
-    (json.dump en build() no usa default=str, un datetime sin convertir
-    explota con TypeError al escribir data/analisis-financiero.json). Estos
-    valores solo se usan para mostrarse en texto en el panel de detalle del
-    visualizador (template.html), nunca para ordenar/filtrar/agrupar --
-    a diferencia del 'fecha' de Centro de Costos, no hace falta mantener un
-    formato ISO ordenable en paralelo."""
+    a 'DD-MM-AAAA' (pedido del usuario 2026-07-28) o None -- nunca deja
+    pasar un datetime crudo hacia el JSON del snapshot (json.dump explota con
+    TypeError). Solo se muestran como texto, nunca se ordena por ellas."""
     if valor is None:
         return None
     if hasattr(valor, "strftime"):
@@ -187,159 +212,83 @@ def _fecha_str(valor):
     return str(valor)
 
 
-def _kpis_por_categoria(p: dict, costos_reales: dict, total_real: float) -> dict:
-    """Recomputa, por categoria (Materiales/Equipos/MO/Otros), las mismas 4
-    formulas que escribe asegurar_hoja_indicadores (columnas D-U): Costo %
-    de venta, Estructura % (mix, suma 100% del gasto real), Desviacion % y
-    Ahorro/Sobrecosto en $. Guards de division por cero replican el patron
-    ya usado en calcular_kpis_proyecto (venta/total_real/proyectado en 0 no
-    debe explotar, solo dar 0)."""
-    reales = {
-        "materiales": costos_reales["Materiales"], "equipos": costos_reales["Equipos"],
-        "mo": p["mo_real"], "otros": costos_reales["Otros"],
-    }
-    proyectados = {
-        "materiales": p["materiales_proy"], "equipos": p["equipos_proy"],
-        "mo": p["mo_proy"], "otros": p["otros_proy"],
-    }
-    venta = p["monto_venta"]
+def calcular_kpis_proyecto(p: dict, costos_reales: dict, hoy: date | None = None) -> dict:
+    """KPIs del proyecto para el snapshot: pide cada valor a
+    af.calcular_kpis_proyecto (única implementación, compartida con el Excel
+    vía test de contrato y con los reportes PDF) y lo traduce a claves
+    cortas. Agrega las alertas del proyecto."""
+    valores = _valores_por_encabezado(p)
+    k = af.calcular_kpis_proyecto(valores, costos_reales, hoy)
 
-    costo_pct_venta = {k: (v / venta if venta else 0.0) for k, v in reales.items()}
-    estructura_pct = {k: (v / total_real if total_real else 0.0) for k, v in reales.items()}
-    desviacion_pct_categoria = {
-        k: (reales[k] / proyectados[k] - 1) if proyectados[k] else 0.0 for k in reales
-    }
-    ahorro_sobrecosto = {k: proyectados[k] - reales[k] for k in reales}
+    def por_categoria(prefijo, sufijo=""):
+        return {corta: k[f"{prefijo}{larga}{sufijo}"] for larga, corta in CLAVE_CATEGORIA.items()}
 
+    avance = p["avance"]
     return {
-        "costo_pct_venta": costo_pct_venta,
-        "estructura_pct": estructura_pct,
-        "desviacion_pct_categoria": desviacion_pct_categoria,
-        "ahorro_sobrecosto": ahorro_sobrecosto,
-    }
-
-
-def _margen_por_dia(p: dict, margen_real: float):
-    """IF(Fecha de cierre vacia, "", margen_real/MAX(1, dias)) -- None si
-    falta Fecha de inicio o Fecha de cierre (proyecto "en desarrollo"),
-    mismo guard que la formula de Excel en asegurar_hoja_indicadores."""
-    fecha_inicio, fecha_cierre = p["fecha_inicio"], p["fecha_cierre"]
-    if fecha_inicio is None or fecha_cierre is None:
-        return None
-    dias = (fecha_cierre - fecha_inicio).days
-    return margen_real / max(1, dias)
-
-
-def calcular_kpis_proyecto(p: dict, costos_reales: dict) -> dict:
-    """Recomputa, en Python, las mismas formulas que asegurar_formulas_
-    proyectos/_formula_nota/_formula_evaluacion/asegurar_hoja_indicadores
-    escriben en el Excel."""
-    total_proyectado = p["materiales_proy"] + p["equipos_proy"] + p["mo_proy"] + p["otros_proy"]
-    total_real = costos_reales["Materiales"] + costos_reales["Equipos"] + costos_reales["Otros"] + p["mo_real"]
-    margen_real = p["monto_venta"] - total_real
-    desviacion_pct = (total_real / total_proyectado - 1) if total_proyectado else 0.0
-
-    # Venta en 0 es un dato "completo" valido (ver es_proyecto_completo), pero
-    # no hay ratio de margen que calcular contra una venta nula -- 0.0 deja el
-    # componente de rentabilidad en 0 sin propagar None a calcular_nota.
-    margen_neto = (margen_real / p["monto_venta"]) if p["monto_venta"] else 0.0
-    nota = af.calcular_nota(margen_neto, desviacion_pct)
-    evaluacion = af.clasificar_evaluacion(nota)
-    # Nota Parcial: importada de analisis_financiero, nunca reimplementada
-    # aca -- este archivo es uno de los dos que se desincronizaron del Excel
-    # en 2026-07-28 al copiar la formula de la Nota en vez de importarla.
-    nota_parcial = af.calcular_nota_parcial(nota, p["avance"])
-
-    resultado = {
-        "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "avance": p["avance"],
+        "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "avance": avance,
+        "en_curso": avance is not None and avance < 1,
         "fecha_inicio": _fecha_str(p["fecha_inicio"]), "fecha_cierre": _fecha_str(p["fecha_cierre"]),
         "categoria": p["categoria"],
-        "monto_venta": p["monto_venta"], "total_proyectado": total_proyectado,
-        "total_real": total_real, "margen_real": margen_real, "desviacion_pct": desviacion_pct,
-        "nota": nota, "evaluacion": evaluacion, "nota_parcial": nota_parcial,
+        "monto_venta": p["monto_venta"],
+        "total_proyectado": k["Total Proyectado"],
+        "total_real": k["Total Real"],
+        # A la fecha: lo gastado hasta hoy contra la venta completa.
+        "margen_real": k["Margen Real"],
+        "margen_neto_pct": k["Margen neto %"],
+        "desviacion_pct": k["Desviación % (Real vs Proyectado)"],
+        # Al cierre: lo que usa la Nota (igual al real si el avance es 100%).
+        "costo_estimado_cierre": k["Costo estimado al cierre"],
+        "margen_estimado_cierre": k["Margen estimado al cierre"],
+        "margen_estimado_cierre_pct": k["Margen estimado al cierre %"],
+        "desviacion_estimada_cierre_pct": k["Desviación estimada al cierre %"],
+        "margen_cierre_pct_indice": k["Margen al cierre % (escenario índice de costo)"],
+        "nota": k["Nota del Proyecto"],
+        "evaluacion": k["Evaluación"],
         "costos_proyectados": {
             "materiales": p["materiales_proy"], "equipos": p["equipos_proy"],
             "mo": p["mo_proy"], "otros": p["otros_proy"],
         },
         "costos_reales": {
-            "materiales": costos_reales["Materiales"], "equipos": costos_reales["Equipos"],
-            "mo": p["mo_real"], "otros": costos_reales["Otros"],
+            "materiales": k["Costos Materiales Reales"], "equipos": k["Costos Equipos Reales"],
+            "mo": k["Mano de Obra Real"], "otros": k["Otros Costos Reales"],
         },
-        "ahorro_sobrecosto_total": total_proyectado - total_real,
-        "margen_por_dia": _margen_por_dia(p, margen_real),
+        "costo_pct_venta": por_categoria("Costo ", " % de venta"),
+        "estructura_pct": por_categoria("Estructura % "),
+        "desviacion_pct_categoria": por_categoria("Desviación % "),
+        "ahorro_sobrecosto": por_categoria("Ahorro/Sobrecosto "),
+        "ahorro_sobrecosto_total": k["Ahorro/Sobrecosto Total"],
+        "margen_por_dia": k["Margen por día de ejecución"],
+        "alertas": af.alertas_proyecto(valores, k, hoy),
+        # Para calcular_clientes: la salida completa del módulo compartido.
+        "_kpis_af": k,
     }
-    resultado.update(_kpis_por_categoria(p, costos_reales, total_real))
-    return resultado
 
 
-def percentil_inclusivo(valores: list[float], p: float) -> float:
-    """Replica PERCENTILE (legacy/inclusive) de Excel: interpolacion lineal
-    sobre la lista ordenada, rango 0-indexado = p*(n-1). Con un solo valor,
-    Excel tambien devuelve ese unico valor."""
-    ordenados = sorted(valores)
-    n = len(ordenados)
-    if n == 1:
-        return ordenados[0]
-    idx = p * (n - 1)
-    lo = int(idx)
-    hi = min(lo + 1, n - 1)
-    frac = idx - lo
-    return ordenados[lo] + (ordenados[hi] - ordenados[lo]) * frac
+percentil_inclusivo = af.percentil_inclusivo
 
 
-def calcular_clientes(kpis_proyectos_completos: list[dict], proyectos_por_tag: dict) -> list[dict]:
-    """Agrupa kpis_proyectos_completos por 'cliente' y recomputa AOV/Vida/
-    Meses activo/Frecuencia/Margen%/CLTV -- mismas formulas que
-    asegurar_hoja_clientes en analisis_financiero.py, pero usando SOLO
-    proyectos completos (spec §3: un proyecto incompleto de un cliente no
-    contamina su CLTV, como si todavia no existiera)."""
-    por_cliente: dict[str, list[dict]] = {}
-    for kpi in kpis_proyectos_completos:
-        cliente = kpi["cliente"]
-        if not cliente:
-            continue
-        por_cliente.setdefault(cliente, []).append(kpi)
-
-    filas = []
-    for cliente, kpis in por_cliente.items():
-        n = len(kpis)
-        aov = sum(k["monto_venta"] for k in kpis) / n
-        vida = n
-        fechas = [proyectos_por_tag[k["tag"]]["fecha_inicio"] for k in kpis]
-        fechas = [f for f in fechas if f is not None]
-        if len(fechas) >= 2:
-            meses_activo = max(12.0, (max(fechas) - min(fechas)).days / 30)
-        else:
-            meses_activo = 12.0
-        frecuencia = vida / (meses_activo / 12)
-        suma_venta = sum(k["monto_venta"] for k in kpis)
-        suma_margen = sum(k["margen_real"] for k in kpis)
-        margen_pct = suma_margen / suma_venta if suma_venta else 0.0
-        cltv = aov * frecuencia * vida * margen_pct
-        filas.append({
-            "cliente": cliente, "aov": aov, "vida": vida, "meses_activo": meses_activo,
-            "frecuencia": frecuencia, "margen_pct": margen_pct, "cltv": cltv,
-        })
-
-    cltvs = [f["cltv"] for f in filas]
-    for f in filas:
-        p67 = percentil_inclusivo(cltvs, 0.67)
-        p33 = percentil_inclusivo(cltvs, 0.33)
-        if f["cltv"] >= p67:
-            f["clasificacion"] = "Clientes estratégicos"
-        elif f["cltv"] >= p33:
-            f["clasificacion"] = "Clientes potenciales"
-        else:
-            f["clasificacion"] = "Clientes de oportunidad"
-
-    return filas
+def calcular_clientes(kpis_proyectos_completos: list[dict]) -> list[dict]:
+    """Clientes del snapshot: af.calcular_clientes (la misma que la hoja
+    'Clientes' y los reportes) traducida a claves cortas. Solo cuentan los
+    proyectos completos -- un proyecto incompleto de un cliente no
+    contamina sus números, como si todavia no existiera."""
+    filas = af.calcular_clientes([k["_kpis_af"] for k in kpis_proyectos_completos])
+    return [{
+        "cliente": f["Cliente"],
+        "n_proyectos": f["N° de proyectos"],
+        "venta_acumulada": f["Venta acumulada (sin IVA)"],
+        "margen_acumulado": f["Margen acumulado"],
+        "margen_pct": f["Margen %"],
+        "recurrente": f["Cliente recurrente"] == "Sí",
+        "clasificacion": f["Clasificación"],
+    } for f in filas]
 
 
 def calcular_categorias(kpis_proyectos_completos: list[dict]) -> list[dict]:
-    """Agrupa kpis_proyectos_completos (ya filtrados a solo proyectos
-    completos, mismo criterio que calcular_clientes) por 'categoria'. Un
-    proyecto sin categoria asignada (None o cadena vacia) cae en el bucket
-    "Sin categoría" en vez de excluirse -- spec §3."""
+    """Agrupa los proyectos completos por 'categoria'. Un proyecto sin
+    categoria asignada cae en "Sin categoría" en vez de excluirse. El margen
+    es el estimado al cierre (el mismo que usa la Nota) y el margen % se
+    pondera por venta, no se promedia."""
     por_categoria: dict[str, list[dict]] = {}
     for kpi in kpis_proyectos_completos:
         categoria = kpi["categoria"] or "Sin categoría"
@@ -348,48 +297,59 @@ def calcular_categorias(kpis_proyectos_completos: list[dict]) -> list[dict]:
     filas = []
     for categoria, kpis in por_categoria.items():
         n = len(kpis)
+        venta = sum(k["monto_venta"] for k in kpis)
+        margen = sum(k["margen_estimado_cierre"] for k in kpis)
+        notas = [k["nota"] for k in kpis if k["nota"] is not None]
         filas.append({
             "categoria": categoria,
             "n_proyectos": n,
-            "margen_real_total": sum(k["margen_real"] for k in kpis),
-            "nota_promedio": sum(k["nota"] for k in kpis) / n,
+            "venta_total": venta,
+            "margen_estimado_total": margen,
+            "margen_pct": (margen / venta) if venta else None,
+            "nota_promedio": (sum(notas) / len(notas)) if notas else None,
             "tags_proyectos": [k["tag"] for k in kpis],
         })
     return filas
 
 
-def embeber_reportes_pdf(proyectos: list[dict], categorias: list[dict]) -> dict[str, str]:
-    """Escanea RAIZ_REPORTES/{Proyectos,Categorías}/*.pdf y embebe en base64
-    los que existen. La ausencia de una clave en el dict devuelto ES la
-    señal de "sin reporte" -- nunca se agrega una clave con valor None o
+def embeber_reportes_pdf(proyectos: list[dict], categorias: list[dict], raiz_reportes: Path | None = None) -> dict[str, str]:
+    """Escanea <raiz_reportes>/{Proyectos,Categorías}/*.pdf y embebe en
+    base64 los que existen. La ausencia de una clave en el dict devuelto ES
+    la señal de "sin reporte" -- nunca se agrega una clave con valor None o
     cadena vacia. Nunca escribe ni modifica ningun PDF, solo lee."""
+    raiz = raiz_reportes if raiz_reportes is not None else RAIZ_REPORTES
     reportes: dict[str, str] = {}
+    if not raiz.exists():
+        return reportes
 
     for p in proyectos:
-        ruta = RAIZ_REPORTES / "Proyectos" / f"{p['tag']}.pdf"
+        ruta = raiz / "Proyectos" / f"{p['tag']}.pdf"
         if ruta.exists():
             reportes[f"proyecto:{p['tag']}"] = base64.b64encode(ruta.read_bytes()).decode("ascii")
 
     for c in categorias:
-        ruta = RAIZ_REPORTES / "Categorías" / f"{c['categoria']}.pdf"
+        ruta = raiz / "Categorías" / f"{c['categoria']}.pdf"
         if ruta.exists():
             reportes[f"categoria:{c['categoria']}"] = base64.b64encode(ruta.read_bytes()).decode("ascii")
 
     return reportes
 
 
-def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
-    """Arma el snapshot saneado completo: proyectos completos + sus KPIs,
-    clientes + su CLTV (excluyendo incompletos), y la lista de proyectos
-    pendientes de completar con el mensaje y link fijos (spec §1/§3).
-    `ruta_excel` es parametrizable para testear contra un workbook temporal,
-    nunca el Excel real de la empresa."""
+def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None = None) -> dict:
+    """Arma el snapshot saneado completo: proyectos completos + sus KPIs y
+    alertas, clientes (excluyendo incompletos), categorías, y la lista de
+    proyectos pendientes de completar con qué les falta. `ruta_excel` es
+    parametrizable para testear contra un workbook temporal, nunca el Excel
+    real de la empresa."""
+    rutas = _rutas(pais)
+    ruta_excel = ruta_excel if ruta_excel is not None else rutas["ruta_excel"]
+    cfg = PAISES_VIZ[pais]
+
     wb = openpyxl.load_workbook(str(ruta_excel), data_only=True)
     ws_proyectos = wb[af.HOJA_PROYECTOS]
     ws_detalle = wb[af.HOJA_DETALLE_COSTOS_REALES]
 
     proyectos = leer_proyectos(ws_proyectos)
-    proyectos_por_tag = {p["tag"]: p for p in proyectos}
     peso_cartera_por_tag = calcular_peso_cartera(proyectos)
     detalle_subcategorias_por_tag = leer_detalle_subcategorias(ws_detalle)
 
@@ -398,8 +358,8 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
     for p in proyectos:
         if es_proyecto_completo(p):
             costos_reales = sumar_costos_reales_por_bucket(ws_detalle, p["tag"])
-            kpi = calcular_kpis_proyecto(p, costos_reales)
-            kpi["peso_cartera_pct"] = peso_cartera_por_tag.get(p["tag"], 0.0)
+            kpi = calcular_kpis_proyecto(p, costos_reales, hoy)
+            kpi["peso_cartera_pct"] = peso_cartera_por_tag.get(p["tag"])
             kpi["detalle_subcategorias"] = detalle_subcategorias_por_tag.get(p["tag"], [])
             completos.append(kpi)
         elif not es_gastos_generales(p):
@@ -407,47 +367,69 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
                 "tag": p["tag"],
                 "nombre": p["nombre"],
                 "mensaje": f"{p['nombre']} — Falta ingresar información en 'Análisis de Proyectos'",
-                "link": URL_PLANILLA_PENDIENTE,
+                "link": cfg["url_planilla"],
                 "campos_faltantes": campos_faltantes(p),
                 "monto_venta": p["monto_venta"],
+                # Las alertas de fechas/avance valen aunque falten datos.
+                "alertas": af.alertas_proyecto(_valores_por_encabezado(p), None, hoy),
             })
     pendientes.sort(key=_orden_pendiente)
 
-    clientes = calcular_clientes(completos, proyectos_por_tag)
+    clientes = calcular_clientes(completos)
     categorias = calcular_categorias(completos)
-    reportes_pdf = embeber_reportes_pdf(completos, categorias)
+    reportes_pdf = embeber_reportes_pdf(completos, categorias, rutas["raiz_reportes"])
 
     pendientes_por_cliente: dict[str, int] = {}
     for p in proyectos:
-        if not es_proyecto_completo(p) and p["cliente"]:
+        if not es_proyecto_completo(p) and p["cliente"] and not es_gastos_generales(p):
             pendientes_por_cliente[p["cliente"]] = pendientes_por_cliente.get(p["cliente"], 0) + 1
     for c in clientes:
         c["proyectos_pendientes"] = pendientes_por_cliente.get(c["cliente"], 0)
 
+    for k in completos:
+        del k["_kpis_af"]
+
     n_completos = len(completos)
-    # Cuanto de la cartera real queda dentro del analisis: la regla de
-    # completitud es todo-o-nada, asi que sin este dato el tablero no deja
-    # ver que la mayor parte de la venta cargada puede estar afuera.
+    venta_total = sum(k["monto_venta"] for k in completos)
+    margen_estimado_total = sum(k["margen_estimado_cierre"] for k in completos)
+    notas = [k["nota"] for k in completos if k["nota"] is not None]
+    # Cuanto de la cartera real queda dentro del analisis: sin este dato el
+    # tablero no deja ver que parte de la venta cargada puede estar afuera.
     proyectos_de_venta = [p for p in proyectos if not es_gastos_generales(p)]
     cobertura = {
         "n_proyectos": len(proyectos_de_venta),
         "n_completos": n_completos,
         "venta_cargada_total": sum(p["monto_venta"] or 0 for p in proyectos_de_venta),
-        "venta_completos": sum(k["monto_venta"] for k in completos),
+        "venta_completos": venta_total,
     }
+    n_recurrentes = sum(1 for c in clientes if c["recurrente"])
     return {
         "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
+        "pais": pais,
+        "titulo": cfg["titulo"],
+        "moneda": cfg["moneda"],
         "umbrales": {
             "excelente": af.UMBRAL_EXCELENTE, "bueno": af.UMBRAL_BUENO, "aprobado": af.UMBRAL_APROBADO,
+            "sobrecosto_nota_cero": af.SOBRECOSTO_NOTA_CERO,
+            "alerta_sobrecosto": af.UMBRAL_ALERTA_SOBRECOSTO,
+            "alerta_costo_incompleto": af.UMBRAL_ALERTA_COSTO_INCOMPLETO,
         },
         "cobertura": cobertura,
         "kpis_proyectos": {
             "n_completos": n_completos,
-            "margen_real_total": sum(k["margen_real"] for k in completos),
-            "monto_venta_total": sum(k["monto_venta"] for k in completos),
-            "total_real_total": sum(k["total_real"] for k in completos),
-            "nota_promedio": (sum(k["nota"] for k in completos) / n_completos) if n_completos else 0,
+            "monto_venta_total": venta_total,
+            "costo_estimado_total": sum(k["costo_estimado_cierre"] for k in completos),
+            "margen_estimado_total": margen_estimado_total,
+            "margen_ponderado_pct": (margen_estimado_total / venta_total) if venta_total else None,
+            "n_en_curso": sum(1 for k in completos if k["en_curso"]),
+            "nota_promedio": (sum(notas) / len(notas)) if notas else None,
             "n_requiere_atencion": sum(1 for k in completos if k["evaluacion"] == "Requiere atención"),
+            "n_con_alertas": sum(1 for k in completos if k["alertas"]),
+        },
+        "clientes_resumen": {
+            "n_clientes": len(clientes),
+            "n_recurrentes": n_recurrentes,
+            "tasa_recompra": (n_recurrentes / len(clientes)) if clientes else None,
         },
         "proyectos": completos,
         "clientes": clientes,
@@ -457,22 +439,24 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL) -> dict:
     }
 
 
-def build() -> int:
+def build(pais: str = "CL") -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     except Exception:
         pass
-    if not RUTA_EXCEL.exists():
-        print(f"[ERROR] No existe el Excel: {RUTA_EXCEL}")
+    rutas = _rutas(pais)
+    cfg = PAISES_VIZ[pais]
+    if not rutas["ruta_excel"].exists():
+        print(f"[ERROR] No existe el Excel: {rutas['ruta_excel']}")
         return 1
     if not RUTA_TEMPLATE.exists():
         print(f"[ERROR] No existe la plantilla: {RUTA_TEMPLATE}")
         return 1
 
-    data = extraer_datos_saneados(RUTA_EXCEL)
+    data = extraer_datos_saneados(rutas["ruta_excel"], pais=pais)
 
-    RUTA_DATA_JSON.parent.mkdir(parents=True, exist_ok=True)
-    with io.open(RUTA_DATA_JSON, "w", encoding="utf-8") as f:
+    rutas["ruta_data_json"].parent.mkdir(parents=True, exist_ok=True)
+    with io.open(rutas["ruta_data_json"], "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     data_json_text = json.dumps(data, ensure_ascii=False)
@@ -480,22 +464,27 @@ def build() -> int:
 
     with io.open(RUTA_TEMPLATE, "r", encoding="utf-8") as f:
         template = f.read()
-    if "__AF_DATA_B64__" not in template:
-        print("[ERROR] template.html no tiene el placeholder __AF_DATA_B64__")
-        return 1
-    html = template.replace("__AF_DATA_B64__", data_b64)
+    for marcador in ("__AF_DATA_B64__", "__AF_TITULO__", "__AF_NAV_ACTIVO__"):
+        if marcador not in template:
+            print(f"[ERROR] template.html no tiene el placeholder {marcador}")
+            return 1
+    html = (
+        template.replace("__AF_TITULO__", cfg["titulo"])
+        .replace("__AF_NAV_ACTIVO__", cfg["nav_activo"])
+        .replace("__AF_DATA_B64__", data_b64)
+    )
 
-    RUTA_BUILD_HTML.parent.mkdir(parents=True, exist_ok=True)
-    with io.open(RUTA_BUILD_HTML, "w", encoding="utf-8") as f:
+    rutas["ruta_build_html"].parent.mkdir(parents=True, exist_ok=True)
+    with io.open(rutas["ruta_build_html"], "w", encoding="utf-8") as f:
         f.write(html)
 
-    print(f"OK — {len(data['proyectos'])} proyecto(s) completo(s), "
+    print(f"OK ({pais}) — {len(data['proyectos'])} proyecto(s) completo(s), "
           f"{len(data['pendientes'])} pendiente(s), {len(data['clientes'])} cliente(s)")
-    print(f"Snapshot: {RUTA_DATA_JSON}")
-    print(f"Visualizador: {RUTA_BUILD_HTML}")
+    print(f"Snapshot: {rutas['ruta_data_json']}")
+    print(f"Visualizador: {rutas['ruta_build_html']}")
     return 0
 
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
-    raise SystemExit(build())
+    raise SystemExit(build(sys.argv[1] if len(sys.argv) > 1 else "CL"))

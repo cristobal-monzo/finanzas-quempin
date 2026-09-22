@@ -29,7 +29,11 @@ def test_extraer_datos_saneados_sin_proyectos_no_falla(tmp_path):
     assert data["clientes"] == []
     assert data["pendientes"] == []
     assert data["kpis_proyectos"]["n_completos"] == 0
-    assert data["kpis_proyectos"]["nota_promedio"] == 0
+    # Sin proyectos no hay promedio que inventar: vacío, el tablero muestra "—".
+    assert data["kpis_proyectos"]["nota_promedio"] is None
+    # Mismo build que Chile (2026-09-21), con la moneda de Perú.
+    assert data["pais"] == "PE"
+    assert data["moneda"] == {"simbolo": "S/", "locale": "es-PE"}
 
 
 def test_extraer_datos_saneados_con_un_proyecto_completo_no_falla(tmp_path):
@@ -69,4 +73,16 @@ def test_extraer_datos_saneados_con_un_proyecto_completo_no_falla(tmp_path):
     proyecto = data["proyectos"][0]
     assert proyecto["avance"] == 0.5
     assert "estado" not in proyecto
-    assert proyecto["nota_parcial"] == bv.af.calcular_nota_parcial(proyecto["nota"], 0.5)
+    # La Nota Parcial se reemplazó por la estimación al cierre (2026-09-21):
+    # 350.000 gastados de 800.000 al 50% -> 350.000 + 400.000 al cierre.
+    assert "nota_parcial" not in proyecto
+    assert proyecto["costo_estimado_cierre"] == 750_000
+    assert proyecto["nota"] == bv.af.calcular_nota(0.25, 750_000 / 800_000 - 1)
+
+
+def test_peru_no_tiene_template_propio():
+    """Unificado con Chile el 2026-09-21: la copia completa del template ya
+    se había quedado atrás dos veces."""
+    carpeta = Path(__file__).resolve().parent.parent
+    assert not (carpeta / "template.html").exists()
+    assert bv._comun.RUTA_TEMPLATE.exists()

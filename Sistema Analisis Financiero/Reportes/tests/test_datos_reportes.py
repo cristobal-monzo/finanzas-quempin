@@ -129,13 +129,19 @@ def test_paquete_datos_proyecto_no_requiere_fecha_de_cierre_para_estar_completo(
     assert paquete["en_desarrollo"] is True
 
 
-def test_paquete_datos_cliente_incluye_cltv_recalculado_y_sus_proyectos(tmp_path):
+def test_paquete_datos_cliente_incluye_kpis_recalculados_y_sus_proyectos(tmp_path):
+    """'kpis_cliente' reemplazó a 'cltv' el 2026-09-21 (fase 1 de la
+    auditoría): margen y venta acumulados, recompra y clasificación."""
     ruta = _crear_excel_af(tmp_path, [_fila_proyecto_completa()], _filas_detalle("UMAG"))
     paquete = dr.paquete_datos_cliente(ruta, "UMAG")
     assert paquete["tipo"] == "cliente"
-    # 1 solo proyecto -> vida=1, meses_activo piso de 12 (1 año), frecuencia=1.
-    assert paquete["cltv"]["CLTV"] == pytest.approx(760000)
-    assert paquete["cltv"]["Clasificación"] == "Clientes estratégicos"  # unico cliente valido
+    assert "cltv" not in paquete
+    kpis = paquete["kpis_cliente"]
+    assert kpis["N° de proyectos"] == 1
+    assert kpis["Venta acumulada (sin IVA)"] == pytest.approx(1000000)
+    assert kpis["Margen acumulado"] == pytest.approx(760000)
+    assert kpis["Cliente recurrente"] == "No"
+    assert kpis["Clasificación"] == "Clientes estratégicos"  # unico cliente valido
     assert len(paquete["proyectos"]) == 1
     assert paquete["proyectos"][0]["TAG proyecto"] == "UMAG"
 
@@ -211,9 +217,10 @@ def test_paquete_datos_comparacion_rechaza_tipo_desconocido(tmp_path):
         dr.paquete_datos_comparacion(ruta, [("no_existe", "UMAG")])
 
 
-def test_indicadores_incluyen_nota_parcial(tmp_path):
-    """La Nota Parcial viaja en el mismo dict de indicadores que el resto del
-    playbook, para que la página 1 del PDF la muestre sin tocar plantilla."""
+def test_indicadores_incluyen_la_estimacion_al_cierre(tmp_path):
+    """La estimación al cierre viaja en el mismo dict de indicadores que el
+    resto del playbook (reemplazó a la Nota Parcial, 2026-09-21), para que
+    la página 1 del PDF la muestre sin tocar plantilla."""
     import kpis_recalculados as kr
 
     proyecto = {
@@ -229,13 +236,18 @@ def test_indicadores_incluyen_nota_parcial(tmp_path):
 
     _, indicadores = kr.recalcular_proyecto(proyecto, reales)
 
-    assert indicadores["Nota Parcial"] == af.calcular_nota_parcial(
-        indicadores["Nota del Proyecto"], 0.75
-    )
-    assert indicadores["Nota Parcial"] < indicadores["Nota del Proyecto"]
+    # 6,4M gastados + 25% de 8M que falta = 8,4M al cierre.
+    assert indicadores["Costo estimado al cierre"] == pytest.approx(8_400_000)
+    assert indicadores["Margen estimado al cierre %"] == pytest.approx(0.16)
+    assert indicadores["Desviación estimada al cierre %"] == pytest.approx(0.05)
+    assert indicadores["Nota del Proyecto"] == af.calcular_nota(0.16, 0.05)
+    assert "Nota Parcial" not in indicadores
 
 
-def test_nota_parcial_vacia_si_el_proyecto_no_tiene_avance_cargado(tmp_path):
+def test_sin_avance_no_hay_estimacion_al_cierre_ni_nota(tmp_path):
+    """Sin % Avance no se puede estimar el cierre, y la Nota se calcula
+    sobre esa estimación: queda vacía, igual que en el Excel. (Un proyecto
+    sin avance tampoco está completo, así que no llega a tener PDF.)"""
     import kpis_recalculados as kr
 
     proyecto = {
@@ -251,5 +263,6 @@ def test_nota_parcial_vacia_si_el_proyecto_no_tiene_avance_cargado(tmp_path):
 
     _, indicadores = kr.recalcular_proyecto(proyecto, reales)
 
-    assert indicadores["Nota del Proyecto"] is not None
-    assert indicadores["Nota Parcial"] is None
+    assert indicadores["Margen neto %"] is not None  # el margen a la fecha sí existe
+    assert indicadores["Costo estimado al cierre"] is None
+    assert indicadores["Nota del Proyecto"] is None
