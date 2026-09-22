@@ -1,3 +1,13 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- DOCTYPE + charset + viewport (Fase 0, auditoria 2026-09-21): sin
+     DOCTYPE el navegador renderizaba en modo quirks; sin charset, cualquier
+     servidor que no mandara UTF-8 (o abrir el archivo local) rompia la regex
+     del gate y el tablero no abria; sin viewport, un telefono lo dibujaba a
+     ancho de escritorio y lo achicaba. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Análisis Financiero Perú — Visualizador</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
@@ -179,7 +189,17 @@
     border-bottom: 2px solid transparent;
   }
   a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
+  a.viz-modnav-tab.is-active:hover { background: none; }
   .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
+  /* En teléfono los 6 tableros envolvían en tres filas y el encabezado se
+     comía un tercio de la pantalla: una sola fila con scroll horizontal. */
+  /* ".viz-header" delante: el contenedor también es .viz-container, y
+     ".viz-header .viz-container" (flex-wrap: wrap) le ganaba por
+     especificidad a una regla de una sola clase. */
+  @media (max-width: 640px) {
+    .viz-header .viz-modnav-inner { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .viz-modnav-tab { white-space: nowrap; flex: 0 0 auto; }
+  }
 
   /* Password gate */
   .viz-gate {
@@ -221,125 +241,63 @@
   .viz-gate-card button:hover { filter: brightness(1.12); }
   .viz-gate-error { font-size: 12px; color: #ff8a4d; min-height: 16px; margin-top: 10px; }
 
-  /* KPI row */
-  .viz-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .viz-kpi {
-    background: var(--surface-card);
-    border: 1px solid var(--border-hairline);
-    border-radius: 10px;
-    padding: 14px 16px;
-  }
-  .viz-kpi .label { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 6px; }
-  .viz-kpi .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .viz-kpi .sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
-  .viz-kpi.accent .value { color: var(--brand-orange-ink, var(--brand-orange)); }
-  .viz-kpi .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
-  .viz-kpi .pill.ok { color: var(--status-good); }
-  .viz-kpi .pill.warn { color: var(--status-warning); }
-  .viz-kpi .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
-
-  /* Botón de copiar nombre de archivo (junto a N° Ref. en la tabla) */
-  .copy-archivo-btn {
-    background: none;
-    border: none;
-    padding: 2px;
-    margin-left: 4px;
-    cursor: pointer;
-    color: var(--text-muted);
-    display: inline-flex;
-    align-items: center;
-    vertical-align: middle;
-  }
-  .copy-archivo-btn:hover, .copy-archivo-btn:focus-visible { color: var(--brand-orange-ink, var(--brand-orange)); }
-  .copy-archivo-btn .icon-check { display: none; }
-  .copy-archivo-btn.copied .icon-copy { display: none; }
-  .copy-archivo-btn.copied .icon-check { display: inline; color: var(--status-good); }
-
-  /* Notas "i" explicativas junto a KPIs y títulos de gráficos */
-  .info-badge {
+  /* Notas "i" explicativas junto a KPIs. La regla vivía como .info-badge
+     (copiada de Centro de Costos) mientras el HTML usa .info-icon, así que
+     las "i" se veían como una letra suelta (auditoría 2026-09-21). */
+  .info-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 14px;
-    height: 14px;
+    width: 15px;
+    height: 15px;
     border-radius: 50%;
     border: 1px solid var(--text-muted);
     color: var(--text-muted);
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 700;
     font-style: italic;
     line-height: 1;
-    margin-left: 5px;
-    cursor: default;
+    cursor: help;
     user-select: none;
-    vertical-align: middle;
+    flex-shrink: 0;
   }
-  .info-badge:hover, .info-badge:focus-visible { border-color: var(--brand-orange-ink, var(--brand-orange)); color: var(--brand-orange-ink, var(--brand-orange)); outline: none; }
+  .info-icon:hover, .info-icon:focus-visible { border-color: var(--brand-orange-ink, var(--brand-orange)); color: var(--brand-orange-ink, var(--brand-orange)); outline: none; }
 
-  /* Section headers */
-  .viz-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin: 0 0 10px; }
-
-  /* Filter bar */
-  .viz-filterbar {
-    background: var(--surface-card);
-    border: 1px solid var(--border-hairline);
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 24px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: flex-end;
-  }
-  .viz-field { display: flex; flex-direction: column; gap: 4px; }
-  .viz-field label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
-  .viz-field input, .viz-field select {
+  /* Buscadores de cada pestaña -- tampoco tenían regla propia y quedaban
+     con el estilo por defecto del navegador. */
+  .viz-search {
+    display: block;
+    width: 100%;
+    max-width: 360px;
     font-family: inherit;
     font-size: 13px;
-    padding: 7px 9px;
+    padding: 8px 11px;
+    margin: 0 0 10px;
     border-radius: 7px;
     border: 1px solid var(--border-hairline);
-    background: var(--surface-1);
-    color: var(--text-primary);
-    min-width: 120px;
-  }
-  .viz-field.search { flex: 1 1 220px; min-width: 200px; }
-  .viz-field.search input { width: 100%; min-width: unset; }
-  .viz-field.dates { flex-direction: row; gap: 6px; align-items: flex-end; }
-  .viz-field.dates input { min-width: 128px; }
-  .viz-clearbtn {
-    font-size: 12px;
-    background: transparent;
-    border: 1px solid var(--border-hairline);
-    color: var(--text-secondary);
-    border-radius: 7px;
-    padding: 7px 12px;
-    cursor: pointer;
-  }
-  .viz-clearbtn:hover { background: var(--surface-1); }
-  .viz-resultcount { font-size: 12px; color: var(--text-muted); margin-left: auto; align-self: center; white-space: nowrap; }
-
-  /* Charts grid */
-  .viz-charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
-  @media (max-width: 760px) { .viz-charts { grid-template-columns: 1fr; } }
-  .viz-chartcard {
     background: var(--surface-card);
-    border: 1px solid var(--border-hairline);
-    border-radius: 10px;
-    padding: 16px;
+    color: var(--text-primary);
   }
-  .viz-chartcard h3 { font-size: 13px; font-weight: 700; margin: 0 0 12px; color: var(--text-primary); }
-  .viz-chartcard .empty { font-size: 12.5px; color: var(--text-muted); padding: 24px 0; text-align: center; }
-  .viz-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
-  .viz-legend .item { display: inline-flex; align-items: center; gap: 5px; }
-  .viz-legend .swatch { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .viz-search::placeholder { color: var(--text-muted); }
+  .viz-search:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+
+  /* Color de estado para texto suelto en tablas y en el panel de detalle
+     (desviación %, ahorro/sobrecosto). Las clases sem-* solo tienen regla
+     bajo .kpi-card/.kpi-value, así que en la tabla un +290 % se veía en
+     negro, igual que un -27 %. */
+  .tone-good { color: var(--status-good); font-weight: 600; }
+  .tone-warn { color: var(--status-warning); font-weight: 600; }
+  .tone-bad  { color: var(--status-bad); font-weight: 600; }
 
   .viz-tooltip {
     /* Fondo fijo en negro oficial, NO ligado al tema — bug encontrado en la
        Iteración 1 del loop de mejora: usaba una variable que en modo oscuro
        se resolvía casi blanca, dejando el texto blanco del tooltip
-       ilegible sobre su propio fondo. */
+       ilegible sobre su propio fondo. Posición calculada en JS en
+       coordenadas de viewport (position: fixed), ver showTooltip. */
     position: fixed;
+    left: 0;
+    top: 0;
     pointer-events: none;
     background: #000000;
     color: #fff;
@@ -353,17 +311,11 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.25);
   }
   .viz-tooltip.show { opacity: 1; }
-  .viz-tooltip .tt-title { font-weight: 700; margin-bottom: 2px; }
-  .viz-tooltip.info-mode { white-space: normal; max-width: 230px; line-height: 1.35; }
+  .viz-tooltip.info-mode { white-space: normal; max-width: 260px; line-height: 1.4; }
 
   svg text { font-family: inherit; }
-  .bar-rect { cursor: pointer; transition: opacity 0.1s; }
-  .bar-rect:hover { opacity: 0.82; }
-  .donut-seg { cursor: pointer; transition: opacity 0.1s; }
-  .donut-seg:hover { opacity: 0.82; }
   .donut-seg-hover { cursor: default; transition: opacity 0.12s; }
   .donut-seg-hover:hover { opacity: 0.78; }
-  .line-dot { cursor: pointer; }
 
   /* Table */
   .viz-tablewrap {
@@ -389,13 +341,13 @@
     color: var(--text-muted);
     padding: 10px 12px;
     border-bottom: 1px solid var(--gridline);
-    cursor: pointer;
-    user-select: none;
     white-space: nowrap;
   }
-  table.viz-table thead th:hover { color: var(--text-primary); }
+  /* Sin cursor de "clic" ni hover en los encabezados: estas tablas no se
+     ordenan (descope deliberado, ver CLAUDE.md) y la señal prometía algo
+     que no pasaba. */
   table.viz-table thead th[title] { cursor: help; text-decoration: underline dotted; text-decoration-color: var(--baseline); text-underline-offset: 3px; }
-  table.viz-table thead th .arrow { font-size: 9px; margin-left: 3px; opacity: 0.6; }
+  table.viz-table thead th.num { text-align: right; }
   table.viz-table tbody td {
     padding: 9px 12px;
     border-bottom: 1px solid var(--gridline);
@@ -408,8 +360,6 @@
   table.viz-table tbody tr.doc-row.is-expanded { background: var(--surface-1); box-shadow: inset 3px 0 0 var(--brand-orange); }
   table.viz-table tbody tr.doc-row.is-expanded td { font-weight: 600; }
   table.viz-table tbody td.num { text-align: right; }
-  .proj-tag { display: inline-flex; align-items: center; gap: 6px; }
-  .proj-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
   .status-badge {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
@@ -456,20 +406,6 @@
   table.viz-itemtable.tabla-proyectos-categoria th:nth-child(4) { width: 12%; }
   table.viz-itemtable.tabla-proyectos-categoria th:nth-child(5) { width: 14%; }
   .detail-subheading { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; margin: 14px 0 6px; }
-  .viz-empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
-  .viz-pagination {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 12px 16px; border-top: 1px solid var(--gridline);
-    font-size: 12px; color: var(--text-secondary); flex-wrap: wrap;
-  }
-  .viz-pagination button {
-    font-family: inherit; font-size: 12px; font-weight: 700;
-    background: var(--surface-1); border: 1px solid var(--border-hairline); color: var(--text-primary);
-    border-radius: 7px; padding: 6px 12px; cursor: pointer;
-  }
-  .viz-pagination button:hover:not(:disabled) { background: var(--gridline); }
-  .viz-pagination button:disabled { opacity: 0.4; cursor: default; }
-  .viz-pagination .pages { display: flex; gap: 6px; align-items: center; }
 
   .viz-footer { font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 8px; line-height: 1.6; }
   .viz-footer strong { color: var(--text-secondary); }
@@ -479,7 +415,8 @@
     background: none; border: none; padding: 10px 16px; font: inherit; cursor: pointer;
     color: var(--text-secondary); border-bottom: 2px solid transparent;
   }
-  .viz-tab-btn.active { color: var(--brand-orange); border-bottom-color: var(--brand-orange); font-weight: 700; }
+  .viz-tab-btn.active { color: var(--brand-orange-ink, var(--brand-orange)); border-bottom-color: var(--brand-orange); font-weight: 700; }
+  .viz-tab-btn:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
   .viz-tab-panel { display: none; }
   .viz-tab-panel.active { display: block; }
 
@@ -487,13 +424,20 @@
     background: var(--surface-card); border: 1px solid var(--brand-orange); border-radius: 8px;
     padding: 12px 16px; margin-bottom: 16px;
   }
-  .pendientes-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .pendientes-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .pendientes-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 3px; }
+  .pendientes-acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .pendientes-toggle-btn {
     background: var(--brand-orange); color: #000; border: none; border-radius: 6px;
-    padding: 6px 12px; font-size: 12px; cursor: pointer;
+    padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
   }
-  .pendientes-list { margin: 10px 0 0; padding-left: 20px; }
-  .pendientes-list a { color: var(--brand-orange); }
+  .pendientes-toggle-btn:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+  .pendientes-link { font-size: 12px; font-weight: 700; color: var(--brand-orange-ink, var(--brand-orange)); }
+  .pendientes-list { margin: 12px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--gridline); }
+  .pendientes-list li { padding: 8px 0; border-bottom: 1px solid var(--gridline); font-size: 13px; }
+  .pendientes-list li:last-child { border-bottom: none; }
+  .pendientes-list .venta { color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-left: 6px; }
+  .pendientes-list .faltan { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
   .kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
   .kpi-card {
@@ -502,6 +446,18 @@
   }
   .kpi-label { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
   .kpi-value { font-size: 24px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  /* Para valores que son una lista corta (conteo por Clasificación) -- a
+     24px ocupaban tres líneas y desbordaban la tarjeta. */
+  .kpi-value--compact { font-size: 14px; font-weight: 600; line-height: 1.5; }
+  .kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  /* Fase 1 (2026-09-21): un proyecto en curso muestra su margen ESTIMADO al
+     cierre, marcado para que no se lea como resultado final. */
+  .est-tag { font-size: 10.5px; font-weight: 700; color: var(--text-muted); margin-left: 4px; letter-spacing: 0.02em; }
+  .alerta-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--status-warning); white-space: nowrap; }
+  .alertas-panel { margin: 4px 0 12px; padding: 10px 12px; border-radius: 8px; background: rgba(201,133,0,0.10); border: 1px solid rgba(201,133,0,0.35); }
+  .alertas-panel ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; line-height: 1.5; }
+  .alertas-panel .detail-subheading { margin-top: 0; color: var(--status-warning); }
+  .pendientes-list .alerta-pend { display: block; font-size: 12px; color: var(--status-warning); margin-top: 2px; }
   /* Coloreado semántico: separado del acento de marca (naranjo), señala
      estado del dato en vez de identidad visual — ver skill artifact-design
      ("Semantic color... doesn't count as your accent"). */
@@ -518,9 +474,14 @@
 
   .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
   .bar-label { width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bar-track { flex: 1; background: var(--surface-1); border-radius: 4px; height: 14px; overflow: hidden; }
+  .bar-track { flex: 1; background: var(--surface-1); border-radius: 4px; height: 14px; overflow: hidden; position: relative; }
   .bar-fill { background: var(--brand-orange); height: 100%; }
-  .bar-value { width: 70px; text-align: right; }
+  .bar-value { width: 70px; text-align: right; font-variant-numeric: tabular-nums; }
+  /* Marcas de umbral sobre una escala fija 0-100 (gráfico de Nota): antes
+     la barra escalaba contra el máximo de la cartera y un 66 se veía casi
+     igual que un 93. */
+  .bar-tick { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--text-muted); opacity: 0.7; }
+  .chart-note { font-size: 11.5px; color: var(--text-muted); margin: 10px 0 0; line-height: 1.45; }
 
   .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
   .donut-legend-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 4px; }
@@ -528,6 +489,8 @@
 
   .fila-nota { font-size: 11px; color: var(--text-secondary); font-style: italic; }
 </style>
+</head>
+<body>
 
 <div class="viz-gate" id="pwGate">
   <form class="viz-gate-card" id="pwForm">
@@ -554,13 +517,16 @@
       <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
     </div>
     <nav class="viz-modnav">
-      <div class="viz-container viz-modnav-inner">
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/">Centro de Costos</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador Histórico</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/">Centro de Costos 🇵🇪</a>
-        <span class="viz-modnav-tab is-active">Análisis Financiero 🇵🇪</span>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/">Cotizador Histórico 🇵🇪</a>
+      <!-- La pestaña activa la marca el JS según data-nav-activo, que el
+           build reemplaza por la subruta del tablero (Chile o Perú usan
+           este mismo template). -->
+      <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="analisis-financiero-peru">
+        <a class="viz-modnav-tab" data-modulo="centro-de-costos" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/">Centro de Costos</a>
+        <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a>
+        <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador Histórico</a>
+        <a class="viz-modnav-tab" data-modulo="centro-de-costos-peru" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/">Centro de Costos 🇵🇪</a>
+        <a class="viz-modnav-tab" data-modulo="analisis-financiero-peru" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero-peru/">Análisis Financiero 🇵🇪</a>
+        <a class="viz-modnav-tab" data-modulo="cotizador-historico-peru" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/">Cotizador Histórico 🇵🇪</a>
       </div>
     </nav>
   </header>
@@ -568,62 +534,77 @@
   <div class="viz-container">
     <div class="pendientes-banner" id="pendientesBanner" style="display:none">
       <div class="pendientes-header">
-        <strong><span id="pendientesCount"></span> proyecto(s) pendiente(s) de completar en Análisis de Proyectos</strong>
-        <button id="pendientesToggle" class="pendientes-toggle-btn" type="button">Ver detalle</button>
+        <div>
+          <strong id="pendientesTitulo"></strong>
+          <div class="pendientes-sub" id="pendientesCobertura"></div>
+        </div>
+        <div class="pendientes-acciones">
+          <a id="pendientesLink" class="pendientes-link" target="_blank" rel="noopener" style="display:none">Abrir la planilla</a>
+          <button id="pendientesToggle" class="pendientes-toggle-btn" type="button" aria-expanded="false" aria-controls="pendientesList">Ver qué falta</button>
+        </div>
       </div>
       <ul id="pendientesList" class="pendientes-list" style="display:none"></ul>
     </div>
 
-    <nav class="viz-tabs">
-      <button class="viz-tab-btn active" data-tab="tabProyectos" type="button">Proyectos</button>
-      <button class="viz-tab-btn" data-tab="tabClientes" type="button">Clientes</button>
-      <button class="viz-tab-btn" data-tab="tabCategoria" type="button">Categoría</button>
+    <nav class="viz-tabs" role="tablist" aria-label="Vistas del análisis">
+      <button class="viz-tab-btn active" data-tab="tabProyectos" type="button" role="tab" aria-selected="true" aria-controls="tabProyectos">Proyectos</button>
+      <button class="viz-tab-btn" data-tab="tabClientes" type="button" role="tab" aria-selected="false" aria-controls="tabClientes">Clientes</button>
+      <button class="viz-tab-btn" data-tab="tabCategoria" type="button" role="tab" aria-selected="false" aria-controls="tabCategoria">Categoría</button>
     </nav>
 
-    <section id="tabProyectos" class="viz-tab-panel active">
+    <section id="tabProyectos" class="viz-tab-panel active" role="tabpanel">
       <div class="kpi-row">
         <div class="kpi-card" id="kpiCardNCompletos">
           <div class="kpi-label">
             Proyectos completos
-            <span class="info-icon" tabindex="0" data-info="Proyectos con los 8 campos manuales cargados en 'Análisis de Proyectos' (Estado, Fecha de inicio, Monto de Venta, 4 costos proyectados y Mano de Obra Real). Solo estos entran en los KPIs, gráficos y tablas de esta pestaña.">i</span>
+            <span class="info-icon" tabindex="0" data-info="Proyectos con todos sus datos manuales cargados en la planilla: % Avance, Monto de Venta, los 4 costos proyectados y Mano de Obra Real. Solo estos entran en los KPIs, gráficos y tablas.">i</span>
           </div>
           <div class="kpi-value" id="kpiNCompletos"></div>
         </div>
         <div class="kpi-card" id="kpiCardMargenTotal">
           <div class="kpi-label">
-            Margen Real total
-            <span class="info-icon" id="infoIconMargenTotal" tabindex="0" data-info="Suma de Margen Real (Monto de Venta − Total Real) de todos los proyectos completos — la utilidad efectivamente generada por la cartera, antes de impuestos.">i</span>
+            Margen al cierre
+            <span class="info-icon" id="infoIconMargenTotal" tabindex="0" data-info="Suma del margen de los proyectos completos: el real en los terminados y el estimado al cierre en los que siguen en curso (costo real + lo que falta a precio de presupuesto). Antes de impuestos.">i</span>
           </div>
           <div class="kpi-value" id="kpiMargenTotal"></div>
+          <div class="kpi-sub" id="kpiMargenSub"></div>
         </div>
         <div class="kpi-card" id="kpiCardNotaPromedio">
           <div class="kpi-label">
             Nota promedio
-            <span class="info-icon" tabindex="0" data-info="Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión. ≥75 verde (excelente/bueno), 55-74 ámbar (aprobado), <55 rojo (requiere atención).">i</span>
+            <span class="info-icon" id="infoNotaPromedio" tabindex="0" data-info="Resume rentabilidad y control de presupuesto en un solo número comparable entre proyectos, para priorizar dónde poner atención de gestión. Promedio simple de las Notas de los proyectos completos. Se colorea con los mismos cortes que la Evaluación: verde = Bueno o Excelente, ámbar = Aprobado, rojo = Requiere atención.">i</span>
           </div>
           <div class="kpi-value" id="kpiNotaPromedio"></div>
         </div>
         <div class="kpi-card" id="kpiCardRequiereAtencion">
           <div class="kpi-label">
             Requiere atención
-            <span class="info-icon" tabindex="0" data-info="Proyectos con Evaluación 'Requiere atención' (Nota < 55) — rentabilidad baja y/o descontrol presupuestario; candidatos a revisión prioritaria.">i</span>
+            <span class="info-icon" id="infoRequiereAtencion" tabindex="0" data-info="Proyectos con Evaluación 'Requiere atención' (Nota < 55) — rentabilidad baja y/o descontrol presupuestario; candidatos a revisión prioritaria.">i</span>
           </div>
           <div class="kpi-value" id="kpiRequiereAtencion"></div>
+        </div>
+        <div class="kpi-card" id="kpiCardAlertas">
+          <div class="kpi-label">
+            Con alertas
+            <span class="info-icon" id="infoAlertas" tabindex="0" data-info="">i</span>
+          </div>
+          <div class="kpi-value" id="kpiAlertas"></div>
         </div>
       </div>
       <div class="chart-row">
         <div class="chart-card"><h3>Nota del Proyecto</h3><div id="chartNotaProyectos"></div></div>
         <div class="chart-card"><h3>Distribución de Evaluación</h3><div id="chartEvaluacion"></div></div>
-        <div class="chart-card"><h3 title="Monto de Venta de cada proyecto sobre la suma de Monto de Venta de todos los proyectos con venta cargada — cuanto más concentrada la cartera en pocos proyectos, mayor el riesgo si uno de ellos cae.">Concentración de cartera (peso en ventas)</h3><div id="chartPesoCartera"></div></div>
+        <div class="chart-card"><h3 title="Monto de Venta de cada proyecto sobre la suma de Monto de Venta de todos los proyectos con venta cargada — cuanto más concentrada la cartera en pocos proyectos, mayor el riesgo si uno de ellos cae.">Concentración de cartera (peso en ventas)</h3><div id="chartPesoCartera"></div><p class="chart-note" id="notaPesoCartera"></p></div>
       </div>
-      <input type="text" id="buscarProyectos" class="viz-search" placeholder="Buscar proyecto o cliente…">
+      <input type="search" id="buscarProyectos" class="viz-search" placeholder="Buscar proyecto o cliente…" aria-label="Buscar proyecto o cliente">
       <div class="viz-tablewrap"><div class="viz-tablescroll">
       <table class="viz-table">
         <thead>
-          <tr><th>Proyecto</th><th>Cliente</th><th>Estado</th><th>Monto Venta</th>
-            <th title="Monto de Venta − Total Real: la utilidad efectivamente generada por el proyecto.">Margen Real</th>
-            <th title="Real / Proyectado − 1, sobre el total de costos. +15% o más = sobregasto relevante respecto al presupuesto original.">Desviación %</th>
-            <th title="0-100: 70% margen neto % (vs. objetivo 25%) + 30% control de desviación total. Resume rentabilidad y control de presupuesto en un número.">Nota</th>
+          <tr><th>Proyecto</th><th>Cliente</th><th title="Porcentaje de avance del proyecto, cargado a mano en la planilla. 100% = ejecución terminada; bajo 100% el Margen Real y la Desviación % todavía pueden moverse." class="num">% Avance</th><th class="num">Monto Venta</th>
+            <th class="num" title="Margen con que termina el proyecto: el real si está al 100 %; si sigue en curso, el estimado al cierre (marcado «est.»): costo real + lo que falta a precio de presupuesto.">Margen al cierre</th>
+            <th class="num" title="Margen al cierre / Monto de Venta. Es el componente de rentabilidad de la Nota (70 %, objetivo 25 %).">Margen %</th>
+            <th class="num" title="Costo al cierre / costo proyectado − 1. Positivo = sobrecosto; es el componente de control de la Nota (30 %).">Desv. al cierre</th>
+            <th class="num" id="thNota" title="">Nota</th>
             <th title="Traduce la Nota a una etiqueta rápida: Excelente / Bueno / Aprobado / Requiere atención.">Evaluación</th></tr>
         </thead>
         <tbody id="tablaProyectosBody"></tbody>
@@ -631,53 +612,63 @@
       </div></div>
     </section>
 
-    <section id="tabClientes" class="viz-tab-panel">
+    <section id="tabClientes" class="viz-tab-panel" role="tabpanel">
+      <!-- Fase 1 (2026-09-21): el CLTV se reemplazó por margen acumulado y
+           recompra -- su fórmula contaba dos veces la cantidad de compras. -->
       <div class="kpi-row">
         <div class="kpi-card">
           <div class="kpi-label">
-            Top cliente por CLTV
-            <span class="info-icon" tabindex="0" data-info="Cliente con el mayor Customer Lifetime Value estimado (ver CLTV promedio para la fórmula) — el que más valor ha generado y probablemente seguirá generando para QUEMPIN.">i</span>
+            Clientes
+            <span class="info-icon" tabindex="0" data-info="Clientes con al menos un proyecto completo. El cliente es la columna Cliente de la planilla: se completa sola a partir del nombre del proyecto y se puede corregir a mano (el sistema respeta lo que escribas).">i</span>
           </div>
-          <div class="kpi-value" id="kpiTopCliente"></div>
+          <div class="kpi-value" id="kpiNClientes"></div>
+        </div>
+        <div class="kpi-card" id="kpiCardRecompra">
+          <div class="kpi-label">
+            Tasa de recompra
+            <span class="info-icon" tabindex="0" data-info="Clientes que ya compraron 2 o más proyectos, sobre el total de clientes. La señal más directa de un cliente que vuelve.">i</span>
+          </div>
+          <div class="kpi-value" id="kpiRecompra"></div>
+          <div class="kpi-sub" id="kpiRecompraSub"></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">
-            CLTV promedio
-            <span class="info-icon" tabindex="0" data-info="Estima el valor total que el cliente representa para QUEMPIN a lo largo de su relación completa (AOV × Frecuencia de compra × Vida del cliente × Margen de utilidad %) — la métrica central para decidir dónde invertir esfuerzo comercial.">i</span>
+            Mayor margen acumulado
+            <span class="info-icon" tabindex="0" data-info="El cliente que más margen le ha dejado a QUEMPIN, sumando sus proyectos completos (en los que siguen en curso cuenta el margen estimado al cierre).">i</span>
           </div>
-          <div class="kpi-value" id="kpiCltvPromedio"></div>
+          <div class="kpi-value kpi-value--compact" id="kpiTopCliente"></div>
+          <div class="kpi-sub" id="kpiTopClienteSub"></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">
             Clasificación
-            <span class="info-icon" tabindex="0" data-info="Conteo de clientes por tier de CLTV, relativo al percentil de la cartera actual (no a un corte fijo en pesos): Estratégicos (top 33%), En desarrollo, De oportunidad (bottom 33%).">i</span>
+            <span class="info-icon" tabindex="0" data-info="Clientes por tier de margen acumulado, relativo a la cartera actual (no a un corte fijo en pesos): Estratégicos (top 33 %), Potenciales (tercio del medio), De oportunidad (bottom 33 %).">i</span>
           </div>
           <div class="kpi-value" id="kpiClasificaciones"></div>
         </div>
       </div>
       <div class="chart-row">
-        <div class="chart-card"><h3>Top 8 clientes por CLTV</h3><div id="chartTopClientes"></div></div>
-        <div class="chart-card"><h3>Distribución de Clasificación</h3><div id="chartClasificacion"></div></div>
+        <div class="chart-card"><h3>Margen acumulado por cliente</h3><div id="chartTopClientes"></div></div>
+        <div class="chart-card"><h3>Distribución de Clasificación</h3><div id="chartClasificacion"></div><p class="chart-note" id="notaClasificacion"></p></div>
       </div>
-      <input type="text" id="buscarClientes" class="viz-search" placeholder="Buscar cliente…">
+      <input type="search" id="buscarClientes" class="viz-search" placeholder="Buscar cliente…" aria-label="Buscar cliente">
       <div class="viz-tablewrap"><div class="viz-tablescroll">
       <table class="viz-table">
         <thead>
           <tr><th>Cliente</th>
-            <th title="Tamaño promedio de una venta a este cliente (Monto de Venta promedio de sus proyectos).">AOV</th>
-            <th title="Cuántas veces ha comprado el cliente en total. Vida=1 → una sola compra hasta ahora.">Vida</th>
-            <th title="Cuánto tiempo lleva comprando el cliente, desde su proyecto más antiguo hasta el más reciente.">Meses activo</th>
-            <th title="Qué tan seguido vuelve a comprar, anualizado. Frecuencia=2 → compra en promedio 2 veces al año.">Frecuencia</th>
-            <th title="Qué tan rentable es la relación completa con este cliente, ponderado por tamaño de proyecto.">Margen %</th>
-            <th title="Customer Lifetime Value: AOV × Frecuencia × Vida × Margen % — valor total estimado que el cliente representa para QUEMPIN.">CLTV</th>
-            <th title="Tier de CLTV relativo al percentil de la cartera actual: Estratégicos (top 33%) / Potenciales / De oportunidad (bottom 33%).">Clasificación</th></tr>
+            <th class="num" title="Proyectos completos del cliente.">Proyectos</th>
+            <th class="num" title="Suma del Monto de Venta de sus proyectos completos.">Venta acumulada</th>
+            <th class="num" title="Suma del margen al cierre de sus proyectos completos (estimado en los que siguen en curso).">Margen acumulado</th>
+            <th class="num" title="Margen acumulado / Venta acumulada.">Margen %</th>
+            <th title="Sí = ya compró 2 o más proyectos.">Recurrente</th>
+            <th title="Tier de margen acumulado relativo a la cartera actual: Estratégicos (top 33 %) / Potenciales / De oportunidad (bottom 33 %).">Clasificación</th></tr>
         </thead>
         <tbody id="tablaClientesBody"></tbody>
       </table>
       </div></div>
     </section>
 
-    <section id="tabCategoria" class="viz-tab-panel">
+    <section id="tabCategoria" class="viz-tab-panel" role="tabpanel">
       <div class="kpi-row">
         <div class="kpi-card">
           <div class="kpi-label">
@@ -688,23 +679,25 @@
         </div>
         <div class="kpi-card">
           <div class="kpi-label">
-            Categoría líder por Margen Real
-            <span class="info-icon" tabindex="0" data-info="Categoría cuya suma de Margen Real de sus proyectos completos es la más alta — dónde se concentra hoy la rentabilidad real de la cartera.">i</span>
+            Categoría líder por margen
+            <span class="info-icon" tabindex="0" data-info="Categoría cuya suma de margen al cierre (real en los terminados, estimado en los en curso) es la más alta — dónde se concentra hoy la rentabilidad de la cartera.">i</span>
           </div>
           <div class="kpi-value" id="kpiCategoriaLider"></div>
         </div>
       </div>
       <div class="chart-row">
-        <div class="chart-card"><h3>Margen Real por Categoría</h3><div id="chartMargenCategoria"></div></div>
+        <div class="chart-card"><h3>Margen al cierre por Categoría</h3><div id="chartMargenCategoria"></div></div>
         <div class="chart-card"><h3>Distribución de Proyectos</h3><div id="chartDistribucionCategoria"></div></div>
       </div>
-      <input type="text" id="buscarCategorias" class="viz-search" placeholder="Buscar categoría…">
+      <input type="search" id="buscarCategorias" class="viz-search" placeholder="Buscar categoría…" aria-label="Buscar categoría">
       <div class="viz-tablewrap"><div class="viz-tablescroll">
       <table class="viz-table">
         <thead>
-          <tr><th>Categoría</th><th>N° Proyectos</th>
-            <th title="Suma de Margen Real de los proyectos completos de esta categoría.">Margen Real Total</th>
-            <th title="Promedio de la Nota del Proyecto (0-100) de los proyectos completos de esta categoría.">Nota Promedio</th></tr>
+          <tr><th>Categoría</th><th class="num">N° Proyectos</th>
+            <th class="num" title="Suma del Monto de Venta de los proyectos completos de esta categoría.">Venta</th>
+            <th class="num" title="Suma del margen al cierre de los proyectos completos de esta categoría.">Margen al cierre</th>
+            <th class="num" title="Margen al cierre / Venta de la categoría (ponderado por tamaño, no un promedio de porcentajes).">Margen %</th>
+            <th class="num" title="Promedio de la Nota del Proyecto (0-100) de los proyectos completos de esta categoría.">Nota Promedio</th></tr>
         </thead>
         <tbody id="tablaCategoriasBody"></tbody>
       </table>
@@ -712,9 +705,8 @@
     </section>
 
     <p class="viz-footer">
-      <strong>Snapshot de prueba</strong> — datos reales de <strong>Análisis de Proyectos.xlsx</strong>. Última actualización de los datos:
-      <span id="vizUltimaFooter">—</span> · snapshot generado el <span id="vizGeneratedFooter">—</span>.
-      Publicado en GitHub Pages. Proveedor muestra tag corto; razón social completa disponible al expandir cada fila.
+      Datos de la planilla <strong>Análisis de Proyectos</strong> (costos reales desde Centro de Costos), generados el
+      <span id="vizGeneratedFooter">—</span>. Publicado en GitHub Pages.
       La contraseña de acceso es una barrera simple del lado del cliente, no seguridad real — no compartas este link fuera del equipo.
     </p>
   </div>
@@ -722,7 +714,7 @@
   <div class="viz-tooltip" id="vizTooltip"></div>
 </div>
 
-<script id="af-data-b64" type="text/plain">eyJnZW5lcmFkbyI6ICIyOC0wOC0yMDI2IDEwOjUxIiwgImtwaXNfcHJveWVjdG9zIjogeyJuX2NvbXBsZXRvcyI6IDAsICJtYXJnZW5fcmVhbF90b3RhbCI6IDAsICJtb250b192ZW50YV90b3RhbCI6IDAsICJ0b3RhbF9yZWFsX3RvdGFsIjogMCwgIm5vdGFfcHJvbWVkaW8iOiAwLCAibl9yZXF1aWVyZV9hdGVuY2lvbiI6IDB9LCAicHJveWVjdG9zIjogW10sICJjbGllbnRlcyI6IFtdLCAiY2F0ZWdvcmlhcyI6IFtdLCAicGVuZGllbnRlcyI6IFtdLCAicmVwb3J0ZXNfcGRmIjoge319</script>
+<script id="af-data-b64" type="text/plain">eyJnZW5lcmFkbyI6ICIyMi0wOS0yMDI2IDEzOjA4IiwgInBhaXMiOiAiUEUiLCAidGl0dWxvIjogIkFuw6FsaXNpcyBGaW5hbmNpZXJvIFBlcsO6IiwgIm1vbmVkYSI6IHsic2ltYm9sbyI6ICJTLyIsICJsb2NhbGUiOiAiZXMtUEUifSwgInVtYnJhbGVzIjogeyJleGNlbGVudGUiOiA4NSwgImJ1ZW5vIjogNzAsICJhcHJvYmFkbyI6IDU1LCAic29icmVjb3N0b19ub3RhX2Nlcm8iOiAwLjMsICJhbGVydGFfc29icmVjb3N0byI6IDAuMSwgImFsZXJ0YV9jb3N0b19pbmNvbXBsZXRvIjogMC44fSwgImNvYmVydHVyYSI6IHsibl9wcm95ZWN0b3MiOiAxOSwgIm5fY29tcGxldG9zIjogMCwgInZlbnRhX2NhcmdhZGFfdG90YWwiOiAwLCAidmVudGFfY29tcGxldG9zIjogMH0sICJrcGlzX3Byb3llY3RvcyI6IHsibl9jb21wbGV0b3MiOiAwLCAibW9udG9fdmVudGFfdG90YWwiOiAwLCAiY29zdG9fZXN0aW1hZG9fdG90YWwiOiAwLCAibWFyZ2VuX2VzdGltYWRvX3RvdGFsIjogMCwgIm1hcmdlbl9wb25kZXJhZG9fcGN0IjogbnVsbCwgIm5fZW5fY3Vyc28iOiAwLCAibm90YV9wcm9tZWRpbyI6IG51bGwsICJuX3JlcXVpZXJlX2F0ZW5jaW9uIjogMCwgIm5fY29uX2FsZXJ0YXMiOiAwfSwgImNsaWVudGVzX3Jlc3VtZW4iOiB7Im5fY2xpZW50ZXMiOiAwLCAibl9yZWN1cnJlbnRlcyI6IDAsICJ0YXNhX3JlY29tcHJhIjogbnVsbH0sICJwcm95ZWN0b3MiOiBbXSwgImNsaWVudGVzIjogW10sICJjYXRlZ29yaWFzIjogW10sICJwZW5kaWVudGVzIjogW3sidGFnIjogIkJXSUwiLCAibm9tYnJlIjogIkJvbWJhIFdpbG8gQ29uY2hhbMOtIiwgIm1lbnNhamUiOiAiQm9tYmEgV2lsbyBDb25jaGFsw60g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDQ0hJIiwgIm5vbWJyZSI6ICJDRVNGQU0gQ2hpbGzDoW4iLCAibWVuc2FqZSI6ICJDRVNGQU0gQ2hpbGzDoW4g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDUE1PIiwgIm5vbWJyZSI6ICJDT05BRiBQdWVydG8gTW9udHQiLCAibWVuc2FqZSI6ICJDT05BRiBQdWVydG8gTW9udHQg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDVkFMIiwgIm5vbWJyZSI6ICJDYWxkZXJhIFZhbGRpdmlhIiwgIm1lbnNhamUiOiAiQ2FsZGVyYSBWYWxkaXZpYSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkNBTlQiLCAibm9tYnJlIjogIkNhbGRlcmFzIEFudG9mYWdhc3RhIiwgIm1lbnNhamUiOiAiQ2FsZGVyYXMgQW50b2ZhZ2FzdGEg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDQ09OIiwgIm5vbWJyZSI6ICJDZXNmYW0gQ29uc3RpdHVjacOzbiIsICJtZW5zYWplIjogIkNlc2ZhbSBDb25zdGl0dWNpw7NuIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiQ0ZMSSIsICJub21icmUiOiAiQ2VzZmFtIExpbWFjaGUiLCAibWVuc2FqZSI6ICJDZXNmYW0gTGltYWNoZSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkNPTUMiLCAibm9tYnJlIjogIkNvbWlzYXLDrWEgQ29uY2hhbMOtIiwgIm1lbnNhamUiOiAiQ29taXNhcsOtYSBDb25jaGFsw60g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDUkVNIiwgIm5vbWJyZSI6ICJDcmVtYWNpw7NuIENvbmNlcGNpw7NuIiwgIm1lbnNhamUiOiAiQ3JlbWFjacOzbiBDb25jZXBjacOzbiDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkVTRk8iLCAibm9tYnJlIjogIkVTRk9DQVIiLCAibWVuc2FqZSI6ICJFU0ZPQ0FSIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiRkNIMSIsICJub21icmUiOiAiRkFDSDEiLCAibWVuc2FqZSI6ICJGQUNIMSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkZDSDIiLCAibm9tYnJlIjogIkZBQ0gyIiwgIm1lbnNhamUiOiAiRkFDSDIg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJGUVlRIiwgIm5vbWJyZSI6ICJGaXNjYWzDrWEgUXVpbHB1w6kgeSBRdWludGVybyIsICJtZW5zYWplIjogIkZpc2NhbMOtYSBRdWlscHXDqSB5IFF1aW50ZXJvIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiSlVOMiIsICJub21icmUiOiAiSnVuamkgVjIiLCAibWVuc2FqZSI6ICJKdW5qaSBWMiDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkpVTkoiLCAibm9tYnJlIjogIkp1bmppJ3MgVmFscGFyYWlzbyIsICJtZW5zYWplIjogIkp1bmppJ3MgVmFscGFyYWlzbyDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkxJTUEiLCAibm9tYnJlIjogIkxpbWFjaGUgRXN0YW5xdWUgNjAwTCIsICJtZW5zYWplIjogIkxpbWFjaGUgRXN0YW5xdWUgNjAwTCDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIk1MRVIiLCAibm9tYnJlIjogIk1pY3JvdHVyYmluYSBMRVIiLCAibWVuc2FqZSI6ICJNaWNyb3R1cmJpbmEgTEVSIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiSFBJTiIsICJub21icmUiOiAiUHV0YWVuZG8gSG9zcGl0YWwgUGluZWwiLCAibWVuc2FqZSI6ICJQdXRhZW5kbyBIb3NwaXRhbCBQaW5lbCDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIlVNQUciLCAibm9tYnJlIjogIlVNQUciLCAibWVuc2FqZSI6ICJVTUFHIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfV0sICJyZXBvcnRlc19wZGYiOiB7fX0=</script>
 <script>
 (function () {
   // ---------- theme persistence ----------
@@ -736,6 +728,19 @@
     }
   } catch (e) {}
 
+  // ---------- pestaña activa de la navegación entre tableros ----------
+  (function () {
+    var nav = document.getElementById('modNav');
+    var activo = nav ? nav.getAttribute('data-nav-activo') : null;
+    if (!nav) return;
+    nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
+      if (a.getAttribute('data-modulo') !== activo) return;
+      a.classList.add('is-active');
+      a.setAttribute('aria-current', 'page');
+      a.removeAttribute('href');
+    });
+  })();
+
   // ---------- password gate ----------
   // Client-side only — deters casual access via a shared link, not real security
   // (the encoded data ships in the page either way). See footer note.
@@ -743,7 +748,7 @@
   function normalizePassword(s) {
     return String(s == null ? '' : s)
       .toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents/tildes
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents/tildes
       .trim();
   }
   function b64ToUtf8(b64) {
@@ -820,7 +825,20 @@
       t = setTimeout(function () { fn.apply(null, args); }, ms);
     };
   }
-  function formatoCLP(n) { return 'S/' + Math.round(n).toLocaleString('es-PE'); }
+  // Formato numérico chileno en todo el tablero (auditoría 2026-09-21):
+  // antes los montos usaban es-CL ("$14.563.245") pero los porcentajes
+  // toFixed ("39.6%"), mezclando el punto de miles con el punto decimal.
+  var MONEDA = DATA.moneda || { simbolo: '$', locale: 'es-CL' };
+  // El signo va antes del símbolo ("-$6.147.756"), no después ("$-6.147.756"),
+  // que se lee mal en una columna de montos. Vacío (null) -> "—".
+  function formatoCLP(n) {
+    if (n == null) return '—';
+    var entero = Math.round(n);
+    return (entero < 0 ? '-' : '') + MONEDA.simbolo + Math.abs(entero).toLocaleString(MONEDA.locale);
+  }
+  function formatoNum(n, decimales) {
+    return Number(n).toLocaleString(MONEDA.locale, { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
+  }
   var NIVEL_EVALUACION = { 'Excelente': 'ok', 'Bueno': 'ok', 'Aprobado': 'warn', 'Requiere atención': 'bad' };
   // Para el donut de Distribución de Evaluación el color ES el canal de lectura
   // (a diferencia de los badges, que siempre llevan el texto al lado), así que
@@ -830,15 +848,41 @@
   function badgePill(texto, nivel) {
     return '<span class="status-badge ' + (nivel || 'warn') + '">' + esc(texto) + '</span>';
   }
-  function formatoPct(n) { return (n * 100).toFixed(1) + '%'; }
+  function formatoPct(n) { return n == null ? '—' : formatoNum(n * 100, 1) + '%'; }
+  // Desviación con signo explícito y color. El color iba en clases sem-*,
+  // que solo tienen regla bajo .kpi-card: en las tablas no se veía.
   function formatoPctDesviacion(n) {
-    var nivel = n <= 0 ? 'sem-good' : (n <= 0.15 ? 'sem-warn' : 'sem-bad');
-    return '<span class="' + nivel + '">' + formatoPct(n) + '</span>';
+    // Vacío = sin presupuesto contra qué medir (nunca un 0 % inventado).
+    if (n == null) return '<span title="Sin presupuesto en esta categoría: no hay contra qué medir la desviación.">—</span>';
+    var nivel = n <= 0 ? 'tone-good' : (n <= 0.15 ? 'tone-warn' : 'tone-bad');
+    return '<span class="' + nivel + '">' + (n > 0 ? '+' : '') + formatoPct(n) + '</span>';
   }
   // Ahorro/Sobrecosto: signo opuesto a la desviacion -- positivo = ahorro (bueno).
   function formatoMontoSigno(n) {
-    return '<span class="' + (n >= 0 ? 'sem-good' : 'sem-bad') + '">' + formatoCLP(n) + '</span>';
+    if (n == null) return '—';
+    return '<span class="' + (n >= 0 ? 'tone-good' : 'tone-bad') + '">' + formatoCLP(n) + '</span>';
   }
+  // Cortes de la Evaluación, desde analisis_financiero.py vía el snapshot
+  // (nunca copiados acá). La Nota promedio se colorea con los mismos cortes
+  // que los badges: antes se pintaba verde recién desde 75, aunque "Bueno"
+  // empieza en 70.
+  var UMBRALES = DATA.umbrales;
+  function semanticaNota(nota) {
+    if (nota == null) return null;
+    return nota >= UMBRALES.bueno ? 'sem-good' : (nota >= UMBRALES.aprobado ? 'sem-warn' : 'sem-bad');
+  }
+  var TEXTO_NOTA = 'Nota del Proyecto (0-100): 70 % margen al cierre (sube hasta 70 puntos en el objetivo de 25 % y sigue subiendo más despacio) + 30 % control de presupuesto (100 puntos en o bajo presupuesto, 0 con +' +
+    formatoNum(UMBRALES.sobrecosto_nota_cero * 100, 0) + ' % de sobrecosto). En un proyecto en curso se usa el estimado al cierre.';
+  document.getElementById('infoNotaPromedio').setAttribute('data-info', 'Promedio de la Nota de los proyectos completos. ' + TEXTO_NOTA +
+    ' Verde desde ' + UMBRALES.bueno + ', ámbar desde ' + UMBRALES.aprobado + ', rojo bajo ' + UMBRALES.aprobado + '.');
+  document.getElementById('thNota').setAttribute('title', TEXTO_NOTA);
+  document.getElementById('infoAlertas').setAttribute('data-info',
+    'Proyectos con alguna señal a revisar: sobrecosto (estimado) al cierre de más de ' + formatoNum(UMBRALES.alerta_sobrecosto * 100, 0) +
+    ' %, terminado con menos del ' + formatoNum(UMBRALES.alerta_costo_incompleto * 100, 0) +
+    ' % del presupuesto gastado (posibles costos sin registrar), fechas que no calzan con el % de avance, o gasto en una categoría sin presupuesto. El detalle está en cada fila (⚠).');
+  document.getElementById('infoRequiereAtencion').setAttribute('data-info',
+    "Proyectos con Evaluación 'Requiere atención' (Nota < " + UMBRALES.aprobado +
+    ') — rentabilidad baja y/o descontrol presupuestario; candidatos a revisión prioritaria.');
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -846,58 +890,113 @@
   }
 
   // Este módulo no distingue "última actualización de datos" de "snapshot
-  // generado" (a diferencia de Centro de Costos) — DATA.generado alimenta
+  // generado" (a diferencia de Centro de Costos): la planilla la reescribe
+  // la misma corrida que genera el tablero, así que DATA.generado vale para
   // ambos.
   document.getElementById('vizGenerated').textContent = 'Datos actualizados al ' + DATA.generado;
-  document.getElementById('vizUltimaFooter').textContent = DATA.generado;
   document.getElementById('vizGeneratedFooter').textContent = DATA.generado;
 
   // ---------- tooltip ----------
+  // El tooltip es position:fixed, así que se ubica en coordenadas de
+  // viewport: antes se le sumaba scrollY y, apenas se bajaba en la página,
+  // aparecía corrido lejos de la "i". Se centra sobre el elemento, no se
+  // sale de la pantalla y cae debajo si no cabe arriba.
   function showTooltip(el, text) {
     tooltip.textContent = text;
     tooltip.classList.add('show', 'info-mode');
     var r = el.getBoundingClientRect();
-    tooltip.style.left = (r.left + r.width / 2) + 'px';
-    tooltip.style.top = (r.top - 8 + window.scrollY) + 'px';
+    var ancho = tooltip.offsetWidth, alto = tooltip.offsetHeight, margen = 8;
+    var left = Math.min(Math.max(margen, r.left + r.width / 2 - ancho / 2), window.innerWidth - ancho - margen);
+    var top = r.top - alto - margen;
+    if (top < margen) top = r.bottom + margen;
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
   }
   function hideTooltip() { tooltip.classList.remove('show'); }
-  document.querySelectorAll('.info-icon:not(#infoIconMargenTotal)').forEach(function (el) {
-    el.addEventListener('mouseenter', function () { showTooltip(el, el.getAttribute('data-info')); });
+  // Mouse, toque y teclado -- antes llegar a una "i" con Tab no mostraba nada.
+  function conectarTooltip(el, textoFn) {
+    el.addEventListener('mouseenter', function () { showTooltip(el, textoFn()); });
     el.addEventListener('mouseleave', hideTooltip);
+    el.addEventListener('focus', function () { showTooltip(el, textoFn()); });
+    el.addEventListener('blur', hideTooltip);
     el.addEventListener('click', function () {
-      if (tooltip.classList.contains('show')) hideTooltip(); else showTooltip(el, el.getAttribute('data-info'));
+      if (tooltip.classList.contains('show')) hideTooltip(); else showTooltip(el, textoFn());
     });
+  }
+  document.querySelectorAll('.info-icon:not(#infoIconMargenTotal)').forEach(function (el) {
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', el.getAttribute('data-info'));
+    conectarTooltip(el, function () { return el.getAttribute('data-info'); });
   });
+  document.addEventListener('keydown', function (evt) { if (evt.key === 'Escape') hideTooltip(); });
+  window.addEventListener('scroll', hideTooltip, { passive: true });
 
   // ---------- tabs ----------
   var tabButtons = document.querySelectorAll('.viz-tab-btn');
   var tabPanels = document.querySelectorAll('.viz-tab-panel');
   tabButtons.forEach(function (btn) {
     btn.addEventListener('click', function () {
-      tabButtons.forEach(function (b) { b.classList.remove('active'); });
+      hideTooltip();
+      tabButtons.forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
       tabPanels.forEach(function (p) { p.classList.remove('active'); });
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
       document.getElementById(btn.getAttribute('data-tab')).classList.add('active');
     });
   });
 
+  // Las tablas se re-dibujan enteras al expandir una fila: sin esto, quien
+  // navega con teclado perdía el foco en cada Enter.
+  function enfocarFila(tbody, atributo, valor) {
+    var filas = tbody.querySelectorAll('tr.doc-row');
+    for (var i = 0; i < filas.length; i++) {
+      if (filas[i].getAttribute(atributo) === valor) { filas[i].focus(); return; }
+    }
+  }
+  function esTeclaDeActivar(evt) {
+    return (evt.key === 'Enter' || evt.key === ' ') && evt.target.matches && evt.target.matches('tr.doc-row');
+  }
+
   // ---------- banner de pendientes ----------
+  // Antes eran N mensajes idénticos con el mismo link. Ahora dice cuánta
+  // venta queda fuera del análisis y qué le falta a cada proyecto, en orden
+  // de venta (orden y campos faltantes se calculan en build_visualizador.py).
   (function renderPendientes() {
     var banner = document.getElementById('pendientesBanner');
-    var count = document.getElementById('pendientesCount');
     var list = document.getElementById('pendientesList');
     if (!PENDIENTES.length) { banner.style.display = 'none'; return; }
     banner.style.display = '';
-    count.textContent = PENDIENTES.length;
+    var cob = DATA.cobertura;
+    var ventaFuera = cob.venta_cargada_total - cob.venta_completos;
+    var n = PENDIENTES.length;
+    document.getElementById('pendientesTitulo').textContent =
+      n + (n === 1 ? ' proyecto queda' : ' proyectos quedan') + ' fuera del análisis' +
+      (ventaFuera > 0 ? ' — ' + formatoCLP(ventaFuera) + ' de venta cargada sin KPIs' : '');
+    document.getElementById('pendientesCobertura').textContent =
+      'El análisis cubre ' + cob.n_completos + ' de ' + cob.n_proyectos + ' proyectos' +
+      (cob.venta_cargada_total > 0
+        ? ' (' + formatoPct(cob.venta_completos / cob.venta_cargada_total) + ' de la venta cargada)'
+        : '') +
+      '. Un proyecto entra cuando tiene cargados % Avance, Monto de Venta, los 4 costos proyectados y la Mano de Obra Real.';
+    var link = PENDIENTES[0].link;
+    if (link) {
+      var enlace = document.getElementById('pendientesLink');
+      enlace.href = link;
+      enlace.style.display = '';
+    }
     list.innerHTML = PENDIENTES.map(function (p) {
-      return '<li>' + esc(p.mensaje) + ' — <a href="' + p.link + '" target="_blank" rel="noopener">Abrir Análisis de Proyectos</a></li>';
+      var venta = p.monto_venta != null ? 'venta ' + formatoCLP(p.monto_venta) : 'sin venta cargada';
+      return '<li><strong>' + esc(p.nombre) + '</strong><span class="venta">' + venta + '</span>' +
+        '<span class="faltan">Falta: ' + esc(p.campos_faltantes.join(', ')) + '</span>' +
+        (p.alertas && p.alertas.length ? '<span class="alerta-pend">⚠ ' + esc(p.alertas.join(' ')) + '</span>' : '') + '</li>';
     }).join('');
   })();
   document.getElementById('pendientesToggle').addEventListener('click', function () {
     var list = document.getElementById('pendientesList');
     var open = list.style.display !== 'none';
     list.style.display = open ? 'none' : '';
-    this.textContent = open ? 'Ver detalle' : 'Ocultar detalle';
+    this.textContent = open ? 'Ver qué falta' : 'Ocultar';
+    this.setAttribute('aria-expanded', open ? 'false' : 'true');
   });
 
   // ---------- gráficos SVG genéricos (barras + donut) ----------
@@ -915,6 +1014,28 @@
     el.innerHTML = rows || '<p>Sin datos.</p>';
   }
 
+  // Nota sobre escala fija 0-100 con los cortes de la Evaluación marcados y
+  // cada barra del color de su Evaluación. Antes escalaba contra la Nota más
+  // alta de la cartera (un 66 llenaba el 71 % de la barra) y todas eran
+  // naranjas: un 93 y un 66 se veían casi iguales.
+  function renderBarChartNota(containerId, proyectos) {
+    var el = document.getElementById(containerId);
+    if (!proyectos.length) { el.innerHTML = '<p>Sin datos.</p>'; return; }
+    var ticks = [UMBRALES.aprobado, UMBRALES.bueno, UMBRALES.excelente].map(function (corte) {
+      return '<span class="bar-tick" style="left:' + corte + '%"></span>';
+    }).join('');
+    var filas = proyectos.map(function (p) {
+      var color = COLOR_SEMANTICO[NIVEL_EVALUACION_DONUT[p.evaluacion]];
+      var ancho = Math.max(0, Math.min(100, p.nota));
+      return '<div class="bar-row" title="' + esc(p.nombre) + ': ' + p.nota + ' (' + esc(p.evaluacion) + ')">' +
+        '<div class="bar-label">' + esc(p.nombre) + '</div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + ancho + '%;background:' + color + '"></div>' + ticks + '</div>' +
+        '<div class="bar-value">' + p.nota + '</div></div>';
+    }).join('');
+    el.innerHTML = filas + '<p class="chart-note">Escala 0–100. Líneas: ' + UMBRALES.aprobado + ' Aprobado · ' +
+      UMBRALES.bueno + ' Bueno · ' + UMBRALES.excelente + ' Excelente.</p>';
+  }
+
   var COLOR_SEMANTICO = { 'ok': 'var(--status-good)', 'ok2': 'var(--status-good-2)', 'warn': 'var(--status-warning)', 'bad': 'var(--status-bad)' };
   function renderDonutChart(containerId, items, labelKey, valueKey, nivelMap) {
     var el = document.getElementById(containerId);
@@ -929,7 +1050,7 @@
     var segs = items.map(function (i, idx) {
       var frac = total ? i[valueKey] / total : 0;
       var dash = frac * circ;
-      var titulo = esc(i[labelKey]) + ': ' + i[valueKey] + ' (' + (frac * 100).toFixed(1) + '%)';
+      var titulo = esc(i[labelKey]) + ': ' + i[valueKey] + ' (' + formatoNum(frac * 100, 1) + '%)';
       var seg = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' +
         colorPara(i, idx) + '" stroke-width="24" stroke-dasharray="' + dash + ' ' + (circ - dash) +
         '" stroke-dashoffset="' + (-offset) + '" class="donut-seg-hover"><title>' + titulo + '</title></circle>';
@@ -939,7 +1060,7 @@
     var legend = items.map(function (i, idx) {
       var frac = total ? i[valueKey] / total : 0;
       return '<div class="donut-legend-row"><span class="donut-swatch" style="background:' +
-        colorPara(i, idx) + '"></span>' + esc(i[labelKey]) + ' (' + i[valueKey] + ' · ' + (frac * 100).toFixed(0) + '%)</div>';
+        colorPara(i, idx) + '"></span>' + esc(i[labelKey]) + ' (' + i[valueKey] + ' · ' + formatoNum(frac * 100, 0) + '%)</div>';
     }).join('');
     el.innerHTML = '<div class="donut-wrap"><svg viewBox="0 0 ' + size + ' ' + size +
       '" width="160" height="160">' + segs + '</svg><div class="donut-legend">' + legend + '</div></div>';
@@ -988,33 +1109,43 @@
   }
 
   document.getElementById('kpiNCompletos').textContent = KPIS.n_completos;
-  document.getElementById('kpiMargenTotal').textContent = formatoCLP(KPIS.margen_real_total);
-  marcarSemantica('kpiMargenTotal', 'kpiCardMargenTotal', KPIS.margen_real_total < 0 ? 'sem-bad' : 'sem-good');
+  document.getElementById('kpiMargenTotal').textContent = formatoCLP(KPIS.margen_estimado_total);
+  marcarSemantica('kpiMargenTotal', 'kpiCardMargenTotal', KPIS.margen_estimado_total < 0 ? 'sem-bad' : 'sem-good');
+  document.getElementById('kpiMargenSub').textContent =
+    (KPIS.margen_ponderado_pct != null ? formatoPct(KPIS.margen_ponderado_pct) + ' de la venta' : '') +
+    (KPIS.n_en_curso ? ' · ' + KPIS.n_en_curso + (KPIS.n_en_curso === 1 ? ' proyecto en curso, estimado' : ' en curso, estimados') : '');
   (function () {
     var cardMargenTotal = document.getElementById('kpiCardMargenTotal');
     var textoDesglose = document.getElementById('infoIconMargenTotal').getAttribute('data-info') +
-      ' Venta total ' + formatoCLP(KPIS.monto_venta_total) + ' − Costos totales ' + formatoCLP(KPIS.total_real_total) +
-      ' = Margen Real total ' + formatoCLP(KPIS.margen_real_total) + '.';
-    cardMargenTotal.addEventListener('mouseenter', function () { showTooltip(cardMargenTotal, textoDesglose); });
-    cardMargenTotal.addEventListener('mouseleave', hideTooltip);
-    cardMargenTotal.addEventListener('click', function () {
-      if (tooltip.classList.contains('show')) hideTooltip(); else showTooltip(cardMargenTotal, textoDesglose);
-    });
+      ' Venta ' + formatoCLP(KPIS.monto_venta_total) + ' − costo al cierre ' + formatoCLP(KPIS.costo_estimado_total) +
+      ' = ' + formatoCLP(KPIS.margen_estimado_total) + '.';
+    conectarTooltip(cardMargenTotal, function () { return textoDesglose; });
+    // La "i" de esta tarjeta no lleva su propio click (el de la tarjeta ya
+    // lo cubre, y dos toggles seguidos se anulaban): solo foco de teclado.
+    var iconoMargen = document.getElementById('infoIconMargenTotal');
+    iconoMargen.setAttribute('role', 'button');
+    iconoMargen.setAttribute('aria-label', textoDesglose);
+    iconoMargen.addEventListener('focus', function () { showTooltip(iconoMargen, textoDesglose); });
+    iconoMargen.addEventListener('blur', hideTooltip);
   })();
-  document.getElementById('kpiNotaPromedio').textContent = Math.round(KPIS.nota_promedio);
-  marcarSemantica('kpiNotaPromedio', 'kpiCardNotaPromedio',
-    KPIS.nota_promedio >= 75 ? 'sem-good' : (KPIS.nota_promedio >= 55 ? 'sem-warn' : 'sem-bad'));
+  document.getElementById('kpiNotaPromedio').textContent = KPIS.nota_promedio == null ? '—' : Math.round(KPIS.nota_promedio);
+  marcarSemantica('kpiNotaPromedio', 'kpiCardNotaPromedio', semanticaNota(KPIS.nota_promedio));
   document.getElementById('kpiRequiereAtencion').textContent = KPIS.n_requiere_atencion;
   marcarSemantica('kpiRequiereAtencion', 'kpiCardRequiereAtencion', KPIS.n_requiere_atencion > 0 ? 'sem-bad' : 'sem-good');
+  document.getElementById('kpiAlertas').textContent = KPIS.n_con_alertas;
+  marcarSemantica('kpiAlertas', 'kpiCardAlertas', KPIS.n_con_alertas > 0 ? 'sem-warn' : 'sem-good');
 
-  var proyectosOrdenados = PROYECTOS.slice().sort(function (a, b) { return b.nota - a.nota; });
-  renderBarChart('chartNotaProyectos', proyectosOrdenados.map(function (p) {
-    return { nombre: p.nombre, nota: p.nota, valueLabel: p.nota };
-  }), 'nombre', 'nota');
+  // Sin Nota (venta 0) al final, no como si fuera un 0.
+  var proyectosOrdenados = PROYECTOS.slice().sort(function (a, b) {
+    return (b.nota == null ? -1 : b.nota) - (a.nota == null ? -1 : a.nota);
+  });
+  renderBarChartNota('chartNotaProyectos', proyectosOrdenados.filter(function (p) { return p.nota != null; }));
 
+  // Orden fijo de mejor a peor (antes dependía del orden de las filas).
+  var ORDEN_EVALUACION = ['Excelente', 'Bueno', 'Aprobado', 'Requiere atención'];
   var porEvaluacion = {};
-  PROYECTOS.forEach(function (p) { porEvaluacion[p.evaluacion] = (porEvaluacion[p.evaluacion] || 0) + 1; });
-  renderDonutChart('chartEvaluacion', Object.keys(porEvaluacion).map(function (k) {
+  PROYECTOS.forEach(function (p) { if (p.evaluacion) porEvaluacion[p.evaluacion] = (porEvaluacion[p.evaluacion] || 0) + 1; });
+  renderDonutChart('chartEvaluacion', ORDEN_EVALUACION.filter(function (k) { return porEvaluacion[k]; }).map(function (k) {
     return { evaluacion: k, n: porEvaluacion[k] };
   }), 'evaluacion', 'n', NIVEL_EVALUACION_DONUT);
 
@@ -1022,6 +1153,20 @@
   renderBarChart('chartPesoCartera', proyectosPorPeso.map(function (p) {
     return { nombre: p.nombre, peso: p.peso_cartera_pct, valueLabel: formatoPct(p.peso_cartera_pct) };
   }), 'nombre', 'peso');
+  // El denominador es toda la venta cargada (también la de proyectos que aún
+  // no entran al análisis), así que las barras visibles no suman 100 %: sin
+  // esta nota parecía un error del gráfico.
+  (function () {
+    var cob = DATA.cobertura;
+    var sumaVisible = PROYECTOS.reduce(function (s, p) { return s + p.peso_cartera_pct; }, 0);
+    var nota = 'Peso sobre ' + formatoCLP(cob.venta_cargada_total) + ' de venta cargada en ' + cob.n_proyectos + ' proyectos';
+    if (sumaVisible < 0.999) {
+      nota += ', incluidos los que aún no entran al análisis: por eso estas barras suman ' + formatoPct(sumaVisible) + ' y no 100 %.';
+    } else {
+      nota += '.';
+    }
+    document.getElementById('notaPesoCartera').textContent = nota;
+  })();
 
   var proyectoExpandido = null;
   var CATEGORIAS_COSTO = [
@@ -1041,16 +1186,16 @@
         '<td class="num">' + formatoPct(p.costo_pct_venta[c.key]) + '</td>' +
         '<td class="num">' + formatoMontoSigno(p.ahorro_sobrecosto[c.key]) + '</td></tr>';
     }).join('');
-    var costoPctVentaTotal = p.monto_venta ? (p.total_real / p.monto_venta) : 0;
+    var costoPctVentaTotal = p.monto_venta ? (p.total_real / p.monto_venta) : null;
     var filaTotal = '<tr><td><strong>Total</strong></td>' +
       '<td class="num"><strong>' + formatoCLP(p.total_proyectado) + '</strong></td>' +
       '<td class="num"><strong>' + formatoCLP(p.total_real) + '</strong></td>' +
       '<td class="num"><strong>' + formatoPctDesviacion(p.desviacion_pct) + '</strong></td>' +
-      '<td class="num"><strong>100.0%</strong></td>' +
+      '<td class="num"><strong>' + formatoPct(1) + '</strong></td>' +
       '<td class="num"><strong>' + formatoPct(costoPctVentaTotal) + '</strong></td>' +
       '<td class="num"><strong>' + formatoMontoSigno(p.ahorro_sobrecosto_total) + '</strong></td></tr>';
     return '<div class="viz-tablescroll"><table class="viz-itemtable tabla-costos-categoria"><thead><tr>' +
-      '<th>Concepto</th><th class="num">Proyectado</th><th class="num">Real</th>' +
+      '<th>Concepto</th><th class="num">Proyectado</th><th class="num" title="Costo real registrado a la fecha.">Real</th>' +
       '<th class="num" title="Real / Proyectado − 1, por categoría. +15% o más = sobregasto relevante en esa categoría.">Desviación %</th>' +
       '<th class="num" title="Costo Real de la categoría / Costos Totales Real — las 4 categorías suman 100% del gasto real, sin importar cuán rentable resultó el proyecto.">Estructura %</th>' +
       '<th class="num" title="Costo Real de la categoría / Monto de Venta — qué parte de cada peso vendido se va en esa categoría.">Costo % venta</th>' +
@@ -1081,14 +1226,23 @@
       : '<span style="color:var(--text-muted);font-size:12px">Sin reporte generado</span>';
     return '<div class="detail-panel">' +
       '<div class="detail-grid">' +
-        '<div><div class="dk">Margen Real</div><div class="dv accent">' + formatoCLP(p.margen_real) + '</div></div>' +
-        '<div><div class="dk" title="Margen Real / Monto de Venta — componente de rentabilidad de la Nota del Proyecto (70% del puntaje, vs. objetivo 25%).">Margen neto %</div><div class="dv">' + (p.monto_venta ? formatoPct(p.margen_real / p.monto_venta) : '—') + '</div></div>' +
+        '<div><div class="dk" title="El real si el proyecto está al 100 %; si sigue en curso, el estimado al cierre: costo real + lo que falta a precio de presupuesto.">Margen al cierre' + (p.en_curso ? ' (estimado)' : '') + '</div><div class="dv accent">' + formatoCLP(p.margen_estimado_cierre) + ' · ' + formatoPct(p.margen_estimado_cierre_pct) + '</div></div>' +
+        (p.en_curso
+          ? '<div><div class="dk" title="Escenario pesimista, solo de referencia: el ritmo de gasto actual se mantiene hasta el final (costo al cierre = costo real / % avance). No entra en la Nota.">Margen al cierre, escenario pesimista</div><div class="dv">' + formatoPct(p.margen_cierre_pct_indice) + '</div></div>' +
+            '<div><div class="dk" title="Lo gastado hasta hoy contra la venta completa: todavía falta ejecutar parte del proyecto, así que no es el resultado final.">Margen a la fecha</div><div class="dv">' + formatoCLP(p.margen_real) + ' · ' + formatoPct(p.margen_neto_pct) + '</div></div>' +
+            '<div><div class="dk">Costo estimado al cierre</div><div class="dv">' + formatoCLP(p.costo_estimado_cierre) + ' de ' + formatoCLP(p.total_proyectado) + ' presupuestados</div></div>'
+          : '') +
         '<div><div class="dk">Margen Proyectado</div><div class="dv">' + formatoCLP(p.monto_venta - p.total_proyectado) + '</div></div>' +
-        '<div><div class="dk">Desviación %</div><div class="dv">' + formatoPctDesviacion(p.desviacion_pct) + '</div></div>' +
-        '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + p.nota + ' — ' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</div></div>' +
+        '<div><div class="dk">Desviación al cierre</div><div class="dv">' + formatoPctDesviacion(p.desviacion_estimada_cierre_pct) + '</div></div>' +
+        '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + (p.nota == null ? '—' : p.nota + ' — ' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion])) + '</div></div>' +
         '<div><div class="dk" title="Monto de Venta del proyecto sobre la suma de Monto de Venta de todos los proyectos con venta cargada — mide concentración de riesgo en la cartera.">Peso en cartera de ventas</div><div class="dv">' + formatoPct(p.peso_cartera_pct) + '</div></div>' +
-        '<div><div class="dk" title="Margen Real / días entre Fecha de inicio y Fecha de cierre. Vacío si el proyecto aún no tiene Fecha de cierre.">Margen por día</div><div class="dv">' + (p.margen_por_dia == null ? '— (en desarrollo)' : formatoCLP(p.margen_por_dia) + '/día') + '</div></div>' +
+        '<div><div class="dk" title="Margen Real / días entre Fecha de inicio y Fecha de cierre. Vacío si falta alguna fecha o si el cierre todavía no llega.">Margen por día</div><div class="dv">' + (p.margen_por_dia == null ? '— (en desarrollo o sin fechas)' : formatoCLP(p.margen_por_dia) + '/día') + '</div></div>' +
       '</div>' +
+      (p.alertas.length
+        ? '<div class="alertas-panel"><div class="detail-subheading">Alertas</div><ul>' +
+          p.alertas.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>'
+        : '') +
+      '<div class="detail-subheading">Costos por categoría' + (p.en_curso ? ' — real a la fecha, con ' + formatoPct(p.avance) + ' de avance' : '') + '</div>' +
       '<div id="chartComparativo-' + esc(p.tag) + '" style="margin-bottom:12px"></div>' +
       tablaCostosCategoriaHtml(p) +
       '<div class="detail-subheading">Detalle real por subcategoría (Centro de Costos)</div>' +
@@ -1114,12 +1268,17 @@
     var tbody = document.getElementById('tablaProyectosBody');
     tbody.innerHTML = items.map(function (p) {
       var expandido = proyectoExpandido === p.tag;
-      var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0">' +
-        '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td>' + esc(p.estado || '—') +
-        '</td><td>' + formatoCLP(p.monto_venta) + '</td><td>' + formatoCLP(p.margen_real) + '</td><td>' +
-        formatoPctDesviacion(p.desviacion_pct) + '</td><td>' + p.nota + '</td><td>' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
+      var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0" aria-expanded="' + expandido + '">' +
+        '<td><span class="expand-toggle" aria-hidden="true">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) +
+        (p.alertas.length ? '<span class="alerta-badge" title="' + esc(p.alertas.join(' · ')) + '">⚠ ' + p.alertas.length + '</span>' : '') +
+        '</td><td>' + esc(p.cliente || '—') + '</td><td class="num">' + (p.avance == null ? '—' : formatoPct(p.avance)) +
+        '</td><td class="num">' + formatoCLP(p.monto_venta) + '</td><td class="num">' + formatoCLP(p.margen_estimado_cierre) +
+        (p.en_curso ? '<span class="est-tag" title="Estimado al cierre: el proyecto sigue en curso.">est.</span>' : '') +
+        '</td><td class="num">' + formatoPct(p.margen_estimado_cierre_pct) + '</td><td class="num">' +
+        formatoPctDesviacion(p.desviacion_estimada_cierre_pct) + '</td><td class="num">' + (p.nota == null ? '—' : p.nota) + '</td><td>' +
+        (p.evaluacion ? badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) : '—') + '</td></tr>';
       if (expandido) {
-        fila += '<tr class="detail-row"><td colspan="8">' + detalleProyectoHtml(p) + '</td></tr>';
+        fila += '<tr class="detail-row"><td colspan="9">' + detalleProyectoHtml(p) + '</td></tr>';
       }
       return fila;
     }).join('');
@@ -1147,28 +1306,55 @@
     }
     var row = evt.target.closest('tr.doc-row');
     if (!row) return;
-    var tag = row.getAttribute('data-tag');
+    alternarProyecto(row.getAttribute('data-tag'));
+  });
+  document.getElementById('tablaProyectosBody').addEventListener('keydown', function (evt) {
+    if (!esTeclaDeActivar(evt)) return;
+    evt.preventDefault();
+    var tag = evt.target.getAttribute('data-tag');
+    alternarProyecto(tag);
+    enfocarFila(this, 'data-tag', tag);
+  });
+  function alternarProyecto(tag) {
     proyectoExpandido = (proyectoExpandido === tag) ? null : tag;
     renderTablaProyectos(proyectosFiltrados());
-  });
+  }
 
   // ---------- pestaña Clientes ----------
-  var clientesOrdenados = CLIENTES.slice().sort(function (a, b) { return b.cltv - a.cltv; });
+  var clientesOrdenados = CLIENTES.slice().sort(function (a, b) { return b.margen_acumulado - a.margen_acumulado; });
+  var RESUMEN_CLIENTES = DATA.clientes_resumen;
+  document.getElementById('kpiNClientes').textContent = RESUMEN_CLIENTES.n_clientes;
+  document.getElementById('kpiRecompra').textContent = formatoPct(RESUMEN_CLIENTES.tasa_recompra);
+  document.getElementById('kpiRecompraSub').textContent = RESUMEN_CLIENTES.n_clientes
+    ? RESUMEN_CLIENTES.n_recurrentes + ' de ' + RESUMEN_CLIENTES.n_clientes + ' clientes volvió a comprar'
+    : '';
   document.getElementById('kpiTopCliente').textContent = clientesOrdenados.length ? clientesOrdenados[0].cliente : '—';
-  document.getElementById('kpiCltvPromedio').textContent = clientesOrdenados.length
-    ? formatoCLP(clientesOrdenados.reduce(function (s, c) { return s + c.cltv; }, 0) / clientesOrdenados.length)
-    : formatoCLP(0);
+  document.getElementById('kpiTopClienteSub').textContent = clientesOrdenados.length
+    ? formatoCLP(clientesOrdenados[0].margen_acumulado) + ' de margen'
+    : '';
 
+  // Orden fijo de mayor a menor tier (antes dependía del orden de llegada de
+  // los datos) y valor compacto: a 24px ocupaba tres líneas y desbordaba.
+  var ORDEN_CLASIFICACION = ['Clientes estratégicos', 'Clientes potenciales', 'Clientes de oportunidad'];
   var porClasificacion = {};
   CLIENTES.forEach(function (c) { porClasificacion[c.clasificacion] = (porClasificacion[c.clasificacion] || 0) + 1; });
-  document.getElementById('kpiClasificaciones').textContent = Object.keys(porClasificacion).map(function (k) {
-    return k + ': ' + porClasificacion[k];
+  var clasificacionesPresentes = ORDEN_CLASIFICACION.filter(function (k) { return porClasificacion[k]; });
+  var kpiClasificaciones = document.getElementById('kpiClasificaciones');
+  kpiClasificaciones.classList.add('kpi-value--compact');
+  kpiClasificaciones.textContent = clasificacionesPresentes.map(function (k) {
+    var corto = k.replace('Clientes ', '');
+    return corto.charAt(0).toUpperCase() + corto.slice(1) + ': ' + porClasificacion[k];
   }).join(' · ') || '—';
 
   renderBarChart('chartTopClientes', clientesOrdenados.slice(0, 8).map(function (c) {
-    return { cliente: c.cliente, cltv: c.cltv, valueLabel: formatoCLP(c.cltv) };
-  }), 'cliente', 'cltv');
-  renderDonutChart('chartClasificacion', Object.keys(porClasificacion).map(function (k) {
+    return { cliente: c.cliente, margen: c.margen_acumulado, valueLabel: formatoCLP(c.margen_acumulado) };
+  }), 'cliente', 'margen');
+  // Con todos los clientes en un solo proyecto, el tier solo ordena por
+  // tamaño del proyecto: dicho explícito para que no se lea como fidelidad.
+  document.getElementById('notaClasificacion').textContent = (RESUMEN_CLIENTES.n_clientes && !RESUMEN_CLIENTES.n_recurrentes)
+    ? 'Ningún cliente tiene todavía más de un proyecto: la clasificación hoy solo ordena por el margen de ese único proyecto.'
+    : '';
+  renderDonutChart('chartClasificacion', clasificacionesPresentes.map(function (k) {
     return { clasificacion: k, n: porClasificacion[k] };
   }), 'clasificacion', 'n', NIVEL_CLASIFICACION);
 
@@ -1178,9 +1364,10 @@
       var nota = c.proyectos_pendientes
         ? '<div class="fila-nota">' + c.proyectos_pendientes + ' proyecto(s) pendiente(s) de completar</div>'
         : '';
-      return '<tr><td>' + esc(c.cliente) + nota + '</td><td>' + formatoCLP(c.aov) + '</td><td>' + c.vida +
-        '</td><td>' + c.meses_activo.toFixed(1) + '</td><td>' + c.frecuencia.toFixed(2) + '</td><td>' +
-        formatoPct(c.margen_pct) + '</td><td>' + formatoCLP(c.cltv) + '</td><td>' + badgePill(c.clasificacion, NIVEL_CLASIFICACION[c.clasificacion]) + '</td></tr>';
+      return '<tr><td>' + esc(c.cliente) + nota + '</td><td class="num">' + c.n_proyectos + '</td><td class="num">' +
+        formatoCLP(c.venta_acumulada) + '</td><td class="num">' + formatoCLP(c.margen_acumulado) + '</td><td class="num">' +
+        formatoPct(c.margen_pct) + '</td><td>' + (c.recurrente ? 'Sí' : 'No') + '</td><td>' +
+        badgePill(c.clasificacion, NIVEL_CLASIFICACION[c.clasificacion]) + '</td></tr>';
     }).join('');
   }
   renderTablaClientes(clientesOrdenados);
@@ -1193,13 +1380,13 @@
 
   // ---------- pestaña Categoría ----------
   var CATEGORIAS = DATA.categorias;
-  var categoriasOrdenadas = CATEGORIAS.slice().sort(function (a, b) { return b.margen_real_total - a.margen_real_total; });
+  var categoriasOrdenadas = CATEGORIAS.slice().sort(function (a, b) { return b.margen_estimado_total - a.margen_estimado_total; });
   document.getElementById('kpiNCategorias').textContent = categoriasOrdenadas.length;
   document.getElementById('kpiCategoriaLider').textContent = categoriasOrdenadas.length ? categoriasOrdenadas[0].categoria : '—';
 
   renderBarChart('chartMargenCategoria', categoriasOrdenadas.map(function (c) {
-    return { categoria: c.categoria, margen_real_total: c.margen_real_total, valueLabel: formatoCLP(c.margen_real_total) };
-  }), 'categoria', 'margen_real_total');
+    return { categoria: c.categoria, margen: c.margen_estimado_total, valueLabel: formatoCLP(c.margen_estimado_total) };
+  }), 'categoria', 'margen');
   renderDonutChart('chartDistribucionCategoria', categoriasOrdenadas.map(function (c) {
     return { categoria: c.categoria, n_proyectos: c.n_proyectos };
   }), 'categoria', 'n_proyectos');
@@ -1214,18 +1401,21 @@
     var proyectosDeCategoria = PROYECTOS.filter(function (p) { return c.tags_proyectos.indexOf(p.tag) !== -1; });
     var filas = proyectosDeCategoria.slice().sort(function (a, b) { return b.nota - a.nota; }).map(function (p) {
       return '<tr><td>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td class="num">' +
-        formatoCLP(p.margen_real) + '</td><td class="num">' + p.nota + '</td><td>' +
-        badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</td></tr>';
+        formatoCLP(p.margen_estimado_cierre) + (p.en_curso ? '<span class="est-tag">est.</span>' : '') + '</td><td class="num">' +
+        (p.nota == null ? '—' : p.nota) + '</td><td>' +
+        (p.evaluacion ? badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) : '—') + '</td></tr>';
     }).join('');
-    var nivelNota = c.nota_promedio >= 75 ? 'sem-good' : (c.nota_promedio >= 55 ? 'sem-warn' : 'sem-bad');
+    // tone-* (texto suelto): las clases sem-* no tienen regla fuera de las
+    // tarjetas KPI, así que este color nunca se veía.
+    var nivelNota = (semanticaNota(c.nota_promedio) || '').replace('sem-', 'tone-');
     return '<div class="detail-panel">' +
       '<div class="detail-grid">' +
         '<div><div class="dk">N° Proyectos</div><div class="dv">' + c.n_proyectos + '</div></div>' +
-        '<div><div class="dk">Margen Real Total</div><div class="dv accent">' + formatoCLP(c.margen_real_total) + '</div></div>' +
-        '<div><div class="dk">Nota Promedio</div><div class="dv ' + nivelNota + '">' + c.nota_promedio.toFixed(1) + '</div></div>' +
+        '<div><div class="dk">Margen al cierre</div><div class="dv accent">' + formatoCLP(c.margen_estimado_total) + ' · ' + formatoPct(c.margen_pct) + '</div></div>' +
+        '<div><div class="dk">Nota Promedio</div><div class="dv ' + nivelNota + '">' + (c.nota_promedio == null ? '—' : formatoNum(c.nota_promedio, 1)) + '</div></div>' +
       '</div>' +
       '<div id="chartProyectosCategoria-' + esc(c.categoria) + '" style="margin-bottom:12px"></div>' +
-      '<div class="viz-tablescroll"><table class="viz-itemtable tabla-proyectos-categoria"><thead><tr><th>Proyecto</th><th>Cliente</th><th class="num">Margen Real</th><th class="num">Nota</th><th>Evaluación</th></tr></thead>' +
+      '<div class="viz-tablescroll"><table class="viz-itemtable tabla-proyectos-categoria"><thead><tr><th>Proyecto</th><th>Cliente</th><th class="num">Margen al cierre</th><th class="num">Nota</th><th>Evaluación</th></tr></thead>' +
       '<tbody>' + filas + '</tbody></table></div>' +
       pdfBtn +
       '</div>';
@@ -1242,11 +1432,12 @@
     var tbody = document.getElementById('tablaCategoriasBody');
     tbody.innerHTML = items.map(function (c) {
       var expandido = categoriaExpandida === c.categoria;
-      var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-categoria="' + esc(c.categoria) + '" tabindex="0">' +
-        '<td><span class="expand-toggle">' + (expandido ? '▾' : '▸') + '</span>' + esc(c.categoria) + '</td><td>' + c.n_proyectos + '</td><td>' +
-        formatoCLP(c.margen_real_total) + '</td><td>' + c.nota_promedio.toFixed(1) + '</td></tr>';
+      var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-categoria="' + esc(c.categoria) + '" tabindex="0" aria-expanded="' + expandido + '">' +
+        '<td><span class="expand-toggle" aria-hidden="true">' + (expandido ? '▾' : '▸') + '</span>' + esc(c.categoria) + '</td><td class="num">' + c.n_proyectos + '</td><td class="num">' +
+        formatoCLP(c.venta_total) + '</td><td class="num">' + formatoCLP(c.margen_estimado_total) + '</td><td class="num">' +
+        formatoPct(c.margen_pct) + '</td><td class="num">' + (c.nota_promedio == null ? '—' : formatoNum(c.nota_promedio, 1)) + '</td></tr>';
       if (expandido) {
-        fila += '<tr class="detail-row"><td colspan="4">' + detalleCategoriaHtml(c) + '</td></tr>';
+        fila += '<tr class="detail-row"><td colspan="6">' + detalleCategoriaHtml(c) + '</td></tr>';
       }
       return fila;
     }).join('');
@@ -1255,8 +1446,8 @@
       if (expandidaEnLista) {
         var proyectosDeCategoria = PROYECTOS.filter(function (p) { return expandidaEnLista.tags_proyectos.indexOf(p.tag) !== -1; });
         renderBarChart('chartProyectosCategoria-' + categoriaExpandida, proyectosDeCategoria.map(function (p) {
-          return { nombre: p.nombre, margen_real: p.margen_real, valueLabel: formatoCLP(p.margen_real) };
-        }), 'nombre', 'margen_real');
+          return { nombre: p.nombre, margen: p.margen_estimado_cierre, valueLabel: formatoCLP(p.margen_estimado_cierre) };
+        }), 'nombre', 'margen');
       }
     }
   }
@@ -1272,10 +1463,21 @@
     }
     var row = evt.target.closest('tr.doc-row');
     if (!row) return;
-    var categoria = row.getAttribute('data-categoria');
+    alternarCategoria(row.getAttribute('data-categoria'));
+  });
+  document.getElementById('tablaCategoriasBody').addEventListener('keydown', function (evt) {
+    if (!esTeclaDeActivar(evt)) return;
+    evt.preventDefault();
+    var categoria = evt.target.getAttribute('data-categoria');
+    alternarCategoria(categoria);
+    enfocarFila(this, 'data-categoria', categoria);
+  });
+  function alternarCategoria(categoria) {
     categoriaExpandida = (categoriaExpandida === categoria) ? null : categoria;
     renderTablaCategorias(categoriasFiltradas());
-  });
+  }
   } // end initApp
 })();
 </script>
+</body>
+</html>
