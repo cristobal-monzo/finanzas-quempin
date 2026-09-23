@@ -1109,3 +1109,47 @@ en navegador (escritorio, 390px, sin errores de consola).
 - **Cifrado de los datos del tablero** (quedó fuera de la Fase 0): el repo de
   publicación `cristobal-monzo/finanzas-quempin` es público y la contraseña
   está en texto plano en los 3 tableros — decisión de los 3 módulos juntos.
+
+## Auditoría 2026-09-21 — Fase 2: el tablero responde preguntas
+
+Tercera y última fase de la auditoría (fase 0: arreglos del tablero; fase 1:
+KPIs correctos). Detalle en `CLAUDE.md` y en `Visualizador Web/CLAUDE.md`,
+sección "Fase 2"; acá lo que no está en el código.
+
+**Qué cambió de fondo**: el tablero abría en una tabla ordenada por Nota, así
+que "¿qué necesita atención?" se respondía abriendo fila por fila. Ahora abre
+en un **Resumen** con los 4 números de la cartera y una lista de "qué mirar
+primero" con el motivo escrito de cada proyecto, más una dispersión que
+separa margen de cumplimiento de presupuesto (la Nota los junta en un
+número). Se agregó **Presupuesto vs Real**, la pestaña para cotizar mejor:
+sesgo por categoría de toda la cartera terminada y mapa de calor proyecto ×
+categoría.
+
+**KPI nuevo**: `Error del presupuesto %` (Σ |real − proyectado| por categoría
+/ presupuesto total). Sobre los datos reales deja ver lo que la desviación
+total esconde: Junji's con -1,1% de desviación total tiene 69% de error de
+presupuesto (materiales +307% compensados con equipos -90%); Hospital Pinel
+68%; el promedio ponderado de la cartera terminada es 46%.
+
+**Lo que el sesgo dice hoy** (7 proyectos terminados): Materiales +16,6%,
+Otros -21,5%, Equipos -11,4%, Mano de Obra +1,0%. El presupuesto de
+materiales se queda corto de forma sistemática y el de "Otros" sobra: no es
+mala suerte de un proyecto, es algo a corregir al cotizar.
+
+**Concentración**: el mayor cliente es 25% de la venta cargada, los 3 mayores
+59%, y el ingreso está repartido como si hubiera 6,7 clientes iguales de los
+13 que hay. (El "mayor cliente" aparece como `261. FACH 1` hasta que se
+corrija a mano esa celda -- ver pendientes de la fase 1.)
+
+**Un bug que la suite no vio y sí vio correr contra datos reales**: el sesgo
+por categoría leía los costos proyectados desde la salida de
+`calcular_kpis_proyecto`, que no los traía; el test pasaba porque su fixture
+era un dict armado a mano con esas claves. Se arregló el código (los
+proyectados pasan de largo en la salida) y el test, que ahora construye su
+fixture con `calcular_kpis_proyecto` en vez de a mano. Regla que vale para el
+resto del repo: **un fixture escrito a mano puede tener una forma que la
+función real nunca produce**.
+
+**Verificado**: 882 tests; tablero revisado en navegador (escritorio y 390px,
+claro y oscuro, sin errores de consola), incluidos filtros, orden por
+columna, dispersión y mapa de calor con los datos reales.

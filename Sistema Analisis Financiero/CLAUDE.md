@@ -173,6 +173,7 @@ nuevos. Ver MEMORY.md 2026-07-28 para la verificación a mano contra UMAG.
 | Desviación estimada al cierre % (2026-09-21) | Costo estimado al cierre / Costo Proyectado − 1 |
 | Margen al cierre % (escenario índice de costo) (2026-09-21) | (Venta − Costo Real / % Avance) / Venta — pesimista, solo referencia, no entra en la Nota |
 | Nota del Proyecto (0-100) | 70% **margen estimado al cierre %** (curva de 2 tramos: lineal 0→70 hasta el objetivo de 25%, luego asíntota hacia 100 sin tocarlo nunca — ver "Curva de la Nota" abajo) + 30% control de **desviación estimada al cierre**, **sin ABS()** — solo penaliza sobrecosto; 100 puntos en o bajo presupuesto, **0 con +30%** (`SOBRECOSTO_NOTA_CERO`, desde 2026-09-21; antes +100%). Vacía si falta el avance |
+| Error del presupuesto % (2026-09-21, fase 2) | Σ \|Costo Real − Costo Proyectado\| de las 4 categorías / Costos Totales Proyectado — cuánto se equivocó el presupuesto sin que los errores se cancelen entre sí en el total |
 | Datos completos (2026-09-21, columna de apoyo) | Sí si están los 7 campos de `CAMPOS_MANUALES_REQUERIDOS` — filtra la hoja Clientes |
 | Clientes (hoja Clientes, 2026-09-21) | N° de proyectos, Venta y Margen acumulados (margen estimado al cierre), Margen %, Recurrente (≥2 proyectos), Clasificación por percentil 67/33 del margen acumulado. Reemplazan al CLTV |
 
@@ -308,6 +309,33 @@ COM** (`Excel.Application`, `CalculateFull`) y se comparó celda a celda
 contra `calcular_kpis_proyecto()` / `calcular_clientes()`: 240 celdas de
 "Indicadores" y los 8 clientes, 0 diferencias, 0 `#DIV/0!`. Los tests
 comparan el TEXTO de las fórmulas; solo esta prueba compara sus VALORES.
+
+## Fase 2 de la auditoría (2026-09-21): el tablero responde preguntas
+
+El rediseño del tablero está en `Visualizador Web/CLAUDE.md`. Del lado de
+los KPIs agregó una columna a "Indicadores" y dos análisis de cartera que
+**no** son de un proyecto y por eso no tienen columna en el Excel:
+
+- **`Error del presupuesto %`** (columna nueva): Σ |real − proyectado| de
+  las 4 categorías sobre el presupuesto total. La "Desviación % Total" puede
+  dar casi 0 con un presupuesto muy mal repartido -- en un proyecto real el
+  total calzó en -1,1% con materiales en +307% compensados por equipos en
+  -90%. Este número no juzga el resultado del proyecto (eso es el margen):
+  juzga la cotización.
+- **`sesgo_por_categoria()`**: Σ real / Σ proyectado − 1 por categoría en
+  toda la cartera **terminada** (un proyecto a medio ejecutar todavía va a
+  gastar más y ensuciaría el sesgo). Con los datos al 2026-09-21: Materiales
+  +16,6%, Equipos -11,4%, Mano de Obra +1,0%, Otros -21,5% sobre 7
+  proyectos. Eso es lo que hay que corregir al cotizar.
+- **`concentracion_cartera()`**: participación de cada cliente en toda la
+  venta cargada (también la de proyectos incompletos: la dependencia existe
+  igual), con HHI y "clientes equivalentes" (1 / HHI). Hoy: el mayor cliente
+  concentra 25%, los 3 mayores 59%, y el ingreso está repartido como si
+  hubiera 6,7 clientes iguales de los 13 que hay.
+
+Los dos análisis viven en `analisis_financiero.py` junto al resto, no en el
+build del tablero: el día que un reporte PDF o Flujo de Caja los necesite,
+ya están.
 
 ## Reportes PDF (implementado 2026-07-24)
 

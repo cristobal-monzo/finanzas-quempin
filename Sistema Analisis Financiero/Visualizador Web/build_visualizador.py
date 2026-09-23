@@ -258,6 +258,7 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict, hoy: date | None = None
         "ahorro_sobrecosto": por_categoria("Ahorro/Sobrecosto "),
         "ahorro_sobrecosto_total": k["Ahorro/Sobrecosto Total"],
         "margen_por_dia": k["Margen por día de ejecución"],
+        "error_presupuesto_pct": k["Error del presupuesto %"],
         "alertas": af.alertas_proyecto(valores, k, hoy),
         # Para calcular_clientes: la salida completa del módulo compartido.
         "_kpis_af": k,
@@ -386,6 +387,7 @@ def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None =
     for c in clientes:
         c["proyectos_pendientes"] = pendientes_por_cliente.get(c["cliente"], 0)
 
+    kpis_af_todos = [k["_kpis_af"] for k in completos]
     for k in completos:
         del k["_kpis_af"]
 
@@ -402,6 +404,16 @@ def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None =
         "venta_cargada_total": sum(p["monto_venta"] or 0 for p in proyectos_de_venta),
         "venta_completos": venta_total,
     }
+    # Análisis de cartera (fase 2): en qué se equivoca el presupuesto y de
+    # cuántos clientes depende el ingreso. El sesgo mira TODOS los proyectos
+    # (la función se queda con los terminados y completos); la concentración,
+    # toda la venta cargada, también la de proyectos que aún no entran.
+    sesgo_categorias = af.sesgo_por_categoria(kpis_af_todos)
+    ventas_por_cliente: dict[str, float] = {}
+    for p in proyectos_de_venta:
+        if p["cliente"] and p["monto_venta"]:
+            ventas_por_cliente[p["cliente"]] = ventas_por_cliente.get(p["cliente"], 0.0) + p["monto_venta"]
+    concentracion = af.concentracion_cartera(ventas_por_cliente)
     n_recurrentes = sum(1 for c in clientes if c["recurrente"])
     return {
         "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
@@ -411,6 +423,7 @@ def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None =
         "umbrales": {
             "excelente": af.UMBRAL_EXCELENTE, "bueno": af.UMBRAL_BUENO, "aprobado": af.UMBRAL_APROBADO,
             "sobrecosto_nota_cero": af.SOBRECOSTO_NOTA_CERO,
+            "margen_objetivo": af.MARGEN_OBJETIVO_NOTA,
             "alerta_sobrecosto": af.UMBRAL_ALERTA_SOBRECOSTO,
             "alerta_costo_incompleto": af.UMBRAL_ALERTA_COSTO_INCOMPLETO,
         },
@@ -426,6 +439,8 @@ def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None =
             "n_requiere_atencion": sum(1 for k in completos if k["evaluacion"] == "Requiere atención"),
             "n_con_alertas": sum(1 for k in completos if k["alertas"]),
         },
+        "presupuesto": {"sesgo_categorias": sesgo_categorias},
+        "concentracion": concentracion,
         "clientes_resumen": {
             "n_clientes": len(clientes),
             "n_recurrentes": n_recurrentes,

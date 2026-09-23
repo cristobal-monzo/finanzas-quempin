@@ -382,6 +382,7 @@ def test_snapshot_trae_los_umbrales_de_evaluacion_del_modulo_compartido(tmp_path
     assert data["umbrales"] == {
         "excelente": af.UMBRAL_EXCELENTE, "bueno": af.UMBRAL_BUENO, "aprobado": af.UMBRAL_APROBADO,
         "sobrecosto_nota_cero": af.SOBRECOSTO_NOTA_CERO,
+        "margen_objetivo": af.MARGEN_OBJETIVO_NOTA,
         "alerta_sobrecosto": af.UMBRAL_ALERTA_SOBRECOSTO,
         "alerta_costo_incompleto": af.UMBRAL_ALERTA_COSTO_INCOMPLETO,
     }
@@ -952,3 +953,67 @@ def test_template_no_tiene_restos_del_esquema_anterior():
         assert resto not in template, resto
     for marcador in ("__AF_DATA_B64__", "__AF_TITULO__", "__AF_NAV_ACTIVO__"):
         assert marcador in template
+
+
+# ── Fase 2 de la auditoría (2026-09-21): análisis de cartera en el snapshot ──
+
+def test_snapshot_trae_el_error_de_presupuesto_por_proyecto(tmp_path):
+    """El KPI que ve lo que la desviación total esconde: sale de af, no se
+    recalcula acá."""
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+    ])
+    data = bv.extraer_datos_saneados(ruta)
+    proyecto = data["proyectos"][0]
+    assert proyecto["error_presupuesto_pct"] is not None
+    assert proyecto["error_presupuesto_pct"] >= abs(proyecto["desviacion_pct"])
+
+
+def test_snapshot_trae_sesgo_por_categoria_y_concentracion(tmp_path):
+    """Los dos análisis de cartera que no son de un proyecto: en qué se
+    equivoca el presupuesto y de cuántos clientes depende el ingreso."""
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "A1", "Nombre del proyecto": "A1", "Cliente": "A", "% Avance": 1.0},
+        {"TAG proyecto": "B1", "Nombre del proyecto": "B1", "Cliente": "B", "% Avance": 1.0,
+         "Monto de Venta (sin IVA)": 3_000_000},
+    ])
+    data = bv.extraer_datos_saneados(ruta)
+
+    categorias = [s["categoria"] for s in data["presupuesto"]["sesgo_categorias"]]
+    assert categorias == ["Materiales", "Equipos", "Mano de Obra", "Otros"]
+    assert all(s["n_proyectos"] == 2 for s in data["presupuesto"]["sesgo_categorias"])
+
+    concentracion = data["concentracion"]
+    assert concentracion["n_clientes"] == 2
+    assert concentracion["top_1"] == 0.75  # 3.000.000 de 4.000.000
+    assert [r["cliente"] for r in concentracion["ranking"]] == ["B", "A"]
+
+
+def test_concentracion_cuenta_tambien_la_venta_de_proyectos_incompletos(tmp_path):
+    """La dependencia de un cliente existe aunque su proyecto todavía no
+    tenga todos los datos cargados."""
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "A1", "Nombre del proyecto": "A1", "Cliente": "A"},
+        {"TAG proyecto": "B1", "Nombre del proyecto": "B1", "Cliente": "B",
+         "Monto de Venta (sin IVA)": 9_000_000, "Mano de Obra Real": None},
+    ])
+    data = bv.extraer_datos_saneados(ruta)
+    assert len(data["proyectos"]) == 1  # B1 no entra al análisis
+    assert data["concentracion"]["n_clientes"] == 2  # pero sí a la concentración
+    assert data["concentracion"]["top_1"] == 0.9
+
+
+def test_template_tiene_las_pestanas_y_los_ganchos_de_la_fase_2():
+    """El template y el snapshot tienen que hablar el mismo idioma: si se
+    renombra una clave en build_visualizador.py y no acá, la pestaña queda
+    vacía sin que ningún test lo note."""
+    template = bv.RUTA_TEMPLATE.read_text(encoding="utf-8")
+    for panel in ("tabResumen", "tabProyectos", "tabPresupuesto", "tabClientes", "tabCategoria"):
+        assert 'id="' + panel + '"' in template
+    for gancho in ("listaAtencion", "scatterProyectos", "sesgoCategorias", "mapaCalor",
+                   "tablaPresupuestoBody", "paretoClientes", "filtroEstado", "filtroCategoria",
+                   "filtroCliente", "filtroAtencion"):
+        assert 'id="' + gancho + '"' in template, gancho
+    for clave in ("error_presupuesto_pct", "sesgo_categorias", "concentracion",
+                  "margen_objetivo", "data-orden"):
+        assert clave in template, clave

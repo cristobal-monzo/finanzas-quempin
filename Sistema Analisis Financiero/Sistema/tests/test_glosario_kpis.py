@@ -126,6 +126,7 @@ COLUMNA_A_KPI_GLOSARIO = {
     "Margen estimado al cierre %": "Margen estimado al cierre (y %)",
     "Desviación estimada al cierre %": "Desviación estimada al cierre %",
     "Margen al cierre % (escenario índice de costo)": "Margen al cierre % (escenario índice de costo)",
+    "Error del presupuesto %": "Error del presupuesto %",
     "Datos completos": "Datos completos",
     "N° de proyectos": "N° de proyectos (Clientes)",
     "Venta acumulada (sin IVA)": "Venta acumulada y Margen acumulado (Clientes)",

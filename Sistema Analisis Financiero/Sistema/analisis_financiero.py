@@ -143,6 +143,9 @@ HEADERS_INDICADORES = [
     "Costo estimado al cierre", "Margen estimado al cierre",
     "Margen estimado al cierre %", "Desviación estimada al cierre %",
     "Margen al cierre % (escenario índice de costo)",
+    # Fase 2 de la auditoría (2026-09-21): cuánto se equivocó el presupuesto
+    # POR CATEGORÍA, sin que los errores se cancelen entre sí en el total.
+    "Error del presupuesto %",
     # Columnas de apoyo para que la hoja "Clientes" sume solo proyectos con
     # los datos completos, igual que el dashboard y los reportes (antes el
     # Excel sumaba también proyectos a medio cargar).
@@ -272,6 +275,7 @@ _ESTILO_INDICADORES_POR_NOMBRE = {
     "Margen estimado al cierre %": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
     "Desviación estimada al cierre %": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 16),
     "Margen al cierre % (escenario índice de costo)": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 18),
+    "Error del presupuesto %": (COLOR_COSTO_PROYECTADO, FORMATO_PORCENTAJE, 16),
     "Cliente": (COLOR_IDENTIFICACION, None, 22),
     "Monto de Venta (sin IVA)": (COLOR_IDENTIFICACION, FORMATO_MONEDA, 16),
     "Datos completos": (COLOR_IDENTIFICACION, None, 12),
@@ -1504,8 +1508,9 @@ def calcular_kpis_proyecto(valores: dict, costos_reales: dict, hoy: date | None 
         "Desviación % (Real vs Proyectado)": desviacion_total,
         "Margen neto %": _dividir(margen_real, venta),
     }
+    proyectados = {col_p: v(col_p) for _, col_p, _ in CATEGORIAS_KPI}
     for sufijo, col_p, col_r in CATEGORIAS_KPI:
-        real, proyectado = reales[col_r], v(col_p)
+        real, proyectado = reales[col_r], proyectados[col_p]
         kpis[f"Costo {sufijo} % de venta"] = _dividir(real, venta)
         kpis[f"Estructura % {sufijo}"] = _dividir(real, total_real)
         kpis[f"Desviación % {sufijo}"] = _desviacion(real, proyectado)
@@ -1523,12 +1528,45 @@ def calcular_kpis_proyecto(valores: dict, costos_reales: dict, hoy: date | None 
         "Margen estimado al cierre %": margen_estimado_pct,
         "Desviación estimada al cierre %": desviacion_estimada,
         "Margen al cierre % (escenario índice de costo)": margen_indice_pct,
+        "Error del presupuesto %": error_presupuesto(
+            {col_r: reales[col_r] for _, _, col_r in CATEGORIAS_KPI},
+            {col_r: proyectados[col_p] for _, col_p, col_r in CATEGORIAS_KPI},
+            total_proyectado,
+        ),
         "Cliente": valores.get("Cliente"),
         "Categoría": valores.get("Categoría"),
+        # Pasan de largo (no son KPIs): los necesitan sesgo_por_categoria y
+        # las alertas -- el avance para distinguir un proyecto terminado de uno
+        # en curso, y los costos proyectados para comparar contra los reales.
+        "% Avance": avance,
+        **proyectados,
         "Monto de Venta (sin IVA)": venta,
         "Datos completos": "Sí" if tiene_datos_completos(valores.get) else "No",
     })
     return kpis
+
+
+def error_presupuesto(reales: dict, proyectados: dict, total_proyectado) -> float | None:
+    """Cuánto se equivocó el presupuesto, sin que los errores de una
+    categoría tapen los de otra: suma de |real - proyectado| de las 4
+    categorías, sobre el presupuesto total.
+
+    La "Desviación % Total" puede dar casi 0 con un presupuesto muy mal
+    repartido -- pasó en un proyecto real: total -1,1% con materiales en
+    +307% compensados por equipos en -90%. Este número lo muestra: 0% =
+    presupuesto clavado categoría por categoría; 65% = dos tercios del
+    presupuesto quedaron en la categoría equivocada. Es el insumo para
+    cotizar mejor, no un juicio sobre el resultado del proyecto (ese es el
+    margen)."""
+    if not total_proyectado:
+        return None
+    suma = 0.0
+    for clave in reales:
+        real, proyectado = reales[clave], proyectados[clave]
+        if real is None or proyectado is None:
+            return None
+        suma += abs(real - proyectado)
+    return suma / total_proyectado
 
 
 def calcular_peso_cartera(ventas_por_tag: dict) -> dict:
@@ -1540,6 +1578,71 @@ def calcular_peso_cartera(ventas_por_tag: dict) -> dict:
     return {
         tag: (_dividir(venta, total) if not _vacio(venta) else None)
         for tag, venta in ventas_por_tag.items()
+    }
+
+
+# ── ANÁLISIS DE CARTERA (Fase 2: solo Python, alimenta el tablero) ──────────
+# Números que no son de un proyecto sino del conjunto, y que por eso no
+# tienen columna en el Excel: en qué se equivoca sistemáticamente el
+# presupuesto, y de cuántos clientes depende el ingreso.
+
+
+def sesgo_por_categoria(kpis_proyectos: list[dict]) -> list[dict]:
+    """Por categoría, cuánto se desvió el gasto real del presupuesto en TODA
+    la cartera (Σ real / Σ proyectado - 1), contando solo proyectos
+    terminados y completos: un proyecto a medio ejecutar todavía va a gastar
+    más y ensuciaría el sesgo.
+
+    Sirve para cotizar: un sesgo estable de +16% en Materiales dice que el
+    presupuesto de materiales se queda corto siempre, no que un proyecto
+    salió mal."""
+    terminados = [
+        k for k in kpis_proyectos
+        if k.get("Datos completos") == "Sí" and avance_acotado(k.get("% Avance")) == 1.0
+    ]
+    filas = []
+    for sufijo, col_p, col_r in CATEGORIAS_KPI:
+        real = sum(k[col_r] for k in terminados if k[col_r] is not None)
+        proyectado = sum(k[col_p] for k in terminados if k[col_p] is not None)
+        filas.append({
+            "categoria": NOMBRE_LEGIBLE_CATEGORIA[sufijo],
+            "real": real,
+            "proyectado": proyectado,
+            "sesgo": _desviacion(real, proyectado),
+            "n_proyectos": len(terminados),
+        })
+    return filas
+
+
+def concentracion_cartera(ventas_por_cliente: dict) -> dict:
+    """De cuántos clientes depende el ingreso. Sobre TODA la venta cargada
+    (también la de proyectos que aún no entran al análisis): la dependencia
+    existe aunque falte completar la planilla.
+
+    'hhi' es el índice de Herfindahl (suma de los cuadrados de las
+    participaciones) y 'clientes_equivalentes' su inverso: 1 = todo el
+    ingreso en un cliente; 5 = como si el ingreso estuviera repartido en 5
+    clientes iguales."""
+    ventas = {c: v for c, v in ventas_por_cliente.items() if v}
+    total = sum(ventas.values())
+    if not total:
+        return {"total": 0, "n_clientes": 0, "top_1": None, "top_3": None,
+                "hhi": None, "clientes_equivalentes": None, "ranking": []}
+    ranking = sorted(ventas.items(), key=lambda par: -par[1])
+    partes = [venta / total for _, venta in ranking]
+    hhi = sum(parte ** 2 for parte in partes)
+    acumulado, ranking_pct = 0.0, []
+    for (cliente, venta), parte in zip(ranking, partes):
+        acumulado += parte
+        ranking_pct.append({"cliente": cliente, "venta": venta, "parte": parte, "acumulado": acumulado})
+    return {
+        "total": total,
+        "n_clientes": len(ranking),
+        "top_1": partes[0],
+        "top_3": sum(partes[:3]),
+        "hhi": hhi,
+        "clientes_equivalentes": 1 / hhi,
+        "ranking": ranking_pct,
     }
 
 
@@ -1776,6 +1879,11 @@ def formulas_indicadores(r: int, f: int) -> dict[str, str]:
             f'=IF(OR({avance}="",{venta}=0),"",IF({avance_acotado_xl}=0,"",'
             f"({venta}-{total_real}/{avance_acotado_xl})/{venta}))"
         ),
+        "Error del presupuesto %": (
+            f'=IF({total_proy}=0,"",('
+            + "+".join(f"ABS({p(col_r)}-{p(col_p)})" for _, col_p, col_r in CATEGORIAS_KPI)
+            + f")/{total_proy})"
+        ),
         "Cliente": f'=IF({p("Cliente")}="","",{p("Cliente")})',
         "Monto de Venta (sin IVA)": f'=IF({venta}="","",{venta})',
         # Misma regla que tiene_datos_completos(): "" y vacío faltan, 0 no.
@@ -1959,6 +2067,12 @@ GLOSARIO_KPIS: list[tuple[str, str, str, str]] = [
         "Mide cuánto margen genera el proyecto por unidad de tiempo -- útil para priorizar proyectos que compiten por la misma capacidad de equipo/tiempo, no solo por margen total.",
         "Margen Real, Fecha de cierre − Fecha de inicio (en días)",
         "$50.000/día = el proyecto generó en promedio $50.000 de margen por cada día que duró su ejecución. Queda vacío si falta alguna de las dos fechas o si la fecha de cierre todavía no llega (en desarrollo) -- no se calcula sobre una duración que aún no terminó.",
+    ),
+    (
+        "Error del presupuesto %",
+        "Mide qué tan bien repartido estaba el presupuesto entre categorías, sin que un error tape a otro -- la 'Desviación % Total' puede dar casi 0 con materiales muy por sobre lo previsto y equipos muy por debajo. Es el insumo para cotizar mejor.",
+        "Suma de |Costo Real − Costo Proyectado| de las 4 categorías, dividida por el presupuesto total",
+        "0% = el presupuesto acertó categoría por categoría. 65% = dos tercios del presupuesto quedaron en la categoría equivocada, aunque el total haya calzado. No juzga el resultado del proyecto (eso es el margen), juzga la cotización.",
     ),
     (
         "Datos completos",

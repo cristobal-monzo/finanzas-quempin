@@ -160,6 +160,45 @@ auditoría"); acá solo lo que toca al tablero.
   el snapshot. `Peru/Análisis Financiero/Visualizador Web/build_visualizador.py`
   quedó como envoltorio de 10 líneas y su `template.html` se borró.
 
+## Fase 2 de la auditoría (2026-09-21): el tablero responde preguntas
+
+La fase 1 dejó los KPIs correctos; esta cambia **qué pregunta contesta cada
+pantalla**. Antes el tablero abría en una tabla de proyectos ordenada por
+Nota: para saber qué necesitaba atención había que abrir fila por fila.
+
+- **Pestaña "Resumen" (nueva, es la que abre)**: venta en análisis, margen
+  al cierre de la cartera, sobrecosto acumulado (solo de los que se
+  pasaron -- un proyecto que ahorró no compensa al que se pasó) y cuántos
+  necesitan atención. Debajo, **"Qué mirar primero"**: una línea por
+  proyecto con el motivo escrito (su alerta, o su Nota y por qué), ordenada
+  por gravedad y tamaño, con un botón que lleva a la fila ya expandida. Al
+  lado, la **dispersión margen vs desviación**: separa las dos preguntas que
+  la Nota junta en un número (cuánto margen deja / si respetó el
+  presupuesto), con el tamaño de burbuja por venta y líneas guía en el
+  objetivo de margen y en "en presupuesto".
+- **Pestaña "Presupuesto vs Real" (nueva)**: el error del presupuesto
+  ponderado de la cartera, la categoría peor estimada, el **sesgo por
+  categoría** (barras divergentes) y un **mapa de calor** proyecto ×
+  categoría. Es la pestaña que sirve para cotizar mejor, no para juzgar el
+  resultado.
+- **Pestaña Proyectos**: filtros (estado, categoría, cliente, "solo con
+  alertas"/"requieren atención") y **encabezados que ordenan de verdad** --
+  antes tenían cursor de mano sin ordenar nada, y el orden era fijo por
+  Nota. Los vacíos van siempre al final, en cualquier sentido.
+- **Pestaña Clientes**: se suma la **concentración del ingreso** (Pareto con
+  acumulado y "clientes equivalentes"), que es la lectura de riesgo que el
+  CLTV nunca dio.
+- **Móvil**: con 5 pestañas la barra ya no cabía en una línea y estiraba la
+  página entera (scroll horizontal en todas las pestañas, no solo en las
+  nuevas). Las pestañas envuelven y las tarjetas de gráfico llevan
+  `min-width: 0` para que un SVG o una tabla ancha no estire el contenedor.
+
+Todo lo que el tablero muestra sale del snapshot; los números nuevos
+(`error_presupuesto_pct`, `presupuesto.sesgo_categorias`, `concentracion`,
+`umbrales.margen_objetivo`) se calculan en `analisis_financiero.py`, no en
+el JS. Tests: `test_snapshot_trae_sesgo_por_categoria_y_concentracion`,
+`test_template_tiene_las_pestanas_y_los_ganchos_de_la_fase_2`.
+
 ## Publicación
 
 GitHub Pages, único canal desde la migración del 2026-08-05 — el Claude
