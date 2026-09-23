@@ -410,7 +410,11 @@
   .viz-footer { font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 8px; line-height: 1.6; }
   .viz-footer strong { color: var(--text-secondary); }
 
-  .viz-tabs { display: flex; gap: 8px; margin: 20px 0 16px; border-bottom: 1px solid var(--gridline); }
+  /* Con 5 pestañas (fase 2) ya no caben en una línea de teléfono: envuelven
+     en vez de estirar la página y provocar scroll horizontal. */
+  .viz-tabs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 20px 0 16px; border-bottom: 1px solid var(--gridline); }
+  .viz-tab-btn { white-space: nowrap; }
+  @media (max-width: 480px) { .viz-tab-btn { padding: 8px 9px; font-size: 13.5px; } }
   .viz-tab-btn {
     background: none; border: none; padding: 10px 16px; font: inherit; cursor: pointer;
     color: var(--text-secondary); border-bottom: 2px solid transparent;
@@ -469,7 +473,10 @@
   .kpi-value.sem-bad { color: var(--status-bad); }
 
   .chart-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
-  .chart-card { background: var(--surface-card); border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 260px; }
+  /* min-width: 0 y max-width: 100% -- sin eso, un hijo ancho (el SVG de la
+     dispersión, la tabla del mapa de calor) estira la tarjeta y aparece
+     scroll horizontal en TODA la página en un teléfono. */
+  .chart-card { background: var(--surface-card); border-radius: 8px; padding: 14px 18px; flex: 1 1 260px; min-width: 0; max-width: 100%; }
   .chart-card h3 { font-size: 13px; margin: 0 0 10px; color: var(--text-secondary); }
 
   .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
@@ -488,6 +495,66 @@
   .donut-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 
   .fila-nota { font-size: 11px; color: var(--text-secondary); font-style: italic; }
+
+  /* ── Fase 2 de la auditoría (2026-09-21) ── */
+
+  /* Resumen: lista de "qué mirar primero". Cada línea es un proyecto y el
+     motivo, en palabras -- antes había que abrir fila por fila para saberlo. */
+  .lista-atencion { list-style: none; margin: 0; padding: 0; }
+  .lista-atencion li { display: flex; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--gridline); font-size: 13px; }
+  .lista-atencion li:last-child { border-bottom: none; }
+  .lista-atencion .quien { font-weight: 700; white-space: nowrap; }
+  .lista-atencion .motivo { color: var(--text-secondary); line-height: 1.45; }
+  .lista-atencion .marca { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 2px; margin-top: 5px; }
+  .lista-atencion .marca.bad { background: var(--status-bad); }
+  .lista-atencion .marca.warn { background: var(--status-warning); }
+  .lista-atencion .ir { flex: 0 0 auto; margin-left: auto; font-size: 12px; color: var(--brand-orange-ink, var(--brand-orange)); background: none; border: none; cursor: pointer; white-space: nowrap; font-weight: 600; }
+  .vacio-ok { font-size: 13px; color: var(--status-good); padding: 10px 0; }
+
+  /* Dispersión margen vs desviación: la vista que separa "gana plata" de
+     "cumple el presupuesto", que la Nota mezcla en un número. */
+  .scatter-wrap { width: 100%; max-width: 100%; overflow-x: auto; }
+  .scatter svg { width: 100%; height: auto; display: block; min-width: 300px; }
+  .scatter .eje { stroke: var(--baseline); stroke-width: 1; }
+  .scatter .guia { stroke: var(--brand-gray-7); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.8; }
+  .scatter .rotulo { fill: var(--text-muted); font-size: 10px; }
+  .scatter .punto { cursor: pointer; stroke: var(--surface-card); stroke-width: 1.5; }
+  .scatter .punto:hover { opacity: 0.85; }
+  .scatter .nombre-punto { fill: var(--text-secondary); font-size: 9.5px; }
+
+  /* Presupuesto vs Real: sesgo (barras divergentes) y mapa de calor. */
+  .sesgo-fila { display: grid; grid-template-columns: 110px 1fr 90px; gap: 8px; align-items: center; font-size: 12.5px; margin-bottom: 8px; }
+  .sesgo-pista { position: relative; height: 16px; background: var(--surface-1); border-radius: 4px; }
+  .sesgo-centro { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--baseline); }
+  .sesgo-barra { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; }
+  .sesgo-valor { text-align: right; font-variant-numeric: tabular-nums; }
+  table.mapa-calor { border-collapse: separate; border-spacing: 2px; font-size: 12px; width: 100%; }
+  table.mapa-calor th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; text-align: center; padding: 4px 6px; }
+  table.mapa-calor th.proyecto, table.mapa-calor td.proyecto { text-align: left; white-space: nowrap; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+  table.mapa-calor td { text-align: center; padding: 7px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  table.mapa-calor td.sin-dato { color: var(--text-muted); }
+
+  /* Pareto de clientes: barras + acumulado, para leer la dependencia. */
+  /* La barra necesita su espacio: con 3 tarjetas en la fila, columnas
+     fijas anchas la dejaban en nada. */
+  .pareto-fila { display: grid; grid-template-columns: minmax(70px, 1.1fr) minmax(50px, 2fr) 46px 46px; gap: 6px; align-items: center; font-size: 12px; margin-bottom: 6px; }
+  .pareto-fila .bar-label { width: auto; }
+  .pareto-fila .acum { text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .pareto-fila .monto { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Filtros de la pestaña Proyectos. */
+  .filtros { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
+  .filtro { display: flex; flex-direction: column; gap: 3px; }
+  .filtro label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+  .filtro select { font-family: inherit; font-size: 13px; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); min-width: 130px; }
+  .filtro.crece { flex: 1 1 220px; }
+  .filtro.crece .viz-search { width: 100%; margin: 0; }
+  .filtros-resultado { font-size: 12px; color: var(--text-muted); margin-left: auto; align-self: center; }
+  /* Encabezados ordenables: antes tenían cursor de mano sin ordenar nada. */
+  table.viz-table thead th.ordenable { cursor: pointer; user-select: none; }
+  table.viz-table thead th.ordenable:hover { color: var(--text-primary); }
+  table.viz-table thead th .orden { font-size: 9px; margin-left: 3px; opacity: 0.55; }
+  table.viz-table thead th.es-orden .orden { opacity: 1; color: var(--brand-orange-ink, var(--brand-orange)); }
 </style>
 </head>
 <body>
@@ -547,12 +614,64 @@
     </div>
 
     <nav class="viz-tabs" role="tablist" aria-label="Vistas del análisis">
-      <button class="viz-tab-btn active" data-tab="tabProyectos" type="button" role="tab" aria-selected="true" aria-controls="tabProyectos">Proyectos</button>
+      <button class="viz-tab-btn active" data-tab="tabResumen" type="button" role="tab" aria-selected="true" aria-controls="tabResumen">Resumen</button>
+      <button class="viz-tab-btn" data-tab="tabProyectos" type="button" role="tab" aria-selected="false" aria-controls="tabProyectos">Proyectos</button>
+      <button class="viz-tab-btn" data-tab="tabPresupuesto" type="button" role="tab" aria-selected="false" aria-controls="tabPresupuesto">Presupuesto vs Real</button>
       <button class="viz-tab-btn" data-tab="tabClientes" type="button" role="tab" aria-selected="false" aria-controls="tabClientes">Clientes</button>
       <button class="viz-tab-btn" data-tab="tabCategoria" type="button" role="tab" aria-selected="false" aria-controls="tabCategoria">Categoría</button>
     </nav>
 
-    <section id="tabProyectos" class="viz-tab-panel active" role="tabpanel">
+    <section id="tabResumen" class="viz-tab-panel active" role="tabpanel">
+      <!-- Fase 2: la primera pantalla responde "cómo va la cartera" y "qué
+           necesita atención", en vez de abrir directo en una tabla. -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">
+            Venta en análisis
+            <span class="info-icon" tabindex="0" data-info="Suma del Monto de Venta de los proyectos que ya tienen todos sus datos cargados. Debajo, cuánta venta hay cargada en total, incluidos los proyectos que aún no entran.">i</span>
+          </div>
+          <div class="kpi-value" id="resVenta"></div>
+          <div class="kpi-sub" id="resVentaSub"></div>
+        </div>
+        <div class="kpi-card" id="resCardMargen">
+          <div class="kpi-label">
+            Margen al cierre
+            <span class="info-icon" tabindex="0" data-info="Suma del margen con que terminan los proyectos: el real en los cerrados, el estimado al cierre en los que siguen en curso. El porcentaje es sobre la venta (ponderado, no un promedio de porcentajes).">i</span>
+          </div>
+          <div class="kpi-value" id="resMargen"></div>
+          <div class="kpi-sub" id="resMargenSub"></div>
+        </div>
+        <div class="kpi-card" id="resCardSobrecosto">
+          <div class="kpi-label">
+            Sobrecosto al cierre
+            <span class="info-icon" tabindex="0" data-info="Suma de lo que se gastó (o se va a gastar) por sobre el presupuesto, contando solo los proyectos que se pasaron. Los que ahorraron no lo compensan: son plata que ya se perdió en otro lado.">i</span>
+          </div>
+          <div class="kpi-value" id="resSobrecosto"></div>
+          <div class="kpi-sub" id="resSobrecostoSub"></div>
+        </div>
+        <div class="kpi-card" id="resCardAtencion">
+          <div class="kpi-label">
+            Necesitan atención
+            <span class="info-icon" tabindex="0" data-info="Proyectos con Evaluación 'Requiere atención' o con alguna alerta (sobrecosto estimado, datos que no calzan, costos posiblemente sin registrar). El detalle está en la lista de abajo.">i</span>
+          </div>
+          <div class="kpi-value" id="resAtencion"></div>
+          <div class="kpi-sub" id="resAtencionSub"></div>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card" style="flex: 2 1 420px">
+          <h3>Qué mirar primero</h3>
+          <div id="listaAtencion"></div>
+        </div>
+        <div class="chart-card" style="flex: 3 1 460px">
+          <h3 title="Cada burbuja es un proyecto: su tamaño es el Monto de Venta. Arriba = más margen; a la derecha = se pasó del presupuesto.">Margen y presupuesto, proyecto a proyecto</h3>
+          <div class="scatter-wrap"><div class="scatter" id="scatterProyectos"></div></div>
+          <p class="chart-note" id="notaScatter"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tabProyectos" class="viz-tab-panel" role="tabpanel">
       <div class="kpi-row">
         <div class="kpi-card" id="kpiCardNCompletos">
           <div class="kpi-label">
@@ -596,18 +715,89 @@
         <div class="chart-card"><h3>Distribución de Evaluación</h3><div id="chartEvaluacion"></div></div>
         <div class="chart-card"><h3 title="Monto de Venta de cada proyecto sobre la suma de Monto de Venta de todos los proyectos con venta cargada — cuanto más concentrada la cartera en pocos proyectos, mayor el riesgo si uno de ellos cae.">Concentración de cartera (peso en ventas)</h3><div id="chartPesoCartera"></div><p class="chart-note" id="notaPesoCartera"></p></div>
       </div>
-      <input type="search" id="buscarProyectos" class="viz-search" placeholder="Buscar proyecto o cliente…" aria-label="Buscar proyecto o cliente">
+      <div class="filtros">
+        <div class="filtro crece">
+          <label for="buscarProyectos">Buscar</label>
+          <input type="search" id="buscarProyectos" class="viz-search" placeholder="Proyecto o cliente…" aria-label="Buscar proyecto o cliente">
+        </div>
+        <div class="filtro">
+          <label for="filtroEstado">Estado</label>
+          <select id="filtroEstado"><option value="">Todos</option><option value="curso">En curso</option><option value="cerrado">Terminados</option></select>
+        </div>
+        <div class="filtro">
+          <label for="filtroCategoria">Categoría</label>
+          <select id="filtroCategoria"><option value="">Todas</option></select>
+        </div>
+        <div class="filtro">
+          <label for="filtroCliente">Cliente</label>
+          <select id="filtroCliente"><option value="">Todos</option></select>
+        </div>
+        <div class="filtro">
+          <label for="filtroAtencion">Solo</label>
+          <select id="filtroAtencion"><option value="">Todos los proyectos</option><option value="alertas">Con alertas</option><option value="atencion">Requieren atención</option></select>
+        </div>
+        <div class="filtros-resultado" id="filtrosResultado"></div>
+      </div>
       <div class="viz-tablewrap"><div class="viz-tablescroll">
       <table class="viz-table">
         <thead>
-          <tr><th>Proyecto</th><th>Cliente</th><th title="Porcentaje de avance del proyecto, cargado a mano en la planilla. 100% = ejecución terminada; bajo 100% el Margen Real y la Desviación % todavía pueden moverse." class="num">% Avance</th><th class="num">Monto Venta</th>
-            <th class="num" title="Margen con que termina el proyecto: el real si está al 100 %; si sigue en curso, el estimado al cierre (marcado «est.»): costo real + lo que falta a precio de presupuesto.">Margen al cierre</th>
-            <th class="num" title="Margen al cierre / Monto de Venta. Es el componente de rentabilidad de la Nota (70 %, objetivo 25 %).">Margen %</th>
-            <th class="num" title="Costo al cierre / costo proyectado − 1. Positivo = sobrecosto; es el componente de control de la Nota (30 %).">Desv. al cierre</th>
-            <th class="num" id="thNota" title="">Nota</th>
+          <tr><th class="ordenable" data-orden="nombre">Proyecto<span class="orden"></span></th>
+            <th class="ordenable" data-orden="cliente">Cliente<span class="orden"></span></th>
+            <th class="num ordenable" data-orden="avance" title="Porcentaje de avance del proyecto, cargado a mano en la planilla. 100% = ejecución terminada; bajo 100% el margen al cierre es una estimación.">% Avance<span class="orden"></span></th>
+            <th class="num ordenable" data-orden="monto_venta">Monto Venta<span class="orden"></span></th>
+            <th class="num ordenable" data-orden="margen_estimado_cierre" title="Margen con que termina el proyecto: el real si está al 100 %; si sigue en curso, el estimado al cierre (marcado «est.»): costo real + lo que falta a precio de presupuesto.">Margen al cierre<span class="orden"></span></th>
+            <th class="num ordenable" data-orden="margen_estimado_cierre_pct" title="Margen al cierre / Monto de Venta. Es el componente de rentabilidad de la Nota (70 %, objetivo 25 %).">Margen %<span class="orden"></span></th>
+            <th class="num ordenable" data-orden="desviacion_estimada_cierre_pct" title="Costo al cierre / costo proyectado − 1. Positivo = sobrecosto; es el componente de control de la Nota (30 %).">Desv. al cierre<span class="orden"></span></th>
+            <th class="num ordenable" data-orden="nota" id="thNota" title="">Nota<span class="orden"></span></th>
             <th title="Traduce la Nota a una etiqueta rápida: Excelente / Bueno / Aprobado / Requiere atención.">Evaluación</th></tr>
         </thead>
         <tbody id="tablaProyectosBody"></tbody>
+      </table>
+      </div></div>
+    </section>
+
+    <section id="tabPresupuesto" class="viz-tab-panel" role="tabpanel">
+      <!-- Fase 2: lo que el presupuesto enseña para la próxima cotización.
+           La desviación total esconde errores que se cancelan entre sí. -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">
+            Error del presupuesto
+            <span class="info-icon" tabindex="0" data-info="Cuánto se equivocó el presupuesto categoría por categoría, sin que un error tape a otro: suma de |real − proyectado| sobre el presupuesto total. 0% = presupuesto clavado. Es el promedio ponderado de los proyectos terminados.">i</span>
+          </div>
+          <div class="kpi-value" id="presError"></div>
+          <div class="kpi-sub" id="presErrorSub"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">
+            Categoría peor estimada
+            <span class="info-icon" tabindex="0" data-info="La categoría cuyo gasto real más se aleja del presupuesto en toda la cartera terminada. Un sesgo que se repite proyecto a proyecto es algo que corregir al cotizar, no mala suerte.">i</span>
+          </div>
+          <div class="kpi-value kpi-value--compact" id="presPeor"></div>
+          <div class="kpi-sub" id="presPeorSub"></div>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card">
+          <h3 title="Σ costo real / Σ presupuesto − 1 de los proyectos terminados. A la derecha: se gasta más de lo que se presupuesta.">Sesgo por categoría en la cartera</h3>
+          <div id="sesgoCategorias"></div>
+          <p class="chart-note" id="notaSesgo"></p>
+        </div>
+        <div class="chart-card">
+          <h3 title="Desviación de cada categoría en cada proyecto. Rojo: se gastó más que lo presupuestado; verde: menos.">Desviación por proyecto y categoría</h3>
+          <div class="viz-tablescroll" id="mapaCalor"></div>
+        </div>
+      </div>
+      <div class="viz-tablewrap"><div class="viz-tablescroll">
+      <table class="viz-table">
+        <thead>
+          <tr><th>Proyecto</th>
+            <th class="num" title="Costos Totales Real / Costos Totales Proyectado − 1: lo que se ve en el total.">Desviación total</th>
+            <th class="num" title="Suma de |real − proyectado| de las 4 categorías sobre el presupuesto total: lo que el total esconde.">Error del presupuesto</th>
+            <th class="num" title="Costo Proyectado − Costo Real. Positivo = ahorro.">Ahorro/Sobrecosto</th>
+            <th class="num" title="Presupuesto total del proyecto.">Presupuesto</th></tr>
+        </thead>
+        <tbody id="tablaPresupuestoBody"></tbody>
       </table>
       </div></div>
     </section>
@@ -648,6 +838,11 @@
         </div>
       </div>
       <div class="chart-row">
+        <div class="chart-card" style="flex: 2 1 380px">
+          <h3 title="Participación de cada cliente en toda la venta cargada, de mayor a menor, con el acumulado. Mide de cuántos clientes depende el ingreso.">Concentración del ingreso por cliente</h3>
+          <div id="paretoClientes"></div>
+          <p class="chart-note" id="notaConcentracion"></p>
+        </div>
         <div class="chart-card"><h3>Margen acumulado por cliente</h3><div id="chartTopClientes"></div></div>
         <div class="chart-card"><h3>Distribución de Clasificación</h3><div id="chartClasificacion"></div><p class="chart-note" id="notaClasificacion"></p></div>
       </div>
@@ -714,7 +909,7 @@
   <div class="viz-tooltip" id="vizTooltip"></div>
 </div>
 
-<script id="af-data-b64" type="text/plain">eyJnZW5lcmFkbyI6ICIyMi0wOS0yMDI2IDEzOjA4IiwgInBhaXMiOiAiUEUiLCAidGl0dWxvIjogIkFuw6FsaXNpcyBGaW5hbmNpZXJvIFBlcsO6IiwgIm1vbmVkYSI6IHsic2ltYm9sbyI6ICJTLyIsICJsb2NhbGUiOiAiZXMtUEUifSwgInVtYnJhbGVzIjogeyJleGNlbGVudGUiOiA4NSwgImJ1ZW5vIjogNzAsICJhcHJvYmFkbyI6IDU1LCAic29icmVjb3N0b19ub3RhX2Nlcm8iOiAwLjMsICJhbGVydGFfc29icmVjb3N0byI6IDAuMSwgImFsZXJ0YV9jb3N0b19pbmNvbXBsZXRvIjogMC44fSwgImNvYmVydHVyYSI6IHsibl9wcm95ZWN0b3MiOiAxOSwgIm5fY29tcGxldG9zIjogMCwgInZlbnRhX2NhcmdhZGFfdG90YWwiOiAwLCAidmVudGFfY29tcGxldG9zIjogMH0sICJrcGlzX3Byb3llY3RvcyI6IHsibl9jb21wbGV0b3MiOiAwLCAibW9udG9fdmVudGFfdG90YWwiOiAwLCAiY29zdG9fZXN0aW1hZG9fdG90YWwiOiAwLCAibWFyZ2VuX2VzdGltYWRvX3RvdGFsIjogMCwgIm1hcmdlbl9wb25kZXJhZG9fcGN0IjogbnVsbCwgIm5fZW5fY3Vyc28iOiAwLCAibm90YV9wcm9tZWRpbyI6IG51bGwsICJuX3JlcXVpZXJlX2F0ZW5jaW9uIjogMCwgIm5fY29uX2FsZXJ0YXMiOiAwfSwgImNsaWVudGVzX3Jlc3VtZW4iOiB7Im5fY2xpZW50ZXMiOiAwLCAibl9yZWN1cnJlbnRlcyI6IDAsICJ0YXNhX3JlY29tcHJhIjogbnVsbH0sICJwcm95ZWN0b3MiOiBbXSwgImNsaWVudGVzIjogW10sICJjYXRlZ29yaWFzIjogW10sICJwZW5kaWVudGVzIjogW3sidGFnIjogIkJXSUwiLCAibm9tYnJlIjogIkJvbWJhIFdpbG8gQ29uY2hhbMOtIiwgIm1lbnNhamUiOiAiQm9tYmEgV2lsbyBDb25jaGFsw60g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDQ0hJIiwgIm5vbWJyZSI6ICJDRVNGQU0gQ2hpbGzDoW4iLCAibWVuc2FqZSI6ICJDRVNGQU0gQ2hpbGzDoW4g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDUE1PIiwgIm5vbWJyZSI6ICJDT05BRiBQdWVydG8gTW9udHQiLCAibWVuc2FqZSI6ICJDT05BRiBQdWVydG8gTW9udHQg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDVkFMIiwgIm5vbWJyZSI6ICJDYWxkZXJhIFZhbGRpdmlhIiwgIm1lbnNhamUiOiAiQ2FsZGVyYSBWYWxkaXZpYSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkNBTlQiLCAibm9tYnJlIjogIkNhbGRlcmFzIEFudG9mYWdhc3RhIiwgIm1lbnNhamUiOiAiQ2FsZGVyYXMgQW50b2ZhZ2FzdGEg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDQ09OIiwgIm5vbWJyZSI6ICJDZXNmYW0gQ29uc3RpdHVjacOzbiIsICJtZW5zYWplIjogIkNlc2ZhbSBDb25zdGl0dWNpw7NuIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiQ0ZMSSIsICJub21icmUiOiAiQ2VzZmFtIExpbWFjaGUiLCAibWVuc2FqZSI6ICJDZXNmYW0gTGltYWNoZSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkNPTUMiLCAibm9tYnJlIjogIkNvbWlzYXLDrWEgQ29uY2hhbMOtIiwgIm1lbnNhamUiOiAiQ29taXNhcsOtYSBDb25jaGFsw60g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDUkVNIiwgIm5vbWJyZSI6ICJDcmVtYWNpw7NuIENvbmNlcGNpw7NuIiwgIm1lbnNhamUiOiAiQ3JlbWFjacOzbiBDb25jZXBjacOzbiDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkVTRk8iLCAibm9tYnJlIjogIkVTRk9DQVIiLCAibWVuc2FqZSI6ICJFU0ZPQ0FSIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiRkNIMSIsICJub21icmUiOiAiRkFDSDEiLCAibWVuc2FqZSI6ICJGQUNIMSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkZDSDIiLCAibm9tYnJlIjogIkZBQ0gyIiwgIm1lbnNhamUiOiAiRkFDSDIg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJGUVlRIiwgIm5vbWJyZSI6ICJGaXNjYWzDrWEgUXVpbHB1w6kgeSBRdWludGVybyIsICJtZW5zYWplIjogIkZpc2NhbMOtYSBRdWlscHXDqSB5IFF1aW50ZXJvIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiSlVOMiIsICJub21icmUiOiAiSnVuamkgVjIiLCAibWVuc2FqZSI6ICJKdW5qaSBWMiDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkpVTkoiLCAibm9tYnJlIjogIkp1bmppJ3MgVmFscGFyYWlzbyIsICJtZW5zYWplIjogIkp1bmppJ3MgVmFscGFyYWlzbyDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkxJTUEiLCAibm9tYnJlIjogIkxpbWFjaGUgRXN0YW5xdWUgNjAwTCIsICJtZW5zYWplIjogIkxpbWFjaGUgRXN0YW5xdWUgNjAwTCDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIk1MRVIiLCAibm9tYnJlIjogIk1pY3JvdHVyYmluYSBMRVIiLCAibWVuc2FqZSI6ICJNaWNyb3R1cmJpbmEgTEVSIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiSFBJTiIsICJub21icmUiOiAiUHV0YWVuZG8gSG9zcGl0YWwgUGluZWwiLCAibWVuc2FqZSI6ICJQdXRhZW5kbyBIb3NwaXRhbCBQaW5lbCDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIlVNQUciLCAibm9tYnJlIjogIlVNQUciLCAibWVuc2FqZSI6ICJVTUFHIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfV0sICJyZXBvcnRlc19wZGYiOiB7fX0=</script>
+<script id="af-data-b64" type="text/plain">eyJnZW5lcmFkbyI6ICIyMy0wOS0yMDI2IDEwOjE0IiwgInBhaXMiOiAiUEUiLCAidGl0dWxvIjogIkFuw6FsaXNpcyBGaW5hbmNpZXJvIFBlcsO6IiwgIm1vbmVkYSI6IHsic2ltYm9sbyI6ICJTLyIsICJsb2NhbGUiOiAiZXMtUEUifSwgInVtYnJhbGVzIjogeyJleGNlbGVudGUiOiA4NSwgImJ1ZW5vIjogNzAsICJhcHJvYmFkbyI6IDU1LCAic29icmVjb3N0b19ub3RhX2Nlcm8iOiAwLjMsICJtYXJnZW5fb2JqZXRpdm8iOiAwLjI1LCAiYWxlcnRhX3NvYnJlY29zdG8iOiAwLjEsICJhbGVydGFfY29zdG9faW5jb21wbGV0byI6IDAuOH0sICJjb2JlcnR1cmEiOiB7Im5fcHJveWVjdG9zIjogMTksICJuX2NvbXBsZXRvcyI6IDAsICJ2ZW50YV9jYXJnYWRhX3RvdGFsIjogMCwgInZlbnRhX2NvbXBsZXRvcyI6IDB9LCAia3Bpc19wcm95ZWN0b3MiOiB7Im5fY29tcGxldG9zIjogMCwgIm1vbnRvX3ZlbnRhX3RvdGFsIjogMCwgImNvc3RvX2VzdGltYWRvX3RvdGFsIjogMCwgIm1hcmdlbl9lc3RpbWFkb190b3RhbCI6IDAsICJtYXJnZW5fcG9uZGVyYWRvX3BjdCI6IG51bGwsICJuX2VuX2N1cnNvIjogMCwgIm5vdGFfcHJvbWVkaW8iOiBudWxsLCAibl9yZXF1aWVyZV9hdGVuY2lvbiI6IDAsICJuX2Nvbl9hbGVydGFzIjogMH0sICJwcmVzdXB1ZXN0byI6IHsic2VzZ29fY2F0ZWdvcmlhcyI6IFt7ImNhdGVnb3JpYSI6ICJNYXRlcmlhbGVzIiwgInJlYWwiOiAwLCAicHJveWVjdGFkbyI6IDAsICJzZXNnbyI6IG51bGwsICJuX3Byb3llY3RvcyI6IDB9LCB7ImNhdGVnb3JpYSI6ICJFcXVpcG9zIiwgInJlYWwiOiAwLCAicHJveWVjdGFkbyI6IDAsICJzZXNnbyI6IG51bGwsICJuX3Byb3llY3RvcyI6IDB9LCB7ImNhdGVnb3JpYSI6ICJNYW5vIGRlIE9icmEiLCAicmVhbCI6IDAsICJwcm95ZWN0YWRvIjogMCwgInNlc2dvIjogbnVsbCwgIm5fcHJveWVjdG9zIjogMH0sIHsiY2F0ZWdvcmlhIjogIk90cm9zIiwgInJlYWwiOiAwLCAicHJveWVjdGFkbyI6IDAsICJzZXNnbyI6IG51bGwsICJuX3Byb3llY3RvcyI6IDB9XX0sICJjb25jZW50cmFjaW9uIjogeyJ0b3RhbCI6IDAsICJuX2NsaWVudGVzIjogMCwgInRvcF8xIjogbnVsbCwgInRvcF8zIjogbnVsbCwgImhoaSI6IG51bGwsICJjbGllbnRlc19lcXVpdmFsZW50ZXMiOiBudWxsLCAicmFua2luZyI6IFtdfSwgImNsaWVudGVzX3Jlc3VtZW4iOiB7Im5fY2xpZW50ZXMiOiAwLCAibl9yZWN1cnJlbnRlcyI6IDAsICJ0YXNhX3JlY29tcHJhIjogbnVsbH0sICJwcm95ZWN0b3MiOiBbXSwgImNsaWVudGVzIjogW10sICJjYXRlZ29yaWFzIjogW10sICJwZW5kaWVudGVzIjogW3sidGFnIjogIkJXSUwiLCAibm9tYnJlIjogIkJvbWJhIFdpbG8gQ29uY2hhbMOtIiwgIm1lbnNhamUiOiAiQm9tYmEgV2lsbyBDb25jaGFsw60g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDQ0hJIiwgIm5vbWJyZSI6ICJDRVNGQU0gQ2hpbGzDoW4iLCAibWVuc2FqZSI6ICJDRVNGQU0gQ2hpbGzDoW4g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDUE1PIiwgIm5vbWJyZSI6ICJDT05BRiBQdWVydG8gTW9udHQiLCAibWVuc2FqZSI6ICJDT05BRiBQdWVydG8gTW9udHQg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDVkFMIiwgIm5vbWJyZSI6ICJDYWxkZXJhIFZhbGRpdmlhIiwgIm1lbnNhamUiOiAiQ2FsZGVyYSBWYWxkaXZpYSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkNBTlQiLCAibm9tYnJlIjogIkNhbGRlcmFzIEFudG9mYWdhc3RhIiwgIm1lbnNhamUiOiAiQ2FsZGVyYXMgQW50b2ZhZ2FzdGEg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDQ09OIiwgIm5vbWJyZSI6ICJDZXNmYW0gQ29uc3RpdHVjacOzbiIsICJtZW5zYWplIjogIkNlc2ZhbSBDb25zdGl0dWNpw7NuIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiQ0ZMSSIsICJub21icmUiOiAiQ2VzZmFtIExpbWFjaGUiLCAibWVuc2FqZSI6ICJDZXNmYW0gTGltYWNoZSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkNPTUMiLCAibm9tYnJlIjogIkNvbWlzYXLDrWEgQ29uY2hhbMOtIiwgIm1lbnNhamUiOiAiQ29taXNhcsOtYSBDb25jaGFsw60g4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJDUkVNIiwgIm5vbWJyZSI6ICJDcmVtYWNpw7NuIENvbmNlcGNpw7NuIiwgIm1lbnNhamUiOiAiQ3JlbWFjacOzbiBDb25jZXBjacOzbiDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkVTRk8iLCAibm9tYnJlIjogIkVTRk9DQVIiLCAibWVuc2FqZSI6ICJFU0ZPQ0FSIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiRkNIMSIsICJub21icmUiOiAiRkFDSDEiLCAibWVuc2FqZSI6ICJGQUNIMSDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkZDSDIiLCAibm9tYnJlIjogIkZBQ0gyIiwgIm1lbnNhamUiOiAiRkFDSDIg4oCUIEZhbHRhIGluZ3Jlc2FyIGluZm9ybWFjacOzbiBlbiAnQW7DoWxpc2lzIGRlIFByb3llY3RvcyciLCAibGluayI6IG51bGwsICJjYW1wb3NfZmFsdGFudGVzIjogWyIlIEF2YW5jZSIsICJNb250byBkZSBWZW50YSAoc2luIElWQSkiLCAiQ29zdG9zIE1hdGVyaWFsZXMgUHJveWVjdGFkb3MiLCAiQ29zdG9zIEVxdWlwb3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFByb3llY3RhZGEiLCAiT3Ryb3MgQ29zdG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBSZWFsIl0sICJtb250b192ZW50YSI6IG51bGwsICJhbGVydGFzIjogW119LCB7InRhZyI6ICJGUVlRIiwgIm5vbWJyZSI6ICJGaXNjYWzDrWEgUXVpbHB1w6kgeSBRdWludGVybyIsICJtZW5zYWplIjogIkZpc2NhbMOtYSBRdWlscHXDqSB5IFF1aW50ZXJvIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiSlVOMiIsICJub21icmUiOiAiSnVuamkgVjIiLCAibWVuc2FqZSI6ICJKdW5qaSBWMiDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkpVTkoiLCAibm9tYnJlIjogIkp1bmppJ3MgVmFscGFyYWlzbyIsICJtZW5zYWplIjogIkp1bmppJ3MgVmFscGFyYWlzbyDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIkxJTUEiLCAibm9tYnJlIjogIkxpbWFjaGUgRXN0YW5xdWUgNjAwTCIsICJtZW5zYWplIjogIkxpbWFjaGUgRXN0YW5xdWUgNjAwTCDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIk1MRVIiLCAibm9tYnJlIjogIk1pY3JvdHVyYmluYSBMRVIiLCAibWVuc2FqZSI6ICJNaWNyb3R1cmJpbmEgTEVSIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfSwgeyJ0YWciOiAiSFBJTiIsICJub21icmUiOiAiUHV0YWVuZG8gSG9zcGl0YWwgUGluZWwiLCAibWVuc2FqZSI6ICJQdXRhZW5kbyBIb3NwaXRhbCBQaW5lbCDigJQgRmFsdGEgaW5ncmVzYXIgaW5mb3JtYWNpw7NuIGVuICdBbsOhbGlzaXMgZGUgUHJveWVjdG9zJyIsICJsaW5rIjogbnVsbCwgImNhbXBvc19mYWx0YW50ZXMiOiBbIiUgQXZhbmNlIiwgIk1vbnRvIGRlIFZlbnRhIChzaW4gSVZBKSIsICJDb3N0b3MgTWF0ZXJpYWxlcyBQcm95ZWN0YWRvcyIsICJDb3N0b3MgRXF1aXBvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUHJveWVjdGFkYSIsICJPdHJvcyBDb3N0b3MgUHJveWVjdGFkb3MiLCAiTWFubyBkZSBPYnJhIFJlYWwiXSwgIm1vbnRvX3ZlbnRhIjogbnVsbCwgImFsZXJ0YXMiOiBbXX0sIHsidGFnIjogIlVNQUciLCAibm9tYnJlIjogIlVNQUciLCAibWVuc2FqZSI6ICJVTUFHIOKAlCBGYWx0YSBpbmdyZXNhciBpbmZvcm1hY2nDs24gZW4gJ0Fuw6FsaXNpcyBkZSBQcm95ZWN0b3MnIiwgImxpbmsiOiBudWxsLCAiY2FtcG9zX2ZhbHRhbnRlcyI6IFsiJSBBdmFuY2UiLCAiTW9udG8gZGUgVmVudGEgKHNpbiBJVkEpIiwgIkNvc3RvcyBNYXRlcmlhbGVzIFByb3llY3RhZG9zIiwgIkNvc3RvcyBFcXVpcG9zIFByb3llY3RhZG9zIiwgIk1hbm8gZGUgT2JyYSBQcm95ZWN0YWRhIiwgIk90cm9zIENvc3RvcyBQcm95ZWN0YWRvcyIsICJNYW5vIGRlIE9icmEgUmVhbCJdLCAibW9udG9fdmVudGEiOiBudWxsLCAiYWxlcnRhcyI6IFtdfV0sICJyZXBvcnRlc19wZGYiOiB7fX0=</script>
 <script>
 (function () {
   // ---------- theme persistence ----------
@@ -1257,12 +1452,84 @@
       '</div>';
   }
 
+  // ---------- filtros y orden de la tabla de Proyectos (fase 2) ----------
+  // Antes la tabla tenía un orden fijo por Nota y los encabezados mostraban
+  // cursor de mano sin ordenar nada.
+  var ORDEN = { campo: 'nota', asc: false };
+
+  function opcionesDe(lista) {
+    return lista.filter(function (v, i) { return v && lista.indexOf(v) === i; }).sort();
+  }
+  (function poblarFiltros() {
+    var cats = opcionesDe(PROYECTOS.map(function (p) { return p.categoria; }));
+    var clientes = opcionesDe(PROYECTOS.map(function (p) { return p.cliente; }));
+    document.getElementById('filtroCategoria').innerHTML =
+      '<option value="">Todas</option>' + cats.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+    document.getElementById('filtroCliente').innerHTML =
+      '<option value="">Todos</option>' + clientes.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+  })();
+
   function proyectosFiltrados() {
     var q = document.getElementById('buscarProyectos').value.toLowerCase();
-    return proyectosOrdenados.filter(function (p) {
-      return (p.nombre + ' ' + (p.cliente || '')).toLowerCase().indexOf(q) !== -1;
+    var estado = document.getElementById('filtroEstado').value;
+    var categoria = document.getElementById('filtroCategoria').value;
+    var cliente = document.getElementById('filtroCliente').value;
+    var solo = document.getElementById('filtroAtencion').value;
+    var items = PROYECTOS.filter(function (p) {
+      if (q && (p.nombre + ' ' + (p.cliente || '')).toLowerCase().indexOf(q) === -1) return false;
+      if (estado === 'curso' && !p.en_curso) return false;
+      if (estado === 'cerrado' && p.en_curso) return false;
+      if (categoria && (p.categoria || '') !== categoria) return false;
+      if (cliente && (p.cliente || '') !== cliente) return false;
+      if (solo === 'alertas' && !p.alertas.length) return false;
+      if (solo === 'atencion' && p.evaluacion !== 'Requiere atención') return false;
+      return true;
+    });
+    // Vacío siempre al final, en cualquier sentido del orden: un proyecto sin
+    // dato no es "el peor", es "no se sabe".
+    items.sort(function (a, b) {
+      var x = a[ORDEN.campo], y = b[ORDEN.campo];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      var cmp = (typeof x === 'string') ? x.localeCompare(y, 'es') : (x - y);
+      return ORDEN.asc ? cmp : -cmp;
+    });
+    document.getElementById('filtrosResultado').textContent =
+      items.length === PROYECTOS.length
+        ? PROYECTOS.length + ' proyectos'
+        : items.length + ' de ' + PROYECTOS.length + ' proyectos';
+    return items;
+  }
+
+  function marcarOrden() {
+    document.querySelectorAll('#tabProyectos th.ordenable').forEach(function (th) {
+      var activo = th.getAttribute('data-orden') === ORDEN.campo;
+      th.classList.toggle('es-orden', activo);
+      th.setAttribute('aria-sort', activo ? (ORDEN.asc ? 'ascending' : 'descending') : 'none');
+      th.querySelector('.orden').textContent = activo ? (ORDEN.asc ? '▲' : '▼') : '↕';
     });
   }
+  document.querySelectorAll('#tabProyectos th.ordenable').forEach(function (th) {
+    th.setAttribute('tabindex', '0');
+    function alternar() {
+      var campo = th.getAttribute('data-orden');
+      // Texto arranca A-Z; números y notas, de mayor a menor.
+      if (ORDEN.campo === campo) ORDEN.asc = !ORDEN.asc;
+      else ORDEN = { campo: campo, asc: campo === 'nombre' || campo === 'cliente' };
+      marcarOrden();
+      renderTablaProyectos(proyectosFiltrados());
+    }
+    th.addEventListener('click', alternar);
+    th.addEventListener('keydown', function (evt) {
+      if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); alternar(); }
+    });
+  });
+  ['filtroEstado', 'filtroCategoria', 'filtroCliente', 'filtroAtencion'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', function () {
+      renderTablaProyectos(proyectosFiltrados());
+    });
+  });
 
   function renderTablaProyectos(items) {
     var tbody = document.getElementById('tablaProyectosBody');
@@ -1294,7 +1561,8 @@
       }
     }
   }
-  renderTablaProyectos(proyectosOrdenados);
+  marcarOrden();
+  renderTablaProyectos(proyectosFiltrados());
   document.getElementById('buscarProyectos').addEventListener('input', debounce(function () {
     renderTablaProyectos(proyectosFiltrados());
   }, 150));
@@ -1377,6 +1645,225 @@
       return c.cliente.toLowerCase().indexOf(q) !== -1;
     }));
   }, 150));
+
+  // Pareto: participación de cada cliente en la venta y acumulado. Es la
+  // lectura de riesgo que el CLTV no daba (de cuántos clientes depende el
+  // ingreso), y va sobre TODA la venta cargada, no solo la analizada.
+  (function renderConcentracion() {
+    var c = DATA.concentracion;
+    var el = document.getElementById('paretoClientes');
+    if (!c || !c.ranking.length) { el.innerHTML = '<p class="chart-note">Sin venta cargada todavía.</p>'; return; }
+    el.innerHTML = c.ranking.slice(0, 10).map(function (r) {
+      return '<div class="pareto-fila" title="' + esc(r.cliente) + ': ' + formatoCLP(r.venta) + ' (' + formatoPct(r.parte) + ')">' +
+        '<div class="bar-label">' + esc(r.cliente) + '</div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + (r.parte / c.top_1 * 100) + '%"></div></div>' +
+        '<div class="monto">' + formatoPct(r.parte) + '</div>' +
+        '<div class="acum">' + formatoPct(r.acumulado) + '</div></div>';
+    }).join('');
+    document.getElementById('notaConcentracion').textContent =
+      'El cliente más grande concentra ' + formatoPct(c.top_1) + ' de la venta y los 3 mayores, ' + formatoPct(c.top_3) +
+      '. El ingreso está repartido como si hubiera ' + formatoNum(c.clientes_equivalentes, 1) + ' clientes iguales (hay ' +
+      c.n_clientes + '): mientras más baja esa cifra, más depende la empresa de pocos clientes.';
+  })();
+
+  // ---------- pestaña Resumen ----------
+  (function renderResumen() {
+    var cob = DATA.cobertura;
+    document.getElementById('resVenta').textContent = formatoCLP(KPIS.monto_venta_total);
+    document.getElementById('resVentaSub').textContent =
+      cob.venta_cargada_total > KPIS.monto_venta_total
+        ? 'de ' + formatoCLP(cob.venta_cargada_total) + ' cargados (' + formatoPct(KPIS.monto_venta_total / cob.venta_cargada_total) + ')'
+        : 'toda la venta cargada está en el análisis';
+    document.getElementById('resMargen').textContent = formatoCLP(KPIS.margen_estimado_total);
+    marcarSemantica('resMargen', 'resCardMargen', KPIS.margen_estimado_total < 0 ? 'sem-bad' : 'sem-good');
+    document.getElementById('resMargenSub').textContent =
+      (KPIS.margen_ponderado_pct != null ? formatoPct(KPIS.margen_ponderado_pct) + ' de la venta' : '') +
+      (KPIS.n_en_curso ? ' · ' + KPIS.n_en_curso + (KPIS.n_en_curso === 1 ? ' en curso, estimado' : ' en curso, estimados') : '');
+
+    // Solo los que se pasaron: un proyecto que ahorró no "devuelve" el
+    // sobrecosto de otro.
+    var sobre = PROYECTOS.filter(function (p) { return p.ahorro_sobrecosto_total < 0; });
+    var montoSobre = sobre.reduce(function (s, p) { return s - p.ahorro_sobrecosto_total; }, 0);
+    document.getElementById('resSobrecosto').textContent = formatoCLP(montoSobre);
+    marcarSemantica('resSobrecosto', 'resCardSobrecosto', montoSobre > 0 ? 'sem-warn' : 'sem-good');
+    document.getElementById('resSobrecostoSub').textContent = sobre.length
+      ? 'en ' + sobre.length + (sobre.length === 1 ? ' proyecto sobre presupuesto' : ' proyectos sobre presupuesto')
+      : 'ningún proyecto sobre presupuesto';
+
+    var atencion = PROYECTOS.filter(function (p) { return p.evaluacion === 'Requiere atención' || p.alertas.length; });
+    document.getElementById('resAtencion').textContent = atencion.length;
+    marcarSemantica('resAtencion', 'resCardAtencion', atencion.length ? 'sem-warn' : 'sem-good');
+    document.getElementById('resAtencionSub').textContent =
+      KPIS.n_requiere_atencion + (KPIS.n_requiere_atencion === 1 ? ' con Nota bajo ' : ' con Nota bajo ') + UMBRALES.aprobado +
+      ' · ' + KPIS.n_con_alertas + ' con alertas';
+
+    // Lista "qué mirar primero": el proyecto y el motivo en palabras.
+    var filas = [];
+    PROYECTOS.forEach(function (p) {
+      var motivos = p.alertas.slice();
+      if (p.evaluacion === 'Requiere atención') {
+        motivos.unshift('Nota ' + p.nota + ': margen al cierre ' + formatoPct(p.margen_estimado_cierre_pct) +
+          ' y desviación ' + formatoPct(p.desviacion_estimada_cierre_pct) + '.');
+      }
+      if (motivos.length) {
+        filas.push({ p: p, grave: p.evaluacion === 'Requiere atención', motivo: motivos.join(' ') });
+      }
+    });
+    filas.sort(function (a, b) { return (b.grave - a.grave) || (b.p.monto_venta - a.p.monto_venta); });
+    var lista = document.getElementById('listaAtencion');
+    if (!filas.length) {
+      lista.innerHTML = '<p class="vacio-ok">Ningún proyecto con alertas ni bajo la nota mínima.</p>';
+    } else {
+      lista.innerHTML = '<ul class="lista-atencion">' + filas.map(function (f) {
+        return '<li><span class="marca ' + (f.grave ? 'bad' : 'warn') + '"></span>' +
+          '<span class="quien">' + esc(f.p.nombre) + '</span>' +
+          '<span class="motivo">' + esc(f.motivo) + '</span>' +
+          '<button class="ir" type="button" data-ir="' + esc(f.p.tag) + '">Ver →</button></li>';
+      }).join('') + '</ul>';
+      lista.addEventListener('click', function (evt) {
+        var btn = evt.target.closest('[data-ir]');
+        if (btn) irAlProyecto(btn.getAttribute('data-ir'));
+      });
+    }
+    renderScatter(PROYECTOS);
+  })();
+
+  function irAlProyecto(tag) {
+    document.querySelector('.viz-tab-btn[data-tab="tabProyectos"]').click();
+    ['filtroEstado', 'filtroCategoria', 'filtroCliente', 'filtroAtencion'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('buscarProyectos').value = '';
+    proyectoExpandido = tag;
+    renderTablaProyectos(proyectosFiltrados());
+    var fila = document.querySelector('tr.doc-row[data-tag="' + tag + '"]');
+    if (fila) { fila.scrollIntoView({ block: 'center' }); fila.focus(); }
+  }
+
+  // Dispersión: separa las dos preguntas que la Nota junta en un número --
+  // cuánto margen deja (eje vertical) y si respetó el presupuesto (eje
+  // horizontal). El tamaño de la burbuja es la venta.
+  function renderScatter(items) {
+    var el = document.getElementById('scatterScatter') || document.getElementById('scatterProyectos');
+    var puntos = items.filter(function (p) {
+      return p.margen_estimado_cierre_pct != null && p.desviacion_estimada_cierre_pct != null;
+    });
+    if (!puntos.length) { el.innerHTML = '<p class="chart-note">Sin proyectos con datos completos.</p>'; return; }
+    var W = 640, H = 360, M = { t: 16, r: 18, b: 34, l: 46 };
+    var xs = puntos.map(function (p) { return p.desviacion_estimada_cierre_pct; });
+    var ys = puntos.map(function (p) { return p.margen_estimado_cierre_pct; });
+    var xMax = Math.max(0.3, Math.ceil(Math.max.apply(null, xs.map(Math.abs)) * 10) / 10);
+    var yMin = Math.min(0, Math.floor(Math.min.apply(null, ys) * 10) / 10);
+    var yMax = Math.max(0.3, Math.ceil(Math.max.apply(null, ys) * 10) / 10);
+    var ventaMax = Math.max.apply(null, puntos.map(function (p) { return p.monto_venta || 0; })) || 1;
+    function px(v) { return M.l + ((v + xMax) / (2 * xMax)) * (W - M.l - M.r); }
+    function py(v) { return H - M.b - ((v - yMin) / (yMax - yMin)) * (H - M.t - M.b); }
+    var objetivo = UMBRALES.margen_objetivo;
+
+    var ejes =
+      '<line class="eje" x1="' + M.l + '" y1="' + (H - M.b) + '" x2="' + (W - M.r) + '" y2="' + (H - M.b) + '"/>' +
+      '<line class="eje" x1="' + M.l + '" y1="' + M.t + '" x2="' + M.l + '" y2="' + (H - M.b) + '"/>' +
+      '<line class="guia" x1="' + px(0) + '" y1="' + M.t + '" x2="' + px(0) + '" y2="' + (H - M.b) + '"/>' +
+      '<line class="guia" x1="' + M.l + '" y1="' + py(objetivo) + '" x2="' + (W - M.r) + '" y2="' + py(objetivo) + '"/>' +
+      '<text class="rotulo" x="' + px(0) + '" y="' + (H - M.b + 14) + '" text-anchor="middle">en presupuesto</text>' +
+      '<text class="rotulo" x="' + (W - M.r) + '" y="' + (H - M.b + 14) + '" text-anchor="end">+' + formatoPct(xMax) + ' sobrecosto →</text>' +
+      '<text class="rotulo" x="' + M.l + '" y="' + (H - M.b + 14) + '" text-anchor="start">← ahorro ' + formatoPct(xMax) + '</text>' +
+      '<text class="rotulo" x="' + (M.l - 6) + '" y="' + (py(objetivo) + 3) + '" text-anchor="end">' + formatoPct(objetivo) + '</text>' +
+      '<text class="rotulo" x="' + (M.l - 6) + '" y="' + (py(yMax) + 3) + '" text-anchor="end">' + formatoPct(yMax) + '</text>' +
+      '<text class="rotulo" x="' + (M.l - 6) + '" y="' + (py(yMin) + 3) + '" text-anchor="end">' + formatoPct(yMin) + '</text>';
+
+    var burbujas = puntos.slice().sort(function (a, b) { return b.monto_venta - a.monto_venta; }).map(function (p) {
+      var r = 6 + 16 * Math.sqrt((p.monto_venta || 0) / ventaMax);
+      var color = COLOR_SEMANTICO[NIVEL_EVALUACION_DONUT[p.evaluacion]] || 'var(--brand-gray-7)';
+      var x = px(Math.max(-xMax, Math.min(xMax, p.desviacion_estimada_cierre_pct)));
+      var y = py(Math.max(yMin, Math.min(yMax, p.margen_estimado_cierre_pct)));
+      return '<circle class="punto" cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + color + '" fill-opacity="0.75" data-tag="' + esc(p.tag) + '">' +
+        '<title>' + esc(p.nombre) + ': margen ' + formatoPct(p.margen_estimado_cierre_pct) +
+        ', desviación ' + formatoPct(p.desviacion_estimada_cierre_pct) + ', venta ' + formatoCLP(p.monto_venta) + '</title></circle>' +
+        '<text class="nombre-punto" x="' + x + '" y="' + (y - r - 3) + '" text-anchor="middle">' + esc(p.tag) + '</text>';
+    }).join('');
+
+    el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Margen al cierre contra desviación del presupuesto, por proyecto">' + ejes + burbujas + '</svg>';
+    el.querySelectorAll('.punto').forEach(function (c) {
+      c.addEventListener('click', function () { irAlProyecto(c.getAttribute('data-tag')); });
+    });
+    document.getElementById('notaScatter').textContent =
+      'Arriba del ' + formatoPct(objetivo) + ' está el objetivo de margen; a la derecha de la línea vertical, los que se pasaron del presupuesto. ' +
+      'Tamaño de la burbuja = Monto de Venta. Clic en una burbuja para ver el proyecto.';
+  }
+
+  // ---------- pestaña Presupuesto vs Real ----------
+  (function renderPresupuesto() {
+    var terminados = PROYECTOS.filter(function (p) { return !p.en_curso && p.error_presupuesto_pct != null; });
+    var presupuestoTotal = terminados.reduce(function (s, p) { return s + p.total_proyectado; }, 0);
+    var errorPonderado = presupuestoTotal
+      ? terminados.reduce(function (s, p) { return s + p.error_presupuesto_pct * p.total_proyectado; }, 0) / presupuestoTotal
+      : null;
+    document.getElementById('presError').textContent = formatoPct(errorPonderado);
+    document.getElementById('presErrorSub').textContent = terminados.length
+      ? 'sobre ' + terminados.length + (terminados.length === 1 ? ' proyecto terminado' : ' proyectos terminados')
+      : 'sin proyectos terminados todavía';
+
+    var sesgos = (DATA.presupuesto.sesgo_categorias || []).filter(function (s) { return s.sesgo != null; });
+    var peor = sesgos.slice().sort(function (a, b) { return Math.abs(b.sesgo) - Math.abs(a.sesgo); })[0];
+    document.getElementById('presPeor').textContent = peor ? peor.categoria : '—';
+    document.getElementById('presPeorSub').textContent = peor
+      ? (peor.sesgo > 0 ? 'se gasta ' + formatoPct(peor.sesgo) + ' más de lo presupuestado' : 'se presupuesta ' + formatoPct(-peor.sesgo) + ' de más')
+      : '';
+
+    var maxSesgo = Math.max.apply(null, sesgos.map(function (s) { return Math.abs(s.sesgo); }).concat([0.1]));
+    document.getElementById('sesgoCategorias').innerHTML = (DATA.presupuesto.sesgo_categorias || []).map(function (s) {
+      if (s.sesgo == null) {
+        return '<div class="sesgo-fila"><div class="bar-label">' + esc(s.categoria) + '</div>' +
+          '<div class="sesgo-pista"><span class="sesgo-centro"></span></div><div class="sesgo-valor">—</div></div>';
+      }
+      var ancho = Math.abs(s.sesgo) / maxSesgo * 50;
+      var estilo = s.sesgo >= 0
+        ? 'left:50%;width:' + ancho + '%;background:var(--status-bad)'
+        : 'right:50%;width:' + ancho + '%;background:var(--status-good)';
+      return '<div class="sesgo-fila" title="' + esc(s.categoria) + ': real ' + formatoCLP(s.real) + ' contra ' + formatoCLP(s.proyectado) + ' presupuestados">' +
+        '<div class="bar-label">' + esc(s.categoria) + '</div>' +
+        '<div class="sesgo-pista"><span class="sesgo-centro"></span><span class="sesgo-barra" style="' + estilo + '"></span></div>' +
+        '<div class="sesgo-valor ' + (s.sesgo > 0 ? 'tone-bad' : 'tone-good') + '">' + (s.sesgo > 0 ? '+' : '') + formatoPct(s.sesgo) + '</div></div>';
+    }).join('') || '<p class="chart-note">Sin proyectos terminados todavía.</p>';
+    var nSesgo = (DATA.presupuesto.sesgo_categorias[0] || {}).n_proyectos || 0;
+    document.getElementById('notaSesgo').textContent = nSesgo
+      ? 'Sobre ' + nSesgo + (nSesgo === 1 ? ' proyecto terminado' : ' proyectos terminados') +
+        '. Rojo: el gasto real supera al presupuesto en esa categoría; verde: se presupuestó de más. Lo que se repite proyecto a proyecto es lo que conviene corregir al cotizar.'
+      : '';
+
+    // Mapa de calor: dónde se desvió cada categoría en cada proyecto.
+    var conDatos = PROYECTOS.filter(function (p) { return p.total_proyectado; });
+    var mapa = document.getElementById('mapaCalor');
+    if (!conDatos.length) { mapa.innerHTML = '<p class="chart-note">Sin proyectos con presupuesto cargado.</p>'; }
+    else {
+      var filas = conDatos.slice().sort(function (a, b) { return (b.error_presupuesto_pct || 0) - (a.error_presupuesto_pct || 0); }).map(function (p) {
+        var celdas = CATEGORIAS_COSTO.map(function (c) {
+          var v = p.desviacion_pct_categoria[c.key];
+          if (v == null) return '<td class="sin-dato" title="' + esc(c.label) + ': sin presupuesto en esta categoría">—</td>';
+          var intensidad = Math.min(1, Math.abs(v) / 1.0);
+          var color = v > 0 ? '209,40,46' : '12,163,12';
+          return '<td style="background:rgba(' + color + ',' + (0.10 + intensidad * 0.55).toFixed(2) + ')" title="' +
+            esc(p.nombre) + ' — ' + esc(c.label) + ': real ' + formatoCLP(p.costos_reales[c.key]) +
+            ' contra ' + formatoCLP(p.costos_proyectados[c.key]) + ' presupuestados">' + (v > 0 ? '+' : '') + formatoNum(v * 100, 0) + '%</td>';
+        }).join('');
+        return '<tr><td class="proyecto" title="' + esc(p.nombre) + '">' + esc(p.nombre) + '</td>' + celdas + '</tr>';
+      }).join('');
+      mapa.innerHTML = '<table class="mapa-calor"><thead><tr><th class="proyecto">Proyecto</th>' +
+        CATEGORIAS_COSTO.map(function (c) { return '<th>' + c.label + '</th>'; }).join('') +
+        '</tr></thead><tbody>' + filas + '</tbody></table>';
+    }
+
+    document.getElementById('tablaPresupuestoBody').innerHTML = PROYECTOS.slice()
+      .sort(function (a, b) { return (b.error_presupuesto_pct || 0) - (a.error_presupuesto_pct || 0); })
+      .map(function (p) {
+        return '<tr><td>' + esc(p.nombre) + (p.en_curso ? '<span class="est-tag">en curso</span>' : '') + '</td>' +
+          '<td class="num">' + formatoPctDesviacion(p.desviacion_pct) + '</td>' +
+          '<td class="num">' + formatoPct(p.error_presupuesto_pct) + '</td>' +
+          '<td class="num">' + formatoMontoSigno(p.ahorro_sobrecosto_total) + '</td>' +
+          '<td class="num">' + formatoCLP(p.total_proyectado) + '</td></tr>';
+      }).join('');
+  })();
 
   // ---------- pestaña Categoría ----------
   var CATEGORIAS = DATA.categorias;
