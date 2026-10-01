@@ -122,6 +122,11 @@ HEADERS_PROYECTOS = [
     "Otros Costos Reales", "Mano de Obra Real", "Total Proyectado",
     "Total Real", "Margen Proyectado", "Margen Real",
     "Desviación % (Real vs Proyectado)",
+    # 2026-10-01 (plan de integración): N° de la Planilla de Ingreso de
+    # Requerimientos, la clave común de proyecto entre las herramientas. Al
+    # final, para no correr ninguna letra ni fórmula existente. Manual; lo
+    # completa también un envío del Formulador que lo traiga, solo si está vacío.
+    "N° Requerimiento",
 ]
 HEADERS_DETALLE_COSTOS_REALES = [
     "TAG proyecto", "Subcategoría", "Bucket", "Total sin IVA",
@@ -251,6 +256,7 @@ ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE = {
     "Margen Proyectado": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
     "Margen Real": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
     "Desviación % (Real vs Proyectado)": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
+    "N° Requerimiento": (COLOR_IDENTIFICACION, FORMATO_ENTERO, 12),
 }
 # columna (letra) -> (color de encabezado, formato numérico o None, ancho sugerido)
 ESTILO_COLUMNAS_PROYECTOS = {
@@ -368,6 +374,7 @@ NOMBRES_COLUMNAS_MANUALES_PROYECTOS = [
     "Fecha de cierre", "Monto de Venta (sin IVA)",
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
+    "N° Requerimiento",
 ]
 COLOR_RESALTADO_MANUAL = "FFF2CC"  # amarillo pastel -- no se reutiliza en ningún otro relleno del libro
 FUENTE_RESALTADO_MANUAL = Font(name="Calibri", size=11, italic=True)
@@ -482,8 +489,23 @@ def asegurar_estructura_workbook(ruta_excel: Path) -> openpyxl.Workbook:
         ws = wb[nombre_hoja] if nombre_hoja in wb.sheetnames else wb.create_sheet(nombre_hoja)
         if nombre_hoja == HOJA_PROYECTOS:
             for col, encabezado in enumerate(headers, start=1):
-                if ws.cell(row=1, column=col).value is None:
+                celda = ws.cell(row=1, column=col)
+                if celda.value is None:
                     ws.cell(row=1, column=col, value=encabezado)
+                elif celda.value == LEYENDA_RESALTADO_MANUAL:
+                    # La leyenda vive justo después del último encabezado
+                    # (aplicar_resaltado_celdas_manuales). Una columna nueva
+                    # al final del esquema cae sobre ella: se reemplaza por el
+                    # encabezado -- la leyenda se vuelve a escribir más a la
+                    # derecha en la misma corrida -- y se le quita el ancho y
+                    # el formato de la leyenda (2026-10-01, "N° Requerimiento").
+                    celda.value = encabezado
+                    celda.font = FUENTE_ENCABEZADO
+                    celda.alignment = ALINEACION_ENCABEZADO
+                    letra = get_column_letter(col)
+                    if letra in ws.column_dimensions:
+                        ws.column_dimensions[letra].width = ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE.get(
+                            encabezado, (None, None, 13))[2]
             continue
 
         max_col_previo = ws.max_column if ws.max_row >= 1 else 0
@@ -2234,7 +2256,9 @@ def preparar_intercambio(ws_proyectos, filas_validas: list[dict], raiz_intercamb
 def proyectos_para_catalogo(ws_proyectos, filas_validas: list[dict], agrupado) -> list[dict]:
     """Lo que el Formulador necesita de cada proyecto para elegir a cuál
     enviar y mostrar qué va a cambiar. Sin 'Gastos Generales' (no es un
-    proyecto al que se le cotice) ni venta/márgenes (no los necesita)."""
+    proyecto al que se le cotice) ni márgenes. La venta va solo para saber
+    si ya está cargada y de dónde vino (publicar_catalogo no publica el
+    monto: la carpeta la ve todo el que entra a la biblioteca)."""
     costos = costos_por_bucket(agrupado)
     salida = []
     for fila_info in filas_validas:
@@ -2246,6 +2270,8 @@ def proyectos_para_catalogo(ws_proyectos, filas_validas: list[dict], agrupado) -
             "tag": pf.normalizar_tag(fila_info["tag"]), "nombre": fila_info["nombre"],
             "cliente": valores.get("Cliente"), "categoria": valores.get("Categoría"),
             "avance": valores.get("% Avance"),
+            "req": ws_proyectos.cell(row=fila_info["fila"], column=HEADERS_PROYECTOS.index(pf.COLUMNA_REQ) + 1).value,
+            "venta": valores.get(pf.COLUMNA_VENTA),
             "proyectados": {c: valores.get(col) for c, col in pf.COLUMNA_POR_CATEGORIA.items()},
             "reales": {
                 "Materiales": reales.get("Materiales", 0.0), "Equipos": reales.get("Equipos", 0.0),
@@ -2255,13 +2281,32 @@ def proyectos_para_catalogo(ws_proyectos, filas_validas: list[dict], agrupado) -
     return salida
 
 
+def sesgo_cartera(ws_proyectos, filas_validas: list[dict], agrupado, hoy: date | None = None) -> dict:
+    """sesgo_por_categoria() en la forma que publica el intercambio: cuánto
+    se desvió el gasto real del presupuesto, por categoría, en los proyectos
+    terminados. El Formulador lo usa para precargar su simulador de
+    sobrecostos (plan de integración, fase 1a). Mismo cálculo que el tablero."""
+    costos = costos_por_bucket(agrupado)
+    hoy = hoy or date.today()
+    kpis = [
+        calcular_kpis_proyecto(valores_fila_proyectos(ws_proyectos, f["fila"]), costos.get(f["tag"], {}), hoy)
+        for f in filas_validas
+    ]
+    filas = sesgo_por_categoria(kpis)
+    return {
+        "proyectosTerminados": filas[0]["n_proyectos"] if filas else 0,
+        "porCategoria": {f["categoria"]: f["sesgo"] for f in filas},
+        "calculado": pf.intercambio.ahora_iso(),
+    }
+
+
 def cerrar_intercambio(contexto: dict, ws_proyectos, filas_validas: list[dict], agrupado) -> list[str]:
     """Después de guardar el Excel: registra la procedencia, archiva los
     envíos atendidos y publica el catálogo para el Formulador."""
     avisos = pf.finalizar(contexto["raiz"], contexto["decisiones"], contexto["estado"], contexto["ruta_estado"])
     pf.publicar_catalogo(
         contexto["raiz"], proyectos_para_catalogo(ws_proyectos, filas_validas, agrupado),
-        contexto["estado"], contexto["decisiones"],
+        contexto["estado"], contexto["decisiones"], sesgo=sesgo_cartera(ws_proyectos, filas_validas, agrupado),
     )
     return avisos
 
@@ -2288,7 +2333,8 @@ def publicar_intercambio(pais: str = "CL") -> dict:
     )
     pf.intercambio.asegurar_carpeta(raiz)
     proyectos = proyectos_para_catalogo(ws_proyectos, filas_validas, agrupado)
-    ruta = pf.publicar_catalogo(raiz, proyectos, contexto["estado"], contexto["decisiones"])
+    ruta = pf.publicar_catalogo(raiz, proyectos, contexto["estado"], contexto["decisiones"],
+                                sesgo=sesgo_cartera(ws_proyectos, filas_validas, agrupado))
     return {"error": None, "ruta": ruta, "proyectos": len(proyectos)}
 
 
@@ -2553,7 +2599,7 @@ def main(pais: str = "CL") -> None:
 
 
 TITULOS_INTERCAMBIO = {
-    "aplicar": ("Costos proyectados aplicados desde el Formulador", "Se aplicarían desde el Formulador"),
+    "aplicar": ("Costos proyectados y ventas aplicados desde el Formulador", "Se aplicarían desde el Formulador"),
     "sin-cambios": ("Envíos del Formulador que ya coincidían con el Excel", "Envíos del Formulador que ya coinciden con el Excel"),
     "pendiente": ("Envíos del Formulador que esperan tu decisión (siguen en el buzón)",) * 2,
     "reemplazado": ("Envíos del Formulador reemplazados por uno más reciente", "Se archivarían por haber uno más reciente"),

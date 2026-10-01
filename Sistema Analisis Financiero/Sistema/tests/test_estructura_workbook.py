@@ -16,7 +16,7 @@ def test_crea_las_3_hojas_con_encabezados_si_no_existe_el_archivo(tmp_path):
     assert ws.cell(row=1, column=2).value == "Nombre del proyecto"
     assert ws.cell(row=1, column=3).value == "Cliente"
     ultima_col = len(af.HEADERS_PROYECTOS)
-    assert ws.cell(row=1, column=ultima_col).value == "Desviación % (Real vs Proyectado)"
+    assert ws.cell(row=1, column=ultima_col).value == "N° Requerimiento"
 
 
 def test_elimina_hoja1_vacia_al_migrar_un_archivo_existente(tmp_path):
@@ -64,7 +64,7 @@ def test_agrega_encabezados_nuevos_a_una_hoja_existente_sin_tocar_los_viejos(tmp
 
     ws = wb[af.HOJA_PROYECTOS]
     assert ws.cell(row=1, column=1).value == "TAG proyecto"
-    assert ws.cell(row=1, column=ultima_col).value == "Desviación % (Real vs Proyectado)"
+    assert ws.cell(row=1, column=ultima_col).value == "N° Requerimiento"
     assert ws.cell(row=2, column=1).value == "UMAG"
 
 
@@ -239,3 +239,29 @@ def test_porcentaje_de_avance_lleva_formato_de_porcentaje():
     porcentaje, Excel convierte solo un '75' tecleado a 75,0%."""
     _, formato, _ = af.ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE["% Avance"]
     assert formato == af.FORMATO_PORCENTAJE
+
+
+def test_columna_nueva_sobre_la_leyenda_la_reemplaza_y_la_leyenda_se_corre(tmp_path):
+    """El archivo real (2026-10-01) tiene la leyenda del resaltado manual en
+    la celda justo después del último encabezado viejo, que es donde cae
+    «N° Requerimiento». La columna nueva gana la celda y la leyenda se vuelve
+    a escribir a su derecha en la misma corrida."""
+    ruta = tmp_path / "Análisis de Proyectos.xlsx"
+    wb_previo = openpyxl.Workbook()
+    ws_previo = wb_previo.active
+    ws_previo.title = af.HOJA_PROYECTOS
+    viejos = af.HEADERS_PROYECTOS[:-1]
+    for col, encabezado in enumerate(viejos, start=1):
+        ws_previo.cell(row=1, column=col, value=encabezado)
+    col_leyenda_vieja = len(viejos) + 1
+    ws_previo.cell(row=1, column=col_leyenda_vieja, value=af.LEYENDA_RESALTADO_MANUAL)
+    ws_previo.column_dimensions[openpyxl.utils.get_column_letter(col_leyenda_vieja)].width = 45
+    wb_previo.save(ruta)
+
+    wb = af.asegurar_estructura_workbook(ruta)
+    af.aplicar_resaltado_celdas_manuales(wb)
+
+    ws = wb[af.HOJA_PROYECTOS]
+    assert ws.cell(row=1, column=col_leyenda_vieja).value == "N° Requerimiento"
+    assert ws.column_dimensions[openpyxl.utils.get_column_letter(col_leyenda_vieja)].width == 12
+    assert ws.cell(row=1, column=col_leyenda_vieja + 1).value == af.LEYENDA_RESALTADO_MANUAL

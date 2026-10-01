@@ -29,6 +29,15 @@ nunca se tocan", y con estas garantías:
 - Nunca toca Centro de Costos ni su carpeta de facturas (el ingreso desde
   SharePoint sigue igual): solo la hoja "Proyectos" de este módulo.
 
+**Venta (2026-10-01, plan de integración).** El mismo canal, con las mismas
+garantías, atiende el mensaje ``venta-proyecto``: el monto de venta sin IVA
+de un proyecto adjudicado (de la cotización emitida en Sistema QUEMPIN, o
+del precio neto del Formulador si no hay cotización) va a «Monto de Venta
+(sin IVA)». No es un segundo canal: es otra clave del mismo registro de
+procedencia (``CLAVE_VENTA``), para que las dos reglas no diverjan. Si un
+envío trae ``proyecto.req`` y la fila no tiene «N° Requerimiento», se
+completa (nunca se pisa).
+
 Al final de cada corrida real publica ``publicado/analisis-financiero.json``
 con los proyectos (TAG, nombre, cliente, avance, costos proyectados y
 reales por categoría, y de dónde viene cada proyectado) y el estado de los
@@ -105,6 +114,8 @@ AVISO_SIN_INTERCAMBIO = (
 RUTA_ESTADO = RAIZ / "presupuestos_formulador.json"
 
 TIPO = "presupuesto-proyecto"
+TIPO_VENTA = "venta-proyecto"
+TIPOS = (TIPO, TIPO_VENTA)
 DESTINO = "analisis-financiero"
 HERRAMIENTA = "analisis-financiero"
 PUBLICACION = "analisis-financiero"
@@ -121,6 +132,11 @@ COLUMNA_POR_CATEGORIA = {
     "Otros": "Otros Costos Proyectados",
 }
 CATEGORIAS = tuple(COLUMNA_POR_CATEGORIA)
+# La venta es una clave más del mismo registro de procedencia.
+CLAVE_VENTA = "Monto de Venta"
+COLUMNA_VENTA = "Monto de Venta (sin IVA)"
+COLUMNA_REQ = "N° Requerimiento"
+COLUMNAS_INTERCAMBIO = {**COLUMNA_POR_CATEGORIA, CLAVE_VENTA: COLUMNA_VENTA}
 # Mismo formato que el prefijo del N° Ref de Centro de Costos (UMAG, FCH1...).
 PATRON_TAG = re.compile(r"^[A-Z0-9]{2,10}$")
 
@@ -187,8 +203,13 @@ def normalizar_tag(tag) -> str:
 
 
 def fuente_legible(mensaje: dict) -> str:
-    """'Formulación 261 v2 · Título' -- lo que se muestra en la nota y en la consola."""
+    """'Formulación 261 v2 · Título' (o 'Cotización 602695 · Título' para una
+    venta que viene de Sistema QUEMPIN) -- lo que se muestra en la nota y en
+    la consola."""
     f = mensaje.get("fuente") or {}
+    if f.get("folio"):
+        titulo = str(f.get("titulo") or "").strip()
+        return f"Cotización {f['folio']}" + (f" · {titulo}" if titulo else "")
     codigo = str(f.get("codigo") or "").strip() or "sin código"
     texto = f"Formulación {codigo} v{f.get('version') or 1}"
     titulo = str(f.get("titulo") or "").strip()
@@ -230,11 +251,55 @@ def validar_presupuesto(mensaje: dict) -> list[str]:
     return errores
 
 
+def validar_venta(mensaje: dict) -> list[str]:
+    """Errores del contenido de un mensaje 'venta-proyecto'."""
+    errores = []
+    proyecto = mensaje.get("proyecto")
+    if not isinstance(proyecto, dict) or not normalizar_tag(proyecto.get("tag")):
+        errores.append("falta el TAG del proyecto de destino")
+    venta = mensaje.get("venta") if isinstance(mensaje.get("venta"), dict) else {}
+    monto = venta.get("montoSinIva")
+    if (not isinstance(monto, (int, float)) or isinstance(monto, bool)
+            or not math.isfinite(monto) or monto <= 0):
+        errores.append("el monto de venta sin IVA debe ser un número mayor que 0")
+    if venta.get("moneda", "CLP") != "CLP":
+        errores.append("el monto de venta tiene que venir en pesos (CLP)")
+    if not isinstance(mensaje.get("fuente"), dict):
+        errores.append("falta la fuente del monto (cotización o formulación)")
+    return errores
+
+
+def validar_contenido(mensaje: dict) -> list[str]:
+    return validar_venta(mensaje) if mensaje.get("tipo") == TIPO_VENTA else validar_presupuesto(mensaje)
+
+
+def valores_mensaje(mensaje: dict) -> dict:
+    """{clave: pesos enteros} que el mensaje quiere escribir."""
+    if mensaje.get("tipo") == TIPO_VENTA:
+        return {CLAVE_VENTA: int(round(mensaje["venta"]["montoSinIva"]))}
+    return {c: int(round(v)) for c, v in mensaje["costos"].items()}
+
+
+def reemplaza_mensaje(mensaje: dict) -> dict:
+    """El If-Match del mensaje, con las mismas claves que valores_mensaje."""
+    reemplaza = mensaje.get("reemplaza") if isinstance(mensaje.get("reemplaza"), dict) else {}
+    if mensaje.get("tipo") == TIPO_VENTA:
+        return {CLAVE_VENTA: reemplaza["montoSinIva"]} if "montoSinIva" in reemplaza else {}
+    return reemplaza
+
+
+def _quien(mensaje: dict) -> str:
+    herramienta = (mensaje.get("origen") or {}).get("herramienta")
+    return "Sistema QUEMPIN" if herramienta == "sistema-quempin" else "el Formulador"
+
+
 # ── PLAN ─────────────────────────────────────────────────────────────────────
 
 def leer_buzon(raiz_intercambio: Path):
-    """(mensajes para este módulo, avisos por archivos ilegibles del buzón)."""
-    validos, invalidos = intercambio.leer_buzon(raiz_intercambio, destino=DESTINO, tipo=TIPO)
+    """(mensajes para este módulo, avisos por archivos ilegibles del buzón).
+    Los dos tipos que atiende: presupuesto-proyecto y venta-proyecto."""
+    validos, invalidos = intercambio.leer_buzon(raiz_intercambio, destino=DESTINO)
+    validos = [m for m in validos if m["tipo"] in TIPOS]
     avisos = [
         f"Intercambio: el archivo '{m['_archivo'].name}' del buzón no es un mensaje válido "
         f"({'; '.join(m['errores'])}) -- se deja donde está."
@@ -244,25 +309,28 @@ def leer_buzon(raiz_intercambio: Path):
 
 
 def valores_actuales(ws, fila: int, columnas: dict) -> dict:
-    return {c: ws.cell(row=fila, column=columnas[col]).value for c, col in COLUMNA_POR_CATEGORIA.items()}
+    return {c: ws.cell(row=fila, column=columnas[col]).value
+            for c, col in COLUMNAS_INTERCAMBIO.items() if col in columnas}
 
 
 def planificar(mensajes: list[dict], filas_por_tag: dict, actuales_por_tag: dict, estado: dict) -> list[dict]:
     """Una decisión por mensaje ('aplicar', 'crear', 'sin-cambios',
     'pendiente', 'reemplazado' o 'rechazado'). Función pura: no escribe
-    nada. 'mensajes' viene ordenado por fecha de envío; si hay varios para
-    el mismo TAG solo cuenta el último."""
+    nada. 'mensajes' viene ordenado por fecha de envío; si hay varios del
+    mismo tipo para el mismo TAG solo cuenta el último (un presupuesto y una
+    venta del mismo TAG son independientes: escriben columnas distintas)."""
     decisiones = []
-    por_tag: dict[str, list[dict]] = {}
+    por_tag: dict[tuple[str, str], list[dict]] = {}
     for mensaje in mensajes:
-        errores = validar_presupuesto(mensaje)
+        errores = validar_contenido(mensaje)
         if errores:
             decisiones.append({"mensaje": mensaje, "accion": "rechazado", "tag": None, "costos": {},
                                "detalle": errores})
             continue
-        por_tag.setdefault(normalizar_tag(mensaje["proyecto"]["tag"]), []).append(mensaje)
+        clave = (normalizar_tag(mensaje["proyecto"]["tag"]), mensaje.get("tipo", TIPO))
+        por_tag.setdefault(clave, []).append(mensaje)
 
-    for tag, lista in por_tag.items():
+    for (tag, _tipo), lista in por_tag.items():
         *anteriores, ultimo = lista
         for anterior in anteriores:
             decisiones.append({
@@ -274,10 +342,10 @@ def planificar(mensajes: list[dict], filas_por_tag: dict, actuales_por_tag: dict
 
 
 def _decidir(mensaje, tag, filas_por_tag, actuales_por_tag, estado) -> dict:
-    costos = {c: int(round(v)) for c, v in mensaje["costos"].items()}
+    costos = valores_mensaje(mensaje)
     base = {"mensaje": mensaje, "tag": tag, "costos": costos}
     if tag not in filas_por_tag:
-        if mensaje["proyecto"].get("crear"):
+        if mensaje["proyecto"].get("crear") and mensaje.get("tipo", TIPO) == TIPO:
             nombre = str(mensaje["proyecto"]["nombre"]).strip()
             return dict(base, accion="crear", nombre=nombre,
                         cambios=[(c, None, v) for c, v in costos.items()],
@@ -291,7 +359,7 @@ def _decidir(mensaje, tag, filas_por_tag, actuales_por_tag, estado) -> dict:
 
     actuales = actuales_por_tag.get(tag, {})
     propios = estado["valores"].get(tag, {})
-    reemplaza = mensaje.get("reemplaza") if isinstance(mensaje.get("reemplaza"), dict) else {}
+    reemplaza = reemplaza_mensaje(mensaje)
     confirmado = mensaje["id"] in estado.get("confirmados", [])
     cambios, conflictos = [], []
     for categoria, nuevo in costos.items():
@@ -313,7 +381,7 @@ def _decidir(mensaje, tag, filas_por_tag, actuales_por_tag, estado) -> dict:
 
     if conflictos:
         return dict(base, accion="pendiente", cambios=cambios, conflictos=conflictos, detalle=[
-            f"{c}: el Excel tiene {_pesos(a)}, escrito a mano; el Formulador envía {_pesos(n)}."
+            f"{c}: el Excel tiene {_pesos(a)}, escrito a mano; {_quien(mensaje)} envía {_pesos(n)}."
             for c, a, n in conflictos
         ] + [
             f"Para reemplazarlos: driver.py intercambio confirmar {mensaje['id']} -- "
@@ -321,7 +389,7 @@ def _decidir(mensaje, tag, filas_por_tag, actuales_por_tag, estado) -> dict:
         ])
     if not cambios:
         return dict(base, accion="sin-cambios", cambios=[],
-                    detalle=["Los costos proyectados ya tenían esos valores."])
+                    detalle=["El Excel ya tenía esos valores."])
     return dict(base, accion="aplicar", cambios=cambios,
                 detalle=[f"{c}: {_pesos(a)} → {_pesos(n)}" for c, a, n in cambios])
 
@@ -331,8 +399,11 @@ def _decidir(mensaje, tag, filas_por_tag, actuales_por_tag, estado) -> dict:
 def _nota(mensaje: dict) -> Comment:
     origen = mensaje.get("origen") or {}
     quien = str(origen.get("usuario") or "").strip()
+    que = ("Monto de venta enviado desde " + ("Sistema QUEMPIN" if _quien(mensaje) == "Sistema QUEMPIN"
+                                              else "el Formulador de proyectos")
+           if mensaje.get("tipo") == TIPO_VENTA else "Costo proyectado enviado desde el Formulador de proyectos")
     texto = (
-        "Costo proyectado enviado desde el Formulador de proyectos\n"
+        f"{que}\n"
         f"{fuente_legible(mensaje)}\n"
         f"Enviado{' por ' + quien if quien else ''} el {_fecha_corta(origen.get('enviado'))}; "
         f"aplicado el {datetime.now().strftime('%d-%m-%Y')}.\n"
@@ -352,7 +423,9 @@ def sincronizar_procedencia(ws, filas_por_tag: dict, columnas: dict, estado: dic
         fila = filas_por_tag.get(tag)
         for categoria in list(estado["valores"][tag]):
             registro = estado["valores"][tag][categoria]
-            celda = ws.cell(row=fila, column=columnas[COLUMNA_POR_CATEGORIA[categoria]]) if fila else None
+            if categoria not in COLUMNAS_INTERCAMBIO:
+                continue
+            celda = ws.cell(row=fila, column=columnas[COLUMNAS_INTERCAMBIO[categoria]]) if fila else None
             if celda is not None and _iguales(_numero(celda.value), registro.get("valor")):
                 continue
             if celda is not None and celda.comment is not None and celda.comment.author == AUTOR_NOTA:
@@ -386,10 +459,24 @@ def aplicar(ws, decisiones: list[dict], filas_por_tag: dict, columnas: dict, sig
             continue
         fila = filas_por_tag[d["tag"]]
         for categoria, _antes, despues in d["cambios"]:
-            ws.cell(row=fila, column=columnas[COLUMNA_POR_CATEGORIA[categoria]], value=despues)
+            ws.cell(row=fila, column=columnas[COLUMNAS_INTERCAMBIO[categoria]], value=despues)
         for categoria in d["costos"]:
-            ws.cell(row=fila, column=columnas[COLUMNA_POR_CATEGORIA[categoria]]).comment = _nota(d["mensaje"])
+            ws.cell(row=fila, column=columnas[COLUMNAS_INTERCAMBIO[categoria]]).comment = _nota(d["mensaje"])
+        completar_requerimiento(ws, fila, columnas, d["mensaje"])
     return nuevas
+
+
+def completar_requerimiento(ws, fila: int, columnas: dict, mensaje: dict) -> bool:
+    """Escribe el N° de requerimiento del envío si la fila no tiene uno:
+    nunca pisa uno escrito (a mano o por otro envío)."""
+    req = str((mensaje.get("proyecto") or {}).get("req") or "").strip()
+    if not req.isdigit() or COLUMNA_REQ not in columnas:
+        return False
+    celda = ws.cell(row=fila, column=columnas[COLUMNA_REQ])
+    if celda.value not in (None, ""):
+        return False
+    celda.value = int(req)
+    return True
 
 
 # ── CIERRE (solo después de guardar el Excel) ────────────────────────────────
@@ -443,41 +530,61 @@ def _json_simple(valor):
     return str(valor)
 
 
+def _origen(propios: dict, clave: str, valor_actual):
+    if clave in propios and _iguales(_numero(valor_actual), propios[clave]["valor"]):
+        return {k: propios[clave][k] for k in ("mensaje", "fuente", "enviado_por", "aplicado")}
+    return None
+
+
+def _req_publicable(valor):
+    numero = _numero(valor)
+    if isinstance(numero, float) and numero.is_integer() and numero > 0:
+        return str(int(numero))
+    if isinstance(numero, str) and numero.strip().isdigit():
+        return numero.strip()
+    return None
+
+
 def publicar_catalogo(raiz_intercambio: Path, proyectos_af: list[dict], estado: dict,
-                      decisiones: list[dict]) -> Path:
+                      decisiones: list[dict], sesgo: dict | None = None) -> Path:
     """publicado/analisis-financiero.json. 'proyectos_af': [{tag, nombre,
-    cliente, categoria, avance, proyectados{cat}, reales{cat}}] ya armado por
-    quien llama. Los proyectados llevan su origen si vienen del Formulador."""
+    cliente, categoria, avance, req, venta, proyectados{cat}, reales{cat}}] ya
+    armado por quien llama. Los proyectados llevan su origen si vienen del
+    Formulador. De la venta se publica solo si está cargada y de dónde vino,
+    nunca el monto (la carpeta la ve todo el que entra a la biblioteca).
+    'sesgo': el de analisis_financiero.sesgo_cartera()."""
     proyectos = []
     for p in proyectos_af:
         propios = estado["valores"].get(p["tag"], {})
+        venta = _numero(p.get("venta"))
         proyectos.append({
             "tag": p["tag"], "nombre": _json_simple(p.get("nombre")),
             "cliente": _json_simple(p.get("cliente")), "categoria": _json_simple(p.get("categoria")),
             "avance": _json_simple(p.get("avance")),
             "proyectados": {c: _json_simple(_numero(p["proyectados"].get(c))) for c in CATEGORIAS},
-            "origen": {
-                c: ({k: propios[c][k] for k in ("mensaje", "fuente", "enviado_por", "aplicado")}
-                    if c in propios and _iguales(_numero(p["proyectados"].get(c)), propios[c]["valor"]) else None)
-                for c in CATEGORIAS
-            },
+            "origen": {c: _origen(propios, c, p["proyectados"].get(c)) for c in CATEGORIAS},
             "reales": {c: _json_simple(_numero(p["reales"].get(c))) for c in CATEGORIAS},
+            "req": _req_publicable(p.get("req")),
+            "venta": {"cargada": venta not in (None, 0), "origen": _origen(propios, CLAVE_VENTA, p.get("venta"))},
         })
     mensajes = {
         id_: {k: v for k, v in r.items() if k in ("estado", "fecha", "detalle", "tag")}
-        for id_, r in intercambio.resultados_recientes(raiz_intercambio).items()
+        for id_, r in intercambio.resultados_recientes(raiz_intercambio, destino=DESTINO).items()
     }
     for d in decisiones:
         if d["accion"] == "pendiente":
             mensajes[d["mensaje"]["id"]] = {
                 "estado": "pendiente", "fecha": intercambio.ahora_iso(), "detalle": d["detalle"], "tag": d["tag"],
             }
-    return intercambio.publicar(raiz_intercambio, PUBLICACION, HERRAMIENTA, {
+    datos = {
         "moneda": "CLP",
         "categorias": list(CATEGORIAS),
         "proyectos": proyectos,
         "mensajes": mensajes,
-    })
+    }
+    if sesgo is not None:
+        datos["sesgo"] = sesgo
+    return intercambio.publicar(raiz_intercambio, PUBLICACION, HERRAMIENTA, datos)
 
 
 # ── CONSOLA ──────────────────────────────────────────────────────────────────
@@ -589,7 +696,7 @@ def adjudicados_para_af(raiz_intercambio: Path, ruta_estado: Path = RUTA_ESTADO)
     proyectos_af = ((sobre.get("datos") if isinstance(sobre, dict) else None) or {}).get("proyectos") or []
     por_tag = {p["tag"]: p for p in proyectos_af if isinstance(p, dict) and p.get("tag")}
     mensajes, _ = leer_buzon(raiz_intercambio)
-    en_buzon = {(m.get("fuente") or {}).get("uid") for m in mensajes}
+    en_buzon = {(m.get("fuente") or {}).get("uid") for m in mensajes if m["tipo"] == TIPO}
     salida = []
     for item in formulaciones.leer_repositorio(raiz_intercambio):
         d = item["datos"]

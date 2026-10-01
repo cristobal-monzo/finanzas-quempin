@@ -522,3 +522,100 @@ def test_cargar_en_un_tag_nuevo_crea_el_proyecto(entorno):
     _correr(entorno)
     ws = openpyxl.load_workbook(entorno["af"])[af.HOJA_PROYECTOS]
     assert ws.cell(row=3, column=1).value == "OBRA" and ws.cell(row=3, column=2).value == "Obra nueva"
+
+
+# ── VENTA, N° DE REQUERIMIENTO Y SESGO (plan de integración, 2026-10-01) ─────
+
+def _venta(id_="venta001", tag="DEMO", monto=7000000, enviado="2026-10-01T10:00:00-03:00", **extra):
+    m = {
+        "esquema": ic.ESQUEMA, "id": id_, "tipo": pf.TIPO_VENTA, "destino": pf.DESTINO,
+        "origen": {"herramienta": "formulador", "enviado": enviado, "usuario": "Persona de prueba"},
+        "proyecto": {"tag": tag},
+        "venta": {"montoSinIva": monto, "moneda": "CLP"},
+        "fuente": {"herramienta": "sistema-quempin", "folio": "602695", "pais": "Chile", "titulo": "Oferta"},
+    }
+    m.update(extra)
+    return m
+
+
+def _celda(ruta, columna, fila=2):
+    return openpyxl.load_workbook(ruta)[af.HOJA_PROYECTOS].cell(row=fila, column=COL[columna])
+
+
+def test_venta_y_presupuesto_del_mismo_tag_son_independientes():
+    decisiones = _plan([_mensaje(), _venta()],
+                       actuales={"DEMO": {**{c: None for c in pf.CATEGORIAS}, pf.CLAVE_VENTA: None}})
+    assert sorted(d["accion"] for d in decisiones) == ["aplicar", "aplicar"]
+
+
+def test_venta_sobre_un_monto_escrito_a_mano_queda_pendiente():
+    (d,) = _plan([_venta()], actuales={"DEMO": {pf.CLAVE_VENTA: 5000000}})
+    assert d["accion"] == "pendiente"
+    assert "Formulador envía $7.000.000" in d["detalle"][0]
+
+
+def test_venta_con_reemplaza_del_valor_visto_se_aplica():
+    (d,) = _plan([_venta(reemplaza={"montoSinIva": 5000000})], actuales={"DEMO": {pf.CLAVE_VENTA: 5000000}})
+    assert d["accion"] == "aplicar" and d["cambios"] == [(pf.CLAVE_VENTA, 5000000, 7000000)]
+
+
+@pytest.mark.parametrize("cambio", [{"venta": {"montoSinIva": 0}}, {"venta": {"montoSinIva": 10, "moneda": "USD"}},
+                                    {"proyecto": {}}])
+def test_venta_invalida_se_rechaza(cambio):
+    (d,) = _plan([_venta(**cambio)])
+    assert d["accion"] == "rechazado"
+
+
+def test_venta_a_tag_inexistente_no_crea_el_proyecto():
+    (d,) = _plan([_venta(tag="NUEVO", proyecto={"tag": "NUEVO", "crear": True, "nombre": "X"})])
+    assert d["accion"] == "pendiente"
+
+
+def test_run_aplica_la_venta_con_nota_de_la_cotizacion(entorno):
+    wb = openpyxl.load_workbook(entorno["af"])
+    wb[af.HOJA_PROYECTOS].cell(row=2, column=COL["Monto de Venta (sin IVA)"]).value = None
+    wb.save(entorno["af"])
+    _enviar(entorno["raiz"], _venta())
+    resumen = _correr(entorno)
+    assert resumen["error"] is None
+    celda = _celda(entorno["af"], "Monto de Venta (sin IVA)")
+    assert celda.value == 7000000
+    assert celda.comment is not None and "Cotización 602695" in celda.comment.text
+    assert "Monto de venta enviado desde Sistema QUEMPIN" not in celda.comment.text  # lo envió el Formulador
+    proyecto = _catalogo(entorno["raiz"])["proyectos"][0]
+    assert proyecto["venta"]["cargada"] is True and proyecto["venta"]["origen"]["mensaje"] == "venta001"
+    assert "7000000" not in json.dumps(_catalogo(entorno["raiz"]))  # el monto nunca se publica
+
+
+def test_el_req_del_envio_completa_la_columna_vacia_y_no_pisa_una_escrita(entorno):
+    _enviar(entorno["raiz"], _mensaje(proyecto={"tag": "DEMO", "req": "280"}))
+    _correr(entorno)
+    assert _celda(entorno["af"], "N° Requerimiento").value == 280
+    assert _catalogo(entorno["raiz"])["proyectos"][0]["req"] == "280"
+
+    _enviar(entorno["raiz"], _venta(id_="venta002", proyecto={"tag": "DEMO", "req": "999"}))
+    _correr(entorno)
+    assert _celda(entorno["af"], "N° Requerimiento").value == 280
+
+
+def test_la_publicacion_trae_el_sesgo_y_cumple_su_esquema(entorno):
+    import esquemas  # Sistema Intercambio, ya en sys.path por presupuestos_formulador
+    _enviar(entorno["raiz"], _mensaje())
+    _correr(entorno)
+    sobre = ic.leer_publicacion(entorno["raiz"], pf.PUBLICACION)
+    assert esquemas.validar_publicacion("analisis-financiero", sobre) == []
+    sesgo = sobre["datos"]["sesgo"]
+    assert set(sesgo["porCategoria"]) == set(pf.CATEGORIAS)
+    assert sesgo["proyectosTerminados"] == 0          # DEMO no está terminado ni completo
+
+
+def test_mensajes_de_otro_destino_no_aparecen_en_la_publicacion(entorno):
+    ic.asegurar_carpeta(entorno["raiz"])
+    otro = _mensaje(id_="otrodest1")
+    otro["destino"] = "sistema-quempin"
+    otro["tipo"] = "borrador-cotizacion"
+    ic.enviar(entorno["raiz"], otro)
+    for m in ic.leer_buzon(entorno["raiz"], destino="sistema-quempin")[0]:
+        ic.archivar(entorno["raiz"], m, "aplicado")
+    _correr(entorno)
+    assert "otrodest1" not in _catalogo(entorno["raiz"])["mensajes"]

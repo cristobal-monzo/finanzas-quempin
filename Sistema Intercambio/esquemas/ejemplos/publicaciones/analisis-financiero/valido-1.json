@@ -36,6 +36,10 @@
           "Equipos": null,
           "Mano de Obra": 0,
           "Otros": 10.5
+        },
+        "venta": {
+          "cargada": true,
+          "origen": null
         }
       }
     ],

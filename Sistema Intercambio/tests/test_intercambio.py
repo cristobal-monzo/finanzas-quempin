@@ -130,3 +130,13 @@ def test_publicar_y_leer_publicacion(tmp_path):
     sobre = ic.leer_publicacion(raiz, "demo")
     assert sobre["herramienta"] == "prueba" and sobre["datos"] == {"proyectos": [1, 2]}
     assert ic.leer_publicacion(raiz, "no-existe") is None
+
+
+def test_resultados_recientes_filtra_por_destino(tmp_path):
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    for id_, destino in (("paraaf01", "analisis-financiero"), ("parasq01", "sistema-quempin")):
+        ic.enviar(raiz, _mensaje(id_=id_, destino=destino))
+    for m in ic.leer_buzon(raiz)[0]:
+        ic.archivar(raiz, m, "aplicado")
+    assert set(ic.resultados_recientes(raiz)) == {"paraaf01", "parasq01"}
+    assert set(ic.resultados_recientes(raiz, destino="sistema-quempin")) == {"parasq01"}

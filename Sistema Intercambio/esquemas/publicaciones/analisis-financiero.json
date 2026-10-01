@@ -55,10 +55,22 @@
             ]
           },
           "venta": {
-            "type": [
-              "number",
-              "null"
-            ]
+            "type": "object",
+            "properties": {
+              "cargada": {
+                "type": "boolean"
+              },
+              "origen": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "cargada"
+            ],
+            "description": "Si el monto de venta está cargado y de dónde vino; el monto no se publica."
           },
           "proyectados": {
             "type": "object"

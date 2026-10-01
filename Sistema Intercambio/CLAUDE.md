@@ -69,6 +69,30 @@ carpeta.
 con resultado, publicar, leer publicaciones). No conoce ningún tipo de
 mensaje: qué hace cada destinatario vive en su módulo.
 
+## El catálogo: `esquemas/` (2026-10-01)
+
+Cada tipo de mensaje y cada publicación tiene su **JSON Schema** en
+`esquemas/mensajes/<tipo>.json` y `esquemas/publicaciones/<nombre>.json`
+(más `sobre-mensaje.json` y `sobre-publicacion.json`), con ejemplos válidos e
+inválidos en `esquemas/ejemplos/`. Es la **fuente única** del formato: la
+tabla de abajo y los textos del Formulador lo resumen, no lo definen.
+
+- `esquemas.py` valida (subconjunto de JSON Schema, sin dependencias);
+  `esquemas.js` es su gemelo para el navegador. `tests/test_esquemas.py`
+  corre los dos sobre los mismos ejemplos y exige el mismo resultado, y
+  falla si un esquema usa una palabra que los validadores no entienden.
+- `esquemas.paquete()` es el catálogo completo en un objeto: el procesador lo
+  deja en la carpeta como `esquemas.json`, para que una herramienta de otro
+  repositorio (Sistema QUEMPIN, el Formulador) valide con el catálogo
+  vigente sin copiarlo.
+- **Copias en otros repositorios**: Sistema QUEMPIN lleva copias textuales de
+  `intercambio.py`, `ubicacion.py` y `esquemas.py` (su
+  `tests/test_copias_intercambio.py` avisa si se desfasan), y el Formulador,
+  de `esquemas.js`. Si cambias uno de estos archivos, vuelve a copiarlo.
+- **Agregar un tipo**: su esquema + ejemplos (válido e inválido) + una fila en
+  la tabla de abajo. El destinatario sigue validando sus propias reglas de
+  negocio; el esquema solo asegura la forma.
+
 ## Tipos de mensaje y publicaciones en uso
 
 | Nombre | Quién escribe | Quién lee | Dónde se implementa |

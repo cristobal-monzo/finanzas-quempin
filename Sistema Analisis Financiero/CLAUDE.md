@@ -389,6 +389,32 @@ común en `../Sistema Intercambio/CLAUDE.md`; lógica en
   `ejecutar()`) es la única lectura de sus datos, compartida con
   `publicar_intercambio()`.
 
+### Venta, N° de requerimiento y sesgo (plan de integración, 2026-10-01)
+
+- **`venta-proyecto`** usa el **mismo** canal y las mismas garantías: el
+  monto de venta sin IVA de un proyecto adjudicado (de la cotización emitida
+  en Sistema QUEMPIN, `fuente.folio`, o del precio neto del Formulador) va a
+  «Monto de Venta (sin IVA)». Es otra clave (`CLAVE_VENTA`) del mismo
+  registro de procedencia, no un segundo canal: dos implementaciones de "solo
+  escribir cuando es seguro" terminarían divergiendo. Una venta a un TAG que
+  no existe espera (no crea el proyecto). Un presupuesto y una venta del
+  mismo TAG son independientes.
+- **«N° Requerimiento»** (columna nueva al final de "Proyectos", manual,
+  amarilla): el N° de la Planilla de Ingreso, la clave común de proyecto.
+  Un envío que trae `proyecto.req` la completa **solo si está vacía**. Al
+  agregarla, la leyenda del resaltado manual (que vivía justo en esa celda,
+  V1) se corre una columna: `asegurar_estructura_workbook` reconoce la
+  leyenda y la reemplaza por el encabezado (verificado sobre una copia del
+  libro real: las 21 columnas anteriores quedan idénticas).
+- La publicación lleva ahora `req`, `venta: {cargada, origen}` (**nunca el
+  monto**: la carpeta la ve todo el que entra a la biblioteca) y `sesgo`
+  (`sesgo_cartera()` = `sesgo_por_categoria()` del tablero, en la forma del
+  catálogo), que el Formulador usa para precargar su simulador de
+  sobrecostos. `mensajes` incluye solo lo que iba a este módulo.
+- El formato de cada mensaje y de la publicación está en
+  `../Sistema Intercambio/esquemas/`; `test_la_publicacion_trae_el_sesgo_y_cumple_su_esquema`
+  valida lo publicado contra él.
+
 Tests: `Sistema/tests/test_presupuestos_formulador.py` (sandbox en
 `tmp_path`). Verificado además de punta a punta con el Formulador real en
 Chrome contra una copia del libro real (país ficticio, archivos reales sin

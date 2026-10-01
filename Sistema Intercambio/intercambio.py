@@ -229,9 +229,10 @@ def archivar(raiz: Path, mensaje: dict, estado: str, detalle: list[str] | None =
     return destino
 
 
-def resultados_recientes(raiz: Path, dias: int = 180) -> dict[str, dict]:
+def resultados_recientes(raiz: Path, dias: int = 180, destino: str | None = None) -> dict[str, dict]:
     """{id: resultado} de los mensajes procesados en los últimos 'dias' --
-    para que cada herramienta publique el estado de lo que le enviaron."""
+    para que cada herramienta publique el estado de lo que le enviaron.
+    Con 'destino', solo los mensajes que iban a esa herramienta."""
     base = Path(raiz) / CARPETA_PROCESADO
     if not base.is_dir():
         return {}
@@ -245,8 +246,11 @@ def resultados_recientes(raiz: Path, dias: int = 180) -> dict[str, dict]:
                 registro = _leer_json(ruta)
             except (OSError, ValueError):
                 continue
-            if isinstance(registro, dict) and isinstance(registro.get("resultado"), dict) and registro.get("id"):
-                salida[registro["id"]] = registro["resultado"]
+            if not (isinstance(registro, dict) and isinstance(registro.get("resultado"), dict) and registro.get("id")):
+                continue
+            if destino and registro.get("destino") != destino:
+                continue
+            salida[registro["id"]] = registro["resultado"]
     return salida
 
 
