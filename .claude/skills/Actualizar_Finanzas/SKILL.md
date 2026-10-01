@@ -37,6 +37,13 @@ openpyxl (ver `requirements.txt`).
   2. Cotizador Histórico `visualizador` — el eslabón que faltaba.
   3. Reportes PDF `status` — lista los que quedaron desactualizados.
   4. Presupuestos del Formulador (solo lectura, después del run de AF).
+  5. Carpeta de intercambio — una vuelta completa del procesador
+     (`Sistema Intercambio/procesar.py --forzar`): republica requerimientos,
+     la lista de proyectos de Análisis Financiero con su sesgo, los precios
+     de referencia del Cotizador, lo de Sistema QUEMPIN, el registro de
+     proyectos y `estado.json`. Entre una corrida y otra, el procesador corre
+     solo cada 15 minutos con su propia tarea programada. Si falla, no frena
+     nada.
 
 ## Presupuestos del Formulador: revisarlos y cargarlos con el usuario
 

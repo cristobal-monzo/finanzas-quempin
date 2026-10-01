@@ -450,6 +450,29 @@ para los comandos (`status`/`consultar`) y ejemplos de salida.
   buscado trae una medida (`"codo bronce 1.1/4"`), solo entran las compras
   de esa medida y las demás se cuentan en `descartadas_por_medida`.
 
+## Precios de referencia para el Formulador (2026-10-01)
+
+`Sistema/precios_referencia.py` publica `publicado/precios-referencia.json`
+en la carpeta de intercambio: una entrada por **hoja** con el promedio, el
+rango y el último precio reajustados por UF (sin IVA), el n° de compras y el
+índice de búsqueda ya calculado. El Formulador busca sobre esas hojas con una
+**copia textual** de `Visualizador Web/busqueda.js` (el test
+`test_copia_del_formulador_es_textual` avisa si se desfasa) y la
+configuración que viaja en la publicación: un solo buscador.
+
+- **No recalcula nada**: parte de la foto del tablero
+  (`Visualizador Web/data/cotizador-historico.json`) y agrupa con la misma
+  `agrupar_por_hoja`. La UF se pide una sola vez, en el build del tablero.
+- **Sin proveedores ni proyectos** (decisión del 2026-10-01: la carpeta la
+  ve toda la biblioteca). Tampoco viajan los campos `prov`, `proy` ni `cod`
+  del índice, y de la descripción se sacan los N° Ref, los números de 5+
+  dígitos (n° de factura) y las palabras de nombres de proveedor que no son
+  vocabulario de producto (`palabras_privadas`): medido sobre el catálogo
+  real, 16 hojas traían «sodimac» y n° de factura en la descripción.
+- Se publica con `driver.py precios`, automáticamente después de cada
+  `driver.py visualizador` de Chile, y desde el procesador del intercambio
+  cuando cambia la foto del tablero.
+
 ## Precauciones
 
 - Este módulo **nunca escribe** `Centro de Costos.xlsx` — si necesitas que

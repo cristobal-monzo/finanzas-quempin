@@ -102,3 +102,7 @@ _backup_pre_optimizacion_*/
 # apuntadas a rutas puntuales).
 tmp/
 **/tmp/
+
+# Procesador del intercambio (2026-10-01): firmas de lo ya procesado y su candado.
+**/procesador_estado*.json
+**/.procesador.lock

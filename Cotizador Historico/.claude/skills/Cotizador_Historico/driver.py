@@ -22,7 +22,14 @@ modulo nunca lo escribe):
                          una fila de promedio y el rango sin IVA.
 
   visualizador [--uf-manual VALOR --uf-fuente "<texto>"]
-                      -> Regenera el visualizador web.
+                      -> Regenera el visualizador web (y, en Chile, vuelve a
+                         publicar los precios de referencia para el Formulador).
+
+  precios             -> Publica publicado/precios-referencia.json en la
+                         carpeta de intercambio desde la foto actual del
+                         tablero, sin pedir la UF de nuevo (ver
+                         Sistema/precios_referencia.py: sin proveedores ni
+                         documentos).
 
   benchmark [--detalle]
                       -> Mide el buscador sobre el catalogo real contra un
@@ -508,7 +515,24 @@ def cmd_visualizador(pais="CL", uf_manual=None, fuente_manual=None):
     import build_visualizador as bv  # noqa: E402
     if pais == "PE":
         return bv.build()
-    return bv.build(uf_manual=uf_manual, fuente_manual=fuente_manual)
+    codigo = bv.build(uf_manual=uf_manual, fuente_manual=fuente_manual)
+    if codigo == 0:
+        # La foto del tablero cambió: el Formulador recibe los precios nuevos.
+        # Nunca hace fallar el comando (el intercambio es opcional).
+        try:
+            cmd_precios()
+        except Exception as error:  # noqa: BLE001
+            print(f"[AVISO] No se pudieron publicar los precios de referencia: {error}")
+    return codigo
+
+
+def cmd_precios():
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    raiz_sistema = Path(__file__).resolve().parents[3] / "Sistema"
+    if str(raiz_sistema) not in sys.path:
+        sys.path.insert(0, str(raiz_sistema))
+    import precios_referencia as pr  # noqa: E402
+    return pr.main()
 
 
 def _extraer_flags_uf(args):
@@ -535,9 +559,9 @@ def _extraer_flags_uf(args):
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar", "visualizador",
                                                 "categorias", "benchmark", "evaluacion",
-                                                "atributos"):
+                                                "atributos", "precios"):
         print(
-            'Uso: python driver.py [status|consultar "<texto>"|visualizador|categorias|'
+            'Uso: python driver.py [status|consultar "<texto>"|visualizador|precios|categorias|'
             'benchmark|evaluacion|atributos] [--uf-manual VALOR --uf-fuente "<texto>"] '
             '[--pais CL|PE]'
         )
@@ -554,6 +578,8 @@ def main():
         return cmd_evaluacion(resto, pais=pais)
     if comando == "atributos":
         return cmd_atributos(resto, pais=pais)
+    if comando == "precios":
+        return cmd_precios()
     if comando == "visualizador":
         uf_manual, fuente_manual, _resto = _extraer_flags_uf(resto)
         return cmd_visualizador(pais=pais, uf_manual=uf_manual, fuente_manual=fuente_manual)

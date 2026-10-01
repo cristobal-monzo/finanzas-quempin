@@ -62,6 +62,11 @@ DRIVER_COTIZADOR = (
     RAIZ / "Cotizador Historico" / ".claude" / "skills"
     / "Cotizador_Historico" / "driver.py"
 )
+# Procesador de la carpeta de intercambio (plan de integracion, 2026-10-01).
+# Corre solo cada 15 minutos con su propia tarea; al final de este run se le
+# fuerza una vuelta completa para que todo lo publicado salga de los datos
+# recien actualizados.
+PROCESADOR_INTERCAMBIO = RAIZ / "Sistema Intercambio" / "procesar.py"
 
 # Los 3 tableros: (nombre, build/index.html regenerado, subruta fija dentro
 # de la rama gh-pages). Desde 2026-08-05 (migracion de Claude Artifacts a
@@ -395,6 +400,16 @@ def cmd_run():
     resultados.append(("Presupuestos del Formulador", salidas[2][1]))
     salida_rep = salidas[1][2]
     _aviso_presupuestos(salidas[2][2])
+
+    # 4. Carpeta de intercambio: todo lo publicado para las demas
+    #    herramientas (requerimientos, lista de proyectos de AF con su sesgo,
+    #    precios de referencia, Sistema QUEMPIN, registro de proyectos y
+    #    estado.json) sale de lo que se acaba de actualizar. Nunca frena.
+    ok_inter, _ = _ejecutar(
+        "Carpeta de intercambio -- procesador (vuelta completa)",
+        PROCESADOR_INTERCAMBIO, ["--forzar"], obligatorio=False,
+    )
+    resultados.append(("Carpeta de intercambio", ok_inter))
 
     _informe_tableros(momento_inicio)
     _informe_tiempos(time.perf_counter() - inicio)
