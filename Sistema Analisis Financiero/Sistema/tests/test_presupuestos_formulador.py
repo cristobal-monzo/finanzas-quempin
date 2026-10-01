@@ -619,3 +619,29 @@ def test_mensajes_de_otro_destino_no_aparecen_en_la_publicacion(entorno):
         ic.archivar(entorno["raiz"], m, "aplicado")
     _correr(entorno)
     assert "otrodest1" not in _catalogo(entorno["raiz"])["mensajes"]
+
+
+def test_cliente_vacio_toma_la_razon_social_de_la_cotizacion_emitida(entorno):
+    ic.asegurar_carpeta(entorno["raiz"])
+    ic.publicar(entorno["raiz"], "documentos-comerciales", "sistema-quempin", {"documentos": [
+        {"tipo": "60", "folio": "602695", "pais": "Chile", "fecha": "2026-10-01", "moneda": "CLP", "total": 1,
+         "contraparte": {"razon_social": "Universidad de Prueba"}, "proyecto": {"req": None, "tag": "DEMO"}},
+        {"tipo": "61", "folio": "612609", "pais": "Chile", "fecha": "2026-10-01", "moneda": "CLP", "total": 1,
+         "contraparte": {"razon_social": "Proveedor X"}, "proyecto": {"tag": "DEMO"}},
+    ]})
+    _correr(entorno)
+    assert _celda(entorno["af"], "Cliente").value == "Universidad de Prueba"
+
+
+def test_tag_cotizado_a_dos_clientes_no_se_adivina():
+    import openpyxl as ox
+    wb = ox.Workbook()
+    ws = wb.active
+    for col, h in enumerate(af.HEADERS_PROYECTOS, start=1):
+        ws.cell(row=1, column=col, value=h)
+    ws.cell(row=2, column=COL["N° Requerimiento"], value=280)
+    filas = [{"fila": 2, "tag": "OBRA", "nombre": "Obra"}]
+    docs = [{"tipo": "60", "contraparte": {"razon_social": "A"}, "proyecto": {"req": "280"}},
+            {"tipo": "60", "contraparte": {"razon_social": "B"}, "proyecto": {"tag": "OBRA"}}]
+    assert af.clientes_desde_cotizaciones(ws, filas, docs) == {}
+    assert af.clientes_desde_cotizaciones(ws, filas, docs[:1]) == {"OBRA": "A"}

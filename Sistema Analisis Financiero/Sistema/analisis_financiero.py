@@ -653,9 +653,13 @@ def leer_clientes_pendientes(ruta_pendientes: Path) -> list[dict]:
         return json.load(f)
 
 
-def asegurar_columna_cliente(ws_proyectos, filas_validas: list[dict], ruta_pendientes: Path) -> list[dict]:
+def asegurar_columna_cliente(ws_proyectos, filas_validas: list[dict], ruta_pendientes: Path,
+                             clientes_conocidos: dict | None = None) -> list[dict]:
     """Completa la columna 'Cliente' de las filas válidas que la tengan
-    vacía: deriva un candidato del nombre del proyecto y lo empareja contra
+    vacía. 'clientes_conocidos' ({TAG: razón social}, de las cotizaciones
+    emitidas en Sistema QUEMPIN -- ver clientes_desde_cotizaciones) da el
+    candidato cuando existe; si no, se deriva del nombre del proyecto. En los
+    dos casos el candidato se empareja contra
     los clientes ya asignados (incluyendo los que se van asignando en esta
     misma corrida). Si el emparejamiento queda 'pendiente', pinta la celda de
     rojo y agrega una entrada a clientes_pendientes.json -- nunca pregunta en
@@ -676,7 +680,8 @@ def asegurar_columna_cliente(ws_proyectos, filas_validas: list[dict], ruta_pendi
         if celda.value:
             continue
 
-        candidato = derivar_cliente(fila_info["nombre"])
+        candidato = ((clientes_conocidos or {}).get(fila_info["tag"])
+                     or derivar_cliente(fila_info["nombre"]))
         resultado = emparejar_cliente(candidato, clientes_existentes)
         celda.value = resultado["cliente"]
 
@@ -700,6 +705,32 @@ def asegurar_columna_cliente(ws_proyectos, filas_validas: list[dict], ruta_pendi
             json.dump(pendientes_totales, f, ensure_ascii=False, indent=2)
 
     return pendientes_nuevos
+
+
+def clientes_desde_cotizaciones(ws_proyectos, filas_validas: list[dict], documentos: list[dict]) -> dict:
+    """{TAG: razón social} desde las cotizaciones emitidas en Sistema QUEMPIN
+    (publicado/documentos-comerciales.json, plan de integración 2026-10-01).
+    Una cotización se asocia a un TAG por su proyecto.tag o por el N° de
+    requerimiento de la fila. Un TAG cotizado a dos razones sociales
+    distintas no se adivina: queda fuera."""
+    col_req = HEADERS_PROYECTOS.index("N° Requerimiento") + 1
+    tag_por_req = {}
+    for fila_info in filas_validas:
+        req = ws_proyectos.cell(row=fila_info["fila"], column=col_req).value
+        if isinstance(req, (int, float)) and not isinstance(req, bool) and float(req).is_integer():
+            tag_por_req[str(int(req))] = fila_info["tag"]
+        elif isinstance(req, str) and req.strip().isdigit():
+            tag_por_req[req.strip()] = fila_info["tag"]
+    nombres: dict[str, set] = {}
+    for doc in documentos or []:
+        if not isinstance(doc, dict) or doc.get("tipo") != "60":
+            continue
+        proyecto = doc.get("proyecto") or {}
+        tag = str(proyecto.get("tag") or "").strip().upper() or tag_por_req.get(str(proyecto.get("req") or ""))
+        nombre = str((doc.get("contraparte") or {}).get("razon_social") or "").strip()
+        if tag and nombre:
+            nombres.setdefault(tag, set()).add(nombre)
+    return {tag: next(iter(n)) for tag, n in nombres.items() if len(n) == 1}
 
 
 def confirmar_clientes_pendientes(
@@ -2523,8 +2554,14 @@ def ejecutar(
             categorias_no_mapeadas.add(subcategoria)
     resumen["categorias_no_mapeadas"] = sorted(categorias_no_mapeadas)
 
+    clientes_conocidos = {}
+    if raiz_intercambio is not None:
+        sobre = pf.intercambio.leer_publicacion(raiz_intercambio, "documentos-comerciales") or {}
+        clientes_conocidos = clientes_desde_cotizaciones(
+            ws_proyectos, filas_validas, (sobre.get("datos") or {}).get("documentos") or []
+        )
     resumen["clientes_pendientes"] = asegurar_columna_cliente(
-        ws_proyectos, filas_validas, ruta_clientes_pendientes
+        ws_proyectos, filas_validas, ruta_clientes_pendientes, clientes_conocidos
     )
 
     asegurar_formulas_proyectos(ws_proyectos, filas_validas)

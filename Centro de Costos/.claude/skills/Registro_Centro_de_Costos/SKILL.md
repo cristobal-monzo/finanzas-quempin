@@ -156,7 +156,12 @@ misma pregunta N veces):
    buscar en `TAGS_PROVEEDOR_CURADOS` y en la columna oculta "Proveedor
    (Razón Social)" de `Master` — y si lo hay, reusar exactamente esa razón
    social ya existente (ver [MEMORY.md](MEMORY.md) § Reglas de negocio,
-   regla agregada 2026-09-07).
+   regla agregada 2026-09-07). Si el RUT es legible y el proveedor no está
+   en el libro, consultar también el directorio de Sistema QUEMPIN (los
+   proveedores a los que ya se les emitió una OC, con su RUT):
+   `py -3.14 "Sistema Intercambio/contrapartes.py" <RUT>` (desde la raíz de
+   Finanzas QUEMPIN; solo lee, plan de integración 2026-10-01). Si aparece,
+   usar esa razón social.
 2. Preguntar al usuario solo lo que el documento no resuelve por sí solo:
    `tipo_proyecto` si el proyecto es nuevo, `estado` (Pagado/Pendiente, casi
    nunca viene impreso), cualquier monto/N° de documento/categoría
