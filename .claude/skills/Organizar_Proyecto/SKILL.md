@@ -19,10 +19,10 @@ para un simple renombrado — ahí es más rápido hacerlo a mano.
 ## Procedimiento
 
 1. **Inventariar la raíz** (`Get-ChildItem -Force`) y clasificar cada elemento:
-   - **Ancla fija** — nunca se mueve: `.git`, `.claude/`, `docs/superpowers/`
-     (ruta relativa que asume el flujo brainstorming/writing-plans de Claude
-     Code), el `CLAUDE.md` de nivel superior si otro `CLAUDE.md` lo enlaza
-     por ruta.
+   - **Ancla fija** — nunca se mueve: `.git`, `.claude/` (Claude Code solo
+     lo busca en la raíz del proyecto abierto), `docs/` (specs y planes de
+     diseño, enlazados por ruta relativa desde el código y los `CLAUDE.md`),
+     el `CLAUDE.md` de nivel superior si otro `CLAUDE.md` lo enlaza por ruta.
    - **Producto** — el/los archivo(s) que el usuario abre y edita a mano
      (ej. un `.xlsx`).
    - **Fuente/datos** — documentos de entrada, JSON de datos, carpetas de
@@ -83,7 +83,7 @@ para un simple renombrado — ahí es más rápido hacerlo a mano.
 - Dejar el código apuntando a la ruta vieja entre el movimiento de archivos
   y la actualización de constantes — no ejecutar nada del proyecto en ese
   estado intermedio.
-- Anidar `docs/superpowers/` o `.claude/` dentro de una subcarpeta nueva —
-  rompe la convención de rutas relativas que asume Claude Code.
+- Anidar `.claude/` o `docs/` dentro de una subcarpeta nueva — Claude Code
+  deja de encontrar las skills y se rompen los enlaces relativos a las specs.
 - Proponer nombres de carpeta genéricos en inglés cuando el proyecto ya
   tiene su propio vocabulario en español — reduce la navegabilidad real.

@@ -11,8 +11,17 @@ from pathlib import Path
 
 
 def calcular_hash_entidad(datos: dict) -> str:
-    """Hash sha256 estable (claves ordenadas) de un paquete de datos."""
-    payload = json.dumps(datos, sort_keys=True, default=str, ensure_ascii=False)
+    """Hash sha256 estable (claves ordenadas) de un paquete de datos.
+
+    Las claves de primer nivel que empiezan con "_" quedan fuera: son
+    contexto de toda la cartera (ver datos_reportes.contexto_cartera), no
+    datos de la entidad. Si entraran, cambiar un solo proyecto marcaria como
+    desactualizados los ~20 reportes del modulo, y regenerar 20 reportes
+    cuesta una redaccion completa cada uno."""
+    payload = json.dumps(
+        {k: v for k, v in datos.items() if not k.startswith("_")},
+        sort_keys=True, default=str, ensure_ascii=False,
+    )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 

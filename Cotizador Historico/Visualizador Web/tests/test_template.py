@@ -26,12 +26,13 @@ RAIZ_MODULO = Path(__file__).resolve().parents[2]
 TEMPLATE_CL = RAIZ_MODULO / "Visualizador Web" / "template.html"
 TEMPLATE_PE = RAIZ_MODULO.parent / "Peru" / "Cotizador Historico" / "Visualizador Web" / "template.html"
 
-# Lo UNICO en que Peru puede diferir de Chile: nombre del tablero, pestaña
-# activa, moneda (soles, sin UF) y el pie que explica de donde salen los
-# datos. Cualquier otra diferencia es una mejora aplicada a un solo pais.
+# Lo UNICO en que Peru puede diferir de Chile: nombre del tablero, subruta
+# en la navegacion (data-nav-activo: de ahi salen el pais del selector y la
+# pestaña activa), moneda (soles, sin UF) y el pie que explica de donde salen
+# los datos. Cualquier otra diferencia es una mejora aplicada a un solo pais.
 MARCAS_LINEAS_DE_PAIS = (
     "<title>", "<h1>", "<h2>",
-    "viz-modnav-tab",
+    'data-nav-activo="',
     "Cotizador Historico — datos reales", "la UF vigente al generar",
     "var CLP = new Intl.NumberFormat", "function fmtNum",
     "getElementById('vizGenerated')", "getElementById('exportMeta')",

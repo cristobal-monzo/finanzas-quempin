@@ -257,3 +257,77 @@ de Documento.
 **Pendiente al cerrar**: las hojas de proyecto (`UMAG`, `HPIN`) y el tablero
 publicado todavía muestran los valores viejos de las 4 celdas editadas fuera
 del camino auditado (tipo de documento y fechas) — se propagan con un `run`.
+
+## 2026-09-21 — 10 PDFs de Microturbina LER (MLER-006 a MLER-015), 3 sin factura
+
+Corrida vía `/Actualizar_CC`. `status` inicial: 10 pendientes sin datos en el
+JSON, todos PDFs en `Microturbina LER`. Cada uno lo extrajo un agente y lo
+contrastó otro, leyendo el documento de forma independiente (2 discrepancias
+arbitradas por un tercero contra lo impreso). Los 10 cuadraron al peso con el
+Neto y el Total impresos antes de escribir el JSON, y la validación no agregó
+ningún hallazgo nuevo. `run` los registró como `MLER-006`…`MLER-015` y
+renombró los 10 archivos.
+
+Siete son facturas normales con evidencia de pago: Danus, Beckman, Becker,
+Serviper, Comercializadora G y P, Easy y Salomón Sack. Serviper, G y P y
+Sack son proveedores nuevos. Tres no traían factura, y el usuario decidió
+cada caso:
+
+- **`MLER-007`: cotización de Tubexa** (`COT00389970-1`), no factura. El
+  usuario confirmó que la compra se concretó y se pagó, y pidió registrarla
+  con los datos de la cotización. **Pendiente**: cambiar N° Documento y
+  Tipo cuando llegue la factura real.
+- **`MLER-006`: commercial invoice en USD** de un proveedor de Hong Kong
+  (muestra de ventilador). Se convirtió con el **dólar observado de la fecha
+  de emisión** (mindicador.cl, verificado en el JSON crudo), sin IVA ni
+  derechos de importación, que se pagan aparte al courier. Se registró como
+  `Factura Exenta` porque el vocabulario no tiene "invoice extranjera" y
+  como `Factura` con impuesto 0 habría caído en `IMPUESTO_MENOR`. No es el
+  cargo real en pesos: si aparece el cargo de la tarjeta o la factura del
+  courier, corregir el monto.
+- **`MLER-013`: flete respaldado solo por una transferencia bancaria.** N°
+  Documento = Id de la transacción (no hay folio), extendiendo el criterio
+  del código de autorización de los vouchers. `Boleta` sin IVA, categoría
+  `Despachos`. La factura Becker del mismo día (`MLER-010`) nombra al mismo
+  transportista en Observaciones: el flete es el retiro de esa cañería.
+
+Supuesto documentado en la nota de `MLER-009` (Beckman): la fecha de emisión
+queda tapada por el voucher. Se usó la de vencimiento, que coincide con el
+timbre CANCELADO.
+
+## 2026-09-30 — 25 registros que juntaban varias facturas, separados en 53
+
+El usuario encontró en el tablero `FCH1-029` con la factura Implementos
+N°6799340 y una boleta Aliservice N°0002795546 bajo un solo N° Ref. No era
+un caso aislado: 22 N° Ref. juntaban 2-3 documentos con número distinto
+(18 de FACH1/FACH2, 2 de Cesfam Constitución, `LIMA-001`) y 3 de Caldera
+Valdivia juntaban 2-4 tickets de peaje. Las notas del JSON lo decían
+("agrupados en 1 entrada porque comparten el mismo archivo"): el extractor
+se saltó la regla del Paso 2.
+
+Se separaron con el comando nuevo `separar-registrado`, sin volver a leer los
+PDF. Cada ítem ya traía el N° y la fecha de su documento en la descripción, y
+las notas traían el impuesto de cada uno. `LIMA-001`, cuyos ítems no traen
+número, se repartió con la única combinación que cuadra exacto contra el
+total impreso de cada factura. Resultado: 734 → 762 documentos, **neto
+idéntico** ($47.829.062). El primer documento conserva el N° Ref. y cada uno
+tiene su propia copia del PDF. No se recortaron los PDF: cada copia es el
+archivo completo, igual que `separar`.
+
+Dos cambios de monto, a la vista en la bitácora:
+- `CCON-014`/`CCON-027` (diésel): el impuesto sube $13.273. El combinado
+  tenía solo el 19%; ahora es el total impreso de cada factura ($65.673 y
+  $47.575) menos el neto, como el resto del combustible.
+- `CCON-016`/`CCON-028`: +$1 de redondeo.
+
+**Duplicado eliminado**: `FCH1-045` (`Documento (43).pdf`) era un segundo
+escaneo de las mismas dos facturas Sodimac de `FCH1-036`: mismos 12 ítems e
+igual impuesto ($28.811), con uno de los números mal leído (148822127 por
+148822727). Sumaba $180.450 de más en FACH1. Con confirmación del usuario se
+eliminó con `driver.py eliminar FCH1-045 --aplicar` (PDF archivado en
+`Excel/Respaldos/Septiembre 2026/`), y su hallazgo `DOCUMENTOS_MEZCLADOS`
+quedó `descartado` con ese motivo. Queda el hueco en la secuencia de FACH1,
+que es lo correcto.
+
+Para que no vuelva a pasar, `run` ya no registra una entrada cuyo
+`n_documento` junte varios números (hallazgo `DOCUMENTOS_MEZCLADOS`).

@@ -67,6 +67,38 @@ def test_extraer_datos_saneados_archivo_origen_ausente_es_none(tmp_path):
     assert data["documentos"][0]["archivo_origen"] is None
 
 
+def test_unificar_variantes_elige_la_forma_con_tilde():
+    """El extractor escribe la misma etiqueta con y sin tilde ("Ferreteria"
+    / "Ferretería"): el tablero las mostraba como dos opciones de filtro y
+    dos porciones de la dona. Se unifican a la forma con tilde, aunque la
+    otra sea más frecuente -- perder una tilde es el error típico, nunca
+    agregarla."""
+    docs = [
+        {"categoria": "Ferreteria", "estado": "Pagado", "tipo_documento": "Nota de Credito",
+         "tipo_proyecto": "Mantenimiento", "items": [{"categoria_item": "Ferreteria"}]},
+        {"categoria": "Ferreteria", "estado": "Nota de Credito", "tipo_documento": "Factura",
+         "tipo_proyecto": "Mantenimiento", "items": []},
+        {"categoria": "Ferretería", "estado": "Nota de Crédito", "tipo_documento": "Nota de Crédito",
+         "tipo_proyecto": "Montaje e instalación", "items": [{"categoria_item": "ferreteria"}]},
+    ]
+    bv.unificar_variantes(docs)
+    assert {d["categoria"] for d in docs} == {"Ferretería"}
+    assert {d["estado"] for d in docs} == {"Pagado", "Nota de Crédito"}
+    assert {d["tipo_documento"] for d in docs} == {"Nota de Crédito", "Factura"}
+    assert [it["categoria_item"] for d in docs for it in d["items"]] == ["Ferretería", "Ferretería"]
+    # Etiquetas distintas (no variantes de tilde) no se tocan.
+    assert {d["tipo_proyecto"] for d in docs} == {"Mantenimiento", "Montaje e instalación"}
+
+
+def test_unificar_variantes_sin_tilde_prefiere_la_mas_frecuente():
+    docs = [{"categoria": "Materiales", "items": []},
+            {"categoria": "Materiales", "items": []},
+            {"categoria": "materiales", "items": []},
+            {"categoria": None, "items": []}]
+    bv.unificar_variantes(docs)
+    assert [d["categoria"] for d in docs] == ["Materiales", "Materiales", "Materiales", None]
+
+
 def test_pendiente_coincide_con_el_color_real_de_auditor_centro_costos(tmp_path):
     """La deteccion de "celda roja" de este modulo es una reimplementacion
     independiente de _celda_es_roja (Sistema/auditor_centro_costos.py) --

@@ -16,7 +16,7 @@ datos reales, versiones anteriores) ver [`HISTORIA.md`](HISTORIA.md); solo
 hace falta abrirlo para entender el origen de una regla puntual, no para
 trabajar en el módulo día a día.
 
-Diseño original: [`../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md`](../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md)
+Diseño original: [`../docs/specs/2026-07-20-visualizador-cotizador-historico-design.md`](../docs/specs/2026-07-20-visualizador-cotizador-historico-design.md)
 — su sección "Exportación" quedó superada (ver `HISTORIA.md`); este
 `CLAUDE.md` es la fuente de verdad sobre qué se exporta y cómo.
 
@@ -150,13 +150,25 @@ todo lo demás le deja espacio (rediseño del 2026-09-21, ver `HISTORIA.md`).
 - **Filtros en un panel plegable** (`#btnFiltros` / `#filterPanel`, cerrado
   por defecto) con el número de filtros activos en el botón. Los 11
   controles abiertos ocupaban media pantalla antes de buscar nada. Son
-  combinables y dependientes (`opcionesDe`): Categoría, Subcategoría,
-  Material, Medida, Marca, Proveedor, Proyecto, rango de fechas y rango de
-  precio; cada desplegable se calcula contra **lo que la búsqueda actual
-  encontró** más los otros filtros, con el conteo en cada opción, así que
-  nunca ofrece una combinación que da cero. Los filtros activos se ven como
-  chips junto al botón aunque el panel esté cerrado, y se quitan de a uno o
-  con "Limpiar todo".
+  combinables y dependientes (`opcionesDe`): Categoría, **Familia**,
+  Subcategoría, Material, Medida, Marca, Proveedor, Proyecto, rango de fechas
+  y rango de precio; cada desplegable se calcula contra **lo que la búsqueda
+  actual encontró** más los otros filtros, con el conteo en cada opción, así
+  que nunca ofrece una combinación que da cero. Los filtros activos se ven
+  como chips junto al botón aunque el panel esté cerrado, y se quitan de a uno
+  o con "Limpiar todo".
+- **Filtros que dependen de la familia del producto** (`#filtrosFamilia`,
+  2026-09-22): al elegir una familia —o cuando todo lo encontrado es de una
+  sola— aparecen los filtros que tienen sentido para ella, con los valores que
+  existen: **Planchas** → Material, Espesor, Ancho, Largo, Terminación, Grado;
+  **Cañerías y Tubos** → Material, Diámetro, Schedule, Tipo de pared, Presión,
+  Norma, Largo; **Pernos** → Diámetro, Largo, Material, Grado, Rosca. No tiene
+  sentido ofrecer "Schedule" para una plancha ni "Ancho" para una válvula. La
+  tabla de qué atributo va con qué familia es
+  `Sistema/catalogo_atributos.FACETAS_POR_FAMILIA` y viaja en el snapshot
+  (`DATA.facetas`); los valores vienen ya formateados en `item.atr`, que arma
+  `cotizador_historico.compactar_atributos`. **Acá no se calcula ningún
+  atributo**: el HTML solo lee lo que el build dejó listo.
 - **Refinar en un clic** (`renderRefinar`): las opciones de Medida, Material
   o Categoría que existen en lo encontrado, como chips con su conteo. Es el
   mismo cálculo que los desplegables, a la vista: buscar "codo" y quedarse
@@ -241,7 +253,7 @@ divergentes** entre ambos, sin ningún test, y que la consulta por consola no
 usaba. Todo eso se movió a `../Sistema/taxonomia.py` +
 `../Sistema/catalogo_taxonomia.py`; el motivo, las mediciones sobre el
 catálogo real y las decisiones de diseño están en
-[`../docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md`](../docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md)
+[`../docs/specs/2026-09-08-taxonomia-cotizador-design.md`](../docs/specs/2026-09-08-taxonomia-cotizador-design.md)
 y resumidas en [`../CLAUDE.md`](../CLAUDE.md) § Taxonomía.
 
 Lo que hace hoy el template:

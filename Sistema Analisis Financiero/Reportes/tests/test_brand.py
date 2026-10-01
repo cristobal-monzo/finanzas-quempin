@@ -56,31 +56,49 @@ def test_construir_html_con_fecha_corte_agrega_nota_de_fuente_al_footer():
     assert "Fuente: Centro de Costos + registro manual" in html
 
 
-def test_es_kpi_fuera_de_rango_margen_neto_muy_por_sobre_objetivo():
-    assert brand.es_kpi_fuera_de_rango("Margen neto %", 0.60) is True
-    assert brand.es_kpi_fuera_de_rango("Margen neto %", 0.30) is False
+def test_estado_kpi_margen_verde_sobre_el_objetivo_ambar_bajo_y_rojo_negativo():
+    # El criterio anterior (es_kpi_fuera_de_rango) marcaba 60% de margen
+    # igual que un sobrecosto: el color no distinguia la buena noticia de la
+    # mala. Un margen alto por costos sin registrar lo avisa una alerta
+    # explicita, no un color raro.
+    assert brand.estado_kpi("Margen neto %", 0.60) == "bueno"
+    assert brand.estado_kpi("Margen neto %", 0.30) == "bueno"
+    assert brand.estado_kpi("Margen neto %", 0.10) == "medio"
+    assert brand.estado_kpi("Margen neto %", -0.05) == "malo"
 
 
-def test_es_kpi_fuera_de_rango_desviacion_grande_en_cualquier_sentido():
-    assert brand.es_kpi_fuera_de_rango("Desviación % Materiales", -0.744) is True
-    assert brand.es_kpi_fuera_de_rango("Desviación % Materiales", 0.05) is False
+def test_estado_kpi_desviacion_solo_es_roja_cuando_es_sobrecosto():
+    assert brand.estado_kpi("Desviación % Materiales", 0.40) == "malo"
+    assert brand.estado_kpi("Desviación % Materiales", -0.744) == "medio"
+    assert brand.estado_kpi("Desviación % Materiales", 0.05) == ""
 
 
-def test_es_kpi_fuera_de_rango_kpi_sin_umbral_definido_da_false():
-    assert brand.es_kpi_fuera_de_rango("Estructura % Materiales", 999) is False
+def test_estado_kpi_nota_y_evaluacion_usan_los_cortes_de_analisis_financiero():
+    assert brand.estado_kpi("Nota del Proyecto", 93) == "bueno"
+    assert brand.estado_kpi("Nota del Proyecto", 60) == "medio"
+    assert brand.estado_kpi("Nota del Proyecto", 20) == "malo"
+    assert brand.estado_kpi("Evaluación", "Requiere atención") == "malo"
 
 
-def test_es_kpi_fuera_de_rango_ahorro_sobrecosto_negativo_es_sobrecosto():
-    assert brand.es_kpi_fuera_de_rango("Ahorro/Sobrecosto Materiales", -50000) is True
-    assert brand.es_kpi_fuera_de_rango("Ahorro/Sobrecosto Materiales", 50000) is False
-    assert brand.es_kpi_fuera_de_rango("Ahorro/Sobrecosto Total", -1) is True
+def test_estado_kpi_kpi_sin_umbral_definido_o_sin_valor_no_pinta_nada():
+    assert brand.estado_kpi("Estructura % Materiales", 999) == ""
+    assert brand.estado_kpi("Margen neto %", None) == ""
 
 
-def test_es_kpi_fuera_de_rango_rentabilidad_sobre_costo_ya_no_existe():
-    # "Rentabilidad sobre costo" se eliminó del playbook 2026-07-28 (era
-    # margen/(1-margen) de "Margen neto %" en otra escala) -- ya no tiene
-    # umbral propio, cae en el caso genérico (False).
-    assert brand.es_kpi_fuera_de_rango("Rentabilidad sobre costo", 0.1) is False
+def test_estado_kpi_ahorro_sobrecosto_negativo_es_sobrecosto():
+    assert brand.estado_kpi("Ahorro/Sobrecosto Materiales", -50000) == "malo"
+    assert brand.estado_kpi("Ahorro/Sobrecosto Materiales", 50000) == ""
+    assert brand.estado_kpi("Ahorro/Sobrecosto Total", -1) == "malo"
+
+
+def test_formatear_kpi_distingue_pesos_de_porcentaje_por_el_nombre():
+    # "Margen estimado al cierre" y "Margen estimado al cierre %" empiezan
+    # igual: el "%" manda sobre la lista de KPIs en pesos.
+    assert brand.formatear_kpi("Margen estimado al cierre", 1293765) == "$1.293.765"
+    assert brand.formatear_kpi("Margen estimado al cierre %", 0.614) == "61,4%"
+    assert brand.formatear_kpi("Nota del Proyecto", 93) == "93/100"
+    assert brand.formatear_kpi("Evaluación", "Excelente") == "Excelente"
+    assert brand.formatear_kpi("Margen neto %", None) == "—"
 
 
 def test_referencia_kpi_devuelve_texto_para_kpi_conocido_y_vacio_para_desconocido():

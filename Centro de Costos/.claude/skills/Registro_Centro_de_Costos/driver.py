@@ -53,6 +53,15 @@ del proyecto y expone dos comandos seguros de invocar desde un agente:
             los N Ref que quedan: el numero es historico y queda un hueco,
             que es lo correcto. Sin '--aplicar' solo muestra que sacaria.
 
+  separar-registrado → Para un documento YA registrado que junta varias
+            facturas/boletas en un solo N Ref (lo que 'separar' evita antes
+            de registrar). Lee un pedido JSON {N_REF: [documento, ...]}: el
+            primer documento conserva el N Ref y los demas reciben uno nuevo;
+            los items se mueven (no se reescriben), cada documento lleva su
+            propio N°, fecha, proveedor e impuesto, y queda una copia del
+            archivo fisico por documento. Sin '--aplicar' solo valida y
+            muestra el resultado.
+
 Uso:
   python driver.py status
   python driver.py run
@@ -63,6 +72,8 @@ Uso:
   python driver.py separar --proyecto "UMAG" --archivo "IMG_1234.jpg" --cantidad 3
   python driver.py eliminar UMAG-042
   python driver.py eliminar UMAG-042 --aplicar
+  python driver.py separar-registrado --plan pedido.json
+  python driver.py separar-registrado --plan pedido.json --aplicar
 """
 
 import sys
@@ -183,7 +194,20 @@ def cmd_status(pais="CL"):
     print(f"\nPendientes SIN datos (o sin items) en el JSON (bloquean el registro): {len(sin_datos)}")
     _imprimir_lista_truncada(sin_datos, lambda info: f"  - [{info['proyecto']}] {info['archivo']}")
 
-    escribibles = len(pendientes) - len(sin_datos)
+    mezclados = []
+    for info in pendientes:
+        dato = acc.buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"])
+        if dato and dato.get("items") and acc.numeros_documento_combinados(dato.get("n_documento")):
+            mezclados.append((info, dato))
+    if mezclados:
+        print(f"\nPendientes cuya entrada junta VARIOS documentos (run no los registra): "
+              f"{len(mezclados)}")
+        _imprimir_lista_truncada(
+            mezclados,
+            lambda par: f"  - [{par[0]['proyecto']}] {par[0]['archivo']}: {par[1]['n_documento']}")
+        print("  Separar cada archivo con 'driver.py separar' y dar una entrada por documento.")
+
+    escribibles = len(pendientes) - len(sin_datos) - len(mezclados)
     print(f"\nSi corres 'run' ahora se registrarían: {escribibles} documento(s).")
 
     # 'status' corre EXACTAMENTE la misma validacion que 'run' (PASO 5B), no
@@ -342,6 +366,55 @@ def cmd_eliminar(args, pais="CL"):
     return 0
 
 
+def cmd_separar_registrado(args, pais="CL"):
+    """Separa documentos YA registrados que juntan varias facturas/boletas en
+    un solo N Ref. El pedido va en un JSON {n_ref: [documento, ...]} (formato
+    en acc.planificar_separacion_registrado). Sin '--aplicar' solo valida y
+    muestra el resultado."""
+    import json
+
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    acc.configurar_pais(pais)
+    aplicar = "--aplicar" in args
+    resto = [a for a in args if a != "--aplicar"]
+    try:
+        ruta_plan, resto = _extraer_flag(resto, "--plan")
+    except ValueError as e:
+        print(f"[ERROR] {e}")
+        print("Uso: python driver.py separar-registrado --plan <pedido.json> [--aplicar]")
+        return 2
+    try:
+        pedidos = json.loads(Path(ruta_plan).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        print(f"[ERROR] No se pudo leer el pedido {ruta_plan}: {e}")
+        return 2
+
+    try:
+        planes, _resultados = acc.ejecutar_separacion_registrados(pedidos, aplicar=aplicar)
+    except (ValueError, FileExistsError, PermissionError) as e:
+        print(f"[ERROR] {e}")
+        return 1
+
+    print("=" * 70)
+    print(f"  {'SEPARACION APLICADA' if aplicar else 'PREVIEW -- no se escribio nada'}")
+    print("=" * 70)
+    for plan in planes:
+        print(f"\n  {plan['n_ref']}  ({plan['proyecto']})  era: {plan['n_documento_original']}"
+              f"  | neto {plan['neto_original']:,.0f}  impuesto {plan['iva_original']:,.0f}")
+        for d in plan["documentos"]:
+            print(f"    -> {d['n_ref']:<10} {d['tipo_documento']:<8} {d['n_documento']:<12} "
+                  f"{d['fecha']:%d-%m-%Y}  {d['proveedor'][:40]:<40} "
+                  f"neto {d['neto']:>10,.0f}  impuesto {d['iva']:>8,.0f}  ({len(d['items'])} item(s))")
+        if plan["diferencia_iva"]:
+            print(f"    [OJO] El impuesto separado suma {plan['diferencia_iva']:+,.0f} respecto del "
+                  f"registro combinado.")
+    if aplicar:
+        print("\n  Falta correr 'run' para propagar a Analisis Financiero y los tableros.")
+    else:
+        print("\n  Para aplicarlo de verdad, agrega --aplicar")
+    return 0
+
+
 def cmd_visualizador(pais="CL"):
     acc.configurar_pais(pais)
     visualizador_dir = acc.RAIZ_VISUALIZADOR_WEB
@@ -356,11 +429,12 @@ def cmd_visualizador(pais="CL"):
 
 
 def main():
-    comandos = ("status", "run", "confirmar", "visualizador", "separar", "eliminar")
+    comandos = ("status", "run", "confirmar", "visualizador", "separar", "eliminar",
+                "separar-registrado")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
         print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador|"
-              "separar --proyecto P --archivo A --cantidad N|eliminar N_REF ... [--aplicar]] "
-              "[--pais CL|PE]")
+              "separar --proyecto P --archivo A --cantidad N|eliminar N_REF ... [--aplicar]|"
+              "separar-registrado --plan pedido.json [--aplicar]] [--pais CL|PE]")
         return 2
 
     comando = sys.argv[1]
@@ -376,6 +450,8 @@ def main():
         return cmd_separar(resto, pais=pais)
     if comando == "eliminar":
         return cmd_eliminar(resto, pais=pais)
+    if comando == "separar-registrado":
+        return cmd_separar_registrado(resto, pais=pais)
     return cmd_run(pais=pais)
 
 

@@ -24,6 +24,18 @@
 **/errores_detectados*.json
 **/clientes_pendientes.json
 
+# Carpeta de intercambio entre herramientas (agregado 2026-09-30): mensajes
+# del Formulador con costos por proyecto y la lista publicada por Análisis
+# Financiero (proyectos, costos proyectados y reales). Desde el mismo día vive
+# fuera del repo (biblioteca de Formulación, .Herramientas formulación); la
+# regla queda por si alguien vuelve a crearla aquí. El registro de procedencia
+# de esos costos también lleva montos.
+Intercambio/*
+!Intercambio/LEEME.md
+**/presupuestos_formulador*.json
+# Qué presupuestos del Formulador ya revisó el usuario con Claude (uids y fechas).
+**/formulaciones_revisadas*.json
+
 # Cache regenerable de valores UF (publicos, no sensibles) -- se ignora solo
 # porque cambia en cada consulta y ensuciaria el diff, no por confidencialidad.
 **/uf_cache.json
@@ -50,6 +62,10 @@ Análisis Financiero/Reportes/
 **/Visualizador Web/data/
 **/Visualizador Web/build/
 
+# Paginas de revision manual: llevan los documentos, montos y numeros de
+# documento incrustados para poder mirarlos uno por uno.
+**/Revision Visual/
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Ruido de entorno
 # ─────────────────────────────────────────────────────────────────────────────
@@ -64,9 +80,6 @@ venv/
 # Worktrees locales
 .worktrees/
 .claude/worktrees/
-
-# Estado de trabajo de skills (ledger de subagent-driven-development, etc.)
-.superpowers/
 
 # OneDrive / Windows
 desktop.ini

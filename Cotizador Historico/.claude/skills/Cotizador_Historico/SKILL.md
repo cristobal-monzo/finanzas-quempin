@@ -137,6 +137,37 @@ python ".claude/skills/Cotizador_Historico/driver.py" categorias --detalle "Pipi
 `py -3.14 -m pytest` antes), y compara que no se haya movido nada que ya
 estaba bien clasificado.
 
+**`atributos [--top N]`** — auditoría del diccionario (2026-09-22). Tampoco
+usa la red ni escribe nada. Reporta:
+
+- las **palabras sin interpretar** del catálogo real, con una sugerencia de
+  qué podrían ser (¿abreviatura de una palabra conocida?, ¿error de tipeo?,
+  ¿marca o modelo?). Ninguna se clasifica a la fuerza: se proponen para
+  agregarlas a `Sistema/catalogo_atributos.py` o `catalogo_taxonomia.py`;
+- las **clasificaciones ambiguas** (dos categorías a menos de 10 puntos), con
+  la alternativa anotada;
+- los productos de **baja confianza** (< 0,7) y su motivo;
+- los que quedaron **sin material** o **sin medida** donde esos atributos
+  definen la hoja.
+
+**`evaluacion [--detalle]`** — ¿mejoró o empeoró? Mide la clasificación
+contra 203 productos reales etiquetados a mano
+(`Sistema/referencia_atributos.py`) y el buscador contra 110 consultas cuya
+relevancia es un predicado sobre el **texto crudo** del producto
+(`Sistema/evaluacion.py`), así que **no depende de la clasificación del
+propio sistema** — a diferencia de `benchmark`, que sí. Informa material,
+dimensiones con su rol, P@1, P@5, Success@5 y MRR, más los conteos del
+catálogo (sin clasificar, sin material, ambiguas, baja confianza).
+
+```
+python ".claude/skills/Cotizador_Historico/driver.py" atributos
+python ".claude/skills/Cotizador_Historico/driver.py" evaluacion --detalle
+```
+
+**Corre `evaluacion` después de cualquier cambio en los tres catálogos**
+(taxonomía, atributos o búsqueda): es lo que distingue una mejora real de
+una que arregla un caso y rompe otros tres.
+
 ## Perú (`--pais CL|PE`)
 
 Los 3 comandos (`status`/`consultar`/`visualizador`) aceptan `--pais CL|PE`

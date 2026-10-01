@@ -56,11 +56,16 @@
   }
 
   // Espejo de busqueda.normalizar_alias: deja pasar " / . - porque son parte
-  // de la medida, y manda todo lo demas a espacio.
+  // de la medida, y manda todo lo demas a espacio. La coma decimal se
+  // convierte en punto ANTES de limpiar ("0,8" no puede partirse en "0" y
+  // "8": son ocho decimas de milimetro).
   function normalizarAlias(texto) {
     var t = sinTildes(unificarComillas(texto).toLowerCase());
+    t = t.replace(/(\d),(?=\d)/g, '$1.');
     t = t.replace(/[^a-z0-9"/.\- ]+/g, ' ');
-    return t.replace(/\s+/g, ' ').trim();
+    t = t.replace(/\s+/g, ' ').trim();
+    // "3/4 x 1/2" y "3/4x1/2" son la misma medida compuesta.
+    return t.replace(/(\d"?)\s+x\s+(?=\d)/g, '$1x');
   }
 
   // ---------- distancia de edicion acotada ----------
@@ -128,22 +133,87 @@
     // guardas y sus constantes son las mismas que usa Python (vienen en
     // cfg.entero_suelto, no escritas aqui).
     var ENTERO = cfg.entero_suelto || { alias: {}, max_pulgadas: 24, angulos: [], cuantificadores: [] };
-    function enteroSueltoComoPulgada(palabras) {
+    function enteroSueltoComoPulgada(palabras, porcentajes) {
       for (var i = 0; i < palabras.length; i++) {
         if (!/^\d{1,2}$/.test(palabras[i])) continue;
         var valor = parseInt(palabras[i], 10);
         if (valor < 1 || valor > ENTERO.max_pulgadas) continue;
         if (ENTERO.angulos.indexOf(valor) !== -1) continue;
         if (i && ENTERO.cuantificadores.indexOf(palabras[i - 1]) !== -1) continue;
-        return Object.prototype.hasOwnProperty.call(ENTERO.alias, palabras[i])
-          ? ENTERO.alias[palabras[i]] : null;
+        if (porcentajes.indexOf(palabras[i]) !== -1) continue;
+        return {
+          canonico: Object.prototype.hasOwnProperty.call(ENTERO.alias, palabras[i])
+            ? ENTERO.alias[palabras[i]] : null,
+          indice: i
+        };
       }
       return null;
     }
 
+    // ---------- numeros, grados y especificaciones de la consulta ----------
+    // Espejo de busqueda._unir_especificaciones y _terminos_numericos. Las
+    // TABLAS (que prefijos existen) vienen del snapshot; aca solo esta el
+    // procedimiento.
+    var SPEC = cfg.especificaciones || { prefijos: [], canonico: {}, grados: [] };
+    var NUMERO_CONSULTA = /^(\d+(?:[.,]\d+)?)(mm|cm|mts|mt|m|plg|pulg|pulgadas?|in)?$/;
+
+    function unirEspecificaciones(palabras) {
+      var salida = [];
+      for (var i = 0; i < palabras.length; i++) {
+        var p = palabras[i], siguiente = i + 1 < palabras.length ? palabras[i + 1] : '';
+        if (SPEC.prefijos.indexOf(p) !== -1 && /^\d{1,4}s?$/.test(siguiente)) {
+          salida.push((SPEC.canonico[p] || p) + siguiente);
+          i++;
+          continue;
+        }
+        salida.push(p);
+      }
+      return salida;
+    }
+
+    function textoNumero(valor) {
+      // %g de Python: sin ceros de mas ("0.70" y "0,7" son el mismo espesor)
+      var v = Math.round(valor * 1e6) / 1e6;
+      return String(v);
+    }
+
+    function terminosNumericos(texto) {
+      var salida = [];
+      function agregar(valor) {
+        var t = '#' + textoNumero(valor);
+        if (salida.indexOf(t) === -1) salida.push(t);
+      }
+      texto.split(' ').filter(Boolean).forEach(function (palabra) {
+        var grado = new RegExp('^(' + SPEC.grados.join('|') + ')[\\s-]*(\\d{3})(l|h)?$').exec(palabra);
+        if (grado) {
+          [raiz(grado[1]), '#' + grado[2]].forEach(function (t) {
+            if (salida.indexOf(t) === -1) salida.push(t);
+          });
+          if (grado[3]) salida.push(grado[2] + grado[3]);
+          return;
+        }
+        var metrica = /^m(\d{1,2})$/.exec(palabra);           // rosca metrica M12
+        if (metrica) { agregar(parseFloat(metrica[1])); return; }
+        palabra.split(/[x×]/).forEach(function (trozo) {
+          var m = NUMERO_CONSULTA.exec(trozo);
+          if (!m) return;
+          var valor = parseFloat(m[1].replace(',', '.')), unidad = m[2];
+          if (unidad === 'm' || unidad === 'mt' || unidad === 'mts') {
+            agregar(valor * 1000); agregar(valor);
+          } else if (unidad === 'cm') {
+            agregar(valor * 10);
+          } else {
+            agregar(valor);
+          }
+        });
+      });
+      return salida;
+    }
+
     function parsearConsulta(texto) {
-      var medidas = {};
+      var medidas = {}, blandas = {};
       var palabras = normalizarAlias(texto).split(' ').filter(Boolean);
+      palabras = unirEspecificaciones(palabras);
       var usadas = {}, i = 0;
       while (i < palabras.length) {
         var avance = 1, tope = Math.min(maxPalabrasAlias, palabras.length - i);
@@ -159,27 +229,42 @@
         i += avance;
       }
       if (!Object.keys(medidas).length) {
-        var suelto = enteroSueltoComoPulgada(palabras);
-        if (suelto) medidas[suelto] = true;
+        // Un numero con signo de porcentaje no es una medida: "soldadura
+        // plata 15%" es la ley de la plata, no quince pulgadas.
+        var porcentajes = (String(texto || '').match(/\d{1,3}(?=\s*%)/g) || []);
+        var suelto = enteroSueltoComoPulgada(palabras, porcentajes);
+        if (suelto && suelto.canonico) {
+          medidas[suelto.canonico] = true;
+          // Un entero suelto es una lectura POSIBLE de la medida: "plancha 4"
+          // son 4 mm de espesor y "valvula 4" son 4 pulgadas (ver busqueda.py).
+          blandas['#' + suelto.canonico.replace(/"$/, '')] = true;
+          usadas[suelto.indice] = true;
+        }
       }
       var resto = palabras.filter(function (_p, idx) { return !usadas[idx]; }).join(' ');
       var terms = terminos(resto).filter(function (t) { return !/^\d+$/.test(t); });
+      terminosNumericos(resto).forEach(function (t) {
+        if (terms.indexOf(t) === -1) terms.push(t);
+      });
       // Un codigo se escribe con separadores pero se indexa pegado. Palabra
-      // por palabra, nunca la consulta entera (ver la nota en busqueda.py).
-      palabras.forEach(function (palabra) {
+      // por palabra, nunca la consulta entera, y nunca una palabra que ya se
+      // leyo como medida ("dn50" son dos pulgadas, no un modelo).
+      palabras.forEach(function (palabra, idx) {
+        if (usadas[idx]) return;
         var pegado = palabra.replace(/[^a-z0-9]/g, '');
         if (ES_CODIGO.test(pegado) && terms.indexOf(pegado) === -1) terms.push(pegado);
       });
-      return { terminos: terms, medidas: Object.keys(medidas) };
+      return { terminos: terms, medidas: Object.keys(medidas), blandas: Object.keys(blandas) };
     }
 
     // ---------- indice invertido ----------
 
-    var post = {}, df = {}, largo = {}, medidasItem = new Array(n);
+    var post = {}, df = {}, largo = {}, medidasItem = new Array(n), numerosItem = new Array(n);
     campos.forEach(function (c) { post[c] = {}; largo[c] = new Array(n); });
 
     for (var idx = 0; idx < n; idx++) {
       var bt = items[idx]._bt || {};
+      numerosItem[idx] = (bt.dim || '').split(' ').filter(Boolean);
       var delItem = {};
       for (var ci = 0; ci < campos.length; ci++) {
         var campo = campos[ci], texto = bt[campo];
@@ -265,6 +350,7 @@
       var parsed = parsearConsulta(texto);
       var terms = parsed.terminos;
       var medidasPedidas = opciones.aplicarMedida === false ? [] : parsed.medidas;
+      var blandas = opciones.aplicarMedida === false ? [] : parsed.blandas;
       if (!terms.length && !medidasPedidas.length) {
         return { resultados: [], sugerencias: [], terminos: [], desconocidos: [], medidas: [] };
       }
@@ -327,6 +413,11 @@
         var medidaOk = null;
         if (medidasPedidas.length) {
           if (compartenMedida(medidasItem[id], medidasPedidas)) {
+            relevancia *= cfg.medida.exacta; medidaOk = true;
+          } else if (blandas.length && compartenMedida(numerosItem[id], blandas)) {
+            // "plancha 4": el 4 se leyo como 4 pulgadas, pero este item lo
+            // tiene como dimension en milimetros -- es la misma medida
+            // escrita de otra forma, no otro calibre.
             relevancia *= cfg.medida.exacta; medidaOk = true;
           } else if (medidasItem[id] && medidasItem[id].length) {
             relevancia *= cfg.medida.distinta; medidaOk = false;

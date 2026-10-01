@@ -45,4 +45,4 @@ por construcción — hay una sola fuente y los dos países la comparten.
 Para cambiar cómo se clasifica algo se edita
 `Cotizador Historico/Sistema/catalogo_taxonomia.py` (una vez, para ambos
 países) y se regeneran los dos builds. Ver
-`../../../Cotizador Historico/docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md`.
+`../../../Cotizador Historico/docs/specs/2026-09-08-taxonomia-cotizador-design.md`.

@@ -50,24 +50,91 @@ consume.
   de diseño).
 
 Diseño completo, incluyendo las alternativas consideradas:
-[`docs/superpowers/specs/2026-07-17-cotizador-historico-design.md`](docs/superpowers/specs/2026-07-17-cotizador-historico-design.md).
+[`docs/specs/2026-07-17-cotizador-historico-design.md`](docs/specs/2026-07-17-cotizador-historico-design.md).
 
-## Taxonomía: cómo se categoriza cada ítem
+## Clasificación y atributos: qué es cada ítem
 
-Reestructurada el **2026-09-08** a pedido del usuario ("hay elementos que son
-de 1.1/4" y que se indican como si fueran de 1/4""). Diseño completo, con
-las mediciones sobre las 1193 compras reales que lo justifican, en
-[`docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md`](docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md).
+Reestructurada dos veces: el **2026-09-08** (categoría > subcategoría > hoja,
+con las medidas bien leídas) y el **2026-09-22**, cuando el material, las
+dimensiones y las especificaciones pasaron a ser **atributos independientes**.
+El pedido del usuario de esa segunda vuelta es el principio que ordena todo:
 
-**Vive en Python, no en el HTML.** `Sistema/taxonomia.py` (motor) +
-`Sistema/catalogo_taxonomia.py` (datos: categorías, materiales, reglas). La
-usan por igual `consultar_item` (consola y conversación) y los dos
-`build_visualizador.py` (Chile y Perú). Antes vivía en JavaScript dentro de
-`Visualizador Web/template.html`, duplicada por país y **ya divergente**
-(Perú nunca recibió la categoría Instrumentación agregada el 2026-08-31),
-sin tests, y la consulta por consola no la usaba.
+> Un producto no debe clasificarse únicamente por su forma o dimensiones. Debe
+> identificarse primero **qué** producto es, **de qué** material está fabricado
+> y posteriormente cuáles son sus características dimensionales y técnicas.
 
-**Cuatro etapas** (cada una testeada por separado en `Sistema/tests/test_taxonomia.py`):
+Diseño completo, con el análisis de lo que estaba roto y las mediciones, en
+[`docs/specs/2026-09-22-atributos-cotizador-design.md`](docs/specs/2026-09-22-atributos-cotizador-design.md)
+(el de la primera vuelta, en
+[`2026-09-08-taxonomia-cotizador-design.md`](docs/specs/2026-09-08-taxonomia-cotizador-design.md)).
+
+**Vive en Python, no en el HTML.** Dos motores, cada uno con sus datos al lado:
+
+| Archivo | Qué hace | Qué se edita ahí |
+|---|---|---|
+| `Sistema/taxonomia.py` | motor: medidas, clasificación, hoja | casi nunca |
+| `Sistema/catalogo_taxonomia.py` | datos: categorías y qué palabras llevan a cada **tipo** | una regla de producto nueva |
+| `Sistema/atributos.py` | motor: material con su rol, especificaciones, terminación, confianza | casi nunca |
+| `Sistema/dimensiones.py` | motor: cuánto mide y **qué es cada número** (un esquema por familia) | casi nunca |
+| `Sistema/catalogo_atributos.py` | datos: **materiales**, abreviaturas, terminaciones, esquemas de medida, facetas | un material, una abreviatura o un filtro nuevo |
+| `Sistema/presentacion.py` | motor: cómo se **escribe** lo que ya se entendió (unidad práctica, una sola ortografía por nombre) | casi nunca |
+| `Sistema/catalogo_presentacion.py` | datos: siglas técnicas con su escritura correcta | una sigla nueva que salga en mayúsculas a medias |
+
+Los usan por igual `consultar_item` (consola y conversación) y los dos
+`build_visualizador.py` (Chile y Perú). Antes de 2026-09-08 esto vivía en
+JavaScript dentro de `Visualizador Web/template.html`, duplicado por país y
+**ya divergente** (Perú nunca recibió la categoría Instrumentación agregada el
+2026-08-31), sin tests, y la consulta por consola no lo usaba.
+
+**La ficha de un producto** (lo que devuelve `taxonomia.clasificar`):
+
+```
+Plancha policarbonato transparente 0,7 x 812 x 3660 mm
+
+  categoría        Planchas y Perfiles      (la carpeta del dashboard)
+  familia          Planchas                 (decide qué filtros se ofrecen)
+  tipo             Plancha                  (QUÉ es)
+  material         Policarbonato            (DE QUÉ está hecho) · familia: Plásticos
+  terminación      Transparente
+  dimensiones      espesor 0,7 mm · ancho 812 mm · largo 3660 mm   (cada una con su ROL)
+  especificaciones (schedule, presión, conexión, rosca, norma, grado...)
+  confianza        0,85   ·   revisar: no
+```
+
+En la ficha, `familia` es el **tipo** (se conserva el nombre de esa clave
+desde 2026-09-08 porque la hoja, el dashboard y el benchmark la usan) y
+`familia_producto` es el nivel de arriba.
+
+**Seis reglas que conviene no reaprender a golpes:**
+
+1. **Ninguna palabra de material es término de una regla de producto.** Cuando
+   `policarbonato` era un término que llevaba a "Plancha", una plancha de
+   policarbonato quedaba **sin material** y dentro de "Perfilería y Maderas",
+   junto al pino.
+2. **El material tiene ROL**: principal, *componente* ("mazo de goma **con
+   mango de** acero" es de goma), *aplicación* ("disco de corte **para** acero
+   inoxidable" no es de inoxidable) y *sistema* de tubería (un terminal de
+   latón DZR **para PEX** es de latón, y va en la carpeta PEX).
+3. **Manda el sustantivo principal.** En español el núcleo del sintagma va
+   primero: el puntaje suma hasta 12 puntos por estar al principio del nombre
+   y resta 25 por venir después de "con", "incluye" o "porta". Sin eso, "Kit
+   bomba DAB ... unión 1.1/4"" era una Unión y "Bolsas basura c/amarra", una
+   Amarra.
+4. **El significado de un número depende de la familia.** "40x2" es un perfil
+   de 40 mm de lado y 2 de espesor; "2x6", una escuadría de pino en pulgadas;
+   "0,7 x 812 x 3660", espesor × ancho × largo. Los esquemas están en
+   `catalogo_atributos.ESQUEMA_POR_TIPO`.
+5. **Un entero sin unidad se lee según el sistema**: en PEX/PPR/PVC son
+   milímetros ("PEX 32"); en cobre o acero, pulgadas nominales ("Copla cobre
+   2"). Las tres barras PEX (16, 20 y 32 mm) compartían hoja porque la única
+   medida que se leía era el largo de la barra.
+6. **Nada se fuerza.** Lo que ninguna tabla explica queda como atributo sin
+   interpretar, con su confianza y su motivo, y se reporta en `driver.py
+   atributos` con una sugerencia (¿abreviatura?, ¿error de tipeo?, ¿marca?)
+   para que una persona decida.
+
+**Cinco etapas** (testeadas por separado en `Sistema/tests/test_taxonomia.py`
+y `Sistema/tests/test_atributos.py`):
 
 1. `normalizar`/`raiz` — sin tildes, sin plural, sin palabras vacías, para
    que `guantes`/`guante` y `Valvula`/`Válvula` sean lo mismo.
@@ -77,13 +144,20 @@ sin tests, y la consulta por consola no la usaba.
    no es medida: modelos (`VA 65/180`), códigos (`NB2-40/42`), magnitudes
    que no son longitud (220V, 280ml, 25kg) y ángulos de fitting
    (`Codo 90 3/4` es de 3/4", no de noventa y tres cuartos).
-3. `clasificar` — categoría/subcategoría/familia con un catálogo de reglas.
-   El match es **por palabra completa**, nunca substring: así "S-tee-lgen"
-   no activa "tee" y "dado que" no activa "dado" (dos errores reales del
-   sistema anterior). Un término negado (`sin`, `s/`) no activa su regla.
-4. `clave_hoja` — `familia + material + medida`. Dos compras solo se
-   promedian si comparten hoja: **una cañería de cobre de 1/2 nunca se
-   promedia con una de 2**.
+3. `clasificar` — categoría/familia/**tipo** con un catálogo de reglas. El
+   match es **por palabra completa**, nunca substring: así "S-tee-lgen" no
+   activa "tee" y "dado que" no activa "dado" (dos errores reales del sistema
+   anterior). Un término negado (`sin`, `s/`) no activa su regla, y un
+   sustantivo genérico se resuelve por contexto (`DESAMBIGUACION`: un
+   "adaptador" con "schuko" es eléctrico; con "broca", el porta sierra de un
+   taladro).
+4. `atributos` — material con su rol y su grado, dimensiones por esquema de
+   familia, especificaciones técnicas (SCH, PN, NPT, HI-HI, tipo de pared,
+   norma, grado, corriente), terminación, color y la **confianza** de cada
+   dato.
+5. `clave_hoja` — `tipo + material (+ grado, + clase de pared) + medida`. Dos
+   compras solo se promedian si comparten hoja: **una cañería de cobre de 1/2
+   nunca se promedia con una de 2**, ni una tipo L con una tipo K.
 
 **Cuatro afinamientos pedidos el 2026-09-09**, todos en
 `catalogo_taxonomia.py`:
@@ -97,8 +171,10 @@ sin tests, y la consulta por consola no la usaba.
 2. **La soldadura de plata es subcategoría propia**, separada de "Aportes":
    cuesta un orden de magnitud más que la de estaño.
 3. **En piping la subcategoría es el material** (`CATEGORIAS_SUBCATEGORIA_POR_MATERIAL`),
-   no el tipo de pieza: Bronce, PPR, Galvanizado, Cobre, Inoxidable, PVC,
-   Acero Negro, PEX y "Otros materiales". El tipo no se pierde, sigue al
+   no el tipo de pieza: Bronce, PPR, Acero galvanizado, Cobre, Acero
+   inoxidable, PVC, Acero negro, PEX, Latón y "Otros materiales" (desde
+   2026-09-22 la carpeta es el **sistema** de tubería cuando lo hay: un
+   terminal de latón para PEX vive en PEX). El tipo no se pierde, sigue al
    frente del nombre de la hoja, y las hojas se listan **alfabéticamente**
    para que todos los codos queden juntos dentro de cada material.
 4. **Las categorías secundarias** (`CATEGORIAS_SECUNDARIAS`: transporte,
@@ -130,10 +206,13 @@ avisar. Lo que no se puede clasificar cae en `Sin Clasificar`, que **no es
 un cajón de sastre sino una cola de trabajo**: aparece como KPI en el
 dashboard y como lista en `driver.py categorias`.
 
-**Para cambiar cómo se clasifica algo** se edita
-`Sistema/catalogo_taxonomia.py` (nunca el HTML), se corre
-`py -3.14 -m pytest` y después `driver.py categorias`, y se compara que no
-se haya movido nada que ya estaba bien.
+**Para cambiar cómo se clasifica algo** se edita el catálogo que corresponda
+(`catalogo_taxonomia.py` para un tipo de producto; `catalogo_atributos.py`
+para un material, una abreviatura, una terminación o un filtro), **nunca el
+HTML**. Después se corre `py -3.14 -m pytest`, `driver.py categorias` (dónde
+cayó cada compra), `driver.py atributos` (qué palabras quedaron sin
+interpretar) y `driver.py evaluacion` (si el cambio mejoró o empeoró),
+comparando que no se haya movido nada que ya estaba bien.
 
 ## Búsqueda: cómo encuentra un ítem
 
@@ -154,20 +233,42 @@ segunda. No había ranking: había un filtro binario disfrazado de ranking.
 
 1. **Cobertura de la consulta.** Un ítem que calza los 3 términos vale mucho
    más que uno que calza 1, y cada término pesa por IDF (cuánto discrimina).
-2. **Peso por campo.** El mismo término vale 12 en el código, 10 en el
-   `Nombre Ítem`, 9 en la hoja de la taxonomía, 4 en la descripción, 2 en el
-   proyecto. Más un descuento por campo largo: que "teflón" sea el nombre
-   completo de un ítem dice más que verlo dentro de una frase de 8 palabras.
-3. **La medida es un multiplicador, no un término.** 2" contra 2" multiplica
-   por 1,6; contra 1/2" por 0,18. **Una medida distinta es otro producto.**
+2. **Un campo por ATRIBUTO, con el peso en el orden que pidió el usuario**
+   (2026-09-22): código 12, **tipo de producto 11**, `Nombre Ítem` 10, hoja 9,
+   **material (con su familia de material y su grado) 8**, **dimensiones 7**,
+   **especificaciones 5**, categoría 5, terminación y aplicación 4,5, marca 4,
+   descripción 3,5, proveedor y proyecto 2. Más un descuento por campo largo:
+   que "teflón" sea el nombre completo de un ítem dice más que verlo dentro de
+   una frase de 8 palabras.
+3. **La medida principal es un multiplicador, no un término.** 2" contra 2"
+   multiplica por 1,6; contra 1/2" por 0,18. **Una medida distinta es otro
+   producto.** Las demás dimensiones sí suman como términos: por eso "plancha
+   policarbonato 0.7" encuentra su plancha y "policarbonato 812" también.
 4. **Tolerancia**, resuelta antes de puntuar con las mismas funciones de la
    taxonomía: tildes, mayúsculas, plurales, palabras vacías, orden de las
-   palabras, sinónimos y errores de tipeo (1 error desde 4 caracteres, 2
-   desde 7).
+   palabras, sinónimos, abreviaturas (`galv`, `inox`, `valv`, `perf`) y
+   errores de tipeo (1 error desde 4 caracteres, 2 desde 7).
+
+**Qué entiende de un número** (2026-09-22; antes se descartaba todo número que
+no fuera una pulgada):
+
+| Se escribe | Se entiende |
+|---|---|
+| `0,7` · `0.7` · `0.70` | el mismo espesor |
+| `812` · `3660` | ancho y largo de una plancha |
+| `5.8m` | 5800 mm (y también se busca como "5.8") |
+| `40x20x2` | tres dimensiones, no un código |
+| `SS316` · `AISI 316` · `inox 316` | material inoxidable + grado 316 |
+| `sch 40` · `SCH40` · `cédula 40` | la misma especificación |
+| `M12` | rosca métrica de 12 mm |
+| `15%` | la ley de una soldadura, **nunca** 15 pulgadas |
+| `plancha 4` | 4 mm de espesor **o** 4 pulgadas: la lectura blanda no hunde al que lo tiene en milímetros |
 
 **Medidas equivalentes.** `2"`, `2”`, `2 pulgadas`, `2 pulg`, `2 plg`,
 `2 in`, `Ø2"` y `DN50` son la misma medida; `2"`, `1/2"`, `3/4"` y `2.1/2"`
-son cuatro medidas distintas. Se resuelve con una **tabla de alias**
+son cuatro medidas distintas. Desde 2026-09-22 hay además dos equivalencias
+**de familia**, escritas en `catalogo_atributos.py`: un disco abrasivo de
+4.1/2" es el de 115 mm, y un electrodo de 1/8" es el de 3,2 mm. Se resuelve con una **tabla de alias**
 generada desde `taxonomia.parsear_medidas` y validada contra él entrada por
 entrada (`tests/test_busqueda_medidas.py`) — así el dashboard no necesita
 reimplementar la gramática de medidas en JavaScript.
@@ -194,27 +295,55 @@ pasó con la taxonomía duplicada en JavaScript (2026-09-08) y con el KPI
 | Procesar la consulta y puntuar | escrito dos veces | `Visualizador Web/busqueda.js`, **un solo archivo** que los builds de Chile y Perú inyectan |
 
 Lo único escrito dos veces es el lado de la consulta, y está clavado por
-`tests/test_paridad_busqueda_js.py`: corre 28 consultas por los dos motores
+`tests/test_paridad_busqueda_js.py`: corre 45 consultas por los dos motores
 con Node y exige el **mismo orden**. Si ese test falla, no se ajusta el
 JavaScript hasta que pase — se averigua cuál de los dos tiene razón.
 
-**Cómo saber si un cambio mejoró o empeoró:**
+**Cómo saber si un cambio mejoró o empeoró.** Hay dos instrumentos, y miden
+cosas distintas:
 
 ```
 py -3.14 ".claude/skills/Cotizador_Historico/driver.py" benchmark [--detalle]
+py -3.14 ".claude/skills/Cotizador_Historico/driver.py" evaluacion [--detalle]
 ```
 
-48 consultas con respuesta esperada, definida como un predicado sobre la
-clasificación (familia + material + medida) y no como una lista de nombres
-escrita a mano, para que siga siendo válida cuando el catálogo crezca. Mide
-Success@5, P@5 y MRR contra el motor anterior. Estado al 2026-09-16:
+`benchmark` (2026-09-16) son 48 consultas cuya respuesta esperada es un
+predicado sobre la clasificación del propio sistema: sirve para comparar dos
+rankings sobre la misma taxonomía, pero **no puede ver un error de la
+taxonomía** (si tres barras PEX comparten hoja, las cuenta como un acierto).
+
+`evaluacion` (2026-09-22) es independiente del sistema: 203 productos reales
+etiquetados a mano (`Sistema/referencia_atributos.py`) y 110 consultas cuya
+relevancia es un predicado sobre el **texto crudo** del producto
+(`Sistema/evaluacion.py`). Mide material, dimensiones con su rol, P@1, P@5,
+Success@5 y MRR, más los conteos sobre las 1.484 compras. Estado al
+2026-09-22 (antes = motor del 2026-09-16):
 
 | Métrica | Antes | Ahora |
 |---|---|---|
-| Success@5 | 0,812 | **1,000** |
-| P@5 | 0,354 | **0,479** |
-| P@5 normalizada (sobre lo alcanzable) | 0,691 | **0,935** |
-| MRR | 0,689 | **1,000** |
+| Material correcto | 0,824 | **1,000** |
+| Dimensiones: valores | 0,644 | **1,000** |
+| Dimensiones: **con su rol** | 0,000 | **1,000** |
+| P@1 | 0,764 | **0,982** |
+| P@5 normalizada | 0,762 | **0,895** |
+| Success@5 | 0,882 | **1,000** |
+| MRR | 0,813 | **0,991** |
+| Compras en "Sin Clasificar" | 20 | **0** |
+| Clasificaciones ambiguas | 17 | **11** |
+
+23 consultas pasaron a acertar en el primer lugar y ninguna empeoró. La
+referencia se escribió mirando el catálogo antes de implementar, pero se
+iteró contra ella: es un set de desarrollo, no una muestra ciega (los
+conteos sobre las 1.484 compras sí son independientes).
+
+Y el benchmark de 48 consultas, para comparar contra el motor de 2026-09-16:
+
+| Métrica | Antes (difflib) | 2026-09-16 | Ahora |
+|---|---|---|---|
+| Success@5 | 0,792 | 1,000 | **1,000** |
+| P@5 | 0,317 | 0,479 | **0,475** |
+| P@5 normalizada (sobre lo alcanzable) | 0,655 | 0,935 | **0,983** |
+| MRR | 0,654 | 1,000 | **1,000** |
 
 El P@5 crudo tiene techo bajo porque la mayoría de las consultas tiene **una
 sola** hoja correcta (hay un solo producto `Válvula de Bola 2"`): contra eso
@@ -232,21 +361,29 @@ datos no mide al buscador, mide a quien escribió el test — pasaron a
 ```
 Cotizador Historico/
 ├── CLAUDE.md                              # este archivo
-├── docs/superpowers/                      # specs/plans de Claude Code
+├── docs/                                  # specs y planes de diseño (specs/, plans/)
 ├── Sistema/
-│   ├── cotizador_historico.py             # lógica: leer Excel, indexar, fuzzy search, reajuste UF
+│   ├── cotizador_historico.py             # lógica: leer Excel, indexar, buscar, reajuste UF
 │   ├── taxonomia.py                       # motor: medidas + clasificación + clave de hoja
-│   ├── catalogo_taxonomia.py              # datos: categorías, materiales, reglas (esto es lo que se edita)
+│   ├── catalogo_taxonomia.py              # datos: categorías y reglas de TIPO de producto (esto se edita)
+│   ├── atributos.py                       # motor: material con rol, especificaciones, terminación, confianza
+│   ├── dimensiones.py                     # motor: cuánto mide y qué es cada número (esquema por familia)
+│   ├── catalogo_atributos.py              # datos: materiales, abreviaturas, terminaciones, esquemas, facetas (esto se edita)
+│   ├── presentacion.py                    # motor: unidad práctica de cada medida + una sola escritura por nombre
+│   ├── catalogo_presentacion.py           # datos: siglas técnicas con su escritura correcta (esto se edita)
 │   ├── busqueda.py                        # motor de búsqueda: normalizar, medidas, índice, ranking
-│   ├── catalogo_busqueda.py               # datos: sinónimos, marcas, pesos, DN↔pulgada (esto es lo que se edita)
-│   ├── benchmark_busqueda.py              # set de consultas con respuesta esperada + métricas
+│   ├── catalogo_busqueda.py               # datos: sinónimos, marcas, pesos, umbrales (esto se edita)
+│   ├── benchmark_busqueda.py              # 48 consultas juzgadas con la clasificación del sistema
+│   ├── evaluacion.py                      # 110 consultas juzgadas contra el texto crudo + métricas de atributos
+│   ├── referencia_atributos.py            # 203 productos reales etiquetados a mano (el patrón de comparación)
 │   ├── uf_cache.json                      # caché fecha ISO -> valor UF (se crea solo en la primera corrida)
 │   └── tests/                             # tests de pytest
 └── .claude/
     └── skills/
         └── Cotizador_Historico/
             ├── SKILL.md
-            └── driver.py                  # comandos: status | consultar "<texto>" | visualizador | categorias | benchmark
+            └── driver.py                  # comandos: status | consultar "<texto>" | visualizador |
+                                           #           categorias | benchmark | evaluacion | atributos
 ```
 
 ## Cómo se usa

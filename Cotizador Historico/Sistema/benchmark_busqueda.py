@@ -87,8 +87,12 @@ CASOS = [
     ("caneria cobre 1.1/2", {"familia": "Cañería", "material": "Cobre", "medida": '1.1/2"'}, "sin tildes"),
     ("copla ppr 32", {"familia": "Copla", "material": "PPR"}, "PPR en milimetros"),
     ("terminal ppr 25", {"familia": "Terminal", "material": "PPR"}, "terminal de fusion"),
-    ("niple galvanizado", {"familia": "Niple", "material": "Galvanizado"}, "niple"),
-    ("union americana", {"familia": "Unión"}, "nombre compuesto"),
+    # Los nombres canonicos de tipo y material cambiaron el 2026-09-22 al
+    # separarse el material como atributo ("Acero galvanizado" en vez de
+    # "Galvanizado") y al hacerse mas preciso el tipo ("Unión Americana" ya
+    # no es una "Unión" cualquiera). El criterio es el mismo producto.
+    ("niple galvanizado", {"familia": "Niple", "material": "Acero galvanizado"}, "niple"),
+    ("union americana", {"familia": "Unión Americana"}, "nombre compuesto"),
     ("flexible", {"familia": "Flexible"}, "flexible/manguera"),
     ("manguera", {"familia": "Flexible"}, "sinonimo de flexible"),
 
@@ -105,7 +109,7 @@ CASOS = [
     ("soldadura de plata", {"categoria": "Soldadura y Gases", "nombre_contiene": "plata"}, "subcategoria propia"),
     ("electrodo", {"familia": "Electrodo"}, "aporte de soldadura"),
     ("teflon", {"familia": "Teflón"}, "sellado"),
-    ("coquilla aislante", {"familia": "Aislante"}, "aislacion"),
+    ("coquilla aislante", {"familia": "Coquilla"}, "aislacion"),
     ("bomba", {"categoria": "Bombas y Equipos Hidráulicos"}, "equipo"),
     ("estanque", {"familia": "Estanque"}, "equipo"),
     ("peaje", {"familia": "Peaje"}, "gasto de operacion"),

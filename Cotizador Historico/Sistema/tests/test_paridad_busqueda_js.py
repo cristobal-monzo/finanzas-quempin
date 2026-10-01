@@ -64,6 +64,16 @@ CORPUS = [
     _item("TAP-2", "Tapagorro", "Tapagorro BR NI 1/2"),
     _item("N-GALV", "Niple galvanizado", 'Niple galv. 1/2" x 10 cm'),
     _item("E-6010", "Electrodo", "Electrodo 6010 3/32 Indura, 5 kg"),
+    # Atributos (2026-09-22): dimensiones con rol, grados y especificaciones
+    _item("P-POLI", "Plancha policarbonato",
+          "Plancha policarbonato transparente 0,7 x 812 x 3660 mm"),
+    _item("P-MDF", "Plancha MDF", "Plancha MDF 0,7 x 1000 x 2000"),
+    _item("PF-40", "Perfil cuadrado", "Perfil cuadrado 40x40x2.0mm, 6 metros"),
+    _item("T-316", "Tubo", "Tubo 1/4 acero inoxidable 316 x 6mts"),
+    _item("CA-SCH", "Cañería", 'Cañería de acero inoxidable ASTM A312 304L, 6" SCH10S'),
+    _item("PEX-20", "Cañeria PEX", "PEX-A Aqualine 20 barra 5.8mt"),
+    _item("PN-M12", "Perno", "Perno de 12x50 C/T"),
+    _item("D-115", "Disco de corte", "Disco de corte 115x1x22,23mm"),
 ]
 
 CONSULTAS = [
@@ -95,6 +105,25 @@ CONSULTAS = [
     "valvula de compuerta",
     "  valvula   de   bola  ",
     "VÁLVULA DE BOLA DE 2”",
+    # Atributos: numeros con y sin unidad, decimales, grados y specs. Es
+    # donde los dos motores divergen mas facil, porque el lado de la consulta
+    # esta escrito dos veces.
+    "plancha policarbonato 0.7",
+    "plancha policarbonato 0,7",
+    "policarbonato 812",
+    "plancha 0.70",
+    "perfil 40x40x2",
+    "perfil cuadrado 6 m",
+    "tubo inox 316",
+    "ss316",
+    "aisi 304l",
+    "cañeria sch 10s",
+    "sch10s",
+    "pex 20",
+    "perno m12",
+    "disco corte 115",
+    "disco corte 4 1/2",
+    "plancha 4",
 ]
 
 

@@ -83,8 +83,19 @@ def test_todas_las_escrituras_la_ponen_primera():
 
 
 def test_escrituras_equivalentes_dan_el_mismo_conjunto_de_resultados():
+    """Escribir la MISMA consulta de otra forma no cambia lo que se
+    encuentra.
+
+    Se comparan solo las escrituras que nombran el producto completo
+    (válvula + bola + 2"). "válvula 2 pulgadas" no entra: esa consulta pide
+    menos -- cualquier válvula de 2" la cumple -- y desde 2026-09-22 el
+    catálogo sabe que la válvula de retención Bugatti también es de 2"
+    (antes su medida se perdía porque el "2 A/BR" del texto se leía como 2
+    amperes)."""
+    completas = [c for c in ESCRITURAS_VALVULA_BOLA_2
+                 if "bola" in c.lower() or "vola" in c.lower() or "esf" in c.lower()]
     referencia = set(_top('Válvula de bola de 2"'))
-    for consulta in ESCRITURAS_VALVULA_BOLA_2:
+    for consulta in completas:
         assert set(_top(consulta)) == referencia, consulta
 
 

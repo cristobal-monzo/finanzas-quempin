@@ -175,8 +175,11 @@ def test_detecta_materiales_que_el_sistema_anterior_no_conocia():
 
 
 def test_abreviatura_de_material_del_catalogo():
+    # Los nombres canonicos de material siguen la nomenclatura del usuario
+    # desde 2026-09-22: "Acero galvanizado", no "Galvanizado" (ver
+    # catalogo_atributos.MATERIALES).
     assert tx.clasificar("Codo", "Codo BR 90 3/4 SO/HE")["material"] == "Bronce"
-    assert tx.clasificar("Bushing", "Bushing galv Tupy 1.1/2 plg")["material"] == "Galvanizado"
+    assert tx.clasificar("Bushing", "Bushing galv Tupy 1.1/2 plg")["material"] == "Acero galvanizado"
 
 
 def test_piping_es_una_sola_categoria_con_el_material_como_faceta():
@@ -305,7 +308,7 @@ def test_un_color_no_es_un_material():
 
 
 def test_acero_negro_se_detecta_por_la_frase_no_por_el_color():
-    assert tx.clasificar("Canieria negra", "Cañería negra ASTM A-53 3/4 plg")["material"] == "Acero Negro"
+    assert tx.clasificar("Canieria negra", "Cañería negra ASTM A-53 3/4 plg")["material"] == "Acero negro"
 
 
 def test_el_material_no_parte_la_hoja_fuera_de_las_familias_donde_define():

@@ -1,6 +1,6 @@
 ---
 name: Registro_Centro_de_Costos
-description: Direct pipeline commands (status/run/confirmar/visualizador/separar) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer locally. Paso 2 also auto-splits any pending file that bundles more than 1 invoice/receipt in the same photo into 1 file per document before registering. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; ask the user for confirmation instead, since they may mean this skill, /Actualizar_CC, or /Actualizar_Base_de_Datos (see root CLAUDE.md § Invocación de skills). Use this skill directly for status checks, dry runs, audits, registering facturas, or confirming manual corrections when the user names it explicitly.
+description: Direct pipeline commands (status/run/confirmar/visualizador/separar/separar-registrado) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer locally. Paso 2 also auto-splits any pending file that bundles more than 1 invoice/receipt in the same photo into 1 file per document before registering. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; ask the user for confirmation instead, since they may mean this skill, /Actualizar_CC, or /Actualizar_Base_de_Datos (see root CLAUDE.md § Invocación de skills). Use this skill directly for status checks, dry runs, audits, registering facturas, or confirming manual corrections when the user names it explicitly.
 ---
 
 # Registro: Centro de Costos
@@ -51,7 +51,7 @@ python ".claude/skills/Registro_Centro_de_Costos/driver.py" status --pais PE
 python ".claude/skills/Registro_Centro_de_Costos/driver.py" run --pais PE
 ```
 
-Ver [`docs/superpowers/specs/2026-08-21-peru-expansion-design.md`](../../../../docs/superpowers/specs/2026-08-21-peru-expansion-design.md) (raíz de `Finanzas QUEMPIN/`) para la arquitectura completa.
+Ver [`docs/specs/2026-08-21-peru-expansion-design.md`](../../../../docs/specs/2026-08-21-peru-expansion-design.md) (raíz de `Finanzas QUEMPIN/`) para la arquitectura completa.
 
 ## Prerequisitos
 
@@ -118,7 +118,9 @@ misma pregunta N veces):
    documento multipágina que en realidad es 1 sola factura** (ej. factura +
    su guía de despacho del mismo N°, o una página de continuación de ítems
    del mismo documento) — solo aplica cuando hay N° de Documento
-   genuinamente distintos.
+   genuinamente distintos. **Nunca resolverlo con una sola entrada que
+   junte los números** ("A y B"), aunque compartan archivo: desde el
+   2026-09-30 `run` se niega a registrarla (`DOCUMENTOS_MEZCLADOS`).
 
    Si el archivo trae N documentos reales, correr (duplica sin recortar —
    cada copia conserva la foto/PDF completo, no se intenta aislar
@@ -422,13 +424,26 @@ inconsistencias = acc.verificar_aritmetica(datos)   # solo lee el JSON, no toca 
   guardar con un `PermissionError` controlado — no corrompe el archivo,
   solo hay que cerrarlo y reintentar.
 - **`driver.py separar` es solo para archivos PENDIENTES (sin registrar
-  todavía)** — no reordena ni corrige nada en el Excel. Para separar un
-  documento que **ya** quedó registrado como 1 solo N° Ref. combinando varias
-  facturas/boletas, hace falta una reestructuración manual del Excel (mover
-  filas de `Master`/`Detalle`, asignar N° Ref. nuevos, dejar constancia en
-  `correcciones_manuales.json`/`ERRORES.md`) — no uses `separar` para ese
-  caso, terminarías con archivos físicos duplicados sin fila propia en
-  Master.
+  todavía)** — no toca el Excel. Para un documento que **ya** quedó
+  registrado como 1 solo N° Ref. combinando varias facturas/boletas, usa
+  `driver.py separar-registrado --plan <pedido.json>` (agregado 2026-09-30;
+  antes era una reestructuración a mano, que se hizo tres veces). El pedido
+  es `{"<N_REF>": [documento, ...]}`, cada documento con `n_documento`,
+  `fecha`, `tipo_documento`, `proveedor`, `categoria`, `iva` (el impreso en
+  ESE documento) e `items`: los índices 0-based de sus filas de `Detalle`, o
+  `{"fila": i, "cantidad": q}` para llevarse parte de una fila. El primero
+  conserva el N° Ref.; los demás reciben uno nuevo. Mueve los ítems sin
+  reescribirlos, rehace el Total con IVA con la tasa de cada documento, deja
+  una copia del archivo por documento y lo anota en la bitácora. Rechaza el
+  pedido si alguna fila queda sin asignar o las cantidades no suman: separar
+  no puede cambiar el neto. Sin `--aplicar` solo muestra el resultado;
+  después de aplicar, correr `run` para propagar. Formato completo en
+  `planificar_separacion_registrado()`.
+- **`run` no registra una entrada del JSON cuyo `n_documento` junta varios
+  números** (`"6799340 y 0002795546"`, `"288946, 289533 y 289351"`): la deja
+  en "Limitaciones" y levanta el hallazgo `DOCUMENTOS_MEZCLADOS` (también en
+  `status`). Así llegaron al libro los 26 N° Ref. combinados que hubo que
+  separar el 2026-09-30.
 
 ## Troubleshooting
 

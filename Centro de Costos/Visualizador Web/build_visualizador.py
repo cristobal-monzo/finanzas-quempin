@@ -27,6 +27,7 @@ import io
 import json
 import re
 import sys
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -51,6 +52,59 @@ REF_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 # de verdad. Mismo criterio "endswith" que ya usa _celda_es_roja en
 # auditor_centro_costos.py, que por eso nunca tuvo este bug.
 ROJO_SUFIJO = "C00000"
+
+# Campos de etiqueta que el tablero usa como filtro/agrupación. Comparten
+# vocabulario ("Nota de Crédito" es a la vez estado y tipo de documento), así
+# que se unifican con un solo mapa.
+CAMPOS_ETIQUETA_DOC = ("categoria", "estado", "tipo_documento", "tipo_proyecto")
+CAMPOS_ETIQUETA_ITEM = ("categoria_item",)
+
+
+def _clave_etiqueta(texto):
+    """Sin tildes, minúsculas y espacios colapsados: la identidad de una
+    etiqueta para decidir si dos textos son la misma categoría."""
+    sin_tildes = unicodedata.normalize("NFD", texto)
+    sin_tildes = "".join(c for c in sin_tildes if not unicodedata.combining(c))
+    return " ".join(sin_tildes.lower().split())
+
+
+def unificar_variantes(docs):
+    """Unifica en su lugar las etiquetas que solo difieren en tildes,
+    mayúsculas o espacios (ej. "Ferreteria" / "Ferretería").
+
+    El extractor escribe la misma etiqueta de las dos formas, y el tablero
+    las mostraba como dos opciones de filtro y dos porciones de la dona --
+    subestimando ambas. Gana la forma con más caracteres no ASCII (perder
+    una tilde es el error típico de extracción; agregarla, nunca), luego la
+    más frecuente. No toca el Excel: solo el snapshot que ve el tablero."""
+    conteo = {}
+    valores = []
+    for d in docs:
+        valores.extend(d.get(c) for c in CAMPOS_ETIQUETA_DOC)
+        for it in d.get("items") or []:
+            valores.extend(it.get(c) for c in CAMPOS_ETIQUETA_ITEM)
+    for v in valores:
+        if isinstance(v, str) and v.strip():
+            conteo[v] = conteo.get(v, 0) + 1
+
+    por_clave = {}
+    for v, n in conteo.items():
+        por_clave.setdefault(_clave_etiqueta(v), []).append((v, n))
+    canonica = {}
+    for variantes in por_clave.values():
+        elegida = max(variantes, key=lambda vn: (sum(ord(c) > 127 for c in vn[0]), vn[1], vn[0]))[0]
+        for v, _ in variantes:
+            canonica[v] = elegida
+
+    for d in docs:
+        for c in CAMPOS_ETIQUETA_DOC:
+            if d.get(c) in canonica:
+                d[c] = canonica[d[c]]
+        for it in d.get("items") or []:
+            for c in CAMPOS_ETIQUETA_ITEM:
+                if it.get(c) in canonica:
+                    it[c] = canonica[it[c]]
+    return docs
 
 
 def extraer_datos_saneados(ruta_excel=RUTA_EXCEL):
@@ -140,6 +194,8 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL):
         else:
             d["total_sin_iva"] = d["total_sin_iva"] or 0
             d["total_con_iva"] = d["total_con_iva"] or 0
+
+    unificar_variantes(docs)
 
     fechas_mod = [d["fecha_modificacion"] for d in docs if d["fecha_modificacion"]]
     output = {

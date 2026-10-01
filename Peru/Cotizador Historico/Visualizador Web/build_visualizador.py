@@ -5,7 +5,7 @@ build_visualizador.py -- genera el visualizador web de Cotizador Historico Peru.
 Copia de Cotizador Historico/Visualizador Web/build_visualizador.py
 adaptada a Peru: lee Centro de Costos Peru.xlsx (pais="PE"), y en vez de
 pedir la UF de hoy y reajustar, usa armar_indice_completo_sin_reajuste --
-Peru no reajusta por ningun indice (ver docs/superpowers/specs/
+Peru no reajusta por ningun indice (ver docs/specs/
 2026-08-21-peru-expansion-design.md decision 5). El snapshot resultante NO
 trae uf_hoy/uf_fecha/uf_fuente -- esos campos no existen para Peru.
 

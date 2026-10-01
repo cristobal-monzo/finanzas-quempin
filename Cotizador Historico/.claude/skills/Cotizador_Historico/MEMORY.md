@@ -66,7 +66,7 @@ fueran de 1/4\"". El diagnóstico se hizo portando el clasificador JS a
 Python y midiéndolo sobre las 1193 compras reales, no estimando.
 
 **Lo que estaba roto** (todo medido, ver el spec
-`docs/superpowers/specs/2026-09-08-taxonomia-cotizador-design.md`):
+`docs/specs/2026-09-08-taxonomia-cotizador-design.md`):
 
 - La fracción mixta chilena no se reconocía: `1.1/4` se leía `1/4`. Efecto
   concreto: la hoja "Valvula bola" mostraba $38.152 promediando una válvula

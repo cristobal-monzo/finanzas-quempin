@@ -177,7 +177,27 @@
     margin-top: 14px;
     padding-top: 10px;
   }
-  .viz-modnav-inner { display: flex; gap: 4px; flex-wrap: wrap; }
+  .viz-modnav-inner { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
+  .viz-modnav-tabs { display: flex; gap: 4px 16px; flex-wrap: wrap; min-width: 0; }
+  /* Selector de país (2026-10-01): antes había 6 pestañas, una por módulo y
+     país; ahora son las 3 de los módulos y el país se elige aquí. <select>
+     nativo (en el teléfono abre la lista del sistema) con la flecha dibujada,
+     para que se vea igual sobre la cabecera negra en todos los navegadores. */
+  .viz-modnav-pais {
+    flex: 0 0 auto;
+    -webkit-appearance: none; appearance: none;
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+    color: #ffffff;
+    background: rgba(255,255,255,0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    padding: 5px 28px 5px 10px;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+  .viz-modnav-pais:hover { background-color: rgba(255,255,255,0.14); }
+  .viz-modnav-pais:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
+  .viz-modnav-pais option { color: #ffffff; background: #1a1a1a; }
   .viz-modnav-tab {
     display: inline-block;
     padding: 6px 12px;
@@ -191,14 +211,22 @@
   a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
   a.viz-modnav-tab.is-active:hover { background: none; }
   .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
-  /* En teléfono los 6 tableros envolvían en tres filas y el encabezado se
-     comía un tercio de la pantalla: una sola fila con scroll horizontal. */
+  /* En teléfono: una sola fila, con el selector de país fijo a la izquierda
+     y solo las pestañas deslizándose de lado (con wrap, el encabezado se
+     comía un tercio de la pantalla). */
   /* ".viz-header" delante: el contenedor también es .viz-container, y
      ".viz-header .viz-container" (flex-wrap: wrap) le ganaba por
      especificidad a una regla de una sola clase. */
   @media (max-width: 640px) {
-    .viz-header .viz-modnav-inner { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .viz-header .viz-modnav-inner { flex-wrap: nowrap; }
+    .viz-modnav-tabs { flex: 1 1 auto; flex-wrap: nowrap; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .viz-modnav-tabs::-webkit-scrollbar { display: none; }
     .viz-modnav-tab { white-space: nowrap; flex: 0 0 auto; }
+    /* 16 px: con menos, Safari de iPhone hace zoom al tocar el selector. */
+    .viz-modnav-pais { font-size: 16px; padding: 4px 26px 4px 9px; }
+    /* Etiquetas cortas (Costos / Análisis / Cotizador): así las 3 caben
+       junto al selector desde 360 px; más angosto, la fila se desliza. */
+    .viz-modnav-largo { display: none; }
   }
 
   /* Password gate */
@@ -555,6 +583,96 @@
   table.viz-table thead th.ordenable:hover { color: var(--text-primary); }
   table.viz-table thead th .orden { font-size: 9px; margin-left: 3px; opacity: 0.55; }
   table.viz-table thead th.es-orden .orden { opacity: 1; color: var(--brand-orange-ink, var(--brand-orange)); }
+
+  /* ---------- Móvil (2026-09-24) ----------
+     Las tablas de 5 a 9 columnas se deslizaban de lado dentro de su caja: en
+     390 px se veían 3 columnas, "Universidad de Magallanes" ocupaba 3 líneas
+     y el detalle expandido de un proyecto quedaba cortado a la derecha junto
+     con la tabla. Bajo 640 px cada fila pasa a tarjeta: la primera celda es
+     el título y el resto va en pares etiqueta/valor (la etiqueta la copia
+     etiquetarCeldas() del <thead> al atributo data-label). */
+  @media (max-width: 640px) {
+    /* Cabecera como la de Centro de Costos: el toggle sube junto al logo (en
+       Perú el título más largo lo empujaba a una línea propia). */
+    .viz-header .viz-container { gap: 8px 12px; }
+    .viz-logo img { height: 34px; }
+    .viz-wordmark { font-size: 18px; }
+    .viz-theme-toggle { margin-left: auto; padding: 6px 10px; }
+    .viz-titleblock { order: 3; flex-basis: 100%; min-width: 0; }
+
+    /* Pestañas: una fila deslizable en vez de 3 filas envueltas. */
+    .viz-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; gap: 0 4px; }
+    .viz-tabs::-webkit-scrollbar { display: none; }
+    .viz-tab-btn { flex: 0 0 auto; }
+
+    .kpi-card { min-width: 0; flex-basis: 40%; }
+    /* A 24 px ni "$37.598.914" ni "Mantenimiento" (Categoría líder) cabían en
+       media tarjeta. Guionado y no overflow-wrap: este último partía la cifra
+       en dos líneas; el guionado solo corta palabras. */
+    .kpi-value { font-size: 21px; -webkit-hyphens: auto; hyphens: auto; }
+
+    /* Filtros en grilla de 2 columnas; 16 px para que Safari de iPhone no
+       haga zoom al tocar un campo. */
+    .filtros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .filtro { min-width: 0; }
+    .filtro.crece, .filtros-resultado { grid-column: 1 / -1; }
+    .filtros-resultado { margin-left: 0; }
+    .filtro select { min-width: 0; width: 100%; font-size: 16px; }
+    .viz-search { font-size: 16px; }
+
+    /* "Qué mirar primero": el motivo baja a su propia línea en vez de
+       quedar apretado en una columna angosta junto al nombre. */
+    .lista-atencion li { flex-wrap: wrap; row-gap: 3px; }
+    .lista-atencion .motivo { order: 3; flex-basis: 100%; padding-left: 18px; }
+    /* Área táctil de "Ver →" y "Abrir la planilla" (~15 px de alto). */
+    .lista-atencion .ir { padding: 8px 6px; margin: -8px -6px; }
+    .pendientes-link { display: inline-block; padding: 8px 0; }
+
+    /* Mapa de calor: sigue deslizándose de lado (es una matriz), pero la
+       columna de proyecto queda fija para saber qué fila se está leyendo. */
+    table.mapa-calor th.proyecto, table.mapa-calor td.proyecto {
+      position: sticky; left: 0; z-index: 1; max-width: 120px; background: var(--surface-card);
+    }
+
+    /* Tablas → tarjetas. Siempre con '>': dentro del detalle expandido hay
+       tablas anidadas que no deben heredar esto. */
+    .viz-tablewrap > .viz-tablescroll { overflow: visible; }
+    table.viz-table { min-width: 0; }
+    table.viz-table, table.viz-table > tbody { display: block; }
+    table.viz-table > thead { display: none; }
+    table.viz-table > tbody > tr:not(.detail-row) {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px;
+      padding: 12px 14px; border-bottom: 1px solid var(--gridline);
+    }
+    table.viz-table > tbody > tr > td { padding: 0; border: 0; min-width: 0; }
+    table.viz-table > tbody > tr > td.num { text-align: left; }
+    table.viz-table > tbody > tr:not(.detail-row) > td:first-child { grid-column: 1 / -1; font-size: 14.5px; font-weight: 700; }
+    table.viz-table > tbody > tr > td[data-label]:not(:first-child)::before {
+      content: attr(data-label); display: block; margin-bottom: 1px;
+      font-size: 10.5px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted);
+    }
+    tr.detail-row, tr.detail-row > td { display: block; }
+    .detail-panel { margin: 0 8px 12px; padding: 12px; }
+    .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    /* Proyectos se ordena por columna: sin <thead> visible, sus encabezados
+       ordenables quedan como una tira de botones deslizable. */
+    #tabProyectos table.viz-table > thead { display: block; }
+    #tabProyectos table.viz-table > thead > tr {
+      display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none;
+      padding: 10px 12px; border-bottom: 1px solid var(--gridline);
+    }
+    #tabProyectos table.viz-table > thead > tr::-webkit-scrollbar { display: none; }
+    #tabProyectos table.viz-table > thead > tr::before {
+      content: 'Ordenar'; flex: 0 0 auto; font-size: 11px; font-weight: 700; color: var(--text-muted);
+    }
+    #tabProyectos table.viz-table > thead th { display: none; }
+    #tabProyectos table.viz-table > thead th.ordenable {
+      display: block; flex: 0 0 auto; padding: 6px 10px; border: 1px solid var(--border-hairline); border-radius: 999px;
+      font-size: 12px; text-transform: none; letter-spacing: 0; text-decoration: none; color: var(--text-secondary);
+    }
+    #tabProyectos table.viz-table > thead th.es-orden { border-color: var(--brand-orange); color: var(--text-primary); font-weight: 700; }
+  }
 </style>
 </head>
 <body>
@@ -583,17 +701,21 @@
       </div>
       <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
     </div>
-    <nav class="viz-modnav">
-      <!-- La pestaña activa la marca el JS según data-nav-activo, que el
-           build reemplaza por la subruta del tablero (Chile o Perú usan
-           este mismo template). -->
+    <nav class="viz-modnav" aria-label="Tableros">
+      <!-- Selector de país + las 3 pestañas de módulo. Los enlaces apuntan a
+           Chile; el JS los pasa al país de este tablero y marca la activa
+           según data-nav-activo (la subruta publicada). Este bloque es igual
+           en los 5 templates: solo cambia ese atributo. -->
       <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="__AF_NAV_ACTIVO__">
-        <a class="viz-modnav-tab" data-modulo="centro-de-costos" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/">Centro de Costos</a>
-        <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a>
-        <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador Histórico</a>
-        <a class="viz-modnav-tab" data-modulo="centro-de-costos-peru" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/">Centro de Costos 🇵🇪</a>
-        <a class="viz-modnav-tab" data-modulo="analisis-financiero-peru" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero-peru/">Análisis Financiero 🇵🇪</a>
-        <a class="viz-modnav-tab" data-modulo="cotizador-historico-peru" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/">Cotizador Histórico 🇵🇪</a>
+        <select class="viz-modnav-pais" id="modNavPais" aria-label="País">
+          <option value="">Chile</option>
+          <option value="-peru">Perú</option>
+        </select>
+        <div class="viz-modnav-tabs">
+          <a class="viz-modnav-tab" data-modulo="centro-de-costos" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/"><span class="viz-modnav-largo">Centro de </span>Costos</a>
+          <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis<span class="viz-modnav-largo"> Financiero</span></a>
+          <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
+        </div>
       </div>
     </nav>
   </header>
@@ -923,16 +1045,36 @@
     }
   } catch (e) {}
 
-  // ---------- pestaña activa de la navegación entre tableros ----------
+  // ---------- navegación entre tableros: país + pestaña activa ----------
+  // data-nav-activo es la subruta publicada de este tablero (ej.
+  // "analisis-financiero-peru"): de ahí salen el país del selector, a qué
+  // país apuntan las 3 pestañas y cuál se marca. Mismo bloque en los 5
+  // templates.
   (function () {
     var nav = document.getElementById('modNav');
-    var activo = nav ? nav.getAttribute('data-nav-activo') : null;
     if (!nav) return;
+    var BASE = 'https://cristobal-monzo.github.io/finanzas-quempin/';
+    var activo = nav.getAttribute('data-nav-activo') || '';
+    var sufijo = /-peru$/.test(activo) ? '-peru' : '';
+    var modulo = activo.slice(0, activo.length - sufijo.length);
     nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
-      if (a.getAttribute('data-modulo') !== activo) return;
-      a.classList.add('is-active');
-      a.setAttribute('aria-current', 'page');
-      a.removeAttribute('href');
+      if (a.getAttribute('data-modulo') === modulo) {
+        a.classList.add('is-active');
+        a.setAttribute('aria-current', 'page');
+        a.removeAttribute('href');
+      } else {
+        a.href = BASE + a.getAttribute('data-modulo') + sufijo + '/';
+      }
+    });
+    // Cambiar de país lleva al mismo módulo en el otro país. Al volver con
+    // "Atrás" el navegador puede restaurar el selector con el otro país
+    // elegido: por eso se repone cada vez que se muestra la página.
+    var pais = document.getElementById('modNavPais');
+    function reponerPais() { pais.value = sufijo; }
+    reponerPais();
+    window.addEventListener('pageshow', reponerPais);
+    pais.addEventListener('change', function () {
+      if (pais.value !== sufijo) location.href = BASE + modulo + pais.value + '/';
     });
   })();
 
@@ -995,6 +1137,42 @@
   var CLIENTES = DATA.clientes;
   var PENDIENTES = DATA.pendientes;
   var KPIS = DATA.kpis_proyectos;
+
+  // ---------- tablas en celular (2026-09-24) ----------
+  // Bajo 640 px cada fila de .viz-table se dibuja como tarjeta (bloque
+  // "Móvil" del CSS) y cada celda necesita el nombre de su columna, que solo
+  // vive en el <thead>. Se copia a data-label en cada render observando el
+  // tbody, en vez de tocar los cuatro renderizadores de tabla.
+  function etiquetarCeldas(tbody) {
+    var nombres = Array.prototype.map.call(tbody.parentNode.querySelectorAll(':scope > thead th'), function (th) {
+      // Solo el texto propio del encabezado, sin la flecha de orden (<span class="orden">).
+      return Array.prototype.filter.call(th.childNodes, function (n) { return n.nodeType === 3; })
+        .map(function (n) { return n.textContent; }).join('').trim();
+    });
+    Array.prototype.forEach.call(tbody.children, function (tr) {
+      if (tr.classList.contains('detail-row')) return;
+      Array.prototype.forEach.call(tr.children, function (td, i) {
+        if (nombres[i]) td.setAttribute('data-label', nombres[i]);
+      });
+    });
+  }
+  document.querySelectorAll('table.viz-table > tbody').forEach(function (tbody) {
+    etiquetarCeldas(tbody);
+    new MutationObserver(function () { etiquetarCeldas(tbody); }).observe(tbody, { childList: true });
+  });
+
+  // En celular las pestañas de tableros son una fila deslizable: se centra la
+  // activa, que si no puede quedar cortada contra el borde derecho. Va aquí y no en
+  // el bloque que la marca, porque ese corre con el tablero todavía oculto
+  // por el gate y no hay nada que medir.
+  var tabActiva = document.querySelector('.viz-modnav-tab.is-active');
+  if (tabActiva) {
+    var filaTabs = tabActiva.parentNode;
+    if (filaTabs.scrollWidth > filaTabs.clientWidth) {
+      filaTabs.scrollLeft += tabActiva.getBoundingClientRect().left - filaTabs.getBoundingClientRect().left -
+        (filaTabs.clientWidth - tabActiva.offsetWidth) / 2;
+    }
+  }
 
   // ---------- theme ----------
   var themeBtn = document.getElementById('themeToggle');

@@ -54,7 +54,7 @@ RAIZ_MODULO = RAIZ.parent
 RAIZ_SITIO_COMUNICACION = RAIZ_MODULO / "Sitio de comunicación - Centro de Costos 1"
 # Carpeta COMPARTIDA por ambos paises (desde 2026-08-21): contiene las
 # subcarpetas "Chile/" y "Perú/", cada una con sus carpetas de proyecto
-# adentro -- ver docs/superpowers/specs/2026-08-21-peru-expansion-design.md.
+# adentro -- ver docs/specs/2026-08-21-peru-expansion-design.md.
 # RAIZ_DOCS (mas abajo, mutable) es la version YA resuelta para el pais activo.
 RAIZ_DOCS_BASE = RAIZ_SITIO_COMUNICACION / "Facturas y Boletas"
 RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Centro de Costos.xlsx"
@@ -248,6 +248,27 @@ TAGS_PROVEEDOR_CURADOS = {
     "Comercial Anwo S.A.": "Anwo",
     "Comercial ANWO S.A.": "Anwo",  # variante en mayusculas del mismo proveedor (pedido 2026-09-07)
     "ANWO S.A.": "Anwo",
+    # Las cuatro de abajo salieron de la revision del 2026-09-23: ninguna regla
+    # automatica saca el nombre por el que se los reconoce.
+    # El proveedor mas comprado del catalogo quedaba partido en dos entradas
+    # del filtro ("Jose Manuel" 90 compras y "Martínez Michelis" 22): la regla
+    # generica se queda con las dos primeras palabras significativas, que aca
+    # son los nombres de pila.
+    "Jose Manuel Martinez Michelis y Compañia Limitada": "Martínez Michelis",
+    "Jose Manuel Martinez Michelis y Cia Ltda": "Martínez Michelis",
+    "Martínez Michelis y Cía.": "Martínez Michelis",
+    # El parentesis trae a la dueña, no al local.
+    "Restaurant El Tata Juan (Roxana del Carmen Quiroz Ugalde)": "El Tata Juan",
+    # "Administradora Casinos" describe el rubro; la empresa es Aliservice.
+    "Soc. Administradora de Casinos y Servicios Aliservice S.A.": "Aliservice",
+    # Aca la marca va AFUERA del parentesis y adentro esta el franquiciado:
+    # es el orden inverso al habitual, ninguna regla lo distingue sola.
+    "Copec (Valencia y Pacheco Limitada) - Camioneta PSYT97": "Copec",
+    "Comercial y Servicios Rivo Limitada (Estación de Servicio, Chimbarongo)": "Copec",
+    # El nombre de fantasia va al final, detras del rubro.
+    "Administradora de Franquicias El Horreo": "El Horreo",
+    "Easy Retail S.A. (Cencosud)": "Easy",  # Cencosud es el holding, Easy la tienda
+    "Easy (F.A9 Retail S.A.)": "Easy",      # F.A9 Retail es la razon social de Easy
 }
 
 _SUFIJOS_LEGALES_RE = re.compile(
@@ -259,37 +280,160 @@ _PALABRAS_GENERICAS_TAG = {
     "servicios", "grupo", "group",
 }
 
+# Lo que hay entre parentesis NO siempre es la marca. En las 270 razones
+# sociales reales del libro tambien aparece el local ("Sodimac S.A. (San
+# Felipe)"), la ciudad ("Easy Retail S.A. (Viña del Mar)") o una nota del
+# ticket ("Peaje Plaza Las Vegas (concesionaria no identificada)"). Tomar la
+# primera palabra de ahi producia tags como "San", "Viña" o "concesionaria",
+# que ademas juntaban empresas sin relacion: bajo "San" convivian Sodimac,
+# Aconcagua Club y un proveedor particular (revision 2026-09-23).
+#
+# Si el parentesis EMPIEZA con una de estas palabras, no es una marca: se
+# ignora y el tag sale del nombre de afuera. Curado del libro real; agregar
+# aca la comuna o el sustantivo que aparezca en un documento nuevo.
+PARENTESIS_NO_ES_MARCA = {
+    # comunas y localidades
+    "san", "santa", "viña", "vina", "quilpue", "quilpué", "belloto", "villa",
+    "putaendo", "llaillay", "llay", "rengo", "nogales", "puchuncavi",
+    "puchuncaví", "quintero", "limache", "catapilco", "olmue", "olmué",
+    "hijuelas", "valparaiso", "valparaíso", "placilla", "longavi", "longaví",
+    "talca", "chimbarongo", "concepcion", "concepción", "curauma",
+    "quisco", "ligua", "felipe", "antonio", "alemana",
+    # marcadores de direccion
+    "av", "avda", "avenida", "calle", "ruta", "km", "sucursal", "local",
+    # sustantivos que describen el rubro, no al proveedor
+    "ferreteria", "ferretería", "restaurant", "restaurante", "cocina",
+    "autoservicio", "estacionamiento", "estacionamientos", "distribuidora",
+    "comercial", "administradora", "concesionaria", "mall", "centro",
+    "libreria", "librería", "panaderia", "panadería", "supermercado",
+    # notas del ticket y formas societarias
+    "boleta", "factura", "compra", "voucher", "por", "pago",
+    "soc", "sociedad", "estacion", "estación", "franquicias",
+}
 
-def generar_tag_proveedor(razon_social):
+# Palabras con las que un tag no puede TERMINAR: no identifican a nadie por
+# si solas ("Sabor a", "Ingenieria en", "Ferreteria San"). Cuando el tag
+# recortado a dos palabras termina en una de estas, se toma una palabra mas.
+_NO_TERMINAR_TAG = {"a", "en", "de", "del", "y", "e", "con", "para",
+                    "san", "santa", "los", "las", "el", "la"}
+
+# Un parentesis que empieza con articulo SI suele ser el nombre de fantasia
+# ("(El Guaton, Valparaiso)", "(La Carreta, Quintero)", "(Donde Camilo)"):
+# ahi el tag son DOS palabras, porque el articulo solo no identifica a nadie
+# -- "El" agrupaba tres proveedores distintos.
+_ARTICULOS_TAG = {"el", "la", "los", "las", "don", "doña", "dona", "donde"}
+
+# Proveedores cuyo nombre aparece SOLO, sin parentesis, en alguna fila ya
+# registrada: {clave normalizada -> tag}. Es lo que permite que
+# "Sodimac S.A. (San Felipe)" se etiquete "Sodimac" y no "San". Se llena con
+# registrar_proveedores_conocidos() al abrir el libro; vacio, el tag sale de
+# las reglas de abajo igual que antes.
+PROVEEDORES_CONOCIDOS = {}
+
+
+def _clave_proveedor(razon_social):
+    return " ".join(str(razon_social or "").lower().split()).strip(" .,")
+
+
+def _sin_parentesis(razon_social):
+    """El nombre sin el parentesis y sin la cola que va despues de la primera
+    coma: ahi el libro anota el local o la fecha, no al proveedor
+    ("Pronto (Administradora ...), San Fco de Mostazal")."""
+    base = re.sub(r"\s*\([^)]*\)", "", razon_social)
+    return base.split(",")[0].strip(" .,")
+
+
+def registrar_proveedores_conocidos(razones_sociales):
+    """Arma el registro de proveedores que el libro ya conoce por su nombre a
+    secas. Solo entran las razones sociales SIN parentesis: son las unicas
+    que no dejan duda de a quien nombran.
+
+    Devuelve el registro, y ademas lo deja en PROVEEDORES_CONOCIDOS para que
+    generar_tag_proveedor() lo use sin tener que pasarlo por cada fila."""
+    PROVEEDORES_CONOCIDOS.clear()
+    for razon in razones_sociales:
+        if not razon or "(" in razon or "/" in razon:
+            continue
+        PROVEEDORES_CONOCIDOS[_clave_proveedor(razon)] = generar_tag_proveedor(razon)
+    return PROVEEDORES_CONOCIDOS
+
+
+def generar_tag_proveedor(razon_social, conocidos=None):
     """Deriva un tag corto y representativo de una razon social completa.
     1) Si esta en TAGS_PROVEEDOR_CURADOS, se usa ese (fuente de verdad manual).
     2) Si el nombre trae una marca entre parentesis (ej. "... (Shell Ruta 68)"),
        se usa la primera palabra de ese parentesis (la marca, sin el
-       descriptor que suele acompañarla).
-    3) Si no, se limpia la razon social de sufijos legales (SpA, S.A., Ltda.,
+       descriptor que suele acompañarla). Dos excepciones: si empieza con un
+       articulo, el nombre de fantasia son dos palabras ("(El Guaton,
+       Valparaiso)" -> "El Guaton"); y si empieza con una palabra de
+       PARENTESIS_NO_ES_MARCA, el parentesis no nombra una marca sino un
+       local, una comuna o una nota del ticket, y se descarta.
+    3) Descartado el parentesis, si lo que queda es un proveedor que el libro
+       ya conoce por su nombre a secas, ese manda: "Sodimac S.A. (San Felipe)"
+       es Sodimac, no "San".
+    4) Si no, se limpia la razon social de sufijos legales (SpA, S.A., Ltda.,
        etc.) y palabras genericas (Comercial, Sociedad, Inversiones, ...) y se
        toman las 1-2 palabras significativas que queden.
     Es un fallback heuristico para proveedores nuevos -- si el resultado no es
-    representativo, agregar la entrada correcta a TAGS_PROVEEDOR_CURADOS."""
+    representativo, agregar la entrada correcta a TAGS_PROVEEDOR_CURADOS.
+
+    El orden importa: el parentesis se mira ANTES que el registro de
+    proveedores conocidos, porque "Horta y Horta Limitada (Copec)" es una
+    estacion Copec aunque "Horta y Horta Limitada" tambien exista sola."""
     if razon_social in TAGS_PROVEEDOR_CURADOS:
         return TAGS_PROVEEDOR_CURADOS[razon_social]
 
+    # Un documento puede cubrir a dos empresas ("Sodimac S.A. / Estacionar
+    # S.A. / Central Parking"): el proveedor es la primera, y sin esto el tag
+    # quedaba literalmente "Sodimac /".
+    razon_social = razon_social.split("/")[0].strip(" .,") or razon_social
+    if razon_social in TAGS_PROVEEDOR_CURADOS:
+        return TAGS_PROVEEDOR_CURADOS[razon_social]
+
+    registro = PROVEEDORES_CONOCIDOS if conocidos is None else conocidos
+    afuera = _sin_parentesis(razon_social)
+    # La cola despues de la coma suele ser la fecha o el local del documento
+    # ("... El Horreo, 21-01-2026"): sin descartarla, dos filas del mismo
+    # proveedor son dos cadenas distintas y ninguna calza con lo curado.
+    if afuera != razon_social and afuera in TAGS_PROVEEDOR_CURADOS:
+        return TAGS_PROVEEDOR_CURADOS[afuera]
+
     m = re.search(r"\(([^)]+)\)", razon_social)
     if m:
-        contenido = m.group(1).strip()
-        if contenido:
-            # rstrip: la marca puede venir seguida de una coma antes del resto
-            # del descriptor (ej. "(Copec, por cuenta y orden de ...)") -- sin
-            # esto, "Copec," quedaba como tag distinto de "Copec" (mismo
-            # proveedor duplicado bajo dos tags, corregido 2026-09-07).
-            return contenido.split()[0].rstrip(",.;:")
+        # rstrip: la marca puede venir seguida de una coma antes del resto
+        # del descriptor (ej. "(Copec, por cuenta y orden de ...)") -- sin
+        # esto, "Copec," quedaba como tag distinto de "Copec" (mismo
+        # proveedor duplicado bajo dos tags, corregido 2026-09-07).
+        palabras_par = [p.rstrip(",.;:") for p in m.group(1).strip().split()]
+        if palabras_par:
+            primera = palabras_par[0].lower()
+            segunda = palabras_par[1].lower() if len(palabras_par) > 1 else ""
+            if primera[:1].isdigit():
+                # una direccion: "(1 Sur 26, Longavi)" daba el tag "1"
+                primera = "calle"
+            if primera in _ARTICULOS_TAG and segunda not in PARENTESIS_NO_ES_MARCA:
+                # nombre de fantasia: "(El Guaton, Valparaiso)" -> "El Guaton".
+                # Pero "(El Quisco)" y "(La Ligua)" son comunas, no locales.
+                return " ".join(palabras_par[:2])
+            if primera not in PARENTESIS_NO_ES_MARCA and primera not in _ARTICULOS_TAG:
+                return palabras_par[0]
+            razon_social = afuera or razon_social
+
+    if m:  # solo si veniamos de descartar un parentesis: sin el no hay nada que mirar
+        conocido = registro.get(_clave_proveedor(razon_social))
+        if conocido:
+            return conocido
 
     base = _SUFIJOS_LEGALES_RE.sub("", razon_social)
     palabras = [
         p for p in re.split(r"\s+", base.strip(" .,"))
         if p and p.strip(".,").lower() not in _PALABRAS_GENERICAS_TAG
     ]
-    tag = " ".join(palabras[:2]).strip(" .,")
+    corte = 2
+    while (corte < len(palabras)
+           and palabras[corte - 1].strip(".,").lower() in _NO_TERMINAR_TAG):
+        corte += 1
+    tag = " ".join(palabras[:corte]).strip(" .,")
     return tag or razon_social
 
 EXTENSIONES_VALIDAS = {".png", ".jpg", ".jpeg", ".heic", ".pdf"}
@@ -1539,6 +1683,45 @@ def migrar_n_documento_sin_ceros(ws_master, ws_detalle):
         print(f"  [OK] {corregidas} celda(s) de N Documento corregida(s): ceros a la izquierda eliminados.")
 
 
+def migrar_tags_proveedor(ws_master):
+    """Migracion idempotente (2026-09-23): vuelve a derivar el tag corto de
+    TODAS las filas ya escritas con las reglas corregidas de
+    generar_tag_proveedor().
+
+    Hacia falta una pasada sobre lo ya escrito porque el tag solo se calcula
+    al registrar el documento o al corregir su razon social: arreglar la regla
+    no alcanzaba para las 734 filas que ya estaban. Antes de esto, "Sodimac"
+    vivia bajo cuatro etiquetas ("Sodimac", "San", "Belloto", "Sodimac /") y
+    el proveedor mas comprado del catalogo bajo dos ("Jose Manuel" y
+    "Martínez Michelis").
+
+    El tag es 100% derivado de la razon social (ver aplicar_correccion), asi
+    que recalcularlo no pisa un dato que alguien haya tipeado: se conserva el
+    color de la celda, para no perder la marca de que esa fila venia de una
+    correccion manual. Misma excepcion deliberada a "nunca tocar una fila ya
+    escrita" que migrar_columna_proveedor() y migrar_n_documento_sin_ceros()."""
+    ultima = ultima_fila_datos(ws_master)
+    razones = [ws_master.cell(row=r, column=COL_PROVEEDOR_RAZON_SOCIAL_MASTER).value
+               for r in range(2, ultima + 1)]
+    registrar_proveedores_conocidos(razones)
+
+    cambiadas = 0
+    for r in range(2, ultima + 1):
+        razon = ws_master.cell(row=r, column=COL_PROVEEDOR_RAZON_SOCIAL_MASTER).value
+        if not razon:
+            continue
+        celda = ws_master.cell(row=r, column=COL_PROVEEDOR_TAG_MASTER)
+        nuevo = generar_tag_proveedor(razon)
+        if nuevo != celda.value:
+            celda.value = nuevo   # sin tocar font/fill/border
+            cambiadas += 1
+
+    if cambiadas:
+        print(f"  [MIGRACION] {cambiadas} tag(s) de proveedor re-derivado(s) "
+              f"de su razon social.")
+    return cambiadas
+
+
 def migrar_columna_total_con_iva_detalle(ws_master, ws_detalle):
     """Migracion idempotente (2026-07-17): agrega 'Total con IVA (CLP)' como
     ultima columna de Detalle (pedido del usuario) y la rellena para TODAS las
@@ -2047,6 +2230,435 @@ def ejecutar_eliminacion(n_refs, ruta_excel=None, aplicar=False):
     _guardar_y_suprimir_aviso(wb, ruta_excel)
     reflejar_a_sitio_comunicacion(ruta_excel=ruta_excel)
     return previos, resultados
+
+
+# ── SEPARACIÓN DE DOCUMENTOS YA REGISTRADOS (varias facturas en 1 N Ref) ────
+#
+# La regla "1 archivo = 1 entrada = 1 documento" existe desde el 2026-09-08 y
+# aun asi el libro acumulo 26 N Ref que juntaban 2-4 documentos tributarios:
+# el extractor los agrupaba "porque comparten el mismo archivo", sumaba los
+# impuestos y se quedaba con la fecha mas antigua. Se corrigio a mano tres
+# veces (2026-08-20, 09-03 y 09-07), cada una con un script improvisado. Esto
+# es ese procedimiento escrito una sola vez, con tests, y con un modo preview.
+#
+# `separar_documento_combinado()` (mas arriba) resuelve el mismo problema
+# ANTES de registrar; esto lo resuelve DESPUES, sobre filas ya escritas.
+
+# Dos o mas grupos de 3+ digitos unidos por un separador de lista. Deja fuera
+# a proposito 'N/A' y 'S/N (Documento (18).pdf)', que llevan '/' pero no dos
+# numeros.
+PATRON_VARIOS_N_DOCUMENTO = re.compile(r"\d{3,}\s*(?:,|\by\b|/|\+|;|&)\s*\d{3,}")
+
+
+def numeros_documento_combinados(n_documento):
+    """Los N Documento distintos de un campo que junta varios
+    ('6799340 y 0002795546' -> ['6799340', '2795546']), o [] si trae uno
+    solo. Es la senal de que una entrada (o una fila de Master) mezcla
+    documentos tributarios distintos."""
+    texto = str(n_documento or "")
+    if not PATRON_VARIOS_N_DOCUMENTO.search(texto):
+        return []
+    numeros = list(dict.fromkeys(
+        normalizar_n_documento(n) for n in re.findall(r"\d{3,}", texto)))
+    return numeros if len(numeros) > 1 else []
+
+
+def separacion_en_el_libro(ws_master, proyecto, n_documento):
+    """{numero: N Ref} si CADA numero de un N Documento combinado ya tiene su
+    propia fila en Master dentro del mismo proyecto, o None si falta alguno.
+    Es la evidencia de que un DOCUMENTOS_MEZCLADOS ya se separo."""
+    numeros = numeros_documento_combinados(n_documento)
+    if not numeros:
+        return None
+    filas = {}
+    for r in range(2, ultima_fila_datos(ws_master) + 1):
+        if ws_master.cell(row=r, column=2).value != proyecto:
+            continue
+        n_doc = ws_master.cell(row=r, column=5).value
+        if es_n_documento_real(n_doc):
+            filas.setdefault(normalizar_n_documento(str(n_doc)), ws_master.cell(row=r, column=1).value)
+    if not all(n in filas for n in numeros):
+        return None
+    return {n: filas[n] for n in numeros}
+
+
+CAMPOS_DOCUMENTO_SEPARADO = ("n_documento", "fecha", "tipo_documento", "proveedor",
+                             "categoria", "iva", "items")
+
+
+def _normalizar_item_separado(spec, n_filas, n_ref):
+    """Un item del pedido de separacion -> {origen, cantidad, descripcion}.
+    Acepta el indice de la fila (0-based) o {"fila": i, "cantidad": q,
+    "descripcion": "..."} para llevarse solo una parte de una fila."""
+    if isinstance(spec, bool):
+        raise ValueError(f"{n_ref}: item invalido {spec!r}")
+    if isinstance(spec, int):
+        spec = {"fila": spec}
+    if not isinstance(spec, dict) or not isinstance(spec.get("fila"), int) \
+            or isinstance(spec.get("fila"), bool):
+        raise ValueError(f"{n_ref}: cada item es un indice de fila o {{'fila': i, ...}}; "
+                         f"recibido {spec!r}")
+    if not 0 <= spec["fila"] < n_filas:
+        raise ValueError(f"{n_ref}: la fila {spec['fila']} no existe (el documento tiene "
+                         f"{n_filas} item(s), indices 0..{n_filas - 1})")
+    cantidad = spec.get("cantidad")
+    if cantidad is not None and not (isinstance(cantidad, (int, float)) and cantidad > 0):
+        raise ValueError(f"{n_ref}: cantidad invalida {cantidad!r} para la fila {spec['fila']}")
+    return {"origen": spec["fila"], "cantidad": cantidad, "descripcion": spec.get("descripcion")}
+
+
+def planificar_separacion_registrado(ws_master, ws_detalle, n_ref, documentos, max_seq,
+                                     reconciliacion_inversa=None):
+    """Valida el pedido de separar `n_ref` en `documentos` y devuelve el plan,
+    sin tocar el libro ni el disco. Levanta ValueError si el pedido no cuadra.
+
+    Cada documento es un dict con n_documento, fecha (DD-MM-AAAA),
+    tipo_documento, proveedor (razon social), categoria, iva (el impuesto
+    IMPRESO en ese documento: aca no se estima nada) e items: las filas de
+    Detalle que le tocan, por su indice 0-based dentro del documento, en el
+    orden en que aparecen en Detalle. Un item puede ser {"fila": i,
+    "cantidad": q} para llevarse solo parte de una fila (FCH2-015 tenia en una
+    sola fila 3 almuerzos de dos boletas distintas) y opcionalmente
+    "descripcion" para reescribir la de esa fila. "nota" es opcional y queda
+    en la bitacora.
+
+    El primer documento conserva `n_ref`; los demas reciben el siguiente N Ref
+    libre del proyecto. `max_seq` se muta a proposito, para que varios planes
+    de la misma corrida no se asignen el mismo numero.
+
+    Todas las filas del original tienen que quedar asignadas y las cantidades
+    de una fila repartida tienen que sumar la original: separar no puede sacar
+    ni agregar costo neto. El impuesto si puede cambiar (el combinado pudo
+    quedar mal sumado); el plan informa la diferencia para que se vea."""
+    filas_master = _mapa_filas_por_n_ref(ws_master)
+    if n_ref not in filas_master:
+        raise ValueError(f"No existe el documento {n_ref!r} en Master.")
+    if not isinstance(documentos, list) or len(documentos) < 2:
+        raise ValueError(f"{n_ref}: hay que separarlo en 2 o mas documentos.")
+    fila_master = filas_master[n_ref]
+    proyecto = ws_master.cell(row=fila_master, column=2).value
+    filas_detalle = _n_ref_a_filas_detalle(ws_detalle, n_ref)
+    if not filas_detalle:
+        raise ValueError(f"{n_ref}: no tiene items en Detalle.")
+
+    cantidades_origen = [ws_detalle.cell(row=r, column=8).value or 0 for r in filas_detalle]
+    repartido = [0] * len(filas_detalle)
+    enteras = set()
+    docs_plan = []
+    for i, doc in enumerate(documentos):
+        faltan = [c for c in CAMPOS_DOCUMENTO_SEPARADO if doc.get(c) in (None, "", [])]
+        if faltan:
+            raise ValueError(f"{n_ref}, documento {i + 1}: faltan {', '.join(faltan)}.")
+        fecha, valida = _fecha_documento(doc["fecha"])
+        if not valida:
+            raise ValueError(f"{n_ref}, documento {i + 1}: fecha {doc['fecha']!r} no es DD-MM-AAAA.")
+        if not isinstance(doc["iva"], (int, float)) or isinstance(doc["iva"], bool):
+            raise ValueError(f"{n_ref}, documento {i + 1}: iva debe ser un numero.")
+
+        items = [_normalizar_item_separado(s, len(filas_detalle), n_ref) for s in doc["items"]]
+        neto = 0
+        for it in items:
+            o = it["origen"]
+            if it["cantidad"] is None:
+                if o in enteras or repartido[o]:
+                    raise ValueError(f"{n_ref}: la fila {o} se asigno completa y ademas a otro documento.")
+                enteras.add(o)
+                repartido[o] = cantidades_origen[o]
+                neto += ws_detalle.cell(row=filas_detalle[o], column=10).value or 0
+            else:
+                if o in enteras:
+                    raise ValueError(f"{n_ref}: la fila {o} se asigno completa y ademas a otro documento.")
+                repartido[o] += it["cantidad"]
+                neto += it["cantidad"] * (ws_detalle.cell(row=filas_detalle[o], column=9).value or 0)
+        docs_plan.append({
+            "n_ref": n_ref if i == 0 else None,
+            "n_documento": normalizar_n_documento(str(doc["n_documento"]).strip()),
+            "fecha": fecha,
+            "tipo_documento": doc["tipo_documento"],
+            "proveedor": doc["proveedor"],
+            "categoria": doc["categoria"],
+            "iva": doc["iva"],
+            "neto": neto,
+            "items": items,
+            "nota": doc.get("nota"),
+        })
+
+    sin_asignar = [o for o, q in enumerate(repartido) if q == 0]
+    if sin_asignar:
+        raise ValueError(f"{n_ref}: quedan filas sin asignar a ningun documento: {sin_asignar}.")
+    descuadre = [o for o, q in enumerate(repartido) if abs(q - cantidades_origen[o]) > 1e-9]
+    if descuadre:
+        detalle = ", ".join(f"fila {o}: {repartido[o]} de {cantidades_origen[o]}" for o in descuadre)
+        raise ValueError(f"{n_ref}: las cantidades repartidas no suman la original ({detalle}).")
+
+    archivo_origen = ws_master.cell(row=fila_master, column=15).value
+    ruta_relativa = resolver_ruta_actual(
+        {"archivo_origen": archivo_origen, "n_ref": n_ref}, reconciliacion_inversa or {})
+    ruta_fuente = None
+    if ruta_relativa and "\\" in ruta_relativa:
+        carpeta, nombre = ruta_relativa.split("\\", 1)
+        ruta_fuente = RAIZ_DOCS / carpeta / nombre
+    if ruta_fuente is None or not ruta_fuente.exists():
+        raise ValueError(f"{n_ref}: no se encontro el archivo fisico ({archivo_origen}); sin el "
+                         f"no se puede dejar una copia por documento.")
+
+    for doc in docs_plan[1:]:
+        doc["n_ref"] = siguiente_n_ref(proyecto, max_seq)
+
+    neto_original = sum(ws_detalle.cell(row=r, column=10).value or 0 for r in filas_detalle)
+    iva_original = ws_master.cell(row=fila_master, column=12).value or 0
+    return {
+        "n_ref": n_ref,
+        "proyecto": proyecto,
+        "n_documento_original": ws_master.cell(row=fila_master, column=5).value,
+        "neto_original": neto_original,
+        "iva_original": iva_original,
+        "diferencia_iva": sum(d["iva"] for d in docs_plan) - iva_original,
+        "ruta_fuente": ruta_fuente,
+        "documentos": docs_plan,
+    }
+
+
+def aplicar_separacion_registrado(ws_master, ws_detalle, plan):
+    """Escribe un plan de planificar_separacion_registrado() en el libro, en
+    memoria. No guarda, no toca el disco y no regenera orden, pies ni hojas de
+    proyecto: eso lo hace ejecutar_separacion_registrados(), que aplica varios
+    planes con una sola apertura del libro.
+
+    Devuelve {"archivos": [(accion, origen, destino)], "bitacora": [...]}.
+
+    Los items se MUEVEN, no se reescriben: cada fila conserva sus valores y su
+    formato (incluida una correccion en azul marino). Solo cambia el N Ref, el
+    N Documento, la cantidad si la fila se reparte, y el Total con IVA, que
+    depende de la tasa real del documento al que ahora pertenece. En Master,
+    lo que cambia respecto de la fila combinada queda en azul marino: son
+    valores que una persona adjudico leyendo cada documento."""
+    from copy import copy as _copy
+
+    limpiar_pie(ws_master)
+    limpiar_pie(ws_detalle)
+    n_ref = plan["n_ref"]
+    fila_master = _mapa_filas_por_n_ref(ws_master)[n_ref]
+    ncols_master = len(ENCABEZADOS_MASTER)
+    ncols_detalle = len(ENCABEZADOS_DETALLE)
+
+    # ── Detalle: el bloque del documento se reemplaza en su mismo lugar.
+    ultima_detalle = ultima_fila_datos(ws_detalle)
+    filas_doc = _n_ref_a_filas_detalle(ws_detalle, n_ref)
+    todas = [capturar_fila(ws_detalle, r, ncols_detalle) for r in range(2, ultima_detalle + 1)]
+    origenes = [todas[r - 2] for r in filas_doc]
+
+    def _celda(snap, col, valor, azul=False):
+        snap[col - 1]["value"] = valor
+        if azul:
+            snap[col - 1]["font"] = _copy(AZUL_MARINO_FONT)
+
+    bloque = []
+    nombres_por_doc = []
+    for doc in plan["documentos"]:
+        tasa = (doc["iva"] / doc["neto"]) if doc["neto"] else 0
+        nombres = []
+        for it in doc["items"]:
+            snap = [{k: (_copy(v) if k != "value" else v) for k, v in c.items()}
+                    for c in origenes[it["origen"]]]
+            _celda(snap, 1, doc["n_ref"])
+            _celda(snap, 4, doc["n_documento"], azul=snap[3]["value"] != doc["n_documento"])
+            if it["cantidad"] is not None:
+                _celda(snap, 8, it["cantidad"], azul=True)
+                _celda(snap, 10, it["cantidad"] * (snap[8]["value"] or 0))
+            if it["descripcion"]:
+                _celda(snap, 6, it["descripcion"], azul=True)
+            _celda(snap, 11, round((snap[9]["value"] or 0) * (1 + tasa)))
+            bloque.append(snap)
+            nombres.append(snap[4]["value"])
+        nombres_por_doc.append(nombres)
+
+    inicio = filas_doc[0] - 2
+    resto = [s for i, s in enumerate(todas) if i + 2 not in set(filas_doc)]
+    nuevas = resto[:inicio] + bloque + resto[inicio:]
+    for i, snap in enumerate(nuevas):
+        escribir_snapshot_fila(ws_detalle, 2 + i, snap)
+
+    # ── Master: la fila original pasa a ser el primer documento; los demas se
+    # agregan al final (el reordenamiento por fecha los ubica despues).
+    original = capturar_fila(ws_master, fila_master, ncols_master)
+    ruta_fuente = plan["ruta_fuente"]
+    carpeta = ruta_fuente.parent.name
+    mtime = datetime.fromtimestamp(ruta_fuente.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    archivos = []
+    renombrado = None
+    bitacora = []
+    fila_nueva = ultima_fila_datos(ws_master) + 1
+    for i, (doc, nombres) in enumerate(zip(plan["documentos"], nombres_por_doc)):
+        fila = fila_master if i == 0 else fila_nueva + i - 1
+        snap = [{k: (_copy(v) if k != "value" else v) for k, v in c.items()} for c in original]
+        tag = generar_tag_proveedor(doc["proveedor"])
+        nombre_archivo = nombre_esperado_archivo(doc["n_ref"], tag, doc["fecha"], ruta_fuente.suffix)
+        valores = {
+            1: doc["n_ref"], 4: doc["fecha"], 5: doc["n_documento"], 6: doc["tipo_documento"],
+            7: tag, 8: doc["proveedor"], 9: doc["categoria"], 10: "; ".join(map(str, nombres)),
+            12: doc["iva"], 15: f"{carpeta}\\{nombre_archivo}", 16: mtime,
+        }
+        for col, valor in valores.items():
+            # El resumen, el archivo y la fecha de modificacion son derivados:
+            # cambian siempre y pintarlos diria que alguien los corrigio.
+            _celda(snap, col, valor,
+                   azul=col not in (1, 10, 15, 16) and original[col - 1]["value"] != valor)
+        snap[3]["number_format"] = DATE_FORMAT
+        snap[11]["number_format"] = MONEY_FORMAT
+        # K y M se rehacen como formula: si alguien habia fijado un valor a
+        # mano en la fila combinada, ese valor ya no describe a ningun documento.
+        snap[10]["value"] = None
+        snap[12]["value"] = None
+        escribir_snapshot_fila(ws_master, fila, snap)
+        escribir_formulas_master(ws_master, fila)
+
+        destino = ruta_fuente.parent / nombre_archivo
+        if i == 0:
+            if destino != ruta_fuente:
+                renombrado = ("renombrar", ruta_fuente, destino)
+        else:
+            archivos.append(("copiar", ruta_fuente, destino))
+
+        anterior_nd = plan["n_documento_original"] if i == 0 else "Nuevo registro separado"
+        anterior_iva = plan["iva_original"] if i == 0 else "Nuevo registro separado"
+        for col, campo, antes, despues in ((5, ENCABEZADOS_MASTER[4], anterior_nd, doc["n_documento"]),
+                                           (12, ENCABEZADOS_MASTER[11], anterior_iva, doc["iva"])):
+            entrada = {"n_ref": doc["n_ref"], "hoja": "Master", "columna": col, "campo": campo,
+                       "valor_anterior": antes, "valor_corregido": despues,
+                       "estado": "Aplicado", "fecha_detectado": hoy, "fecha_aplicado": hoy}
+            if col == 12 and doc.get("nota"):
+                entrada["nota"] = doc["nota"]
+            bitacora.append(entrada)
+
+    # Las copias salen del archivo original, asi que su renombrado va al final.
+    if renombrado:
+        archivos.append(renombrado)
+
+    refs = [d["n_ref"] for d in plan["documentos"]]
+    bitacora.insert(0, {
+        "n_ref": "/".join(refs), "hoja": "Master/Detalle", "columna": 0,
+        "campo": "Reestructuración: documentos mezclados separados",
+        "valor_anterior": f"{n_ref} juntaba {len(refs)} documentos "
+                          f"({plan['n_documento_original']}) en un solo registro",
+        "valor_corregido": "; ".join(
+            f"{d['n_ref']}={d['tipo_documento']} {d['n_documento']} ({d['proveedor']})"
+            for d in plan["documentos"]) + "; archivo físico duplicado",
+        "estado": "Aplicado", "fecha_detectado": hoy, "fecha_aplicado": hoy,
+    })
+    return {"archivos": archivos, "bitacora": bitacora}
+
+
+def _ejecutar_operaciones_archivo(operaciones):
+    """Ejecuta renombrados/copias y devuelve una funcion que los deshace (en
+    orden inverso). Si una falla a mitad de camino, deshace las ya hechas y
+    relanza el error."""
+    hechas = []
+
+    def deshacer():
+        for accion, origen, destino in reversed(hechas):
+            if accion == "renombrar" and destino.exists():
+                destino.rename(origen)
+            elif accion == "copiar" and destino.exists():
+                destino.unlink()
+
+    try:
+        for accion, origen, destino in operaciones:
+            if accion == "renombrar":
+                origen.rename(destino)
+            else:
+                shutil.copy2(origen, destino)
+            hechas.append((accion, origen, destino))
+    except Exception:
+        deshacer()
+        raise
+    return deshacer
+
+
+def ejecutar_separacion_registrados(pedidos, ruta_excel=None, aplicar=False,
+                                   ruta_correcciones=None, ruta_errores=None,
+                                   ruta_backups=None):
+    """Separa uno o varios documentos ya registrados que juntan varios
+    documentos tributarios. `pedidos` = {n_ref: [documento, ...]} (formato en
+    planificar_separacion_registrado).
+
+    Con aplicar=False solo valida y devuelve los planes: es el default a
+    proposito, igual que ejecutar_eliminacion(). Con aplicar=True: una sola
+    apertura, un respaldo y un guardado para todos los pedidos; regenera orden
+    por fecha, pies y hojas de proyecto; deja una copia del archivo fisico por
+    documento, con su nombre <N Ref>_<Tag>_<Fecha>; refleja el libro al sitio
+    compartido y anota todo en correcciones_manuales.json + ERRORES.md.
+
+    Devuelve (planes, resultados). Si el libro esta abierto en Excel levanta
+    PermissionError antes de tocar nada; si falla el guardado, deshace las
+    copias y renombrados de archivos."""
+    ruta_excel = ruta_excel if ruta_excel is not None else RUTA_EXCEL
+    ruta_correcciones = ruta_correcciones or RUTA_CORRECCIONES
+    ruta_errores = ruta_errores or RUTA_ERRORES_MD
+    ruta_backups = ruta_backups or RUTA_BACKUPS
+
+    wb = openpyxl.load_workbook(str(ruta_excel), data_only=False)
+    ws_master, ws_detalle = wb["Master"], wb["Detalle"]
+    _filas, max_seq, _docs = leer_master(ws_master)
+    reconciliacion_inversa = construir_reconciliacion_inversa(cargar_reconciliacion())
+    planes = [
+        planificar_separacion_registrado(ws_master, ws_detalle, n_ref, documentos, max_seq,
+                                         reconciliacion_inversa)
+        for n_ref, documentos in pedidos.items()
+    ]
+    if not aplicar:
+        wb.close()
+        return planes, []
+
+    if excel_esta_bloqueado(ruta_excel):
+        raise PermissionError("El archivo esta abierto en Excel (o bloqueado). Cierralo y reintenta.")
+
+    # Los tags se derivan con el mismo registro de proveedores conocidos que
+    # usa 'run' (migrar_tags_proveedor): si no, el proximo 'run' los
+    # recalcularia distinto y renombraria de nuevo las copias recien hechas.
+    ultima = ultima_fila_datos(ws_master)
+    registrar_proveedores_conocidos(
+        ws_master.cell(row=r, column=COL_PROVEEDOR_RAZON_SOCIAL_MASTER).value
+        for r in range(2, ultima + 1))
+
+    resultados = [aplicar_separacion_registrado(ws_master, ws_detalle, plan) for plan in planes]
+    operaciones = [op for res in resultados for op in res["archivos"]]
+    destinos = [destino for _accion, _origen, destino in operaciones]
+    ocupados = [d.name for d in destinos if d.exists()]
+    if ocupados or len(set(destinos)) != len(destinos):
+        raise FileExistsError(f"Ya existe(n) archivo(s) destino: {', '.join(ocupados) or 'repetidos'}")
+
+    hacer_backup(ruta_excel, ruta_backups)
+
+    fila_master = ultima_fila_datos(ws_master) + 1
+    fila_detalle = ultima_fila_datos(ws_detalle) + 1
+    reordenar_por_fecha(ws_master, ws_detalle, fila_master, fila_detalle)
+    regenerar_pie(ws_detalle, len(ENCABEZADOS_DETALLE), [10, 11],
+                  "TOTAL GENERAL", fila_detalle, LEYENDA_DETALLE)
+    regenerar_pie(ws_master, len(ENCABEZADOS_MASTER), [11, 12, 13],
+                  "TOTAL GENERAL", fila_master, LEYENDA_MASTER)
+    proyectos = sorted({p["proyecto"] for p in planes if p["proyecto"]})
+    colores = asignar_colores_proyectos(wb, proyectos)
+    for proyecto in proyectos:
+        filas = [r for r in range(2, fila_master)
+                 if ws_master.cell(row=r, column=2).value == proyecto]
+        regenerar_hoja_proyecto(wb, proyecto, filas, colores.get(proyecto))
+
+    deshacer = _ejecutar_operaciones_archivo(operaciones)
+    try:
+        _guardar_y_suprimir_aviso(wb, ruta_excel)
+    except PermissionError:
+        deshacer()
+        raise
+    reflejar_a_sitio_comunicacion(ruta_excel=ruta_excel)
+
+    correcciones = cargar_correcciones_manuales(ruta_correcciones)
+    for res in resultados:
+        correcciones.extend(res["bitacora"])
+    guardar_correcciones_manuales(correcciones, ruta_correcciones)
+    regenerar_tabla_errores_md(correcciones, ruta_errores)
+    return planes, resultados
 
 
 # ── DATOS EXTRAÍDOS (JSON) ──────────────────────────────────────────────────
@@ -2651,6 +3263,14 @@ TAXONOMIA_ERRORES = {
         "revisar", "Parte de la compra agrupada en un item 'varios'",
         "Si se consigue leer el detalle real, desglosarlo con "
         "'Revision_de_Errores/driver.py desglosar <N_REF>'.", None),
+    # Sin columna a proposito: no se arregla escribiendo una celda (poner un
+    # solo numero en N Documento dejaria los items del otro documento bajo el
+    # numero equivocado), sino separando el documento en varios N Ref.
+    "DOCUMENTOS_MEZCLADOS": (
+        "error", "Una sola entrada junta varios documentos tributarios",
+        "Una factura/boleta = una entrada. Si el archivo esta pendiente: "
+        "'driver.py separar' y una entrada del JSON por copia ('run' no lo registra "
+        "mientras tanto). Si ya esta registrado: 'driver.py separar-registrado'.", None),
 }
 
 ORDEN_SEVERIDAD = {"error": 0, "revisar": 1, "estimado": 2}
@@ -2811,6 +3431,13 @@ def validar_documento(dato):
         hallazgos.append(_hallazgo(
             "N_DOC_ILEGIBLE", dato, valor_actual=n_doc,
             detalle=f"quedo como '{n_doc}'"))
+    numeros = numeros_documento_combinados(n_doc)
+    if numeros:
+        hallazgos.append(_hallazgo(
+            "DOCUMENTOS_MEZCLADOS", dato, campo=ENCABEZADOS_MASTER[4], valor_actual=n_doc,
+            impacto=neto,
+            detalle=f"{len(numeros)} documentos distintos ({', '.join(numeros)}) en una "
+                    f"sola entrada: el impuesto queda sumado y la fecha es la de uno solo"))
 
     severidad_impuesto = severidad_cuadre_impuesto(dato, neto, iva)
     if severidad_impuesto is not None:
@@ -3497,6 +4124,20 @@ def cerrar_hallazgos_ya_corregidos(registro, ws_master, correcciones=None, hoy=N
     cerrados = []
     for entrada in list(registro["errores"]):
         if entrada["estado"] != "abierto":
+            continue
+        # La entrada combinada del JSON no desaparece al separar (el JSON no
+        # se reescribe), asi que la evidencia tiene que venir del libro: cada
+        # uno de sus numeros ya es una fila propia del mismo proyecto.
+        if entrada["codigo"] == "DOCUMENTOS_MEZCLADOS":
+            separados = separacion_en_el_libro(ws_master, entrada.get("proyecto"),
+                                               entrada.get("valor_actual"))
+            if separados:
+                cerrar_hallazgo(
+                    registro, entrada["id"], "resuelto",
+                    "Ya separado en el libro: " + ", ".join(
+                        f"{n_ref_doc} ({numero})" for numero, n_ref_doc in separados.items()) + ".",
+                    hoy=hoy)
+                cerrados.append(entrada)
             continue
         n_ref, columna = entrada.get("n_ref"), entrada.get("columna")
         if not n_ref or n_ref not in filas:
@@ -4288,6 +4929,12 @@ def main(pais="CL"):
     else:
         print("  [INFO] No hay backup anterior contra el cual comparar (primera corrida).")
 
+    # Va DESPUES de PASO 2B a proposito: reescribe una columna derivada de
+    # todas las filas ya escritas, y corriendo antes la deteccion de
+    # correcciones manuales la leeria como si alguien hubiera editado el libro
+    # a mano en cada una de esas filas.
+    migrar_tags_proveedor(ws_master)
+
     _paso("PASO 3", "Leer registros existentes")
     filas_master, max_seq, docs_registrados = leer_master(ws_master)
     reconciliacion = cargar_reconciliacion()
@@ -4388,6 +5035,21 @@ def main(pais="CL"):
                 "detalle": "La entrada del JSON no tiene 'items' (lista de lineas).",
                 "accion": "Agregar al menos un item con nombre_item/cantidad/p_unitario_sin_iva.",
             })
+            continue
+        # Una entrada que junta varios documentos NO se escribe: separarla
+        # despues cuesta una reestructuracion del libro (se hizo a mano tres
+        # veces, para 26 N Ref), y dejarla pasar es exactamente como llegaron.
+        numeros = numeros_documento_combinados(dato.get("n_documento"))
+        if numeros:
+            limitaciones.append({
+                "archivo": info["archivo"], "proyecto": info["proyecto"],
+                "detalle": f"La entrada junta {len(numeros)} documentos distintos "
+                           f"({', '.join(numeros)}); no se registra.",
+                "accion": "Separar el archivo con 'driver.py separar' y dar una entrada "
+                          "por documento en el JSON.",
+            })
+            print(f"  [WARN] No se registra (junta varios documentos): "
+                  f"{info['proyecto']}\\{info['archivo']}")
             continue
 
         original = duplicados_autoresueltos.get(clave)

@@ -298,17 +298,22 @@ def cmd_status():
     tableros."""
     momento_inicio = datetime.now().timestamp()
     inicio = time.perf_counter()
-    # Los 4 status son de solo lectura y no dependen entre si: van en paralelo.
+    # Los 5 son de solo lectura y no dependen entre si: van en paralelo.
     trabajos = [
-        (titulo, driver, ["status"], False)
-        for titulo, driver in (
-            ("Centro de Costos -- status", DRIVER_CENTRO_COSTOS),
-            ("Analisis Financiero -- status", DRIVER_ANALISIS_FINANCIERO),
-            ("Reportes PDF -- status", DRIVER_REPORTES),
-            ("Cotizador Historico -- status", DRIVER_COTIZADOR),
+        (titulo, driver, args, False)
+        for titulo, driver, args in (
+            ("Centro de Costos -- status", DRIVER_CENTRO_COSTOS, ["status"]),
+            ("Analisis Financiero -- status", DRIVER_ANALISIS_FINANCIERO, ["status"]),
+            ("Reportes PDF -- status", DRIVER_REPORTES, ["status"]),
+            ("Cotizador Historico -- status", DRIVER_COTIZADOR, ["status"]),
+            # Pedido del usuario (2026-09-30): los presupuestos nuevos del
+            # Formulador y los adjudicados que faltan en Analisis Financiero.
+            ("Presupuestos del Formulador", DRIVER_ANALISIS_FINANCIERO, ["formulaciones"]),
         )
     ]
-    resultados = [(titulo, ok) for titulo, ok, _ in _ejecutar_varios(trabajos)]
+    salidas = _ejecutar_varios(trabajos)
+    resultados = [(titulo, ok) for titulo, ok, _ in salidas]
+    _aviso_presupuestos(salidas[-1][2])
 
     # En 'status' ningun build se regenera, asi que todos saldran como "sin
     # cambios" -- sirve igual para ver cual falta, cuando se genero cada uno y
@@ -317,7 +322,26 @@ def cmd_status():
     _informe_tiempos(time.perf_counter() - inicio)
 
     print("\n  Nada fue escrito. Para ejecutar de verdad: python driver.py run")
-    return _resumir(resultados, "Los 4 modulos respondieron. Nada fue escrito.")
+    return _resumir(resultados, "Los 5 pasos respondieron. Nada fue escrito.")
+
+
+def _aviso_presupuestos(salida):
+    """Si hay presupuestos del Formulador que revisar o cargar, dejarlo dicho
+    al final, donde el agente lo ve junto con lo demas pendiente."""
+    salida = salida or ""
+    cargar = salida.count("[CARGAR]") + salida.count("[ELEGIR TAG]")
+    novedades = salida.count("[NUEVO]") + salida.count("[CAMBIÓ]")
+    if not (cargar or novedades):
+        return
+    print("\n" + "=" * 72)
+    print("  PRESUPUESTOS DEL FORMULADOR -- para revisar con el usuario")
+    print("=" * 72)
+    if novedades:
+        print(f"  - {novedades} presupuesto(s) nuevos o cambiados: resumirselos al usuario y luego")
+        print("    'Registro_Analisis_Financiero/driver.py formulaciones revisadas'.")
+    if cargar:
+        print(f"  - {cargar} adjudicado(s) sin cargar en Analisis Financiero: confirmar el TAG con el")
+        print("    usuario y usar 'driver.py formulaciones cargar <uid> <TAG>' (se aplica en el run).")
 
 
 def cmd_run():
@@ -326,6 +350,16 @@ def cmd_run():
     momento_inicio = datetime.now().timestamp()
     inicio = time.perf_counter()
     resultados = []
+
+    # 0. Presupuestos entregados por archivo (navegadores sin acceso a la
+    #    carpeta): al repositorio del Formulador. Solo escribe en
+    #    publicado/formulador/ con las mismas reglas del Formulador; si falla,
+    #    no frena lo demas.
+    ok_inc, _ = _ejecutar(
+        "Presupuestos del Formulador -- incorporar entregas por archivo",
+        DRIVER_ANALISIS_FINANCIERO, ["formulaciones", "incorporar"], obligatorio=False,
+    )
+    resultados.append(("Entregas de presupuestos por archivo", ok_inc))
 
     # 1. Centro de Costos. Su propio 'run' ya encadena Analisis Financiero
     #    (PASO 12d), el visualizador de CC (12c) y, dentro de AF, el
@@ -353,10 +387,14 @@ def cmd_run():
          DRIVER_COTIZADOR, ["visualizador"], False),
         ("Reportes PDF -- que quedo pendiente",
          DRIVER_REPORTES, ["status"], False),
+        # Solo lectura, despues del run de AF: asi ve lo que ese run ya aplico.
+        ("Presupuestos del Formulador", DRIVER_ANALISIS_FINANCIERO, ["formulaciones"], False),
     ])
     resultados.append(("Tablero Cotizador Historico", salidas[0][1]))
     resultados.append(("Estado de reportes PDF", salidas[1][1]))
+    resultados.append(("Presupuestos del Formulador", salidas[2][1]))
     salida_rep = salidas[1][2]
+    _aviso_presupuestos(salidas[2][2])
 
     _informe_tableros(momento_inicio)
     _informe_tiempos(time.perf_counter() - inicio)

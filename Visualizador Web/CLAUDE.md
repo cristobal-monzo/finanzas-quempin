@@ -9,7 +9,7 @@ descendiente en el árbol), así que léelo explícitamente antes de tocar
 cualquier visualizador.
 
 Ver el spec de diseño original en
-[`docs/superpowers/specs/2026-07-19-visualizador-web-design.md`](../docs/superpowers/specs/2026-07-19-visualizador-web-design.md).
+[`docs/specs/2026-07-19-visualizador-web-design.md`](../docs/specs/2026-07-19-visualizador-web-design.md).
 
 ## Rol
 
@@ -47,6 +47,56 @@ Todo visualizador debe incluir, como mínimo:
   backend o una llamada a una API con key (no es 100% estático como el
   resto del sitio), así que cada módulo decide si lo implementa y cómo,
   cuando le toque su propio ciclo de diseño.
+
+## Teléfono — obligatorio, y se verifica emulando uno (2026-09-24)
+
+Pedido del usuario: todos los tableros tienen que poder revisarse en el
+teléfono. Hasta esta fecha, Centro de Costos y Cotizador (Chile y Perú) y el
+hub no declaraban `<meta name="viewport">`: el teléfono los dibujaba a ~980 px
+y los achicaba, así que **el diseño móvil que Centro de Costos y Cotizador ya
+tenían escrito nunca se activó en un teléfono real**. Tampoco declaraban
+DOCTYPE (corrían en modo quirks). Análisis Financiero sí tenía viewport, pero
+deslizaba de lado tablas de 9 columnas, con el detalle del proyecto cortado.
+Nada de eso se ve en un escritorio, ni achicando la ventana del navegador.
+
+Lo que tiene que cumplir cualquier tablero (actual o futuro):
+
+- **Cabecera**: `<!DOCTYPE html>`, `<meta charset="utf-8">` y
+  `<meta name="viewport" content="width=device-width, initial-scale=1">`, sin
+  bloquear el zoom. Lo exige `Visualizador Web/tests/test_tableros_movil.py`
+  para toda plantilla `*/Visualizador Web/template.html`, incluida la de un
+  módulo nuevo.
+- **Corte en 640 px** (`@media (max-width: 640px)`), con el mismo lenguaje en
+  todos: navegación entre tableros en una sola fila (selector de país fijo +
+  las 3 pestañas con etiqueta corta, que se deslizan centrando la activa si
+  no caben); el botón de tema junto al logo; KPIs en 2 columnas.
+- **Tablas → tarjetas**, no scroll horizontal: primera celda como título y el
+  resto en pares etiqueta/valor. Análisis Financiero toma las etiquetas del
+  `<thead>` (`etiquetarCeldas()`, un solo `MutationObserver` para las 4
+  tablas); si la tabla se ordena por columna, sus encabezados quedan como una
+  tira "Ordenar". **Selectores siempre con `>`** (`table.viz-table > tbody`,
+  `tr.detail-row > td`): el detalle expandido lleva tablas anidadas, y con
+  selectores de descendiente la tabla de ítems de Centro de Costos perdía su
+  encabezado y ponía cada celda en su propia fila. Solo una matriz (mapa de
+  calor) o una subtabla dentro de un detalle se desliza de lado, con la
+  primera columna fija.
+- **Campos a 16 px en móvil**: con menos, Safari de iPhone hace zoom al tocar
+  el buscador o un filtro y descuadra la página.
+
+Cómo verificarlo, con los `build/index.html` ya regenerados:
+
+```
+py -3.14 "Visualizador Web/auditoria_movil.py"            # 7 tableros × 360/390/768 px
+py -3.14 "Visualizador Web/auditoria_movil.py" cc --capturas <carpeta fuera del repo>
+```
+
+Emula un teléfono de verdad (`isMobile` de Chromium, que es lo que respeta el
+viewport), pasa la contraseña, recorre pestañas y una interacción típica
+(expandir un documento, buscar, abrir filtros), y termina con código 1 si algo
+se sale de la pantalla o si queda un campo bajo 16 px. **Córrelo después de
+tocar cualquier plantilla**: la auditoría encontró campos de cantidad a 14 px
+que solo aparecen tras una búsqueda, algo que no se ve mirando la pantalla
+inicial. Las capturas muestran datos reales: nunca dentro del repo.
 
 ## Datos — export estático saneado (obligatorio)
 
@@ -87,13 +137,30 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
   `/cotizador-historico/`) — no deberían cambiar nunca, a diferencia de los
   links opacos de Artifact que sí podían regenerarse por error.
 
+## Navegación entre tableros: selector de país + 3 pestañas (2026-10-01)
+
+Pedido del usuario: la cabecera de cada tablero tenía 6 pestañas (3 módulos ×
+2 países). Ahora lleva un selector de país (Chile / Perú) y solo las 3
+pestañas de módulo; cambiar de país lleva al mismo módulo en el otro país.
+
+- El HTML (`<nav class="viz-modnav">`) y su JS (bloque "navegación entre
+  tableros: país + pestaña activa") son **idénticos en los 5 templates**. Lo
+  único propio de cada uno es `data-nav-activo`, la subruta publicada (en
+  Análisis Financiero la pone el build, `__AF_NAV_ACTIVO__`): de ahí el JS
+  saca el país del selector, a qué país apuntan las pestañas y cuál marca.
+  `Visualizador Web/tests/test_navegacion_tableros.py` falla si una copia
+  diverge — si cambias la navegación, cámbiala en los 5.
+- Un módulo nuevo (ej. Flujo de Caja) es una 4.ª pestaña en los 5 templates
+  y en `MODULOS` de ese test. Un país nuevo es otra `<option>` (su `value` es
+  el sufijo de la subruta, como `-peru`) y ese sufijo en el JS, que hoy solo
+  reconoce `-peru`.
+
 ## Hosting — GitHub Pages (decidido y migrado, 2026-08-05)
 
 Los 3 Claude Artifacts privados se reemplazaron por **un solo sitio en
 GitHub Pages**, repo público `cristobal-monzo/finanzas-quempin`, servido
 desde la rama huérfana `gh-pages` (separada de `master`: solo contiene los
-4 archivos estáticos publicados, nunca el código fuente ni
-`docs/superpowers/`):
+4 archivos estáticos publicados, nunca el código fuente ni `docs/`):
 
 ```
 https://cristobal-monzo.github.io/finanzas-quempin/                     # hub

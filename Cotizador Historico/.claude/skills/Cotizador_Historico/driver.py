@@ -32,6 +32,22 @@ modulo nunca lo escribe):
                          comprobar que un cambio en Sistema/catalogo_busqueda.py
                          mejoro y no empeoro.
 
+  evaluacion [--detalle]
+                      -> Mide la clasificacion contra 203 productos reales
+                         etiquetados a mano y el buscador contra 110
+                         consultas juzgadas por el texto crudo del producto
+                         (no por la clasificacion del propio sistema, que es
+                         lo que hace benchmark). Es la que responde "¿mejoro
+                         o empeoro?" despues de tocar cualquiera de los tres
+                         catalogos.
+
+  atributos [--top N]
+                      -> Auditoria del diccionario: que palabras del catalogo
+                         real todavia no sabe interpretar (con una sugerencia
+                         de que podrian ser), que productos quedaron con poca
+                         confianza y cuales se decidieron por un margen
+                         minimo. Nada se clasifica a la fuerza.
+
   categorias [--detalle "<categoria>"] [--top N]
                       -> Auditoria de la clasificacion (no toca la UF ni la
                          red): cuantas compras cae en cada categoria, que
@@ -61,6 +77,8 @@ Uso:
   python driver.py categorias --detalle "Piping"
   python driver.py benchmark
   python driver.py benchmark --detalle
+  python driver.py evaluacion --detalle
+  python driver.py atributos
 """
 
 import sys
@@ -389,6 +407,91 @@ def cmd_benchmark(args, pais="CL"):
     return 0
 
 
+def cmd_evaluacion(args, pais="CL"):
+    """Mide la clasificacion y el buscador con criterios independientes del
+    sistema: los atributos contra Sistema/referencia_atributos.py (etiquetada
+    a mano) y las consultas contra un predicado sobre el texto crudo del
+    producto. Solo lectura y sin red.
+
+    Es la que responde "¿mejoro o empeoro?" despues de tocar el catalogo de
+    taxonomia, el de atributos o el de busqueda -- benchmark mide el orden de
+    los resultados, esta mide ademas si el producto quedo bien entendido."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    import evaluacion
+    import referencia_atributos
+
+    try:
+        items = ch.cargar_items_detalle(pais=pais)
+    except ch.ExcelNoDisponibleError as exc:
+        print(f"[ERROR] {exc}")
+        return 1
+    indexables = [it for it in items if it["excluido_motivo"] is None]
+    if not indexables:
+        print("No hay items indexables en Detalle.")
+        return 1
+
+    evaluacion.correr(ch.taxonomia, ch.busqueda, indexables, referencia_atributos.REFERENCIA,
+                      detalle="--detalle" in args)
+    print()
+    print("Nada fue escrito. La referencia de atributos vive en")
+    print("Sistema/referencia_atributos.py y las consultas en Sistema/evaluacion.py.")
+    return 0
+
+
+def cmd_atributos(args, pais="CL"):
+    """Auditoria del diccionario: que palabras del catalogo real todavia no
+    sabe interpretar el sistema, que productos quedaron con poca confianza y
+    cuales se decidieron por un margen minimo. Solo lectura y sin red."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    top = 25
+    if "--top" in args:
+        top = int(args[args.index("--top") + 1])
+
+    try:
+        items = ch.cargar_items_detalle(pais=pais)
+    except ch.ExcelNoDisponibleError as exc:
+        print(f"[ERROR] {exc}")
+        return 1
+    indexables = [it for it in items if it["excluido_motivo"] is None]
+    if not indexables:
+        print("No hay items indexables en Detalle.")
+        return 1
+
+    from atributos import auditoria
+    a = auditoria(indexables, ch.taxonomia.clasificar, top=top)
+
+    print("=" * 78)
+    print(f"  ATRIBUTOS - {pais} ({len(indexables)} compras indexables)")
+    print("=" * 78)
+    print(f"\n--- PALABRAS SIN INTERPRETAR: {a['n_desconocidos']} distintas ---")
+    print("Ninguna se clasifica a la fuerza: aparecen como atributo desconocido y se")
+    print("proponen aca para agregarlas a catalogo_atributos.py o catalogo_taxonomia.py.")
+    print("\n| Palabra | Veces | Ejemplo | Sugerencia |")
+    print("|---|---|---|---|")
+    for palabra, n in a["desconocidos"]:
+        print(f"| {palabra} | {n} | {a['ejemplos'][palabra][:38]} | {a['sugerencias'][palabra]} |")
+
+    print(f"\n--- CLASIFICACIONES AMBIGUAS: {len(a['ambiguas'])} ---")
+    print("Dos categorias a menos de 10 puntos: se eligio una y se dejo dicho cual era la otra.")
+    for nombre, desc, ficha in a["ambiguas"][:top]:
+        alt = ficha.get("alternativa") or {}
+        print(f"  {nombre[:34]:36} -> {ficha['tipo'][:20]:22} (¿{alt.get('tipo', '?')}?)")
+
+    print(f"\n--- BAJA CONFIANZA: {len(a['baja_confianza'])} ---")
+    for nombre, desc, ficha in a["baja_confianza"][:top]:
+        print(f"  [{ficha['confianza']:.2f}] {nombre[:32]:34} {'; '.join(ficha['motivos_revision'])[:60]}")
+
+    print(f"\n--- SIN MATERIAL (donde el material define la hoja): {len(a['sin_material'])} ---")
+    print(f"--- SIN MEDIDA (donde la medida define la hoja): {len(a['sin_medida'])} ---")
+    for nombre, desc, _f in a["sin_medida"][:top]:
+        print(f"  {nombre[:34]:36} | {desc[:44]}")
+
+    print("\n" + "=" * 78)
+    print("  Nada fue escrito. Para medir el efecto de un cambio: driver.py evaluacion")
+    print("=" * 78)
+    return 0
+
+
 def cmd_visualizador(pais="CL", uf_manual=None, fuente_manual=None):
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     raiz_modulo = Path(__file__).resolve().parents[3]
@@ -431,10 +534,12 @@ def _extraer_flags_uf(args):
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar", "visualizador",
-                                                "categorias", "benchmark"):
+                                                "categorias", "benchmark", "evaluacion",
+                                                "atributos"):
         print(
-            'Uso: python driver.py [status|consultar "<texto>"|'
-            'visualizador|categorias|benchmark] [--uf-manual VALOR --uf-fuente "<texto>"] [--pais CL|PE]'
+            'Uso: python driver.py [status|consultar "<texto>"|visualizador|categorias|'
+            'benchmark|evaluacion|atributos] [--uf-manual VALOR --uf-fuente "<texto>"] '
+            '[--pais CL|PE]'
         )
         return 2
     comando = sys.argv[1]
@@ -445,6 +550,10 @@ def main():
         return cmd_categorias(resto, pais=pais)
     if comando == "benchmark":
         return cmd_benchmark(resto, pais=pais)
+    if comando == "evaluacion":
+        return cmd_evaluacion(resto, pais=pais)
+    if comando == "atributos":
+        return cmd_atributos(resto, pais=pais)
     if comando == "visualizador":
         uf_manual, fuente_manual, _resto = _extraer_flags_uf(resto)
         return cmd_visualizador(pais=pais, uf_manual=uf_manual, fuente_manual=fuente_manual)

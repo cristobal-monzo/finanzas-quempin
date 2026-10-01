@@ -59,6 +59,7 @@ from bisect import bisect_left
 
 
 import taxonomia
+from catalogo_atributos import ABREVIATURAS
 from catalogo_busqueda import (CALIDAD_DIFUSA, CALIDAD_EXACTA, CALIDAD_PREFIJO,
                                DN_A_PULGADA, FACTOR_NORMA_LARGO,
                                FRACCION_DEL_MEJOR, MARCAS,
@@ -73,18 +74,31 @@ from catalogo_busqueda import (CALIDAD_DIFUSA, CALIDAD_EXACTA, CALIDAD_PREFIJO,
 # palabras vacias en el proyecto.
 VACIAS = taxonomia.VACIAS
 
-CAMPOS = ("cod", "nom", "hoja", "mat", "mar", "cat", "desc", "prov", "proy")
+CAMPOS = ("cod", "tipo", "nom", "hoja", "mat", "dim", "esp", "term", "apl", "mar", "cat",
+          "desc", "prov", "proy")
 
 
 # ====================== 1. NORMALIZACION ======================
 
 def _canonico_sinonimo():
-    """{raiz_escrita_como_sea: raiz_canonica} a partir de SINONIMOS."""
+    """{raiz_escrita_como_sea: raiz_canonica} a partir de SINONIMOS y de las
+    abreviaturas del catalogo de atributos.
+
+    Las abreviaturas ("galv", "cuad", "perf", "neg") estan escritas UNA vez,
+    en catalogo_atributos.ABREVIATURAS, y las usan tanto la clasificacion
+    como el buscador: si se agrega una abreviatura nueva, las dos la
+    entienden."""
     mapa = {}
     for grupo in SINONIMOS:
         canonico = taxonomia.singular(taxonomia.normalizar(grupo[0]))
         for palabra in grupo:
             mapa[taxonomia.singular(taxonomia.normalizar(palabra))] = canonico
+    for abreviatura, completa in ABREVIATURAS.items():
+        if " " in completa:
+            continue
+        raiz_abreviatura = taxonomia.singular(taxonomia.normalizar(abreviatura))
+        raiz_completa = taxonomia.singular(taxonomia.normalizar(completa))
+        mapa.setdefault(raiz_abreviatura, mapa.get(raiz_completa, raiz_completa))
     return mapa
 
 
@@ -177,13 +191,21 @@ def _alias_de_pulgada(texto_fraccion):
 def normalizar_alias(texto):
     """La clave con la que se busca un alias de medida: comillas unificadas,
     sin tildes, minusculas y sin espacios de mas. Deja pasar " / . - porque
-    son parte de la medida."""
+    son parte de la medida.
+
+    La coma decimal se convierte en punto ANTES de limpiar: si no, "0,8" se
+    partia en "0" y "8" y una plancha de 0,8 mm se buscaba con dos numeros
+    que no significan nada (uno de ellos encontraba el fierro de 8 mm)."""
     t = _unificar_comillas(texto).lower()
     t = "".join(c for c in unicodedata.normalize("NFD", t)
                 if unicodedata.category(c) != "Mn")
+    t = re.sub(r"(?<=\d),(?=\d)", ".", t)
     t = _DIAMETRO.sub("", t)
     t = re.sub(r'[^a-z0-9"/.\- ]+', " ", t)
-    return re.sub(r"\s+", " ", t).strip()
+    t = re.sub(r"\s+", " ", t).strip()
+    # "3/4 x 1/2" y "3/4x1/2" son la misma medida compuesta: el catalogo la
+    # escribe pegada y la gente la escribe con espacios.
+    return re.sub(r'(\d["]?)\s+x\s+(?=\d)', r"\1x", t)
 
 
 def _construir_alias_medida(medidas_extra=()):
@@ -273,7 +295,7 @@ def _pulgada_de_dn(texto):
     return salida
 
 
-def _entero_suelto_como_pulgada(palabras):
+def _entero_suelto_como_pulgada(palabras, porcentajes=()):
     """Un numero suelto en una CONSULTA es casi siempre el calibre.
 
     "valvula bola 2" es una valvula de dos pulgadas, no dos valvulas. Las
@@ -298,21 +320,39 @@ def _entero_suelto_como_pulgada(palabras):
             continue
         if i and palabras[i - 1] in taxonomia.CUANTIFICADORES:
             continue
+        if palabra in porcentajes:
+            continue
         canonico = ALIAS_ENTERO.get(palabra)
-        return {canonico} if canonico else set()
-    return set()
+        return ({canonico} if canonico else set()), i
+    return set(), None
 
 
 def parsear_consulta(texto):
-    """(terminos, medidas) de una consulta.
+    """(terminos, medidas) de una consulta -- ver parsear_consulta_detalle."""
+    d = parsear_consulta_detalle(texto)
+    return d["terminos"], d["medidas"]
+
+
+def parsear_consulta_detalle(texto):
+    """Todo lo que se puede leer de lo que alguien escribio:
+
+        {terminos, medidas, blandas}
 
     Las medidas se leen PRIMERO y las palabras que las escribian se sacan
     del texto antes de sacar los terminos: sin eso, "valvula 2 pulgadas"
     dejaba 'pulgada' como un termino mas, que ningun item cumple (los items
     dicen 2", no "2 pulgadas") y que por lo tanto hundia la cobertura de la
-    consulta correcta."""
+    consulta correcta.
+
+    Lo que queda despues de las medidas tambien se mira: los NUMEROS pasan a
+    ser terminos del campo de dimensiones ("plancha policarbonato 0.7"), los
+    grados de material se parten en material + numero ("SS316" -> inoxidable
+    + 316) y las especificaciones se pegan ("sch 40" -> sch40). Antes todo
+    numero que no fuera una pulgada se descartaba, asi que "plancha 0.7",
+    "policarbonato 812" y "electrodo 6011" buscaban solo por la palabra."""
     medidas = set()
     palabras = normalizar_alias(texto).split()
+    palabras = _unir_especificaciones(palabras)
     usadas = set()
     i = 0
     while i < len(palabras):
@@ -328,11 +368,30 @@ def parsear_consulta(texto):
 
     medidas |= _pulgada_de_dn(texto)
 
-    resto = " ".join(p for i, p in enumerate(palabras) if i not in usadas)
+    # Un numero con signo de porcentaje no es una medida: "soldadura plata
+    # 15%" es la ley de la plata, no quince pulgadas. El % se pierde al
+    # normalizar, asi que se lee del texto tal cual lo escribieron.
+    porcentajes = set(re.findall(r"(\d{1,3})\s*%", str(texto or "")))
+    blandas = set()
     if not medidas:
-        medidas |= _entero_suelto_como_pulgada(palabras)
+        sueltas, indice = _entero_suelto_como_pulgada(palabras, porcentajes)
+        medidas |= sueltas
+        if indice is not None:
+            # La palabra que escribia la medida se saca del texto igual que
+            # cuando viene con unidad: si no, "valvula bola 2" sumaba ademas
+            # el termino numerico #2 y devolvia un conjunto distinto al de
+            # 'valvula bola 2"', que es la misma consulta.
+            usadas.add(indice)
+        # Un entero suelto es una lectura POSIBLE de la medida, no una
+        # certeza: "plancha 4" son 4 mm de espesor y "valvula 4" son 4
+        # pulgadas. Se marca blanda para que un item cuyo 4 es una dimension
+        # en milimetros no quede hundido como si fuera de otro calibre.
+        for canonico in sueltas:
+            blandas.add(canonico.rstrip('"'))
 
+    resto = " ".join(p for i, p in enumerate(palabras) if i not in usadas)
     terms = [t for t in terminos(resto) if not t.isdigit()]
+    terms.extend(t for t in _terminos_numericos(resto) if t not in terms)
 
     # Un codigo se escribe con separadores ("JUNJ-101", "Cod. HER3709") pero
     # se indexa pegado. Sin este termino extra, "JUNJ-101" se partia en
@@ -344,11 +403,98 @@ def parsear_consulta(texto):
     # termino que ningun item cumple y que, por ser unico, entraba al
     # denominador de la cobertura con el peso mas alto posible y hundia el
     # puntaje de los resultados correctos.
-    for palabra in normalizar_alias(texto).split():
+    # Una palabra que YA se leyo como medida no vuelve a entrar como codigo:
+    # "dn50" es dos pulgadas, no un modelo. Si entrara como termino ademas,
+    # sumaria al denominador de la cobertura un termino que ningun item
+    # cumple y "valvula de bola dn50" devolveria algo distinto a
+    # 'valvula de bola 2"'.
+    for i, palabra in enumerate(palabras):
+        if i in usadas:
+            continue
         pegado = re.sub(r"[^a-z0-9]", "", palabra)
         if _TOKEN_CODIGO.match(pegado) and pegado not in terms:
             terms.append(pegado)
-    return tuple(terms), medidas
+    return {"terminos": tuple(terms), "medidas": medidas, "blandas": blandas}
+
+
+# ---- numeros, grados y especificaciones de la consulta ----
+
+# "sch 40" -> sch40, "pn 16" -> pn16, "clase 150" -> clase150: el catalogo
+# los escribe pegados y asi se indexan.
+_PREFIJOS_SPEC = ("sch", "sched", "schedule", "cedula", "ced", "pn", "clase", "serie", "grado",
+                  "gr", "g")
+_CANONICO_SPEC = {"sched": "sch", "schedule": "sch", "cedula": "sch", "ced": "sch",
+                  "grado": "g", "gr": "g"}
+# Prefijos con que se escribe un grado de acero inoxidable pegado al numero.
+_PREFIJOS_GRADO = ("ss", "aisi", "inox", "sus", "tp")
+_NUMERO_CONSULTA = re.compile(r"^(\d+(?:[.,]\d+)?)(mm|cm|mts|mt|m|plg|pulg|pulgadas?|in)?$")
+
+
+def _unir_especificaciones(palabras):
+    salida = []
+    i = 0
+    while i < len(palabras):
+        p = palabras[i]
+        siguiente = palabras[i + 1] if i + 1 < len(palabras) else ""
+        if p in _PREFIJOS_SPEC and re.fullmatch(r"\d{1,4}s?", siguiente):
+            salida.append(_CANONICO_SPEC.get(p, p) + siguiente)
+            i += 2
+            continue
+        salida.append(p)
+        i += 1
+    return salida
+
+
+def _terminos_numericos(texto):
+    """Los numeros de una consulta, en la forma en que estan indexados:
+
+        "0,7"     -> #0.7       (el espesor de una plancha)
+        "812 mm"  -> #812
+        "5.8m"    -> #5800 y #5.8   (el catalogo escribe las dos)
+        "40x20x2" -> #40 #20 #2
+        "ss316"   -> inoxidable y #316
+        "m12"     -> #12
+    """
+    salida = []
+
+    def agregar(valor):
+        for v in ("#" + _texto_numero(valor),):
+            if v not in salida:
+                salida.append(v)
+
+    for palabra in texto.split():
+        m = re.fullmatch(r"(%s)[\s-]*(\d{3})(l|h)?" % "|".join(_PREFIJOS_GRADO), palabra)
+        if m:
+            for t in (raiz(m.group(1)), "#" + m.group(2)):
+                if t not in salida:
+                    salida.append(t)
+            if m.group(3):
+                salida.append(m.group(2) + m.group(3))
+            continue
+        m = re.fullmatch(r"m(\d{1,2})", palabra)          # rosca metrica M12
+        if m:
+            agregar(m.group(1))
+            continue
+        for trozo in re.split(r"[x×]", palabra):
+            m = _NUMERO_CONSULTA.match(trozo)
+            if not m:
+                continue
+            valor = float(m.group(1).replace(",", "."))
+            unidad = m.group(2)
+            if unidad in ("m", "mt", "mts"):
+                agregar(valor * 1000)
+                agregar(valor)
+            elif unidad == "cm":
+                agregar(valor * 10)
+            else:
+                agregar(valor)
+    return salida
+
+
+def _texto_numero(valor):
+    """Un numero en la forma canonica con que se indexa: sin ceros de mas
+    ("0.70" y "0,7" son el mismo espesor; "032" y "32", el mismo tubo)."""
+    return ("%g" % float(valor))
 
 
 def medidas_de_consulta(texto):
@@ -356,7 +502,7 @@ def medidas_de_consulta(texto):
     return parsear_consulta(texto)[1]
 
 
-def medidas_de_item(nombre, descripcion, medida_taxonomia=None):
+def medidas_de_item(nombre, descripcion, medida_taxonomia=None, equivalentes=()):
     """TODAS las medidas que menciona un item, no solo la que la taxonomia
     eligio como principal.
 
@@ -373,6 +519,10 @@ def medidas_de_item(nombre, descripcion, medida_taxonomia=None):
         encontradas |= _pulgada_de_dn(texto)
     if medida_taxonomia:
         encontradas.add(medida_taxonomia)
+    # Las medidas que la ficha ya resolvio con su rol (diametro, espesor,
+    # largo) y sus equivalencias de familia: un disco de 4.1/2" tambien se
+    # busca como "115mm", y un electrodo de 1/8" como "3.2mm".
+    encontradas.update(m for m in equivalentes if m)
     return sorted(encontradas)
 
 
@@ -409,35 +559,68 @@ def _codigos(item):
     return salida
 
 
+# Los campos de la ficha que el buscador indexa. Un item que viene del
+# dashboard ya los trae (agregar_taxonomia los copia a la compra); uno que
+# viene directo del Excel se clasifica aqui.
+_CAMPOS_FICHA = ("familia", "tipo", "familia_producto", "material", "material_base",
+                 "material_grado", "sistema", "aplicacion", "terminacion", "color",
+                 "especificaciones", "numeros", "medidas_equivalentes", "medida",
+                 "medida_texto", "categoria", "subcategoria")
+
+
+def con_ficha(item):
+    """El item con su ficha de atributos. Si ya la trae (camino del
+    dashboard), se devuelve tal cual; si no (camino del CLI, que lee el Excel
+    directo), se clasifica.
+
+    Sin esto, buscar "valvula de bola" desde la consola no podria usar el
+    nombre canonico del producto, que es el campo que hace que una compra
+    registrada como "Valvula" a secas igual aparezca."""
+    if item.get("hoja"):
+        return item
+    clasif = taxonomia.clasificar(item.get("nombre_item"), item.get("descripcion"))
+    return dict(item, hoja=taxonomia.clave_hoja(clasif),
+                **{c: clasif[c] for c in _CAMPOS_FICHA})
+
+
 def terminos_documento(item):
     """{campo: "raices separadas por espacio"} -- lo que se indexa de un item.
+
+    Un campo por ATRIBUTO, no un saco de palabras: el tipo de producto, el
+    material (con su familia de material y su grado), las dimensiones, las
+    especificaciones tecnicas, la terminacion y para que sirve. Asi el peso
+    de cada campo puede seguir la prioridad que pidio el usuario -- tipo,
+    material, medida, otras dimensiones, especificaciones, terminacion,
+    marca y recien despues el texto libre.
 
     Este dict es exactamente lo que build_visualizador.py embebe en el
     snapshot, para que el JavaScript del dashboard NO tenga que derivar los
     terminos por su cuenta. El lado del documento se calcula una sola vez,
     en Python; el navegador solo procesa la consulta."""
+    item = con_ficha(item)
     nombre = item.get("nombre_item") or ""
     desc = item.get("descripcion") or ""
-    if not item.get("hoja"):
-        # Los items que vienen directo de cargar_items_detalle (el camino del
-        # CLI) todavia no pasaron por agregar_taxonomia. Se clasifican aqui
-        # para que la consola indexe los mismos campos que el dashboard: sin
-        # esto, buscar "valvula de bola" desde la consola no podria usar el
-        # nombre canonico del producto, que es el campo que hace que una
-        # compra registrada como "Valvula" a secas igual aparezca.
-        clasif = taxonomia.clasificar(nombre, desc)
-        item = dict(item, hoja=taxonomia.clave_hoja(clasif), familia=clasif["familia"],
-                    material=clasif["material"], medida=clasif["medida"],
-                    categoria=clasif["categoria"], subcategoria=clasif["subcategoria"])
     hoja = item.get("hoja") or ""
-    familia = item.get("familia") or ""
+    tipo = item.get("tipo") or item.get("familia") or ""
     marca = item.get("marca") or detectar_marca(nombre, desc)
+    specs = item.get("especificaciones") or {}
+    terminacion = item.get("terminacion") or []
+    if isinstance(terminacion, str):
+        terminacion = [terminacion]
 
     campos = {
         "cod": " ".join(dict.fromkeys(_codigos(item))),
+        "tipo": " ".join(terminos(tipo + " " + (item.get("familia_producto") or ""))),
         "nom": " ".join(terminos(nombre)),
-        "hoja": " ".join(terminos(hoja + " " + familia)),
-        "mat": " ".join(terminos(item.get("material") or "")),
+        "hoja": " ".join(terminos(hoja)),
+        "mat": " ".join(dict.fromkeys(
+            list(terminos(" ".join(x for x in (item.get("material"), item.get("material_base"),
+                                               item.get("sistema")) if x)))
+            + _terminos_grado(item.get("material_grado")))),
+        "dim": " ".join("#" + n for n in (item.get("numeros") or [])),
+        "esp": " ".join(dict.fromkeys(_terminos_especificaciones(specs))),
+        "term": " ".join(terminos(" ".join(terminacion + ([item.get("color")] if item.get("color") else [])))),
+        "apl": " ".join(terminos(item.get("aplicacion") or "")),
         "mar": " ".join(terminos(marca or "")),
         "cat": " ".join(terminos((item.get("categoria") or "") + " " +
                                  (item.get("subcategoria") or ""))),
@@ -446,6 +629,40 @@ def terminos_documento(item):
         "proy": " ".join(terminos(item.get("proyecto") or "")),
     }
     return {c: v for c, v in campos.items() if v}
+
+
+def _terminos_grado(grado):
+    """'AISI 316L' -> ['aisi', '316l', '#316'] : quien busca escribe
+    cualquiera de las tres (y "SS316" se parte igual del lado de la
+    consulta)."""
+    if not grado:
+        return []
+    salida = list(terminos(grado))
+    for m in re.finditer(r"(\d{2,4})([a-z])?", grado.lower()):
+        salida.append("#" + m.group(1))
+        if m.group(2):
+            salida.append(m.group(1) + m.group(2))
+    return salida
+
+
+def _terminos_especificaciones(specs):
+    """Las especificaciones como se escriben: 'SCH 40' -> sch40 y #40;
+    'HI-HI' -> hi; 'PN16' -> pn16 y #16."""
+    salida = []
+    for valor in specs.values():
+        texto = str(valor).lower()
+        for parte in re.split(r"[\s\-/]+", texto):
+            pegado = re.sub(r"[^a-z0-9]", "", parte)
+            if pegado and pegado not in salida:
+                salida.append(pegado)
+        pegado_total = re.sub(r"[^a-z0-9]", "", texto)
+        if pegado_total and pegado_total not in salida:
+            salida.append(pegado_total)
+        for numero in re.findall(r"\d+(?:\.\d+)?", texto):
+            t = "#" + ("%g" % float(numero))
+            if t not in salida:
+                salida.append(t)
+    return salida
 
 
 # ====================== 4. DISTANCIA DE EDICION ======================
@@ -507,7 +724,7 @@ class Indice(object):
     asi que el llamador sigue siendo el dueno de la lista."""
 
     __slots__ = ("items", "post", "df", "vocab", "vocab_ordenado", "vocab_por_largo",
-                 "medidas", "n", "largo", "_cache_expansion")
+                 "medidas", "numeros", "n", "largo", "_cache_expansion")
 
     def __init__(self, items, terminos_por_item=None, medidas_por_item=None):
         self.items = items
@@ -515,11 +732,17 @@ class Indice(object):
         self.post = {c: {} for c in CAMPOS}
         self.df = {}
         self.medidas = []
+        self.numeros = []
         self.largo = {c: {} for c in CAMPOS}
 
-        for idx, item in enumerate(items):
+        for idx, item_crudo in enumerate(items):
+            # La ficha se resuelve UNA vez por item: la usan los terminos y
+            # las medidas. self.items conserva los dicts originales (el
+            # llamador sigue siendo su dueno).
+            item = item_crudo if terminos_por_item is not None else con_ficha(item_crudo)
             campos = (terminos_por_item[idx] if terminos_por_item is not None
                       else terminos_documento(item))
+            self.numeros.append(set(campos.get("dim", "").split()))
             del_item = set()
             for campo, texto in campos.items():
                 if campo not in self.post:
@@ -536,7 +759,8 @@ class Indice(object):
                 self.medidas.append(set(medidas_por_item[idx]))
             else:
                 self.medidas.append(set(medidas_de_item(
-                    item.get("nombre_item"), item.get("descripcion"), item.get("medida"))))
+                    item.get("nombre_item"), item.get("descripcion"), item.get("medida"),
+                    item.get("medidas_equivalentes") or ())))
 
         self.vocab = self.df
         self.vocab_ordenado = sorted(self.df)
@@ -547,6 +771,12 @@ class Indice(object):
         for termino in self.vocab_ordenado:
             self.vocab_por_largo.setdefault(len(termino), []).append(termino)
         self._cache_expansion = {}
+
+    def _numeros(self, idx):
+        """Los numeros de las dimensiones de un item, como estan indexados
+        ('#0.7', '#812'). Salen del mismo campo que se puntua, asi que no hay
+        una segunda estructura que mantener."""
+        return self.numeros[idx]
 
     # ---- expansion de un termino de consulta ----
 
@@ -635,7 +865,9 @@ class Indice(object):
         existen. El dashboard, en cambio, si quiere el ranking por medida:
         ahi la pregunta es "muestrame lo que pedi primero", no "cuanto
         cuesta esto exactamente"."""
-        terms, medidas_pedidas = parsear_consulta(texto)
+        consulta = parsear_consulta_detalle(texto)
+        terms, medidas_pedidas = consulta["terminos"], consulta["medidas"]
+        blandas = {"#" + n for n in consulta["blandas"]}
         if not aplicar_medida:
             medidas_pedidas = set()
         if not terms and not medidas_pedidas:
@@ -683,6 +915,12 @@ class Indice(object):
             medidas_item = self.medidas[idx]
             if medidas_pedidas:
                 if medidas_item & medidas_pedidas:
+                    relevancia *= MULT_MEDIDA_EXACTA
+                    medida_ok = True
+                elif blandas & self._numeros(idx):
+                    # "plancha 4": el 4 se leyo como 4 pulgadas, pero este
+                    # item lo tiene como dimension en milimetros. Es la misma
+                    # medida escrita de otra forma, no otro calibre.
                     relevancia *= MULT_MEDIDA_EXACTA
                     medida_ok = True
                 elif medidas_item:
@@ -783,10 +1021,14 @@ def catalogo_sugerencias(items, minimo=1):
 
     for item in items:
         sumar(item.get("hoja"), "producto")
-        sumar(item.get("familia"), "familia")
+        sumar(item.get("tipo") or item.get("familia"), "familia")
+        sumar(item.get("familia_producto"), "familia")
         sumar(item.get("categoria"), "categoria")
         sumar(item.get("subcategoria"), "subcategoria")
         sumar(item.get("material"), "material")
+        sumar(item.get("material_grado"), "material")
+        for t in (item.get("terminacion") or []):
+            sumar(t, "terminacion")
         sumar(item.get("medida"), "medida")
         sumar(item.get("marca") or detectar_marca(item.get("nombre_item"),
                                                   item.get("descripcion")), "marca")
@@ -818,6 +1060,13 @@ def config_para_snapshot(medidas_presentes=()):
         "max_errores": [list(t) for t in MAX_ERRORES_POR_LARGO],
         "medida": {"exacta": MULT_MEDIDA_EXACTA, "distinta": MULT_MEDIDA_DISTINTA,
                    "ausente": MULT_MEDIDA_AUSENTE},
+        # Tablas del lado de la consulta que el navegador necesita para leer
+        # numeros, grados y especificaciones igual que Python.
+        "especificaciones": {
+            "prefijos": list(_PREFIJOS_SPEC),
+            "canonico": dict(_CANONICO_SPEC),
+            "grados": list(_PREFIJOS_GRADO),
+        },
         "piso_cobertura": PISO_COBERTURA,
         "factor_norma_largo": FACTOR_NORMA_LARGO,
         "fraccion_del_mejor": FRACCION_DEL_MEJOR,
@@ -852,10 +1101,17 @@ def indexar_para_snapshot(compras):
     implementaciones del mismo paso y volveriamos al problema que dejo la
     taxonomia duplicada en los templates."""
     for compra in compras:
+        # con_ficha: una compra del dashboard ya trae sus atributos; una que
+        # viene del Excel se clasifica aqui. Tiene que ser la MISMA ficha que
+        # usa Indice() en Python, o el navegador y la consola indexarian
+        # medidas distintas (lo que el test de paridad detecta como ordenes
+        # distintos).
+        ficha = con_ficha(compra)
         compra["marca"] = compra.get("marca") or detectar_marca(
             compra.get("nombre_item"), compra.get("descripcion"))
-        compra["_bt"] = terminos_documento(compra)
+        compra["_bt"] = terminos_documento(ficha)
         compra["_bm"] = medidas_de_item(compra.get("nombre_item"),
                                         compra.get("descripcion"),
-                                        compra.get("medida"))
+                                        ficha.get("medida"),
+                                        ficha.get("medidas_equivalentes") or ())
     return compras

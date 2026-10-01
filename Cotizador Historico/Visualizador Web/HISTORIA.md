@@ -14,7 +14,7 @@ actual con changelog fechado — mismo patrón ya aplicado en
 
 ## 2026-07-20 — Exportación: de descarga de archivo a copiar/pegar
 
-El diseño original (`../docs/superpowers/specs/2026-07-20-visualizador-cotizador-historico-design.md`,
+El diseño original (`../docs/specs/2026-07-20-visualizador-cotizador-historico-design.md`,
 sección "Exportación") contemplaba descargar un archivo. Primer intento:
 `.xlsx`/`.csv` vía la capability `downloads` de los Artifacts de Claude —
 pero esa capability solo acepta `gif png jpg jpeg webp mp4 webm txt json md`
@@ -29,7 +29,7 @@ carrito, más un botón "Copiar todo" que copia al portapapeles. Esto evita
 el allowlist de extensiones de `downloads` (ya no aplica) y es más simple:
 no hay que declarar ninguna capability al publicar el Artifact, ni
 distinguir el caso "dentro del sandbox del Artifact" del caso "abierto
-localmente". Ver `../docs/superpowers/plans/2026-07-20-visualizador-cotizador-historico.md`,
+localmente". Ver `../docs/plans/2026-07-20-visualizador-cotizador-historico.md`,
 sección "Task 8", para el registro completo del cambio de decisión.
 
 ## 2026-07-21 — Taxonomía y explorador de carpetas reemplazan el Top 10

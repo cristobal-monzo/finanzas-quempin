@@ -242,6 +242,137 @@ el valor — ver
 | 2026-09-14 | Master | JUNJ-130 | N° Documento | S/N (estacionamiento 07-04-2026) | N/A | Aplicado (2026-09-14) | Comprobante de pago de derechos municipales (I. Municipalidad de Valparaiso, estacionamiento en via publica): no trae folio ni numero de documento reutilizable, solo patente, horario y TERMINAL. Mismo criterio que los comprobantes de peaje (MEMORY.md, pedido 2026-08-19; precedentes CVAL-002/003/005). |
 | 2026-09-14 | Master | JUNJ-141 | N° Documento | S/N (V2 Documento (39)_1.pdf) | 186939 | Aplicado (2026-09-14) | Voucher Getnet de Transporte y Carga ESS SpA (RUT 77.747.688-2, El Quisco), 22/04/2026 15:19:25, Mastercard Credito *9309. Monto $19.400 + propina $1.940 = $21.340; IVA incluido $3.097. No trae folio de boleta: se usa el Codigo de Aprobacion como N de Documento (MEMORY.md, vouchers de tarjeta). Los 2 ultimos digitos (39) no se leen -- el logo Getnet impreso en el papel los pisa -- y los aporto el usuario el 2026-09-14. Otros identificadores del voucher: Comprobante 000002, Cod Venta 0000000001. |
 | 2026-09-14 | Master | JUNJ-173 | N° Documento | S/N (estacionamiento 09-04-2026) | N/A | Aplicado (2026-09-14) | Comprobante de pago de derechos municipales (I. Municipalidad de Valparaiso, estacionamiento en via publica): no trae folio ni numero de documento reutilizable, solo patente, horario y TERMINAL. Mismo criterio que los comprobantes de peaje (MEMORY.md, pedido 2026-08-19; precedentes CVAL-002/003/005). |
+| 2026-09-30 | Master | CCON-014 | N° Documento | 23600704 y 229617 | 23600704 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CCON-014 | IVA 19% (CLP) | 15963 | 18175 | Aplicado (2026-09-30) | Impuesto = IVA + impuesto especifico: total impreso $65.673 (antes solo se habia registrado el 19%). |
+| 2026-09-30 | Master/Detalle | CCON-014/CCON-027 | Reestructuración: documentos mezclados separados | CCON-014 juntaba 2 documentos (23600704 y 229617) en un solo registro | CCON-014=Factura 23600704 (Administradora de Ventas al Detalle Ltda (Copec)); CCON-027=Factura 229617 (Horta y Horta Limitada (Copec)); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CCON-016 | N° Documento | 38447786 y 38447765 | 38447786 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CCON-016 | IVA 19% (CLP) | 2032 | 1479 | Aplicado (2026-09-30) | Total impreso $9.260. |
+| 2026-09-30 | Master/Detalle | CCON-016/CCON-028 | Reestructuración: documentos mezclados separados | CCON-016 juntaba 2 documentos (38447786 y 38447765) en un solo registro | CCON-016=Factura 38447786 (Easy Retail S.A.); CCON-028=Factura 38447765 (Easy Retail S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CCON-027 | N° Documento | Nuevo registro separado | 229617 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CCON-027 | IVA 19% (CLP) | Nuevo registro separado | 11061 | Aplicado (2026-09-30) | Impuesto = IVA + impuesto especifico: total impreso $47.575 (antes solo se habia registrado el 19%). |
+| 2026-09-30 | Master | CCON-028 | N° Documento | Nuevo registro separado | 38447765 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CCON-028 | IVA 19% (CLP) | Nuevo registro separado | 554 | Aplicado (2026-09-30) | Total impreso $3.470. |
+| 2026-09-30 | Master | CVAL-002 | N° Documento | N/A | N/A | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-002 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | CVAL-002/CVAL-021 | Reestructuración: documentos mezclados separados | CVAL-002 juntaba 2 documentos (N/A) en un solo registro | CVAL-002=Boleta N/A (Sociedad Concesionaria Temuco-Río Bueno S.A.); CVAL-021=Boleta N/A (Ruta de la Araucanía S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-003 | N° Documento | N/A | N/A | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-003 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | CVAL-003/CVAL-022 | Reestructuración: documentos mezclados separados | CVAL-003 juntaba 2 documentos (N/A) en un solo registro | CVAL-003=Boleta N/A (Sociedad Concesionaria Temuco-Río Bueno S.A.); CVAL-022=Boleta N/A (Ruta de la Araucanía S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-005 | N° Documento | N/A | N/A | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-005 | IVA 19% (CLP) | 0 | 0 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | CVAL-005/CVAL-023/CVAL-024/CVAL-025 | Reestructuración: documentos mezclados separados | CVAL-005 juntaba 4 documentos (N/A) en un solo registro | CVAL-005=Boleta N/A (Autopista de Los Andes S.A.); CVAL-023=Boleta N/A (Autopista de Los Andes S.A.); CVAL-024=Boleta N/A (Ruta de la Araucanía S.A.); CVAL-025=Boleta N/A (Ruta de la Araucanía S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-021 | N° Documento | Nuevo registro separado | N/A | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-021 | IVA 19% (CLP) | Nuevo registro separado | 0 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-022 | N° Documento | Nuevo registro separado | N/A | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-022 | IVA 19% (CLP) | Nuevo registro separado | 0 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-023 | N° Documento | Nuevo registro separado | N/A | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-023 | IVA 19% (CLP) | Nuevo registro separado | 0 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-024 | N° Documento | Nuevo registro separado | N/A | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-024 | IVA 19% (CLP) | Nuevo registro separado | 0 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-025 | N° Documento | Nuevo registro separado | N/A | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | CVAL-025 | IVA 19% (CLP) | Nuevo registro separado | 0 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-019 | N° Documento | 103957 y 289815 | 289815 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-019 | IVA 19% (CLP) | 4489 | 4186 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-019/FCH1-053 | Reestructuración: documentos mezclados separados | FCH1-019 juntaba 2 documentos (103957 y 289815) en un solo registro | FCH1-019=Factura 289815 (Comercial Silva Ltda. (Copec, por cuenta y orden de Esmax Distribución SpA)); FCH1-053=Boleta 103957 (Saba Estacionamientos de Chile (Mall Marina Viña)); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-020 | N° Documento | 107662184 y 107164793 | 107164793 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-020 | IVA 19% (CLP) | 120 | 64 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-020/FCH1-054 | Reestructuración: documentos mezclados separados | FCH1-020 juntaba 2 documentos (107662184 y 107164793) en un solo registro | FCH1-020=Boleta 107164793 (Cencosud Shopping S.A. (Estacionamiento Portal Valparaiso)); FCH1-054=Boleta 107662184 (Cencosud Shopping S.A. (Estacionamiento Portal Valparaiso)); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-025 | N° Documento | 2778048 y 0002801023 | 2778048 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-025 | IVA 19% (CLP) | 6261 | 3483 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-025/FCH1-055 | Reestructuración: documentos mezclados separados | FCH1-025 juntaba 2 documentos (2778048 y 0002801023) en un solo registro | FCH1-025=Boleta 2778048 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); FCH1-055=Boleta 2801023 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-029 | N° Documento | 6799340 y 0002795546 | 6799340 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-029 | IVA 19% (CLP) | 9615 | 8689 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-029/FCH1-056 | Reestructuración: documentos mezclados separados | FCH1-029 juntaba 2 documentos (6799340 y 0002795546) en un solo registro | FCH1-029=Factura 6799340 (Implementos S.A.); FCH1-056=Boleta 2795546 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-030 | N° Documento | 2778654 y 0002795519 | 2795519 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-030 | IVA 19% (CLP) | 5556 | 3704 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-030/FCH1-057 | Reestructuración: documentos mezclados separados | FCH1-030 juntaba 2 documentos (2778654 y 0002795519) en un solo registro | FCH1-030=Boleta 2795519 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); FCH1-057=Boleta 2778654 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-031 | N° Documento | 271883989 y 38659653 | 38659653 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-031 | IVA 19% (CLP) | 6371 | 3566 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-031/FCH1-058 | Reestructuración: documentos mezclados separados | FCH1-031 juntaba 2 documentos (271883989 y 38659653) en un solo registro | FCH1-031=Factura 38659653 (Easy (F.A9 Retail S.A.)); FCH1-058=Boleta 271883989 (Easy (F.A9 Retail S.A.)); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-032 | N° Documento | 38425192 y 148671475 | 38425192 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-032 | IVA 19% (CLP) | 15722 | 10776 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-032/FCH1-059 | Reestructuración: documentos mezclados separados | FCH1-032 juntaba 2 documentos (38425192 y 148671475) en un solo registro | FCH1-032=Factura 38425192 (Easy (F.A9 Retail S.A.)); FCH1-059=Factura 148671475 (Sodimac S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-033 | N° Documento | 84935903 y 148568139 | 148568139 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-033 | IVA 19% (CLP) | 18078 | 18014 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-033/FCH1-060 | Reestructuración: documentos mezclados separados | FCH1-033 juntaba 2 documentos (84935903 y 148568139) en un solo registro | FCH1-033=Factura 148568139 (Sodimac S.A.); FCH1-060=Boleta 84935903 (Saba Estacionamientos de Chile S.A. (Mall Arauco El Bosque)); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-035 | N° Documento | 148789179 y 646781879 | 148789179 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-035 | IVA 19% (CLP) | 35576 | 31748 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-035/FCH1-061 | Reestructuración: documentos mezclados separados | FCH1-035 juntaba 2 documentos (148789179 y 646781879) en un solo registro | FCH1-035=Factura 148789179 (Sodimac S.A.); FCH1-061=Boleta 646781879 (Administradora de Ventas al Detalle Ltda (Pronto)); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-036 | N° Documento | 148512785 y 148822727 | 148512785 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-036 | IVA 19% (CLP) | 28811 | 15703 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-036/FCH1-062 | Reestructuración: documentos mezclados separados | FCH1-036 juntaba 2 documentos (148512785 y 148822727) en un solo registro | FCH1-036=Factura 148512785 (Sodimac S.A.); FCH1-062=Factura 148822727 (Sodimac S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-037 | N° Documento | 2783207 y 0002773929 | 2773929 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-037 | IVA 19% (CLP) | 4630 | 2778 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-037/FCH1-063 | Reestructuración: documentos mezclados separados | FCH1-037 juntaba 2 documentos (2783207 y 0002773929) en un solo registro | FCH1-037=Boleta 2773929 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); FCH1-063=Boleta 2783207 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-038 | N° Documento | 148536910, 0091862602 y 182106102 | 148536910 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-038 | IVA 19% (CLP) | 3988 | 3746 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH1-038/FCH1-064/FCH1-065 | Reestructuración: documentos mezclados separados | FCH1-038 juntaba 3 documentos (148536910, 0091862602 y 182106102) en un solo registro | FCH1-038=Factura 148536910 (Sodimac S.A.); FCH1-064=Boleta 91862602 (Estacionar S.A.); FCH1-065=Boleta 182106102 (Central Parking System Chile S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-053 | N° Documento | Nuevo registro separado | 103957 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-053 | IVA 19% (CLP) | Nuevo registro separado | 303 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-054 | N° Documento | Nuevo registro separado | 107662184 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-054 | IVA 19% (CLP) | Nuevo registro separado | 56 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-055 | N° Documento | Nuevo registro separado | 2801023 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-055 | IVA 19% (CLP) | Nuevo registro separado | 2778 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-056 | N° Documento | Nuevo registro separado | 2795546 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-056 | IVA 19% (CLP) | Nuevo registro separado | 926 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-057 | N° Documento | Nuevo registro separado | 2778654 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-057 | IVA 19% (CLP) | Nuevo registro separado | 1852 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-058 | N° Documento | Nuevo registro separado | 271883989 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-058 | IVA 19% (CLP) | Nuevo registro separado | 2805 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-059 | N° Documento | Nuevo registro separado | 148671475 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-059 | IVA 19% (CLP) | Nuevo registro separado | 4946 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-060 | N° Documento | Nuevo registro separado | 84935903 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-060 | IVA 19% (CLP) | Nuevo registro separado | 64 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-061 | N° Documento | Nuevo registro separado | 646781879 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-061 | IVA 19% (CLP) | Nuevo registro separado | 3828 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-062 | N° Documento | Nuevo registro separado | 148822727 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-062 | IVA 19% (CLP) | Nuevo registro separado | 13108 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-063 | N° Documento | Nuevo registro separado | 2783207 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-063 | IVA 19% (CLP) | Nuevo registro separado | 1852 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-064 | N° Documento | Nuevo registro separado | 91862602 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-064 | IVA 19% (CLP) | Nuevo registro separado | 108 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-065 | N° Documento | Nuevo registro separado | 182106102 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH1-065 | IVA 19% (CLP) | Nuevo registro separado | 134 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-015 | N° Documento | 2810703 y 0002810794 | 2810794 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-015 | IVA 19% (CLP) | 2778 | 1852 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH2-015/FCH2-058 | Reestructuración: documentos mezclados separados | FCH2-015 juntaba 2 documentos (2810703 y 0002810794) en un solo registro | FCH2-015=Boleta 2810794 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); FCH2-058=Boleta 2810703 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-016 | N° Documento | 148767356 y 0002812087 | 148767356 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-016 | IVA 19% (CLP) | 6000 | 4148 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH2-016/FCH2-059 | Reestructuración: documentos mezclados separados | FCH2-016 juntaba 2 documentos (148767356 y 0002812087) en un solo registro | FCH2-016=Factura 148767356 (Sodimac S.A.); FCH2-059=Boleta 2812087 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-018 | N° Documento | 179072205 y 0002806998 | 2806998 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-018 | IVA 19% (CLP) | 4256 | 2778 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH2-018/FCH2-060 | Reestructuración: documentos mezclados separados | FCH2-018 juntaba 2 documentos (179072205 y 0002806998) en un solo registro | FCH2-018=Boleta 2806998 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); FCH2-060=Boleta 179072205 (Copec Pronto); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-019 | N° Documento | 149256787 y 0002805616 | 2805616 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-019 | IVA 19% (CLP) | 5906 | 4630 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH2-019/FCH2-061 | Reestructuración: documentos mezclados separados | FCH2-019 juntaba 2 documentos (149256787 y 0002805616) en un solo registro | FCH2-019=Boleta 2805616 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); FCH2-061=Factura 149256787 (Sodimac S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-020 | N° Documento | 148985129 y 149187224 | 149187224 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-020 | IVA 19% (CLP) | 50432 | 34035 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH2-020/FCH2-062 | Reestructuración: documentos mezclados separados | FCH2-020 juntaba 2 documentos (148985129 y 149187224) en un solo registro | FCH2-020=Factura 149187224 (Sodimac S.A.); FCH2-062=Factura 148985129 (Sodimac S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-026 | N° Documento | 280633 y 0002786118 | 280633 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-026 | IVA 19% (CLP) | 12211 | 6655 | Aplicado (2026-09-30) | Neto y IVA como vienen impresos; el total impreso es $40.000 y no calza con neto + IVA ($41.682): revisar contra el original. |
+| 2026-09-30 | Master/Detalle | FCH2-026/FCH2-063 | Reestructuración: documentos mezclados separados | FCH2-026 juntaba 2 documentos (280633 y 0002786118) en un solo registro | FCH2-026=Factura 280633 (Comercial y Servicios V y A Limitada (Copec)); FCH2-063=Boleta 2786118 (Soc. Administradora de Casinos y Servicios Aliservice S.A.); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-027 | N° Documento | 773236 y 768764 | 773236 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-027 | IVA 19% (CLP) | 58511 | 51889 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | FCH2-027/FCH2-064 | Reestructuración: documentos mezclados separados | FCH2-027 juntaba 2 documentos (773236 y 768764) en un solo registro | FCH2-027=Factura 773236 (Sociedad Comercial Sanchez Herrera S.A. (Pernos KTM)); FCH2-064=Factura 768764 (Sociedad Comercial Sanchez Herrera S.A. (Pernos KTM)); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-058 | N° Documento | Nuevo registro separado | 2810703 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-058 | IVA 19% (CLP) | Nuevo registro separado | 926 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-059 | N° Documento | Nuevo registro separado | 2812087 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-059 | IVA 19% (CLP) | Nuevo registro separado | 1852 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-060 | N° Documento | Nuevo registro separado | 179072205 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-060 | IVA 19% (CLP) | Nuevo registro separado | 1478 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-061 | N° Documento | Nuevo registro separado | 149256787 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-061 | IVA 19% (CLP) | Nuevo registro separado | 1276 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-062 | N° Documento | Nuevo registro separado | 148985129 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-062 | IVA 19% (CLP) | Nuevo registro separado | 16397 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-063 | N° Documento | Nuevo registro separado | 2786118 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-063 | IVA 19% (CLP) | Nuevo registro separado | 5556 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-064 | N° Documento | Nuevo registro separado | 768764 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | FCH2-064 | IVA 19% (CLP) | Nuevo registro separado | 6622 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | LIMA-001 | N° Documento | 144691683 y 144910844 | 144910844 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | LIMA-001 | IVA 19% (CLP) | 17168 | 9106 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master/Detalle | LIMA-001/LIMA-004 | Reestructuración: documentos mezclados separados | LIMA-001 juntaba 2 documentos (144691683 y 144910844) en un solo registro | LIMA-001=Factura 144910844 (Sodimac); LIMA-004=Factura 144691683 (Sodimac); archivo físico duplicado | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | LIMA-004 | N° Documento | Nuevo registro separado | 144691683 | Aplicado (2026-09-30) |  |
+| 2026-09-30 | Master | LIMA-004 | IVA 19% (CLP) | Nuevo registro separado | 8062 | Aplicado (2026-09-30) |  |
 
 ## Historial de errores detectados
 

@@ -5,7 +5,7 @@ compras historicas en Centro de Costos, reajustando cada precio por UF
 (fecha de compra -> fecha de la consulta).
 
 Modulo 100% de solo lectura sobre Centro de Costos.xlsx: nunca lo abre en
-modo escritura ni lo modifica. Ver ../docs/superpowers/specs/
+modo escritura ni lo modifica. Ver ../docs/specs/
 2026-07-17-cotizador-historico-design.md para el diseno completo.
 """
 
@@ -27,6 +27,8 @@ import openpyxl
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import busqueda  # noqa: E402
+import dimensiones  # noqa: E402
+import presentacion  # noqa: E402
 import taxonomia  # noqa: E402
 
 RAIZ_MODULO = Path(__file__).resolve().parent.parent
@@ -248,14 +250,6 @@ def buscar_items(items, texto_busqueda, indice=None, aplicar_medida=True):
     return [r["item"] for r in resultados], sugerencias
 
 
-def buscar_items_detallado(items, texto_busqueda):
-    """Igual que buscar_items pero devuelve los resultados completos del
-    motor (score y motivos de por que aparecio cada uno), sin perder el item.
-    Lo usa consultar_item para poder mostrar la explicacion."""
-    indexables = [it for it in items if it.get("excluido_motivo") is None]
-    return busqueda.Indice(indexables).buscar(texto_busqueda)
-
-
 class UFNoDisponibleError(Exception):
     """No se pudo obtener el valor de la UF para una fecha desde mindicador.cl."""
 
@@ -383,21 +377,80 @@ def agregar_taxonomia(compra):
     caminos (reajustar_todos para el dashboard, consultar_item para la
     consulta puntual) para que ambos clasifiquen identico."""
     clasif = taxonomia.clasificar(compra.get("nombre_item"), compra.get("descripcion"))
-    compra["categoria"] = clasif["categoria"]
-    compra["subcategoria"] = clasif["subcategoria"]
-    compra["familia"] = clasif["familia"]
-    compra["material"] = clasif["material"]
-    compra["medida"] = clasif["medida"]
-    compra["medida_mm"] = clasif["medida_mm"]
-    compra["cotizable"] = clasif["cotizable"]
-    compra["secundaria"] = clasif["secundaria"]
-    compra["requiere_medida"] = clasif["requiere_medida"]
+    for campo in ("categoria", "subcategoria", "familia", "material", "medida", "medida_texto",
+                  "medida_mm", "cotizable", "secundaria", "requiere_medida",
+                  # atributos (2026-09-22): el tipo y la familia de producto,
+                  # el material con su familia y su grado, el sistema de
+                  # tuberia, la terminacion, las dimensiones con su rol y las
+                  # especificaciones tecnicas. El buscador los indexa como
+                  # campos separados y el dashboard arma con ellos los
+                  # filtros de cada familia.
+                  "tipo", "familia_producto", "material_base", "material_grado", "sistema",
+                  "aplicacion", "terminacion", "color", "dimensiones", "especificaciones",
+                  "esquema", "numeros", "medidas_equivalentes", "confianza", "revisar",
+                  "motivos_revision", "nombre_normalizado"):
+        compra[campo] = clasif[campo]
     compra["hoja"] = taxonomia.clave_hoja(clasif)
+    # La misma hoja escrita para leerla: es la que ve el usuario en la ficha
+    # y en el filtro. La de arriba es la que se indexa y agrupa.
+    compra["hoja_texto"] = taxonomia.clave_hoja(clasif, presentable=True)
     # La clave de agrupacion va aparte del texto que se muestra: el mismo
     # producto puede venir escrito distinto ("Estanque R24 lts rojo 8 bar" y
     # "Estanque R 24 LTS rojo 8 BAR"), y sin normalizar abriria dos hojas.
     compra["hoja_clave"] = taxonomia.clave_agrupacion(clasif)
     return compra
+
+
+def compactar_atributos(compras):
+    """Deja cada compra con sus atributos en la forma que consume el
+    dashboard y devuelve la tabla de facetas por familia.
+
+    La ficha completa (dimensiones con su rol, especificaciones, motivos de
+    revision) es util en Python pero pesada dentro del HTML publicado, que
+    viaja entera al navegador. Aca se aplana a `atr` -- {clave: texto} listo
+    para mostrar en un filtro -- y se sueltan los campos que el navegador no
+    usa (el buscador ya recibe sus terminos en _bt/_bm).
+
+    Devuelve {familia: [[clave, etiqueta], ...]} con los filtros que tienen
+    sentido para cada familia: "Schedule" no existe para una plancha ni
+    "Ancho" para una valvula (pedido del usuario, 2026-09-22)."""
+    from catalogo_atributos import FACETAS_POR_DEFECTO, FACETAS_POR_FAMILIA
+    usadas = {}
+    for compra in compras:
+        dims = compra.get("dimensiones") or {}
+        specs = compra.get("especificaciones") or {}
+        familia = compra.get("familia_producto") or ""
+        atr = {}
+        for clave, etiqueta in FACETAS_POR_FAMILIA.get(familia, FACETAS_POR_DEFECTO):
+            if clave.startswith("dim:"):
+                d = dims.get(clave[4:])
+                valor = dimensiones.texto_dimension(clave[4:], d) if d else None
+            elif clave.startswith("spec:"):
+                valor = specs.get(clave[5:])
+            elif clave == "tipo":
+                valor = compra.get("tipo")
+            elif clave == "terminacion":
+                valor = ", ".join(compra.get("terminacion") or []) or None
+            else:
+                valor = compra.get(clave)
+            if valor:
+                atr[clave] = str(valor)
+        compra["atr"] = atr
+        if familia:
+            usadas[familia] = [list(f) for f in
+                               FACETAS_POR_FAMILIA.get(familia, FACETAS_POR_DEFECTO)]
+        for campo in ("dimensiones", "especificaciones", "esquema", "numeros",
+                      "medidas_equivalentes", "motivos_revision", "nombre_normalizado",
+                      "materiales_secundarios"):
+            compra.pop(campo, None)
+        # Las escrituras legibles viajan solo cuando dicen algo distinto de
+        # la canonica: en la mayoria del catalogo la medida esta en pulgadas
+        # y las dos cadenas son identicas. El template ya cae a la canonica
+        # cuando no vienen (hoja_texto || hoja).
+        for legible, canonico in (("hoja_texto", "hoja"), ("medida_texto", "medida")):
+            if compra.get(legible) == compra.get(canonico):
+                compra.pop(legible, None)
+    return usadas
 
 
 def agrupar_por_hoja(compras):
@@ -414,13 +467,17 @@ def agrupar_por_hoja(compras):
         clave = (compra.get("hoja_clave") or compra.get("hoja")
                  or compra.get("nombre_item") or "sin nombre")
         grupo = grupos.setdefault(clave, {
-            "hoja": compra.get("hoja") or compra.get("nombre_item") or "Sin nombre",
+            # El nombre del grupo se MUESTRA (consola, tablero, cotizacion),
+            # asi que va en la escritura legible; la clave de agrupacion es
+            # la de arriba y no cambia.
+            "hoja": (compra.get("hoja_texto") or compra.get("hoja")
+                     or compra.get("nombre_item") or "Sin nombre"),
             "hoja_clave": clave,
             "categoria": compra.get("categoria"),
             "subcategoria": compra.get("subcategoria"),
             "familia": compra.get("familia"),
             "material": compra.get("material"),
-            "medida": compra.get("medida"),
+            "medida": compra.get("medida_texto") or compra.get("medida"),
             "cotizable": compra.get("cotizable", True),
             "secundaria": compra.get("secundaria", False),
             "compras": [],
@@ -478,6 +535,7 @@ def reajustar_todos(items, uf_hoy, cache_uf=None):
         compra["proveedor_tag"] = item.get("proveedor_tag")
         reajustados.append(agregar_taxonomia(compra))
 
+    unificar_escritura(reajustados)
     if propio_cache:
         guardar_cache_uf(cache_uf)
     return reajustados, sin_uf_count
@@ -486,7 +544,7 @@ def reajustar_todos(items, uf_hoy, cache_uf=None):
 def armar_compra_sin_reajuste(item):
     """Version 'PE' de reajustar_item: sin UF ni reajuste por indice --
     decision explicita del spec de expansion a Peru (no existe hoy una
-    fuente publica equivalente a la UF chilena, ver docs/superpowers/specs/
+    fuente publica equivalente a la UF chilena, ver docs/specs/
     2026-08-21-peru-expansion-design.md decision 5). El precio historico se
     muestra tal cual (factor implicito 1) -- mismo shape de salida que
     reajustar_item para que consultar_item/build_visualizador.py/
@@ -502,6 +560,43 @@ def armar_compra_sin_reajuste(item):
         "precio_reajustado_hoy": precio,
         "precio_reajustado_hoy_con_iva": round(precio * tasa_iva),
     }
+
+
+def unificar_escritura(compras):
+    """Una sola escritura por nombre en todo el catalogo.
+
+    El Excel es la fuente y este modulo es de solo lectura, asi que el mismo
+    proveedor llega escrito de varias formas ("Quilpue" con y sin tilde) y la
+    misma marca tambien ("ANWO" y "Anwo" en dos radiadores seguidos). Verlo
+    dos veces en un filtro hace dudar de si son dos cosas distintas.
+
+    Es un paso sobre el catalogo COMPLETO y no por compra porque la forma
+    correcta se decide comparando todas las escrituras entre si (ver
+    presentacion.unificar_nombres / unificar_ortografia).
+
+    Solo toca las etiquetas que se muestran -- la hoja, el proveedor, el
+    proyecto. El nombre y la descripcion originales del documento quedan
+    intactos: son el registro de lo que decia la factura.
+
+    Devuelve cuantas escrituras se unificaron, para poder reportarlo."""
+    ortografia = presentacion.unificar_ortografia(
+        [c.get("hoja_texto") for c in compras]
+        + [c.get("nombre_item") for c in compras]
+        + [c.get("descripcion") for c in compras])
+    proveedores = presentacion.unificar_nombres([c.get("proveedor_tag") for c in compras])
+    proyectos = presentacion.unificar_nombres([c.get("proyecto") for c in compras])
+
+    for compra in compras:
+        if compra.get("hoja_texto"):
+            compra["hoja_texto"] = presentacion.aplicar_ortografia(
+                compra["hoja_texto"], ortografia)
+        for campo, mapa in (("proveedor_tag", proveedores), ("proyecto", proyectos)):
+            if compra.get(campo):
+                compra[campo] = mapa.get(compra[campo], compra[campo])
+
+    return {"palabras": len(ortografia),
+            "proveedores": sum(1 for k, v in proveedores.items() if k != v),
+            "proyectos": sum(1 for k, v in proyectos.items() if k != v)}
 
 
 def armar_indice_completo_sin_reajuste(items):
@@ -522,6 +617,7 @@ def armar_indice_completo_sin_reajuste(items):
         compra["proyecto"] = item.get("proyecto")
         compra["proveedor_tag"] = item.get("proveedor_tag")
         resultado.append(agregar_taxonomia(compra))
+    unificar_escritura(resultado)
     return resultado, 0
 
 

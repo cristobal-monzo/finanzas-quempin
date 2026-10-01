@@ -6,7 +6,7 @@ Ver el doc maestro compartido en
 (rol, manual de marca, mandato de herramientas dinámicas, política de datos,
 hosting). Ver también [`../CLAUDE.md`](../CLAUDE.md) para el esquema completo
 de `Análisis de Proyectos 2026.xlsx`, y el spec de diseño
-[`docs/superpowers/specs/2026-07-23-analisis-financiero-visualizador-web-design.md`](../../docs/superpowers/specs/2026-07-23-analisis-financiero-visualizador-web-design.md).
+[`docs/specs/2026-07-23-analisis-financiero-visualizador-web-design.md`](../../docs/specs/2026-07-23-analisis-financiero-visualizador-web-design.md).
 
 **Estado: implementado (2026-07-23).**
 

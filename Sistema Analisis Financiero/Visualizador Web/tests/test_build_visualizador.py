@@ -103,7 +103,7 @@ def test_sumar_costos_reales_por_bucket_agrupa_por_tag_y_bucket(tmp_path):
 
 
 def test_calcular_kpis_proyecto_recomputa_igual_que_formula_excel():
-    # Numeros del spec (docs/superpowers/specs/2026-07-23-analisis-financiero-
+    # Numeros del spec (docs/specs/2026-07-23-analisis-financiero-
     # visualizador-web-design.md §2): total_proyectado=800000, total_real=750000
     # -> desviacion=-6.25%, margen_real=250000 (25% de venta, exactamente el
     # objetivo).

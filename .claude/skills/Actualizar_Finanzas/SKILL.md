@@ -22,9 +22,13 @@ py -3.14 ".claude/skills/Actualizar_Finanzas/driver.py" run
 openpyxl (ver `requirements.txt`).
 
 - **`status`** — solo lectura sobre los 4 drivers (Centro de Costos, Análisis
-  Financiero, Reportes PDF, Cotizador Histórico). No escribe Excel, ni
-  archivos, ni tableros. Es el paso previo obligatorio antes de `run`.
+  Financiero, Reportes PDF, Cotizador Histórico) más la sección
+  **Presupuestos del Formulador**. No escribe Excel, ni archivos, ni
+  tableros. Es el paso previo obligatorio antes de `run`.
 - **`run`** — cadena completa, en orden de dependencias:
+  0. Presupuestos entregados por archivo (desde navegadores sin acceso a la
+     carpeta): se incorporan al repositorio de formulaciones. Solo escribe en
+     `publicado/formulador/` y, si falla, no frena lo demás.
   1. Centro de Costos `run` — registra documentos nuevos. Su propio flujo ya
      encadena Análisis Financiero (PASO 12d), el tablero de Centro de Costos
      (12c) y, dentro de Análisis Financiero, el tablero de Análisis
@@ -32,6 +36,40 @@ openpyxl (ver `requirements.txt`).
      actualiza ningún tablero sobre datos a medio escribir.
   2. Cotizador Histórico `visualizador` — el eslabón que faltaba.
   3. Reportes PDF `status` — lista los que quedaron desactualizados.
+  4. Presupuestos del Formulador (solo lectura, después del run de AF).
+
+## Presupuestos del Formulador: revisarlos y cargarlos con el usuario
+
+Pedido del usuario (2026-09-30): «cuando alguien genere un nuevo presupuesto
+quiero que se guarde, o que al menos quede un input para que yo, usando
+Claude, pueda actualizar». Cada presupuesto del Formulador queda en el
+repositorio de formulaciones (`publicado/formulador/` de la carpeta de
+intercambio, en la biblioteca «Formulación de proyectos»). Su sección en
+`status`/`run` (comando `formulaciones` de
+[Registro_Analisis_Financiero](../../../Sistema%20Analisis%20Financiero/.claude/skills/Registro_Analisis_Financiero/SKILL.md))
+muestra:
+
+- **`[NUEVO]` / `[CAMBIÓ]`** — presupuestos desde la última revisión, con su
+  costo, precio neto, margen, estado y autor. **Resúmeselos al usuario** en
+  pocas líneas: quién, qué oferta, precio, margen y si tiene errores. Después
+  marca la revisión con
+  `py -3.14 "Sistema Analisis Financiero/.claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones revisadas`.
+  No los marques sin habérselos mostrado: la corrida programada de las 23:00
+  nunca los marca, justamente para que lleguen al usuario.
+- **`[ELEGIR TAG]` / `[CARGAR]`** — presupuestos *Adjudicada* cuyos costos no
+  están en Análisis Financiero, o que cambiaron después de cargarlos.
+  **Pregúntale al usuario a qué proyecto (TAG) corresponde**, con el sugerido
+  y lo que hoy tiene Análisis Financiero a la vista. Con su sí, corre
+  `driver.py formulaciones cargar <uid> <TAG>` (o `--nombre "..."` si es un
+  proyecto nuevo) **antes de `run`**. Así se deja el mismo envío que haría el
+  Formulador, y el `run` lo aplica con todas sus garantías: respaldo, y nunca
+  pisa un valor escrito a mano que no se vio.
+- `[EN BUZÓN]`, `[CARGADO]` — no hay nada que hacer. `[SIN RESUMEN]` — lo
+  guardó una versión antigua del Formulador: hay que abrirlo y guardarlo de
+  nuevo.
+
+El driver repite al final, en «PRESUPUESTOS DEL FORMULADOR -- para revisar
+con el usuario», si queda algo de esto pendiente.
 
   **Antes de correr este `run`**, si el `status` de arriba mostró
   pendientes de Centro de Costos sin datos en `datos_extraidos.json`, este

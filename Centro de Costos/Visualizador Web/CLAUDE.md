@@ -87,9 +87,9 @@ Centro de Costos/Visualizador Web/
   (desktop) o al tocar (touch), reutilizando el mismo `.viz-tooltip` de los
   gráficos. Deliberadamente no se agregó a ningún otro KPI/gráfico/filtro —
   se consideran autoexplicativos por su label.
-- Ver spec y plan completos en `docs/superpowers/specs/2026-07-19-
+- Ver spec y plan completos en `docs/specs/2026-07-19-
   visualizador-cc-copy-archivo-y-notas-info-design.md` y el plan homónimo en
-  `docs/superpowers/plans/`.
+  `docs/plans/`.
 
 ## Ciclo de mejora continua (2026-07-19) — colores, tipografía, rendimiento
 
@@ -136,6 +136,86 @@ se reviertan por accidente:
   todas de una) y la búsqueda de texto tiene debounce de 150ms — pensado
   para cuando este módulo tenga cientos o miles de documentos, no solo los
   30 actuales.
+
+## Ciclo UX/UI (2026-09-21) — el tablero como herramienta de exploración
+
+Auditoría con navegador real (escritorio, 390 px, modo oscuro) sobre los 724
+documentos reales. Lo que cambió, y por qué, para no revertirlo sin querer:
+
+- **Los gráficos filtran.** Tenían `cursor:pointer` pero un clic no hacía
+  nada. Ahora una barra de proyecto/proveedor, una porción o ítem de leyenda
+  de la dona, o un mes del gráfico mensual filtran todo el tablero (un
+  segundo clic lo quita; "Otros" abre el desglose). El proveedor no tiene
+  select: se filtra desde el gráfico o desde el detalle de un documento
+  ("Ver todo lo de <proveedor>").
+- **Todo cambio de filtro pasa por `setFilters()`** (selects, chips, clics
+  en gráficos, detalle, link). Si agregas un filtro, agrégalo a
+  `EMPTY_FILTERS`, `CHIPS`, `HASH_KEYS` y `getFiltered()`; no escribas otro
+  camino que toque `state` y llame a `render()` por su cuenta.
+- **Chips de filtros activos** bajo la barra de filtros, cada uno removible.
+  Antes la única pista de un filtro puesto era "N de 724".
+- **Filtros y orden viajan en el hash** (`#proyecto=…&cat=…&orden=total_con_iva.asc`):
+  recargar no los pierde y el link copiado abre la misma vista. Un valor que
+  ya no existe en los datos (link viejo) se ignora.
+- **Selector de período** (mes en curso, mes anterior, 3/12 meses, año en
+  curso/anterior) que rellena Desde/Hasta.
+- **Búsqueda por términos**: "easy cinta" exige las dos palabras en
+  cualquier campo (antes, la frase completa como un trozo contiguo). Busca
+  también en proyecto, categoría, tipo de documento y nombre + descripción
+  de cada ítem; el texto se normaliza una sola vez por documento
+  (`d._hay`). Coincidencias resaltadas; atajo `/` y `Esc`. **No es el motor
+  de `Cotizador Historico/Sistema/busqueda.py`**: aquí se filtran documentos,
+  no se rankean ítems. Si el tablero llegara a necesitar sinónimos o medidas
+  equivalentes, reutiliza ese motor en vez de crecer este.
+- **Eje mensual continuo**: `aggregateMensual` rellena los meses sin gasto.
+  Antes Dic 2024 → May 2025 se dibujaba a la misma distancia que Jul → Ago, y
+  la curva acumulada exageraba la pendiente de los tramos con huecos. El eje
+  y usa marcas redondas (`niceScale`), y toda la columna de cada mes responde
+  al mouse (antes había que acertarle a un punto de 4 px).
+- **Montos negativos (notas de crédito)**: `fmt()` pone el signo antes del
+  `$` ("−$194.979"; es-CL da "$-194.979"). Los gráficos grafican solo montos
+  positivos y, si no queda ninguno, lo dicen. La nota de crédito tiene su
+  propio badge gris — antes salía en el ámbar de "Pendiente".
+- **Tabla**: el resumen de ítems va bajo el proveedor (o el ítem que calzó
+  con la búsqueda), filas por página 25/50/100 (recordado en
+  `localStorage`), cabeceras ordenables con teclado, el foco sobrevive a
+  expandir/colapsar, y seleccionar texto no colapsa la fila.
+- **Exportar CSV**: los documentos filtrados en el orden de la tabla, con
+  `;` y BOM UTF-8 (lo que espera Excel es-CL), montos enteros, fechas
+  DD-MM-AAAA. Solo lleva lo que ya está en el snapshot.
+- **Móvil (≤ 640 px)**: la tabla pasa a tarjetas (antes Total y Estado
+  quedaban fuera de pantalla), la navegación entre tableros a una sola fila
+  deslizable (antes 3 filas) y los KPIs a 2 columnas.
+- **Accesibilidad**: foco visible uniforme, el foco entra al modal y vuelve
+  al botón que lo abrió, `aria-label` con resumen en cada gráfico,
+  `prefers-reduced-motion` respetado. En oscuro, barras y muestras llevan un
+  contorno (`--bar-outline`): el slot negro oficial sobre la tarjeta oscura
+  quedaba en 1,3:1.
+- **Bugs corregidos de paso**: la dona quedaba vacía al filtrar por una
+  categoría (un arco de 360° tiene inicio = fin y SVG no lo dibuja; ver
+  `donutPath`); el tooltip quedaba detrás del overlay de los modales
+  (z-index 1000 < 1500); en móvil, el `resize` que dispara la barra de
+  direcciones al hacer scroll redibujaba todo el tablero.
+
+**Etiquetas unificadas en el build, no en el HTML.** El extractor escribe la
+misma etiqueta con y sin tilde ("Ferreteria"/"Ferretería", "Nota de
+Credito"/"Nota de Crédito", "Alimentacion"/"Alimentación"): el tablero las
+mostraba como dos opciones de filtro y dos porciones de la dona.
+`unificar_variantes()` en `build_visualizador.py` las junta (gana la forma
+con tilde) en el snapshot, con test. **No corrige el Excel**: las variantes
+siguen en `Master` y conviene corregirlas en origen.
+
+**Cómo se verificó**: un script Playwright de 36 chequeos (clic en cada tipo
+de gráfico, chips, búsqueda, período, solo notas de crédito, modal, orden por
+teclado, CSV, link con hash, foco) que además compara el KPI "Gasto total"
+contra la suma del snapshot en cada filtro, y la suma del CSV contra el
+total. Vivió en el scratchpad de la sesión, no en el repo.
+
+**Perú no recibió estos cambios.** `Peru/Centro de Costos/Visualizador
+Web/template.html` es una copia de esta plantilla (cambia título, moneda,
+pestaña activa y pie) que ya venía divergiendo. Portarlos es copiar este
+archivo y reaplicar esas diferencias; mejor aún, generar la de Perú a partir
+de esta.
 
 ## Automático desde `run` (2026-07-19) — y el bug de fórmulas sin recalcular
 

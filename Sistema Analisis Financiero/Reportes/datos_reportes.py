@@ -17,7 +17,9 @@ if str(RAIZ_SISTEMA) not in sys.path:
     sys.path.insert(0, str(RAIZ_SISTEMA))
 
 from analisis_financiero import (  # noqa: E402
-    HOJA_DETALLE_COSTOS_REALES, HOJA_PROYECTOS, tiene_datos_completos,
+    HOJA_DETALLE_COSTOS_REALES, HOJA_PROYECTOS, alertas_proyecto,
+    calcular_peso_cartera, concentracion_cartera, percentil_inclusivo,
+    sesgo_por_categoria, tiene_datos_completos,
 )
 
 from kpis_recalculados import (  # noqa: E402
@@ -91,14 +93,73 @@ def _todos_los_proyectos_recalculados(wb) -> list[dict]:
     return entradas
 
 
-def paquete_datos_proyecto(ruta_excel: Path, tag: str) -> dict:
+def abrir_libro(ruta_excel: Path):
+    """Abre el libro de solo lectura. Existe para poder abrirlo UNA vez y
+    pasarlo a varias paquete_datos_*: calcular los 20 reportes de la cartera
+    abria el mismo archivo 20 veces (openpyxl cuesta ~0,3-0,8 s por
+    apertura, ver CLAUDE.md raiz)."""
+    return openpyxl.load_workbook(ruta_excel, data_only=True)
+
+
+def _libro(ruta_excel: Path, wb):
+    return wb if wb is not None else abrir_libro(ruta_excel)
+
+
+def contexto_cartera(entradas: list[dict]) -> dict:
+    """Numeros de TODA la cartera contra los que se lee una entidad: sin
+    ellos, "margen 24%" no dice si es bueno o malo para QUEMPIN. Viaja en el
+    paquete bajo la clave "_contexto" -- el "_" lo deja fuera del hash del
+    manifiesto a proposito: cambia con cualquier proyecto ajeno, y si entrara
+    al hash, tocar un solo proyecto dejaria los 20 reportes desactualizados.
+
+    `entradas`: las de _todos_los_proyectos_recalculados (TODOS los proyectos
+    del libro, completos o no)."""
+    kpis = [
+        {**e["indicadores"], **{
+            k: e["proyecto"].get(k) for k in (
+                "Cliente", "Categoría", "% Avance", "Monto de Venta (sin IVA)",
+                "Costos Materiales Proyectados", "Costos Equipos Proyectados",
+                "Mano de Obra Proyectada", "Otros Costos Proyectados",
+                "Costos Materiales Reales", "Costos Equipos Reales",
+                "Otros Costos Reales", "Mano de Obra Real",
+            )
+        }, "Datos completos": "Sí" if proyecto_tiene_datos_completos(e["proyecto"]) else "No"}
+        for e in entradas
+    ]
+    completos = [k for k in kpis if k["Datos completos"] == "Sí"]
+    ventas_por_cliente: dict[str, float] = {}
+    for e in entradas:
+        cliente = e["proyecto"].get("Cliente")
+        venta = e["proyecto"].get("Monto de Venta (sin IVA)")
+        if cliente and venta:
+            ventas_por_cliente[cliente] = ventas_por_cliente.get(cliente, 0.0) + venta
+
+    margenes = [
+        k["Margen estimado al cierre %"] for k in completos
+        if k["Margen estimado al cierre %"] is not None
+    ]
+    notas = [k["Nota del Proyecto"] for k in completos if k["Nota del Proyecto"] is not None]
+    return {
+        "n_proyectos_completos": len(completos),
+        "peso_cartera": calcular_peso_cartera({
+            e["proyecto"]["TAG proyecto"]: e["proyecto"].get("Monto de Venta (sin IVA)")
+            for e in entradas
+        }),
+        "venta_total": sum(ventas_por_cliente.values()),
+        "margen_mediano": percentil_inclusivo(margenes, 0.5) if margenes else None,
+        "nota_mediana": percentil_inclusivo(notas, 0.5) if notas else None,
+        "sesgo_por_categoria": sesgo_por_categoria(completos),
+        "concentracion": concentracion_cartera(ventas_por_cliente),
+    }
+
+
+def paquete_datos_proyecto(ruta_excel: Path, tag: str, wb=None) -> dict:
     """Datos de 'Proyectos' + KPIs derivados (recalculados en Python, ver
     kpis_recalculados.py) para un proyecto por su TAG. Lanza
     DatosIncompletosError si le faltan campos manuales requeridos."""
-    wb = openpyxl.load_workbook(ruta_excel, data_only=True)
+    entradas = _todos_los_proyectos_recalculados(_libro(ruta_excel, wb))
     entrada = next(
-        (e for e in _todos_los_proyectos_recalculados(wb) if e["proyecto"].get("TAG proyecto") == tag),
-        None,
+        (e for e in entradas if e["proyecto"].get("TAG proyecto") == tag), None,
     )
     if entrada is None:
         raise ValueError(f"TAG de proyecto '{tag}' no encontrado en '{HOJA_PROYECTOS}'.")
@@ -115,10 +176,29 @@ def paquete_datos_proyecto(ruta_excel: Path, tag: str) -> dict:
         "proyecto": proyecto,
         "indicadores": entrada["indicadores"],
         "en_desarrollo": proyecto_esta_en_desarrollo(proyecto),
+        # Las alertas ya existian (consola del run y dashboard) pero no
+        # llegaban al PDF, que es justo donde se revisa un proyecto uno por
+        # uno. Van en el paquete y por lo tanto en el hash: si aparece o se
+        # cierra una alerta, ese reporte queda desactualizado.
+        # ("Datos completos" no viaja en `indicadores` -- no es un KPI del
+        # proyecto, es la columna de apoyo de la hoja Clientes; acá ya se
+        # sabe que es "Sí" porque el guard de arriba no lanzó.)
+        "alertas": alertas_proyecto(
+            proyecto, {**proyecto, **entrada["indicadores"], "Datos completos": "Sí"},
+        ),
+        "_contexto": contexto_cartera(entradas),
     }
 
 
-def paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str) -> dict:
+def _proyecto_plano(entrada: dict) -> dict:
+    """Un proyecto con sus columnas de 'Proyectos' y sus indicadores en un
+    solo dict. Los reportes de cliente/categoría listan un proyecto por fila
+    con su Nota y su margen estimado al cierre, que viven en 'Indicadores';
+    los nombres de columna de las dos hojas no se pisan entre sí."""
+    return {**entrada["proyecto"], **entrada["indicadores"]}
+
+
+def paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str, wb=None) -> dict:
     """KPIs del cliente (hoja 'Clientes', recalculados en Python: N° de
     proyectos, venta y margen acumulados, margen %, si es recurrente y su
     Clasificación) + sus proyectos con datos completos -- los incompletos se
@@ -128,10 +208,9 @@ def paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str) -> dict:
 
     'kpis_cliente' reemplazó a la clave 'cltv' el 2026-09-21, junto con el
     CLTV (ver analisis_financiero.calcular_clientes)."""
-    wb = openpyxl.load_workbook(ruta_excel, data_only=True)
-    entradas = _todos_los_proyectos_recalculados(wb)
+    entradas = _todos_los_proyectos_recalculados(_libro(ruta_excel, wb))
     proyectos_cliente = [
-        e["proyecto"] for e in entradas
+        _proyecto_plano(e) for e in entradas
         if proyecto_tiene_datos_completos(e["proyecto"]) and e["proyecto"].get("Cliente") == nombre_cliente
     ]
     kpis_cliente = calcular_clientes_reporte(entradas).get(nombre_cliente, {})
@@ -145,20 +224,24 @@ def paquete_datos_cliente(ruta_excel: Path, nombre_cliente: str) -> dict:
     return {
         "tipo": "cliente", "cliente": nombre_cliente,
         "kpis_cliente": kpis_cliente, "proyectos": proyectos_cliente,
+        "_contexto": contexto_cartera(entradas),
     }
 
 
-def paquete_datos_categoria(ruta_excel: Path, categoria: str) -> dict:
+def paquete_datos_categoria(ruta_excel: Path, categoria: str, wb=None) -> dict:
     """Proyectos con datos completos (recalculados en Python) cuya
     Categoría calza -- los incompletos se excluyen del agregado."""
-    wb = openpyxl.load_workbook(ruta_excel, data_only=True)
+    entradas = _todos_los_proyectos_recalculados(_libro(ruta_excel, wb))
     proyectos = [
-        e["proyecto"] for e in _todos_los_proyectos_recalculados(wb)
+        _proyecto_plano(e) for e in entradas
         if proyecto_tiene_datos_completos(e["proyecto"]) and e["proyecto"].get("Categoría") == categoria
     ]
     if not proyectos:
         raise ValueError(f"Ningún proyecto con datos completos y Categoría '{categoria}'.")
-    return {"tipo": "categoria", "categoria": categoria, "proyectos": proyectos}
+    return {
+        "tipo": "categoria", "categoria": categoria, "proyectos": proyectos,
+        "_contexto": contexto_cartera(entradas),
+    }
 
 
 _FUNCIONES_POR_TIPO = {
@@ -168,12 +251,13 @@ _FUNCIONES_POR_TIPO = {
 }
 
 
-def paquete_datos_comparacion(ruta_excel: Path, entidades: list[tuple[str, str]]) -> dict:
+def paquete_datos_comparacion(ruta_excel: Path, entidades: list[tuple[str, str]], wb=None) -> dict:
     """entidades: lista de (tipo, identificador), tipo en 'proyecto'/'cliente'/'categoria'."""
+    wb = _libro(ruta_excel, wb)
     paquetes = []
     for tipo, identificador in entidades:
         funcion = _FUNCIONES_POR_TIPO.get(tipo)
         if funcion is None:
             raise ValueError(f"Tipo de entidad desconocido: '{tipo}'.")
-        paquetes.append(funcion(ruta_excel, identificador))
+        paquetes.append(funcion(ruta_excel, identificador, wb))
     return {"tipo": "comparacion", "entidades": paquetes}

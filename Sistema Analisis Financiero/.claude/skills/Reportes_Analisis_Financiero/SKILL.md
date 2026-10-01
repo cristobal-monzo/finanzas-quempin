@@ -5,190 +5,113 @@ description: Usar cuando el usuario escribe "/Reportes_Analisis_Financiero" expl
 
 # Reportes Analisis Financiero
 
-Construye PDFs de analisis financiero especializado (KPIs, graficos, tablas,
-comparativas) con la marca oficial de QUEMPIN. El **contenido de cada reporte
-lo redacta el agente** en la conversacion -- este skill solo expone la
-infraestructura (datos, marca, render) y detecta que reportes quedaron
-desactualizados. Ver
-`docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`
-(raiz de `Finanzas QUEMPIN/`) para el diseno completo.
+Reportes PDF de 2 paginas con la marca oficial de QUEMPIN:
+
+- **Pagina 1 -- el panel de verificacion: la arma `Reportes/panel.py`, NO el
+  agente.** No tiene decisiones editoriales (el estandar es "todos los KPIs
+  de la entidad, sin seleccion"), asi que escribirla a mano era trabajo
+  deterministico pagado como redaccion, y dos reportes escritos en sesiones
+  distintas no quedaban iguales.
+- **Pagina 2 -- el analisis: eso si lo escribe el agente**, y es lo unico.
+
+Diseno completo:
+`docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`
+(raiz de `Finanzas QUEMPIN/`).
 
 ## Comandos
 
-**`status`** -- solo lectura: lista que reportes (proyecto/cliente/categoria)
-estan pendientes o desactualizados.
-
 ```
-python ".claude/skills/Reportes_Analisis_Financiero/driver.py" status
-```
+D=".claude/skills/Reportes_Analisis_Financiero/driver.py"   # desde Sistema Analisis Financiero/
 
-**`run`** -- misma deteccion que `status`, pero pensada para que el agente
-tome la lista y redacte/renderice cada reporte pendiente a continuacion (este
-comando no genera contenido por si solo).
-
-```
-python ".claude/skills/Reportes_Analisis_Financiero/driver.py" run
+py -3.14 "$D" status                       # que reportes quedaron pendientes/desactualizados
+py -3.14 "$D" contexto "proyecto:UMAG"     # los numeros de esa entidad, para redactar
+py -3.14 "$D" generar "proyecto:UMAG" --narrativa analisis_umag.html
+py -3.14 "$D" generar --lote lote.json     # varios de una (un solo Chromium)
 ```
 
-## Como redactar y renderizar un reporte (flujo del agente)
+`contexto` acepta varias claves de una. `--lote` toma un JSON
+`{"proyecto:UMAG": "analisis_umag.html", "cliente:X": "analisis_x.html"}`.
 
-1. Armar el paquete de datos: `datos_reportes.paquete_datos_proyecto/cliente/categoria/comparacion(RUTA_EXCEL, ...)`.
-   Si el proyecto no tiene todos sus datos manuales cargados, esta llamada
-   lanza `DatosIncompletosError` -- **no generar el reporte en ese caso**
-   (ni improvisar los datos que faltan).
-2. Si el paquete de un proyecto trae `en_desarrollo: true` (sin fecha de
-   cierre, o con una posterior a hoy), incluir un indicador visual explícito
-   ("EN DESARROLLO") en el reporte -- nunca presentarlo como un proyecto
-   cerrado y evaluado en forma definitiva.
-3. Redactar el `contenido_html` del reporte envuelto en **exactamente 2**
-   `<div class="pdf-pagina">...</div>` (para Proyecto/Cliente/Categoria --
-   la comparacion ad-hoc todavia no tiene layout definido, ver Gotchas):
-   - **Pagina 1 -- panel de verificacion, misma estructura siempre**: tabla
-     **completa** de KPIs (todos los indicadores relevantes a la entidad,
-     nunca un subconjunto elegido editorialmente), datos clave (montos,
-     costos, desviacion) y el/los grafico(s) estandar de apoyo via
-     `graficos.grafico_barras_svg`/`grafico_dona_svg`. El contenido (que
-     KPIs/columnas) varia segun el tipo de entidad, pero el orden de
-     secciones de esta pagina es siempre el mismo.
-     - **Todo monto en pesos (venta, costos, margen, venta/margen acumulado del cliente, etc.) se
-       formatea con `brand.formatear_moneda(valor)`** -- da "$1.293.765"
-       ("$" + "." como separador de miles), tanto en la tabla de KPIs como
-       en la prosa de pagina 2. No armar el string a mano (`f"{valor:,.0f}"`
-       produce "1,293,765", con la coma como separador de miles al reves de
-       la convencion usada en QUEMPIN). Para valores dentro de un grafico de
-       `graficos.py` (barras/comparativo), pasar `moneda=True` en vez de
-       llamar a `formatear_moneda` aparte -- mismo formato, ya integrado en
-       la funcion del grafico.
-     - **Todo grafico de dona o de barras por categoria lleva leyenda de
-       color**: `graficos.leyenda_html(etiquetas, colores)`. Si hay mas de
-       una categoria de gasto en un mismo grafico de barras, cada categoria
-       usa su propio color -- no todas las barras del mismo color.
-     - **Para comparar Proyectado vs Real por categoria, usar
-       `graficos.grafico_barras_comparativo_svg`** (no `grafico_barras_svg`
-       con `opacidades`, que se probo primero y en la practica costaba
-       distinguir a simple vista que barra era de que categoria -- mismo
-       tono, solo mas claro/oscuro). La variante comparativa agrupa cada
-       categoria con su nombre una sola vez, un cuadro de color + acento
-       vertical junto al nombre, Proyectado con relleno achurado y Real con
-       relleno solido (mismo color en ambos), banda de fondo alternada y
-       linea separadora entre categorias -- la categoria se identifica por
-       color+forma antes de leer cualquier etiqueta.
-     - **Los KPIs fuera de lo esperado van en negrita/naranjo** en la tabla
-       (clase CSS `alerta` en el `<td>`) -- el criterio esta centralizado en
-       `brand.es_kpi_fuera_de_rango(nombre_kpi, valor)` (umbrales: margen
-       neto muy por sobre el objetivo o negativo, rentabilidad sobre costo
-       fuera de [1x, 4x), |desviacion| >= 30%). Usar esa funcion, no repetir
-       un set hardcodeado por script -- si un caso concreto amerita otro
-       criterio (ej. "Frecuencia de compra" es un artefacto de formula, no
-       un KPI con umbral fijo), marcar esa fila a mano y explicar por que en
-       la prosa de pagina 2.
-     - **La tabla completa de KPIs lleva una 3ra columna "Referencia"**
-       (`brand.referencia_kpi(nombre_kpi)`) con el objetivo/rango esperado
-       del playbook -- para que la tabla se explique sola sin depender de
-       leer la pagina 2. Vacia para KPIs sin referencia fija definida
-       (Productividad, Costo % de venta).
-     - **Todo grafico de dona lleva porcentaje por segmento**
-       (`grafico_dona_svg(..., mostrar_porcentaje=True)`) ademas de la
-       leyenda de color -- mas densidad de informacion sin depender solo
-       del color para leer la composicion.
-   - **Pagina 2 -- el analisis, contenido variable**: resumen ejecutivo
-     (2-4 oraciones), fortalezas (evidencia con cifras concretas),
-     debilidades/riesgos (simetrico, igual con cifras), analisis de KPIs
-     interpretado contra una referencia (objetivo del playbook, promedio de
-     categoria, entidad similar -- no solo el valor desnudo), y notas de
-     cierre con foco estrategico/financiero/empresarial (implicancia para
-     una decision futura, no un resumen repetido). Puede sumar graficos
-     puntuales adicionales si el analisis especifico lo amerita -- sin
-     estructura fija aca.
-     - **Preferir listas (`<ul>`/`<ol>`) con `<strong>` en las cifras/
-       conclusiones clave de cada punto** por sobre parrafos largos de
-       prosa, salvo en resumen ejecutivo y analisis de KPIs (mas
-       explicativos, quedan mejor en prosa corta). Objetivo: que se lea de
-       corrido sin tener que releer parrafos densos.
-     - Tipografia mas grande que en pagina 1 (pagina 1 compite por espacio
-       con graficos/tablas; pagina 2 no) -- partir de ~13px de body text en
-       vez de los ~10.5px de pagina 1.
-   - El header (logo/titulo/fecha, e indicador "EN DESARROLLO" si aplica)
-     va completo arriba de la pagina 1 (ya lo pone `brand.construir_html`);
-     **se repite, en version compacta, al inicio de la pagina 2** via
-     `brand.encabezado_html(titulo, generado_el)` -- el PDF impreso debe
-     llevar marca/identificacion en todas sus paginas fisicas, no solo en
-     la primera. El footer si va una sola vez, al final de la pagina 2.
-   - **La pagina 1 y la pagina 2 ya tienen su CSS compartido en
-     `brand.py`** (clases `.pdf-pagina.p1` / `.pdf-pagina.p2`, dentro de
-     `CSS_BASE_REPORTE`) -- usar `<div class="pdf-pagina p1">` /
-     `<div class="pdf-pagina p2">`, no copiar un `<style>` inline por
-     script. Si un reporte concreto necesita un ajuste puntual, extender
-     esas clases compartidas en `brand.py`, no duplicarlas.
-4. Envolver con `brand.construir_html(titulo, generado_el, contenido_html,
-   fecha_corte=...)`. `fecha_corte` (recomendado, no obligatorio) es la
-   fecha de cierre real de los datos (ej. fecha de cierre del proyecto, o
-   la mas reciente entre los proyectos de un cliente/categoria) -- agrega
-   al footer "Datos al {fecha} -- Fuente: Centro de Costos + registro
-   manual", distinto de `generado_el` (cuando se genero el PDF, que puede
-   ser posterior).
-5. Renderizar: `motor_reportes.renderizar_pdf(html, ruta_salida)` hacia
-   `Análisis Financiero/Reportes/{Proyectos,Clientes,Categorías,Comparativas}/`.
-6. Actualizar el manifiesto (solo para proyecto/cliente/categoria, NO para
-   comparaciones ad-hoc): `estado_reportes.marcar_generado(estado, clave, datos, fecha_de_hoy)`
-   y `estado_reportes.guardar_estado(RUTA_ESTADO_REPORTES, nuevo_estado)`. `clave`
-   debe ser EXACTAMENTE la misma clave que le asignó `driver.listar_entidades`
-   (`"proyecto:TAG"` / `"cliente:Nombre"` / `"categoria:Nombre"`) y `datos` debe
-   ser el mismo paquete completo que armaste en el paso 1 -- si cualquiera de
-   los dos difiere, el hash guardado nunca vuelve a calzar con el recalculado
-   y ese reporte queda "desactualizado" para siempre aunque esté al día.
+`generar` arma el documento (pagina 1 + la narrativa), renderiza el PDF en
+`Análisis Financiero/Reportes/{Proyectos,Clientes,Categorías}/`, avisa si no
+quedo en 2 paginas y actualiza el manifiesto de obsolescencia. No hay que
+llamar a `estado_reportes` a mano.
+
+## Flujo del agente
+
+1. `status` -> las claves pendientes (`proyecto:TAG` / `cliente:Nombre` /
+   `categoria:Nombre`).
+2. `contexto <clave>` -> ~20 lineas con todo lo necesario para el analisis:
+   identificacion y estado, venta y su peso en la cartera, presupuesto ->
+   real -> estimado al cierre, margen y Nota contra la mediana de la cartera,
+   la tabla por categoria de gasto **con el sesgo de la cartera al lado**,
+   las alertas del proyecto y la concentracion de clientes. No hay que abrir
+   el Excel ni volcar los dicts del paquete.
+3. Escribir SOLO el analisis en un `.html` suelto (ver abajo) y pasarlo a
+   `generar`.
+
+Si la entidad no tiene sus datos manuales completos no aparece en `status` y
+`generar` falla con `DatosIncompletosError`: explicarle al usuario que campo
+falta, nunca inventarlo.
+
+## Que escribe el agente (pagina 2)
+
+Solo el cuerpo: `generar` le pone el encabezado con marca, el salto de
+pagina y el footer. Estructura esperada:
+
+```html
+<h2>Análisis — Proyecto UMAG</h2>
+<div class="destacado"><p>Resumen ejecutivo, 2-4 oraciones.</p></div>
+<h3>Fortalezas</h3>
+<ul class="lista-analisis"><li>Cifra concreta + <strong>conclusión</strong>.</li></ul>
+<h3>Debilidades / riesgos</h3>
+<ul class="lista-analisis">...</ul>
+<h3>Análisis de KPIs</h3>
+<p>Prosa corta: cada KPI contra una referencia (objetivo del playbook,
+mediana de la cartera, sesgo de la categoría), no el valor desnudo.</p>
+<div class="decision"><h3>Qué hacer con esto</h3>
+<ol class="lista-analisis"><li>Implicancia para una decisión futura.</li></ol></div>
+```
+
+- **Listas con `<strong>` en la cifra o la conclusion de cada punto**, no
+  parrafos largos; prosa solo en el resumen ejecutivo y en el analisis de
+  KPIs.
+- **Interpretar, no repetir**: la pagina 1 ya muestra todos los numeros. La
+  pagina 2 dice que significan y contra que se comparan -- para eso
+  `contexto` trae la mediana de la cartera y el sesgo por categoria.
+- **Todo monto en pesos va con `brand.formatear_moneda`** ("$1.293.765"), o
+  copiado tal cual de la salida de `contexto`, que ya viene formateada.
+  Nunca `f"{valor:,.0f}"` (da "1,293,765", la coma al reves de la
+  convencion chilena).
+- Clases disponibles: `destacado` (caja de resumen), `decision` (caja de
+  cierre), `lista-analisis`, `fila-2-col`. Estan en `brand.CSS_BASE_REPORTE`;
+  si hace falta un ajuste, extender ahi, no poner un `<style>` inline.
+- Un proyecto `EN DESARROLLO` ya sale marcado en la pagina 1: no presentarlo
+  como cerrado ni evaluado en forma definitiva en la prosa.
 
 ## Gotchas
 
 - **Nunca genera contenido sin que se le pida** -- `status`/`run` solo
-  detectan y listan, la redaccion ocurre en conversacion.
-- **Comparaciones ad-hoc no pasan por el manifiesto de obsolescencia** -- se
-  generan frescas cada vez, no se marcan como vigentes/desactualizadas.
-- **Proyectos sin datos manuales completos nunca aparecen como pendientes**
-  (`listar_entidades` los excluye) -- si el usuario pide el reporte de uno
-  igual, `paquete_datos_proyecto` lanza `DatosIncompletosError`: explicarle
-  qué campo falta, no inventarlo.
-- **`en_desarrollo: true` no es un defecto** -- es la señal de que el
-  proyecto sigue abierto (sin fecha de cierre, o con una futura); el reporte
-  se genera igual, solo con el indicador visual correspondiente.
-- **`playwright` debe estar instalado** (`pip install playwright && python -m playwright install chromium`) -- reutiliza el Chromium ya cacheado para Centro de Costos si la revision calza.
-- **`graficos.grafico_barras_svg` no valida valores negativos** -- KPIs como
-  "Margen Real" o "Desviación %" pueden ser legítimamente negativos (proyecto
-  con pérdida). Un valor negativo produce una barra invisible (ancho negativo)
-  y puede distorsionar la escala del resto del gráfico. Para esos KPIs usar
-  una tabla o un texto destacado en vez de `grafico_barras_svg`, o graficar el
-  valor absoluto con una anotación explícita de signo.
-- **La comparación ad-hoc NO tiene layout de 2 páginas definido todavía**
-  (addendum 2026-07-24 del spec, §10) -- si el usuario pide una comparación,
-  antes de redactarla hay que definir su estructura con él, no reutilizar el
-  layout de Proyecto/Cliente/Categoría sin más. Recordárselo explícitamente
-  si no lo menciona.
-- **`grafico_barras_svg` reserva espacio para el valor de la barra mas
-  larga via `margen_valor`** (default 76, en unidades del viewBox) -- si se
-  agranda `ancho`/se achica `ancho_etiqueta` sin ajustar `margen_valor`, el
-  numero de la barra que llega al 100% de `max_valor` puede quedar cortado
-  en el borde del grafico (paso justo por esto en la primera version del
-  panel de proyecto -- "Otros Proyectado" se cortaba). Verificar visualmente
-  (ver mas abajo) despues de cualquier cambio de tamaño, no asumir que un
-  numero mas grande de `ancho` alcanza.
-- **Para porcentajes chicos (Costo % de venta, ~0.9%-7%) usar
-  `decimales=1, sufijo="%"`** en `grafico_barras_svg` -- el formato entero
-  por defecto (".0f") redondea 2,3% a "2", perdiendo precision visible.
-- **Patron "Estructura de costos (% de venta)"**: un `grafico_barras_svg`
-  de una sola serie (no Proyectado/Real) con las 4 categorias de gasto y
-  sus colores, mostrando "Costo X % de venta" -- complementa la dona
-  (composicion del costo real) con la vista "cuanto de la venta se va en
-  cada categoria". Usar `graficos.leyenda_html`/dona en un
-  `<div class="dona-con-leyenda">` (clase ya definida en `brand.py`, pone
-  la leyenda al lado del grafico en vez de debajo) para un uso mas
-  compacto del espacio en la columna izquierda de la página 1.
-- **Verificar la página 1 visualmente, no solo el conteo de páginas** --
-  `pypdf` confirma que entra en 2 páginas, pero no detecta un valor de
-  barra cortado en el borde ni espacio en blanco mal distribuido. Renderizar
-  la página a PNG con PyMuPDF (`fitz`) y mirarla (`Read` la imagen) antes de
-  dar el reporte por bueno:
+  detectan y listan.
+- **La comparacion ad-hoc NO tiene layout de 2 paginas definido**
+  (addendum 2026-07-24 del spec, §10) y `panel.panel()` la rechaza a
+  proposito. Si el usuario pide una comparacion, definir su estructura con
+  el antes de redactarla. No pasa por el manifiesto de obsolescencia.
+- **El contexto de cartera no entra al hash del manifiesto** (viaja en la
+  clave `_contexto`): si entrara, tocar un solo proyecto dejaria los ~20
+  reportes desactualizados de golpe.
+- **`playwright` debe estar instalado** (`py -3.14 -m pip install
+  playwright && py -3.14 -m playwright install chromium`).
+- **Si `generar` avisa "OJO: N paginas"**, el contenido de la pagina 2 se
+  paso de largo: acortar las listas, no achicar la pagina 1.
+- **Un cambio en `panel.py` o en el CSS se verifica mirando el PDF**, no
+  contando paginas: renderizar a PNG con PyMuPDF y leer la imagen.
   ```python
   import fitz
   doc = fitz.open(ruta_pdf)
-  doc[0].get_pixmap(matrix=fitz.Matrix(2, 2)).save(ruta_png)
+  doc[0].get_pixmap(matrix=fitz.Matrix(1.5, 1.5)).save(ruta_png)
   ```
+- **Un KPI nuevo en `HEADERS_INDICADORES` hay que sumarlo a un bloque de
+  `panel.BLOQUES_INDICADORES`** -- `tests/test_panel.py` falla si no, para
+  que no quede fuera del PDF en silencio (ya paso con los 2 KPIs de
+  2026-07-28).

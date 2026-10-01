@@ -18,7 +18,7 @@ Todo el repo corre con **un solo intérprete**: `py -3.14`.
 ```
 py -3.14 -m pip install -r requirements.txt
 py -3.14 -m playwright install chromium      # solo para los reportes PDF
-py -3.14 -m pytest                           # las 7 suites juntas (640 tests)
+py -3.14 -m pytest                           # las 7 suites juntas (972 tests)
 ```
 
 **No uses `python` a secas**: en este equipo el `python` del PATH es 3.11 y
@@ -131,6 +131,31 @@ quedó desactualizada con este pedido.
 | [Análisis Financiero/](Sistema%20Analisis%20Financiero/CLAUDE.md) | Implementado (2026-07-20) | `Sistema Analisis Financiero/CLAUDE.md` |
 | Flujo de Caja | No iniciado | — |
 | [Visualizador Web/](Visualizador%20Web/CLAUDE.md) | Implementado en los 3 módulos (CC 2026-07-19, AF 2026-07-23, Cotizador) | `Visualizador Web/CLAUDE.md` |
+| [Sistema Intercambio/](Sistema%20Intercambio/CLAUDE.md) | Implementado (2026-09-30): Formulador → costos proyectados de AF | `Sistema Intercambio/CLAUDE.md` |
+
+## Cómo se comunican las herramientas: carpeta de intercambio
+
+Desde el 2026-09-30 las herramientas comparten información por una carpeta
+de intercambio sincronizada por OneDrive. **Ya no vive en este repo**: por
+pedido del usuario está en la biblioteca de SharePoint «Formulación de
+proyectos - Documentos», en `.Herramientas formulación/Intercambio/`, para
+que todos los colegas tengan acceso; ahí vive también el repositorio de las
+formulaciones. Ubicación, alcance y cuidados en `Sistema Intercambio/CLAUDE.md`.
+Usa un protocolo común (`Sistema Intercambio/intercambio.py`):
+cada herramienta es dueña de sus datos, **pide** cambios a otra dejando un
+mensaje en `buzon/` y **comparte** lo suyo en `publicado/`; el destinatario
+decide, aplica con sus propias reglas y archiva el mensaje con su resultado.
+Lo usa también el Formulador de proyectos (web, fuera de este repo), que
+abre la carpeta desde el navegador sin iniciar sesión en nada.
+
+Primer flujo: el Formulador envía los costos de una oferta adjudicada y
+Análisis Financiero los aplica como costos proyectados en su `run` (ver
+`Sistema Analisis Financiero/CLAUDE.md` § "Costos proyectados desde el
+Formulador"). **Centro de Costos no se tocó** (ni su ingreso de facturas
+desde SharePoint): sus costos reales llegan al Formulador por la publicación
+de Análisis Financiero. **Si un módulo nuevo necesita pedir o compartir
+datos con otra herramienta, usa este protocolo** en vez de leer o escribir
+los archivos de otro módulo.
 
 ## Cómo se actualiza todo: `/Actualizar_Finanzas`
 
@@ -154,23 +179,90 @@ de `auditor_centro_costos.main()`.
 
 **Centro de Costos** registra el gasto por centro de costos: lee fotos de facturas/boletas depositadas en carpetas por proyecto más un `datos_extraidos.json` ya extraído (con desglose en ítems de línea), y mantiene `Centro de Costos.xlsx` (Master = 1 fila/documento con fórmulas, Detalle = 1 fila/ítem, una hoja de solo lectura por proyecto), de forma idempotente y con backup automático con timestamp antes de cada escritura. La arquitectura completa, el flujo del script, el esquema del JSON y el skill `/Registro_Centro_de_Costos` (comandos `status`/`run`) están documentados en su propio `CLAUDE.md` — léelo antes de tocar cualquier cosa bajo `Centro de Costos/`.
 
-**Visualizador Web** es transversal a todos los módulos: cada uno tendrá, en su propia carpeta, una subcarpeta `Visualizador Web/` con un HTML publicado online (gráficos, tablas dinámicas, buscadores, filtros). El doc maestro compartido (marca, mandato de herramientas dinámicas, política de datos, hosting) vive en `Visualizador Web/CLAUDE.md` a nivel raíz; cada módulo tiene su propio `<Módulo>/Visualizador Web/CLAUDE.md` con el contenido específico a presentar. **Centro de Costos ya tiene una implementación real** (2026-07-19): `Centro de Costos/Visualizador Web/template.html` (estructura, versionada) + `build_visualizador.py` (export + build, corrible vía `driver.py visualizador` del skill `/Registro_Centro_de_Costos`) generan un `build/index.html` autocontenido con los datos incrustados, publicado en GitHub Pages (único canal desde la migración del 2026-08-05 — los Claude Artifacts privados que se usaban antes ya no se actualizan, pedido explícito del usuario 2026-08-19). **Los tres módulos implementados ya tienen su visualizador real** (Centro de Costos 2026-07-19, Análisis Financiero 2026-07-23, Cotizador Historico); solo Flujo de Caja sigue con el scaffolding de `CLAUDE.md`. Ver el spec original en `docs/superpowers/specs/2026-07-19-visualizador-web-design.md`.
+**Visualizador Web** es transversal a todos los módulos: cada uno tendrá, en su propia carpeta, una subcarpeta `Visualizador Web/` con un HTML publicado online (gráficos, tablas dinámicas, buscadores, filtros). El doc maestro compartido (marca, mandato de herramientas dinámicas, política de datos, hosting) vive en `Visualizador Web/CLAUDE.md` a nivel raíz; cada módulo tiene su propio `<Módulo>/Visualizador Web/CLAUDE.md` con el contenido específico a presentar. **Centro de Costos ya tiene una implementación real** (2026-07-19): `Centro de Costos/Visualizador Web/template.html` (estructura, versionada) + `build_visualizador.py` (export + build, corrible vía `driver.py visualizador` del skill `/Registro_Centro_de_Costos`) generan un `build/index.html` autocontenido con los datos incrustados, publicado en GitHub Pages (único canal desde la migración del 2026-08-05 — los Claude Artifacts privados que se usaban antes ya no se actualizan, pedido explícito del usuario 2026-08-19). **Los tres módulos implementados ya tienen su visualizador real** (Centro de Costos 2026-07-19, Análisis Financiero 2026-07-23, Cotizador Historico); solo Flujo de Caja sigue con el scaffolding de `CLAUDE.md`. Ver el spec original en `docs/specs/2026-07-19-visualizador-web-design.md`.
 
 **Los tres se regeneran en disco, y los tres tienen ahora su propio skill "run + publicar" en un solo paso** (2026-08-05): `/Actualizar_CC` (Centro de Costos), `/Actualizar_AF` (Análisis Financiero), `/Actualizar_Cotizador` (Cotizador Histórico) — cada uno corre su registrador/visualizador y republica el dashboard existente en GitHub Pages (URL estructural fija, nunca un link nuevo). Úsalos cuando el usuario nombra un solo módulo; para los tres a la vez sigue siendo `/Actualizar_Finanzas` (que no publica por sí solo — deja los 3 builds listos en disco y reporta cuáles se regeneraron, la publicación de cada uno la hace el agente siguiendo la sección de arriba de ese skill). **El procedimiento común de los tres vive una sola vez** en [`docs/actualizar-un-modulo.md`](docs/actualizar-un-modulo.md) (por qué existen, los cuatro pasos, cuándo no aplican); cada `SKILL.md` solo agrega lo propio de su módulo. Antes los tres repetían ese texto casi palabra por palabra, y había que acordarse de sincronizarlos a mano.
 
 **Análisis Financiero** es distinto a los demás: no es solo un pipeline de registro, es un rol consultivo — actúa como analista financiero experto (evalúa proyectos, propone/depura KPIs, decide cómo presentar la información, cruza todos los módulos), sobre un Excel (`Análisis de Proyectos.xlsx`) que consolida costos reales de Centro de Costos contra ventas y proyecciones manuales por proyecto. **Reorganizado 2026-07-21**: `Análisis Financiero/` contiene únicamente el Excel de trabajo; el código, los tests y el skill viven en la carpeta hermana `Sistema Analisis Financiero/` (ver su `CLAUDE.md` para el diseño completo). Implementado y encadenado al `run` de Centro de Costos (PASO 12d) — ver `Sistema Analisis Financiero/CLAUDE.md`. Desde 2026-07-23 también tiene un Visualizador Web propio (`Sistema Analisis Financiero/Visualizador Web/`, mismo patrón que Centro de Costos: proyectos completos con sus KPIs + Clientes/CLTV, excluyendo del cálculo cualquier proyecto sin información manual completa).
 
+**Lo que no tiene decisión editorial se genera, no se redacta** (2026-09-24,
+reportes PDF de Análisis Financiero). La página 1 de esos reportes lleva por
+estándar *todos* los KPIs de la entidad "sin selección editorial" — o sea, no
+tiene ninguna decisión — y aun así la escribía el agente a mano, en HTML, una
+vez por reporte: 20 entidades, 20 veces el mismo panel, y dos reportes de
+sesiones distintas nunca quedaban idénticos. Ahora la arma
+`Sistema Analisis Financiero/Reportes/panel.py` y el agente escribe solo el
+análisis. Tres cosas que sirven para cualquier módulo que produzca
+documentos:
+
+- **Si el formato está fijo por un estándar escrito, ese estándar es código
+  que todavía no se escribió.** El mismo texto que describía cómo armar la
+  página a mano se borró del `SKILL.md` (194 → 115 líneas) al existir el
+  generador.
+- **Un color sin dirección no informa.** El criterio anterior pintaba del
+  mismo naranjo un margen de 61% y un sobrecosto de +40%: había que leer el
+  número igual. El semáforo (`brand.estado_kpi`) reusa los colores y los
+  cortes ya calibrados del dashboard en vez de definir otros.
+- **Dale al que redacta los números ya comparados.** `driver.py contexto`
+  entrega ~20 líneas con la mediana de la cartera y el sesgo por categoría al
+  lado de cada cifra del proyecto; antes había que volcar los dicts crudos y
+  escribir Python suelto para obtener lo mismo.
+
 **Cotizador Histórico tiene su propia taxonomía de productos** (reestructurada
-2026-09-08): clasifica cada compra en categoría > subcategoría > hoja, donde la
-hoja (`familia + material + medida`) es la unidad de comparación de precios —
-una cañería de cobre de 1/2" nunca se promedia con una de 2". Vive en
-`Cotizador Historico/Sistema/taxonomia.py` + `catalogo_taxonomia.py` (Python,
-testeada, compartida por Chile y Perú y por la consulta de consola y el
-dashboard). **Antes vivía en JavaScript dentro de cada `template.html`**,
-duplicada por país y ya divergente — mismo tipo de hueco que la divergencia del
-KPI "Nota del Proyecto" de 2026-07-28. Si agregas un módulo que necesite
-clasificar ítems, reutiliza ese motor en vez de escribir otro. Auditoría:
+2026-09-08 y 2026-09-22): clasifica cada compra en categoría > familia > tipo,
+más los atributos del producto, y la hoja (`tipo + material + medida`) es la
+unidad de comparación de precios — una cañería de cobre de 1/2" nunca se
+promedia con una de 2". Vive en `Cotizador Historico/Sistema/taxonomia.py` +
+`catalogo_taxonomia.py` (Python, testeada, compartida por Chile y Perú y por la
+consulta de consola y el dashboard). **Antes vivía en JavaScript dentro de cada
+`template.html`**, duplicada por país y ya divergente — mismo tipo de hueco que
+la divergencia del KPI "Nota del Proyecto" de 2026-07-28. Si agregas un módulo
+que necesite clasificar ítems, reutiliza ese motor en vez de escribir otro.
+Auditoría:
 `py -3.14 "Cotizador Historico/.claude/skills/Cotizador_Historico/driver.py" categorias`.
+
+**Un producto no es su forma: es qué es, de qué está hecho y cuánto mide**
+(pedido del usuario 2026-09-22, motor en `Cotizador Historico/Sistema/
+atributos.py` + `catalogo_atributos.py`). El material, la terminación, cada
+dimensión **con su rol** (espesor, ancho, largo, diámetro, diámetro de salida)
+y las especificaciones técnicas (SCH, PN, NPT, norma, grado) son atributos
+independientes, con su confianza. Tres cosas que aprendió este módulo y sirven
+para cualquier otro que clasifique cosas:
+
+- **Una palabra de material nunca puede ser el término que define el tipo de
+  producto.** Mientras `policarbonato` fue un término de la regla "Plancha",
+  una plancha de policarbonato quedó sin material y dentro de "Perfilería y
+  Maderas", junto al pino.
+- **El mismo material cambia de significado según dónde aparece**: "disco de
+  corte **para** acero inoxidable" no es de inoxidable, y "mazo de goma **con
+  mango de** acero" es de goma. Sin rol, el material es una palabra suelta.
+- **Un número solo significa algo dentro de una familia**: "40x2" es un perfil
+  de 40 mm de lado y 2 de espesor; "2x6", una escuadría de pino en pulgadas.
+  Leerlos con una sola regla genérica hacía que tres barras PEX de 16, 20 y 32
+  mm compartieran hoja (la única medida leída era el largo de la barra).
+
+Si un módulo nuevo necesita describir materiales, reutiliza ese motor;
+`driver.py atributos` lista lo que todavía no sabe interpretar y `driver.py
+evaluacion` dice si un cambio mejoró o empeoró.
+
+**Un valor y su escritura son dos cosas distintas** (2026-09-23,
+`Cotizador Historico/Sistema/presentacion.py`). "20000mm" y "20 m" son la
+misma extensión eléctrica: la primera es la que hace falta para *comparar*
+medidas entre sí, la segunda es la única que un comprador reconoce. Mientras
+vivieron en el mismo campo, el catálogo mostraba la escritura de la máquina.
+Dos cosas que dejó separarlas, y valen para cualquier módulo que muestre
+datos que también indexa:
+
+- **La cadena que se muestra no puede ser la que se compara.** Al pasar la
+  hoja a la escritura legible, "Reducción de Cobre 3/4x1/2"" quedó
+  `3/4" x 1/2"` y la consulta `reduccion cobre 3/4 x 1/2` —que el buscador
+  junta en un solo término `3/4x1/2`— dejó de encontrarla. Se ve en la
+  evaluación (P@1 0,982 → 0,955), no mirando la pantalla.
+- **La escritura correcta se puede leer de los propios datos.** El mismo
+  proveedor llega como "Quilpue" y "Quilpué", y la misma marca como "ANWO" y
+  "Anwo". En vez de una lista a mano, gana la forma con tilde y después la
+  más frecuente del catálogo: determinista, explicable y no envejece cuando
+  entra un proveedor nuevo.
 
 **El buscador del Cotizador es otro motor reutilizable** (reescrito
 2026-09-16): `Cotizador Historico/Sistema/busqueda.py` +

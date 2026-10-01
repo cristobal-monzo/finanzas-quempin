@@ -174,3 +174,50 @@ def test_main_cualquier_otro_comando_valido_cae_a_cmd_run(monkeypatch):
     with patch.object(driver, "cmd_run", return_value=0) as mock_fn:
         driver.main()
     mock_fn.assert_called_once()
+
+
+# ── cmd_formulaciones (presupuestos del Formulador, 2026-09-30) ─────────────
+# País ficticio con todas sus rutas en tmp_path: nunca la carpeta real.
+
+def _pais_ficticio(monkeypatch, tmp_path):
+    import formulaciones as fz
+    import intercambio as ic
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    monkeypatch.setitem(af.PAISES, "ZZ", dict(
+        af.PAISES["CL"], raiz_intercambio=raiz, ruta_estado_intercambio=tmp_path / "estado.json",
+        aviso_sin_intercambio=None,
+    ))
+    monkeypatch.setattr(fz, "RUTA_REVISADAS", tmp_path / "revisadas.json")
+    datos = {"uid": "a1b2c3d4e5f6", "codigo": "QPN-2026-001", "version": 1, "titulo": "Obra nueva",
+             "estado": "Adjudicada", "modificado": "2026-09-30T15:00:00.000Z"}
+    carpeta = fz.carpeta_repositorio(raiz)
+    carpeta.mkdir(parents=True)
+    (carpeta / "a1b2c3d4e5f6.json").write_text(__import__("json").dumps({
+        "esquema": ic.ESQUEMA, "herramienta": "formulador", "tipo": "proyecto", "autor": "Persona",
+        "historia": [], "datos": datos,
+        "resumen": {"costosAF": {"Materiales": 1, "Equipos": 2, "Mano de Obra": 3, "Otros": 4}},
+    }), encoding="utf-8")
+    return raiz, fz, ic
+
+
+def test_formulaciones_resumen_y_revisadas(monkeypatch, tmp_path, capsys):
+    raiz, fz, _ = _pais_ficticio(monkeypatch, tmp_path)
+    assert driver.cmd_formulaciones([], pais="ZZ") == 0
+    salida = capsys.readouterr().out
+    assert "[NUEVO] QPN-2026-001 v1 «Obra nueva»" in salida and "[ELEGIR TAG]" in salida
+    assert driver.cmd_formulaciones(["revisadas"], pais="ZZ") == 0
+    assert (tmp_path / "revisadas.json").exists()
+    driver.cmd_formulaciones([], pais="ZZ")
+    assert "Sin novedades" in capsys.readouterr().out
+
+
+def test_formulaciones_cargar_deja_el_envio_en_el_buzon(monkeypatch, tmp_path, capsys):
+    raiz, _, ic = _pais_ficticio(monkeypatch, tmp_path)
+    assert driver.cmd_formulaciones(["cargar", "QPN-2026-001", "obra"], pais="ZZ") == 1   # TAG nuevo sin nombre
+    assert "--nombre" in capsys.readouterr().out
+    assert driver.cmd_formulaciones(["cargar", "QPN-2026-001 v1", "obra", "--nombre", "Obra", "nueva"], pais="ZZ") == 0
+    (m,), _ = ic.leer_buzon(raiz)
+    assert m["proyecto"] == {"tag": "OBRA", "nombre": "Obra nueva", "crear": True}
+    assert m["fuente"]["uid"] == "a1b2c3d4e5f6" and m["origen"]["usuario"] == "Persona (cargado con Claude)"
+    driver.cmd_formulaciones([], pais="ZZ")
+    assert "[EN BUZÓN]" in capsys.readouterr().out

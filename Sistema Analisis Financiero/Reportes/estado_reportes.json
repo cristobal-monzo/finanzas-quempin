@@ -1,58 +1,86 @@
 {
   "categoria:I+D+i": {
-    "generado_el": "2026-08-20",
-    "hash": "16eab6b18cad16cdfdb5eace49ea19dabef0ef1c2c0d28e7559a27936474b26e"
+    "generado_el": "24-09-2026",
+    "hash": "45c795e3ae3ead2d1daec48b641582c80ad387fc78f577aeba61751982688890"
   },
   "categoria:Mantenimiento": {
-    "generado_el": "2026-08-20",
-    "hash": "8ee254abcc8f55ef12b83f5789290bf33a1f82b036068c090fd335a80f9d7423"
+    "generado_el": "24-09-2026",
+    "hash": "65ef2996fe8abd2dae5234ee2b47b0ec7fd9807791b23f5e226e63e6363cc90d"
   },
   "categoria:Montaje": {
-    "generado_el": "2026-08-20",
-    "hash": "794f77560b7832456e7e205bd9da2c9ee8b5f825893f50b5b12c43a89eacde6b"
+    "generado_el": "24-09-2026",
+    "hash": "89592b58a3c5239ffbadfe58d9dfc0feaf72dcbb1a642b9123b6a9a48a8d3b89"
+  },
+  "categoria:Montaje e instalación": {
+    "generado_el": "24-09-2026",
+    "hash": "204579bf325968cddcf95cba874cdaf43ad89f066957ed5ec785f7610e0c71af"
   },
   "cliente:Caldera Valdivia": {
-    "generado_el": "2026-08-20",
-    "hash": "2e85e0e6970146464a1a3199c90e5a7e7203795258e2f02d8eeaf0914a0de7cf"
+    "generado_el": "24-09-2026",
+    "hash": "19809b31c191099151e6bb095be4d9320e6fac76994708af72faad0e0effb563"
   },
   "cliente:Cesfam Constitución": {
-    "generado_el": "2026-08-20",
-    "hash": "1d64b9d06f886a2818d500ab006355ab5f164e378d2cf5ce1bfb830667d1c9b1"
+    "generado_el": "24-09-2026",
+    "hash": "c8e53aaff6d0378282b68d920cef90a274d19d33992042fdd42df050461f3e12"
   },
   "cliente:Cremación Concepción": {
-    "generado_el": "2026-08-20",
-    "hash": "7d03007c67ea5d5882afbf184aa52f04f9ad706746e92e2ab46e0b2109188f6d"
+    "generado_el": "24-09-2026",
+    "hash": "08700b3a618b8c1d5b9e8bd8d33f83742d77597138a95781e8a65187098f87d5"
+  },
+  "cliente:ESFOCAR": {
+    "generado_el": "24-09-2026",
+    "hash": "3d181e786964c882332e3062bcb86dc795366a62bd2352d6b3ea9d2a12269e86"
+  },
+  "cliente:Junji's Valparaiso": {
+    "generado_el": "24-09-2026",
+    "hash": "dfd36016aa53dc1c63e38fefb8505be8958f31a183a692d3b6b2880253e995e7"
   },
   "cliente:Microturbina LER": {
-    "generado_el": "2026-08-20",
-    "hash": "cba6a68641616272938c2c3d4473fd6d2c84a588f1fb0e47eb1e5ffc7ee51dc5"
+    "generado_el": "24-09-2026",
+    "hash": "b7b46e3057fa92183146214a94c47ed119f0293ab1e1fde72a8140696e8c0816"
+  },
+  "cliente:Putaendo Hospital Pinel": {
+    "generado_el": "24-09-2026",
+    "hash": "5daf024fdad4b1afe4194ab4ca59dd022eb30bfd1fe6317267138a023a137ea5"
   },
   "cliente:UMAG": {
     "generado_el": "2026-07-26",
     "hash": "e716a1f55e98ea5ef4af50128c5766c4132e75052d1b9c4de0c281ee4dc172bb"
   },
   "cliente:Universidad de Magallanes": {
-    "generado_el": "2026-08-20",
-    "hash": "7cb0ec0d0746f154c877dc9e0c47be5ed9bc9d6c5a40da99b989d8f49b8a9964"
+    "generado_el": "24-09-2026",
+    "hash": "ffbddc16441b60f7257c272afa2c625a01eddf2a1fba959776c676e0e02a78af"
   },
   "proyecto:CCON": {
-    "generado_el": "2026-08-20",
-    "hash": "c8ecf5c7eb3cf6e6bbe698e18b5fe0337509008fe74889a7d7b5513d7ce48406"
+    "generado_el": "24-09-2026",
+    "hash": "11cca84a5a7c2c19514b2de8987decf827aef4958ec6c5cd6319b415ccdef8d5"
   },
   "proyecto:CREM": {
-    "generado_el": "2026-08-20",
-    "hash": "ed55051093642eca76855a0f58ea06d874ec2447eeb5799a08c26ef37861465d"
+    "generado_el": "24-09-2026",
+    "hash": "1ad6e4ff06edd8f5f20c32b53ccaa46f2bc42bb5ca6c94f5831c33f04aece03e"
   },
   "proyecto:CVAL": {
-    "generado_el": "2026-08-20",
-    "hash": "de0e7d4ac94c0392a1b5bb434582d7d5d816aa603011a349cf53963296d06000"
+    "generado_el": "24-09-2026",
+    "hash": "84befd21d008a9eeed41e46963ea2e7c3986f207f88e18ae110ba22369510966"
+  },
+  "proyecto:ESFO": {
+    "generado_el": "24-09-2026",
+    "hash": "4c220452f4c828a2b810565438f01bcfea6d9a4fde104ab8d865d17c81702ffb"
+  },
+  "proyecto:HPIN": {
+    "generado_el": "24-09-2026",
+    "hash": "8106277005b489b49919e8f05737e983c3817eea40e423d4dc9b85322a374222"
+  },
+  "proyecto:JUNJ": {
+    "generado_el": "24-09-2026",
+    "hash": "e7f9aa572a6e7bcc24723a89c155baf43d7756281d04d90da4b16ae76a02adcd"
   },
   "proyecto:MLER": {
-    "generado_el": "2026-08-20",
-    "hash": "f5817a4e8a8216cfa4524818f7f72d705b8e72d3f7b20020f2d2efafa594195c"
+    "generado_el": "24-09-2026",
+    "hash": "a2d2231439b21cd4dbd8a7cc88c8b5495f77d70f4f1f0dc90815ce7d17048e71"
   },
   "proyecto:UMAG": {
-    "generado_el": "2026-08-20",
-    "hash": "43078f488dda5def2f19c2ee7383729f74938aff80e9704dc37dd0f3bda094d2"
+    "generado_el": "24-09-2026",
+    "hash": "0ccb2b0fc2bdbb2a0986a0c3c0a4fcb8698ad9d923ede63d580f9b7ae91c50e8"
   }
 }

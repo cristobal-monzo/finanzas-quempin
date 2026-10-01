@@ -14,7 +14,7 @@ rutas de este documento son relativas a la raíz de esta carpeta
 El driver vive en `.claude/skills/Registro_Analisis_Financiero/driver.py`.
 
 Ver `../../CLAUDE.md` para el rol del agente (analista financiero, no solo
-pipeline) y `docs/superpowers/specs/2026-07-20-analisis-financiero-design.md`
+pipeline) y `docs/specs/2026-07-20-analisis-financiero-design.md`
 (raíz de `Finanzas QUEMPIN/`) para el diseño completo.
 
 ## Comandos
@@ -70,6 +70,44 @@ Excel que no ameríta un `run` completo).
 python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador
 ```
 
+**`intercambio`** -- costos proyectados enviados desde el Formulador de
+proyectos por el buzón de la carpeta de intercambio,
+`Formulación de proyectos - Documentos/.Herramientas formulación/Intercambio/buzon/` (ver `CLAUDE.md` §
+"Costos proyectados desde el Formulador"). Sin argumentos es solo lectura:
+qué se aplicaría en el próximo `run` y qué envíos esperan una decisión
+(pisarían un valor escrito a mano que quien envió no vio). `run` aplica solo
+lo seguro; lo demás se resuelve acá:
+
+```
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio confirmar <id>   # reemplaza y corre run
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio descartar <id>   # archiva sin tocar el Excel
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio publicar         # lista para el Formulador, sin escribir el Excel
+```
+
+`confirmar` corre un `run` completo: si se hace, publicar el dashboard como
+en `/Actualizar_AF`. Solo Chile (`--pais PE` informa que no está activo).
+
+**`formulaciones`** -- el repositorio de presupuestos del Formulador
+(`publicado/formulador/` de la misma carpeta; pedido del usuario
+2026-09-30). Sin argumentos es solo lectura. Muestra los presupuestos nuevos o
+cambiados desde la última revisión, los entregados por archivo que esperan en
+el buzón, y los *Adjudicada* con su estado frente al Análisis Financiero
+(`CARGADO`, `EN BUZÓN`, `CARGAR`, `ELEGIR TAG`). Cómo usarlo con el usuario
+está en `/Actualizar_Finanzas` § «Presupuestos del Formulador»: el TAG lo
+confirma siempre el usuario.
+
+```
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones incorporar            # entregas por archivo -> repositorio
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones revisadas             # después de mostrárselas al usuario
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones cargar <uid|código [vN]> <TAG> [--nombre "Proyecto nuevo"]
+```
+
+`cargar` deja en el buzón el mismo envío que haría el Formulador, con lo que
+el usuario vio como If-Match. Se aplica en el próximo `run`. Los costos salen
+del `resumen` que calcula el propio Formulador; Python no recalcula precios.
+
 ## Perú (`--pais CL|PE`)
 
 Los 4 comandos aceptan `--pais CL|PE` (default `CL`, sin cambio de
@@ -91,7 +129,10 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador --pa
   Centro de Costos hoy. No esperar que `run` la complete sola.
 - **Las columnas manuales de "Proyectos" nunca se tocan** (TAG, Nombre,
   % Avance, fechas, Venta, proyectados, Mano de Obra Real) -- si algo ahí se
-  ve mal, es un dato cargado a mano, no un bug de este script.
+  ve mal, es un dato cargado a mano, no un bug de este script. **Única
+  excepción (2026-09-30):** los 4 costos proyectados que llegan desde el
+  Formulador por el buzón de Intercambio, solo en los casos seguros; esas
+  celdas llevan una nota de Excel con su procedencia.
 - **TAG proyecto debe calzar con el prefijo de Centro de Costos**
   (`PREFIJOS_PROYECTO` en `auditor_centro_costos.py`) -- si no calzan, los
   costos reales de ese proyecto quedan en $0 (el `SUMIFS` no encuentra

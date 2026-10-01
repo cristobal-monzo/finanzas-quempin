@@ -3,7 +3,7 @@
 analisis_financiero.py -- Consolidador de costos reales por proyecto para
 QUEMPIN SpA. Lee Centro de Costos.xlsx (SOLO LECTURA, nunca lo escribe) y
 mantiene Análisis de Proyectos.xlsx (3 hojas: Proyectos, Detalle Costos
-Reales, Indicadores). Ver docs/superpowers/specs/2026-07-20-analisis-
+Reales, Indicadores). Ver docs/specs/2026-07-20-analisis-
 financiero-design.md para el diseño completo.
 """
 
@@ -58,6 +58,14 @@ RAIZ_FACTURAS_CENTRO_COSTOS = (
 
 RAIZ_VISUALIZADOR_WEB_AF = RAIZ_MODULO / "Visualizador Web"
 
+# Canal de entrada desde el Formulador de proyectos por la carpeta de
+# Intercambio (2026-09-30): costos proyectados que el Formulador envía para
+# un TAG. Lógica y garantías en presupuestos_formulador.py (junto a este
+# archivo); el protocolo común, en "Sistema Intercambio/intercambio.py".
+if str(RAIZ) not in sys.path:
+    sys.path.insert(0, str(RAIZ))
+import presupuestos_formulador as pf  # noqa: E402
+
 # Config por pais -- solo lo que este modulo necesita (Excel de trabajo,
 # Excel/carpeta de facturas de Centro de Costos que lee, columna cuyo
 # nombre varia entre IVA/CLP y IGV/PEN, y carpeta del visualizador). Mismo
@@ -70,6 +78,12 @@ PAISES = {
         "raiz_facturas_cc": RAIZ_FACTURAS_CENTRO_COSTOS,
         "raiz_visualizador_web": RAIZ_VISUALIZADOR_WEB_AF,
         "col_total_sin_iva_cc": "Total sin IVA (CLP)",
+        # Intercambio con el Formulador (Chile: el Formulador trabaja en CLP).
+        # Un país ficticio de pruebas debe sobrescribir estas dos rutas.
+        # None si la biblioteca de Formulación no está sincronizada aquí.
+        "raiz_intercambio": pf.RAIZ_INTERCAMBIO,
+        "ruta_estado_intercambio": pf.RUTA_ESTADO,
+        "aviso_sin_intercambio": None if pf.RAIZ_INTERCAMBIO else pf.AVISO_SIN_INTERCAMBIO,
     },
     "PE": {
         "ruta_excel_af": RAIZ_PERU / "Análisis Financiero" / "Análisis de Proyectos Perú.xlsx",
@@ -79,6 +93,8 @@ PAISES = {
         ),
         "raiz_visualizador_web": RAIZ_PERU / "Análisis Financiero" / "Visualizador Web",
         "col_total_sin_iva_cc": "Total sin IGV (PEN)",
+        "raiz_intercambio": None,
+        "ruta_estado_intercambio": None,
     },
 }
 
@@ -2170,7 +2186,137 @@ def alertas_de_cartera(ws_proyectos, filas_validas: list[dict], agrupado, hoy: d
     return salida
 
 
+# ── INTERCAMBIO CON EL FORMULADOR DE PROYECTOS ──────────────────────────────
+# Lógica y garantías en presupuestos_formulador.py; acá solo se le pasa la
+# hoja y las filas, y se ordena en qué momento de ejecutar() corre cada parte.
+
+def _columnas_proyectos() -> dict[str, int]:
+    return {nombre: idx for idx, nombre in enumerate(HEADERS_PROYECTOS, start=1)}
+
+
+def _primera_fila_libre(ws_proyectos) -> int:
+    """Primera fila después de la última con TAG o Nombre -- no max(fila
+    válida)+1: una fila a medio cargar (sin Nombre) no es válida pero tiene
+    datos, y una fila nueva no puede caerle encima."""
+    ultima = 1
+    for fila in range(2, ws_proyectos.max_row + 1):
+        if ws_proyectos.cell(row=fila, column=1).value is not None or ws_proyectos.cell(row=fila, column=2).value is not None:
+            ultima = fila
+    return ultima + 1
+
+
+def preparar_intercambio(ws_proyectos, filas_validas: list[dict], raiz_intercambio: Path,
+                         ruta_estado: Path, dry_run: bool) -> dict:
+    """Lee el buzón y decide qué hacer con cada envío del Formulador. Sin
+    dry_run, además crea la carpeta si falta, olvida la procedencia de lo que
+    se cambió a mano y escribe las decisiones en la hoja (en memoria: el
+    guardado es el de siempre, al final de ejecutar())."""
+    columnas = _columnas_proyectos()
+    filas_por_tag = {pf.normalizar_tag(f["tag"]): f["fila"] for f in filas_validas}
+    estado = pf.leer_estado(ruta_estado)
+    avisos = []
+    if not dry_run:
+        pf.intercambio.asegurar_carpeta(raiz_intercambio)
+        avisos += pf.sincronizar_procedencia(ws_proyectos, filas_por_tag, columnas, estado)
+    mensajes, avisos_buzon = pf.leer_buzon(raiz_intercambio)
+    avisos += avisos_buzon
+    actuales = {tag: pf.valores_actuales(ws_proyectos, fila, columnas) for tag, fila in filas_por_tag.items()}
+    decisiones = pf.planificar(mensajes, filas_por_tag, actuales, estado)
+    nuevas = []
+    if not dry_run:
+        nuevas = pf.aplicar(ws_proyectos, decisiones, filas_por_tag, columnas, _primera_fila_libre(ws_proyectos))
+    return {
+        "raiz": raiz_intercambio, "ruta_estado": ruta_estado, "estado": estado,
+        "decisiones": decisiones, "nuevas": nuevas, "avisos": avisos,
+    }
+
+
+def proyectos_para_catalogo(ws_proyectos, filas_validas: list[dict], agrupado) -> list[dict]:
+    """Lo que el Formulador necesita de cada proyecto para elegir a cuál
+    enviar y mostrar qué va a cambiar. Sin 'Gastos Generales' (no es un
+    proyecto al que se le cotice) ni venta/márgenes (no los necesita)."""
+    costos = costos_por_bucket(agrupado)
+    salida = []
+    for fila_info in filas_validas:
+        valores = valores_fila_proyectos(ws_proyectos, fila_info["fila"])
+        if valores.get("Categoría") == CATEGORIA_GASTOS_GENERALES:
+            continue
+        reales = costos.get(fila_info["tag"], {})
+        salida.append({
+            "tag": pf.normalizar_tag(fila_info["tag"]), "nombre": fila_info["nombre"],
+            "cliente": valores.get("Cliente"), "categoria": valores.get("Categoría"),
+            "avance": valores.get("% Avance"),
+            "proyectados": {c: valores.get(col) for c, col in pf.COLUMNA_POR_CATEGORIA.items()},
+            "reales": {
+                "Materiales": reales.get("Materiales", 0.0), "Equipos": reales.get("Equipos", 0.0),
+                "Mano de Obra": valores.get("Mano de Obra Real"), "Otros": reales.get("Otros", 0.0),
+            },
+        })
+    return salida
+
+
+def cerrar_intercambio(contexto: dict, ws_proyectos, filas_validas: list[dict], agrupado) -> list[str]:
+    """Después de guardar el Excel: registra la procedencia, archiva los
+    envíos atendidos y publica el catálogo para el Formulador."""
+    avisos = pf.finalizar(contexto["raiz"], contexto["decisiones"], contexto["estado"], contexto["ruta_estado"])
+    pf.publicar_catalogo(
+        contexto["raiz"], proyectos_para_catalogo(ws_proyectos, filas_validas, agrupado),
+        contexto["estado"], contexto["decisiones"],
+    )
+    return avisos
+
+
+def publicar_intercambio(pais: str = "CL") -> dict:
+    """Publica el catálogo para el Formulador **sin escribir el Excel** (solo
+    lo lee, igual que Centro de Costos): para conectar el Formulador o
+    refrescar su lista sin esperar un run. No aplica ningún envío del buzón
+    -- eso solo lo hace ejecutar(), con respaldo y guardado. Escribe
+    únicamente en la carpeta de Intercambio (la crea si falta)."""
+    cfg = PAISES[pais]
+    raiz = cfg.get("raiz_intercambio")
+    if raiz is None:
+        return {"error": f"El intercambio con el Formulador no está activo para {pais}.", "ruta": None}
+    if not cfg["ruta_excel_af"].exists() or not cfg["ruta_excel_cc"].exists():
+        return {"error": "Falta el Excel de Análisis Financiero o el de Centro de Costos.", "ruta": None}
+    wb = openpyxl.load_workbook(cfg["ruta_excel_af"])   # nunca se guarda
+    ws_proyectos = wb[HOJA_PROYECTOS]
+    filas_validas, _ = leer_filas_proyectos(ws_proyectos)
+    items_detalle, _, _ = cargar_datos_centro_costos(cfg["ruta_excel_cc"], pais)
+    agrupado = agrupar_por_proyecto_y_subcategoria(items_detalle)
+    contexto = preparar_intercambio(
+        ws_proyectos, filas_validas, raiz, cfg["ruta_estado_intercambio"], dry_run=True,
+    )
+    pf.intercambio.asegurar_carpeta(raiz)
+    proyectos = proyectos_para_catalogo(ws_proyectos, filas_validas, agrupado)
+    ruta = pf.publicar_catalogo(raiz, proyectos, contexto["estado"], contexto["decisiones"])
+    return {"error": None, "ruta": ruta, "proyectos": len(proyectos)}
+
+
 # ── ORQUESTADOR ───────────────────────────────────────────────────────────
+
+def cargar_datos_centro_costos(ruta_excel_cc: Path, pais: str = "CL"):
+    """(items_detalle, tipos_por_prefijo, nombres_por_prefijo) de Centro de
+    Costos, solo lectura.
+
+    Las tres lecturas salen del snapshot JSON que deja su visualizador
+    (PASO 12c, inmediatamente antes de este modulo), y solo si esta al dia.
+    Antes cada lector abria el .xlsx por su cuenta -- tres load_workbook del
+    mismo archivo, dos de ellos sobre la misma hoja Master -- y eso era ~1,6s
+    de los 2,8s de ejecutar(), el paso mas caro de toda la cadena. Si el
+    snapshot no sirve se cae al Excel, abriendolo una sola vez y compartiendo
+    el wb. Nunca se escribe ese libro. (Extraída de ejecutar() el 2026-09-30
+    para que publicar_intercambio lea exactamente lo mismo.)"""
+    if snapshot_al_dia(ruta_excel=ruta_excel_cc):
+        desde_snapshot = leer_centro_costos_desde_snapshot(pais=pais)
+        if desde_snapshot is not None:
+            return desde_snapshot
+    wb_cc = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
+    return (
+        leer_detalle_centro_costos(ruta_excel_cc, pais=pais, wb=wb_cc),
+        leer_tipo_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc),
+        leer_nombres_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc),
+    )
+
 
 def actualizar_visualizador_af(pais: str = "CL") -> bool:
     """Regenera el visualizador web (Visualizador Web/build/index.html) a
@@ -2206,6 +2352,8 @@ def ejecutar(
     ruta_clientes_pendientes: Path = RUTA_CLIENTES_PENDIENTES,
     dry_run: bool = False,
     pais: str = "CL",
+    raiz_intercambio: Path | None = None,
+    ruta_estado_intercambio: Path | None = None,
 ) -> dict:
     """Orquesta todo el flujo. Con dry_run=True no escribe nada -- ni backup,
     ni carpetas, ni el Excel -- solo reporta qué pasaría (usado por el
@@ -2216,8 +2364,21 @@ def ejecutar(
     'pais' resuelve ruta_excel_af/ruta_excel_cc/raiz_facturas_cc via PAISES
     cuando se omiten -- un valor explícito para cualquiera de los 3 sigue
     ganando (mismo contrato que antes de este parámetro, con "CL" como
-    default transparente)."""
+    default transparente).
+
+    Intercambio con el Formulador (2026-09-30): corre solo contra el libro
+    del país (ruta_excel_af omitida) o si quien llama pasa su propia
+    raiz_intercambio -- un test con un Excel temporal nunca lee ni escribe la
+    carpeta real. Nunca aborta la corrida: si falla, queda como aviso."""
     cfg = PAISES[pais]
+    libro_del_pais = ruta_excel_af is None
+    if raiz_intercambio is None and libro_del_pais:
+        raiz_intercambio = cfg.get("raiz_intercambio")
+    if raiz_intercambio is not None and ruta_estado_intercambio is None:
+        ruta_estado_intercambio = (
+            (cfg.get("ruta_estado_intercambio") if libro_del_pais else None)
+            or Path(raiz_intercambio).parent / pf.RUTA_ESTADO.name
+        )
     if ruta_excel_af is None:
         ruta_excel_af = cfg["ruta_excel_af"]
     if ruta_excel_cc is None:
@@ -2228,7 +2389,10 @@ def ejecutar(
     resumen = {
         "avisos": [], "carpetas_creadas": [], "categorias_no_mapeadas": [],
         "clientes_pendientes": [], "proyectos_nuevos": [], "alertas": [], "error": None,
+        "intercambio": {},
     }
+    if libro_del_pais and raiz_intercambio is None and cfg.get("aviso_sin_intercambio"):
+        resumen["avisos"].append(cfg["aviso_sin_intercambio"])
 
     wb = asegurar_estructura_workbook(ruta_excel_af)
     ws_proyectos = wb[HOJA_PROYECTOS]
@@ -2241,25 +2405,7 @@ def ejecutar(
         )
         return resumen
 
-    # Las tres lecturas de Centro de Costos salen del snapshot JSON que dejo
-    # su visualizador (PASO 12c, inmediatamente antes de este modulo), y solo
-    # si esta al dia. Antes cada lector abria el .xlsx por su cuenta -- tres
-    # load_workbook del mismo archivo, dos de ellos sobre la misma hoja
-    # Master -- y eso era ~1,6s de los 2,8s de ejecutar(), el paso mas caro de
-    # toda la cadena. Si el snapshot no sirve se cae al Excel, abriendolo una
-    # sola vez y compartiendo el wb. Solo lectura: nunca se escribe ese libro.
-    desde_snapshot = None
-    if snapshot_al_dia(ruta_excel=ruta_excel_cc):
-        desde_snapshot = leer_centro_costos_desde_snapshot(pais=pais)
-
-    if desde_snapshot is not None:
-        items_detalle, tipos_por_prefijo, nombres_por_prefijo_cc = desde_snapshot
-    else:
-        wb_cc = openpyxl.load_workbook(ruta_excel_cc, data_only=True)
-        items_detalle = leer_detalle_centro_costos(ruta_excel_cc, pais=pais, wb=wb_cc)
-        nombres_por_prefijo_cc = leer_nombres_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc)
-        tipos_por_prefijo = leer_tipo_proyecto_centro_costos(ruta_excel_cc, wb=wb_cc)
-
+    items_detalle, tipos_por_prefijo, nombres_por_prefijo_cc = cargar_datos_centro_costos(ruta_excel_cc, pais)
     agrupado = agrupar_por_proyecto_y_subcategoria(items_detalle)
     tags_existentes = {f["tag"] for f in filas_validas}
     prefijos_faltantes = {
@@ -2279,6 +2425,15 @@ def ejecutar(
                 categorias_no_mapeadas.add(subcategoria)
         resumen["categorias_no_mapeadas"] = sorted(categorias_no_mapeadas)
         resumen["alertas"] = alertas_de_cartera(ws_proyectos, filas_validas, agrupado)
+        if raiz_intercambio is not None:
+            try:
+                previo = preparar_intercambio(
+                    ws_proyectos, filas_validas, raiz_intercambio, ruta_estado_intercambio, dry_run=True,
+                )
+                resumen["intercambio"] = pf.resumen_decisiones(previo["decisiones"])
+                resumen["avisos"].extend(previo["avisos"])
+            except Exception as exc:
+                resumen["avisos"].append(f"Intercambio con el Formulador: no se pudo revisar el buzón ({exc}).")
         return resumen
 
     if prefijos_faltantes:
@@ -2290,6 +2445,23 @@ def ejecutar(
         hacer_backup(ruta_excel_af, raiz_respaldos)
     except PermissionError as exc:
         resumen["avisos"].append(f"No se pudo respaldar (¿archivo abierto?): {exc}")
+
+    # Costos proyectados enviados por el Formulador: se escriben antes de
+    # las fórmulas, Clientes e Indicadores para que esta misma corrida (y el
+    # dashboard) ya los use. Si algo falla, la corrida sigue sin ellos.
+    contexto_intercambio = None
+    if raiz_intercambio is not None:
+        try:
+            contexto_intercambio = preparar_intercambio(
+                ws_proyectos, filas_validas, raiz_intercambio, ruta_estado_intercambio, dry_run=False,
+            )
+            filas_validas.extend(contexto_intercambio["nuevas"])
+            resumen["proyectos_nuevos"].extend(f["nombre"] for f in contexto_intercambio["nuevas"])
+            resumen["intercambio"] = pf.resumen_decisiones(contexto_intercambio["decisiones"])
+            resumen["avisos"].extend(contexto_intercambio["avisos"])
+        except Exception as exc:
+            contexto_intercambio = None
+            resumen["avisos"].append(f"Intercambio con el Formulador: se omitió en esta corrida ({exc}).")
 
     try:
         resumen["carpetas_creadas"] = asegurar_carpetas_proyectos(filas_validas, raiz_facturas_cc)
@@ -2329,6 +2501,15 @@ def ejecutar(
     except PermissionError as exc:
         resumen["error"] = f"No se pudo guardar {ruta_excel_af} (¿archivo abierto?): {exc}"
 
+    # Solo con el Excel ya guardado: si no se pudo guardar, los envíos del
+    # Formulador siguen en el buzón y se aplican en la próxima corrida.
+    if contexto_intercambio is not None and resumen["error"] is None:
+        try:
+            resumen["avisos"].extend(cerrar_intercambio(contexto_intercambio, ws_proyectos, filas_validas, agrupado))
+        except Exception as exc:
+            resumen["avisos"].append(f"Intercambio con el Formulador: el Excel quedó guardado, pero no se pudo "
+                                     f"archivar ni publicar ({exc}); se reintenta en la próxima corrida.")
+
     try:
         if not actualizar_visualizador_af(pais=pais):
             resumen["avisos"].append(
@@ -2362,12 +2543,31 @@ def main(pais: str = "CL") -> None:
             f"[AVISO] {len(resumen['clientes_pendientes'])} cliente(s) nuevo(s) parecido(s) "
             "a uno existente -- revisar con 'python driver.py confirmar-cliente'."
         )
+    imprimir_intercambio(resumen["intercambio"], aplicado=not resumen["error"])
     for aviso in resumen["avisos"]:
         print(f"[AVISO] {aviso}")
     for alerta in resumen["alertas"]:
         print(f"[ALERTA] {alerta}")
     if resumen["error"]:
         print(f"[ERROR] {resumen['error']}")
+
+
+TITULOS_INTERCAMBIO = {
+    "aplicar": ("Costos proyectados aplicados desde el Formulador", "Se aplicarían desde el Formulador"),
+    "sin-cambios": ("Envíos del Formulador que ya coincidían con el Excel", "Envíos del Formulador que ya coinciden con el Excel"),
+    "pendiente": ("Envíos del Formulador que esperan tu decisión (siguen en el buzón)",) * 2,
+    "reemplazado": ("Envíos del Formulador reemplazados por uno más reciente", "Se archivarían por haber uno más reciente"),
+    "rechazado": ("Envíos del Formulador rechazados por formato", "Se rechazarían por formato"),
+}
+
+
+def imprimir_intercambio(por_accion: dict, aplicado: bool = True) -> None:
+    """Sección de consola de run (aplicado=True) y status (False)."""
+    for accion in ("aplicar", "pendiente", "sin-cambios", "reemplazado", "rechazado"):
+        if por_accion.get(accion):
+            print(f"{TITULOS_INTERCAMBIO[accion][0 if aplicado else 1]}:")
+            for linea in por_accion[accion]:
+                print(f"  - {linea}")
 
 
 if __name__ == "__main__":

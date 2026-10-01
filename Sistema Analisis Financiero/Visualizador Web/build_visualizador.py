@@ -15,7 +15,7 @@ la misma implementación que usan los reportes PDF. Aquí solo se traduce el
 resultado a las claves cortas del snapshot y se agrega lo que depende de
 toda la cartera (peso en cartera, cobertura, totales).
 
-Ver docs/superpowers/specs/2026-07-23-analisis-financiero-visualizador-web-
+Ver docs/specs/2026-07-23-analisis-financiero-visualizador-web-
 design.md para el diseno original.
 """
 

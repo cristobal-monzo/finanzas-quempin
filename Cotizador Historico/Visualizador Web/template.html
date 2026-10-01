@@ -1,4 +1,13 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- DOCTYPE + charset + viewport (2026-09-24, mismo arreglo que Analisis
+     Financiero en su auditoria del 2026-09-21): sin viewport un telefono
+     dibujaba el tablero a ~980 px y lo achicaba, y las reglas @media de
+     movil de mas abajo nunca se activaban; sin DOCTYPE corria en modo
+     quirks. Ver Visualizador Web/tests/test_tableros_movil.py. -->
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cotizador Historico — Visualizador</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
@@ -161,7 +170,27 @@
     margin-top: 14px;
     padding-top: 10px;
   }
-  .viz-modnav-inner { display: flex; gap: 4px; flex-wrap: wrap; }
+  .viz-modnav-inner { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
+  .viz-modnav-tabs { display: flex; gap: 4px 16px; flex-wrap: wrap; min-width: 0; }
+  /* Selector de país (2026-10-01): antes había 6 pestañas, una por módulo y
+     país; ahora son las 3 de los módulos y el país se elige aquí. <select>
+     nativo (en el teléfono abre la lista del sistema) con la flecha dibujada,
+     para que se vea igual sobre la cabecera negra en todos los navegadores. */
+  .viz-modnav-pais {
+    flex: 0 0 auto;
+    -webkit-appearance: none; appearance: none;
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+    color: #ffffff;
+    background: rgba(255,255,255,0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    padding: 5px 28px 5px 10px;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+  .viz-modnav-pais:hover { background-color: rgba(255,255,255,0.14); }
+  .viz-modnav-pais:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
+  .viz-modnav-pais option { color: #ffffff; background: #1a1a1a; }
   .viz-modnav-tab {
     display: inline-block;
     padding: 6px 12px;
@@ -173,6 +202,7 @@
     border-bottom: 2px solid transparent;
   }
   a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
+  a.viz-modnav-tab.is-active:hover { background: none; }
   .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
 
   /* Password gate */
@@ -636,10 +666,17 @@
     .viz-titleblock { order: 3; flex-basis: 100%; }
     .viz-theme-toggle { margin-left: auto; }
     .viz-modnav { margin-top: 10px; }
-    /* Una sola fila deslizable: con wrap, las 6 pestañas ocupaban 3 filas. */
-    .viz-header .viz-modnav-inner { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; gap: 4px; }
-    .viz-header .viz-modnav-inner::-webkit-scrollbar { display: none; }
-    .viz-modnav-tab { white-space: nowrap; }
+    /* Una sola fila: el selector de país fijo a la izquierda y solo las
+       pestañas se deslizan (con wrap, la navegación ocupaba varias filas). */
+    .viz-header .viz-modnav-inner { flex-wrap: nowrap; }
+    .viz-modnav-tabs { flex: 1 1 auto; flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .viz-modnav-tabs::-webkit-scrollbar { display: none; }
+    .viz-modnav-tab { white-space: nowrap; flex: 0 0 auto; }
+    /* 16 px: con menos, Safari de iPhone hace zoom al tocar el selector. */
+    .viz-modnav-pais { font-size: 16px; padding: 4px 26px 4px 9px; }
+    /* Etiquetas cortas (Costos / Análisis / Cotizador): así las 3 caben
+       junto al selector desde 360 px; más angosto, la fila se desliza. */
+    .viz-modnav-largo { display: none; }
     .viz-hero { padding: 14px 14px 12px; }
     .viz-hero-title { font-size: 17px; }
     .viz-hint { line-height: 1.8; }
@@ -669,8 +706,17 @@
     .viz-leafrow .lf-price { grid-column: 2; grid-row: 1 / span 2; }
     .viz-cart-fab { right: 16px; bottom: 16px; }
     .viz-toast { bottom: 76px; }
+    /* 16 px: con menos, Safari de iPhone hace zoom al tocar el campo
+       (el buscador principal ya lo tenia; los filtros y el orden no). */
+    .viz-field input, .viz-field select, #fOrden, .viz-qty input { font-size: 16px; }
+    /* 2 columnas: con el minimo de 165 px cabia una sola y los 12 filtros
+       eran una pantalla y media de selects apilados. */
+    .viz-filtergrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .viz-ejemplo { padding-top: 6px; padding-bottom: 6px; }
   }
 </style>
+</head>
+<body>
 
 <div class="viz-gate" id="pwGate">
   <form class="viz-gate-card" id="pwForm">
@@ -696,14 +742,21 @@
       </div>
       <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
     </div>
-    <nav class="viz-modnav">
-      <div class="viz-container viz-modnav-inner">
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/">Centro de Costos</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a>
-        <span class="viz-modnav-tab is-active">Cotizador Histórico</span>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/">Centro de Costos 🇵🇪</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero-peru/">Análisis Financiero 🇵🇪</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/">Cotizador Histórico 🇵🇪</a>
+    <nav class="viz-modnav" aria-label="Tableros">
+      <!-- Selector de país + las 3 pestañas de módulo. Los enlaces apuntan a
+           Chile; el JS los pasa al país de este tablero y marca la activa
+           según data-nav-activo (la subruta publicada). Este bloque es igual
+           en los 5 templates: solo cambia ese atributo. -->
+      <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="cotizador-historico">
+        <select class="viz-modnav-pais" id="modNavPais" aria-label="País">
+          <option value="">Chile</option>
+          <option value="-peru">Perú</option>
+        </select>
+        <div class="viz-modnav-tabs">
+          <a class="viz-modnav-tab" data-modulo="centro-de-costos" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/"><span class="viz-modnav-largo">Centro de </span>Costos</a>
+          <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis<span class="viz-modnav-largo"> Financiero</span></a>
+          <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
+        </div>
       </div>
     </nav>
   </header>
@@ -743,6 +796,7 @@
       <div id="filterPanel" class="viz-filterpanel" hidden>
         <div class="viz-filtergrid">
           <div class="viz-field"><label for="fCategoria">Categoría</label><select id="fCategoria"></select></div>
+          <div class="viz-field"><label for="fFamilia">Familia</label><select id="fFamilia"></select></div>
           <div class="viz-field"><label for="fSubcategoria">Subcategoría</label><select id="fSubcategoria"></select></div>
           <div class="viz-field"><label for="fMaterial">Material</label><select id="fMaterial"></select></div>
           <div class="viz-field"><label for="fMedida">Medida</label><select id="fMedida"></select></div>
@@ -755,6 +809,10 @@
           <div class="viz-field"><label for="fHasta">Comprado hasta</label><input id="fHasta" type="date" /></div>
           <div class="viz-field"><label for="fPrecioMin">Precio mín. (c/IVA)</label><input id="fPrecioMin" type="number" inputmode="numeric" min="0" step="1000" placeholder="$" /></div>
           <div class="viz-field"><label for="fPrecioMax">Precio máx. (c/IVA)</label><input id="fPrecioMax" type="number" inputmode="numeric" min="0" step="1000" placeholder="$" /></div>
+        </div>
+        <div id="filtrosFamiliaWrap" hidden>
+          <p class="viz-filternote is-familia" id="filtrosFamiliaTitulo"></p>
+          <div class="viz-filtergrid" id="filtrosFamilia"></div>
         </div>
         <p class="viz-filternote">Cada lista muestra solo las opciones que existen en lo que encontró tu búsqueda, con cuántas compras hay de cada una.</p>
       </div>
@@ -925,6 +983,39 @@
     try { localStorage.setItem('ch_viz_theme', next); } catch (e) {}
   });
 
+  // ---------- navegación entre tableros: país + pestaña activa ----------
+  // data-nav-activo es la subruta publicada de este tablero (ej.
+  // "analisis-financiero-peru"): de ahí salen el país del selector, a qué
+  // país apuntan las 3 pestañas y cuál se marca. Mismo bloque en los 5
+  // templates.
+  (function () {
+    var nav = document.getElementById('modNav');
+    if (!nav) return;
+    var BASE = 'https://cristobal-monzo.github.io/finanzas-quempin/';
+    var activo = nav.getAttribute('data-nav-activo') || '';
+    var sufijo = /-peru$/.test(activo) ? '-peru' : '';
+    var modulo = activo.slice(0, activo.length - sufijo.length);
+    nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
+      if (a.getAttribute('data-modulo') === modulo) {
+        a.classList.add('is-active');
+        a.setAttribute('aria-current', 'page');
+        a.removeAttribute('href');
+      } else {
+        a.href = BASE + a.getAttribute('data-modulo') + sufijo + '/';
+      }
+    });
+    // Cambiar de país lleva al mismo módulo en el otro país. Al volver con
+    // "Atrás" el navegador puede restaurar el selector con el otro país
+    // elegido: por eso se repone cada vez que se muestra la página.
+    var pais = document.getElementById('modNavPais');
+    function reponerPais() { pais.value = sufijo; }
+    reponerPais();
+    window.addEventListener('pageshow', reponerPais);
+    pais.addEventListener('change', function () {
+      if (pais.value !== sufijo) location.href = BASE + modulo + pais.value + '/';
+    });
+  })();
+
   // En celular las pestañas de tableros son una fila deslizable: se centra la
   // activa, que si no queda cortada contra el borde derecho.
   var tabActiva = document.querySelector('.viz-modnav-tab.is-active');
@@ -1004,8 +1095,13 @@
       subcategoria: it.subcategoria || 'Sin Clasificar',
       familia: it.familia,
       material: it.material,
-      medida: it.medida,
-      hoja: it.hoja || it.nombre_item,
+      // La medida COMO SE LEE ("20 m"), no la canonica con que el
+      // buscador la compara ("20000mm"). Un item viejo del snapshot
+      // puede no traer medida_texto.
+      medida: it.medida_texto || it.medida,
+      // hoja_texto es la hoja COMO SE LEE ("Extensión Eléctrica 20 m");
+      // it.hoja es la canónica, la que se indexa y con la que se agrupa.
+      hoja: it.hoja_texto || it.hoja || it.nombre_item,
       // hoja_clave es la version normalizada con la que se agrupa: el mismo
       // producto puede venir escrito distinto ("Estanque R24 lts rojo 8 bar"
       // y "Estanque R 24 LTS rojo 8 BAR") y sin ella abriria dos hojas.
@@ -1091,9 +1187,13 @@
   // ---------- filtros ----------
   var FILTROS = [
     { id: 'fCategoria',    clave: 'categoria',    etiqueta: 'Categoría',    todas: 'Todas',  campo: function (i) { return i._clasif.categoria; } },
+    // Familia de producto (Planchas, Fittings, Pernos): el nivel entre la
+    // categoría y el tipo, y el que decide qué filtros de atributo se
+    // ofrecen mas abajo.
+    { id: 'fFamilia',      clave: 'familia',      etiqueta: 'Familia',      todas: 'Todas',  campo: function (i) { return i.familia_producto; } },
     { id: 'fSubcategoria', clave: 'subcategoria', etiqueta: 'Subcategoría', todas: 'Todas',  campo: function (i) { return i._clasif.subcategoria; } },
     { id: 'fMaterial',     clave: 'material',     etiqueta: 'Material',     todas: 'Todos',  campo: function (i) { return i.material; } },
-    { id: 'fMedida',       clave: 'medida',       etiqueta: 'Medida',       todas: 'Todas',  campo: function (i) { return i.medida; } },
+    { id: 'fMedida',       clave: 'medida',       etiqueta: 'Medida',       todas: 'Todas',  campo: function (i) { return i._clasif.medida; } },
     { id: 'fMarca',        clave: 'marca',        etiqueta: 'Marca',        todas: 'Todas',  campo: function (i) { return i.marca; } },
     { id: 'fProveedor',    clave: 'proveedor',    etiqueta: 'Proveedor',    todas: 'Todos',  campo: function (i) { return i.proveedor_tag; } },
     { id: 'fProyecto',     clave: 'proyecto',     etiqueta: 'Proyecto',     todas: 'Todos',  campo: function (i) { return i.proyecto; } }
@@ -1101,11 +1201,16 @@
 
   var searchState = {
     texto: '', mostrarTodas: false, agrupar: true, orden: 'relevancia',
-    filtros: {}, precioMin: '', precioMax: '', desde: '', hasta: ''
+    filtros: {}, atributos: {}, precioMin: '', precioMax: '', desde: '', hasta: ''
   };
   FILTROS.forEach(function (f) { searchState.filtros[f.clave] = ''; });
 
-  function pasaFiltros(item, exceptoClave) {
+  function pasaFiltros(item, exceptoClave, exceptoAtributo) {
+    for (var clave in searchState.atributos) {
+      if (clave === exceptoAtributo) continue;
+      var elegido = searchState.atributos[clave];
+      if (elegido && String((item.atr || {})[clave] || '') !== elegido) return false;
+    }
     for (var i = 0; i < FILTROS.length; i++) {
       var f = FILTROS[i];
       if (f.clave === exceptoClave) continue;
@@ -1159,11 +1264,90 @@
     });
   }
 
+  // ---------- filtros de atributo, segun la familia ----------
+  // No tiene sentido ofrecer "Schedule" para una plancha ni "Ancho" para una
+  // valvula: los filtros dependen de la familia del producto. La tabla de
+  // que atributo va con que familia viene del snapshot
+  // (Sistema/catalogo_atributos.py: FACETAS_POR_FAMILIA), y los valores
+  // salen de item.atr, que el build deja ya formateado.
+  var FACETAS_FAMILIA = DATA.facetas || {};
+  var ETIQUETA_ATRIBUTO = {};
+  Object.keys(FACETAS_FAMILIA).forEach(function (fam) {
+    FACETAS_FAMILIA[fam].forEach(function (par) { ETIQUETA_ATRIBUTO[par[0]] = par[1]; });
+  });
+
+  function familiaEnFoco(items) {
+    if (searchState.filtros.familia) return searchState.filtros.familia;
+    // Si todo lo que encontró la búsqueda es de una sola familia, se ofrecen
+    // sus filtros sin que haya que elegirla a mano.
+    var vistas = {}, total = 0;
+    for (var i = 0; i < items.length && total < 2; i++) {
+      var f = items[i].familia_producto;
+      if (f && !vistas[f]) { vistas[f] = true; total++; }
+    }
+    var claves = Object.keys(vistas);
+    return claves.length === 1 ? claves[0] : null;
+  }
+
+  function opcionesDeAtributo(clave) {
+    var conteo = {};
+    BASE_FACETAS.forEach(function (item) {
+      if (!pasaFiltros(item, null, clave)) return;
+      var v = (item.atr || {})[clave];
+      if (v === undefined || v === null || v === '') return;
+      conteo[v] = (conteo[v] || 0) + 1;
+    });
+    return Object.keys(conteo).sort(function (a, b) {
+      return conteo[b] - conteo[a] || a.localeCompare(b, 'es', { numeric: true });
+    }).map(function (v) { return { valor: v, n: conteo[v] }; });
+  }
+
+  function renderFiltrosAtributo() {
+    var wrap = document.getElementById('filtrosFamiliaWrap');
+    var el = document.getElementById('filtrosFamilia');
+    var familia = familiaEnFoco(BASE_FACETAS);
+    var facetas = familia ? (FACETAS_FAMILIA[familia] || []) : [];
+    // Un filtro activo sobre un atributo que ya no aplica quedaría invisible
+    // y sin forma de sacarlo.
+    Object.keys(searchState.atributos).forEach(function (clave) {
+      var sigue = facetas.some(function (f) { return f[0] === clave; });
+      if (!sigue) delete searchState.atributos[clave];
+    });
+    var campos = facetas.map(function (f) {
+      var opciones = opcionesDeAtributo(f[0]);
+      if (!opciones.length) return '';
+      var id = 'fAtr_' + f[0].replace(/[^a-z0-9]/gi, '_');
+      return '<div class="viz-field"><label for="' + id + '">' + esc(f[1]) + '</label>' +
+        '<select id="' + id + '" data-atributo="' + esc(f[0]) + '">' +
+        '<option value="">Todas</option>' + opciones.map(function (o) {
+          return '<option value="' + esc(o.valor) + '"' +
+            (o.valor === searchState.atributos[f[0]] ? ' selected' : '') + '>' +
+            esc(o.valor) + ' (' + o.n + ')</option>';
+        }).join('') + '</select></div>';
+    }).filter(Boolean).join('');
+    wrap.hidden = !campos;
+    document.getElementById('filtrosFamiliaTitulo').innerHTML =
+      campos ? 'Filtros de <b>' + esc(familia) + '</b>' : '';
+    el.innerHTML = campos;
+    el.querySelectorAll('select').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        searchState.atributos[sel.getAttribute('data-atributo')] = sel.value;
+        renderSearch();
+      });
+    });
+  }
+
   function chipsFiltrosActivos() {
     var chips = [];
     FILTROS.forEach(function (f) {
       if (searchState.filtros[f.clave]) {
         chips.push({ clave: f.clave, texto: f.etiqueta + ': ' + searchState.filtros[f.clave] });
+      }
+    });
+    Object.keys(searchState.atributos).forEach(function (clave) {
+      if (searchState.atributos[clave]) {
+        chips.push({ clave: 'atr:' + clave,
+                     texto: (ETIQUETA_ATRIBUTO[clave] || clave) + ': ' + searchState.atributos[clave] });
       }
     });
     if (searchState.desde) chips.push({ clave: 'desde', texto: 'Desde ' + fmtDate(searchState.desde) });
@@ -1174,7 +1358,8 @@
   }
 
   function limpiarFiltro(clave) {
-    if (Object.prototype.hasOwnProperty.call(searchState.filtros, clave)) searchState.filtros[clave] = '';
+    if (clave.indexOf('atr:') === 0) delete searchState.atributos[clave.slice(4)];
+    else if (Object.prototype.hasOwnProperty.call(searchState.filtros, clave)) searchState.filtros[clave] = '';
     else searchState[clave] = '';
     sincronizarControles();
     renderSearch();
@@ -1182,6 +1367,7 @@
 
   function limpiarTodo() {
     FILTROS.forEach(function (f) { searchState.filtros[f.clave] = ''; });
+    searchState.atributos = {};
     searchState.desde = searchState.hasta = searchState.precioMin = searchState.precioMax = '';
     sincronizarControles();
     renderSearch();
@@ -1193,6 +1379,7 @@
     document.getElementById('fPrecioMin').value = searchState.precioMin;
     document.getElementById('fPrecioMax').value = searchState.precioMax;
     renderFiltros();
+    renderFiltrosAtributo();
   }
 
   // ---------- historial de busquedas ----------
@@ -1241,11 +1428,11 @@
   });
   var ICONO_TIPO = {
     producto: '📦', familia: '📦', categoria: '📁', subcategoria: '📂',
-    marca: '🏷️', material: '🧱', medida: '📏'
+    marca: '🏷️', material: '🧱', medida: '📏', terminacion: '✨'
   };
   var ETIQUETA_TIPO = {
     producto: 'producto', familia: 'producto', categoria: 'categoría', subcategoria: 'subcategoría',
-    marca: 'marca', material: 'material', medida: 'medida'
+    marca: 'marca', material: 'material', medida: 'medida', terminacion: 'terminación'
   };
   var acState = { abierto: false, indice: -1, opciones: [] };
 
@@ -1476,7 +1663,7 @@
     var chips = [];
     if (item.marca) chips.push(item.marca);
     if (item.material) chips.push(item.material);
-    if (item.medida) chips.push(item.medida);
+    if (item._clasif.medida) chips.push(item._clasif.medida);
     return '<article class="viz-refcard' + (esLaMasBarata ? ' is-cheapest' : '') + '">' +
       (esLaMasBarata ? '<span class="rc-cheapest-badge">Más barato de ' + stats.n_compras + ' compras</span>' : '') +
       '<div class="rc-hoja">' + esc(item._clasif.hoja) + '</div>' +
@@ -1525,7 +1712,7 @@
     var it = g.mejor.item, r = g.resumen;
     var chips = [];
     if (it.material) chips.push(it.material);
-    if (it.medida) chips.push(it.medida);
+    if (it._clasif.medida) chips.push(it._clasif.medida);
     if (r.marcas.length === 1) chips.push(r.marcas[0]);
     else if (r.marcas.length > 1) chips.push(r.marcas.length + ' marcas');
     var abierto = gruposAbiertos.hasOwnProperty(g.clave) ? gruposAbiertos[g.clave] : abrirPorDefecto;
@@ -1737,6 +1924,7 @@
       : ITEMS_VISIBLES;
 
     renderFiltros();
+    renderFiltrosAtributo();
     renderRecientes();
     renderChipsFiltros();
     // Con una busqueda activa los KPIs del catalogo no aportan y empujan los
@@ -2313,3 +2501,5 @@
   } // end initApp
 })();
 </script>
+</body>
+</html>

@@ -47,10 +47,16 @@ SINONIMOS = [
     # --- valvulas ---
     ["valvula", "valv"],
     ["retencion", "antirretorno", "check"],
-    # --- materiales (mismos canonicos que catalogo_taxonomia.MATERIALES) ---
-    ["inoxidable", "inox", "ss304", "ss316", "aisi"],
+    # --- materiales (mismos canonicos que catalogo_atributos.MATERIALES) ---
+    ["inoxidable", "inox", "ss", "sus", "ss304", "ss316", "aisi"],
     ["galvanizado", "galvanizada", "galv", "zincado"],
-    ["bronce", "dzr", "laton"],
+    # Bronce y laton se separaron el 2026-09-22, cuando el material paso a
+    # ser un atributo propio: el DZR de una valvula es laton, no bronce.
+    ["bronce", "br", "bce"],
+    ["laton", "dzr"],
+    ["policarbonato", "policarb"],
+    ["plancha", "placa", "lamina"],
+    ["platina", "pletina"],
     ["cobre"],
     ["ppr"],
     ["pex", "pexa"],
@@ -92,26 +98,11 @@ SINONIMOS = [
 # calibre distinto, que es justo lo que la taxonomia evita.
 # Por eso "50mm" solo encuentra items de 50mm, y solo "DN50" escrito asi
 # trae ademas los de 2".
-DN_A_PULGADA = {
-    6: "1/4",
-    8: "5/16",
-    10: "3/8",
-    15: "1/2",
-    20: "3/4",
-    25: "1",
-    32: "1.1/4",
-    40: "1.1/2",
-    50: "2",
-    65: "2.1/2",
-    80: "3",
-    90: "3.1/2",
-    100: "4",
-    125: "5",
-    150: "6",
-    200: "8",
-    250: "10",
-    300: "12",
-}
+#
+# La tabla vive en catalogo_atributos porque la clasificacion tambien la
+# necesita (un "Flange DN50" tiene un diametro de 2"): una sola tabla para
+# el buscador y para la taxonomia.
+from catalogo_atributos import DN_A_PULGADA  # noqa: E402,F401
 
 
 # Medidas nominales en pulgadas que el buscador siempre sabe escribir, este o
@@ -181,24 +172,33 @@ MARCAS = [
 # PESOS POR CAMPO
 # ---------------------------------------------------------------------------
 # Cuanto vale que un termino de la consulta aparezca en cada campo del item.
-# Pedido explicito del usuario: "mayor peso para nombre, medida, categoria y
-# codigo del item". La medida no esta aca porque no se puntua como termino
+# El orden sale del pedido del usuario (2026-09-22): tipo exacto de producto,
+# materialidad, medida principal, otras dimensiones, especificaciones
+# tecnicas, terminacion, marca y recien despues el texto descriptivo.
+#
+# La MEDIDA PRINCIPAL no esta en esta tabla porque no se puntua como termino
 # sino como multiplicador (ver MULT_MEDIDA_*): una medida distinta no es un
-# match mas debil, es otro producto.
+# match mas debil, es otro producto. El campo "dim" son las demas
+# dimensiones, que si suman como terminos ("plancha policarbonato 0.7").
 #
 # "hoja" es el nombre canonico que la taxonomia le puso al producto
-# (familia + material + medida, ej. "Valvula de Bola de Bronce 1.1/2\"").
+# (tipo + material + medida, ej. "Valvula de Bola de Bronce 1.1/2\"").
 # Pesa casi como el nombre porque es justamente el nombre bien escrito: por
 # eso una compra cuyo Nombre Item es solo "Valvula" aparece igual al buscar
 # "valvula de bola".
 PESOS_CAMPO = {
     "cod": 12.0,    # N Ref. y codigos de proveedor: si calza, es EL item
+    "tipo": 11.0,   # QUE es el producto (Plancha, Codo, Válvula de Bola)
     "nom": 10.0,    # Nombre Item
-    "hoja": 9.0,    # nombre canonico de la taxonomia (familia+material+medida)
-    "mat": 6.0,     # material
-    "mar": 6.0,     # marca
+    "hoja": 9.0,    # nombre canonico de la taxonomia (tipo+material+medida)
+    "mat": 8.0,     # material, familia de material y grado (AISI 316L)
+    "dim": 7.0,     # los numeros de las dimensiones (0.7, 812, 3660)
+    "esp": 5.0,     # especificaciones tecnicas (SCH 40, PN16, NPT, HI-HI)
     "cat": 5.0,     # categoria + subcategoria
-    "desc": 4.0,    # descripcion (texto libre de la factura)
+    "term": 4.5,    # terminacion y color (transparente, galvanizado en caliente)
+    "apl": 4.5,     # para que sirve ("disco de corte para acero inoxidable")
+    "mar": 4.0,     # marca
+    "desc": 3.5,    # descripcion (texto libre de la factura)
     "prov": 2.0,    # proveedor
     "proy": 2.0,    # proyecto
 }

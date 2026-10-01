@@ -72,6 +72,7 @@ def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None, uf_manual=None, fuen
     # del documento en JavaScript (ver Sistema/busqueda.py).
     ch.busqueda.indexar_para_snapshot(reajustados)
     medidas_presentes = sorted({m for it in reajustados for m in it["_bm"]})
+    facetas = ch.compactar_atributos(reajustados)
 
     return {
         "generado": datetime.now().strftime("%d-%m-%Y %H:%M"),
@@ -81,6 +82,10 @@ def extraer_indice_saneado(ruta_excel=None, fecha_hoy=None, uf_manual=None, fuen
         "excluidos_count": excluidos_count,
         "sin_uf_count": sin_uf_count,
         "categorias": _catalogo_categorias(),
+        # Que filtros ofrecer para cada familia de producto (espesor para una
+        # plancha, schedule para una cañería, grado para un perno). La tabla
+        # vive en Sistema/catalogo_atributos.py.
+        "facetas": facetas,
         "busqueda": ch.busqueda.config_para_snapshot(medidas_presentes),
         "sugerencias": ch.busqueda.catalogo_sugerencias(reajustados),
         "items": reajustados,

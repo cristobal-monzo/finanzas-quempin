@@ -1,3 +1,13 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- DOCTYPE + charset + viewport (2026-09-24, mismo arreglo que Analisis
+     Financiero en su auditoria del 2026-09-21): sin viewport un telefono
+     dibujaba el tablero a ~980 px y lo achicaba, y las reglas @media de
+     movil de mas abajo nunca se activaban; sin DOCTYPE corria en modo
+     quirks. Ver Visualizador Web/tests/test_tableros_movil.py. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Centro de Costos — Visualizador</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
@@ -52,6 +62,10 @@
     --brand-orange-ink: #b23a00;
     --status-good:    #0ca30c;
     --status-warning: #c98500;
+    /* Contorno de barras/porciones: invisible en claro; en oscuro separa
+       del fondo el slot negro oficial (#000 sobre #221f1c = 1,3:1). */
+    --bar-outline:    transparent;
+    --chip-hover:     rgba(255,81,0,0.10);
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) .viz-root {
@@ -72,6 +86,8 @@
       --brand-gray-7:   #98989a;
       --status-good:    #3fb950;
       --status-warning: #d29922;
+      --bar-outline:    rgba(255,255,255,0.30);
+      --chip-hover:     rgba(255,81,0,0.16);
     }
   }
   :root[data-theme="dark"] .viz-root {
@@ -92,6 +108,8 @@
     --brand-gray-7:   #98989a;
     --status-good:    #3fb950;
     --status-warning: #d29922;
+    --bar-outline:    rgba(255,255,255,0.30);
+    --chip-hover:     rgba(255,81,0,0.16);
   }
 
   * { box-sizing: border-box; }
@@ -152,7 +170,27 @@
     margin-top: 14px;
     padding-top: 10px;
   }
-  .viz-modnav-inner { display: flex; gap: 4px; flex-wrap: wrap; }
+  .viz-modnav-inner { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
+  .viz-modnav-tabs { display: flex; gap: 4px 16px; flex-wrap: wrap; min-width: 0; }
+  /* Selector de país (2026-10-01): antes había 6 pestañas, una por módulo y
+     país; ahora son las 3 de los módulos y el país se elige aquí. <select>
+     nativo (en el teléfono abre la lista del sistema) con la flecha dibujada,
+     para que se vea igual sobre la cabecera negra en todos los navegadores. */
+  .viz-modnav-pais {
+    flex: 0 0 auto;
+    -webkit-appearance: none; appearance: none;
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+    color: #ffffff;
+    background: rgba(255,255,255,0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    padding: 5px 28px 5px 10px;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+  .viz-modnav-pais:hover { background-color: rgba(255,255,255,0.14); }
+  .viz-modnav-pais:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
+  .viz-modnav-pais option { color: #ffffff; background: #1a1a1a; }
   .viz-modnav-tab {
     display: inline-block;
     padding: 6px 12px;
@@ -164,6 +202,7 @@
     border-bottom: 2px solid transparent;
   }
   a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
+  a.viz-modnav-tab.is-active:hover { background: none; }
   .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
 
   /* Password gate */
@@ -264,20 +303,33 @@
   /* Section headers */
   .viz-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin: 0 0 10px; }
 
-  /* Filter bar */
+  /* Filter bar — grilla de 12 columnas: fila 1 búsqueda + período, fila 2
+     las 4 dimensiones. Antes era un flex-wrap que dejaba "Desde/Hasta" y
+     "Limpiar filtros" huérfanos en una segunda fila a medio llenar. */
   .viz-filterbar {
     background: var(--surface-card);
     border: 1px solid var(--border-hairline);
     border-radius: 10px;
-    padding: 14px 16px;
+    padding: 14px 16px 12px;
     margin-bottom: 24px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: flex-end;
   }
-  .viz-field { display: flex; flex-direction: column; gap: 4px; }
-  .viz-field label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+  .viz-filtergrid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px 12px; }
+  .viz-filtergrid .span-search { grid-column: span 6; }
+  .viz-filtergrid .span-periodo { grid-column: span 2; }
+  .viz-filtergrid .span-date { grid-column: span 2; }
+  .viz-filtergrid .span-sel { grid-column: span 3; }
+  @media (max-width: 900px) {
+    .viz-filtergrid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .viz-filtergrid .span-search { grid-column: span 6; }
+    .viz-filtergrid .span-sel { grid-column: span 3; }
+  }
+  @media (max-width: 560px) {
+    .viz-filtergrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .viz-filtergrid .span-search, .viz-filtergrid .span-periodo { grid-column: span 2; }
+    .viz-filtergrid .span-date, .viz-filtergrid .span-sel { grid-column: span 1; }
+  }
+  .viz-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .viz-field label { font-size: 11px; color: var(--text-muted); font-weight: 700; }
   .viz-field input, .viz-field select {
     font-family: inherit;
     font-size: 13px;
@@ -286,23 +338,58 @@
     border: 1px solid var(--border-hairline);
     background: var(--surface-1);
     color: var(--text-primary);
-    min-width: 120px;
+    width: 100%;
+    min-width: 0;
+    height: 34px;
   }
-  .viz-field.search { flex: 1 1 220px; min-width: 200px; }
-  .viz-field.search input { width: 100%; min-width: unset; }
-  .viz-field.dates { flex-direction: row; gap: 6px; align-items: flex-end; }
-  .viz-field.dates input { min-width: 128px; }
+  .viz-field select.is-set, .viz-field input.is-set { border-color: var(--brand-orange); box-shadow: inset 0 0 0 1px var(--brand-orange); }
+  .viz-searchwrap { position: relative; }
+  .viz-searchwrap input { padding-right: 34px; }
+  .viz-kbd {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+    border: 1px solid var(--border-hairline); border-radius: 4px; padding: 1px 6px;
+    pointer-events: none;
+  }
+  .viz-searchwrap input:focus + .viz-kbd, .viz-searchwrap input.is-set + .viz-kbd { display: none; }
+  @media (hover: none) { .viz-kbd { display: none; } }
+  /* Pie de la barra: conteo + chips de filtros activos + limpiar. Sin
+     esto, la única pista de que había un filtro puesto era "N de 724". */
+  .viz-filterfoot {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gridline);
+    min-height: 28px;
+  }
+  .viz-resultcount { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+  .viz-resultcount strong { color: var(--text-primary); }
+  .viz-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; }
+  .viz-chip {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+    font-family: inherit; font-size: 11.5px; color: var(--text-primary);
+    background: var(--surface-1); border: 1px solid var(--border-hairline);
+    border-radius: 999px; padding: 3px 6px 3px 10px; cursor: pointer;
+  }
+  .viz-chip .k { color: var(--text-muted); }
+  .viz-chip .v { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+  .viz-chip .x {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%; font-size: 11px; line-height: 1;
+    color: var(--text-muted); background: var(--gridline);
+  }
+  .viz-chip:hover .x, .viz-chip:focus-visible .x { background: var(--brand-orange); color: #000; }
   .viz-clearbtn {
+    font-family: inherit;
     font-size: 12px;
+    font-weight: 700;
     background: transparent;
     border: 1px solid var(--border-hairline);
     color: var(--text-secondary);
     border-radius: 7px;
-    padding: 7px 12px;
+    padding: 5px 12px;
     cursor: pointer;
+    margin-left: auto;
   }
-  .viz-clearbtn:hover { background: var(--surface-1); }
-  .viz-resultcount { font-size: 12px; color: var(--text-muted); margin-left: auto; align-self: center; white-space: nowrap; }
+  .viz-clearbtn:hover { background: var(--surface-1); color: var(--text-primary); }
 
   /* Charts grid */
   .viz-charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
@@ -390,7 +477,9 @@
     font-size: 11.5px;
     padding: 6px 9px;
     border-radius: 6px;
-    z-index: 1000;
+    /* Sobre los modales (1500): con 1000 el tooltip de los gráficos
+       "Ver todos" quedaba escondido detrás del overlay. */
+    z-index: 1600;
     opacity: 0;
     transition: opacity 0.1s ease-out;
     white-space: nowrap;
@@ -399,6 +488,7 @@
   .viz-tooltip.show { opacity: 1; }
   .viz-tooltip .tt-title { font-weight: 700; margin-bottom: 2px; }
   .viz-tooltip.info-mode { white-space: normal; max-width: 230px; line-height: 1.35; }
+  .viz-tooltip .tt-hint { color: #98989a; font-size: 10.5px; margin-top: 3px; }
 
   svg text { font-family: inherit; }
   .bar-rect { cursor: pointer; transition: opacity 0.1s; }
@@ -498,7 +588,162 @@
 
   .viz-footer { font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 8px; line-height: 1.6; }
   .viz-footer strong { color: var(--text-secondary); }
+
+  /* ---------- Ciclo UX/UI 2026-09-21 (ver CLAUDE.md del visualizador) ---------- */
+
+  /* Foco de teclado visible y consistente en todo control interactivo. */
+  .viz-root button:focus-visible, .viz-root select:focus-visible, .viz-root input:focus-visible,
+  .viz-root [tabindex]:focus-visible, .viz-root a:focus-visible {
+    outline: 2px solid var(--brand-orange); outline-offset: 2px;
+  }
+
+  /* Encabezado de sección con acción a la derecha (Gráficos / Documentos). */
+  .viz-sectionhead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+  .viz-sectionhead .viz-section-title { margin: 0; }
+  .viz-hint { font-size: 11.5px; color: var(--text-muted); }
+
+  /* Gráficos: las marcas filtran al hacer clic — el hover lo anuncia. */
+  .bar-rect { stroke: var(--bar-outline); stroke-width: 1; }
+  .viz-legend .swatch, .proj-dot { box-shadow: inset 0 0 0 1px var(--bar-outline); }
+  .bar-rect.is-hover { opacity: 0.82; }
+  .col-hit { fill: transparent; cursor: pointer; }
+  .chart-guide { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+  .line-dot { pointer-events: none; transition: r 0.1s; }
+  .line-dot.is-hover { r: 6; }
+  .rank-label { cursor: pointer; }
+  .rank-label:hover { text-decoration: underline; }
+  .viz-legend button.item {
+    font-family: inherit; font-size: inherit; color: inherit; text-align: left;
+    background: none; border: 0; padding: 2px 4px; margin: -2px -4px; border-radius: 4px; cursor: pointer;
+  }
+  .viz-legend button.item:hover { background: var(--chip-hover); }
+  .viz-legend button.item.is-active { font-weight: 700; color: var(--text-primary); }
+  .viz-chart-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  /* Tabla: resumen de ítems bajo el proveedor, coincidencias resaltadas,
+     montos negativos (notas de crédito) diferenciados. */
+  table.viz-table tbody td.c-ref, table.viz-table tbody td.c-proy, table.viz-table tbody td.c-fecha,
+  table.viz-table tbody td.c-total, table.viz-table tbody td.c-estado { white-space: nowrap; }
+  .cell-prov .prov { display: block; }
+  .row-sub {
+    display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 2px;
+    max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  mark.hl { background: rgba(255,81,0,0.22); color: inherit; border-radius: 2px; padding: 0 1px; }
+  td.num.neg, .dv.neg { color: var(--text-secondary); }
+  .status-badge.neutral { background: rgba(152,152,154,0.18); color: var(--text-secondary); }
+  .expand-toggle { font-size: 12px; transition: transform 0.12s; }
+  table.viz-table thead th[data-key]:focus-visible { color: var(--text-primary); outline-offset: -2px; }
+  table.viz-table thead th.is-sorted { color: var(--text-primary); }
+  .pend-dot { color: var(--status-warning); }
+  .viz-pagesize { display: inline-flex; align-items: center; gap: 6px; }
+  .viz-pagesize select {
+    font-family: inherit; font-size: 12px; padding: 4px 6px; border-radius: 6px;
+    border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary);
+  }
+  .viz-actionbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    background: var(--surface-card); border: 1px solid var(--border-hairline); color: var(--text-primary);
+    border-radius: 7px; padding: 6px 12px; cursor: pointer;
+  }
+  .viz-actionbtn:hover { border-color: var(--brand-orange); color: var(--brand-orange-ink, var(--brand-orange)); }
+  .detail-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 12px; }
+  .detail-actions button {
+    font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer;
+    background: transparent; border: 1px solid var(--border-hairline); color: var(--text-secondary);
+    border-radius: 999px; padding: 3px 10px;
+  }
+  .detail-actions button:hover { border-color: var(--brand-orange); color: var(--brand-orange-ink, var(--brand-orange)); }
+
+  /* ---------- Móvil ---------- */
+  @media (max-width: 640px) {
+    .viz-container { padding: 0 14px; }
+    /* Cabecera: el toggle sube junto al logo y la navegación pasa a una
+       sola fila deslizable (antes eran 3 filas, ~150 px de pantalla). */
+    .viz-header { padding: 12px 0 0; margin-bottom: 16px; }
+    .viz-header .viz-container { gap: 8px 12px; }
+    .viz-logo img { height: 34px; }
+    .viz-wordmark { font-size: 18px; }
+    .viz-theme-toggle { margin-left: auto; padding: 6px 10px; }
+    .viz-titleblock { order: 3; flex-basis: 100%; min-width: 0; }
+    .viz-modnav { margin-top: 10px; padding-top: 4px; }
+    /* El selector de país queda fijo a la izquierda y solo las pestañas se
+       deslizan. .viz-header .viz-container (flex-wrap: wrap) también calza
+       con este contenedor y es más específica: hay que ganarle. */
+    .viz-header .viz-modnav-inner { flex-wrap: nowrap; }
+    .viz-modnav-tabs { flex: 1 1 auto; flex-wrap: nowrap; gap: 4px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .viz-modnav-tabs::-webkit-scrollbar { display: none; }
+    .viz-modnav-tab { white-space: nowrap; flex: 0 0 auto; }
+    /* 16 px: con menos, Safari de iPhone hace zoom al tocar el selector. */
+    .viz-modnav-pais { font-size: 16px; padding: 4px 26px 4px 9px; }
+    /* Etiquetas cortas (Costos / Análisis / Cotizador): así las 3 caben
+       junto al selector desde 360 px; más angosto, la fila se desliza. */
+    .viz-modnav-largo { display: none; }
+
+    .viz-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .viz-kpis .viz-kpi:first-child { grid-column: span 2; }
+    .viz-kpi { padding: 12px 14px; }
+    .viz-kpi .value { font-size: 19px; }
+    .viz-filterbar { margin-bottom: 16px; }
+    .viz-hint { display: none; }
+    /* 16 px: con menos, Safari de iPhone hace zoom al tocar el campo. */
+    .viz-field input, .viz-field select, .viz-pagesize select { font-size: 16px; }
+    /* Área táctil: el ícono de copiar y los ítems de leyenda medían ~17 px
+       de alto. Margen negativo = mismo aspecto, más superficie para el dedo. */
+    .copy-archivo-btn { padding: 6px; margin: -4px -4px -4px 0; }
+    .viz-linkbtn { padding: 7px 12px; }
+    .viz-legend button.item { padding: 6px 4px; margin: -6px -4px; }
+
+    /* Tabla → tarjetas: en 390 px la tabla de 8 columnas dejaba Total y
+       Estado fuera de pantalla y partía el N° Ref. en dos líneas. */
+    .viz-tablescroll { overflow: visible; }
+    table.viz-table { min-width: 0; }
+    /* '>' y no descendiente: la tabla de ítems del detalle vive DENTRO de
+       esta tabla, y con 'thead'/'tbody'/'td' a secas perdía su encabezado
+       y cada celda caía en su propia fila. */
+    table.viz-table > thead { display: none; }
+    table.viz-table, table.viz-table > tbody { display: block; }
+    table.viz-table tbody tr.doc-row {
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr) auto;
+      grid-template-areas: "tg ref fecha" "tg prov total" "tg proy estado";
+      gap: 3px 10px; padding: 11px 12px; border-bottom: 1px solid var(--gridline);
+    }
+    table.viz-table tbody tr.doc-row td { padding: 0; border: 0; min-width: 0; }
+    table.viz-table tbody td.c-tg { grid-area: tg; }
+    table.viz-table tbody td.c-ref { grid-area: ref; font-weight: 700; white-space: nowrap; }
+    table.viz-table tbody td.c-fecha { grid-area: fecha; text-align: right; color: var(--text-muted); font-size: 12px; }
+    table.viz-table tbody td.c-prov { grid-area: prov; }
+    table.viz-table tbody td.c-total { grid-area: total; font-weight: 700; }
+    table.viz-table tbody td.c-proy { grid-area: proy; font-size: 12px; color: var(--text-secondary); }
+    table.viz-table tbody td.c-estado { grid-area: estado; text-align: right; }
+    table.viz-table tbody td.c-cat { display: none; }
+    table.viz-table tbody tr.doc-row.is-expanded td { font-weight: inherit; }
+    table.viz-table tbody tr.doc-row.is-expanded td.c-ref, table.viz-table tbody tr.doc-row.is-expanded td.c-total { font-weight: 700; }
+    .row-sub { max-width: none; }
+    tr.detail-row, tr.detail-row > td { display: block; }
+    .detail-panel { margin: 0 8px 12px; padding: 12px; }
+    .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    table.viz-itemtable th:nth-child(3), table.viz-itemtable td:nth-child(3),
+    table.viz-itemtable th:nth-child(5), table.viz-itemtable td:nth-child(5) { display: none; }
+    table.viz-itemtable th:nth-child(1) { width: 30%; }
+    table.viz-itemtable th:nth-child(2) { width: auto; }
+    table.viz-itemtable th:nth-child(4) { width: 14%; }
+    table.viz-itemtable th:nth-child(6) { width: 26%; }
+    /* El nowrap y el relleno de 12 px de la tabla principal también llegan
+       a esta tabla anidada: cortaban el encabezado "Total c/IVA". */
+    table.viz-table .viz-itemtable th, table.viz-table .viz-itemtable td { padding: 7px 6px; }
+    table.viz-table .viz-itemtable th { white-space: normal; }
+    .viz-pagination { justify-content: center; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .viz-root *, .viz-root *::before, .viz-root *::after { transition: none !important; animation: none !important; }
+  }
 </style>
+</head>
+<body>
 
 <div class="viz-gate" id="pwGate">
   <form class="viz-gate-card" id="pwForm">
@@ -524,14 +769,21 @@
       </div>
       <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
     </div>
-    <nav class="viz-modnav">
-      <div class="viz-container viz-modnav-inner">
-        <span class="viz-modnav-tab is-active">Centro de Costos</span>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador Histórico</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos-peru/">Centro de Costos 🇵🇪</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero-peru/">Análisis Financiero 🇵🇪</a>
-        <a class="viz-modnav-tab" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/">Cotizador Histórico 🇵🇪</a>
+    <nav class="viz-modnav" aria-label="Tableros">
+      <!-- Selector de país + las 3 pestañas de módulo. Los enlaces apuntan a
+           Chile; el JS los pasa al país de este tablero y marca la activa
+           según data-nav-activo (la subruta publicada). Este bloque es igual
+           en los 5 templates: solo cambia ese atributo. -->
+      <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="centro-de-costos">
+        <select class="viz-modnav-pais" id="modNavPais" aria-label="País">
+          <option value="">Chile</option>
+          <option value="-peru">Perú</option>
+        </select>
+        <div class="viz-modnav-tabs">
+          <a class="viz-modnav-tab" data-modulo="centro-de-costos" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/"><span class="viz-modnav-largo">Centro de </span>Costos</a>
+          <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis<span class="viz-modnav-largo"> Financiero</span></a>
+          <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
+        </div>
       </div>
     </nav>
   </header>
@@ -539,35 +791,58 @@
   <div class="viz-container">
     <div class="viz-kpis" id="kpiRow"></div>
 
-    <div class="viz-filterbar">
-      <div class="viz-field search">
-        <label for="fSearch">Buscar</label>
-        <input id="fSearch" type="text" placeholder="Proveedor, ítem, N° documento…" />
+    <section class="viz-filterbar" aria-label="Filtros">
+      <div class="viz-filtergrid">
+        <div class="viz-field span-search">
+          <label for="fSearch">Buscar</label>
+          <div class="viz-searchwrap">
+            <input id="fSearch" type="search" placeholder="Proveedor, ítem, proyecto, N° documento…" autocomplete="off" spellcheck="false" />
+            <span class="viz-kbd" aria-hidden="true">/</span>
+          </div>
+        </div>
+        <div class="viz-field span-periodo">
+          <label for="fPeriodo">Período</label>
+          <select id="fPeriodo">
+            <option value="">Todo el período</option>
+            <option value="mes">Mes en curso</option>
+            <option value="mes_ant">Mes anterior</option>
+            <option value="3m">Últimos 3 meses</option>
+            <option value="12m">Últimos 12 meses</option>
+            <option value="anio">Año en curso</option>
+            <option value="anio_ant">Año anterior</option>
+            <option value="custom" hidden>Personalizado</option>
+          </select>
+        </div>
+        <div class="viz-field span-date"><label for="fDesde">Desde</label><input id="fDesde" type="date" /></div>
+        <div class="viz-field span-date"><label for="fHasta">Hasta</label><input id="fHasta" type="date" /></div>
+        <div class="viz-field span-sel">
+          <label for="fProyecto">Proyecto</label>
+          <select id="fProyecto"><option value="">Todos</option></select>
+        </div>
+        <div class="viz-field span-sel">
+          <label for="fTipoProyecto">Tipo de proyecto</label>
+          <select id="fTipoProyecto"><option value="">Todos</option></select>
+        </div>
+        <div class="viz-field span-sel">
+          <label for="fCategoria">Categoría</label>
+          <select id="fCategoria"><option value="">Todas</option></select>
+        </div>
+        <div class="viz-field span-sel">
+          <label for="fEstado">Estado</label>
+          <select id="fEstado"><option value="">Todos</option></select>
+        </div>
       </div>
-      <div class="viz-field">
-        <label for="fProyecto">Proyecto</label>
-        <select id="fProyecto"><option value="">Todos</option></select>
+      <div class="viz-filterfoot">
+        <span class="viz-resultcount" id="resultCount" aria-live="polite"></span>
+        <div class="viz-chips" id="activeChips"></div>
+        <button class="viz-clearbtn" id="btnClear" type="button" hidden>Limpiar filtros</button>
       </div>
-      <div class="viz-field">
-        <label for="fTipoProyecto">Tipo de proyecto</label>
-        <select id="fTipoProyecto"><option value="">Todos</option></select>
-      </div>
-      <div class="viz-field">
-        <label for="fCategoria">Categoría</label>
-        <select id="fCategoria"><option value="">Todas</option></select>
-      </div>
-      <div class="viz-field">
-        <label for="fEstado">Estado</label>
-        <select id="fEstado"><option value="">Todos</option></select>
-      </div>
-      <div class="viz-field dates">
-        <div class="viz-field"><label for="fDesde">Desde</label><input id="fDesde" type="date" /></div>
-        <div class="viz-field"><label for="fHasta">Hasta</label><input id="fHasta" type="date" /></div>
-      </div>
-      <button class="viz-clearbtn" id="btnClear" type="button">Limpiar filtros</button>
-      <span class="viz-resultcount" id="resultCount"></span>
-    </div>
+    </section>
 
+    <div class="viz-sectionhead">
+      <p class="viz-section-title">Resumen</p>
+      <span class="viz-hint">Haz clic en una barra, porción o mes para filtrar todo el tablero.</span>
+    </div>
     <div class="viz-charts">
       <div class="viz-chartcard">
         <div class="viz-chartcard-head">
@@ -603,20 +878,26 @@
       </div>
     </div>
 
-    <p class="viz-section-title">Documentos</p>
+    <div class="viz-sectionhead" id="docsHead">
+      <p class="viz-section-title">Documentos</p>
+      <button class="viz-actionbtn" id="btnExportCsv" type="button" title="Descarga los documentos filtrados, en el orden actual, para abrirlos en Excel">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><polyline points="7 10 12 15 17 10"></polyline><path d="M5 21h14"></path></svg>
+        Exportar CSV
+      </button>
+    </div>
     <div class="viz-tablewrap">
       <div class="viz-tablescroll">
         <table class="viz-table" id="docTable">
           <thead>
             <tr>
-              <th style="width:20px"></th>
-              <th data-key="ref" aria-sort="none">N° Ref. <span class="arrow"></span></th>
-              <th data-key="proyecto" aria-sort="none">Proyecto <span class="arrow"></span></th>
-              <th data-key="fecha" aria-sort="descending">Fecha <span class="arrow"></span></th>
-              <th data-key="proveedor_tag" aria-sort="none">Proveedor <span class="arrow"></span></th>
-              <th data-key="categoria" aria-sort="none">Categoría <span class="arrow"></span></th>
-              <th data-key="total_con_iva" class="num" aria-sort="none">Total c/IVA <span class="arrow"></span></th>
-              <th data-key="estado" aria-sort="none">Estado <span class="arrow"></span></th>
+              <th style="width:20px" aria-label="Expandir"></th>
+              <th data-key="ref" aria-sort="none" tabindex="0">N° Ref. <span class="arrow"></span></th>
+              <th data-key="proyecto" aria-sort="none" tabindex="0">Proyecto <span class="arrow"></span></th>
+              <th data-key="fecha" aria-sort="descending" tabindex="0">Fecha <span class="arrow"></span></th>
+              <th data-key="proveedor_tag" aria-sort="none" tabindex="0">Proveedor · ítems <span class="arrow"></span></th>
+              <th data-key="categoria" aria-sort="none" tabindex="0">Categoría <span class="arrow"></span></th>
+              <th data-key="total_con_iva" class="num" aria-sort="none" tabindex="0">Total c/IVA <span class="arrow"></span></th>
+              <th data-key="estado" aria-sort="none" tabindex="0">Estado <span class="arrow"></span></th>
             </tr>
           </thead>
           <tbody id="docTableBody"></tbody>
@@ -627,10 +908,8 @@
     </div>
 
     <p class="viz-footer">
-      <strong>Snapshot de prueba</strong> — datos reales de <strong>Centro de Costos.xlsx</strong>. Última actualización de los datos:
-      <span id="vizUltimaFooter">—</span> · snapshot generado el <span id="vizGeneratedFooter">—</span>.
-      Publicado en GitHub Pages. Proveedor muestra tag corto; razón social completa disponible al expandir cada fila.
-      La contraseña de acceso es una barrera simple del lado del cliente, no seguridad real — no compartas este link fuera del equipo.
+      Datos de <strong>Centro de Costos.xlsx</strong> · última actualización <span id="vizUltimaFooter">—</span> · tablero generado el <span id="vizGeneratedFooter">—</span>.<br>
+      La razón social completa de cada proveedor aparece al expandir la fila. La contraseña es una barrera simple del lado del cliente, no seguridad real: no compartas este link fuera del equipo.
     </p>
   </div>
 
@@ -754,9 +1033,47 @@
     try { localStorage.setItem('cc_viz_theme', next); } catch (e) {}
   });
 
+  // ---------- navegación entre tableros: país + pestaña activa ----------
+  // data-nav-activo es la subruta publicada de este tablero (ej.
+  // "analisis-financiero-peru"): de ahí salen el país del selector, a qué
+  // país apuntan las 3 pestañas y cuál se marca. Mismo bloque en los 5
+  // templates.
+  (function () {
+    var nav = document.getElementById('modNav');
+    if (!nav) return;
+    var BASE = 'https://cristobal-monzo.github.io/finanzas-quempin/';
+    var activo = nav.getAttribute('data-nav-activo') || '';
+    var sufijo = /-peru$/.test(activo) ? '-peru' : '';
+    var modulo = activo.slice(0, activo.length - sufijo.length);
+    nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
+      if (a.getAttribute('data-modulo') === modulo) {
+        a.classList.add('is-active');
+        a.setAttribute('aria-current', 'page');
+        a.removeAttribute('href');
+      } else {
+        a.href = BASE + a.getAttribute('data-modulo') + sufijo + '/';
+      }
+    });
+    // Cambiar de país lleva al mismo módulo en el otro país. Al volver con
+    // "Atrás" el navegador puede restaurar el selector con el otro país
+    // elegido: por eso se repone cada vez que se muestra la página.
+    var pais = document.getElementById('modNavPais');
+    function reponerPais() { pais.value = sufijo; }
+    reponerPais();
+    window.addEventListener('pageshow', reponerPais);
+    pais.addEventListener('change', function () {
+      if (pais.value !== sufijo) location.href = BASE + modulo + pais.value + '/';
+    });
+  })();
+
   // ---------- helpers ----------
   var CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-  function fmt(n) { return CLP.format(Math.round(n || 0)); }
+  // Signo antes del "$" ("−$194.979"): es-CL lo pone después ("$-194.979"),
+  // que en las notas de crédito se leía como un error de tipeo.
+  function fmt(n) {
+    var r = Math.round(n || 0);
+    return (r < 0 ? '−' : '') + CLP.format(Math.abs(r));
+  }
   function fmtNum(n) { return new Intl.NumberFormat('es-CL').format(n); }
   function fmtDate(iso) {
     if (!iso) return '—';
@@ -897,73 +1214,260 @@
   fillSelect('fEstado', uniqSorted(DOCS.map(function (d) { return d.estado; })));
 
   // ---------- state ----------
-  var PAGE_SIZE = 25;
+  var PAGE_SIZES = [25, 50, 100];
+  var SORT_KEYS = ['ref', 'proyecto', 'fecha', 'proveedor_tag', 'categoria', 'total_con_iva', 'estado'];
+  var EMPTY_FILTERS = { search: '', proyecto: '', tipoProyecto: '', categoria: '', estado: '', proveedor: '', desde: '', hasta: '' };
   var state = {
-    search: '', proyecto: '', tipoProyecto: '', categoria: '', estado: '', desde: '', hasta: '',
+    search: '', proyecto: '', tipoProyecto: '', categoria: '', estado: '', proveedor: '', desde: '', hasta: '',
     sortKey: 'fecha', sortDir: 'desc',
     page: 1,
+    pageSize: PAGE_SIZES[0],
     expanded: {},
     mensualView: 'acumulado' // 'acumulado' | 'individual' — ver btnToggleMensual
   };
+  try {
+    var savedPageSize = +localStorage.getItem('cc_viz_page_size');
+    if (PAGE_SIZES.indexOf(savedPageSize) !== -1) state.pageSize = savedPageSize;
+  } catch (e) {}
 
-  // La búsqueda de texto libre dispara en cada tecla — con 30 documentos no
-  // se nota, pero con cientos/miles reconstruir tabla+gráficos en cada
-  // pulsación sí sería perceptible. Los selects/fechas son eventos
-  // discretos (no per-keystroke), no necesitan debounce.
-  var debouncedFilterChange = debounce(onFilterChange, 150);
-  document.getElementById('fSearch').addEventListener('input', debouncedFilterChange);
-  ['fProyecto', 'fTipoProyecto', 'fCategoria', 'fEstado', 'fDesde', 'fHasta'].forEach(function (id) {
-    document.getElementById(id).addEventListener('change', onFilterChange);
+  // Texto de búsqueda precalculado una vez por documento (antes se
+  // normalizaban 5 campos de cada documento en cada tecla). Suma proyecto,
+  // categoría, tipo de documento y nombre + descripción de cada ítem:
+  // buscar "3/4", "Junji" o "boleta" ahora encuentra algo.
+  DOCS.forEach(function (d) {
+    d._hay = norm([d.ref, d.n_documento, d.proyecto, d.categoria, d.tipo_documento,
+      d.proveedor_tag, d.proveedor_razon_social, d.resumen_items]
+      .concat((d.items || []).map(function (it) { return (it.nombre_item || '') + ' ' + (it.descripcion || ''); }))
+      .join(' '));
   });
-  document.getElementById('btnClear').addEventListener('click', function () {
-    state.search = ''; state.proyecto = ''; state.tipoProyecto = ''; state.categoria = ''; state.estado = ''; state.desde = ''; state.hasta = ''; state.page = 1;
-    ['fSearch'].forEach(function (id) { document.getElementById(id).value = ''; });
-    ['fProyecto', 'fTipoProyecto', 'fCategoria', 'fEstado'].forEach(function (id) { document.getElementById(id).value = ''; });
-    ['fDesde', 'fHasta'].forEach(function (id) { document.getElementById(id).value = ''; });
-    render();
-  });
-  function onFilterChange() {
-    state.search = document.getElementById('fSearch').value;
-    state.proyecto = document.getElementById('fProyecto').value;
-    state.tipoProyecto = document.getElementById('fTipoProyecto').value;
-    state.categoria = document.getElementById('fCategoria').value;
-    state.estado = document.getElementById('fEstado').value;
-    state.desde = document.getElementById('fDesde').value;
-    state.hasta = document.getElementById('fHasta').value;
-    state.page = 1;
-    render();
+  // Varias palabras = todas deben aparecer, en cualquier orden y campo
+  // ("easy cinta"). Antes la consulta completa tenía que calzar como un
+  // solo trozo de texto contiguo.
+  function searchTerms(q) { return norm(q).split(/\s+/).filter(Boolean); }
+
+  // ---------- períodos ----------
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function isoDate(dt) { return dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate()); }
+  // m es base 0 y puede salirse de rango (Date lo normaliza: m = -1 es
+  // diciembre del año anterior).
+  function rangoMes(y, m) { return [isoDate(new Date(y, m, 1)), isoDate(new Date(y, m + 1, 0))]; }
+  var PERIODOS = ['mes', 'mes_ant', '3m', '12m', 'anio', 'anio_ant'];
+  function rangoPeriodo(key) {
+    var hoy = new Date(), y = hoy.getFullYear(), m = hoy.getMonth();
+    switch (key) {
+      case 'mes': return rangoMes(y, m);
+      case 'mes_ant': return rangoMes(y, m - 1);
+      case '3m': return [isoDate(new Date(y, m - 2, 1)), isoDate(new Date(y, m + 1, 0))];
+      case '12m': return [isoDate(new Date(y, m - 11, 1)), isoDate(new Date(y, m + 1, 0))];
+      case 'anio': return [y + '-01-01', y + '-12-31'];
+      case 'anio_ant': return [(y - 1) + '-01-01', (y - 1) + '-12-31'];
+    }
+    return null;
+  }
+  function periodoActual() {
+    if (!state.desde && !state.hasta) return '';
+    for (var i = 0; i < PERIODOS.length; i++) {
+      var r = rangoPeriodo(PERIODOS[i]);
+      if (r[0] === state.desde && r[1] === state.hasta) return PERIODOS[i];
+    }
+    return 'custom';
+  }
+  // 'YYYY-MM' si Desde/Hasta cubren exactamente un mes calendario (lo que
+  // deja un clic en el gráfico mensual); '' en cualquier otro caso.
+  function mesDeRango() {
+    if (!state.desde || !state.hasta || state.desde.slice(0, 7) !== state.hasta.slice(0, 7)) return '';
+    var p = state.desde.split('-'), r = rangoMes(+p[0], +p[1] - 1);
+    return r[0] === state.desde && r[1] === state.hasta ? state.desde.slice(0, 7) : '';
+  }
+  function textoPeriodo() {
+    var per = periodoActual();
+    if (per && per !== 'custom') return document.querySelector('#fPeriodo option[value="' + per + '"]').textContent;
+    var mes = mesDeRango();
+    if (mes) return mesLabel(mes);
+    if (state.desde && state.hasta) return fmtDate(state.desde) + ' – ' + fmtDate(state.hasta);
+    return state.desde ? 'desde ' + fmtDate(state.desde) : 'hasta ' + fmtDate(state.hasta);
   }
 
+  // ---------- controles de filtro ----------
+  var CONTROLES = [
+    ['fSearch', 'search'], ['fProyecto', 'proyecto'], ['fTipoProyecto', 'tipoProyecto'],
+    ['fCategoria', 'categoria'], ['fEstado', 'estado'], ['fDesde', 'desde'], ['fHasta', 'hasta']
+  ];
+  var searchEl = document.getElementById('fSearch');
+  var periodoEl = document.getElementById('fPeriodo');
+  function syncControls() {
+    CONTROLES.forEach(function (c) {
+      var el = document.getElementById(c[0]);
+      if (el.value !== state[c[1]]) el.value = state[c[1]];
+      el.classList.toggle('is-set', !!state[c[1]]);
+    });
+    periodoEl.value = periodoActual();
+    periodoEl.classList.toggle('is-set', !!periodoEl.value);
+  }
+  // Un solo punto de entrada para cambiar filtros: selects, chips, clics en
+  // gráficos, acciones del detalle y el link compartido pasan por aquí.
+  function setFilters(patch) {
+    Object.keys(patch).forEach(function (k) { state[k] = patch[k]; });
+    state.page = 1;
+    syncControls();
+    render();
+  }
+  // Clic en un gráfico: alterna (un segundo clic sobre lo mismo lo quita).
+  function toggleFilter(key, value) {
+    var p = {};
+    p[key] = state[key] === value ? '' : value;
+    setFilters(p);
+  }
+  function toggleMes(mes) {
+    if (mesDeRango() === mes) { setFilters({ desde: '', hasta: '' }); return; }
+    var p = mes.split('-'), r = rangoMes(+p[0], +p[1] - 1);
+    setFilters({ desde: r[0], hasta: r[1] });
+  }
+
+  // La búsqueda dispara en cada tecla: debounce para no reconstruir tabla +
+  // gráficos en cada pulsación. Selects y fechas son eventos discretos.
+  searchEl.addEventListener('input', debounce(function () { setFilters({ search: searchEl.value }); }, 150));
+  searchEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && searchEl.value) { e.preventDefault(); searchEl.value = ''; setFilters({ search: '' }); }
+  });
+  CONTROLES.slice(1).forEach(function (c) {
+    document.getElementById(c[0]).addEventListener('change', function (e) {
+      var p = {};
+      p[c[1]] = e.target.value;
+      setFilters(p);
+    });
+  });
+  periodoEl.addEventListener('change', function () {
+    var r = rangoPeriodo(periodoEl.value);
+    setFilters(r ? { desde: r[0], hasta: r[1] } : { desde: '', hasta: '' });
+  });
+  document.getElementById('btnClear').addEventListener('click', function () {
+    setFilters(EMPTY_FILTERS);
+    searchEl.focus();
+  });
+  // Atajo "/" para saltar al buscador desde cualquier parte del tablero.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target, tag = t && t.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+    e.preventDefault();
+    searchEl.focus();
+    searchEl.select();
+  });
+
   function getFiltered() {
-    var q = norm(state.search);
+    var terms = searchTerms(state.search);
     return DOCS.filter(function (d) {
       if (state.proyecto && d.proyecto !== state.proyecto) return false;
       if (state.tipoProyecto && d.tipo_proyecto !== state.tipoProyecto) return false;
       if (state.categoria && d.categoria !== state.categoria) return false;
       if (state.estado && d.estado !== state.estado) return false;
+      if (state.proveedor && d.proveedor_tag !== state.proveedor) return false;
       if (state.desde && (!d.fecha || d.fecha < state.desde)) return false;
       if (state.hasta && (!d.fecha || d.fecha > state.hasta)) return false;
-      if (q) {
-        var hay = norm(d.proveedor_tag) + ' ' + norm(d.proveedor_razon_social) + ' ' + norm(d.resumen_items) + ' ' + norm(d.n_documento) + ' ' + norm(d.ref);
-        if (hay.indexOf(q) === -1) return false;
+      for (var i = 0; i < terms.length; i++) {
+        if (d._hay.indexOf(terms[i]) === -1) return false;
       }
       return true;
     });
   }
 
+  // ---------- filtros activos (chips) ----------
+  // Antes la única pista de que había un filtro puesto era "N de 724". Cada
+  // chip se quita con un clic, incluido el de proveedor, que no tiene select
+  // (se activa desde el gráfico o desde el detalle de un documento).
+  var CHIPS = [
+    ['search', 'Búsqueda'], ['proyecto', 'Proyecto'], ['tipoProyecto', 'Tipo'],
+    ['categoria', 'Categoría'], ['estado', 'Estado'], ['proveedor', 'Proveedor']
+  ];
+  function renderFilterSummary(filtered) {
+    var chips = [];
+    CHIPS.forEach(function (c) {
+      if (!state[c[0]]) return;
+      chips.push({ quitar: [c[0]], k: c[1], v: c[0] === 'search' ? '“' + state.search.trim() + '”' : state[c[0]] });
+    });
+    if (state.desde || state.hasta) chips.push({ quitar: ['desde', 'hasta'], k: 'Período', v: textoPeriodo() });
+    var cont = document.getElementById('activeChips');
+    cont.innerHTML = chips.map(function (c, i) {
+      return '<button type="button" class="viz-chip" data-i="' + i + '" title="Quitar este filtro" aria-label="Quitar filtro ' + esc(c.k) + ': ' + esc(c.v) + '">' +
+        '<span class="k">' + esc(c.k) + ':</span><span class="v">' + esc(c.v) + '</span><span class="x" aria-hidden="true">✕</span></button>';
+    }).join('');
+    cont.querySelectorAll('.viz-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var p = {};
+        chips[+btn.dataset.i].quitar.forEach(function (k) { p[k] = ''; });
+        setFilters(p);
+      });
+    });
+    document.getElementById('btnClear').hidden = !chips.length;
+    document.getElementById('resultCount').innerHTML = chips.length
+      ? '<strong>' + fmtNum(filtered.length) + '</strong> de ' + fmtNum(DOCS.length) + ' documentos'
+      : fmtNum(DOCS.length) + ' documentos · sin filtros';
+  }
+
+  // ---------- estado en el link (#...) ----------
+  // Filtros y orden viajan en el hash: recargar no los pierde, y el link
+  // copiado de la barra abre a otra persona exactamente la misma vista.
+  var HASH_KEYS = [['q', 'search'], ['proyecto', 'proyecto'], ['tipo', 'tipoProyecto'], ['cat', 'categoria'],
+    ['estado', 'estado'], ['prov', 'proveedor'], ['desde', 'desde'], ['hasta', 'hasta']];
+  var CAMPO_DE = { proyecto: 'proyecto', tipoProyecto: 'tipo_proyecto', categoria: 'categoria', estado: 'estado', proveedor: 'proveedor_tag' };
+  function writeHash() {
+    var p = new URLSearchParams();
+    HASH_KEYS.forEach(function (h) { if (state[h[1]]) p.set(h[0], state[h[1]]); });
+    if (state.sortKey !== 'fecha' || state.sortDir !== 'desc') p.set('orden', state.sortKey + '.' + state.sortDir);
+    var s = p.toString();
+    if ((s && '#' + s === location.hash) || (!s && !location.hash)) return;
+    try { history.replaceState(null, '', s ? '#' + s : location.pathname + location.search); } catch (e) {}
+  }
+  function readHash() {
+    var p = new URLSearchParams(location.hash.replace(/^#/, ''));
+    Object.keys(EMPTY_FILTERS).forEach(function (k) { state[k] = ''; });
+    HASH_KEYS.forEach(function (h) {
+      var v = p.get(h[0]);
+      if (!v) return;
+      var key = h[1];
+      if (key === 'desde' || key === 'hasta') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) state[key] = v;
+        return;
+      }
+      // Un link viejo puede nombrar un proyecto/proveedor que ya no existe:
+      // se ignora en vez de dejar el tablero vacío sin explicación.
+      if (CAMPO_DE[key] && !DOCS.some(function (d) { return d[CAMPO_DE[key]] === v; })) return;
+      state[key] = v;
+    });
+    var o = (p.get('orden') || '').split('.');
+    state.sortKey = 'fecha';
+    state.sortDir = 'desc';
+    if (SORT_KEYS.indexOf(o[0]) !== -1 && (o[1] === 'asc' || o[1] === 'desc')) { state.sortKey = o[0]; state.sortDir = o[1]; }
+  }
+  window.addEventListener('hashchange', function () {
+    readHash();
+    state.page = 1;
+    syncControls();
+    render();
+  });
+
   // ---------- tooltip ----------
-  function showTooltip(evt, title, lines) {
-    tooltip.innerHTML = '<div class="tt-title">' + esc(title) + '</div>' + lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('');
+  // hint: línea final en gris que anuncia qué hace un clic ("Clic para filtrar").
+  function showTooltip(evt, title, lines, hint) {
+    tooltip.innerHTML = '<div class="tt-title">' + esc(title) + '</div>' +
+      lines.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') +
+      (hint ? '<div class="tt-hint">' + esc(hint) + '</div>' : '');
     tooltip.classList.add('show');
     tooltip.classList.remove('info-mode');
     tooltip.dataset.infoKey = '';
     moveTooltip(evt);
   }
+  // Se mide el tooltip real en vez de suponer 160 px de ancho: con nombres
+  // largos se salía por la derecha, y cerca del borde inferior quedaba cortado.
   function moveTooltip(evt) {
-    var x = evt.clientX, y = evt.clientY;
-    var vw = window.innerWidth;
-    tooltip.style.left = (x + 14 > vw - 160 ? x - 160 : x + 14) + 'px';
-    tooltip.style.top = (y + 14) + 'px';
+    var pad = 8, vw = window.innerWidth, vh = window.innerHeight;
+    var w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+    var x = evt.clientX + 14, y = evt.clientY + 14;
+    if (x + w > vw - pad) x = evt.clientX - w - 14;
+    if (y + h > vh - pad) y = evt.clientY - h - 14;
+    tooltip.style.left = Math.max(pad, x) + 'px';
+    tooltip.style.top = Math.max(pad, y) + 'px';
   }
   function hideTooltip() {
     tooltip.classList.remove('show');
@@ -974,10 +1478,10 @@
   // ---------- notas "i" ----------
   var INFO_NOTES = {
     pendientes: { title: 'Pendientes de revisión', text: 'Documentos con algún dato que no se pudo leer con certeza desde la foto original (ej. N° de documento). Se incluyen en los totales igual, marcados con ● en la tabla, hasta que alguien los revise.' },
-    gastoSinIva: { title: 'Gasto total (s/IVA)', text: 'Monto neto, sin el Impuesto al Valor Agregado. Es la base sobre la que se calcula el IVA de cada documento.' },
-    topProveedores: { title: 'Top proveedores', text: 'Los 8 proveedores con mayor gasto acumulado en el rango filtrado. El resto no se oculta: se resume en una nota aparte con el monto total fuera del top 8, o usa "Ver todos" para verlos completos.' },
-    mensualAcumulado: { title: 'Gasto mensual acumulado', text: 'La línea muestra el acumulado corrido mes a mes, no el gasto de cada mes por separado. Pasa el mouse sobre un punto para ver ambos valores. Usa el botón ⇄ para ver el gasto de cada mes por separado.' },
-    mensualIndividual: { title: 'Gasto mensual por mes', text: 'Cada barra es el gasto de ese mes en particular, sin acumular los meses anteriores. Usa el botón ⇄ para volver a la vista acumulada.' }
+    gastoSinIva: { title: 'Gasto total (s/IVA)', text: 'Monto neto, sin impuestos. La diferencia con el total c/IVA son los impuestos de cada documento: el IVA y, en combustibles, el impuesto específico.' },
+    topProveedores: { title: 'Top proveedores', text: 'Los 8 proveedores con mayor gasto en los filtros actuales. El resto se resume en una nota con su monto, o usa "Ver todos". Haz clic en un proveedor para ver solo sus documentos.' },
+    mensualAcumulado: { title: 'Gasto mensual acumulado', text: 'La línea muestra el acumulado corrido mes a mes; los meses sin gasto aparecen como tramos planos. Pasa el mouse sobre cualquier mes para ver ambos valores, o haz clic para filtrar el tablero a ese mes. Usa ⇄ para ver el gasto de cada mes por separado.' },
+    mensualIndividual: { title: 'Gasto mensual por mes', text: 'Cada barra es el gasto de ese mes, sin acumular los anteriores. Haz clic en un mes para filtrar el tablero. Usa ⇄ para volver a la vista acumulada.' }
   };
   var HOVER_CAPABLE = window.matchMedia('(hover: hover)').matches;
   function infoBadgeHtml(key) {
@@ -1052,16 +1556,40 @@
   });
 
   // ---------- KPI row ----------
+  // Cada KPI lleva en su subtítulo un dato que no está en otro lado (antes
+  // "Documentos" repetía el conteo del primer KPI y su subtítulo era jerga
+  // interna: "Master · 1 fila por documento").
+  var TIPO_DOC_PLURAL = { 'factura': 'facturas', 'boleta': 'boletas', 'guia de despacho': 'guías', 'nota de credito': 'notas de crédito', 'factura exenta': 'facturas exentas' };
+  function resumenTiposDoc(docs) {
+    var c = {};
+    docs.forEach(function (d) { var k = d.tipo_documento || 'Sin tipo'; c[k] = (c[k] || 0) + 1; });
+    var tipos = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; });
+    var partes = tipos.slice(0, 2).map(function (t) {
+      return fmtNum(c[t]) + ' ' + (c[t] === 1 ? t.toLowerCase() : (TIPO_DOC_PLURAL[norm(t)] || t.toLowerCase()));
+    });
+    var resto = tipos.slice(2).reduce(function (s, t) { return s + c[t]; }, 0);
+    if (resto) partes.push(fmtNum(resto) + (resto === 1 ? ' otro' : ' otros'));
+    return partes.join(' · ') || 'Sin documentos';
+  }
+  function sumaCampo(docs, campo) { return docs.reduce(function (s, d) { return s + (d[campo] || 0); }, 0); }
   function renderKPIs(docs) {
-    var totalConIva = docs.reduce(function (s, d) { return s + (d.total_con_iva || 0); }, 0);
-    var totalSinIva = docs.reduce(function (s, d) { return s + (d.total_sin_iva || 0); }, 0);
+    var totalConIva = sumaCampo(docs, 'total_con_iva');
+    var totalSinIva = sumaCampo(docs, 'total_sin_iva');
     var nPend = docs.filter(function (d) { return d.pendiente_revision; }).length;
-    var nProy = new Set(docs.map(function (d) { return d.proyecto; })).size;
+    var notas = docs.filter(function (d) { return (d.total_con_iva || 0) < 0; });
+    var proyectos = aggregate(docs, 'proyecto');
+    var top = proyectos[0];
+    var subTotal = notas.length
+      ? 'Descuenta ' + notas.length + (notas.length === 1 ? ' nota' : ' notas') + ' de crédito (' + fmt(Math.abs(sumaCampo(notas, 'total_con_iva'))) + ')'
+      : (docs.length ? 'Promedio ' + fmt(totalConIva / docs.length) + ' por documento' : 'Sin documentos');
+    var subProy = top && proyectos.length > 1 && totalConIva > 0
+      ? 'Mayor: ' + top.proyecto + ' (' + fmtPct(top.monto / totalConIva * 100) + ')'
+      : (top ? top.proyecto : 'Sin gasto en estos filtros');
     var kpis = [
-      { label: 'Gasto total (c/IVA)', value: fmt(totalConIva), sub: docs.length + ' documento' + (docs.length === 1 ? '' : 's'), accent: true },
-      { label: 'Gasto total (s/IVA)', value: fmt(totalSinIva), sub: 'Neto', info: 'gastoSinIva' },
-      { label: 'Proyectos', value: fmtNum(nProy), sub: 'con gasto en el rango filtrado' },
-      { label: 'Documentos', value: fmtNum(docs.length), sub: 'Master · 1 fila por documento' },
+      { label: 'Gasto total (c/IVA)', value: fmt(totalConIva), sub: subTotal, accent: true },
+      { label: 'Gasto total (s/IVA)', value: fmt(totalSinIva), sub: 'Impuestos: ' + fmt(totalConIva - totalSinIva), info: 'gastoSinIva' },
+      { label: 'Proyectos', value: fmtNum(proyectos.length), sub: subProy },
+      { label: 'Documentos', value: fmtNum(docs.length), sub: resumenTiposDoc(docs) },
       { label: 'Pendientes de revisión', value: fmtNum(nPend), sub: nPend > 0 ? 'requieren revisión manual' : 'todo validado', pill: nPend > 0 ? 'warn' : 'ok', info: 'pendientes' }
     ];
     var row = document.getElementById('kpiRow');
@@ -1078,15 +1606,21 @@
   function truncateLabel(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
   // Transición sutil al redibujar un gráfico (cada cambio de filtro
   // reconstruye el SVG entero) — Web Animations API, no bloquea ni retrasa
-  // nada: la animación corre después de que el contenido y sus listeners ya
-  // quedaron montados, solo decora la aparición.
+  // nada. Se omite si el sistema pide reducir movimiento.
+  var REDUCED_MOTION = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   function fadeIn(el) {
-    if (el.animate) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
+    if (!REDUCED_MOTION && el.animate) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
   }
+  // Formato compacto es-CL ("$13,4M", "$950k"): antes salía en formato
+  // inglés ("13.4M") al lado de montos con punto de miles ("$55.655.867").
   function fmtCompact(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'M';
-    if (n >= 1000) return Math.round(n / 1000) + 'k';
-    return Math.round(n);
+    var a = Math.abs(n), s = n < 0 ? '−' : '';
+    if (a >= 999500) {
+      var m = a / 1e6;
+      return s + '$' + String(m >= 100 ? Math.round(m) : Math.round(m * 10) / 10).replace('.', ',') + 'M';
+    }
+    if (a >= 1000) return s + '$' + Math.round(a / 1000) + 'k';
+    return s + '$' + Math.round(a);
   }
   // Bajo 5% un entero redondea a "0%" y esconde participaciones reales
   // (ej. "Consumibles — 0%" en la dona de categorías) — bajo ese umbral se
@@ -1095,125 +1629,250 @@
     if (pct > 0 && pct < 5) return pct.toFixed(2).replace('.', ',') + '%';
     return Math.round(pct) + '%';
   }
+  // Escala "redonda" para ejes ($0 / $10M / $20M…) en vez de dividir el
+  // máximo en 4, que daba marcas como 13.9M / 27.8M / 41.7M.
+  function niceScale(lo, hi, nTicks) {
+    if (hi === lo) hi = lo + 1;
+    var raw = (hi - lo) / nTicks;
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var r = raw / mag;
+    var step = (r > 7.07 ? 10 : r > 3.16 ? 5 : r > 1.41 ? 2 : 1) * mag;
+    var a = Math.floor(lo / step) * step, b = Math.ceil(hi / step) * step;
+    var ticks = [];
+    for (var v = a; v <= b + step / 2; v += step) ticks.push(Math.round(v));
+    return { lo: a, hi: b, ticks: ticks };
+  }
+  function emptyChartHtml(hayFilas) {
+    return '<div class="empty">' + (hayFilas
+      ? 'En estos filtros solo hay montos negativos (notas de crédito): no hay gasto que graficar.'
+      : 'Sin datos para los filtros actuales.') + '</div>';
+  }
+  function ariaResumen(titulo, items, labelKey, valueKey) {
+    return (titulo || 'Gráfico') + ': ' + items.slice(0, 5).map(function (it) { return it[labelKey] + ' ' + fmt(it[valueKey]); }).join(', ');
+  }
 
   // ---------- SVG chart: horizontal ranking bars ----------
-  // opts.limit (default 8), opts.colorMap (identidad por color, opcional —
-  // sin él todas las barras son naranjo sólido), opts.noun (singular/plural
-  // para la nota "+N ... más fuera del top", default proveedor/proveedores).
+  // opts: limit (default 8), colorMap (identidad por color; sin él, naranjo
+  // sólido), noun (singular/plural para "+N ... fuera del top"), title
+  // (aria-label), active (valor filtrado ahora), onSelect(valor) (clic en
+  // cualquier parte de la fila, etiqueta incluida — antes el cursor de mano
+  // prometía un clic que no hacía nada).
   function renderRankingChart(containerId, items, labelKey, valueKey, opts) {
     opts = opts || {};
     var limit = opts.limit || 8;
     var colorMap = opts.colorMap || null;
     var noun = opts.noun || ['proveedor', 'proveedores'];
     var el = document.getElementById(containerId);
-    if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var top = items.slice(0, limit);
-    var total = items.reduce(function (s, i) { return s + i[valueKey]; }, 0) || 1;
+    // Solo montos positivos: una fila neta negativa (ej. filtrando solo
+    // notas de crédito) daba barras de ancho negativo.
+    var positivos = items.filter(function (i) { return i[valueKey] > 0; });
+    if (!positivos.length) { el.innerHTML = emptyChartHtml(items.length); return; }
+    var neto = items.reduce(function (s, i) { return s + i[valueKey]; }, 0);
+    var base = neto > 0 ? neto : positivos.reduce(function (s, i) { return s + i[valueKey]; }, 0);
+    var top = positivos.slice(0, limit);
     var W = el.clientWidth || 480;
-    var rowH = 26, padL = 100, padR = 60, padTB = 6;
+    // Columna de etiquetas proporcional al ancho (antes 100 px fijos, que
+    // cortaban "Junji's Valpa…" o "Cremación Con…" a 14 caracteres).
+    var padL = Math.round(Math.min(190, Math.max(96, W * 0.34))), padR = 60, rowH = 28, padTB = 2;
+    var maxChars = Math.max(10, Math.floor((padL - 12) / 6.2));
     var H = top.length * rowH + padTB * 2;
-    var innerW = W - padL - padR;
-    var max = Math.max.apply(null, top.map(function (i) { return i[valueKey]; })) || 1;
-    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img">' + (colorMap ? HATCH_DEFS : '');
+    var innerW = Math.max(40, W - padL - padR);
+    var max = Math.max.apply(null, top.map(function (i) { return i[valueKey]; }));
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="' +
+      esc(ariaResumen(opts.title, top, labelKey, valueKey)) + '">' + (colorMap ? HATCH_DEFS : '');
     top.forEach(function (it, i) {
       var y = padTB + i * rowH;
-      var w = innerW * (it[valueKey] / max);
+      var w = Math.max(innerW * (it[valueKey] / max), 2);
       var color = colorMap ? fillFor(colorMap[it[labelKey]]) : 'var(--brand-orange)';
-      svg += '<text x="' + (padL - 8) + '" y="' + (y + rowH / 2 + 4) + '" text-anchor="end" font-size="11" fill="var(--text-secondary)">' + esc(truncateLabel(it[labelKey], 14)) + '</text>';
-      svg += '<rect class="bar-rect" data-i="' + i + '" x="' + padL + '" y="' + (y + 4) + '" width="' + Math.max(w, 2) + '" height="' + (rowH - 10) + '" rx="4" fill="' + color + '"/>';
-      svg += '<text x="' + (padL + w + 8) + '" y="' + (y + rowH / 2 + 4) + '" font-size="10.5" fill="var(--text-muted)">' + fmtCompact(it[valueKey]) + '</text>';
+      var activo = !!opts.active && opts.active === it[labelKey];
+      svg += '<g class="rank-row" data-i="' + i + '">' +
+        '<rect class="col-hit" x="0" y="' + y + '" width="' + W + '" height="' + rowH + '"/>' +
+        '<text class="rank-label" x="' + (padL - 8) + '" y="' + (y + rowH / 2 + 4) + '" text-anchor="end" font-size="11.5"' +
+        (activo ? ' font-weight="700" fill="var(--text-primary)"' : ' fill="var(--text-secondary)"') + '>' +
+        esc(truncateLabel(it[labelKey], maxChars)) + '</text>' +
+        '<rect class="bar-rect" x="' + padL + '" y="' + (y + 5) + '" width="' + w + '" height="' + (rowH - 10) + '" rx="4" fill="' + color + '"/>' +
+        '<text x="' + (padL + w + 6) + '" y="' + (y + rowH / 2 + 4) + '" font-size="10.5" fill="var(--text-muted)">' + fmtCompact(it[valueKey]) + '</text>' +
+        '</g>';
     });
     svg += '</svg>';
-    // Con "cientos o miles" de facturas el número de proveedores/proyectos
-    // distintos va a superar el top mostrado — que quede explícito que hay
-    // más, en vez de dar la impresión de que la lista está completa.
-    var resto = items.length - top.length;
-    var nounWord = resto === 1 ? noun[0] : noun[1];
-    var restoHtml = resto > 0
-      ? '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">+ ' + resto + ' ' + nounWord + ' más fuera del top ' + limit + ' (' + fmt(total - top.reduce(function (s, i) { return s + i[valueKey]; }, 0)) + ')</div>'
+    // Con cientos de proveedores el top mostrado no es la lista completa:
+    // que quede explícito cuántos quedan fuera y cuánto suman.
+    var resto = positivos.slice(limit);
+    var restoHtml = resto.length
+      ? '<div class="viz-chart-note">+ ' + fmtNum(resto.length) + ' ' + (resto.length === 1 ? noun[0] : noun[1]) +
+        ' más fuera del top ' + limit + ' (' + fmt(resto.reduce(function (s, i) { return s + i[valueKey]; }, 0)) + ')</div>'
       : '';
     el.innerHTML = svg + restoHtml;
-    el.querySelectorAll('.bar-rect').forEach(function (rect) {
-      var it = top[+rect.dataset.i];
-      rect.addEventListener('mousemove', function (e) {
-        showTooltip(e, it[labelKey], [fmt(it[valueKey]), fmtPct(it[valueKey] / total * 100) + ' del total filtrado']);
+    el.querySelectorAll('.rank-row').forEach(function (g) {
+      var it = top[+g.dataset.i];
+      var bar = g.querySelector('.bar-rect');
+      var activo = !!opts.active && opts.active === it[labelKey];
+      g.addEventListener('mousemove', function (e) {
+        bar.classList.add('is-hover');
+        showTooltip(e, it[labelKey], [fmt(it[valueKey]), fmtPct(it[valueKey] / base * 100) + ' del total filtrado'],
+          opts.onSelect ? (activo ? 'Clic para quitar el filtro' : 'Clic para filtrar') : '');
       });
-      rect.addEventListener('mouseleave', hideTooltip);
+      g.addEventListener('mouseleave', function () { bar.classList.remove('is-hover'); hideTooltip(); });
+      if (opts.onSelect) {
+        g.style.cursor = 'pointer';
+        g.addEventListener('click', function () { hideTooltip(); opts.onSelect(it[labelKey]); });
+      }
     });
     fadeIn(el);
   }
 
   // ---------- SVG chart: donut ----------
-  function renderDonutChart(containerId, items, labelKey, valueKey, colorMap) {
+  // opts: title, active, onSelect(valor), onOtros() (clic en "Otros").
+  function donutPath(cx, cy, rOuter, rInner, a0, a1) {
+    // Una porción del 100% (ej. al filtrar por una categoría) es un arco con
+    // inicio = fin, que SVG no dibuja: la dona quedaba vacía. Se dibuja
+    // como anillo completo.
+    if (a1 - a0 >= 2 * Math.PI - 1e-6) {
+      return 'M' + cx + ',' + (cy - rOuter) + ' A' + rOuter + ',' + rOuter + ' 0 1 1 ' + cx + ',' + (cy + rOuter) +
+        ' A' + rOuter + ',' + rOuter + ' 0 1 1 ' + cx + ',' + (cy - rOuter) +
+        ' M' + cx + ',' + (cy - rInner) + ' A' + rInner + ',' + rInner + ' 0 1 0 ' + cx + ',' + (cy + rInner) +
+        ' A' + rInner + ',' + rInner + ' 0 1 0 ' + cx + ',' + (cy - rInner) + ' Z';
+    }
+    var large = (a1 - a0) > Math.PI ? 1 : 0;
+    var x0o = cx + rOuter * Math.cos(a0), y0o = cy + rOuter * Math.sin(a0);
+    var x1o = cx + rOuter * Math.cos(a1), y1o = cy + rOuter * Math.sin(a1);
+    var x0i = cx + rInner * Math.cos(a1), y0i = cy + rInner * Math.sin(a1);
+    var x1i = cx + rInner * Math.cos(a0), y1i = cy + rInner * Math.sin(a0);
+    return 'M' + x0o + ',' + y0o + ' A' + rOuter + ',' + rOuter + ' 0 ' + large + ' 1 ' + x1o + ',' + y1o +
+      ' L' + x0i + ',' + y0i + ' A' + rInner + ',' + rInner + ' 0 ' + large + ' 0 ' + x1i + ',' + y1i + ' Z';
+  }
+  function renderDonutChart(containerId, items, labelKey, valueKey, colorMap, opts) {
+    opts = opts || {};
     var el = document.getElementById(containerId);
-    if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var total = items.reduce(function (s, i) { return s + i[valueKey]; }, 0) || 1;
+    var hayFilas = items.length;
+    items = items.filter(function (i) { return i[valueKey] > 0; });
+    if (!items.length) { el.innerHTML = emptyChartHtml(hayFilas); return; }
+    var total = items.reduce(function (s, i) { return s + i[valueKey]; }, 0);
     var size = 200, cx = size / 2, cy = size / 2, rOuter = 86, rInner = 52;
     var angle = -Math.PI / 2;
-    var svg = '<div class="viz-donut-layout"><svg viewBox="0 0 ' + size + ' ' + size + '" width="180" height="180" role="img">' + HATCH_DEFS;
+    function colorDe(it) { return it._esOtros ? 'var(--text-muted)' : (colorMap ? fillFor(colorMap[it[labelKey]]) : 'var(--brand-orange)'); }
+    function swatchDe(it) { return it._esOtros ? 'background:var(--text-muted)' : (colorMap ? swatchStyleFor(colorMap[it[labelKey]]) : 'background:var(--brand-orange)'); }
+    var svg = '<div class="viz-donut-layout"><svg viewBox="0 0 ' + size + ' ' + size + '" width="180" height="180" role="img" aria-label="' +
+      esc(ariaResumen(opts.title, items, labelKey, valueKey)) + '">' + HATCH_DEFS;
     items.forEach(function (it, i) {
-      var frac = it[valueKey] / total;
-      var a0 = angle, a1 = angle + frac * 2 * Math.PI;
+      var a0 = angle, a1 = angle + (it[valueKey] / total) * 2 * Math.PI;
       angle = a1;
-      var large = (a1 - a0) > Math.PI ? 1 : 0;
-      var x0o = cx + rOuter * Math.cos(a0), y0o = cy + rOuter * Math.sin(a0);
-      var x1o = cx + rOuter * Math.cos(a1), y1o = cy + rOuter * Math.sin(a1);
-      var x0i = cx + rInner * Math.cos(a1), y0i = cy + rInner * Math.sin(a1);
-      var x1i = cx + rInner * Math.cos(a0), y1i = cy + rInner * Math.sin(a0);
-      var d = 'M' + x0o + ',' + y0o + ' A' + rOuter + ',' + rOuter + ' 0 ' + large + ' 1 ' + x1o + ',' + y1o +
-        ' L' + x0i + ',' + y0i + ' A' + rInner + ',' + rInner + ' 0 ' + large + ' 0 ' + x1i + ',' + y1i + ' Z';
-      var color = it._esOtros ? 'var(--text-muted)' : (colorMap ? fillFor(colorMap[it[labelKey]]) : 'var(--brand-orange)');
-      svg += '<path class="donut-seg" data-i="' + i + '" d="' + d + '" fill="' + color + '" stroke="var(--surface-card)" stroke-width="2"/>';
+      svg += '<path class="donut-seg" data-i="' + i + '" d="' + donutPath(cx, cy, rOuter, rInner, a0, a1) + '" fill="' + colorDe(it) +
+        '" fill-rule="evenodd" stroke="var(--surface-card)" stroke-width="2"/>';
     });
     svg += '<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" font-size="12" fill="var(--text-muted)">Total</text>';
-    svg += '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--text-primary)">' + fmtCompact(total) + '</text>';
+    svg += '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text-primary)">' + fmtCompact(total) + '</text>';
     svg += '</svg>';
-    svg += '<div class="viz-legend viz-legend-grid">' + items.map(function (it) {
-      var swatchStyle = it._esOtros ? 'background:var(--text-muted)' : (colorMap ? swatchStyleFor(colorMap[it[labelKey]]) : 'background:var(--brand-orange)');
-      var pct = it[valueKey] / total * 100;
-      return '<span class="item"><span class="swatch" style="' + swatchStyle + '"></span>' + esc(it[labelKey]) + ' — ' + fmtPct(pct) + '</span>';
+    svg += '<div class="viz-legend viz-legend-grid">' + items.map(function (it, i) {
+      var activo = !!opts.active && opts.active === it[labelKey];
+      return '<button type="button" class="item' + (activo ? ' is-active' : '') + '" data-i="' + i + '" title="' +
+        esc(it._esOtros ? 'Ver el desglose de las categorías menores' : (activo ? 'Quitar el filtro' : 'Filtrar por ' + it[labelKey])) + '">' +
+        '<span class="swatch" style="' + swatchDe(it) + '"></span>' + esc(it[labelKey]) + ' — ' + fmtPct(it[valueKey] / total * 100) + '</button>';
     }).join('') + '</div></div>';
     el.innerHTML = svg;
+    function hintDe(it) {
+      if (it._esOtros) return opts.onOtros ? 'Clic para ver el desglose' : '';
+      if (!opts.onSelect) return '';
+      return opts.active === it[labelKey] ? 'Clic para quitar el filtro' : 'Clic para filtrar';
+    }
+    function elegir(it) {
+      hideTooltip();
+      if (it._esOtros) { if (opts.onOtros) opts.onOtros(); return; }
+      if (opts.onSelect) opts.onSelect(it[labelKey]);
+    }
     el.querySelectorAll('.donut-seg').forEach(function (seg) {
       var it = items[+seg.dataset.i];
-      seg.addEventListener('mousemove', function (e) { showTooltip(e, it[labelKey], [fmt(it[valueKey]), fmtPct(it[valueKey] / total * 100) + ' del total']); });
+      seg.addEventListener('mousemove', function (e) {
+        showTooltip(e, it[labelKey], [fmt(it[valueKey]), fmtPct(it[valueKey] / total * 100) + ' del total'], hintDe(it));
+      });
       seg.addEventListener('mouseleave', hideTooltip);
+      seg.addEventListener('click', function () { elegir(it); });
+    });
+    el.querySelectorAll('.viz-legend button.item').forEach(function (b) {
+      b.addEventListener('click', function () { elegir(items[+b.dataset.i]); });
     });
     fadeIn(el);
   }
 
-  // ---------- SVG chart: line ----------
-  function renderLineChart(containerId, items) {
-    var el = document.getElementById(containerId);
-    if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var W = el.clientWidth || 480, H = 220, padL = 56, padB = 48, padT = 14, padR = 16;
+  // ---------- SVG chart: gasto mensual (acumulado = línea, por mes = barras) ----------
+  // Ambos modos comparten eje y escala, y se "leen" igual: toda la columna
+  // de cada mes responde al mouse (antes había que acertarle a un punto de
+  // 4 px) con una guía vertical, y un clic filtra el tablero a ese mes.
+  function renderMensualChart(items) {
+    var el = document.getElementById('chartMensual');
+    if (!items.length) { el.innerHTML = emptyChartHtml(0); return; }
+    var individual = state.mensualView === 'individual';
+    var key = individual ? 'monto' : 'acumulado';
+    var W = el.clientWidth || 480, H = 230, padL = 58, padB = 48, padT = 12, padR = 12;
     var innerW = W - padL - padR, innerH = H - padT - padB;
-    var max = Math.max.apply(null, items.map(function (i) { return i.acumulado; })) || 1;
-    var n = items.length;
-    function xAt(i) { return n === 1 ? padL + innerW / 2 : padL + innerW * (i / (n - 1)); }
-    function yAt(v) { return padT + innerH - innerH * (v / max); }
-    var steps = 4;
-    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img">';
-    for (var g = 0; g <= steps; g++) {
-      var gy = padT + innerH - (innerH * g / steps);
-      svg += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--gridline)" stroke-width="1"/>';
-      svg += '<text x="' + (padL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="10" fill="var(--text-muted)">' + fmtCompact(max * g / steps) + '</text>';
+    var vals = items.map(function (it) { return it[key]; });
+    var sc = niceScale(Math.min(0, Math.min.apply(null, vals)), Math.max(0, Math.max.apply(null, vals)), 4);
+    function yAt(v) { return padT + innerH * (sc.hi - v) / (sc.hi - sc.lo); }
+    var n = items.length, band = innerW / n;
+    function xAt(i) { return padL + band * (i + 0.5); }
+    var y0 = yAt(0);
+    var mesSel = mesDeRango();
+    var total = items.reduce(function (s, it) { return s + it.monto; }, 0);
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="' +
+      esc('Gasto mensual ' + (individual ? 'por mes' : 'acumulado') + ', ' + mesLabel(items[0].mes) + ' a ' + mesLabel(items[n - 1].mes) + ': ' + fmt(total)) + '">';
+    sc.ticks.forEach(function (t) {
+      var gy = yAt(t);
+      svg += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + gy + '" y2="' + gy + '" stroke="' + (t === 0 ? 'var(--baseline)' : 'var(--gridline)') + '" stroke-width="1"/>';
+      svg += '<text x="' + (padL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="10" fill="var(--text-muted)">' + fmtCompact(t) + '</text>';
+    });
+    if (individual) {
+      var bw = Math.max(2, Math.min(34, band * 0.72));
+      items.forEach(function (it, i) {
+        var yv = yAt(it.monto);
+        svg += '<rect class="bar-rect" data-i="' + i + '" x="' + (xAt(i) - bw / 2) + '" y="' + Math.min(yv, y0) + '" width="' + bw +
+          '" height="' + (it.monto ? Math.max(Math.abs(y0 - yv), 1) : 0) + '" rx="3" fill="var(--brand-orange)"' +
+          (mesSel && mesSel !== it.mes ? ' opacity="0.35"' : '') + '/>';
+      });
+    } else {
+      var pathD = items.map(function (it, i) { return (i === 0 ? 'M' : 'L') + xAt(i) + ',' + yAt(it.acumulado); }).join(' ');
+      var areaD = pathD + ' L' + xAt(n - 1) + ',' + y0 + ' L' + xAt(0) + ',' + y0 + ' Z';
+      svg += '<path d="' + areaD + '" fill="var(--brand-orange)" opacity="0.10"/>';
+      svg += '<path d="' + pathD + '" fill="none" stroke="var(--brand-orange)" stroke-width="2" stroke-linejoin="round"/>';
+      items.forEach(function (it, i) {
+        svg += '<circle class="line-dot" data-i="' + i + '" cx="' + xAt(i) + '" cy="' + yAt(it.acumulado) + '" r="' + (n > 30 ? 2 : 3) +
+          '" fill="var(--brand-orange)" stroke="var(--surface-card)" stroke-width="1.5"/>';
+      });
     }
-    var pathD = items.map(function (it, i) { return (i === 0 ? 'M' : 'L') + xAt(i) + ',' + yAt(it.acumulado); }).join(' ');
-    var areaD = pathD + ' L' + xAt(n - 1) + ',' + (padT + innerH) + ' L' + xAt(0) + ',' + (padT + innerH) + ' Z';
-    svg += '<path d="' + areaD + '" fill="var(--brand-orange)" opacity="0.10"/>';
-    svg += '<path d="' + pathD + '" fill="none" stroke="var(--brand-orange)" stroke-width="2"/>';
+    svg += '<line class="chart-guide" x1="0" x2="0" y1="' + padT + '" y2="' + (padT + innerH) + '" visibility="hidden"/>';
     items.forEach(function (it, i) {
-      svg += '<circle class="line-dot" data-i="' + i + '" cx="' + xAt(i) + '" cy="' + yAt(it.acumulado) + '" r="4" fill="var(--brand-orange)" stroke="var(--surface-card)" stroke-width="1.5"/>';
+      svg += '<rect class="col-hit" data-i="' + i + '" x="' + (padL + band * i) + '" y="' + padT + '" width="' + band + '" height="' + innerH + '"/>';
     });
     svg += mesAxisTicksSvg(items, xAt, H - padB + 8);
     svg += '</svg>';
     el.innerHTML = svg;
-    el.querySelectorAll('.line-dot').forEach(function (dot) {
-      var it = items[+dot.dataset.i];
-      dot.addEventListener('mousemove', function (e) { showTooltip(e, mesLabel(it.mes), ['Gasto del mes: ' + fmt(it.monto), 'Acumulado a la fecha: ' + fmt(it.acumulado)]); });
-      dot.addEventListener('mouseleave', hideTooltip);
+    var guide = el.querySelector('.chart-guide');
+    var marks = el.querySelectorAll(individual ? '.bar-rect' : '.line-dot');
+    function limpiar() {
+      guide.setAttribute('visibility', 'hidden');
+      marks.forEach(function (m) { m.classList.remove('is-hover'); });
+      hideTooltip();
+    }
+    el.querySelectorAll('.col-hit').forEach(function (hit) {
+      var i = +hit.dataset.i, it = items[i];
+      // Un mes sin gasto no se puede "filtrar": dejaría el tablero vacío.
+      if (!it.monto) hit.style.cursor = 'default';
+      hit.addEventListener('mousemove', function (e) {
+        guide.setAttribute('x1', xAt(i));
+        guide.setAttribute('x2', xAt(i));
+        guide.setAttribute('visibility', 'visible');
+        marks.forEach(function (m) { m.classList.toggle('is-hover', +m.dataset.i === i); });
+        var lines = ['Gasto del mes: ' + fmt(it.monto)];
+        if (!individual) lines.push('Acumulado a la fecha: ' + fmt(it.acumulado));
+        showTooltip(e, mesLabel(it.mes), lines,
+          it.monto ? (mesSel === it.mes ? 'Clic para quitar el filtro' : 'Clic para ver solo este mes') : '');
+      });
+      hit.addEventListener('click', function () {
+        if (!it.monto) return;
+        limpiar();
+        toggleMes(it.mes);
+      });
     });
+    el.querySelector('svg').addEventListener('mouseleave', limpiar);
     fadeIn(el);
   }
   var MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -1264,44 +1923,6 @@
     return svg;
   }
 
-  // ---------- SVG chart: monthly bars (gasto individual del mes, no acumulado) ----------
-  function renderMensualBarChart(containerId, items) {
-    var el = document.getElementById(containerId);
-    if (!items.length) { el.innerHTML = '<div class="empty">Sin datos para los filtros actuales.</div>'; return; }
-    var W = el.clientWidth || 480, H = 220, padL = 56, padB = 48, padT = 14, padR = 16;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var max = Math.max.apply(null, items.map(function (i) { return i.monto; })) || 1;
-    var n = items.length;
-    var gap = 10;
-    var bw = Math.max(8, (innerW - gap * (n - 1)) / n);
-    var steps = 4;
-    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img">';
-    for (var g = 0; g <= steps; g++) {
-      var gy = padT + innerH - (innerH * g / steps);
-      svg += '<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--gridline)" stroke-width="1"/>';
-      svg += '<text x="' + (padL - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="10" fill="var(--text-muted)">' + fmtCompact(max * g / steps) + '</text>';
-    }
-    items.forEach(function (it, i) {
-      var x = padL + i * (bw + gap);
-      var h = innerH * (it.monto / max);
-      var y = padT + innerH - h;
-      svg += '<rect class="bar-rect" data-i="' + i + '" x="' + x + '" y="' + y + '" width="' + bw + '" height="' + Math.max(h, 1) + '" rx="4" fill="var(--brand-orange)"/>';
-    });
-    svg += mesAxisTicksSvg(items, function (i) { return padL + i * (bw + gap) + bw / 2; }, H - padB + 8);
-    svg += '</svg>';
-    el.innerHTML = svg;
-    el.querySelectorAll('.bar-rect').forEach(function (rect) {
-      var it = items[+rect.dataset.i];
-      rect.addEventListener('mousemove', function (e) { showTooltip(e, mesLabel(it.mes), ['Gasto del mes: ' + fmt(it.monto)]); });
-      rect.addEventListener('mouseleave', hideTooltip);
-    });
-    fadeIn(el);
-  }
-  function renderMensualChart(items) {
-    if (state.mensualView === 'individual') renderMensualBarChart('chartMensual', items);
-    else renderLineChart('chartMensual', items);
-  }
-
   // ---------- aggregation from filtered docs ----------
   function aggregate(docs, key) {
     var map = {};
@@ -1314,6 +1935,9 @@
     out.sort(function (a, b) { return b.monto - a.monto; });
     return out;
   }
+  // Los meses sin gasto también son meses: sin rellenarlos, el eje saltaba
+  // de Dic 2024 a May 2025 a la misma distancia que de Jul a Ago, y la curva
+  // acumulada exageraba la pendiente justo en los tramos con huecos.
   function aggregateMensual(docs) {
     var map = {};
     docs.forEach(function (d) {
@@ -1322,8 +1946,18 @@
       map[mes] = (map[mes] || 0) + d.total_con_iva;
     });
     var meses = Object.keys(map).sort();
-    var acumulado = 0;
-    return meses.map(function (m) { acumulado += map[m]; return { mes: m, monto: map[m], acumulado: acumulado }; });
+    if (!meses.length) return [];
+    var ultimo = meses[meses.length - 1];
+    var p = meses[0].split('-'), y = +p[0], m = +p[1];
+    var out = [], acumulado = 0;
+    for (var guard = 0; guard < 1200; guard++) {
+      var k = y + '-' + pad2(m);
+      acumulado += map[k] || 0;
+      out.push({ mes: k, monto: map[k] || 0, acumulado: acumulado });
+      if (k >= ultimo) break;
+      if (++m > 12) { m = 1; y++; }
+    }
+    return out;
   }
   // Agrupa en "Otros" las categorías cuyo gasto es menor al 1% del total,
   // para que la dona no amontone tajadas ilegibles — el desglose completo
@@ -1353,9 +1987,54 @@
 
   // ---------- table ----------
   function statusBadge(estado) {
-    var ok = estado === 'Pagado';
-    return '<span class="status-badge ' + (ok ? 'ok' : 'warn') + '">' + esc(estado || '—') + '</span>';
+    var k = norm(estado);
+    // Una nota de crédito no está "pendiente": antes caía en el mismo ámbar
+    // que Pendiente solo por no ser "Pagado".
+    var cls = k === 'pagado' ? 'ok' : (k.indexOf('pendiente') === 0 ? 'warn' : 'neutral');
+    return '<span class="status-badge ' + cls + '">' + esc(estado || '—') + '</span>';
   }
+  // Resalta los términos buscados. Se mapea carácter a carácter el texto
+  // original contra su versión normalizada para que "ferreteria" marque
+  // dentro de "Ferretería".
+  function hl(text, terms) {
+    var s = String(text == null ? '' : text);
+    if (!terms.length || !s) return esc(s);
+    var chars = Array.from(s), normStr = '', idx = [], on = [];
+    chars.forEach(function (c, i) {
+      var n = norm(c);
+      for (var j = 0; j < n.length; j++) { normStr += n[j]; idx.push(i); }
+    });
+    terms.forEach(function (t) {
+      for (var p = normStr.indexOf(t); p !== -1; p = normStr.indexOf(t, p + 1)) {
+        for (var k = p; k < p + t.length; k++) on[idx[k]] = true;
+      }
+    });
+    var out = '', abierto = false;
+    chars.forEach(function (c, i) {
+      if (on[i] && !abierto) { out += '<mark class="hl">'; abierto = true; }
+      if (!on[i] && abierto) { out += '</mark>'; abierto = false; }
+      out += esc(c);
+    });
+    return out + (abierto ? '</mark>' : '');
+  }
+  // Segunda línea bajo el proveedor: qué se compró, sin tener que expandir.
+  // Si la búsqueda calzó con un ítem que no sale en el resumen, se muestra
+  // ese ítem — así se ve por qué el documento está en los resultados.
+  function subLinea(d, terms) {
+    var resumen = d.resumen_items || '';
+    if (terms.length) {
+      var nr = norm(resumen);
+      if (terms.some(function (t) { return nr.indexOf(t) === -1; })) {
+        var hit = (d.items || []).filter(function (it) {
+          var h = norm((it.nombre_item || '') + ' ' + (it.descripcion || ''));
+          return terms.some(function (t) { return h.indexOf(t) !== -1; });
+        })[0];
+        if (hit) return (hit.nombre_item || '') + (hit.descripcion ? ' — ' + hit.descripcion : '');
+      }
+    }
+    return resumen;
+  }
+  function cssEsc(s) { return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/"/g, '\\"'); }
   function renderTable(allDocs) {
     var tbody = document.getElementById('docTableBody');
     var empty = document.getElementById('emptyState');
@@ -1367,51 +2046,61 @@
       return;
     }
     empty.style.display = 'none';
+    var terms = searchTerms(state.search);
 
-    // Paginación client-side: con cientos/miles de facturas, dibujar todas
-    // las filas de una vez es el cuello de botella real de rendimiento de
-    // este visualizador — acotar el DOM a una página evita el bloqueo,
-    // sin necesitar un backend ni virtualización más compleja.
-    var totalPages = Math.max(1, Math.ceil(allDocs.length / PAGE_SIZE));
+    // Paginación client-side: dibujar cientos de filas de una vez es el
+    // cuello de botella real de este visualizador.
+    var totalPages = Math.max(1, Math.ceil(allDocs.length / state.pageSize));
     if (state.page > totalPages) state.page = totalPages;
     if (state.page < 1) state.page = 1;
-    var startIdx = (state.page - 1) * PAGE_SIZE;
-    var docs = allDocs.slice(startIdx, startIdx + PAGE_SIZE);
+    var startIdx = (state.page - 1) * state.pageSize;
+    var docs = allDocs.slice(startIdx, startIdx + state.pageSize);
 
     var rows = [];
     docs.forEach(function (d) {
       var expanded = !!state.expanded[d.ref];
-      var pSwatchStyle = swatchStyleFor(proyectoColorVar[d.proyecto]);
+      var neg = (d.total_con_iva || 0) < 0;
+      var sub = subLinea(d, terms);
       rows.push(
-        '<tr class="doc-row' + (expanded ? ' is-expanded' : '') + '" data-ref="' + esc(d.ref) + '">' +
-        '<td><span class="expand-toggle" aria-hidden="true">' + (expanded ? '▾' : '▸') + '</span></td>' +
-        '<td>' + esc(d.ref) + (d.pendiente_revision ? ' <span title="Pendiente de revisión" style="color:var(--status-warning)">●</span>' : '') + copyArchivoBtnHtml(d.archivo_origen) + '</td>' +
-        '<td><span class="proj-tag"><span class="proj-dot" style="' + pSwatchStyle + '"></span>' + esc(d.proyecto) + '</span></td>' +
-        '<td>' + fmtDate(d.fecha) + '</td>' +
-        '<td>' + esc(d.proveedor_tag) + '</td>' +
-        '<td>' + esc(d.categoria) + '</td>' +
-        '<td class="num">' + fmt(d.total_con_iva) + '</td>' +
-        '<td>' + statusBadge(d.estado) + '</td>' +
+        '<tr class="doc-row' + (expanded ? ' is-expanded' : '') + '" data-ref="' + esc(d.ref) + '" role="button" tabindex="0" aria-expanded="' + expanded + '" aria-label="Ver detalle del documento ' + esc(d.ref) + '">' +
+        '<td class="c-tg"><span class="expand-toggle" aria-hidden="true">' + (expanded ? '▾' : '▸') + '</span></td>' +
+        '<td class="c-ref">' + hl(d.ref, terms) + (d.pendiente_revision ? ' <span class="pend-dot" title="Pendiente de revisión">●</span>' : '') + copyArchivoBtnHtml(d.archivo_origen) + '</td>' +
+        '<td class="c-proy"><span class="proj-tag"><span class="proj-dot" style="' + swatchStyleFor(proyectoColorVar[d.proyecto]) + '"></span>' + hl(d.proyecto, terms) + '</span></td>' +
+        '<td class="c-fecha">' + fmtDate(d.fecha) + '</td>' +
+        '<td class="c-prov cell-prov"><span class="prov">' + hl(d.proveedor_tag, terms) + '</span>' +
+        (sub ? '<span class="row-sub" title="' + esc(sub) + '">' + hl(sub, terms) + '</span>' : '') + '</td>' +
+        '<td class="c-cat">' + hl(d.categoria, terms) + '</td>' +
+        '<td class="c-total num' + (neg ? ' neg' : '') + '">' + fmt(d.total_con_iva) + '</td>' +
+        '<td class="c-estado">' + statusBadge(d.estado) + '</td>' +
         '</tr>'
       );
       if (expanded) {
         var itemsRows = (d.items || []).map(function (it) {
-          return '<tr><td>' + esc(it.nombre_item) + '</td><td>' + esc(it.descripcion || '') + '</td><td>' + esc(it.categoria_item || '') + '</td>' +
+          return '<tr><td>' + hl(it.nombre_item, terms) + '</td><td>' + hl(it.descripcion || '', terms) + '</td><td>' + esc(it.categoria_item || '') + '</td>' +
             '<td class="num">' + fmtNum(it.cantidad) + '</td><td class="num">' + fmt(it.p_unitario_sin_iva) + '</td>' +
             '<td class="num">' + fmt(it.total_con_iva) + '</td></tr>';
         }).join('');
+        // Atajos para seguir explorando desde un documento: "¿qué más le
+        // compramos a este proveedor?" era imposible sin conocer su tag.
+        var acciones = [];
+        if (d.proveedor_tag) acciones.push(['proveedor', d.proveedor_tag, state.proveedor === d.proveedor_tag ? 'Quitar filtro de proveedor' : 'Ver todo lo de ' + d.proveedor_tag]);
+        if (d.proyecto) acciones.push(['proyecto', d.proyecto, state.proyecto === d.proyecto ? 'Quitar filtro de proyecto' : 'Ver solo ' + d.proyecto]);
         rows.push(
           '<tr class="detail-row"><td colspan="8"><div class="detail-panel">' +
+          '<div class="detail-actions">' + acciones.map(function (a) {
+            return '<button type="button" data-k="' + a[0] + '" data-v="' + esc(a[1]) + '">' + esc(a[2]) + '</button>';
+          }).join('') + '</div>' +
           '<div class="detail-grid">' +
-          '<div><div class="dk">Razón social</div><div class="dv">' + esc(d.proveedor_razon_social || '—') + '</div></div>' +
+          '<div><div class="dk">Razón social</div><div class="dv">' + hl(d.proveedor_razon_social || '—', terms) + '</div></div>' +
           '<div><div class="dk">Tipo de proyecto</div><div class="dv">' + esc(d.tipo_proyecto || '—') + '</div></div>' +
+          '<div><div class="dk">Categoría</div><div class="dv">' + esc(d.categoria || '—') + '</div></div>' +
           '<div><div class="dk">Tipo de documento</div><div class="dv">' + esc(d.tipo_documento || '—') + '</div></div>' +
-          '<div><div class="dk">N° Documento</div><div class="dv">' + esc(d.n_documento || '—') + '</div></div>' +
-          '<div><div class="dk">Total sin IVA</div><div class="dv">' + fmt(d.total_sin_iva) + '</div></div>' +
-          '<div><div class="dk">IVA</div><div class="dv">' + fmt(d.iva) + '</div></div>' +
+          '<div><div class="dk">N° Documento</div><div class="dv">' + hl(d.n_documento || '—', terms) + '</div></div>' +
+          '<div><div class="dk">Total sin IVA</div><div class="dv' + (neg ? ' neg' : '') + '">' + fmt(d.total_sin_iva) + '</div></div>' +
+          '<div><div class="dk">IVA e impuestos</div><div class="dv' + (neg ? ' neg' : '') + '">' + fmt(d.iva) + '</div></div>' +
           '<div><div class="dk">Total con IVA</div><div class="dv accent">' + fmt(d.total_con_iva) + '</div></div>' +
           '</div>' +
-          '<table class="viz-itemtable"><thead><tr><th>Ítem</th><th>Descripción</th><th>Categoría</th><th>Cant.</th><th>P. Unit. s/IVA</th><th>Total c/IVA</th></tr></thead>' +
+          '<table class="viz-itemtable"><thead><tr><th>Ítem</th><th>Descripción</th><th>Categoría</th><th class="num">Cant.</th><th class="num">P. Unit. s/IVA</th><th class="num">Total c/IVA</th></tr></thead>' +
           '<tbody>' + itemsRows + '</tbody></table>' +
           '</div></td></tr>'
         );
@@ -1419,19 +2108,24 @@
     });
     tbody.innerHTML = rows.join('');
     tbody.querySelectorAll('tr.doc-row').forEach(function (tr) {
-      // role="button" + tabindex + Enter/Espacio: la fila se expande con
-      // click, pero hasta ahora no había forma de hacerlo solo con teclado.
-      tr.setAttribute('role', 'button');
-      tr.setAttribute('tabindex', '0');
-      tr.setAttribute('aria-expanded', tr.classList.contains('is-expanded') ? 'true' : 'false');
-      tr.setAttribute('aria-label', 'Ver detalle del documento ' + tr.dataset.ref);
       function toggle() {
         var ref = tr.dataset.ref;
         state.expanded[ref] = !state.expanded[ref];
         renderTable(getSorted(getFiltered()));
+        // Redibujar la tabla destruye la fila: sin esto, quien navega con
+        // teclado perdía el foco en cada expandir/colapsar.
+        var again = tbody.querySelector('tr.doc-row[data-ref="' + cssEsc(ref) + '"]');
+        if (again) again.focus({ preventScroll: true });
       }
-      tr.addEventListener('click', toggle);
+      tr.addEventListener('click', function (e) {
+        if (e.target.closest && e.target.closest('button')) return;
+        // Seleccionar texto (ej. para copiar un N° de documento) no debe
+        // colapsar la fila.
+        if (window.getSelection && String(window.getSelection()).length) return;
+        toggle();
+      });
       tr.addEventListener('keydown', function (e) {
+        if (e.target !== tr) return;
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
       });
     });
@@ -1441,25 +2135,40 @@
         copyArchivoOrigen(btn);
       });
     });
+    tbody.querySelectorAll('.detail-actions button').forEach(function (b) {
+      b.addEventListener('click', function () { toggleFilter(b.dataset.k, b.dataset.v); });
+    });
 
     renderPagination(allDocs.length, totalPages, paginationEl);
   }
 
   function renderPagination(totalDocs, totalPages, el) {
-    if (totalPages <= 1) { el.innerHTML = ''; return; }
-    var startIdx = (state.page - 1) * PAGE_SIZE;
-    var endIdx = Math.min(startIdx + PAGE_SIZE, totalDocs);
+    if (totalDocs <= PAGE_SIZES[0]) { el.innerHTML = ''; return; }
+    var startIdx = (state.page - 1) * state.pageSize;
+    var endIdx = Math.min(startIdx + state.pageSize, totalDocs);
     el.innerHTML =
-      '<span>Mostrando ' + (startIdx + 1) + '–' + endIdx + ' de ' + totalDocs + '</span>' +
+      '<span>Mostrando ' + fmtNum(startIdx + 1) + '–' + fmtNum(endIdx) + ' de ' + fmtNum(totalDocs) + '</span>' +
+      '<label class="viz-pagesize">Filas por página <select id="pgSize">' + PAGE_SIZES.map(function (n) {
+        return '<option value="' + n + '"' + (n === state.pageSize ? ' selected' : '') + '>' + n + '</option>';
+      }).join('') + '</select></label>' +
       '<div class="pages">' +
       '<button type="button" id="pgPrev"' + (state.page <= 1 ? ' disabled' : '') + '>‹ Anterior</button>' +
       '<span>Página ' + state.page + ' de ' + totalPages + '</span>' +
       '<button type="button" id="pgNext"' + (state.page >= totalPages ? ' disabled' : '') + '>Siguiente ›</button>' +
       '</div>';
-    var prevBtn = document.getElementById('pgPrev');
-    var nextBtn = document.getElementById('pgNext');
-    if (prevBtn) prevBtn.addEventListener('click', function () { state.page--; renderTable(getSorted(getFiltered())); document.querySelector('.viz-tablewrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
-    if (nextBtn) nextBtn.addEventListener('click', function () { state.page++; renderTable(getSorted(getFiltered())); document.querySelector('.viz-tablewrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+    function irA(p) {
+      state.page = p;
+      renderTable(getSorted(getFiltered()));
+      document.getElementById('docsHead').scrollIntoView({ behavior: REDUCED_MOTION ? 'auto' : 'smooth', block: 'start' });
+    }
+    document.getElementById('pgPrev').addEventListener('click', function () { irA(state.page - 1); });
+    document.getElementById('pgNext').addEventListener('click', function () { irA(state.page + 1); });
+    document.getElementById('pgSize').addEventListener('change', function (e) {
+      state.pageSize = +e.target.value;
+      state.page = 1;
+      try { localStorage.setItem('cc_viz_page_size', String(state.pageSize)); } catch (err) {}
+      renderTable(getSorted(getFiltered()));
+    });
   }
 
   function getSorted(docs) {
@@ -1477,13 +2186,19 @@
     return copy;
   }
 
+  // Cabeceras ordenables también con teclado (Enter/Espacio): antes solo
+  // respondían al mouse.
   document.querySelectorAll('#docTable thead th[data-key]').forEach(function (th) {
-    th.addEventListener('click', function () {
+    function ordenar() {
       var key = th.dataset.key;
       if (state.sortKey === key) { state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc'; }
       else { state.sortKey = key; state.sortDir = key === 'total_con_iva' || key === 'fecha' ? 'desc' : 'asc'; }
       state.page = 1;
       render();
+    }
+    th.addEventListener('click', ordenar);
+    th.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ordenar(); }
     });
   });
   function updateSortArrows() {
@@ -1491,94 +2206,146 @@
       var arrow = th.querySelector('.arrow');
       var active = th.dataset.key === state.sortKey;
       arrow.textContent = active ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
+      th.classList.toggle('is-sorted', active);
       th.setAttribute('aria-sort', active ? (state.sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
     });
   }
 
+  // ---------- exportar CSV ----------
+  // Los documentos filtrados, en el orden de la tabla, listos para Excel:
+  // separador ";" y BOM UTF-8 (lo que espera Excel en configuración es-CL),
+  // montos como enteros sin separador de miles y fechas DD-MM-AAAA.
+  var CSV_COLUMNAS = [
+    ['N° Ref.', 'ref'], ['Proyecto', 'proyecto'], ['Tipo de proyecto', 'tipo_proyecto'],
+    ['Fecha', function (d) { return d.fecha ? fmtDate(d.fecha) : ''; }],
+    ['N° Documento', 'n_documento'], ['Tipo documento', 'tipo_documento'],
+    ['Proveedor', 'proveedor_tag'], ['Razón social', 'proveedor_razon_social'],
+    ['Categoría', 'categoria'], ['Resumen ítems', 'resumen_items'],
+    ['Total sin IVA (CLP)', function (d) { return Math.round(d.total_sin_iva || 0); }],
+    ['IVA (CLP)', function (d) { return Math.round(d.iva || 0); }],
+    ['Total con IVA (CLP)', function (d) { return Math.round(d.total_con_iva || 0); }],
+    ['Estado', 'estado'],
+    ['Pendiente de revisión', function (d) { return d.pendiente_revision ? 'Sí' : ''; }]
+  ];
+  function celdaCsv(v) {
+    v = v == null ? '' : String(v);
+    return /[";\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function exportarCsv() {
+    var docs = getSorted(getFiltered());
+    var lineas = [CSV_COLUMNAS.map(function (c) { return celdaCsv(c[0]); }).join(';')];
+    docs.forEach(function (d) {
+      lineas.push(CSV_COLUMNAS.map(function (c) { return celdaCsv(typeof c[1] === 'function' ? c[1](d) : d[c[1]]); }).join(';'));
+    });
+    var blob = new Blob(['﻿' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'centro-de-costos_' + isoDate(new Date()) + (docs.length !== DOCS.length ? '_filtrado' : '') + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  document.getElementById('btnExportCsv').addEventListener('click', exportarCsv);
+
   // ---------- render orchestration ----------
-  function render() {
-    var filtered = getFiltered();
-    var sorted = getSorted(filtered);
-    renderKPIs(filtered);
-    document.getElementById('resultCount').textContent = filtered.length + ' de ' + DOCS.length + ' documentos';
+  function renderCharts(filtered) {
     var proyectoAgg = aggregate(filtered, 'proyecto');
-    renderRankingChart('chartProyecto', proyectoAgg, 'proyecto', 'monto', { limit: 8, colorMap: proyectoColorVar, noun: ['proyecto', 'proyectos'] });
-    var btnVerTodosProyectos = document.getElementById('btnVerTodosProyectos');
-    if (btnVerTodosProyectos) btnVerTodosProyectos.style.display = proyectoAgg.length > 8 ? '' : 'none';
+    renderRankingChart('chartProyecto', proyectoAgg, 'proyecto', 'monto', {
+      limit: 8, colorMap: proyectoColorVar, noun: ['proyecto', 'proyectos'], title: 'Gasto por proyecto',
+      active: state.proyecto, onSelect: function (v) { toggleFilter('proyecto', v); }
+    });
+    document.getElementById('btnVerTodosProyectos').style.display = proyectoAgg.length > 8 ? '' : 'none';
     var categoriaCompacta = aggregateCategoriaCompacta(filtered);
-    renderDonutChart('chartCategoria', categoriaCompacta.items, 'categoria', 'monto', categoriaColorVar);
-    var btnVerDesgloseCategorias = document.getElementById('btnVerDesgloseCategorias');
-    if (btnVerDesgloseCategorias) btnVerDesgloseCategorias.style.display = categoriaCompacta.hasOtros ? '' : 'none';
+    renderDonutChart('chartCategoria', categoriaCompacta.items, 'categoria', 'monto', categoriaColorVar, {
+      title: 'Gasto por categoría', active: state.categoria,
+      onSelect: function (v) { toggleFilter('categoria', v); },
+      onOtros: function () { modalCategoriasCtl.open(); }
+    });
+    document.getElementById('btnVerDesgloseCategorias').style.display = categoriaCompacta.hasOtros ? '' : 'none';
     renderMensualChart(aggregateMensual(filtered));
     var proveedorAgg = aggregateProveedor(filtered);
-    renderRankingChart('chartProveedores', proveedorAgg, 'proveedor', 'monto');
-    var btnVerTodosProveedores = document.getElementById('btnVerTodosProveedores');
-    if (btnVerTodosProveedores) btnVerTodosProveedores.style.display = proveedorAgg.length > 8 ? '' : 'none';
-    renderTable(sorted);
+    renderRankingChart('chartProveedores', proveedorAgg, 'proveedor', 'monto', {
+      title: 'Top proveedores', active: state.proveedor,
+      onSelect: function (v) { toggleFilter('proveedor', v); }
+    });
+    document.getElementById('btnVerTodosProveedores').style.display = proveedorAgg.length > 8 ? '' : 'none';
+  }
+  function render() {
+    hideTooltip();
+    var filtered = getFiltered();
+    renderKPIs(filtered);
+    renderFilterSummary(filtered);
+    renderCharts(filtered);
+    renderTable(getSorted(filtered));
     updateSortArrows();
+    writeHash();
   }
 
-  window.addEventListener('resize', debounce(render, 200));
+  // Solo el ancho cambia la geometría de los gráficos. En móvil, la barra
+  // de direcciones que aparece/desaparece al hacer scroll dispara 'resize'
+  // (cambia solo el alto) y antes eso redibujaba todo el tablero en pleno
+  // scroll.
+  var lastWidth = window.innerWidth;
+  window.addEventListener('resize', debounce(function () {
+    if (window.innerWidth === lastWidth) return;
+    lastWidth = window.innerWidth;
+    renderCharts(getFiltered());
+  }, 200));
   function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
-  // ---------- modales "ver todos" (Gasto por proyecto / Top proveedores) ----------
-  // Mismo patrón para ambos: overlay + botón cerrar + click en el fondo +
-  // Escape, renderizando el ranking completo (sin límite de 8) al abrir.
-  function setupRankingModal(opts) {
-    var modalEl = document.getElementById(opts.modalId);
+  // ---------- modales "ver todos" / "ver desglose" ----------
+  // Mismo patrón para los tres: overlay + botón cerrar + clic en el fondo +
+  // Escape. El foco entra al modal al abrir y vuelve al botón que lo abrió
+  // al cerrar (antes quedaba detrás del overlay). Un clic en una barra o
+  // porción del modal cierra y filtra, igual que en la tarjeta.
+  function setupModal(modalId, renderFn) {
+    var modalEl = document.getElementById(modalId);
+    var closeBtn = modalEl.querySelector('.viz-modal-close');
+    var lastFocus = null;
     function onKeydown(e) { if (e.key === 'Escape') close(); }
     function open() {
+      lastFocus = document.activeElement;
       modalEl.hidden = false;
-      var items = opts.dataFn();
-      renderRankingChart(opts.mountId, items, opts.labelKey, opts.valueKey, { limit: items.length, colorMap: opts.colorMap, noun: opts.noun });
+      renderFn(close);
       document.addEventListener('keydown', onKeydown);
+      closeBtn.focus();
     }
     function close() {
+      if (modalEl.hidden) return;
       modalEl.hidden = true;
+      hideTooltip();
       document.removeEventListener('keydown', onKeydown);
+      if (lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus();
     }
     modalEl.addEventListener('click', function (e) { if (e.target === modalEl) close(); });
+    closeBtn.addEventListener('click', close);
     return { open: open, close: close };
   }
-  var modalProyectosCtl = setupRankingModal({
-    modalId: 'modalProyectos', mountId: 'chartProyectoFull',
-    dataFn: function () { return aggregate(getFiltered(), 'proyecto'); },
-    labelKey: 'proyecto', valueKey: 'monto', colorMap: proyectoColorVar, noun: ['proyecto', 'proyectos']
+  var modalProyectosCtl = setupModal('modalProyectos', function (close) {
+    var items = aggregate(getFiltered(), 'proyecto');
+    renderRankingChart('chartProyectoFull', items, 'proyecto', 'monto', {
+      limit: items.length, colorMap: proyectoColorVar, noun: ['proyecto', 'proyectos'], title: 'Gasto por proyecto',
+      active: state.proyecto, onSelect: function (v) { close(); toggleFilter('proyecto', v); }
+    });
   });
   document.getElementById('btnVerTodosProyectos').addEventListener('click', modalProyectosCtl.open);
-  document.getElementById('btnCerrarModalProyectos').addEventListener('click', modalProyectosCtl.close);
 
-  var modalProveedoresCtl = setupRankingModal({
-    modalId: 'modalProveedores', mountId: 'chartProveedoresFull',
-    dataFn: function () { return aggregateProveedor(getFiltered()); },
-    labelKey: 'proveedor', valueKey: 'monto', colorMap: null, noun: ['proveedor', 'proveedores']
+  var modalProveedoresCtl = setupModal('modalProveedores', function (close) {
+    var items = aggregateProveedor(getFiltered());
+    renderRankingChart('chartProveedoresFull', items, 'proveedor', 'monto', {
+      limit: items.length, title: 'Proveedores',
+      active: state.proveedor, onSelect: function (v) { close(); toggleFilter('proveedor', v); }
+    });
   });
   document.getElementById('btnVerTodosProveedores').addEventListener('click', modalProveedoresCtl.open);
-  document.getElementById('btnCerrarModalProveedores').addEventListener('click', modalProveedoresCtl.close);
 
-  // ---------- modal "ver desglose" (Gasto por categoría, sin agrupar "Otros") ----------
-  function setupDonutModal(opts) {
-    var modalEl = document.getElementById(opts.modalId);
-    function onKeydown(e) { if (e.key === 'Escape') close(); }
-    function open() {
-      modalEl.hidden = false;
-      renderDonutChart(opts.mountId, opts.dataFn(), opts.labelKey, opts.valueKey, opts.colorMap);
-      document.addEventListener('keydown', onKeydown);
-    }
-    function close() {
-      modalEl.hidden = true;
-      document.removeEventListener('keydown', onKeydown);
-    }
-    modalEl.addEventListener('click', function (e) { if (e.target === modalEl) close(); });
-    return { open: open, close: close };
-  }
-  var modalCategoriasCtl = setupDonutModal({
-    modalId: 'modalCategorias', mountId: 'chartCategoriaFull',
-    dataFn: function () { return aggregate(getFiltered(), 'categoria'); },
-    labelKey: 'categoria', valueKey: 'monto', colorMap: categoriaColorVar
+  var modalCategoriasCtl = setupModal('modalCategorias', function (close) {
+    renderDonutChart('chartCategoriaFull', aggregate(getFiltered(), 'categoria'), 'categoria', 'monto', categoriaColorVar, {
+      title: 'Gasto por categoría', active: state.categoria,
+      onSelect: function (v) { close(); toggleFilter('categoria', v); }
+    });
   });
   document.getElementById('btnVerDesgloseCategorias').addEventListener('click', modalCategoriasCtl.open);
-  document.getElementById('btnCerrarModalCategorias').addEventListener('click', modalCategoriasCtl.close);
 
   // ---------- toggle "Gasto mensual acumulado" ⇄ "por mes" ----------
   var btnToggleMensual = document.getElementById('btnToggleMensual');
@@ -1595,7 +2362,11 @@
   });
 
   bindInfoBadges(document);
+  readHash();
+  syncControls();
   render();
   } // end initApp
 })();
 </script>
+</body>
+</html>

@@ -56,8 +56,8 @@ PDF, Visualizador Web, etc.) y decisiones de diseño de cada una: comprimido
 acá el 2026-07-27 para que esta sección no quede desactualizada cada vez que
 se agrega una extensión — ver en vez de eso los archivos
 `*analisis-financiero*` en
-[`docs/superpowers/specs/`](../docs/superpowers/specs/) y
-[`docs/superpowers/plans/`](../docs/superpowers/plans/) (rutas relativas a
+[`docs/specs/`](../docs/specs/) y
+[`docs/plans/`](../docs/plans/) (rutas relativas a
 la raíz de `Finanzas QUEMPIN/`), uno por extensión, orden cronológico por la
 fecha en el nombre del archivo.
 
@@ -337,18 +337,87 @@ Los dos análisis viven en `analisis_financiero.py` junto al resto, no en el
 build del tablero: el día que un reporte PDF o Flujo de Caja los necesite,
 ya están.
 
+## Costos proyectados desde el Formulador (Intercambio, 2026-09-30)
+
+Pedido del usuario: que las herramientas compartan información entre sí y,
+en concreto, que el **Formulador de proyectos** (web) pueda actualizar los
+costos proyectados de este módulo. Canal de entrada auditado a las 4
+columnas "... Proyectado(s)" de "Proyectos" — **la única excepción a la
+regla de oro de las columnas manuales**, por pedido explícito. Protocolo
+común en `../Sistema Intercambio/CLAUDE.md`; lógica en
+`Sistema/presupuestos_formulador.py`, enganchada en `ejecutar()`.
+
+- El Formulador deja un mensaje `presupuesto-proyecto` (TAG + costos por
+  categoría; gastos generales e imprevistos no viajan) en el `buzon/` de la
+  carpeta de intercambio: desde el 2026-09-30,
+  `Formulación de proyectos - Documentos/.Herramientas formulación/Intercambio/`
+  (antes `Finanzas QUEMPIN/Intercambio/`), ubicada por
+  `presupuestos_formulador.ubicar_intercambio()`; sin la biblioteca
+  sincronizada queda inactivo con un aviso en `status`/`run`. Cada `run` lo aplica **después del
+  respaldo y antes de fórmulas/Indicadores/Clientes**, así la misma corrida
+  y el dashboard ya lo usan.
+- **Solo escribe cuando es seguro**: celda vacía, valor que el propio
+  Formulador escribió antes (registro de procedencia
+  `Sistema/presupuestos_formulador.json`, gitignoreado), o valor que quien
+  envió **vio** en el Formulador ("reemplaza", como un If-Match). Un valor
+  escrito a mano que no se vio deja el envío **pendiente** en el buzón:
+  `driver.py intercambio confirmar|descartar <id>`. Nunca aplica un envío a
+  medias; varios envíos al mismo TAG: gana el último.
+- Cada celda escrita lleva una **nota de Excel** con la procedencia (autor
+  `Formulador (Intercambio)`). Si alguien la cambia a mano después, la
+  corrida siguiente quita la nota y la trata como manual.
+- Los envíos se archivan en `procesado/` y el registro se guarda **solo si el
+  Excel se guardó**: con el libro abierto, todo queda en el buzón para la
+  próxima. Nunca aborta el run (queda como aviso).
+- TAG que no existe: pendiente hasta que aparezca (lo crea Centro de Costos
+  con la primera factura), salvo que el envío diga `crear` con un nombre:
+  ahí crea la fila (TAG + Nombre), en la primera fila libre (no sobre una a
+  medio cargar).
+- Al final de cada `run` publica `publicado/analisis-financiero.json` en esa
+  carpeta (TAG, nombre, cliente, categoría, avance, proyectados con su
+  origen, reales por categoría y estado de los envíos; sin "Gastos
+  Generales" ni venta). La ve todo el que entra a la biblioteca de
+  Formulación: el usuario lo aceptó al moverla ahí. `driver.py intercambio
+  publicar` hace lo mismo **sin escribir el Excel**.
+- El intercambio corre solo contra el libro del país (`ruta_excel_af`
+  omitida; `PAISES["CL"]["raiz_intercambio"]`) o con una `raiz_intercambio`
+  explícita: un test con Excel temporal nunca toca la carpeta real. **Un país
+  ficticio de verificación debe sobrescribir `raiz_intercambio` y
+  `ruta_estado_intercambio`** (si copia `PAISES["CL"]`, apuntarían a los
+  reales). Perú: desactivado.
+- Centro de Costos no se tocó; `cargar_datos_centro_costos()` (extraída de
+  `ejecutar()`) es la única lectura de sus datos, compartida con
+  `publicar_intercambio()`.
+
+Tests: `Sistema/tests/test_presupuestos_formulador.py` (sandbox en
+`tmp_path`). Verificado además de punta a punta con el Formulador real en
+Chrome contra una copia del libro real (país ficticio, archivos reales sin
+cambios).
+
 ## Reportes PDF (implementado 2026-07-24)
 
 Genera reportes PDF por proyecto/cliente/categoría y comparativas ad-hoc a
 partir de `Análisis de Proyectos 2026.xlsx`, en la carpeta hermana `Reportes/`:
 
-- **`brand.py`** — fuente Lato embebida (3 variantes) y logo en base64,
-  `construir_html()` arma el HTML base (título + logo + contenido) que luego
-  se renderiza a PDF.
+- **`panel.py`** (2026-09-24) — **arma la página 1 completa** (el panel de
+  verificación) de proyecto/cliente/categoría desde el paquete de datos:
+  ficha con chips, 4 tarjetas de KPI con semáforo, alertas, gráficos y los 28
+  indicadores del playbook en 2 columnas agrupadas por bloque. También
+  envuelve la página 2 (`pagina_analisis`) y arma el documento completo
+  (`documento`). Antes esa página la escribía el agente a mano en cada
+  reporte, pese a no tener ninguna decisión editorial — ver MEMORY.md
+  2026-09-24.
+- **`brand.py`** — fuente Lato embebida (3 variantes, lectura cacheada) y
+  logo en base64, `construir_html()` arma el HTML base (título + logo +
+  contenido) que luego se renderiza a PDF. `estado_kpi()` es el semáforo
+  centralizado (bueno/medio/malo, colores y cortes compartidos con el
+  dashboard) y `formatear_kpi()` decide pesos/porcentaje/Nota por el nombre
+  de la columna.
 - **`graficos.py`** — gráficos SVG propios (barras, dona) sin dependencias
   externas, para incrustar en el HTML del reporte.
 - **`motor_reportes.py`** — renderiza el HTML final a un PDF válido
-  (`renderizar_pdf`).
+  (`renderizar_pdf`, o `renderizar_pdfs` para un lote entero con un solo
+  Chromium).
 - **`datos_reportes.py`** — arma el paquete de datos de cada reporte
   (`paquete_datos_proyecto` / `_cliente` / `_categoria` / `_comparacion`),
   leyendo `Análisis de Proyectos 2026.xlsx` de solo lectura, igual que el resto del
@@ -364,8 +433,11 @@ partir de `Análisis de Proyectos 2026.xlsx`, en la carpeta hermana `Reportes/`:
 El skill `Reportes_Analisis_Financiero`
 (`.claude/skills/Reportes_Analisis_Financiero/driver.py` + `SKILL.md`) expone
 `status` (lista entidades con datos completos y cuáles tienen reporte
-pendiente/desactualizado, vía `calcular_reportes_pendientes`) y `run` (genera
-los PDFs pendientes). Desde 2026-07-24, `Centro de Costos` avisa por consola
+pendiente/desactualizado, vía `calcular_reportes_pendientes`), `contexto
+<clave>` (los números de una entidad, ya formateados y comparados contra la
+cartera, para redactar la página 2 sin abrir el Excel) y `generar <clave>
+--narrativa <html>` / `generar --lote <json>` (arma el documento, renderiza,
+avisa si no quedó en 2 páginas y actualiza el manifiesto). Desde 2026-07-24, `Centro de Costos` avisa por consola
 al final de su propio `run` (PASO 12d, `auditor_centro_costos.py`,
 `_avisar_reportes_pendientes()`) si quedaron reportes pendientes tras
 actualizar Análisis Financiero — best-effort: si el skill de reportes no
@@ -389,17 +461,19 @@ indicador visual explícito de que el proyecto sigue en curso, no cerrado.
 Proyecto/Cliente/Categoría, todo reporte va en exactamente 2
 `<div class="pdf-pagina">` (CSS de salto de página en `brand.py`) — página 1
 es un panel de verificación 100% visual/tabular con **todos** los KPIs de la
-entidad (sin selección editorial) y estructura de secciones fija; página 2
+entidad (sin selección editorial) y estructura de secciones fija, **por eso
+desde 2026-09-24 la genera `panel.py` y no el agente**: una página sin
+decisiones editoriales no se redacta, se construye; página 2
 es el análisis narrativo (resumen ejecutivo, fortalezas, debilidades,
 notas estratégicas), con estructura libre y gráficos puntuales adicionales
 si el agente los considera necesarios. La comparación ad-hoc queda
 explícitamente fuera de este estándar — ver "Pendientes" en `MEMORY.md`.
 
 Ver diseño completo:
-[`docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`](../docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md)
+[`docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`](../docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md)
 (addendum §10 para este estándar)
 y el plan de implementación
-[`docs/superpowers/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md`](../docs/superpowers/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md)
+[`docs/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md`](../docs/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md)
 (rutas relativas a la raíz de `Finanzas QUEMPIN/`).
 
 ## Precauciones

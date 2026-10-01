@@ -273,7 +273,7 @@ módulos), no en este archivo.
   `Sitio de comunicación - Centro de Costos 1/Facturas y Boletas/Perú/<Proyecto>/`
   (paralelo a `.../Chile/<Proyecto>/` para los documentos chilenos, ambos
   dentro de la misma carpeta compartida) — ver
-  `docs/superpowers/specs/2026-08-21-peru-expansion-design.md` (raíz del
+  `docs/specs/2026-08-21-peru-expansion-design.md` (raíz del
   repo) para la arquitectura completa.
 
 ## Criterios de clasificación

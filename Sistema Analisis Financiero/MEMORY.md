@@ -53,7 +53,7 @@ empresa (con tablas dinámicas y referencias a RRHH/Órdenes de Compra externas)
 fórmulas extraídas, los 2 bugs encontrados en él (fórmula de "Productividad
 Materiales" inconsistente entre proyectos; mezcla de bases IVA entre ingreso y
 costos) y las correcciones aplicadas quedan documentadas en el spec
-(`docs/superpowers/specs/2026-07-20-analisis-financiero-design.md`, sección
+(`docs/specs/2026-07-20-analisis-financiero-design.md`, sección
 "Playbook de KPIs") y resumidas en `CLAUDE.md`. Si en el futuro aparece un
 archivo con nombre parecido, no asumir que es el mismo ni que sigue vigente.
 
@@ -207,7 +207,7 @@ Magallanes".
   describía.
 
 Diseño completo:
-[`docs/superpowers/specs/2026-07-21-analisis-financiero-nota-clientes-design.md`](../docs/superpowers/specs/2026-07-21-analisis-financiero-nota-clientes-design.md)
+[`docs/specs/2026-07-21-analisis-financiero-nota-clientes-design.md`](../docs/specs/2026-07-21-analisis-financiero-nota-clientes-design.md)
 (ruta relativa a la raíz de `Finanzas QUEMPIN/`).
 
 ## Reportes PDF (implementación, 2026-07-24)
@@ -257,7 +257,7 @@ Diseño completo:
   o generar un reporte de comparación, hay que definir su estructura con
   él antes de redactarlo — no reutilizar el layout de arriba sin más.
 - Diseño completo: addendum §10 de
-  [`docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`](../docs/superpowers/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md).
+  [`docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`](../docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md).
 - **Verificado generando `proyecto:UMAG` real (2026-07-24)**: la primera
   versión del contenido (tarjetas de KPI + 2 tablas + 2 gráficos en página 1,
   5 párrafos en página 2, con el CSS base de `brand.py` sin más) se
@@ -595,9 +595,9 @@ El script (`Sistema/analisis_financiero.py`, 71 tests), el skill
 `status`/`run`/`confirmar-cliente`) y el enganche automático al `run` de
 Centro de Costos (PASO 12d de `auditor_centro_costos.py`) ya están
 implementados — ver detalle e historial de las 12 tareas originales en
-`docs/superpowers/plans/2026-07-20-analisis-financiero-implementacion.md` y
+`docs/plans/2026-07-20-analisis-financiero-implementacion.md` y
 de la extensión de Nota/Clientes/Glosario en
-`docs/superpowers/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md`
+`docs/plans/2026-07-21-analisis-financiero-nota-clientes-implementacion.md`
 (rutas relativas a la raíz de `Finanzas QUEMPIN/`). Lo que queda pendiente:
 
 - `Análisis de Proyectos 2026.xlsx` está vacío — no hay proyectos cargados todavía,
@@ -759,8 +759,9 @@ dashboard (ver sección "Segunda tanda de KPIs nuevos" más arriba):
   cuando se detectó la reversión se restauró desde ahí antes de seguir. Los 2
   archivos que quedaron con contenido viejo/de conflicto se movieron (no se
   borraron) a `Análisis Financiero/_OBSOLETO no usar (conflicto OneDrive
-  2026-08-19)/` -- limpiar esa carpeta a mano cuando el usuario confirme que
-  ya no los necesita.
+  2026-08-19)/`. **Cerrado el 2026-09-24**: el usuario confirmó que ya no los
+  necesitaba y esa carpeta se eliminó en la limpieza de carpetas fuera de
+  flujo. Ya no existe -- no la busques.
 - **Fix real**: en vez de pelear más por el mismo nombre de archivo, se creó
   el libro con nombre nuevo (`Análisis de Proyectos 2026.xlsx`, nunca existió
   antes en OneDrive, así que no hereda ningún historial de conflicto) y se
@@ -1153,3 +1154,127 @@ función real nunca produce**.
 **Verificado**: 882 tests; tablero revisado en navegador (escritorio y 390px,
 claro y oscuro, sin errores de consola), incluidos filtros, orden por
 columna, dispersión y mapa de calor con los datos reales.
+
+## Reportes PDF: la página 1 se genera, no se redacta (2026-09-24)
+
+Pedido del usuario: mejorar los reportes de Análisis Financiero, optimizar el
+uso de tokens y mejorar la presentación. Las tres cosas resultaron ser el
+mismo problema.
+
+**El hallazgo**: el estándar de 2 páginas dice que la página 1 lleva *todos*
+los KPIs de la entidad, "sin selección editorial" — o sea, no tiene ninguna
+decisión. Y aun así la escribía el agente a mano, en HTML, una vez por
+reporte: con 20 entidades pendientes, 20 veces el mismo panel. Era trabajo
+determinístico pagado como redacción, y además dos reportes escritos en
+sesiones distintas no quedaban iguales (mismo KPI con otro formato, una fila
+de menos). Mismo patrón que la divergencia del KPI "Nota del Proyecto"
+(2026-07-28) y la taxonomía duplicada en JavaScript (2026-09-08).
+
+**Lo que se hizo**: `Reportes/panel.py` arma la página 1 completa de
+proyecto/cliente/categoría desde el paquete de datos, y el driver ganó dos
+comandos:
+
+- `contexto <clave>` — ~20 líneas ya formateadas y **ya comparadas contra la
+  cartera** (mediana de margen y de Nota, sesgo por categoría al lado de la
+  desviación del proyecto, peso en la venta total, concentración de
+  clientes). Antes el agente volcaba los dicts crudos del paquete y escribía
+  Python suelto para calcular esas comparaciones.
+- `generar <clave> --narrativa <html>` (o `--lote lote.json`) — arma el
+  documento, renderiza, avisa si no quedó en 2 páginas y actualiza el
+  manifiesto. El agente escribe **solo la página 2**, que es donde hay juicio.
+
+El `SKILL.md` bajó de 194 a ~115 líneas: la mitad describía cómo construir a
+mano la página 1 (formato de moneda, leyendas de color, márgenes de los
+gráficos, repetir el encabezado) y ya no aplica.
+
+**Decisiones de diseño, con su porqué:**
+
+- **El semáforo reemplaza al booleano `es_kpi_fuera_de_rango`.** Ese criterio
+  pintaba del mismo naranjo un margen de 61% y un sobrecosto de +40%: el
+  color no distinguía la buena noticia de la mala, había que leer el número
+  igual. Ahora `brand.estado_kpi` devuelve bueno/medio/malo con los colores
+  ya calibrados del dashboard (contraste AA verificado ahí) y los cortes de
+  la Nota leídos de `analisis_financiero.clasificar_evaluacion`, no
+  duplicados. Se sacó también la regla "margen ≥ 1,5× el objetivo = revisar":
+  ese caso (margen alto porque faltan costos por registrar) ahora lo dice una
+  alerta explícita, con el motivo, en vez de un color raro.
+- **Las alertas de `alertas_proyecto()` llegaron al PDF.** Existían desde la
+  auditoría del 2026-09-21 pero solo salían por consola y en el tablero,
+  que es justo donde *no* se revisa un proyecto de a uno. En UMAG la alerta
+  ("terminado con un costo real de 72,9% del presupuesto") es lo que impide
+  leer su 61,4% de margen como eficiencia pura.
+- **El contexto de cartera NO entra al hash del manifiesto** (viaja bajo la
+  clave `_contexto`, y `calcular_hash_entidad` ignora las claves que empiezan
+  con "_"). Si entrara, tocar un solo proyecto marcaría los ~20 reportes como
+  desactualizados de golpe — y cada regeneración cuesta una redacción.
+- **Los KPIs de cliente/categoría son razón de sumas, no promedio de KPIs**
+  (`panel._indicadores_agregados`): un proyecto de $200.000 no pesa lo mismo
+  que uno de $14 millones. Los KPIs que no están definidos para un agregado
+  (Nota, Evaluación, margen por día) quedan en "—" en vez de inventarse.
+- **La tabla de indicadores va en 2 columnas, agrupada por bloque.** Son 28
+  filas: en una sola columna no caben junto a los gráficos. Partirla no es
+  selección editorial — `tests/test_panel.py` exige que los bloques cubran
+  *exactamente* las claves que devuelve `recalcular_proyecto`, así que un KPI
+  nuevo que nadie asigne a un bloque hace fallar la suite en vez de
+  desaparecer del PDF en silencio (que es lo que pasó con los 2 KPIs de
+  2026-07-28).
+
+**Rendimiento, de paso**: el libro se abre una sola vez por corrida (antes
+una vez por entidad, ~20 aperturas), el template de Centro de Costos —1 MB de
+fuentes y logo en base64— se lee cacheado (antes 3 lecturas por reporte), y
+`motor_reportes.renderizar_pdfs` levanta un solo Chromium para todo el lote.
+
+**Verificado**: 983 tests; los 3 tipos de panel renderizados a PNG y
+revisados como imagen (el de proyecto se pasaba a 3 páginas en la primera
+versión: se rebalancearon los bloques entre columnas y "Datos clave" pasó a
+la columna izquierda); `proyecto:UMAG` regenerado de punta a punta con el
+flujo nuevo.
+
+## Costos proyectados desde el Formulador por Intercambio (2026-09-30)
+
+**Pedido del usuario**: «algo que no afecte el ingreso del SharePoint al flujo
+de trabajo pero que permita a las distintas herramientas (Centro de Costos,
+Análisis Financiero, Formulador de proyectos) comunicarse o compartir
+información entre sí», con el resultado esperado de **actualizar los costos
+estimados del Análisis Financiero desde el Formulador**.
+
+**Decisiones de diseño** (tomadas en la implementación, no consultadas una a
+una):
+
+- **Carpeta de intercambio en OneDrive, no un servicio.** El Formulador es una
+  página estática (GitHub Pages) y este módulo corre en Python local: el único
+  lugar que ambos alcanzan sin servidores ni cuentas nuevas es una carpeta
+  sincronizada. El navegador la abre con la API de acceso a archivos
+  (Chrome/Edge). No depende del modo SharePoint del Formulador (todavía sin
+  registrar en Entra) ni lo cambia.
+- **Mensaje en vez de escritura directa.** El Formulador nunca toca el Excel:
+  pide el cambio y este módulo decide, con su respaldo y sus reglas. Escribir
+  el `.xlsx` desde el navegador (ExcelJS) habría arriesgado estilos, fórmulas
+  y notas que solo openpyxl mantiene.
+- **Excepción acotada a la regla de oro.** Las 4 columnas "... Proyectado(s)"
+  se escriben solo si la celda está vacía, si tiene lo que el propio
+  Formulador escribió, o si quien envió vio ese valor ("reemplaza", como un
+  If-Match). Lo demás queda pendiente (`intercambio confirmar|descartar`).
+- **Gastos generales e imprevistos no viajan**: este módulo compara costos
+  directos contra el gasto real; los gastos generales de la empresa tienen su
+  propio proyecto (GGEN).
+- **Proyectos nuevos**: solo si el envío lo pide explícitamente (`crear` +
+  nombre); si no, un TAG inexistente queda pendiente hasta que Centro de Costos
+  cree la fila con la primera factura.
+- **Centro de Costos no se modificó.** Sus reales llegan al Formulador por la
+  publicación de este módulo.
+
+**Verificado**: 49 tests nuevos (protocolo + canal, todo en `tmp_path`); suite
+completa sin regresiones; prueba de punta a punta con el Formulador en Chrome
+contra una **copia** del libro real bajo un país ficticio (envío a proyecto
+vacío → aplicado con nota; a proyecto con valores manuales vistos →
+reemplazados; cambio manual entre envío y run → pendiente sin aplicar a
+medias; estado de vuelta en el Formulador), con guard de que los archivos
+reales no cambiaron.
+
+**Estado al cerrar (2026-09-30)**: la carpeta real `Finanzas QUEMPIN/Intercambio/`
+ya existe (creada con `driver.py intercambio publicar`, que solo leyó el Excel:
+huellas de AF y CC idénticas antes y después) con la lista de 18 proyectos
+publicada. Nada se commiteó (el repo tenía además cambios sin commit de otras
+sesiones). **Pendiente del usuario**: publicar el Formulador en GitHub Pages
+y, la primera vez que envíe costos, elegir esa carpeta en el navegador.
