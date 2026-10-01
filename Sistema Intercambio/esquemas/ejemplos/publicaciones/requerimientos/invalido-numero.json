@@ -1,0 +1,15 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "planilla-requerimientos",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "fuente": "x",
+    "requerimientos": [
+      {
+        "numero": "280",
+        "estado": "x",
+        "titulo": "y"
+      }
+    ]
+  }
+}

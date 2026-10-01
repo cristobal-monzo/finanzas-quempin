@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "formulador/<uid>.json (repositorio del Formulador)",
+  "description": "Un presupuesto del Formulador, uno por archivo. Lo escriben solo los Formuladores (js/compartida.js) y formulaciones.py al incorporar una entrega por archivo.",
+  "dueno": "formulador",
+  "type": "object",
+  "properties": {
+    "esquema": {
+      "const": "quempin.intercambio/1"
+    },
+    "herramienta": {
+      "const": "formulador"
+    },
+    "tipo": {
+      "const": "proyecto"
+    },
+    "generado": {
+      "type": "string"
+    },
+    "autor": {
+      "type": "string"
+    },
+    "historia": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resumen": {
+      "type": "object"
+    },
+    "datos": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "modificado": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "uid",
+        "modificado"
+      ]
+    }
+  },
+  "required": [
+    "esquema",
+    "tipo",
+    "datos"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "a1b2c3d4e5f6a1b2c3d4e5f6",
+  "tipo": "borrador-cotizacion",
+  "destino": "sistema-quempin",
+  "origen": {
+    "herramienta": "formulador",
+    "usuario": "persona@empresa.cl",
+    "enviado": "2026-10-01T10:00:00-03:00"
+  },
+  "proyecto": {
+    "req": "280",
+    "tag": "OBRA"
+  },
+  "fuente": {
+    "uid": "f1e2d3c4b5a6",
+    "codigo": "QPN-2026-001",
+    "version": 2,
+    "titulo": "Oferta de ejemplo",
+    "cliente": "Cliente de ejemplo",
+    "estado": "Adjudicada",
+    "modificado": "2026-10-01T12:00:00.000Z"
+  },
+  "cotizacion": {
+    "pais": "Chile",
+    "moneda": "CLP",
+    "referencia": "Conexión laboratorio",
+    "fecha": "2026-10-01",
+    "plazoEntrega": "30 días",
+    "observaciones": [
+      "Valores netos por partida del Formulador QPN-2026-001 v2."
+    ],
+    "cliente": {
+      "razon_social": "Cliente de ejemplo SpA",
+      "rut": "76.123.456-7"
+    },
+    "items": []
+  },
+  "informativo": {
+    "precioNeto": 360000
+  }
+}

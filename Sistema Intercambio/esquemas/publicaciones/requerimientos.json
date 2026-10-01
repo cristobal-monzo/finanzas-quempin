@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "requerimientos (lector de la Planilla de Ingreso)",
+  "description": "Copia de solo lectura de la Planilla de Ingreso de Requerimientos: el origen del N° de requerimiento, la clave común de proyecto.",
+  "dueno": "planilla-requerimientos",
+  "type": "object",
+  "properties": {
+    "fuente": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actualizado": {
+      "type": "string"
+    },
+    "requerimientos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "numero": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "estado": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "canal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "titulo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ubicacion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "referencia": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "apertura": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cierre": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "presupuesto": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valorOfertado": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "valorAdjudicado": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "numero",
+          "estado",
+          "titulo"
+        ]
+      }
+    },
+    "resumen": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "fuente",
+    "requerimientos"
+  ]
+}

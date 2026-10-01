@@ -1,0 +1,13 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "procesador",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "proyectos": [
+      {
+        "req": "280",
+        "tag": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "folios (Sistema QUEMPIN)",
+  "description": "Último documento emitido de cada tipo del Control de Documentos, por país. Sirve para proponer el número siguiente.",
+  "dueno": "sistema-quempin",
+  "type": "object",
+  "properties": {
+    "tipos": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string"
+          },
+          "categoria": {
+            "type": "string"
+          },
+          "paises": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "ultimo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "fecha": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "autor": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "referencia": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "siguiente": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "nombre",
+          "paises"
+        ]
+      }
+    }
+  },
+  "required": [
+    "tipos"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "a1b2c3d4e5f6a1b2c3d4e5f6",
+  "tipo": "presupuesto-proyecto",
+  "destino": "analisis-financiero",
+  "origen": {
+    "herramienta": "formulador",
+    "usuario": "persona@empresa.cl",
+    "enviado": "2026-10-01T10:00:00-03:00"
+  },
+  "proyecto": {
+    "tag": "OBRA",
+    "req": "280"
+  },
+  "fuente": {
+    "uid": "f1e2d3c4b5a6",
+    "codigo": "QPN-2026-001",
+    "version": 2,
+    "titulo": "Oferta de ejemplo",
+    "cliente": "Cliente de ejemplo",
+    "estado": "Adjudicada",
+    "modificado": "2026-10-01T12:00:00.000Z"
+  },
+  "costos": {
+    "Materiales": -5,
+    "Equipos": 200000,
+    "Mano de Obra": 450000,
+    "Otros": 150000
+  },
+  "informativo": {
+    "moneda": "CLP"
+  },
+  "reemplaza": {
+    "Materiales": null,
+    "Equipos": null,
+    "Mano de Obra": 380000,
+    "Otros": null
+  }
+}

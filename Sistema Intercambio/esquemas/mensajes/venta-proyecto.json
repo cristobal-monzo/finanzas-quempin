@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "venta-proyecto (Formulador → Análisis Financiero)",
+  "description": "Monto de venta sin IVA de un proyecto adjudicado. Sale de la cotización emitida en Sistema QUEMPIN (fuente.folio) o, si no hay, del precio neto del Formulador. Se aplica a «Monto de Venta (sin IVA)» con las mismas reglas que presupuesto-proyecto.",
+  "destino": "analisis-financiero",
+  "type": "object",
+  "properties": {
+    "proyecto": {
+      "type": "object",
+      "properties": {
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "req": {
+          "type": "string",
+          "pattern": "^\\d{1,6}$",
+          "description": "N° de la Planilla de Ingreso de Requerimientos"
+        },
+        "nombre": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tag"
+      ]
+    },
+    "venta": {
+      "type": "object",
+      "properties": {
+        "montoSinIva": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "moneda": {
+          "const": "CLP"
+        }
+      },
+      "required": [
+        "montoSinIva"
+      ],
+      "additionalProperties": false
+    },
+    "fuente": {
+      "type": "object",
+      "properties": {
+        "herramienta": {
+          "enum": [
+            "formulador",
+            "sistema-quempin"
+          ]
+        },
+        "uid": {
+          "type": "string"
+        },
+        "codigo": {
+          "type": "string"
+        },
+        "version": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "titulo": {
+          "type": "string"
+        },
+        "folio": {
+          "type": "string",
+          "pattern": "^\\d{6,}$"
+        },
+        "pais": {
+          "enum": [
+            "Chile",
+            "Peru"
+          ]
+        },
+        "fecha": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "herramienta"
+      ]
+    },
+    "reemplaza": {
+      "type": "object",
+      "properties": {
+        "montoSinIva": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "proyecto",
+    "venta",
+    "fuente"
+  ]
+}

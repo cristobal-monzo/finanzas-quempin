@@ -1,0 +1,18 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "planilla-requerimientos",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "fuente": "Planilla de Ingreso de Requerimientos",
+    "actualizado": "2026-10-01",
+    "requerimientos": [
+      {
+        "numero": 280,
+        "estado": "Adjudicado",
+        "titulo": "UMAG - Conexión",
+        "presupuesto": null,
+        "valorOfertado": 3060000
+      }
+    ]
+  }
+}

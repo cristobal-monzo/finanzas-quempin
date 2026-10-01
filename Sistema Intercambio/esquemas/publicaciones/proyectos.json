@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "proyectos (registro de proyectos)",
+  "description": "Cruce de claves: por cada N° de requerimiento, su TAG, sus formulaciones, cotizaciones, órdenes de compra y carpetas. No es dueño de ningún dato: junta lo que publican los demás.",
+  "dueno": "procesador",
+  "type": "object",
+  "properties": {
+    "proyectos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "req": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tag": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "titulo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "estado": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "formulaciones": {
+            "type": "array"
+          },
+          "cotizaciones": {
+            "type": "array"
+          },
+          "ordenes": {
+            "type": "array"
+          },
+          "carpetas": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "req",
+          "tag",
+          "formulaciones",
+          "cotizaciones",
+          "ordenes"
+        ]
+      }
+    },
+    "sinVincular": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "proyectos"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "contrapartes (Sistema QUEMPIN)",
+  "description": "Directorio de clientes y proveedores con RUT, el que mantiene Sistema QUEMPIN al emitir.",
+  "dueno": "sistema-quempin",
+  "type": "object",
+  "properties": {
+    "clientes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rut": {
+            "type": "string"
+          },
+          "razon_social": {
+            "type": "string"
+          },
+          "pais": {
+            "type": "string"
+          },
+          "ciudad": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "razon_social"
+        ]
+      }
+    },
+    "proveedores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rut": {
+            "type": "string"
+          },
+          "razon_social": {
+            "type": "string"
+          },
+          "pais": {
+            "type": "string"
+          },
+          "ciudad": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "razon_social"
+        ]
+      }
+    }
+  },
+  "required": [
+    "clientes",
+    "proveedores"
+  ]
+}

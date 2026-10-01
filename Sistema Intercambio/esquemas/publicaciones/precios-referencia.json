@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "precios-referencia (Cotizador Histórico)",
+  "description": "Precio de compra reajustado por UF, sin IVA, por hoja (tipo + material + medida). Sin nombres de proveedores (decisión del 2026-10-01).",
+  "dueno": "cotizador-historico",
+  "type": "object",
+  "properties": {
+    "uf": {
+      "type": "object",
+      "properties": {
+        "valor": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fecha": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fuente": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "valor",
+        "fecha"
+      ]
+    },
+    "hojas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "clave": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1
+          },
+          "categoria": {
+            "type": "string"
+          },
+          "subcategoria": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "material": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "medida": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "precio": {
+            "type": "object",
+            "properties": {
+              "promedio": {
+                "type": "number",
+                "minimum": 0
+              },
+              "minimo": {
+                "type": "number",
+                "minimum": 0
+              },
+              "maximo": {
+                "type": "number",
+                "minimum": 0
+              },
+              "ultimo": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "promedio"
+            ]
+          },
+          "ultimaCompra": {
+            "type": "string"
+          },
+          "unidad": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "terminos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "clave",
+          "nombre",
+          "n",
+          "precio"
+        ]
+      }
+    }
+  },
+  "required": [
+    "uf",
+    "hojas"
+  ]
+}

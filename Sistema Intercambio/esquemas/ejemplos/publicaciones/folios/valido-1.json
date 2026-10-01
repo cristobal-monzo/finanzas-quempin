@@ -1,0 +1,22 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "sistema-quempin",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "tipos": {
+      "81": {
+        "nombre": "Evaluación de costos",
+        "categoria": "Proyectos de ingeniería",
+        "paises": {
+          "Chile": {
+            "ultimo": "812601",
+            "fecha": "2026-01-12",
+            "autor": "JB",
+            "referencia": "Municipalidad",
+            "siguiente": "812602"
+          }
+        }
+      }
+    }
+  }
+}

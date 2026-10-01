@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "estado (procesador del intercambio)",
+  "description": "Pulso del intercambio: cuándo corrió el procesador, qué quedó pendiente por destino y qué tan nueva es cada publicación.",
+  "dueno": "procesador",
+  "type": "object",
+  "properties": {
+    "procesador": {
+      "type": "object",
+      "properties": {
+        "ultimaCorrida": {
+          "type": "string",
+          "minLength": 1
+        },
+        "duracionSeg": {
+          "type": "number",
+          "minimum": 0
+        },
+        "equipo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ultimaCorrida"
+      ]
+    },
+    "publicaciones": {
+      "type": "object"
+    },
+    "buzon": {
+      "type": "object"
+    },
+    "avisos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "procesador",
+    "publicaciones",
+    "buzon"
+  ]
+}

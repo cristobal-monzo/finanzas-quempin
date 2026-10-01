@@ -1,0 +1,36 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "sistema-quempin",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "documentos": [
+      {
+        "tipo": "60",
+        "folio": "602695",
+        "pais": "Chile",
+        "fecha": "2026-10-01",
+        "referencia": "Conexión",
+        "contraparte": {
+          "id": "761234567",
+          "rut": "76.123.456-7",
+          "razon_social": "Cliente SpA"
+        },
+        "proyecto": {
+          "req": "280",
+          "tag": null
+        },
+        "moneda": "CLP",
+        "neto": 1000,
+        "impuesto": 190,
+        "total": 1190,
+        "cuotas": [
+          {
+            "porcentaje": 50,
+            "condicion": "por adelantado",
+            "monto": 595
+          }
+        ]
+      }
+    ]
+  }
+}

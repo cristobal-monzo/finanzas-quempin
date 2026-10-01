@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "actualizar-requerimiento (Formulador o Sistema QUEMPIN → Planilla de Ingreso)",
+  "description": "Sugerencia para la Planilla de Ingreso de Requerimientos (estado, valor ofertado o adjudicado, con IVA). Nunca se escribe sola: queda en una cola que una persona confirma con /Sugerencias_Requerimientos.",
+  "destino": "planilla-requerimientos",
+  "type": "object",
+  "properties": {
+    "requerimiento": {
+      "type": "object",
+      "properties": {
+        "numero": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "numero"
+      ]
+    },
+    "cambios": {
+      "type": "object",
+      "properties": {
+        "estado": {
+          "enum": [
+            "Evaluación",
+            "Ofertado",
+            "Adjudicado",
+            "No adjudicado",
+            "Descartado"
+          ]
+        },
+        "valorOfertado": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "valorAdjudicado": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "reemplaza": {
+      "type": "object",
+      "properties": {
+        "estado": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "valorOfertado": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "valorAdjudicado": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "fuente": {
+      "type": "object",
+      "properties": {
+        "herramienta": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uid": {
+          "type": "string"
+        },
+        "codigo": {
+          "type": "string"
+        },
+        "folio": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "herramienta"
+      ]
+    }
+  },
+  "required": [
+    "requerimiento",
+    "cambios",
+    "fuente"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "cotizador-historico",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "uf": {
+      "valor": 39500.12,
+      "fecha": "2026-10-01",
+      "fuente": "mindicador.cl"
+    },
+    "hojas": [
+      {
+        "clave": "valvula bola bronce 2",
+        "nombre": "Válvula de bola bronce 2\"",
+        "categoria": "Piping y Fittings",
+        "n": 3,
+        "precio": {
+          "promedio": 25000,
+          "minimo": 22000,
+          "maximo": 28000,
+          "ultimo": 28000
+        },
+        "ultimaCompra": "2026-08-01"
+      }
+    ]
+  }
+}

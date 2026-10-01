@@ -1,0 +1,28 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "a1b2c3d4e5f6a1b2c3d4e5f6",
+  "tipo": "registro-documento",
+  "destino": "sistema-quempin",
+  "origen": {
+    "herramienta": "formulador",
+    "usuario": "persona@empresa.cl",
+    "enviado": "2026-10-01T10:00:00-03:00"
+  },
+  "documento": {
+    "tipo": "81",
+    "pais": "Chile",
+    "folio": "812602",
+    "fecha": "2026-10-01",
+    "autor": "CM",
+    "referencia": "Conexión laboratorio",
+    "nombreArchivo": "812602_QPN-2026-001_v2_Conexion"
+  },
+  "proyecto": {
+    "req": "280"
+  },
+  "fuente": {
+    "uid": "f1e2d3c4b5a6",
+    "codigo": "QPN-2026-001",
+    "version": 2
+  }
+}

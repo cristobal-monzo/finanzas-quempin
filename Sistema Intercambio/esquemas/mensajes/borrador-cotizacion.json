@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "borrador-cotizacion (Formulador → Sistema QUEMPIN)",
+  "description": "Una cotización prellenada con las partidas y el precio neto del paso «Utilidad y precio». Sistema QUEMPIN la muestra en «Borradores recibidos»; una persona la revisa y la emite. Al emitirla se archiva como 'aplicado' con el folio.",
+  "destino": "sistema-quempin",
+  "type": "object",
+  "properties": {
+    "proyecto": {
+      "type": "object",
+      "properties": {
+        "req": {
+          "type": "string",
+          "pattern": "^\\d{1,6}$",
+          "description": "N° de la Planilla de Ingreso de Requerimientos"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9]{2,10}$",
+          "description": "TAG del proyecto en Análisis Financiero y Centro de Costos"
+        },
+        "nombre": {
+          "type": "string"
+        }
+      }
+    },
+    "fuente": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "codigo": {
+          "type": "string"
+        },
+        "version": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "titulo": {
+          "type": "string"
+        },
+        "estado": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uid"
+      ]
+    },
+    "cotizacion": {
+      "type": "object",
+      "properties": {
+        "pais": {
+          "enum": [
+            "Chile",
+            "Peru"
+          ]
+        },
+        "moneda": {
+          "type": "string",
+          "minLength": 1
+        },
+        "referencia": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fecha": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+        },
+        "plazoEntrega": {
+          "type": "string"
+        },
+        "direccionEntrega": {
+          "type": "string"
+        },
+        "descuentoPct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "observaciones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cliente": {
+          "type": "object",
+          "properties": {
+            "razon_social": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rut": {
+              "type": "string"
+            },
+            "contacto": {
+              "type": "string"
+            },
+            "correo": {
+              "type": "string"
+            },
+            "telefono": {
+              "type": "string"
+            },
+            "direccion": {
+              "type": "string"
+            },
+            "ciudad": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "razon_social"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "descripcion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "detalles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "unidad": {
+                "type": "string"
+              },
+              "cantidad": {
+                "type": "number",
+                "minimum": 0
+              },
+              "precioUnitario": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "descripcion",
+              "cantidad",
+              "precioUnitario"
+            ]
+          }
+        }
+      },
+      "required": [
+        "pais",
+        "moneda",
+        "referencia",
+        "cliente",
+        "items"
+      ]
+    },
+    "informativo": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "fuente",
+    "cotizacion"
+  ]
+}

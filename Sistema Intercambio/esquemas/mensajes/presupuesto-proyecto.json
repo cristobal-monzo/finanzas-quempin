@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "presupuesto-proyecto (Formulador → Análisis Financiero)",
+  "description": "Costos directos de una oferta adjudicada: pasan a ser los costos proyectados del proyecto en «Análisis de Proyectos». Si el Excel tiene un valor escrito a mano que quien envió no vio ('reemplaza'), el envío queda pendiente.",
+  "destino": "analisis-financiero",
+  "type": "object",
+  "properties": {
+    "proyecto": {
+      "type": "object",
+      "properties": {
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nombre": {
+          "type": "string"
+        },
+        "crear": {
+          "type": "boolean"
+        },
+        "req": {
+          "type": "string",
+          "pattern": "^\\d{1,6}$",
+          "description": "N° de la Planilla de Ingreso de Requerimientos"
+        }
+      },
+      "required": [
+        "tag"
+      ]
+    },
+    "fuente": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "codigo": {
+          "type": "string"
+        },
+        "version": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "titulo": {
+          "type": "string"
+        },
+        "cliente": {
+          "type": "string"
+        },
+        "estado": {
+          "type": "string"
+        },
+        "modificado": {
+          "type": "string"
+        }
+      }
+    },
+    "costos": {
+      "type": "object",
+      "properties": {
+        "Materiales": {
+          "type": "number",
+          "minimum": 0
+        },
+        "Equipos": {
+          "type": "number",
+          "minimum": 0
+        },
+        "Mano de Obra": {
+          "type": "number",
+          "minimum": 0
+        },
+        "Otros": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "informativo": {
+      "type": "object"
+    },
+    "reemplaza": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "number",
+          "string",
+          "null"
+        ]
+      }
+    }
+  },
+  "required": [
+    "proyecto",
+    "costos"
+  ]
+}

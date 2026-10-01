@@ -1,0 +1,28 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "a1b2c3d4e5f6a1b2c3d4e5f6",
+  "tipo": "actualizar-requerimiento",
+  "destino": "planilla-requerimientos",
+  "origen": {
+    "herramienta": "formulador",
+    "usuario": "persona@empresa.cl",
+    "enviado": "2026-10-01T10:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 280
+  },
+  "cambios": {
+    "estado": "Ofertado",
+    "valorOfertado": 3060000,
+    "titulo": "otro"
+  },
+  "reemplaza": {
+    "estado": "Evaluación",
+    "valorOfertado": null
+  },
+  "fuente": {
+    "herramienta": "formulador",
+    "uid": "f1e2d3c4b5a6",
+    "codigo": "QPN-2026-001"
+  }
+}

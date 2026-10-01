@@ -1,0 +1,15 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "sistema-quempin",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "clientes": [
+      {
+        "id": "761234567",
+        "rut": "76.123.456-7",
+        "razon_social": "Cliente SpA"
+      }
+    ],
+    "proveedores": []
+  }
+}

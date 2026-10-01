@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "analisis-financiero (Análisis Financiero)",
+  "description": "Proyectos del Análisis Financiero: costos proyectados (con su origen), reales (de Centro de Costos), avance, estado de los mensajes recibidos y el sesgo histórico del presupuesto por categoría.",
+  "dueno": "analisis-financiero",
+  "type": "object",
+  "properties": {
+    "moneda": {
+      "type": "string",
+      "minLength": 1
+    },
+    "categorias": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "proyectos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nombre": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cliente": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "categoria": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avance": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "req": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "venta": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "proyectados": {
+            "type": "object"
+          },
+          "reales": {
+            "type": "object"
+          },
+          "origen": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "tag",
+          "proyectados",
+          "reales"
+        ]
+      }
+    },
+    "mensajes": {
+      "type": "object"
+    },
+    "sesgo": {
+      "type": "object",
+      "properties": {
+        "proyectosTerminados": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "porCategoria": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "calculado": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "proyectosTerminados",
+        "porCategoria"
+      ]
+    }
+  },
+  "required": [
+    "moneda",
+    "categorias",
+    "proyectos",
+    "mensajes"
+  ]
+}

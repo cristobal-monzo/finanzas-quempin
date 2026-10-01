@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "formulacion (navegador sin carpeta → repositorio del Formulador)",
+  "description": "Un presupuesto entregado por archivo desde un navegador que no puede abrir la carpeta (Firefox, Safari, teléfono). Lo incorpora formulaciones.incorporar_buzon con las mismas reglas de quién gana del Formulador.",
+  "destino": "formulador",
+  "type": "object",
+  "properties": {
+    "datos": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "modificado": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "uid",
+        "modificado"
+      ]
+    },
+    "historia": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "resumen": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "datos"
+  ]
+}

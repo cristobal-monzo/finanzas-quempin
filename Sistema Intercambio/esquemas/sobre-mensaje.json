@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sobre de un mensaje",
+  "description": "Lo común a todo mensaje del buzón. El contenido propio de cada tipo está en mensajes/<tipo>.json.",
+  "type": "object",
+  "properties": {
+    "esquema": {
+      "const": "quempin.intercambio/1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{6,64}$"
+    },
+    "tipo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "destino": {
+      "type": "string",
+      "minLength": 1
+    },
+    "origen": {
+      "type": "object",
+      "properties": {
+        "herramienta": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enviado": {
+          "type": "string",
+          "minLength": 10
+        },
+        "usuario": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "herramienta",
+        "enviado"
+      ]
+    }
+  },
+  "required": [
+    "esquema",
+    "id",
+    "tipo",
+    "destino",
+    "origen"
+  ]
+}

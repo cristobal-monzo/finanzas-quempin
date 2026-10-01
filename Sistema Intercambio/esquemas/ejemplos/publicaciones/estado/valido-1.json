@@ -1,0 +1,15 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "procesador",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "procesador": {
+      "ultimaCorrida": "2026-10-01T10:00:00-03:00",
+      "duracionSeg": 1.2,
+      "equipo": "PC"
+    },
+    "publicaciones": {},
+    "buzon": {},
+    "avisos": []
+  }
+}

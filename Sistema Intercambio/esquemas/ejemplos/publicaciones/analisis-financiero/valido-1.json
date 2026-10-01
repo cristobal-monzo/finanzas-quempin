@@ -1,0 +1,53 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "analisis-financiero",
+  "generado": "2026-10-01T10:00:00-03:00",
+  "datos": {
+    "moneda": "CLP",
+    "categorias": [
+      "Materiales",
+      "Equipos",
+      "Mano de Obra",
+      "Otros"
+    ],
+    "mensajes": {},
+    "proyectos": [
+      {
+        "tag": "OBRA",
+        "nombre": "Obra",
+        "cliente": null,
+        "categoria": null,
+        "avance": 0.5,
+        "req": "280",
+        "proyectados": {
+          "Materiales": 1000,
+          "Equipos": null,
+          "Mano de Obra": 0,
+          "Otros": 10.5
+        },
+        "origen": {
+          "Materiales": null,
+          "Equipos": null,
+          "Mano de Obra": null,
+          "Otros": null
+        },
+        "reales": {
+          "Materiales": 1000,
+          "Equipos": null,
+          "Mano de Obra": 0,
+          "Otros": 10.5
+        }
+      }
+    ],
+    "sesgo": {
+      "proyectosTerminados": 7,
+      "porCategoria": {
+        "Materiales": 0.166,
+        "Equipos": -0.114,
+        "Mano de Obra": 0.01,
+        "Otros": null
+      },
+      "calculado": "2026-10-01T10:00:00-03:00"
+    }
+  }
+}

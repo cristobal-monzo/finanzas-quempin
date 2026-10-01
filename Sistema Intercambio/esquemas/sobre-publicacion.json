@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sobre de una publicación",
+  "description": "Lo común a publicado/<nombre>.json (lo escribe intercambio.publicar). El repositorio del Formulador (publicado/formulador/<uid>.json) tiene su propio sobre: publicaciones/formulador-proyecto.json.",
+  "type": "object",
+  "properties": {
+    "esquema": {
+      "const": "quempin.intercambio/1"
+    },
+    "herramienta": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generado": {
+      "type": "string",
+      "minLength": 10
+    },
+    "datos": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "esquema",
+    "herramienta",
+    "generado",
+    "datos"
+  ]
+}
