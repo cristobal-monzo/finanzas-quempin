@@ -117,6 +117,10 @@
               }
             }
           },
+          "plazoEntrega": {
+            "type": "string",
+            "description": "Texto libre de la cotización («90 días»). Flujo de Caja lo usa para fechar la cuota «contra entrega»."
+          },
           "autor": {
             "type": "string"
           },
