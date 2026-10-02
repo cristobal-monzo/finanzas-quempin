@@ -6,8 +6,9 @@ una corrida grande y otra.
 Plan de integración (2026-09-30, §5.5). Antes, el lado Python solo se movía
 cuando corría ``/Actualizar_Finanzas`` (tarea programada dom/mar/jue a las
 23:00, o a la mañana siguiente si el PC estaba apagado): un envío hecho un
-miércoles se aplicaba el viernes. Este procesador corre cada 15 minutos (su
-propia tarea programada, ver ``tarea_procesador.cmd``) y hace solo lo barato,
+miércoles se aplicaba el viernes. Este procesador corre cada 2 horas (su
+propia tarea programada, ver ``tarea_procesador.cmd``; el usuario eligió 2 horas
+en vez de 15 minutos el 2026-10-02) y hace solo lo barato,
 y solo si algo cambió desde la última vez:
 
 1. ``esquemas.json``: deja el catálogo en la carpeta (las herramientas de
@@ -171,7 +172,7 @@ def paso_analisis_financiero(raiz: Path, previo, forzar):
     """'run' (con respaldo) solo si hay envíos que todavía no se intentaron;
     si no, y cambió el Centro de Costos o el libro, solo republica sin
     escribir el Excel. Un envío que queda pendiente (valor escrito a mano)
-    no dispara un run cada 15 minutos: se reintenta cuando cambia algo."""
+    no dispara un run en cada vuelta: se reintenta cuando cambia algo."""
     envios = _envios_af(raiz)
     firma = _firma_af(envios)
     if firma == previo and not forzar:

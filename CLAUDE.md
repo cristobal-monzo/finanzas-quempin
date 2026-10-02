@@ -131,7 +131,7 @@ quedó desactualizada con este pedido.
 | [Análisis Financiero/](Sistema%20Analisis%20Financiero/CLAUDE.md) | Implementado (2026-07-20) | `Sistema Analisis Financiero/CLAUDE.md` |
 | [Flujo de Caja/](Flujo%20de%20Caja/CLAUDE.md) | Implementado (2026-10-02), solo Chile: consumidor puro de CC, Sistema QUEMPIN, Planilla de Ingreso y AF | `Flujo de Caja/CLAUDE.md` |
 | [Visualizador Web/](Visualizador%20Web/CLAUDE.md) | Implementado en los 4 módulos (CC 2026-07-19, AF 2026-07-23, Cotizador, Flujo de Caja 2026-10-02) | `Visualizador Web/CLAUDE.md` |
-| [Sistema Intercambio/](Sistema%20Intercambio/CLAUDE.md) | Implementado (2026-09-30), ampliado el 2026-10-01 con el plan de integración: catálogo de esquemas, procesador cada 15 min, Planilla de Ingreso, registro de proyectos | `Sistema Intercambio/CLAUDE.md` |
+| [Sistema Intercambio/](Sistema%20Intercambio/CLAUDE.md) | Implementado (2026-09-30), ampliado el 2026-10-01 con el plan de integración: catálogo de esquemas, procesador cada 2 horas, Planilla de Ingreso, registro de proyectos | `Sistema Intercambio/CLAUDE.md` |
 
 ## Cómo se comunican las herramientas: carpeta de intercambio
 
@@ -156,7 +156,7 @@ Formulador"). Desde el 2026-10-01 (plan de integración,
 los precios de referencia del Cotizador, la Planilla de Ingreso, las
 cotizaciones de Sistema QUEMPIN y el sesgo del presupuesto; el formato de
 cada cosa está en `Sistema Intercambio/esquemas/` y un **procesador** la
-mantiene al día cada 15 minutos (`Sistema Intercambio/procesar.py`). La
+mantiene al día cada 2 horas (`Sistema Intercambio/procesar.py`). La
 clave común de proyecto es el **N° de la Planilla de Ingreso**. **Centro de Costos no se tocó** (ni su ingreso de facturas
 desde SharePoint): sus costos reales llegan al Formulador por la publicación
 de Análisis Financiero. **Si un módulo nuevo necesita pedir o compartir

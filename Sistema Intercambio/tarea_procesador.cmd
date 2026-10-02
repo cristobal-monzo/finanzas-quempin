@@ -2,7 +2,7 @@
 setlocal
 
 rem Wrapper para el Programador de tareas de Windows: corre el procesador del
-rem intercambio (procesar.py) cada 15 minutos. Su propio log va a
+rem intercambio (procesar.py) cada 2 horas (decision del usuario, 2026-10-02). Su propio log va a
 rem logs\procesador_AAAA-MM.log (una linea por vuelta).
 
 set "PROYECTO=C:\Users\quemp\OneDrive - QUEMPIN SPA\Escritorio\Proyectos Claude\Finanzas QUEMPIN"

@@ -42,7 +42,7 @@ openpyxl (ver `requirements.txt`).
      la lista de proyectos de Análisis Financiero con su sesgo, los precios
      de referencia del Cotizador, lo de Sistema QUEMPIN, el registro de
      proyectos y `estado.json`. Entre una corrida y otra, el procesador corre
-     solo cada 15 minutos con su propia tarea programada. Si falla, no frena
+     solo cada 2 horas con su propia tarea programada. Si falla, no frena
      nada.
   6. Flujo de Caja `run` — Excel y tablero, armados con lo que el procesador
      acaba de publicar y la foto del Centro de Costos del paso 1 (ver

@@ -65,7 +65,7 @@ DRIVER_COTIZADOR = (
     / "Cotizador_Historico" / "driver.py"
 )
 # Procesador de la carpeta de intercambio (plan de integracion, 2026-10-01).
-# Corre solo cada 15 minutos con su propia tarea; al final de este run se le
+# Corre solo cada 2 horas con su propia tarea; al final de este run se le
 # fuerza una vuelta completa para que todo lo publicado salga de los datos
 # recien actualizados.
 PROCESADOR_INTERCAMBIO = RAIZ / "Sistema Intercambio" / "procesar.py"

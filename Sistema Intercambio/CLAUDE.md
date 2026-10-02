@@ -126,7 +126,7 @@ Flujo de Caja **no publica nada aquí** (decidido 2026-10-02): lee
 resultado es la caja de la empresa y esta carpeta la ve toda la biblioteca de
 Formulación. Sale solo a su Excel y a su tablero con contraseña.
 
-## El procesador (`procesar.py`, cada 15 minutos)
+## El procesador (`procesar.py`, cada 2 horas)
 
 Antes el lado Python solo se movía en el `run` de `/Actualizar_Finanzas`
 (dom/mar/jue a las 23:00, o a la mañana siguiente con el PC apagado): un
@@ -143,7 +143,7 @@ procesar` con su Python 3.11); `proyectos.json`, y `estado.json`.
 
 - **Un paso que falla no frena a los demás** y queda en `estado.json` y en
   `logs/procesador_AAAA-MM.log` (una línea por vuelta).
-- **Un envío que queda pendiente no dispara un `run` cada 15 minutos**: se
+- **Un envío que queda pendiente no dispara un `run` en cada vuelta**: se
   reintenta cuando cambia algo (un envío nuevo, el libro, Centro de Costos).
 - Los módulos de Finanzas corren **en su propio proceso** (archivos
   homónimos, igual que en `/Actualizar_Finanzas`); un candado
