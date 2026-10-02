@@ -133,3 +133,13 @@ def test_buzon_resumido_por_destino(entorno):
     b = pr.resumen_buzon(entorno["raiz"])
     assert b["sistema-quempin"]["pendientes"] == 2 and b["sistema-quempin"]["masAntiguo"].startswith("2026-10-01")
     assert b["analisis-financiero"]["pendientes"] == 1
+
+
+def test_avisos_de_sistema_quempin_quedan_en_el_detalle(tmp_path, monkeypatch):
+    (tmp_path / "app" / "integraciones").mkdir(parents=True)
+    (tmp_path / "app" / "integraciones" / "ecosistema.py").write_text("", encoding="utf-8")
+    monkeypatch.setattr(pr, "RAIZ_SISTEMA_QUEMPIN", tmp_path)
+    salida = json.dumps({"activo": True, "borradores": 0, "avisos": ["folios: no se pudo publicar (sin Control)."]})
+    monkeypatch.setattr(pr, "correr", lambda comando, cwd=None, limite=600: (True, salida))
+    detalle, firma = pr.paso_sistema_quempin(tmp_path, None, False)
+    assert firma == "ok" and detalle.endswith("avisos: folios: no se pudo publicar (sin Control).")

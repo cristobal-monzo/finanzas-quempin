@@ -216,7 +216,10 @@ def paso_sistema_quempin(raiz: Path, previo, forzar):
         return salida[-200:], "ok"
     if not resultado.get("activo"):
         return "; ".join(resultado.get("avisos") or ["inactivo"]), None
-    return f"publicado; {resultado.get('borradores', 0)} borrador(es) esperan en Sistema QUEMPIN", "ok"
+    detalle = f"publicado; {resultado.get('borradores', 0)} borrador(es) esperan en Sistema QUEMPIN"
+    if resultado.get("avisos"):   # ej. «folios: no se pudo publicar (...)»: que se vea, no solo en su log
+        detalle += " · avisos: " + "; ".join(resultado["avisos"])
+    return detalle, "ok"
 
 
 def paso_proyectos(raiz: Path, previo, forzar):
