@@ -127,14 +127,14 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
 - **Sin gate de contraseña** (decisión explícita del usuario, 2026-07-29,
   sigue vigente): el hub no expone información financiera, cada tarjeta
   lleva a un sitio que sí pide su propia contraseña.
-- Favicon 🗂️ del hub (distinto a los de los 3 módulos: 🏗️ Centro de
-  Costos, 📊 Análisis Financiero, 🧾 Cotizador Histórico) — aplica solo si
+- Favicon 🗂️ del hub (distinto a los de los 4 módulos: 🏗️ Centro de
+  Costos, 📊 Análisis Financiero, 🧾 Cotizador Histórico, 💵 Flujo de Caja) — aplica solo si
   se sigue publicando alguna copia como Claude Artifact; en GitHub Pages no
   hay favicon de "Artifact" que fijar, el `<link rel="icon">` del propio
   HTML basta.
 - Las URLs de destino son estructurales (`/centro-de-costos/`,
   `/centro-de-costos-peru/`, `/analisis-financiero/`,
-  `/cotizador-historico/`) — no deberían cambiar nunca, a diferencia de los
+  `/cotizador-historico/`, `/flujo-de-caja/`) — no deberían cambiar nunca, a diferencia de los
   links opacos de Artifact que sí podían regenerarse por error.
 
 ## Navegación entre tableros: selector de país + 3 pestañas (2026-10-01)
@@ -150,10 +150,14 @@ pestañas de módulo; cambiar de país lleva al mismo módulo en el otro país.
   saca el país del selector, a qué país apuntan las pestañas y cuál marca.
   `Visualizador Web/tests/test_navegacion_tableros.py` falla si una copia
   diverge — si cambias la navegación, cámbiala en los 5.
-- Un módulo nuevo (ej. Flujo de Caja) es una 4.ª pestaña en los 5 templates
-  y en `MODULOS` de ese test. Un país nuevo es otra `<option>` (su `value` es
-  el sufijo de la subruta, como `-peru`) y ese sufijo en el JS, que hoy solo
-  reconoce `-peru`.
+- Un módulo nuevo es una pestaña más en todos los templates y en `MODULOS`
+  de ese test (así entró Flujo de Caja el 2026-10-02: hoy son 6 templates y
+  4 pestañas). Un país nuevo es otra `<option>` (su `value` es el sufijo de
+  la subruta, como `-peru`) y ese sufijo en el JS, que hoy solo reconoce
+  `-peru`.
+- Un módulo que existe solo para Chile va en `SOLO_CHILE` del JS (hoy
+  `flujo-de-caja`): su pestaña apunta siempre a Chile, y elegir otro país
+  desde ese tablero lleva a Centro de Costos de ese país.
 
 ## Hosting — GitHub Pages (decidido y migrado, 2026-08-05)
 
@@ -170,6 +174,7 @@ https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/
 https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero-peru/
 https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/
 https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/
+https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/          # solo Chile (2026-10-02)
 ```
 
 **Cómo publicar (reemplaza "usar el tool `Artifact`" en toda la
@@ -188,6 +193,7 @@ tampoco hace falta guardar/leer un link en el `MEMORY.md` de cada skill.
 | Análisis Financiero Perú | `analisis-financiero-peru` | `Peru/Análisis Financiero/Visualizador Web/build/index.html` |
 | Cotizador Histórico | `cotizador-historico` | `Cotizador Historico/Visualizador Web/build/index.html` |
 | Cotizador Histórico Perú | `cotizador-historico-peru` | `Peru/Cotizador Historico/Visualizador Web/build/index.html` |
+| Flujo de Caja | `flujo-de-caja` | `Flujo de Caja/Visualizador Web/build/index.html` |
 
 ```
 cp "<Origen de la tabla>" ".worktrees/gh-pages/<subruta>/index.html"

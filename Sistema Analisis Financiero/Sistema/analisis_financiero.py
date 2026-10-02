@@ -2284,6 +2284,20 @@ def preparar_intercambio(ws_proyectos, filas_validas: list[dict], raiz_intercamb
     }
 
 
+def por_ejecutar(valores: dict) -> dict | None:
+    """{categoría: Proyectado x (1 - avance)} -- lo que falta ejecutar a
+    precio de presupuesto, por categoría. None sin avance cargado."""
+    avance = avance_acotado(valores.get("% Avance"))
+    if avance is None:
+        return None
+    salida = {}
+    for categoria, columna in pf.COLUMNA_POR_CATEGORIA.items():
+        proyectado = valores.get(columna)
+        salida[categoria] = (round(proyectado * (1 - avance))
+                             if isinstance(proyectado, (int, float)) and not isinstance(proyectado, bool) else None)
+    return salida
+
+
 def proyectos_para_catalogo(ws_proyectos, filas_validas: list[dict], agrupado) -> list[dict]:
     """Lo que el Formulador necesita de cada proyecto para elegir a cuál
     enviar y mostrar qué va a cambiar. Sin 'Gastos Generales' (no es un
@@ -2303,6 +2317,11 @@ def proyectos_para_catalogo(ws_proyectos, filas_validas: list[dict], agrupado) -
             "avance": valores.get("% Avance"),
             "req": ws_proyectos.cell(row=fila_info["fila"], column=HEADERS_PROYECTOS.index(pf.COLUMNA_REQ) + 1).value,
             "venta": valores.get(pf.COLUMNA_VENTA),
+            "cierre": valores.get("Fecha de cierre"),
+            # Lo que falta ejecutar, a precio de presupuesto (el mismo término
+            # de costo_estimado_al_cierre): lo usa Flujo de Caja para proyectar
+            # egresos sin recalcular nada por su cuenta.
+            "porEjecutar": por_ejecutar(valores),
             "proyectados": {c: valores.get(col) for c, col in pf.COLUMNA_POR_CATEGORIA.items()},
             "reales": {
                 "Materiales": reales.get("Materiales", 0.0), "Equipos": reales.get("Equipos", 0.0),

@@ -72,6 +72,26 @@
             ],
             "description": "Si el monto de venta está cargado y de dónde vino; el monto no se publica."
           },
+          "cierre": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Fecha de cierre del proyecto (AAAA-MM-DD)."
+          },
+          "porEjecutar": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "description": "Por categoría: Proyectado × (1 − avance), sin IVA. null sin avance cargado. Lo usa Flujo de Caja."
+          },
           "proyectados": {
             "type": "object"
           },

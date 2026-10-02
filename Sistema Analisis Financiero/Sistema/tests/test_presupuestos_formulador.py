@@ -609,6 +609,29 @@ def test_la_publicacion_trae_el_sesgo_y_cumple_su_esquema(entorno):
     assert sesgo["proyectosTerminados"] == 0          # DEMO no está terminado ni completo
 
 
+def test_por_ejecutar_es_lo_proyectado_que_falta_segun_el_avance():
+    valores = {"% Avance": 0.4, "Costos Materiales Proyectados": 100000, "Costos Equipos Proyectados": None,
+               "Mano de Obra Proyectada": 50000, "Otros Costos Proyectados": True}
+    assert af.por_ejecutar(valores) == {"Materiales": 60000, "Equipos": None, "Mano de Obra": 30000, "Otros": None}
+    assert af.por_ejecutar({"% Avance": 1.3, "Costos Materiales Proyectados": 100000})["Materiales"] == 0  # acotado
+    assert af.por_ejecutar({"% Avance": None, "Costos Materiales Proyectados": 100000}) is None
+
+
+def test_la_publicacion_trae_cierre_y_por_ejecutar_para_flujo_de_caja(entorno, tmp_path):
+    """Flujo de Caja proyecta los egresos con estos dos campos (2026-10-02)."""
+    from datetime import datetime
+    import esquemas
+    entorno["af"] = _excel_af(tmp_path, [("DEMO", "Proyecto de prueba", {
+        "Monto de Venta (sin IVA)": 5000000, "% Avance": 0.25, "Fecha de cierre": datetime(2026, 12, 15)})])
+    _enviar(entorno["raiz"], _mensaje())
+    _correr(entorno)
+    sobre = ic.leer_publicacion(entorno["raiz"], pf.PUBLICACION)
+    proyecto = sobre["datos"]["proyectos"][0]
+    assert proyecto["cierre"] == "2026-12-15"
+    assert proyecto["porEjecutar"] == {"Materiales": 750000, "Equipos": 150000, "Mano de Obra": 337500, "Otros": 112500}
+    assert esquemas.validar_publicacion("analisis-financiero", sobre) == []
+
+
 def test_mensajes_de_otro_destino_no_aparecen_en_la_publicacion(entorno):
     ic.asegurar_carpeta(entorno["raiz"])
     otro = _mensaje(id_="otrodest1")

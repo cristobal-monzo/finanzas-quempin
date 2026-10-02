@@ -1,6 +1,6 @@
 ---
 name: Actualizar_Finanzas
-description: Use when the user types "/Actualizar_Finanzas" explicitly. If the user instead describes the same intent in natural language without the leading "/" — "actualiza las finanzas", "actualiza todo", "corre todo el pipeline", "deja todo al día", or a read-only status across every module — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Runs Centro de Costos (which chains Análisis Financiero and the CC/AF dashboards), then regenerates the Cotizador Histórico dashboard (which nothing else invokes) and reports which PDF reports went stale. Use /Registro_Centro_de_Costos or /Actualizar_CC instead when the user explicitly names only Centro de Costos.
+description: Use when the user types "/Actualizar_Finanzas" explicitly. If the user instead describes the same intent in natural language without the leading "/" — "actualiza las finanzas", "actualiza todo", "corre todo el pipeline", "deja todo al día", or a read-only status across every module — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Runs Centro de Costos (which chains Análisis Financiero and the CC/AF dashboards), then regenerates the Cotizador Histórico dashboard (which nothing else invokes), reports which PDF reports went stale, runs the exchange-folder processor and rebuilds Flujo de Caja (Excel and dashboard). Use /Registro_Centro_de_Costos or /Actualizar_CC instead when the user explicitly names only Centro de Costos.
 ---
 
 # Actualizar Finanzas (orquestador de todos los módulos)
@@ -21,8 +21,8 @@ py -3.14 ".claude/skills/Actualizar_Finanzas/driver.py" run
 **Usar `py -3.14`, no `python`** — el `python` del PATH es 3.11 y no tiene
 openpyxl (ver `requirements.txt`).
 
-- **`status`** — solo lectura sobre los 4 drivers (Centro de Costos, Análisis
-  Financiero, Reportes PDF, Cotizador Histórico) más la sección
+- **`status`** — solo lectura sobre los 5 drivers (Centro de Costos, Análisis
+  Financiero, Reportes PDF, Cotizador Histórico, Flujo de Caja) más la sección
   **Presupuestos del Formulador**. No escribe Excel, ni archivos, ni
   tableros. Es el paso previo obligatorio antes de `run`.
 - **`run`** — cadena completa, en orden de dependencias:
@@ -44,6 +44,10 @@ openpyxl (ver `requirements.txt`).
      proyectos y `estado.json`. Entre una corrida y otra, el procesador corre
      solo cada 15 minutos con su propia tarea programada. Si falla, no frena
      nada.
+  6. Flujo de Caja `run` — Excel y tablero, armados con lo que el procesador
+     acaba de publicar y la foto del Centro de Costos del paso 1 (ver
+     [Registro_Flujo_de_Caja](../../../Flujo%20de%20Caja/.claude/skills/Registro_Flujo_de_Caja/SKILL.md)).
+     Si falla, no frena nada.
 
 ## Presupuestos del Formulador: revisarlos y cargarlos con el usuario
 
@@ -89,14 +93,14 @@ con el usuario», si queda algo de esto pendiente.
   `/Actualizar_CC`. Si se salta este paso, esos documentos simplemente
   seguirán apareciendo como pendientes después de `run`.
 
-## Paso obligatorio tras `run`: publicar los 3 tableros
+## Paso obligatorio tras `run`: publicar los 4 tableros
 
 **Regenerar los `build/index.html` en disco NO cambia lo que ve la gente.**
 Desde 2026-08-05 el canal real de consumo es un sitio en GitHub Pages
 (repo público `cristobal-monzo/finanzas-quempin`, rama `gh-pages`) — ver
 [`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
 § Hosting para el detalle completo y el trade-off de control de acceso ya
-decidido. Si corres `run` y no publicas, el Excel queda al día y los tres
+decidido. Si corres `run` y no publicas, el Excel queda al día y los cuatro
 tableros publicados siguen mostrando datos viejos.
 
 Al final de `run` (y de `status`) el driver imprime la sección **"TABLEROS
@@ -132,7 +136,7 @@ Criterio de cuándo publicar cada uno:
   solo quiere Centro de Costos y quiere dejar la publicación para después,
   [`/Actualizar_Base_de_Datos`](../../../Centro%20de%20Costos/.claude/skills/Actualizar_Base_de_Datos/SKILL.md)
   es más directo — este orquestador de todas formas nunca publica solo,
-  pero sí corre y reporta los 3 módulos, no solo uno.
+  pero sí corre y reporta todos los módulos, no solo uno.
 
 ## Cómo reportar al usuario
 
@@ -149,5 +153,5 @@ El driver corre **cada módulo en su propio proceso** (`subprocess`), no por
 `driver.py`) y `sys.modules` cachea por nombre, así que importarlos en el
 mismo proceso entrega el equivocado. Un proceso por módulo elimina esa clase
 de error y evita que un módulo caído voltee a los demás. Si agregas un módulo
-nuevo (ej. Flujo de Caja), agrégalo acá como una línea más — no dentro de
-`auditor_centro_costos.main()`.
+nuevo, agrégalo acá como una línea más (así entró Flujo de Caja, 2026-10-02)
+— no dentro de `auditor_centro_costos.main()`.

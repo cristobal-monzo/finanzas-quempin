@@ -98,7 +98,7 @@ tabla de abajo y los textos del Formulador lo resumen, no lo definen.
 | Nombre | Quién escribe | Quién lee | Dónde se implementa |
 |---|---|---|---|
 | mensaje `presupuesto-proyecto` → `analisis-financiero` | Formulador (`js/intercambio.js`) | Análisis Financiero | `Sistema Analisis Financiero/Sistema/presupuestos_formulador.py` |
-| `publicado/analisis-financiero.json` | Análisis Financiero (fin de cada `run`, o `driver.py intercambio publicar`) | Formulador | mismo archivo |
+| `publicado/analisis-financiero.json` | Análisis Financiero (fin de cada `run`, o `driver.py intercambio publicar`) | Formulador; Flujo de Caja (`porEjecutar` y `cierre`) | mismo archivo |
 | `publicado/formulador/<uid>.json`: un archivo por presupuesto, el repositorio de formulaciones, con `historia`, `resumen` (costo, precio, margen y `costosAF`, calculados por el Formulador) y `datos` | Formulador de cada equipo (`js/compartida.js`, 2026-09-30); también `formulaciones.incorporar_buzon()` con las entregas por archivo | Formulador de los demás equipos; Claude (`formulaciones.py`, driver AF `formulaciones`) | `Sistema Intercambio/formulaciones.py` |
 | mensaje `formulacion` → `formulador`: un presupuesto entregado por archivo desde un navegador sin acceso a la carpeta | Formulador («Descargar para el equipo»; se deja a mano en `buzon/`) | `formulaciones.incorporar_buzon()` (procesador, y paso 0 del `run` de `/Actualizar_Finanzas`), con las mismas reglas de quién gana del Formulador; en conflicto queda como copia | `Sistema Intercambio/formulaciones.py` |
 | mensaje `venta-proyecto` → `analisis-financiero`: monto de venta sin IVA de un proyecto adjudicado (de la cotización emitida, o del precio neto del Formulador) | Formulador | Análisis Financiero, por el **mismo** canal y garantías que `presupuesto-proyecto` | `presupuestos_formulador.py` |
@@ -108,8 +108,7 @@ tabla de abajo y los textos del Formulador lo resumen, no lo definen.
 | `publicado/requerimientos.json`: la Planilla de Ingreso, de solo lectura | procesador (cuando cambia la planilla) | Formulador, Sistema QUEMPIN, registro de proyectos, Flujo de Caja | `requerimientos.py` |
 | `publicado/precios-referencia.json`: precio reajustado por UF por hoja, sin proveedores ni documentos | Cotizador Histórico (`driver.py precios`, y tras cada `visualizador`); procesador cuando cambia la foto del tablero | Formulador | `Cotizador Historico/Sistema/precios_referencia.py` |
 | `publicado/documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN (al emitir/editar/eliminar en el equipo donde se hizo, y el procesador) | Formulador, Análisis Financiero, registro de proyectos, Flujo de Caja | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |
-| `publicado/proyectos.json`: cruce `req` ↔ TAG ↔ formulaciones ↔ cotizaciones/OC ↔ carpetas | procesador | Formulador, Flujo de Caja, Claude | `Sistema Intercambio/proyectos.py` |
-| `publicado/flujo-caja.json` | Flujo de Caja | tablero de Flujo de Caja | `Flujo de Caja/Sistema/flujo_caja.py` |
+| `publicado/proyectos.json`: cruce `req` ↔ TAG ↔ formulaciones ↔ cotizaciones/OC ↔ carpetas | procesador | Formulador, Claude | `Sistema Intercambio/proyectos.py` |
 | `publicado/estado.json`: el pulso (última vuelta del procesador, pendientes por destino, cuán nueva es cada publicación) | procesador | Formulador («al día hace 6 min») | `Sistema Intercambio/procesar.py` |
 | `esquemas.json` (raíz de la carpeta): el catálogo completo | procesador | Sistema QUEMPIN, Formulador | `esquemas.paquete()` |
 
@@ -121,6 +120,11 @@ partir de un presupuesto adjudicado del repositorio.
 Centro de Costos **no se modificó**: sus costos reales llegan al Formulador a
 través de la publicación del Análisis Financiero (que ya los lee de su
 snapshot). El ingreso de facturas desde SharePoint sigue igual.
+
+Flujo de Caja **no publica nada aquí** (decidido 2026-10-02): lee
+`requerimientos`, `documentos-comerciales` y `analisis-financiero`, pero su
+resultado es la caja de la empresa y esta carpeta la ve toda la biblioteca de
+Formulación. Sale solo a su Excel y a su tablero con contraseña.
 
 ## El procesador (`procesar.py`, cada 15 minutos)
 

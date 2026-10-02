@@ -40,6 +40,13 @@
         "venta": {
           "cargada": true,
           "origen": null
+        },
+        "cierre": "2026-12-15",
+        "porEjecutar": {
+          "Materiales": 100000,
+          "Equipos": 0,
+          "Mano de Obra": 50000,
+          "Otros": null
         }
       }
     ],

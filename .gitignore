@@ -106,3 +106,6 @@ tmp/
 # Procesador del intercambio (2026-10-01): firmas de lo ya procesado y su candado.
 **/procesador_estado*.json
 **/.procesador.lock
+
+# Flujo de Caja: saldo de caja y ajustes a mano (dato de la empresa)
+**/parametros_flujo_caja.json

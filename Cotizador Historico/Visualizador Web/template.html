@@ -743,10 +743,11 @@
       <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
     </div>
     <nav class="viz-modnav" aria-label="Tableros">
-      <!-- Selector de país + las 3 pestañas de módulo. Los enlaces apuntan a
+      <!-- Selector de país + las pestañas de módulo. Los enlaces apuntan a
            Chile; el JS los pasa al país de este tablero y marca la activa
            según data-nav-activo (la subruta publicada). Este bloque es igual
-           en los 5 templates: solo cambia ese atributo. -->
+           en los 6 templates: solo cambia ese atributo. Flujo de Caja existe
+           solo para Chile: su pestaña apunta siempre a Chile. -->
       <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="cotizador-historico">
         <select class="viz-modnav-pais" id="modNavPais" aria-label="País">
           <option value="">Chile</option>
@@ -756,6 +757,7 @@
           <a class="viz-modnav-tab" data-modulo="centro-de-costos" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/"><span class="viz-modnav-largo">Centro de </span>Costos</a>
           <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis<span class="viz-modnav-largo"> Financiero</span></a>
           <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
+          <a class="viz-modnav-tab" data-modulo="flujo-de-caja" href="https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/">Flujo<span class="viz-modnav-largo"> de Caja</span></a>
         </div>
       </div>
     </nav>
@@ -986,8 +988,10 @@
   // ---------- navegación entre tableros: país + pestaña activa ----------
   // data-nav-activo es la subruta publicada de este tablero (ej.
   // "analisis-financiero-peru"): de ahí salen el país del selector, a qué
-  // país apuntan las 3 pestañas y cuál se marca. Mismo bloque en los 5
-  // templates.
+  // país apuntan las pestañas y cuál se marca. Mismo bloque en los 6
+  // templates. Flujo de Caja (2026-10-01) existe solo para Chile: su pestaña
+  // apunta siempre a Chile, y elegir Perú desde ese tablero lleva a Centro
+  // de Costos Perú.
   (function () {
     var nav = document.getElementById('modNav');
     if (!nav) return;
@@ -995,13 +999,15 @@
     var activo = nav.getAttribute('data-nav-activo') || '';
     var sufijo = /-peru$/.test(activo) ? '-peru' : '';
     var modulo = activo.slice(0, activo.length - sufijo.length);
+    var SOLO_CHILE = ['flujo-de-caja'];
     nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
-      if (a.getAttribute('data-modulo') === modulo) {
+      var destino = a.getAttribute('data-modulo');
+      if (destino === modulo) {
         a.classList.add('is-active');
         a.setAttribute('aria-current', 'page');
         a.removeAttribute('href');
       } else {
-        a.href = BASE + a.getAttribute('data-modulo') + sufijo + '/';
+        a.href = BASE + destino + (SOLO_CHILE.indexOf(destino) >= 0 ? '' : sufijo) + '/';
       }
     });
     // Cambiar de país lleva al mismo módulo en el otro país. Al volver con
@@ -1012,7 +1018,9 @@
     reponerPais();
     window.addEventListener('pageshow', reponerPais);
     pais.addEventListener('change', function () {
-      if (pais.value !== sufijo) location.href = BASE + modulo + pais.value + '/';
+      if (pais.value === sufijo) return;
+      var destino = SOLO_CHILE.indexOf(modulo) >= 0 && pais.value ? 'centro-de-costos' : modulo;
+      location.href = BASE + destino + pais.value + '/';
     });
   })();
 

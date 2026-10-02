@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""La navegacion entre tableros es la misma en las 5 plantillas.
+"""La navegacion entre tableros es la misma en las 6 plantillas.
 
 Desde el 2026-10-01 la cabecera de cada tablero lleva un selector de pais
 (Chile / Peru) y solo las 3 pestanas de los modulos; antes eran 6 pestanas,
@@ -24,8 +24,10 @@ PLANTILLAS = {
     "Sistema Analisis Financiero/Visualizador Web/template.html": "__AF_NAV_ACTIVO__",
     "Cotizador Historico/Visualizador Web/template.html": "cotizador-historico",
     "Peru/Cotizador Historico/Visualizador Web/template.html": "cotizador-historico-peru",
+    # Flujo de Caja (2026-10-01): solo Chile, ver SOLO_CHILE en el JS.
+    "Flujo de Caja/Visualizador Web/template.html": "flujo-de-caja",
 }
-MODULOS = ["centro-de-costos", "analisis-financiero", "cotizador-historico"]
+MODULOS = ["centro-de-costos", "analisis-financiero", "cotizador-historico", "flujo-de-caja"]
 
 
 def _leer(rel):
@@ -65,7 +67,7 @@ def test_el_js_de_la_navegacion_es_igual_en_todas():
     assert not distintas, f"el JS de la navegacion cambio solo en: {distintas}"
 
 
-def test_tres_pestanas_y_un_selector_de_pais():
+def test_una_pestana_por_modulo_y_un_selector_de_pais():
     nav = _nav(_leer("Centro de Costos/Visualizador Web/template.html"))
     assert re.findall(r'data-modulo="([^"]+)"', nav) == MODULOS
     selector = re.search(r'<select[^>]*id="modNavPais"[^>]*>(.*?)</select>', nav, re.S)

@@ -566,6 +566,8 @@ def publicar_catalogo(raiz_intercambio: Path, proyectos_af: list[dict], estado: 
             "reales": {c: _json_simple(_numero(p["reales"].get(c))) for c in CATEGORIAS},
             "req": _req_publicable(p.get("req")),
             "venta": {"cargada": venta not in (None, 0), "origen": _origen(propios, CLAVE_VENTA, p.get("venta"))},
+            "cierre": _json_simple(p.get("cierre")),
+            "porEjecutar": p.get("porEjecutar"),
         })
     mensajes = {
         id_: {k: v for k, v in r.items() if k in ("estado", "fecha", "detalle", "tag")}

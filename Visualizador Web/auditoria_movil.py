@@ -38,6 +38,7 @@ TABLEROS = {
     "afpe": "Peru/Análisis Financiero/Visualizador Web/build/index.html",
     "cot": "Cotizador Historico/Visualizador Web/build/index.html",
     "cotpe": "Peru/Cotizador Historico/Visualizador Web/build/index.html",
+    "fc": "Flujo de Caja/Visualizador Web/build/index.html",
     "hub": "Visualizador Web/index.html",
 }
 

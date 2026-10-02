@@ -11,6 +11,8 @@ dia, en el orden correcto de dependencias:
         -> Visualizador AF          (lee AF)                   [ya encadenado]
         -> Visualizador Cotizador   (lee CC)                   <-- LO AGREGA ESTE
         -> Reportes PDF pendientes  (lee AF)                   <-- LO REPORTA ESTE
+        -> Carpeta de intercambio   (procesar.py --forzar)     [2026-10-01]
+        -> Flujo de Caja            (lee CC + intercambio)     [2026-10-02]
 
 Por que existe (auditoria 2026-07-28): 'run' de Centro de Costos ya encadena
 Analisis Financiero y dos de los tres visualizadores (PASO 12b/12c/12d), pero
@@ -67,8 +69,14 @@ DRIVER_COTIZADOR = (
 # fuerza una vuelta completa para que todo lo publicado salga de los datos
 # recien actualizados.
 PROCESADOR_INTERCAMBIO = RAIZ / "Sistema Intercambio" / "procesar.py"
+# Flujo de Caja (2026-10-02): se arma con lo que publican CC, Sistema QUEMPIN,
+# la Planilla y AF, asi que va despues del procesador.
+DRIVER_FLUJO_CAJA = (
+    RAIZ / "Flujo de Caja" / ".claude" / "skills"
+    / "Registro_Flujo_de_Caja" / "driver.py"
+)
 
-# Los 3 tableros: (nombre, build/index.html regenerado, subruta fija dentro
+# Los 4 tableros: (nombre, build/index.html regenerado, subruta fija dentro
 # de la rama gh-pages). Desde 2026-08-05 (migracion de Claude Artifacts a
 # GitHub Pages) la URL de cada uno es estructural -- ya no hay un link opaco
 # que leer de un MEMORY.md ni que cuidar de "no regenerar por error".
@@ -89,13 +97,18 @@ TABLEROS = (
         RAIZ / "Cotizador Historico" / "Visualizador Web" / "build" / "index.html",
         "cotizador-historico",
     ),
+    (
+        "Flujo de Caja",
+        RAIZ / "Flujo de Caja" / "Visualizador Web" / "build" / "index.html",
+        "flujo-de-caja",
+    ),
 )
 
 URL_BASE_PAGES = "https://cristobal-monzo.github.io/finanzas-quempin"
 
 
 def _informe_tableros(momento_inicio):
-    """Lista los 3 tableros con su ruta, si se regeneraron en esta corrida y
+    """Lista los 4 tableros con su ruta, si se regeneraron en esta corrida y
     su URL fija -- todo lo que el agente necesita para publicarlos. Publicar
     (copiar a .worktrees/gh-pages/<subruta>/index.html + git push) es lo
     unico que este driver no hace solo: requiere git push, que el agente
@@ -303,7 +316,7 @@ def cmd_status():
     tableros."""
     momento_inicio = datetime.now().timestamp()
     inicio = time.perf_counter()
-    # Los 5 son de solo lectura y no dependen entre si: van en paralelo.
+    # Los 6 son de solo lectura y no dependen entre si: van en paralelo.
     trabajos = [
         (titulo, driver, args, False)
         for titulo, driver, args in (
@@ -314,11 +327,12 @@ def cmd_status():
             # Pedido del usuario (2026-09-30): los presupuestos nuevos del
             # Formulador y los adjudicados que faltan en Analisis Financiero.
             ("Presupuestos del Formulador", DRIVER_ANALISIS_FINANCIERO, ["formulaciones"]),
+            ("Flujo de Caja -- status", DRIVER_FLUJO_CAJA, ["status"]),
         )
     ]
     salidas = _ejecutar_varios(trabajos)
     resultados = [(titulo, ok) for titulo, ok, _ in salidas]
-    _aviso_presupuestos(salidas[-1][2])
+    _aviso_presupuestos(salidas[4][2])
 
     # En 'status' ningun build se regenera, asi que todos saldran como "sin
     # cambios" -- sirve igual para ver cual falta, cuando se genero cada uno y
@@ -327,7 +341,7 @@ def cmd_status():
     _informe_tiempos(time.perf_counter() - inicio)
 
     print("\n  Nada fue escrito. Para ejecutar de verdad: python driver.py run")
-    return _resumir(resultados, "Los 5 pasos respondieron. Nada fue escrito.")
+    return _resumir(resultados, "Los 6 pasos respondieron. Nada fue escrito.")
 
 
 def _aviso_presupuestos(salida):
@@ -411,13 +425,21 @@ def cmd_run():
     )
     resultados.append(("Carpeta de intercambio", ok_inter))
 
+    # 5. Flujo de Caja: Excel y tablero, desde lo que el procesador acaba de
+    #    publicar y la foto del Centro de Costos del paso 1. Nunca frena.
+    ok_flujo, _ = _ejecutar(
+        "Flujo de Caja -- run (Excel y tablero)",
+        DRIVER_FLUJO_CAJA, ["run"], obligatorio=False,
+    )
+    resultados.append(("Flujo de Caja", ok_flujo))
+
     _informe_tableros(momento_inicio)
     _informe_tiempos(time.perf_counter() - inicio)
 
     codigo = _resumir(resultados, "Todos los modulos y tableros quedaron al dia en disco.")
 
     print("\n  Falta para cerrar la actualizacion:")
-    print("   - PUBLICAR los 3 tableros de arriba (paso obligatorio: regenerarlos")
+    print("   - PUBLICAR los 4 tableros de arriba (paso obligatorio: regenerarlos")
     print("     en disco no cambia lo que ve la gente en el link publicado).")
     if "pendiente" in salida_rep.lower() or "desactualizad" in salida_rep.lower():
         print("   - Generar los reportes PDF pendientes: /Reportes_Analisis_Financiero run")

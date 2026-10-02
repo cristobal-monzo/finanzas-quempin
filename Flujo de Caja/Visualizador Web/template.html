@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- Tablero de Flujo de Caja (2026-10-01, plan de integración, fase 4).
+     Plantilla versionada; build_visualizador.py inyecta las fuentes y el
+     logo (desde el módulo de marca, sin duplicarlos aquí) y los datos. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flujo de Caja — Visualizador</title>
+<link rel="icon" type="image/png" href="__FC_LOGO__">
+<style>
+__FC_FUENTES__
+
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f4f2ee;
+    --surface-card:   #ffffff;
+    --text-primary:   #171513;
+    --text-secondary: #52514e;
+    --text-muted:     #666560;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border-hairline: rgba(11,11,11,0.10);
+    /* Sistema cromático corporativo QUEMPIN (manual §14, Pantone→hex tal
+       cual está impreso — nunca reemplazar por tonos parecidos): */
+    --brand-orange:   #ff5100; /* PANTONE ORANGE 021 C */
+    --brand-black:    #000000; /* PANTONE BLACK C */
+    --brand-gray-11:  #54565a; /* PANTONE COOL GRAY 11 C — oscuro */
+    --brand-gray-7:   #98989a; /* PANTONE COOL GRAY 7 C — claro */
+    /* Variante de texto: mismo matiz del naranjo oficial, solo con menor
+       luminosidad — no es un color "parecido", es un sombreado del mismo
+       Pantone 021 C para que el texto pequeño cumpla contraste AA (4.5:1)
+       sobre fondo claro; ver Iteración 1 del loop de mejora continua. */
+    --brand-orange-ink: #b23a00;
+    /* #0ca30c/#c98500 originales dan 3.35:1 / 3.07:1 sobre --surface-card
+       blanco -- bajo el minimo WCAG AA de texto normal (4.5:1). Oscurecidos
+       manteniendo el mismo matiz hasta pasar AA con margen (Iteracion 3 del
+       loop de mejora continua). */
+    --status-good:    #087a08;
+    /* Tono claro del mismo verde, para el gráfico de Distribución de
+       Evaluación: "Excelente" y "Bueno" comparten nivel "ok" en los badges,
+       pero ahí el texto distingue -- en el donut el color ES el canal de
+       lectura, así que necesitan un paso de luminosidad propio (validado
+       con dataviz --ordinal: ΔL >= 0.06, contraste 3.90:1 sobre blanco). */
+    --status-good-2:  #5a8f1f;
+    --status-warning: #8c5900;
+    --status-bad:     #d1282e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --surface-card:   #221f1c;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #a6a49d;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border-hairline: rgba(255,255,255,0.12);
+      --brand-orange:   #ff5100;
+      --brand-orange-ink: #ff8a4d;
+      --brand-black:    #000000;
+      --brand-gray-11:  #54565a;
+      --brand-gray-7:   #98989a;
+      --status-good:    #3fb950;
+      --status-good-2:  #8fce6a;
+      --status-warning: #d29922;
+      --status-bad:     #f85149;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --surface-card:   #221f1c;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #a6a49d;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border-hairline: rgba(255,255,255,0.12);
+    --brand-orange:   #ff5100;
+    --brand-orange-ink: #ff8a4d;
+    --brand-black:    #000000;
+    --brand-gray-11:  #54565a;
+    --brand-gray-7:   #98989a;
+    --status-good:    #3fb950;
+    --status-good-2:  #8fce6a;
+    --status-warning: #d29922;
+    --status-bad:     #f85149;
+  }
+
+  * { box-sizing: border-box; }
+  /* El navegador aplica ~8px de margen a <body> por defecto -- sin este
+     reset, y como html/body no tienen fondo propio (heredan el blanco del
+     navegador), queda un marco blanco alrededor de TODO el contenido sin
+     importar min-height. No es lo mismo que el bug de min-height:100% (ya
+     corregido arriba): ese se notaba solo cuando el contenido era mas
+     corto que la ventana, este se ve siempre, en los 3 dashboards. */
+  html, body { margin: 0; padding: 0; background: #0d0d0d; }
+  .viz-root {
+    font-family: 'Lato', system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 0 0 48px 0;
+  }
+  .viz-container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+  /* Header — fixed on-brand chrome, deliberately NOT tied to the light/dark toggle
+     ("APLICACIÓN PRINCIPAL FONDO NEGRO" del manual §11 usos correctos), así
+     el contraste y los colores oficiales se mantienen sin importar el tema. */
+  .viz-header {
+    background: #000000;
+    color: #fff;
+    padding: 18px 0;
+    margin-bottom: 24px;
+    border-bottom: 3px solid #ff5100;
+  }
+  .viz-header .viz-container { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .viz-logo { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+  .viz-logo img { height: 42px; width: auto; display: block; flex-shrink: 0; }
+  .viz-wordmark { font-size: 21px; font-weight: 900; letter-spacing: 0.02em; line-height: 1; color: #ffffff; }
+  .viz-wordmark .in { color: #ff5100; }
+  .viz-titleblock { flex: 1 1 auto; min-width: 200px; }
+  .viz-titleblock h1 { font-size: 15px; font-weight: 700; margin: 0; color: #ffffff; }
+  .viz-titleblock p { font-size: 12.5px; color: #98989a; margin: 3px 0 0; }
+  .viz-titleblock p strong { color: #ffffff; font-weight: 700; }
+  .viz-theme-toggle {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.28);
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .viz-theme-toggle:hover { background: rgba(255,255,255,0.2); }
+
+  /* Nav entre tableros — visible solo tras pasar el gate (dentro de
+     .viz-root), permite saltar a otro modulo sin re-ingresar la
+     contrasena (los 4 tableros comparten el mismo unlock, ver
+     'quempin_viz_unlocked' mas abajo). */
+  .viz-modnav {
+    border-top: 1px solid rgba(255,255,255,0.14);
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+  .viz-modnav-inner { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
+  .viz-modnav-tabs { display: flex; gap: 4px 16px; flex-wrap: wrap; min-width: 0; }
+  /* Selector de país (2026-10-01): antes había 6 pestañas, una por módulo y
+     país; ahora son las 3 de los módulos y el país se elige aquí. <select>
+     nativo (en el teléfono abre la lista del sistema) con la flecha dibujada,
+     para que se vea igual sobre la cabecera negra en todos los navegadores. */
+  .viz-modnav-pais {
+    flex: 0 0 auto;
+    -webkit-appearance: none; appearance: none;
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+    color: #ffffff;
+    background: rgba(255,255,255,0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    padding: 5px 28px 5px 10px;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+  .viz-modnav-pais:hover { background-color: rgba(255,255,255,0.14); }
+  .viz-modnav-pais:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
+  .viz-modnav-pais option { color: #ffffff; background: #1a1a1a; }
+  .viz-modnav-tab {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px 6px 0 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #98989a;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+  }
+  a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
+  a.viz-modnav-tab.is-active:hover { background: none; }
+  .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
+  /* En teléfono: una sola fila, con el selector de país fijo a la izquierda
+     y solo las pestañas deslizándose de lado (con wrap, el encabezado se
+     comía un tercio de la pantalla). */
+  /* ".viz-header" delante: el contenedor también es .viz-container, y
+     ".viz-header .viz-container" (flex-wrap: wrap) le ganaba por
+     especificidad a una regla de una sola clase. */
+  @media (max-width: 640px) {
+    .viz-header .viz-modnav-inner { flex-wrap: nowrap; }
+    .viz-modnav-tabs { flex: 1 1 auto; flex-wrap: nowrap; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .viz-modnav-tabs::-webkit-scrollbar { display: none; }
+    .viz-modnav-tab { white-space: nowrap; flex: 0 0 auto; }
+    /* 16 px: con menos, Safari de iPhone hace zoom al tocar el selector. */
+    .viz-modnav-pais { font-size: 16px; padding: 4px 26px 4px 9px; }
+    /* Etiquetas cortas (Costos / Análisis / Cotizador): así las 3 caben
+       junto al selector desde 360 px; más angosto, la fila se desliza. */
+    .viz-modnav-largo { display: none; }
+  }
+
+  /* Password gate */
+  .viz-gate {
+    /* Bug real encontrado en QA con navegador (Iteración 3): .viz-gate es
+       hermano de .viz-root, no descendiente — la regla de Lato en
+       .viz-root nunca llegaba aquí y el gate caía al serif por defecto
+       del navegador (Times New Roman), con el consiguiente artefacto de
+       antialiasing que se veía "arcoíris" sobre fondo negro puro. */
+    font-family: 'Lato', system-ui, -apple-system, "Segoe UI", sans-serif;
+    position: fixed; inset: 0; z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    background: #000000;
+    padding: 20px;
+  }
+  .viz-gate-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 32px 28px;
+    max-width: 340px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .viz-gate-card img { height: 52px; margin-bottom: 14px; }
+  .viz-gate-card h2 { font-size: 15px; color: #fff; margin: 0 0 4px; font-weight: 700; }
+  .viz-gate-card p.hint { font-size: 12px; color: #98989a; margin: 0 0 18px; line-height: 1.5; }
+  .viz-gate-card input {
+    width: 100%; font-family: inherit; font-size: 14px; text-align: center;
+    padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18);
+    background: #000000; color: #fff; margin-bottom: 10px;
+  }
+  .viz-gate-card input:focus { outline: 2px solid #ff5100; outline-offset: 1px; }
+  .viz-gate-card button {
+    width: 100%; font-family: inherit; font-size: 13px; font-weight: 900;
+    padding: 10px 12px; border-radius: 8px; border: none;
+    background: #ff5100; color: #000000; cursor: pointer;
+  }
+  .viz-gate-card button:hover { filter: brightness(1.12); }
+  .viz-gate-error { font-size: 12px; color: #ff8a4d; min-height: 16px; margin-top: 10px; }
+
+
+  /* ---------- Flujo de Caja ---------- */
+  .fc-avisos { background: var(--surface-card); border: 1px solid var(--gridline); border-left: 3px solid var(--brand-orange);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--text-secondary); }
+  .fc-avisos ul { margin: 6px 0 0; padding-left: 18px; }
+  .fc-avisos strong { color: var(--text-primary); }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .kpi-card { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .kpi-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+  .kpi-value { font-size: 24px; font-weight: 900; margin-top: 6px; color: var(--text-primary); }
+  .kpi-value.neg { color: var(--status-bad); }
+  .kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
+  .panel { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 16px; margin-bottom: 18px; }
+  .panel h2 { font-size: 14px; margin: 0 0 4px; color: var(--text-primary); }
+  .panel .sub { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 12px; }
+  .fc-opciones { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+  .fc-opciones label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .fc-grafico { width: 100%; overflow: hidden; }
+  .fc-grafico svg { display: block; width: 100%; height: auto; }
+  .fc-grafico text { fill: var(--text-muted); font-size: 11px; font-family: inherit; }
+  .fc-grafico .eje { stroke: var(--baseline); }
+  .fc-grafico .guia { stroke: var(--gridline); }
+  .fc-grafico .col-hover { fill: transparent; cursor: pointer; }
+  .fc-grafico .col-hover:hover, .fc-grafico .col-hover:focus { fill: var(--border-hairline); outline: none; }
+  .s-ing-com { fill: var(--brand-orange); }
+  .s-ing-pro { fill: url(#rayas); }
+  .s-egr-real { fill: var(--brand-gray-11); }
+  .s-egr-com { fill: var(--text-primary); }
+  .s-egr-est { fill: var(--brand-gray-7); }
+  .l-acum { fill: none; stroke: var(--brand-orange-ink); stroke-width: 2.2; }
+  .p-acum { fill: var(--surface-card); stroke: var(--brand-orange-ink); stroke-width: 2; }
+  .fc-leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-secondary); }
+  .fc-leyenda .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  /* Muestras de la leyenda en CSS (no copiadas por JS): así siguen al cambio de tema. */
+  .fc-leyenda .s-ing-com { background: var(--brand-orange); }
+  .fc-leyenda .s-ing-pro { background: repeating-linear-gradient(45deg, var(--brand-orange) 0 3px, transparent 3px 6px); border: 1px solid var(--brand-orange); }
+  .fc-leyenda .s-egr-real { background: var(--brand-gray-11); }
+  .fc-leyenda .s-egr-com { background: var(--text-primary); }
+  .fc-leyenda .s-egr-est { background: var(--brand-gray-7); }
+  .fc-leyenda .l-acum { background: var(--brand-orange-ink); height: 3px; vertical-align: 3px; }
+  .fc-tooltip { position: fixed; z-index: 3000; pointer-events: none; background: #000; color: #fff; border-radius: 8px; padding: 9px 11px;
+    font-size: 12px; line-height: 1.5; box-shadow: 0 8px 24px rgba(0,0,0,.3); max-width: 280px; display: none; }
+  .fc-tooltip b { color: #ff8a4d; }
+  .fc-filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .fc-filtros input, .fc-filtros select { font-family: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--gridline);
+    background: var(--surface-1); color: var(--text-primary); }
+  .fc-filtros input { flex: 1 1 220px; min-width: 0; }
+  .tabla-wrap { overflow-x: auto; }
+  table.viz-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.viz-table > thead > tr > th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+    border-bottom: 1px solid var(--baseline); padding: 8px 8px; white-space: nowrap; cursor: pointer; user-select: none; }
+  table.viz-table > thead > tr > th.num, table.viz-table > tbody > tr > td.num { text-align: right; }
+  table.viz-table > tbody > tr > td { padding: 7px 8px; border-bottom: 1px solid var(--gridline); color: var(--text-primary); vertical-align: top; }
+  table.viz-table > tbody > tr > td.neg { color: var(--status-bad); }
+  #tMovs > tbody > tr > td:first-child, #tMovs > tbody > tr > td.num { white-space: nowrap; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--gridline); color: var(--text-secondary); white-space: nowrap; }
+  .chip.vencido { border-color: var(--status-warning); color: var(--status-warning); }
+  .fc-mas { margin-top: 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 8px;
+    border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
+  .fc-nota { font-size: 11.5px; color: var(--text-muted); margin-top: 24px; line-height: 1.5; }
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) {
+    .viz-container { padding: 0 14px; }
+    .kpi-value { font-size: 20px; }
+    .fc-filtros input, .fc-filtros select { font-size: 16px; flex: 1 1 100%; }
+    /* Tablas como tarjetas: primera celda de título, el resto etiqueta/valor (data-label). */
+    table.viz-table > thead { display: none; }
+    table.viz-table, table.viz-table > tbody, table.viz-table > tbody > tr, table.viz-table > tbody > tr > td { display: block; width: 100%; }
+    table.viz-table > tbody > tr { border: 1px solid var(--gridline); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+    table.viz-table > tbody > tr > td { border: none; padding: 3px 0; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+    table.viz-table > tbody > tr > td::before { content: attr(data-label); color: var(--text-muted); font-size: 11.5px; text-align: left; flex: 0 0 auto; }
+    table.viz-table > tbody > tr > td:first-child { font-weight: 700; }
+    .tabla-wrap { overflow-x: visible; }
+  }
+</style>
+</head>
+<body>
+
+<div class="viz-gate" id="pwGate">
+  <form class="viz-gate-card" id="pwForm">
+    <img src="__FC_LOGO__" alt="QUEMPIN">
+    <h2>Flujo de Caja — Visualizador</h2>
+    <p class="hint">Acceso restringido. Ingresa la contraseña para ver los datos.</p>
+    <input id="pwInput" type="password" placeholder="Contraseña" autocomplete="off" autocapitalize="off" />
+    <button type="submit">Entrar</button>
+    <div class="viz-gate-error" id="pwError"></div>
+  </form>
+</div>
+
+<div class="viz-root" id="vizRoot" style="display:none">
+  <header class="viz-header">
+    <div class="viz-container">
+      <div class="viz-logo">
+        <img src="__FC_LOGO__" alt="QUEMPIN">
+        <div class="viz-wordmark">QUEMP<span class="in">IN</span></div>
+      </div>
+      <div class="viz-titleblock">
+        <h1>Flujo de Caja — Visualizador</h1>
+        <p id="vizGenerated">Datos actualizados al —</p>
+      </div>
+      <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
+    </div>
+    <nav class="viz-modnav" aria-label="Tableros">
+      <!-- Selector de país + las pestañas de módulo. Los enlaces apuntan a
+           Chile; el JS los pasa al país de este tablero y marca la activa
+           según data-nav-activo (la subruta publicada). Este bloque es igual
+           en los 6 templates: solo cambia ese atributo. Flujo de Caja existe
+           solo para Chile: su pestaña apunta siempre a Chile. -->
+      <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="flujo-de-caja">
+        <select class="viz-modnav-pais" id="modNavPais" aria-label="País">
+          <option value="">Chile</option>
+          <option value="-peru">Perú</option>
+        </select>
+        <div class="viz-modnav-tabs">
+          <a class="viz-modnav-tab" data-modulo="centro-de-costos" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/"><span class="viz-modnav-largo">Centro de </span>Costos</a>
+          <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis<span class="viz-modnav-largo"> Financiero</span></a>
+          <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
+          <a class="viz-modnav-tab" data-modulo="flujo-de-caja" href="https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/">Flujo<span class="viz-modnav-largo"> de Caja</span></a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <div class="viz-container">
+    <div class="fc-avisos" id="fcAvisos" style="display:none"></div>
+
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Por cobrar</div><div class="kpi-value" id="kCobrar"></div><div class="kpi-sub" id="kCobrarSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Por pagar y por ejecutar</div><div class="kpi-value" id="kPagar"></div><div class="kpi-sub" id="kPagarSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Neto proyectado</div><div class="kpi-value" id="kNeto"></div><div class="kpi-sub" id="kNetoSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Mes más ajustado</div><div class="kpi-value" id="kMin"></div><div class="kpi-sub" id="kMinSub"></div></div>
+    </div>
+
+    <section class="panel">
+      <h2>Mes a mes</h2>
+      <p class="sub">Hacia atrás, lo pagado según Centro de Costos. Hacia adelante, lo comprometido y lo estimado; la línea es el acumulado desde el mes en curso.</p>
+      <div class="fc-opciones">
+        <label><input type="checkbox" id="optProbables"> Incluir ofertas por adjudicar (ponderadas por la tasa de adjudicación: una oferta se gana o se pierde entera)</label>
+      </div>
+      <div class="fc-grafico" id="fcGrafico" role="img" aria-label="Ingresos y egresos por mes"></div>
+      <ul class="fc-leyenda" id="fcLeyenda"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Movimientos</h2>
+      <p class="sub">Cada línea dice de qué herramienta salió. «Vencido» = debió ocurrir antes de hoy y sigue pendiente: se cuenta en el mes en curso.</p>
+      <div class="fc-filtros">
+        <input id="fBuscar" type="search" placeholder="Buscar concepto, referencia o proyecto" aria-label="Buscar movimientos">
+        <select id="fSentido" aria-label="Sentido"><option value="">Ingresos y egresos</option><option value="ingreso">Ingresos</option><option value="egreso">Egresos</option></select>
+        <select id="fClase" aria-label="Clase"><option value="">Todas las clases</option><option value="real">Real</option><option value="comprometido">Comprometido</option><option value="probable">Probable</option><option value="estimado">Estimado</option></select>
+        <select id="fMes" aria-label="Mes"><option value="">Todos los meses</option></select>
+      </div>
+      <div class="tabla-wrap">
+        <table class="viz-table" id="tMovs">
+          <thead><tr><th data-k="fecha">Fecha</th><th data-k="sentido">Sentido</th><th data-k="clase">Clase</th><th data-k="monto" class="num">Monto</th><th data-k="concepto">Concepto</th><th data-k="fuente">Fuente</th><th data-k="proyecto">Proyecto</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="fc-mas" id="fMas" type="button" style="display:none">Mostrar más</button>
+    </section>
+
+    <section class="panel">
+      <h2>Supuestos</h2>
+      <p class="sub">Lo que el cálculo asume donde ninguna herramienta tiene el dato. Se cambian en <code>Flujo de Caja/Sistema/parametros_flujo_caja.json</code>.</p>
+      <div class="tabla-wrap">
+        <table class="viz-table" id="tSupuestos"><thead><tr><th>Supuesto</th><th class="num">Valor</th><th>Qué significa</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <p class="fc-nota">Sin cobros reales ni saldo bancario: ninguna herramienta los tiene todavía. La contraseña de esta página es una barrera, no seguridad real.</p>
+  </div>
+</div>
+<div class="fc-tooltip" id="fcTooltip" role="tooltip"></div>
+
+<script id="fc-data-b64" type="text/plain">__FC_DATA_B64__</script>
+<script>
+(function () {
+  try {
+    var savedTheme = localStorage.getItem('fc_viz_theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') document.documentElement.setAttribute('data-theme', savedTheme);
+  } catch (e) {}
+
+  // ---------- navegación entre tableros: país + pestaña activa ----------
+  // data-nav-activo es la subruta publicada de este tablero (ej.
+  // "analisis-financiero-peru"): de ahí salen el país del selector, a qué
+  // país apuntan las pestañas y cuál se marca. Mismo bloque en los 6
+  // templates. Flujo de Caja (2026-10-01) existe solo para Chile: su pestaña
+  // apunta siempre a Chile, y elegir Perú desde ese tablero lleva a Centro
+  // de Costos Perú.
+  (function () {
+    var nav = document.getElementById('modNav');
+    if (!nav) return;
+    var BASE = 'https://cristobal-monzo.github.io/finanzas-quempin/';
+    var activo = nav.getAttribute('data-nav-activo') || '';
+    var sufijo = /-peru$/.test(activo) ? '-peru' : '';
+    var modulo = activo.slice(0, activo.length - sufijo.length);
+    var SOLO_CHILE = ['flujo-de-caja'];
+    nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
+      var destino = a.getAttribute('data-modulo');
+      if (destino === modulo) {
+        a.classList.add('is-active');
+        a.setAttribute('aria-current', 'page');
+        a.removeAttribute('href');
+      } else {
+        a.href = BASE + destino + (SOLO_CHILE.indexOf(destino) >= 0 ? '' : sufijo) + '/';
+      }
+    });
+    // Cambiar de país lleva al mismo módulo en el otro país. Al volver con
+    // "Atrás" el navegador puede restaurar el selector con el otro país
+    // elegido: por eso se repone cada vez que se muestra la página.
+    var pais = document.getElementById('modNavPais');
+    function reponerPais() { pais.value = sufijo; }
+    reponerPais();
+    window.addEventListener('pageshow', reponerPais);
+    pais.addEventListener('change', function () {
+      if (pais.value === sufijo) return;
+      var destino = SOLO_CHILE.indexOf(modulo) >= 0 && pais.value ? 'centro-de-costos' : modulo;
+      location.href = BASE + destino + pais.value + '/';
+    });
+  })();
+
+  // ---------- password gate (misma barrera y misma marca que los demás tableros) ----------
+  var GATE_PASSWORD_NORM = 'combustion';
+  function normalizePassword(s) {
+    return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  }
+  function b64ToUtf8(b64) {
+    var bin = atob(b64.replace(/\s+/g, ''));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+  var gate = document.getElementById('pwGate');
+  var gateInput = document.getElementById('pwInput');
+  function unlock() {
+    gate.style.display = 'none';
+    document.getElementById('vizRoot').style.display = '';
+    try { localStorage.setItem('quempin_viz_unlocked', '1'); } catch (e) {}
+    initApp(JSON.parse(b64ToUtf8(document.getElementById('fc-data-b64').textContent)));
+  }
+  document.getElementById('pwForm').addEventListener('submit', function (evt) {
+    evt.preventDefault();
+    if (normalizePassword(gateInput.value) === GATE_PASSWORD_NORM) unlock();
+    else { document.getElementById('pwError').textContent = 'Contraseña incorrecta. Intenta de nuevo.'; gateInput.value = ''; gateInput.focus(); }
+  });
+  var yaDesbloqueado = false;
+  try { yaDesbloqueado = localStorage.getItem('quempin_viz_unlocked') === '1'; } catch (e) {}
+  if (yaDesbloqueado) unlock(); else gateInput.focus();
+
+  function initApp(DATA) {
+    var fCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+    var clp = function (v) { return v === null || v === undefined ? '—' : fCLP.format(Math.round(v)); };
+    var esc = function (s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    var MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    var mesCorto = function (m) { var p = m.split('-'); return MESES[+p[1] - 1] + ' ' + p[0].slice(2); };
+    var fechaCorta = function (iso) { var p = String(iso).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : iso; };
+
+    document.getElementById('vizGenerated').innerHTML = 'Datos al <strong>' + esc(fechaCorta(DATA.hoy)) + '</strong> · generado ' + esc(fechaCorta(DATA.generado));
+
+    // Mobile: centrar la pestaña activa y etiquetar las celdas (mismo criterio que los demás tableros).
+    var tabActiva = document.querySelector('.viz-modnav-tab.is-active');
+    if (tabActiva) {
+      var filaTabs = tabActiva.parentNode;
+      if (filaTabs.scrollWidth > filaTabs.clientWidth) {
+        filaTabs.scrollLeft += tabActiva.getBoundingClientRect().left - filaTabs.getBoundingClientRect().left - (filaTabs.clientWidth - tabActiva.offsetWidth) / 2;
+      }
+    }
+    function etiquetarCeldas(tbody) {
+      var nombres = Array.prototype.map.call(tbody.parentNode.querySelectorAll(':scope > thead th'), function (th) { return th.textContent.replace(/[▲▼]/g, '').trim(); });
+      Array.prototype.forEach.call(tbody.children, function (tr) {
+        Array.prototype.forEach.call(tr.children, function (td, i) { if (nombres[i]) td.setAttribute('data-label', nombres[i]); });
+      });
+    }
+    document.querySelectorAll('table.viz-table > tbody').forEach(function (tbody) {
+      new MutationObserver(function () { etiquetarCeldas(tbody); }).observe(tbody, { childList: true });
+    });
+
+    var themeBtn = document.getElementById('themeToggle');
+    function isDarkNow() {
+      var d = document.documentElement;
+      return d.getAttribute('data-theme') === 'dark' || (d.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    themeBtn.textContent = isDarkNow() ? 'Modo claro' : 'Modo oscuro';
+    themeBtn.addEventListener('click', function () {
+      var next = isDarkNow() ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      themeBtn.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+      try { localStorage.setItem('fc_viz_theme', next); } catch (e) {}
+    });
+
+    // Avisos de la corrida
+    var av = document.getElementById('fcAvisos');
+    if (DATA.avisos && DATA.avisos.length) {
+      av.style.display = '';
+      av.innerHTML = '<strong>Para leer estos números:</strong><ul>' + DATA.avisos.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul>';
+    }
+
+    var optProb = document.getElementById('optProbables');
+    var futuros = DATA.meses.filter(function (m) { return m.proyectado; });
+    var saldo0 = (DATA.supuestos.saldoInicial || {}).valor || 0;
+
+    function pintarKpis() {
+      var conProb = optProb.checked;
+      var suma = function (k) { return futuros.reduce(function (a, m) { return a + (m[k] || 0); }, 0); };
+      var cobrar = suma('ingreso_comprometido'), prob = suma('ingreso_probable');
+      var pagar = suma('egreso_comprometido'), ejecutar = suma('egreso_estimado'), real = suma('egreso_real');
+      document.getElementById('kCobrar').textContent = clp(cobrar + (conProb ? prob : 0));
+      document.getElementById('kCobrarSub').textContent = 'Cuotas de cotizaciones adjudicadas' + (conProb ? ' + ' + clp(prob) + ' de ofertas ponderadas' : '') + ', en ' + futuros.length + ' meses.';
+      document.getElementById('kPagar').textContent = clp(pagar + ejecutar + real);
+      document.getElementById('kPagarSub').textContent = clp(pagar) + ' comprometido (facturas y OC) · ' + clp(ejecutar) + ' por ejecutar en proyectos en curso.';
+      var neto = futuros.reduce(function (a, m) { return a + (conProb ? m.neto : m.netoSinProbables); }, 0);
+      var kn = document.getElementById('kNeto');
+      kn.textContent = clp(neto);
+      kn.className = 'kpi-value' + (neto < 0 ? ' neg' : '');
+      document.getElementById('kNetoSub').textContent = saldo0 ? 'Saldo inicial ' + clp(saldo0) + ' · cierre ' + clp(saldo0 + neto) : 'Sin saldo inicial: es la variación, no el saldo.';
+      var acum = saldo0, peor = null;
+      futuros.forEach(function (m) { acum += conProb ? m.neto : m.netoSinProbables; if (peor === null || acum < peor.v) peor = { m: m.mes, v: acum }; });
+      var km = document.getElementById('kMin');
+      km.textContent = peor ? mesCorto(peor.m) : '—';
+      document.getElementById('kMinSub').textContent = peor ? 'Acumulado más bajo: ' + clp(peor.v) + '.' : '';
+    }
+
+    // ---------- gráfico ----------
+    var tip = document.getElementById('fcTooltip');
+    var SERIES = [
+      { k: 'ingreso_comprometido', n: 'Cuotas por cobrar', cls: 's-ing-com', signo: 1 },
+      { k: 'ingreso_probable', n: 'Ofertas por adjudicar', cls: 's-ing-pro', signo: 1, prob: true },
+      { k: 'egreso_real', n: 'Pagado', cls: 's-egr-real', signo: -1 },
+      { k: 'egreso_comprometido', n: 'Por pagar', cls: 's-egr-com', signo: -1 },
+      { k: 'egreso_estimado', n: 'Por ejecutar', cls: 's-egr-est', signo: -1 }
+    ];
+    function pintarGrafico() {
+      var conProb = optProb.checked;
+      var series = SERIES.filter(function (s) { return conProb || !s.prob; });
+      // Se dibuja al ancho real del panel (no a 900 escalado): en un teléfono el
+      // texto quedaba en ~5 px. Se vuelve a dibujar si cambia el ancho.
+      var W = Math.max(300, Math.round(document.getElementById('fcGrafico').clientWidth || 900));
+      var angosto = W < 600, H = angosto ? 260 : 320, mx = angosto ? 50 : 64, my = 18, n = DATA.meses.length;
+      var maxUp = 1, maxDown = 1, acum = saldo0, puntos = [];
+      DATA.meses.forEach(function (m) {
+        var up = 0, down = 0;
+        series.forEach(function (s) { if (s.signo > 0) up += Math.max(0, m[s.k] || 0); else down += Math.max(0, m[s.k] || 0); });
+        maxUp = Math.max(maxUp, up); maxDown = Math.max(maxDown, down);
+        if (m.proyectado) { acum += conProb ? m.neto : m.netoSinProbables; puntos.push({ m: m, v: acum }); }
+      });
+      puntos.forEach(function (p) { maxUp = Math.max(maxUp, p.v); maxDown = Math.max(maxDown, -p.v); });
+      // Marcas del eje en pasos redondos (1-2-5): con las mitades de cada lado
+      // las etiquetas se pisaban cuando un lado era mucho menor que el otro.
+      var paso = pasoRedondo((maxUp + maxDown) / 5);
+      maxUp = Math.ceil(maxUp / paso) * paso; maxDown = Math.ceil(maxDown / paso) * paso;
+      var marcas = [];
+      for (var v = -maxDown; v <= maxUp + paso / 2; v += paso) marcas.push(Math.round(v));
+      var alto = H - 2 * my - 22, escala = alto / (maxUp + maxDown), y0 = my + maxUp * escala;
+      var ancho = (W - mx - 10) / n, barra = Math.min(46, ancho * 0.62);
+      var svg = ['<svg viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><defs><pattern id="rayas" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" style="fill:var(--surface-card)"/><rect width="3" height="6" style="fill:var(--brand-orange)"/></pattern></defs>'];
+      marcas.forEach(function (v) {
+        var y = y0 - v * escala;
+        svg.push('<line class="' + (v === 0 ? 'eje' : 'guia') + '" x1="' + mx + '" x2="' + (W - 6) + '" y1="' + y + '" y2="' + y + '"/>');
+        svg.push('<text x="' + (mx - 6) + '" y="' + (y + 4) + '" text-anchor="end">' + esc(clpCorto(v)) + '</text>');
+      });
+      DATA.meses.forEach(function (m, i) {
+        var x = mx + i * ancho + (ancho - barra) / 2, arriba = y0, abajo = y0;
+        series.forEach(function (s) {
+          var v = Math.max(0, m[s.k] || 0);
+          if (!v) return;
+          var h = v * escala;
+          if (s.signo > 0) { arriba -= h; svg.push('<rect class="' + s.cls + '" x="' + x + '" y="' + arriba + '" width="' + barra + '" height="' + h + '"/>'); }
+          else { svg.push('<rect class="' + s.cls + '" x="' + x + '" y="' + abajo + '" width="' + barra + '" height="' + h + '"/>'); abajo += h; }
+        });
+        if (ancho >= 44 || i % 2 === 0) {   // sin espacio para todos los meses: uno sí, uno no
+          svg.push('<text x="' + (mx + i * ancho + ancho / 2) + '" y="' + (H - 6) + '" text-anchor="middle"' + (m.proyectado ? '' : ' opacity="0.7"') + '>' + mesCorto(m.mes) + '</text>');
+        }
+        svg.push('<rect class="col-hover" tabindex="0" data-i="' + i + '" x="' + (mx + i * ancho) + '" y="' + my + '" width="' + ancho + '" height="' + (H - 2 * my - 12) + '"/>');
+      });
+      if (puntos.length) {
+        var xi = function (p) { return mx + DATA.meses.indexOf(p.m) * ancho + ancho / 2; };
+        svg.push('<polyline class="l-acum" points="' + puntos.map(function (p) { return xi(p) + ',' + (y0 - p.v * escala); }).join(' ') + '"/>');
+        puntos.forEach(function (p) { svg.push('<circle class="p-acum" cx="' + xi(p) + '" cy="' + (y0 - p.v * escala) + '" r="3.5"/>'); });
+      }
+      svg.push('</svg>');
+      var g = document.getElementById('fcGrafico');
+      g.innerHTML = svg.join('');
+      g.querySelectorAll('.col-hover').forEach(function (r) {
+        var mostrar = function (evt) {
+          var m = DATA.meses[+r.getAttribute('data-i')];
+          var filas = series.map(function (s) { return s.n + ': <b>' + clp(m[s.k] || 0) + '</b>'; });
+          if (m.proyectado) filas.push('Neto del mes: <b>' + clp(conProb ? m.neto : m.netoSinProbables) + '</b>');
+          tip.innerHTML = '<strong>' + mesCorto(m.mes) + (m.proyectado ? '' : ' (real)') + '</strong><br>' + filas.join('<br>');
+          tip.style.display = 'block';
+          var b = r.getBoundingClientRect();
+          var x = evt && evt.clientX ? evt.clientX : b.left + b.width / 2, y = evt && evt.clientY ? evt.clientY : b.top + 30;
+          tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 8, x + 12) + 'px';
+          tip.style.top = Math.max(8, y - tip.offsetHeight - 10) + 'px';
+        };
+        r.addEventListener('mousemove', mostrar);
+        r.addEventListener('focus', mostrar);
+        r.addEventListener('mouseleave', function () { tip.style.display = 'none'; });
+        r.addEventListener('blur', function () { tip.style.display = 'none'; });
+      });
+      var totales = {};
+      series.forEach(function (s) { totales[s.k] = DATA.meses.reduce(function (a, m) { return a + (m[s.k] || 0); }, 0); });
+      document.getElementById('fcLeyenda').innerHTML = series.map(function (s) {
+        return '<li><span class="sw ' + s.cls + '"></span>' + s.n + ' · ' + clp(totales[s.k]) + '</li>';
+      }).join('') + '<li><span class="sw l-acum"></span>Acumulado desde el mes en curso</li>';
+    }
+    function pasoRedondo(x) {
+      var e = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1)))), f = x / e;
+      return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * e;
+    }
+    function clpCorto(v) {
+      var a = Math.abs(v), s = v < 0 ? '−' : '';
+      return a >= 1e6 ? s + '$' + (a / 1e6).toLocaleString('es-CL', { maximumFractionDigits: 1 }) + ' M' : a >= 1e3 ? s + '$' + Math.round(a / 1e3) + ' mil' : s + '$' + Math.round(a);
+    }
+
+    // ---------- tabla de movimientos ----------
+    var MOVS = DATA.movimientos.slice();
+    var orden = { k: 'fecha', dir: -1 }, limite = 50;
+    var fMes = document.getElementById('fMes');
+    DATA.meses.slice().reverse().forEach(function (m) { var o = document.createElement('option'); o.value = m.mes; o.textContent = mesCorto(m.mes); fMes.appendChild(o); });
+    var norm = function (s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); };
+    var CLASE = { real: 'Real', comprometido: 'Comprometido', probable: 'Probable', estimado: 'Estimado' };
+    function pintarTabla() {
+      var q = norm(document.getElementById('fBuscar').value), se = document.getElementById('fSentido').value,
+        cl = document.getElementById('fClase').value, me = fMes.value;
+      var lista = MOVS.filter(function (m) {
+        return (!se || m.sentido === se) && (!cl || m.clase === cl) && (!me || m.mes === me) &&
+          (!q || norm(m.concepto + ' ' + m.referencia + ' ' + m.proyecto + ' ' + m.fuente).indexOf(q) >= 0);
+      }).sort(function (a, b) {
+        var x = a[orden.k], y = b[orden.k];
+        return (x < y ? -1 : x > y ? 1 : 0) * orden.dir;
+      });
+      var tbody = document.querySelector('#tMovs > tbody');
+      tbody.innerHTML = lista.slice(0, limite).map(function (m) {
+        var monto = (m.sentido === 'egreso' ? -1 : 1) * m.monto;
+        return '<tr><td>' + esc(fechaCorta(m.fecha)) + '</td><td>' + (m.sentido === 'ingreso' ? 'Ingreso' : 'Egreso') + '</td><td><span class="chip">' + esc(CLASE[m.clase] || m.clase) + '</span>' +
+          (m.vencido ? ' <span class="chip vencido">vencido</span>' : '') + '</td><td class="num' + (monto < 0 ? ' neg' : '') + '">' + clp(monto) + '</td><td>' + esc(m.concepto) +
+          '</td><td>' + esc(m.fuente) + '</td><td>' + esc(m.proyecto) + '</td></tr>';
+      }).join('') || '<tr><td colspan="7">Sin movimientos con estos filtros.</td></tr>';
+      var mas = document.getElementById('fMas');
+      mas.style.display = lista.length > limite ? '' : 'none';
+      mas.textContent = 'Mostrar más (' + (lista.length - limite) + ' restantes)';
+      document.querySelectorAll('#tMovs > thead th').forEach(function (th) {
+        th.textContent = th.textContent.replace(/ [▲▼]$/, '') + (th.getAttribute('data-k') === orden.k ? (orden.dir > 0 ? ' ▲' : ' ▼') : '');
+        th.setAttribute('aria-sort', th.getAttribute('data-k') === orden.k ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none');
+      });
+    }
+    ['fBuscar', 'fSentido', 'fClase'].forEach(function (id) { document.getElementById(id).addEventListener('input', function () { limite = 50; pintarTabla(); }); });
+    fMes.addEventListener('change', function () { limite = 50; pintarTabla(); });
+    document.getElementById('fMas').addEventListener('click', function () { limite += 300; pintarTabla(); });
+    document.querySelectorAll('#tMovs > thead th').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var k = th.getAttribute('data-k');
+        orden = { k: k, dir: orden.k === k ? -orden.dir : (k === 'monto' || k === 'fecha' ? -1 : 1) };
+        pintarTabla();
+      });
+    });
+
+    document.querySelector('#tSupuestos > tbody').innerHTML = Object.keys(DATA.supuestos).map(function (k) {
+      var s = DATA.supuestos[k];
+      return '<tr><td>' + esc(k) + '</td><td class="num">' + esc(s.valor === null ? '—' : s.valor) + '</td><td>' + esc(s.descripcion) + '</td></tr>';
+    }).join('');
+
+    optProb.addEventListener('change', function () { pintarKpis(); pintarGrafico(); });
+    pintarKpis();
+    pintarGrafico();
+    pintarTabla();
+    var anchoDibujado = document.getElementById('fcGrafico').clientWidth, esperaResize = null;
+    window.addEventListener('resize', function () {
+      tip.style.display = 'none';
+      clearTimeout(esperaResize);
+      esperaResize = setTimeout(function () {
+        var ancho = document.getElementById('fcGrafico').clientWidth;
+        if (ancho !== anchoDibujado) { anchoDibujado = ancho; pintarGrafico(); }
+      }, 150);
+    });
+  }
+})();
+</script>
+</body>
+</html>
