@@ -28,7 +28,13 @@ a mano; sin él, el acumulado es la variación, no el saldo).
 Todo lo que el cálculo asume vive en `SUPUESTOS` (`Sistema/flujo_caja.py`),
 viaja con el resultado (hoja «Supuestos» del Excel y tabla del tablero) y se
 cambia en `Sistema/parametros_flujo_caja.json` (gitignoreado; solo se leen
-las claves que existen en `SUPUESTOS`). El más importante: `saldoInicial`.
+las claves que existen en `SUPUESTOS`). El más importante: `saldoInicial`,
+una estimación a mano que el usuario dio el 2026-10-02 sin tenerla
+confirmada (el monto vive solo en ese archivo: este repositorio es público). Se fija con `driver.py saldo <monto>` y se puede probar
+otro valor sin tocar el archivo: en el tablero (campo «Saldo de caja al
+inicio de…», recordado solo en ese navegador y descartado si cambia el del
+archivo) y en el Excel (el saldo proyectado del «Resumen» son fórmulas desde
+la celda del saldo en «Supuestos»).
 
 Reglas que no son parámetros:
 - Una cuota, factura u OC que debió ocurrir antes de hoy y sigue pendiente se

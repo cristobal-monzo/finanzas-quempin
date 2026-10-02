@@ -259,6 +259,15 @@ __FC_FUENTES__
   .panel .sub { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 12px; }
   .fc-opciones { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
   .fc-opciones label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  /* Saldo inicial de prueba (2026-10-02: el usuario no está seguro del saldo
+     y quiere poder cambiarlo). */
+  .fc-saldo { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+  .fc-saldo label { font-weight: 700; color: var(--text-primary); }
+  .fc-saldo input { font-family: inherit; font-size: 13px; width: 150px; padding: 6px 10px; border-radius: 8px; text-align: right;
+    border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary); }
+  .fc-saldo button { font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary); }
+  .fc-saldo .prueba { color: var(--brand-orange-ink); font-weight: 700; }
   .fc-grafico { width: 100%; overflow: hidden; }
   .fc-grafico svg { display: block; width: 100%; height: auto; }
   .fc-grafico text { fill: var(--text-muted); font-size: 11px; font-family: inherit; }
@@ -307,6 +316,7 @@ __FC_FUENTES__
     .viz-container { padding: 0 14px; }
     .kpi-value { font-size: 20px; }
     .fc-filtros input, .fc-filtros select { font-size: 16px; flex: 1 1 100%; }
+    .fc-saldo input { font-size: 16px; }
     /* Tablas como tarjetas: primera celda de título, el resto etiqueta/valor (data-label). */
     table.viz-table > thead { display: none; }
     table.viz-table, table.viz-table > tbody, table.viz-table > tbody > tr, table.viz-table > tbody > tr > td { display: block; width: 100%; }
@@ -378,6 +388,12 @@ __FC_FUENTES__
     <section class="panel">
       <h2>Mes a mes</h2>
       <p class="sub">Hacia atrás, lo pagado según Centro de Costos. Hacia adelante, lo comprometido y lo estimado; la línea es el acumulado desde el mes en curso.</p>
+      <div class="fc-saldo">
+        <label for="optSaldo">Saldo de caja al inicio de <span id="optSaldoMes"></span></label>
+        <input id="optSaldo" type="text" inputmode="numeric" autocomplete="off" aria-describedby="optSaldoNota">
+        <button type="button" id="optSaldoVolver" hidden>Volver al del archivo</button>
+        <span id="optSaldoNota"></span>
+      </div>
       <div class="fc-opciones">
         <label><input type="checkbox" id="optProbables"> Incluir ofertas por adjudicar (ponderadas por la tasa de adjudicación: una oferta se gana o se pierde entera)</label>
       </div>
@@ -541,7 +557,16 @@ __FC_FUENTES__
 
     var optProb = document.getElementById('optProbables');
     var futuros = DATA.meses.filter(function (m) { return m.proyectado; });
-    var saldo0 = (DATA.supuestos.saldoInicial || {}).valor || 0;
+    // Saldo inicial: el del archivo (parametros_flujo_caja.json) o uno de
+    // prueba escrito aquí, que se recuerda solo en este navegador y se
+    // descarta si el del archivo cambia.
+    var saldoOficial = (DATA.supuestos.saldoInicial || {}).valor || 0;
+    var CLAVE_SALDO = 'fc_saldo_inicial';
+    var saldo0 = saldoOficial;
+    try {
+      var guardado = JSON.parse(localStorage.getItem(CLAVE_SALDO) || 'null');
+      if (guardado && guardado.oficial === saldoOficial && typeof guardado.valor === 'number') saldo0 = guardado.valor;
+    } catch (e) {}
 
     function pintarKpis() {
       var conProb = optProb.checked;
@@ -701,10 +726,43 @@ __FC_FUENTES__
 
     document.querySelector('#tSupuestos > tbody').innerHTML = Object.keys(DATA.supuestos).map(function (k) {
       var s = DATA.supuestos[k];
-      return '<tr><td>' + esc(k) + '</td><td class="num">' + esc(s.valor === null ? '—' : s.valor) + '</td><td>' + esc(s.descripcion) + '</td></tr>';
+      var valor = s.valor === null ? '—' : k === 'saldoInicial' ? clp(s.valor) : typeof s.valor === 'number' ? s.valor.toLocaleString('es-CL') : s.valor;
+      return '<tr><td>' + esc(k) + '</td><td class="num">' + esc(valor) + '</td><td>' + esc(s.descripcion) + '</td></tr>';
     }).join('');
 
     optProb.addEventListener('change', function () { pintarKpis(); pintarGrafico(); });
+
+    var inputSaldo = document.getElementById('optSaldo'), volverSaldo = document.getElementById('optSaldoVolver');
+    var miles = function (v) { return Math.round(v).toLocaleString('es-CL'); };
+    var leerMonto = function (texto) {
+      var t = String(texto).replace(/[^0-9-]/g, '');
+      if (!t || t === '-') return null;
+      var v = parseInt(t, 10);
+      return isNaN(v) ? null : v;
+    };
+    function pintarSaldo() {
+      var prueba = saldo0 !== saldoOficial;
+      volverSaldo.hidden = !prueba;
+      volverSaldo.textContent = 'Volver a ' + clp(saldoOficial);
+      var nota = document.getElementById('optSaldoNota');
+      nota.className = prueba ? 'prueba' : '';
+      nota.textContent = prueba ? 'Valor de prueba, solo en este navegador.'
+        : saldoOficial ? 'Estimación a mano, no un dato del banco.' : 'Sin saldo en el archivo: el acumulado es solo la variación.';
+    }
+    function cambiarSaldo(valor) {
+      saldo0 = valor;
+      try {
+        if (saldo0 === saldoOficial) localStorage.removeItem(CLAVE_SALDO);
+        else localStorage.setItem(CLAVE_SALDO, JSON.stringify({ valor: saldo0, oficial: saldoOficial }));
+      } catch (e) {}
+      pintarSaldo(); pintarKpis(); pintarGrafico();
+    }
+    document.getElementById('optSaldoMes').textContent = futuros.length ? mesCorto(futuros[0].mes) : 'este mes';
+    inputSaldo.value = miles(saldo0);
+    inputSaldo.addEventListener('input', function () { var v = leerMonto(inputSaldo.value); if (v !== null) cambiarSaldo(v); });
+    inputSaldo.addEventListener('change', function () { inputSaldo.value = miles(saldo0); });
+    volverSaldo.addEventListener('click', function () { inputSaldo.value = miles(saldoOficial); cambiarSaldo(saldoOficial); });
+    pintarSaldo();
     pintarKpis();
     pintarGrafico();
     pintarTabla();

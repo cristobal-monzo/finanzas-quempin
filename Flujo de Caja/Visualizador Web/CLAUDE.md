@@ -19,6 +19,10 @@ Ver el doc maestro compartido en
 - **Gráfico**: barras apiladas por mes (ingresos arriba, egresos abajo) con el
   acumulado como línea; se dibuja al ancho real del panel. Las ofertas por
   adjudicar se suman solo si se marca la casilla (desmarcada por defecto).
+- **Saldo inicial de prueba**: campo sobre el gráfico, con el del archivo
+  por defecto; un valor distinto recalcula KPIs y gráfico, se recuerda solo
+  en ese navegador (`fc_saldo_inicial`, junto con el oficial: si este
+  cambia, la prueba se descarta) y «Volver a …» lo restablece.
 - **Tabla**: movimientos con búsqueda, filtros por sentido, clase y mes,
   orden por columna; en móvil, tarjetas (`data-label`).
 - **Supuestos y avisos**: se muestran tal como vienen del cálculo.

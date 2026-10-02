@@ -16,12 +16,16 @@ herramientas (detalle de cada línea y de cada supuesto en
 py -3.14 "Flujo de Caja/.claude/skills/Registro_Flujo_de_Caja/driver.py" status
 py -3.14 "Flujo de Caja/.claude/skills/Registro_Flujo_de_Caja/driver.py" run
 py -3.14 "Flujo de Caja/.claude/skills/Registro_Flujo_de_Caja/driver.py" visualizador
+py -3.14 "Flujo de Caja/.claude/skills/Registro_Flujo_de_Caja/driver.py" saldo <monto> [AAAA-MM-DD]
 ```
 
 - **`status`** — resumen mes a mes y avisos; no escribe nada.
 - **`run`** — escribe `Excel/Flujo de Caja.xlsx` (hojas Resumen, Movimientos
   y Supuestos) y regenera el tablero `Visualizador Web/build/index.html`.
 - **`visualizador`** — solo el tablero.
+- **`saldo <monto>`** — fija el saldo de caja inicial (acepta `1500000` o
+  `1.500.000`); la fecha por defecto es el inicio del mes en curso. Después,
+  `run`.
 
 `/Actualizar_Finanzas run` ya corre `run` al final, después del procesador de
 la carpeta de intercambio (el flujo lee lo que ese procesador publica).
@@ -31,9 +35,11 @@ la carpeta de intercambio (el flujo lee lo que ese procesador publica).
 1. Correr `status` y mostrarle al usuario la tabla y **todos los avisos**: dicen
    qué falta para que el número sea completo (cotizaciones sin proyecto, una
    oferta que domina lo probable, falta de saldo inicial).
-2. Si el usuario da el saldo de caja, escribirlo en
-   `parametros_flujo_caja.json` como `{"saldoInicial": <monto>, "saldoInicialFecha": "AAAA-MM-DD"}`
-   (las claves que no estén en `SUPUESTOS` se ignoran).
+2. Si el usuario da el saldo de caja, `driver.py saldo <monto>`. El
+   2026-10-02 dio una estimación («no estoy seguro, quiero que se pueda
+   cambiar»): por eso el tablero tiene un campo para probar otro
+   saldo (se recuerda solo en ese navegador) y en el Excel el saldo
+   proyectado son fórmulas desde la celda del saldo en «Supuestos».
 3. Correr `run`. Publicar el tablero en GitHub Pages (subruta
    `flujo-de-caja`) **solo si el usuario lo pide**, como los demás tableros.
 

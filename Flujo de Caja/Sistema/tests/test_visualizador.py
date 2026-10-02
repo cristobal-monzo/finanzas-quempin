@@ -21,3 +21,4 @@ def test_construir_inyecta_datos_fuentes_y_logo(tmp_path):
     b64 = html.split('id="fc-data-b64" type="text/plain">')[1].split("<")[0]
     assert json.loads(base64.b64decode(b64))["hoy"] == "2026-10-01"
     assert 'data-nav-activo="flujo-de-caja"' in html and "combustion" in html
+    assert 'id="optSaldo"' in html          # el saldo inicial se puede probar en el tablero (2026-10-02)

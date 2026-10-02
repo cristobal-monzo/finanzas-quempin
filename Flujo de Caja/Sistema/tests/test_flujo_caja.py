@@ -126,6 +126,7 @@ def test_resumen_por_mes_y_acumulado_con_saldo_inicial():
     assert meses["2026-09"]["egreso_real"] == 400 and meses["2026-09"]["acumulado"] is None
     assert meses["2026-10"]["neto"] == 300 and meses["2026-10"]["acumulado"] == 1300
     assert meses["2026-11"]["neto"] == 100 and meses["2026-11"]["netoSinProbables"] == 0 and meses["2026-11"]["acumulado"] == 1400
+    assert meses["2026-11"]["acumuladoSinProbables"] == 1300 and meses["2026-09"]["acumuladoSinProbables"] is None
     assert len(meses) == SUP["mesesHistoria"] + SUP["mesesProyeccion"]
 
 
@@ -175,3 +176,37 @@ def test_parametros_propios_solo_las_claves_conocidas(tmp_path):
     ruta.write_text(json.dumps({"saldoInicial": 5000000, "otraCosa": 1}), encoding="utf-8")
     sup = fc.leer_parametros(ruta)
     assert sup["saldoInicial"] == 5000000 and "otraCosa" not in sup
+
+
+def test_guardar_saldo_conserva_lo_demas_y_acepta_formato_chileno(tmp_path):
+    ruta = tmp_path / "parametros_flujo_caja.json"
+    ruta.write_text(json.dumps({"diasPagoProveedores": 45}), encoding="utf-8")
+    fc.guardar_saldo("$12.345.000", date(2026, 10, 1), ruta)
+    sup = fc.leer_parametros(ruta)
+    assert sup["saldoInicial"] == 12345000 and sup["saldoInicialFecha"] == "2026-10-01" and sup["diasPagoProveedores"] == 45
+    fc.guardar_saldo(9876000, date(2026, 10, 1), ruta)
+    assert fc.leer_parametros(ruta)["saldoInicial"] == 9876000
+    with pytest.raises(ValueError):
+        fc.guardar_saldo("cincuenta", ruta=ruta)
+
+
+def test_con_saldo_el_aviso_dice_que_es_una_estimacion(tmp_path):
+    sup = dict(SUP, saldoInicial=12345000, saldoInicialFecha="2026-10-01")
+    datos = fc.armar(None, tmp_path / "no-existe.json", hoy=HOY, sup=sup)
+    assert any(a.startswith("Saldo de caja inicial: $12.345.000 al 2026-10-01. Es una estimación") for a in datos["avisos"])
+    assert not any(a.startswith("Sin saldo inicial") for a in datos["avisos"])
+
+
+def test_el_saldo_del_excel_se_recalcula_desde_la_celda_del_supuesto(carpeta, tmp_path):
+    raiz, foto = carpeta
+    datos = fc.armar(raiz, foto, hoy=HOY, sup=dict(SUP, saldoInicial=12345000))
+    libro = openpyxl.load_workbook(fc.escribir_excel(datos, tmp_path / "Flujo de Caja.xlsx"))
+    resumen, supuestos = libro["Resumen"], libro["Supuestos"]
+    assert supuestos["A2"].value == "saldoInicial" and supuestos["B2"].value == 12345000
+    filas = {resumen.cell(row=r, column=1).value: r for r in range(1, resumen.max_row + 1)}
+    sin, con = filas["Saldo proyectado sin ofertas por adjudicar"], filas["Saldo proyectado con ofertas ponderadas"]
+    primero = next(i for i, m in enumerate(datos["meses"], start=2) if m["proyectado"])
+    col, sig = openpyxl.utils.get_column_letter(primero), openpyxl.utils.get_column_letter(primero + 1)
+    assert resumen.cell(row=sin, column=primero).value == f"=Supuestos!$B$2+{col}{filas['Neto sin ofertas probables']}"
+    assert resumen.cell(row=con, column=primero + 1).value == f"={col}{con}+{sig}{filas['Neto del mes']}"
+    assert resumen.cell(row=sin, column=2).value is None          # los meses reales no llevan saldo

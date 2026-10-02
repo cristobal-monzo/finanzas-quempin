@@ -71,7 +71,7 @@ SUPUESTOS = {
 }
 CATEGORIAS_SIN_IVA = ("Mano de Obra",)
 DESCRIPCION_SUPUESTOS = {
-    "saldoInicial": "Saldo de caja al inicio del mes en curso (a mano; 0 = el acumulado es solo la variación).",
+    "saldoInicial": "Saldo de caja al inicio del mes en curso (estimación a mano, no del banco; 0 = el acumulado es solo la variación). Se cambia con «driver.py saldo <monto>»; en el tablero se puede probar otro valor.",
     "diasPagoProveedores": "Días desde la fecha de una factura pendiente o de una OC hasta que se paga.",
     "diasCobroAdelanto": "Días desde la cotización hasta que se cobra la cuota «por adelantado».",
     "diasEntregaPorDefecto": "Días hasta la cuota «contra entrega» cuando la cotización no trae un plazo legible.",
@@ -366,7 +366,7 @@ def resumen_por_mes(movimientos: list[dict], hoy: date, sup: dict) -> list[dict]
         if m["mes"] in meses:
             sumas[(m["mes"], m["sentido"], m["clase"])] += m["monto"]
     actual = _mes(inicio)
-    saldo = float(sup.get("saldoInicial") or 0)
+    saldo = saldo_sin = float(sup.get("saldoInicial") or 0)
     salida = []
     for mes in meses:
         fila = {"mes": mes, "proyectado": mes >= actual}
@@ -377,9 +377,11 @@ def resumen_por_mes(movimientos: list[dict], hoy: date, sup: dict) -> list[dict]
                                      - fila["egreso_comprometido"] - fila["egreso_estimado"] - fila["egreso_real"]))
             fila["netoSinProbables"] = fila["neto"] - fila["ingreso_probable"]
             saldo += fila["neto"]
+            saldo_sin += fila["netoSinProbables"]
             fila["acumulado"] = int(round(saldo))
+            fila["acumuladoSinProbables"] = int(round(saldo_sin))
         else:
-            fila["neto"] = fila["netoSinProbables"] = fila["acumulado"] = None
+            fila["neto"] = fila["netoSinProbables"] = fila["acumulado"] = fila["acumuladoSinProbables"] = None
         salida.append(fila)
     return salida
 
@@ -395,6 +397,30 @@ def leer_parametros(ruta: Path = RUTA_PARAMETROS) -> dict:
     except (OSError, ValueError):
         pass
     return sup
+
+
+def guardar_saldo(monto, fecha: date | None = None, ruta: Path = RUTA_PARAMETROS) -> dict:
+    """Fija el saldo de caja inicial (estimación a mano) en
+    parametros_flujo_caja.json, conservando lo demás que tenga el archivo.
+    La fecha por defecto es el inicio del mes en curso, que es cuando el
+    cálculo lo aplica. Acepta «1500000», «1.500.000» o «$1.500.000»."""
+    valor = _numero(str(monto).replace("$", "").replace(" ", ""))
+    if valor is None:
+        raise ValueError(f"No es un monto: {monto!r}")
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            propios = json.load(f)
+        if not isinstance(propios, dict):
+            propios = {}
+    except (OSError, ValueError):
+        propios = {}
+    propios["saldoInicial"] = int(round(valor))
+    propios["saldoInicialFecha"] = (fecha or date.today().replace(day=1)).isoformat()
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    temporal = ruta.with_name(ruta.name + ".tmp")
+    temporal.write_text(json.dumps(propios, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.replace(temporal, ruta)
+    return propios
 
 
 def _datos(raiz, nombre) -> dict:
@@ -441,7 +467,11 @@ def armar(raiz_intercambio: Path | None, ruta_foto_cc: Path = RUTA_FOTO_CC, hoy:
     m, a = egresos_por_ejecutar(proyectos_af, comprometido_por_tag, hoy, sup)
     movs += m
     avisos += a
-    if not sup.get("saldoInicial"):
+    if sup.get("saldoInicial"):
+        desde = f" al {sup['saldoInicialFecha']}" if sup.get("saldoInicialFecha") else ""
+        avisos.append(f"Saldo de caja inicial: ${_miles(sup['saldoInicial'])}{desde}. Es una estimación a mano "
+                      "(parametros_flujo_caja.json), no un dato del banco: en el tablero se puede probar otro valor.")
+    else:
         avisos.append("Sin saldo inicial de caja (parametros_flujo_caja.json): el acumulado es la variación desde hoy, no el saldo.")
     movs.sort(key=lambda x: (x["fecha"], x["sentido"], x["clase"]))
     return {
@@ -483,17 +513,37 @@ def escribir_excel(datos: dict, ruta: Path = RUTA_EXCEL) -> Path:
         return ws
 
     meses = datos["meses"]
+    # El saldo se calcula con fórmulas desde la celda del saldo inicial en
+    # «Supuestos»: quien no está seguro del saldo (2026-10-02) lo cambia ahí
+    # y ve el resultado sin correr nada (para que quede, «driver.py saldo»).
+    fila_saldo = 2 + list(datos["supuestos"]).index("saldoInicial")
+    fila_neto, fila_neto_sin = 2 + len(LINEAS), 3 + len(LINEAS)
+
+    def saldos(fila_propia, fila_neto_usada):
+        celdas, anterior = [], None
+        for i, m in enumerate(meses):
+            col = get_column_letter(i + 2)
+            if not m["proyectado"]:
+                celdas.append(None)
+                continue
+            base = f"Supuestos!$B${fila_saldo}" if anterior is None else f"{anterior}{fila_propia}"
+            celdas.append(f"={base}+{col}{fila_neto_usada}")
+            anterior = col
+        return celdas
+
     ws = hoja("Resumen", ["Línea"] + [m["mes"] + ("" if m["proyectado"] else " (real)") for m in meses],
               [[n] + [m[f"{s}_{c}"] for m in meses] for s, c, n in LINEAS]
               + [["Neto del mes"] + [m["neto"] for m in meses],
                  ["Neto sin ofertas probables"] + [m["netoSinProbables"] for m in meses],
-                 ["Acumulado"] + [m["acumulado"] for m in meses]],
+                 ["Saldo proyectado sin ofertas por adjudicar"] + saldos(4 + len(LINEAS), fila_neto_sin),
+                 ["Saldo proyectado con ofertas ponderadas"] + saldos(5 + len(LINEAS), fila_neto)],
               [38] + [14] * len(meses))
     for fila in ws.iter_rows(min_row=2, min_col=2):
         for c in fila:
             c.number_format = moneda
-    for c in ws[ws.max_row]:
-        c.font = Font(bold=True)
+    for fila in (4 + len(LINEAS), 5 + len(LINEAS)):
+        for c in ws[fila]:
+            c.font = Font(bold=True)
     ws = hoja("Movimientos", ["Fecha", "Mes", "Sentido", "Clase", "Monto", "Concepto", "Fuente", "Referencia", "Proyecto", "Vencido"],
               [[m["fecha"], m["mes"], m["sentido"], m["clase"], m["monto"], m["concepto"], m["fuente"], m["referencia"],
                 m["proyecto"], "Sí" if m["vencido"] else ""] for m in datos["movimientos"]],
@@ -501,11 +551,15 @@ def escribir_excel(datos: dict, ruta: Path = RUTA_EXCEL) -> Path:
     for c in ws["E"][1:]:
         c.number_format = moneda
     ws.auto_filter.ref = ws.dimensions
-    hoja("Supuestos", ["Supuesto", "Valor", "Qué significa"],
-         [[k, v["valor"], v["descripcion"]] for k, v in datos["supuestos"].items()]
-         + [[], ["Avisos de esta corrida"]] + [[a] for a in datos["avisos"]]
-         + [[], [f"Generado {datos['generado']}. Se regenera completo en cada corrida: no lo edites a mano."]],
-         [26, 12, 90])
+    ws = hoja("Supuestos", ["Supuesto", "Valor", "Qué significa"],
+              [[k, v["valor"], v["descripcion"]] for k, v in datos["supuestos"].items()]
+              + [[], ["Avisos de esta corrida"]] + [[a] for a in datos["avisos"]]
+              + [[], [f"Generado {datos['generado']}. Se regenera completo en cada corrida: para probar otro "
+                      "saldo inicial, cambia B" + str(fila_saldo) + " (el Resumen se recalcula); para que quede, "
+                      "«driver.py saldo <monto>»."]],
+              [26, 14, 90])
+    ws.cell(row=fila_saldo, column=2).number_format = moneda
+    ws.cell(row=fila_saldo, column=2).font = Font(bold=True)
     del libro["Sheet"]
     ruta.parent.mkdir(parents=True, exist_ok=True)
     temporal = ruta.with_name(f"{ruta.stem}.tmp{ruta.suffix}")
