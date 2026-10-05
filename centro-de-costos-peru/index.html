@@ -267,6 +267,9 @@
     background: #000000; color: #fff; margin-bottom: 10px;
   }
   .viz-gate-card input:focus { outline: 2px solid #ff5100; outline-offset: 1px; }
+  /* Bajo 16 px Safari de iPhone amplía la página al tocar el campo, y el tablero
+     queda ampliado al entrar (2026-10-05: todos escriben la contraseña nueva). */
+  @media (max-width: 640px) { .viz-gate-card input { font-size: 16px; } }
   .viz-gate-card button {
     width: 100%; font-family: inherit; font-size: 13px; font-weight: 900;
     padding: 10px 12px; border-radius: 8px; border: none;
@@ -946,7 +949,7 @@ var QuempinCandado = (function () {
   return { abrir: abrir, derivar: derivar, descifrar: descifrar };
 })();
 </script>
-<script id="cc-data-b64" type="text/plain">{"v":1,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"nSN7ebPPO5CCD44w","datos":"7wLgwrE2mgJ8qv333fWCSTvilGWgbzFP06zTQ/gW9X0xI4pOTxBpQ3aISuSn0roAeAWozKE81weEaMG9CNli6+1/C1aISLg9JfWznrsoWVPZ2zexinApM2YOYIk9ebosr0Ru69jsVi4ChmTnxKsQfsM4OeLZgsDF3zkCYzWdQYXIwP2LfXPykAxfgEY/vUkwP8mqbt+Z0Q0/X7mfSOqW3e0cDbaGWQiycNX5rGd2eO9RW/MYp2Sr2bvJBFI1BA1UxzJ2Vfpzjqw="}</script>
+<script id="cc-data-b64" type="text/plain">{"v":1,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"Rrjxks2MJFvQmrxd","datos":"Uv7HokgVADTrIE305T+1pa9Fqo1RS1UckjnUhYsDUdKXikEKLBQuQ3HcP0e9TUWk73Z4xPhlAPRcW6ynYsZhZ68SJOHpTculOsajJfv/ED8ysJ3g1yizL5786UobT4H1OIQWvi+HS0FMU9cAEndhIH0nJXsuN0K7Isq2c8Gp2n7M3fw/SPDgnqTjdMrPVJ90mLH600QNXLMxMPBqIm5ENbM947W2JM8PvbqXv6OsHCEQw4mfgp0l0D6SPtklUJZYnem3zCHjXzo="}</script>
 <script>
 (function () {
   // ---------- theme persistence ----------
