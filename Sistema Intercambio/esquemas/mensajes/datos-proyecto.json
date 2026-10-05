@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "datos-proyecto (tablero de Análisis Financiero → Análisis Financiero)",
+  "description": "Valores manuales de un proyecto ingresados en la pestaña «Ingresar datos» del tablero: % de avance, fechas, monto de venta, los 4 costos proyectados, la mano de obra real y el N° de requerimiento. Las claves de costos y venta son las mismas de presupuesto-proyecto y venta-proyecto. Cada valor se escribe solo si la celda está vacía o si todavía tiene el valor que la persona vio ('reemplaza'); si no, el envío queda pendiente. null deja la celda vacía. Varios envíos al mismo proyecto se aplican todos, en orden de envío.",
+  "destino": "analisis-financiero",
+  "type": "object",
+  "properties": {
+    "proyecto": {
+      "type": "object",
+      "properties": {
+        "tag": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{2,10}$"
+        },
+        "nombre": {
+          "type": "string"
+        },
+        "crear": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tag"
+      ]
+    },
+    "valores": {
+      "type": "object",
+      "properties": {
+        "% Avance": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fracción: 0,35 = 35 %"
+        },
+        "Fecha de inicio": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "Fecha de cierre": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "Monto de Venta": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "description": "Sin IVA, en pesos"
+        },
+        "Materiales": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "Equipos": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "Mano de Obra": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "Otros": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "Mano de Obra Real": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "N° Requerimiento": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 999999,
+          "description": "N° de la Planilla de Ingreso de Requerimientos"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reemplaza": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "number",
+          "string",
+          "null"
+        ]
+      }
+    },
+    "informativo": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "proyecto",
+    "valores",
+    "reemplaza"
+  ]
+}

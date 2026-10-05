@@ -668,3 +668,214 @@ def test_tag_cotizado_a_dos_clientes_no_se_adivina():
             {"tipo": "60", "contraparte": {"razon_social": "B"}, "proyecto": {"tag": "OBRA"}}]
     assert af.clientes_desde_cotizaciones(ws, filas, docs) == {}
     assert af.clientes_desde_cotizaciones(ws, filas, docs[:1]) == {"OBRA": "A"}
+
+
+# ── INGRESO MANUAL DESDE EL TABLERO (datos-proyecto, 2026-10-02) ─────────────
+
+def _datos(id_="tablero01", tag="DEMO", valores=None, reemplaza=None, enviado="2026-10-02T10:00:00-03:00",
+           proyecto=None, usuario="Persona de prueba"):
+    valores = valores if valores is not None else {"% Avance": 0.4, "Fecha de cierre": "2026-12-15"}
+    return {
+        "esquema": ic.ESQUEMA, "id": id_, "tipo": pf.TIPO_DATOS, "destino": pf.DESTINO,
+        "origen": {"herramienta": pf.HERRAMIENTA_TABLERO, "enviado": enviado, "usuario": usuario},
+        "proyecto": proyecto or {"tag": tag},
+        "valores": valores,
+        "reemplaza": reemplaza if reemplaza is not None else {c: None for c in valores},
+    }
+
+
+def test_los_ejemplos_del_catalogo_son_validos_para_este_modulo():
+    import esquemas
+    carpeta = esquemas.CARPETA / "ejemplos" / "mensajes" / pf.TIPO_DATOS
+    for ruta in carpeta.glob("valido*.json"):
+        assert pf.validar_contenido(json.loads(ruta.read_text(encoding="utf-8"))) == [], ruta.name
+
+
+def test_los_campos_del_tablero_son_columnas_manuales_de_proyectos():
+    """Lo que escribe el tablero tiene que ser una columna manual (amarilla)
+    de "Proyectos" -- nunca una fórmula ni Cliente/Categoría."""
+    assert set(pf.COLUMNAS_ESCRIBIBLES.values()) <= set(af.NOMBRES_COLUMNAS_MANUALES_PROYECTOS)
+    assert set(af.NOMBRES_COLUMNAS_MANUALES_PROYECTOS) - set(pf.COLUMNAS_ESCRIBIBLES.values()) == {
+        "TAG proyecto", "Nombre del proyecto"}
+
+
+def test_el_procesador_atiende_los_mismos_tipos_que_este_modulo():
+    import procesar
+    assert set(procesar.TIPOS_AF) == set(pf.TIPOS)
+
+
+def test_datos_en_celdas_vacias_se_aplican():
+    (d,) = _plan([_datos()], actuales={"DEMO": {"% Avance": None, "Fecha de cierre": None}})
+    assert d["accion"] == "aplicar"
+    assert d["cambios"] == [("% Avance", None, 0.4), ("Fecha de cierre", None, "2026-12-15")]
+
+
+def test_datos_sobre_el_valor_visto_se_aplican_y_sobre_otro_quedan_pendientes():
+    actuales = {"DEMO": {"% Avance": 0.25, "Fecha de cierre": None}}
+    (d,) = _plan([_datos(reemplaza={"% Avance": 0.25, "Fecha de cierre": None})], actuales)
+    assert d["accion"] == "aplicar"
+    (d,) = _plan([_datos(reemplaza={"% Avance": 0.10, "Fecha de cierre": None})], actuales)
+    assert d["accion"] == "pendiente" and [c for c, _, _ in d["conflictos"]] == ["% Avance"]
+    assert "se vio 10,0 %" in d["detalle"][0] and "ya tiene 25,0 %" in d["detalle"][0]
+
+
+def test_fecha_del_excel_se_compara_con_la_del_tablero():
+    from datetime import datetime
+    actuales = {"DEMO": {"Fecha de cierre": datetime(2026, 11, 30)}}
+    (d,) = _plan([_datos(valores={"Fecha de cierre": "2026-12-15"},
+                         reemplaza={"Fecha de cierre": "2026-11-30"})], actuales)
+    assert d["accion"] == "aplicar" and d["cambios"] == [("Fecha de cierre", "2026-11-30", "2026-12-15")]
+    (d,) = _plan([_datos(valores={"Fecha de cierre": "2026-11-30"})], actuales)
+    assert d["accion"] == "sin-cambios"
+
+
+def test_valor_que_escribio_el_formulador_no_se_pisa_sin_haberlo_visto():
+    actuales = {"DEMO": {"Materiales": 900000}}
+    estado = {"valores": {"DEMO": {"Materiales": {"valor": 900000}}}, "confirmados": []}
+    (d,) = _plan([_datos(valores={"Materiales": 1200000})], actuales, estado)
+    assert d["accion"] == "pendiente"
+    (d,) = _plan([_datos(valores={"Materiales": 1200000}, reemplaza={"Materiales": 900000})], actuales, estado)
+    assert d["accion"] == "aplicar"
+
+
+def test_varios_ingresos_al_mismo_proyecto_se_aplican_todos_en_orden():
+    """«Gana el último» perdería el avance del primero: son ediciones sueltas."""
+    primero = _datos("tablero01", valores={"% Avance": 0.4}, reemplaza={"% Avance": 0.2})
+    segundo = _datos("tablero02", valores={"% Avance": 0.6, "Mano de Obra Real": 50000},
+                     reemplaza={"% Avance": 0.4, "Mano de Obra Real": None}, enviado="2026-10-02T11:00:00-03:00")
+    otro = _datos("tablero03", valores={"% Avance": 0.9}, reemplaza={"% Avance": 0.2},
+                  enviado="2026-10-02T12:00:00-03:00")
+    decisiones = _plan([primero, segundo, otro], {"DEMO": {"% Avance": 0.2, "Mano de Obra Real": None}})
+    assert [d["accion"] for d in decisiones] == ["aplicar", "aplicar", "pendiente"]
+
+
+def test_ingreso_y_formulador_en_la_misma_corrida_se_ven_entre_si():
+    manual = _datos(valores={"Materiales": 1200000}, enviado="2026-10-02T09:00:00-03:00")
+    formulador = _mensaje(enviado="2026-10-02T10:00:00-03:00")  # no vio el 1.200.000 recién ingresado
+    decisiones = _plan([manual, formulador])
+    assert [d["accion"] for d in decisiones] == ["aplicar", "pendiente"]
+
+
+def test_proyecto_nuevo_desde_el_tablero_y_luego_otro_ingreso_al_mismo():
+    crear = _datos(proyecto={"tag": "NUEVO", "nombre": "Obra nueva", "crear": True},
+                   valores={"Monto de Venta": 8000000, "% Avance": 0})
+    despues = _datos("tablero02", tag="NUEVO", valores={"% Avance": 0.1}, reemplaza={"% Avance": 0},
+                     enviado="2026-10-02T11:00:00-03:00")
+    decisiones = _plan([crear, despues])
+    assert [d["accion"] for d in decisiones] == ["crear", "aplicar"]
+    (d,) = _plan([_datos(tag="NADA")])
+    assert d["accion"] == "pendiente" and "no existe" in d["detalle"][0]
+
+
+@pytest.mark.parametrize("cambio", [
+    {"valores": {}},
+    {"valores": {"% Avance": 40}},
+    {"valores": {"Fecha de cierre": "2026-02-30"}},
+    {"valores": {"Cliente": "Otro"}},
+    {"valores": {"Monto de Venta": 0}},
+    {"valores": {"N° Requerimiento": 280.5}},
+    {"valores": {"Materiales": -5}},
+    {"proyecto": {"tag": "obra 1"}},
+    {"proyecto": {"tag": "OBRA", "crear": True}},
+])
+def test_ingreso_invalido_se_rechaza(cambio):
+    m = _datos()
+    m.update(cambio)
+    (d,) = _plan([m])
+    assert d["accion"] == "rechazado" and d["detalle"]
+
+
+def test_run_escribe_el_ingreso_con_tipos_y_formatos_de_excel_y_sin_nota(entorno):
+    from datetime import datetime
+    _enviar(entorno["raiz"], _datos(valores={
+        "% Avance": 0.35, "Fecha de inicio": "2026-09-01", "Fecha de cierre": "2026-12-15",
+        "Mano de Obra Real": 420000.4, "N° Requerimiento": 280, "Materiales": 1000000,
+    }))
+    resumen = _correr(entorno)
+    assert resumen["error"] is None and resumen["intercambio"]["aplicar"]
+    assert _celda(entorno["af"], "% Avance").value == 0.35
+    assert _celda(entorno["af"], "% Avance").number_format == "0.0%"
+    assert _celda(entorno["af"], "Fecha de inicio").value == datetime(2026, 9, 1)
+    assert _celda(entorno["af"], "Fecha de cierre").number_format == af.FORMATO_FECHA
+    assert _celda(entorno["af"], "Mano de Obra Real").value == 420000
+    assert _celda(entorno["af"], "Mano de Obra Real").number_format == af.FORMATO_MONEDA
+    assert _celda(entorno["af"], "N° Requerimiento").value == 280
+    assert _celda(entorno["af"], "Costos Materiales Proyectados").comment is None   # es manual: sin nota
+    estado = json.loads(entorno["estado"].read_text(encoding="utf-8"))
+    assert "DEMO" not in estado["valores"]                                      # ni registro del Formulador
+    procesado = _procesados(entorno["raiz"])["tablero01"]
+    assert procesado["resultado"]["estado"] == "aplicado"
+    assert procesado["resultado"]["cambios"]["% Avance"] == {"antes": None, "despues": 0.35}
+    assert _catalogo(entorno["raiz"])["mensajes"]["tablero01"]["estado"] == "aplicado"
+
+
+def test_run_respeta_el_formato_que_la_celda_ya_tenia(entorno):
+    wb = openpyxl.load_workbook(entorno["af"])
+    celda = wb[af.HOJA_PROYECTOS].cell(row=2, column=COL["Monto de Venta (sin IVA)"])
+    celda.number_format = '#,##0 "pesos"'
+    wb.save(entorno["af"])
+    _enviar(entorno["raiz"], _datos(valores={"Monto de Venta": 6000000}, reemplaza={"Monto de Venta": 5000000}))
+    _correr(entorno)
+    celda = _celda(entorno["af"], "Monto de Venta (sin IVA)")
+    assert celda.value == 6000000 and celda.number_format == '#,##0 "pesos"'
+
+
+def test_run_ingreso_sobre_un_valor_del_formulador_le_quita_la_nota_y_el_registro(entorno):
+    _enviar(entorno["raiz"], _mensaje())
+    _correr(entorno)
+    assert _celda(entorno["af"], "Costos Materiales Proyectados").comment is not None
+    _enviar(entorno["raiz"], _datos(valores={"Materiales": 1100000}, reemplaza={"Materiales": 1000000}))
+    _correr(entorno)
+    celda = _celda(entorno["af"], "Costos Materiales Proyectados")
+    assert celda.value == 1100000 and celda.comment is None
+    assert _celda(entorno["af"], "Costos Equipos Proyectados").comment is not None   # las demás siguen del Formulador
+    estado = json.loads(entorno["estado"].read_text(encoding="utf-8"))
+    assert "Materiales" not in estado["valores"]["DEMO"] and "Equipos" in estado["valores"]["DEMO"]
+    assert _catalogo(entorno["raiz"])["proyectos"][0]["origen"]["Materiales"] is None
+
+
+def test_run_puede_dejar_una_celda_vacia(entorno):
+    _enviar(entorno["raiz"], _datos(valores={"Monto de Venta": None}, reemplaza={"Monto de Venta": 5000000}))
+    _correr(entorno)
+    assert _celda(entorno["af"], "Monto de Venta (sin IVA)").value is None
+
+
+def test_run_crea_el_proyecto_con_todos_sus_datos(entorno):
+    _enviar(entorno["raiz"], _datos(proyecto={"tag": "NUEVO", "nombre": "Obra nueva", "crear": True},
+                                    valores={"Monto de Venta": 8000000, "% Avance": 0, "Otros": 300000}))
+    resumen = _correr(entorno)
+    assert "Obra nueva" in resumen["proyectos_nuevos"]
+    ws = openpyxl.load_workbook(entorno["af"])[af.HOJA_PROYECTOS]
+    assert ws.cell(row=3, column=1).value == "NUEVO" and ws.cell(row=3, column=2).value == "Obra nueva"
+    assert ws.cell(row=3, column=COL["Monto de Venta (sin IVA)"]).value == 8000000
+    assert ws.cell(row=3, column=COL["% Avance"]).value == 0
+    assert ws.cell(row=3, column=COL["Otros Costos Proyectados"]).value == 300000
+
+
+def test_run_ingreso_en_conflicto_no_escribe_nada_y_se_confirma(entorno):
+    _enviar(entorno["raiz"], _datos(valores={"Monto de Venta": 6000000, "% Avance": 0.5},
+                                    reemplaza={"Monto de Venta": 4000000, "% Avance": None}))
+    resumen = _correr(entorno)
+    assert resumen["intercambio"]["pendiente"]
+    assert _celda(entorno["af"], "Monto de Venta (sin IVA)").value == 5000000
+    assert _celda(entorno["af"], "% Avance").value is None                     # nunca a medias
+    assert pf.confirmar("tablero01", entorno["raiz"], entorno["estado"])
+    _correr(entorno)
+    assert _celda(entorno["af"], "Monto de Venta (sin IVA)").value == 6000000
+    assert _celda(entorno["af"], "% Avance").value == 0.5
+
+
+def test_cargar_archivo_deja_el_envio_en_el_buzon_una_sola_vez(entorno, tmp_path):
+    archivo = tmp_path / "descargado.json"
+    archivo.write_text(json.dumps(_datos()), encoding="utf-8")
+    ok, texto = pf.cargar_archivo(entorno["raiz"], archivo)
+    assert ok and "DEMO" in texto
+    assert len(list((entorno["raiz"] / "buzon").glob("*.json"))) == 1
+    ok, texto = pf.cargar_archivo(entorno["raiz"], archivo)
+    assert not ok and "ya está en el buzón" in texto
+    _correr(entorno)
+    ok, texto = pf.cargar_archivo(entorno["raiz"], archivo)
+    assert not ok and "ya se atendió" in texto
+    malo = tmp_path / "malo.json"
+    malo.write_text(json.dumps(_datos(valores={"% Avance": 40})), encoding="utf-8")
+    assert pf.cargar_archivo(entorno["raiz"], malo)[0] is False

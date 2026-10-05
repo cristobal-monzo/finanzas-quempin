@@ -263,6 +263,12 @@ ESTILO_COLUMNAS_PROYECTOS = {
     LETRA_COL_PROYECTOS[nombre]: estilo
     for nombre, estilo in ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE.items()
 }
+# Formato numérico por encabezado: lo usa el buzón del Intercambio al
+# escribir una celda que no tenía formato propio (2026-10-02, ingreso desde
+# el tablero), para que un 0,35 se vea 35,0 % y una fecha no quede como número.
+FORMATOS_COLUMNAS_PROYECTOS = {
+    nombre: formato for nombre, (_, formato, _) in ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE.items() if formato
+}
 
 ESTILO_COLUMNAS_DETALLE_COSTOS_REALES = {
     "A": (COLOR_IDENTIFICACION, None, 10),
@@ -2277,7 +2283,8 @@ def preparar_intercambio(ws_proyectos, filas_validas: list[dict], raiz_intercamb
     decisiones = pf.planificar(mensajes, filas_por_tag, actuales, estado)
     nuevas = []
     if not dry_run:
-        nuevas = pf.aplicar(ws_proyectos, decisiones, filas_por_tag, columnas, _primera_fila_libre(ws_proyectos))
+        nuevas = pf.aplicar(ws_proyectos, decisiones, filas_por_tag, columnas, _primera_fila_libre(ws_proyectos),
+                            formatos=FORMATOS_COLUMNAS_PROYECTOS)
     return {
         "raiz": raiz_intercambio, "ruta_estado": ruta_estado, "estado": estado,
         "decisiones": decisiones, "nuevas": nuevas, "avisos": avisos,
@@ -2654,12 +2661,14 @@ def main(pais: str = "CL") -> None:
         print(f"[ERROR] {resumen['error']}")
 
 
+# Desde el 2026-10-02 el buzón trae también lo ingresado en el tablero
+# (datos-proyecto): cada línea dice de dónde viene (fuente_legible).
 TITULOS_INTERCAMBIO = {
-    "aplicar": ("Costos proyectados y ventas aplicados desde el Formulador", "Se aplicarían desde el Formulador"),
-    "sin-cambios": ("Envíos del Formulador que ya coincidían con el Excel", "Envíos del Formulador que ya coinciden con el Excel"),
-    "pendiente": ("Envíos del Formulador que esperan tu decisión (siguen en el buzón)",) * 2,
+    "aplicar": ("Envíos aplicados (Formulador y tablero)", "Se aplicarían (Formulador y tablero)"),
+    "sin-cambios": ("Envíos que ya coincidían con el Excel", "Envíos que ya coinciden con el Excel"),
+    "pendiente": ("Envíos que esperan tu decisión (siguen en el buzón)",) * 2,
     "reemplazado": ("Envíos del Formulador reemplazados por uno más reciente", "Se archivarían por haber uno más reciente"),
-    "rechazado": ("Envíos del Formulador rechazados por formato", "Se rechazarían por formato"),
+    "rechazado": ("Envíos rechazados por formato", "Se rechazarían por formato"),
 }
 
 

@@ -26,14 +26,18 @@ expone cuatro comandos:
                       correr todo run.
 
   intercambio      -> Buzón de la carpeta Intercambio (costos proyectados
-                      enviados desde el Formulador de proyectos): qué se
+                      enviados desde el Formulador de proyectos, y valores
+                      ingresados en la pestaña «Ingresar datos» del
+                      tablero): qué se
                       aplicaría en el próximo run y qué espera una
                       decisión. Solo lectura. Con "confirmar <id>" autoriza
                       a reemplazar los valores escritos a mano que ese envío
                       tenía en conflicto y corre run; con "descartar <id>"
                       lo archiva sin tocar el Excel; con "publicar" deja al
                       día la lista de proyectos que ve el Formulador, sin
-                      escribir el Excel (solo lo lee).
+                      escribir el Excel (solo lo lee); con "cargar
+                      <archivo>" deja en el buzón un envío descargado
+                      (validado, nunca dos veces).
 
   formulaciones    -> Presupuestos del repositorio del Formulador (pedido del
                       usuario 2026-09-30). Sin argumentos es solo lectura:
@@ -50,7 +54,7 @@ Uso:
   python driver.py run
   python driver.py confirmar-cliente [--todos|TAG ...]
   python driver.py visualizador
-  python driver.py intercambio [publicar | confirmar <id> | descartar <id>]
+  python driver.py intercambio [publicar | confirmar <id> | descartar <id> | cargar <archivo> ...]
   python driver.py formulaciones [incorporar | revisadas | cargar <uid|código [vN]> <TAG> [--nombre "..."]]
 """
 
@@ -194,6 +198,20 @@ def cmd_intercambio(args: list[str], pais: str = "CL") -> int:
         print(f"[OK] Lista de {resultado['proyectos']} proyectos publicada para el Formulador en {resultado['ruta']}")
         print("     El Excel no se modificó. Los envíos del buzón se aplican en el próximo run.")
         return 0
+
+    if args and args[0] == "cargar":
+        # Archivos descargados de la pestaña «Ingresar datos» del tablero
+        # (o del Formulador) que no pudieron guardarse solos en el buzón.
+        if len(args) < 2:
+            print("Uso: python driver.py intercambio cargar <archivo.json> [<archivo.json> ...]")
+            return 2
+        codigo = 0
+        for archivo in args[1:]:
+            ok, texto = af.pf.cargar_archivo(raiz, Path(archivo))
+            print(f"[{'OK' if ok else 'ERROR'}] {texto}")
+            codigo = codigo if ok else 1
+        print("     Se aplican en el próximo run (o en la próxima vuelta del procesador, cada 2 horas).")
+        return codigo
 
     if args and args[0] in ("confirmar", "descartar"):
         if len(args) != 2:
@@ -360,7 +378,7 @@ def main() -> int:
     comandos = ("status", "run", "confirmar-cliente", "visualizador", "intercambio", "formulaciones")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
         print("Uso: python driver.py [status|run|confirmar-cliente [--todos|TAG ...]|visualizador"
-              "|intercambio [publicar|confirmar <id>|descartar <id>]"
+              "|intercambio [publicar|confirmar <id>|descartar <id>|cargar <archivo>...]"
               "|formulaciones [incorporar|revisadas|cargar <uid|código> <TAG> [--nombre ...]]] [--pais CL|PE]")
         return 2
     comando = sys.argv[1]

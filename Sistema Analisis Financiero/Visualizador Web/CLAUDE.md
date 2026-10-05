@@ -16,6 +16,7 @@ de `Análisis de Proyectos 2026.xlsx`, y el spec de diseño
 Sistema Analisis Financiero/Visualizador Web/
 ├── CLAUDE.md              # este archivo — versionado
 ├── template.html          # estructura/CSS/JS + brand kit, SIN datos — versionado
+├── ingreso.js             # lógica de la pestaña «Ingresar datos» (2026-10-02), la inserta el build — versionado
 ├── build_visualizador.py  # export saneado (recomputado en Python) + build — versionado
 ├── tests/                 # pytest de este visualizador — versionado
 ├── data/                  # snapshot intermedio (analisis-financiero.json) — gitignored
@@ -198,6 +199,53 @@ Todo lo que el tablero muestra sale del snapshot; los números nuevos
 `umbrales.margen_objetivo`) se calculan en `analisis_financiero.py`, no en
 el JS. Tests: `test_snapshot_trae_sesgo_por_categoria_y_concentracion`,
 `test_template_tiene_las_pestanas_y_los_ganchos_de_la_fase_2`.
+
+## Pestaña «Ingresar datos» (2026-10-02)
+
+Pedido del usuario: ingresar los valores manuales del análisis sin abrir el
+Excel. Es la única pestaña que **escribe** algo: el resto del tablero sigue
+siendo de solo lectura. Diseño del canal en `../CLAUDE.md` § «Ingreso manual
+desde el tablero».
+
+- **Qué muestra**: una tabla como la planilla, un proyecto por fila y una
+  columna por campo manual, con lo que hoy tiene el Excel y lo que le falta a
+  cada proyecto para entrar al análisis. Los campos, su tipo y su orden llegan
+  en `DATA.ingreso` (`build_visualizador.datos_para_ingreso`, desde
+  `pf.CAMPOS_TABLERO`); el template no repite ninguna columna (un test lo
+  exige). Solo Chile: en Perú `ingreso` es `None` y la pestaña no aparece.
+- **Lógica en `ingreso.js`**, no en el template: leer lo tecleado (35,5 % →
+  0,355; «12.500.000» → 12500000), comparar con lo que había, armar un mensaje
+  `datos-proyecto` por proyecto y escribirlo en la carpeta. Funciona en Node:
+  `tests/test_ingreso.py` arma mensajes con él desde un snapshot real y los
+  pasa por el catálogo y por el plan de Python. El build lo inserta junto con
+  `Sistema Intercambio/esquemas.js` (el original, no una copia), con el que la
+  pestaña valida cada envío antes de guardarlo.
+- **Borrador** en `localStorage` (`af_ingreso_borrador_v1`): lo cambiado queda
+  en naranjo y no se pierde al cerrar. Un borrador viejo que el tablero nuevo
+  ya trae se descarta solo.
+- **«Lo que se vio»** (`reemplaza`) es lo del snapshot, salvo que desde este
+  navegador ya se haya enviado algo para ese campo que el tablero todavía no
+  muestra (más nuevo que el snapshot, o aún en el buzón): entonces es lo
+  enviado. Así un segundo cambio se apoya en el primero en vez de chocar.
+- **Enviar**: en Chrome/Edge de escritorio, «Guardar en el buzón» escribe un
+  archivo por proyecto en `buzon/` con la API de acceso a archivos. Usa el
+  **mismo registro de IndexedDB que el Formulador** (`qpn-intercambio`): los
+  dos están en `cristobal-monzo.github.io`, así que la carpeta conectada en
+  uno sirve en el otro. En otro navegador, «Descargar» baja los mismos
+  archivos para dejarlos a mano en `buzon/` (o `driver.py intercambio
+  cargar`).
+- **Seguimiento**: «Envíos desde este navegador» (`af_ingreso_envios_v1`, los
+  últimos 60) dice si cada uno sigue en el buzón, si se aplicó, si espera una
+  decisión o si fue rechazado, leyendo `publicado/analisis-financiero.json`
+  (`mensajes`) cuando la carpeta ya tiene permiso; sin carpeta, compara con el
+  snapshot.
+- **El tablero publicado no cambia solo**: el procesador aplica el envío al
+  Excel en ≤ 2 horas, pero GitHub Pages se actualiza cuando se publica
+  (`/Actualizar_AF`).
+- El aviso de proyectos incompletos lleva «Completarlos aquí», que abre la
+  pestaña filtrada en los que les faltan datos.
+- En pantallas de más de 1240 px la tabla usa todo el ancho de la ventana (no
+  cabe en los 1.140 px del tablero); bajo 640 px cada proyecto es una tarjeta.
 
 ## Publicación
 

@@ -1,0 +1,44 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "b1c2d3e4f5a6b1c2d3e4f5a6",
+  "tipo": "datos-proyecto",
+  "destino": "analisis-financiero",
+  "origen": {
+    "herramienta": "tablero-af",
+    "usuario": "Persona de prueba",
+    "enviado": "2026-10-02T16:00:00-03:00"
+  },
+  "proyecto": {
+    "tag": "NUEVO",
+    "nombre": "Proyecto nuevo de ejemplo",
+    "crear": true
+  },
+  "valores": {
+    "% Avance": 0,
+    "Fecha de inicio": "2026-10-05",
+    "Fecha de cierre": null,
+    "Monto de Venta": 8500000,
+    "Materiales": 2100000,
+    "Equipos": 600000,
+    "Mano de Obra": 1400000,
+    "Otros": 300000,
+    "Mano de Obra Real": 0,
+    "N° Requerimiento": 302
+  },
+  "reemplaza": {
+    "% Avance": null,
+    "Fecha de inicio": null,
+    "Fecha de cierre": null,
+    "Monto de Venta": null,
+    "Materiales": null,
+    "Equipos": null,
+    "Mano de Obra": null,
+    "Otros": null,
+    "Mano de Obra Real": null,
+    "N° Requerimiento": null
+  },
+  "informativo": {
+    "nombre": "Obra de ejemplo",
+    "tablero": "02-10-2026 09:55"
+  }
+}

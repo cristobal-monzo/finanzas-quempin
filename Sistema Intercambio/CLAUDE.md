@@ -102,6 +102,7 @@ tabla de abajo y los textos del Formulador lo resumen, no lo definen.
 | `publicado/formulador/<uid>.json`: un archivo por presupuesto, el repositorio de formulaciones, con `historia`, `resumen` (costo, precio, margen y `costosAF`, calculados por el Formulador) y `datos` | Formulador de cada equipo (`js/compartida.js`, 2026-09-30); también `formulaciones.incorporar_buzon()` con las entregas por archivo | Formulador de los demás equipos; Claude (`formulaciones.py`, driver AF `formulaciones`) | `Sistema Intercambio/formulaciones.py` |
 | mensaje `formulacion` → `formulador`: un presupuesto entregado por archivo desde un navegador sin acceso a la carpeta | Formulador («Descargar para el equipo»; se deja a mano en `buzon/`) | `formulaciones.incorporar_buzon()` (procesador, y paso 0 del `run` de `/Actualizar_Finanzas`), con las mismas reglas de quién gana del Formulador; en conflicto queda como copia | `Sistema Intercambio/formulaciones.py` |
 | mensaje `venta-proyecto` → `analisis-financiero`: monto de venta sin IVA de un proyecto adjudicado (de la cotización emitida, o del precio neto del Formulador) | Formulador | Análisis Financiero, por el **mismo** canal y garantías que `presupuesto-proyecto` | `presupuestos_formulador.py` |
+| mensaje `datos-proyecto` → `analisis-financiero` (2026-10-02): valores manuales de un proyecto (% avance, fechas, venta, los 4 proyectados, mano de obra real, N° de requerimiento), uno por proyecto; puede crear el proyecto o dejar una celda vacía | pestaña «Ingresar datos» del tablero de Análisis Financiero (`Visualizador Web/ingreso.js`), o un archivo descargado de ella que se deja a mano en `buzon/` (`driver.py intercambio cargar`) | Análisis Financiero, por el mismo canal y la misma regla de lo visto; varios al mismo proyecto se aplican todos, en orden, y quedan como valor manual (sin nota) | `presupuestos_formulador.py` |
 | mensaje `borrador-cotizacion` → `sistema-quempin`: una cotización prellenada por partida | Formulador | Sistema QUEMPIN («Borradores del Formulador»: una persona la revisa y la emite; al emitir se archiva con el folio) | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |
 | mensaje `registro-documento` → `sistema-quempin`: registrar en el Control de Documentos la evaluación de costos (81) del Formulador | Formulador | Sistema QUEMPIN (la app cada minuto, y el procesador); si el folio ya se usó, asigna el siguiente | mismo archivo |
 | mensaje `actualizar-requerimiento` → `planilla-requerimientos`: estado y valor ofertado o adjudicado | Formulador | **nadie lo escribe**: una persona lo pasa a la Planilla y el procesador lo cierra cuando ya está (`/Sugerencias_Requerimientos`) | `Sistema Intercambio/requerimientos.py` |
@@ -136,7 +137,9 @@ y al final de cada `run` de `/Actualizar_Finanzas` (con `--forzar`). Hace, en
 orden y **solo si algo cambió** desde la vuelta anterior (firmas en
 `procesador_estado.json`, gitignoreado): `esquemas.json`; entregas de
 formulaciones por archivo; requerimientos y cierre de sugerencias; Análisis
-Financiero (`run` solo si llegaron envíos que no se intentaron; si no, y
+Financiero (`run` solo si llegaron envíos que no se intentaron, de cualquiera
+de los tipos cuyo esquema declara `destino: analisis-financiero` -- desde el
+2026-10-02 se leen del catálogo, no de una lista del procesador; si no, y
 cambió Centro de Costos o el libro, solo `intercambio publicar`); precios de
 referencia; Sistema QUEMPIN (`python -m app.integraciones.ecosistema
 procesar` con su Python 3.11); `proyectos.json`, y `estado.json`.

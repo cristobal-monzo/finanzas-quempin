@@ -71,7 +71,8 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador
 ```
 
 **`intercambio`** -- costos proyectados enviados desde el Formulador de
-proyectos por el buzón de la carpeta de intercambio,
+proyectos, y valores ingresados en la pestaña «Ingresar datos» del tablero
+(`datos-proyecto`, 2026-10-02), por el buzón de la carpeta de intercambio,
 `Formulación de proyectos - Documentos/.Herramientas formulación/Intercambio/buzon/` (ver `CLAUDE.md` §
 "Costos proyectados desde el Formulador"). Sin argumentos es solo lectura:
 qué se aplicaría en el próximo `run` y qué envíos esperan una decisión
@@ -83,7 +84,14 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio
 python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio confirmar <id>   # reemplaza y corre run
 python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio descartar <id>   # archiva sin tocar el Excel
 python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio publicar         # lista para el Formulador, sin escribir el Excel
+python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio cargar <archivo.json> ...  # un envío descargado -> buzón
 ```
+
+`cargar` es para los archivos que la pestaña «Ingresar datos» descarga cuando
+el navegador no puede escribir en la carpeta (Firefox, Safari, teléfono) y
+alguien los manda por correo: valida cada uno contra el catálogo y las reglas
+de este módulo y lo deja en el buzón tal cual (mismo id, nunca dos veces). Se
+aplica en el próximo `run` o en la próxima vuelta del procesador.
 
 `confirmar` corre un `run` completo: si se hace, publicar el dashboard como
 en `/Actualizar_AF`. Solo Chile (`--pais PE` informa que no está activo).
@@ -132,7 +140,10 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador --pa
   ve mal, es un dato cargado a mano, no un bug de este script. **Única
   excepción (2026-09-30):** los 4 costos proyectados que llegan desde el
   Formulador por el buzón de Intercambio, solo en los casos seguros; esas
-  celdas llevan una nota de Excel con su procedencia.
+  celdas llevan una nota de Excel con su procedencia. Desde el 2026-10-02
+  también lo ingresado en la pestaña «Ingresar datos» del tablero (todas las
+  columnas manuales menos TAG y Nombre, con la misma regla); eso no lleva
+  nota: es un valor manual, como si se hubiera tecleado en el Excel.
 - **TAG proyecto debe calzar con el prefijo de Centro de Costos**
   (`PREFIJOS_PROYECTO` en `auditor_centro_costos.py`) -- si no calzan, los
   costos reales de ese proyecto quedan en $0 (el `SUMIFS` no encuentra

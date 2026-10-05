@@ -1,0 +1,23 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "b1c2d3e4f5a6b1c2d3e4f5a6",
+  "tipo": "datos-proyecto",
+  "destino": "analisis-financiero",
+  "origen": {
+    "herramienta": "tablero-af",
+    "usuario": "Persona de prueba",
+    "enviado": "2026-10-02T16:00:00-03:00"
+  },
+  "proyecto": {
+    "tag": "OBRA"
+  },
+  "valores": {
+    "% Avance": 0.4,
+    "Fecha de cierre": "2026-12-15",
+    "Mano de Obra Real": 1250000
+  },
+  "informativo": {
+    "nombre": "Obra de ejemplo",
+    "tablero": "02-10-2026 09:55"
+  }
+}

@@ -31,8 +31,15 @@ import openpyxl
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "Sistema"))
 import analisis_financiero as af  # noqa: E402
 
+import esquemas  # noqa: E402  (Sistema Intercambio, en sys.path desde analisis_financiero)
+
 RAIZ = Path(__file__).resolve().parent  # Sistema Analisis Financiero/Visualizador Web/
 RUTA_TEMPLATE = RAIZ / "template.html"
+# Pestaña «Ingresar datos» (2026-10-02): su lógica vive en ingreso.js (probada
+# con Node) y valida cada envío con el mismo esquemas.js del catálogo del
+# Intercambio -- el original, no una copia. Los dos se insertan en el tablero.
+RUTA_INGRESO_JS = RAIZ / "ingreso.js"
+RUTA_ESQUEMAS_JS = af.pf.RAIZ_SISTEMA_INTERCAMBIO / "esquemas.js"
 
 # Rutas de Chile como constantes de módulo (los tests las reemplazan con
 # monkeypatch); las de Perú viven en PAISES_VIZ["PE"].
@@ -57,6 +64,9 @@ PAISES_VIZ = {
         "moneda": {"simbolo": "$", "locale": "es-CL"},
         "nav_activo": "analisis-financiero",
         "url_planilla": URL_PLANILLA_PENDIENTE,
+        # Solo Chile: el buzón del Intercambio lo atiende el Análisis
+        # Financiero de Chile (Perú no tiene intercambio).
+        "ingreso": True,
     },
     "PE": {
         "titulo": "Análisis Financiero Perú",
@@ -313,6 +323,79 @@ def calcular_categorias(kpis_proyectos_completos: list[dict]) -> list[dict]:
     return filas
 
 
+# ── PESTAÑA «INGRESAR DATOS» (2026-10-02) ───────────────────────────────────
+# Qué campos se ingresan, de qué tipo y en qué orden lo decide
+# presupuestos_formulador.CAMPOS_TABLERO (el mismo que aplica los envíos); aquí
+# solo se agrega cómo se rotulan en la pestaña.
+ROTULOS_INGRESO = {
+    "% Avance": ("Avance y plazos", "% Avance"),
+    "Fecha de inicio": ("Avance y plazos", "Inicio"),
+    "Fecha de cierre": ("Avance y plazos", "Cierre"),
+    af.pf.CLAVE_VENTA: ("Venta", "Venta sin IVA"),
+    "Materiales": ("Costos proyectados", "Materiales"),
+    "Equipos": ("Costos proyectados", "Equipos"),
+    "Mano de Obra": ("Costos proyectados", "Mano de obra"),
+    "Otros": ("Costos proyectados", "Otros"),
+    "Mano de Obra Real": ("Costo real", "Mano de obra real"),
+    af.pf.COLUMNA_REQ: ("Planilla", "N° req."),
+}
+
+
+def _valor_para_mensaje(valor):
+    """Una celda en la forma en que el tablero la muestra y la devuelve como
+    'lo que se vio' (reemplaza): fechas AAAA-MM-DD, números tal cual, y un
+    texto escrito a mano como texto. Nunca un datetime (no es JSON)."""
+    if valor is None or (isinstance(valor, str) and not valor.strip()):
+        return None
+    if isinstance(valor, datetime):
+        return valor.date().isoformat()
+    if isinstance(valor, date):
+        return valor.isoformat()
+    if isinstance(valor, bool):
+        return str(valor)
+    if isinstance(valor, (int, float)):
+        return int(valor) if float(valor).is_integer() else valor
+    return str(valor)
+
+
+def datos_para_ingreso(ws_proyectos, proyectos: list[dict]) -> dict:
+    """Lo que necesita la pestaña: los campos (desde CAMPOS_TABLERO), cada
+    proyecto con sus valores actuales y lo que le falta para entrar al
+    análisis, y lo necesario para armar y validar el mensaje sin copiar nada
+    en el JavaScript."""
+    columna = {nombre: idx for idx, nombre in enumerate(af.HEADERS_PROYECTOS, start=1)}
+    requeridas = set(af.CAMPOS_MANUALES_REQUERIDOS)
+    campos = [{
+        "clave": clave, "columna": col, "tipo": tipo,
+        "grupo": ROTULOS_INGRESO[clave][0], "etiqueta": ROTULOS_INGRESO[clave][1],
+        "requerido": col in requeridas, "positivo": clave == af.pf.CLAVE_VENTA,
+    } for clave, (col, tipo) in af.pf.CAMPOS_TABLERO.items()]
+    filas = []
+    for p in proyectos:
+        valores = {c["clave"]: _valor_para_mensaje(ws_proyectos.cell(row=p["fila"], column=columna[c["columna"]]).value)
+                   for c in campos}
+        gastos_generales = es_gastos_generales(p)
+        filas.append({
+            "tag": af.pf.normalizar_tag(p["tag"]), "nombre": p["nombre"], "cliente": p["cliente"],
+            "categoria": p["categoria"], "gastos_generales": gastos_generales,
+            "faltan": [] if gastos_generales else [c["clave"] for c in campos
+                                                   if c["requerido"] and valores[c["clave"]] is None],
+            "valores": valores,
+        })
+    paquete = esquemas.paquete()
+    return {
+        "generado": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "esquema": af.pf.intercambio.ESQUEMA, "tipo": af.pf.TIPO_DATOS, "destino": af.pf.DESTINO,
+        "herramienta": af.pf.HERRAMIENTA_TABLERO, "patron_tag": af.pf.PATRON_TAG.pattern,
+        "campos": campos,
+        "proyectos": filas,
+        "tags": [f["tag"] for f in filas],
+        # Solo lo necesario para validar el envío en el navegador.
+        "esquemas": {"sobreMensaje": paquete["sobreMensaje"],
+                     "mensajes": {af.pf.TIPO_DATOS: paquete["mensajes"][af.pf.TIPO_DATOS]}},
+    }
+
+
 def embeber_reportes_pdf(proyectos: list[dict], categorias: list[dict], raiz_reportes: Path | None = None) -> dict[str, str]:
     """Escanea <raiz_reportes>/{Proyectos,Categorías}/*.pdf y embebe en
     base64 los que existen. La ausencia de una clave en el dict devuelto ES
@@ -451,6 +534,8 @@ def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None =
         "categorias": categorias,
         "pendientes": pendientes,
         "reportes_pdf": reportes_pdf,
+        # Pestaña «Ingresar datos»: None en Perú (la pestaña no aparece).
+        "ingreso": datos_para_ingreso(ws_proyectos, proyectos) if cfg.get("ingreso") else None,
     }
 
 
@@ -479,12 +564,20 @@ def build(pais: str = "CL") -> int:
 
     with io.open(RUTA_TEMPLATE, "r", encoding="utf-8") as f:
         template = f.read()
-    for marcador in ("__AF_DATA_B64__", "__AF_TITULO__", "__AF_NAV_ACTIVO__"):
+    for marcador in ("__AF_DATA_B64__", "__AF_TITULO__", "__AF_NAV_ACTIVO__", "__AF_ESQUEMAS_JS__", "__AF_INGRESO_JS__"):
         if marcador not in template:
             print(f"[ERROR] template.html no tiene el placeholder {marcador}")
             return 1
+    with io.open(RUTA_ESQUEMAS_JS, "r", encoding="utf-8") as f:
+        esquemas_js = f.read()
+    with io.open(RUTA_INGRESO_JS, "r", encoding="utf-8") as f:
+        ingreso_js = f.read()
+    # Los dos scripts van primero: el snapshot (base64) es lo último que se
+    # reemplaza, así ningún texto de los datos puede pasar por un marcador.
     html = (
-        template.replace("__AF_TITULO__", cfg["titulo"])
+        template.replace("__AF_ESQUEMAS_JS__", esquemas_js)
+        .replace("__AF_INGRESO_JS__", ingreso_js)
+        .replace("__AF_TITULO__", cfg["titulo"])
         .replace("__AF_NAV_ACTIVO__", cfg["nav_activo"])
         .replace("__AF_DATA_B64__", data_b64)
     )

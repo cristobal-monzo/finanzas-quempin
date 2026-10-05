@@ -420,6 +420,53 @@ Tests: `Sistema/tests/test_presupuestos_formulador.py` (sandbox en
 Chrome contra una copia del libro real (país ficticio, archivos reales sin
 cambios).
 
+### Ingreso manual desde el tablero (`datos-proyecto`, 2026-10-02)
+
+Pedido del usuario: un lugar donde ingresar los valores manuales sin abrir el
+Excel, que «genere un descargable» o deje el dato «listo para cargar». Eligió
+(entre las opciones que se le dieron) **una pestaña en el mismo tablero** y
+**el buzón de Intercambio** como camino al Excel, sabiendo que esa carpeta la
+ve toda la biblioteca de Formulación.
+
+- **La pestaña** («Ingresar datos», ver `Visualizador Web/CLAUDE.md`) deja un
+  mensaje `datos-proyecto` **por proyecto** en el buzón: así un proyecto en
+  conflicto no frena a los demás. Campos: todas las columnas manuales de
+  «Proyectos» menos TAG y Nombre (`CAMPOS_TABLERO`, que es también lo que la
+  pestaña muestra: no hay otra lista). Nombre solo al crear un proyecto.
+- **Mismo canal y misma regla** que el Formulador, en
+  `presupuestos_formulador.py`: la celda vacía se escribe; una con valor solo
+  si todavía tiene lo que la persona vio en el tablero (`reemplaza`); si no,
+  pendiente (`intercambio confirmar|descartar <id>`). Todo o nada por envío.
+  Costos y venta usan **las mismas claves** que el Formulador (`Materiales`,
+  `Monto de Venta`...), así los dos hablan de la misma celda.
+- **Tres diferencias**, porque esto es ingreso manual y no la copia del
+  estado de otra herramienta: (1) varios envíos al mismo proyecto se aplican
+  **todos, en orden**, cada uno sobre lo que dejó el anterior (`planificar`
+  decide en orden de envío y con los valores que van quedando; «gana el
+  último» sigue solo para los dos tipos del Formulador); (2) **sin nota ni
+  registro de procedencia**: queda como valor manual, y si pisa uno del
+  Formulador le quita su nota y lo saca del registro; (3) puede dejar una
+  celda vacía (`null`) y crear un proyecto con todos sus datos.
+- **Tipos de valor**: el avance viaja como fracción (0,35) igual que en el
+  Excel, las fechas como `AAAA-MM-DD` y se escriben como fecha de Excel, pesos
+  y N° de requerimiento como enteros. La comparación «¿es el mismo valor?»
+  (`_mismo_valor`) tiene su gemela en `ingreso.js` y un test las compara.
+- **Formato**: lo que escribe el buzón (de cualquiera de los dos orígenes)
+  toma el formato de su columna (`FORMATOS_COLUMNAS_PROYECTOS`) solo si la
+  celda no tenía uno propio: en el libro real las celdas manuales ya traen el
+  formato que les puso el usuario, y se respeta.
+- **Archivo descargado** (navegador sin acceso a la carpeta): se deja tal cual
+  en `buzon/`, o `driver.py intercambio cargar <archivo>` lo valida y lo deja
+  ahí (mismo id, nunca dos veces).
+- El procesador toma ahora los tipos que atiende AF **del catálogo** (cada
+  esquema declara su destino), no de una lista suya; un test exige que
+  coincidan con `pf.TIPOS`.
+
+Verificado de punta a punta: un envío generado por la pestaña en Chrome
+(carpeta simulada en el almacenamiento privado del navegador) aplicado con
+`ejecutar()` sobre una copia del libro real, con los archivos reales (AF,
+Centro de Costos, registro y buzón) sin cambios.
+
 ## Reportes PDF (implementado 2026-07-24)
 
 Genera reportes PDF por proyecto/cliente/categoría y comparativas ad-hoc a

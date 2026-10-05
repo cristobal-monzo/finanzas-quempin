@@ -198,6 +198,44 @@
   .viz-modnav-pais:hover { background-color: rgba(255,255,255,0.14); }
   .viz-modnav-pais:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
   .viz-modnav-pais option { color: #ffffff; background: #1a1a1a; }
+  /* Menús desplegables con la estética del tablero (2026-10-05, pedido del
+     usuario: la lista del sistema «no parecía pertenecer al dashboard»).
+     Flecha propia en todos, y la lista abierta dibujada con la paleta del
+     tablero: Chrome y Edge lo permiten desde la versión 135
+     (appearance: base-select); Safari y Firefox siguen abriendo la lista del
+     sistema, con la flecha propia. Bloque idéntico en los 6 templates. */
+  .viz-root select:not([multiple]):not(.viz-modnav-pais) {
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+    padding-right: 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23898781' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; background-size: 12px;
+  }
+  @supports (appearance: base-select) {
+    /* mismo peso que la regla de la flecha, que si no le gana */
+    .viz-root select:not([multiple]):not(.viz-modnav-pais), .viz-root select.viz-modnav-pais,
+    .viz-root select::picker(select) { appearance: base-select; }
+    .viz-root select::picker-icon { display: none; }   /* la flecha es la propia */
+    /* En este modo no hay «…»: un texto largo se corta antes de la flecha */
+    .viz-root select:not([multiple]) { overflow: clip; overflow-clip-margin: content-box; }
+    .viz-root select::picker(select) {
+      margin-block: 4px; padding: 5px; max-height: min(340px, 70vh); overflow-y: auto;
+      background: var(--surface-card); color: var(--text-primary);
+      border: 1px solid var(--border-hairline); border-radius: 10px;
+      box-shadow: 0 14px 38px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06);
+    }
+    .viz-root select option {
+      gap: 8px; padding: 8px 10px; border-radius: 6px; font-weight: 400; line-height: 1.3;
+      color: inherit; background: transparent; cursor: pointer;
+    }
+    .viz-root select option:hover, .viz-root select option:focus-visible { background: color-mix(in srgb, var(--brand-orange) 12%, transparent); outline: none; }
+    .viz-root select option:focus-visible { box-shadow: inset 0 0 0 1px var(--brand-orange); }
+    .viz-root select option:checked { color: var(--brand-orange-ink, var(--brand-orange)); font-weight: 700; }
+    .viz-root select option::checkmark { color: var(--brand-orange-ink, var(--brand-orange)); font-weight: 900; }
+    .viz-root select option:disabled { opacity: .45; cursor: not-allowed; background: transparent; }
+    /* El de país va sobre la cabecera negra: su lista también es oscura */
+    .viz-root select.viz-modnav-pais::picker(select) { background: #1a1a1a; color: #ffffff; border-color: rgba(255,255,255,0.18); box-shadow: 0 14px 38px rgba(0,0,0,0.55); }
+    .viz-root select.viz-modnav-pais option:checked, .viz-root select.viz-modnav-pais option::checkmark { color: #ff8a4d; }
+  }
   .viz-modnav-tab {
     display: inline-block;
     padding: 6px 12px;
@@ -673,6 +711,144 @@
     }
     #tabProyectos table.viz-table > thead th.es-orden { border-color: var(--brand-orange); color: var(--text-primary); font-weight: 700; }
   }
+
+  /* ---------- Pestaña «Ingresar datos» (2026-10-02) ----------
+     Los valores manuales de la hoja «Proyectos» se escriben aquí como en la
+     planilla y viajan al Excel por el buzón del Intercambio (ingreso.js). Tabla
+     propia (no .viz-table): cada celda es un campo, y en el teléfono pasa a
+     tarjeta con sus propias reglas. */
+  .ing-intro { display: flex; gap: 16px 24px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap;
+    background: var(--surface-card); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  .ing-intro > div:first-child { flex: 1 1 420px; min-width: 0; }
+  .ing-titulo { font-size: 15px; margin: 0 0 6px; }
+  .ing-texto { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; margin: 0; max-width: 72ch; }
+  .ing-carpeta { flex: 0 1 300px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; font-size: 12.5px; }
+  .ing-estado { font-weight: 700; color: var(--text-secondary); }
+  .ing-estado.ok { color: var(--status-good); }
+  .ing-estado.warn { color: var(--status-warning); }
+  .ing-ayuda { color: var(--text-muted); line-height: 1.45; }
+  .ing-boton {
+    font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 7px; cursor: pointer;
+    border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary);
+  }
+  .ing-boton:hover { border-color: var(--brand-orange); }
+  .ing-boton:focus-visible, .ing-input:focus-visible, .ing-deshacer:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+  .ing-boton:disabled { opacity: 0.5; cursor: default; border-color: var(--border-hairline); }
+  .ing-primario { background: var(--brand-orange); border-color: var(--brand-orange); color: #000; }
+  .ing-primario:hover { filter: brightness(1.08); }
+  .ing-acciones { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+  .ing-mensaje { font-size: 13px; line-height: 1.5; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px;
+    background: rgba(12,163,12,0.10); border: 1px solid rgba(12,163,12,0.35); }
+  .ing-mensaje.warn { background: rgba(201,133,0,0.10); border-color: rgba(201,133,0,0.40); }
+
+  .ing-tablawrap { background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 10px;
+    overflow: auto; max-height: 72vh; margin-bottom: 12px; }
+  table.ing-tabla { width: 100%; min-width: 1180px; border-collapse: separate; border-spacing: 0; font-size: 13px; color: inherit; }
+  table.ing-tabla thead th { position: sticky; z-index: 2; background: var(--surface-card); color: var(--text-muted);
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 700; text-align: left;
+    padding: 0 8px; border-bottom: 1px solid var(--gridline); white-space: nowrap; }
+  table.ing-tabla thead tr:first-child th { top: 0; height: 28px; }
+  table.ing-tabla thead tr:nth-child(2) th { top: 28px; height: 30px; }
+  table.ing-tabla thead th.ing-grupo { color: var(--text-secondary); border-left: 1px solid var(--gridline); }
+  table.ing-tabla thead th[title] { cursor: help; }
+  .ing-req { color: var(--brand-orange-ink, var(--brand-orange)); margin-left: 2px; }
+  table.ing-tabla tbody td { padding: 7px 4px; border-bottom: 1px solid var(--gridline); vertical-align: middle; }
+  table.ing-tabla tbody tr:hover td { background: var(--surface-1); }
+  table.ing-tabla .ing-col-proy { position: sticky; left: 0; z-index: 1; background: var(--surface-card);
+    min-width: 200px; max-width: 250px; padding-left: 12px; border-right: 1px solid var(--gridline); }
+  table.ing-tabla thead .ing-col-proy { z-index: 3; }
+  .ing-nombre { font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+  .ing-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 3px; }
+  .ing-tag { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.02em; }
+  .ing-chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+    background: var(--surface-1); color: var(--text-secondary); white-space: nowrap; }
+  .ing-chip.falta { background: rgba(201,133,0,0.14); color: var(--status-warning); }
+  .ing-chip.ok { background: rgba(12,163,12,0.12); color: var(--status-good); }
+  .ing-chip.nuevo, .ing-chip.cambio { background: rgba(255,81,0,0.14); color: var(--brand-orange-ink, var(--brand-orange)); }
+  .ing-chip.bad { background: rgba(209,40,46,0.13); color: var(--status-bad); }
+  .ing-deshacer { margin-top: 4px; font: inherit; font-size: 11.5px; font-weight: 600; background: none; border: none; padding: 2px 0;
+    color: var(--brand-orange-ink, var(--brand-orange)); cursor: pointer; }
+  .ing-input {
+    width: 100%; min-width: 84px; font-family: inherit; font-size: 13px; padding: 6px 7px; border-radius: 6px;
+    border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary);
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .ing-input[type="date"] { text-align: left; min-width: 124px; }
+  .ing-input::placeholder { color: var(--text-muted); }
+  .ing-input.falta { background: rgba(201,133,0,0.07); }
+  .ing-input.falta::placeholder { color: var(--status-warning); font-style: italic; }
+  .ing-input.cambiado { border-color: var(--brand-orange); box-shadow: 0 0 0 1px var(--brand-orange); background: var(--surface-card); }
+  .ing-input.invalido { border-color: var(--status-bad); box-shadow: 0 0 0 1px var(--status-bad); }
+  .ing-sufijo { position: relative; display: block; }
+  .ing-sufijo .ing-input { padding-right: 22px; min-width: 70px; }
+  .ing-sufijo::after { content: '%'; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: var(--text-muted); pointer-events: none; }
+  .ing-vacio { padding: 18px; font-size: 13px; color: var(--text-muted); }
+  /* Con 10 columnas la tabla no cabe en los 1.140 px del tablero y las dos
+     últimas quedaban escondidas a la derecha: en pantallas anchas usa todo el
+     ancho de la ventana (centrada, con 24 px de margen; 100vw incluye la barra
+     de desplazamiento, por eso el margen sale parejo y no aparece scroll). */
+  @media (min-width: 1241px) {
+    .ing-tablawrap { width: min(calc(100vw - 48px), 1480px); margin-left: calc(50% - min(50vw - 24px, 740px)); }
+  }
+
+  .ing-barra { position: sticky; bottom: 12px; z-index: 5; display: flex; gap: 10px 14px; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; background: var(--surface-card); border: 1.5px solid var(--brand-orange);
+    border-radius: 10px; padding: 10px 14px; margin: 0 0 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); }
+  .ing-barra[hidden] { display: none; }
+  .ing-barra .ing-resumen { font-size: 13px; font-weight: 700; }
+  .ing-barra .ing-resumen .tone-bad { margin-left: 6px; }
+
+  .ing-envios ul { list-style: none; margin: 0; padding: 0; }
+  .ing-envios li { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: baseline; padding: 8px 0;
+    border-bottom: 1px solid var(--gridline); font-size: 12.5px; }
+  .ing-envios li:last-child { border-bottom: none; }
+  .ing-envios .cuando { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ing-envios .que { font-weight: 700; }
+  .ing-envios .campos { color: var(--text-secondary); flex: 1 1 200px; }
+  .ing-envios .detalle { flex-basis: 100%; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+
+  .ing-dialogo { border: none; border-radius: 12px; padding: 0; width: calc(100% - 32px); max-width: 680px;
+    max-height: calc(100vh - 48px); background: var(--surface-card); color: var(--text-primary);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.35); }
+  .ing-dialogo::backdrop { background: rgba(0,0,0,0.55); }
+  .ing-dialogo form { display: flex; flex-direction: column; max-height: calc(100vh - 48px); }
+  .ing-dialogo h3 { font-size: 15px; margin: 0; padding: 16px 20px 10px; border-bottom: 1px solid var(--gridline); }
+  .ing-dialogo-cuerpo { padding: 12px 20px; overflow: auto; }
+  .ing-dialogo-pie { padding: 12px 20px 16px; border-top: 1px solid var(--gridline); display: flex; flex-direction: column; gap: 10px; }
+  .ing-dialogo-acciones { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .ing-dialogo label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  .ing-dialogo label input { font-family: inherit; font-size: 14px; padding: 8px 10px; border-radius: 7px;
+    border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
+  .ing-dialogo .ing-aviso { font-size: 12.5px; color: var(--status-bad); line-height: 1.45; }
+  .ing-dialogo .ing-aviso.warn { color: var(--status-warning); }
+  .ing-dialogo .ing-nota { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+  .ing-rev-proy { margin-bottom: 14px; }
+  .ing-rev-titulo { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+  table.ing-rev-tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; color: inherit; }
+  table.ing-rev-tabla th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted);
+    padding: 5px 6px; border-bottom: 1px solid var(--gridline); }
+  table.ing-rev-tabla td { padding: 6px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  table.ing-rev-tabla .num { text-align: right; }
+  table.ing-rev-tabla tr.ing-error td { color: var(--status-bad); }
+
+  @media (max-width: 640px) {
+    .ing-tablawrap { overflow: visible; max-height: none; }
+    table.ing-tabla, table.ing-tabla > tbody { display: block; min-width: 0; }
+    table.ing-tabla > thead { display: none; }
+    table.ing-tabla > tbody > tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px;
+      padding: 12px; border-bottom: 1px solid var(--gridline); }
+    table.ing-tabla > tbody > tr > td { padding: 0; border: 0; background: none; }
+    table.ing-tabla tbody tr:hover td { background: none; }
+    table.ing-tabla td.ing-col-proy { grid-column: 1 / -1; position: static; max-width: none; border: 0; padding: 0; }
+    table.ing-tabla td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px;
+      font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+    .ing-input { font-size: 16px; min-width: 0; }
+    .ing-input[type="date"] { min-width: 0; }
+    .ing-barra { bottom: 8px; }
+    .ing-barra .ing-acciones { width: 100%; }
+    .ing-barra .ing-acciones .ing-boton { flex: 1 1 0; }
+  }
 </style>
 </head>
 <body>
@@ -731,6 +907,7 @@
         </div>
         <div class="pendientes-acciones">
           <a id="pendientesLink" class="pendientes-link" target="_blank" rel="noopener" style="display:none">Abrir la planilla</a>
+          <button id="pendientesCompletar" class="pendientes-toggle-btn" type="button" style="display:none">Completarlos aquí</button>
           <button id="pendientesToggle" class="pendientes-toggle-btn" type="button" aria-expanded="false" aria-controls="pendientesList">Ver qué falta</button>
         </div>
       </div>
@@ -743,6 +920,7 @@
       <button class="viz-tab-btn" data-tab="tabPresupuesto" type="button" role="tab" aria-selected="false" aria-controls="tabPresupuesto">Presupuesto vs Real</button>
       <button class="viz-tab-btn" data-tab="tabClientes" type="button" role="tab" aria-selected="false" aria-controls="tabClientes">Clientes</button>
       <button class="viz-tab-btn" data-tab="tabCategoria" type="button" role="tab" aria-selected="false" aria-controls="tabCategoria">Categoría</button>
+      <button class="viz-tab-btn" data-tab="tabIngreso" id="tabBtnIngreso" type="button" role="tab" aria-selected="false" aria-controls="tabIngreso" hidden>Ingresar datos</button>
     </nav>
 
     <section id="tabResumen" class="viz-tab-panel active" role="tabpanel">
@@ -1023,6 +1201,101 @@
       </div></div>
     </section>
 
+    <section id="tabIngreso" class="viz-tab-panel" role="tabpanel">
+      <!-- 2026-10-02: los valores manuales de «Proyectos» se ingresan aquí y
+           llegan al Excel por el buzón del Intercambio (ver ingreso.js). La
+           arman build_visualizador.datos_para_ingreso y el JS de initApp. -->
+      <div class="ing-intro">
+        <div>
+          <h2 class="ing-titulo">Ingresar datos de los proyectos</h2>
+          <p class="ing-texto">
+            Escribe aquí los valores que hoy se cargan a mano en la planilla. Lo que cambies queda marcado en naranjo y
+            se guarda como borrador en este navegador. Al enviar, cada proyecto queda como un archivo en el buzón de la
+            carpeta de Intercambio y el Análisis Financiero lo pasa al Excel en su próxima vuelta (cada 2 horas, o al
+            correr <strong>/Actualizar_AF</strong>). Nunca reemplaza un valor que alguien cambió en el Excel después de
+            que lo viste aquí: ese envío queda esperando una decisión.
+          </p>
+        </div>
+        <div class="ing-carpeta" id="ingCarpeta" aria-live="polite"></div>
+      </div>
+      <div class="ing-mensaje" id="ingMensaje" role="status" hidden></div>
+      <div class="filtros">
+        <div class="filtro crece">
+          <label for="ingBuscar">Buscar</label>
+          <input type="search" id="ingBuscar" class="viz-search" placeholder="Proyecto, TAG o cliente…" aria-label="Buscar proyecto">
+        </div>
+        <div class="filtro">
+          <label for="ingFiltro">Mostrar</label>
+          <select id="ingFiltro">
+            <option value="">Todos los proyectos</option>
+            <option value="faltan">Les faltan datos</option>
+            <option value="curso">En curso</option>
+            <option value="cambios">Con cambios sin enviar</option>
+          </select>
+        </div>
+        <div class="ing-acciones">
+          <button type="button" class="ing-boton" id="ingNuevo">+ Proyecto nuevo</button>
+          <button type="button" class="ing-boton" id="ingAbrir" title="Volver a cargar un archivo descargado desde esta pestaña, para revisarlo o terminarlo.">Abrir archivo</button>
+          <input type="file" id="ingArchivo" accept=".json,application/json" multiple hidden>
+        </div>
+        <div class="filtros-resultado" id="ingConteo"></div>
+      </div>
+      <div class="ing-tablawrap"><table class="ing-tabla" id="ingTabla"></table></div>
+      <div class="ing-barra" id="ingBarra" hidden>
+        <span class="ing-resumen" id="ingResumen"></span>
+        <div class="ing-acciones">
+          <button type="button" class="ing-boton" id="ingDescartar">Descartar cambios</button>
+          <button type="button" class="ing-boton ing-primario" id="ingRevisar">Revisar y enviar</button>
+        </div>
+      </div>
+      <div class="chart-card ing-envios">
+        <h3>Envíos desde este navegador</h3>
+        <div id="ingEnvios"></div>
+      </div>
+
+      <dialog class="ing-dialogo" id="ingDialogo" aria-labelledby="ingDialogoTitulo">
+        <form method="dialog">
+          <h3 id="ingDialogoTitulo">Revisar antes de enviar</h3>
+          <div class="ing-dialogo-cuerpo" id="ingDialogoCuerpo"></div>
+          <div class="ing-dialogo-pie">
+            <label>Tu nombre (queda registrado en el envío)
+              <input type="text" id="ingUsuario" autocomplete="name" maxlength="80" placeholder="Nombre y apellido">
+            </label>
+            <div class="ing-aviso" id="ingDialogoAviso" role="alert"></div>
+            <p class="ing-nota" id="ingDialogoNota"></p>
+            <div class="ing-dialogo-acciones">
+              <button type="button" class="ing-boton" id="ingVolver">Volver</button>
+              <button type="button" class="ing-boton" id="ingDescargar">Descargar archivo</button>
+              <button type="button" class="ing-boton ing-primario" id="ingGuardar">Guardar en el buzón</button>
+            </div>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog class="ing-dialogo" id="ingNuevoDialogo" aria-labelledby="ingNuevoTitulo">
+        <form method="dialog" id="ingNuevoForm">
+          <h3 id="ingNuevoTitulo">Proyecto nuevo</h3>
+          <div class="ing-dialogo-cuerpo">
+            <p class="ing-nota">Para un proyecto que todavía no está en la planilla. El TAG es el prefijo del N° Ref. de sus
+              facturas en Centro de Costos (por ejemplo UMAG): así sus costos reales se juntan con lo que ingreses aquí.</p>
+            <label style="margin-top:12px">TAG
+              <input type="text" id="ingNuevoTag" maxlength="10" autocomplete="off" autocapitalize="characters" placeholder="UMAG">
+            </label>
+            <label style="margin-top:10px">Nombre del proyecto
+              <input type="text" id="ingNuevoNombre" maxlength="120" autocomplete="off">
+            </label>
+          </div>
+          <div class="ing-dialogo-pie">
+            <div class="ing-aviso" id="ingNuevoAviso" role="alert"></div>
+            <div class="ing-dialogo-acciones">
+              <button type="button" class="ing-boton" id="ingNuevoCancelar">Cancelar</button>
+              <button type="submit" class="ing-boton ing-primario">Agregar</button>
+            </div>
+          </div>
+        </form>
+      </dialog>
+    </section>
+
     <p class="viz-footer">
       Datos de la planilla <strong>Análisis de Proyectos</strong> (costos reales desde Centro de Costos), generados el
       <span id="vizGeneratedFooter">—</span>. Publicado en GitHub Pages.
@@ -1033,6 +1306,10 @@
   <div class="viz-tooltip" id="vizTooltip"></div>
 </div>
 
+<!-- Pestaña «Ingresar datos»: el validador del catálogo del Intercambio y la lógica de la
+     pestaña, insertados por build_visualizador.py (originales, no copias). -->
+<script id="af-esquemas-js">__AF_ESQUEMAS_JS__</script>
+<script id="af-ingreso-js">__AF_INGRESO_JS__</script>
 <script id="af-data-b64" type="text/plain">__AF_DATA_B64__</script>
 <script>
 (function () {
@@ -2149,6 +2426,573 @@
     categoriaExpandida = (categoriaExpandida === categoria) ? null : categoria;
     renderTablaCategorias(categoriasFiltradas());
   }
+
+  // ---------- pestaña Ingresar datos (2026-10-02) ----------
+  // Los valores manuales de «Proyectos» se ingresan aquí y viajan al Excel como
+  // mensajes «datos-proyecto» por el buzón del Intercambio. Qué campos hay y qué
+  // le falta a cada proyecto llega en DATA.ingreso (build_visualizador.py); cómo
+  // se lee lo tecleado y cómo se arma el mensaje vive en ingreso.js (QIngreso),
+  // probado con Node contra las reglas de Python. Aquí solo la pantalla.
+  (function iniciarIngreso() {
+    var ING = DATA.ingreso;
+    if (!ING || !window.QIngreso || !window.QEsquemas) return;
+    var Q = window.QIngreso;
+    var LOCALE = MONEDA.locale;
+    document.getElementById('tabBtnIngreso').hidden = false;
+    var CAMPOS = ING.campos;
+    var CAMPO = {};
+    CAMPOS.forEach(function (c) { CAMPO[c.clave] = c; });
+    var POR_TAG = {};
+    ING.proyectos.forEach(function (p) { POR_TAG[p.tag] = p; });
+    var generadoMs = Date.parse(ING.generado);
+
+    var CLAVE_BORRADOR = 'af_ingreso_borrador_v1', CLAVE_ENVIOS = 'af_ingreso_envios_v1', CLAVE_USUARIO = 'af_ingreso_usuario';
+    function leerLS(k, porDefecto) {
+      try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? porDefecto : v; } catch (e) { return porDefecto; }
+    }
+    function guardarLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    // {tag: {textos: {clave: lo tecleado}, valores: {clave: valor ya leído}, nuevo?: {nombre}}}
+    var borrador = leerLS(CLAVE_BORRADOR, {});
+    if (typeof borrador !== 'object' || Array.isArray(borrador)) borrador = {};
+    // Lo enviado desde este navegador, del más antiguo al más reciente (máx. 60).
+    var envios = leerLS(CLAVE_ENVIOS, []);
+    if (!Array.isArray(envios)) envios = [];
+    function guardarBorrador() { guardarLS(CLAVE_BORRADOR, borrador); }
+    function guardarEnvios() { envios = envios.slice(-60); guardarLS(CLAVE_ENVIOS, envios); }
+
+    // Lo que la persona tiene a la vista para un campo: lo del tablero, o lo último que
+    // se envió desde aquí si el tablero todavía no lo trae (es anterior al envío, o el
+    // envío sigue en el buzón). Así un segundo cambio al mismo campo se apoya en el
+    // primero (el Análisis Financiero los aplica en orden) en vez de chocar con él. Un
+    // proyecto nuevo no tiene nada a la vista.
+    function base(tag, clave) {
+      if (borrador[tag] && borrador[tag].nuevo) return null;
+      var p = POR_TAG[tag];
+      var v = p && p.valores[clave] !== undefined ? p.valores[clave] : null;
+      for (var i = envios.length - 1; i >= 0; i--) {
+        var e = envios[i];
+        if (e.tag !== tag || !Object.prototype.hasOwnProperty.call(e.valores, clave)) continue;
+        if (!e.enBuzon && Date.parse(e.enviado) <= generadoMs) break;
+        if (e.resultado && ['rechazado', 'descartado', 'pendiente'].indexOf(e.resultado.estado) >= 0) continue;
+        return e.valores[clave];
+      }
+      return v;
+    }
+    function efectivo(tag, clave) {
+      var b = borrador[tag];
+      if (b && b.valores && Object.prototype.hasOwnProperty.call(b.valores, clave)) return b.valores[clave];
+      return base(tag, clave);
+    }
+    function tieneCambio(tag, clave) {
+      var b = borrador[tag];
+      return !!(b && b.textos && Object.prototype.hasOwnProperty.call(b.textos, clave));
+    }
+    function errorDe(tag, clave) {
+      return tieneCambio(tag, clave) ? Q.parsear(CAMPO[clave], borrador[tag].textos[clave]).error || null : null;
+    }
+    function faltanAhora(p) {
+      if (p.gastos_generales) return [];
+      return CAMPOS.filter(function (c) { return c.requerido && efectivo(p.tag, c.clave) == null; })
+        .map(function (c) { return c.etiqueta; });
+    }
+    function textoValor(c, v) {
+      if (v == null) return 'vacío';
+      if (c.tipo === 'fecha') return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v.split('-').reverse().join('-') : String(v);
+      if (typeof v !== 'number') return '«' + v + '»';
+      if (c.tipo === 'fraccion') return Q.mostrar(c, v, LOCALE) + ' %';
+      if (c.tipo === 'entero') return String(v);
+      return formatoCLP(v);
+    }
+
+    // Lo tecleado en un campo. Si vuelve a ser lo que había, deja de ser un cambio.
+    function actualizar(tag, clave, texto) {
+      var c = CAMPO[clave];
+      var b = borrador[tag] || (borrador[tag] = { textos: {}, valores: {} });
+      b.textos = b.textos || {};
+      b.valores = b.valores || {};
+      var r = Q.parsear(c, texto);
+      if (!r.error && Q.iguales(c, r.valor, base(tag, clave))) {
+        delete b.textos[clave];
+        delete b.valores[clave];
+      } else {
+        b.textos[clave] = texto;
+        if (r.error) delete b.valores[clave]; else b.valores[clave] = r.valor;
+      }
+      if (!b.nuevo && !Object.keys(b.textos).length) delete borrador[tag];
+      guardarBorrador();
+    }
+    // Un borrador viejo puede haber quedado igual al tablero nuevo (ya se aplicó), o
+    // apuntar a un proyecto que ya no está. Un «nuevo» que ya existe pasa a ser normal.
+    Object.keys(borrador).forEach(function (tag) {
+      var b = borrador[tag];
+      if (!b || typeof b !== 'object') { delete borrador[tag]; return; }
+      if (b.nuevo && POR_TAG[tag]) delete b.nuevo;
+      if (!b.nuevo && !POR_TAG[tag]) { delete borrador[tag]; return; }
+      Object.keys(b.textos || {}).forEach(function (clave) {
+        if (!CAMPO[clave]) { delete b.textos[clave]; delete (b.valores || {})[clave]; return; }
+        actualizar(tag, clave, b.textos[clave]);
+      });
+      if (borrador[tag] && !borrador[tag].nuevo && !Object.keys(borrador[tag].textos || {}).length) delete borrador[tag];
+    });
+    guardarBorrador();
+
+    // ---- tabla ----
+    var tabla = document.getElementById('ingTabla');
+    var filtro = document.getElementById('ingFiltro');
+    var buscar = document.getElementById('ingBuscar');
+    function enCurso(p) { var a = efectivo(p.tag, '% Avance'); return typeof a !== 'number' || a < 1; }
+    function todasLasFilas() {
+      var nuevos = Object.keys(borrador).filter(function (t) { return borrador[t].nuevo; }).map(function (t) {
+        return { tag: t, nombre: borrador[t].nuevo.nombre, cliente: '', nuevo: true, gastos_generales: false, valores: {} };
+      });
+      function orden(p) { return p.gastos_generales ? 3 : (faltanAhora(p).length ? 0 : (enCurso(p) ? 1 : 2)); }
+      return nuevos.concat(ING.proyectos.slice().sort(function (a, b) {
+        return orden(a) - orden(b) || String(a.nombre).localeCompare(String(b.nombre), 'es');
+      }));
+    }
+    function visibles() {
+      var q = buscar.value.trim().toLowerCase();
+      var f = filtro.value;
+      return todasLasFilas().filter(function (p) {
+        if (q && (p.nombre + ' ' + p.tag + ' ' + (p.cliente || '')).toLowerCase().indexOf(q) < 0) return false;
+        if (f === 'faltan') return faltanAhora(p).length > 0;
+        if (f === 'curso') return !p.gastos_generales && enCurso(p);
+        if (f === 'cambios') return !!borrador[p.tag];
+        return true;
+      });
+    }
+    function encabezado() {
+      var grupos = [];
+      CAMPOS.forEach(function (c) {
+        var g = grupos[grupos.length - 1];
+        if (g && g.nombre === c.grupo) g.n++; else grupos.push({ nombre: c.grupo, n: 1 });
+      });
+      return '<thead><tr><th rowspan="2" class="ing-col-proy">Proyecto</th>' +
+        grupos.map(function (g) { return '<th colspan="' + g.n + '" class="ing-grupo">' + esc(g.nombre) + '</th>'; }).join('') +
+        '</tr><tr>' + CAMPOS.map(function (c) {
+          return '<th title="' + esc('Columna «' + c.columna + '» de la planilla' + (c.requerido ? '. Necesaria para que el proyecto entre al análisis.' : '.')) + '">' +
+            esc(c.etiqueta) + (c.requerido ? '<span class="ing-req" aria-hidden="true">*</span>' : '') + '</th>';
+        }).join('') + '</tr></thead>';
+    }
+    function celdaProyecto(p) {
+      var b = borrador[p.tag];
+      var n = b ? Object.keys(b.textos || {}).length : 0;
+      var faltan = faltanAhora(p);
+      var malos = CAMPOS.filter(function (c) { return errorDe(p.tag, c.clave); }).length;
+      var chips = (p.nuevo ? '<span class="ing-chip nuevo">nuevo</span>' : '') +
+        (p.gastos_generales ? '<span class="ing-chip">gastos internos</span>'
+          : faltan.length ? '<span class="ing-chip falta" title="' + esc('Falta: ' + faltan.join(', ')) + '">faltan ' + faltan.length + '</span>'
+          : '<span class="ing-chip ok">completo</span>') +
+        (n ? '<span class="ing-chip cambio">' + n + (n === 1 ? ' cambio' : ' cambios') + '</span>' : '') +
+        (malos ? '<span class="ing-chip bad">' + malos + ' por corregir</span>' : '');
+      return '<div class="ing-nombre">' + esc(p.nombre) + '</div>' +
+        '<div class="ing-meta"><span class="ing-tag">' + esc(p.tag) + '</span>' + chips + '</div>' +
+        (n || p.nuevo ? '<button type="button" class="ing-deshacer" data-deshacer="' + esc(p.tag) + '">' +
+          (p.nuevo ? 'Quitar este proyecto' : 'Deshacer cambios') + '</button>' : '');
+    }
+    function clasesCampo(p, c) {
+      var falta = c.requerido && !p.gastos_generales && efectivo(p.tag, c.clave) == null;
+      return 'ing-input' + (tieneCambio(p.tag, c.clave) ? ' cambiado' : '') + (errorDe(p.tag, c.clave) ? ' invalido' : '') +
+        (falta ? ' falta' : '');
+    }
+    function tituloCampo(p, c) {
+      var error = errorDe(p.tag, c.clave);
+      if (error) return error;
+      if (tieneCambio(p.tag, c.clave)) return 'Antes: ' + textoValor(c, base(p.tag, c.clave));
+      return 'Columna «' + c.columna + '»';
+    }
+    function campoHtml(p, c) {
+      var b = borrador[p.tag];
+      var actual = base(p.tag, c.clave);
+      var esFecha = c.tipo === 'fecha' && (actual == null || /^\d{4}-\d{2}-\d{2}$/.test(String(actual)) || tieneCambio(p.tag, c.clave));
+      var texto = tieneCambio(p.tag, c.clave) ? b.textos[c.clave] : (c.tipo === 'fecha' ? (actual || '') : Q.mostrar(c, actual, LOCALE));
+      var falta = c.requerido && !p.gastos_generales && efectivo(p.tag, c.clave) == null;
+      var input = '<input type="' + (esFecha ? 'date' : 'text') + '" class="' + clasesCampo(p, c) + '"' +
+        (c.tipo === 'fecha' ? '' : ' inputmode="' + (c.tipo === 'fraccion' ? 'decimal' : 'numeric') + '"') +
+        ' data-tag="' + esc(p.tag) + '" data-clave="' + esc(c.clave) + '" value="' + esc(texto) + '"' +
+        ' placeholder="' + (falta ? 'falta' : '') + '" autocomplete="off"' +
+        ' aria-label="' + esc(c.etiqueta + ' — ' + p.nombre) + '" title="' + esc(tituloCampo(p, c)) + '">';
+      return c.tipo === 'fraccion' ? '<span class="ing-sufijo">' + input + '</span>' : input;
+    }
+    function filaHtml(p) {
+      return '<tr data-tag="' + esc(p.tag) + '"><td class="ing-col-proy">' + celdaProyecto(p) + '</td>' +
+        CAMPOS.map(function (c) { return '<td data-label="' + esc(c.etiqueta) + '">' + campoHtml(p, c) + '</td>'; }).join('') + '</tr>';
+    }
+    function renderTabla() {
+      var filas = visibles();
+      tabla.innerHTML = encabezado() + '<tbody>' + (filas.length ? filas.map(filaHtml).join('')
+        : '<tr><td colspan="' + (CAMPOS.length + 1) + '" class="ing-vacio">Ningún proyecto calza con el filtro.</td></tr>') + '</tbody>';
+      var total = todasLasFilas().length;
+      document.getElementById('ingConteo').textContent = filas.length === total ? total + ' proyectos' : filas.length + ' de ' + total + ' proyectos';
+    }
+    function refrescarFila(tag) {
+      var tr = tabla.querySelector('tr[data-tag="' + tag + '"]');
+      if (!tr) return;
+      var p = POR_TAG[tag] || todasLasFilas().filter(function (x) { return x.tag === tag; })[0];
+      if (!p) return;
+      tr.querySelector('.ing-col-proy').innerHTML = celdaProyecto(p);
+      tr.querySelectorAll('input.ing-input').forEach(function (input) {
+        var c = CAMPO[input.getAttribute('data-clave')];
+        input.className = clasesCampo(p, c);
+        input.title = tituloCampo(p, c);
+        input.placeholder = c.requerido && !p.gastos_generales && efectivo(p.tag, c.clave) == null ? 'falta' : '';
+      });
+    }
+    function renderBarra() {
+      var tags = Object.keys(borrador);
+      var cambios = 0, malos = 0;
+      tags.forEach(function (t) {
+        Object.keys(borrador[t].textos || {}).forEach(function (k) { cambios++; if (errorDe(t, k)) malos++; });
+      });
+      var barra = document.getElementById('ingBarra');
+      barra.hidden = !tags.length;
+      document.getElementById('ingResumen').innerHTML =
+        cambios + (cambios === 1 ? ' cambio' : ' cambios') + ' en ' + tags.length + (tags.length === 1 ? ' proyecto' : ' proyectos') +
+        (malos ? '<span class="tone-bad">' + malos + ' por corregir</span>' : '');
+    }
+    tabla.addEventListener('input', function (evt) {
+      var input = evt.target.closest('input.ing-input');
+      if (!input) return;
+      var tag = input.getAttribute('data-tag');
+      actualizar(tag, input.getAttribute('data-clave'), input.value);
+      refrescarFila(tag);
+      renderBarra();
+    });
+    // Al salir del campo se muestra con el formato del tablero (12.345.678; 35,5).
+    tabla.addEventListener('change', function (evt) {
+      var input = evt.target.closest('input.ing-input');
+      if (!input || input.type === 'date') return;
+      var c = CAMPO[input.getAttribute('data-clave')];
+      var r = Q.parsear(c, input.value);
+      if (!r.error && r.valor != null) {
+        input.value = Q.mostrar(c, r.valor, LOCALE);
+        var tag = input.getAttribute('data-tag');
+        if (tieneCambio(tag, c.clave)) { borrador[tag].textos[c.clave] = input.value; guardarBorrador(); }
+      }
+    });
+    tabla.addEventListener('click', function (evt) {
+      var btn = evt.target.closest('[data-deshacer]');
+      if (!btn) return;
+      delete borrador[btn.getAttribute('data-deshacer')];
+      guardarBorrador();
+      renderTodo();
+    });
+    filtro.addEventListener('change', renderTabla);
+    buscar.addEventListener('input', debounce(renderTabla, 150));
+
+    function renderTodo() { renderTabla(); renderBarra(); renderEnvios(); }
+
+    var mensaje = document.getElementById('ingMensaje');
+    function mostrarMensaje(html, nivel) {
+      mensaje.innerHTML = html;
+      mensaje.className = 'ing-mensaje' + (nivel ? ' ' + nivel : '');
+      mensaje.hidden = false;
+    }
+
+    document.getElementById('ingDescartar').addEventListener('click', function () {
+      if (!window.confirm('¿Descartar todos los cambios sin enviar?')) return;
+      borrador = {};
+      guardarBorrador();
+      renderTodo();
+    });
+
+    // ---- carpeta de intercambio ----
+    var cajaCarpeta = document.getElementById('ingCarpeta');
+    var estadoCarpeta = { disponible: Q.carpeta.disponible(), conectada: false };
+    function pintarCarpeta() {
+      var e = estadoCarpeta;
+      if (!e.disponible) {
+        cajaCarpeta.innerHTML = '<span class="ing-estado warn">Este navegador no abre carpetas</span>' +
+          '<span class="ing-ayuda">En Chrome o Edge de escritorio los envíos se guardan directo en el buzón. Aquí se descargan como archivo.</span>';
+      } else if (!e.conectada) {
+        cajaCarpeta.innerHTML = '<span class="ing-estado">Carpeta de Intercambio sin conectar</span>' +
+          '<span class="ing-ayuda">Elige la biblioteca «Formulación de proyectos - Documentos» de tu OneDrive (la misma que usa el Formulador).</span>' +
+          '<button type="button" class="ing-boton" data-carpeta="conectar">Conectar carpeta</button>';
+      } else if (e.permiso !== 'granted') {
+        cajaCarpeta.innerHTML = '<span class="ing-estado">Carpeta recordada: ' + esc(e.nombre) + '</span>' +
+          '<span class="ing-ayuda">El navegador pide permiso una vez por sesión.</span>' +
+          '<button type="button" class="ing-boton" data-carpeta="permitir">Dar permiso</button>';
+      } else {
+        cajaCarpeta.innerHTML = '<span class="ing-estado ok">✓ Carpeta de Intercambio conectada</span>' +
+          '<button type="button" class="ing-boton" data-carpeta="revisar">Revisar el estado de los envíos</button>';
+      }
+    }
+    function leerEstadoCarpeta() {
+      return Q.carpeta.estado().then(function (e) { estadoCarpeta = e; pintarCarpeta(); return e; })
+        .catch(function () { pintarCarpeta(); return estadoCarpeta; });
+    }
+    // Resultados que publica el Análisis Financiero y lo que sigue en el buzón. Nunca
+    // pide permiso: solo lee si ya lo hay.
+    function refrescarEnvios() {
+      if (!estadoCarpeta.conectada || estadoCarpeta.permiso !== 'granted') return Promise.resolve();
+      return Promise.all([Q.carpeta.resultados(), Q.carpeta.archivosEnBuzon()]).then(function (r) {
+        var res = r[0] || {}, archivos = r[1] || [];
+        envios.forEach(function (e) {
+          if (res[e.id]) e.resultado = { estado: res[e.id].estado, detalle: res[e.id].detalle || [] };
+          e.enBuzon = archivos.some(function (nombre) { return nombre.indexOf(e.id) >= 0; });
+        });
+        guardarEnvios();
+        renderTodo();
+      }).catch(function () {});
+    }
+    // Conectar o pedir permiso (siempre desde un clic): true si quedó lista para escribir.
+    function prepararCarpeta() {
+      return Q.carpeta.estado().then(function (e) {
+        if (!e.conectada) return Q.carpeta.conectar().then(function (e2) { return e2.permiso === 'granted' || Q.carpeta.permitir(); });
+        return e.permiso === 'granted' || Q.carpeta.permitir();
+      }).then(function (ok) { return leerEstadoCarpeta().then(function () { return ok; }); });
+    }
+    cajaCarpeta.addEventListener('click', function (evt) {
+      var btn = evt.target.closest('[data-carpeta]');
+      if (!btn) return;
+      var accion = btn.getAttribute('data-carpeta');
+      (accion === 'revisar' ? Promise.resolve(true) : prepararCarpeta())
+        .then(function (ok) { if (ok) return refrescarEnvios(); })
+        .catch(function (e) { if (!e || e.name !== 'AbortError') mostrarMensaje(esc(e.message || String(e)), 'warn'); });
+    });
+
+    // ---- envíos hechos desde este navegador ----
+    var ESTADOS = {
+      aplicado: ['ok', 'Aplicado en el Excel'], 'sin-cambios': ['ok', 'El Excel ya lo tenía'],
+      pendiente: ['warn', 'Espera una decisión'], rechazado: ['bad', 'Rechazado'], descartado: ['bad', 'Descartado']
+    };
+    function estadoEnvio(e) {
+      if (e.resultado && ESTADOS[e.resultado.estado]) {
+        return { nivel: ESTADOS[e.resultado.estado][0], texto: ESTADOS[e.resultado.estado][1], detalle: (e.resultado.detalle || []).join(' ') };
+      }
+      if (e.enBuzon) return { nivel: 'warn', texto: 'En el buzón: se aplica en la próxima vuelta' };
+      if (Date.parse(e.enviado) <= generadoMs) {
+        var p = POR_TAG[e.tag];
+        var calza = p && Object.keys(e.valores).every(function (k) { return CAMPO[k] && Q.iguales(CAMPO[k], e.valores[k], p.valores[k]); });
+        return calza ? { nivel: 'ok', texto: 'Ya se ve en el tablero' }
+          : { nivel: 'warn', texto: 'No se ve en el tablero', detalle: 'El tablero es posterior al envío pero no muestra estos valores: puede estar esperando una decisión (driver.py intercambio) o no haber llegado al buzón.' };
+      }
+      if (e.via === 'descarga') return { nivel: 'warn', texto: 'Descargado', detalle: 'Falta dejar el archivo en el buzón de la carpeta de Intercambio.' };
+      return { nivel: 'warn', texto: 'Enviado' };
+    }
+    function renderEnvios() {
+      var caja = document.getElementById('ingEnvios');
+      if (!envios.length) { caja.innerHTML = '<p class="chart-note">Todavía no hay envíos desde este navegador.</p>'; return; }
+      caja.innerHTML = '<ul>' + envios.slice().reverse().slice(0, 20).map(function (e) {
+        var est = estadoEnvio(e);
+        var cuando = new Date(Date.parse(e.enviado));
+        var campos = Object.keys(e.valores).map(function (k) {
+          return (CAMPO[k] ? CAMPO[k].etiqueta : k) + ' ' + (CAMPO[k] ? textoValor(CAMPO[k], e.valores[k]) : '');
+        }).join(' · ');
+        return '<li><span class="cuando">' + esc(cuando.toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })) + '</span>' +
+          '<span class="que">' + esc(e.nombre) + ' <span class="ing-tag">' + esc(e.tag) + '</span></span>' +
+          '<span class="campos">' + esc(campos) + '</span>' +
+          badgePill(est.texto, est.nivel) +
+          (est.detalle ? '<span class="detalle">' + esc(est.detalle) + '</span>' : '') + '</li>';
+      }).join('') + '</ul>';
+    }
+
+    // ---- revisar y enviar ----
+    var dialogo = document.getElementById('ingDialogo');
+    var aviso = document.getElementById('ingDialogoAviso');
+    var usuario = document.getElementById('ingUsuario');
+    var btnGuardar = document.getElementById('ingGuardar');
+    var btnDescargar = document.getElementById('ingDescargar');
+    usuario.value = leerLS(CLAVE_USUARIO, '') || '';
+    function nombreDe(tag) { return POR_TAG[tag] ? POR_TAG[tag].nombre : ((borrador[tag] || {}).nuevo || {}).nombre || tag; }
+    function problemas() {
+      var errores = [], advertencias = [];
+      Object.keys(borrador).forEach(function (tag) {
+        var b = borrador[tag];
+        Object.keys(b.textos || {}).forEach(function (k) {
+          var e = errorDe(tag, k);
+          if (e) errores.push(nombreDe(tag) + ' — ' + CAMPO[k].etiqueta + ': ' + e);
+        });
+        if (b.nuevo && !Object.keys(b.valores || {}).length) errores.push(nombreDe(tag) + ': un proyecto nuevo necesita al menos un valor.');
+        var ini = efectivo(tag, 'Fecha de inicio'), cie = efectivo(tag, 'Fecha de cierre');
+        if (typeof ini === 'string' && typeof cie === 'string' && /^\d{4}/.test(ini) && /^\d{4}/.test(cie) && cie < ini) {
+          advertencias.push(nombreDe(tag) + ': la fecha de cierre es anterior a la de inicio.');
+        }
+      });
+      return { errores: errores, advertencias: advertencias };
+    }
+    function abrirRevision() {
+      var html = Object.keys(borrador).map(function (tag) {
+        var b = borrador[tag];
+        var filas = CAMPOS.filter(function (c) { return tieneCambio(tag, c.clave); }).map(function (c) {
+          var error = errorDe(tag, c.clave);
+          return '<tr' + (error ? ' class="ing-error"' : '') + '><td>' + esc(c.etiqueta) + '</td>' +
+            '<td class="num">' + (b.nuevo ? '—' : esc(textoValor(c, base(tag, c.clave)))) + '</td>' +
+            '<td class="num"><strong>' + (error ? esc(b.textos[c.clave] + ' — ' + error) : esc(textoValor(c, b.valores[c.clave]))) + '</strong></td></tr>';
+        }).join('');
+        return '<div class="ing-rev-proy"><div class="ing-rev-titulo">' + esc(nombreDe(tag)) + ' <span class="ing-tag">' + esc(tag) + '</span>' +
+          (b.nuevo ? ' <span class="ing-chip nuevo">nuevo</span>' : '') + '</div>' +
+          '<table class="ing-rev-tabla"><thead><tr><th>Campo</th><th class="num">Hoy</th><th class="num">Nuevo</th></tr></thead><tbody>' +
+          (filas || '<tr class="ing-error"><td colspan="3">Sin valores todavía.</td></tr>') + '</tbody></table></div>';
+      }).join('');
+      document.getElementById('ingDialogoCuerpo').innerHTML = html;
+      var pr = problemas();
+      aviso.className = 'ing-aviso' + (pr.errores.length ? '' : ' warn');
+      aviso.innerHTML = pr.errores.length
+        ? 'Corrige antes de enviar:<br>' + pr.errores.map(esc).join('<br>')
+        : pr.advertencias.map(esc).join('<br>');
+      var n = Object.keys(borrador).length;
+      btnGuardar.disabled = btnDescargar.disabled = !!pr.errores.length;
+      btnGuardar.hidden = !estadoCarpeta.disponible;
+      btnDescargar.textContent = n === 1 ? 'Descargar archivo' : 'Descargar ' + n + ' archivos';
+      document.getElementById('ingDialogoNota').textContent = estadoCarpeta.disponible
+        ? 'Se guarda un archivo por proyecto en el buzón de la carpeta de Intercambio' +
+          (estadoCarpeta.conectada ? '.' : ' (la primera vez hay que elegir la biblioteca «Formulación de proyectos - Documentos»).')
+        : 'Este navegador no puede escribir en la carpeta: descarga los archivos y déjalos en el buzón de Intercambio.';
+      dialogo.showModal();
+    }
+    document.getElementById('ingRevisar').addEventListener('click', function () {
+      leerEstadoCarpeta().then(abrirRevision);
+    });
+    document.getElementById('ingVolver').addEventListener('click', function () { dialogo.close(); });
+
+    function armar() {
+      var nombre = usuario.value.trim();
+      guardarLS(CLAVE_USUARIO, nombre);
+      var limpio = {};
+      Object.keys(borrador).forEach(function (t) { limpio[t] = { valores: borrador[t].valores || {}, nuevo: borrador[t].nuevo }; });
+      var mensajes = Q.armarMensajes(ING, limpio, { usuario: nombre, visto: base });
+      var errores = [];
+      mensajes.forEach(function (m) {
+        QEsquemas.validarMensaje(m, ING.esquemas).forEach(function (e) { errores.push(m.proyecto.tag + ': ' + e); });
+      });
+      return { mensajes: mensajes, errores: errores };
+    }
+    // Cada envío que sale bien deja de estar en el borrador: si falla a la mitad, lo
+    // que queda es exactamente lo que falta enviar.
+    function registrar(m, via, archivo) {
+      envios.push({ id: m.id, tag: m.proyecto.tag, nombre: m.informativo.nombre, valores: m.valores,
+        enviado: m.origen.enviado, via: via, archivo: archivo });
+      guardarEnvios();
+      delete borrador[m.proyecto.tag];
+      guardarBorrador();
+    }
+    function ocupado(si) { btnGuardar.disabled = btnDescargar.disabled = si; }
+    btnGuardar.addEventListener('click', function () {
+      var listo = armar();
+      if (listo.errores.length) { aviso.textContent = listo.errores.join(' · '); return; }
+      ocupado(true);
+      prepararCarpeta().then(function (ok) {
+        if (!ok) throw new Error('Sin permiso para escribir en la carpeta: el navegador lo pidió y no se dio.');
+        return listo.mensajes.reduce(function (cadena, m) {
+          return cadena.then(function () { return Q.carpeta.enviar(m).then(function (archivo) { registrar(m, 'carpeta', archivo); }); });
+        }, Promise.resolve());
+      }).then(function () {
+        dialogo.close();
+        var n = listo.mensajes.length;
+        mostrarMensaje('Listo: ' + n + (n === 1 ? ' envío quedó' : ' envíos quedaron') + ' en el buzón de Intercambio. ' +
+          'El Análisis Financiero los pasa al Excel en su próxima vuelta (cada 2 horas, o al correr /Actualizar_AF); ' +
+          'el tablero los muestra cuando se vuelva a publicar. Abajo puedes revisar en qué quedó cada uno.');
+        renderTodo();
+        return refrescarEnvios();
+      }).catch(function (e) {
+        renderTodo();
+        if (e && e.name === 'AbortError') return;
+        aviso.className = 'ing-aviso';
+        aviso.textContent = (e && e.message) || String(e);
+      }).then(function () { ocupado(false); });
+    });
+    btnDescargar.addEventListener('click', function () {
+      var listo = armar();
+      if (listo.errores.length) { aviso.textContent = listo.errores.join(' · '); return; }
+      ocupado(true);
+      // Uno tras otro: varios a la vez y el navegador puede bloquear las descargas.
+      listo.mensajes.reduce(function (cadena, m, i) {
+        return cadena.then(function () {
+          return new Promise(function (resolver) {
+            setTimeout(function () { Q.descargar(m); registrar(m, 'descarga', Q.nombreArchivo(m)); resolver(); }, i ? 400 : 0);
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        dialogo.close();
+        ocupado(false);
+        var n = listo.mensajes.length;
+        mostrarMensaje('Se ' + (n === 1 ? 'descargó 1 archivo' : 'descargaron ' + n + ' archivos') + '. Déjalos tal cual en la carpeta ' +
+          '<strong>Formulación de proyectos - Documentos › .Herramientas formulación › Intercambio › buzon</strong>, ' +
+          'o pásaselos a quien corre /Actualizar_AF (<code>driver.py intercambio cargar &lt;archivo&gt;</code>).', 'warn');
+        renderTodo();
+      });
+    });
+
+    // ---- proyecto nuevo ----
+    var dlgNuevo = document.getElementById('ingNuevoDialogo');
+    var nuevoTag = document.getElementById('ingNuevoTag');
+    var nuevoNombre = document.getElementById('ingNuevoNombre');
+    var nuevoAviso = document.getElementById('ingNuevoAviso');
+    document.getElementById('ingNuevo').addEventListener('click', function () {
+      nuevoTag.value = ''; nuevoNombre.value = ''; nuevoAviso.textContent = '';
+      dlgNuevo.showModal();
+      nuevoTag.focus();
+    });
+    nuevoTag.addEventListener('input', function () { nuevoTag.value = nuevoTag.value.toUpperCase().replace(/\s+/g, ''); });
+    document.getElementById('ingNuevoCancelar').addEventListener('click', function () { dlgNuevo.close(); });
+    document.getElementById('ingNuevoForm').addEventListener('submit', function (evt) {
+      evt.preventDefault();
+      var tag = nuevoTag.value.trim(), nombre = nuevoNombre.value.trim();
+      var errores = Q.validarNuevo(ING, tag, nombre, Object.keys(borrador));
+      if (errores.length) { nuevoAviso.textContent = errores.join(' '); return; }
+      borrador[tag] = { textos: {}, valores: {}, nuevo: { nombre: nombre } };
+      guardarBorrador();
+      dlgNuevo.close();
+      filtro.value = '';
+      buscar.value = '';
+      renderTodo();
+      var primero = tabla.querySelector('tr[data-tag="' + tag + '"] input.ing-input');
+      if (primero) primero.focus();
+    });
+
+    // ---- abrir un archivo descargado antes ----
+    var inputArchivo = document.getElementById('ingArchivo');
+    document.getElementById('ingAbrir').addEventListener('click', function () { inputArchivo.click(); });
+    inputArchivo.addEventListener('change', function () {
+      var archivos = Array.prototype.slice.call(inputArchivo.files);
+      inputArchivo.value = '';
+      Promise.all(archivos.map(function (f) {
+        return f.text().then(function (t) {
+          try { return { nombre: f.name, m: JSON.parse(t.replace(/^﻿/, '')) }; } catch (e) { return { nombre: f.name, error: 'no es un archivo JSON' }; }
+        });
+      })).then(function (leidos) {
+        var cargados = [], fallas = [];
+        leidos.forEach(function (x) {
+          if (x.error) { fallas.push(x.nombre + ': ' + x.error); return; }
+          var m = x.m;
+          var errores = m && m.tipo === ING.tipo ? QEsquemas.validarMensaje(m, ING.esquemas) : ['no es un ingreso de datos de esta pestaña'];
+          if (errores.length) { fallas.push(x.nombre + ': ' + errores[0]); return; }
+          var tag = m.proyecto.tag;
+          if (!POR_TAG[tag] && !m.proyecto.crear) { fallas.push(x.nombre + ': el proyecto ' + tag + ' no está en el tablero'); return; }
+          if (!POR_TAG[tag]) borrador[tag] = borrador[tag] || { textos: {}, valores: {}, nuevo: { nombre: m.proyecto.nombre } };
+          Object.keys(m.valores).forEach(function (k) {
+            var c = CAMPO[k];
+            actualizar(tag, k, c.tipo === 'fecha' ? (m.valores[k] || '') : Q.mostrar(c, m.valores[k], LOCALE));
+          });
+          cargados.push(nombreDe(tag));
+        });
+        renderTodo();
+        if (cargados.length || fallas.length) {
+          mostrarMensaje((cargados.length ? 'Cargado como cambios sin enviar: ' + esc(cargados.join(', ')) + '. Revísalos y envíalos.' : '') +
+            (fallas.length ? (cargados.length ? '<br>' : '') + 'No se pudo cargar: ' + esc(fallas.join(' · ')) : ''), fallas.length ? 'warn' : '');
+        }
+      });
+    });
+
+    // Desde el aviso de proyectos incompletos: directo a lo que falta.
+    var completar = document.getElementById('pendientesCompletar');
+    completar.style.display = '';
+    completar.addEventListener('click', function () {
+      document.querySelector('.viz-tab-btn[data-tab="tabIngreso"]').click();
+      filtro.value = 'faltan';
+      buscar.value = '';
+      renderTabla();
+    });
+    // Al abrir la pestaña, lo que ya se pueda leer de la carpeta (sin pedir permiso).
+    document.querySelector('.viz-tab-btn[data-tab="tabIngreso"]').addEventListener('click', function () {
+      leerEstadoCarpeta().then(refrescarEnvios);
+    });
+
+    pintarCarpeta();
+    renderTodo();
+    leerEstadoCarpeta();
+  })();
   } // end initApp
 })();
 </script>

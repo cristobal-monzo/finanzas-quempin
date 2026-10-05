@@ -79,7 +79,11 @@ RAIZ_FACTURAS_CL = (RAIZ_FINANZAS / "Centro de Costos" / "Sitio de comunicación
 RAIZ_SISTEMA_QUEMPIN = RAIZ_FINANZAS.parent / "Sistema QUEMPIN"
 PYTHON_SISTEMA_QUEMPIN = os.environ.get("QUEMPIN_PYTHON_SISTEMA", "py -3.11").split()
 
-TIPOS_AF = ("presupuesto-proyecto", "venta-proyecto")
+# Los tipos que atiende Análisis Financiero, leídos del catálogo (cada esquema
+# declara su destino): antes era una lista escrita aquí, y un tipo nuevo
+# (datos-proyecto, 2026-10-02) se habría quedado en el buzón sin disparar el run.
+TIPOS_AF = tuple(sorted(t for t, ficha in esquemas.catalogo()["mensajes"].items()
+                        if ficha.get("destino") == "analisis-financiero"))
 
 
 # ── UTILIDADES ───────────────────────────────────────────────────────────────
