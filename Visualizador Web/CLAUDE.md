@@ -159,6 +159,26 @@ pestañas de módulo; cambiar de país lleva al mismo módulo en el otro país.
   `flujo-de-caja`): su pestaña apunta siempre a Chile, y elegir otro país
   desde ese tablero lleva a Centro de Costos de ese país.
 
+## Menús desplegables con la estética del tablero (2026-10-05)
+
+Pedido del usuario: la lista que abre un `<select>` (la del sistema operativo)
+«no parecía pertenecer al dashboard». Cada template lleva, justo después de
+`.viz-modnav-pais option`, un **bloque CSS idéntico en los 6**: flecha propia
+en todos los `<select>` y, bajo `@supports (appearance: base-select)`, la lista
+abierta dibujada con la paleta del tablero (fondo de tarjeta, opción elegida en
+naranjo con ✓, hover naranjo suave; la del selector de país, oscura como la
+cabecera). Lo dibujan Chrome y Edge desde la versión 135; Safari y Firefox
+siguen con la lista del sistema. Un tablero nuevo copia ese bloque tal cual.
+
+- La regla de `appearance: base-select` tiene que pesar lo mismo que la de la
+  flecha (`:not(.viz-modnav-pais)` incluido): con menos especificidad, la de la
+  flecha (`appearance: none`) le gana y la lista vuelve a ser la del sistema.
+- En ese modo el texto largo no termina en «…»: se corta antes de la flecha
+  (`overflow: clip; overflow-clip-margin: content-box`).
+- El Formulador usa el mismo criterio (`css/styles.css`), y sus campos de texto
+  con lista (N° de requerimiento, cliente) usan su lista propia `.pop` en vez de
+  `<datalist>`, que no admite estilos.
+
 ## Hosting — GitHub Pages (decidido y migrado, 2026-08-05)
 
 Los 3 Claude Artifacts privados se reemplazaron por **un solo sitio en
