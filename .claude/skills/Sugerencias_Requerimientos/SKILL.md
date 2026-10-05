@@ -9,7 +9,10 @@ La Planilla de Ingreso de Requerimientos (raíz de la biblioteca «Formulación
 de proyectos - Documentos») es de las personas. El Formulador y Sistema
 QUEMPIN mandan el mensaje `actualizar-requerimiento` cuando un requerimiento
 pasa a **Ofertado** o **Adjudicado**, con el valor ofertado o adjudicado (IVA
-incluido). **Ninguna herramienta escribe la planilla**: guardarla con
+incluido). Desde el 2026-10-05 el Formulador también avisa **No adjudicado**
+(oferta Perdida) y **Descartado**, sin valor: con los no adjudicados la
+planilla calcula la tasa de adjudicación que usa el Flujo de Caja.
+**Ninguna herramienta escribe la planilla**: guardarla con
 openpyxl borra sus matrices dinámicas y sus imágenes en celdas (medido el
 2026-10-01, ver `Sistema Intercambio/requerimientos.py`). Una persona pasa la
 sugerencia a mano y el procesador del intercambio la cierra sola cuando la
