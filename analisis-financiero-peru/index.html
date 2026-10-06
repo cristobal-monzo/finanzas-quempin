@@ -73,6 +73,17 @@
     --status-good-2:  #5a8f1f;
     --status-warning: #8c5900;
     --status-bad:     #d1282e;
+    /* Ficha del proyecto (2026-10-05): gris = costo, naranjo = margen. El
+       costo es el Cool Gray 11 y lo que falta gastar un paso más claro del
+       mismo gris (el Cool Gray 7 daba 2,9:1 sobre blanco). Validados con
+       dataviz: >= 3:1 sobre la tarjeta y ΔE >= 12 entre vecinos, también
+       simulando daltonismo. --ficha-ppto es solo el fondo de la zona del
+       presupuesto; el borde lo marca una raya oscura. */
+    --ficha-costo:          #54565a;
+    --ficha-costo-tinta:    #ffffff;
+    --ficha-por-gastar:     #8a8a8c;
+    --ficha-por-gastar-tinta: #000000;
+    --ficha-ppto:           #e6e4de;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) .viz-root {
@@ -95,6 +106,11 @@
       --status-good-2:  #8fce6a;
       --status-warning: #d29922;
       --status-bad:     #f85149;
+      --ficha-costo:          #a2a3a6;
+      --ficha-costo-tinta:    #000000;
+      --ficha-por-gastar:     #6b6c70;
+      --ficha-por-gastar-tinta: #ffffff;
+      --ficha-ppto:           #3a3733;
     }
   }
   :root[data-theme="dark"] .viz-root {
@@ -117,6 +133,11 @@
     --status-good-2:  #8fce6a;
     --status-warning: #d29922;
     --status-bad:     #f85149;
+    --ficha-costo:          #a2a3a6;
+    --ficha-costo-tinta:    #000000;
+    --ficha-por-gastar:     #6b6c70;
+    --ficha-por-gastar-tinta: #ffffff;
+    --ficha-ppto:           #3a3733;
   }
 
   * { box-sizing: border-box; }
@@ -249,6 +270,10 @@
   a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
   a.viz-modnav-tab.is-active:hover { background: none; }
   .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
+  /* Enlace a los proyectos (Formulador), a la derecha de los tableros */
+  .viz-modnav-herr { margin-left: auto; flex: 0 0 auto; padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.22); font-size: 12.5px; font-weight: 700; color: #ffffff; text-decoration: none; white-space: nowrap; }
+  .viz-modnav-herr:hover { border-color: #ff5100; background: rgba(255,255,255,0.08); }
+  .viz-modnav-herr:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
   /* En teléfono: una sola fila, con el selector de país fijo a la izquierda
      y solo las pestañas deslizándose de lado (con wrap, el encabezado se
      comía un tercio de la pantalla). */
@@ -461,14 +486,13 @@
   table.viz-itemtable td.num { text-align: right; font-variant-numeric: tabular-nums; }
   table.viz-itemtable tbody tr:last-child td { border-bottom: none; }
   /* Anchos propios para no heredar los nth-child pensados para la tabla
-     Concepto/Proyectado/Real de 3 columnas -- estas dos tienen 7 y 4. */
-  table.viz-itemtable.tabla-costos-categoria { min-width: 620px; }
+     Concepto/Proyectado/Real de 3 columnas -- estas dos tienen 7 y 5. (La
+     de subcategorías pasó a barras en la ficha del proyecto, 2026-10-05.) */
+  /* 720 y no 620: a 620 px una columna de 14 % no alcanzaba para «$12.345.678»
+     y en el teléfono la cifra se partía en dos líneas (se desliza de lado). */
+  table.viz-itemtable.tabla-costos-categoria { min-width: 720px; }
   table.viz-itemtable.tabla-costos-categoria th:nth-child(1) { width: 16%; }
   table.viz-itemtable.tabla-costos-categoria th:nth-child(n+2) { width: 14%; }
-  table.viz-itemtable.tabla-subcategorias th:nth-child(1) { width: 32%; }
-  table.viz-itemtable.tabla-subcategorias th:nth-child(2) { width: 22%; }
-  table.viz-itemtable.tabla-subcategorias th:nth-child(3) { width: 22%; }
-  table.viz-itemtable.tabla-subcategorias th:nth-child(4) { width: 24%; }
   table.viz-itemtable.tabla-proyectos-categoria th:nth-child(1) { width: 28%; }
   table.viz-itemtable.tabla-proyectos-categoria th:nth-child(2) { width: 28%; }
   table.viz-itemtable.tabla-proyectos-categoria th:nth-child(3) { width: 18%; }
@@ -625,6 +649,162 @@
   table.viz-table thead th .orden { font-size: 9px; margin-left: 3px; opacity: 0.55; }
   table.viz-table thead th.es-orden .orden { opacity: 1; color: var(--brand-orange-ink, var(--brand-orange)); }
 
+  /* ---------- Ficha del proyecto (2026-10-05) ----------
+     Lo que se ve al abrir un proyecto. Antes: 11 datos del mismo tamaño y
+     color, la venta y las fechas al fondo del panel, un gráfico que pintaba
+     el presupuesto en naranjo (lo más llamativo) y el gasto en gris, y la
+     misma comparación repetida en la tabla de abajo. Ahora, de arriba abajo:
+     el contexto (estado, fechas, reporte), cuatro cifras grandes (venta,
+     costo, margen y Nota, cada una contra el presupuesto), las alertas, los
+     dos gráficos que explican el resultado y, al final, el detalle. */
+  table.viz-table tbody tr.doc-row { scroll-margin-top: 12px; }
+  .ficha { padding: 14px 16px 16px; }
+  .ficha-cab { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between;
+    padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--gridline); }
+  .ficha-cab-datos { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 12.5px;
+    color: var(--text-secondary); min-width: 0; font-variant-numeric: tabular-nums; }
+  .ficha-estado { display: inline-flex; align-items: center; gap: 8px; color: var(--text-primary); font-weight: 600; }
+  .ficha-chip { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; padding: 2px 9px;
+    border-radius: 999px; background: var(--surface-1); border: 1px solid var(--border-hairline); color: var(--text-secondary); }
+  .ficha-avance { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--ficha-ppto); overflow: hidden; }
+  .ficha-avance > span { display: block; height: 100%; background: var(--ficha-costo); }
+  .ficha-cab-acciones { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+  .ficha-boton { font-family: inherit; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+    border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
+  .ficha-boton:hover { border-color: var(--brand-orange); }
+  /* «Ver la formulación ↗» es un enlace con el aspecto de los botones de la ficha (2026-10-06) */
+  a.ficha-boton { display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap; }
+  /* Llegó un enlace del Formulador con un proyecto que este tablero todavía no trae */
+  .aviso-enlace { background: var(--surface-card); border: 1px solid var(--border-hairline); border-left: 3px solid var(--brand-orange);
+    border-radius: 8px; padding: 10px 14px; margin: 0 0 14px; font-size: 13px; color: var(--text-secondary); }
+  .aviso-enlace b { color: var(--text-primary); }
+  .ficha-cerrar { font-family: inherit; font-size: 12px; font-weight: 600; padding: 6px 4px; border: none; background: none;
+    cursor: pointer; color: var(--text-muted); }
+  .ficha-cerrar:hover { color: var(--text-primary); }
+  .ficha-boton:focus-visible, .ficha-cerrar:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
+  .ficha-sin-pdf { font-size: 12px; color: var(--text-muted); }
+
+  /* Las cuatro cifras. Cifras proporcionales (las tabulares se ven sueltas a
+     este tamaño) y el color solo donde hay un juicio: la diferencia contra el
+     presupuesto y la Nota. */
+  .ficha-cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .ficha-cifra { border: 1px solid var(--border-hairline); border-left-width: 3px; border-radius: 8px; padding: 12px 14px; min-width: 0; }
+  .ficha-cifra.sem-good { border-left-color: var(--status-good); }
+  .ficha-cifra.sem-warn { border-left-color: var(--status-warning); }
+  .ficha-cifra.sem-bad { border-left-color: var(--status-bad); }
+  /* Texto corrido (no flex): en media tarjeta de teléfono «Costo al cierre ·
+     estimado» envuelve como una frase en vez de partirse en columnas. */
+  .ficha-cifra-etq { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); line-height: 1.5; }
+  .ficha-cifra-etq .est { text-transform: none; letter-spacing: 0; font-weight: 600; }
+  .ficha-cifra-etq .info-icon, .ficha-otros .dk .info-icon { vertical-align: middle; position: relative; top: -1px; margin-left: 5px; }
+  .ficha-cifra-valor { font-size: 25px; font-weight: 700; line-height: 1.2; margin: 6px 0 4px; color: var(--text-primary); }
+  .ficha-cifra-valor small { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+  .ficha-cifra-valor.sem-good { color: var(--status-good); }
+  .ficha-cifra-valor.sem-warn { color: var(--status-warning); }
+  .ficha-cifra-valor.sem-bad { color: var(--status-bad); }
+  .ficha-cifra-sub { font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+  .ficha-cifra-sub + .ficha-cifra-sub { margin-top: 3px; }
+  .ficha .alertas-panel { margin: 0 0 14px; }
+
+  /* Tarjetas: resultado y Nota lado a lado; categorías a lo ancho; en qué se
+     gastó y otros indicadores al final. */
+  .ficha-fila { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; margin-bottom: 12px; }
+  .ficha-card { border: 1px solid var(--border-hairline); border-radius: 8px; padding: 14px 16px; min-width: 0; margin-bottom: 12px; }
+  .ficha-fila > .ficha-card { margin-bottom: 0; }
+  .ficha-fila.al-tope { align-items: start; }   /* sin estirar una tarjeta corta junto a una larga */
+  .ficha-h { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
+  .ficha-leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-secondary); }
+  .ficha-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .ficha-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+  .ficha-leyenda i.raya { width: 0; height: 12px; border-left: 2px dashed var(--text-primary); border-radius: 0; }
+  .ficha-leyenda i.linea { width: 0; height: 12px; border-left: 2px solid var(--text-primary); border-radius: 0; }
+  .ficha-leyenda i.ppto { background: var(--ficha-ppto); border-right: 2px solid var(--text-secondary); border-radius: 2px 0 0 2px; }
+  .ficha-pie { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 10px 0 0; }
+  .ficha-pie strong { color: var(--text-primary); }
+  .ficha-card .detail-subheading { margin-top: 16px; }
+
+  /* «De la venta al margen»: cada barra es la venta completa partida en costo
+     y margen. Entre segmentos, 2 px del color de la tarjeta (no una raya). */
+  .fv-fila + .fv-fila { margin-top: 12px; }
+  .fv-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 2px 10px; flex-wrap: wrap; font-size: 12.5px; margin-bottom: 5px; }
+  .fv-nombre { font-weight: 700; }
+  .fv-margen { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .fv-margen strong { color: var(--text-primary); }
+  .fv-barra { position: relative; display: flex; height: 24px; }
+  .fv-seg { height: 100%; flex: 0 0 auto; }
+  .fv-seg + .fv-seg { border-left: 2px solid var(--surface-card); }
+  .fv-seg.fin { border-radius: 0 4px 4px 0; }
+  .fv-seg.costo { background: var(--ficha-costo); }
+  .fv-seg.por-gastar { background: var(--ficha-por-gastar); }
+  .fv-seg.margen { background: var(--brand-orange); }
+  .fv-seg.perdida { background: var(--status-bad); }
+  .fv-marca { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed var(--text-primary); }
+  .fv-venta { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px solid var(--text-primary); }
+
+  /* «Por qué tiene esta nota»: cada componente sobre su máximo de puntos. */
+  .nm + .nm { margin-top: 14px; }
+  .nm-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12.5px; margin-bottom: 5px; }
+  .nm-cab b { font-weight: 700; }
+  .nm-cab small { color: var(--text-muted); font-size: 11.5px; }
+  .nm-pts { color: var(--text-secondary); white-space: nowrap; }
+  .nm-pts strong { font-size: 15px; color: var(--text-primary); }
+  .nm-pista { height: 10px; border-radius: 5px; background: var(--ficha-ppto); overflow: hidden; }
+  .nm-relleno { height: 100%; border-radius: 0 5px 5px 0; }
+  .nm-relleno.good { background: var(--status-good); }
+  .nm-relleno.warn { background: var(--status-warning); }
+  .nm-relleno.bad { background: var(--status-bad); }
+  .nm-texto { font-size: 12px; color: var(--text-secondary); margin-top: 5px; line-height: 1.45; }
+  .nm-total { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--gridline); font-size: 12.5px;
+    color: var(--text-secondary); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .nm-total strong { font-size: 15px; color: var(--text-primary); }
+
+  /* Presupuesto vs real por categoría: la zona clara es el presupuesto (la
+     raya oscura, su borde), la barra gris lo gastado dentro de él y lo rojo
+     lo que se pasó. */
+  .pc-fila { display: grid; grid-template-columns: 104px minmax(0, 1fr) 96px; gap: 10px; align-items: center; font-size: 12.5px; min-height: 26px; }
+  .pc-fila + .pc-fila { margin-top: 4px; }
+  .pc-pista { position: relative; height: 16px; }
+  .pc-ppto { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ficha-ppto); border-right: 2px solid var(--text-secondary); border-radius: 3px 0 0 3px; }
+  .pc-real { position: absolute; left: 0; top: 4px; bottom: 4px; background: var(--ficha-costo); border-radius: 0 3px 3px 0; }
+  .pc-real.con-exceso { border-radius: 0; }
+  .pc-exceso { position: absolute; top: 4px; bottom: 4px; background: var(--status-bad); border-radius: 0 3px 3px 0; }
+  .pc-valor { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* En qué se gastó: subcategorías de las facturas de Centro de Costos. */
+  .sc-fila { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.5fr) auto 50px; gap: 10px; align-items: center; font-size: 12.5px; min-height: 24px; }
+  .sc-fila + .sc-fila { margin-top: 2px; }
+  .sc-nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-grupo { color: var(--text-muted); font-size: 11px; margin-left: 6px; }
+  .sc-pista { height: 10px; }
+  .sc-barra { height: 100%; background: var(--ficha-costo); border-radius: 0 3px 3px 0; }
+  .sc-monto, .sc-pct { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sc-pct { color: var(--text-secondary); }
+
+  .ficha-otros { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px 18px; font-size: 13px; }
+  .ficha-otros .dk { color: var(--text-muted); font-size: 11px; font-weight: 700; line-height: 1.5;
+    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .ficha-otros .dv { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .ficha-otros .dv small { display: block; color: var(--text-muted); font-size: 11.5px; font-weight: 400; margin-top: 1px; }
+
+  @media (max-width: 900px) {
+    .ficha-cifras { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ficha-fila { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .ficha-cifras { gap: 8px; }
+    .ficha-cifra { padding: 10px 11px; }
+    /* Media tarjeta de un teléfono de 360 px: una cifra de ocho dígitos con puntos cabe desde 18 px. Una
+       cifra más larga corta en el punto de miles (<wbr>), nunca entre dígitos. */
+    .ficha-cifra-valor { font-size: clamp(17px, 5vw, 21px); }
+    .ficha-cab-acciones { margin-left: 0; width: 100%; }
+    .ficha-cab-acciones .ficha-boton { flex: 1 1 auto; padding: 10px 12px; }
+    .ficha-cerrar { padding: 10px 8px; }
+    .ficha-card { padding: 12px; }
+    .pc-fila { grid-template-columns: 82px minmax(0, 1fr) 74px; gap: 8px; }
+    .sc-fila { grid-template-columns: minmax(0, 1fr) 56px auto 42px; gap: 8px; }
+    .sc-grupo { display: none; }
+  }
+
   /* ---------- Móvil (2026-09-24) ----------
      Las tablas de 5 a 9 columnas se deslizaban de lado dentro de su caja: en
      390 px se veían 3 columnas, "Universidad de Magallanes" ocupaba 3 líneas
@@ -647,7 +827,7 @@
     .viz-tab-btn { flex: 0 0 auto; }
 
     .kpi-card { min-width: 0; flex-basis: 40%; }
-    /* A 24 px ni "$37.598.914" ni "Mantenimiento" (Categoría líder) cabían en
+    /* A 24 px ni "$12.345.678" ni "Mantenimiento" (Categoría líder) cabían en
        media tarjeta. Guionado y no overflow-wrap: este último partía la cifra
        en dos líneas; el guionado solo corta palabras. */
     .kpi-value { font-size: 21px; -webkit-hyphens: auto; hyphens: auto; }
@@ -898,6 +1078,8 @@
           <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
           <a class="viz-modnav-tab" data-modulo="flujo-de-caja" href="https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/">Flujo<span class="viz-modnav-largo"> de Caja</span></a>
         </div>
+        <!-- Los proyectos, su formulación y su seguimiento (2026-10-06): las demás herramientas del recorrido -->
+        <a class="viz-modnav-herr" href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/" target="_blank" rel="noopener" title="Los proyectos: formulación, cotización y seguimiento de cada oferta">Formulador<span class="viz-modnav-largo"> de proyectos</span> ↗</a>
       </div>
     </nav>
   </header>
@@ -1855,7 +2037,7 @@ var QuempinCandado = (function () {
   return { abrir: abrir, derivar: derivar, descifrar: descifrar };
 })();
 </script>
-<script id="af-data-b64" type="text/plain">{"v":1,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"Ml7VFbpv8EEaLr2b","datos":"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"}</script>
+<script id="af-data-b64" type="text/plain">{"v":1,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"xn1KZ56A2myQnCCA","datos":"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"}</script>
 <script>
 (function () {
   // ---------- theme persistence ----------
@@ -1982,10 +2164,10 @@ var QuempinCandado = (function () {
     };
   }
   // Formato numérico chileno en todo el tablero (auditoría 2026-09-21):
-  // antes los montos usaban es-CL ("$14.563.245") pero los porcentajes
+  // antes los montos usaban es-CL ("$12.345.678") pero los porcentajes
   // toFixed ("39.6%"), mezclando el punto de miles con el punto decimal.
   var MONEDA = DATA.moneda || { simbolo: '$', locale: 'es-CL' };
-  // El signo va antes del símbolo ("-$6.147.756"), no después ("$-6.147.756"),
+  // El signo va antes del símbolo ("-$1.234.567"), no después ("$-1.234.567"),
   // que se lee mal en una columna de montos. Vacío (null) -> "—".
   function formatoCLP(n) {
     if (n == null) return '—';
@@ -2007,11 +2189,11 @@ var QuempinCandado = (function () {
   function formatoPct(n) { return n == null ? '—' : formatoNum(n * 100, 1) + '%'; }
   // Desviación con signo explícito y color. El color iba en clases sem-*,
   // que solo tienen regla bajo .kpi-card: en las tablas no se veía.
+  function tonoDesviacion(n) { return n <= 0 ? 'tone-good' : (n <= 0.15 ? 'tone-warn' : 'tone-bad'); }
   function formatoPctDesviacion(n) {
     // Vacío = sin presupuesto contra qué medir (nunca un 0 % inventado).
     if (n == null) return '<span title="Sin presupuesto en esta categoría: no hay contra qué medir la desviación.">—</span>';
-    var nivel = n <= 0 ? 'tone-good' : (n <= 0.15 ? 'tone-warn' : 'tone-bad');
-    return '<span class="' + nivel + '">' + (n > 0 ? '+' : '') + formatoPct(n) + '</span>';
+    return '<span class="' + tonoDesviacion(n) + '">' + (n > 0 ? '+' : '') + formatoPct(n) + '</span>';
   }
   // Ahorro/Sobrecosto: signo opuesto a la desviacion -- positivo = ahorro (bueno).
   function formatoMontoSigno(n) {
@@ -2102,11 +2284,12 @@ var QuempinCandado = (function () {
   });
 
   // Las tablas se re-dibujan enteras al expandir una fila: sin esto, quien
-  // navega con teclado perdía el foco en cada Enter.
+  // navega con teclado perdía el foco en cada Enter. Sin desplazar: de eso se
+  // encarga llevarAFicha al abrir un proyecto.
   function enfocarFila(tbody, atributo, valor) {
     var filas = tbody.querySelectorAll('tr.doc-row');
     for (var i = 0; i < filas.length; i++) {
-      if (filas[i].getAttribute(atributo) === valor) { filas[i].focus(); return; }
+      if (filas[i].getAttribute(atributo) === valor) { filas[i].focus({ preventScroll: true }); return; }
     }
   }
   function esTeclaDeActivar(evt) {
@@ -2222,26 +2405,6 @@ var QuempinCandado = (function () {
       '" width="160" height="160">' + segs + '</svg><div class="donut-legend">' + legend + '</div></div>';
   }
 
-  function renderBarChartComparativo(containerId, items, labelKey, valorAKey, valorBKey, etiquetaA, etiquetaB) {
-    var el = document.getElementById(containerId);
-    var max = Math.max.apply(null, items.map(function (i) {
-      return Math.max(i[valorAKey], i[valorBKey]);
-    }).concat([1]));
-    var legend = '<div class="donut-legend-row"><span class="donut-swatch" style="background:var(--brand-orange)"></span>' +
-      esc(etiquetaA) + '</div><div class="donut-legend-row"><span class="donut-swatch" style="background:var(--brand-gray-11)"></span>' +
-      esc(etiquetaB) + '</div>';
-    var rows = items.map(function (i) {
-      var pctA = Math.max(0, i[valorAKey]) / max * 100;
-      var pctB = Math.max(0, i[valorBKey]) / max * 100;
-      return '<div class="bar-label" style="margin-top:8px;font-weight:600">' + esc(i[labelKey]) + '</div>' +
-        '<div class="bar-row"><div class="bar-track"><div class="bar-fill" style="width:' + pctA + '%"></div></div>' +
-        '<div class="bar-value">' + formatoCLP(i[valorAKey]) + '</div></div>' +
-        '<div class="bar-row"><div class="bar-track"><div class="bar-fill" style="width:' + pctB + '%;background:var(--brand-gray-11)"></div></div>' +
-        '<div class="bar-value">' + formatoCLP(i[valorBKey]) + '</div></div>';
-    }).join('');
-    el.innerHTML = rows ? ('<div class="donut-legend" style="margin-bottom:8px">' + legend + '</div>' + rows) : '<p>Sin datos.</p>';
-  }
-
   function abrirPdfBlob(base64, nombreArchivo) {
     var binario = atob(base64);
     var bytes = new Uint8Array(binario.length);
@@ -2325,6 +2488,8 @@ var QuempinCandado = (function () {
   })();
 
   var proyectoExpandido = null;
+  // La pestaña «Ingresar datos» con un proyecto ya buscado (la arma iniciarIngreso)
+  var abrirIngresoDe = function () { return false; };
   var CATEGORIAS_COSTO = [
     { key: 'materiales', label: 'Materiales' },
     { key: 'equipos', label: 'Equipos' },
@@ -2351,65 +2516,318 @@ var QuempinCandado = (function () {
       '<td class="num"><strong>' + formatoPct(costoPctVentaTotal) + '</strong></td>' +
       '<td class="num"><strong>' + formatoMontoSigno(p.ahorro_sobrecosto_total) + '</strong></td></tr>';
     return '<div class="viz-tablescroll"><table class="viz-itemtable tabla-costos-categoria"><thead><tr>' +
-      '<th>Concepto</th><th class="num">Proyectado</th><th class="num" title="Costo real registrado a la fecha.">Real</th>' +
-      '<th class="num" title="Real / Proyectado − 1, por categoría. +15% o más = sobregasto relevante en esa categoría.">Desviación %</th>' +
+      '<th>Categoría</th><th class="num" title="Costo proyectado de la planilla.">Presupuesto</th><th class="num" title="Costo real registrado a la fecha.">Real</th>' +
+      '<th class="num" title="Real / Presupuesto − 1, por categoría. +15% o más = sobregasto relevante en esa categoría.">Desviación %</th>' +
       '<th class="num" title="Costo Real de la categoría / Costos Totales Real — las 4 categorías suman 100% del gasto real, sin importar cuán rentable resultó el proyecto.">Estructura %</th>' +
       '<th class="num" title="Costo Real de la categoría / Monto de Venta — qué parte de cada peso vendido se va en esa categoría.">Costo % venta</th>' +
-      '<th class="num" title="Costo Proyectado − Costo Real. Positivo = ahorro (se gastó menos de lo presupuestado); negativo = sobrecosto.">Ahorro/Sobrecosto</th>' +
+      '<th class="num" title="Presupuesto − Real. Positivo = ahorro (se gastó menos de lo presupuestado); negativo = sobrecosto.">Ahorro/Sobrecosto</th>' +
       '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>';
   }
 
-  function tablaSubcategoriasHtml(p) {
-    if (!p.detalle_subcategorias.length) {
-      return '<p style="color:var(--text-muted);font-size:12px;margin-top:10px">' +
-        'Sin gasto detallado por documento en Centro de Costos (proyecto con solo Mano de Obra Real, ingresada a mano).</p>';
+  // ---------- ficha del proyecto (2026-10-05) ----------
+  // Lo que se ve al abrir un proyecto (orden y motivos en el CSS «Ficha del
+  // proyecto»). Cada número sale del snapshot (build_visualizador.py, desde
+  // af); aquí solo se ordena, se compara contra el presupuesto y se dibuja.
+  // Colores: gris = costo, naranjo = margen, rojo = lo que pasa del
+  // presupuesto o de la venta.
+  var PUNTOS_RENTABILIDAD = Math.round(UMBRALES.peso_rentabilidad * 100);
+  var PUNTOS_CONTROL = Math.round(UMBRALES.peso_control * 100);
+
+  function infoHtml(texto) {
+    return '<span class="info-icon" tabindex="0" data-info="' + esc(texto) + '">i</span>';
+  }
+  // Una cifra grande que no cabe corta en el punto de miles, nunca entre dígitos.
+  function cifraGrande(n) { return formatoCLP(n).replace(/\./g, '.<wbr>'); }
+
+  function cabeceraFichaHtml(p) {
+    var estado = p.en_curso
+      ? '<span class="ficha-estado"><span class="ficha-chip">En curso</span>' +
+        '<span class="ficha-avance" aria-hidden="true"><span style="width:' + Math.max(0, Math.min(100, p.avance * 100)) + '%"></span></span>' +
+        formatoPct(p.avance) + ' de avance</span>' +
+        (p.presupuesto_gastado_pct != null ? '<span>' + formatoPct(p.presupuesto_gastado_pct) + ' del presupuesto ya gastado</span>' : '')
+      : '<span class="ficha-estado"><span class="ficha-chip">Terminado</span></span>';
+    var fechas = (p.fecha_inicio || p.fecha_cierre)
+      ? 'Inicio ' + esc(p.fecha_inicio || '—') + ' · Cierre ' + esc(p.fecha_cierre || '—')
+      : 'Sin fechas cargadas';
+    var pdfKey = 'proyecto:' + p.tag;
+    var pdf = DATA.reportes_pdf[pdfKey]
+      ? '<button type="button" class="ficha-boton" data-pdf-key="' + esc(pdfKey) + '">Ver reporte PDF</button>'
+      : '<span class="ficha-sin-pdf">Sin reporte PDF</span>';
+    return '<div class="ficha-cab"><div class="ficha-cab-datos">' + estado +
+      '<span>' + esc(p.categoria || 'Sin categoría') + '</span><span>' + fechas + '</span></div>' +
+      '<div class="ficha-cab-acciones">' + enlaceFormuladorHtml(p) + pdf +
+      '<button type="button" class="ficha-cerrar" data-cerrar-ficha aria-label="Cerrar la ficha del proyecto">Cerrar ✕</button></div></div>';
+  }
+
+  // ---------- el mismo proyecto en el Formulador (2026-10-06) ----------
+  // La ficha abre su formulación, su cotización y su recorrido: por N° de
+  // requerimiento si lo tiene; si no, por TAG (el que usó «Pasar a ejecución»).
+  var FORMULADOR = 'https://cristobal-monzo.github.io/formulacion-proyectos-quempin/';
+  function enlaceFormulador(p) {
+    return FORMULADOR + (p.req ? '#/req/' + encodeURIComponent(p.req) : '#/tag/' + encodeURIComponent(p.tag));
+  }
+  function enlaceFormuladorHtml(p) {
+    return '<a class="ficha-boton" href="' + esc(enlaceFormulador(p)) + '" target="_blank" rel="noopener"' +
+      ' title="Abre este proyecto en el Formulador de proyectos: su formulación, su cotización y su recorrido">Ver la formulación ↗</a>';
+  }
+
+  function cifraHtml(o) {
+    return '<div class="ficha-cifra' + (o.nivel ? ' ' + o.nivel : '') + '">' +
+      '<div class="ficha-cifra-etq">' + o.etiqueta + infoHtml(o.info) + '</div>' +
+      '<div class="ficha-cifra-valor' + (o.nivel ? ' ' + o.nivel : '') + '">' + o.valor + '</div>' +
+      o.lineas.filter(Boolean).map(function (l) { return '<div class="ficha-cifra-sub">' + l + '</div>'; }).join('') +
+      '</div>';
+  }
+
+  // «A 1 punto de Aprobado»: qué tan cerca está del corte siguiente.
+  function distanciaNota(nota) {
+    var cortes = [['Aprobado', UMBRALES.aprobado], ['Bueno', UMBRALES.bueno], ['Excelente', UMBRALES.excelente]];
+    for (var i = 0; i < cortes.length; i++) {
+      if (nota < cortes[i][1]) {
+        var d = cortes[i][1] - nota;
+        return 'A ' + d + (d === 1 ? ' punto' : ' puntos') + ' de «' + cortes[i][0] + '» (' + cortes[i][1] + ')';
+      }
     }
-    var filas = p.detalle_subcategorias.slice().sort(function (a, b) { return b.pct - a.pct; }).map(function (s) {
-      return '<tr><td>' + esc(s.subcategoria) + '</td><td>' + esc(s.bucket) + '</td>' +
-        '<td class="num">' + formatoCLP(s.total) + '</td>' +
-        '<td class="num">' + (s.pct == null ? '—' : formatoPct(s.pct)) + '</td></tr>';
+    return 'Dentro de «Excelente» (desde ' + UMBRALES.excelente + ')';
+  }
+
+  function cifrasFichaHtml(p) {
+    var est = p.en_curso ? ' <span class="est">· estimado</span>' : '';
+    var desv = p.desviacion_estimada_cierre_pct;
+    var dif = p.margen_vs_presupuesto;
+    var lineaDesv = desv == null ? '' : '<span class="' + tonoDesviacion(desv) + '">' +
+      (desv > 0 ? '▲ ' + formatoPct(desv) + ' sobre' : desv < 0 ? '▼ ' + formatoPct(-desv) + ' bajo' : 'Justo en') + '</span> el presupuesto';
+    // El margen que falta es el sobrecosto en pesos: mismo color que la
+    // desviación del costo (un 0,2 % de diferencia no es una alarma roja).
+    var lineaDif = (dif == null || p.margen_proyectado == null) ? '' : (Math.round(dif) === 0
+      ? 'Igual a lo presupuestado (' + formatoPct(p.margen_proyectado_pct) + ')'
+      : '<span class="' + (desv == null ? (dif < 0 ? 'tone-bad' : 'tone-good') : tonoDesviacion(desv)) + '">' +
+        (dif < 0 ? '▼ ' : '▲ ') + formatoCLP(Math.abs(dif)) +
+        (dif < 0 ? ' menos' : ' más') + '</span> que lo presupuestado (' + formatoPct(p.margen_proyectado_pct) + ')');
+    var nivelNota = semanticaNota(p.nota);
+    return '<div class="ficha-cifras">' +
+      cifraHtml({
+        etiqueta: 'Venta <span class="est">· sin IVA</span>', valor: cifraGrande(p.monto_venta),
+        info: 'Monto de Venta del proyecto, sin IVA. Debajo, cuánto pesa en toda la venta cargada en la planilla (también la de proyectos que aún no entran al análisis).',
+        lineas: [p.peso_cartera_pct != null ? formatoPct(p.peso_cartera_pct) + ' de toda la venta cargada' : ''],
+      }) +
+      cifraHtml({
+        etiqueta: 'Costo al cierre' + est, valor: cifraGrande(p.costo_estimado_cierre),
+        info: p.en_curso
+          ? 'Lo gastado hasta hoy más lo que falta ejecutar a precio de presupuesto: costo real + presupuesto × (1 − % avance). Se compara con el presupuesto total del proyecto.'
+          : 'El costo real del proyecto terminado, comparado con su presupuesto total.',
+        lineas: [p.total_proyectado ? 'Presupuesto ' + formatoCLP(p.total_proyectado) : 'Sin presupuesto cargado', lineaDesv],
+      }) +
+      cifraHtml({
+        etiqueta: 'Margen al cierre' + est, valor: cifraGrande(p.margen_estimado_cierre),
+        info: 'Venta − costo al cierre. Debajo, cuánto más o menos margen deja que el presupuestado (venta − presupuesto).',
+        lineas: [p.margen_estimado_cierre_pct != null ? formatoPct(p.margen_estimado_cierre_pct) + ' de la venta' : '', lineaDif],
+      }) +
+      cifraHtml({
+        etiqueta: 'Nota del proyecto', nivel: nivelNota, info: TEXTO_NOTA,
+        valor: p.nota == null ? '—' : p.nota + '<small>/100</small>',
+        lineas: p.nota == null ? ['Sin nota: falta la venta o el presupuesto.']
+          : [badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]), distanciaNota(p.nota)],
+      }) +
+      '</div>';
+  }
+
+  // «De la venta al margen»: cada barra es la venta partida en costo y margen,
+  // una con el presupuesto y otra con el cierre. Lo que se achica o crece el
+  // naranjo entre las dos es el margen perdido o ganado contra lo presupuestado.
+  function ventaMargenHtml(p) {
+    var venta = p.monto_venta;
+    if (!(venta > 0)) return '<p class="ficha-pie">Sin venta cargada: no hay margen que mostrar.</p>';
+    var real = p.total_real || 0, cierre = p.costo_estimado_cierre, plan = p.total_proyectado || 0;
+    var pesimista = p.en_curso ? p.costo_cierre_pesimista : null;
+    var escala = Math.max(venta, plan, cierre || 0, pesimista || 0);
+    function pct(v) { return v / escala * 100; }
+    function barra(partes, marcas) {
+      // Lo que pasa de la venta va en rojo: es pérdida, no costo cubierto.
+      var segs = [], acumulado = 0;
+      partes.forEach(function (parte) {
+        if (!(parte.valor > 0)) return;
+        var desde = acumulado, hasta = acumulado + parte.valor;
+        if (desde < venta) segs.push({ clase: parte.clase, valor: Math.min(hasta, venta) - desde, titulo: parte.titulo });
+        if (hasta > venta) segs.push({ clase: 'perdida', valor: hasta - Math.max(desde, venta), titulo: 'Por sobre la venta: ' + formatoCLP(hasta - Math.max(desde, venta)) });
+        acumulado = hasta;
+      });
+      if (acumulado < venta) segs.push({ clase: 'margen', valor: venta - acumulado, titulo: 'Margen ' + formatoCLP(venta - acumulado) });
+      return '<div class="fv-barra">' + segs.map(function (s, i) {
+        return '<div class="fv-seg ' + s.clase + (i === segs.length - 1 ? ' fin' : '') + '" style="width:' + pct(s.valor) + '%" title="' + esc(s.titulo) + '"></div>';
+      }).join('') + (marcas || '') + '</div>';
+    }
+    function cabecera(nombre, margen, margenPct) {
+      var texto = margen == null ? '—' : margen >= 0
+        ? 'Margen <strong>' + formatoCLP(margen) + '</strong> · ' + formatoPct(margenPct)
+        : '<span class="tone-bad">Pérdida <strong>' + formatoCLP(-margen) + '</strong> · ' + formatoPct(-margenPct) + '</span>';
+      return '<div class="fv-cab"><span class="fv-nombre">' + nombre + '</span><span class="fv-margen">' + texto + '</span></div>';
+    }
+    var marcaVenta = escala > venta ? '<span class="fv-venta" style="left:' + pct(venta) + '%" title="Venta ' + formatoCLP(venta) + '"></span>' : '';
+    var marcaPesimista = pesimista != null
+      ? '<span class="fv-marca" style="left:' + pct(pesimista) + '%" title="Si el gasto siguiera al ritmo actual: costo ' + formatoCLP(pesimista) + '"></span>' : '';
+    var partesCierre = p.en_curso
+      ? [{ clase: 'costo', valor: real, titulo: 'Gastado a la fecha: ' + formatoCLP(real) },
+         { clase: 'por-gastar', valor: (cierre || 0) - real, titulo: 'Falta ejecutar, a precio de presupuesto: ' + formatoCLP((cierre || 0) - real) }]
+      : [{ clase: 'costo', valor: real, titulo: 'Costo real: ' + formatoCLP(real) }];
+    var perdida = (cierre || 0) > venta || plan > venta;
+    var hayMargen = plan < venta || (cierre || 0) < venta;
+    var leyenda = '<div class="ficha-leyenda">' +
+      '<span><i style="background:var(--ficha-costo)"></i>' + (p.en_curso ? 'Gastado a la fecha' : 'Costo') + '</span>' +
+      (p.en_curso ? '<span><i style="background:var(--ficha-por-gastar)"></i>Falta ejecutar (estimado)</span>' : '') +
+      (hayMargen ? '<span><i style="background:var(--brand-orange)"></i>Margen</span>' : '') +
+      (perdida ? '<span><i style="background:var(--status-bad)"></i>Pérdida</span>' : '') +
+      (marcaVenta ? '<span><i class="linea"></i>Venta</span>' : '') +
+      (marcaPesimista ? '<span><i class="raya"></i>Si el gasto sigue al ritmo actual</span>' : '') + '</div>';
+
+    // La historia del gráfico en una frase. Un margen negativo se dice «pérdida».
+    function margenEnPalabras(pctMargen) {
+      return pctMargen < 0 ? 'una pérdida de ' + formatoPct(-pctMargen) : 'un margen de ' + formatoPct(pctMargen);
+    }
+    var frase = '';
+    if (p.margen_proyectado != null && p.margen_vs_presupuesto != null) {
+      var dif = p.margen_vs_presupuesto;
+      frase = 'Se presupuestó ' + margenEnPalabras(p.margen_proyectado_pct) + ' (' + formatoCLP(Math.abs(p.margen_proyectado)) + '); ' +
+        (p.en_curso ? 'con lo gastado hasta hoy y lo que falta a precio de presupuesto, el cierre estimado deja ' : 'el proyecto terminó con ') +
+        margenEnPalabras(p.margen_estimado_cierre_pct) + (Math.round(dif) === 0 ? ', lo mismo que lo presupuestado.'
+          : ': <strong>' + formatoCLP(Math.abs(dif)) + (dif < 0 ? ' menos' : ' más') + '</strong> de margen.');
+      if (p.en_curso && p.margen_cierre_pct_indice != null) {
+        var m = p.margen_cierre_pct_indice, e = p.margen_estimado_cierre_pct;
+        frase += ' Si el gasto siguiera al ritmo actual hasta el final, ' + (m < 0
+          ? 'terminaría con ' + margenEnPalabras(m) + '.'
+          : 'el margen ' + (m < e ? 'bajaría a ' : m > e ? 'subiría a ' : 'quedaría en ') + formatoPct(m) + '.');
+      }
+    }
+    return '<div class="fv-fila">' + cabecera('Presupuesto', p.margen_proyectado, p.margen_proyectado_pct) +
+        barra([{ clase: 'costo', valor: plan, titulo: 'Costo presupuestado: ' + formatoCLP(plan) }], marcaVenta) + '</div>' +
+      '<div class="fv-fila">' + cabecera(p.en_curso ? 'Al cierre (estimado)' : 'Real', p.margen_estimado_cierre, p.margen_estimado_cierre_pct) +
+        barra(partesCierre, marcaVenta + marcaPesimista) + '</div>' +
+      leyenda + (frase ? '<p class="ficha-pie">' + frase + '</p>' : '');
+  }
+
+  // «Por qué tiene esta nota»: rentabilidad sobre 70 y control del presupuesto
+  // sobre 30; los puntos (af.componentes_nota) suman exactamente la Nota.
+  function notaComponentesHtml(p) {
+    if (!p.nota_puntos) return '<p class="ficha-pie">Sin nota: falta la venta o el presupuesto.</p>';
+    function medidor(nombre, puntos, maximo, texto) {
+      var frac = maximo ? puntos / maximo : 0;
+      var nivel = frac * 100 >= UMBRALES.bueno ? 'good' : (frac * 100 >= UMBRALES.aprobado ? 'warn' : 'bad');
+      return '<div class="nm"><div class="nm-cab"><span><b>' + nombre + '</b> <small>· ' + maximo + ' % de la nota</small></span>' +
+        '<span class="nm-pts"><strong>' + puntos + '</strong> de ' + maximo + '</span></div>' +
+        '<div class="nm-pista" role="img" aria-label="' + esc(nombre + ': ' + puntos + ' de ' + maximo + ' puntos') + '">' +
+        '<div class="nm-relleno ' + nivel + '" style="width:' + (frac * 100) + '%"></div></div>' +
+        '<div class="nm-texto">' + texto + '</div></div>';
+    }
+    var m = p.margen_estimado_cierre_pct, d = p.desviacion_estimada_cierre_pct;
+    var objetivo = UMBRALES.margen_objetivo, tope = UMBRALES.sobrecosto_nota_cero;
+    var textoMargen = 'Margen al cierre de ' + formatoPct(m) + (m >= objetivo
+      ? ', sobre el objetivo de ' + formatoPct(objetivo) + '.'
+      : '; el objetivo es ' + formatoPct(objetivo) + '.');
+    var textoControl = d <= 0
+      ? (d < 0 ? formatoPct(-d) + ' bajo el presupuesto' : 'Justo en el presupuesto') + ': puntaje completo.'
+      : formatoPct(d) + ' sobre el presupuesto' + (d >= tope
+        ? ': desde ' + formatoPct(tope) + ' ya no suma puntos.'
+        : '; con ' + formatoPct(tope) + ' no sumaría ninguno.');
+    return medidor('Rentabilidad', p.nota_puntos.rentabilidad, PUNTOS_RENTABILIDAD, textoMargen) +
+      medidor('Control del presupuesto', p.nota_puntos.control, PUNTOS_CONTROL, textoControl) +
+      '<div class="nm-total">' + p.nota_puntos.rentabilidad + ' + ' + p.nota_puntos.control + ' = <strong>' + p.nota + '</strong>' +
+      badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion]) + '</div>';
+  }
+
+  // Presupuesto vs real por categoría, en la misma escala de pesos: la zona
+  // clara es el presupuesto, la barra gris lo gastado y lo rojo lo que se pasó.
+  function categoriasFichaHtml(p) {
+    var filas = CATEGORIAS_COSTO.map(function (c) {
+      return { c: c, proy: Math.max(0, p.costos_proyectados[c.key] || 0), real: Math.max(0, p.costos_reales[c.key] || 0),
+        desv: p.desviacion_pct_categoria[c.key] };
+    });
+    var escala = Math.max.apply(null, filas.map(function (f) { return Math.max(f.proy, f.real); }).concat([1]));
+    var html = filas.map(function (f) {
+      var b = f.proy / escala * 100, r = f.real / escala * 100;
+      var dentro = Math.min(r, b), exceso = Math.max(0, r - b);
+      var valor = f.proy > 0 ? formatoPctDesviacion(f.desv)
+        : (f.real > 0 ? '<span class="tone-warn">sin presupuesto</span>' : '—');
+      var titulo = f.c.label + ': ' + (p.en_curso ? 'gastado a la fecha ' : 'real ') + formatoCLP(f.real) +
+        ' de ' + formatoCLP(f.proy) + ' presupuestados';
+      return '<div class="pc-fila" title="' + esc(titulo) + '"><div>' + f.c.label + '</div><div class="pc-pista">' +
+        (b > 0 ? '<div class="pc-ppto" style="width:' + b + '%"></div>' : '') +
+        (dentro > 0 ? '<div class="pc-real' + (exceso > 0 ? ' con-exceso' : '') + '" style="width:' + dentro + '%"></div>' : '') +
+        (exceso > 0 ? '<div class="pc-exceso" style="left:' + dentro + '%;width:' + exceso + '%"></div>' : '') +
+        '</div><div class="pc-valor">' + valor + '</div></div>';
     }).join('');
-    return '<div class="viz-tablescroll"><table class="viz-itemtable tabla-subcategorias"><thead><tr>' +
-      '<th>Subcategoría</th><th>Bucket</th><th class="num">Total</th>' +
-      '<th class="num" title="Peso de esta subcategoría dentro del gasto detallado del proyecto en Centro de Costos — suma ~100% (no incluye Mano de Obra Real, manual y sin detalle por documento).">% del Total Real</th>' +
-      '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+    var hayExceso = filas.some(function (f) { return f.real > f.proy; });
+    var leyenda = '<div class="ficha-leyenda"><span><i class="ppto"></i>Presupuesto</span>' +
+      '<span><i style="background:var(--ficha-costo)"></i>' + (p.en_curso ? 'Gastado a la fecha' : 'Real') + '</span>' +
+      (hayExceso ? '<span><i style="background:var(--status-bad)"></i>Sobre el presupuesto</span>' : '') + '</div>';
+    var pie = '';
+    if (p.en_curso) {
+      pie = 'Gasto real a la fecha, con ' + formatoPct(p.avance) + ' de avance: lo que falta ejecutar todavía no aparece aquí.';
+    } else if (p.error_presupuesto_pct != null && p.desviacion_pct != null &&
+               p.error_presupuesto_pct >= 0.15 && p.error_presupuesto_pct >= 2 * Math.abs(p.desviacion_pct)) {
+      // Lo que la desviación total esconde (af.error_presupuesto).
+      pie = 'En total el gasto quedó ' + (p.desviacion_pct > 0 ? '+' : '') + formatoPct(p.desviacion_pct) +
+        ' respecto del presupuesto, pero categoría por categoría el presupuesto se equivocó en <strong>' +
+        formatoPct(p.error_presupuesto_pct) + '</strong> de su monto: un error compensó al otro. Es lo que conviene corregir al cotizar el próximo.';
+    }
+    return html + leyenda + (pie ? '<p class="ficha-pie">' + pie + '</p>' : '');
+  }
+
+  // En qué se gastó: las facturas de Centro de Costos por subcategoría.
+  function subcategoriasFichaHtml(p) {
+    if (!p.detalle_subcategorias.length) {
+      return '<p class="ficha-pie">Sin facturas de este proyecto en Centro de Costos: su costo real es solo la Mano de Obra ingresada a mano.</p>';
+    }
+    var filas = p.detalle_subcategorias.slice().sort(function (a, b) { return b.total - a.total; });
+    var max = Math.max.apply(null, filas.map(function (s) { return s.total; }).concat([1]));
+    return filas.map(function (s) {
+      return '<div class="sc-fila" title="' + esc(s.subcategoria + ' (' + s.bucket + '): ' + formatoCLP(s.total)) + '">' +
+        '<div class="sc-nombre">' + esc(s.subcategoria) + '<span class="sc-grupo">' + esc(s.bucket) + '</span></div>' +
+        '<div class="sc-pista"><div class="sc-barra" style="width:' + (Math.max(0, s.total) / max * 100) + '%"></div></div>' +
+        '<div class="sc-monto">' + formatoCLP(s.total) + '</div>' +
+        '<div class="sc-pct">' + (s.pct == null ? '—' : formatoPct(s.pct)) + '</div></div>';
+    }).join('') +
+      '<p class="ficha-pie">Facturas registradas en Centro de Costos; el % es sobre su total. No incluye la Mano de Obra Real, que se ingresa a mano.</p>';
+  }
+
+  function otrosIndicadoresHtml(p) {
+    var items = [];
+    if (p.en_curso) {
+      items.push(['Margen a la fecha', 'Lo gastado hasta hoy contra la venta completa: todavía falta ejecutar parte del proyecto, así que no es el resultado final.',
+        formatoCLP(p.margen_real) + '<small>' + formatoPct(p.margen_neto_pct) + ' de la venta</small>']);
+      items.push(['Escenario pesimista', 'Solo de referencia: el ritmo de gasto actual se mantiene hasta el final (costo al cierre = costo real / % avance). No entra en la Nota.',
+        formatoPct(p.margen_cierre_pct_indice) + ' de margen' +
+        (p.costo_cierre_pesimista != null ? '<small>costo al cierre ' + formatoCLP(p.costo_cierre_pesimista) + '</small>' : '')]);
+    }
+    items.push(['Error del presupuesto', 'Cuánto se equivocó el presupuesto categoría por categoría, sin que un error tape a otro: suma de |real − presupuesto| de las 4 categorías sobre el presupuesto total. 0% = presupuesto clavado.' +
+      (p.en_curso ? ' En curso compara lo gastado a la fecha.' : ''), formatoPct(p.error_presupuesto_pct)]);
+    items.push(['Margen por día', 'Margen Real / días entre Fecha de inicio y Fecha de cierre. Vacío si falta alguna fecha o si el cierre todavía no llega.',
+      p.margen_por_dia == null ? '—<small>en desarrollo o sin fechas</small>' : formatoCLP(p.margen_por_dia) + '/día']);
+    return '<div class="ficha-otros">' + items.map(function (it) {
+      return '<div><div class="dk">' + it[0] + infoHtml(it[1]) + '</div><div class="dv">' + it[2] + '</div></div>';
+    }).join('') + '</div>';
   }
 
   function detalleProyectoHtml(p) {
-    var pdfKey = 'proyecto:' + p.tag;
-    var pdfBtn = DATA.reportes_pdf[pdfKey]
-      ? '<button type="button" class="pendientes-toggle-btn" data-pdf-key="' + esc(pdfKey) + '">Ver/Descargar PDF</button>'
-      : '<span style="color:var(--text-muted);font-size:12px">Sin reporte generado</span>';
-    return '<div class="detail-panel">' +
-      '<div class="detail-grid">' +
-        '<div><div class="dk" title="El real si el proyecto está al 100 %; si sigue en curso, el estimado al cierre: costo real + lo que falta a precio de presupuesto.">Margen al cierre' + (p.en_curso ? ' (estimado)' : '') + '</div><div class="dv accent">' + formatoCLP(p.margen_estimado_cierre) + ' · ' + formatoPct(p.margen_estimado_cierre_pct) + '</div></div>' +
-        (p.en_curso
-          ? '<div><div class="dk" title="Escenario pesimista, solo de referencia: el ritmo de gasto actual se mantiene hasta el final (costo al cierre = costo real / % avance). No entra en la Nota.">Margen al cierre, escenario pesimista</div><div class="dv">' + formatoPct(p.margen_cierre_pct_indice) + '</div></div>' +
-            '<div><div class="dk" title="Lo gastado hasta hoy contra la venta completa: todavía falta ejecutar parte del proyecto, así que no es el resultado final.">Margen a la fecha</div><div class="dv">' + formatoCLP(p.margen_real) + ' · ' + formatoPct(p.margen_neto_pct) + '</div></div>' +
-            '<div><div class="dk">Costo estimado al cierre</div><div class="dv">' + formatoCLP(p.costo_estimado_cierre) + ' de ' + formatoCLP(p.total_proyectado) + ' presupuestados</div></div>'
-          : '') +
-        '<div><div class="dk">Margen Proyectado</div><div class="dv">' + formatoCLP(p.monto_venta - p.total_proyectado) + '</div></div>' +
-        '<div><div class="dk">Desviación al cierre</div><div class="dv">' + formatoPctDesviacion(p.desviacion_estimada_cierre_pct) + '</div></div>' +
-        '<div><div class="dk">Nota / Evaluación</div><div class="dv">' + (p.nota == null ? '—' : p.nota + ' — ' + badgePill(p.evaluacion, NIVEL_EVALUACION[p.evaluacion])) + '</div></div>' +
-        '<div><div class="dk" title="Monto de Venta del proyecto sobre la suma de Monto de Venta de todos los proyectos con venta cargada — mide concentración de riesgo en la cartera.">Peso en cartera de ventas</div><div class="dv">' + formatoPct(p.peso_cartera_pct) + '</div></div>' +
-        '<div><div class="dk" title="Margen Real / días entre Fecha de inicio y Fecha de cierre. Vacío si falta alguna fecha o si el cierre todavía no llega.">Margen por día</div><div class="dv">' + (p.margen_por_dia == null ? '— (en desarrollo o sin fechas)' : formatoCLP(p.margen_por_dia) + '/día') + '</div></div>' +
-      '</div>' +
+    var vs = p.en_curso ? 'cierre estimado' : 'real';
+    return '<div class="detail-panel ficha" role="region" aria-label="' + esc('Ficha de ' + p.nombre) + '">' +
+      cabeceraFichaHtml(p) +
+      cifrasFichaHtml(p) +
       (p.alertas.length
-        ? '<div class="alertas-panel"><div class="detail-subheading">Alertas</div><ul>' +
+        ? '<div class="alertas-panel"><div class="detail-subheading">⚠ Alertas</div><ul>' +
           p.alertas.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>'
         : '') +
-      '<div class="detail-subheading">Costos por categoría' + (p.en_curso ? ' — real a la fecha, con ' + formatoPct(p.avance) + ' de avance' : '') + '</div>' +
-      '<div id="chartComparativo-' + esc(p.tag) + '" style="margin-bottom:12px"></div>' +
-      tablaCostosCategoriaHtml(p) +
-      '<div class="detail-subheading">Detalle real por subcategoría (Centro de Costos)</div>' +
-      tablaSubcategoriasHtml(p) +
-      '<div class="detail-grid" style="margin-top:12px">' +
-        '<div><div class="dk">Monto de Venta</div><div class="dv">' + formatoCLP(p.monto_venta) + '</div></div>' +
-        '<div><div class="dk">Fecha de inicio</div><div class="dv">' + esc(p.fecha_inicio || '—') + '</div></div>' +
-        '<div><div class="dk">Fecha de cierre</div><div class="dv">' + esc(p.fecha_cierre || '—') + '</div></div>' +
-        '<div><div class="dk">Categoría</div><div class="dv">' + esc(p.categoria || 'Sin categoría') + '</div></div>' +
+      '<div class="ficha-fila">' +
+        '<section class="ficha-card"><h4 class="ficha-h">De la venta al margen: presupuesto vs ' + vs + '</h4>' + ventaMargenHtml(p) + '</section>' +
+        '<section class="ficha-card"><h4 class="ficha-h">Por qué tiene esta nota</h4>' + notaComponentesHtml(p) + '</section>' +
       '</div>' +
-      pdfBtn +
+      '<section class="ficha-card"><h4 class="ficha-h">Costos por categoría: presupuesto vs ' + (p.en_curso ? 'gastado a la fecha' : 'real') + '</h4>' +
+        categoriasFichaHtml(p) +
+        '<div class="detail-subheading">Todos los montos por categoría' + (p.en_curso ? ' — real a la fecha' : '') + '</div>' +
+        tablaCostosCategoriaHtml(p) + '</section>' +
+      '<div class="ficha-fila al-tope">' +
+        '<section class="ficha-card"><h4 class="ficha-h">En qué se gastó</h4>' + subcategoriasFichaHtml(p) + '</section>' +
+        '<section class="ficha-card"><h4 class="ficha-h">Otros indicadores</h4>' + otrosIndicadoresHtml(p) + '</section>' +
+      '</div>' +
       '</div>';
   }
 
@@ -2510,17 +2928,12 @@ var QuempinCandado = (function () {
       }
       return fila;
     }).join('');
-    if (proyectoExpandido) {
-      var expandidoEnLista = items.filter(function (x) { return x.tag === proyectoExpandido; })[0];
-      if (expandidoEnLista) {
-        renderBarChartComparativo('chartComparativo-' + proyectoExpandido, [
-          { concepto: 'Materiales', proy: expandidoEnLista.costos_proyectados.materiales, real: expandidoEnLista.costos_reales.materiales },
-          { concepto: 'Equipos', proy: expandidoEnLista.costos_proyectados.equipos, real: expandidoEnLista.costos_reales.equipos },
-          { concepto: 'Mano de Obra', proy: expandidoEnLista.costos_proyectados.mo, real: expandidoEnLista.costos_reales.mo },
-          { concepto: 'Otros', proy: expandidoEnLista.costos_proyectados.otros, real: expandidoEnLista.costos_reales.otros },
-        ], 'concepto', 'proy', 'real', 'Proyectado', 'Real');
-      }
-    }
+    // Las «i» de la ficha nacen con cada dibujo de la tabla: se conectan acá.
+    tbody.querySelectorAll('.detail-row .info-icon').forEach(function (el) {
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', el.getAttribute('data-info'));
+      conectarTooltip(el, function () { return el.getAttribute('data-info'); });
+    });
   }
   marcarOrden();
   renderTablaProyectos(proyectosFiltrados());
@@ -2531,6 +2944,17 @@ var QuempinCandado = (function () {
     var btnPdf = evt.target.closest('[data-pdf-key]');
     if (btnPdf) {
       abrirPdfBlob(DATA.reportes_pdf[btnPdf.getAttribute('data-pdf-key')], btnPdf.getAttribute('data-pdf-key').replace(':', '_') + '.pdf');
+      return;
+    }
+    if (evt.target.closest('[data-cerrar-ficha]')) {
+      var abierto = proyectoExpandido;
+      alternarProyecto(abierto);
+      // Cerrada desde abajo de una ficha larga, la fila puede quedar fuera de la vista.
+      var filaCerrada = filaProyecto(abierto);
+      if (filaCerrada) {
+        if (filaCerrada.getBoundingClientRect().top < 0) filaCerrada.scrollIntoView({ block: 'start' });
+        filaCerrada.focus({ preventScroll: true });
+      }
       return;
     }
     var row = evt.target.closest('tr.doc-row');
@@ -2544,9 +2968,26 @@ var QuempinCandado = (function () {
     alternarProyecto(tag);
     enfocarFila(this, 'data-tag', tag);
   });
+  function filaProyecto(tag) {
+    var filas = document.querySelectorAll('#tablaProyectosBody tr.doc-row');
+    for (var i = 0; i < filas.length; i++) if (filas[i].getAttribute('data-tag') === tag) return filas[i];
+    return null;
+  }
+  // Al abrir un proyecto su fila sube al borde de arriba, con la ficha a la
+  // vista: abierta desde una fila del fondo de la tabla, antes había que bajar
+  // a buscarla. Si la fila ya está arriba, no se mueve nada.
+  function llevarAFicha(tag, siempre) {
+    var fila = filaProyecto(tag);
+    if (!fila) return;
+    var arriba = fila.getBoundingClientRect().top;
+    if (!siempre && arriba >= 0 && arriba <= window.innerHeight * 0.3) return;
+    var quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    fila.scrollIntoView({ block: 'start', behavior: quieto ? 'auto' : 'smooth' });
+  }
   function alternarProyecto(tag) {
     proyectoExpandido = (proyectoExpandido === tag) ? null : tag;
     renderTablaProyectos(proyectosFiltrados());
+    if (proyectoExpandido) llevarAFicha(proyectoExpandido);
   }
 
   // ---------- pestaña Clientes ----------
@@ -2697,8 +3138,11 @@ var QuempinCandado = (function () {
     document.getElementById('buscarProyectos').value = '';
     proyectoExpandido = tag;
     renderTablaProyectos(proyectosFiltrados());
-    var fila = document.querySelector('tr.doc-row[data-tag="' + tag + '"]');
-    if (fila) { fila.scrollIntoView({ block: 'center' }); fila.focus(); }
+    // La fila arriba y la ficha debajo, a la vista (antes la fila quedaba al
+    // centro y la ficha cortada por el borde inferior).
+    llevarAFicha(tag, true);
+    var fila = filaProyecto(tag);
+    if (fila) fila.focus({ preventScroll: true });
   }
 
   // Dispersión: separa las dos preguntas que la Nota junta en un número --
@@ -3490,7 +3934,41 @@ var QuempinCandado = (function () {
     pintarCarpeta();
     renderTodo();
     leerEstadoCarpeta();
+    abrirIngresoDe = function (tag) {
+      if (!POR_TAG[tag]) return false;
+      document.querySelector('.viz-tab-btn[data-tab="tabIngreso"]').click();
+      filtro.value = '';
+      buscar.value = tag;
+      renderTabla();
+      return true;
+    };
   })();
+
+  // ---------- enlace desde otra herramienta: #proyecto=TAG (2026-10-06) ----------
+  // El Formulador lleva aquí al pasar un proyecto a ejecución. Si el proyecto ya
+  // está en el análisis, se abre su ficha; si le faltan datos, «Ingresar datos»
+  // con ese proyecto; si el tablero todavía no lo trae (se agrega cuando se
+  // vuelve a publicar), un aviso que lo dice.
+  function abrirDesdeEnlace() {
+    var m = /^#proyecto=([^&]+)/.exec(location.hash || '');
+    if (!m) return;
+    var tag = decodeURIComponent(m[1]).trim().toUpperCase();
+    var aviso = document.getElementById('avisoEnlace');
+    if (aviso) aviso.remove();
+    if (PROYECTOS.some(function (p) { return p.tag === tag; })) { irAlProyecto(tag); return; }
+    if (abrirIngresoDe(tag)) return;
+    document.querySelector('.viz-tab-btn[data-tab="tabProyectos"]').click();
+    var div = document.createElement('div');
+    div.id = 'avisoEnlace';
+    div.className = 'aviso-enlace';
+    div.setAttribute('role', 'status');
+    div.innerHTML = 'El proyecto <b>' + esc(tag) + '</b> todavía no está en este tablero: aparece cuando se vuelve a publicar ' +
+      '(lo que envió el Formulador se aplica en la carpeta del equipo cada 2 horas).';
+    var destino = document.getElementById('tabProyectos');
+    destino.insertBefore(div, destino.firstChild);
+  }
+  abrirDesdeEnlace();
+  window.addEventListener('hashchange', abrirDesdeEnlace);
   } // end initApp
 })();
 </script>
