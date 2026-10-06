@@ -72,7 +72,8 @@ def libro(tmp_path):
 
 def test_los_campos_de_la_pestana_son_los_del_canal_que_los_aplica(libro):
     ingreso = bv.extraer_datos_saneados(libro)["ingreso"]
-    assert [c["clave"] for c in ingreso["campos"]] == list(pf.CAMPOS_TABLERO)
+    assert [c["clave"] for c in ingreso["campos"]] == [k for k in pf.CAMPOS_TABLERO if k not in bv.FUERA_DE_LA_PESTANA]
+    assert pf.COLUMNA_REQ not in [c["clave"] for c in ingreso["campos"]]   # pedido 2026-10-05: no aporta
     for c in ingreso["campos"]:
         assert (c["columna"], c["tipo"]) == pf.CAMPOS_TABLERO[c["clave"]]
         assert c["requerido"] == (c["columna"] in af.CAMPOS_MANUALES_REQUERIDOS)
@@ -89,7 +90,7 @@ def test_cada_proyecto_trae_sus_valores_como_los_devuelve_el_tablero(libro):
     assert demo["valores"] == {
         "% Avance": 0.35, "Fecha de inicio": "2026-09-01", "Fecha de cierre": None, "Monto de Venta": 5_000_000,
         "Materiales": 1_000_000, "Equipos": 200_000, "Mano de Obra": 450_000, "Otros": 150_000,
-        "Mano de Obra Real": 80_000.4, "N° Requerimiento": 280,
+        "Mano de Obra Real": 80_000.4,
     }
     assert demo["faltan"] == []
     assert medio["valores"]["Fecha de cierre"] == "a confirmar"      # texto escrito a mano: tal cual
@@ -204,7 +205,7 @@ def test_lo_que_arma_la_pestana_lo_acepta_y_lo_aplica_python(libro, tmp_path):
     borrador = {
         "DEMO": {"valores": {"% Avance": 0.6, "Fecha de cierre": "2026-12-15", "Mano de Obra Real": 120000}},
         "MEDIO": {"valores": {"Materiales": 900000, "Fecha de cierre": None}},
-        "NUEVO": {"valores": {"Monto de Venta": 8000000, "N° Requerimiento": 302}, "nuevo": {"nombre": "Obra nueva"}},
+        "NUEVO": {"valores": {"Monto de Venta": 8000000, "Fecha de inicio": "2026-11-02"}, "nuevo": {"nombre": "Obra nueva"}},
         "VACIO": {"valores": {}},
     }
     salida = _node(tmp_path, {"ingreso": ingreso, "borrador": borrador})
@@ -217,7 +218,7 @@ def test_lo_que_arma_la_pestana_lo_acepta_y_lo_aplica_python(libro, tmp_path):
     assert demo["reemplaza"] == {"% Avance": 0.35, "Fecha de cierre": None, "Mano de Obra Real": 80000.4}
     assert medio["reemplaza"] == {"Materiales": None, "Fecha de cierre": "a confirmar"}
     assert nuevo["proyecto"] == {"tag": "NUEVO", "nombre": "Obra nueva", "crear": True}
-    assert nuevo["reemplaza"] == {"Monto de Venta": None, "N° Requerimiento": None}
+    assert nuevo["reemplaza"] == {"Fecha de inicio": None, "Monto de Venta": None}
     assert salida["nombres"][0] == "20261002-100000_tablero-af_datos-proyecto_idprueba0.json"
 
     import openpyxl
@@ -234,10 +235,10 @@ def test_lo_que_se_ve_en_la_pestana_es_lo_que_hay_en_el_excel(libro, tmp_path):
     ingreso = bv.extraer_datos_saneados(libro)["ingreso"]
     demo = ingreso["proyectos"][0]["valores"]
     casos = [["% Avance", demo["% Avance"]], ["Monto de Venta", demo["Monto de Venta"]],
-             ["Mano de Obra Real", demo["Mano de Obra Real"]], ["N° Requerimiento", demo["N° Requerimiento"]],
+             ["Mano de Obra Real", demo["Mano de Obra Real"]],
              ["Fecha de cierre", None], ["Fecha de cierre", "a confirmar"]]
     assert _node(tmp_path, {"ingreso": ingreso, "mostrar": casos})["mostrar"] == [
-        "35", "5.000.000", "80.000", "280", "", "a confirmar"]
+        "35", "5.000.000", "80.000", "", "a confirmar"]
 
 
 @hay_node

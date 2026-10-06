@@ -330,7 +330,12 @@ def calcular_categorias(kpis_proyectos_completos: list[dict]) -> list[dict]:
 # ── PESTAÑA «INGRESAR DATOS» (2026-10-02) ───────────────────────────────────
 # Qué campos se ingresan, de qué tipo y en qué orden lo decide
 # presupuestos_formulador.CAMPOS_TABLERO (el mismo que aplica los envíos); aquí
-# solo se agrega cómo se rotulan en la pestaña.
+# solo se agrega cómo se rotulan en la pestaña y cuáles no se muestran.
+#
+# N° Requerimiento sale de la pestaña (pedido del usuario, 2026-10-05: «no
+# aporta»). El canal lo sigue aceptando: lo completan los envíos del
+# Formulador (`proyecto.req`) y un `datos-proyecto` que lo traiga.
+FUERA_DE_LA_PESTANA = {af.pf.COLUMNA_REQ}
 ROTULOS_INGRESO = {
     "% Avance": ("Avance y plazos", "% Avance"),
     "Fecha de inicio": ("Avance y plazos", "Inicio"),
@@ -341,7 +346,6 @@ ROTULOS_INGRESO = {
     "Mano de Obra": ("Costos proyectados", "Mano de obra"),
     "Otros": ("Costos proyectados", "Otros"),
     "Mano de Obra Real": ("Costo real", "Mano de obra real"),
-    af.pf.COLUMNA_REQ: ("Planilla", "N° req."),
 }
 
 
@@ -373,7 +377,7 @@ def datos_para_ingreso(ws_proyectos, proyectos: list[dict]) -> dict:
         "clave": clave, "columna": col, "tipo": tipo,
         "grupo": ROTULOS_INGRESO[clave][0], "etiqueta": ROTULOS_INGRESO[clave][1],
         "requerido": col in requeridas, "positivo": clave == af.pf.CLAVE_VENTA,
-    } for clave, (col, tipo) in af.pf.CAMPOS_TABLERO.items()]
+    } for clave, (col, tipo) in af.pf.CAMPOS_TABLERO.items() if clave not in FUERA_DE_LA_PESTANA]
     filas = []
     for p in proyectos:
         valores = {c["clave"]: _valor_para_mensaje(ws_proyectos.cell(row=p["fila"], column=columna[c["columna"]]).value)
