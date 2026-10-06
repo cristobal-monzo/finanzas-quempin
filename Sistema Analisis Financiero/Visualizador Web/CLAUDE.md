@@ -305,6 +305,29 @@ desde el tablero».
 - En pantallas de más de 1240 px la tabla usa todo el ancho de la ventana (no
   cabe en los 1.140 px del tablero); bajo 640 px cada proyecto es una tarjeta.
 
+## Enlaces con el Formulador (2026-10-06)
+
+Pedido del usuario: que cada herramienta lleve a la siguiente con el proyecto
+abierto, sin volver a buscarlo.
+
+- **Entrada `#proyecto=<TAG>`** (`abrirDesdeEnlace`, también al cambiar el
+  hash): abre la ficha de ese proyecto; si no está en el análisis pero sí en
+  «Ingresar datos», esa pestaña con el proyecto buscado (`abrirIngresoDe`); si
+  el tablero todavía no lo trae, un aviso (`.aviso-enlace`) que dice cuándo
+  aparece. La usa el Formulador al pasar un proyecto a ejecución y desde su
+  seguimiento.
+- **Salida «Ver la formulación ↗»** en la cabecera de la ficha
+  (`enlaceFormuladorHtml`): abre el Formulador en `#/req/<N°>`, o en
+  `#/tag/<TAG>` si el proyecto no trae N° de requerimiento.
+- **`req` en el snapshot**: `leer_proyectos` lee la columna del N° de
+  requerimiento (`af.pf.COLUMNA_REQ`; `_req` deja 280, 280.0 o «280» como
+  `"280"`, y cualquier otra cosa como `None`) y lo pone en cada proyecto y en
+  los pendientes de «Ingresar datos».
+- Tests: `test_snapshot_trae_el_n_de_requerimiento_para_enlazar_al_formulador`
+  y `test_la_ficha_enlaza_al_formulador_y_el_tablero_abre_enlaces_por_tag`.
+- La cabecera lleva además el enlace «Formulador de proyectos ↗», igual en los
+  6 tableros (ver `../../Visualizador Web/CLAUDE.md` § Navegación).
+
 ## Publicación
 
 GitHub Pages, único canal desde la migración del 2026-08-05 — el Claude

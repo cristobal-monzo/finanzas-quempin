@@ -300,6 +300,37 @@ def test_extraer_datos_saneados_separa_completos_e_incompletos(tmp_path):
     assert re.match(r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$", data["generado"])
 
 
+def test_snapshot_trae_el_n_de_requerimiento_para_enlazar_al_formulador(tmp_path):
+    """2026-10-06: la ficha enlaza al proyecto en el Formulador por su N° de
+    requerimiento (la clave común entre herramientas). La celda puede traer
+    280, 280.0 o «280»; lo que no es un N° queda en None."""
+    ruta = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID", af.pf.COLUMNA_REQ: 280.0},
+        {"TAG proyecto": "CFLI", "Nombre del proyecto": "Cesfam Limache", "Cliente": "Cesfam",
+         "Monto de Venta (sin IVA)": None, af.pf.COLUMNA_REQ: "301"},
+        {"TAG proyecto": "OTRO", "Nombre del proyecto": "Otro", "Cliente": "X", af.pf.COLUMNA_REQ: "sin n°"},
+    ])
+
+    data = bv.extraer_datos_saneados(ruta)
+
+    por_tag = {p["tag"]: p for p in data["proyectos"]}
+    assert por_tag["UMAG"]["req"] == "280"
+    assert por_tag["OTRO"]["req"] is None
+    assert data["pendientes"][0]["tag"] == "CFLI" and data["pendientes"][0]["req"] == "301"
+
+
+def test_la_ficha_enlaza_al_formulador_y_el_tablero_abre_enlaces_por_tag():
+    """La ficha lleva «Ver la formulación ↗» (por N° de requerimiento o por
+    TAG) y #proyecto=TAG, el enlace que deja el Formulador al pasar a
+    ejecución, abre la ficha o «Ingresar datos»."""
+    html = (Path(__file__).resolve().parent.parent / "template.html").read_text(encoding="utf-8")
+    assert "formulacion-proyectos-quempin/" in html
+    assert "'#/req/' + encodeURIComponent(p.req)" in html and "'#/tag/' + encodeURIComponent(p.tag)" in html
+    assert "enlaceFormuladorHtml(p) + pdf" in html, "el enlace va en la cabecera de la ficha"
+    assert "/^#proyecto=([^&]+)/" in html and "window.addEventListener('hashchange', abrirDesdeEnlace)" in html
+    assert "if (abrirIngresoDe(tag)) return;" in html
+
+
 def test_pendientes_dicen_que_campo_falta_y_cuanta_venta_queda_fuera(tmp_path):
     ruta = _wb_con_proyectos(tmp_path, [
         {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},

@@ -124,9 +124,23 @@ def _valores_por_encabezado(p: dict) -> dict:
     return {encabezado: p.get(clave) for encabezado, clave in CLAVE_POR_ENCABEZADO.items()}
 
 
+def _req(valor) -> str | None:
+    """N° de requerimiento como texto de dígitos («280»), o None: la celda
+    puede traer 280, 280.0 o «280»."""
+    if isinstance(valor, bool) or valor is None:
+        return None
+    if isinstance(valor, (int, float)):
+        return str(int(valor)) if float(valor).is_integer() and valor > 0 else None
+    texto = str(valor).strip()
+    return texto if texto.isdigit() else None
+
+
 def leer_proyectos(ws_proyectos) -> list[dict]:
     """Lee todas las filas validas (TAG y Nombre no vacios) de 'Proyectos'
-    con sus columnas manuales crudas -- solo lectura, nunca toca el Excel."""
+    con sus columnas manuales crudas -- solo lectura, nunca toca el Excel.
+    También el N° de requerimiento (2026-10-06): con él la ficha enlaza al
+    proyecto en el Formulador."""
+    col_req = (af.HEADERS_PROYECTOS.index(af.pf.COLUMNA_REQ) + 1) if af.pf.COLUMNA_REQ in af.HEADERS_PROYECTOS else None
     proyectos = []
     for fila in range(2, ws_proyectos.max_row + 1):
         valores = af.valores_fila_proyectos(ws_proyectos, fila)
@@ -134,6 +148,7 @@ def leer_proyectos(ws_proyectos) -> list[dict]:
             continue
         p = {"fila": fila}
         p.update({clave: valores[encabezado] for encabezado, clave in CLAVE_POR_ENCABEZADO.items()})
+        p["req"] = _req(ws_proyectos.cell(row=fila, column=col_req).value) if col_req else None
         proyectos.append(p)
     return proyectos
 
@@ -241,6 +256,7 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict, hoy: date | None = None
     venta = k["Monto de Venta (sin IVA)"]
     return {
         "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "avance": avance,
+        "req": p.get("req"),
         "en_curso": avance is not None and avance < 1,
         "fecha_inicio": _fecha_str(p["fecha_inicio"]), "fecha_cierre": _fecha_str(p["fecha_cierre"]),
         "categoria": p["categoria"],
@@ -472,6 +488,7 @@ def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None =
         elif not es_gastos_generales(p):
             pendientes.append({
                 "tag": p["tag"],
+                "req": p.get("req"),
                 "nombre": p["nombre"],
                 "mensaje": f"{p['nombre']} — Falta ingresar información en 'Análisis de Proyectos'",
                 "link": cfg["url_planilla"],

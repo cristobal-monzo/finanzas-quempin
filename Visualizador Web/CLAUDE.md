@@ -136,6 +136,12 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
   `/centro-de-costos-peru/`, `/analisis-financiero/`,
   `/cotizador-historico/`, `/flujo-de-caja/`) — no deberían cambiar nunca, a diferencia de los
   links opacos de Artifact que sí podían regenerarse por error.
+- **Desde el 2026-10-06 es «Herramientas QUEMPIN»** (pedido del usuario: que
+  las herramientas se sientan como un solo recorrido). Arriba, el botón «Abrir
+  el Formulador de proyectos →» (ahí empieza cada proyecto) y las seis etapas
+  del recorrido, cada una con la herramienta que la hace; Sistema QUEMPIN es un
+  programa del computador, así que se nombra pero no se enlaza. Abajo, las
+  tarjetas de los tableros con la etapa a la que sirven. Sigue sin datos.
 
 ## Navegación entre tableros: selector de país + 3 pestañas (2026-10-01)
 
@@ -158,6 +164,11 @@ pestañas de módulo; cambiar de país lleva al mismo módulo en el otro país.
 - Un módulo que existe solo para Chile va en `SOLO_CHILE` del JS (hoy
   `flujo-de-caja`): su pestaña apunta siempre a Chile, y elegir otro país
   desde ese tablero lleva a Centro de Costos de ese país.
+- **Enlace «Formulador de proyectos ↗»** (`a.viz-modnav-herr`, 2026-10-06), a
+  la derecha de las pestañas, dentro del mismo HTML idéntico de los 6
+  templates (con su CSS): lleva a los proyectos, su formulación y su
+  seguimiento, en pestaña nueva. En pantallas angostas dice solo
+  «Formulador ↗» (`.viz-modnav-largo`).
 
 ## Menús desplegables con la estética del tablero (2026-10-05)
 

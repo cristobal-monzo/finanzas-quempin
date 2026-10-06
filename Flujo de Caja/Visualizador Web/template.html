@@ -222,6 +222,10 @@ __FC_FUENTES__
   a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
   a.viz-modnav-tab.is-active:hover { background: none; }
   .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
+  /* Enlace a los proyectos (Formulador), a la derecha de los tableros */
+  .viz-modnav-herr { margin-left: auto; flex: 0 0 auto; padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.22); font-size: 12.5px; font-weight: 700; color: #ffffff; text-decoration: none; white-space: nowrap; }
+  .viz-modnav-herr:hover { border-color: #ff5100; background: rgba(255,255,255,0.08); }
+  .viz-modnav-herr:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
   /* En teléfono: una sola fila, con el selector de país fijo a la izquierda
      y solo las pestañas deslizándose de lado (con wrap, el encabezado se
      comía un tercio de la pantalla). */
@@ -412,6 +416,8 @@ __FC_FUENTES__
           <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
           <a class="viz-modnav-tab" data-modulo="flujo-de-caja" href="https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/">Flujo<span class="viz-modnav-largo"> de Caja</span></a>
         </div>
+        <!-- Los proyectos, su formulación y su seguimiento (2026-10-06): las demás herramientas del recorrido -->
+        <a class="viz-modnav-herr" href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/" target="_blank" rel="noopener" title="Los proyectos: formulación, cotización y seguimiento de cada oferta">Formulador<span class="viz-modnav-largo"> de proyectos</span> ↗</a>
       </div>
     </nav>
   </header>
