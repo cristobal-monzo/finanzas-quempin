@@ -217,6 +217,11 @@
   .hub-recorrido p.hr-donde { font-size: 12px; font-weight: 700; color: var(--brand-orange-ink); margin-bottom: 4px; }
   .hub-recorrido p.hr-donde a { color: var(--brand-orange-ink); }
   .hub-card .hub-etapa { margin: -4px 0 0; font-size: 12px; font-weight: 700; color: var(--brand-orange-ink); }
+  .hub-recorrido-pliegue { border-top: 1px solid var(--border-hairline); margin-top: 20px; padding-top: 14px; }
+  .hub-recorrido-pliegue summary { cursor: pointer; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+  .hub-recorrido-pliegue summary:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
+  .hub-recorrido-pliegue .hub-recorrido-intro { font-size: 13.5px; color: var(--text-secondary); line-height: 1.6; margin: 12px 0 0; }
+  .hub-recorrido-pliegue .hub-recorrido-intro strong { color: var(--text-primary); }
   @media (max-width: 900px) { .hub-recorrido { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .hub-recorrido { grid-template-columns: 1fr; } .hub-hero .hub-cta { display: block; text-align: center; } }
 
@@ -255,19 +260,8 @@
 
   <div class="viz-container">
     <div class="hub-hero">
-      <p>Un proyecto pasa por seis etapas y cada herramienta hace una. <strong>Empieza en el Formulador</strong>: ahí se crea el proyecto, y su barra dice siempre en qué etapa va y qué sigue, con un botón a la herramienta que corresponde.</p>
       <a class="btn hub-cta" href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/">Abrir el Formulador de proyectos →</a>
     </div>
-
-    <h2 class="hub-section-title">El recorrido de un proyecto</h2>
-    <ol class="hub-recorrido">
-      <li><span class="hr-n">1</span><div><h3>Requerimiento</h3><p class="hr-donde">Planilla de Ingreso · SharePoint</p><p>Le da su N°: la clave que une el proyecto en todas las herramientas.</p></div></li>
-      <li class="aqui"><span class="hr-n">2</span><div><h3>Formulación</h3><p class="hr-donde"><a href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/">Formulador de proyectos</a></p><p>Costos, precio y evaluación. El Excel queda al día en la carpeta de la oferta.</p></div></li>
-      <li><span class="hr-n">3</span><div><h3>Cotización</h3><p class="hr-donde">Sistema QUEMPIN · programa del computador</p><p>Emite la cotización con su número y su PDF, desde el borrador que prepara el Formulador. Se abre con <strong>QUEMPIN.exe</strong>, en la carpeta compartida del equipo.</p></div></li>
-      <li class="aqui"><span class="hr-n">4</span><div><h3>Oferta y adjudicación</h3><p class="hr-donde"><a href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/">Formulador de proyectos</a></p><p>Se marca Enviada, Adjudicada o Perdida; el estado y el valor van a la Planilla de Ingreso.</p></div></li>
-      <li><span class="hr-n">5</span><div><h3>Ejecución</h3><p class="hr-donde"><a href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a> y <a href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/">Centro de Costos</a></p><p>Recibe los costos y la venta; las facturas registran el gasto real.</p></div></li>
-      <li><span class="hr-n">6</span><div><h3>Cierre</h3><p class="hr-donde"><a href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a></p><p>Lo gastado frente a lo presupuestado vuelve al Formulador para las próximas ofertas.</p></div></li>
-    </ol>
 
     <h2 class="hub-section-title">Tableros</h2>
     <div class="hub-grid">
@@ -303,6 +297,20 @@
         <a class="btn" href="https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/">Abrir tablero →</a>
       </article>
     </div>
+
+    <!-- El recorrido (2026-10-06): plegado al final; la página es de acceso rápido -->
+    <details class="hub-recorrido-pliegue">
+      <summary>El recorrido de un proyecto</summary>
+      <p class="hub-recorrido-intro">Un proyecto pasa por seis etapas y cada herramienta hace una. <strong>Empieza en el Formulador</strong>: ahí se crea el proyecto, y su barra dice siempre en qué etapa va y qué sigue, con un botón a la herramienta que corresponde.</p>
+      <ol class="hub-recorrido">
+        <li><span class="hr-n">1</span><div><h3>Requerimiento</h3><p class="hr-donde">Planilla de Ingreso · SharePoint</p><p>Le da su N°: la clave que une el proyecto en todas las herramientas.</p></div></li>
+        <li class="aqui"><span class="hr-n">2</span><div><h3>Formulación</h3><p class="hr-donde"><a href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/">Formulador de proyectos</a></p><p>Costos, precio y evaluación. El Excel queda al día en la carpeta de la oferta.</p></div></li>
+        <li><span class="hr-n">3</span><div><h3>Cotización</h3><p class="hr-donde">Sistema QUEMPIN · programa del computador</p><p>Emite la cotización con su número y su PDF, desde el borrador que prepara el Formulador. Se abre con <strong>QUEMPIN.exe</strong>, en la carpeta compartida del equipo.</p></div></li>
+        <li class="aqui"><span class="hr-n">4</span><div><h3>Oferta y adjudicación</h3><p class="hr-donde"><a href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/">Formulador de proyectos</a></p><p>Se marca Enviada, Adjudicada o Perdida; el estado y el valor van a la Planilla de Ingreso.</p></div></li>
+        <li><span class="hr-n">5</span><div><h3>Ejecución</h3><p class="hr-donde"><a href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a> y <a href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/">Centro de Costos</a></p><p>Recibe los costos y la venta; las facturas registran el gasto real.</p></div></li>
+        <li><span class="hr-n">6</span><div><h3>Cierre</h3><p class="hr-donde"><a href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis Financiero</a></p><p>Lo gastado frente a lo presupuestado vuelve al Formulador para las próximas ofertas.</p></div></li>
+      </ol>
+    </details>
 
     <!-- Publicación: GitHub Pages, rama gh-pages (se actualiza al republicar un tablero). Este índice no
          lleva datos; los tableros los traen cifrados con la contraseña del equipo (Visualizador Web/candado.py). -->
