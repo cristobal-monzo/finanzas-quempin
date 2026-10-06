@@ -36,6 +36,10 @@ def test_main_pe_corre_sin_errores_sobre_arbol_vacio(tmp_path, monkeypatch, caps
     pe_cfg["ruta_excel_sitio_comunicacion"] = None
     pe_cfg["ruta_visualizador_web"] = tmp_path / "Visualizador Web"
     monkeypatch.setitem(acc.PAISES, "PE", pe_cfg)
+    # PASO 12d carga Analisis Financiero aparte y corre su ejecutar(pais="PE")
+    # con SUS rutas reales: reescribia el Excel y el tablero reales de AF Peru
+    # en cada corrida de la suite (encontrado 2026-10-05).
+    monkeypatch.setattr(acc, "actualizar_analisis_financiero", lambda pais="CL": True)
 
     acc.main(pais="PE")
 

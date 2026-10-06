@@ -74,7 +74,11 @@ def main(argv=None) -> int:
             print("\n[ERROR] No se escribió el Excel (ver avisos).")
             return 1
         print(f"\n[OK] Excel: {datos['excel']}")
-    print(f"[OK] Tablero: {bv.construir(datos)}")
+    try:
+        print(f"[OK] Tablero: {bv.construir(datos)}")
+    except bv.candado.SinContrasena as error:
+        print(f"[ERROR] Tablero no generado: {error}")
+        return 1
     return 0
 
 

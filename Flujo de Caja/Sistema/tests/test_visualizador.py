@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """El tablero de Flujo de Caja se arma con datos sintéticos y lleva la marca."""
-import base64
-import json
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -18,7 +17,7 @@ def test_construir_inyecta_datos_fuentes_y_logo(tmp_path):
     for marcador in bv.MARCADORES:
         assert marcador not in html
     assert "@font-face" in html and 'src="data:image/png;base64,' in html
-    b64 = html.split('id="fc-data-b64" type="text/plain">')[1].split("<")[0]
-    assert json.loads(base64.b64decode(b64))["hoy"] == "2026-10-01"
-    assert 'data-nav-activo="flujo-de-caja"' in html and "combustion" in html
+    publicados = bv.candado.leer_datos(html, "fc-data-b64", os.environ[bv.candado.VARIABLE_CONTRASENA])
+    assert publicados["hoy"] == "2026-10-01"                # cifrados con la contraseña de los tableros (2026-10-05)
+    assert 'data-nav-activo="flujo-de-caja"' in html and "QuempinCandado.abrir('fc-data-b64', initApp);" in html
     assert 'id="optSaldo"' in html          # el saldo inicial se puede probar en el tablero (2026-10-02)

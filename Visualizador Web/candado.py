@@ -1,0 +1,144 @@
+# -*- coding: utf-8 -*-
+"""Candado de los tableros publicados: sus datos viajan cifrados con la contraseña.
+
+Por que existe (2026-10-05): el sitio de GitHub Pages y su repo son publicos, y
+hasta esta fecha cada tablero llevaba sus datos solo codificados en base64, con
+la contrasena escrita en claro en el propio HTML (y en las plantillas
+versionadas). Cualquiera con el link podia leer todas las cifras sin saberla, y
+el clasificador de permisos de Claude Code empezo a bloquear el push por eso.
+
+Ahora cada build guarda en el HTML un "sobre" con los datos cifrados
+(AES-256-GCM, clave derivada de la contrasena con PBKDF2-SHA256) y candado.js
+los abre en el navegador. La contrasena no esta en ningun archivo versionado ni
+publicado: sin ella, lo publicado es ilegible.
+
+La contrasena se lee, en este orden, de:
+1. la variable de entorno QUEMPIN_TABLEROS_CONTRASENA (los tests la fijan, ver
+   conftest.py de la raiz);
+2. el archivo .contrasena_tableros en la raiz del repo (una linea; gitignored).
+Si no hay ninguna, el build falla: nunca se genera un tablero sin cifrar.
+
+Cambiar la contrasena: editar ese archivo, regenerar y publicar los 7 tableros.
+Un navegador que recordaba la anterior la vuelve a pedir solo.
+"""
+import base64
+import functools
+import hashlib
+import json
+import os
+import re
+import secrets
+import unicodedata
+from pathlib import Path
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+RAIZ_REPO = Path(__file__).resolve().parents[1]
+RUTA_CONTRASENA = RAIZ_REPO / ".contrasena_tableros"
+VARIABLE_CONTRASENA = "QUEMPIN_TABLEROS_CONTRASENA"
+RUTA_JS = Path(__file__).resolve().with_name("candado.js")
+MARCADOR_JS = "__CANDADO_JS__"
+
+# La sal es publica (va en el sobre) y es la misma en los 7 tableros: asi la
+# clave que el navegador recuerda al escribir la contrasena en uno abre tambien
+# los demas, como hacia la barrera anterior.
+SAL = b"quempin-tableros-2026"
+# PBKDF2-SHA256 con 600.000 iteraciones (recomendacion OWASP 2023): en un
+# telefono tarda menos de un par de segundos, una sola vez por navegador.
+ITERACIONES = 600_000
+
+
+class SinContrasena(RuntimeError):
+    """No hay contrasena de los tableros configurada en este equipo."""
+
+
+def normalizar(contrasena: str) -> str:
+    """Igual que normalizar() de candado.js: sin mayusculas, tildes ni espacios en los extremos."""
+    s = unicodedata.normalize("NFD", str(contrasena).lower())
+    return "".join(c for c in s if not "\u0300" <= c <= "\u036f").strip()
+
+
+def leer_contrasena() -> str:
+    valor = os.environ.get(VARIABLE_CONTRASENA)
+    if valor is None and RUTA_CONTRASENA.exists():
+        valor = RUTA_CONTRASENA.read_text(encoding="utf-8").strip()
+    if not valor or not normalizar(valor):
+        raise SinContrasena(
+            f"No hay contraseña de los tableros en este equipo: escríbela en una línea en "
+            f"{RUTA_CONTRASENA} (no se versiona) o en la variable de entorno {VARIABLE_CONTRASENA}."
+        )
+    return valor
+
+
+@functools.lru_cache(maxsize=8)
+def derivar_clave(contrasena: str, sal: bytes = SAL, iteraciones: int = ITERACIONES) -> bytes:
+    return hashlib.pbkdf2_hmac("sha256", normalizar(contrasena).encode("utf-8"), sal, iteraciones, 32)
+
+
+def _b64(datos: bytes) -> str:
+    return base64.b64encode(datos).decode("ascii")
+
+
+def cifrar(texto: str, contrasena: str | None = None) -> str:
+    """El sobre (JSON de una linea, solo ASCII) que va en el HTML en lugar de los datos."""
+    if contrasena is None:
+        contrasena = leer_contrasena()
+    iv = secrets.token_bytes(12)
+    cifrado = AESGCM(derivar_clave(contrasena)).encrypt(iv, texto.encode("utf-8"), None)
+    return json.dumps({"v": 1, "kdf": "PBKDF2-SHA256", "it": ITERACIONES, "sal": _b64(SAL),
+                       "iv": _b64(iv), "datos": _b64(cifrado)}, separators=(",", ":"))
+
+
+def descifrar(sobre: str, contrasena: str) -> str:
+    """Inverso de cifrar(). Con otra contrasena levanta cryptography.exceptions.InvalidTag."""
+    s = json.loads(sobre)
+    clave = derivar_clave(contrasena, base64.b64decode(s["sal"]), s["it"])
+    return AESGCM(clave).decrypt(base64.b64decode(s["iv"]), base64.b64decode(s["datos"]), None).decode("utf-8")
+
+
+def incrustar(html: str, marcador_datos: str, texto: str, contrasena: str | None = None) -> str:
+    """Pone candado.js y el sobre con `texto` cifrado en la plantilla ya armada.
+
+    Va al final de cada build: el sobre es lo ultimo que se reemplaza, asi
+    ningun texto suyo puede pasar por un marcador.
+    """
+    for marcador in (MARCADOR_JS, marcador_datos):
+        if marcador not in html:
+            raise ValueError(f"la plantilla no tiene el marcador {marcador}")
+    sobre = cifrar(texto, contrasena)
+    return html.replace(MARCADOR_JS, RUTA_JS.read_text(encoding="utf-8")).replace(marcador_datos, sobre)
+
+
+def leer_datos(html: str, id_script: str, contrasena: str):
+    """Los datos que lleva un tablero ya construido (para tests y revisiones)."""
+    m = re.search(r'<script id="' + re.escape(id_script) + r'" type="text/plain">([^<]*)</script>', html)
+    if not m:
+        raise ValueError(f"el HTML no tiene <script id=\"{id_script}\">")
+    return json.loads(descifrar(m.group(1), contrasena))
+
+
+def abre_con(html: str, contrasena: str) -> bool:
+    """True si el tablero trae sus datos en un sobre y la contrasena lo abre."""
+    sobres = re.findall(r'<script id="[^"]+" type="text/plain">(\{"v":[^<]*)</script>', html)
+    try:
+        return bool(sobres) and all(json.loads(descifrar(s, contrasena)) is not None for s in sobres)
+    except Exception:
+        return False
+
+
+if __name__ == "__main__":
+    # Paso obligatorio antes de publicar (receta de Visualizador Web/CLAUDE.md
+    # § Hosting): cada tablero tiene que abrir con la contrasena de este equipo.
+    # El 2026-10-05 se publico Analisis Financiero cifrado con la de prueba (los
+    # tests lo habian regenerado entre el build y la copia) y el equipo no podia
+    # abrirlo.
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    contrasena_real = leer_contrasena()
+    rutas = sys.argv[1:]
+    malos = [r for r in rutas if not abre_con(Path(r).read_text(encoding="utf-8"), contrasena_real)]
+    for ruta in rutas:
+        print(f"[{'NO ABRE' if ruta in malos else 'OK'}] {ruta}")
+    if malos:
+        print("No publiques: regenera esos tableros (build_visualizador.py) y vuelve a verificar.")
+    raise SystemExit(1 if malos or not rutas else 0)

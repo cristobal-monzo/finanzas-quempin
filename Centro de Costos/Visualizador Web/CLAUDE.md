@@ -43,14 +43,11 @@ Centro de Costos/Visualizador Web/
   snapshot ya existe con ese formato) si en algún momento se decide
   hacerlo; por ahora el snapshot en `data/` es solo un subproducto auditable
   del build, el HTML no lo lee.
-- **Gate de contraseña** (pedido del usuario 2026-07-19): pantalla previa
-  que pide contraseña antes de mostrar cualquier dato (acepta variantes de
-  mayúsculas/tilde). Es una barrera del lado del cliente, **no seguridad
-  real** — el propio HTML lo dice en su pie de página — solo disuade acceso
-  casual a quien tenga el link. La contraseña vive como constante en
-  `template.html`; los datos van en base64 (no JSON plano) como capa extra
-  liviana, pero siguen siendo recuperables por cualquiera con el HTML —
-  no lo trates como control de acceso real.
+- **Contraseña** (pedido del usuario 2026-07-19): pantalla previa que la
+  pide antes de mostrar cualquier dato (acepta variantes de
+  mayúsculas/tilde). Desde 2026-10-05 los datos van cifrados con ella y no
+  está escrita en la página: ver § "Punto de control de acceso" del
+  [doc maestro](../../Visualizador%20Web/CLAUDE.md).
 - **Publicación**: GitHub Pages, único canal desde la migración del
   2026-08-05 — los Claude Artifacts privados que se usaban antes ya no se
   actualizan (pedido explícito del usuario, 2026-08-19). Receta y comandos

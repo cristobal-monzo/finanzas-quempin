@@ -22,7 +22,6 @@ Uso:
   (o, desde el driver de la skill: python driver.py visualizador --pais PE)
 """
 
-import base64
 import io
 import json
 import re
@@ -38,6 +37,10 @@ RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Centro de Costos Perú.xlsx"
 RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "centro-de-costos-peru.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
+
+# Candado (2026-10-05): los datos van cifrados con la contraseña de los tableros.
+sys.path.insert(0, str(RAIZ.parents[2] / "Visualizador Web"))
+import candado  # noqa: E402
 
 REF_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 # Debe coincidir con ROJO ("C00000") en Centro de Costos/Sistema/
@@ -161,14 +164,15 @@ def build():
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     data_json_text = json.dumps(data, ensure_ascii=False)
-    data_b64 = base64.b64encode(data_json_text.encode("utf-8")).decode("ascii")
 
     with io.open(RUTA_TEMPLATE, "r", encoding="utf-8") as f:
         template = f.read()
-    if "__CC_DATA_B64__" not in template:
-        print("[ERROR] template.html no tiene el placeholder __CC_DATA_B64__")
+    html = template
+    try:
+        html = candado.incrustar(html, "__CC_DATA_B64__", data_json_text)
+    except (ValueError, candado.SinContrasena) as e:
+        print(f"[ERROR] {e}")
         return 1
-    html = template.replace("__CC_DATA_B64__", data_b64)
 
     RUTA_BUILD_HTML.parent.mkdir(parents=True, exist_ok=True)
     with io.open(RUTA_BUILD_HTML, "w", encoding="utf-8") as f:

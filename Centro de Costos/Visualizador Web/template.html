@@ -163,8 +163,8 @@
 
   /* Nav entre tableros — visible solo tras pasar el gate (dentro de
      .viz-root), permite saltar a otro modulo sin re-ingresar la
-     contrasena (los 4 tableros comparten el mismo unlock, ver
-     'quempin_viz_unlocked' mas abajo). */
+     contrasena (los 7 tableros comparten la clave recordada, ver
+     Visualizador Web/candado.js). */
   .viz-modnav {
     border-top: 1px solid rgba(255,255,255,0.14);
     margin-top: 14px;
@@ -275,6 +275,9 @@
     background: #000000; color: #fff; margin-bottom: 10px;
   }
   .viz-gate-card input:focus { outline: 2px solid #ff5100; outline-offset: 1px; }
+  /* Bajo 16 px Safari de iPhone amplía la página al tocar el campo, y el tablero
+     queda ampliado al entrar (2026-10-05: todos escriben la contraseña nueva). */
+  @media (max-width: 640px) { .viz-gate-card input { font-size: 16px; } }
   .viz-gate-card button {
     width: 100%; font-family: inherit; font-size: 13px; font-weight: 900;
     padding: 10px 12px; border-radius: 8px; border: none;
@@ -949,7 +952,7 @@
 
     <p class="viz-footer">
       Datos de <strong>Centro de Costos.xlsx</strong> · última actualización <span id="vizUltimaFooter">—</span> · tablero generado el <span id="vizGeneratedFooter">—</span>.<br>
-      La razón social completa de cada proveedor aparece al expandir la fila. La contraseña es una barrera simple del lado del cliente, no seguridad real: no compartas este link fuera del equipo.
+      La razón social completa de cada proveedor aparece al expandir la fila. Los datos viajan cifrados y solo se abren con la contraseña del equipo: no la compartas fuera de él.
     </p>
   </div>
 
@@ -986,6 +989,9 @@
   </div>
 </div>
 
+<!-- Candado: abre los datos cifrados con la contraseña. Visualizador Web/candado.js,
+     insertado por build_visualizador.py (el original, no una copia). -->
+<script>__CANDADO_JS__</script>
 <script id="cc-data-b64" type="text/plain">__CC_DATA_B64__</script>
 <script>
 (function () {
@@ -1000,56 +1006,9 @@
     }
   } catch (e) {}
 
-  // ---------- password gate ----------
-  // Client-side only — deters casual access via a shared link, not real security
-  // (the encoded data ships in the page either way). See footer note.
-  var GATE_PASSWORD_NORM = 'combustion';
-  function normalizePassword(s) {
-    return String(s == null ? '' : s)
-      .toLowerCase()
-      .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip accents/tildes
-      .trim();
-  }
-  function b64ToUtf8(b64) {
-    var bin = atob(b64.replace(/\s+/g, ''));
-    var bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder('utf-8').decode(bytes);
-  }
-
-  var gate = document.getElementById('pwGate');
-  var gateForm = document.getElementById('pwForm');
-  var gateInput = document.getElementById('pwInput');
-  var gateError = document.getElementById('pwError');
-  var vizRootEl = document.getElementById('vizRoot');
-
-  function unlock() {
-    gate.style.display = 'none';
-    vizRootEl.style.display = '';
-    try { localStorage.setItem('quempin_viz_unlocked', '1'); } catch (e) {}
-    var b64 = document.getElementById('cc-data-b64').textContent;
-    var DATA = JSON.parse(b64ToUtf8(b64));
-    initApp(DATA);
-  }
-
-  gateForm.addEventListener('submit', function (evt) {
-    evt.preventDefault();
-    if (normalizePassword(gateInput.value) === GATE_PASSWORD_NORM) {
-      unlock();
-    } else {
-      gateError.textContent = 'Contraseña incorrecta. Intenta de nuevo.';
-      gateInput.value = '';
-      gateInput.focus();
-    }
-  });
-
-  var alreadyUnlocked = false;
-  try { alreadyUnlocked = localStorage.getItem('quempin_viz_unlocked') === '1'; } catch (e) {}
-  if (alreadyUnlocked) {
-    unlock();
-  } else {
-    gateInput.focus();
-  }
+  // ---------- candado: los datos vienen cifrados (Visualizador Web/candado.js) ----------
+  // Sin la contraseña no se pueden leer: no hay una comparación que saltarse.
+  QuempinCandado.abrir('cc-data-b64', initApp);
 
   // ---------- app (runs only after a correct password) ----------
   function initApp(DATA) {

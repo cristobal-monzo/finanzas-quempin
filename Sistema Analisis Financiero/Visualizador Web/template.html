@@ -170,8 +170,8 @@
 
   /* Nav entre tableros — visible solo tras pasar el gate (dentro de
      .viz-root), permite saltar a otro modulo sin re-ingresar la
-     contrasena (los 4 tableros comparten el mismo unlock, ver
-     'quempin_viz_unlocked' mas abajo). */
+     contrasena (los 7 tableros comparten la clave recordada, ver
+     Visualizador Web/candado.js). */
   .viz-modnav {
     border-top: 1px solid rgba(255,255,255,0.14);
     margin-top: 14px;
@@ -299,6 +299,9 @@
     background: #000000; color: #fff; margin-bottom: 10px;
   }
   .viz-gate-card input:focus { outline: 2px solid #ff5100; outline-offset: 1px; }
+  /* Bajo 16 px Safari de iPhone amplía la página al tocar el campo, y el tablero
+     queda ampliado al entrar (2026-10-05: todos escriben la contraseña nueva). */
+  @media (max-width: 640px) { .viz-gate-card input { font-size: 16px; } }
   .viz-gate-card button {
     width: 100%; font-family: inherit; font-size: 13px; font-weight: 900;
     padding: 10px 12px; border-radius: 8px; border: none;
@@ -644,7 +647,7 @@
     .viz-tab-btn { flex: 0 0 auto; }
 
     .kpi-card { min-width: 0; flex-basis: 40%; }
-    /* A 24 px ni "$37.598.914" ni "Mantenimiento" (Categoría líder) cabían en
+    /* A 24 px ni "$12.345.678" ni "Mantenimiento" (Categoría líder) cabían en
        media tarjeta. Guionado y no overflow-wrap: este último partía la cifra
        en dos líneas; el guionado solo corta palabras. */
     .kpi-value { font-size: 21px; -webkit-hyphens: auto; hyphens: auto; }
@@ -844,6 +847,7 @@
     table.ing-tabla td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px;
       font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
     .ing-input { font-size: 16px; min-width: 0; }
+    .ing-dialogo label input { font-size: 16px; }   /* nombre, TAG y nombre del proyecto nuevo */
     .ing-input[type="date"] { min-width: 0; }
     .ing-barra { bottom: 8px; }
     .ing-barra .ing-acciones { width: 100%; }
@@ -1299,7 +1303,7 @@
     <p class="viz-footer">
       Datos de la planilla <strong>Análisis de Proyectos</strong> (costos reales desde Centro de Costos), generados el
       <span id="vizGeneratedFooter">—</span>. Publicado en GitHub Pages.
-      La contraseña de acceso es una barrera simple del lado del cliente, no seguridad real — no compartas este link fuera del equipo.
+      Los datos viajan cifrados y solo se abren con la contraseña del equipo — no la compartas fuera de él.
     </p>
   </div>
 
@@ -1310,6 +1314,9 @@
      pestaña, insertados por build_visualizador.py (originales, no copias). -->
 <script id="af-esquemas-js">__AF_ESQUEMAS_JS__</script>
 <script id="af-ingreso-js">__AF_INGRESO_JS__</script>
+<!-- Candado: abre los datos cifrados con la contraseña. Visualizador Web/candado.js,
+     insertado por build_visualizador.py (el original, no una copia). -->
+<script>__CANDADO_JS__</script>
 <script id="af-data-b64" type="text/plain">__AF_DATA_B64__</script>
 <script>
 (function () {
@@ -1363,56 +1370,9 @@
     });
   })();
 
-  // ---------- password gate ----------
-  // Client-side only — deters casual access via a shared link, not real security
-  // (the encoded data ships in the page either way). See footer note.
-  var GATE_PASSWORD_NORM = 'combustion';
-  function normalizePassword(s) {
-    return String(s == null ? '' : s)
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents/tildes
-      .trim();
-  }
-  function b64ToUtf8(b64) {
-    var bin = atob(b64.replace(/\s+/g, ''));
-    var bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder('utf-8').decode(bytes);
-  }
-
-  var gate = document.getElementById('pwGate');
-  var gateForm = document.getElementById('pwForm');
-  var gateInput = document.getElementById('pwInput');
-  var gateError = document.getElementById('pwError');
-  var vizRootEl = document.getElementById('vizRoot');
-
-  function unlock() {
-    gate.style.display = 'none';
-    vizRootEl.style.display = '';
-    try { localStorage.setItem('quempin_viz_unlocked', '1'); } catch (e) {}
-    var b64 = document.getElementById('af-data-b64').textContent;
-    var DATA = JSON.parse(b64ToUtf8(b64));
-    initApp(DATA);
-  }
-
-  gateForm.addEventListener('submit', function (evt) {
-    evt.preventDefault();
-    if (normalizePassword(gateInput.value) === GATE_PASSWORD_NORM) {
-      unlock();
-    } else {
-      gateError.textContent = 'Contraseña incorrecta. Intenta de nuevo.';
-      gateInput.value = '';
-      gateInput.focus();
-    }
-  });
-
-  var alreadyUnlocked = false;
-  try { alreadyUnlocked = localStorage.getItem('quempin_viz_unlocked') === '1'; } catch (e) {}
-  if (alreadyUnlocked) {
-    unlock();
-  } else {
-    gateInput.focus();
-  }
+  // ---------- candado: los datos vienen cifrados (Visualizador Web/candado.js) ----------
+  // Sin la contraseña no se pueden leer: no hay una comparación que saltarse.
+  QuempinCandado.abrir('af-data-b64', initApp);
 
   // ---------- app (runs only after a correct password) ----------
   function initApp(DATA) {
@@ -1484,10 +1444,10 @@
     };
   }
   // Formato numérico chileno en todo el tablero (auditoría 2026-09-21):
-  // antes los montos usaban es-CL ("$14.563.245") pero los porcentajes
+  // antes los montos usaban es-CL ("$12.345.678") pero los porcentajes
   // toFixed ("39.6%"), mezclando el punto de miles con el punto decimal.
   var MONEDA = DATA.moneda || { simbolo: '$', locale: 'es-CL' };
-  // El signo va antes del símbolo ("-$6.147.756"), no después ("$-6.147.756"),
+  // El signo va antes del símbolo ("-$1.234.567"), no después ("$-1.234.567"),
   // que se lee mal en una columna de montos. Vacío (null) -> "—".
   function formatoCLP(n) {
     if (n == null) return '—';

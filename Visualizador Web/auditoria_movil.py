@@ -18,7 +18,9 @@ reporta:
 - elementos que se salen de la pantalla (fuera de un contenedor con scroll
   propio, que es lo unico aceptable: el mapa de calor, las subtablas);
 - campos de texto con letra < 16 px en anchos de telefono (Safari de iPhone
-  hace zoom al tocarlos).
+  hace zoom al tocarlos). Incluye la contrasena (hasta 2026-10-05 se excluia y
+  media 14 px en los 6 tableros); no los selectores de archivo, que no abren
+  teclado.
 
 Lee los build/index.html locales (regeneralos antes). Termina con codigo 1 si
 encuentra algo. Las capturas son opcionales y van donde se indique: muestran
@@ -29,7 +31,8 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-CONTRASENA = "combustion"  # la misma que ya va en claro en cada template
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import candado  # noqa: E402  (la contrasena de los tableros: .contrasena_tableros, no versionada)
 
 TABLEROS = {
     "cc": "Centro de Costos/Visualizador Web/build/index.html",
@@ -72,7 +75,7 @@ JS_DESBORDES = r"""
 
 JS_CAMPOS_CHICOS = r"""
 () => [...document.querySelectorAll('input, select, textarea')]
-  .filter(e => !['checkbox', 'radio', 'hidden', 'button', 'submit', 'password'].includes(e.type) && !e.readOnly)
+  .filter(e => !['checkbox', 'radio', 'hidden', 'button', 'submit', 'file'].includes(e.type) && !e.readOnly)
   .filter(e => parseFloat(getComputedStyle(e).fontSize) < 16)
   .map(e => (e.id || e.className || e.tagName) + ' ' + getComputedStyle(e).fontSize)
   .filter((x, i, todos) => todos.indexOf(x) === i)
@@ -82,14 +85,16 @@ JS_CAMPOS_CHICOS = r"""
 def _pasar_gate(page):
     campo = page.locator("#pwInput")
     if campo.count() and campo.is_visible():
-        campo.fill(CONTRASENA)
+        campo.fill(candado.leer_contrasena())
         campo.press("Enter")
-        page.wait_for_timeout(500)
+        # Derivar la clave y descifrar toma un momento (2026-10-05: datos cifrados).
+        page.locator("#pwGate").wait_for(state="hidden", timeout=20000)
 
 
 def _escenas(page, clave):
     """Genera (nombre, preparar) de cada vista a revisar en este tablero."""
-    pestanas = page.locator(".viz-tab-btn")
+    # Solo las visibles: "Ingresar datos" va oculta en Peru (2026-10-05).
+    pestanas = page.locator(".viz-tab-btn:visible")
     if pestanas.count():
         for i in range(pestanas.count()):
             yield f"pestana {pestanas.nth(i).inner_text().strip()}", lambda i=i: pestanas.nth(i).click()

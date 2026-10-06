@@ -143,8 +143,8 @@ __FC_FUENTES__
 
   /* Nav entre tableros — visible solo tras pasar el gate (dentro de
      .viz-root), permite saltar a otro modulo sin re-ingresar la
-     contrasena (los 4 tableros comparten el mismo unlock, ver
-     'quempin_viz_unlocked' mas abajo). */
+     contrasena (los 7 tableros comparten la clave recordada, ver
+     Visualizador Web/candado.js). */
   .viz-modnav {
     border-top: 1px solid rgba(255,255,255,0.14);
     margin-top: 14px;
@@ -272,6 +272,9 @@ __FC_FUENTES__
     background: #000000; color: #fff; margin-bottom: 10px;
   }
   .viz-gate-card input:focus { outline: 2px solid #ff5100; outline-offset: 1px; }
+  /* Bajo 16 px Safari de iPhone amplía la página al tocar el campo, y el tablero
+     queda ampliado al entrar (2026-10-05: todos escriben la contraseña nueva). */
+  @media (max-width: 640px) { .viz-gate-card input { font-size: 16px; } }
   .viz-gate-card button {
     width: 100%; font-family: inherit; font-size: 13px; font-weight: 900;
     padding: 10px 12px; border-radius: 8px; border: none;
@@ -465,11 +468,14 @@ __FC_FUENTES__
       </div>
     </section>
 
-    <p class="fc-nota">Sin cobros reales ni saldo bancario: ninguna herramienta los tiene todavía. La contraseña de esta página es una barrera, no seguridad real.</p>
+    <p class="fc-nota">Sin cobros reales ni saldo bancario: ninguna herramienta los tiene todavía. Los datos de esta página viajan cifrados: solo se abren con la contraseña.</p>
   </div>
 </div>
 <div class="fc-tooltip" id="fcTooltip" role="tooltip"></div>
 
+<!-- Candado: abre los datos cifrados con la contraseña. Visualizador Web/candado.js,
+     insertado por build_visualizador.py (el original, no una copia). -->
+<script>__CANDADO_JS__</script>
 <script id="fc-data-b64" type="text/plain">__FC_DATA_B64__</script>
 <script>
 (function () {
@@ -517,33 +523,9 @@ __FC_FUENTES__
     });
   })();
 
-  // ---------- password gate (misma barrera y misma marca que los demás tableros) ----------
-  var GATE_PASSWORD_NORM = 'combustion';
-  function normalizePassword(s) {
-    return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-  }
-  function b64ToUtf8(b64) {
-    var bin = atob(b64.replace(/\s+/g, ''));
-    var bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new TextDecoder('utf-8').decode(bytes);
-  }
-  var gate = document.getElementById('pwGate');
-  var gateInput = document.getElementById('pwInput');
-  function unlock() {
-    gate.style.display = 'none';
-    document.getElementById('vizRoot').style.display = '';
-    try { localStorage.setItem('quempin_viz_unlocked', '1'); } catch (e) {}
-    initApp(JSON.parse(b64ToUtf8(document.getElementById('fc-data-b64').textContent)));
-  }
-  document.getElementById('pwForm').addEventListener('submit', function (evt) {
-    evt.preventDefault();
-    if (normalizePassword(gateInput.value) === GATE_PASSWORD_NORM) unlock();
-    else { document.getElementById('pwError').textContent = 'Contraseña incorrecta. Intenta de nuevo.'; gateInput.value = ''; gateInput.focus(); }
-  });
-  var yaDesbloqueado = false;
-  try { yaDesbloqueado = localStorage.getItem('quempin_viz_unlocked') === '1'; } catch (e) {}
-  if (yaDesbloqueado) unlock(); else gateInput.focus();
+  // ---------- candado: los datos vienen cifrados (Visualizador Web/candado.js) ----------
+  // Sin la contraseña no se pueden leer: no hay una comparación que saltarse.
+  QuempinCandado.abrir('fc-data-b64', initApp);
 
   function initApp(DATA) {
     var fCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });

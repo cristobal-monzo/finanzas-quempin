@@ -25,5 +25,9 @@ pypdf>=6.0.0
 #     py -3.14 -m playwright install chromium
 playwright>=1.61.0
 
+# Cifrado de los datos de los tableros publicados (AES-GCM; Visualizador
+# Web/candado.py). La derivacion de la clave (PBKDF2) es de la libreria estandar.
+cryptography>=46.0.0
+
 # Tests.
 pytest>=8.0

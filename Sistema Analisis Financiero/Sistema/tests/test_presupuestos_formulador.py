@@ -14,13 +14,6 @@ ic = pf.intercambio
 COL = {nombre: idx for idx, nombre in enumerate(af.HEADERS_PROYECTOS, start=1)}
 
 
-@pytest.fixture(autouse=True)
-def _sin_dashboard_real(monkeypatch):
-    """ejecutar() regenera el dashboard al final: en estas pruebas no hace
-    falta y no debe tocar el build real."""
-    monkeypatch.setattr(af, "actualizar_visualizador_af", lambda pais="CL": True)
-
-
 # ── ARMADO ───────────────────────────────────────────────────────────────────
 
 def _excel_cc(tmp_path, filas):

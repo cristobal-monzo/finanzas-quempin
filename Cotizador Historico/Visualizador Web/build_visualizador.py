@@ -16,7 +16,6 @@ Uso:
   (o, desde el driver de la skill: python driver.py visualizador)
 """
 
-import base64
 import io
 import json
 import sys
@@ -33,6 +32,10 @@ RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_BUSQUEDA_JS = RAIZ / "busqueda.js"
 RUTA_DATA_JSON = RAIZ / "data" / "cotizador-historico.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
+
+# Candado (2026-10-05): los datos van cifrados con la contraseña de los tableros.
+sys.path.insert(0, str(RAIZ.parents[1] / "Visualizador Web"))
+import candado  # noqa: E402
 
 
 def _catalogo_categorias():
@@ -111,7 +114,6 @@ def build(uf_manual=None, fuente_manual=None):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     data_json_text = json.dumps(data, ensure_ascii=False)
-    data_b64 = base64.b64encode(data_json_text.encode("utf-8")).decode("ascii")
 
     with io.open(RUTA_TEMPLATE, "r", encoding="utf-8") as f:
         template = f.read()
@@ -124,12 +126,16 @@ def build(uf_manual=None, fuente_manual=None):
     if not RUTA_BUSQUEDA_JS.exists():
         print(f"[ERROR] No existe el motor de busqueda: {RUTA_BUSQUEDA_JS}")
         return 1
-    html = template.replace("__CH_DATA_B64__", data_b64)
     # busqueda.js se INYECTA, no se copia dentro del template: es el mismo
     # archivo que usa Peru. Cuando este codigo vivia dentro de cada
     # template.html, Chile y Peru divergieron sin que nadie lo notara.
     with io.open(RUTA_BUSQUEDA_JS, "r", encoding="utf-8") as f:
-        html = html.replace("__CH_BUSQUEDA_JS__", f.read())
+        html = template.replace("__CH_BUSQUEDA_JS__", f.read())
+    try:
+        html = candado.incrustar(html, "__CH_DATA_B64__", data_json_text)
+    except (ValueError, candado.SinContrasena) as e:
+        print(f"[ERROR] {e}")
+        return 1
 
     RUTA_BUILD_HTML.parent.mkdir(parents=True, exist_ok=True)
     with io.open(RUTA_BUILD_HTML, "w", encoding="utf-8") as f:

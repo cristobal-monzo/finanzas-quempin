@@ -34,6 +34,10 @@ import analisis_financiero as af  # noqa: E402
 import esquemas  # noqa: E402  (Sistema Intercambio, en sys.path desde analisis_financiero)
 
 RAIZ = Path(__file__).resolve().parent  # Sistema Analisis Financiero/Visualizador Web/
+
+# Candado (2026-10-05): los datos van cifrados con la contraseña de los tableros.
+sys.path.insert(0, str(RAIZ.parents[1] / "Visualizador Web"))
+import candado  # noqa: E402
 RUTA_TEMPLATE = RAIZ / "template.html"
 # Pestaña «Ingresar datos» (2026-10-02): su lógica vive en ingreso.js (probada
 # con Node) y valida cada envío con el mismo esquemas.js del catálogo del
@@ -560,7 +564,6 @@ def build(pais: str = "CL") -> int:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     data_json_text = json.dumps(data, ensure_ascii=False)
-    data_b64 = base64.b64encode(data_json_text.encode("utf-8")).decode("ascii")
 
     with io.open(RUTA_TEMPLATE, "r", encoding="utf-8") as f:
         template = f.read()
@@ -572,15 +575,19 @@ def build(pais: str = "CL") -> int:
         esquemas_js = f.read()
     with io.open(RUTA_INGRESO_JS, "r", encoding="utf-8") as f:
         ingreso_js = f.read()
-    # Los dos scripts van primero: el snapshot (base64) es lo último que se
-    # reemplaza, así ningún texto de los datos puede pasar por un marcador.
+    # Los dos scripts van primero: el sobre cifrado (candado.incrustar) es lo
+    # último que se reemplaza, así ningún texto suyo puede pasar por un marcador.
     html = (
         template.replace("__AF_ESQUEMAS_JS__", esquemas_js)
         .replace("__AF_INGRESO_JS__", ingreso_js)
         .replace("__AF_TITULO__", cfg["titulo"])
         .replace("__AF_NAV_ACTIVO__", cfg["nav_activo"])
-        .replace("__AF_DATA_B64__", data_b64)
     )
+    try:
+        html = candado.incrustar(html, "__AF_DATA_B64__", data_json_text)
+    except (ValueError, candado.SinContrasena) as e:
+        print(f"[ERROR] {e}")
+        return 1
 
     rutas["ruta_build_html"].parent.mkdir(parents=True, exist_ok=True)
     with io.open(rutas["ruta_build_html"], "w", encoding="utf-8") as f:

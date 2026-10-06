@@ -343,9 +343,9 @@ módulos), no en este archivo.
 - Flujo para actualizar: `python driver.py visualizador` (regenera
   `Visualizador Web/build/index.html` desde el Excel actual) → publicar
   como arriba.
-- La contraseña de acceso del gate vive como constante en
-  `Visualizador Web/template.html` (no se repite acá — ya es visible en el
-  HTML publicado, ver nota de "no es seguridad real" en ese `CLAUDE.md`).
+- La contraseña de los tableros vive solo en `.contrasena_tableros` (raíz del
+  repo, no versionada) y cifra sus datos desde 2026-10-05 — no se repite acá;
+  ver § "Punto de control de acceso" de `Visualizador Web/CLAUDE.md` (raíz).
 
 ## Historial de ejecuciones
 

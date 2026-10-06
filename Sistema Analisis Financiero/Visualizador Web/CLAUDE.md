@@ -44,8 +44,9 @@ Sistema Analisis Financiero/Visualizador Web/
   `Sistema/tests/test_contrato_kpis.py`). Ver spec §3.
 - **Datos incrustados** (base64, no `fetch`) — mismo motivo que Centro de
   Costos: el canal de consumo es un Claude Artifact privado.
-- **Gate de contraseña**: misma contraseña que Centro de Costos (decisión
-  del usuario, 2026-07-23) — ver `template.html`.
+- **Contraseña**: la misma de todos los tableros (decisión del usuario,
+  2026-07-23); desde 2026-10-05 cifra los datos, reportes PDF incrustados
+  incluidos — ver § "Punto de control de acceso" del doc maestro.
 
 ## Contenido
 

@@ -30,10 +30,9 @@ el promedio/rango hacia abajo. Arreglado en `cargar_items_detalle`
 - Flujo para actualizar: `python driver.py visualizador` (regenera
   `Visualizador Web/build/index.html` a partir de `Centro de Costos.xlsx` y
   la UF vigente) → publicar como arriba.
-- La contraseña de acceso del gate vive como constante en
-  `Visualizador Web/template.html` (no se repite acá — ya es visible en el
-  HTML publicado, ver nota de "no es seguridad real" en ese `CLAUDE.md`).
-  Es la misma contraseña que usa el visualizador de Centro de Costos.
+- La contraseña de los tableros vive solo en `.contrasena_tableros` (raíz del
+  repo, no versionada) y cifra sus datos desde 2026-10-05 — no se repite acá;
+  ver § "Punto de control de acceso" de `Visualizador Web/CLAUDE.md` (raíz).
 - **`mindicador.cl` fue intermitente durante la implementación y la primera
   publicación (2026-07-20)** — timeouts, fallos de handshake TLS, y
   desconexiones remotas, todos transitorios (se recuperaba solo en minutos).

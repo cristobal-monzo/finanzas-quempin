@@ -102,14 +102,12 @@ poder distinguir un valor manual de uno de mindicador.cl.
   `#98989a` (Cool Gray 7 C), `#54565a` (Cool Gray 11 C).
 - Misma tipografía Lato (manual QUEMPIN §13), embebida sin depender de un
   CDN.
-- Mismo gate de contraseña: constante `GATE_PASSWORD_NORM = 'combustion'`
-  en `template.html`, comparada tras normalizar el input (minúsculas, sin
-  tilde) — mismo disclaimer de "no es seguridad real" que Centro de Costos.
-  El estado de "ya desbloqueado" se guarda en `sessionStorage`
-  (`ch_viz_unlocked`) y la preferencia de tema claro/oscuro en
-  `localStorage` (`ch_viz_theme`) — ambos persisten intencionalmente
-  (sesión y dispositivo respectivamente) y son casos distintos de la regla
-  de no-persistencia del carrito, ver abajo.
+- Misma contraseña que los demás tableros; desde 2026-10-05 cifra los datos
+  (candado común, ver § "Punto de control de acceso" del doc maestro). La
+  clave que el navegador recuerda tras escribirla (`quempin_viz_clave`) y la
+  preferencia de tema claro/oscuro (`ch_viz_theme`) persisten en
+  `localStorage` intencionalmente, y son casos distintos de la regla de
+  no-persistencia del carrito, ver abajo.
 
 ## Búsqueda
 
@@ -460,8 +458,7 @@ comandos exactos en [`../../Visualizador Web/CLAUDE.md`](../../Visualizador%20We
 `https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/`.
 El punto de control de acceso quedó resuelto en esa misma migración (repo
 público + el mismo gate de contraseña, ver § "Punto de control de acceso"
-del doc maestro) — el gate sigue siendo una barrera débil, no seguridad
-real.
+del doc maestro); desde 2026-10-05 los datos van cifrados con la contraseña.
 
 ## Fuera de alcance de esta versión
 

@@ -401,10 +401,13 @@ def test_template_declara_doctype_charset_y_viewport():
 def test_template_no_depende_del_encoding_para_la_regex_del_gate():
     """La regex que quita tildes a la contraseña iba con los caracteres
     combinantes literales -- leidos como Latin-1 forman un rango invalido y
-    tiran abajo todo el script. Con escapes \\u no depende del encoding."""
+    tiran abajo todo el script. Con escapes \\u no depende del encoding.
+    Desde 2026-10-05 esa regex vive en el candado compartido (candado.js)."""
     template = bv.RUTA_TEMPLATE.read_text(encoding="utf-8")
-    assert chr(0x300) not in template and chr(0x36F) not in template
-    assert "\\u0300-\\u036f" in template
+    candado_js = bv.candado.RUTA_JS.read_text(encoding="utf-8")
+    for texto in (template, candado_js):
+        assert chr(0x300) not in texto and chr(0x36F) not in texto
+    assert "\\u0300-\\u036f" in candado_js
 
 
 def test_extraer_datos_saneados_kpis_proyectos_resumen(tmp_path):

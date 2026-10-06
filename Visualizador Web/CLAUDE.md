@@ -217,10 +217,18 @@ tampoco hace falta guardar/leer un link en el `MEMORY.md` de cada skill.
 
 ```
 cp "<Origen de la tabla>" ".worktrees/gh-pages/<subruta>/index.html"
+py -3.14 "Visualizador Web/candado.py" ".worktrees/gh-pages/<subruta>/index.html"   # [OK], o no se publica
 git -C ".worktrees/gh-pages" add <subruta>/index.html
 git -C ".worktrees/gh-pages" commit -m "actualizar tablero de <módulo>"
 git -C ".worktrees/gh-pages" push
 ```
+
+**La verificación con `candado.py` no se salta** (2026-10-05): confirma que
+el tablero copiado se abre con la contraseña de este equipo. Ese día se
+publicó Análisis Financiero cifrado con la contraseña de prueba de los
+tests (la suite lo había regenerado entre el build y la copia) y nadie del
+equipo podía abrirlo. Los tests que causaban eso ya no tocan los tableros
+reales, pero un tablero que no abre no se publica, venga de donde venga.
 
 **Esta es la única copia de esta receta** (consolidado 2026-08-18 — antes
 estaba repetida casi textual en `Actualizar_CC`, `Actualizar_AF`,
@@ -231,25 +239,57 @@ Artifacts a GitHub Pages). Esos skills solo enlazan acá para el "cómo" —
 si necesitas cambiar la mecánica de publicación, cámbiala una sola vez,
 en esta sección.
 
-## Punto de control de acceso — resuelto (2026-08-05), con este trade-off explícito
+## Punto de control de acceso — candado con cifrado real (2026-10-05)
 
 **GitHub Pages no ofrece un sitio realmente privado fuera de GitHub
 Enterprise Cloud**: un repositorio privado + plan Pro/Team sigue
 publicando el sitio de Pages *públicamente alcanzable* por cualquiera con
-el link — la visibilidad del repo protege el código fuente, no el sitio
-publicado (verificado 2026-08-05, ver fuentes abajo). Dado esto, decisión
-explícita del usuario: **repo público + el mismo gate de contraseña que ya
-tenían los 3 dashboards** (barrera débil, no seguridad real — ya se
-documentaba así antes de esta migración). Esto es objetivamente **menos
-privado** que los Artifacts anteriores (privados por defecto, no
-indexables); el usuario aceptó ese trade-off a cambio de un solo dominio y
-poder automatizar el deploy vía `git push` en vez de depender de que un
-agente llame al tool `Artifact` cada vez.
+el link (verificado 2026-08-05, ver fuentes abajo). Al migrar, el usuario
+aceptó repo público + el gate de contraseña de los dashboards, una barrera
+débil: los datos iban en base64 y la contraseña escrita en claro en cada
+`template.html`, así que cualquiera con el link o el repo leía las cifras.
+El 2026-10-05 el clasificador de permisos de Claude Code empezó a bloquear
+el push por eso, y el usuario pidió cifrar.
 
-Si en el futuro se necesita control de acceso real, las opciones que
-quedan (no implementadas): un proxy con autenticación real delante del
-sitio estático (ej. Cloudflare Access), o volver a Artifacts privados para
-el/los tableros que lo requieran.
+Cómo funciona desde entonces (`Visualizador Web/candado.py` + `candado.js`):
+
+- Cada build guarda sus datos en un **sobre cifrado** (AES-256-GCM, clave
+  derivada de la contraseña con PBKDF2-SHA256, 600.000 iteraciones) en vez
+  del base64, y `candado.js`, que el build inserta, lo abre en el navegador.
+  En la página no hay contraseña contra la cual comparar: sin ella los datos
+  son ilegibles, en el sitio y en el repo.
+- **La contraseña vive solo en `.contrasena_tableros`** (raíz del repo, una
+  línea, gitignored) o en la variable `QUEMPIN_TABLEROS_CONTRASENA`. Sin ella
+  el build falla: nunca se genera un tablero sin cifrar. No la escribas en un
+  archivo versionado, un test, un doc ni una memoria; `test_candado.py` revisa
+  los archivos versionados en el equipo que la tiene. Los tests usan una de
+  prueba (`conftest.py` de la raíz).
+- El navegador **recuerda la clave derivada** (`localStorage`,
+  `quempin_viz_clave`), la misma para los 7 tableros: la contraseña se
+  escribe una vez. Si cambia, la recordada deja de abrir y se vuelve a pedir.
+- **Cambiar la contraseña**: editar `.contrasena_tableros`, regenerar y
+  publicar los 7 tableros, y avisar al equipo. El contenido cifrado es
+  público y se puede atacar sin conexión, así que tiene que ser larga (la
+  actual: 4 palabras al azar + 4 dígitos).
+- **Un tablero nuevo**: `<script>__CANDADO_JS__</script>` antes de su
+  `<script id="xx-data-b64" type="text/plain">`,
+  `QuempinCandado.abrir('xx-data-b64', initApp)` en vez de un gate propio, y
+  `candado.incrustar(...)` como último reemplazo del build. `test_candado.py`
+  lo exige a toda plantilla.
+- **Solo los datos van cifrados**: estructura, rótulos y código siguen siendo
+  públicos, igual que las plantillas en `master`. Nada con datos se publica
+  fuera de un sobre: los 20 informes PDF que estaban sueltos en
+  `analisis-financiero/reportes/` se sacaron ese día (el tablero los lleva
+  incrustados en sus datos).
+- El historial de `gh-pages` se reemplazó ese día por un solo commit (los
+  anteriores dejaban leer los datos). El anterior quedó solo como respaldo
+  local en `refs/respaldo/gh-pages-antes-del-cifrado-2026-10-05`. GitHub
+  puede conservar un tiempo los commits viejos accesibles por su
+  identificador.
+
+Si además hiciera falta ocultar la estructura o saber quién entra, quedan
+las opciones de antes: un proxy con autenticación delante del sitio (ej.
+Cloudflare Access) o Artifacts privados.
 
 Fuentes: [GitHub Docs — Changing the visibility of your GitHub Pages site](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/changing-the-visibility-of-your-github-pages-site),
 [GitHub Community Discussion #58203](https://github.com/orgs/community/discussions/58203).
