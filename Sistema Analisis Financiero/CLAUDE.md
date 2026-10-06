@@ -207,6 +207,15 @@ si la cartera cambia. Detalle completo, la propuesta discutida con el
 usuario y los valores verificados contra los 7 proyectos reales: ver
 MEMORY.md 2026-08-20.
 
+**De dónde salen los puntos de la Nota (2026-10-05)**: `componentes_nota()`
+devuelve la rentabilidad (sobre 70) y el control del presupuesto (sobre 30)
+en enteros que **suman exactamente** `calcular_nota()`: el control se lleva
+lo que el redondeo de la Nota no le dio a la rentabilidad. Lo usa la ficha
+del proyecto del tablero («48 + 6 = 54»). No es una tercera implementación:
+reusa `_score_margen_nota` y `calcular_nota`. Contrato en
+`test_nota_evaluacion.py` (suma exacta en una grilla de márgenes y
+desviaciones).
+
 **Piso de "Meses activo" corregido de 1 a 12 meses (2026-08-20, mismo
 día)**: la Frecuencia de compra (hoja Clientes) se anualizaba dividiendo
 por un piso de solo 1 mes de historial, así que un cliente con un único

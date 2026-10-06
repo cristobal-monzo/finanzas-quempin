@@ -383,6 +383,8 @@ def test_snapshot_trae_los_umbrales_de_evaluacion_del_modulo_compartido(tmp_path
         "excelente": af.UMBRAL_EXCELENTE, "bueno": af.UMBRAL_BUENO, "aprobado": af.UMBRAL_APROBADO,
         "sobrecosto_nota_cero": af.SOBRECOSTO_NOTA_CERO,
         "margen_objetivo": af.MARGEN_OBJETIVO_NOTA,
+        "peso_rentabilidad": af.PESO_RENTABILIDAD_NOTA,
+        "peso_control": af.PESO_DESVIACION_NOTA,
         "alerta_sobrecosto": af.UMBRAL_ALERTA_SOBRECOSTO,
         "alerta_costo_incompleto": af.UMBRAL_ALERTA_COSTO_INCOMPLETO,
     }
@@ -880,6 +882,30 @@ def test_snapshot_expone_avance_y_estimacion_al_cierre():
     assert kpis["margen_real"] == 3_600_000  # a la fecha: sigue disponible, no se pierde
 
 
+def test_snapshot_trae_lo_que_la_ficha_compara_contra_el_presupuesto():
+    """Ficha del proyecto (2026-10-05). Al 75 % con 6,4M gastados de 8M y
+    venta 10M: el presupuesto dejaba 2M (20 %) y el cierre estimado 1,6M, o
+    sea 400.000 menos; al ritmo actual el costo terminaría en 6,4M / 0,75. Los
+    puntos de la Nota suman la Nota."""
+    p = {
+        "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": 0.75,
+        "fecha_inicio": None, "fecha_cierre": None, "categoria": "I+D+i",
+        "monto_venta": 10_000_000,
+        "materiales_proy": 4_000_000, "equipos_proy": 2_000_000,
+        "mo_proy": 1_000_000, "otros_proy": 1_000_000, "mo_real": 800_000,
+    }
+    reales = {"Materiales": 3_200_000, "Equipos": 1_600_000, "Otros": 800_000}
+
+    kpis = bv.calcular_kpis_proyecto(p, reales)
+
+    assert kpis["margen_proyectado"] == 2_000_000
+    assert kpis["margen_proyectado_pct"] == 0.2
+    assert kpis["margen_vs_presupuesto"] == -400_000
+    assert kpis["presupuesto_gastado_pct"] == 0.8
+    assert round(kpis["costo_cierre_pesimista"]) == round(6_400_000 / 0.75)
+    assert kpis["nota_puntos"]["rentabilidad"] + kpis["nota_puntos"]["control"] == kpis["nota"]
+
+
 def test_snapshot_sin_avance_no_tiene_estimacion_ni_nota():
     p = {
         "tag": "UMAG", "nombre": "UMAG", "cliente": "AGCID", "avance": None,
@@ -1020,3 +1046,21 @@ def test_template_tiene_las_pestanas_y_los_ganchos_de_la_fase_2():
     for clave in ("error_presupuesto_pct", "sesgo_categorias", "concentracion",
                   "margen_objetivo", "data-orden"):
         assert clave in template, clave
+
+
+def test_la_ficha_del_proyecto_solo_lee_claves_que_trae_el_snapshot(tmp_path):
+    """Ficha del proyecto (2026-10-05): cada «p.clave» y «UMBRALES.clave» que
+    lee existe en el snapshot. Una clave que no calza no da error en el
+    navegador: deja una cifra en «—» o un gráfico vacío sin que nadie lo note."""
+    template = bv.RUTA_TEMPLATE.read_text(encoding="utf-8")
+    ficha = template[template.index("// ---------- ficha del proyecto"):
+                     template.index("// ---------- filtros y orden de la tabla de Proyectos")]
+    data = bv.extraer_datos_saneados(_wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+    ]))
+
+    leidas = set(re.findall(r"\bp\.([a-z_]+)", ficha))
+    assert {"monto_venta", "costo_estimado_cierre", "nota_puntos"} <= leidas  # el corte del template sigue siendo la ficha
+    assert leidas <= set(data["proyectos"][0]), sorted(leidas - set(data["proyectos"][0]))
+    umbrales = set(re.findall(r"\bUMBRALES\.([a-z_]+)", ficha))
+    assert umbrales <= set(data["umbrales"]), sorted(umbrales - set(data["umbrales"]))

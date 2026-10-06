@@ -238,6 +238,7 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict, hoy: date | None = None
         return {corta: k[f"{prefijo}{larga}{sufijo}"] for larga, corta in CLAVE_CATEGORIA.items()}
 
     avance = p["avance"]
+    venta = k["Monto de Venta (sin IVA)"]
     return {
         "tag": p["tag"], "nombre": p["nombre"], "cliente": p["cliente"], "avance": avance,
         "en_curso": avance is not None and avance < 1,
@@ -273,6 +274,20 @@ def calcular_kpis_proyecto(p: dict, costos_reales: dict, hoy: date | None = None
         "ahorro_sobrecosto_total": k["Ahorro/Sobrecosto Total"],
         "margen_por_dia": k["Margen por día de ejecución"],
         "error_presupuesto_pct": k["Error del presupuesto %"],
+        # Ficha del proyecto (2026-10-05): contra qué se compara el cierre y de
+        # dónde salen los puntos de la Nota. Todo sale de af; el JS solo lo dibuja.
+        "margen_proyectado": k["Margen Proyectado"],
+        "margen_proyectado_pct": (k["Margen Proyectado"] / venta)
+        if venta and k["Margen Proyectado"] is not None else None,
+        # Cuánto más (o menos) margen deja el cierre que el presupuesto.
+        "margen_vs_presupuesto": (k["Margen estimado al cierre"] - k["Margen Proyectado"])
+        if k["Margen estimado al cierre"] is not None and k["Margen Proyectado"] is not None else None,
+        "presupuesto_gastado_pct": (k["Total Real"] / k["Total Proyectado"])
+        if k["Total Proyectado"] and k["Total Real"] is not None else None,
+        # Escenario pesimista en pesos (el % ya viaja en margen_cierre_pct_indice).
+        "costo_cierre_pesimista": af.costo_al_cierre_indice(k["Total Real"], avance),
+        "nota_puntos": af.componentes_nota(k["Margen estimado al cierre %"], k["Desviación estimada al cierre %"])
+        if k["Nota del Proyecto"] is not None else None,
         "alertas": af.alertas_proyecto(valores, k, hoy),
         # Para calcular_clientes: la salida completa del módulo compartido.
         "_kpis_af": k,
@@ -515,6 +530,9 @@ def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None =
             "excelente": af.UMBRAL_EXCELENTE, "bueno": af.UMBRAL_BUENO, "aprobado": af.UMBRAL_APROBADO,
             "sobrecosto_nota_cero": af.SOBRECOSTO_NOTA_CERO,
             "margen_objetivo": af.MARGEN_OBJETIVO_NOTA,
+            # Pesos de la Nota: la ficha muestra sus puntos sobre 70 y sobre 30.
+            "peso_rentabilidad": af.PESO_RENTABILIDAD_NOTA,
+            "peso_control": af.PESO_DESVIACION_NOTA,
             "alerta_sobrecosto": af.UMBRAL_ALERTA_SOBRECOSTO,
             "alerta_costo_incompleto": af.UMBRAL_ALERTA_COSTO_INCOMPLETO,
         },

@@ -1357,6 +1357,20 @@ def calcular_nota(margen_neto: float | None, desviacion_total: float | None) -> 
     )
 
 
+def componentes_nota(margen_neto: float | None, desviacion_total: float | None) -> dict | None:
+    """De dónde salen los puntos de la Nota (2026-10-05, ficha del proyecto en
+    el tablero): rentabilidad sobre 70 y control del presupuesto sobre 30, en
+    enteros que suman exactamente calcular_nota(). El control se lleva lo que
+    el redondeo de la Nota no le dio a la rentabilidad, así la ficha nunca
+    muestra 48 + 7 = 54. Queda entre 0 y 30 porque el redondeo es monótono.
+    None si falta un insumo, igual que la Nota."""
+    nota = calcular_nota(margen_neto, desviacion_total)
+    if nota is None:
+        return None
+    rentabilidad = _redondear_excel(PESO_RENTABILIDAD_NOTA * _score_margen_nota(margen_neto))
+    return {"rentabilidad": rentabilidad, "control": nota - rentabilidad}
+
+
 def clasificar_evaluacion(nota: int | None) -> str | None:
     """Equivalente Python exacto de _formula_evaluacion()."""
     if nota is None:

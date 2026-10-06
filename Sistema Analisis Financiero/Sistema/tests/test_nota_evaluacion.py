@@ -222,3 +222,30 @@ def test_margen_por_dia_vacio_si_el_cierre_es_futuro_o_falta_una_fecha():
     assert af.margen_por_dia(date(2026, 1, 1), date(2026, 1, 11), 1000.0, hoy) == 100.0
     # mismo día de inicio y cierre: MAX(1, días), no división por cero
     assert af.margen_por_dia(date(2026, 1, 1), date(2026, 1, 1), 1000.0, hoy) == 1000.0
+
+
+# ── De dónde salen los puntos de la Nota (ficha del proyecto, 2026-10-05) ───
+
+def test_los_componentes_de_la_nota_suman_exactamente_la_nota():
+    """La ficha del tablero muestra «48 + 6 = 54»: los dos sumandos tienen que
+    dar la Nota en todo el rango, también donde redondear cada uno por su
+    lado la descuadraría en un punto."""
+    margenes = [i / 100 for i in range(-20, 121, 3)] + [af.MARGEN_OBJETIVO_NOTA, 0.125]
+    desviaciones = [i / 100 for i in range(-50, 61, 2)] + [0.0, af.SOBRECOSTO_NOTA_CERO]
+    for margen in margenes:
+        for desviacion in desviaciones:
+            c = af.componentes_nota(margen, desviacion)
+            assert c["rentabilidad"] + c["control"] == af.calcular_nota(margen, desviacion), (margen, desviacion)
+            assert 0 <= c["rentabilidad"] <= 70 and 0 <= c["control"] <= 30, (margen, desviacion, c)
+
+
+def test_los_componentes_de_la_nota_separan_rentabilidad_y_control():
+    """En el objetivo de margen la rentabilidad vale 49 de 70; con +30 % de
+    sobrecosto el control no suma nada, y en o bajo presupuesto suma 30."""
+    assert af.componentes_nota(af.MARGEN_OBJETIVO_NOTA, af.SOBRECOSTO_NOTA_CERO) == {"rentabilidad": 49, "control": 0}
+    assert af.componentes_nota(af.MARGEN_OBJETIVO_NOTA, -0.10) == {"rentabilidad": 49, "control": 30}
+
+
+def test_los_componentes_de_la_nota_quedan_vacios_si_falta_un_insumo():
+    assert af.componentes_nota(None, 0.1) is None
+    assert af.componentes_nota(0.3, None) is None

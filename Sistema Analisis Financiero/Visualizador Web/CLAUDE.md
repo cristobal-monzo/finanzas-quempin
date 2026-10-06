@@ -54,15 +54,13 @@ Sistema Analisis Financiero/Visualizador Web/
   KPIs (N° completos, Margen al cierre de la cartera, Nota promedio, N°
   "Requiere atención", N° con alertas), ranking de Nota del Proyecto (barras),
   distribución de Evaluación (donut), tabla buscable (orden fijo por Nota
-  descendente). El panel de detalle por proyecto (click en la fila) muestra
-  además los KPIs agregados 2026-07-28 al playbook de "Indicadores": **Peso
-  en cartera de ventas** y **Margen por día** (tarjetas junto a
-  Margen/Desviación/Nota); una tabla ampliada por categoría (Materiales/
-  Equipos/MO/Otros) con Proyectado, Real, Desviación %, Estructura % (mix),
-  Costo % de venta y Ahorro/Sobrecosto, con fila Total; y una subtabla
-  **Detalle real por subcategoría** (granularidad de "Detalle Costos
-  Reales" — Consumibles, Equipos-Herramientas, Combustible, etc. — con su
-  `% del Total Real del proyecto`). Todo recomputado en Python en
+  descendente). Click en la fila abre la **ficha del proyecto** (rehecha el
+  2026-10-05, ver § «Ficha del proyecto»): venta, costo, margen y Nota contra
+  el presupuesto, los gráficos que explican el resultado, la tabla ampliada
+  por categoría (Presupuesto, Real, Desviación %, Estructura % (mix), Costo %
+  de venta y Ahorro/Sobrecosto, con fila Total), el gasto por subcategoría de
+  "Detalle Costos Reales" y los KPIs agregados el 2026-07-28 (**Peso en
+  cartera de ventas**, **Margen por día**). Todo recomputado en Python en
   `build_visualizador.py` (`_kpis_por_categoria`, `calcular_peso_cartera`,
   `leer_detalle_subcategorias`), nunca leído del cache de fórmulas del
   Excel — mismo principio que el resto del snapshot.
@@ -200,6 +198,65 @@ Todo lo que el tablero muestra sale del snapshot; los números nuevos
 `umbrales.margen_objetivo`) se calculan en `analisis_financiero.py`, no en
 el JS. Tests: `test_snapshot_trae_sesgo_por_categoria_y_concentracion`,
 `test_template_tiene_las_pestanas_y_los_ganchos_de_la_fase_2`.
+
+## Ficha del proyecto (2026-10-05)
+
+Pedido del usuario: que al abrir un proyecto se vean claramente los montos y
+valores más relevantes, los gráficos que importan y lo destacable. El panel
+anterior ponía 11 datos del mismo tamaño y color en la cabecera (la venta,
+las fechas y la categoría quedaban al fondo, después de dos tablas), pintaba
+el presupuesto en naranjo —lo más llamativo— y el gasto en gris, repetía esa
+misma comparación en la tabla de abajo y nunca decía cuánto margen se perdió
+o ganó contra lo presupuestado: había que restarlo a mano.
+
+De arriba abajo:
+
+1. **Contexto**: estado (en curso con barra de avance y % del presupuesto ya
+   gastado, o terminado), categoría, fechas, «Ver reporte PDF» y «Cerrar».
+2. **Cuatro cifras grandes**, cada una contra el presupuesto: venta (con su
+   peso en la cartera), costo al cierre (▲/▼ % sobre o bajo el presupuesto),
+   margen al cierre (cuánto más o menos que lo presupuestado, en pesos) y la
+   Nota (con su Evaluación y a cuántos puntos está del corte siguiente). El
+   color solo va donde hay un juicio, con los cortes de `formatoPctDesviacion`.
+3. **Alertas**.
+4. **De la venta al margen**: dos barras del largo de la venta partidas en
+   costo y margen, una con el presupuesto y otra con el cierre (en curso: lo
+   gastado, lo que falta a precio de presupuesto y una raya en el escenario
+   pesimista). Debajo, la historia en una frase. Lo que pasa de la venta va en
+   rojo («pérdida»).
+5. **Por qué tiene esta nota**: rentabilidad sobre 70 y control del
+   presupuesto sobre 30, en puntos que suman la Nota (`af.componentes_nota`).
+6. **Costos por categoría**: presupuesto (zona clara con su borde), gastado
+   (gris) y lo que se pasó (rojo), en la misma escala de pesos; en un
+   proyecto terminado, una frase cuando la desviación total esconde errores
+   que se compensan (`error_presupuesto_pct` ≥ 15 % y ≥ 2 × |desviación|).
+   Debajo, la tabla con todos los montos.
+7. **En qué se gastó** (barras por subcategoría de las facturas de Centro de
+   Costos; antes una tabla con la columna interna «Bucket») y **Otros
+   indicadores** (margen a la fecha y escenario pesimista si sigue en curso,
+   error del presupuesto, margen por día).
+
+Colores de la ficha: gris = costo, naranjo = margen, rojo = lo que pasa del
+presupuesto o de la venta. Los grises tienen sus propias variables
+(`--ficha-costo`, `--ficha-por-gastar`, `--ficha-ppto`, con valores para el
+modo oscuro), validadas con el skill `dataviz`: ≥ 3:1 sobre la tarjeta y
+ΔE ≥ 12 entre vecinos también simulando daltonismo.
+
+Al abrir un proyecto (desde la tabla, «Qué mirar primero» o la dispersión),
+su fila sube al borde de arriba con la ficha a la vista; antes, abierta desde
+una fila del fondo, había que bajar a buscarla.
+
+- **Snapshot**: `margen_proyectado`, `margen_proyectado_pct`,
+  `margen_vs_presupuesto`, `presupuesto_gastado_pct`,
+  `costo_cierre_pesimista`, `nota_puntos` por proyecto, y
+  `umbrales.peso_rentabilidad` / `peso_control`. Todo desde `af`; el JS solo
+  ordena y dibuja.
+- **Tests**: `test_snapshot_trae_lo_que_la_ficha_compara_contra_el_presupuesto`
+  y `test_la_ficha_del_proyecto_solo_lee_claves_que_trae_el_snapshot` (cada
+  `p.clave` y `UMBRALES.clave` de la ficha existe en el snapshot: una clave
+  mal escrita no da error en el navegador, deja una cifra en «—»).
+- Se borró `renderBarChartComparativo` (solo lo usaba el panel anterior) y el
+  CSS de la tabla de subcategorías.
 
 ## Pestaña «Ingresar datos» (2026-10-02)
 
