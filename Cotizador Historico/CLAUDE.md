@@ -26,8 +26,14 @@ consume.
   (`tasa_iva_real`).
 - El reajuste es solo por UF (no IPC, no dólar) — valores obtenidos de la
   API pública `mindicador.cl`, con caché local de fechas históricas en
-  `Sistema/uf_cache.json`. La UF del día de la consulta nunca se cachea
-  entre corridas — siempre se pide fresca.
+  `Sistema/uf_cache.json`. La UF del día de la consulta siempre se pide
+  fresca. Desde el 2026-10-08 la última que respondió queda en
+  `Sistema/uf_ultima.json` (gitignoreado): si mindicador.cl no responde, y no
+  se pasó un valor manual, se usa esa, si tiene hasta 3 días
+  (`DIAS_UF_RESPALDO`), y el tablero dice de qué día es. Antes un timeout
+  dejaba la corrida programada sin tablero del Cotizador (pasó el
+  2026-10-05). En los tests la variable `QUEMPIN_UF_ULTIMA` (fijada por el
+  `conftest.py` raíz) la manda a `tmp_path`.
 - Búsqueda de ítem por texto: **motor de relevancia propio**
   (`Sistema/busqueda.py`, reescrito 2026-09-16, ver sección siguiente), sin
   dependencias nuevas. Busca contra nombre, descripción, nombre canónico de

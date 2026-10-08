@@ -111,3 +111,65 @@ def test_obtener_valor_uf_consulta_api_y_actualiza_cache_si_falta(monkeypatch):
     valor = ch.obtener_valor_uf(date(2026, 7, 1), cache)
     assert valor == 40000.0
     assert cache == {"2026-07-01": 40000.0}
+
+
+# ── obtener_uf_hoy: respaldo con la ultima UF que respondio (2026-10-08) ──
+
+def _sin_mindicador(fecha):
+    raise ch.UFNoDisponibleError("simulado: mindicador.cl no responde")
+
+
+def test_los_tests_nunca_escriben_el_respaldo_real():
+    # El conftest.py raiz redirige el archivo a tmp_path: una UF simulada en un
+    # test no puede quedar como respaldo del tablero real.
+    assert ch._ruta_ultima_uf() != ch.RUTA_ULTIMA_UF
+
+
+def test_obtener_uf_hoy_recuerda_la_uf_que_respondio(monkeypatch):
+    monkeypatch.setattr(ch, "consultar_uf_api", lambda fecha: 39123.45)
+    assert ch.obtener_uf_hoy(date(2026, 10, 7)) == (39123.45, "mindicador.cl")
+    assert ch.ultima_uf_guardada(date(2026, 10, 7)) == ("2026-10-07", 39123.45)
+
+
+def test_sin_mindicador_usa_la_ultima_uf_y_dice_de_que_dia_es(monkeypatch):
+    monkeypatch.setattr(ch, "consultar_uf_api", lambda fecha: 39123.45)
+    ch.obtener_uf_hoy(date(2026, 10, 7))
+    monkeypatch.setattr(ch, "consultar_uf_api", _sin_mindicador)
+    valor, fuente = ch.obtener_uf_hoy(date(2026, 10, 8))
+    assert valor == 39123.45
+    assert fuente.startswith("UF del 07-10-2026") and "mindicador.cl no respondió" in fuente
+
+
+def test_una_uf_de_mas_de_tres_dias_no_sirve_de_respaldo(monkeypatch):
+    monkeypatch.setattr(ch, "consultar_uf_api", lambda fecha: 39123.45)
+    ch.obtener_uf_hoy(date(2026, 10, 1))
+    monkeypatch.setattr(ch, "consultar_uf_api", _sin_mindicador)
+    assert ch.obtener_uf_hoy(date(2026, 10, 4))[0] == 39123.45      # 3 dias: sirve
+    with pytest.raises(ch.UFNoDisponibleError):
+        ch.obtener_uf_hoy(date(2026, 10, 5))                         # 4 dias: no
+
+
+def test_una_uf_guardada_posterior_a_la_fecha_pedida_no_se_usa(monkeypatch):
+    monkeypatch.setattr(ch, "consultar_uf_api", lambda fecha: 39123.45)
+    ch.obtener_uf_hoy(date(2026, 10, 8))
+    monkeypatch.setattr(ch, "consultar_uf_api", _sin_mindicador)
+    with pytest.raises(ch.UFNoDisponibleError):
+        ch.obtener_uf_hoy(date(2026, 10, 7))
+
+
+def test_el_valor_manual_gana_sobre_la_uf_guardada(monkeypatch):
+    monkeypatch.setattr(ch, "consultar_uf_api", lambda fecha: 39123.45)
+    ch.obtener_uf_hoy(date(2026, 10, 7))
+    monkeypatch.setattr(ch, "consultar_uf_api", _sin_mindicador)
+    assert ch.obtener_uf_hoy(date(2026, 10, 8), uf_manual=39200.0, fuente_manual="Banco Central") == (39200.0, "Banco Central")
+
+
+def test_sin_respaldo_ni_valor_manual_relanza_el_error(monkeypatch):
+    monkeypatch.setattr(ch, "consultar_uf_api", _sin_mindicador)
+    with pytest.raises(ch.UFNoDisponibleError):
+        ch.obtener_uf_hoy(date(2026, 10, 8))
+
+
+def test_un_respaldo_ilegible_se_ignora(monkeypatch):
+    ch._ruta_ultima_uf().write_text("{no es json", encoding="utf-8")
+    assert ch.ultima_uf_guardada(date(2026, 10, 8)) is None

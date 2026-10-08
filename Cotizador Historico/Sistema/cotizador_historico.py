@@ -12,6 +12,7 @@ modo escritura ni lo modifica. Ver ../docs/specs/
 from datetime import date, datetime
 from pathlib import Path
 import math
+import os
 import sys
 import unicodedata
 import json
@@ -278,19 +279,75 @@ def consultar_uf_api(fecha):
         raise UFNoDisponibleError(f"Respuesta inesperada de mindicador.cl para {fecha}: {exc}") from exc
 
 
-def obtener_uf_hoy(fecha, uf_manual=None, fuente_manual=None):
-    """UF de 'hoy' con fallback manual: intenta mindicador.cl primero
-    (consultar_uf_api); si falla y se paso un valor manual -- buscado por
-    el agente en una fuente confiable cuando mindicador.cl no responde --
-    lo usa en su lugar. Devuelve (valor, fuente). Sin valor manual, relanza
-    UFNoDisponibleError igual que antes: nunca se inventa un valor de UF sin
-    que alguien lo haya provisto explicitamente."""
+# Ultima UF "de hoy" que respondio mindicador.cl, para cuando no responde
+# (2026-10-08: la corrida programada del 2026-10-05 perdio el tablero del
+# Cotizador por un timeout). uf_cache.json no sirve de respaldo: solo guarda
+# fechas de compras, la mas reciente con semanas de antiguedad. La variable
+# de entorno la redirige; el conftest.py raiz la apunta a tmp_path en todos
+# los tests, para que una UF simulada nunca quede como respaldo real.
+RUTA_ULTIMA_UF = Path(__file__).resolve().parent / "uf_ultima.json"
+VARIABLE_RUTA_ULTIMA_UF = "QUEMPIN_UF_ULTIMA"
+# La UF cambia unas centesimas por dia: una de hasta 3 dias atras cambia los
+# precios reajustados en menos de 0,1 %, y el tablero dice de que dia es.
+DIAS_UF_RESPALDO = 3
+
+
+def _ruta_ultima_uf():
+    return Path(os.environ.get(VARIABLE_RUTA_ULTIMA_UF) or RUTA_ULTIMA_UF)
+
+
+def _fecha_iso(fecha):
+    return fecha.strftime("%Y-%m-%d")
+
+
+def guardar_ultima_uf(fecha, valor):
+    """Recuerda la UF de 'hoy' recien obtenida. Nunca frena a quien la pidio."""
+    ruta = _ruta_ultima_uf()
+    temporal = ruta.with_name(f".{ruta.name}.tmp")
     try:
-        return consultar_uf_api(fecha), "mindicador.cl"
+        with open(temporal, "w", encoding="utf-8") as f:
+            json.dump({"fecha": _fecha_iso(fecha), "valor": valor}, f, ensure_ascii=False)
+        os.replace(temporal, ruta)
+    except OSError:
+        pass
+
+
+def ultima_uf_guardada(fecha, dias=DIAS_UF_RESPALDO):
+    """(fecha_iso, valor) de la ultima UF guardada si es de 'fecha' o de hasta
+    'dias' antes; None si no hay o es mas antigua (o posterior a 'fecha')."""
+    try:
+        with open(_ruta_ultima_uf(), "r", encoding="utf-8") as f:
+            guardada = json.load(f)
+        dia = datetime.strptime(guardada["fecha"], "%Y-%m-%d").date()
+        valor = float(guardada["valor"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    hoy = fecha.date() if isinstance(fecha, datetime) else fecha
+    if not 0 <= (hoy - dia).days <= dias:
+        return None
+    return guardada["fecha"], valor
+
+
+def obtener_uf_hoy(fecha, uf_manual=None, fuente_manual=None):
+    """UF de 'hoy': intenta mindicador.cl primero (consultar_uf_api) y la
+    recuerda. Si falla, usa en este orden el valor manual que se haya pasado
+    (buscado por el agente en una fuente confiable) o la ultima UF que si
+    respondio, de hasta DIAS_UF_RESPALDO dias atras, diciendo de que dia es.
+    Devuelve (valor, fuente). Sin ninguno de los dos, relanza
+    UFNoDisponibleError: nunca se inventa un valor de UF, solo se reutiliza
+    uno que mindicador.cl ya entrego."""
+    try:
+        valor = consultar_uf_api(fecha)
     except UFNoDisponibleError:
-        if uf_manual is None:
+        if uf_manual is not None:
+            return uf_manual, fuente_manual or "fuente manual (sin especificar)"
+        respaldo = ultima_uf_guardada(fecha)
+        if respaldo is None:
             raise
-        return uf_manual, fuente_manual or "fuente manual (sin especificar)"
+        dia, valor = respaldo
+        return valor, f"UF del {dia[8:10]}-{dia[5:7]}-{dia[:4]}, la última disponible: mindicador.cl no respondió"
+    guardar_ultima_uf(fecha, valor)
+    return valor, "mindicador.cl"
 
 
 def cargar_cache_uf(ruta_cache=None):

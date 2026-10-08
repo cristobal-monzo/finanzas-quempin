@@ -39,6 +39,7 @@ Intercambio/*
 # Cache regenerable de valores UF (publicos, no sensibles) -- se ignora solo
 # porque cambia en cada consulta y ensuciaria el diff, no por confidencialidad.
 **/uf_cache.json
+**/uf_ultima.json
 
 # Respaldos automaticos y carpetas de trabajo/scratch de cualquier modulo.
 **/Respaldos/
