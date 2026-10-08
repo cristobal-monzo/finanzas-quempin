@@ -159,6 +159,15 @@ def test_linea_legible(raiz):
     assert "costo $1.113.820" in texto and "precio neto $1.856.404" in texto and "margen 40,0 %" in texto
 
 
+def test_linea_en_la_moneda_del_proyecto(raiz):
+    item = {"datos": _datos(), "resumen": _resumen(moneda="USD", costoDirecto=1113.8, precioNeto=1856.4),
+            "autor": "", "mod": "2026-09-30T15:00:00.000Z"}
+    texto = fz.linea(item)
+    assert "costo US$ 1.113,80" in texto and "precio neto US$ 1.856,40" in texto
+    item["resumen"] = _resumen(moneda="PEN", precioNeto=25000)
+    assert "precio neto S/ 25.000,00" in fz.linea(item)
+
+
 # ── ENVIAR (librería común) ──────────────────────────────────────────────────
 
 def test_enviar_valida_y_usa_el_nombre_del_formulador(raiz):

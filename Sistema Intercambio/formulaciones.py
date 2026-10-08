@@ -225,8 +225,16 @@ def marcar_revisadas(repositorio: list[dict], ruta: Path | None = None) -> int:
 
 # ── TEXTO ────────────────────────────────────────────────────────────────────
 
-def _pesos(valor) -> str:
-    return "—" if not isinstance(valor, (int, float)) else "$" + f"{round(valor):,}".replace(",", ".")
+# Moneda del presupuesto (resumen.moneda del Formulador): pesos enteros; soles, dólares y euros con centavos
+_MONEDAS = {"CLP": ("$", 0), "PEN": ("S/ ", 2), "USD": ("US$ ", 2), "EUR": ("€ ", 2)}
+
+
+def _monto(valor, moneda: str = "CLP") -> str:
+    if not isinstance(valor, (int, float)):
+        return "—"
+    simbolo, dec = _MONEDAS.get(moneda or "CLP", _MONEDAS["CLP"])
+    texto = f"{abs(valor):,.{dec}f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    return ("-" if round(valor, dec) < 0 else "") + simbolo + texto
 
 
 def _fecha(iso: str) -> str:
@@ -244,8 +252,8 @@ def linea(item: dict) -> str:
         titulo_legible(d),
         d.get("cliente") or "sin cliente",
         d.get("estado") or "Borrador",
-        f"costo {_pesos(r.get('costoDirecto'))}",
-        f"precio neto {_pesos(r.get('precioNeto'))}",
+        f"costo {_monto(r.get('costoDirecto'), r.get('moneda'))}",
+        f"precio neto {_monto(r.get('precioNeto'), r.get('moneda'))}",
         f"margen {margen * 100:.1f} %".replace(".", ",") if isinstance(margen, (int, float)) else "margen —",
     ]
     if r.get("errores"):
