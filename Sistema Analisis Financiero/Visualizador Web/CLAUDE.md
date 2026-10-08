@@ -45,8 +45,19 @@ Sistema Analisis Financiero/Visualizador Web/
 - **Datos incrustados** (base64, no `fetch`) — mismo motivo que Centro de
   Costos: el canal de consumo es un Claude Artifact privado.
 - **Contraseña**: la misma de todos los tableros (decisión del usuario,
-  2026-07-23); desde 2026-10-05 cifra los datos, reportes PDF incrustados
-  incluidos — ver § "Punto de control de acceso" del doc maestro.
+  2026-07-23); desde 2026-10-05 cifra los datos — ver § "Punto de control de
+  acceso" del doc maestro.
+- **Reportes PDF aparte (2026-10-08)**: eran el 97 % del tablero (1,7 MB de
+  1,76) y viajaban en base64 dentro de los datos. Ahora `build()` deja cada
+  uno cifrado en `build/reportes/<huella>.json` (`escribir_reportes_cifrados`)
+  y los datos solo llevan `reportes_pdf[clave] = {archivo, fecha,
+  desactualizado}` (`reportes_pdf_publicables`). El botón dice la fecha del
+  PDF y si sus datos cambiaron después (lo que calcula el skill
+  `Reportes_Analisis_Financiero`, consultado en el build solo contra el libro
+  real; si no se puede saber, solo la fecha), y baja y descifra el archivo al
+  abrirlo (`QuempinCandado.abrirArchivo`). El tablero pasó de 2,7 MB a 0,4 MB.
+  Se publica con `Visualizador Web/publicar.py`, que copia también
+  `reportes/`; abierto como archivo local, el reporte no abre (avisa).
 
 ## Contenido
 

@@ -683,6 +683,8 @@
   .ficha-cerrar:hover { color: var(--text-primary); }
   .ficha-boton:focus-visible, .ficha-cerrar:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
   .ficha-sin-pdf { font-size: 12px; color: var(--text-muted); }
+  .reporte-fecha { font-weight: 400; color: var(--text-muted); }
+  .reporte-desact { font-weight: 700; color: var(--status-warning); }
 
   /* Las cuatro cifras. Cifras proporcionales (las tabulares se ven sueltas a
      este tamaño) y el color solo donde hay un juicio: la diferencia contra el
@@ -1867,13 +1869,33 @@
       '" width="160" height="160">' + segs + '</svg><div class="donut-legend">' + legend + '</div></div>';
   }
 
-  function abrirPdfBlob(base64, nombreArchivo) {
-    var binario = atob(base64);
-    var bytes = new Uint8Array(binario.length);
-    for (var i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
-    var blob = new Blob([bytes], { type: 'application/pdf' });
-    var url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+  // Reportes PDF (2026-10-08): ya no viajan dentro de los datos (eran el 97 % del
+  // tablero). Cada uno está cifrado en reportes/<huella>.json, junto a esta
+  // página, y se baja al abrirlo con la misma contraseña. La ventana se abre en el
+  // mismo clic para que el bloqueador de ventanas emergentes no la frene.
+  function botonReporte(clave, clase) {
+    var r = DATA.reportes_pdf[clave];
+    if (!r) return null;
+    var nota = r.desactualizado
+      ? 'Este reporte es del ' + r.fecha + ' y los datos cambiaron después: sus cifras pueden no calzar con el tablero.'
+      : 'Reporte PDF generado el ' + r.fecha + '.';
+    return '<button type="button" class="' + clase + '" data-reporte="' + esc(clave) + '" title="' + esc(nota) + '">' +
+      'Ver reporte PDF <span class="reporte-fecha">· ' + esc(r.fecha) + '</span>' +
+      (r.desactualizado ? ' <span class="reporte-desact">· desactualizado</span>' : '') + '</button>';
+  }
+  function abrirReporte(clave) {
+    var r = DATA.reportes_pdf[clave];
+    if (!r) return;
+    var ventana = window.open('', '_blank');
+    QuempinCandado.abrirArchivo(r.archivo).then(function (bytes) {
+      var url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      if (ventana) ventana.location.href = url; else window.open(url, '_blank');
+    }, function () {
+      if (ventana) ventana.close();
+      window.alert(location.protocol === 'file:'
+        ? 'Los reportes se abren desde el tablero publicado, no desde el archivo local.'
+        : 'No se pudo abrir el reporte. Revisa la conexión e inténtalo de nuevo.');
+    });
   }
 
   // ---------- pestaña Proyectos ----------
@@ -2011,10 +2033,7 @@
     var fechas = (p.fecha_inicio || p.fecha_cierre)
       ? 'Inicio ' + esc(p.fecha_inicio || '—') + ' · Cierre ' + esc(p.fecha_cierre || '—')
       : 'Sin fechas cargadas';
-    var pdfKey = 'proyecto:' + p.tag;
-    var pdf = DATA.reportes_pdf[pdfKey]
-      ? '<button type="button" class="ficha-boton" data-pdf-key="' + esc(pdfKey) + '">Ver reporte PDF</button>'
-      : '<span class="ficha-sin-pdf">Sin reporte PDF</span>';
+    var pdf = botonReporte('proyecto:' + p.tag, 'ficha-boton') || '<span class="ficha-sin-pdf">Sin reporte PDF</span>';
     return '<div class="ficha-cab"><div class="ficha-cab-datos">' + estado +
       '<span>' + esc(p.categoria || 'Sin categoría') + '</span><span>' + fechas + '</span></div>' +
       '<div class="ficha-cab-acciones">' + enlaceFormuladorHtml(p) + pdf +
@@ -2403,9 +2422,9 @@
     renderTablaProyectos(proyectosFiltrados());
   }, 150));
   document.getElementById('tablaProyectosBody').addEventListener('click', function (evt) {
-    var btnPdf = evt.target.closest('[data-pdf-key]');
+    var btnPdf = evt.target.closest('[data-reporte]');
     if (btnPdf) {
-      abrirPdfBlob(DATA.reportes_pdf[btnPdf.getAttribute('data-pdf-key')], btnPdf.getAttribute('data-pdf-key').replace(':', '_') + '.pdf');
+      abrirReporte(btnPdf.getAttribute('data-reporte'));
       return;
     }
     if (evt.target.closest('[data-cerrar-ficha]')) {
@@ -2748,10 +2767,8 @@
   var categoriaExpandida = null;
 
   function detalleCategoriaHtml(c) {
-    var pdfKey = 'categoria:' + c.categoria;
-    var pdfBtn = DATA.reportes_pdf[pdfKey]
-      ? '<button type="button" class="pendientes-toggle-btn" data-pdf-key-cat="' + esc(pdfKey) + '">Ver/Descargar PDF</button>'
-      : '<span style="color:var(--text-muted);font-size:12px">Sin reporte generado</span>';
+    var pdfBtn = botonReporte('categoria:' + c.categoria, 'pendientes-toggle-btn') ||
+      '<span style="color:var(--text-muted);font-size:12px">Sin reporte generado</span>';
     var proyectosDeCategoria = PROYECTOS.filter(function (p) { return c.tags_proyectos.indexOf(p.tag) !== -1; });
     var filas = proyectosDeCategoria.slice().sort(function (a, b) { return b.nota - a.nota; }).map(function (p) {
       return '<tr><td>' + esc(p.nombre) + '</td><td>' + esc(p.cliente || '—') + '</td><td class="num">' +
@@ -2810,9 +2827,9 @@
     renderTablaCategorias(categoriasFiltradas());
   }, 150));
   document.getElementById('tablaCategoriasBody').addEventListener('click', function (evt) {
-    var btnPdf = evt.target.closest('[data-pdf-key-cat]');
+    var btnPdf = evt.target.closest('[data-reporte]');
     if (btnPdf) {
-      abrirPdfBlob(DATA.reportes_pdf[btnPdf.getAttribute('data-pdf-key-cat')], btnPdf.getAttribute('data-pdf-key-cat').replace(':', '_') + '.pdf');
+      abrirReporte(btnPdf.getAttribute('data-reporte'));
       return;
     }
     var row = evt.target.closest('tr.doc-row');

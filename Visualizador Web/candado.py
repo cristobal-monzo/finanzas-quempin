@@ -23,6 +23,7 @@ Un navegador que recordaba la anterior la vuelve a pedir solo.
 """
 import base64
 import functools
+import gzip
 import hashlib
 import json
 import os
@@ -79,21 +80,72 @@ def _b64(datos: bytes) -> str:
     return base64.b64encode(datos).decode("ascii")
 
 
-def cifrar(texto: str, contrasena: str | None = None) -> str:
-    """El sobre (JSON de una linea, solo ASCII) que va en el HTML en lugar de los datos."""
+def cifrar_bytes(datos: bytes, contrasena: str | None = None, comprimir: bool = False) -> str:
+    """Sobre de unos bytes cualquiera (JSON de una linea, solo ASCII).
+
+    Version 2 (2026-10-08): con comprimir=True los bytes pasan por gzip ANTES
+    de cifrar ("comp": "gzip"). Lo cifrado no se puede comprimir, asi que esa
+    es la unica oportunidad: los datos de Centro de Costos bajan de 1,0 MB a
+    ~0,1 MB y los del Cotizador de 3,0 MB a ~0,25 MB. mtime=0 deja el gzip
+    igual en cada build. Los PDF van sin comprimir: ya vienen comprimidos."""
     if contrasena is None:
         contrasena = leer_contrasena()
+    if comprimir:
+        datos = gzip.compress(datos, mtime=0)
     iv = secrets.token_bytes(12)
-    cifrado = AESGCM(derivar_clave(contrasena)).encrypt(iv, texto.encode("utf-8"), None)
-    return json.dumps({"v": 1, "kdf": "PBKDF2-SHA256", "it": ITERACIONES, "sal": _b64(SAL),
-                       "iv": _b64(iv), "datos": _b64(cifrado)}, separators=(",", ":"))
+    cifrado = AESGCM(derivar_clave(contrasena)).encrypt(iv, datos, None)
+    return json.dumps({"v": 2, "kdf": "PBKDF2-SHA256", "it": ITERACIONES, "sal": _b64(SAL), "iv": _b64(iv),
+                       "comp": "gzip" if comprimir else None, "datos": _b64(cifrado)}, separators=(",", ":"))
+
+
+def cifrar(texto: str, contrasena: str | None = None) -> str:
+    """El sobre que va en el HTML en lugar de los datos: el texto, comprimido y cifrado."""
+    return cifrar_bytes(texto.encode("utf-8"), contrasena, comprimir=True)
+
+
+def descifrar_bytes(sobre: str, contrasena: str) -> bytes:
+    """Inverso de cifrar_bytes(); abre tambien los sobres version 1 (sin "comp").
+    Con otra contrasena levanta cryptography.exceptions.InvalidTag."""
+    s = json.loads(sobre)
+    clave = derivar_clave(contrasena, base64.b64decode(s["sal"]), s["it"])
+    plano = AESGCM(clave).decrypt(base64.b64decode(s["iv"]), base64.b64decode(s["datos"]), None)
+    return gzip.decompress(plano) if s.get("comp") == "gzip" else plano
 
 
 def descifrar(sobre: str, contrasena: str) -> str:
     """Inverso de cifrar(). Con otra contrasena levanta cryptography.exceptions.InvalidTag."""
-    s = json.loads(sobre)
-    clave = derivar_clave(contrasena, base64.b64decode(s["sal"]), s["it"])
-    return AESGCM(clave).decrypt(base64.b64decode(s["iv"]), base64.b64decode(s["datos"]), None).decode("utf-8")
+    return descifrar_bytes(sobre, contrasena).decode("utf-8")
+
+
+# Archivos cifrados que un tablero baja al usarlos (2026-10-08): hoy, los
+# reportes PDF de Analisis Financiero, que eran el 97 % de sus datos. Van junto
+# al index.html, con el nombre derivado de su contenido.
+CARPETA_ARCHIVOS = "reportes"
+_PATRON_ARCHIVO = re.compile(r"^" + CARPETA_ARCHIVOS + r"/[0-9a-f]{16,64}\.json$")
+
+
+def nombre_archivo(datos: bytes) -> str:
+    """Ruta relativa al index.html de un archivo cifrado: la misma para el
+    mismo contenido, asi un reporte que no cambio no ensucia gh-pages."""
+    return f"{CARPETA_ARCHIVOS}/{hashlib.sha256(datos).hexdigest()[:24]}.json"
+
+
+def archivos_citados(datos) -> list[str]:
+    """Rutas de archivos cifrados que nombran los datos de un tablero."""
+    encontrados = []
+
+    def recorrer(x):
+        if isinstance(x, dict):
+            for v in x.values():
+                recorrer(v)
+        elif isinstance(x, list):
+            for v in x:
+                recorrer(v)
+        elif isinstance(x, str) and _PATRON_ARCHIVO.match(x):
+            encontrados.append(x)
+
+    recorrer(datos)
+    return sorted(set(encontrados))
 
 
 def incrustar(html: str, marcador_datos: str, texto: str, contrasena: str | None = None) -> str:
@@ -117,11 +169,23 @@ def leer_datos(html: str, id_script: str, contrasena: str):
     return json.loads(descifrar(m.group(1), contrasena))
 
 
-def abre_con(html: str, contrasena: str) -> bool:
-    """True si el tablero trae sus datos en un sobre y la contrasena lo abre."""
+def abre_con(html: str, contrasena: str, carpeta: Path | None = None) -> bool:
+    """True si el tablero trae sus datos en un sobre y la contrasena lo abre.
+    Con 'carpeta' (la del index.html), tambien cada archivo cifrado que citan
+    sus datos tiene que estar ahi y abrir: un tablero publicado sin su carpeta
+    reportes/ tendria botones que no abren nada."""
     sobres = re.findall(r'<script id="[^"]+" type="text/plain">(\{"v":[^<]*)</script>', html)
     try:
-        return bool(sobres) and all(json.loads(descifrar(s, contrasena)) is not None for s in sobres)
+        if not sobres:
+            return False
+        for s in sobres:
+            datos = json.loads(descifrar(s, contrasena))
+            if datos is None:
+                return False
+            if carpeta is not None:
+                for rel in archivos_citados(datos):
+                    descifrar_bytes((Path(carpeta) / rel).read_text(encoding="utf-8"), contrasena)
+        return True
     except Exception:
         return False
 
@@ -136,7 +200,8 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     contrasena_real = leer_contrasena()
     rutas = sys.argv[1:]
-    malos = [r for r in rutas if not abre_con(Path(r).read_text(encoding="utf-8"), contrasena_real)]
+    malos = [r for r in rutas
+             if not abre_con(Path(r).read_text(encoding="utf-8"), contrasena_real, carpeta=Path(r).parent)]
     for ruta in rutas:
         print(f"[{'NO ABRE' if ruta in malos else 'OK'}] {ruta}")
     if malos:

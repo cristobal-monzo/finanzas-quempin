@@ -4,6 +4,7 @@ import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+import pytest
 
 import analisis_financiero as af
 
@@ -525,6 +526,7 @@ def test_build_genera_html_no_vacio_con_snapshot_incrustado(tmp_path, monkeypatc
     monkeypatch.setattr(bv, "RUTA_EXCEL", ruta_excel)
     monkeypatch.setattr(bv, "RUTA_DATA_JSON", ruta_data)
     monkeypatch.setattr(bv, "RUTA_BUILD_HTML", ruta_build)
+    monkeypatch.setattr(bv, "RAIZ_REPORTES", tmp_path / "sin-reportes")
 
     resultado = bv.build()
 
@@ -803,41 +805,88 @@ def test_calcular_categorias_lista_vacia_devuelve_lista_vacia():
     assert bv.calcular_categorias([]) == []
 
 
-def test_embeber_reportes_pdf_incluye_solo_proyectos_con_pdf_existente(tmp_path, monkeypatch):
+def test_reportes_pdf_publicables_incluye_solo_proyectos_con_pdf_existente(tmp_path, monkeypatch):
     raiz_reportes = tmp_path / "Reportes"
     (raiz_reportes / "Proyectos").mkdir(parents=True)
     (raiz_reportes / "Proyectos" / "UMAG.pdf").write_bytes(b"%PDF-1.4 contenido de prueba")
     monkeypatch.setattr(bv, "RAIZ_REPORTES", raiz_reportes)
 
-    reportes = bv.embeber_reportes_pdf(
+    reportes = bv.reportes_pdf_publicables(
         [{"tag": "UMAG"}, {"tag": "SINPDF"}], [],
     )
 
-    assert "proyecto:UMAG" in reportes
-    assert "proyecto:SINPDF" not in reportes
-    assert _base64.b64decode(reportes["proyecto:UMAG"]) == b"%PDF-1.4 contenido de prueba"
+    assert set(reportes) == {"proyecto:UMAG"}
+    meta = reportes["proyecto:UMAG"]
+    # El PDF ya no viaja en los datos (2026-10-08): solo dónde está cifrado, su fecha y su estado.
+    assert meta["archivo"] == bv.candado.nombre_archivo(b"%PDF-1.4 contenido de prueba")
+    assert re.fullmatch(r"\d{2}-\d{2}-\d{4}", meta["fecha"])
+    assert meta["desactualizado"] is None
+    assert "contenido de prueba" not in str(reportes)
+    assert _base64.b64encode(b"%PDF-1.4").decode("ascii") not in str(reportes)
 
 
-def test_embeber_reportes_pdf_incluye_categorias_con_pdf_existente(tmp_path, monkeypatch):
+def test_reportes_pdf_publicables_incluye_categorias_con_pdf_existente(tmp_path, monkeypatch):
     raiz_reportes = tmp_path / "Reportes"
     (raiz_reportes / "Categorías").mkdir(parents=True)
     (raiz_reportes / "Categorías" / "I+D+i.pdf").write_bytes(b"%PDF fake categoria")
     monkeypatch.setattr(bv, "RAIZ_REPORTES", raiz_reportes)
 
-    reportes = bv.embeber_reportes_pdf(
+    reportes = bv.reportes_pdf_publicables(
         [], [{"categoria": "I+D+i"}, {"categoria": "Sin categoría"}],
     )
 
-    assert "categoria:I+D+i" in reportes
-    assert "categoria:Sin categoría" not in reportes
+    assert set(reportes) == {"categoria:I+D+i"}
 
 
-def test_embeber_reportes_pdf_devuelve_vacio_si_no_hay_carpeta_reportes(tmp_path, monkeypatch):
+def test_reportes_pdf_publicables_devuelve_vacio_si_no_hay_carpeta_reportes(tmp_path, monkeypatch):
     monkeypatch.setattr(bv, "RAIZ_REPORTES", tmp_path / "esta-carpeta-no-existe")
 
-    reportes = bv.embeber_reportes_pdf([{"tag": "X"}], [{"categoria": "Y"}])
+    reportes = bv.reportes_pdf_publicables([{"tag": "X"}], [{"categoria": "Y"}])
 
     assert reportes == {}
+
+
+def test_reportes_pdf_publicables_marca_los_desactualizados(tmp_path):
+    raiz_reportes = tmp_path / "Reportes"
+    (raiz_reportes / "Proyectos").mkdir(parents=True)
+    for tag in ("UMAG", "CFLI"):
+        (raiz_reportes / "Proyectos" / f"{tag}.pdf").write_bytes(b"%PDF " + tag.encode())
+
+    reportes = bv.reportes_pdf_publicables([{"tag": "UMAG"}, {"tag": "CFLI"}], [], raiz_reportes,
+                                           desactualizados={"proyecto:UMAG"})
+
+    assert reportes["proyecto:UMAG"]["desactualizado"] is True
+    assert reportes["proyecto:CFLI"]["desactualizado"] is False
+
+
+def test_build_deja_cada_reporte_cifrado_aparte_y_borra_los_que_sobran(tmp_path, monkeypatch):
+    ruta_excel = _wb_con_proyectos(tmp_path, [
+        {"TAG proyecto": "UMAG", "Nombre del proyecto": "UMAG", "Cliente": "AGCID"},
+    ])
+    raiz_reportes = tmp_path / "Reportes"
+    (raiz_reportes / "Proyectos").mkdir(parents=True)
+    pdf = b"%PDF-1.7 reporte de prueba que no debe ir dentro del tablero"
+    (raiz_reportes / "Proyectos" / "UMAG.pdf").write_bytes(pdf)
+    ruta_build = tmp_path / "build" / "index.html"
+    sobrante = tmp_path / "build" / "reportes" / ("0" * 24 + ".json")
+    sobrante.parent.mkdir(parents=True)
+    sobrante.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(bv, "RUTA_EXCEL", ruta_excel)
+    monkeypatch.setattr(bv, "RUTA_DATA_JSON", tmp_path / "data" / "analisis-financiero.json")
+    monkeypatch.setattr(bv, "RUTA_BUILD_HTML", ruta_build)
+    monkeypatch.setattr(bv, "RAIZ_REPORTES", raiz_reportes)
+
+    assert bv.build() == 0
+
+    html = ruta_build.read_text(encoding="utf-8")
+    contrasena = bv.candado.leer_contrasena()            # la de prueba (conftest.py raíz)
+    datos = bv.candado.leer_datos(html, "af-data-b64", contrasena)
+    archivo = datos["reportes_pdf"]["proyecto:UMAG"]["archivo"]
+    cifrado = (ruta_build.parent / archivo).read_text(encoding="utf-8")
+    assert bv.candado.descifrar_bytes(cifrado, contrasena) == pdf
+    assert not sobrante.exists()
+    assert _base64.b64encode(pdf).decode("ascii")[:40] not in html
+    assert bv.candado.abre_con(html, contrasena, carpeta=ruta_build.parent)
 
 
 def test_extraer_datos_saneados_incluye_categorias_y_reportes_pdf(tmp_path, monkeypatch):
@@ -851,6 +900,8 @@ def test_extraer_datos_saneados_incluye_categorias_y_reportes_pdf(tmp_path, monk
     (raiz_reportes / "Proyectos").mkdir(parents=True)
     (raiz_reportes / "Proyectos" / "UMAG.pdf").write_bytes(b"%PDF fake")
     monkeypatch.setattr(bv, "RAIZ_REPORTES", raiz_reportes)
+    monkeypatch.setattr(bv, "_reportes_desactualizados",
+                        lambda: pytest.fail("con un Excel de prueba no se consulta el manifiesto real"))
 
     data = bv.extraer_datos_saneados(ruta_excel)
 
@@ -863,7 +914,8 @@ def test_extraer_datos_saneados_incluye_categorias_y_reportes_pdf(tmp_path, monk
         "nota_promedio": proyecto["nota"],
         "tags_proyectos": ["UMAG"],
     }]
-    assert "proyecto:UMAG" in data["reportes_pdf"]
+    assert data["reportes_pdf"]["proyecto:UMAG"]["archivo"].startswith("reportes/")
+    assert data["reportes_pdf"]["proyecto:UMAG"]["desactualizado"] is None
 
 
 def test_extraer_datos_saneados_incluye_peso_cartera_y_detalle_subcategorias(tmp_path):

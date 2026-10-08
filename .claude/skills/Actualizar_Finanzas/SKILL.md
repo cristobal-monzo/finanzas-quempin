@@ -105,13 +105,15 @@ tableros publicados siguen mostrando datos viejos.
 
 Al final de `run` (y de `status`) el driver imprime la sección **"TABLEROS
 PARA PUBLICAR"** con, por cada tablero: si se regeneró en esta corrida, la
-ruta absoluta de su `index.html`, su URL pública fija, y la ruta destino
-dentro del worktree `.worktrees/gh-pages/`.
+ruta absoluta de su `index.html` y su URL pública fija; al final, el comando
+`publicar.py` con los que se regeneraron.
 
-Para cada uno que corresponda publicar, usa la receta de
+Para publicarlos, usa la receta de
 [`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
-§ Hosting (única copia de esos comandos) con los valores que imprimió el
-driver arriba (columnas "Archivo"/"Copiar a") — no repitas la receta acá.
+§ Hosting (única copia de esos comandos): `publicar.py` con las claves que
+imprimió el driver, y después commit y push en gh-pages — no repitas la
+receta acá. No copies el `index.html` a mano: desde el 2026-10-08 el tablero
+del AF lleva sus reportes PDF cifrados aparte, en `build/reportes/`.
 Las URLs son estructurales (no opacas como los links de Artifact) — no hay
 que "cuidar" nada especial entre publicaciones, solo confirmar que la
 subruta coincida con la que imprimió el driver.

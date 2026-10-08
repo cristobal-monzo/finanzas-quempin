@@ -81,26 +81,27 @@ DRIVER_FLUJO_CAJA = (
 # GitHub Pages) la URL de cada uno es estructural -- ya no hay un link opaco
 # que leer de un MEMORY.md ni que cuidar de "no regenerar por error".
 RAIZ_GH_PAGES = RAIZ / ".worktrees" / "gh-pages"
+# (nombre, build, subruta, clave de "Visualizador Web/publicar.py")
 TABLEROS = (
     (
         "Centro de Costos",
         RAIZ / "Centro de Costos" / "Visualizador Web" / "build" / "index.html",
-        "centro-de-costos",
+        "centro-de-costos", "cc",
     ),
     (
         "Análisis Financiero",
         RAIZ / "Sistema Analisis Financiero" / "Visualizador Web" / "build" / "index.html",
-        "analisis-financiero",
+        "analisis-financiero", "af",
     ),
     (
         "Cotizador Histórico",
         RAIZ / "Cotizador Historico" / "Visualizador Web" / "build" / "index.html",
-        "cotizador-historico",
+        "cotizador-historico", "cot",
     ),
     (
         "Flujo de Caja",
         RAIZ / "Flujo de Caja" / "Visualizador Web" / "build" / "index.html",
-        "flujo-de-caja",
+        "flujo-de-caja", "fc",
     ),
 )
 
@@ -110,14 +111,15 @@ URL_BASE_PAGES = "https://cristobal-monzo.github.io/finanzas-quempin"
 def _informe_tableros(momento_inicio):
     """Lista los 4 tableros con su ruta, si se regeneraron en esta corrida y
     su URL fija -- todo lo que el agente necesita para publicarlos. Publicar
-    (copiar a .worktrees/gh-pages/<subruta>/index.html + git push) es lo
-    unico que este driver no hace solo: requiere git push, que el agente
-    corre de forma visible/confirmable, no escondido dentro de este script."""
+    (Visualizador Web/publicar.py + commit + git push) es lo unico que este
+    driver no hace solo: requiere git push, que el agente corre de forma
+    visible/confirmable, no escondido dentro de este script."""
     print("\n" + "=" * 72)
     print("  TABLEROS PARA PUBLICAR")
     print("=" * 72)
 
-    for nombre, ruta_build, subruta in TABLEROS:
+    regenerados = []
+    for nombre, ruta_build, subruta, clave in TABLEROS:
         print(f"\n  {nombre}")
         if not ruta_build.exists():
             print("    [SIN BUILD] No existe todavia -- nada que publicar.")
@@ -132,11 +134,16 @@ def _informe_tableros(momento_inicio):
         print(f"    Estado : {estado}")
         print(f"    Archivo: {ruta_build}")
         print(f"    URL    : {URL_BASE_PAGES}/{subruta}/")
-        print(f"    Copiar a: {RAIZ_GH_PAGES / subruta / 'index.html'}")
+        if regenerado:
+            regenerados.append(clave)
 
-    print("\n  Publicar = copiar cada archivo de arriba a su ruta dentro de")
-    print(f"  {RAIZ_GH_PAGES} y correr, desde ahi:")
-    print("    git add <subruta>/index.html && git commit -m '...' && git push")
+    # No se copian a mano (2026-10-08): el tablero del AF lleva sus reportes PDF
+    # cifrados aparte en build/reportes/, y publicar.py copia todo y lo verifica.
+    print("\n  Publicar = dejarlos listos con publicar.py (copia cada uno con su carpeta")
+    print("  reportes/, verifica con el candado y hace git add en gh-pages), y despues")
+    print("  commit y push en gh-pages:")
+    print(f'    py -3.14 "Visualizador Web/publicar.py" {" ".join(regenerados) or "<cc af cot fc>"}')
+    print(f'    git -C "{RAIZ_GH_PAGES}" commit -m "..." && git -C "{RAIZ_GH_PAGES}" push')
 
 
 # Cronometro de la corrida: cada _ejecutar() deja aca cuanto tardo su modulo.

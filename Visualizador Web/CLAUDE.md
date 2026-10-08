@@ -227,14 +227,23 @@ tampoco hace falta guardar/leer un link en el `MEMORY.md` de cada skill.
 | Flujo de Caja | `flujo-de-caja` | `Flujo de Caja/Visualizador Web/build/index.html` |
 
 ```
-cp "<Origen de la tabla>" ".worktrees/gh-pages/<subruta>/index.html"
-py -3.14 "Visualizador Web/candado.py" ".worktrees/gh-pages/<subruta>/index.html"   # [OK], o no se publica
-git -C ".worktrees/gh-pages" add <subruta>/index.html
-git -C ".worktrees/gh-pages" commit -m "actualizar tablero de <módulo>"
+py -3.14 "Visualizador Web/publicar.py" cc af cot fc        # o --todos; claves: cc ccpe af afpe cot cotpe fc
+git -C ".worktrees/gh-pages" commit -m "actualizar tableros: <cuáles>"
 git -C ".worktrees/gh-pages" push
 ```
 
-**La verificación con `candado.py` no se salta** (2026-10-05): confirma que
+`publicar.py` (2026-10-08) copia el `build/index.html` de cada uno a
+`.worktrees/gh-pages/<subruta>/`, deja su carpeta `reportes/` igual a la del
+build, verifica con el candado que el build y la copia abren con la contraseña
+de este equipo (también cada archivo cifrado que citan sus datos) y lo deja en
+el índice de git. Si algo no abre, no toca gh-pages. **No copies tableros a
+mano**: desde ese día el de Análisis Financiero lleva sus reportes PDF en
+`reportes/<huella>.json`, cifrados aparte, y un `index.html` copiado solo
+tendría botones de reporte que no abren nada. El hub (`index.html` de esta
+carpeta, sin datos) se sigue copiando a mano a `.worktrees/gh-pages/index.html`.
+
+**La verificación con `candado.py` no se salta** (2026-10-05; `publicar.py`
+la hace sola desde el 2026-10-08): confirma que
 el tablero copiado se abre con la contraseña de este equipo. Ese día se
 publicó Análisis Financiero cifrado con la contraseña de prueba de los
 tests (la suite lo había regenerado entre el build y la copia) y nadie del
@@ -269,6 +278,20 @@ Cómo funciona desde entonces (`Visualizador Web/candado.py` + `candado.js`):
   del base64, y `candado.js`, que el build inserta, lo abre en el navegador.
   En la página no hay contraseña contra la cual comparar: sin ella los datos
   son ilegibles, en el sitio y en el repo.
+- **Sobre versión 2 (2026-10-08): los datos se comprimen con gzip antes de
+  cifrar** (`"comp": "gzip"`), porque lo cifrado ya no se puede comprimir:
+  Centro de Costos bajó de 1,0 MB a ~0,1 MB de datos y el Cotizador de 3,0 MB
+  a ~0,25 MB. El navegador los descomprime con `DecompressionStream` (Chrome,
+  Edge, Safari 16.4+, Firefox 113+); si no puede, el candado lo dice en vez de
+  hablar de contraseña incorrecta. Los sobres versión 1 (sin `comp`) se siguen
+  abriendo.
+- **Archivos cifrados aparte**: lo que no hace falta para dibujar el tablero
+  va en `reportes/<huella>.json` junto al `index.html`, cifrado con la misma
+  contraseña (`candado.cifrar_bytes`, sin comprimir), y el tablero lo baja al
+  usarlo (`QuempinCandado.abrirArchivo`). Hoy, los reportes PDF del AF, que
+  eran el 97 % de su tablero. El nombre sale del contenido: un reporte que no
+  cambió no se vuelve a subir. `candado.abre_con(..., carpeta=)` exige que
+  cada archivo citado esté y abra.
 - **La contraseña vive solo en `.contrasena_tableros`** (raíz del repo, una
   línea, gitignored) o en la variable `QUEMPIN_TABLEROS_CONTRASENA`. Sin ella
   el build falla: nunca se genera un tablero sin cifrar. No la escribas en un

@@ -19,7 +19,7 @@ Ver docs/specs/2026-07-23-analisis-financiero-visualizador-web-
 design.md para el diseno original.
 """
 
-import base64
+import importlib.util
 import io
 import json
 import sys
@@ -435,27 +435,76 @@ def datos_para_ingreso(ws_proyectos, proyectos: list[dict]) -> dict:
     }
 
 
-def embeber_reportes_pdf(proyectos: list[dict], categorias: list[dict], raiz_reportes: Path | None = None) -> dict[str, str]:
-    """Escanea <raiz_reportes>/{Proyectos,Categorías}/*.pdf y embebe en
-    base64 los que existen. La ausencia de una clave en el dict devuelto ES
-    la señal de "sin reporte" -- nunca se agrega una clave con valor None o
-    cadena vacia. Nunca escribe ni modifica ningun PDF, solo lee."""
+def ruta_pdf_reporte(clave: str, raiz_reportes: Path) -> Path:
+    """Donde vive el PDF de 'proyecto:<TAG>' o 'categoria:<nombre>'."""
+    tipo, identificador = clave.split(":", 1)
+    return raiz_reportes / ("Proyectos" if tipo == "proyecto" else "Categorías") / f"{identificador}.pdf"
+
+
+def reportes_pdf_publicables(proyectos: list[dict], categorias: list[dict], raiz_reportes: Path | None = None,
+                             desactualizados: set[str] | None = None) -> dict[str, dict]:
+    """Los reportes PDF que existen de estos proyectos y categorías:
+    clave -> {archivo, fecha, desactualizado}.
+
+    Hasta el 2026-10-08 cada PDF viajaba en base64 dentro de los datos: eran
+    el 97 % del tablero (1,7 MB de 1,76) y se bajaban enteros aunque nadie
+    abriera un reporte. Ahora build() deja cada uno cifrado en
+    build/reportes/<huella>.json y el tablero lo baja al abrirlo. 'fecha' es
+    la del archivo y 'desactualizado' dice si sus datos cambiaron después (None
+    si no se sabe). La ausencia de una clave sigue siendo "sin reporte". Nunca
+    escribe ni modifica ningún PDF, solo lee."""
     raiz = raiz_reportes if raiz_reportes is not None else RAIZ_REPORTES
-    reportes: dict[str, str] = {}
+    reportes: dict[str, dict] = {}
     if not raiz.exists():
         return reportes
-
-    for p in proyectos:
-        ruta = raiz / "Proyectos" / f"{p['tag']}.pdf"
-        if ruta.exists():
-            reportes[f"proyecto:{p['tag']}"] = base64.b64encode(ruta.read_bytes()).decode("ascii")
-
-    for c in categorias:
-        ruta = raiz / "Categorías" / f"{c['categoria']}.pdf"
-        if ruta.exists():
-            reportes[f"categoria:{c['categoria']}"] = base64.b64encode(ruta.read_bytes()).decode("ascii")
-
+    claves = [f"proyecto:{p['tag']}" for p in proyectos] + [f"categoria:{c['categoria']}" for c in categorias]
+    for clave in claves:
+        ruta = ruta_pdf_reporte(clave, raiz)
+        if not ruta.exists():
+            continue
+        reportes[clave] = {
+            "archivo": candado.nombre_archivo(ruta.read_bytes()),
+            "fecha": datetime.fromtimestamp(ruta.stat().st_mtime).strftime("%d-%m-%Y"),
+            "desactualizado": None if desactualizados is None else clave in desactualizados,
+        }
     return reportes
+
+
+def _reportes_desactualizados() -> set[str] | None:
+    """Claves de los reportes PDF cuyos datos cambiaron desde que se
+    generaron, según el manifiesto del skill Reportes_Analisis_Financiero
+    (lo mismo que avisa el run de Centro de Costos). Best-effort: None si no
+    se puede saber, y el tablero solo muestra la fecha. Se carga con un nombre
+    propio para no chocar con los otros driver.py en sys.modules."""
+    ruta = RAIZ.parent / ".claude" / "skills" / "Reportes_Analisis_Financiero" / "driver.py"
+    try:
+        spec = importlib.util.spec_from_file_location("_af_driver_reportes", ruta)
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return set(modulo.calcular_reportes_pendientes())
+    except Exception:  # noqa: BLE001 -- nunca frena el tablero
+        return None
+
+
+def escribir_reportes_cifrados(reportes: dict[str, dict], raiz_reportes: Path, carpeta_build: Path) -> int:
+    """Deja cada reporte citado en <carpeta_build>/reportes/, cifrado con la
+    contraseña de los tableros, y borra los que ya no cita nadie. Devuelve
+    cuántos quedaron."""
+    destino = carpeta_build / candado.CARPETA_ARCHIVOS
+    destino.mkdir(parents=True, exist_ok=True)
+    vigentes = set()
+    for clave, meta in reportes.items():
+        datos = ruta_pdf_reporte(clave, raiz_reportes).read_bytes()
+        if candado.nombre_archivo(datos) != meta["archivo"]:
+            raise RuntimeError(f"el PDF de {clave} cambió durante el build: vuelve a correrlo")
+        ruta = carpeta_build / meta["archivo"]
+        vigentes.add(ruta.name)
+        if not ruta.exists():   # mismo nombre = mismo contenido: no se vuelve a cifrar
+            ruta.write_text(candado.cifrar_bytes(datos), encoding="utf-8")
+    for viejo in destino.glob("*.json"):
+        if viejo.name not in vigentes:
+            viejo.unlink()
+    return len(vigentes)
 
 
 def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None = None) -> dict:
@@ -501,7 +550,11 @@ def extraer_datos_saneados(ruta_excel=None, pais: str = "CL", hoy: date | None =
 
     clientes = calcular_clientes(completos)
     categorias = calcular_categorias(completos)
-    reportes_pdf = embeber_reportes_pdf(completos, categorias, rutas["raiz_reportes"])
+    # Solo contra el libro real de Chile se pregunta qué reportes quedaron
+    # desactualizados: un test con un Excel temporal no debe leer el manifiesto real.
+    es_real = pais == "CL" and Path(ruta_excel).resolve() == Path(af.RUTA_EXCEL).resolve()
+    reportes_pdf = reportes_pdf_publicables(completos, categorias, rutas["raiz_reportes"],
+                                            _reportes_desactualizados() if es_real else None)
 
     pendientes_por_cliente: dict[str, int] = {}
     for p in proyectos:
@@ -629,6 +682,12 @@ def build(pais: str = "CL") -> int:
         return 1
 
     rutas["ruta_build_html"].parent.mkdir(parents=True, exist_ok=True)
+    try:
+        n_reportes = escribir_reportes_cifrados(data["reportes_pdf"], rutas["raiz_reportes"],
+                                                rutas["ruta_build_html"].parent)
+    except (OSError, RuntimeError, candado.SinContrasena) as e:
+        print(f"[ERROR] reportes PDF: {e}")
+        return 1
     with io.open(rutas["ruta_build_html"], "w", encoding="utf-8") as f:
         f.write(html)
 
@@ -636,6 +695,8 @@ def build(pais: str = "CL") -> int:
           f"{len(data['pendientes'])} pendiente(s), {len(data['clientes'])} cliente(s)")
     print(f"Snapshot: {rutas['ruta_data_json']}")
     print(f"Visualizador: {rutas['ruta_build_html']}")
+    print(f"Reportes PDF cifrados aparte: {n_reportes} en "
+          f"{rutas['ruta_build_html'].parent / candado.CARPETA_ARCHIVOS} (se publican junto al index.html)")
     return 0
 
 

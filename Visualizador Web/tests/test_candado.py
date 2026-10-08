@@ -57,6 +57,51 @@ def test_el_sobre_no_deja_ver_los_datos_ni_la_contrasena():
     assert candado.cifrar(DATOS, "x") != candado.cifrar(DATOS, "x")   # IV nuevo en cada build
 
 
+def test_los_datos_van_comprimidos_antes_de_cifrar():
+    """Sobre version 2 (2026-10-08): lo cifrado no se puede comprimir, asi que
+    se comprime antes. Los datos de los tableros son JSON muy repetitivo."""
+    filas = json.dumps([{"proveedor": "Ferretería Ñandú", "monto": 12_345, "categoria": "Materiales"}] * 2000,
+                       ensure_ascii=False)
+    sobre = candado.cifrar(filas, "x")
+    assert json.loads(sobre)["v"] == 2 and json.loads(sobre)["comp"] == "gzip"
+    assert len(sobre) < len(filas) / 10
+    assert candado.descifrar(sobre, "x") == filas
+
+
+def test_un_sobre_version_1_se_sigue_abriendo():
+    """Los tableros ya publicados llevan sobres sin comprimir hasta que se regeneran."""
+    iv = b"\x01" * 12
+    cifrado = candado.AESGCM(candado.derivar_clave("x")).encrypt(iv, DATOS.encode("utf-8"), None)
+    sobre_v1 = json.dumps({"v": 1, "kdf": "PBKDF2-SHA256", "it": candado.ITERACIONES,
+                           "sal": candado._b64(candado.SAL), "iv": candado._b64(iv), "datos": candado._b64(cifrado)})
+    assert candado.descifrar(sobre_v1, "x") == DATOS
+
+
+def test_un_archivo_aparte_se_cifra_sin_comprimir_y_con_nombre_por_su_contenido():
+    pdf = b"%PDF-1.7 contenido de prueba " * 50
+    sobre = candado.cifrar_bytes(pdf, "x")
+    assert json.loads(sobre)["comp"] is None and candado.descifrar_bytes(sobre, "x") == pdf
+    assert candado.nombre_archivo(pdf) == candado.nombre_archivo(pdf)        # mismo contenido, mismo archivo
+    assert candado.nombre_archivo(pdf) != candado.nombre_archivo(pdf + b"!")
+    assert candado.nombre_archivo(pdf).startswith("reportes/") and "PDF" not in candado.nombre_archivo(pdf)
+
+
+def test_antes_de_publicar_tambien_se_revisan_los_archivos_que_citan_los_datos(tmp_path):
+    pdf = b"%PDF-1.7 reporte"
+    rel = candado.nombre_archivo(pdf)
+    datos = json.dumps({"reportes_pdf": {"proyecto:X": {"archivo": rel, "fecha": "01-01-2026"}}})
+    tablero = candado.incrustar(f"<script>{candado.MARCADOR_JS}</script>"
+                                '<script id="xx-data-b64" type="text/plain">__XX__</script>', "__XX__", datos, "la real")
+    assert candado.archivos_citados(json.loads(datos)) == [rel]
+    assert not candado.abre_con(tablero, "la real", carpeta=tmp_path)          # falta la carpeta reportes/
+    (tmp_path / "reportes").mkdir()
+    (tmp_path / rel).write_text(candado.cifrar_bytes(pdf, "otra"), encoding="utf-8")
+    assert not candado.abre_con(tablero, "la real", carpeta=tmp_path)          # cifrado con otra contraseña
+    (tmp_path / rel).write_text(candado.cifrar_bytes(pdf, "la real"), encoding="utf-8")
+    assert candado.abre_con(tablero, "la real", carpeta=tmp_path)
+    assert candado.abre_con(tablero, "la real")                                # sin carpeta: solo el sobre
+
+
 def test_sin_contrasena_no_se_construye_nada(monkeypatch, tmp_path):
     monkeypatch.delenv(candado.VARIABLE_CONTRASENA)
     monkeypatch.setattr(candado, "RUTA_CONTRASENA", tmp_path / "no-existe")
@@ -117,8 +162,31 @@ def test_el_navegador_abre_lo_que_cifra_python(tmp_path):
                           input=json.dumps(entrada, ensure_ascii=False).encode("utf-8"))
     buena, mala = json.loads(proc.stdout.decode("utf-8"))
     assert buena["clave"] == candado.derivar_clave("Contraseña Ñandú").hex()   # misma normalización y misma clave
-    assert buena["datos"] == json.loads(DATOS)
+    assert buena["datos"] == json.loads(DATOS)                                 # sobre v2: descomprime en el navegador
     assert mala.get("error") is True
+
+
+_SCRIPT_NODE_ARCHIVO = r"""
+const fs = require('fs');
+(0, eval)(fs.readFileSync(process.argv[2], 'utf8'));
+const entrada = JSON.parse(fs.readFileSync(0, 'utf8'));
+const sobre = JSON.parse(entrada.sobre);
+QuempinCandado.derivar(entrada.clave, sobre)
+  .then((clave) => QuempinCandado.descifrarBytes(clave, sobre))
+  .then((buf) => process.stdout.write(Buffer.from(buf).toString('base64')));
+"""
+
+
+@hay_node
+def test_el_navegador_abre_un_archivo_cifrado_aparte(tmp_path):
+    """Un reporte PDF: bytes sin comprimir, que el tablero baja al abrirlo."""
+    pdf = b"%PDF-1.7 \x00\x01\x02 binario de prueba"
+    script = tmp_path / "candado_archivo.js"
+    script.write_text(_SCRIPT_NODE_ARCHIVO, encoding="utf-8")
+    entrada = {"sobre": candado.cifrar_bytes(pdf, "Clave Ñ"), "clave": "clave n"}
+    proc = subprocess.run(["node", str(script), str(candado.RUTA_JS)], capture_output=True, check=True,
+                          input=json.dumps(entrada, ensure_ascii=False).encode("utf-8"))
+    assert base64.b64decode(proc.stdout) == pdf
 
 
 @pytest.mark.parametrize("ruta", PLANTILLAS, ids=lambda p: str(p.relative_to(RAIZ).parent.parent))

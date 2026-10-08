@@ -39,7 +39,9 @@ usuario, 2026-08-19).
    [`Visualizador Web/CLAUDE.md`](../Visualizador%20Web/CLAUDE.md) § Hosting
    (el de la **raíz** del repo, no el del módulo). Es la única copia — no la
    dupliques. Cada skill aporta solo su subruta (`centro-de-costos`,
-   `analisis-financiero`, `cotizador-historico`).
+   `analisis-financiero`, `cotizador-historico`), que en `publicar.py` es la
+   clave `cc`, `af` o `cot`. No se copia el `index.html` a mano: desde el
+   2026-10-08 el del AF lleva sus reportes PDF cifrados aparte.
 
 4. **Reportar en una respuesta corta**: qué cambió, si se publicó o no hacía
    falta, y el link (el mismo de siempre, la URL es estructural y fija).

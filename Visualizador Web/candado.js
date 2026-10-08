@@ -35,11 +35,40 @@ var QuempinCandado = (function () {
       })
       .then(function (bits) { return new Uint8Array(bits); });
   }
+  // Sobre versión 2 (2026-10-08): los datos van comprimidos con gzip antes de
+  // cifrar ("comp": "gzip"); el navegador los descomprime con DecompressionStream.
+  // Los sobres versión 1 (sin "comp") se siguen abriendo igual.
+  function puedeAbrir(sobre) {
+    return sobre.comp !== 'gzip' || typeof DecompressionStream === 'function';
+  }
+  function descomprimir(buffer) {
+    var flujo = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return new Response(flujo).arrayBuffer();
+  }
   // Con una clave equivocada AES-GCM rechaza la promesa (no devuelve basura).
-  function descifrar(clave, sobre) {
+  function descifrarBytes(clave, sobre) {
     return crypto.subtle.importKey('raw', clave, 'AES-GCM', false, ['decrypt'])
       .then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes(sobre.iv) }, k, bytes(sobre.datos)); })
+      .then(function (plano) { return sobre.comp === 'gzip' ? descomprimir(plano) : plano; });
+  }
+  function descifrar(clave, sobre) {
+    return descifrarBytes(clave, sobre)
       .then(function (plano) { return JSON.parse(new TextDecoder('utf-8').decode(plano)); });
+  }
+
+  // La clave con que se abrió este tablero: con ella se abren después los
+  // archivos cifrados que se bajan al usarlos (los reportes PDF del AF).
+  var claveAbierta = null;
+  // Baja un archivo cifrado (ruta relativa al tablero, ej. reportes/<huella>.json)
+  // y devuelve sus bytes ya descifrados (ArrayBuffer).
+  function abrirArchivo(ruta) {
+    if (!claveAbierta) return Promise.reject(new Error('El tablero todavía no está abierto.'));
+    return fetch(ruta, { cache: 'no-cache' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('No se encontró el archivo (' + r.status + ').');
+        return r.json();
+      })
+      .then(function (sobre) { return descifrarBytes(claveAbierta, sobre); });
   }
 
   // Engancha el formulario de contraseña de la plantilla (#pwGate, #pwForm,
@@ -54,6 +83,7 @@ var QuempinCandado = (function () {
     var boton = form.querySelector('button');
 
     function mostrar(DATA, clave) {
+      claveAbierta = clave;
       try { localStorage.setItem(RECORDADA, aB64(clave)); } catch (e) {}
       gate.style.display = 'none';
       document.getElementById('vizRoot').style.display = '';
@@ -67,8 +97,10 @@ var QuempinCandado = (function () {
     // Marca de la barrera anterior: ya no abre nada.
     try { localStorage.removeItem('quempin_viz_unlocked'); } catch (e) {}
 
-    if (!window.crypto || !crypto.subtle) {
-      error.textContent = 'Este navegador no puede abrir los datos cifrados. Prueba con Chrome, Edge o Safari al día.';
+    // Antes de pedir la contraseña: si el navegador no puede abrir el sobre, que
+    // no parezca una contraseña incorrecta.
+    if (!window.crypto || !crypto.subtle || !puedeAbrir(sobre)) {
+      error.textContent = 'Este navegador no puede abrir los datos cifrados. Actualízalo, o usa Chrome, Edge o Safari al día.';
       boton.disabled = true;
       return;
     }
@@ -102,5 +134,5 @@ var QuempinCandado = (function () {
     });
   }
 
-  return { abrir: abrir, derivar: derivar, descifrar: descifrar };
+  return { abrir: abrir, derivar: derivar, descifrar: descifrar, descifrarBytes: descifrarBytes, abrirArchivo: abrirArchivo };
 })();
