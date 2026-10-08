@@ -65,7 +65,7 @@ muestra:
   pocas líneas: quién, qué oferta, precio, margen y si tiene errores. Después
   marca la revisión con
   `py -3.14 "Sistema Analisis Financiero/.claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones revisadas`.
-  No los marques sin habérselos mostrado: la corrida programada de las 23:00
+  No los marques sin habérselos mostrado: la corrida programada de los lunes a las 10:00
   nunca los marca, justamente para que lleguen al usuario.
 - **`[ELEGIR TAG]` / `[CARGAR]`** — presupuestos *Adjudicada* cuyos costos no
   están en Análisis Financiero, o que cambiaron después de cargarlos.
