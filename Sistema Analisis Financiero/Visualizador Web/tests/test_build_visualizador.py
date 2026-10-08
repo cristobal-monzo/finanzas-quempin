@@ -536,6 +536,8 @@ def test_build_genera_html_no_vacio_con_snapshot_incrustado(tmp_path, monkeypatc
     contenido = ruta_build.read_text(encoding="utf-8")
     assert "__AF_DATA_B64__" not in contenido
     assert len(contenido) > 1000
+    # El pulso del procesador (Sistema Intercambio/pulso.js) va insertado, no copiado (2026-10-08).
+    assert "__AF_PULSO_JS__" not in contenido and bv.RUTA_PULSO_JS.read_text(encoding="utf-8") in contenido
 
 
 def test_build_falla_si_no_existe_el_excel(tmp_path, monkeypatch):

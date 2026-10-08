@@ -277,6 +277,17 @@
       return (sobre && sobre.datos && sobre.datos.mensajes) || {};
     } catch (e) { return {}; }
   }
+  /* El pulso del procesador del intercambio (publicado/estado.json): si no corre, lo que se
+     envía queda en el buzón sin aplicarse. La lectura la hace pulso.js (Sistema Intercambio). */
+  async function estadoProcesador() {
+    const h = await carpetaLista();
+    if (!h) return null;
+    try {
+      const pub = await h.getDirectoryHandle('publicado');
+      const sobre = await leerJSON(pub, 'estado.json');
+      return (sobre && sobre.datos) || null;
+    } catch (e) { return null; }
+  }
   function descargar(m) {
     const a = root.document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(m, null, 2) + '\n'], { type: 'application/json' }));
@@ -288,7 +299,7 @@
 
   const api = {
     parsear, mostrar, iguales, armarMensajes, validarNuevo, nombreArchivo, isoLocal, nuevoId, fechaValida,
-    carpeta: { disponible, estado: estadoCarpeta, conectar, permitir, enviar, archivosEnBuzon, resultados }, descargar
+    carpeta: { disponible, estado: estadoCarpeta, conectar, permitir, enviar, archivosEnBuzon, resultados, estadoProcesador }, descargar
   };
   root.QIngreso = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

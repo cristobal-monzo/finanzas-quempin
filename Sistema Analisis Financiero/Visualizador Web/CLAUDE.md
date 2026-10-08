@@ -307,7 +307,10 @@ desde el tablero».
   últimos 60) dice si cada uno sigue en el buzón, si se aplicó, si espera una
   decisión o si fue rechazado, leyendo `publicado/analisis-financiero.json`
   (`mensajes`) cuando la carpeta ya tiene permiso; sin carpeta, compara con el
-  snapshot.
+  snapshot. Arriba de la lista va el pulso del procesador (`publicado/estado.json`
+  leído con `Sistema Intercambio/pulso.js`, que el build inserta en
+  `__AF_PULSO_JS__`): si lleva más de 4 horas hábiles sin correr, un aviso rojo
+  dice que lo enviado no se está aplicando (2026-10-08).
 - **El tablero publicado no cambia solo**: el procesador aplica el envío al
   Excel en ≤ 2 horas, pero GitHub Pages se actualiza cuando se publica
   (`/Actualizar_AF`).

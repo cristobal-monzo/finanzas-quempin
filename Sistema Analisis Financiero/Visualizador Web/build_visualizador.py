@@ -44,6 +44,9 @@ RUTA_TEMPLATE = RAIZ / "template.html"
 # Intercambio -- el original, no una copia. Los dos se insertan en el tablero.
 RUTA_INGRESO_JS = RAIZ / "ingreso.js"
 RUTA_ESQUEMAS_JS = af.pf.RAIZ_SISTEMA_INTERCAMBIO / "esquemas.js"
+# El pulso del procesador del intercambio (2026-10-08): la misma regla que usa el
+# Formulador para avisar que está detenido, en un solo archivo.
+RUTA_PULSO_JS = af.pf.RAIZ_SISTEMA_INTERCAMBIO / "pulso.js"
 
 # Rutas de Chile como constantes de módulo (los tests las reemplazan con
 # monkeypatch); las de Perú viven en PAISES_VIZ["PE"].
@@ -659,7 +662,8 @@ def build(pais: str = "CL") -> int:
 
     with io.open(RUTA_TEMPLATE, "r", encoding="utf-8") as f:
         template = f.read()
-    for marcador in ("__AF_DATA_B64__", "__AF_TITULO__", "__AF_NAV_ACTIVO__", "__AF_ESQUEMAS_JS__", "__AF_INGRESO_JS__"):
+    for marcador in ("__AF_DATA_B64__", "__AF_TITULO__", "__AF_NAV_ACTIVO__", "__AF_ESQUEMAS_JS__", "__AF_PULSO_JS__",
+                     "__AF_INGRESO_JS__"):
         if marcador not in template:
             print(f"[ERROR] template.html no tiene el placeholder {marcador}")
             return 1
@@ -667,10 +671,13 @@ def build(pais: str = "CL") -> int:
         esquemas_js = f.read()
     with io.open(RUTA_INGRESO_JS, "r", encoding="utf-8") as f:
         ingreso_js = f.read()
+    with io.open(RUTA_PULSO_JS, "r", encoding="utf-8") as f:
+        pulso_js = f.read()
     # Los dos scripts van primero: el sobre cifrado (candado.incrustar) es lo
     # último que se reemplaza, así ningún texto suyo puede pasar por un marcador.
     html = (
         template.replace("__AF_ESQUEMAS_JS__", esquemas_js)
+        .replace("__AF_PULSO_JS__", pulso_js)
         .replace("__AF_INGRESO_JS__", ingreso_js)
         .replace("__AF_TITULO__", cfg["titulo"])
         .replace("__AF_NAV_ACTIVO__", cfg["nav_activo"])

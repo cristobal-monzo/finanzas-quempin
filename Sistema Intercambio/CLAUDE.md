@@ -110,7 +110,7 @@ tabla de abajo y los textos del Formulador lo resumen, no lo definen.
 | `publicado/precios-referencia.json`: precio reajustado por UF por hoja, sin proveedores ni documentos | Cotizador Histórico (`driver.py precios`, y tras cada `visualizador`); procesador cuando cambia la foto del tablero | Formulador | `Cotizador Historico/Sistema/precios_referencia.py` |
 | `publicado/documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN (al emitir/editar/eliminar en el equipo donde se hizo, y el procesador) | Formulador, Análisis Financiero, registro de proyectos, Flujo de Caja | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |
 | `publicado/proyectos.json`: cruce `req` ↔ TAG ↔ formulaciones ↔ cotizaciones/OC ↔ carpetas | procesador | Formulador, Claude | `Sistema Intercambio/proyectos.py` |
-| `publicado/estado.json`: el pulso (última vuelta del procesador, pendientes por destino, cuán nueva es cada publicación) | procesador | Formulador («al día hace 6 min») | `Sistema Intercambio/procesar.py` |
+| `publicado/estado.json`: el pulso (última vuelta del procesador, pendientes por destino, cuán nueva es cada publicación) | procesador | Formulador («al día hace 6 min», y aviso rojo en la lista si está detenido) y la pestaña «Ingresar datos» del tablero AF, los dos con `pulso.js` | `Sistema Intercambio/procesar.py` |
 | `esquemas.json` (raíz de la carpeta): el catálogo completo | procesador | Sistema QUEMPIN, Formulador | `esquemas.paquete()` |
 
 `intercambio.enviar(raiz, mensaje)` deja un mensaje en el buzón con el mismo
@@ -152,6 +152,16 @@ procesar` con su Python 3.11); `proyectos.json`, y `estado.json`.
   homónimos, igual que en `/Actualizar_Finanzas`); un candado
   (`.procesador.lock`, vence a los 30 min) evita dos vueltas a la vez.
 - Nunca escribe la Planilla de Ingreso ni publica en GitHub.
+- **Si deja de correr, las herramientas lo dicen** (2026-10-08). La tarea
+  estuvo deshabilitada del 05-10 al 08-10 sin que nadie lo notara: los envíos
+  al AF esperaron hasta 28 horas. `pulso.js` (una sola copia de la regla, que
+  el Formulador lleva textual y el tablero AF inserta en su build) cuenta las
+  horas hábiles (lunes a viernes, 08:30–19:00, hora del navegador) desde la
+  última vuelta: con más de 4 (dos vueltas perdidas) el Formulador pone un
+  aviso rojo en su lista de proyectos y en Seguimiento, y la pestaña «Ingresar
+  datos» del AF otro arriba de sus envíos. Las noches y los fines de semana no
+  cuentan: con el PC apagado el procesador espera, y eso no es una falla. La
+  tarea corre también a batería desde ese día.
 
 ## Registro de proyectos (`proyectos.py`)
 

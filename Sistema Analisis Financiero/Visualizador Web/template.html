@@ -992,6 +992,10 @@
   .ing-envios .que { font-weight: 700; }
   .ing-envios .campos { color: var(--text-secondary); flex: 1 1 200px; }
   .ing-envios .detalle { flex-basis: 100%; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+  /* Pulso del procesador del intercambio (pulso.js, 2026-10-08) */
+  .ing-pulso { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); }
+  .ing-pulso.detenido { padding: 10px 12px; border: 1px solid var(--border-hairline); border-left: 3px solid var(--status-bad);
+    border-radius: 8px; color: var(--text-primary); font-weight: 700; font-size: 13px; }
 
   .ing-dialogo { border: none; border-radius: 12px; padding: 0; width: calc(100% - 32px); max-width: 680px;
     max-height: calc(100vh - 48px); background: var(--surface-card); color: var(--text-primary);
@@ -1497,6 +1501,7 @@
 <!-- Pestaña «Ingresar datos»: el validador del catálogo del Intercambio y la lógica de la
      pestaña, insertados por build_visualizador.py (originales, no copias). -->
 <script id="af-esquemas-js">__AF_ESQUEMAS_JS__</script>
+<script id="af-pulso-js">__AF_PULSO_JS__</script>
 <script id="af-ingreso-js">__AF_INGRESO_JS__</script>
 <!-- Candado: abre los datos cifrados con la contraseña. Visualizador Web/candado.js,
      insertado por build_visualizador.py (el original, no una copia). -->
@@ -3146,8 +3151,9 @@
     // pide permiso: solo lee si ya lo hay.
     function refrescarEnvios() {
       if (!estadoCarpeta.conectada || estadoCarpeta.permiso !== 'granted') return Promise.resolve();
-      return Promise.all([Q.carpeta.resultados(), Q.carpeta.archivosEnBuzon()]).then(function (r) {
+      return Promise.all([Q.carpeta.resultados(), Q.carpeta.archivosEnBuzon(), Q.carpeta.estadoProcesador()]).then(function (r) {
         var res = r[0] || {}, archivos = r[1] || [];
+        pulso = window.QPulso ? QPulso.lectura(r[2]) : null;
         envios.forEach(function (e) {
           if (res[e.id]) e.resultado = { estado: res[e.id].estado, detalle: res[e.id].detalle || [] };
           e.enBuzon = archivos.some(function (nombre) { return nombre.indexOf(e.id) >= 0; });
@@ -3191,10 +3197,18 @@
       if (e.via === 'descarga') return { nivel: 'warn', texto: 'Descargado', detalle: 'Falta dejar el archivo en el buzón de la carpeta de Intercambio.' };
       return { nivel: 'warn', texto: 'Enviado' };
     }
+    // Si el procesador no corre, lo enviado no se aplica: se dice arriba de la lista (2026-10-08).
+    var pulso = null;
+    function pulsoHtml() {
+      if (!pulso) return '';
+      return pulso.detenido
+        ? '<p class="ing-pulso detenido" role="alert">Lo que envías no se está aplicando. ' + esc(pulso.texto) + '</p>'
+        : '<p class="ing-pulso">' + esc(pulso.texto) + ' Lo que está en el buzón se aplica en la próxima vuelta (cada 2 horas).</p>';
+    }
     function renderEnvios() {
       var caja = document.getElementById('ingEnvios');
-      if (!envios.length) { caja.innerHTML = '<p class="chart-note">Todavía no hay envíos desde este navegador.</p>'; return; }
-      caja.innerHTML = '<ul>' + envios.slice().reverse().slice(0, 20).map(function (e) {
+      if (!envios.length) { caja.innerHTML = pulsoHtml() + '<p class="chart-note">Todavía no hay envíos desde este navegador.</p>'; return; }
+      caja.innerHTML = pulsoHtml() + '<ul>' + envios.slice().reverse().slice(0, 20).map(function (e) {
         var est = estadoEnvio(e);
         var cuando = new Date(Date.parse(e.enviado));
         var campos = Object.keys(e.valores).map(function (k) {
