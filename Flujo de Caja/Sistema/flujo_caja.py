@@ -13,6 +13,7 @@ que ya producen módulos anteriores"). Cada movimiento dice de dónde salió:
 | Facturas por pagar | comprometido | Centro de Costos: documentos «Pendiente» |
 | Órdenes de compra sin factura | comprometido | Sistema QUEMPIN: OC (61) que todavía no calzan con una factura |
 | Cuotas por cobrar | comprometido | Sistema QUEMPIN: cuotas de las cotizaciones de proyectos adjudicados |
+| Ventas según Análisis Financiero | estimado | Excel del Análisis Financiero: «Monto de Venta (sin IVA)» + IVA, al cierre o en estados de pago mensuales |
 | Ofertas por adjudicar | probable | Planilla de Ingreso: «Ofertado» × tasa histórica de adjudicación |
 | Costo por ejecutar | estimado | Análisis Financiero: Proyectado × (1 − avance), menos lo ya comprometido |
 
@@ -52,6 +53,10 @@ import ubicacion  # noqa: E402
 
 RUTA_FOTO_CC = RAIZ_FINANZAS / "Centro de Costos" / "Visualizador Web" / "data" / "centro-de-costos.json"
 RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Flujo de Caja.xlsx"
+# La venta de cada proyecto no viaja por la carpeta de intercambio (la ve toda
+# la biblioteca de Formulación): se lee del Excel del Análisis Financiero, que
+# vive aquí al lado, como la foto del Centro de Costos.
+RUTA_EXCEL_AF = RAIZ_FINANZAS / "Análisis Financiero" / "Análisis de Proyectos 2026.xlsx"
 RUTA_PARAMETROS = RAIZ / "parametros_flujo_caja.json"   # saldo inicial y ajustes (gitignoreado)
 
 SUPUESTOS = {
@@ -65,6 +70,9 @@ SUPUESTOS = {
     "toleranciaOC": 0.02,             # una factura calza con una OC si su total difiere a lo más 2 %
     "diasCobroDadoPorHecho": 60,      # una cuota vencida hace más de N días se da por cobrada
     "diasAdjudicacionProbable": 60,   # requerimiento ofertado: se cobraría a N días del cierre
+    "diasCobroVenta": 30,             # venta del Análisis Financiero: se cobra a N días del cierre (o del fin de cada mes)
+    "diasVentaEnUnPago": 62,          # un proyecto más largo que esto se cobra en estados de pago mensuales
+    "ivaVentas": 0.19,                # el Monto de Venta del Análisis Financiero viene sin IVA
     "ivaCostos": 0.19,                # el costo por ejecutar viene sin IVA: se agrega a todo menos mano de obra
     "mesesHistoria": 6,
     "mesesProyeccion": 6,
@@ -80,6 +88,9 @@ DESCRIPCION_SUPUESTOS = {
     "toleranciaOC": "Diferencia máxima entre el total de una OC y el de la factura que la cierra.",
     "diasCobroDadoPorHecho": "Una cuota que debió cobrarse hace más de esto se da por cobrada.",
     "diasAdjudicacionProbable": "Días desde el cierre de una oferta hasta su primer cobro, si se gana.",
+    "diasCobroVenta": "Venta de un proyecto del Análisis Financiero: días desde su cierre (o desde el fin de cada mes, si va en estados de pago) hasta que se cobra.",
+    "diasVentaEnUnPago": "Un proyecto que dura más que esto (de inicio a cierre) se cobra en estados de pago mensuales proporcionales a sus días en cada mes; uno más corto, de una vez.",
+    "ivaVentas": "IVA agregado al Monto de Venta (sin IVA) del Análisis Financiero.",
     "ivaCostos": "IVA agregado al costo por ejecutar de materiales, equipos y otros.",
     "mesesHistoria": "Meses hacia atrás con egresos reales.",
     "mesesProyeccion": "Meses hacia adelante proyectados.",
@@ -264,23 +275,153 @@ def ingresos_cotizaciones(docs: list[dict], requerimientos: list[dict], proyecto
             else:
                 dias = sup["diasOtraCondicion"]
             esperada = f + timedelta(days=dias)
+            concepto = f"Cotización {d.get('folio')} · {c.get('condicion') or ''} · {cliente}".strip(" ·")
             if (hoy - esperada).days > sup["diasCobroDadoPorHecho"]:
+                # Se da por cobrada y queda en su mes, en la historia (2026-10-06).
                 dadas += 1
-                continue
-            fc, vencido = _al_presente(esperada, hoy)
-            movs.append(_movimiento(fc, "ingreso", "comprometido", _numero(c["monto"]),
-                                    f"Cotización {d.get('folio')} · {c.get('condicion') or ''} · {cliente}".strip(" ·"),
+                cobro, vencido, concepto = esperada, False, concepto + " (cobro dado por hecho)"
+            else:
+                cobro, vencido = _al_presente(esperada, hoy)
+            movs.append(_movimiento(cobro, "ingreso", "comprometido", _numero(c["monto"]), concepto,
                                     "Sistema QUEMPIN", d.get("folio") or "", proyecto, vencido))
     sin_proyecto = sum(1 for d in docs if d.get("tipo") == "60" and not _clave_proyecto(d))
     if sin_proyecto:
         avisos.append(f"{sin_proyecto} cotización(es) de Sistema QUEMPIN sin proyecto (N° de requerimiento o TAG): "
                       "sus cuotas no se cuentan hasta asociarlas en el campo «Proyecto».")
     if dadas:
-        avisos.append(f"{dadas} cuota(s) que debieron cobrarse hace más de {sup['diasCobroDadoPorHecho']} días se dan por cobradas.")
+        avisos.append(f"{dadas} cuota(s) que debieron cobrarse hace más de {sup['diasCobroDadoPorHecho']} días se dan por cobradas "
+                      "y quedan en su mes, en la historia.")
     if otras:
         avisos.append(f"{otras} cotización(es) adjudicada(s) en otra moneda quedan fuera (no hay tipo de cambio).")
+    # Lo ya cubierto por una cotización: sus N° de requerimiento (no se cuentan
+    # además como probables) y sus TAG (no se cuentan además con la venta del AF).
     cubiertos = {k[4:] for k in ultimas if k.startswith("req:")}
+    cubiertos |= {f"tag:{(d.get('proyecto') or {}).get('tag')}" for d in ultimas.values() if (d.get("proyecto") or {}).get("tag")}
     return movs, avisos, cubiertos
+
+
+def _estados_de_pago(inicio: date | None, cierre: date, venta: float, sup: dict) -> list[tuple[date, int]]:
+    """[(fecha de cobro, monto)]. Un proyecto que dura hasta diasVentaEnUnPago
+    se cobra de una vez a diasCobroVenta del cierre; uno más largo (contratos
+    de mantención de un año, 2026-10-06), en estados de pago mensuales
+    proporcionales a sus días en cada mes, cada uno a diasCobroVenta del fin
+    de ese mes (el último, del cierre)."""
+    total = int(round(venta))
+    plazo = timedelta(days=sup["diasCobroVenta"])
+    if inicio is None or inicio >= cierre or (cierre - inicio).days <= sup["diasVentaEnUnPago"]:
+        return [(cierre + plazo, total)]
+    tramos, desde = [], inicio
+    while desde <= cierre:
+        hasta = min(_sumar_meses(desde, 1) - timedelta(days=1), cierre)
+        tramos.append((hasta, (hasta - desde).days + 1))
+        desde = hasta + timedelta(days=1)
+    dias = sum(d for _, d in tramos)
+    partes = [total * d // dias for _, d in tramos]
+    partes[-1] += total - sum(partes)          # que sumen la venta exacta
+    return [(hasta + plazo, parte) for (hasta, _), parte in zip(tramos, partes)]
+
+
+def ingresos_ventas_af(proyectos: list[dict], cubiertos: set, ultimo_gasto: dict, hoy: date, sup: dict) -> tuple[list[dict], list[str]]:
+    """Las ventas de los proyectos del Análisis Financiero (2026-10-06: el
+    usuario pidió sacarlas de ahí, también las de los proyectos terminados).
+    «Monto de Venta (sin IVA)» + IVA, en los estados de pago de
+    _estados_de_pago. Sin fecha de cierre: la del último gasto del proyecto
+    en Centro de Costos si está terminado, o el fin de los 3 meses que usa el
+    costo por ejecutar si sigue en curso. Lo que debió cobrarse hace más de
+    diasCobroDadoPorHecho se da por cobrado y queda en su mes (la historia);
+    lo más reciente que sigue pendiente, vencido en el mes en curso.
+
+    Un proyecto con cotización asociada (su TAG o su N° en `cubiertos`) no
+    entra: sus cuotas reales ya están en el flujo."""
+    movs, avisos = [], []
+    inicio_mes = date(hoy.year, hoy.month, 1)
+    entran, en_cuotas, por_gasto, sin_fecha, sin_venta, dadas = [], 0, [], [], [], 0
+    for p in proyectos:
+        tag = str(p.get("tag") or "").strip()
+        if not tag or f"tag:{tag}" in cubiertos or (p.get("req") and str(p["req"]) in cubiertos):
+            continue
+        venta = _numero(p.get("venta"))
+        if not venta or venta <= 0:
+            if p.get("categoria") != "Gastos Generales":
+                sin_venta.append(tag)
+            continue
+        inicio, cierre = _fecha(p.get("inicio")), _fecha(p.get("cierre"))
+        if cierre is None:
+            if (_numero(p.get("avance")) or 0) < 1:
+                cierre = _sumar_meses(inicio_mes, 3) - timedelta(days=1)
+            elif tag in ultimo_gasto:
+                cierre = ultimo_gasto[tag]
+                por_gasto.append(tag)
+            else:
+                sin_fecha.append(tag)
+                continue
+        pagos = _estados_de_pago(inicio, cierre, venta * (1 + sup["ivaVentas"]), sup)
+        entran.append(tag)
+        en_cuotas += len(pagos) > 1
+        for i, (cobro, monto) in enumerate(pagos, start=1):
+            concepto = f"{tag} · {p.get('nombre') or ''} · venta + IVA" + (f" (estado de pago {i}/{len(pagos)})" if len(pagos) > 1 else "")
+            if (hoy - cobro).days > sup["diasCobroDadoPorHecho"]:
+                dadas += 1
+                vencido, concepto = False, concepto + " (cobro dado por hecho)"
+            else:
+                cobro, vencido = _al_presente(cobro, hoy)
+            movs.append(_movimiento(cobro, "ingreso", "estimado", monto, concepto, "Análisis Financiero", tag, tag, vencido))
+    if entran:
+        avisos.append(f"{len(entran)} proyecto(s) entran con la venta del Análisis Financiero + IVA, cobrada a {sup['diasCobroVenta']} días "
+                      f"del cierre ({en_cuotas} de ellos, por durar más de {sup['diasVentaEnUnPago']} días, en estados de pago mensuales). "
+                      "Asociar su cotización en Sistema QUEMPIN (campo «Proyecto» = TAG) la reemplaza por sus cuotas reales.")
+    if dadas:
+        avisos.append(f"{dadas} cobro(s) de ventas que debieron entrar hace más de {sup['diasCobroDadoPorHecho']} días se dan por hechos "
+                      "y quedan en su mes, en la historia: el flujo no sabe si de verdad se cobraron (no hay banco conectado).")
+    if por_gasto:
+        avisos.append(f"Sin fecha de cierre en el Análisis Financiero, se usa la de su último gasto en Centro de Costos: {', '.join(por_gasto)}.")
+    if sin_fecha:
+        avisos.append(f"Sin fecha de cierre ni gastos, su venta queda fuera: {', '.join(sin_fecha)}.")
+    if sin_venta:
+        avisos.append(f"Sin «Monto de Venta» en el Análisis Financiero, su venta no está en el flujo: {', '.join(sin_venta)}.")
+    return movs, avisos
+
+
+def _req(valor) -> str | None:
+    """N° de requerimiento como texto («279», no «279.0»)."""
+    if valor is None or str(valor).strip() == "":
+        return None
+    n = _numero(valor)
+    return str(int(n)) if n is not None and n == int(n) else str(valor).strip()
+
+
+def leer_proyectos_af(ruta: Path = RUTA_EXCEL_AF) -> tuple[list[dict], list[str]]:
+    """Los proyectos de la hoja «Proyectos» del Excel del Análisis Financiero,
+    con su venta (solo lectura: ese libro lo escribe su propio módulo)."""
+    columnas = {"tag": "TAG proyecto", "nombre": "Nombre del proyecto", "categoria": "Categoría", "avance": "% Avance",
+                "inicio": "Fecha de inicio", "cierre": "Fecha de cierre", "venta": "Monto de Venta (sin IVA)"}
+    try:
+        import openpyxl
+        libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    except Exception as error:      # no existe, abierto con bloqueo o no es un .xlsx
+        return [], [f"No se pudo leer el Excel del Análisis Financiero ({ruta.name}: {error}): sin ventas de proyectos."]
+    try:
+        if "Proyectos" not in libro.sheetnames:
+            return [], ["El Excel del Análisis Financiero no tiene la hoja «Proyectos»: sin ventas de proyectos."]
+        filas = libro["Proyectos"].iter_rows(values_only=True)
+        encabezado = [str(c or "").strip() for c in next(filas, ())]
+        if columnas["tag"] not in encabezado or columnas["venta"] not in encabezado:
+            return [], ["El Excel del Análisis Financiero no tiene «TAG proyecto» y «Monto de Venta (sin IVA)»: sin ventas de proyectos."]
+        indice = {k: encabezado.index(v) for k, v in columnas.items() if v in encabezado}
+        i_req = next((i for i, h in enumerate(encabezado) if "Requerimiento" in h), None)
+        proyectos = []
+        for f in filas:
+            def valor(i):
+                return f[i] if i is not None and i < len(f) else None
+            if not valor(indice["tag"]):
+                continue
+            proyecto = {k: valor(i) for k, i in indice.items()}
+            proyecto["tag"] = str(proyecto["tag"]).strip()
+            proyecto["req"] = _req(valor(i_req))
+            proyectos.append(proyecto)
+        return proyectos, []
+    finally:
+        libro.close()
 
 
 def ingresos_probables(requerimientos: list[dict], tasa: float | None, cubiertos: set, hoy: date, sup: dict) -> tuple[list[dict], list[str]]:
@@ -351,6 +492,7 @@ def egresos_por_ejecutar(proyectos_af: list[dict], comprometido_por_tag: dict, h
 
 LINEAS = (
     ("ingreso", "comprometido", "Cuotas por cobrar"),
+    ("ingreso", "estimado", "Ventas según Análisis Financiero"),
     ("ingreso", "probable", "Ofertas por adjudicar (ponderadas)"),
     ("egreso", "real", "Egresos pagados"),
     ("egreso", "comprometido", "Por pagar (facturas pendientes y OC)"),
@@ -372,16 +514,16 @@ def resumen_por_mes(movimientos: list[dict], hoy: date, sup: dict) -> list[dict]
         fila = {"mes": mes, "proyectado": mes >= actual}
         for sentido, clase, _ in LINEAS:
             fila[f"{sentido}_{clase}"] = int(round(sumas[(mes, sentido, clase)]))
+        fila["neto"] = int(round(fila["ingreso_comprometido"] + fila["ingreso_estimado"] + fila["ingreso_probable"]
+                                 - fila["egreso_comprometido"] - fila["egreso_estimado"] - fila["egreso_real"]))
+        fila["netoSinProbables"] = fila["neto"] - fila["ingreso_probable"]
         if fila["proyectado"]:
-            fila["neto"] = int(round(fila["ingreso_comprometido"] + fila["ingreso_probable"]
-                                     - fila["egreso_comprometido"] - fila["egreso_estimado"] - fila["egreso_real"]))
-            fila["netoSinProbables"] = fila["neto"] - fila["ingreso_probable"]
             saldo += fila["neto"]
             saldo_sin += fila["netoSinProbables"]
             fila["acumulado"] = int(round(saldo))
             fila["acumuladoSinProbables"] = int(round(saldo_sin))
         else:
-            fila["neto"] = fila["netoSinProbables"] = fila["acumulado"] = fila["acumuladoSinProbables"] = None
+            fila["acumulado"] = fila["acumuladoSinProbables"] = None
         salida.append(fila)
     return salida
 
@@ -429,7 +571,7 @@ def _datos(raiz, nombre) -> dict:
 
 
 def armar(raiz_intercambio: Path | None, ruta_foto_cc: Path = RUTA_FOTO_CC, hoy: date | None = None,
-          sup: dict | None = None) -> dict:
+          sup: dict | None = None, ruta_excel_af: Path = RUTA_EXCEL_AF) -> dict:
     """El flujo completo, desde lo que publicaron las demás herramientas."""
     hoy = hoy or date.today()
     sup = sup or leer_parametros()
@@ -457,6 +599,20 @@ def armar(raiz_intercambio: Path | None, ruta_foto_cc: Path = RUTA_FOTO_CC, hoy:
     m, a, cubiertos = ingresos_cotizaciones(docs, reqs, proyectos_af, hoy, sup)
     movs += m
     avisos += a
+    proyectos_venta, a = leer_proyectos_af(ruta_excel_af)
+    avisos += a
+    ultimo_gasto = {}
+    for d in documentos_cc:
+        tag, f = _tag_de_ref(d.get("ref")), _fecha(d.get("fecha"))
+        if tag and f and f > ultimo_gasto.get(tag, date.min):
+            ultimo_gasto[tag] = f
+    m, a = ingresos_ventas_af(proyectos_venta, cubiertos, ultimo_gasto, hoy, sup)
+    movs += m
+    avisos += a
+    # Un requerimiento cuya venta ya está en el Análisis Financiero no se
+    # cuenta además como oferta probable.
+    con_venta = {x["proyecto"] for x in m}
+    cubiertos |= {p["req"] for p in proyectos_venta if p.get("req") and p["tag"] in con_venta}
     m, a = ingresos_probables(reqs, tasa, cubiertos, hoy, sup)
     movs += m
     avisos += a

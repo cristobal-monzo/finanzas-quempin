@@ -16,6 +16,7 @@ línea, de dónde salió cada número.
 | Facturas por pagar | comprometido | Centro de Costos: documentos «Pendiente» |
 | Órdenes de compra sin factura | comprometido | Sistema QUEMPIN (`publicado/documentos-comerciales.json`, tipo 61) que no calzan con una factura |
 | Cuotas por cobrar | comprometido | Sistema QUEMPIN: cuotas de la última cotización (tipo 60) de cada proyecto adjudicado |
+| Ventas según Análisis Financiero | estimado | Hoja «Proyectos» del Excel `Análisis Financiero/Análisis de Proyectos 2026.xlsx` (todos los proyectos, también los terminados): «Monto de Venta (sin IVA)» + IVA, a `diasCobroVenta` del cierre o, si dura más de `diasVentaEnUnPago`, en estados de pago mensuales. Sin cierre: la fecha de su último gasto en Centro de Costos. Solo los TAG que ninguna cotización cubre |
 | Ofertas por adjudicar | probable | Planilla de Ingreso (`publicado/requerimientos.json`): «Ofertado» × tasa histórica de adjudicación |
 | Costo por ejecutar | estimado | Análisis Financiero (`publicado/analisis-financiero.json`, `porEjecutar` y `cierre`), con IVA, menos lo ya comprometido |
 
@@ -37,6 +38,13 @@ archivo) y en el Excel (el saldo proyectado del «Resumen» son fórmulas desde
 la celda del saldo en «Supuestos»).
 
 Reglas que no son parámetros:
+- Cómo entran las ventas: la cotización (tipo 60) en Sistema QUEMPIN con el
+  campo «Proyecto» (N° de requerimiento o TAG) da las cuotas reales, cuando ese
+  N° está «Adjudicado» en la Planilla o el TAG existe en el Análisis Financiero.
+  Sin eso, la venta del Análisis Financiero hace de respaldo (línea «estimado»).
+- Un cobro que debió ocurrir hace más de `diasCobroDadoPorHecho` se da por
+  hecho y queda en su mes, en la historia (cuotas y ventas): por eso los meses
+  pasados tienen ingresos y neto; el acumulado sigue partiendo del mes en curso.
 - Una cuota, factura u OC que debió ocurrir antes de hoy y sigue pendiente se
   cuenta en el mes en curso, marcada «vencido».
 - Una cotización sin proyecto (N° de requerimiento o TAG) no aporta cuotas:

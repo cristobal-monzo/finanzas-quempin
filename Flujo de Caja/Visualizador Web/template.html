@@ -322,6 +322,7 @@ __FC_FUENTES__
   .fc-grafico .col-hover:hover, .fc-grafico .col-hover:focus { fill: var(--border-hairline); outline: none; }
   .s-ing-com { fill: var(--brand-orange); }
   .s-ing-pro { fill: url(#rayas); }
+  .s-ing-est { fill: var(--brand-orange); fill-opacity: 0.45; }
   .s-egr-real { fill: var(--brand-gray-11); }
   .s-egr-com { fill: var(--text-primary); }
   .s-egr-est { fill: var(--brand-gray-7); }
@@ -331,6 +332,7 @@ __FC_FUENTES__
   .fc-leyenda .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
   /* Muestras de la leyenda en CSS (no copiadas por JS): así siguen al cambio de tema. */
   .fc-leyenda .s-ing-com { background: var(--brand-orange); }
+  .fc-leyenda .s-ing-est { background: var(--brand-orange); opacity: 0.45; }
   .fc-leyenda .s-ing-pro { background: repeating-linear-gradient(45deg, var(--brand-orange) 0 3px, transparent 3px 6px); border: 1px solid var(--brand-orange); }
   .fc-leyenda .s-egr-real { background: var(--brand-gray-11); }
   .fc-leyenda .s-egr-com { background: var(--text-primary); }
@@ -434,7 +436,7 @@ __FC_FUENTES__
 
     <section class="panel">
       <h2>Mes a mes</h2>
-      <p class="sub">Hacia atrás, lo pagado según Centro de Costos. Hacia adelante, lo comprometido y lo estimado; la línea es el acumulado desde el mes en curso.</p>
+      <p class="sub">Hacia atrás, lo pagado según Centro de Costos y las ventas que se dan por cobradas. Hacia adelante, lo comprometido y lo estimado; la línea es el acumulado desde el mes en curso.</p>
       <div class="fc-saldo">
         <label for="optSaldo">Saldo de caja al inicio de <span id="optSaldoMes"></span></label>
         <input id="optSaldo" type="text" inputmode="numeric" autocomplete="off" aria-describedby="optSaldoNota">
@@ -597,10 +599,10 @@ __FC_FUENTES__
     function pintarKpis() {
       var conProb = optProb.checked;
       var suma = function (k) { return futuros.reduce(function (a, m) { return a + (m[k] || 0); }, 0); };
-      var cobrar = suma('ingreso_comprometido'), prob = suma('ingreso_probable');
+      var cobrar = suma('ingreso_comprometido'), venta = suma('ingreso_estimado'), prob = suma('ingreso_probable');
       var pagar = suma('egreso_comprometido'), ejecutar = suma('egreso_estimado'), real = suma('egreso_real');
-      document.getElementById('kCobrar').textContent = clp(cobrar + (conProb ? prob : 0));
-      document.getElementById('kCobrarSub').textContent = 'Cuotas de cotizaciones adjudicadas' + (conProb ? ' + ' + clp(prob) + ' de ofertas ponderadas' : '') + ', en ' + futuros.length + ' meses.';
+      document.getElementById('kCobrar').textContent = clp(cobrar + venta + (conProb ? prob : 0));
+      document.getElementById('kCobrarSub').textContent = clp(cobrar) + ' en cuotas de cotizaciones · ' + clp(venta) + ' de ventas del Análisis Financiero' + (conProb ? ' · ' + clp(prob) + ' de ofertas ponderadas' : '') + ', en ' + futuros.length + ' meses.';
       document.getElementById('kPagar').textContent = clp(pagar + ejecutar + real);
       document.getElementById('kPagarSub').textContent = clp(pagar) + ' comprometido (facturas y OC) · ' + clp(ejecutar) + ' por ejecutar en proyectos en curso.';
       var neto = futuros.reduce(function (a, m) { return a + (conProb ? m.neto : m.netoSinProbables); }, 0);
@@ -619,6 +621,7 @@ __FC_FUENTES__
     var tip = document.getElementById('fcTooltip');
     var SERIES = [
       { k: 'ingreso_comprometido', n: 'Cuotas por cobrar', cls: 's-ing-com', signo: 1 },
+      { k: 'ingreso_estimado', n: 'Ventas (Análisis Financiero)', cls: 's-ing-est', signo: 1 },
       { k: 'ingreso_probable', n: 'Ofertas por adjudicar', cls: 's-ing-pro', signo: 1, prob: true },
       { k: 'egreso_real', n: 'Pagado', cls: 's-egr-real', signo: -1 },
       { k: 'egreso_comprometido', n: 'Por pagar', cls: 's-egr-com', signo: -1 },
@@ -679,7 +682,7 @@ __FC_FUENTES__
         var mostrar = function (evt) {
           var m = DATA.meses[+r.getAttribute('data-i')];
           var filas = series.map(function (s) { return s.n + ': <b>' + clp(m[s.k] || 0) + '</b>'; });
-          if (m.proyectado) filas.push('Neto del mes: <b>' + clp(conProb ? m.neto : m.netoSinProbables) + '</b>');
+          if (m.neto !== null && m.neto !== undefined) filas.push('Neto del mes: <b>' + clp(conProb ? m.neto : m.netoSinProbables) + '</b>');
           tip.innerHTML = '<strong>' + mesCorto(m.mes) + (m.proyectado ? '' : ' (real)') + '</strong><br>' + filas.join('<br>');
           tip.style.display = 'block';
           var b = r.getBoundingClientRect();

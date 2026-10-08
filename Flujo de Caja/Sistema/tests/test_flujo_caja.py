@@ -72,13 +72,15 @@ def test_cuotas_de_la_ultima_cotizacion_de_cada_proyecto_adjudicado():
     movs, _, cubiertos = fc.ingresos_cotizaciones(docs, reqs, [{"tag": "DEMO"}], HOY, SUP)
     por = sorted((m["referencia"], m["fecha"], m["monto"]) for m in movs)
     assert por == [("602695", "2026-10-05", 1000), ("602695", "2026-12-19", 1000), ("602697", "2026-10-25", 700)]
-    assert cubiertos == {"280"}
+    assert cubiertos == {"280", "tag:DEMO"}
 
 
 def test_cuota_vencida_hace_mucho_se_da_por_cobrada():
     docs = [_cot("602600", "2026-03-01", 1000, [{"porcentaje": 100, "condicion": "por adelantado", "monto": 1000}], req="280")]
     movs, avisos, _ = fc.ingresos_cotizaciones(docs, [{"numero": 280, "estado": "Adjudicado"}], [], HOY, SUP)
-    assert movs == [] and "se dan por cobradas" in avisos[0]
+    # queda en su mes, en la historia (2026-10-06), no vencida en el mes en curso
+    assert [(m["fecha"], m["vencido"]) for m in movs] == [("2026-03-16", False)]
+    assert movs[0]["concepto"].endswith("(cobro dado por hecho)") and "se dan por cobradas" in avisos[0]
 
 
 def test_probables_ponderados_por_la_tasa_y_sin_los_ya_cotizados():
@@ -116,17 +118,85 @@ def test_por_ejecutar_con_iva_menos_lo_comprometido_repartido_hasta_el_cierre():
     assert sum(m["monto"] for m in movs) == 140000
 
 
+
+def test_ventas_del_af_tambien_las_de_proyectos_terminados():
+    proyectos = [
+        {"tag": "ZZCA", "nombre": "Caldera", "inicio": "2026-10-05", "cierre": "2026-10-23", "avance": 0, "venta": 1000000},
+        {"tag": "DEMO", "cierre": "2026-10-23", "venta": 5},                              # ya tiene cotización
+        {"tag": "X279", "req": "279", "cierre": "2026-10-10", "venta": 50},               # su N° ya tiene cotización
+        {"tag": "FCH1", "inicio": "2026-08-17", "cierre": "2026-08-25", "avance": 1, "venta": 100},   # cobro 24-09: vencido
+        {"tag": "CCON", "inicio": "2026-05-29", "cierre": "2026-06-29", "avance": 1, "venta": 100},   # cobro 29-07: hace 64 días
+        {"tag": "ESFO", "avance": 1, "venta": 100},                                       # sin cierre: su último gasto
+        {"tag": "FQYQ", "avance": 1, "venta": 100},                                       # sin cierre ni gastos
+        {"tag": "JUNJ", "avance": 0.5, "venta": 200},                                     # en curso sin cierre: a 3 meses
+        {"tag": "BWIL", "avance": 1, "venta": None},                                      # sin venta
+        {"tag": "GGEN", "categoria": "Gastos Generales"},                                 # no es una venta
+    ]
+    movs, avisos = fc.ingresos_ventas_af(proyectos, {"tag:DEMO", "279"}, {"ESFO": date(2026, 5, 12)}, HOY, SUP)
+    por = {m["referencia"]: m for m in movs}
+    assert set(por) == {"ZZCA", "FCH1", "CCON", "ESFO", "JUNJ"}
+    assert por["ZZCA"]["fecha"] == "2026-11-22" and por["ZZCA"]["monto"] == 1190000 and por["ZZCA"]["clase"] == "estimado"
+    assert por["FCH1"]["vencido"] and por["FCH1"]["fecha"] == HOY.isoformat()
+    # terminados hace tiempo: dados por cobrados, en su mes (la historia)
+    assert (por["CCON"]["fecha"], por["CCON"]["vencido"], por["CCON"]["monto"]) == ("2026-07-29", False, 119)
+    assert por["ESFO"]["fecha"] == "2026-06-11" and por["ESFO"]["concepto"].endswith("(cobro dado por hecho)")
+    assert por["JUNJ"]["fecha"] == "2027-01-30"
+    assert any(a.endswith(": ESFO.") for a in avisos) and any(a.endswith(": FQYQ.") for a in avisos)
+    assert any(a.endswith(": BWIL.") for a in avisos) and not any("GGEN" in a for a in avisos)
+
+
+def test_proyecto_largo_en_estados_de_pago_mensuales():
+    pagos = fc._estados_de_pago(date(2026, 1, 15), date(2026, 4, 14), 900, SUP)
+    # 17 + 28 + 31 + 14 días; cada tramo se cobra 30 días después del fin de su mes (el último, del cierre)
+    assert pagos == [(date(2026, 3, 2), 170), (date(2026, 3, 30), 280), (date(2026, 4, 30), 310), (date(2026, 5, 14), 140)]
+    assert fc._estados_de_pago(date(2026, 1, 1), date(2026, 2, 15), 100, SUP) == [(date(2026, 3, 17), 100)]
+    assert fc._estados_de_pago(None, date(2026, 2, 15), 100, SUP) == [(date(2026, 3, 17), 100)]
+
+
+def test_cotizacion_con_tag_cubre_la_venta_del_af():
+    docs = [_cot("602697", "2026-09-25", 700, [], tag="DEMO")]
+    _, _, cubiertos = fc.ingresos_cotizaciones(docs, [], [{"tag": "DEMO"}], HOY, SUP)
+    assert "tag:DEMO" in cubiertos
+
+
+def _excel_af(ruta, filas):
+    libro = openpyxl.Workbook()
+    ws = libro.active
+    ws.title = "Proyectos"
+    ws.append(["TAG proyecto", "Nombre del proyecto", "Categoría", "% Avance", "Fecha de inicio", "Fecha de cierre",
+               "Monto de Venta (sin IVA)", "N° Requerimiento"])
+    for f in filas:
+        ws.append(f)
+    libro.save(ruta)
+    return ruta
+
+
+def test_leer_proyectos_del_excel_del_af(tmp_path):
+    from datetime import datetime
+    ruta = _excel_af(tmp_path / "af.xlsx", [["ZZCA", "Caldera", None, 0, datetime(2026, 10, 5), datetime(2026, 10, 23), 1000000, 279.0],
+                                            [None, "sin TAG", None, None, None, None, 5, None]])
+    proyectos, avisos = fc.leer_proyectos_af(ruta)
+    assert avisos == [] and len(proyectos) == 1
+    assert proyectos[0]["tag"] == "ZZCA" and proyectos[0]["venta"] == 1000000 and proyectos[0]["req"] == "279"
+    assert fc._fecha(proyectos[0]["cierre"]) == date(2026, 10, 23)
+    proyectos, avisos = fc.leer_proyectos_af(tmp_path / "no-existe.xlsx")
+    assert proyectos == [] and "No se pudo leer" in avisos[0]
+
+
 def test_resumen_por_mes_y_acumulado_con_saldo_inicial():
     sup = dict(SUP, saldoInicial=1000)
     movs = [fc._movimiento(date(2026, 9, 5), "egreso", "real", 400, "x", "CC"),
             fc._movimiento(date(2026, 10, 5), "ingreso", "comprometido", 500, "x", "SQ"),
             fc._movimiento(date(2026, 10, 9), "egreso", "comprometido", 200, "x", "CC"),
-            fc._movimiento(date(2026, 11, 1), "ingreso", "probable", 100, "x", "PI")]
+            fc._movimiento(date(2026, 11, 1), "ingreso", "probable", 100, "x", "PI"),
+            fc._movimiento(date(2026, 12, 1), "ingreso", "estimado", 50, "x", "AF")]
     meses = {m["mes"]: m for m in fc.resumen_por_mes(movs, HOY, sup)}
     assert meses["2026-09"]["egreso_real"] == 400 and meses["2026-09"]["acumulado"] is None
+    assert meses["2026-09"]["neto"] == -400            # la historia también tiene neto (ahora trae ventas)
     assert meses["2026-10"]["neto"] == 300 and meses["2026-10"]["acumulado"] == 1300
     assert meses["2026-11"]["neto"] == 100 and meses["2026-11"]["netoSinProbables"] == 0 and meses["2026-11"]["acumulado"] == 1400
     assert meses["2026-11"]["acumuladoSinProbables"] == 1300 and meses["2026-09"]["acumuladoSinProbables"] is None
+    assert meses["2026-12"]["neto"] == 50 and meses["2026-12"]["acumuladoSinProbables"] == 1350   # la venta del AF no es «probable»
     assert len(meses) == SUP["mesesHistoria"] + SUP["mesesProyeccion"]
 
 
@@ -150,7 +220,7 @@ def carpeta(tmp_path):
 
 def test_armar_desde_las_publicaciones_y_escribir_el_excel(carpeta, tmp_path):
     raiz, foto = carpeta
-    datos = fc.armar(raiz, foto, hoy=HOY, sup=dict(SUP))
+    datos = fc.armar(raiz, foto, hoy=HOY, sup=dict(SUP), ruta_excel_af=tmp_path / "no-existe.xlsx")
     clases = {(m["sentido"], m["clase"]) for m in datos["movimientos"]}
     assert clases == {("egreso", "real"), ("egreso", "comprometido"), ("ingreso", "comprometido"),
                       ("ingreso", "probable"), ("egreso", "estimado")}
@@ -165,8 +235,18 @@ def test_armar_desde_las_publicaciones_y_escribir_el_excel(carpeta, tmp_path):
     assert libro["Movimientos"].max_row == len(datos["movimientos"]) + 1
 
 
+def test_venta_del_af_saca_su_requerimiento_de_los_probables(carpeta, tmp_path):
+    raiz, foto = carpeta
+    from datetime import datetime
+    af = _excel_af(tmp_path / "af.xlsx", [["UMAG", "Lab", None, 0.5, datetime(2026, 11, 1), datetime(2026, 11, 30), 1000, 300]])
+    datos = fc.armar(raiz, foto, hoy=HOY, sup=dict(SUP), ruta_excel_af=af)
+    ventas = [m for m in datos["movimientos"] if m["sentido"] == "ingreso" and m["clase"] == "estimado"]
+    assert [(m["referencia"], m["monto"], m["fecha"]) for m in ventas] == [("UMAG", 1190, "2026-12-30")]
+    assert not any(m["clase"] == "probable" for m in datos["movimientos"])      # el N° 300 ya tiene su venta
+
+
 def test_sin_carpeta_ni_foto_avisa_y_no_falla(tmp_path):
-    datos = fc.armar(None, tmp_path / "no-existe.json", hoy=HOY, sup=dict(SUP))
+    datos = fc.armar(None, tmp_path / "no-existe.json", hoy=HOY, sup=dict(SUP), ruta_excel_af=tmp_path / "no-existe.xlsx")
     assert datos["movimientos"] == []
     assert any("Centro de Costos" in a for a in datos["avisos"]) and any("intercambio" in a for a in datos["avisos"])
 
@@ -192,14 +272,14 @@ def test_guardar_saldo_conserva_lo_demas_y_acepta_formato_chileno(tmp_path):
 
 def test_con_saldo_el_aviso_dice_que_es_una_estimacion(tmp_path):
     sup = dict(SUP, saldoInicial=12345000, saldoInicialFecha="2026-10-01")
-    datos = fc.armar(None, tmp_path / "no-existe.json", hoy=HOY, sup=sup)
+    datos = fc.armar(None, tmp_path / "no-existe.json", hoy=HOY, sup=sup, ruta_excel_af=tmp_path / "no-existe.xlsx")
     assert any(a.startswith("Saldo de caja inicial: $12.345.000 al 2026-10-01. Es una estimación") for a in datos["avisos"])
     assert not any(a.startswith("Sin saldo inicial") for a in datos["avisos"])
 
 
 def test_el_saldo_del_excel_se_recalcula_desde_la_celda_del_supuesto(carpeta, tmp_path):
     raiz, foto = carpeta
-    datos = fc.armar(raiz, foto, hoy=HOY, sup=dict(SUP, saldoInicial=12345000))
+    datos = fc.armar(raiz, foto, hoy=HOY, sup=dict(SUP, saldoInicial=12345000), ruta_excel_af=tmp_path / "no-existe.xlsx")
     libro = openpyxl.load_workbook(fc.escribir_excel(datos, tmp_path / "Flujo de Caja.xlsx"))
     resumen, supuestos = libro["Resumen"], libro["Supuestos"]
     assert supuestos["A2"].value == "saldoInicial" and supuestos["B2"].value == 12345000

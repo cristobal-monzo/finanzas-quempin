@@ -12,7 +12,8 @@ import build_visualizador as bv  # noqa: E402
 
 
 def test_construir_inyecta_datos_fuentes_y_logo(tmp_path):
-    datos = fc.armar(None, tmp_path / "no-existe.json", hoy=date(2026, 10, 1), sup=dict(fc.SUPUESTOS))
+    datos = fc.armar(None, tmp_path / "no-existe.json", hoy=date(2026, 10, 1), sup=dict(fc.SUPUESTOS),
+                     ruta_excel_af=tmp_path / "no-existe.xlsx")
     html = bv.construir(datos, tmp_path / "data.json", tmp_path / "index.html").read_text(encoding="utf-8")
     for marcador in bv.MARCADORES:
         assert marcador not in html

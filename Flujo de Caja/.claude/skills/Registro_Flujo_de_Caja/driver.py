@@ -35,11 +35,11 @@ def _resumen(datos: dict) -> None:
     print("  FLUJO DE CAJA")
     print("=" * 72)
     print(f"Datos al {datos['hoy']} · {len(datos['movimientos'])} movimientos\n")
-    print(f"  {'Mes':8} {'Cobrar':>14} {'Probable':>14} {'Pagar':>14} {'Ejecutar':>14} {'Neto s/prob.':>14}")
+    print(f"  {'Mes':8} {'Cuotas':>14} {'Venta AF':>14} {'Probable':>14} {'Pagar':>14} {'Ejecutar':>14} {'Neto s/prob.':>14}")
     for m in datos["meses"]:
         if not m["proyectado"]:
             continue
-        print(f"  {m['mes']:8} {_clp(m['ingreso_comprometido']):>14} {_clp(m['ingreso_probable']):>14} "
+        print(f"  {m['mes']:8} {_clp(m['ingreso_comprometido']):>14} {_clp(m['ingreso_estimado']):>14} {_clp(m['ingreso_probable']):>14} "
               f"{_clp(m['egreso_comprometido'] + m['egreso_real']):>14} {_clp(m['egreso_estimado']):>14} "
               f"{_clp(m['netoSinProbables']):>14}")
     if datos["avisos"]:
