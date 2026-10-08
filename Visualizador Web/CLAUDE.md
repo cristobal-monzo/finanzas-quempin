@@ -308,10 +308,13 @@ Fuentes: [GitHub Docs — Changing the visibility of your GitHub Pages site](htt
 ## CI
 
 `.github/workflows/tests.yml` (raíz del repo) corre la suite completa de
-pytest en cada push/PR a `master` — ninguno de los tests toca datos
+pytest en cada push y PR de cualquier rama menos `gh-pages` — ninguno de los tests toca datos
 financieros reales (todos usan workbooks sintéticos en `tmp_path`), así
 que el runner de GitHub no necesita ni puede acceder a los archivos reales
-de Centro de Costos (viven solo en el OneDrive local).
+de Centro de Costos (viven solo en el OneDrive local). Instala Chromium
+para la prueba de los reportes PDF: sin él, la CI falló desde el
+2026-08-26 hasta el 2026-10-08 sin que nadie lo notara, y además solo
+corría en `master`, que no es donde se trabaja.
 
 ## Convenciones técnicas esperadas (cuando se construya el HTML real)
 

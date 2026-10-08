@@ -18,7 +18,7 @@ Todo el repo corre con **un solo intérprete**: `py -3.14`.
 ```
 py -3.14 -m pip install -r requirements.txt
 py -3.14 -m playwright install chromium      # solo para los reportes PDF
-py -3.14 -m pytest                           # las 7 suites juntas (972 tests)
+py -3.14 -m pytest                           # todas las suites juntas (1.335 tests al 2026-10-08)
 ```
 
 **No uses `python` a secas**: en este equipo el `python` del PATH es 3.11 y
@@ -111,7 +111,7 @@ lenguaje natural sin escribir el "/" (ej. "actualiza el centro de costos",
 agente **no invoca el skill directamente** — primero pregunta en la
 conversación a cuál skill se refiere (ej. "¿Te refieres a
 `/Actualizar_CC`?") y espera confirmación explícita antes de llamarlo. Esto
-aplica a los 11 skills del proyecto por igual, incluyendo los de solo
+aplica a los 13 skills del proyecto por igual, incluyendo los de solo
 lectura/consulta (`/Cotizador_Historico`, `status` de cualquier
 registrador) — no solo los que escriben o publican algo.
 
