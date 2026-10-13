@@ -107,6 +107,11 @@ tmp/
 # Procesador del intercambio (2026-10-01): firmas de lo ya procesado y su candado.
 **/procesador_estado*.json
 **/.procesador.lock
+# Monitor de Mercado Público (2026-10-13): caché de lo consultado. Son datos
+# públicos, pero cambian en cada vuelta. El ticket NUNCA vive en el repo: va
+# cifrado en %LOCALAPPDATA%\QUEMPIN (ver mercado_publico.py).
+**/mercado_publico_estado*.json
+**/*.ticket
 
 # Flujo de Caja: saldo de caja y ajustes a mano (dato de la empresa)
 **/parametros_flujo_caja.json

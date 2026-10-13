@@ -12,6 +12,8 @@ import intercambio as ic
 import procesar as pr
 import requerimientos as rq
 
+REVISAR_REAL = pr.mercado_publico.revisar   # antes de que el fixture lo reemplace
+
 
 @pytest.fixture
 def entorno(tmp_path, monkeypatch):
@@ -37,6 +39,8 @@ def entorno(tmp_path, monkeypatch):
         return True, "listo"
 
     monkeypatch.setattr(pr, "correr", _correr)
+    monkeypatch.setattr(pr.mercado_publico, "revisar", lambda raiz: {
+        "licitaciones": 0, "ordenes": 0, "llamadas": 0, "sugeridas": [], "revisar": [], "incompleta": False})
     return {"raiz": raiz, "planilla": planilla, "estado": tmp_path / "estado_local.json", "llamadas": llamadas,
             "tmp": tmp_path}
 
@@ -143,3 +147,11 @@ def test_avisos_de_sistema_quempin_quedan_en_el_detalle(tmp_path, monkeypatch):
     monkeypatch.setattr(pr, "correr", lambda comando, cwd=None, limite=600: (True, salida))
     detalle, firma = pr.paso_sistema_quempin(tmp_path, None, False)
     assert firma == "ok" and detalle.endswith("avisos: folios: no se pudo publicar (sin Control).")
+
+
+def test_mercado_publico_sin_ticket_falla_con_instrucciones(entorno, monkeypatch):
+    monkeypatch.setattr(pr.mercado_publico, "revisar", REVISAR_REAL)   # el real, con la red cortada (conftest)
+    r = _vuelta(entorno)
+    paso = r["pasos"]["mercado-publico"]
+    assert paso["ok"] is False and "configurar" in paso["detalle"]
+    assert r["pasos"]["proyectos"]["ok"] is True                     # no frena a los demás

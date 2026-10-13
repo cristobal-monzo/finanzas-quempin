@@ -23,8 +23,11 @@ y solo si algo cambió desde la última vez:
    tablero (no pide la UF de nuevo).
 6. Sistema QUEMPIN: registros de documentos de otras herramientas,
    borradores inválidos y sus publicaciones (con su propio Python).
-7. ``proyectos.json``: el cruce de claves, con todo lo anterior.
-8. ``estado.json``: el pulso que muestran las herramientas («al día hace 6
+7. Mercado Público: resultado de las licitaciones de la Planilla y órdenes
+   de compra a QUEMPIN -> ``licitaciones.json`` y sugerencias para la
+   Planilla (``mercado_publico.py``; consulta la API en cada vuelta).
+8. ``proyectos.json``: el cruce de claves, con todo lo anterior.
+9. ``estado.json``: el pulso que muestran las herramientas («al día hace 6
    min»): qué corrió, qué quedó pendiente por destinatario y cuán nueva es
    cada publicación.
 
@@ -56,6 +59,7 @@ if str(AQUI) not in sys.path:
 import esquemas  # noqa: E402
 import formulaciones  # noqa: E402
 import intercambio  # noqa: E402
+import mercado_publico  # noqa: E402
 import proyectos  # noqa: E402
 import requerimientos  # noqa: E402
 import ubicacion  # noqa: E402
@@ -227,6 +231,21 @@ def paso_sistema_quempin(raiz: Path, previo, forzar):
     return detalle, "ok"
 
 
+def paso_mercado_publico(raiz: Path, previo, forzar):
+    """Siempre consulta: lo que cambia está en Mercado Público, no en la
+    carpeta. Sin ticket o con el ticket rechazado, el paso falla y la bandeja
+    de pendientes lo muestra con qué hacer."""
+    r = mercado_publico.revisar(raiz)
+    partes = [f"{r['licitaciones']} licitación(es), {r['ordenes']} OC, {r['llamadas']} consulta(s)"]
+    if r["sugeridas"]:
+        partes.append(f"{len(r['sugeridas'])} sugerencia(s) nueva(s) para la Planilla")
+    if r["revisar"]:
+        partes.append(f"{len(r['revisar'])} por revisar")
+    if r["incompleta"]:
+        partes.append("sigue en la próxima vuelta")
+    return "; ".join(partes), "ok"
+
+
 def paso_proyectos(raiz: Path, previo, forzar):
     carpetas = proyectos.carpetas_de_proyectos(AQUI, RAIZ_FACTURAS_CL if RAIZ_FACTURAS_CL.is_dir() else None)
     r = proyectos.publicar(raiz, carpetas)
@@ -241,6 +260,7 @@ PASOS = (
     ("analisis-financiero", paso_analisis_financiero),
     ("precios-referencia", paso_precios),
     ("sistema-quempin", paso_sistema_quempin),
+    ("mercado-publico", paso_mercado_publico),
     ("proyectos", paso_proyectos),
 )
 

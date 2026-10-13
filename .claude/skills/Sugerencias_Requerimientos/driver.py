@@ -67,6 +67,8 @@ def cmd_status() -> int:
             print("    OJO: la planilla cambió después de que se hizo la sugerencia:")
         for linea in d["detalle"]:
             print(f"    - {linea}")
+        if fuente.get("motivo"):
+            print(f"    Por qué: {fuente['motivo']}")
     print("\nCuando estén pasadas, el procesador las cierra solo (o vuelve a correr 'status').")
     print("Para descartar una: driver.py descartar <id>")
     return 0

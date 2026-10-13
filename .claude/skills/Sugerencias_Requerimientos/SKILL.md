@@ -12,6 +12,11 @@ pasa a **Ofertado** o **Adjudicado**, con el valor ofertado o adjudicado (IVA
 incluido). Desde el 2026-10-05 el Formulador también avisa **No adjudicado**
 (oferta Perdida) y **Descartado**, sin valor: con los no adjudicados la
 planilla calcula la tasa de adjudicación que usa el Flujo de Caja.
+Desde el 2026-10-13 también sugiere el **monitor de Mercado Público**
+(`Sistema Intercambio/mercado_publico.py`, en cada vuelta del procesador):
+«Adjudicado» con el valor, o «No adjudicado», según lo que publica
+ChileCompra. Sus sugerencias traen una línea «Por qué», con el código, la
+fecha, el ganador y el monto. Al mostrarlas, cítala tal cual.
 **Ninguna herramienta escribe la planilla**: guardarla con
 openpyxl borra sus matrices dinámicas y sus imágenes en celdas (medido el
 2026-10-01, ver `Sistema Intercambio/requerimientos.py`). Una persona pasa la

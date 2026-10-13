@@ -109,6 +109,7 @@ tabla de abajo y los textos del Formulador lo resumen, no lo definen.
 | `publicado/requerimientos.json`: la Planilla de Ingreso, de solo lectura | procesador (cuando cambia la planilla) | Formulador, Sistema QUEMPIN, registro de proyectos, Flujo de Caja | `requerimientos.py` |
 | `publicado/precios-referencia.json`: precio reajustado por UF por hoja, sin proveedores ni documentos | Cotizador Histórico (`driver.py precios`, y tras cada `visualizador`); procesador cuando cambia la foto del tablero | Formulador | `Cotizador Historico/Sistema/precios_referencia.py` |
 | `publicado/documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN (al emitir/editar/eliminar en el equipo donde se hizo, y el procesador) | Formulador, Análisis Financiero, registro de proyectos, Flujo de Caja | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |
+| `publicado/licitaciones.json` (2026-10-13): resultado en Mercado Público de cada requerimiento con código, quién ganó y por cuánto, OC emitidas a QUEMPIN y lo que debe revisar una persona; también deja mensajes `actualizar-requerimiento` con `fuente.herramienta = mercado-publico` y `fuente.motivo` | procesador (`mercado_publico.py`, cada vuelta) | Formulador (Seguimiento, «Oferta y adjudicación»), bandeja de pendientes, `/Sugerencias_Requerimientos` | `Sistema Intercambio/mercado_publico.py` |
 | `publicado/proyectos.json`: cruce `req` ↔ TAG ↔ formulaciones ↔ cotizaciones/OC ↔ carpetas | procesador | Formulador, Claude | `Sistema Intercambio/proyectos.py` |
 | `publicado/estado.json`: el pulso (última vuelta del procesador, pendientes por destino, cuán nueva es cada publicación) | procesador | Formulador («al día hace 6 min», y aviso rojo en la lista si está detenido) y la pestaña «Ingresar datos» del tablero AF, los dos con `pulso.js` | `Sistema Intercambio/procesar.py` |
 | `esquemas.json` (raíz de la carpeta): el catálogo completo | procesador | Sistema QUEMPIN, Formulador | `esquemas.paquete()` |
@@ -142,7 +143,9 @@ de los tipos cuyo esquema declara `destino: analisis-financiero` -- desde el
 2026-10-02 se leen del catálogo, no de una lista del procesador; si no, y
 cambió Centro de Costos o el libro, solo `intercambio publicar`); precios de
 referencia; Sistema QUEMPIN (`python -m app.integraciones.ecosistema
-procesar` con su Python 3.11); `proyectos.json`, y `estado.json`.
+procesar` con su Python 3.11); Mercado Público (este paso consulta siempre:
+lo que cambia está en la API, no en la carpeta); `proyectos.json`, y
+`estado.json`.
 
 - **Un paso que falla no frena a los demás** y queda en `estado.json` y en
   `logs/procesador_AAAA-MM.log` (una línea por vuelta).
@@ -162,6 +165,61 @@ procesar` con su Python 3.11); `proyectos.json`, y `estado.json`.
   datos» del AF otro arriba de sus envíos. Las noches y los fines de semana no
   cuentan: con el PC apagado el procesador espera, y eso no es una falla. La
   tarea corre también a batería desde ese día.
+
+## Monitor de Mercado Público (`mercado_publico.py`, 2026-10-13)
+
+El 97 % de los requerimientos viene de Mercado Público y su resultado se
+pasaba a mano (análisis del 2026-10-08, §6 punto 1). En cada vuelta del
+procesador, con la API pública de ChileCompra:
+
+1. Consulta las licitaciones de la Planilla con código en «ID o Referencia»
+   que esperan resultado (Ofertado, Evaluación); después barre las órdenes
+   de compra emitidas a QUEMPIN (proveedor 1717812, 60 días hacia atrás la
+   primera vez; después solo hoy y ayer), y por último verifica una vez las
+   ya cerradas (de nuevo al mes, por si se revoca).
+2. Sugiere a la Planilla **solo lo que Mercado Público prueba** (`decidir`):
+   - ganada, o con OC: «Adjudicado» y el valor con IVA. Usa el total de las OC
+     si suman el neto adjudicado; si no, el neto del acta más 19 %. Nunca pisa
+     un valor ya escrito.
+   - adjudicada a otro, desierta o revocada, con la Planilla en «Ofertado»:
+     «No adjudicado».
+   - Lo dudoso va a `revisar` y a la bandeja, no al buzón. Por ejemplo, la
+     Planilla dice «Adjudicado» y Mercado Público dice otro ganador, o una
+     licitación resuelta sigue en «Evaluación» (no se sabe si se ofertó).
+   - Una sugerencia no se repite: ni si ya hay una igual en el buzón (de
+     cualquier herramienta), ni si alguien la descartó (claves en la caché).
+3. Las Compras Ágiles (COT) no existen como licitación en la API: se sabe que
+   se ganaron solo por la OC, que nombra la COT en su título. Las OC que no
+   calzan con ningún requerimiento van a la bandeja.
+
+**Seguridad:**
+- El ticket es personal (ClaveÚnica). Va cifrado con DPAPI en
+  `%LOCALAPPDATA%\QUEMPIN\mercado-publico.ticket`, fuera de OneDrive y del
+  repo. Solo el mismo usuario de Windows lo descifra, y la tarea programada
+  corre como ese usuario.
+- Se ingresa con `py -3.14 mercado_publico.py configurar`, sin eco y nunca
+  por argumento. Antes de guardarlo se prueba contra la API.
+- `QUEMPIN_MP_TICKET` lo reemplaza en pruebas o en otro equipo.
+- Se censura en todo mensaje de error.
+- Solo HTTPS a api.mercadopublico.cl, con tiempo límite y tope de 5 MB por
+  respuesta. Los códigos se validan con regex antes de armar la URL.
+- Los textos de la API se limpian de caracteres de control y se acortan.
+- Los enlaces se limitan a https://www.mercadopublico.cl.
+- No se publican nombres ni contactos de funcionarios del comprador.
+- El Formulador vuelve a validar el enlace y escapa todo: la carpeta la
+  puede editar cualquiera con acceso a la biblioteca.
+
+**Límites de la API (medido el 2026-10-13):**
+- Rechaza consultas seguidas con el error 10500: 2 s entre llamadas y
+  reintento con espera creciente.
+- El 203 es ticket inválido: corta la vuelta y la bandeja lo muestra.
+- Tope de 120 llamadas por vuelta (unos 4 minutos). La primera vez necesitó
+  dos vueltas.
+
+`py -3.14 mercado_publico.py status` dice qué sugeriría sin escribir en la
+carpeta. La caché (`mercado_publico_estado.json`, gitignoreada) solo lleva
+datos públicos. Las pruebas cortan la red y el ticket en `tests/conftest.py`:
+ninguna consulta la API real.
 
 ## Registro de proyectos (`proyectos.py`)
 

@@ -139,6 +139,29 @@ def sin_requerimiento(af: dict | None, documentos: dict | None) -> list[Pendient
     return salida
 
 
+def desde_licitaciones(licitaciones: dict | None) -> list[Pendiente]:
+    """Lo que el monitor de Mercado Público no puede decidir solo: resultados
+    que contradicen la planilla, licitaciones resueltas que siguen en
+    Evaluación y órdenes de compra a QUEMPIN que no están en la planilla.
+    (Las sugerencias que sí puede hacer ya cuentan en el buzón.)"""
+    if not licitaciones:
+        return []
+    salida = []
+    for r in licitaciones.get("revisar") or []:
+        if isinstance(r, dict) and r.get("texto"):
+            salida.append(Pendiente("medio", f"Mercado Público · N° {r.get('req')} ({r.get('codigo')}): {r['texto']}",
+                                    "corregirlo en la Planilla de Ingreso si corresponde"))
+    ordenes = {o.get("codigo"): o for o in licitaciones.get("ordenes") or [] if isinstance(o, dict)}
+    sin_req = [ordenes.get(c) or {"codigo": c} for c in licitaciones.get("ordenesSinRequerimiento") or []]
+    if sin_req:
+        lista = "; ".join(f"{o['codigo']}" + (f" ({o['comprador']})" if o.get("comprador") else "") for o in sin_req[:5])
+        salida.append(Pendiente(
+            "medio", f"{len(sin_req)} orden(es) de compra a QUEMPIN sin requerimiento en la planilla: {lista}"
+                     f"{' ...' if len(sin_req) > 5 else ''}.",
+            "si corresponde, agregarlas a la Planilla con su código de licitación o Compra Ágil en «ID o Referencia»"))
+    return salida
+
+
 def pendientes(raiz_intercambio: Path | None, extras: list[Pendiente] = (), ahora: datetime | None = None) -> list[Pendiente]:
     ahora = ahora or datetime.now()
     if raiz_intercambio is None:
@@ -148,6 +171,7 @@ def pendientes(raiz_intercambio: Path | None, extras: list[Pendiente] = (), ahor
         base = desde_estado(_leer_datos(raiz_intercambio, "estado"), ahora)
         base += sin_requerimiento(_leer_datos(raiz_intercambio, "analisis-financiero"),
                                   _leer_datos(raiz_intercambio, "documentos-comerciales"))
+        base += desde_licitaciones(_leer_datos(raiz_intercambio, "licitaciones"))
     todos = base + list(extras)
     return sorted(todos, key=lambda p: 0 if p.nivel == "alto" else 1)
 

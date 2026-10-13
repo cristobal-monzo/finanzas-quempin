@@ -1,0 +1,34 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "mercado-publico",
+  "generado": "2026-10-13T12:00:00-03:00",
+  "datos": {
+    "proveedor": {"rut": "76.772.215-K", "codigo": "1717812", "nombre": "QUEMPIN SPA"},
+    "consultado": "2026-10-13T12:00:00-03:00",
+    "completo": true,
+    "licitaciones": [
+      {
+        "req": 280,
+        "codigo": "1234-56-LE26",
+        "resultado": "ganada",
+        "url": "https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=1234-56-LE26",
+        "urlActa": null,
+        "nombre": "Mantención de calderas",
+        "comprador": "Organismo de ejemplo",
+        "planilla": "Ofertado",
+        "montoQuempin": 1000000,
+        "oferentes": 3,
+        "adjudicados": [{"rut": "76.772.215-K", "nombre": "QUEMPIN SPA", "montoNeto": 1000000}],
+        "ordenes": ["1234-78-SE26"],
+        "motivo": "Mercado Público: 1234-56-LE26 adjudicada a QUEMPIN."
+      }
+    ],
+    "ordenes": [
+      {"codigo": "1234-78-SE26", "url": "https://www.mercadopublico.cl/PurchaseOrder/Modules/PO/DetailsPurchaseOrder.aspx?codigoOC=1234-78-SE26", "total": 1190000, "adquisicion": "1234-56-LE26"}
+    ],
+    "ordenesSinRequerimiento": [],
+    "revisar": [],
+    "resumen": {"ganadas": 1, "perdidas": 0, "desiertas": 0, "enEspera": 0, "tasaAdjudicacion": 1},
+    "avisos": []
+  }
+}
