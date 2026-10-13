@@ -454,7 +454,7 @@ def leer_orden(crudo: dict) -> dict | None:
     comprador = crudo.get("Comprador") if isinstance(crudo.get("Comprador"), dict) else {}
     nombre = _texto(crudo.get("Nombre"), 200)
     # De qué adquisición viene: el campo, o el código que el comprador escribe
-    # en el nombre («… a compra ágil: 4321-7-COT26», «OC DESDE 5555-39-LE26»).
+    # en el nombre («… a compra ágil: 2950-307-COT26», «OC DESDE 1099402-39-LE26»).
     origen = codigo_de(crudo.get("CodigoLicitacion"))
     if not origen:
         for texto in (crudo.get("Nombre"), crudo.get("Descripcion")):

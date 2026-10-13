@@ -121,7 +121,7 @@ def test_licitacion_perdida_desierta_y_ausente():
     assert perdida["resultado"] == "perdida" and perdida["adjudicados"][0]["montoNeto"] == 900000
     assert mp.leer_licitacion(_licitacion("1-2-LE26", estado=7, adjudicados=[]), "1-2-LE26")["resultado"] == "desierta"
     assert mp.leer_licitacion(None, "1-2-LE26")["resultado"] == "no-encontrada"
-    assert mp.leer_licitacion(None, "4321-7-COT26")["resultado"] == "compra-agil"
+    assert mp.leer_licitacion(None, "2950-307-COT26")["resultado"] == "compra-agil"
 
 
 def test_lo_que_responde_la_api_no_se_cree_a_ciegas():
@@ -136,10 +136,10 @@ def test_lo_que_responde_la_api_no_se_cree_a_ciegas():
 
 
 def test_codigos_dentro_de_la_referencia_y_de_la_orden():
-    assert mp.codigo_de("ID: 5555-39-le26 (ver bases)") == "5555-39-LE26"
+    assert mp.codigo_de("ID: 1099402-39-le26 (ver bases)") == "1099402-39-LE26"
     assert mp.codigo_de("trato directo") is None
-    oc = mp.leer_orden(_orden("4321-11-AG26", nombre="Servicio de mantención a compra ágil: 4321-7-COT26"))
-    assert oc["adquisicion"] == "4321-7-COT26" and oc["url"].endswith("codigoOC=4321-11-AG26")
+    oc = mp.leer_orden(_orden("2950-594-AG26", nombre="SER. MANTENCIÓN a compra ágil: 2950-307-COT26"))
+    assert oc["adquisicion"] == "2950-307-COT26" and oc["url"].endswith("codigoOC=2950-594-AG26")
 
 
 # ── Decidir ──────────────────────────────────────────────────────────────────
@@ -248,9 +248,9 @@ def _api_tipica():
             "1-2-LE26": _licitacion("1-2-LE26", adjudicados=[("99.999.999-9", "Otra SpA", 1, 900000)]),
             "7-7-LE26": _licitacion("7-7-LE26", estado=6, adjudicados=[]),
         },
-        ordenes_por_dia={"01102026": ["1234-90-SE26", "4321-11-AG26"]},
+        ordenes_por_dia={"01102026": ["1234-90-SE26", "2950-594-AG26"]},
         ordenes={"1234-90-SE26": _orden("1234-90-SE26", licitacion="1234-56-LE26"),
-                 "4321-11-AG26": _orden("4321-11-AG26", nombre="a compra ágil: 4321-7-COT26", total_neto=400000)})
+                 "2950-594-AG26": _orden("2950-594-AG26", nombre="a compra ágil: 2950-307-COT26", total_neto=528800)})
 
 
 def test_vuelta_sugiere_publica_y_no_repite(carpeta, tmp_path):
@@ -274,7 +274,7 @@ def test_vuelta_sugiere_publica_y_no_repite(carpeta, tmp_path):
     assert esquemas.validar_publicacion(mp.PUBLICACION, pub) == []
     datos = pub["datos"]
     assert datos["resumen"]["ganadas"] == 1 and datos["resumen"]["perdidas"] == 1 and datos["resumen"]["tasaAdjudicacion"] == 0.5
-    assert datos["ordenesSinRequerimiento"] == ["4321-11-AG26"]          # Compra Ágil sin fila en la planilla
+    assert datos["ordenesSinRequerimiento"] == ["2950-594-AG26"]          # Compra Ágil sin fila en la planilla
     assert TICKET not in json.dumps(pub) and TICKET not in estado.read_text(encoding="utf-8")
 
     # Segunda vuelta: nada nuevo en el buzón, y lo ya resuelto no se vuelve a consultar.
@@ -313,12 +313,12 @@ def test_status_no_escribe_en_la_carpeta(carpeta, tmp_path):
 
 
 def test_orden_de_compra_de_compra_agil_prueba_la_adjudicacion(carpeta, tmp_path):
-    raiz = carpeta([_req(290, referencia="4321-7-COT26")])
+    raiz = carpeta([_req(290, referencia="2950-307-COT26")])
     r = mp.revisar(raiz, _cliente(_api_tipica()), ruta_estado=tmp_path / "e.json", hoy=HOY)
-    assert r["sugeridas"] == [{"req": 290, "codigo": "4321-7-COT26",
-                               "cambios": {"estado": "Adjudicado", "valorAdjudicado": round(400000 * 1.19)}}]
+    assert r["sugeridas"] == [{"req": 290, "codigo": "2950-307-COT26",
+                               "cambios": {"estado": "Adjudicado", "valorAdjudicado": round(528800 * 1.19)}}]
     fila = ic.leer_publicacion(raiz, mp.PUBLICACION)["datos"]["licitaciones"][0]
-    assert fila["resultado"] == "ganada" and fila["ordenes"] == ["4321-11-AG26"]
+    assert fila["resultado"] == "ganada" and fila["ordenes"] == ["2950-594-AG26"]
 
 
 def test_tope_deja_la_vuelta_incompleta_y_sigue_despues(carpeta, tmp_path):
@@ -342,10 +342,10 @@ def test_la_sugerencia_la_entiende_la_planilla(carpeta, tmp_path):
 
 def test_bandeja_muestra_lo_que_necesita_una_persona():
     datos = {"revisar": [{"req": 281, "codigo": "1-2-LE26", "texto": "La planilla dice «Adjudicado», pero…"}],
-             "ordenes": [{"codigo": "4321-11-AG26", "comprador": "Organismo de ejemplo", "url": "https://www.mercadopublico.cl/x"}],
-             "ordenesSinRequerimiento": ["4321-11-AG26"]}
+             "ordenes": [{"codigo": "2950-594-AG26", "comprador": "Escuela Naval", "url": "https://www.mercadopublico.cl/x"}],
+             "ordenesSinRequerimiento": ["2950-594-AG26"]}
     textos = [p.texto for p in bandeja.desde_licitaciones(datos)]
-    assert any("N° 281" in t for t in textos) and any("4321-11-AG26 (Organismo de ejemplo)" in t for t in textos)
+    assert any("N° 281" in t for t in textos) and any("2950-594-AG26 (Escuela Naval)" in t for t in textos)
     assert bandeja.desde_licitaciones(None) == []
 
 
