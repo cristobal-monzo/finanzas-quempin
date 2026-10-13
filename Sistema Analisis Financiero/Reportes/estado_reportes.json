@@ -1,15 +1,15 @@
 {
   "categoria:I+D+i": {
     "generado_el": "13-10-2026",
-    "hash": "8eb2fa32632765b78396a2829be7e1ab57cddcf4e288d16384ab4ece0ecb10a6"
+    "hash": "ac1b0ac1fb59d71fb13d181dda3f023b6140d399b097e8ededed6c61b69d043c"
   },
   "categoria:Mantenimiento": {
     "generado_el": "13-10-2026",
-    "hash": "68485d916d04c22f12ba472d06ae327f51c4173c48ef0ae9d2bc2d92d31818eb"
+    "hash": "0c3529a187572473a9a39f5277b167b9b503ccf46c6e8344b5163995992d4f44"
   },
   "categoria:Montaje": {
     "generado_el": "13-10-2026",
-    "hash": "6dcf7f649a80341eb2b72317c2e8b0ca37231f0ddfc6946d1af674c1e2f9e90d"
+    "hash": "c6c4240f30a825cfc33fad071b9c6d080c4706b74c4eba72197ace495024256f"
   },
   "categoria:Montaje e instalación": {
     "generado_el": "13-10-2026",
@@ -17,7 +17,7 @@
   },
   "cliente:Caldera Valdivia": {
     "generado_el": "13-10-2026",
-    "hash": "ee0540909b19de3ca64b47839d13de18c87d262ca7011a397e604025c67056ea"
+    "hash": "642978f4c2cdc82fd303ce2fb788803614c45d3bec6f3f88658f2a4e7c390ccd"
   },
   "cliente:Cesfam Constitución": {
     "generado_el": "13-10-2026",
@@ -25,7 +25,7 @@
   },
   "cliente:Cremación Concepción": {
     "generado_el": "13-10-2026",
-    "hash": "00148fe2c645a541ef4541d24aa0486728360c5ec8e62ee414b1792da9693ed2"
+    "hash": "cdd9999d7cd3994e5cfce3e609373df7a4ab1d2adb7a7cfdc3eda0f91df7b96c"
   },
   "cliente:ESFOCAR": {
     "generado_el": "13-10-2026",
@@ -49,7 +49,7 @@
   },
   "cliente:Universidad de Magallanes": {
     "generado_el": "13-10-2026",
-    "hash": "2fd5796c69b904f5f1e66870c4a5a98ff2999cac03ebf10e6c2d492476719b93"
+    "hash": "8345df1dc29bb431f8568a003f2735e5e3efd4cc46b5361089da0fe1de960de9"
   },
   "proyecto:CCON": {
     "generado_el": "13-10-2026",
@@ -57,11 +57,11 @@
   },
   "proyecto:CREM": {
     "generado_el": "13-10-2026",
-    "hash": "356d5a44721375766895141ec3a65fc592cf1321f1e889f88ebede7de39ff471"
+    "hash": "385e3311f649ff5c0a6d23074c1a5d1134a263fff9265d3604cfcfd4f40944e4"
   },
   "proyecto:CVAL": {
     "generado_el": "13-10-2026",
-    "hash": "dad7fd8b9a440bc7174d7ae5be3021af3152649674c24aa49686ea4a39538b0c"
+    "hash": "2eb1cf4bd766cc08a8b9ade552cbc6260397d086c1df0e9a55b5d8f70a98e7da"
   },
   "proyecto:ESFO": {
     "generado_el": "13-10-2026",
@@ -81,6 +81,6 @@
   },
   "proyecto:UMAG": {
     "generado_el": "13-10-2026",
-    "hash": "f82dc6017c9da84e78827d6d839316f6cb371e4f7295de9d275cfa14ba5ebf6b"
+    "hash": "5bcc16a24c425a34c9f4acbb825aecf778b593fdc74c8240ffc9ebcba5eeec55"
   }
 }
