@@ -221,8 +221,18 @@ def cmd_status(pais="CL"):
     print(f"\nValidacion sobre TODO datos_extraidos.json "
           f"(lo mismo que hara 'run'; cuadre contra {acc.NOMBRE_IMPUESTO_PCT}):")
     hallazgos, copias_exactas = acc.validar_corpus(datos_json, archivos_sin_datos=sin_datos)
+    # Lo que el registro ya tiene cerrado contra este mismo dato no se cuenta
+    # como pendiente: 'run' tampoco lo reabre (separar_ya_revisados).
+    hallazgos, ya_revisados = acc.separar_ya_revisados(hallazgos, acc.cargar_registro_errores())
+    # 'run' resuelve solas solo las copias exactas que todavia no se registran
+    # (PASO 5B, claves_pendientes): las ya registradas tienen su hallazgo.
+    claves_pendientes = {acc.clave_documento(i["proyecto"], i["archivo"]) for i in pendientes}
+    copias_exactas = {k: v for k, v in copias_exactas.items() if k in claves_pendientes}
+    if ya_revisados:
+        print(f"  [YA REVISADOS] {len(ya_revisados)} hallazgo(s) cerrados antes (corregidos en el "
+              f"Excel o descartados con motivo): no se cuentan de nuevo.")
     if not hallazgos:
-        print("  Sin hallazgos.")
+        print("  Sin hallazgos por revisar.")
     else:
         for severidad in ("error", "revisar", "estimado"):
             grupo = [h for h in hallazgos if h["severidad"] == severidad]

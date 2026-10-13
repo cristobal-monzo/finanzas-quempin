@@ -90,6 +90,7 @@ PREFIJOS_PROYECTO = {
     "Putaendo Hospital Pinel": "HPIN",
     "FACH2": "FCH2",
     "FACH1": "FCH1",
+    "Limache Estanque 600L": "LIMA",
 }
 # "Junji V2" (JUN2) existio entre el 2026-09-10 y el 2026-09-11: era el
 # reingreso de facturas que en "Junji's Valparaiso" se habian cargado cortadas,
@@ -3131,6 +3132,7 @@ def verificar_aritmetica(datos):
             continue
         hallazgos.append({
             "severidad": severidad,
+            "documento": clave_documento(d.get("proyecto"), d.get("archivo")),
             "archivo": d["archivo"], "n_documento": d["n_documento"],
             "categoria": d.get("categoria", ""),
             "neto": total_sin_iva,
@@ -3676,6 +3678,36 @@ def fusionar_hallazgos(registro, hallazgos, hoy=None):
         desaparecidos.append(entrada)
 
     return nuevos, reabiertos, desaparecidos
+
+
+def separar_ya_revisados(hallazgos, registro):
+    """(por_revisar, ya_revisados): ya revisado es un hallazgo que el registro
+    tiene cerrado contra este mismo valor de origen -- corregido en el Excel o
+    descartado con motivo. Es la misma regla de fusionar_hallazgos(), sin
+    tocar el registro, para que 'status' y el informe de 'run' no vuelvan a
+    contar como pendiente lo que ya se adjudico (2026-10-13: 'status' decia
+    46 errores y 59 por revisar, y eran los 109 ya cerrados)."""
+    por_id = {e["id"]: e for e in registro["errores"]}
+    por_revisar, ya_revisados = [], []
+    for h in hallazgos:
+        e = por_id.get(h["id"])
+        adjudicado = (e is not None and e["estado"] in ESTADOS_CERRADOS
+                      and e.get("valor_origen_al_cerrar", _SIN_ADJUDICAR) == h["valor_actual"])
+        (ya_revisados if adjudicado else por_revisar).append(h)
+    return por_revisar, ya_revisados
+
+
+def documentos_impuesto_ya_revisados(registro):
+    """Documentos cuyo descuadre de impuesto ya se adjudico (cerrado con el
+    origen sin cambiar) y que no tienen otro hallazgo de impuesto abierto: el
+    cuadre del PASO 13 los omite en vez de reimprimirlos en cada corrida."""
+    def de_impuesto(e):
+        return str(e.get("codigo", "")).startswith(("IMPUESTO", "NC_IMPUESTO"))
+    abiertos = {e["documento"] for e in registro["errores"]
+                if e["estado"] == "abierto" and de_impuesto(e)}
+    return {e["documento"] for e in registro["errores"]
+            if e["estado"] in ESTADOS_CERRADOS and e.get("origen_sin_corregir")
+            and de_impuesto(e) and e["documento"] not in abiertos}
 
 
 def hallazgos_abiertos(registro, severidad=None):
@@ -4976,7 +5008,9 @@ def main(pais="CL"):
     anotar_n_ref_desde_master(registro_errores, ws_master, datos_json, ws_detalle=ws_detalle)
     ya_corregidos = cerrar_hallazgos_ya_corregidos(registro_errores, ws_master,
                                                   ws_detalle=ws_detalle)
-    print(f"  Hallazgos vigentes: {len(hallazgos)} "
+    _por_revisar, _ya_revisados = separar_ya_revisados(hallazgos, registro_errores)
+    print(f"  Hallazgos en el JSON: {len(hallazgos)} -- {len(_por_revisar)} por revisar, "
+          f"{len(_ya_revisados)} ya revisados antes "
           f"({len(nuevos_hallazgos)} nuevo(s), {len(reabiertos)} reabierto(s), "
           f"{len(desaparecidos)} cerrado(s) por dejar de aparecer)")
     if ya_corregidos:
@@ -5232,7 +5266,12 @@ def main(pais="CL"):
         print("   Sin hallazgos.")
 
     print(f"\n2. CUADRE DE IMPUESTO (Neto vs {NOMBRE_IMPUESTO_PCT})")
-    _imprimir_cuadre_impuesto(inconsistencias)
+    revisados_impuesto = documentos_impuesto_ya_revisados(registro_errores)
+    _imprimir_cuadre_impuesto([i for i in inconsistencias if i["documento"] not in revisados_impuesto])
+    omitidos_impuesto = sum(1 for i in inconsistencias if i["documento"] in revisados_impuesto)
+    if omitidos_impuesto:
+        print(f"   ({omitidos_impuesto} descuadre(s) ya revisado(s) antes -- corregidos en el Excel "
+              f"o descartados con motivo -- no se repiten; ver HALLAZGOS ABIERTOS.)")
 
     # Los duplicados se reportan en HALLAZGOS ABIERTOS (DUPLICADO_EXACTO /
     # DUPLICADO_AMBIGUO). Aca habia un detector aparte, escrito dentro del

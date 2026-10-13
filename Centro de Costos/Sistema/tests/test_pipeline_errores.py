@@ -95,7 +95,7 @@ def test_los_hallazgos_se_reportan_antes_del_paso_de_guardado(sandbox, capsys):
 
     salida = capsys.readouterr().out
     assert salida.index("PASO 5B") < salida.index("PASO 12")
-    assert salida.index("Hallazgos vigentes") < salida.index("PASO 12")
+    assert salida.index("Hallazgos en el JSON") < salida.index("PASO 12")
 
 
 def test_el_registro_de_errores_queda_en_disco_tras_la_corrida(sandbox):

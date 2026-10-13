@@ -446,7 +446,7 @@ def _detecta_despues_de_publicar(salida):
     i_guardar = salida.find("PASO 12")
     if i_guardar == -1:
         return False
-    candidatos = [salida.find(m) for m in ("PASO 5B", "Hallazgos vigentes",
+    candidatos = [salida.find(m) for m in ("PASO 5B", "Hallazgos en el JSON",
                                            "HALLAZGOS ABIERTOS", "INFORME DE AUDITORIA")]
     candidatos = [i for i in candidatos if i != -1]
     return (min(candidatos) > i_guardar) if candidatos else True
