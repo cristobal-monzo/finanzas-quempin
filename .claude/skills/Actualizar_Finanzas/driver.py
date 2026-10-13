@@ -34,11 +34,16 @@ que documentan sus skills -- dejaria el Excel actualizado y los tableros
 viejos: se cambiaria un hueco conocido por uno nuevo. El encadenamiento se
 mantiene y este orquestador cubre lo que faltaba.
 
+Bandeja de pendientes (2026-10-13): 'status' y 'run' cierran con todo lo que
+espera a una persona, junto (Sistema Intercambio/bandeja.py).
+
 Uso:
   python driver.py status   # solo lectura: que haria cada modulo, sin tocar nada
   python driver.py run      # cadena completa
 """
 
+import importlib.util
+import re
 import subprocess
 import sys
 import time
@@ -106,6 +111,67 @@ TABLEROS = (
 )
 
 URL_BASE_PAGES = "https://cristobal-monzo.github.io/finanzas-quempin"
+SISTEMA_INTERCAMBIO = RAIZ / "Sistema Intercambio"
+
+
+def _cargar(nombre, ruta):
+    """Carga un modulo por ruta (sin depender de sys.path ni chocar por nombre)."""
+    spec = importlib.util.spec_from_file_location(nombre, ruta)
+    modulo = importlib.util.module_from_spec(spec)
+    sys.modules[nombre] = modulo   # @dataclass busca su modulo en sys.modules
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+_RE_REPORTES = re.compile(r"(\d+) reporte\(s\) pendiente\(s\)/desactualizado\(s\)")
+_RE_CC_STATUS = re.compile(r"\[(ERROR|REVISAR|ESTIMADO)\] (\d+) hallazgo\(s\)")
+_RE_CC_RUN = re.compile(r"Hallazgos abiertos \(error/revisar/estimado\):\s+(\d+)")
+_RE_CC_SIN_DATOS = re.compile(r"Pendientes SIN datos .*?: (\d+)")
+
+
+def _extras_bandeja(bandeja, salida_cc="", salida_reportes="", salida_presupuestos=""):
+    """Lo que los otros pasos ya contaron, como pendientes de la bandeja."""
+    extras = []
+    m = _RE_REPORTES.search(salida_reportes or "")
+    if m and int(m.group(1)):
+        extras.append(bandeja.Pendiente(
+            "medio", f"{m.group(1)} reporte(s) PDF del Analisis Financiero desactualizados.",
+            "generarlos con /Reportes_Analisis_Financiero run (llevan analisis redactado)"))
+    presupuestos = salida_presupuestos or ""
+    novedades = presupuestos.count("[NUEVO]") + presupuestos.count("[CAMBIÓ]")
+    cargar = presupuestos.count("[CARGAR]") + presupuestos.count("[ELEGIR TAG]")
+    if novedades:
+        extras.append(bandeja.Pendiente(
+            "medio", f"{novedades} presupuesto(s) del Formulador nuevos o cambiados sin revisar.",
+            "resumirselos al usuario y marcar 'driver.py formulaciones revisadas'"))
+    if cargar:
+        extras.append(bandeja.Pendiente(
+            "medio", f"{cargar} presupuesto(s) adjudicados sin cargar en el Analisis Financiero.",
+            "confirmar el TAG con el usuario: 'driver.py formulaciones cargar <uid> <TAG>'"))
+    abiertos = sum(int(n) for _, n in _RE_CC_STATUS.findall(salida_cc or ""))
+    m = _RE_CC_RUN.search(salida_cc or "")
+    if m:
+        abiertos = int(m.group(1))
+    if abiertos:
+        extras.append(bandeja.Pendiente(
+            "medio", f"{abiertos} hallazgo(s) del Centro de Costos por revisar.", "/Revision_de_Errores"))
+    m = _RE_CC_SIN_DATOS.search(salida_cc or "")
+    if m and int(m.group(1)):
+        extras.append(bandeja.Pendiente(
+            "medio", f"{m.group(1)} documento(s) del Centro de Costos sin datos extraidos (no se registran).",
+            "completar datos_extraidos.json (Paso 2 de /Registro_Centro_de_Costos)"))
+    return extras
+
+
+def _bandeja(**salidas):
+    """Imprime la bandeja de pendientes. Nunca frena la corrida."""
+    try:
+        bandeja = _cargar("bandeja_pendientes", SISTEMA_INTERCAMBIO / "bandeja.py")
+        ubicacion = _cargar("ubicacion_intercambio", SISTEMA_INTERCAMBIO / "ubicacion.py")
+        raiz = ubicacion.ubicar_intercambio(SISTEMA_INTERCAMBIO)
+        bandeja.imprimir(bandeja.pendientes(raiz, _extras_bandeja(bandeja, **salidas)))
+    except Exception as error:  # noqa: BLE001 -- la bandeja informa, nunca frena
+        print(f"\n  [WARN] No se pudo armar la bandeja de pendientes: {error}")
 
 
 def _informe_tableros(momento_inicio):
@@ -345,6 +411,7 @@ def cmd_status():
     # cambios" -- sirve igual para ver cual falta, cuando se genero cada uno y
     # si tiene link registrado.
     _informe_tableros(momento_inicio)
+    _bandeja(salida_cc=salidas[0][2], salida_reportes=salidas[2][2], salida_presupuestos=salidas[4][2])
     _informe_tiempos(time.perf_counter() - inicio)
 
     print("\n  Nada fue escrito. Para ejecutar de verdad: python driver.py run")
@@ -390,7 +457,7 @@ def cmd_run():
     # 1. Centro de Costos. Su propio 'run' ya encadena Analisis Financiero
     #    (PASO 12d), el visualizador de CC (12c) y, dentro de AF, el
     #    visualizador de AF. Si esto falla no tiene sentido seguir.
-    ok_cc, _ = _ejecutar(
+    ok_cc, salida_cc = _ejecutar(
         "Centro de Costos -- run (encadena Analisis Financiero y sus 2 tableros)",
         DRIVER_CENTRO_COSTOS, ["run"], obligatorio=True,
     )
@@ -441,6 +508,7 @@ def cmd_run():
     resultados.append(("Flujo de Caja", ok_flujo))
 
     _informe_tableros(momento_inicio)
+    _bandeja(salida_cc=salida_cc, salida_reportes=salida_rep, salida_presupuestos=salidas[2][2])
     _informe_tiempos(time.perf_counter() - inicio)
 
     codigo = _resumir(resultados, "Todos los modulos y tableros quedaron al dia en disco.")
