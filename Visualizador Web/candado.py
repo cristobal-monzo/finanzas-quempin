@@ -190,7 +190,50 @@ def abre_con(html: str, contrasena: str, carpeta: Path | None = None) -> bool:
         return False
 
 
+# Llave del Formulador (2026-10-13): una sola contrasena para el Formulador y
+# los tableros. El Formulador (otro repositorio, mismo sitio de GitHub Pages)
+# lleva en su index.html un sobre pequeno cifrado con esta contrasena; su
+# barrera la verifica abriendo ese sobre con candado.js, igual que un tablero,
+# y recuerda la misma clave derivada ('quempin_viz_clave'): entrar a uno abre
+# los demas. Antes tenia su propia contrasena escrita en claro en el HTML.
+RUTA_INDEX_FORMULADOR = RAIZ_REPO.parent / "Formulación de proyectos" / "quempin-formulacion" / "index.html"
+ID_LLAVE = "llaveFormulador"
+_PATRON_LLAVE = re.compile(r'(<script id="' + ID_LLAVE + r'" type="text/plain">)([^<]*)(</script>)')
+TEXTO_LLAVE = b'{"herramienta":"formulador"}'
+
+
+def escribir_llave(ruta_index: Path = RUTA_INDEX_FORMULADOR, contrasena: str | None = None) -> None:
+    """Deja en el index.html del Formulador un sobre nuevo con la contrasena de
+    los tableros. Correrlo cada vez que cambie la contrasena (y publicar el
+    Formulador). Sin comprimir: el sobre es minimo y asi abre aun sin
+    DecompressionStream."""
+    with open(ruta_index, encoding="utf-8", newline="") as f:   # conserva los CRLF del repo
+        html = f.read()
+    if not _PATRON_LLAVE.search(html):
+        raise ValueError(f'{ruta_index} no tiene <script id="{ID_LLAVE}" type="text/plain">')
+    sobre = cifrar_bytes(TEXTO_LLAVE, contrasena, comprimir=False)
+    Path(ruta_index).write_text(_PATRON_LLAVE.sub(lambda m: m.group(1) + sobre + m.group(3), html, count=1),
+                                encoding="utf-8", newline="")
+
+
+def llave_abre_con(html: str, contrasena: str) -> bool:
+    """True si el sobre del Formulador abre con esta contrasena."""
+    m = _PATRON_LLAVE.search(html)
+    try:
+        return bool(m) and descifrar_bytes(m.group(2), contrasena) == TEXTO_LLAVE
+    except Exception:
+        return False
+
+
 if __name__ == "__main__":
+    import sys
+    if sys.argv[1:2] == ["--llave-formulador"]:
+        # Uso: py -3.14 "Visualizador Web/candado.py" --llave-formulador [ruta/index.html]
+        ruta = Path(sys.argv[2]) if len(sys.argv) > 2 else RUTA_INDEX_FORMULADOR
+        escribir_llave(ruta)
+        ok = llave_abre_con(ruta.read_text(encoding="utf-8"), leer_contrasena())
+        print(f"[{'OK' if ok else 'NO ABRE'}] llave del Formulador en {ruta}")
+        raise SystemExit(0 if ok else 1)
     # Paso obligatorio antes de publicar (receta de Visualizador Web/CLAUDE.md
     # § Hosting): cada tablero tiene que abrir con la contrasena de este equipo.
     # El 2026-10-05 se publico Analisis Financiero cifrado con la de prueba (los

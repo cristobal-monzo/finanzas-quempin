@@ -301,8 +301,15 @@ Cómo funciona desde entonces (`Visualizador Web/candado.py` + `candado.js`):
 - El navegador **recuerda la clave derivada** (`localStorage`,
   `quempin_viz_clave`), la misma para los 7 tableros: la contraseña se
   escribe una vez. Si cambia, la recordada deja de abrir y se vuelve a pedir.
+- **El Formulador usa la misma contraseña** (2026-10-13): su `index.html`
+  (otro repositorio, mismo sitio) lleva un sobre corto cifrado con ella
+  (`<script id="llaveFormulador">`) y una copia de `candado.js` en su `js/`
+  (`test_candado.py` exige que sea idéntica). Recuerda la misma
+  `quempin_viz_clave`: entrar a uno abre los demás.
 - **Cambiar la contraseña**: editar `.contrasena_tableros`, regenerar y
-  publicar los 7 tableros, y avisar al equipo. El contenido cifrado es
+  publicar los 7 tableros, regenerar el sobre del Formulador con
+  `py -3.14 "Visualizador Web/candado.py" --llave-formulador` y publicarlo, y
+  avisar al equipo. El contenido cifrado es
   público y se puede atacar sin conexión, así que tiene que ser larga (la
   actual: 4 palabras al azar + 4 dígitos).
 - **Un tablero nuevo**: `<script>__CANDADO_JS__</script>` antes de su

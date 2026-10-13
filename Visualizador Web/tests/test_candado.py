@@ -222,3 +222,51 @@ def test_la_contrasena_real_no_esta_en_ningun_archivo_versionado():
         if ruta.is_file() and real in candado.normalizar(ruta.read_bytes().decode("utf-8", errors="ignore")):
             con_ella.append(rel)
     assert con_ella == []
+
+
+# ── Llave del Formulador (2026-10-13): una sola contraseña ──────────────────
+
+HTML_FORMULADOR = '<html>\r\n<script id="llaveFormulador" type="text/plain"></script>\r\n</html>\r\n'
+
+
+def test_la_llave_del_formulador_abre_solo_con_la_contrasena(tmp_path):
+    ruta = tmp_path / "index.html"
+    ruta.write_bytes(HTML_FORMULADOR.encode("utf-8"))
+    candado.escribir_llave(ruta, "Clave de Prueba")
+    html = ruta.read_bytes().decode("utf-8")
+    assert candado.llave_abre_con(html, "clave de prueba")
+    assert not candado.llave_abre_con(html, "otra")
+    assert "\r\n" in html and "\n" not in html.replace("\r\n", ""), "conserva los CRLF del repo del Formulador"
+
+
+def test_la_llave_se_reemplaza_al_cambiar_la_contrasena(tmp_path):
+    ruta = tmp_path / "index.html"
+    ruta.write_bytes(HTML_FORMULADOR.encode("utf-8"))
+    candado.escribir_llave(ruta, "primera")
+    candado.escribir_llave(ruta, "segunda")
+    html = ruta.read_text(encoding="utf-8")
+    assert html.count('id="llaveFormulador"') == 1
+    assert candado.llave_abre_con(html, "segunda") and not candado.llave_abre_con(html, "primera")
+
+
+def test_sin_el_marcador_no_se_escribe(tmp_path):
+    ruta = tmp_path / "index.html"
+    ruta.write_text("<html></html>", encoding="utf-8")
+    with pytest.raises(ValueError):
+        candado.escribir_llave(ruta, "x")
+
+
+def test_el_formulador_lleva_la_misma_copia_de_candado_js():
+    """El Formulador (otro repositorio) verifica su contraseña con una copia de
+    candado.js. Si cambias este archivo, vuelve a copiarlo a su js/."""
+    copia = candado.RUTA_INDEX_FORMULADOR.parent / "js" / "candado.js"
+    if not copia.exists():
+        pytest.skip("el Formulador no está en esta máquina")
+    assert copia.read_bytes().replace(b"\r\n", b"\n") == candado.RUTA_JS.read_bytes().replace(b"\r\n", b"\n")
+
+
+def test_el_formulador_ya_no_lleva_una_contrasena_en_claro():
+    if not candado.RUTA_INDEX_FORMULADOR.exists():
+        pytest.skip("el Formulador no está en esta máquina")
+    html = candado.RUTA_INDEX_FORMULADOR.read_text(encoding="utf-8")
+    assert "GATE_PASSWORD" not in html and 'id="llaveFormulador"' in html
