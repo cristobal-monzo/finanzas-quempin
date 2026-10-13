@@ -5,7 +5,7 @@
   },
   "categoria:Mantenimiento": {
     "generado_el": "13-10-2026",
-    "hash": "0c3529a187572473a9a39f5277b167b9b503ccf46c6e8344b5163995992d4f44"
+    "hash": "943efca491a44f8b7992f26459bd1b2d3236961d6074ce8813805efe8d7124b8"
   },
   "categoria:Montaje": {
     "generado_el": "13-10-2026",
@@ -13,7 +13,7 @@
   },
   "categoria:Montaje e instalación": {
     "generado_el": "13-10-2026",
-    "hash": "013680b7292c97281cdc92f76c21784b281b7dc32c3e6e6311af2d468e8f95f1"
+    "hash": "f8009eb6609c0f53d7a461ee7a535cbc284286ffe517a9b19255a8d28fcb87d9"
   },
   "cliente:Caldera Valdivia": {
     "generado_el": "13-10-2026",
@@ -29,11 +29,11 @@
   },
   "cliente:ESFOCAR": {
     "generado_el": "13-10-2026",
-    "hash": "d8949adf0f802599166a08b8ef4d621a4537b442c442c0f5649d34aa68ade23c"
+    "hash": "1e1b99097e9ffc2b30ab48e515f6cfc2e39e691f5ac12999e37d06fab3211533"
   },
   "cliente:Junji's Valparaiso": {
     "generado_el": "13-10-2026",
-    "hash": "915599a30280779967986e68f751b47a58163438d8704e1ac7b2dc31f1697757"
+    "hash": "1118a6a99a03680fbd0c18df10ca105807a144af0848a385be1b193a309e83c2"
   },
   "cliente:Microturbina LER": {
     "generado_el": "13-10-2026",
@@ -41,7 +41,7 @@
   },
   "cliente:Putaendo Hospital Pinel": {
     "generado_el": "13-10-2026",
-    "hash": "d8626fae554c7b48dd0fe47adcd3a36951f1d6b9502cfd39e444c84609164128"
+    "hash": "0c3b1052841d34fa0f397ee232aa44e421497205d5bccd8aeba0e1091f586236"
   },
   "cliente:UMAG": {
     "generado_el": "2026-07-26",
@@ -65,15 +65,15 @@
   },
   "proyecto:ESFO": {
     "generado_el": "13-10-2026",
-    "hash": "417ec42cd3f6af39af233eac8a38593b8047a1ad99feb47851a090bce35ddd22"
+    "hash": "d43dc762d6c1c5768e82e9c7d6c13ab848850e1c214757f0c08c57d3cbe5ad96"
   },
   "proyecto:HPIN": {
     "generado_el": "13-10-2026",
-    "hash": "3d4b6a81853cc9a4a2ee2fe1fb0a1be3155dcf292ff00a4f65b448d80b3b9dc8"
+    "hash": "a68a362ac84b140e6e0b6a07326786154d26305d1f248d14aef887977c573185"
   },
   "proyecto:JUNJ": {
     "generado_el": "13-10-2026",
-    "hash": "6874aca36f15465cd32768afd7404a6945b4d5d5d84f1ab11c043869f78d0048"
+    "hash": "e534f5276636bc02939ea7f6b6246b60a0f6e974b303d32df90f0c2670c59c38"
   },
   "proyecto:MLER": {
     "generado_el": "13-10-2026",
