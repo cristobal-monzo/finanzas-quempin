@@ -992,6 +992,10 @@
   .ing-envios .que { font-weight: 700; }
   .ing-envios .campos { color: var(--text-secondary); flex: 1 1 200px; }
   .ing-envios .detalle { flex-basis: 100%; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+  /* Pulso del procesador del intercambio (pulso.js, 2026-10-08) */
+  .ing-pulso { margin: 0 0 10px; font-size: 12.5px; color: var(--text-muted); }
+  .ing-pulso.detenido { padding: 10px 12px; border: 1px solid var(--border-hairline); border-left: 3px solid var(--status-bad);
+    border-radius: 8px; color: var(--text-primary); font-weight: 700; font-size: 13px; }
 
   .ing-dialogo { border: none; border-radius: 12px; padding: 0; width: calc(100% - 32px); max-width: 680px;
     max-height: calc(100vh - 48px); background: var(--surface-card); color: var(--text-primary);
@@ -1067,8 +1071,9 @@
       <!-- Selector de país + las pestañas de módulo. Los enlaces apuntan a
            Chile; el JS los pasa al país de este tablero y marca la activa
            según data-nav-activo (la subruta publicada). Este bloque es igual
-           en los 6 templates: solo cambia ese atributo. Flujo de Caja existe
-           solo para Chile: su pestaña apunta siempre a Chile. -->
+           en los 7 templates: solo cambia ese atributo. Flujo de Caja y
+           Oportunidades existen solo para Chile: sus pestañas apuntan
+           siempre a Chile. -->
       <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="analisis-financiero-peru">
         <select class="viz-modnav-pais" id="modNavPais" aria-label="País">
           <option value="">Chile</option>
@@ -1079,6 +1084,7 @@
           <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis<span class="viz-modnav-largo"> Financiero</span></a>
           <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
           <a class="viz-modnav-tab" data-modulo="flujo-de-caja" href="https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/">Flujo<span class="viz-modnav-largo"> de Caja</span></a>
+          <a class="viz-modnav-tab" data-modulo="oportunidades" href="https://cristobal-monzo.github.io/finanzas-quempin/oportunidades/">Oportunidades</a>
         </div>
         <!-- Los proyectos, su formulación y su seguimiento (2026-10-06): las demás herramientas del recorrido -->
         <a class="viz-modnav-herr" href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/" target="_blank" rel="noopener" title="Los proyectos: formulación, cotización y seguimiento de cada oferta">Formulador<span class="viz-modnav-largo"> de proyectos</span> ↗</a>
@@ -1400,7 +1406,7 @@
             Escribe aquí los valores que hoy se cargan a mano en la planilla. Lo que cambies queda marcado en naranjo y
             se guarda como borrador en este navegador. Al enviar, cada proyecto queda como un archivo en el buzón de la
             carpeta de Intercambio y el Análisis Financiero lo pasa al Excel en su próxima vuelta (cada 2 horas, o al
-            correr <strong>/Actualizar_AF</strong>). Nunca reemplaza un valor que alguien cambió en el Excel después de
+            correr <strong>/Actualizar_Finanzas</strong>). Nunca reemplaza un valor que alguien cambió en el Excel después de
             que lo viste aquí: ese envío queda esperando una decisión.
           </p>
         </div>
@@ -1465,9 +1471,9 @@
           <h3 id="ingNuevoTitulo">Proyecto nuevo</h3>
           <div class="ing-dialogo-cuerpo">
             <p class="ing-nota">Para un proyecto que todavía no está en la planilla. El TAG es el prefijo del N° Ref. de sus
-              facturas en Centro de Costos (por ejemplo UMAG): así sus costos reales se juntan con lo que ingreses aquí.</p>
+              facturas en Centro de Costos (por ejemplo ABCD): así sus costos reales se juntan con lo que ingreses aquí.</p>
             <label style="margin-top:12px">TAG
-              <input type="text" id="ingNuevoTag" maxlength="10" autocomplete="off" autocapitalize="characters" placeholder="UMAG">
+              <input type="text" id="ingNuevoTag" maxlength="10" autocomplete="off" autocapitalize="characters" placeholder="ABCD">
             </label>
             <label style="margin-top:10px">Nombre del proyecto
               <input type="text" id="ingNuevoNombre" maxlength="120" autocomplete="off">
@@ -1634,6 +1640,79 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
+<script id="af-pulso-js">/* pulso.js — Cuán al día está la carpeta de intercambio, leído de
+ * publicado/estado.json (lo escribe el procesador en cada vuelta).
+ *
+ * Por qué existe (2026-10-08): la tarea del procesador estuvo deshabilitada
+ * del 05-10 al 08-10 y nadie se enteró. Los envíos al Análisis Financiero
+ * esperaron hasta 28 horas, y la única señal era un punto ámbar en la
+ * configuración del Formulador. Ahora, si el procesador lleva más de
+ * DETENIDO_HORAS_HABILES horas de horario hábil sin correr (dos vueltas
+ * perdidas), las herramientas lo dicen con un aviso rojo. Las horas fuera del
+ * horario no cuentan: con el computador apagado de noche o el fin de semana
+ * el procesador espera, y eso no es una falla.
+ *
+ * Lo usan el Formulador (copia textual en js/pulso.js) y la pestaña «Ingresar
+ * datos» del tablero de Análisis Financiero (su build lo inserta). Si cambias
+ * este archivo, vuelve a copiarlo al Formulador (un test compara las dos).
+ */
+(function (root) {
+  'use strict';
+
+  // Horario hábil del equipo, en la hora local del navegador: lunes (1) a
+  // viernes (5), de 08:30 a 19:00.
+  const HORARIO = { dias: [1, 2, 3, 4, 5], desde: 8.5, hasta: 19 };
+  // El procesador corre cada 2 horas (decisión del usuario, 2026-10-02): en
+  // verde hasta 2 h y media, para no marcar «atrasado» entre dos corridas.
+  const VERDE_HASTA_MIN = 150;
+  const DETENIDO_HORAS_HABILES = 4;
+
+  /* Minutos de horario hábil entre dos fechas (Date). */
+  function minutosHabiles(desde, hasta, horario) {
+    const h = horario || HORARIO;
+    if (!(desde instanceof Date) || !(hasta instanceof Date) || !(hasta > desde)) return 0;
+    let total = 0;
+    const dia = new Date(desde.getFullYear(), desde.getMonth(), desde.getDate());
+    for (let i = 0; dia <= hasta && i < 800; i++, dia.setDate(dia.getDate() + 1)) {
+      if (h.dias.indexOf(dia.getDay()) < 0) continue;
+      const ini = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 0, Math.round(h.desde * 60));
+      const fin = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 0, Math.round(h.hasta * 60));
+      const a = Math.max(ini.getTime(), desde.getTime());
+      const b = Math.min(fin.getTime(), hasta.getTime());
+      if (b > a) total += (b - a) / 60000;
+    }
+    return Math.round(total);
+  }
+
+  function haceCuanto(min) {
+    if (min < 1) return 'hace menos de un minuto';
+    if (min < 60) return `hace ${min} min`;
+    if (min < 48 * 60) return `hace ${Math.round(min / 60)} h`;
+    return `hace ${Math.round(min / 1440)} días`;
+  }
+
+  /* { nivel: 'ok'|'warn'|'bad', detenido, texto, minutos, minutosHabiles }, o
+     null si no hay estado. 'ahora' se puede fijar (pruebas). */
+  function lectura(estado, ahora) {
+    const ultima = estado && estado.procesador && estado.procesador.ultimaCorrida;
+    const t = ultima ? new Date(ultima) : null;
+    if (!t || isNaN(t)) return null;
+    const ya = ahora || new Date();
+    const min = Math.max(0, Math.round((ya - t) / 60000));
+    const habiles = minutosHabiles(t, ya);
+    const pasos = estado.procesador.pasos || {};
+    const fallas = Object.keys(pasos).filter((k) => pasos[k] && pasos[k].ok === false);
+    const detenido = habiles > DETENIDO_HORAS_HABILES * 60;
+    const nivel = detenido ? 'bad' : fallas.length ? 'warn' : min <= VERDE_HASTA_MIN ? 'ok' : 'warn';
+    const texto = detenido
+      ? `El procesador del intercambio no corre desde ${haceCuanto(min)}: lo que se envíe a las demás herramientas queda esperando hasta que vuelva a correr. Avisa a quien administra las herramientas QUEMPIN.`
+      : `Las demás herramientas revisaron la carpeta ${haceCuanto(min)}` + (fallas.length ? ` (con problemas en: ${fallas.join(', ')})` : '') + '.';
+    return { nivel, detenido, texto, minutos: min, minutosHabiles: habiles };
+  }
+
+  root.QPulso = { lectura, minutosHabiles, HORARIO, VERDE_HASTA_MIN, DETENIDO_HORAS_HABILES };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
 <script id="af-ingreso-js">/* ingreso.js — Lógica de la pestaña «Ingresar datos» del tablero de Análisis Financiero
  * (pedido del usuario, 2026-10-02): los valores manuales de la hoja «Proyectos» se
  * ingresan aquí y viajan al Excel como mensajes «datos-proyecto» por el buzón de la
@@ -1788,7 +1867,7 @@
      de Costos, y que no exista ya. */
   function validarNuevo(ingreso, tag, nombre, tagsYaAgregados) {
     const errores = [];
-    if (!new RegExp(ingreso.patron_tag).test(tag)) errores.push('El TAG debe tener 2 a 10 letras mayúsculas o números (ej. UMAG).');
+    if (!new RegExp(ingreso.patron_tag).test(tag)) errores.push('El TAG debe tener 2 a 10 letras mayúsculas o números (ej. ABCD).');
     else if (ingreso.tags.indexOf(tag) >= 0 || (tagsYaAgregados || []).indexOf(tag) >= 0) errores.push('Ya hay un proyecto con el TAG ' + tag + '.');
     if (!String(nombre || '').trim()) errores.push('Falta el nombre del proyecto.');
     return errores;
@@ -1913,6 +1992,17 @@
       return (sobre && sobre.datos && sobre.datos.mensajes) || {};
     } catch (e) { return {}; }
   }
+  /* El pulso del procesador del intercambio (publicado/estado.json): si no corre, lo que se
+     envía queda en el buzón sin aplicarse. La lectura la hace pulso.js (Sistema Intercambio). */
+  async function estadoProcesador() {
+    const h = await carpetaLista();
+    if (!h) return null;
+    try {
+      const pub = await h.getDirectoryHandle('publicado');
+      const sobre = await leerJSON(pub, 'estado.json');
+      return (sobre && sobre.datos) || null;
+    } catch (e) { return null; }
+  }
   function descargar(m) {
     const a = root.document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(m, null, 2) + '\n'], { type: 'application/json' }));
@@ -1924,7 +2014,7 @@
 
   const api = {
     parsear, mostrar, iguales, armarMensajes, validarNuevo, nombreArchivo, isoLocal, nuevoId, fechaValida,
-    carpeta: { disponible, estado: estadoCarpeta, conectar, permitir, enviar, archivosEnBuzon, resultados }, descargar
+    carpeta: { disponible, estado: estadoCarpeta, conectar, permitir, enviar, archivosEnBuzon, resultados, estadoProcesador }, descargar
   };
   root.QIngreso = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -2071,7 +2161,7 @@ var QuempinCandado = (function () {
   return { abrir: abrir, derivar: derivar, descifrar: descifrar, descifrarBytes: descifrarBytes, abrirArchivo: abrirArchivo };
 })();
 </script>
-<script id="af-data-b64" type="text/plain">{"v":2,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"G1vmu0+8crhS3FBY","comp":"gzip","datos":"e6Uf87hHwV3uz4X0T0GZDXsr2w/AnFMkBqcMvdTX0jvkeeJJmKEy2XYboir66BVqrQ3HON/4UQwnseJCZdAET2pnepOZa25lusZe8hoAS6hE9b5JiIyW3nf5AB5/QTRdTQXxOaz6MZ7o6vUKHfHZcpQ+1Yr+VgK6OBGVo2a9S0luKhaLp/najf7qedVF5sbBOeS877xQcDE8x76d+VMP8II9s4Ejp0/L9cKEHrn4hfh22Ebs4JUrEk9rCn67s8JYblUX0jDnmaEFpGSJuQArNJ44Wfn6dwLihn+yE4ItfkzEtX8AvRc2DG3qSFvUPup0iofXHUFlDuFfGsZE9sz+00NsbDj5uU1uPREdG3Axvzz9lWE3kCdpDoyBuL3Er6YjlJo5CO0ZOHcJLcrdzoynCw7eNKfZPuvbq55yx4OjHZcu+c6DBWLagRMaqQd0qQq3Q/QJg8Cag7GadyvOG1/p2vgaPfXfpwH+zODVy8fkA2uKnhrhD23O4h6MQ275Ofh72H2YNRcuRb4vEXUyDQ9crv+uTmJofUJqtakjpS0GfVBL0a6thlotBgCxa0h3e/I3TI6HbqThmjW3mJblXjq3/oYZT5M9ZebrcSgI+0wdvHVNHzDcJ5e2fGrUvdYFA4xGQj0gRSQdcyPlOg0Zj+QkqzRmrrSla8UbJBKEZagq4QAE+CCp8DMnrUs8maHFS1XxF9NlVFhKeDkouz1utUn4IKUoK+uZbIpOl0Kvx+G+rPULOzTXsSm0IPyd+zoYrm49COkz8REVl1xjhMFb2Kcxmx3W72DbeJ1wPyUYTIj0R/LKvhQNK0SmDnw9G9gDny+DSne6w5nEILzJd2Ww08cXSriurco6E2seGebJGLXepqiJ6fF6k+oyRuK3jMWWeckRWgrSQ0m3YfImunr1hjxOK5XTI5YwJYSDZK7ZmQhZjV5HX5TJOgQOF2a73Q06qN7IotDbYMG+sZcGIGgJ3VGYt+bnleFYn4x+ZA1doQIoQfHfD8/d/NGoTW5nllh8m+BwWOmnfADskRMdbh+uzterNiVe1RsGamDKB0jNi1fjBC1kB6D5OhW2D/vLYisoyd2hSVvR+nOqAibiz/swWo3/lOaMtORn0ZQdM9zYtaov0BjbLLVXb260qZCBFxevsGbo1+ZG9b+dkiarFiJbxo3eWY1Gp+k0r2as0D8kXsDBSnWY+6UlGm5cyckDaF5aWi1vDic+x529c/hFXGbez3yKqd3Wd8sdl3kjj4htcuCRV16XfVSMCuGmbBOK4HKUApTZBil7B+TqJf0RumkSYplwUX53VD8lV5TFZQMpmQS9Y6d7xcXGPNVgNxr7j0tJhmT4i5rNqjETe5Jc/RbKGX1PHUY1dqEdJ6Dkert1RdW/Fr/zyqIWBWPQWzGW0fRpu3mqZyaXhD5y0uq9Uh4hgoAgl//bRv0HC4sZjElFn3467UuFz11aeknB5ths0CL5FOMwOhCkYsSel8PAaGLdXHK6jFJr5JkIzpod72BPEZLydDmcmGwhLs5gdLm8VJ/95dq63DUN7mJjGkxP0C5mlGlsWgxxCBjH5YWR/xG1GjqBXf+t5FdiCuGvBvcdJQ/3Rg=="}</script>
+<script id="af-data-b64" type="text/plain">{"v":2,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"poUqDhyX98NbvYni","comp":"gzip","datos":"Fhh/UniXPbaVniIXuOlbd/qucpJGHBCgw0O1RE8KJY7w0WiRI3K6UpmAelzLdp3X7DB9y4NJdue8Dnzsy9EhQGcF2udh/5l/8BjIahSCWcvRPPKEWJD6XHR8bhbzNTJKcS6PgL7CUvOieZkg7N5JcxvG1lqjw5yTEg3OYivFHpJnNf4RFlXSnaBphQ99uSqBGGMygG3d1RW0oJd369egjrA1GdjpLBe0uynJJXUI5ACMSEZMh3kowzn8zkbbsvnIVY9pISxbsZehd59VAAYEepxKszaGf98mYkFcgYDgYiUZyPoCfd/GrX1/ZpdTGoMrKioLQ/tZ5UZiXwymhYS56OXUJ63TqvkTPo7cz0CaIVDCvYzlsnJCBwziiN8yFWRwGI2AuUG+Iowgzb9gFUjK+7ORxqNcamiyPvb9tOO0N4vZhsR+a3mdU0OmyLNazrzSQ6SSj1Ml2RKkD+7bDdwZjmH46E6qaeLyDtA2R4+r97ivkB6X/BeYTsDvP0pe4wjmgrpZZyPJr7kd/gHka4ZXgylwWfefSlICPzEQ0+0mnQOTol0d0F2/+TUZ9ZAJz+UOzElLz6LkYINiIKQ6OyYQqVKTni3XPKCKMyAdVQfTqxTUEVsa6SqyhTTtTNrk8woMXxjStq3cwUCeoMrwSAMOPp/xEUfDzlk5Dx0EcPClXd5yNTq0RjwpJP7yXOzTdbeziAgB9LXRHH7btZ2bZXIGI4hLxJTL2t9HI3xNS6nnyCvZ6uFMYsm0riRTuDfDSoEdLdZgRxv/SxKZLMM3wlpAbIA0NoFWw1ITIA5/DiaPS6lVTva+uhZrWJMRngJkj1+qfXcsa2BmDD2jYISdyBtsoklikqA8a5JG6RcaroSE8urXmEaV8i1jhVZLDF2SWUB6xasI2eztFdrsnTxW+aU9bndON6vmrf0Em4goMuTwlG4vHDOD/HqWbhQGWZrAm2f8Raywlw2wHxsQFukUpbF1DfX66YjAyLA2t8JZWdVRoxqXBkXIfp6GqZ1mIVMvkecF0ioEpS6kk92wgD2nW+TF2GLa8Od6A/bK0jqAFexWSNwIah2wX1m6RiWnvcNvTKQ4QMFKPI38FAtUIdyGBrNwub/n51ecvGP7kdmUBeLQoibDSu53Ns6XBDrQBnQKcEs4TImJJP2h5OhK9AjFJKNbsLJBINg35ERhoJ1JsbdDPeR7Td34L4Zi8ctJvenYYIlN6o0N1mSYtralW4Kftlr9OOyXsNjQLyAue/8nkfpoYWRhGwnkKMj8OrYrSV0kqh73IWFy+/kL9LVbi9zUDLaXvtInU92kz5UFFPG/sl7Sd5M2ukd+X903SQNY8gN3iwHyyUwBpfNK6FizyFOi9AAp+/gQtvvg1TRVZMapTOuhIBfpQ/UwJ07ljeu9VUBijUHENEY0jy6Ov2nOYaOd16OZaoSbY0zQKlvSrLnwnOsvZvNbRdZ1qnDyN6wav6OulcyIz7jusYoIFHLXLRTVXbtwRBX6Vr3fLILlZNuvki79ZZyIPC0VopkOfX/tHzN6onu23+BbgbZYgK3nA4o4DZVIRdB2HTorVR0yfYAe08a4KLq2pihM49qyt/X/zFrc3w=="}</script>
 <script>
 (function () {
   // ---------- theme persistence ----------
@@ -2088,10 +2178,10 @@ var QuempinCandado = (function () {
   // ---------- navegación entre tableros: país + pestaña activa ----------
   // data-nav-activo es la subruta publicada de este tablero (ej.
   // "analisis-financiero-peru"): de ahí salen el país del selector, a qué
-  // país apuntan las pestañas y cuál se marca. Mismo bloque en los 6
-  // templates. Flujo de Caja (2026-10-01) existe solo para Chile: su pestaña
-  // apunta siempre a Chile, y elegir Perú desde ese tablero lleva a Centro
-  // de Costos Perú.
+  // país apuntan las pestañas y cuál se marca. Mismo bloque en los 7
+  // templates. Flujo de Caja (2026-10-01) y Oportunidades en Mercado Público
+  // (2026-10-13) existen solo para Chile: su pestaña apunta siempre a Chile,
+  // y elegir Perú desde ese tablero lleva a Centro de Costos Perú.
   (function () {
     var nav = document.getElementById('modNav');
     if (!nav) return;
@@ -2099,7 +2189,7 @@ var QuempinCandado = (function () {
     var activo = nav.getAttribute('data-nav-activo') || '';
     var sufijo = /-peru$/.test(activo) ? '-peru' : '';
     var modulo = activo.slice(0, activo.length - sufijo.length);
-    var SOLO_CHILE = ['flujo-de-caja'];
+    var SOLO_CHILE = ['flujo-de-caja', 'oportunidades'];
     nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
       var destino = a.getAttribute('data-modulo');
       if (destino === modulo) {
@@ -3716,8 +3806,9 @@ var QuempinCandado = (function () {
     // pide permiso: solo lee si ya lo hay.
     function refrescarEnvios() {
       if (!estadoCarpeta.conectada || estadoCarpeta.permiso !== 'granted') return Promise.resolve();
-      return Promise.all([Q.carpeta.resultados(), Q.carpeta.archivosEnBuzon()]).then(function (r) {
+      return Promise.all([Q.carpeta.resultados(), Q.carpeta.archivosEnBuzon(), Q.carpeta.estadoProcesador()]).then(function (r) {
         var res = r[0] || {}, archivos = r[1] || [];
+        pulso = window.QPulso ? QPulso.lectura(r[2]) : null;
         envios.forEach(function (e) {
           if (res[e.id]) e.resultado = { estado: res[e.id].estado, detalle: res[e.id].detalle || [] };
           e.enBuzon = archivos.some(function (nombre) { return nombre.indexOf(e.id) >= 0; });
@@ -3761,10 +3852,18 @@ var QuempinCandado = (function () {
       if (e.via === 'descarga') return { nivel: 'warn', texto: 'Descargado', detalle: 'Falta dejar el archivo en el buzón de la carpeta de Intercambio.' };
       return { nivel: 'warn', texto: 'Enviado' };
     }
+    // Si el procesador no corre, lo enviado no se aplica: se dice arriba de la lista (2026-10-08).
+    var pulso = null;
+    function pulsoHtml() {
+      if (!pulso) return '';
+      return pulso.detenido
+        ? '<p class="ing-pulso detenido" role="alert">Lo que envías no se está aplicando. ' + esc(pulso.texto) + '</p>'
+        : '<p class="ing-pulso">' + esc(pulso.texto) + ' Lo que está en el buzón se aplica en la próxima vuelta (cada 2 horas).</p>';
+    }
     function renderEnvios() {
       var caja = document.getElementById('ingEnvios');
-      if (!envios.length) { caja.innerHTML = '<p class="chart-note">Todavía no hay envíos desde este navegador.</p>'; return; }
-      caja.innerHTML = '<ul>' + envios.slice().reverse().slice(0, 20).map(function (e) {
+      if (!envios.length) { caja.innerHTML = pulsoHtml() + '<p class="chart-note">Todavía no hay envíos desde este navegador.</p>'; return; }
+      caja.innerHTML = pulsoHtml() + '<ul>' + envios.slice().reverse().slice(0, 20).map(function (e) {
         var est = estadoEnvio(e);
         var cuando = new Date(Date.parse(e.enviado));
         var campos = Object.keys(e.valores).map(function (k) {
@@ -3872,7 +3971,7 @@ var QuempinCandado = (function () {
         dialogo.close();
         var n = listo.mensajes.length;
         mostrarMensaje('Listo: ' + n + (n === 1 ? ' envío quedó' : ' envíos quedaron') + ' en el buzón de Intercambio. ' +
-          'El Análisis Financiero los pasa al Excel en su próxima vuelta (cada 2 horas, o al correr /Actualizar_AF); ' +
+          'El Análisis Financiero los pasa al Excel en su próxima vuelta (cada 2 horas, o al correr /Actualizar_Finanzas); ' +
           'el tablero los muestra cuando se vuelva a publicar. Abajo puedes revisar en qué quedó cada uno.');
         renderTodo();
         return refrescarEnvios();
@@ -3900,7 +3999,7 @@ var QuempinCandado = (function () {
         var n = listo.mensajes.length;
         mostrarMensaje('Se ' + (n === 1 ? 'descargó 1 archivo' : 'descargaron ' + n + ' archivos') + '. Déjalos tal cual en la carpeta ' +
           '<strong>Formulación de proyectos - Documentos › .Herramientas formulación › Intercambio › buzon</strong>, ' +
-          'o pásaselos a quien corre /Actualizar_AF (<code>driver.py intercambio cargar &lt;archivo&gt;</code>).', 'warn');
+          'o pásaselos a quien corre /Actualizar_Finanzas (<code>driver.py intercambio cargar &lt;archivo&gt;</code>).', 'warn');
         renderTodo();
       });
     });
