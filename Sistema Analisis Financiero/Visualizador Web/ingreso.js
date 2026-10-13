@@ -152,7 +152,7 @@
      de Costos, y que no exista ya. */
   function validarNuevo(ingreso, tag, nombre, tagsYaAgregados) {
     const errores = [];
-    if (!new RegExp(ingreso.patron_tag).test(tag)) errores.push('El TAG debe tener 2 a 10 letras mayúsculas o números (ej. UMAG).');
+    if (!new RegExp(ingreso.patron_tag).test(tag)) errores.push('El TAG debe tener 2 a 10 letras mayúsculas o números (ej. ABCD).');
     else if (ingreso.tags.indexOf(tag) >= 0 || (tagsYaAgregados || []).indexOf(tag) >= 0) errores.push('Ya hay un proyecto con el TAG ' + tag + '.');
     if (!String(nombre || '').trim()) errores.push('Falta el nombre del proyecto.');
     return errores;
