@@ -105,47 +105,32 @@ presupuestos del Formulador sin revisar y hallazgos del Centro de Costos por
 revisar. Al reportar al usuario, **resume la bandeja**: es la lista de lo que
 falta. `[!]` marca lo que está detenido o fallando.
 
-## Paso obligatorio tras `run`: publicar los 4 tableros
+## `run` publica los tableros que regeneró (desde 2026-10-13)
 
-**Regenerar los `build/index.html` en disco NO cambia lo que ve la gente.**
-Desde 2026-08-05 el canal real de consumo es un sitio en GitHub Pages
-(repo público `cristobal-monzo/finanzas-quempin`, rama `gh-pages`) — ver
+**Regenerar los `build/index.html` en disco no cambia lo que ve la gente**: el
+canal es GitHub Pages (repo público, rama `gh-pages`, ver
 [`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
-§ Hosting para el detalle completo y el trade-off de control de acceso ya
-decidido. Si corres `run` y no publicas, el Excel queda al día y los cuatro
-tableros publicados siguen mostrando datos viejos.
+§ Hosting). Por eso, con autorización del usuario del 2026-10-13, **`run`
+termina publicando solo** los tableros marcados «REGENERADO en esta corrida»:
 
-Al final de `run` (y de `status`) el driver imprime la sección **"TABLEROS
-PARA PUBLICAR"** con, por cada tablero: si se regeneró en esta corrida, la
-ruta absoluta de su `index.html` y su URL pública fija; al final, el comando
-`publicar.py` con los que se regeneraron.
+1. `Visualizador Web/publicar.py <claves>` copia cada tablero con su carpeta
+   `reportes/`, verifica con el candado que abre con la contraseña del equipo
+   y hace `git add`; si alguno no abre, no se toca gh-pages.
+2. Commit de **solo esas subrutas** en `.worktrees/gh-pages` y `git push`.
 
-Para publicarlos, usa la receta de
-[`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
-§ Hosting (única copia de esos comandos): `publicar.py` con las claves que
-imprimió el driver, y después commit y push en gh-pages — no repitas la
-receta acá. No copies el `index.html` a mano: desde el 2026-10-08 el tablero
-del AF lleva sus reportes PDF cifrados aparte, en `build/reportes/`.
-Las URLs son estructurales (no opacas como los links de Artifact) — no hay
-que "cuidar" nada especial entre publicaciones, solo confirmar que la
-subruta coincida con la que imprimió el driver.
+Lo hace también la corrida programada de los lunes, que antes dejaba los
+tableros regenerados sin publicar. El paso aparece en el RESUMEN como
+«Publicar tableros en GitHub Pages»; si falla (sin conexión, push rechazado),
+el resto de la corrida igual quedó hecho y el driver dice qué correr.
 
-Criterio de cuándo publicar cada uno:
-- Si el driver lo marcó **REGENERADO en esta corrida** → publicar.
-- Si lo marcó **sin cambios** y el usuario no pidió un refresco forzado → no
-  hace falta; dilo en una línea.
-- Si dice **SIN BUILD** → ese módulo nunca generó su tablero; repórtalo, no
-  hay nada que copiar.
+**`run --sin-publicar`** omite ese paso, cuando el usuario quiere acumular
+varias corridas y publicar después.
 
 ## Qué NO hace (a propósito)
 
 - **No genera los reportes PDF.** Cada PDF lleva análisis redactado por el
   agente (página 2 del estándar de 2 páginas), no es una salida mecánica —
   se generan con `/Reportes_Analisis_Financiero run` cuando corresponda.
-- **No publica solo.** `git push` es una acción visible/confirmable que
-  corre el agente (o el usuario) de forma explícita, no escondida dentro
-  del proceso del driver — por eso el driver deja todo listo e impreso, y
-  la publicación sigue la sección de arriba.
 - **No es la única forma de actualizar datos sin publicar.** Si el usuario
   solo quiere Centro de Costos y dejar la publicación para después,
   `/Registro_Centro_de_Costos` con «sin publicar» es más directo (antes

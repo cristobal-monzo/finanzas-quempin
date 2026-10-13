@@ -37,9 +37,17 @@ mantiene y este orquestador cubre lo que faltaba.
 Bandeja de pendientes (2026-10-13): 'status' y 'run' cierran con todo lo que
 espera a una persona, junto (Sistema Intercambio/bandeja.py).
 
+Publicacion automatica (2026-10-13, autorizada por el usuario): 'run' termina
+publicando en GitHub Pages los tableros que regenero -- con publicar.py, que
+verifica con el candado que cada uno abre antes de tocar gh-pages, y despues
+commit de solo esas subrutas y push. Los tableros van cifrados. Antes lo hacia
+el agente a mano, y la corrida programada de los lunes dejaba los tableros
+regenerados en disco sin publicar. '--sin-publicar' lo omite.
+
 Uso:
-  python driver.py status   # solo lectura: que haria cada modulo, sin tocar nada
-  python driver.py run      # cadena completa
+  python driver.py status               # solo lectura: que haria cada modulo, sin tocar nada
+  python driver.py run                  # cadena completa y publica los tableros regenerados
+  python driver.py run --sin-publicar   # cadena completa, sin publicar
 """
 
 import importlib.util
@@ -112,6 +120,7 @@ TABLEROS = (
 
 URL_BASE_PAGES = "https://cristobal-monzo.github.io/finanzas-quempin"
 SISTEMA_INTERCAMBIO = RAIZ / "Sistema Intercambio"
+PUBLICAR = RAIZ / "Visualizador Web" / "publicar.py"
 
 
 def _cargar(nombre, ruta):
@@ -210,6 +219,50 @@ def _informe_tableros(momento_inicio):
     print("  commit y push en gh-pages:")
     print(f'    py -3.14 "Visualizador Web/publicar.py" {" ".join(regenerados) or "<cc af cot fc>"}')
     print(f'    git -C "{RAIZ_GH_PAGES}" commit -m "..." && git -C "{RAIZ_GH_PAGES}" push')
+    print("  ('run' lo hace solo al final, salvo con --sin-publicar.)")
+    return regenerados
+
+
+def _git_gh_pages(*args):
+    proceso = subprocess.run(["git", "-C", str(RAIZ_GH_PAGES), *args], capture_output=True,
+                             text=True, encoding="utf-8", errors="replace")
+    return proceso.returncode, (proceso.stdout or "") + (proceso.stderr or "")
+
+
+def _publicar(claves):
+    """publicar.py (copia, verifica con el candado y hace git add) + commit de
+    solo esas subrutas + push. Devuelve (ok, texto para el resumen). Nunca
+    lanza: un tablero que no se pudo publicar no deshace lo demas."""
+    print("\n" + "=" * 72)
+    print("  PUBLICAR TABLEROS EN GITHUB PAGES")
+    print("=" * 72)
+    if not claves:
+        print("  Ningun tablero se regenero en esta corrida: nada que publicar.")
+        return True
+    ok, _ = _ejecutar("publicar.py " + " ".join(claves), PUBLICAR, claves, obligatorio=False)
+    if not ok:
+        print("  [WARN] publicar.py no dejo los tableros listos: gh-pages queda sin tocar.")
+        return False
+    subrutas = [s for _, _, s, c in TABLEROS if c in claves]
+    marca = datetime.now().strftime("%d-%m-%Y %H:%M")
+    rc, texto = _git_gh_pages("commit", "-m", f"actualizar tableros: {', '.join(subrutas)} ({marca})",
+                              "--", *subrutas)
+    if rc != 0:
+        if "nothing to commit" in texto or "nada para hacer commit" in texto or "no changes added" in texto:
+            print("  Lo publicado ya era identico: no hubo commit.")
+            return True
+        print(texto.rstrip())
+        print("  [WARN] No se pudo hacer commit en gh-pages.")
+        return False
+    rc, texto = _git_gh_pages("push")
+    print(texto.rstrip() or "  (push sin salida)")
+    if rc != 0:
+        print("  [WARN] El commit quedo en gh-pages pero el push fallo: correr 'git push' en .worktrees/gh-pages.")
+        return False
+    for _, _, subruta, clave in TABLEROS:
+        if clave in claves:
+            print(f"  [PUBLICADO] {URL_BASE_PAGES}/{subruta}/")
+    return True
 
 
 # Cronometro de la corrida: cada _ejecutar() deja aca cuanto tardo su modulo.
@@ -437,7 +490,7 @@ def _aviso_presupuestos(salida):
         print("    usuario y usar 'driver.py formulaciones cargar <uid> <TAG>' (se aplica en el run).")
 
 
-def cmd_run():
+def cmd_run(publicar=True):
     # Marca de tiempo previa a todo: sirve para distinguir que build/index.html
     # se regenero de verdad en esta corrida y cual quedo igual que antes.
     momento_inicio = datetime.now().timestamp()
@@ -507,15 +560,18 @@ def cmd_run():
     )
     resultados.append(("Flujo de Caja", ok_flujo))
 
-    _informe_tableros(momento_inicio)
+    regenerados = _informe_tableros(momento_inicio)
+    if publicar:
+        resultados.append(("Publicar tableros en GitHub Pages", _publicar(regenerados)))
     _bandeja(salida_cc=salida_cc, salida_reportes=salida_rep, salida_presupuestos=salidas[2][2])
     _informe_tiempos(time.perf_counter() - inicio)
 
-    codigo = _resumir(resultados, "Todos los modulos y tableros quedaron al dia en disco.")
+    codigo = _resumir(resultados, "Todos los modulos y tableros quedaron al dia"
+                      + (" y publicados." if publicar else " en disco (sin publicar, a pedido)."))
 
     print("\n  Falta para cerrar la actualizacion:")
-    print("   - PUBLICAR los 4 tableros de arriba (paso obligatorio: regenerarlos")
-    print("     en disco no cambia lo que ve la gente en el link publicado).")
+    if not publicar and regenerados:
+        print("   - PUBLICAR los tableros regenerados (se pidio --sin-publicar).")
     if "pendiente" in salida_rep.lower() or "desactualizad" in salida_rep.lower():
         print("   - Generar los reportes PDF pendientes: /Reportes_Analisis_Financiero run")
     return codigo
@@ -524,10 +580,12 @@ def cmd_run():
 def main():
     comandos = ("status", "run")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
-        print("Uso: python driver.py [status|run]")
+        print("Uso: python driver.py [status|run [--sin-publicar]]")
         return 2
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
-    return cmd_status() if sys.argv[1] == "status" else cmd_run()
+    if sys.argv[1] == "status":
+        return cmd_status()
+    return cmd_run(publicar="--sin-publicar" not in sys.argv[2:])
 
 
 if __name__ == "__main__":
