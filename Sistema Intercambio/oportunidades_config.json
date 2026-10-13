@@ -1,0 +1,142 @@
+{
+  "_comentario": "Configuración del buscador de oportunidades de Mercado Público (oportunidades.py). Se puede editar a mano: las palabras se comparan sin tildes ni mayúsculas y en singular (caldera = calderas). Los pesos se pueden mover también en la página, para cada persona.",
+
+  "enProcesador": false,
+
+  "pesos": {
+    "rubro": 30,
+    "monto": 15,
+    "dificultad": 15,
+    "visita": 10,
+    "ubicacion": 10,
+    "comprador": 10,
+    "plazoOferta": 5,
+    "ejecucion": 5
+  },
+
+  "_topesPorRubro": "Sin un rubro claro, una licitación no sube de cierta categoría aunque el resto de los criterios sea perfecto.",
+  "topesPorRubro": [
+    {"rubroMenorA": 40, "categoriaMaxima": "baja"},
+    {"rubroMenorA": 50, "categoriaMaxima": "evaluar"},
+    {"rubroMenorA": 70, "categoriaMaxima": "buena"}
+  ],
+
+  "categorias": [
+    {"id": "prioritaria", "nombre": "Prioritaria", "desde": 75},
+    {"id": "buena", "nombre": "Buena", "desde": 60},
+    {"id": "evaluar", "nombre": "Evaluar", "desde": 45},
+    {"id": "baja", "nombre": "Baja", "desde": 0}
+  ],
+
+  "rubro": {
+    "nucleo": [
+      "caldera", "sala de calderas", "calefacción", "agua caliente", "quemador", "boiler",
+      "central térmica", "sistema térmico", "generador de vapor", "vapor", "radiador",
+      "hidrógeno", "incinerador", "horno crematorio", "intercambiador de calor", "red de gas",
+      "instalación de gas", "gas natural", "gas licuado", "calefón", "termo eléctrico"
+    ],
+    "afines": [
+      "climatización", "bomba de calor", "paneles solares", "solar térmico", "colector solar",
+      "piscina temperada", "temperado de piscina", "chimenea", "horno industrial", "horno a gas",
+      "horno panadero", "marmita", "estanque acumulador", "válvula termostática", "válvula motorizada",
+      "válvula de gas", "bomba recirculadora", "sala de bombas", "sala de máquinas", "tren de gas",
+      "termoventilador", "calentador"
+    ],
+    "_excluir": "excluir: no es trabajo de QUEMPIN aunque nombre una caldera (combustible, químicos). En el nombre de la licitación, la descarta; en la descripción, resta. restar: resta poco si además hay palabras del núcleo.",
+    "excluir": [
+      "combustible", "suministro de petróleo", "petróleo diésel", "petróleo calefacción", "petróleo para calefacción",
+      "suministro diésel", "diésel caldera", "parafina", "leña", "suministro de pellet", "pavimento",
+      "pavimentación", "iluminación", "alumbrado", "vialidad", "autoclave", "esterilización",
+      "producto químico", "medicamento", "alimentación", "capacitación", "factor de emisión",
+      "base calefactora", "tala", "árbol", "letrero", "prótesis", "hidrogeológico"
+    ],
+    "restar": ["aire acondicionado", "limpieza", "kit", "insumo", "vidrio"]
+  },
+
+  "regiones": {
+    "_comentario": "Puntaje de 0 a 100 por región del comprador, según la distancia a la base de QUEMPIN. Se compara con el nombre de la región sin tildes.",
+    "valparaiso": 100,
+    "metropolitana": 100,
+    "higgins": 80,
+    "maule": 75,
+    "coquimbo": 65,
+    "nuble": 55,
+    "biobio": 50,
+    "araucania": 40,
+    "atacama": 35,
+    "los rios": 35,
+    "los lagos": 30,
+    "antofagasta": 25,
+    "tarapaca": 20,
+    "arica": 20,
+    "aysen": 15,
+    "magallanes": 15,
+    "_sinRegion": 50
+  },
+
+  "monto": {
+    "_comentario": "Sin rango fijo (null) se usa el de la historia: lo que QUEMPIN ofertó o se adjudicó. maximo es el tope que la empresa puede tomar (garantías, caja); null = 3 veces el percentil 90 de la historia.",
+    "idealDesde": null,
+    "idealHasta": null,
+    "maximo": null,
+    "valorUTM": 71000,
+    "valorUFRespaldo": 40000
+  },
+
+  "plazoOferta": {
+    "_comentario": "Puntaje por días hasta el cierre: el primer tramo con menos días que menosDeDias. Con descarta, la licitación sale de la lista (no alcanza a prepararse). La página repite esta tabla con la fecha del día.",
+    "tramos": [
+      {"menosDeDias": 1, "puntaje": 0, "descarta": true},
+      {"menosDeDias": 3, "puntaje": 30},
+      {"menosDeDias": 5, "puntaje": 60},
+      {"menosDeDias": 10, "puntaje": 85},
+      {"menosDeDias": null, "puntaje": 100}
+    ]
+  },
+
+  "visitaPasada": {
+    "_comentario": "Puntaje del criterio visita cuando la fecha de la visita ya pasó: si era obligatoria (o las bases no lo dicen) casi no queda opción; si era optativa, poco cambia. Una obligatoria ya pasada descarta.",
+    "obligatoriaODuda": 10,
+    "optativa": 70
+  },
+
+  "ejecucion": {
+    "_comentario": "Puntaje según la duración del contrato en meses (el primer tramo que la contiene). Los contratos de mantención de 6 a 36 meses dan ingresos recurrentes.",
+    "tramos": [
+      {"hastaMeses": 1, "puntaje": 80, "texto": "trabajo puntual"},
+      {"hastaMeses": 5, "puntaje": 85, "texto": "trabajo de corto plazo"},
+      {"hastaMeses": 36, "puntaje": 100, "texto": "contrato con ingresos recurrentes"},
+      {"hastaMeses": null, "puntaje": 55, "texto": "compromiso muy largo"}
+    ],
+    "sinDato": 60
+  },
+
+  "dificultad": {
+    "_comentario": "Se parte de 100 (fácil) y se resta por cada señal de complejidad. palabrasVariosRecintos se buscan tal cual (en plural): «al establecimiento» es uno solo.",
+    "palabrasAltas": ["proyecto", "diseño", "ingeniería", "reubicación", "construcción", "obra civil", "habilitación", "normalización", "estudio"],
+    "palabrasMedias": ["instalación", "reemplazo", "suministro e instalación", "cambio de", "montaje", "renovación", "mejoramiento", "modernización"],
+    "palabrasVariosRecintos": ["establecimientos", "recintos", "cesfams", "edificios", "sedes", "cuarteles", "comisarías", "jardines infantiles", "colegios", "escuelas", "liceos"],
+    "restaAlta": 25,
+    "restaMedia": 12,
+    "restaVariosRecintos": 10,
+    "restaObras": 20,
+    "restaPorTipo": {"LP": 8, "LQ": 12, "LR": 18, "B2": 8, "H2": 12, "I2": 18},
+    "restaMuchosItems": 10,
+    "muchosItems": 10,
+    "restaDosEtapas": 5,
+    "restaTomaRazon": 5
+  },
+
+  "prefiltro": {
+    "_comentario": "Antes de pedir la ficha completa (cada una cuesta una consulta), se elige por el nombre: palabras del rubro, o muy parecida (60 %, 2 palabras en común) a algo que QUEMPIN ofertó. maxCandidatas limita cuántas fichas se mantienen al día.",
+    "maxCandidatas": 150
+  },
+
+  "consultas": {
+    "_comentario": "Presupuesto de consultas a la API por vuelta (2 s cada una). La ficha de una licitación se vuelve a pedir pasados diasRefrescoFicha.",
+    "tope": 80,
+    "diasRefrescoFicha": 3,
+    "diasHistoriaMercado": 365,
+    "diasMercadoPorVuelta": 8
+  }
+}

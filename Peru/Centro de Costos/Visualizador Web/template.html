@@ -696,8 +696,9 @@
       <!-- Selector de país + las pestañas de módulo. Los enlaces apuntan a
            Chile; el JS los pasa al país de este tablero y marca la activa
            según data-nav-activo (la subruta publicada). Este bloque es igual
-           en los 6 templates: solo cambia ese atributo. Flujo de Caja existe
-           solo para Chile: su pestaña apunta siempre a Chile. -->
+           en los 7 templates: solo cambia ese atributo. Flujo de Caja y
+           Oportunidades existen solo para Chile: sus pestañas apuntan
+           siempre a Chile. -->
       <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="centro-de-costos-peru">
         <select class="viz-modnav-pais" id="modNavPais" aria-label="País">
           <option value="">Chile</option>
@@ -708,6 +709,7 @@
           <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis<span class="viz-modnav-largo"> Financiero</span></a>
           <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
           <a class="viz-modnav-tab" data-modulo="flujo-de-caja" href="https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/">Flujo<span class="viz-modnav-largo"> de Caja</span></a>
+          <a class="viz-modnav-tab" data-modulo="oportunidades" href="https://cristobal-monzo.github.io/finanzas-quempin/oportunidades/">Oportunidades</a>
         </div>
         <!-- Los proyectos, su formulación y su seguimiento (2026-10-06): las demás herramientas del recorrido -->
         <a class="viz-modnav-herr" href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/" target="_blank" rel="noopener" title="Los proyectos: formulación, cotización y seguimiento de cada oferta">Formulador<span class="viz-modnav-largo"> de proyectos</span> ↗</a>
@@ -892,10 +894,10 @@
   // ---------- navegación entre tableros: país + pestaña activa ----------
   // data-nav-activo es la subruta publicada de este tablero (ej.
   // "analisis-financiero-peru"): de ahí salen el país del selector, a qué
-  // país apuntan las pestañas y cuál se marca. Mismo bloque en los 6
-  // templates. Flujo de Caja (2026-10-01) existe solo para Chile: su pestaña
-  // apunta siempre a Chile, y elegir Perú desde ese tablero lleva a Centro
-  // de Costos Perú.
+  // país apuntan las pestañas y cuál se marca. Mismo bloque en los 7
+  // templates. Flujo de Caja (2026-10-01) y Oportunidades en Mercado Público
+  // (2026-10-13) existen solo para Chile: su pestaña apunta siempre a Chile,
+  // y elegir Perú desde ese tablero lleva a Centro de Costos Perú.
   (function () {
     var nav = document.getElementById('modNav');
     if (!nav) return;
@@ -903,7 +905,7 @@
     var activo = nav.getAttribute('data-nav-activo') || '';
     var sufijo = /-peru$/.test(activo) ? '-peru' : '';
     var modulo = activo.slice(0, activo.length - sufijo.length);
-    var SOLO_CHILE = ['flujo-de-caja'];
+    var SOLO_CHILE = ['flujo-de-caja', 'oportunidades'];
     nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
       var destino = a.getAttribute('data-modulo');
       if (destino === modulo) {

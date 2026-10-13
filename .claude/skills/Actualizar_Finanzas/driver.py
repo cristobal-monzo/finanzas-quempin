@@ -13,6 +13,7 @@ dia, en el orden correcto de dependencias:
         -> Reportes PDF pendientes  (lee AF)                   <-- LO REPORTA ESTE
         -> Carpeta de intercambio   (procesar.py --forzar)     [2026-10-01]
         -> Flujo de Caja            (lee CC + intercambio)     [2026-10-02]
+        -> Oportunidades MP         (API de Mercado Público)   [2026-10-13]
 
 Por que existe (auditoria 2026-07-28): 'run' de Centro de Costos ya encadena
 Analisis Financiero y dos de los tres visualizadores (PASO 12b/12c/12d), pero
@@ -88,8 +89,14 @@ DRIVER_FLUJO_CAJA = (
     RAIZ / "Flujo de Caja" / ".claude" / "skills"
     / "Registro_Flujo_de_Caja" / "driver.py"
 )
+# Oportunidades en Mercado Público (2026-10-13): consulta la API (unos 3
+# minutos, con el tope de consultas de oportunidades_config.json) y arma su
+# tablero con la Planilla que el procesador acaba de publicar. Sin respuesta de
+# Mercado Público usa la última evaluación guardada: nunca frena la cadena.
+BUILD_OPORTUNIDADES = RAIZ / "Sistema Intercambio" / "Visualizador Web" / "build_visualizador.py"
 
-# Los 4 tableros: (nombre, build/index.html regenerado, subruta fija dentro
+# Los tableros de Chile que regenera 'run' (los de Perú tienen su propio
+# camino): (nombre, build/index.html regenerado, subruta fija dentro
 # de la rama gh-pages). Desde 2026-08-05 (migracion de Claude Artifacts a
 # GitHub Pages) la URL de cada uno es estructural -- ya no hay un link opaco
 # que leer de un MEMORY.md ni que cuidar de "no regenerar por error".
@@ -115,6 +122,11 @@ TABLEROS = (
         "Flujo de Caja",
         RAIZ / "Flujo de Caja" / "Visualizador Web" / "build" / "index.html",
         "flujo-de-caja", "fc",
+    ),
+    (
+        "Oportunidades en Mercado Público",
+        RAIZ / "Sistema Intercambio" / "Visualizador Web" / "build" / "index.html",
+        "oportunidades", "op",
     ),
 )
 
@@ -559,6 +571,14 @@ def cmd_run(publicar=True):
         DRIVER_FLUJO_CAJA, ["run"], obligatorio=False,
     )
     resultados.append(("Flujo de Caja", ok_flujo))
+
+    # 6. Oportunidades en Mercado Público: consulta la API y arma su tablero con
+    #    la Planilla recién publicada por el procesador. Nunca frena.
+    ok_op, _ = _ejecutar(
+        "Oportunidades en Mercado Público -- tablero (consulta la API)",
+        BUILD_OPORTUNIDADES, [], obligatorio=False,
+    )
+    resultados.append(("Tablero de Oportunidades", ok_op))
 
     regenerados = _informe_tableros(momento_inicio)
     if publicar:

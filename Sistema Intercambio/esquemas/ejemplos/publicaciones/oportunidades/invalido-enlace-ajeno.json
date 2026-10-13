@@ -1,0 +1,269 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "oportunidades",
+  "generado": "2026-10-13T10:00:00-03:00",
+  "datos": {
+    "consultado": "2026-10-13T10:00:00-03:00",
+    "completo": true,
+    "criterios": [
+      {
+        "id": "rubro",
+        "nombre": "Rubro",
+        "peso": 30,
+        "descripcion": "Qué tan cerca está del trabajo de QUEMPIN: palabras del rubro y parecido con lo que ya se ofertó o se ganó."
+      },
+      {
+        "id": "monto",
+        "nombre": "Monto",
+        "peso": 15,
+        "descripcion": "Si el monto cae en el rango que QUEMPIN suele ofertar y adjudicarse, ni tan chico que no pague el esfuerzo ni tan grande que exceda la capacidad."
+      },
+      {
+        "id": "dificultad",
+        "nombre": "Dificultad",
+        "peso": 15,
+        "descripcion": "Facilidad de implementación: 100 es una mantención simple; bajan obras, diseño, varios recintos, muchos ítems o licitaciones grandes."
+      },
+      {
+        "id": "visita",
+        "nombre": "Visita a terreno",
+        "peso": 10,
+        "descripcion": "Si exige visita técnica, cuándo es y cuánto cuesta ir. Una visita ya pasada suele dejar fuera."
+      },
+      {
+        "id": "ubicacion",
+        "nombre": "Ubicación",
+        "peso": 10,
+        "descripcion": "Distancia del comprador a la base de QUEMPIN (región)."
+      },
+      {
+        "id": "comprador",
+        "nombre": "Comprador y competencia",
+        "peso": 10,
+        "descripcion": "Historia con ese comprador (ganado, perdido, descartado) y cuántos compiten en licitaciones parecidas."
+      },
+      {
+        "id": "plazoOferta",
+        "nombre": "Plazo para ofertar",
+        "peso": 5,
+        "descripcion": "Días que quedan para preparar la oferta."
+      },
+      {
+        "id": "ejecucion",
+        "nombre": "Tiempo de ejecución",
+        "peso": 5,
+        "descripcion": "Duración del contrato: los de mantención de 6 a 36 meses dan ingresos recurrentes."
+      }
+    ],
+    "categorias": [
+      {
+        "id": "prioritaria",
+        "nombre": "Prioritaria",
+        "desde": 75
+      },
+      {
+        "id": "buena",
+        "nombre": "Buena",
+        "desde": 60
+      },
+      {
+        "id": "evaluar",
+        "nombre": "Evaluar",
+        "desde": 45
+      },
+      {
+        "id": "baja",
+        "nombre": "Baja",
+        "desde": 0
+      }
+    ],
+    "topesPorRubro": [
+      {
+        "rubroMenorA": 40,
+        "categoriaMaxima": "baja"
+      },
+      {
+        "rubroMenorA": 50,
+        "categoriaMaxima": "evaluar"
+      },
+      {
+        "rubroMenorA": 70,
+        "categoriaMaxima": "buena"
+      }
+    ],
+    "reglas": {
+      "plazoOferta": [
+        {
+          "menosDeDias": 1,
+          "puntaje": 0,
+          "descarta": true
+        },
+        {
+          "menosDeDias": 3,
+          "puntaje": 30
+        },
+        {
+          "menosDeDias": 5,
+          "puntaje": 60
+        },
+        {
+          "menosDeDias": 10,
+          "puntaje": 85
+        },
+        {
+          "menosDeDias": null,
+          "puntaje": 100
+        }
+      ],
+      "visitaPasada": {
+        "_comentario": "Puntaje del criterio visita cuando la fecha de la visita ya pasó: si era obligatoria (o las bases no lo dicen) casi no queda opción; si era optativa, poco cambia. Una obligatoria ya pasada descarta.",
+        "obligatoriaODuda": 10,
+        "optativa": 70
+      }
+    },
+    "perfil": {
+      "historia": {
+        "requerimientos": 10,
+        "ofertados": 7,
+        "ganados": 3,
+        "perdidos": 3
+      },
+      "montoHabitual": {
+        "p10": 2600000,
+        "p25": 6000000,
+        "p75": 25000000,
+        "p90": 42000000,
+        "maximo": 126000000,
+        "maximoFijo": false
+      },
+      "mercado": {
+        "licitaciones": 0,
+        "desde": null,
+        "diasBarridos": 0,
+        "diasObjetivo": 365
+      },
+      "competidores": [],
+      "publicadas": 1,
+      "candidatas": 1
+    },
+    "oportunidades": [
+      {
+        "codigo": "1234-56-LE26",
+        "url": "javascript:alert(1)",
+        "nombre": "Mantención preventiva de calderas",
+        "descripcion": "Mantención mensual por 12 meses.",
+        "organismo": "Servicio de ejemplo",
+        "unidadCompra": "Unidad de ejemplo",
+        "region": "Región de Valparaíso",
+        "regionCorta": "Valparaíso",
+        "comuna": "Quilpué",
+        "tipo": "LE",
+        "publicada": "2026-10-10T10:00",
+        "cierre": "2026-10-25T15:00",
+        "diasParaCierre": 12.2,
+        "monto": {
+          "valor": 10000000,
+          "fuente": "estimado"
+        },
+        "duracionMeses": 12,
+        "visita": {
+          "fecha": null,
+          "obligatoria": null
+        },
+        "categorias": [
+          "Servicios / Calefacción"
+        ],
+        "puntaje": 95.2,
+        "categoria": "prioritaria",
+        "descartar": [],
+        "descartarFijo": [],
+        "aFavor": [
+          "Del rubro: caldera",
+          "$10,0 M, en el rango habitual",
+          "Mantención simple"
+        ],
+        "enContra": [],
+        "criterios": {
+          "rubro": {
+            "puntaje": 99,
+            "motivo": "núcleo: caldera; 6 de 6 parecidas se ofertaron, 3 ganada(s) (N° 1, 8, 3)",
+            "corto": "Del rubro: caldera"
+          },
+          "monto": {
+            "puntaje": 100,
+            "motivo": "$10,0 M (estimado): en el rango que QUEMPIN más oferta",
+            "corto": "$10,0 M, en el rango habitual"
+          },
+          "dificultad": {
+            "puntaje": 100,
+            "motivo": "mantención simple",
+            "corto": "Mantención simple"
+          },
+          "ubicacion": {
+            "puntaje": 100,
+            "motivo": "Quilpué, Región de Valparaíso",
+            "corto": "Cerca: Quilpué"
+          },
+          "visita": {
+            "puntaje": 100,
+            "motivo": "sin visita a terreno en la ficha",
+            "corto": "Sin visita a terreno"
+          },
+          "comprador": {
+            "puntaje": 55,
+            "motivo": "comprador nuevo para QUEMPIN",
+            "corto": "Comprador nuevo"
+          },
+          "plazoOferta": {
+            "puntaje": 100,
+            "motivo": "cierra el 25-10-2026 (12 días)",
+            "corto": "Cierra en 12 días"
+          },
+          "ejecucion": {
+            "puntaje": 100,
+            "motivo": "12 mes(es): contrato con ingresos recurrentes",
+            "corto": "Contrato de 12 meses"
+          }
+        },
+        "probabilidadGanar": 0.59,
+        "valorEsperado": 5900000,
+        "parecidas": [
+          {
+            "req": 9,
+            "titulo": "Revisión y pruebas a caldera",
+            "estado": "No adjudicado",
+            "similitud": 1.0
+          },
+          {
+            "req": 4,
+            "titulo": "Mantención caldera escuela",
+            "estado": "Ofertado",
+            "similitud": 1.0
+          },
+          {
+            "req": 1,
+            "titulo": "Mantención preventiva caldera hospital",
+            "estado": "Adjudicado",
+            "similitud": 1.0
+          },
+          {
+            "req": 8,
+            "titulo": "Caldera sala de calderas CESFAM",
+            "estado": "Adjudicado",
+            "similitud": 0.732
+          },
+          {
+            "req": 2,
+            "titulo": "Mantención calderas y red de calefacción",
+            "estado": "No adjudicado",
+            "similitud": 0.534
+          }
+        ],
+        "mercado": [],
+        "enPlanilla": null,
+        "ficha": true
+      }
+    ],
+    "avisos": []
+  }
+}

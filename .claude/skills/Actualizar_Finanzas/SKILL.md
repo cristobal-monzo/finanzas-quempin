@@ -1,6 +1,6 @@
 ---
 name: Actualizar_Finanzas
-description: Use when the user types "/Actualizar_Finanzas" explicitly. If the user instead describes the same intent in natural language without the leading "/" — "actualiza las finanzas", "actualiza todo", "corre todo el pipeline", "deja todo al día", or a read-only status across every module — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Runs Centro de Costos (which chains Análisis Financiero and the CC/AF dashboards), then regenerates the Cotizador Histórico dashboard (which nothing else invokes), reports which PDF reports went stale, runs the exchange-folder processor and rebuilds Flujo de Caja (Excel and dashboard). Ends with a pending-items tray (bandeja de pendientes). Use /Registro_Centro_de_Costos instead when the user explicitly names only Centro de Costos.
+description: Use when the user types "/Actualizar_Finanzas" explicitly. If the user instead describes the same intent in natural language without the leading "/" — "actualiza las finanzas", "actualiza todo", "corre todo el pipeline", "deja todo al día", or a read-only status across every module — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Runs Centro de Costos (which chains Análisis Financiero and the CC/AF dashboards), then regenerates the Cotizador Histórico dashboard (which nothing else invokes), reports which PDF reports went stale, runs the exchange-folder processor, rebuilds Flujo de Caja (Excel and dashboard) and the Mercado Público opportunities dashboard. Ends with a pending-items tray (bandeja de pendientes). Use /Registro_Centro_de_Costos instead when the user explicitly names only Centro de Costos.
 ---
 
 # Actualizar Finanzas (orquestador de todos los módulos)
@@ -48,6 +48,11 @@ openpyxl (ver `requirements.txt`).
      acaba de publicar y la foto del Centro de Costos del paso 1 (ver
      [Registro_Flujo_de_Caja](../../../Flujo%20de%20Caja/.claude/skills/Registro_Flujo_de_Caja/SKILL.md)).
      Si falla, no frena nada.
+  7. Oportunidades en Mercado Público (2026-10-13) — consulta la API de
+     Mercado Público (unos 3 minutos) y arma su tablero
+     (`Sistema Intercambio/Visualizador Web/build_visualizador.py`). Sin
+     respuesta de la API usa la última evaluación guardada y lo avisa en el
+     tablero. Si falla, no frena nada.
 
 ## Presupuestos del Formulador: revisarlos y cargarlos con el usuario
 

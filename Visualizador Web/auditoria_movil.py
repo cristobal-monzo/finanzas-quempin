@@ -42,6 +42,7 @@ TABLEROS = {
     "cot": "Cotizador Historico/Visualizador Web/build/index.html",
     "cotpe": "Peru/Cotizador Historico/Visualizador Web/build/index.html",
     "fc": "Flujo de Caja/Visualizador Web/build/index.html",
+    "op": "Sistema Intercambio/Visualizador Web/build/index.html",
     "hub": "Visualizador Web/index.html",
 }
 
@@ -108,6 +109,18 @@ def _escenas(page, clave):
             if fila.count():
                 fila.click()
         yield "fila expandida", expandir
+    if clave == "op":
+        def oportunidad_abierta():
+            page.locator('.viz-tab-btn[data-tab="tabOportunidades"]').click()
+            fila = page.locator("#tOps tr.op-row").first
+            if fila.count():
+                fila.click()
+        yield "oportunidad abierta", oportunidad_abierta
+
+        def todas_y_busqueda():
+            page.select_option("#fMostrar", "todas")
+            page.fill("#fBuscar", "caldera")
+        yield "todas + búsqueda", todas_y_busqueda
     if clave in ("cot", "cotpe"):
         def buscar():
             page.fill("#fSearch", "valvula bola 2 pulgadas")

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Deja los tableros recien construidos listos para publicar en gh-pages.
 
-    py -3.14 "Visualizador Web/publicar.py" cc af cot fc      # los que se regeneraron
+    py -3.14 "Visualizador Web/publicar.py" cc af cot fc op   # los que se regeneraron
     py -3.14 "Visualizador Web/publicar.py" --todos
 
 Por cada tablero: copia su build/index.html a .worktrees/gh-pages/<subruta>/,
@@ -37,6 +37,8 @@ TABLEROS = {
     "cot": ("cotizador-historico", "Cotizador Historico/Visualizador Web/build/index.html"),
     "cotpe": ("cotizador-historico-peru", "Peru/Cotizador Historico/Visualizador Web/build/index.html"),
     "fc": ("flujo-de-caja", "Flujo de Caja/Visualizador Web/build/index.html"),
+    # Oportunidades en Mercado Público (2026-10-13): solo Chile.
+    "op": ("oportunidades", "Sistema Intercambio/Visualizador Web/build/index.html"),
 }
 
 
@@ -84,7 +86,7 @@ def preparar(clave: str, contrasena: str, raiz_gh_pages: Path = RAIZ_GH_PAGES) -
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("tableros", nargs="*", metavar="tablero", help="subconjunto de: " + ", ".join(TABLEROS))
-    ap.add_argument("--todos", action="store_true", help="los 7 tableros")
+    ap.add_argument("--todos", action="store_true", help="todos los tableros")
     args = ap.parse_args(argv)
     claves = list(TABLEROS) if args.todos else args.tableros
     desconocidos = [c for c in claves if c not in TABLEROS]

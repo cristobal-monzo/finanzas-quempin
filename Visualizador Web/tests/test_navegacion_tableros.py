@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""La navegacion entre tableros es la misma en las 6 plantillas.
+"""La navegacion entre tableros es la misma en las 7 plantillas.
 
 Desde el 2026-10-01 la cabecera de cada tablero lleva un selector de pais
 (Chile / Peru) y solo las 3 pestanas de los modulos; antes eran 6 pestanas,
@@ -26,8 +26,10 @@ PLANTILLAS = {
     "Peru/Cotizador Historico/Visualizador Web/template.html": "cotizador-historico-peru",
     # Flujo de Caja (2026-10-01): solo Chile, ver SOLO_CHILE en el JS.
     "Flujo de Caja/Visualizador Web/template.html": "flujo-de-caja",
+    # Oportunidades en Mercado Público (2026-10-13): solo Chile, como Flujo de Caja.
+    "Sistema Intercambio/Visualizador Web/template.html": "oportunidades",
 }
-MODULOS = ["centro-de-costos", "analisis-financiero", "cotizador-historico", "flujo-de-caja"]
+MODULOS = ["centro-de-costos", "analisis-financiero", "cotizador-historico", "flujo-de-caja", "oportunidades"]
 
 
 def _leer(rel):

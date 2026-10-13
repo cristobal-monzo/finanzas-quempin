@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!-- Tablero de Oportunidades en Mercado Público (2026-10-13, pedido del
+     usuario: «que sea más claro cuáles son las oportunidades más relevantes»
+     y publicado «con contraseña, con la estética del resto de herramientas
+     QUEMPIN»). Plantilla versionada; build_visualizador.py inyecta las
+     fuentes y el logo (desde el módulo de marca) y los datos cifrados. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oportunidades en Mercado Público — Visualizador</title>
+<link rel="icon" type="image/png" href="__OP_LOGO__">
+<style>
+__OP_FUENTES__
+
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f4f2ee;
+    --surface-card:   #ffffff;
+    --text-primary:   #171513;
+    --text-secondary: #52514e;
+    --text-muted:     #666560;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border-hairline: rgba(11,11,11,0.10);
+    /* Sistema cromático corporativo QUEMPIN (manual §14, Pantone→hex tal
+       cual está impreso — nunca reemplazar por tonos parecidos): */
+    --brand-orange:   #ff5100; /* PANTONE ORANGE 021 C */
+    --brand-black:    #000000; /* PANTONE BLACK C */
+    --brand-gray-11:  #54565a; /* PANTONE COOL GRAY 11 C — oscuro */
+    --brand-gray-7:   #98989a; /* PANTONE COOL GRAY 7 C — claro */
+    /* Mismo matiz del naranjo oficial, más oscuro, para texto chico (AA). */
+    --brand-orange-ink: #b23a00;
+    --status-good:    #087a08;
+    --status-warning: #8c5900;
+    --status-bad:     #d1282e;
+    /* Gris de desénfasis del mapa de prioridad (lo que no es prioritario ni
+       bueno): no es un color de identidad, va con leyenda y tabla al lado. */
+    --op-resto:       #98989a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --surface-card:   #221f1c;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #a6a49d;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border-hairline: rgba(255,255,255,0.12);
+      --brand-orange:   #ff5100;
+      --brand-orange-ink: #ff8a4d;
+      --brand-black:    #000000;
+      --brand-gray-11:  #54565a;
+      --brand-gray-7:   #98989a;
+      --status-good:    #3fb950;
+      --status-warning: #d29922;
+      --status-bad:     #f85149;
+      --op-resto:       #a6a49d;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --surface-card:   #221f1c;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #a6a49d;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border-hairline: rgba(255,255,255,0.12);
+    --brand-orange:   #ff5100;
+    --brand-orange-ink: #ff8a4d;
+    --brand-black:    #000000;
+    --brand-gray-11:  #54565a;
+    --brand-gray-7:   #98989a;
+    --status-good:    #3fb950;
+    --status-warning: #d29922;
+    --status-bad:     #f85149;
+    --op-resto:       #a6a49d;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0d0d0d; }
+  .viz-root {
+    font-family: 'Lato', system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 0 0 48px 0;
+  }
+  .viz-container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+  /* Header — mismo cromo de marca que los demás tableros (fondo negro,
+     filete naranjo), independiente del tema claro/oscuro. */
+  .viz-header {
+    background: #000000;
+    color: #fff;
+    padding: 18px 0;
+    margin-bottom: 24px;
+    border-bottom: 3px solid #ff5100;
+  }
+  .viz-header .viz-container { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .viz-logo { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; }
+  .viz-logo img { height: 42px; width: auto; display: block; flex-shrink: 0; }
+  .viz-wordmark { font-size: 21px; font-weight: 900; letter-spacing: 0.02em; line-height: 1; color: #ffffff; }
+  .viz-wordmark .in { color: #ff5100; }
+  .viz-titleblock { flex: 1 1 auto; min-width: 200px; }
+  .viz-titleblock h1 { font-size: 15px; font-weight: 700; margin: 0; color: #ffffff; }
+  .viz-titleblock p { font-size: 12.5px; color: #98989a; margin: 3px 0 0; }
+  .viz-titleblock p strong { color: #ffffff; font-weight: 700; }
+  .viz-theme-toggle {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.28);
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .viz-theme-toggle:hover { background: rgba(255,255,255,0.2); }
+
+  /* Nav entre tableros: igual que en los demás (test_navegacion_tableros.py). */
+  .viz-modnav {
+    border-top: 1px solid rgba(255,255,255,0.14);
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+  .viz-modnav-inner { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
+  .viz-modnav-tabs { display: flex; gap: 4px 16px; flex-wrap: wrap; min-width: 0; }
+  .viz-modnav-pais {
+    flex: 0 0 auto;
+    -webkit-appearance: none; appearance: none;
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+    color: #ffffff;
+    background: rgba(255,255,255,0.08) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 6px;
+    padding: 5px 28px 5px 10px;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+  .viz-modnav-pais:hover { background-color: rgba(255,255,255,0.14); }
+  .viz-modnav-pais:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
+  .viz-modnav-pais option { color: #ffffff; background: #1a1a1a; }
+  /* Menús desplegables con la estética del tablero (2026-10-05). Bloque
+     idéntico en todos los templates. */
+  .viz-root select:not([multiple]):not(.viz-modnav-pais) {
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+    padding-right: 30px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23898781' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center; background-size: 12px;
+  }
+  @supports (appearance: base-select) {
+    /* mismo peso que la regla de la flecha, que si no le gana */
+    .viz-root select:not([multiple]):not(.viz-modnav-pais), .viz-root select.viz-modnav-pais,
+    .viz-root select::picker(select) { appearance: base-select; }
+    .viz-root select::picker-icon { display: none; }   /* la flecha es la propia */
+    /* En este modo no hay «…»: un texto largo se corta antes de la flecha */
+    .viz-root select:not([multiple]) { overflow: clip; overflow-clip-margin: content-box; }
+    .viz-root select::picker(select) {
+      margin-block: 4px; padding: 5px; max-height: min(340px, 70vh); overflow-y: auto;
+      background: var(--surface-card); color: var(--text-primary);
+      border: 1px solid var(--border-hairline); border-radius: 10px;
+      box-shadow: 0 14px 38px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06);
+    }
+    .viz-root select option {
+      gap: 8px; padding: 8px 10px; border-radius: 6px; font-weight: 400; line-height: 1.3;
+      color: inherit; background: transparent; cursor: pointer;
+    }
+    .viz-root select option:hover, .viz-root select option:focus-visible { background: color-mix(in srgb, var(--brand-orange) 12%, transparent); outline: none; }
+    .viz-root select option:focus-visible { box-shadow: inset 0 0 0 1px var(--brand-orange); }
+    .viz-root select option:checked { color: var(--brand-orange-ink, var(--brand-orange)); font-weight: 700; }
+    .viz-root select option::checkmark { color: var(--brand-orange-ink, var(--brand-orange)); font-weight: 900; }
+    .viz-root select option:disabled { opacity: .45; cursor: not-allowed; background: transparent; }
+    /* El de país va sobre la cabecera negra: su lista también es oscura */
+    .viz-root select.viz-modnav-pais::picker(select) { background: #1a1a1a; color: #ffffff; border-color: rgba(255,255,255,0.18); box-shadow: 0 14px 38px rgba(0,0,0,0.55); }
+    .viz-root select.viz-modnav-pais option:checked, .viz-root select.viz-modnav-pais option::checkmark { color: #ff8a4d; }
+  }
+  .viz-modnav-tab {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 6px 6px 0 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #98989a;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+  }
+  a.viz-modnav-tab:hover { color: #ffffff; background: rgba(255,255,255,0.08); }
+  a.viz-modnav-tab.is-active:hover { background: none; }
+  .viz-modnav-tab.is-active { color: #ffffff; border-bottom-color: #ff5100; cursor: default; }
+  .viz-modnav-herr { margin-left: auto; flex: 0 0 auto; padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.22); font-size: 12.5px; font-weight: 700; color: #ffffff; text-decoration: none; white-space: nowrap; }
+  .viz-modnav-herr:hover { border-color: #ff5100; background: rgba(255,255,255,0.08); }
+  .viz-modnav-herr:focus-visible { outline: 2px solid #ff5100; outline-offset: 2px; }
+  @media (max-width: 640px) {
+    .viz-header .viz-modnav-inner { flex-wrap: nowrap; }
+    .viz-modnav-tabs { flex: 1 1 auto; flex-wrap: nowrap; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .viz-modnav-tabs::-webkit-scrollbar { display: none; }
+    .viz-modnav-tab { white-space: nowrap; flex: 0 0 auto; }
+    /* 16 px: con menos, Safari de iPhone hace zoom al tocar el selector. */
+    .viz-modnav-pais { font-size: 16px; padding: 4px 26px 4px 9px; }
+    .viz-modnav-largo { display: none; }
+  }
+
+  /* Password gate — igual que los demás tableros */
+  .viz-gate {
+    font-family: 'Lato', system-ui, -apple-system, "Segoe UI", sans-serif;
+    position: fixed; inset: 0; z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    background: #000000;
+    padding: 20px;
+  }
+  .viz-gate-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 32px 28px;
+    max-width: 340px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .viz-gate-card img { height: 52px; margin-bottom: 14px; }
+  .viz-gate-card h2 { font-size: 15px; color: #fff; margin: 0 0 4px; font-weight: 700; }
+  .viz-gate-card p.hint { font-size: 12px; color: #98989a; margin: 0 0 18px; line-height: 1.5; }
+  .viz-gate-card input {
+    width: 100%; font-family: inherit; font-size: 14px; text-align: center;
+    padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18);
+    background: #000000; color: #fff; margin-bottom: 10px;
+  }
+  .viz-gate-card input:focus { outline: 2px solid #ff5100; outline-offset: 1px; }
+  @media (max-width: 640px) { .viz-gate-card input { font-size: 16px; } }
+  .viz-gate-card button {
+    width: 100%; font-family: inherit; font-size: 13px; font-weight: 900;
+    padding: 10px 12px; border-radius: 8px; border: none;
+    background: #ff5100; color: #000000; cursor: pointer;
+  }
+  .viz-gate-card button:hover { filter: brightness(1.12); }
+  .viz-gate-error { font-size: 12px; color: #ff8a4d; min-height: 16px; margin-top: 10px; }
+
+  /* ---------- Piezas comunes (mismas que Flujo de Caja y Análisis Financiero) ---------- */
+  .op-avisos { background: var(--surface-card); border: 1px solid var(--gridline); border-left: 3px solid var(--brand-orange);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--text-secondary); }
+  .op-avisos ul { margin: 6px 0 0; padding-left: 18px; }
+  .op-avisos strong { color: var(--text-primary); }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 6px; }
+  .kpi-card { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .kpi-card.destacado { border-color: var(--brand-orange); box-shadow: inset 0 3px 0 var(--brand-orange); }
+  .kpi-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+  .kpi-value { font-size: 26px; font-weight: 900; margin-top: 6px; color: var(--text-primary); }
+  .kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; overflow-wrap: anywhere; }
+  .panel { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 16px; margin-bottom: 18px; }
+  .panel h2 { font-size: 14px; margin: 0 0 4px; color: var(--text-primary); }
+  .panel .sub { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 12px; line-height: 1.5; }
+  .seccion-titulo { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; margin: 4px 0 10px; }
+  .seccion-titulo h2 { font-size: 15px; margin: 0; }
+  .seccion-titulo p { font-size: 12.5px; color: var(--text-secondary); margin: 0; }
+
+  .viz-tabs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 20px 0 16px; border-bottom: 1px solid var(--gridline); }
+  .viz-tab-btn {
+    background: none; border: none; padding: 10px 16px; font: inherit; cursor: pointer; white-space: nowrap;
+    color: var(--text-secondary); border-bottom: 2px solid transparent;
+  }
+  .viz-tab-btn.active { color: var(--brand-orange-ink, var(--brand-orange)); border-bottom-color: var(--brand-orange); font-weight: 700; }
+  .viz-tab-btn:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
+  .viz-tab-panel { display: none; }
+  .viz-tab-panel.active { display: block; }
+
+  /* Filtros: una sola fila sobre todo lo que filtran (recomendadas, mapa y tabla). */
+  .op-filtros { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-bottom: 16px;
+    background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 10px 12px; }
+  .op-filtros input[type=search], .op-filtros select { font-family: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px;
+    border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary); max-width: 100%; min-width: 0; }
+  .op-filtros input[type=search] { flex: 1 1 240px; }
+  .op-filtros label.op-check { display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; }
+  .op-filtros .op-cuenta { margin-left: auto; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+  input[type=checkbox], input[type=range] { accent-color: var(--brand-orange); }
+
+  /* Categorías: la etiqueta siempre dice el nombre (nunca solo color). */
+  .cat { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid var(--gridline); color: var(--text-secondary); line-height: 1.5; }
+  .cat-prioritaria { background: var(--brand-orange); border-color: var(--brand-orange); color: #000000; }
+  .cat-buena { border: 1.5px solid var(--brand-orange); color: var(--brand-orange-ink); }
+  .cat-evaluar { border-color: var(--baseline); color: var(--text-secondary); }
+  .cat-baja { color: var(--text-muted); }
+  .cat-descartar { border-color: var(--status-bad); color: var(--status-bad); }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--gridline);
+    color: var(--text-secondary); white-space: nowrap; line-height: 1.5; }
+  .chip.nueva { border-color: var(--brand-orange); color: var(--brand-orange-ink); }
+  .chip.planilla { border-color: var(--baseline); }
+  .chip.tope { border-style: dashed; }
+  .cierre-urgente { color: var(--status-bad); font-weight: 800; }
+  .cierre-pronto { color: var(--status-warning); font-weight: 800; }
+
+  /* ---------- Recomendadas: las 3 que conviene mirar primero ---------- */
+  .op-top-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .op-top { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .op-top.es-prioritaria { border-color: color-mix(in srgb, var(--brand-orange) 55%, var(--gridline)); box-shadow: inset 0 3px 0 var(--brand-orange); }
+  .op-top-cabeza { display: flex; gap: 12px; align-items: flex-start; }
+  .op-anillo { flex: 0 0 auto; width: 58px; height: 58px; position: relative; }
+  .op-anillo svg { display: block; width: 58px; height: 58px; }
+  .op-anillo .pista { fill: none; stroke: var(--gridline); stroke-width: 6; }
+  .op-anillo .valor { fill: none; stroke-width: 6; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .op-anillo .num { position: absolute; inset: 0; display: grid; place-items: center; font-size: 19px; font-weight: 900; color: var(--text-primary); }
+  .op-top-etiquetas { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-bottom: 6px; }
+  .op-rank { font-size: 11px; font-weight: 900; color: var(--text-muted); letter-spacing: .04em; }
+  .op-top h3 { font-size: 14.5px; font-weight: 900; line-height: 1.3; margin: 0; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .op-top .op-org { font-size: 12.5px; color: var(--text-secondary); margin: 3px 0 0; overflow-wrap: anywhere; }
+  .op-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 10px 0;
+    border-top: 1px solid var(--gridline); border-bottom: 1px solid var(--gridline); }
+  .op-datos dt { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+  .op-datos dd { margin: 2px 0 0; font-size: 13px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+  .op-datos dd small { display: block; font-weight: 400; font-size: 11.5px; color: var(--text-secondary); }
+  .op-razones { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; color: var(--text-secondary); }
+  .op-razones li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; align-items: start; }
+  .op-razones .ico { font-weight: 900; text-align: center; }
+  .op-razones .favor .ico { color: var(--status-good); }
+  .op-razones .contra .ico { color: var(--status-warning); }
+  .op-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+  .op-btn { font-family: inherit; font-size: 12.5px; font-weight: 900; padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer;
+    background: var(--brand-orange); color: #000000; text-decoration: none; display: inline-block; }
+  .op-btn:hover { filter: brightness(1.08); }
+  .op-btn-sec { font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary); text-decoration: none; display: inline-block; }
+  .op-btn-sec:hover { border-color: var(--brand-orange); }
+  .op-btn:focus-visible, .op-btn-sec:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
+  .op-vacio { color: var(--text-secondary); font-size: 13px; padding: 14px; text-align: center; background: var(--surface-card);
+    border: 1px dashed var(--baseline); border-radius: 12px; margin-bottom: 18px; }
+
+  /* ---------- Mapa de prioridad ---------- */
+  .op-mapa { width: 100%; }
+  .op-mapa svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .op-mapa text { fill: var(--text-muted); font-size: 11px; font-family: inherit; }
+  .op-mapa text.rotulo-banda { fill: var(--text-secondary); font-weight: 700; }
+  .op-mapa text.rank { fill: var(--text-primary); font-weight: 900; font-size: 11.5px; }
+  .op-mapa .guia { stroke: var(--gridline); stroke-width: 1; }
+  .op-mapa .eje { stroke: var(--baseline); stroke-width: 1; }
+  .op-mapa .banda-prioritaria { fill: var(--brand-orange); fill-opacity: 0.06; }
+  .op-mapa .banda-urgente { fill: var(--status-bad); fill-opacity: 0.05; }
+  /* Énfasis, no colores de identidad: prioritaria = naranjo lleno, buena = anillo
+     del mismo naranjo (la forma las distingue: en tema oscuro dos naranjos no
+     se separan), el resto en gris; con leyenda y la tabla como gemela. */
+  .p-prioritaria { fill: var(--brand-orange); stroke: var(--surface-card); stroke-width: 2; }
+  .p-buena { fill: var(--surface-card); stroke: var(--brand-orange); stroke-width: 2.5; }
+  .p-resto { fill: var(--op-resto); stroke: var(--surface-card); stroke-width: 2; }
+  .op-mapa .golpe { fill: transparent; cursor: pointer; }
+  .op-mapa .golpe:focus { outline: none; }
+  .op-mapa .golpe:hover + .marca, .op-mapa .golpe:focus + .marca { stroke: var(--text-primary); }
+  .op-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-secondary); }
+  .op-leyenda svg { vertical-align: -2px; margin-right: 6px; }
+  .op-tooltip { position: fixed; z-index: 3000; pointer-events: none; background: #000; color: #fff; border-radius: 8px; padding: 9px 11px;
+    font-size: 12px; line-height: 1.5; box-shadow: 0 8px 24px rgba(0,0,0,.3); max-width: 300px; display: none; }
+  .op-tooltip .v { font-size: 15px; font-weight: 900; color: #ff8a4d; }
+  .op-tooltip .t { font-weight: 700; }
+  .op-tooltip .s { color: #c3c2b7; }
+
+  /* ---------- Tabla con detalle ---------- */
+  .tabla-wrap { overflow-x: auto; }
+  table.viz-table { width: 100%; border-collapse: collapse; font-size: 12.5px; color: inherit; }
+  table.viz-table > thead > tr > th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+    border-bottom: 1px solid var(--baseline); padding: 8px 8px; white-space: nowrap; }
+  table.viz-table > thead > tr > th[data-k] { cursor: pointer; user-select: none; }
+  table.viz-table > thead > tr > th[data-k]:hover { color: var(--text-primary); }
+  table.viz-table > thead > tr > th.num, table.viz-table > tbody > tr > td.num { text-align: right; }
+  table.viz-table > tbody > tr > td { padding: 9px 8px; border-bottom: 1px solid var(--gridline); color: var(--text-primary); vertical-align: top; }
+  table.viz-table > tbody > tr > td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.viz-table > tbody > tr.op-row { cursor: pointer; }
+  table.viz-table > tbody > tr.op-row:hover { background: var(--surface-1); }
+  table.viz-table > tbody > tr.op-row:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
+  table.viz-table > tbody > tr.op-row.is-expanded { background: var(--surface-1); box-shadow: inset 3px 0 0 var(--brand-orange); }
+  table.viz-table > tbody > tr.op-row.es-descartada > td { color: var(--text-muted); }
+  .op-nombre { font-weight: 700; overflow-wrap: anywhere; }
+  .op-nombre-sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; overflow-wrap: anywhere; }
+  .op-etiquetas { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .op-puntaje { font-size: 15px; font-weight: 900; }
+  .op-mini { display: flex; gap: 2px; margin-top: 4px; width: 84px; margin-left: auto; }
+  .op-mini span { flex: 1 1 auto; height: 4px; border-radius: 2px; background: var(--gridline); position: relative; overflow: hidden; }
+  .op-mini span i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--brand-orange); }
+  tr.detail-row > td { background: var(--surface-1); padding: 0 !important; }
+  .op-detalle { margin: 0 8px 12px; padding: 14px 16px; border: 1.5px solid var(--brand-orange); border-radius: 10px; background: var(--surface-card);
+    display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; }
+  .op-detalle h4 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 0 0 8px; }
+  .op-descarte { background: color-mix(in srgb, var(--status-bad) 10%, transparent); color: var(--status-bad); border-radius: 8px;
+    padding: 8px 10px; font-size: 12.5px; margin-bottom: 10px; }
+  .op-tope { font-size: 12px; color: var(--text-secondary); margin: 0 0 10px; }
+  /* Cómo se arma el puntaje: un tramo por criterio, de ancho = su peso, lleno según su puntaje. */
+  .op-composicion { display: flex; gap: 2px; height: 12px; margin: 0 0 4px; }
+  .op-composicion span { position: relative; height: 100%; background: var(--gridline); border-radius: 3px; overflow: hidden; min-width: 2px; }
+  .op-composicion span i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--brand-orange); }
+  .op-composicion-pie { font-size: 11.5px; color: var(--text-muted); margin: 0 0 12px; }
+  .op-crit { display: grid; grid-template-columns: 150px minmax(0, 1fr) 34px; gap: 2px 10px; align-items: center; font-size: 12.5px; margin-bottom: 8px; }
+  .op-crit .nom { color: var(--text-primary); font-weight: 700; }
+  .op-crit .nom small { font-weight: 400; color: var(--text-muted); }
+  .op-crit .barra { height: 8px; border-radius: 4px; background: var(--gridline); overflow: hidden; }
+  .op-crit .barra i { display: block; height: 100%; background: var(--brand-orange); border-radius: 4px; }
+  .op-crit .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .op-crit .mot { grid-column: 2 / -1; color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
+  .op-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 0 0 12px; font-size: 12.5px; }
+  .op-ficha dt { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; }
+  .op-ficha dd { margin: 1px 0 0; color: var(--text-primary); overflow-wrap: anywhere; }
+  .op-texto { font-size: 12.5px; color: var(--text-secondary); white-space: pre-line; max-height: 10em; overflow: auto; margin: 0 0 12px; line-height: 1.5; }
+  .op-lista { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; color: var(--text-secondary); }
+  .op-lista li { margin-bottom: 3px; overflow-wrap: anywhere; }
+  .op-mas { margin-top: 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 8px;
+    border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
+
+  /* ---------- Cómo se evalúa ---------- */
+  .op-pesos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 22px; margin: 4px 0 12px; }
+  .op-peso { display: grid; grid-template-columns: minmax(0, 1fr) 36px; gap: 2px 8px; align-items: center; font-size: 13px; }
+  .op-peso input { grid-column: 1 / -1; width: 100%; }
+  .op-peso output { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-secondary); }
+  .op-pesos-nota { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+  .op-reglas { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+  .op-reglas strong { color: var(--text-primary); }
+
+  .op-nota { font-size: 11.5px; color: var(--text-muted); margin-top: 24px; line-height: 1.5; }
+
+  @media (max-width: 980px) {
+    .op-top-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .op-top-grid > .op-top:nth-child(3) { display: none; }
+  }
+  @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) {
+    .viz-container { padding: 0 14px; }
+    .kpi-value { font-size: 21px; }
+    .op-top-grid { grid-template-columns: minmax(0, 1fr); }
+    .op-top-grid > .op-top:nth-child(3) { display: flex; }
+    .viz-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; gap: 0 4px; }
+    .viz-tabs::-webkit-scrollbar { display: none; }
+    .viz-tab-btn { flex: 0 0 auto; padding: 9px 10px; }
+    .op-filtros input[type=search], .op-filtros select { font-size: 16px; flex: 1 1 100%; }
+    /* 16 px también en los deslizadores de pesos: la auditoría móvil exige 16 px a todo campo. */
+    .op-peso input { font-size: 16px; }
+    .op-filtros .op-cuenta { margin-left: 0; }
+    .op-detalle { grid-template-columns: minmax(0, 1fr); margin: 0 0 10px; padding: 12px; }
+    .op-crit { grid-template-columns: 104px minmax(0, 1fr) 32px; }
+    /* Tablas como tarjetas: primera celda de título, el resto etiqueta/valor (data-label). */
+    table.viz-table > thead { display: none; }
+    table.viz-table, table.viz-table > tbody, table.viz-table > tbody > tr, table.viz-table > tbody > tr > td { display: block; width: 100%; }
+    table.viz-table > tbody > tr:not(.detail-row) { border: 1px solid var(--gridline); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+    table.viz-table > tbody > tr:not(.detail-row) > td { border: none; padding: 3px 0; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+    table.viz-table > tbody > tr:not(.detail-row) > td::before { content: attr(data-label); color: var(--text-muted); font-size: 11.5px; text-align: left; flex: 0 0 auto; }
+    table.viz-table > tbody > tr:not(.detail-row) > td:first-child { display: block; text-align: left; }
+    table.viz-table > tbody > tr:not(.detail-row) > td:first-child::before { content: none; }
+    table.viz-table > tbody > tr.detail-row { border: 0; padding: 0; margin: -4px 0 10px; }
+    .op-mini { margin-left: 0; }
+    .tabla-wrap { overflow-x: visible; }
+  }
+</style>
+</head>
+<body>
+
+<div class="viz-gate" id="pwGate">
+  <form class="viz-gate-card" id="pwForm">
+    <img src="__OP_LOGO__" alt="QUEMPIN">
+    <h2>Oportunidades en Mercado Público</h2>
+    <p class="hint">Acceso restringido. Ingresa la contraseña para ver los datos.</p>
+    <input id="pwInput" type="password" placeholder="Contraseña" autocomplete="off" autocapitalize="off" />
+    <button type="submit">Entrar</button>
+    <div class="viz-gate-error" id="pwError"></div>
+  </form>
+</div>
+
+<div class="viz-root" id="vizRoot" style="display:none">
+  <header class="viz-header">
+    <div class="viz-container">
+      <div class="viz-logo">
+        <img src="__OP_LOGO__" alt="QUEMPIN">
+        <div class="viz-wordmark">QUEMP<span class="in">IN</span></div>
+      </div>
+      <div class="viz-titleblock">
+        <h1>Oportunidades en Mercado Público</h1>
+        <p id="vizGenerated">Datos actualizados al —</p>
+      </div>
+      <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
+    </div>
+    <nav class="viz-modnav" aria-label="Tableros">
+      <!-- Selector de país + las pestañas de módulo. Los enlaces apuntan a
+           Chile; el JS los pasa al país de este tablero y marca la activa
+           según data-nav-activo (la subruta publicada). Este bloque es igual
+           en los 7 templates: solo cambia ese atributo. Flujo de Caja y
+           Oportunidades existen solo para Chile: sus pestañas apuntan
+           siempre a Chile. -->
+      <div class="viz-container viz-modnav-inner" id="modNav" data-nav-activo="oportunidades">
+        <select class="viz-modnav-pais" id="modNavPais" aria-label="País">
+          <option value="">Chile</option>
+          <option value="-peru">Perú</option>
+        </select>
+        <div class="viz-modnav-tabs">
+          <a class="viz-modnav-tab" data-modulo="centro-de-costos" href="https://cristobal-monzo.github.io/finanzas-quempin/centro-de-costos/"><span class="viz-modnav-largo">Centro de </span>Costos</a>
+          <a class="viz-modnav-tab" data-modulo="analisis-financiero" href="https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/">Análisis<span class="viz-modnav-largo"> Financiero</span></a>
+          <a class="viz-modnav-tab" data-modulo="cotizador-historico" href="https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/">Cotizador<span class="viz-modnav-largo"> Histórico</span></a>
+          <a class="viz-modnav-tab" data-modulo="flujo-de-caja" href="https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/">Flujo<span class="viz-modnav-largo"> de Caja</span></a>
+          <a class="viz-modnav-tab" data-modulo="oportunidades" href="https://cristobal-monzo.github.io/finanzas-quempin/oportunidades/">Oportunidades</a>
+        </div>
+        <!-- Los proyectos, su formulación y su seguimiento (2026-10-06): las demás herramientas del recorrido -->
+        <a class="viz-modnav-herr" href="https://cristobal-monzo.github.io/formulacion-proyectos-quempin/" target="_blank" rel="noopener" title="Los proyectos: formulación, cotización y seguimiento de cada oferta">Formulador<span class="viz-modnav-largo"> de proyectos</span> ↗</a>
+      </div>
+    </nav>
+  </header>
+
+  <div class="viz-container">
+    <div class="op-avisos" id="opAvisos" hidden></div>
+
+    <div class="kpi-row" id="opKpis">
+      <div class="kpi-card destacado"><div class="kpi-label">Prioritarias</div><div class="kpi-value" id="kPrioritarias">—</div><div class="kpi-sub" id="kPrioritariasSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Cierran pronto</div><div class="kpi-value" id="kPronto">—</div><div class="kpi-sub" id="kProntoSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Nuevas para ti</div><div class="kpi-value" id="kNuevas">—</div><div class="kpi-sub" id="kNuevasSub"></div></div>
+      <div class="kpi-card"><div class="kpi-label">Del rubro</div><div class="kpi-value" id="kRubro">—</div><div class="kpi-sub" id="kRubroSub"></div></div>
+    </div>
+
+    <div class="viz-tabs" role="tablist">
+      <button class="viz-tab-btn active" type="button" role="tab" aria-selected="true" data-tab="tabOportunidades">Oportunidades</button>
+      <button class="viz-tab-btn" type="button" role="tab" aria-selected="false" data-tab="tabMetodo">Cómo se evalúa</button>
+      <button class="viz-tab-btn" type="button" role="tab" aria-selected="false" data-tab="tabMercado">Historia y competencia</button>
+    </div>
+
+    <section class="viz-tab-panel active" id="tabOportunidades" role="tabpanel">
+      <div class="op-filtros" role="search">
+        <input id="fBuscar" type="search" placeholder="Buscar por nombre, organismo, comuna o código" aria-label="Buscar oportunidades">
+        <select id="fMostrar" aria-label="Qué mostrar">
+          <option value="recomendadas">Prioritarias y buenas</option>
+          <option value="prioritarias">Solo prioritarias</option>
+          <option value="todas">Todas, sin las descartadas</option>
+          <option value="resto">Evaluar y baja</option>
+          <option value="descartadas">Descartadas por una regla</option>
+        </select>
+        <select id="fRegion" aria-label="Región"><option value="">Todas las regiones</option></select>
+        <select id="fCierre" aria-label="Cierre">
+          <option value="">Cualquier cierre</option>
+          <option value="3">Cierra en 3 días o menos</option>
+          <option value="7">Cierra en 7 días o menos</option>
+          <option value="14">Cierra en 14 días o menos</option>
+        </select>
+        <label class="op-check"><input type="checkbox" id="fNuevas"> Solo nuevas</label>
+        <label class="op-check"><input type="checkbox" id="fPlanilla" checked> Incluir las que ya están en la Planilla</label>
+        <span class="op-cuenta" id="fCuenta"></span>
+      </div>
+
+      <div class="seccion-titulo">
+        <h2>Para revisar primero</h2>
+        <p>Las de mayor puntaje con lo que juega a favor y en contra. Abre la evaluación para ver cada criterio.</p>
+      </div>
+      <div class="op-top-grid" id="opTop"></div>
+
+      <section class="panel">
+        <h2>Mapa de prioridad</h2>
+        <p class="sub">Cada punto es una licitación: más arriba, mejor evaluada; más a la izquierda, menos días para ofertar. Arriba a la izquierda están las que no pueden esperar. Toca un punto para abrir su evaluación.</p>
+        <div class="op-mapa" id="opMapa" role="img" aria-label="Puntaje de cada oportunidad según los días que faltan para su cierre"></div>
+        <ul class="op-leyenda" id="opLeyenda"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Todas las oportunidades</h2>
+        <p class="sub">Ordenadas por categoría y puntaje; toca un encabezado para ordenar por otra columna y una fila para ver su evaluación completa.</p>
+        <div class="tabla-wrap">
+          <table class="viz-table" id="tOps">
+            <thead><tr>
+              <th data-k="nombre">Oportunidad</th>
+              <th data-k="puntaje" class="num">Puntaje</th>
+              <th data-k="categoria">Categoría</th>
+              <th data-k="region">Región</th>
+              <th data-k="monto" class="num">Monto</th>
+              <th data-k="cierre">Cierre</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button class="op-mas" id="fMas" type="button" hidden>Mostrar más</button>
+      </section>
+    </section>
+
+    <section class="viz-tab-panel" id="tabMetodo" role="tabpanel">
+      <section class="panel">
+        <h2>Pesos de la evaluación</h2>
+        <p class="sub">El puntaje de cada licitación es el promedio de sus 8 criterios con estos pesos. Muévelos para ver cómo cambia el orden: se guardan solo en este navegador.</p>
+        <div class="op-pesos" id="opPesos"></div>
+        <button class="op-btn-sec" id="opPesosRestablecer" type="button">Restablecer los pesos del equipo</button>
+        <p class="op-pesos-nota" id="opPesosNota"></p>
+      </section>
+      <section class="panel">
+        <h2>Qué mide cada criterio</h2>
+        <div class="tabla-wrap">
+          <table class="viz-table" id="tCriterios"><thead><tr><th>Criterio</th><th class="num">Peso</th><th>Qué mide</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Categorías y reglas</h2>
+        <ul class="op-reglas" id="opReglas"></ul>
+      </section>
+      <section class="panel">
+        <h2>Lo que aprende de la historia de QUEMPIN</h2>
+        <ul class="op-reglas" id="opHistoria"></ul>
+      </section>
+    </section>
+
+    <section class="viz-tab-panel" id="tabMercado" role="tabpanel">
+      <section class="panel">
+        <h2>Historial de mercado</h2>
+        <p class="sub" id="opMercadoTexto"></p>
+      </section>
+      <section class="panel">
+        <h2>Competidores que más ganan en el rubro</h2>
+        <p class="sub">Empresas adjudicadas en licitaciones parecidas a las que oferta QUEMPIN, según lo revisado hasta ahora.</p>
+        <div class="tabla-wrap">
+          <table class="viz-table" id="tCompetidores"><thead><tr><th>Empresa</th><th class="num">Adjudicadas</th><th class="num">Monto neto</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+    </section>
+
+    <p class="op-nota">Fuentes: la API pública de Mercado Público (ChileCompra) y la Planilla de Ingreso de Requerimientos. La evaluación es una ayuda para decidir rápido qué mirar; ofertar o no lo decide el equipo. Los datos de esta página viajan cifrados: solo se abren con la contraseña.</p>
+  </div>
+</div>
+<div class="op-tooltip" id="opTooltip" role="tooltip"></div>
+
+<!-- Candado: abre los datos cifrados con la contraseña. Visualizador Web/candado.js,
+     insertado por build_visualizador.py (el original, no una copia). -->
+<script>__CANDADO_JS__</script>
+<script id="op-data-b64" type="text/plain">__OP_DATA_B64__</script>
+<script>
+(function () {
+  try {
+    var savedTheme = localStorage.getItem('op_viz_theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') document.documentElement.setAttribute('data-theme', savedTheme);
+  } catch (e) {}
+
+  // ---------- navegación entre tableros: país + pestaña activa ----------
+  // data-nav-activo es la subruta publicada de este tablero (ej.
+  // "analisis-financiero-peru"): de ahí salen el país del selector, a qué
+  // país apuntan las pestañas y cuál se marca. Mismo bloque en los 7
+  // templates. Flujo de Caja (2026-10-01) y Oportunidades en Mercado Público
+  // (2026-10-13) existen solo para Chile: su pestaña apunta siempre a Chile,
+  // y elegir Perú desde ese tablero lleva a Centro de Costos Perú.
+  (function () {
+    var nav = document.getElementById('modNav');
+    if (!nav) return;
+    var BASE = 'https://cristobal-monzo.github.io/finanzas-quempin/';
+    var activo = nav.getAttribute('data-nav-activo') || '';
+    var sufijo = /-peru$/.test(activo) ? '-peru' : '';
+    var modulo = activo.slice(0, activo.length - sufijo.length);
+    var SOLO_CHILE = ['flujo-de-caja', 'oportunidades'];
+    nav.querySelectorAll('a[data-modulo]').forEach(function (a) {
+      var destino = a.getAttribute('data-modulo');
+      if (destino === modulo) {
+        a.classList.add('is-active');
+        a.setAttribute('aria-current', 'page');
+        a.removeAttribute('href');
+      } else {
+        a.href = BASE + destino + (SOLO_CHILE.indexOf(destino) >= 0 ? '' : sufijo) + '/';
+      }
+    });
+    // Cambiar de país lleva al mismo módulo en el otro país. Al volver con
+    // "Atrás" el navegador puede restaurar el selector con el otro país
+    // elegido: por eso se repone cada vez que se muestra la página.
+    var pais = document.getElementById('modNavPais');
+    function reponerPais() { pais.value = sufijo; }
+    reponerPais();
+    window.addEventListener('pageshow', reponerPais);
+    pais.addEventListener('change', function () {
+      if (pais.value === sufijo) return;
+      var destino = SOLO_CHILE.indexOf(modulo) >= 0 && pais.value ? 'centro-de-costos' : modulo;
+      location.href = BASE + destino + pais.value + '/';
+    });
+  })();
+
+  // ---------- candado: los datos vienen cifrados (Visualizador Web/candado.js) ----------
+  // Sin la contraseña no se pueden leer: no hay una comparación que saltarse.
+  QuempinCandado.abrir('op-data-b64', initApp);
+
+  function initApp(DATA) {
+    // Todo texto que viene de la API se escribe con textContent: un nombre de
+    // licitación nunca se interpreta como HTML.
+    function el(tag, attrs, hijos) {
+      var n = document.createElement(tag);
+      if (attrs) Object.keys(attrs).forEach(function (k) {
+        var v = attrs[k];
+        if (v === null || v === undefined || v === false) return;
+        if (k === 'texto') n.textContent = v;
+        else if (k === 'clase') n.className = v;
+        else n.setAttribute(k, v === true ? '' : v);
+      });
+      (hijos || []).forEach(function (h) { if (h !== null && h !== undefined) n.appendChild(typeof h === 'string' ? document.createTextNode(h) : h); });
+      return n;
+    }
+    var SVG = 'http://www.w3.org/2000/svg';
+    function sv(tag, attrs) {
+      var n = document.createElementNS(SVG, tag);
+      Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+      return n;
+    }
+    function vaciar(n) { while (n.firstChild) n.removeChild(n.firstChild); return n; }
+    function enlaceSeguro(url) { return (typeof url === 'string' && url.indexOf('https://www.mercadopublico.cl/') === 0) ? url : null; }
+    var fCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+    function clp(v) { return v === null || v === undefined ? '—' : fCLP.format(Math.round(v)); }
+    function clpCorto(v) {
+      if (v === null || v === undefined) return 'sin monto';
+      var a = Math.abs(v);
+      return a >= 1e6 ? '$' + (a / 1e6).toLocaleString('es-CL', { maximumFractionDigits: 1 }) + ' M' : clp(v);
+    }
+    function norm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+    function fechaCorta(iso) { var p = String(iso || '').slice(0, 10).split('-'); return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : '—'; }
+    function fechaHora(iso) { return fechaCorta(iso) + (String(iso || '').length > 11 ? ' ' + String(iso).slice(11, 16) : ''); }
+    // Igual que Evaluador._dias_para: hora local; una fecha sin hora vale hasta las 23:59.
+    function aFecha(iso) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(String(iso || ''));
+      if (!m) return null;
+      return m[4] ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : new Date(+m[1], +m[2] - 1, +m[3], 23, 59);
+    }
+    var AHORA = new Date();
+    function diasHasta(iso) { var f = aFecha(iso); return f ? (f - AHORA) / 86400000 : null; }
+    function textoCierre(dias) {
+      if (dias === null) return 'sin fecha';
+      if (dias < 0) return 'ya cerró';
+      if (dias < 1) return 'cierra hoy';
+      var d = Math.floor(dias);
+      return d === 1 ? 'cierra mañana' : 'cierra en ' + d + ' días';
+    }
+    function claseCierre(dias) { return dias === null ? '' : dias < 3 ? 'cierre-urgente' : dias < 7 ? 'cierre-pronto' : ''; }
+
+    var CRIT = DATA.criterios || [];
+    var CATS = (DATA.categorias || []).slice().sort(function (a, b) { return b.desde - a.desde; });
+    var ORDEN_CAT = CATS.map(function (c) { return c.id; });
+    var NOMBRE_CAT = { descartar: 'Descartada' };
+    CATS.forEach(function (c) { NOMBRE_CAT[c.id] = c.nombre; });
+    var RANGO_CAT = { descartar: 99 };
+    ORDEN_CAT.forEach(function (id, i) { RANGO_CAT[id] = i; });
+    var REGLAS = DATA.reglas || { plazoOferta: [], visitaPasada: {} };
+
+    // ---------- pesos (por persona, en este navegador) ----------
+    var CLAVE_PESOS = 'quempin_op_pesos';
+    var pesos = {};
+    var guardados = null;
+    try { guardados = JSON.parse(localStorage.getItem(CLAVE_PESOS) || 'null'); } catch (e) {}
+    CRIT.forEach(function (c) { pesos[c.id] = guardados && typeof guardados[c.id] === 'number' ? guardados[c.id] : c.peso; });
+    function pesosPropios() { return CRIT.some(function (c) { return pesos[c.id] !== c.peso; }); }
+
+    // ---------- evaluación al día ----------
+    // Los puntajes vienen del build; lo que depende de la fecha (días para el
+    // cierre, una visita que ya pasó) se recalcula con la fecha de hoy, con
+    // las mismas tablas que usa oportunidades.py (DATA.reglas).
+    // Misma regla que Evaluador.categoria en oportunidades.py: puntaje, con tope si el rubro no es claro.
+    function categoria(puntaje, rubro) {
+      var cat = ORDEN_CAT[ORDEN_CAT.length - 1] || 'baja', tope = null;
+      for (var i = 0; i < CATS.length; i++) if (puntaje >= CATS[i].desde) { cat = CATS[i].id; break; }
+      (DATA.topesPorRubro || []).forEach(function (t) {
+        if (rubro < t.rubroMenorA && ORDEN_CAT.indexOf(cat) < ORDEN_CAT.indexOf(t.categoriaMaxima)) { cat = t.categoriaMaxima; tope = t; }
+      });
+      return { cat: cat, tope: tope };
+    }
+    function evaluar(op) {
+      var p = {};
+      CRIT.forEach(function (c) { p[c.id] = ((op.criterios || {})[c.id] || {}).puntaje || 0; });
+      var descartar = (op.descartarFijo || op.descartar || []).slice();
+      var dias = diasHasta(op.cierre);
+      if (dias !== null && REGLAS.plazoOferta.length) {
+        var tramo = REGLAS.plazoOferta.filter(function (t) { return t.menosDeDias === null || dias < t.menosDeDias; })[0];
+        if (tramo) {
+          p.plazoOferta = tramo.puntaje;
+          if (tramo.descarta) descartar.push(dias < 0 ? 'Ya cerró' : 'Cierra en menos de un día');
+        }
+      }
+      if (op.ficha && op.visita && op.visita.fecha) {
+        var dv = diasHasta(op.visita.fecha);
+        if (dv !== null && dv < 0) {
+          p.visita = op.visita.obligatoria === false ? REGLAS.visitaPasada.optativa : REGLAS.visitaPasada.obligatoriaODuda;
+          if (op.visita.obligatoria) descartar.push('La visita obligatoria fue el ' + fechaHora(op.visita.fecha));
+        }
+      }
+      var total = 0, suma = 0;
+      CRIT.forEach(function (c) { total += pesos[c.id]; suma += p[c.id] * pesos[c.id]; });
+      var puntaje = total ? Math.round(suma / total * 10) / 10 : 0;
+      var c = descartar.length ? { cat: 'descartar', tope: null } : categoria(puntaje, p.rubro || 0);
+      return { puntaje: puntaje, cat: c.cat, tope: c.tope, descartar: descartar, dias: dias, p: p, total: total };
+    }
+
+    // ---------- nuevas desde la última visita (solo este navegador) ----------
+    var CLAVE_VISTAS = 'quempin_op_vistas', DIA_MS = 86400000;
+    var vistas = null, primeraVisita = false;
+    try { vistas = JSON.parse(localStorage.getItem(CLAVE_VISTAS) || 'null'); } catch (e) { vistas = undefined; }
+    if (vistas !== undefined && (vistas === null || typeof vistas !== 'object' || Array.isArray(vistas))) { primeraVisita = true; vistas = {}; }
+    var hayMemoria = vistas !== undefined;
+    var ahoraMs = AHORA.getTime();
+    var OPS = (DATA.oportunidades || []).filter(function (op) { var d = diasHasta(op.cierre); return d === null || d >= 0; });
+    var cerradasDesdeElBuild = (DATA.oportunidades || []).length - OPS.length;
+    OPS.forEach(function (op) {
+      if (!hayMemoria) { op._nueva = false; return; }
+      // La primera vez no hay con qué comparar: todo queda como ya visto (0).
+      if (!(op.codigo in vistas)) vistas[op.codigo] = primeraVisita ? 0 : ahoraMs;
+      op._nueva = vistas[op.codigo] > 0 && ahoraMs - vistas[op.codigo] < DIA_MS;
+    });
+    if (hayMemoria) {
+      var limpias = {};
+      OPS.forEach(function (op) { limpias[op.codigo] = vistas[op.codigo]; });
+      try { localStorage.setItem(CLAVE_VISTAS, JSON.stringify(limpias)); } catch (e) {}
+    }
+
+    function recalcular() { OPS.forEach(function (op) { op._e = evaluar(op); }); }
+
+    // ---------- cabecera, avisos, tema ----------
+    var cons = DATA.consultado ? new Date(DATA.consultado) : null;
+    var gen = document.getElementById('vizGenerated');
+    vaciar(gen).appendChild(document.createTextNode('Datos al '));
+    gen.appendChild(el('strong', { texto: cons && !isNaN(cons) ? cons.toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }) : '—' }));
+    gen.appendChild(document.createTextNode(' · Mercado Público y Planilla de Ingreso'));
+
+    var avisos = (DATA.avisos || []).slice();
+    if (DATA.completo === false) avisos.unshift('Esta vuelta no alcanzó a revisar todas las fichas: algunas oportunidades están evaluadas solo por su nombre.');
+    if (cerradasDesdeElBuild) avisos.push(cerradasDesdeElBuild + ' licitación(es) cerraron después de esta actualización y ya no se muestran.');
+    if (avisos.length) {
+      var av = document.getElementById('opAvisos');
+      av.hidden = false;
+      av.appendChild(el('strong', { texto: 'Para leer estos datos:' }));
+      av.appendChild(el('ul', null, avisos.map(function (a) { return el('li', { texto: a }); })));
+    }
+
+    var themeBtn = document.getElementById('themeToggle');
+    function isDarkNow() {
+      var d = document.documentElement;
+      return d.getAttribute('data-theme') === 'dark' || (d.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    themeBtn.textContent = isDarkNow() ? 'Modo claro' : 'Modo oscuro';
+    themeBtn.addEventListener('click', function () {
+      var next = isDarkNow() ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      themeBtn.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+      try { localStorage.setItem('op_viz_theme', next); } catch (e) {}
+    });
+
+    // Mobile: centrar la pestaña activa de la navegación (mismo criterio que los demás tableros).
+    var tabActiva = document.querySelector('.viz-modnav-tab.is-active');
+    if (tabActiva) {
+      var filaTabs = tabActiva.parentNode;
+      if (filaTabs.scrollWidth > filaTabs.clientWidth) {
+        filaTabs.scrollLeft += tabActiva.getBoundingClientRect().left - filaTabs.getBoundingClientRect().left - (filaTabs.clientWidth - tabActiva.offsetWidth) / 2;
+      }
+    }
+
+    // ---------- pestañas del tablero ----------
+    document.querySelectorAll('.viz-tab-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('.viz-tab-btn').forEach(function (x) {
+          x.classList.toggle('active', x === b);
+          x.setAttribute('aria-selected', String(x === b));
+        });
+        document.querySelectorAll('.viz-tab-panel').forEach(function (p) { p.classList.toggle('active', p.id === b.getAttribute('data-tab')); });
+        if (b.getAttribute('data-tab') === 'tabOportunidades') pintarMapa();
+      });
+    });
+
+    // ---------- filtros ----------
+    var fBuscar = document.getElementById('fBuscar'), fMostrar = document.getElementById('fMostrar'),
+      fRegion = document.getElementById('fRegion'), fCierre = document.getElementById('fCierre'),
+      fNuevas = document.getElementById('fNuevas'), fPlanilla = document.getElementById('fPlanilla');
+    var regiones = {};
+    OPS.forEach(function (op) { if (op.regionCorta) regiones[op.regionCorta] = 1; });
+    Object.keys(regiones).sort(function (a, b) { return a.localeCompare(b, 'es'); }).forEach(function (r) { fRegion.appendChild(el('option', { value: r, texto: r })); });
+    if (!hayMemoria) { fNuevas.disabled = true; fNuevas.parentNode.title = 'Este navegador no guarda datos: no se pueden marcar las nuevas.'; }
+
+    function pasaFiltros(op) {
+      var e = op._e, m = fMostrar.value;
+      if (m === 'recomendadas' && !(e.cat === 'prioritaria' || e.cat === 'buena')) return false;
+      if (m === 'prioritarias' && e.cat !== 'prioritaria') return false;
+      if (m === 'todas' && e.cat === 'descartar') return false;
+      if (m === 'resto' && !(e.cat === 'evaluar' || e.cat === 'baja')) return false;
+      if (m === 'descartadas' && e.cat !== 'descartar') return false;
+      if (fRegion.value && op.regionCorta !== fRegion.value) return false;
+      if (fCierre.value && (e.dias === null || e.dias > +fCierre.value)) return false;
+      if (fNuevas.checked && !op._nueva) return false;
+      if (!fPlanilla.checked && op.enPlanilla) return false;
+      var q = norm(fBuscar.value).trim();
+      if (q && norm([op.nombre, op.organismo, op.unidadCompra, op.comuna, op.regionCorta, op.codigo].join(' ')).indexOf(q) < 0) return false;
+      return true;
+    }
+    function porRelevancia(a, b) {
+      var ra = RANGO_CAT[a._e.cat], rb = RANGO_CAT[b._e.cat];
+      if (ra !== rb) return ra - rb;
+      return b._e.puntaje - a._e.puntaje;
+    }
+
+    // ---------- piezas de una oportunidad ----------
+    function etiquetaCategoria(op) {
+      return el('span', { clase: 'cat cat-' + op._e.cat, texto: NOMBRE_CAT[op._e.cat] || op._e.cat });
+    }
+    function etiquetasExtra(op) {
+      var xs = [];
+      if (op._nueva) xs.push(el('span', { clase: 'chip nueva', texto: 'Nueva' }));
+      if (op.enPlanilla) xs.push(el('span', { clase: 'chip planilla', texto: 'Planilla N° ' + op.enPlanilla.req + (op.enPlanilla.estado ? ' · ' + op.enPlanilla.estado : '') }));
+      if (!op.ficha) xs.push(el('span', { clase: 'chip', texto: 'solo por el nombre' }));
+      return xs;
+    }
+    function textoMonto(op) {
+      var m = op.monto || {};
+      if (!m.valor) return { v: 'sin monto', s: 'no publicado' };
+      var estimado = String(m.fuente || '').indexOf('por tipo') === 0;
+      return { v: (estimado ? '~' : '') + clpCorto(m.valor), s: estimado ? 'estimado ' + m.fuente : (m.fuente === 'estimado' ? 'estimado por el comprador' : m.fuente) };
+    }
+    function colorAnillo(cat) { return cat === 'prioritaria' || cat === 'buena' ? 'var(--brand-orange)' : 'var(--op-resto)'; }
+    function anillo(op) {
+      var r = 24, largo = 2 * Math.PI * r, v = Math.max(0, Math.min(100, op._e.puntaje));
+      var s = sv('svg', { viewBox: '0 0 58 58', 'aria-hidden': 'true' });
+      s.appendChild(sv('circle', { class: 'pista', cx: 29, cy: 29, r: r }));
+      var arco = sv('circle', { class: 'valor', cx: 29, cy: 29, r: r, 'stroke-dasharray': (largo * v / 100) + ' ' + largo });
+      arco.style.stroke = colorAnillo(op._e.cat);
+      s.appendChild(arco);
+      return el('div', { clase: 'op-anillo', title: 'Puntaje ' + Math.round(v) + ' de 100' }, [s, el('span', { clase: 'num', texto: String(Math.round(v)) })]);
+    }
+
+    function tarjetaTop(op, i) {
+      var e = op._e, monto = textoMonto(op);
+      var cabeza = el('div', { clase: 'op-top-cabeza' }, [
+        anillo(op),
+        el('div', { style: 'min-width:0' }, [
+          el('div', { clase: 'op-top-etiquetas' }, [el('span', { clase: 'op-rank', texto: '#' + (i + 1) }), etiquetaCategoria(op)].concat(etiquetasExtra(op))),
+          el('h3', { texto: op.nombre || op.codigo, title: op.nombre || '' }),
+          el('p', { clase: 'op-org', texto: [op.organismo, op.comuna || op.regionCorta].filter(Boolean).join(' · ') })
+        ])
+      ]);
+      var visita = op.visita && op.visita.fecha ? fechaCorta(op.visita.fecha).slice(0, 5) + (op.visita.obligatoria ? ' (oblig.)' : '') : 'no';
+      var datos = el('dl', { clase: 'op-datos' }, [
+        el('div', null, [el('dt', { texto: 'Monto' }), el('dd', null, [monto.v, el('small', { texto: monto.s })])]),
+        el('div', null, [el('dt', { texto: 'Cierre' }), el('dd', { clase: claseCierre(e.dias) }, [textoCierre(e.dias), el('small', { texto: fechaHora(op.cierre) })])]),
+        el('div', null, [el('dt', { texto: 'Visita' }), el('dd', null, [visita, el('small', { texto: op.duracionMeses ? 'contrato ' + (op.duracionMeses >= 1 ? Math.round(op.duracionMeses) + ' meses' : Math.round(op.duracionMeses * 30) + ' días') : 'duración no informada' })])])
+      ]);
+      var razones = el('ul', { clase: 'op-razones' });
+      (op.aFavor || []).forEach(function (t) { razones.appendChild(el('li', { clase: 'favor' }, [el('span', { clase: 'ico', 'aria-label': 'A favor', texto: '✓' }), el('span', { texto: t })])); });
+      (op.enContra || []).forEach(function (t) { razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: t })])); });
+      if (e.tope) razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: 'Rubro no del todo claro: no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '»' })]));
+      var ver = el('button', { clase: 'op-btn', type: 'button', texto: 'Ver evaluación' });
+      ver.addEventListener('click', function () { abrirEnTabla(op.codigo); });
+      var acciones = el('div', { clase: 'op-acciones' }, [ver]);
+      var url = enlaceSeguro(op.url);
+      if (url) acciones.appendChild(el('a', { clase: 'op-btn-sec', href: url, target: '_blank', rel: 'noopener noreferrer', texto: 'Ficha en Mercado Público ↗' }));
+      return el('article', { clase: 'op-top' + (e.cat === 'prioritaria' ? ' es-prioritaria' : '') }, [cabeza, datos, razones, acciones]);
+    }
+
+    function detalle(op) {
+      var e = op._e, izq = el('div'), der = el('div');
+      if (e.descartar.length) izq.appendChild(el('div', { clase: 'op-descarte', texto: 'Se descarta: ' + e.descartar.join(' · ') }));
+      if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: 'Con rubro ' + Math.round(e.p.rubro) + ' (bajo ' + e.tope.rubroMenorA + ') no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '», aunque el puntaje dé para más.' }));
+      izq.appendChild(el('h4', { texto: 'Cómo se arma el puntaje' }));
+      var comp = el('div', { clase: 'op-composicion', role: 'img', 'aria-label': 'Aporte de cada criterio al puntaje' });
+      CRIT.forEach(function (c) {
+        if (!pesos[c.id]) return;
+        var seg = el('span', { title: c.nombre + ': ' + e.p[c.id] + ' de 100 (aporta ' + (e.p[c.id] * pesos[c.id] / e.total).toFixed(1) + ' de ' + (100 * pesos[c.id] / e.total).toFixed(1) + ')' });
+        seg.style.flex = pesos[c.id] + ' 1 0';
+        var lleno = el('i'); lleno.style.width = e.p[c.id] + '%';
+        seg.appendChild(lleno);
+        comp.appendChild(seg);
+      });
+      izq.appendChild(comp);
+      izq.appendChild(el('p', { clase: 'op-composicion-pie', texto: 'Un tramo por criterio, tan ancho como su peso y lleno según su puntaje: lo vacío es lo que le falta. Total ' + e.puntaje.toLocaleString('es-CL', { maximumFractionDigits: 1 }) + ' de 100.' }));
+      CRIT.forEach(function (c) {
+        var k = (op.criterios || {})[c.id] || {};
+        var v = e.p[c.id];
+        var motivo = k.motivo || '';
+        if (c.id === 'plazoOferta' && e.dias !== null) motivo = textoCierre(e.dias) + ' (' + fechaHora(op.cierre) + ')';
+        var barra = el('div', { clase: 'barra' }); var b = el('i'); b.style.width = v + '%'; barra.appendChild(b);
+        izq.appendChild(el('div', { clase: 'op-crit' }, [
+          el('span', { clase: 'nom' }, [c.nombre + ' ', el('small', { texto: '×' + pesos[c.id] })]),
+          barra,
+          el('span', { clase: 'val', texto: String(Math.round(v)) }),
+          el('span', { clase: 'mot', texto: motivo })
+        ]));
+      });
+      if (op.parecidas && op.parecidas.length) {
+        izq.appendChild(el('h4', { texto: 'Parecidas en la Planilla de Ingreso' }));
+        izq.appendChild(el('ul', { clase: 'op-lista' }, op.parecidas.map(function (p) {
+          return el('li', { texto: 'N° ' + p.req + ' · ' + (p.titulo || '') + ' — ' + p.estado });
+        })));
+      }
+      if (op.mercado && op.mercado.length) {
+        izq.appendChild(el('h4', { texto: 'Precedentes en el mercado' }));
+        izq.appendChild(el('ul', { clase: 'op-lista' }, op.mercado.map(function (m) {
+          return el('li', { texto: (m.fecha ? m.fecha.slice(0, 7) + ' · ' : '') + (m.nombre || m.codigo) + ' — ' + (m.organismo || '') + ': ganó ' + (m.ganadores || []).join(', ') +
+            ((m.moneda || 'CLP') === 'CLP' ? ' por ' + clpCorto(m.monto) + ' neto' : '') + (m.oferentes ? ' (' + m.oferentes + ' oferentes)' : '') });
+        })));
+      }
+      var monto = textoMonto(op);
+      var pares = [
+        ['Código', op.codigo], ['Tipo', op.tipo || '—'], ['Organismo', op.organismo || '—'], ['Unidad', op.unidadCompra || '—'],
+        ['Lugar', [op.comuna, op.region].filter(Boolean).join(', ') || '—'], ['Publicada', fechaHora(op.publicada)],
+        ['Cierre', fechaHora(op.cierre) + ' · ' + textoCierre(e.dias)], ['Monto', monto.v + ' (' + monto.s + ')'],
+        ['Duración', op.duracionMeses !== null && op.duracionMeses !== undefined ? (op.duracionMeses >= 1 ? Math.round(op.duracionMeses) + ' meses' : Math.round(op.duracionMeses * 30) + ' días') : 'no informada'],
+        ['Visita a terreno', op.visita && op.visita.fecha ? fechaHora(op.visita.fecha) + (op.visita.obligatoria ? ' · obligatoria' : op.visita.obligatoria === false ? ' · optativa' : ' · ver bases') : 'no'],
+        ['Probabilidad de ganar', op.probabilidadGanar !== null && op.probabilidadGanar !== undefined ? Math.round(op.probabilidadGanar * 100) + ' % en las parecidas ya resueltas' : 'sin historia suficiente']
+      ];
+      der.appendChild(el('h4', { texto: 'Ficha' }));
+      der.appendChild(el('dl', { clase: 'op-ficha' }, pares.map(function (p) { return el('div', null, [el('dt', { texto: p[0] }), el('dd', { texto: p[1] })]); })));
+      if (op.descripcion) {
+        der.appendChild(el('h4', { texto: 'Descripción' }));
+        der.appendChild(el('p', { clase: 'op-texto', texto: op.descripcion }));
+      }
+      var acciones = el('div', { clase: 'op-acciones' });
+      var url = enlaceSeguro(op.url);
+      if (url) acciones.appendChild(el('a', { clase: 'op-btn', href: url, target: '_blank', rel: 'noopener noreferrer', texto: 'Ficha en Mercado Público ↗' }));
+      var copiar = el('button', { clase: 'op-btn-sec', type: 'button', texto: 'Copiar código' });
+      copiar.addEventListener('click', function (evt) {
+        evt.stopPropagation();
+        var listo = function () { copiar.textContent = 'Copiado'; setTimeout(function () { copiar.textContent = 'Copiar código'; }, 1500); };
+        if (navigator.clipboard) navigator.clipboard.writeText(op.codigo).then(listo, function () {}); else listo();
+      });
+      acciones.appendChild(copiar);
+      der.appendChild(acciones);
+      return el('div', { clase: 'op-detalle' }, [izq, der]);
+    }
+
+    // ---------- recomendadas ----------
+    function pintarTop(lista) {
+      var caja = vaciar(document.getElementById('opTop'));
+      var top = lista.filter(function (op) { return op._e.cat === 'prioritaria' || op._e.cat === 'buena'; }).slice(0, 3);
+      if (!top.length) {
+        caja.className = '';
+        caja.appendChild(el('div', { clase: 'op-vacio', texto: lista.length ? 'Con estos filtros no hay prioritarias ni buenas: revisa la tabla.' : 'Ninguna oportunidad con estos filtros.' }));
+        return;
+      }
+      caja.className = 'op-top-grid';
+      top.forEach(function (op, i) { caja.appendChild(tarjetaTop(op, i)); });
+    }
+
+    // ---------- mapa de prioridad ----------
+    var tip = document.getElementById('opTooltip');
+    var listaMapa = [];
+    function claseMarca(cat) { return cat === 'prioritaria' ? 'p-prioritaria' : cat === 'buena' ? 'p-buena' : 'p-resto'; }
+    function pintarMapa() {
+      var caja = document.getElementById('opMapa');
+      var ancho = Math.round(caja.clientWidth || 0);
+      if (!ancho) return;   // pestaña oculta: se dibuja al volver
+      vaciar(caja);
+      var lista = listaMapa.filter(function (op) { return op._e.cat !== 'descartar' && op._e.dias !== null; });
+      var W = Math.max(300, ancho), angosto = W < 560, H = angosto ? 280 : 340;
+      var mx = 38, mr = angosto ? 74 : 92, my = 14, mb = 36;
+      var X_MAX = 30;
+      var minP = lista.reduce(function (a, op) { return Math.min(a, op._e.puntaje); }, 100);
+      var Y_MIN = Math.max(0, Math.min(30, Math.floor((minP - 5) / 10) * 10));
+      var px = function (d) { return mx + Math.min(X_MAX, Math.max(0, d)) / X_MAX * (W - mx - mr); };
+      var py = function (v) { return my + (100 - v) / (100 - Y_MIN) * (H - my - mb); };
+      var s = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, 'aria-hidden': 'true' });
+      // Zonas: «Prioritaria» (banda arriba) y «cierra en menos de 5 días» (franja izquierda).
+      var corte = (CATS[0] || { desde: 75 }).desde;
+      s.appendChild(sv('rect', { class: 'banda-prioritaria', x: mx, y: py(100), width: W - mx - mr, height: py(corte) - py(100) }));
+      s.appendChild(sv('rect', { class: 'banda-urgente', x: mx, y: py(100), width: px(5) - mx, height: py(Y_MIN) - py(100) }));
+      for (var v = Y_MIN; v <= 100; v += 10) {
+        s.appendChild(sv('line', { class: v === Y_MIN ? 'eje' : 'guia', x1: mx, x2: W - mr, y1: py(v), y2: py(v) }));
+        var t = sv('text', { x: mx - 6, y: py(v) + 4, 'text-anchor': 'end' }); t.textContent = v; s.appendChild(t);
+      }
+      CATS.forEach(function (c) {
+        if (c.desde <= Y_MIN || c.desde >= 100) return;
+        var r = sv('text', { class: 'rotulo-banda', x: W - mr + 6, y: py(c.desde) + 4 }); r.textContent = '— ' + c.nombre; s.appendChild(r);
+      });
+      [0, 5, 10, 15, 20, 25, 30].forEach(function (d) {
+        var tx = sv('text', { x: px(d), y: H - mb + 16, 'text-anchor': 'middle' }); tx.textContent = d === 30 ? '30+' : d; s.appendChild(tx);
+      });
+      var ejeX = sv('text', { x: mx + (W - mx - mr) / 2, y: H - 4, 'text-anchor': 'middle' }); ejeX.textContent = 'Días para el cierre'; s.appendChild(ejeX);
+      // Primero los grises, encima las buenas y arriba de todo las prioritarias.
+      var orden = lista.slice().sort(function (a, b) { return RANGO_CAT[b._e.cat] - RANGO_CAT[a._e.cat]; });
+      var top3 = lista.filter(function (op) { return op._e.cat === 'prioritaria' || op._e.cat === 'buena'; }).slice(0, 3);
+      // Rótulos #1-#3 sin pisarse ni tapar otro punto: se prueba a la derecha
+      // arriba, derecha abajo, izquierda arriba e izquierda abajo, y gana el
+      // primero libre (nunca se desplazan lejos de su punto).
+      var cajas = lista.map(function (op) { var x = px(op._e.dias), y = py(op._e.puntaje); return { x0: x - 6, y0: y - 6, x1: x + 6, y1: y + 6, op: op }; });
+      var rotulos = {};
+      top3.forEach(function (op, i) {
+        var x = px(op._e.dias), y = py(op._e.puntaje), w = 18, h = 12;
+        var opciones = [[9, -8, 'start'], [9, 16, 'start'], [-9, -8, 'end'], [-9, 16, 'end']].map(function (o) {
+          var x0 = o[2] === 'start' ? x + o[0] : x + o[0] - w;
+          return { x: x + o[0], y: y + o[1], ancla: o[2], caja: { x0: x0, y0: y + o[1] - h + 2, x1: x0 + w, y1: y + o[1] + 2 } };
+        });
+        var choca = function (c) {
+          return cajas.some(function (b) { return b.op !== op && c.x0 < b.x1 && c.x1 > b.x0 && c.y0 < b.y1 && c.y1 > b.y0; });
+        };
+        var elegida = opciones.filter(function (o) { return !choca(o.caja); })[0] || opciones[0];
+        cajas.push({ x0: elegida.caja.x0, y0: elegida.caja.y0, x1: elegida.caja.x1, y1: elegida.caja.y1, op: null });
+        rotulos[op.codigo] = { x: elegida.x, y: elegida.y, ancla: elegida.ancla, texto: '#' + (i + 1) };
+      });
+      orden.forEach(function (op) {
+        var x = px(op._e.dias), y = py(op._e.puntaje), cat = op._e.cat;
+        var g = sv('g', {});
+        // Área de toque de 24 px (más grande que la marca): no hay que apuntarle al centro.
+        var golpe = sv('circle', { class: 'golpe', cx: x, cy: y, r: 12, tabindex: 0, role: 'button', 'aria-label': (op.nombre || op.codigo) + ', puntaje ' + Math.round(op._e.puntaje) });
+        var marca = sv('circle', { class: 'marca ' + claseMarca(cat), cx: x, cy: y, r: cat === 'prioritaria' || cat === 'buena' ? 6 : 4.5 });
+        g.appendChild(golpe); g.appendChild(marca);
+        var rot = rotulos[op.codigo];
+        if (rot) {
+          var et = sv('text', { class: 'rank', x: rot.x, y: rot.y, 'text-anchor': rot.ancla }); et.textContent = rot.texto; g.appendChild(et);
+        }
+        var mostrar = function (evt) {
+          vaciar(tip);
+          tip.appendChild(el('div', { clase: 'v', texto: Math.round(op._e.puntaje) + ' · ' + NOMBRE_CAT[cat] }));
+          tip.appendChild(el('div', { clase: 't', texto: op.nombre || op.codigo }));
+          tip.appendChild(el('div', { clase: 's', texto: [op.organismo, op.regionCorta].filter(Boolean).join(' · ') }));
+          tip.appendChild(el('div', { texto: textoCierre(op._e.dias) + ' · ' + textoMonto(op).v }));
+          tip.style.display = 'block';
+          var b = golpe.getBoundingClientRect();
+          var cx = evt && evt.clientX ? evt.clientX : b.left + b.width / 2, cy = evt && evt.clientY ? evt.clientY : b.top;
+          tip.style.left = Math.max(8, Math.min(window.innerWidth - tip.offsetWidth - 8, cx + 12)) + 'px';
+          tip.style.top = Math.max(8, cy - tip.offsetHeight - 12) + 'px';
+        };
+        var ocultar = function () { tip.style.display = 'none'; };
+        golpe.addEventListener('pointermove', mostrar);
+        golpe.addEventListener('focus', mostrar);
+        golpe.addEventListener('pointerleave', ocultar);
+        golpe.addEventListener('blur', ocultar);
+        golpe.addEventListener('click', function () { ocultar(); abrirEnTabla(op.codigo); });
+        golpe.addEventListener('keydown', function (evt) { if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); ocultar(); abrirEnTabla(op.codigo); } });
+        s.appendChild(g);
+      });
+      caja.appendChild(s);
+      if (!lista.length) caja.appendChild(el('div', { clase: 'op-vacio', texto: 'Nada que mostrar con estos filtros.' }));
+      var leyenda = vaciar(document.getElementById('opLeyenda'));
+      var muestra = function (clase, r) {
+        var m = sv('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': 'true' });
+        m.appendChild(sv('circle', { class: clase, cx: 8, cy: 8, r: r }));
+        return m;
+      };
+      [['p-prioritaria', 6, 'Prioritaria'], ['p-buena', 5.5, 'Buena'], ['p-resto', 4.5, 'Evaluar y baja']].forEach(function (x) {
+        leyenda.appendChild(el('li', null, [muestra(x[0], x[1]), x[2] + ' · ' + lista.filter(function (op) {
+          return x[0] === 'p-resto' ? (op._e.cat === 'evaluar' || op._e.cat === 'baja') : op._e.cat === x[2].toLowerCase();
+        }).length]));
+      });
+      leyenda.appendChild(el('li', { texto: 'Franja roja: cierra en menos de 5 días' }));
+    }
+
+    // ---------- tabla ----------
+    var orden = { k: null, dir: 1 }, limite = 30, abiertas = {};
+    var tbody = document.querySelector('#tOps > tbody');
+    function valorOrden(op, k) {
+      if (k === 'nombre') return norm(op.nombre);
+      if (k === 'puntaje') return op._e.puntaje;
+      if (k === 'categoria') return RANGO_CAT[op._e.cat];
+      if (k === 'region') return norm(op.regionCorta);
+      if (k === 'monto') return (op.monto || {}).valor || 0;
+      if (k === 'cierre') return op._e.dias === null ? 9999 : op._e.dias;
+      return 0;
+    }
+    function filaDe(op) {
+      var e = op._e, monto = textoMonto(op);
+      var mini = el('div', { clase: 'op-mini', 'aria-hidden': 'true' });
+      CRIT.forEach(function (c) {
+        var seg = el('span', { title: c.nombre + ': ' + e.p[c.id] }); seg.style.flex = (pesos[c.id] || 0.0001) + ' 1 0';
+        var i = el('i'); i.style.width = e.p[c.id] + '%'; seg.appendChild(i); mini.appendChild(seg);
+      });
+      var tr = el('tr', { clase: 'op-row' + (e.cat === 'descartar' ? ' es-descartada' : '') + (abiertas[op.codigo] ? ' is-expanded' : ''), tabindex: 0,
+        'aria-expanded': String(!!abiertas[op.codigo]), 'data-codigo': op.codigo }, [
+        el('td', { 'data-label': 'Oportunidad' }, [
+          el('div', { clase: 'op-nombre', texto: op.nombre || op.codigo }),
+          el('div', { clase: 'op-nombre-sub', texto: [op.organismo, op.codigo].filter(Boolean).join(' · ') }),
+          el('div', { clase: 'op-etiquetas' }, etiquetasExtra(op))
+        ]),
+        el('td', { clase: 'num', 'data-label': 'Puntaje' }, [el('div', null, [el('span', { clase: 'op-puntaje', texto: String(Math.round(e.puntaje)) }), mini])]),
+        el('td', { 'data-label': 'Categoría' }, [etiquetaCategoria(op)]),
+        el('td', { 'data-label': 'Región', texto: op.comuna ? op.comuna + (op.regionCorta ? ', ' + op.regionCorta : '') : (op.regionCorta || '—') }),
+        el('td', { clase: 'num', 'data-label': 'Monto', texto: monto.v }),
+        el('td', { 'data-label': 'Cierre' }, [el('div', null, [el('span', { clase: claseCierre(e.dias), texto: textoCierre(e.dias) }), el('div', { clase: 'op-nombre-sub', texto: fechaHora(op.cierre) })])])
+      ]);
+      var alternar = function () { abiertas[op.codigo] = !abiertas[op.codigo]; pintarTabla(); };
+      tr.addEventListener('click', function (evt) { if (evt.target.closest('a, button')) return; alternar(); });
+      tr.addEventListener('keydown', function (evt) { if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); alternar(); } });
+      return tr;
+    }
+    function listaOrdenada() {
+      var lista = listaMapa.slice();
+      if (orden.k) lista.sort(function (a, b) {
+        var x = valorOrden(a, orden.k), y = valorOrden(b, orden.k);
+        return (x < y ? -1 : x > y ? 1 : 0) * orden.dir || porRelevancia(a, b);
+      });
+      return lista;
+    }
+    function pintarTabla() {
+      var lista = listaOrdenada();
+      vaciar(tbody);
+      lista.slice(0, limite).forEach(function (op) {
+        tbody.appendChild(filaDe(op));
+        if (abiertas[op.codigo]) tbody.appendChild(el('tr', { clase: 'detail-row' }, [el('td', { colspan: 6 }, [detalle(op)])]));
+      });
+      if (!lista.length) tbody.appendChild(el('tr', null, [el('td', { colspan: 6, texto: 'Ninguna oportunidad con estos filtros.' })]));
+      var mas = document.getElementById('fMas');
+      mas.hidden = lista.length <= limite;
+      mas.textContent = 'Mostrar más (' + (lista.length - limite) + ' restantes)';
+      document.querySelectorAll('#tOps > thead th').forEach(function (th) {
+        var k = th.getAttribute('data-k');
+        th.textContent = th.textContent.replace(/ [▲▼]$/, '') + (k === orden.k ? (orden.dir > 0 ? ' ▲' : ' ▼') : '');
+        th.setAttribute('aria-sort', k === orden.k ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none');
+      });
+    }
+    document.querySelectorAll('#tOps > thead th[data-k]').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var k = th.getAttribute('data-k');
+        orden = orden.k === k ? { k: k, dir: -orden.dir } : { k: k, dir: (k === 'puntaje' || k === 'monto') ? -1 : 1 };
+        pintarTabla();
+      });
+    });
+    document.getElementById('fMas').addEventListener('click', function () { limite += 100; pintarTabla(); });
+    function abrirEnTabla(codigo) {
+      var op = OPS.filter(function (o) { return o.codigo === codigo; })[0];
+      if (!op) return;
+      if (listaMapa.indexOf(op) < 0) { fMostrar.value = op._e.cat === 'descartar' ? 'descartadas' : 'todas'; fRegion.value = ''; fCierre.value = ''; fNuevas.checked = false; fPlanilla.checked = true; fBuscar.value = ''; aplicar(); }
+      var pos = listaOrdenada().indexOf(op);
+      if (pos >= limite) limite = pos + 1;
+      abiertas[codigo] = true;
+      pintarTabla();
+      var fila = tbody.querySelector('tr.op-row[data-codigo="' + codigo + '"]');
+      if (fila) { fila.scrollIntoView({ behavior: 'smooth', block: 'start' }); fila.focus({ preventScroll: true }); }
+    }
+
+    // ---------- KPIs (sobre todo, no sobre el filtro: son el resumen del día) ----------
+    function pintarKpis() {
+      var vivas = OPS.filter(function (op) { return op._e.cat !== 'descartar'; });
+      var prio = vivas.filter(function (op) { return op._e.cat === 'prioritaria'; });
+      var buenas = vivas.filter(function (op) { return op._e.cat === 'buena'; });
+      document.getElementById('kPrioritarias').textContent = prio.length;
+      document.getElementById('kPrioritariasSub').textContent = 'y ' + buenas.length + ' buena' + (buenas.length === 1 ? '' : 's') + ', de ' + vivas.length + ' vigentes evaluadas.';
+      var pronto = prio.concat(buenas).filter(function (op) { return op._e.dias !== null && op._e.dias <= 5; })
+        .sort(function (a, b) { return a._e.dias - b._e.dias; });
+      document.getElementById('kPronto').textContent = pronto.length;
+      var corto = function (t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1).trim() + '…' : t; };
+      document.getElementById('kProntoSub').textContent = pronto.length
+        ? 'Prioritarias o buenas con 5 días o menos. La primera ' + textoCierre(pronto[0]._e.dias).replace('cierra ', '') + ': ' + corto(pronto[0].nombre || pronto[0].codigo, 42) + '.'
+        : 'Ninguna prioritaria o buena cierra en los próximos 5 días.';
+      var nuevas = vivas.filter(function (op) { return op._nueva; });
+      document.getElementById('kNuevas').textContent = hayMemoria && !primeraVisita ? nuevas.length : '—';
+      document.getElementById('kNuevasSub').textContent = !hayMemoria ? 'Este navegador no guarda datos: no se pueden marcar.'
+        : primeraVisita ? 'Desde tu próxima visita se marcan las que aparezcan.' : 'Aparecieron desde tu última visita (en este navegador).';
+      var perfil = DATA.perfil || {};
+      document.getElementById('kRubro').textContent = (perfil.candidatas || OPS.length).toLocaleString('es-CL');
+      document.getElementById('kRubroSub').textContent = 'De ' + (perfil.publicadas || 0).toLocaleString('es-CL') + ' licitaciones publicadas revisadas en la última actualización.';
+    }
+
+    // ---------- aplicar todo ----------
+    function aplicar() {
+      listaMapa = OPS.filter(pasaFiltros).sort(porRelevancia);
+      document.getElementById('fCuenta').textContent = listaMapa.length + ' de ' + OPS.length;
+      pintarTop(listaMapa);
+      pintarMapa();
+      pintarTabla();
+    }
+    [fBuscar, fMostrar, fRegion, fCierre, fNuevas, fPlanilla].forEach(function (c) {
+      c.addEventListener(c.tagName === 'SELECT' || c.type === 'checkbox' ? 'change' : 'input', function () { limite = 30; aplicar(); });
+    });
+
+    // ---------- Cómo se evalúa ----------
+    function pintarPesos() {
+      var caja = vaciar(document.getElementById('opPesos'));
+      CRIT.forEach(function (c) {
+        var salida = el('output', { texto: String(pesos[c.id]) });
+        var rango = el('input', { type: 'range', min: 0, max: 50, step: 1, value: pesos[c.id], 'aria-label': 'Peso de ' + c.nombre });
+        rango.addEventListener('input', function () {
+          pesos[c.id] = +rango.value; salida.textContent = rango.value;
+          try { localStorage.setItem(CLAVE_PESOS, JSON.stringify(pesos)); } catch (e) {}
+          todo();   // no vuelve a dibujar los deslizadores: cortaría el arrastre
+        });
+        caja.appendChild(el('label', { clase: 'op-peso', title: c.descripcion || '' }, [el('span', { texto: c.nombre }), salida, rango]));
+      });
+    }
+    function pintarNotaPesos() {
+      document.getElementById('opPesosNota').textContent = pesosPropios() ? 'Estás viendo el orden con tus pesos, no con los del equipo.' : 'Son los pesos del equipo (oportunidades_config.json).';
+    }
+    document.getElementById('opPesosRestablecer').addEventListener('click', function () {
+      CRIT.forEach(function (c) { pesos[c.id] = c.peso; });
+      try { localStorage.removeItem(CLAVE_PESOS); } catch (e) {}
+      pintarPesos(); todo();
+    });
+    function pintarMetodo() {
+      var tb = vaciar(document.querySelector('#tCriterios > tbody'));
+      CRIT.forEach(function (c) { tb.appendChild(el('tr', null, [el('td', { texto: c.nombre }), el('td', { clase: 'num', texto: String(pesos[c.id]) }), el('td', { texto: c.descripcion || '' })])); });
+      var reglas = vaciar(document.getElementById('opReglas'));
+      CATS.forEach(function (c) { reglas.appendChild(el('li', null, [el('strong', { texto: c.nombre }), ': desde ' + c.desde + ' puntos.'])); });
+      (DATA.topesPorRubro || []).forEach(function (t) {
+        reglas.appendChild(el('li', { texto: 'Con el rubro bajo ' + t.rubroMenorA + ' puntos no pasa de «' + (NOMBRE_CAT[t.categoriaMaxima] || t.categoriaMaxima) + '», aunque el resto sea perfecto.' }));
+      });
+      reglas.appendChild(el('li', { texto: 'Se descarta sola si cierra en menos de un día, si la visita obligatoria ya pasó, si el nombre la deja fuera del rubro (combustible, químicos…) o si el monto supera un máximo fijado en la configuración.' }));
+      var tramos = (REGLAS.plazoOferta || []).filter(function (t) { return !t.descarta; }).map(function (t) { return (t.menosDeDias === null ? 'más' : 'menos de ' + t.menosDeDias + ' días') + ': ' + t.puntaje; });
+      if (tramos.length) reglas.appendChild(el('li', { texto: 'Plazo para ofertar (se cuenta con la fecha de hoy) — ' + tramos.join(' · ') + '.' }));
+      var h = (DATA.perfil || {}).historia || {}, m = (DATA.perfil || {}).montoHabitual || {};
+      var hist = vaciar(document.getElementById('opHistoria'));
+      hist.appendChild(el('li', { texto: 'Planilla de Ingreso: ' + (h.requerimientos || 0) + ' requerimientos, ' + (h.ofertados || 0) + ' ofertados, ' + (h.ganados || 0) + ' ganados y ' + (h.perdidos || 0) + ' perdidos.' }));
+      hist.appendChild(el('li', { texto: 'Para cada licitación se buscan las más parecidas de la Planilla: si se ofertaron y se ganaron, sube el rubro; si se descartaron, baja.' }));
+      if (m.p25) hist.appendChild(el('li', { texto: 'Monto habitual (lo ofertado): el centro va de ' + clpCorto(m.p25) + ' a ' + clpCorto(m.p75) + '; lo habitual, de ' + clpCorto(m.p10) + ' a ' + clpCorto(m.p90) + '. Sobre ' + clpCorto(m.maximo) + (m.maximoFijo ? ' se descarta.' : ' el criterio monto puntúa bajo, sin descartar.') }));
+    }
+
+    // ---------- Historia y competencia ----------
+    function pintarMercado() {
+      var me = (DATA.perfil || {}).mercado || {};
+      document.getElementById('opMercadoTexto').textContent = (me.licitaciones || 0) + ' licitaciones del rubro ya adjudicadas' + (me.desde ? ', desde el ' + fechaCorta(me.desde) : '') +
+        '. Se completa de a poco con las consultas que sobran en cada actualización: ' + (me.diasBarridos || 0) + ' de ' + (me.diasObjetivo || 0) + ' días revisados.';
+      var tb = vaciar(document.querySelector('#tCompetidores > tbody'));
+      var comp = (DATA.perfil || {}).competidores || [];
+      if (!comp.length) tb.appendChild(el('tr', null, [el('td', { colspan: 3, texto: 'Todavía sin datos.' })]));
+      comp.forEach(function (c) { tb.appendChild(el('tr', null, [el('td', { texto: c.nombre }), el('td', { clase: 'num', texto: String(c.ganadas) }), el('td', { clase: 'num', texto: clpCorto(c.monto) })])); });
+    }
+
+    // Mobile: etiquetas de las celdas de las tablas simples (la de oportunidades ya las trae).
+    function etiquetarCeldas(tabla) {
+      var nombres = Array.prototype.map.call(tabla.querySelectorAll(':scope > thead th'), function (th) { return th.textContent.replace(/[▲▼]/g, '').trim(); });
+      tabla.querySelectorAll(':scope > tbody > tr').forEach(function (tr) {
+        Array.prototype.forEach.call(tr.children, function (td, i) { if (nombres[i] && !td.hasAttribute('data-label')) td.setAttribute('data-label', nombres[i]); });
+      });
+    }
+
+    function todo() {
+      recalcular();
+      pintarKpis();
+      aplicar();
+      pintarMetodo();
+      pintarNotaPesos();
+      etiquetarCeldas(document.getElementById('tCriterios'));
+    }
+    pintarPesos();
+    todo();
+    pintarMercado();
+    etiquetarCeldas(document.getElementById('tCompetidores'));
+
+    var anchoDibujado = document.getElementById('opMapa').clientWidth, espera = null;
+    window.addEventListener('resize', function () {
+      tip.style.display = 'none';
+      clearTimeout(espera);
+      espera = setTimeout(function () {
+        var ancho = document.getElementById('opMapa').clientWidth;
+        if (ancho !== anchoDibujado) { anchoDibujado = ancho; pintarMapa(); }
+      }, 150);
+    });
+    window.addEventListener('scroll', function () { tip.style.display = 'none'; }, { passive: true });
+  }
+})();
+</script>
+</body>
+</html>

@@ -5,8 +5,8 @@ Hasta esta fecha los tableros publicaban sus datos en base64 junto a la
 contrasena escrita en claro, en un sitio y un repo publicos: cualquiera con el
 link podia leerlos. Estos tests fijan lo que cambio: el sobre que va en el HTML
 no deja ver ni los datos ni la contrasena, solo la contrasena correcta lo abre
-(en Python y en el navegador, con la misma normalizacion), las 6 plantillas lo
-usan, y la contrasena real nunca termina en un archivo versionado.
+(en Python y en el navegador, con la misma normalizacion), todas las plantillas
+lo usan, y la contrasena real nunca termina en un archivo versionado.
 """
 import base64
 import json
@@ -200,8 +200,9 @@ def test_cada_plantilla_abre_sus_datos_con_el_candado(ruta):
         assert resto not in html
 
 
-def test_estan_las_6_plantillas():
-    assert len(PLANTILLAS) == 6, [str(p) for p in PLANTILLAS]
+def test_estan_las_7_plantillas():
+    # 7 desde el 2026-10-13: Oportunidades en Mercado Público (Sistema Intercambio).
+    assert len(PLANTILLAS) == 7, [str(p) for p in PLANTILLAS]
 
 
 @hay_git

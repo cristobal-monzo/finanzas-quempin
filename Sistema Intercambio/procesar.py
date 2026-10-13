@@ -26,6 +26,10 @@ y solo si algo cambió desde la última vez:
 7. Mercado Público: resultado de las licitaciones de la Planilla y órdenes
    de compra a QUEMPIN -> ``licitaciones.json`` y sugerencias para la
    Planilla (``mercado_publico.py``; consulta la API en cada vuelta).
+7b. Oportunidades: licitaciones publicadas del rubro con su evaluación previa
+   -> ``oportunidades.json`` y la página «Oportunidades Mercado Público.html»
+   junto a la Planilla (``oportunidades.py``; solo si su configuración dice
+   ``enProcesador``).
 8. ``proyectos.json``: el cruce de claves, con todo lo anterior.
 9. ``estado.json``: el pulso que muestran las herramientas («al día hace 6
    min»): qué corrió, qué quedó pendiente por destinatario y cuán nueva es
@@ -60,6 +64,7 @@ import esquemas  # noqa: E402
 import formulaciones  # noqa: E402
 import intercambio  # noqa: E402
 import mercado_publico  # noqa: E402
+import oportunidades  # noqa: E402
 import proyectos  # noqa: E402
 import requerimientos  # noqa: E402
 import ubicacion  # noqa: E402
@@ -246,6 +251,23 @@ def paso_mercado_publico(raiz: Path, previo, forzar):
     return "; ".join(partes), "ok"
 
 
+def paso_oportunidades(raiz: Path, previo, forzar):
+    """Busca y evalúa licitaciones publicadas. Apagado hasta que la
+    configuración diga «enProcesador»: consulta la API con el mismo ticket
+    que el monitor y publica para todo el equipo."""
+    config = oportunidades.cargar_config()
+    if not config.get("enProcesador"):
+        return "apagado (oportunidades_config.json, enProcesador)", None
+    r = oportunidades.revisar(raiz, config=config)
+    d = r["datos"]
+    cuenta = {c: sum(1 for o in d["oportunidades"] if o["categoria"] == c) for c in ("prioritaria", "buena")}
+    partes = [f"{len(d['oportunidades'])} evaluada(s): {cuenta['prioritaria']} prioritaria(s), {cuenta['buena']} buena(s)",
+              f"{r['llamadas']} consulta(s)"]
+    if r["incompleta"]:
+        partes.append("sigue en la próxima vuelta")
+    return "; ".join(partes), "ok"
+
+
 def paso_proyectos(raiz: Path, previo, forzar):
     carpetas = proyectos.carpetas_de_proyectos(AQUI, RAIZ_FACTURAS_CL if RAIZ_FACTURAS_CL.is_dir() else None)
     r = proyectos.publicar(raiz, carpetas)
@@ -261,6 +283,7 @@ PASOS = (
     ("precios-referencia", paso_precios),
     ("sistema-quempin", paso_sistema_quempin),
     ("mercado-publico", paso_mercado_publico),
+    ("oportunidades", paso_oportunidades),
     ("proyectos", paso_proyectos),
 )
 

@@ -111,6 +111,9 @@ tmp/
 # públicos, pero cambian en cada vuelta. El ticket NUNCA vive en el repo: va
 # cifrado en %LOCALAPPDATA%\QUEMPIN (ver mercado_publico.py).
 **/mercado_publico_estado*.json
+# Oportunidades (2026-10-13): fichas de licitaciones publicadas e historial de
+# mercado (datos públicos), regenerable.
+**/oportunidades_estado*.json
 **/*.ticket
 
 # Flujo de Caja: saldo de caja y ajustes a mano (dato de la empresa)

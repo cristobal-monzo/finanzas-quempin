@@ -86,7 +86,7 @@ Lo que tiene que cumplir cualquier tablero (actual o futuro):
 Cómo verificarlo, con los `build/index.html` ya regenerados:
 
 ```
-py -3.14 "Visualizador Web/auditoria_movil.py"            # 7 tableros × 360/390/768 px
+py -3.14 "Visualizador Web/auditoria_movil.py"            # 8 tableros y el hub × 360/390/768 px
 py -3.14 "Visualizador Web/auditoria_movil.py" cc --capturas <carpeta fuera del repo>
 ```
 
@@ -134,7 +134,7 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
   HTML basta.
 - Las URLs de destino son estructurales (`/centro-de-costos/`,
   `/centro-de-costos-peru/`, `/analisis-financiero/`,
-  `/cotizador-historico/`, `/flujo-de-caja/`) — no deberían cambiar nunca, a diferencia de los
+  `/cotizador-historico/`, `/flujo-de-caja/`, `/oportunidades/`) — no deberían cambiar nunca, a diferencia de los
   links opacos de Artifact que sí podían regenerarse por error.
 - **Desde el 2026-10-06 es «Herramientas QUEMPIN»** (pedido del usuario: que
   las herramientas se sientan como un solo recorrido). Arriba, el botón «Abrir
@@ -142,6 +142,9 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
   del recorrido, cada una con la herramienta que la hace; Sistema QUEMPIN es un
   programa del computador, así que se nombra pero no se enlaza. Abajo, las
   tarjetas de los tableros con la etapa a la que sirven. Sigue sin datos.
+- **Oportunidades en Mercado Público** (2026-10-13) es la primera tarjeta: es
+  donde empieza un requerimiento (etapa 1), y la etapa 1 del recorrido la
+  nombra junto a la Planilla de Ingreso.
 
 ## Navegación entre tableros: selector de país + 3 pestañas (2026-10-01)
 
@@ -157,15 +160,18 @@ pestañas de módulo; cambiar de país lleva al mismo módulo en el otro país.
   `Visualizador Web/tests/test_navegacion_tableros.py` falla si una copia
   diverge — si cambias la navegación, cámbiala en los 5.
 - Un módulo nuevo es una pestaña más en todos los templates y en `MODULOS`
-  de ese test (así entró Flujo de Caja el 2026-10-02: hoy son 6 templates y
-  4 pestañas). Un país nuevo es otra `<option>` (su `value` es el sufijo de
-  la subruta, como `-peru`) y ese sufijo en el JS, que hoy solo reconoce
-  `-peru`.
+  de ese test (así entró Flujo de Caja el 2026-10-02, y Oportunidades en
+  Mercado Público el 2026-10-13: hoy son 7 templates y 5 pestañas). Un país
+  nuevo es otra `<option>` (su `value` es el sufijo de la subruta, como
+  `-peru`) y ese sufijo en el JS, que hoy solo reconoce `-peru`.
 - Un módulo que existe solo para Chile va en `SOLO_CHILE` del JS (hoy
-  `flujo-de-caja`): su pestaña apunta siempre a Chile, y elegir otro país
-  desde ese tablero lleva a Centro de Costos de ese país.
+  `flujo-de-caja` y `oportunidades`): su pestaña apunta siempre a Chile, y
+  elegir otro país desde ese tablero lleva a Centro de Costos de ese país.
+- La pestaña de un módulo nuevo solo aparece en los demás tableros cuando se
+  regeneran y publican: publícalos todos juntos (`publicar.py --todos`), o
+  uno enlaza a un tablero que el resto todavía no muestra.
 - **Enlace «Formulador de proyectos ↗»** (`a.viz-modnav-herr`, 2026-10-06), a
-  la derecha de las pestañas, dentro del mismo HTML idéntico de los 6
+  la derecha de las pestañas, dentro del mismo HTML idéntico de los 7
   templates (con su CSS): lleva a los proyectos, su formulación y su
   seguimiento, en pestaña nueva. En pantallas angostas dice solo
   «Formulador ↗» (`.viz-modnav-largo`).
@@ -174,7 +180,7 @@ pestañas de módulo; cambiar de país lleva al mismo módulo en el otro país.
 
 Pedido del usuario: la lista que abre un `<select>` (la del sistema operativo)
 «no parecía pertenecer al dashboard». Cada template lleva, justo después de
-`.viz-modnav-pais option`, un **bloque CSS idéntico en los 6**: flecha propia
+`.viz-modnav-pais option`, un **bloque CSS idéntico en los 7**: flecha propia
 en todos los `<select>` y, bajo `@supports (appearance: base-select)`, la lista
 abierta dibujada con la paleta del tablero (fondo de tarjeta, opción elegida en
 naranjo con ✓, hover naranjo suave; la del selector de país, oscura como la
@@ -206,6 +212,7 @@ https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero-peru/
 https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/
 https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico-peru/
 https://cristobal-monzo.github.io/finanzas-quempin/flujo-de-caja/          # solo Chile (2026-10-02)
+https://cristobal-monzo.github.io/finanzas-quempin/oportunidades/          # solo Chile (2026-10-13)
 ```
 
 **Cómo publicar (reemplaza "usar el tool `Artifact`" en toda la
@@ -225,9 +232,10 @@ tampoco hace falta guardar/leer un link en el `MEMORY.md` de cada skill.
 | Cotizador Histórico | `cotizador-historico` | `Cotizador Historico/Visualizador Web/build/index.html` |
 | Cotizador Histórico Perú | `cotizador-historico-peru` | `Peru/Cotizador Historico/Visualizador Web/build/index.html` |
 | Flujo de Caja | `flujo-de-caja` | `Flujo de Caja/Visualizador Web/build/index.html` |
+| Oportunidades en Mercado Público | `oportunidades` | `Sistema Intercambio/Visualizador Web/build/index.html` |
 
 ```
-py -3.14 "Visualizador Web/publicar.py" cc af cot fc        # o --todos; claves: cc ccpe af afpe cot cotpe fc
+py -3.14 "Visualizador Web/publicar.py" cc af cot fc op     # o --todos; claves: cc ccpe af afpe cot cotpe fc op
 git -C ".worktrees/gh-pages" commit -m "actualizar tableros: <cuáles>"
 git -C ".worktrees/gh-pages" push
 ```
@@ -299,7 +307,7 @@ Cómo funciona desde entonces (`Visualizador Web/candado.py` + `candado.js`):
   los archivos versionados en el equipo que la tiene. Los tests usan una de
   prueba (`conftest.py` de la raíz).
 - El navegador **recuerda la clave derivada** (`localStorage`,
-  `quempin_viz_clave`), la misma para los 7 tableros: la contraseña se
+  `quempin_viz_clave`), la misma para los 8 tableros: la contraseña se
   escribe una vez. Si cambia, la recordada deja de abrir y se vuelve a pedir.
 - **El Formulador usa la misma contraseña** (2026-10-13): su `index.html`
   (otro repositorio, mismo sitio) lleva un sobre corto cifrado con ella
@@ -307,7 +315,7 @@ Cómo funciona desde entonces (`Visualizador Web/candado.py` + `candado.js`):
   (`test_candado.py` exige que sea idéntica). Recuerda la misma
   `quempin_viz_clave`: entrar a uno abre los demás.
 - **Cambiar la contraseña**: editar `.contrasena_tableros`, regenerar y
-  publicar los 7 tableros, regenerar el sobre del Formulador con
+  publicar los 8 tableros, regenerar el sobre del Formulador con
   `py -3.14 "Visualizador Web/candado.py" --llave-formulador` y publicarlo, y
   avisar al equipo. El contenido cifrado es
   público y se puede atacar sin conexión, así que tiene que ser larga (la

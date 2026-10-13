@@ -110,6 +110,7 @@ tabla de abajo y los textos del Formulador lo resumen, no lo definen.
 | `publicado/precios-referencia.json`: precio reajustado por UF por hoja, sin proveedores ni documentos | Cotizador Histórico (`driver.py precios`, y tras cada `visualizador`); procesador cuando cambia la foto del tablero | Formulador | `Cotizador Historico/Sistema/precios_referencia.py` |
 | `publicado/documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN (al emitir/editar/eliminar en el equipo donde se hizo, y el procesador) | Formulador, Análisis Financiero, registro de proyectos, Flujo de Caja | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |
 | `publicado/licitaciones.json` (2026-10-13): resultado en Mercado Público de cada requerimiento con código, quién ganó y por cuánto, OC emitidas a QUEMPIN y lo que debe revisar una persona; también deja mensajes `actualizar-requerimiento` con `fuente.herramienta = mercado-publico` y `fuente.motivo` | procesador (`mercado_publico.py`, cada vuelta) | Formulador (Seguimiento, «Oferta y adjudicación»), bandeja de pendientes, `/Sugerencias_Requerimientos` | `Sistema Intercambio/mercado_publico.py` |
+| `publicado/oportunidades.json` (2026-10-13): licitaciones publicadas del rubro con su evaluación previa (8 criterios de 0 a 100, ponderado, categoría, motivos, a favor / en contra, parecidas de la Planilla, precedentes de mercado y las reglas que dependen de la fecha) | procesador (`oportunidades.py`, solo con `enProcesador` en su configuración) | otras herramientas; el equipo la mira en el tablero de GitHub Pages (`oportunidades/`, con contraseña), que arma `Visualizador Web/build_visualizador.py` con la misma evaluación | `Sistema Intercambio/oportunidades.py` |
 | `publicado/proyectos.json`: cruce `req` ↔ TAG ↔ formulaciones ↔ cotizaciones/OC ↔ carpetas | procesador | Formulador, Claude | `Sistema Intercambio/proyectos.py` |
 | `publicado/estado.json`: el pulso (última vuelta del procesador, pendientes por destino, cuán nueva es cada publicación) | procesador | Formulador («al día hace 6 min», y aviso rojo en la lista si está detenido) y la pestaña «Ingresar datos» del tablero AF, los dos con `pulso.js` | `Sistema Intercambio/procesar.py` |
 | `esquemas.json` (raíz de la carpeta): el catálogo completo | procesador | Sistema QUEMPIN, Formulador | `esquemas.paquete()` |
@@ -220,6 +221,101 @@ procesador, con la API pública de ChileCompra:
 carpeta. La caché (`mercado_publico_estado.json`, gitignoreada) solo lleva
 datos públicos. Las pruebas cortan la red y el ticket en `tests/conftest.py`:
 ninguna consulta la API real.
+
+## Oportunidades de negocio (`oportunidades.py`, 2026-10-13)
+
+Pedido del usuario: una herramienta que, con el historial de Mercado
+Público, identifique buenas oportunidades y haga una **evaluación previa**
+por rubro, monto, dificultad, visita técnica y tiempos de ejecución. Antes se
+revisaba Mercado Público a mano, y de 305 requerimientos de la Planilla 202
+terminaron descartados.
+
+En cada vuelta (con el mismo cliente y ticket del monitor):
+
+1. **Busca**: el listado de licitaciones publicadas (`estado=activas`, unas
+   5.000, una consulta). Después aplica un **prefiltro por el nombre**: frases
+   del rubro (`nucleo`, `afines`), o mucho parecido (≥ 0,6 y al menos 2
+   palabras en común) con un título que QUEMPIN ofertó. Con una palabra de
+   `excluir` en el nombre queda fuera sin gastar la ficha. Solo para las
+   candidatas pide la ficha, que se guarda en caché 3 días. El 2026-10-13
+   quedaron 46 a 48 candidatas de 4.932.
+2. **Historial de mercado**, de a poco y solo con las consultas que sobran
+   (completarlo no cuenta como vuelta incompleta). Lee el listado de unos
+   días hacia atrás (una consulta por día, hasta 365) y pide la ficha de las
+   adjudicadas del rubro: ganador, monto neto y oferentes. Se suma lo que el
+   monitor ya trajo de las licitaciones de la Planilla. Con eso salen los
+   competidores y los «precedentes» de cada comprador.
+3. **Evalúa** con 8 criterios de 0 a 100, cada uno con su motivo: rubro,
+   monto, dificultad, visita a terreno, ubicación, comprador y competencia,
+   plazo para ofertar y tiempo de ejecución. Calcula el ponderado y la
+   categoría.
+   - **Descartan solos**: cierra en menos de un día; visita **obligatoria** ya
+     pasada; palabra de `excluir` en el nombre; sin palabras del rubro ni
+     parecido; monto sobre un `maximo` puesto a mano. El máximo que sale de la
+     historia solo orienta, porque QUEMPIN ya ha ofertado licitaciones varias veces mayores que lo habitual.
+   - **Tope por rubro**: con rubro < 40 la categoría no pasa de «Baja», con
+     < 50 de «Evaluar» y con < 70 de «Buena». El tablero repite esta regla al
+     mover los pesos: si cambias una, cambia la otra (hay una prueba en
+     Chromium, `tests/test_tablero_oportunidades.py`).
+   - Se ordena por categoría y después por puntaje: una «Buena» por tope no
+     pasa delante de una «Prioritaria».
+4. **Publica** `oportunidades.json` (paso del procesador, si está activo).
+   Para cada licitación deja también `aFavor` / `enContra` (frases cortas
+   según hacia dónde empuja cada criterio), `descartarFijo` (los motivos que
+   no dependen de la fecha) y, para todas, `reglas` (tramos del plazo y la
+   visita ya pasada).
+5. **El tablero** (2026-10-13, pedido del usuario: «que sea más claro cuáles
+   son las oportunidades más relevantes» y publicado «con contraseña, con la
+   estética del resto»): `Visualizador Web/` de esta carpeta, publicado en
+   `oportunidades/` de gh-pages como los demás tableros, con la pestaña en la
+   navegación de los 7 y la tarjeta en el hub. Ver su `CLAUDE.md`. Reemplazó a
+   la página suelta que se dejaba junto a la Planilla: un solo lugar, cifrado.
+
+**Decisiones medidas contra los datos reales (2026-10-13):**
+- **No se corta a raíces de 6 letras**, solo se pasa a singular. Con el corte,
+  «hidrogeológico» era «hidrógeno».
+- Para decir que dos títulos se parecen, las palabras genéricas no cuentan
+  (`_GENERICAS`: mantención, revisión, servicio, sistema, agua, meses, años,
+  tipos de comprador y ciudades). Tampoco las que salen en menos de 3 títulos
+  de la Planilla (lugares, siglas).
+- Las palabras desconocidas sí cuentan en la norma y **diluyen** el
+  parecido.
+- Sin palabras del rubro hacen falta **2 palabras en común**. Con una sola
+  («piscina», «carabineros», «meses») pasaban 376 de 4.932 publicadas, casi
+  todas ajenas. Antes de estas reglas, «Revisión de prótesis» y
+  «radiotaxis» salían prioritarias.
+- El parecido se busca **solo por el nombre**, porque la Planilla guarda
+  títulos. La categoría de los ítems no entra al rubro: la de climatización
+  junta calefacción con aire acondicionado.
+- Las frases del rubro que aparecen **solo en la descripción** valen menos:
+  núcleo 60 en vez de 85, afín 35 en vez de 55. «Guardavidas para la piscina
+  temperada» no es climatizar una piscina.
+- «Varios recintos» se busca en plural, sin pasar a singular: «al
+  establecimiento» es uno solo.
+- La historia pesa un 25 % del rubro. Muchos descartes de calderas fueron por
+  distancia o plazo, y eso ya lo miden otros criterios.
+- Sin ficha (tope de consultas), visita, dificultad y duración quedan en 50,
+  nunca en 100.
+
+**Configuración**: `oportunidades_config.json` (versionado, sin datos de la
+empresa) guarda pesos, categorías, topes, frases del rubro, puntaje por
+región, tramos de duración, señales de dificultad, valor UTM y presupuesto de
+consultas (80 por vuelta). La UF se lee de la caché del Cotizador.
+
+**Seguridad**: es el mismo cliente del monitor (HTTPS, tope de tamaño,
+ticket DPAPI).
+- No se publican funcionarios: no se leen esos campos.
+- A la descripción se le borran correos y teléfonos (`_sin_contactos`), sin
+  tocar los montos.
+- El tablero lleva los datos cifrados (candado de los tableros) y escribe
+  todo con `textContent`: un nombre de la API nunca se interpreta como HTML.
+- Los enlaces se limitan a https://www.mercadopublico.cl/.
+
+**Estado**: el paso del procesador está **apagado** (`enProcesador: false`)
+hasta que el usuario lo active; el tablero lo refresca `/Actualizar_Finanzas
+run` (paso 7) y lo publica con los demás. `py -3.14 oportunidades.py status`
+evalúa sin publicar nada, y `--sin-red` reevalúa con la caché
+(`oportunidades_estado.json`, gitignoreada).
 
 ## Registro de proyectos (`proyectos.py`)
 
