@@ -513,7 +513,7 @@ configuración que viaja en la publicación: un solo buscador.
   visualizador publicado (sufijo "· fuente: ..." junto a "UF utilizada").
   Detalle del mecanismo (`obtener_uf_hoy`) en "Funciones clave" arriba;
   procedimiento paso a paso para el flujo de publicación en
-  `.claude/skills/Actualizar_Cotizador/SKILL.md`.
+  `.claude/skills/Cotizador_Historico/SKILL.md` § «Publicar el tablero».
 - **El buscador no se edita en `template.html`.** Mismo criterio que la
   taxonomía: el motor está en `Sistema/busqueda.py` + `catalogo_busqueda.py`
   y el lado navegador en `Visualizador Web/busqueda.js`, **un solo archivo

@@ -256,7 +256,7 @@ def build():
     print(f"Snapshot: {RUTA_DATA_JSON}")
     print(f"Visualizador: {RUTA_BUILD_HTML}")
     print("Para verlo: copialo a .worktrees/gh-pages/centro-de-costos/index.html y "
-          "haz git push (ver /Actualizar_CC), o abrelo directo en el navegador.")
+          "haz git push (ver /Registro_Centro_de_Costos), o abrelo directo en el navegador.")
     return 0
 
 

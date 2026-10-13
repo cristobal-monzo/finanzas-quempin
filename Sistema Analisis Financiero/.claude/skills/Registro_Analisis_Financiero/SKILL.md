@@ -1,6 +1,6 @@
 ---
 name: Registro_Analisis_Financiero
-description: Usar cuando el usuario escribe "/Registro_Analisis_Financiero" explícitamente. Si en cambio pide en lenguaje natural (sin el "/") actualizar Análisis Financiero, refrescar los indicadores de proyectos, ver el estado de Análisis de Proyectos 2026.xlsx, evaluar rentabilidad/KPIs de un proyecto, o revisar/confirmar un cliente detectado como similar a uno existente, pedir confirmación antes de invocarlo -- puede que el usuario quiera /Actualizar_AF en vez de este (ver CLAUDE.md raíz § Invocación de skills). Consolida los costos reales por proyecto y categoría desde Centro de Costos hacia Análisis de Proyectos 2026.xlsx (hojas Proyectos/Detalle Costos Reales/Indicadores/Clientes/Glosario KPIs), calcula la Nota del Proyecto (0-100, sobre el margen estimado al cierre), el margen acumulado y la recompra por cliente, avisa alertas de datos/sobrecosto, y crea la carpeta de facturas para proyectos nuevos agregados a mano en el Excel.
+description: Usar cuando el usuario escribe "/Registro_Analisis_Financiero" explícitamente. Si en cambio pide en lenguaje natural (sin el "/") actualizar Análisis Financiero, refrescar los indicadores de proyectos, ver el estado de Análisis de Proyectos 2026.xlsx, evaluar rentabilidad/KPIs de un proyecto, o revisar/confirmar un cliente detectado como similar a uno existente, pedir confirmación antes de invocarlo -- puede que el usuario quiera /Actualizar_Finanzas en vez de este (ver CLAUDE.md raíz § Invocación de skills). Desde el 2026-10-13 este skill también publica el tablero del AF al terminar (absorbió a /Actualizar_AF: ese nombre antiguo es este skill). Consolida los costos reales por proyecto y categoría desde Centro de Costos hacia Análisis de Proyectos 2026.xlsx (hojas Proyectos/Detalle Costos Reales/Indicadores/Clientes/Glosario KPIs), calcula la Nota del Proyecto (0-100, sobre el margen estimado al cierre), el margen acumulado y la recompra por cliente, avisa alertas de datos/sobrecosto, y crea la carpeta de facturas para proyectos nuevos agregados a mano en el Excel.
 ---
 
 # Registro Análisis Financiero
@@ -93,8 +93,8 @@ alguien los manda por correo: valida cada uno contra el catálogo y las reglas
 de este módulo y lo deja en el buzón tal cual (mismo id, nunca dos veces). Se
 aplica en el próximo `run` o en la próxima vuelta del procesador.
 
-`confirmar` corre un `run` completo: si se hace, publicar el dashboard como
-en `/Actualizar_AF`. Solo Chile (`--pais PE` informa que no está activo).
+`confirmar` corre un `run` completo: si se hace, publicar el tablero (ver
+«Publicar el tablero» abajo). Solo Chile (`--pais PE` informa que no está activo).
 
 **`formulaciones`** -- el repositorio de presupuestos del Formulador
 (`publicado/formulador/` de la misma carpeta; pedido del usuario
@@ -115,6 +115,23 @@ python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones car
 `cargar` deja en el buzón el mismo envío que haría el Formulador, con lo que
 el usuario vio como If-Match. Se aplica en el próximo `run`. Los costos salen
 del `resumen` que calcula el propio Formulador; Python no recalcula precios.
+
+## Publicar el tablero (antes `/Actualizar_AF`)
+
+Desde la fusión del 2026-10-13 este skill publica su tablero al terminar.
+Procedimiento común en
+[`docs/actualizar-un-modulo.md`](../../../../docs/actualizar-un-modulo.md).
+Lo propio de este módulo:
+
+- **Cuándo correr `run`**: si `status` muestra algo pendiente (carpetas
+  nuevas, avisos que ameriten atención) **o** si el usuario pide un refresco
+  — corrigió algo a mano en `Análisis de Proyectos 2026.xlsx`, confirmó un
+  cliente pendiente, o Centro de Costos acaba de correr. `run` ya regenera
+  `Visualizador Web/build/index.html`.
+- **Publicar** es obligatorio si se corrió `run`: desde la raíz del repo,
+  `py -3.14 "Visualizador Web/publicar.py" af` (copia el tablero con sus
+  reportes PDF cifrados y verifica que abran) y commit + push en
+  `.worktrees/gh-pages`. Con «sin publicar», no se publica y se avisa.
 
 ## Perú (`--pais CL|PE`)
 

@@ -1404,7 +1404,7 @@
             Escribe aquí los valores que hoy se cargan a mano en la planilla. Lo que cambies queda marcado en naranjo y
             se guarda como borrador en este navegador. Al enviar, cada proyecto queda como un archivo en el buzón de la
             carpeta de Intercambio y el Análisis Financiero lo pasa al Excel en su próxima vuelta (cada 2 horas, o al
-            correr <strong>/Actualizar_AF</strong>). Nunca reemplaza un valor que alguien cambió en el Excel después de
+            correr <strong>/Actualizar_Finanzas</strong>). Nunca reemplaza un valor que alguien cambió en el Excel después de
             que lo viste aquí: ese envío queda esperando una decisión.
           </p>
         </div>
@@ -3316,7 +3316,7 @@
         dialogo.close();
         var n = listo.mensajes.length;
         mostrarMensaje('Listo: ' + n + (n === 1 ? ' envío quedó' : ' envíos quedaron') + ' en el buzón de Intercambio. ' +
-          'El Análisis Financiero los pasa al Excel en su próxima vuelta (cada 2 horas, o al correr /Actualizar_AF); ' +
+          'El Análisis Financiero los pasa al Excel en su próxima vuelta (cada 2 horas, o al correr /Actualizar_Finanzas); ' +
           'el tablero los muestra cuando se vuelva a publicar. Abajo puedes revisar en qué quedó cada uno.');
         renderTodo();
         return refrescarEnvios();
@@ -3344,7 +3344,7 @@
         var n = listo.mensajes.length;
         mostrarMensaje('Se ' + (n === 1 ? 'descargó 1 archivo' : 'descargaron ' + n + ' archivos') + '. Déjalos tal cual en la carpeta ' +
           '<strong>Formulación de proyectos - Documentos › .Herramientas formulación › Intercambio › buzon</strong>, ' +
-          'o pásaselos a quien corre /Actualizar_AF (<code>driver.py intercambio cargar &lt;archivo&gt;</code>).', 'warn');
+          'o pásaselos a quien corre /Actualizar_Finanzas (<code>driver.py intercambio cargar &lt;archivo&gt;</code>).', 'warn');
         renderTodo();
       });
     });

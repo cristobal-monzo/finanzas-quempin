@@ -104,14 +104,14 @@ motor de taxonomía del Cotizador.
 
 Pedido explícito del usuario, 2026-08-18: todos los skills de `Finanzas
 QUEMPIN` (los de esta raíz y los de cada módulo) se invocan por su nombre
-explícito con "/" (ej. `/Actualizar_CC`, `/Registro_Centro_de_Costos`,
+explícito con "/" (ej. `/Actualizar_Finanzas`, `/Registro_Centro_de_Costos`,
 `/Cotizador_Historico`). Si el usuario describe la misma intención en
 lenguaje natural sin escribir el "/" (ej. "actualiza el centro de costos",
 "revisa los errores del excel", "¿cuánto debería costar un taladro?"), el
 agente **no invoca el skill directamente** — primero pregunta en la
 conversación a cuál skill se refiere (ej. "¿Te refieres a
-`/Actualizar_CC`?") y espera confirmación explícita antes de llamarlo. Esto
-aplica a los 13 skills del proyecto por igual, incluyendo los de solo
+`/Registro_Centro_de_Costos`?") y espera confirmación explícita antes de llamarlo. Esto
+aplica a los 9 skills del proyecto por igual, incluyendo los de solo
 lectura/consulta (`/Cotizador_Historico`, `status` de cualquier
 registrador) — no solo los que escriben o publican algo.
 
@@ -121,6 +121,28 @@ como opción), pero esa frase dispara una pregunta de confirmación, nunca
 una invocación automática. Reemplaza la política anterior de varios skills
 ("esto es el default para esas frases" / "rutea automáticamente a X"), que
 quedó desactualizada con este pedido.
+
+## Mapa de skills: cuál usar
+
+Eran 13 con nombres parecidos; el 2026-10-13, por pedido del usuario, se
+fusionaron los que se pisaban: `/Actualizar_CC` y `/Actualizar_Base_de_Datos`
+en `/Registro_Centro_de_Costos`, `/Actualizar_AF` en
+`/Registro_Analisis_Financiero` y `/Actualizar_Cotizador` en
+`/Cotizador_Historico`. Cada skill de registro publica ahora su tablero al
+terminar, salvo que el usuario diga «sin publicar». Si alguien escribe un
+nombre antiguo, es el skill nuevo: dilo en una línea y sigue.
+
+| Cuándo | Skill |
+|---|---|
+| Dejar todo al día (los 4 módulos y los 4 tableros) y ver qué espera a una persona | `/Actualizar_Finanzas` |
+| Registrar facturas y boletas, y publicar el tablero de Centro de Costos | `/Registro_Centro_de_Costos` |
+| Revisar y corregir hallazgos, celdas rojas o ítems agrupados del Centro de Costos | `/Revision_de_Errores` |
+| Recalcular el Análisis Financiero, confirmar clientes o envíos, y publicar su tablero | `/Registro_Analisis_Financiero` |
+| Reportes PDF de un proyecto, cliente o categoría | `/Reportes_Analisis_Financiero` |
+| Cuánto debería costar algo hoy, y publicar el tablero del Cotizador | `/Cotizador_Historico` |
+| Flujo de caja (Excel y tablero) | `/Registro_Flujo_de_Caja` |
+| Sugerencias del Formulador para la Planilla de Ingreso | `/Sugerencias_Requerimientos` |
+| Reorganizar las carpetas de un proyecto | `/Organizar_Proyecto` |
 
 ## Módulos
 
@@ -188,7 +210,7 @@ proceso**: los tres tienen archivos homónimos (`build_visualizador.py`,
 
 **Visualizador Web** es transversal a todos los módulos: cada uno tendrá, en su propia carpeta, una subcarpeta `Visualizador Web/` con un HTML publicado online (gráficos, tablas dinámicas, buscadores, filtros). El doc maestro compartido (marca, mandato de herramientas dinámicas, política de datos, hosting) vive en `Visualizador Web/CLAUDE.md` a nivel raíz; cada módulo tiene su propio `<Módulo>/Visualizador Web/CLAUDE.md` con el contenido específico a presentar. **Centro de Costos ya tiene una implementación real** (2026-07-19): `Centro de Costos/Visualizador Web/template.html` (estructura, versionada) + `build_visualizador.py` (export + build, corrible vía `driver.py visualizador` del skill `/Registro_Centro_de_Costos`) generan un `build/index.html` autocontenido con los datos incrustados, publicado en GitHub Pages (único canal desde la migración del 2026-08-05 — los Claude Artifacts privados que se usaban antes ya no se actualizan, pedido explícito del usuario 2026-08-19). **Los cuatro módulos tienen su visualizador real** (Centro de Costos 2026-07-19, Análisis Financiero 2026-07-23, Cotizador Historico, Flujo de Caja 2026-10-02). Ver el spec original en `docs/specs/2026-07-19-visualizador-web-design.md`.
 
-**Los tres se regeneran en disco, y los tres tienen ahora su propio skill "run + publicar" en un solo paso** (2026-08-05): `/Actualizar_CC` (Centro de Costos), `/Actualizar_AF` (Análisis Financiero), `/Actualizar_Cotizador` (Cotizador Histórico) — cada uno corre su registrador/visualizador y republica el dashboard existente en GitHub Pages (URL estructural fija, nunca un link nuevo). Úsalos cuando el usuario nombra un solo módulo; para los tres a la vez sigue siendo `/Actualizar_Finanzas` (que no publica por sí solo — deja los 3 builds listos en disco y reporta cuáles se regeneraron, la publicación de cada uno la hace el agente siguiendo la sección de arriba de ese skill). **El procedimiento común de los tres vive una sola vez** en [`docs/actualizar-un-modulo.md`](docs/actualizar-un-modulo.md) (por qué existen, los cuatro pasos, cuándo no aplican); cada `SKILL.md` solo agrega lo propio de su módulo. Antes los tres repetían ese texto casi palabra por palabra, y había que acordarse de sincronizarlos a mano.
+**Los tres se regeneran en disco, y el skill de registro de cada uno los publica al terminar** (desde la fusión del 2026-10-13; antes eran tres envoltorios aparte, `/Actualizar_CC`, `/Actualizar_AF` y `/Actualizar_Cotizador`): `/Registro_Centro_de_Costos`, `/Registro_Analisis_Financiero` y `/Cotizador_Historico` republican el tablero existente en GitHub Pages (URL estructural fija, nunca un link nuevo). Úsalos cuando el usuario nombra un solo módulo; para todos a la vez es `/Actualizar_Finanzas` (que deja los builds listos en disco, reporta cuáles se regeneraron y cierra con la bandeja de pendientes; la publicación la hace el agente siguiendo ese skill). **El procedimiento común vive una sola vez** en [`docs/actualizar-un-modulo.md`](docs/actualizar-un-modulo.md); cada `SKILL.md` solo agrega lo propio de su módulo.
 
 **Análisis Financiero** es distinto a los demás: no es solo un pipeline de registro, es un rol consultivo — actúa como analista financiero experto (evalúa proyectos, propone/depura KPIs, decide cómo presentar la información, cruza todos los módulos), sobre un Excel (`Análisis de Proyectos.xlsx`) que consolida costos reales de Centro de Costos contra ventas y proyecciones manuales por proyecto. **Reorganizado 2026-07-21**: `Análisis Financiero/` contiene únicamente el Excel de trabajo; el código, los tests y el skill viven en la carpeta hermana `Sistema Analisis Financiero/` (ver su `CLAUDE.md` para el diseño completo). Implementado y encadenado al `run` de Centro de Costos (PASO 12d) — ver `Sistema Analisis Financiero/CLAUDE.md`. Desde 2026-07-23 también tiene un Visualizador Web propio (`Sistema Analisis Financiero/Visualizador Web/`, mismo patrón que Centro de Costos: proyectos completos con sus KPIs + Clientes/CLTV, excluyendo del cálculo cualquier proyecto sin información manual completa).
 

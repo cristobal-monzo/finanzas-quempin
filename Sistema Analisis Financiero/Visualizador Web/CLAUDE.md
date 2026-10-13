@@ -313,7 +313,7 @@ desde el tablero».
   dice que lo enviado no se está aplicando (2026-10-08).
 - **El tablero publicado no cambia solo**: el procesador aplica el envío al
   Excel en ≤ 2 horas, pero GitHub Pages se actualiza cuando se publica
-  (`/Actualizar_AF`).
+  (`/Registro_Analisis_Financiero` o `/Actualizar_Finanzas`).
 - El aviso de proyectos incompletos lleva «Completarlos aquí», que abre la
   pestaña filtrada en los que les faltan datos.
 - En pantallas de más de 1240 px la tabla usa todo el ancho de la ventana (no

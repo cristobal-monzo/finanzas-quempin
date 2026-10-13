@@ -255,7 +255,7 @@ estaba repetida casi textual en `Actualizar_CC`, `Actualizar_AF`,
 `Actualizar_Cotizador`, `Actualizar_Finanzas` y en el `MEMORY.md` de
 `Registro_Centro_de_Costos`, con el riesgo real de que una futura migración
 de hosting quedara aplicada a medias — ya pasó una vez, con la migración de
-Artifacts a GitHub Pages). Esos skills solo enlazan acá para el "cómo" —
+Artifacts a GitHub Pages). Esos skills (fusionados el 2026-10-13 en los de registro de cada módulo) solo enlazan acá para el "cómo" —
 si necesitas cambiar la mecánica de publicación, cámbiala una sola vez,
 en esta sección.
 

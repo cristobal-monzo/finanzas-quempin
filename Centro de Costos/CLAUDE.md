@@ -69,38 +69,20 @@ esta skill hay que correr `python driver.py reflejar`
 comunicación - Centro de Costos 1/` — a diferencia de `run`, `corregir`/
 `desglosar` no hacen ese reflejo por sí solos.
 
-### Skill: `/Actualizar_CC`
+### Publicar el tablero: dentro de `/Registro_Centro_de_Costos`
 
-Agregada 2026-07-27 en
-[.claude/skills/Actualizar_CC/](.claude/skills/Actualizar_CC/SKILL.md).
-Envoltorio sobre `/Registro_Centro_de_Costos`: corre su flujo `status`→`run`
-y, si se registraron documentos nuevos (o el usuario pide forzarlo),
-**publica** el `Visualizador Web/build/index.html` regenerado en el sitio de
-GitHub Pages del proyecto (receta y URL fija en
-[`../Visualizador Web/CLAUDE.md`](../Visualizador%20Web/CLAUDE.md) §
-Hosting — hasta 2026-08-05 se publicaba como Claude Artifact, texto
-corregido acá el 2026-08-18 porque había quedado desactualizado tras esa
-migración). Cierra el paso manual que quedaba pendiente tras cada `run`: el
-registrador ya regenera el HTML en disco solo (PASO 12c), pero subirlo no
-era automático.
-
-### Skill: `/Actualizar_Base_de_Datos`
-
-Agregada 2026-08-18 en
-[.claude/skills/Actualizar_Base_de_Datos/](.claude/skills/Actualizar_Base_de_Datos/SKILL.md).
-Envoltorio sobre `/Registro_Centro_de_Costos` que corre `status`→`run` y se
-detiene ahí — a diferencia de `/Actualizar_CC`, deliberadamente **no**
-publica el dashboard (nunca toca el worktree `gh-pages`). Pensado para
-acumular varias corridas de registro de datos y publicar todo junto después
-con `/Actualizar_CC` o `/Actualizar_Finanzas`. Desde 2026-08-18, si `status`
-muestra documentos pendientes sin entrada en `datos_extraidos.json`, el
-agente los completa de forma interactiva antes de `run` (Paso 2 de
-`Registro_Centro_de_Costos/SKILL.md`: abre cada foto/PDF, extrae lo legible,
-y pregunta al usuario solo lo que el documento no resuelve por sí solo,
-agrupando por proyecto) — ningún documento nuevo queda sin registrar solo
-porque falte poblar el JSON. Mismo comportamiento heredado por `/Actualizar_CC`
-y (con una nota aparte, porque corre `run` como subproceso) por
-`/Actualizar_Finanzas`.
+Hasta el 2026-10-13 había dos envoltorios sobre `/Registro_Centro_de_Costos`:
+`/Actualizar_CC` (registrar y publicar el tablero en GitHub Pages) y
+`/Actualizar_Base_de_Datos` (registrar sin publicar). Se fusionaron en el
+skill de registro: ahora publica al terminar, y «sin publicar» es una
+instrucción del usuario, no otro skill. Procedimiento en
+[`../docs/actualizar-un-modulo.md`](../docs/actualizar-un-modulo.md).
+Lo que heredó de ellos: si `status` muestra documentos pendientes sin entrada
+en `datos_extraidos.json`, el agente los completa de forma interactiva antes
+de `run` (Paso 2 de `Registro_Centro_de_Costos/SKILL.md`: abre cada foto/PDF,
+extrae lo legible y pregunta al usuario solo lo que el documento no resuelve,
+agrupando por proyecto). Ningún documento nuevo queda sin registrar solo
+porque falte poblar el JSON; `/Actualizar_Finanzas` sigue la misma regla.
 
 ### Historia: reconstrucción de julio 2026
 

@@ -1,6 +1,6 @@
 ---
 name: Registro_Centro_de_Costos
-description: Direct pipeline commands (status/run/confirmar/visualizador/separar/separar-registrado) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer locally. Paso 2 also auto-splits any pending file that bundles more than 1 invoice/receipt in the same photo into 1 file per document before registering. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; ask the user for confirmation instead, since they may mean this skill, /Actualizar_CC, or /Actualizar_Base_de_Datos (see root CLAUDE.md § Invocación de skills). Use this skill directly for status checks, dry runs, audits, registering facturas, or confirming manual corrections when the user names it explicitly.
+description: Direct pipeline commands (status/run/confirmar/visualizador/separar/separar-registrado) for the Centro de Costos cost-center system — inventories invoice/receipt files under "Facturas y Boletas/", cross-checks them against datos_extraidos.json (per-line-item schema), and writes Master (1 row/documento con fórmulas)/Detalle (1 row/ítem)/hojas de proyecto (solo lectura, fórmulas) into "Centro de Costos.xlsx" with automatic backup, and regenerates the web visualizer, which this skill then publishes on GitHub Pages (merged 2026-10-13: it replaces /Actualizar_CC; saying "sin publicar" replaces /Actualizar_Base_de_Datos). Paso 2 also auto-splits any pending file that bundles more than 1 invoice/receipt in the same photo into 1 file per document before registering. Invoke ONLY via explicit "/Registro_Centro_de_Costos" — do NOT auto-trigger on loose phrases like "actualiza el centro de costos" or "actualiza cc" said without the leading slash; ask the user for confirmation instead, since they may mean this skill or /Actualizar_Finanzas (see root CLAUDE.md § Invocación de skills). The old names /Actualizar_CC and /Actualizar_Base_de_Datos mean this skill (with or without publishing). Use this skill directly for status checks, dry runs, audits, registering facturas, publishing the Centro de Costos dashboard, or confirming manual corrections when the user names it explicitly.
 ---
 
 # Registro: Centro de Costos
@@ -306,9 +306,17 @@ comandos exactos (subruta `centro-de-costos`) en
 `git add`/`commit`/`push` desde ese worktree. **Los Claude Artifacts ya no
 se actualizan** (pedido explícito del usuario, 2026-08-19) — GitHub Pages es
 el único canal de publicación desde la migración del 2026-08-05.
-`/Actualizar_CC` hace exactamente este paso extra sobre este mismo pipeline;
-si en cambio corriste `/Registro_Centro_de_Costos` directo por invocación
-explícita, el paso de publicar sigue siendo tuyo al terminar — no lo saltes.
+
+**Este skill publica al terminar** (fusión del 2026-10-13: absorbió a
+`/Actualizar_CC` y a `/Actualizar_Base_de_Datos`). Procedimiento común en
+[`docs/actualizar-un-modulo.md`](../../../../docs/actualizar-un-modulo.md):
+- con `run` que registró documentos (N > 0), o con un refresco pedido,
+  publicar con `py -3.14 "Visualizador Web/publicar.py" cc` (desde la raíz del
+  repo) y commit + push en `.worktrees/gh-pages`;
+- **si el usuario dijo «sin publicar»** («solo el Excel», «publico todo junto
+  después»; lo que antes era `/Actualizar_Base_de_Datos`), no publicar y
+  terminar diciendo que el tablero publicado sigue desactualizado hasta que se
+  publique (con este skill o con `/Actualizar_Finanzas`).
 
 Para regenerar el HTML local aparte sin correr todo el registrador (ej. solo
 cambió el diseño en `template.html`, no hay documentos nuevos):

@@ -1,6 +1,6 @@
 ---
 name: Actualizar_Finanzas
-description: Use when the user types "/Actualizar_Finanzas" explicitly. If the user instead describes the same intent in natural language without the leading "/" — "actualiza las finanzas", "actualiza todo", "corre todo el pipeline", "deja todo al día", or a read-only status across every module — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Runs Centro de Costos (which chains Análisis Financiero and the CC/AF dashboards), then regenerates the Cotizador Histórico dashboard (which nothing else invokes), reports which PDF reports went stale, runs the exchange-folder processor and rebuilds Flujo de Caja (Excel and dashboard). Use /Registro_Centro_de_Costos or /Actualizar_CC instead when the user explicitly names only Centro de Costos.
+description: Use when the user types "/Actualizar_Finanzas" explicitly. If the user instead describes the same intent in natural language without the leading "/" — "actualiza las finanzas", "actualiza todo", "corre todo el pipeline", "deja todo al día", or a read-only status across every module — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Runs Centro de Costos (which chains Análisis Financiero and the CC/AF dashboards), then regenerates the Cotizador Histórico dashboard (which nothing else invokes), reports which PDF reports went stale, runs the exchange-folder processor and rebuilds Flujo de Caja (Excel and dashboard). Ends with a pending-items tray (bandeja de pendientes). Use /Registro_Centro_de_Costos instead when the user explicitly names only Centro de Costos.
 ---
 
 # Actualizar Finanzas (orquestador de todos los módulos)
@@ -89,9 +89,21 @@ con el usuario», si queda algo de esto pendiente.
   primero, siguiendo el Paso 2 (interactivo, preguntas agrupadas por
   proyecto/documento) de
   [Registro_Centro_de_Costos/SKILL.md](../../../Centro%20de%20Costos/.claude/skills/Registro_Centro_de_Costos/SKILL.md)
-  (pedido 2026-08-18) — igual que hacen `/Actualizar_Base_de_Datos` y
-  `/Actualizar_CC`. Si se salta este paso, esos documentos simplemente
+  (pedido 2026-08-18) — igual que hace `/Registro_Centro_de_Costos`. Si se salta este paso, esos documentos simplemente
   seguirán apareciendo como pendientes después de `run`.
+
+## Bandeja de pendientes
+
+`status` y `run` cierran con la **BANDEJA DE PENDIENTES**
+(`Sistema Intercambio/bandeja.py`, 2026-10-13): todo lo que espera a una
+persona, con qué hacer en cada caso. Junta el procesador del intercambio
+detenido o con pasos fallando, sus avisos (copias en conflicto incluidas), lo
+que espera en el buzón de cada herramienta (sugerencias para la Planilla,
+borradores y registros para Sistema QUEMPIN, envíos al AF), proyectos del AF y
+cotizaciones de Chile sin N° de requerimiento, reportes PDF desactualizados,
+presupuestos del Formulador sin revisar y hallazgos del Centro de Costos por
+revisar. Al reportar al usuario, **resume la bandeja**: es la lista de lo que
+falta. `[!]` marca lo que está detenido o fallando.
 
 ## Paso obligatorio tras `run`: publicar los 4 tableros
 
@@ -135,10 +147,9 @@ Criterio de cuándo publicar cada uno:
   del proceso del driver — por eso el driver deja todo listo e impreso, y
   la publicación sigue la sección de arriba.
 - **No es la única forma de actualizar datos sin publicar.** Si el usuario
-  solo quiere Centro de Costos y quiere dejar la publicación para después,
-  [`/Actualizar_Base_de_Datos`](../../../Centro%20de%20Costos/.claude/skills/Actualizar_Base_de_Datos/SKILL.md)
-  es más directo — este orquestador de todas formas nunca publica solo,
-  pero sí corre y reporta todos los módulos, no solo uno.
+  solo quiere Centro de Costos y dejar la publicación para después,
+  `/Registro_Centro_de_Costos` con «sin publicar» es más directo (antes
+  `/Actualizar_Base_de_Datos`, fusionado el 2026-10-13).
 
 ## Cómo reportar al usuario
 

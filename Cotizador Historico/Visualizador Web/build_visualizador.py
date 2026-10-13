@@ -150,7 +150,7 @@ def build(uf_manual=None, fuente_manual=None):
     print(f"Snapshot: {RUTA_DATA_JSON}")
     print(f"Visualizador: {RUTA_BUILD_HTML}")
     print("Para verlo: copialo a .worktrees/gh-pages/cotizador-historico/index.html y "
-          "haz git push (ver /Actualizar_Cotizador), o abrelo directo en el navegador.")
+          "haz git push (ver /Cotizador_Historico), o abrelo directo en el navegador.")
     return 0
 
 

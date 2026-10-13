@@ -1,6 +1,6 @@
 ---
 name: Cotizador_Historico
-description: Usar cuando el usuario escribe "/Cotizador_Historico" explícitamente. Si en cambio pregunta en lenguaje natural (sin el "/") cuánto debería costar algo hoy, pide una cotización aproximada basada en compras anteriores, o quiere saber el precio histórico reajustado de un ítem ya comprado, pedir confirmación antes de invocarlo (ver CLAUDE.md raíz § Invocación de skills; aplica también siendo de solo lectura) -- nunca activarlo automático. Estima el costo actual de un ítem (material, equipo, herramienta) a partir de sus compras históricas en Centro de Costos, reajustando el precio por la variación de la UF entre la fecha de compra y hoy.
+description: Usar cuando el usuario escribe "/Cotizador_Historico" explícitamente. Si en cambio pregunta en lenguaje natural (sin el "/") cuánto debería costar algo hoy, pide una cotización aproximada basada en compras anteriores, o quiere saber el precio histórico reajustado de un ítem ya comprado, pedir confirmación antes de invocarlo (ver CLAUDE.md raíz § Invocación de skills; aplica también siendo de solo lectura) -- nunca activarlo automático. Estima el costo actual de un ítem (material, equipo, herramienta) a partir de sus compras históricas en Centro de Costos, reajustando el precio por la variación de la UF entre la fecha de compra y hoy. También regenera y publica el tablero del Cotizador en GitHub Pages (comando visualizador; desde el 2026-10-13 absorbió a /Actualizar_Cotizador: ese nombre antiguo es este skill).
 ---
 
 # Cotizador Historico
@@ -109,8 +109,8 @@ tanto `visualizador` como `consultar` aceptan `--uf-manual VALOR --uf-fuente
 usa este valor. El agente debe obtenerlo buscando en internet (`WebSearch`)
 una fuente confiable (ej. Banco Central de Chile) **antes** de pasar estos
 flags, nunca inventarlo. Ver `../../CLAUDE.md` § Precauciones para el
-detalle del mecanismo y `../Actualizar_Cotizador/SKILL.md` para el
-procedimiento paso a paso dentro del flujo de publicación.
+detalle del mecanismo y «Publicar el tablero» abajo para el procedimiento
+paso a paso dentro del flujo de publicación.
 
 ```
 python ".claude/skills/Cotizador_Historico/driver.py" visualizador --uf-manual 39200.50 --uf-fuente "Banco Central de Chile, 20-08-2026"
@@ -167,6 +167,39 @@ python ".claude/skills/Cotizador_Historico/driver.py" evaluacion --detalle
 **Corre `evaluacion` después de cualquier cambio en los tres catálogos**
 (taxonomía, atributos o búsqueda): es lo que distingue una mejora real de
 una que arregla un caso y rompe otros tres.
+
+## Publicar el tablero (antes `/Actualizar_Cotizador`)
+
+Desde la fusión del 2026-10-13, cuando el usuario pide actualizar el tablero
+del Cotizador, este skill lo regenera y lo publica. Procedimiento común en
+[`docs/actualizar-un-modulo.md`](../../../../docs/actualizar-un-modulo.md).
+Lo propio de este módulo:
+
+- **No escribe datos**: es de solo lectura sobre `Centro de Costos.xlsx`, así
+  que no hay `run` que decida si algo cambió. Regenerar siempre es seguro y
+  barato cuando se pide.
+- **Paso 1 — `status`**: confirma que `Centro de Costos.xlsx` existe, cuántos
+  ítems quedan excluidos del índice y si hay conexión a `mindicador.cl`.
+- **Paso 2 — `visualizador`** (reemplaza al `run` de los otros módulos).
+- **Paso 3 — publicar**: desde la raíz del repo,
+  `py -3.14 "Visualizador Web/publicar.py" cot` y commit + push en
+  `.worktrees/gh-pages`. Con «sin publicar», no se publica y se avisa.
+- **Paso 4 — reportar** cuántos ítems quedan indexados y excluidos.
+
+**Si `visualizador` falla por `mindicador.cl` caído** (pedido del usuario,
+2026-08-20): el tablero necesita la UF de **hoy**, que nunca se cachea. No te
+detengas a avisar sin más:
+
+1. Busca en internet (`WebSearch`) la UF de **hoy** en una fuente confiable
+   (Banco Central de Chile, SII o un sitio financiero reconocido). Nunca la
+   inventes ni uses un valor viejo de `uf_cache.json`, que es solo para las
+   fechas de compra.
+2. Reintenta con `visualizador --uf-manual VALOR --uf-fuente "<fuente, DD-MM-AAAA>"`.
+   Queda marcado en el snapshot (`uf_fuente`) y visible junto a «UF utilizada».
+3. Solo si no encuentras un valor confiable, avisa al usuario y detente.
+
+Si el usuario solo pide una cotización puntual («¿cuánto debería costar un
+taladro?»), usa `consultar`: no hace falta tocar el tablero.
 
 ## Perú (`--pais CL|PE`)
 
