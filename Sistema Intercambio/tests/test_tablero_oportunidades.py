@@ -7,7 +7,6 @@ visita que ya pasó), que la página recalcula al día.
 Datos ficticios, en tmp_path. La contraseña es la de prueba del conftest raíz:
 la real nunca aparece en un test."""
 import importlib.util
-import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -93,6 +92,29 @@ def test_el_tablero_se_arma_cifrado_y_abre_con_la_contrasena(tmp_path):
     # Nada de los datos viaja en claro: ni el organismo ni la historia de la Planilla.
     assert "Servicio de ejemplo" not in html and "Mantención preventiva caldera hospital" not in html
     assert 'data-nav-activo="oportunidades"' in html
+
+
+def test_sin_respuesta_de_mercado_publico_usa_la_cache_y_lo_avisa(monkeypatch):
+    """La tarea diaria publica solo un tablero al día: sin API, el build arma
+    uno con la caché (para la corrida semanal) y lo marca con el código 3."""
+    pedidas = []
+
+    def revisar_falso(raiz, enviar, sin_red):
+        pedidas.append(sin_red)
+        if not sin_red:
+            raise build.mercado_publico.SinTicket("no hay ticket de Mercado Público en este equipo")
+        return {"datos": {"avisos": [], "oportunidades": []}, "llamadas": 0}
+
+    monkeypatch.setattr(build.oportunidades, "revisar", revisar_falso)
+    datos, llamadas, al_dia = build.evaluar(raiz=RAIZ_INTERCAMBIO)
+    assert al_dia is False and pedidas == [False, True] and llamadas == 0
+    assert datos["avisos"][0].startswith("No se pudo consultar Mercado Público")
+
+    escritos = []
+    monkeypatch.setattr(build, "construir", lambda datos: escritos.append(datos) or Path("index.html"))   # nunca el build real
+    assert build.main([]) == build.CODIGO_CON_CACHE and escritos
+    monkeypatch.setattr(build, "evaluar", lambda sin_red=False: ({"avisos": [], "oportunidades": []}, 5, True))
+    assert build.main([]) == 0
 
 
 def test_la_plantilla_repite_las_reglas_de_python():

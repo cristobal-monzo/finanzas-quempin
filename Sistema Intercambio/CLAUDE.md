@@ -312,8 +312,10 @@ ticket DPAPI).
 - Los enlaces se limitan a https://www.mercadopublico.cl/.
 
 **Estado**: el paso del procesador está **apagado** (`enProcesador: false`)
-hasta que el usuario lo active; el tablero lo refresca `/Actualizar_Finanzas
-run` (paso 7) y lo publica con los demás. `py -3.14 oportunidades.py status`
+hasta que el usuario lo active. El tablero se refresca y publica **todos los
+días a las 08:00** (tarea «Oportunidades Mercado Publico QUEMPIN»,
+`Actualizar_Finanzas/driver.py oportunidades`, desde el 2026-10-14) y también
+en `/Actualizar_Finanzas run` (paso 7). `py -3.14 oportunidades.py status`
 evalúa sin publicar nada, y `--sin-red` reevalúa con la caché
 (`oportunidades_estado.json`, gitignoreada).
 

@@ -53,6 +53,15 @@ openpyxl (ver `requirements.txt`).
      (`Sistema Intercambio/Visualizador Web/build_visualizador.py`). Sin
      respuesta de la API usa la última evaluación guardada y lo avisa en el
      tablero. Si falla, no frena nada.
+- **`oportunidades`** (2026-10-14, pedido del usuario: «que sea diaria») —
+  solo el tablero de Oportunidades: consulta la API, lo arma y lo publica en
+  GitHub Pages. Lo corre **todos los días a las 08:00** la tarea «Oportunidades
+  Mercado Publico QUEMPIN» (`tarea_oportunidades.cmd`, log en
+  `logs/oportunidades_*.log`, se guardan 30), aparte de la corrida semanal.
+  Si el equipo está apagado a esa hora, corre al encenderlo. Si Mercado
+  Público no responde, **no publica**: queda en línea el tablero anterior,
+  con su fecha. Si el procesador del intercambio está corriendo (también
+  consulta la API), lo espera hasta 15 minutos.
 
 ## Presupuestos del Formulador: revisarlos y cargarlos con el usuario
 

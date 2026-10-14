@@ -45,10 +45,15 @@ commit de solo esas subrutas y push. Los tableros van cifrados. Antes lo hacia
 el agente a mano, y la corrida programada de los lunes dejaba los tableros
 regenerados en disco sin publicar. '--sin-publicar' lo omite.
 
+Tablero de Oportunidades a diario (2026-10-13, pedido del usuario): 'oportunidades'
+arma y publica solo ese tablero; lo corre su propia tarea programada todos
+los dias (tarea_oportunidades.cmd). 'run' lo sigue incluyendo.
+
 Uso:
   python driver.py status               # solo lectura: que haria cada modulo, sin tocar nada
   python driver.py run                  # cadena completa y publica los tableros regenerados
   python driver.py run --sin-publicar   # cadena completa, sin publicar
+  python driver.py oportunidades        # solo el tablero de Oportunidades, y lo publica si quedo al dia
 """
 
 import importlib.util
@@ -597,14 +602,61 @@ def cmd_run(publicar=True):
     return codigo
 
 
+# El procesador del intercambio también consulta la API de Mercado Público (su
+# monitor). Si las dos tareas arrancan juntas (al encender el equipo corren
+# las que se perdieron), la API rechaza las consultas simultáneas: se espera a
+# que el procesador suelte su candado, que vence a los 30 minutos.
+CANDADO_PROCESADOR = SISTEMA_INTERCAMBIO / ".procesador.lock"
+ESPERA_PROCESADOR_SEG = 15 * 60
+
+
+def _esperar_procesador(dormir=time.sleep, reloj=time.monotonic):
+    inicio = reloj()
+    avisado = False
+    while CANDADO_PROCESADOR.exists() and reloj() - inicio < ESPERA_PROCESADOR_SEG:
+        try:
+            if time.time() - CANDADO_PROCESADOR.stat().st_mtime > 30 * 60:
+                break                          # candado vencido: el procesador no lo va a soltar
+        except OSError:
+            break
+        if not avisado:
+            print("  El procesador del intercambio está corriendo: se espera a que termine.")
+            avisado = True
+        dormir(15)
+
+
+def cmd_oportunidades(publicar=True):
+    """Solo el tablero de Oportunidades en Mercado Público, a diario (pedido
+    del usuario, 2026-10-13: las licitaciones cierran en días y la corrida
+    completa es semanal). Lo corre la tarea «Oportunidades Mercado Publico
+    QUEMPIN» (tarea_oportunidades.cmd). Si Mercado Público no respondió, el
+    build arma el tablero con la caché (código 3) y aquí NO se publica: queda en
+    línea el anterior, con su fecha a la vista."""
+    inicio = time.perf_counter()
+    _esperar_procesador()
+    ok, salida = _ejecutar(
+        "Oportunidades en Mercado Público -- tablero (consulta la API)",
+        BUILD_OPORTUNIDADES, [], obligatorio=False,
+    )
+    resultados = [("Tablero de Oportunidades al día", ok)]
+    if not ok:
+        print("\n  [WARN] El tablero no quedó al día (ver arriba): no se publica; queda en línea el anterior.")
+    elif publicar:
+        resultados.append(("Publicar en GitHub Pages", _publicar(["op"])))
+    _informe_tiempos(time.perf_counter() - inicio)
+    return _resumir(resultados, "Tablero de Oportunidades al día" + (" y publicado." if publicar else " en disco (sin publicar)."))
+
+
 def main():
-    comandos = ("status", "run")
+    comandos = ("status", "run", "oportunidades")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
-        print("Uso: python driver.py [status|run [--sin-publicar]]")
+        print("Uso: python driver.py [status|run [--sin-publicar]|oportunidades [--sin-publicar]]")
         return 2
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     if sys.argv[1] == "status":
         return cmd_status()
+    if sys.argv[1] == "oportunidades":
+        return cmd_oportunidades(publicar="--sin-publicar" not in sys.argv[2:])
     return cmd_run(publicar="--sin-publicar" not in sys.argv[2:])
 
 
