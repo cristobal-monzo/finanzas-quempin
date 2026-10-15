@@ -32,7 +32,7 @@
   "rubro": {
     "nucleo": [
       "caldera", "sala de calderas", "calefacción", "agua caliente", "quemador", "boiler",
-      "central térmica", "sistema térmico", "generador de vapor", "vapor", "radiador",
+      "central térmica", "sistema térmico", "generador de vapor", "vapor",
       "hidrógeno", "incinerador", "horno crematorio", "intercambiador de calor", "red de gas",
       "instalación de gas", "gas natural", "gas licuado", "calefón", "termo eléctrico"
     ],
@@ -41,15 +41,16 @@
       "piscina temperada", "temperado de piscina", "chimenea", "horno industrial", "horno a gas",
       "horno panadero", "marmita", "estanque acumulador", "válvula termostática", "válvula motorizada",
       "válvula de gas", "bomba recirculadora", "sala de bombas", "sala de máquinas", "tren de gas",
-      "termoventilador", "calentador"
+      "termoventilador", "calentador", "radiador"
     ],
     "_excluir": "excluir: no es trabajo de QUEMPIN aunque nombre una caldera (combustible, químicos). En el nombre de la licitación, la descarta; en la descripción, resta. restar: resta poco si además hay palabras del núcleo.",
     "excluir": [
-      "combustible", "suministro de petróleo", "petróleo diésel", "petróleo calefacción", "petróleo para calefacción", "petróleo para caldera",
+      "combustible", "suministro de petróleo", "petróleo diésel", "petróleo calefacción", "petróleo para calefacción", "petróleo para calderas de calefacción",
       "suministro diésel", "diésel caldera", "parafina", "leña", "suministro de pellet", "pavimento",
       "pavimentación", "iluminación", "alumbrado", "vialidad", "autoclave", "esterilización",
       "producto químico", "medicamento", "alimentación", "capacitación", "factor de emisión",
-      "base calefactora", "tala", "árbol", "letrero", "prótesis", "hidrogeológico", "aditivo", "granel"
+      "base calefactora", "tala", "árbol", "letrero", "prótesis", "hidrogeológico", "aditivo", "granel",
+      "vehículo", "camioneta", "camión", "ambulancia", "automotriz", "radiador de motor", "engrase", "mueble"
     ],
     "_restaExcluirSoloDescripcion": "Si el nombre es del núcleo y la palabra de excluir está solo en la descripción, resta esto en vez de 35 (medido 2026-10-14 contra la Planilla).",
     "restaExcluirSoloDescripcion": 10,
@@ -147,9 +148,9 @@
     "maxCandidatas": 40,
     "minimoHistoriaMonto": 8,
     "monto": {"idealDesde": null, "idealHasta": null, "maximo": null},
-    "_busquedas": "En orden de importancia (si la API está lenta, las últimas quedan para la próxima vuelta). Son las palabras de lo que QUEMPIN cotizó por compra ágil; climatización y otros afines casi nunca se ofertaron.",
+    "_busquedas": "En orden de importancia (si la API está lenta, las últimas quedan para la próxima vuelta). Son las palabras de lo que QUEMPIN cotizó por compra ágil; climatización y otros afines casi nunca se ofertaron. «radiador» no se busca: en compras ágiles casi siempre es el de un vehículo (medido el 2026-10-15).",
     "busquedas": [
-      "caldera", "calderas", "calefacción", "quemador", "radiadores", "radiador", "agua caliente",
+      "caldera", "calderas", "calefacción", "quemador", "agua caliente",
       "quemadores", "incinerador", "vapor", "hidrógeno", "termo eléctrico", "calefón", "bomba de calor"
     ],
     "plazoOferta": {

@@ -354,10 +354,19 @@ Lo que se encontró y se cambió:
   Nuevos pesos: rubro 30, monto 10, dificultad 15, visita 5, ubicación 15,
   comprador 15, plazo 5, ejecución 5.
 - **Exclusiones nuevas**: «aditivo» (por «Provisión de sal y aditivos para
-  caldera», que tenía 88) y «granel» (petróleo a granel).
+  caldera», que tenía 88), «granel» y «petróleo para calderas de
+  calefacción» (combustible). También vehículos y muebles («radiador de
+  motor», «camioneta», «mueble»…).
+- **«radiador» pasó de núcleo a afín.** En las compras ágiles casi siempre es
+  el de un vehículo, y salían como prioritarias. «Caldera y radiadores» sigue
+  siendo núcleo por «caldera».
+- **Ojo con las frases**: las palabras vacías («para», «por») no cuentan.
+  «petróleo para caldera» calzaba con «cambio de caldera **a petróleo por
+  caldera** a gas», que se ofertó. Medir siempre después de agregar una
+  frase.
 - Resultado en las 247 licitaciones: el AUC pasó de 0,757 a 0,79. Con nota 85
-  o más se ofertaba el 67 % (10 de 15); ahora 3 de 4. Hay que repetir la
-  medición cuando cambien reglas o pesos.
+  o más se ofertaba el 67 % (10 de 15); ahora el 80 % (4 de 5). Hay que
+  repetir la medición cuando cambien reglas o pesos.
 
 **Correo de alertas (2026-10-14, `alertas_oportunidades.py`)**: cuando hay
 una oportunidad nueva con **nota 85 o más**, se envía un resumen (monto,
