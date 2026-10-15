@@ -18,7 +18,7 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   Mercado Público usa la caché y lo avisa. `--sin-red` arma solo la página.
 - **Publicado** en `oportunidades/` de gh-pages, clave `op` de
   `Visualizador Web/publicar.py`. Se actualiza **a diario** (desde el
-  2026-10-14): la tarea «Oportunidades Mercado Publico QUEMPIN», a las 08:00,
+  2026-10-14): la tarea «Oportunidades Mercado Publico QUEMPIN», a las 09:00,
   corre `Actualizar_Finanzas/driver.py oportunidades`, que lo arma y lo publica
   solo si Mercado Público respondió (el build termina con código 3 cuando usó
   la caché). `/Actualizar_Finanzas run` también lo regenera con los demás.

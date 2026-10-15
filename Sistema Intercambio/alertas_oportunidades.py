@@ -19,9 +19,16 @@ Reglas (``alertas`` en oportunidades_config.json):
 - **Como máximo maxCorreosPorSemana correos en 7 días corridos.** Si en una
   vuelta hay varias, van todas juntas en un solo correo. Si ya se llegó al
   tope, esperan: la próxima vuelta las vuelve a mirar si siguen abiertas.
-- El destinatario está en ``oportunidades_destinatarios.json``, fuera del
-  repositorio (que es público): ``{"para": ["nombre@quempin.cl"]}``. Sin ese
-  archivo no se envía nada.
+- **Solo en horario laboral** (2026-10-15, pedido del usuario: «nunca debes
+  mandar un correo fuera de los días u horarios laborales, siempre de lunes a
+  viernes y en horarios entre las 9.00 a las 17.00»): ``alertas.horario`` y
+  los feriados nacionales de ``alertas.feriados``. Fuera de horario lo
+  elegible **espera**, sin marcarse como enviado: sale en la primera vuelta
+  dentro del horario si sigue abierto. Se revisa al decidir y otra vez justo
+  antes de entregar el correo a Outlook.
+- Los destinatarios están en ``oportunidades_destinatarios.json``, fuera del
+  repositorio (que es público): ``{"para": ["nombre@quempin.cl", ...]}``. Sin
+  ese archivo no se envía nada.
 
 El correo sale por **Outlook de este equipo** (``enviar_correo_outlook.ps1``,
 COM de Outlook): no se guarda ninguna contraseña nueva. Lo llama
@@ -95,6 +102,24 @@ def elegibles(datos: dict, enviados: set[str], reglas: dict, ahora: datetime) ->
     return sorted(salida, key=lambda o: -o["puntaje"])
 
 
+def en_horario_laboral(ahora: datetime, reglas: dict) -> tuple[bool, str]:
+    """(se puede enviar ahora, por qué no). Lunes a viernes, dentro de
+    horario.desde y antes de horario.hasta, y que no sea feriado."""
+    h = reglas["horario"]
+    if ahora.isoweekday() not in h["dias"]:
+        return False, "es fin de semana"
+    if ahora.date().isoformat() in set(reglas.get("feriados") or []):
+        return False, "es feriado"
+    if not (h["desde"] <= ahora.strftime("%H:%M") < h["hasta"]):
+        return False, f"es fuera del horario de {h['desde']} a {h['hasta']}"
+    return True, ""
+
+
+def feriados_cubren(ahora: datetime, reglas: dict) -> bool:
+    """La lista de feriados tiene fechas del año en curso (hay que extenderla cada año)."""
+    return any(str(f).startswith(f"{ahora.year}-") for f in reglas.get("feriados") or [])
+
+
 def correos_en_7_dias(registro: dict, ahora: datetime) -> int:
     desde = (ahora - timedelta(days=7)).isoformat(timespec="seconds")
     return sum(1 for c in registro.get("correos") or [] if c.get("fecha", "") > desde)
@@ -106,6 +131,12 @@ def decidir(datos: dict, registro: dict, reglas: dict, ahora: datetime) -> dict:
     usados = correos_en_7_dias(registro, ahora)
     if not lista:
         return {"enviar": [], "esperan": [], "motivo": f"ninguna oportunidad nueva con nota {reglas['notaMinima']} o más"}
+    habil, por_que = en_horario_laboral(ahora, reglas)
+    if not habil:
+        h = reglas["horario"]
+        return {"enviar": [], "esperan": lista,
+                "motivo": f"no se envía porque {por_que} (solo de lunes a viernes hábiles, de {h['desde']} a {h['hasta']}): "
+                          "esperan a la próxima vuelta en horario"}
     if usados >= reglas["maxCorreosPorSemana"]:
         return {"enviar": [], "esperan": lista,
                 "motivo": f"ya se enviaron {usados} correos en 7 días (tope {reglas['maxCorreosPorSemana']}): esperan"}
@@ -217,7 +248,7 @@ def cuerpo_html(lista: list[dict], ahora: datetime, reglas: dict) -> str:
   <p style="font-size:15px;margin:8px 0 16px 0">{'Apareció una oportunidad' if len(lista) == 1 else f'Aparecieron {len(lista)} oportunidades'} con nota {reglas['notaMinima']} o más en la evaluación de hoy.</p>
   {''.join(bloques)}
   <p style="font-size:14px;margin:16px 0"><a href="{URL_TABLERO}" style="color:{NARANJO_TINTA}">Abrir el tablero de Oportunidades</a> (con la contraseña de los tableros) para ver cómo se calculó cada nota.</p>
-  <p style="font-size:12px;color:#777;margin:16px 0 0 0">Correo automático: solo para notas de {reglas['notaMinima']} o más, como máximo {reglas['maxCorreosPorSemana']} correos en 7 días y nunca dos veces la misma oportunidad. Las notas son una evaluación previa: confirma plazos, visita y requisitos en las bases.</p>
+  <p style="font-size:12px;color:#777;margin:16px 0 0 0">Correo automático: solo para notas de {reglas['notaMinima']} o más, en días hábiles de {reglas['horario']['desde']} a {reglas['horario']['hasta']}, como máximo {reglas['maxCorreosPorSemana']} correos en 7 días y nunca dos veces la misma oportunidad. Las notas son una evaluación previa: confirma plazos, visita y requisitos en las bases.</p>
 </div></body></html>"""
 
 
@@ -229,9 +260,19 @@ def destinatarios(ruta: Path | None = None) -> list[str]:
     return [x for x in para if _CORREO.match(x)]
 
 
+def exigir_horario_laboral(ahora: datetime | None = None) -> None:
+    """Segundo control del horario, con la hora de este instante y la
+    configuración recién leída: nunca sale un correo fuera del horario
+    laboral, aunque quien llame se haya equivocado."""
+    habil, por_que = en_horario_laboral(ahora or datetime.now(), op.cargar_config()["alertas"])
+    if not habil:
+        raise ErrorCorreo(f"no se envía porque {por_que}")
+
+
 def enviar_outlook(para: list[str], titulo: str, cuerpo: str) -> str:
     """Entrega el correo a Outlook de este equipo (COM). Devuelve 'enviado' o
     'bandeja-de-salida' (Outlook lo envía al sincronizar)."""
+    exigir_horario_laboral()
     with tempfile.TemporaryDirectory() as carpeta:
         ruta = Path(carpeta) / "correo.json"
         ruta.write_text(json.dumps({"para": para, "asunto": titulo, "html": cuerpo}, ensure_ascii=True), encoding="ascii")
@@ -295,6 +336,9 @@ def main(argv=None) -> int:
         print(f"[ERROR] No hay evaluación guardada en {RUTA_DATOS}: arma primero el tablero.")
         return 1
     config = op.cargar_config()
+    if not feriados_cubren(datetime.now(), config["alertas"]):
+        print(f"[AVISO] La lista de feriados (alertas.feriados en oportunidades_config.json) no tiene fechas de "
+              f"{datetime.now().year}: agrégalas. Mientras tanto solo se evitan los fines de semana.")
     if orden == "vista":
         ahora = datetime.now()
         lista = sorted((o for o in datos.get("oportunidades") or [] if o.get("ficha") and o.get("categoria") != "descartar"),

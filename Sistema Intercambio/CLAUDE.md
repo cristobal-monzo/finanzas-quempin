@@ -371,9 +371,19 @@ Lo que se encontró y se cambió:
 **Correo de alertas (2026-10-14, `alertas_oportunidades.py`)**: cuando hay
 una oportunidad nueva con **nota 85 o más**, se envía un resumen (monto,
 tiempo restante, región, visita técnica, ejecución o plazo de entrega,
-comprador, a favor y en contra) a quien esté en
-`oportunidades_destinatarios.json`, que está gitignoreado porque el repo es
-público. Reglas en `alertas` de la configuración:
+comprador, a favor y en contra) a quienes estén en
+`oportunidades_destinatarios.json` (gitignoreado porque el repo es público;
+desde el 2026-10-15 son dos personas). Reglas en `alertas` de la
+configuración:
+- **Solo en horario laboral** (2026-10-15, pedido del usuario: «nunca debes
+  mandar un correo fuera de los días u horarios laborales, siempre de lunes a
+  viernes y en horarios entre las 9.00 a las 17.00»): `horario` (a las 17:00
+  ya no) y los feriados nacionales de `feriados`, verificados en feriados.cl.
+  2027 trae un feriado adicional el 17 de septiembre. Fuera de horario lo
+  elegible **espera** sin marcarse como enviado y sale en la primera vuelta
+  en horario si sigue abierto. Se revisa dos veces: al decidir y justo antes
+  de entregar a Outlook (`exigir_horario_laboral`). **Cada año hay que
+  agregar los feriados del año nuevo**; si faltan, el comando lo avisa.
 - **Como máximo 3 correos en 7 días corridos.** Si en una vuelta hay varias,
   van juntas en un solo correo.
 - **Nunca se repite una oportunidad**: lo enviado queda en
@@ -410,8 +420,9 @@ ticket DPAPI).
 
 **Estado**: el paso del procesador está **apagado** (`enProcesador: false`)
 hasta que el usuario lo active. El tablero se refresca y publica **todos los
-días a las 08:00** (tarea «Oportunidades Mercado Publico QUEMPIN»,
-`Actualizar_Finanzas/driver.py oportunidades`, desde el 2026-10-14) y también
+días a las 09:00** (tarea «Oportunidades Mercado Publico QUEMPIN»,
+`Actualizar_Finanzas/driver.py oportunidades`, desde el 2026-10-14; era a las
+08:00 hasta que el correo quedó limitado al horario laboral) y también
 en `/Actualizar_Finanzas run` (paso 7). `py -3.14 oportunidades.py status`
 evalúa sin publicar nada, y `--sin-red` reevalúa con la caché
 (`oportunidades_estado.json`, gitignoreada).

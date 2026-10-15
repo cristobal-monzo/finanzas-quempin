@@ -331,3 +331,48 @@ def test_sin_ficha_se_usa_la_region_y_el_monto_del_listado(tmp_path, config):
     o = r["datos"]["oportunidades"][0]
     assert not o["ficha"] and o["compraAgil"] and o["regionCorta"] == "Magallanes"
     assert o["criterios"]["ubicacion"]["puntaje"] == 15 and o["monto"]["valor"] == 1_800_000
+
+
+# ── horario laboral (2026-10-15) ─────────────────────────────────────────────
+
+@pytest.mark.parametrize("cuando,se_envia", [
+    (datetime(2026, 10, 13, 9, 0), True),       # martes 9:00
+    (datetime(2026, 10, 13, 16, 59), True),     # martes 16:59
+    (datetime(2026, 10, 13, 8, 59), False),     # antes de las 9
+    (datetime(2026, 10, 13, 17, 0), False),     # a las 17:00 ya no
+    (datetime(2026, 10, 17, 10, 0), False),     # sábado
+    (datetime(2026, 10, 18, 10, 0), False),     # domingo
+    (datetime(2026, 10, 12, 10, 0), False),     # lunes feriado (Encuentro de Dos Mundos)
+])
+def test_solo_se_envia_en_dias_y_horas_laborales(reglas, cuando, se_envia):
+    datos = {"oportunidades": [_op("1-1-LE26", 92, cierre="2026-10-30T15:00")]}
+    d = al.decidir(datos, {}, reglas, cuando)
+    assert bool(d["enviar"]) is se_envia
+    if not se_envia:
+        assert [o["codigo"] for o in d["esperan"]] == ["1-1-LE26"] and "no se envía porque" in d["motivo"]
+
+
+def test_fuera_de_horario_espera_y_sale_en_la_proxima_vuelta_habil(tmp_path):
+    destinatarios = tmp_path / "dest.json"
+    destinatarios.write_text(json.dumps({"para": ["persona@ejemplo.cl", "otra@ejemplo.cl"]}), encoding="utf-8")
+    enviados = []
+    kw = dict(remitente=lambda para, asunto, cuerpo: enviados.append(para) or "enviado",
+              ruta_registro=tmp_path / "r.json", ruta_destinatarios=destinatarios)
+    datos = {"oportunidades": [_op("1-1-LE26", 92, cierre="2026-10-30T15:00")]}
+    r = al.ejecutar(datos, ahora=datetime(2026, 10, 17, 11, 0), **kw)       # sábado
+    assert r["enviado"] is None and enviados == [] and not (tmp_path / "r.json").exists()
+    r = al.ejecutar(datos, ahora=datetime(2026, 10, 19, 9, 5), **kw)        # lunes 9:05
+    assert r["enviado"] == "enviado" and enviados == [["persona@ejemplo.cl", "otra@ejemplo.cl"]]
+
+
+def test_el_envio_a_outlook_revisa_otra_vez_la_hora():
+    with pytest.raises(al.ErrorCorreo, match="fin de semana"):
+        al.exigir_horario_laboral(datetime(2026, 10, 17, 10, 0))
+    with pytest.raises(al.ErrorCorreo, match="fuera del horario"):
+        al.exigir_horario_laboral(datetime(2026, 10, 14, 18, 30))
+    al.exigir_horario_laboral(datetime(2026, 10, 14, 11, 0))                  # miércoles 11:00: no reclama
+
+
+def test_la_lista_de_feriados_cubre_el_ano_en_curso(reglas):
+    assert al.feriados_cubren(datetime(2026, 10, 15), reglas) and al.feriados_cubren(datetime(2027, 3, 1), reglas)
+    assert not al.feriados_cubren(datetime(2030, 1, 2), reglas)

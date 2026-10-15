@@ -55,7 +55,7 @@ openpyxl (ver `requirements.txt`).
      tablero. Si falla, no frena nada.
 - **`oportunidades`** (2026-10-14, pedido del usuario: «que sea diaria») —
   solo el tablero de Oportunidades: consulta la API, lo arma y lo publica en
-  GitHub Pages. Lo corre **todos los días a las 08:00** la tarea «Oportunidades
+  GitHub Pages. Lo corre **todos los días a las 09:00** la tarea «Oportunidades
   Mercado Publico QUEMPIN» (`tarea_oportunidades.cmd`, log en
   `logs/oportunidades_*.log`, se guardan 30), aparte de la corrida semanal.
   Si el equipo está apagado a esa hora, corre al encenderlo. Si Mercado
@@ -66,9 +66,12 @@ openpyxl (ver `requirements.txt`).
   v2, mismo ticket) y, después de publicar, manda el **correo de alertas**
   (`Sistema Intercambio/alertas_oportunidades.py enviar`, pedido del
   usuario): solo oportunidades con nota 85 o más, como máximo 3 correos en 7
-  días y nunca la misma dos veces. Sale por Outlook de este equipo; el
-  destinatario está en `oportunidades_destinatarios.json` (gitignoreado). Con
+  días y nunca la misma dos veces. Sale por Outlook de este equipo; los
+  destinatarios están en `oportunidades_destinatarios.json` (gitignoreado). Con
   datos de la caché no se manda nada. `run` hace lo mismo en su paso 7.
+  **Solo en horario laboral** (2026-10-15, pedido del usuario): de lunes a
+  viernes hábiles, de 9:00 a 17:00. Fuera de ese horario el correo espera a la
+  próxima vuelta en horario. Por eso la tarea pasó de las 08:00 a las 09:00.
 
 ## Presupuestos del Formulador: revisarlos y cargarlos con el usuario
 
