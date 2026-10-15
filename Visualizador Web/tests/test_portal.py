@@ -315,7 +315,7 @@ def _marco(pagina, familia, herr=None):
     pagina.wait_for_function("""([f, h]) => {
         const m = document.getElementById('marco-' + f);
         const b = m && m.contentDocument && m.contentDocument.body;
-        return !!(b && b.dataset.herr && (!h || b.dataset.herr === h));
+        return !!(b && b.dataset.herr && b.dataset.cargas && (!h || b.dataset.herr === h));
     }""", arg=[familia, herr])
     return pagina.locator("#marco-" + familia).element_handle().content_frame()
 
@@ -374,7 +374,7 @@ def test_un_enlace_a_otra_herramienta_abre_su_pestana_en_el_portal(navegador, si
     cc = _marco(pagina, "centro-costos", "cc")
     cc.click("#aAF")
     af = _marco(pagina, "analisis", "af")
-    assert af.evaluate("document.body.dataset.hash") == "#proyecto=DEMO"
+    _esperar(pagina, "analisis", "hash", "#proyecto=DEMO")
     assert cc.evaluate("document.body.dataset.herr") == "cc", "el Centro de Costos sigue en su pestaña"
     assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Análisis Financiero"]
     # Un enlace con target=_blank y un window.open también quedan en el portal, sin ventanas nuevas.
@@ -400,7 +400,7 @@ def test_los_enlaces_dentro_de_la_misma_herramienta_o_a_otra_pagina_navegan_norm
     _menu(pagina, "Centro de Costos")
     cc = _marco(pagina, "centro-costos", "cc")
     cc.click("#aMismo")
-    assert cc.evaluate("document.body.dataset.hash") == "#tag=OTRO"
+    _esperar(pagina, "centro-costos", "hash", "#tag=OTRO")
     # Un enlace al portal mismo no lo anida: vuelve al inicio, y la herramienta sigue donde estaba.
     cc.click("#aPortal")
     pagina.locator("#vistaInicio").wait_for(state="visible")
@@ -421,7 +421,7 @@ def test_el_buscador_lleva_a_la_pestana_de_una_calculadora(navegador, sitio):
     assert primero.locator(".res-tit").inner_text() == "Gas natural / GLP › Quemador atmosférico"
     pagina.keyboard.press("Enter")
     gas = _marco(pagina, "gas", "gas")
-    assert gas.evaluate("document.body.dataset.tab") == "quemador"
+    _esperar(pagina, "gas", "tab", "quemador")
     # Otra pestaña de la misma calculadora: se cambia ahí mismo, sin recargar ni abrir otra.
     pagina.locator("#buscar").fill("combustion")
     pagina.keyboard.press("Enter")
@@ -437,7 +437,7 @@ def test_el_buscador_lleva_a_la_pestana_de_una_calculadora(navegador, sitio):
     tarjeta = pagina.locator("#calcs .calc").filter(has=pagina.locator("h3", has_text=re.compile("^Hidrógeno$")))
     tarjeta.locator("button", has_text="Memoria de cálculo").click()
     h2 = _marco(pagina, "hidrogeno", "hidrogeno")
-    assert h2.evaluate("document.body.dataset.tab") == "memoria"
+    _esperar(pagina, "hidrogeno", "tab", "memoria")
     # Búsquedas por necesidad
     for consulta, esperado in (("factura", "Centro de Costos"), ("orden de compra", "Orden de compra"),
                                ("caneria", "Diámetro de tubería"), ("licitaciones", "Oportunidades en Mercado Público")):
@@ -477,7 +477,7 @@ def test_el_proyecto_elegido_abre_cada_herramienta_en_el(navegador, sitio):
                                                                                 "QMPN-2026-002 · Mantención de prueba"]
     pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-001").click()
     formulador = _marco(pagina, "formulador", "formulador")
-    assert formulador.evaluate("document.body.dataset.hash") == "#/p/u2/gantt"
+    _esperar(pagina, "formulador", "hash", "#/p/u2/gantt")
     assert "QMPN-2026-001" in pagina.locator("#proyectoActual").inner_text()
     # El mismo Formulador, en la misma pestaña
     _menu(pagina, "Formulador de proyectos")
@@ -485,7 +485,7 @@ def test_el_proyecto_elegido_abre_cada_herramienta_en_el(navegador, sitio):
     assert _pestanas(pagina) == ["Inicio", "Formulador de proyectos · QMPN-2026-001"]
     _menu(pagina, "Centro de Costos")
     cc = _marco(pagina, "centro-costos", "cc")
-    assert cc.evaluate("document.body.dataset.hash") == "#tag=DEMO"
+    _esperar(pagina, "centro-costos", "hash", "#tag=DEMO")
     # Sin proyecto: las abiertas vuelven a su vista general
     pagina.locator("#btnProyecto").click()
     pagina.locator("#listaProyectos .pop-item", has_text="Sin proyecto").click()
@@ -584,7 +584,7 @@ def test_las_pestanas_vuelven_al_recargar_y_solo_carga_la_activa(navegador, siti
     pagina.locator("#vistaInicio").wait_for(state="attached")
     assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Hidrógeno"]
     h2 = _marco(pagina, "hidrogeno", "hidrogeno")
-    assert h2.evaluate("document.body.dataset.tab") == "memoria"
+    _esperar(pagina, "hidrogeno", "tab", "memoria")
     assert pagina.locator("#marco-centro-costos").count() == 0
     pagina.locator("#pestanas .ir", has_text="Centro de Costos").click()
     _marco(pagina, "centro-costos", "cc")
@@ -604,9 +604,8 @@ def test_no_quedan_mas_de_ocho_herramientas_cargadas(navegador, sitio):
     for nombre in nombres:
         _menu(pagina, nombre)
     _marco(pagina, "gas", "gas")
-    pagina.wait_for_timeout(800)
     assert len(_pestanas(pagina)) == 10
-    assert pagina.locator("iframe.marco").count() <= 8
+    pagina.wait_for_function("() => document.querySelectorAll('iframe.marco').length <= 8")
     assert not errores
     pagina.context.close()
 
