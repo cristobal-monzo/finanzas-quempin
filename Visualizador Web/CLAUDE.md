@@ -145,6 +145,22 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
 - **Oportunidades en Mercado Público** (2026-10-13) es la primera tarjeta: es
   donde empieza un requerimiento (etapa 1), y la etapa 1 del recorrido la
   nombra junto a la Planilla de Ingreso.
+- **Desde el 2026-10-14 las tarjetas van en el orden del recorrido**
+  (Oportunidades, Cotizador, Centro de Costos, Análisis Financiero y, al final,
+  Flujo de Caja), y bajo el botón del Formulador una línea dice que su sección
+  «Pendientes del equipo» muestra lo que espera a alguien.
+
+## Enlaces por proyecto entre tableros (2026-10-14)
+
+- La ficha de un proyecto del **Análisis Financiero** (Chile, con gasto real)
+  lleva **«Ver sus facturas ↗»**: abre el Centro de Costos con
+  `#tag=<TAG>`.
+- El **Centro de Costos** (Chile) lee `#tag=<TAG>` y elige el proyecto cuyos
+  documentos llevan ese prefijo en su N° de referencia (`DEMO-101` → `DEMO`;
+  medido: 19 prefijos, ninguno con dos nombres). Con un proyecto elegido, junto
+  a «Limpiar filtros» ofrece **«Ficha en Análisis Financiero ↗»**
+  (`analisis-financiero/#proyecto=<TAG>`).
+- El de Perú no lee `#tag=`: por eso el AF de Perú no muestra el enlace.
 
 ## Navegación entre tableros: selector de país + 3 pestañas (2026-10-01)
 

@@ -400,6 +400,13 @@ a diferencia del tema visual (que sí usa `localStorage`) o del estado de
 "gate desbloqueado" (que usa `sessionStorage`), el contenido del carrito
 nunca se escribe en ningún almacenamiento del navegador.
 
+- **«Copiar para el Formulador»** (2026-10-14, Chile y Perú): copia al
+  portapapeles las líneas del carrito como `Descripción · Unidad · Cantidad ·
+  Costo unitario neto` (la hoja, `Un.`, la cantidad y `precio_reajustado_hoy`
+  redondeado), el formato que reconoce «Pegar desde Excel» del Formulador
+  (`js/pegar.js`, paso 3). Va por el portapapeles y no por el navegador: el
+  carrito sigue sin persistir. `test_template.py` lo exige en los dos países.
+
 - Cada tarjeta de producto, cada fila de la tabla de compras y cada
   tarjeta de la vista sin agrupar tienen el mismo bloque cantidad (−/+) +
   "Agregar" (`renderAgregar`), atendido por **un solo listener delegado**

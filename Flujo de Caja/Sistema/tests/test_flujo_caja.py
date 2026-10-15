@@ -290,3 +290,19 @@ def test_el_saldo_del_excel_se_recalcula_desde_la_celda_del_supuesto(carpeta, tm
     assert resumen.cell(row=sin, column=primero).value == f"=Supuestos!$B$2+{col}{filas['Neto sin ofertas probables']}"
     assert resumen.cell(row=con, column=primero + 1).value == f"={col}{con}+{sig}{filas['Neto del mes']}"
     assert resumen.cell(row=sin, column=2).value is None          # los meses reales no llevan saldo
+
+
+def test_calidad_cuenta_las_cotizaciones_sin_proyecto(tmp_path):
+    """2026-10-14: el tablero muestra cuántas cotizaciones no tienen N° de requerimiento (sus cuotas
+    no cuentan) junto a qué parte de lo proyectado sale de documentos."""
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    ic.publicar(raiz, "documentos-comerciales", "sistema-quempin", {"documentos": [
+        _cot("602695", "2026-09-20", 2000, [], req="280"),
+        _cot("602696", "2026-09-21", 3000, []),
+        _cot("602697", "2026-09-22", 4000, [], tag="UMAG"),
+        _cot("602698", "2026-09-23", 5000, []),
+        _oc("612611", "2026-09-20", 300000)]})
+    datos = fc.armar(raiz, tmp_path / "no-existe.json", hoy=HOY, sup=dict(SUP), ruta_excel_af=tmp_path / "no-existe.xlsx")
+    assert datos["calidad"] == {"cotizacionesSinProyecto": 2, "saldoEstimado": bool(SUP.get("saldoInicial"))}
+    datos = fc.armar(None, tmp_path / "no-existe.json", hoy=HOY, sup=dict(SUP, saldoInicial=1000), ruta_excel_af=tmp_path / "no-existe.xlsx")
+    assert datos["calidad"] == {"cotizacionesSinProyecto": 0, "saldoEstimado": True}

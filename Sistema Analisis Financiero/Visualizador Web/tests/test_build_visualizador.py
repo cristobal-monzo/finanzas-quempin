@@ -327,9 +327,21 @@ def test_la_ficha_enlaza_al_formulador_y_el_tablero_abre_enlaces_por_tag():
     html = (Path(__file__).resolve().parent.parent / "template.html").read_text(encoding="utf-8")
     assert "formulacion-proyectos-quempin/" in html
     assert "'#/req/' + encodeURIComponent(p.req)" in html and "'#/tag/' + encodeURIComponent(p.tag)" in html
-    assert "enlaceFormuladorHtml(p) + pdf" in html, "el enlace va en la cabecera de la ficha"
+    assert "enlaceFormuladorHtml(p) + enlaceCentroCostosHtml(p) + pdf" in html, "los enlaces van en la cabecera de la ficha"
     assert "/^#proyecto=([^&]+)/" in html and "window.addEventListener('hashchange', abrirDesdeEnlace)" in html
     assert "if (abrirIngresoDe(tag)) return;" in html
+
+
+def test_la_ficha_lleva_a_sus_facturas_en_el_centro_de_costos():
+    """2026-10-14: «Ver sus facturas ↗» abre el tablero del Centro de Costos filtrado por el TAG del
+    proyecto (#tag=), solo en Chile y solo si el proyecto tiene gasto real; el tablero del Centro de
+    Costos lee ese #tag= y, con un proyecto elegido, ofrece volver a su ficha (#proyecto=TAG)."""
+    html = (Path(__file__).resolve().parent.parent / "template.html").read_text(encoding="utf-8")
+    assert "centro-de-costos/#tag=' + encodeURIComponent(p.tag)" in html
+    assert "/-peru$/.test(activo)" in html and "conGasto" in html
+    cc = (Path(__file__).resolve().parents[3] / "Centro de Costos" / "Visualizador Web" / "template.html").read_text(encoding="utf-8")
+    assert "p.get('tag')" in cc and "indexOf(tag + '-') === 0" in cc
+    assert 'id="enlaceAF"' in cc and "analisis-financiero/#proyecto=' + encodeURIComponent(tagSel)" in cc
 
 
 def test_pendientes_dicen_que_campo_falta_y_cuanta_venta_queda_fuera(tmp_path):

@@ -485,6 +485,8 @@
   .viz-cart-textarea { width: 100%; font-family: 'Lato', monospace; font-size: 11px; padding: 8px; border-radius: 7px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); resize: vertical; white-space: pre; }
   .viz-cart-copybtn { width: 100%; font-family: inherit; font-size: 13.5px; font-weight: 900; padding: 11px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; margin-top: 8px; }
   .viz-cart-copybtn:disabled { opacity: 0.4; cursor: default; }
+  /* «Copiar para el Formulador» (2026-10-14): mismas filas, en el formato que entiende su «Pegar desde Excel» */
+  .viz-cart-copybtn-sec { background: transparent; color: var(--text-primary); border: 1.5px solid var(--brand-orange); margin-top: 6px; }
   .viz-cart-note { font-size: 10.5px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.4; }
 
   .viz-toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 960; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); background: #000; color: #fff; border-left: 3px solid #ff5100; border-radius: 10px; padding: 10px 10px 10px 14px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
@@ -937,7 +939,8 @@
       <p class="viz-cart-meta" id="exportMeta"></p>
       <textarea id="exportText" class="viz-cart-textarea" readonly rows="4" placeholder="Agrega referencias para generar la tabla…"></textarea>
       <button type="button" id="btnCopiarTodo" class="viz-cart-copybtn" disabled>Copiar tabla para Excel</button>
-      <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas). La cotización no se guarda: se borra al recargar la página.</p>
+      <button type="button" id="btnCopiarFormulador" class="viz-cart-copybtn viz-cart-copybtn-sec" disabled>Copiar para el Formulador</button>
+      <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas). Para el Formulador: paso 3 › Materiales › «Pegar desde Excel», con el costo neto actualizado por UF. La cotización no se guarda: se borra al recargar la página.</p>
     </div>
   </aside>
 
@@ -2252,6 +2255,7 @@
     var totalsEl = document.getElementById('cartTotals');
     var exportTextEl = document.getElementById('exportText');
     var copyBtn = document.getElementById('btnCopiarTodo');
+    var copyFormBtn = document.getElementById('btnCopiarFormulador');
     document.getElementById('cartVaciarBtn').hidden = !cart.length;
     actualizarMarcasCarrito();
 
@@ -2261,11 +2265,13 @@
       totalsEl.innerHTML = '';
       exportTextEl.value = '';
       copyBtn.disabled = true;
+      copyFormBtn.disabled = true;
       return;
     }
     emptyEl.style.display = 'none';
     try { exportTextEl.value = construirTextoExport(); } catch (e) { console.error('construirTextoExport failed:', e); }
     copyBtn.disabled = false;
+    copyFormBtn.disabled = false;
 
     listEl.innerHTML = cart.map(function (l) {
       var subtotal = l.cantidad * l.precio_reajustado_hoy_con_iva;
@@ -2387,6 +2393,39 @@
   }
 
   document.getElementById('btnCopiarTodo').addEventListener('click', copiarTextoExport);
+
+  // ---------- la cotización para el Formulador de proyectos (2026-10-14) ----------
+  // Las mismas líneas, en el formato que reconoce su «Pegar desde Excel» (js/pegar.js del Formulador):
+  // descripción, unidad, cantidad y costo unitario NETO actualizado por UF (el Formulador formula sin IVA).
+  // Va por el portapapeles: el carrito no se guarda en el navegador (solo en memoria, a propósito).
+  function construirTextoFormulador() {
+    var lineas = ['Descripción\tUnidad\tCantidad\tCosto unitario neto'];
+    cart.forEach(function (l) {
+      lineas.push([limpiarParaTsv(l.hoja || l.nombre_item), 'Un.', l.cantidad, Math.round(l.precio_reajustado_hoy)].join('\t'));
+    });
+    return lineas.join('\n');
+  }
+  document.getElementById('btnCopiarFormulador').addEventListener('click', function () {
+    var btn = document.getElementById('btnCopiarFormulador');
+    var texto = construirTextoFormulador();
+    function listo() {
+      btn.textContent = '✓ Copiada: pégala en el Formulador';
+      setTimeout(function () { btn.textContent = 'Copiar para el Formulador'; }, 1800);
+    }
+    function respaldo() {
+      var ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:-1000px;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { if (document.execCommand('copy')) listo(); } catch (e) {}
+      ta.remove();
+      btn.focus();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(listo, respaldo);
+    else respaldo();
+  });
 
   // ---------- explorador de carpetas (categoria > subcategoria > hoja) ----------
   var folderState = { categoria: null, subcategoria: null, hoja: null };

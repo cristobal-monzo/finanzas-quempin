@@ -289,10 +289,38 @@ __FC_FUENTES__
 
 
   /* ---------- Flujo de Caja ---------- */
-  .fc-avisos { background: var(--surface-card); border: 1px solid var(--gridline); border-left: 3px solid var(--brand-orange);
-    border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--text-secondary); }
-  .fc-avisos ul { margin: 6px 0 0; padding-left: 18px; }
-  .fc-avisos strong { color: var(--text-primary); }
+  /* ¿Cuánto de lo proyectado está respaldado? (2026-10-14): qué parte sale de documentos (cuotas de
+     cotizaciones, facturas y OC) y qué parte de estimaciones, con lo que la mejora. Las notas de la
+     corrida, que antes eran un bloque de 8 viñetas arriba de todo, van plegadas al pie de la tarjeta. */
+  .fc-conf { background: var(--surface-card); border: 1px solid var(--gridline); border-left: 3px solid var(--brand-orange);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
+  .fc-conf-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .fc-conf-h h2 { font-size: 14px; margin: 0; color: var(--text-primary); }
+  .fc-conf-res { font-size: 13px; color: var(--text-secondary); }
+  .fc-conf-res b { color: var(--text-primary); }
+  .fc-conf-filas { display: grid; gap: 8px; margin: 12px 0 0; }
+  .fc-conf-fila { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-secondary); }
+  .fc-conf-fila .t { font-weight: 700; color: var(--text-primary); }
+  .fc-conf-barra { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--gridline); }
+  .fc-conf-barra span { display: block; height: 100%; min-width: 0; }
+  .fc-conf-barra span + span { border-left: 1.5px solid var(--surface-card); }
+  .fc-conf-fila .pct { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+  .b-doc { background: var(--brand-orange); }
+  .b-est { background: var(--brand-orange); opacity: 0.45; }
+  .b-pro { background: repeating-linear-gradient(45deg, var(--brand-orange) 0 3px, transparent 3px 6px); }
+  .b-egr-doc { background: var(--text-primary); }
+  .b-egr-est { background: var(--brand-gray-7); }
+  .fc-conf-leyenda { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-secondary); }
+  .fc-conf-leyenda .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .fc-conf-accion { margin: 10px 0 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+  .fc-conf-accion b { color: var(--text-primary); }
+  .fc-notas { margin-top: 10px; border-top: 1px solid var(--gridline); padding-top: 8px; font-size: 12.5px; color: var(--text-secondary); }
+  .fc-notas summary { cursor: pointer; font-weight: 700; color: var(--brand-orange-ink); min-height: 28px; display: flex; align-items: center; gap: 6px; list-style: none; }
+  .fc-notas summary::-webkit-details-marker { display: none; }
+  .fc-notas summary::before { content: '▸'; font-size: 11px; }
+  .fc-notas[open] summary::before { content: '▾'; }
+  .fc-notas ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.45; }
+  @media (max-width: 640px) { .fc-conf-fila { grid-template-columns: 1fr auto; } .fc-conf-fila .fc-conf-barra { grid-column: 1 / -1; grid-row: 2; } }
   .kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
   .kpi-card { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 14px 16px; min-width: 0; }
   .kpi-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
@@ -427,14 +455,20 @@ __FC_FUENTES__
   </header>
 
   <div class="viz-container">
-    <div class="fc-avisos" id="fcAvisos" style="display:none"></div>
-
     <div class="kpi-row">
       <div class="kpi-card"><div class="kpi-label">Por cobrar</div><div class="kpi-value" id="kCobrar"></div><div class="kpi-sub" id="kCobrarSub"></div></div>
       <div class="kpi-card"><div class="kpi-label">Por pagar y por ejecutar</div><div class="kpi-value" id="kPagar"></div><div class="kpi-sub" id="kPagarSub"></div></div>
       <div class="kpi-card"><div class="kpi-label">Neto proyectado</div><div class="kpi-value" id="kNeto"></div><div class="kpi-sub" id="kNetoSub"></div></div>
       <div class="kpi-card"><div class="kpi-label">Mes más ajustado</div><div class="kpi-value" id="kMin"></div><div class="kpi-sub" id="kMinSub"></div></div>
     </div>
+
+    <section class="fc-conf" id="fcConf" aria-labelledby="fcConfT">
+      <div class="fc-conf-h"><h2 id="fcConfT">¿Cuánto de lo proyectado está respaldado?</h2><span class="fc-conf-res" id="fcConfRes"></span></div>
+      <div class="fc-conf-filas" id="fcConfFilas"></div>
+      <ul class="fc-conf-leyenda" id="fcConfLeyenda"></ul>
+      <p class="fc-conf-accion" id="fcConfAccion" hidden></p>
+      <details class="fc-notas" id="fcNotas" hidden><summary id="fcNotasT">Notas sobre los datos</summary><ul id="fcNotasLista"></ul></details>
+    </section>
 
     <section class="panel">
       <h2>Mes a mes</h2>
@@ -578,15 +612,63 @@ __FC_FUENTES__
       try { localStorage.setItem('fc_viz_theme', next); } catch (e) {}
     });
 
-    // Avisos de la corrida
-    var av = document.getElementById('fcAvisos');
+    // Notas de la corrida: plegadas al pie de «¿Cuánto de lo proyectado está respaldado?» (2026-10-14)
     if (DATA.avisos && DATA.avisos.length) {
-      av.style.display = '';
-      av.innerHTML = '<strong>Para leer estos números:</strong><ul>' + DATA.avisos.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul>';
+      document.getElementById('fcNotas').hidden = false;
+      document.getElementById('fcNotasT').textContent = 'Notas sobre los datos (' + DATA.avisos.length + ')';
+      document.getElementById('fcNotasLista').innerHTML = DATA.avisos.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('');
     }
 
     var optProb = document.getElementById('optProbables');
     var futuros = DATA.meses.filter(function (m) { return m.proyectado; });
+
+    /* Qué parte de lo proyectado (desde el mes en curso) sale de documentos y qué parte de estimaciones:
+       ingresos de cuotas de cotizaciones contra ventas del Análisis Financiero (monto real, fecha
+       estimada) y ofertas ponderadas; egresos de facturas y OC contra el costo por ejecutar. */
+    function pintarConfianza() {
+      var conProb = optProb.checked;
+      var suma = function (k) { return futuros.reduce(function (a, m) { return a + Math.max(0, m[k] || 0); }, 0); };
+      var ing = [
+        { k: 'doc', n: 'Cuotas de cotizaciones', v: suma('ingreso_comprometido'), cls: 'b-doc' },
+        { k: 'est', n: 'Ventas del Análisis Financiero (fecha estimada)', v: suma('ingreso_estimado'), cls: 'b-est' }
+      ];
+      if (conProb) ing.push({ k: 'pro', n: 'Ofertas ponderadas', v: suma('ingreso_probable'), cls: 'b-pro' });
+      var egr = [
+        { k: 'doc', n: 'Facturas y OC por pagar', v: suma('egreso_comprometido') + suma('egreso_real'), cls: 'b-egr-doc' },
+        { k: 'est', n: 'Costo por ejecutar (estimado)', v: suma('egreso_estimado'), cls: 'b-egr-est' }
+      ];
+      var tot = function (xs) { return xs.reduce(function (a, x) { return a + x.v; }, 0); };
+      var pct = function (v, t) { return t > 0 ? Math.round(v / t * 100) : 0; };
+      var fila = function (titulo, xs) {
+        var t = tot(xs);
+        var barras = t > 0 ? xs.filter(function (x) { return x.v > 0; }).map(function (x) {
+          return '<span class="' + x.cls + '" style="width:' + (x.v / t * 100).toFixed(2) + '%" title="' + esc(x.n + ': ' + clp(x.v) + ' (' + pct(x.v, t) + ' %)') + '"></span>';
+        }).join('') : '';
+        return '<div class="fc-conf-fila"><span class="t">' + titulo + '</span><div class="fc-conf-barra" role="img" aria-label="' +
+          esc(titulo + ': ' + xs.map(function (x) { return x.n + ' ' + pct(x.v, t) + ' %'; }).join(', ')) + '">' + barras + '</div>' +
+          '<span class="pct">' + pct(xs[0].v, t) + ' % con documentos</span></div>';
+      };
+      document.getElementById('fcConfFilas').innerHTML = fila('Ingresos', ing) + fila('Egresos', egr);
+      var docs = ing[0].v + egr[0].v, todo = tot(ing) + tot(egr);
+      document.getElementById('fcConfRes').innerHTML = todo > 0
+        ? '<b>' + pct(docs, todo) + ' %</b> de lo proyectado sale de documentos (cotizaciones, facturas y OC); el resto es estimación.'
+        : 'Sin movimientos proyectados.';
+      var vistos = {};
+      document.getElementById('fcConfLeyenda').innerHTML = ing.concat(egr).filter(function (x) {
+        if (vistos[x.cls]) return false; vistos[x.cls] = true; return true;
+      }).map(function (x) { return '<li><span class="sw ' + x.cls + '"></span>' + esc(x.n) + ' · ' + clp(x.v) + '</li>'; }).join('');
+      // Lo que lo mejora: las cotizaciones ganadas sin proyecto no aportan sus cuotas
+      var cal = DATA.calidad || {};
+      var acc = document.getElementById('fcConfAccion');
+      var partes = [];
+      if (cal.cotizacionesSinProyecto) {
+        partes.push('<b>' + cal.cotizacionesSinProyecto + (cal.cotizacionesSinProyecto === 1 ? ' cotización no tiene' : ' cotizaciones no tienen') +
+          ' N° de requerimiento.</b> Las que se ganaron aportan sus cuotas reales cuando se asocian a su proyecto: en Sistema QUEMPIN, Historial › «Solo sin N° de requerimiento» › Editar documento.');
+      }
+      if (cal.saldoEstimado) partes.push('El saldo inicial es una estimación a mano, no un dato del banco.');
+      acc.hidden = !partes.length;
+      acc.innerHTML = partes.join(' ');
+    }
     // Saldo inicial: el del archivo (parametros_flujo_caja.json) o uno de
     // prueba escrito aquí, que se recuerda solo en este navegador y se
     // descarta si el del archivo cambia.
@@ -755,13 +837,22 @@ __FC_FUENTES__
       });
     });
 
+    // Nombres legibles de los supuestos (2026-10-14); la clave de parametros_flujo_caja.json queda en el title
+    var NOMBRE_SUPUESTO = {
+      saldoInicial: 'Saldo inicial de caja', diasPagoProveedores: 'Días para pagar a un proveedor', diasCobroAdelanto: 'Días para cobrar un adelanto',
+      diasEntregaPorDefecto: 'Días hasta la entrega (sin plazo en la cotización)', diasOtraCondicion: 'Días para cobrar otras condiciones',
+      diasOCSinFactura: 'Días de una OC sin factura', toleranciaOC: 'Tolerancia entre OC y factura', diasCobroDadoPorHecho: 'Días para dar un cobro por hecho',
+      diasAdjudicacionProbable: 'Días hasta el primer cobro de una oferta', diasCobroVenta: 'Días para cobrar la venta tras el cierre',
+      diasVentaEnUnPago: 'Hasta cuántos días se cobra en un solo pago', ivaVentas: 'IVA de las ventas', ivaCostos: 'IVA de los costos',
+      mesesHistoria: 'Meses hacia atrás', mesesProyeccion: 'Meses hacia adelante'
+    };
     document.querySelector('#tSupuestos > tbody').innerHTML = Object.keys(DATA.supuestos).map(function (k) {
       var s = DATA.supuestos[k];
       var valor = s.valor === null ? '—' : k === 'saldoInicial' ? clp(s.valor) : typeof s.valor === 'number' ? s.valor.toLocaleString('es-CL') : s.valor;
-      return '<tr><td>' + esc(k) + '</td><td class="num">' + esc(valor) + '</td><td>' + esc(s.descripcion) + '</td></tr>';
+      return '<tr><td title="' + esc(k) + '">' + esc(NOMBRE_SUPUESTO[k] || k) + '</td><td class="num">' + esc(valor) + '</td><td>' + esc(s.descripcion) + '</td></tr>';
     }).join('');
 
-    optProb.addEventListener('change', function () { pintarKpis(); pintarGrafico(); });
+    optProb.addEventListener('change', function () { pintarKpis(); pintarGrafico(); pintarConfianza(); });
 
     var inputSaldo = document.getElementById('optSaldo'), volverSaldo = document.getElementById('optSaldoVolver');
     var miles = function (v) { return Math.round(v).toLocaleString('es-CL'); };
@@ -795,6 +886,7 @@ __FC_FUENTES__
     volverSaldo.addEventListener('click', function () { inputSaldo.value = miles(saldoOficial); cambiarSaldo(saldoOficial); });
     pintarSaldo();
     pintarKpis();
+    pintarConfianza();
     pintarGrafico();
     pintarTabla();
     var anchoDibujado = document.getElementById('fcGrafico').clientWidth, esperaResize = null;

@@ -99,3 +99,18 @@ def test_el_javascript_de_la_pantalla_es_valido(ruta, tmp_path):
     archivo.write_text(_script_app(_leer(ruta)), encoding="utf-8")
     proc = subprocess.run(["node", "--check", str(archivo)], capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
+
+
+@pytest.mark.parametrize("ruta", [TEMPLATE_CL, TEMPLATE_PE], ids=["chile", "peru"])
+def test_la_cotizacion_se_copia_para_el_formulador(ruta):
+    """2026-10-14: «Copiar para el Formulador» deja en el portapapeles las líneas del carrito con el
+    encabezado que reconoce «Pegar desde Excel» del Formulador (js/pegar.js) y el costo NETO
+    actualizado por UF; como el resto del carrito, no usa el almacenamiento del navegador."""
+    if not ruta.exists():
+        pytest.skip("no esta el template")
+    html = _leer(ruta)
+    assert 'id="btnCopiarFormulador"' in html
+    assert r"'Descripción\tUnidad\tCantidad\tCosto unitario neto'" in html
+    assert "Math.round(l.precio_reajustado_hoy)" in html
+    assert "copyFormBtn.disabled = !cart.length" not in html   # se habilita junto con «Copiar tabla para Excel»
+    assert "copyFormBtn.disabled = true" in html and "copyFormBtn.disabled = false" in html

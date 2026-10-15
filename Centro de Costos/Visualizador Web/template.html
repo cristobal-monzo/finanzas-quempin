@@ -435,6 +435,9 @@
     margin-left: auto;
   }
   .viz-clearbtn:hover { background: var(--surface-1); color: var(--text-primary); }
+  /* Con un proyecto elegido, su ficha en el Análisis Financiero (2026-10-14) */
+  .viz-clearbtn.enlace-af { margin-left: 0; text-decoration: none; color: var(--brand-orange-ink); border-color: var(--brand-orange); }
+  .viz-clearbtn.enlace-af[hidden] { display: none; }
 
   /* Charts grid */
   .viz-charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
@@ -887,6 +890,7 @@
         <span class="viz-resultcount" id="resultCount" aria-live="polite"></span>
         <div class="viz-chips" id="activeChips"></div>
         <button class="viz-clearbtn" id="btnClear" type="button" hidden>Limpiar filtros</button>
+        <a class="viz-clearbtn enlace-af" id="enlaceAF" href="#" target="_blank" rel="noopener" hidden title="El presupuesto contra lo gastado, el margen y la Nota de este proyecto">Ficha en Análisis Financiero ↗</a>
       </div>
     </section>
 
@@ -1416,6 +1420,16 @@
     document.getElementById('resultCount').innerHTML = chips.length
       ? '<strong>' + fmtNum(filtered.length) + '</strong> de ' + fmtNum(DOCS.length) + ' documentos'
       : fmtNum(DOCS.length) + ' documentos · sin filtros';
+    // Con un proyecto elegido: su ficha en el Análisis Financiero (presupuesto contra real, Nota) (2026-10-14)
+    var tagSel = state.proyecto ? tagDeProyecto(state.proyecto) : '';
+    var af = document.getElementById('enlaceAF');
+    af.hidden = !tagSel;
+    if (tagSel) af.href = 'https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/#proyecto=' + encodeURIComponent(tagSel);
+  }
+  /* El TAG del Análisis Financiero de un proyecto: el prefijo del N° de referencia de sus documentos. */
+  function tagDeProyecto(nombre) {
+    var d = DOCS.filter(function (x) { return x.proyecto === nombre && /^[A-Za-z0-9]{2,8}-/.test(String(x.ref || '')); })[0];
+    return d ? String(d.ref).split('-')[0].toUpperCase() : '';
   }
 
   // ---------- estado en el link (#...) ----------
@@ -1448,6 +1462,13 @@
       if (CAMPO_DE[key] && !DOCS.some(function (d) { return d[CAMPO_DE[key]] === v; })) return;
       state[key] = v;
     });
+    // Desde la ficha del Análisis Financiero (2026-10-14): #tag=TAG filtra por el proyecto cuyos
+    // documentos llevan ese prefijo en su N° de referencia (DEMO-101 → DEMO).
+    var tag = (p.get('tag') || '').trim().toUpperCase();
+    if (tag && !state.proyecto) {
+      var d0 = DOCS.filter(function (d) { return String(d.ref || '').toUpperCase().indexOf(tag + '-') === 0 && d.proyecto; })[0];
+      if (d0) state.proyecto = d0.proyecto;
+    }
     var o = (p.get('orden') || '').split('.');
     state.sortKey = 'fecha';
     state.sortDir = 'desc';

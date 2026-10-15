@@ -639,6 +639,12 @@ def armar(raiz_intercambio: Path | None, ruta_foto_cc: Path = RUTA_FOTO_CC, hoy:
         "lineas": [{"sentido": s, "clase": c, "nombre": n} for s, c, n in LINEAS],
         "supuestos": {k: {"valor": sup[k], "descripcion": DESCRIPCION_SUPUESTOS.get(k, "")} for k in SUPUESTOS if k != "saldoInicialFecha"},
         "avisos": avisos,
+        # Lo que falta para que el flujo descanse en documentos y no en estimaciones (2026-10-14): el
+        # tablero lo muestra junto a qué parte de lo proyectado está respaldada, con dónde corregirlo.
+        "calidad": {
+            "cotizacionesSinProyecto": sum(1 for d in docs if d.get("tipo") == "60" and not _clave_proyecto(d)),
+            "saldoEstimado": bool(sup.get("saldoInicial")),
+        },
     }
 
 

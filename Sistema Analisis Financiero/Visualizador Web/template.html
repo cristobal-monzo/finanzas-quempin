@@ -798,7 +798,8 @@
     /* Media tarjeta de un teléfono de 360 px: una cifra de ocho dígitos con puntos cabe desde 18 px. Una
        cifra más larga corta en el punto de miles (<wbr>), nunca entre dígitos. */
     .ficha-cifra-valor { font-size: clamp(17px, 5vw, 21px); }
-    .ficha-cab-acciones { margin-left: 0; width: 100%; }
+    /* Con «Ver sus facturas» son tres botones más «Cerrar» (2026-10-14): en el teléfono se reparten en dos filas */
+    .ficha-cab-acciones { margin-left: 0; width: 100%; flex-wrap: wrap; }
     .ficha-cab-acciones .ficha-boton { flex: 1 1 auto; padding: 10px 12px; }
     .ficha-cerrar { padding: 10px 8px; }
     .ficha-card { padding: 12px; }
@@ -2043,7 +2044,7 @@
     var pdf = botonReporte('proyecto:' + p.tag, 'ficha-boton') || '<span class="ficha-sin-pdf">Sin reporte PDF</span>';
     return '<div class="ficha-cab"><div class="ficha-cab-datos">' + estado +
       '<span>' + esc(p.categoria || 'Sin categoría') + '</span><span>' + fechas + '</span></div>' +
-      '<div class="ficha-cab-acciones">' + enlaceFormuladorHtml(p) + pdf +
+      '<div class="ficha-cab-acciones">' + enlaceFormuladorHtml(p) + enlaceCentroCostosHtml(p) + pdf +
       '<button type="button" class="ficha-cerrar" data-cerrar-ficha aria-label="Cerrar la ficha del proyecto">Cerrar ✕</button></div></div>';
   }
 
@@ -2057,6 +2058,18 @@
   function enlaceFormuladorHtml(p) {
     return '<a class="ficha-boton" href="' + esc(enlaceFormulador(p)) + '" target="_blank" rel="noopener"' +
       ' title="Abre este proyecto en el Formulador de proyectos: su formulación, su cotización y su recorrido">Ver la formulación ↗</a>';
+  }
+
+  // ---------- sus facturas en el Centro de Costos (2026-10-14) ----------
+  // El tablero del Centro de Costos abre filtrado por el proyecto (#tag=TAG: sus documentos se
+  // reconocen por el prefijo de su N° de referencia). Solo Chile: el de Perú no lee ese filtro.
+  var TABLEROS_URL = 'https://cristobal-monzo.github.io/finanzas-quempin/';
+  function enlaceCentroCostosHtml(p) {
+    var activo = (document.getElementById('modNav') || {}).getAttribute ? document.getElementById('modNav').getAttribute('data-nav-activo') || '' : '';
+    var conGasto = CATEGORIAS_COSTO.some(function (c) { return ((p.costos_reales || {})[c.key] || 0) > 0; });
+    if (/-peru$/.test(activo) || !p.tag || !conGasto) return '';
+    return '<a class="ficha-boton" href="' + esc(TABLEROS_URL + 'centro-de-costos/#tag=' + encodeURIComponent(p.tag)) + '" target="_blank" rel="noopener"' +
+      ' title="Abre el tablero del Centro de Costos con las facturas y boletas de este proyecto">Ver sus facturas ↗</a>';
   }
 
   function cifraHtml(o) {

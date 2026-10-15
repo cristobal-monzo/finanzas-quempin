@@ -25,4 +25,15 @@ Ver el doc maestro compartido en
   cambia, la prueba se descarta) y «Volver a …» lo restablece.
 - **Tabla**: movimientos con búsqueda, filtros por sentido, clase y mes,
   orden por columna; en móvil, tarjetas (`data-label`).
-- **Supuestos y avisos**: se muestran tal como vienen del cálculo.
+- **¿Cuánto de lo proyectado está respaldado?** (2026-10-14, bajo los KPIs):
+  qué parte de lo proyectado desde el mes en curso sale de documentos (cuotas
+  de cotizaciones, facturas y OC) y qué parte de estimaciones (ventas del AF
+  con fecha estimada, costo por ejecutar y, si se marca la casilla, ofertas
+  ponderadas), en una barra para ingresos y otra para egresos. Debajo, lo que
+  lo mejora, desde `calidad` del snapshot (`flujo_caja.armar`): las
+  cotizaciones sin N° de requerimiento, con dónde se corrigen (Historial de
+  Sistema QUEMPIN › «Solo sin N° de requerimiento»), y si el saldo inicial es
+  una estimación. Las notas de la corrida (`avisos`), que antes eran un bloque
+  de viñetas arriba de todo, van plegadas al pie («Notas sobre los datos»).
+- **Supuestos**: con un nombre legible (`NOMBRE_SUPUESTO` en el template); la
+  clave de `parametros_flujo_caja.json` queda en el `title` de la celda.
