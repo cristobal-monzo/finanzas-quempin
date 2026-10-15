@@ -86,7 +86,7 @@ Lo que tiene que cumplir cualquier tablero (actual o futuro):
 Cómo verificarlo, con los `build/index.html` ya regenerados:
 
 ```
-py -3.14 "Visualizador Web/auditoria_movil.py"            # 8 tableros y el hub × 360/390/768 px
+py -3.14 "Visualizador Web/auditoria_movil.py"            # 8 tableros, el hub y el portal × 360/390/768 px
 py -3.14 "Visualizador Web/auditoria_movil.py" cc --capturas <carpeta fuera del repo>
 ```
 
@@ -149,6 +149,96 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
   (Oportunidades, Cotizador, Centro de Costos, Análisis Financiero y, al final,
   Flujo de Caja), y bajo el botón del Formulador una línea dice que su sección
   «Pendientes del equipo» muestra lo que espera a alguien.
+
+## Portal QUEMPIN (2026-10-15, en prueba)
+
+Pedido del usuario (2026-10-15): un menú por temática para llegar a todas las
+herramientas «sin tener que usar tantos links», con las calculadoras incluidas,
+y que se pueda revertir si no le gusta.
+
+- **Qué es**: `Visualizador Web/portal/index.html`, publicado en
+  `https://cristobal-monzo.github.io/finanzas-quempin/portal/`. Una sola
+  ventana: menú por necesidad (☰), buscador (Ctrl K), proyecto elegido una vez
+  y pestañas con las herramientas abiertas dentro (iframes del mismo sitio).
+  Inicio muestra Mi día, atajos, calculadoras y proyectos recientes. No lleva
+  datos ni contraseña: cada herramienta pide la suya (la del equipo, que el
+  navegador recuerda).
+- **Por qué funciona**: el Formulador, los tableros y la Calculadora están en el
+  mismo sitio (`cristobal-monzo.github.io`). Eso permite tres cosas:
+  - el portal los abre dentro;
+  - ve a qué herramienta lleva cada enlace;
+  - comparte con ellos el `localStorage`: la contraseña recordada y los
+    proyectos del Formulador.
+
+  Verificado el 2026-10-15:
+  - GitHub Pages no manda X-Frame-Options ni CSP.
+  - Dentro del portal el Formulador sí puede pedir la carpeta
+    (`showDirectoryPicker`), algo que un sitio distinto tiene prohibido.
+- **El registro** (`<script type="application/json" id="portal-registro">`):
+  grupos y herramientas. Cada herramienta lleva:
+  - `tipo`: marco, excel, programa, archivo, ayuda o inicio.
+  - `ruta` y `peru`.
+  - `familia` y `alias`: la misma página va en una sola pestaña. El
+    Formulador incluye Proyectos y Carta Gantt; el Análisis incluye Ingresar
+    datos.
+  - `proyecto`: cómo se abre con el proyecto elegido.
+  - `pestanas` de cada calculadora (los `data-tab` de `Calculadora
+    Técnica/assets/gases.js`).
+
+  Una herramienta nueva es una entrada ahí. Un tablero nuevo va además en
+  `publicar.py`: `test_portal.py` exige que los dos tengan los mismos.
+- **Enlaces entre herramientas**: el portal engancha cada marco del mismo sitio.
+  - Un clic o un `window.open` hacia otra herramienta abre la pestaña de esa
+    herramienta en el portal, no una ventana nueva. Esto vale también para los
+    enlaces absolutos de los tableros.
+  - Dentro de la misma herramienta se navega normal.
+  - `window.open('')` (los reportes PDF del Análisis) no se toca.
+  - Si una herramienta se va a otra por su cuenta (el selector de
+    calculadora), la pestaña la sigue.
+- **Proyecto elegido**: lee, nunca escribe, `qpn.formulacion.proyectos.v1` del
+  Formulador, con la última versión de cada código. Se abre así:
+
+  | Herramienta | Dirección |
+  |---|---|
+  | Formulador | `#/req/<N°>`, o `#/tag/` o `#/p/<uid>/ficha` |
+  | Carta Gantt | `#/p/<uid>/gantt` |
+  | Seguimiento | `#/p/<uid>/seguimiento` |
+  | Centro de Costos (Chile) | `#tag=` |
+  | Análisis Financiero | `#proyecto=` |
+
+  Si el proyecto cambia, las pestañas abiertas se van a él.
+- **Lo que no se abre dentro**:
+  - Planilla de Ingreso: Excel para la web en una pestaña nueva, con el enlace
+    de `js/m365-config.js` del Formulador.
+  - Control de Documentos: el portal dice dónde está, porque aún no tiene
+    enlace web.
+  - QUEMPIN.exe (cotización, OC, clientes): el portal dice cómo abrirlo.
+- **En el navegador**: guarda `quempin_portal_pestanas` (vuelven sin cargar,
+  solo la activa), `quempin_portal_proyecto`, `quempin_portal_menu` y
+  `quempin_portal_pais`. El tema usa `quempin_hub_theme`, el del índice. Cuando
+  una herramienta guarda la contraseña, las que esperaban con el candado se
+  recargan solas. Se mantienen 8 herramientas cargadas como máximo.
+- **Publicar**: copiar el archivo a `.worktrees/gh-pages/portal/index.html`,
+  hacer commit y push. No tiene build ni datos, y `publicar.py` no lo toca.
+- **Revertir**: borrar `portal/` en gh-pages, o hacer `git revert` del commit
+  que lo agregó. Para el portal no se cambió el índice ni ninguna herramienta.
+- **Pruebas**:
+  - `Visualizador Web/tests/test_portal.py` revisa:
+    - el registro contra lo publicado;
+    - los enlaces que leen el AF, el CC, el Formulador y la Calculadora;
+    - el portal en Chromium, sobre un sitio de mentira con las mismas rutas.
+  - `auditoria_movil.py portal` revisa el teléfono.
+- **Pendiente si se adopta (fase 2)**:
+  - un botón que abra QUEMPIN.exe (protocolo `quempin://` que registre el
+    programa);
+  - los contadores de «Pendientes del equipo» leídos de la carpeta de
+    intercambio;
+  - el índice apuntando al portal;
+  - un enlace web al Control de Documentos.
+
+  Si el Formulador activa SharePoint (`clientId` en `m365-config.js`), su
+  ingreso por redirección no funciona dentro de un marco: dentro del portal hay
+  que usar una ventana emergente.
 
 ## Enlaces por proyecto entre tableros (2026-10-14)
 

@@ -27,7 +27,7 @@ NARANJO_PROFUNDO_OSCURO = "#ff8a4d"
 
 PAGINAS = (sorted(RAIZ.glob("*/Visualizador Web/template.html"))
            + sorted(RAIZ.glob("Peru/*/Visualizador Web/template.html"))
-           + [RAIZ / "Visualizador Web" / "index.html"])
+           + [RAIZ / "Visualizador Web" / "index.html", RAIZ / "Visualizador Web" / "portal" / "index.html"])
 
 
 def test_brand_py_trae_los_colores_del_manual():
