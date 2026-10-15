@@ -534,6 +534,11 @@ __OP_FUENTES__
           <option value="resto">Evaluar y baja</option>
           <option value="descartadas">Descartadas por una regla</option>
         </select>
+        <select id="fTipo" aria-label="Tipo de compra">
+          <option value="">Licitaciones y compras ágiles</option>
+          <option value="licitacion">Solo licitaciones</option>
+          <option value="compraAgil">Solo compras ágiles</option>
+        </select>
         <select id="fRegion" aria-label="Región"><option value="">Todas las regiones</option></select>
         <select id="fCierre" aria-label="Cierre">
           <option value="">Cualquier cierre</option>
@@ -554,7 +559,7 @@ __OP_FUENTES__
 
       <section class="panel">
         <h2>Mapa de prioridad</h2>
-        <p class="sub">Cada punto es una licitación: más arriba, mejor evaluada; más a la izquierda, menos días para ofertar. Arriba a la izquierda están las que no pueden esperar. Toca un punto para abrir su evaluación.</p>
+        <p class="sub">Cada punto es una licitación o compra ágil: más arriba, mejor evaluada; más a la izquierda, menos días para ofertar. Arriba a la izquierda están las que no pueden esperar. Toca un punto para abrir su evaluación.</p>
         <div class="op-mapa" id="opMapa" role="img" aria-label="Puntaje de cada oportunidad según los días que faltan para su cierre"></div>
         <ul class="op-leyenda" id="opLeyenda"></ul>
       </section>
@@ -582,7 +587,7 @@ __OP_FUENTES__
     <section class="viz-tab-panel" id="tabMetodo" role="tabpanel">
       <section class="panel">
         <h2>Pesos de la evaluación</h2>
-        <p class="sub">El puntaje de cada licitación es el promedio de sus 8 criterios con estos pesos. Muévelos para ver cómo cambia el orden: se guardan solo en este navegador.</p>
+        <p class="sub">El puntaje de cada oportunidad es el promedio de sus 8 criterios con estos pesos. Muévelos para ver cómo cambia el orden: se guardan solo en este navegador.</p>
         <div class="op-pesos" id="opPesos"></div>
         <button class="op-btn-sec" id="opPesosRestablecer" type="button">Restablecer los pesos del equipo</button>
         <p class="op-pesos-nota" id="opPesosNota"></p>
@@ -698,7 +703,9 @@ __OP_FUENTES__
       return n;
     }
     function vaciar(n) { while (n.firstChild) n.removeChild(n.firstChild); return n; }
-    function enlaceSeguro(url) { return (typeof url === 'string' && url.indexOf('https://www.mercadopublico.cl/') === 0) ? url : null; }
+    function enlaceSeguro(url) {
+      return (typeof url === 'string' && (url.indexOf('https://www.mercadopublico.cl/') === 0 || url.indexOf('https://buscador.mercadopublico.cl/ficha?') === 0)) ? url : null;
+    }
     var fCLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
     function clp(v) { return v === null || v === undefined ? '—' : fCLP.format(Math.round(v)); }
     function clpCorto(v) {
@@ -761,11 +768,13 @@ __OP_FUENTES__
       CRIT.forEach(function (c) { p[c.id] = ((op.criterios || {})[c.id] || {}).puntaje || 0; });
       var descartar = (op.descartarFijo || op.descartar || []).slice();
       var dias = diasHasta(op.cierre);
-      if (dias !== null && REGLAS.plazoOferta.length) {
-        var tramo = REGLAS.plazoOferta.filter(function (t) { return t.menosDeDias === null || dias < t.menosDeDias; })[0];
+      // Una compra ágil se cotiza en horas: tiene sus propios tramos (plazoOfertaCompraAgil).
+      var tramos = op.compraAgil && REGLAS.plazoOfertaCompraAgil ? REGLAS.plazoOfertaCompraAgil : REGLAS.plazoOferta;
+      if (dias !== null && tramos.length) {
+        var tramo = tramos.filter(function (t) { return t.menosDeDias === null || dias < t.menosDeDias; })[0];
         if (tramo) {
           p.plazoOferta = tramo.puntaje;
-          if (tramo.descarta) descartar.push(dias < 0 ? 'Ya cerró' : 'Cierra en menos de un día');
+          if (tramo.descarta) descartar.push(dias < 0 ? 'Ya cerró' : op.compraAgil ? 'Cierra en menos de ' + Math.round(tramo.menosDeDias * 24) + ' horas' : 'Cierra en menos de un día');
         }
       }
       if (op.ficha && op.visita && op.visita.fecha) {
@@ -814,7 +823,7 @@ __OP_FUENTES__
 
     var avisos = (DATA.avisos || []).slice();
     if (DATA.completo === false) avisos.unshift('Esta vuelta no alcanzó a revisar todas las fichas: algunas oportunidades están evaluadas solo por su nombre.');
-    if (cerradasDesdeElBuild) avisos.push(cerradasDesdeElBuild + ' licitación(es) cerraron después de esta actualización y ya no se muestran.');
+    if (cerradasDesdeElBuild) avisos.push(cerradasDesdeElBuild + ' oportunidad(es) cerraron después de esta actualización y ya no se muestran.');
     if (avisos.length) {
       var av = document.getElementById('opAvisos');
       av.hidden = false;
@@ -859,7 +868,8 @@ __OP_FUENTES__
     // ---------- filtros ----------
     var fBuscar = document.getElementById('fBuscar'), fMostrar = document.getElementById('fMostrar'),
       fRegion = document.getElementById('fRegion'), fCierre = document.getElementById('fCierre'),
-      fNuevas = document.getElementById('fNuevas'), fPlanilla = document.getElementById('fPlanilla');
+      fNuevas = document.getElementById('fNuevas'), fPlanilla = document.getElementById('fPlanilla'),
+      fTipo = document.getElementById('fTipo');
     var regiones = {};
     OPS.forEach(function (op) { if (op.regionCorta) regiones[op.regionCorta] = 1; });
     Object.keys(regiones).sort(function (a, b) { return a.localeCompare(b, 'es'); }).forEach(function (r) { fRegion.appendChild(el('option', { value: r, texto: r })); });
@@ -872,6 +882,7 @@ __OP_FUENTES__
       if (m === 'todas' && e.cat === 'descartar') return false;
       if (m === 'resto' && !(e.cat === 'evaluar' || e.cat === 'baja')) return false;
       if (m === 'descartadas' && e.cat !== 'descartar') return false;
+      if (fTipo.value && (fTipo.value === 'compraAgil') !== !!op.compraAgil) return false;
       if (fRegion.value && op.regionCorta !== fRegion.value) return false;
       if (fCierre.value && (e.dias === null || e.dias > +fCierre.value)) return false;
       if (fNuevas.checked && !op._nueva) return false;
@@ -892,6 +903,7 @@ __OP_FUENTES__
     }
     function etiquetasExtra(op) {
       var xs = [];
+      if (op.compraAgil) xs.push(el('span', { clase: 'chip', texto: 'Compra Ágil' }));
       if (op._nueva) xs.push(el('span', { clase: 'chip nueva', texto: 'Nueva' }));
       if (op.enPlanilla) xs.push(el('span', { clase: 'chip planilla', texto: 'Planilla N° ' + op.enPlanilla.req + (op.enPlanilla.estado ? ' · ' + op.enPlanilla.estado : '') }));
       if (!op.ficha) xs.push(el('span', { clase: 'chip', texto: 'solo por el nombre' }));
@@ -901,7 +913,15 @@ __OP_FUENTES__
       var m = op.monto || {};
       if (!m.valor) return { v: 'sin monto', s: 'no publicado' };
       var estimado = String(m.fuente || '').indexOf('por tipo') === 0;
+      if (op.compraAgil) return { v: clpCorto(m.valor), s: 'disponible (compra ágil)' };
       return { v: (estimado ? '~' : '') + clpCorto(m.valor), s: estimado ? 'estimado ' + m.fuente : (m.fuente === 'estimado' ? 'estimado por el comprador' : m.fuente) };
+    }
+    // Una compra ágil informa el plazo de entrega en días, no la duración de un contrato.
+    function textoDuracion(op) {
+      var d = op.duracionMeses;
+      if (d === null || d === undefined) return op.compraAgil ? 'plazo de entrega no informado' : 'duración no informada';
+      if (op.compraAgil) return 'entrega en ' + Math.round(d * 30) + ' días';
+      return 'contrato ' + (d >= 1 ? Math.round(d) + ' meses' : Math.round(d * 30) + ' días');
     }
     function colorAnillo(cat) { return cat === 'prioritaria' || cat === 'buena' ? 'var(--brand-orange)' : 'var(--op-resto)'; }
     function anillo(op) {
@@ -924,11 +944,12 @@ __OP_FUENTES__
           el('p', { clase: 'op-org', texto: [op.organismo, op.comuna || op.regionCorta].filter(Boolean).join(' · ') })
         ])
       ]);
-      var visita = op.visita && op.visita.fecha ? fechaCorta(op.visita.fecha).slice(0, 5) + (op.visita.obligatoria ? ' (oblig.)' : '') : 'no';
+      var visita = op.visita && op.visita.fecha ? fechaCorta(op.visita.fecha).slice(0, 5) + (op.visita.obligatoria ? ' (oblig.)' : '')
+        : op.visita && op.visita.mencionada ? 'la pide (ver bases)' : 'no';
       var datos = el('dl', { clase: 'op-datos' }, [
         el('div', null, [el('dt', { texto: 'Monto' }), el('dd', null, [monto.v, el('small', { texto: monto.s })])]),
         el('div', null, [el('dt', { texto: 'Cierre' }), el('dd', { clase: claseCierre(e.dias) }, [textoCierre(e.dias), el('small', { texto: fechaHora(op.cierre) })])]),
-        el('div', null, [el('dt', { texto: 'Visita' }), el('dd', null, [visita, el('small', { texto: op.duracionMeses ? 'contrato ' + (op.duracionMeses >= 1 ? Math.round(op.duracionMeses) + ' meses' : Math.round(op.duracionMeses * 30) + ' días') : 'duración no informada' })])])
+        el('div', null, [el('dt', { texto: 'Visita' }), el('dd', null, [visita, el('small', { texto: textoDuracion(op) })])])
       ]);
       var razones = el('ul', { clase: 'op-razones' });
       (op.aFavor || []).forEach(function (t) { razones.appendChild(el('li', { clase: 'favor' }, [el('span', { clase: 'ico', 'aria-label': 'A favor', texto: '✓' }), el('span', { texto: t })])); });
@@ -986,10 +1007,10 @@ __OP_FUENTES__
       }
       var monto = textoMonto(op);
       var pares = [
-        ['Código', op.codigo], ['Tipo', op.tipo || '—'], ['Organismo', op.organismo || '—'], ['Unidad', op.unidadCompra || '—'],
+        ['Código', op.codigo], ['Tipo', op.compraAgil ? 'Compra Ágil' : (op.tipo || '—')], ['Organismo', op.organismo || '—'], ['Unidad', op.unidadCompra || '—'],
         ['Lugar', [op.comuna, op.region].filter(Boolean).join(', ') || '—'], ['Publicada', fechaHora(op.publicada)],
         ['Cierre', fechaHora(op.cierre) + ' · ' + textoCierre(e.dias)], ['Monto', monto.v + ' (' + monto.s + ')'],
-        ['Duración', op.duracionMeses !== null && op.duracionMeses !== undefined ? (op.duracionMeses >= 1 ? Math.round(op.duracionMeses) + ' meses' : Math.round(op.duracionMeses * 30) + ' días') : 'no informada'],
+        [op.compraAgil ? 'Plazo de entrega' : 'Duración', textoDuracion(op)],
         ['Visita a terreno', op.visita && op.visita.fecha ? fechaHora(op.visita.fecha) + (op.visita.obligatoria ? ' · obligatoria' : op.visita.obligatoria === false ? ' · optativa' : ' · ver bases') : 'no'],
         ['Probabilidad de ganar', op.probabilidadGanar !== null && op.probabilidadGanar !== undefined ? Math.round(op.probabilidadGanar * 100) + ' % en las parecidas ya resueltas' : 'sin historia suficiente']
       ];
@@ -1231,7 +1252,10 @@ __OP_FUENTES__
         : primeraVisita ? 'Desde tu próxima visita se marcan las que aparezcan.' : 'Aparecieron desde tu última visita (en este navegador).';
       var perfil = DATA.perfil || {};
       document.getElementById('kRubro').textContent = (perfil.candidatas || OPS.length).toLocaleString('es-CL');
-      document.getElementById('kRubroSub').textContent = 'De ' + (perfil.publicadas || 0).toLocaleString('es-CL') + ' licitaciones publicadas revisadas en la última actualización.';
+      var pca = perfil.compraAgil || {};
+      document.getElementById('kRubro').textContent = ((perfil.candidatas || 0) + (pca.candidatas || 0) || OPS.length).toLocaleString('es-CL');
+      document.getElementById('kRubroSub').textContent = 'De ' + (perfil.publicadas || 0).toLocaleString('es-CL') + ' licitaciones publicadas' +
+        (pca.publicadas ? ' y ' + pca.publicadas.toLocaleString('es-CL') + ' compras ágiles que nombran el rubro' : '') + ', revisadas en la última actualización.';
     }
 
     // ---------- aplicar todo ----------
@@ -1242,7 +1266,7 @@ __OP_FUENTES__
       pintarMapa();
       pintarTabla();
     }
-    [fBuscar, fMostrar, fRegion, fCierre, fNuevas, fPlanilla].forEach(function (c) {
+    [fBuscar, fMostrar, fTipo, fRegion, fCierre, fNuevas, fPlanilla].forEach(function (c) {
       c.addEventListener(c.tagName === 'SELECT' || c.type === 'checkbox' ? 'change' : 'input', function () { limite = 30; aplicar(); });
     });
 

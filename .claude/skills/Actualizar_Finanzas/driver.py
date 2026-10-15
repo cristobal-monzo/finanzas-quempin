@@ -99,6 +99,11 @@ DRIVER_FLUJO_CAJA = (
 # tablero con la Planilla que el procesador acaba de publicar. Sin respuesta de
 # Mercado Público usa la última evaluación guardada: nunca frena la cadena.
 BUILD_OPORTUNIDADES = RAIZ / "Sistema Intercambio" / "Visualizador Web" / "build_visualizador.py"
+# Correo cuando aparece una oportunidad con nota 85 o más (2026-10-14, pedido
+# del usuario: máximo 3 correos en 7 días, nunca la misma dos veces). Corre
+# solo si el tablero quedó al día, y después de publicarlo: el correo enlaza
+# al tablero.
+ALERTAS_OPORTUNIDADES = RAIZ / "Sistema Intercambio" / "alertas_oportunidades.py"
 
 # Los tableros de Chile que regenera 'run' (los de Perú tienen su propio
 # camino): (nombre, build/index.html regenerado, subruta fija dentro
@@ -588,6 +593,8 @@ def cmd_run(publicar=True):
     regenerados = _informe_tableros(momento_inicio)
     if publicar:
         resultados.append(("Publicar tableros en GitHub Pages", _publicar(regenerados)))
+    if ok_op:
+        resultados.append(("Alertas de Oportunidades por correo", _alertas_oportunidades()))
     _bandeja(salida_cc=salida_cc, salida_reportes=salida_rep, salida_presupuestos=salidas[2][2])
     _informe_tiempos(time.perf_counter() - inicio)
 
@@ -625,6 +632,17 @@ def _esperar_procesador(dormir=time.sleep, reloj=time.monotonic):
         dormir(15)
 
 
+def _alertas_oportunidades():
+    """Correo si hay oportunidades nuevas con nota 85 o más (las reglas y el
+    tope semanal están en alertas_oportunidades.py). Un fallo no frena nada:
+    lo no enviado se reintenta en la próxima vuelta."""
+    ok, _ = _ejecutar(
+        "Oportunidades -- alertas por correo (nota 85 o más)",
+        ALERTAS_OPORTUNIDADES, ["enviar"], obligatorio=False,
+    )
+    return ok
+
+
 def cmd_oportunidades(publicar=True):
     """Solo el tablero de Oportunidades en Mercado Público, a diario (pedido
     del usuario, 2026-10-13: las licitaciones cierran en días y la corrida
@@ -640,9 +658,11 @@ def cmd_oportunidades(publicar=True):
     )
     resultados = [("Tablero de Oportunidades al día", ok)]
     if not ok:
-        print("\n  [WARN] El tablero no quedó al día (ver arriba): no se publica; queda en línea el anterior.")
-    elif publicar:
-        resultados.append(("Publicar en GitHub Pages", _publicar(["op"])))
+        print("\n  [WARN] El tablero no quedó al día (ver arriba): no se publica ni se envían alertas; queda en línea el anterior.")
+    else:
+        if publicar:
+            resultados.append(("Publicar en GitHub Pages", _publicar(["op"])))
+        resultados.append(("Alertas por correo", _alertas_oportunidades()))
     _informe_tiempos(time.perf_counter() - inicio)
     return _resumir(resultados, "Tablero de Oportunidades al día" + (" y publicado." if publicar else " en disco (sin publicar)."))
 

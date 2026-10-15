@@ -61,6 +61,7 @@ AQUI = Path(__file__).resolve().parent
 if str(AQUI) not in sys.path:
     sys.path.insert(0, str(AQUI))
 
+import compra_agil as ca  # noqa: E402
 import esquemas  # noqa: E402
 import intercambio  # noqa: E402
 import mercado_publico as mp  # noqa: E402
@@ -219,6 +220,7 @@ class Historia:
                 "req": r.get("numero"), "titulo": mp._texto(r.get("titulo"), 120), "estado": r.get("estado") or "",
                 "ofertado": estado in ESTADOS_OFERTADOS, "ganado": estado == "adjudicado",
                 "perdido": estado == "no adjudicado", "codigo": codigo, "unidad": unidad_de(codigo),
+                "compraAgil": mp.es_compra_agil(codigo or ""),
                 "raices": raices(r.get("titulo")),
                 "monto": next((v for v in (r.get("valorOfertado"), r.get("presupuesto"), r.get("valorAdjudicado"))
                                if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0), None),
@@ -272,8 +274,11 @@ class Historia:
         fuertes = self.parecidas(nombre, k=len(self.items), minimo=SIMILITUD_SIN_PALABRAS, min_comunes=MIN_PALABRAS_COMUNES)
         return max((s for s, it in fuertes if it["ofertado"]), default=0)
 
-    def montos_ofertados(self) -> list[float]:
-        return sorted(it["monto"] for it in self.items if it["ofertado"] and it["monto"])
+    def montos_ofertados(self, compra_agil: bool | None = None) -> list[float]:
+        """Montos de lo ofertado; con compra_agil, solo de ese tipo (una compra
+        ágil es de hasta 100 UTM: mezclarlas achica el rango de las licitaciones)."""
+        return sorted(it["monto"] for it in self.items if it["ofertado"] and it["monto"]
+                      and (compra_agil is None or it["compraAgil"] == compra_agil))
 
     def con_unidad(self, unidad: str | None) -> list[dict]:
         return [it for it in self.items if unidad and it["unidad"] == unidad]
@@ -399,15 +404,24 @@ class Evaluador:
         self.c, self.h, self.ahora, self.uf = config, historia, ahora, uf
         self.mercado = mercado
         self.mercado_vec = [(m, historia.vector(raices(m.get("nombre")))) for m in mercado]
-        montos = historia.montos_ofertados()
-        cm = config["monto"]
-        self.rango = {
-            "p10": cm.get("idealDesde") or percentil(montos, 0.10),
-            "p25": cm.get("idealDesde") or percentil(montos, 0.25),
-            "p75": cm.get("idealHasta") or percentil(montos, 0.75),
-            "p90": cm.get("idealHasta") or percentil(montos, 0.90),
+        # Cada tipo con su propio rango: una compra ágil es de hasta 100 UTM y
+        # al lado de una licitación siempre parecería «más chica que lo habitual».
+        self.rango = self._rango(historia.montos_ofertados(compra_agil=False) or historia.montos_ofertados(), config["monto"])
+        cca = config.get("compraAgil", {})
+        montos_ca = historia.montos_ofertados(compra_agil=True)
+        self.rango_ca = self._rango(montos_ca if len(montos_ca) >= cca.get("minimoHistoriaMonto", 8) else [], cca.get("monto", {}))
+
+    @staticmethod
+    def _rango(montos: list[float], fijo: dict) -> dict:
+        rango = {
+            "p10": fijo.get("idealDesde") or percentil(montos, 0.10),
+            "p25": fijo.get("idealDesde") or percentil(montos, 0.25),
+            "p75": fijo.get("idealHasta") or percentil(montos, 0.75),
+            "p90": fijo.get("idealHasta") or percentil(montos, 0.90),
         }
-        self.rango["maximo"] = cm.get("maximo") or ((self.rango["p90"] or 0) * 3 or None)
+        rango["maximo"] = fijo.get("maximo") or ((rango["p90"] or 0) * 3 or None)
+        rango["maximoFijo"] = bool(fijo.get("maximo"))
+        return rango
 
     # Prefiltro: solo con el nombre (antes de gastar una consulta en la ficha).
     def prefiltro(self, nombre: str) -> float:
@@ -435,7 +449,8 @@ class Evaluador:
 
         criterios["rubro"] = self._rubro(rs, ficha, parecidas, descartar_fijo)
         monto, fuente_monto = self._monto_clp(ficha)
-        criterios["monto"] = self._monto(monto, fuente_monto, descartar_fijo)
+        es_ca = bool(ficha.get("compraAgil"))
+        criterios["monto"] = self._monto(monto, fuente_monto, descartar_fijo, self.rango_ca if es_ca else self.rango)
         meses = self._duracion_meses(ficha, texto)
         criterios["dificultad"] = self._dificultad(rs, ficha)
         criterios["ubicacion"] = self._ubicacion(ficha)
@@ -463,7 +478,8 @@ class Evaluador:
         dias = self._dias_para(ficha.get("cierre"))
         return {
             "codigo": ficha["codigo"],
-            "url": mp.FICHA_LICITACION + ficha["codigo"],
+            "url": (ca.FICHA if es_ca else mp.FICHA_LICITACION) + ficha["codigo"],
+            "compraAgil": es_ca,
             "nombre": ficha.get("nombre"),
             "descripcion": (ficha.get("descripcion") or "")[:600] or None,
             "organismo": ficha.get("organismo"),
@@ -477,7 +493,8 @@ class Evaluador:
             "diasParaCierre": None if dias is None else round(dias, 1),
             "monto": {"valor": round(monto) if monto else None, "fuente": fuente_monto},
             "duracionMeses": None if meses is None else round(meses, 1),
-            "visita": {"fecha": ficha.get("visita"), "obligatoria": self._visita_obligatoria(texto) if ficha.get("visita") else None},
+            "visita": {"fecha": ficha.get("visita"), "obligatoria": self._visita_obligatoria(texto) if ficha.get("visita") else None,
+                       "mencionada": bool(not ficha.get("visita") and self._visita_mencionada(texto))},
             "categorias": ficha.get("categorias") or [],
             "puntaje": puntaje,
             "categoria": categoria,
@@ -516,10 +533,12 @@ class Evaluador:
                 cat = tope["categoriaMaxima"]
         return cat
 
-    def evaluar_sin_ficha(self, codigo: str, nombre: str, cierre: str | None, en_planilla) -> dict:
+    def evaluar_sin_ficha(self, codigo: str, nombre: str, cierre: str | None, en_planilla, extra: dict | None = None) -> dict:
         """Candidata cuya ficha todavía no se pidió (tope de consultas): se
-        evalúa solo con el nombre y queda marcada."""
-        ficha = {"codigo": codigo, "nombre": nombre, "cierre": cierre, "tipo": codigo.rsplit("-", 1)[-1][:-2], "_completa": False}
+        evalúa solo con el nombre (y lo que traiga el listado, 'extra') y
+        queda marcada."""
+        ficha = dict({"codigo": codigo, "nombre": nombre, "cierre": cierre, "tipo": codigo.rsplit("-", 1)[-1][:-2], "_completa": False,
+                      "compraAgil": mp.es_compra_agil(codigo)}, **(extra or {}))
         r = self.evaluar(ficha, en_planilla)
         r["ficha"] = False
         return r
@@ -542,9 +561,16 @@ class Evaluador:
         donde = "" if (nucleo_nombre or (not nucleo and afines_nombre)) else " (solo en la descripción)"
         motivo = [(f"núcleo: {', '.join(nucleo[:3])}" if nucleo else f"afín: {', '.join(afines[:3])}") + donde
                   if (nucleo or afines) else "sin palabras del rubro"]
+        en_nombre = coincidencias(rs_nombre, r["excluir"])
         if fuera:
-            base -= 35
-            motivo.append(f"fuera de rubro: {', '.join(fuera[:3])}")
+            # Con el nombre del núcleo, una palabra de excluir que solo está en la
+            # descripción resta poco: «alimentación» eléctrica, «capacitación» del
+            # personal o «pavimento» de la sala no cambian el trabajo (medido el
+            # 2026-10-14: de 8 así, 4 se ofertaron, más que el promedio).
+            solo_descripcion = bool(nucleo_nombre) and not en_nombre
+            base -= r.get("restaExcluirSoloDescripcion", 35) if solo_descripcion else 35
+            motivo.append(f"{'menciona' if solo_descripcion else 'fuera de rubro:'} {', '.join(fuera[:3])}"
+                          + (" en la descripción" if solo_descripcion else ""))
         if resta:
             base -= 10 if nucleo else 25      # «calderas y aire acondicionado» sigue siendo del rubro
             motivo.append(f"resta: {', '.join(resta[:3])}")
@@ -557,7 +583,6 @@ class Evaluador:
             ganadas = [it for _, it in parecidas if it["ganado"]]
             motivo.append(f"{sum(1 for _, it in parecidas if it['ofertado'])} de {len(parecidas)} parecidas se ofertaron"
                           + (f", {len(ganadas)} ganada(s) (N° {', '.join(str(it['req']) for it in ganadas[:3])})" if ganadas else ""))
-        en_nombre = coincidencias(rs_nombre, r["excluir"])
         if en_nombre:
             descartar.append("Fuera de rubro: " + ", ".join(en_nombre[:3]))
         if not nucleo and not afines:
@@ -566,7 +591,7 @@ class Evaluador:
             elif not fuera and not self.h.muy_parecida_ofertada(ficha.get("nombre") or ""):
                 descartar.append("Sin relación clara con el rubro (ni palabras del rubro ni muy parecida a algo ofertado)")
             base = min(base, 45)
-        if fuera:
+        if fuera and not (nucleo_nombre and not en_nombre):
             corto = f"Fuera de rubro: {fuera[0]}"
         elif nucleo:
             corto = f"Del rubro: {nucleo[0]}" + ("" if nucleo_nombre else " (en la descripción)")
@@ -592,8 +617,8 @@ class Evaluador:
             return math.sqrt(rango[0] * rango[1]) * utm, f"por tipo {ficha.get('tipo')}, {desde}–{hasta} UTM"
         return None, "sin dato"
 
-    def _monto(self, monto, fuente, descartar) -> dict:
-        r = self.rango
+    def _monto(self, monto, fuente, descartar, rango: dict | None = None) -> dict:
+        r = rango or self.rango
         if monto is None or not r["p10"]:
             return {"puntaje": 50, "motivo": "sin monto publicado ni tipo de licitación conocido",
                     "corto": "Monto no publicado"}
@@ -607,11 +632,14 @@ class Evaluador:
             p, txt, corto = max(20, 85 * (r["p90"] / monto) ** 0.6), "más grande que lo habitual", "más grande que lo habitual"
         if r["maximo"] and monto > r["maximo"]:
             p, txt, corto = 10, f"sobre el máximo de {_pesos(r['maximo'])}: revisar garantías y caja", "sobre el máximo: garantías y caja"
-            if self.c["monto"].get("maximo"):       # solo un tope puesto a mano descarta; el de la historia es orientativo
+            if r.get("maximoFijo"):                 # solo un tope puesto a mano descarta; el de la historia es orientativo
                 descartar.append(f"Monto {_pesos(monto)} sobre el máximo de {_pesos(r['maximo'])}")
         estimado = fuente.startswith("por tipo")
         if estimado:
-            p = 0.7 * p + 0.3 * 60      # el monto es una suposición: pesa menos
+            # El monto es una suposición por el tipo de licitación: casi neutro (medido el
+            # 2026-10-14: estimado así no separaba lo ofertado de lo descartado, AUC 0,45).
+            confianza = self.c["monto"].get("confianzaEstimadoPorTipo", 0.7)
+            p = confianza * p + (1 - confianza) * 60
         return {"puntaje": _acotar(p), "motivo": f"{_pesos(monto)} ({fuente}): {txt}",
                 "corto": f"{'~' if estimado else ''}{_pesos(monto)}, {corto}"}
 
@@ -693,8 +721,20 @@ class Evaluador:
             return False
         return None
 
+    @staticmethod
+    def _visita_mencionada(texto) -> bool:
+        """«visita técnica», «visita a terreno», «visita obligatoria»: no basta
+        la palabra sola («visita médica», «visitas guiadas»)."""
+        t = normalizar(texto)
+        return bool(re.search(r"visita\w* (tecnica|a terreno|en terreno|de terreno|obligatori|inspectiva|previa)", t))
+
     def _visita(self, ficha, texto, region_pts, descartar) -> dict:
         fecha = ficha.get("visita")
+        if not fecha and self._visita_mencionada(texto):
+            # Sin fecha en la ficha (siempre en una compra ágil) pero la descripción la pide.
+            p = 40 + 0.5 * region_pts
+            return {"puntaje": _acotar(p), "motivo": "la descripción menciona una visita (sin fecha en la ficha)",
+                    "corto": "Pide visita (ver fecha en las bases)"}
         if not fecha:
             return {"puntaje": 100, "motivo": "sin visita a terreno en la ficha", "corto": "Sin visita a terreno"}
         obligatoria = self._visita_obligatoria(texto)
@@ -791,12 +831,26 @@ class Evaluador:
         if dias is None:
             return {"puntaje": 50, "motivo": "sin fecha de cierre", "corto": "Sin fecha de cierre"}
         cuando = mp._fecha_corta(ficha["cierre"])
-        tramo = next(t for t in self.c["plazoOferta"]["tramos"] if t["menosDeDias"] is None or dias < t["menosDeDias"])
+        tramos = self.tramos_plazo(ficha)
+        tramo = next(t for t in tramos if t["menosDeDias"] is None or dias < t["menosDeDias"])
         if tramo.get("descarta"):
-            descartar.append("Cierra en menos de un día" if dias >= 0 else "Ya cerró")
+            if dias < 0:
+                descartar.append("Ya cerró")
+            else:
+                descartar.append(f"Cierra en menos de {round(tramo['menosDeDias'] * 24)} horas" if ficha.get("compraAgil")
+                                 else "Cierra en menos de un día")
             return {"puntaje": tramo["puntaje"], "motivo": f"cierra el {cuando}: no alcanza", "corto": "Cierra hoy"}
+        if dias < 2:
+            return {"puntaje": tramo["puntaje"], "motivo": f"cierra el {cuando} {(ficha['cierre'] or '')[11:16]} ({dias * 24:.0f} horas)",
+                    "corto": f"Cierra en {dias * 24:.0f} horas"}
         return {"puntaje": tramo["puntaje"], "motivo": f"cierra el {cuando} ({dias:.0f} días)",
                 "corto": f"Cierra en {dias:.0f} días"}
+
+    def tramos_plazo(self, ficha) -> list[dict]:
+        """Una compra ágil se cotiza en horas: tiene sus propios tramos."""
+        if ficha.get("compraAgil") and self.c.get("compraAgil", {}).get("plazoOferta"):
+            return self.c["compraAgil"]["plazoOferta"]["tramos"]
+        return self.c["plazoOferta"]["tramos"]
 
     def _ejecucion(self, meses, ficha) -> dict:
         c = self.c["ejecucion"]
@@ -886,14 +940,88 @@ def _barrer_mercado(cliente, estado: dict, evaluador: Evaluador, config: dict, h
         cola.pop(0)
 
 
+def _revisar_compras_agiles(cliente_ca, estado: dict, evaluador: Evaluador, config: dict, ahora: datetime) -> list[str]:
+    """Las compras ágiles publicadas que nombran palabras del rubro (una
+    búsqueda por palabra: la API no tiene listado por rubro y distingue
+    tildes y plurales), el mismo prefiltro que las licitaciones y la ficha de
+    las candidatas. Una ficha se vuelve a pedir solo si la compra cambió.
+    Devuelve avisos."""
+    cfg = config["compraAgil"]
+    est = estado.setdefault("compraAgil", {})
+    fichas = est.setdefault("fichas", {})
+    previas = est.get("activas") or {}
+    activas, fallidas, sin_tiempo = {}, [], False
+    for i, q in enumerate(cfg["busquedas"]):
+        # Parte del tiempo queda para las fichas: sin ficha no hay visita, plazo de entrega ni correo.
+        if cliente_ca.fraccion_usada() >= cfg.get("fraccionTiempoBusquedas", 0.6):
+            fallidas += cfg["busquedas"][i:]
+            sin_tiempo = True
+            break
+        try:
+            filas = cliente_ca.buscar(q, max_paginas=cfg.get("paginasPorBusqueda", 2))
+        except mp.TopeDeLlamadas:               # se acabó el tiempo o las llamadas: se sigue con lo que hay
+            fallidas += cfg["busquedas"][i:]
+            sin_tiempo = True
+            break
+        except (mp.TicketInvalido, ca.CuotaAgotada):
+            raise
+        except mp.ErrorMercadoPublico:          # una búsqueda que falla (504) no frena las demás
+            fallidas.append(q)
+            continue
+        for x in filas:
+            fila = ca.leer_listado(x)
+            if fila and fila["estado"] == "publicada":
+                activas[fila["codigo"]] = fila
+    if len(fallidas) == len(cfg["busquedas"]):
+        raise mp.ErrorMercadoPublico("ninguna búsqueda de Compra Ágil respondió")
+    if fallidas:
+        # Lo que trajo la vuelta anterior y sigue abierto no se pierde por una búsqueda caída.
+        for codigo, fila in previas.items():
+            if codigo not in activas and (fila.get("cierre") or "") > ahora.isoformat(timespec="minutes"):
+                activas[codigo] = fila
+    est["activas"] = activas
+    est["consultado"] = ahora.isoformat(timespec="seconds")
+    candidatas = sorted(((evaluador.prefiltro(v["nombre"] or ""), c) for c, v in activas.items()), reverse=True)
+    est["candidatas"] = [c for p, c in candidatas if p > 0][: cfg["maxCandidatas"]]
+    for codigo in est["candidatas"]:
+        previa = fichas.get(codigo)
+        if previa and previa.get("cambio") and previa.get("cambio") == activas[codigo].get("cambio"):
+            continue
+        try:
+            crudo = cliente_ca.detalle(codigo)
+        except mp.TopeDeLlamadas:
+            sin_tiempo = True
+            break                               # las que faltan se evalúan por el nombre y se piden en la próxima vuelta
+        except (mp.TicketInvalido, ca.CuotaAgotada):
+            raise
+        except mp.ErrorMercadoPublico:
+            continue                            # se evalúa por el nombre y se pide en la próxima vuelta
+        if crudo:
+            fichas[codigo] = dict(ca.leer_ficha(crudo, codigo), _consultado=ahora.isoformat(timespec="seconds"))
+    viejas = (ahora - timedelta(days=7)).isoformat()
+    for codigo in [c for c, f in fichas.items() if c not in activas and f.get("_consultado", "") < viejas]:
+        del fichas[codigo]
+    avisos = []
+    if fallidas:
+        avisos.append(f"Compra Ágil no respondió a {len(fallidas)} búsqueda(s) ({', '.join(fallidas[:4])}"
+                      f"{'…' if len(fallidas) > 4 else ''}): se mantienen las de la vuelta anterior que siguen abiertas.")
+    if sin_tiempo:
+        avisos.append("Compra Ágil estuvo lenta: se usó todo el tiempo de esta vuelta; lo que falta sigue en la próxima.")
+    return avisos
+
+
 def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: Path | None = None,
             config: dict | None = None, ahora: datetime | None = None, sin_red: bool = False,
-            reqs: list[dict] | None = None) -> dict:
+            reqs: list[dict] | None = None, cliente_ca=None) -> dict:
     """Una vuelta completa. Devuelve {'datos': publicación, 'llamadas', 'avisos'}.
     Con 'enviar' publica oportunidades.json en la carpeta de intercambio; sin
     él solo consulta (actualiza la caché local). Con 'sin_red' evalúa con lo
     que ya está en la caché. El tablero publicado (con contraseña) lo arma
-    Visualizador Web/build_visualizador.py con estos mismos datos."""
+    Visualizador Web/build_visualizador.py con estos mismos datos.
+
+    Las compras ágiles se consultan con 'cliente_ca' (otra API, el mismo
+    ticket). Si se pasa un 'cliente' de licitaciones sin 'cliente_ca' (las
+    pruebas), no se consultan: así una prueba nunca sale a la red."""
     config = config or cargar_config()
     ahora = ahora or datetime.now()
     ruta_estado = ruta_estado or RUTA_ESTADO
@@ -915,7 +1043,12 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
     evaluador = Evaluador(config, historia, mercado_actual(), ahora, valor_uf(config))
 
     if not sin_red:
-        cliente = cliente or mp.Cliente(mp.leer_ticket(), tope=config["consultas"]["tope"])
+        if cliente is None:
+            ticket = mp.leer_ticket()
+            cliente = mp.Cliente(ticket, tope=config["consultas"]["tope"])
+            if cliente_ca is None and config.get("compraAgil", {}).get("activo"):
+                cliente_ca = ca.Cliente(ticket, tope=config["compraAgil"]["tope"],
+                                        limite_seg=60 * config["compraAgil"].get("limiteMinutos", 8))
         try:
             listado = cliente.obtener("licitaciones.json", estado="activas").get("Listado") or []
             activas = {}
@@ -951,6 +1084,15 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
             estado["actualizado"] = ahora.isoformat(timespec="seconds")
             intercambio._escribir_json_atomico(ruta_estado, estado)
         evaluador = Evaluador(config, historia, mercado_actual(), ahora, valor_uf(config))
+        if cliente_ca is not None:
+            try:
+                avisos += _revisar_compras_agiles(cliente_ca, estado, evaluador, config, ahora)
+            except mp.TopeDeLlamadas:
+                avisos.append("Se alcanzó el tope de consultas de Compra Ágil: las fichas que faltan siguen en la próxima vuelta.")
+            except mp.ErrorMercadoPublico as error:
+                avisos.append(f"No se pudo consultar Compra Ágil ({error}): se muestran las de la vuelta anterior.")
+            finally:
+                intercambio._escribir_json_atomico(ruta_estado, estado)
     elif not estado.get("activas"):
         avisos.append("La caché está vacía: corre una vez con red.")
 
@@ -968,6 +1110,23 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
             oportunidades.append(evaluador.evaluar(ficha, en_planilla))
         else:
             oportunidades.append(evaluador.evaluar_sin_ficha(codigo, activas[codigo]["nombre"], activas[codigo]["cierre"], en_planilla))
+    est_ca = estado.get("compraAgil") or {}
+    activas_ca, fichas_ca = est_ca.get("activas") or {}, est_ca.get("fichas") or {}
+    for codigo in est_ca.get("candidatas") or []:
+        if codigo not in activas_ca:
+            continue
+        it = historia.por_codigo.get(codigo)
+        en_planilla = {"req": it["req"], "estado": it["estado"]} if it else None
+        ficha = fichas_ca.get(codigo)
+        if ficha and ficha.get("estado") not in (None, "publicada"):
+            continue
+        if ficha:
+            oportunidades.append(evaluador.evaluar(ficha, en_planilla))
+        else:
+            fila = activas_ca[codigo]
+            oportunidades.append(evaluador.evaluar_sin_ficha(codigo, fila["nombre"], fila["cierre"], en_planilla, extra={
+                "region": fila.get("region"), "organismo": fila.get("organismo"), "montoEstimado": fila.get("monto"),
+                "moneda": "CLP"}))
     # Primero la categoría (una «Buena» por tope de rubro no pasa delante de una «Prioritaria»), después el puntaje.
     rango_categoria = {c["id"]: i for i, c in enumerate(sorted(config["categorias"], key=lambda c: -c["desde"]))}
     oportunidades.sort(key=lambda o: (rango_categoria.get(o["categoria"], len(rango_categoria)), -o["puntaje"]))
@@ -979,7 +1138,12 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
         raise ValueError("oportunidades.json no cumple su esquema: " + "; ".join(errores[:5]))
     if enviar and raiz:
         intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)
-    return {"datos": datos, "llamadas": getattr(cliente, "llamadas", 0), "avisos": avisos, "incompleta": incompleta}
+    return {"datos": datos, "llamadas": getattr(cliente, "llamadas", 0) + getattr(cliente_ca, "llamadas", 0),
+            "avisos": avisos, "incompleta": incompleta}
+
+
+def _monto_habitual(rango: dict) -> dict:
+    return dict({k: (round(v) if v else None) for k, v in rango.items() if k != "maximoFijo"}, maximoFijo=rango["maximoFijo"])
 
 
 def publicacion(oportunidades, evaluador: Evaluador, historia: Historia, config, estado, avisos, incompleta, ahora) -> dict:
@@ -994,17 +1158,21 @@ def publicacion(oportunidades, evaluador: Evaluador, historia: Historia, config,
         "topesPorRubro": config.get("topesPorRubro", []),
         # Lo que la página recalcula con la fecha del día (una licitación se
         # mira días después de evaluada): misma tabla que usa Evaluador.
-        "reglas": {"plazoOferta": config["plazoOferta"]["tramos"], "visitaPasada": config["visitaPasada"]},
+        "reglas": {"plazoOferta": config["plazoOferta"]["tramos"], "visitaPasada": config["visitaPasada"],
+                   "plazoOfertaCompraAgil": config.get("compraAgil", {}).get("plazoOferta", config["plazoOferta"])["tramos"]},
         "perfil": {
             "historia": historia.resumen(),
-            "montoHabitual": dict({k: (round(v) if v else None) for k, v in evaluador.rango.items()},
-                                  maximoFijo=bool(config["monto"].get("maximo"))),
+            "montoHabitual": _monto_habitual(evaluador.rango),
+            "montoHabitualCompraAgil": _monto_habitual(evaluador.rango_ca),
             "mercado": {"licitaciones": len(mercado), "desde": fechas[0] if fechas else None,
                         "diasBarridos": len(estado.get("diasMercado") or []),
                         "diasObjetivo": config["consultas"]["diasHistoriaMercado"]},
             "competidores": competidores(mercado),
             "publicadas": len(estado.get("activas") or {}),
             "candidatas": len(estado.get("candidatas") or []),
+            "compraAgil": {"publicadas": len((estado.get("compraAgil") or {}).get("activas") or {}),
+                           "candidatas": len((estado.get("compraAgil") or {}).get("candidatas") or []),
+                           "consultado": (estado.get("compraAgil") or {}).get("consultado")},
         },
         "oportunidades": oportunidades,
         "avisos": avisos,

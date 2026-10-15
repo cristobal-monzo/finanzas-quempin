@@ -3,13 +3,14 @@
 
   "enProcesador": false,
 
+  "_pesos": "Recalibrados el 2026-10-14 contra 247 licitaciones de la Planilla (calibrar_oportunidades.py medir): rubro, ubicación, comprador y dificultad separan lo ofertado de lo descartado; monto, plazo y ejecución casi no. Visita y plazo no se pueden medir con la historia (la API no guarda la visita de una licitación cerrada), pero sus reglas siguen descartando.",
   "pesos": {
     "rubro": 30,
-    "monto": 15,
+    "monto": 10,
     "dificultad": 15,
-    "visita": 10,
-    "ubicacion": 10,
-    "comprador": 10,
+    "visita": 5,
+    "ubicacion": 15,
+    "comprador": 15,
     "plazoOferta": 5,
     "ejecucion": 5
   },
@@ -44,12 +45,14 @@
     ],
     "_excluir": "excluir: no es trabajo de QUEMPIN aunque nombre una caldera (combustible, químicos). En el nombre de la licitación, la descarta; en la descripción, resta. restar: resta poco si además hay palabras del núcleo.",
     "excluir": [
-      "combustible", "suministro de petróleo", "petróleo diésel", "petróleo calefacción", "petróleo para calefacción",
+      "combustible", "suministro de petróleo", "petróleo diésel", "petróleo calefacción", "petróleo para calefacción", "petróleo para caldera",
       "suministro diésel", "diésel caldera", "parafina", "leña", "suministro de pellet", "pavimento",
       "pavimentación", "iluminación", "alumbrado", "vialidad", "autoclave", "esterilización",
       "producto químico", "medicamento", "alimentación", "capacitación", "factor de emisión",
-      "base calefactora", "tala", "árbol", "letrero", "prótesis", "hidrogeológico"
+      "base calefactora", "tala", "árbol", "letrero", "prótesis", "hidrogeológico", "aditivo", "granel"
     ],
+    "_restaExcluirSoloDescripcion": "Si el nombre es del núcleo y la palabra de excluir está solo en la descripción, resta esto en vez de 35 (medido 2026-10-14 contra la Planilla).",
+    "restaExcluirSoloDescripcion": 10,
     "restar": ["aire acondicionado", "limpieza", "kit", "insumo", "vidrio"]
   },
 
@@ -79,6 +82,8 @@
     "idealDesde": null,
     "idealHasta": null,
     "maximo": null,
+    "_confianzaEstimadoPorTipo": "Si el comprador no publica el monto, se estima por el tipo de licitación y el criterio queda entre ese cálculo (este peso) y 60 neutro.",
+    "confianzaEstimadoPorTipo": 0.3,
     "valorUTM": 71000,
     "valorUFRespaldo": 40000
   },
@@ -130,6 +135,40 @@
   "prefiltro": {
     "_comentario": "Antes de pedir la ficha completa (cada una cuesta una consulta), se elige por el nombre: palabras del rubro, o muy parecida (60 %, 2 palabras en común) a algo que QUEMPIN ofertó. maxCandidatas limita cuántas fichas se mantienen al día.",
     "maxCandidatas": 150
+  },
+
+  "compraAgil": {
+    "_comentario": "Compras Ágiles (COT, hasta 100 UTM), desde la API Compra Ágil v2 de ChileCompra (mismo ticket). Es lenta (15 a 20 s por búsqueda el 2026-10-15): limiteMinutos acota el tiempo de cada vuelta. La API no tiene listado por rubro: se hace una búsqueda por cada palabra de busquedas, que distingue tildes y plurales (caldera y calderas son búsquedas distintas). El monto ideal sale de las compras ágiles que QUEMPIN cotizó (si hay al menos minimoHistoriaMonto); monto fija un rango a mano. plazoOferta: tramos propios en días (0,25 = 6 horas), porque una compra ágil se cotiza en horas.",
+    "activo": true,
+    "tope": 100,
+    "limiteMinutos": 8,
+    "fraccionTiempoBusquedas": 0.6,
+    "paginasPorBusqueda": 2,
+    "maxCandidatas": 40,
+    "minimoHistoriaMonto": 8,
+    "monto": {"idealDesde": null, "idealHasta": null, "maximo": null},
+    "_busquedas": "En orden de importancia (si la API está lenta, las últimas quedan para la próxima vuelta). Son las palabras de lo que QUEMPIN cotizó por compra ágil; climatización y otros afines casi nunca se ofertaron.",
+    "busquedas": [
+      "caldera", "calderas", "calefacción", "quemador", "radiadores", "radiador", "agua caliente",
+      "quemadores", "incinerador", "vapor", "hidrógeno", "termo eléctrico", "calefón", "bomba de calor"
+    ],
+    "plazoOferta": {
+      "tramos": [
+        {"menosDeDias": 0.25, "puntaje": 0, "descarta": true},
+        {"menosDeDias": 1, "puntaje": 60},
+        {"menosDeDias": 2, "puntaje": 85},
+        {"menosDeDias": null, "puntaje": 100}
+      ]
+    }
+  },
+
+  "alertas": {
+    "_comentario": "Correo automático (alertas_oportunidades.py, pedido del usuario 2026-10-14): solo notas de notaMinima o más, como máximo maxCorreosPorSemana correos en 7 días corridos (si hay varias, van juntas en un correo) y nunca dos veces la misma. No se avisa lo que ya está en la Planilla ni lo que cierra antes de horasMinimasParaCerrar. El destinatario va en oportunidades_destinatarios.json (fuera del repositorio).",
+    "notaMinima": 85,
+    "maxCorreosPorSemana": 3,
+    "maxOportunidadesPorCorreo": 5,
+    "horasMinimasParaCerrar": {"licitacion": 48, "compraAgil": 12},
+    "omitirSiEstaEnPlanilla": true
   },
 
   "consultas": {

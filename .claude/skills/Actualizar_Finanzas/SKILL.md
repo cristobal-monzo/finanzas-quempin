@@ -62,6 +62,13 @@ openpyxl (ver `requirements.txt`).
   Público no responde, **no publica**: queda en línea el tablero anterior,
   con su fecha. Si el procesador del intercambio está corriendo (también
   consulta la API), lo espera hasta 15 minutos.
+  Desde el 2026-10-14 cubre también las **compras ágiles** (API Compra Ágil
+  v2, mismo ticket) y, después de publicar, manda el **correo de alertas**
+  (`Sistema Intercambio/alertas_oportunidades.py enviar`, pedido del
+  usuario): solo oportunidades con nota 85 o más, como máximo 3 correos en 7
+  días y nunca la misma dos veces. Sale por Outlook de este equipo; el
+  destinatario está en `oportunidades_destinatarios.json` (gitignoreado). Con
+  datos de la caché no se manda nada. `run` hace lo mismo en su paso 7.
 
 ## Presupuestos del Formulador: revisarlos y cargarlos con el usuario
 

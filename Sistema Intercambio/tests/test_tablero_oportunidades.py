@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+import compra_agil as ca
 import oportunidades as op
 
 RAIZ_INTERCAMBIO = Path(__file__).resolve().parents[1]
@@ -76,6 +77,13 @@ def _datos():
         (ev_antes, _ficha("5000-97-LE26", "Mantención de calderas municipales", cierre=_en(-0.5))),   # ya cerró
     ]
     ops = [e.evaluar(op.leer_ficha(f, f["CodigoExterno"])) for e, f in fichas]
+    # Compras ágiles (2026-10-14): se cotizan en horas y tienen sus propios tramos de plazo.
+    for codigo, horas in (("100-98-COT26", 10), ("100-99-COT26", 3)):
+        crudo = {"codigo": codigo, "nombre": "Mantención de caldera del gimnasio", "descripcion": "",
+                 "estado": {"codigo": "publicada"}, "fechas": {"fecha_cierre": _en(horas / 24)[:16].replace("T", " ")},
+                 "presupuesto": {"monto_disponible_clp": 2_000_000}, "entrega": {"plazo_entrega_dias": 10},
+                 "institucion": {"organismo_comprador": "Servicio de ejemplo", "nombre_region": "Región de Valparaíso"}}
+        ops.append(ev.evaluar(ca.leer_ficha(crudo, codigo)))
     datos = op.publicacion(ops, ev, historia, config, {"activas": {}, "candidatas": []}, [], False, AHORA)
     return datos, config
 
@@ -122,7 +130,7 @@ def test_la_plantilla_repite_las_reglas_de_python():
     si cambias una regla, cambia la otra (y el test del navegador de abajo)."""
     plantilla = build.RUTA_TEMPLATE.read_text(encoding="utf-8")
     for pieza in ("Evaluador.categoria", "topesPorRubro", "rubroMenorA", "categoriaMaxima",
-                  "REGLAS.plazoOferta", "menosDeDias", "visitaPasada", "obligatoriaODuda", "descartarFijo"):
+                  "REGLAS.plazoOferta", "plazoOfertaCompraAgil", "menosDeDias", "visitaPasada", "obligatoriaODuda", "descartarFijo"):
         assert pieza in plantilla, pieza
     assert "innerHTML" not in plantilla, "los textos de la API se escriben con textContent"
 
@@ -169,7 +177,7 @@ def test_la_pagina_calcula_igual_que_python_y_recalcula_lo_que_depende_de_la_fec
     descartadas = {f["codigo"]: f for f in _filas(pagina)}
     por_codigo = {o["codigo"]: o for o in datos["oportunidades"]}
 
-    for codigo in ("761391-91-LE26", "5000-92-LE26", "5000-93-LE26", "5000-95-LE26"):
+    for codigo in ("761391-91-LE26", "5000-92-LE26", "5000-93-LE26", "5000-95-LE26", "100-98-COT26"):
         o = por_codigo[codigo]
         assert codigo in vivas, codigo
         assert vivas[codigo]["categoria"] == nombres[o["categoria"]], codigo
@@ -179,6 +187,12 @@ def test_la_pagina_calcula_igual_que_python_y_recalcula_lo_que_depende_de_la_fec
     assert por_codigo["5000-96-LE26"]["categoria"] != "descartar"
     assert "5000-96-LE26" in descartadas and "5000-96-LE26" not in vivas
     assert "5000-97-LE26" not in vivas and "5000-97-LE26" not in descartadas    # ya cerró: no se muestra
+    # Compra ágil que cierra en 10 horas: viva (una licitación se descartaría); en 3 horas: descartada.
+    assert por_codigo["100-98-COT26"]["compraAgil"] and por_codigo["100-99-COT26"]["categoria"] == "descartar"
+    assert "100-99-COT26" in descartadas
+    pagina.select_option("#fMostrar", "todas")
+    pagina.select_option("#fTipo", "compraAgil")
+    assert [f["codigo"] for f in _filas(pagina)] == ["100-98-COT26"]
     assert errores == []
 
 

@@ -54,4 +54,14 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   incluir las de la Planilla) que valen para las recomendadas, el mapa y la
   tabla; orden por columna; en móvil, tarjetas (`data-label`).
 - Todo texto de la API se escribe con `textContent` (`el()`), y los enlaces
-  solo van a https://www.mercadopublico.cl/.
+  solo van a https://www.mercadopublico.cl/ o a la ficha pública de una compra
+  ágil (https://buscador.mercadopublico.cl/ficha?code=…).
+- **Compras ágiles** (2026-10-14, pedido del usuario): van en la misma lista,
+  con la etiqueta «Compra Ágil» y el filtro de tipo. Se cotizan en horas, así
+  que tienen sus propios tramos de plazo (`DATA.reglas.plazoOfertaCompraAgil`,
+  que `evaluar()` usa cuando `op.compraAgil`); en vez de la duración de un
+  contrato muestran el plazo de entrega. La prueba en Chromium cubre una que
+  cierra en 10 horas (viva) y otra en 3 (descartada).
+- Las oportunidades con nota 85 o más llegan además **por correo**
+  (`../alertas_oportunidades.py`, ver `../CLAUDE.md`): el correo enlaza a
+  este tablero.

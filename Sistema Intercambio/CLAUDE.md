@@ -297,10 +297,95 @@ En cada vuelta (con el mismo cliente y ticket del monitor):
 - Sin ficha (tope de consultas), visita, dificultad y duración quedan en 50,
   nunca en 100.
 
+**Compras ágiles (2026-10-14, pedido del usuario: «licitaciones y compras
+ágiles»)**: la API de licitaciones no las expone. Las trae `compra_agil.py`
+desde la **API Compra Ágil v2** de ChileCompra (mayo 2026, mismo ticket, que
+va en un header; cuota diaria con error 429).
+- No hay listado por rubro: se hace **una búsqueda por palabra**
+  (`compraAgil.busquedas`). La API distingue tildes y plurales («calderas» trae
+  3, «caldera» 26), y una búsqueda muy amplia («gas») termina en 504.
+- Pasan el mismo prefiltro y la misma evaluación que una licitación, con tres
+  diferencias. El monto se compara con las compras ágiles que QUEMPIN cotizó
+  (`rango_ca`). Los tramos de plazo están en horas (`compraAgil.plazoOferta`,
+  menos de 6 horas descarta). Y la visita se lee en la descripción, porque la
+  ficha no tiene ese campo.
+- La ficha se vuelve a pedir solo si la compra cambió (`fecha_ultimo_cambio`).
+  Una búsqueda que falla no borra lo que seguía abierto.
+- **Es lenta.** El 2026-10-15 tardaba 15 a 20 s por búsqueda, y «caldera»
+  daba 504 a los 30 s aunque se acotara por fecha o por tamaño de página. Por
+  eso cada vuelta tiene un **presupuesto de tiempo** (`limiteMinutos`, 8).
+  Las búsquedas van en orden de importancia (14 palabras). Lo que no alcanza
+  sigue en la próxima vuelta, y las licitaciones se publican igual. Sin ese
+  tope, la tarea diaria pasó 15 minutos atascada y habría chocado con su
+  límite de 45.
+- Las búsquedas usan como máximo el 60 % de ese tiempo
+  (`fraccionTiempoBusquedas`); el resto queda para las fichas. En la primera
+  vuelta real las búsquedas se comieron todo y ninguna compra ágil tuvo
+  ficha.
+- Sin ficha, la evaluación por el nombre usa la región, el monto y el
+  organismo que trae el listado. Igual queda marcada «solo por el nombre», y
+  sin ficha nunca se manda correo.
+- El enlace va a la ficha pública `https://buscador.mercadopublico.cl/ficha?code=…`
+  (el esquema acepta `www` y `buscador`).
+
+**Calibración (2026-10-14, pedido del usuario: «mejora la precisión de las
+notas»)**: `calibrar_oportunidades.py` evalúa cada requerimiento de la
+Planilla con código como si se viera al día siguiente de publicado (una
+compra ágil, a las 3 horas). Lo evalúa sin sí mismo en la historia y lo
+compara con lo que decidió QUEMPIN: ofertó o descartó. `descargar` baja las
+fichas una vez a `oportunidades_estado_calibracion.json` (gitignoreado);
+`medir` da el AUC y la tasa de oferta por tramo de nota, sin consultar la API.
+Lo que se encontró y se cambió:
+- **La etiqueta tiene mucho ruido.** De los N° 100 a 249 se ofertó entre el
+  8 y el 26 %; desde el N° 250, el 80 %. Con «evaluador» vacío se ofertó 1 de
+  109. Entre los casos que alguien sí evaluó, **ningún criterio predice la
+  decisión** (AUC ≈ 0,5): ahí pesan la capacidad del momento, las garantías y
+  los requisitos de las bases. La nota sirve para separar lo que es del
+  rubro de lo que no, no para adivinar esas decisiones.
+- **Error corregido**: una palabra de `excluir` que aparecía solo en la
+  descripción restaba 35 aunque el nombre fuera del núcleo («alimentación»
+  eléctrica, «capacitación», «pavimento» de la sala). De 8 casos así se
+  ofertaron 4. Ahora resta `restaExcluirSoloDescripcion` (10).
+- **El monto estimado por tipo** (cuando no se publica, la mitad de los casos)
+  separaba peor que el azar (AUC 0,45, contra 0,57 con el monto publicado).
+  Ahora queda casi neutro (`confianzaEstimadoPorTipo` 0,3).
+- **Pesos**: visita, plazo y ejecución daban 100 a casi todo e inflaban la
+  nota sin separar nada; ejecución incluso iba al revés en todas las épocas.
+  Nuevos pesos: rubro 30, monto 10, dificultad 15, visita 5, ubicación 15,
+  comprador 15, plazo 5, ejecución 5.
+- **Exclusiones nuevas**: «aditivo» (por «Provisión de sal y aditivos para
+  caldera», que tenía 88) y «granel» (petróleo a granel).
+- Resultado en las 247 licitaciones: el AUC pasó de 0,757 a 0,79. Con nota 85
+  o más se ofertaba el 67 % (10 de 15); ahora 3 de 4. Hay que repetir la
+  medición cuando cambien reglas o pesos.
+
+**Correo de alertas (2026-10-14, `alertas_oportunidades.py`)**: cuando hay
+una oportunidad nueva con **nota 85 o más**, se envía un resumen (monto,
+tiempo restante, región, visita técnica, ejecución o plazo de entrega,
+comprador, a favor y en contra) a quien esté en
+`oportunidades_destinatarios.json`, que está gitignoreado porque el repo es
+público. Reglas en `alertas` de la configuración:
+- **Como máximo 3 correos en 7 días corridos.** Si en una vuelta hay varias,
+  van juntas en un solo correo.
+- **Nunca se repite una oportunidad**: lo enviado queda en
+  `oportunidades_estado_correos.json`.
+- No se avisa lo que ya está en la Planilla, lo descartado, lo que no tiene
+  ficha, ni lo que cierra antes de 48 horas (una compra ágil, 12 horas).
+- **Cómo sale**: lo envía Outlook de este equipo por COM
+  (`enviar_correo_outlook.ps1`, que recibe un JSON y no texto por la línea de
+  comandos). No se guarda ninguna contraseña nueva.
+- **Cuándo**: lo corre `Actualizar_Finanzas/driver.py` después de publicar el
+  tablero, y solo si Mercado Público respondió.
+- **Si Outlook falla**, no se marca como enviada y se reintenta en la próxima
+  vuelta.
+- Comandos: `status` (qué se enviaría), `vista` (escribe el correo como
+  .html, sin enviar). Las pruebas cortan Outlook en el `conftest`.
+
 **Configuración**: `oportunidades_config.json` (versionado, sin datos de la
 empresa) guarda pesos, categorías, topes, frases del rubro, puntaje por
-región, tramos de duración, señales de dificultad, valor UTM y presupuesto de
-consultas (80 por vuelta). La UF se lee de la caché del Cotizador.
+región, tramos de duración, señales de dificultad, valor UTM, presupuesto de
+consultas (80 por vuelta), compras ágiles y alertas. La UF se lee de la
+caché del Cotizador.
 
 **Seguridad**: es el mismo cliente del monitor (HTTPS, tope de tamaño,
 ticket DPAPI).
@@ -309,7 +394,10 @@ ticket DPAPI).
   tocar los montos.
 - El tablero lleva los datos cifrados (candado de los tableros) y escribe
   todo con `textContent`: un nombre de la API nunca se interpreta como HTML.
-- Los enlaces se limitan a https://www.mercadopublico.cl/.
+- Los enlaces se limitan a https://www.mercadopublico.cl/ y a la ficha
+  pública de una compra ágil en buscador.mercadopublico.cl.
+- El correo escapa todo texto de la API (`html.escape`). Los destinatarios se
+  validan contra una expresión de correo y no están en el repositorio.
 
 **Estado**: el paso del procesador está **apagado** (`enProcesador: false`)
 hasta que el usuario lo active. El tablero se refresca y publica **todos los
