@@ -798,7 +798,8 @@
     /* Media tarjeta de un teléfono de 360 px: una cifra de ocho dígitos con puntos cabe desde 18 px. Una
        cifra más larga corta en el punto de miles (<wbr>), nunca entre dígitos. */
     .ficha-cifra-valor { font-size: clamp(17px, 5vw, 21px); }
-    .ficha-cab-acciones { margin-left: 0; width: 100%; }
+    /* Con «Ver sus facturas» son tres botones más «Cerrar» (2026-10-14): en el teléfono se reparten en dos filas */
+    .ficha-cab-acciones { margin-left: 0; width: 100%; flex-wrap: wrap; }
     .ficha-cab-acciones .ficha-boton { flex: 1 1 auto; padding: 10px 12px; }
     .ficha-cerrar { padding: 10px 8px; }
     .ficha-card { padding: 12px; }
@@ -2161,7 +2162,7 @@ var QuempinCandado = (function () {
   return { abrir: abrir, derivar: derivar, descifrar: descifrar, descifrarBytes: descifrarBytes, abrirArchivo: abrirArchivo };
 })();
 </script>
-<script id="af-data-b64" type="text/plain">{"v":2,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"poUqDhyX98NbvYni","comp":"gzip","datos":"Fhh/UniXPbaVniIXuOlbd/qucpJGHBCgw0O1RE8KJY7w0WiRI3K6UpmAelzLdp3X7DB9y4NJdue8Dnzsy9EhQGcF2udh/5l/8BjIahSCWcvRPPKEWJD6XHR8bhbzNTJKcS6PgL7CUvOieZkg7N5JcxvG1lqjw5yTEg3OYivFHpJnNf4RFlXSnaBphQ99uSqBGGMygG3d1RW0oJd369egjrA1GdjpLBe0uynJJXUI5ACMSEZMh3kowzn8zkbbsvnIVY9pISxbsZehd59VAAYEepxKszaGf98mYkFcgYDgYiUZyPoCfd/GrX1/ZpdTGoMrKioLQ/tZ5UZiXwymhYS56OXUJ63TqvkTPo7cz0CaIVDCvYzlsnJCBwziiN8yFWRwGI2AuUG+Iowgzb9gFUjK+7ORxqNcamiyPvb9tOO0N4vZhsR+a3mdU0OmyLNazrzSQ6SSj1Ml2RKkD+7bDdwZjmH46E6qaeLyDtA2R4+r97ivkB6X/BeYTsDvP0pe4wjmgrpZZyPJr7kd/gHka4ZXgylwWfefSlICPzEQ0+0mnQOTol0d0F2/+TUZ9ZAJz+UOzElLz6LkYINiIKQ6OyYQqVKTni3XPKCKMyAdVQfTqxTUEVsa6SqyhTTtTNrk8woMXxjStq3cwUCeoMrwSAMOPp/xEUfDzlk5Dx0EcPClXd5yNTq0RjwpJP7yXOzTdbeziAgB9LXRHH7btZ2bZXIGI4hLxJTL2t9HI3xNS6nnyCvZ6uFMYsm0riRTuDfDSoEdLdZgRxv/SxKZLMM3wlpAbIA0NoFWw1ITIA5/DiaPS6lVTva+uhZrWJMRngJkj1+qfXcsa2BmDD2jYISdyBtsoklikqA8a5JG6RcaroSE8urXmEaV8i1jhVZLDF2SWUB6xasI2eztFdrsnTxW+aU9bndON6vmrf0Em4goMuTwlG4vHDOD/HqWbhQGWZrAm2f8Raywlw2wHxsQFukUpbF1DfX66YjAyLA2t8JZWdVRoxqXBkXIfp6GqZ1mIVMvkecF0ioEpS6kk92wgD2nW+TF2GLa8Od6A/bK0jqAFexWSNwIah2wX1m6RiWnvcNvTKQ4QMFKPI38FAtUIdyGBrNwub/n51ecvGP7kdmUBeLQoibDSu53Ns6XBDrQBnQKcEs4TImJJP2h5OhK9AjFJKNbsLJBINg35ERhoJ1JsbdDPeR7Td34L4Zi8ctJvenYYIlN6o0N1mSYtralW4Kftlr9OOyXsNjQLyAue/8nkfpoYWRhGwnkKMj8OrYrSV0kqh73IWFy+/kL9LVbi9zUDLaXvtInU92kz5UFFPG/sl7Sd5M2ukd+X903SQNY8gN3iwHyyUwBpfNK6FizyFOi9AAp+/gQtvvg1TRVZMapTOuhIBfpQ/UwJ07ljeu9VUBijUHENEY0jy6Ov2nOYaOd16OZaoSbY0zQKlvSrLnwnOsvZvNbRdZ1qnDyN6wav6OulcyIz7jusYoIFHLXLRTVXbtwRBX6Vr3fLILlZNuvki79ZZyIPC0VopkOfX/tHzN6onu23+BbgbZYgK3nA4o4DZVIRdB2HTorVR0yfYAe08a4KLq2pihM49qyt/X/zFrc3w=="}</script>
+<script id="af-data-b64" type="text/plain">{"v":2,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"H9XDxrsTxYsfXBsf","comp":"gzip","datos":"+yv7w98B/xstPbcSbrsO3N4iaebOT8fhguBf7dvp64cw2wdvxGSfCU++q2759I3XtAk7KfmezyAzckbDVARC6cvCqWaEarhFJOap7IlRop7VUcwAYWvFkJ7K4M8A+aCG6B5vkibIc+8lD0TIXuRBwN8g5irXWdGCCEFM8iQQLGWS6WwcM15UPl+DQeptOJ7Y2bpOOwxZT+G6e6SGp8I+aTh0vpLbcj1sK6KhKKFWQt0MjbFJju3UdWrIxMAkmPhTJFec+uEJ5yH1Q5A2kIqCVg4ZN5GaHlq7lDYIGdPFiw7rwGDk5PW+QncSKExcQwedFAZQH7KToRaeYxq6RlrcGxLqkw2kcE5FOkZWWlUvz5TsL6DwNaEVh0Mc8nDK5zY0VleQNo8TP3WUmAT3m05qJDjisrL2XGaF6AlLTcgCe1luczNeCcdYCfRBjEu5Iev33LFASDValRuKwUKQDTGzlPuDCONa3r1hfuShtc+fgXqycUxZCJNCt0rjwEojDQg601aYC/mXvrCeWuMD2gbYoaMIao9PovZdiyvZl4Q7MrQcpbuUculjAQuFBAjBVutRRTEFreBXhQrt7I+nE8pwdQWpZZ1Dz6UFTaBZcb2lWHCIN92cfhMlFHR1PkXG1wfZ12bT8ryrX+/I1UqDabPpLw4tgEIF94LNiz2RRduQWXSDVvEAmvZTTu97gmM1ZC78VXsY0sl+e8ZemlZTN9ZaO0V7MlW+SXkxuS86UR1l+yQCF5x6OCdfusqC9nMklTffr0WliVDq/E6jJYQQqEkottqwCACv4tH9miG0xQP4a+WaGTsGk2iqA/BzVCaSr/kMYx7Rc3FcC2cYtiTg+6VOW/PkugRaWtzTpju+ohidIt6XQ0KSq2Eyf8OVQuV0YFajP9XqffZbmlJQ6aCry0qOpXeUtu+oxymXKcIJheVCisHhDJO8cxreazfoGQRjevBWmAeXvgS0Qw1mPVIGgwnnRBeolj82MZWxxKkxY+T/344FnGECtVURpm5c3MtvTjNx8BEWEtInSScyHLWGwDZM5QwZKqECrIGyIqhWVvJVrH4J+798qEcqLhMJsp3vIbZmsR7BsJH8ySODoYKrMvgaXANZJK/OnjvVVNj4tXy5WVaSJenmbSsqK3wfb4Cy3cyxDFc6GHOmUv6BmRXOkm4+5+n1Z9NBnS8WUQvgpq8MfW8D1CcEjkEhK5ieGa5NKLeooybIphe4XmzyE/1eQNps6pDkg9oN5DqKcXr9sdoGYYMtBG+x5WMDWZ1qEiifykk8pvWJVwQ4ZBeJdjZ137AR6sokOjVd8BSiSkCY0gFygkFztGLeLsZOoQovItzMp8QEus8viwbHJjDQtkdOHjSLVejCd5Hb9OK0Zt1mx8AbyPLThvaGNxgRxDrC0UNyiMZe4QsBBoiK42ytRamq7CMyJ+89AJ+CchbHzNcWjIF33ZIDbD/vTFlYk51QEDEkyS/VxjjpF1TrC2VUj6yVa98qX9Zk1jnz4D2ovsCxNImB0/zIeYc/ItxCTc+URXhCi4vYmgz3OX6g3cBvfZAfNeInx3PiQhvMowBX9j8Q6g/M1Q46R3IJGqGCv9N//4ZWGQ=="}</script>
 <script>
 (function () {
   // ---------- theme persistence ----------
@@ -2696,7 +2697,7 @@ var QuempinCandado = (function () {
     var pdf = botonReporte('proyecto:' + p.tag, 'ficha-boton') || '<span class="ficha-sin-pdf">Sin reporte PDF</span>';
     return '<div class="ficha-cab"><div class="ficha-cab-datos">' + estado +
       '<span>' + esc(p.categoria || 'Sin categoría') + '</span><span>' + fechas + '</span></div>' +
-      '<div class="ficha-cab-acciones">' + enlaceFormuladorHtml(p) + pdf +
+      '<div class="ficha-cab-acciones">' + enlaceFormuladorHtml(p) + enlaceCentroCostosHtml(p) + pdf +
       '<button type="button" class="ficha-cerrar" data-cerrar-ficha aria-label="Cerrar la ficha del proyecto">Cerrar ✕</button></div></div>';
   }
 
@@ -2710,6 +2711,18 @@ var QuempinCandado = (function () {
   function enlaceFormuladorHtml(p) {
     return '<a class="ficha-boton" href="' + esc(enlaceFormulador(p)) + '" target="_blank" rel="noopener"' +
       ' title="Abre este proyecto en el Formulador de proyectos: su formulación, su cotización y su recorrido">Ver la formulación ↗</a>';
+  }
+
+  // ---------- sus facturas en el Centro de Costos (2026-10-14) ----------
+  // El tablero del Centro de Costos abre filtrado por el proyecto (#tag=TAG: sus documentos se
+  // reconocen por el prefijo de su N° de referencia). Solo Chile: el de Perú no lee ese filtro.
+  var TABLEROS_URL = 'https://cristobal-monzo.github.io/finanzas-quempin/';
+  function enlaceCentroCostosHtml(p) {
+    var activo = (document.getElementById('modNav') || {}).getAttribute ? document.getElementById('modNav').getAttribute('data-nav-activo') || '' : '';
+    var conGasto = CATEGORIAS_COSTO.some(function (c) { return ((p.costos_reales || {})[c.key] || 0) > 0; });
+    if (/-peru$/.test(activo) || !p.tag || !conGasto) return '';
+    return '<a class="ficha-boton" href="' + esc(TABLEROS_URL + 'centro-de-costos/#tag=' + encodeURIComponent(p.tag)) + '" target="_blank" rel="noopener"' +
+      ' title="Abre el tablero del Centro de Costos con las facturas y boletas de este proyecto">Ver sus facturas ↗</a>';
   }
 
   function cifraHtml(o) {
