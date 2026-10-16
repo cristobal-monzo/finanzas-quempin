@@ -93,6 +93,7 @@ def test_registro_bien_formado():
             assert h["url"].startswith("https://quempinspa2020.sharepoint.com/"), h["id"]
         if h["tipo"] == "programa":
             assert h.get("accion"), h["id"]
+            assert re.fullmatch(r"quempin://[a-z-]+", h.get("enlace", "")), h["id"]
         if h["tipo"] == "archivo":
             assert h.get("donde"), h["id"]
         if h.get("alias"):
@@ -103,8 +104,31 @@ def test_registro_bien_formado():
         assert h.get("claves", "") == h.get("claves", "").lower(), h["id"]
     for g in grupos:
         assert any(h["grupo"] == g for h in herr), f"grupo vacío: {g}"
-    for a in reg["atajos"]:
-        assert a["herr"] in por_id and a["texto"].strip()
+    # Lo que muestra el Inicio: cada herramienta con su línea breve, que cabe en una línea
+    for h in herr:
+        if h["grupo"] in grupos - {"ayuda"}:
+            assert 0 < len(h.get("breve", "")) <= 38, h["id"]
+        if h["tipo"] == "marco":   # el nombre de su pestaña
+            assert len(h.get("corto", h["nombre"])) <= 18, h["id"]
+
+
+def test_los_grupos_del_pedido_del_2026_10_16():
+    """Cuatro grupos y la ayuda; la calculadora al final, antes de la ayuda."""
+    assert [g["nombre"] for g in _registro()["grupos"]] == [
+        "Formulación de proyectos", "Control y finanzas", "Cotizar y comprar", "Calculadora", "Ayuda"]
+
+
+def test_sistema_quempin_conoce_los_enlaces_del_portal():
+    """Cada quempin:// del portal es una sección que QUEMPIN.exe abre (Sistema QUEMPIN app/protocolo.py)."""
+    sistema = _hermano("Sistema QUEMPIN")
+    protocolo = sistema / "app" / "protocolo.py" if sistema else None
+    if not protocolo or not protocolo.exists():
+        pytest.skip("Sistema QUEMPIN no está en este equipo")
+    secciones = set(re.findall(r'^\s+"([a-z-]+)": \d+,$', protocolo.read_text(encoding="utf-8"), re.M))
+    assert {"cotizacion", "orden-compra", "clientes"} <= secciones
+    for h in _registro()["herramientas"]:
+        if h["tipo"] == "programa":
+            assert h["enlace"].removeprefix("quempin://") in secciones, h["id"]
 
 
 def test_las_calculadoras_estan_en_el_portal():
@@ -301,6 +325,12 @@ def _abrir_portal(navegador, sitio, ancho=1280, alto=860, clave=True, proyectos=
         for (const [k, v] of Object.entries(semilla)) if (localStorage.getItem(k) === null) localStorage.setItem(k, v);
         window.__abiertas = [];
         window.open = function (u) { window.__abiertas.push(String(u)); return null; };
+        // Los quempin:// (QUEMPIN.exe) se anotan en vez de pedirle a Windows que abra el programa.
+        window.__lanzados = [];
+        document.addEventListener('click', (e) => {
+            const a = e.target && e.target.closest ? e.target.closest('a[href^="quempin:"]') : null;
+            if (a) { window.__lanzados.push(a.getAttribute('href')); e.preventDefault(); }
+        }, true);
     })(%s)""" % json.dumps(semilla))
     pagina = ctx.new_page()
     errores = []
@@ -330,23 +360,92 @@ def _esperar(pagina, familia, campo, valor):
 
 
 def _menu(pagina, nombre):
-    pagina.locator("#menu .menu-item", has_text=nombre).first.click()
+    """Elige una herramienta en el menú, desplegando antes su grupo (hay uno solo abierto a la vez)."""
+    item = pagina.locator("#menu .menu-item", has_text=nombre).first
+    if not item.is_visible():
+        item.locator("xpath=ancestor::section[1]/button[contains(@class, 'grupo-cab')]").click()
+    item.click()
 
 
 def _pestanas(pagina):
     return pagina.locator("#pestanas .ir").all_inner_texts()
 
 
-def test_inicio_muestra_los_grupos_y_las_calculadoras(navegador, sitio):
+JS_BARRAS = """() => ['.vista-inicio', '.menu-lista', '.pestanas-lista'].map((s) => {
+    const e = document.querySelector(s);
+    return e && e.getClientRects().length ? [s, e.scrollHeight - e.clientHeight, e.scrollWidth - e.clientWidth] : [s, 0, 0];
+}).filter(([s, alto, ancho]) => alto > 1 || ancho > 1)"""
+
+
+def test_inicio_muestra_todas_las_herramientas_por_grupo(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     grupos = pagina.locator("#menu .grupo-cab").all_inner_texts()
-    assert [g.strip() for g in grupos] == ["Conseguir trabajo", "Formular la oferta", "Calcular", "Cotizar y comprar",
-                                           "Ejecutar y controlar", "Caja de la empresa", "Ayuda"]
-    calcs = pagina.locator("#calcs .calc")
-    assert calcs.count() == 4
-    assert [calcs.nth(i).locator(".calc-pest button").count() for i in range(4)] == [0, 3, 5, 4]
+    assert [g.strip() for g in grupos] == ["Formulación de proyectos", "Control y finanzas", "Cotizar y comprar",
+                                           "Calculadora", "Ayuda"]
+    assert pagina.locator("#iniGrupos .ini-grupo h2").all_inner_texts() == [
+        "Formulación de proyectos", "Control y finanzas", "Cotizar y comprar", "Calculadora"]
+    reg = _registro()
+    esperadas = [h["id"] for h in reg["herramientas"] if h["grupo"] in {"formular", "finanzas", "cotizar", "calcular"}]
+    assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item')].map(b => b.dataset.herr)") == esperadas
+    # Lo que se abre fuera del portal (Excel, Sistema QUEMPIN) lleva la flecha ↗
+    assert pagina.locator("#iniGrupos .ini-item:has(.ini-fuera)").count() == 5
     assert _pestanas(pagina) == ["Inicio"]
     assert pagina.locator("iframe").count() == 0
+    # Una herramienta del Inicio se abre en su pestaña
+    pagina.locator('.ini-item[data-herr="flujo-caja"]').click()
+    _marco(pagina, "flujo-caja", "fc")
+    assert _pestanas(pagina) == ["Inicio", "Flujo de Caja"]
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1280, 600), (1024, 640)])
+def test_el_inicio_y_el_menu_caben_sin_barras(navegador, sitio, ancho, alto):
+    """Pedido del 2026-10-16: el Inicio con todas las herramientas sin desplazarse, y ninguna barra vertical."""
+    pagina, errores = _abrir_portal(navegador, sitio, ancho=ancho, alto=alto)
+    assert pagina.evaluate(JS_BARRAS) == []
+    # El grupo más largo desplegado tampoco desborda el menú
+    _menu(pagina, "Seguimiento")
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
+    assert pagina.evaluate(JS_BARRAS) == []
+    # Con menos ancho van dos columnas
+    columnas = pagina.evaluate("getComputedStyle(document.getElementById('iniGrupos')).gridTemplateColumns.split(' ').length")
+    assert columnas == (4 if ancho >= 1280 else 2)
+    assert pagina.evaluate("getComputedStyle(document.querySelector('.menu-lista')).scrollbarWidth") == "none"
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_menu_despliega_un_grupo_a_la_vez(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    abiertos = lambda: pagina.locator('#menu .grupo-cab[aria-expanded="true"]').all_inner_texts()
+    assert [g.strip() for g in abiertos()] == ["Formulación de proyectos"]
+    pagina.locator("#grupo-finanzas").click()
+    assert [g.strip() for g in abiertos()] == ["Control y finanzas"]
+    assert pagina.locator("#items-formular").is_hidden()
+    pagina.locator("#grupo-finanzas").click()
+    assert abiertos() == []
+    # Abrir una herramienta (aquí desde el Inicio) despliega su grupo
+    pagina.locator('.ini-item[data-herr="gas"]').click()
+    _marco(pagina, "gas", "gas")
+    assert [g.strip() for g in abiertos()] == ["Calculadora"]
+    assert not errores
+    pagina.context.close()
+
+
+def test_las_pestanas_se_encogen_en_vez_de_desplazarse(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio, ancho=1366, alto=657)
+    ids = ["oportunidades", "formulador", "cotizador", "centro-costos", "analisis", "flujo-caja",
+           "diametro", "hidrogeno", "gas", "otros-gases"]
+    for herr in ids:
+        pagina.locator("#pestanas .ir", has_text="Inicio").click()
+        pagina.locator(f'.ini-item[data-herr="{herr}"]').click()
+    _marco(pagina, "otros-gases", "otros")
+    assert _pestanas(pagina) == ["Inicio", "Oportunidades", "Formulador", "Cotizador", "Centro de Costos", "Análisis",
+                                 "Flujo de Caja", "Diámetro", "Hidrógeno", "Gas / GLP", "Otros gases"]
+    assert pagina.evaluate(JS_BARRAS) == []
+    # El nombre completo queda a mano en el title
+    assert pagina.locator("#pestanas .ir", has_text="Análisis").get_attribute("title") == "Análisis Financiero"
     assert not errores
     pagina.context.close()
 
@@ -376,18 +475,18 @@ def test_un_enlace_a_otra_herramienta_abre_su_pestana_en_el_portal(navegador, si
     af = _marco(pagina, "analisis", "af")
     _esperar(pagina, "analisis", "hash", "#proyecto=DEMO")
     assert cc.evaluate("document.body.dataset.herr") == "cc", "el Centro de Costos sigue en su pestaña"
-    assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Análisis Financiero"]
+    assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Análisis"]
     # Un enlace con target=_blank y un window.open también quedan en el portal, sin ventanas nuevas.
     pagina.locator("#pestanas .ir", has_text="Centro de Costos").click()
     cc.click("#aForm")
     _marco(pagina, "formulador", "formulador")
-    pagina.locator("#pestanas .ir", has_text="Análisis Financiero").click()
+    pagina.locator("#pestanas .ir", has_text="Análisis").click()
     af.click("#bOpen")
     _esperar(pagina, "formulador", "hash", "#/req/7")
     assert len(pagina.context.pages) == 1
-    assert _pestanas(pagina).count("Formulador de proyectos") == 1
+    assert _pestanas(pagina).count("Formulador") == 1
     # El window.open('') de los reportes PDF no se toca: abre su ventana como siempre.
-    pagina.locator("#pestanas .ir", has_text="Análisis Financiero").click()
+    pagina.locator("#pestanas .ir", has_text="Análisis").click()
     with pagina.context.expect_page():
         af.click("#bReporte")
     assert af.evaluate("document.body.dataset.reporte") == "abierta"
@@ -427,20 +526,19 @@ def test_el_buscador_lleva_a_la_pestana_de_una_calculadora(navegador, sitio):
     pagina.keyboard.press("Enter")
     _esperar(pagina, "gas", "tab", "combustion")
     assert gas.evaluate("document.body.dataset.cargas") == "1"
-    assert _pestanas(pagina) == ["Inicio", "Gas natural / GLP"]
+    assert _pestanas(pagina) == ["Inicio", "Gas / GLP"]
     # Volver a elegirla en el menú no la mueve de donde quedó.
     _menu(pagina, "Gas natural / GLP")
     pagina.wait_for_timeout(200)
     assert gas.evaluate("document.body.dataset.tab") == "combustion"
-    # Las fichas de Inicio también entran directo a una pestaña.
-    pagina.locator("#pestanas .ir", has_text="Inicio").click()
-    tarjeta = pagina.locator("#calcs .calc").filter(has=pagina.locator("h3", has_text=re.compile("^Hidrógeno$")))
-    tarjeta.locator("button", has_text="Memoria de cálculo").click()
+    # Buscar una pestaña de otra calculadora la abre directo en ella.
+    pagina.locator("#buscar").fill("memoria hidrogeno")
+    pagina.keyboard.press("Enter")
     h2 = _marco(pagina, "hidrogeno", "hidrogeno")
     _esperar(pagina, "hidrogeno", "tab", "memoria")
     # Búsquedas por necesidad
     for consulta, esperado in (("factura", "Centro de Costos"), ("orden de compra", "Orden de compra"),
-                               ("caneria", "Diámetro de tubería"), ("licitaciones", "Oportunidades en Mercado Público")):
+                               ("caneria", "Diámetro de tubería"), ("licitaciones", "Oportunidades")):
         pagina.locator("#buscar").fill(consulta)
         assert esperado in pagina.locator("#resultados .res-tit").all_inner_texts(), consulta
     pagina.locator("#buscar").fill("zzz sin nada")
@@ -465,10 +563,6 @@ def test_la_calculadora_que_cambia_sola_mueve_su_pestana(navegador, sitio):
 
 def test_el_proyecto_elegido_abre_cada_herramienta_en_el(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
-    # Inicio: lo que hay en este navegador, sin la versión vieja ni el eliminado
-    assert pagina.locator("#miDia .num").all_inner_texts() == ["1", "1"]
-    assert pagina.locator("#recientes .reciente .t").all_inner_texts() == ["QMPN-2026-001 · Obra de prueba",
-                                                                           "QMPN-2026-002 · Mantención de prueba"]
     # La Carta Gantt necesita un proyecto: lo pide y después la abre
     _menu(pagina, "Carta Gantt")
     assert pagina.locator("#popProyecto").is_visible()
@@ -480,9 +574,9 @@ def test_el_proyecto_elegido_abre_cada_herramienta_en_el(navegador, sitio):
     _esperar(pagina, "formulador", "hash", "#/p/u2/gantt")
     assert "QMPN-2026-001" in pagina.locator("#proyectoActual").inner_text()
     # El mismo Formulador, en la misma pestaña
-    _menu(pagina, "Formulador de proyectos")
+    _menu(pagina, "Formulador")
     _esperar(pagina, "formulador", "hash", "#/req/7")
-    assert _pestanas(pagina) == ["Inicio", "Formulador de proyectos · QMPN-2026-001"]
+    assert _pestanas(pagina) == ["Inicio", "Formulador · QMPN-2026-001"]
     _menu(pagina, "Centro de Costos")
     cc = _marco(pagina, "centro-costos", "cc")
     _esperar(pagina, "centro-costos", "hash", "#tag=DEMO")
@@ -510,12 +604,12 @@ def test_el_proyecto_elegido_abre_cada_herramienta_en_el(navegador, sitio):
 
 def test_ingresar_datos_y_analisis_son_una_sola_pestana(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    _menu(pagina, "Ingresar avance y datos")
+    _menu(pagina, "Ingresar avance")
     af = _marco(pagina, "analisis", "af")
     _esperar(pagina, "analisis", "tab", "tabIngreso")
     _menu(pagina, "Análisis Financiero")
     _esperar(pagina, "analisis", "tab", "tabResumen")
-    assert _pestanas(pagina) == ["Inicio", "Análisis Financiero"]
+    assert _pestanas(pagina) == ["Inicio", "Análisis"]
     assert af.evaluate("document.body.dataset.cargas") == "1"
     assert not errores
     pagina.context.close()
@@ -542,7 +636,14 @@ def test_excel_y_programa_no_se_abren_dentro(navegador, sitio):
     abiertas = pagina.evaluate("window.__abiertas")
     assert len(abiertas) == 1 and abiertas[0].startswith("https://quempinspa2020.sharepoint.com/")
     assert pagina.locator("iframe").count() == 0
+    # Cotizar y comprar abre QUEMPIN.exe en su sección con quempin:// (Sistema QUEMPIN 1.3.8)
     _menu(pagina, "Emitir cotización")
+    pagina.locator('.ini-item[data-herr="clientes"]').click()
+    assert pagina.evaluate("window.__lanzados") == ["quempin://cotizacion", "quempin://clientes"]
+    assert "Abriendo Sistema QUEMPIN" in pagina.locator("#aviso").inner_text()
+    assert pagina.locator("#dlgInfo").is_hidden()
+    # Si no se abrió, el aviso explica cómo dejarlo listo en ese computador
+    pagina.locator("#aviso button", has_text="¿No se abrió?").click()
     assert pagina.locator("#dlgInfo").is_visible()
     assert "QUEMPIN.exe" in pagina.locator("#dlgInfo").inner_text()
     pagina.locator("#dlgInfo button", has_text="Entendido").click()
@@ -563,7 +664,7 @@ def test_el_pais_elige_el_tablero_de_peru(navegador, sitio):
     assert _marco(pagina, "cotizador", "cotpe").url.endswith("/cotizador-historico-peru/")
     _menu(pagina, "Flujo de Caja")
     assert _marco(pagina, "flujo-caja", "fc").url.endswith("/flujo-de-caja/")        # solo existe en Chile
-    _menu(pagina, "Ingresar avance y datos")
+    _menu(pagina, "Ingresar avance")
     _marco(pagina, "analisis", "af")                                                  # solo existe en Chile
     assert pagina.locator("#pais").input_value() == "pe"
     # De vuelta a Chile, el Cotizador abierto se cambia solo
@@ -600,7 +701,7 @@ def test_las_pestanas_vuelven_al_recargar_y_solo_carga_la_activa(navegador, siti
 def test_no_quedan_mas_de_ocho_herramientas_cargadas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     nombres = ["Centro de Costos", "Análisis Financiero", "Flujo de Caja", "Cotizador Histórico", "Oportunidades",
-               "Formulador de proyectos", "Diámetro de tubería", "Hidrógeno", "Gas natural / GLP"]
+               "Formulador", "Diámetro de tubería", "Hidrógeno", "Gas natural / GLP"]
     for nombre in nombres:
         _menu(pagina, nombre)
     _marco(pagina, "gas", "gas")

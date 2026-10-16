@@ -160,9 +160,31 @@ y que se pueda revertir si no le gusta.
   `https://cristobal-monzo.github.io/finanzas-quempin/portal/`. Una sola
   ventana: menú por necesidad (☰), buscador (Ctrl K), proyecto elegido una vez
   y pestañas con las herramientas abiertas dentro (iframes del mismo sitio).
-  Inicio muestra Mi día, atajos, calculadoras y proyectos recientes. No lleva
-  datos ni contraseña: cada herramienta pide la suya (la del equipo, que el
-  navegador recuerda).
+  No lleva datos ni contraseña: cada herramienta pide la suya (la del equipo,
+  que el navegador recuerda).
+- **Cambios del 2026-10-16** (pedido del usuario):
+  - **Cuatro grupos y la ayuda**: Formulación de proyectos, Control y
+    finanzas, Cotizar y comprar, Calculadora (al final, antes de Ayuda).
+    `test_los_grupos_del_pedido_del_2026_10_16` fija el orden.
+  - **Inicio minimalista**: todas las herramientas en cuatro columnas, una por
+    grupo, con su línea `breve`; lo que se abre fuera (Excel, QUEMPIN.exe)
+    lleva ↗. Cabe sin desplazarse desde 1024×640: con menos ancho van dos
+    columnas y, si falta alto, se esconden las líneas breves (container
+    queries sobre `.vista-inicio`). Se quitaron Mi día, atajos, las fichas de
+    calculadora y los proyectos recientes.
+  - **Sin barras de desplazamiento** en el portal (clase `sin-barra`): el menú
+    despliega un solo grupo a la vez (`quempin_portal_menu.abierto`; al
+    cambiar de herramienta se abre su grupo) y las pestañas se encogen como
+    las de un navegador, con su nombre `corto` (el completo va en el title) y
+    la ✕ encima del nombre. Si una pantalla muy baja no alcanza, se desplaza
+    con la rueda, sin barra. Las herramientas abiertas dentro conservan la
+    suya. `test_el_inicio_y_el_menu_caben_sin_barras` mide 4 tamaños.
+  - **Cotizar y comprar abre QUEMPIN.exe** con `quempin://cotizacion`,
+    `quempin://orden-compra` y `quempin://clientes` (campo `enlace`): el
+    programa 1.3.8 se anota en Windows al abrirse y abre esa sección, o trae al
+    frente la ventana abierta (Sistema QUEMPIN `app/protocolo.py`, CLAUDE.md
+    §11). El portal muestra «Abriendo Sistema QUEMPIN… ¿No se abrió?», que
+    explica cómo dejarlo listo en ese computador.
 - **Por qué funciona**: el Formulador, los tableros y la Calculadora están en el
   mismo sitio (`cristobal-monzo.github.io`). Eso permite tres cosas:
   - el portal los abre dentro;
@@ -212,7 +234,8 @@ y que se pueda revertir si no le gusta.
     de `js/m365-config.js` del Formulador.
   - Control de Documentos: el portal dice dónde está, porque aún no tiene
     enlace web.
-  - QUEMPIN.exe (cotización, OC, clientes): el portal dice cómo abrirlo.
+  - QUEMPIN.exe (cotización, OC, clientes): se abre por `quempin://`, fuera
+    del navegador.
 - **En el navegador**: guarda `quempin_portal_pestanas` (vuelven sin cargar,
   solo la activa), `quempin_portal_proyecto`, `quempin_portal_menu` y
   `quempin_portal_pais`. El tema usa `quempin_hub_theme`, el del índice. Cuando
@@ -229,8 +252,6 @@ y que se pueda revertir si no le gusta.
     - el portal en Chromium, sobre un sitio de mentira con las mismas rutas.
   - `auditoria_movil.py portal` revisa el teléfono.
 - **Pendiente si se adopta (fase 2)**:
-  - un botón que abra QUEMPIN.exe (protocolo `quempin://` que registre el
-    programa);
   - los contadores de «Pendientes del equipo» leídos de la carpeta de
     intercambio;
   - el índice apuntando al portal;
