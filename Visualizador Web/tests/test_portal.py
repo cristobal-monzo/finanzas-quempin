@@ -100,7 +100,11 @@ def test_registro_bien_formado():
             dueno = por_id[h["familia"]]
             assert not dueno.get("alias") and dueno["ruta"] == h["ruta"], h["id"]
         if h.get("familia") and not h.get("alias"):
-            assert h["familia"] == h["id"], h["id"]
+            # La dueña de la familia, o una página hermana con su propia ruta (las calculadoras)
+            dueno = por_id[h["familia"]]
+            assert h["familia"] == h["id"] or (dueno["familia"] == dueno["id"] and h["ruta"] != dueno["ruta"]), h["id"]
+        if h.get("incrustar"):
+            assert h["incrustar"] in {"tablero", "calculadora", "formulador"} and h["tipo"] == "marco", h["id"]
         assert h.get("claves", "") == h.get("claves", "").lower(), h["id"]
     for g in grupos:
         assert any(h["grupo"] == g for h in herr), f"grupo vacío: {g}"
@@ -209,6 +213,23 @@ PAGINA = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>{t
   document.body.dataset.cargas = String(n);
 </script>{script}</body></html>"""
 
+# Cabeceras como las reales: lo que el portal esconde dentro de él (logo, título, modo oscuro).
+CABECERA_TABLERO = """<div class="viz-root"><header class="viz-header"><div class="viz-container">
+  <div class="viz-logo"><div class="viz-wordmark">QUEMPIN</div></div>
+  <div class="viz-titleblock"><h1>Tablero — Visualizador</h1><p id="vizGenerated">Datos al 15-10-2026</p></div>
+  <button class="viz-theme-toggle" id="themeToggle">Modo oscuro</button></div>
+  <nav class="viz-modnav"><a class="viz-modnav-tab" href="/finanzas-quempin/flujo-de-caja/">Flujo</a></nav></header></div>"""
+CABECERA_CALC = """<header class="viz-header"><div class="viz-container"><span class="viz-wordmark">QUEMPIN</span>
+  <div class="viz-titleblock"><h1>Calculadora</h1></div><button id="themeToggle">Modo oscuro</button></div></header>"""
+CABECERA_FORMULADOR = """<div class="viz-root"><header class="viz-header"><div class="viz-container">
+  <a class="viz-logo" href="#/"><span class="viz-wordmark">QUEMPIN</span></a>
+  <div class="viz-titleblock"><h1>Formulación de Proyectos</h1></div>
+  <button class="viz-theme-toggle hb" id="herrBtn">Herramientas</button>
+  <button class="viz-theme-toggle hb" data-act="config" id="config">Configuración</button>
+  <button class="viz-theme-toggle hb" id="themeToggle">Modo oscuro</button></div>
+  <nav class="viz-modnav"><div class="viz-container viz-modnav-inner" id="modnav"><a class="viz-modnav-tab is-active" href="#/">Proyectos</a></div></nav>
+</header></div>"""
+
 CANDADO = """<div id="pwGate">Contraseña del equipo</div>
 <script>if (localStorage.getItem('quempin_viz_clave')) document.getElementById('pwGate').hidden = true;</script>"""
 
@@ -228,7 +249,7 @@ def _sitio(raiz: Path):
     (raiz / "finanzas-quempin" / "portal").mkdir(parents=True)
     (raiz / "finanzas-quempin" / "portal" / "index.html").write_bytes(PORTAL.read_bytes())
     pagina("/finanzas-quempin/", "Herramientas QUEMPIN", "indice")
-    pagina("/finanzas-quempin/centro-de-costos/", "Centro de Costos", "cc", CANDADO + """
+    pagina("/finanzas-quempin/centro-de-costos/", "Centro de Costos", "cc", CABECERA_TABLERO + CANDADO + """
       <a id="aAF" href="../analisis-financiero/#proyecto=DEMO">Ficha en Análisis Financiero</a>
       <a id="aForm" href="/formulacion-proyectos-quempin/" target="_blank">Formulador ↗</a>
       <a id="aMismo" href="#tag=OTRO">mismo tablero</a>
@@ -261,12 +282,12 @@ def _sitio(raiz: Path):
     pagina("/finanzas-quempin/cotizador-historico-peru/", "Cotizador Histórico Perú", "cotpe")
     pagina("/finanzas-quempin/flujo-de-caja/", "Flujo de Caja", "fc")
     pagina("/finanzas-quempin/oportunidades/", "Oportunidades", "op")
-    pagina("/formulacion-proyectos-quempin/", "Formulador", "formulador")
+    pagina("/formulacion-proyectos-quempin/", "Formulador", "formulador", CABECERA_FORMULADOR)
     pagina("/calculadora-tecnica-quempin/", "Calculadora Técnica", "calc")
     for ruta, herr in (("DiametroTuberia", "diametro"), ("Hidrogeno", "hidrogeno"),
                        ("GasNatural-GLP", "gas"), ("OtrosGases", "otros")):
         pagina(f"/calculadora-tecnica-quempin/{ruta}/", herr, herr,
-               '<select id="selector-gas" onchange="location.href = this.value"><option value="">—</option>'
+               CABECERA_CALC + '<select id="selector-gas" onchange="location.href = this.value"><option value="">—</option>'
                '<option value="../OtrosGases/">Otros gases</option></select>', PESTANAS_CALC.format())
     pagina("/otra-cosa/", "Otra cosa", "otra")
 
@@ -360,8 +381,16 @@ def _esperar(pagina, familia, campo, valor):
 
 
 def _menu(pagina, nombre):
-    """Elige una herramienta en el menú, desplegando antes su grupo (hay uno solo abierto a la vez)."""
-    item = pagina.locator("#menu .menu-item", has_text=nombre).first
+    """Elige una herramienta por su nombre en el menú: en la franja de íconos abre el panel de su
+    grupo; en el menú con nombres (☰, teléfono) despliega su grupo (hay uno solo abierto a la vez)."""
+    herr = _registro()["herramientas"]
+    h = next((x for x in herr if x["nombre"] == nombre), None) or next(x for x in herr if x["nombre"].startswith(nombre))
+    riel = pagina.locator(f'#riel .riel-btn[data-grupo="{h["grupo"]}"]')
+    if riel.is_visible():
+        riel.click()
+        pagina.locator(f'#flotante .ini-item[data-herr="{h["id"]}"]').click()
+        return
+    item = pagina.locator(f'#menu .menu-item[data-herr="{h["id"]}"]')
     if not item.is_visible():
         item.locator("xpath=ancestor::section[1]/button[contains(@class, 'grupo-cab')]").click()
     item.click()
@@ -371,7 +400,7 @@ def _pestanas(pagina):
     return pagina.locator("#pestanas .ir").all_inner_texts()
 
 
-JS_BARRAS = """() => ['.vista-inicio', '.menu-lista', '.pestanas-lista'].map((s) => {
+JS_BARRAS = """() => ['.vista-inicio', '.menu-lista', '.riel', '.pestanas-lista'].map((s) => {
     const e = document.querySelector(s);
     return e && e.getClientRects().length ? [s, e.scrollHeight - e.clientHeight, e.scrollWidth - e.clientWidth] : [s, 0, 0];
 }).filter(([s, alto, ancho]) => alto > 1 || ancho > 1)"""
@@ -408,16 +437,22 @@ def test_el_inicio_y_el_menu_caben_sin_barras(navegador, sitio, ancho, alto):
     _menu(pagina, "Seguimiento")
     pagina.locator("#pestanas .ir", has_text="Inicio").click()
     assert pagina.evaluate(JS_BARRAS) == []
-    # Con menos ancho van dos columnas
-    columnas = pagina.evaluate("getComputedStyle(document.getElementById('iniGrupos')).gridTemplateColumns.split(' ').length")
-    assert columnas == (4 if ancho >= 1280 else 2)
+    # Con la franja de íconos caben las cuatro columnas desde 1024 px
+    columnas = "getComputedStyle(document.getElementById('iniGrupos')).gridTemplateColumns.split(' ').length"
+    assert pagina.evaluate(columnas) == 4
     assert pagina.evaluate("getComputedStyle(document.querySelector('.menu-lista')).scrollbarWidth") == "none"
+    # El menú con nombres (☰), con su grupo más largo desplegado, tampoco; con menos ancho van dos columnas
+    pagina.locator("#btnMenu").click()
+    assert pagina.locator("#menuLista").is_visible() and pagina.locator("#riel").is_hidden()
+    assert pagina.evaluate(JS_BARRAS) == []
+    assert pagina.evaluate(columnas) == (4 if ancho >= 1280 else 2)
     assert not errores
     pagina.context.close()
 
 
 def test_el_menu_despliega_un_grupo_a_la_vez(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.locator("#btnMenu").click()          # el menú con nombres
     abiertos = lambda: pagina.locator('#menu .grupo-cab[aria-expanded="true"]').all_inner_texts()
     assert [g.strip() for g in abiertos()] == ["Formulación de proyectos"]
     pagina.locator("#grupo-finanzas").click()
@@ -427,7 +462,7 @@ def test_el_menu_despliega_un_grupo_a_la_vez(navegador, sitio):
     assert abiertos() == []
     # Abrir una herramienta (aquí desde el Inicio) despliega su grupo
     pagina.locator('.ini-item[data-herr="gas"]').click()
-    _marco(pagina, "gas", "gas")
+    _marco(pagina, "calculadora", "gas")
     assert [g.strip() for g in abiertos()] == ["Calculadora"]
     assert not errores
     pagina.context.close()
@@ -440,9 +475,10 @@ def test_las_pestanas_se_encogen_en_vez_de_desplazarse(navegador, sitio):
     for herr in ids:
         pagina.locator("#pestanas .ir", has_text="Inicio").click()
         pagina.locator(f'.ini-item[data-herr="{herr}"]').click()
-    _marco(pagina, "otros-gases", "otros")
+    _marco(pagina, "calculadora", "otros")
+    # Las cuatro calculadoras comparten una pestaña: muestra la última elegida
     assert _pestanas(pagina) == ["Inicio", "Oportunidades", "Formulador", "Cotizador", "Centro de Costos", "Análisis",
-                                 "Flujo de Caja", "Diámetro", "Hidrógeno", "Gas / GLP", "Otros gases"]
+                                 "Flujo de Caja", "Otros gases"]
     assert pagina.evaluate(JS_BARRAS) == []
     # El nombre completo queda a mano en el title
     assert pagina.locator("#pestanas .ir", has_text="Análisis").get_attribute("title") == "Análisis Financiero"
@@ -519,12 +555,12 @@ def test_el_buscador_lleva_a_la_pestana_de_una_calculadora(navegador, sitio):
     primero = pagina.locator("#resultados .res").first
     assert primero.locator(".res-tit").inner_text() == "Gas natural / GLP › Quemador atmosférico"
     pagina.keyboard.press("Enter")
-    gas = _marco(pagina, "gas", "gas")
-    _esperar(pagina, "gas", "tab", "quemador")
+    gas = _marco(pagina, "calculadora", "gas")
+    _esperar(pagina, "calculadora", "tab", "quemador")
     # Otra pestaña de la misma calculadora: se cambia ahí mismo, sin recargar ni abrir otra.
     pagina.locator("#buscar").fill("combustion")
     pagina.keyboard.press("Enter")
-    _esperar(pagina, "gas", "tab", "combustion")
+    _esperar(pagina, "calculadora", "tab", "combustion")
     assert gas.evaluate("document.body.dataset.cargas") == "1"
     assert _pestanas(pagina) == ["Inicio", "Gas / GLP"]
     # Volver a elegirla en el menú no la mueve de donde quedó.
@@ -534,8 +570,9 @@ def test_el_buscador_lleva_a_la_pestana_de_una_calculadora(navegador, sitio):
     # Buscar una pestaña de otra calculadora la abre directo en ella.
     pagina.locator("#buscar").fill("memoria hidrogeno")
     pagina.keyboard.press("Enter")
-    h2 = _marco(pagina, "hidrogeno", "hidrogeno")
-    _esperar(pagina, "hidrogeno", "tab", "memoria")
+    h2 = _marco(pagina, "calculadora", "hidrogeno")
+    _esperar(pagina, "calculadora", "tab", "memoria")
+    assert _pestanas(pagina) == ["Inicio", "Hidrógeno"], "otra calculadora va en la misma pestaña"
     # Búsquedas por necesidad
     for consulta, esperado in (("factura", "Centro de Costos"), ("orden de compra", "Orden de compra"),
                                ("caneria", "Diámetro de tubería"), ("licitaciones", "Oportunidades")):
@@ -552,9 +589,9 @@ def test_el_buscador_lleva_a_la_pestana_de_una_calculadora(navegador, sitio):
 def test_la_calculadora_que_cambia_sola_mueve_su_pestana(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     _menu(pagina, "Hidrógeno")
-    h2 = _marco(pagina, "hidrogeno", "hidrogeno")
+    h2 = _marco(pagina, "calculadora", "hidrogeno")
     h2.select_option("#selector-gas", "../OtrosGases/")
-    _marco(pagina, "otros-gases", "otros")
+    _marco(pagina, "calculadora", "otros")
     assert _pestanas(pagina) == ["Inicio", "Otros gases"]
     assert pagina.locator('#menu .menu-item[aria-current="page"]').inner_text().strip() == "Otros gases"
     assert not errores
@@ -659,15 +696,19 @@ def test_excel_y_programa_no_se_abren_dentro(navegador, sitio):
 
 def test_el_pais_elige_el_tablero_de_peru(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.select_option("#pais", "pe")
+    assert pagina.locator("#pais").is_hidden(), "en el Inicio no hay país que elegir"
     _menu(pagina, "Cotizador Histórico")
+    _marco(pagina, "cotizador", "cot")
+    pagina.select_option("#pais", "pe")
     assert _marco(pagina, "cotizador", "cotpe").url.endswith("/cotizador-historico-peru/")
     _menu(pagina, "Flujo de Caja")
     assert _marco(pagina, "flujo-caja", "fc").url.endswith("/flujo-de-caja/")        # solo existe en Chile
+    assert pagina.locator("#pais").is_hidden()
     _menu(pagina, "Ingresar avance")
     _marco(pagina, "analisis", "af")                                                  # solo existe en Chile
+    # De vuelta a Chile desde el Cotizador, que se cambia solo
+    pagina.locator("#pestanas .ir", has_text="Cotizador").click()
     assert pagina.locator("#pais").input_value() == "pe"
-    # De vuelta a Chile, el Cotizador abierto se cambia solo
     pagina.select_option("#pais", "cl")
     _marco(pagina, "cotizador", "cot")
     assert not errores
@@ -680,12 +721,12 @@ def test_las_pestanas_vuelven_al_recargar_y_solo_carga_la_activa(navegador, siti
     _marco(pagina, "centro-costos", "cc")
     pagina.locator("#buscar").fill("memoria hidrogeno")
     pagina.keyboard.press("Enter")
-    _marco(pagina, "hidrogeno", "hidrogeno")
+    _marco(pagina, "calculadora", "hidrogeno")
     pagina.reload()
     pagina.locator("#vistaInicio").wait_for(state="attached")
     assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Hidrógeno"]
-    h2 = _marco(pagina, "hidrogeno", "hidrogeno")
-    _esperar(pagina, "hidrogeno", "tab", "memoria")
+    h2 = _marco(pagina, "calculadora", "hidrogeno")
+    _esperar(pagina, "calculadora", "tab", "memoria")
     assert pagina.locator("#marco-centro-costos").count() == 0
     pagina.locator("#pestanas .ir", has_text="Centro de Costos").click()
     _marco(pagina, "centro-costos", "cc")
@@ -698,14 +739,17 @@ def test_las_pestanas_vuelven_al_recargar_y_solo_carga_la_activa(navegador, siti
     pagina.context.close()
 
 
-def test_no_quedan_mas_de_ocho_herramientas_cargadas(navegador, sitio):
+def test_una_pestana_por_herramienta_y_no_mas_de_ocho_cargadas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    nombres = ["Centro de Costos", "Análisis Financiero", "Flujo de Caja", "Cotizador Histórico", "Oportunidades",
-               "Formulador", "Diámetro de tubería", "Hidrógeno", "Gas natural / GLP"]
+    nombres = ["Centro de Costos", "Análisis Financiero", "Ingresar avance", "Flujo de Caja", "Cotizador Histórico",
+               "Oportunidades", "Formulador", "Carta Gantt", "Seguimiento", "Diámetro de tubería", "Hidrógeno",
+               "Gas natural / GLP", "Índice anterior"]
     for nombre in nombres:
         _menu(pagina, nombre)
-    _marco(pagina, "gas", "gas")
-    assert len(_pestanas(pagina)) == 10
+        if pagina.locator("#popProyecto").is_visible():            # la Carta Gantt pide proyecto: se sigue sin
+            pagina.keyboard.press("Escape")
+    _marco(pagina, "calculadora", "gas")
+    assert len(_pestanas(pagina)) == 9                               # Inicio + 8 herramientas, ni una más
     pagina.wait_for_function("() => document.querySelectorAll('iframe.marco').length <= 8")
     assert not errores
     pagina.context.close()
@@ -744,9 +788,146 @@ def test_telefono_sin_desbordes_y_menu_desplegable(navegador, sitio, ancho):
         assert pagina.locator("#buscar").is_visible()
         pagina.locator("#buscar").fill("diametro")
         pagina.keyboard.press("Enter")
-        _marco(pagina, "diametro", "diametro")
+        _marco(pagina, "calculadora", "diametro")
         assert pagina.locator("#buscar").is_hidden()
         d = pagina.evaluate(JS_DESBORDES)
         assert d["doc"] <= ancho and not d["fuera"], d
     assert not errores
     pagina.context.close()
+
+
+# ---- Dentro del portal las herramientas no repiten su cabecera (2026-10-16) ----------------------
+
+def _estilo(marco, selector, prop="display"):
+    return marco.evaluate("([s, p]) => { const e = document.querySelector(s); return e ? getComputedStyle(e)[p] : null; }",
+                          [selector, prop])
+
+
+def test_dentro_del_portal_las_herramientas_no_repiten_su_cabecera(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _menu(pagina, "Centro de Costos")
+    cc = _marco(pagina, "centro-costos", "cc")
+    pagina.wait_for_function("() => document.getElementById('marco-centro-costos').contentDocument.documentElement.dataset.enPortal === 'tablero'")
+    assert _estilo(cc, ".viz-header") == "none"
+    # La fecha de los datos, que estaba en esa cabecera, va junto a las pestañas del portal
+    pagina.wait_for_function("() => document.getElementById('datoMarco').textContent === 'Datos al 15-10-2026'")
+    assert pagina.locator("#datoMarco").is_visible()
+    _menu(pagina, "Hidrógeno")
+    calc = _marco(pagina, "calculadora", "hidrogeno")
+    pagina.wait_for_function("() => document.getElementById('marco-calculadora').contentDocument.documentElement.dataset.enPortal === 'calculadora'")
+    assert _estilo(calc, ".viz-header") == "none"
+    assert pagina.locator("#datoMarco").is_hidden()
+    _menu(pagina, "Formulador")
+    form = _marco(pagina, "formulador", "formulador")
+    pagina.wait_for_function("() => document.getElementById('marco-formulador').contentDocument.documentElement.dataset.enPortal === 'formulador'")
+    # Del Formulador quedan sus secciones y Configuración; no su logo, su título, su menú de herramientas ni su tema
+    for oculto in (".viz-logo", ".viz-titleblock", "#herrBtn", "#themeToggle"):
+        assert _estilo(form, oculto) == "none", oculto
+    for visible in (".viz-modnav", "#config"):
+        assert _estilo(form, visible) != "none", visible
+    # Abiertas aparte, en su dirección de siempre, se ven como siempre
+    aparte = pagina.context.new_page()
+    aparte.goto(sitio + "/finanzas-quempin/centro-de-costos/")
+    assert aparte.evaluate("getComputedStyle(document.querySelector('.viz-header')).display") != "none"
+    aparte.close()
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_solo_modo_oscuro_para_el_portal_y_sus_herramientas(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _menu(pagina, "Centro de Costos")
+    _marco(pagina, "centro-costos", "cc")
+    oscuro = pagina.evaluate("document.documentElement.getAttribute('data-theme') === 'dark' || matchMedia('(prefers-color-scheme: dark)').matches")
+    pagina.locator("#btnTema").click()
+    nuevo = "light" if oscuro else "dark"
+    assert pagina.evaluate("document.documentElement.getAttribute('data-theme')") == nuevo
+    pagina.wait_for_function("t => document.getElementById('marco-centro-costos').contentDocument.documentElement.getAttribute('data-theme') === t", arg=nuevo)
+    # Las herramientas que se abran después, y aparte, también
+    claves = sorted({h["tema"] for h in _registro()["herramientas"] if h.get("tema")})
+    assert pagina.evaluate("ks => ks.map(k => localStorage.getItem(k))", claves) == [nuevo] * len(claves)
+    _menu(pagina, "Hidrógeno")
+    _marco(pagina, "calculadora", "hidrogeno")
+    pagina.wait_for_function("t => document.getElementById('marco-calculadora').contentDocument.documentElement.getAttribute('data-theme') === t", arg=nuevo)
+    assert pagina.locator("#btnTema").get_attribute("aria-label") == ("Modo claro" if nuevo == "dark" else "Modo oscuro")
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_franja_abre_el_panel_de_cada_grupo(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    assert pagina.locator("#riel").is_visible() and pagina.locator("#menuLista").is_hidden()
+    assert pagina.locator("#riel .riel-btn").all_inner_texts() == ["Inicio", "Formulación", "Finanzas", "Cotizar", "Calculadora", "Ayuda"]
+    pagina.locator('#riel .riel-btn[data-grupo="finanzas"]').click()
+    assert pagina.locator("#flotante").is_visible()
+    assert pagina.evaluate("[...document.querySelectorAll('#flotante .ini-item')].map(b => b.dataset.herr)") == [
+        "centro-costos", "ingresar", "analisis", "flujo-caja"]
+    pagina.keyboard.press("Escape")
+    assert pagina.locator("#flotante").is_hidden()
+    # Elegir una herramienta la abre, cierra el panel y marca su grupo en la franja
+    pagina.locator('#riel .riel-btn[data-grupo="finanzas"]').click()
+    pagina.locator('#flotante .ini-item[data-herr="flujo-caja"]').click()
+    _marco(pagina, "flujo-caja", "fc")
+    assert pagina.locator("#flotante").is_hidden()
+    assert pagina.locator('#riel .riel-btn[aria-current="true"]').get_attribute("data-grupo") == "finanzas"
+    # Un clic fuera también lo cierra
+    pagina.locator('#riel .riel-btn[data-grupo="cotizar"]').click()
+    pagina.locator("#pestanas .ir").first.click()
+    assert pagina.locator("#flotante").is_hidden()
+    # ☰ despliega el menú con nombres y se recuerda
+    pagina.locator("#btnMenu").click()
+    assert pagina.locator("#menuLista").is_visible()
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for(state="attached")
+    assert pagina.locator("#menuLista").is_visible() and pagina.locator("#riel").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_inicio_marca_las_herramientas_ya_abiertas(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.locator('.ini-item[data-herr="flujo-caja"]').click()
+    _marco(pagina, "flujo-caja", "fc")
+    pagina.locator("#pestanas .ir").first.click()
+    assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item.abierta')].map(b => b.dataset.herr)") == ["flujo-caja"]
+    assert not errores
+    pagina.context.close()
+
+
+def _plantilla_tablero(subruta, compilado):
+    """El template de un tablero publicado (el AF de Perú se arma con el de Chile)."""
+    t = RAIZ / Path(compilado).parent.parent / "template.html"
+    return t if t.exists() else RAIZ / "Sistema Analisis Financiero" / "Visualizador Web" / "template.html"
+
+
+def test_lo_que_esconde_el_portal_existe_en_cada_herramienta():
+    """Los selectores de ESTILO_INCRUSTADO y las claves de tema del registro, contra el código de cada
+    herramienta: si una cambia su cabecera, esto avisa en vez de que el portal la muestre repetida."""
+    reg = {h["id"]: h for h in _registro()["herramientas"]}
+    publicar = _cargar("publicar_para_test_incrustar", VISUALIZADOR / "publicar.py")
+    por_ruta = {}
+    for h in reg.values():
+        for clave in ("ruta", "peru"):
+            if h.get(clave):
+                por_ruta[h[clave]] = h
+    for subruta, compilado in publicar.TABLEROS.values():
+        h = por_ruta["/finanzas-quempin/" + subruta + "/"]
+        texto = _plantilla_tablero(subruta, compilado).read_text(encoding="utf-8")
+        assert h["incrustar"] == "tablero", subruta
+        assert '<header class="viz-header">' in texto and 'id="vizGenerated"' in texto, subruta
+        assert f"localStorage.getItem('{h['tema']}')" in texto, subruta
+    calculadora = _hermano("Calculadora Técnica")
+    if calculadora:
+        for h in reg.values():
+            if h.get("incrustar") == "calculadora":
+                carpeta = h["ruta"].removeprefix("/calculadora-tecnica-quempin/").strip("/")
+                texto = (calculadora / carpeta / "index.html").read_text(encoding="utf-8")
+                assert 'class="viz-header"' in texto and f"'{h['tema']}'" in texto, h["id"]
+    formulador = _hermano("Formulación de proyectos")
+    raiz_f = formulador / "quempin-formulacion" if formulador else None
+    if raiz_f and raiz_f.exists():
+        indice = (raiz_f / "index.html").read_text(encoding="utf-8")
+        for pieza in ('class="viz-header"', 'class="viz-logo"', 'class="viz-titleblock"', 'id="herrBtn"',
+                      'id="themeToggle"', 'class="viz-modnav"', 'data-act="config"'):
+            assert pieza in indice, pieza
+        assert f"'{reg['formulador']['tema']}'" in (raiz_f / "js" / "app.js").read_text(encoding="utf-8")

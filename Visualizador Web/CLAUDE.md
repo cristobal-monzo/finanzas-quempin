@@ -185,6 +185,33 @@ y que se pueda revertir si no le gusta.
     frente la ventana abierta (Sistema QUEMPIN `app/protocolo.py`, CLAUDE.md
     §11). El portal muestra «Abriendo Sistema QUEMPIN… ¿No se abrió?», que
     explica cómo dejarlo listo en ese computador.
+- **Segunda vuelta del 2026-10-16** (pedido: que no se repitan los logos ni los
+  nombres de QUEMPIN en cada herramienta, que no se abran demasiadas pestañas y
+  mejor navegación):
+  - **Herramientas sin su cabecera dentro del portal**: el portal marca el
+    `<html>` de cada marco con `data-en-portal="tablero|calculadora|formulador"`
+    (campo `incrustar` del registro) y le agrega `ESTILO_INCRUSTADO`. Tableros y
+    calculadoras pierden su `.viz-header` (logo, título, país, tableros, modo
+    oscuro); el Formulador conserva su barra de secciones y Configuración, en
+    una barra clara. Se aplica apenas existe cada página (un vigilante cada
+    100 ms), sin tocar las herramientas: abiertas aparte se ven como siempre.
+    `test_lo_que_esconde_el_portal_existe_en_cada_herramienta` revisa los
+    selectores contra los templates, la Calculadora y el Formulador.
+  - **Lo que traía esa cabecera**: la fecha de los datos (`#vizGenerated`) va
+    junto a las pestañas; el país, en un selector ahí mismo que solo aparece en
+    los tableros con versión Perú; el modo claro/oscuro es uno solo (☾ en la
+    cabecera), que fija también la clave de tema de cada herramienta (campo
+    `tema`: `cc_viz_theme`, `quempin_h2_theme`, `quempin_fp_theme`…).
+  - **Una pestaña por herramienta**: las cuatro calculadoras son la familia
+    `calculadora` (páginas hermanas con su propia ruta: elegir otra navega la
+    misma pestaña). Con el Formulador (Gantt, Seguimiento) y el Análisis
+    (Ingresar avance) quedan 8 pestañas como máximo.
+  - **Franja de íconos**: el menú es por defecto una franja de 72 px (Inicio,
+    un ícono por grupo, Ayuda al fondo) que abre un panel con las herramientas
+    del grupo; ☰ alterna con el menú con nombres (`quempin_portal_menu.modo`).
+    En el teléfono el menú sigue siendo el panel con nombres.
+  - Pestañas con el ícono de su grupo e Inicio como casita; en el Inicio, un
+    punto naranjo marca las herramientas que ya tienen pestaña.
 - **Por qué funciona**: el Formulador, los tableros y la Calculadora están en el
   mismo sitio (`cristobal-monzo.github.io`). Eso permite tres cosas:
   - el portal los abre dentro;
