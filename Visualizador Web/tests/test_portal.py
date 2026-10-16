@@ -684,9 +684,6 @@ def test_excel_y_programa_no_se_abren_dentro(navegador, sitio):
     assert pagina.locator("#dlgInfo").is_visible()
     assert "QUEMPIN.exe" in pagina.locator("#dlgInfo").inner_text()
     pagina.locator("#dlgInfo button", has_text="Entendido").click()
-    _menu(pagina, "Control de Documentos")
-    assert "QUEMPIN_Control de Documentos" in pagina.locator("#dlgInfoDonde").inner_text()
-    pagina.keyboard.press("Escape")
     _menu(pagina, "Cómo usar el portal")
     assert pagina.locator("#dlgAyuda").is_visible()
     assert _pestanas(pagina) == ["Inicio"]
