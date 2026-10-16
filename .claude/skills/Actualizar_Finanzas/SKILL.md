@@ -72,6 +72,11 @@ openpyxl (ver `requirements.txt`).
   **Solo en horario laboral** (2026-10-15, pedido del usuario): de lunes a
   viernes hábiles, de 9:00 a 17:00. Fuera de ese horario el correo espera a la
   próxima vuelta en horario. Por eso la tarea pasó de las 08:00 a las 09:00.
+  **Antes de enviar revisa las bases** (2026-10-15, pedido del usuario): lee la
+  ficha de las bases de cada candidata en Mercado Público y el correo lleva lo
+  verificado (visita, garantías, criterios, pago, multas...). Lo que las bases
+  descartan no se envía. Los PDF adjuntos no se pueden bajar solos
+  (reCAPTCHA): el correo pide leerlos. Ver `Sistema Intercambio/CLAUDE.md`.
 
 ## Presupuestos del Formulador: revisarlos y cargarlos con el usuario
 

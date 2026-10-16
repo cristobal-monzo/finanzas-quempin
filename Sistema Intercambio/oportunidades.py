@@ -493,8 +493,7 @@ class Evaluador:
             "diasParaCierre": None if dias is None else round(dias, 1),
             "monto": {"valor": round(monto) if monto else None, "fuente": fuente_monto},
             "duracionMeses": None if meses is None else round(meses, 1),
-            "visita": {"fecha": ficha.get("visita"), "obligatoria": self._visita_obligatoria(texto) if ficha.get("visita") else None,
-                       "mencionada": bool(not ficha.get("visita") and self._visita_mencionada(texto))},
+            "visita": self.datos_visita(ficha, texto),
             "categorias": ficha.get("categorias") or [],
             "puntaje": puntaje,
             "categoria": categoria,
@@ -728,20 +727,60 @@ class Evaluador:
         t = normalizar(texto)
         return bool(re.search(r"visita\w* (tecnica|a terreno|en terreno|de terreno|obligatori|inspectiva|previa)", t))
 
+    def datos_visita(self, ficha, texto) -> dict:
+        """La visita a terreno de una oportunidad. La API de licitaciones casi
+        nunca la trae (llega como 1900-01-02): la fuente es la ficha de las
+        bases (``visitaBases``, que guarda ``_leer_visitas_bases``). Con varias
+        fechas (una por recinto, o dos días a elegir) se muestra la próxima y
+        la visita pasó solo cuando pasaron todas (``ultima``)."""
+        vb = ficha.get("visitaBases") or {}
+        fechas = [v for v in vb.get("fechas") or [] if v.get("fecha")]
+        if fechas:
+            ahora = self.ahora.isoformat(timespec="minutes")
+            futuras = [v for v in fechas if v["fecha"] > ahora]
+            elegida = futuras[0] if futuras else fechas[-1]
+            marcas = [v.get("obligatoria") for v in fechas]
+            obligatoria = (True if True in marcas else False if all(m is False for m in marcas)
+                           else self._visita_obligatoria(texto))
+            return {"fecha": elegida["fecha"], "ultima": fechas[-1]["fecha"], "fechas": [v["fecha"] for v in fechas][:40],
+                    "obligatoria": obligatoria, "lugar": elegida.get("lugar"), "mencionada": False, "fuente": "bases"}
+        if ficha.get("visita"):
+            return {"fecha": ficha["visita"], "ultima": ficha["visita"], "fechas": [ficha["visita"]],
+                    "obligatoria": self._visita_obligatoria(texto), "lugar": ficha.get("direccionVisita"),
+                    "mencionada": False, "fuente": "api"}
+        mencionada = bool(vb.get("nombrada")) or self._visita_mencionada(texto)
+        # «Sin visita» solo si la ficha de las bases se leyó y trae su contenido;
+        # si no (no se pudo leer, licitación menor a 100 UTM, compra ágil), no se sabe.
+        sin_visita = bool(vb) and bool(vb.get("contenidoBases")) and not mencionada
+        return {"fecha": None, "ultima": None, "fechas": [], "obligatoria": None, "lugar": None, "mencionada": mencionada,
+                "fuente": "bases" if vb else None, "sinVisita": sin_visita}
+
     def _visita(self, ficha, texto, region_pts, descartar) -> dict:
-        fecha = ficha.get("visita")
-        if not fecha and self._visita_mencionada(texto):
-            # Sin fecha en la ficha (siempre en una compra ágil) pero la descripción la pide.
+        v = self.datos_visita(ficha, texto)
+        fecha = v["fecha"]
+        if not fecha and v["mencionada"]:
+            # Las bases o la descripción la nombran, sin fecha en la ficha (siempre en una compra ágil).
             p = 40 + 0.5 * region_pts
-            return {"puntaje": _acotar(p), "motivo": "la descripción menciona una visita (sin fecha en la ficha)",
+            return {"puntaje": _acotar(p), "motivo": ("las bases nombran una visita, sin fecha en la ficha" if v["fuente"] == "bases"
+                                                      else "la descripción menciona una visita (sin fecha en la ficha)"),
                     "corto": "Pide visita (ver fecha en las bases)"}
+        if not fecha and v["sinVisita"]:
+            return {"puntaje": 100, "motivo": "sin visita a terreno en la ficha de las bases", "corto": "Sin visita a terreno"}
         if not fecha:
-            return {"puntaje": 100, "motivo": "sin visita a terreno en la ficha", "corto": "Sin visita a terreno"}
-        obligatoria = self._visita_obligatoria(texto)
+            # Lo esperado: sin visita vale 100; con visita, lo que costaría ir a esa región.
+            p = 100 - self.c["visitaSinDato"]["probabilidadVisita"] * (100 - (40 + 0.5 * region_pts))
+            motivo = ("la ficha no detalla las bases (licitación menor a 100 UTM): ver los adjuntos" if v["fuente"] == "bases"
+                      else "la compra ágil no informa visita: revisar la descripción y los adjuntos" if ficha.get("compraAgil")
+                      else "todavía no se lee la ficha de las bases (se pide en la próxima vuelta)")
+            return {"puntaje": _acotar(p), "motivo": motivo, "corto": "Visita sin confirmar (ver bases)"}
+        obligatoria = v["obligatoria"]
         dias = self._dias_para(fecha)
         cuando = mp._fecha_corta(fecha) + (f" {fecha[11:16]}" if len(fecha) > 11 else "")
         tipo = "obligatoria" if obligatoria else ("optativa" if obligatoria is False else "¿obligatoria? (ver bases)")
-        if dias is not None and dias < 0:
+        mas = len(v["fechas"]) - 1
+        otras = f" (y {mas} fecha(s) más)" if mas > 0 else ""
+        dias_ultima = self._dias_para(v["ultima"])
+        if dias_ultima is not None and dias_ultima < 0:
             if obligatoria:
                 descartar.append(f"La visita obligatoria fue el {cuando}")
             reglas = self.c["visitaPasada"]
@@ -752,9 +791,11 @@ class Evaluador:
             p -= 20
         if obligatoria is False:
             p = (p + 100) / 2
-        corto = ("Visita optativa" if obligatoria is False else "Visita a terreno") + f" el {mp._fecha_corta(fecha)[:5]}"
+        corto = ("Visita optativa" if obligatoria is False else "Visita obligatoria" if obligatoria else "Visita a terreno") \
+            + f" el {mp._fecha_corta(fecha)[:5]}"
         return {"puntaje": _acotar(p), "motivo": f"visita {tipo} el {cuando}"
-                + (f" (en {dias:.0f} día(s))" if dias is not None else ""), "corto": corto}
+                + (f" (en {dias:.0f} día(s))" if dias is not None else "") + otras
+                + (f": {v['lugar']}" if v.get("lugar") else ""), "corto": corto}
 
     def _mercado_parecido(self, ficha) -> list[tuple[float, dict]]:
         v = self.h.vector(raices(ficha.get("nombre")))
@@ -1010,9 +1051,42 @@ def _revisar_compras_agiles(cliente_ca, estado: dict, evaluador: Evaluador, conf
     return avisos
 
 
+def _leer_visitas_bases(fichas: dict, candidatas: list[str], config: dict, abrir=None, dormir=None, reloj=None) -> list[str]:
+    """La visita a terreno de cada licitación candidata, desde su ficha
+    pública (la API no la informa). Se guarda en la ficha de la caché
+    (``visitaBases``) y se vuelve a leer cuando esa ficha se refresca. Una
+    consulta cada ``pausaSeg``, como mucho ``limiteMinutos``: las que faltan
+    siguen en la próxima vuelta. Devuelve avisos."""
+    import time
+    import bases_oportunidades as bases     # aquí: ese módulo importa este
+    cfg = config["consultas"].get("fichaBases") or {}
+    if not cfg.get("activo"):
+        return []
+    dormir, reloj = dormir or time.sleep, reloj or time.monotonic
+    pendientes = [c for c in candidatas if c in fichas and not ca.es_codigo(c) and "visitaBases" not in fichas[c]
+                  and fichas[c].get("estadoCodigo") in (None, 5)]
+    inicio, fallidas = reloj(), 0
+    for i, codigo in enumerate(pendientes):
+        if reloj() - inicio > 60 * cfg.get("limiteMinutos", 4):
+            return [f"Faltó tiempo para leer la visita a terreno de {len(pendientes) - i} licitación(es) en la ficha "
+                    "de las bases: siguen en la próxima vuelta."]
+        if i:
+            dormir(cfg.get("pausaSeg", 2))
+        try:
+            ficha_bases = bases.leer_ficha(bases.bajar_ficha(codigo, abrir))
+        except (bases.ErrorBases, *bases._ERRORES_RED):
+            fallidas += 1
+            continue
+        fichas[codigo]["visitaBases"] = bases.resumen_visita(ficha_bases)
+    if fallidas:
+        return [f"No se pudo leer la ficha de las bases de {fallidas} licitación(es): su visita a terreno queda "
+                "sin confirmar y se vuelve a pedir en la próxima vuelta."]
+    return []
+
+
 def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: Path | None = None,
             config: dict | None = None, ahora: datetime | None = None, sin_red: bool = False,
-            reqs: list[dict] | None = None, cliente_ca=None) -> dict:
+            reqs: list[dict] | None = None, cliente_ca=None, abrir_ficha=None) -> dict:
     """Una vuelta completa. Devuelve {'datos': publicación, 'llamadas', 'avisos'}.
     Con 'enviar' publica oportunidades.json en la carpeta de intercambio; sin
     él solo consulta (actualiza la caché local). Con 'sin_red' evalúa con lo
@@ -1021,7 +1095,9 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
 
     Las compras ágiles se consultan con 'cliente_ca' (otra API, el mismo
     ticket). Si se pasa un 'cliente' de licitaciones sin 'cliente_ca' (las
-    pruebas), no se consultan: así una prueba nunca sale a la red."""
+    pruebas), no se consultan: así una prueba nunca sale a la red. Lo mismo
+    con la ficha de las bases (la visita a terreno): se lee en una vuelta
+    real o con 'abrir_ficha'."""
     config = config or cargar_config()
     ahora = ahora or datetime.now()
     ruta_estado = ruta_estado or RUTA_ESTADO
@@ -1043,6 +1119,7 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
     evaluador = Evaluador(config, historia, mercado_actual(), ahora, valor_uf(config))
 
     if not sin_red:
+        leer_bases = cliente is None or abrir_ficha is not None
         if cliente is None:
             ticket = mp.leer_ticket()
             cliente = mp.Cliente(ticket, tope=config["consultas"]["tope"])
@@ -1083,6 +1160,11 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
                 del fichas[codigo]
             estado["actualizado"] = ahora.isoformat(timespec="seconds")
             intercambio._escribir_json_atomico(ruta_estado, estado)
+        if leer_bases:
+            try:
+                avisos += _leer_visitas_bases(fichas, estado.get("candidatas") or [], config, abrir=abrir_ficha)
+            finally:
+                intercambio._escribir_json_atomico(ruta_estado, estado)
         evaluador = Evaluador(config, historia, mercado_actual(), ahora, valor_uf(config))
         if cliente_ca is not None:
             try:

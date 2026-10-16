@@ -40,6 +40,9 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   ya cerró no se muestra. `categoria()` y `evaluar()` del JS repiten
   `Evaluador.categoria` y los tramos del plazo:
   `tests/test_tablero_oportunidades.py` las compara en Chromium.
+- **Visita a terreno** (2026-10-15): viene de la ficha de las bases (la API no
+  la trae). Con varias fechas, `visitaDelDia` muestra la próxima y la da por
+  pasada solo cuando pasaron todas. Sin dato dice «sin confirmar», no «no».
 - **Mapa (guía de dataviz)**: énfasis, no colores de identidad. Prioritaria es
   el naranjo oficial lleno, Buena un anillo del mismo naranjo y el resto gris.
   Las distingue la forma: en tema oscuro dos naranjos no se separan
@@ -52,7 +55,9 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   primera visita no marca nada.
 - **Tabla**: búsqueda, filtros (qué mostrar, región, cierre, solo nuevas,
   incluir las de la Planilla) que valen para las recomendadas, el mapa y la
-  tabla; orden por columna; en móvil, tarjetas (`data-label`).
+  tabla; orden por columna; en móvil, tarjetas (`data-label`). Una fila se
+  abre y cierra en su lugar, y rehacer la tabla guarda el scroll (2026-10-15,
+  el usuario: al hacer clic en un proyecto la página volvía al inicio).
 - Todo texto de la API se escribe con `textContent` (`el()`), y los enlaces
   solo van a https://www.mercadopublico.cl/ o a la ficha pública de una compra
   ágil (https://buscador.mercadopublico.cl/ficha?code=…).

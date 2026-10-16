@@ -637,7 +637,7 @@ def _alertas_oportunidades():
     tope semanal están en alertas_oportunidades.py). Un fallo no frena nada:
     lo no enviado se reintenta en la próxima vuelta."""
     ok, _ = _ejecutar(
-        "Oportunidades -- alertas por correo (nota 85 o más)",
+        "Oportunidades -- alertas por correo (nota 85 o más, con las bases revisadas)",
         ALERTAS_OPORTUNIDADES, ["enviar"], obligatorio=False,
     )
     return ok

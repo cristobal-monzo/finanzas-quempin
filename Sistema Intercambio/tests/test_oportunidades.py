@@ -158,11 +158,49 @@ def test_visita_a_terreno_pasada_obligatoria_descarta_y_futura_resta_por_distanc
     cerca = _evaluar(evaluador, _ficha("1-3-LE26", "Mantención calderas", visita="2026-10-20T10:00:00"))
     lejos = _evaluar(evaluador, _ficha("1-4-LE26", "Mantención calderas", visita="2026-10-20T10:00:00",
                                        region="Región de Magallanes y de la Antártica Chilena"))
-    assert sin["criterios"]["visita"]["puntaje"] == 100
+    # La API no trae la visita: sin leer la ficha de las bases no se sabe (antes decía «Sin visita a terreno»).
+    assert cerca["criterios"]["visita"]["puntaje"] < sin["criterios"]["visita"]["puntaje"] < 100
+    assert sin["criterios"]["visita"]["corto"] == "Visita sin confirmar (ver bases)"
     assert pasada["categoria"] == "descartar" and "visita obligatoria" in pasada["descartar"][0]
     assert pasada["visita"]["obligatoria"] is True
     assert cerca["criterios"]["visita"]["puntaje"] > lejos["criterios"]["visita"]["puntaje"]
     assert lejos["criterios"]["ubicacion"]["puntaje"] < cerca["criterios"]["ubicacion"]["puntaje"]
+
+
+def _con_bases(evaluador, crudo, **visita_bases):
+    """Evalúa con la visita leída de la ficha de las bases (lo que guarda _leer_visitas_bases)."""
+    ficha = op.leer_ficha(crudo, crudo["CodigoExterno"])
+    ficha["visitaBases"] = dict({"fechas": [], "nombrada": False, "daPuntaje": False, "contenidoBases": True}, **visita_bases)
+    return evaluador.evaluar(ficha)
+
+
+def test_la_visita_sale_de_la_ficha_de_las_bases(evaluador):
+    ninguna = _con_bases(evaluador, _ficha("1-1-LE26", "Mantención calderas"))
+    assert ninguna["criterios"]["visita"]["puntaje"] == 100 and ninguna["visita"]["sinVisita"] is True
+    assert ninguna["criterios"]["visita"]["corto"] == "Sin visita a terreno"
+    # Dos fechas a elegir: una ya pasó y la otra no. No descarta y muestra la que viene.
+    dos = _con_bases(evaluador, _ficha("1-2-LE26", "Mantención calderas"), fechas=[
+        {"fecha": "2026-10-09T10:00", "obligatoria": True, "lugar": None},
+        {"fecha": "2026-10-20T10:00", "obligatoria": True, "lugar": "Calle Ficticia 123"}])
+    assert dos["categoria"] != "descartar" and dos["visita"]["fecha"] == "2026-10-20T10:00"
+    assert dos["visita"]["ultima"] == "2026-10-20T10:00" and dos["visita"]["obligatoria"] is True
+    assert dos["criterios"]["visita"]["corto"] == "Visita obligatoria el 20-10"
+    assert "Calle Ficticia 123" in dos["criterios"]["visita"]["motivo"]
+    # Obligatoria y ya pasada: descarta (la API la daba por inexistente).
+    pasada = _con_bases(evaluador, _ficha("1-3-LE26", "Mantención calderas"),
+                        fechas=[{"fecha": "2026-10-09T10:00", "obligatoria": True, "lugar": None}])
+    assert pasada["categoria"] == "descartar" and "La visita obligatoria fue el" in pasada["descartar"][0]
+    voluntaria = _con_bases(evaluador, _ficha("1-4-LE26", "Mantención calderas"),
+                            fechas=[{"fecha": "2026-10-09T10:00", "obligatoria": False, "lugar": None}])
+    assert voluntaria["categoria"] != "descartar"
+    assert voluntaria["criterios"]["visita"]["puntaje"] == evaluador.c["visitaPasada"]["optativa"]
+    # Las bases la nombran (una cláusula o un criterio) sin fecha: hay que buscarla en el PDF.
+    nombrada = _con_bases(evaluador, _ficha("1-5-LE26", "Mantención calderas"), nombrada=True)
+    assert nombrada["criterios"]["visita"]["corto"] == "Pide visita (ver fecha en las bases)" and nombrada["visita"]["mencionada"]
+    # Una L1 no trae el contenido de las bases en la ficha: no se sabe.
+    menor = _con_bases(evaluador, _ficha("1-6-L126", "Mantención calderas"), contenidoBases=False)
+    assert menor["criterios"]["visita"]["puntaje"] == _evaluar(evaluador, _ficha("1-7-L126", "Mantención calderas"))["criterios"]["visita"]["puntaje"]
+    assert "100 UTM" in menor["criterios"]["visita"]["motivo"] and not menor["visita"]["sinVisita"]
 
 
 def test_plazo_para_ofertar_y_duracion(evaluador):
@@ -260,6 +298,44 @@ def test_respeta_el_tope_de_consultas_y_sigue_en_la_proxima(carpeta, config):
     r2 = op.revisar(carpeta, cliente=_cliente(api2), config=config, ahora=AHORA)
     assert all(o["ficha"] for o in r2["datos"]["oportunidades"])
     assert sum("codigo=" in u for u in api2.urls) == 7               # las 3 ya leídas no se piden de nuevo
+
+
+def _pagina_bases(codigo, visita=None):
+    """Una ficha pública mínima: la visita está en las fechas del comprador."""
+    filas = ""
+    if visita:
+        filas = (f'<span id="grvFechasUsuario_ctl02_lblFicha3TituloFechaUsuario">{visita[0]}</span>'
+                 f'<span id="grvFechasUsuario_ctl02_lblFicha3FechaUsuario">{visita[1]}</span>')
+    return f'<html><body><span id="lblNumLicitacion">{codigo}</span><span id="lblFicha1Estado">Publicada</span>{filas}</body></html>'
+
+
+def test_la_vuelta_lee_la_visita_en_la_ficha_de_las_bases_una_vez(carpeta, config):
+    config["consultas"]["fichaBases"]["pausaSeg"] = 0
+    fichas = [_ficha("5000-60-LE26", "Mantención calderas hospital"), _ficha("5000-61-LE26", "Mantención calderas liceo"),
+              _ficha("5000-62-LE26", "Mantención calderas cesfam")]
+    pedidas = []
+
+    def abrir(url, tiempo):
+        assert url.startswith(mp.FICHA_LICITACION)
+        codigo = urllib.parse.unquote(url.rsplit("=", 1)[-1])
+        pedidas.append(codigo)
+        if codigo == "5000-62-LE26":
+            return 503, b""
+        visita = ("VISITA A TERRENO OBLIGATORIA", "12-10-2026 10:00:00") if codigo == "5000-60-LE26" else None
+        return 200, _pagina_bases(codigo, visita).encode()
+
+    r = op.revisar(carpeta, cliente=_cliente(ApiFalsa(fichas=fichas)), config=config, ahora=AHORA, abrir_ficha=abrir)
+    por_codigo = {o["codigo"]: o for o in r["datos"]["oportunidades"]}
+    assert sorted(pedidas) == ["5000-60-LE26", "5000-61-LE26", "5000-62-LE26"]
+    assert por_codigo["5000-60-LE26"]["categoria"] == "descartar"                   # la obligatoria fue ayer
+    assert por_codigo["5000-60-LE26"]["visita"]["fuente"] == "bases"
+    assert por_codigo["5000-61-LE26"]["criterios"]["visita"]["corto"] == "Sin visita a terreno"
+    assert por_codigo["5000-62-LE26"]["criterios"]["visita"]["corto"] == "Visita sin confirmar (ver bases)"
+    assert any("ficha de las bases de 1 licitación" in a for a in r["avisos"])
+    # La próxima vuelta pide solo la que falló: las leídas quedan en la caché.
+    pedidas.clear()
+    op.revisar(carpeta, cliente=_cliente(ApiFalsa(fichas=fichas)), config=config, ahora=AHORA, abrir_ficha=abrir)
+    assert pedidas == ["5000-62-LE26"]
 
 
 def test_status_no_publica(carpeta, config):

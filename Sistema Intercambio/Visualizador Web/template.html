@@ -769,6 +769,13 @@ __OP_FUENTES__
       var descartar = (op.descartarFijo || op.descartar || []).slice();
       var dias = diasHasta(op.cierre);
       // Una compra ágil se cotiza en horas: tiene sus propios tramos (plazoOfertaCompraAgil).
+    // La visita que toca hoy: la próxima de sus fechas o, si ya pasaron todas, la última.
+    function visitaDelDia(op) {
+      var v = op.visita || {};
+      var fechas = (v.fechas && v.fechas.length ? v.fechas : [v.ultima || v.fecha]).filter(Boolean);
+      var futuras = fechas.filter(function (f) { var d = diasHasta(f); return d !== null && d >= 0; });
+      return { fecha: futuras[0] || fechas[fechas.length - 1] || null, pasada: fechas.length > 0 && !futuras.length, mas: Math.max(0, futuras.length - 1) };
+    }
       var tramos = op.compraAgil && REGLAS.plazoOfertaCompraAgil ? REGLAS.plazoOfertaCompraAgil : REGLAS.plazoOferta;
       if (dias !== null && tramos.length) {
         var tramo = tramos.filter(function (t) { return t.menosDeDias === null || dias < t.menosDeDias; })[0];
@@ -777,12 +784,11 @@ __OP_FUENTES__
           if (tramo.descarta) descartar.push(dias < 0 ? 'Ya cerró' : op.compraAgil ? 'Cierra en menos de ' + Math.round(tramo.menosDeDias * 24) + ' horas' : 'Cierra en menos de un día');
         }
       }
-      if (op.ficha && op.visita && op.visita.fecha) {
-        var dv = diasHasta(op.visita.fecha);
-        if (dv !== null && dv < 0) {
-          p.visita = op.visita.obligatoria === false ? REGLAS.visitaPasada.optativa : REGLAS.visitaPasada.obligatoriaODuda;
-          if (op.visita.obligatoria) descartar.push('La visita obligatoria fue el ' + fechaHora(op.visita.fecha));
-        }
+      // Con varias fechas de visita (una por recinto, o dos a elegir), pasó cuando pasaron todas.
+      var vis = visitaDelDia(op);
+      if (op.ficha && vis.pasada) {
+        p.visita = op.visita.obligatoria === false ? REGLAS.visitaPasada.optativa : REGLAS.visitaPasada.obligatoriaODuda;
+        if (op.visita.obligatoria) descartar.push('La visita obligatoria fue el ' + fechaHora(vis.fecha));
       }
       var total = 0, suma = 0;
       CRIT.forEach(function (c) { total += pesos[c.id]; suma += p[c.id] * pesos[c.id]; });
@@ -944,8 +950,9 @@ __OP_FUENTES__
           el('p', { clase: 'op-org', texto: [op.organismo, op.comuna || op.regionCorta].filter(Boolean).join(' · ') })
         ])
       ]);
-      var visita = op.visita && op.visita.fecha ? fechaCorta(op.visita.fecha).slice(0, 5) + (op.visita.obligatoria ? ' (oblig.)' : '')
-        : op.visita && op.visita.mencionada ? 'la pide (ver bases)' : 'no';
+      var vis = visitaDelDia(op), v = op.visita || {};
+      var visita = vis.fecha ? fechaCorta(vis.fecha).slice(0, 5) + (v.obligatoria ? ' (oblig.)' : v.obligatoria === false ? ' (optativa)' : '') + (vis.pasada ? ' ya pasó' : '')
+        : v.mencionada ? 'la pide (ver bases)' : v.sinVisita ? 'no' : 'sin confirmar';
       var datos = el('dl', { clase: 'op-datos' }, [
         el('div', null, [el('dt', { texto: 'Monto' }), el('dd', null, [monto.v, el('small', { texto: monto.s })])]),
         el('div', null, [el('dt', { texto: 'Cierre' }), el('dd', { clase: claseCierre(e.dias) }, [textoCierre(e.dias), el('small', { texto: fechaHora(op.cierre) })])]),
@@ -969,6 +976,12 @@ __OP_FUENTES__
       if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: 'Con rubro ' + Math.round(e.p.rubro) + ' (bajo ' + e.tope.rubroMenorA + ') no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '», aunque el puntaje dé para más.' }));
       izq.appendChild(el('h4', { texto: 'Cómo se arma el puntaje' }));
       var comp = el('div', { clase: 'op-composicion', role: 'img', 'aria-label': 'Aporte de cada criterio al puntaje' });
+    function textoVisita(op) {
+      var vis = visitaDelDia(op), v = op.visita || {};
+      if (!vis.fecha) return v.mencionada ? 'las bases la piden, sin fecha en la ficha: ver bases' : v.sinVisita ? 'no (según la ficha de las bases)' : 'sin confirmar: ver las bases';
+      return fechaHora(vis.fecha) + (vis.pasada ? ' (ya pasó)' : '') + (v.obligatoria ? ' · obligatoria' : v.obligatoria === false ? ' · optativa' : ' · ver bases si es obligatoria') +
+        (vis.mas ? ' · y ' + vis.mas + ' fecha(s) más' : '') + (v.lugar && vis.fecha === v.fecha && !vis.pasada ? ' · ' + v.lugar : '');
+    }
       CRIT.forEach(function (c) {
         if (!pesos[c.id]) return;
         var seg = el('span', { title: c.nombre + ': ' + e.p[c.id] + ' de 100 (aporta ' + (e.p[c.id] * pesos[c.id] / e.total).toFixed(1) + ' de ' + (100 * pesos[c.id] / e.total).toFixed(1) + ')' });
@@ -1011,7 +1024,7 @@ __OP_FUENTES__
         ['Lugar', [op.comuna, op.region].filter(Boolean).join(', ') || '—'], ['Publicada', fechaHora(op.publicada)],
         ['Cierre', fechaHora(op.cierre) + ' · ' + textoCierre(e.dias)], ['Monto', monto.v + ' (' + monto.s + ')'],
         [op.compraAgil ? 'Plazo de entrega' : 'Duración', textoDuracion(op)],
-        ['Visita a terreno', op.visita && op.visita.fecha ? fechaHora(op.visita.fecha) + (op.visita.obligatoria ? ' · obligatoria' : op.visita.obligatoria === false ? ' · optativa' : ' · ver bases') : 'no'],
+        ['Visita a terreno', textoVisita(op)],
         ['Probabilidad de ganar', op.probabilidadGanar !== null && op.probabilidadGanar !== undefined ? Math.round(op.probabilidadGanar * 100) + ' % en las parecidas ya resueltas' : 'sin historia suficiente']
       ];
       der.appendChild(el('h4', { texto: 'Ficha' }));
@@ -1182,7 +1195,15 @@ __OP_FUENTES__
         el('td', { clase: 'num', 'data-label': 'Monto', texto: monto.v }),
         el('td', { 'data-label': 'Cierre' }, [el('div', null, [el('span', { clase: claseCierre(e.dias), texto: textoCierre(e.dias) }), el('div', { clase: 'op-nombre-sub', texto: fechaHora(op.cierre) })])])
       ]);
-      var alternar = function () { abiertas[op.codigo] = !abiertas[op.codigo]; pintarTabla(); };
+      // Abre o cierra solo esta fila: rehacer la tabla entera hacía saltar la página hacia arriba.
+      var alternar = function () {
+        var abierta = abiertas[op.codigo] = !abiertas[op.codigo];
+        tr.classList.toggle('is-expanded', abierta);
+        tr.setAttribute('aria-expanded', String(abierta));
+        var sig = tr.nextElementSibling;
+        if (sig && sig.classList.contains('detail-row')) sig.parentNode.removeChild(sig);
+        if (abierta) tr.parentNode.insertBefore(filaDetalle(op), tr.nextSibling);
+      };
       tr.addEventListener('click', function (evt) { if (evt.target.closest('a, button')) return; alternar(); });
       tr.addEventListener('keydown', function (evt) { if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); alternar(); } });
       return tr;
@@ -1193,6 +1214,7 @@ __OP_FUENTES__
         var x = valorOrden(a, orden.k), y = valorOrden(b, orden.k);
         return (x < y ? -1 : x > y ? 1 : 0) * orden.dir || porRelevancia(a, b);
       });
+    function filaDetalle(op) { return el('tr', { clase: 'detail-row' }, [el('td', { colspan: 6 }, [detalle(op)])]); }
       return lista;
     }
     function pintarTabla() {
@@ -1200,8 +1222,10 @@ __OP_FUENTES__
       vaciar(tbody);
       lista.slice(0, limite).forEach(function (op) {
         tbody.appendChild(filaDe(op));
-        if (abiertas[op.codigo]) tbody.appendChild(el('tr', { clase: 'detail-row' }, [el('td', { colspan: 6 }, [detalle(op)])]));
+        if (abiertas[op.codigo]) tbody.appendChild(filaDetalle(op));
       });
+      // Rehacer la tabla (al ordenar, filtrar o «Mostrar más») no mueve la página.
+      var y = window.scrollY;
       if (!lista.length) tbody.appendChild(el('tr', null, [el('td', { colspan: 6, texto: 'Ninguna oportunidad con estos filtros.' })]));
       var mas = document.getElementById('fMas');
       mas.hidden = lista.length <= limite;
@@ -1217,6 +1241,7 @@ __OP_FUENTES__
         var k = th.getAttribute('data-k');
         orden = orden.k === k ? { k: k, dir: -orden.dir } : { k: k, dir: (k === 'puntaje' || k === 'monto') ? -1 : 1 };
         pintarTabla();
+      if (window.scrollY !== y) window.scrollTo(0, y);
       });
     });
     document.getElementById('fMas').addEventListener('click', function () { limite += 100; pintarTabla(); });
@@ -1307,6 +1332,7 @@ __OP_FUENTES__
       var hist = vaciar(document.getElementById('opHistoria'));
       hist.appendChild(el('li', { texto: 'Planilla de Ingreso: ' + (h.requerimientos || 0) + ' requerimientos, ' + (h.ofertados || 0) + ' ofertados, ' + (h.ganados || 0) + ' ganados y ' + (h.perdidos || 0) + ' perdidos.' }));
       hist.appendChild(el('li', { texto: 'Para cada licitación se buscan las más parecidas de la Planilla: si se ofertaron y se ganaron, sube el rubro; si se descartaron, baja.' }));
+      reglas.appendChild(el('li', { texto: 'La visita a terreno se lee en la ficha de las bases de Mercado Público (la API no la informa). Con varias fechas se muestra la próxima, y pasó cuando pasaron todas. Si la ficha no se pudo leer, la licitación es menor a 100 UTM o es una compra ágil sin mención, queda «sin confirmar»: revisa las bases.' }));
       if (m.p25) hist.appendChild(el('li', { texto: 'Monto habitual (lo ofertado): el centro va de ' + clpCorto(m.p25) + ' a ' + clpCorto(m.p75) + '; lo habitual, de ' + clpCorto(m.p10) + ' a ' + clpCorto(m.p90) + '. Sobre ' + clpCorto(m.maximo) + (m.maximoFijo ? ' se descarta.' : ' el criterio monto puntúa bajo, sin descartar.') }));
     }
 

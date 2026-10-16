@@ -106,6 +106,11 @@
     "optativa": 70
   },
 
+  "visitaSinDato": {
+    "_comentario": "Cuando no se sabe si hay visita (la ficha de las bases no se pudo leer todavía, la licitación es menor a 100 UTM y su ficha no trae el contenido de las bases, o es una compra ágil sin visita en la descripción), el criterio vale lo esperado: 100 sin visita y, con probabilidadVisita, lo que valdría una visita en esa región. Antes daba 100 («Sin visita a terreno»), pero el 2026-10-15 la ficha de las bases mostró visita en 20 de 35 licitaciones del tablero que decían eso.",
+    "probabilidadVisita": 0.55
+  },
+
   "ejecucion": {
     "_comentario": "Puntaje según la duración del contrato en meses (el primer tramo que la contiene). Los contratos de mantención de 6 a 36 meses dan ingresos recurrentes.",
     "tramos": [
@@ -170,6 +175,27 @@
     "maxOportunidadesPorCorreo": 5,
     "horasMinimasParaCerrar": {"licitacion": 48, "compraAgil": 12},
     "omitirSiEstaEnPlanilla": true,
+    "_revisionBases": "Pedido del usuario (2026-10-15): antes de enviar, revisar las bases de cada oportunidad y verificar los puntos más relevantes (bases_oportunidades.py). Se lee la ficha pública de la licitación (el «Contenido de las bases»: plazos y visita, documentos que pide, criterios, montos, garantías y cláusulas) o la ficha de la compra ágil en su API. Los PDF adjuntos no se pueden bajar sin pasar un reCAPTCHA o un bloqueo de bots, y no se intenta. Lo que la descarta sola (no publicada, cierre muy cerca, visita obligatoria ya pasada) no se envía y no se vuelve a revisar. Si la ficha no responde, espera a la próxima vuelta salvo que sea la última a tiempo: entonces sale con el aviso. Umbrales: reclamosPagoAltos (reclamos por pago en 12 meses), plazoPagoMaxDias, precioPesaPoco y experienciaPesaMucho (% de la ponderación), fielCumplimientoAlto (%). senales: frases (sin tildes, palabras completas) que se buscan en criterios, cláusulas, garantías, documentos y descripción.",
+    "revisionBases": {
+      "activa": true,
+      "maxRevisionesPorVuelta": 8,
+      "pausaSeg": 3,
+      "reclamosPagoAltos": 50,
+      "plazoPagoMaxDias": 30,
+      "precioPesaPoco": 40,
+      "experienciaPesaMucho": 25,
+      "fielCumplimientoAlto": 10,
+      "senales": [
+        {"clave": "sec", "tema": "certificación SEC", "frases": ["sec", "superintendencia de electricidad y combustibles", "instalador autorizado", "instalador de gas"]},
+        {"clave": "marca", "tema": "representación de marca o servicio técnico autorizado", "frases": ["representacion de marca", "representacion de la marca", "representante de la marca", "servicio tecnico autorizado", "distribuidor autorizado", "certificado del fabricante", "carta del fabricante"]},
+        {"clave": "experiencia", "tema": "experiencia mínima exigida", "frases": ["experiencia minima", "anos de experiencia", "experiencia comprobable"]},
+        {"clave": "registro", "tema": "inscripción en un registro de contratistas", "frases": ["registro de contratistas", "registro nacional de contratistas", "registro de consultores", "registro minvu", "registro mop"]},
+        {"clave": "seguro", "tema": "seguro de responsabilidad civil", "frases": ["responsabilidad civil"]},
+        {"clave": "iso", "tema": "norma ISO", "frases": ["iso 9001", "iso 14001", "iso 45001"]},
+        {"clave": "garantia", "tema": "boleta o póliza de garantía", "frases": ["boleta de garantia", "poliza de garantia", "vale vista", "certificado de fianza"]},
+        {"clave": "multas", "tema": "multas", "frases": ["multa", "multas"]}
+      ]
+    },
     "_horario": "Pedido del usuario (2026-10-15): nunca enviar fuera de días u horarios laborales. dias: 1 = lunes ... 5 = viernes. Se envía desde «desde» y antes de «hasta» (a las 17:00 ya no). Fuera de horario las elegibles esperan.",
     "horario": {"dias": [1, 2, 3, 4, 5], "desde": "09:00", "hasta": "17:00"},
     "_feriados": "Feriados nacionales de Chile en que no se envía (verificados en feriados.cl el 2026-10-15). Hay que agregar los de cada año nuevo: si el año en curso no tiene fechas, alertas_oportunidades.py lo avisa.",
@@ -188,6 +214,8 @@
     "tope": 80,
     "diasRefrescoFicha": 3,
     "diasHistoriaMercado": 365,
-    "diasMercadoPorVuelta": 8
+    "diasMercadoPorVuelta": 8,
+    "_fichaBases": "La visita a terreno no viene en la API: se lee de la ficha pública de cada licitación candidata (bases_oportunidades.py, sin captcha), una cada pausaSeg y como mucho limiteMinutos por vuelta; las que faltan siguen en la próxima. Se vuelve a leer cuando se refresca la ficha de la API (diasRefrescoFicha).",
+    "fichaBases": {"activo": true, "pausaSeg": 2, "limiteMinutos": 4}
   }
 }

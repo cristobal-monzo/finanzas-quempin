@@ -199,7 +199,9 @@ def test_la_visita_se_lee_en_la_descripcion_de_una_compra_agil(config):
     con = ev.evaluar(ca.leer_ficha(_ca("100-1-COT26", "Mantención caldera", descripcion="Se exige visita técnica previa"), "100-1-COT26"))
     sin = ev.evaluar(ca.leer_ficha(_ca("100-2-COT26", "Mantención caldera", descripcion="Ver visitas guiadas del museo"), "100-2-COT26"))
     assert con["visita"]["mencionada"] and con["criterios"]["visita"]["puntaje"] < 100
-    assert not sin["visita"]["mencionada"] and sin["criterios"]["visita"]["puntaje"] == 100
+    # Sin mención no se sabe (la compra ágil no informa visita): «sin confirmar», no «sin visita».
+    assert not sin["visita"]["mencionada"] and sin["criterios"]["visita"]["puntaje"] < 100
+    assert sin["criterios"]["visita"]["puntaje"] > con["criterios"]["visita"]["puntaje"]
 
 
 def test_una_busqueda_caida_no_borra_lo_que_seguia_abierto(tmp_path, config):

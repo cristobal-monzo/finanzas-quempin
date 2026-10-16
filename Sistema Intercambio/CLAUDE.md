@@ -295,7 +295,8 @@ En cada vuelta (con el mismo cliente y ticket del monitor):
 - La historia pesa un 25 % del rubro. Muchos descartes de calderas fueron por
   distancia o plazo, y eso ya lo miden otros criterios.
 - Sin ficha (tope de consultas), visita, dificultad y duración quedan en 50,
-  nunca en 100.
+  nunca en 100. La visita sale de la ficha de las bases, no de la API (ver
+  «La visita en el tablero», más abajo).
 
 **Compras ágiles (2026-10-14, pedido del usuario: «licitaciones y compras
 ágiles»)**: la API de licitaciones no las expone. Las trae `compra_agil.py`
@@ -399,6 +400,66 @@ configuración:
   vuelta.
 - Comandos: `status` (qué se enviaría), `vista` (escribe el correo como
   .html, sin enviar). Las pruebas cortan Outlook en el `conftest`.
+
+**Revisión de las bases antes del correo (2026-10-15, `bases_oportunidades.py`)**,
+pedido del usuario: «antes de enviar los correos de alerta [...] se analicen
+los anexos buscando las bases técnicas y administrativas y verifiques los
+puntos más relevantes, luego de eso envías el correo».
+- **Los PDF de las bases no se pueden bajar solos, y no se intenta.** En una
+  licitación, «Ver adjuntos» exige reCAPTCHA Enterprise; en una compra ágil,
+  buscador.mercadopublico.cl bloquea todo lo que no sea un navegador
+  (CloudFront). Ninguna API los entrega: la de licitaciones no los nombra, la
+  de Compra Ágil da solo nombre e id, y la OCDS
+  (`apis.mercadopublico.cl/OCDS/data/...`) no trae documentos ni las
+  licitaciones recién publicadas. Verificado el 2026-10-15.
+- **Lo que sí se lee**: la ficha pública de la licitación
+  (`DetailsAcquisition.aspx`, sin captcha), con el «Contenido de las bases»
+  que el comprador llena en el portal. Se lee por id de elemento (ASP.NET):
+  `lblFicha1Estado`, `lblFicha3Cierre`, `grvFechasUsuario_ctlNN_*` (ahí está la
+  **visita a terreno**: la API la deja en 1900-01-02), `grvCriterios_*`,
+  `grvGarantias_*`, `grvRequerimientosTecnicos_*` (multas), `lblFicha7*`
+  (monto, duración, pago, subcontratación) y `grvAdministrativo/Tecnico/Economico_*`.
+  Una L1 (menos de 100 UTM) tiene una ficha corta sin ese contenido. De una
+  compra ágil se vuelve a pedir el detalle a su API: estado, cierre,
+  presupuesto, entrega, descripción y nombres de los adjuntos.
+- **Qué verifica**: estado y cierre, visita (obligatoria, voluntaria o sin
+  decir, y si ya pasó), monto y duración contra la evaluación previa,
+  garantías, criterios (precio bajo 40 %, experiencia 25 % o más, puntaje por
+  certificación o marca), pago a más de 30 días, 50 o más reclamos por pago,
+  subcontratación prohibida, multas, y las `senales` de la configuración (SEC,
+  representación de marca, experiencia mínima, registros, seguros, ISO). Cuenta
+  cuántos campos solo dicen «según bases adjuntas».
+- **Qué hace con eso**: lo que descarta sola (no publicada, cierre que quedó
+  bajo `horasMinimasParaCerrar`, visita **obligatoria** ya pasada) no se envía,
+  deja su lugar a la siguiente y queda en `descartadasBases` del registro (no
+  se vuelve a revisar). Lo demás va al correo en «Revisión de las bases», con
+  ! / ✓ / ·, y corrige las filas de visita, monto y cierre. Si la ficha no
+  responde, la oportunidad espera; sale con el aviso solo si en la próxima
+  vuelta hábil (`proxima_vuelta`) ya no cerraría con tiempo.
+- Medido el 2026-10-15 con 10 fichas reales: la licitación enviada ese día
+  tenía visita a terreno el 20-10 que la evaluación no veía; otra, visita
+  obligatoria al día siguiente. Revisar 3 tomó 21 s (la compra ágil, por su
+  API lenta, la mayor parte).
+- **La visita en el tablero (2026-10-15, el usuario: «no se están
+  identificando bien las visitas a terreno»)**: la evaluación previa decía
+  «Sin visita a terreno» (100) en todo, porque la API nunca la trae. Leídas las
+  fichas, 20 de 35 licitaciones del tablero tenían visita, varias obligatorias
+  y ya pasadas. Ahora cada vuelta lee la ficha pública de las candidatas
+  (`_leer_visitas_bases`, `consultas.fichaBases`: una cada 2 s, como mucho
+  4 minutos; las que faltan siguen en la próxima) y guarda `visitaBases`
+  (`resumen_visita`) en la ficha de la caché, que se vuelve a leer al
+  refrescarse la de la API. `visitas_de_la_ficha` es la regla única del tablero
+  y del correo: es visita una fecha del comprador que la nombra, o cualquiera
+  que no sea otro hito (firma, adjudicación...) si un criterio o cláusula
+  trata de la visita (hay bases con una fecha por recinto). Con varias fechas
+  se muestra la próxima y la visita pasa cuando pasaron todas (`ultima`; la
+  página lo repite en `visitaDelDia`). Sin la ficha leída, una L1 o una compra
+  ágil sin mención: «Visita sin confirmar», con el valor esperado
+  (`visitaSinDato.probabilidadVisita` 0,55, lo medido ese día), nunca 100.
+- `py -3.14 bases_oportunidades.py <código>...` revisa y muestra sin enviar ni
+  guardar. Configuración en `alertas.revisionBases` (`activa: false` vuelve al
+  correo sin revisión). Las pruebas (`tests/test_bases_oportunidades.py`) usan
+  fichas sintéticas con los mismos id; el `conftest` corta la red de la ficha.
 
 **Configuración**: `oportunidades_config.json` (versionado, sin datos de la
 empresa) guarda pesos, categorías, topes, frases del rubro, puntaje por

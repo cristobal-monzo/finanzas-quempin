@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest  # noqa: E402
 
 import alertas_oportunidades  # noqa: E402
+import bases_oportunidades  # noqa: E402
 import compra_agil  # noqa: E402
 import mercado_publico  # noqa: E402
 import oportunidades  # noqa: E402
@@ -34,3 +35,15 @@ def _sin_mercado_publico_real(tmp_path, monkeypatch):
     monkeypatch.setattr(alertas_oportunidades, "enviar_outlook", _sin_outlook)
     monkeypatch.setattr(alertas_oportunidades, "RUTA_REGISTRO", tmp_path / "oportunidades_estado_correos.json")
     monkeypatch.setattr(alertas_oportunidades, "RUTA_DESTINATARIOS", tmp_path / "sin-destinatarios.json")
+
+    # La revisión de las bases antes del correo (2026-10-15): ninguna prueba
+    # baja una ficha de verdad. Las del correo que no miran las bases pasan
+    # por una revisión sin observaciones; las que sí, traen su propio revisor.
+    def _sin_red_ficha(url, tiempo):
+        raise AssertionError("una prueba intentó bajar una ficha de Mercado Público de verdad")
+
+    def _bases_sin_observaciones(o, ahora, config):
+        return {"codigo": o["codigo"], "ok": True, "revisado": ahora.isoformat(timespec="minutes"), "puntos": [],
+                "descarta": None, "correcciones": {}, "remiten": 0, "fuente": "una ficha de prueba"}
+    monkeypatch.setattr(bases_oportunidades, "_abrir_ficha", _sin_red_ficha)
+    monkeypatch.setattr(alertas_oportunidades, "revisar_bases", _bases_sin_observaciones)

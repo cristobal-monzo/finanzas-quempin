@@ -77,6 +77,13 @@ def _datos():
         (ev_antes, _ficha("5000-97-LE26", "Mantención de calderas municipales", cierre=_en(-0.5))),   # ya cerró
     ]
     ops = [e.evaluar(op.leer_ficha(f, f["CodigoExterno"])) for e, f in fichas]
+    # La visita leída en la ficha de las bases (la API no la trae), con dos fechas:
+    # una ya pasó y otra viene (sigue viva); o las dos pasaron desde el build (descartada hoy).
+    for e, codigo, dias in ((ev, "5000-88-LE26", (-2, 3)), (ev_antes, "5000-89-LE26", (-2, -1))):
+        ficha = op.leer_ficha(_ficha(codigo, "Mantención de calderas del hospital", cierre=_en(12)), codigo)
+        ficha["visitaBases"] = {"fechas": [{"fecha": _en(d)[:16], "obligatoria": True, "lugar": None} for d in dias],
+                                "nombrada": False, "daPuntaje": False, "contenidoBases": True}
+        ops.append(e.evaluar(ficha))
     # Compras ágiles (2026-10-14): se cotizan en horas y tienen sus propios tramos de plazo.
     for codigo, horas in (("100-98-COT26", 10), ("100-99-COT26", 3)):
         crudo = {"codigo": codigo, "nombre": "Mantención de caldera del gimnasio", "descripcion": "",
@@ -187,12 +194,43 @@ def test_la_pagina_calcula_igual_que_python_y_recalcula_lo_que_depende_de_la_fec
     assert por_codigo["5000-96-LE26"]["categoria"] != "descartar"
     assert "5000-96-LE26" in descartadas and "5000-96-LE26" not in vivas
     assert "5000-97-LE26" not in vivas and "5000-97-LE26" not in descartadas    # ya cerró: no se muestra
+    # Visita con varias fechas: pasa cuando pasaron todas.
+    assert "5000-88-LE26" in vivas and vivas["5000-88-LE26"]["puntaje"] == round(por_codigo["5000-88-LE26"]["puntaje"])
+    assert por_codigo["5000-89-LE26"]["categoria"] != "descartar" and "5000-89-LE26" in descartadas
     # Compra ágil que cierra en 10 horas: viva (una licitación se descartaría); en 3 horas: descartada.
     assert por_codigo["100-98-COT26"]["compraAgil"] and por_codigo["100-99-COT26"]["categoria"] == "descartar"
     assert "100-99-COT26" in descartadas
     pagina.select_option("#fMostrar", "todas")
     pagina.select_option("#fTipo", "compraAgil")
     assert [f["codigo"] for f in _filas(pagina)] == ["100-98-COT26"]
+    assert errores == []
+
+
+def test_abrir_una_fila_no_mueve_la_pagina(navegador, tmp_path):
+    """Pedido del usuario (2026-10-15): al hacer clic en un proyecto la página
+    volvía al inicio (se rehacía la tabla entera). Abre y cierra en su lugar."""
+    pagina, _, _, errores = _abrir(navegador, tmp_path, ancho=390)    # en móvil la tabla son tarjetas: la página es larga
+    pagina.select_option("#fMostrar", "todas")
+    filas = pagina.locator("#tOps tr.op-row")
+    fila = filas.nth(filas.count() - 1)
+    fila.scroll_into_view_if_needed()
+    pagina.evaluate("window.scrollBy(0, 150)")
+    antes = pagina.evaluate("window.scrollY")
+    assert antes > 0
+    caja = fila.bounding_box()
+    pagina.mouse.click(caja["x"] + 20, caja["y"] + 10)
+    assert fila.get_attribute("aria-expanded") == "true"
+    assert pagina.locator("#tOps tr.detail-row").count() == 1
+    assert abs(pagina.evaluate("window.scrollY") - antes) <= 1
+    caja = fila.bounding_box()
+    pagina.mouse.click(caja["x"] + 20, caja["y"] + 10)
+    assert fila.get_attribute("aria-expanded") == "false" and pagina.locator("#tOps tr.detail-row").count() == 0
+    assert abs(pagina.evaluate("window.scrollY") - antes) <= 1
+    # Ordenar por una columna tampoco la mueve.
+    pagina.evaluate("window.scrollTo(0, document.querySelector('#tOps').getBoundingClientRect().top + window.scrollY - 40)")
+    antes = pagina.evaluate("window.scrollY")
+    pagina.evaluate("document.querySelector('#tOps > thead th[data-k=\"puntaje\"]').click()")
+    assert abs(pagina.evaluate("window.scrollY") - antes) <= 1
     assert errores == []
 
 

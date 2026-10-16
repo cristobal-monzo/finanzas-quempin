@@ -29,6 +29,16 @@ Reglas (``alertas`` en oportunidades_config.json):
 - Los destinatarios están en ``oportunidades_destinatarios.json``, fuera del
   repositorio (que es público): ``{"para": ["nombre@quempin.cl", ...]}``. Sin
   ese archivo no se envía nada.
+- **Antes de enviar se revisan las bases** (2026-10-15, pedido del usuario:
+  «antes de enviar los correos [...] se analicen los anexos buscando las
+  bases técnicas y administrativas y verifiques los puntos más relevantes»):
+  ``bases_oportunidades.py`` lee la ficha de las bases de cada candidata y
+  el correo lleva lo verificado. Lo que las bases descartan (no publicada,
+  cierre muy cerca, visita obligatoria ya pasada) no se envía y queda en
+  ``descartadasBases`` del registro: no se vuelve a revisar. Si la ficha no
+  responde, la oportunidad espera a la próxima vuelta, salvo que en la
+  próxima ya no alcance a cerrar con tiempo: entonces sale con el aviso.
+  Configuración: ``alertas.revisionBases``.
 
 El correo sale por **Outlook de este equipo** (``enviar_correo_outlook.ps1``,
 COM de Outlook): no se guarda ninguna contraseña nueva. Lo llama
@@ -36,8 +46,8 @@ COM de Outlook): no se guarda ninguna contraseña nueva. Lo llama
 Mercado Público respondió (con datos de la caché no se avisa nada).
 
 Uso:
-    py -3.14 alertas_oportunidades.py status          # qué se enviaría ahora, sin enviar
-    py -3.14 alertas_oportunidades.py vista [ruta]    # escribe el correo como .html para mirarlo, sin enviar
+    py -3.14 alertas_oportunidades.py status          # qué se enviaría ahora (con sus bases revisadas), sin enviar ni guardar
+    py -3.14 alertas_oportunidades.py vista [ruta]    # escribe el correo como .html para mirarlo (revisa las bases), sin enviar
     py -3.14 alertas_oportunidades.py enviar          # envía si corresponde (lo hace el driver)
 """
 
@@ -56,6 +66,7 @@ AQUI = Path(__file__).resolve().parent
 if str(AQUI) not in sys.path:
     sys.path.insert(0, str(AQUI))
 
+import bases_oportunidades as bases  # noqa: E402
 import intercambio  # noqa: E402
 import oportunidades as op  # noqa: E402
 
@@ -126,7 +137,8 @@ def correos_en_7_dias(registro: dict, ahora: datetime) -> int:
 
 
 def decidir(datos: dict, registro: dict, reglas: dict, ahora: datetime) -> dict:
-    enviados = {e.get("codigo") for e in registro.get("enviados") or []}
+    # Lo ya enviado y lo que la revisión de las bases descartó no vuelve.
+    enviados = {e.get("codigo") for e in (registro.get("enviados") or []) + (registro.get("descartadasBases") or [])}
     lista = elegibles(datos, enviados, reglas, ahora)
     usados = correos_en_7_dias(registro, ahora)
     if not lista:
@@ -142,6 +154,62 @@ def decidir(datos: dict, registro: dict, reglas: dict, ahora: datetime) -> dict:
                 "motivo": f"ya se enviaron {usados} correos en 7 días (tope {reglas['maxCorreosPorSemana']}): esperan"}
     tope = reglas.get("maxOportunidadesPorCorreo", 5)
     return {"enviar": lista[:tope], "esperan": lista[tope:], "motivo": f"correo {usados + 1} de {reglas['maxCorreosPorSemana']} en 7 días"}
+
+
+# ── REVISAR LAS BASES ANTES DE ENVIAR ────────────────────────────────────────
+
+def revisar_bases(o: dict, ahora: datetime, config: dict) -> dict:
+    """La revisión real, contra Mercado Público. Las pruebas la reemplazan."""
+    return bases.revisar(o, ahora, config)
+
+
+def proxima_vuelta(ahora: datetime, reglas: dict) -> datetime:
+    """Cuándo podría salir el próximo correo: el siguiente día hábil, a la
+    hora en que empieza el horario (la tarea corre a diario a esa hora)."""
+    hh, mm = (int(x) for x in reglas["horario"]["desde"].split(":"))
+    dia = ahora.date()
+    for _ in range(15):
+        dia += timedelta(days=1)
+        momento = datetime(dia.year, dia.month, dia.day, hh, mm)
+        if en_horario_laboral(momento, reglas)[0]:
+            return momento
+    return momento
+
+
+def ultima_oportunidad(o: dict, ahora: datetime, reglas: dict) -> bool:
+    """En la próxima vuelta ya no alcanzaría a avisarse a tiempo."""
+    horas = horas_para(o.get("cierre"), proxima_vuelta(ahora, reglas))
+    return horas is None or horas < reglas["horasMinimasParaCerrar"]["compraAgil" if es_compra_agil(o) else "licitacion"]
+
+
+def revisar_candidatas(d: dict, reglas: dict, config: dict, ahora: datetime, revisor) -> dict:
+    """Revisa las bases de las que van al correo, de mejor a peor nota. Una
+    que las bases descartan deja su lugar a la siguiente; una cuya ficha no
+    respondió espera, salvo que sea su última vuelta a tiempo."""
+    rb = reglas.get("revisionBases") or {}
+    tope = reglas.get("maxOportunidadesPorCorreo", 5)
+    maximo = rb.get("maxRevisionesPorVuelta", 8)
+    aprobadas, sin_revisar, sin_turno, descartadas = [], [], [], []
+    revisadas = 0
+    for o in d["enviar"] + d["esperan"]:
+        if len(aprobadas) >= tope or revisadas >= maximo:
+            sin_turno.append(o)
+            continue
+        revisadas += 1
+        r = revisor(o, ahora, config)
+        o = dict(o, revisionBases=r)
+        if r.get("descarta"):
+            descartadas.append(o)
+        elif not r.get("ok") and not ultima_oportunidad(o, ahora, reglas):
+            sin_revisar.append(o)
+        else:
+            aprobadas.append(o)
+    motivo = d["motivo"]
+    if not aprobadas:
+        partes = ([f"la revisión de las bases descartó {len(descartadas)}"] if descartadas else []) + \
+                 ([f"no se pudieron revisar las bases de {len(sin_revisar)} (esperan a la próxima vuelta)"] if sin_revisar else [])
+        motivo = "; ".join(partes or ["no quedó ninguna para enviar"]) + ": no se envía correo"
+    return dict(d, enviar=aprobadas, esperan=sin_revisar + sin_turno, descartadasBases=descartadas, motivo=motivo)
 
 
 # ── EL CORREO ────────────────────────────────────────────────────────────────
@@ -173,8 +241,11 @@ def texto_visita(o: dict) -> str:
             return f"Optativa: {cuando}"
         return f"Sí: {cuando} (revisar en las bases si es obligatoria)"
     if v.get("mencionada"):
-        return "La descripción menciona una visita (sin fecha en la ficha)"
-    return "No requiere (sin visita en la ficha)"
+        return ("Las bases la nombran, sin fecha en la ficha" if v.get("fuente") == "bases"
+                else "La descripción menciona una visita (sin fecha en la ficha)")
+    if v.get("sinVisita"):
+        return "No requiere (sin visita en la ficha de las bases)"
+    return "Sin confirmar: revisar en las bases"
 
 
 def texto_monto(o: dict) -> str:
@@ -199,11 +270,14 @@ def texto_ejecucion(o: dict) -> str:
 
 def filas(o: dict, ahora: datetime) -> list[tuple[str, str]]:
     lugar = ", ".join(x for x in (o.get("comuna"), o.get("regionCorta") or o.get("region")) if x) or "Sin dato"
+    # Lo que la revisión de las bases corrigió manda sobre la evaluación previa.
+    corregido = (o.get("revisionBases") or {}).get("correcciones") or {}
+    cierre = corregido.get("cierre") or o.get("cierre")
     salida = [
-        ("Monto", texto_monto(o)),
-        ("Tiempo restante", f"{tiempo_restante(o.get('cierre'), ahora)} (cierra el {_fecha_hora(o.get('cierre'))})"),
+        ("Monto", corregido.get("monto") or texto_monto(o)),
+        ("Tiempo restante", f"{tiempo_restante(cierre, ahora)} (cierra el {_fecha_hora(cierre)})"),
         ("Región", lugar),
-        ("Visita técnica", texto_visita(o)),
+        ("Visita técnica", corregido.get("visita") or texto_visita(o)),
         ("Ejecución" if not es_compra_agil(o) else "Plazo de entrega", texto_ejecucion(o)),
         ("Comprador", " · ".join(x for x in (o.get("organismo"), o.get("unidadCompra")) if x) or "Sin dato"),
     ]
@@ -220,6 +294,29 @@ def asunto(lista: list[dict]) -> str:
     return f"{len(lista)} oportunidades muy buenas en Mercado Público (nota {lista[-1]['puntaje']:.0f} a {lista[0]['puntaje']:.0f})"
 
 
+_MARCA_NIVEL = {"descarta": ("✗", "#b00020"), "atencion": ("!", NARANJO_TINTA), "ok": ("✓", "#1b7a3a"), "dato": ("·", "#777")}
+
+
+def bloque_bases(o: dict) -> str:
+    """Lo verificado en las bases, de lo más importante a lo informativo."""
+    r = o.get("revisionBases")
+    if not r:
+        return ""
+    e = html.escape
+    titulo = '<div style="font-size:14px;font-weight:bold;color:#111;margin:14px 0 4px 0">Revisión de las bases</div>'
+    if not r.get("ok"):
+        return (titulo + f'<div style="font-size:14px;color:{NARANJO_TINTA}">! No se pudo leer la ficha de las bases '
+                f'({e(r.get("error") or "sin respuesta")}). Sale igual porque mañana ya no habría tiempo: revísalas antes de decidir.</div>')
+    filas_html = "".join(
+        f'<li style="margin:3px 0"><span style="color:{_MARCA_NIVEL[p["nivel"]][1]};font-weight:bold">{_MARCA_NIVEL[p["nivel"]][0]}</span> {e(p["texto"])}</li>'
+        for p in sorted(r.get("puntos") or [], key=lambda p: bases.NIVELES.index(p["nivel"])))
+    remiten = (f' {r["remiten"]} punto{"s" if r["remiten"] > 1 else ""} de la ficha remite{"n" if r["remiten"] > 1 else ""} '
+               'a las bases adjuntas (PDF).') if r.get("remiten") else ""
+    return (titulo + f'<ul style="list-style:none;padding:0;margin:0;font-size:14px;color:#111">{filas_html}</ul>'
+            f'<div style="font-size:12px;color:#777;margin-top:6px">Leído de {e(r.get("fuente") or "Mercado Público")} '
+            f'el {_fecha_hora(r.get("revisado"))}.{remiten} Los PDF adjuntos no se pueden bajar automáticamente: léelos en la ficha.</div>')
+
+
 def cuerpo_html(lista: list[dict], ahora: datetime, reglas: dict) -> str:
     e = html.escape
     bloques = []
@@ -228,8 +325,12 @@ def cuerpo_html(lista: list[dict], ahora: datetime, reglas: dict) -> str:
         filas_html = "".join(
             f'<tr><td style="padding:4px 12px 4px 0;color:#555;white-space:nowrap;vertical-align:top">{e(k)}</td>'
             f'<td style="padding:4px 0;color:#111;vertical-align:top">{e(v)}</td></tr>' for k, v in filas(o, ahora))
-        favor = "".join(f'<li style="margin:2px 0">✓ {e(x)}</li>' for x in o.get("aFavor") or [])
-        contra = "".join(f'<li style="margin:2px 0;color:{NARANJO_TINTA}">! {e(x)}</li>' for x in o.get("enContra") or [])
+        # Si las bases dicen otra cosa de la visita, la frase de la evaluación previa sobra (y la contradiría).
+        corrige_visita = "visita" in ((o.get("revisionBases") or {}).get("correcciones") or {})
+        vigentes = [x for x in (o.get("aFavor") or []) + (o.get("enContra") or [])
+                    if not (corrige_visita and "visita" in op.normalizar(x))]
+        favor = "".join(f'<li style="margin:2px 0">✓ {e(x)}</li>' for x in o.get("aFavor") or [] if x in vigentes)
+        contra = "".join(f'<li style="margin:2px 0;color:{NARANJO_TINTA}">! {e(x)}</li>' for x in o.get("enContra") or [] if x in vigentes)
         razones = (f'<ul style="list-style:none;padding:0;margin:10px 0 0 0;font-size:14px">{favor}{contra}</ul>'
                    if favor or contra else "")
         bloques.append(f"""
@@ -240,15 +341,16 @@ def cuerpo_html(lista: list[dict], ahora: datetime, reglas: dict) -> str:
   <div style="display:inline-block;background:{NARANJO};color:#fff;font-weight:bold;font-size:15px;padding:3px 10px;border-radius:12px">Nota {o['puntaje']:.0f}/100</div>
   <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:10px;font-size:14px">{filas_html}</table>
   {razones}
+  {bloque_bases(o)}
   <div style="margin-top:12px"><a href="{e(o['url'], quote=True)}" style="color:{NARANJO_TINTA};font-weight:bold">Ver la ficha en Mercado Público</a></div>
 </td></tr></table>""")
     return f"""<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#fff">
 <div style="font-family:Lato,Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto;padding:16px;color:#111">
   <div style="font-size:13px;font-weight:bold;color:{NARANJO_TINTA};letter-spacing:.06em">QUEMPIN · OPORTUNIDADES EN MERCADO PÚBLICO</div>
-  <p style="font-size:15px;margin:8px 0 16px 0">{'Apareció una oportunidad' if len(lista) == 1 else f'Aparecieron {len(lista)} oportunidades'} con nota {reglas['notaMinima']} o más en la evaluación de hoy.</p>
+  <p style="font-size:15px;margin:8px 0 16px 0">{'Apareció una oportunidad' if len(lista) == 1 else f'Aparecieron {len(lista)} oportunidades'} con nota {reglas['notaMinima']} o más en la evaluación de hoy.{' Antes de enviar este correo se revisaron sus bases en Mercado Público: lo verificado va en cada una.' if any((o.get('revisionBases') or {}).get('ok') for o in lista) else ''}</p>
   {''.join(bloques)}
   <p style="font-size:14px;margin:16px 0"><a href="{URL_TABLERO}" style="color:{NARANJO_TINTA}">Abrir el tablero de Oportunidades</a> (con la contraseña de los tableros) para ver cómo se calculó cada nota.</p>
-  <p style="font-size:12px;color:#777;margin:16px 0 0 0">Correo automático: solo para notas de {reglas['notaMinima']} o más, en días hábiles de {reglas['horario']['desde']} a {reglas['horario']['hasta']}, como máximo {reglas['maxCorreosPorSemana']} correos en 7 días y nunca dos veces la misma oportunidad. Las notas son una evaluación previa: confirma plazos, visita y requisitos en las bases.</p>
+  <p style="font-size:12px;color:#777;margin:16px 0 0 0">Correo automático: solo para notas de {reglas['notaMinima']} o más, en días hábiles de {reglas['horario']['desde']} a {reglas['horario']['hasta']}, como máximo {reglas['maxCorreosPorSemana']} correos en 7 días y nunca dos veces la misma oportunidad. Las notas son una evaluación previa y la revisión lee la ficha de las bases que publica Mercado Público; las bases administrativas y técnicas en PDF hay que leerlas en la ficha antes de ofertar.</p>
 </div></body></html>"""
 
 
@@ -288,36 +390,63 @@ def enviar_outlook(para: list[str], titulo: str, cuerpo: str) -> str:
     return salida[-1]
 
 
+def _guardar_registro(ruta: Path, registro: dict, ahora: datetime) -> None:
+    # Se recuerda un año (una licitación no vuelve a publicarse con el mismo código).
+    hace_un_ano = (ahora - timedelta(days=365)).isoformat()
+    for clave in ("enviados", "correos", "descartadasBases"):
+        if clave in registro:
+            registro[clave] = [x for x in registro[clave] if x.get("fecha", "") > hace_un_ano]
+    intercambio._escribir_json_atomico(ruta, registro)
+
+
 def ejecutar(datos: dict, enviar: bool = True, ahora: datetime | None = None, config: dict | None = None,
-             remitente=None, ruta_registro: Path | None = None, ruta_destinatarios: Path | None = None) -> dict:
-    # Se resuelven al llamar (no al definir): así las pruebas pueden cambiarlos y nunca envían de verdad.
+             remitente=None, ruta_registro: Path | None = None, ruta_destinatarios: Path | None = None,
+             revisor=None) -> dict:
+    # Se resuelven al llamar (no al definir): así las pruebas pueden cambiarlos y nunca envían ni consultan de verdad.
     remitente = remitente or enviar_outlook
+    revisor = revisor or revisar_bases
     ruta_registro = ruta_registro or RUTA_REGISTRO
     ruta_destinatarios = ruta_destinatarios or RUTA_DESTINATARIOS
     config = config or op.cargar_config()
     reglas = config["alertas"]
     ahora = ahora or datetime.now()
     registro = op._leer_estado(ruta_registro)
-    d = decidir(datos, registro, reglas, ahora)
+    d = dict(decidir(datos, registro, reglas, ahora), descartadasBases=[])
+    if d["enviar"] and (reglas.get("revisionBases") or {}).get("activa", True):
+        d = revisar_candidatas(d, reglas, config, ahora, revisor)
     resultado = dict(d, enviado=None)
+    momento = ahora.isoformat(timespec="seconds")
+    if enviar and d["descartadasBases"]:
+        registro.setdefault("descartadasBases", []).extend(
+            {"codigo": o["codigo"], "fecha": momento, "puntaje": o["puntaje"], "nombre": (o.get("nombre") or "")[:120],
+             "motivo": o["revisionBases"]["descarta"]} for o in d["descartadasBases"])
     if not d["enviar"] or not enviar:
+        if enviar and d["descartadasBases"]:
+            _guardar_registro(ruta_registro, registro, ahora)
         return resultado
     para = destinatarios(ruta_destinatarios)
     if not para:
         resultado["motivo"] = f"no hay destinatario en {ruta_destinatarios.name}: no se envió"
+        if d["descartadasBases"]:
+            _guardar_registro(ruta_registro, registro, ahora)
         return resultado
     estado = remitente(para, asunto(d["enviar"]), cuerpo_html(d["enviar"], ahora, reglas))
-    momento = ahora.isoformat(timespec="seconds")
     registro.setdefault("correos", []).append({"fecha": momento, "codigos": [o["codigo"] for o in d["enviar"]], "estado": estado})
-    registro.setdefault("enviados", []).extend({"codigo": o["codigo"], "fecha": momento, "puntaje": o["puntaje"],
-                                                "nombre": (o.get("nombre") or "")[:120]} for o in d["enviar"])
-    # Lo enviado se recuerda un año (una licitación no vuelve a publicarse con el mismo código).
-    hace_un_ano = (ahora - timedelta(days=365)).isoformat()
-    registro["enviados"] = [x for x in registro["enviados"] if x.get("fecha", "") > hace_un_ano]
-    registro["correos"] = [x for x in registro["correos"] if x.get("fecha", "") > hace_un_ano]
-    intercambio._escribir_json_atomico(ruta_registro, registro)
+    registro.setdefault("enviados", []).extend(
+        {"codigo": o["codigo"], "fecha": momento, "puntaje": o["puntaje"], "nombre": (o.get("nombre") or "")[:120],
+         "bases": _resumen_revision(o.get("revisionBases"))} for o in d["enviar"])
+    _guardar_registro(ruta_registro, registro, ahora)
     resultado["enviado"] = estado
     return resultado
+
+
+def _resumen_revision(r: dict | None) -> str:
+    if not r:
+        return "sin revisar (revisión apagada)"
+    if not r.get("ok"):
+        return f"no se pudo revisar: {r.get('error')}"
+    atencion = sum(1 for p in r.get("puntos") or [] if p["nivel"] == "atencion")
+    return f"revisadas: {atencion} punto{'s' if atencion != 1 else ''} de atención"
 
 
 def main(argv=None) -> int:
@@ -343,9 +472,10 @@ def main(argv=None) -> int:
         ahora = datetime.now()
         lista = sorted((o for o in datos.get("oportunidades") or [] if o.get("ficha") and o.get("categoria") != "descartar"),
                        key=lambda o: -o["puntaje"])[:2]
+        lista = [dict(o, revisionBases=revisar_bases(o, ahora, config)) for o in lista]
         ruta = Path(argv[1]) if len(argv) > 1 else Path(tempfile.gettempdir()) / "vista_correo_oportunidades.html"
         ruta.write_text(cuerpo_html(lista, ahora, config["alertas"]), encoding="utf-8")
-        print(f"Vista del correo (con las 2 mejores de hoy, tengan o no {config['alertas']['notaMinima']}): {ruta}")
+        print(f"Vista del correo (con las 2 mejores de hoy, tengan o no {config['alertas']['notaMinima']}, y sus bases revisadas): {ruta}")
         return 0
     try:
         r = ejecutar(datos, enviar=orden == "enviar", config=config)
@@ -354,8 +484,12 @@ def main(argv=None) -> int:
         return 1
     for o in r["enviar"]:
         print(f"  {'[ENVIADA]' if r['enviado'] else '[SE ENVIARÍA]'} {o['puntaje']:5.1f}  {o['codigo']:<18} {(o.get('nombre') or '')[:60]}")
+        print(f"      bases: {_resumen_revision(o.get('revisionBases'))}")
+    for o in r["descartadasBases"]:
+        print(f"  [DESCARTADA POR LAS BASES] {o['puntaje']:5.1f}  {o['codigo']:<18} {o['revisionBases']['descarta']}")
     for o in r["esperan"]:
-        print(f"  [ESPERA]  {o['puntaje']:5.1f}  {o['codigo']:<18} {(o.get('nombre') or '')[:60]}")
+        espera = f" (bases: {_resumen_revision(o['revisionBases'])})" if o.get("revisionBases") else ""
+        print(f"  [ESPERA]  {o['puntaje']:5.1f}  {o['codigo']:<18} {(o.get('nombre') or '')[:60]}{espera}")
     estado = {"enviado": "correo enviado", "bandeja-de-salida": "correo en la bandeja de salida de Outlook (sale al sincronizar)"}
     print(f"Alertas por correo: {estado.get(r['enviado'], r['motivo'])}.")
     return 0
