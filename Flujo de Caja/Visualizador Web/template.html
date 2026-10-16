@@ -6,7 +6,7 @@
      logo (desde el módulo de marca, sin duplicarlos aquí) y los datos. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Flujo de Caja — Visualizador</title>
+<title>Flujo de Caja — QUEMPIN</title>
 <link rel="icon" type="image/png" href="__FC_LOGO__">
 <style>
 __FC_FUENTES__
@@ -306,7 +306,8 @@ __FC_FUENTES__
   .fc-conf-barra span + span { border-left: 1.5px solid var(--surface-card); }
   .fc-conf-fila .pct { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
   .b-doc { background: var(--brand-orange); }
-  .b-est { background: var(--brand-orange); opacity: 0.45; }
+  /* Estimado = naranjo claro con borde (2026-10-16): con solo opacidad se confundía con las cuotas. */
+  .b-est { background: color-mix(in srgb, var(--brand-orange) 22%, var(--surface-card)); box-shadow: inset 0 0 0 1.5px var(--brand-orange); }
   .b-pro { background: repeating-linear-gradient(45deg, var(--brand-orange) 0 3px, transparent 3px 6px); }
   .b-egr-doc { background: var(--text-primary); }
   .b-egr-est { background: var(--brand-gray-7); }
@@ -323,7 +324,7 @@ __FC_FUENTES__
   @media (max-width: 640px) { .fc-conf-fila { grid-template-columns: 1fr auto; } .fc-conf-fila .fc-conf-barra { grid-column: 1 / -1; grid-row: 2; } }
   .kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
   .kpi-card { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 14px 16px; min-width: 0; }
-  .kpi-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+  .kpi-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
   .kpi-value { font-size: 24px; font-weight: 900; margin-top: 6px; color: var(--text-primary); }
   .kpi-value.neg { color: var(--status-bad); }
   .kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; }
@@ -343,14 +344,14 @@ __FC_FUENTES__
   .fc-saldo .prueba { color: var(--brand-orange-ink); font-weight: 700; }
   .fc-grafico { width: 100%; overflow: hidden; }
   .fc-grafico svg { display: block; width: 100%; height: auto; }
-  .fc-grafico text { fill: var(--text-muted); font-size: 11px; font-family: inherit; }
+  .fc-grafico text { fill: var(--text-muted); font-size: 12px; font-family: inherit; }
   .fc-grafico .eje { stroke: var(--baseline); }
   .fc-grafico .guia { stroke: var(--gridline); }
   .fc-grafico .col-hover { fill: transparent; cursor: pointer; }
   .fc-grafico .col-hover:hover, .fc-grafico .col-hover:focus { fill: var(--border-hairline); outline: none; }
   .s-ing-com { fill: var(--brand-orange); }
   .s-ing-pro { fill: url(#rayas); }
-  .s-ing-est { fill: var(--brand-orange); fill-opacity: 0.45; }
+  .s-ing-est { fill: var(--brand-orange); fill-opacity: 0.2; stroke: var(--brand-orange); stroke-width: 1.4; }
   .s-egr-real { fill: var(--brand-gray-11); }
   .s-egr-com { fill: var(--text-primary); }
   .s-egr-est { fill: var(--brand-gray-7); }
@@ -360,7 +361,7 @@ __FC_FUENTES__
   .fc-leyenda .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
   /* Muestras de la leyenda en CSS (no copiadas por JS): así siguen al cambio de tema. */
   .fc-leyenda .s-ing-com { background: var(--brand-orange); }
-  .fc-leyenda .s-ing-est { background: var(--brand-orange); opacity: 0.45; }
+  .fc-leyenda .s-ing-est { background: color-mix(in srgb, var(--brand-orange) 22%, var(--surface-card)); box-shadow: inset 0 0 0 1.5px var(--brand-orange); }
   .fc-leyenda .s-ing-pro { background: repeating-linear-gradient(45deg, var(--brand-orange) 0 3px, transparent 3px 6px); border: 1px solid var(--brand-orange); }
   .fc-leyenda .s-egr-real { background: var(--brand-gray-11); }
   .fc-leyenda .s-egr-com { background: var(--text-primary); }
@@ -375,17 +376,28 @@ __FC_FUENTES__
   .fc-filtros input { flex: 1 1 220px; min-width: 0; }
   .tabla-wrap { overflow-x: auto; }
   table.viz-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  table.viz-table > thead > tr > th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+  table.viz-table > thead > tr > th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
     border-bottom: 1px solid var(--baseline); padding: 8px 8px; white-space: nowrap; cursor: pointer; user-select: none; }
   table.viz-table > thead > tr > th.num, table.viz-table > tbody > tr > td.num { text-align: right; }
   table.viz-table > tbody > tr > td { padding: 7px 8px; border-bottom: 1px solid var(--gridline); color: var(--text-primary); vertical-align: top; }
   table.viz-table > tbody > tr > td.neg { color: var(--status-bad); }
-  #tMovs > tbody > tr > td:first-child, #tMovs > tbody > tr > td.num { white-space: nowrap; }
-  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--gridline); color: var(--text-secondary); white-space: nowrap; }
+  #tMovs > tbody > tr > td:first-child, #tMovs > tbody > tr > td.num,
+  #tMovs > tbody > tr > td:nth-child(3), #tMovs > tbody > tr > td:nth-child(6), #tMovs > tbody > tr > td:nth-child(7) { white-space: nowrap; }
+  /* Separador de mes (2026-10-16): con la tabla ordenada por fecha, cada mes abre con su total. */
+  #tMovs > tbody > tr.fc-mes-sep > td { background: var(--surface-1); font-weight: 700; color: var(--text-primary); padding: 9px 8px; border-bottom: 1px solid var(--baseline); }
+  #tMovs > tbody > tr.fc-mes-sep > td span { font-weight: 400; color: var(--text-secondary); margin-left: 10px; }
+  .fc-supuestos > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; min-height: 28px; }
+  .fc-supuestos > summary::-webkit-details-marker { display: none; }
+  .fc-supuestos > summary::before { content: '▸'; font-size: 12px; color: var(--brand-orange-ink); }
+  .fc-supuestos[open] > summary::before { content: '▾'; }
+  .fc-supuestos > summary h2 { margin: 0; }
+  .fc-supuestos > summary .sub { margin: 0; }
+  .fc-supuestos[open] > summary { margin-bottom: 12px; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--gridline); color: var(--text-secondary); white-space: nowrap; }
   .chip.vencido { border-color: var(--status-warning); color: var(--status-warning); }
   .fc-mas { margin-top: 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 8px;
     border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
-  .fc-nota { font-size: 11.5px; color: var(--text-muted); margin-top: 24px; line-height: 1.5; }
+  .fc-nota { font-size: 12px; color: var(--text-muted); margin-top: 24px; line-height: 1.5; }
   @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 640px) {
     .viz-container { padding: 0 14px; }
@@ -397,8 +409,24 @@ __FC_FUENTES__
     table.viz-table, table.viz-table > tbody, table.viz-table > tbody > tr, table.viz-table > tbody > tr > td { display: block; width: 100%; }
     table.viz-table > tbody > tr { border: 1px solid var(--gridline); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
     table.viz-table > tbody > tr > td { border: none; padding: 3px 0; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
-    table.viz-table > tbody > tr > td::before { content: attr(data-label); color: var(--text-muted); font-size: 11.5px; text-align: left; flex: 0 0 auto; }
+    table.viz-table > tbody > tr > td::before { content: attr(data-label); color: var(--text-muted); font-size: 12px; text-align: left; flex: 0 0 auto; }
     table.viz-table > tbody > tr > td:first-child { font-weight: 700; }
+    /* Movimiento en 3 renglones (2026-10-16; antes 7 pares etiqueta/valor): fecha y monto; concepto;
+       clase, fuente y proyecto. El sentido lo dice el signo y el color del monto. */
+    #tMovs > tbody > tr:not(.fc-mes-sep) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 3px 10px; align-items: center; }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td { display: block; width: auto; padding: 0; text-align: left; font-weight: 400; }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td::before { content: none; }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td:nth-child(1) { grid-area: 1 / 1 / 2 / 3; color: var(--text-muted); }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td:nth-child(2) { display: none; }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td:nth-child(4) { grid-area: 1 / 3 / 2 / 5; text-align: right; font-weight: 700; }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td:nth-child(5) { grid-area: 2 / 1 / 3 / -1; }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td:nth-child(3) { grid-area: 3 / 1 / 4 / 2; white-space: normal; }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td:nth-child(6) { grid-area: 3 / 2 / 4 / 4; color: var(--text-muted); text-align: right; overflow: hidden; text-overflow: ellipsis; }
+    #tMovs > tbody > tr:not(.fc-mes-sep) > td:nth-child(7) { grid-area: 3 / 4 / 4 / 5; color: var(--text-muted); font-weight: 700; }
+    #tMovs > tbody > tr.fc-mes-sep { border: none; padding: 10px 2px 4px; margin-bottom: 4px; }
+    #tMovs > tbody > tr.fc-mes-sep > td { background: none; border: none; padding: 0; display: block; text-align: left; white-space: normal; }
+    #tMovs > tbody > tr.fc-mes-sep > td::before { content: none; }
+    #tMovs > tbody > tr.fc-mes-sep > td span { display: block; margin: 2px 0 0; }
     .tabla-wrap { overflow-x: visible; }
   }
 </style>
@@ -408,7 +436,7 @@ __FC_FUENTES__
 <div class="viz-gate" id="pwGate">
   <form class="viz-gate-card" id="pwForm">
     <img src="__FC_LOGO__" alt="QUEMPIN">
-    <h2>Flujo de Caja — Visualizador</h2>
+    <h2>Flujo de Caja</h2>
     <p class="hint">Acceso restringido. Ingresa la contraseña para ver los datos.</p>
     <input id="pwInput" type="password" placeholder="Contraseña" autocomplete="off" autocapitalize="off" />
     <button type="submit">Entrar</button>
@@ -424,7 +452,7 @@ __FC_FUENTES__
         <div class="viz-wordmark">QUEMP<span class="in">IN</span></div>
       </div>
       <div class="viz-titleblock">
-        <h1>Flujo de Caja — Visualizador</h1>
+        <h1>Flujo de Caja</h1>
         <p id="vizGenerated">Datos actualizados al —</p>
       </div>
       <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
@@ -472,7 +500,7 @@ __FC_FUENTES__
 
     <section class="panel">
       <h2>Mes a mes</h2>
-      <p class="sub">Hacia atrás, lo pagado según Centro de Costos y las ventas que se dan por cobradas. Hacia adelante, lo comprometido y lo estimado; la línea es el acumulado desde el mes en curso.</p>
+      <p class="sub">Hacia atrás, lo pagado según Centro de Costos y las ventas que se dan por cobradas. Hacia adelante, lo comprometido y lo estimado. Abajo, el saldo acumulado desde el mes en curso.</p>
       <div class="fc-saldo">
         <label for="optSaldo">Saldo de caja al inicio de <span id="optSaldoMes"></span></label>
         <input id="optSaldo" type="text" inputmode="numeric" autocomplete="off" aria-describedby="optSaldoNota">
@@ -488,7 +516,7 @@ __FC_FUENTES__
 
     <section class="panel">
       <h2>Movimientos</h2>
-      <p class="sub">Cada línea dice de qué herramienta salió. «Vencido» = debió ocurrir antes de hoy y sigue pendiente: se cuenta en el mes en curso.</p>
+      <p class="sub">Lo que viene, mes a mes. Cada línea dice de qué herramienta salió. «Vencido» = debió ocurrir antes de hoy y sigue pendiente: se cuenta en el mes en curso.</p>
       <div class="fc-filtros">
         <input id="fBuscar" type="search" placeholder="Buscar concepto, referencia o proyecto" aria-label="Buscar movimientos">
         <select id="fSentido" aria-label="Sentido"><option value="">Ingresos y egresos</option><option value="ingreso">Ingresos</option><option value="egreso">Egresos</option></select>
@@ -504,13 +532,13 @@ __FC_FUENTES__
       <button class="fc-mas" id="fMas" type="button" style="display:none">Mostrar más</button>
     </section>
 
-    <section class="panel">
-      <h2>Supuestos</h2>
-      <p class="sub">Lo que el cálculo asume donde ninguna herramienta tiene el dato. Se cambian en <code>Flujo de Caja/Sistema/parametros_flujo_caja.json</code>.</p>
+    <!-- Plegado (2026-10-16): es la letra chica del cálculo, no lo que se viene a mirar. -->
+    <details class="panel fc-supuestos">
+      <summary><h2>Supuestos del cálculo</h2><span class="sub">· lo que se asume donde ninguna herramienta tiene el dato</span></summary>
       <div class="tabla-wrap">
         <table class="viz-table" id="tSupuestos"><thead><tr><th>Supuesto</th><th class="num">Valor</th><th>Qué significa</th></tr></thead><tbody></tbody></table>
       </div>
-    </section>
+    </details>
 
     <p class="fc-nota">Sin cobros reales ni saldo bancario: ninguna herramienta los tiene todavía. Los datos de esta página viajan cifrados: solo se abren con la contraseña.</p>
   </div>
@@ -717,7 +745,11 @@ __FC_FUENTES__
       // Se dibuja al ancho real del panel (no a 900 escalado): en un teléfono el
       // texto quedaba en ~5 px. Se vuelve a dibujar si cambia el ancho.
       var W = Math.max(300, Math.round(document.getElementById('fcGrafico').clientWidth || 900));
-      var angosto = W < 600, H = angosto ? 260 : 320, mx = angosto ? 50 : 64, my = 18, n = DATA.meses.length;
+      // Dos paneles con el mismo eje de meses (2026-10-16): arriba las barras de cada mes y abajo el
+      // saldo acumulado, cada uno con su escala. Con una sola escala, el acumulado (~$100-150 M)
+      // aplastaba las barras del mes y casi no se veían.
+      var angosto = W < 600, mx = angosto ? 54 : 68, my = 14, n = DATA.meses.length;
+      var H1 = angosto ? 210 : 250, GAP = 52, H2 = angosto ? 100 : 120, H = my + H1 + GAP + H2 + 24;
       var maxUp = 1, maxDown = 1, acum = saldo0, puntos = [];
       DATA.meses.forEach(function (m) {
         var up = 0, down = 0;
@@ -725,14 +757,13 @@ __FC_FUENTES__
         maxUp = Math.max(maxUp, up); maxDown = Math.max(maxDown, down);
         if (m.proyectado) { acum += conProb ? m.neto : m.netoSinProbables; puntos.push({ m: m, v: acum }); }
       });
-      puntos.forEach(function (p) { maxUp = Math.max(maxUp, p.v); maxDown = Math.max(maxDown, -p.v); });
       // Marcas del eje en pasos redondos (1-2-5): con las mitades de cada lado
       // las etiquetas se pisaban cuando un lado era mucho menor que el otro.
       var paso = pasoRedondo((maxUp + maxDown) / 5);
       maxUp = Math.ceil(maxUp / paso) * paso; maxDown = Math.ceil(maxDown / paso) * paso;
       var marcas = [];
       for (var v = -maxDown; v <= maxUp + paso / 2; v += paso) marcas.push(Math.round(v));
-      var alto = H - 2 * my - 22, escala = alto / (maxUp + maxDown), y0 = my + maxUp * escala;
+      var escala = H1 / (maxUp + maxDown), y0 = my + maxUp * escala;
       var ancho = (W - mx - 10) / n, barra = Math.min(46, ancho * 0.62);
       var svg = ['<svg viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><defs><pattern id="rayas" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" style="fill:var(--surface-card)"/><rect width="3" height="6" style="fill:var(--brand-orange)"/></pattern></defs>'];
       marcas.forEach(function (v) {
@@ -740,6 +771,20 @@ __FC_FUENTES__
         svg.push('<line class="' + (v === 0 ? 'eje' : 'guia') + '" x1="' + mx + '" x2="' + (W - 6) + '" y1="' + y + '" y2="' + y + '"/>');
         svg.push('<text x="' + (mx - 6) + '" y="' + (y + 4) + '" text-anchor="end">' + esc(clpCorto(v)) + '</text>');
       });
+      // Panel del saldo: su propia escala, con el cero adentro si el saldo cruza a negativo
+      var top2 = my + H1 + GAP, sMin = 0, sMax = 1;
+      if (puntos.length) {
+        sMin = Math.min.apply(null, puntos.map(function (p) { return p.v; }));
+        sMax = Math.max.apply(null, puntos.map(function (p) { return p.v; }));
+      }
+      var paso2 = pasoRedondo(Math.max(1, sMax - sMin) / 3);
+      sMin = Math.floor(sMin / paso2) * paso2; sMax = Math.max(sMin + paso2, Math.ceil(sMax / paso2) * paso2);
+      var ySaldo = function (val) { return top2 + (sMax - val) / (sMax - sMin) * H2; };
+      svg.push('<text x="' + mx + '" y="' + (top2 - 14) + '" style="font-weight:700;fill:var(--text-secondary)">Saldo acumulado proyectado</text>');
+      for (var v2 = sMin; v2 <= sMax + paso2 / 2; v2 += paso2) {
+        svg.push('<line class="' + (v2 === 0 ? 'eje' : 'guia') + '" x1="' + mx + '" x2="' + (W - 6) + '" y1="' + ySaldo(v2) + '" y2="' + ySaldo(v2) + '"/>');
+        svg.push('<text x="' + (mx - 6) + '" y="' + (ySaldo(v2) + 4) + '" text-anchor="end">' + esc(clpCorto(v2)) + '</text>');
+      }
       DATA.meses.forEach(function (m, i) {
         var x = mx + i * ancho + (ancho - barra) / 2, arriba = y0, abajo = y0;
         series.forEach(function (s) {
@@ -750,14 +795,15 @@ __FC_FUENTES__
           else { svg.push('<rect class="' + s.cls + '" x="' + x + '" y="' + abajo + '" width="' + barra + '" height="' + h + '"/>'); abajo += h; }
         });
         if (ancho >= 44 || i % 2 === 0) {   // sin espacio para todos los meses: uno sí, uno no
-          svg.push('<text x="' + (mx + i * ancho + ancho / 2) + '" y="' + (H - 6) + '" text-anchor="middle"' + (m.proyectado ? '' : ' opacity="0.7"') + '>' + mesCorto(m.mes) + '</text>');
+          var etiqueta = '<text x="' + (mx + i * ancho + ancho / 2) + '" y="{Y}" text-anchor="middle"' + (m.proyectado ? '' : ' opacity="0.7"') + '>' + mesCorto(m.mes) + '</text>';
+          svg.push(etiqueta.replace('{Y}', my + H1 + 16), etiqueta.replace('{Y}', H - 6));
         }
-        svg.push('<rect class="col-hover" tabindex="0" data-i="' + i + '" x="' + (mx + i * ancho) + '" y="' + my + '" width="' + ancho + '" height="' + (H - 2 * my - 12) + '"/>');
+        svg.push('<rect class="col-hover" tabindex="0" data-i="' + i + '" x="' + (mx + i * ancho) + '" y="' + my + '" width="' + ancho + '" height="' + (H - my - 20) + '"/>');
       });
       if (puntos.length) {
         var xi = function (p) { return mx + DATA.meses.indexOf(p.m) * ancho + ancho / 2; };
-        svg.push('<polyline class="l-acum" points="' + puntos.map(function (p) { return xi(p) + ',' + (y0 - p.v * escala); }).join(' ') + '"/>');
-        puntos.forEach(function (p) { svg.push('<circle class="p-acum" cx="' + xi(p) + '" cy="' + (y0 - p.v * escala) + '" r="3.5"/>'); });
+        svg.push('<polyline class="l-acum" points="' + puntos.map(function (p) { return xi(p) + ',' + ySaldo(p.v); }).join(' ') + '"/>');
+        puntos.forEach(function (p) { svg.push('<circle class="p-acum" cx="' + xi(p) + '" cy="' + ySaldo(p.v) + '" r="3.5"/>'); });
       }
       svg.push('</svg>');
       var g = document.getElementById('fcGrafico');
@@ -767,6 +813,8 @@ __FC_FUENTES__
           var m = DATA.meses[+r.getAttribute('data-i')];
           var filas = series.map(function (s) { return s.n + ': <b>' + clp(m[s.k] || 0) + '</b>'; });
           if (m.neto !== null && m.neto !== undefined) filas.push('Neto del mes: <b>' + clp(conProb ? m.neto : m.netoSinProbables) + '</b>');
+          var punto = puntos.filter(function (p) { return p.m === m; })[0];
+          if (punto) filas.push('Saldo acumulado: <b>' + clp(punto.v) + '</b>');
           tip.innerHTML = '<strong>' + mesCorto(m.mes) + (m.proyectado ? '' : ' (real)') + '</strong><br>' + filas.join('<br>');
           tip.style.display = 'block';
           var b = r.getBoundingClientRect();
@@ -783,7 +831,7 @@ __FC_FUENTES__
       series.forEach(function (s) { totales[s.k] = DATA.meses.reduce(function (a, m) { return a + (m[s.k] || 0); }, 0); });
       document.getElementById('fcLeyenda').innerHTML = series.map(function (s) {
         return '<li><span class="sw ' + s.cls + '"></span>' + s.n + ' · ' + clp(totales[s.k]) + '</li>';
-      }).join('') + '<li><span class="sw l-acum"></span>Acumulado desde el mes en curso</li>';
+      }).join('') + '<li><span class="sw l-acum"></span>Saldo acumulado desde el mes en curso (panel de abajo)</li>';
     }
     function pasoRedondo(x) {
       var e = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1)))), f = x / e;
@@ -796,8 +844,18 @@ __FC_FUENTES__
 
     // ---------- tabla de movimientos ----------
     var MOVS = DATA.movimientos.slice();
-    var orden = { k: 'fecha', dir: -1 }, limite = 50;
+    // Por defecto (2026-10-16): desde el mes en curso, de lo más cercano a lo más lejano. Antes partía
+    // por lo más lejano (fines de 2027) y lo vencido de hoy quedaba al fondo. En el teléfono, 20 filas.
+    var LIMITE = window.matchMedia('(max-width: 640px)').matches ? 20 : 50;
+    var orden = { k: 'fecha', dir: 1 }, limite = LIMITE;
     var fMes = document.getElementById('fMes');
+    var mesActual = futuros.length ? futuros[0].mes : String(DATA.hoy).slice(0, 7);
+    var MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    var mesLargo = function (m) { var p = String(m).split('-'); return MESES_LARGOS[+p[1] - 1] + ' ' + p[0]; };
+    var opDesde = document.createElement('option');
+    opDesde.value = 'desde'; opDesde.textContent = 'Desde ' + mesCorto(mesActual) + ' (lo que viene)';
+    fMes.insertBefore(opDesde, fMes.firstChild);
+    fMes.value = 'desde';
     DATA.meses.slice().reverse().forEach(function (m) { var o = document.createElement('option'); o.value = m.mes; o.textContent = mesCorto(m.mes); fMes.appendChild(o); });
     var norm = function (s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); };
     var CLASE = { real: 'Real', comprometido: 'Comprometido', probable: 'Probable', estimado: 'Estimado' };
@@ -805,16 +863,31 @@ __FC_FUENTES__
       var q = norm(document.getElementById('fBuscar').value), se = document.getElementById('fSentido').value,
         cl = document.getElementById('fClase').value, me = fMes.value;
       var lista = MOVS.filter(function (m) {
-        return (!se || m.sentido === se) && (!cl || m.clase === cl) && (!me || m.mes === me) &&
+        var enMes = !me || (me === 'desde' ? (m.mes >= mesActual || m.vencido) : m.mes === me);
+        return (!se || m.sentido === se) && (!cl || m.clase === cl) && enMes &&
           (!q || norm(m.concepto + ' ' + m.referencia + ' ' + m.proyecto + ' ' + m.fuente).indexOf(q) >= 0);
       }).sort(function (a, b) {
         var x = a[orden.k], y = b[orden.k];
         return (x < y ? -1 : x > y ? 1 : 0) * orden.dir;
       });
       var tbody = document.querySelector('#tMovs > tbody');
+      // Ordenada por fecha, cada mes abre con una fila con sus totales (de todo lo filtrado, no solo lo visible)
+      var porMes = {};
+      if (orden.k === 'fecha') lista.forEach(function (m) {
+        var t = porMes[m.mes] || (porMes[m.mes] = { ing: 0, egr: 0, n: 0 });
+        t[m.sentido === 'egreso' ? 'egr' : 'ing'] += m.monto; t.n++;
+      });
+      var mesPrevio = null;
       tbody.innerHTML = lista.slice(0, limite).map(function (m) {
         var monto = (m.sentido === 'egreso' ? -1 : 1) * m.monto;
-        return '<tr><td>' + esc(fechaCorta(m.fecha)) + '</td><td>' + (m.sentido === 'ingreso' ? 'Ingreso' : 'Egreso') + '</td><td><span class="chip">' + esc(CLASE[m.clase] || m.clase) + '</span>' +
+        var sep = '';
+        if (orden.k === 'fecha' && m.mes !== mesPrevio) {
+          var t = porMes[m.mes];
+          sep = '<tr class="fc-mes-sep"><td colspan="7">' + esc(mesLargo(m.mes).replace(/^./, function (c) { return c.toUpperCase(); })) +
+            '<span>' + t.n + (t.n === 1 ? ' movimiento' : ' movimientos') + ' · ingresos ' + clp(t.ing) + ' · egresos ' + clp(t.egr) + '</span></td></tr>';
+          mesPrevio = m.mes;
+        }
+        return sep + '<tr><td>' + esc(fechaCorta(m.fecha)) + '</td><td>' + (m.sentido === 'ingreso' ? 'Ingreso' : 'Egreso') + '</td><td><span class="chip">' + esc(CLASE[m.clase] || m.clase) + '</span>' +
           (m.vencido ? ' <span class="chip vencido">vencido</span>' : '') + '</td><td class="num' + (monto < 0 ? ' neg' : '') + '">' + clp(monto) + '</td><td>' + esc(m.concepto) +
           '</td><td>' + esc(m.fuente) + '</td><td>' + esc(m.proyecto) + '</td></tr>';
       }).join('') || '<tr><td colspan="7">Sin movimientos con estos filtros.</td></tr>';
@@ -826,8 +899,8 @@ __FC_FUENTES__
         th.setAttribute('aria-sort', th.getAttribute('data-k') === orden.k ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none');
       });
     }
-    ['fBuscar', 'fSentido', 'fClase'].forEach(function (id) { document.getElementById(id).addEventListener('input', function () { limite = 50; pintarTabla(); }); });
-    fMes.addEventListener('change', function () { limite = 50; pintarTabla(); });
+    ['fBuscar', 'fSentido', 'fClase'].forEach(function (id) { document.getElementById(id).addEventListener('input', function () { limite = LIMITE; pintarTabla(); }); });
+    fMes.addEventListener('change', function () { limite = LIMITE; pintarTabla(); });
     document.getElementById('fMas').addEventListener('click', function () { limite += 300; pintarTabla(); });
     document.querySelectorAll('#tMovs > thead th').forEach(function (th) {
       th.addEventListener('click', function () {

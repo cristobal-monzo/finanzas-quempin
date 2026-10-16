@@ -33,7 +33,7 @@ TEMPLATE_PE = RAIZ_MODULO.parent / "Peru" / "Cotizador Historico" / "Visualizado
 MARCAS_LINEAS_DE_PAIS = (
     "<title>", "<h1>", "<h2>",
     'data-nav-activo="',
-    "Cotizador Historico — datos reales", "la UF vigente al generar",
+    "Cotizador Histórico — datos reales", "la UF vigente al generar",
     "var CLP = new Intl.NumberFormat", "function fmtNum",
     "getElementById('vizGenerated')", "getElementById('exportMeta')",
     '<div class="label">UF utilizada</div>',

@@ -16,15 +16,21 @@ Ver el doc maestro compartido en
   siempre a Chile y elegir Perú desde aquí lleva a Centro de Costos Perú.
 - **KPIs**: por cobrar, por pagar y por ejecutar, neto proyectado, mes más
   ajustado (acumulado más bajo).
-- **Gráfico**: barras apiladas por mes (ingresos arriba, egresos abajo) con el
-  acumulado como línea; se dibuja al ancho real del panel. Las ofertas por
+- **Gráfico**: dos paneles con el mismo eje de meses (2026-10-16): arriba las
+  barras apiladas por mes (ingresos arriba, egresos abajo) y abajo el saldo
+  acumulado proyectado, cada uno con su escala (con una sola, el acumulado
+  aplastaba las barras). Las ventas estimadas del AF van en naranjo claro con
+  borde, para no confundirse con las cuotas. Se dibuja al ancho real del panel. Las ofertas por
   adjudicar se suman solo si se marca la casilla (desmarcada por defecto).
 - **Saldo inicial de prueba**: campo sobre el gráfico, con el del archivo
   por defecto; un valor distinto recalcula KPIs y gráfico, se recuerda solo
   en ese navegador (`fc_saldo_inicial`, junto con el oficial: si este
   cambia, la prueba se descarta) y «Volver a …» lo restablece.
 - **Tabla**: movimientos con búsqueda, filtros por sentido, clase y mes,
-  orden por columna; en móvil, tarjetas (`data-label`).
+  orden por columna. Por defecto «Desde <mes en curso>» (lo que viene más lo
+  vencido), de lo más cercano a lo más lejano, con una fila por mes con sus
+  totales cuando se ordena por fecha. En móvil, tarjetas de 3 renglones (fecha
+  y monto; concepto; clase, fuente y proyecto) y 20 filas por tanda.
 - **¿Cuánto de lo proyectado está respaldado?** (2026-10-14, bajo los KPIs):
   qué parte de lo proyectado desde el mes en curso sale de documentos (cuotas
   de cotizaciones, facturas y OC) y qué parte de estimaciones (ventas del AF
@@ -35,5 +41,7 @@ Ver el doc maestro compartido en
   Sistema QUEMPIN › «Solo sin N° de requerimiento»), y si el saldo inicial es
   una estimación. Las notas de la corrida (`avisos`), que antes eran un bloque
   de viñetas arriba de todo, van plegadas al pie («Notas sobre los datos»).
-- **Supuestos**: con un nombre legible (`NOMBRE_SUPUESTO` en el template); la
-  clave de `parametros_flujo_caja.json` queda en el `title` de la celda.
+- **Supuestos**: plegados al pie («Supuestos del cálculo»), con un nombre
+  legible (`NOMBRE_SUPUESTO` en el template); la clave de
+  `parametros_flujo_caja.json` queda en el `title` de la celda (la ruta del
+  archivo ya no se muestra en la página).

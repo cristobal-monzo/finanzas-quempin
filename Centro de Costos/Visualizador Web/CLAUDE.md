@@ -110,9 +110,13 @@ se reviertan por accidente:
   explícitamente sustituir los colores por "parecidos" — pero un dashboard
   necesita distinguir más de 4 proyectos/categorías. Solución: los primeros
   4 (por gasto descendente) usan los 4 colores sólidos oficiales; el resto
-  usa una textura de rayas diagonales (naranjo o gris oscuro) en vez de
-  inventar un 5° color — mecanismo `buildColorMap`/`fillFor`/`swatchStyleFor`
-  en el script del visualizador dentro de `template.html`.
+  usa tonos aclarados del mismo naranjo y gris oscuro (`BRAND_TINTS`,
+  `color-mix` con la superficie) en vez de inventar un 5° color. Hasta el
+  2026-10-16 eran rayas diagonales, que recargaban los gráficos. Mecanismo
+  `buildColorMap`/`fillFor`/`swatchStyleFor` en el script del visualizador
+  dentro de `template.html`. Porcentajes de la leyenda: enteros, con un
+  decimal solo bajo 1 % (`fmtPct`). En el teléfono los filtros, salvo la
+  búsqueda, se pliegan tras el botón «Filtros (n)».
 - **Tipografía Lato embebida**: el manual reserva "Squ721Rm" (modificada)
   para el isologotipo — no está licenciada para reproducir en código y no
   hay archivo de fuente disponible. Para texto de datos en presentaciones

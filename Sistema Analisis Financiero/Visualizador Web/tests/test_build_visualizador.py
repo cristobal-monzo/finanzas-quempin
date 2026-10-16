@@ -1063,7 +1063,7 @@ def test_build_de_peru_usa_el_mismo_template_con_su_titulo_y_moneda(tmp_path, mo
 
     assert bv.build("PE") == 0
     html = (tmp_path / "pe" / "index.html").read_text(encoding="utf-8")
-    assert "<title>Análisis Financiero Perú — Visualizador</title>" in html
+    assert "<title>Análisis Financiero Perú — QUEMPIN</title>" in html
     assert 'data-nav-activo="analisis-financiero-peru"' in html
     assert "__AF_" not in html
     data = bv.extraer_datos_saneados(ruta_excel, pais="PE")

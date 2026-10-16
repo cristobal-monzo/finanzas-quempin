@@ -8,7 +8,7 @@
      fuentes y el logo (desde el módulo de marca) y los datos cifrados. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Oportunidades en Mercado Público — Visualizador</title>
+<title>Oportunidades en Mercado Público — QUEMPIN</title>
 <link rel="icon" type="image/png" href="__OP_LOGO__">
 <style>
 __OP_FUENTES__
@@ -246,14 +246,20 @@ __OP_FUENTES__
   .viz-gate-error { font-size: 12px; color: #ff8a4d; min-height: 16px; margin-top: 10px; }
 
   /* ---------- Piezas comunes (mismas que Flujo de Caja y Análisis Financiero) ---------- */
-  .op-avisos { background: var(--surface-card); border: 1px solid var(--gridline); border-left: 3px solid var(--brand-orange);
-    border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--text-secondary); }
-  .op-avisos ul { margin: 6px 0 0; padding-left: 18px; }
-  .op-avisos strong { color: var(--text-primary); }
+  /* Notas de la actualización, plegadas en una línea (2026-10-16): antes eran un recuadro naranjo arriba
+     de todo, y lo primero que se leía eran las fallas técnicas de la consulta, no las oportunidades. */
+  .op-avisos { margin: -8px 0 14px; font-size: 13px; color: var(--text-secondary); }
+  .op-avisos > summary { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; cursor: pointer; list-style: none;
+    font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
+  .op-avisos > summary::-webkit-details-marker { display: none; }
+  .op-avisos > summary::before { content: '▸'; font-size: 12px; }
+  .op-avisos[open] > summary::before { content: '▾'; }
+  .op-avisos > summary:hover { color: var(--brand-orange-ink); }
+  .op-avisos ul { margin: 4px 0 0; padding: 10px 16px 10px 32px; background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; line-height: 1.45; }
   .kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 6px; }
   .kpi-card { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 14px 16px; min-width: 0; }
   .kpi-card.destacado { border-color: var(--brand-orange); box-shadow: inset 0 3px 0 var(--brand-orange); }
-  .kpi-label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+  .kpi-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
   .kpi-value { font-size: 26px; font-weight: 900; margin-top: 6px; color: var(--text-primary); }
   .kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4; overflow-wrap: anywhere; }
   .panel { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px; padding: 16px; margin-bottom: 18px; }
@@ -284,14 +290,14 @@ __OP_FUENTES__
   input[type=checkbox], input[type=range] { accent-color: var(--brand-orange); }
 
   /* Categorías: la etiqueta siempre dice el nombre (nunca solo color). */
-  .cat { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  .cat { display: inline-block; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
     border: 1px solid var(--gridline); color: var(--text-secondary); line-height: 1.5; }
   .cat-prioritaria { background: var(--brand-orange); border-color: var(--brand-orange); color: #000000; }
   .cat-buena { border: 1.5px solid var(--brand-orange); color: var(--brand-orange-ink); }
   .cat-evaluar { border-color: var(--baseline); color: var(--text-secondary); }
   .cat-baja { color: var(--text-muted); }
   .cat-descartar { border-color: var(--status-bad); color: var(--status-bad); }
-  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--gridline);
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--gridline);
     color: var(--text-secondary); white-space: nowrap; line-height: 1.5; }
   .chip.nueva { border-color: var(--brand-orange); color: var(--brand-orange-ink); }
   .chip.planilla { border-color: var(--baseline); }
@@ -311,15 +317,15 @@ __OP_FUENTES__
   .op-anillo .valor { fill: none; stroke-width: 6; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
   .op-anillo .num { position: absolute; inset: 0; display: grid; place-items: center; font-size: 19px; font-weight: 900; color: var(--text-primary); }
   .op-top-etiquetas { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-bottom: 6px; }
-  .op-rank { font-size: 11px; font-weight: 900; color: var(--text-muted); letter-spacing: .04em; }
+  .op-rank { font-size: 12px; font-weight: 900; color: var(--text-muted); letter-spacing: .04em; }
   .op-top h3 { font-size: 14.5px; font-weight: 900; line-height: 1.3; margin: 0; overflow-wrap: anywhere;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .op-top .op-org { font-size: 12.5px; color: var(--text-secondary); margin: 3px 0 0; overflow-wrap: anywhere; }
   .op-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 10px 0;
     border-top: 1px solid var(--gridline); border-bottom: 1px solid var(--gridline); }
-  .op-datos dt { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+  .op-datos dt { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
   .op-datos dd { margin: 2px 0 0; font-size: 13px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
-  .op-datos dd small { display: block; font-weight: 400; font-size: 11.5px; color: var(--text-secondary); }
+  .op-datos dd small { display: block; font-weight: 400; font-size: 12px; color: var(--text-secondary); }
   .op-razones { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; color: var(--text-secondary); }
   .op-razones li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; align-items: start; }
   .op-razones .ico { font-weight: 900; text-align: center; }
@@ -339,9 +345,9 @@ __OP_FUENTES__
   /* ---------- Mapa de prioridad ---------- */
   .op-mapa { width: 100%; }
   .op-mapa svg { display: block; width: 100%; height: auto; overflow: visible; }
-  .op-mapa text { fill: var(--text-muted); font-size: 11px; font-family: inherit; }
+  .op-mapa text { fill: var(--text-muted); font-size: 12px; font-family: inherit; }
   .op-mapa text.rotulo-banda { fill: var(--text-secondary); font-weight: 700; }
-  .op-mapa text.rank { fill: var(--text-primary); font-weight: 900; font-size: 11.5px; }
+  .op-mapa text.rank { fill: var(--text-primary); font-weight: 900; font-size: 12px; }
   .op-mapa .guia { stroke: var(--gridline); stroke-width: 1; }
   .op-mapa .eje { stroke: var(--baseline); stroke-width: 1; }
   .op-mapa .banda-prioritaria { fill: var(--brand-orange); fill-opacity: 0.06; }
@@ -366,7 +372,7 @@ __OP_FUENTES__
   /* ---------- Tabla con detalle ---------- */
   .tabla-wrap { overflow-x: auto; }
   table.viz-table { width: 100%; border-collapse: collapse; font-size: 12.5px; color: inherit; }
-  table.viz-table > thead > tr > th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+  table.viz-table > thead > tr > th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
     border-bottom: 1px solid var(--baseline); padding: 8px 8px; white-space: nowrap; }
   table.viz-table > thead > tr > th[data-k] { cursor: pointer; user-select: none; }
   table.viz-table > thead > tr > th[data-k]:hover { color: var(--text-primary); }
@@ -379,7 +385,7 @@ __OP_FUENTES__
   table.viz-table > tbody > tr.op-row.is-expanded { background: var(--surface-1); box-shadow: inset 3px 0 0 var(--brand-orange); }
   table.viz-table > tbody > tr.op-row.es-descartada > td { color: var(--text-muted); }
   .op-nombre { font-weight: 700; overflow-wrap: anywhere; }
-  .op-nombre-sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; overflow-wrap: anywhere; }
+  .op-nombre-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; overflow-wrap: anywhere; }
   .op-etiquetas { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .op-puntaje { font-size: 15px; font-weight: 900; }
   .op-mini { display: flex; gap: 2px; margin-top: 4px; width: 84px; margin-left: auto; }
@@ -388,7 +394,7 @@ __OP_FUENTES__
   tr.detail-row > td { background: var(--surface-1); padding: 0 !important; }
   .op-detalle { margin: 0 8px 12px; padding: 14px 16px; border: 1.5px solid var(--brand-orange); border-radius: 10px; background: var(--surface-card);
     display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; }
-  .op-detalle h4 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 0 0 8px; }
+  .op-detalle h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 0 0 8px; }
   .op-descarte { background: color-mix(in srgb, var(--status-bad) 10%, transparent); color: var(--status-bad); border-radius: 8px;
     padding: 8px 10px; font-size: 12.5px; margin-bottom: 10px; }
   .op-tope { font-size: 12px; color: var(--text-secondary); margin: 0 0 10px; }
@@ -396,7 +402,7 @@ __OP_FUENTES__
   .op-composicion { display: flex; gap: 2px; height: 12px; margin: 0 0 4px; }
   .op-composicion span { position: relative; height: 100%; background: var(--gridline); border-radius: 3px; overflow: hidden; min-width: 2px; }
   .op-composicion span i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--brand-orange); }
-  .op-composicion-pie { font-size: 11.5px; color: var(--text-muted); margin: 0 0 12px; }
+  .op-composicion-pie { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; }
   .op-crit { display: grid; grid-template-columns: 150px minmax(0, 1fr) 34px; gap: 2px 10px; align-items: center; font-size: 12.5px; margin-bottom: 8px; }
   .op-crit .nom { color: var(--text-primary); font-weight: 700; }
   .op-crit .nom small { font-weight: 400; color: var(--text-muted); }
@@ -405,7 +411,7 @@ __OP_FUENTES__
   .op-crit .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
   .op-crit .mot { grid-column: 2 / -1; color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
   .op-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 0 0 12px; font-size: 12.5px; }
-  .op-ficha dt { color: var(--text-muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; }
+  .op-ficha dt { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
   .op-ficha dd { margin: 1px 0 0; color: var(--text-primary); overflow-wrap: anywhere; }
   .op-texto { font-size: 12.5px; color: var(--text-secondary); white-space: pre-line; max-height: 10em; overflow: auto; margin: 0 0 12px; line-height: 1.5; }
   .op-lista { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; color: var(--text-secondary); }
@@ -422,7 +428,7 @@ __OP_FUENTES__
   .op-reglas { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
   .op-reglas strong { color: var(--text-primary); }
 
-  .op-nota { font-size: 11.5px; color: var(--text-muted); margin-top: 24px; line-height: 1.5; }
+  .op-nota { font-size: 12px; color: var(--text-muted); margin-top: 24px; line-height: 1.5; }
 
   @media (max-width: 980px) {
     .op-top-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -448,7 +454,7 @@ __OP_FUENTES__
     table.viz-table, table.viz-table > tbody, table.viz-table > tbody > tr, table.viz-table > tbody > tr > td { display: block; width: 100%; }
     table.viz-table > tbody > tr:not(.detail-row) { border: 1px solid var(--gridline); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
     table.viz-table > tbody > tr:not(.detail-row) > td { border: none; padding: 3px 0; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
-    table.viz-table > tbody > tr:not(.detail-row) > td::before { content: attr(data-label); color: var(--text-muted); font-size: 11.5px; text-align: left; flex: 0 0 auto; }
+    table.viz-table > tbody > tr:not(.detail-row) > td::before { content: attr(data-label); color: var(--text-muted); font-size: 12px; text-align: left; flex: 0 0 auto; }
     table.viz-table > tbody > tr:not(.detail-row) > td:first-child { display: block; text-align: left; }
     table.viz-table > tbody > tr:not(.detail-row) > td:first-child::before { content: none; }
     table.viz-table > tbody > tr.detail-row { border: 0; padding: 0; margin: -4px 0 10px; }
@@ -509,7 +515,7 @@ __OP_FUENTES__
   </header>
 
   <div class="viz-container">
-    <div class="op-avisos" id="opAvisos" hidden></div>
+    <details class="op-avisos" id="opAvisos" hidden></details>
 
     <div class="kpi-row" id="opKpis">
       <div class="kpi-card destacado"><div class="kpi-label">Prioritarias</div><div class="kpi-value" id="kPrioritarias">—</div><div class="kpi-sub" id="kPrioritariasSub"></div></div>
@@ -763,12 +769,6 @@ __OP_FUENTES__
       });
       return { cat: cat, tope: tope };
     }
-    function evaluar(op) {
-      var p = {};
-      CRIT.forEach(function (c) { p[c.id] = ((op.criterios || {})[c.id] || {}).puntaje || 0; });
-      var descartar = (op.descartarFijo || op.descartar || []).slice();
-      var dias = diasHasta(op.cierre);
-      // Una compra ágil se cotiza en horas: tiene sus propios tramos (plazoOfertaCompraAgil).
     // La visita que toca hoy: la próxima de sus fechas o, si ya pasaron todas, la última.
     function visitaDelDia(op) {
       var v = op.visita || {};
@@ -776,6 +776,12 @@ __OP_FUENTES__
       var futuras = fechas.filter(function (f) { var d = diasHasta(f); return d !== null && d >= 0; });
       return { fecha: futuras[0] || fechas[fechas.length - 1] || null, pasada: fechas.length > 0 && !futuras.length, mas: Math.max(0, futuras.length - 1) };
     }
+    function evaluar(op) {
+      var p = {};
+      CRIT.forEach(function (c) { p[c.id] = ((op.criterios || {})[c.id] || {}).puntaje || 0; });
+      var descartar = (op.descartarFijo || op.descartar || []).slice();
+      var dias = diasHasta(op.cierre);
+      // Una compra ágil se cotiza en horas: tiene sus propios tramos (plazoOfertaCompraAgil).
       var tramos = op.compraAgil && REGLAS.plazoOfertaCompraAgil ? REGLAS.plazoOfertaCompraAgil : REGLAS.plazoOferta;
       if (dias !== null && tramos.length) {
         var tramo = tramos.filter(function (t) { return t.menosDeDias === null || dias < t.menosDeDias; })[0];
@@ -833,7 +839,7 @@ __OP_FUENTES__
     if (avisos.length) {
       var av = document.getElementById('opAvisos');
       av.hidden = false;
-      av.appendChild(el('strong', { texto: 'Para leer estos datos:' }));
+      av.appendChild(el('summary', { texto: 'Notas sobre esta actualización (' + avisos.length + ')' }));
       av.appendChild(el('ul', null, avisos.map(function (a) { return el('li', { texto: a }); })));
     }
 
@@ -970,18 +976,18 @@ __OP_FUENTES__
       return el('article', { clase: 'op-top' + (e.cat === 'prioritaria' ? ' es-prioritaria' : '') }, [cabeza, datos, razones, acciones]);
     }
 
-    function detalle(op) {
-      var e = op._e, izq = el('div'), der = el('div');
-      if (e.descartar.length) izq.appendChild(el('div', { clase: 'op-descarte', texto: 'Se descarta: ' + e.descartar.join(' · ') }));
-      if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: 'Con rubro ' + Math.round(e.p.rubro) + ' (bajo ' + e.tope.rubroMenorA + ') no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '», aunque el puntaje dé para más.' }));
-      izq.appendChild(el('h4', { texto: 'Cómo se arma el puntaje' }));
-      var comp = el('div', { clase: 'op-composicion', role: 'img', 'aria-label': 'Aporte de cada criterio al puntaje' });
     function textoVisita(op) {
       var vis = visitaDelDia(op), v = op.visita || {};
       if (!vis.fecha) return v.mencionada ? 'las bases la piden, sin fecha en la ficha: ver bases' : v.sinVisita ? 'no (según la ficha de las bases)' : 'sin confirmar: ver las bases';
       return fechaHora(vis.fecha) + (vis.pasada ? ' (ya pasó)' : '') + (v.obligatoria ? ' · obligatoria' : v.obligatoria === false ? ' · optativa' : ' · ver bases si es obligatoria') +
         (vis.mas ? ' · y ' + vis.mas + ' fecha(s) más' : '') + (v.lugar && vis.fecha === v.fecha && !vis.pasada ? ' · ' + v.lugar : '');
     }
+    function detalle(op) {
+      var e = op._e, izq = el('div'), der = el('div');
+      if (e.descartar.length) izq.appendChild(el('div', { clase: 'op-descarte', texto: 'Se descarta: ' + e.descartar.join(' · ') }));
+      if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: 'Con rubro ' + Math.round(e.p.rubro) + ' (bajo ' + e.tope.rubroMenorA + ') no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '», aunque el puntaje dé para más.' }));
+      izq.appendChild(el('h4', { texto: 'Cómo se arma el puntaje' }));
+      var comp = el('div', { clase: 'op-composicion', role: 'img', 'aria-label': 'Aporte de cada criterio al puntaje' });
       CRIT.forEach(function (c) {
         if (!pesos[c.id]) return;
         var seg = el('span', { title: c.nombre + ': ' + e.p[c.id] + ' de 100 (aporta ' + (e.p[c.id] * pesos[c.id] / e.total).toFixed(1) + ' de ' + (100 * pesos[c.id] / e.total).toFixed(1) + ')' });
@@ -1208,24 +1214,24 @@ __OP_FUENTES__
       tr.addEventListener('keydown', function (evt) { if (evt.key === 'Enter' || evt.key === ' ') { evt.preventDefault(); alternar(); } });
       return tr;
     }
+    function filaDetalle(op) { return el('tr', { clase: 'detail-row' }, [el('td', { colspan: 6 }, [detalle(op)])]); }
     function listaOrdenada() {
       var lista = listaMapa.slice();
       if (orden.k) lista.sort(function (a, b) {
         var x = valorOrden(a, orden.k), y = valorOrden(b, orden.k);
         return (x < y ? -1 : x > y ? 1 : 0) * orden.dir || porRelevancia(a, b);
       });
-    function filaDetalle(op) { return el('tr', { clase: 'detail-row' }, [el('td', { colspan: 6 }, [detalle(op)])]); }
       return lista;
     }
     function pintarTabla() {
+      // Rehacer la tabla (al ordenar, filtrar o «Mostrar más») no mueve la página.
+      var y = window.scrollY;
       var lista = listaOrdenada();
       vaciar(tbody);
       lista.slice(0, limite).forEach(function (op) {
         tbody.appendChild(filaDe(op));
         if (abiertas[op.codigo]) tbody.appendChild(filaDetalle(op));
       });
-      // Rehacer la tabla (al ordenar, filtrar o «Mostrar más») no mueve la página.
-      var y = window.scrollY;
       if (!lista.length) tbody.appendChild(el('tr', null, [el('td', { colspan: 6, texto: 'Ninguna oportunidad con estos filtros.' })]));
       var mas = document.getElementById('fMas');
       mas.hidden = lista.length <= limite;
@@ -1235,13 +1241,13 @@ __OP_FUENTES__
         th.textContent = th.textContent.replace(/ [▲▼]$/, '') + (k === orden.k ? (orden.dir > 0 ? ' ▲' : ' ▼') : '');
         th.setAttribute('aria-sort', k === orden.k ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none');
       });
+      if (window.scrollY !== y) window.scrollTo(0, y);
     }
     document.querySelectorAll('#tOps > thead th[data-k]').forEach(function (th) {
       th.addEventListener('click', function () {
         var k = th.getAttribute('data-k');
         orden = orden.k === k ? { k: k, dir: -orden.dir } : { k: k, dir: (k === 'puntaje' || k === 'monto') ? -1 : 1 };
         pintarTabla();
-      if (window.scrollY !== y) window.scrollTo(0, y);
       });
     });
     document.getElementById('fMas').addEventListener('click', function () { limite += 100; pintarTabla(); });
@@ -1326,13 +1332,13 @@ __OP_FUENTES__
         reglas.appendChild(el('li', { texto: 'Con el rubro bajo ' + t.rubroMenorA + ' puntos no pasa de «' + (NOMBRE_CAT[t.categoriaMaxima] || t.categoriaMaxima) + '», aunque el resto sea perfecto.' }));
       });
       reglas.appendChild(el('li', { texto: 'Se descarta sola si cierra en menos de un día, si la visita obligatoria ya pasó, si el nombre la deja fuera del rubro (combustible, químicos…) o si el monto supera un máximo fijado en la configuración.' }));
+      reglas.appendChild(el('li', { texto: 'La visita a terreno se lee en la ficha de las bases de Mercado Público (la API no la informa). Con varias fechas se muestra la próxima, y pasó cuando pasaron todas. Si la ficha no se pudo leer, la licitación es menor a 100 UTM o es una compra ágil sin mención, queda «sin confirmar»: revisa las bases.' }));
       var tramos = (REGLAS.plazoOferta || []).filter(function (t) { return !t.descarta; }).map(function (t) { return (t.menosDeDias === null ? 'más' : 'menos de ' + t.menosDeDias + ' días') + ': ' + t.puntaje; });
       if (tramos.length) reglas.appendChild(el('li', { texto: 'Plazo para ofertar (se cuenta con la fecha de hoy) — ' + tramos.join(' · ') + '.' }));
       var h = (DATA.perfil || {}).historia || {}, m = (DATA.perfil || {}).montoHabitual || {};
       var hist = vaciar(document.getElementById('opHistoria'));
       hist.appendChild(el('li', { texto: 'Planilla de Ingreso: ' + (h.requerimientos || 0) + ' requerimientos, ' + (h.ofertados || 0) + ' ofertados, ' + (h.ganados || 0) + ' ganados y ' + (h.perdidos || 0) + ' perdidos.' }));
       hist.appendChild(el('li', { texto: 'Para cada licitación se buscan las más parecidas de la Planilla: si se ofertaron y se ganaron, sube el rubro; si se descartaron, baja.' }));
-      reglas.appendChild(el('li', { texto: 'La visita a terreno se lee en la ficha de las bases de Mercado Público (la API no la informa). Con varias fechas se muestra la próxima, y pasó cuando pasaron todas. Si la ficha no se pudo leer, la licitación es menor a 100 UTM o es una compra ágil sin mención, queda «sin confirmar»: revisa las bases.' }));
       if (m.p25) hist.appendChild(el('li', { texto: 'Monto habitual (lo ofertado): el centro va de ' + clpCorto(m.p25) + ' a ' + clpCorto(m.p75) + '; lo habitual, de ' + clpCorto(m.p10) + ' a ' + clpCorto(m.p90) + '. Sobre ' + clpCorto(m.maximo) + (m.maximoFijo ? ' se descarta.' : ' el criterio monto puntúa bajo, sin descartar.') }));
     }
 
