@@ -206,12 +206,30 @@ y que se pueda revertir si no le gusta.
     `calculadora` (páginas hermanas con su propia ruta: elegir otra navega la
     misma pestaña). Con el Formulador (Gantt, Seguimiento) y el Análisis
     (Ingresar avance) quedan 8 pestañas como máximo.
-  - **Franja de íconos**: el menú es por defecto una franja de 72 px (Inicio,
-    un ícono por grupo, Ayuda al fondo) que abre un panel con las herramientas
-    del grupo; ☰ alterna con el menú con nombres (`quempin_portal_menu.modo`).
-    En el teléfono el menú sigue siendo el panel con nombres.
   - Pestañas con el ícono de su grupo e Inicio como casita; en el Inicio, un
     punto naranjo marca las herramientas que ya tienen pestaña.
+- **Tercera vuelta del 2026-10-16** (pedido: quitar la franja de íconos, que el
+  menú aparezca solo con ☰; sacar «Índice anterior» de la Ayuda y agregar una
+  sección de configuración con todo lo que hay que conectar, bien referenciado):
+  - **Sin franja**: el menú con nombres se despliega encima de la herramienta
+    solo con ☰ (clase `menu-abierto`, igual en el computador y el teléfono) y
+    se cierra al elegir, con Esc o tocando fuera. La herramienta usa todo el
+    ancho. `test_el_menu_solo_aparece_con_la_hamburguesa`.
+  - **Sin «Índice anterior»**: un enlace al índice viejo (`/finanzas-quempin/`)
+    desde una herramienta lleva al Inicio del portal (`RUTA_INDICE`).
+  - **Configuración y conexiones** (Ayuda; herramienta `tipo: vista`, una
+    pestaña sin marco con la sección `#vistaConexiones`): lo arma el bloque
+    `<script type="application/json" id="portal-conexiones">`, una tarjeta por
+    carpeta, programa o acceso con su ruta, su enlace a SharePoint, cómo dejarlo
+    listo, quién lo usa y qué pasa si falta, más el computador del procesador y
+    sus tres tareas. Arriba, «En este navegador» revisa solo, sin escribir nada:
+    si conecta carpetas, la biblioteca conectada en el Formulador (IndexedDB
+    `qpn-intercambio`, compartida por ser el mismo sitio), el pulso del
+    procesador (`publicado/estado.json`, leído con el `js/pulso.js` del
+    Formulador) y la contraseña. Las rutas se comprobaron en el disco y en
+    SharePoint el 2026-10-16; `test_las_rutas_de_conexiones_son_las_del_intercambio`
+    las compara con `Sistema Intercambio/ubicacion.py`. Si cambia una carpeta,
+    una tarea o lo que necesita una herramienta, se corrige ese bloque.
 - **Por qué funciona**: el Formulador, los tableros y la Calculadora están en el
   mismo sitio (`cristobal-monzo.github.io`). Eso permite tres cosas:
   - el portal los abre dentro;
@@ -225,7 +243,8 @@ y que se pueda revertir si no le gusta.
     (`showDirectoryPicker`), algo que un sitio distinto tiene prohibido.
 - **El registro** (`<script type="application/json" id="portal-registro">`):
   grupos y herramientas. Cada herramienta lleva:
-  - `tipo`: marco, excel, programa, archivo, ayuda o inicio.
+  - `tipo`: marco, excel, programa, archivo, ayuda, inicio o vista (una sección
+    propia del portal, en su pestaña: `vista` es su id).
   - `ruta` y `peru`.
   - `familia` y `alias`: la misma página va en una sola pestaña. El
     Formulador incluye Proyectos y Carta Gantt; el Análisis incluye Ingresar

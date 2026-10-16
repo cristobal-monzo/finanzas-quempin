@@ -27,15 +27,23 @@ VISUALIZADOR = AQUI.parent
 RAIZ = VISUALIZADOR.parent
 PORTAL = VISUALIZADOR / "portal" / "index.html"
 BASES = ("/formulacion-proyectos-quempin/", "/finanzas-quempin/", "/calculadora-tecnica-quempin/")
-TIPOS = {"marco", "excel", "programa", "archivo", "ayuda", "inicio"}
+TIPOS = {"marco", "excel", "programa", "archivo", "ayuda", "inicio", "vista"}
 LS_PROYECTOS = "qpn.formulacion.proyectos.v1"
 
 
-def _registro():
+def _bloque(id_):
     html = PORTAL.read_text(encoding="utf-8")
-    m = re.search(r'<script type="application/json" id="portal-registro">(.*?)</script>', html, re.S)
-    assert m, "falta el registro de herramientas"
+    m = re.search(r'<script type="application/json" id="%s">(.*?)</script>' % id_, html, re.S)
+    assert m, f"falta el bloque {id_}"
     return json.loads(m.group(1))
+
+
+def _registro():
+    return _bloque("portal-registro")
+
+
+def _conexiones():
+    return _bloque("portal-conexiones")
 
 
 def _cargar(nombre, ruta):
@@ -105,6 +113,8 @@ def test_registro_bien_formado():
             assert h["familia"] == h["id"] or (dueno["familia"] == dueno["id"] and h["ruta"] != dueno["ruta"]), h["id"]
         if h.get("incrustar"):
             assert h["incrustar"] in {"tablero", "calculadora", "formulador"} and h["tipo"] == "marco", h["id"]
+        if h["tipo"] == "vista":   # una vista propia del portal, con su sección en la página
+            assert f'id="{h["vista"]}"' in PORTAL.read_text(encoding="utf-8"), h["id"]
         assert h.get("claves", "") == h.get("claves", "").lower(), h["id"]
     for g in grupos:
         assert any(h["grupo"] == g for h in herr), f"grupo vacío: {g}"
@@ -120,6 +130,58 @@ def test_los_grupos_del_pedido_del_2026_10_16():
     """Cuatro grupos y la ayuda; la calculadora al final, antes de la ayuda."""
     assert [g["nombre"] for g in _registro()["grupos"]] == [
         "Formulación de proyectos", "Control y finanzas", "Cotizar y comprar", "Calculadora", "Ayuda"]
+
+
+def test_la_ayuda_sin_indice_anterior_y_con_configuracion():
+    """Pedido del 2026-10-16: fuera el «Índice anterior»; en su lugar, Configuración y conexiones."""
+    ayuda = [h for h in _registro()["herramientas"] if h["grupo"] == "ayuda"]
+    assert [h["nombre"] for h in ayuda] == ["Cómo usar el portal", "Configuración y conexiones"]
+    assert not any(h.get("ruta") == "/finanzas-quempin/" for h in _registro()["herramientas"])
+
+
+def test_conexiones_bien_referenciadas():
+    """Cada carpeta, programa o acceso dice para qué es, quién lo usa, dónde está y qué pasa si falta;
+    cada herramienta del portal (salvo las calculadoras) necesita algo de la lista."""
+    cx = _conexiones()
+    reg = _registro()
+    ids_herr = {h["id"] for h in reg["herramientas"]}
+    elementos = cx["elementos"]
+    ids = [e["id"] for e in elementos] + [cx["procesador"]["id"]]
+    assert len(ids) == len(set(ids)), "ids repetidos"
+    for e in elementos:
+        for campo in ("tipo", "nombre", "corto", "para", "falta"):
+            assert e.get(campo, "").strip(), (e["id"], campo)
+        assert e["usan"] and set(e["usan"]) <= ids_herr | {"procesador"}, e["id"]
+        assert e.get("ruta") or e["tipo"] in {"Cuenta", "En el navegador"}, f"{e['id']}: ¿dónde está?"
+        if "web" in e:
+            assert e["web"].startswith("https://quempinspa2020.sharepoint.com/"), e["id"]
+        if "abrir" in e:
+            assert e["abrir"] in ids_herr, e["id"]
+        assert e.get("estado") in {None, "navegador", "biblioteca", "procesador", "contrasena"}, e["id"]
+    por_id = {h["id"]: h for h in reg["herramientas"]}
+    usadas = {u for e in elementos for u in e["usan"]}
+    for h in reg["herramientas"]:
+        if h["grupo"] in {"formular", "finanzas", "cotizar"}:
+            assert h["id"] in usadas or (h.get("alias") and h["familia"] in usadas), h["id"]
+    tareas = [t["nombre"] for t in cx["procesador"]["tareas"]]
+    assert tareas == ["Procesar intercambio QUEMPIN", "Actualizar Finanzas QUEMPIN", "Oportunidades Mercado Publico QUEMPIN"]
+    assert por_id["planilla"]["url"].startswith("https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/")
+
+
+def test_las_rutas_de_conexiones_son_las_del_intercambio():
+    """Los nombres de bibliotecas y carpetas, contra los que buscan las herramientas (Sistema Intercambio/ubicacion.py,
+    que Sistema QUEMPIN y el Análisis Financiero copian textual)."""
+    ubicacion = _cargar("ubicacion_para_test_portal", RAIZ / "Sistema Intercambio" / "ubicacion.py")
+    e = {x["id"]: x for x in _conexiones()["elementos"]}
+    clave = ubicacion._clave
+    assert e["biblioteca"]["ruta"][-1] == ubicacion.BIBLIOTECA_FORMULACION
+    assert e["gestion"]["ruta"][-1] == ubicacion.BIBLIOTECA_GESTION
+    assert e["planilla"]["ruta"][-2:] == [ubicacion.BIBLIOTECA_FORMULACION, ubicacion.PLANILLA_REQUERIMIENTOS]
+    assert [clave(x) for x in e["intercambio"]["ruta"][-3:]] == [
+        clave(ubicacion.BIBLIOTECA_FORMULACION), clave(ubicacion.CARPETA_HERRAMIENTAS), clave(ubicacion.CARPETA_INTERCAMBIO)]
+    # Sistema QUEMPIN encuentra el intercambio subiendo desde su carpeta compartida: las dos bibliotecas van juntas
+    assert e["compartida"]["ruta"][0] == e["biblioteca"]["ruta"][0] == e["cotizaciones"]["ruta"][0]
+    assert "web" in e["intercambio"] and e["intercambio"]["web"].endswith("/.HERRAMIENTAS FORMULACIÓN/Intercambio")
 
 
 def test_sistema_quempin_conoce_los_enlaces_del_portal():
@@ -283,6 +345,12 @@ def _sitio(raiz: Path):
     pagina("/finanzas-quempin/flujo-de-caja/", "Flujo de Caja", "fc")
     pagina("/finanzas-quempin/oportunidades/", "Oportunidades", "op")
     pagina("/formulacion-proyectos-quempin/", "Formulador", "formulador", CABECERA_FORMULADOR)
+    # El pulso del procesador que lee «Configuración y conexiones» (el del Formulador, si está en este equipo)
+    formulador = _hermano("Formulación de proyectos")
+    pulso = formulador / "quempin-formulacion" / "js" / "pulso.js" if formulador else None
+    if pulso and pulso.exists():
+        (raiz / "formulacion-proyectos-quempin" / "js").mkdir(parents=True, exist_ok=True)
+        (raiz / "formulacion-proyectos-quempin" / "js" / "pulso.js").write_bytes(pulso.read_bytes())
     pagina("/calculadora-tecnica-quempin/", "Calculadora Técnica", "calc")
     for ruta, herr in (("DiametroTuberia", "diametro"), ("Hidrogeno", "hidrogeno"),
                        ("GasNatural-GLP", "gas"), ("OtrosGases", "otros")):
@@ -381,15 +449,12 @@ def _esperar(pagina, familia, campo, valor):
 
 
 def _menu(pagina, nombre):
-    """Elige una herramienta por su nombre en el menú: en la franja de íconos abre el panel de su
-    grupo; en el menú con nombres (☰, teléfono) despliega su grupo (hay uno solo abierto a la vez)."""
+    """Elige una herramienta por su nombre en el menú: lo abre con ☰, despliega su grupo (hay uno solo
+    abierto a la vez) y la elige; al elegirla el menú se cierra."""
     herr = _registro()["herramientas"]
     h = next((x for x in herr if x["nombre"] == nombre), None) or next(x for x in herr if x["nombre"].startswith(nombre))
-    riel = pagina.locator(f'#riel .riel-btn[data-grupo="{h["grupo"]}"]')
-    if riel.is_visible():
-        riel.click()
-        pagina.locator(f'#flotante .ini-item[data-herr="{h["id"]}"]').click()
-        return
+    if pagina.locator("#menu").is_hidden():
+        pagina.locator("#btnMenu").click()
     item = pagina.locator(f'#menu .menu-item[data-herr="{h["id"]}"]')
     if not item.is_visible():
         item.locator("xpath=ancestor::section[1]/button[contains(@class, 'grupo-cab')]").click()
@@ -400,7 +465,7 @@ def _pestanas(pagina):
     return pagina.locator("#pestanas .ir").all_inner_texts()
 
 
-JS_BARRAS = """() => ['.vista-inicio', '.menu-lista', '.riel', '.pestanas-lista'].map((s) => {
+JS_BARRAS = """() => ['.vista-inicio', '.menu-lista', '.pestanas-lista'].map((s) => {
     const e = document.querySelector(s);
     return e && e.getClientRects().length ? [s, e.scrollHeight - e.clientHeight, e.scrollWidth - e.clientWidth] : [s, 0, 0];
 }).filter(([s, alto, ancho]) => alto > 1 || ancho > 1)"""
@@ -417,7 +482,9 @@ def test_inicio_muestra_todas_las_herramientas_por_grupo(navegador, sitio):
     esperadas = [h["id"] for h in reg["herramientas"] if h["grupo"] in {"formular", "finanzas", "cotizar", "calcular"}]
     assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item')].map(b => b.dataset.herr)") == esperadas
     # Lo que se abre fuera del portal (Excel, Sistema QUEMPIN) lleva la flecha ↗
-    assert pagina.locator("#iniGrupos .ini-item:has(.ini-fuera)").count() == 5
+    fuera = [h["id"] for h in reg["herramientas"] if h["id"] in esperadas and h["tipo"] != "marco"]
+    assert fuera == ["planilla", "cotizacion", "orden-compra"]
+    assert pagina.locator("#iniGrupos .ini-item:has(.ini-fuera)").count() == len(fuera)
     assert _pestanas(pagina) == ["Inicio"]
     assert pagina.locator("iframe").count() == 0
     # Una herramienta del Inicio se abre en su pestaña
@@ -433,19 +500,17 @@ def test_el_inicio_y_el_menu_caben_sin_barras(navegador, sitio, ancho, alto):
     """Pedido del 2026-10-16: el Inicio con todas las herramientas sin desplazarse, y ninguna barra vertical."""
     pagina, errores = _abrir_portal(navegador, sitio, ancho=ancho, alto=alto)
     assert pagina.evaluate(JS_BARRAS) == []
-    # El grupo más largo desplegado tampoco desborda el menú
-    _menu(pagina, "Seguimiento")
-    pagina.locator("#pestanas .ir", has_text="Inicio").click()
-    assert pagina.evaluate(JS_BARRAS) == []
-    # Con la franja de íconos caben las cuatro columnas desde 1024 px
+    # Sin menú fijo al lado, las cuatro columnas caben desde 1024 px
     columnas = "getComputedStyle(document.getElementById('iniGrupos')).gridTemplateColumns.split(' ').length"
     assert pagina.evaluate(columnas) == 4
     assert pagina.evaluate("getComputedStyle(document.querySelector('.menu-lista')).scrollbarWidth") == "none"
-    # El menú con nombres (☰), con su grupo más largo desplegado, tampoco; con menos ancho van dos columnas
+    # El menú (☰), con su grupo más largo desplegado, tampoco desborda; va encima y no achica el Inicio
+    _menu(pagina, "Seguimiento")
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
     pagina.locator("#btnMenu").click()
-    assert pagina.locator("#menuLista").is_visible() and pagina.locator("#riel").is_hidden()
+    assert pagina.locator('#menu .grupo-cab[aria-expanded="true"]').inner_text().strip() == "Formulación de proyectos"
     assert pagina.evaluate(JS_BARRAS) == []
-    assert pagina.evaluate(columnas) == (4 if ancho >= 1280 else 2)
+    assert pagina.evaluate(columnas) == 4
     assert not errores
     pagina.context.close()
 
@@ -461,8 +526,10 @@ def test_el_menu_despliega_un_grupo_a_la_vez(navegador, sitio):
     pagina.locator("#grupo-finanzas").click()
     assert abiertos() == []
     # Abrir una herramienta (aquí desde el Inicio) despliega su grupo
+    pagina.keyboard.press("Escape")
     pagina.locator('.ini-item[data-herr="gas"]').click()
     _marco(pagina, "calculadora", "gas")
+    pagina.locator("#btnMenu").click()
     assert [g.strip() for g in abiertos()] == ["Calculadora"]
     assert not errores
     pagina.context.close()
@@ -740,13 +807,14 @@ def test_una_pestana_por_herramienta_y_no_mas_de_ocho_cargadas(navegador, sitio)
     pagina, errores = _abrir_portal(navegador, sitio)
     nombres = ["Centro de Costos", "Análisis Financiero", "Ingresar avance", "Flujo de Caja", "Cotizador Histórico",
                "Oportunidades", "Formulador", "Carta Gantt", "Seguimiento", "Diámetro de tubería", "Hidrógeno",
-               "Gas natural / GLP", "Índice anterior"]
+               "Gas natural / GLP", "Configuración y conexiones"]
     for nombre in nombres:
         _menu(pagina, nombre)
         if pagina.locator("#popProyecto").is_visible():            # la Carta Gantt pide proyecto: se sigue sin
             pagina.keyboard.press("Escape")
+    assert len(_pestanas(pagina)) == 9                               # Inicio + 8 pestañas, ni una más
+    pagina.locator("#pestanas .ir", has_text="Gas / GLP").click()
     _marco(pagina, "calculadora", "gas")
-    assert len(_pestanas(pagina)) == 9                               # Inicio + 8 herramientas, ni una más
     pagina.wait_for_function("() => document.querySelectorAll('iframe.marco').length <= 8")
     assert not errores
     pagina.context.close()
@@ -851,32 +919,40 @@ def test_un_solo_modo_oscuro_para_el_portal_y_sus_herramientas(navegador, sitio)
     pagina.context.close()
 
 
-def test_la_franja_abre_el_panel_de_cada_grupo(navegador, sitio):
+def test_el_menu_solo_aparece_con_la_hamburguesa(navegador, sitio):
+    """Pedido del 2026-10-16 (tarde): sin la franja de íconos a la izquierda; el menú aparece solo con ☰."""
     pagina, errores = _abrir_portal(navegador, sitio)
-    assert pagina.locator("#riel").is_visible() and pagina.locator("#menuLista").is_hidden()
-    assert pagina.locator("#riel .riel-btn").all_inner_texts() == ["Inicio", "Formulación", "Finanzas", "Cotizar", "Calculadora", "Ayuda"]
-    pagina.locator('#riel .riel-btn[data-grupo="finanzas"]').click()
-    assert pagina.locator("#flotante").is_visible()
-    assert pagina.evaluate("[...document.querySelectorAll('#flotante .ini-item')].map(b => b.dataset.herr)") == [
-        "centro-costos", "ingresar", "analisis", "flujo-caja"]
-    pagina.keyboard.press("Escape")
-    assert pagina.locator("#flotante").is_hidden()
-    # Elegir una herramienta la abre, cierra el panel y marca su grupo en la franja
-    pagina.locator('#riel .riel-btn[data-grupo="finanzas"]').click()
-    pagina.locator('#flotante .ini-item[data-herr="flujo-caja"]').click()
-    _marco(pagina, "flujo-caja", "fc")
-    assert pagina.locator("#flotante").is_hidden()
-    assert pagina.locator('#riel .riel-btn[aria-current="true"]').get_attribute("data-grupo") == "finanzas"
-    # Un clic fuera también lo cierra
-    pagina.locator('#riel .riel-btn[data-grupo="cotizar"]').click()
-    pagina.locator("#pestanas .ir").first.click()
-    assert pagina.locator("#flotante").is_hidden()
-    # ☰ despliega el menú con nombres y se recuerda
+    izquierda = "Math.round(document.getElementById('escenario').getBoundingClientRect().left)"
+    assert pagina.locator("#riel, #flotante").count() == 0
+    assert pagina.locator("#menu").is_hidden() and pagina.evaluate(izquierda) == 0
+    assert pagina.locator("#btnMenu").get_attribute("aria-expanded") == "false"
+    # ☰ lo abre encima, sin correr la herramienta, con el foco adentro; Esc lo cierra y devuelve el foco
     pagina.locator("#btnMenu").click()
-    assert pagina.locator("#menuLista").is_visible()
+    assert pagina.locator("#menu").is_visible() and pagina.locator("#velo").is_visible()
+    assert pagina.locator("#btnMenu").get_attribute("aria-expanded") == "true"
+    assert pagina.evaluate(izquierda) == 0
+    assert pagina.evaluate("document.getElementById('menu').contains(document.activeElement)")
+    pagina.keyboard.press("Escape")
+    assert pagina.locator("#menu").is_hidden()
+    assert pagina.evaluate("document.activeElement && document.activeElement.id") == "btnMenu"
+    # Tocar fuera también lo cierra, y ☰ otra vez lo cierra
+    pagina.locator("#btnMenu").click()
+    pagina.locator("#velo").click(position={"x": 900, "y": 300})
+    assert pagina.locator("#menu").is_hidden()
+    pagina.locator("#btnMenu").click()
+    pagina.locator("#btnMenu").click()
+    assert pagina.locator("#menu").is_hidden()
+    # Elegir una herramienta la abre a todo el ancho y cierra el menú
+    _menu(pagina, "Flujo de Caja")
+    _marco(pagina, "flujo-caja", "fc")
+    assert pagina.locator("#menu").is_hidden() and pagina.locator("#velo").is_hidden()
+    assert pagina.evaluate(izquierda) == 0
+    # Al volver a abrir, marca la herramienta activa; al recargar el menú vuelve cerrado
+    pagina.locator("#btnMenu").click()
+    assert pagina.locator('#menu .menu-item[aria-current="page"]').inner_text().strip() == "Flujo de Caja"
     pagina.reload()
     pagina.locator("#vistaInicio").wait_for(state="attached")
-    assert pagina.locator("#menuLista").is_visible() and pagina.locator("#riel").is_hidden()
+    assert pagina.locator("#menu").is_hidden()
     assert not errores
     pagina.context.close()
 
@@ -887,6 +963,144 @@ def test_el_inicio_marca_las_herramientas_ya_abiertas(navegador, sitio):
     _marco(pagina, "flujo-caja", "fc")
     pagina.locator("#pestanas .ir").first.click()
     assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item.abierta')].map(b => b.dataset.herr)") == ["flujo-caja"]
+    assert not errores
+    pagina.context.close()
+
+
+# ---- Configuración y conexiones (2026-10-16) -------------------------------------------------------
+
+JS_CONECTAR = """async (minutos) => {
+    // Lo que deja el Formulador al conectar la biblioteca (js/intercambio.js), con carpetas del almacenamiento
+    // privado del navegador en vez de las de OneDrive: así el permiso ya está dado.
+    const raiz = await navigator.storage.getDirectory();
+    const bib = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos', { create: true });
+    const herr = await bib.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN', { create: true });
+    const inter = await herr.getDirectoryHandle('Intercambio', { create: true });
+    const pub = await inter.getDirectoryHandle('publicado', { create: true });
+    const w = await (await pub.getFileHandle('estado.json', { create: true })).createWritable();
+    await w.write(JSON.stringify({ esquema: 'quempin.intercambio/1', datos: { procesador: {
+        ultimaCorrida: new Date(Date.now() - minutos * 60000).toISOString(), pasos: {} } } }));
+    await w.close();
+    await new Promise((ok, mal) => {
+        const r = indexedDB.open('qpn-intercambio', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('carpetas');
+        r.onerror = () => mal(r.error);
+        r.onsuccess = () => {
+            const tx = r.result.transaction('carpetas', 'readwrite');
+            tx.objectStore('carpetas').put(inter, 'intercambio');
+            tx.objectStore('carpetas').put(bib, 'biblioteca');
+            tx.oncomplete = () => { r.result.close(); ok(); };
+            tx.onerror = () => mal(tx.error);
+        };
+    });
+}"""
+
+JS_ESTADO_CX = """() => Object.fromEntries([...document.querySelectorAll('#cxEstado li')].map(li =>
+    [li.dataset.estado, [li.dataset.nivel, li.querySelector('.cx-est-det').textContent]]))"""
+
+
+def _estado_cx(pagina, esperar=None):
+    """El estado de cada fila de «En este navegador», cuando ya se revisó (o cuando llega a lo esperado)."""
+    pagina.wait_for_function("""(esperado) => {
+        const filas = [...document.querySelectorAll('#cxEstado li')];
+        if (!filas.length || !filas.every((li) => li.dataset.nivel)) return false;
+        return !esperado || Object.entries(esperado).every(([s, n]) =>
+            document.querySelector('#cxEstado li[data-estado="' + s + '"]').dataset.nivel === n);
+    }""", arg=esperar)
+    return pagina.evaluate(JS_ESTADO_CX)
+
+
+def test_configuracion_y_conexiones_en_su_pestana(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.locator("#iniConexiones").click()
+    assert _pestanas(pagina) == ["Inicio", "Conexiones"]
+    assert pagina.locator("#vistaConexiones").is_visible() and pagina.locator("#vistaInicio").is_hidden()
+    assert pagina.url.endswith("#/conexiones")
+    assert pagina.locator("iframe").count() == 0
+    assert pagina.locator("#btnRecargar").is_hidden() and pagina.locator("#btnAparte").is_hidden()
+    # Una tarjeta por cada carpeta, programa o acceso, más el computador del procesador
+    cx = _conexiones()
+    tarjetas = pagina.evaluate("[...document.querySelectorAll('.cx-tarjeta')].map(t => t.id)")
+    assert tarjetas == ["cx-" + e["id"] for e in cx["elementos"]] + ["cx-procesador"]
+    # Sus enlaces van a SharePoint, codificados
+    enlaces = pagina.evaluate("[...document.querySelectorAll('#vistaConexiones a[href]')].map(a => a.getAttribute('href'))")
+    assert len(enlaces) == sum(1 for e in cx["elementos"] if "web" in e)
+    assert all(h.startswith("https://quempinspa2020.sharepoint.com/") and " " not in h for h in enlaces)
+    assert any(h.endswith("/.HERRAMIENTAS%20FORMULACI%C3%93N/Intercambio") for h in enlaces)
+    # Qué necesita cada herramienta: las que necesitan lo mismo van juntas; las calculadoras, nada
+    filas = pagina.evaluate("""() => [...document.querySelectorAll('#cxNecesita tbody tr')].map(tr =>
+        [tr.querySelector('th').textContent, [...tr.querySelectorAll('.cx-chip')].map(c => c.textContent)])""")
+    por_nombre = dict(filas)
+    for juntas in ("Formulador, Carta Gantt y Seguimiento", "Centro de Costos y Análisis Financiero",
+                   "Emitir cotización y Orden de compra"):
+        assert juntas in por_nombre, juntas
+    assert filas[-1] == ["Calculadora (todas)", []]
+    assert {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"} <= set(por_nombre["Formulador, Carta Gantt y Seguimiento"])
+    assert "QUEMPIN.exe" in por_nombre["Emitir cotización y Orden de compra"]
+    # Un dato de la tabla lleva a su tarjeta; «Lo usan» abre la herramienta
+    pagina.locator("#cxNecesita .cx-chip", has_text="QUEMPIN.exe").first.click()
+    pagina.wait_for_function("() => document.getElementById('cx-sistema').classList.contains('resaltada')")
+    pagina.locator("#cx-biblioteca .cx-usan .cx-chip", has_text="Formulador").click()
+    _marco(pagina, "formulador", "formulador")
+    assert _pestanas(pagina) == ["Inicio", "Conexiones", "Formulador"]
+    # La pestaña vuelve al recargar, y se cierra como cualquier otra
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for(state="attached")
+    assert _pestanas(pagina) == ["Inicio", "Conexiones", "Formulador"]
+    pagina.locator("#pestanas .ir", has_text="Conexiones").click()
+    assert pagina.locator("#vistaConexiones").is_visible()
+    pagina.locator("#pestanas .pestana", has_text="Conexiones").locator(".x").click()
+    assert _pestanas(pagina) == ["Inicio", "Formulador"]
+    assert pagina.locator("#vistaConexiones").is_hidden()
+    # También desde el buscador y desde la Ayuda del menú
+    pagina.locator("#buscar").fill("carpeta de intercambio")
+    assert pagina.locator("#resultados .res-tit").first.inner_text() == "Configuración y conexiones"
+    pagina.keyboard.press("Escape")
+    _menu(pagina, "Configuración y conexiones")
+    assert pagina.locator("#vistaConexiones").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+def test_conexiones_revisa_este_navegador(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio, clave=False)
+    _menu(pagina, "Configuración y conexiones")
+    e = _estado_cx(pagina)
+    assert e["contrasena"][0] == "warn"
+    puede = pagina.evaluate("typeof showDirectoryPicker === 'function'")
+    assert e["navegador"][0] == ("ok" if puede else "bad")
+    if not puede:
+        pytest.skip("este Chromium no conecta carpetas")
+    assert e["biblioteca"][0] == "bad" and "Sin conectar" in e["biblioteca"][1]
+    assert e["procesador"][0] == "nada"
+    # Solo mira: no crea la base del Formulador cuando no existe
+    assert "qpn-intercambio" not in pagina.evaluate("indexedDB.databases().then((d) => d.map((x) => x.name))")
+    # Con la biblioteca conectada (como la deja el Formulador) y el procesador al día
+    pagina.evaluate(JS_CONECTAR, 30)
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
+    pagina.locator("#pestanas .ir", has_text="Conexiones").click()
+    e = _estado_cx(pagina, {"biblioteca": "ok", "procesador": "ok"})
+    assert "Formulación de proyectos - Documentos" in e["biblioteca"][1]
+    if (pagina.evaluate("!!window.QPulso")):          # el pulso del Formulador, con sus mismos textos
+        assert "hace 30 min" in e["procesador"][1], e["procesador"]
+    assert pagina.locator("#cx-biblioteca .cx-pildora").inner_text().strip() == "Conectada"
+    assert pagina.locator("#cx-intercambio .cx-pildora").inner_text().strip() == "Al día"
+    assert not errores
+    pagina.context.close()
+
+
+def test_conexiones_en_el_telefono(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio, ancho=390, alto=844, movil=True)
+    _menu(pagina, "Configuración y conexiones")
+    _estado_cx(pagina)
+    derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#vistaConexiones *')]
+        .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))""")
+    assert derecha <= 390.5, derecha
+    # Ningún texto bajo 12 px
+    chicos = pagina.evaluate("""() => [...document.querySelectorAll('#vistaConexiones *')]
+        .filter((e) => e.getClientRects().length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+        .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName)""")
+    assert not chicos, chicos
     assert not errores
     pagina.context.close()
 

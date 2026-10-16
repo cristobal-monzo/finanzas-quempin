@@ -58,6 +58,10 @@
     --tinte-borde:    #f3c2a8;
     --tinte-texto:    #7a2800;
     --sombra:         0 16px 40px rgba(0,0,0,0.22);
+    /* Estado de una conexión (Configuración y conexiones) */
+    --estado-ok:      #1e8e3e;
+    --estado-warn:    #c77700;
+    --estado-bad:     #d93025;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -76,6 +80,9 @@
       --tinte-borde:    #6b3a1f;
       --tinte-texto:    #ffc6a6;
       --sombra:         0 16px 40px rgba(0,0,0,0.6);
+      --estado-ok:      #5bd17f;
+      --estado-warn:    #f2b84b;
+      --estado-bad:     #ff6b5e;
     }
   }
   :root[data-theme="dark"] {
@@ -94,6 +101,9 @@
     --tinte-borde:    #6b3a1f;
     --tinte-texto:    #ffc6a6;
     --sombra:         0 16px 40px rgba(0,0,0,0.6);
+    --estado-ok:      #5bd17f;
+    --estado-warn:    #f2b84b;
+    --estado-bad:     #ff6b5e;
   }
 
   * { box-sizing: border-box; }
@@ -225,45 +235,22 @@
   .pop-vacio { margin: 8px 6px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
 
   /* ---- Cuerpo: menú + herramientas ----
-     Menú (2026-10-16): por defecto una franja angosta de íconos, uno por grupo, que abre un panel
-     con sus herramientas; ☰ lo despliega con los nombres (y se recuerda). Así la herramienta abierta
-     usa casi todo el ancho y la lista no se repite al lado del Inicio, que ya las muestra todas. */
+     Menú (2026-10-16, tarde): sin franja fija a la izquierda. Solo aparece al tocar ☰, encima de
+     la herramienta, y se cierra al elegir una, al tocar fuera o con Esc; así la herramienta abierta
+     usa todo el ancho. El Inicio ya las muestra todas. */
   .cuerpo { flex: 1 1 auto; min-height: 0; display: flex; position: relative; }
   .menu {
-    width: 252px; flex: 0 0 auto; min-height: 0;
+    position: absolute; top: 0; bottom: 0; left: 0; z-index: 25;
+    width: min(86vw, 300px); min-height: 0;
     display: flex; flex-direction: column;
-    background: #161514; color: #e8e6e1;
+    background: #161514; color: #e8e6e1; box-shadow: var(--sombra);
   }
-  .portal.menu-riel .menu { width: 72px; }
+  .portal:not(.menu-abierto) .menu { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .portal.menu-abierto .menu { animation: menu-entra 0.16s ease-out; }
+    @keyframes menu-entra { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+  }
   .menu-lista { flex: 1 1 auto; overflow-y: auto; padding: 8px 8px 10px; }
-  .riel { display: none; flex: 1 1 auto; flex-direction: column; gap: 2px; padding: 8px 6px; overflow-y: auto; }
-  .portal.menu-riel .riel { display: flex; }
-  .portal.menu-riel .menu-lista { display: none; }
-  .riel-btn {
-    position: relative; width: 100%; min-height: 56px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-    padding: 6px 2px; border: 0; border-radius: 10px;
-    background: transparent; color: #c9c7c0; cursor: pointer;
-    font-size: 10.5px; font-weight: 700; line-height: 1.1; text-align: center;
-  }
-  .riel-btn .ico { color: #ff8a4d; display: inline-flex; }
-  .riel-btn:hover, .riel-btn[aria-expanded="true"] { background: #262422; color: #ffffff; }
-  .riel-btn[aria-current="true"] { background: #3a2417; color: #ffffff; }
-  .riel-btn[aria-current="true"]::before {
-    content: ""; position: absolute; left: -6px; top: 12px; bottom: 12px; width: 3px;
-    border-radius: 0 3px 3px 0; background: var(--brand-orange);
-  }
-  .riel-sep { flex: 1 1 auto; min-height: 8px; }
-  /* Panel de un grupo, al lado de la franja: las mismas filas que el Inicio */
-  .flotante {
-    position: absolute; left: 76px; z-index: 26; width: 290px; max-height: calc(100% - 16px); overflow-y: auto;
-    padding: 12px 6px 6px; border-radius: 14px;
-    border: 1px solid var(--border-hairline); background: var(--surface-card); color: var(--text-primary);
-    box-shadow: var(--sombra);
-  }
-  .flotante h2 { margin: 0 10px 6px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; }
-  .flotante h2 .ico { color: var(--brand-orange); display: inline-flex; }
-  .flotante .ini-item[aria-current="page"] { background: var(--tinte); box-shadow: inset 3px 0 0 var(--brand-orange); }
   .menu-item, .grupo-cab {
     width: 100%; min-height: 38px;
     display: flex; align-items: center; gap: 11px;
@@ -397,6 +384,97 @@
   }
   @container inicio (max-width: 520px) { .ini-grupos { grid-template-columns: 1fr; } }
 
+  /* ---- Configuración y conexiones (2026-10-16): qué necesita cada herramienta y dónde está ---- */
+  .vista-conexiones { position: absolute; inset: 0; overflow-y: auto; background: var(--page-plane); container: conexiones / inline-size; }
+  .conexiones { max-width: 1180px; margin: 0 auto; padding: 22px 24px 32px; display: flex; flex-direction: column; gap: 16px; }
+  .cx-cab h1 { margin: 0 0 6px; font-size: 24px; font-weight: 900; }
+  .cx-cab p { margin: 0; max-width: 80ch; font-size: 15px; line-height: 1.55; color: var(--text-secondary); }
+  .cx-arriba { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+  .cx-panel, .cx-tarjeta {
+    padding: 16px 18px; border-radius: 14px;
+    border: 1px solid var(--border-hairline); background: var(--surface-card);
+  }
+  .cx-panel h2 { margin: 0 0 8px; font-size: 16px; font-weight: 900; }
+  .cx-sec { margin: 6px 0 0; font-size: 18px; font-weight: 900; }
+  .cx-nota { margin: -8px 0 0; max-width: 80ch; font-size: 13.5px; line-height: 1.5; color: var(--texto-suave); }
+  .cx-punto { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: var(--brand-gray-7); }
+  .cx-punto.ok { background: var(--estado-ok); }
+  .cx-punto.warn { background: var(--estado-warn); }
+  .cx-punto.bad { background: var(--estado-bad); }
+  .cx-estado { list-style: none; margin: 0; padding: 0; }
+  .cx-estado li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: start; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--gridline); }
+  .cx-estado li:first-child { border-top: 0; padding-top: 2px; }
+  .cx-estado .cx-punto { margin-top: 6px; }
+  .cx-est-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .cx-est-nom {
+    align-self: flex-start; padding: 0; border: 0; background: transparent; cursor: pointer;
+    color: var(--text-primary); font-size: 14px; font-weight: 900; text-align: left;
+  }
+  .cx-est-nom:hover { color: var(--brand-orange-ink); text-decoration: underline; }
+  .cx-est-det { font-size: 13.5px; line-height: 1.45; color: var(--text-secondary); }
+  .cx-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .cx-tabla thead th { padding: 0 0 6px; text-align: left; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
+  .cx-tabla tbody th, .cx-tabla td { padding: 8px 0; border-top: 1px solid var(--gridline); text-align: left; vertical-align: top; }
+  .cx-tabla tbody th { width: 34%; padding-right: 14px; font-weight: 700; line-height: 1.4; }
+  .cx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cx-chip {
+    min-height: 28px; padding: 2px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--gridline); background: var(--page-plane); color: var(--text-primary);
+    font-size: 12.5px; font-weight: 700; line-height: 1.3; text-align: left;
+  }
+  .cx-chip:hover { border-color: var(--brand-orange); }
+  .cx-chip.herr { background: var(--tinte); border-color: var(--tinte-borde); color: var(--tinte-texto); }
+  .cx-nada { font-size: 13.5px; color: var(--texto-suave); }
+  /* Las tarjetas en dos columnas que se llenan de arriba abajo (no quedan huecos entre tarjetas de distinto alto) */
+  .cx-tarjetas { columns: 2; column-gap: 16px; }
+  .cx-tarjeta { break-inside: avoid; margin: 0 0 16px; display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 16px; transition: box-shadow 0.3s ease; }
+  .cx-tarjeta.resaltada { box-shadow: 0 0 0 3px var(--brand-orange); }
+  .cx-tar-cab { display: flex; align-items: flex-start; gap: 12px; }
+  .cx-tar-cab .ico {
+    flex: 0 0 auto; width: 38px; height: 38px; display: grid; place-items: center;
+    border-radius: 10px; background: var(--tinte); color: var(--brand-orange-ink);
+  }
+  .cx-tar-tit { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .cx-tar-tit h3 { margin: 0; font-size: 16px; font-weight: 900; line-height: 1.3; }
+  .cx-tipo { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
+  .cx-pildora {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--gridline); background: var(--page-plane); color: var(--text-secondary);
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .cx-pildora .cx-punto { width: 8px; height: 8px; }
+  .cx-para { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-secondary); }
+  .cx-ruta { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--gridline); background: var(--page-plane); }
+  .cx-ruta-et { display: block; margin-bottom: 2px; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
+  .cx-migas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; font-size: 13.5px; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+  .cx-migas li + li::before { content: "›"; margin: 0 6px; color: var(--brand-orange); font-weight: 900; }
+  .cx-acc { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cx-enlace {
+    min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--baseline); background: var(--surface-card); color: var(--brand-orange-ink);
+    font-size: 13.5px; font-weight: 700; text-decoration: none; white-space: nowrap;
+  }
+  .cx-enlace:hover { border-color: var(--brand-orange); background: var(--tinte); }
+  .cx-tarjeta h4 { margin: 2px 0 -4px; font-size: 13px; font-weight: 900; }
+  .cx-pasos { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; line-height: 1.5; color: var(--text-secondary); }
+  .cx-usan { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .cx-usan-et { margin-right: 2px; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
+  .cx-falta { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--tinte); color: var(--tinte-texto); font-size: 13.5px; line-height: 1.5; }
+  .cx-tareas tbody th { width: 30%; }
+  .cx-tareas td:nth-child(2) { width: 20%; padding-right: 14px; white-space: nowrap; }
+  @container conexiones (max-width: 900px) {
+    .cx-arriba { grid-template-columns: minmax(0, 1fr); }
+    .cx-tarjetas { columns: 1; }
+  }
+  @container conexiones (max-width: 560px) {
+    .cx-tabla tbody tr { display: block; padding: 8px 0; border-top: 1px solid var(--gridline); }
+    .cx-tabla tbody th, .cx-tabla td { display: block; width: auto !important; padding: 0; border: 0; white-space: normal !important; }
+    .cx-tabla tbody th { margin-bottom: 4px; }
+    .cx-tabla thead { display: none; }
+    .cx-estado li { grid-template-columns: 10px minmax(0, 1fr); }
+    .cx-est-acc { grid-column: 2; }
+  }
+
   /* ---- Diálogos y aviso ---- */
   dialog {
     width: min(560px, calc(100vw - 24px)); padding: 0; border-radius: 14px;
@@ -441,16 +519,11 @@
     .btn-proyecto { max-width: 136px; padding: 0 10px; }
     .btn-proyecto .et { display: none; }
     .pop-proyecto input, .acc-pais { font-size: 16px; }
-    /* En el teléfono el menú es un panel que se despliega encima, siempre con los nombres */
-    .menu, .portal.menu-riel .menu { position: absolute; top: 0; bottom: 0; left: 0; z-index: 25; width: min(86vw, 320px); box-shadow: var(--sombra); }
-    .portal:not(.menu-movil) .menu { display: none; }
-    .portal.menu-riel .riel { display: none; }
-    .portal.menu-riel .menu-lista { display: block; }
-    .flotante { display: none; }
     .menu-item, .grupo-cab { min-height: 46px; font-size: 15px; }
     .grupo-items .menu-item { min-height: 44px; }
     .pestana .ir { max-width: 150px; }
     .inicio { padding: 16px 16px 24px; }
+    .conexiones { padding: 16px 16px 24px; }
     .ini-item { min-height: 48px; }
   }
 </style>
@@ -460,7 +533,7 @@
 
 <div class="portal" id="portal">
   <header class="cab">
-    <button class="cab-btn" id="btnMenu" type="button" aria-controls="menu" aria-expanded="true" aria-label="Mostrar u ocultar el menú de herramientas">
+    <button class="cab-btn" id="btnMenu" type="button" aria-controls="menu" aria-expanded="false" aria-label="Menú de herramientas">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <button class="marca" id="btnInicio" type="button" aria-label="Inicio del portal"><span>QUEMP<span class="in">IN</span></span><small>Herramientas</small></button>
@@ -499,10 +572,8 @@
 
   <div class="cuerpo">
     <nav class="menu" id="menu" aria-label="Herramientas QUEMPIN">
-      <div class="riel sin-barra" id="riel"></div>
       <div class="menu-lista sin-barra" id="menuLista"></div>
     </nav>
-    <div class="flotante sin-barra" id="flotante" role="dialog" hidden></div>
     <div class="velo" id="velo" hidden></div>
 
     <main class="principal">
@@ -527,7 +598,32 @@
           <div class="inicio">
             <h1 class="sr" id="tituloInicio">Inicio: todas las herramientas de QUEMPIN</h1>
             <div class="ini-grupos" id="iniGrupos"></div>
-            <p class="ini-pie"><kbd>Ctrl K</kbd> busca una herramienta, una pestaña de calculadora o un proyecto · <button type="button" id="iniAyuda">Cómo usar el portal</button></p>
+            <p class="ini-pie"><kbd>Ctrl K</kbd> busca una herramienta, una pestaña de calculadora o un proyecto · <button type="button" id="iniAyuda">Cómo usar el portal</button> · <button type="button" id="iniConexiones">Configuración y conexiones</button></p>
+          </div>
+        </section>
+        <!-- Configuración y conexiones: la arma pintarConexiones() con el bloque «portal-conexiones» -->
+        <section class="vista-conexiones sin-barra" id="vistaConexiones" aria-labelledby="tituloConexiones" hidden>
+          <div class="conexiones">
+            <header class="cx-cab">
+              <h1 id="tituloConexiones">Configuración y conexiones</h1>
+              <p>Lo que cada herramienta necesita en tu computador: las bibliotecas de OneDrive, los programas y los permisos del navegador, con dónde está cada cosa. Revísalo al empezar en un computador nuevo o si una herramienta deja de recibir datos.</p>
+            </header>
+            <div class="cx-arriba">
+              <section class="cx-panel" aria-labelledby="cxEstadoTit">
+                <h2 id="cxEstadoTit">En este navegador</h2>
+                <ul class="cx-estado" id="cxEstado"></ul>
+              </section>
+              <section class="cx-panel" aria-labelledby="cxNecesitaTit">
+                <h2 id="cxNecesitaTit">Qué necesita cada herramienta</h2>
+                <table class="cx-tabla" id="cxNecesita">
+                  <thead><tr><th scope="col">Herramienta</th><th scope="col">Necesita (toca uno para ver dónde está)</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </section>
+            </div>
+            <h2 class="cx-sec">Carpetas, programas y accesos</h2>
+            <p class="cx-nota">Las rutas son las del Explorador de archivos. Según cómo se agregó cada biblioteca, puede quedar dentro de «OneDrive - QUEMPIN SPA › Shortcuts» o de la carpeta «QUEMPIN SPA»: lo importante es que todas queden juntas, en la misma carpeta.</p>
+            <div class="cx-tarjetas" id="cxTarjetas"></div>
           </div>
         </section>
       </div>
@@ -550,13 +646,14 @@
     <h2 id="dlgAyudaTit">Cómo usar el portal</h2>
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador, su Carta Gantt y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
-      <li><strong>El Inicio y la franja de la izquierda</strong> las muestran en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. Cada ícono de la franja abre su grupo; ☰ la despliega con los nombres.</li>
+      <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
       <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él.</li>
       <li><strong>Excel y Sistema QUEMPIN.</strong> La Planilla de Ingreso se abre en Excel para la web, en otra pestaña del navegador. «Cotizar y comprar» abre el programa QUEMPIN.exe en la pantalla que elijas; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
       <li><strong>Abrir aparte</strong> (↗, arriba a la derecha) lleva la herramienta activa a su propia pestaña del navegador, en su dirección de siempre.</li>
       <li>La contraseña es la del equipo, la misma de siempre, y se escribe una sola vez por navegador.</li>
+      <li><strong>Configuración y conexiones</strong> (en Ayuda) muestra las carpetas, programas y permisos que necesita cada herramienta, dónde está cada uno y si este navegador ya los tiene conectados.</li>
     </ul>
     <div class="dlg-acc"><button class="btn-pri" value="ok">Entendido</button></div>
   </form>
@@ -675,11 +772,125 @@
      "claves": "calculadora tecnica"},
     {"id": "ayuda", "nombre": "Cómo usar el portal", "grupo": "ayuda", "tipo": "ayuda",
      "claves": "ayuda portal atajos como usar"},
-    {"id": "indice", "nombre": "Índice anterior", "grupo": "ayuda", "tipo": "marco",
-     "ruta": "/finanzas-quempin/", "exacta": true,
-     "desc": "La página «Herramientas QUEMPIN» de antes, sin cambios.",
-     "claves": "indice hub herramientas tableros anterior"}
+    {"id": "conexiones", "nombre": "Configuración y conexiones", "corto": "Conexiones", "grupo": "ayuda", "tipo": "vista", "vista": "vistaConexiones", "icono": "engranaje",
+     "desc": "Las carpetas, programas y permisos que necesita cada herramienta: dónde están y cómo dejarlos conectados.",
+     "claves": "configuracion conexiones conectar carpeta carpetas intercambio buzon sincronizar sincronizacion onedrive sharepoint biblioteca permiso contrasena programa exe procesador facturas control de documentos"}
   ]
+}
+</script>
+
+<!-- Configuración y conexiones (2026-10-16): lo que cada herramienta necesita en un computador. Lo arma
+     pintarConexiones() con textContent; test_portal.py revisa que cada «usan» exista en el registro.
+     ruta: dónde está, carpeta por carpeta (en el computador, o «en» SharePoint si no se lleva a OneDrive).
+     web: su carpeta en SharePoint (se codifica al pintar). estado: lo que este navegador puede revisar solo.
+     Rutas comprobadas en este computador y en SharePoint el 2026-10-16 (Sistema Intercambio/ubicacion.py,
+     Sistema QUEMPIN datos/ajustes.json, Centro de Costos RAIZ_DOCS). -->
+<script type="application/json" id="portal-conexiones">
+{
+  "elementos": [
+    {"id": "cuenta", "tipo": "Cuenta", "nombre": "Cuenta Microsoft 365 de QUEMPIN", "corto": "Cuenta Microsoft 365",
+     "para": "Tu correo @quempin.cl. Con ella entras a SharePoint, a Excel para la web y a OneDrive, que trae las bibliotecas del equipo a tu computador.",
+     "pasos": ["Inicia sesión en OneDrive (la nube junto al reloj de Windows) con tu cuenta @quempin.cl.",
+               "En el navegador, entra a SharePoint con la misma cuenta: los enlaces de esta página la usan."],
+     "usan": ["planilla"],
+     "falta": "SharePoint y la Planilla piden iniciar sesión, y OneDrive no trae las bibliotecas."},
+    {"id": "biblioteca", "tipo": "Biblioteca de SharePoint", "nombre": "Formulación de proyectos", "corto": "Biblioteca Formulación",
+     "para": "La biblioteca del equipo: la Planilla de Ingreso, una carpeta por oferta y la carpeta de intercambio. Es la conexión más importante.",
+     "ruta": ["OneDrive - QUEMPIN SPA", "Formulación de proyectos - Documentos"],
+     "web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos",
+     "pasos": ["Ábrela en SharePoint y elige «Agregar acceso directo a Mis archivos»: aparece en el Explorador de archivos, dentro de «OneDrive - QUEMPIN SPA».",
+               "Si usas Sistema QUEMPIN, agrega «Cotizaciones y OC» de la misma forma: las dos bibliotecas tienen que quedar en la misma carpeta.",
+               "En el Formulador: Configuración › «Carpeta compartida (OneDrive)» › Conectar carpeta, y elige esta biblioteca completa, no una carpeta de adentro."],
+     "usan": ["formulador", "ingresar", "cotizacion", "orden-compra"],
+     "estado": "biblioteca",
+     "falta": "El Formulador no comparte los presupuestos con el equipo ni guarda el Excel en la carpeta de cada oferta, y Sistema QUEMPIN no recibe sus borradores."},
+    {"id": "intercambio", "tipo": "Carpeta", "nombre": "Carpeta de intercambio", "corto": "Carpeta de intercambio",
+     "para": "El buzón y la cartelera por donde las herramientas se pasan los datos: «buzon» (pedidos que esperan), «publicado» (lo que cada una publica) y «procesado» (lo ya atendido). Su LEEME.md lo explica.",
+     "ruta": ["OneDrive - QUEMPIN SPA", "Formulación de proyectos - Documentos", ".HERRAMIENTAS FORMULACIÓN", "Intercambio"],
+     "web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos/.HERRAMIENTAS FORMULACIÓN/Intercambio",
+     "pasos": ["No se conecta aparte: queda conectada al conectar la biblioteca completa en el Formulador. «Ingresar avance» usa esa misma conexión, porque está en el mismo sitio web.",
+               "Sistema QUEMPIN y el procesador la encuentran solos cuando la biblioteca está en OneDrive.",
+               "No muevas, renombres ni edites sus archivos a mano."],
+     "usan": ["formulador", "ingresar", "cotizacion", "orden-compra", "procesador"],
+     "estado": "procesador",
+     "falta": "Lo que se envía queda esperando. Sin conexión, el Formulador descarga cada envío para dejarlo a mano en «buzon»."},
+    {"id": "planilla", "tipo": "Excel", "nombre": "Planilla de Ingreso de Requerimientos", "corto": "Planilla de Ingreso",
+     "para": "Cada requerimiento con su N°, la clave del proyecto en todas las herramientas. La llevan las personas: ninguna herramienta la escribe.",
+     "ruta": ["OneDrive - QUEMPIN SPA", "Formulación de proyectos - Documentos", "Planilla de Ingreso de Requerimientos.xlsx"],
+     "abrir": "planilla",
+     "pasos": ["La que vale es la de la raíz de la biblioteca. La copia que hay en «.HERRAMIENTAS FORMULACIÓN» es antigua."],
+     "usan": ["formulador", "cotizacion", "orden-compra", "flujo-caja", "oportunidades"],
+     "falta": "Sin su N°, las herramientas no saben a qué proyecto pertenece una oferta, una cotización o un costo."},
+    {"id": "cotizaciones", "tipo": "Biblioteca de SharePoint", "nombre": "Cotizaciones y OC", "corto": "Biblioteca Cotizaciones y OC",
+     "para": "Todo lo de Sistema QUEMPIN: el programa, su carpeta compartida y el Control de Documentos.",
+     "ruta": ["OneDrive - QUEMPIN SPA", "Cotizaciones y OC - Documentos"],
+     "web": "https://quempinspa2020.sharepoint.com/sites/EntornoQuempin/Documentos compartidos",
+     "pasos": ["Ábrela en SharePoint y elige «Agregar acceso directo a Mis archivos», igual que «Formulación de proyectos», para que queden lado a lado."],
+     "usan": ["cotizacion", "orden-compra"],
+     "falta": "No llegan a tu computador el programa, su carpeta compartida ni el Control de Documentos."},
+    {"id": "sistema", "tipo": "Programa", "nombre": "Sistema QUEMPIN (QUEMPIN.exe)", "corto": "QUEMPIN.exe",
+     "para": "Emite las cotizaciones (60) y las órdenes de compra (61) con su folio. «Cotizar y comprar» lo abre desde el portal.",
+     "ruta": ["OneDrive - QUEMPIN SPA", "Cotizaciones y OC - Documentos", "QUEMPIN.exe"],
+     "pasos": ["Ábrelo una vez con doble clic desde esa carpeta (versión 1.3.8 o más nueva). «Crear acceso directo.bat», en la Carpeta compartida QUEMPIN, lo deja en el Escritorio.",
+               "La primera vez pide la Carpeta compartida QUEMPIN (botón Examinar…), tu nombre, iniciales, cargo y correo. Quedan solo en tu computador y se cambian en Configuración › Mi perfil.",
+               "La primera vez que el portal lo abre, el navegador pregunta: marca «Permitir siempre» y elige «Abrir»."],
+     "usan": ["cotizacion", "orden-compra"],
+     "falta": "Los botones de «Cotizar y comprar» no hacen nada: abre el programa una vez desde su carpeta."},
+    {"id": "compartida", "tipo": "Carpeta", "nombre": "Carpeta compartida QUEMPIN", "corto": "Carpeta compartida",
+     "para": "Los datos comunes de Sistema QUEMPIN: clientes, proveedores, documentos emitidos y sus PDF, más su guía LEEME.md y las versiones anteriores del programa.",
+     "ruta": ["OneDrive - QUEMPIN SPA", "Cotizaciones y OC - Documentos", "Carpeta compartida QUEMPIN"],
+     "web": "https://quempinspa2020.sharepoint.com/sites/EntornoQuempin/Documentos compartidos/Carpeta compartida QUEMPIN",
+     "pasos": ["Se elige una vez, al abrir QUEMPIN.exe por primera vez. Si el programa la vuelve a pedir, OneDrive aún no termina de sincronizar: indícala de nuevo."],
+     "usan": ["cotizacion", "orden-compra"],
+     "falta": "Sistema QUEMPIN vuelve a pedir su configuración al abrirse."},
+    {"id": "control", "tipo": "Excel", "nombre": "Control de Documentos", "corto": "Control de Documentos",
+     "para": "La numeración de cada tipo de documento: memorias (40–42), cotización (60), orden de compra (61) y evaluación de costos (81). Sistema QUEMPIN le agrega una fila por documento.",
+     "ruta": ["OneDrive - QUEMPIN SPA", "Cotizaciones y OC - Documentos", "Orden Interno", "Control Cotizaciones y OC", "QUEMPIN_Control de Documentos 2026.xlsx"],
+     "web": "https://quempinspa2020.sharepoint.com/sites/EntornoQuempin/Documentos compartidos/Orden Interno/Control Cotizaciones y OC",
+     "pasos": ["Se fija una vez para todo el equipo en Sistema QUEMPIN › Configuración › Ajustes del equipo, y se cambia ahí al llegar un año nuevo.",
+               "Sistema QUEMPIN usa el de la carpeta «Control Cotizaciones y OC»."],
+     "usan": ["cotizacion", "orden-compra", "formulador"],
+     "falta": "Las filas quedan en cola y se escriben cuando el archivo vuelve a estar disponible."},
+    {"id": "facturas", "tipo": "Carpeta de SharePoint", "nombre": "Facturas y boletas", "corto": "Facturas y boletas",
+     "para": "Donde se sube cada factura y boleta, en la carpeta de su proyecto. El Centro de Costos las registra desde ahí.",
+     "en": "SharePoint",
+     "ruta": ["Sitio de comunicación", "Documentos", "Centro de Costos", "Facturas y Boletas", "Chile o Perú", "Carpeta del proyecto"],
+     "web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos/Facturas y Boletas",
+     "pasos": ["Sube el documento a la carpeta de su proyecto, o crea una con el nombre del proyecto. No hace falta tenerla en OneDrive: se sube desde SharePoint o desde el teléfono.",
+               "Se registra los lunes a las 10:00, o antes si quien administra las finanzas actualiza."],
+     "usan": ["centro-costos", "analisis", "cotizador", "flujo-caja"],
+     "falta": "Ese gasto no aparece en el Centro de Costos, el Análisis Financiero ni el Flujo de Caja."},
+    {"id": "gestion", "tipo": "Biblioteca de SharePoint", "nombre": "Gestión de Proyectos", "corto": "Biblioteca Gestión de Proyectos",
+     "para": "Las carpetas de los proyectos en ejecución, cada una con su N° adelante (por ejemplo «250. Nombre del proyecto»). El procesador las une con su requerimiento.",
+     "ruta": ["OneDrive - QUEMPIN SPA", "Gestión de Proyectos - Documentos"],
+     "web": "https://quempinspa2020.sharepoint.com/sites/Proyectos/Documentos compartidos",
+     "pasos": ["Solo hace falta en el computador del procesador, agregada igual que las otras dos bibliotecas."],
+     "usan": ["procesador"],
+     "falta": "El cruce de proyectos no muestra la carpeta de ejecución de cada N°."},
+    {"id": "contrasena", "tipo": "En el navegador", "nombre": "Contraseña del equipo", "corto": "Contraseña", "icono": "llave",
+     "para": "Abre los tableros y el Formulador. Es la misma para todos y se escribe una vez por navegador: al entrar a una herramienta se abren las demás.",
+     "pasos": ["Pídesela a quien administra las herramientas QUEMPIN. No la compartas fuera del equipo.",
+               "Si borras los datos del navegador, la vuelve a pedir."],
+     "usan": ["formulador", "oportunidades", "cotizador", "centro-costos", "analisis", "ingresar", "flujo-caja"],
+     "estado": "contrasena",
+     "falta": "Cada herramienta muestra su candado y no abre sus datos."},
+    {"id": "navegador", "tipo": "En el navegador", "nombre": "Chrome o Edge de escritorio", "corto": "Chrome o Edge",
+     "para": "Solo ellos pueden conectar una carpeta de tu computador al Formulador y a «Ingresar avance».",
+     "pasos": ["En otro navegador o en el teléfono, el Formulador descarga cada envío para dejarlo a mano en «buzon»."],
+     "usan": ["formulador", "ingresar"],
+     "estado": "navegador",
+     "falta": "No se puede conectar la biblioteca: los envíos se descargan."}
+  ],
+  "procesador": {
+    "id": "procesador", "nombre": "El computador del procesador", "corto": "El procesador",
+    "para": "Un computador de QUEMPIN hace el trabajo automático con tres tareas programadas de Windows. Necesita estar encendido, con OneDrive al día y las tres bibliotecas más la carpeta del Centro de Costos. Si está apagado, todo espera y nada se pierde.",
+    "tareas": [
+      {"nombre": "Procesar intercambio QUEMPIN", "cuando": "Cada 2 horas", "hace": "Atiende el buzón, renueva lo publicado y deja su pulso."},
+      {"nombre": "Actualizar Finanzas QUEMPIN", "cuando": "Lunes, 10:00", "hace": "Registra facturas, actualiza Análisis Financiero, Cotizador y Flujo de Caja, y publica los tableros."},
+      {"nombre": "Oportunidades Mercado Publico QUEMPIN", "cuando": "Todos los días, 09:00", "hace": "Consulta Mercado Público con el ticket de la API, guardado cifrado en ese computador, y publica Oportunidades."}
+    ],
+    "falta": "Pasadas 4 horas hábiles sin una vuelta del procesador, el Formulador y «Ingresar avance» lo avisan en rojo: avisa a quien administra las herramientas."
+  }
 }
 </script>
 
@@ -713,6 +924,7 @@
   const MAX_MARCOS = 8;                  // herramientas cargadas a la vez; las demás se recargan al volver
   const MOVIL = window.matchMedia('(max-width: 760px)');
   const RUTA_PORTAL = rutaNormal(location.pathname);
+  const RUTA_INDICE = RUTA_PORTAL.replace(/[^/]+\/$/, '');   // /finanzas-quempin/
 
   const $ = (s) => document.querySelector(s);
   const portal = $('#portal');
@@ -748,6 +960,15 @@
     barras: '<path d="M3 21h18"/><path d="M6 17v-6M11 17V5M16 17v-9"/>',
     billetera: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 14h2"/>',
     ayuda: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7"/><path d="M12 17h.01"/>',
+    // El mismo engranaje de «Configuración» del Formulador
+    engranaje: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+    nube: '<path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.6A3.7 3.7 0 0 1 17.5 18z"/>',
+    tabla: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 15h18M9 4v16"/>',
+    ventana: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8.5h18"/><path d="M6 6.3h.01M8.5 6.3h.01" stroke-width="2.4"/>',
+    persona: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    llave: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/>',
+    globo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/>',
+    reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     flecha: '<path d="M6 9l6 6 6-6"/>',
     fuera: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
     cerrar: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -790,15 +1011,18 @@
     activa: 'inicio',           // familia activa, o 'inicio'
     proyecto: leer(LS.proyecto, null),   // código del proyecto elegido (la última versión manda)
     pais: leer(LS.pais, 'cl') === 'pe' ? 'pe' : 'cl',
-    // modo: 'riel' (franja de íconos) o 'abierto' (con los nombres); abierto: el único grupo
-    // desplegado del menú con nombres (así cabe sin barra de desplazamiento)
-    menu: Object.assign({ modo: 'riel', abierto: 'formular' }, leer(LS.menu, {}) || {}),
+    // abierto: el único grupo desplegado del menú (así cabe sin barra de desplazamiento)
+    menu: Object.assign({ abierto: 'formular' }, leer(LS.menu, {}) || {}),
     proyectos: [],
     pendiente: null             // herramienta que espera que se elija un proyecto (Carta Gantt)
   };
   delete estado.menu.cerrados;  // de versiones anteriores del portal
   delete estado.menu.oculto;
+  delete estado.menu.modo;      // la franja de íconos (hasta el 2026-10-16)
   const familiaDe = (h) => (h && (h.familia || h.id)) || null;
+  // Las vistas propias del portal (Configuración y conexiones) van en su pestaña, sin marco.
+  const VISTAS = REG.herramientas.filter((h) => h.tipo === 'vista');
+  const esVista = (p) => !!p && (HERR.get(p.herr) || {}).tipo === 'vista';
 
   // ---- Proyectos del Formulador (los de este navegador; solo lectura) ------------------------
   function reqDe(p) {
@@ -845,7 +1069,8 @@
   function herramientaDeUrl(u) {
     if (!u || u.origin !== location.origin) return null;
     const p = rutaNormal(u.pathname);
-    if (p === RUTA_PORTAL || p.startsWith(RUTA_PORTAL)) return { portal: true };
+    // El índice «Herramientas QUEMPIN» de antes (la carpeta de arriba del portal) lo reemplaza el Inicio.
+    if (p === RUTA_PORTAL || p.startsWith(RUTA_PORTAL) || p === RUTA_INDICE) return { portal: true };
     for (const r of RUTAS) {
       if (r.h.exacta ? p === r.prefijo : p.startsWith(r.prefijo)) return { h: r.h, pais: r.pais };
     }
@@ -917,75 +1142,6 @@
       lista.append(sec);
     });
     pintarGrupos();
-    construirRiel();
-  }
-  // La franja: Inicio, un ícono por grupo (abre su panel) y la ayuda al fondo.
-  function botonRiel(id, nombre, ico) {
-    const b = crear('button', 'riel-btn');
-    b.type = 'button';
-    b.dataset.grupo = id;
-    const i = crear('span', 'ico');
-    i.append(icono(ico, 22));
-    b.append(i, crear('span', null, nombre));
-    return b;
-  }
-  function construirRiel() {
-    const riel = $('#riel');
-    riel.textContent = '';
-    const inicio = botonRiel('inicio', 'Inicio', 'inicio');
-    inicio.title = 'Inicio: todas las herramientas';
-    inicio.addEventListener('click', () => abrir('inicio'));
-    riel.append(inicio);
-    REG.grupos.forEach((g) => {
-      if (g.id === 'ayuda') riel.append(crear('div', 'riel-sep'));
-      const b = botonRiel(g.id, g.corto || g.nombre, g.icono);
-      b.title = g.nombre;
-      b.setAttribute('aria-haspopup', 'dialog');
-      b.setAttribute('aria-controls', 'flotante');
-      b.setAttribute('aria-expanded', 'false');
-      b.addEventListener('click', () => { if (panelDe === g.id) cerrarPanel(); else abrirPanel(g, b); });
-      riel.append(b);
-    });
-  }
-  // El panel de un grupo, junto a la franja: sus herramientas con su línea breve, como en el Inicio.
-  let panelDe = null;
-  function abrirPanel(g, boton) {
-    cerrarPanel();
-    const f = $('#flotante');
-    f.textContent = '';
-    f.setAttribute('aria-label', g.nombre);
-    const h2 = crear('h2');
-    const i = crear('span', 'ico');
-    i.append(icono(g.icono));
-    h2.append(i, crear('span', null, g.nombre));
-    const ul = crear('ul', 'ini-lista');
-    const actual = herrActual();
-    REG.herramientas.filter((h) => h.grupo === g.id).forEach((h) => {
-      const b = itemHerramienta(h);
-      if (h.id === actual) b.setAttribute('aria-current', 'page');
-      const li = crear('li');
-      li.append(b);
-      ul.append(li);
-    });
-    f.append(h2, ul);
-    f.hidden = false;
-    // A la altura de su ícono, sin salirse por abajo
-    f.style.top = Math.max(8, Math.min(boton.offsetTop - 6, f.parentElement.clientHeight - f.offsetHeight - 8)) + 'px';
-    boton.setAttribute('aria-expanded', 'true');
-    panelDe = g.id;
-    const primero = f.querySelector('.ini-item');
-    if (primero) primero.focus({ preventScroll: true });
-  }
-  function cerrarPanel(devolverFoco) {
-    if (!panelDe) return;
-    const b = document.querySelector('.riel-btn[data-grupo="' + panelDe + '"]');
-    $('#flotante').hidden = true;
-    $('#flotante').textContent = '';
-    panelDe = null;
-    if (b) {
-      b.setAttribute('aria-expanded', 'false');
-      if (devolverFoco) b.focus();
-    }
   }
   const herrActual = () => (estado.activa === 'inicio' ? 'inicio' : ((pestanaDe(estado.activa) || {}).herr || ''));
   let marcada = null;   // la herramienta que se marcó la última vez
@@ -993,11 +1149,6 @@
     const actual = herrActual();
     document.querySelectorAll('.menu-item').forEach((b) => {
       if (b.dataset.herr === actual) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-    });
-    // En la franja se marca el grupo de la herramienta activa
-    const grupo = actual === 'inicio' ? 'inicio' : (HERR.get(actual) || {}).grupo;
-    document.querySelectorAll('.riel-btn').forEach((b) => {
-      if (b.dataset.grupo === grupo) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
     });
     // Al cambiar de herramienta se despliega su grupo (si la persona abrió otro a mano, se respeta hasta el próximo cambio).
     const h = HERR.get(actual);
@@ -1008,15 +1159,20 @@
     }
     marcada = actual;
   }
-  function abrirMenuMovil(abrir) {
-    portal.classList.toggle('menu-movil', abrir);
-    $('#velo').hidden = !abrir;
-    $('#btnMenu').setAttribute('aria-expanded', abrir ? 'true' : 'false');
-  }
-  function pintarBotonMenu() {
-    const conNombres = estado.menu.modo === 'abierto';
-    $('#btnMenu').setAttribute('aria-expanded', MOVIL.matches ? String(portal.classList.contains('menu-movil')) : String(conNombres));
-    portal.classList.toggle('menu-riel', !conNombres);
+  // El menú se despliega encima de la herramienta solo al tocar ☰ (en el computador y en el teléfono).
+  const menuAbierto = () => portal.classList.contains('menu-abierto');
+  function mostrarMenu(si, devolverFoco) {
+    if (si === menuAbierto()) return;
+    portal.classList.toggle('menu-abierto', si);
+    $('#velo').hidden = !si;
+    $('#btnMenu').setAttribute('aria-expanded', si ? 'true' : 'false');
+    if (si) {
+      // El foco va a la herramienta abierta (o a la primera), para seguir con el teclado
+      const actual = document.querySelector('#menu .menu-item[aria-current="page"]');
+      (actual && actual.getClientRects().length ? actual : $('#menu .menu-item')).focus({ preventScroll: true });
+    } else if (devolverFoco) {
+      $('#btnMenu').focus();
+    }
   }
 
   // ---- Pestañas y marcos -------------------------------------------------------------------------
@@ -1046,7 +1202,7 @@
       ir.type = 'button';
       ir.setAttribute('role', 'tab');
       ir.setAttribute('aria-selected', activa ? 'true' : 'false');
-      ir.setAttribute('aria-controls', p.inicio ? 'vistaInicio' : 'marco-' + p.familia);
+      ir.setAttribute('aria-controls', p.inicio ? 'vistaInicio' : esVista(p) ? HERR.get(p.herr).vista : 'marco-' + p.familia);
       ir.title = p.inicio ? 'Inicio' : etiqueta(p, true);
       ir.addEventListener('click', () => activar(p.familia));
       w.append(ir);
@@ -1063,8 +1219,8 @@
     });
     const p = pestanaDe(estado.activa);
     const h = p && HERR.get(p.herr);
-    $('#btnRecargar').hidden = !p;
-    $('#btnAparte').hidden = !p;
+    $('#btnRecargar').hidden = !p || esVista(p);
+    $('#btnAparte').hidden = !p || esVista(p);
     $('#pais').hidden = !(h && h.peru);    // solo en los tableros que existen en Chile y en Perú
     pintarDato();
   }
@@ -1126,13 +1282,14 @@
     if (familia !== 'inicio' && !pestanaDe(familia)) familia = 'inicio';
     estado.activa = familia;
     $('#vistaInicio').hidden = familia !== 'inicio';
+    VISTAS.forEach((h) => { $('#' + h.vista).hidden = familia !== h.id; });
     let actual = null;
     estado.pestanas.forEach((p) => {
       const es = p.familia === familia;
       if (es) {
         actual = p;
         p.usado = Date.now();
-        if (!p.marco) crearMarco(p);
+        if (!p.marco && !esVista(p)) crearMarco(p);
       }
       if (p.marco) p.marco.classList.toggle('oculto', !es);
       if (p.cargador) p.cargador.hidden = !es || !p.cargando;
@@ -1141,6 +1298,7 @@
     marcarMenu();
     try { history.replaceState(null, '', '#/' + (actual ? actual.herr : '')); } catch (e) { /* nada */ }
     if (familia === 'inicio') pintarInicio();
+    if (familia === 'conexiones') pintarConexiones();
     guardarPestanas();
   }
   function cerrar(familia) {
@@ -1200,7 +1358,7 @@
     const h = HERR.get(id);
     if (!h) return;
     cerrarFlotantes();
-    if (MOVIL.matches) abrirMenuMovil(false);
+    mostrarMenu(false);
     if (h.tipo === 'inicio') { activar('inicio'); return; }
     if (h.tipo === 'excel') {
       window.open(h.url, '_blank', 'noopener');
@@ -1210,6 +1368,11 @@
     if (h.tipo === 'programa') { abrirPrograma(h); return; }
     if (h.tipo === 'archivo') { mostrarInfo(h); return; }
     if (h.tipo === 'ayuda') { $('#dlgAyuda').showModal(); return; }
+    if (h.tipo === 'vista') {
+      if (!pestanaDe(h.id)) estado.pestanas.push({ familia: h.id, herr: h.id, url: '', ultima: '', marco: null, cargador: null, cargando: false, usado: 0 });
+      activar(h.id);
+      return;
+    }
     if (h.requiereProyecto && !proyectoActual() && !op.url) {
       estado.pendiente = id;
       abrirSelector('Elige el proyecto para ver su ' + h.nombre + '.');
@@ -1409,8 +1572,7 @@
   }
 
   // ---- Inicio --------------------------------------------------------------------------------------
-  // Una herramienta como fila: nombre, línea breve y ↗ si se abre fuera del portal. La usan el Inicio
-  // y el panel de cada grupo de la franja.
+  // Una herramienta como fila del Inicio: nombre, línea breve y ↗ si se abre fuera del portal.
   function itemHerramienta(h) {
     const b = crear('button', 'ini-item');
     b.type = 'button';
@@ -1489,6 +1651,345 @@
     }
     $('#dlgInfoDesc').textContent = h.desc || '';
     $('#dlgInfo').showModal();
+  }
+
+  // ---- Configuración y conexiones ------------------------------------------------------------------
+  // Qué carpetas, programas y permisos necesita cada herramienta, dónde están (bloque «portal-conexiones»)
+  // y lo que este navegador puede revisar solo: si conecta carpetas, si la biblioteca del equipo está
+  // conectada (la misma conexión del Formulador: IndexedDB «qpn-intercambio», que se comparte porque es
+  // el mismo sitio), el pulso del procesador y si ya tiene la contraseña. Solo lee; no guarda nada.
+  const CX = JSON.parse(document.getElementById('portal-conexiones').textContent);
+  const CX_POR_ID = new Map(CX.elementos.map((e) => [e.id, e]).concat([[CX.procesador.id, CX.procesador]]));
+  const ICONO_TIPO = { 'Cuenta': 'persona', 'Biblioteca de SharePoint': 'nube', 'Carpeta': 'proyectos', 'Carpeta de SharePoint': 'proyectos',
+    'Excel': 'tabla', 'Programa': 'ventana', 'En el navegador': 'globo' };
+  const ESTADOS = [
+    { id: 'navegador', nombre: 'Navegador' },
+    { id: 'biblioteca', nombre: 'Biblioteca del equipo' },
+    { id: 'procesador', nombre: 'Procesador del intercambio' },
+    { id: 'contrasena', nombre: 'Contraseña del equipo' }
+  ];
+  const REDUCIR = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const unir = (xs) => (xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1]);
+
+  // Lo que necesita una herramienta: lo que la nombra, o lo de la dueña de su pestaña (Carta Gantt, Seguimiento).
+  function necesidades(h) {
+    const de = (id) => CX.elementos.filter((e) => e.usan.includes(id)).map((e) => e.id);
+    const propias = de(h.id);
+    return propias.length || !h.alias ? propias : de(h.familia);
+  }
+  function irATarjeta(id) {
+    const t = document.getElementById('cx-' + id);
+    if (!t) return;
+    t.scrollIntoView({ block: 'start', behavior: REDUCIR.matches ? 'auto' : 'smooth' });
+    t.classList.add('resaltada');
+    setTimeout(() => t.classList.remove('resaltada'), 1800);
+  }
+  function chipElemento(id) {
+    const e = CX_POR_ID.get(id);
+    const b = crear('button', 'cx-chip', e.corto || e.nombre);
+    b.type = 'button';
+    b.title = 'Ver dónde está: ' + e.nombre;
+    b.addEventListener('click', () => irATarjeta(id));
+    return b;
+  }
+  // En «Lo usan»: una herramienta abre su pestaña; el procesador, que no está en el portal, lleva a su tarjeta.
+  function chipUsa(id) {
+    if (!HERR.has(id)) return chipElemento(id);
+    const h = HERR.get(id);
+    const b = crear('button', 'cx-chip herr', h.nombre);
+    b.type = 'button';
+    b.title = 'Abrir ' + h.nombre;
+    b.addEventListener('click', () => abrir(id));
+    return b;
+  }
+  function pildora(estadoId) {
+    const p = crear('span', 'cx-pildora');
+    p.dataset.estado = estadoId;
+    p.append(crear('span', 'cx-punto'), crear('span', null, 'Revisando…'));
+    return p;
+  }
+  function cabeceraTarjeta(e, tipo, ico) {
+    const cab = crear('header', 'cx-tar-cab');
+    const i = crear('span', 'ico');
+    i.append(icono(ico, 20));
+    const tit = crear('div', 'cx-tar-tit');
+    const h3 = crear('h3', null, e.nombre);
+    h3.id = 'cxt-' + e.id;
+    tit.append(crear('span', 'cx-tipo', tipo), h3);
+    cab.append(i, tit);
+    if (e.estado) cab.append(pildora(e.estado));
+    return cab;
+  }
+  function parrafoFalta(texto) {
+    const p = crear('p', 'cx-falta');
+    p.append(crear('strong', null, 'Si falta: '), document.createTextNode(texto));
+    return p;
+  }
+  function tarjeta(e) {
+    const t = crear('article', 'cx-tarjeta');
+    t.id = 'cx-' + e.id;
+    t.setAttribute('aria-labelledby', 'cxt-' + e.id);
+    t.append(cabeceraTarjeta(e, e.tipo, e.icono || ICONO_TIPO[e.tipo] || 'documento'), crear('p', 'cx-para', e.para));
+    if (e.ruta) {
+      const r = crear('div', 'cx-ruta');
+      r.append(crear('span', 'cx-ruta-et', e.en === 'SharePoint' ? 'En SharePoint' : 'En tu computador'));
+      const ol = crear('ol', 'cx-migas');
+      ol.setAttribute('aria-label', 'Ruta, carpeta por carpeta');
+      e.ruta.forEach((x) => ol.append(crear('li', null, x)));
+      r.append(ol);
+      t.append(r);
+    }
+    if (e.web || e.abrir) {
+      const acc = crear('div', 'cx-acc');
+      if (e.web) {
+        const a = crear('a', 'cx-enlace');
+        a.href = encodeURI(e.web);
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.append(crear('span', null, 'Abrir en SharePoint'), icono('fuera', 14));
+        acc.append(a);
+      }
+      if (e.abrir) {
+        const b = crear('button', 'cx-enlace');
+        b.type = 'button';
+        b.append(crear('span', null, 'Abrir en Excel para la web'), icono('fuera', 14));
+        b.addEventListener('click', () => abrir(e.abrir));
+        acc.append(b);
+      }
+      t.append(acc);
+    }
+    if (e.pasos && e.pasos.length) {
+      t.append(crear('h4', null, 'Cómo dejarlo listo'));
+      const ol = crear('ol', 'cx-pasos');
+      e.pasos.forEach((x) => ol.append(crear('li', null, x)));
+      t.append(ol);
+    }
+    const u = crear('div', 'cx-usan');
+    u.append(crear('span', 'cx-usan-et', 'Lo usan'));
+    e.usan.forEach((id) => u.append(chipUsa(id)));
+    t.append(u);
+    if (e.falta) t.append(parrafoFalta(e.falta));
+    return t;
+  }
+  function tarjetaProcesador() {
+    const e = CX.procesador;
+    const t = crear('section', 'cx-tarjeta cx-procesador');
+    t.id = 'cx-' + e.id;
+    t.setAttribute('aria-labelledby', 'cxt-' + e.id);
+    t.append(cabeceraTarjeta(Object.assign({ estado: 'procesador' }, e), 'Lo que corre solo', 'reloj'), crear('p', 'cx-para', e.para));
+    const tabla = crear('table', 'cx-tabla cx-tareas');
+    const cab = crear('tr');
+    ['Tarea programada', 'Cuándo', 'Qué hace'].forEach((x) => { const th = crear('th', null, x); th.scope = 'col'; cab.append(th); });
+    const thead = crear('thead');
+    thead.append(cab);
+    const tbody = crear('tbody');
+    e.tareas.forEach((x) => {
+      const tr = crear('tr');
+      const th = crear('th', null, x.nombre);
+      th.scope = 'row';
+      tr.append(th, crear('td', null, x.cuando), crear('td', null, x.hace));
+      tbody.append(tr);
+    });
+    tabla.append(thead, tbody);
+    t.append(tabla, parrafoFalta(e.falta));
+    return t;
+  }
+  let cxArmada = false;
+  function armarConexiones() {
+    if (cxArmada) return;
+    cxArmada = true;
+    ESTADOS.forEach((s) => {
+      const li = crear('li');
+      li.dataset.estado = s.id;
+      const txt = crear('div', 'cx-est-txt');
+      const nom = crear('button', 'cx-est-nom', s.nombre);
+      nom.type = 'button';
+      nom.title = 'Ver cómo dejarlo listo';
+      nom.addEventListener('click', () => irATarjeta(s.id));
+      txt.append(nom, crear('span', 'cx-est-det', 'Revisando…'));
+      li.append(crear('span', 'cx-punto'), txt, crear('div', 'cx-est-acc'));
+      $('#cxEstado').append(li);
+    });
+    // Una fila por herramienta (o por varias que necesitan lo mismo); las calculadoras no necesitan nada.
+    const filas = [];
+    REG.herramientas.forEach((h) => {
+      if (!GRUPO_NOMBRE.has(h.grupo) || h.grupo === 'ayuda') return;
+      const nec = necesidades(h);
+      const clave = h.grupo + '|' + nec.join(',');
+      const f = filas.find((x) => x.clave === clave);
+      if (f) f.nombres.push(h.nombre); else filas.push({ clave, grupo: h.grupo, nombres: [h.nombre], nec });
+    });
+    filas.forEach((f) => {
+      const tr = crear('tr');
+      const th = crear('th', null, f.grupo === 'calcular' && f.nombres.length > 1 ? GRUPO_NOMBRE.get(f.grupo) + ' (todas)' : unir(f.nombres));
+      th.scope = 'row';
+      const td = crear('td');
+      if (f.nec.length) {
+        const c = crear('div', 'cx-chips');
+        f.nec.forEach((id) => c.append(chipElemento(id)));
+        td.append(c);
+      } else {
+        td.append(crear('span', 'cx-nada', 'Nada: funciona sola, sin contraseña.'));
+      }
+      tr.append(th, td);
+      $('#cxNecesita tbody').append(tr);
+    });
+    const cont = $('#cxTarjetas');
+    CX.elementos.forEach((e) => cont.append(tarjeta(e)));
+    cont.after(tarjetaProcesador());
+  }
+
+  // La biblioteca que conectó el Formulador en este navegador (js/intercambio.js): solo se lee.
+  function leerCarpetas() {
+    return new Promise((listo) => {
+      let req;
+      try { req = indexedDB.open('qpn-intercambio'); } catch (e) { listo({}); return; }
+      // No existe todavía: se deja sin crear (al cancelarla el navegador no la guarda) para que el Formulador la arme a su modo.
+      req.onupgradeneeded = () => { try { req.transaction.abort(); } catch (e) { /* nada */ } };
+      req.onerror = (e) => { if (e && e.preventDefault) e.preventDefault(); listo({}); };
+      req.onsuccess = () => {
+        const db = req.result;
+        try {
+          const tx = db.transaction('carpetas', 'readonly');
+          const tienda = tx.objectStore('carpetas');
+          const a = tienda.get('intercambio');
+          const b = tienda.get('biblioteca');
+          tx.oncomplete = () => { db.close(); listo({ intercambio: a.result || null, biblioteca: b.result || null }); };
+          tx.onerror = () => { db.close(); listo({}); };
+        } catch (e) { db.close(); listo({}); }
+      };
+    });
+  }
+  async function permisoDe(h) {
+    try { return await h.queryPermission({ mode: 'readwrite' }); } catch (e) { return 'prompt'; }
+  }
+  const nombreClave = (s) => String(s || '').normalize('NFC').toLowerCase();
+  async function hijaComo(dir, nombre) {
+    try {
+      for await (const [n, h] of dir.entries()) if (h.kind === 'directory' && nombreClave(n) === nombreClave(nombre)) return h;
+    } catch (e) { /* sin permiso */ }
+    return null;
+  }
+  // La carpeta de intercambio, si ya hay permiso (con el de la biblioteca alcanza, como en el Formulador).
+  async function intercambioLegible(c) {
+    if (c.intercambio && (await permisoDe(c.intercambio)) === 'granted') return c.intercambio;
+    if (c.biblioteca && (await permisoDe(c.biblioteca)) === 'granted') {
+      const herramientas = await hijaComo(c.biblioteca, '.Herramientas formulación');
+      return herramientas ? hijaComo(herramientas, 'Intercambio') : null;
+    }
+    return null;
+  }
+  async function leerPulso(dir) {
+    try {
+      const pub = await dir.getDirectoryHandle('publicado');
+      const f = await (await pub.getFileHandle('estado.json')).getFile();
+      const sobre = JSON.parse((await f.text()).replace(/^﻿/, ''));
+      return sobre && sobre.datos ? sobre.datos : null;
+    } catch (e) { return null; }
+  }
+  // La misma lectura del pulso que el Formulador y «Ingresar datos» (su js/pulso.js, en este mismo sitio):
+  // iguales umbrales de horario hábil y los mismos textos. Si no carga, se dice solo la hora de la última vuelta.
+  let pulsoCargado = null;
+  function cargarPulso() {
+    if (window.QPulso) return Promise.resolve();
+    if (!pulsoCargado) {
+      pulsoCargado = new Promise((listo) => {
+        const s = document.createElement('script');
+        s.src = HERR.get('formulador').ruta + 'js/pulso.js';
+        s.onload = () => listo();
+        s.onerror = () => listo();
+        document.head.append(s);
+      });
+    }
+    return pulsoCargado;
+  }
+  function lecturaPulso(est) {
+    let l = null;
+    try { l = window.QPulso ? window.QPulso.lectura(est) : null; } catch (e) { l = null; }
+    if (l) return l;
+    const t = est && est.procesador ? new Date(est.procesador.ultimaCorrida) : null;
+    if (!t || isNaN(t)) return null;
+    const min = Math.max(0, Math.round((Date.now() - t) / 60000));
+    const cuando = t.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return { nivel: min <= 150 ? 'ok' : 'warn', texto: 'La última vuelta del procesador fue el ' + cuando + '.' };
+  }
+  let carpetasVistas = {};
+  async function revisarConexiones() {
+    const r = {};
+    const puede = typeof window.showDirectoryPicker === 'function';
+    r.navegador = puede
+      ? { nivel: 'ok', corto: 'Compatible', texto: 'Este navegador puede conectar carpetas.' }
+      : { nivel: 'bad', corto: 'No compatible', texto: 'Este navegador no puede conectar carpetas: abre el portal en Chrome o Edge de escritorio.' };
+    let clave = null;
+    try { clave = localStorage.getItem(LS_CLAVE_TABLEROS); } catch (e) { clave = null; }
+    r.contrasena = clave
+      ? { nivel: 'ok', corto: 'Guardada', texto: 'Guardada en este navegador.' }
+      : { nivel: 'warn', corto: 'Falta', texto: 'Todavía no: la primera herramienta que abras te la pide.' };
+    const c = puede ? await leerCarpetas() : {};
+    carpetasVistas = c;
+    const alFormulador = { texto: 'Abrir el Formulador', ir: () => abrir('formulador') };
+    let dir = null;
+    if (!puede) {
+      r.biblioteca = { nivel: 'bad', corto: 'No se puede', texto: 'Se conecta en Chrome o Edge de escritorio.' };
+    } else if (!c.intercambio) {
+      r.biblioteca = { nivel: 'bad', corto: 'Sin conectar', texto: 'Sin conectar en este navegador. Se conecta en el Formulador › Configuración › Conectar carpeta.', accion: alFormulador };
+    } else {
+      dir = await intercambioLegible(c);
+      const nombre = (c.biblioteca || c.intercambio).name;
+      if (!dir) r.biblioteca = { nivel: 'warn', corto: 'Falta permiso', texto: 'Conectada («' + nombre + '»), pero el navegador pide permiso otra vez en esta sesión.', accion: { texto: 'Dar permiso', ir: darPermiso } };
+      else if (!c.biblioteca) r.biblioteca = { nivel: 'warn', corto: 'Incompleta', texto: 'Está conectada solo «' + c.intercambio.name + '». Para el Excel de cada oferta, conecta la biblioteca completa.', accion: alFormulador };
+      else r.biblioteca = { nivel: 'ok', corto: 'Conectada', texto: 'Conectada: «' + nombre + '».' };
+    }
+    if (dir) {
+      await cargarPulso();
+      const l = lecturaPulso(await leerPulso(dir));
+      r.procesador = l
+        ? { nivel: l.nivel, corto: l.nivel === 'ok' ? 'Al día' : l.detenido ? 'Detenido' : 'Revisar', texto: l.texto }
+        : { nivel: 'warn', corto: 'Sin pulso', texto: 'La carpeta no tiene el pulso del procesador (publicado › estado.json).' };
+    } else {
+      r.procesador = { nivel: '', corto: 'Sin ver', texto: 'Se ve aquí cuando la biblioteca está conectada y con permiso.' };
+    }
+    return r;
+  }
+  // Desde el clic y sin esperas antes: el navegador solo pide permiso si viene de uno.
+  function darPermiso() {
+    const h = carpetasVistas.biblioteca || carpetasVistas.intercambio;
+    if (!h) return;
+    h.requestPermission({ mode: 'readwrite' }).catch(() => null).then(pintarEstadoConexiones);
+  }
+  let revisando = null;
+  function pintarEstadoConexiones() {
+    if (revisando) return revisando;
+    revisando = revisarConexiones().then((r) => {
+      ESTADOS.forEach((s) => {
+        const x = r[s.id];
+        const li = document.querySelector('#cxEstado li[data-estado="' + s.id + '"]');
+        if (!li || !x) return;
+        li.dataset.nivel = x.nivel || 'nada';
+        li.querySelector('.cx-punto').className = 'cx-punto ' + (x.nivel || '');
+        li.querySelector('.cx-est-det').textContent = x.texto;
+        const acc = li.querySelector('.cx-est-acc');
+        acc.textContent = '';
+        if (x.accion) {
+          const b = crear('button', 'cx-enlace', x.accion.texto);
+          b.type = 'button';
+          b.addEventListener('click', x.accion.ir);
+          acc.append(b);
+        }
+      });
+      document.querySelectorAll('.cx-pildora').forEach((p) => {
+        const x = r[p.dataset.estado];
+        if (!x) return;
+        p.querySelector('.cx-punto').className = 'cx-punto ' + (x.nivel || '');
+        p.lastChild.textContent = x.corto;
+        p.title = x.texto;
+      });
+    }).catch((e) => console.error(e)).then(() => { revisando = null; });
+    return revisando;
+  }
+  function pintarConexiones() {
+    armarConexiones();
+    pintarEstadoConexiones();
   }
 
   // ---- Buscador ------------------------------------------------------------------------------------
@@ -1582,7 +2083,6 @@
 
   function cerrarFlotantes() {
     cerrarSelector(false);
-    cerrarPanel();
     if (!$('#resultados').hidden && document.activeElement !== $('#buscar')) cerrarBusqueda();
   }
   // Atajos de teclado, también con el foco dentro de una herramienta.
@@ -1594,8 +2094,7 @@
     }
     if (e.key === 'Escape') {
       if (!$('#popProyecto').hidden) { e.preventDefault(); cerrarSelector(true); return; }
-      if (panelDe) { e.preventDefault(); cerrarPanel(true); return; }
-      if (portal.classList.contains('menu-movil')) { e.preventDefault(); abrirMenuMovil(false); return; }
+      if (menuAbierto()) { e.preventDefault(); mostrarMenu(false, true); return; }
       if (!$('#resultados').hidden || portal.classList.contains('buscando')) { e.preventDefault(); cerrarBusqueda(); }
     }
   }
@@ -1704,19 +2203,12 @@
   estado.proyectos = leerProyectos();
   pintarProyecto();
 
-  $('#btnMenu').addEventListener('click', () => {
-    if (MOVIL.matches) { abrirMenuMovil(!portal.classList.contains('menu-movil')); return; }
-    // ☰ alterna la franja de íconos y el menú con los nombres
-    estado.menu.modo = estado.menu.modo === 'abierto' ? 'riel' : 'abierto';
-    guardar(LS.menu, estado.menu);
-    cerrarPanel();
-    pintarBotonMenu();
-  });
-  $('#velo').addEventListener('click', () => abrirMenuMovil(false));
-  MOVIL.addEventListener('change', () => { abrirMenuMovil(false); mostrarBuscadorMovil(false); pintarBotonMenu(); pintarProyecto(); });
-  pintarBotonMenu();
+  $('#btnMenu').addEventListener('click', () => { cerrarFlotantes(); mostrarMenu(!menuAbierto()); });
+  $('#velo').addEventListener('click', () => mostrarMenu(false));
+  MOVIL.addEventListener('change', () => { mostrarMenu(false); mostrarBuscadorMovil(false); pintarProyecto(); });
   $('#btnInicio').addEventListener('click', () => abrir('inicio'));
   $('#iniAyuda').addEventListener('click', () => abrir('ayuda'));
+  $('#iniConexiones').addEventListener('click', () => abrir('conexiones'));
   // Con muchas pestañas abiertas, la rueda del mouse las recorre de lado (no hay barra).
   $('#pestanas').addEventListener('wheel', (e) => {
     const lista = $('#pestanas');
@@ -1762,7 +2254,6 @@
   document.addEventListener('click', (e) => {
     const pop = $('#popProyecto');
     if (!pop.hidden && !selectorRecien && !pop.contains(e.target) && !$('#btnProyecto').contains(e.target)) cerrarSelector(false);
-    if (panelDe && !$('#flotante').contains(e.target) && !$('#riel').contains(e.target)) cerrarPanel();
   });
 
   $('#btnRecargar').addEventListener('click', () => {
@@ -1797,15 +2288,15 @@
   if (previas && Array.isArray(previas.pestanas)) {
     previas.pestanas.forEach((x) => {
       const h = x && HERR.get(x.herr);
-      if (!h || h.tipo !== 'marco' || familiaDe(h) !== x.familia || pestanaDe(x.familia)) return;
-      const url = typeof x.url === 'string' && x.url.startsWith('/') ? x.url : urlDe(h);
+      if (!h || (h.tipo !== 'marco' && h.tipo !== 'vista') || familiaDe(h) !== x.familia || pestanaDe(x.familia)) return;
+      const url = h.tipo === 'vista' ? '' : typeof x.url === 'string' && x.url.startsWith('/') ? x.url : urlDe(h);
       estado.pestanas.push({ familia: x.familia, herr: h.id, url, ultima: url, marco: null, cargador: null, cargando: false, usado: 0 });
     });
   }
   // Una dirección como …/portal/#/centro-costos abre esa herramienta.
   let pedida = null;
   try { pedida = HERR.get(decodeURIComponent(location.hash.replace(/^#\/?/, '').split(/[/?]/)[0] || '')); } catch (e) { pedida = null; }
-  if (pedida && pedida.tipo === 'marco') {
+  if (pedida && (pedida.tipo === 'marco' || pedida.tipo === 'vista')) {
     const ya = pestanaDe(familiaDe(pedida));
     if (ya) { ya.herr = pedida.id; activar(ya.familia); } else abrir(pedida.id);
   } else {
