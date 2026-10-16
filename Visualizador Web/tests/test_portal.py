@@ -129,7 +129,7 @@ def test_sistema_quempin_conoce_los_enlaces_del_portal():
     if not protocolo or not protocolo.exists():
         pytest.skip("Sistema QUEMPIN no está en este equipo")
     secciones = set(re.findall(r'^\s+"([a-z-]+)": \d+,$', protocolo.read_text(encoding="utf-8"), re.M))
-    assert {"cotizacion", "orden-compra", "clientes"} <= secciones
+    assert {"cotizacion", "orden-compra"} <= secciones
     for h in _registro()["herramientas"]:
         if h["tipo"] == "programa":
             assert h["enlace"].removeprefix("quempin://") in secciones, h["id"]
@@ -675,8 +675,8 @@ def test_excel_y_programa_no_se_abren_dentro(navegador, sitio):
     assert pagina.locator("iframe").count() == 0
     # Cotizar y comprar abre QUEMPIN.exe en su sección con quempin:// (Sistema QUEMPIN 1.3.8)
     _menu(pagina, "Emitir cotización")
-    pagina.locator('.ini-item[data-herr="clientes"]').click()
-    assert pagina.evaluate("window.__lanzados") == ["quempin://cotizacion", "quempin://clientes"]
+    pagina.locator('.ini-item[data-herr="orden-compra"]').click()
+    assert pagina.evaluate("window.__lanzados") == ["quempin://cotizacion", "quempin://orden-compra"]
     assert "Abriendo Sistema QUEMPIN" in pagina.locator("#aviso").inner_text()
     assert pagina.locator("#dlgInfo").is_hidden()
     # Si no se abrió, el aviso explica cómo dejarlo listo en ese computador
