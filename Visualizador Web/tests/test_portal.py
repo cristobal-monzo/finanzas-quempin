@@ -1253,3 +1253,73 @@ def test_telefono_con_usuario_y_proyecto_sin_desbordes(navegador, sitio, ancho):
     assert pop["x"] >= 0 and pop["x"] + pop["width"] <= ancho, pop
     assert not errores
     pagina.context.close()
+
+
+# ---- La carpeta del proyecto en el Explorador (2026-10-19, QUEMPIN.exe 1.3.10) -------------------------
+def _proyectos_con_carpeta():
+    datos = json.loads(json.dumps(PROYECTOS))
+    datos["proyectos"][1]["vinculos"]["carpetaOferta"] = {
+        "nombre": "312. Gimnasio de prueba", "ruta": ["0 OFERTAS PRESENTADAS", "312. Gimnasio de prueba"], "numero": "312"}
+    # Adjudicada y copiada a Gestión de Proyectos: el original quedó en Adjudicadas y se abre la copia
+    datos["proyectos"][2]["vinculos"] = {"carpetaOferta": {
+        "nombre": "250. Obra de prueba", "ruta": ["0 OFERTAS ADJUDICADAS", "250. Obra de prueba"], "numero": "250",
+        "gestion": {"copiada": "2026-10-19T12:00:00.000Z"}}}
+    datos["proyectos"].append({"uid": "u5", "codigo": "QMPN-2026-009", "version": 1, "titulo": "Ruta mala", "estado": "Borrador",
+                               "modificado": "2026-10-01T09:00:00Z", "vinculos": {"carpetaOferta": {"nombre": "x", "ruta": ["..", "x"]}}})
+    return datos
+
+
+def test_la_carpeta_del_proyecto_se_abre_en_el_explorador(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.evaluate("d => localStorage.setItem('qpn.formulacion.proyectos.v1', JSON.stringify(d))", _proyectos_con_carpeta())
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    boton = pagina.locator("#btnCarpeta")
+    assert boton.is_hidden()          # sin proyecto elegido
+    pagina.locator("#btnProyecto").click()
+    pagina.locator("#listaProyectos .pop-item", has_text="Obra de prueba").click()
+    assert boton.is_visible()
+    assert "312. Gimnasio de prueba" in boton.get_attribute("title")
+    boton.click()
+    assert pagina.evaluate("window.__lanzados") == ["quempin://carpeta/formulacion/0%20OFERTAS%20PRESENTADAS/312.%20Gimnasio%20de%20prueba"]
+    assert "Abriendo «312. Gimnasio de prueba» en el Explorador" in pagina.locator("#aviso").inner_text()
+    pagina.locator("#aviso button", has_text="¿No se abrió?").click()
+    texto = pagina.locator("#dlgInfo").inner_text()
+    assert "1.3.10" in texto and "Formulación de proyectos › 0 OFERTAS PRESENTADAS › 312. Gimnasio de prueba" in texto
+    pagina.locator("#dlgInfo button", has_text="Entendido").click()
+    # Uno ya copiado a Gestión de Proyectos abre esa copia
+    pagina.locator("#btnProyecto").click()
+    pagina.locator("#listaProyectos .pop-item", has_text="Mantención de prueba").click()
+    boton.click()
+    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/250.%20Obra%20de%20prueba"
+    # Sin carpeta, o con una ruta que no es de la biblioteca, no hay botón
+    pagina.locator("#btnProyecto").click()
+    pagina.locator("#listaProyectos .pop-item", has_text="Ruta mala").click()
+    assert boton.is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_en_el_telefono_no_hay_boton_de_carpeta(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio, ancho=390, alto=844, movil=True)
+    pagina.evaluate("d => { localStorage.setItem('qpn.formulacion.proyectos.v1', JSON.stringify(d)); localStorage.setItem('quempin_portal_proyecto', JSON.stringify('QMPN-2026-001')); }", _proyectos_con_carpeta())
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    assert pagina.locator("#btnCarpeta").is_hidden()
+    d = pagina.evaluate(JS_DESBORDES)
+    assert d["doc"] <= 390 and not d["fuera"], d
+    assert not errores
+    pagina.context.close()
+
+
+def test_sistema_quempin_atiende_las_carpetas_que_pide_el_portal():
+    """quempin://carpeta/<formulacion|gestion>/… es lo que lee app/carpetas.py de Sistema QUEMPIN."""
+    sistema = _hermano("Sistema QUEMPIN")
+    carpetas = sistema / "app" / "carpetas.py" if sistema else None
+    if not carpetas or not carpetas.exists():
+        pytest.skip("Sistema QUEMPIN no está en este equipo")
+    fuente = carpetas.read_text(encoding="utf-8")
+    assert 'ACCIONES = ("carpeta", "trasladar")' in fuente
+    assert '"formulacion": ubicacion.BIBLIOTECA_FORMULACION' in fuente and '"gestion": ubicacion.BIBLIOTECA_GESTION' in fuente
+    portal = PORTAL.read_text(encoding="utf-8")
+    assert "'quempin://carpeta/' + c.biblioteca + '/'" in portal
