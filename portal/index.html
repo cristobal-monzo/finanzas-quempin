@@ -554,6 +554,44 @@
     color: #ff8a4d; font: inherit; font-weight: 900; text-decoration: underline; cursor: pointer;
   }
 
+
+  /* ---- Acabado común de diálogos y listas (2026-10-19) ----
+     El título y los botones quedan fijos y solo se desplaza el contenido; ✕ para cerrar.
+     Las listas desplegables entran con un leve desliz y llevan su nota separada por una línea. */
+  dialog[open] { max-height: calc(100dvh - 32px); overflow: hidden; display: flex; }
+  .dlg { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 24px; gap: 12px; scrollbar-width: thin; }
+  .dlg h2 {
+    position: sticky; top: 0; z-index: 1; margin: 0 -24px; padding: 18px 60px 14px 24px;
+    background: var(--surface-card); border-bottom: 1px solid var(--border-hairline); font-size: 19px;
+  }
+  .dlg-x {
+    position: absolute; top: 12px; right: 12px; z-index: 2; width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); cursor: pointer;
+  }
+  .dlg-x:hover { background: var(--page-plane); color: var(--text-primary); }
+  .dlg-acc {
+    position: sticky; bottom: 0; margin: 4px -24px 0; padding: 14px 24px 18px;
+    background: var(--surface-card); border-top: 1px solid var(--border-hairline);
+  }
+  .dlg-acc .btn-pri { min-width: 120px; }
+  .pop-proyecto { padding: 12px; }
+  .pop-proyecto > .pop-nota:first-child { margin: 0 2px 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border-hairline); font-size: 12.5px; }
+  .pop-usuario #sinUsuario { margin-top: 4px; }
+  .resultados, .pop-proyecto { transform-origin: top right; }
+  @media (prefers-reduced-motion: no-preference) {
+    .resultados:not([hidden]), .pop-proyecto:not([hidden]), dialog[open] { animation: pop-entra 0.14s ease-out; }
+    @keyframes pop-entra { from { opacity: 0; transform: translateY(-6px); } }
+  }
+  .grupo-items { position: relative; }
+  .grupo-items::before { content: ""; position: absolute; left: 19px; top: 4px; bottom: 4px; width: 1px; background: #2e2b28; }
+  @media (max-width: 760px) {
+    .dlg { padding: 0 18px; }
+    .dlg h2 { margin: 0 -18px; padding: 16px 56px 12px 18px; }
+    .dlg-acc { margin: 4px -18px 0; padding: 12px 18px 16px; }
+    .dlg-acc .btn-pri { flex: 1 1 auto; }
+  }
+
   /* ---- Teléfono: el menú se despliega encima y el buscador va en su propia fila ---- */
   @media (max-width: 760px) {
     .cab { gap: 4px; padding-right: 8px; }
@@ -732,6 +770,7 @@
 <dialog id="dlgInfo" aria-labelledby="dlgInfoTit">
   <form method="dialog" class="dlg">
     <h2 id="dlgInfoTit"></h2>
+    <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <p id="dlgInfoTxt"></p>
     <p class="donde" id="dlgInfoDonde" hidden></p>
     <p id="dlgInfoDesc"></p>
@@ -742,6 +781,7 @@
 <dialog id="dlgAyuda" aria-labelledby="dlgAyudaTit">
   <form method="dialog" class="dlg">
     <h2 id="dlgAyudaTit">Cómo usar el portal</h2>
+    <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador, su Carta Gantt y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
       <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
