@@ -252,13 +252,17 @@ def cmd_intercambio(args: list[str], pais: str = "CL") -> int:
 
 
 def _buscar_presupuesto(repositorio: list[dict], clave: str) -> list[dict]:
-    """Por uid, o por código (con «vN» opcional: «QPN-2026-001 v2»)."""
+    """Por uid, o por código (con «vN» opcional: «QPN-2026-001 v2», «312. Gimnasio municipal v2»).
+    Desde el 2026-10-19 el código es el nombre de la carpeta de la oferta: un « v» que no va
+    seguido de un número es parte del nombre («300. Calderas a vapor»)."""
     exacto = [i for i in repositorio if i["uid"] == clave]
     if exacto:
         return exacto
     partes = clave.rsplit(" v", 1)
-    codigo = partes[0].strip()
-    version = partes[1].strip() if len(partes) == 2 and partes[1].strip().isdigit() else None
+    if len(partes) == 2 and partes[1].strip().isdigit():
+        codigo, version = partes[0].strip(), partes[1].strip()
+    else:
+        codigo, version = clave.strip(), None
     return [i for i in repositorio if str(i["datos"].get("codigo") or "") == codigo
             and (version is None or str(i["datos"].get("version")) == version) and not i["datos"].get("eliminado")]
 
