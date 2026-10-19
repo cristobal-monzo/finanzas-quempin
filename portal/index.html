@@ -233,6 +233,25 @@
   .pop-item .t { font-size: 14px; font-weight: 700; }
   .pop-item .s { font-size: 12.5px; color: var(--texto-suave); }
   .pop-vacio { margin: 8px 6px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+  .pop-grupo { margin: 8px 10px 4px; font-size: 11px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: var(--texto-suave); }
+  .pop-grupo:first-child { margin-top: 2px; }
+
+  /* ---- Usuario (2026-10-16): quién trabaja, con las iniciales del equipo. Mismo botón que Proyecto;
+     sin elegir, con borde naranjo y «¿Quién eres?» ---- */
+  .usuario { position: relative; flex: 0 0 auto; }
+  .btn-usuario .ico-usr { display: none; flex: 0 0 auto; }
+  .btn-usuario .val { font-weight: 900; letter-spacing: 0.04em; }
+  .btn-usuario.sin { border-color: var(--brand-orange); }
+  .btn-usuario.sin .val { font-weight: 700; letter-spacing: 0; }
+  .pop-usuario { width: min(320px, calc(100vw - 24px)); }
+  .usuarios { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .usr-op {
+    width: 100%; min-height: 48px; border-radius: 10px;
+    border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary);
+    font-size: 16px; font-weight: 900; letter-spacing: 0.04em; cursor: pointer;
+  }
+  .usr-op:hover { border-color: var(--brand-orange); }
+  .usr-op[aria-selected="true"] { background: var(--tinte); border-color: var(--brand-orange); box-shadow: inset 0 -3px 0 var(--brand-orange); }
 
   /* ---- Cuerpo: menú + herramientas ----
      Menú (2026-10-16, tarde): sin franja fija a la izquierda. Solo aparece al tocar ☰, encima de
@@ -518,6 +537,15 @@
     .buscador kbd { display: none; }
     .btn-proyecto { max-width: 136px; padding: 0 10px; }
     .btn-proyecto .et { display: none; }
+    /* El proyecto elegido usa lo que queda de la fila: un código largo se corta con «…» (completo en su title) */
+    .proyecto { flex: 0 1 auto; min-width: 0; }
+    .proyecto .btn-proyecto { max-width: 100%; }
+    /* Usuario en el teléfono: solo las iniciales; sin elegir, un ícono de persona con borde naranjo */
+    .btn-usuario { min-width: 40px; padding: 0 9px; justify-content: center; }
+    .btn-usuario > svg:last-child { display: none; }
+    .btn-usuario.sin .val { display: none; }
+    .btn-usuario.sin .ico-usr { display: inline-block; }
+    .pop-usuario { position: fixed; top: 64px; left: 12px; right: 12px; width: auto; }
     .pop-proyecto input, .acc-pais { font-size: 16px; }
     .menu-item, .grupo-cab { min-height: 46px; font-size: 15px; }
     .grupo-items .menu-item { min-height: 44px; }
@@ -525,6 +553,12 @@
     .inicio { padding: 16px 16px 24px; }
     .conexiones { padding: 16px 16px 24px; }
     .ini-item { min-height: 48px; }
+  }
+  /* Teléfonos angostos (360 px): con Usuario y Proyecto en la cabecera, todo un poco más junto */
+  @media (max-width: 380px) {
+    .cab { gap: 2px; padding-left: 4px; }
+    .cab-btn { width: 40px; }
+    .marca { font-size: 16px; padding: 0 4px; }
   }
 </style>
 </head>
@@ -554,6 +588,21 @@
     </button>
     <!-- Un solo modo claro/oscuro para el portal y todas las herramientas abiertas en él -->
     <button class="cab-btn" id="btnTema" type="button" aria-label="Modo oscuro" title="Modo oscuro"></button>
+    <!-- Quién trabaja (2026-10-16): sus iniciales quedan en 'quempin_usuario', la misma clave del
+         Formulador (js/usuario.js): elegirlas aquí vale allá, que las usa como responsable y autor. -->
+    <div class="usuario">
+      <button class="btn-proyecto btn-usuario sin" id="btnUsuario" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="popUsuario">
+        <svg class="ico-usr" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span class="et">Usuario</span>
+        <span class="val" id="usuarioActual">¿Quién eres?</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="pop-proyecto pop-usuario" id="popUsuario" role="dialog" aria-label="Elegir usuario" hidden>
+        <p class="pop-nota">¿Quién eres? En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres, y aquí el selector de proyectos muestra primero los tuyos.</p>
+        <ul class="usuarios" id="listaUsuarios" role="listbox" aria-label="Iniciales del equipo"></ul>
+        <button class="pop-item" id="sinUsuario" type="button" role="option"><span class="t">Sin usuario</span><span class="s">Lo que hagas no queda a nombre de nadie</span></button>
+      </div>
+    </div>
     <div class="proyecto">
       <button class="btn-proyecto" id="btnProyecto" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="popProyecto">
         <span class="et">Proyecto</span>
@@ -649,6 +698,7 @@
       <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
+      <li><strong>Usuario.</strong> Elige tus iniciales arriba a la derecha, una vez por navegador. En el Formulador quedas como responsable de los proyectos que crees y como autor de la evaluación de costos en el Control de Documentos, y su lista y el selector de proyectos muestran primero los tuyos. En Sistema QUEMPIN las iniciales se eligen en Configuración › Mi perfil.</li>
       <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él.</li>
       <li><strong>Excel y Sistema QUEMPIN.</strong> La Planilla de Ingreso se abre en Excel para la web, en otra pestaña del navegador. «Cotizar y comprar» abre el programa QUEMPIN.exe en la pantalla que elijas; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
       <li><strong>Abrir aparte</strong> (↗, arriba a la derecha) lleva la herramienta activa a su propia pestaña del navegador, en su dirección de siempre.</li>
@@ -672,9 +722,12 @@
      incrustar: cómo se ve dentro del portal (tablero, calculadora, formulador: ESTILO_INCRUSTADO);
      tema: la clave de modo claro/oscuro de esa herramienta, que el botón del portal también fija.
      proyecto: cómo se abre con el proyecto elegido (formulador, seguimiento, gantt, tag, af).
-     pestanas: las de una calculadora (su id es el data-tab de la Calculadora: assets/gases.js). -->
+     pestanas: las de una calculadora (su id es el data-tab de la Calculadora: assets/gases.js).
+     usuarios: las iniciales del equipo para el selector de usuario (2026-10-16); las mismas del Formulador
+               (js/usuario.js) y de Sistema QUEMPIN (app/config.py, USUARIOS): si el equipo cambia, en los tres. -->
 <script type="application/json" id="portal-registro">
 {
+  "usuarios": ["NB", "ES", "LC", "CM", "MP", "SV"],
   "grupos": [
     {"id": "formular", "nombre": "Formulación de proyectos", "corto": "Formulación", "icono": "portapapeles"},
     {"id": "finanzas", "nombre": "Control y finanzas", "corto": "Finanzas", "icono": "barras"},
@@ -916,11 +969,18 @@
     proyecto: 'quempin_portal_proyecto',
     menu: 'quempin_portal_menu',
     pais: 'quempin_portal_pais',
-    tema: 'quempin_hub_theme'          // el mismo del índice: claro u oscuro en los dos
+    tema: 'quempin_hub_theme',         // el mismo del índice: claro u oscuro en los dos
+    // El usuario (2026-10-16): la misma clave del Formulador (js/usuario.js), con las iniciales tal cual
+    // (texto, no JSON), así elegirlo aquí o allá vale para los dos.
+    usuario: 'quempin_usuario'
   };
   // Solo se leen: los escriben el Formulador (sus proyectos) y los tableros (la clave del candado).
   const LS_FORMULADOR = 'qpn.formulacion.proyectos.v1';
   const LS_CLAVE_TABLEROS = 'quempin_viz_clave';
+  // Las iniciales que el Formulador guardaba antes del selector de usuario (solo se leen, para
+  // adoptarlas la primera vez, igual que hace js/usuario.js)
+  const LS_FORMULADOR_ANTES = ['qpn.formulacion.iniciales', 'qpn.formulacion.config.v1'];
+  const USUARIOS = Array.isArray(REG.usuarios) ? REG.usuarios : [];
   const MAX_MARCOS = 8;                  // herramientas cargadas a la vez; las demás se recargan al volver
   const MOVIL = window.matchMedia('(max-width: 760px)');
   const RUTA_PORTAL = rutaNormal(location.pathname);
@@ -1014,6 +1074,7 @@
     // abierto: el único grupo desplegado del menú (así cabe sin barra de desplazamiento)
     menu: Object.assign({ abierto: 'formular' }, leer(LS.menu, {}) || {}),
     proyectos: [],
+    usuario: '',                // las iniciales de quien trabaja (leerUsuario), o ''
     pendiente: null             // herramienta que espera que se elija un proyecto (Carta Gantt)
   };
   delete estado.menu.cerrados;  // de versiones anteriores del portal
@@ -1047,7 +1108,7 @@
       porCodigo.set(codigo, {
         uid: String(p.uid), codigo, version, modificado,
         titulo: texto(p.titulo), cliente: texto(p.cliente), estado: texto(p.estado),
-        req: reqDe(p), tag: tagDe(p)
+        req: reqDe(p), tag: tagDe(p), responsable: texto(p.responsable)
       });
     });
     return Array.from(porCodigo.values()).sort((a, b) => b.modificado.localeCompare(a.modificado));
@@ -1056,6 +1117,24 @@
     return estado.proyecto ? estado.proyectos.find((p) => p.codigo === estado.proyecto) || null : null;
   }
   const nombreProyecto = (p) => p.codigo + (p.titulo ? ' · ' + p.titulo : '');
+
+  // ---- Usuario (2026-10-16): quién trabaja, con las iniciales del equipo ---------------------------
+  const usuarioValido = (v) => { const s = texto(v).toUpperCase(); return USUARIOS.includes(s) ? s : ''; };
+  /* Las iniciales elegidas, o ''. Sin elección guardada, las que el Formulador tenía de antes, si son del
+     equipo (quedan guardadas en la clave común, como hace el Formulador). */
+  function leerUsuario() {
+    let v = null;
+    try { v = localStorage.getItem(LS.usuario); } catch (e) { v = null; }
+    if (v !== null) return usuarioValido(v);
+    let previa = '';
+    try {
+      previa = usuarioValido(localStorage.getItem(LS_FORMULADOR_ANTES[0])) ||
+        usuarioValido((JSON.parse(localStorage.getItem(LS_FORMULADOR_ANTES[1]) || 'null') || {}).responsable);
+    } catch (e) { previa = ''; }
+    if (previa) { try { localStorage.setItem(LS.usuario, previa); } catch (e) { /* solo esta visita */ } }
+    return previa;
+  }
+  const esMio = (p) => !!estado.usuario && texto(p.responsable).toUpperCase() === estado.usuario;
 
   // ---- Direcciones -------------------------------------------------------------------------------
   // Cada ruta del sitio → su herramienta (la más larga primero). Los alias comparten la ruta de otra.
@@ -1521,10 +1600,9 @@
     const ul = $('#listaProyectos');
     ul.textContent = '';
     const q = norm($('#filtroProyecto').value).trim();
-    const lista = estado.proyectos.filter((p) => !q || q.split(/\s+/).every((t) => norm([p.codigo, p.titulo, p.cliente, p.req ? 'n ' + p.req : '', p.tag].join(' ')).includes(t)));
+    const lista = estado.proyectos.filter((p) => !q || q.split(/\s+/).every((t) => norm([p.codigo, p.titulo, p.cliente, p.req ? 'n ' + p.req : '', p.tag, p.responsable].join(' ')).includes(t)));
     $('#sinProyectos').hidden = estado.proyectos.length > 0;
-    const opciones = estado.proyecto ? [{ ninguno: true }].concat(lista) : lista;
-    opciones.forEach((p) => {
+    const fila = (p) => {
       const li = crear('li');
       const b = crear('button', 'pop-item');
       b.type = 'button';
@@ -1534,12 +1612,21 @@
         b.addEventListener('click', () => elegirProyecto(null));
       } else {
         b.setAttribute('aria-selected', p.codigo === estado.proyecto ? 'true' : 'false');
-        const sub = [p.cliente, p.req ? 'N° ' + p.req : '', p.estado].filter(Boolean).join(' · ');
+        const sub = [p.cliente, p.req ? 'N° ' + p.req : '', p.estado, p.responsable && !esMio(p) ? 'a cargo de ' + p.responsable : ''].filter(Boolean).join(' · ');
         b.append(crear('span', 't', nombreProyecto(p)), crear('span', 's', sub || 'Sin datos de cliente'));
         b.addEventListener('click', () => elegirProyecto(p.codigo));
       }
       li.append(b);
       ul.append(li);
+    };
+    if (estado.proyecto) fila({ ninguno: true });
+    // Con usuario, primero sus proyectos (su responsable en el Formulador) y después los del equipo
+    const mios = lista.filter(esMio);
+    const grupos = mios.length ? [['Tus proyectos (' + estado.usuario + ')', mios], ['Del equipo', lista.filter((p) => !esMio(p))]] : [[null, lista]];
+    grupos.forEach(([titulo, ps]) => {
+      if (!ps.length) return;
+      if (titulo) { const g = crear('li', 'pop-grupo', titulo); g.setAttribute('role', 'presentation'); ul.append(g); }
+      ps.forEach(fila);
     });
     if (estado.proyectos.length && !lista.length) ul.append(crear('li', 'pop-vacio', 'Ningún proyecto calza con lo buscado.'));
   }
@@ -1569,6 +1656,62 @@
     if (!$('#popProyecto').hidden) pintarListaProyectos();
     if (estado.activa === 'inicio') pintarInicio();
     pintarPestanas();
+  }
+
+  // ---- Usuario elegido (2026-10-16) ---------------------------------------------------------------
+  // Una vez por navegador. Lo usa el Formulador (responsable de lo que se crea, autor en el Control de
+  // Documentos, «Mis proyectos») y aquí el selector de proyectos, que muestra primero los suyos.
+  function pintarUsuario() {
+    const u = estado.usuario;
+    const b = $('#btnUsuario');
+    $('#usuarioActual').textContent = u || '¿Quién eres?';
+    b.classList.toggle('sin', !u);
+    b.setAttribute('aria-label', u ? 'Usuario: ' + u + '. Cambiar' : 'Elegir tu usuario');
+    b.title = u ? 'Trabajas como ' + u + ': lo que formules o registres queda a tu nombre' : 'Elige tus iniciales: lo que formules o registres queda a tu nombre';
+  }
+  let usuarioRecien = false;
+  function abrirUsuario() {
+    cerrarFlotantes();
+    usuarioRecien = true;
+    setTimeout(() => { usuarioRecien = false; }, 0);
+    const ul = $('#listaUsuarios');
+    ul.textContent = '';
+    USUARIOS.forEach((ini) => {
+      const li = crear('li');
+      const b = crear('button', 'usr-op', ini);
+      b.type = 'button';
+      b.dataset.usuario = ini;
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', ini === estado.usuario ? 'true' : 'false');
+      const n = estado.proyectos.filter((p) => texto(p.responsable).toUpperCase() === ini).length;
+      b.title = ini + (n ? ' · ' + n + (n === 1 ? ' proyecto a su cargo' : ' proyectos a su cargo') : '');
+      b.addEventListener('click', () => elegirUsuario(ini));
+      li.append(b);
+      ul.append(li);
+    });
+    $('#sinUsuario').setAttribute('aria-selected', estado.usuario ? 'false' : 'true');
+    $('#popUsuario').hidden = false;
+    $('#btnUsuario').setAttribute('aria-expanded', 'true');
+    const actual = ul.querySelector('[aria-selected="true"]') || ul.querySelector('.usr-op');
+    if (actual) actual.focus();
+  }
+  function cerrarUsuario(devolverFoco) {
+    const pop = $('#popUsuario');
+    if (pop.hidden) return;
+    pop.hidden = true;
+    $('#btnUsuario').setAttribute('aria-expanded', 'false');
+    if (devolverFoco) $('#btnUsuario').focus();
+  }
+  function elegirUsuario(ini) {
+    const nuevo = usuarioValido(ini);
+    const cambia = nuevo !== estado.usuario;
+    estado.usuario = nuevo;
+    // Las iniciales tal cual (no JSON): así las lee el Formulador. Las herramientas abiertas aquí dentro
+    // se enteran solas (evento storage del mismo sitio).
+    try { localStorage.setItem(LS.usuario, nuevo); } catch (e) { /* solo esta visita */ }
+    cerrarUsuario(false);
+    pintarUsuario();
+    if (cambia) avisar(nuevo ? 'Trabajas como ' + nuevo + ': lo que formules o registres queda a tu nombre.' : 'Sin usuario: lo que hagas no queda a nombre de nadie.');
   }
 
   // ---- Inicio --------------------------------------------------------------------------------------
@@ -2013,8 +2156,8 @@
       }));
     });
     estado.proyectos.forEach((p) => items.push({
-      titulo: nombreProyecto(p), sub: ['Proyecto', p.cliente, p.req ? 'N° ' + p.req : ''].filter(Boolean).join(' · '), tipo: 'Proyecto',
-      texto: norm([p.codigo, p.titulo, p.cliente, p.req, p.req ? 'n' + p.req : '', p.tag, 'proyecto'].join(' ')),
+      titulo: nombreProyecto(p), sub: [esMio(p) ? 'Tu proyecto' : 'Proyecto', p.cliente, p.req ? 'N° ' + p.req : '', p.responsable && !esMio(p) ? 'a cargo de ' + p.responsable : ''].filter(Boolean).join(' · '), tipo: 'Proyecto',
+      texto: norm([p.codigo, p.titulo, p.cliente, p.req, p.req ? 'n' + p.req : '', p.tag, p.responsable, 'proyecto'].join(' ')),
       ir: () => { elegirProyecto(p.codigo); abrir('proyectos'); }
     }));
     return items;
@@ -2083,6 +2226,7 @@
 
   function cerrarFlotantes() {
     cerrarSelector(false);
+    cerrarUsuario(false);
     if (!$('#resultados').hidden && document.activeElement !== $('#buscar')) cerrarBusqueda();
   }
   // Atajos de teclado, también con el foco dentro de una herramienta.
@@ -2094,6 +2238,7 @@
     }
     if (e.key === 'Escape') {
       if (!$('#popProyecto').hidden) { e.preventDefault(); cerrarSelector(true); return; }
+      if (!$('#popUsuario').hidden) { e.preventDefault(); cerrarUsuario(true); return; }
       if (menuAbierto()) { e.preventDefault(); mostrarMenu(false, true); return; }
       if (!$('#resultados').hidden || portal.classList.contains('buscando')) { e.preventDefault(); cerrarBusqueda(); }
     }
@@ -2133,7 +2278,7 @@
     // Formulador: queda su barra de secciones (Proyectos, el proyecto abierto, Guía) y Configuración,
     // en una barra clara y baja en vez del cromo negro.
     'html[data-en-portal="formulador"] .viz-header .viz-logo, html[data-en-portal="formulador"] .viz-header .viz-titleblock,' +
-      ' html[data-en-portal="formulador"] #herrBtn, html[data-en-portal="formulador"] #themeToggle { display: none !important; }',
+      ' html[data-en-portal="formulador"] #herrBtn, html[data-en-portal="formulador"] #themeToggle, html[data-en-portal="formulador"] #usuarioBtn { display: none !important; }',
     'html[data-en-portal="formulador"] .viz-header { display: flex; align-items: flex-end; gap: 8px; padding: 0 !important;' +
       ' margin-bottom: 18px; background: var(--surface-1); color: var(--text-primary); border-bottom: 1px solid var(--gridline); }',
     'html[data-en-portal="formulador"] .viz-header > .viz-modnav { order: 1; flex: 1 1 auto; min-width: 0; margin: 0; padding: 6px 0 0; border: 0; }',
@@ -2202,6 +2347,10 @@
   construirMenu();
   estado.proyectos = leerProyectos();
   pintarProyecto();
+  estado.usuario = leerUsuario();
+  pintarUsuario();
+  $('#btnUsuario').addEventListener('click', () => { if ($('#popUsuario').hidden) abrirUsuario(); else cerrarUsuario(true); });
+  $('#sinUsuario').addEventListener('click', () => elegirUsuario(''));
 
   $('#btnMenu').addEventListener('click', () => { cerrarFlotantes(); mostrarMenu(!menuAbierto()); });
   $('#velo').addEventListener('click', () => mostrarMenu(false));
@@ -2254,6 +2403,8 @@
   document.addEventListener('click', (e) => {
     const pop = $('#popProyecto');
     if (!pop.hidden && !selectorRecien && !pop.contains(e.target) && !$('#btnProyecto').contains(e.target)) cerrarSelector(false);
+    const popU = $('#popUsuario');
+    if (!popU.hidden && !usuarioRecien && !popU.contains(e.target) && !$('#btnUsuario').contains(e.target)) cerrarUsuario(false);
   });
 
   $('#btnRecargar').addEventListener('click', () => {
@@ -2274,6 +2425,12 @@
 
   window.addEventListener('storage', (e) => {
     if (e.key === LS_FORMULADOR) refrescarProyectos();
+    // El usuario elegido en el Formulador (aquí dentro o en otra pestaña) también vale aquí
+    if (e.key === LS.usuario || e.key === null) {
+      estado.usuario = leerUsuario();
+      pintarUsuario();
+      if (!$('#popProyecto').hidden) pintarListaProyectos();
+    }
     // Si en una herramienta se acaba de escribir la contraseña, las que esperaban con el candado se abren.
     if (e.key === LS_CLAVE_TABLEROS && e.newValue) {
       estado.pestanas.forEach((p) => {
