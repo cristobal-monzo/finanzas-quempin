@@ -935,6 +935,34 @@ __OP_FUENTES__
       if (op.compraAgil) return 'entrega en ' + Math.round(d * 30) + ' días';
       return 'contrato ' + (d >= 1 ? Math.round(d) + ' meses' : Math.round(d * 30) + ' días');
     }
+    // ---------- «Llevar al Formulador» (2026-10-16, pedido del usuario) ----------
+    // Abre el Formulador con los datos públicos de la oportunidad en el # (JSON en base64url: pasa por el
+    // Portal y por la dirección sin cambiar). El Formulador los valida (js/oportunidad.js), abre el
+    // proyecto si la licitación ya lo tiene y, si no, lo crea con estos datos. Va solo el monto que
+    // publicó el comprador: el estimado por el tipo de licitación no es un presupuesto.
+    var FORMULADOR = 'https://cristobal-monzo.github.io/formulacion-proyectos-quempin/';
+    function base64url(texto) {
+      var bytes = new TextEncoder().encode(texto), bin = '';
+      for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    function enlaceFormulador(op) {
+      var m = op.monto || {}, v = op.visita || {}, vis = visitaDelDia(op);
+      var porTipo = String(m.fuente || '').indexOf('por tipo') === 0;
+      return FORMULADOR + '#/oportunidad/' + base64url(JSON.stringify({
+        v: 1, codigo: op.codigo, compraAgil: !!op.compraAgil, nombre: op.nombre || '', organismo: op.organismo || '',
+        unidad: op.unidadCompra || '', comuna: op.comuna || '', region: op.region || '', tipo: op.tipo || '', cierre: op.cierre || '',
+        monto: m.valor && !porTipo ? Math.round(m.valor) : null, duracionMeses: op.duracionMeses === undefined ? null : op.duracionMeses,
+        visita: vis.fecha ? { fecha: vis.fecha, obligatoria: v.obligatoria === undefined ? null : v.obligatoria, pasada: vis.pasada } : null,
+        descripcion: String(op.descripcion || '').slice(0, 2000), req: op.enPlanilla && op.enPlanilla.req ? String(op.enPlanilla.req) : ''
+      }));
+    }
+    function botonFormulador(op, clase) {
+      return el('a', { clase: clase + ' op-formulador', href: enlaceFormulador(op), target: '_blank', rel: 'noopener',
+        title: 'Crea el proyecto en el Formulador con el nombre, el ID, el organismo, la ubicación, el monto y el cierre de esta oportunidad. Si la licitación ya tiene proyecto, lo abre.',
+        texto: 'Llevar al Formulador ↗' });
+    }
+
     function colorAnillo(cat) { return cat === 'prioritaria' || cat === 'buena' ? 'var(--brand-orange)' : 'var(--op-resto)'; }
     function anillo(op) {
       var r = 24, largo = 2 * Math.PI * r, v = Math.max(0, Math.min(100, op._e.puntaje));
@@ -970,7 +998,7 @@ __OP_FUENTES__
       if (e.tope) razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: 'Rubro no del todo claro: no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '»' })]));
       var ver = el('button', { clase: 'op-btn', type: 'button', texto: 'Ver evaluación' });
       ver.addEventListener('click', function () { abrirEnTabla(op.codigo); });
-      var acciones = el('div', { clase: 'op-acciones' }, [ver]);
+      var acciones = el('div', { clase: 'op-acciones' }, [ver, botonFormulador(op, 'op-btn-sec')]);
       var url = enlaceSeguro(op.url);
       if (url) acciones.appendChild(el('a', { clase: 'op-btn-sec', href: url, target: '_blank', rel: 'noopener noreferrer', texto: 'Ficha en Mercado Público ↗' }));
       return el('article', { clase: 'op-top' + (e.cat === 'prioritaria' ? ' es-prioritaria' : '') }, [cabeza, datos, razones, acciones]);
@@ -1039,9 +1067,9 @@ __OP_FUENTES__
         der.appendChild(el('h4', { texto: 'Descripción' }));
         der.appendChild(el('p', { clase: 'op-texto', texto: op.descripcion }));
       }
-      var acciones = el('div', { clase: 'op-acciones' });
+      var acciones = el('div', { clase: 'op-acciones' }, [botonFormulador(op, 'op-btn')]);
       var url = enlaceSeguro(op.url);
-      if (url) acciones.appendChild(el('a', { clase: 'op-btn', href: url, target: '_blank', rel: 'noopener noreferrer', texto: 'Ficha en Mercado Público ↗' }));
+      if (url) acciones.appendChild(el('a', { clase: 'op-btn-sec', href: url, target: '_blank', rel: 'noopener noreferrer', texto: 'Ficha en Mercado Público ↗' }));
       var copiar = el('button', { clase: 'op-btn-sec', type: 'button', texto: 'Copiar código' });
       copiar.addEventListener('click', function (evt) {
         evt.stopPropagation();

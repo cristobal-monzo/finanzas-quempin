@@ -6,7 +6,10 @@ visita que ya pasó), que la página recalcula al día.
 
 Datos ficticios, en tmp_path. La contraseña es la de prueba del conftest raíz:
 la real nunca aparece en un test."""
+import base64
 import importlib.util
+import json
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -59,7 +62,8 @@ def _ficha(codigo, nombre, descripcion="", region="Región de Valparaíso", mont
     }
 
 
-def _datos():
+def _datos(extra=()):
+    """extra: fichas más, evaluadas hoy (solo para el test que las pide)."""
     config = op.cargar_config()
     historia = op.Historia(HISTORIA)
     ev = op.Evaluador(config, historia, [], AHORA, 40000)
@@ -76,6 +80,7 @@ def _datos():
                           visita=_en(-1), cierre=_en(10))),
         (ev_antes, _ficha("5000-97-LE26", "Mantención de calderas municipales", cierre=_en(-0.5))),   # ya cerró
     ]
+    fichas += [(ev, f) for f in extra]
     ops = [e.evaluar(op.leer_ficha(f, f["CodigoExterno"])) for e, f in fichas]
     # La visita leída en la ficha de las bases (la API no la trae), con dos fechas:
     # una ya pasó y otra viene (sigue viva); o las dos pasaron desde el build (descartada hoy).
@@ -154,8 +159,8 @@ def navegador():
         nav.close()
 
 
-def _abrir(navegador, tmp_path, ancho=1280):
-    datos, config = _datos()
+def _abrir(navegador, tmp_path, ancho=1280, extra=()):
+    datos, config = _datos(extra)
     ruta = build.construir(datos, ruta_json=tmp_path / "data.json", ruta_html=tmp_path / "index.html")
     pagina = navegador.new_page(viewport={"width": ancho, "height": 900})
     errores = []
@@ -251,4 +256,48 @@ def test_las_recomendadas_son_las_mejores_y_un_peso_cambia_el_orden(navegador, t
     pagina.locator('input[aria-label="Peso de Rubro"]').fill("0")
     pagina.click('.viz-tab-btn[data-tab="tabOportunidades"]')
     assert _filas(pagina) != antes
+    assert errores == []
+
+
+def _datos_del_enlace(href):
+    """El # de «Llevar al Formulador»: JSON en base64url, lo que lee js/oportunidad.js del Formulador."""
+    prefijo = "https://cristobal-monzo.github.io/formulacion-proyectos-quempin/#/oportunidad/"
+    assert href.startswith(prefijo), href
+    cola = href[len(prefijo):]
+    assert re.fullmatch(r"[A-Za-z0-9_-]+", cola), "sin «/», «+», «=» ni «%»: pasa por el Portal sin cambiar"
+    return json.loads(base64.urlsafe_b64decode(cola + "=" * (-len(cola) % 4)).decode("utf-8"))
+
+
+def test_llevar_al_formulador_lleva_los_datos_de_la_oportunidad(navegador, tmp_path):
+    """Pedido del usuario (2026-10-16): exportar la oportunidad al Formulador con
+    su nombre, ID, monto, etc. Va en las recomendadas y en el detalle de cada una."""
+    sin_monto = _ficha("5000-87-LE26", "Mantención de calderas del consultorio", monto=None, cierre=_en(9))
+    pagina, datos, _, errores = _abrir(navegador, tmp_path, extra=[sin_monto])
+    por_codigo = {o["codigo"]: o for o in datos["oportunidades"]}
+    boton = pagina.locator("#opTop .op-top").first.locator("a.op-formulador")
+    assert boton.inner_text().startswith("Llevar al Formulador") and boton.get_attribute("target") == "_blank"
+    d = _datos_del_enlace(boton.get_attribute("href"))
+    o = por_codigo[d["codigo"]]
+    assert d["v"] == 1 and d["nombre"] == o["nombre"] and d["organismo"] == o["organismo"] == "Servicio de ejemplo"
+    assert d["comuna"] == (o["comuna"] or "") and d["region"] == o["region"] and d["tipo"] == o["tipo"]
+    assert d["compraAgil"] is o["compraAgil"] and d["cierre"] == o["cierre"] and d["duracionMeses"] == o["duracionMeses"]
+    assert d["monto"] == (None if o["monto"]["fuente"].startswith("por tipo") else round(o["monto"]["valor"]))
+
+    def del_detalle(codigo):
+        pagina.select_option("#fMostrar", "todas")
+        pagina.fill("#fBuscar", codigo)
+        pagina.locator(f'#tOps tr.op-row[data-codigo="{codigo}"]').click()
+        return _datos_del_enlace(pagina.locator("#tOps tr.detail-row a.op-formulador").get_attribute("href"))
+
+    licitacion = del_detalle("761391-91-LE26")
+    assert licitacion["monto"] == 10_000_000 and licitacion["comuna"] == "Quilpué" and licitacion["compraAgil"] is False
+    assert licitacion["req"] == "" and licitacion["descripcion"] == ""
+    # Sin monto publicado, el que se estima por el tipo de licitación no viaja: no es un presupuesto.
+    assert por_codigo["5000-87-LE26"]["monto"]["fuente"].startswith("por tipo")
+    assert del_detalle("5000-87-LE26")["monto"] is None
+    # La compra ágil va como tal, con su presupuesto disponible.
+    agil = del_detalle("100-98-COT26")
+    assert agil["compraAgil"] is True and agil["monto"] == 2_000_000 and agil["tipo"] == "COT"
+    # La visita que toca hoy: la próxima de sus fechas.
+    assert del_detalle("5000-88-LE26")["visita"] == {"fecha": _en(3)[:16], "obligatoria": True, "pasada": False}
     assert errores == []

@@ -59,8 +59,18 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   abre y cierra en su lugar, y rehacer la tabla guarda el scroll (2026-10-15,
   el usuario: al hacer clic en un proyecto la página volvía al inicio).
 - Todo texto de la API se escribe con `textContent` (`el()`), y los enlaces
-  solo van a https://www.mercadopublico.cl/ o a la ficha pública de una compra
-  ágil (https://buscador.mercadopublico.cl/ficha?code=…).
+  solo van a https://www.mercadopublico.cl/, a la ficha pública de una compra
+  ágil (https://buscador.mercadopublico.cl/ficha?code=…) o al Formulador.
+- **«Llevar al Formulador ↗»** (2026-10-16, pedido del usuario: exportar la
+  oportunidad al Formulador con nombre, ID, monto, etc.): en las 3
+  recomendadas y en el detalle de cada una. `enlaceFormulador()` abre
+  `…/formulacion-proyectos-quempin/#/oportunidad/<datos>`, con los datos
+  públicos en JSON y base64url (código, nombre, organismo, comuna y región,
+  tipo, cierre, monto, duración, la visita del día, descripción y el N° de la
+  Planilla si ya está). Solo va el monto que publicó el comprador: el
+  estimado «por tipo» no es un presupuesto. El Formulador lo lee en
+  `js/oportunidad.js` (si cambian los campos, cambian los dos lados);
+  `test_llevar_al_formulador_lleva_los_datos_de_la_oportunidad` lo cubre.
 - **Compras ágiles** (2026-10-14, pedido del usuario): van en la misma lista,
   con la etiqueta «Compra Ágil» y el filtro de tipo. Se cotizan en horas, así
   que tienen sus propios tramos de plazo (`DATA.reglas.plazoOfertaCompraAgil`,
