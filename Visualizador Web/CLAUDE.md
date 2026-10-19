@@ -287,6 +287,20 @@ y que se pueda revertir si no le gusta.
   `quempin_portal_pais`. El tema usa `quempin_hub_theme`, el del índice. Cuando
   una herramienta guarda la contraseña, las que esperaban con el candado se
   recargan solas. Se mantienen 8 herramientas cargadas como máximo.
+- **Usuario** (2026-10-16, pedido del usuario: «un selector de usuario» con
+  NB, ES, LC, CM, MP, SV): botón `#btnUsuario` junto a Proyecto. Guarda las
+  iniciales **tal cual, sin JSON**, en `quempin_usuario`, la misma clave del
+  Formulador (`js/usuario.js`), que las usa como responsable de lo que se crea,
+  autor en el Control de Documentos y «Mis proyectos»; cada uno se entera del
+  cambio del otro por el evento `storage`. El selector de proyectos muestra
+  primero «Tus proyectos» (el `responsable` del Formulador). Sin elección, adopta
+  las iniciales que el Formulador tenía antes (`qpn.formulacion.iniciales` o su
+  «Responsable por defecto»), solo leyéndolas. La lista va en el registro
+  (`"usuarios"`) y debe ser la misma del Formulador y de Sistema QUEMPIN
+  (`app/config.py`, `USUARIOS`): `test_portal.py` las compara. Dentro del portal
+  se oculta el botón de usuario del Formulador (`#usuarioBtn`). En el teléfono el
+  botón muestra solo las iniciales (o un ícono sin usuario) y su ventana va fija
+  a la pantalla; bajo 380 px la cabecera se junta un poco.
 - **Publicar**: copiar el archivo a `.worktrees/gh-pages/portal/index.html`,
   hacer commit y push. No tiene build ni datos, y `publicar.py` no lo toca.
 - **Revertir**: borrar `portal/` en gh-pages, o hacer `git revert` del commit

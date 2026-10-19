@@ -286,6 +286,7 @@ CABECERA_CALC = """<header class="viz-header"><div class="viz-container"><span c
 CABECERA_FORMULADOR = """<div class="viz-root"><header class="viz-header"><div class="viz-container">
   <a class="viz-logo" href="#/"><span class="viz-wordmark">QUEMPIN</span></a>
   <div class="viz-titleblock"><h1>Formulación de Proyectos</h1></div>
+  <button class="viz-theme-toggle hb usuario-btn" id="usuarioBtn">LC</button>
   <button class="viz-theme-toggle hb" id="herrBtn">Herramientas</button>
   <button class="viz-theme-toggle hb" data-act="config" id="config">Configuración</button>
   <button class="viz-theme-toggle hb" id="themeToggle">Modo oscuro</button></div>
@@ -886,7 +887,7 @@ def test_dentro_del_portal_las_herramientas_no_repiten_su_cabecera(navegador, si
     form = _marco(pagina, "formulador", "formulador")
     pagina.wait_for_function("() => document.getElementById('marco-formulador').contentDocument.documentElement.dataset.enPortal === 'formulador'")
     # Del Formulador quedan sus secciones y Configuración; no su logo, su título, su menú de herramientas ni su tema
-    for oculto in (".viz-logo", ".viz-titleblock", "#herrBtn", "#themeToggle"):
+    for oculto in (".viz-logo", ".viz-titleblock", "#herrBtn", "#themeToggle", "#usuarioBtn"):
         assert _estilo(form, oculto) == "none", oculto
     for visible in (".viz-modnav", "#config"):
         assert _estilo(form, visible) != "none", visible
@@ -1139,6 +1140,116 @@ def test_lo_que_esconde_el_portal_existe_en_cada_herramienta():
     if raiz_f and raiz_f.exists():
         indice = (raiz_f / "index.html").read_text(encoding="utf-8")
         for pieza in ('class="viz-header"', 'class="viz-logo"', 'class="viz-titleblock"', 'id="herrBtn"',
-                      'id="themeToggle"', 'class="viz-modnav"', 'data-act="config"'):
+                      'id="themeToggle"', 'class="viz-modnav"', 'data-act="config"', 'id="usuarioBtn"'):
             assert pieza in indice, pieza
         assert f"'{reg['formulador']['tema']}'" in (raiz_f / "js" / "app.js").read_text(encoding="utf-8")
+
+
+# ---- Usuario (2026-10-16): las iniciales del equipo, elegidas una vez por navegador -------------------
+
+USUARIOS = ["NB", "ES", "LC", "CM", "MP", "SV"]
+
+
+def test_las_iniciales_del_equipo_son_las_mismas_en_las_tres_herramientas():
+    """El portal, el Formulador (js/usuario.js) y Sistema QUEMPIN (app/config.py) ofrecen la misma lista."""
+    assert _registro()["usuarios"] == USUARIOS
+    formulador = _hermano("Formulación de proyectos")
+    usuario_js = formulador / "quempin-formulacion" / "js" / "usuario.js" if formulador else None
+    if usuario_js and usuario_js.exists():
+        texto = usuario_js.read_text(encoding="utf-8")
+        assert re.findall(r"'([A-Z]{2})'", re.search(r"const LISTA = \[(.*?)\]", texto).group(1)) == USUARIOS
+        assert "const CLAVE = 'quempin_usuario'" in texto
+    sistema = _hermano("Sistema QUEMPIN")
+    config = sistema / "app" / "config.py" if sistema else None
+    if config and config.exists():
+        texto = config.read_text(encoding="utf-8")
+        assert re.findall(r'"([A-Z]{2})"', re.search(r"^USUARIOS = \((.*?)\)", texto, re.M).group(1)) == USUARIOS
+
+
+def _proyectos_con_responsable():
+    datos = json.loads(json.dumps(PROYECTOS))
+    datos["proyectos"][1]["responsable"] = "LC"     # QMPN-2026-001 v2, la versión que manda
+    datos["proyectos"][2]["responsable"] = "CM"     # QMPN-2026-002
+    return datos
+
+
+def test_el_usuario_se_elige_una_vez_y_ordena_los_proyectos(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.evaluate("d => localStorage.setItem('qpn.formulacion.proyectos.v1', JSON.stringify(d))", _proyectos_con_responsable())
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    boton = pagina.locator("#btnUsuario")
+    assert pagina.locator("#usuarioActual").inner_text() == "¿Quién eres?" and "sin" in boton.get_attribute("class")
+    boton.click()
+    assert pagina.locator("#listaUsuarios .usr-op").all_inner_texts() == USUARIOS
+    assert pagina.locator("#sinUsuario").get_attribute("aria-selected") == "true"
+    pagina.locator('#listaUsuarios .usr-op[data-usuario="LC"]').click()
+    assert pagina.locator("#popUsuario").is_hidden()
+    assert pagina.locator("#usuarioActual").inner_text() == "LC" and "sin" not in boton.get_attribute("class")
+    # Se guarda tal cual (no JSON): así lo lee el Formulador
+    assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "LC"
+    assert "Trabajas como LC" in pagina.locator("#aviso").inner_text()
+    # El selector de proyectos muestra primero los suyos
+    pagina.locator("#btnProyecto").click()
+    assert pagina.locator("#listaProyectos .pop-grupo").all_text_contents() == ["Tus proyectos (LC)", "Del equipo"]
+    titulos = pagina.locator("#listaProyectos li").all_inner_texts()
+    assert titulos[1].startswith("QMPN-2026-001") and titulos[3].startswith("QMPN-2026-002"), titulos
+    assert "a cargo de CM" in titulos[3]
+    pagina.keyboard.press("Escape")
+    # El buscador dice cuál es suyo y encuentra por iniciales
+    pagina.locator("#buscar").fill("cm")
+    assert "a cargo de CM" in pagina.locator("#resultados").inner_text()
+    pagina.locator("#buscar").fill("")
+    # Sin usuario: se guarda vacío y los proyectos van sin grupos
+    boton.click()
+    pagina.locator("#sinUsuario").click()
+    assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == ""
+    assert pagina.locator("#usuarioActual").inner_text() == "¿Quién eres?"
+    pagina.locator("#btnProyecto").click()
+    assert pagina.locator("#listaProyectos .pop-grupo").count() == 0
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_usuario_elegido_en_el_formulador_vale_en_el_portal(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _menu(pagina, "Formulador")
+    form = _marco(pagina, "formulador", "formulador")
+    # El Formulador (dentro del portal) guarda la misma clave: el portal se entera sin recargar
+    form.evaluate("localStorage.setItem('quempin_usuario', 'MP')")
+    pagina.wait_for_function("() => document.getElementById('usuarioActual').textContent === 'MP'")
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_portal_adopta_las_iniciales_que_el_formulador_tenia_de_antes(navegador, sitio):
+    ctx = navegador.new_context(viewport={"width": 1280, "height": 860})
+    ctx.add_init_script("""(() => {
+        if (window !== window.top || localStorage.getItem('quempin_usuario') !== null) return;
+        localStorage.setItem('quempin_viz_clave', 'clave-de-mentira');
+        localStorage.setItem('qpn.formulacion.iniciales', 'es');
+    })()""")
+    pagina = ctx.new_page()
+    pagina.goto(sitio + "/finanzas-quempin/portal/")
+    pagina.locator("#vistaInicio").wait_for()
+    assert pagina.locator("#usuarioActual").inner_text() == "ES"
+    assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "ES"
+    ctx.close()
+
+
+@pytest.mark.parametrize("ancho", [360, 390])
+def test_telefono_con_usuario_y_proyecto_sin_desbordes(navegador, sitio, ancho):
+    pagina, errores = _abrir_portal(navegador, sitio, ancho=ancho, alto=844, proyectos=True, movil=True)
+    pagina.evaluate("localStorage.setItem('quempin_usuario', 'LC'); localStorage.setItem('quempin_portal_proyecto', JSON.stringify('QMPN-2026-001'))")
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    assert pagina.locator("#usuarioActual").inner_text() == "LC"
+    d = pagina.evaluate(JS_DESBORDES)
+    assert d["doc"] <= ancho and not d["fuera"], d
+    caja = pagina.locator("#btnUsuario").bounding_box()
+    assert caja["x"] >= 0 and caja["x"] + caja["width"] <= ancho, caja
+    pagina.locator("#btnUsuario").click()
+    pop = pagina.locator("#popUsuario").bounding_box()
+    assert pop["x"] >= 0 and pop["x"] + pop["width"] <= ancho, pop
+    assert not errores
+    pagina.context.close()
