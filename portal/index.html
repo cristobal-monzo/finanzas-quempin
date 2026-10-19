@@ -208,6 +208,9 @@
   .btn-proyecto:hover { border-color: #6b6a66; }
   .btn-proyecto .et { font-size: 10.5px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: #ff8a4d; }
   .btn-proyecto .val { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* La carpeta del proyecto elegido (2026-10-19): QUEMPIN.exe la abre en el Explorador de archivos */
+  .btn-carpeta { margin-left: -4px; }
+  .cab-btn[hidden] { display: none; }
   .pop-proyecto {
     position: absolute; right: 0; top: 48px; width: min(380px, calc(100vw - 24px));
     padding: 10px; border-radius: 12px;
@@ -536,6 +539,8 @@
     .buscador input { font-size: 16px; height: 42px; }
     .buscador kbd { display: none; }
     .btn-proyecto { max-width: 136px; padding: 0 10px; }
+    /* En el teléfono no hay Explorador de archivos ni QUEMPIN.exe */
+    .btn-carpeta { display: none; }
     .btn-proyecto .et { display: none; }
     /* El proyecto elegido usa lo que queda de la fila: un código largo se corta con «…» (completo en su title) */
     .proyecto { flex: 0 1 auto; min-width: 0; }
@@ -617,6 +622,11 @@
         <p class="pop-vacio" id="sinProyectos" hidden>Aquí aparecen los proyectos del Formulador guardados en este navegador. Ábrelo una vez y vuelve.</p>
       </div>
     </div>
+    <!-- La carpeta del proyecto elegido en el Explorador de archivos (2026-10-19): QUEMPIN.exe 1.3.10 atiende
+         quempin://carpeta/… (Sistema QUEMPIN app/carpetas.py). Solo si el proyecto tiene carpeta de oferta. -->
+    <button class="cab-btn btn-carpeta" id="btnCarpeta" type="button" hidden aria-label="Abrir la carpeta del proyecto" title="Abrir la carpeta del proyecto">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5L12 11l2.5 2.5"/></svg>
+    </button>
   </header>
 
   <div class="cuerpo">
@@ -699,7 +709,7 @@
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
       <li><strong>Usuario.</strong> Elige tus iniciales arriba a la derecha, una vez por navegador. En el Formulador quedas como responsable de los proyectos que crees y como autor de la evaluación de costos en el Control de Documentos, y su lista y el selector de proyectos muestran primero los tuyos. En Sistema QUEMPIN las iniciales se eligen en Configuración › Mi perfil.</li>
-      <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él.</li>
+      <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él. Si tiene carpeta, el botón de la carpeta, a su lado, la abre en el Explorador de archivos del computador (con QUEMPIN.exe 1.3.10 o más nuevo).</li>
       <li><strong>Excel y Sistema QUEMPIN.</strong> La Planilla de Ingreso se abre en Excel para la web, en otra pestaña del navegador. «Cotizar y comprar» abre el programa QUEMPIN.exe en la pantalla que elijas; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
       <li><strong>Abrir aparte</strong> (↗, arriba a la derecha) lleva la herramienta activa a su propia pestaña del navegador, en su dirección de siempre.</li>
       <li>La contraseña es la del equipo, la misma de siempre, y se escribe una sola vez por navegador.</li>
@@ -882,13 +892,13 @@
      "usan": ["cotizacion", "orden-compra"],
      "falta": "No llegan a tu computador el programa, su carpeta compartida ni el Control de Documentos."},
     {"id": "sistema", "tipo": "Programa", "nombre": "Sistema QUEMPIN (QUEMPIN.exe)", "corto": "QUEMPIN.exe",
-     "para": "Emite las cotizaciones (60) y las órdenes de compra (61) con su folio. «Cotizar y comprar» lo abre desde el portal.",
+     "para": "Emite las cotizaciones (60) y las órdenes de compra (61) con su folio. «Cotizar y comprar» lo abre desde el portal, y desde la versión 1.3.10 abre la carpeta de cada proyecto en el Explorador y, al adjudicarse, la copia a Gestión de Proyectos (el original pasa a 0 OFERTAS ADJUDICADAS).",
      "ruta": ["OneDrive - QUEMPIN SPA", "Cotizaciones y OC - Documentos", "QUEMPIN.exe"],
-     "pasos": ["Ábrelo una vez con doble clic desde esa carpeta (versión 1.3.8 o más nueva). «Crear acceso directo.bat», en la Carpeta compartida QUEMPIN, lo deja en el Escritorio.",
+     "pasos": ["Ábrelo una vez con doble clic desde esa carpeta (versión 1.3.10 o más nueva). «Crear acceso directo.bat», en la Carpeta compartida QUEMPIN, lo deja en el Escritorio.",
                "La primera vez pide la Carpeta compartida QUEMPIN (botón Examinar…), tu nombre, iniciales, cargo y correo. Quedan solo en tu computador y se cambian en Configuración › Mi perfil.",
                "La primera vez que el portal lo abre, el navegador pregunta: marca «Permitir siempre» y elige «Abrir»."],
      "usan": ["cotizacion", "orden-compra"],
-     "falta": "Los botones de «Cotizar y comprar» no hacen nada: abre el programa una vez desde su carpeta."},
+     "falta": "Los botones de «Cotizar y comprar» y el de la carpeta del proyecto no hacen nada: abre el programa una vez desde su carpeta."},
     {"id": "compartida", "tipo": "Carpeta", "nombre": "Carpeta compartida QUEMPIN", "corto": "Carpeta compartida",
      "para": "Los datos comunes de Sistema QUEMPIN: clientes, proveedores, documentos emitidos y sus PDF, más su guía LEEME.md y las versiones anteriores del programa.",
      "ruta": ["OneDrive - QUEMPIN SPA", "Cotizaciones y OC - Documentos", "Carpeta compartida QUEMPIN"],
@@ -1093,6 +1103,18 @@
     return p && /^\d{1,6}$/.test(String(p.codigo || '')) ? String(p.codigo) : null;
   }
   const tagDe = (p) => texto(((p && p.vinculos && p.vinculos.analisisFinanciero) || {}).tag).toUpperCase() || null;
+  /* La carpeta del proyecto: { nombre, ruta, biblioteca } o null. Es la de la oferta (vinculos.carpetaOferta del
+     Formulador, ruta dentro de «Formulación de proyectos») o, cuando ya se adjudicó y se copió a Gestión de
+     Proyectos (v.gestion, 2026-10-19), esa copia, donde sigue la ejecución. */
+  function carpetaDe(p) {
+    const v = p && p.vinculos && p.vinculos.carpetaOferta;
+    const ruta = v && Array.isArray(v.ruta) ? v.ruta.map(texto) : [];
+    const valida = (n) => !!n && !n.startsWith('.') && !/[\\/:*?"<>|]/.test(n);
+    if (!ruta.length || ruta.length > 6 || !ruta.every(valida)) return null;
+    const nombre = texto(v.nombre) || ruta[ruta.length - 1];
+    if (v.gestion && typeof v.gestion === 'object' && valida(nombre)) return { nombre, ruta: [nombre], biblioteca: 'gestion' };
+    return { nombre, ruta, biblioteca: 'formulacion' };
+  }
   function leerProyectos() {
     let datos = null;
     try { datos = JSON.parse(localStorage.getItem(LS_FORMULADOR) || 'null'); } catch (e) { datos = null; }
@@ -1108,7 +1130,7 @@
       porCodigo.set(codigo, {
         uid: String(p.uid), codigo, version, modificado,
         titulo: texto(p.titulo), cliente: texto(p.cliente), estado: texto(p.estado),
-        req: reqDe(p), tag: tagDe(p), responsable: texto(p.responsable)
+        req: reqDe(p), tag: tagDe(p), responsable: texto(p.responsable), carpeta: carpetaDe(p)
       });
     });
     return Array.from(porCodigo.values()).sort((a, b) => b.modificado.localeCompare(a.modificado));
@@ -1573,6 +1595,12 @@
     const val = $('#proyectoActual');
     val.textContent = p ? (MOVIL.matches ? p.codigo : nombreProyecto(p)) : 'Elegir';
     $('#btnProyecto').title = p ? 'Proyecto: ' + nombreProyecto(p) : 'Elegir un proyecto';
+    const c = p && p.carpeta;
+    const bc = $('#btnCarpeta');
+    bc.hidden = !c;
+    const t = c ? 'Abrir la carpeta «' + c.nombre + '»' + (c.biblioteca === 'gestion' ? ' de Gestión de Proyectos' : '') + ' en el Explorador de archivos' : 'Abrir la carpeta del proyecto';
+    bc.title = t;
+    bc.setAttribute('aria-label', t);
   }
   let selectorRecien = false;   // el clic que lo abrió (p. ej. en «Carta Gantt») no lo cierra al llegar al documento
   function abrirSelector(nota) {
@@ -1770,14 +1798,39 @@
   // El navegador no ejecuta programas, pero sí abre direcciones de un protocolo que Windows conoce:
   // QUEMPIN.exe se anota como dueño de quempin:// cada vez que se abre (Sistema QUEMPIN 1.3.8,
   // app/protocolo.py) y abre la sección que dice la dirección. Si ya está abierto, se trae al frente.
-  function abrirPrograma(h) {
+  function abrirEnlace(url) {
     const a = crear('a');
-    a.href = h.enlace;
+    a.href = url;
     a.hidden = true;
     document.body.append(a);
     a.click();
     a.remove();
+  }
+  function abrirPrograma(h) {
+    abrirEnlace(h.enlace);
     avisar('Abriendo Sistema QUEMPIN…', { texto: '¿No se abrió?', ir: () => mostrarInfo(h) });
+  }
+
+  // ---- Carpeta del proyecto (2026-10-19) -------------------------------------------------------------
+  // Pedido del usuario: abrir la carpeta del proyecto en el Explorador de archivos del computador. QUEMPIN.exe
+  // 1.3.10 atiende quempin://carpeta/<biblioteca>/<ruta> sin abrir su ventana y, si la carpeta se movió (a
+  // Adjudicadas), la busca por su nombre en las dos bibliotecas (Sistema QUEMPIN app/carpetas.py).
+  const NOMBRE_BIBLIOTECA = { formulacion: 'Formulación de proyectos', gestion: 'Gestión de Proyectos' };
+  const enlaceCarpeta = (c) => 'quempin://carpeta/' + c.biblioteca + '/' + c.ruta.map(encodeURIComponent).join('/');
+  function abrirCarpeta() {
+    const p = proyectoActual();
+    const c = p && p.carpeta;
+    if (!c) return;
+    abrirEnlace(enlaceCarpeta(c));
+    avisar('Abriendo «' + c.nombre + '» en el Explorador de archivos…', { texto: '¿No se abrió?', ir: () => infoCarpeta(c) });
+  }
+  function infoCarpeta(c) {
+    $('#dlgInfoTit').textContent = 'Si la carpeta no se abrió';
+    $('#dlgInfoTxt').textContent = 'El botón le pide a QUEMPIN.exe que abra la carpeta en el Explorador de archivos de este computador. Necesita la versión 1.3.10 o más nueva, abierta una vez desde su carpeta, y la biblioteca sincronizada en OneDrive. Si el navegador pregunta, marca «Permitir siempre» y elige «Abrir». La carpeta es:';
+    $('#dlgInfoDonde').textContent = [NOMBRE_BIBLIOTECA[c.biblioteca]].concat(c.ruta).join(' › ');
+    $('#dlgInfoDonde').hidden = false;
+    $('#dlgInfoDesc').textContent = 'Si la movieron de lugar, el programa la busca por su nombre en Formulación de proyectos y en Gestión de Proyectos.';
+    $('#dlgInfo').showModal();
   }
 
   // ---- Diálogos ------------------------------------------------------------------------------------
@@ -2366,6 +2419,7 @@
     e.preventDefault();
   }, { passive: false });
 
+  $('#btnCarpeta').addEventListener('click', abrirCarpeta);
   $('#btnProyecto').addEventListener('click', () => {
     if ($('#popProyecto').hidden) { estado.pendiente = null; abrirSelector(); } else cerrarSelector(true);
   });
