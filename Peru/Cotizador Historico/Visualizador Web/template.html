@@ -455,7 +455,11 @@
   @keyframes cartBump { 0% { transform: scale(1); } 50% { transform: scale(1.35); } 100% { transform: scale(1); } }
   .viz-cart-backdrop { position: fixed; inset: 0; z-index: 940; background: rgba(0,0,0,0.38); }
   .viz-cart-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 100vw); background: var(--surface-card); color: var(--text-primary); border-left: 1px solid var(--border-hairline); box-shadow: -8px 0 24px rgba(0,0,0,0.2); z-index: 950; display: flex; flex-direction: column; gap: 10px; padding: 16px; }
-  .viz-cart-header { display: flex; align-items: center; gap: 6px; }
+  .viz-cart-header { display: flex; align-items: center; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--border-hairline); }
+  @media (prefers-reduced-motion: no-preference) {
+    .viz-cart-drawer:not([hidden]) { animation: cartEntra .18s ease-out; }
+    @keyframes cartEntra { from { transform: translateX(24px); opacity: 0; } }
+  }
   .viz-cart-header h3 { font-size: 17px; font-weight: 900; margin: 0; flex: 1; }
   .viz-cart-close { font-family: inherit; background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-secondary); padding: 6px 9px; border-radius: 7px; }
   .viz-cart-close:hover { background: var(--gridline); color: var(--text-primary); }
