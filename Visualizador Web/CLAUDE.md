@@ -222,11 +222,16 @@ y que se pueda revertir si no le gusta.
     `<script type="application/json" id="portal-conexiones">`, una tarjeta por
     carpeta, programa o acceso con su ruta, su enlace a SharePoint, cómo dejarlo
     listo, quién lo usa y qué pasa si falta, más el computador del procesador y
-    sus tres tareas. Arriba, «En este navegador» revisa solo, sin escribir nada:
-    si conecta carpetas, la biblioteca conectada en el Formulador (IndexedDB
-    `qpn-intercambio`, compartida por ser el mismo sitio), el pulso del
-    procesador (`publicado/estado.json`, leído con el `js/pulso.js` del
-    Formulador) y la contraseña. Las rutas se comprobaron en el disco y en
+    sus tres tareas. Arriba, «Preparar este computador» (2026-10-19): un paso por
+    cosa que se conecta, en orden, con su estado y su botón (solo el primero
+    pendiente va destacado) y «n de 6 pasos listos». Revisa solo si conecta
+    carpetas, la biblioteca (IndexedDB `qpn-intercambio`, compartida con el
+    Formulador por ser el mismo sitio), el pulso del procesador
+    (`publicado/estado.json`, leído con el `js/pulso.js` del Formulador), la
+    contraseña y el usuario. «Conectar biblioteca» la conecta aquí mismo y la guarda
+    con las mismas claves que `js/intercambio.js` (nunca crea un Intercambio nuevo).
+    OneDrive y QUEMPIN.exe no se pueden ver desde el navegador: se marcan a mano
+    (`quempin_portal_conexiones`, solo en ese navegador). Las rutas se comprobaron en el disco y en
     SharePoint el 2026-10-16; `test_las_rutas_de_conexiones_son_las_del_intercambio`
     las compara con `Sistema Intercambio/ubicacion.py`. Si cambia una carpeta,
     una tarea o lo que necesita una herramienta, se corrige ese bloque.

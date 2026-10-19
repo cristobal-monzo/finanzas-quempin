@@ -1024,7 +1024,7 @@ def test_configuracion_y_conexiones_en_su_pestana(navegador, sitio):
     tarjetas = pagina.evaluate("[...document.querySelectorAll('.cx-tarjeta')].map(t => t.id)")
     assert tarjetas == ["cx-" + e["id"] for e in cx["elementos"]] + ["cx-procesador"]
     # Sus enlaces van a SharePoint, codificados
-    enlaces = pagina.evaluate("[...document.querySelectorAll('#vistaConexiones a[href]')].map(a => a.getAttribute('href'))")
+    enlaces = pagina.evaluate("[...document.querySelectorAll('.cx-tarjeta a[href]')].map(a => a.getAttribute('href'))")
     assert len(enlaces) == sum(1 for e in cx["elementos"] if "web" in e)
     assert all(h.startswith("https://quempinspa2020.sharepoint.com/") and " " not in h for h in enlaces)
     assert any(h.endswith("/.HERRAMIENTAS%20FORMULACI%C3%93N/Intercambio") for h in enlaces)
@@ -1086,6 +1086,71 @@ def test_conexiones_revisa_este_navegador(navegador, sitio):
         assert "hace 30 min" in e["procesador"][1], e["procesador"]
     assert pagina.locator("#cx-biblioteca .cx-pildora").inner_text().strip() == "Conectada"
     assert pagina.locator("#cx-intercambio .cx-pildora").inner_text().strip() == "Al día"
+    assert not errores
+    pagina.context.close()
+
+
+def test_preparar_este_computador(navegador, sitio):
+    """Pedido del 2026-10-19: arriba, cada cosa que se conecta, en orden, con su botón; la biblioteca se conecta aquí."""
+    pagina, errores = _abrir_portal(navegador, sitio, clave=False)
+    _menu(pagina, "Configuración y conexiones")
+    e = _estado_cx(pagina)
+    assert list(e) == ["navegador", "onedrive", "biblioteca", "contrasena", "usuario", "sistema", "procesador"]
+    if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
+        pytest.skip("este Chromium no conecta carpetas")
+    botones = lambda s: pagina.locator('#cxEstado li[data-estado="' + s + '"] .cx-est-acc').inner_text()
+    assert "Conectar biblioteca" in botones("biblioteca")
+    assert "Elegir mi usuario" in botones("usuario") and "Probar QUEMPIN.exe" in botones("sistema")
+    assert pagina.locator('#cxEstado li[data-estado="onedrive"] a[href^="https://quempinspa2020.sharepoint.com/"]').count() == 2
+    assert pagina.locator("#cxAvanceTxt").inner_text() == "1 de 6 pasos listos"
+    # El botón destacado es solo el del paso que toca ahora
+    assert pagina.evaluate("[...document.querySelectorAll('#cxEstado .cx-boton')].map(b => b.closest('li').dataset.estado)") == ["onedrive"]
+    # Una carpeta que no es la biblioteca: se dice qué elegir y no se guarda nada
+    pagina.evaluate("""async () => {
+        const raiz = await navigator.storage.getDirectory();
+        const otra = await raiz.getDirectoryHandle('Descargas', { create: true });
+        window.showDirectoryPicker = async () => otra;
+    }""")
+    pagina.locator('#cxEstado li[data-estado="biblioteca"] button', has_text="Conectar biblioteca").click()
+    pagina.wait_for_function("() => /no es la biblioteca/.test(document.getElementById('aviso').textContent)")
+    assert _estado_cx(pagina)["biblioteca"][0] == "bad"
+    # La biblioteca completa (con su intercambio y la Planilla): queda donde la guarda el Formulador
+    pagina.evaluate(JS_CONECTAR, 30)
+    pagina.evaluate("""async () => {
+        const raiz = await navigator.storage.getDirectory();
+        const bib = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+        const inter = await (await bib.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio');
+        const w = await (await inter.getFileHandle('intercambio.json', { create: true })).createWritable();
+        await w.write(JSON.stringify({ esquema: 'quempin.intercambio/1' }));
+        await w.close();
+        await bib.getFileHandle('Planilla de Ingreso de Requerimientos.xlsx', { create: true });
+        await new Promise((ok) => { const r = indexedDB.deleteDatabase('qpn-intercambio'); r.onsuccess = r.onerror = ok; });
+        window.showDirectoryPicker = async () => bib;
+    }""")
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
+    pagina.locator("#pestanas .ir", has_text="Conexiones").click()
+    _estado_cx(pagina, {"biblioteca": "bad"})
+    pagina.locator('#cxEstado li[data-estado="biblioteca"] button', has_text="Conectar biblioteca").click()
+    e = _estado_cx(pagina, {"biblioteca": "ok", "procesador": "ok"})
+    assert "Formulación de proyectos - Documentos" in e["biblioteca"][1]
+    dentro = pagina.evaluate("""() => [...document.querySelectorAll('#cxEstado li[data-estado="biblioteca"] .cx-est-dentro span')]
+        .map((s) => [s.className, s.textContent])""")
+    assert dentro == [["si", "Carpeta de intercambio"], ["si", "Planilla de Ingreso"]]
+    guardado = pagina.evaluate("""() => new Promise((ok) => { const r = indexedDB.open('qpn-intercambio');
+        r.onsuccess = () => { const t = r.result.transaction('carpetas').objectStore('carpetas');
+          const a = t.get('intercambio'), b = t.get('biblioteca');
+          t.transaction.oncomplete = () => { r.result.close(); ok([a.result.name, b.result.name]); }; }; })""")
+    assert guardado == ["Intercambio", "Formulación de proyectos - Documentos"]
+    # Con la biblioteca conectada, OneDrive queda a medio camino hasta marcarlo; las marcas se pueden quitar
+    assert e["onedrive"][0] == "warn"
+    pagina.locator('#cxEstado li[data-estado="onedrive"] button', has_text="Ya están las dos").click()
+    _estado_cx(pagina, {"onedrive": "ok"})
+    pagina.locator('#cxEstado li[data-estado="usuario"] button', has_text="Elegir mi usuario").click()
+    pagina.locator("#listaUsuarios .usr-op").first.click()
+    _estado_cx(pagina, {"usuario": "ok"})
+    assert pagina.locator("#cxAvanceTxt").inner_text() == "4 de 6 pasos listos"
+    pagina.locator('#cxEstado li[data-estado="onedrive"] .cx-desmarcar').click()
+    _estado_cx(pagina, {"onedrive": "warn"})
     assert not errores
     pagina.context.close()
 
