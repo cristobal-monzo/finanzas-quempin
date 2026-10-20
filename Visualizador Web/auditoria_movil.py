@@ -44,6 +44,8 @@ TABLEROS = {
     "fc": "Flujo de Caja/Visualizador Web/build/index.html",
     "op": "Sistema Intercambio/Visualizador Web/build/index.html",
     "hub": "Visualizador Web/index.html",
+    # Portal QUEMPIN (2026-10-15): sin contraseña ni datos; se revisa su Inicio, el menú y el selector de proyecto.
+    "portal": "Visualizador Web/portal/index.html",
 }
 
 # Elementos mas externos cuyo borde se sale del viewport y que no estan
@@ -121,6 +123,17 @@ def _escenas(page, clave):
             page.select_option("#fMostrar", "todas")
             page.fill("#fBuscar", "caldera")
         yield "todas + búsqueda", todas_y_busqueda
+    if clave == "portal":
+        def menu():
+            if page.locator("#menu").is_hidden():
+                page.click("#btnMenu")
+        yield "menú abierto", menu
+
+        def proyecto():
+            if page.locator("#velo").is_visible():
+                page.keyboard.press("Escape")   # cierra el menú desplegado del teléfono
+            page.click("#btnProyecto")
+        yield "elegir proyecto", proyecto
     if clave in ("cot", "cotpe"):
         def buscar():
             page.fill("#fSearch", "valvula bola 2 pulgadas")

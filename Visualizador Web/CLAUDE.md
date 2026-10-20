@@ -86,7 +86,7 @@ Lo que tiene que cumplir cualquier tablero (actual o futuro):
 Cómo verificarlo, con los `build/index.html` ya regenerados:
 
 ```
-py -3.14 "Visualizador Web/auditoria_movil.py"            # 8 tableros y el hub × 360/390/768 px
+py -3.14 "Visualizador Web/auditoria_movil.py"            # 8 tableros, el hub y el portal × 360/390/768 px
 py -3.14 "Visualizador Web/auditoria_movil.py" cc --capturas <carpeta fuera del repo>
 ```
 
@@ -149,6 +149,226 @@ ningún Excel/JSON: se edita a mano y se vuelve a copiar a
   (Oportunidades, Cotizador, Centro de Costos, Análisis Financiero y, al final,
   Flujo de Caja), y bajo el botón del Formulador una línea dice que su sección
   «Pendientes del equipo» muestra lo que espera a alguien.
+
+## Portal QUEMPIN (2026-10-15, en prueba)
+
+Pedido del usuario (2026-10-15): un menú por temática para llegar a todas las
+herramientas «sin tener que usar tantos links», con las calculadoras incluidas,
+y que se pueda revertir si no le gusta.
+
+- **Qué es**: `Visualizador Web/portal/index.html`, publicado en
+  `https://cristobal-monzo.github.io/finanzas-quempin/portal/`. Una sola
+  ventana: menú por necesidad (☰), buscador (Ctrl K), proyecto elegido una vez
+  y pestañas con las herramientas abiertas dentro (iframes del mismo sitio).
+  No lleva datos ni contraseña: cada herramienta pide la suya (la del equipo,
+  que el navegador recuerda).
+- **Cambios del 2026-10-16** (pedido del usuario):
+  - **Cuatro grupos y la ayuda**: Formulación de proyectos, Control y
+    finanzas, Cotizar y comprar, Calculadora (al final, antes de Ayuda).
+    `test_los_grupos_del_pedido_del_2026_10_16` fija el orden.
+  - **Inicio minimalista**: todas las herramientas en cuatro columnas, una por
+    grupo, con su línea `breve`; lo que se abre fuera (Excel, QUEMPIN.exe)
+    lleva ↗. Cabe sin desplazarse desde 1024×640: con menos ancho van dos
+    columnas y, si falta alto, se esconden las líneas breves (container
+    queries sobre `.vista-inicio`). Se quitaron Mi día, atajos, las fichas de
+    calculadora y los proyectos recientes.
+  - **Sin barras de desplazamiento** en el portal (clase `sin-barra`): el menú
+    despliega un solo grupo a la vez (`quempin_portal_menu.abierto`; al
+    cambiar de herramienta se abre su grupo) y las pestañas se encogen como
+    las de un navegador, con su nombre `corto` (el completo va en el title) y
+    la ✕ encima del nombre. Si una pantalla muy baja no alcanza, se desplaza
+    con la rueda, sin barra. Las herramientas abiertas dentro conservan la
+    suya. `test_el_inicio_y_el_menu_caben_sin_barras` mide 4 tamaños.
+  - **Cotizar y comprar abre QUEMPIN.exe** con `quempin://cotizacion`,
+    `quempin://orden-compra` y `quempin://clientes` (campo `enlace`): el
+    programa 1.3.8 se anota en Windows al abrirse y abre esa sección, o trae al
+    frente la ventana abierta (Sistema QUEMPIN `app/protocolo.py`, CLAUDE.md
+    §11). El portal muestra «Abriendo Sistema QUEMPIN… ¿No se abrió?», que
+    explica cómo dejarlo listo en ese computador.
+- **Segunda vuelta del 2026-10-16** (pedido: que no se repitan los logos ni los
+  nombres de QUEMPIN en cada herramienta, que no se abran demasiadas pestañas y
+  mejor navegación):
+  - **Herramientas sin su cabecera dentro del portal**: el portal marca el
+    `<html>` de cada marco con `data-en-portal="tablero|calculadora|formulador"`
+    (campo `incrustar` del registro) y le agrega `ESTILO_INCRUSTADO`. Tableros y
+    calculadoras pierden su `.viz-header` (logo, título, país, tableros, modo
+    oscuro); el Formulador conserva su barra de secciones y Configuración, en
+    una barra clara. Se aplica apenas existe cada página (un vigilante cada
+    100 ms), sin tocar las herramientas: abiertas aparte se ven como siempre.
+    `test_lo_que_esconde_el_portal_existe_en_cada_herramienta` revisa los
+    selectores contra los templates, la Calculadora y el Formulador.
+  - **Lo que traía esa cabecera**: la fecha de los datos (`#vizGenerated`) va
+    junto a las pestañas; el país, en un selector ahí mismo que solo aparece en
+    los tableros con versión Perú; el modo claro/oscuro es uno solo (☾ en la
+    cabecera), que fija también la clave de tema de cada herramienta (campo
+    `tema`: `cc_viz_theme`, `quempin_h2_theme`, `quempin_fp_theme`…).
+  - **Una pestaña por herramienta**: las cuatro calculadoras son la familia
+    `calculadora` (páginas hermanas con su propia ruta: elegir otra navega la
+    misma pestaña). Con el Formulador (Gantt, Seguimiento) y el Análisis
+    (Ingresar avance) quedan 8 pestañas como máximo.
+  - Pestañas con el ícono de su grupo e Inicio como casita; en el Inicio, un
+    punto naranjo marca las herramientas que ya tienen pestaña.
+- **Tercera vuelta del 2026-10-16** (pedido: quitar la franja de íconos, que el
+  menú aparezca solo con ☰; sacar «Índice anterior» de la Ayuda y agregar una
+  sección de configuración con todo lo que hay que conectar, bien referenciado):
+  - **Sin franja**: el menú con nombres se despliega encima de la herramienta
+    solo con ☰ (clase `menu-abierto`, igual en el computador y el teléfono) y
+    se cierra al elegir, con Esc o tocando fuera. La herramienta usa todo el
+    ancho. `test_el_menu_solo_aparece_con_la_hamburguesa`.
+  - **Sin «Índice anterior»**: un enlace al índice viejo (`/finanzas-quempin/`)
+    desde una herramienta lleva al Inicio del portal (`RUTA_INDICE`).
+  - **Configuración y conexiones** (Ayuda; herramienta `tipo: vista`, una
+    pestaña sin marco con la sección `#vistaConexiones`): lo arma el bloque
+    `<script type="application/json" id="portal-conexiones">`, una tarjeta por
+    carpeta, programa o acceso con su ruta, su enlace a SharePoint, cómo dejarlo
+    listo, quién lo usa y qué pasa si falta, más el computador del procesador y
+    sus tres tareas. Arriba, «Preparar este computador» (2026-10-19): un paso por
+    cosa que se conecta, en orden, con su estado y su botón (solo el primero
+    pendiente va destacado) y «n de 6 pasos listos». Revisa solo si conecta
+    carpetas, la biblioteca (IndexedDB `qpn-intercambio`, compartida con el
+    Formulador por ser el mismo sitio), el pulso del procesador
+    (`publicado/estado.json`, leído con el `js/pulso.js` del Formulador), la
+    contraseña y el usuario. «Conectar biblioteca» la conecta aquí mismo y la guarda
+    con las mismas claves que `js/intercambio.js` (nunca crea un Intercambio nuevo).
+    OneDrive y QUEMPIN.exe no se pueden ver desde el navegador: se marcan a mano
+    (`quempin_portal_conexiones`, solo en ese navegador). Las rutas se comprobaron en el disco y en
+    SharePoint el 2026-10-16; `test_las_rutas_de_conexiones_son_las_del_intercambio`
+    las compara con `Sistema Intercambio/ubicacion.py`. Si cambia una carpeta,
+    una tarea o lo que necesita una herramienta, se corrige ese bloque.
+- **Por qué funciona**: el Formulador, los tableros y la Calculadora están en el
+  mismo sitio (`cristobal-monzo.github.io`). Eso permite tres cosas:
+  - el portal los abre dentro;
+  - ve a qué herramienta lleva cada enlace;
+  - comparte con ellos el `localStorage`: la contraseña recordada y los
+    proyectos del Formulador.
+
+  Verificado el 2026-10-15:
+  - GitHub Pages no manda X-Frame-Options ni CSP.
+  - Dentro del portal el Formulador sí puede pedir la carpeta
+    (`showDirectoryPicker`), algo que un sitio distinto tiene prohibido.
+- **El registro** (`<script type="application/json" id="portal-registro">`):
+  grupos y herramientas. Cada herramienta lleva:
+  - `tipo`: marco, excel, programa, archivo, ayuda, inicio o vista (una sección
+    propia del portal, en su pestaña: `vista` es su id).
+  - `ruta` y `peru`.
+  - `familia` y `alias`: la misma página va en una sola pestaña. El
+    Formulador incluye Proyectos y Carta Gantt; el Análisis incluye Ingresar
+    datos.
+  - `proyecto`: cómo se abre con el proyecto elegido.
+  - `pestanas` de cada calculadora (los `data-tab` de `Calculadora
+    Técnica/assets/gases.js`).
+
+  Una herramienta nueva es una entrada ahí. Un tablero nuevo va además en
+  `publicar.py`: `test_portal.py` exige que los dos tengan los mismos.
+- **Enlaces entre herramientas**: el portal engancha cada marco del mismo sitio.
+  - Un clic o un `window.open` hacia otra herramienta abre la pestaña de esa
+    herramienta en el portal, no una ventana nueva. Esto vale también para los
+    enlaces absolutos de los tableros.
+  - Dentro de la misma herramienta se navega normal.
+  - `window.open('')` (los reportes PDF del Análisis) no se toca.
+  - Si una herramienta se va a otra por su cuenta (el selector de
+    calculadora), la pestaña la sigue.
+- **Proyecto elegido**: lee, nunca escribe, `qpn.formulacion.proyectos.v1` del
+  Formulador, con la última versión de cada código. Se abre así:
+
+  | Herramienta | Dirección |
+  |---|---|
+  | Formulador | `#/req/<N°>`, o `#/tag/` o `#/p/<uid>/ficha` |
+  | Carta Gantt | `#/p/<uid>/gantt` |
+  | Seguimiento | `#/p/<uid>/seguimiento` |
+  | Centro de Costos (Chile) | `#tag=` |
+  | Análisis Financiero | `#proyecto=` |
+
+  Si el proyecto cambia, las pestañas abiertas se van a él.
+- **Lo que no se abre dentro**:
+  - Planilla de Ingreso: Excel para la web en una pestaña nueva, con el enlace
+    de `js/m365-config.js` del Formulador.
+  - Control de Documentos: el portal dice dónde está, porque aún no tiene
+    enlace web.
+  - QUEMPIN.exe (cotización, OC, clientes): se abre por `quempin://`, fuera
+    del navegador.
+- **En el navegador**: guarda `quempin_portal_pestanas` (vuelven sin cargar,
+  solo la activa), `quempin_portal_proyecto`, `quempin_portal_menu` y
+  `quempin_portal_pais`. El tema usa `quempin_hub_theme`, el del índice. Cuando
+  una herramienta guarda la contraseña, las que esperaban con el candado se
+  recargan solas. Se mantienen 8 herramientas cargadas como máximo.
+- **Usuario** (2026-10-16, pedido del usuario: «un selector de usuario» con
+  NB, ES, LC, CM, MP, SV): botón `#btnUsuario` junto a Proyecto. Guarda las
+  iniciales **tal cual, sin JSON**, en `quempin_usuario`, la misma clave del
+  Formulador (`js/usuario.js`), que las usa como responsable de lo que se crea,
+  autor en el Control de Documentos y «Mis proyectos»; cada uno se entera del
+  cambio del otro por el evento `storage`. El selector de proyectos muestra
+  primero «Tus proyectos» (el `responsable` del Formulador). Sin elección, adopta
+  las iniciales que el Formulador tenía antes (`qpn.formulacion.iniciales` o su
+  «Responsable por defecto»), solo leyéndolas. La lista va en el registro
+  (`"usuarios"`) y debe ser la misma del Formulador y de Sistema QUEMPIN
+  (`app/config.py`, `USUARIOS`): `test_portal.py` las compara. Dentro del portal
+  se oculta el botón de usuario del Formulador (`#usuarioBtn`). En el teléfono el
+  botón muestra solo las iniciales (o un ícono sin usuario) y su ventana va fija
+  a la pantalla; bajo 380 px la cabecera se junta un poco.
+- **Recorrido de proyectos** (2026-10-20, pedido del usuario: una herramienta
+  nueva que deje «muy claro» el flujo de trabajo, «clara, visual», afectada por
+  el usuario elegido y con una casilla para ver solo sus proyectos):
+  - **Qué es**: la vista `recorrido` (`tipo: vista`, `#vistaRecorrido`, arriba en
+    el menú junto a Inicio, y una franja arriba del Inicio). Un tablero con las
+    seis etapas del Seguimiento del Formulador (`js/flujo.js`, mismos títulos:
+    `test_el_recorrido_tiene_las_etapas_del_formulador`). Cada proyecto del equipo
+    es una tarjeta en su etapa, con su N°, quién lo tiene, sus fechas, lo que
+    sigue y un botón que abre la herramienta donde se hace. Cada columna nombra
+    y abre la herramienta de su etapa.
+  - **De dónde lee**: de la carpeta de intercambio, con la conexión de la
+    biblioteca guardada en este navegador (IndexedDB `qpn-intercambio`, la del
+    Formulador). Lee `publicado/requerimientos`, `proyectos`,
+    `analisis-financiero`, `licitaciones`, `estado`, `publicado/formulador/*.json`
+    y los `borrador-cotizacion` del `buzon/`. **Nunca escribe en la carpeta**, y
+    en la página no va ningún dato: se arma en el navegador de cada persona.
+    Sin conexión, sin permiso o en un navegador que no abre carpetas, dice qué
+    hacer y da el botón (`Conectar biblioteca` reutiliza `conectarBiblioteca`).
+  - **Las reglas** (`rcArmar`, `rcTarjetaReq`): entra lo vivo en la Planilla
+    (Evaluación, Ofertado, Adjudicado), lo que tiene formulación (si la Planilla
+    no lo cerró), lo que tiene ficha en el Análisis, los presupuestos sin N° y
+    las fichas del Análisis sin N°. La etapa sale de lo más avanzado que haya:
+    ficha en el Análisis (Ejecución, o Cierre con 100 % de avance); Adjudicado sin
+    ficha (Ejecución: «Pasar a ejecución» o «Crear su ficha»); Ofertado,
+    formulación Enviada o cotización emitida (Oferta, con el resultado de
+    Mercado Público); borrador esperando en Sistema QUEMPIN, o formulación con
+    precio y sin errores (Cotización); formulación en curso (Formulación); y si
+    no, Requerimiento. Lo que lleva más de 60 días sin moverse va plegado al pie
+    de su etapa; una oferta con más de 45 días sin respuesta pide confirmar el
+    resultado. Los datos que no calzan entre herramientas (la Planilla dice
+    «Ofertado» y ya hay ficha en el Análisis) salen como «datos por revisar».
+  - **Quién lo tiene**: las primeras iniciales del equipo entre el responsable
+    de la formulación, el evaluador y el captador de la Planilla. Con usuario
+    elegido, lo suyo va marcado en naranjo, la primera cifra es «Te esperan» y
+    «Solo mis proyectos» (recordado en `quempin_portal_recorrido`) deja solo lo
+    suyo; sin usuario, la casilla se desactiva y ofrece elegirlo.
+  - **Cifras y búsqueda**: las cuatro cifras de arriba (te esperan o requieren
+    acción, cierran esta semana, esperan respuesta, en ejecución) filtran el
+    tablero; el buscador filtra por N°, nombre, ciudad o TAG, y Ctrl K encuentra
+    cada proyecto y abre su detalle (sus seis etapas, lo que sigue, sus datos y
+    sus enlaces, incluidas sus carpetas por `quempin://carpeta`).
+  - Se relee al volver a la pestaña si pasó más de un minuto, o con ↻. La
+    vista previa con datos reales se arma fuera del repo (almacenamiento privado
+    de un Chromium aislado), nunca con capturas dentro del repo.
+- **Publicar**: copiar el archivo a `.worktrees/gh-pages/portal/index.html`,
+  hacer commit y push. No tiene build ni datos, y `publicar.py` no lo toca.
+- **Revertir**: borrar `portal/` en gh-pages, o hacer `git revert` del commit
+  que lo agregó. Para el portal no se cambió el índice ni ninguna herramienta.
+- **Pruebas**:
+  - `Visualizador Web/tests/test_portal.py` revisa:
+    - el registro contra lo publicado;
+    - los enlaces que leen el AF, el CC, el Formulador y la Calculadora;
+    - el portal en Chromium, sobre un sitio de mentira con las mismas rutas.
+  - `auditoria_movil.py portal` revisa el teléfono.
+- **Pendiente si se adopta (fase 2)**:
+  - los contadores de «Pendientes del equipo» leídos de la carpeta de
+    intercambio;
+  - el índice apuntando al portal;
+  - un enlace web al Control de Documentos.
+
+  Si el Formulador activa SharePoint (`clientId` en `m365-config.js`), su
+  ingreso por redirección no funciona dentro de un marco: dentro del portal hay
+  que usar una ventana emergente.
 
 ## Enlaces por proyecto entre tableros (2026-10-14)
 
