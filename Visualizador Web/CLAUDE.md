@@ -114,6 +114,10 @@ versiona) — ver regla ya agregada en el `.gitignore` raíz.
 
 ## Índice (hub) de los tableros
 
+**Desde el 2026-10-19 la dirección del hub abre el Portal** (`portal/`, un script al
+inicio del `<head>`; decisión del usuario: una sola puerta). Dentro de un marco o con
+`?indice` se ve el índice de siempre.
+
 `Visualizador Web/index.html` (raíz, junto a este `CLAUDE.md`) es una
 página estática que **no muestra datos** — una tarjeta por tablero
 publicado (4 desde que se agregó Centro de Costos Perú, 2026-08-25),

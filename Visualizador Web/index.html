@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<script>
+  // Una sola puerta (2026-10-19, decisión del usuario): esta dirección abre el Portal QUEMPIN, que reúne
+  // todas las herramientas. Dentro de un marco (el propio portal) o con ?indice se queda en este índice.
+  if (window.top === window && !/[?&]indice/.test(location.search)) location.replace('portal/' + location.hash);
+</script>
 <!-- DOCTYPE + charset + viewport (2026-09-24, mismo arreglo que Analisis
      Financiero en su auditoria del 2026-09-21): sin viewport un telefono
      dibujaba el tablero a ~980 px y lo achicaba, y las reglas @media de
