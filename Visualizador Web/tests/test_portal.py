@@ -112,7 +112,7 @@ def test_registro_bien_formado():
             dueno = por_id[h["familia"]]
             assert h["familia"] == h["id"] or (dueno["familia"] == dueno["id"] and h["ruta"] != dueno["ruta"]), h["id"]
         if h.get("incrustar"):
-            assert h["incrustar"] in {"tablero", "calculadora", "formulador"} and h["tipo"] == "marco", h["id"]
+            assert h["incrustar"] in {"tablero", "calculadora", "formulador", "gantt"} and h["tipo"] == "marco", h["id"]
         if h["tipo"] == "vista":   # una vista propia del portal, con su sección en la página
             assert f'id="{h["vista"]}"' in PORTAL.read_text(encoding="utf-8"), h["id"]
         assert h.get("claves", "") == h.get("claves", "").lower(), h["id"]
@@ -234,8 +234,13 @@ def test_las_rutas_del_formulador_que_usa_el_portal():
     if not app or not app.exists():
         pytest.skip("el Formulador no está en este equipo")
     texto = app.read_text(encoding="utf-8")
-    for pieza in ("id: 'gantt'", "id: 'seguimiento'", "id: 'ficha'", "parts[0] === 'req'", "parts[0] === 'tag'"):
+    for pieza in ("id: 'seguimiento'", "id: 'ficha'", "parts[0] === 'req'", "parts[0] === 'tag'"):
         assert pieza in texto, pieza
+    # La Carta Gantt, herramienta aparte desde el 2026-10-20: su página abre la carta de un proyecto con
+    # #/proyecto/<uid>, y el Formulador manda ahí los enlaces antiguos #/p/<uid>/gantt
+    gantt = app.parent.parent / "gantt"
+    assert "parts[0] === 'proyecto'" in (gantt / "app.js").read_text(encoding="utf-8")
+    assert "gantt/#/proyecto/" in texto
     store = (app.parent / "store.js").read_text(encoding="utf-8")
     assert f"'{LS_PROYECTOS}'" in store
     assert "id=\"pwGate\"" in (app.parent.parent / "index.html").read_text(encoding="utf-8")
@@ -293,6 +298,11 @@ CABECERA_FORMULADOR = """<div class="viz-root"><header class="viz-header"><div c
   <nav class="viz-modnav"><div class="viz-container viz-modnav-inner" id="modnav"><a class="viz-modnav-tab is-active" href="#/">Proyectos</a></div></nav>
 </header></div>"""
 
+CABECERA_GANTT = """<div class="viz-root"><header class="viz-header"><div class="viz-container">
+  <a class="viz-logo" href="#/"><span class="viz-wordmark">QUEMPIN</span></a>
+  <div class="viz-titleblock"><h1>Carta Gantt</h1></div>
+  <button class="viz-theme-toggle hb" id="themeToggle">Modo oscuro</button></div></header></div>"""
+
 CANDADO = """<div id="pwGate">Contraseña del equipo</div>
 <script>if (localStorage.getItem('quempin_viz_clave')) document.getElementById('pwGate').hidden = true;</script>"""
 
@@ -346,6 +356,7 @@ def _sitio(raiz: Path):
     pagina("/finanzas-quempin/flujo-de-caja/", "Flujo de Caja", "fc")
     pagina("/finanzas-quempin/oportunidades/", "Oportunidades", "op")
     pagina("/formulacion-proyectos-quempin/", "Formulador", "formulador", CABECERA_FORMULADOR)
+    pagina("/formulacion-proyectos-quempin/gantt/", "Carta Gantt", "gantt", CABECERA_GANTT)
     # El pulso del procesador que lee «Configuración y conexiones» (el del Formulador, si está en este equipo)
     formulador = _hermano("Formulación de proyectos")
     pulso = formulador / "quempin-formulacion" / "js" / "pulso.js" if formulador else None
@@ -668,19 +679,24 @@ def test_la_calculadora_que_cambia_sola_mueve_su_pestana(navegador, sitio):
 
 def test_el_proyecto_elegido_abre_cada_herramienta_en_el(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
-    # La Carta Gantt necesita un proyecto: lo pide y después la abre
+    # La Carta Gantt es una herramienta aparte (2026-10-20): sin proyecto abre su lista, sin pedir uno
     _menu(pagina, "Carta Gantt")
-    assert pagina.locator("#popProyecto").is_visible()
-    assert "Carta Gantt" in pagina.locator("#popNota").inner_text()
+    assert not pagina.locator("#popProyecto").is_visible()
+    _marco(pagina, "gantt", "gantt")
+    _esperar(pagina, "gantt", "hash", "#/")
+    # Con un proyecto elegido, abre su carta en su propia pestaña, aparte del Formulador
+    pagina.locator("#btnProyecto").click()
     assert pagina.locator("#listaProyectos .pop-item .t").all_inner_texts() == ["QMPN-2026-001 · Obra de prueba",
                                                                                 "QMPN-2026-002 · Mantención de prueba"]
     pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-001").click()
-    formulador = _marco(pagina, "formulador", "formulador")
-    _esperar(pagina, "formulador", "hash", "#/p/u2/gantt")
     assert "QMPN-2026-001" in pagina.locator("#proyectoActual").inner_text()
-    # El mismo Formulador, en la misma pestaña
+    _esperar(pagina, "gantt", "hash", "#/proyecto/u2")
+    assert pagina.evaluate("document.getElementById('marco-gantt').contentDocument.documentElement.dataset.enPortal") == "gantt"
     _menu(pagina, "Formulador")
+    formulador = _marco(pagina, "formulador", "formulador")
     _esperar(pagina, "formulador", "hash", "#/req/7")
+    assert _pestanas(pagina) == ["Inicio", "Carta Gantt · QMPN-2026-001", "Formulador · QMPN-2026-001"]
+    pagina.locator("#pestanas .x").first.click()
     assert _pestanas(pagina) == ["Inicio", "Formulador · QMPN-2026-001"]
     _menu(pagina, "Centro de Costos")
     cc = _marco(pagina, "centro-costos", "cc")
@@ -811,9 +827,7 @@ def test_una_pestana_por_herramienta_y_no_mas_de_ocho_cargadas(navegador, sitio)
                "Gas natural / GLP", "Configuración y conexiones"]
     for nombre in nombres:
         _menu(pagina, nombre)
-        if pagina.locator("#popProyecto").is_visible():            # la Carta Gantt pide proyecto: se sigue sin
-            pagina.keyboard.press("Escape")
-    assert len(_pestanas(pagina)) == 9                               # Inicio + 8 pestañas, ni una más
+    assert len(_pestanas(pagina)) == 10                              # Inicio + 9 pestañas (la Carta Gantt, aparte desde 2026-10-20), ni una más
     pagina.locator("#pestanas .ir", has_text="Gas / GLP").click()
     _marco(pagina, "calculadora", "gas")
     pagina.wait_for_function("() => document.querySelectorAll('iframe.marco').length <= 8")
@@ -1032,11 +1046,13 @@ def test_configuracion_y_conexiones_en_su_pestana(navegador, sitio):
     filas = pagina.evaluate("""() => [...document.querySelectorAll('#cxNecesita tbody tr')].map(tr =>
         [tr.querySelector('th').textContent, [...tr.querySelectorAll('.cx-chip')].map(c => c.textContent)])""")
     por_nombre = dict(filas)
-    for juntas in ("Formulador, Carta Gantt y Seguimiento", "Centro de Costos y Análisis Financiero",
+    for juntas in ("Formulador y Seguimiento", "Centro de Costos y Análisis Financiero",
                    "Emitir cotización y Orden de compra"):
         assert juntas in por_nombre, juntas
     assert filas[-1] == ["Calculadora (todas)", []]
-    assert {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"} <= set(por_nombre["Formulador, Carta Gantt y Seguimiento"])
+    assert {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"} <= set(por_nombre["Formulador y Seguimiento"])
+    # La Carta Gantt, herramienta aparte (2026-10-20): la carpeta del equipo para compartir sus cartas
+    assert set(por_nombre["Carta Gantt"]) == {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"}
     assert "QUEMPIN.exe" in por_nombre["Emitir cotización y Orden de compra"]
     # Un dato de la tabla lleva a su tarjeta; «Lo usan» abre la herramienta
     pagina.locator("#cxNecesita .cx-chip", has_text="QUEMPIN.exe").first.click()
@@ -1208,6 +1224,11 @@ def test_lo_que_esconde_el_portal_existe_en_cada_herramienta():
                       'id="themeToggle"', 'class="viz-modnav"', 'data-act="config"', 'id="usuarioBtn"'):
             assert pieza in indice, pieza
         assert f"'{reg['formulador']['tema']}'" in (raiz_f / "js" / "app.js").read_text(encoding="utf-8")
+        # La Carta Gantt (2026-10-20): pierde toda su cabecera; su tema, en su página y en su interfaz
+        g = raiz_f / "gantt"
+        assert reg["gantt"]["incrustar"] == "gantt" and 'class="viz-header"' in (g / "index.html").read_text(encoding="utf-8")
+        assert f"'{reg['gantt']['tema']}'" in (g / "index.html").read_text(encoding="utf-8")
+        assert f"'{reg['gantt']['tema']}'" in (g / "app.js").read_text(encoding="utf-8")
 
 
 # ---- Usuario (2026-10-16): las iniciales del equipo, elegidas una vez por navegador -------------------

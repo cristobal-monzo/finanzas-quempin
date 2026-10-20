@@ -193,10 +193,10 @@ y que se pueda revertir si no le gusta.
   nombres de QUEMPIN en cada herramienta, que no se abran demasiadas pestañas y
   mejor navegación):
   - **Herramientas sin su cabecera dentro del portal**: el portal marca el
-    `<html>` de cada marco con `data-en-portal="tablero|calculadora|formulador"`
-    (campo `incrustar` del registro) y le agrega `ESTILO_INCRUSTADO`. Tableros y
-    calculadoras pierden su `.viz-header` (logo, título, país, tableros, modo
-    oscuro); el Formulador conserva su barra de secciones y Configuración, en
+    `<html>` de cada marco con `data-en-portal="tablero|calculadora|formulador|gantt"`
+    (campo `incrustar` del registro) y le agrega `ESTILO_INCRUSTADO`. Tableros,
+    calculadoras y la Carta Gantt pierden su `.viz-header` (logo, título, país,
+    tableros, modo oscuro); el Formulador conserva su barra de secciones y Configuración, en
     una barra clara. Se aplica apenas existe cada página (un vigilante cada
     100 ms), sin tocar las herramientas: abiertas aparte se ven como siempre.
     `test_lo_que_esconde_el_portal_existe_en_cada_herramienta` revisa los
@@ -256,8 +256,14 @@ y que se pueda revertir si no le gusta.
     propia del portal, en su pestaña: `vista` es su id).
   - `ruta` y `peru`.
   - `familia` y `alias`: la misma página va en una sola pestaña. El
-    Formulador incluye Proyectos y Carta Gantt; el Análisis incluye Ingresar
-    datos.
+    Formulador incluye Seguimiento; el Análisis incluye Ingresar datos. La
+    Carta Gantt dejó de ser parte del Formulador el 2026-10-20 (pedido del
+    usuario: «una herramienta aparte, no una extensión del formulador»): es su
+    propia página, `/formulacion-proyectos-quempin/gantt/` (en el repositorio
+    del Formulador, carpeta `gantt/`), con su pestaña, su tema
+    (`quempin_gantt_theme`) y sus datos (`publicado/gantt/` en la carpeta de
+    intercambio). Con un proyecto elegido abre `#/proyecto/<uid>`; sin él, su
+    lista de cartas.
   - `proyecto`: cómo se abre con el proyecto elegido.
   - `pestanas` de cada calculadora (los `data-tab` de `Calculadora
     Técnica/assets/gases.js`).
