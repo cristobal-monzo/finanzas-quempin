@@ -405,7 +405,50 @@
     .ini-item { min-height: 33px; }
   }
   @container inicio (max-width: 520px) { .ini-grupos { grid-template-columns: 1fr; } }
-  /* La entrada al Recorrido de proyectos (2026-10-20), arriba de las herramientas */
+  /* El Recorrido de proyectos en el Inicio (2026-10-20), debajo de las herramientas: lo que le espera al
+     usuario, en una fila de tarjetas (las mismas del tablero, con su etapa), o el acceso directo */
+  .ini-rc { padding: 12px 14px 14px; border-radius: 14px; border: 1px solid var(--tinte-borde); background: var(--tinte); display: flex; flex-direction: column; gap: 10px; }
+  .ini-rc-cab { display: flex; align-items: center; gap: 12px; }
+  .ini-rc-cab .ico { flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: var(--brand-orange); color: #000000; }
+  h2.ini-rc-tit { margin: 0; display: flex; align-items: center; gap: 8px; line-height: 1.3; }
+  .ini-rc-tit b { padding: 0 7px; border-radius: 999px; background: var(--brand-orange); color: #000000; font-size: 12px; font-weight: 900; letter-spacing: 0.04em; }
+  p.ini-rc-sub { margin: 0; }
+  .ini-rc-ver {
+    flex: 0 0 auto; min-height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 10px;
+    border: 1px solid var(--tinte-borde); background: var(--surface-card); color: var(--brand-orange-ink); font-size: 13.5px; font-weight: 900; cursor: pointer;
+  }
+  .ini-rc-ver:hover { border-color: var(--brand-orange); }
+  .ini-rc-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .ini-rc-lista > li { min-width: 0; display: flex; }
+  .ini-rc-lista .rc-tarjeta { flex: 1 1 auto; min-width: 0; margin-top: 0; display: flex; flex-direction: column; }
+  .ini-rc-lista .rc-tarjeta.tuya { border-color: var(--border-hairline); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .ini-rc-lista .rc-abrir { flex: 1 1 auto; }
+  .ini-rc-lista .rc-resp, .ini-rc-lista .rc-tag, .ini-rc-lista .rc-sub { display: none; }
+  .ini-rc-lista .rc-chip:nth-child(n+3) { display: none; }     /* las dos primeras (el cierre va primero); el resto, en su detalle */
+  .ini-rc-mas {
+    flex: 1 1 auto; min-height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    border: 1px dashed var(--tinte-borde); border-radius: 10px; background: transparent; color: var(--brand-orange-ink);
+    font-size: 13.5px; font-weight: 700; cursor: pointer;
+  }
+  .ini-rc-mas .n { font-size: 24px; font-weight: 900; line-height: 1.1; }
+  .ini-rc-mas:hover { border-color: var(--brand-orange); background: var(--surface-card); }
+  /* La etapa de la tarjeta, en el Inicio: seis tramos, el suyo en naranjo */
+  .rc-etapa { margin-left: auto; flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+  .rc-etapa > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-segs { flex: 0 0 auto; display: inline-flex; gap: 2px; }
+  .rc-segs span { width: 7px; height: 6px; border-radius: 2px; background: var(--gridline); }
+  .rc-segs .hecha { background: var(--baseline); }
+  .rc-segs .aqui { background: var(--brand-orange); }
+  @container inicio (max-width: 900px) { .ini-rc-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @container inicio (max-width: 520px) { .ini-rc-lista { grid-template-columns: minmax(0, 1fr); } .ini-rc-ver span { display: none; } }
+  /* Con poco alto, todo sigue sin desplazarse: títulos de una línea y sin la línea de ayuda (está en el menú) */
+  @container inicio (max-height: 700px) {
+    .ini-rc .rc-tit { -webkit-line-clamp: 1; }
+    .ini-rc .rc-chips { flex-wrap: nowrap; }
+    .ini-rc .rc-chip:nth-child(n+2) { display: none; }
+    .ini-rc-mas { min-height: 72px; }
+    .inicio:has(.ini-rc:not([hidden])) .ini-pie { display: none; }
+  }
   .ini-recorrido {
     width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 16px;
     border: 1px solid var(--tinte-borde); border-radius: 14px; background: var(--tinte);
@@ -938,13 +981,25 @@
         <section class="vista-inicio sin-barra" id="vistaInicio" aria-labelledby="tituloInicio">
           <div class="inicio">
             <h1 class="sr" id="tituloInicio">Inicio: todas las herramientas de QUEMPIN</h1>
-            <!-- La entrada al Recorrido de proyectos (2026-10-20): con la biblioteca conectada dice cuánto te espera -->
+            <div class="ini-grupos" id="iniGrupos"></div>
+            <!-- El Recorrido de proyectos en el Inicio, debajo de las herramientas (2026-10-20): lo que le espera al
+                 usuario elegido (pintarInicioRecorrido); si nada le espera, el acceso directo de abajo -->
+            <section class="ini-rc" id="iniRc" aria-labelledby="iniRcTit" hidden>
+              <header class="ini-rc-cab">
+                <span class="ico" id="iniRcIco"></span>
+                <div class="ini-rc-txt">
+                  <h2 class="ini-rc-tit" id="iniRcTit">Te esperan</h2>
+                  <p class="ini-rc-sub" id="iniRcSub"></p>
+                </div>
+                <button class="ini-rc-ver" id="iniRcVer" type="button"><span>Ver el recorrido</span></button>
+              </header>
+              <ul class="ini-rc-lista" id="iniRcLista"></ul>
+            </section>
             <button class="ini-recorrido" id="iniRecorrido" type="button">
               <span class="ico" id="iniRecorridoIco"></span>
               <span class="ini-rc-txt"><span class="ini-rc-tit">Recorrido de los proyectos</span><span class="ini-rc-sub" id="iniRecorridoSub">Dónde va cada proyecto del equipo y qué sigue en cada uno</span></span>
               <span class="ini-rc-ir" id="iniRecorridoIr"><span>Ver el recorrido</span></span>
             </button>
-            <div class="ini-grupos" id="iniGrupos"></div>
             <p class="ini-pie"><kbd>Ctrl K</kbd> busca una herramienta, una pestaña de calculadora o un proyecto · <button type="button" id="iniAyuda">Cómo usar el portal</button> · <button type="button" id="iniConexiones">Configuración y conexiones</button></p>
           </div>
         </section>
@@ -3158,6 +3213,7 @@
   const RC_PESO = { hacer: 2, curso: 3, espera: 4, listo: 5 };
   const rcPeso = (t) => (t.accion.nivel === 'bad' ? 0 : t.accion.nivel === 'warn' ? 1 : RC_PESO[t.accion.tipo] || 6);
   const rcOrden = (a, b) => rcPeso(a) - rcPeso(b) || a.orden - b.orden || (+(b.req || 0)) - (+(a.req || 0));
+  const rcEtapaN = (t) => RC_ETAPAS.findIndex((e) => e.id === t.etapa);
 
   // ---- Pintar ---------------------------------------------------------------------------------------
   function rcPintar() {
@@ -3328,7 +3384,8 @@
   function rcEtiqueta(t) {
     return t.req ? 'N° ' + t.req : t.tag ? t.tag : t.formulacion ? t.formulacion.codigo : '';
   }
-  function rcTarjetaEl(t) {
+  // conEtapa: fuera del tablero (en el Inicio) la tarjeta dice además en qué etapa va.
+  function rcTarjetaEl(t, conEtapa) {
     const art = crear('article', 'rc-tarjeta');
     art.dataset.clave = t.clave;
     art.dataset.etapa = t.etapa;
@@ -3345,6 +3402,16 @@
     const r = crear('span', 'rc-resp' + (t.responsable ? '' : ' nadie'), t.responsable || '—');
     r.title = t.responsable ? (mia ? 'Tuyo' : 'A cargo de ' + t.responsable) + ' (' + t.respDe + ')' : 'Sin responsable';
     f1.append(r);
+    if (conEtapa) {
+      const i = rcEtapaN(t);
+      const et = crear('span', 'rc-etapa');
+      const segs = crear('span', 'rc-segs');
+      segs.setAttribute('aria-hidden', 'true');
+      RC_ETAPAS.forEach((e, k) => segs.append(crear('span', k < i ? 'hecha' : k === i ? 'aqui' : null)));
+      et.append(segs, crear('span', null, RC_ETAPAS[i].corto));
+      et.title = 'Etapa ' + (i + 1) + ' de 6: ' + RC_ETAPAS[i].titulo;
+      f1.append(et);
+    }
     det.append(f1, crear('span', 'rc-tit', t.titulo));
     if (t.lugar) det.append(crear('span', 'rc-sub', t.lugar));
     if (t.etapa === 'ejecucion' && typeof t.avance === 'number') {
@@ -3484,19 +3551,58 @@
     $('#dlgRecorrido').showModal();
   }
 
-  // ---- Entrada en el Inicio y cambios de usuario -----------------------------------------------------
+  // ---- En el Inicio, debajo de las herramientas, y cambios de usuario --------------------------------
+  /* Pedido del usuario (2026-10-20): una vista previa del recorrido enfocada en el usuario elegido. Lo que le
+     espera (la cifra «Te esperan» del tablero), lo urgente primero, cada tarjeta con su etapa y su botón. Si
+     nada le espera, o no hay usuario o datos, queda un acceso directo al recorrido que dice cómo va el equipo. */
+  const RC_INICIO_MAX = 4;      // una fila; con más, la última casilla es «+N más»
+  // Entre etapas distintas: lo urgente primero y después en el orden del recorrido
+  const rcOrdenInicio = (a, b) => rcPeso(a) - rcPeso(b) || rcEtapaN(a) - rcEtapaN(b) || rcOrden(a, b);
+  function rcAbrirDesdeInicio(foco) {
+    rc.foco = foco || null;
+    abrir('recorrido');
+  }
   function pintarInicioRecorrido() {
-    const sub = $('#iniRecorridoSub');
-    if (!rc.leido) { sub.textContent = 'Dónde va cada proyecto del equipo y qué sigue en cada uno'; return; }
-    const todas = rc.tarjetas;
-    const n = rcCifras(todas);
+    const u = estado.usuario;
+    const tuyas = rc.leido && u ? rc.tarjetas.filter(RC_FOCOS.accion.es).sort(rcOrdenInicio) : [];
+    $('#iniRc').hidden = !tuyas.length;
+    $('#iniRecorrido').hidden = !!tuyas.length;
+    if (!tuyas.length) { pintarInicioAcceso(); return; }
+    const tit = $('#iniRcTit');
+    tit.textContent = '';
+    tit.append(crear('span', null, tuyas.length === 1 ? 'Te espera 1 proyecto' : 'Te esperan ' + tuyas.length + ' proyectos'), crear('b', null, u));
+    const n = rcCifras(rc.tarjetas.filter(rcMia));
     const partes = [];
-    if (estado.usuario) partes.push(n.accion ? pl(n.accion, 'te espera', 'te esperan') : 'Nada te espera');
-    else partes.push(pl(n.accion, 'requiere acción', 'requieren acción'));
     if (n.cierran) partes.push(pl(n.cierran, 'cierra esta semana', 'cierran esta semana'));
     if (n.esperan) partes.push(pl(n.esperan, 'espera respuesta', 'esperan respuesta'));
     if (n.ejecucion) partes.push(n.ejecucion + ' en ejecución');
-    sub.textContent = partes.join(' · ');
+    $('#iniRcSub').textContent = partes.length ? 'De tus proyectos, ' + partes.join(' · ') : 'Lo más urgente primero, con el botón para hacerlo';
+    const lista = $('#iniRcLista');
+    lista.textContent = '';
+    const caben = tuyas.length > RC_INICIO_MAX ? RC_INICIO_MAX - 1 : tuyas.length;
+    tuyas.slice(0, caben).forEach((t) => { const li = crear('li'); li.append(rcTarjetaEl(t, true)); lista.append(li); });
+    if (caben < tuyas.length) {
+      const b = crear('button', 'ini-rc-mas');
+      b.type = 'button';
+      b.append(crear('span', 'n', '+' + (tuyas.length - caben)), crear('span', null, 'Ver los ' + tuyas.length + ' que te esperan'));
+      b.title = 'Abrir el recorrido con solo lo que te espera';
+      b.addEventListener('click', () => rcAbrirDesdeInicio('accion'));
+      const li = crear('li');
+      li.append(b);
+      lista.append(li);
+    }
+  }
+  function pintarInicioAcceso() {
+    const sub = $('#iniRecorridoSub');
+    if (!rc.leido) { sub.textContent = 'Dónde va cada proyecto del equipo y qué sigue en cada uno'; return; }
+    const n = rcCifras(rc.tarjetas);
+    const equipo = [];
+    if (!estado.usuario && n.accion) equipo.push(pl(n.accion, 'requiere acción', 'requieren acción'));
+    if (n.cierran) equipo.push(pl(n.cierran, 'cierra esta semana', 'cierran esta semana'));
+    if (n.esperan) equipo.push(pl(n.esperan, 'espera respuesta', 'esperan respuesta'));
+    if (n.ejecucion) equipo.push(n.ejecucion + ' en ejecución');
+    sub.textContent = (estado.usuario ? 'Nada te espera por ahora' : 'Elige tu usuario para ver aquí lo que te espera')
+      + (equipo.length ? '. En el equipo, ' + equipo.join(' · ') : '');
   }
   // «Solo mis proyectos» se recuerda aunque no haya usuario: vuelve a valer al elegir uno.
   function rcAlCambiarUsuario() {
@@ -3735,9 +3841,12 @@
   $('#iniAyuda').addEventListener('click', () => abrir('ayuda'));
   $('#iniConexiones').addEventListener('click', () => abrir('conexiones'));
   // Recorrido de proyectos
-  $('#iniRecorrido').addEventListener('click', () => abrir('recorrido'));
+  $('#iniRecorrido').addEventListener('click', () => rcAbrirDesdeInicio());
   $('#iniRecorridoIco').append(icono('ruta', 22));
   $('#iniRecorridoIr').append(icono('derecha', 16));
+  $('#iniRcIco').append(icono('ruta', 20));
+  $('#iniRcVer').append(icono('derecha', 16));
+  $('#iniRcVer').addEventListener('click', () => rcAbrirDesdeInicio());
   $('#rcActualizar').append(icono('recargar', 16));
   $('#rcActualizar').addEventListener('click', () => {
     if (rc.sinDatos === 'permiso') { rcPedirPermiso(); return; }

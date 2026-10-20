@@ -314,7 +314,7 @@ y que se pueda revertir si no le gusta.
   nueva que deje «muy claro» el flujo de trabajo, «clara, visual», afectada por
   el usuario elegido y con una casilla para ver solo sus proyectos):
   - **Qué es**: la vista `recorrido` (`tipo: vista`, `#vistaRecorrido`, arriba en
-    el menú junto a Inicio, y una franja arriba del Inicio). Un tablero con las
+    el menú junto a Inicio, y en el Inicio bajo las herramientas). Un tablero con las
     seis etapas del Seguimiento del Formulador (`js/flujo.js`, mismos títulos:
     `test_el_recorrido_tiene_las_etapas_del_formulador`). Cada proyecto del equipo
     es una tarjeta en su etapa, con su N°, quién lo tiene, sus fechas, lo que
@@ -351,6 +351,15 @@ y que se pueda revertir si no le gusta.
     tablero; el buscador filtra por N°, nombre, ciudad o TAG, y Ctrl K encuentra
     cada proyecto y abre su detalle (sus seis etapas, lo que sigue, sus datos y
     sus enlaces, incluidas sus carpetas por `quempin://carpeta`).
+  - **En el Inicio** (2026-10-20, pedido del usuario: una vista previa debajo de
+    las herramientas, enfocada en el usuario elegido; si no tiene pendientes, un
+    acceso directo): `#iniRc` muestra lo que le espera (la cifra «Te esperan»),
+    lo urgente primero, en una fila de hasta cuatro tarjetas del tablero con su
+    etapa (`rcTarjetaEl(t, true)`); con más, la última casilla es «+N más» y abre
+    el recorrido filtrado. Sin pendientes, sin usuario o sin datos queda el
+    acceso directo `#iniRecorrido`, que dice cómo va el equipo. Con poco alto
+    (≤ 700 px) los títulos van en una línea y se esconde la línea de ayuda, para
+    que el Inicio siga sin desplazarse.
   - Se relee al volver a la pestaña si pasó más de un minuto, o con ↻. La
     vista previa con datos reales se arma fuera del repo (almacenamiento privado
     de un Chromium aislado), nunca con capturas dentro del repo.

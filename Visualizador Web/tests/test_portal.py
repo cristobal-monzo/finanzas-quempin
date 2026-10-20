@@ -1502,8 +1502,8 @@ JS_COLUMNAS = """() => Object.fromEntries([...document.querySelectorAll('#rcTabl
     [...c.querySelectorAll(':scope > .rc-lista .rc-tarjeta')].map((t) => t.dataset.clave)]))"""
 
 
-def _recorrido_con_datos(navegador, sitio, usuario=None, **kw):
-    """El portal con la biblioteca conectada (como la deja el Formulador) y la carpeta de prueba, en el Recorrido."""
+def _portal_con_datos(navegador, sitio, usuario=None, **kw):
+    """El portal con la biblioteca conectada (como la deja el Formulador) y la carpeta de prueba, en el Inicio."""
     pagina, errores = _abrir_portal(navegador, sitio, **kw)
     if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
         pagina.context.close()
@@ -1514,6 +1514,12 @@ def _recorrido_con_datos(navegador, sitio, usuario=None, **kw):
         pagina.evaluate("u => localStorage.setItem('quempin_usuario', u)", usuario)
     pagina.reload()
     pagina.locator("#vistaInicio").wait_for()
+    return pagina, errores
+
+
+def _recorrido_con_datos(navegador, sitio, usuario=None, **kw):
+    """Lo mismo, ya en el Recorrido."""
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario, **kw)
     _menu(pagina, "Recorrido de proyectos")
     pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
     return pagina, errores
@@ -1676,11 +1682,95 @@ def test_las_cifras_y_el_buscador_filtran_el_recorrido(navegador, sitio):
     pagina.locator("#resultados .res", has_text="N° 908").first.click()
     assert pagina.locator("#dlgRecorrido").is_visible() and pagina.locator("#dlgRcTit").inner_text() == "N° 908 · En obra"
     pagina.keyboard.press("Escape")
-    # El Inicio dice cuánto te espera, y lleva al recorrido
+    # El Inicio dice lo que te espera, y lleva al recorrido
     pagina.locator("#pestanas .ir").first.click()
-    assert pagina.locator("#iniRecorridoSub").inner_text() == "5 te esperan · 2 cierran esta semana · 1 espera respuesta · 3 en ejecución"
+    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 5 proyectos"
+    pagina.locator("#iniRcVer").click()
+    assert pagina.locator("#vistaRecorrido").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+def _inicio_tarjetas(pagina):
+    return pagina.locator("#iniRcLista .rc-tarjeta").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
+
+
+def test_el_inicio_muestra_lo_que_te_espera(navegador, sitio):
+    """Pedido del 2026-10-20: debajo de las herramientas, una vista previa del recorrido enfocada en el usuario
+    elegido; si no tiene pendientes, un acceso directo al recorrido."""
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
+    previa = pagina.locator("#iniRc")
+    previa.locator(".rc-tarjeta").first.wait_for()
+    assert pagina.locator("#iniRecorrido").is_hidden()
+    # Debajo de las herramientas, antes de la línea de ayuda
+    assert pagina.evaluate("[...document.querySelector('.inicio').children].map((e) => e.id || e.className)") == [
+        "tituloInicio", "iniGrupos", "iniRc", "iniRecorrido", "ini-pie"]
+    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 5 proyectos" and pagina.locator("#iniRcTit b").inner_text() == "LC"
+    assert pagina.locator("#iniRcSub").inner_text() == "De tus proyectos, 2 cierran esta semana · 1 en ejecución"
+    # Lo urgente primero (rojo, después ámbar) y, entre iguales, en el orden del recorrido; con más de cuatro, «+N más»
+    assert _inicio_tarjetas(pagina) == ["req-900", "req-904", "f-fz"]
+    etapa = lambda c: pagina.locator(f'#iniRc .rc-tarjeta[data-clave="{c}"] .rc-etapa').inner_text()
+    assert [etapa(c) for c in ("req-900", "req-904", "f-fz")] == ["Requerimiento", "Oferta", "Requerimiento"]
+    assert pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-segs .aqui').count() == 1
+    assert pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-segs .hecha').count() == 3
+    mas = pagina.locator("#iniRcLista .ini-rc-mas")
+    assert mas.inner_text().split("\n") == ["+2", "Ver los 5 que te esperan"]
+    # Cada tarjeta abre su detalle y su botón la herramienta donde se hace
+    pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-abrir').click()
+    assert pagina.locator("#dlgRcTit").inner_text() == "N° 904 · Cotización emitida"
+    pagina.keyboard.press("Escape")
+    pagina.locator('#iniRc .rc-tarjeta[data-clave="req-900"] .rc-accion').click()
+    _esperar(pagina, "formulador", "hash", "#/req/900")
+    # «+2 más» abre el recorrido con solo lo que te espera; «Ver el recorrido», el tablero completo
+    pagina.locator("#pestanas .ir").first.click()
+    mas.click()
+    assert pagina.locator("#vistaRecorrido").is_visible() and pagina.locator("#rcFoco").inner_text().strip() == "Mostrando: Te esperan"
+    assert sorted(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == ["f-fz", "req-900", "req-903", "req-904", "req-906"]
+    pagina.locator("#pestanas .ir").first.click()
+    pagina.locator("#iniRcVer").click()
+    assert pagina.locator("#rcFoco").is_hidden() and len(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == 14
+    pagina.locator("#pestanas .ir").first.click()
+    # Otro usuario, elegido arriba: la vista previa cambia sin recargar
+    elegir = lambda u: (pagina.locator("#btnUsuario").click(), pagina.locator(f'#listaUsuarios .usr-op[data-usuario="{u}"]').click())
+    elegir("CM")
+    assert _inicio_tarjetas(pagina) == ["req-901", "req-902"] and pagina.locator("#iniRcLista .ini-rc-mas").count() == 0
+    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 2 proyectos"
+    assert pagina.locator("#iniRcSub").inner_text() == "Lo más urgente primero, con el botón para hacerlo"
+    # Nada pendiente: queda el acceso directo, que dice cómo va el equipo
+    elegir("ES")
+    assert previa.is_hidden() and pagina.locator("#iniRecorrido").is_visible()
+    assert pagina.locator("#iniRecorridoSub").inner_text() == (
+        "Nada te espera por ahora. En el equipo, 2 cierran esta semana · 1 espera respuesta · 3 en ejecución")
+    pagina.locator("#btnUsuario").click()
+    pagina.locator("#sinUsuario").click()
+    assert previa.is_hidden() and pagina.locator("#iniRecorridoSub").inner_text() == (
+        "Elige tu usuario para ver aquí lo que te espera. En el equipo, 10 requieren acción · 2 cierran esta semana"
+        " · 1 espera respuesta · 3 en ejecución")
     pagina.locator("#iniRecorrido").click()
     assert pagina.locator("#vistaRecorrido").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1024, 768), (390, 844)])
+def test_lo_que_te_espera_cabe_en_el_inicio(navegador, sitio, ancho, alto):
+    """Con la vista previa el Inicio sigue sin barras en el escritorio, y en el teléfono no se sale por el lado."""
+    movil = ancho < 760
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", ancho=ancho, alto=alto, movil=movil)
+    pagina.locator("#iniRc .rc-tarjeta").first.wait_for()
+    if not movil:
+        assert pagina.evaluate(JS_BARRAS) == []
+    d = pagina.evaluate(JS_DESBORDES)
+    assert d["doc"] <= ancho and not d["fuera"], d
+    derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#iniRc *')]
+        .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))""")
+    assert derecha <= ancho + 0.5, derecha
+    chicos = pagina.evaluate("""() => [...document.querySelectorAll('#iniRc *')]
+        .filter((e) => e.getClientRects().length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+        .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName)""")
+    assert not chicos, chicos
+    columnas = "getComputedStyle(document.getElementById('iniRcLista')).gridTemplateColumns.split(' ').length"
+    assert pagina.evaluate(columnas) == (1 if movil else 4)
     assert not errores
     pagina.context.close()
 
