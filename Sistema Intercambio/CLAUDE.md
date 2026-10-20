@@ -149,8 +149,12 @@ de los tipos cuyo esquema declara `destino: analisis-financiero` -- desde el
 cambió Centro de Costos o el libro, solo `intercambio publicar`); precios de
 referencia; Sistema QUEMPIN (`python -m app.integraciones.ecosistema
 procesar` con su Python 3.11); Mercado Público (este paso consulta siempre:
-lo que cambia está en la API, no en la carpeta); `proyectos.json`, y
-`estado.json`.
+lo que cambia está en la API, no en la carpeta); la UF del día (una consulta
+diaria a mindicador.cl con `Cotizador_Historico/driver.py uf`: la UF de
+respaldo del tablero del Cotizador ya no llega al lunes con una semana de
+antigüedad); `proyectos.json`, y `estado.json`. El paso `esquemas` deja
+además `LEEME.md` desde `LEEME-carpeta.md` cuando cambia: edita ese archivo,
+no el de la carpeta.
 
 - **Un paso que falla no frena a los demás** y queda en `estado.json` y en
   `logs/procesador_AAAA-MM.log` (una línea por vuelta).
