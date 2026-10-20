@@ -139,3 +139,23 @@ def test_descartar_sugerencia(tmp_path):
     assert rq.descartar_sugerencia(raiz, "descartar1")
     assert not rq.descartar_sugerencia(raiz, "descartar1")
     assert ic.resultados_recientes(raiz)["descartar1"]["estado"] == "descartado"
+
+
+def test_una_sugerencia_superada_por_otra_mas_nueva_se_archiva_reemplazada(tmp_path):
+    """Misma regla que «Pasar a la Planilla» del Formulador: la más nueva por columna (2026-10-19)."""
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    vieja = _sugerencia(cambios={"estado": "Adjudicado", "valorAdjudicado": 1000}, id_="vieja0001")
+    nueva = _sugerencia(cambios={"estado": "Adjudicado", "valorAdjudicado": 2000}, id_="nueva0001")
+    nueva["origen"]["enviado"] = "2026-10-02T10:00:00-03:00"
+    parcial = _sugerencia(cambios={"estado": "Ofertado", "valorOfertado": 900}, id_="parcial01")
+    parcial["origen"]["enviado"] = "2026-09-30T10:00:00-03:00"   # su valorOfertado no lo pide nadie después
+    otro_n = _sugerencia(numero=281, id_="otro00001")
+    for m in (vieja, nueva, parcial, otro_n):
+        ic.enviar(raiz, m)
+    reqs = [{"numero": 280, "estado": "Evaluación"}, {"numero": 281, "estado": "Ofertado"}]
+    decisiones = {d["mensaje"]["id"]: d["accion"] for d in rq.revisar_sugerencias(raiz, reqs)}
+    assert decisiones["vieja0001"] == "reemplazado"
+    assert decisiones["nueva0001"] == "pendiente" and decisiones["parcial01"] == "pendiente"
+    assert decisiones["otro00001"] == "pendiente"
+    assert ic.resultados_recientes(raiz)["vieja0001"]["estado"] == "reemplazado"
+    assert "vieja0001" not in [m["id"] for m in ic.leer_buzon(raiz)[0]]

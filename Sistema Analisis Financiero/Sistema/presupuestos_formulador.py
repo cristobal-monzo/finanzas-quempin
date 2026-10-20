@@ -85,43 +85,23 @@ if str(RAIZ_SISTEMA_INTERCAMBIO) not in sys.path:
     sys.path.insert(0, str(RAIZ_SISTEMA_INTERCAMBIO))
 import intercambio  # noqa: E402
 
+import ubicacion  # noqa: E402
+
 # Carpeta de intercambio, compartida con el equipo. Desde el 2026-09-30
 # (pedido explícito del usuario) vive en «.Herramientas formulación/Intercambio»,
 # dentro de la biblioteca de SharePoint «Formulación de proyectos», que los
-# colegas ya tienen sincronizada: ahí vive también el repositorio de las
-# formulaciones (publicado/formulador/). Antes estaba en Finanzas
-# QUEMPIN/Intercambio. Se busca subiendo desde este repo hasta la carpeta de
-# OneDrive que contiene la biblioteca; la variable QUEMPIN_INTERCAMBIO la fija
-# a mano. Si la biblioteca no está sincronizada en este equipo, el intercambio
+# colegas ya tienen sincronizada. Se busca subiendo desde este repo hasta la
+# carpeta de OneDrive que contiene la biblioteca, con la misma regla que todas
+# las herramientas (Sistema Intercambio/ubicacion.py; hasta el 2026-10-19 aquí
+# había una copia propia, sin QUEMPIN_ONEDRIVE). QUEMPIN_INTERCAMBIO la fija a
+# mano. Si la biblioteca no está sincronizada en este equipo, el intercambio
 # queda inactivo con un aviso: nunca se crea una biblioteca falsa ni se vuelve
 # a la carpeta antigua (sería un buzón que nadie más lee).
-BIBLIOTECA_FORMULACION = "Formulación de proyectos - Documentos"
-CARPETA_HERRAMIENTAS = ".Herramientas formulación"
-CARPETA_INTERCAMBIO = "Intercambio"
-
-
-def _hija(padre: Path, nombre: str) -> Path:
-    """La subcarpeta con ese nombre sin distinguir mayúsculas ni la forma de
-    las tildes (en el disco está como «.HERRAMIENTAS FORMULACIÓN»)."""
-    clave = unicodedata.normalize("NFC", nombre).casefold()
-    try:
-        for hija in padre.iterdir():
-            if hija.is_dir() and unicodedata.normalize("NFC", hija.name).casefold() == clave:
-                return hija
-    except OSError:
-        pass
-    return padre / nombre
+BIBLIOTECA_FORMULACION = ubicacion.BIBLIOTECA_FORMULACION
 
 
 def ubicar_intercambio() -> Path | None:
-    fija = os.environ.get("QUEMPIN_INTERCAMBIO")
-    if fija:
-        return Path(fija)
-    for base in RAIZ_FINANZAS.parents:
-        biblioteca = base / BIBLIOTECA_FORMULACION
-        if biblioteca.is_dir():
-            return _hija(_hija(biblioteca, CARPETA_HERRAMIENTAS), CARPETA_INTERCAMBIO)
-    return None
+    return ubicacion.ubicar_intercambio(RAIZ_FINANZAS)
 
 
 RAIZ_INTERCAMBIO = ubicar_intercambio()

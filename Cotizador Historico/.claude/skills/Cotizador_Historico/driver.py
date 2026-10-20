@@ -535,6 +535,26 @@ def cmd_precios():
     return pr.main()
 
 
+def cmd_uf():
+    """Renueva la UF de respaldo (uf_ultima.json) si todavia no es la de hoy.
+    La llama el procesador del intercambio una vez al dia, para que la
+    corrida semanal tenga una UF reciente si mindicador.cl no responde."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    hoy = date.today()
+    guardada = ch.ultima_uf_guardada(hoy, dias=0)
+    if guardada:
+        print(f"UF del dia ya guardada: {guardada[1]}")
+        return 0
+    try:
+        valor = ch.consultar_uf_api(hoy)
+    except ch.UFNoDisponibleError as error:
+        print(f"[ERROR] {error}")
+        return 1
+    ch.guardar_ultima_uf(hoy, valor)
+    print(f"UF del {hoy:%d-%m-%Y} guardada: {valor}")
+    return 0
+
+
 def _extraer_flags_uf(args):
     """Extrae --uf-manual VALOR --uf-fuente "<texto>" de args (ambos
     opcionales, fallback cuando mindicador.cl no responde -- ver docstring
@@ -559,9 +579,9 @@ def _extraer_flags_uf(args):
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("status", "consultar", "visualizador",
                                                 "categorias", "benchmark", "evaluacion",
-                                                "atributos", "precios"):
+                                                "atributos", "precios", "uf"):
         print(
-            'Uso: python driver.py [status|consultar "<texto>"|visualizador|precios|categorias|'
+            'Uso: python driver.py [status|consultar "<texto>"|visualizador|precios|uf|categorias|'
             'benchmark|evaluacion|atributos] [--uf-manual VALOR --uf-fuente "<texto>"] '
             '[--pais CL|PE]'
         )
@@ -580,6 +600,8 @@ def main():
         return cmd_atributos(resto, pais=pais)
     if comando == "precios":
         return cmd_precios()
+    if comando == "uf":
+        return cmd_uf()
     if comando == "visualizador":
         uf_manual, fuente_manual, _resto = _extraer_flags_uf(resto)
         return cmd_visualizador(pais=pais, uf_manual=uf_manual, fuente_manual=fuente_manual)

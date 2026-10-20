@@ -35,7 +35,7 @@ proyectados y reales por proyecto.
 ```
 Formulación de proyectos - Documentos/.Herramientas formulación/Intercambio/
 ├── intercambio.json     manifiesto: así se reconoce la carpeta correcta
-├── LEEME.md             explicación para personas (vive solo aquí, no en git)
+├── LEEME.md             explicación para personas; la deja el procesador desde LEEME-carpeta.md (en git)
 ├── buzon/               mensajes que una herramienta le envía a otra
 ├── procesado/AAAA-MM/   mensajes ya atendidos, con su resultado
 └── publicado/           lo que cada herramienta publica para las demás
@@ -60,7 +60,11 @@ carpeta.
   lo informa.
 - **Lo publicado se reemplaza completo** en cada corrida, con escritura
   atómica (temporal + `os.replace`): nunca queda un JSON a medio escribir si
-  OneDrive sincroniza en ese momento.
+  OneDrive sincroniza en ese momento. **Si los datos son iguales a los ya
+  publicados, no se reescribe** (2026-10-19): el procesador reescribía 5
+  publicaciones idénticas cada 2 horas, que OneDrive subía y bajaba a cada
+  equipo y SharePoint guardaba como versión nueva. `generado` dice cuándo
+  cambió el dato; el pulso del procesador está en `estado.json`.
 - Sobre común de un mensaje: `esquema`, `id` (6–64 letras/números/-/_),
   `tipo`, `destino`, `origen {herramienta, enviado, usuario?}`. El contenido
   propio de cada tipo lo valida su destinatario.
@@ -105,7 +109,7 @@ tabla de abajo y los textos del Formulador lo resumen, no lo definen.
 | mensaje `datos-proyecto` → `analisis-financiero` (2026-10-02): valores manuales de un proyecto (% avance, fechas, venta, los 4 proyectados, mano de obra real, N° de requerimiento), uno por proyecto; puede crear el proyecto o dejar una celda vacía | pestaña «Ingresar datos» del tablero de Análisis Financiero (`Visualizador Web/ingreso.js`), o un archivo descargado de ella que se deja a mano en `buzon/` (`driver.py intercambio cargar`) | Análisis Financiero, por el mismo canal y la misma regla de lo visto; varios al mismo proyecto se aplican todos, en orden, y quedan como valor manual (sin nota) | `presupuestos_formulador.py` |
 | mensaje `borrador-cotizacion` → `sistema-quempin`: una cotización prellenada por partida | Formulador | Sistema QUEMPIN (aviso arriba de «Nueva Cotización» y botón «Borradores del Formulador»: una persona la revisa y la emite; al emitir se archiva con el folio) | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |
 | mensaje `registro-documento` → `sistema-quempin`: registrar en el Control de Documentos la evaluación de costos (81) del Formulador | Formulador | Sistema QUEMPIN (la app cada minuto, y el procesador); si el folio ya se usó, asigna el siguiente | mismo archivo |
-| mensaje `actualizar-requerimiento` → `planilla-requerimientos`: estado y valor ofertado o adjudicado | Formulador | **nadie lo escribe**: una persona lo pasa a la Planilla y el procesador lo cierra cuando ya está (`/Sugerencias_Requerimientos`) | `Sistema Intercambio/requerimientos.py` |
+| mensaje `actualizar-requerimiento` → `planilla-requerimientos`: estado y valor ofertado o adjudicado | Formulador | **nadie lo escribe**: una persona lo pasa a la Planilla y el procesador lo cierra cuando ya está (`/Sugerencias_Requerimientos`). Una sugerencia cuyas columnas pide todas otra más nueva del mismo N° se archiva como `reemplazado` (2026-10-19, la regla con que el Formulador muestra «Pasar a la Planilla») | `Sistema Intercambio/requerimientos.py` |
 | `publicado/requerimientos.json`: la Planilla de Ingreso, de solo lectura | procesador (cuando cambia la planilla) | Formulador, Sistema QUEMPIN, registro de proyectos, Flujo de Caja | `requerimientos.py` |
 | `publicado/precios-referencia.json`: precio reajustado por UF por hoja, sin proveedores ni documentos | Cotizador Histórico (`driver.py precios`, y tras cada `visualizador`); procesador cuando cambia la foto del tablero | Formulador | `Cotizador Historico/Sistema/precios_referencia.py` |
 | `publicado/documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN (al emitir/editar/eliminar en el equipo donde se hizo, y el procesador) | Formulador, Análisis Financiero, registro de proyectos, Flujo de Caja | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |

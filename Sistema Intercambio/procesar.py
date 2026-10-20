@@ -12,7 +12,9 @@ en vez de 15 minutos el 2026-10-02) y hace solo lo barato,
 y solo si algo cambió desde la última vez:
 
 1. ``esquemas.json``: deja el catálogo en la carpeta (las herramientas de
-   otros repositorios validan con él).
+   otros repositorios validan con él), y el ``LEEME.md`` para personas, que
+   vive versionado en ``LEEME-carpeta.md`` (desde el 2026-10-19; antes solo
+   existía en la carpeta y quedó atrás).
 2. Formulaciones entregadas por archivo -> repositorio del Formulador.
 3. Planilla de Ingreso -> ``requerimientos.json``, y cierra las sugerencias
    que ya están pasadas a la planilla.
@@ -27,9 +29,10 @@ y solo si algo cambió desde la última vez:
    de compra a QUEMPIN -> ``licitaciones.json`` y sugerencias para la
    Planilla (``mercado_publico.py``; consulta la API en cada vuelta).
 7b. Oportunidades: licitaciones publicadas del rubro con su evaluación previa
-   -> ``oportunidades.json`` y la página «Oportunidades Mercado Público.html»
-   junto a la Planilla (``oportunidades.py``; solo si su configuración dice
-   ``enProcesador``).
+   -> ``oportunidades.json`` (``oportunidades.py``; solo si su configuración
+   dice ``enProcesador``; el equipo lo ve en su tablero).
+7c. UF del día: una vez al día, para que el tablero del Cotizador tenga una
+   UF reciente de respaldo si mindicador.cl no responde (2026-10-19).
 8. ``proyectos.json``: el cruce de claves, con todo lo anterior.
 9. ``estado.json``: el pulso que muestran las herramientas («al día hace 6
    min»): qué corrió, qué quedó pendiente por destinatario y cuán nueva es
@@ -74,6 +77,8 @@ RUTA_CANDADO = AQUI / ".procesador.lock"
 CANDADO_VENCE_SEG = 30 * 60
 CARPETA_LOGS = RAIZ_FINANZAS / "logs"
 ARCHIVO_PAQUETE = "esquemas.json"
+ARCHIVO_LEEME = "LEEME.md"
+LEEME_VERSIONADO = AQUI / "LEEME-carpeta.md"
 PUBLICACION_ESTADO = "estado"
 
 DRIVER_AF = RAIZ_FINANZAS / "Sistema Analisis Financiero" / ".claude" / "skills" / "Registro_Analisis_Financiero" / "driver.py"
@@ -81,6 +86,7 @@ DRIVER_COTIZADOR = RAIZ_FINANZAS / "Cotizador Historico" / ".claude" / "skills" 
 EXCEL_AF = RAIZ_FINANZAS / "Análisis Financiero" / "Análisis de Proyectos 2026.xlsx"
 EXCEL_CC = RAIZ_FINANZAS / "Centro de Costos" / "Excel" / "Centro de Costos.xlsx"
 FOTO_COTIZADOR = RAIZ_FINANZAS / "Cotizador Historico" / "Visualizador Web" / "data" / "cotizador-historico.json"
+UF_ULTIMA = RAIZ_FINANZAS / "Cotizador Historico" / "Sistema" / "uf_ultima.json"
 RAIZ_FACTURAS_CL = (RAIZ_FINANZAS / "Centro de Costos" / "Sitio de comunicación - Centro de Costos 1"
                     / "Facturas y Boletas" / "Chile")
 # Sistema QUEMPIN es otro repositorio, con su propio Python (3.11, el que
@@ -141,10 +147,29 @@ def paso_esquemas(raiz: Path, previo, forzar):
     paquete = esquemas.paquete()
     texto = json.dumps(paquete, ensure_ascii=False, sort_keys=True)
     firma = hashlib.sha1(texto.encode("utf-8")).hexdigest()
+    leeme = _poner_leeme(raiz)
     if firma == previo and (raiz / ARCHIVO_PAQUETE).exists() and not forzar:
-        return "sin cambios", None
+        return "sin cambios" + leeme, None
     intercambio._escribir_json_atomico(raiz / ARCHIVO_PAQUETE, paquete)
-    return f"{len(paquete['mensajes'])} tipos de mensaje y {len(paquete['publicaciones'])} publicaciones", firma
+    return f"{len(paquete['mensajes'])} tipos de mensaje y {len(paquete['publicaciones'])} publicaciones" + leeme, firma
+
+
+def _poner_leeme(raiz: Path) -> str:
+    """Deja en la carpeta el LEEME versionado, solo si cambió."""
+    try:
+        texto = LEEME_VERSIONADO.read_bytes()
+    except OSError:
+        return ""
+    destino = raiz / ARCHIVO_LEEME
+    try:
+        if destino.read_bytes() == texto:
+            return ""
+    except OSError:
+        pass
+    temporal = destino.with_name(f".{destino.name}.tmp")
+    temporal.write_bytes(texto)
+    os.replace(temporal, destino)
+    return "; LEEME.md al día"
 
 
 def paso_formulaciones(raiz: Path, previo, forzar):
@@ -167,7 +192,7 @@ def paso_requerimientos(raiz: Path, previo, forzar):
         requerimientos.publicar(raiz, planilla)
     reqs = (intercambio.leer_publicacion(raiz, requerimientos.PUBLICACION) or {}).get("datos", {}).get("requerimientos", [])
     decisiones = requerimientos.revisar_sugerencias(raiz, reqs)
-    aplicadas = sum(1 for d in decisiones if d["accion"] == "aplicado")
+    aplicadas = sum(1 for d in decisiones if d["accion"] in ("aplicado", "reemplazado"))
     esperan = sum(1 for d in decisiones if d["accion"] in ("pendiente", "conflicto"))
     return f"{len(reqs)} requerimientos; sugerencias: {aplicadas} cerradas, {esperan} esperan", firma
 
@@ -268,6 +293,20 @@ def paso_oportunidades(raiz: Path, previo, forzar):
     return "; ".join(partes), "ok"
 
 
+def paso_uf(raiz: Path, previo, forzar):
+    """Una consulta a mindicador.cl al día (driver.py uf del Cotizador), para
+    que la UF de respaldo nunca tenga más de un día hábil."""
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    # La misma variable que usa el Cotizador (las pruebas la apuntan a tmp_path)
+    guardada = _leer_json(Path(os.environ.get("QUEMPIN_UF_ULTIMA") or UF_ULTIMA), {}).get("fecha")
+    if (guardada == hoy or previo == hoy) and not forzar:
+        return "UF del día ya guardada", None
+    ok, salida = correr([sys.executable, str(DRIVER_COTIZADOR), "uf"], cwd=DRIVER_COTIZADOR.parent, limite=120)
+    if not ok:
+        raise RuntimeError(f"UF del día: {salida}")
+    return salida.splitlines()[-1] if salida else "UF guardada", hoy
+
+
 def paso_proyectos(raiz: Path, previo, forzar):
     carpetas = proyectos.carpetas_de_proyectos(AQUI, RAIZ_FACTURAS_CL if RAIZ_FACTURAS_CL.is_dir() else None)
     r = proyectos.publicar(raiz, carpetas)
@@ -284,6 +323,7 @@ PASOS = (
     ("sistema-quempin", paso_sistema_quempin),
     ("mercado-publico", paso_mercado_publico),
     ("oportunidades", paso_oportunidades),
+    ("uf", paso_uf),
     ("proyectos", paso_proyectos),
 )
 
@@ -296,6 +336,8 @@ def resumen_publicaciones(raiz: Path) -> dict:
         sobre = intercambio.leer_publicacion(raiz, ruta.stem)
         if sobre:
             salida[ruta.stem] = {"herramienta": sobre.get("herramienta"), "generado": sobre.get("generado")}
+    if PUBLICACION_ESTADO in salida:   # el que se está escribiendo: su fecha es la de esta vuelta, no la anterior
+        salida[PUBLICACION_ESTADO]["generado"] = intercambio.ahora_iso()
     repositorio = raiz / intercambio.CARPETA_PUBLICADO / "formulador"
     if repositorio.is_dir():
         salida["formulador/"] = {"herramienta": "formulador",

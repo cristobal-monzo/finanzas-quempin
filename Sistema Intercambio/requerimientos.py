@@ -253,14 +253,43 @@ def _texto(valor) -> str:
     return f"«{valor}»"
 
 
+def reemplazadas(mensajes: list[dict]) -> dict[str, str]:
+    """{id: fecha de la más nueva} de las sugerencias cuyas columnas pide
+    todas otra posterior para el mismo N° (de cualquier herramienta). Es la
+    regla con que el Formulador muestra «Pasar a la Planilla» (la más nueva
+    por columna, js/pendientes.js): las anteriores quedaban en el buzón para
+    siempre, porque la Planilla nunca iba a mostrar un valor ya superado."""
+    salida = {}
+    por_n: dict = {}
+    for m in mensajes:
+        por_n.setdefault((m.get("requerimiento") or {}).get("numero"), []).append(m)
+    for grupo in por_n.values():
+        grupo.sort(key=lambda m: (m["origen"]["enviado"], m["id"]))
+        for i, m in enumerate(grupo):
+            posteriores = grupo[i + 1:]
+            columnas = set(m.get("cambios") or {})
+            if columnas and posteriores and columnas <= {c for x in posteriores for c in (x.get("cambios") or {})}:
+                salida[m["id"]] = posteriores[-1]["origen"]["enviado"][:10]
+    return salida
+
+
 def revisar_sugerencias(raiz_intercambio: Path, requerimientos: list[dict], archivar: bool = True) -> list[dict]:
     """Decide cada sugerencia del buzón contra la planilla actual. Con
     'archivar', mueve a procesado/ las que ya están aplicadas ('aplicado')
     y las inválidas ('rechazado'); las demás siguen en el buzón."""
     mensajes, invalidos = intercambio.leer_buzon(raiz_intercambio, destino=DESTINO, tipo=TIPO_SUGERENCIA)
     indice = por_numero(requerimientos)
+    nuevas = reemplazadas(mensajes)
     salida = []
     for m in mensajes:
+        if m["id"] in nuevas:
+            n = (m.get("requerimiento") or {}).get("numero")
+            decision = {"accion": "reemplazado", "falta": {}, "mensaje": m,
+                        "detalle": [f"N° {n}: hay una sugerencia más nueva para lo mismo ({nuevas[m['id']]})."]}
+            if archivar:
+                intercambio.archivar(raiz_intercambio, m, "reemplazado", decision["detalle"], extra={"requerimiento": n})
+            salida.append(decision)
+            continue
         decision = decidir_sugerencia(m, indice.get((m.get("requerimiento") or {}).get("numero")))
         decision["mensaje"] = m
         if archivar and decision["accion"] in ("aplicado", "rechazado"):

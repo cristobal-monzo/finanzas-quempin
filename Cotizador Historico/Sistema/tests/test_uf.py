@@ -140,13 +140,38 @@ def test_sin_mindicador_usa_la_ultima_uf_y_dice_de_que_dia_es(monkeypatch):
     assert fuente.startswith("UF del 07-10-2026") and "mindicador.cl no respondió" in fuente
 
 
-def test_una_uf_de_mas_de_tres_dias_no_sirve_de_respaldo(monkeypatch):
+def test_una_uf_de_mas_de_siete_dias_no_sirve_de_respaldo(monkeypatch):
+    # 7 dias desde el 2026-10-19: el lunes encontraba la UF del lunes anterior y fallaba con 3
     monkeypatch.setattr(ch, "consultar_uf_api", lambda fecha: 39123.45)
     ch.obtener_uf_hoy(date(2026, 10, 1))
     monkeypatch.setattr(ch, "consultar_uf_api", _sin_mindicador)
-    assert ch.obtener_uf_hoy(date(2026, 10, 4))[0] == 39123.45      # 3 dias: sirve
+    assert ch.obtener_uf_hoy(date(2026, 10, 8))[0] == 39123.45      # 7 dias: sirve
     with pytest.raises(ch.UFNoDisponibleError):
-        ch.obtener_uf_hoy(date(2026, 10, 5))                         # 4 dias: no
+        ch.obtener_uf_hoy(date(2026, 10, 9))                         # 8 dias: no
+
+
+def test_mindicador_lento_se_reintenta_una_vez(monkeypatch):
+    llamadas = []
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return b'{"serie": [{"valor": 41000.5}]}'
+
+    def _abrir(url, timeout):
+        llamadas.append(timeout)
+        if len(llamadas) == 1:
+            raise TimeoutError("The read operation timed out")
+        return _Resp()
+
+    monkeypatch.setattr(ch.urllib.request, "urlopen", _abrir)
+    assert ch.consultar_uf_api(date(2026, 10, 19)) == 41000.5
+    assert llamadas == list(ch.ESPERAS_MINDICADOR)
 
 
 def test_una_uf_guardada_posterior_a_la_fecha_pedida_no_se_usa(monkeypatch):

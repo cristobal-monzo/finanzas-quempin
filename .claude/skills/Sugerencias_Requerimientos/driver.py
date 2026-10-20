@@ -45,7 +45,7 @@ def cmd_status() -> int:
         return 1
     reqs = rq.leer_planilla(planilla)
     decisiones = rq.revisar_sugerencias(raiz, reqs)
-    cerradas = [d for d in decisiones if d["accion"] == "aplicado"]
+    cerradas = [d for d in decisiones if d["accion"] in ("aplicado", "reemplazado")]
     abiertas = [d for d in decisiones if d["accion"] in ("pendiente", "conflicto")]
     print("=" * 70)
     print("  SUGERENCIAS PARA LA PLANILLA DE INGRESO")

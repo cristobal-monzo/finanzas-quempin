@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 
@@ -140,3 +141,18 @@ def test_resultados_recientes_filtra_por_destino(tmp_path):
         ic.archivar(raiz, m, "aplicado")
     assert set(ic.resultados_recientes(raiz)) == {"paraaf01", "parasq01"}
     assert set(ic.resultados_recientes(raiz, destino="sistema-quempin")) == {"parasq01"}
+
+
+def test_publicar_lo_mismo_no_reescribe_el_archivo(tmp_path):
+    """Una publicación igual a la anterior no se reescribe: OneDrive no la vuelve a subir y
+    «generado» queda en el último cambio real (2026-10-19)."""
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    ruta = ic.publicar(raiz, "demo", "prueba", {"a": [1, 2], "b": 1.5})
+    antes = ruta.read_bytes()
+    os.utime(ruta, (1_000_000, 1_000_000))
+    ic.publicar(raiz, "demo", "prueba", {"b": 1.5, "a": (1, 2)})   # mismos datos, otro orden y tipo
+    assert ruta.read_bytes() == antes and ruta.stat().st_mtime == 1_000_000
+    ic.publicar(raiz, "demo", "prueba", {"a": [1, 2, 3], "b": 1.5})
+    assert ic.leer_publicacion(raiz, "demo")["datos"]["a"] == [1, 2, 3]
+    ic.publicar(raiz, "demo", "otra-herramienta", {"a": [1, 2, 3], "b": 1.5})
+    assert ic.leer_publicacion(raiz, "demo")["herramienta"] == "otra-herramienta"

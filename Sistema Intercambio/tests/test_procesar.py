@@ -3,6 +3,7 @@
 no frena a los demás, y deja un estado.json válido. Los subprocesos (drivers
 de Finanzas y Sistema QUEMPIN) se reemplazan: nada real se toca."""
 import json
+import os
 
 import openpyxl
 import pytest
@@ -155,3 +156,30 @@ def test_mercado_publico_sin_ticket_falla_con_instrucciones(entorno, monkeypatch
     paso = r["pasos"]["mercado-publico"]
     assert paso["ok"] is False and "configurar" in paso["detalle"]
     assert r["pasos"]["proyectos"]["ok"] is True                     # no frena a los demás
+
+
+def test_uf_del_dia_se_pide_una_sola_vez_al_dia(entorno, tmp_path, monkeypatch):
+    uf = tmp_path / "uf_ultima.json"
+    monkeypatch.setenv("QUEMPIN_UF_ULTIMA", str(uf))
+    _vuelta(entorno)
+    pedidas = [c for c in entorno["llamadas"] if c[-1] == "uf"]
+    assert len(pedidas) == 1
+    entorno["llamadas"].clear()
+    _vuelta(entorno)
+    assert not [c for c in entorno["llamadas"] if c[-1] == "uf"]
+
+
+def test_el_leeme_versionado_queda_en_la_carpeta_y_no_se_reescribe(entorno):
+    _vuelta(entorno)
+    leeme = entorno["raiz"] / "LEEME.md"
+    assert leeme.read_bytes() == pr.LEEME_VERSIONADO.read_bytes()
+    os.utime(leeme, (1_000_000, 1_000_000))
+    _vuelta(entorno)
+    assert leeme.stat().st_mtime == 1_000_000
+
+
+def test_el_estado_dice_su_propia_vuelta(entorno):
+    _vuelta(entorno)
+    _vuelta(entorno)
+    estado = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]
+    assert estado["publicaciones"]["estado"]["generado"] >= estado["procesador"]["ultimaCorrida"][:16]

@@ -256,9 +256,21 @@ def resultados_recientes(raiz: Path, dias: int = 180, destino: str | None = None
 
 # ── PUBLICACIONES ────────────────────────────────────────────────────────────
 
+def _canonico(datos) -> str:
+    return json.dumps(datos, ensure_ascii=False, sort_keys=True)
+
+
 def publicar(raiz: Path, nombre: str, herramienta: str, datos) -> Path:
-    """Reemplaza publicado/<nombre>.json con un sobre común."""
+    """Reemplaza publicado/<nombre>.json con un sobre común. Si ya publica
+    exactamente los mismos datos, no lo reescribe (2026-10-19): el procesador
+    reescribía 5 publicaciones iguales cada 2 horas, OneDrive las subía y
+    bajaba a cada equipo y SharePoint guardaba una versión nueva de cada una.
+    Así «generado» dice cuándo cambió el dato, no cuándo se miró."""
     ruta = Path(raiz) / CARPETA_PUBLICADO / f"{nombre}.json"
+    previo = leer_publicacion(raiz, nombre)
+    if (previo is not None and previo.get("herramienta") == herramienta
+            and _canonico(previo.get("datos")) == _canonico(json.loads(_canonico(datos)))):
+        return ruta
     _escribir_json_atomico(ruta, {
         "esquema": ESQUEMA,
         "herramienta": herramienta,

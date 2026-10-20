@@ -258,17 +258,27 @@ class UFNoDisponibleError(Exception):
 URL_MINDICADOR_UF = "https://mindicador.cl/api/uf/{fecha}"
 
 
+# Esperas de cada intento: mindicador.cl a veces tarda mas de 10 s en
+# contestar (2026-10-19, la corrida del lunes perdio el tablero del Cotizador
+# por un solo timeout).
+ESPERAS_MINDICADOR = (10, 25)
+
+
 def consultar_uf_api(fecha):
     """Llama a mindicador.cl y devuelve el valor UF (float) para 'fecha'
-    (date o datetime). Lanza UFNoDisponibleError si falla la conexion, la
-    respuesta no es JSON valido, o no trae serie de datos. Nunca cachea en
-    disco -- eso lo hace el llamador via obtener_valor_uf/guardar_cache_uf."""
+    (date o datetime). Si no contesta a tiempo, reintenta una vez con mas
+    espera. Lanza UFNoDisponibleError si falla la conexion, la respuesta no
+    es JSON valido, o no trae serie de datos. Nunca cachea en disco -- eso lo
+    hace el llamador via obtener_valor_uf/guardar_cache_uf."""
     url = URL_MINDICADOR_UF.format(fecha=fecha.strftime("%d-%m-%Y"))
-    try:
-        with urllib.request.urlopen(url, timeout=10) as respuesta:
-            datos = json.loads(respuesta.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError) as exc:
-        raise UFNoDisponibleError(f"No se pudo consultar mindicador.cl para {fecha}: {exc}") from exc
+    for intento, espera in enumerate(ESPERAS_MINDICADOR):
+        try:
+            with urllib.request.urlopen(url, timeout=espera) as respuesta:
+                datos = json.loads(respuesta.read().decode("utf-8"))
+            break
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            if intento + 1 == len(ESPERAS_MINDICADOR):
+                raise UFNoDisponibleError(f"No se pudo consultar mindicador.cl para {fecha}: {exc}") from exc
 
     serie = datos.get("serie") or []
     if not serie:
@@ -287,9 +297,12 @@ def consultar_uf_api(fecha):
 # los tests, para que una UF simulada nunca quede como respaldo real.
 RUTA_ULTIMA_UF = Path(__file__).resolve().parent / "uf_ultima.json"
 VARIABLE_RUTA_ULTIMA_UF = "QUEMPIN_UF_ULTIMA"
-# La UF cambia unas centesimas por dia: una de hasta 3 dias atras cambia los
-# precios reajustados en menos de 0,1 %, y el tablero dice de que dia es.
-DIAS_UF_RESPALDO = 3
+# La UF cambia ~0,01 % por dia: una de hasta 7 dias atras cambia los precios
+# reajustados en menos de 0,1 %, y el tablero dice de que dia es. Eran 3 dias,
+# pero la UF solo se renovaba en la corrida semanal: el lunes encontraba una de
+# 6 o 7 dias y fallaba (2026-10-05 y 2026-10-19). Desde el 2026-10-19 el
+# procesador del intercambio la renueva una vez al dia (driver.py uf).
+DIAS_UF_RESPALDO = 7
 
 
 def _ruta_ultima_uf():
