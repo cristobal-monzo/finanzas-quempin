@@ -405,6 +405,24 @@
     .ini-item { min-height: 33px; }
   }
   @container inicio (max-width: 520px) { .ini-grupos { grid-template-columns: 1fr; } }
+  /* La entrada al Recorrido de proyectos (2026-10-20), arriba de las herramientas */
+  .ini-recorrido {
+    width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 16px;
+    border: 1px solid var(--tinte-borde); border-radius: 14px; background: var(--tinte);
+    color: var(--text-primary); text-align: left; cursor: pointer;
+  }
+  .ini-recorrido:hover { border-color: var(--brand-orange); }
+  .ini-recorrido .ico { flex: 0 0 auto; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--brand-orange); color: #000000; }
+  .ini-rc-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .ini-rc-tit { font-size: 15px; font-weight: 900; }
+  .ini-rc-sub { font-size: 13px; color: var(--tinte-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ini-rc-ir { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 900; color: var(--brand-orange-ink); }
+  @container inicio (max-height: 560px) {
+    .ini-recorrido { padding: 6px 12px; }
+    .ini-recorrido .ico { width: 30px; height: 30px; }
+    .ini-rc-sub { display: none; }
+  }
+  @container inicio (max-width: 520px) { .ini-rc-ir span { display: none; } }
 
   /* ---- Configuración y conexiones (2026-10-16): qué necesita cada herramienta y dónde está ---- */
   .vista-conexiones { position: absolute; inset: 0; overflow-y: auto; background: var(--page-plane); container: conexiones / inline-size; }
@@ -526,6 +544,200 @@
     .cx-avance { align-items: flex-start; }
   }
 
+  /* ---- Recorrido de proyectos (2026-10-20): cada proyecto del equipo en su etapa y qué sigue ----
+     Seis columnas, una por etapa, como la barra de Seguimiento del Formulador. Con menos ancho van tres
+     (dos filas: de la Planilla a la cotización, y de la oferta al cierre) y en el teléfono una. */
+  .vista-recorrido { position: absolute; inset: 0; overflow-y: auto; background: var(--page-plane); container: recorrido / inline-size; }
+  .recorrido { max-width: 1640px; margin: 0 auto; padding: 20px 24px 32px; display: flex; flex-direction: column; gap: 14px; }
+  .rc-cab { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; }
+  .rc-cab h1 { margin: 0 0 4px; font-size: 24px; font-weight: 900; }
+  .rc-cab p { margin: 0; max-width: 72ch; font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); }
+  .rc-frescura { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--texto-suave); }
+  .rc-frescura .acc-btn { height: 32px; padding: 0 10px; }
+  /* Resumen: cuatro cifras que también filtran el tablero */
+  .rc-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .rc-kpi {
+    min-height: 76px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 12px;
+    padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
+    color: var(--text-primary); text-align: left; cursor: pointer;
+  }
+  .rc-kpi:hover { border-color: var(--brand-orange); }
+  .rc-kpi[aria-pressed="true"] { border-color: var(--brand-orange); background: var(--tinte); box-shadow: inset 0 -3px 0 var(--brand-orange); }
+  .rc-kpi-n { grid-row: 1 / 3; min-width: 1.6ch; font-size: 30px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .rc-kpi[data-nivel="bad"] .rc-kpi-n { color: var(--estado-bad); }
+  .rc-kpi[data-nivel="warn"] .rc-kpi-n { color: var(--brand-orange-ink); }
+  .rc-kpi-et { font-size: 14px; font-weight: 900; }
+  .rc-kpi-sub { font-size: 12.5px; line-height: 1.35; color: var(--texto-suave); }
+  /* Filtros */
+  .rc-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .rc-mios {
+    min-height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid var(--baseline); background: var(--surface-card); font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .rc-mios input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-orange); cursor: pointer; }
+  .rc-mios:has(input:checked) { border-color: var(--brand-orange); background: var(--tinte); }
+  .rc-mios:has(input:disabled) { cursor: default; color: var(--texto-suave); }
+  .rc-mios b { padding: 0 7px; border-radius: 999px; background: var(--brand-orange); color: #000000; font-size: 12px; font-weight: 900; letter-spacing: 0.04em; }
+  .rc-elegir { padding: 0; border: 0; background: transparent; color: var(--brand-orange-ink); font-size: 13.5px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+  .rc-buscar { flex: 0 1 300px; min-width: 180px; }
+  .rc-buscar input {
+    width: 100%; height: 38px; padding: 0 12px; border-radius: 10px;
+    border: 1px solid var(--baseline); background: var(--surface-card); color: var(--text-primary); font-size: 14px;
+  }
+  .rc-foco {
+    min-height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 6px 0 12px; border-radius: 999px;
+    border: 1px solid var(--brand-orange); background: var(--tinte); color: var(--tinte-texto); font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .rc-cuenta { margin-left: auto; font-size: 13px; color: var(--texto-suave); }
+  /* El tablero */
+  .rc-tablero { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: start; }
+  .rc-col { min-width: 0; padding: 0 7px 8px; border-radius: 14px; border: 1px solid var(--border-hairline); background: var(--surface-1); }
+  .rc-col-cab { position: sticky; top: 0; z-index: 2; margin: 0 -7px; padding: 10px 10px 8px; border-radius: 14px 14px 0 0; background: var(--surface-1); border-bottom: 1px solid var(--gridline); }
+  .rc-col-tit { display: flex; align-items: center; gap: 7px; }
+  .rc-col-tit h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14.5px; font-weight: 900; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-col-pie { display: flex; align-items: center; gap: 8px; margin: 5px 0 0 31px; }
+  .rc-num {
+    flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
+    background: var(--brand-black); color: #ffffff; font-size: 12px; font-weight: 900;
+  }
+  :root[data-theme="dark"] .rc-num { background: #3a3835; }
+  @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .rc-num { background: #3a3835; } }
+  .rc-col-n { margin-left: auto; flex: 0 0 auto; min-width: 24px; padding: 1px 7px; border-radius: 999px; background: var(--gridline); font-size: 12px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
+  .rc-donde {
+    min-width: 0; padding: 0; border: 0; background: transparent; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px; color: var(--texto-suave); font-size: 12.5px; font-weight: 700; text-align: left;
+  }
+  .rc-donde span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-donde svg { flex: 0 0 auto; }
+  .rc-donde:hover { color: var(--brand-orange-ink); text-decoration: underline; }
+  .rc-lista { list-style: none; margin: 0; padding: 0; }
+  .rc-nueva {
+    width: 100%; min-height: 38px; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    border: 1px dashed var(--baseline); border-radius: 10px; background: transparent; color: var(--text-secondary);
+    font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .rc-nueva:hover { border-color: var(--brand-orange); color: var(--brand-orange-ink); }
+  .rc-vacia { margin: 14px 4px 6px; font-size: 13px; color: var(--texto-suave); text-align: center; }
+  .rc-antiguos { margin-top: 8px; }
+  .rc-antiguos > summary {
+    min-height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 8px; cursor: pointer;
+    font-size: 12.5px; font-weight: 700; color: var(--texto-suave); list-style: none;
+  }
+  .rc-antiguos > summary::-webkit-details-marker { display: none; }
+  .rc-antiguos > summary::before { content: "▸"; color: var(--brand-orange); }
+  .rc-antiguos[open] > summary::before { content: "▾"; }
+  .rc-antiguos > summary:hover { background: var(--gridline); color: var(--text-primary); }
+  /* Una tarjeta por proyecto: arriba su N° y quién lo tiene, el nombre, sus fechas y, abajo, lo que sigue */
+  .rc-tarjeta {
+    position: relative; margin-top: 8px; overflow: hidden; border-radius: 10px;
+    border: 1px solid var(--border-hairline); background: var(--surface-card); box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .rc-tarjeta::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: transparent; }
+  .rc-tarjeta[data-tipo="hacer"]::before { background: var(--baseline); }
+  .rc-tarjeta[data-nivel="warn"]::before { background: var(--estado-warn); }
+  .rc-tarjeta[data-nivel="bad"]::before { background: var(--estado-bad); }
+  .rc-tarjeta.tuya { border-color: var(--tinte-borde); box-shadow: 0 1px 3px rgba(255,81,0,0.18); }
+  .rc-tarjeta.atenuada { opacity: 0.55; }
+  .rc-abrir {
+    width: 100%; display: flex; flex-direction: column; gap: 3px; padding: 9px 10px 9px 13px;
+    border: 0; background: transparent; color: var(--text-primary); text-align: left; cursor: pointer;
+  }
+  .rc-abrir:hover { background: var(--page-plane); }
+  .rc-fila1 { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; font-weight: 900; color: var(--texto-suave); }
+  .rc-n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-tag { padding: 0 5px; border-radius: 5px; border: 1px solid var(--gridline); font-size: 12px; letter-spacing: 0.03em; }
+  .rc-resp {
+    margin-left: auto; flex: 0 0 auto; min-width: 28px; height: 22px; padding: 0 6px; display: inline-grid; place-items: center;
+    border-radius: 999px; border: 1px solid var(--baseline); color: var(--text-secondary); font-size: 12px; font-weight: 900; letter-spacing: 0.04em;
+  }
+  .rc-tarjeta.tuya .rc-resp { border-color: var(--brand-orange); background: var(--brand-orange); color: #000000; }
+  .rc-resp.nadie { border-style: dashed; color: var(--texto-suave); }
+  .rc-tit { font-size: 14px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .rc-sub { font-size: 12.5px; color: var(--texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .rc-chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px;
+    border: 1px solid var(--gridline); background: var(--page-plane); color: var(--text-secondary); font-size: 12px; font-weight: 700; line-height: 1.5;
+  }
+  .rc-chip[data-nivel="bad"] { border-color: var(--estado-bad); background: transparent; color: var(--estado-bad); }
+  .rc-chip[data-nivel="warn"] { border-color: var(--estado-warn); background: transparent; color: var(--text-primary); }
+  .rc-chip[data-nivel="ok"] { border-color: var(--estado-ok); background: transparent; color: var(--text-primary); }
+  .rc-chip[data-nivel="warn"]::before, .rc-chip[data-nivel="ok"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--estado-warn); }
+  .rc-chip[data-nivel="ok"]::before { background: var(--estado-ok); }
+  .rc-avance { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 12px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .rc-barra { flex: 1 1 auto; height: 6px; border-radius: 999px; background: var(--gridline); overflow: hidden; }
+  .rc-barra span { display: block; height: 100%; border-radius: inherit; background: var(--brand-orange); }
+  .rc-accion, .rc-espera {
+    width: 100%; min-height: 38px; display: flex; align-items: center; gap: 6px; padding: 6px 10px 7px 13px;
+    border: 0; border-top: 1px solid var(--gridline); background: transparent; text-align: left; font-size: 13px; line-height: 1.3;
+  }
+  .rc-accion { color: var(--brand-orange-ink); font-weight: 900; cursor: pointer; }
+  .rc-accion span { flex: 1 1 auto; min-width: 0; }
+  .rc-accion svg { flex: 0 0 auto; }
+  .rc-accion:hover { background: var(--tinte); }
+  .rc-tarjeta[data-tipo="curso"] .rc-accion, .rc-tarjeta[data-tipo="listo"] .rc-accion { color: var(--text-secondary); font-weight: 700; }
+  .rc-espera { color: var(--texto-suave); font-weight: 700; }
+  .rc-espera svg { flex: 0 0 auto; }
+  /* Sin la carpeta del equipo: qué falta y su botón */
+  .rc-vacio {
+    max-width: 640px; margin: 24px auto; padding: 28px 28px 24px; border-radius: 16px;
+    border: 1px solid var(--border-hairline); background: var(--surface-card); text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .rc-vacio .ico { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: var(--tinte); color: var(--brand-orange-ink); }
+  .rc-vacio h2 { margin: 4px 0 0; font-size: 19px; font-weight: 900; }
+  .rc-vacio p { margin: 0; max-width: 56ch; font-size: 14.5px; line-height: 1.55; color: var(--text-secondary); }
+  .rc-vacio .cx-acc { justify-content: center; margin-top: 6px; }
+  .rc-leyendo { padding: 40px 0; text-align: center; font-size: 14px; color: var(--texto-suave); }
+  /* El detalle de un proyecto */
+  #dlgRecorrido { width: min(720px, calc(100vw - 24px)); }
+  .rc-det-sub { margin: -2px 0 0; font-size: 14px; color: var(--text-secondary); }
+  .rc-pasos { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .rc-paso { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
+  .rc-paso::before { content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px; background: var(--gridline); }
+  .rc-paso:first-child::before { display: none; }
+  .rc-paso[data-est="hecha"]::before, .rc-paso[data-est="actual"]::before, .rc-paso[data-est="espera"]::before, .rc-paso[data-est="omitida"]::before { background: var(--estado-ok); }
+  .rc-paso .p {
+    position: relative; z-index: 1; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%;
+    border: 2px solid var(--baseline); background: var(--surface-card); color: var(--text-secondary); font-size: 12.5px; font-weight: 900;
+  }
+  .rc-paso[data-est="hecha"] .p { border-color: var(--estado-ok); background: var(--estado-ok); color: #ffffff; }
+  .rc-paso[data-est="omitida"] .p { border-color: var(--estado-ok); border-style: dashed; color: var(--estado-ok); }
+  .rc-paso[data-est="actual"] .p { border-color: var(--brand-orange); background: var(--brand-orange); color: #000000; box-shadow: 0 0 0 4px var(--tinte); }
+  .rc-paso[data-est="espera"] .p { border-color: var(--estado-warn); color: var(--text-primary); box-shadow: 0 0 0 4px var(--tinte); }
+  .rc-paso .et { font-size: 12px; font-weight: 700; line-height: 1.25; color: var(--texto-suave); }
+  .rc-paso[data-est="actual"] .et, .rc-paso[data-est="espera"] .et { color: var(--text-primary); font-weight: 900; }
+  .rc-sigue { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--tinte-borde); background: var(--tinte); display: flex; flex-direction: column; gap: 8px; }
+  .rc-sigue[data-tipo="espera"], .rc-sigue[data-tipo="listo"], .rc-sigue[data-tipo="curso"] { border-color: var(--gridline); background: var(--page-plane); }
+  .rc-sigue h3 { margin: 0; font-size: 12.5px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tinte-texto); }
+  .rc-sigue[data-tipo="espera"] h3, .rc-sigue[data-tipo="listo"] h3, .rc-sigue[data-tipo="curso"] h3 { color: var(--texto-suave); }
+  .rc-sigue p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--text-primary); }
+  .rc-sigue .cx-acc { margin-top: 2px; }
+  .rc-avisos { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .rc-avisos li { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--estado-warn); font-size: 14px; line-height: 1.45; color: var(--text-primary); }
+  .rc-avisos li svg { flex: 0 0 auto; margin-top: 2px; color: var(--estado-warn); }
+  .rc-datos { margin: 0; display: grid; grid-template-columns: minmax(130px, 30%) minmax(0, 1fr); }
+  .rc-datos dt, .rc-datos dd { margin: 0; padding: 7px 0; border-top: 1px solid var(--gridline); font-size: 14px; line-height: 1.45; }
+  .rc-datos dt { padding-right: 12px; font-weight: 700; color: var(--texto-suave); }
+  .rc-datos dd { overflow-wrap: anywhere; }
+  .rc-det-h { margin: 4px 0 -4px; font-size: 13px; font-weight: 900; }
+  @container recorrido (max-width: 1340px) { .rc-col-tit h2 { font-size: 13.5px; } }
+  @container recorrido (max-width: 1100px) { .rc-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } .rc-col-tit h2 { font-size: 14.5px; } }
+  @container recorrido (max-width: 760px) { .rc-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @container recorrido (max-width: 600px) {
+    .rc-tablero { grid-template-columns: minmax(0, 1fr); }
+    .rc-cuenta { margin-left: 0; }
+    .rc-buscar { flex: 1 1 100%; }
+    .rc-kpi { min-height: 64px; padding: 8px 12px; }
+    .rc-kpi-n { font-size: 26px; }
+    .rc-kpi-sub { display: none; }
+  }
+  @media (max-width: 560px) {
+    .rc-paso .et { display: none; }
+    .rc-datos { grid-template-columns: minmax(0, 1fr); }
+    .rc-datos dd { padding-top: 0; border-top: 0; }
+  }
+
   /* ---- Diálogos y aviso ---- */
   dialog {
     width: min(560px, calc(100vw - 24px)); padding: 0; border-radius: 14px;
@@ -575,6 +787,7 @@
     background: var(--surface-card); border-top: 1px solid var(--border-hairline);
   }
   .dlg-acc .btn-pri { min-width: 120px; }
+  .dlg-cuerpo { display: flex; flex-direction: column; gap: 14px; }
   .pop-proyecto { padding: 12px; }
   .pop-proyecto > .pop-nota:first-child { margin: 0 2px 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border-hairline); font-size: 12.5px; }
   .pop-usuario #sinUsuario { margin-top: 4px; }
@@ -624,6 +837,8 @@
     .pestana .ir { max-width: 150px; }
     .inicio { padding: 16px 16px 24px; }
     .conexiones { padding: 16px 16px 24px; }
+    .recorrido { padding: 16px 16px 24px; }
+    .rc-buscar input { font-size: 16px; }
     .ini-item { min-height: 48px; }
   }
   /* Teléfonos angostos (360 px): con Usuario y Proyecto en la cabecera, todo un poco más junto */
@@ -670,7 +885,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="pop-proyecto pop-usuario" id="popUsuario" role="dialog" aria-label="Elegir usuario" hidden>
-        <p class="pop-nota">¿Quién eres? En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres, y aquí el selector de proyectos muestra primero los tuyos.</p>
+        <p class="pop-nota">¿Quién eres? En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres; aquí el selector de proyectos muestra primero los tuyos y el Recorrido los marca.</p>
         <ul class="usuarios" id="listaUsuarios" role="listbox" aria-label="Iniciales del equipo"></ul>
         <button class="pop-item" id="sinUsuario" type="button" role="option"><span class="t">Sin usuario</span><span class="s">Lo que hagas no queda a nombre de nadie</span></button>
       </div>
@@ -723,8 +938,46 @@
         <section class="vista-inicio sin-barra" id="vistaInicio" aria-labelledby="tituloInicio">
           <div class="inicio">
             <h1 class="sr" id="tituloInicio">Inicio: todas las herramientas de QUEMPIN</h1>
+            <!-- La entrada al Recorrido de proyectos (2026-10-20): con la biblioteca conectada dice cuánto te espera -->
+            <button class="ini-recorrido" id="iniRecorrido" type="button">
+              <span class="ico" id="iniRecorridoIco"></span>
+              <span class="ini-rc-txt"><span class="ini-rc-tit">Recorrido de los proyectos</span><span class="ini-rc-sub" id="iniRecorridoSub">Dónde va cada proyecto del equipo y qué sigue en cada uno</span></span>
+              <span class="ini-rc-ir" id="iniRecorridoIr"><span>Ver el recorrido</span></span>
+            </button>
             <div class="ini-grupos" id="iniGrupos"></div>
             <p class="ini-pie"><kbd>Ctrl K</kbd> busca una herramienta, una pestaña de calculadora o un proyecto · <button type="button" id="iniAyuda">Cómo usar el portal</button> · <button type="button" id="iniConexiones">Configuración y conexiones</button></p>
+          </div>
+        </section>
+        <!-- Recorrido de proyectos (2026-10-20): lo arma rcPintar() con lo que publica la carpeta de intercambio -->
+        <section class="vista-recorrido sin-barra" id="vistaRecorrido" aria-labelledby="tituloRecorrido" hidden>
+          <div class="recorrido">
+            <header class="rc-cab">
+              <div>
+                <h1 id="tituloRecorrido">Recorrido de los proyectos</h1>
+                <p>Cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre: lo que sigue, quién lo tiene y un botón para hacerlo.</p>
+              </div>
+              <div class="rc-frescura">
+                <span class="cx-punto" id="rcPunto"></span>
+                <span id="rcFrescura" role="status">Leyendo la carpeta del equipo…</span>
+                <button class="acc-btn" id="rcActualizar" type="button" title="Volver a leer la carpeta del equipo" aria-label="Volver a leer la carpeta del equipo"></button>
+              </div>
+            </header>
+            <div class="rc-vacio" id="rcVacio" hidden></div>
+            <div class="rc-leyendo" id="rcLeyendo" role="status">Leyendo la carpeta del equipo…</div>
+            <div id="rcContenido" hidden>
+              <div class="rc-resumen" id="rcResumen" role="group" aria-label="Resumen: cada cifra filtra el tablero"></div>
+              <div class="rc-filtros">
+                <label class="rc-mios"><input type="checkbox" id="rcMios"><span id="rcMiosTxt">Solo mis proyectos</span></label>
+                <button class="rc-elegir" id="rcElegir" type="button" hidden>Elige tu usuario</button>
+                <div class="rc-buscar">
+                  <label class="sr" for="rcBuscar">Buscar en el recorrido</label>
+                  <input id="rcBuscar" type="search" autocomplete="off" spellcheck="false" placeholder="Buscar N°, nombre, ciudad o TAG">
+                </div>
+                <button class="rc-foco" id="rcFoco" type="button" hidden></button>
+                <span class="rc-cuenta" id="rcCuenta" aria-live="polite"></span>
+              </div>
+              <div class="rc-tablero" id="rcTablero"></div>
+            </div>
           </div>
         </section>
         <!-- Configuración y conexiones: la arma pintarConexiones() con el bloque «portal-conexiones» -->
@@ -784,6 +1037,7 @@
     <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador, su Carta Gantt y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
+      <li><strong>Recorrido de los proyectos</strong> (arriba en el Inicio y en el menú): cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre, con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Las cifras de arriba filtran el tablero y «Solo mis proyectos» deja los tuyos. Lee la carpeta del equipo, así que necesita la biblioteca conectada en este navegador.</li>
       <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
@@ -795,6 +1049,16 @@
       <li><strong>Configuración y conexiones</strong> (en Ayuda) muestra las carpetas, programas y permisos que necesita cada herramienta, dónde está cada uno y si este navegador ya los tiene conectados.</li>
     </ul>
     <div class="dlg-acc"><button class="btn-pri" value="ok">Entendido</button></div>
+  </form>
+</dialog>
+
+<!-- El detalle de un proyecto del Recorrido: sus seis etapas, lo que sigue, sus datos y sus enlaces -->
+<dialog id="dlgRecorrido" aria-labelledby="dlgRcTit">
+  <form method="dialog" class="dlg">
+    <h2 id="dlgRcTit"></h2>
+    <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div id="dlgRcCuerpo" class="dlg-cuerpo"></div>
+    <div class="dlg-acc"><button class="btn-pri" value="ok">Cerrar</button></div>
   </form>
 </dialog>
 
@@ -827,6 +1091,9 @@
   "herramientas": [
     {"id": "inicio", "nombre": "Inicio", "grupo": "arriba", "icono": "inicio", "tipo": "inicio",
      "claves": "inicio portal"},
+    {"id": "recorrido", "nombre": "Recorrido de proyectos", "corto": "Recorrido", "grupo": "arriba", "tipo": "vista", "vista": "vistaRecorrido", "icono": "ruta",
+     "desc": "Cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre: lo que sigue, quién lo tiene y la herramienta donde se hace.",
+     "claves": "recorrido etapa etapas tablero flujo pendientes que sigue proyectos del equipo mis proyectos responsable cierre plazo vencimiento ejecucion"},
     {"id": "oportunidades", "nombre": "Oportunidades", "grupo": "formular", "tipo": "marco", "incrustar": "tablero", "tema": "op_viz_theme",
      "ruta": "/finanzas-quempin/oportunidades/", "breve": "Mercado Público, con puntaje",
      "desc": "Licitaciones y compras ágiles que calzan con el trabajo de QUEMPIN, con su puntaje y su cierre.",
@@ -943,17 +1210,17 @@
      "pasos": ["Ábrela en SharePoint y elige «Agregar acceso directo a Mis archivos»: aparece en el Explorador de archivos, dentro de «OneDrive - QUEMPIN SPA».",
                "Si usas Sistema QUEMPIN, agrega «Cotizaciones y OC» de la misma forma: las dos bibliotecas tienen que quedar en la misma carpeta.",
                "En el Formulador: Configuración › «Carpeta compartida (OneDrive)» › Conectar carpeta, y elige esta biblioteca completa, no una carpeta de adentro."],
-     "usan": ["formulador", "ingresar", "cotizacion", "orden-compra"],
+     "usan": ["formulador", "ingresar", "recorrido", "cotizacion", "orden-compra"],
      "estado": "biblioteca",
      "falta": "El Formulador no comparte los presupuestos con el equipo ni guarda el Excel en la carpeta de cada oferta, y Sistema QUEMPIN no recibe sus borradores."},
     {"id": "intercambio", "tipo": "Carpeta", "nombre": "Carpeta de intercambio", "corto": "Carpeta de intercambio",
      "para": "El buzón y la cartelera por donde las herramientas se pasan los datos: «buzon» (pedidos que esperan), «publicado» (lo que cada una publica) y «procesado» (lo ya atendido). Su LEEME.md lo explica.",
      "ruta": ["OneDrive - QUEMPIN SPA", "Formulación de proyectos - Documentos", ".HERRAMIENTAS FORMULACIÓN", "Intercambio"],
      "web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos/.HERRAMIENTAS FORMULACIÓN/Intercambio",
-     "pasos": ["No se conecta aparte: queda conectada al conectar la biblioteca completa en el Formulador. «Ingresar avance» usa esa misma conexión, porque está en el mismo sitio web.",
+     "pasos": ["No se conecta aparte: queda conectada al conectar la biblioteca completa en el Formulador. «Ingresar avance» y el Recorrido de proyectos usan esa misma conexión, porque están en el mismo sitio web.",
                "Sistema QUEMPIN y el procesador la encuentran solos cuando la biblioteca está en OneDrive.",
                "No muevas, renombres ni edites sus archivos a mano."],
-     "usan": ["formulador", "ingresar", "cotizacion", "orden-compra", "procesador"],
+     "usan": ["formulador", "ingresar", "recorrido", "cotizacion", "orden-compra", "procesador"],
      "estado": "procesador",
      "falta": "Lo que se envía queda esperando. Sin conexión, el Formulador descarga cada envío para dejarlo a mano en «buzon»."},
     {"id": "planilla", "tipo": "Excel", "nombre": "Planilla de Ingreso de Requerimientos", "corto": "Planilla de Ingreso",
@@ -1121,6 +1388,12 @@
     flecha: '<path d="M6 9l6 6 6-6"/>',
     fuera: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
     cerrar: '<path d="M6 6l12 12M18 6L6 18"/>',
+    // Recorrido de proyectos: el camino de un proyecto, de un punto a otro
+    ruta: '<circle cx="5.5" cy="6" r="2.5"/><circle cx="18.5" cy="18" r="2.5"/><path d="M8 6h7.5a3.5 3.5 0 0 1 0 7h-7a3.5 3.5 0 0 0 0 7H16"/>',
+    derecha: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    recargar: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+    alerta: '<path d="M12 3.5l9 16H3z"/><path d="M12 10v4.5M12 17.5h.01"/>',
+    mas: '<path d="M12 5v14M5 12h14"/>',
     luna: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
     sol: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'
   };
@@ -1479,6 +1752,7 @@
     try { history.replaceState(null, '', '#/' + (actual ? actual.herr : '')); } catch (e) { /* nada */ }
     if (familia === 'inicio') pintarInicio();
     if (familia === 'conexiones') pintarConexiones();
+    if (familia === 'recorrido') rcAlMostrar();
     guardarPestanas();
   }
   function cerrar(familia) {
@@ -1818,6 +2092,7 @@
     try { localStorage.setItem(LS.usuario, nuevo); } catch (e) { /* solo esta visita */ }
     cerrarUsuario(false);
     pintarUsuario();
+    rcAlCambiarUsuario();
     if (cxArmada && !$('#vistaConexiones').hidden) pintarEstadoConexiones();
     if (cambia) avisar(nuevo ? 'Trabajas como ' + nuevo + ': lo que formules o registres queda a tu nombre.' : 'Sin usuario: lo que hagas no queda a nombre de nadie.');
   }
@@ -1872,6 +2147,12 @@
       const nom = b.querySelector('.ini-nom');
       if (si) nom.dataset.estado = 'abierta'; else delete nom.dataset.estado;
     });
+    // La línea del Recorrido: con la biblioteca ya conectada y con permiso, dice cuánto espera (sin pedir nada).
+    pintarInicioRecorrido();
+    if (!rc.leyendo && (!rc.intentado || (rc.leido && Date.now() - rc.leido > 5 * RC_RELEER_SEG * 1000))) {
+      rc.intentado = true;
+      rcCargar();
+    }
   }
 
   // ---- Sistema QUEMPIN (QUEMPIN.exe) ---------------------------------------------------------------
@@ -2117,7 +2398,8 @@
     // Una fila por herramienta (o por varias que necesitan lo mismo); las calculadoras no necesitan nada.
     const filas = [];
     REG.herramientas.forEach((h) => {
-      if (!GRUPO_NOMBRE.has(h.grupo) || h.grupo === 'ayuda') return;
+      // Las de cada grupo (sin la ayuda) y, de las de arriba, las que necesitan algo (el Recorrido)
+      if (h.grupo === 'arriba' ? !necesidades(h).length : !GRUPO_NOMBRE.has(h.grupo) || h.grupo === 'ayuda') return;
       const nec = necesidades(h);
       const clave = h.grupo + '|' + nec.join(',');
       const f = filas.find((x) => x.clave === clave);
@@ -2443,6 +2725,785 @@
     pintarEstadoConexiones();
   }
 
+  // ---- Recorrido de proyectos (2026-10-20) ----------------------------------------------------------
+  // Pedido del usuario: una herramienta nueva que deje muy claro el flujo de trabajo. Todos los proyectos
+  // del equipo en las seis etapas del recorrido (las mismas del Seguimiento del Formulador, js/flujo.js),
+  // cada uno con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Se arma
+  // en el navegador con lo que publica la carpeta de intercambio, por la conexión de la biblioteca que
+  // ya usan el Formulador y «Configuración y conexiones»: la Planilla (requerimientos.json), el cruce de
+  // proyectos, el Análisis Financiero, Mercado Público, el repositorio de formulaciones y los borradores
+  // que esperan en Sistema QUEMPIN. Solo lee: nunca escribe en la carpeta. El usuario elegido marca lo
+  // suyo, y «Solo mis proyectos» deja solo eso.
+  const RC_ETAPAS = [
+    { id: 'requerimiento', titulo: 'Requerimiento', corto: 'Requerimiento', herr: 'planilla' },
+    { id: 'formulacion', titulo: 'Formulación', corto: 'Formulación', herr: 'formulador' },
+    { id: 'cotizacion', titulo: 'Cotización', corto: 'Cotización', herr: 'cotizacion' },
+    { id: 'oferta', titulo: 'Oferta y adjudicación', corto: 'Oferta', herr: 'proyectos' },
+    { id: 'ejecucion', titulo: 'Ejecución', corto: 'Ejecución', herr: 'ingresar' },
+    { id: 'cierre', titulo: 'Cierre', corto: 'Cierre', herr: 'analisis' }
+  ];
+  const RC_ANTES_DE_OFERTAR = ['requerimiento', 'formulacion', 'cotizacion'];
+  const RC_VIVOS = ['Evaluación', 'Ofertado', 'Adjudicado'];       // estados de la Planilla que siguen en curso
+  const RC_EN_FORMULACION = ['Borrador', 'En revisión'];
+  const RC_DIAS_ANTIGUO = 60;          // lo que lleva más que esto sin moverse va plegado al pie de su etapa
+  const RC_DIAS_SIN_RESPUESTA = 45;    // una oferta sin respuesta hace más que esto: confirmar el resultado
+  const RC_RELEER_SEG = 60;            // al volver a la pestaña se relee si pasó más que esto
+  const LS_RC = 'quempin_portal_recorrido';   // { mios }: lo elegido en este navegador
+  const RC_MP = /^https:\/\/www\.mercadopublico\.cl\//;
+  const DIA = 86400000;
+  const MAXIMO = Number.MAX_SAFE_INTEGER;
+  const rc = {
+    tarjetas: [], datos: null, leido: 0, leyendo: null, carpetas: null, pulso: null,
+    foco: null, q: '', mios: !!(leer(LS_RC, {}) || {}).mios
+  };
+
+  // Fechas de la Planilla y de las publicaciones: «2026-10-23», «2026-10-23T20:00», «15-10-2026 a las 11:00».
+  function rcFecha(v) {
+    const s = texto(v);
+    let m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(s);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0));
+    m = /\b(\d{1,2})[-/](\d{1,2})[-/](\d{4})\b/.exec(s);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+  }
+  const rcDia = (f) => new Date(f.getFullYear(), f.getMonth(), f.getDate()).getTime();
+  const rcDias = (f, hoy) => Math.round((rcDia(f) - rcDia(hoy)) / DIA);   // > 0: falta; < 0: ya pasó
+  const dos = (n) => String(n).padStart(2, '0');
+  const rcCorta = (f, hoy) => dos(f.getDate()) + '-' + dos(f.getMonth() + 1) + (f.getFullYear() === hoy.getFullYear() ? '' : '-' + String(f.getFullYear()).slice(2));
+  const pl = (n, uno, varios) => n + ' ' + (n === 1 ? uno : varios);
+  const rcNum = (v) => { const s = texto(v).replace(/\.0$/, ''); return /^\d{1,6}$/.test(s) && +s > 0 ? String(+s) : null; };
+  function rcCierre(f, hoy) {
+    const d = rcDias(f, hoy);
+    if (d < 0) return { texto: 'Cerró el ' + rcCorta(f, hoy), nivel: '' };
+    if (d <= 1) return { texto: d === 0 ? 'Cierra hoy' : 'Cierra mañana', nivel: 'bad' };
+    return { texto: 'Cierra en ' + d + ' días', nivel: d <= 2 ? 'bad' : d <= 7 ? 'warn' : '' };
+  }
+  const rcNivel = (f, hoy) => (f ? rcCierre(f, hoy).nivel : '');
+  /* Quién lo tiene: las primeras iniciales del equipo entre las que se dan ([valor, de dónde]); si ninguna
+     es del equipo de hoy, las primeras que haya (JB, SA, de antes). */
+  function rcResponsable(...pares) {
+    const validas = pares.map(([v, de]) => [texto(v).toUpperCase(), de]).filter(([v]) => /^[A-Z]{2,3}$/.test(v));
+    return validas.find(([v]) => USUARIOS.includes(v)) || validas[0] || ['', ''];
+  }
+  // Una carpeta del cruce («0 OFERTAS ADJUDICADAS/284. Nombre»), con las mismas reglas que carpetaDe.
+  function rcCarpeta(relativa, biblioteca) {
+    const ruta = texto(relativa).split('/').map(texto).filter(Boolean);
+    const valida = (n) => !!n && !n.startsWith('.') && !/[\\/:*?"<>|]/.test(n);
+    return ruta.length && ruta.length <= 6 && ruta.every(valida) ? { nombre: ruta[ruta.length - 1], ruta, biblioteca } : null;
+  }
+  const rcSinNumero = (nombre) => texto(nombre).replace(/^\s*\d{1,4}\s*[.\-_)]\s*/, '');
+  /* Un título de la Planilla escrito todo en mayúsculas, legible en una tarjeta: cada palabra con mayúscula
+     inicial, los artículos y preposiciones en minúscula y las siglas cortas (GLP, ACS, H2) como venían. */
+  const RC_MENORES = new Set(['a', 'al', 'de', 'del', 'el', 'la', 'las', 'los', 'en', 'y', 'e', 'o', 'u', 'con', 'por', 'para', 'sin', 'sobre', 'un', 'una']);
+  function rcLegible(v) {
+    const s = texto(v);
+    if (!s || /[a-záéíóúñü]/.test(s)) return s;
+    return s.toLowerCase().split(/(\s+)/).map((w, i) => {
+      if (/^\s+$/.test(w) || !w) return w;
+      if (i > 0 && RC_MENORES.has(w)) return w;
+      if (/\d/.test(w) || (w.length <= 3 && !RC_MENORES.has(w))) return w.toUpperCase();
+      return w.replace(/\p{L}/u, (c) => c.toUpperCase());
+    }).join('');
+  }
+  // Adónde lleva cada acción: una herramienta del portal (con su dirección) o QUEMPIN.exe.
+  const RC_IR = {
+    req: (n) => ({ herr: 'formulador', url: HERR.get('formulador').ruta + '#/req/' + encodeURIComponent(n) }),
+    ficha: (uid) => ({ herr: 'formulador', url: HERR.get('formulador').ruta + '#/p/' + encodeURIComponent(uid) + '/ficha' }),
+    seguimiento: (uid) => ({ herr: 'proyectos', url: HERR.get('formulador').ruta + '#/p/' + encodeURIComponent(uid) + '/seguimiento' }),
+    af: (tag) => ({ herr: 'analisis', url: HERR.get('analisis').ruta + '#proyecto=' + encodeURIComponent(tag) }),
+    cc: (tag) => ({ herr: 'centro-costos', url: HERR.get('centro-costos').ruta + '#tag=' + encodeURIComponent(tag) }),
+    herr: (id) => ({ herr: id })
+  };
+
+  // ---- Lo que se sabe de cada proyecto → su etapa y lo que sigue (solo calcula) ---------------------
+  function rcBase(clave) {
+    return { clave, req: null, tag: null, titulo: '', lugar: '', planilla: null, formulacion: null, af: null, lic: null, cierre: null,
+      carpetas: {}, cotizaciones: [], chips: [], avisos: [], responsable: '', respDe: '', antiguo: false, orden: MAXIMO };
+  }
+  // Con ficha en el Análisis Financiero: en ejecución hasta el 100 % de avance, y después cerrado.
+  function rcEtapaAF(t, af, hoy) {
+    const tag = texto(af.tag).toUpperCase();
+    const avance = Math.max(0, Math.min(1, Number(af.avance) || 0));
+    const fin = rcFecha(af.cierre);
+    t.avance = avance;
+    if (Number(af.avance) >= 1) {
+      t.etapa = 'cierre';
+      t.accion = { tipo: 'listo', corto: 'Ver su resultado', nivel: '', ir: RC_IR.af(tag),
+        texto: 'Terminado. Lo gastado frente a lo presupuestado ya cuenta en su Nota del Análisis Financiero y en el sesgo real que usa el Formulador.' };
+      t.chips.push(fin ? { texto: 'Terminó el ' + rcCorta(fin, hoy), nivel: 'ok' } : { texto: 'Sin fecha de término', nivel: '' });
+      t.antiguo = !fin || rcDias(fin, hoy) < -RC_DIAS_ANTIGUO;
+      t.orden = fin ? -fin.getTime() : MAXIMO;
+      return;
+    }
+    t.etapa = 'ejecucion';
+    const atrasado = !!fin && rcDias(fin, hoy) < 0;
+    t.accion = atrasado
+      ? { tipo: 'hacer', corto: 'Actualizar avance o término', nivel: 'warn', ir: RC_IR.herr('ingresar'),
+          texto: 'Su término (' + rcCorta(fin, hoy) + ') ya pasó con ' + Math.round(avance * 100) + ' % de avance. Actualiza el avance o la fecha en «Ingresar avance».' }
+      : { tipo: 'curso', corto: 'Registrar avance', nivel: '', ir: RC_IR.herr('ingresar'),
+          texto: 'En ejecución. Registra el avance, las fechas y la mano de obra real en «Ingresar avance»; las facturas llegan solas al Centro de Costos.' };
+    if (fin) t.chips.push(atrasado ? { texto: 'Término vencido', nivel: 'warn' } : { texto: 'Termina el ' + rcCorta(fin, hoy), nivel: '' });
+    t.orden = fin ? fin.getTime() : MAXIMO;
+    if (af.venta && af.venta.cargada === false) t.avisos.push('Falta su monto de venta en el Análisis Financiero: sin él no entra completo a sus indicadores.');
+  }
+  // Un requerimiento de la Planilla, con lo que cuelga de él en las demás herramientas.
+  function rcTarjetaReq(n, x, hoy) {
+    const { r, c, f, af, lic } = x;
+    const t = rcBase('req-' + n);
+    const pe = r ? texto(r.estado) : '';
+    const fe = f ? f.estado : '';
+    t.req = n;
+    t.planilla = r; t.formulacion = f; t.af = af; t.lic = lic;
+    t.carpetas = (c && c.carpetas && typeof c.carpetas === 'object') ? c.carpetas : {};
+    t.cotizaciones = c && Array.isArray(c.cotizaciones) ? c.cotizaciones : [];
+    t.tag = texto((af && af.tag) || (c && c.tag)).toUpperCase() || null;
+    const carpeta = (t.carpetas.oferta || t.carpetas.ejecucion || [])[0];
+    t.titulo = rcSinNumero(texto(carpeta).split('/').pop()) || (f && f.titulo) || rcLegible(r && r.titulo) || texto(af && af.nombre) || 'Requerimiento ' + n;
+    t.lugar = texto(r && r.ubicacion) || texto(af && af.cliente);
+    [t.responsable, t.respDe] = rcResponsable([f && f.responsable, 'responsable de la formulación'],
+      [r && r.evaluador, 'evaluador en la Planilla'], [r && r.captador, 'captador en la Planilla']);
+    const cierre = rcFecha(r && r.cierre) || rcFecha(lic && lic.fechaCierre);
+    t.cierre = cierre;
+    const dondeMarca = f ? RC_IR.seguimiento(f.uid) : RC_IR.herr('planilla');
+
+    if (af) {
+      rcEtapaAF(t, af, hoy);
+      if (pe && pe !== 'Adjudicado') t.avisos.push('La Planilla de Ingreso dice «' + pe + '», pero el proyecto ya tiene ficha en el Análisis Financiero: corresponde «Adjudicado».');
+      return t;
+    }
+    if (pe === 'Adjudicado' || fe === 'Adjudicada') {
+      t.etapa = 'ejecucion';
+      t.accion = f
+        ? { tipo: 'hacer', corto: 'Pasar a ejecución', nivel: 'warn', ir: RC_IR.seguimiento(f.uid),
+            texto: 'Adjudicado. Pásalo a ejecución desde el Seguimiento del Formulador: sus costos y su venta llegan al Análisis Financiero en un solo envío.' }
+        : { tipo: 'hacer', corto: 'Crear su ficha en el Análisis', nivel: 'warn', ir: RC_IR.herr('ingresar'),
+            texto: 'Adjudicado y sin ficha en el Análisis Financiero. Créala en «Ingresar avance» con su TAG y este N°, para seguir su avance y sus costos.' };
+      if (fe === 'Adjudicada' && pe && pe !== 'Adjudicado') t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
+      const ref = cierre || rcFecha(r && r.apertura);
+      t.antiguo = !!ref && rcDias(ref, hoy) < -RC_DIAS_ANTIGUO;
+      t.orden = ref ? -ref.getTime() : MAXIMO;
+      return t;
+    }
+    if (fe === 'Perdida' || fe === 'Descartada') {
+      // El Formulador ya la cerró y la Planilla sigue diciendo que está viva: solo falta pasarlo a mano
+      const debe = fe === 'Perdida' ? 'No adjudicado' : 'Descartado';
+      t.etapa = 'oferta';
+      t.accion = { tipo: 'hacer', corto: 'Avisar a la Planilla', nivel: 'warn', ir: RC_IR.herr('planilla'),
+        texto: 'En el Formulador quedó «' + fe + '». Falta que la Planilla de Ingreso diga «' + debe + '»: quien la lleva lo pasa a mano.' };
+      t.orden = cierre ? rcDias(cierre, hoy) : MAXIMO;      // como las demás ofertas: la más antigua arriba
+      return t;
+    }
+    const enviada = pe === 'Ofertado' || fe === 'Enviada';
+    if (enviada || t.cotizaciones.length) {
+      t.etapa = 'oferta';
+      const res = lic ? texto(lic.resultado) : '';
+      const resuelta = ['ganada', 'otro', 'desierta', 'revocada'].includes(res);
+      const desde = cierre || rcFecha(r && r.apertura);
+      const dias = desde ? -rcDias(desde, hoy) : null;          // días desde que se entregó la oferta
+      if (!enviada) {
+        const folio = t.cotizaciones.map((x) => texto(x.folio)).filter(Boolean)[0];
+        t.accion = { tipo: 'hacer', corto: 'Marcar como Enviada', nivel: rcNivel(cierre, hoy) || 'warn', ir: dondeMarca,
+          texto: 'La cotización' + (folio ? ' ' + folio : '') + ' ya está emitida. Envíala al cliente y márcala como Enviada: el valor ofertado se avisa a la Planilla de Ingreso.' };
+        if (cierre && rcDias(cierre, hoy) >= 0) t.chips.push(rcCierre(cierre, hoy));
+      } else if (res === 'ganada') {
+        t.accion = { tipo: 'hacer', corto: 'Marcar como Adjudicada', nivel: 'warn', ir: dondeMarca,
+          texto: 'Mercado Público ya la adjudicó a QUEMPIN. Márcala Adjudicada' + (f ? ' en el Seguimiento del Formulador' : ' en la Planilla de Ingreso') + ' y pásala a ejecución.' };
+        t.chips.push({ texto: 'Ganada en Mercado Público', nivel: 'ok' });
+      } else if (resuelta) {
+        const que = { otro: 'la adjudicó a otro proveedor', desierta: 'la declaró desierta', revocada: 'la revocó' }[res];
+        t.accion = { tipo: 'hacer', corto: 'Marcar «No adjudicado»', nivel: 'warn', ir: dondeMarca,
+          texto: 'Mercado Público ' + que + '. Márcala «No adjudicado» en la Planilla de Ingreso' + (f ? ', o como Perdida en el Seguimiento del Formulador, que se lo avisa' : '') + '.' };
+        t.chips.push({ texto: { otro: 'Adjudicada a otro', desierta: 'Desierta', revocada: 'Revocada' }[res], nivel: '' });
+      } else if (fe === 'Enviada' && pe !== 'Ofertado') {
+        t.accion = { tipo: 'hacer', corto: 'Avisar a la Planilla', nivel: 'warn', ir: RC_IR.herr('planilla'),
+          texto: 'La oferta se envió. Falta que la Planilla de Ingreso diga «Ofertado», con su valor: quien la lleva lo pasa a mano.' };
+      } else if (dias !== null && dias > RC_DIAS_SIN_RESPUESTA) {
+        t.accion = { tipo: 'hacer', corto: 'Confirmar el resultado', nivel: '', ir: dondeMarca,
+          texto: 'Lleva ' + dias + ' días sin respuesta. Confirma con el cliente o en Mercado Público si se adjudicó, y déjalo en la Planilla de Ingreso.' };
+      } else {
+        t.accion = { tipo: 'espera', corto: 'Esperando respuesta', nivel: '', ir: f ? RC_IR.seguimiento(f.uid) : null,
+          texto: 'Oferta enviada, esperando la respuesta del cliente' + (res === 'en-evaluacion' ? ' (en Mercado Público está en evaluación)' : '') + '. Cuando llegue, márcala Adjudicada o Perdida.' };
+      }
+      if (enviada && dias !== null && dias >= 0) {
+        const como = cierre ? 'Ofertada' : 'Ingresó';      // sin cierre, se cuenta desde la apertura
+        t.chips.push({ texto: dias === 0 ? como + ' hoy' : como + ' hace ' + pl(dias, 'día', 'días'), nivel: '' });
+      }
+      const adjudica = rcFecha(lic && lic.fechaAdjudicacion);
+      if (enviada && !resuelta && adjudica && rcDias(adjudica, hoy) >= 0) t.chips.push({ texto: 'Adjudica ~' + rcCorta(adjudica, hoy), nivel: '' });
+      if (pe === 'Ofertado' && RC_EN_FORMULACION.includes(fe)) t.avisos.push('La formulación sigue como «' + fe + '»: márcala Enviada en el Seguimiento para que su recorrido quede al día.');
+      t.orden = dias !== null ? -dias : MAXIMO;
+      return t;
+    }
+    // Antes de ofertar: lo manda el cierre de la licitación
+    const vencida = !!cierre && rcDias(cierre, hoy) < 0;
+    const nivel = vencida ? '' : rcNivel(cierre, hoy);
+    if (cierre) t.chips.push(rcCierre(cierre, hoy));
+    const visita = rcFecha(r && r.visita);
+    if (visita && rcDias(visita, hoy) >= 0) {
+      const d = rcDias(visita, hoy);
+      t.chips.push({ texto: 'Visita ' + (d === 0 ? 'hoy' : d === 1 ? 'mañana' : 'el ' + rcCorta(visita, hoy)), nivel: d <= 2 ? 'warn' : '' });
+    }
+    t.orden = cierre ? cierre.getTime() : MAXIMO;
+    if (x.borrador) {
+      t.etapa = 'cotizacion';
+      t.accion = { tipo: 'hacer', corto: 'Emitir en Sistema QUEMPIN', nivel, ir: RC_IR.herr('cotizacion'),
+        texto: 'La cotización espera en Sistema QUEMPIN, en «Borradores del Formulador»: revísala y emítela con su folio.' };
+    } else if (f) {
+      const resumen = f.resumen || {};
+      const errores = Number(resumen.errores) || 0;
+      const avisos = Number(resumen.alertas) || 0;
+      if (!errores && Number(resumen.precioNeto) > 0) {
+        t.etapa = 'cotizacion';
+        t.accion = { tipo: 'hacer', corto: 'Preparar la cotización', nivel, ir: RC_IR.seguimiento(f.uid),
+          texto: 'La formulación ya tiene precio' + (avisos ? ' (con ' + pl(avisos, 'aviso', 'avisos') + ' por revisar)' : '') + '. Prepara la cotización desde el Seguimiento: llega a Sistema QUEMPIN para emitirse con su folio.' };
+      } else {
+        t.etapa = 'formulacion';
+        t.accion = { tipo: 'hacer', corto: errores ? 'Corregir la formulación' : 'Seguir formulando', nivel, ir: RC_IR.req(n),
+          texto: errores ? 'La formulación tiene ' + pl(errores, 'error', 'errores') + ': corrígelos en el Formulador antes de cotizar.'
+            : 'La formulación está en curso: completa costos, utilidad y precio en el Formulador.' };
+      }
+    } else {
+      t.etapa = 'requerimiento';
+      t.accion = vencida
+        ? { tipo: 'hacer', corto: 'Actualizar la Planilla', nivel: '', ir: RC_IR.herr('planilla'),
+            texto: 'Cerró el ' + rcCorta(cierre, hoy) + ' sin formulación. Si no se ofertó, márcalo «Descartado» en la Planilla de Ingreso; si se ofertó, «Ofertado».' }
+        : { tipo: 'hacer', corto: 'Formular', nivel, ir: RC_IR.req(n),
+            texto: 'Decide si se oferta. Para ofertar, crea su formulación en el Formulador: queda unida a este N° y a su carpeta.' };
+      t.antiguo = vencida && rcDias(cierre, hoy) < -RC_DIAS_ANTIGUO;
+      if ((t.carpetas.oferta || []).length) t.chips.push({ texto: 'Carpeta creada', nivel: '' });
+    }
+    if (vencida && t.etapa !== 'requerimiento') t.avisos.push('Su cierre ya pasó (' + rcCorta(cierre, hoy) + '): si la oferta se entregó, márcala Enviada.');
+    return t;
+  }
+  // Un presupuesto del Formulador sin N° de requerimiento: no se une con nada hasta que lo tenga.
+  function rcTarjetaSinReq(f, hoy) {
+    const t = rcBase('f-' + f.uid);
+    const mod = rcFecha(f.modificado);
+    t.formulacion = f;
+    t.titulo = f.titulo || 'Presupuesto sin nombre';
+    t.lugar = f.cliente;
+    t.etapa = 'requerimiento';
+    t.accion = { tipo: 'hacer', corto: 'Escribir el N° de requerimiento', nivel: 'warn', ir: RC_IR.ficha(f.uid),
+      texto: 'Este presupuesto (' + f.codigo + ') no tiene el N° de la Planilla de Ingreso: sin él no se une con su cotización, el Análisis Financiero ni el Flujo de Caja. Escríbelo en su Ficha.' };
+    t.chips.push({ texto: 'Sin N°', nivel: 'warn' });
+    t.antiguo = !!mod && rcDias(mod, hoy) < -RC_DIAS_ANTIGUO;
+    t.orden = mod ? -mod.getTime() : MAXIMO;
+    [t.responsable, t.respDe] = rcResponsable([f.responsable, 'responsable de la formulación']);
+    return t;
+  }
+  // Un proyecto del Análisis Financiero sin N° de requerimiento (los de antes del 2026-10).
+  function rcTarjetaAF(af, hoy) {
+    const t = rcBase('tag-' + texto(af.tag).toUpperCase());
+    t.tag = texto(af.tag).toUpperCase();
+    t.af = af;
+    t.titulo = texto(af.nombre) || t.tag;
+    t.lugar = texto(af.cliente);
+    rcEtapaAF(t, af, hoy);
+    t.avisos.push('No tiene N° de requerimiento: escríbelo en «Ingresar avance» para unirlo con su oferta y su Planilla.');
+    if (t.etapa === 'ejecucion') t.chips.unshift({ texto: 'Sin N°', nivel: 'warn' });
+    return t;
+  }
+  /* Todo el recorrido a partir de lo publicado. d: { requerimientos, cruce, af, licitaciones, formulaciones,
+     borradores } tal como vienen de la carpeta (rcLeer). Devuelve las tarjetas, sin pintar. */
+  function rcArmar(d, hoy) {
+    const porNum = new Map();
+    d.requerimientos.forEach((r) => { const n = rcNum(r && r.numero); if (n) porNum.set(n, r); });
+    const cruce = new Map(), lic = new Map(), afPorReq = new Map(), afPorTag = new Map();
+    d.cruce.forEach((c) => { const n = rcNum(c && c.req); if (n) cruce.set(n, c); });
+    d.licitaciones.forEach((l) => { const n = rcNum(l && l.req); if (n) lic.set(n, l); });
+    d.af.forEach((p) => {
+      if (!p || !texto(p.tag)) return;
+      afPorTag.set(texto(p.tag).toUpperCase(), p);
+      const n = rcNum(p.req);
+      if (n) afPorReq.set(n, p);
+    });
+    cruce.forEach((c, n) => {      // el TAG que declaró otra herramienta (el Formulador, Sistema QUEMPIN)
+      const p = afPorTag.get(texto(c.tag).toUpperCase());
+      if (p && !afPorReq.has(n) && !rcNum(p.req)) afPorReq.set(n, p);
+    });
+    // Formulaciones del repositorio: la última versión de cada código manda, como en el Formulador.
+    const porCodigo = new Map();
+    d.formulaciones.forEach((x) => {
+      const f = x.datos;
+      if (!f || !f.uid || f.eliminado) return;
+      const ficha = { uid: String(f.uid), codigo: texto(f.codigo) || String(f.uid), version: parseInt(f.version, 10) || 1,
+        titulo: texto(f.titulo), cliente: texto(f.cliente), estado: texto(f.estado) || 'Borrador',
+        responsable: texto(f.responsable).toUpperCase(), modificado: texto(f.modificado), req: reqDe(f), resumen: x.resumen || {} };
+      const previo = porCodigo.get(ficha.codigo);
+      if (!previo) { porCodigo.set(ficha.codigo, ficha); return; }
+      const manda = previo.version > ficha.version || (previo.version === ficha.version && previo.modificado >= ficha.modificado) ? previo : ficha;
+      manda.req = manda.req || previo.req || ficha.req;
+      porCodigo.set(ficha.codigo, manda);
+    });
+    const formPorReq = new Map();
+    const sinReq = [];
+    porCodigo.forEach((f) => {
+      if (!f.req) { if (f.estado !== 'Perdida' && f.estado !== 'Descartada') sinReq.push(f); return; }
+      const previo = formPorReq.get(f.req);
+      if (!previo || previo.modificado < f.modificado) formPorReq.set(f.req, f);
+    });
+    const borradores = new Set();
+    d.borradores.forEach((m) => { const n = rcNum(m.proyecto && m.proyecto.req); if (n) borradores.add(n); });
+    // Entra lo que sigue vivo en la Planilla, lo que tiene formulación (si la Planilla no lo cerró) y lo
+    // que tiene ficha en el Análisis Financiero.
+    const nums = new Set();
+    porNum.forEach((r, n) => { if (RC_VIVOS.includes(texto(r.estado))) nums.add(n); });
+    formPorReq.forEach((f, n) => {
+      const r = porNum.get(n);
+      if ((!r || RC_VIVOS.includes(texto(r.estado))) && f.estado !== 'Perdida' && f.estado !== 'Descartada') nums.add(n);
+    });
+    afPorReq.forEach((p, n) => nums.add(n));
+    const tarjetas = [];
+    nums.forEach((n) => tarjetas.push(rcTarjetaReq(n, { r: porNum.get(n) || null, c: cruce.get(n) || null, f: formPorReq.get(n) || null,
+      af: afPorReq.get(n) || null, lic: lic.get(n) || null, borrador: borradores.has(n) }, hoy)));
+    sinReq.forEach((f) => tarjetas.push(rcTarjetaSinReq(f, hoy)));
+    const unidos = new Set(afPorReq.values());
+    afPorTag.forEach((p) => { if (!unidos.has(p)) tarjetas.push(rcTarjetaAF(p, hoy)); });
+    tarjetas.forEach((t) => {
+      t.buscar = norm([t.req ? 'n' + t.req + ' n° ' + t.req : '', t.tag, t.titulo, t.lugar, t.responsable, t.planilla && t.planilla.titulo,
+        t.planilla && t.planilla.referencia, t.formulacion && t.formulacion.codigo, t.lic && t.lic.comprador, t.af && t.af.nombre].join(' '));
+    });
+    return tarjetas;
+  }
+
+  // ---- Leer la carpeta del equipo -------------------------------------------------------------------
+  const rcSinBom = (s) => String(s).replace(/^﻿/, '');
+  async function rcSub(dir, ...camino) {
+    try { let d = dir; for (const n of camino) d = await d.getDirectoryHandle(n); return d; } catch (e) { return null; }
+  }
+  async function rcJson(dir, archivo) {
+    try { return JSON.parse(rcSinBom(await (await (await dir.getFileHandle(archivo)).getFile()).text())); } catch (e) { return null; }
+  }
+  // Todos los .json de una carpeta; uno a medio sincronizar se salta.
+  async function rcJsonDe(dir) {
+    const salida = [];
+    if (!dir) return salida;
+    try {
+      for await (const [n, h] of dir.entries()) {
+        if (h.kind !== 'file' || !/\.json$/i.test(n)) continue;
+        try { salida.push(JSON.parse(rcSinBom(await (await h.getFile()).text()))); } catch (e) { /* se salta */ }
+      }
+    } catch (e) { /* sin permiso */ }
+    return salida;
+  }
+  async function rcLeer(dir) {
+    const pub = await rcSub(dir, 'publicado');
+    const leerPub = (n) => (pub ? rcJson(pub, n + '.json') : Promise.resolve(null));
+    const [req, cruce, af, lic, est, repo, buzon] = await Promise.all([
+      leerPub('requerimientos'), leerPub('proyectos'), leerPub('analisis-financiero'), leerPub('licitaciones'), leerPub('estado'),
+      rcSub(dir, 'publicado', 'formulador').then(rcJsonDe), rcSub(dir, 'buzon').then(rcJsonDe)
+    ]);
+    const lista = (s, k) => (s && s.datos && Array.isArray(s.datos[k]) ? s.datos[k] : []);
+    return {
+      requerimientos: lista(req, 'requerimientos'), cruce: lista(cruce, 'proyectos'), af: lista(af, 'proyectos'),
+      licitaciones: lista(lic, 'licitaciones'),
+      formulaciones: repo.filter((x) => x && x.datos && typeof x.datos === 'object'),
+      borradores: buzon.filter((m) => m && m.tipo === 'borrador-cotizacion' && m.destino === 'sistema-quempin'),
+      estado: est && est.datos ? est.datos : null,
+      falta: [!req && 'la Planilla de Ingreso', !af && 'el Análisis Financiero'].filter(Boolean)
+    };
+  }
+  // Lee la carpeta si este navegador ya tiene la biblioteca conectada y con permiso; si no, dice qué falta.
+  function rcCargar() {
+    if (rc.leyendo) return rc.leyendo;
+    rc.leyendo = (async () => {
+      if (typeof window.showDirectoryPicker !== 'function') { rcSinDatos('navegador'); return; }
+      const c = await leerCarpetas();
+      rc.carpetas = c;
+      if (!c.intercambio) { rcSinDatos('conectar'); return; }
+      const dir = await intercambioLegible(c);
+      if (!dir) { rcSinDatos('permiso'); return; }
+      const datos = await rcLeer(dir);
+      await cargarPulso();
+      rc.datos = datos;
+      rc.pulso = lecturaPulso(datos.estado);
+      rc.tarjetas = rcArmar(datos, new Date());
+      rc.leido = Date.now();
+      rc.sinDatos = null;
+    })().catch((e) => { console.error(e); rcSinDatos('error'); }).then(() => {
+      rc.leyendo = null;
+      if (!$('#vistaRecorrido').hidden) rcPintar();
+      pintarInicioRecorrido();
+    });
+    return rc.leyendo;
+  }
+  function rcAlMostrar() {
+    if (!rc.leido || Date.now() - rc.leido > RC_RELEER_SEG * 1000) rcCargar();
+    rcPintar();
+  }
+  function rcSinDatos(por) {
+    rc.sinDatos = por;
+    rc.tarjetas = [];
+    rc.leido = 0;
+  }
+  // Desde el clic y sin esperas antes: el navegador solo pide permiso si viene de uno.
+  function rcPedirPermiso() {
+    const h = rc.carpetas && (rc.carpetas.biblioteca || rc.carpetas.intercambio);
+    if (!h) { rcCargar(); return; }
+    h.requestPermission({ mode: 'readwrite' }).catch(() => null).then(() => rcCargar());
+  }
+
+  // ---- Filtros, resumen y orden ---------------------------------------------------------------------
+  const rcMia = (t) => !!estado.usuario && t.responsable === estado.usuario;
+  const RC_FOCOS = {
+    accion: { es: (t) => t.accion.tipo === 'hacer' && !t.antiguo && (!estado.usuario || rcMia(t)) },
+    cierran: { es: (t) => RC_ANTES_DE_OFERTAR.includes(t.etapa) && !!t.cierre && rcDias(t.cierre, new Date()) >= 0 && rcDias(t.cierre, new Date()) <= 7 },
+    esperan: { es: (t) => t.accion.tipo === 'espera' },
+    ejecucion: { es: (t) => t.etapa === 'ejecucion' && !t.antiguo }
+  };
+  function rcAlcance() {
+    const q = norm(rc.q).trim().split(/\s+/).filter(Boolean);
+    const mios = rc.mios && !!estado.usuario;
+    return rc.tarjetas.filter((t) => (!mios || rcMia(t)) && q.every((x) => t.buscar.includes(x)));
+  }
+  const RC_PESO = { hacer: 2, curso: 3, espera: 4, listo: 5 };
+  const rcPeso = (t) => (t.accion.nivel === 'bad' ? 0 : t.accion.nivel === 'warn' ? 1 : RC_PESO[t.accion.tipo] || 6);
+  const rcOrden = (a, b) => rcPeso(a) - rcPeso(b) || a.orden - b.orden || (+(b.req || 0)) - (+(a.req || 0));
+
+  // ---- Pintar ---------------------------------------------------------------------------------------
+  function rcPintar() {
+    const hay = rc.leido > 0;
+    $('#rcLeyendo').hidden = hay || !!rc.sinDatos;
+    $('#rcContenido').hidden = !hay;
+    $('#rcVacio').hidden = hay || !rc.sinDatos;
+    rcPintarFrescura();
+    if (!hay) { if (rc.sinDatos) rcPintarVacio(rc.sinDatos); return; }
+    rcPintarFiltros();
+    const alcance = rcAlcance();
+    rcPintarResumen(alcance);
+    rcPintarTablero(alcance);
+  }
+  function rcPintarFrescura() {
+    const txt = $('#rcFrescura');
+    const punto = $('#rcPunto');
+    if (rc.leyendo) { txt.textContent = rc.leido ? 'Actualizando…' : 'Leyendo la carpeta del equipo…'; return; }
+    if (!rc.leido) { txt.textContent = 'Sin datos de la carpeta del equipo'; punto.className = 'cx-punto'; txt.title = ''; return; }
+    const l = rc.pulso;
+    const min = l ? l.minutos : null;
+    const hace = min === null ? '' : min < 1 ? 'hace un momento' : min < 60 ? 'hace ' + min + ' min' : min < 48 * 60 ? 'hace ' + Math.round(min / 60) + ' h' : 'hace ' + Math.round(min / 1440) + ' días';
+    txt.textContent = l ? (l.detenido ? 'Procesador detenido: datos de ' + hace : 'Datos del procesador ' + hace) : 'Leído de la carpeta del equipo';
+    txt.title = (l ? l.texto + ' ' : '') + 'Las formulaciones del equipo se leen al momento; la Planilla, el Análisis y Mercado Público, de la última vuelta del procesador.';
+    punto.className = 'cx-punto ' + (l ? l.nivel : '');
+  }
+  function rcPintarVacio(por) {
+    const v = $('#rcVacio');
+    v.textContent = '';
+    const ico = crear('span', 'ico');
+    ico.append(icono(por === 'error' ? 'alerta' : 'nube', 26));
+    const acc = crear('div', 'cx-acc');
+    const boton = (txt, ir, pri) => {
+      const b = crear('button', pri ? 'cx-boton' : 'cx-enlace', txt);
+      b.type = 'button';
+      b.addEventListener('click', ir);
+      acc.append(b);
+    };
+    let tit, p;
+    if (por === 'navegador') {
+      tit = 'Ábrelo en Chrome o Edge de escritorio';
+      p = 'El recorrido se arma con los datos de la carpeta del equipo, y este navegador no puede abrir carpetas del computador.';
+      boton('Copiar la dirección del portal', copiarDireccion, true);
+    } else if (por === 'conectar') {
+      tit = 'Conecta la biblioteca del equipo';
+      p = 'El recorrido lee lo que publican las herramientas en la carpeta de intercambio. Conecta una vez la biblioteca «' + BIBLIOTECA_FORMULACION + '» en este navegador (la misma conexión del Formulador) y acepta «Ver archivos».';
+      boton('Conectar biblioteca', () => conectarBiblioteca().then(() => rcCargar()), true);
+      boton('Ver Configuración y conexiones', () => abrir('conexiones'));
+    } else if (por === 'permiso') {
+      tit = 'Falta el permiso de esta sesión';
+      p = 'La biblioteca está conectada, pero el navegador pide permiso otra vez para leerla.';
+      boton('Dar permiso', rcPedirPermiso, true);
+    } else {
+      tit = 'No se pudo leer la carpeta del equipo';
+      p = 'Puede que OneDrive esté sincronizando. Vuelve a intentarlo en un momento; si sigue, revisa Configuración y conexiones.';
+      boton('Volver a intentar', () => rcCargar(), true);
+      boton('Ver Configuración y conexiones', () => abrir('conexiones'));
+    }
+    v.append(ico, crear('h2', null, tit), crear('p', null, p), acc);
+  }
+  function rcPintarFiltros() {
+    const u = estado.usuario;
+    const caja = $('#rcMios');
+    caja.disabled = !u;
+    caja.checked = rc.mios && !!u;
+    const t = $('#rcMiosTxt');
+    t.textContent = 'Solo mis proyectos';
+    if (u) { const b = crear('b', null, u); t.append(' ', b); }
+    $('#rcElegir').hidden = !!u;
+    const foco = $('#rcFoco');
+    foco.hidden = !rc.foco;
+    if (rc.foco) {
+      foco.textContent = '';
+      foco.append(crear('span', null, 'Mostrando: ' + rcFocoNombre(rc.foco)), icono('cerrar', 14));
+      foco.setAttribute('aria-label', 'Quitar el filtro «' + rcFocoNombre(rc.foco) + '»');
+    }
+  }
+  // Las cuatro cifras de arriba; cada una es también un filtro del tablero.
+  const rcKpis = () => [
+    { id: 'accion', et: estado.usuario ? 'Te esperan' : 'Requieren acción', sub: estado.usuario ? 'Tuyos, con algo por hacer' : 'Elige tu usuario para ver los tuyos', alerta: 'warn' },
+    { id: 'cierran', et: 'Cierran esta semana', sub: 'Por ofertar, vencen en 7 días o menos', alerta: 'bad' },
+    { id: 'esperan', et: 'Esperan respuesta', sub: 'Ofertas enviadas, sin resultado aún', alerta: '' },
+    { id: 'ejecucion', et: 'En ejecución', sub: 'Obras en curso en el Análisis Financiero', alerta: '' }
+  ];
+  const rcFocoNombre = (id) => (rcKpis().find((k) => k.id === id) || {}).et || '';
+  function rcCifras(alcance) {
+    return Object.fromEntries(Object.entries(RC_FOCOS).map(([id, f]) => [id, alcance.filter(f.es).length]));
+  }
+  function rcPintarResumen(alcance) {
+    const n = rcCifras(alcance);
+    const cont = $('#rcResumen');
+    cont.textContent = '';
+    rcKpis().forEach((k) => {
+      const b = crear('button', 'rc-kpi');
+      b.type = 'button';
+      b.dataset.foco = k.id;
+      if (k.alerta && n[k.id]) b.dataset.nivel = k.alerta;
+      b.setAttribute('aria-pressed', rc.foco === k.id ? 'true' : 'false');
+      b.append(crear('span', 'rc-kpi-n', String(n[k.id])), crear('span', 'rc-kpi-et', k.et), crear('span', 'rc-kpi-sub', k.sub));
+      b.title = rc.foco === k.id ? 'Mostrar todo otra vez' : 'Mostrar solo: ' + k.et.toLowerCase();
+      b.addEventListener('click', () => {
+        rc.foco = rc.foco === k.id ? null : k.id;
+        rcPintar();
+        const otra = document.querySelector('.rc-kpi[data-foco="' + k.id + '"]');   // se repintó: el foco sigue en ella
+        if (otra) otra.focus();
+      });
+      cont.append(b);
+    });
+  }
+  function rcPintarTablero(alcance) {
+    const foco = rc.foco ? RC_FOCOS[rc.foco] : null;
+    const tab = $('#rcTablero');
+    tab.textContent = '';
+    let vistas = 0;
+    RC_ETAPAS.forEach((e, i) => {
+      const todas = alcance.filter((t) => t.etapa === e.id && (!foco || foco.es(t))).sort(rcOrden);
+      const actuales = todas.filter((t) => !t.antiguo);
+      const antiguas = todas.filter((t) => t.antiguo);
+      vistas += todas.length;
+      const col = crear('section', 'rc-col');
+      col.dataset.etapa = e.id;
+      col.setAttribute('aria-labelledby', 'rc-et-' + e.id);
+      const cab = crear('header', 'rc-col-cab');
+      const tit = crear('div', 'rc-col-tit');
+      const h2 = crear('h2', null, e.titulo);
+      h2.id = 'rc-et-' + e.id;
+      const cuenta = crear('span', 'rc-col-n', String(actuales.length));
+      cuenta.title = pl(actuales.length, 'proyecto', 'proyectos') + (antiguas.length ? ' (y ' + antiguas.length + ' de antes, plegados)' : '');
+      h2.title = e.titulo;
+      tit.append(crear('span', 'rc-num', String(i + 1)), h2);
+      // Abajo del nombre: la herramienta donde se hace la etapa (la abre) y cuántos proyectos hay en ella
+      const h = HERR.get(e.herr);
+      const donde = crear('button', 'rc-donde');
+      donde.type = 'button';
+      donde.append(crear('span', null, h.nombre));
+      if (h.tipo !== 'marco') donde.append(icono('fuera', 12));
+      donde.title = 'Abrir ' + h.nombre + ': ' + (h.desc || '');
+      donde.addEventListener('click', () => abrir(h.id));
+      const pie = crear('div', 'rc-col-pie');
+      pie.append(donde, cuenta);
+      cab.append(tit, pie);
+      col.append(cab);
+      if (e.id === 'requerimiento' && !rc.foco && !rc.q) {
+        const nueva = crear('button', 'rc-nueva');
+        nueva.type = 'button';
+        nueva.append(icono('mas', 14), crear('span', null, 'Ver Oportunidades'));
+        nueva.title = 'Licitaciones y compras ágiles de Mercado Público que calzan con QUEMPIN';
+        nueva.addEventListener('click', () => abrir('oportunidades'));
+        col.append(nueva);
+      }
+      const ul = crear('ul', 'rc-lista');
+      actuales.forEach((t) => { const li = crear('li'); li.append(rcTarjetaEl(t)); ul.append(li); });
+      col.append(ul);
+      if (!actuales.length && !antiguas.length) col.append(crear('p', 'rc-vacia', rc.foco || rc.q || (rc.mios && estado.usuario) ? 'Nada con este filtro' : 'Nada en esta etapa'));
+      if (antiguas.length) {
+        const det = crear('details', 'rc-antiguos');
+        det.append(crear('summary', null, (actuales.length ? '' : 'Nada reciente · ') + pl(antiguas.length, 'de antes', 'de antes') + ' (más de ' + RC_DIAS_ANTIGUO + ' días)'));
+        const ul2 = crear('ul', 'rc-lista');
+        antiguas.forEach((t) => { const li = crear('li'); li.append(rcTarjetaEl(t)); ul2.append(li); });
+        det.append(ul2);
+        col.append(det);
+      }
+      tab.append(col);
+    });
+    const de = rc.mios && estado.usuario ? 'tuyos' : 'del equipo';
+    $('#rcCuenta').textContent = pl(vistas, 'proyecto ', 'proyectos ') + de;
+  }
+  function rcEtiqueta(t) {
+    return t.req ? 'N° ' + t.req : t.tag ? t.tag : t.formulacion ? t.formulacion.codigo : '';
+  }
+  function rcTarjetaEl(t) {
+    const art = crear('article', 'rc-tarjeta');
+    art.dataset.clave = t.clave;
+    art.dataset.etapa = t.etapa;
+    art.dataset.tipo = t.accion.tipo;
+    if (t.accion.nivel) art.dataset.nivel = t.accion.nivel;
+    const mia = rcMia(t);
+    if (mia) art.classList.add('tuya');
+    const det = crear('button', 'rc-abrir');
+    det.type = 'button';
+    det.title = 'Ver su recorrido, sus datos y sus enlaces';
+    const f1 = crear('span', 'rc-fila1');
+    f1.append(crear('span', 'rc-n', rcEtiqueta(t)));
+    if (t.req && t.tag) f1.append(crear('span', 'rc-tag', t.tag));
+    const r = crear('span', 'rc-resp' + (t.responsable ? '' : ' nadie'), t.responsable || '—');
+    r.title = t.responsable ? (mia ? 'Tuyo' : 'A cargo de ' + t.responsable) + ' (' + t.respDe + ')' : 'Sin responsable';
+    f1.append(r);
+    det.append(f1, crear('span', 'rc-tit', t.titulo));
+    if (t.lugar) det.append(crear('span', 'rc-sub', t.lugar));
+    if (t.etapa === 'ejecucion' && typeof t.avance === 'number') {
+      const av = crear('span', 'rc-avance');
+      const barra = crear('span', 'rc-barra');
+      const lleno = crear('span');
+      lleno.style.width = Math.round(t.avance * 100) + '%';
+      barra.append(lleno);
+      av.append(barra, crear('span', null, Math.round(t.avance * 100) + ' %'));
+      av.title = 'Avance registrado en el Análisis Financiero';
+      det.append(av);
+    }
+    const chips = t.chips.slice();
+    if (t.avisos.length) chips.push({ texto: pl(t.avisos.length, 'dato por revisar', 'datos por revisar'), nivel: 'warn' });
+    if (chips.length) {
+      const c = crear('span', 'rc-chips');
+      chips.forEach((x) => { const s = crear('span', 'rc-chip', x.texto); if (x.nivel) s.dataset.nivel = x.nivel; c.append(s); });
+      det.append(c);
+    }
+    det.addEventListener('click', () => rcVerDetalle(t.clave));
+    art.append(det);
+    const a = t.accion;
+    if (a.ir && a.tipo !== 'espera') {
+      const b = crear('button', 'rc-accion');
+      b.type = 'button';
+      b.dataset.accion = a.corto;
+      b.append(crear('span', null, a.corto), icono('derecha', 15));
+      b.title = a.texto;
+      b.addEventListener('click', () => rcIr(a.ir));
+      art.append(b);
+    } else {
+      const s = crear('div', 'rc-espera');
+      s.append(icono('reloj', 15), crear('span', null, a.corto));
+      s.title = a.texto;
+      art.append(s);
+    }
+    return art;
+  }
+  function rcIr(ir) {
+    if (!ir) return;
+    const dlg = $('#dlgRecorrido');
+    if (dlg.open) dlg.close();
+    if (ir.enlace) { abrirEnlace(ir.enlace); return; }
+    if (ir.web) { window.open(ir.web, '_blank', 'noopener'); return; }
+    abrir(ir.herr, ir.url ? { url: ir.url } : {});
+  }
+
+  // ---- El detalle de un proyecto ---------------------------------------------------------------------
+  function rcPasos(t) {
+    const i = RC_ETAPAS.findIndex((e) => e.id === t.etapa);
+    return RC_ETAPAS.map((e, k) => {
+      let est = k < i ? 'hecha' : k > i ? 'pendiente' : t.accion.tipo === 'espera' ? 'espera' : t.accion.tipo === 'listo' ? 'hecha' : 'actual';
+      // Lo que se saltó sin dejar registro aquí (una obra de antes sin formulación ni cotización en las herramientas)
+      if (k < i && ((e.id === 'formulacion' && !t.formulacion) || (e.id === 'cotizacion' && !t.cotizaciones.length) || (e.id === 'requerimiento' && !t.req))) est = 'omitida';
+      return { e, n: k + 1, est };
+    });
+  }
+  const RC_EST_TXT = { hecha: 'hecha', omitida: 'sin registro en las herramientas', actual: 'aquí está', espera: 'aquí está, esperando', pendiente: 'por venir' };
+  function rcVerDetalle(clave) {
+    const t = rc.tarjetas.find((x) => x.clave === clave);
+    if (!t) return;
+    const cuerpo = $('#dlgRcCuerpo');
+    cuerpo.textContent = '';
+    $('#dlgRcTit').textContent = (rcEtiqueta(t) ? rcEtiqueta(t) + ' · ' : '') + t.titulo;
+    const sub = [t.responsable ? (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) + ' (' + t.respDe + ')' : 'Sin responsable', t.lugar].filter(Boolean).join(' · ');
+    cuerpo.append(crear('p', 'rc-det-sub', sub));
+    const ol = crear('ol', 'rc-pasos');
+    ol.setAttribute('aria-label', 'Las seis etapas del recorrido');
+    rcPasos(t).forEach((p) => {
+      const li = crear('li', 'rc-paso');
+      li.dataset.est = p.est;
+      const c = crear('span', 'p', p.est === 'hecha' ? '✓' : p.est === 'omitida' ? '–' : String(p.n));
+      c.setAttribute('aria-hidden', 'true');
+      li.append(c, crear('span', 'et', p.e.corto), crear('span', 'sr', ': ' + RC_EST_TXT[p.est]));
+      li.title = p.e.titulo + ': ' + RC_EST_TXT[p.est];
+      ol.append(li);
+    });
+    const etapa = RC_ETAPAS.find((e) => e.id === t.etapa);
+    cuerpo.append(ol);
+    const a = t.accion;
+    const sigue = crear('section', 'rc-sigue');
+    sigue.dataset.tipo = a.tipo;
+    sigue.append(crear('h3', null, (a.tipo === 'espera' ? 'En espera' : a.tipo === 'listo' ? 'Terminado' : 'Qué sigue') + ' · etapa ' + (RC_ETAPAS.indexOf(etapa) + 1) + ' de 6, ' + etapa.titulo),
+      crear('p', null, a.texto));
+    if (a.ir) {
+      const acc = crear('div', 'cx-acc');
+      const b = crear('button', a.tipo === 'hacer' ? 'cx-boton' : 'cx-enlace', a.tipo === 'espera' ? 'Ver su seguimiento' : a.corto);
+      b.type = 'button';
+      b.addEventListener('click', () => rcIr(a.ir));
+      acc.append(b);
+      sigue.append(acc);
+    }
+    cuerpo.append(sigue);
+    if (t.avisos.length) {
+      const ul = crear('ul', 'rc-avisos');
+      t.avisos.forEach((x) => { const li = crear('li'); li.append(icono('alerta', 16), crear('span', null, x)); ul.append(li); });
+      cuerpo.append(ul);
+    }
+    const dl = crear('dl', 'rc-datos');
+    const hoy = new Date();
+    const fecha = (v) => { const f = rcFecha(v); return f ? rcCorta(f, hoy) : texto(v); };
+    const dato = (et, val) => { if (texto(val)) dl.append(crear('dt', null, et), crear('dd', null, texto(val))); };
+    const r = t.planilla;
+    if (r) {
+      dato('Planilla de Ingreso', [r.estado, r.canal].filter((x) => texto(x)).join(' · '));
+      dato('Licitación', [r.titulo, r.referencia].filter((x) => texto(x)).join(' · '));
+      dato('Evaluador · captador', [r.evaluador || '—', r.captador || '—'].join(' · '));
+      dato('Apertura · cierre', [r.apertura ? fecha(r.apertura) : '—', r.cierre ? fecha(r.cierre) : '—'].join(' · '));
+      dato('Visita a terreno', r.visita);
+    }
+    if (t.lic) dato('Mercado Público', [t.lic.estado, t.lic.comprador].filter((x) => texto(x)).join(' · '));
+    const f = t.formulacion;
+    if (f) dato('Formulación', [f.codigo, f.estado, f.responsable && 'a cargo de ' + f.responsable, f.modificado && 'modificada el ' + fecha(f.modificado)].filter(Boolean).join(' · '));
+    if (t.cotizaciones.length) dato('Cotizaciones', t.cotizaciones.map((x) => texto(x.folio) + (x.fecha ? ' (' + fecha(x.fecha) + ')' : '')).join(', '));
+    if (t.af) dato('Análisis Financiero', [t.tag, Math.round((Number(t.af.avance) || 0) * 100) + ' % de avance', t.af.cierre && 'término ' + fecha(t.af.cierre)].filter(Boolean).join(' · '));
+    if (dl.childElementCount) cuerpo.append(crear('h3', 'rc-det-h', 'Sus datos'), dl);
+    // Sus enlaces: cada herramienta donde tiene algo, y sus carpetas en el Explorador
+    const enl = crear('div', 'cx-acc');
+    const enlace = (txt, ir, fuera) => {
+      const b = crear('button', 'cx-enlace');
+      b.type = 'button';
+      b.append(crear('span', null, txt));
+      if (fuera) b.append(icono('fuera', 14));
+      b.addEventListener('click', () => rcIr(ir));
+      enl.append(b);
+    };
+    if (t.req) enlace('Formulador', RC_IR.req(t.req));
+    else if (f) enlace('Formulador', RC_IR.ficha(f.uid));
+    if (f) enlace('Seguimiento', RC_IR.seguimiento(f.uid));
+    if (t.tag && t.af) { enlace('Análisis Financiero', RC_IR.af(t.tag)); enlace('Centro de Costos', RC_IR.cc(t.tag)); }
+    if (t.lic && RC_MP.test(texto(t.lic.url))) enlace('Ficha en Mercado Público', { web: texto(t.lic.url) }, true);
+    [['oferta', 'formulacion', 'Carpeta de la oferta'], ['ejecucion', 'gestion', 'Carpeta de ejecución']].forEach(([k, bib, txt]) => {
+      const c = rcCarpeta((t.carpetas[k] || [])[0], bib);
+      if (c && !MOVIL.matches) enlace(txt, { enlace: enlaceCarpeta(c) }, true);
+    });
+    if (enl.childElementCount) cuerpo.append(crear('h3', 'rc-det-h', 'Abrir'), enl);
+    $('#dlgRecorrido').showModal();
+  }
+
+  // ---- Entrada en el Inicio y cambios de usuario -----------------------------------------------------
+  function pintarInicioRecorrido() {
+    const sub = $('#iniRecorridoSub');
+    if (!rc.leido) { sub.textContent = 'Dónde va cada proyecto del equipo y qué sigue en cada uno'; return; }
+    const todas = rc.tarjetas;
+    const n = rcCifras(todas);
+    const partes = [];
+    if (estado.usuario) partes.push(n.accion ? pl(n.accion, 'te espera', 'te esperan') : 'Nada te espera');
+    else partes.push(pl(n.accion, 'requiere acción', 'requieren acción'));
+    if (n.cierran) partes.push(pl(n.cierran, 'cierra esta semana', 'cierran esta semana'));
+    if (n.esperan) partes.push(pl(n.esperan, 'espera respuesta', 'esperan respuesta'));
+    if (n.ejecucion) partes.push(n.ejecucion + ' en ejecución');
+    sub.textContent = partes.join(' · ');
+  }
+  // «Solo mis proyectos» se recuerda aunque no haya usuario: vuelve a valer al elegir uno.
+  function rcAlCambiarUsuario() {
+    if (!$('#vistaRecorrido').hidden) rcPintar();
+    pintarInicioRecorrido();
+  }
+
   // ---- Buscador ------------------------------------------------------------------------------------
   const GRUPO_NOMBRE = new Map(REG.grupos.map((g) => [g.id, g.nombre]));
   let resultados = [];
@@ -2467,6 +3528,13 @@
       titulo: nombreProyecto(p), sub: [esMio(p) ? 'Tu proyecto' : 'Proyecto', p.cliente, p.req ? 'N° ' + p.req : '', p.responsable && !esMio(p) ? 'a cargo de ' + p.responsable : ''].filter(Boolean).join(' · '), tipo: 'Proyecto',
       texto: norm([p.codigo, p.titulo, p.cliente, p.req, p.req ? 'n' + p.req : '', p.tag, p.responsable, 'proyecto'].join(' ')),
       ir: () => { elegirProyecto(p.codigo); abrir('proyectos'); }
+    }));
+    // Los proyectos del Recorrido (si ya se leyó la carpeta del equipo): llevan a su detalle
+    rc.tarjetas.forEach((t) => items.push({
+      titulo: (rcEtiqueta(t) ? rcEtiqueta(t) + ' · ' : '') + t.titulo,
+      sub: ['Recorrido', (RC_ETAPAS.find((e) => e.id === t.etapa) || {}).titulo, t.accion.corto, t.responsable && (rcMia(t) ? 'tuyo' : 'a cargo de ' + t.responsable)].filter(Boolean).join(' · '),
+      tipo: 'Etapa', texto: t.buscar + ' recorrido etapa',
+      ir: () => { abrir('recorrido'); rcVerDetalle(t.clave); }
     }));
     return items;
   }
@@ -2666,6 +3734,24 @@
   $('#btnInicio').addEventListener('click', () => abrir('inicio'));
   $('#iniAyuda').addEventListener('click', () => abrir('ayuda'));
   $('#iniConexiones').addEventListener('click', () => abrir('conexiones'));
+  // Recorrido de proyectos
+  $('#iniRecorrido').addEventListener('click', () => abrir('recorrido'));
+  $('#iniRecorridoIco').append(icono('ruta', 22));
+  $('#iniRecorridoIr').append(icono('derecha', 16));
+  $('#rcActualizar').append(icono('recargar', 16));
+  $('#rcActualizar').addEventListener('click', () => {
+    if (rc.sinDatos === 'permiso') { rcPedirPermiso(); return; }
+    rcCargar();
+    rcPintarFrescura();
+  });
+  $('#rcMios').addEventListener('change', (e) => {
+    rc.mios = e.target.checked;
+    guardar(LS_RC, { mios: rc.mios });
+    rcPintar();
+  });
+  $('#rcElegir').addEventListener('click', abrirUsuario);
+  $('#rcBuscar').addEventListener('input', (e) => { rc.q = e.target.value; rcPintar(); });
+  $('#rcFoco').addEventListener('click', () => { rc.foco = null; rcPintar(); $('#rcBuscar').focus(); });
   // Con muchas pestañas abiertas, la rueda del mouse las recorre de lado (no hay barra).
   $('#pestanas').addEventListener('wheel', (e) => {
     const lista = $('#pestanas');
@@ -2738,6 +3824,7 @@
     if (e.key === LS.usuario || e.key === null) {
       estado.usuario = leerUsuario();
       pintarUsuario();
+      rcAlCambiarUsuario();
       if (!$('#popProyecto').hidden) pintarListaProyectos();
     }
     // La contraseña o el usuario recién escritos en una herramienta marcan su paso en «Preparar este computador»
