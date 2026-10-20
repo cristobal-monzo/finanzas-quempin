@@ -2497,7 +2497,7 @@
     if (!t || isNaN(t)) return null;
     const min = Math.max(0, Math.round((Date.now() - t) / 60000));
     const cuando = t.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-    return { nivel: min <= 150 ? 'ok' : 'warn', texto: 'La última vuelta del procesador fue el ' + cuando + '.' };
+    return { nivel: min <= 150 ? 'ok' : 'warn', minutos: min, detenido: false, texto: 'La última vuelta del procesador fue el ' + cuando + '.' };
   }
   // ---- Conectar la biblioteca desde el portal --------------------------------------------------------
   // Lo mismo que el Formulador › Configuración › Conectar carpeta (js/intercambio.js): se elige la biblioteca
