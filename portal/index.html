@@ -591,30 +591,34 @@
      Seis columnas, una por etapa, como la barra de Seguimiento del Formulador. Con menos ancho van tres
      (dos filas: de la Planilla a la cotización, y de la oferta al cierre) y en el teléfono una. */
   .vista-recorrido { position: absolute; inset: 0; overflow-y: auto; background: var(--page-plane); container: recorrido / inline-size; }
-  .recorrido { max-width: 1640px; margin: 0 auto; padding: 20px 24px 32px; display: flex; flex-direction: column; gap: 14px; }
-  .rc-cab { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; }
-  .rc-cab h1 { margin: 0 0 4px; font-size: 24px; font-weight: 900; }
-  .rc-cab p { margin: 0; max-width: 72ch; font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); }
+  .recorrido { max-width: 1640px; margin: 0 auto; padding: 16px 24px 28px; display: flex; flex-direction: column; gap: 12px; }
+  #rcContenido { display: flex; flex-direction: column; gap: 12px; }
+  #rcContenido[hidden] { display: none; }
+  /* Cabecera en una línea: título y explicación a la izquierda, la frescura de los datos a la derecha */
+  .rc-cab { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 24px; }
+  .rc-cab > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; min-width: 0; }
+  .rc-cab h1 { margin: 0; font-size: 22px; font-weight: 900; line-height: 1.2; }
+  .rc-cab p { margin: 0; font-size: 14px; line-height: 1.4; color: var(--texto-suave); }
   .rc-frescura { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--texto-suave); }
-  .rc-frescura .acc-btn { height: 32px; padding: 0 10px; }
+  .rc-frescura .acc-btn { height: 30px; padding: 0 8px; }
   /* Resumen: cuatro cifras que también filtran el tablero */
-  .rc-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .rc-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .rc-kpi {
-    min-height: 76px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 12px;
-    padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
-    color: var(--text-primary); text-align: left; cursor: pointer;
+    min-height: 58px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 12px;
+    padding: 8px 14px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
+    color: var(--text-primary); text-align: left; cursor: pointer; transition: border-color 0.12s, background-color 0.12s;
   }
   .rc-kpi:hover { border-color: var(--brand-orange); }
   .rc-kpi[aria-pressed="true"] { border-color: var(--brand-orange); background: var(--tinte); box-shadow: inset 0 -3px 0 var(--brand-orange); }
-  .rc-kpi-n { grid-row: 1 / 3; min-width: 1.6ch; font-size: 30px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .rc-kpi-n { grid-row: 1 / 3; min-width: 1.6ch; font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
   .rc-kpi[data-nivel="bad"] .rc-kpi-n { color: var(--estado-bad); }
   .rc-kpi[data-nivel="warn"] .rc-kpi-n { color: var(--brand-orange-ink); }
-  .rc-kpi-et { font-size: 14px; font-weight: 900; }
-  .rc-kpi-sub { font-size: 12.5px; line-height: 1.35; color: var(--texto-suave); }
+  .rc-kpi-et { align-self: end; font-size: 14px; font-weight: 900; line-height: 1.25; }
+  .rc-kpi-sub { align-self: start; font-size: 12px; line-height: 1.35; color: var(--texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* Filtros */
-  .rc-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .rc-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
   .rc-mios {
-    min-height: 38px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 999px;
+    min-height: 36px; display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 999px;
     border: 1px solid var(--baseline); background: var(--surface-card); font-size: 14px; font-weight: 700; cursor: pointer;
   }
   .rc-mios input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-orange); cursor: pointer; }
@@ -624,7 +628,7 @@
   .rc-elegir { padding: 0; border: 0; background: transparent; color: var(--brand-orange-ink); font-size: 13.5px; font-weight: 700; text-decoration: underline; cursor: pointer; }
   .rc-buscar { flex: 0 1 300px; min-width: 180px; }
   .rc-buscar input {
-    width: 100%; height: 38px; padding: 0 12px; border-radius: 10px;
+    width: 100%; height: 36px; padding: 0 12px; border-radius: 999px;
     border: 1px solid var(--baseline); background: var(--surface-card); color: var(--text-primary); font-size: 14px;
   }
   .rc-foco {
@@ -633,19 +637,22 @@
   }
   .rc-cuenta { margin-left: auto; font-size: 13px; color: var(--texto-suave); }
   /* El tablero */
-  .rc-tablero { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: start; }
-  .rc-col { min-width: 0; padding: 0 7px 8px; border-radius: 14px; border: 1px solid var(--border-hairline); background: var(--surface-1); }
-  .rc-col-cab { position: sticky; top: 0; z-index: 2; margin: 0 -7px; padding: 10px 10px 8px; border-radius: 14px 14px 0 0; background: var(--surface-1); border-bottom: 1px solid var(--gridline); }
+  /* Las etapas sin proyectos quedan más angostas (--rc-cols lo arma rcPintarTablero) y ceden su ancho a las llenas */
+  .rc-tablero { display: grid; grid-template-columns: var(--rc-cols, repeat(6, minmax(0, 1fr))); gap: 8px; align-items: start; }
+  .rc-col { min-width: 0; padding: 0 6px 6px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-1); }
+  .rc-col.vacia { background: transparent; border-style: dashed; }
+  .rc-col.vacia .rc-col-cab { background: var(--page-plane); border-bottom-color: transparent; }
+  .rc-col-cab { position: sticky; top: 0; z-index: 2; margin: 0 -6px; padding: 8px 10px 7px; border-radius: 12px 12px 0 0; background: var(--surface-1); border-bottom: 1px solid var(--gridline); }
   .rc-col-tit { display: flex; align-items: center; gap: 7px; }
-  .rc-col-tit h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14.5px; font-weight: 900; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rc-col-pie { display: flex; align-items: center; gap: 8px; margin: 5px 0 0 31px; }
+  .rc-col-tit h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14px; font-weight: 900; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-col-pie { display: flex; align-items: center; gap: 8px; margin: 2px 0 0 29px; }
   .rc-num {
-    flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%;
+    flex: 0 0 auto; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
     background: var(--brand-black); color: #ffffff; font-size: 12px; font-weight: 900;
   }
   :root[data-theme="dark"] .rc-num { background: #3a3835; }
   @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .rc-num { background: #3a3835; } }
-  .rc-col-n { margin-left: auto; flex: 0 0 auto; min-width: 24px; padding: 1px 7px; border-radius: 999px; background: var(--gridline); font-size: 12px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
+  .rc-col-n { flex: 0 0 auto; min-width: 24px; padding: 1px 7px; border-radius: 999px; background: var(--gridline); font-size: 12px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; }
   .rc-donde {
     min-width: 0; padding: 0; border: 0; background: transparent; cursor: pointer;
     display: inline-flex; align-items: center; gap: 4px; color: var(--texto-suave); font-size: 12.5px; font-weight: 700; text-align: left;
@@ -655,12 +662,12 @@
   .rc-donde:hover { color: var(--brand-orange-ink); text-decoration: underline; }
   .rc-lista { list-style: none; margin: 0; padding: 0; }
   .rc-nueva {
-    width: 100%; min-height: 38px; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; min-height: 32px; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 6px;
     border: 1px dashed var(--baseline); border-radius: 10px; background: transparent; color: var(--text-secondary);
     font-size: 13px; font-weight: 700; cursor: pointer;
   }
   .rc-nueva:hover { border-color: var(--brand-orange); color: var(--brand-orange-ink); }
-  .rc-vacia { margin: 14px 4px 6px; font-size: 13px; color: var(--texto-suave); text-align: center; }
+  .rc-vacia { margin: 12px 4px 6px; font-size: 13px; color: var(--texto-suave); text-align: center; }
   .rc-antiguos { margin-top: 8px; }
   .rc-antiguos > summary {
     min-height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 8px; cursor: pointer;
@@ -672,9 +679,11 @@
   .rc-antiguos > summary:hover { background: var(--gridline); color: var(--text-primary); }
   /* Una tarjeta por proyecto: arriba su N° y quién lo tiene, el nombre, sus fechas y, abajo, lo que sigue */
   .rc-tarjeta {
-    position: relative; margin-top: 8px; overflow: hidden; border-radius: 10px;
+    position: relative; margin-top: 6px; overflow: hidden; border-radius: 10px;
     border: 1px solid var(--border-hairline); background: var(--surface-card); box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: box-shadow 0.12s, border-color 0.12s;
   }
+  .rc-tarjeta:hover { border-color: var(--baseline); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   .rc-tarjeta::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: transparent; }
   .rc-tarjeta[data-tipo="hacer"]::before { background: var(--baseline); }
   .rc-tarjeta[data-nivel="warn"]::before { background: var(--estado-warn); }
@@ -682,7 +691,7 @@
   .rc-tarjeta.tuya { border-color: var(--tinte-borde); box-shadow: 0 1px 3px rgba(255,81,0,0.18); }
   .rc-tarjeta.atenuada { opacity: 0.55; }
   .rc-abrir {
-    width: 100%; display: flex; flex-direction: column; gap: 3px; padding: 9px 10px 9px 13px;
+    width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px 8px 12px;
     border: 0; background: transparent; color: var(--text-primary); text-align: left; cursor: pointer;
   }
   .rc-abrir:hover { background: var(--page-plane); }
@@ -690,16 +699,16 @@
   .rc-n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rc-tag { padding: 0 5px; border-radius: 5px; border: 1px solid var(--gridline); font-size: 12px; letter-spacing: 0.03em; }
   .rc-resp {
-    margin-left: auto; flex: 0 0 auto; min-width: 28px; height: 22px; padding: 0 6px; display: inline-grid; place-items: center;
+    margin-left: auto; flex: 0 0 auto; min-width: 26px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center;
     border-radius: 999px; border: 1px solid var(--baseline); color: var(--text-secondary); font-size: 12px; font-weight: 900; letter-spacing: 0.04em;
   }
   .rc-tarjeta.tuya .rc-resp { border-color: var(--brand-orange); background: var(--brand-orange); color: #000000; }
   .rc-resp.nadie { border-style: dashed; color: var(--texto-suave); }
-  .rc-tit { font-size: 14px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .rc-tit { font-size: 13.5px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .rc-sub { font-size: 12.5px; color: var(--texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rc-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .rc-chips { display: flex; flex-wrap: wrap; gap: 3px 4px; margin-top: 3px; }
   .rc-chip {
-    display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; white-space: nowrap; border-radius: 999px;
     border: 1px solid var(--gridline); background: var(--page-plane); color: var(--text-secondary); font-size: 12px; font-weight: 700; line-height: 1.5;
   }
   .rc-chip[data-nivel="bad"] { border-color: var(--estado-bad); background: transparent; color: var(--estado-bad); }
@@ -707,11 +716,11 @@
   .rc-chip[data-nivel="ok"] { border-color: var(--estado-ok); background: transparent; color: var(--text-primary); }
   .rc-chip[data-nivel="warn"]::before, .rc-chip[data-nivel="ok"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--estado-warn); }
   .rc-chip[data-nivel="ok"]::before { background: var(--estado-ok); }
-  .rc-avance { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 12px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .rc-avance { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 12px; font-weight: 900; font-variant-numeric: tabular-nums; }
   .rc-barra { flex: 1 1 auto; height: 6px; border-radius: 999px; background: var(--gridline); overflow: hidden; }
   .rc-barra span { display: block; height: 100%; border-radius: inherit; background: var(--brand-orange); }
   .rc-accion, .rc-espera {
-    width: 100%; min-height: 38px; display: flex; align-items: center; gap: 6px; padding: 6px 10px 7px 13px;
+    width: 100%; min-height: 34px; display: flex; align-items: center; gap: 6px; padding: 5px 10px 6px 12px;
     border: 0; border-top: 1px solid var(--gridline); background: transparent; text-align: left; font-size: 13px; line-height: 1.3;
   }
   .rc-accion { color: var(--brand-orange-ink); font-weight: 900; cursor: pointer; }
@@ -734,6 +743,9 @@
   .rc-leyendo { padding: 40px 0; text-align: center; font-size: 14px; color: var(--texto-suave); }
   /* El detalle de un proyecto */
   #dlgRecorrido { width: min(720px, calc(100vw - 24px)); }
+  /* Ya hay ✕ arriba y el botón naranja es el de «qué sigue»: Cerrar va como botón secundario */
+  #dlgRecorrido .dlg-acc .btn-pri { min-height: 40px; border: 1px solid var(--baseline); background: transparent; color: var(--text-primary); font-weight: 700; }
+  #dlgRecorrido .dlg-acc .btn-pri:hover { background: var(--page-plane); }
   .rc-det-sub { margin: -2px 0 0; font-size: 14px; color: var(--text-secondary); }
   .rc-pasos { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .rc-paso { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
@@ -765,14 +777,16 @@
   .rc-datos dd { overflow-wrap: anywhere; }
   .rc-det-h { margin: 4px 0 -4px; font-size: 13px; font-weight: 900; }
   @container recorrido (max-width: 1340px) { .rc-col-tit h2 { font-size: 13.5px; } }
-  @container recorrido (max-width: 1100px) { .rc-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } .rc-col-tit h2 { font-size: 14.5px; } }
+  @container recorrido (max-width: 1100px) { .rc-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } .rc-col-tit h2 { font-size: 14px; } }
+  @container recorrido (max-width: 900px) { .rc-cab p { display: none; } }
   @container recorrido (max-width: 760px) { .rc-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @container recorrido (max-width: 600px) {
     .rc-tablero { grid-template-columns: minmax(0, 1fr); }
     .rc-cuenta { margin-left: 0; }
     .rc-buscar { flex: 1 1 100%; }
-    .rc-kpi { min-height: 64px; padding: 8px 12px; }
-    .rc-kpi-n { font-size: 26px; }
+    .recorrido { padding: 12px 16px 24px; }
+    .rc-kpi { min-height: 50px; padding: 6px 12px; }
+    .rc-kpi-n { font-size: 22px; }
     .rc-kpi-sub { display: none; }
   }
   @media (max-width: 560px) {
@@ -1009,7 +1023,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloRecorrido">Recorrido de los proyectos</h1>
-                <p>Cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre: lo que sigue, quién lo tiene y un botón para hacerlo.</p>
+                <p>Cada proyecto del equipo en su etapa: qué sigue y quién lo tiene.</p>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="rcPunto"></span>
@@ -3328,6 +3342,7 @@
     const tab = $('#rcTablero');
     tab.textContent = '';
     let vistas = 0;
+    const anchos = [];
     RC_ETAPAS.forEach((e, i) => {
       const todas = alcance.filter((t) => t.etapa === e.id && (!foco || foco.es(t))).sort(rcOrden);
       const actuales = todas.filter((t) => !t.antiguo);
@@ -3343,7 +3358,9 @@
       const cuenta = crear('span', 'rc-col-n', String(actuales.length));
       cuenta.title = pl(actuales.length, 'proyecto', 'proyectos') + (antiguas.length ? ' (y ' + antiguas.length + ' de antes, plegados)' : '');
       h2.title = e.titulo;
-      tit.append(crear('span', 'rc-num', String(i + 1)), h2);
+      tit.append(crear('span', 'rc-num', String(i + 1)), h2, cuenta);
+      if (!todas.length) col.classList.add('vacia');
+      anchos.push(todas.length ? 'minmax(0, 1fr)' : 'minmax(0, 0.6fr)');
       // Abajo del nombre: la herramienta donde se hace la etapa (la abre) y cuántos proyectos hay en ella
       const h = HERR.get(e.herr);
       const donde = crear('button', 'rc-donde');
@@ -3353,7 +3370,7 @@
       donde.title = 'Abrir ' + h.nombre + ': ' + (h.desc || '');
       donde.addEventListener('click', () => abrir(h.id));
       const pie = crear('div', 'rc-col-pie');
-      pie.append(donde, cuenta);
+      pie.append(donde);
       cab.append(tit, pie);
       col.append(cab);
       if (e.id === 'requerimiento' && !rc.foco && !rc.q) {
@@ -3378,6 +3395,7 @@
       }
       tab.append(col);
     });
+    tab.style.setProperty('--rc-cols', anchos.join(' '));
     const de = rc.mios && estado.usuario ? 'tuyos' : 'del equipo';
     $('#rcCuenta').textContent = pl(vistas, 'proyecto ', 'proyectos ') + de;
   }
@@ -3520,7 +3538,8 @@
       dato('Licitación', [r.titulo, r.referencia].filter((x) => texto(x)).join(' · '));
       dato('Evaluador · captador', [r.evaluador || '—', r.captador || '—'].join(' · '));
       dato('Apertura · cierre', [r.apertura ? fecha(r.apertura) : '—', r.cierre ? fecha(r.cierre) : '—'].join(' · '));
-      dato('Visita a terreno', r.visita);
+      const fv = rcFecha(r.visita);
+      dato('Visita a terreno', fv ? rcCorta(fv, hoy) + (fv.getHours() || fv.getMinutes() ? ' a las ' + dos(fv.getHours()) + ':' + dos(fv.getMinutes()) : '') : r.visita);
     }
     if (t.lic) dato('Mercado Público', [t.lic.estado, t.lic.comprador].filter((x) => texto(x)).join(' · '));
     const f = t.formulacion;
