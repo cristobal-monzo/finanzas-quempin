@@ -1388,3 +1388,322 @@ def test_sistema_quempin_atiende_las_carpetas_que_pide_el_portal():
     assert '"formulacion": ubicacion.BIBLIOTECA_FORMULACION' in fuente and '"gestion": ubicacion.BIBLIOTECA_GESTION' in fuente
     portal = PORTAL.read_text(encoding="utf-8")
     assert "'quempin://carpeta/' + c.biblioteca + '/'" in portal
+
+
+# ---- Recorrido de proyectos (2026-10-20) -----------------------------------------------------------------
+# Todos los proyectos del equipo en las seis etapas, armado con lo que publica la carpeta de intercambio.
+
+def test_el_recorrido_tiene_las_etapas_del_formulador():
+    """Las seis etapas del tablero son las del Seguimiento del Formulador (js/flujo.js), en el mismo orden."""
+    portal = PORTAL.read_text(encoding="utf-8")
+    bloque = re.search(r"const RC_ETAPAS = \[(.*?)\];", portal, re.S).group(1)
+    titulos = re.findall(r"titulo: '([^']+)'", bloque)
+    assert titulos == ["Requerimiento", "Formulación", "Cotización", "Oferta y adjudicación", "Ejecución", "Cierre"]
+    reg = {h["id"]: h for h in _registro()["herramientas"]}
+    assert all(h in reg for h in re.findall(r"herr: '([a-z-]+)'", bloque))
+    assert reg["recorrido"]["tipo"] == "vista" and reg["recorrido"]["grupo"] == "arriba"
+    formulador = _hermano("Formulación de proyectos")
+    flujo = formulador / "quempin-formulacion" / "js" / "flujo.js" if formulador else None
+    if flujo and flujo.exists():
+        etapas = re.search(r"const ETAPAS = \[(.*?)\];", flujo.read_text(encoding="utf-8"), re.S).group(1)
+        assert re.findall(r"titulo: '([^']+)'", etapas) == titulos
+    # El recorrido lee la carpeta del equipo: Configuración y conexiones lo dice
+    usan = {e["id"]: e["usan"] for e in _conexiones()["elementos"]}
+    assert "recorrido" in usan["biblioteca"] and "recorrido" in usan["intercambio"]
+
+
+def _dia(dias, hora=None):
+    from datetime import date, timedelta
+    d = (date.today() + timedelta(days=dias)).isoformat()
+    return d + "T" + hora if hora else d
+
+
+def _sobre(herramienta, datos):
+    return {"esquema": "quempin.intercambio/1", "herramienta": herramienta, "generado": _dia(0, "09:00:00-03:00"), "datos": datos}
+
+
+def _formulacion(uid, codigo, req, estado, responsable, precio=0, errores=0, eliminado=False, titulo=""):
+    return {"esquema": "quempin.intercambio/1", "herramienta": "formulador", "tipo": "proyecto",
+            "resumen": {"precioNeto": precio, "errores": errores, "alertas": 0},
+            "datos": {"uid": uid, "codigo": codigo, "version": 1, "titulo": titulo, "estado": estado, "responsable": responsable,
+                      "modificado": _dia(-1, "10:00:00Z"), "eliminado": eliminado,
+                      "vinculos": {"requerimiento": {"numero": req}} if req else {}}}
+
+
+def _intercambio_de_prueba():
+    """Lo que publicaría la carpeta de intercambio, con un proyecto en cada situación del recorrido. Datos de mentira,
+    con fechas relativas a hoy."""
+    reqs = [
+        {"numero": 900, "estado": "Evaluación", "evaluador": "LC", "captador": "NB", "titulo": "LICEO", "ubicacion": "Valparaíso",
+         "cierre": _dia(2, "15:00"), "visita": _dia(1)},
+        {"numero": 901, "estado": "Evaluación", "evaluador": "CM", "titulo": "MANTENCIÓN DE CALDERAS DEL CESFAM Y GLP", "cierre": _dia(20)},
+        {"numero": 902, "estado": "Evaluación", "evaluador": "CM", "titulo": "Formulación lista", "cierre": _dia(10)},
+        {"numero": 903, "estado": "Evaluación", "evaluador": "LC", "titulo": "Borrador en Sistema QUEMPIN", "cierre": _dia(5)},
+        {"numero": 904, "estado": "Evaluación", "evaluador": "LC", "titulo": "Cotización emitida", "cierre": _dia(1)},
+        {"numero": 905, "estado": "Ofertado", "evaluador": "NB", "titulo": "Oferta esperando", "cierre": _dia(-5)},
+        {"numero": 906, "estado": "Ofertado", "evaluador": "LC", "titulo": "Oferta ganada", "cierre": _dia(-20)},
+        {"numero": 907, "estado": "Adjudicado", "evaluador": "NB", "titulo": "Adjudicada sin ficha", "cierre": _dia(-10)},
+        {"numero": 908, "estado": "Adjudicado", "evaluador": "LC", "titulo": "En obra", "cierre": _dia(-40)},
+        {"numero": 909, "estado": "Adjudicado", "evaluador": "NB", "titulo": "Terminada", "cierre": _dia(-90)},
+        {"numero": 910, "estado": "Adjudicado", "evaluador": "JB", "titulo": "Adjudicada hace mucho", "cierre": _dia(-200)},
+        {"numero": 911, "estado": "Descartado", "evaluador": "LC", "titulo": "Descartada", "cierre": _dia(3)},
+        {"numero": 912, "estado": "Evaluación", "evaluador": "NB", "titulo": "Cerró sin oferta", "cierre": _dia(-3)},
+        {"numero": 913, "estado": "Ofertado", "evaluador": "NB", "titulo": "Perdida en el Formulador", "cierre": _dia(-15)},
+    ]
+    cruce = [
+        {"req": "900", "tag": None, "formulaciones": [], "cotizaciones": [], "ordenes": [], "carpetas": {"oferta": ["900. Liceo de prueba"]}},
+        {"req": "904", "tag": None, "formulaciones": [], "cotizaciones": [{"folio": "6020001", "fecha": _dia(-1)}], "ordenes": [], "carpetas": {}},
+        {"req": "908", "tag": "DEMO", "formulaciones": [], "cotizaciones": [], "ordenes": [],
+         "carpetas": {"oferta": ["0 OFERTAS ADJUDICADAS/908. En obra"], "ejecucion": ["908. En obra"]}},
+    ]
+    af = [
+        {"tag": "DEMO", "nombre": "Obra demo", "avance": 0.4, "req": "908", "cierre": _dia(30), "venta": {"cargada": True}},
+        {"tag": "FIN", "nombre": "Obra terminada", "avance": 1, "req": "909", "cierre": _dia(-10), "venta": {"cargada": True}},
+        {"tag": "SOLO", "nombre": "Obra sin número", "avance": 0.5, "req": None, "cierre": _dia(60), "venta": {"cargada": True}},
+    ]
+    lic = [
+        {"req": 905, "codigo": "1-1-LE26", "resultado": "en-evaluacion", "estado": "Cerrada",
+         "url": "https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=1-1-LE26"},
+        {"req": 906, "codigo": "1-2-LE26", "resultado": "ganada", "estado": "Adjudicada",
+         "url": "https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?idlicitacion=1-2-LE26"},
+    ]
+    sobre_msg = {"esquema": "quempin.intercambio/1", "id": "b903", "tipo": "borrador-cotizacion", "destino": "sistema-quempin",
+                 "origen": {"herramienta": "formulador", "enviado": _dia(-1, "10:00")}, "proyecto": {"req": "903"}, "fuente": {"uid": "f903"}}
+    return {
+        "publicado/requerimientos.json": _sobre("procesador", {"requerimientos": reqs}),
+        "publicado/proyectos.json": _sobre("procesador", {"proyectos": cruce, "sinVincular": {}}),
+        "publicado/analisis-financiero.json": _sobre("analisis-financiero", {"proyectos": af}),
+        "publicado/licitaciones.json": _sobre("procesador", {"licitaciones": lic}),
+        "publicado/formulador/f901.json": _formulacion("f901", "QMPN-2026-901", 901, "Borrador", "CM"),
+        "publicado/formulador/f902.json": _formulacion("f902", "QMPN-2026-902", 902, "En revisión", "CM", precio=1000),
+        "publicado/formulador/f913.json": _formulacion("f913", "QMPN-2026-913", 913, "Perdida", "NB", precio=500),
+        "publicado/formulador/fz.json": _formulacion("fz", "QMPN-2026-777", None, "Borrador", "LC"),
+        "publicado/formulador/fx.json": _formulacion("fx", "QMPN-2026-778", None, "Borrador", "LC", eliminado=True),
+        "buzon/b903.json": sobre_msg,
+        "buzon/otro.json": {"tipo": "datos-proyecto", "destino": "analisis-financiero"},
+    }
+
+
+JS_ESCRIBIR_INTERCAMBIO = """async (archivos) => {
+    const raiz = await navigator.storage.getDirectory();
+    const bib = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos', { create: true });
+    const inter = await (await bib.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN', { create: true })).getDirectoryHandle('Intercambio', { create: true });
+    for (const [ruta, contenido] of Object.entries(archivos)) {
+        const partes = ruta.split('/');
+        let d = inter;
+        for (const p of partes.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
+        const w = await (await d.getFileHandle(partes[partes.length - 1], { create: true })).createWritable();
+        await w.write(JSON.stringify(contenido));
+        await w.close();
+    }
+}"""
+
+JS_COLUMNAS = """() => Object.fromEntries([...document.querySelectorAll('#rcTablero .rc-col')].map((c) => [c.dataset.etapa,
+    [...c.querySelectorAll(':scope > .rc-lista .rc-tarjeta')].map((t) => t.dataset.clave)]))"""
+
+
+def _recorrido_con_datos(navegador, sitio, usuario=None, **kw):
+    """El portal con la biblioteca conectada (como la deja el Formulador) y la carpeta de prueba, en el Recorrido."""
+    pagina, errores = _abrir_portal(navegador, sitio, **kw)
+    if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
+        pagina.context.close()
+        pytest.skip("este Chromium no conecta carpetas")
+    pagina.evaluate(JS_CONECTAR, 30)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _intercambio_de_prueba())
+    if usuario:
+        pagina.evaluate("u => localStorage.setItem('quempin_usuario', u)", usuario)
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    return pagina, errores
+
+
+def _cifras(pagina):
+    return dict(zip(pagina.locator("#rcResumen .rc-kpi").evaluate_all("bs => bs.map((b) => b.dataset.foco)"),
+                    [int(x) for x in pagina.locator("#rcResumen .rc-kpi-n").all_inner_texts()]))
+
+
+def test_el_recorrido_sin_biblioteca_dice_que_conectar(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.locator("#iniRecorrido").click()
+    assert _pestanas(pagina) == ["Inicio", "Recorrido"]
+    assert pagina.url.endswith("#/recorrido") and pagina.locator("iframe").count() == 0
+    pagina.locator("#rcVacio").wait_for()
+    texto = pagina.locator("#rcVacio").inner_text()
+    if pagina.evaluate("typeof showDirectoryPicker === 'function'"):
+        assert "Conecta la biblioteca del equipo" in texto
+        assert pagina.locator("#rcVacio .cx-boton").inner_text() == "Conectar biblioteca"
+        # Solo mira: no crea la base del Formulador
+        assert "qpn-intercambio" not in pagina.evaluate("indexedDB.databases().then((d) => d.map((x) => x.name))")
+        pagina.locator("#rcVacio .cx-enlace", has_text="Configuración y conexiones").click()
+        assert pagina.locator("#vistaConexiones").is_visible()
+    else:
+        assert "Chrome o Edge" in texto
+    assert pagina.locator("#rcContenido").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_recorrido_pone_cada_proyecto_en_su_etapa(navegador, sitio):
+    pagina, errores = _recorrido_con_datos(navegador, sitio)
+    col = pagina.evaluate(JS_COLUMNAS)
+    assert col == {
+        "requerimiento": ["req-900", "f-fz", "req-912"],      # lo urgente primero: cierra en 2 días; después, sin N°
+        "formulacion": ["req-901"],
+        "cotizacion": ["req-903", "req-902"],                  # el que cierra antes, arriba
+        "oferta": ["req-904", "req-906", "req-913", "req-905"],
+        "ejecucion": ["req-907", "req-908", "tag-SOLO"],
+        "cierre": ["req-909"],
+    }, col
+    # Lo descartado en la Planilla y lo eliminado en el Formulador no está; lo de hace más de 60 días va plegado
+    assert pagina.locator('.rc-tarjeta[data-clave="req-911"], .rc-tarjeta[data-clave="f-fx"]').count() == 0
+    assert pagina.locator('.rc-col[data-etapa="ejecucion"] .rc-antiguos .rc-tarjeta').evaluate_all("ts => ts.map((t) => t.dataset.clave)") == ["req-910"]
+    accion = lambda c: pagina.locator(f'.rc-tarjeta[data-clave="{c}"] .rc-accion, .rc-tarjeta[data-clave="{c}"] .rc-espera').inner_text().strip()
+    assert accion("req-900") == "Formular"
+    assert accion("f-fz") == "Escribir el N° de requerimiento"
+    assert accion("req-912") == "Actualizar la Planilla"
+    assert accion("req-901") == "Seguir formulando"
+    assert accion("req-902") == "Preparar la cotización"
+    assert accion("req-903") == "Emitir en Sistema QUEMPIN"
+    assert accion("req-904") == "Marcar como Enviada"
+    assert accion("req-905") == "Esperando respuesta"
+    assert accion("req-906") == "Marcar como Adjudicada"
+    assert accion("req-913") == "Avisar a la Planilla"
+    assert accion("req-907") == "Crear su ficha en el Análisis"
+    assert accion("req-908") == "Registrar avance"
+    assert accion("req-909") == "Ver su resultado"
+    tarjeta = lambda c: pagina.locator(f'.rc-tarjeta[data-clave="{c}"]').inner_text()
+    # El nombre de la carpeta manda; un título de la Planilla en mayúsculas se lee normal
+    assert "Liceo de prueba" in tarjeta("req-900") and "Cierra en 2 días" in tarjeta("req-900") and "Visita mañana" in tarjeta("req-900")
+    assert pagina.locator('.rc-tarjeta[data-clave="req-900"]').get_attribute("data-nivel") == "bad"
+    assert "Mantención de Calderas del Cesfam y GLP" in tarjeta("req-901")
+    assert "40 %" in tarjeta("req-908") and "DEMO" in tarjeta("req-908")
+    assert "Sin N°" in tarjeta("tag-SOLO") and "Sin N°" in tarjeta("f-fz")
+    assert "Ganada en Mercado Público" in tarjeta("req-906")
+    # Sin usuario: lo que requiere acción es de todo el equipo
+    assert _cifras(pagina) == {"accion": 10, "cierran": 2, "esperan": 1, "ejecucion": 3}
+    assert pagina.locator("#rcMios").is_disabled() and pagina.locator("#rcElegir").is_visible()
+    assert "Datos del procesador hace 30 min" in pagina.locator("#rcFrescura").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_cada_tarjeta_abre_la_herramienta_donde_se_hace(navegador, sitio):
+    pagina, errores = _recorrido_con_datos(navegador, sitio)
+    pagina.locator('.rc-tarjeta[data-clave="req-900"] .rc-accion').click()
+    _esperar(pagina, "formulador", "hash", "#/req/900")
+    pagina.locator("#pestanas .ir", has_text="Recorrido").click()
+    pagina.locator('.rc-tarjeta[data-clave="req-903"] .rc-accion').click()
+    assert pagina.evaluate("window.__lanzados") == ["quempin://cotizacion"]
+    pagina.locator('.rc-tarjeta[data-clave="req-902"] .rc-accion').click()
+    _esperar(pagina, "formulador", "hash", "#/p/f902/seguimiento")
+    pagina.locator("#pestanas .ir", has_text="Recorrido").click()
+    # El detalle: sus seis etapas, lo que sigue, sus datos y sus enlaces
+    pagina.locator('.rc-tarjeta[data-clave="req-908"] .rc-abrir').click()
+    dlg = pagina.locator("#dlgRecorrido")
+    assert dlg.is_visible()
+    assert pagina.locator("#dlgRcTit").inner_text() == "N° 908 · En obra"
+    assert pagina.locator("#dlgRecorrido .rc-paso").evaluate_all("ps => ps.map((p) => p.dataset.est)") == [
+        "hecha", "omitida", "omitida", "hecha", "actual", "pendiente"]
+    assert "Registrar avance" in pagina.locator("#dlgRecorrido .rc-sigue").inner_text()
+    pagina.locator("#dlgRecorrido .cx-enlace", has_text="Carpeta de ejecución").click()
+    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/908.%20En%20obra"
+    assert dlg.is_hidden()
+    pagina.locator('.rc-tarjeta[data-clave="req-908"] .rc-abrir').click()
+    pagina.locator("#dlgRecorrido .cx-enlace", has_text="Análisis Financiero").click()
+    _esperar(pagina, "analisis", "hash", "#proyecto=DEMO")
+    pagina.locator("#pestanas .ir", has_text="Recorrido").click()
+    # Mercado Público se abre aparte, solo con su dirección oficial
+    pagina.locator('.rc-tarjeta[data-clave="req-905"] .rc-abrir').click()
+    assert pagina.locator("#dlgRecorrido .rc-paso").evaluate_all("ps => ps.map((p) => p.dataset.est)")[3] == "espera"
+    pagina.locator("#dlgRecorrido .cx-enlace", has_text="Mercado Público").click()
+    assert pagina.evaluate("window.__abiertas")[-1].startswith("https://www.mercadopublico.cl/")
+    # La herramienta de cada etapa, desde su columna
+    pagina.locator('.rc-col[data-etapa="ejecucion"] .rc-donde').click()
+    _marco(pagina, "analisis", "af")
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_usuario_marca_lo_suyo_y_filtra_el_recorrido(navegador, sitio):
+    """Pedido del 2026-10-20: el recorrido se ve afectado por el usuario elegido, con un filtro para ver solo lo suyo."""
+    pagina, errores = _recorrido_con_datos(navegador, sitio, usuario="LC")
+    tuyas = lambda: pagina.locator("#rcTablero .rc-tarjeta.tuya").evaluate_all("ts => ts.map((t) => t.dataset.clave).sort()")
+    assert tuyas() == sorted(["req-900", "f-fz", "req-903", "req-904", "req-906", "req-908"])
+    assert _cifras(pagina) == {"accion": 5, "cierran": 2, "esperan": 1, "ejecucion": 3}
+    assert pagina.locator("#rcResumen .rc-kpi").first.inner_text().startswith("5\nTe esperan")
+    caja = pagina.locator("#rcMios")
+    assert caja.is_enabled() and not caja.is_checked() and pagina.locator("#rcMiosTxt").inner_text() == "Solo mis proyectos LC"
+    caja.check()
+    assert sorted(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == tuyas()
+    assert pagina.locator("#rcCuenta").inner_text() == "6 proyectos tuyos"
+    assert _cifras(pagina) == {"accion": 5, "cierran": 2, "esperan": 0, "ejecucion": 1}
+    # Se recuerda en este navegador
+    pagina.reload()
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    assert pagina.locator("#rcMios").is_checked()
+    # Otro usuario, elegido arriba: el tablero cambia sin recargar
+    pagina.locator("#btnUsuario").click()
+    pagina.locator('#listaUsuarios .usr-op[data-usuario="CM"]').click()
+    assert sorted(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == ["req-901", "req-902"]
+    assert pagina.locator("#rcMiosTxt").inner_text() == "Solo mis proyectos CM"
+    # Sin usuario, el filtro no se puede usar y se ofrece elegirlo
+    pagina.locator("#btnUsuario").click()
+    pagina.locator("#sinUsuario").click()
+    assert pagina.locator("#rcMios").is_disabled() and len(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == 14
+    pagina.locator("#rcElegir").click()
+    assert pagina.locator("#popUsuario").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+def test_las_cifras_y_el_buscador_filtran_el_recorrido(navegador, sitio):
+    pagina, errores = _recorrido_con_datos(navegador, sitio, usuario="LC")
+    pagina.locator('#rcResumen .rc-kpi[data-foco="cierran"]').click()
+    assert pagina.locator('#rcResumen .rc-kpi[data-foco="cierran"]').get_attribute("aria-pressed") == "true"
+    assert sorted(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == ["req-900", "req-903"]
+    assert pagina.locator("#rcFoco").inner_text().strip() == "Mostrando: Cierran esta semana"
+    pagina.locator("#rcFoco").click()
+    assert pagina.locator("#rcFoco").is_hidden() and len(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == 14
+    pagina.locator("#rcBuscar").fill("liceo")
+    assert sum(pagina.evaluate(JS_COLUMNAS).values(), []) == ["req-900"]
+    pagina.locator("#rcBuscar").fill("demo")
+    assert sum(pagina.evaluate(JS_COLUMNAS).values(), []) == ["req-908"]
+    pagina.locator("#rcBuscar").fill("")
+    # Ctrl K también encuentra los proyectos del recorrido y abre su detalle
+    pagina.locator("#buscar").fill("908")
+    pagina.locator("#resultados .res", has_text="N° 908").first.click()
+    assert pagina.locator("#dlgRecorrido").is_visible() and pagina.locator("#dlgRcTit").inner_text() == "N° 908 · En obra"
+    pagina.keyboard.press("Escape")
+    # El Inicio dice cuánto te espera, y lleva al recorrido
+    pagina.locator("#pestanas .ir").first.click()
+    assert pagina.locator("#iniRecorridoSub").inner_text() == "5 te esperan · 2 cierran esta semana · 1 espera respuesta · 3 en ejecución"
+    pagina.locator("#iniRecorrido").click()
+    assert pagina.locator("#vistaRecorrido").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho", [390, 1024])
+def test_el_recorrido_cabe_sin_desbordes(navegador, sitio, ancho):
+    movil = ancho < 760
+    pagina, errores = _recorrido_con_datos(navegador, sitio, usuario="LC", ancho=ancho, alto=844, movil=movil)
+    d = pagina.evaluate(JS_DESBORDES)
+    assert d["doc"] <= ancho and not d["fuera"], d
+    derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#vistaRecorrido *')]
+        .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))""")
+    assert derecha <= ancho + 0.5, derecha
+    chicos = pagina.evaluate("""() => [...document.querySelectorAll('#vistaRecorrido *')]
+        .filter((e) => e.getClientRects().length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+        .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName)""")
+    assert not chicos, chicos
+    columnas = "getComputedStyle(document.getElementById('rcTablero')).gridTemplateColumns.split(' ').length"
+    assert pagina.evaluate(columnas) == (1 if movil else 3)
+    if movil:
+        assert pagina.evaluate("parseFloat(getComputedStyle(document.getElementById('rcBuscar')).fontSize)") >= 16
+    pagina.locator('.rc-tarjeta[data-clave="req-908"] .rc-abrir').click()
+    caja = pagina.locator("#dlgRecorrido").bounding_box()
+    assert caja["x"] >= 0 and caja["x"] + caja["width"] <= ancho, caja
+    assert not errores
+    pagina.context.close()
