@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "planificacion/<semana>/<dispositivo>.json (Planificación semanal)",
+  "description": "Lo que un navegador planificó en una semana en el Portal QUEMPIN: quién va a qué proyecto cada día, las ausencias y los proyectos sin trabajo esa semana. Cada navegador escribe solo su archivo (publicado/planificacion/<AAAA-Www>/<dispositivo>.json) y la semana es la unión de todos: en cada casilla manda el cambio más reciente ('t'), también si es quitar ('activa': false, 'motivo': ''). 'proyecto' es 'req:<N° de la Planilla>', 'tag:<TAG del Análisis Financiero>' u 'otra:<actividad>'.",
+  "dueno": "planificacion",
+  "type": "object",
+  "properties": {
+    "semana": {
+      "type": "string",
+      "pattern": "^\\d{4}-W\\d{2}$"
+    },
+    "desde": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "dispositivo": {
+      "type": "string",
+      "pattern": "^[a-z0-9]{8,24}$"
+    },
+    "asignaciones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dia": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "persona": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,3}$"
+          },
+          "proyecto": {
+            "type": "string",
+            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40})$"
+          },
+          "activa": {
+            "type": "boolean"
+          },
+          "t": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "por": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dia",
+          "persona",
+          "proyecto",
+          "activa",
+          "t"
+        ]
+      }
+    },
+    "ausencias": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dia": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "persona": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,3}$"
+          },
+          "motivo": {
+            "enum": [
+              "",
+              "vacaciones",
+              "licencia",
+              "permiso",
+              "otro"
+            ]
+          },
+          "t": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "por": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dia",
+          "persona",
+          "motivo",
+          "t"
+        ]
+      }
+    },
+    "pausas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40})$"
+          },
+          "activa": {
+            "type": "boolean"
+          },
+          "nota": {
+            "type": "string"
+          },
+          "t": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "por": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proyecto",
+          "activa",
+          "t"
+        ]
+      }
+    },
+    "proyectos": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "semana",
+    "desde",
+    "dispositivo",
+    "asignaciones",
+    "ausencias",
+    "pausas"
+  ]
+}

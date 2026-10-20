@@ -493,8 +493,8 @@ def test_inicio_muestra_todas_las_herramientas_por_grupo(navegador, sitio):
     reg = _registro()
     esperadas = [h["id"] for h in reg["herramientas"] if h["grupo"] in {"formular", "finanzas", "cotizar", "calcular"}]
     assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item')].map(b => b.dataset.herr)") == esperadas
-    # Lo que se abre fuera del portal (Excel, Sistema QUEMPIN) lleva la flecha ↗
-    fuera = [h["id"] for h in reg["herramientas"] if h["id"] in esperadas and h["tipo"] != "marco"]
+    # Lo que se abre fuera del portal (Excel, Sistema QUEMPIN) lleva la flecha ↗; las vistas del portal, no
+    fuera = [h["id"] for h in reg["herramientas"] if h["id"] in esperadas and h["tipo"] not in ("marco", "vista")]
     assert fuera == ["planilla", "cotizacion", "orden-compra"]
     assert pagina.locator("#iniGrupos .ini-item:has(.ini-fuera)").count() == len(fuera)
     assert _pestanas(pagina) == ["Inicio"]
@@ -1818,3 +1818,434 @@ def test_el_recorrido_cabe_sin_desbordes(navegador, sitio, ancho):
     assert caja["x"] >= 0 and caja["x"] + caja["width"] <= ancho, caja
     assert not errores
     pagina.context.close()
+
+
+# ---- Planificación semanal (2026-10-20) -------------------------------------------------------------
+
+DISPOSITIVO = "pruebaportal01"          # el nombre del archivo que escribe el navegador de las pruebas
+# Los proyectos activos de _intercambio_de_prueba (la etapa Ejecución del Recorrido, sin los de hace más de 60
+# días), por nombre: 907 adjudicado sin ficha, 908 con ficha DEMO al 40 % y SOLO, una ficha sin N°.
+ACTIVOS = {"req:907": "Adjudicada sin ficha", "req:908": "En obra", "tag:SOLO": "Obra sin número"}
+
+JS_LEER_INTERCAMBIO = """async (ruta) => {
+    const raiz = await navigator.storage.getDirectory();
+    let d = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+    d = await (await d.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio');
+    const partes = ruta.split('/');
+    try {
+        for (const p of partes.slice(0, -1)) d = await d.getDirectoryHandle(p);
+        return JSON.parse(await (await (await d.getFileHandle(partes[partes.length - 1])).getFile()).text());
+    } catch (e) { return null; }
+}"""
+
+JS_ESCRIBIR_TEXTO = """async ([ruta, texto]) => {
+    const raiz = await navigator.storage.getDirectory();
+    let d = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+    d = await (await d.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio');
+    const partes = ruta.split('/');
+    for (const p of partes.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
+    const w = await (await d.getFileHandle(partes[partes.length - 1], { create: true })).createWritable();
+    await w.write(texto);
+    await w.close();
+}"""
+
+# Lo que muestra «Por personal»: por persona, cada día con sus proyectos (o su ausencia)
+JS_PERSONAL = """() => Object.fromEntries([...document.querySelectorAll('#plPersonal tr[data-persona]')].map((tr) => [tr.dataset.persona,
+    [...tr.querySelectorAll('td[data-dia]')].map((td) => [...td.querySelectorAll('.pl-chip .t, .pl-aus')].map((e) => e.textContent))]))"""
+
+
+def _semana_de(d):
+    from datetime import timedelta
+    lunes = d - timedelta(days=d.weekday())
+    anio, numero, _ = lunes.isocalendar()
+    return f"{anio}-W{numero:02d}", lunes
+
+
+def _instante(segundos):
+    from datetime import datetime, timedelta, timezone
+    t = datetime.now(timezone.utc) + timedelta(seconds=segundos)
+    return t.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _sobre_plan(semana, lunes, dispositivo, asignaciones=(), ausencias=(), pausas=(), proyectos=None):
+    return {"esquema": "quempin.intercambio/1", "herramienta": "planificacion", "tipo": "planificacion-semana",
+            "generado": _instante(0), "autor": "NB",
+            "datos": {"semana": semana, "desde": lunes.isoformat(), "dispositivo": dispositivo, "asignaciones": list(asignaciones),
+                      "ausencias": list(ausencias), "pausas": list(pausas), "proyectos": proyectos or {}}}
+
+
+def _plan_con_datos(navegador, sitio, usuario=None, vista=None, **kw):
+    """El portal con la carpeta de prueba, en la Planificación semanal. Este navegador escribe «pruebaportal01.json»."""
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario, **kw)
+    pagina.evaluate("""([d, v]) => {
+        localStorage.setItem('quempin_portal_dispositivo', d);
+        if (v) localStorage.setItem('quempin_portal_plan', JSON.stringify({ vista: v }));
+    }""", [DISPOSITIVO, vista])
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Planificación semanal")
+    pagina.locator("#plResumen .rc-kpi").first.wait_for()
+    return pagina, errores
+
+
+def _esperar_archivo(pagina, ruta, hasta=lambda sobre: True):
+    """El archivo de la carpeta de prueba, cuando ya cumple lo esperado (se guarda medio segundo después del cambio)."""
+    import time
+    fin = time.time() + 10
+    while True:
+        sobre = pagina.evaluate(JS_LEER_INTERCAMBIO, ruta)
+        if sobre and hasta(sobre):
+            return sobre
+        assert time.time() < fin, f"{ruta}: {sobre}"
+        pagina.wait_for_timeout(150)
+
+
+def _celda_personal(pagina, persona, dia):
+    return pagina.locator(f'#plPersonal tr[data-persona="{persona}"] td[data-dia="{dia}"] .pl-celda')
+
+
+def _celda_proyecto(pagina, clave, dia):
+    return pagina.locator(f'#plProyecto tr[data-clave="{clave}"] td[data-dia="{dia}"] .pl-celda')
+
+
+def test_la_planificacion_semanal_en_el_registro():
+    """Pedido del 2026-10-20: planificar la semana con el personal NB, ES, LC, CM, MP, SV y EV, como máximo 3 proyectos
+    por persona en un día. Lee y guarda en la carpeta del equipo, y Configuración y conexiones lo dice."""
+    reg = _registro()
+    h = {x["id"]: x for x in reg["herramientas"]}["planificacion"]
+    assert h["tipo"] == "vista" and h["vista"] == "vistaPlan" and h["grupo"] == "finanzas"
+    assert reg["personal"] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV"]
+    assert set(reg["usuarios"]) <= set(reg["personal"]), "quien usa las herramientas también se planifica"
+    usan = {e["id"]: e["usan"] for e in _conexiones()["elementos"]}
+    assert "planificacion" in usan["biblioteca"] and "planificacion" in usan["intercambio"]
+    portal = PORTAL.read_text(encoding="utf-8")
+    assert "const PL_MAX = 3;" in portal
+    # Lo que escribe es una publicación del catálogo del intercambio
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    assert "planificacion-semana" in esquemas.publicaciones()
+
+
+def test_la_planificacion_sin_biblioteca_dice_que_conectar(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.locator('.ini-item[data-herr="planificacion"]').click()
+    assert _pestanas(pagina) == ["Inicio", "Planificación"]
+    assert pagina.url.endswith("#/planificacion") and pagina.locator("iframe").count() == 0
+    pagina.locator("#plVacio").wait_for()
+    texto = pagina.locator("#plVacio").inner_text()
+    if pagina.evaluate("typeof showDirectoryPicker === 'function'"):
+        assert "Conecta la biblioteca del equipo" in texto and "La planificación lee los proyectos en ejecución" in texto
+    else:
+        assert "Chrome o Edge" in texto
+    assert pagina.locator("#plContenido").is_hidden()
+    # Sin datos no se sabe nada: no hay alarma
+    assert pagina.locator("#plAlertaCab").is_hidden() and pagina.locator(".pl-alerta-n").count() == 0
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_alarma_muestra_los_proyectos_activos_sin_asignar(navegador, sitio):
+    """Pedido del 2026-10-20: si un proyecto activo no se asigna en la semana actual, una alarma. Se ve en la cabecera
+    (desde cualquier herramienta), en el menú y en el Inicio, y la vista dice cuáles son."""
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
+    alerta = pagina.locator("#plAlertaCab")
+    alerta.wait_for()
+    assert " ".join(alerta.inner_text().split()) == "3 sin asignar"
+    assert all(t in alerta.get_attribute("title") for t in ACTIVOS.values())
+    item = pagina.locator('.ini-item[data-herr="planificacion"]')
+    assert item.locator(".pl-alerta-n").inner_text() == "3"
+    assert item.locator(".ini-sub").inner_text() == "3 proyectos sin asignar esta semana"
+    assert item.locator(".ini-fuera").count() == 0, "se abre dentro del portal"
+    pagina.locator("#btnMenu").click()
+    pagina.locator("#grupo-finanzas").click()
+    assert pagina.locator('#menu .menu-item[data-herr="planificacion"] .pl-alerta-n').inner_text() == "3"
+    pagina.keyboard.press("Escape")
+    alerta.click()
+    pagina.locator("#plAlarma").wait_for()
+    assert _pestanas(pagina) == ["Inicio", "Planificación"]
+    assert pagina.locator("#plAlarma").get_attribute("data-nivel") == "bad"
+    assert pagina.locator("#plAlarma .pl-alarma-tit").inner_text() == "3 proyectos activos sin nadie asignado esta semana"
+    assert pagina.locator("#plAlarma .pl-alarma-p").all_inner_texts() == list(ACTIVOS.values())
+    assert [int(x) for x in pagina.locator("#plResumen .rc-kpi-n").all_inner_texts()][:2] == [3, 3]
+    assert pagina.locator("#plSemanaRango").inner_text().startswith("Esta semana · ") and pagina.locator("#plHoy").is_disabled()
+    # Cada proyecto de la alarma lleva a su fila en «Por proyecto», donde los sin asignar van primero
+    pagina.locator("#plAlarma .pl-alarma-p", has_text="En obra").click()
+    assert pagina.locator('.pl-vista[data-vista="proyecto"]').get_attribute("aria-pressed") == "true"
+    assert pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)") == list(ACTIVOS)
+    assert pagina.locator("#plProyecto tr.alarma").count() == 3
+    # El nombre abre su detalle del Recorrido
+    pagina.locator('#plProyecto tr[data-clave="req:908"] .pl-proy').click()
+    assert pagina.locator("#dlgRcTit").inner_text() == "N° 908 · En obra"
+    pagina.keyboard.press("Escape")
+    assert not errores
+    pagina.context.close()
+
+
+def test_asignar_por_personal_queda_en_la_carpeta_del_equipo(navegador, sitio):
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    assert list(pagina.evaluate(JS_PERSONAL)) == ["NB", "ES", "LC", "CM", "MP", "SV", "EV"]
+    assert pagina.locator("#plPersonal tr.tuya").get_attribute("data-persona") == "LC"
+    _celda_personal(pagina, "LC", 0).click()
+    pop = pagina.locator("#plPop")
+    assert pop.is_visible() and pagina.locator("#plPopTit").inner_text().startswith("LC · Lunes ")
+    assert pagina.locator("#plPopSub").inner_text() == "0 de 3 proyectos este día"
+    pop.locator('input[data-op="c|req:908"]').check()
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == ["En obra"]
+    assert "LC va a En obra el lunes" in pagina.locator("#aviso").inner_text()
+    assert pagina.locator("#plAlertaN").inner_text() == "2"
+    # Queda en la carpeta, en el archivo de este navegador, con quién lo hizo; y cumple el esquema del catálogo
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, archivo)
+    d = sobre["datos"]
+    assert (sobre["herramienta"], d["semana"], d["desde"], d["dispositivo"]) == ("planificacion", semana, lunes.isoformat(), DISPOSITIVO)
+    assert [(x["dia"], x["persona"], x["proyecto"], x["activa"], x["por"]) for x in d["asignaciones"]] == [
+        (lunes.isoformat(), "LC", "req:908", True, "LC")]
+    assert d["proyectos"]["req:908"]["titulo"] == "En obra"
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    assert esquemas.validar_publicacion("planificacion-semana", sobre) == []
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'Guardado en la carpeta del equipo'")
+    # Al volver a abrir el portal sigue ahí
+    pagina.reload()
+    pagina.locator('#plPersonal tr[data-persona="LC"] .pl-chip').first.wait_for()
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == ["En obra"]
+    # Quitarla también se guarda (manda el cambio más reciente)
+    _celda_personal(pagina, "LC", 0).click()
+    pop.locator('input[data-op="c|req:908"]').uncheck()
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == []
+    sobre = _esperar_archivo(pagina, archivo, lambda s: not s["datos"]["asignaciones"][0]["activa"])
+    assert len(sobre["datos"]["asignaciones"]) == 1
+    # Escape cierra la ventanita y vuelve a la casilla
+    pagina.keyboard.press("Escape")
+    assert pop.is_hidden()
+    assert pagina.evaluate("document.activeElement.dataset.ancla") == "p|LC|" + lunes.isoformat()
+    assert not errores
+    pagina.context.close()
+
+
+def test_como_maximo_tres_proyectos_por_persona_en_un_dia(navegador, sitio):
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    pop = pagina.locator("#plPop")
+    _celda_personal(pagina, "LC", 1).click()
+    for c in ACTIVOS:
+        pop.locator(f'input[data-op="c|{c}"]').check()
+    assert pagina.locator("#plPopSub").inner_text() == "3 de 3 proyectos este día"
+    assert "ya tiene 3 proyectos el martes" in pop.locator(".pl-pop-nota").inner_text()
+    assert pop.locator('input[data-op="otra"]').count() == 0, "tampoco otra actividad"
+    assert _celda_personal(pagina, "LC", 1).locator(".pl-lleno").inner_text() == "Completo"
+    pagina.keyboard.press("Escape")
+    # NB ese día en otra actividad; LC no puede sumarse: ya está completo
+    _celda_personal(pagina, "NB", 1).click()
+    pop.locator('input[data-op="otra"]').fill("oficina")
+    pop.locator('input[data-op="otra"]').press("Enter")
+    assert pagina.evaluate(JS_PERSONAL)["NB"][1] == ["Oficina"]
+    pagina.keyboard.press("Escape")
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    assert "Otra actividad" in pagina.locator('#plProyecto tr[data-clave="otra:oficina"]').inner_text()
+    _celda_proyecto(pagina, "otra:oficina", 1).click()
+    lc = pop.locator('input[data-op="c|LC"]')
+    assert lc.is_disabled() and not lc.is_checked()
+    assert "Completo: ya tiene 3 proyectos ese día" in pop.locator("li:has(input[data-op='c|LC'])").inner_text()
+    assert pop.locator('input[data-op="c|NB"]').is_checked() and pop.locator('input[data-op="c|ES"]').is_enabled()
+    pagina.keyboard.press("Escape")
+    # Dos computadores a la vez pueden pasarse del máximo: la casilla queda en rojo para corregirla
+    semana, lunes = _semana_de(date.today())
+    martes = (lunes + timedelta(days=1)).isoformat()
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {f"publicado/planificacion/{semana}/otro0001.json": _sobre_plan(semana, lunes, "otro0001",
+        asignaciones=[{"dia": martes, "persona": "LC", "proyecto": "otra:bodega", "activa": True, "t": _instante(5), "por": "NB"}],
+        proyectos={"otra:bodega": {"titulo": "Bodega"}})})
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    pagina.locator("#plActualizar").click()
+    pagina.locator('#plPersonal tr[data-persona="LC"] td[data-dia="1"] .pl-celda.exceso').wait_for()
+    assert _celda_personal(pagina, "LC", 1).locator(".pl-lleno").inner_text() == "4 de 3: quita 1"
+    assert "Bodega" in pagina.evaluate(JS_PERSONAL)["LC"][1]
+    assert not errores
+    pagina.context.close()
+
+
+def test_toda_la_semana_una_ausencia_y_deshacer(navegador, sitio):
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    pop = pagina.locator("#plPop")
+    fila = lambda clave: pagina.locator(f'#plProyecto tr[data-clave="{clave}"] td[data-dia]').evaluate_all(
+        "tds => tds.map((td) => [...td.querySelectorAll('.pl-per')].map((p) => p.textContent).join(','))")
+    _celda_proyecto(pagina, "req:907", 0).click()
+    pop.locator('input[data-op="c|ES"]').check()
+    pop.locator('[data-op="w|ES"]').click()
+    assert fila("req:907") == ["ES"] * 5
+    assert "ES va a Adjudicada sin ficha de lunes a viernes." in pagina.locator("#aviso").inner_text()
+    assert "5 días · 1 persona" in pagina.locator('#plProyecto tr[data-clave="req:907"] th').inner_text()
+    pagina.keyboard.press("Escape")
+    # Ausente el miércoles: queda fuera de sus proyectos de ese día y no se le puede asignar
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    _celda_personal(pagina, "ES", 2).click()
+    pop.locator('[data-op="a|vacaciones"]').click()
+    assert pagina.evaluate(JS_PERSONAL)["ES"] == [["Adjudicada sin ficha"], ["Adjudicada sin ficha"], ["Vacaciones"],
+                                                   ["Adjudicada sin ficha"], ["Adjudicada sin ficha"]]
+    assert pop.locator('input[data-op="c|req:907"]').is_disabled()
+    assert pop.locator('[data-op="a|vacaciones"]').get_attribute("aria-pressed") == "true"
+    aviso = pagina.locator("#aviso")
+    assert "ES queda ausente el miércoles" in aviso.inner_text() and "se quitó de Adjudicada sin ficha" in aviso.inner_text()
+    # «Deshacer» en el aviso lo deja como estaba, sin cerrar la ventanita
+    aviso.locator("button", has_text="Deshacer").click()
+    assert pagina.evaluate(JS_PERSONAL)["ES"][2] == ["Adjudicada sin ficha"]
+    assert pop.is_visible() and pop.locator('[data-op="a|vacaciones"]').get_attribute("aria-pressed") == "false"
+    # Ctrl Z deshace el cambio anterior: toda la semana
+    pagina.keyboard.press("Escape")
+    pagina.keyboard.press("Control+z")
+    assert pagina.evaluate(JS_PERSONAL)["ES"] == [["Adjudicada sin ficha"], [], [], [], []]
+    assert not errores
+    pagina.context.close()
+
+
+def test_sin_trabajo_esta_semana_no_cuenta_como_alarma(navegador, sitio):
+    pagina, errores = _plan_con_datos(navegador, sitio, vista="proyecto")
+    fila = pagina.locator('#plProyecto tr[data-clave="tag:SOLO"]')
+    fila.locator(".pl-pausar").click()
+    assert pagina.locator("#plAlertaN").inner_text() == "2"
+    assert "pausa" in fila.get_attribute("class") and fila.locator(".rc-chip").inner_text() == "Sin trabajo esta semana"
+    assert "Obra sin número" not in pagina.locator("#plAlarma").inner_text()
+    assert pagina.locator("#plResumen .rc-kpi").nth(1).locator(".rc-kpi-sub").inner_text() == "Y 1 sin trabajo esta semana"
+    # Los que no se trabajan van al final
+    assert pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)")[-1] == "tag:SOLO"
+    fila.locator(".pl-pausar", has_text="Volver a planificar").click()
+    assert pagina.locator("#plAlertaN").inner_text() == "3"
+    # Asignarle a alguien también lo saca de la pausa
+    fila.locator(".pl-pausar").click()
+    _celda_proyecto(pagina, "tag:SOLO", 3).click()
+    pagina.locator('#plPop input[data-op="c|MP"]').check()
+    assert "Ya no está «sin trabajo esta semana»" in pagina.locator("#aviso").inner_text()
+    assert "pausa" not in (fila.get_attribute("class") or "") and pagina.locator("#plAlertaN").inner_text() == "2"
+    assert not errores
+    pagina.context.close()
+
+
+def test_los_cambios_de_otro_computador_se_unen_y_manda_el_mas_reciente(navegador, sitio):
+    """Cada navegador escribe su propio archivo de la semana (OneDrive nunca tiene que juntar dos versiones del mismo):
+    la semana es la unión de todos, y en cada casilla manda el cambio más reciente, también si es quitar."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    lun, mar = lunes.isoformat(), (lunes + timedelta(days=1)).isoformat()
+    for dia in (0, 1):
+        _celda_personal(pagina, "LC", dia).click()
+        pagina.locator('#plPop input[data-op="c|req:908"]').check()
+        pagina.keyboard.press("Escape")
+    _esperar_archivo(pagina, f"publicado/planificacion/{semana}/{DISPOSITIVO}.json", lambda s: len(s["datos"]["asignaciones"]) == 2)
+    # Otro computador, después: quita a LC del lunes y pone a MP el martes. Un cambio suyo de antes (quitar a LC del
+    # martes, hace una hora) no manda. Un archivo a medio sincronizar se salta.
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {f"publicado/planificacion/{semana}/otro0001.json": _sobre_plan(semana, lunes, "otro0001", [
+        {"dia": lun, "persona": "LC", "proyecto": "req:908", "activa": False, "t": _instante(60), "por": "NB"},
+        {"dia": mar, "persona": "MP", "proyecto": "tag:SOLO", "activa": True, "t": _instante(60), "por": "NB"},
+        {"dia": mar, "persona": "LC", "proyecto": "req:908", "activa": False, "t": _instante(-3600), "por": "NB"},
+        {"dia": mar, "persona": "XX", "proyecto": "req:908", "activa": True, "t": _instante(60), "por": "NB"},
+    ])})
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, [f"publicado/planificacion/{semana}/roto.json", '{"esquema": "quempin.intercambio/1", "datos": {'])
+    pagina.locator("#plActualizar").click()
+    pagina.locator('#plPersonal tr[data-persona="MP"] td[data-dia="1"] .pl-chip').wait_for()
+    p = pagina.evaluate(JS_PERSONAL)
+    assert p["LC"][:2] == [[], ["En obra"]] and p["MP"][1] == ["Obra sin número"]
+    assert "XX" not in p, "solo el personal de la planificación"
+    # El archivo de este navegador sigue diciendo solo lo suyo: no copia lo del otro
+    mio = pagina.evaluate(JS_LEER_INTERCAMBIO, f"publicado/planificacion/{semana}/{DISPOSITIVO}.json")
+    assert {(x["dia"], x["persona"]) for x in mio["datos"]["asignaciones"]} == {(lun, "LC"), (mar, "LC")}
+    assert not errores
+    pagina.context.close()
+
+
+def test_otras_semanas_copiar_la_anterior_compartir_e_imprimir(navegador, sitio):
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    _, lunes = _semana_de(date.today())
+    numero = lunes.isocalendar()[1]
+    anterior = (lunes - timedelta(days=7)).isocalendar()[1]
+    pagina.locator("#plAntes").click()
+    assert pagina.locator("#plSemanaN").inner_text().split()[:2] == ["Semana", str(anterior)]
+    assert not pagina.locator("#plSemanaRango").inner_text().startswith("Esta semana") and pagina.locator("#plHoy").is_enabled()
+    pagina.locator("#plPersonal .pl-celda").first.wait_for()
+    # La semana pasada: LC en «En obra» el jueves. Una semana que ya pasó no se marca en rojo.
+    _celda_personal(pagina, "LC", 3).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    assert pagina.locator("#plAlarma").get_attribute("data-nivel") == ""
+    pagina.locator("#plDespues").click()
+    assert pagina.locator("#plSemanaRango").inner_text().startswith("Esta semana")
+    pagina.locator("#plPersonal .pl-celda").first.wait_for()
+    pagina.locator("#plCopiar").click()
+    pagina.wait_for_function("document.getElementById('aviso').textContent.startsWith('Se copió')")
+    assert pagina.locator("#aviso").inner_text().startswith(f"Se copió 1 asignación de la semana {anterior}.")
+    assert pagina.evaluate(JS_PERSONAL)["LC"][3] == ["En obra"]
+    # Compartir: el resumen de la semana para WhatsApp
+    pagina.locator("#plCompartir").click()
+    texto = pagina.locator("#plTextoArea").input_value()
+    assert texto.startswith(f"*Planificación semana {numero} · ")
+    assert "\n*Jueves " in texto and "• En obra: LC" in texto and "Sin asignaciones" in texto
+    assert texto.endswith("⚠ Sin nadie asignado: Adjudicada sin ficha, Obra sin número")
+    pagina.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=sitio)
+    pagina.locator("#plCopiarTexto").click()
+    assert pagina.evaluate("navigator.clipboard.readText()").replace("\r\n", "\n") == texto     # Windows lo guarda con \r\n
+    assert pagina.locator("#dlgPlTexto").is_hidden()
+    # Imprimir: solo la semana a la vista
+    pagina.evaluate("""() => { window.print = () => {
+        window.__impreso = document.body.classList.contains('pl-imprimiendo');
+        window.dispatchEvent(new Event('afterprint'));
+    }; }""")
+    pagina.locator("#plImprimir").click()
+    assert pagina.evaluate("window.__impreso") is True
+    assert pagina.evaluate("document.body.classList.contains('pl-imprimiendo')") is False
+    assert pagina.locator("#plImpreso").text_content().startswith(f"Semana {numero} · ")
+    assert not errores
+    pagina.context.close()
+
+
+def test_las_semanas_cruzan_el_cambio_de_ano(navegador, sitio):
+    """La semana ISO 8601 es del año de su jueves: el 1 de enero de 2027 cae en la semana 53 de 2026."""
+    from datetime import datetime
+    pagina, errores = _portal_con_datos(navegador, sitio)
+    pagina.clock.set_system_time(datetime(2027, 1, 1, 10, 0))
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Planificación semanal")
+    pagina.locator("#plSemanaN").wait_for()
+    assert pagina.locator("#plSemanaN").inner_text() == "Semana 53 de 2026"
+    assert pagina.locator("#plSemanaRango").inner_text() == "Esta semana · 28 de diciembre al 1 de enero"
+    pagina.locator("#plDespues").click()
+    assert pagina.locator("#plSemanaN").inner_text() == "Semana 1"
+    assert pagina.locator("#plSemanaRango").inner_text() == "4 al 8 de enero"
+    pagina.locator("#plAntes").click()
+    pagina.locator("#plAntes").click()
+    assert (pagina.locator("#plSemanaN").inner_text(), pagina.locator("#plSemanaRango").inner_text()) == (
+        "Semana 52 de 2026", "21 al 25 de diciembre")
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho", [390, 1024, 1366])
+def test_la_planificacion_cabe_sin_desbordes(navegador, sitio, ancho):
+    movil = ancho < 760
+    for vista in ("general", "personal", "proyecto"):
+        pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista=vista, ancho=ancho, alto=844, movil=movil)
+        pagina.locator(f"#pl{vista.capitalize()}").wait_for()
+        d = pagina.evaluate(JS_DESBORDES)
+        assert d["doc"] <= ancho and not d["fuera"], (vista, d)
+        derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#vistaPlan *')]
+            .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))""")
+        assert derecha <= ancho + 0.5, (vista, derecha)
+        chicos = pagina.evaluate("""() => [...document.querySelectorAll('#vistaPlan *')]
+            .filter((e) => e.getClientRects().length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+            .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName)""")
+        assert not chicos, (vista, chicos)
+        if vista != "general":
+            # En el teléfono las tablas muestran un día a la vez, el de hoy si es de la semana; arriba se elige otro
+            visibles = pagina.locator(f"#pl{vista.capitalize()} thead th[data-dia]").evaluate_all(
+                "ths => ths.filter((t) => t.getClientRects().length).length")
+            assert visibles == (1 if movil else 5), (vista, visibles)
+            assert pagina.locator("#plDiasMovil").is_visible() == movil
+        # La ventanita queda dentro de la pantalla
+        pagina.locator("#plGeneral .pl-nuevo" if vista == "general" else f"#pl{vista.capitalize()} .pl-celda >> visible=true").first.click()
+        caja = pagina.locator("#plPop").bounding_box()
+        assert caja["x"] >= 0 and caja["x"] + caja["width"] <= ancho and caja["y"] >= 0 and caja["y"] + caja["height"] <= 844, (vista, caja)
+        if movil:
+            assert pagina.evaluate("parseFloat(getComputedStyle(document.querySelector('#plPop .pl-otra input, #plPop .pl-buscar') || document.body).fontSize)") >= 16
+        assert not errores
+        pagina.context.close()

@@ -369,6 +369,54 @@ y que se pueda revertir si no le gusta.
   - Se relee al volver a la pestaña si pasó más de un minuto, o con ↻. La
     vista previa con datos reales se arma fuera del repo (almacenamiento privado
     de un Chromium aislado), nunca con capturas dentro del repo.
+- **Planificación semanal** (2026-10-20, pedido del usuario: planificar cada semana
+  según el personal y los proyectos activos, «Lunes, ES en Llay Llay, LC en
+  Limache», como máximo 3 proyectos por persona en un día, una alarma si un
+  proyecto activo no se asigna en la semana actual, y verla por personal, por
+  proyecto y en general, con UX profesional):
+  - **Qué es**: la vista `planificacion` (`tipo: vista`, `#vistaPlan`, primera de
+    Control y finanzas, así está en el Inicio). Tres vistas de la misma semana
+    (`quempin_portal_plan` recuerda cuál y si se muestra el sábado): **General**
+    (un tablero por día con cada proyecto y quiénes van, quiénes quedan sin
+    proyecto y quiénes faltan; abajo, lo que cubre cada proyecto y la carga de cada
+    persona), **Por personal** y **Por proyecto** (tablas de lunes a viernes; el
+    sábado aparece si se pide o si ya tiene algo). Cada casilla se toca y abre una
+    ventanita junto a ella (`#plPop`; en el teléfono sube desde abajo y las tablas
+    muestran un día a la vez): proyectos o personas con casillas, «Toda la
+    semana», otra actividad (oficina, visita técnica) y la ausencia del día
+    (vacaciones, licencia, permiso), que quita a la persona de sus proyectos de ese
+    día. Cada cambio se puede deshacer (el aviso o Ctrl Z). También: copiar la
+    semana anterior (solo agrega), compartir la semana como texto para WhatsApp e
+    imprimirla (`body.pl-imprimiendo`, A4 horizontal).
+  - **El personal** es el bloque `"personal"` del registro (NB, ES, LC, CM, MP,
+    SV y EV): incluye a todos los `"usuarios"` y puede tener más (EV se planifica
+    pero no elige usuario en las herramientas). El usuario elegido va en naranjo.
+  - **Proyectos activos**: los que el Recorrido pone en Ejecución (`rcArmar`, sin
+    los de más de 60 días), con la clave `req:<N°>` o `tag:<TAG>`; una asignación
+    hecha con el TAG sigue siendo del mismo proyecto cuando este recibe su N°.
+    El nombre de cada uno queda en el archivo, así una semana pasada se sigue
+    leyendo cuando el proyecto terminó.
+  - **Máximo 3** (`PL_MAX`): con 3, la persona sale deshabilitada en las ventanitas
+    («Completo»). Si dos computadores se pasan a la vez, la casilla queda en rojo
+    («4 de 3: quita 1»).
+  - **La alarma**: un proyecto activo sin nadie ningún día de la semana de hoy,
+    salvo que se marque «Sin trabajo esta semana» (una pausa de esa semana, que
+    también se quita al asignarle a alguien). Se ve en la cabecera (`#plAlertaCab`,
+    desde cualquier herramienta; no en el teléfono, donde no cabe), en el menú y en
+    el Inicio (número y línea en rojo), y la vista la detalla arriba. Para eso el
+    portal lee la carpeta al abrirse aunque no abra en el Inicio, sin pedir permisos.
+  - **Dónde se guarda**: en la carpeta de intercambio, en
+    `publicado/planificacion/<AAAA-Www>/<dispositivo>.json` (esquema
+    `planificacion-semana` del catálogo). Cada navegador escribe solo su archivo
+    (`quempin_portal_dispositivo`), así OneDrive nunca junta dos versiones del
+    mismo; la semana es la unión de todos y en cada casilla manda el cambio más
+    reciente (`t`), también si es quitar, con un reloj que nunca queda detrás de
+    lo ya visto. Lo que no alcanza a guardarse espera en `quempin_portal_plan_pendiente`
+    y se reintenta. La vista relee cada 30 segundos (solo los archivos que
+    cambiaron). Es la primera vista del portal que escribe en la carpeta.
+  - Pruebas: `test_portal.py`, desde `test_la_planificacion_semanal_en_el_registro`
+    (alarma, máximo, guardado y esquema, unión de dos computadores, ausencias,
+    deshacer, semanas y cambio de año, copiar, compartir, imprimir, teléfono).
 - **Publicar**: copiar el archivo a `.worktrees/gh-pages/portal/index.html`,
   hacer commit y push. No tiene build ni datos, y `publicar.py` no lo toca.
 - **Revertir**: borrar `portal/` en gh-pages, o hacer `git revert` del commit

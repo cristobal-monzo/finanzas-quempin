@@ -1,0 +1,84 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "planificacion",
+  "tipo": "planificacion-semana",
+  "generado": "2026-10-20T19:05:00.000Z",
+  "autor": "NB",
+  "datos": {
+    "semana": "2026-W43",
+    "desde": "2026-10-19",
+    "dispositivo": "k3j4h5q2x9",
+    "asignaciones": [
+      {
+        "dia": "2026-10-19",
+        "persona": "es",
+        "proyecto": "req:296",
+        "activa": true,
+        "t": "ayer",
+        "por": "NB"
+      },
+      {
+        "dia": "2026-10-19",
+        "persona": "LC",
+        "proyecto": "tag:DEMO",
+        "activa": true,
+        "t": "2026-10-20T19:04:12.004Z",
+        "por": "NB"
+      },
+      {
+        "dia": "2026-10-20",
+        "persona": "LC",
+        "proyecto": "tag:DEMO",
+        "activa": false,
+        "t": "2026-10-20T19:04:30.500Z",
+        "por": "NB"
+      },
+      {
+        "dia": "2026-10-23",
+        "persona": "NB",
+        "proyecto": "otra:oficina",
+        "activa": true,
+        "t": "2026-10-20T19:04:40.000Z",
+        "por": "NB"
+      }
+    ],
+    "ausencias": [
+      {
+        "dia": "2026-10-21",
+        "persona": "SV",
+        "motivo": "vacaciones",
+        "t": "2026-10-20T19:04:50.000Z",
+        "por": "NB"
+      }
+    ],
+    "pausas": [
+      {
+        "proyecto": "req:303",
+        "activa": true,
+        "nota": "Esperando materiales",
+        "t": "2026-10-20T19:04:55.000Z",
+        "por": "NB"
+      }
+    ],
+    "proyectos": {
+      "req:296": {
+        "titulo": "Obra de ejemplo",
+        "lugar": "Ciudad de ejemplo",
+        "req": "296",
+        "tag": null
+      },
+      "tag:DEMO": {
+        "titulo": "Obra demo",
+        "lugar": "",
+        "req": null,
+        "tag": "DEMO"
+      },
+      "otra:oficina": {
+        "titulo": "Oficina",
+        "lugar": "",
+        "req": null,
+        "tag": null
+      }
+    }
+  }
+}

@@ -16,6 +16,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 | `procesado/` | Envíos ya atendidos, por mes, con su resultado: aplicado, sin cambios, reemplazado por uno más reciente, rechazado o descartado. |
 | `publicado/` | Lo que cada herramienta comparte con las demás (ver abajo). Un archivo se reescribe solo cuando cambia lo que dice. |
 | `publicado/formulador/` | Un archivo por cada proyecto del Formulador: así el equipo ve los mismos proyectos. |
+| `publicado/planificacion/` | La Planificación semanal del Portal QUEMPIN: quién va a qué proyecto cada día. Una carpeta por semana y, dentro, un archivo por computador; el Portal los junta. |
 | `esquemas.json` | El formato de cada envío y de cada publicación. |
 | `intercambio.json` | Marca que identifica esta carpeta. |
 
