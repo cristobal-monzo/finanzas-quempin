@@ -303,7 +303,9 @@ def paso_uf(raiz: Path, previo, forzar):
         return "UF del día ya guardada", None
     ok, salida = correr([sys.executable, str(DRIVER_COTIZADOR), "uf"], cwd=DRIVER_COTIZADOR.parent, limite=120)
     if not ok:
-        raise RuntimeError(f"UF del día: {salida}")
+        # Es solo el respaldo del Cotizador: mindicador.cl caído no es una falla del procesador
+        # (no debe encender el aviso de las herramientas). Se reintenta en la próxima vuelta.
+        return "mindicador.cl no respondió; se reintenta en la próxima vuelta", None
     return salida.splitlines()[-1] if salida else "UF guardada", hoy
 
 

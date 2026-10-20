@@ -183,3 +183,11 @@ def test_el_estado_dice_su_propia_vuelta(entorno):
     _vuelta(entorno)
     estado = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]
     assert estado["publicaciones"]["estado"]["generado"] >= estado["procesador"]["ultimaCorrida"][:16]
+
+
+def test_mindicador_caido_no_es_una_falla_del_procesador(entorno, tmp_path, monkeypatch):
+    monkeypatch.setenv("QUEMPIN_UF_ULTIMA", str(tmp_path / "uf_ultima.json"))
+    monkeypatch.setattr(pr, "correr", lambda comando, cwd=None, limite=600: (comando[-1] != "uf", "[ERROR] HTTP 500"))
+    r = _vuelta(entorno)
+    assert r["pasos"]["uf"]["ok"] and "se reintenta" in r["pasos"]["uf"]["detalle"]
+    assert not r["avisos"]
