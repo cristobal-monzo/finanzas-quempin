@@ -382,12 +382,38 @@ y que se pueda revertir si no le gusta.
     persona), **Por personal** y **Por proyecto** (tablas de lunes a viernes; el
     sábado aparece si se pide o si ya tiene algo). Cada casilla se toca y abre una
     ventanita junto a ella (`#plPop`; en el teléfono sube desde abajo y las tablas
-    muestran un día a la vez): proyectos o personas con casillas, «Toda la
-    semana», otra actividad (oficina, visita técnica) y la ausencia del día
-    (vacaciones, licencia, permiso), que quita a la persona de sus proyectos de ese
-    día. Cada cambio se puede deshacer (el aviso o Ctrl Z). También: copiar la
-    semana anterior (solo agrega), compartir la semana como texto para WhatsApp e
-    imprimirla (`body.pl-imprimiendo`, A4 horizontal).
+    muestran un día a la vez): proyectos o personas con casillas, otra actividad
+    (oficina, visita técnica) y la ausencia (vacaciones, licencia, permiso), que
+    quita a la persona de sus proyectos de esos días. Cada cambio se puede deshacer
+    (el aviso o Ctrl Z). También: copiar la semana anterior (solo agrega).
+  - **Asignar rápido** (2026-10-23, pedido del usuario: «rápido de asignar e
+    intuitivo»): arriba de la ventanita, la franja **«Qué días»** (`#plPopDias`,
+    `planif.pop.dias`; al abrir, el día de la casilla) con los días, «Toda la
+    semana», «Días libres» / «Días sin nadie» y «Solo <día>»: lo que se marca vale
+    para todos los días elegidos en una sola tanda (`plAsignarDias`,
+    `plAusentarDias`: un aviso y un «Deshacer»); se salta lo que no se puede
+    (ausencia, 3 proyectos) y la ventanita lo dice. Con varios días, una casilla
+    a medias (`indeterminate`) es un proyecto o una persona que va solo algunos:
+    marcarla completa los que faltan. **«Cambiar»** (`planif.pop.cambiar`) pasa a
+    la persona a otro proyecto (`plCambiarPor`) o pone a otra persona en su lugar
+    (`plReemplazar`), en un paso; Escape sale de «Cambiar» antes de cerrar.
+    Enter en el buscador elige la primera opción a la vista. En las tablas, las
+    flechas van de casilla en casilla (`plTeclasTabla`) y lo recién cambiado se
+    ilumina un momento (`planif.recien`). Tocar un proyecto de la alarma abre su
+    ventanita, con «Sin trabajo esta semana» arriba y «Siguiente sin nadie» en el
+    pie (`#plPopSiguiente`). En «Asignar» del tablero general van primero los
+    proyectos sin nadie ese día, y desde el proyecto se vuelve a la lista. Las
+    notas de la ventanita usan `.pl-pop-nota.tinte`: la clase `.aviso` es la del
+    mensaje flotante de abajo.
+  - **Compartir e imprimir** (2026-10-23, pedido: «que la exportación sea clara en
+    la asignación»): «Compartir» (`#dlgPlTexto`) arma el texto por persona, día por
+    día con el lugar y con quién va, o por día como antes (`planif.texto`, en
+    `quempin_portal_plan`). «Imprimir o PDF» abre `#dlgPlExportar`: la tabla de la
+    semana (persona × día, A4 horizontal) y una hoja para cada persona elegida
+    (A4 vertical, página con nombre `plVertical`: día, proyecto, lugar y con quién
+    va); de entrada, quienes tienen algo esa semana. `plDocumento` lo arma en
+    `#plDoc`, que solo se ve al imprimir (`body.pl-imprimiendo`); el título de la
+    página es el nombre del PDF. Sale igual desde cualquier vista.
   - **El personal** es el bloque `"personal"` del registro (NB, ES, LC, CM, MP,
     SV y EV): incluye a todos los `"usuarios"` y puede tener más (EV se planifica
     pero no elige usuario en las herramientas). El usuario elegido va en naranjo.
@@ -416,7 +442,9 @@ y que se pueda revertir si no le gusta.
     cambiaron). Es la primera vista del portal que escribe en la carpeta.
   - Pruebas: `test_portal.py`, desde `test_la_planificacion_semanal_en_el_registro`
     (alarma, máximo, guardado y esquema, unión de dos computadores, ausencias,
-    deshacer, semanas y cambio de año, copiar, compartir, imprimir, teléfono).
+    deshacer, semanas y cambio de año, copiar, compartir, imprimir, teléfono; y
+    desde el 2026-10-23 varios días, «Cambiar», teclado, alarma → ventanita y
+    «Asignar» del tablero general).
 - **Publicar**: copiar el archivo a `.worktrees/gh-pages/portal/index.html`,
   hacer commit y push. No tiene build ni datos, y `publicar.py` no lo toca.
 - **Revertir**: borrar `portal/` en gh-pages, o hacer `git revert` del commit

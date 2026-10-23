@@ -860,7 +860,6 @@
   @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .pl-vista[aria-pressed="true"] { background: #3a3835; } }
   .pl-acciones { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .pl-acciones .rc-mios { min-height: 34px; font-size: 13.5px; }
-  .pl-impreso { display: none; }
   /* La alarma: los proyectos activos sin nadie en la semana */
   .pl-alarma {
     display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; border-radius: 12px;
@@ -918,6 +917,7 @@
   }
   .pl-celda:hover { background: var(--page-plane); }
   .pl-celda:focus-visible { outline-offset: -2px; }
+  @media (prefers-reduced-motion: no-preference) { .pl-celda.recien, .pl-bloque.recien { animation: pl-resalta 1.8s ease-out; } }
   .pl-mas {
     align-self: flex-start; min-height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 6px;
     border-radius: 6px; border: 1px dashed var(--baseline); color: var(--texto-suave); font-size: 12px; font-weight: 700;
@@ -944,7 +944,8 @@
     border-radius: 6px; border-left: 3px solid var(--pc); background: color-mix(in srgb, var(--pc) 13%, var(--surface-card));
     font-size: 12.5px; font-weight: 700; line-height: 1.3;
   }
-  .pl-chip .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* El nombre en hasta dos líneas: «Chimenea Talcahuano (LICANTEN)» se lee entero, no «Chimenea Talcahua…» */
+  .pl-chip .t { min-width: 0; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .pl-chip.otra { border-left-style: dotted; background: var(--page-plane); }
   .pl-chip.inactivo { background: var(--page-plane); color: var(--text-secondary); }
   /* Las personas: sus iniciales; las del usuario elegido, en naranjo */
@@ -1066,10 +1067,38 @@
   .pl-pop-cab p { margin: 2px 0 0; font-size: 12.5px; color: var(--texto-suave); }
   .pl-pop .dlg-x { top: 7px; right: 7px; }
   .pl-pop-cuerpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; }
-  .pl-pop-pie { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border-hairline); }
-  .pl-pop-pie .btn-pri { min-height: 38px; min-width: 96px; font-size: 14px; }
+  .pl-pop-cuerpo > * { flex-shrink: 0; }      /* con la lista larga se recorre, no se aplasta (el buscador quedaba bajito) */
+  .pl-pop-pausa {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px;
+    padding: 6px 6px 6px 10px; border-radius: 8px; background: var(--page-plane); font-size: 13px; line-height: 1.4; color: var(--text-secondary);
+  }
+  .pl-pop-pie { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border-hairline); }
+  .pl-pop-pie .btn-pri { flex: 0 0 auto; min-height: 38px; min-width: 96px; font-size: 14px; }
+  .pl-pop-sig { flex: 0 1 auto; min-width: 0; margin-right: auto; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 32px; font-size: 13px; }
+  /* «Qué días»: lo que se marca vale para todos los días elegidos */
+  .pl-pop-dias { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 9px; border-bottom: 1px solid var(--border-hairline); background: var(--page-plane); }
+  .pl-dias-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+  .pl-dias-tit { margin-right: auto; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
+  .pl-dias-r {
+    min-height: 28px; padding: 0 9px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    border: 1px solid var(--baseline); background: var(--surface-card); color: var(--brand-orange-ink); font-size: 12px; font-weight: 700;
+  }
+  .pl-dias-r:hover { border-color: var(--brand-orange); }
+  .pl-dias-r[aria-pressed="true"] { border-color: var(--brand-orange); background: var(--tinte); color: var(--tinte-texto); }
+  .pl-dias-fila { display: flex; gap: 4px; }
+  .pl-dia-op {
+    flex: 1 1 0; min-width: 0; min-height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 1px solid var(--border-hairline); border-radius: 8px; background: var(--surface-card); color: var(--text-secondary);
+    font-size: 12px; font-weight: 700; line-height: 1.15; cursor: pointer;
+  }
+  .pl-dia-op b { font-size: 14px; font-weight: 900; color: var(--text-primary); }
+  .pl-dia-op:hover { border-color: var(--brand-orange); }
+  .pl-dia-op.hoy { border-color: var(--tinte-borde); }
+  .pl-dia-op.bloq { border-style: dashed; }
+  .pl-dia-op.bloq b { color: var(--texto-suave); text-decoration: line-through; }
+  .pl-dia-op[aria-pressed="true"] { border-color: var(--brand-orange); background: var(--tinte); box-shadow: inset 0 -3px 0 var(--brand-orange); color: var(--tinte-texto); }
   .pl-pop-nota { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--page-plane); font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
-  .pl-pop-nota.aviso { background: var(--tinte); color: var(--tinte-texto); }
+  .pl-pop-nota.tinte { background: var(--tinte); color: var(--tinte-texto); }
   .pl-buscar {
     width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--baseline); border-radius: 8px;
     background: var(--surface-1); color: var(--text-primary); font-size: 14px;
@@ -1077,6 +1106,9 @@
   .pl-ops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
   .pl-ops > li { display: flex; align-items: center; gap: 6px; border-radius: 8px; }
   .pl-ops > li:has(input:checked) { background: var(--tinte); }
+  .pl-ops > li:has(input:indeterminate) { background: linear-gradient(90deg, var(--tinte), transparent); }
+  .pl-grupos, .pl-grupo { display: flex; flex-direction: column; gap: 6px; }
+  .pl-grupos { gap: 10px; }
   .pl-op {
     flex: 1 1 auto; min-width: 0; min-height: 46px; display: flex; align-items: center; gap: 10px; padding: 5px 8px;
     border: 0; border-radius: 8px; background: transparent; color: var(--text-primary); text-align: left; cursor: pointer;
@@ -1092,13 +1124,17 @@
   .pl-op-txt .s { font-size: 12px; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pl-op .pl-per { min-width: 36px; }
   .pl-op .pl-flecha { flex: 0 0 auto; display: inline-flex; color: var(--texto-suave); }
-  .pl-semana-btn {
+  button.pl-op:disabled { cursor: default; opacity: 0.55; }
+  button.pl-op:disabled:hover { background: transparent; }
+  .pl-op-txt .s .pl-op-alerta { font-weight: 700; color: var(--estado-bad); }
+  .pl-op-btn {
     flex: 0 0 auto; min-height: 28px; margin-right: 6px; padding: 0 9px; border-radius: 7px; cursor: pointer;
     border: 1px solid var(--tinte-borde); background: var(--surface-card); color: var(--brand-orange-ink); font-size: 12px; font-weight: 700; white-space: nowrap;
   }
-  .pl-semana-btn:hover { border-color: var(--brand-orange); }
+  .pl-op-btn:hover { border-color: var(--brand-orange); }
+  .pl-pop-volver { align-self: flex-start; min-height: 30px; padding: 0 10px; font-size: 13px; }
   .pl-pop-sec { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
-  .pl-pop-sec h4 { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
+  .pl-pop-sec h4, .pl-grupo h4 { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
   .pl-otra { display: flex; gap: 6px; }
   .pl-otra input {
     flex: 1 1 auto; min-width: 0; height: 36px; padding: 0 10px; border: 1px solid var(--baseline); border-radius: 8px;
@@ -1117,7 +1153,59 @@
     background: var(--surface-1); color: var(--text-primary); font: 13.5px/1.5 ui-monospace, Consolas, monospace; resize: vertical;
   }
   #dlgPlTexto { width: min(620px, calc(100vw - 24px)); }
-  #dlgPlTexto .dlg-acc .cx-enlace { min-height: 44px; }
+  #dlgPlTexto .dlg-acc .cx-enlace, #dlgPlExportar .dlg-acc .cx-enlace { min-height: 44px; }
+  .pl-texto-modo { align-self: flex-start; }
+  /* Exportar: qué va al papel (la tabla, las hojas de cada persona) y de quiénes */
+  #dlgPlExportar { width: min(580px, calc(100vw - 24px)); }
+  .pl-exp-ops, .pl-exp-quienes { min-width: 0; margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px; }
+  .pl-exp-ops legend, .pl-exp-quienes legend { margin-bottom: 6px; padding: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
+  .pl-exp-op { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--baseline); cursor: pointer; }
+  .pl-exp-op:has(input:checked) { border-color: var(--brand-orange); background: var(--tinte); }
+  .pl-exp-op input, .pl-exp-per input { flex: 0 0 auto; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--brand-orange); cursor: pointer; }
+  .pl-exp-op > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .pl-exp-op b { font-size: 15px; color: var(--text-primary); }
+  .pl-exp-op b + span { font-size: 13.5px; line-height: 1.45; color: var(--text-secondary); }
+  .pl-exp-quienes:disabled { opacity: 0.5; }
+  .pl-exp-pers { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pl-exp-per {
+    min-height: 36px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px 0 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--baseline); background: var(--surface-card); font-size: 14px; font-weight: 900; letter-spacing: 0.04em;
+  }
+  .pl-exp-per input { margin: 0; }
+  .pl-exp-per:has(input:checked) { border-color: var(--brand-orange); background: var(--tinte); }
+  .pl-exp-per.nada { color: var(--texto-suave); }
+  .dlg p.pl-exp-cuenta { color: var(--text-primary); font-weight: 700; }
+  .dlg p.pl-exp-pista { font-size: 13.5px; color: var(--texto-suave); }
+  #plExpImprimir:disabled { opacity: 0.45; cursor: default; }
+  /* La semana en papel (plDocumento): en pantalla no se ve; al imprimir es lo único que sale */
+  .pl-doc { display: none; color: #171513; font-size: 12px; line-height: 1.35; }
+  .pl-doc-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #171513; }
+  .pl-doc-cab h1 { margin: 0; font-size: 20px; font-weight: 900; line-height: 1.2; }
+  .pl-doc-sem { margin: 0 0 2px; font-size: 12px; font-weight: 700; color: #52514e; }
+  .pl-doc-imp { margin: 0; font-size: 11px; line-height: 1.4; color: #5f5e5a; text-align: right; }
+  .pl-doc-t, .pl-doc-dias { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .pl-doc-t th, .pl-doc-t td, .pl-doc-dias th, .pl-doc-dias td { padding: 5px 7px; border: 1px solid #b5b4aa; text-align: left; vertical-align: top; }
+  .pl-doc-t thead th, .pl-doc-dias thead th { background: #efeee9; font-size: 11.5px; font-weight: 900; }
+  .pl-doc-t .pl-doc-per { width: 56px; }
+  .pl-doc-t tbody th { font-size: 16px; font-weight: 900; letter-spacing: 0.04em; }
+  .pl-doc-t tr, .pl-doc-dias tbody { break-inside: avoid; }
+  .pl-doc-p { margin: 0 0 6px; padding-left: 6px; border-left: 3px solid var(--pc, #b5b4aa); }
+  .pl-doc-p:last-child { margin-bottom: 0; }
+  .pl-doc-p.otra { border-left-style: dotted; }
+  .pl-doc-p b { display: block; font-weight: 800; line-height: 1.25; }
+  .pl-doc-p span { display: block; font-size: 10.5px; color: #52514e; }
+  .pl-doc-aus { margin: 0 0 5px; font-style: italic; font-weight: 700; }
+  .pl-doc-libre { margin: 0; color: #8a8984; }
+  .pl-doc-exceso { margin: 5px 0 0; font-weight: 700; color: #d93025; }
+  .pl-doc-notas { margin: 8px 0 0; padding: 0; list-style: none; font-size: 11.5px; }
+  .pl-doc-notas b { font-weight: 900; }
+  .pl-doc-hoja .pl-doc-cab h1 { font-size: 30px; letter-spacing: 0.04em; }
+  .pl-doc-dias { font-size: 12.5px; }
+  .pl-doc-dias tbody + tbody { border-top: 2px solid #171513; }
+  .pl-doc-dias tbody th { font-size: 13px; font-weight: 900; }
+  .pl-doc-dias .pl-doc-p b { font-size: 13px; }
+  .pl-doc-dias .libre td { color: #8a8984; }
+  .pl-doc-dias .aus td { font-style: italic; font-weight: 700; }
   @container plan (max-width: 1340px) { .pl-th-nom { width: 176px; } .pl-t-proyecto .pl-th-nom { width: 240px; } .pl-th-tot { width: 100px; } }
   @container plan (max-width: 1180px) {
     .pl-acciones .cx-enlace span:not(.sr) { display: none; }
@@ -1257,8 +1345,12 @@
        la ventanita sube desde abajo */
     .cab-alerta { display: none; }
     .pl-pop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-height: 78dvh; }
+    /* Con la ventanita abierta abajo, el aviso (con su «Deshacer») va arriba: no tapa «Listo» ni «Siguiente» */
+    body:has(#plPop:not([hidden])) .aviso { bottom: auto; top: 72px; }
     .pl-buscar, .pl-otra input { font-size: 16px; }
     .pl-texto { font-size: 16px; }
+    .pl-dia-op { min-height: 44px; }
+    .pl-dias-r, .pl-op-btn, .pl-pop-volver, .pl-aus-op { min-height: 36px; }
   }
   /* Teléfonos angostos (360 px): con Usuario y Proyecto en la cabecera, todo un poco más junto */
   @media (max-width: 380px) {
@@ -1267,9 +1359,13 @@
     .marca { font-size: 16px; padding: 0 4px; }
   }
 
-  /* ---- Imprimir la Planificación semanal: solo la semana a la vista, en una hoja horizontal y en claro ---- */
+  /* ---- Imprimir la Planificación semanal: solo el documento de la semana (#plDoc), en claro. La tabla va en hojas
+     horizontales y cada persona en su hoja vertical (páginas con nombre: Chrome y Edge las respetan) ---- */
   @media print {
     @page { size: A4 landscape; margin: 10mm; }
+    @page plVertical { size: A4 portrait; margin: 12mm; }
+    /* También el esquema de color: en modo oscuro, con «Gráficos de fondo», el margen de cada hoja salía casi negro */
+    :root:has(> body.pl-imprimiendo) { color-scheme: light; height: auto; background: #ffffff; }
     body.pl-imprimiendo {
       --surface-1: #fcfcfb; --page-plane: #ffffff; --surface-card: #ffffff; --text-primary: #171513; --text-secondary: #52514e;
       --gridline: #d6d5ce; --baseline: #b5b4aa; --border-hairline: rgba(11,11,11,0.18); --texto-suave: #5f5e5a;
@@ -1280,20 +1376,10 @@
       height: auto; overflow: visible; background: #ffffff; color: #171513;
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
-    body.pl-imprimiendo .portal, body.pl-imprimiendo .cuerpo, body.pl-imprimiendo .principal, body.pl-imprimiendo .escenario { display: block; height: auto; position: static; }
-    body.pl-imprimiendo .cab, body.pl-imprimiendo .pestanas, body.pl-imprimiendo .menu, body.pl-imprimiendo .velo, body.pl-imprimiendo .aviso,
-    body.pl-imprimiendo .marco, body.pl-imprimiendo .cargando, body.pl-imprimiendo .escenario > section:not(#vistaPlan),
-    body.pl-imprimiendo .pl-pop, body.pl-imprimiendo dialog, body.pl-imprimiendo .pl-barra, body.pl-imprimiendo .rc-frescura,
-    body.pl-imprimiendo .plan .rc-cab p, body.pl-imprimiendo .pl-resumen, body.pl-imprimiendo .pl-dias-movil, body.pl-imprimiendo .pl-nuevo,
-    body.pl-imprimiendo .pl-mas, body.pl-imprimiendo .pl-pausar, body.pl-imprimiendo .pl-alarma-pista { display: none !important; }
-    body.pl-imprimiendo .vista-plan { position: static; overflow: visible; background: #ffffff; }
-    body.pl-imprimiendo .plan { max-width: none; padding: 0; gap: 8px; }
-    body.pl-imprimiendo .pl-impreso { display: block; margin: -4px 0 0; font-size: 12px; color: #52514e; }
-    body.pl-imprimiendo .pl-tabla thead th { position: static; }
-    body.pl-imprimiendo .pl-tabla tr, body.pl-imprimiendo .pl-dia, body.pl-imprimiendo .pl-bloque, body.pl-imprimiendo .pl-panel { break-inside: avoid; }
-    body.pl-imprimiendo .pl-tablero { grid-template-columns: repeat(var(--pl-n, 5), minmax(0, 1fr)); }
-    body.pl-imprimiendo .pl-paneles { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-    body.pl-imprimiendo .pl-tabla [data-dia] { display: table-cell !important; }
+    body.pl-imprimiendo > :not(#plDoc) { display: none !important; }
+    body.pl-imprimiendo .pl-doc { display: block; }
+    .pl-doc-hoja { page: plVertical; }
+    .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
 </head>
@@ -1473,11 +1559,10 @@
                 <div class="pl-acciones">
                   <label class="rc-mios" title="Mostrar también el sábado"><input type="checkbox" id="plSabado"><span>Sábado</span></label>
                   <button class="cx-enlace" id="plCopiar" type="button" title="Agrega lo de la semana anterior, día por día, sin borrar nada de esta"></button>
-                  <button class="cx-enlace" id="plCompartir" type="button" title="El resumen de la semana para pegar en WhatsApp o en un correo"></button>
-                  <button class="cx-enlace" id="plImprimir" type="button" title="Imprimir la semana tal como se ve"></button>
+                  <button class="cx-enlace" id="plCompartir" type="button" title="Lo de cada persona, listo para pegar en WhatsApp o en un correo"></button>
+                  <button class="cx-enlace" id="plImprimir" type="button" title="Imprimir o guardar en PDF la tabla de la semana y una hoja para cada persona"></button>
                 </div>
               </div>
-              <p class="pl-impreso" id="plImpreso"></p>
               <div class="pl-alarma" id="plAlarma" hidden></div>
               <div class="rc-resumen pl-resumen" id="plResumen" role="group" aria-label="La semana en cifras: cada una abre su vista"></div>
               <div class="pl-dias-movil" id="plDiasMovil" role="group" aria-label="Día a la vista"></div>
@@ -1546,7 +1631,7 @@
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
       <li><strong>Recorrido de los proyectos</strong> (arriba en el Inicio y en el menú): cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre, con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Las cifras de arriba filtran el tablero y «Solo mis proyectos» deja los tuyos. Lee la carpeta del equipo, así que necesita la biblioteca conectada en este navegador.</li>
-      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla, y también se anotan las ausencias y otras actividades. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar») hasta que se asigna o se marca «Sin trabajo esta semana». Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
+      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar»); al tocarlo se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
       <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
@@ -1578,8 +1663,9 @@
     <p id="plPopSub"></p>
     <button class="dlg-x" id="plPopX" type="button" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
+  <div class="pl-pop-dias" id="plPopDias" role="group" aria-label="Qué días" hidden></div>
   <div class="pl-pop-cuerpo" id="plPopCuerpo"></div>
-  <div class="pl-pop-pie"><button class="btn-pri" id="plPopListo" type="button">Listo</button></div>
+  <div class="pl-pop-pie"><button class="cx-enlace pl-pop-sig" id="plPopSiguiente" type="button" hidden></button><button class="btn-pri" id="plPopListo" type="button">Listo</button></div>
 </div>
 
 <!-- Planificación semanal: la semana como texto, para pegarla en WhatsApp o en un correo -->
@@ -1587,12 +1673,40 @@
   <form method="dialog" class="dlg">
     <h2 id="dlgPlTextoTit">Compartir la semana</h2>
     <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <p>El resumen de la semana a la vista, listo para pegar en WhatsApp o en un correo.</p>
+    <p>La semana a la vista, lista para pegar en WhatsApp o en un correo: por persona, cada uno ve sus días, proyectos y con quién va.</p>
+    <div class="pl-vistas pl-texto-modo" id="plTextoModo" role="group" aria-label="Cómo ordenar el texto">
+      <button class="pl-vista" type="button" data-modo="persona">Por persona</button>
+      <button class="pl-vista" type="button" data-modo="dia">Por día</button>
+    </div>
     <label class="sr" for="plTextoArea">Resumen de la semana</label>
     <textarea class="pl-texto" id="plTextoArea" readonly rows="14"></textarea>
     <div class="dlg-acc"><button class="cx-enlace" value="">Cerrar</button><button class="btn-pri" id="plCopiarTexto" type="button">Copiar el texto</button></div>
   </form>
 </dialog>
+
+<!-- Planificación semanal: qué imprimir o guardar en PDF (lo arma plDocumento() en #plDoc, solo para el papel) -->
+<dialog id="dlgPlExportar" aria-labelledby="dlgPlExportarTit">
+  <form method="dialog" class="dlg">
+    <h2 id="dlgPlExportarTit">Imprimir o guardar en PDF</h2>
+    <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <p id="plExpSemana"></p>
+    <fieldset class="pl-exp-ops">
+      <legend>Qué incluir</legend>
+      <label class="pl-exp-op"><input type="checkbox" id="plExpTabla" checked><span><b>Tabla de la semana</b><span>Cada persona en una fila y, cada día, el nombre completo de sus proyectos con el lugar. En una hoja horizontal.</span></span></label>
+      <label class="pl-exp-op"><input type="checkbox" id="plExpHojas" checked><span><b>Una hoja para cada persona</b><span>Sus días, proyectos, lugar y con quién va, para entregársela. Una hoja vertical por persona.</span></span></label>
+    </fieldset>
+    <fieldset class="pl-exp-quienes" id="plExpQuienes">
+      <legend>Hojas de</legend>
+      <div class="pl-exp-pers" id="plExpPers"></div>
+    </fieldset>
+    <p class="pl-exp-cuenta" id="plExpCuenta" aria-live="polite"></p>
+    <p class="pl-exp-pista">Para tener el archivo, en la ventana de impresión elige «Guardar como PDF».</p>
+    <div class="dlg-acc"><button class="cx-enlace" value="">Cancelar</button><button class="btn-pri" id="plExpImprimir" type="button">Imprimir o guardar PDF</button></div>
+  </form>
+</dialog>
+
+<!-- Planificación semanal: la semana en papel. Se arma al imprimir y se vacía al terminar; en pantalla no se ve -->
+<div class="pl-doc" id="plDoc"></div>
 
 <div class="aviso" id="aviso" role="status" aria-live="polite" hidden></div>
 
@@ -4163,18 +4277,20 @@
   const planif = {
     vista: PL_VISTAS.some((v) => v.id === plPrefs.vista) ? plPrefs.vista : 'general',
     sabado: plPrefs.sabado === true,
+    texto: plPrefs.texto === 'dia' ? 'dia' : 'persona',     // cómo se ordena el texto de Compartir
     lunes: null,              // el lunes de la semana a la vista
     semanas: new Map(),       // «2026-W43» → { id, lunes, archivos, mias, ef, leida }
     dispositivo: '',
     reloj: 0,                 // el instante más nuevo que se vio o se escribió (ms)
     porGuardar: new Set(), guardando: false, otraVez: false, relojGuardar: null, guardado: 0, errorGuardar: null,
     deshacer: [],             // tandas de cambios para deshacer, la última al final
+    recien: new Set(), relojRecien: null,   // las casillas (anclas) de la última tanda, que se iluminan
     leyendo: null, error: null,
     pop: null,                // la ventanita abierta: { tipo: persona | proyecto | nuevo, iso, ancla, … }
     diaMovil: null,           // el día que muestran las tablas en el teléfono
     foco: null                // el proyecto que «Por proyecto» resalta al pintarse
   };
-  const plGuardarPrefs = () => guardar(LS_PL, { vista: planif.vista, sabado: planif.sabado });
+  const plGuardarPrefs = () => guardar(LS_PL, { vista: planif.vista, sabado: planif.sabado, texto: planif.texto });
 
   // ---- Semanas: de lunes a sábado, con el número ISO 8601 (la semana es del año de su jueves) -------------------
   const plMas = (f, n) => new Date(f.getFullYear(), f.getMonth(), f.getDate() + n);
@@ -4456,7 +4572,7 @@
   function plActivos() {
     const vistos = new Set();
     return rc.tarjetas.filter((t) => t.etapa === 'ejecucion' && !t.antiguo && (t.req || t.tag)).map((t) => ({
-      clave: t.req ? 'req:' + t.req : 'tag:' + t.tag, req: t.req || null, tag: t.tag || null, titulo: t.titulo, lugar: plLugar(t.titulo, t.lugar),
+      clave: t.req ? 'req:' + t.req : 'tag:' + t.tag, req: t.req || null, tag: t.tag || null, titulo: t.titulo, lugar: plLugar(t.titulo, t.lugar), sitio: rcLegible(t.lugar),
       avance: typeof t.avance === 'number' ? t.avance : null, tarjeta: t.clave, activo: true, otra: false
     })).filter((p) => !vistos.has(p.clave) && vistos.add(p.clave)).sort(plPorTitulo);
   }
@@ -4566,10 +4682,17 @@
     planif.deshacer.push({ semana: s.id, tanda });
     if (planif.deshacer.length > 40) planif.deshacer.shift();
     plProgramarGuardado(s.id);
+    plMarcarRecien(tanda.filter((x) => x.tipo === 'asig' || x.tipo === 'aus').map((x) => x.e), m);
     plPintar();
     plPintarAlarmaGlobal();
     if (mensaje) avisar(mensaje, { texto: 'Deshacer', ir: plDeshacer });
     return true;
+  }
+  // Las casillas de la última tanda se iluminan un momento al repintarse: se ve qué llenó «Toda la semana» o varios días.
+  function plMarcarRecien(es, m) {
+    planif.recien = new Set(es.flatMap((e) => ['p|' + e.persona + '|' + e.dia].concat(e.proyecto ? ['j|' + m.canon(e.proyecto) + '|' + e.dia] : [])));
+    clearTimeout(planif.relojRecien);
+    planif.relojRecien = setTimeout(() => { planif.recien = new Set(); }, 1800);
   }
   function plDeshacer() {
     const u = planif.deshacer.pop();
@@ -4580,52 +4703,100 @@
     });
     plRecalcular(s);
     plProgramarGuardado(s.id);
+    plMarcarRecien(u.tanda.filter((x) => x.tipo === 'asig' || x.tipo === 'aus').map((x) => x.e), plModelo(s));
     plPintar();
     plPintarAlarmaGlobal();
     avisar('Se deshizo el último cambio' + (planif.lunes && s.id !== plSemanaId(planif.lunes) ? ', de la semana ' + plNum(s) : '') + '.');
   }
   const plSemanaVista = () => plSemana(plSemanaId(planif.lunes || plLunesDe(new Date())));
-  // Asignar o quitar a una persona en un proyecto, un día. Una ausencia o el máximo de 3 lo impiden.
-  function plAsignar(s, iso, per, clave, si) {
+  /* Unos días de la semana, para los avisos: «el lunes 19», «el lunes y el jueves», «de lunes a viernes» (tres o más
+     seguidos), «el lunes, el miércoles y el viernes». */
+  function plDiasTexto(s, isos) {
+    const ds = [...new Set(isos)].map((iso) => plDiaDe(s, iso)).sort((a, b) => a.i - b.i);
+    if (ds.length === 1) return plElDia(ds[0]);
+    if (ds.length >= 3 && ds[ds.length - 1].i - ds[0].i === ds.length - 1) return 'de ' + ds[0].nombre.toLowerCase() + ' a ' + ds[ds.length - 1].nombre.toLowerCase();
+    return unir(ds.map((d) => 'el ' + d.nombre.toLowerCase()));
+  }
+  /* Asignar (si) o quitar a una persona en un proyecto, uno o varios días, en una sola tanda: un aviso y un «Deshacer».
+     Se salta lo que no se puede (una ausencia, o el máximo de 3) y el aviso lo dice. Con un solo día bloqueado, el aviso
+     explica qué hacer. Asignar le quita al proyecto la marca «sin trabajo esta semana». Devuelve si algo cambió. */
+  function plAsignarDias(s, per, clave, isos, si) {
     const m = plModelo(s);
-    const d = plDiaDe(s, iso);
-    const k = iso + '|' + per;
-    const suyos = m.porPersona.get(k) || [];
-    if (si && m.ausencias.has(k)) { avisar(per + ' está ausente ' + plElDia(d) + ': quita la ausencia para asignarle un proyecto.'); plPintar(); return; }
-    if (si && !suyos.includes(clave) && suyos.length >= PL_MAX) { avisar(per + ' ya tiene ' + PL_MAX + ' proyectos ' + plElDia(d) + ', el máximo: quita uno para agregar otro.'); plPintar(); return; }
-    const cambios = [{ tipo: 'asig', dia: iso, persona: per, clave, activa: si }];
+    const cambios = [], no = [];
+    isos.forEach((iso) => {
+      const k = iso + '|' + per;
+      const suyos = m.porPersona.get(k) || [];
+      const ya = suyos.includes(clave);
+      if (!si) { if (ya) cambios.push({ tipo: 'asig', dia: iso, persona: per, clave, activa: false }); return; }
+      const aus = m.ausencias.get(k);
+      if (ya) return;
+      if (aus) no.push({ iso, por: plAusencia(aus.motivo).nombre.toLowerCase() });
+      else if (suyos.length >= PL_MAX) no.push({ iso, por: 'ya tiene ' + PL_MAX + ' proyectos' });
+      else cambios.push({ tipo: 'asig', dia: iso, persona: per, clave, activa: true });
+    });
+    const dias = cambios.map((c) => c.dia);        // el aviso dice solo los días que cambian
+    const t = m.titulo(clave);
+    if (!cambios.length) {
+      if (no.length === 1 && isos.length === 1) {
+        const d = plDiaDe(s, no[0].iso);
+        avisar(m.ausencias.has(no[0].iso + '|' + per) ? per + ' está ausente ' + plElDia(d) + ': quita la ausencia para asignarle un proyecto.'
+          : per + ' ya tiene ' + PL_MAX + ' proyectos ' + plElDia(d) + ', el máximo: quita uno para agregar otro.');
+      } else if (no.length) avisar('No se puede asignar a ' + per + ' en ' + t + ': ' + unir(no.map((x) => plElDia(plDiaDe(s, x.iso)) + ' (' + x.por + ')')) + '.');
+      plPintar();
+      return false;
+    }
     let extra = '';
     if (si && m.pausas.has(clave)) { cambios.push({ tipo: 'pau', clave, activa: false }); extra = ' Ya no está «sin trabajo esta semana».'; }
-    plCambiar(s, cambios, per + (si ? ' va a ' : ' ya no va a ') + m.titulo(clave) + ' ' + plElDia(d) + '.' + extra);
+    const salvo = no.length ? ', salvo ' + unir(no.map((x) => plElDia(plDiaDe(s, x.iso)) + ' (' + x.por + ')')) : '';
+    return plCambiar(s, cambios, si ? per + ' va a ' + t + ' ' + plDiasTexto(s, dias) + salvo + '.' + extra
+      : per + ' ya no va a ' + t + ' ' + plDiasTexto(s, dias) + '.');
   }
-  // La misma persona en el mismo proyecto todos los días a la vista, salvo los que no se puede (ausencia o 3 proyectos).
-  function plTodaLaSemana(s, per, clave) {
+  /* Cambiar a una persona de un proyecto a otro, los días en que estaba, en un paso: se quita y se pone en la misma
+     tanda, así también sirve con el día completo (3 proyectos). Si ese día ya iba al otro, solo se quita del primero. */
+  function plCambiarPor(s, per, de, a, isos) {
     const m = plModelo(s);
-    const dias = plDias(s);
-    const cambios = [], no = [];
-    dias.forEach((d) => {
-      const k = d.iso + '|' + per;
-      const suyos = m.porPersona.get(k) || [];
-      if (suyos.includes(clave)) return;
-      const aus = m.ausencias.get(k);
-      if (aus) no.push(plElDia(d) + ' (' + plAusencia(aus.motivo).nombre.toLowerCase() + ')');
-      else if (suyos.length >= PL_MAX) no.push(plElDia(d) + ' (ya tiene ' + PL_MAX + ' proyectos)');
-      else cambios.push({ tipo: 'asig', dia: d.iso, persona: per, clave, activa: true });
+    const suyos = (iso) => m.porPersona.get(iso + '|' + per) || [];
+    const dias = isos.filter((iso) => suyos(iso).includes(de));
+    if (!dias.length || dias.every((iso) => suyos(iso).includes(a))) { avisar(per + ' ya va a ' + m.titulo(a) + ' esos días.'); return false; }
+    const cambios = dias.flatMap((iso) => [{ tipo: 'asig', dia: iso, persona: per, clave: de, activa: false }]
+      .concat(suyos(iso).includes(a) ? [] : [{ tipo: 'asig', dia: iso, persona: per, clave: a, activa: true }]));
+    if (m.pausas.has(a)) cambios.push({ tipo: 'pau', clave: a, activa: false });
+    return plCambiar(s, cambios, per + ' cambia de ' + m.titulo(de) + ' a ' + m.titulo(a) + ' ' + plDiasTexto(s, dias) + '.');
+  }
+  /* Lo mismo desde el proyecto: en vez de una persona va otra, los días en que iba la primera (si la otra ya iba, solo
+     se quita la primera). Se saltan los días en que la otra está ausente o tiene 3 proyectos: ahí sigue la primera, y
+     el aviso lo dice. */
+  function plReemplazar(s, clave, de, a, isos) {
+    const m = plModelo(s);
+    const dias = [], no = [], cambios = [];
+    let pone = 0;
+    isos.forEach((iso) => {
+      const van = m.porProyecto.get(iso + '|' + clave) || [];
+      if (!van.includes(de)) return;
+      const aus = m.ausencias.get(iso + '|' + a);
+      const dia = plElDia(plDiaDe(s, iso));
+      if (van.includes(a)) cambios.push({ tipo: 'asig', dia: iso, persona: de, clave, activa: false });
+      else if (aus) { no.push({ dia, por: plAusencia(aus.motivo).nombre.toLowerCase() }); return; }
+      else if ((m.porPersona.get(iso + '|' + a) || []).length >= PL_MAX) { no.push({ dia, por: 'ya tiene ' + PL_MAX + ' proyectos' }); return; }
+      else { pone++; cambios.push({ tipo: 'asig', dia: iso, persona: de, clave, activa: false }, { tipo: 'asig', dia: iso, persona: a, clave, activa: true }); }
+      dias.push(iso);
     });
     const t = m.titulo(clave);
-    if (!cambios.length) { avisar(no.length ? 'No se puede asignar a ' + per + ' más días: ' + unir(no) + '.' : per + ' ya va a ' + t + ' todos los días.'); return; }
-    if (m.pausas.has(clave)) cambios.push({ tipo: 'pau', clave, activa: false });
-    plCambiar(s, cambios, per + ' va a ' + t + ' de lunes a ' + dias[dias.length - 1].nombre.toLowerCase() + (no.length ? ', salvo ' + unir(no) : '') + '.');
+    if (!pone) { avisar(no.length ? a + ' no puede ir a ' + t + ': ' + unir(no.map((x) => x.dia + ' (' + x.por + ')')) + '.' : a + ' ya va a ' + t + ' esos días.'); return false; }
+    return plCambiar(s, cambios, a + ' va a ' + t + ' en vez de ' + de + ' ' + plDiasTexto(s, dias)
+      + (no.length ? '; ' + de + ' sigue ' + unir(no.map((x) => x.dia + ' (' + a + ': ' + x.por + ')')) : '') + '.');
   }
-  // Una ausencia (vacaciones, licencia, permiso…) deja a la persona sin proyectos ese día; motivo '' la quita.
-  function plAusentar(s, iso, per, motivo) {
+  // Una ausencia (vacaciones, licencia, permiso…) deja a la persona sin proyectos esos días; motivo '' la quita.
+  function plAusentarDias(s, isos, per, motivo) {
     const m = plModelo(s);
-    const d = plDiaDe(s, iso);
-    const quitados = motivo ? m.porPersona.get(iso + '|' + per) || [] : [];
-    const cambios = [{ tipo: 'aus', dia: iso, persona: per, motivo }].concat(quitados.map((c) => ({ tipo: 'asig', dia: iso, persona: per, clave: c, activa: false })));
-    plCambiar(s, cambios, motivo
-      ? per + ' queda ausente ' + plElDia(d) + ' (' + plAusencia(motivo).nombre.toLowerCase() + ')' + (quitados.length ? '; se quitó de ' + unir(quitados.map(m.titulo)) : '') + '.'
-      : per + ' ya no está ausente ' + plElDia(d) + '.');
+    const cambios = [], quitados = new Set();
+    isos.forEach((iso) => {
+      cambios.push({ tipo: 'aus', dia: iso, persona: per, motivo });
+      if (motivo) (m.porPersona.get(iso + '|' + per) || []).forEach((c) => { quitados.add(c); cambios.push({ tipo: 'asig', dia: iso, persona: per, clave: c, activa: false }); });
+    });
+    return plCambiar(s, cambios, motivo
+      ? per + ' queda ausente ' + plDiasTexto(s, isos) + ' (' + plAusencia(motivo).nombre.toLowerCase() + ')' + (quitados.size ? '; se quitó de ' + unir([...quitados].map(m.titulo)) : '') + '.'
+      : per + ' ya no está ausente ' + plDiasTexto(s, isos) + '.');
   }
   // «Sin trabajo esta semana»: el proyecto sigue activo, pero esa semana no se trabaja en él y no cuenta como alarma.
   function plPausar(s, clave, si) {
@@ -4645,10 +4816,10 @@
     }
     return clave;
   }
-  function plOtra(s, iso, per, txt) {
+  function plOtra(s, isos, per, txt) {
     const c = plClaveOtra(s, txt);
     if (!c) { avisar('Escribe qué actividad es: oficina, visita técnica, bodega…'); return; }
-    plAsignar(s, iso, per, c, true);
+    plAsignarDias(s, per, c, isos, true);
   }
   // Copia lo de la semana anterior, día por día, sin borrar nada de esta: lo que ya no se puede (un proyecto que terminó,
   // una ausencia o un día con 3 proyectos) se salta y se cuenta.
@@ -4742,9 +4913,10 @@
     plCerrarPop(false);
     plPintar();
   }
-  // Desde la alarma: «Por proyecto», con ese proyecto a la vista
-  function plEnfocar(clave) {
+  // Desde la alarma: «Por proyecto», con ese proyecto a la vista y, con abrir, su ventanita en hoy (o en el primer día)
+  function plEnfocar(clave, abrir) {
     planif.foco = clave;
+    planif.focoAbrir = !!abrir;
     plElegirVista('proyecto');
   }
   // La alarma de la cabecera: la semana de hoy en la Planificación
@@ -4832,8 +5004,6 @@
     if (planif.vista === 'general') plPintarGeneral(s, m, dias);
     else if (planif.vista === 'personal') plPintarPersonal(s, m, dias);
     else plPintarProyecto(s, m, dias);
-    $('#plImpreso').textContent = 'Semana ' + plNum(s) + ' · ' + plRango(s.lunes, dias.length) + ' de ' + plMas(s.lunes, dias.length - 1).getFullYear()
-      + ' · ' + PL_VISTAS.find((v) => v.id === planif.vista).nombre + ' · impreso ' + plCuando(new Date().toISOString());
     if (planif.pop) plPintarPop(false);
   }
   function plPintarFrescura() {
@@ -4889,12 +5059,12 @@
       b.type = 'button';
       b.style.setProperty('--pc', m.color(p.clave));
       b.append(crear('span', 'pl-dot'), crear('span', null, p.titulo));
-      b.title = 'Planificar ' + p.titulo + ' en «Por proyecto»';
-      b.addEventListener('click', () => plEnfocar(p.clave));
+      b.title = 'Asignar a alguien en ' + p.titulo;
+      b.addEventListener('click', () => plEnfocar(p.clave, true));
       li.append(b);
       ul.append(li);
     });
-    txt.append(ul, crear('span', 'pl-alarma-pista', 'Asigna a alguien al menos un día o, si esa semana no se trabaja en él, márcalo «Sin trabajo esta semana» en «Por proyecto».'));
+    txt.append(ul, crear('span', 'pl-alarma-pista', 'Toca uno para asignar a alguien al menos un día o, si esa semana no se trabaja en él, marcarlo «Sin trabajo esta semana».'));
     caja.append(ico, txt);
   }
   // Las cuatro cifras de la semana; cada una abre la vista donde se ve
@@ -4964,11 +5134,25 @@
   function plCelda(ancla, d) {
     const td = crear('td', d.hoy ? 'hoy' : null);
     td.dataset.dia = String(d.i);
-    const b = crear('button', 'pl-celda');
+    const b = crear('button', 'pl-celda' + (planif.recien.has(ancla) ? ' recien' : ''));
     b.type = 'button';
     b.dataset.ancla = ancla;
     td.append(b);
     return [td, b];
+  }
+  // En las tablas, las flechas van de casilla en casilla (Inicio y Fin: el primer y el último día), sin recorrerlas con
+  // Tab; Enter abre la ventanita. En el teléfono solo se recorren las casillas a la vista (las del día elegido).
+  function plTeclasTabla(e) {
+    const c = e.target.closest && e.target.closest('.pl-celda');
+    const paso = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0], Home: [0, -99], End: [0, 99] }[e.key];
+    if (!c || !paso || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    const visibles = (tr) => [...tr.querySelectorAll('.pl-celda')].filter((x) => x.getClientRects().length);
+    const filas = [...c.closest('tbody').rows].filter((tr) => visibles(tr).length);
+    const f = Math.max(0, Math.min(filas.length - 1, filas.indexOf(c.closest('tr')) + paso[0]));
+    const fila = visibles(filas[f]);
+    const destino = fila[Math.max(0, Math.min(fila.length - 1, visibles(c.closest('tr')).indexOf(c) + paso[1]))];
+    if (destino) destino.focus();
   }
   // «Asignar» en una casilla vacía; con algo ya asignado, un «+» que aparece en la esquina (txt null)
   function plAgregar(b, txt) {
@@ -5071,13 +5255,19 @@
     cont.append(t);
     if (planif.foco) {
       const f = cont.querySelector('tr[data-clave="' + CSS.escape(planif.foco) + '"]');
+      const abrir = planif.focoAbrir;
       planif.foco = null;
+      planif.focoAbrir = false;
       if (f) {
         f.scrollIntoView({ block: 'center', behavior: REDUCIR.matches ? 'auto' : 'smooth' });
         f.classList.add('resaltada');
         setTimeout(() => f.classList.remove('resaltada'), 1800);
-        const c = f.querySelector('.pl-celda');
-        if (c) c.focus({ preventScroll: true });
+        const celdas = [...f.querySelectorAll('.pl-celda')].filter((x) => x.getClientRects().length);
+        const c = celdas.find((x) => x.closest('td.hoy')) || celdas[0];
+        if (c) {
+          c.focus({ preventScroll: true });
+          if (abrir) plAbrirProyecto(f.dataset.clave, dias[+c.closest('td').dataset.dia].iso, null, true);
+        }
       }
     }
   }
@@ -5157,7 +5347,7 @@
         claves.forEach((c) => {
           const p = m.proyectos.get(c) || {};
           const li = crear('li');
-          const b = crear('button', 'pl-bloque' + (p.otra ? ' otra' : ''));
+          const b = crear('button', 'pl-bloque' + (p.otra ? ' otra' : '') + (planif.recien.has('j|' + c + '|' + d.iso) ? ' recien' : ''));
           b.type = 'button';
           b.dataset.ancla = 'j|' + c + '|' + d.iso;
           b.style.setProperty('--pc', m.color(c));
@@ -5318,9 +5508,10 @@
     $('#plPop').hidden = false;
     plPintarPop(true);
   }
-  const plAbrirPersona = (per, iso, ancla) => plAbrir({ tipo: 'persona', per, iso, ancla: ancla || 'p|' + per + '|' + iso, q: '' });
-  const plAbrirProyecto = (clave, iso, ancla) => plAbrir({ tipo: 'proyecto', clave, iso, ancla: ancla || 'j|' + clave + '|' + iso });
-  const plAbrirNuevo = (iso) => plAbrir({ tipo: 'nuevo', iso, ancla: 'n|' + iso, q: '' });
+  // dias: los días elegidos en la franja «Qué días» (al abrir, el de la casilla); cambiar: «Cambiar» a medio elegir
+  const plAbrirPersona = (per, iso, ancla) => plAbrir({ tipo: 'persona', per, iso, dias: [iso], ancla: ancla || 'p|' + per + '|' + iso, q: '' });
+  const plAbrirProyecto = (clave, iso, ancla, alarma) => plAbrir({ tipo: 'proyecto', clave, iso, dias: [iso], ancla: ancla || 'j|' + clave + '|' + iso, alarma: !!alarma, q: '' });
+  const plAbrirNuevo = (iso) => plAbrir({ tipo: 'nuevo', iso, dias: [iso], ancla: 'n|' + iso, q: '' });
   function plCerrarPop(devolverFoco) {
     const pop = $('#plPop');
     const ancla = planif.pop && planif.pop.ancla;
@@ -5350,53 +5541,158 @@
     const d = plDiaDe(s, x.iso);
     if (!s.leida || d.i < 0 || d.i > 5) { plCerrarPop(false); return; }
     const m = plModelo(s);
+    /* Los días elegidos, entre los que están a la vista. El día de la casilla sigue en la franja aunque su columna se
+       esconda con la ventanita abierta (el sábado al quitarle lo último): si no, lo marcado caería en otro día. */
+    const visibles = plDias(s);
+    if (!visibles.some((y) => y.iso === x.iso)) visibles.push(d);
+    x.dias = visibles.map((y) => y.iso).filter((iso) => x.dias.includes(iso));
+    if (!x.dias.length) x.dias = [x.iso];
+    const ds = x.dias.map((iso) => plDiaDe(s, iso));
     const cuerpo = $('#plPopCuerpo');
-    const enfocado = document.activeElement && cuerpo.contains(document.activeElement) ? document.activeElement.dataset.op : null;
+    const a = document.activeElement;
+    const enfocado = a && pop.contains(a) ? a.dataset.op : null;
     const scroll = cuerpo.scrollTop;
     cuerpo.textContent = '';
-    if (x.tipo === 'persona') plPopPersona(s, m, d, x, cuerpo);
-    else if (x.tipo === 'proyecto') plPopProyecto(s, m, d, x, cuerpo);
-    else plPopNuevo(s, m, d, x, cuerpo);
+    $('#plPopSiguiente').hidden = true;
+    plPopDias(s, m, visibles, x);
+    if (x.tipo === 'persona') plPopPersona(s, m, ds, x, cuerpo);
+    else if (x.tipo === 'proyecto') plPopProyecto(s, m, ds, x, cuerpo);
+    else plPopNuevo(s, m, ds, x, cuerpo);
     cuerpo.scrollTop = primera ? 0 : scroll;
     plColocarPop();
-    const volver = enfocado && cuerpo.querySelector('[data-op="' + CSS.escape(enfocado) + '"]');
-    if (volver) volver.focus({ preventScroll: true });
-    else if (primera) {
+    const volver = enfocado && pop.querySelector('[data-op="' + CSS.escape(enfocado) + '"]');
+    if (volver && !volver.disabled) volver.focus({ preventScroll: true });
+    else if (primera || enfocado) {
       // En el computador, el buscador (se escribe y filtra); en el teléfono, nada que abra el teclado
       const f = cuerpo.querySelector(MOVIL.matches ? 'input[type="checkbox"]:not([disabled]), button:not([disabled])' : 'input:not([disabled]), button:not([disabled])');
       if (f) f.focus({ preventScroll: true });
     }
   }
-  // Un buscador sobre la lista de la ventanita (con muchas opciones); lo escrito sigue al repintar
-  function plBuscador(x, cuerpo, ul, placeholder) {
+  /* La franja «Qué días»: lo que se marca en la ventanita vale para todos los días elegidos, en un solo paso (un aviso y
+     un «Deshacer»). Cada día dice en su título cómo está ese día: ausente, completo, cuántos van. */
+  function plPopDias(s, m, visibles, x) {
+    const cont = $('#plPopDias');
+    cont.textContent = '';
+    cont.hidden = false;
+    const elegir = (isos) => { x.dias = isos; x.cambiar = null; plPintarPop(false); };
+    const iguales = (isos) => isos.length === x.dias.length && isos.every((iso) => x.dias.includes(iso));
+    const cab = crear('div', 'pl-dias-cab');
+    cab.append(crear('span', 'pl-dias-tit', 'Qué días'));
+    const rapido = (op, txt, isos, titulo) => {
+      if (!isos.length) return;
+      const b = crear('button', 'pl-dias-r', txt);
+      b.type = 'button';
+      b.dataset.op = op;
+      b.title = titulo;
+      b.setAttribute('aria-pressed', iguales(isos) ? 'true' : 'false');
+      b.addEventListener('click', () => elegir(isos));
+      cab.append(b);
+    };
+    const todos = visibles.map((d) => d.iso);
+    rapido('d|todos', 'Toda la semana', todos, 'Elegir todos los días a la vista');
+    if (x.tipo === 'persona') {
+      rapido('d|libres', 'Días libres', todos.filter((iso) => !m.ausencias.has(iso + '|' + x.per) && !(m.porPersona.get(iso + '|' + x.per) || []).length),
+        'Los días en que ' + x.per + ' no tiene proyectos ni ausencia');
+    } else if (x.tipo === 'proyecto') {
+      rapido('d|libres', 'Días sin nadie', todos.filter((iso) => !(m.porProyecto.get(iso + '|' + x.clave) || []).length), 'Los días en que nadie va a este proyecto');
+    }
+    const casilla = plDiaDe(s, x.iso);
+    if (!iguales([x.iso])) rapido('d|solo', 'Solo ' + casilla.corto.toLowerCase() + ' ' + casilla.fecha.getDate(), [x.iso], 'Volver al día de la casilla: ' + plFechaLarga(casilla));
+    const fila = crear('div', 'pl-dias-fila');
+    visibles.forEach((d) => {
+      const si = x.dias.includes(d.iso);
+      const b = crear('button', 'pl-dia-op' + (d.hoy ? ' hoy' : ''));
+      b.type = 'button';
+      b.dataset.op = 'd|' + d.iso;
+      b.setAttribute('aria-pressed', si ? 'true' : 'false');
+      b.append(crear('span', null, d.corto), crear('b', null, String(d.fecha.getDate())));
+      let como = '';
+      if (x.tipo === 'persona') {
+        const au = m.ausencias.get(d.iso + '|' + x.per);
+        const n = (m.porPersona.get(d.iso + '|' + x.per) || []).length;
+        como = au ? 'ausente (' + plAusencia(au.motivo).nombre.toLowerCase() + ')' : n >= PL_MAX ? 'completo, con ' + PL_MAX + ' proyectos' : n ? pl(n, 'proyecto', 'proyectos') : 'sin proyecto';
+        if (au || n >= PL_MAX) b.classList.add('bloq');
+      } else if (x.tipo === 'proyecto') {
+        const n = (m.porProyecto.get(d.iso + '|' + x.clave) || []).length;
+        como = n ? pl(n, 'persona', 'personas') : 'nadie';
+      }
+      b.setAttribute('aria-label', plFechaLarga(d) + (como ? ', ' + como : ''));
+      b.title = plFechaLarga(d) + (como ? ': ' + como : '') + (!si ? '. Toca para sumarlo' : x.dias.length > 1 ? '. Toca para sacarlo' : '');
+      b.addEventListener('click', () => { if (!si || x.dias.length > 1) elegir(si ? x.dias.filter((iso) => iso !== d.iso) : x.dias.concat(d.iso)); });
+      fila.append(b);
+    });
+    cont.append(cab, fila);
+  }
+  const plCortos = (ds) => ds.map((d) => d.corto.toLowerCase() + ' ' + d.fecha.getDate()).join(', ');     // «lun 19, mié 21»
+  /* Un buscador sobre la lista de la ventanita (con muchas opciones); lo escrito sigue al repintar. Enter elige la primera
+     opción a la vista: la marca y cierra la ventanita, o entra en ella. */
+  function plBuscador(x, cuerpo, cont, placeholder) {
     const inp = crear('input', 'pl-buscar');
     inp.type = 'search';
     inp.autocomplete = 'off';
     inp.placeholder = placeholder;
-    inp.setAttribute('aria-label', placeholder);
+    inp.setAttribute('aria-label', placeholder + '. Enter elige el primero');
     inp.dataset.op = 'buscar';
     inp.value = x.q || '';
     const filtrar = () => {
       x.q = inp.value;
       const q = norm(inp.value).trim().split(/\s+/).filter(Boolean);
-      ul.querySelectorAll(':scope > li').forEach((li) => { li.hidden = !q.every((y) => (li.dataset.buscar || '').includes(y)); });
+      cont.querySelectorAll('li[data-buscar]').forEach((li) => { li.hidden = !q.every((y) => li.dataset.buscar.includes(y)); });
+      cont.querySelectorAll('.pl-grupo').forEach((g) => { g.hidden = !g.querySelector('li[data-buscar]:not([hidden])'); });
     };
     inp.addEventListener('input', filtrar);
+    inp.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || !norm(inp.value).trim()) return;
+      e.preventDefault();
+      const li = cont.querySelector('li[data-buscar]:not([hidden])');
+      const c = li && li.querySelector('input[type="checkbox"], button.pl-op');
+      if (!c || c.disabled) return;
+      if (c.type !== 'checkbox') { c.click(); return; }
+      if (!c.checked) c.click();
+      plCerrarPop(true);
+    });
     cuerpo.append(inp);
     return filtrar;
   }
-  // Una opción de la lista: su casilla, su marca (color o iniciales), su nombre y, si ya está elegida, «Toda la semana»
+  // Una opción de la lista: su casilla, su marca (color o iniciales), su nombre y, al lado, «Cambiar» si ya está elegida
   function plOpcion(ul, buscar, casilla, marca, titulo, sub, extra) {
     const li = crear('li');
     li.dataset.buscar = buscar;
     const lab = crear('label', 'pl-op' + (casilla.disabled ? ' no' : ''));
     const tx = crear('span', 'pl-op-txt');
     tx.append(crear('span', 't', titulo));
-    if (sub) tx.append(crear('span', 's', sub));
+    if (sub) tx.append(typeof sub === 'string' ? crear('span', 's', sub) : sub);
     lab.append(casilla, marca, tx);
     li.append(lab);
     if (extra) li.append(extra);
     ul.append(li);
+  }
+  // Una opción que lleva a otra parte (el proyecto que se elige, a quién se pasa): su marca, su nombre y una flecha
+  function plBotonLista(ul, op, buscar, marca, titulo, sub, ir) {
+    const li = crear('li');
+    li.dataset.buscar = buscar;
+    const b = crear('button', 'pl-op');
+    b.type = 'button';
+    b.dataset.op = op;
+    const tx = crear('span', 'pl-op-txt');
+    tx.append(crear('span', 't', titulo));
+    if (sub) tx.append(sub);
+    const f = crear('span', 'pl-flecha');
+    f.append(icono('derecha', 15));
+    b.append(marca, tx, f);
+    b.addEventListener('click', ir);
+    li.append(b);
+    ul.append(li);
+    return b;
+  }
+  // La línea de abajo de una opción, con un aviso en rojo al comienzo si hace falta («Sin nadie esta semana»)
+  function plSub(partes, alerta) {
+    const txt = partes.filter(Boolean).join(' · ');
+    if (!txt && !alerta) return null;
+    const e = crear('span', 's');
+    if (alerta) e.append(crear('b', 'pl-op-alerta', alerta), txt ? ' · ' : '');
+    e.append(txt);
+    return e;
   }
   function plCasilla(op, si, no, alCambiar) {
     const cb = crear('input');
@@ -5407,136 +5703,22 @@
     cb.addEventListener('change', () => alCambiar(cb.checked));
     return cb;
   }
-  function plBotonSemana(op, titulo, ir) {
-    const b = crear('button', 'pl-semana-btn', 'Toda la semana');
+  function plBotonOp(op, txt, titulo, ir) {
+    const b = crear('button', 'pl-op-btn', txt);
     b.type = 'button';
     b.dataset.op = op;
     b.title = titulo;
     b.addEventListener('click', ir);
     return b;
   }
-  // Una persona un día: sus proyectos (hasta 3), otra actividad y una ausencia
-  function plPopPersona(s, m, d, x, cuerpo) {
-    const k = x.iso + '|' + x.per;
-    const suyos = m.porPersona.get(k) || [];
-    const aus = m.ausencias.get(k);
-    $('#plPopTit').textContent = x.per + ' · ' + plFechaLarga(d);
-    $('#plPopSub').textContent = aus ? plAusencia(aus.motivo).nombre : suyos.length + ' de ' + PL_MAX + ' proyectos este día';
-    if (aus) cuerpo.append(crear('p', 'pl-pop-nota aviso', x.per + ' está ausente este día (' + plAusencia(aus.motivo).nombre.toLowerCase() + '). Quita la ausencia para asignarle proyectos.'));
-    else if (suyos.length >= PL_MAX) cuerpo.append(crear('p', 'pl-pop-nota aviso', x.per + ' ya tiene ' + PL_MAX + ' proyectos ' + plElDia(d) + ', el máximo. Quita uno para elegir otro.'));
-    // Los proyectos activos, y lo que ya tiene ese día o se usó en la semana (otras actividades, proyectos que terminaron)
-    const ops = m.activos.slice();
-    m.ordenar(suyos.concat([...m.dias.keys()].filter((c) => c.startsWith('otra:')))).forEach((c) => {
-      if (!ops.some((p) => p.clave === c) && m.proyectos.has(c)) ops.push(m.proyectos.get(c));
-    });
-    const ul = crear('ul', 'pl-ops');
-    ul.setAttribute('aria-label', 'Proyectos de ' + x.per + ' ' + plElDia(d));
-    const filtrar = ops.length > 7 ? plBuscador(x, cuerpo, ul, 'Buscar proyecto') : null;
-    ops.forEach((p) => {
-      const si = suyos.includes(p.clave);
-      const cb = plCasilla('c|' + p.clave, si, !si && (!!aus || suyos.length >= PL_MAX), (v) => plAsignar(s, x.iso, x.per, p.clave, v));
-      const dot = crear('span', 'pl-dot');
-      dot.style.setProperty('--pc', m.color(p.clave));
-      const otros = plOrdenPersonas((m.porProyecto.get(x.iso + '|' + p.clave) || []).filter((q) => q !== x.per));
-      const sub = [p.otra ? 'Otra actividad' : p.lugar, otros.length ? 'con ' + unir(otros) : ''].filter(Boolean).join(' · ');
-      plOpcion(ul, norm([p.titulo, p.lugar, p.tag, p.req].join(' ')), cb, dot, p.titulo, sub,
-        si ? plBotonSemana('w|' + p.clave, 'Asignar a ' + x.per + ' en ' + p.titulo + ' todos los días de la semana', () => plTodaLaSemana(s, x.per, p.clave)) : null);
-    });
-    if (ops.length) cuerpo.append(ul);
-    else cuerpo.append(crear('p', 'pl-pop-nota', 'No hay proyectos en ejecución en el Recorrido. Puedes anotar otra actividad.'));
-    if (filtrar) filtrar();
-    if (!aus && suyos.length < PL_MAX) {
-      const sec = crear('div', 'pl-pop-sec');
-      sec.append(crear('h4', null, 'Otra actividad'));
-      const f = crear('form', 'pl-otra');
-      const inp = crear('input');
-      inp.type = 'text';
-      inp.maxLength = 60;
-      inp.placeholder = 'Oficina, visita técnica, bodega…';
-      inp.setAttribute('aria-label', 'Otra actividad de ' + x.per + ' ' + plElDia(d));
-      inp.dataset.op = 'otra';
-      const ok = crear('button', 'cx-enlace', 'Agregar');
-      ok.type = 'submit';
-      f.append(inp, ok);
-      f.addEventListener('submit', (e) => { e.preventDefault(); plOtra(s, x.iso, x.per, inp.value); });
-      sec.append(f);
-      cuerpo.append(sec);
-    }
-    const sec2 = crear('div', 'pl-pop-sec');
-    sec2.append(crear('h4', null, 'Ausencia'));
-    const fila = crear('div', 'pl-aus-ops');
-    PL_AUSENCIAS.forEach((a) => {
-      const b = crear('button', 'pl-aus-op', a.nombre);
-      b.type = 'button';
-      b.dataset.op = 'a|' + a.id;
-      const es = !!aus && aus.motivo === a.id;
-      b.setAttribute('aria-pressed', es ? 'true' : 'false');
-      b.title = es ? 'Quitar la ausencia' : x.per + ' no está disponible ' + plElDia(d) + (suyos.length ? ': se quita de sus proyectos de ese día' : '');
-      b.addEventListener('click', () => plAusentar(s, x.iso, x.per, es ? '' : a.id));
-      fila.append(b);
-    });
-    sec2.append(fila);
-    cuerpo.append(sec2);
+  function plVolver(txt, ir) {
+    const b = crear('button', 'cx-enlace pl-pop-volver', '‹ ' + txt);
+    b.type = 'button';
+    b.dataset.op = 'volver';
+    b.addEventListener('click', ir);
+    return b;
   }
-  // Un proyecto un día: quiénes van (cada persona con sus otros proyectos de ese día)
-  function plPopProyecto(s, m, d, x, cuerpo) {
-    const p = m.proyectos.get(x.clave) || { clave: x.clave, titulo: m.titulo(x.clave), lugar: '' };
-    const van = m.porProyecto.get(x.iso + '|' + x.clave) || [];
-    $('#plPopTit').textContent = p.titulo;
-    $('#plPopSub').textContent = plFechaLarga(d) + ' · ' + (van.length ? pl(van.length, 'persona', 'personas') : 'nadie asignado');
-    if (m.pausas.has(x.clave) && !(m.dias.get(x.clave) || []).length) cuerpo.append(crear('p', 'pl-pop-nota', 'Está marcado «sin trabajo ' + plEsta(s) + '». Si asignas a alguien, vuelve a la planificación.'));
-    const ul = crear('ul', 'pl-ops');
-    ul.setAttribute('aria-label', 'Quiénes van a ' + p.titulo + ' ' + plElDia(d));
-    PERSONAL.forEach((per) => {
-      const k = x.iso + '|' + per;
-      const suyos = m.porPersona.get(k) || [];
-      const aus = m.ausencias.get(k);
-      const si = van.includes(per);
-      const lleno = !si && suyos.length >= PL_MAX;
-      const cb = plCasilla('c|' + per, si, !si && (!!aus || lleno), (v) => plAsignar(s, x.iso, per, x.clave, v));
-      const otros = m.ordenar(suyos.filter((c) => c !== x.clave)).map(m.titulo);
-      const sub = aus ? plAusencia(aus.motivo).nombre : lleno ? 'Completo: ya tiene ' + PL_MAX + ' proyectos ese día'
-        : otros.length ? 'También en ' + unir(otros) : 'Sin otro proyecto ese día';
-      plOpcion(ul, norm(per), cb, plPersona(per), per === estado.usuario ? per + ' · tú' : per, sub,
-        si ? plBotonSemana('w|' + per, 'Asignar a ' + per + ' en ' + p.titulo + ' todos los días de la semana', () => plTodaLaSemana(s, per, x.clave)) : null);
-    });
-    cuerpo.append(ul);
-  }
-  // «Asignar» en un día del tablero general: primero el proyecto, después quiénes van
-  function plPopNuevo(s, m, d, x, cuerpo) {
-    $('#plPopTit').textContent = 'Asignar ' + plElDia(d);
-    $('#plPopSub').textContent = 'Elige el proyecto; después, quiénes van';
-    const ya = new Set(PERSONAL.flatMap((per) => m.porPersona.get(x.iso + '|' + per) || []));
-    const ops = m.activos.filter((p) => !ya.has(p.clave));
-    const ul = crear('ul', 'pl-ops');
-    ul.setAttribute('aria-label', 'Proyectos sin nadie ' + plElDia(d));
-    const filtrar = ops.length > 7 ? plBuscador(x, cuerpo, ul, 'Buscar proyecto') : null;
-    const sin = new Set(m.sinAsignar.map((p) => p.clave));
-    ops.forEach((p) => {
-      const li = crear('li');
-      li.dataset.buscar = norm([p.titulo, p.lugar, p.tag, p.req].join(' '));
-      const b = crear('button', 'pl-op');
-      b.type = 'button';
-      b.dataset.op = 'n|' + p.clave;
-      const dot = crear('span', 'pl-dot');
-      dot.style.setProperty('--pc', m.color(p.clave));
-      const tx = crear('span', 'pl-op-txt');
-      tx.append(crear('span', 't', p.titulo));
-      const sub = [p.lugar, sin.has(p.clave) ? 'sin nadie en la semana' : ''].filter(Boolean).join(' · ');
-      if (sub) tx.append(crear('span', 's', sub));
-      const f = crear('span', 'pl-flecha');
-      f.append(icono('derecha', 15));
-      b.append(dot, tx, f);
-      b.addEventListener('click', () => {
-        planif.pop = { tipo: 'proyecto', clave: p.clave, iso: x.iso, ancla: x.ancla };
-        plPintarPop(true);
-      });
-      li.append(b);
-      ul.append(li);
-    });
-    if (ops.length) cuerpo.append(ul);
-    else cuerpo.append(crear('p', 'pl-pop-nota', m.activos.length ? 'Todos los proyectos activos ya tienen a alguien ' + plElDia(d) + '. Toca uno en el tablero para cambiar quiénes van.' : 'No hay proyectos en ejecución en el Recorrido.'));
-    if (filtrar) filtrar();
+  function plFormOtra(etiqueta, boton, ir) {
     const sec = crear('div', 'pl-pop-sec');
     sec.append(crear('h4', null, 'Otra actividad'));
     const f = crear('form', 'pl-otra');
@@ -5544,42 +5726,297 @@
     inp.type = 'text';
     inp.maxLength = 60;
     inp.placeholder = 'Oficina, visita técnica, bodega…';
-    inp.setAttribute('aria-label', 'Otra actividad ' + plElDia(d));
+    inp.setAttribute('aria-label', etiqueta);
     inp.dataset.op = 'otra';
-    const ok = crear('button', 'cx-enlace', 'Seguir');
+    const ok = crear('button', 'cx-enlace', boton);
     ok.type = 'submit';
     f.append(inp, ok);
-    f.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const c = plClaveOtra(s, inp.value);
-      if (!c) { avisar('Escribe qué actividad es: oficina, visita técnica, bodega…'); return; }
-      planif.pop = { tipo: 'proyecto', clave: c, iso: x.iso, ancla: x.ancla };
-      plPintarPop(true);
-    });
+    f.addEventListener('submit', (e) => { e.preventDefault(); ir(inp.value); });
     sec.append(f);
+    return sec;
+  }
+  /* Una persona, uno o varios días: sus proyectos (hasta 3 por día), otra actividad y una ausencia. Con varios días, una
+     casilla a medias es un proyecto que tiene solo algunos de ellos: marcarla lo completa. */
+  function plPopPersona(s, m, ds, x, cuerpo) {
+    const uno = ds.length === 1 ? ds[0] : null;
+    const suyosDe = (d) => m.porPersona.get(d.iso + '|' + x.per) || [];
+    const ausDe = (d) => m.ausencias.get(d.iso + '|' + x.per);
+    const cuando = plDiasTexto(s, x.dias);
+    if (x.cambiar && !ds.some((d) => suyosDe(d).includes(x.cambiar))) x.cambiar = null;
+    const aus = uno && ausDe(uno);
+    $('#plPopTit').textContent = x.per + ' · ' + (uno ? plFechaLarga(uno) : pl(ds.length, 'día', 'días'));
+    $('#plPopSub').textContent = uno ? (aus ? plAusencia(aus.motivo).nombre : suyosDe(uno).length + ' de ' + PL_MAX + ' proyectos este día') : 'Lo que marques vale ' + cuando;
+    // Los proyectos activos, y lo que ya tiene esos días o se usó en la semana (otras actividades, proyectos que terminaron)
+    const ops = m.activos.slice();
+    m.ordenar([...new Set(ds.flatMap(suyosDe))].concat([...m.dias.keys()].filter((c) => c.startsWith('otra:')))).forEach((c) => {
+      if (!ops.some((p) => p.clave === c) && m.proyectos.has(c)) ops.push(m.proyectos.get(c));
+    });
+    if (x.cambiar) { plPopCambiarProyecto(s, m, ds, x, cuerpo, ops); return; }
+    const libres = ds.filter((d) => !ausDe(d) && suyosDe(d).length < PL_MAX);      // los días en que se le puede agregar algo
+    if (aus) cuerpo.append(crear('p', 'pl-pop-nota tinte', x.per + ' está ausente este día (' + plAusencia(aus.motivo).nombre.toLowerCase() + '). Quita la ausencia para asignarle proyectos.'));
+    else if (uno && !libres.length) cuerpo.append(crear('p', 'pl-pop-nota tinte', x.per + ' ya tiene ' + PL_MAX + ' proyectos ' + plElDia(uno) + ', el máximo. Quita uno o usa «Cambiar».'));
+    else if (!uno && libres.length < ds.length) {
+      const no = ds.filter((d) => !libres.includes(d)).map((d) => plElDia(d) + ' (' + (ausDe(d) ? plAusencia(ausDe(d).motivo).nombre.toLowerCase() : 'ya tiene ' + PL_MAX + ' proyectos') + ')');
+      cuerpo.append(crear('p', 'pl-pop-nota tinte', (!libres.length ? 'No se le puede agregar nada: ' : no.length === 1 ? 'Al agregar se salta ' : 'Al agregar se saltan ') + unir(no) + '.'));
+    }
+    const ul = crear('ul', 'pl-ops');
+    ul.setAttribute('aria-label', 'Proyectos de ' + x.per + ' ' + cuando);
+    const filtrar = ops.length > 7 ? plBuscador(x, cuerpo, ul, 'Buscar proyecto') : null;
+    const sin = new Set(m.sinAsignar.map((p) => p.clave));
+    ops.forEach((p) => {
+      // Marcada si ya va todos los días en que se le puede agregar algo (una ausencia o 3 proyectos no la dejan a medias)
+      const con = ds.filter((d) => suyosDe(d).includes(p.clave));
+      const faltan = libres.filter((d) => !con.includes(d));
+      const cb = plCasilla('c|' + p.clave, con.length > 0 && !faltan.length, !con.length && !libres.length, (v) => plAsignarDias(s, x.per, p.clave, x.dias, v));
+      cb.indeterminate = con.length > 0 && faltan.length > 0;
+      const dot = crear('span', 'pl-dot');
+      dot.style.setProperty('--pc', m.color(p.clave));
+      const otros = uno ? plOrdenPersonas((m.porProyecto.get(uno.iso + '|' + p.clave) || []).filter((q) => q !== x.per)) : [];
+      const sub = plSub([p.otra ? 'Otra actividad' : p.lugar, otros.length ? 'con ' + unir(otros) : '', con.length && con.length < ds.length ? 'va ' + plCortos(con) : ''],
+        sin.has(p.clave) ? 'Sin nadie ' + plEsta(s) : '');
+      plOpcion(ul, norm([p.titulo, p.lugar, p.tag, p.req].join(' ')), cb, dot, p.titulo, sub,
+        con.length && ops.length > 1 ? plBotonOp('k|' + p.clave, 'Cambiar', 'Pasar a ' + x.per + ' de ' + p.titulo + ' a otro proyecto ' + plDiasTexto(s, con.map((d) => d.iso)),
+          () => { x.cambiar = p.clave; x.q = ''; plPintarPop(true); }) : null);
+    });
+    if (ops.length) cuerpo.append(ul);
+    else cuerpo.append(crear('p', 'pl-pop-nota', 'No hay proyectos en ejecución en el Recorrido. Puedes anotar otra actividad.'));
+    if (filtrar) filtrar();
+    if (libres.length) cuerpo.append(plFormOtra('Otra actividad de ' + x.per + ' ' + cuando, 'Agregar', (txt) => plOtra(s, x.dias, x.per, txt)));
+    const sec = crear('div', 'pl-pop-sec');
+    sec.append(crear('h4', null, 'Ausencia'));
+    const fila = crear('div', 'pl-aus-ops');
+    const conAus = ds.filter(ausDe);
+    const conProy = ds.some((d) => suyosDe(d).length);
+    PL_AUSENCIAS.forEach((a) => {
+      const b = crear('button', 'pl-aus-op', a.nombre);
+      b.type = 'button';
+      b.dataset.op = 'a|' + a.id;
+      const es = conAus.length === ds.length && ds.every((d) => ausDe(d).motivo === a.id);
+      b.setAttribute('aria-pressed', es ? 'true' : 'false');
+      b.title = es ? 'Quitar la ausencia' : x.per + ' no está disponible ' + cuando + (conProy ? ': se quita de sus proyectos ' + (uno ? 'de ese día' : 'de esos días') : '');
+      b.addEventListener('click', () => plAusentarDias(s, x.dias, x.per, es ? '' : a.id));
+      fila.append(b);
+    });
+    // Con varios días, si la ausencia es solo en algunos o con motivos distintos, un botón para quitarla
+    if (conAus.length && !fila.querySelector('[aria-pressed="true"]')) {
+      const b = crear('button', 'pl-aus-op', 'Quitar ausencia');
+      b.type = 'button';
+      b.dataset.op = 'a|';
+      b.title = 'Quitar la ausencia ' + plDiasTexto(s, conAus.map((d) => d.iso));
+      b.addEventListener('click', () => plAusentarDias(s, conAus.map((d) => d.iso), x.per, ''));
+      fila.append(b);
+    }
+    sec.append(fila);
     cuerpo.append(sec);
   }
-
-  // ---- Compartir e imprimir --------------------------------------------------------------------------------
-  // La semana como texto para WhatsApp (*negrita*): cada día, sus proyectos con quiénes van, y quiénes faltan.
-  function plTexto(s, m, dias) {
-    const l = ['*Planificación semana ' + plNum(s) + ' · ' + plRango(s.lunes, dias.length) + '*'];
-    dias.forEach((d) => {
-      l.push('', '*' + d.nombre + ' ' + d.fecha.getDate() + '*');
-      const claves = m.ordenar([...new Set(PERSONAL.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
-      claves.forEach((c) => l.push('• ' + m.titulo(c) + ': ' + plOrdenPersonas(m.porProyecto.get(d.iso + '|' + c) || []).join(', ')));
-      const aus = PERSONAL.filter((per) => m.ausencias.has(d.iso + '|' + per));
-      if (aus.length) l.push('• Ausentes: ' + aus.map((per) => per + ' (' + plAusencia(m.ausencias.get(d.iso + '|' + per).motivo).nombre.toLowerCase() + ')').join(', '));
-      if (!claves.length && !aus.length) l.push('Sin asignaciones');
+  // «Cambiar» desde la persona: deja un proyecto y pasa a otro, los días elegidos en que lo tenía, en un paso
+  function plPopCambiarProyecto(s, m, ds, x, cuerpo, ops) {
+    const de = x.cambiar;
+    const con = ds.filter((d) => (m.porPersona.get(d.iso + '|' + x.per) || []).includes(de)).map((d) => d.iso);
+    cuerpo.append(plVolver('Volver', () => { x.cambiar = null; plPintarPop(true); }));
+    cuerpo.append(crear('p', 'pl-pop-nota', 'Pasar a ' + x.per + ' de ' + m.titulo(de) + ' a otro proyecto ' + plDiasTexto(s, con) + '. ¿A cuál?'));
+    const lista = ops.filter((p) => p.clave !== de);
+    const ul = crear('ul', 'pl-ops');
+    ul.setAttribute('aria-label', 'Proyecto al que pasa ' + x.per);
+    const filtrar = lista.length > 7 ? plBuscador(x, cuerpo, ul, 'Buscar proyecto') : null;
+    lista.forEach((p) => {
+      const ya = con.filter((iso) => (m.porPersona.get(iso + '|' + x.per) || []).includes(p.clave));
+      const dot = crear('span', 'pl-dot');
+      dot.style.setProperty('--pc', m.color(p.clave));
+      const b = plBotonLista(ul, 'x|' + p.clave, norm([p.titulo, p.lugar, p.tag, p.req].join(' ')), dot, p.titulo,
+        plSub([p.otra ? 'Otra actividad' : p.lugar, !ya.length ? '' : ya.length === con.length ? 'ya va ' + (con.length === 1 ? 'ese día' : 'esos días')
+          : 'ya va ' + plCortos(ya.map((iso) => plDiaDe(s, iso)))]), () => {
+          x.cambiar = null;
+          if (!plCambiarPor(s, x.per, de, p.clave, con)) { x.cambiar = de; plPintarPop(false); return; }
+          const c = $('#plPop [data-op="' + CSS.escape('c|' + p.clave) + '"]');
+          if (c) c.focus({ preventScroll: true });
+        });
+      b.disabled = ya.length === con.length;
     });
+    cuerpo.append(ul);
+    if (filtrar) filtrar();
+  }
+  /* Un proyecto, uno o varios días: quiénes van (cada persona con lo demás que tiene), «Cambiar» a una por otra y, si
+     nadie va en la semana, «Sin trabajo». Desde la alarma, el pie lleva al siguiente proyecto sin nadie. */
+  function plPopProyecto(s, m, ds, x, cuerpo) {
+    const uno = ds.length === 1 ? ds[0] : null;
+    const p = m.proyectos.get(x.clave) || { clave: x.clave, titulo: m.titulo(x.clave), lugar: '' };
+    const vanDe = (d) => m.porProyecto.get(d.iso + '|' + x.clave) || [];
+    const cuando = plDiasTexto(s, x.dias);
+    if (x.cambiar && !ds.some((d) => vanDe(d).includes(x.cambiar))) x.cambiar = null;
+    $('#plPopTit').textContent = p.titulo;
+    $('#plPopSub').textContent = uno ? plFechaLarga(uno) + ' · ' + (vanDe(uno).length ? pl(vanDe(uno).length, 'persona', 'personas') : 'nadie asignado') : 'Lo que marques vale ' + cuando;
+    /* El que sigue en la lista de la alarma, dando la vuelta: así se recorren todos aunque se deje alguno pendiente.
+       Si este ya salió de la lista (se asignó), sigue el que quedó en su lugar (x.idx). */
+    const l = m.sinAsignar;
+    const i = l.findIndex((q) => q.clave === x.clave);
+    if (i >= 0) x.idx = i;
+    const desde = i >= 0 ? i + 1 : Math.min(x.idx || 0, l.length);
+    const sig = l.slice(desde).concat(l.slice(0, desde)).find((q) => q.clave !== x.clave);
+    if (x.alarma && sig) {
+      const b = $('#plPopSiguiente');
+      b.hidden = false;
+      b.dataset.clave = sig.clave;
+      b.textContent = 'Siguiente sin nadie: ' + sig.titulo + ' ›';
+    }
+    if (x.volver) cuerpo.append(plVolver('Otro proyecto', () => { planif.pop = { tipo: 'nuevo', iso: x.iso, dias: x.dias, ancla: x.ancla, q: '' }; plPintarPop(true); }));
+    // Si nadie va en la semana, arriba la otra salida: «sin trabajo esta semana» (deja de contar como alarma)
+    const pausa = m.pausas.has(x.clave);
+    if ((p.activo || pausa) && !(m.dias.get(x.clave) || []).length) {
+      const fila = crear('div', 'pl-pop-pausa');
+      fila.append(crear('span', null, pausa ? 'No cuenta como alarma. Si asignas a alguien, vuelve a planificarse.' : 'Nadie va en toda la semana.'));
+      const b = crear('button', 'pl-aus-op', 'Sin trabajo ' + plEsta(s));
+      b.type = 'button';
+      b.dataset.op = 'pausa';
+      b.setAttribute('aria-pressed', pausa ? 'true' : 'false');
+      b.title = pausa ? 'Que vuelva a contar como alarma si nadie va en la semana' : 'No se trabaja en este proyecto ' + plEsta(s) + ': deja de contar como alarma';
+      b.addEventListener('click', () => plPausar(s, x.clave, !pausa));
+      fila.append(b);
+      cuerpo.append(fila);
+    }
+    if (x.cambiar) { plPopCambiarPersona(s, m, ds, x, cuerpo); return; }
+    const ul = crear('ul', 'pl-ops');
+    ul.setAttribute('aria-label', 'Quiénes van a ' + p.titulo + ' ' + cuando);
+    PERSONAL.forEach((per) => {
+      const suyosDe = (d) => m.porPersona.get(d.iso + '|' + per) || [];
+      const con = ds.filter((d) => vanDe(d).includes(per));
+      const ausentes = ds.filter((d) => m.ausencias.has(d.iso + '|' + per));
+      const llenos = ds.filter((d) => !con.includes(d) && !m.ausencias.has(d.iso + '|' + per) && suyosDe(d).length >= PL_MAX);
+      // Marcada si va todos los días en que puede ir (una ausencia o 3 proyectos no la dejan a medias)
+      const faltan = ds.filter((d) => !con.includes(d) && !ausentes.includes(d) && !llenos.includes(d));
+      const cb = plCasilla('c|' + per, con.length > 0 && !faltan.length, !con.length && !faltan.length, (v) => plAsignarDias(s, per, x.clave, x.dias, v));
+      cb.indeterminate = con.length > 0 && faltan.length > 0;
+      let sub;
+      if (uno) {
+        const aus = m.ausencias.get(uno.iso + '|' + per);
+        const otros = m.ordenar(suyosDe(uno).filter((c) => c !== x.clave)).map(m.titulo);
+        sub = aus ? plAusencia(aus.motivo).nombre : llenos.length ? 'Completo: ya tiene ' + PL_MAX + ' proyectos ese día'
+          : otros.length ? 'También en ' + unir(otros) : 'Sin otro proyecto ese día';
+      } else {
+        const partes = [con.length && con.length < ds.length ? 'va ' + plCortos(con) : '', ausentes.length ? 'ausente ' + plCortos(ausentes) : '', llenos.length ? 'completo ' + plCortos(llenos) : ''].filter(Boolean);
+        sub = partes.length ? partes.join(' · ') : con.length ? 'Va todos esos días' : 'Puede ir esos días';
+        sub = sub.charAt(0).toUpperCase() + sub.slice(1);
+      }
+      plOpcion(ul, norm(per), cb, plPersona(per), per === estado.usuario ? per + ' · tú' : per, sub,
+        con.length ? plBotonOp('k|' + per, 'Cambiar', 'Que vaya otra persona en vez de ' + per + ' ' + plDiasTexto(s, con.map((d) => d.iso)),
+          () => { x.cambiar = per; plPintarPop(true); }) : null);
+    });
+    cuerpo.append(ul);
+  }
+  // «Cambiar» desde el proyecto: otra persona va en vez de esta, los días elegidos en que iba
+  function plPopCambiarPersona(s, m, ds, x, cuerpo) {
+    const de = x.cambiar;
+    const vanDe = (iso) => m.porProyecto.get(iso + '|' + x.clave) || [];
+    const con = ds.filter((d) => vanDe(d.iso).includes(de)).map((d) => d.iso);
+    cuerpo.append(plVolver('Volver', () => { x.cambiar = null; plPintarPop(true); }));
+    cuerpo.append(crear('p', 'pl-pop-nota', '¿Quién va a ' + m.titulo(x.clave) + ' en vez de ' + de + ' ' + plDiasTexto(s, con) + '?'));
+    const ul = crear('ul', 'pl-ops');
+    ul.setAttribute('aria-label', 'Quién va en vez de ' + de);
+    PERSONAL.filter((per) => per !== de).forEach((per) => {
+      const ya = con.filter((iso) => vanDe(iso).includes(per));
+      const aus = con.filter((iso) => !ya.includes(iso) && m.ausencias.has(iso + '|' + per));
+      const puede = con.filter((iso) => !ya.includes(iso) && !aus.includes(iso) && (m.porPersona.get(iso + '|' + per) || []).length < PL_MAX);
+      const llenos = con.filter((iso) => !ya.includes(iso) && !aus.includes(iso) && !puede.includes(iso));
+      // Cada motivo con sus días («ya va lun 19 · ausente mar 20»); si es uno solo para todos, «ese día» o «esos días»
+      const cuando = (isos) => (isos.length < con.length ? ' ' + plCortos(isos.map((iso) => plDiaDe(s, iso))) : con.length === 1 ? ' ese día' : ' esos días');
+      const partes = [puede.length && puede.length < con.length ? 'puede' + cuando(puede) : '', ya.length ? 'ya va' + cuando(ya) : '',
+        aus.length ? 'ausente' + cuando(aus) : '', llenos.length ? 'completo' + cuando(llenos) : ''].filter(Boolean).join(' · ');
+      const sub = partes.charAt(0).toUpperCase() + partes.slice(1);
+      const b = plBotonLista(ul, 'x|' + per, norm(per), plPersona(per), per === estado.usuario ? per + ' · tú' : per, plSub([sub]), () => {
+        x.cambiar = null;
+        if (!plReemplazar(s, x.clave, de, per, con)) { x.cambiar = de; plPintarPop(false); return; }
+        const c = $('#plPop [data-op="' + CSS.escape('c|' + per) + '"]');
+        if (c) c.focus({ preventScroll: true });
+      });
+      b.disabled = !puede.length;
+    });
+    cuerpo.append(ul);
+  }
+  // «Asignar» en un día del tablero general: primero el proyecto (arriba, los que no tienen a nadie), después quiénes van
+  function plPopNuevo(s, m, ds, x, cuerpo) {
+    const uno = ds.length === 1 ? ds[0] : null;
+    const cuando = plDiasTexto(s, x.dias);
+    $('#plPopTit').textContent = 'Asignar ' + cuando;
+    $('#plPopSub').textContent = 'Elige el proyecto; después, quiénes van';
+    const vanDe = (p) => plOrdenPersonas([...new Set(ds.flatMap((d) => m.porProyecto.get(d.iso + '|' + p.clave) || []))]);
+    const sin = new Set(m.sinAsignar.map((p) => p.clave));
+    const ir = (clave) => { planif.pop = { tipo: 'proyecto', clave, iso: x.iso, dias: x.dias, ancla: x.ancla, volver: true, q: '' }; plPintarPop(true); };
+    const grupos = [['Sin nadie ' + (uno ? 'ese día' : 'esos días'), m.activos.filter((p) => !vanDe(p).length)],
+      ['Ya tienen a alguien', m.activos.filter((p) => vanDe(p).length)]].filter(([, l]) => l.length);
+    const cont = crear('div', 'pl-grupos');
+    const filtrar = m.activos.length > 7 ? plBuscador(x, cuerpo, cont, 'Buscar proyecto') : null;
+    grupos.forEach(([tit, lista]) => {
+      const g = crear('div', 'pl-grupo');
+      const ul = crear('ul', 'pl-ops');
+      ul.setAttribute('aria-label', tit);
+      lista.forEach((p) => {
+        const dot = crear('span', 'pl-dot');
+        dot.style.setProperty('--pc', m.color(p.clave));
+        const van = vanDe(p);
+        plBotonLista(ul, 'n|' + p.clave, norm([p.titulo, p.lugar, p.tag, p.req].join(' ')), dot, p.titulo,
+          plSub([p.lugar, van.length ? 'van ' + unir(van) : ''], sin.has(p.clave) ? 'Sin nadie ' + plEsta(s) : ''), () => ir(p.clave));
+      });
+      g.append(crear('h4', null, tit), ul);
+      cont.append(g);
+    });
+    if (grupos.length) cuerpo.append(cont);
+    else cuerpo.append(crear('p', 'pl-pop-nota', 'No hay proyectos en ejecución en el Recorrido.'));
+    if (filtrar) filtrar();
+    cuerpo.append(plFormOtra('Otra actividad ' + cuando, 'Seguir', (txt) => {
+      const c = plClaveOtra(s, txt);
+      if (!c) { avisar('Escribe qué actividad es: oficina, visita técnica, bodega…'); return; }
+      ir(c);
+    }));
+  }
+
+  // ---- Compartir y exportar --------------------------------------------------------------------------------
+  // Lo de una persona un día, para el papel y el texto: su ausencia y sus proyectos, cada uno con el lugar y con quién va.
+  function plDiaDePersona(m, d, per) {
+    const a = m.ausencias.get(d.iso + '|' + per);
+    const proyectos = m.ordenar(m.porPersona.get(d.iso + '|' + per) || []).map((c) => {
+      const p = m.proyectos.get(c) || {};
+      return { clave: c, titulo: m.titulo(c), lugar: p.lugar || '', sitio: p.sitio || p.lugar || '', req: p.req || null, otra: !!p.otra,
+        con: plOrdenPersonas((m.porProyecto.get(d.iso + '|' + c) || []).filter((x) => x !== per)) };
+    });
+    return { ausencia: a ? plAusencia(a.motivo).nombre : '', proyectos };
+  }
+  /* La semana como texto para WhatsApp (*negrita*). Por persona: cada uno, día por día, sus proyectos con el lugar y con
+     quién va («• Lun 19: Chimenea Talcahuano, con MP y EV»). Por día: cada día, sus proyectos con quiénes van, y quiénes faltan. */
+  function plTexto(s, m, dias, modo) {
+    const l = ['*Planificación semana ' + plNum(s) + ' · ' + plRango(s.lunes, dias.length) + '*'];
+    if (modo === 'dia') {
+      dias.forEach((d) => {
+        l.push('', '*' + d.nombre + ' ' + d.fecha.getDate() + '*');
+        const claves = m.ordenar([...new Set(PERSONAL.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
+        claves.forEach((c) => l.push('• ' + m.titulo(c) + ': ' + plOrdenPersonas(m.porProyecto.get(d.iso + '|' + c) || []).join(', ')));
+        const aus = PERSONAL.filter((per) => m.ausencias.has(d.iso + '|' + per));
+        if (aus.length) l.push('• Ausentes: ' + aus.map((per) => per + ' (' + plAusencia(m.ausencias.get(d.iso + '|' + per).motivo).nombre.toLowerCase() + ')').join(', '));
+        if (!claves.length && !aus.length) l.push('Sin asignaciones');
+      });
+    } else {
+      PERSONAL.forEach((per) => {
+        l.push('', '*' + per + '*');
+        dias.forEach((d) => {
+          const x = plDiaDePersona(m, d, per);
+          const que = x.proyectos.map((p) => p.titulo + (p.lugar ? ' (' + p.lugar + ')' : '') + (p.con.length ? ', con ' + unir(p.con) : ''));
+          if (x.ausencia) que.unshift(x.ausencia);
+          l.push('• ' + d.corto + ' ' + d.fecha.getDate() + ': ' + (que.length ? que.join('; ') : 'sin proyecto'));
+        });
+      });
+    }
     if (m.sinAsignar.length) l.push('', '⚠ Sin nadie asignado: ' + m.sinAsignar.map((p) => p.titulo).join(', '));
     return l.join('\n');
+  }
+  function plPintarTexto() {
+    const s = plSemanaVista();
+    $('#plTextoArea').value = plTexto(s, plModelo(s), plDias(s), planif.texto);
+    document.querySelectorAll('#plTextoModo .pl-vista').forEach((b) => b.setAttribute('aria-pressed', b.dataset.modo === planif.texto ? 'true' : 'false'));
   }
   function plCompartir() {
     const s = plSemanaVista();
     if (!s.leida) return;
     plCerrarPop(false);
-    $('#plTextoArea').value = plTexto(s, plModelo(s), plDias(s));
+    plPintarTexto();
     $('#dlgPlTexto').showModal();
   }
   function plCopiarTexto() {
@@ -5589,11 +6026,173 @@
       navigator.clipboard.writeText(area.value).then(() => { $('#dlgPlTexto').close(); avisar('Copiado: pégalo en WhatsApp o en un correo.'); }, mal);
     } catch (e) { mal(); }
   }
-  function plImprimir() {
+  // Exportar: qué va al papel. Las hojas son de quienes tienen algo esa semana; las demás se pueden sumar.
+  function plAbrirExportar() {
+    const s = plSemanaVista();
+    if (!s.leida) return;
     plCerrarPop(false);
-    plPintar();
+    const m = plModelo(s), dias = plDias(s);
+    $('#plExpSemana').textContent = 'Semana ' + plNum(s) + ' · ' + plRango(s.lunes, dias.length) + ' de ' + plMas(s.lunes, dias.length - 1).getFullYear()
+      + '. Sale igual desde cualquier vista.';
+    const cont = $('#plExpPers');
+    cont.textContent = '';
+    PERSONAL.forEach((per) => {
+      const tiene = dias.some((d) => m.ausencias.has(d.iso + '|' + per) || (m.porPersona.get(d.iso + '|' + per) || []).length);
+      const lab = crear('label', 'pl-exp-per' + (tiene ? '' : ' nada'));
+      const cb = crear('input');
+      cb.type = 'checkbox';
+      cb.value = per;
+      cb.checked = tiene;
+      cb.addEventListener('change', plExpCuenta);
+      lab.title = tiene ? 'La hoja de ' + per : per + ' no tiene nada asignado esta semana';
+      lab.append(cb, crear('span', null, per));
+      cont.append(lab);
+    });
+    plExpCuenta();
+    $('#dlgPlExportar').showModal();
+  }
+  const plExpPersonas = () => ($('#plExpHojas').checked ? [...document.querySelectorAll('#plExpPers input:checked')].map((x) => x.value) : []);
+  function plExpCuenta() {
+    const tabla = $('#plExpTabla').checked, n = plExpPersonas().length;
+    $('#plExpQuienes').disabled = !$('#plExpHojas').checked;
+    $('#plExpImprimir').disabled = !tabla && !n;
+    $('#plExpCuenta').textContent = !tabla && !n ? 'Elige qué imprimir.'
+      : (!tabla && n > 1 ? 'Salen ' : 'Sale ') + unir([tabla ? 'la tabla de la semana' : '', n ? pl(n, 'hoja de persona', 'hojas de personas') : ''].filter(Boolean)) + '.';
+  }
+  // «el 23 de octubre de 2026 a las 10:25»: en el papel, «hoy» deja de servir al día siguiente
+  const plFechaHora = (f) => 'el ' + f.getDate() + ' de ' + PL_MESES[f.getMonth()] + ' de ' + f.getFullYear() + ' a las ' + f.getHours() + ':' + dos(f.getMinutes());
+  /* La semana en papel, pensada para quien la recibe y no la pantalla impresa: sin cortar nombres, sin marcas de quien
+     imprime («tú», «Hoy») y legible en blanco y negro (el color de cada proyecto solo acompaña). La tabla de la semana
+     (cada persona en una fila y, cada día, sus proyectos con el N° y el lugar) va en hojas horizontales; cada persona
+     elegida, en su hoja vertical: día por día, sus proyectos, el lugar y con quién va. */
+  function plDocumento(s, m, dias, tabla, personas) {
+    const doc = $('#plDoc');
+    doc.textContent = '';
+    const semana = 'Planificación semanal · Semana ' + plNum(s) + ' · ' + plRango(s.lunes, dias.length) + ' de ' + plMas(s.lunes, dias.length - 1).getFullYear();
+    const impreso = 'Impreso ' + plFechaHora(new Date()) + (estado.usuario ? ' por ' + estado.usuario : '');
+    const cabecera = (titulo, lineas) => {
+      const h = crear('header', 'pl-doc-cab');
+      const t = crear('div');
+      t.append(crear('p', 'pl-doc-sem', semana), crear('h1', null, titulo));
+      const d = crear('p', 'pl-doc-imp');
+      lineas.forEach((x, i) => { if (i) d.append(crear('br')); d.append(document.createTextNode(x)); });
+      h.append(t, d);
+      return h;
+    };
+    const proyecto = (p) => {
+      const e = crear('div', 'pl-doc-p' + (p.otra ? ' otra' : ''));
+      e.style.setProperty('--pc', m.color(p.clave));
+      e.append(crear('b', null, p.titulo));
+      const sub = [p.otra ? 'Otra actividad' : p.req ? 'N° ' + p.req : '', p.lugar].filter(Boolean).join(' · ');
+      if (sub) e.append(crear('span', null, sub));
+      return e;
+    };
+    if (tabla) {
+      const sec = crear('section', 'pl-doc-tabla');
+      sec.append(cabecera('Quién va a qué proyecto', [impreso]));
+      const t = crear('table', 'pl-doc-t');
+      const thead = crear('thead'), tr = crear('tr');
+      const th0 = crear('th', 'pl-doc-per', 'Persona');
+      th0.scope = 'col';
+      tr.append(th0);
+      dias.forEach((d) => { const th = crear('th', null, d.nombre + ' ' + d.fecha.getDate()); th.scope = 'col'; tr.append(th); });
+      thead.append(tr);
+      const tb = crear('tbody');
+      PERSONAL.forEach((per) => {
+        const fila = crear('tr');
+        const th = crear('th', 'pl-doc-per', per);
+        th.scope = 'row';
+        fila.append(th);
+        dias.forEach((d) => {
+          const x = plDiaDePersona(m, d, per);
+          const td = crear('td');
+          if (x.ausencia) td.append(crear('p', 'pl-doc-aus', 'Ausente: ' + x.ausencia.toLowerCase()));
+          x.proyectos.forEach((p) => td.append(proyecto(p)));
+          if (!x.ausencia && !x.proyectos.length) td.append(crear('p', 'pl-doc-libre', 'Sin proyecto'));
+          if (x.proyectos.length > PL_MAX) td.append(crear('p', 'pl-doc-exceso', x.proyectos.length + ' proyectos: el máximo es ' + PL_MAX));
+          fila.append(td);
+        });
+        tb.append(fila);
+      });
+      t.append(thead, tb);
+      sec.append(t);
+      const notas = crear('ul', 'pl-doc-notas');
+      const nota = (et, lista) => { if (!lista.length) return; const li = crear('li'); li.append(crear('b', null, et + ': '), document.createTextNode(lista.join(', ') + '.')); notas.append(li); };
+      nota('Proyectos activos sin nadie esta semana', m.sinAsignar.map((p) => p.titulo));
+      nota('Sin trabajo esta semana', m.activos.filter((p) => m.pausas.has(p.clave) && !m.dias.has(p.clave)).map((p) => p.titulo));
+      if (notas.childElementCount) sec.append(notas);
+      doc.append(sec);
+    }
+    personas.forEach((per) => {
+      const sec = crear('section', 'pl-doc-hoja');
+      const semanaDe = dias.map((d) => plDiaDePersona(m, d, per));
+      const conProyecto = semanaDe.filter((x) => x.proyectos.length).length;
+      const ausente = semanaDe.filter((x) => x.ausencia && !x.proyectos.length).length;
+      const proyectos = new Set(semanaDe.flatMap((x) => x.proyectos.map((p) => p.clave)));
+      const disponibles = dias.length - ausente;
+      sec.append(cabecera(per, [!disponibles ? 'Ausente toda la semana'
+        : conProyecto + ' de ' + pl(disponibles, 'día', 'días') + ' con proyecto · ' + pl(proyectos.size, 'proyecto', 'proyectos'), impreso]));
+      const t = crear('table', 'pl-doc-dias');
+      const cols = crear('colgroup');
+      ['17%', '39%', '20%', '24%'].forEach((w) => { const c = crear('col'); c.style.width = w; cols.append(c); });
+      const thead = crear('thead'), tr = crear('tr');
+      ['Día', 'Proyecto', 'Lugar', 'Con quién va'].forEach((x) => { const th = crear('th', null, x); th.scope = 'col'; tr.append(th); });
+      thead.append(tr);
+      t.append(cols, thead);
+      dias.forEach((d, i) => {
+        const x = semanaDe[i];
+        const tb = crear('tbody');      // un día por grupo: no se parte entre dos hojas
+        const filas = [];
+        if (x.ausencia) {
+          const f = crear('tr', 'aus');
+          const td = crear('td', null, 'Ausente: ' + x.ausencia.toLowerCase());
+          td.colSpan = 3;
+          f.append(td);
+          filas.push(f);
+        }
+        x.proyectos.forEach((p) => {
+          const f = crear('tr');
+          const tp = crear('td');
+          tp.append(proyecto(Object.assign({}, p, { lugar: '' })));
+          f.append(tp, crear('td', null, p.sitio || '—'), crear('td', null, p.con.length ? unir(p.con) : 'Nadie más'));
+          filas.push(f);
+        });
+        if (!filas.length) {
+          const f = crear('tr', 'libre');
+          const td = crear('td', null, 'Sin proyecto asignado');
+          td.colSpan = 3;
+          f.append(td);
+          filas.push(f);
+        }
+        const th = crear('th', null, d.nombre + ' ' + d.fecha.getDate());
+        th.scope = 'rowgroup';
+        th.rowSpan = filas.length;
+        filas[0].prepend(th);
+        tb.append(...filas);
+        t.append(tb);
+      });
+      sec.append(t);
+      doc.append(sec);
+    });
+  }
+  /* Imprime lo elegido. El título de la página pasa a ser el de la semana mientras tanto: es el nombre que el navegador
+     propone al guardar en PDF («Planificación semana 43 (19 al 23 de octubre)»). */
+  function plImprimir() {
+    const s = plSemanaVista();
+    const tabla = $('#plExpTabla').checked, personas = plExpPersonas();
+    if (!s.leida || (!tabla && !personas.length)) return;
+    $('#dlgPlExportar').close();
+    const dias = plDias(s);
+    plDocumento(s, plModelo(s), dias, tabla, personas);
+    const titulo = document.title;
+    document.title = 'Planificación semana ' + plNum(s) + ' (' + plRango(s.lunes, dias.length) + ')';
     document.body.classList.add('pl-imprimiendo');
-    const fin = () => { document.body.classList.remove('pl-imprimiendo'); window.removeEventListener('afterprint', fin); };
+    const fin = () => {
+      document.body.classList.remove('pl-imprimiendo');
+      document.title = titulo;
+      $('#plDoc').textContent = '';
+      window.removeEventListener('afterprint', fin);
+    };
     window.addEventListener('afterprint', fin);
     window.print();
   }
@@ -5715,7 +6314,12 @@
       return;
     }
     if (e.key === 'Escape') {
-      if (!$('#plPop').hidden) { e.preventDefault(); plCerrarPop(true); return; }
+      // En la ventanita, Escape primero sale de «Cambiar»; después la cierra
+      if (!$('#plPop').hidden) {
+        e.preventDefault();
+        if (planif.pop && planif.pop.cambiar) { planif.pop.cambiar = null; plPintarPop(true); } else plCerrarPop(true);
+        return;
+      }
       if (!$('#popProyecto').hidden) { e.preventDefault(); cerrarSelector(true); return; }
       if (!$('#popUsuario').hidden) { e.preventDefault(); cerrarUsuario(true); return; }
       if (menuAbierto()) { e.preventDefault(); mostrarMenu(false, true); return; }
@@ -5876,7 +6480,7 @@
   });
   $('#plSabado').addEventListener('change', (e) => { planif.sabado = e.target.checked; plGuardarPrefs(); plPintar(); });
   [['#plCopiar', 'copiar', 'Copiar la semana anterior', plCopiarAnterior], ['#plCompartir', 'compartir', 'Compartir', plCompartir],
-    ['#plImprimir', 'imprimir', 'Imprimir', plImprimir]].forEach(([id, ico, txt, ir]) => {
+    ['#plImprimir', 'imprimir', 'Imprimir o PDF', plAbrirExportar]].forEach(([id, ico, txt, ir]) => {
     const b = $(id);
     b.append(icono(ico, 16), crear('span', null, txt));
     b.setAttribute('aria-label', txt);
@@ -5889,11 +6493,20 @@
     plPintarFrescura();
   });
   $('#plReintentar').addEventListener('click', () => { planif.errorGuardar = null; plGuardar(); });
+  ['#plPersonal', '#plProyecto'].forEach((id) => $(id).addEventListener('keydown', plTeclasTabla));
   $('#plPopX').addEventListener('click', () => plCerrarPop(true));
   $('#plPopListo').addEventListener('click', () => plCerrarPop(true));
+  $('#plPopSiguiente').addEventListener('click', (e) => plEnfocar(e.currentTarget.dataset.clave, true));
   $('#plAlertaCab').prepend(icono('alerta', 16));
   $('#plAlertaCab').addEventListener('click', plIrAlarma);
   $('#plCopiarTexto').addEventListener('click', plCopiarTexto);
+  document.querySelectorAll('#plTextoModo .pl-vista').forEach((b) => b.addEventListener('click', () => {
+    planif.texto = b.dataset.modo;
+    plGuardarPrefs();
+    plPintarTexto();
+  }));
+  ['#plExpTabla', '#plExpHojas'].forEach((id) => $(id).addEventListener('change', plExpCuenta));
+  $('#plExpImprimir').addEventListener('click', plImprimir);
   $('#vistaPlan').addEventListener('scroll', plColocarPop, { passive: true });
   window.addEventListener('resize', plColocarPop);
   // Lo que espera guardarse no espera al próximo cambio si la pestaña se esconde

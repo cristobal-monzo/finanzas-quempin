@@ -2032,6 +2032,9 @@ def test_como_maximo_tres_proyectos_por_persona_en_un_dia(navegador, sitio):
         pop.locator(f'input[data-op="c|{c}"]').check()
     assert pagina.locator("#plPopSub").inner_text() == "3 de 3 proyectos este día"
     assert "ya tiene 3 proyectos el martes" in pop.locator(".pl-pop-nota").inner_text()
+    # La nota va dentro de la ventanita (con la clase del aviso de abajo quedaba flotando sobre él)
+    nota, caja = pop.locator(".pl-pop-nota").bounding_box(), pop.bounding_box()
+    assert caja["y"] <= nota["y"] and nota["y"] + nota["height"] <= caja["y"] + caja["height"], (nota, caja)
     assert pop.locator('input[data-op="otra"]').count() == 0, "tampoco otra actividad"
     assert _celda_personal(pagina, "LC", 1).locator(".pl-lleno").inner_text() == "Completo"
     pagina.keyboard.press("Escape")
@@ -2070,8 +2073,10 @@ def test_toda_la_semana_una_ausencia_y_deshacer(navegador, sitio):
     fila = lambda clave: pagina.locator(f'#plProyecto tr[data-clave="{clave}"] td[data-dia]').evaluate_all(
         "tds => tds.map((td) => [...td.querySelectorAll('.pl-per')].map((p) => p.textContent).join(','))")
     _celda_proyecto(pagina, "req:907", 0).click()
+    # «Toda la semana» en «Qué días»: lo que se marca vale para los cinco días, en un solo paso
+    pop.locator('[data-op="d|todos"]').click()
+    assert pagina.locator("#plPopSub").inner_text() == "Lo que marques vale de lunes a viernes"
     pop.locator('input[data-op="c|ES"]').check()
-    pop.locator('[data-op="w|ES"]').click()
     assert fila("req:907") == ["ES"] * 5
     assert "ES va a Adjudicada sin ficha de lunes a viernes." in pagina.locator("#aviso").inner_text()
     assert "5 días · 1 persona" in pagina.locator('#plProyecto tr[data-clave="req:907"] th').inner_text()
@@ -2090,10 +2095,233 @@ def test_toda_la_semana_una_ausencia_y_deshacer(navegador, sitio):
     aviso.locator("button", has_text="Deshacer").click()
     assert pagina.evaluate(JS_PERSONAL)["ES"][2] == ["Adjudicada sin ficha"]
     assert pop.is_visible() and pop.locator('[data-op="a|vacaciones"]').get_attribute("aria-pressed") == "false"
-    # Ctrl Z deshace el cambio anterior: toda la semana
+    # Ctrl Z deshace el cambio anterior: los cinco días juntos
     pagina.keyboard.press("Escape")
     pagina.keyboard.press("Control+z")
-    assert pagina.evaluate(JS_PERSONAL)["ES"] == [["Adjudicada sin ficha"], [], [], [], []]
+    assert pagina.evaluate(JS_PERSONAL)["ES"] == [[], [], [], [], []]
+    assert not errores
+    pagina.context.close()
+
+
+def test_varios_dias_cambiar_y_ausencia_en_un_paso(navegador, sitio):
+    """Pedido del 2026-10-23 (asignar rápido): en la ventanita se eligen varios días y lo que se marca vale para todos, con
+    un solo aviso y un solo «Deshacer». «Cambiar» pasa a la persona de un proyecto a otro en un clic."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    _, lunes = _semana_de(date.today())
+    iso = lambda i: (lunes + timedelta(days=i)).isoformat()
+    pop = pagina.locator("#plPop")
+    _celda_personal(pagina, "LC", 0).click()
+    assert pop.locator(f'[data-op="d|{iso(0)}"]').get_attribute("aria-pressed") == "true"
+    assert pop.locator('.pl-dia-op[aria-pressed="true"]').count() == 1
+    pop.locator(f'[data-op="d|{iso(1)}"]').click()
+    pop.locator(f'[data-op="d|{iso(2)}"]').click()
+    assert pagina.locator("#plPopTit").inner_text() == "LC · 3 días"
+    assert pagina.locator("#plPopSub").inner_text() == "Lo que marques vale de lunes a miércoles"
+    pop.locator('input[data-op="c|req:908"]').check()
+    assert [d[:1] for d in pagina.evaluate(JS_PERSONAL)["LC"]] == [["En obra"]] * 3 + [[], []]
+    assert pagina.locator("#aviso").inner_text().startswith("LC va a En obra de lunes a miércoles.")
+    # Con toda la semana, la casilla queda a medias (va solo algunos días) y marcarla completa los que faltan
+    pop.locator('[data-op="d|todos"]').click()
+    casilla = pop.locator('input[data-op="c|req:908"]')
+    assert casilla.evaluate("c => c.indeterminate") and not casilla.is_checked()
+    assert f"va lun {lunes.day}, mar " in pop.locator("li:has(input[data-op='c|req:908'])").inner_text()
+    casilla.click()
+    assert pagina.evaluate(JS_PERSONAL)["LC"] == [["En obra"]] * 5
+    assert pagina.locator("#aviso").inner_text().startswith("LC va a En obra el jueves y el viernes.")
+    # «Cambiar»: de En obra a Adjudicada sin ficha los cinco días, en un paso; Escape vuelve de «Cambiar» sin cerrar
+    pop.locator('[data-op="k|req:908"]').click()
+    assert "Pasar a LC de En obra a otro proyecto de lunes a viernes" in pop.locator(".pl-pop-nota").inner_text()
+    pagina.keyboard.press("Escape")
+    assert pop.is_visible() and pop.locator('[data-op="k|req:908"]').count() == 1
+    pop.locator('[data-op="k|req:908"]').click()
+    pop.locator('[data-op="x|req:907"]').click()
+    assert pagina.evaluate(JS_PERSONAL)["LC"] == [["Adjudicada sin ficha"]] * 5
+    assert pagina.locator("#aviso").inner_text().startswith("LC cambia de En obra a Adjudicada sin ficha de lunes a viernes.")
+    assert pagina.evaluate("document.activeElement.dataset.op") == "c|req:907"
+    # Un solo Ctrl Z deshace el cambio entero
+    pagina.keyboard.press("Escape")
+    pagina.keyboard.press("Control+z")
+    assert pagina.evaluate(JS_PERSONAL)["LC"] == [["En obra"]] * 5
+    # Ausente el jueves y el viernes de una vez: se quita de sus proyectos esos días
+    _celda_personal(pagina, "LC", 3).click()
+    pop.locator(f'[data-op="d|{iso(4)}"]').click()
+    pop.locator('[data-op="a|permiso"]').click()
+    assert pagina.evaluate(JS_PERSONAL)["LC"] == [["En obra"]] * 3 + [["Permiso"]] * 2
+    assert pagina.locator("#aviso").inner_text().startswith("LC queda ausente el jueves y el viernes (permiso); se quitó de En obra.")
+    assert pop.locator('[data-op="a|permiso"]').get_attribute("aria-pressed") == "true"
+    # Con toda la semana, la ventanita dice qué días se saltan; «Quitar ausencia» la quita donde está
+    pop.locator('[data-op="d|todos"]').click()
+    assert "Al agregar se saltan el jueves" in pop.locator(".pl-pop-nota").inner_text()
+    assert pop.locator(f'[data-op="d|{iso(3)}"]').evaluate("b => b.classList.contains('bloq')")
+    pop.locator('[data-op="a|"]').click()
+    assert pagina.evaluate(JS_PERSONAL)["LC"] == [["En obra"]] * 3 + [[], []]
+    assert not errores
+    pagina.context.close()
+
+
+def test_casos_borde_de_varios_dias_cambiar_e_imprimir(navegador, sitio):
+    """Lo que encontró la revisión del 2026-10-23: el sábado que se esconde con la ventanita abierta, la casilla a medias
+    que no se podía quitar, «Cambiar» cuando el destino ya estaba, «Siguiente sin nadie» que iba y volvía, la hoja de
+    quien está ausente toda la semana, «Salen 2 hojas» y el margen oscuro al imprimir en modo oscuro."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    _, lunes = _semana_de(date.today())
+    iso = lambda i: (lunes + timedelta(days=i)).isoformat()
+    pop = pagina.locator("#plPop")
+    aviso = lambda: pagina.locator("#aviso").inner_text()
+    # «Siguiente sin nadie» recorre todos los de la alarma, aunque se deje alguno pendiente
+    pagina.locator("#plAlarma .pl-alarma-p").first.click()
+    titulos = [pagina.locator("#plPopTit").inner_text()]
+    for _ in range(2):
+        pagina.locator("#plPopSiguiente").click()
+        titulos.append(pagina.locator("#plPopTit").inner_text())
+    assert len(set(titulos)) == 3, titulos
+    pagina.keyboard.press("Escape")
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    # El sábado: al quitarle lo último su columna se esconde, pero la ventanita sigue en el sábado (no salta al lunes)
+    pagina.locator("#plSabado").check()
+    _celda_personal(pagina, "ES", 5).click()
+    pop.locator('input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    pagina.locator("#plSabado").click()          # ya no se pide, pero queda a la vista porque tiene algo
+    assert pagina.locator("#plSabado").is_disabled()
+    _celda_personal(pagina, "ES", 5).click()
+    pop.locator('input[data-op="c|req:908"]').uncheck()
+    assert pagina.locator('#plPersonal td[data-dia="5"]').count() == 0
+    assert pagina.locator("#plPopTit").inner_text().startswith("ES · Sábado ")
+    pop.locator('input[data-op="c|req:908"]').check()
+    assert aviso().startswith("ES va a En obra el sábado")
+    assert pagina.evaluate(JS_PERSONAL)["ES"][0] == []
+    pop.locator('input[data-op="c|req:908"]').uncheck()
+    pagina.keyboard.press("Escape")
+    # Con un día de vacaciones, ir todos los demás días cuenta como marcada (no a medias): al tocarla se quita
+    _celda_personal(pagina, "ES", 0).click()
+    pop.locator('[data-op="d|todos"]').click()
+    pop.locator('input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    _celda_personal(pagina, "ES", 4).click()
+    pop.locator('[data-op="a|vacaciones"]').click()
+    pop.locator('[data-op="d|todos"]').click()
+    casilla = pop.locator('input[data-op="c|req:908"]')
+    assert casilla.is_checked() and not casilla.evaluate("c => c.indeterminate")
+    casilla.uncheck()
+    assert pagina.evaluate(JS_PERSONAL)["ES"] == [[], [], [], [], ["Vacaciones"]]
+    pagina.keyboard.press("Escape")
+    # «Cambiar» cuando el destino ya estaba algún día: ese día solo se quita el origen
+    _celda_personal(pagina, "LC", 0).click()
+    pop.locator(f'[data-op="d|{iso(1)}"]').click()
+    pop.locator('input[data-op="c|req:908"]').check()
+    pop.locator('[data-op="d|solo"]').click()
+    pop.locator('input[data-op="c|req:907"]').check()
+    pop.locator(f'[data-op="d|{iso(1)}"]').click()
+    pop.locator('[data-op="k|req:908"]').click()
+    assert f"ya va lun {lunes.day}" in pop.locator('[data-op="x|req:907"]').inner_text()
+    pop.locator('[data-op="x|req:907"]').click()
+    assert pagina.evaluate(JS_PERSONAL)["LC"][:2] == [["Adjudicada sin ficha"], ["Adjudicada sin ficha"]]
+    pagina.keyboard.press("Escape")
+    # La hoja de quien está ausente toda la semana lo dice; sin la tabla, «Salen 2 hojas»
+    _celda_personal(pagina, "ES", 0).click()
+    pop.locator('[data-op="d|todos"]').click()
+    pop.locator('[data-op="a|licencia"]').click()
+    pagina.keyboard.press("Escape")
+    pagina.evaluate("""() => { window.print = () => {
+        window.__hojas = [...document.querySelectorAll('#plDoc .pl-doc-hoja')].map((s) => s.innerText);
+        window.dispatchEvent(new Event('afterprint'));
+    }; }""")
+    pagina.locator("#plImprimir").click()
+    dlg = pagina.locator("#dlgPlExportar")
+    assert dlg.locator("#plExpPers input:checked").evaluate_all("xs => xs.map((x) => x.value)") == ["ES", "LC"]
+    dlg.locator("#plExpTabla").uncheck()
+    assert dlg.locator("#plExpCuenta").inner_text() == "Salen 2 hojas de personas."
+    dlg.locator("#plExpImprimir").click()
+    hojas = pagina.evaluate("window.__hojas")
+    assert "Ausente toda la semana" in hojas[0] and "de 5 días con proyecto" in hojas[1]
+    # Al imprimir en modo oscuro, la página entera queda en claro (también el margen de cada hoja)
+    pagina.locator("#btnTema").click()
+    pagina.emulate_media(media="print")
+    claro = pagina.evaluate("""() => { document.body.classList.add('pl-imprimiendo');
+        const c = getComputedStyle(document.documentElement); const r = [c.colorScheme, c.backgroundColor];
+        document.body.classList.remove('pl-imprimiendo'); return r; }""")
+    pagina.emulate_media(media="screen")
+    assert claro == ["light", "rgb(255, 255, 255)"], claro
+    assert not errores
+    pagina.context.close()
+
+
+def test_cambiar_quien_va_y_moverse_con_el_teclado(navegador, sitio):
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    _, lunes = _semana_de(date.today())
+    pop = pagina.locator("#plPop")
+    _celda_proyecto(pagina, "req:908", 0).click()
+    pop.locator('input[data-op="c|ES"]').check()
+    # «Cambiar» a ES: va MP en su lugar, en un paso
+    pop.locator('[data-op="k|ES"]').click()
+    assert pop.locator('[data-op="x|ES"]').count() == 0
+    pop.locator('[data-op="x|MP"]').click()
+    assert pagina.locator("#aviso").inner_text().startswith(f"MP va a En obra en vez de ES el lunes {lunes.day}.")
+    assert pop.locator('input[data-op="c|MP"]').is_checked() and not pop.locator('input[data-op="c|ES"]').is_checked()
+    pagina.keyboard.press("Escape")
+    # Las flechas van de casilla en casilla; Enter abre la ventanita
+    ancla = lambda: pagina.evaluate("document.activeElement.dataset.ancla")
+    iso = lambda i: (lunes + timedelta(days=i)).isoformat()
+    assert ancla() == f"j|req:908|{iso(0)}"
+    pagina.keyboard.press("ArrowRight")
+    assert ancla() == f"j|req:908|{iso(1)}"
+    claves = pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
+    i = claves.index("req:908")
+    pagina.keyboard.press("ArrowUp" if i else "ArrowDown")
+    assert ancla() == f"j|{claves[i - 1 if i else 1]}|{iso(1)}"
+    pagina.keyboard.press("ArrowDown" if i else "ArrowUp")
+    pagina.keyboard.press("End")
+    assert ancla() == f"j|req:908|{iso(4)}"
+    pagina.keyboard.press("Enter")
+    assert pop.is_visible() and pagina.locator("#plPopTit").inner_text() == "En obra"
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_alarma_abre_el_proyecto_y_sigue_con_el_siguiente(navegador, sitio):
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    nombres = list(ACTIVOS.values())
+    pop = pagina.locator("#plPop")
+    sig = pagina.locator("#plPopSiguiente")
+    pagina.locator("#plAlarma .pl-alarma-p", has_text=nombres[0]).click()
+    assert pagina.locator('.pl-vista[data-vista="proyecto"]').get_attribute("aria-pressed") == "true"
+    assert pop.is_visible() and pagina.locator("#plPopTit").inner_text() == nombres[0]
+    assert sig.inner_text() == f"Siguiente sin nadie: {nombres[1]} ›"
+    pop.locator('input[data-op="c|LC"]').check()
+    assert pagina.locator("#plAlertaN").inner_text() == "2"
+    sig.click()
+    assert pagina.locator("#plPopTit").inner_text() == nombres[1]
+    # Si esa semana no se trabaja en él, se marca desde la misma ventanita
+    pop.locator('[data-op="pausa"]').click()
+    assert pagina.locator("#plAlertaN").inner_text() == "1"
+    assert pop.locator('[data-op="pausa"]').get_attribute("aria-pressed") == "true"
+    sig.click()
+    assert pagina.locator("#plPopTit").inner_text() == nombres[2] and sig.is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_asignar_en_el_tablero_general_elige_el_proyecto_y_despues_quienes(navegador, sitio):
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general")
+    _, lunes = _semana_de(date.today())
+    pop = pagina.locator("#plPop")
+    pagina.locator(f'#plGeneral [data-ancla="n|{lunes.isoformat()}"]').click()
+    assert pagina.locator("#plPopTit").inner_text() == f"Asignar el lunes {lunes.day}"
+    assert pop.locator(".pl-grupo h4").all_text_contents() == ["Sin nadie ese día"]
+    pop.locator('[data-op="d|todos"]').click()
+    pop.locator('[data-op="n|req:908"]').click()
+    # El proyecto, con los mismos días elegidos y la vuelta a la lista
+    assert pagina.locator("#plPopTit").inner_text() == "En obra"
+    assert pagina.locator("#plPopSub").inner_text() == "Lo que marques vale de lunes a viernes"
+    pop.locator('input[data-op="c|NB"]').check()
+    pop.locator('[data-op="volver"]').click()
+    assert pop.locator(".pl-grupo h4").all_text_contents() == ["Sin nadie esos días", "Ya tienen a alguien"]
+    assert "van NB" in pop.locator('[data-op="n|req:908"]').inner_text()
     assert not errores
     pagina.context.close()
 
@@ -2175,25 +2403,57 @@ def test_otras_semanas_copiar_la_anterior_compartir_e_imprimir(navegador, sitio)
     pagina.wait_for_function("document.getElementById('aviso').textContent.startsWith('Se copió')")
     assert pagina.locator("#aviso").inner_text().startswith(f"Se copió 1 asignación de la semana {anterior}.")
     assert pagina.evaluate(JS_PERSONAL)["LC"][3] == ["En obra"]
-    # Compartir: el resumen de la semana para WhatsApp
+    # Compartir (2026-10-23): por persona, lo de cada uno día por día; también por día, como antes
+    jueves = (lunes + timedelta(days=3)).day
     pagina.locator("#plCompartir").click()
     texto = pagina.locator("#plTextoArea").input_value()
     assert texto.startswith(f"*Planificación semana {numero} · ")
-    assert "\n*Jueves " in texto and "• En obra: LC" in texto and "Sin asignaciones" in texto
+    assert f"\n*LC*\n• Lun {lunes.day}: sin proyecto\n" in texto and f"\n• Jue {jueves}: En obra\n" in texto
     assert texto.endswith("⚠ Sin nadie asignado: Adjudicada sin ficha, Obra sin número")
+    pagina.locator('#plTextoModo [data-modo="dia"]').click()
+    texto = pagina.locator("#plTextoArea").input_value()
+    assert "\n*Jueves " in texto and "• En obra: LC" in texto and "Sin asignaciones" in texto
     pagina.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=sitio)
     pagina.locator("#plCopiarTexto").click()
     assert pagina.evaluate("navigator.clipboard.readText()").replace("\r\n", "\n") == texto     # Windows lo guarda con \r\n
     assert pagina.locator("#dlgPlTexto").is_hidden()
-    # Imprimir: solo la semana a la vista
+    # El orden elegido queda para la próxima vez
+    pagina.locator("#plCompartir").click()
+    assert pagina.locator('#plTextoModo [data-modo="dia"]').get_attribute("aria-pressed") == "true"
+    pagina.keyboard.press("Escape")
+    # Imprimir o PDF (2026-10-23): un documento propio para el papel, el mismo desde cualquier vista: la tabla de la
+    # semana y una hoja para cada persona elegida (de entrada, quienes tienen algo esa semana: aquí solo LC)
     pagina.evaluate("""() => { window.print = () => {
         window.__impreso = document.body.classList.contains('pl-imprimiendo');
+        window.__titulo = document.title;
+        window.__hojas = [...document.querySelectorAll('#plDoc section')].map((s) => s.className + ':' + s.querySelector('h1').textContent);
+        window.__tabla = [...document.querySelectorAll('#plDoc .pl-doc-t tbody tr')].map((tr) => [...tr.cells].map((c) => c.innerText.trim()));
+        window.__hoja = document.querySelector('#plDoc .pl-doc-hoja') ? document.querySelector('#plDoc .pl-doc-hoja').innerText : '';
         window.dispatchEvent(new Event('afterprint'));
     }; }""")
     pagina.locator("#plImprimir").click()
-    assert pagina.evaluate("window.__impreso") is True
+    dlg = pagina.locator("#dlgPlExportar")
+    assert dlg.is_visible()
+    assert dlg.locator("#plExpPers input:checked").evaluate_all("xs => xs.map((x) => x.value)") == ["LC"]
+    assert dlg.locator("#plExpCuenta").inner_text() == "Sale la tabla de la semana y 1 hoja de persona."
+    dlg.locator("#plExpImprimir").click()
+    assert pagina.evaluate("window.__impreso") is True and dlg.is_hidden()
+    assert pagina.evaluate("window.__titulo").startswith(f"Planificación semana {numero} (")
+    assert pagina.evaluate("window.__hojas") == ["pl-doc-tabla:Quién va a qué proyecto", "pl-doc-hoja:LC"]
+    tabla = pagina.evaluate("window.__tabla")
+    assert [f[0] for f in tabla] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV"]
+    assert tabla[2][4].startswith("En obra") and tabla[2][1] == "Sin proyecto"
+    hoja = pagina.evaluate("window.__hoja")
+    assert "En obra" in hoja and "Nadie más" in hoja and "Sin proyecto asignado" in hoja and "tú" not in hoja
+    # Al terminar, el documento se vacía y la página vuelve a su título
     assert pagina.evaluate("document.body.classList.contains('pl-imprimiendo')") is False
-    assert pagina.locator("#plImpreso").text_content().startswith(f"Semana {numero} · ")
+    assert pagina.evaluate("document.getElementById('plDoc').childElementCount") == 0
+    assert not pagina.evaluate("document.title").startswith("Planificación semana")
+    # Sin nada elegido no se imprime
+    pagina.locator("#plImprimir").click()
+    dlg.locator("#plExpTabla").uncheck()
+    dlg.locator("#plExpHojas").uncheck()
+    assert dlg.locator("#plExpImprimir").is_disabled() and dlg.locator("#plExpCuenta").inner_text() == "Elige qué imprimir."
     assert not errores
     pagina.context.close()
 
@@ -2245,7 +2505,20 @@ def test_la_planificacion_cabe_sin_desbordes(navegador, sitio, ancho):
         pagina.locator("#plGeneral .pl-nuevo" if vista == "general" else f"#pl{vista.capitalize()} .pl-celda >> visible=true").first.click()
         caja = pagina.locator("#plPop").bounding_box()
         assert caja["x"] >= 0 and caja["x"] + caja["width"] <= ancho and caja["y"] >= 0 and caja["y"] + caja["height"] <= 844, (vista, caja)
+        # Dentro de ella, con la franja «Qué días» y toda la semana elegida, nada se sale de lado ni queda con letra chica
+        pagina.locator('#plPop [data-op="d|todos"]').click()
+        dentro = pagina.evaluate("""() => { const r = document.getElementById('plPop').getBoundingClientRect();
+            const vis = [...document.querySelectorAll('#plPop *')].filter((e) => e.getClientRects().length);
+            return { fuera: vis.filter((e) => e.getBoundingClientRect().right > r.right + 0.5).map((e) => e.className || e.tagName),
+                     chicos: vis.filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+                       .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName) }; }""")
+        assert not dentro["fuera"] and not dentro["chicos"], (vista, dentro)
         if movil:
             assert pagina.evaluate("parseFloat(getComputedStyle(document.querySelector('#plPop .pl-otra input, #plPop .pl-buscar') || document.body).fontSize)") >= 16
+            # El aviso de un cambio (con «Deshacer») no tapa la ventanita, que sube desde abajo
+            if vista != "general":
+                pagina.locator("#plPop .pl-ops input:not([disabled])").first.click()
+                pagina.locator("#aviso").wait_for()
+                assert pagina.locator("#aviso").bounding_box()["y"] + pagina.locator("#aviso").bounding_box()["height"] <= pagina.locator("#plPop").bounding_box()["y"]
         assert not errores
         pagina.context.close()
