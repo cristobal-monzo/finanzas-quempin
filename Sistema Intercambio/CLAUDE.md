@@ -161,7 +161,9 @@ además `LEEME.md` desde `LEEME-carpeta.md` cuando cambia: edita ese archivo,
 no el de la carpeta.
 
 - **Un paso que falla no frena a los demás** y queda en `estado.json` y en
-  `logs/procesador_AAAA-MM.log` (una línea por vuelta).
+  `logs/procesador_AAAA-MM.log` (una línea por vuelta, con los segundos de la
+  vuelta y de cada paso de 10 s o más desde el 2026-10-25: `sistema-quempin`
+  había llegado dos veces al límite de 300 s sin que el log lo dejara ver).
 - **Un envío que queda pendiente no dispara un `run` en cada vuelta**: se
   reintenta cuando cambia algo (un envío nuevo, el libro, Centro de Costos).
 - Los módulos de Finanzas corren **en su propio proceso** (archivos

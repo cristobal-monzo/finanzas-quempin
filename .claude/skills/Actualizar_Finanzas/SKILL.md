@@ -58,7 +58,10 @@ openpyxl (ver `requirements.txt`).
   GitHub Pages. Lo corre **todos los días a las 09:00** la tarea «Oportunidades
   Mercado Publico QUEMPIN» (`tarea_oportunidades.cmd`, log en
   `logs/oportunidades_*.log`, se guardan 30), aparte de la corrida semanal.
-  Si el equipo está apagado a esa hora, corre al encenderlo. Si Mercado
+  Si el equipo está apagado a esa hora, corre al encenderlo; como la red tarda
+  en llegar después de encender (el 22 y el 23-10-2026 falló así y el tablero
+  quedó cinco días atrás), la tarea espera hasta 10 minutos a que se resuelva
+  `api.mercadopublico.cl` antes de correr (2026-10-25). Si Mercado
   Público no responde, **no publica**: queda en línea el tablero anterior,
   con su fecha. Si el procesador del intercambio está corriendo (también
   consulta la API), lo espera hasta 15 minutos.

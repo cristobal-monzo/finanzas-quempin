@@ -185,6 +185,19 @@ def test_el_estado_dice_su_propia_vuelta(entorno):
     assert estado["publicaciones"]["estado"]["generado"] >= estado["procesador"]["ultimaCorrida"][:16]
 
 
+def test_el_log_dice_cuanto_tardo_cada_paso_lento(tmp_path, monkeypatch):
+    """2026-10-25: el log solo decía «ok» o «FALLA», y una vuelta de 300 s no se veía hasta que fallaba."""
+    monkeypatch.setattr(pr, "CARPETA_LOGS", tmp_path)
+    pr._registrar({"activo": True, "avisos": [], "pasos": {
+        "esquemas": {"ok": True, "detalle": "", "seg": 1.5},
+        "sistema-quempin": {"ok": True, "detalle": "", "seg": 89.6},
+        "uf": {"ok": False, "detalle": "", "seg": 12.0}}})
+    linea = next(tmp_path.glob("procesador_*.log")).read_text(encoding="utf-8").strip()
+    assert linea.endswith(" activo 103s esquemas=ok sistema-quempin=ok(90s) uf=FALLA(12s)")
+    pr._registrar({"activo": False, "avisos": ["sin carpeta"], "pasos": {}})
+    assert next(tmp_path.glob("procesador_*.log")).read_text(encoding="utf-8").splitlines()[-2].endswith(" inactivo ")
+
+
 def test_mindicador_caido_no_es_una_falla_del_procesador(entorno, tmp_path, monkeypatch):
     monkeypatch.setenv("QUEMPIN_UF_ULTIMA", str(tmp_path / "uf_ultima.json"))
     monkeypatch.setattr(pr, "correr", lambda comando, cwd=None, limite=600: (comando[-1] != "uf", "[ERROR] HTTP 500"))

@@ -442,12 +442,20 @@ def procesar(raiz: Path | None = None, forzar: bool = False, pasos=PASOS,
         RUTA_CANDADO.unlink(missing_ok=True)
 
 
+PASO_LENTO_SEG = 10   # desde aquí el log anota los segundos del paso
+
+
 def _registrar(resultado: dict) -> None:
+    """Una línea por vuelta, con lo que tardó y los segundos de cada paso lento (2026-10-25): sistema-quempin
+    llegó dos veces al límite de 300 s y la UF tardó 91 s, y el log solo decía «ok» o «FALLA»."""
     try:
         CARPETA_LOGS.mkdir(exist_ok=True)
         ruta = CARPETA_LOGS / f"procesador_{datetime.now():%Y-%m}.log"
-        partes = [f"{n}={'ok' if p['ok'] else 'FALLA'}" for n, p in resultado.get("pasos", {}).items()]
-        linea = f"{datetime.now():%Y-%m-%d %H:%M:%S} {'activo' if resultado.get('activo') else 'inactivo'} " + " ".join(partes)
+        pasos = resultado.get("pasos", {})
+        partes = [f"{n}={'ok' if p['ok'] else 'FALLA'}" + (f"({p['seg']:.0f}s)" if p.get("seg", 0) >= PASO_LENTO_SEG else "")
+                  for n, p in pasos.items()]
+        total = f" {sum(p.get('seg', 0) for p in pasos.values()):.0f}s" if pasos else ""
+        linea = f"{datetime.now():%Y-%m-%d %H:%M:%S} {'activo' if resultado.get('activo') else 'inactivo'}{total} " + " ".join(partes)
         with open(ruta, "a", encoding="utf-8") as f:
             f.write(linea + "".join(f"\n    {a}" for a in resultado.get("avisos", [])) + "\n")
     except OSError:

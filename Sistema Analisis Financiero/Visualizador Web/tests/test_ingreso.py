@@ -330,6 +330,8 @@ def test_la_pestana_recuerda_y_no_pide_dos_veces_quien_envia(navegador, libro, t
     # «Cómo funciona» abierto la primera vez; cerrado, así queda al volver
     assert pagina.evaluate("document.getElementById('ingComo').open") is True
     pagina.click("#ingComo summary")
+    # El evento «toggle» llega en otra tarea: recargar antes perdía lo elegido (la prueba fallaba con carga)
+    pagina.wait_for_function("localStorage.getItem('af_ingreso_como') === 'false'")
     pagina.select_option("#ingFiltro", "")
     pagina.reload()
     pagina.locator("#pwGate").wait_for(state="hidden", timeout=20000)   # la clave quedó recordada
