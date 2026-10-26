@@ -1356,6 +1356,41 @@
   .pl-agregados ul + h3 { margin-top: 8px; }
   .pl-agregar-pie { max-width: 260px; margin: 10px 0 0; min-height: 38px; }
   .pl-agregar-pie:disabled { opacity: 0.45; cursor: default; }
+  .pl-pie { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .pl-pie .pl-agregar-pie { flex: 0 1 260px; margin: 0; }
+  /* Estado de los proyectos, y darlos por cerrados (2026-10-26) */
+  #dlgPlProyectos { width: min(680px, calc(100vw - 24px)); }
+  #dlgPlProyectos .dlg-acc .cx-enlace { min-height: 44px; }
+  .dlg p.pl-proys-aviso {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 8px;
+    background: var(--tinte); color: var(--tinte-texto); font-weight: 700;
+  }
+  .dlg p.pl-proys-aviso[hidden] { display: none; }
+  .pl-proys-aviso .cx-enlace { flex: 0 0 auto; min-height: 36px; }
+  .pl-proys { display: flex; flex-direction: column; gap: 6px; }
+  .pl-proys h3 { margin: 6px 0 0; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
+  .dlg .pl-proys ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .dlg .pl-proys li { display: flex; flex-direction: column; gap: 8px; padding: 10px 8px 10px 12px; border-radius: 8px; background: var(--page-plane); font-size: 14px; }
+  .pl-proys-fila { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .pl-proys-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .pl-proys-txt b { font-size: 14.5px; color: var(--text-primary); overflow-wrap: anywhere; }
+  .pl-proys-txt > span { font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+  .pl-proys-txt > span.pl-proys-fuentes { color: var(--texto-suave); }
+  .pl-proys-chips { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; }
+  .pl-proys-acc { flex: 0 0 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+  .pl-proys-acc .cx-enlace { min-height: 36px; }
+  .pl-proys-acc .cx-enlace:disabled { opacity: 0.45; cursor: default; }
+  .pl-proys-vacio { font-size: 14px; color: var(--texto-suave); }
+  .pl-cerrar { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid var(--gridline); }
+  .dlg p.pl-cerrar-txt { font-size: 13.5px; line-height: 1.5; }
+  .pl-cerrar-af { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.45; color: var(--text-primary); cursor: pointer; }
+  .pl-cerrar-af input { margin: 3px 0 0; flex: 0 0 auto; }
+  .pl-cerrar-acc { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .pl-cerrar-acc button { min-height: 40px; }
+  @media (max-width: 560px) {
+    .pl-proys-fila { flex-direction: column; }
+    .pl-proys-acc { justify-content: flex-start; }
+  }
   /* Una persona escrita a mano: su nombre corto en la etiqueta y su círculo con borde punteado */
   .pl-per.mano { letter-spacing: 0; font-weight: 800; }
   .pl-avatar.mano { border-style: dashed; border-color: var(--baseline); }
@@ -1747,6 +1782,7 @@
                 <div class="pl-acciones">
                   <label class="rc-mios" title="Mostrar también el sábado"><input type="checkbox" id="plSabado"><span>Sábado</span></label>
                   <button class="cx-enlace" id="plAgregar" type="button" title="Una persona o un proyecto que no están en la lista, solo para la semana a la vista"></button>
+                  <button class="cx-enlace" id="plProyectos" type="button" title="De dónde sale cada proyecto, cómo va, y dar por cerrado uno que ya terminó"></button>
                   <button class="cx-enlace" id="plCopiar" type="button" title="Agrega lo de la semana anterior, día por día, sin borrar nada de esta"></button>
                   <button class="cx-enlace" id="plCompartir" type="button" title="Lo de cada persona, listo para pegar en WhatsApp o en un correo"></button>
                   <button class="cx-enlace" id="plImprimir" type="button" title="Imprimir o guardar en PDF la tabla de la semana y una hoja para cada persona"></button>
@@ -1972,6 +2008,18 @@
     <label class="pl-campo" id="plAgregarLugarCampo"><span>Lugar <i>(opcional)</i></span><input id="plAgregarLugar" type="text" maxlength="60" autocomplete="off" placeholder="Comuna o ciudad"></label>
     <div class="pl-agregados" id="plAgregados"></div>
     <div class="dlg-acc"><button class="cx-enlace" id="plAgregarCerrar" type="button">Cerrar</button><button class="btn-pri" id="plAgregarOk" type="submit">Agregar</button></div>
+  </form>
+</dialog>
+
+<!-- Planificación semanal: el estado de cada proyecto y darlo por cerrado (2026-10-26); lo arma plPintarProyectos() -->
+<dialog id="dlgPlProyectos" aria-labelledby="dlgPlProyectosTit">
+  <form class="dlg" id="plProyForm" novalidate>
+    <h2 id="dlgPlProyectosTit">Estado de los proyectos</h2>
+    <button class="dlg-x" id="plProyX" type="button" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <p id="plProyPista"></p>
+    <p class="pl-proys-aviso" id="plProyAviso" role="status" hidden></p>
+    <div class="pl-proys" id="plProyLista"></div>
+    <div class="dlg-acc"><button class="btn-pri" id="plProyCerrar" type="button">Listo</button></div>
   </form>
 </dialog>
 
@@ -3787,7 +3835,7 @@
           texto: 'Su término (' + rcCorta(fin, hoy) + ') ya pasó con ' + Math.round(avance * 100) + ' % de avance. Actualiza el avance o la fecha en «Ingresar avance».' }
       : { tipo: 'curso', corto: 'Registrar avance', nivel: '', ir: RC_IR.herr('ingresar'),
           texto: 'En ejecución. Registra el avance, las fechas y la mano de obra real en «Ingresar avance»; las facturas llegan solas al Centro de Costos.'
-            + ' Cuando termine, márcalo «Cerrada» en el Seguimiento del Formulador (o deja su avance en 100 %): sale de la Planificación semanal.' };
+            + ' Cuando termine, márcalo «Cerrada» en el Seguimiento del Formulador, deja su avance en 100 % o dalo por cerrado («Dar por cerrado», en su ficha o en «Estado de los proyectos»): sale de la Planificación semanal.' };
     if (fin) t.chips.push(atrasado ? { texto: 'Término vencido', nivel: 'warn' } : { texto: 'Termina el ' + rcCorta(fin, hoy), nivel: '' });
     t.orden = fin ? fin.getTime() : MAXIMO;
     if (af.venta && af.venta.cargada === false) t.avisos.push('Falta su monto de venta en el Análisis Financiero: sin él no entra completo a sus indicadores.');
@@ -3806,6 +3854,31 @@
     if (avance !== null && avance < 1) t.avisos.push('Está «Cerrada» en el Formulador, pero el Análisis Financiero tiene ' + Math.round(avance * 100) + ' % de avance: déjalo en 100 % en «Ingresar avance» para que su resultado cuente en el sesgo real.');
     t.antiguo = !!fin && rcDias(fin, hoy) < -RC_DIAS_ANTIGUO;
     t.orden = fin ? -fin.getTime() : MAXIMO;
+  }
+  /* Dado por cerrado en la Planificación semanal (2026-10-26): un proyecto en ejecución que ya terminó y se entregó,
+     aunque no haya pasado por el Formulador ni tenga el 100 % en el Análisis Financiero. Va al «Cierre» como los
+     terminados; e es lo último que se guardó para su N° o su TAG (plCierres). */
+  const rcClavesCierre = (t) => [t.req ? 'req:' + t.req : '', t.tag ? 'tag:' + t.tag : ''].filter(Boolean);
+  function rcCierreDe(t, cierres) {
+    let u = null;
+    rcClavesCierre(t).forEach((k) => { const e = cierres.get(k); if (e && (!u || e.t > u.t)) u = e; });
+    return u;
+  }
+  function rcCerradoEnPlan(t, e, hoy) {
+    const fin = new Date(e.t);
+    const avance = t.af ? Math.max(0, Math.min(1, Number(t.af.avance) || 0)) : null;
+    t.etapa = 'cierre';
+    t.cierrePlan = e;
+    t.accion = { tipo: 'listo', corto: 'Cerrado', nivel: '', ir: t.af && t.tag ? RC_IR.af(t.tag) : t.formulacion ? RC_IR.seguimiento(t.formulacion.uid) : null,
+      texto: 'Dado por cerrado en la Planificación semanal' + (e.por ? ' por ' + e.por : '') + ' el ' + rcCorta(fin, hoy) + (e.nota ? ': «' + e.nota + '»' : '')
+        + '. Ya no aparece en la planificación; si sigue en obra, reábrelo.' };
+    t.chips = [{ texto: 'Cerrado', nivel: 'ok' }];
+    if (avance !== null && avance < 1) {
+      t.avisos.push(e.af ? 'Se pidió dejar su avance en 100 % en el Análisis Financiero: llega en la próxima vuelta del procesador.'
+        : 'El Análisis Financiero tiene ' + Math.round(avance * 100) + ' % de avance: déjalo en 100 % en «Ingresar avance» para que su resultado cuente en el sesgo real.');
+    }
+    t.antiguo = rcDias(fin, hoy) < -RC_DIAS_ANTIGUO;
+    t.orden = -fin.getTime();
   }
   // Un requerimiento de la Planilla, con lo que cuelga de él en las demás herramientas.
   function rcTarjetaReq(n, x, hoy) {
@@ -3972,7 +4045,7 @@
     return t;
   }
   /* Todo el recorrido a partir de lo publicado. d: { requerimientos, cruce, af, licitaciones, formulaciones,
-     borradores } tal como vienen de la carpeta (rcLeer). Devuelve las tarjetas, sin pintar. */
+     borradores, cierres } tal como vienen de la carpeta (rcLeer). Devuelve las tarjetas, sin pintar. */
   function rcArmar(d, hoy) {
     const porNum = new Map();
     d.requerimientos.forEach((r) => { const n = rcNum(r && r.numero); if (n) porNum.set(n, r); });
@@ -4027,6 +4100,11 @@
     sinReq.forEach((f) => tarjetas.push(rcTarjetaSinReq(f, hoy)));
     const unidos = new Set(afPorReq.values());
     afPorTag.forEach((p) => { if (!unidos.has(p)) tarjetas.push(rcTarjetaAF(p, hoy)); });
+    const cierres = d.cierres || new Map();
+    tarjetas.forEach((t) => {
+      const e = t.etapa === 'ejecucion' ? rcCierreDe(t, cierres) : null;
+      if (e && e.cerrado) rcCerradoEnPlan(t, e, hoy);
+    });
     tarjetas.forEach((t) => {
       t.buscar = norm([t.req ? 'n' + t.req + ' n° ' + t.req : '', t.tag, t.titulo, t.lugar, t.responsable, t.planilla && t.planilla.titulo,
         t.planilla && t.planilla.referencia, t.formulacion && t.formulacion.codigo, t.lic && t.lic.comprador, t.af && t.af.nombre].join(' '));
@@ -4057,9 +4135,10 @@
   async function rcLeer(dir) {
     const pub = await rcSub(dir, 'publicado');
     const leerPub = (n) => (pub ? rcJson(pub, n + '.json') : Promise.resolve(null));
-    const [req, cruce, af, lic, est, repo, buzon] = await Promise.all([
+    const [req, cruce, af, lic, est, repo, buzon, cierres] = await Promise.all([
       leerPub('requerimientos'), leerPub('proyectos'), leerPub('analisis-financiero'), leerPub('licitaciones'), leerPub('estado'),
-      rcSub(dir, 'publicado', 'formulador').then(rcJsonDe), rcSub(dir, 'buzon').then(rcJsonDe)
+      rcSub(dir, 'publicado', 'formulador').then(rcJsonDe), rcSub(dir, 'buzon').then(rcJsonDe),
+      plLeerCierres(dir).catch((e) => { console.error(e); return plCierres().ef; })
     ]);
     const lista = (s, k) => (s && s.datos && Array.isArray(s.datos[k]) ? s.datos[k] : []);
     return {
@@ -4067,6 +4146,7 @@
       licitaciones: lista(lic, 'licitaciones'),
       formulaciones: repo.filter((x) => x && x.datos && typeof x.datos === 'object'),
       borradores: buzon.filter((m) => m && m.tipo === 'borrador-cotizacion' && m.destino === 'sistema-quempin'),
+      cierres,
       estado: est && est.datos ? est.datos : null,
       falta: [!req && 'la Planilla de Ingreso', !af && 'el Análisis Financiero'].filter(Boolean)
     };
@@ -4478,7 +4558,23 @@
       if (c && !MOVIL.matches) enlace(txt, { enlace: enlaceCarpeta(c) }, true);
     });
     if (enl.childElementCount) cuerpo.append(crear('h3', 'rc-det-h', 'Abrir'), enl);
-    $('#dlgRecorrido').showModal();
+    // En ejecución: darlo por cerrado si ya terminó; cerrado en la Planificación: reabrirlo (2026-10-26)
+    if ((t.etapa === 'ejecucion' || t.cierrePlan) && rcClavesCierre(t).length) {
+      const acc = crear('div', 'cx-acc');
+      const b = crear('button', 'cx-enlace', t.cierrePlan ? 'Reabrir: sigue en obra' : 'Dar por cerrado');
+      b.type = 'button';
+      b.dataset.op = t.cierrePlan ? 'reabrir' : 'cerrar';
+      b.disabled = !rc.dir;
+      b.title = t.cierrePlan ? 'Vuelve a ejecución y a la Planificación semanal' : 'Ya terminó y se entregó: pasa al «Cierre» y sale de la Planificación semanal';
+      b.addEventListener('click', () => {
+        if (t.cierrePlan) { plReabrir(t); rcVerDetalle(t.clave); return; }
+        $('#dlgRecorrido').close();
+        plAbrirProyectos(t.clave);
+      });
+      acc.append(b);
+      cuerpo.append(crear('h3', 'rc-det-h', t.cierrePlan ? 'Cerrado en la planificación' : '¿Ya terminó?'), acc);
+    }
+    if (!$('#dlgRecorrido').open) $('#dlgRecorrido').showModal();
   }
 
   // ---- En el Inicio, debajo de las herramientas, y cambios de usuario --------------------------------
@@ -4591,6 +4687,9 @@
   const PL_PER_MANO = /^x-[a-z0-9-]{1,30}$/;
   const plPerValida = (x) => PERSONAL.includes(x) || PL_PER_MANO.test(texto(x));
   const PL_LISTA = 'lista';     // publicado/planificacion/lista/<dispositivo>.json: las personas y proyectos agregados a mano
+  const PL_CIERRES = 'cierres'; // publicado/planificacion/cierres/<dispositivo>.json: los proyectos dados por cerrados
+  const PL_CLAVE_CIERRE = /^(req:\d{1,6}|tag:[A-Z0-9]{2,10})$/;
+  const PL_CERRADOS_MAX = 12;   // los cerrados más recientes que muestra «Estado de los proyectos», para reabrirlos
   // «Juan Pérez» → «juan-perez»: la parte de la clave que sale del nombre
   const plSlug = (txt, max) => norm(txt).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, max).replace(/-+$/, '');
   const PL_SIN_CARPETA = {
@@ -4605,6 +4704,9 @@
     lunes: null,              // el lunes de la semana a la vista
     semanas: new Map(),       // «2026-W43» → { id, lunes, archivos, mias, ef, leida }
     lista: null,              // las personas y proyectos agregados a mano: { archivos, mias, ef, leida } (plLista)
+    cierres: null,            // los proyectos dados por cerrados: { archivos, mias, ef, leida } (plCierres)
+    cerrar: null,             // en «Estado de los proyectos», la tarjeta que se está por cerrar (su formulario abierto)
+    cerrando: false, proyAviso: null,
     dispositivo: '',
     reloj: 0,                 // el instante más nuevo que se vio o se escribió (ms)
     porGuardar: new Set(), guardando: false, otraVez: false, relojGuardar: null, guardado: 0, errorGuardar: null,
@@ -4855,6 +4957,101 @@
   // Los proyectos escritos a mano en la semana s
   const plProyManoActivos = (s) => [...plLista().ef.proyectos.values()].filter((e) => e.activa && e.semana === s.id);
 
+  /* ---- Los proyectos dados por cerrados (2026-10-26) ----------------------------------------------------------------
+     Pedido del usuario: un proyecto terminado y entregado que no pasó por el Formulador (solo «Adjudicado» en la
+     Planilla de Ingreso, o con ficha en el Análisis Financiero sin el 100 %) no tenía cómo salir de la planificación.
+     Darlo por cerrado lo lleva al «Cierre» del Recorrido (rcArmar → rcCerradoEnPlan) y así sale de los activos, en
+     todas las semanas y para todo el equipo. Va en publicado/planificacion/cierres/<dispositivo>.json (esquema
+     planificacion-cierres), un archivo por navegador como la lista; por cada clave (su N° y su TAG) manda el cambio
+     más reciente, y reabrirlo es 'cerrado': false. */
+  function plCierres() {
+    if (!planif.cierres) planif.cierres = { archivos: new Map(), mias: new Map(), ef: new Map(), leida: 0 };
+    return planif.cierres;
+  }
+  function plLeerCierresArchivo(sobre) {
+    const d = sobre && sobre.esquema === 'quempin.intercambio/1' && sobre.herramienta === 'planificacion' ? sobre.datos : null;
+    if (!d || typeof d !== 'object') return null;
+    const de = texto(d.dispositivo).slice(0, 24);
+    const tope = new Date(Date.now() + 365 * DIA).toISOString();
+    const instante = (x) => typeof x === 'string' && PL_INSTANTE.test(x) && x <= tope;
+    const por = (x) => (/^[A-Z]{2,3}$/.test(texto(x)) ? texto(x) : '');
+    const proyectos = new Map();
+    (Array.isArray(d.proyectos) ? d.proyectos.slice(0, 2000) : []).forEach((x) => {
+      if (!x || !PL_CLAVE_CIERRE.test(texto(x.clave)) || typeof x.cerrado !== 'boolean' || !instante(x.t)) return;
+      plPoner(proyectos, x.clave, { clave: x.clave, titulo: plNombreLimpio(x.titulo), nota: plNota(x.nota), cerrado: x.cerrado, af: x.af === true,
+        t: x.t, por: por(x.por), de });
+    });
+    return { proyectos, generado: texto(sobre.generado) };
+  }
+  const plNota = (v) => texto(v).replace(/\s+/g, ' ').trim().slice(0, 200);
+  function plRecalcularCierres() {
+    const c = plCierres();
+    const ef = new Map();
+    [...c.archivos.values()].map((a) => a.proyectos).concat([c.mias]).forEach((m) => m.forEach((e, k) => plPoner(ef, k, e)));
+    c.ef = ef;
+  }
+  function plAdoptarCierres(r) {
+    const c = plCierres();
+    r.proyectos.forEach((e, k) => plPoner(c.mias, k, e));
+  }
+  function plSobreCierres() {
+    const sinDe = (e) => { const x = Object.assign({}, e); delete x.de; return x; };
+    return {
+      esquema: 'quempin.intercambio/1', herramienta: 'planificacion', tipo: 'planificacion-cierres',
+      generado: new Date().toISOString(), autor: estado.usuario || '',
+      datos: { dispositivo: plDispositivo(), proyectos: [...plCierres().mias.values()].map(sinDe) }
+    };
+  }
+  // Lo lee el Recorrido junto con lo demás de la carpeta (rcLeer): devuelve lo vigente, clave → el último cambio
+  async function plLeerCierres(dir) {
+    const c = plCierres();
+    const carpeta = await plCarpeta(dir, PL_CIERRES, false);
+    const vistos = new Set();
+    if (carpeta) {
+      for await (const [n, h] of carpeta.entries()) {
+        if (h.kind !== 'file' || !/\.json$/i.test(n)) continue;
+        vistos.add(n);
+        let f;
+        try { f = await h.getFile(); } catch (e) { continue; }
+        const previo = c.archivos.get(n);
+        if (previo && previo.lm === f.lastModified && previo.size === f.size) continue;
+        let r = null;
+        try { r = plLeerCierresArchivo(JSON.parse(rcSinBom(await f.text()))); } catch (e) { r = null; }   // a medio sincronizar
+        if (!r) continue;
+        r.lm = f.lastModified;
+        r.size = f.size;
+        c.archivos.set(n, r);
+        r.proyectos.forEach((e) => { planif.reloj = Math.max(planif.reloj, Date.parse(e.t)); });
+        if (n === plNombreArchivo()) plAdoptarCierres(r);
+      }
+    }
+    c.archivos.forEach((x, n) => { if (!vistos.has(n)) c.archivos.delete(n); });
+    c.leida = Date.now();
+    plRecalcularCierres();
+    return c.ef;
+  }
+  async function plEscribirCierres(dir) {
+    const c = plCierres();
+    const carpeta = await plCarpeta(dir, PL_CIERRES, true);
+    const nombre = plNombreArchivo();
+    try {
+      const f = await (await carpeta.getFileHandle(nombre)).getFile();
+      const r = plLeerCierresArchivo(JSON.parse(rcSinBom(await f.text())));
+      if (r) plAdoptarCierres(r);
+    } catch (e) { /* todavía no existe */ }
+    const h = await carpeta.getFileHandle(nombre, { create: true });
+    const sobre = plSobreCierres();
+    const w = await h.createWritable();
+    await w.write(JSON.stringify(sobre, null, 1));
+    await w.close();
+    const f = await h.getFile();
+    const copia = plLeerCierresArchivo(sobre);
+    copia.lm = f.lastModified;
+    copia.size = f.size;
+    c.archivos.set(nombre, copia);
+    plRecalcularCierres();
+  }
+
   // ---- Leer y guardar en la carpeta del equipo ---------------------------------------------------------------
   const plNombreArchivo = () => plDispositivo() + '.json';
   async function plCarpeta(dir, id, crear) {
@@ -4971,6 +5168,7 @@
   }
   async function plEscribirSemana(dir, id) {
     if (id === PL_LISTA) { await plEscribirLista(dir); return; }
+    if (id === PL_CIERRES) { await plEscribirCierres(dir); return; }
     const s = plSemana(id);
     const carpeta = await plCarpeta(dir, id, true);
     const nombre = plNombreArchivo();
@@ -4997,6 +5195,7 @@
     const p = {};
     planif.porGuardar.forEach((id) => {
       if (id === PL_LISTA) { p[id] = plSobreLista().datos; return; }
+      if (id === PL_CIERRES) { p[id] = plSobreCierres().datos; return; }
       const s = planif.semanas.get(id);
       if (s) p[id] = plSobre(s).datos;
     });
@@ -5015,6 +5214,14 @@
         if (!r) return;
         plAdoptarLista(r);
         plRecalcularLista();
+        planif.porGuardar.add(id);
+        return;
+      }
+      if (id === PL_CIERRES) {
+        const r = plLeerCierresArchivo({ esquema: 'quempin.intercambio/1', herramienta: 'planificacion', datos: p[id] });
+        if (!r) return;
+        plAdoptarCierres(r);
+        plRecalcularCierres();
         planif.porGuardar.add(id);
         return;
       }
@@ -5264,6 +5471,7 @@
   function plDeshacer() {
     const u = planif.deshacer.pop();
     if (!u) { avisar('No hay cambios de la planificación para deshacer.'); return; }
+    if (u.cierres) { plDeshacerCierre(u); return; }
     // Agregar o quitar una persona o un proyecto escrito a mano (también los que «Copiar la semana anterior» trajo)
     (u.listas || []).forEach(({ tipo, e }) => plPonerLista(tipo, e));
     if (u.listas) plRecalcularLista();
@@ -6341,7 +6549,15 @@
       tb.append(tr);
     }
     t.append(tb);
-    cont.append(t, plBotonAgregar('proyecto', 'Agregar proyecto', 'Un proyecto que no está en ejecución en el Recorrido: escribe su nombre y queda solo en esta semana'));
+    const pie = crear('div', 'pl-pie');
+    const est = crear('button', 'rc-nueva pl-agregar-pie');
+    est.type = 'button';
+    est.dataset.estado = 'proyectos';
+    est.title = 'De dónde sale cada proyecto, cómo va, y dar por cerrado uno que ya terminó';
+    est.append(icono('bandera', 14), crear('span', null, 'Estado de los proyectos'));
+    est.addEventListener('click', () => plAbrirProyectos());
+    pie.append(plBotonAgregar('proyecto', 'Agregar proyecto', 'Un proyecto que no está en ejecución en el Recorrido: escribe su nombre y queda solo en esta semana'), est);
+    cont.append(t, pie);
     if (planif.foco) {
       const f = cont.querySelector('tr[data-clave="' + CSS.escape(planif.foco) + '"]');
       const abrir = planif.focoAbrir;
@@ -6387,6 +6603,9 @@
     b.append(dot, tx);
     th.append(b);
     const est = crear('div', 'pl-proy-estado');
+    // Cómo va según el Recorrido (su avance, o lo que le falta), con el detalle al pasar encima (2026-10-26)
+    const como = p.activo && !p.mano ? plEstadoDe(plTarjeta(p.tarjeta)) : null;
+    if (como) { const c = plChipEstado(como.texto, como.nivel); c.title = como.titulo; c.classList.add('pl-avance'); est.append(c); }
     if (alarma) est.append(plChipEstado(s.id === plHoyId() ? 'Sin asignar esta semana' : 'Sin asignar', s.id === plHoyId() ? 'bad' : 'warn'));
     else if (pausa && !diasCon.length) est.append(plChipEstado('Sin trabajo ' + plEsta(s) + (pausa.nota ? ': ' + pausa.nota : ''), ''));
     else if (diasCon.length) est.append(plChipEstado(pl(diasCon.length, 'día', 'días') + ' · ' + pl(personas.size, 'persona', 'personas'), 'ok'));
@@ -7545,6 +7764,300 @@
     }
   }
 
+  /* ---- Estado de los proyectos y darlos por cerrados (2026-10-26) ---------------------------------------------------
+     Pedido del usuario: ver en la planificación el estado de cada proyecto y dar por cerrado uno que ya terminó y se
+     entregó, aunque no haya pasado por el Formulador. Cerrarlo vale para su N° y su TAG (plCierres); si tiene ficha
+     en el Análisis Financiero sin el 100 %, se puede pedir ahí el 100 % de avance (un «datos-proyecto» al buzón, como
+     «Ingresar avance»). Se deshace como lo demás: si ese mensaje todavía no se procesa, se borra del buzón. */
+  const plTarjeta = (clave) => (clave && rc.tarjetas.find((t) => t.clave === clave)) || null;
+  const plAvanceAF = (t) => (t && t.af ? Math.max(0, Math.min(1, Number(t.af.avance) || 0)) : null);
+  // Cómo va un proyecto en ejecución, en una etiqueta: su avance o lo que le falta. El detalle, al pasar encima.
+  function plEstadoDe(t) {
+    if (!t || t.etapa !== 'ejecucion') return null;
+    if (t.af) {
+      const pct = Math.round(plAvanceAF(t) * 100) + ' % de avance';
+      const vencido = t.chips.some((c) => c.texto === 'Término vencido');
+      return { texto: vencido ? 'Término vencido · ' + pct : pct, nivel: vencido ? 'warn' : '', titulo: t.accion.texto };
+    }
+    return { texto: t.formulacion ? 'Falta pasarlo a ejecución' : 'Sin ficha en el Análisis Financiero', nivel: 'warn', titulo: t.accion.texto };
+  }
+  // De dónde sale: lo que dicen de él la Planilla de Ingreso, el Formulador y el Análisis Financiero
+  function plFuentes(t) {
+    const r = t.planilla, f = t.formulacion, af = t.af;
+    const fin = af && rcFecha(af.cierre);
+    return [r ? 'Planilla «' + texto(r.estado) + '»' : t.req ? 'N° ' + t.req + ' sin fila en la Planilla' : 'Sin N° en la Planilla',
+      f ? 'Formulador «' + f.estado + '»' : 'sin formulación',
+      af ? 'Análisis Financiero ' + Math.round(plAvanceAF(t) * 100) + ' %' + (fin ? ', término ' + rcCorta(fin, new Date()) : '') : 'sin ficha en el Análisis Financiero'
+    ].join(' · ');
+  }
+  // Después de cerrar o reabrir: el Recorrido se rearma con lo nuevo y se repinta todo lo que lo muestra
+  function plAlCambiarCierres() {
+    if (rc.datos) {
+      rc.datos.cierres = plCierres().ef;
+      rc.tarjetas = rcArmar(rc.datos, new Date());
+    }
+    if (!$('#vistaRecorrido').hidden) rcPintar();
+    pintarInicioRecorrido();
+    plPintar();
+    plPintarAlarmaGlobal();
+    if ($('#dlgPlProyectos').open) plPintarProyectos();
+  }
+  // Cierra (o reabre) la tarjeta en todas sus claves; devuelve lo que había, para deshacer
+  function plPonerCierres(t, cerrado, nota, af) {
+    const c = plCierres();
+    const antes = rcClavesCierre(t).map((k) => {
+      const previo = c.ef.get(k);
+      const x = previo ? Object.assign({}, previo) : { clave: k, titulo: t.titulo, nota: '', cerrado: false, af: false };
+      delete x.t; delete x.por; delete x.de;
+      c.mias.set(k, { clave: k, titulo: plNombreLimpio(t.titulo), nota: cerrado ? plNota(nota) : '', cerrado, af: cerrado && !!af,
+        t: plAhora(), por: estado.usuario || '', de: plDispositivo() });
+      return x;
+    });
+    plRecalcularCierres();
+    plProgramarGuardado(PL_CIERRES);
+    return antes;
+  }
+  function plRecordar(u) {
+    planif.deshacer.push(u);
+    if (planif.deshacer.length > 40) planif.deshacer.shift();
+  }
+  // El aviso: abajo y, con «Estado de los proyectos» abierto (tapa el de abajo), también arriba en el diálogo
+  function plAvisarCierre(txt, conDeshacer) {
+    planif.proyAviso = { texto: txt, deshacer: !!conDeshacer };
+    if ($('#dlgPlProyectos').open) plPintarProyectos();
+    avisar(txt, conDeshacer ? { texto: 'Deshacer', ir: plDeshacer } : undefined);
+  }
+  // El 100 % de avance al Análisis Financiero, como lo manda «Ingresar avance»: solo si la celda tiene lo que se vio
+  async function plPedirAvanceCompleto(t) {
+    const enviado = scAhora();
+    const id = scId();
+    const origen = { herramienta: 'portal', enviado };
+    if (estado.usuario) origen.usuario = estado.usuario;
+    const visto = t.af.avance === null || t.af.avance === undefined || t.af.avance === '' || !isFinite(Number(t.af.avance)) ? null : Number(t.af.avance);
+    const msg = { esquema: 'quempin.intercambio/1', id, tipo: 'datos-proyecto', destino: 'analisis-financiero', origen,
+      proyecto: { tag: t.tag }, valores: { '% Avance': 1 }, reemplaza: { '% Avance': visto },
+      informativo: { nombre: texto(t.af.nombre) || t.titulo, motivo: 'Dado por cerrado en la Planificación semanal del Portal' } };
+    const nombre = enviado.slice(0, 19).replace(/[-:]/g, '').replace('T', '-') + '_portal_datos-proyecto_' + id + '.json';
+    const buzon = await rc.dir.getDirectoryHandle('buzon', { create: true });
+    const h = await buzon.getFileHandle(nombre, { create: true });
+    const w = await h.createWritable();
+    await w.write(JSON.stringify(msg, null, 2) + '\n');
+    await w.close();
+    return nombre;
+  }
+  async function plDarPorCerrado(t, nota, conAF) {
+    if (!rc.dir || t.etapa !== 'ejecucion' || !rcClavesCierre(t).length) return false;
+    const pedirAF = conAF && !!t.af && !!t.tag && plAvanceAF(t) < 1;
+    let buzon = null;
+    if (pedirAF) {
+      try { buzon = await plPedirAvanceCompleto(t); } catch (e) {
+        console.error(e);
+        plAvisarCierre('No se pudo pedir el 100 % al Análisis Financiero (' + (e && e.name === 'NotAllowedError' ? 'falta el permiso para escribir en la carpeta del equipo' : 'revisa que OneDrive esté funcionando') + '): ' + t.titulo + ' sigue abierto.');
+        return false;
+      }
+    }
+    plRecordar({ cierres: plPonerCierres(t, true, nota, !!buzon), buzon, titulo: t.titulo });
+    planif.cerrar = null;
+    plAlCambiarCierres();
+    plAvisarCierre(t.titulo + ' queda cerrado: pasa al «Cierre» del Recorrido y sale de la planificación.'
+      + (buzon ? ' El 100 % de avance llega al Análisis Financiero en la próxima vuelta del procesador.' : ''), true);
+    return true;
+  }
+  function plReabrir(t) {
+    if (!rc.dir || !t.cierrePlan) return;
+    plRecordar({ cierres: plPonerCierres(t, false), buzon: null, titulo: t.titulo });
+    plAlCambiarCierres();
+    const u = plTarjeta(t.clave);
+    plAvisarCierre(u && u.etapa === 'ejecucion' ? t.titulo + ' vuelve a ejecución: aparece otra vez en la planificación.'
+      : t.titulo + ' ya no está cerrado en la planificación, pero sigue en el «Cierre»: ' + (u && plAvanceAF(u) === 1
+        ? 'el Análisis Financiero tiene 100 % de avance (bájalo en «Ingresar avance» si sigue en obra).' : 'otra herramienta lo da por terminado.'), true);
+  }
+  async function plDeshacerCierre(u) {
+    const c = plCierres();
+    u.cierres.forEach((e) => c.mias.set(e.clave, Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() })));
+    plRecalcularCierres();
+    plProgramarGuardado(PL_CIERRES);
+    plAlCambiarCierres();
+    let extra = '';
+    if (u.buzon) {
+      try { await (await rc.dir.getDirectoryHandle('buzon')).removeEntry(u.buzon); extra = ' El pedido del 100 % al Análisis Financiero se retiró.'; }
+      catch (e) { extra = ' El 100 % de avance ya llegó al Análisis Financiero: cámbialo en «Ingresar avance».'; }
+    }
+    plAvisarCierre('Se deshizo el último cambio de ' + u.titulo + '.' + extra, false);
+  }
+
+  function plAbrirProyectos(clave) {
+    plCerrarPop(false);
+    planif.cerrar = clave || null;
+    planif.proyAviso = null;
+    plPintarProyectos();
+    const d = $('#dlgPlProyectos');
+    if (!d.open) d.showModal();
+    const li = clave && d.querySelector('li[data-tarjeta="' + CSS.escape(clave) + '"]');
+    if (li) {
+      li.scrollIntoView({ block: 'nearest' });
+      const nota = li.querySelector('#plCerrarNota');
+      if (nota) nota.focus();
+    }
+  }
+  function plPintarProyectos() {
+    const s = plSemanaVista();
+    const activos = rc.leido ? plActivos(s) : [];
+    const m = s.leida ? plModelo(s) : null;
+    const delRc = activos.filter((p) => !p.mano);
+    const aMano = activos.filter((p) => p.mano);
+    const cerrados = rc.tarjetas.filter((t) => t.cierrePlan).sort((a, b) => b.cierrePlan.t.localeCompare(a.cierrePlan.t)).slice(0, PL_CERRADOS_MAX);
+    if (planif.cerrar && !delRc.some((p) => p.tarjeta === planif.cerrar)) planif.cerrar = null;
+    $('#plProyPista').textContent = rc.leido
+      ? 'Los proyectos activos salen del Recorrido: adjudicados o con ficha en el Análisis Financiero, hasta que llegan al 100 % de avance o quedan «Cerrada» en el Formulador. Uno que ya terminó y se entregó, dalo por cerrado: pasa al «Cierre» del Recorrido y deja de aparecer en la planificación, en todas las semanas y para todo el equipo.'
+      : 'Leyendo la carpeta del equipo…';
+    const av = $('#plProyAviso');
+    av.textContent = '';
+    av.hidden = !planif.proyAviso;
+    if (planif.proyAviso) {
+      av.append(crear('span', null, planif.proyAviso.texto));
+      if (planif.proyAviso.deshacer) {
+        const b = crear('button', 'cx-enlace', 'Deshacer');
+        b.type = 'button';
+        b.addEventListener('click', () => {
+          planif.proyAviso = null;
+          plDeshacer();
+          if ($('#dlgPlProyectos').open) plPintarProyectos();
+        });
+        av.append(b);
+      }
+    }
+    const cont = $('#plProyLista');
+    cont.textContent = '';
+    const lista = (titulo) => { cont.append(crear('h3', null, titulo)); const ul = crear('ul'); cont.append(ul); return ul; };
+    const boton = (txt, accion, titulo, ir) => {
+      const b = crear('button', 'cx-enlace', txt);
+      b.type = 'button';
+      b.dataset.accion = accion;
+      b.title = titulo;
+      b.addEventListener('click', ir);
+      return b;
+    };
+    const fila = (li, titulo, sub, extra, chips, botones) => {
+      const f = crear('div', 'pl-proys-fila');
+      const tx = crear('div', 'pl-proys-txt');
+      tx.append(crear('b', null, titulo));
+      if (sub) tx.append(crear('span', null, sub));
+      if (extra) tx.append(crear('span', 'pl-proys-fuentes', extra));
+      if (chips.length) {
+        const w = crear('div', 'pl-proys-chips');
+        chips.forEach((c) => { const x = plChipEstado(c.texto, c.nivel); if (c.titulo) x.title = c.titulo; w.append(x); });
+        tx.append(w);
+      }
+      const acc = crear('div', 'pl-proys-acc');
+      botones.forEach((b) => acc.append(b));
+      f.append(tx, acc);
+      li.append(f);
+    };
+    const ul = lista(delRc.length ? 'En ejecución · ' + delRc.length : 'En ejecución');
+    if (!delRc.length) ul.append(crear('li', 'pl-proys-vacio', rc.leido ? 'No hay proyectos en ejecución en el Recorrido.' : 'Leyendo…'));
+    delRc.forEach((p) => {
+      const t = plTarjeta(p.tarjeta);
+      if (!t) return;
+      const li = crear('li');
+      li.dataset.tarjeta = t.clave;
+      li.dataset.clave = p.clave;
+      const chips = [plEstadoDe(t)].filter(Boolean);
+      if (m) {
+        const n = (m.dias.get(p.clave) || []).length;
+        chips.push(n ? { texto: (s.id === plHoyId() ? 'Esta semana: ' : 'Semana ' + plNum(s) + ': ') + pl(n, 'día', 'días'), nivel: 'ok' }
+          : { texto: 'Nadie ' + plEsta(s), nivel: '' });
+      }
+      const abierto = planif.cerrar === t.clave;
+      const cerrarB = boton('Dar por cerrado', 'cerrar', 'Ya terminó y se entregó: pasa al «Cierre» del Recorrido y sale de la planificación', () => {
+        planif.cerrar = abierto ? null : t.clave;
+        plPintarProyectos();
+        const nota = $('#plCerrarNota');
+        if (nota) nota.focus();
+      });
+      cerrarB.disabled = !rc.dir;
+      cerrarB.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+      fila(li, p.titulo, [p.req ? 'N° ' + p.req : '', p.tag && p.tag !== p.titulo ? p.tag : '', p.lugar].filter(Boolean).join(' · '), plFuentes(t), chips,
+        [boton('Ver recorrido', 'ver', 'Sus etapas, sus datos y sus enlaces', () => rcVerDetalle(t.clave)), cerrarB]);
+      if (abierto) li.append(plFormCerrar(t));
+      ul.append(li);
+    });
+    if (aMano.length) {
+      const um = lista('Agregados a mano en ' + plEsta(s));
+      aMano.forEach((p) => {
+        const li = crear('li');
+        li.dataset.clave = p.clave;
+        const b = boton('Quitar de ' + plEsta(s), 'quitar', 'Son temporales: dejan de estar en ' + plEsta(s) + ' y lo ya asignado se sigue viendo', () => {
+          plQuitarProyecto(p.clave);
+          plAvisarCierre(p.titulo + ' ya no está en ' + plEsta(s) + '. Lo asignado se sigue viendo.', true);
+        });
+        b.disabled = !rc.dir;
+        fila(li, p.titulo, [p.req ? 'N° ' + p.req : '', p.lugar].filter(Boolean).join(' · '), 'Agregado a mano: vale solo para ' + plEsta(s), [], [b]);
+        um.append(li);
+      });
+    }
+    if (cerrados.length) {
+      const uc = lista('Cerrados en la planificación');
+      cerrados.forEach((t) => {
+        const e = t.cierrePlan;
+        const li = crear('li');
+        li.dataset.tarjeta = t.clave;
+        const b = boton('Reabrir', 'reabrir', 'Sigue en obra: vuelve a ejecución y a la planificación', () => plReabrir(t));
+        b.disabled = !rc.dir;
+        fila(li, t.titulo, [t.req ? 'N° ' + t.req : '', t.tag && t.tag !== t.titulo ? t.tag : ''].filter(Boolean).join(' · '),
+          'Cerrado' + (e.por ? ' por ' + e.por : '') + ' ' + plCuando(e.t) + (e.nota ? ': «' + e.nota + '»' : ''), [], [b]);
+        uc.append(li);
+      });
+    }
+  }
+  // El formulario de una tarjeta que se va a cerrar: una nota y, si corresponde, el 100 % en el Análisis Financiero
+  function plFormCerrar(t) {
+    const w = crear('div', 'pl-cerrar');
+    w.append(crear('p', 'pl-cerrar-txt', 'Pasa al «Cierre» del Recorrido y deja de aparecer en la planificación, también en las semanas que vienen. Lo ya asignado se sigue viendo con su nombre, y se puede reabrir.'));
+    const campo = crear('label', 'pl-campo');
+    const et = crear('span', null, 'Nota ');
+    et.append(crear('i', null, '(opcional)'));
+    const nota = crear('input');
+    nota.id = 'plCerrarNota';
+    nota.type = 'text';
+    nota.maxLength = 200;
+    nota.autocomplete = 'off';
+    nota.placeholder = 'Entregado el 20-10, con acta de recepción';
+    campo.append(et, nota);
+    w.append(campo);
+    const avance = plAvanceAF(t);
+    if (t.af && t.tag && avance < 1) {
+      const l = crear('label', 'pl-cerrar-af');
+      const cb = crear('input');
+      cb.type = 'checkbox';
+      cb.id = 'plCerrarAF';
+      cb.checked = true;
+      l.append(cb, crear('span', null, 'Dejar también su avance en 100 % en el Análisis Financiero (hoy tiene ' + Math.round(avance * 100) + ' %). Llega en la próxima vuelta del procesador.'));
+      w.append(l);
+    }
+    const acc = crear('div', 'pl-cerrar-acc');
+    const no = crear('button', 'cx-enlace', 'Cancelar');
+    no.type = 'button';
+    no.addEventListener('click', () => { planif.cerrar = null; plPintarProyectos(); });
+    const si = crear('button', 'btn-pri', 'Dar por cerrado');
+    si.type = 'submit';
+    si.id = 'plCerrarOk';
+    acc.append(no, si);
+    w.append(acc);
+    return w;
+  }
+  async function plConfirmarCierre(e) {
+    if (e) e.preventDefault();
+    const t = plTarjeta(planif.cerrar);
+    if (!t || planif.cerrando) return;
+    const cb = $('#plCerrarAF');
+    planif.cerrando = true;
+    const ok = $('#plCerrarOk');
+    if (ok) ok.disabled = true;
+    try { await plDarPorCerrado(t, $('#plCerrarNota') ? $('#plCerrarNota').value : '', !!(cb && cb.checked)); }
+    finally { planif.cerrando = false; if (ok && ok.isConnected) ok.disabled = false; }
+  }
+
   // ---- Buscador ------------------------------------------------------------------------------------
   const GRUPO_NOMBRE = new Map(REG.grupos.map((g) => [g.id, g.nombre]));
   let resultados = [];
@@ -7851,6 +8364,7 @@
   });
   $('#plSabado').addEventListener('change', (e) => { planif.sabado = e.target.checked; plGuardarPrefs(); plPintar(); });
   [['#plAgregar', 'mas', 'Agregar', () => plAbrirAgregar(planif.vista === 'proyecto' ? 'proyecto' : 'persona')],
+    ['#plProyectos', 'bandera', 'Estado de los proyectos', () => plAbrirProyectos()],
     ['#plCopiar', 'copiar', 'Copiar la semana anterior', plCopiarAnterior], ['#plCompartir', 'compartir', 'Compartir', plCompartir],
     ['#plImprimir', 'imprimir', 'Imprimir o PDF', plAbrirExportar]].forEach(([id, ico, txt, ir]) => {
     const b = $(id);
@@ -7887,6 +8401,9 @@
   ['#plAgregarX', '#plAgregarCerrar'].forEach((id) => $(id).addEventListener('click', () => $('#dlgPlAgregar').close()));
   $('#plAgregarNombre').addEventListener('input', () => { if ($('#plAgregarPista').classList.contains('error')) plPintarAgregar(); });
   $('#plExpImprimir').addEventListener('click', plImprimir);
+  $('#plProyForm').addEventListener('submit', plConfirmarCierre);
+  ['#plProyX', '#plProyCerrar'].forEach((id) => $(id).addEventListener('click', () => $('#dlgPlProyectos').close()));
+  $('#dlgPlProyectos').addEventListener('close', () => { planif.cerrar = null; planif.proyAviso = null; });
   $('#vistaPlan').addEventListener('scroll', plColocarPop, { passive: true });
   window.addEventListener('resize', plColocarPop);
   // Lo que espera guardarse no espera al próximo cambio si la pestaña se esconde
