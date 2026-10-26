@@ -794,7 +794,9 @@ __OP_FUENTES__
       var vis = visitaDelDia(op);
       if (op.ficha && vis.pasada) {
         p.visita = op.visita.obligatoria === false ? REGLAS.visitaPasada.optativa : REGLAS.visitaPasada.obligatoriaODuda;
-        if (op.visita.obligatoria) descartar.push('La visita obligatoria fue el ' + fechaHora(vis.fecha));
+        // Una visita ya pasada la retira del tablero, sea obligatoria, optativa o sin aclarar.
+        var clase = op.visita.obligatoria ? 'obligatoria' : op.visita.obligatoria === false ? 'optativa' : 'a terreno';
+        descartar.push('La visita ' + clase + ' fue el ' + fechaHora(vis.fecha));
       }
       var total = 0, suma = 0;
       CRIT.forEach(function (c) { total += pesos[c.id]; suma += p[c.id] * pesos[c.id]; });
@@ -1359,7 +1361,7 @@ __OP_FUENTES__
       (DATA.topesPorRubro || []).forEach(function (t) {
         reglas.appendChild(el('li', { texto: 'Con el rubro bajo ' + t.rubroMenorA + ' puntos no pasa de «' + (NOMBRE_CAT[t.categoriaMaxima] || t.categoriaMaxima) + '», aunque el resto sea perfecto.' }));
       });
-      reglas.appendChild(el('li', { texto: 'Se descarta sola si cierra en menos de un día, si la visita obligatoria ya pasó, si el nombre la deja fuera del rubro (combustible, químicos…) o si el monto supera un máximo fijado en la configuración.' }));
+      reglas.appendChild(el('li', { texto: 'Se descarta sola si cierra en menos de un día, si la visita a terreno ya pasó (obligatoria u optativa), si el nombre la deja fuera del rubro (combustible, químicos…) o si el monto supera un máximo fijado en la configuración.' }));
       reglas.appendChild(el('li', { texto: 'La visita a terreno se lee en la ficha de las bases de Mercado Público (la API no la informa). Con varias fechas se muestra la próxima, y pasó cuando pasaron todas. Si la ficha no se pudo leer, la licitación es menor a 100 UTM o es una compra ágil sin mención, queda «sin confirmar»: revisa las bases.' }));
       var tramos = (REGLAS.plazoOferta || []).filter(function (t) { return !t.descarta; }).map(function (t) { return (t.menosDeDias === null ? 'más' : 'menos de ' + t.menosDeDias + ' días') + ': ' + t.puntaje; });
       if (tramos.length) reglas.appendChild(el('li', { texto: 'Plazo para ofertar (se cuenta con la fecha de hoy) — ' + tramos.join(' · ') + '.' }));

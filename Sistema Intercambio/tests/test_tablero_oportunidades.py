@@ -84,9 +84,11 @@ def _datos(extra=()):
     ops = [e.evaluar(op.leer_ficha(f, f["CodigoExterno"])) for e, f in fichas]
     # La visita leída en la ficha de las bases (la API no la trae), con dos fechas:
     # una ya pasó y otra viene (sigue viva); o las dos pasaron desde el build (descartada hoy).
-    for e, codigo, dias in ((ev, "5000-88-LE26", (-2, 3)), (ev_antes, "5000-89-LE26", (-2, -1))):
+    # Una optativa ya pasada también se retira (pedido del usuario, 2026-10-26).
+    for e, codigo, dias, obligatoria in ((ev, "5000-88-LE26", (-2, 3), True), (ev_antes, "5000-89-LE26", (-2, -1), True),
+                                         (ev_antes, "5000-86-LE26", (-1,), False)):
         ficha = op.leer_ficha(_ficha(codigo, "Mantención de calderas del hospital", cierre=_en(12)), codigo)
-        ficha["visitaBases"] = {"fechas": [{"fecha": _en(d)[:16], "obligatoria": True, "lugar": None} for d in dias],
+        ficha["visitaBases"] = {"fechas": [{"fecha": _en(d)[:16], "obligatoria": obligatoria, "lugar": None} for d in dias],
                                 "nombrada": False, "daPuntaje": False, "contenidoBases": True}
         ops.append(e.evaluar(ficha))
     # Compras ágiles (2026-10-14): se cotizan en horas y tienen sus propios tramos de plazo.
@@ -202,6 +204,9 @@ def test_la_pagina_calcula_igual_que_python_y_recalcula_lo_que_depende_de_la_fec
     # Visita con varias fechas: pasa cuando pasaron todas.
     assert "5000-88-LE26" in vivas and vivas["5000-88-LE26"]["puntaje"] == round(por_codigo["5000-88-LE26"]["puntaje"])
     assert por_codigo["5000-89-LE26"]["categoria"] != "descartar" and "5000-89-LE26" in descartadas
+    # Optativa evaluada antes de su visita; hoy ya pasó: fuera del tablero.
+    assert por_codigo["5000-86-LE26"]["categoria"] != "descartar"
+    assert "5000-86-LE26" in descartadas and "5000-86-LE26" not in vivas
     # Compra ágil que cierra en 10 horas: viva (una licitación se descartaría); en 3 horas: descartada.
     assert por_codigo["100-98-COT26"]["compraAgil"] and por_codigo["100-99-COT26"]["categoria"] == "descartar"
     assert "100-99-COT26" in descartadas

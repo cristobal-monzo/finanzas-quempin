@@ -101,7 +101,7 @@
   },
 
   "visitaPasada": {
-    "_comentario": "Puntaje del criterio visita cuando la fecha de la visita ya pasó: si era obligatoria (o las bases no lo dicen) casi no queda opción; si era optativa, poco cambia. Una obligatoria ya pasada descarta.",
+    "_comentario": "Puntaje del criterio visita cuando la fecha de la visita ya pasó: si era obligatoria (o las bases no lo dicen) casi no queda opción; si era optativa, poco cambia. Desde el 2026-10-26 toda visita ya pasada (obligatoria, optativa o sin aclarar) descarta: sale del tablero y del correo.",
     "obligatoriaODuda": 10,
     "optativa": 70
   },

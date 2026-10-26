@@ -34,7 +34,7 @@ Reglas (``alertas`` en oportunidades_config.json):
   bases técnicas y administrativas y verifiques los puntos más relevantes»):
   ``bases_oportunidades.py`` lee la ficha de las bases de cada candidata y
   el correo lleva lo verificado. Lo que las bases descartan (no publicada,
-  cierre muy cerca, visita obligatoria ya pasada) no se envía y queda en
+  cierre muy cerca, visita a terreno ya pasada) no se envía y queda en
   ``descartadasBases`` del registro: no se vuelve a revisar. Si la ficha no
   responde, la oportunidad espera a la próxima vuelta, salvo que en la
   próxima ya no alcance a cerrar con tiempo: entonces sale con el aviso.

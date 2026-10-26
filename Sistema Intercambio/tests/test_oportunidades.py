@@ -192,7 +192,7 @@ def test_la_visita_sale_de_la_ficha_de_las_bases(evaluador):
     assert pasada["categoria"] == "descartar" and "La visita obligatoria fue el" in pasada["descartar"][0]
     voluntaria = _con_bases(evaluador, _ficha("1-4-LE26", "Mantención calderas"),
                             fechas=[{"fecha": "2026-10-09T10:00", "obligatoria": False, "lugar": None}])
-    assert voluntaria["categoria"] != "descartar"
+    assert voluntaria["categoria"] == "descartar" and "La visita optativa fue el" in voluntaria["descartar"][0]
     assert voluntaria["criterios"]["visita"]["puntaje"] == evaluador.c["visitaPasada"]["optativa"]
     # Las bases la nombran (una cláusula o un criterio) sin fecha: hay que buscarla en el PDF.
     nombrada = _con_bases(evaluador, _ficha("1-5-LE26", "Mantención calderas"), nombrada=True)

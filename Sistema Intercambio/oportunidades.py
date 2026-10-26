@@ -26,7 +26,7 @@ Qué hace, en cada vuelta:
    para ofertar, tiempo de ejecución), un puntaje ponderado y su categoría.
    Cada criterio dice por qué: la evaluación es una ayuda para decidir rápido,
    no una caja negra. Hay motivos que descartan solos (cierra en menos de un
-   día, visita obligatoria ya pasada, fuera de rubro).
+   día, visita a terreno ya pasada, fuera de rubro).
 4. **Publica** ``publicado/oportunidades.json`` para las demás herramientas
    (el paso del procesador, si su configuración lo activa). Lo que mira el
    equipo es el tablero de GitHub Pages, con la contraseña de los demás
@@ -781,8 +781,10 @@ class Evaluador:
         otras = f" (y {mas} fecha(s) más)" if mas > 0 else ""
         dias_ultima = self._dias_para(v["ultima"])
         if dias_ultima is not None and dias_ultima < 0:
-            if obligatoria:
-                descartar.append(f"La visita obligatoria fue el {cuando}")
+            # Una visita ya pasada saca la oportunidad del tablero, sea obligatoria,
+            # optativa o sin aclarar (regla del usuario, 2026-10-26).
+            clase = "obligatoria" if obligatoria else ("optativa" if obligatoria is False else "a terreno")
+            descartar.append(f"La visita {clase} fue el {cuando}")
             reglas = self.c["visitaPasada"]
             return {"puntaje": reglas["optativa"] if obligatoria is False else reglas["obligatoriaODuda"],
                     "motivo": f"visita {tipo} el {cuando}: ya pasó", "corto": "La visita a terreno ya pasó"}
