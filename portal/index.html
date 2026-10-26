@@ -1332,6 +1332,32 @@
   .dlg p.pl-exp-cuenta { color: var(--text-primary); font-weight: 700; }
   .dlg p.pl-exp-pista { font-size: 13.5px; color: var(--texto-suave); }
   #plExpImprimir:disabled { opacity: 0.45; cursor: default; }
+  /* Agregar a mano una persona o un proyecto (2026-10-26) */
+  #dlgPlAgregar { width: min(520px, calc(100vw - 24px)); }
+  #dlgPlAgregar .dlg-acc .cx-enlace { min-height: 44px; }
+  .dlg p#plAgregarPista.error { padding: 8px 12px; border-radius: 8px; background: var(--tinte); color: var(--tinte-texto); font-weight: 700; }
+  .pl-campo { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 900; color: var(--text-primary); }
+  .pl-campo[hidden] { display: none; }
+  .pl-campo i { font-style: normal; font-weight: 700; color: var(--texto-suave); }
+  .pl-campo input {
+    height: 42px; padding: 0 12px; border: 1px solid var(--baseline); border-radius: 8px;
+    background: var(--surface-1); color: var(--text-primary); font-size: 15px; font-weight: 400;
+  }
+  .pl-campo input:focus { outline: 2px solid var(--brand-orange); outline-offset: 1px; border-color: transparent; }
+  .pl-agregados { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--gridline); }
+  .pl-agregados[hidden] { display: none; }
+  .pl-agregados h3 { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
+  .dlg .pl-agregados ul { margin: 0; padding: 0; list-style: none; gap: 4px; }
+  .pl-agregados li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 4px 6px 12px; border-radius: 8px; background: var(--page-plane); }
+  .pl-agr-txt { min-width: 0; display: flex; flex-direction: column; }
+  .pl-agr-txt b { font-size: 14.5px; color: var(--text-primary); overflow-wrap: anywhere; }
+  .pl-agr-txt span { font-size: 13px; color: var(--text-secondary); }
+  .pl-agregados .cx-enlace { flex: 0 0 auto; min-height: 36px; }
+  .pl-agregar-pie { max-width: 260px; margin: 10px 0 0; min-height: 38px; }
+  .pl-agregar-pie:disabled { opacity: 0.45; cursor: default; }
+  /* Una persona escrita a mano: su nombre corto en la etiqueta y su círculo con borde punteado */
+  .pl-per.mano { letter-spacing: 0; font-weight: 800; }
+  .pl-avatar.mano { border-style: dashed; border-color: var(--baseline); }
   /* La semana en papel (plDocumento): en pantalla no se ve; al imprimir es lo único que sale */
   .pl-doc { display: none; color: #171513; font-size: 12px; line-height: 1.35; }
   .pl-doc-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #171513; }
@@ -1507,7 +1533,7 @@
     .pl-pop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-height: 78dvh; }
     /* Con la ventanita abierta abajo, el aviso (con su «Deshacer») va arriba: no tapa «Listo» ni «Siguiente» */
     body:has(#plPop:not([hidden])) .aviso { bottom: auto; top: 72px; }
-    .pl-buscar, .pl-otra input { font-size: 16px; }
+    .pl-buscar, .pl-otra input, .pl-campo input { font-size: 16px; }
     .pl-texto { font-size: 16px; }
     .pl-dia-op { min-height: 44px; }
     .pl-dias-r, .pl-op-btn, .pl-pop-volver, .pl-aus-op, .pl-veh-op { min-height: 36px; }
@@ -1718,6 +1744,7 @@
                 <div class="pl-vistas" id="plVistas" role="group" aria-label="Cómo ver la semana"></div>
                 <div class="pl-acciones">
                   <label class="rc-mios" title="Mostrar también el sábado"><input type="checkbox" id="plSabado"><span>Sábado</span></label>
+                  <button class="cx-enlace" id="plAgregar" type="button" title="Una persona o un proyecto que no están en la lista: quedan en todas las semanas"></button>
                   <button class="cx-enlace" id="plCopiar" type="button" title="Agrega lo de la semana anterior, día por día, sin borrar nada de esta"></button>
                   <button class="cx-enlace" id="plCompartir" type="button" title="Lo de cada persona, listo para pegar en WhatsApp o en un correo"></button>
                   <button class="cx-enlace" id="plImprimir" type="button" title="Imprimir o guardar en PDF la tabla de la semana y una hoja para cada persona"></button>
@@ -1855,7 +1882,7 @@
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
       <li><strong>Recorrido de los proyectos</strong> (arriba en el Inicio y en el menú): cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre, con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Las cifras de arriba filtran el tablero y «Solo mis proyectos» deja los tuyos. Lee la carpeta del equipo, así que necesita la biblioteca conectada en este navegador.</li>
-      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar»); al tocarlo se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
+      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar»); al tocarlo se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Con «Agregar» (o en la ventanita de un proyecto, «Otra persona») se escribe el nombre de alguien que no está en la lista, o un proyecto que no está en ejecución en el Recorrido (con su N° de la Planilla adelante, si lo tiene): queda en todas las semanas hasta que se quite, y quitarlo no borra lo ya asignado. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
       <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
@@ -1929,6 +1956,23 @@
   </form>
 </dialog>
 
+<!-- Planificación semanal: agregar a mano una persona o un proyecto que no están en la lista, y quitarlos (2026-10-26) -->
+<dialog id="dlgPlAgregar" aria-labelledby="dlgPlAgregarTit">
+  <form class="dlg" id="plAgregarForm" novalidate>
+    <h2 id="dlgPlAgregarTit">Agregar a la planificación</h2>
+    <button class="dlg-x" id="plAgregarX" type="button" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="pl-vistas pl-texto-modo" id="plAgregarModo" role="group" aria-label="Qué agregar">
+      <button class="pl-vista" type="button" data-modo="persona">Persona</button>
+      <button class="pl-vista" type="button" data-modo="proyecto">Proyecto</button>
+    </div>
+    <p id="plAgregarPista"></p>
+    <label class="pl-campo"><span id="plAgregarEt">Nombre</span><input id="plAgregarNombre" type="text" maxlength="60" autocomplete="off"></label>
+    <label class="pl-campo" id="plAgregarLugarCampo"><span>Lugar <i>(opcional)</i></span><input id="plAgregarLugar" type="text" maxlength="60" autocomplete="off" placeholder="Comuna o ciudad"></label>
+    <div class="pl-agregados" id="plAgregados"></div>
+    <div class="dlg-acc"><button class="cx-enlace" id="plAgregarCerrar" type="button">Cerrar</button><button class="btn-pri" id="plAgregarOk" type="submit">Agregar</button></div>
+  </form>
+</dialog>
+
 <!-- Planificación semanal: la semana en papel. Se arma al imprimir y se vacía al terminar; en pantalla no se ve -->
 <div class="pl-doc" id="plDoc"></div>
 
@@ -1949,14 +1993,14 @@
      usuarios: las iniciales del equipo para el selector de usuario (2026-10-16); las mismas del Formulador
                (js/usuario.js) y de Sistema QUEMPIN (app/config.py, USUARIOS): si el equipo cambia, en los tres.
      personal: a quiénes se asigna en la Planificación semanal (pedido del 2026-10-20). Incluye a todos los
-               usuarios y puede tener más: EV se planifica, pero no elige usuario en las herramientas.
+               usuarios y puede tener más: EV y RL se planifican, pero no eligen usuario en las herramientas.
      vehiculos: los de la empresa, que la Planificación semanal asigna a una persona en un proyecto un día (pedido
                 del 2026-10-25). El id va en el archivo de la semana: si la lista cambia, también el enum de
                 «vehiculo» del esquema planificacion-semana (test_portal.py los compara); articulo: «va en la RAM». -->
 <script type="application/json" id="portal-registro">
 {
   "usuarios": ["NB", "ES", "LC", "CM", "MP", "SV"],
-  "personal": ["NB", "ES", "LC", "CM", "MP", "SV", "EV"],
+  "personal": ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"],
   "vehiculos": [{"id": "quempineta", "nombre": "Quempineta", "articulo": "la"}, {"id": "ram", "nombre": "RAM", "articulo": "la"}],
   "grupos": [
     {"id": "formular", "nombre": "Formulación de proyectos", "corto": "Formulación", "icono": "portapapeles"},
@@ -4514,8 +4558,15 @@
   const plLaVeh = (v) => (v.articulo || 'la') + ' ' + v.nombre;           // «la RAM»
   const mayuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const PL_TIPOS = ['asig', 'aus', 'pau', 'veh'];                          // las casillas de una semana
-  const PL_CLAVE = /^(req:\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40})$/;
+  // pro: un proyecto escrito a mano en la planificación (2026-10-26), que no viene del Recorrido
+  const PL_CLAVE = /^(req:\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$/;
   const PL_INSTANTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+  // Una persona escrita a mano (2026-10-26): «x-» y su nombre sin tildes («x-juan-perez»); el nombre va en la lista
+  const PL_PER_MANO = /^x-[a-z0-9-]{1,30}$/;
+  const plPerValida = (x) => PERSONAL.includes(x) || PL_PER_MANO.test(texto(x));
+  const PL_LISTA = 'lista';     // publicado/planificacion/lista/<dispositivo>.json: las personas y proyectos agregados a mano
+  // «Juan Pérez» → «juan-perez»: la parte de la clave que sale del nombre
+  const plSlug = (txt, max) => norm(txt).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, max).replace(/-+$/, '');
   const PL_SIN_CARPETA = {
     navegador: 'La planificación se guarda en la carpeta del equipo, y este navegador no puede abrir carpetas del computador.',
     conectar: 'La planificación lee los proyectos en ejecución y guarda lo asignado en la carpeta de intercambio. Conecta una vez la biblioteca «' + BIBLIOTECA_FORMULACION + '» en este navegador (la misma conexión del Formulador) y acepta «Ver archivos» y «Guardar cambios».'
@@ -4527,6 +4578,7 @@
     texto: plPrefs.texto === 'dia' ? 'dia' : 'persona',     // cómo se ordena el texto de Compartir
     lunes: null,              // el lunes de la semana a la vista
     semanas: new Map(),       // «2026-W43» → { id, lunes, archivos, mias, ef, leida }
+    lista: null,              // las personas y proyectos agregados a mano: { archivos, mias, ef, leida } (plLista)
     dispositivo: '',
     reloj: 0,                 // el instante más nuevo que se vio o se escribió (ms)
     porGuardar: new Set(), guardando: false, otraVez: false, relojGuardar: null, guardado: 0, errorGuardar: null,
@@ -4608,7 +4660,8 @@
     planif.reloj = Math.max(Date.now(), planif.reloj + 1);
     return new Date(planif.reloj).toISOString();
   }
-  const plVacia = () => ({ asig: new Map(), aus: new Map(), pau: new Map(), veh: new Map(), proyectos: {} });
+  // proyectos y personas: los nombres de lo usado en la semana (las personas, solo las escritas a mano)
+  const plVacia = () => ({ asig: new Map(), aus: new Map(), pau: new Map(), veh: new Map(), proyectos: {}, personas: {} });
   const plKAsig = (e) => e.dia + '|' + e.persona + '|' + e.proyecto;      // también la del vehículo de esa asignación
   const plKAus = (e) => e.dia + '|' + e.persona;
   const plKPau = (e) => e.proyecto;
@@ -4638,11 +4691,11 @@
     const lista = (v) => (Array.isArray(v) ? v.slice(0, 3000) : []);
     const r = plVacia();
     lista(d.asignaciones).forEach((x) => {
-      if (!x || !dia(x.dia) || !PERSONAL.includes(x.persona) || !PL_CLAVE.test(texto(x.proyecto)) || !instante(x.t)) return;
+      if (!x || !dia(x.dia) || !plPerValida(x.persona) || !PL_CLAVE.test(texto(x.proyecto)) || !instante(x.t)) return;
       plPoner(r.asig, plKAsig(x), { dia: x.dia, persona: x.persona, proyecto: x.proyecto, activa: x.activa === true, t: x.t, por: por(x.por), de });
     });
     lista(d.ausencias).forEach((x) => {
-      if (!x || !dia(x.dia) || !PERSONAL.includes(x.persona) || !instante(x.t)) return;
+      if (!x || !dia(x.dia) || !plPerValida(x.persona) || !instante(x.t)) return;
       const motivo = PL_AUSENCIAS.some((a) => a.id === x.motivo) ? x.motivo : '';
       plPoner(r.aus, plKAus(x), { dia: x.dia, persona: x.persona, motivo, t: x.t, por: por(x.por), de });
     });
@@ -4652,7 +4705,7 @@
     });
     // Un vehículo que ya no está en el registro cuenta como quitado
     lista(d.vehiculos).forEach((x) => {
-      if (!x || !dia(x.dia) || !PERSONAL.includes(x.persona) || !PL_CLAVE.test(texto(x.proyecto)) || !instante(x.t)) return;
+      if (!x || !dia(x.dia) || !plPerValida(x.persona) || !PL_CLAVE.test(texto(x.proyecto)) || !instante(x.t)) return;
       plPoner(r.veh, plKAsig(x), { dia: x.dia, persona: x.persona, proyecto: x.proyecto, vehiculo: plVehiculo(x.vehiculo) ? x.vehiculo : '', t: x.t, por: por(x.por), de });
     });
     if (d.proyectos && typeof d.proyectos === 'object' && !Array.isArray(d.proyectos)) {
@@ -4661,6 +4714,13 @@
         if (!PL_CLAVE.test(k) || !v || typeof v !== 'object') return;
         r.proyectos[k] = { titulo: texto(v.titulo).slice(0, 120), lugar: texto(v.lugar).slice(0, 80), req: rcNum(v.req),
           tag: /^[A-Z0-9]{2,10}$/.test(texto(v.tag)) ? texto(v.tag) : null };
+      });
+    }
+    if (d.personas && typeof d.personas === 'object' && !Array.isArray(d.personas)) {
+      Object.keys(d.personas).slice(0, 200).forEach((k) => {
+        const v = d.personas[k];
+        const nombre = v && typeof v === 'object' ? plNombreLimpio(v.nombre) : '';
+        if (PL_PER_MANO.test(k) && nombre) r.personas[k] = { nombre };
       });
     }
     r.generado = texto(sobre.generado);
@@ -4673,6 +4733,7 @@
     fuentes.forEach((f) => {
       PL_TIPOS.forEach((tipo) => f[tipo].forEach((e, k) => plPoner(ef[tipo], k, e)));
       Object.assign(ef.proyectos, f.proyectos);      // los nombres: los del archivo más nuevo (y los de aquí) valen más
+      Object.assign(ef.personas, f.personas);
     });
     s.ef = ef;
   }
@@ -4680,7 +4741,81 @@
   function plAdoptar(s, r) {
     PL_TIPOS.forEach((tipo) => r[tipo].forEach((e, k) => plPoner(s.mias[tipo], k, e)));
     Object.keys(r.proyectos).forEach((k) => { if (!s.mias.proyectos[k]) s.mias.proyectos[k] = r.proyectos[k]; });
+    Object.keys(r.personas).forEach((k) => { if (!s.mias.personas[k]) s.mias.personas[k] = r.personas[k]; });
   }
+
+  /* ---- Las personas y proyectos agregados a mano (2026-10-26) ------------------------------------------------------
+     Valen para todas las semanas: van en publicado/planificacion/lista/<dispositivo>.json (esquema planificacion-lista),
+     un archivo por navegador como las semanas, y en cada persona o proyecto manda el cambio más reciente (quitarlo de la
+     planificación es 'activa': false; lo ya asignado en una semana se sigue viendo con su nombre). */
+  const plNombreLimpio = (v) => texto(v).replace(/\s+/g, ' ').trim().slice(0, 60);
+  const plListaVacia = () => ({ personas: new Map(), proyectos: new Map() });
+  function plLista() {
+    if (!planif.lista) planif.lista = { archivos: new Map(), mias: plListaVacia(), ef: plListaVacia(), leida: 0 };
+    return planif.lista;
+  }
+  function plLeerListaArchivo(sobre) {
+    const d = sobre && sobre.esquema === 'quempin.intercambio/1' && sobre.herramienta === 'planificacion' ? sobre.datos : null;
+    if (!d || typeof d !== 'object') return null;
+    const de = texto(d.dispositivo).slice(0, 24);
+    const tope = new Date(Date.now() + 365 * DIA).toISOString();
+    const instante = (x) => typeof x === 'string' && PL_INSTANTE.test(x) && x <= tope;
+    const por = (x) => (/^[A-Z]{2,3}$/.test(texto(x)) ? texto(x) : '');
+    const lista = (v) => (Array.isArray(v) ? v.slice(0, 500) : []);
+    const r = plListaVacia();
+    lista(d.personas).forEach((x) => {
+      const nombre = x ? plNombreLimpio(x.nombre) : '';
+      if (!x || !PL_PER_MANO.test(texto(x.id)) || !nombre || !instante(x.t)) return;
+      plPoner(r.personas, x.id, { id: x.id, nombre, activa: x.activa === true, t: x.t, por: por(x.por), de });
+    });
+    lista(d.proyectos).forEach((x) => {
+      const titulo = x ? plNombreLimpio(x.titulo) : '';
+      if (!x || !/^(req:\d{1,6}|pro:[a-z0-9-]{1,40})$/.test(texto(x.clave)) || !titulo || !instante(x.t)) return;
+      plPoner(r.proyectos, x.clave, { clave: x.clave, titulo, lugar: plNombreLimpio(x.lugar), activa: x.activa === true, t: x.t, por: por(x.por), de });
+    });
+    r.generado = texto(sobre.generado);
+    return r;
+  }
+  function plRecalcularLista() {
+    const l = plLista();
+    const ef = plListaVacia();
+    [...l.archivos.values()].concat([l.mias]).forEach((f) => ['personas', 'proyectos'].forEach((k) => f[k].forEach((e, id) => plPoner(ef[k], id, e))));
+    l.ef = ef;
+  }
+  function plAdoptarLista(r) {
+    const l = plLista();
+    ['personas', 'proyectos'].forEach((k) => r[k].forEach((e, id) => plPoner(l.mias[k], id, e)));
+  }
+  function plSobreLista() {
+    const l = plLista();
+    const sinDe = (e) => { const x = Object.assign({}, e); delete x.de; return x; };
+    return {
+      esquema: 'quempin.intercambio/1', herramienta: 'planificacion', tipo: 'planificacion-lista',
+      generado: new Date().toISOString(), autor: estado.usuario || '',
+      datos: { dispositivo: plDispositivo(), personas: [...l.mias.personas.values()].map(sinDe), proyectos: [...l.mias.proyectos.values()].map(sinDe) }
+    };
+  }
+  // El nombre de una persona: las iniciales del equipo tal cual; una escrita a mano, el de la lista o el de la semana
+  function plNom(per) {
+    if (!PL_PER_MANO.test(per || '')) return per;
+    const e = plLista().ef.personas.get(per);
+    if (e) return e.nombre;
+    for (const s of planif.semanas.values()) if (s.ef.personas[per]) return s.ef.personas[per].nombre;
+    return mayuscula(per.slice(2).replace(/-/g, ' '));
+  }
+  // Para las etiquetas chicas: «Juan Pérez» → «Juan P.»
+  function plNomCorto(per) {
+    if (!PL_PER_MANO.test(per || '')) return per;
+    const p = plNom(per).split(' ');
+    return p.length > 1 ? p[0] + ' ' + p[1].charAt(0).toUpperCase() + '.' : p[0];
+  }
+  // El círculo de la fila: las iniciales («JP»)
+  const plIniciales = (per) => (PL_PER_MANO.test(per || '') ? plNom(per).split(' ').slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') : per);
+  const plNoms = (xs) => unir(xs.map(plNom));
+  // Las personas escritas a mano que siguen en la planificación, por nombre
+  const plManoActivas = () => [...plLista().ef.personas.values()].filter((e) => e.activa).sort((a, b) => plComparar(a.nombre, b.nombre)).map((e) => e.id);
+  // Los proyectos escritos a mano que siguen en la planificación
+  const plProyManoActivos = () => [...plLista().ef.proyectos.values()].filter((e) => e.activa);
 
   // ---- Leer y guardar en la carpeta del equipo ---------------------------------------------------------------
   const plNombreArchivo = () => plDispositivo() + '.json';
@@ -4724,11 +4859,46 @@
     if (cambio) plRecalcular(s);
     return cambio;
   }
+  // Lo mismo con la lista de lo agregado a mano
+  async function plLeerLista(dir) {
+    const l = plLista();
+    const carpeta = await plCarpeta(dir, PL_LISTA, false);
+    let cambio = !l.leida;
+    const vistos = new Set();
+    if (carpeta) {
+      for await (const [n, h] of carpeta.entries()) {
+        if (h.kind !== 'file' || !/\.json$/i.test(n)) continue;
+        vistos.add(n);
+        let f;
+        try { f = await h.getFile(); } catch (e) { continue; }
+        const previo = l.archivos.get(n);
+        if (previo && previo.lm === f.lastModified && previo.size === f.size) continue;
+        let r = null;
+        try { r = plLeerListaArchivo(JSON.parse(rcSinBom(await f.text()))); } catch (e) { r = null; }
+        if (!r) continue;
+        r.lm = f.lastModified;
+        r.size = f.size;
+        l.archivos.set(n, r);
+        cambio = true;
+        ['personas', 'proyectos'].forEach((k) => r[k].forEach((e) => { planif.reloj = Math.max(planif.reloj, Date.parse(e.t)); }));
+        if (n === plNombreArchivo()) plAdoptarLista(r);
+      }
+    }
+    l.archivos.forEach((x, n) => { if (!vistos.has(n)) { l.archivos.delete(n); cambio = true; } });
+    l.leida = Date.now();
+    if (cambio) plRecalcularLista();
+    return cambio;
+  }
   function plSobre(s) {
     const m = s.mias;
     const usados = new Set([...m.asig.values(), ...m.pau.values(), ...m.veh.values()].map((e) => e.proyecto));
     const proyectos = {};
     usados.forEach((k) => { const v = m.proyectos[k] || s.ef.proyectos[k]; if (v) proyectos[k] = v; });
+    // El nombre de cada persona escrita a mano que aparece en el archivo: la semana se lee bien aunque la quiten de la lista
+    const personas = {};
+    [...m.asig.values(), ...m.aus.values(), ...m.veh.values()].forEach((e) => {
+      if (PL_PER_MANO.test(e.persona) && !personas[e.persona]) personas[e.persona] = m.personas[e.persona] || s.ef.personas[e.persona] || { nombre: plNom(e.persona) };
+    });
     const sinDe = (e) => { const x = Object.assign({}, e); delete x.de; return x; };   // el dispositivo ya va arriba
     return {
       esquema: 'quempin.intercambio/1', herramienta: 'planificacion', tipo: 'planificacion-semana',
@@ -4736,11 +4906,33 @@
       datos: {
         semana: s.id, desde: plISO(s.lunes), dispositivo: plDispositivo(),
         asignaciones: [...m.asig.values()].map(sinDe), ausencias: [...m.aus.values()].map(sinDe), pausas: [...m.pau.values()].map(sinDe),
-        vehiculos: [...m.veh.values()].map(sinDe), proyectos
+        vehiculos: [...m.veh.values()].map(sinDe), proyectos, personas
       }
     };
   }
+  async function plEscribirLista(dir) {
+    const l = plLista();
+    const carpeta = await plCarpeta(dir, PL_LISTA, true);
+    const nombre = plNombreArchivo();
+    try {
+      const f = await (await carpeta.getFileHandle(nombre)).getFile();
+      const r = plLeerListaArchivo(JSON.parse(rcSinBom(await f.text())));
+      if (r) plAdoptarLista(r);
+    } catch (e) { /* todavía no existe */ }
+    const h = await carpeta.getFileHandle(nombre, { create: true });
+    const sobre = plSobreLista();
+    const w = await h.createWritable();
+    await w.write(JSON.stringify(sobre, null, 1));
+    await w.close();
+    const f = await h.getFile();
+    const copia = plLeerListaArchivo(sobre);
+    copia.lm = f.lastModified;
+    copia.size = f.size;
+    l.archivos.set(nombre, copia);
+    plRecalcularLista();
+  }
   async function plEscribirSemana(dir, id) {
+    if (id === PL_LISTA) { await plEscribirLista(dir); return; }
     const s = plSemana(id);
     const carpeta = await plCarpeta(dir, id, true);
     const nombre = plNombreArchivo();
@@ -4765,7 +4957,11 @@
   // Lo que espera guardarse queda también en este navegador: si la página se cierra antes, se guarda la próxima vez.
   function plGuardarPendiente() {
     const p = {};
-    planif.porGuardar.forEach((id) => { const s = planif.semanas.get(id); if (s) p[id] = plSobre(s).datos; });
+    planif.porGuardar.forEach((id) => {
+      if (id === PL_LISTA) { p[id] = plSobreLista().datos; return; }
+      const s = planif.semanas.get(id);
+      if (s) p[id] = plSobre(s).datos;
+    });
     try {
       if (Object.keys(p).length) localStorage.setItem(LS_PL_PENDIENTE, JSON.stringify(p));
       else localStorage.removeItem(LS_PL_PENDIENTE);
@@ -4776,6 +4972,14 @@
     try { p = JSON.parse(localStorage.getItem(LS_PL_PENDIENTE) || 'null'); } catch (e) { p = null; }
     if (!p || typeof p !== 'object') return;
     Object.keys(p).forEach((id) => {
+      if (id === PL_LISTA) {
+        const r = plLeerListaArchivo({ esquema: 'quempin.intercambio/1', herramienta: 'planificacion', datos: p[id] });
+        if (!r) return;
+        plAdoptarLista(r);
+        plRecalcularLista();
+        planif.porGuardar.add(id);
+        return;
+      }
       const lunes = plLunesDeId(id);
       const r = lunes && plLeerArchivo({ esquema: 'quempin.intercambio/1', herramienta: 'planificacion', datos: p[id] }, id, lunes);
       if (!r) return;
@@ -4825,16 +5029,27 @@
     const l = rcLegible(lugar);
     return l && !norm(titulo).includes(norm(l)) ? l : '';
   }
+  /* Los proyectos en ejecución del Recorrido y, después, los agregados a mano que siguen en la planificación (mano: true).
+     Uno escrito con su N° que después entra en ejecución queda una sola vez, como el del Recorrido. */
   function plActivos() {
     const vistos = new Set();
-    return rc.tarjetas.filter((t) => t.etapa === 'ejecucion' && !t.antiguo && (t.req || t.tag)).map((t) => ({
+    const delRecorrido = rc.tarjetas.filter((t) => t.etapa === 'ejecucion' && !t.antiguo && (t.req || t.tag)).map((t) => ({
       clave: t.req ? 'req:' + t.req : 'tag:' + t.tag, req: t.req || null, tag: t.tag || null, titulo: t.titulo, lugar: plLugar(t.titulo, t.lugar), sitio: rcLegible(t.lugar),
       avance: typeof t.avance === 'number' ? t.avance : null, tarjeta: t.clave, activo: true, otra: false
-    })).filter((p) => !vistos.has(p.clave) && vistos.add(p.clave)).sort(plPorTitulo);
+    }));
+    const aMano = plProyManoActivos().map((e) => {
+      const req = e.clave.startsWith('req:') ? e.clave.slice(4) : null;
+      const t = req ? rc.tarjetas.find((x) => x.req === req) : null;     // su tarjeta del Recorrido, aunque esté en otra etapa
+      return { clave: e.clave, req, tag: (t && t.tag) || null, titulo: e.titulo, lugar: plLugar(e.titulo, e.lugar), sitio: e.lugar,
+        avance: null, tarjeta: t ? t.clave : null, activo: true, otra: false, mano: true };
+    });
+    return delRecorrido.concat(aMano).filter((p) => !vistos.has(p.clave) && vistos.add(p.clave)).sort(plPorTitulo);
   }
   const plComparar = (a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
   const plPorTitulo = (a, b) => plComparar(a.titulo, b.titulo);
-  const plOrdenPersonas = (xs) => PERSONAL.filter((p) => xs.includes(p));
+  // El equipo en su orden y, después, las personas escritas a mano por nombre
+  const plOrdenPersonas = (xs) => PERSONAL.filter((p) => xs.includes(p))
+    .concat(xs.filter((p) => !PERSONAL.includes(p)).sort((a, b) => plComparar(plNom(a), plNom(b))));
   // Un color por proyecto, el mismo en todas las vistas y semanas mientras no cambien los activos: sale de su clave y,
   // si dos chocan, el segundo (en orden de clave) toma el siguiente libre. Con más de diez se repiten.
   function plColores(claves) {
@@ -4863,7 +5078,7 @@
     const proyectos = new Map(activos.map((p) => [p.clave, p]));
     const deLaSemana = (c, k) => {      // un proyecto que ya no está activo, o una otra actividad, con su nombre guardado
       if (proyectos.has(c)) return;
-      const sn = s.ef.proyectos[k] || s.ef.proyectos[c] || {};
+      const sn = s.ef.proyectos[k] || s.ef.proyectos[c] || plLista().ef.proyectos.get(c) || {};
       const otra = c.startsWith('otra:');
       proyectos.set(c, { clave: c, req: sn.req || (c.startsWith('req:') ? c.slice(4) : null), tag: sn.tag || (c.startsWith('tag:') ? c.slice(4) : null),
         titulo: sn.titulo || (otra ? 'Otra actividad' : c.startsWith('req:') ? 'N° ' + c.slice(4) : c.slice(4)), lugar: sn.lugar || '', activo: false, otra, tarjeta: null });
@@ -4880,6 +5095,12 @@
     });
     const ausencias = new Map();
     s.ef.aus.forEach((e) => { if (e.motivo) ausencias.set(e.dia + '|' + e.persona, e); });
+    /* Las filas de personas: el equipo, las escritas a mano que siguen en la planificación y las que ya no están en la
+       lista pero tienen algo esta semana (así no se pierde lo asignado) */
+    const enLaSemana = new Set();
+    s.ef.asig.forEach((e) => { if (e.activa) enLaSemana.add(e.persona); });
+    ausencias.forEach((e) => enLaSemana.add(e.persona));
+    const personas = plOrdenPersonas([...new Set(PERSONAL.concat(plManoActivas(), [...enLaSemana]))]);
     const pausas = new Map();
     s.ef.pau.forEach((e) => { if (e.activa) pausas.set(canon(e.proyecto), e); });
     const colores = plColores([...proyectos.keys()]);
@@ -4913,7 +5134,7 @@
       usoVeh.set(kv, grupos.sort((a, b) => plComparar(titulo(a[0].clave), titulo(b[0].clave))));
     });
     return {
-      activos, proyectos, canon, porPersona, porProyecto, dias, ausencias, pausas, titulo,
+      activos, proyectos, canon, porPersona, porProyecto, dias, ausencias, pausas, titulo, personas,
       color: (c) => (c.startsWith('otra:') ? 'var(--baseline)' : colores.get(c) || 'var(--baseline)'),
       ordenar: (claves) => claves.slice().sort((a, b) => plComparar(titulo(a), titulo(b))),
       vehiculo: (dia, per, c) => vehiculos.get(dia + '|' + per + '|' + c) || '',
@@ -4957,6 +5178,8 @@
       if (v) poner('veh', { dia, persona: per, proyecto: clave, vehiculo: '' }, { vehiculo: v });
     };
     cambios.forEach((c) => {
+      // El nombre de una persona escrita a mano va en el archivo de la semana junto a lo suyo
+      if (c.persona && PL_PER_MANO.test(c.persona)) s.mias.personas[c.persona] = { nombre: plNom(c.persona) };
       if (c.tipo === 'asig') {
         const iguales = [...s.ef.asig.values()].filter((e) => e.activa && e.dia === c.dia && e.persona === c.persona && m.canon(e.proyecto) === c.clave);
         if (c.activa && !iguales.length) {
@@ -5003,6 +5226,16 @@
   function plDeshacer() {
     const u = planif.deshacer.pop();
     if (!u) { avisar('No hay cambios de la planificación para deshacer.'); return; }
+    if (u.lista) {      // agregar o quitar una persona o un proyecto escrito a mano
+      const { tipo, e } = u.lista;
+      plLista().mias[tipo].set(tipo === 'personas' ? e.id : e.clave, Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
+      plRecalcularLista();
+      plProgramarGuardado(PL_LISTA);
+      plPintar();
+      plPintarAlarmaGlobal();
+      avisar('Se deshizo el último cambio.');
+      return;
+    }
     const s = plSemana(u.semana);
     u.tanda.slice().reverse().forEach(({ tipo, e }) => {
       s.mias[tipo].set(plK(tipo, e), Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
@@ -5045,17 +5278,17 @@
     if (!cambios.length) {
       if (no.length === 1 && isos.length === 1) {
         const d = plDiaDe(s, no[0].iso);
-        avisar(m.ausencias.has(no[0].iso + '|' + per) ? per + ' está ausente ' + plElDia(d) + ': quita la ausencia para asignarle un proyecto.'
-          : per + ' ya tiene ' + PL_MAX + ' proyectos ' + plElDia(d) + ', el máximo: quita uno para agregar otro.');
-      } else if (no.length) avisar('No se puede asignar a ' + per + ' en ' + t + ': ' + unir(no.map((x) => plElDia(plDiaDe(s, x.iso)) + ' (' + x.por + ')')) + '.');
+        avisar(m.ausencias.has(no[0].iso + '|' + per) ? plNom(per) + ' está ausente ' + plElDia(d) + ': quita la ausencia para asignarle un proyecto.'
+          : plNom(per) + ' ya tiene ' + PL_MAX + ' proyectos ' + plElDia(d) + ', el máximo: quita uno para agregar otro.');
+      } else if (no.length) avisar('No se puede asignar a ' + plNom(per) + ' en ' + t + ': ' + unir(no.map((x) => plElDia(plDiaDe(s, x.iso)) + ' (' + x.por + ')')) + '.');
       plPintar();
       return false;
     }
     let extra = '';
     if (si && m.pausas.has(clave)) { cambios.push({ tipo: 'pau', clave, activa: false }); extra = ' Ya no está «sin trabajo esta semana».'; }
     const salvo = no.length ? ', salvo ' + unir(no.map((x) => plElDia(plDiaDe(s, x.iso)) + ' (' + x.por + ')')) : '';
-    return plCambiar(s, cambios, si ? per + ' va a ' + t + ' ' + plDiasTexto(s, dias) + salvo + '.' + extra
-      : per + ' ya no va a ' + t + ' ' + plDiasTexto(s, dias) + '.');
+    return plCambiar(s, cambios, si ? plNom(per) + ' va a ' + t + ' ' + plDiasTexto(s, dias) + salvo + '.' + extra
+      : plNom(per) + ' ya no va a ' + t + ' ' + plDiasTexto(s, dias) + '.');
   }
   /* El vehículo de una persona en un proyecto, los días elegidos en que va ('' lo quita), en una sola tanda. Si ese
      vehículo ya va con otros a otro lugar alguno de esos días, el aviso lo dice (no se impide: pueden ir pasando). */
@@ -5068,11 +5301,11 @@
     const t = m.titulo(clave);
     return plCambiar(s, dias.map((iso) => ({ tipo: 'veh', dia: iso, persona: per, clave, vehiculo: id })), () => {
       const cuando = plDiasTexto(s, dias);
-      if (!v) return per + ' ya no lleva ' + unir(antes.map(plLaVeh)) + ' a ' + t + ' ' + cuando + '.';
+      if (!v) return plNom(per) + ' ya no lleva ' + unir(antes.map(plLaVeh)) + ' a ' + t + ' ' + cuando + '.';
       const mm = plModelo(s);
       const choques = dias.map((iso) => ({ iso, otros: mm.vehOtros(iso, id, per, clave) })).filter((x) => x.otros.length);
-      const donde = [...new Set(choques.flatMap((x) => x.otros.flat().map((y) => mm.titulo(y.clave) + ' (' + unir(y.personas) + ')')))];
-      return per + ' va en ' + plLaVeh(v) + ' a ' + t + ' ' + cuando + '.'
+      const donde = [...new Set(choques.flatMap((x) => x.otros.flat().map((y) => mm.titulo(y.clave) + ' (' + plNoms(y.personas) + ')')))];
+      return plNom(per) + ' va en ' + plLaVeh(v) + ' a ' + t + ' ' + cuando + '.'
         + (choques.length ? ' Ojo: ' + plDiasTexto(s, choques.map((x) => x.iso)) + ' ' + plLaVeh(v) + ' también va a ' + unir(donde) + '.' : '');
     });
   }
@@ -5083,7 +5316,7 @@
     const m = plModelo(s);
     const suyos = (iso) => m.porPersona.get(iso + '|' + per) || [];
     const dias = isos.filter((iso) => suyos(iso).includes(de));
-    if (!dias.length || dias.every((iso) => suyos(iso).includes(a))) { avisar(per + ' ya va a ' + m.titulo(a) + ' esos días.'); return false; }
+    if (!dias.length || dias.every((iso) => suyos(iso).includes(a))) { avisar(plNom(per) + ' ya va a ' + m.titulo(a) + ' esos días.'); return false; }
     const cambios = dias.flatMap((iso) => {
       const ya = suyos(iso).includes(a);
       const v = m.vehiculo(iso, per, de);
@@ -5092,7 +5325,7 @@
         .concat(v && !(ya && m.vehiculo(iso, per, a)) ? [{ tipo: 'veh', dia: iso, persona: per, clave: a, vehiculo: v }] : []);
     });
     if (m.pausas.has(a)) cambios.push({ tipo: 'pau', clave: a, activa: false });
-    return plCambiar(s, cambios, per + ' cambia de ' + m.titulo(de) + ' a ' + m.titulo(a) + ' ' + plDiasTexto(s, dias) + '.');
+    return plCambiar(s, cambios, plNom(per) + ' cambia de ' + m.titulo(de) + ' a ' + m.titulo(a) + ' ' + plDiasTexto(s, dias) + '.');
   }
   /* Lo mismo desde el proyecto: en vez de una persona va otra, los días en que iba la primera (si la otra ya iba, solo
      se quita la primera). Se saltan los días en que la otra está ausente o tiene 3 proyectos: ahí sigue la primera, y
@@ -5115,9 +5348,9 @@
       dias.push(iso);
     });
     const t = m.titulo(clave);
-    if (!pone) { avisar(no.length ? a + ' no puede ir a ' + t + ': ' + unir(no.map((x) => x.dia + ' (' + x.por + ')')) + '.' : a + ' ya va a ' + t + ' esos días.'); return false; }
-    return plCambiar(s, cambios, a + ' va a ' + t + ' en vez de ' + de + ' ' + plDiasTexto(s, dias)
-      + (no.length ? '; ' + de + ' sigue ' + unir(no.map((x) => x.dia + ' (' + a + ': ' + x.por + ')')) : '') + '.');
+    if (!pone) { avisar(no.length ? plNom(a) + ' no puede ir a ' + t + ': ' + unir(no.map((x) => x.dia + ' (' + x.por + ')')) + '.' : plNom(a) + ' ya va a ' + t + ' esos días.'); return false; }
+    return plCambiar(s, cambios, plNom(a) + ' va a ' + t + ' en vez de ' + plNom(de) + ' ' + plDiasTexto(s, dias)
+      + (no.length ? '; ' + plNom(de) + ' sigue ' + unir(no.map((x) => x.dia + ' (' + plNom(a) + ': ' + x.por + ')')) : '') + '.');
   }
   // Una ausencia (vacaciones, licencia, permiso…) deja a la persona sin proyectos esos días; motivo '' la quita.
   function plAusentarDias(s, isos, per, motivo) {
@@ -5128,8 +5361,8 @@
       if (motivo) (m.porPersona.get(iso + '|' + per) || []).forEach((c) => { quitados.add(c); cambios.push({ tipo: 'asig', dia: iso, persona: per, clave: c, activa: false }); });
     });
     return plCambiar(s, cambios, motivo
-      ? per + ' queda ausente ' + plDiasTexto(s, isos) + ' (' + plAusencia(motivo).nombre.toLowerCase() + ')' + (quitados.size ? '; se quitó de ' + unir([...quitados].map(m.titulo)) : '') + '.'
-      : per + ' ya no está ausente ' + plDiasTexto(s, isos) + '.');
+      ? plNom(per) + ' queda ausente ' + plDiasTexto(s, isos) + ' (' + plAusencia(motivo).nombre.toLowerCase() + ')' + (quitados.size ? '; se quitó de ' + unir([...quitados].map(m.titulo)) : '') + '.'
+      : plNom(per) + ' ya no está ausente ' + plDiasTexto(s, isos) + '.');
   }
   // «Sin trabajo esta semana»: el proyecto sigue activo, pero esa semana no se trabaja en él y no cuenta como alarma.
   function plPausar(s, clave, si) {
@@ -5153,6 +5386,81 @@
     const c = plClaveOtra(s, txt);
     if (!c) { avisar('Escribe qué actividad es: oficina, visita técnica, bodega…'); return; }
     plAsignarDias(s, per, c, isos, true);
+  }
+  /* Agregar a mano (2026-10-26): una persona por su nombre (alguien de apoyo, un contratista) o un proyecto que no está en
+     ejecución en el Recorrido. Queda en la planificación de todas las semanas hasta que se quite; quitarlo no borra lo ya
+     asignado. tipo: 'personas' | 'proyectos'; e: la persona { id, nombre, activa } o el proyecto { clave, titulo, lugar,
+     activa }. Se puede deshacer desde el aviso o con Ctrl Z. */
+  function plCambiarLista(tipo, e, mensaje) {
+    const l = plLista();
+    const k = tipo === 'personas' ? e.id : e.clave;
+    const previo = l.ef[tipo].get(k);
+    const sinMeta = (x) => { const y = Object.assign({}, x); delete y.t; delete y.por; delete y.de; return y; };
+    l.mias[tipo].set(k, Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
+    plRecalcularLista();
+    planif.deshacer.push({ lista: { tipo, e: previo ? sinMeta(previo) : Object.assign({}, e, { activa: false }) } });
+    if (planif.deshacer.length > 40) planif.deshacer.shift();
+    plProgramarGuardado(PL_LISTA);
+    plPintar();
+    plPintarAlarmaGlobal();
+    avisar(mensaje, { texto: 'Deshacer', ir: plDeshacer });
+  }
+  // «juan pérez» → «Juan Pérez»: cada palabra escrita toda en minúsculas parte con mayúscula
+  const plCapital = (txt) => txt.split(' ').map((w) => (w === w.toLowerCase() ? mayuscula(w) : w)).join(' ');
+  function plAgregarPersona(txt, aviso = avisar) {
+    const nombre = plCapital(plNombreLimpio(txt));
+    const delEquipo = PERSONAL.find((p) => p === nombre.toUpperCase());
+    if (delEquipo) { aviso(delEquipo + ' ya está en la planificación.'); return null; }
+    const slug = plSlug(nombre, 30);
+    if (!slug) { aviso('Escribe el nombre de la persona.'); return null; }
+    const id = 'x-' + slug;
+    const ya = plLista().ef.personas.get(id);
+    if (ya && ya.activa) { aviso(ya.nombre + ' ya está en la planificación.'); return id; }
+    plCambiarLista('personas', { id, nombre, activa: true },
+      nombre + ' queda en la planificación de todas las semanas: toca su fila en «Por personal» para asignarle proyectos.');
+    return id;
+  }
+  // Un N° de requerimiento de la Planilla de Ingreso: su nombre, el de su tarjeta del Recorrido o el de la Planilla
+  function plNombreReq(n) {
+    const t = rc.tarjetas.find((x) => x.req === n);
+    if (t) return t.titulo;
+    const r = rc.datos && rc.datos.requerimientos.find((x) => rcNum(x && x.numero) === n);
+    return r ? rcLegible(r.titulo) || 'Requerimiento ' + n : null;
+  }
+  /* Con su N° de la Planilla adelante («281. H2 Green», «N° 281») queda unido a ese requerimiento: si después entra en
+     ejecución en el Recorrido, es el mismo proyecto. Si no, una clave propia sale de su nombre. Devuelve la clave. */
+  function plAgregarProyecto(txt, lugarTxt, aviso = avisar) {
+    let titulo = plNombreLimpio(txt);
+    const lugar = plNombreLimpio(lugarTxt);
+    if (!titulo) { aviso('Escribe el nombre del proyecto.'); return null; }
+    const n = /^(?:n\s*°?\s*)?(\d{1,6})(?=$|[\s.\-–:])[\s.\-–:]*(.*)$/i.exec(titulo);
+    const req = n && rcNum(n[1]);
+    let clave;
+    if (req && plNombreReq(req)) {
+      clave = 'req:' + req;
+      titulo = plNombreLimpio(n[2]) || plNombreReq(req);
+    } else {
+      const slug = plSlug(titulo, 40);
+      if (!slug) { aviso('Escribe el nombre del proyecto.'); return null; }
+      clave = 'pro:' + slug;
+    }
+    titulo = mayuscula(titulo);
+    const ya = plActivos().find((p) => p.clave === clave || (!req && norm(p.titulo) === norm(titulo)));
+    if (ya) { aviso(ya.titulo + ' ya está en la planificación.'); return ya.clave; }
+    plCambiarLista('proyectos', { clave, titulo, lugar, activa: true },
+      titulo + ' queda en la planificación de todas las semanas, como un proyecto activo más.');
+    return clave;
+  }
+  function plQuitarPersona(id) {
+    const e = plLista().ef.personas.get(id);
+    if (!e || !e.activa) return;
+    plCambiarLista('personas', { id, nombre: e.nombre, activa: false }, e.nombre + ' ya no está en la planificación. Lo que tenía asignado se sigue viendo en sus semanas.');
+  }
+  function plQuitarProyecto(clave) {
+    const e = plLista().ef.proyectos.get(clave);
+    if (!e || !e.activa) return;
+    plCambiarLista('proyectos', { clave, titulo: e.titulo, lugar: e.lugar, activa: false },
+      e.titulo + ' ya no está en la planificación. Lo asignado se sigue viendo en sus semanas.');
   }
   // Copia lo de la semana anterior, día por día, sin borrar nada de esta: lo que ya no se puede (un proyecto que terminó,
   // una ausencia o un día con 3 proyectos) se salta y se cuenta. Cada asignación copiada lleva su vehículo.
@@ -5213,7 +5521,7 @@
     if (!planif.lunes) planif.lunes = plLunesDe(new Date());
     const ids = Array.from(new Set([plHoyId(), plSemanaId(planif.lunes)]));
     planif.leyendo = (async () => {
-      let cambio = false;
+      let cambio = await plLeerLista(dir);      // primero lo agregado a mano: los nombres y los proyectos de la semana
       for (const id of ids) cambio = (await plLeerSemana(dir, id)) || cambio;
       planif.error = null;
       return cambio;
@@ -5612,9 +5920,12 @@
 
   // ---- Pintar ---------------------------------------------------------------------------------------------
   const plAusencia = (id) => PL_AUSENCIAS.find((a) => a.id === id) || PL_AUSENCIAS[PL_AUSENCIAS.length - 1];
+  // Una persona: sus iniciales; una escrita a mano, su nombre corto («Juan P.») y entero al pasar encima
   function plPersona(per, boton) {
-    const e = crear(boton ? 'button' : 'span', 'pl-per' + (per === estado.usuario ? ' tuya' : ''), per);
+    const mano = PL_PER_MANO.test(per);
+    const e = crear(boton ? 'button' : 'span', 'pl-per' + (per === estado.usuario ? ' tuya' : '') + (mano ? ' mano' : ''), plNomCorto(per));
     if (boton) e.type = 'button';
+    if (mano) e.title = plNom(per);
     return e;
   }
   function plChipEstado(txt, nivel) {
@@ -5688,6 +5999,7 @@
     sab.disabled = dias.length === 6 && !planif.sabado;        // el sábado ya tiene algo: queda a la vista
     sab.parentElement.title = sab.disabled ? 'El sábado tiene asignaciones o ausencias: queda a la vista' : 'Mostrar también el sábado';
     $('#plCopiar').disabled = !rc.dir;
+    $('#plAgregar').disabled = !rc.dir;
   }
   function plPintarAlarma(s, m) {
     const caja = $('#plAlarma');
@@ -5723,16 +6035,17 @@
     const cont = $('#plResumen');
     cont.textContent = '';
     let asignados = 0, ausentes = 0;
-    dias.forEach((d) => PERSONAL.forEach((per) => {
+    dias.forEach((d) => m.personas.forEach((per) => {
       const k = d.iso + '|' + per;
       if (m.ausencias.has(k)) ausentes++;
       else if ((m.porPersona.get(k) || []).length) asignados++;
     }));
-    const disponibles = PERSONAL.length * dias.length - ausentes;
+    const disponibles = m.personas.length * dias.length - ausentes;
     const pausados = m.activos.filter((p) => m.pausas.has(p.clave) && !m.dias.has(p.clave)).length;
     const actual = s.id === plHoyId();
     const cifras = [
-      { n: m.activos.length, et: 'Proyectos activos', sub: 'En ejecución, según el Recorrido', vista: 'proyecto' },
+      { n: m.activos.length, et: 'Proyectos activos', vista: 'proyecto',
+        sub: m.activos.some((p) => p.mano) ? 'Con ' + pl(m.activos.filter((p) => p.mano).length, 'agregado', 'agregados') + ' a mano' : 'En ejecución, según el Recorrido' },
       { n: m.sinAsignar.length, et: 'Sin asignar', sub: pausados ? 'Y ' + pausados + ' sin trabajo ' + plEsta(s) : 'Sin nadie ningún día de la semana',
         vista: 'proyecto', nivel: m.sinAsignar.length ? (actual ? 'bad' : 'warn') : '' },
       { n: asignados, et: 'Días asignados', sub: 'De ' + pl(disponibles, 'día-persona disponible', 'días-persona disponibles'), vista: 'personal' },
@@ -5844,7 +6157,7 @@
     const v = plVehiculo(id);
     const e = crear('span', 'pl-veh' + (choque ? ' choque' : ''));
     e.append(icono('vehiculo', 14), crear('span', 'n', v ? v.nombre : id));
-    if (quienes && quienes.length) e.append(crear('span', 'q', quienes.join(' ')));
+    if (quienes && quienes.length) e.append(crear('span', 'q', quienes.map(plNomCorto).join(' ')));
     if (choque) e.title = choque;
     return e;
   }
@@ -5852,7 +6165,7 @@
   function plChoque(m, d, id) {
     const g = m.usoVeh(d.iso, id);
     return g.length < 2 ? '' : mayuscula(plLaVeh(plVehiculo(id))) + ' va a ' + g.length + ' lugares a la vez ' + plElDia(d) + ': '
-      + unir(g.flat().map((x) => m.titulo(x.clave) + ' (' + unir(x.personas) + ')')) + '. Revisa si van juntos';
+      + unir(g.flat().map((x) => m.titulo(x.clave) + ' (' + plNoms(x.personas) + ')')) + '. Revisa si van juntos';
   }
   // Los vehículos de quienes van a un proyecto un día (d): uno solo si van todos en él; si no, cada uno con quiénes lo llevan
   function plVehs(m, d, clave, van) {
@@ -5867,7 +6180,7 @@
   function plVehsTexto(m, iso, clave, van) {
     const partes = PL_VEHICULOS.map((v) => {
       const con = van.filter((per) => m.vehiculo(iso, per, clave) === v.id);
-      return con.length ? (con.length === van.length ? '' : unir(con) + ' ') + 'en ' + plLaVeh(v) : '';
+      return con.length ? (con.length === van.length ? '' : plNoms(con) + ' ') + 'en ' + plLaVeh(v) : '';
     }).filter(Boolean);
     return partes.length ? ', ' + unir(partes) : '';
   }
@@ -5888,7 +6201,7 @@
     t.dataset.foco = String(planif.diaMovil);
     plCabecera(t, 'Personal', dias);
     const tb = crear('tbody');
-    PERSONAL.forEach((per) => {
+    m.personas.forEach((per) => {
       const tr = crear('tr');
       tr.dataset.persona = per;
       if (per === estado.usuario) tr.classList.add('tuya');
@@ -5905,7 +6218,7 @@
         if (lista.length > PL_MAX) { b.classList.add('exceso'); b.append(crear('span', 'pl-lleno', lista.length + ' de ' + PL_MAX + ': quita ' + (lista.length - PL_MAX))); }
         else if (lista.length === PL_MAX) b.append(crear('span', 'pl-lleno', 'Completo'));
         else if (!a) plAgregar(b, lista.length ? null : 'Asignar');
-        b.setAttribute('aria-label', per + ', ' + plFechaLarga(d) + ': ' + (a ? plAusencia(a.motivo).nombre.toLowerCase()
+        b.setAttribute('aria-label', plNom(per) + ', ' + plFechaLarga(d) + ': ' + (a ? plAusencia(a.motivo).nombre.toLowerCase()
           : lista.length ? lista.map((c) => m.titulo(c) + plVehsTexto(m, d.iso, c, [per])).join('; ') : 'sin proyecto') + '. Cambiar');
         b.addEventListener('click', () => plAbrirPersona(per, d.iso));
         return td;
@@ -5914,16 +6227,31 @@
       th.scope = 'row';
       const q = crear('div', 'pl-quien');
       const tx = crear('span', 'pl-quien-txt');
-      tx.append(crear('b', null, per === estado.usuario ? per + ' · tú' : per),
-        crear('span', null, proyectos.size ? pl(proyectos.size, 'proyecto', 'proyectos') : aus === dias.length ? 'Ausente' : 'Sin proyectos'));
-      q.append(crear('span', 'pl-avatar', per), tx);
+      const mano = PL_PER_MANO.test(per);
+      const enLista = !mano || plManoActivas().includes(per);
+      // Una persona escrita a mano se ve por su círculo punteado; si ya la quitaron de la lista, lo dice
+      tx.append(crear('b', null, per === estado.usuario ? per + ' · tú' : plNom(per)),
+        crear('span', null, !enLista ? 'Fuera de la lista' : proyectos.size ? pl(proyectos.size, 'proyecto', 'proyectos') : aus === dias.length ? 'Ausente' : 'Sin proyectos'));
+      q.append(crear('span', 'pl-avatar' + (mano ? ' mano' : ''), plIniciales(per)), tx);
+      if (mano) th.title = plNom(per) + (enLista ? ': agregada a mano en la planificación' : ': ya no está en la lista de la planificación');
       th.append(q);
       tr.append(th, ...celdas, plTotal(dias, (d) => (m.ausencias.has(d.iso + '|' + per) ? 'aus' : (m.porPersona.get(d.iso + '|' + per) || []).length ? 'si' : ''),
         con + ' de ' + (dias.length - aus) + ' días'));
       tb.append(tr);
     });
     t.append(tb);
-    cont.append(t);
+    cont.append(t, plBotonAgregar('persona', 'Agregar persona', 'Alguien que no está en la lista: escribe su nombre y queda en todas las semanas'));
+  }
+  // Al pie de «Por personal» y «Por proyecto»: agregar a mano lo que no está en la lista
+  function plBotonAgregar(modo, txt, titulo) {
+    const b = crear('button', 'rc-nueva pl-agregar-pie');
+    b.type = 'button';
+    b.dataset.agregar = modo;
+    b.title = titulo;
+    b.disabled = !rc.dir;
+    b.append(icono('mas', 14), crear('span', null, txt));
+    b.addEventListener('click', () => plAbrirAgregar(modo));
+    return b;
   }
   // Por proyecto: una fila por proyecto activo (primero los que nadie tiene), quiénes van cada día, y lo demás de la semana.
   function plPintarProyecto(s, m, dias) {
@@ -5948,13 +6276,13 @@
     }
     if (!m.activos.length && !otros.length) {
       const tr = crear('tr', 'pl-nada');
-      const td = crear('td', null, 'No hay proyectos en ejecución en el Recorrido. Cuando un proyecto se adjudica o tiene su ficha en el Análisis Financiero, aparece aquí.');
+      const td = crear('td', null, 'No hay proyectos en ejecución en el Recorrido. Cuando un proyecto se adjudica o tiene su ficha en el Análisis Financiero, aparece aquí; uno que no está, agrégalo abajo.');
       td.colSpan = dias.length + 2;
       tr.append(td);
       tb.append(tr);
     }
     t.append(tb);
-    cont.append(t);
+    cont.append(t, plBotonAgregar('proyecto', 'Agregar proyecto', 'Un proyecto que no está en ejecución en el Recorrido: escribe su nombre y queda en todas las semanas'));
     if (planif.foco) {
       const f = cont.querySelector('tr[data-clave="' + CSS.escape(planif.foco) + '"]');
       const abrir = planif.focoAbrir;
@@ -5994,7 +6322,8 @@
     dot.style.setProperty('--pc', m.color(p.clave));
     const tx = crear('span', 'pl-proy-txt');
     tx.append(crear('span', 't', p.titulo));
-    const sub = p.otra ? 'Otra actividad' : [p.req ? 'N° ' + p.req : '', p.tag && p.tag !== p.titulo ? p.tag : '', p.lugar, p.activo === false ? 'ya no está en ejecución' : ''].filter(Boolean).join(' · ');
+    const sub = p.otra ? 'Otra actividad' : [p.req ? 'N° ' + p.req : '', p.tag && p.tag !== p.titulo ? p.tag : '', p.lugar, p.mano ? 'agregado a mano' : '',
+      p.activo === false ? 'ya no está en ejecución' : ''].filter(Boolean).join(' · ');
     if (sub) tx.append(crear('span', 's', sub));
     b.append(dot, tx);
     th.append(b);
@@ -6018,7 +6347,7 @@
       const vs = van.length ? plVehs(m, d, p.clave, van) : null;
       if (vs) c.append(vs);
       plAgregar(c, van.length ? null : 'Asignar');
-      c.setAttribute('aria-label', p.titulo + ', ' + plFechaLarga(d) + ': ' + (van.length ? unir(van) + plVehsTexto(m, d.iso, p.clave, van) : 'nadie') + '. Cambiar');
+      c.setAttribute('aria-label', p.titulo + ', ' + plFechaLarga(d) + ': ' + (van.length ? plNoms(van) + plVehsTexto(m, d.iso, p.clave, van) : 'nadie') + '. Cambiar');
       c.addEventListener('click', () => plAbrirProyecto(p.clave, d.iso));
       tr.append(td);
     });
@@ -6042,10 +6371,10 @@
       h3.append(crear('span', null, d.nombre), crear('b', null, String(d.fecha.getDate())));
       cab.append(h3);
       if (d.hoy) cab.append(crear('span', 'pl-hoy-pill', 'Hoy'));
-      const enObra = PERSONAL.filter((per) => (m.porPersona.get(d.iso + '|' + per) || []).length);
+      const enObra = m.personas.filter((per) => (m.porPersona.get(d.iso + '|' + per) || []).length);
       cab.append(crear('span', 'pl-dia-n', enObra.length ? pl(enObra.length, 'persona', 'personas') : 'Nadie asignado'));
       col.append(cab);
-      const claves = m.ordenar([...new Set(PERSONAL.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
+      const claves = m.ordenar([...new Set(m.personas.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
       if (claves.length) {
         const ul = crear('ul', 'pl-bloques');
         claves.forEach((c) => {
@@ -6063,7 +6392,7 @@
           b.append(w);
           const vs = plVehs(m, d, c, van);
           if (vs) b.append(vs);
-          b.setAttribute('aria-label', m.titulo(c) + ', ' + plFechaLarga(d) + ': ' + unir(van) + plVehsTexto(m, d.iso, c, van) + '. Cambiar quiénes van');
+          b.setAttribute('aria-label', m.titulo(c) + ', ' + plFechaLarga(d) + ': ' + plNoms(van) + plVehsTexto(m, d.iso, c, van) + '. Cambiar quiénes van');
           b.addEventListener('click', () => plAbrirProyecto(c, d.iso));
           li.append(b);
           ul.append(li);
@@ -6072,8 +6401,8 @@
       } else {
         col.append(crear('p', 'pl-dia-vacio', 'Sin asignaciones'));
       }
-      const libres = PERSONAL.filter((per) => !m.ausencias.has(d.iso + '|' + per) && !(m.porPersona.get(d.iso + '|' + per) || []).length);
-      const ausentes = PERSONAL.filter((per) => m.ausencias.has(d.iso + '|' + per));
+      const libres = m.personas.filter((per) => !m.ausencias.has(d.iso + '|' + per) && !(m.porPersona.get(d.iso + '|' + per) || []).length);
+      const ausentes = m.personas.filter((per) => m.ausencias.has(d.iso + '|' + per));
       [[libres, 'Sin proyecto', 'libre'], [ausentes, 'Ausentes', 'aus']].forEach(([lista, et, clase]) => {
         if (!lista.length) return;
         const f = crear('div', 'pl-libres');
@@ -6083,7 +6412,7 @@
           b.classList.add(clase);
           b.dataset.ancla = 'p|' + per + '|' + d.iso;
           const a = m.ausencias.get(d.iso + '|' + per);
-          b.title = a ? per + ': ' + plAusencia(a.motivo).nombre.toLowerCase() + ' ' + plElDia(d) : per + ' no tiene proyecto ' + plElDia(d) + ': asignarle uno';
+          b.title = a ? plNom(per) + ': ' + plAusencia(a.motivo).nombre.toLowerCase() + ' ' + plElDia(d) : plNom(per) + ' no tiene proyecto ' + plElDia(d) + ': asignarle uno';
           b.setAttribute('aria-label', b.title);
           b.addEventListener('click', () => plAbrirPersona(per, d.iso));
           f.append(b);
@@ -6148,7 +6477,7 @@
         const td = crear('td', 'd');
         const q = crear('span', 'pl-cuadro' + (van.length ? ' si' : ''));
         q.style.setProperty('--pc', m.color(p.clave));
-        q.title = plFechaLarga(d) + ': ' + (van.length ? unir(van) : 'nadie');
+        q.title = plFechaLarga(d) + ': ' + (van.length ? plNoms(van) : 'nadie');
         td.append(q);
         tr.append(td);
       });
@@ -6177,7 +6506,7 @@
     b.append(crear('h2', null, 'Personal en la semana'));
     const tb = tabla('Persona', [['Días', 'n']]);
     const tbb = crear('tbody');
-    PERSONAL.forEach((per) => {
+    m.personas.forEach((per) => {
       const tr = crear('tr');
       const th = crear('th');
       th.scope = 'row';
@@ -6193,7 +6522,7 @@
         const q = crear('button', 'pl-cuadro ' + (au ? 'aus' : lista.length ? 'n' + Math.min(lista.length, 4) : ''), au || !lista.length ? '' : String(lista.length));
         q.type = 'button';
         q.dataset.ancla = 'q|' + per + '|' + d.iso;
-        q.title = per + ', ' + plFechaLarga(d) + ': ' + (au ? plAusencia(au.motivo).nombre.toLowerCase() : lista.length ? m.ordenar(lista).map(m.titulo).join(', ') : 'sin proyecto');
+        q.title = plNom(per) + ', ' + plFechaLarga(d) + ': ' + (au ? plAusencia(au.motivo).nombre.toLowerCase() : lista.length ? m.ordenar(lista).map(m.titulo).join(', ') : 'sin proyecto');
         q.setAttribute('aria-label', q.title + '. Cambiar');
         q.addEventListener('click', () => plAbrirPersona(per, d.iso, 'q|' + per + '|' + d.iso));
         td.append(q);
@@ -6247,8 +6576,8 @@
           b.type = 'button';
           b.dataset.ancla = 'v|' + v.id + '|' + x.clave + '|' + d.iso;
           b.style.setProperty('--pc', m.color(x.clave));
-          b.append(crear('span', 'pl-dot'), crear('span', 't', m.titulo(x.clave)), crear('span', 'quien', x.personas.join(' ')));
-          b.title = mayuscula(plLaVeh(v)) + ' ' + plElDia(d) + ': ' + m.titulo(x.clave) + ', con ' + unir(x.personas) + '. Toca para cambiarlo';
+          b.append(crear('span', 'pl-dot'), crear('span', 't', m.titulo(x.clave)), crear('span', 'quien', x.personas.map(plNomCorto).join(' ')));
+          b.title = mayuscula(plLaVeh(v)) + ' ' + plElDia(d) + ': ' + m.titulo(x.clave) + ', con ' + plNoms(x.personas) + '. Toca para cambiarlo';
           b.setAttribute('aria-label', b.title);
           b.addEventListener('click', () => plAbrirProyecto(x.clave, d.iso, b.dataset.ancla));
           td.append(b);
@@ -6375,7 +6704,7 @@
     rapido('d|todos', 'Toda la semana', todos, 'Elegir todos los días a la vista');
     if (x.tipo === 'persona') {
       rapido('d|libres', 'Días libres', todos.filter((iso) => !m.ausencias.has(iso + '|' + x.per) && !(m.porPersona.get(iso + '|' + x.per) || []).length),
-        'Los días en que ' + x.per + ' no tiene proyectos ni ausencia');
+        'Los días en que ' + plNom(x.per) + ' no tiene proyectos ni ausencia');
     } else if (x.tipo === 'proyecto') {
       rapido('d|libres', 'Días sin nadie', todos.filter((iso) => !(m.porProyecto.get(iso + '|' + x.clave) || []).length), 'Los días en que nadie va a este proyecto');
     }
@@ -6458,7 +6787,7 @@
   function plVehOps(s, m, per, clave, isos, op) {
     const fila = crear('div', 'pl-op-veh');
     fila.setAttribute('role', 'group');
-    fila.setAttribute('aria-label', 'Vehículo de ' + per + ' en ' + m.titulo(clave));
+    fila.setAttribute('aria-label', 'Vehículo de ' + plNom(per) + ' en ' + m.titulo(clave));
     const et = crear('span', 'et');
     et.append(icono('vehiculo', 16), crear('span', null, 'Vehículo'));
     fila.append(et);
@@ -6473,8 +6802,8 @@
       b.setAttribute('aria-pressed', todos ? 'true' : con.length ? 'mixed' : 'false');
       b.append(crear('span', null, v.nombre));
       const ojo = otros.length ? '. Ojo: ' + plDiasTexto(s, otros.map((x) => x.iso)) + ' ' + plLaVeh(v) + ' también va a '
-        + unir([...new Set(otros.flatMap((x) => x.g.flat().map((y) => m.titulo(y.clave) + ' (' + unir(y.personas) + ')')))]) : '';
-      b.title = (todos ? 'Quitar ' + plLaVeh(v) + ' a ' + per + ' ' + cuando : per + ' va en ' + plLaVeh(v) + ' ' + cuando) + ojo;
+        + unir([...new Set(otros.flatMap((x) => x.g.flat().map((y) => m.titulo(y.clave) + ' (' + plNoms(y.personas) + ')')))]) : '';
+      b.title = (todos ? 'Quitar ' + plLaVeh(v) + ' a ' + plNom(per) + ' ' + cuando : plNom(per) + ' va en ' + plLaVeh(v) + ' ' + cuando) + ojo;
       b.setAttribute('aria-label', v.nombre + (otros.length ? ', que ya va a otra parte' : ''));     // elegido o a medias: aria-pressed
       b.addEventListener('click', () => plVehiculoDias(s, per, clave, isos, todos ? '' : v.id));
       fila.append(b);
@@ -6532,16 +6861,17 @@
     b.addEventListener('click', ir);
     return b;
   }
-  function plFormOtra(etiqueta, boton, ir) {
+  // Un campo para escribir algo que no está en la lista (otra actividad, otra persona, otro proyecto) y su botón
+  function plFormTexto(titulo, placeholder, etiqueta, boton, op, ir) {
     const sec = crear('div', 'pl-pop-sec');
-    sec.append(crear('h4', null, 'Otra actividad'));
+    sec.append(crear('h4', null, titulo));
     const f = crear('form', 'pl-otra');
     const inp = crear('input');
     inp.type = 'text';
     inp.maxLength = 60;
-    inp.placeholder = 'Oficina, visita técnica, bodega…';
+    inp.placeholder = placeholder;
     inp.setAttribute('aria-label', etiqueta);
-    inp.dataset.op = 'otra';
+    inp.dataset.op = op;
     const ok = crear('button', 'cx-enlace', boton);
     ok.type = 'submit';
     f.append(inp, ok);
@@ -6549,6 +6879,9 @@
     sec.append(f);
     return sec;
   }
+  const plFormOtra = (etiqueta, boton, ir) => plFormTexto('Otra actividad', 'Oficina, visita técnica, bodega…', etiqueta, boton, 'otra', ir);
+  // Un proyecto que no está en la lista, escrito: queda en la planificación de todas las semanas (plAgregarProyecto)
+  const plFormProyecto = (etiqueta, boton, ir) => plFormTexto('Proyecto que no está en la lista', 'Nombre, o su N° de la Planilla', etiqueta, boton, 'proyecto-nuevo', ir);
   /* Una persona, uno o varios días: sus proyectos (hasta 3 por día), otra actividad y una ausencia. Con varios días, una
      casilla a medias es un proyecto que tiene solo algunos de ellos: marcarla lo completa. */
   function plPopPersona(s, m, ds, x, cuerpo) {
@@ -6558,7 +6891,7 @@
     const cuando = plDiasTexto(s, x.dias);
     if (x.cambiar && !ds.some((d) => suyosDe(d).includes(x.cambiar))) x.cambiar = null;
     const aus = uno && ausDe(uno);
-    $('#plPopTit').textContent = x.per + ' · ' + (uno ? plFechaLarga(uno) : pl(ds.length, 'día', 'días'));
+    $('#plPopTit').textContent = plNom(x.per) + ' · ' + (uno ? plFechaLarga(uno) : pl(ds.length, 'día', 'días'));
     $('#plPopSub').textContent = uno ? (aus ? plAusencia(aus.motivo).nombre : suyosDe(uno).length + ' de ' + PL_MAX + ' proyectos este día') : 'Lo que marques vale ' + cuando;
     // Los proyectos activos, y lo que ya tiene esos días o se usó en la semana (otras actividades, proyectos que terminaron)
     const ops = m.activos.slice();
@@ -6567,14 +6900,14 @@
     });
     if (x.cambiar) { plPopCambiarProyecto(s, m, ds, x, cuerpo, ops); return; }
     const libres = ds.filter((d) => !ausDe(d) && suyosDe(d).length < PL_MAX);      // los días en que se le puede agregar algo
-    if (aus) cuerpo.append(crear('p', 'pl-pop-nota tinte', x.per + ' está ausente este día (' + plAusencia(aus.motivo).nombre.toLowerCase() + '). Quita la ausencia para asignarle proyectos.'));
-    else if (uno && !libres.length) cuerpo.append(crear('p', 'pl-pop-nota tinte', x.per + ' ya tiene ' + PL_MAX + ' proyectos ' + plElDia(uno) + ', el máximo. Quita uno o usa «Cambiar».'));
+    if (aus) cuerpo.append(crear('p', 'pl-pop-nota tinte', plNom(x.per) + ' está ausente este día (' + plAusencia(aus.motivo).nombre.toLowerCase() + '). Quita la ausencia para asignarle proyectos.'));
+    else if (uno && !libres.length) cuerpo.append(crear('p', 'pl-pop-nota tinte', plNom(x.per) + ' ya tiene ' + PL_MAX + ' proyectos ' + plElDia(uno) + ', el máximo. Quita uno o usa «Cambiar».'));
     else if (!uno && libres.length < ds.length) {
       const no = ds.filter((d) => !libres.includes(d)).map((d) => plElDia(d) + ' (' + (ausDe(d) ? plAusencia(ausDe(d).motivo).nombre.toLowerCase() : 'ya tiene ' + PL_MAX + ' proyectos') + ')');
       cuerpo.append(crear('p', 'pl-pop-nota tinte', (!libres.length ? 'No se le puede agregar nada: ' : no.length === 1 ? 'Al agregar se salta ' : 'Al agregar se saltan ') + unir(no) + '.'));
     }
     const ul = crear('ul', 'pl-ops');
-    ul.setAttribute('aria-label', 'Proyectos de ' + x.per + ' ' + cuando);
+    ul.setAttribute('aria-label', 'Proyectos de ' + plNom(x.per) + ' ' + cuando);
     const filtrar = ops.length > 7 ? plBuscador(x, cuerpo, ul, 'Buscar proyecto') : null;
     const sin = new Set(m.sinAsignar.map((p) => p.clave));
     ops.forEach((p) => {
@@ -6586,17 +6919,23 @@
       const dot = crear('span', 'pl-dot');
       dot.style.setProperty('--pc', m.color(p.clave));
       const otros = uno ? plOrdenPersonas((m.porProyecto.get(uno.iso + '|' + p.clave) || []).filter((q) => q !== x.per)) : [];
-      const sub = plSub([p.otra ? 'Otra actividad' : p.lugar, otros.length ? 'con ' + unir(otros) : '', con.length && con.length < ds.length ? 'va ' + plCortos(con) : ''],
+      const sub = plSub([p.otra ? 'Otra actividad' : p.lugar, otros.length ? 'con ' + plNoms(otros) : '', con.length && con.length < ds.length ? 'va ' + plCortos(con) : ''],
         sin.has(p.clave) ? 'Sin nadie ' + plEsta(s) : '');
       plOpcion(ul, norm([p.titulo, p.lugar, p.tag, p.req].join(' ')), cb, dot, p.titulo, sub,
-        con.length && ops.length > 1 ? plBotonOp('k|' + p.clave, 'Cambiar', 'Pasar a ' + x.per + ' de ' + p.titulo + ' a otro proyecto ' + plDiasTexto(s, con.map((d) => d.iso)),
+        con.length && ops.length > 1 ? plBotonOp('k|' + p.clave, 'Cambiar', 'Pasar a ' + plNom(x.per) + ' de ' + p.titulo + ' a otro proyecto ' + plDiasTexto(s, con.map((d) => d.iso)),
           () => { x.cambiar = p.clave; x.q = ''; plPintarPop(true); }) : null,
         con.length && PL_VEHICULOS.length ? plVehOps(s, m, x.per, p.clave, con.map((d) => d.iso), 'v|' + p.clave) : null);
     });
     if (ops.length) cuerpo.append(ul);
     else cuerpo.append(crear('p', 'pl-pop-nota', 'No hay proyectos en ejecución en el Recorrido. Puedes anotar otra actividad.'));
     if (filtrar) filtrar();
-    if (libres.length) cuerpo.append(plFormOtra('Otra actividad de ' + x.per + ' ' + cuando, 'Agregar', (txt) => plOtra(s, x.dias, x.per, txt)));
+    if (libres.length) {
+      cuerpo.append(plFormProyecto('Proyecto que no está en la lista, para ' + plNom(x.per) + ' ' + cuando, 'Agregar', (txt) => {
+        const c = plAgregarProyecto(txt);
+        if (c) plAsignarDias(s, x.per, c, x.dias, true);
+      }));
+      cuerpo.append(plFormOtra('Otra actividad de ' + plNom(x.per) + ' ' + cuando, 'Agregar', (txt) => plOtra(s, x.dias, x.per, txt)));
+    }
     const sec = crear('div', 'pl-pop-sec');
     sec.append(crear('h4', null, 'Ausencia'));
     const fila = crear('div', 'pl-aus-ops');
@@ -6608,7 +6947,7 @@
       b.dataset.op = 'a|' + a.id;
       const es = conAus.length === ds.length && ds.every((d) => ausDe(d).motivo === a.id);
       b.setAttribute('aria-pressed', es ? 'true' : 'false');
-      b.title = es ? 'Quitar la ausencia' : x.per + ' no está disponible ' + cuando + (conProy ? ': se quita de sus proyectos ' + (uno ? 'de ese día' : 'de esos días') : '');
+      b.title = es ? 'Quitar la ausencia' : plNom(x.per) + ' no está disponible ' + cuando + (conProy ? ': se quita de sus proyectos ' + (uno ? 'de ese día' : 'de esos días') : '');
       b.addEventListener('click', () => plAusentarDias(s, x.dias, x.per, es ? '' : a.id));
       fila.append(b);
     });
@@ -6629,10 +6968,10 @@
     const de = x.cambiar;
     const con = ds.filter((d) => (m.porPersona.get(d.iso + '|' + x.per) || []).includes(de)).map((d) => d.iso);
     cuerpo.append(plVolver('Volver', () => { x.cambiar = null; plPintarPop(true); }));
-    cuerpo.append(crear('p', 'pl-pop-nota', 'Pasar a ' + x.per + ' de ' + m.titulo(de) + ' a otro proyecto ' + plDiasTexto(s, con) + '. ¿A cuál?'));
+    cuerpo.append(crear('p', 'pl-pop-nota', 'Pasar a ' + plNom(x.per) + ' de ' + m.titulo(de) + ' a otro proyecto ' + plDiasTexto(s, con) + '. ¿A cuál?'));
     const lista = ops.filter((p) => p.clave !== de);
     const ul = crear('ul', 'pl-ops');
-    ul.setAttribute('aria-label', 'Proyecto al que pasa ' + x.per);
+    ul.setAttribute('aria-label', 'Proyecto al que pasa ' + plNom(x.per));
     const filtrar = lista.length > 7 ? plBuscador(x, cuerpo, ul, 'Buscar proyecto') : null;
     lista.forEach((p) => {
       const ya = con.filter((iso) => (m.porPersona.get(iso + '|' + x.per) || []).includes(p.clave));
@@ -6692,7 +7031,7 @@
     if (x.cambiar) { plPopCambiarPersona(s, m, ds, x, cuerpo); return; }
     const ul = crear('ul', 'pl-ops');
     ul.setAttribute('aria-label', 'Quiénes van a ' + p.titulo + ' ' + cuando);
-    PERSONAL.forEach((per) => {
+    m.personas.forEach((per) => {
       const suyosDe = (d) => m.porPersona.get(d.iso + '|' + per) || [];
       const con = ds.filter((d) => vanDe(d).includes(per));
       const ausentes = ds.filter((d) => m.ausencias.has(d.iso + '|' + per));
@@ -6712,12 +7051,17 @@
         sub = partes.length ? partes.join(' · ') : con.length ? 'Va todos esos días' : 'Puede ir esos días';
         sub = sub.charAt(0).toUpperCase() + sub.slice(1);
       }
-      plOpcion(ul, norm(per), cb, plPersona(per), per === estado.usuario ? per + ' · tú' : per, sub,
-        con.length ? plBotonOp('k|' + per, 'Cambiar', 'Que vaya otra persona en vez de ' + per + ' ' + plDiasTexto(s, con.map((d) => d.iso)),
+      plOpcion(ul, norm(per + ' ' + plNom(per)), cb, plPersona(per), per === estado.usuario ? per + ' · tú' : plNom(per), sub,
+        con.length ? plBotonOp('k|' + per, 'Cambiar', 'Que vaya otra persona en vez de ' + plNom(per) + ' ' + plDiasTexto(s, con.map((d) => d.iso)),
           () => { x.cambiar = per; plPintarPop(true); }) : null,
         con.length && PL_VEHICULOS.length ? plVehOps(s, m, per, x.clave, con.map((d) => d.iso), 'v|' + per) : null);
     });
     cuerpo.append(ul);
+    // Alguien que no está en la lista: se escribe su nombre, queda en la planificación y va a este proyecto esos días
+    cuerpo.append(plFormTexto('Otra persona', 'Nombre y apellido', 'Otra persona que va a ' + p.titulo + ' ' + cuando, 'Agregar', 'persona-nueva', (txt) => {
+      const per = plAgregarPersona(txt);
+      if (per) plAsignarDias(s, per, x.clave, x.dias, true);
+    }));
   }
   // «Cambiar» desde el proyecto: otra persona va en vez de esta, los días elegidos en que iba
   function plPopCambiarPersona(s, m, ds, x, cuerpo) {
@@ -6725,10 +7069,10 @@
     const vanDe = (iso) => m.porProyecto.get(iso + '|' + x.clave) || [];
     const con = ds.filter((d) => vanDe(d.iso).includes(de)).map((d) => d.iso);
     cuerpo.append(plVolver('Volver', () => { x.cambiar = null; plPintarPop(true); }));
-    cuerpo.append(crear('p', 'pl-pop-nota', '¿Quién va a ' + m.titulo(x.clave) + ' en vez de ' + de + ' ' + plDiasTexto(s, con) + '?'));
+    cuerpo.append(crear('p', 'pl-pop-nota', '¿Quién va a ' + m.titulo(x.clave) + ' en vez de ' + plNom(de) + ' ' + plDiasTexto(s, con) + '?'));
     const ul = crear('ul', 'pl-ops');
     ul.setAttribute('aria-label', 'Quién va en vez de ' + de);
-    PERSONAL.filter((per) => per !== de).forEach((per) => {
+    m.personas.filter((per) => per !== de).forEach((per) => {
       const ya = con.filter((iso) => vanDe(iso).includes(per));
       const aus = con.filter((iso) => !ya.includes(iso) && m.ausencias.has(iso + '|' + per));
       const puede = con.filter((iso) => !ya.includes(iso) && !aus.includes(iso) && (m.porPersona.get(iso + '|' + per) || []).length < PL_MAX);
@@ -6738,7 +7082,7 @@
       const partes = [puede.length && puede.length < con.length ? 'puede' + cuando(puede) : '', ya.length ? 'ya va' + cuando(ya) : '',
         aus.length ? 'ausente' + cuando(aus) : '', llenos.length ? 'completo' + cuando(llenos) : ''].filter(Boolean).join(' · ');
       const sub = partes.charAt(0).toUpperCase() + partes.slice(1);
-      const b = plBotonLista(ul, 'x|' + per, norm(per), plPersona(per), per === estado.usuario ? per + ' · tú' : per, plSub([sub]), () => {
+      const b = plBotonLista(ul, 'x|' + per, norm(per + ' ' + plNom(per)), plPersona(per), per === estado.usuario ? per + ' · tú' : plNom(per), plSub([sub]), () => {
         x.cambiar = null;
         if (!plReemplazar(s, x.clave, de, per, con)) { x.cambiar = de; plPintarPop(false); return; }
         const c = $('#plPop [data-op="' + CSS.escape('c|' + per) + '"]');
@@ -6770,7 +7114,7 @@
         dot.style.setProperty('--pc', m.color(p.clave));
         const van = vanDe(p);
         plBotonLista(ul, 'n|' + p.clave, norm([p.titulo, p.lugar, p.tag, p.req].join(' ')), dot, p.titulo,
-          plSub([p.lugar, van.length ? 'van ' + unir(van) : ''], sin.has(p.clave) ? 'Sin nadie ' + plEsta(s) : ''), () => ir(p.clave));
+          plSub([p.lugar, van.length ? 'van ' + plNoms(van) : ''], sin.has(p.clave) ? 'Sin nadie ' + plEsta(s) : ''), () => ir(p.clave));
       });
       g.append(crear('h4', null, tit), ul);
       cont.append(g);
@@ -6778,6 +7122,10 @@
     if (grupos.length) cuerpo.append(cont);
     else cuerpo.append(crear('p', 'pl-pop-nota', 'No hay proyectos en ejecución en el Recorrido.'));
     if (filtrar) filtrar();
+    cuerpo.append(plFormProyecto('Proyecto ' + cuando + ' que no está en la lista', 'Seguir', (txt) => {
+      const c = plAgregarProyecto(txt);
+      if (c) ir(c);
+    }));
     cuerpo.append(plFormOtra('Otra actividad ' + cuando, 'Seguir', (txt) => {
       const c = plClaveOtra(s, txt);
       if (!c) { avisar('Escribe qué actividad es: oficina, visita técnica, bodega…'); return; }
@@ -6801,8 +7149,8 @@
   function plQuienesConVeh(m, iso, c) {
     const van = plOrdenPersonas(m.porProyecto.get(iso + '|' + c) || []);
     const vs = van.map((per) => plVehiculo(m.vehiculo(iso, per, c)));
-    if (vs.length && vs[0] && vs.every((v) => v === vs[0])) return van.join(', ') + ' (' + vs[0].nombre + ')';
-    return van.map((per, i) => per + (vs[i] ? ' (' + vs[i].nombre + ')' : '')).join(', ');
+    if (vs.length && vs[0] && vs.every((v) => v === vs[0])) return van.map(plNom).join(', ') + ' (' + vs[0].nombre + ')';
+    return van.map((per, i) => plNom(per) + (vs[i] ? ' (' + vs[i].nombre + ')' : '')).join(', ');
   }
   /* La semana como texto para WhatsApp (*negrita*). Por persona: cada uno, día por día, sus proyectos con el lugar, con
      quién va y en qué vehículo («• Lun 19: Chimenea Talcahuano, con MP y EV, en la RAM»). Por día: cada día, sus
@@ -6812,18 +7160,18 @@
     if (modo === 'dia') {
       dias.forEach((d) => {
         l.push('', '*' + d.nombre + ' ' + d.fecha.getDate() + '*');
-        const claves = m.ordenar([...new Set(PERSONAL.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
+        const claves = m.ordenar([...new Set(m.personas.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
         claves.forEach((c) => l.push('• ' + m.titulo(c) + ': ' + plQuienesConVeh(m, d.iso, c)));
-        const aus = PERSONAL.filter((per) => m.ausencias.has(d.iso + '|' + per));
-        if (aus.length) l.push('• Ausentes: ' + aus.map((per) => per + ' (' + plAusencia(m.ausencias.get(d.iso + '|' + per).motivo).nombre.toLowerCase() + ')').join(', '));
+        const aus = m.personas.filter((per) => m.ausencias.has(d.iso + '|' + per));
+        if (aus.length) l.push('• Ausentes: ' + aus.map((per) => plNom(per) + ' (' + plAusencia(m.ausencias.get(d.iso + '|' + per).motivo).nombre.toLowerCase() + ')').join(', '));
         if (!claves.length && !aus.length) l.push('Sin asignaciones');
       });
     } else {
-      PERSONAL.forEach((per) => {
-        l.push('', '*' + per + '*');
+      m.personas.forEach((per) => {
+        l.push('', '*' + plNom(per) + '*');
         dias.forEach((d) => {
           const x = plDiaDePersona(m, d, per);
-          const que = x.proyectos.map((p) => p.titulo + (p.lugar ? ' (' + p.lugar + ')' : '') + (p.con.length ? ', con ' + unir(p.con) : '')
+          const que = x.proyectos.map((p) => p.titulo + (p.lugar ? ' (' + p.lugar + ')' : '') + (p.con.length ? ', con ' + plNoms(p.con) : '')
             + (p.vehiculo ? ', en ' + plLaVeh(p.vehiculo) : ''));
           if (x.ausencia) que.unshift(x.ausencia);
           l.push('• ' + d.corto + ' ' + d.fecha.getDate() + ': ' + (que.length ? que.join('; ') : 'sin proyecto'));
@@ -6862,7 +7210,7 @@
       + '. Sale igual desde cualquier vista.';
     const cont = $('#plExpPers');
     cont.textContent = '';
-    PERSONAL.forEach((per) => {
+    m.personas.forEach((per) => {
       const tiene = dias.some((d) => m.ausencias.has(d.iso + '|' + per) || (m.porPersona.get(d.iso + '|' + per) || []).length);
       const lab = crear('label', 'pl-exp-per' + (tiene ? '' : ' nada'));
       const cb = crear('input');
@@ -6870,8 +7218,8 @@
       cb.value = per;
       cb.checked = tiene;
       cb.addEventListener('change', plExpCuenta);
-      lab.title = tiene ? 'La hoja de ' + per : per + ' no tiene nada asignado esta semana';
-      lab.append(cb, crear('span', null, per));
+      lab.title = tiene ? 'La hoja de ' + plNom(per) : plNom(per) + ' no tiene nada asignado esta semana';
+      lab.append(cb, crear('span', null, plNom(per)));
       cont.append(lab);
     });
     plExpCuenta();
@@ -6927,9 +7275,9 @@
       dias.forEach((d) => { const th = crear('th', null, d.nombre + ' ' + d.fecha.getDate()); th.scope = 'col'; tr.append(th); });
       thead.append(tr);
       const tb = crear('tbody');
-      PERSONAL.forEach((per) => {
+      m.personas.forEach((per) => {
         const fila = crear('tr');
-        const th = crear('th', 'pl-doc-per', per);
+        const th = crear('th', 'pl-doc-per', plNom(per));
         th.scope = 'row';
         fila.append(th);
         dias.forEach((d) => {
@@ -6954,7 +7302,7 @@
       PL_VEHICULOS.forEach((v) => {
         const usos = dias.filter((d) => m.usoVeh(d.iso, v.id).length).map((d) => {
           const g = m.usoVeh(d.iso, v.id);
-          return d.corto.toLowerCase() + ' ' + d.fecha.getDate() + ', ' + unir(g.flat().map((x) => m.titulo(x.clave) + ' (' + unir(x.personas) + ')'))
+          return d.corto.toLowerCase() + ' ' + d.fecha.getDate() + ', ' + unir(g.flat().map((x) => m.titulo(x.clave) + ' (' + plNoms(x.personas) + ')'))
             + (g.length > 1 ? ' — en ' + g.length + ' lugares a la vez' : '');
         });
         if (!usos.length) return;
@@ -6972,7 +7320,7 @@
       const ausente = semanaDe.filter((x) => x.ausencia && !x.proyectos.length).length;
       const proyectos = new Set(semanaDe.flatMap((x) => x.proyectos.map((p) => p.clave)));
       const disponibles = dias.length - ausente;
-      sec.append(cabecera(per, [!disponibles ? 'Ausente toda la semana'
+      sec.append(cabecera(plNom(per), [!disponibles ? 'Ausente toda la semana'
         : conProyecto + ' de ' + pl(disponibles, 'día', 'días') + ' con proyecto · ' + pl(proyectos.size, 'proyecto', 'proyectos'), impreso]));
       const t = crear('table', 'pl-doc-dias');
       const cols = crear('colgroup');
@@ -6996,7 +7344,7 @@
           const f = crear('tr');
           const tp = crear('td');
           tp.append(proyecto(Object.assign({}, p, { lugar: '', vehiculo: null })));
-          f.append(tp, crear('td', null, p.sitio || '—'), crear('td', null, p.con.length ? unir(p.con) : 'Nadie más'));
+          f.append(tp, crear('td', null, p.sitio || '—'), crear('td', null, p.con.length ? plNoms(p.con) : 'Nadie más'));
           if (conVeh) f.append(crear('td', p.vehiculo ? 'veh' : null, p.vehiculo ? p.vehiculo.nombre : '—'));
           filas.push(f);
         });
@@ -7038,6 +7386,77 @@
     };
     window.addEventListener('afterprint', fin);
     window.print();
+  }
+
+  // ---- Agregar a mano: el diálogo (2026-10-26) --------------------------------------------------------------------
+  // modo: 'persona' o 'proyecto'. Abajo, lo agregado a mano que sigue en la planificación, cada uno con «Quitar».
+  function plAbrirAgregar(modo) {
+    if (!rc.dir) return;
+    plCerrarPop(false);
+    planif.agregar = modo === 'proyecto' ? 'proyecto' : 'persona';
+    $('#plAgregarNombre').value = '';
+    $('#plAgregarLugar').value = '';
+    plPintarAgregar();
+    $('#dlgPlAgregar').showModal();
+    $('#plAgregarNombre').focus();
+  }
+  function plPintarAgregar(error) {
+    const proy = planif.agregar === 'proyecto';
+    document.querySelectorAll('#plAgregarModo .pl-vista').forEach((b) => b.setAttribute('aria-pressed', b.dataset.modo === planif.agregar ? 'true' : 'false'));
+    const pista = $('#plAgregarPista');
+    pista.classList.toggle('error', !!error);
+    pista.textContent = error || (proy
+      ? 'Un proyecto que no está en ejecución en el Recorrido. Queda en todas las semanas como un proyecto activo más, hasta que lo quites. Si tiene N° en la Planilla de Ingreso, escríbelo adelante («281. H2 Green»): cuando entre en ejecución será el mismo.'
+      : 'Alguien que no está en la lista: de apoyo, un contratista. Queda en todas las semanas, para asignarle proyectos como a los demás, hasta que lo quites.');
+    $('#plAgregarEt').textContent = proy ? 'Nombre del proyecto' : 'Nombre y apellido';
+    $('#plAgregarNombre').placeholder = proy ? 'Galpón Quilicura, o 281. H2 Green' : 'Juan Pérez';
+    $('#plAgregarLugarCampo').hidden = !proy;
+    $('#plAgregarOk').textContent = proy ? 'Agregar proyecto' : 'Agregar persona';
+    const cont = $('#plAgregados');
+    cont.textContent = '';
+    const lista = proy
+      ? plProyManoActivos().sort(plPorTitulo).map((e) => ({ k: e.clave, nom: e.titulo, sub: [e.clave.startsWith('req:') ? 'N° ' + e.clave.slice(4) : '', e.lugar].filter(Boolean).join(' · ') }))
+      : plManoActivas().map((id) => ({ k: id, nom: plNom(id), sub: '' }));
+    cont.hidden = !lista.length;
+    if (!lista.length) return;
+    cont.append(crear('h3', null, proy ? 'Proyectos agregados a mano' : 'Personas agregadas a mano'));
+    const ul = crear('ul');
+    lista.forEach((x) => {
+      const li = crear('li');
+      const tx = crear('span', 'pl-agr-txt');
+      tx.append(crear('b', null, x.nom));
+      if (x.sub) tx.append(crear('span', null, x.sub));
+      const b = crear('button', 'cx-enlace', 'Quitar');
+      b.type = 'button';
+      b.dataset.k = x.k;
+      b.title = 'Sacar a ' + x.nom + ' de la planificación. Lo ya asignado se sigue viendo en sus semanas';
+      b.addEventListener('click', () => {
+        if (proy) plQuitarProyecto(x.k); else plQuitarPersona(x.k);
+        plPintarAgregar();
+        $('#plAgregarNombre').focus();
+      });
+      li.append(tx, b);
+      ul.append(li);
+    });
+    cont.append(ul);
+  }
+  // Con el diálogo abierto, el aviso de abajo no se ve: un problema se dice en el diálogo y no se cierra
+  function plConfirmarAgregar(e) {
+    e.preventDefault();
+    let problema = '';
+    const aviso = (txt) => { problema = txt; };
+    const nombre = $('#plAgregarNombre').value;
+    const k = planif.agregar === 'proyecto' ? plAgregarProyecto(nombre, $('#plAgregarLugar').value, aviso) : plAgregarPersona(nombre, aviso);
+    if (problema) { plPintarAgregar(problema); $('#plAgregarNombre').focus(); return; }
+    $('#dlgPlAgregar').close();
+    if (planif.agregar === 'proyecto') { plEnfocar(k); return; }
+    plElegirVista('personal');
+    const tr = document.querySelector('#plPersonal tr[data-persona="' + CSS.escape(k) + '"]');
+    if (tr) {
+      tr.scrollIntoView({ block: 'center', behavior: REDUCIR.matches ? 'auto' : 'smooth' });
+      tr.classList.add('resaltada');
+      setTimeout(() => tr.classList.remove('resaltada'), 1800);
+    }
   }
 
   // ---- Buscador ------------------------------------------------------------------------------------
@@ -7345,7 +7764,8 @@
     $('#plVistas').append(b);
   });
   $('#plSabado').addEventListener('change', (e) => { planif.sabado = e.target.checked; plGuardarPrefs(); plPintar(); });
-  [['#plCopiar', 'copiar', 'Copiar la semana anterior', plCopiarAnterior], ['#plCompartir', 'compartir', 'Compartir', plCompartir],
+  [['#plAgregar', 'mas', 'Agregar', () => plAbrirAgregar(planif.vista === 'proyecto' ? 'proyecto' : 'persona')],
+    ['#plCopiar', 'copiar', 'Copiar la semana anterior', plCopiarAnterior], ['#plCompartir', 'compartir', 'Compartir', plCompartir],
     ['#plImprimir', 'imprimir', 'Imprimir o PDF', plAbrirExportar]].forEach(([id, ico, txt, ir]) => {
     const b = $(id);
     b.append(icono(ico, 16), crear('span', null, txt));
@@ -7372,6 +7792,14 @@
     plPintarTexto();
   }));
   ['#plExpTabla', '#plExpHojas'].forEach((id) => $(id).addEventListener('change', plExpCuenta));
+  $('#plAgregarForm').addEventListener('submit', plConfirmarAgregar);
+  document.querySelectorAll('#plAgregarModo .pl-vista').forEach((b) => b.addEventListener('click', () => {
+    planif.agregar = b.dataset.modo;
+    plPintarAgregar();
+    $('#plAgregarNombre').focus();
+  }));
+  ['#plAgregarX', '#plAgregarCerrar'].forEach((id) => $(id).addEventListener('click', () => $('#dlgPlAgregar').close()));
+  $('#plAgregarNombre').addEventListener('input', () => { if ($('#plAgregarPista').classList.contains('error')) plPintarAgregar(); });
   $('#plExpImprimir').addEventListener('click', plImprimir);
   $('#vistaPlan').addEventListener('scroll', plColocarPop, { passive: true });
   window.addEventListener('resize', plColocarPop);
