@@ -344,7 +344,9 @@ y que se pueda revertir si no le gusta.
     (Evaluación, Ofertado, Adjudicado), lo que tiene formulación (si la Planilla
     no lo cerró), lo que tiene ficha en el Análisis, los presupuestos sin N° y
     las fichas del Análisis sin N°. La etapa sale de lo más avanzado que haya:
-    ficha en el Análisis (Ejecución, o Cierre con 100 % de avance); Adjudicado sin
+    formulación «Cerrada» (Cierre, aunque el Análisis no tenga el 100 %: lo avisa;
+    `rcCerrada`, desde el 2026-10-26); ficha en el Análisis (Ejecución, o Cierre con
+    100 % de avance, que si sigue «Adjudicada» propone marcarla Cerrada); Adjudicado sin
     ficha (Ejecución: «Pasar a ejecución» o «Crear su ficha»); Ofertado,
     formulación Enviada o cotización emitida (Oferta, con el resultado de
     Mercado Público); borrador esperando en Sistema QUEMPIN, o formulación con
@@ -480,7 +482,9 @@ y que se pueda revertir si no le gusta.
     los proyectos. Agregar y quitar se deshacen (aviso o Ctrl Z, `u.listas` en
     `plDeshacer`).
   - **Proyectos activos**: los que el Recorrido pone en Ejecución (`rcArmar`, sin
-    los de más de 60 días), con la clave `req:<N°>` o `tag:<TAG>`; una asignación
+    los de más de 60 días), con la clave `req:<N°>` o `tag:<TAG>`. Un proyecto
+    cerrado (formulación «Cerrada» o 100 % de avance) sale, también si se agregó a
+    mano con su N° (`test_un_proyecto_cerrado_sale_de_la_planificacion`); una asignación
     hecha con el TAG sigue siendo del mismo proyecto cuando este recibe su N°.
     El nombre de cada uno queda en el archivo, así una semana pasada se sigue
     leyendo cuando el proyecto terminó.

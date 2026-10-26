@@ -3076,6 +3076,54 @@ def test_agregar_un_proyecto_escrito_o_con_su_numero(navegador, sitio):
     pagina.context.close()
 
 
+def test_un_proyecto_cerrado_sale_de_la_planificacion(navegador, sitio):
+    """Pedido del 2026-10-26: «Cerrada» en el Formulador lleva el proyecto al «Cierre» del Recorrido, aunque el Análisis
+    Financiero no tenga el 100 %, y lo saca de la Planificación semanal, también si se había agregado a mano con su N°."""
+    from datetime import date
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
+    semana = _semana_de(date.today())[0]      # lo agregado a mano vale en su semana
+    lista = {"esquema": "quempin.intercambio/1", "herramienta": "planificacion", "tipo": "planificacion-lista", "generado": _instante(0),
+             "autor": "NB", "datos": {"dispositivo": "otronavegador1", "personas": [], "proyectos": [
+                 {"clave": "req:909", "titulo": "Terminada a mano", "lugar": "", "semana": semana, "activa": True, "t": _instante(-60)},
+                 {"clave": "pro:obra-externa", "titulo": "Obra externa", "lugar": "Talca", "semana": semana, "activa": True, "t": _instante(-60)}]}}
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {
+        "publicado/formulador/f907.json": _formulacion("f907", "QMPN-2026-907", 907, "Cerrada", "NB", precio=900),
+        "publicado/formulador/f908.json": _formulacion("f908", "QMPN-2026-908", 908, "Cerrada", "LC", precio=800),
+        "publicado/formulador/f909.json": _formulacion("f909", "QMPN-2026-909", 909, "Adjudicada", "NB", precio=700),
+        "publicado/formulador/fy.json": _formulacion("fy", "QMPN-2026-779", None, "Cerrada", "LC"),
+        "publicado/planificacion/lista/otronavegador1.json": lista})
+    pagina.evaluate("d => localStorage.setItem('quempin_portal_dispositivo', d)", DISPOSITIVO)
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    col = pagina.evaluate(JS_COLUMNAS)
+    assert col["ejecucion"] == ["tag-SOLO"], col
+    assert sorted(col["cierre"]) == ["req-907", "req-908", "req-909"], col
+    assert pagina.locator('.rc-tarjeta[data-clave="f-fy"]').count() == 0, "cerrada y sin N°: no pide el N°"
+    tarjeta = lambda c: pagina.locator(f'.rc-tarjeta[data-clave="{c}"]').inner_text()
+    assert "Cerrado" in tarjeta("req-907") and "Cerrado" in tarjeta("req-908")
+    # Cerrada con 40 % en el Análisis: lo dice, para que el avance quede en 100 %
+    pagina.locator('.rc-tarjeta[data-clave="req-908"] .rc-abrir').click()
+    texto = pagina.locator("#dlgRecorrido").inner_text()
+    assert "Proyecto cerrado" in texto and "40 % de avance" in texto, texto
+    assert pagina.locator("#dlgRecorrido .rc-paso").evaluate_all("ps => ps.map((p) => p.dataset.est)")[4:] == ["hecha", "hecha"]
+    pagina.keyboard.press("Escape")
+    # 100 % y todavía «Adjudicada»: propone marcarla Cerrada
+    pagina.locator('.rc-tarjeta[data-clave="req-909"] .rc-abrir').click()
+    assert "márcalo «Cerrada»" in pagina.locator("#dlgRecorrido").inner_text()
+    pagina.keyboard.press("Escape")
+    # En la Planificación queda solo lo que sigue en obra (y lo agregado a mano que no está cerrado)
+    _menu(pagina, "Planificación semanal")
+    pagina.locator("#plResumen .rc-kpi").first.wait_for()
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    claves = pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
+    assert sorted(claves) == ["pro:obra-externa", "tag:SOLO"], claves
+    assert " ".join(pagina.locator("#plAlertaCab").inner_text().split()) == "2 sin asignar"
+    assert not errores
+    pagina.context.close()
+
+
 def test_lo_agregado_por_otro_navegador_aparece(navegador, sitio):
     """La lista es la unión de los archivos de todos los navegadores: lo que otro agregó aparece al releer, y en cada
     persona manda el cambio más reciente (si otro la quitó después, ya no está)."""

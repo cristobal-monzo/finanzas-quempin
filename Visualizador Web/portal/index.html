@@ -3690,6 +3690,7 @@
   const RC_ANTES_DE_OFERTAR = ['requerimiento', 'formulacion', 'cotizacion'];
   const RC_VIVOS = ['Evaluación', 'Ofertado', 'Adjudicado'];       // estados de la Planilla que siguen en curso
   const RC_EN_FORMULACION = ['Borrador', 'En revisión'];
+  const RC_FUERA = ['Perdida', 'Descartada'];      // formulaciones que no siguen (Cerrada sí: va al «Cierre»)
   const RC_DIAS_ANTIGUO = 60;          // lo que lleva más que esto sin moverse va plegado al pie de su etapa
   const RC_DIAS_SIN_RESPUESTA = 45;    // una oferta sin respuesta hace más que esto: confirmar el resultado
   const RC_RELEER_SEG = 60;            // al volver a la pestaña se relee si pasó más que esto
@@ -3785,10 +3786,26 @@
       ? { tipo: 'hacer', corto: 'Actualizar avance o término', nivel: 'warn', ir: RC_IR.herr('ingresar'),
           texto: 'Su término (' + rcCorta(fin, hoy) + ') ya pasó con ' + Math.round(avance * 100) + ' % de avance. Actualiza el avance o la fecha en «Ingresar avance».' }
       : { tipo: 'curso', corto: 'Registrar avance', nivel: '', ir: RC_IR.herr('ingresar'),
-          texto: 'En ejecución. Registra el avance, las fechas y la mano de obra real en «Ingresar avance»; las facturas llegan solas al Centro de Costos.' };
+          texto: 'En ejecución. Registra el avance, las fechas y la mano de obra real en «Ingresar avance»; las facturas llegan solas al Centro de Costos.'
+            + ' Cuando termine, márcalo «Cerrada» en el Seguimiento del Formulador (o deja su avance en 100 %): sale de la Planificación semanal.' };
     if (fin) t.chips.push(atrasado ? { texto: 'Término vencido', nivel: 'warn' } : { texto: 'Termina el ' + rcCorta(fin, hoy), nivel: '' });
     t.orden = fin ? fin.getTime() : MAXIMO;
     if (af.venta && af.venta.cargada === false) t.avisos.push('Falta su monto de venta en el Análisis Financiero: sin él no entra completo a sus indicadores.');
+  }
+  /* Marcado «Cerrada» en el Formulador (2026-10-26): va al «Cierre» aunque el Análisis Financiero no tenga el 100 %, y
+     sale de la Planificación semanal. Plegado, como los terminados, cuando lleva más de 60 días cerrado. */
+  function rcCerrada(t, f, hoy) {
+    const finAF = rcFecha(t.af && t.af.cierre);       // su término en el Análisis, si ya pasó; si no, el último cambio
+    const fin = finAF && rcDias(finAF, hoy) <= 0 ? finAF : rcFecha(f.modificado) || finAF;
+    const avance = t.af ? Math.max(0, Math.min(1, Number(t.af.avance) || 0)) : null;
+    t.etapa = 'cierre';
+    t.accion = { tipo: 'listo', corto: 'Cerrado', nivel: '', ir: t.af ? RC_IR.af(texto(t.af.tag).toUpperCase()) : RC_IR.seguimiento(f.uid),
+      texto: 'Proyecto cerrado: su ejecución terminó y ya no aparece en la Planificación semanal.'
+        + (t.af ? ' Su resultado está en el Análisis Financiero.' : '') };
+    t.chips = [{ texto: 'Cerrado', nivel: 'ok' }].concat(t.chips.filter((c) => /^Terminó/.test(c.texto)));
+    if (avance !== null && avance < 1) t.avisos.push('Está «Cerrada» en el Formulador, pero el Análisis Financiero tiene ' + Math.round(avance * 100) + ' % de avance: déjalo en 100 % en «Ingresar avance» para que su resultado cuente en el sesgo real.');
+    t.antiguo = !!fin && rcDias(fin, hoy) < -RC_DIAS_ANTIGUO;
+    t.orden = fin ? -fin.getTime() : MAXIMO;
   }
   // Un requerimiento de la Planilla, con lo que cuelga de él en las demás herramientas.
   function rcTarjetaReq(n, x, hoy) {
@@ -3812,7 +3829,14 @@
 
     if (af) {
       rcEtapaAF(t, af, hoy);
+      if (fe === 'Cerrada') rcCerrada(t, f, hoy);
+      else if (t.etapa === 'cierre' && fe === 'Adjudicada') t.avisos.push('Tiene 100 % de avance: márcalo «Cerrada» en el Seguimiento del Formulador para que quede descrito como terminado.');
       if (pe && pe !== 'Adjudicado') t.avisos.push('La Planilla de Ingreso dice «' + pe + '», pero el proyecto ya tiene ficha en el Análisis Financiero: corresponde «Adjudicado».');
+      return t;
+    }
+    if (fe === 'Cerrada') {
+      rcCerrada(t, f, hoy);
+      if (pe && pe !== 'Adjudicado') t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
       return t;
     }
     if (pe === 'Adjudicado' || fe === 'Adjudicada') {
@@ -3982,7 +4006,7 @@
     const formPorReq = new Map();
     const sinReq = [];
     porCodigo.forEach((f) => {
-      if (!f.req) { if (f.estado !== 'Perdida' && f.estado !== 'Descartada') sinReq.push(f); return; }
+      if (!f.req) { if (!RC_FUERA.includes(f.estado) && f.estado !== 'Cerrada') sinReq.push(f); return; }
       const previo = formPorReq.get(f.req);
       if (!previo || previo.modificado < f.modificado) formPorReq.set(f.req, f);
     });
@@ -3994,7 +4018,7 @@
     porNum.forEach((r, n) => { if (RC_VIVOS.includes(texto(r.estado))) nums.add(n); });
     formPorReq.forEach((f, n) => {
       const r = porNum.get(n);
-      if ((!r || RC_VIVOS.includes(texto(r.estado))) && f.estado !== 'Perdida' && f.estado !== 'Descartada') nums.add(n);
+      if ((!r || RC_VIVOS.includes(texto(r.estado))) && !RC_FUERA.includes(f.estado)) nums.add(n);
     });
     afPorReq.forEach((p, n) => nums.add(n));
     const tarjetas = [];
@@ -5055,8 +5079,8 @@
       const req = e.clave.startsWith('req:') ? e.clave.slice(4) : null;
       const t = req ? rc.tarjetas.find((x) => x.req === req) : null;     // su tarjeta del Recorrido, aunque esté en otra etapa
       return { clave: e.clave, req, tag: (t && t.tag) || null, titulo: e.titulo, lugar: plLugar(e.titulo, e.lugar), sitio: e.lugar,
-        avance: null, tarjeta: t ? t.clave : null, activo: true, otra: false, mano: true };
-    });
+        avance: null, tarjeta: t ? t.clave : null, activo: true, otra: false, mano: true, cerrado: !!t && t.etapa === 'cierre' };
+    }).filter((p) => !p.cerrado);       // cerrado (en el Formulador o con 100 % de avance): sale, como los del Recorrido
     return delRecorrido.concat(aMano).filter((p) => !vistos.has(p.clave) && vistos.add(p.clave)).sort(plPorTitulo);
   }
   const plComparar = (a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
