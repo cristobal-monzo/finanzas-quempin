@@ -1,0 +1,42 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "planificacion",
+  "tipo": "planificacion-lista",
+  "generado": "2026-10-26T13:05:00.000Z",
+  "autor": "NB",
+  "datos": {
+    "dispositivo": "k3j4h5q2x9",
+    "personas": [
+      {
+        "id": "x-juan-perez",
+        "nombre": "Juan Pérez",
+        "activa": true,
+        "t": "2026-10-26T13:04:12.004Z",
+        "por": "NB"
+      },
+      {
+        "id": "x-maestro-gasfiter",
+        "nombre": "Maestro gásfiter",
+        "activa": false,
+        "t": "2026-10-26T13:04:40.120Z",
+        "por": ""
+      }
+    ],
+    "proyectos": [
+      {
+        "clave": "pro:galpon-quilicura",
+        "titulo": "Galpón Quilicura",
+        "lugar": "Quilicura",
+        "activa": true,
+        "t": "2026-10-26T13:04:50.000Z",
+        "por": "NB"
+      },
+      {
+        "clave": "req:281",
+        "titulo": "H2 Green",
+        "activa": true,
+        "t": "2026-10-26T13:04:55.000Z"
+      }
+    ]
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "planificacion/lista/<dispositivo>.json (Planificación semanal: lo agregado a mano)",
+  "description": "Las personas y los proyectos que alguien agregó a mano en la Planificación semanal del Portal QUEMPIN (2026-10-26): una persona que no está en el equipo del registro ('x-<nombre>', con su nombre) o un proyecto que no está en ejecución en el Recorrido ('pro:<nombre>', o 'req:<N°>' si se escribió con su N° de la Planilla de Ingreso). Valen para todas las semanas. Cada navegador escribe solo su archivo (publicado/planificacion/lista/<dispositivo>.json) y la lista es la unión de todos: en cada persona o proyecto manda el cambio más reciente ('t'); quitarlo de la planificación es 'activa': false.",
+  "dueno": "planificacion",
+  "type": "object",
+  "properties": {
+    "dispositivo": {
+      "type": "string",
+      "pattern": "^[a-z0-9]{8,24}$"
+    },
+    "personas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^x-[a-z0-9-]{1,30}$"
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1
+          },
+          "activa": {
+            "type": "boolean"
+          },
+          "t": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "por": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "nombre",
+          "activa",
+          "t"
+        ]
+      }
+    },
+    "proyectos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "clave": {
+            "type": "string",
+            "pattern": "^(req:\\d{1,6}|pro:[a-z0-9-]{1,40})$"
+          },
+          "titulo": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lugar": {
+            "type": "string"
+          },
+          "activa": {
+            "type": "boolean"
+          },
+          "t": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "por": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clave",
+          "titulo",
+          "activa",
+          "t"
+        ]
+      }
+    }
+  },
+  "required": [
+    "dispositivo",
+    "personas",
+    "proyectos"
+  ]
+}

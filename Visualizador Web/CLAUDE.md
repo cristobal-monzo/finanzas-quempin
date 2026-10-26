@@ -439,8 +439,31 @@ y que se pueda revertir si no le gusta.
     a alguien y tocar su vehículo enseguida) vuelve a la lista y se guarda en la
     vuelta siguiente; antes quedaba fuera del archivo hasta el próximo cambio.
   - **El personal** es el bloque `"personal"` del registro (NB, ES, LC, CM, MP,
-    SV y EV): incluye a todos los `"usuarios"` y puede tener más (EV se planifica
-    pero no elige usuario en las herramientas). El usuario elegido va en naranjo.
+    SV, EV y, desde el 2026-10-26, RL): incluye a todos los `"usuarios"` y puede
+    tener más (EV y RL se planifican pero no eligen usuario en las herramientas).
+    El usuario elegido va en naranjo.
+  - **Agregar a mano** (2026-10-26, pedido del usuario: «agregar una persona
+    escribiendo su nombre para asignarla a los proyectos» y «agregar proyectos
+    escribiéndolos en el planificador»): «Agregar» arriba (`#plAgregar`, abre
+    `#dlgPlAgregar` en Persona o Proyecto según la vista), los botones del pie de
+    «Por personal» y «Por proyecto» (`.pl-agregar-pie`), «Otra persona» en la
+    ventanita de un proyecto (`data-op="persona-nueva"`: la agrega y la asigna esos
+    días) y «Proyecto que no está en la lista» en la de una persona y en «Asignar»
+    del tablero (`data-op="proyecto-nuevo"`). Una persona escrita es `x-<nombre>`
+    (`PL_PER_MANO`; se ve con su nombre, «Juan P.» en las etiquetas, iniciales en un
+    círculo punteado; `plNom`, `plNomCorto`, `plIniciales`) y entra en las filas de
+    la semana (`m.personas`: el equipo, las de la lista y las que tienen algo esa
+    semana aunque ya no estén). Un proyecto escrito es `pro:<nombre>`, o
+    `req:<N°>` si se escribió con su N° de la Planilla adelante («281. H2 Green»:
+    sirve para uno que el Recorrido plegó por antiguo y, cuando entre en ejecución,
+    es el mismo); cuenta como proyecto activo (`plActivos`, `mano: true`), también
+    en la alarma. Valen para todas las semanas: van en la lista
+    `publicado/planificacion/lista/<dispositivo>.json` (esquema
+    `planificacion-lista`; `plLista`, `plLeerLista`, `plEscribirLista`, misma unión
+    por navegador y el más reciente manda). Quitar (en el diálogo) es `activa:
+    false`: lo ya asignado se sigue viendo con su nombre, porque el archivo de la
+    semana guarda el de cada persona escrita (`personas`) como el de los proyectos.
+    Agregar y quitar se deshacen (aviso o Ctrl Z, `u.lista` en `plDeshacer`).
   - **Proyectos activos**: los que el Recorrido pone en Ejecución (`rcArmar`, sin
     los de más de 60 días), con la clave `req:<N°>` o `tag:<TAG>`; una asignación
     hecha con el TAG sigue siendo del mismo proyecto cuando este recibe su N°.
@@ -457,7 +480,8 @@ y que se pueda revertir si no le gusta.
     portal lee la carpeta al abrirse aunque no abra en el Inicio, sin pedir permisos.
   - **Dónde se guarda**: en la carpeta de intercambio, en
     `publicado/planificacion/<AAAA-Www>/<dispositivo>.json` (esquema
-    `planificacion-semana` del catálogo). Cada navegador escribe solo su archivo
+    `planificacion-semana` del catálogo; lo agregado a mano, en
+    `publicado/planificacion/lista/`, esquema `planificacion-lista`). Cada navegador escribe solo su archivo
     (`quempin_portal_dispositivo`), así OneDrive nunca junta dos versiones del
     mismo; la semana es la unión de todos y en cada casilla manda el cambio más
     reciente (`t`), también si es quitar, con un reloj que nunca queda detrás de

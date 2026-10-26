@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "planificacion/<semana>/<dispositivo>.json (Planificación semanal)",
-  "description": "Lo que un navegador planificó en una semana en el Portal QUEMPIN: quién va a qué proyecto cada día, las ausencias, los proyectos sin trabajo esa semana y, desde el 2026-10-25, el vehículo de la empresa con que va cada persona a cada proyecto ('vehiculos', el id del registro del portal; no lo traen los archivos de antes). Cada navegador escribe solo su archivo (publicado/planificacion/<AAAA-Www>/<dispositivo>.json) y la semana es la unión de todos: en cada casilla manda el cambio más reciente ('t'), también si es quitar ('activa': false, 'motivo': '', 'vehiculo': ''). 'proyecto' es 'req:<N° de la Planilla>', 'tag:<TAG del Análisis Financiero>' u 'otra:<actividad>'.",
+  "description": "Lo que un navegador planificó en una semana en el Portal QUEMPIN: quién va a qué proyecto cada día, las ausencias, los proyectos sin trabajo esa semana y, desde el 2026-10-25, el vehículo de la empresa con que va cada persona a cada proyecto ('vehiculos', el id del registro del portal; no lo traen los archivos de antes). Cada navegador escribe solo su archivo (publicado/planificacion/<AAAA-Www>/<dispositivo>.json) y la semana es la unión de todos: en cada casilla manda el cambio más reciente ('t'), también si es quitar ('activa': false, 'motivo': '', 'vehiculo': ''). 'proyecto' es 'req:<N° de la Planilla>', 'tag:<TAG del Análisis Financiero>', 'otra:<actividad>' o, desde el 2026-10-26, 'pro:<nombre>' (un proyecto escrito a mano en la planificación). 'persona' son las iniciales del equipo o, desde el 2026-10-26, 'x-<nombre>' (alguien escrito a mano); su nombre va en 'personas' ({ 'x-juan-perez': { 'nombre': 'Juan Pérez' } }), como el de los proyectos en 'proyectos'. Los dos se agregan en la lista de la planificación (esquema planificacion-lista).",
   "dueno": "planificacion",
   "type": "object",
   "properties": {
@@ -28,11 +28,11 @@
           },
           "persona": {
             "type": "string",
-            "pattern": "^[A-Z]{2,3}$"
+            "pattern": "^([A-Z]{2,3}|x-[a-z0-9-]{1,30})$"
           },
           "proyecto": {
             "type": "string",
-            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40})$"
+            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
           },
           "activa": {
             "type": "boolean"
@@ -65,7 +65,7 @@
           },
           "persona": {
             "type": "string",
-            "pattern": "^[A-Z]{2,3}$"
+            "pattern": "^([A-Z]{2,3}|x-[a-z0-9-]{1,30})$"
           },
           "motivo": {
             "enum": [
@@ -99,7 +99,7 @@
         "properties": {
           "proyecto": {
             "type": "string",
-            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40})$"
+            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
           },
           "activa": {
             "type": "boolean"
@@ -133,11 +133,11 @@
           },
           "persona": {
             "type": "string",
-            "pattern": "^[A-Z]{2,3}$"
+            "pattern": "^([A-Z]{2,3}|x-[a-z0-9-]{1,30})$"
           },
           "proyecto": {
             "type": "string",
-            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40})$"
+            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
           },
           "vehiculo": {
             "enum": [
@@ -164,6 +164,9 @@
       }
     },
     "proyectos": {
+      "type": "object"
+    },
+    "personas": {
       "type": "object"
     }
   },

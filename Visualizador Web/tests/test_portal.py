@@ -2848,6 +2848,226 @@ def test_los_vehiculos_caben_sin_desbordes(navegador, sitio, ancho):
     pagina.context.close()
 
 
+# ---- Personas y proyectos escritos a mano en la Planificación (2026-10-26) ---------------------------------------
+
+LISTA = f"publicado/planificacion/lista/{DISPOSITIVO}.json"
+
+
+def _esquemas():
+    return _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+
+
+def test_agregar_una_persona_escrita_y_asignarla(navegador, sitio):
+    """Pedido del 2026-10-26: agregar a alguien que no está en la lista escribiendo su nombre, para asignarlo a proyectos.
+    Queda en todas las semanas (la lista va aparte de las semanas), con su nombre en las tres vistas, y quitarlo no borra
+    lo ya asignado."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    aviso = lambda: pagina.locator("#aviso").inner_text()
+    dlg = pagina.locator("#dlgPlAgregar")
+    # «Agregar», arriba, abre el diálogo en «Persona» desde «Por personal»; sin nombre no se cierra y lo dice ahí mismo
+    pagina.locator("#plAgregar").click()
+    assert dlg.is_visible()
+    assert pagina.locator('#plAgregarModo [data-modo="persona"]').get_attribute("aria-pressed") == "true"
+    assert pagina.locator("#plAgregarLugarCampo").is_hidden()
+    pagina.locator("#plAgregarOk").click()
+    assert dlg.is_visible() and pagina.locator("#plAgregarPista").inner_text() == "Escribe el nombre de la persona."
+    # Alguien del equipo ya está
+    pagina.locator("#plAgregarNombre").fill("rl")
+    pagina.locator("#plAgregarOk").click()
+    assert dlg.is_visible() and pagina.locator("#plAgregarPista").inner_text() == "RL ya está en la planificación."
+    pagina.locator("#plAgregarNombre").fill("juan pérez")
+    pagina.locator("#plAgregarNombre").press("Enter")
+    assert dlg.is_hidden()
+    assert aviso().startswith("Juan Pérez queda en la planificación de todas las semanas")
+    fila = pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]')
+    assert fila.locator(".pl-quien-txt b").inner_text() == "Juan Pérez"
+    assert fila.locator(".pl-avatar").inner_text() == "JP"
+    assert fila.locator(".pl-quien-txt span").inner_text() == "Sin proyectos"
+    assert "pl-avatar mano" in fila.locator(".pl-avatar").get_attribute("class"), "círculo punteado"
+    assert list(pagina.evaluate(JS_PERSONAL))[-1] == "x-juan-perez", "después del equipo"
+    # La lista queda en su archivo y cumple el esquema
+    sobre = _esperar_archivo(pagina, LISTA, lambda s: len(s["datos"]["personas"]) == 1)
+    assert [(x["id"], x["nombre"], x["activa"], x["por"]) for x in sobre["datos"]["personas"]] == [("x-juan-perez", "Juan Pérez", True, "LC")]
+    assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
+    # Se le asigna un proyecto como a cualquiera
+    _celda_personal(pagina, "x-juan-perez", 0).click()
+    assert pagina.locator("#plPopTit").inner_text().startswith("Juan Pérez · ")
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    assert aviso().startswith(f"Juan Pérez va a En obra el lunes {lunes.day}.")
+    pagina.keyboard.press("Escape")
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, archivo, lambda s: any(x["persona"] == "x-juan-perez" for x in s["datos"]["asignaciones"]))
+    assert sobre["datos"]["personas"] == {"x-juan-perez": {"nombre": "Juan Pérez"}}
+    assert _esquemas().validar_publicacion("planificacion-semana", sobre) == []
+    # En «Por proyecto» va con su nombre corto, y el texto para WhatsApp con el entero
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    assert _celda_proyecto(pagina, "req:908", 0).locator(".pl-per").all_inner_texts() == ["Juan P."]
+    pagina.locator("#plCompartir").click()
+    assert "*Juan Pérez*" in pagina.locator("#plTextoArea").input_value()
+    pagina.keyboard.press("Escape")
+    # Sigue en la semana siguiente, sin nada asignado
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    pagina.locator("#plDespues").click()
+    pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]').wait_for()
+    # Quitarlo: sale de las semanas en que no tiene nada; donde tiene algo se sigue viendo
+    pagina.locator('#plPersonal [data-agregar="persona"]').click()
+    assert pagina.locator("#plAgregados li").all_inner_texts()[0].startswith("Juan Pérez")
+    pagina.locator('#plAgregados button[data-k="x-juan-perez"]').click()
+    assert pagina.locator("#plAgregados").is_hidden()
+    pagina.locator("#plAgregarCerrar").click()
+    assert aviso().startswith("Juan Pérez ya no está en la planificación.")
+    assert pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]').count() == 0
+    pagina.locator("#plHoy").click()
+    fila = pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]')
+    fila.wait_for()
+    assert fila.locator(".pl-quien-txt span").inner_text() == "Fuera de la lista"
+    # Ctrl Z lo vuelve a la lista
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    assert fila.locator(".pl-quien-txt span").inner_text() == "1 proyecto"
+    sobre = _esperar_archivo(pagina, LISTA, lambda s: s["datos"]["personas"][0]["activa"] is True and s["datos"]["personas"][0]["t"] > sobre["generado"])
+    assert not errores
+    pagina.context.close()
+
+
+def test_otra_persona_y_otro_proyecto_desde_la_ventanita(navegador, sitio):
+    """En la ventanita de un proyecto se escribe otra persona y queda asignada a él esos días; en la de una persona, un
+    proyecto que no está en la lista, y en «Asignar» del tablero general, también."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    _, lunes = _semana_de(date.today())
+    aviso = lambda: pagina.locator("#aviso").inner_text()
+    pop = pagina.locator("#plPop")
+    _celda_proyecto(pagina, "req:907", 0).click()
+    pop.locator('[data-op="d|todos"]').click()
+    pop.locator('input[data-op="persona-nueva"]').fill("Pedro Soto")
+    pop.locator('input[data-op="persona-nueva"]').press("Enter")
+    assert aviso().startswith("Pedro Soto va a Adjudicada sin ficha de lunes a viernes.")
+    assert pop.locator('input[data-op="c|x-pedro-soto"]').is_checked()
+    assert pop.locator('li:has(input[data-op="c|x-pedro-soto"]) .pl-op-txt .t').inner_text() == "Pedro Soto"
+    pagina.keyboard.press("Escape")
+    assert _celda_proyecto(pagina, "req:907", 4).locator(".pl-per").all_inner_texts() == ["Pedro S."]
+    # Desde una persona: un proyecto que no está en la lista
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    _celda_personal(pagina, "ES", 1).click()
+    pop.locator('input[data-op="proyecto-nuevo"]').fill("bodega Renca")
+    pop.locator('input[data-op="proyecto-nuevo"]').press("Enter")
+    martes = lunes + timedelta(days=1)
+    assert aviso().startswith(f"ES va a Bodega Renca el martes {martes.day}.")
+    assert pop.locator('input[data-op="c|pro:bodega-renca"]').is_checked()
+    pagina.keyboard.press("Escape")
+    assert pagina.evaluate(JS_PERSONAL)["ES"][1] == ["Bodega Renca"]
+    # Desde «Asignar» en el tablero general: el proyecto escrito y después quiénes van
+    pagina.locator('.pl-vista[data-vista="general"]').click()
+    pagina.locator("#plGeneral .pl-nuevo").first.click()
+    pop.locator('input[data-op="proyecto-nuevo"]').fill("Galpón Quilicura")
+    pop.locator('input[data-op="proyecto-nuevo"]').press("Enter")
+    assert pagina.locator("#plPopTit").inner_text() == "Galpón Quilicura"
+    pop.locator('input[data-op="c|MP"]').check()
+    assert aviso().startswith("MP va a Galpón Quilicura")
+    pagina.keyboard.press("Escape")
+    # Los tres quedan en la lista de este navegador, que cumple el esquema
+    sobre = _esperar_archivo(pagina, LISTA, lambda s: len(s["datos"]["proyectos"]) == 2 and len(s["datos"]["personas"]) == 1)
+    assert sorted(x["clave"] for x in sobre["datos"]["proyectos"]) == ["pro:bodega-renca", "pro:galpon-quilicura"]
+    assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_agregar_un_proyecto_escrito_o_con_su_numero(navegador, sitio):
+    """Un proyecto escrito queda como un proyecto activo más en todas las semanas (cuenta en el resumen y en la alarma
+    si nadie va). Escrito con su N° de la Planilla queda unido a ese requerimiento, aunque el Recorrido lo tenga plegado
+    por antiguo (como H2 Green el 2026-10-26); uno que ya está en ejecución no se repite."""
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    dlg = pagina.locator("#dlgPlAgregar")
+    kpi = pagina.locator("#plResumen .rc-kpi").first
+    assert kpi.locator(".rc-kpi-n").inner_text() == str(len(ACTIVOS))
+    pagina.locator("#plAgregar").click()
+    assert pagina.locator('#plAgregarModo [data-modo="proyecto"]').get_attribute("aria-pressed") == "true", "desde «Por proyecto»"
+    pagina.locator("#plAgregarNombre").fill("Galpón Quilicura")
+    pagina.locator("#plAgregarLugar").fill("Quilicura")
+    pagina.locator("#plAgregarOk").click()
+    assert dlg.is_hidden()
+    fila = pagina.locator('#plProyecto tr[data-clave="pro:galpon-quilicura"]')
+    assert fila.locator(".pl-proy-txt .t").inner_text() == "Galpón Quilicura"
+    assert fila.locator(".pl-proy-txt .s").inner_text() == "agregado a mano"       # el lugar ya está en el nombre
+    assert "alarma" in fila.get_attribute("class").split(), "nadie va: cuenta como sin asignar"
+    assert kpi.locator(".rc-kpi-n").inner_text() == str(len(ACTIVOS) + 1)
+    assert kpi.locator(".rc-kpi-sub").inner_text() == "Con 1 agregado a mano"
+    # Con su N°: el 910 se adjudicó hace mucho y el Recorrido lo plegó, pero se puede planificar
+    pagina.locator('#plProyecto [data-agregar="proyecto"]').click()
+    pagina.locator("#plAgregarNombre").fill("910. Caldera antigua")
+    pagina.locator("#plAgregarOk").click()
+    fila = pagina.locator('#plProyecto tr[data-clave="req:910"]')
+    assert fila.locator(".pl-proy-txt .t").inner_text() == "Caldera antigua"
+    assert fila.locator(".pl-proy-txt .s").inner_text() == "N° 910 · agregado a mano"
+    assert fila.locator("button.pl-proy").count() == 1, "abre su tarjeta del Recorrido"
+    # Uno en ejecución no se agrega otra vez: lo dice el diálogo, que sigue abierto
+    pagina.locator("#plAgregar").click()
+    pagina.locator("#plAgregarNombre").fill("907")
+    pagina.locator("#plAgregarOk").click()
+    assert dlg.is_visible() and pagina.locator("#plAgregarPista").inner_text() == "Adjudicada sin ficha ya está en la planificación."
+    assert [x.split("\n")[0] for x in pagina.locator("#plAgregados li").all_inner_texts()] == ["Caldera antigua", "Galpón Quilicura"]
+    pagina.locator("#plAgregarX").click()
+    sobre = _esperar_archivo(pagina, LISTA, lambda s: len(s["datos"]["proyectos"]) == 2)
+    assert {x["clave"]: (x["titulo"], x.get("lugar")) for x in sobre["datos"]["proyectos"]} == {
+        "pro:galpon-quilicura": ("Galpón Quilicura", "Quilicura"), "req:910": ("Caldera antigua", "")}
+    assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_lo_agregado_por_otro_navegador_aparece(navegador, sitio):
+    """La lista es la unión de los archivos de todos los navegadores: lo que otro agregó aparece al releer, y en cada
+    persona manda el cambio más reciente (si otro la quitó después, ya no está)."""
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    otro = {"esquema": "quempin.intercambio/1", "herramienta": "planificacion", "tipo": "planificacion-lista", "generado": _instante(0),
+            "autor": "NB", "datos": {"dispositivo": "otronavegador1", "personas": [
+                {"id": "x-ana-rojas", "nombre": "Ana Rojas", "activa": True, "t": _instante(-60), "por": "NB"},
+                {"id": "x-quitado", "nombre": "Ya quitado", "activa": False, "t": _instante(-30), "por": "NB"}],
+                "proyectos": [{"clave": "pro:obra-externa", "titulo": "Obra externa", "lugar": "Talca", "activa": True, "t": _instante(-60)}]}}
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["publicado/planificacion/lista/otronavegador1.json", json.dumps(otro)])
+    pagina.locator("#plActualizar").click()
+    pagina.locator('#plPersonal tr[data-persona="x-ana-rojas"]').wait_for()
+    assert pagina.locator('#plPersonal tr[data-persona="x-quitado"]').count() == 0
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    assert pagina.locator('#plProyecto tr[data-clave="pro:obra-externa"] .pl-proy-txt .s').inner_text() == "Talca · agregado a mano"
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho", [390, 1280])
+def test_agregar_a_mano_cabe_sin_desbordes(navegador, sitio, ancho):
+    """El diálogo, el botón de arriba y los del pie de las tablas caben sin salirse ni letra chica, también en el teléfono."""
+    movil = ancho < 760
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal", ancho=ancho, alto=844, movil=movil)
+    pagina.locator("#plAgregar").click()
+    pagina.locator("#plAgregarNombre").fill("Juan Pérez")
+    pagina.locator("#plAgregarOk").click()
+    pagina.locator("#plAgregar").click()
+    caja = pagina.locator("#dlgPlAgregar").bounding_box()
+    assert caja["x"] >= 0 and caja["x"] + caja["width"] <= ancho, caja
+    dentro = pagina.evaluate("""() => { const r = document.getElementById('dlgPlAgregar').getBoundingClientRect();
+        const vis = [...document.querySelectorAll('#dlgPlAgregar *')].filter((e) => e.getClientRects().length);
+        return { fuera: vis.filter((e) => e.getBoundingClientRect().right > r.right + 0.5).map((e) => e.className || e.tagName),
+                 chicos: vis.filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+                   .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName) }; }""")
+    assert not dentro["fuera"] and not dentro["chicos"], dentro
+    if movil:
+        assert pagina.evaluate("parseFloat(getComputedStyle(document.getElementById('plAgregarNombre')).fontSize)") >= 16
+    pagina.locator("#plAgregarX").click()
+    for vista in ("personal", "proyecto"):
+        pagina.locator(f'.pl-vista[data-vista="{vista}"]').click()
+        d = pagina.evaluate(JS_DESBORDES)
+        assert d["doc"] <= ancho and not d["fuera"], (vista, d)
+        b = pagina.locator(f"#pl{vista.capitalize()} .pl-agregar-pie").bounding_box()
+        assert b["x"] >= 0 and b["x"] + b["width"] <= ancho, (vista, b)
+    assert not errores
+    pagina.context.close()
+
+
 # ---- Subir documentos al Centro de Costos (2026-10-23) ----------------------------------------------------------
 
 JS_LEER_BUZON = """async () => {
