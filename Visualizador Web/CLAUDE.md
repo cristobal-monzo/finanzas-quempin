@@ -488,6 +488,27 @@ y que se pueda revertir si no le gusta.
     hecha con el TAG sigue siendo del mismo proyecto cuando este recibe su N°.
     El nombre de cada uno queda en el archivo, así una semana pasada se sigue
     leyendo cuando el proyecto terminó.
+  - **Estado de los proyectos y «Dar por cerrado»** (2026-10-26, pedido del
+    usuario: un proyecto terminado y entregado que no pasó por el Formulador, solo
+    «Adjudicado» en la Planilla o con ficha en el Análisis sin el 100 %, no tenía
+    cómo salir). Cada fila de «Por proyecto» lleva su avance o lo que le falta
+    (`plEstadoDe`, `.pl-avance`, el detalle en el `title`). El botón «Estado de los
+    proyectos» (arriba y al pie de «Por proyecto», `#dlgPlProyectos`,
+    `plPintarProyectos`) lista los activos con de dónde sale cada uno (`plFuentes`)
+    y «Dar por cerrado», con una nota y, si tiene ficha en el Análisis sin el 100 %,
+    la casilla para pedir ahí el 100 % de avance (un `datos-proyecto` al buzón con
+    `origen.herramienta` `portal` y `reemplaza` el avance que se vio, como «Ingresar
+    avance»). También «Dar por cerrado» / «Reabrir» en la ficha del Recorrido
+    (`rcVerDetalle`). El cierre se guarda para todas las claves del proyecto (`req:`
+    y `tag:`) en `publicado/planificacion/cierres/<dispositivo>.json` (esquema
+    `planificacion-cierres`; `plCierres`, `plLeerCierres`, que lee `rcLeer`,
+    `plEscribirCierres`; misma unión por navegador, el más reciente manda;
+    reabrir es `cerrado: false`). `rcArmar` pasa a «Cierre» la tarjeta en ejecución
+    que tenga uno vigente (`rcCerradoEnPlan`, `t.cierrePlan`), así sale de la
+    planificación en todas las semanas, para todo el equipo. Se deshace (aviso del
+    diálogo, aviso de abajo o Ctrl Z, `u.cierres` en `plDeshacer` →
+    `plDeshacerCierre`), y si el pedido del 100 % sigue en el buzón, se borra.
+    Pruebas desde `test_el_estado_de_los_proyectos_y_dar_por_cerrado_uno_sin_formulador`.
   - **Máximo 3** (`PL_MAX`): con 3, la persona sale deshabilitada en las ventanitas
     («Completo»). Si dos computadores se pasan a la vez, la casilla queda en rojo
     («4 de 3: quita 1»).
@@ -500,7 +521,8 @@ y que se pueda revertir si no le gusta.
   - **Dónde se guarda**: en la carpeta de intercambio, en
     `publicado/planificacion/<AAAA-Www>/<dispositivo>.json` (esquema
     `planificacion-semana` del catálogo; lo agregado a mano, en
-    `publicado/planificacion/lista/`, esquema `planificacion-lista`). Cada navegador escribe solo su archivo
+    `publicado/planificacion/lista/`, esquema `planificacion-lista`; lo dado por
+    cerrado, en `publicado/planificacion/cierres/`, esquema `planificacion-cierres`). Cada navegador escribe solo su archivo
     (`quempin_portal_dispositivo`), así OneDrive nunca junta dos versiones del
     mismo; la semana es la unión de todos y en cada casilla manda el cambio más
     reciente (`t`), también si es quitar, con un reloj que nunca queda detrás de

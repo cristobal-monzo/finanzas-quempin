@@ -1,0 +1,45 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "planificacion",
+  "tipo": "planificacion-cierres",
+  "generado": "2026-10-26T15:10:00.000Z",
+  "autor": "NB",
+  "datos": {
+    "dispositivo": "k3j4h5q2x9",
+    "proyectos": [
+      {
+        "clave": "req:950",
+        "titulo": "Mantención de calderas de ejemplo",
+        "cerrado": true,
+        "nota": "Entregado el 20-10, con acta de recepción",
+        "af": false,
+        "t": "2026-10-26T15:09:12.004Z",
+        "por": "NB"
+      },
+      {
+        "clave": "req:951",
+        "titulo": "Obra de ejemplo",
+        "cerrado": true,
+        "nota": "",
+        "af": true,
+        "t": "2026-10-26T15:09:40.120Z",
+        "por": "NB"
+      },
+      {
+        "clave": "tag:OBRA",
+        "titulo": "Obra de ejemplo",
+        "cerrado": true,
+        "nota": "",
+        "af": true,
+        "t": "2026-10-26T15:09:40.121Z",
+        "por": "NB"
+      },
+      {
+        "clave": "req:952",
+        "titulo": "Reabierta: sigue en obra",
+        "cerrado": false,
+        "t": "2026-10-26T15:09:55.000Z"
+      }
+    ]
+  }
+}

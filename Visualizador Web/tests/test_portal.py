@@ -2370,7 +2370,7 @@ def test_sin_trabajo_esta_semana_no_cuenta_como_alarma(navegador, sitio):
     fila = pagina.locator('#plProyecto tr[data-clave="tag:SOLO"]')
     fila.locator(".pl-pausar").click()
     assert pagina.locator("#plAlertaN").inner_text() == "2"
-    assert "pausa" in fila.get_attribute("class") and fila.locator(".rc-chip").inner_text() == "Sin trabajo esta semana"
+    assert "pausa" in fila.get_attribute("class") and fila.locator(".rc-chip:not(.pl-avance)").inner_text() == "Sin trabajo esta semana"
     assert "Obra sin número" not in pagina.locator("#plAlarma").inner_text()
     assert pagina.locator("#plResumen .rc-kpi").nth(1).locator(".rc-kpi-sub").inner_text() == "Y 1 sin trabajo esta semana"
     # Los que no se trabajan van al final
@@ -3124,6 +3124,166 @@ def test_un_proyecto_cerrado_sale_de_la_planificacion(navegador, sitio):
     pagina.context.close()
 
 
+CIERRES = f"publicado/planificacion/cierres/{DISPOSITIVO}.json"
+
+JS_BUZON = """async () => {
+    const raiz = await navigator.storage.getDirectory();
+    let d = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+    d = await (await (await d.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio')).getDirectoryHandle('buzon');
+    const salida = {};
+    for await (const [n, h] of d.entries()) if (h.kind === 'file') salida[n] = JSON.parse(await (await h.getFile()).text());
+    return salida;
+}"""
+
+
+def _proyectos_del_dialogo(pagina, titulo):
+    """Las claves de una lista de «Estado de los proyectos» («En ejecución · 3», «Cerrados en la planificación»)."""
+    return pagina.evaluate("""(t) => {
+        const h = [...document.querySelectorAll('#plProyLista h3')].find((x) => x.textContent.startsWith(t));
+        return h ? [...h.nextElementSibling.querySelectorAll(':scope > li[data-tarjeta], :scope > li[data-clave]')].map((li) => li.dataset.clave || li.dataset.tarjeta) : null;
+    }""", titulo)
+
+
+def test_el_estado_de_los_proyectos_y_dar_por_cerrado_uno_sin_formulador(navegador, sitio):
+    """Pedido del 2026-10-26: ver en la planificación el estado de cada proyecto y dar por cerrado uno que ya terminó y se
+    entregó, aunque no haya pasado por el Formulador (el 907 está solo «Adjudicado» en la Planilla). Sale de la
+    planificación, pasa al «Cierre» del Recorrido con quién y cuándo lo cerró, y se puede reabrir."""
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    kpi = pagina.locator("#plResumen .rc-kpi").first
+    # Cada fila de «Por proyecto» dice cómo va según el Recorrido, con el detalle al pasar encima
+    avance = lambda c: pagina.locator(f'#plProyecto tr[data-clave="{c}"] .pl-avance')
+    assert avance("req:907").inner_text() == "Sin ficha en el Análisis Financiero"
+    assert avance("req:907").get_attribute("data-nivel") == "warn"
+    assert "Créala en «Ingresar avance»" in avance("req:907").get_attribute("title")
+    assert avance("req:908").inner_text() == "40 % de avance"
+    assert avance("tag:SOLO").inner_text() == "50 % de avance"
+    # «Estado de los proyectos», arriba o al pie de «Por proyecto»: de dónde sale cada uno y cómo va
+    pagina.locator('#plProyecto [data-estado="proyectos"]').click()
+    dlg = pagina.locator("#dlgPlProyectos")
+    assert dlg.is_visible()
+    assert _proyectos_del_dialogo(pagina, "En ejecución") == list(ACTIVOS)
+    li = dlg.locator('li[data-clave="req:907"]')
+    assert li.locator(".pl-proys-fuentes").inner_text() == "Planilla «Adjudicado» · sin formulación · sin ficha en el Análisis Financiero"
+    assert dlg.locator('li[data-clave="req:908"] .pl-proys-fuentes').inner_text().startswith("Planilla «Adjudicado» · sin formulación · Análisis Financiero 40 %, término ")
+    assert li.locator(".rc-chip").all_inner_texts() == ["Sin ficha en el Análisis Financiero", "Nadie esta semana"]
+    # Darlo por cerrado: sin ficha en el Análisis no ofrece el 100 %; la nota queda con él
+    li.locator('[data-accion="cerrar"]').click()
+    assert li.locator(".pl-cerrar").is_visible() and dlg.locator("#plCerrarAF").count() == 0
+    dlg.locator("#plCerrarNota").fill("Entregado el 20-10, con acta")
+    dlg.locator("#plCerrarNota").press("Enter")
+    assert dlg.is_visible(), "Enter confirma sin cerrar el diálogo"
+    assert dlg.locator("#plProyAviso").inner_text().startswith("Adjudicada sin ficha queda cerrado: pasa al «Cierre» del Recorrido y sale de la planificación.")
+    assert _proyectos_del_dialogo(pagina, "En ejecución") == ["req:908", "tag:SOLO"]
+    assert _proyectos_del_dialogo(pagina, "Cerrados en la planificación") == ["req-907"]
+    assert "Cerrado por LC hoy a las" in dlg.locator('li[data-tarjeta="req-907"]').inner_text()
+    assert "«Entregado el 20-10, con acta»" in dlg.locator('li[data-tarjeta="req-907"]').inner_text()
+    pagina.locator("#plProyCerrar").click()
+    assert dlg.is_hidden()
+    # Sale de la planificación (y de la alarma) y queda en su archivo, que cumple el esquema
+    assert pagina.locator('#plProyecto tr[data-clave="req:907"]').count() == 0
+    assert kpi.locator(".rc-kpi-n").inner_text() == str(len(ACTIVOS) - 1)
+    sobre = _esperar_archivo(pagina, CIERRES, lambda s: len(s["datos"]["proyectos"]) == 1)
+    assert [(x["clave"], x["cerrado"], x["nota"], x["af"], x["por"]) for x in sobre["datos"]["proyectos"]] == [
+        ("req:907", True, "Entregado el 20-10, con acta", False, "LC")]
+    assert _esquemas().validar_publicacion("planificacion-cierres", sobre) == []
+    # En el Recorrido está en el «Cierre», con quién lo cerró y su nota, y desde ahí se reabre
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    col = pagina.evaluate(JS_COLUMNAS)
+    assert "req-907" in col["cierre"] and "req-907" not in col["ejecucion"], col
+    pagina.locator('.rc-tarjeta[data-clave="req-907"] .rc-abrir').click()
+    texto = pagina.locator("#dlgRecorrido").inner_text()
+    assert "Dado por cerrado en la Planificación semanal por LC" in texto and "«Entregado el 20-10, con acta»" in texto, texto
+    pagina.locator('#dlgRecorrido [data-op="reabrir"]').click()
+    assert pagina.locator('#dlgRecorrido [data-op="cerrar"]').is_visible(), "vuelve a ejecución y se puede volver a cerrar"
+    pagina.keyboard.press("Escape")
+    assert "req-907" in pagina.evaluate(JS_COLUMNAS)["ejecucion"]
+    sobre = _esperar_archivo(pagina, CIERRES, lambda s: not s["datos"]["proyectos"][0]["cerrado"])
+    assert _esquemas().validar_publicacion("planificacion-cierres", sobre) == []
+    _menu(pagina, "Planificación semanal")
+    pagina.locator('#plProyecto tr[data-clave="req:907"]').wait_for()
+    assert not errores
+    pagina.context.close()
+
+
+def test_dar_por_cerrado_pide_el_100_al_analisis_y_se_deshace(navegador, sitio):
+    """Con ficha en el Análisis Financiero sin el 100 % (DEMO, 40 %), cerrarlo ofrece dejar ahí el 100 % de avance: un
+    «datos-proyecto» al buzón, como «Ingresar avance», que solo reemplaza el 40 % que se vio. El cierre vale para su N° y
+    su TAG. «Deshacer» lo reabre y retira el mensaje si todavía no se procesa. Se abre también desde el Recorrido."""
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    dlg = pagina.locator("#dlgPlProyectos")
+    # Desde la ficha del Recorrido (la fila del proyecto la abre): «Dar por cerrado» lleva al formulario
+    pagina.locator('#plProyecto tr[data-clave="req:908"] button.pl-proy').click()
+    pagina.locator('#dlgRecorrido [data-op="cerrar"]').click()
+    assert pagina.locator("#dlgRecorrido").is_hidden() and dlg.is_visible()
+    assert dlg.locator('li[data-clave="req:908"] .pl-cerrar').is_visible()
+    assert dlg.locator("#plCerrarAF").is_checked()
+    assert "hoy tiene 40 %" in dlg.locator(".pl-cerrar-af").inner_text()
+    dlg.locator("#plCerrarOk").click()
+    pagina.wait_for_function("() => !document.querySelector('#plProyAviso').hidden")      # espera a escribir en el buzón
+    assert "El 100 % de avance llega al Análisis Financiero en la próxima vuelta del procesador." in dlg.locator("#plProyAviso").inner_text()
+    buzon = {n: m for n, m in pagina.evaluate(JS_BUZON).items() if m.get("tipo") == "datos-proyecto" and m.get("origen", {}).get("herramienta") == "portal"}
+    assert len(buzon) == 1, buzon
+    nombre, msg = next(iter(buzon.items()))
+    assert nombre.endswith("_portal_datos-proyecto_" + msg["id"] + ".json")
+    assert (msg["proyecto"], msg["valores"], msg["reemplaza"], msg["origen"]["usuario"]) == ({"tag": "DEMO"}, {"% Avance": 1}, {"% Avance": 0.4}, "LC")
+    assert _esquemas().validar_mensaje(msg) == []
+    sobre = _esperar_archivo(pagina, CIERRES, lambda s: len(s["datos"]["proyectos"]) == 2)
+    assert sorted((x["clave"], x["cerrado"], x["af"]) for x in sobre["datos"]["proyectos"]) == [("req:908", True, True), ("tag:DEMO", True, True)]
+    assert _esquemas().validar_publicacion("planificacion-cierres", sobre) == []
+    # Deshacer, en el mismo diálogo: vuelve a ejecución y el pedido del 100 % se retira del buzón
+    dlg.locator("#plProyAviso button").click()
+    pagina.wait_for_function("() => document.querySelector('#plProyAviso').textContent.includes('se retiró')")
+    assert "req:908" in _proyectos_del_dialogo(pagina, "En ejecución")
+    assert not [m for m in pagina.evaluate(JS_BUZON).values() if m.get("origen", {}).get("herramienta") == "portal"]
+    sobre = _esperar_archivo(pagina, CIERRES, lambda s: all(not x["cerrado"] for x in s["datos"]["proyectos"]))
+    assert _esquemas().validar_publicacion("planificacion-cierres", sobre) == []
+    # Sin N° (solo TAG) y sin pedir el 100 %: se cierra por su TAG y no escribe al buzón
+    li = dlg.locator('li[data-clave="tag:SOLO"]')
+    li.locator('[data-accion="cerrar"]').click()
+    dlg.locator("#plCerrarAF").uncheck()
+    dlg.locator("#plCerrarOk").click()
+    assert _proyectos_del_dialogo(pagina, "En ejecución") == ["req:907", "req:908"]
+    assert not [m for m in pagina.evaluate(JS_BUZON).values() if m.get("origen", {}).get("herramienta") == "portal"]
+    sobre = _esperar_archivo(pagina, CIERRES, lambda s: any(x["clave"] == "tag:SOLO" for x in s["datos"]["proyectos"]))
+    assert [(x["cerrado"], x["af"]) for x in sobre["datos"]["proyectos"] if x["clave"] == "tag:SOLO"] == [(True, False)]
+    # En el Recorrido, el aviso de que el Análisis sigue sin el 100 %
+    pagina.locator("#plProyCerrar").click()
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator('.rc-tarjeta[data-clave="tag-SOLO"]').wait_for()
+    pagina.locator('.rc-tarjeta[data-clave="tag-SOLO"] .rc-abrir').click()
+    assert "tiene 50 % de avance: déjalo en 100 %" in pagina.locator("#dlgRecorrido").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_lo_cerrado_en_otro_navegador_sale_de_la_planificacion(navegador, sitio):
+    """Los cierres son la unión de los archivos de todos los navegadores, y por clave manda el más reciente: lo que otro
+    cerró no aparece, y lo que cerró y después reabrió, sí."""
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
+    otro = {"esquema": "quempin.intercambio/1", "herramienta": "planificacion", "tipo": "planificacion-cierres", "generado": _instante(0),
+            "autor": "NB", "datos": {"dispositivo": "otronavegador1", "proyectos": [
+                {"clave": "req:907", "titulo": "Adjudicada sin ficha", "cerrado": True, "nota": "", "af": False, "t": _instante(-90), "por": "NB"},
+                {"clave": "tag:DEMO", "titulo": "En obra", "cerrado": True, "nota": "", "af": False, "t": _instante(-90), "por": "NB"},
+                {"clave": "tag:DEMO", "titulo": "En obra", "cerrado": False, "t": _instante(-30), "por": "NB"},
+                {"clave": "pro:no-vale", "titulo": "Mal formado", "cerrado": True, "t": _instante(-30)}]}}
+    assert _esquemas().validar_publicacion("planificacion-cierres", otro) != [], "la clave pro: no vale en el esquema"
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"publicado/planificacion/cierres/otronavegador1.json": otro})
+    pagina.evaluate("d => localStorage.setItem('quempin_portal_dispositivo', d)", DISPOSITIVO)
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Planificación semanal")
+    pagina.locator("#plResumen .rc-kpi").first.wait_for()
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    claves = pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
+    assert sorted(claves) == ["req:908", "tag:SOLO"], claves
+    pagina.locator("#plProyectos").click()
+    assert _proyectos_del_dialogo(pagina, "Cerrados en la planificación") == ["req-907"]
+    assert "Cerrado por NB" in pagina.locator('#dlgPlProyectos li[data-tarjeta="req-907"]').inner_text()
+    assert not errores
+    pagina.context.close()
+
+
 def test_lo_agregado_por_otro_navegador_aparece(navegador, sitio):
     """La lista es la unión de los archivos de todos los navegadores: lo que otro agregó aparece al releer, y en cada
     persona manda el cambio más reciente (si otro la quitó después, ya no está)."""
@@ -3167,8 +3327,9 @@ def test_agregar_a_mano_cabe_sin_desbordes(navegador, sitio, ancho):
         pagina.locator(f'.pl-vista[data-vista="{vista}"]').click()
         d = pagina.evaluate(JS_DESBORDES)
         assert d["doc"] <= ancho and not d["fuera"], (vista, d)
-        b = pagina.locator(f"#pl{vista.capitalize()} .pl-agregar-pie").bounding_box()
-        assert b["x"] >= 0 and b["x"] + b["width"] <= ancho, (vista, b)
+        for b in pagina.locator(f"#pl{vista.capitalize()} .pl-agregar-pie").all():      # «Agregar» y «Estado de los proyectos»
+            b = b.bounding_box()
+            assert b["x"] >= 0 and b["x"] + b["width"] <= ancho, (vista, b)
     assert not errores
     pagina.context.close()
 

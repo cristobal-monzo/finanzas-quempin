@@ -1,0 +1,23 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "planificacion",
+  "tipo": "planificacion-cierres",
+  "generado": "2026-10-26T15:10:00.000Z",
+  "autor": "NB",
+  "datos": {
+    "dispositivo": "k3j4h5q2x9",
+    "proyectos": [
+      {
+        "clave": "pro:galpon-de-ejemplo",
+        "titulo": "Uno agregado a mano no se cierra: se quita de su semana",
+        "cerrado": true,
+        "t": "2026-10-26T15:09:12.004Z"
+      },
+      {
+        "clave": "req:950",
+        "titulo": "Sin decir si está cerrado",
+        "t": "2026-10-26T15:09:12.004Z"
+      }
+    ]
+  }
+}
