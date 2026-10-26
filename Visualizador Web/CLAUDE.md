@@ -457,13 +457,22 @@ y que se pueda revertir si no le gusta.
     `req:<N°>` si se escribió con su N° de la Planilla adelante («281. H2 Green»:
     sirve para uno que el Recorrido plegó por antiguo y, cuando entre en ejecución,
     es el mismo); cuenta como proyecto activo (`plActivos`, `mano: true`), también
-    en la alarma. Valen para todas las semanas: van en la lista
+    en la alarma. Son **temporales** (pedido del 2026-10-26: quien se agrega a
+    mano no trabaja en la empresa fuera de esas tareas): cada uno vale solo para
+    la semana a la vista cuando se agregó (`semana`, clave `semana|id` en la
+    lista, `plKLista`; `plManoActivas(s)`, `plProyManoActivos(s)`,
+    `plActivos(s)`). No pasa a las semanas siguientes: «Copiar la semana
+    anterior» lleva los que van en lo copiado (y su Deshacer los quita), y el
+    diálogo «Agregar» ofrece los de semanas anteriores («Sumar a esta», hasta 6,
+    el más reciente primero). Uno guardado antes del cambio, sin `semana`, es de la
+    semana de su `t`. Van en la lista
     `publicado/planificacion/lista/<dispositivo>.json` (esquema
     `planificacion-lista`; `plLista`, `plLeerLista`, `plEscribirLista`, misma unión
     por navegador y el más reciente manda). Quitar (en el diálogo) es `activa:
-    false`: lo ya asignado se sigue viendo con su nombre, porque el archivo de la
-    semana guarda el de cada persona escrita (`personas`) como el de los proyectos.
-    Agregar y quitar se deshacen (aviso o Ctrl Z, `u.lista` en `plDeshacer`).
+    false` en esa semana: lo ya asignado se sigue viendo con su nombre, porque el
+    archivo de la semana guarda el de cada persona escrita (`personas`) como el de
+    los proyectos. Agregar y quitar se deshacen (aviso o Ctrl Z, `u.listas` en
+    `plDeshacer`).
   - **Proyectos activos**: los que el Recorrido pone en Ejecución (`rcArmar`, sin
     los de más de 60 días), con la clave `req:<N°>` o `tag:<TAG>`; una asignación
     hecha con el TAG sigue siendo del mismo proyecto cuando este recibe su N°.

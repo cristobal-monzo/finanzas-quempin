@@ -2859,9 +2859,9 @@ def _esquemas():
 
 def test_agregar_una_persona_escrita_y_asignarla(navegador, sitio):
     """Pedido del 2026-10-26: agregar a alguien que no está en la lista escribiendo su nombre, para asignarlo a proyectos.
-    Queda en todas las semanas (la lista va aparte de las semanas), con su nombre en las tres vistas, y quitarlo no borra
-    lo ya asignado."""
-    from datetime import date
+    Es temporal (pedido del mismo día): queda solo en la semana a la vista, con su nombre en las tres vistas; la semana
+    siguiente no aparece, pero en «Agregar» se suma con un toque. Quitarlo no borra lo ya asignado."""
+    from datetime import date, timedelta
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
     semana, lunes = _semana_de(date.today())
     aviso = lambda: pagina.locator("#aviso").inner_text()
@@ -2880,7 +2880,7 @@ def test_agregar_una_persona_escrita_y_asignarla(navegador, sitio):
     pagina.locator("#plAgregarNombre").fill("juan pérez")
     pagina.locator("#plAgregarNombre").press("Enter")
     assert dlg.is_hidden()
-    assert aviso().startswith("Juan Pérez queda en la planificación de todas las semanas")
+    assert aviso().startswith("Juan Pérez queda solo en esta semana")
     fila = pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]')
     assert fila.locator(".pl-quien-txt b").inner_text() == "Juan Pérez"
     assert fila.locator(".pl-avatar").inner_text() == "JP"
@@ -2889,7 +2889,7 @@ def test_agregar_una_persona_escrita_y_asignarla(navegador, sitio):
     assert list(pagina.evaluate(JS_PERSONAL))[-1] == "x-juan-perez", "después del equipo"
     # La lista queda en su archivo y cumple el esquema
     sobre = _esperar_archivo(pagina, LISTA, lambda s: len(s["datos"]["personas"]) == 1)
-    assert [(x["id"], x["nombre"], x["activa"], x["por"]) for x in sobre["datos"]["personas"]] == [("x-juan-perez", "Juan Pérez", True, "LC")]
+    assert [(x["id"], x["nombre"], x["semana"], x["activa"], x["por"]) for x in sobre["datos"]["personas"]] == [("x-juan-perez", "Juan Pérez", semana, True, "LC")]
     assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
     # Se le asigna un proyecto como a cualquiera
     _celda_personal(pagina, "x-juan-perez", 0).click()
@@ -2907,27 +2907,41 @@ def test_agregar_una_persona_escrita_y_asignarla(navegador, sitio):
     pagina.locator("#plCompartir").click()
     assert "*Juan Pérez*" in pagina.locator("#plTextoArea").input_value()
     pagina.keyboard.press("Escape")
-    # Sigue en la semana siguiente, sin nada asignado
+    # La semana siguiente no está: es temporal. En «Agregar» aparece entre los de semanas anteriores y se suma con un toque
     pagina.locator('.pl-vista[data-vista="personal"]').click()
     pagina.locator("#plDespues").click()
-    pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]').wait_for()
-    # Quitarlo: sale de las semanas en que no tiene nada; donde tiene algo se sigue viendo
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    assert pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]').count() == 0
+    siguiente = _semana_de(lunes + timedelta(days=7))[0]
     pagina.locator('#plPersonal [data-agregar="persona"]').click()
-    assert pagina.locator("#plAgregados li").all_inner_texts()[0].startswith("Juan Pérez")
-    pagina.locator('#plAgregados button[data-k="x-juan-perez"]').click()
-    assert pagina.locator("#plAgregados").is_hidden()
+    assert "no pasa a las siguientes" in pagina.locator("#plAgregarPista").inner_text()
+    assert pagina.locator("#plAgregados h3").all_text_contents() == ["De semanas anteriores"]
+    assert pagina.locator("#plAgregados li .pl-agr-txt").all_inner_texts()[0].split("\n") == ["Juan Pérez", f"semana {int(semana[-2:])}"]
+    pagina.locator('#plAgregados button[data-k="x-juan-perez"][data-accion="sumar"]').click()
+    assert pagina.locator("#plAgregados h3").all_text_contents() == [f"Personas agregadas a mano en la semana {int(siguiente[-2:])}"]
     pagina.locator("#plAgregarCerrar").click()
-    assert aviso().startswith("Juan Pérez ya no está en la planificación.")
+    fila = pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]')
+    assert fila.locator(".pl-quien-txt span").inner_text() == "Sin proyectos"
+    # Quitarlo de esa semana: sale; en la suya, donde tiene algo, se sigue viendo
+    pagina.locator('#plPersonal [data-agregar="persona"]').click()
+    pagina.locator('#plAgregados button[data-k="x-juan-perez"][data-accion="quitar"]').click()
+    pagina.locator("#plAgregarCerrar").click()
+    assert aviso().startswith(f"Juan Pérez ya no está en la semana {int(siguiente[-2:])}.")
     assert pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]').count() == 0
     pagina.locator("#plHoy").click()
-    fila = pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]')
     fila.wait_for()
+    assert fila.locator(".pl-quien-txt span").inner_text() == "1 proyecto"
+    pagina.locator('#plPersonal [data-agregar="persona"]').click()
+    pagina.locator('#plAgregados button[data-k="x-juan-perez"][data-accion="quitar"]').click()
+    pagina.locator("#plAgregarCerrar").click()
+    assert aviso().startswith("Juan Pérez ya no está en esta semana.")
     assert fila.locator(".pl-quien-txt span").inner_text() == "Fuera de la lista"
     # Ctrl Z lo vuelve a la lista
     pagina.locator("#tituloPlan").click()
     pagina.keyboard.press("Control+z")
     assert fila.locator(".pl-quien-txt span").inner_text() == "1 proyecto"
-    sobre = _esperar_archivo(pagina, LISTA, lambda s: s["datos"]["personas"][0]["activa"] is True and s["datos"]["personas"][0]["t"] > sobre["generado"])
+    sobre = _esperar_archivo(pagina, LISTA, lambda s: sorted((x["semana"], x["activa"]) for x in s["datos"]["personas"]) == [(semana, True), (siguiente, False)])
+    assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
     assert not errores
     pagina.context.close()
 
@@ -2977,8 +2991,8 @@ def test_otra_persona_y_otro_proyecto_desde_la_ventanita(navegador, sitio):
 
 
 def test_agregar_un_proyecto_escrito_o_con_su_numero(navegador, sitio):
-    """Un proyecto escrito queda como un proyecto activo más en todas las semanas (cuenta en el resumen y en la alarma
-    si nadie va). Escrito con su N° de la Planilla queda unido a ese requerimiento, aunque el Recorrido lo tenga plegado
+    """Un proyecto escrito queda como un proyecto activo más en la semana a la vista (cuenta en el resumen y en la alarma
+    si nadie va; la semana siguiente ya no está). Escrito con su N° de la Planilla queda unido a ese requerimiento, aunque el Recorrido lo tenga plegado
     por antiguo (como H2 Green el 2026-10-26); uno que ya está en ejecución no se repite."""
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
     dlg = pagina.locator("#dlgPlAgregar")
@@ -3015,6 +3029,10 @@ def test_agregar_un_proyecto_escrito_o_con_su_numero(navegador, sitio):
     assert {x["clave"]: (x["titulo"], x.get("lugar")) for x in sobre["datos"]["proyectos"]} == {
         "pro:galpon-quilicura": ("Galpón Quilicura", "Quilicura"), "req:910": ("Caldera antigua", "")}
     assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
+    pagina.locator("#plDespues").click()
+    pagina.locator('#plProyecto tr[data-clave="req:908"]').wait_for()
+    assert pagina.locator('#plProyecto tr[data-clave="pro:galpon-quilicura"]').count() == 0
+    assert kpi.locator(".rc-kpi-n").inner_text() == str(len(ACTIVOS))
     assert not errores
     pagina.context.close()
 
@@ -3185,5 +3203,56 @@ def test_subir_documentos_sin_biblioteca_dice_que_conectar(navegador, sitio):
     pagina.locator("#scVacio").wait_for()
     assert "Conecta" in pagina.locator("#scVacio").inner_text() or "Chrome o Edge" in pagina.locator("#scVacio").inner_text()
     assert pagina.locator("#scContenido").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_lo_agregado_a_mano_es_de_su_semana_y_se_copia_con_lo_suyo(navegador, sitio):
+    """Lo agregado a mano antes del 2026-10-26 (sin «semana») es de la semana en que se escribió: otra semana no lo
+    muestra. «Copiar la semana anterior» trae a la persona y al proyecto escritos junto con lo suyo, y su Deshacer los
+    vuelve a sacar."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    antes, lunes_antes = _semana_de(lunes - timedelta(days=7))
+    otro = {"esquema": "quempin.intercambio/1", "herramienta": "planificacion", "tipo": "planificacion-lista", "generado": _instante(0),
+            "autor": "NB", "datos": {"dispositivo": "otronavegador1", "personas": [
+                # Sin «semana»: la de su instante, hace siete días (la semana anterior)
+                {"id": "x-ana-rojas", "nombre": "Ana Rojas", "activa": True, "t": _instante(-7 * 86400)},
+                {"id": "x-pedro-soto", "nombre": "Pedro Soto", "semana": antes, "activa": True, "t": _instante(-60)}],
+                "proyectos": [{"clave": "pro:obra-externa", "titulo": "Obra externa", "semana": antes, "activa": True, "t": _instante(-60)}]}}
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["publicado/planificacion/lista/otronavegador1.json", json.dumps(otro)])
+    jueves = (lunes_antes + timedelta(days=3)).isoformat()
+    a = lambda per, c: {"dia": jueves, "persona": per, "proyecto": c, "activa": True, "t": _instante(-50), "por": "NB"}
+    pasada = _sobre_plan(antes, lunes_antes, "otronavegador1", asignaciones=[a("x-pedro-soto", "req:908"), a("LC", "pro:obra-externa")],
+                         proyectos={"pro:obra-externa": {"titulo": "Obra externa"}})
+    pasada["datos"]["personas"] = {"x-pedro-soto": {"nombre": "Pedro Soto"}}
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, [f"publicado/planificacion/{antes}/otronavegador1.json", json.dumps(pasada)])
+    pagina.locator("#plActualizar").click()
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    pagina.wait_for_timeout(300)
+    assert [p for p in pagina.evaluate(JS_PERSONAL) if p.startswith("x-")] == [], "ninguno es de esta semana"
+    pagina.locator("#plAntes").click()
+    pagina.locator('#plPersonal tr[data-persona="x-pedro-soto"]').wait_for()
+    assert [p for p in pagina.evaluate(JS_PERSONAL) if p.startswith("x-")] == ["x-ana-rojas", "x-pedro-soto"]
+    # En esta semana, copiar la anterior los trae: Pedro (con lo suyo) y Obra externa como activo; Ana no tenía nada
+    pagina.locator("#plDespues").click()
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    pagina.locator("#plCopiar").click()
+    pagina.wait_for_function("document.getElementById('aviso').textContent.startsWith('Se copiaron')")
+    p = pagina.evaluate(JS_PERSONAL)
+    assert p["x-pedro-soto"][3] == ["En obra"] and p["LC"][3] == ["Obra externa"] and "x-ana-rojas" not in p
+    assert pagina.locator('#plPersonal tr[data-persona="x-pedro-soto"] .pl-quien-txt span').inner_text() == "1 proyecto"
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    assert pagina.locator('#plProyecto tr[data-clave="pro:obra-externa"] .pl-proy-txt .s').inner_text() == "agregado a mano"
+    sobre = _esperar_archivo(pagina, LISTA, lambda s: len(s["datos"]["personas"]) == 1 and len(s["datos"]["proyectos"]) == 1)
+    assert (sobre["datos"]["personas"][0]["semana"], sobre["datos"]["proyectos"][0]["semana"]) == (semana, semana)
+    assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
+    # Un Deshacer saca lo copiado y también a ellos
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    pagina.locator('#plProyecto tr[data-clave="pro:obra-externa"]').wait_for(state="detached")
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    assert "x-pedro-soto" not in pagina.evaluate(JS_PERSONAL)
     assert not errores
     pagina.context.close()
