@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "planificacion/<semana>/<dispositivo>.json (Planificación semanal)",
-  "description": "Lo que un navegador planificó en una semana en el Portal QUEMPIN: quién va a qué proyecto cada día, las ausencias y los proyectos sin trabajo esa semana. Cada navegador escribe solo su archivo (publicado/planificacion/<AAAA-Www>/<dispositivo>.json) y la semana es la unión de todos: en cada casilla manda el cambio más reciente ('t'), también si es quitar ('activa': false, 'motivo': ''). 'proyecto' es 'req:<N° de la Planilla>', 'tag:<TAG del Análisis Financiero>' u 'otra:<actividad>'.",
+  "description": "Lo que un navegador planificó en una semana en el Portal QUEMPIN: quién va a qué proyecto cada día, las ausencias, los proyectos sin trabajo esa semana y, desde el 2026-10-25, el vehículo de la empresa con que va cada persona a cada proyecto ('vehiculos', el id del registro del portal; no lo traen los archivos de antes). Cada navegador escribe solo su archivo (publicado/planificacion/<AAAA-Www>/<dispositivo>.json) y la semana es la unión de todos: en cada casilla manda el cambio más reciente ('t'), también si es quitar ('activa': false, 'motivo': '', 'vehiculo': ''). 'proyecto' es 'req:<N° de la Planilla>', 'tag:<TAG del Análisis Financiero>' u 'otra:<actividad>'.",
   "dueno": "planificacion",
   "type": "object",
   "properties": {
@@ -118,6 +118,47 @@
         "required": [
           "proyecto",
           "activa",
+          "t"
+        ]
+      }
+    },
+    "vehiculos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dia": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "persona": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,3}$"
+          },
+          "proyecto": {
+            "type": "string",
+            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40})$"
+          },
+          "vehiculo": {
+            "enum": [
+              "",
+              "quempineta",
+              "ram"
+            ]
+          },
+          "t": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "por": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "dia",
+          "persona",
+          "proyecto",
+          "vehiculo",
           "t"
         ]
       }

@@ -414,6 +414,30 @@ y que se pueda revertir si no le gusta.
     va); de entrada, quienes tienen algo esa semana. `plDocumento` lo arma en
     `#plDoc`, que solo se ve al imprimir (`body.pl-imprimiendo`); el título de la
     página es el nombre del PDF. Sale igual desde cualquier vista.
+  - **Vehículos** (2026-10-25, pedido del usuario: «a una persona en un proyecto
+    se le pueda asignar uno de los dos vehículos de la empresa, Quempineta y RAM;
+    la asignación debe ser sencilla y se debe poder ver en el resumen»): bloque
+    `"vehiculos"` del registro (`id`, `nombre`, `articulo`; el `id` va en el
+    archivo y el enum del esquema debe ser el mismo, `test_portal.py` los compara).
+    En la ventanita, bajo cada persona (o proyecto) marcada, «Vehículo» con un
+    botón por vehículo (`plVehOps`, `data-op="v|<persona o clave>|<id>"`): un toque
+    lo asigna los días elegidos en que va (`plVehiculoDias`, una tanda), otro lo
+    quita; a medias (`aria-pressed="mixed"`) si lo lleva solo algunos días. Se ve
+    como etiqueta (`.pl-veh`) en las tres vistas, en la cifra «Vehículos en uso»
+    del resumen (`.pl-kpi-veh`, lleva al panel) y en **«Vehículos en la semana»**
+    (`#plVehiculos`, vista General: un día por fila, un vehículo por columna,
+    «Libre» si nadie lo lleva). Un vehículo con personas que ese día no comparten
+    proyecto está en dos lugares a la vez (`usoVeh` del modelo, en grupos): se
+    avisa en naranjo (etiqueta, resumen, panel, el punto del botón y el aviso), sin
+    impedirlo. Quitar una asignación le quita el vehículo; «Cambiar» y el reemplazo
+    se lo llevan a la otra persona o proyecto; copiar la semana anterior lo copia;
+    Compartir e Imprimir lo dicen (columna «Vehículo» en las hojas si alguien va en
+    uno esa semana). En el archivo es `vehiculos` (una casilla por persona, proyecto
+    y día, `vehiculo: ''` lo quita, manda el más reciente).
+  - **Guardar** (arreglo del 2026-10-25): `plGuardar` saca la semana de
+    `porGuardar` antes de escribir, así un cambio hecho mientras se escribe (marcar
+    a alguien y tocar su vehículo enseguida) vuelve a la lista y se guarda en la
+    vuelta siguiente; antes quedaba fuera del archivo hasta el próximo cambio.
   - **El personal** es el bloque `"personal"` del registro (NB, ES, LC, CM, MP,
     SV y EV): incluye a todos los `"usuarios"` y puede tener más (EV se planifica
     pero no elige usuario en las herramientas). El usuario elegido va en naranjo.
@@ -444,7 +468,9 @@ y que se pueda revertir si no le gusta.
     (alarma, máximo, guardado y esquema, unión de dos computadores, ausencias,
     deshacer, semanas y cambio de año, copiar, compartir, imprimir, teléfono; y
     desde el 2026-10-23 varios días, «Cambiar», teclado, alarma → ventanita y
-    «Asignar» del tablero general).
+    «Asignar» del tablero general; desde el 2026-10-25 los vehículos, desde
+    `test_los_vehiculos_en_el_registro_y_en_el_esquema`, y el cambio que llega
+    mientras se guarda).
 - **Publicar**: copiar el archivo a `.worktrees/gh-pages/portal/index.html`,
   hacer commit y push. No tiene build ni datos, y `publicar.py` no lo toca.
 - **Revertir**: borrar `portal/` en gh-pages, o hacer `git revert` del commit

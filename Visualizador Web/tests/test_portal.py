@@ -2524,6 +2524,330 @@ def test_la_planificacion_cabe_sin_desbordes(navegador, sitio, ancho):
         pagina.context.close()
 
 
+# ---- Vehículos de la Planificación (2026-10-25) -------------------------------------------------------------------
+
+# Las etiquetas de vehículo dentro de un elemento: [nombre, iniciales de quienes lo llevan si no son todos]
+JS_VEHS = """(el) => [...el.querySelectorAll('.pl-veh')].map((v) => [v.querySelector('.n').textContent,
+    v.querySelector('.q') ? v.querySelector('.q').textContent : ''])"""
+
+# «Vehículos en la semana» (vista General): cada día, por vehículo, sus usos («En obra ES LC», con « / » entre uno y
+# otro) o «Libre»
+JS_PANEL_VEHICULOS = """() => [...document.querySelectorAll('#plVehiculos tbody tr')].map((tr) => [tr.dataset.iso,
+    Object.fromEntries([...tr.querySelectorAll('td[data-veh]')].map((td) => [td.dataset.veh,
+        [...td.querySelectorAll('.pl-veh-uso')].map((b) => b.querySelector('.t').textContent + ' ' + b.querySelector('.quien').textContent).join(' / ')
+        || td.textContent.trim()]))])"""
+
+
+def _vehs(locator):
+    return locator.evaluate(JS_VEHS)
+
+
+def _semana_con_vehiculos(pagina):
+    """Lo que planificó otro computador: ES y LC van en la RAM a En obra el lunes; MP en la Quempineta a Obra sin número
+    de lunes a miércoles; el martes, la RAM va con ES a En obra y con NB a Adjudicada sin ficha (dos lugares a la vez)."""
+    from datetime import date, timedelta
+    semana, lunes = _semana_de(date.today())
+    d = lambda i: (lunes + timedelta(days=i)).isoformat()
+    asig = lambda dia, per, p: {"dia": dia, "persona": per, "proyecto": p, "activa": True, "t": _instante(-60), "por": "NB"}
+    veh = lambda dia, per, p, v: {"dia": dia, "persona": per, "proyecto": p, "vehiculo": v, "t": _instante(-50), "por": "NB"}
+    usos = [(0, "ES", "req:908", "ram"), (0, "LC", "req:908", "ram"), (1, "ES", "req:908", "ram"), (1, "NB", "req:907", "ram")] + [
+        (i, "MP", "tag:SOLO", "quempineta") for i in range(3)]
+    sobre = _sobre_plan(semana, lunes, "otro0002", asignaciones=[asig(d(i), per, p) for i, per, p, _ in usos])
+    sobre["datos"]["vehiculos"] = [veh(d(i), per, p, v) for i, per, p, v in usos]
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {f"publicado/planificacion/{semana}/otro0002.json": sobre})
+    pagina.locator("#plActualizar").click()
+    pagina.wait_for_function("(document.querySelector('#plResumen .pl-kpi-veh .rc-kpi-n') || {}).textContent === '2'")
+    return semana, lunes
+
+
+def test_los_vehiculos_en_el_registro_y_en_el_esquema():
+    """Pedido del 2026-10-25: a una persona en un proyecto se le asigna uno de los dos vehículos de la empresa, la
+    Quempineta o la RAM. Salen del registro del portal, y el esquema del archivo de la semana acepta los mismos."""
+    reg = _registro()
+    assert [(v["id"], v["nombre"], v["articulo"]) for v in reg["vehiculos"]] == [("quempineta", "Quempineta", "la"), ("ram", "RAM", "la")]
+    esquema = json.loads((RAIZ / "Sistema Intercambio" / "esquemas" / "publicaciones" / "planificacion-semana.json").read_text(encoding="utf-8"))
+    assert esquema["properties"]["vehiculos"]["items"]["properties"]["vehiculo"]["enum"] == [""] + [v["id"] for v in reg["vehiculos"]]
+    assert "vehiculos" not in esquema["required"], "los archivos de antes del 2026-10-25 no lo traen"
+
+
+def test_asignar_un_vehiculo_a_una_persona_en_un_proyecto(navegador, sitio):
+    """Un toque en la ventanita de la casilla: bajo cada persona asignada, la Quempineta y la RAM. Se ve en las tres
+    vistas y en el resumen de arriba, queda en la carpeta, otro toque lo quita y quitar a la persona también se lo quita."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    semana, lunes = _semana_de(date.today())
+    lun = lunes.isoformat()
+    pop = pagina.locator("#plPop")
+    aviso = lambda: pagina.locator("#aviso").inner_text()
+    celda = _celda_proyecto(pagina, "req:908", 0)
+    # Sin vehículos asignados, el resumen los cuenta libres
+    kpi = pagina.locator("#plResumen .pl-kpi-veh")
+    assert (kpi.locator(".rc-kpi-n").inner_text(), kpi.locator(".rc-kpi-et").inner_text()) == ("0", "Vehículos en uso")
+    assert kpi.locator(".rc-kpi-sub").inner_text() == "Quempineta libre · RAM libre"
+    celda.click()
+    assert pop.locator(".pl-op-veh").count() == 0, "solo bajo quienes van"
+    pop.locator('input[data-op="c|ES"]').check()
+    pop.locator('input[data-op="c|LC"]').check()
+    assert pop.locator("li:has(input[data-op='c|ES']) .pl-veh-op").all_inner_texts() == ["Quempineta", "RAM"]
+    assert pop.locator('[data-op="v|ES|ram"]').get_attribute("aria-pressed") == "false"
+    pop.locator('[data-op="v|ES|ram"]').click()
+    assert aviso().startswith(f"ES va en la RAM a En obra el lunes {lunes.day}.") and "Ojo" not in aviso()
+    assert pop.locator('[data-op="v|ES|ram"]').get_attribute("aria-pressed") == "true"
+    assert pagina.evaluate("document.activeElement.dataset.op") == "v|ES|ram", "el foco sigue en el botón al repintarse"
+    assert _vehs(celda) == [["RAM", "ES"]]
+    # Los dos en la RAM: una sola etiqueta, sin iniciales
+    pop.locator('[data-op="v|LC|ram"]').click()
+    assert _vehs(celda) == [["RAM", ""]]
+    # Queda en el archivo de este navegador y cumple el esquema del catálogo
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, archivo, lambda s: len(s["datos"].get("vehiculos", [])) == 2)
+    assert sorted((x["dia"], x["persona"], x["proyecto"], x["vehiculo"], x["por"]) for x in sobre["datos"]["vehiculos"]) == [
+        (lun, "ES", "req:908", "ram", "LC"), (lun, "LC", "req:908", "ram", "LC")]
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    assert esquemas.validar_publicacion("planificacion-semana", sobre) == []
+    # Otro toque lo quita; elegir el otro lo cambia
+    pop.locator('[data-op="v|ES|ram"]').click()
+    assert aviso().startswith(f"ES ya no lleva la RAM a En obra el lunes {lunes.day}.")
+    assert _vehs(celda) == [["RAM", "LC"]]
+    pop.locator('[data-op="v|ES|quempineta"]').click()
+    assert _vehs(celda) == [["Quempineta", "ES"], ["RAM", "LC"]]
+    pagina.keyboard.press("Escape")
+    # Por personal: el vehículo va junto al proyecto de ese día
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    assert _vehs(_celda_personal(pagina, "ES", 0)) == [["Quempineta", ""]]
+    assert pagina.evaluate(JS_PERSONAL)["ES"][0] == ["En obra"]
+    assert "en la Quempineta" in _celda_personal(pagina, "ES", 0).locator(".pl-chip").get_attribute("title")
+    # El resumen: cuántos vehículos se usan y cuántos días cada uno; lleva a «Vehículos en la semana», en General
+    assert kpi.locator(".rc-kpi-n").inner_text() == "2" and kpi.locator(".rc-kpi-sub").inner_text() == "Quempineta 1 día · RAM 1 día"
+    kpi.click()
+    assert pagina.locator('.pl-vista[data-vista="general"]').get_attribute("aria-pressed") == "true"
+    assert pagina.locator("#plVehiculos h2").inner_text() == "Vehículos en la semana"
+    assert pagina.locator("#plVehiculos").evaluate("e => e.classList.contains('resaltada')")
+    panel = pagina.evaluate(JS_PANEL_VEHICULOS)
+    assert panel[0] == [lun, {"quempineta": "En obra ES", "ram": "En obra LC"}]
+    assert all(dia[1] == {"quempineta": "Libre", "ram": "Libre"} for dia in panel[1:]) and len(panel) == 5
+    assert pagina.locator("#plVehiculos tfoot td").all_inner_texts() == ["1 de 5 días", "1 de 5 días"]
+    assert _vehs(pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|req:908|{lun}"]')) == [["Quempineta", "ES"], ["RAM", "LC"]]
+    # Un uso del panel abre ese proyecto ese día; quitar a LC le quita también la RAM, y deshacer devuelve las dos cosas
+    pagina.locator("#plVehiculos .pl-veh-uso", has_text="LC").click()
+    assert pagina.locator("#plPopTit").inner_text() == "En obra" and pop.locator('[data-op="v|LC|ram"]').get_attribute("aria-pressed") == "true"
+    pop.locator('input[data-op="c|LC"]').uncheck()
+    assert pagina.evaluate(JS_PANEL_VEHICULOS)[0][1]["ram"] == "Libre"
+    _esperar_archivo(pagina, archivo, lambda s: any(x["persona"] == "LC" and x["vehiculo"] == "" for x in s["datos"]["vehiculos"]))
+    pagina.keyboard.press("Escape")
+    pagina.keyboard.press("Control+z")
+    assert pagina.evaluate(JS_PANEL_VEHICULOS)[0][1]["ram"] == "En obra LC"
+    # Volver a asignar a alguien empieza sin vehículo
+    pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|req:908|{lun}"]').click()
+    pop.locator('input[data-op="c|LC"]').uncheck()
+    pop.locator('input[data-op="c|LC"]').check()
+    assert pop.locator('[data-op="v|LC|ram"]').get_attribute("aria-pressed") == "false"
+    assert not errores
+    pagina.context.close()
+
+
+def test_vehiculo_varios_dias_cambiar_y_copiar_la_semana(navegador, sitio):
+    """Con varios días elegidos, el vehículo vale para todos los días en que la persona va (a medias si lo lleva solo
+    algunos). Al pasarla a otro proyecto, o poner a otra en su lugar, el vehículo se va con ella; copiar la semana
+    anterior copia también los vehículos."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    _, lunes = _semana_de(date.today())
+    pop = pagina.locator("#plPop")
+    aviso = lambda: pagina.locator("#aviso").inner_text()
+    _celda_personal(pagina, "MP", 0).click()
+    pop.locator('[data-op="d|todos"]').click()
+    pop.locator('input[data-op="c|req:907"]').check()
+    pop.locator('[data-op="v|req:907|quempineta"]').click()
+    assert aviso().startswith("MP va en la Quempineta a Adjudicada sin ficha de lunes a viernes.")
+    assert [_vehs(_celda_personal(pagina, "MP", i)) for i in range(5)] == [[["Quempineta", ""]]] * 5
+    # Solo el lunes, la RAM: con toda la semana, los dos quedan a medias; tocar uno lo pone todos los días
+    pop.locator('[data-op="d|solo"]').click()
+    pop.locator('[data-op="v|req:907|ram"]').click()
+    pop.locator('[data-op="d|todos"]').click()
+    estados = lambda: [pop.locator(f'[data-op="v|req:907|{v}"]').get_attribute("aria-pressed") for v in ("quempineta", "ram")]
+    assert estados() == ["mixed", "mixed"]
+    pop.locator('[data-op="v|req:907|quempineta"]').click()
+    assert estados() == ["true", "false"] and aviso().startswith("MP va en la Quempineta a Adjudicada sin ficha el lunes")
+    # «Cambiar»: MP pasa a En obra los cinco días y la Quempineta se va con ella
+    pop.locator('[data-op="k|req:907"]').click()
+    pop.locator('[data-op="x|req:908"]').click()
+    assert pagina.evaluate(JS_PERSONAL)["MP"] == [["En obra"]] * 5
+    assert [_vehs(_celda_personal(pagina, "MP", i)) for i in range(5)] == [[["Quempineta", ""]]] * 5
+    pagina.keyboard.press("Escape")
+    # Desde el proyecto, SV va en vez de MP el lunes: también se lleva la Quempineta
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    _celda_proyecto(pagina, "req:908", 0).click()
+    pop.locator('[data-op="k|MP"]').click()
+    pop.locator('[data-op="x|SV"]').click()
+    assert pop.locator('[data-op="v|SV|quempineta"]').get_attribute("aria-pressed") == "true"
+    assert _vehs(_celda_proyecto(pagina, "req:908", 0)) == [["Quempineta", ""]]
+    # Un solo Ctrl Z deshace el reemplazo entero, con el vehículo
+    pagina.keyboard.press("Escape")
+    pagina.keyboard.press("Control+z")
+    assert _celda_proyecto(pagina, "req:908", 0).locator(".pl-per").all_inner_texts() == ["MP"]
+    assert _vehs(_celda_proyecto(pagina, "req:908", 0)) == [["Quempineta", ""]]
+    # La semana que viene: copiar esta trae las asignaciones con sus vehículos
+    pagina.locator("#plDespues").click()
+    pagina.locator("#plProyecto .pl-celda").first.wait_for()
+    pagina.locator("#plCopiar").click()
+    pagina.wait_for_function("document.getElementById('aviso').textContent.startsWith('Se copiaron')")
+    assert aviso().startswith(f"Se copiaron 5 asignaciones de la semana {lunes.isocalendar()[1]} (con sus vehículos).")
+    assert [_vehs(_celda_proyecto(pagina, "req:908", i)) for i in range(5)] == [[["Quempineta", ""]]] * 5
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_vehiculo_en_dos_lugares_a_la_vez_se_avisa_y_se_comparte(navegador, sitio):
+    """Personas que no comparten proyecto ese día en el mismo vehículo: está en dos lugares a la vez. La ventanita lo
+    dice antes de elegirlo, el aviso al elegirlo, y el resumen y «Vehículos en la semana» lo marcan en naranjo (no se
+    impide). Compartir e imprimir dicen en qué vehículo va cada uno."""
+    from datetime import timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    semana, lunes = _semana_con_vehiculos(pagina)
+    lun, mar = lunes.isoformat(), (lunes + timedelta(days=1)).isoformat()
+    pop = pagina.locator("#plPop")
+    kpi = pagina.locator("#plResumen .pl-kpi-veh")
+    # Lo de otro computador: el martes la RAM está en En obra (ES) y en Adjudicada sin ficha (NB)
+    assert kpi.get_attribute("data-nivel") == "warn"
+    assert kpi.locator(".rc-kpi-sub").inner_text() == f"La RAM en 2 lugares el martes {(lunes + timedelta(days=1)).day}"
+    # Esas casillas llevan la etiqueta en naranjo, y su título dice dónde más está
+    choque = _celda_proyecto(pagina, "req:907", 1).locator(".pl-veh")
+    assert "choque" in choque.get_attribute("class")
+    assert choque.get_attribute("title").startswith(f"La RAM va a 2 lugares a la vez el martes {(lunes + timedelta(days=1)).day}: Adjudicada sin ficha (NB) y En obra (ES)")
+    assert _celda_proyecto(pagina, "req:908", 0).locator(".pl-veh.choque").count() == 0
+    # En la ventanita, la RAM ya va a otra parte ese día: un punto naranjo y su título dicen dónde
+    _celda_proyecto(pagina, "tag:SOLO", 3).click()
+    pop.locator('input[data-op="c|CM"]').check()
+    assert "ocupado" not in pop.locator('[data-op="v|CM|ram"]').get_attribute("class"), "el jueves la RAM está libre"
+    pagina.keyboard.press("Escape")
+    _celda_proyecto(pagina, "tag:SOLO", 0).click()
+    ram = pop.locator('[data-op="v|MP|ram"]')
+    assert "ocupado" in ram.get_attribute("class") and "la RAM también va a En obra (ES y LC)" in ram.get_attribute("title")
+    ram.click()
+    assert f"MP va en la RAM a Obra sin número el lunes {lunes.day}. Ojo: el lunes {lunes.day} la RAM también va a En obra (ES y LC)." in pagina.locator("#aviso").inner_text()
+    assert kpi.locator(".rc-kpi-sub").inner_text() == f"La RAM en 2 lugares el lunes {lunes.day} y 1 más"
+    pagina.keyboard.press("Escape")
+    kpi.click()
+    lunes_ram = pagina.locator(f'#plVehiculos tr[data-iso="{lun}"] td[data-veh="ram"]')
+    assert lunes_ram.get_attribute("data-nivel") == "warn" and "En 2 lugares a la vez" in lunes_ram.inner_text()
+    assert pagina.evaluate(JS_PANEL_VEHICULOS)[0][1]["ram"] == "En obra ES LC / Obra sin número MP"
+    # Si ES también va a Obra sin número en la RAM, viajan juntos: ya no está en dos lugares el lunes
+    pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|tag:SOLO|{lun}"]').click()
+    pop.locator('input[data-op="c|ES"]').check()
+    pop.locator('[data-op="v|ES|ram"]').click()
+    assert "Ojo" not in pagina.locator("#aviso").inner_text()
+    pagina.keyboard.press("Escape")
+    assert lunes_ram.get_attribute("data-nivel") is None
+    assert pagina.locator(f'#plVehiculos tr[data-iso="{mar}"] td[data-veh="ram"]').get_attribute("data-nivel") == "warn"
+    # Compartir: por persona, en qué vehículo va a cada proyecto; por día, quiénes van y en qué
+    pagina.locator("#plCompartir").click()
+    texto = pagina.locator("#plTextoArea").input_value()
+    linea_es = next(x for x in texto.split("\n*ES*\n")[1].split("\n") if x.startswith(f"• Lun {lunes.day}:"))
+    assert "En obra, con LC, en la RAM" in linea_es and "Obra sin número" in linea_es and linea_es.endswith("en la RAM")
+    pagina.locator('#plTextoModo [data-modo="dia"]').click()
+    texto = pagina.locator("#plTextoArea").input_value()
+    assert "• En obra: ES, LC (RAM)" in texto and "• Obra sin número: ES, MP (RAM)" in texto
+    assert f"• Adjudicada sin ficha: NB (RAM)" in texto
+    pagina.keyboard.press("Escape")
+    # Imprimir: el vehículo en la tabla y en la hoja de cada persona (su columna), y abajo dónde va cada uno
+    pagina.evaluate("""() => { window.print = () => {
+        window.__tabla = [...document.querySelectorAll('#plDoc .pl-doc-t tbody tr')].map((tr) => [...tr.cells].map((c) => c.innerText.trim()));
+        window.__notas = [...document.querySelectorAll('#plDoc .pl-doc-notas li')].map((li) => li.innerText);
+        window.__hoja = [...document.querySelectorAll('#plDoc .pl-doc-hoja')].map((s) => [s.querySelector('h1').textContent,
+            [...s.querySelectorAll('thead th')].map((th) => th.textContent), [...s.querySelectorAll('td.veh')].map((td) => td.textContent)]);
+        window.dispatchEvent(new Event('afterprint'));
+    }; }""")
+    pagina.locator("#plImprimir").click()
+    pagina.locator("#plExpImprimir").click()
+    tabla = pagina.evaluate("window.__tabla")
+    assert "Vehículo: RAM" in tabla[1][1], tabla[1]           # ES, el lunes
+    assert "Vehículo: RAM" in tabla[4][1] and "Vehículo: Quempineta" in tabla[4][2], tabla[4]    # MP: se pasó a la RAM el lunes
+    notas = pagina.evaluate("window.__notas")
+    assert any(n.startswith("Quempineta: ") and "Obra sin número (MP)" in n for n in notas), notas
+    ram = next(n for n in notas if n.startswith("RAM: "))
+    assert f"lun {lunes.day}, En obra (ES y LC) y Obra sin número (ES y MP);" in ram, ram
+    assert ram.endswith(f"mar {(lunes + timedelta(days=1)).day}, Adjudicada sin ficha (NB) y En obra (ES) — en 2 lugares a la vez."), ram
+    hojas = {h[0]: h for h in pagina.evaluate("window.__hoja")}
+    assert hojas["ES"][1] == ["Día", "Proyecto", "Lugar", "Con quién va", "Vehículo"] and hojas["ES"][2].count("RAM") == 3
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_cambio_mientras_se_guarda_tambien_llega_a_la_carpeta(navegador, sitio):
+    """Revisión del 2026-10-25: un cambio hecho mientras se escribía el anterior quedaba fuera del archivo hasta el
+    próximo cambio (y si se cerraba la página, se perdía), justo lo que pasa al marcar a alguien y tocar su vehículo
+    enseguida. Ahora vuelve a la lista y se guarda en la vuelta siguiente."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    semana, _ = _semana_de(date.today())
+    # Cada escritura tarda un segundo: el segundo cambio llega con la primera a medio escribir
+    pagina.evaluate("""() => { const original = FileSystemFileHandle.prototype.createWritable;
+        FileSystemFileHandle.prototype.createWritable = async function (...a) { await new Promise((r) => setTimeout(r, 1000)); return original.apply(this, a); }; }""")
+    pop = pagina.locator("#plPop")
+    _celda_proyecto(pagina, "req:908", 0).click()
+    pop.locator('input[data-op="c|ES"]').check()
+    pagina.wait_for_timeout(650)          # la primera escritura empezó a los 450 ms y espera su segundo
+    pop.locator('[data-op="v|ES|ram"]').click()
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, archivo, lambda s: [x["vehiculo"] for x in s["datos"].get("vehiculos", [])] == ["ram"])
+    assert [(x["persona"], x["activa"]) for x in sobre["datos"]["asignaciones"]] == [("ES", True)]
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'Guardado en la carpeta del equipo'")
+    assert pagina.evaluate("localStorage.getItem('quempin_portal_plan_pendiente')") is None, "nada quedó esperando"
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho", [390, 1024, 1366])
+def test_los_vehiculos_caben_sin_desbordes(navegador, sitio, ancho):
+    """Las etiquetas de vehículo en las tres vistas, «Vehículos en la semana», la cifra del resumen y los botones de la
+    ventanita caben sin salirse de lado ni quedar con letra chica, también en el teléfono."""
+    movil = ancho < 760
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general", ancho=ancho, alto=844, movil=movil)
+    _, lunes = _semana_con_vehiculos(pagina)
+    lun = lunes.isoformat()
+    for vista in ("general", "personal", "proyecto"):
+        pagina.locator(f'.pl-vista[data-vista="{vista}"]').click()
+        pagina.locator(f"#pl{vista.capitalize()} .pl-veh >> visible=true").first.wait_for()     # en el teléfono, el lunes
+        d = pagina.evaluate(JS_DESBORDES)
+        assert d["doc"] <= ancho and not d["fuera"], (vista, d)
+        fuera = pagina.evaluate("""(ancho) => [...document.querySelectorAll('#vistaPlan *')].filter((e) => e.getClientRects().length
+            && e.getBoundingClientRect().right > ancho + 0.5).map((e) => e.className || e.tagName)""", ancho)
+        assert not fuera, (vista, fuera)
+        chicos = pagina.evaluate("""() => [...document.querySelectorAll('#vistaPlan *')]
+            .filter((e) => e.getClientRects().length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+            .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName)""")
+        assert not chicos, (vista, chicos)
+    # La cifra de los vehículos se lee entera (en el teléfono ocupa su fila)
+    kpi = pagina.locator("#plResumen .pl-kpi-veh .rc-kpi-sub")
+    assert kpi.is_visible() and kpi.evaluate("e => e.scrollWidth <= e.clientWidth + 1"), kpi.inner_text()
+    # La ventanita con los vehículos bajo cada persona
+    if movil:
+        pagina.locator('#plDiasMovil .pl-dia-tab').first.click()
+    _celda_proyecto(pagina, "req:908", 0).click()
+    caja = pagina.locator("#plPop").bounding_box()
+    assert caja["x"] >= 0 and caja["x"] + caja["width"] <= ancho and caja["y"] >= 0 and caja["y"] + caja["height"] <= 844, caja
+    dentro = pagina.evaluate("""() => { const r = document.getElementById('plPop').getBoundingClientRect();
+        const vis = [...document.querySelectorAll('#plPop *')].filter((e) => e.getClientRects().length);
+        return { fuera: vis.filter((e) => e.getBoundingClientRect().right > r.right + 0.5).map((e) => e.className || e.tagName),
+                 chicos: vis.filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+                   .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName),
+                 botones: vis.filter((e) => e.matches('.pl-veh-op')).map((e) => e.getBoundingClientRect().height) }; }""")
+    assert not dentro["fuera"] and not dentro["chicos"], dentro
+    assert len(dentro["botones"]) == 4 and min(dentro["botones"]) >= (36 if movil else 30), dentro["botones"]
+    pagina.keyboard.press("Escape")
+    # «Vehículos en la semana» entero a la vista: sus columnas no se salen del panel
+    pagina.locator('.pl-vista[data-vista="general"]').click()
+    panel = pagina.locator("#plVehiculos")
+    panel.scroll_into_view_if_needed()
+    p = panel.bounding_box()
+    assert all(b["x"] + b["width"] <= p["x"] + p["width"] + 0.5 for b in
+               pagina.locator("#plVehiculos .pl-veh-uso, #plVehiculos th").evaluate_all("es => es.map((e) => e.getBoundingClientRect().toJSON())")), p
+    assert pagina.locator(f'#plVehiculos tr[data-iso="{lun}"] .pl-veh-uso').count() == 2      # la RAM a En obra, la Quempineta a Obra sin número
+    assert not errores
+    pagina.context.close()
+
+
 # ---- Subir documentos al Centro de Costos (2026-10-23) ----------------------------------------------------------
 
 JS_LEER_BUZON = """async () => {

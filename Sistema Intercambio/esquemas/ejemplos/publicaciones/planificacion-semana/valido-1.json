@@ -60,6 +60,32 @@
         "por": "NB"
       }
     ],
+    "vehiculos": [
+      {
+        "dia": "2026-10-19",
+        "persona": "ES",
+        "proyecto": "req:296",
+        "vehiculo": "ram",
+        "t": "2026-10-20T19:04:14.300Z",
+        "por": "NB"
+      },
+      {
+        "dia": "2026-10-19",
+        "persona": "LC",
+        "proyecto": "tag:DEMO",
+        "vehiculo": "quempineta",
+        "t": "2026-10-20T19:04:15.000Z",
+        "por": "NB"
+      },
+      {
+        "dia": "2026-10-20",
+        "persona": "LC",
+        "proyecto": "tag:DEMO",
+        "vehiculo": "",
+        "t": "2026-10-20T19:04:30.500Z",
+        "por": "NB"
+      }
+    ],
     "proyectos": {
       "req:296": {
         "titulo": "Obra de ejemplo",

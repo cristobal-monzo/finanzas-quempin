@@ -1036,7 +1036,7 @@
   }
   .pl-chip {
     --pc: var(--baseline);
-    min-width: 0; min-height: 24px; display: flex; align-items: center; padding: 2px 8px 2px 7px;
+    min-width: 0; min-height: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; padding: 2px 8px 2px 7px;
     border-radius: 6px; border-left: 3px solid var(--pc); background: color-mix(in srgb, var(--pc) 13%, var(--surface-card));
     font-size: 12.5px; font-weight: 700; line-height: 1.3;
   }
@@ -1044,6 +1044,20 @@
   .pl-chip .t { min-width: 0; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .pl-chip.otra { border-left-style: dotted; background: var(--page-plane); }
   .pl-chip.inactivo { background: var(--page-plane); color: var(--text-secondary); }
+  /* Los vehículos (2026-10-25): una etiqueta neutra con su ícono y su nombre (los colores son de los proyectos) y, si no
+     lo llevan todos los de la casilla, las iniciales de quienes lo llevan */
+  .pl-veh {
+    flex: 0 0 auto; max-width: 100%; min-height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 7px 0 5px;
+    border-radius: 6px; border: 1px solid var(--baseline); background: var(--surface-card); color: var(--text-primary);
+    font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap;
+  }
+  .pl-veh svg { flex: 0 0 auto; color: var(--text-secondary); }
+  .pl-veh .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .pl-veh .q { font-weight: 900; letter-spacing: 0.04em; color: var(--text-secondary); }
+  .pl-veh.choque { border-color: var(--estado-warn); background: color-mix(in srgb, var(--estado-warn) 16%, var(--surface-card)); }
+  .pl-veh.choque svg { color: var(--brand-orange-ink); }
+  .pl-chip .pl-veh { min-height: 20px; }
+  .pl-vehs { display: flex; flex-wrap: wrap; gap: 4px; }
   /* Las personas: sus iniciales; las del usuario elegido, en naranjo */
   .pl-pers { display: flex; flex-wrap: wrap; gap: 4px; }
   .pl-per {
@@ -1140,6 +1154,37 @@
   .pl-cuadro.n4 { border-color: var(--estado-bad); background: var(--estado-bad); }
   .pl-cob .pl-pers { gap: 3px; }
   .pl-cob .pl-per { min-width: 28px; height: 22px; padding: 0 5px; }
+  /* «Vehículos en la semana»: un día por fila y un vehículo por columna; cada uso, el proyecto (abre su ventanita) y
+     quiénes lo llevan; en naranjo, un vehículo en dos lugares a la vez. Con tres paneles, el de proyectos va a la
+     izquierda y los otros dos uno sobre otro a la derecha. */
+  .pl-paneles:has(> .pl-panel-veh) > .pl-panel:first-child { grid-row: span 2; }
+  .pl-panel.resaltada { animation: pl-resalta 1.8s ease-out; }
+  .pl-vehs-t .dia { width: 66px; }
+  .pl-vehs-t th, .pl-vehs-t td { vertical-align: top; }
+  .pl-vehs-t thead th { padding-left: 6px; }
+  .pl-vehs-t thead th.dia { padding-left: 0; }
+  .pl-veh-th { display: inline-flex; align-items: center; gap: 6px; color: var(--text-primary); font-size: 13px; font-weight: 900; }
+  .pl-veh-th svg { flex: 0 0 auto; color: var(--text-secondary); }
+  .pl-vehs-t tbody th { padding-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--texto-suave); white-space: nowrap; }
+  .pl-vehs-t tbody th b { margin-left: 4px; font-size: 14px; font-weight: 900; color: var(--text-primary); }
+  .pl-vehs-t tbody tr.hoy th { color: var(--text-primary); box-shadow: inset 3px 0 0 var(--brand-orange); padding-left: 7px; }
+  .pl-vehs-t td { padding: 4px 10px 4px 2px; }
+  .pl-veh-uso {
+    --pc: var(--baseline);
+    width: 100%; min-width: 0; min-height: 30px; display: flex; align-items: center; gap: 7px; padding: 2px 4px; border: 0; border-radius: 6px;
+    background: transparent; color: var(--text-primary); font-size: 13px; font-weight: 700; text-align: left; cursor: pointer;
+  }
+  .pl-veh-uso:hover { background: var(--page-plane); }
+  .pl-veh-uso:hover .t { color: var(--brand-orange-ink); text-decoration: underline; }
+  .pl-veh-uso .t { flex: 1 1 auto; min-width: 0; overflow: hidden; overflow-wrap: anywhere; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .pl-veh-uso .quien { flex: 0 0 auto; font-size: 12px; font-weight: 900; letter-spacing: 0.04em; color: var(--text-secondary); }     /* no .q: es la columna «Quiénes» de .pl-cob */
+  .pl-veh-libre { display: block; padding: 6px 4px; font-size: 12.5px; color: var(--texto-suave); }
+  .pl-vehs-t td[data-nivel="warn"] { background: color-mix(in srgb, var(--estado-warn) 9%, transparent); box-shadow: inset 3px 0 0 var(--estado-warn); }
+  .pl-veh-choque { display: block; padding: 0 4px 3px 8px; font-size: 12px; font-weight: 700; color: var(--brand-orange-ink); }
+  .pl-vehs-t tfoot th, .pl-vehs-t tfoot td { padding-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+  .pl-vehs-t tfoot td { padding-left: 6px; }
+  /* El resumen con la cifra de los vehículos: cinco en una fila; más angosto, tres y la de los vehículos al doble */
+  .pl-resumen.con-veh { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   /* El día a la vista en el teléfono (las tablas muestran uno a la vez) */
   .pl-dias-movil { display: none; }
   .pl-dia-tab {
@@ -1228,6 +1273,20 @@
     border: 1px solid var(--tinte-borde); background: var(--surface-card); color: var(--brand-orange-ink); font-size: 12px; font-weight: 700; white-space: nowrap;
   }
   .pl-op-btn:hover { border-color: var(--brand-orange); }
+  /* Con qué vehículo va, bajo la persona o el proyecto marcado: se elige uno como en un selector (otro toque lo quita) */
+  .pl-ops > li.con-debajo { flex-wrap: wrap; row-gap: 0; }
+  .pl-op-veh { flex: 1 1 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 8px 8px 36px; }
+  .pl-op-veh .et { display: inline-flex; align-items: center; gap: 5px; margin-right: 2px; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
+  .pl-veh-op {
+    min-height: 30px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--baseline); background: var(--surface-card); color: var(--text-primary); font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  }
+  .pl-veh-op:hover { border-color: var(--brand-orange); }
+  .pl-veh-op[aria-pressed="true"] { border-color: var(--brand-black); background: var(--brand-black); color: #ffffff; }
+  :root[data-theme="dark"] .pl-veh-op[aria-pressed="true"] { border-color: #6b6862; background: #3a3835; }
+  @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .pl-veh-op[aria-pressed="true"] { border-color: #6b6862; background: #3a3835; } }
+  .pl-veh-op[aria-pressed="mixed"] { border-style: dashed; border-color: var(--brand-orange); }
+  .pl-veh-op.ocupado::after { content: ""; flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--estado-warn); }
   .pl-pop-volver { align-self: flex-start; min-height: 30px; padding: 0 10px; font-size: 13px; }
   .pl-pop-sec { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
   .pl-pop-sec h4, .pl-grupo h4 { margin: 0; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
@@ -1290,6 +1349,7 @@
   .pl-doc-p.otra { border-left-style: dotted; }
   .pl-doc-p b { display: block; font-weight: 800; line-height: 1.25; }
   .pl-doc-p span { display: block; font-size: 10.5px; color: #52514e; }
+  .pl-doc-p .pl-doc-veh, .pl-doc-dias td.veh { font-weight: 800; color: #171513; }
   .pl-doc-aus { margin: 0 0 5px; font-style: italic; font-weight: 700; }
   .pl-doc-libre { margin: 0; color: #8a8984; }
   .pl-doc-exceso { margin: 5px 0 0; font-weight: 700; color: #d93025; }
@@ -1307,10 +1367,13 @@
     .pl-acciones .cx-enlace span:not(.sr) { display: none; }
     .pl-acciones { margin-left: 0; }
     .pl-paneles { grid-template-columns: minmax(0, 1fr); }
+    .pl-paneles:has(> .pl-panel-veh) > .pl-panel:first-child { grid-row: auto; }
+    .pl-resumen.con-veh { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .pl-resumen.con-veh .pl-kpi-veh { grid-column: span 2; }
   }
   @container plan (max-width: 1100px) { .pl-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @container plan (max-width: 900px) { .plan .rc-cab p { display: none; } .pl-th-tot { width: 86px; } .pl-mini { display: none; } }
-  @container plan (max-width: 760px) { .pl-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @container plan (max-width: 760px) { .pl-resumen, .pl-resumen.con-veh { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   /* El teléfono: un día a la vez en las tablas, que eligen los botones de días */
   @container plan (max-width: 720px) {
     .pl-dias-movil:not([hidden]) { display: flex; gap: 4px; }
@@ -1331,6 +1394,7 @@
     .pl-resumen .rc-kpi { min-height: 50px; padding: 6px 12px; }
     .pl-resumen .rc-kpi-n { font-size: 22px; }
     .pl-resumen .rc-kpi-sub { display: none; }
+    .pl-resumen .pl-kpi-veh .rc-kpi-sub { display: block; }      /* ocupa la fila entera: cabe dónde va cada uno */
     .pl-vista svg { display: none; }
     .pl-cob .q { display: none; }
   }
@@ -1446,7 +1510,7 @@
     .pl-buscar, .pl-otra input { font-size: 16px; }
     .pl-texto { font-size: 16px; }
     .pl-dia-op { min-height: 44px; }
-    .pl-dias-r, .pl-op-btn, .pl-pop-volver, .pl-aus-op { min-height: 36px; }
+    .pl-dias-r, .pl-op-btn, .pl-pop-volver, .pl-aus-op, .pl-veh-op { min-height: 36px; }
   }
   /* Teléfonos angostos (360 px): con Usuario y Proyecto en la cabecera, todo un poco más junto */
   @media (max-width: 380px) {
@@ -1632,7 +1696,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloPlan">Planificación semanal</h1>
-                <p>Quién va a qué proyecto activo cada día: hasta tres proyectos por persona en un día.</p>
+                <p>Quién va a qué proyecto activo cada día, y en qué vehículo: hasta tres proyectos por persona en un día.</p>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="plPunto"></span>
@@ -1791,7 +1855,7 @@
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
       <li><strong>Recorrido de los proyectos</strong> (arriba en el Inicio y en el menú): cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre, con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Las cifras de arriba filtran el tablero y «Solo mis proyectos» deja los tuyos. Lee la carpeta del equipo, así que necesita la biblioteca conectada en este navegador.</li>
-      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar»); al tocarlo se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
+      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar»); al tocarlo se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
       <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
@@ -1833,7 +1897,7 @@
   <form method="dialog" class="dlg">
     <h2 id="dlgPlTextoTit">Compartir la semana</h2>
     <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <p>La semana a la vista, lista para pegar en WhatsApp o en un correo: por persona, cada uno ve sus días, proyectos y con quién va.</p>
+    <p>La semana a la vista, lista para pegar en WhatsApp o en un correo: por persona, cada uno ve sus días, proyectos, con quién va y en qué vehículo.</p>
     <div class="pl-vistas pl-texto-modo" id="plTextoModo" role="group" aria-label="Cómo ordenar el texto">
       <button class="pl-vista" type="button" data-modo="persona">Por persona</button>
       <button class="pl-vista" type="button" data-modo="dia">Por día</button>
@@ -1852,8 +1916,8 @@
     <p id="plExpSemana"></p>
     <fieldset class="pl-exp-ops">
       <legend>Qué incluir</legend>
-      <label class="pl-exp-op"><input type="checkbox" id="plExpTabla" checked><span><b>Tabla de la semana</b><span>Cada persona en una fila y, cada día, el nombre completo de sus proyectos con el lugar. En una hoja horizontal.</span></span></label>
-      <label class="pl-exp-op"><input type="checkbox" id="plExpHojas" checked><span><b>Una hoja para cada persona</b><span>Sus días, proyectos, lugar y con quién va, para entregársela. Una hoja vertical por persona.</span></span></label>
+      <label class="pl-exp-op"><input type="checkbox" id="plExpTabla" checked><span><b>Tabla de la semana</b><span>Cada persona en una fila y, cada día, el nombre completo de sus proyectos con el lugar y el vehículo; abajo, dónde va cada vehículo. En una hoja horizontal.</span></span></label>
+      <label class="pl-exp-op"><input type="checkbox" id="plExpHojas" checked><span><b>Una hoja para cada persona</b><span>Sus días, proyectos, lugar, con quién va y en qué vehículo, para entregársela. Una hoja vertical por persona.</span></span></label>
     </fieldset>
     <fieldset class="pl-exp-quienes" id="plExpQuienes">
       <legend>Hojas de</legend>
@@ -1885,11 +1949,15 @@
      usuarios: las iniciales del equipo para el selector de usuario (2026-10-16); las mismas del Formulador
                (js/usuario.js) y de Sistema QUEMPIN (app/config.py, USUARIOS): si el equipo cambia, en los tres.
      personal: a quiénes se asigna en la Planificación semanal (pedido del 2026-10-20). Incluye a todos los
-               usuarios y puede tener más: EV se planifica, pero no elige usuario en las herramientas. -->
+               usuarios y puede tener más: EV se planifica, pero no elige usuario en las herramientas.
+     vehiculos: los de la empresa, que la Planificación semanal asigna a una persona en un proyecto un día (pedido
+                del 2026-10-25). El id va en el archivo de la semana: si la lista cambia, también el enum de
+                «vehiculo» del esquema planificacion-semana (test_portal.py los compara); articulo: «va en la RAM». -->
 <script type="application/json" id="portal-registro">
 {
   "usuarios": ["NB", "ES", "LC", "CM", "MP", "SV"],
   "personal": ["NB", "ES", "LC", "CM", "MP", "SV", "EV"],
+  "vehiculos": [{"id": "quempineta", "nombre": "Quempineta", "articulo": "la"}, {"id": "ram", "nombre": "RAM", "articulo": "la"}],
   "grupos": [
     {"id": "formular", "nombre": "Formulación de proyectos", "corto": "Formulación", "icono": "portapapeles"},
     {"id": "finanzas", "nombre": "Control y finanzas", "corto": "Finanzas", "icono": "barras"},
@@ -2220,7 +2288,9 @@
     copiar: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
     compartir: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>',
     subir: '<path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/>',
-    imprimir: '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>'
+    imprimir: '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+    // Una camioneta de lado: los vehículos de la empresa
+    vehiculo: '<path d="M14 17V6.5a1 1 0 0 0-1-1H3.5a1 1 0 0 0-1 1V16a1 1 0 0 0 1 1H5"/><path d="M14 9.5h3.6l3.4 4.2V16a1 1 0 0 1-1 1h-.5"/><path d="M9 17h6.5"/><circle cx="7" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/>'
   };
   function icono(nombre, tam) {
     const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -4410,8 +4480,13 @@
   // cuentan lo mismo.
   // Lo planificado vive en la carpeta de intercambio, en «publicado/planificacion/<AAAA-Www>/<dispositivo>.json».
   // Cada navegador escribe solo su archivo, así OneDrive nunca tiene que juntar dos versiones del mismo, y la semana
-  // es la unión de todos: en cada casilla (una persona en un proyecto un día, una ausencia, una pausa) manda el cambio
-  // más reciente, también si fue quitar. Lo que no alcanzó a guardarse espera en este navegador y se reintenta.
+  // es la unión de todos: en cada casilla (una persona en un proyecto un día, una ausencia, una pausa, un vehículo)
+  // manda el cambio más reciente, también si fue quitar. Lo que no alcanzó a guardarse espera en este navegador y se
+  // reintenta.
+  // Vehículos (2026-10-25): a una persona en un proyecto un día se le asigna uno de los de la empresa (Quempineta o
+  // RAM, del registro), con un toque en la ventanita de la casilla; quienes van juntos llevan el mismo. Se ve en cada
+  // casilla, en el resumen de arriba, en «Vehículos en la semana» de la vista General, al compartir y al imprimir. Un
+  // vehículo con personas que no comparten proyecto ese día está en dos lugares a la vez: se avisa, sin impedirlo.
   const PL_MAX = 3;                      // proyectos de una persona en un día
   const PL_RELEER_SEG = 30;              // con la vista abierta, cada cuánto se miran los cambios del equipo
   const PL_DIAS = [
@@ -4434,6 +4509,11 @@
   const LS_PL_DISPOSITIVO = 'quempin_portal_dispositivo';      // el nombre del archivo de este navegador
   const LS_PL_PENDIENTE = 'quempin_portal_plan_pendiente';     // lo que aún no llega a la carpeta
   const PERSONAL = Array.isArray(REG.personal) && REG.personal.length ? REG.personal : USUARIOS;
+  const PL_VEHICULOS = (Array.isArray(REG.vehiculos) ? REG.vehiculos : []).filter((v) => v && /^[a-z0-9-]{1,24}$/.test(texto(v.id)) && texto(v.nombre));
+  const plVehiculo = (id) => PL_VEHICULOS.find((v) => v.id === id) || null;
+  const plLaVeh = (v) => (v.articulo || 'la') + ' ' + v.nombre;           // «la RAM»
+  const mayuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const PL_TIPOS = ['asig', 'aus', 'pau', 'veh'];                          // las casillas de una semana
   const PL_CLAVE = /^(req:\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40})$/;
   const PL_INSTANTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
   const PL_SIN_CARPETA = {
@@ -4455,7 +4535,8 @@
     leyendo: null, error: null,
     pop: null,                // la ventanita abierta: { tipo: persona | proyecto | nuevo, iso, ancla, … }
     diaMovil: null,           // el día que muestran las tablas en el teléfono
-    foco: null                // el proyecto que «Por proyecto» resalta al pintarse
+    foco: null,               // el proyecto que «Por proyecto» resalta al pintarse
+    focoVeh: false            // «Vehículos en la semana», que General muestra al pintarse (desde el resumen)
   };
   const plGuardarPrefs = () => guardar(LS_PL, { vista: planif.vista, sabado: planif.sabado, texto: planif.texto });
 
@@ -4527,11 +4608,11 @@
     planif.reloj = Math.max(Date.now(), planif.reloj + 1);
     return new Date(planif.reloj).toISOString();
   }
-  const plVacia = () => ({ asig: new Map(), aus: new Map(), pau: new Map(), proyectos: {} });
-  const plKAsig = (e) => e.dia + '|' + e.persona + '|' + e.proyecto;
+  const plVacia = () => ({ asig: new Map(), aus: new Map(), pau: new Map(), veh: new Map(), proyectos: {} });
+  const plKAsig = (e) => e.dia + '|' + e.persona + '|' + e.proyecto;      // también la del vehículo de esa asignación
   const plKAus = (e) => e.dia + '|' + e.persona;
   const plKPau = (e) => e.proyecto;
-  const plK = (tipo, e) => (tipo === 'asig' ? plKAsig(e) : tipo === 'aus' ? plKAus(e) : plKPau(e));
+  const plK = (tipo, e) => (tipo === 'asig' || tipo === 'veh' ? plKAsig(e) : tipo === 'aus' ? plKAus(e) : plKPau(e));
   // Manda el cambio más reciente; con el mismo instante, el del dispositivo de nombre mayor (en todos los computadores el mismo).
   const plGana = (a, b) => !a || b.t > a.t || (b.t === a.t && (b.de || '') > (a.de || ''));
   function plPoner(mapa, k, e) { if (plGana(mapa.get(k), e)) mapa.set(k, e); }
@@ -4569,6 +4650,11 @@
       if (!x || !PL_CLAVE.test(texto(x.proyecto)) || !instante(x.t)) return;
       plPoner(r.pau, plKPau(x), { proyecto: x.proyecto, activa: x.activa === true, nota: texto(x.nota).slice(0, 120), t: x.t, por: por(x.por), de });
     });
+    // Un vehículo que ya no está en el registro cuenta como quitado
+    lista(d.vehiculos).forEach((x) => {
+      if (!x || !dia(x.dia) || !PERSONAL.includes(x.persona) || !PL_CLAVE.test(texto(x.proyecto)) || !instante(x.t)) return;
+      plPoner(r.veh, plKAsig(x), { dia: x.dia, persona: x.persona, proyecto: x.proyecto, vehiculo: plVehiculo(x.vehiculo) ? x.vehiculo : '', t: x.t, por: por(x.por), de });
+    });
     if (d.proyectos && typeof d.proyectos === 'object' && !Array.isArray(d.proyectos)) {
       Object.keys(d.proyectos).slice(0, 500).forEach((k) => {
         const v = d.proyectos[k];
@@ -4585,14 +4671,14 @@
     const ef = plVacia();
     const fuentes = [...s.archivos.values()].sort((a, b) => (a.generado || '').localeCompare(b.generado || '')).concat([s.mias]);
     fuentes.forEach((f) => {
-      ['asig', 'aus', 'pau'].forEach((tipo) => f[tipo].forEach((e, k) => plPoner(ef[tipo], k, e)));
+      PL_TIPOS.forEach((tipo) => f[tipo].forEach((e, k) => plPoner(ef[tipo], k, e)));
       Object.assign(ef.proyectos, f.proyectos);      // los nombres: los del archivo más nuevo (y los de aquí) valen más
     });
     s.ef = ef;
   }
   // Lo que este navegador escribió (su propio archivo, o lo que esperaba guardarse) vuelve a ser suyo.
   function plAdoptar(s, r) {
-    ['asig', 'aus', 'pau'].forEach((tipo) => r[tipo].forEach((e, k) => plPoner(s.mias[tipo], k, e)));
+    PL_TIPOS.forEach((tipo) => r[tipo].forEach((e, k) => plPoner(s.mias[tipo], k, e)));
     Object.keys(r.proyectos).forEach((k) => { if (!s.mias.proyectos[k]) s.mias.proyectos[k] = r.proyectos[k]; });
   }
 
@@ -4629,7 +4715,7 @@
         r.size = f.size;
         s.archivos.set(n, r);
         cambio = true;
-        ['asig', 'aus', 'pau'].forEach((tipo) => r[tipo].forEach((e) => { planif.reloj = Math.max(planif.reloj, Date.parse(e.t)); }));
+        PL_TIPOS.forEach((tipo) => r[tipo].forEach((e) => { planif.reloj = Math.max(planif.reloj, Date.parse(e.t)); }));
         if (n === plNombreArchivo()) plAdoptar(s, r);
       }
     }
@@ -4640,7 +4726,7 @@
   }
   function plSobre(s) {
     const m = s.mias;
-    const usados = new Set([...m.asig.values(), ...m.pau.values()].map((e) => e.proyecto));
+    const usados = new Set([...m.asig.values(), ...m.pau.values(), ...m.veh.values()].map((e) => e.proyecto));
     const proyectos = {};
     usados.forEach((k) => { const v = m.proyectos[k] || s.ef.proyectos[k]; if (v) proyectos[k] = v; });
     const sinDe = (e) => { const x = Object.assign({}, e); delete x.de; return x; };   // el dispositivo ya va arriba
@@ -4650,7 +4736,7 @@
       datos: {
         semana: s.id, desde: plISO(s.lunes), dispositivo: plDispositivo(),
         asignaciones: [...m.asig.values()].map(sinDe), ausencias: [...m.aus.values()].map(sinDe), pausas: [...m.pau.values()].map(sinDe),
-        proyectos
+        vehiculos: [...m.veh.values()].map(sinDe), proyectos
       }
     };
   }
@@ -4714,9 +4800,12 @@
     plPintarFrescura();
     try {
       if (!rc.dir) throw new Error('La biblioteca del equipo no está conectada con permiso en este navegador.');
+      /* Se saca de la lista antes de escribir: un cambio que llega mientras se escribe la vuelve a poner y se guarda en
+         la vuelta siguiente (sacándola después, ese cambio quedaba fuera del archivo hasta el próximo, como marcar a
+         alguien y tocar su vehículo enseguida). */
       for (const id of [...planif.porGuardar]) {
-        await plEscribirSemana(rc.dir, id);
         planif.porGuardar.delete(id);
+        try { await plEscribirSemana(rc.dir, id); } catch (e) { planif.porGuardar.add(id); throw e; }
       }
       planif.errorGuardar = null;
       planif.guardado = Date.now();
@@ -4795,10 +4884,42 @@
     s.ef.pau.forEach((e) => { if (e.activa) pausas.set(canon(e.proyecto), e); });
     const colores = plColores([...proyectos.keys()]);
     const titulo = (c) => { const p = proyectos.get(c); const sn = s.ef.proyectos[c]; return (p && p.titulo) || (sn && sn.titulo) || (c.startsWith('otra:') ? 'Otra actividad' : c.slice(4)); };
+    /* El vehículo de cada asignación (una persona en un proyecto un día): manda el cambio más reciente entre las claves
+       del mismo proyecto (su TAG y su N°), y cuenta solo mientras la persona siga en ese proyecto ese día. */
+    const vehMas = new Map();
+    s.ef.veh.forEach((e) => { const k = e.dia + '|' + e.persona + '|' + canon(e.proyecto); if (plGana(vehMas.get(k), e)) vehMas.set(k, e); });
+    const vehiculos = new Map();       // «dia|persona|clave» → el id del vehículo
+    const porVeh = new Map();          // «dia|vehículo» → Map(clave → personas)
+    vehMas.forEach((e, k) => {
+      const c = canon(e.proyecto);
+      if (!e.vehiculo || !(porPersona.get(e.dia + '|' + e.persona) || []).includes(c)) return;
+      vehiculos.set(k, e.vehiculo);
+      const l = porVeh.get(e.dia + '|' + e.vehiculo) || new Map();
+      l.set(c, (l.get(c) || []).concat(e.persona));
+      porVeh.set(e.dia + '|' + e.vehiculo, l);
+    });
+    // Cada vehículo, cada día, en grupos de los que viajan juntos (comparten algún proyecto en él): dos grupos son el
+    // mismo vehículo en dos lugares a la vez. Los proyectos y los grupos, por nombre.
+    const usoVeh = new Map();          // «dia|vehículo» → [[{ clave, personas }], …]
+    porVeh.forEach((l, kv) => {
+      const grupos = [];
+      [...l.keys()].sort((a, b) => plComparar(titulo(a), titulo(b))).forEach((clave) => {
+        const personas = l.get(clave);
+        const juntos = grupos.filter((g) => g.some((x) => x.personas.some((p) => personas.includes(p))));
+        juntos.forEach((g) => grupos.splice(grupos.indexOf(g), 1));
+        grupos.push([].concat(...juntos, [{ clave, personas: plOrdenPersonas(personas) }]));
+      });
+      grupos.forEach((g) => g.sort((a, b) => plComparar(titulo(a.clave), titulo(b.clave))));
+      usoVeh.set(kv, grupos.sort((a, b) => plComparar(titulo(a[0].clave), titulo(b[0].clave))));
+    });
     return {
       activos, proyectos, canon, porPersona, porProyecto, dias, ausencias, pausas, titulo,
       color: (c) => (c.startsWith('otra:') ? 'var(--baseline)' : colores.get(c) || 'var(--baseline)'),
       ordenar: (claves) => claves.slice().sort((a, b) => plComparar(titulo(a), titulo(b))),
+      vehiculo: (dia, per, c) => vehiculos.get(dia + '|' + per + '|' + c) || '',
+      usoVeh: (dia, id) => usoVeh.get(dia + '|' + id) || [],
+      // Los grupos que llevan ese vehículo ese día a otra parte: ni van a ese proyecto ni llevan a esa persona
+      vehOtros: (dia, id, per, c) => (usoVeh.get(dia + '|' + id) || []).filter((g) => !g.some((x) => x.clave === c || x.personas.includes(per))),
       // La alarma: un proyecto activo sin nadie ningún día de la semana, salvo que esa semana no se trabaje en él
       sinAsignar: activos.filter((p) => !dias.has(p.clave) && !pausas.has(p.clave))
     };
@@ -4811,9 +4932,10 @@
     const sn = s.ef.proyectos[clave] || {};
     s.mias.proyectos[clave] = { titulo: p.titulo || sn.titulo || m.titulo(clave), lugar: p.lugar || sn.lugar || '', req: p.req || sn.req || null, tag: p.tag || sn.tag || null };
   }
-  /* Cada cambio: { tipo: 'asig', dia, persona, clave, activa }, { tipo: 'aus', dia, persona, motivo } o { tipo: 'pau',
-     clave, activa, nota }, con la clave de hoy del proyecto. Queda como lo de este navegador, con su instante; se guarda
-     en la carpeta y se puede deshacer (Ctrl Z o el aviso). Devuelve si algo cambió. */
+  /* Cada cambio: { tipo: 'asig', dia, persona, clave, activa }, { tipo: 'aus', dia, persona, motivo }, { tipo: 'pau',
+     clave, activa, nota } o { tipo: 'veh', dia, persona, clave, vehiculo } ('' lo quita), con la clave de hoy del
+     proyecto. Queda como lo de este navegador, con su instante; se guarda en la carpeta y se puede deshacer (Ctrl Z o
+     el aviso). Devuelve si algo cambió. */
   function plCambiar(s, cambios, mensaje) {
     const m = plModelo(s);
     const tanda = [];
@@ -4822,15 +4944,32 @@
       s.mias[tipo].set(plK(tipo, e), Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
       plRecalcular(s);
     };
+    // El vehículo de una casilla tal como va quedando la tanda, también si ya no está asignada: el cambio más reciente
+    // entre las claves del mismo proyecto
+    const vehDe = (dia, per, clave) => {
+      let u = null;
+      s.ef.veh.forEach((e) => { if (e.dia === dia && e.persona === per && m.canon(e.proyecto) === clave && plGana(u, e)) u = e; });
+      return u ? u.vehiculo : '';
+    };
+    // Una asignación que se pone o se quita queda sin vehículo (uno que quedó de antes no vuelve a aparecer)
+    const sinVeh = (dia, per, clave) => {
+      const v = vehDe(dia, per, clave);
+      if (v) poner('veh', { dia, persona: per, proyecto: clave, vehiculo: '' }, { vehiculo: v });
+    };
     cambios.forEach((c) => {
       if (c.tipo === 'asig') {
         const iguales = [...s.ef.asig.values()].filter((e) => e.activa && e.dia === c.dia && e.persona === c.persona && m.canon(e.proyecto) === c.clave);
         if (c.activa && !iguales.length) {
           plNombrar(s, m, c.clave);
           poner('asig', { dia: c.dia, persona: c.persona, proyecto: c.clave, activa: true }, { activa: false });
-        } else if (!c.activa) {
+          sinVeh(c.dia, c.persona, c.clave);
+        } else if (!c.activa && iguales.length) {
           iguales.forEach((x) => poner('asig', { dia: x.dia, persona: x.persona, proyecto: x.proyecto, activa: false }, { activa: true }));
+          sinVeh(c.dia, c.persona, c.clave);
         }
+      } else if (c.tipo === 'veh') {
+        const antes = vehDe(c.dia, c.persona, c.clave);
+        if (antes !== c.vehiculo) poner('veh', { dia: c.dia, persona: c.persona, proyecto: c.clave, vehiculo: c.vehiculo }, { vehiculo: antes });
       } else if (c.tipo === 'aus') {
         const previo = s.ef.aus.get(c.dia + '|' + c.persona);
         const antes = previo ? previo.motivo : '';
@@ -4849,10 +4988,10 @@
     planif.deshacer.push({ semana: s.id, tanda });
     if (planif.deshacer.length > 40) planif.deshacer.shift();
     plProgramarGuardado(s.id);
-    plMarcarRecien(tanda.filter((x) => x.tipo === 'asig' || x.tipo === 'aus').map((x) => x.e), m);
+    plMarcarRecien(tanda.filter((x) => x.tipo !== 'pau').map((x) => x.e), m);
     plPintar();
     plPintarAlarmaGlobal();
-    if (mensaje) avisar(mensaje, { texto: 'Deshacer', ir: plDeshacer });
+    if (mensaje) avisar(typeof mensaje === 'function' ? mensaje() : mensaje, { texto: 'Deshacer', ir: plDeshacer });
     return true;
   }
   // Las casillas de la última tanda se iluminan un momento al repintarse: se ve qué llenó «Toda la semana» o varios días.
@@ -4870,7 +5009,7 @@
     });
     plRecalcular(s);
     plProgramarGuardado(s.id);
-    plMarcarRecien(u.tanda.filter((x) => x.tipo === 'asig' || x.tipo === 'aus').map((x) => x.e), plModelo(s));
+    plMarcarRecien(u.tanda.filter((x) => x.tipo !== 'pau').map((x) => x.e), plModelo(s));
     plPintar();
     plPintarAlarmaGlobal();
     avisar('Se deshizo el último cambio' + (planif.lunes && s.id !== plSemanaId(planif.lunes) ? ', de la semana ' + plNum(s) : '') + '.');
@@ -4918,21 +5057,46 @@
     return plCambiar(s, cambios, si ? per + ' va a ' + t + ' ' + plDiasTexto(s, dias) + salvo + '.' + extra
       : per + ' ya no va a ' + t + ' ' + plDiasTexto(s, dias) + '.');
   }
+  /* El vehículo de una persona en un proyecto, los días elegidos en que va ('' lo quita), en una sola tanda. Si ese
+     vehículo ya va con otros a otro lugar alguno de esos días, el aviso lo dice (no se impide: pueden ir pasando). */
+  function plVehiculoDias(s, per, clave, isos, id) {
+    const m = plModelo(s);
+    const dias = isos.filter((iso) => (m.porPersona.get(iso + '|' + per) || []).includes(clave) && m.vehiculo(iso, per, clave) !== id);
+    if (!dias.length) return false;
+    const v = plVehiculo(id);
+    const antes = [...new Set(dias.map((iso) => m.vehiculo(iso, per, clave)).filter(Boolean))].map(plVehiculo).filter(Boolean);
+    const t = m.titulo(clave);
+    return plCambiar(s, dias.map((iso) => ({ tipo: 'veh', dia: iso, persona: per, clave, vehiculo: id })), () => {
+      const cuando = plDiasTexto(s, dias);
+      if (!v) return per + ' ya no lleva ' + unir(antes.map(plLaVeh)) + ' a ' + t + ' ' + cuando + '.';
+      const mm = plModelo(s);
+      const choques = dias.map((iso) => ({ iso, otros: mm.vehOtros(iso, id, per, clave) })).filter((x) => x.otros.length);
+      const donde = [...new Set(choques.flatMap((x) => x.otros.flat().map((y) => mm.titulo(y.clave) + ' (' + unir(y.personas) + ')')))];
+      return per + ' va en ' + plLaVeh(v) + ' a ' + t + ' ' + cuando + '.'
+        + (choques.length ? ' Ojo: ' + plDiasTexto(s, choques.map((x) => x.iso)) + ' ' + plLaVeh(v) + ' también va a ' + unir(donde) + '.' : '');
+    });
+  }
   /* Cambiar a una persona de un proyecto a otro, los días en que estaba, en un paso: se quita y se pone en la misma
-     tanda, así también sirve con el día completo (3 proyectos). Si ese día ya iba al otro, solo se quita del primero. */
+     tanda, así también sirve con el día completo (3 proyectos). Si ese día ya iba al otro, solo se quita del primero.
+     El vehículo que llevaba se va con ella al otro proyecto, salvo que allá ya lleve uno. */
   function plCambiarPor(s, per, de, a, isos) {
     const m = plModelo(s);
     const suyos = (iso) => m.porPersona.get(iso + '|' + per) || [];
     const dias = isos.filter((iso) => suyos(iso).includes(de));
     if (!dias.length || dias.every((iso) => suyos(iso).includes(a))) { avisar(per + ' ya va a ' + m.titulo(a) + ' esos días.'); return false; }
-    const cambios = dias.flatMap((iso) => [{ tipo: 'asig', dia: iso, persona: per, clave: de, activa: false }]
-      .concat(suyos(iso).includes(a) ? [] : [{ tipo: 'asig', dia: iso, persona: per, clave: a, activa: true }]));
+    const cambios = dias.flatMap((iso) => {
+      const ya = suyos(iso).includes(a);
+      const v = m.vehiculo(iso, per, de);
+      return [{ tipo: 'asig', dia: iso, persona: per, clave: de, activa: false }]
+        .concat(ya ? [] : [{ tipo: 'asig', dia: iso, persona: per, clave: a, activa: true }])
+        .concat(v && !(ya && m.vehiculo(iso, per, a)) ? [{ tipo: 'veh', dia: iso, persona: per, clave: a, vehiculo: v }] : []);
+    });
     if (m.pausas.has(a)) cambios.push({ tipo: 'pau', clave: a, activa: false });
     return plCambiar(s, cambios, per + ' cambia de ' + m.titulo(de) + ' a ' + m.titulo(a) + ' ' + plDiasTexto(s, dias) + '.');
   }
   /* Lo mismo desde el proyecto: en vez de una persona va otra, los días en que iba la primera (si la otra ya iba, solo
      se quita la primera). Se saltan los días en que la otra está ausente o tiene 3 proyectos: ahí sigue la primera, y
-     el aviso lo dice. */
+     el aviso lo dice. El vehículo de la primera pasa a la otra, si ella no lleva uno a ese proyecto. */
   function plReemplazar(s, clave, de, a, isos) {
     const m = plModelo(s);
     const dias = [], no = [], cambios = [];
@@ -4946,6 +5110,8 @@
       else if (aus) { no.push({ dia, por: plAusencia(aus.motivo).nombre.toLowerCase() }); return; }
       else if ((m.porPersona.get(iso + '|' + a) || []).length >= PL_MAX) { no.push({ dia, por: 'ya tiene ' + PL_MAX + ' proyectos' }); return; }
       else { pone++; cambios.push({ tipo: 'asig', dia: iso, persona: de, clave, activa: false }, { tipo: 'asig', dia: iso, persona: a, clave, activa: true }); }
+      const v = m.vehiculo(iso, de, clave);
+      if (v && !m.vehiculo(iso, a, clave)) cambios.push({ tipo: 'veh', dia: iso, persona: a, clave, vehiculo: v });
       dias.push(iso);
     });
     const t = m.titulo(clave);
@@ -4989,7 +5155,7 @@
     plAsignarDias(s, per, c, isos, true);
   }
   // Copia lo de la semana anterior, día por día, sin borrar nada de esta: lo que ya no se puede (un proyecto que terminó,
-  // una ausencia o un día con 3 proyectos) se salta y se cuenta.
+  // una ausencia o un día con 3 proyectos) se salta y se cuenta. Cada asignación copiada lleva su vehículo.
   async function plCopiarAnterior() {
     if (!rc.dir) return;
     const s = plSemanaVista();
@@ -4997,7 +5163,7 @@
     try { await plLeerSemana(rc.dir, antes.id); } catch (e) { avisar('No se pudo leer la semana anterior: ' + (e.message || e)); return; }
     const ma = plModelo(antes), m = plModelo(s);
     const cambios = [], cuenta = new Map();
-    let total = 0, saltados = 0;
+    let total = 0, saltados = 0, copiadas = 0, vehiculos = 0;
     [...ma.porPersona.keys()].sort().forEach((k) => {
       const [diaAntes, per] = k.split('|');
       const iso = plISO(plMas(plDesdeISO(diaAntes), 7));
@@ -5012,13 +5178,17 @@
         cuenta.set(kk, n + 1);
         if (p.otra && !s.ef.proyectos[c]) s.mias.proyectos[c] = antes.ef.proyectos[c] || { titulo: p.titulo, lugar: '', req: null, tag: null };
         cambios.push({ tipo: 'asig', dia: iso, persona: per, clave: c, activa: true });
+        copiadas++;
+        const v = ma.vehiculo(diaAntes, per, c);
+        if (v) { vehiculos++; cambios.push({ tipo: 'veh', dia: iso, persona: per, clave: c, vehiculo: v }); }
       });
     });
     const n = plNum(antes);
     if (!total) { avisar('La semana ' + n + ' no tiene asignaciones para copiar.'); return; }
     if (!cambios.length) { avisar('Lo de la semana ' + n + ' ya está en esta' + (saltados ? ', salvo ' + pl(saltados, 'asignación que no se puede copiar', 'asignaciones que no se pueden copiar') : '') + '.'); return; }
     plRecalcular(s);
-    plCambiar(s, cambios, (cambios.length === 1 ? 'Se copió 1 asignación' : 'Se copiaron ' + cambios.length + ' asignaciones') + ' de la semana ' + n
+    plCambiar(s, cambios, (copiadas === 1 ? 'Se copió 1 asignación' : 'Se copiaron ' + copiadas + ' asignaciones') + ' de la semana ' + n
+      + (vehiculos ? ' (' + (vehiculos === copiadas ? (copiadas === 1 ? 'con su vehículo' : 'con sus vehículos') : pl(vehiculos, 'con vehículo', 'con vehículo')) + ')' : '')
       + (saltados ? '; ' + saltados + ' no (proyecto terminado, ausencia o día con 3 proyectos)' : '') + '.');
   }
 
@@ -5500,7 +5670,7 @@
     if (!rc.leido) { txt.textContent = rc.leyendo ? 'Leyendo la carpeta del equipo…' : 'Sin datos de la carpeta del equipo'; txt.title = ''; punto.className = 'cx-punto'; return; }
     const s = planif.lunes ? planif.semanas.get(plSemanaId(planif.lunes)) : null;
     let u = null;
-    if (s) ['asig', 'aus', 'pau'].forEach((tipo) => s.ef[tipo].forEach((e) => { if (!u || e.t > u.t) u = e; }));
+    if (s) PL_TIPOS.forEach((tipo) => s.ef[tipo].forEach((e) => { if (!u || e.t > u.t) u = e; }));
     txt.textContent = Date.now() - planif.guardado < 8000 ? 'Guardado en la carpeta del equipo'
       : u ? 'Último cambio: ' + (u.por || 'sin usuario') + ', ' + plCuando(u.t) : 'Al día con la carpeta del equipo';
     txt.title = 'Se guarda en la carpeta de intercambio (publicado › planificacion), así todo el equipo ve la misma semana. Lo que cambian los demás llega con OneDrive, y esta vista lo revisa cada ' + PL_RELEER_SEG + ' segundos.';
@@ -5548,7 +5718,7 @@
     txt.append(ul, crear('span', 'pl-alarma-pista', 'Toca uno para asignar a alguien al menos un día o, si esa semana no se trabaja en él, marcarlo «Sin trabajo esta semana».'));
     caja.append(ico, txt);
   }
-  // Las cuatro cifras de la semana; cada una abre la vista donde se ve
+  // Las cifras de la semana; cada una abre la vista donde se ve. La de los vehículos lleva a «Vehículos en la semana».
   function plPintarResumen(s, m, dias) {
     const cont = $('#plResumen');
     cont.textContent = '';
@@ -5561,19 +5731,32 @@
     const disponibles = PERSONAL.length * dias.length - ausentes;
     const pausados = m.activos.filter((p) => m.pausas.has(p.clave) && !m.dias.has(p.clave)).length;
     const actual = s.id === plHoyId();
-    [
+    const cifras = [
       { n: m.activos.length, et: 'Proyectos activos', sub: 'En ejecución, según el Recorrido', vista: 'proyecto' },
       { n: m.sinAsignar.length, et: 'Sin asignar', sub: pausados ? 'Y ' + pausados + ' sin trabajo ' + plEsta(s) : 'Sin nadie ningún día de la semana',
         vista: 'proyecto', nivel: m.sinAsignar.length ? (actual ? 'bad' : 'warn') : '' },
       { n: asignados, et: 'Días asignados', sub: 'De ' + pl(disponibles, 'día-persona disponible', 'días-persona disponibles'), vista: 'personal' },
       { n: disponibles - asignados, et: 'Días libres', sub: ausentes ? 'Sin proyecto; aparte, ' + pl(ausentes, 'día de ausencia', 'días de ausencia') : 'Personas sin proyecto ese día', vista: 'personal' }
-    ].forEach((k) => {
-      const b = crear('button', 'rc-kpi');
+    ];
+    if (PL_VEHICULOS.length) {
+      // Cuántos se usan y cuántos días cada uno; si uno va a dos lugares a la vez, eso primero
+      const usos = PL_VEHICULOS.map((v) => ({ v, dias: dias.filter((d) => m.usoVeh(d.iso, v.id).length) }));
+      const choques = usos.flatMap((u) => u.dias.filter((d) => m.usoVeh(d.iso, u.v.id).length > 1).map((d) => ({ v: u.v, d, n: m.usoVeh(d.iso, u.v.id).length })));
+      const enUso = usos.filter((u) => u.dias.length).length;
+      const detalle = usos.map((u) => u.v.nombre + ' ' + (u.dias.length ? pl(u.dias.length, 'día', 'días') : 'libre')).join(' · ');
+      cifras.push({ n: enUso, et: enUso === 1 ? 'Vehículo en uso' : 'Vehículos en uso', vista: 'general', veh: true, nivel: choques.length ? 'warn' : '',
+        sub: choques.length ? mayuscula(plLaVeh(choques[0].v)) + ' en ' + choques[0].n + ' lugares ' + plElDia(choques[0].d) + (choques.length > 1 ? ' y ' + (choques.length - 1) + ' más' : '') : detalle,
+        titulo: (choques.length ? choques.map((x) => mayuscula(plLaVeh(x.v)) + ' va a ' + x.n + ' lugares a la vez ' + plElDia(x.d)).join('. ') + '. ' : detalle + '. ')
+          + 'Ver dónde va cada vehículo, en la vista General' });
+    }
+    cont.classList.toggle('con-veh', PL_VEHICULOS.length > 0);
+    cifras.forEach((k) => {
+      const b = crear('button', 'rc-kpi' + (k.veh ? ' pl-kpi-veh' : ''));
       b.type = 'button';
       if (k.nivel) b.dataset.nivel = k.nivel;
       b.append(crear('span', 'rc-kpi-n', String(k.n)), crear('span', 'rc-kpi-et', k.et), crear('span', 'rc-kpi-sub', k.sub));
-      b.title = 'Ver ' + PL_VISTAS.find((v) => v.id === k.vista).nombre.toLowerCase();
-      b.addEventListener('click', () => plElegirVista(k.vista));
+      b.title = k.titulo || 'Ver ' + PL_VISTAS.find((v) => v.id === k.vista).nombre.toLowerCase();
+      b.addEventListener('click', () => { planif.focoVeh = !!k.veh; plElegirVista(k.vista); });
       cont.append(b);
     });
   }
@@ -5643,13 +5826,50 @@
     if (txt) mas.append(crear('span', null, txt));
     b.append(mas);
   }
-  function plChip(m, c) {
+  // Un proyecto de una persona un día (d) y, si lo lleva, el vehículo con que va
+  function plChip(m, c, veh, d) {
     const p = m.proyectos.get(c) || {};
+    const v = plVehiculo(veh);
     const s = crear('span', 'pl-chip' + (p.otra ? ' otra' : p.activo === false ? ' inactivo' : ''));
     s.style.setProperty('--pc', m.color(c));
     s.append(crear('span', 't', m.titulo(c)));
-    s.title = m.titulo(c) + (p.lugar ? ' · ' + p.lugar : '') + (p.otra ? ' (otra actividad)' : p.activo === false ? ' (ya no está en ejecución)' : '');
+    if (v) s.append(plVeh(v.id, null, plChoque(m, d, v.id)));
+    s.title = m.titulo(c) + (p.lugar ? ' · ' + p.lugar : '') + (p.otra ? ' (otra actividad)' : p.activo === false ? ' (ya no está en ejecución)' : '')
+      + (v ? ', en ' + plLaVeh(v) : '');
     return s;
+  }
+  // Un vehículo, con su ícono («RAM»); con quiénes lo llevan si no son todos los de la casilla («RAM · ES LC»); en
+  // naranjo si ese día va a dos lugares a la vez (choque: lo que dice su título)
+  function plVeh(id, quienes, choque) {
+    const v = plVehiculo(id);
+    const e = crear('span', 'pl-veh' + (choque ? ' choque' : ''));
+    e.append(icono('vehiculo', 14), crear('span', 'n', v ? v.nombre : id));
+    if (quienes && quienes.length) e.append(crear('span', 'q', quienes.join(' ')));
+    if (choque) e.title = choque;
+    return e;
+  }
+  // «La RAM va a 2 lugares a la vez el martes 20: Adjudicada sin ficha (NB) y En obra (ES)», o '' si va a uno solo
+  function plChoque(m, d, id) {
+    const g = m.usoVeh(d.iso, id);
+    return g.length < 2 ? '' : mayuscula(plLaVeh(plVehiculo(id))) + ' va a ' + g.length + ' lugares a la vez ' + plElDia(d) + ': '
+      + unir(g.flat().map((x) => m.titulo(x.clave) + ' (' + unir(x.personas) + ')')) + '. Revisa si van juntos';
+  }
+  // Los vehículos de quienes van a un proyecto un día (d): uno solo si van todos en él; si no, cada uno con quiénes lo llevan
+  function plVehs(m, d, clave, van) {
+    const w = crear('span', 'pl-vehs');
+    PL_VEHICULOS.forEach((v) => {
+      const con = van.filter((per) => m.vehiculo(d.iso, per, clave) === v.id);
+      if (con.length) w.append(plVeh(v.id, con.length === van.length ? null : con, plChoque(m, d, v.id)));
+    });
+    return w.childElementCount ? w : null;
+  }
+  // Lo mismo en palabras, para leer en voz alta: «, en la RAM» o «, ES en la RAM y LC en la Quempineta»
+  function plVehsTexto(m, iso, clave, van) {
+    const partes = PL_VEHICULOS.map((v) => {
+      const con = van.filter((per) => m.vehiculo(iso, per, clave) === v.id);
+      return con.length ? (con.length === van.length ? '' : unir(con) + ' ') + 'en ' + plLaVeh(v) : '';
+    }).filter(Boolean);
+    return partes.length ? ', ' + unir(partes) : '';
   }
   // La semana de una fila: cuántos días tiene algo y un cuadrito por día
   function plTotal(dias, estadoDe, txt) {
@@ -5681,11 +5901,12 @@
         const [td, b] = plCelda('p|' + per + '|' + d.iso, d);
         if (a) { aus++; b.classList.add('ausente'); b.append(crear('span', 'pl-aus', plAusencia(a.motivo).nombre)); }
         else if (lista.length) con++;
-        lista.forEach((c) => { proyectos.add(c); b.append(plChip(m, c)); });
+        lista.forEach((c) => { proyectos.add(c); b.append(plChip(m, c, m.vehiculo(d.iso, per, c), d)); });
         if (lista.length > PL_MAX) { b.classList.add('exceso'); b.append(crear('span', 'pl-lleno', lista.length + ' de ' + PL_MAX + ': quita ' + (lista.length - PL_MAX))); }
         else if (lista.length === PL_MAX) b.append(crear('span', 'pl-lleno', 'Completo'));
         else if (!a) plAgregar(b, lista.length ? null : 'Asignar');
-        b.setAttribute('aria-label', per + ', ' + plFechaLarga(d) + ': ' + (a ? plAusencia(a.motivo).nombre.toLowerCase() : lista.length ? lista.map(m.titulo).join(', ') : 'sin proyecto') + '. Cambiar');
+        b.setAttribute('aria-label', per + ', ' + plFechaLarga(d) + ': ' + (a ? plAusencia(a.motivo).nombre.toLowerCase()
+          : lista.length ? lista.map((c) => m.titulo(c) + plVehsTexto(m, d.iso, c, [per])).join('; ') : 'sin proyecto') + '. Cambiar');
         b.addEventListener('click', () => plAbrirPersona(per, d.iso));
         return td;
       });
@@ -5794,8 +6015,10 @@
       const [td, c] = plCelda('j|' + p.clave + '|' + d.iso, d);
       const van = plOrdenPersonas(m.porProyecto.get(d.iso + '|' + p.clave) || []);
       if (van.length) { const w = crear('span', 'pl-pers'); van.forEach((x) => w.append(plPersona(x))); c.append(w); }
+      const vs = van.length ? plVehs(m, d, p.clave, van) : null;
+      if (vs) c.append(vs);
       plAgregar(c, van.length ? null : 'Asignar');
-      c.setAttribute('aria-label', p.titulo + ', ' + plFechaLarga(d) + ': ' + (van.length ? unir(van) : 'nadie') + '. Cambiar');
+      c.setAttribute('aria-label', p.titulo + ', ' + plFechaLarga(d) + ': ' + (van.length ? unir(van) + plVehsTexto(m, d.iso, p.clave, van) : 'nadie') + '. Cambiar');
       c.addEventListener('click', () => plAbrirProyecto(p.clave, d.iso));
       tr.append(td);
     });
@@ -5838,7 +6061,9 @@
           const w = crear('span', 'pl-pers');
           van.forEach((x) => w.append(plPersona(x)));
           b.append(w);
-          b.setAttribute('aria-label', m.titulo(c) + ', ' + plFechaLarga(d) + ': ' + unir(van) + '. Cambiar quiénes van');
+          const vs = plVehs(m, d, c, van);
+          if (vs) b.append(vs);
+          b.setAttribute('aria-label', m.titulo(c) + ', ' + plFechaLarga(d) + ': ' + unir(van) + plVehsTexto(m, d.iso, c, van) + '. Cambiar quiénes van');
           b.addEventListener('click', () => plAbrirProyecto(c, d.iso));
           li.append(b);
           ul.append(li);
@@ -5875,6 +6100,14 @@
       tab.append(col);
     });
     cont.append(tab, plPaneles(s, m, dias));
+    // Desde la cifra de los vehículos en el resumen: su panel, a la vista y resaltado un momento
+    const veh = planif.focoVeh && $('#plVehiculos');
+    planif.focoVeh = false;
+    if (veh) {
+      veh.scrollIntoView({ block: 'center', behavior: REDUCIR.matches ? 'auto' : 'smooth' });
+      veh.classList.add('resaltada');
+      setTimeout(() => veh.classList.remove('resaltada'), 1800);
+    }
   }
   function plPaneles(s, m, dias) {
     const w = crear('div', 'pl-paneles');
@@ -5972,7 +6205,76 @@
     tb.append(tbb);
     b.append(tb);
     w.append(a, b);
+    if (PL_VEHICULOS.length) w.append(plPanelVehiculos(m, dias));
     return w;
+  }
+  /* Dónde va cada vehículo cada día y con quiénes (tocar uno abre ese proyecto ese día, donde se cambia); «Libre» si
+     nadie lo lleva, y en naranjo si va a dos lugares a la vez: personas que no comparten proyecto ese día. */
+  function plPanelVehiculos(m, dias) {
+    const sec = crear('section', 'pl-panel pl-panel-veh');
+    sec.id = 'plVehiculos';
+    sec.append(crear('h2', null, 'Vehículos en la semana'));
+    const t = crear('table', 'pl-cob pl-vehs-t');
+    const thead = crear('thead'), tr = crear('tr');
+    const th0 = crear('th', 'dia', 'Día');
+    th0.scope = 'col';
+    tr.append(th0);
+    PL_VEHICULOS.forEach((v) => {
+      const th = crear('th');
+      th.scope = 'col';
+      const e = crear('span', 'pl-veh-th');
+      e.append(icono('vehiculo', 16), crear('span', null, v.nombre));
+      th.append(e);
+      tr.append(th);
+    });
+    thead.append(tr);
+    const tb = crear('tbody');
+    dias.forEach((d) => {
+      const fila = crear('tr', d.hoy ? 'hoy' : null);
+      fila.dataset.iso = d.iso;          // no data-dia: en las tablas es el número del día que esconde el teléfono
+      const th = crear('th', 'dia');
+      th.scope = 'row';
+      th.title = plFechaLarga(d) + (d.hoy ? ' (hoy)' : '');
+      th.append(crear('span', null, d.corto), crear('b', null, String(d.fecha.getDate())));
+      fila.append(th);
+      PL_VEHICULOS.forEach((v) => {
+        const td = crear('td');
+        td.dataset.veh = v.id;
+        const grupos = m.usoVeh(d.iso, v.id);
+        if (!grupos.length) td.append(crear('span', 'pl-veh-libre', 'Libre'));
+        grupos.forEach((g) => g.forEach((x) => {
+          const b = crear('button', 'pl-veh-uso');
+          b.type = 'button';
+          b.dataset.ancla = 'v|' + v.id + '|' + x.clave + '|' + d.iso;
+          b.style.setProperty('--pc', m.color(x.clave));
+          b.append(crear('span', 'pl-dot'), crear('span', 't', m.titulo(x.clave)), crear('span', 'quien', x.personas.join(' ')));
+          b.title = mayuscula(plLaVeh(v)) + ' ' + plElDia(d) + ': ' + m.titulo(x.clave) + ', con ' + unir(x.personas) + '. Toca para cambiarlo';
+          b.setAttribute('aria-label', b.title);
+          b.addEventListener('click', () => plAbrirProyecto(x.clave, d.iso, b.dataset.ancla));
+          td.append(b);
+        }));
+        if (grupos.length > 1) {
+          td.dataset.nivel = 'warn';
+          const n = crear('span', 'pl-veh-choque', 'En ' + grupos.length + ' lugares a la vez');
+          n.title = 'Van en ' + plLaVeh(v) + ' personas que ' + plElDia(d) + ' no comparten proyecto: revisa si van juntas o si alguien cambia de vehículo';
+          td.append(n);
+        }
+        fila.append(td);
+      });
+      tb.append(fila);
+    });
+    const tf = crear('tfoot'), pie = crear('tr');
+    const thf = crear('th', 'dia', 'Semana');
+    thf.scope = 'row';
+    pie.append(thf);
+    PL_VEHICULOS.forEach((v) => {
+      const n = dias.filter((d) => m.usoVeh(d.iso, v.id).length).length;
+      pie.append(crear('td', 'n', n ? n + ' de ' + pl(dias.length, 'día', 'días') : 'Sin uso'));
+    });
+    tf.append(pie);
+    t.append(thead, tb, tf);
+    sec.append(t);
+    return sec;
   }
 
   // ---- La ventanita de una casilla ------------------------------------------------------------------------
@@ -6135,8 +6437,9 @@
     cuerpo.append(inp);
     return filtrar;
   }
-  // Una opción de la lista: su casilla, su marca (color o iniciales), su nombre y, al lado, «Cambiar» si ya está elegida
-  function plOpcion(ul, buscar, casilla, marca, titulo, sub, extra) {
+  // Una opción de la lista: su casilla, su marca (color o iniciales), su nombre y, al lado, «Cambiar» si ya está elegida;
+  // debajo, con qué vehículo va
+  function plOpcion(ul, buscar, casilla, marca, titulo, sub, extra, debajo) {
     const li = crear('li');
     li.dataset.buscar = buscar;
     const lab = crear('label', 'pl-op' + (casilla.disabled ? ' no' : ''));
@@ -6146,7 +6449,37 @@
     lab.append(casilla, marca, tx);
     li.append(lab);
     if (extra) li.append(extra);
+    if (debajo) { li.classList.add('con-debajo'); li.append(debajo); }
     ul.append(li);
+  }
+  /* Con qué vehículo va una persona a un proyecto, los días elegidos en que va: un toque asigna uno y, si ya era el suyo,
+     lo quita. Con varios días queda a medias si lo lleva solo algunos (tocarlo lo pone en todos). Un punto naranjo dice
+     que ese vehículo ya va con otros a otra parte alguno de esos días (se puede igual: pueden ir pasando). */
+  function plVehOps(s, m, per, clave, isos, op) {
+    const fila = crear('div', 'pl-op-veh');
+    fila.setAttribute('role', 'group');
+    fila.setAttribute('aria-label', 'Vehículo de ' + per + ' en ' + m.titulo(clave));
+    const et = crear('span', 'et');
+    et.append(icono('vehiculo', 16), crear('span', null, 'Vehículo'));
+    fila.append(et);
+    const cuando = plDiasTexto(s, isos);
+    PL_VEHICULOS.forEach((v) => {
+      const con = isos.filter((iso) => m.vehiculo(iso, per, clave) === v.id);
+      const todos = con.length === isos.length;
+      const otros = isos.map((iso) => ({ iso, g: m.vehOtros(iso, v.id, per, clave) })).filter((x) => x.g.length);
+      const b = crear('button', 'pl-veh-op' + (otros.length ? ' ocupado' : ''));
+      b.type = 'button';
+      b.dataset.op = op + '|' + v.id;
+      b.setAttribute('aria-pressed', todos ? 'true' : con.length ? 'mixed' : 'false');
+      b.append(crear('span', null, v.nombre));
+      const ojo = otros.length ? '. Ojo: ' + plDiasTexto(s, otros.map((x) => x.iso)) + ' ' + plLaVeh(v) + ' también va a '
+        + unir([...new Set(otros.flatMap((x) => x.g.flat().map((y) => m.titulo(y.clave) + ' (' + unir(y.personas) + ')')))]) : '';
+      b.title = (todos ? 'Quitar ' + plLaVeh(v) + ' a ' + per + ' ' + cuando : per + ' va en ' + plLaVeh(v) + ' ' + cuando) + ojo;
+      b.setAttribute('aria-label', v.nombre + (otros.length ? ', que ya va a otra parte' : ''));     // elegido o a medias: aria-pressed
+      b.addEventListener('click', () => plVehiculoDias(s, per, clave, isos, todos ? '' : v.id));
+      fila.append(b);
+    });
+    return fila;
   }
   // Una opción que lleva a otra parte (el proyecto que se elige, a quién se pasa): su marca, su nombre y una flecha
   function plBotonLista(ul, op, buscar, marca, titulo, sub, ir) {
@@ -6257,7 +6590,8 @@
         sin.has(p.clave) ? 'Sin nadie ' + plEsta(s) : '');
       plOpcion(ul, norm([p.titulo, p.lugar, p.tag, p.req].join(' ')), cb, dot, p.titulo, sub,
         con.length && ops.length > 1 ? plBotonOp('k|' + p.clave, 'Cambiar', 'Pasar a ' + x.per + ' de ' + p.titulo + ' a otro proyecto ' + plDiasTexto(s, con.map((d) => d.iso)),
-          () => { x.cambiar = p.clave; x.q = ''; plPintarPop(true); }) : null);
+          () => { x.cambiar = p.clave; x.q = ''; plPintarPop(true); }) : null,
+        con.length && PL_VEHICULOS.length ? plVehOps(s, m, x.per, p.clave, con.map((d) => d.iso), 'v|' + p.clave) : null);
     });
     if (ops.length) cuerpo.append(ul);
     else cuerpo.append(crear('p', 'pl-pop-nota', 'No hay proyectos en ejecución en el Recorrido. Puedes anotar otra actividad.'));
@@ -6380,7 +6714,8 @@
       }
       plOpcion(ul, norm(per), cb, plPersona(per), per === estado.usuario ? per + ' · tú' : per, sub,
         con.length ? plBotonOp('k|' + per, 'Cambiar', 'Que vaya otra persona en vez de ' + per + ' ' + plDiasTexto(s, con.map((d) => d.iso)),
-          () => { x.cambiar = per; plPintarPop(true); }) : null);
+          () => { x.cambiar = per; plPintarPop(true); }) : null,
+        con.length && PL_VEHICULOS.length ? plVehOps(s, m, per, x.clave, con.map((d) => d.iso), 'v|' + per) : null);
     });
     cuerpo.append(ul);
   }
@@ -6451,25 +6786,34 @@
   }
 
   // ---- Compartir y exportar --------------------------------------------------------------------------------
-  // Lo de una persona un día, para el papel y el texto: su ausencia y sus proyectos, cada uno con el lugar y con quién va.
+  // Lo de una persona un día, para el papel y el texto: su ausencia y sus proyectos, cada uno con el lugar, con quién va y
+  // en qué vehículo.
   function plDiaDePersona(m, d, per) {
     const a = m.ausencias.get(d.iso + '|' + per);
     const proyectos = m.ordenar(m.porPersona.get(d.iso + '|' + per) || []).map((c) => {
       const p = m.proyectos.get(c) || {};
       return { clave: c, titulo: m.titulo(c), lugar: p.lugar || '', sitio: p.sitio || p.lugar || '', req: p.req || null, otra: !!p.otra,
-        con: plOrdenPersonas((m.porProyecto.get(d.iso + '|' + c) || []).filter((x) => x !== per)) };
+        con: plOrdenPersonas((m.porProyecto.get(d.iso + '|' + c) || []).filter((x) => x !== per)), vehiculo: plVehiculo(m.vehiculo(d.iso, per, c)) };
     });
     return { ausencia: a ? plAusencia(a.motivo).nombre : '', proyectos };
   }
-  /* La semana como texto para WhatsApp (*negrita*). Por persona: cada uno, día por día, sus proyectos con el lugar y con
-     quién va («• Lun 19: Chimenea Talcahuano, con MP y EV»). Por día: cada día, sus proyectos con quiénes van, y quiénes faltan. */
+  // Quiénes van a un proyecto un día, con su vehículo: «ES, LC (RAM)» si van todos en el mismo; si no, cada uno el suyo
+  function plQuienesConVeh(m, iso, c) {
+    const van = plOrdenPersonas(m.porProyecto.get(iso + '|' + c) || []);
+    const vs = van.map((per) => plVehiculo(m.vehiculo(iso, per, c)));
+    if (vs.length && vs[0] && vs.every((v) => v === vs[0])) return van.join(', ') + ' (' + vs[0].nombre + ')';
+    return van.map((per, i) => per + (vs[i] ? ' (' + vs[i].nombre + ')' : '')).join(', ');
+  }
+  /* La semana como texto para WhatsApp (*negrita*). Por persona: cada uno, día por día, sus proyectos con el lugar, con
+     quién va y en qué vehículo («• Lun 19: Chimenea Talcahuano, con MP y EV, en la RAM»). Por día: cada día, sus
+     proyectos con quiénes van (y su vehículo), y quiénes faltan. */
   function plTexto(s, m, dias, modo) {
     const l = ['*Planificación semana ' + plNum(s) + ' · ' + plRango(s.lunes, dias.length) + '*'];
     if (modo === 'dia') {
       dias.forEach((d) => {
         l.push('', '*' + d.nombre + ' ' + d.fecha.getDate() + '*');
         const claves = m.ordenar([...new Set(PERSONAL.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
-        claves.forEach((c) => l.push('• ' + m.titulo(c) + ': ' + plOrdenPersonas(m.porProyecto.get(d.iso + '|' + c) || []).join(', ')));
+        claves.forEach((c) => l.push('• ' + m.titulo(c) + ': ' + plQuienesConVeh(m, d.iso, c)));
         const aus = PERSONAL.filter((per) => m.ausencias.has(d.iso + '|' + per));
         if (aus.length) l.push('• Ausentes: ' + aus.map((per) => per + ' (' + plAusencia(m.ausencias.get(d.iso + '|' + per).motivo).nombre.toLowerCase() + ')').join(', '));
         if (!claves.length && !aus.length) l.push('Sin asignaciones');
@@ -6479,7 +6823,8 @@
         l.push('', '*' + per + '*');
         dias.forEach((d) => {
           const x = plDiaDePersona(m, d, per);
-          const que = x.proyectos.map((p) => p.titulo + (p.lugar ? ' (' + p.lugar + ')' : '') + (p.con.length ? ', con ' + unir(p.con) : ''));
+          const que = x.proyectos.map((p) => p.titulo + (p.lugar ? ' (' + p.lugar + ')' : '') + (p.con.length ? ', con ' + unir(p.con) : '')
+            + (p.vehiculo ? ', en ' + plLaVeh(p.vehiculo) : ''));
           if (x.ausencia) que.unshift(x.ausencia);
           l.push('• ' + d.corto + ' ' + d.fecha.getDate() + ': ' + (que.length ? que.join('; ') : 'sin proyecto'));
         });
@@ -6566,8 +6911,11 @@
       e.append(crear('b', null, p.titulo));
       const sub = [p.otra ? 'Otra actividad' : p.req ? 'N° ' + p.req : '', p.lugar].filter(Boolean).join(' · ');
       if (sub) e.append(crear('span', null, sub));
+      if (p.vehiculo) e.append(crear('span', 'pl-doc-veh', 'Vehículo: ' + p.vehiculo.nombre));
       return e;
     };
+    // ¿Alguien va en vehículo esta semana? Entonces las hojas llevan su columna
+    const conVeh = PL_VEHICULOS.some((v) => dias.some((d) => m.usoVeh(d.iso, v.id).length));
     if (tabla) {
       const sec = crear('section', 'pl-doc-tabla');
       sec.append(cabecera('Quién va a qué proyecto', [impreso]));
@@ -6601,6 +6949,19 @@
       const nota = (et, lista) => { if (!lista.length) return; const li = crear('li'); li.append(crear('b', null, et + ': '), document.createTextNode(lista.join(', ') + '.')); notas.append(li); };
       nota('Proyectos activos sin nadie esta semana', m.sinAsignar.map((p) => p.titulo));
       nota('Sin trabajo esta semana', m.activos.filter((p) => m.pausas.has(p.clave) && !m.dias.has(p.clave)).map((p) => p.titulo));
+      // Dónde va cada vehículo: «Quempineta: lun 19, En obra (ES y LC); mié 21, Limache (MP).», y si un día va a dos
+      // lugares, también lo dice
+      PL_VEHICULOS.forEach((v) => {
+        const usos = dias.filter((d) => m.usoVeh(d.iso, v.id).length).map((d) => {
+          const g = m.usoVeh(d.iso, v.id);
+          return d.corto.toLowerCase() + ' ' + d.fecha.getDate() + ', ' + unir(g.flat().map((x) => m.titulo(x.clave) + ' (' + unir(x.personas) + ')'))
+            + (g.length > 1 ? ' — en ' + g.length + ' lugares a la vez' : '');
+        });
+        if (!usos.length) return;
+        const li = crear('li');
+        li.append(crear('b', null, v.nombre + ': '), document.createTextNode(usos.join('; ') + '.'));
+        notas.append(li);
+      });
       if (notas.childElementCount) sec.append(notas);
       doc.append(sec);
     }
@@ -6615,9 +6976,9 @@
         : conProyecto + ' de ' + pl(disponibles, 'día', 'días') + ' con proyecto · ' + pl(proyectos.size, 'proyecto', 'proyectos'), impreso]));
       const t = crear('table', 'pl-doc-dias');
       const cols = crear('colgroup');
-      ['17%', '39%', '20%', '24%'].forEach((w) => { const c = crear('col'); c.style.width = w; cols.append(c); });
+      (conVeh ? ['14%', '33%', '18%', '21%', '14%'] : ['17%', '39%', '20%', '24%']).forEach((w) => { const c = crear('col'); c.style.width = w; cols.append(c); });
       const thead = crear('thead'), tr = crear('tr');
-      ['Día', 'Proyecto', 'Lugar', 'Con quién va'].forEach((x) => { const th = crear('th', null, x); th.scope = 'col'; tr.append(th); });
+      ['Día', 'Proyecto', 'Lugar', 'Con quién va'].concat(conVeh ? ['Vehículo'] : []).forEach((x) => { const th = crear('th', null, x); th.scope = 'col'; tr.append(th); });
       thead.append(tr);
       t.append(cols, thead);
       dias.forEach((d, i) => {
@@ -6627,21 +6988,22 @@
         if (x.ausencia) {
           const f = crear('tr', 'aus');
           const td = crear('td', null, 'Ausente: ' + x.ausencia.toLowerCase());
-          td.colSpan = 3;
+          td.colSpan = conVeh ? 4 : 3;
           f.append(td);
           filas.push(f);
         }
         x.proyectos.forEach((p) => {
           const f = crear('tr');
           const tp = crear('td');
-          tp.append(proyecto(Object.assign({}, p, { lugar: '' })));
+          tp.append(proyecto(Object.assign({}, p, { lugar: '', vehiculo: null })));
           f.append(tp, crear('td', null, p.sitio || '—'), crear('td', null, p.con.length ? unir(p.con) : 'Nadie más'));
+          if (conVeh) f.append(crear('td', p.vehiculo ? 'veh' : null, p.vehiculo ? p.vehiculo.nombre : '—'));
           filas.push(f);
         });
         if (!filas.length) {
           const f = crear('tr', 'libre');
           const td = crear('td', null, 'Sin proyecto asignado');
-          td.colSpan = 3;
+          td.colSpan = conVeh ? 4 : 3;
           f.append(td);
           filas.push(f);
         }
