@@ -1914,7 +1914,7 @@ def test_la_planificacion_semanal_en_el_registro():
     reg = _registro()
     h = {x["id"]: x for x in reg["herramientas"]}["planificacion"]
     assert h["tipo"] == "vista" and h["vista"] == "vistaPlan" and h["grupo"] == "finanzas"
-    assert reg["personal"] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV"]
+    assert reg["personal"] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
     assert set(reg["usuarios"]) <= set(reg["personal"]), "quien usa las herramientas también se planifica"
     usan = {e["id"]: e["usan"] for e in _conexiones()["elementos"]}
     assert "planificacion" in usan["biblioteca"] and "planificacion" in usan["intercambio"]
@@ -1984,7 +1984,7 @@ def test_asignar_por_personal_queda_en_la_carpeta_del_equipo(navegador, sitio):
     from datetime import date
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
     semana, lunes = _semana_de(date.today())
-    assert list(pagina.evaluate(JS_PERSONAL)) == ["NB", "ES", "LC", "CM", "MP", "SV", "EV"]
+    assert list(pagina.evaluate(JS_PERSONAL)) == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
     assert pagina.locator("#plPersonal tr.tuya").get_attribute("data-persona") == "LC"
     _celda_personal(pagina, "LC", 0).click()
     pop = pagina.locator("#plPop")
@@ -2441,7 +2441,7 @@ def test_otras_semanas_copiar_la_anterior_compartir_e_imprimir(navegador, sitio)
     assert pagina.evaluate("window.__titulo").startswith(f"Planificación semana {numero} (")
     assert pagina.evaluate("window.__hojas") == ["pl-doc-tabla:Quién va a qué proyecto", "pl-doc-hoja:LC"]
     tabla = pagina.evaluate("window.__tabla")
-    assert [f[0] for f in tabla] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV"]
+    assert [f[0] for f in tabla] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
     assert tabla[2][4].startswith("En obra") and tabla[2][1] == "Sin proyecto"
     hoja = pagina.evaluate("window.__hoja")
     assert "En obra" in hoja and "Nadie más" in hoja and "Sin proyecto asignado" in hoja and "tú" not in hoja

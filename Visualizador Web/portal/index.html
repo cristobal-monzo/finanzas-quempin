@@ -1949,14 +1949,14 @@
      usuarios: las iniciales del equipo para el selector de usuario (2026-10-16); las mismas del Formulador
                (js/usuario.js) y de Sistema QUEMPIN (app/config.py, USUARIOS): si el equipo cambia, en los tres.
      personal: a quiénes se asigna en la Planificación semanal (pedido del 2026-10-20). Incluye a todos los
-               usuarios y puede tener más: EV se planifica, pero no elige usuario en las herramientas.
+               usuarios y puede tener más: EV y RL se planifican, pero no eligen usuario en las herramientas.
      vehiculos: los de la empresa, que la Planificación semanal asigna a una persona en un proyecto un día (pedido
                 del 2026-10-25). El id va en el archivo de la semana: si la lista cambia, también el enum de
                 «vehiculo» del esquema planificacion-semana (test_portal.py los compara); articulo: «va en la RAM». -->
 <script type="application/json" id="portal-registro">
 {
   "usuarios": ["NB", "ES", "LC", "CM", "MP", "SV"],
-  "personal": ["NB", "ES", "LC", "CM", "MP", "SV", "EV"],
+  "personal": ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"],
   "vehiculos": [{"id": "quempineta", "nombre": "Quempineta", "articulo": "la"}, {"id": "ram", "nombre": "RAM", "articulo": "la"}],
   "grupos": [
     {"id": "formular", "nombre": "Formulación de proyectos", "corto": "Formulación", "icono": "portapapeles"},
