@@ -908,6 +908,25 @@
   .ing-intro > div:first-child { flex: 1 1 420px; min-width: 0; }
   .ing-titulo { font-size: 15px; margin: 0 0 6px; }
   .ing-texto { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; margin: 0; max-width: 72ch; }
+  .ing-como summary { cursor: pointer; font-size: 12.5px; color: var(--text-secondary); padding: 2px 0; width: fit-content; }
+  .ing-como summary:hover { color: var(--text-primary); }
+  .ing-como summary:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; border-radius: 4px; }
+  .ing-como[open] summary { margin-bottom: 6px; }
+  .ing-pasos { margin: 0 0 4px; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .ing-pasos li { margin: 1px 0; padding-left: 2px; }
+  .ing-como .ing-texto { max-width: none; }
+  .ing-pasos strong { color: var(--text-primary); }
+  /* En «Ingresar datos» el aviso rojo de proyectos incompletos se reemplaza por el avance de la carga
+     (renderProgreso): ahí mismo se completan, y el aviso empujaba la tabla bajo el pliegue (2026-10-25). */
+  body[data-pestana="tabIngreso"] .pendientes-banner { display: none !important; }
+  .ing-progreso { display: flex; gap: 8px 16px; align-items: center; flex-wrap: wrap; background: var(--surface-card);
+    border: 1px solid var(--border-hairline); border-radius: 10px; padding: 10px 16px; margin: 0 0 14px; font-size: 13px; }
+  .ing-progreso[hidden] { display: none; }
+  .ing-progreso .cifra { font-weight: 800; color: var(--text-primary); }
+  .ing-progreso .barra { flex: 0 1 220px; height: 8px; border-radius: 999px; background: var(--gridline); overflow: hidden; }
+  .ing-progreso .barra span { display: block; height: 100%; background: var(--status-good); border-radius: inherit; }
+  .ing-progreso .fecha { flex: 1 1 220px; text-align: right; color: var(--text-muted); font-size: 12px; cursor: help; }
+  @media (max-width: 900px) { .ing-progreso .fecha { text-align: left; } }
   .ing-carpeta { flex: 0 1 300px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; font-size: 12.5px; }
   .ing-estado { font-weight: 700; color: var(--text-secondary); }
   .ing-estado.ok { color: var(--status-good); }
@@ -1408,19 +1427,25 @@
       <!-- 2026-10-02: los valores manuales de «Proyectos» se ingresan aquí y
            llegan al Excel por el buzón del Intercambio (ver ingreso.js). La
            arman build_visualizador.datos_para_ingreso y el JS de initApp. -->
+      <!-- 2026-10-25: tres pasos en vez de un párrafo con «buzón», «vuelta» y /Actualizar_Finanzas, y el
+           avance de la carga aquí mismo (el aviso rojo de arriba se esconde en esta pestaña). -->
       <div class="ing-intro">
         <div>
-          <h2 class="ing-titulo">Ingresar datos de los proyectos</h2>
-          <p class="ing-texto">
-            Escribe aquí los valores que hoy se cargan a mano en la planilla. Lo que cambies queda marcado en naranjo y
-            se guarda como borrador en este navegador. Al enviar, cada proyecto queda como un archivo en el buzón de la
-            carpeta de Intercambio y el Análisis Financiero lo pasa al Excel en su próxima vuelta (cada 2 horas, o al
-            correr <strong>/Actualizar_Finanzas</strong>). Nunca reemplaza un valor que alguien cambió en el Excel después de
-            que lo viste aquí: ese envío queda esperando una decisión.
-          </p>
+          <h2 class="ing-titulo">Ingresar avance y datos de los proyectos</h2>
+          <!-- Abierto la primera vez; después queda como lo dejó la persona (iniciarIngreso, af_ingreso_como) -->
+          <details class="ing-como" id="ingComo">
+            <summary>Cómo funciona: escribes, revisas y envías; llega al Excel en la próxima vuelta (cada 2 horas)</summary>
+            <ol class="ing-pasos">
+              <li><strong>Escribe</strong> lo que cambió: queda en naranjo y se guarda en este navegador hasta que lo envíes.</li>
+              <li><strong>Revisa y envía</strong> con el botón que aparece abajo: antes de enviar se ve qué cambia.</li>
+              <li><strong>Llega al Excel</strong> en la próxima vuelta del procesador (cada 2 horas) y al tablero en su próxima publicación.</li>
+            </ol>
+            <p class="ing-texto">Si alguien cambió ese valor en el Excel después de que lo viste, tu envío no lo pisa: queda esperando una decisión.</p>
+          </details>
         </div>
         <div class="ing-carpeta" id="ingCarpeta" aria-live="polite"></div>
       </div>
+      <div class="ing-progreso" id="ingProgreso" hidden></div>
       <div class="ing-mensaje" id="ingMensaje" role="status" hidden></div>
       <div class="filtros">
         <div class="filtro crece">
@@ -1430,10 +1455,10 @@
         <div class="filtro">
           <label for="ingFiltro">Mostrar</label>
           <select id="ingFiltro">
-            <option value="">Todos los proyectos</option>
-            <option value="faltan">Les faltan datos</option>
             <option value="curso">En curso</option>
+            <option value="faltan">Les faltan datos</option>
             <option value="cambios">Con cambios sin enviar</option>
+            <option value="">Todos los proyectos</option>
           </select>
         </div>
         <div class="ing-acciones">
@@ -1461,15 +1486,15 @@
           <h3 id="ingDialogoTitulo">Revisar antes de enviar</h3>
           <div class="ing-dialogo-cuerpo" id="ingDialogoCuerpo"></div>
           <div class="ing-dialogo-pie">
-            <label>Tu nombre (queda registrado en el envío)
-              <input type="text" id="ingUsuario" autocomplete="name" maxlength="80" placeholder="Nombre y apellido">
+            <label>Quién envía (queda registrado en el envío)
+              <input type="text" id="ingUsuario" autocomplete="name" maxlength="80" placeholder="Tus iniciales o tu nombre">
             </label>
             <div class="ing-aviso" id="ingDialogoAviso" role="alert"></div>
             <p class="ing-nota" id="ingDialogoNota"></p>
             <div class="ing-dialogo-acciones">
               <button type="button" class="ing-boton" id="ingVolver">Volver</button>
               <button type="button" class="ing-boton" id="ingDescargar">Descargar archivo</button>
-              <button type="button" class="ing-boton ing-primario" id="ingGuardar">Guardar en el buzón</button>
+              <button type="button" class="ing-boton ing-primario" id="ingGuardar">Enviar al Análisis Financiero</button>
             </div>
           </div>
         </form>
@@ -1760,6 +1785,7 @@
       btn.classList.add('active');
       btn.setAttribute('aria-selected', 'true');
       document.getElementById(btn.getAttribute('data-tab')).classList.add('active');
+      document.body.setAttribute('data-pestana', btn.getAttribute('data-tab'));   // el CSS esconde lo que sobra en cada pestaña
     });
   });
 
@@ -2989,6 +3015,16 @@
     var tabla = document.getElementById('ingTabla');
     var filtro = document.getElementById('ingFiltro');
     var buscar = document.getElementById('ingBuscar');
+    // De entrada «En curso» (2026-10-25): lo que se actualiza seguido. Antes eran los 22 proyectos con 52
+    // «falta», casi todos de obras terminadas; esos quedan a un clic en el avance de la carga. Este
+    // navegador recuerda lo último que se eligió.
+    var CLAVE_FILTRO = 'af_ingreso_filtro';
+    var filtroGuardado = leerLS(CLAVE_FILTRO, 'curso');
+    if (Array.prototype.some.call(filtro.options, function (o) { return o.value === filtroGuardado; })) filtro.value = filtroGuardado;
+    // «Cómo funciona»: abierto la primera vez; después, como lo dejó la persona (la tabla queda a la vista)
+    var como = document.getElementById('ingComo');
+    como.open = leerLS('af_ingreso_como', true) !== false;
+    como.addEventListener('toggle', function () { guardarLS('af_ingreso_como', como.open); });
     function enCurso(p) { var a = efectivo(p.tag, '% Avance'); return typeof a !== 'number' || a < 1; }
     function todasLasFilas() {
       var nuevos = Object.keys(borrador).filter(function (t) { return borrador[t].nuevo; }).map(function (t) {
@@ -3087,6 +3123,36 @@
         input.placeholder = c.requerido && !p.gastos_generales && efectivo(p.tag, c.clave) == null ? 'falta' : '';
       });
     }
+    // Cuántos proyectos ya tienen lo necesario para el análisis, en vez del aviso rojo de arriba, y de
+    // cuándo son los valores que se ven (los del último tablero publicado).
+    var cajaProgreso = document.getElementById('ingProgreso');
+    function renderProgreso() {
+      var reales = ING.proyectos.filter(function (p) { return !p.gastos_generales; });
+      if (!reales.length) { cajaProgreso.hidden = true; return; }
+      var completos = reales.filter(function (p) { return !faltanAhora(p).length; }).length;
+      var faltan = reales.length - completos;
+      var conBorrador = Object.keys(borrador).length > 0;
+      var fecha = new Date(generadoMs);
+      cajaProgreso.hidden = false;
+      cajaProgreso.innerHTML =
+        '<span><span class="cifra">' + completos + ' de ' + reales.length + '</span> proyectos tienen todo lo necesario para el análisis' +
+        (conBorrador ? ' (contando tus cambios sin enviar)' : '') + '</span>' +
+        '<span class="barra" aria-hidden="true"><span style="width:' + Math.round(completos / reales.length * 100) + '%"></span></span>' +
+        (faltan ? '<button type="button" class="ing-boton" data-progreso="faltan">Ver ' + (faltan === 1 ? 'el que le faltan' : 'los ' + faltan + ' que les faltan') + ' datos</button>'
+          : '<span class="tone-good">Todos completos</span>') +
+        (isNaN(fecha.getTime()) ? '' : '<span class="fecha" title="Los valores son los del Excel cuando se publicó este tablero. ' +
+          'Lo que enviaste desde este navegador después se muestra en su lugar.">Valores del Excel al ' +
+          esc(fecha.toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })) +
+          '</span>');
+    }
+    cajaProgreso.addEventListener('click', function (evt) {
+      if (!evt.target.closest('[data-progreso="faltan"]')) return;
+      filtro.value = 'faltan';
+      buscar.value = '';
+      renderTabla();
+      tabla.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+
     function renderBarra() {
       var tags = Object.keys(borrador);
       var cambios = 0, malos = 0;
@@ -3106,6 +3172,7 @@
       actualizar(tag, input.getAttribute('data-clave'), input.value);
       refrescarFila(tag);
       renderBarra();
+      renderProgreso();
     });
     // Al salir del campo se muestra con el formato del tablero (12.345.678; 35,5).
     tabla.addEventListener('change', function (evt) {
@@ -3126,10 +3193,10 @@
       guardarBorrador();
       renderTodo();
     });
-    filtro.addEventListener('change', renderTabla);
+    filtro.addEventListener('change', function () { guardarLS(CLAVE_FILTRO, filtro.value); renderTabla(); });
     buscar.addEventListener('input', debounce(renderTabla, 150));
 
-    function renderTodo() { renderTabla(); renderBarra(); renderEnvios(); }
+    function renderTodo() { renderProgreso(); renderTabla(); renderBarra(); renderEnvios(); }
 
     var mensaje = document.getElementById('ingMensaje');
     function mostrarMensaje(html, nivel) {
@@ -3210,12 +3277,12 @@
       if (e.resultado && ESTADOS[e.resultado.estado]) {
         return { nivel: ESTADOS[e.resultado.estado][0], texto: ESTADOS[e.resultado.estado][1], detalle: (e.resultado.detalle || []).join(' ') };
       }
-      if (e.enBuzon) return { nivel: 'warn', texto: 'En el buzón: se aplica en la próxima vuelta' };
+      if (e.enBuzon) return { nivel: 'warn', texto: 'Enviado: llega al Excel en la próxima vuelta' };
       if (Date.parse(e.enviado) <= generadoMs) {
         var p = POR_TAG[e.tag];
         var calza = p && Object.keys(e.valores).every(function (k) { return CAMPO[k] && Q.iguales(CAMPO[k], e.valores[k], p.valores[k]); });
         return calza ? { nivel: 'ok', texto: 'Ya se ve en el tablero' }
-          : { nivel: 'warn', texto: 'No se ve en el tablero', detalle: 'El tablero es posterior al envío pero no muestra estos valores: puede estar esperando una decisión (driver.py intercambio) o no haber llegado al buzón.' };
+          : { nivel: 'warn', texto: 'No se ve en el tablero', detalle: 'El tablero es posterior al envío pero no muestra estos valores: puede estar esperando una decisión o no haber llegado a la carpeta. Avísale a quien administra las herramientas QUEMPIN.' };
       }
       if (e.via === 'descarga') return { nivel: 'warn', texto: 'Descargado', detalle: 'Falta dejar el archivo en el buzón de la carpeta de Intercambio.' };
       return { nivel: 'warn', texto: 'Enviado' };
@@ -3226,7 +3293,7 @@
       if (!pulso) return '';
       return pulso.detenido
         ? '<p class="ing-pulso detenido" role="alert">Lo que envías no se está aplicando. ' + esc(pulso.texto) + '</p>'
-        : '<p class="ing-pulso">' + esc(pulso.texto) + ' Lo que está en el buzón se aplica en la próxima vuelta (cada 2 horas).</p>';
+        : '<p class="ing-pulso">' + esc(pulso.texto) + ' Lo enviado llega al Excel en la próxima vuelta (cada 2 horas).</p>';
     }
     function renderEnvios() {
       var caja = document.getElementById('ingEnvios');
@@ -3251,7 +3318,13 @@
     var usuario = document.getElementById('ingUsuario');
     var btnGuardar = document.getElementById('ingGuardar');
     var btnDescargar = document.getElementById('ingDescargar');
-    usuario.value = leerLS(CLAVE_USUARIO, '') || '';
+    // Quién envía: lo último escrito aquí o, si nada, las iniciales elegidas en el Portal o el Formulador
+    // (la misma clave, 'quempin_usuario'): así no se pide dos veces (2026-10-25).
+    function inicialesDelEquipo() {
+      try { var v = String(localStorage.getItem('quempin_usuario') || '').trim().toUpperCase(); return /^[A-ZÑ]{2,3}$/.test(v) ? v : ''; }
+      catch (e) { return ''; }
+    }
+    usuario.value = leerLS(CLAVE_USUARIO, '') || inicialesDelEquipo();
     function nombreDe(tag) { return POR_TAG[tag] ? POR_TAG[tag].nombre : ((borrador[tag] || {}).nuevo || {}).nombre || tag; }
     function problemas() {
       var errores = [], advertencias = [];
@@ -3294,7 +3367,7 @@
       btnGuardar.hidden = !estadoCarpeta.disponible;
       btnDescargar.textContent = n === 1 ? 'Descargar archivo' : 'Descargar ' + n + ' archivos';
       document.getElementById('ingDialogoNota').textContent = estadoCarpeta.disponible
-        ? 'Se guarda un archivo por proyecto en el buzón de la carpeta de Intercambio' +
+        ? 'Se envía un archivo por proyecto por la carpeta del equipo (Intercambio)' +
           (estadoCarpeta.conectada ? '.' : ' (la primera vez hay que elegir la biblioteca «Formulación de proyectos - Documentos»).')
         : 'Este navegador no puede escribir en la carpeta: descarga los archivos y déjalos en el buzón de Intercambio.';
       dialogo.showModal();
@@ -3337,10 +3410,11 @@
         }, Promise.resolve());
       }).then(function () {
         dialogo.close();
+        como.open = false;   // ya envió una vez: la explicación se pliega (el evento «toggle» lo recuerda)
         var n = listo.mensajes.length;
-        mostrarMensaje('Listo: ' + n + (n === 1 ? ' envío quedó' : ' envíos quedaron') + ' en el buzón de Intercambio. ' +
-          'El Análisis Financiero los pasa al Excel en su próxima vuelta (cada 2 horas, o al correr /Actualizar_Finanzas); ' +
-          'el tablero los muestra cuando se vuelva a publicar. Abajo puedes revisar en qué quedó cada uno.');
+        mostrarMensaje('Listo: ' + (n === 1 ? 'se envió 1 proyecto' : 'se enviaron ' + n + ' proyectos') + '. ' +
+          'Llegan al Excel del Análisis Financiero en la próxima vuelta del procesador (cada 2 horas, con el computador ' +
+          'de la oficina encendido) y el tablero los muestra en su próxima publicación. Abajo ves en qué quedó cada uno.');
         renderTodo();
         return refrescarEnvios();
       }).catch(function (e) {
@@ -3367,7 +3441,7 @@
         var n = listo.mensajes.length;
         mostrarMensaje('Se ' + (n === 1 ? 'descargó 1 archivo' : 'descargaron ' + n + ' archivos') + '. Déjalos tal cual en la carpeta ' +
           '<strong>Formulación de proyectos - Documentos › .Herramientas formulación › Intercambio › buzon</strong>, ' +
-          'o pásaselos a quien corre /Actualizar_Finanzas (<code>driver.py intercambio cargar &lt;archivo&gt;</code>).', 'warn');
+          'o envíaselos a quien administra las herramientas QUEMPIN.', 'warn');
         renderTodo();
       });
     });
@@ -3448,6 +3522,7 @@
     });
 
     pintarCarpeta();
+    if (filtro.value && !visibles().length) filtro.value = '';   // sin obras en curso (o sin cambios guardados): todos
     renderTodo();
     leerEstadoCarpeta();
     abrirIngresoDe = function (tag) {

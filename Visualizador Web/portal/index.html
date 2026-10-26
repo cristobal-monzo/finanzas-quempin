@@ -2040,9 +2040,9 @@
      "desc": "El programa de trabajo de cada proyecto, con su ruta crítica, en PDF y Excel. Herramienta propia desde el 2026-10-20: con un proyecto elegido abre su carta.",
      "claves": "gantt carta programa plazo plazos cronograma ruta critica"},
     {"id": "proyectos", "nombre": "Seguimiento", "grupo": "formular", "tipo": "marco",
-     "ruta": "/formulacion-proyectos-quempin/", "familia": "formulador", "alias": true, "proyecto": "seguimiento",
-     "breve": "En qué etapa va y qué sigue",
-     "desc": "La lista de proyectos del Formulador y, con un proyecto elegido, su seguimiento: en qué etapa va y qué sigue.",
+     "ruta": "/formulacion-proyectos-quempin/", "familia": "formulador", "alias": true, "proyecto": "seguimiento", "requiereProyecto": true,
+     "breve": "Un proyecto: su etapa y qué sigue",
+     "desc": "El seguimiento de un proyecto: en qué etapa va, qué sigue y en qué herramienta se hace. Sin proyecto elegido, primero pide elegirlo (la lista de todos está en el Formulador; el equipo completo, en el Recorrido).",
      "claves": "proyecto proyectos etapa avance que sigue seguimiento recorrido"},
     {"id": "planificacion", "nombre": "Planificación semanal", "corto": "Planificación", "grupo": "finanzas", "tipo": "vista", "vista": "vistaPlan", "icono": "calendario",
      "breve": "Quién va a qué proyecto cada día",
@@ -7974,8 +7974,11 @@
   let pedida = null;
   try { pedida = HERR.get(decodeURIComponent(location.hash.replace(/^#\/?/, '').split(/[/?]/)[0] || '')); } catch (e) { pedida = null; }
   if (pedida && (pedida.tipo === 'marco' || pedida.tipo === 'vista')) {
+    // Si la pestaña de la visita anterior mostraba otra herramienta de la misma página (Análisis
+    // Financiero e Ingresar avance, Formulador y Seguimiento), se abre la pedida: antes quedaba la
+    // anterior con el nombre de la pedida (…/portal/#/ingresar mostraba el Resumen, 2026-10-25).
     const ya = pestanaDe(familiaDe(pedida));
-    if (ya) { ya.herr = pedida.id; activar(ya.familia); } else abrir(pedida.id);
+    if (ya && ya.herr === pedida.id) activar(ya.familia); else abrir(pedida.id);
   } else {
     activar(previas && pestanaDe(previas.activa) ? previas.activa : 'inicio');
   }

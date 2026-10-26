@@ -255,8 +255,14 @@ y que se pueda revertir si no le gusta.
   - `tipo`: marco, excel, programa, archivo, ayuda, inicio o vista (una sección
     propia del portal, en su pestaña: `vista` es su id).
   - `ruta` y `peru`.
+  - `requiereProyecto`: sin proyecto elegido, abre el selector en vez de la
+    herramienta. Lo lleva Seguimiento desde el 2026-10-25: sin proyecto era la
+    misma lista del Formulador con otro nombre.
   - `familia` y `alias`: la misma página va en una sola pestaña. El
-    Formulador incluye Seguimiento; el Análisis incluye Ingresar datos. La
+    Formulador incluye Seguimiento; el Análisis incluye Ingresar datos. Una
+    dirección `…/portal/#/<herramienta>` abre esa y no su pareja aunque la
+    pestaña de la visita anterior mostrara la otra (2026-10-25: `#/ingresar`
+    dejaba el Resumen). La
     Carta Gantt dejó de ser parte del Formulador el 2026-10-20 (pedido del
     usuario: «una herramienta aparte, no una extensión del formulador»): es su
     propia página, `/formulacion-proyectos-quempin/gantt/` (en el repositorio

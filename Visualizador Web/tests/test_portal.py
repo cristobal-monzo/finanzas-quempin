@@ -736,6 +736,45 @@ def test_ingresar_datos_y_analisis_son_una_sola_pestana(navegador, sitio):
     pagina.context.close()
 
 
+def test_el_seguimiento_pide_el_proyecto(navegador, sitio):
+    """2026-10-25: sin proyecto, «Seguimiento» abría la misma lista que «Formulador», con otro nombre.
+    Ahora pide elegir el proyecto y abre su seguimiento."""
+    pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
+    _menu(pagina, "Seguimiento")
+    assert pagina.locator("#popProyecto").is_visible()
+    assert pagina.locator("#popNota").inner_text() == "Elige el proyecto para ver su Seguimiento."
+    assert _pestanas(pagina) == ["Inicio"]
+    pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-002").click()
+    _marco(pagina, "formulador", "formulador")
+    _esperar(pagina, "formulador", "hash", "#/p/u3/seguimiento")
+    assert _pestanas(pagina) == ["Inicio", "Seguimiento · QMPN-2026-002"]
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_direccion_de_una_herramienta_abre_esa_y_no_su_pareja(navegador, sitio):
+    """…/portal/#/ingresar con la pestaña del Análisis Financiero de la visita anterior dejaba el Resumen con
+    el nombre «Ingresar avance» (2026-10-25): las dos son la misma página y la pestaña del tablero dice cuál."""
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _menu(pagina, "Ingresar avance")
+    _marco(pagina, "analisis", "af")
+    _esperar(pagina, "analisis", "tab", "tabIngreso")
+    _menu(pagina, "Análisis Financiero")
+    _esperar(pagina, "analisis", "tab", "tabResumen")
+    pagina.goto(sitio + "/finanzas-quempin/portal/?otra-visita#/ingresar")
+    pagina.locator("#vistaInicio").wait_for(state="attached")
+    _marco(pagina, "analisis", "af")
+    _esperar(pagina, "analisis", "tab", "tabIngreso")
+    assert _pestanas(pagina) == ["Inicio", "Ingresar avance"]
+    # La misma herramienta que ya estaba se queda donde la persona la dejó
+    pagina.goto(sitio + "/finanzas-quempin/portal/?tercera#/ingresar")
+    pagina.locator("#vistaInicio").wait_for(state="attached")
+    _marco(pagina, "analisis", "af")
+    assert _pestanas(pagina) == ["Inicio", "Ingresar avance"]
+    assert not errores
+    pagina.context.close()
+
+
 def test_la_contrasena_escrita_en_una_herramienta_abre_las_demas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio, clave=False)
     _menu(pagina, "Centro de Costos")

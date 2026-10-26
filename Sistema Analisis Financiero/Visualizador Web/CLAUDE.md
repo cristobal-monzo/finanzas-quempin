@@ -296,7 +296,8 @@ desde el tablero».
   navegador ya se haya enviado algo para ese campo que el tablero todavía no
   muestra (más nuevo que el snapshot, o aún en el buzón): entonces es lo
   enviado. Así un segundo cambio se apoya en el primero en vez de chocar.
-- **Enviar**: en Chrome/Edge de escritorio, «Guardar en el buzón» escribe un
+- **Enviar**: en Chrome/Edge de escritorio, «Enviar al Análisis Financiero»
+  (antes «Guardar en el buzón») escribe un
   archivo por proyecto en `buzon/` con la API de acceso a archivos. Usa el
   **mismo registro de IndexedDB que el Formulador** (`qpn-intercambio`): los
   dos están en `cristobal-monzo.github.io`, así que la carpeta conectada en
@@ -318,6 +319,25 @@ desde el tablero».
   pestaña filtrada en los que les faltan datos.
 - En pantallas de más de 1240 px la tabla usa todo el ancho de la ventana (no
   cabe en los 1.140 px del tablero); bajo 640 px cada proyecto es una tarjeta.
+- **Al grano (2026-10-25)**: la revisión de UX del Portal la encontró como la
+  herramienta más difícil de usar (se entraba bajo el aviso rojo, con 22 filas
+  y 52 «falta», y un párrafo con «buzón», «vuelta» y `/Actualizar_Finanzas`).
+  Desde entonces:
+  - En esta pestaña el aviso de incompletos se esconde (`body[data-pestana]`,
+    que pone el cambio de pestaña) y lo reemplaza `#ingProgreso`: cuántos
+    proyectos ya tienen lo necesario, un botón a los que les faltan datos y de
+    cuándo son los valores (los del último tablero publicado).
+  - «Mostrar» parte en **En curso** y el navegador recuerda lo último elegido
+    (`af_ingreso_filtro`); sin obras en curso muestra todos.
+  - «Cómo funciona» son tres pasos en un `<details>` (`#ingComo`): abierto la
+    primera vez, se pliega solo después del primer envío y queda como lo dejó
+    la persona (`af_ingreso_como`).
+  - Quién envía parte con las iniciales que ya eligió el Portal o el
+    Formulador (`quempin_usuario`) si este navegador no tenía un nombre.
+  - Los textos dejan fuera `/Actualizar_Finanzas` y `driver.py` (un test lo
+    exige): eso es de quien mantiene el sistema.
+  - Tests de pantalla en `tests/test_ingreso.py` (Chromium sobre un build del
+    libro de prueba).
 
 ## Enlaces con el Formulador (2026-10-06)
 

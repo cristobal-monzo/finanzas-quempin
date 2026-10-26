@@ -117,13 +117,24 @@ def test_el_build_inserta_la_logica_y_el_validador_originales(libro, tmp_path, m
 def test_template_tiene_la_pestana_y_sus_ganchos():
     template = bv.RUTA_TEMPLATE.read_text(encoding="utf-8")
     for gancho in ("tabIngreso", "tabBtnIngreso", "ingTabla", "ingBarra", "ingDialogo", "ingNuevoDialogo",
-                   "ingEnvios", "ingCarpeta", "ingArchivo", "pendientesCompletar", "af-esquemas-js", "af-ingreso-js"):
+                   "ingEnvios", "ingCarpeta", "ingArchivo", "ingProgreso", "ingComo", "pendientesCompletar",
+                   "af-esquemas-js", "af-ingreso-js"):
         assert 'id="' + gancho + '"' in template, gancho
     for marcador in ("__AF_ESQUEMAS_JS__", "__AF_INGRESO_JS__"):
         assert template.count(marcador) == 1, marcador
     # Lo que depende de los datos llega en el snapshot: el template no repite las claves.
     for clave in ("Costos Materiales Proyectados", "Mano de Obra Real\"", "N° Requerimiento"):
         assert clave not in template, clave
+
+
+def test_los_textos_no_usan_la_jerga_de_quien_mantiene_el_sistema():
+    """2026-10-25: el equipo leía «/Actualizar_Finanzas» y «driver.py intercambio cargar» en los avisos.
+    Se revisan los textos (entre comillas o entre etiquetas), no los comentarios."""
+    import re
+    template = re.sub(r"<!--.*?-->", "", bv.RUTA_TEMPLATE.read_text(encoding="utf-8"), flags=re.S)
+    textos = re.findall(r"'(?:[^'\\\n]|\\.)*'|\"(?:[^\"\\\n]|\\.)*\"|>[^<>]+<", template)
+    for jerga in ("/Actualizar_Finanzas", "driver.py", "Guardar en el buzón"):
+        assert not [t for t in textos if jerga in t], jerga
 
 
 # ── ingreso.js (Node) contra Python ─────────────────────────────────────────
@@ -247,3 +258,88 @@ def test_proyecto_nuevo_valida_tag_y_nombre(libro, tmp_path):
     r = _node(tmp_path, {"ingreso": ingreso, "nuevos": [["OBRA", "Obra"], ["DEMO", "Otra"], ["obra 1", "X"], ["OBRA", ""]]})
     assert [len(e) for e in r["nuevos"]] == [0, 1, 1, 1]
     assert "Ya hay un proyecto" in r["nuevos"][1][0]
+
+
+# ── LA PANTALLA EN EL NAVEGADOR (2026-10-25) ─────────────────────────────────
+# La revisión de UX del Portal la encontró como la herramienta más difícil de usar: se entraba bajo el aviso
+# rojo de proyectos incompletos, con 22 filas y 52 «falta», un párrafo con «buzón», «vuelta» y
+# /Actualizar_Finanzas, y el nombre de quien envía pedido otra vez. Esto fija lo que se cambió.
+
+@pytest.fixture(scope="module")
+def navegador():
+    sync_api = pytest.importorskip("playwright.sync_api")
+    with sync_api.sync_playwright() as p:
+        try:
+            nav = p.chromium.launch()
+        except Exception as error:   # sin Chromium instalado (py -3.14 -m playwright install chromium)
+            pytest.skip(f"no se pudo abrir Chromium: {error}")
+        yield nav
+        nav.close()
+
+
+def _pantalla(navegador, libro, tmp_path, monkeypatch, ancho=1280):
+    monkeypatch.setattr(bv, "RUTA_EXCEL", libro)
+    monkeypatch.setattr(bv, "RUTA_DATA_JSON", tmp_path / "data.json")
+    monkeypatch.setattr(bv, "RUTA_BUILD_HTML", tmp_path / "index.html")
+    assert bv.build() == 0
+    ctx = navegador.new_context(viewport={"width": ancho, "height": 860})
+    # Las iniciales que el Portal o el Formulador ya eligieron en este navegador
+    ctx.add_init_script("if (localStorage.getItem('quempin_usuario') === null) localStorage.setItem('quempin_usuario', 'LC');")
+    pagina = ctx.new_page()
+    errores = []
+    pagina.on("pageerror", lambda e: errores.append(str(e)))
+    pagina.goto((tmp_path / "index.html").as_uri())
+    pagina.fill("#pwInput", bv.candado.leer_contrasena())
+    pagina.press("#pwInput", "Enter")
+    pagina.locator("#pwGate").wait_for(state="hidden", timeout=20000)
+    return pagina, errores
+
+
+def _mostrado(pagina, selector):
+    return pagina.evaluate("s => getComputedStyle(document.querySelector(s)).display !== 'none'", selector)
+
+
+def test_la_pestana_de_ingreso_va_al_grano(navegador, libro, tmp_path, monkeypatch):
+    pagina, errores = _pantalla(navegador, libro, tmp_path, monkeypatch)
+    assert _mostrado(pagina, "#pendientesBanner")             # en el Resumen el aviso de incompletos sigue
+    pagina.click("#tabBtnIngreso")
+    assert not _mostrado(pagina, "#pendientesBanner")         # aquí se completan: el aviso no empuja la tabla
+    # De entrada, las obras en curso (DEMO al 35 % y MEDIO sin avance); Gastos Generales no
+    assert pagina.input_value("#ingFiltro") == "curso"
+    assert pagina.locator("#ingTabla tbody tr[data-tag]").evaluate_all("f => f.map(tr => tr.dataset.tag)") == ["MEDIO", "DEMO"]
+    # El avance de la carga reemplaza al aviso, con un clic a los que les faltan datos
+    progreso = pagina.inner_text("#ingProgreso")
+    assert "1 de 2 proyectos tienen todo lo necesario para el análisis" in progreso
+    assert "Valores del Excel al " in progreso
+    pagina.click('#ingProgreso [data-progreso="faltan"]')
+    assert pagina.input_value("#ingFiltro") == "faltan"
+    assert pagina.locator("#ingTabla tbody tr[data-tag]").evaluate_all("f => f.map(tr => tr.dataset.tag)") == ["MEDIO"]
+    # Sin jerga de quien mantiene el sistema
+    texto = pagina.inner_text("#tabIngreso")
+    for jerga in ("/Actualizar_Finanzas", "driver.py", "Guardar en el buzón"):
+        assert jerga not in texto, jerga
+    # Cabe sin desplazar la página de lado
+    assert pagina.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth") <= 0
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_pestana_recuerda_y_no_pide_dos_veces_quien_envia(navegador, libro, tmp_path, monkeypatch):
+    pagina, errores = _pantalla(navegador, libro, tmp_path, monkeypatch)
+    pagina.click("#tabBtnIngreso")
+    # «Cómo funciona» abierto la primera vez; cerrado, así queda al volver
+    assert pagina.evaluate("document.getElementById('ingComo').open") is True
+    pagina.click("#ingComo summary")
+    pagina.select_option("#ingFiltro", "")
+    pagina.reload()
+    pagina.locator("#pwGate").wait_for(state="hidden", timeout=20000)   # la clave quedó recordada
+    pagina.click("#tabBtnIngreso")
+    assert pagina.evaluate("document.getElementById('ingComo').open") is False
+    assert pagina.input_value("#ingFiltro") == ""
+    # Quién envía: las iniciales elegidas en el Portal, sin escribirlas otra vez
+    pagina.fill('#ingTabla input.ing-input[data-tag="DEMO"][data-clave="% Avance"]', "40")
+    pagina.click("#ingRevisar")
+    assert pagina.input_value("#ingUsuario") == "LC"
+    assert pagina.inner_text("#ingGuardar") == "Enviar al Análisis Financiero"
+    assert not errores
+    pagina.context.close()
