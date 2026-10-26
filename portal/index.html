@@ -1353,6 +1353,7 @@
   .pl-agr-txt b { font-size: 14.5px; color: var(--text-primary); overflow-wrap: anywhere; }
   .pl-agr-txt span { font-size: 13px; color: var(--text-secondary); }
   .pl-agregados .cx-enlace { flex: 0 0 auto; min-height: 36px; }
+  .pl-agregados ul + h3 { margin-top: 8px; }
   .pl-agregar-pie { max-width: 260px; margin: 10px 0 0; min-height: 38px; }
   .pl-agregar-pie:disabled { opacity: 0.45; cursor: default; }
   /* Una persona escrita a mano: su nombre corto en la etiqueta y su círculo con borde punteado */
@@ -1744,7 +1745,7 @@
                 <div class="pl-vistas" id="plVistas" role="group" aria-label="Cómo ver la semana"></div>
                 <div class="pl-acciones">
                   <label class="rc-mios" title="Mostrar también el sábado"><input type="checkbox" id="plSabado"><span>Sábado</span></label>
-                  <button class="cx-enlace" id="plAgregar" type="button" title="Una persona o un proyecto que no están en la lista: quedan en todas las semanas"></button>
+                  <button class="cx-enlace" id="plAgregar" type="button" title="Una persona o un proyecto que no están en la lista, solo para la semana a la vista"></button>
                   <button class="cx-enlace" id="plCopiar" type="button" title="Agrega lo de la semana anterior, día por día, sin borrar nada de esta"></button>
                   <button class="cx-enlace" id="plCompartir" type="button" title="Lo de cada persona, listo para pegar en WhatsApp o en un correo"></button>
                   <button class="cx-enlace" id="plImprimir" type="button" title="Imprimir o guardar en PDF la tabla de la semana y una hoja para cada persona"></button>
@@ -1882,7 +1883,7 @@
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
       <li><strong>Recorrido de los proyectos</strong> (arriba en el Inicio y en el menú): cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre, con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Las cifras de arriba filtran el tablero y «Solo mis proyectos» deja los tuyos. Lee la carpeta del equipo, así que necesita la biblioteca conectada en este navegador.</li>
-      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar»); al tocarlo se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Con «Agregar» (o en la ventanita de un proyecto, «Otra persona») se escribe el nombre de alguien que no está en la lista, o un proyecto que no está en ejecución en el Recorrido (con su N° de la Planilla adelante, si lo tiene): queda en todas las semanas hasta que se quite, y quitarlo no borra lo ya asignado. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
+      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar»); al tocarlo se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Con «Agregar» (o en la ventanita de un proyecto, «Otra persona») se escribe el nombre de alguien que no está en la lista, o un proyecto que no está en ejecución en el Recorrido (con su N° de la Planilla adelante, si lo tiene): es temporal y queda solo en esa semana (no pasa a las siguientes; «Copiar la semana anterior» lo lleva junto con lo suyo, y en «Agregar» se vuelve a sumar con un toque). Quitarlo no borra lo ya asignado. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
       <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
@@ -4745,11 +4746,14 @@
   }
 
   /* ---- Las personas y proyectos agregados a mano (2026-10-26) ------------------------------------------------------
-     Valen para todas las semanas: van en publicado/planificacion/lista/<dispositivo>.json (esquema planificacion-lista),
-     un archivo por navegador como las semanas, y en cada persona o proyecto manda el cambio más reciente (quitarlo de la
-     planificación es 'activa': false; lo ya asignado en una semana se sigue viendo con su nombre). */
+     Son temporales: valen solo para la semana en que se agregaron (2026-10-26: alguien de apoyo o una obra puntual no
+     pasa a las semanas siguientes; «Copiar la semana anterior» los lleva junto con lo suyo). Van en
+     publicado/planificacion/lista/<dispositivo>.json (esquema planificacion-lista), un archivo por navegador como las
+     semanas, y en cada semana y persona o proyecto manda el cambio más reciente (quitarlo es 'activa': false; lo ya
+     asignado se sigue viendo con su nombre). Uno guardado antes, sin 'semana', es de la semana en que se escribió. */
   const plNombreLimpio = (v) => texto(v).replace(/\s+/g, ' ').trim().slice(0, 60);
   const plListaVacia = () => ({ personas: new Map(), proyectos: new Map() });
+  const plKLista = (e) => e.semana + '|' + (e.id || e.clave);
   function plLista() {
     if (!planif.lista) planif.lista = { archivos: new Map(), mias: plListaVacia(), ef: plListaVacia(), leida: 0 };
     return planif.lista;
@@ -4761,17 +4765,20 @@
     const tope = new Date(Date.now() + 365 * DIA).toISOString();
     const instante = (x) => typeof x === 'string' && PL_INSTANTE.test(x) && x <= tope;
     const por = (x) => (/^[A-Z]{2,3}$/.test(texto(x)) ? texto(x) : '');
-    const lista = (v) => (Array.isArray(v) ? v.slice(0, 500) : []);
+    const lista = (v) => (Array.isArray(v) ? v.slice(0, 2000) : []);
+    const semana = (x) => (plLunesDeId(texto(x.semana)) ? x.semana : plSemanaId(plLunesDe(new Date(x.t))));
     const r = plListaVacia();
     lista(d.personas).forEach((x) => {
       const nombre = x ? plNombreLimpio(x.nombre) : '';
       if (!x || !PL_PER_MANO.test(texto(x.id)) || !nombre || !instante(x.t)) return;
-      plPoner(r.personas, x.id, { id: x.id, nombre, activa: x.activa === true, t: x.t, por: por(x.por), de });
+      const e = { id: x.id, nombre, semana: semana(x), activa: x.activa === true, t: x.t, por: por(x.por), de };
+      plPoner(r.personas, plKLista(e), e);
     });
     lista(d.proyectos).forEach((x) => {
       const titulo = x ? plNombreLimpio(x.titulo) : '';
       if (!x || !/^(req:\d{1,6}|pro:[a-z0-9-]{1,40})$/.test(texto(x.clave)) || !titulo || !instante(x.t)) return;
-      plPoner(r.proyectos, x.clave, { clave: x.clave, titulo, lugar: plNombreLimpio(x.lugar), activa: x.activa === true, t: x.t, por: por(x.por), de });
+      const e = { clave: x.clave, titulo, lugar: plNombreLimpio(x.lugar), semana: semana(x), activa: x.activa === true, t: x.t, por: por(x.por), de };
+      plPoner(r.proyectos, plKLista(e), e);
     });
     r.generado = texto(sobre.generado);
     return r;
@@ -4795,10 +4802,16 @@
       datos: { dispositivo: plDispositivo(), personas: [...l.mias.personas.values()].map(sinDe), proyectos: [...l.mias.proyectos.values()].map(sinDe) }
     };
   }
+  // Lo más reciente de una persona o un proyecto agregado a mano, en cualquier semana: su nombre
+  function plManoUltimo(tipo, k) {
+    let u = null;
+    plLista().ef[tipo].forEach((e) => { if ((e.id || e.clave) === k && plGana(u, e)) u = e; });
+    return u;
+  }
   // El nombre de una persona: las iniciales del equipo tal cual; una escrita a mano, el de la lista o el de la semana
   function plNom(per) {
     if (!PL_PER_MANO.test(per || '')) return per;
-    const e = plLista().ef.personas.get(per);
+    const e = plManoUltimo('personas', per);
     if (e) return e.nombre;
     for (const s of planif.semanas.values()) if (s.ef.personas[per]) return s.ef.personas[per].nombre;
     return mayuscula(per.slice(2).replace(/-/g, ' '));
@@ -4812,10 +4825,10 @@
   // El círculo de la fila: las iniciales («JP»)
   const plIniciales = (per) => (PL_PER_MANO.test(per || '') ? plNom(per).split(' ').slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') : per);
   const plNoms = (xs) => unir(xs.map(plNom));
-  // Las personas escritas a mano que siguen en la planificación, por nombre
-  const plManoActivas = () => [...plLista().ef.personas.values()].filter((e) => e.activa).sort((a, b) => plComparar(a.nombre, b.nombre)).map((e) => e.id);
-  // Los proyectos escritos a mano que siguen en la planificación
-  const plProyManoActivos = () => [...plLista().ef.proyectos.values()].filter((e) => e.activa);
+  // Las personas escritas a mano en la semana s, por nombre
+  const plManoActivas = (s) => [...plLista().ef.personas.values()].filter((e) => e.activa && e.semana === s.id).sort((a, b) => plComparar(a.nombre, b.nombre)).map((e) => e.id);
+  // Los proyectos escritos a mano en la semana s
+  const plProyManoActivos = (s) => [...plLista().ef.proyectos.values()].filter((e) => e.activa && e.semana === s.id);
 
   // ---- Leer y guardar en la carpeta del equipo ---------------------------------------------------------------
   const plNombreArchivo = () => plDispositivo() + '.json';
@@ -5029,15 +5042,15 @@
     const l = rcLegible(lugar);
     return l && !norm(titulo).includes(norm(l)) ? l : '';
   }
-  /* Los proyectos en ejecución del Recorrido y, después, los agregados a mano que siguen en la planificación (mano: true).
-     Uno escrito con su N° que después entra en ejecución queda una sola vez, como el del Recorrido. */
-  function plActivos() {
+  /* Los proyectos en ejecución del Recorrido y, después, los agregados a mano en la semana s (mano: true). Uno escrito
+     con su N° que después entra en ejecución queda una sola vez, como el del Recorrido. */
+  function plActivos(s) {
     const vistos = new Set();
     const delRecorrido = rc.tarjetas.filter((t) => t.etapa === 'ejecucion' && !t.antiguo && (t.req || t.tag)).map((t) => ({
       clave: t.req ? 'req:' + t.req : 'tag:' + t.tag, req: t.req || null, tag: t.tag || null, titulo: t.titulo, lugar: plLugar(t.titulo, t.lugar), sitio: rcLegible(t.lugar),
       avance: typeof t.avance === 'number' ? t.avance : null, tarjeta: t.clave, activo: true, otra: false
     }));
-    const aMano = plProyManoActivos().map((e) => {
+    const aMano = plProyManoActivos(s).map((e) => {
       const req = e.clave.startsWith('req:') ? e.clave.slice(4) : null;
       const t = req ? rc.tarjetas.find((x) => x.req === req) : null;     // su tarjeta del Recorrido, aunque esté en otra etapa
       return { clave: e.clave, req, tag: (t && t.tag) || null, titulo: e.titulo, lugar: plLugar(e.titulo, e.lugar), sitio: e.lugar,
@@ -5068,7 +5081,7 @@
   /* Lo que dice la semana, unido con los proyectos activos de hoy. Una asignación hecha con el TAG de un proyecto que
      después recibió su N° (o al revés) sigue siendo del mismo proyecto: canon da la clave de hoy. */
   function plModelo(s) {
-    const activos = plActivos();
+    const activos = plActivos(s);
     const porReq = new Map(), porTag = new Map();
     activos.forEach((p) => { if (p.req) porReq.set(p.req, p); if (p.tag) porTag.set(p.tag, p); });
     const canon = (k) => {
@@ -5078,7 +5091,7 @@
     const proyectos = new Map(activos.map((p) => [p.clave, p]));
     const deLaSemana = (c, k) => {      // un proyecto que ya no está activo, o una otra actividad, con su nombre guardado
       if (proyectos.has(c)) return;
-      const sn = s.ef.proyectos[k] || s.ef.proyectos[c] || plLista().ef.proyectos.get(c) || {};
+      const sn = s.ef.proyectos[k] || s.ef.proyectos[c] || plManoUltimo('proyectos', c) || {};
       const otra = c.startsWith('otra:');
       proyectos.set(c, { clave: c, req: sn.req || (c.startsWith('req:') ? c.slice(4) : null), tag: sn.tag || (c.startsWith('tag:') ? c.slice(4) : null),
         titulo: sn.titulo || (otra ? 'Otra actividad' : c.startsWith('req:') ? 'N° ' + c.slice(4) : c.slice(4)), lugar: sn.lugar || '', activo: false, otra, tarjeta: null });
@@ -5095,12 +5108,12 @@
     });
     const ausencias = new Map();
     s.ef.aus.forEach((e) => { if (e.motivo) ausencias.set(e.dia + '|' + e.persona, e); });
-    /* Las filas de personas: el equipo, las escritas a mano que siguen en la planificación y las que ya no están en la
-       lista pero tienen algo esta semana (así no se pierde lo asignado) */
+    /* Las filas de personas: el equipo, las escritas a mano en esta semana y las que se quitaron pero tienen algo en
+       ella (así no se pierde lo asignado) */
     const enLaSemana = new Set();
     s.ef.asig.forEach((e) => { if (e.activa) enLaSemana.add(e.persona); });
     ausencias.forEach((e) => enLaSemana.add(e.persona));
-    const personas = plOrdenPersonas([...new Set(PERSONAL.concat(plManoActivas(), [...enLaSemana]))]);
+    const personas = plOrdenPersonas([...new Set(PERSONAL.concat(plManoActivas(s), [...enLaSemana]))]);
     const pausas = new Map();
     s.ef.pau.forEach((e) => { if (e.activa) pausas.set(canon(e.proyecto), e); });
     const colores = plColores([...proyectos.keys()]);
@@ -5226,11 +5239,10 @@
   function plDeshacer() {
     const u = planif.deshacer.pop();
     if (!u) { avisar('No hay cambios de la planificación para deshacer.'); return; }
-    if (u.lista) {      // agregar o quitar una persona o un proyecto escrito a mano
-      const { tipo, e } = u.lista;
-      plLista().mias[tipo].set(tipo === 'personas' ? e.id : e.clave, Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
-      plRecalcularLista();
-      plProgramarGuardado(PL_LISTA);
+    // Agregar o quitar una persona o un proyecto escrito a mano (también los que «Copiar la semana anterior» trajo)
+    (u.listas || []).forEach(({ tipo, e }) => plPonerLista(tipo, e));
+    if (u.listas) plRecalcularLista();
+    if (!u.tanda) {
       plPintar();
       plPintarAlarmaGlobal();
       avisar('Se deshizo el último cambio.');
@@ -5388,19 +5400,23 @@
     plAsignarDias(s, per, c, isos, true);
   }
   /* Agregar a mano (2026-10-26): una persona por su nombre (alguien de apoyo, un contratista) o un proyecto que no está en
-     ejecución en el Recorrido. Queda en la planificación de todas las semanas hasta que se quite; quitarlo no borra lo ya
-     asignado. tipo: 'personas' | 'proyectos'; e: la persona { id, nombre, activa } o el proyecto { clave, titulo, lugar,
-     activa }. Se puede deshacer desde el aviso o con Ctrl Z. */
-  function plCambiarLista(tipo, e, mensaje) {
+     ejecución en el Recorrido. Es temporal: queda solo en la semana a la vista; quitarlo no borra lo ya asignado.
+     tipo: 'personas' | 'proyectos'; e: la persona { id, nombre, semana, activa } o el proyecto { clave, titulo, lugar,
+     semana, activa }. plPonerLista lo deja como de este navegador y devuelve cómo deshacerlo (falta plRecalcularLista). */
+  function plPonerLista(tipo, e) {
     const l = plLista();
-    const k = tipo === 'personas' ? e.id : e.clave;
-    const previo = l.ef[tipo].get(k);
+    const previo = l.ef[tipo].get(plKLista(e));
     const sinMeta = (x) => { const y = Object.assign({}, x); delete y.t; delete y.por; delete y.de; return y; };
-    l.mias[tipo].set(k, Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
-    plRecalcularLista();
-    planif.deshacer.push({ lista: { tipo, e: previo ? sinMeta(previo) : Object.assign({}, e, { activa: false }) } });
-    if (planif.deshacer.length > 40) planif.deshacer.shift();
+    l.mias[tipo].set(plKLista(e), Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
     plProgramarGuardado(PL_LISTA);
+    return { tipo, e: previo ? sinMeta(previo) : Object.assign({}, e, { activa: false }) };
+  }
+  // Un cambio de la lista con su aviso; se puede deshacer desde el aviso o con Ctrl Z
+  function plCambiarLista(tipo, e, mensaje) {
+    const antes = plPonerLista(tipo, e);
+    plRecalcularLista();
+    planif.deshacer.push({ listas: [antes] });
+    if (planif.deshacer.length > 40) planif.deshacer.shift();
     plPintar();
     plPintarAlarmaGlobal();
     avisar(mensaje, { texto: 'Deshacer', ir: plDeshacer });
@@ -5408,16 +5424,16 @@
   // «juan pérez» → «Juan Pérez»: cada palabra escrita toda en minúsculas parte con mayúscula
   const plCapital = (txt) => txt.split(' ').map((w) => (w === w.toLowerCase() ? mayuscula(w) : w)).join(' ');
   function plAgregarPersona(txt, aviso = avisar) {
+    const s = plSemanaVista();
     const nombre = plCapital(plNombreLimpio(txt));
     const delEquipo = PERSONAL.find((p) => p === nombre.toUpperCase());
     if (delEquipo) { aviso(delEquipo + ' ya está en la planificación.'); return null; }
     const slug = plSlug(nombre, 30);
     if (!slug) { aviso('Escribe el nombre de la persona.'); return null; }
     const id = 'x-' + slug;
-    const ya = plLista().ef.personas.get(id);
-    if (ya && ya.activa) { aviso(ya.nombre + ' ya está en la planificación.'); return id; }
-    plCambiarLista('personas', { id, nombre, activa: true },
-      nombre + ' queda en la planificación de todas las semanas: toca su fila en «Por personal» para asignarle proyectos.');
+    if (plManoActivas(s).includes(id)) { aviso(plNom(id) + ' ya está en ' + plEsta(s) + '.'); return id; }
+    plCambiarLista('personas', { id, nombre, semana: s.id, activa: true },
+      nombre + ' queda solo en ' + plEsta(s) + ': toca su fila en «Por personal» para asignarle proyectos.');
     return id;
   }
   // Un N° de requerimiento de la Planilla de Ingreso: su nombre, el de su tarjeta del Recorrido o el de la Planilla
@@ -5430,6 +5446,7 @@
   /* Con su N° de la Planilla adelante («281. H2 Green», «N° 281») queda unido a ese requerimiento: si después entra en
      ejecución en el Recorrido, es el mismo proyecto. Si no, una clave propia sale de su nombre. Devuelve la clave. */
   function plAgregarProyecto(txt, lugarTxt, aviso = avisar) {
+    const s = plSemanaVista();
     let titulo = plNombreLimpio(txt);
     const lugar = plNombreLimpio(lugarTxt);
     if (!titulo) { aviso('Escribe el nombre del proyecto.'); return null; }
@@ -5445,25 +5462,28 @@
       clave = 'pro:' + slug;
     }
     titulo = mayuscula(titulo);
-    const ya = plActivos().find((p) => p.clave === clave || (!req && norm(p.titulo) === norm(titulo)));
-    if (ya) { aviso(ya.titulo + ' ya está en la planificación.'); return ya.clave; }
-    plCambiarLista('proyectos', { clave, titulo, lugar, activa: true },
-      titulo + ' queda en la planificación de todas las semanas, como un proyecto activo más.');
+    const ya = plActivos(s).find((p) => p.clave === clave || (!req && norm(p.titulo) === norm(titulo)));
+    if (ya) { aviso(ya.titulo + (ya.mano ? ' ya está en ' + plEsta(s) + '.' : ' ya está en la planificación.')); return ya.clave; }
+    plCambiarLista('proyectos', { clave, titulo, lugar, semana: s.id, activa: true },
+      titulo + ' queda solo en ' + plEsta(s) + ', como un proyecto activo más.');
     return clave;
   }
   function plQuitarPersona(id) {
-    const e = plLista().ef.personas.get(id);
+    const s = plSemanaVista();
+    const e = plLista().ef.personas.get(s.id + '|' + id);
     if (!e || !e.activa) return;
-    plCambiarLista('personas', { id, nombre: e.nombre, activa: false }, e.nombre + ' ya no está en la planificación. Lo que tenía asignado se sigue viendo en sus semanas.');
+    plCambiarLista('personas', { id, nombre: e.nombre, semana: s.id, activa: false }, e.nombre + ' ya no está en ' + plEsta(s) + '. Lo que tenía asignado se sigue viendo.');
   }
   function plQuitarProyecto(clave) {
-    const e = plLista().ef.proyectos.get(clave);
+    const s = plSemanaVista();
+    const e = plLista().ef.proyectos.get(s.id + '|' + clave);
     if (!e || !e.activa) return;
-    plCambiarLista('proyectos', { clave, titulo: e.titulo, lugar: e.lugar, activa: false },
-      e.titulo + ' ya no está en la planificación. Lo asignado se sigue viendo en sus semanas.');
+    plCambiarLista('proyectos', { clave, titulo: e.titulo, lugar: e.lugar, semana: s.id, activa: false },
+      e.titulo + ' ya no está en ' + plEsta(s) + '. Lo asignado se sigue viendo.');
   }
-  // Copia lo de la semana anterior, día por día, sin borrar nada de esta: lo que ya no se puede (un proyecto que terminó,
-  // una ausencia o un día con 3 proyectos) se salta y se cuenta. Cada asignación copiada lleva su vehículo.
+  /* Copia lo de la semana anterior, día por día, sin borrar nada de esta: lo que ya no se puede (un proyecto que terminó,
+     una ausencia o un día con 3 proyectos) se salta y se cuenta. Cada asignación copiada lleva su vehículo, y las
+     personas y proyectos agregados a mano que van en ella pasan también a esta semana (son temporales: solo así siguen). */
   async function plCopiarAnterior() {
     if (!rc.dir) return;
     const s = plSemanaVista();
@@ -5494,10 +5514,24 @@
     const n = plNum(antes);
     if (!total) { avisar('La semana ' + n + ' no tiene asignaciones para copiar.'); return; }
     if (!cambios.length) { avisar('Lo de la semana ' + n + ' ya está en esta' + (saltados ? ', salvo ' + pl(saltados, 'asignación que no se puede copiar', 'asignaciones que no se pueden copiar') : '') + '.'); return; }
+    // Lo agregado a mano que va en lo copiado (en la semana anterior, aunque después lo quitaran) pasa a esta
+    const listas = [];
+    const llevar = (tipo, k) => {
+      const e = plLista().ef[tipo].get(antes.id + '|' + k), ya = plLista().ef[tipo].get(s.id + '|' + k);
+      if (!e || (ya && ya.activa)) return;
+      const x = Object.assign({}, e, { semana: s.id, activa: true });
+      delete x.t; delete x.por; delete x.de;
+      listas.push(plPonerLista(tipo, x));
+    };
+    const copiado = cambios.filter((c) => c.tipo === 'asig');
+    new Set(copiado.map((c) => c.persona)).forEach((per) => { if (PL_PER_MANO.test(per)) llevar('personas', per); });
+    new Set(copiado.map((c) => c.clave)).forEach((c) => { if (ma.proyectos.get(c).mano) llevar('proyectos', c); });
+    if (listas.length) plRecalcularLista();
     plRecalcular(s);
-    plCambiar(s, cambios, (copiadas === 1 ? 'Se copió 1 asignación' : 'Se copiaron ' + copiadas + ' asignaciones') + ' de la semana ' + n
+    const hecho = plCambiar(s, cambios, (copiadas === 1 ? 'Se copió 1 asignación' : 'Se copiaron ' + copiadas + ' asignaciones') + ' de la semana ' + n
       + (vehiculos ? ' (' + (vehiculos === copiadas ? (copiadas === 1 ? 'con su vehículo' : 'con sus vehículos') : pl(vehiculos, 'con vehículo', 'con vehículo')) + ')' : '')
       + (saltados ? '; ' + saltados + ' no (proyecto terminado, ausencia o día con 3 proyectos)' : '') + '.');
+    if (hecho && listas.length) planif.deshacer[planif.deshacer.length - 1].listas = listas;     // un Deshacer quita también eso
   }
 
   // ---- Leer, mostrar y vigilar ---------------------------------------------------------------------------------
@@ -6228,7 +6262,7 @@
       const q = crear('div', 'pl-quien');
       const tx = crear('span', 'pl-quien-txt');
       const mano = PL_PER_MANO.test(per);
-      const enLista = !mano || plManoActivas().includes(per);
+      const enLista = !mano || plManoActivas(s).includes(per);
       // Una persona escrita a mano se ve por su círculo punteado; si ya la quitaron de la lista, lo dice
       tx.append(crear('b', null, per === estado.usuario ? per + ' · tú' : plNom(per)),
         crear('span', null, !enLista ? 'Fuera de la lista' : proyectos.size ? pl(proyectos.size, 'proyecto', 'proyectos') : aus === dias.length ? 'Ausente' : 'Sin proyectos'));
@@ -6240,7 +6274,7 @@
       tb.append(tr);
     });
     t.append(tb);
-    cont.append(t, plBotonAgregar('persona', 'Agregar persona', 'Alguien que no está en la lista: escribe su nombre y queda en todas las semanas'));
+    cont.append(t, plBotonAgregar('persona', 'Agregar persona', 'Alguien que no está en la lista: escribe su nombre y queda solo en esta semana'));
   }
   // Al pie de «Por personal» y «Por proyecto»: agregar a mano lo que no está en la lista
   function plBotonAgregar(modo, txt, titulo) {
@@ -6282,7 +6316,7 @@
       tb.append(tr);
     }
     t.append(tb);
-    cont.append(t, plBotonAgregar('proyecto', 'Agregar proyecto', 'Un proyecto que no está en ejecución en el Recorrido: escribe su nombre y queda en todas las semanas'));
+    cont.append(t, plBotonAgregar('proyecto', 'Agregar proyecto', 'Un proyecto que no está en ejecución en el Recorrido: escribe su nombre y queda solo en esta semana'));
     if (planif.foco) {
       const f = cont.querySelector('tr[data-clave="' + CSS.escape(planif.foco) + '"]');
       const abrir = planif.focoAbrir;
@@ -6880,7 +6914,7 @@
     return sec;
   }
   const plFormOtra = (etiqueta, boton, ir) => plFormTexto('Otra actividad', 'Oficina, visita técnica, bodega…', etiqueta, boton, 'otra', ir);
-  // Un proyecto que no está en la lista, escrito: queda en la planificación de todas las semanas (plAgregarProyecto)
+  // Un proyecto que no está en la lista, escrito: queda en la planificación de la semana a la vista (plAgregarProyecto)
   const plFormProyecto = (etiqueta, boton, ir) => plFormTexto('Proyecto que no está en la lista', 'Nombre, o su N° de la Planilla', etiqueta, boton, 'proyecto-nuevo', ir);
   /* Una persona, uno o varios días: sus proyectos (hasta 3 por día), otra actividad y una ausencia. Con varios días, una
      casilla a medias es un proyecto que tiene solo algunos de ellos: marcarla lo completa. */
@@ -7405,40 +7439,67 @@
     document.querySelectorAll('#plAgregarModo .pl-vista').forEach((b) => b.setAttribute('aria-pressed', b.dataset.modo === planif.agregar ? 'true' : 'false'));
     const pista = $('#plAgregarPista');
     pista.classList.toggle('error', !!error);
+    const s = plSemanaVista();
+    const esta = plEsta(s);
     pista.textContent = error || (proy
-      ? 'Un proyecto que no está en ejecución en el Recorrido. Queda en todas las semanas como un proyecto activo más, hasta que lo quites. Si tiene N° en la Planilla de Ingreso, escríbelo adelante («281. H2 Green»): cuando entre en ejecución será el mismo.'
-      : 'Alguien que no está en la lista: de apoyo, un contratista. Queda en todas las semanas, para asignarle proyectos como a los demás, hasta que lo quites.');
+      ? 'Un proyecto que no está en ejecución en el Recorrido. Queda solo en ' + esta + ' como un proyecto activo más: no pasa a las siguientes. Si tiene N° en la Planilla de Ingreso, escríbelo adelante («281. H2 Green»): cuando entre en ejecución será el mismo.'
+      : 'Alguien que no está en la lista: de apoyo, un contratista. Queda solo en ' + esta + ', para asignarle proyectos como a los demás: no pasa a las siguientes.');
     $('#plAgregarEt').textContent = proy ? 'Nombre del proyecto' : 'Nombre y apellido';
     $('#plAgregarNombre').placeholder = proy ? 'Galpón Quilicura, o 281. H2 Green' : 'Juan Pérez';
     $('#plAgregarLugarCampo').hidden = !proy;
     $('#plAgregarOk').textContent = proy ? 'Agregar proyecto' : 'Agregar persona';
     const cont = $('#plAgregados');
     cont.textContent = '';
-    const lista = proy
-      ? plProyManoActivos().sort(plPorTitulo).map((e) => ({ k: e.clave, nom: e.titulo, sub: [e.clave.startsWith('req:') ? 'N° ' + e.clave.slice(4) : '', e.lugar].filter(Boolean).join(' · ') }))
-      : plManoActivas().map((id) => ({ k: id, nom: plNom(id), sub: '' }));
-    cont.hidden = !lista.length;
-    if (!lista.length) return;
-    cont.append(crear('h3', null, proy ? 'Proyectos agregados a mano' : 'Personas agregadas a mano'));
-    const ul = crear('ul');
-    lista.forEach((x) => {
-      const li = crear('li');
-      const tx = crear('span', 'pl-agr-txt');
-      tx.append(crear('b', null, x.nom));
-      if (x.sub) tx.append(crear('span', null, x.sub));
-      const b = crear('button', 'cx-enlace', 'Quitar');
-      b.type = 'button';
-      b.dataset.k = x.k;
-      b.title = 'Sacar a ' + x.nom + ' de la planificación. Lo ya asignado se sigue viendo en sus semanas';
-      b.addEventListener('click', () => {
-        if (proy) plQuitarProyecto(x.k); else plQuitarPersona(x.k);
-        plPintarAgregar();
-        $('#plAgregarNombre').focus();
+    const fila = (e) => (proy ? { k: e.clave, nom: e.titulo, sub: [e.clave.startsWith('req:') ? 'N° ' + e.clave.slice(4) : '', e.lugar].filter(Boolean).join(' · ') }
+      : { k: e.id, nom: e.nombre, sub: '' });
+    const lista = proy ? plProyManoActivos(s).sort(plPorTitulo).map(fila) : plManoActivas(s).map((id) => fila(plLista().ef.personas.get(s.id + '|' + id)));
+    /* Los de semanas anteriores que no están en esta, lo más reciente primero: vuelven con un toque (alguien de apoyo que
+       sigue otra semana). Hasta 6. */
+    const enEsta = new Set(lista.map((x) => x.k));
+    const antes = new Map();
+    [...plLista().ef[proy ? 'proyectos' : 'personas'].values()]
+      .filter((e) => e.activa && e.semana < s.id && !enEsta.has(e.id || e.clave) && !(proy && plActivos(s).some((p) => p.clave === e.clave)))
+      .sort((a, b) => b.semana.localeCompare(a.semana) || b.t.localeCompare(a.t))
+      .forEach((e) => { if (!antes.has(e.id || e.clave)) antes.set(e.id || e.clave, e); });
+    const previos = [...antes.values()].slice(0, 6);
+    cont.hidden = !lista.length && !previos.length;
+    const bloque = (titulo, filas, boton, accion) => {
+      cont.append(crear('h3', null, titulo));
+      const ul = crear('ul');
+      filas.forEach((x) => {
+        const li = crear('li');
+        const tx = crear('span', 'pl-agr-txt');
+        tx.append(crear('b', null, x.nom));
+        if (x.sub) tx.append(crear('span', null, x.sub));
+        const b = crear('button', 'cx-enlace', boton);
+        b.type = 'button';
+        b.dataset.k = x.k;
+        b.dataset.accion = boton === 'Quitar' ? 'quitar' : 'sumar';
+        b.title = x.titulo;
+        b.addEventListener('click', () => {
+          accion(x);
+          plPintarAgregar();
+          $('#plAgregarNombre').focus();
+        });
+        li.append(tx, b);
+        ul.append(li);
       });
-      li.append(tx, b);
-      ul.append(li);
-    });
-    cont.append(ul);
+      cont.append(ul);
+    };
+    if (lista.length) {
+      bloque((proy ? 'Proyectos agregados a mano en ' : 'Personas agregadas a mano en ') + esta,
+        lista.map((x) => Object.assign(x, { titulo: 'Sacar a ' + x.nom + ' de ' + esta + '. Lo ya asignado se sigue viendo' })), 'Quitar',
+        (x) => { if (proy) plQuitarProyecto(x.k); else plQuitarPersona(x.k); });
+    }
+    if (previos.length) {
+      bloque('De semanas anteriores',
+        previos.map((e) => Object.assign(fila(e), { sub: [fila(e).sub, 'semana ' + +e.semana.slice(-2)].filter(Boolean).join(' · '), titulo: 'Sumar a ' + (e.titulo || e.nombre) + ' a ' + esta })),
+        'Sumar a esta', (x) => {
+          const e = antes.get(x.k);
+          if (proy) plCambiarLista('proyectos', { clave: e.clave, titulo: e.titulo, lugar: e.lugar, semana: s.id, activa: true }, e.titulo + ' queda solo en ' + esta + ', como un proyecto activo más.');
+          else plCambiarLista('personas', { id: e.id, nombre: e.nombre, semana: s.id, activa: true }, e.nombre + ' queda solo en ' + esta + ': toca su fila en «Por personal» para asignarle proyectos.');
+        });
+    }
   }
   // Con el diálogo abierto, el aviso de abajo no se ve: un problema se dice en el diálogo y no se cierra
   function plConfirmarAgregar(e) {
