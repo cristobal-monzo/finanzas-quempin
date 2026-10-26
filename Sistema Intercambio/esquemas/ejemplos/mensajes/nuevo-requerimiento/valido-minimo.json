@@ -1,0 +1,20 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "a1b2c3d4e5f6a1b2c3d4e5f6",
+  "tipo": "nuevo-requerimiento",
+  "destino": "planilla-requerimientos",
+  "origen": {
+    "herramienta": "formulador",
+    "usuario": "NB",
+    "enviado": "2026-10-26T16:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 318,
+    "titulo": "Quemador planta"
+  },
+  "fuente": {
+    "herramienta": "formulador",
+    "uid": "f1e2d3c4b5a6",
+    "codigo": "317. Caldera gimnasio municipal"
+  }
+}

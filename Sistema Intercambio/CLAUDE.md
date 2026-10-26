@@ -115,7 +115,8 @@ tabla de abajo y los textos del Formulador lo resumen, no lo definen.
 | mensaje `borrador-cotizacion` → `sistema-quempin`: una cotización prellenada por partida | Formulador | Sistema QUEMPIN (aviso arriba de «Nueva Cotización» y botón «Borradores del Formulador»: una persona la revisa y la emite; al emitir se archiva con el folio) | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |
 | mensaje `registro-documento` → `sistema-quempin`: registrar en el Control de Documentos la evaluación de costos (81) del Formulador | Formulador | Sistema QUEMPIN (la app cada minuto, y el procesador); si el folio ya se usó, asigna el siguiente | mismo archivo |
 | mensaje `actualizar-requerimiento` → `planilla-requerimientos`: estado y valor ofertado o adjudicado | Formulador | **nadie lo escribe**: una persona lo pasa a la Planilla y el procesador lo cierra cuando ya está (`/Sugerencias_Requerimientos`). Una sugerencia cuyas columnas pide todas otra más nueva del mismo N° se archiva como `reemplazado` (2026-10-19, la regla con que el Formulador muestra «Pasar a la Planilla») | `Sistema Intercambio/requerimientos.py` |
-| `publicado/requerimientos.json`: la Planilla de Ingreso, de solo lectura | procesador (cuando cambia la planilla) | Formulador, Sistema QUEMPIN, registro de proyectos, Flujo de Caja | `requerimientos.py` |
+| mensaje `nuevo-requerimiento` → `planilla-requerimientos` (2026-10-26): un proyecto creado en el Formulador sin N° en la Planilla, con el N° que ya llevan su código y su carpeta (el siguiente libre: después del mayor de la Planilla, de las carpetas, de los pedidos que esperan y de los proyectos del navegador) y los datos de la fila (Estado «Evaluación», Canal «Otro» o «Mercado Público», Capt., Eval., Título, Ubicación, ID o «-», Apertura, Cierre, Presupuesto) | Formulador («Nuevo proyecto», casilla «registrar en la Planilla», marcada por defecto) | `planilla_escritura.py`, cada 10 minutos: escribe la fila con Excel (`aplicado`); si ese N° ya lo tiene otro requerimiento no escribe nada y queda `rechazado` con el motivo | `Sistema Intercambio/planilla_escritura.py` |
+| `publicado/requerimientos.json`: la Planilla de Ingreso, de solo lectura. **No se publica si la planilla le cambió el N° a 3 o más requerimientos** (`requerimientos.renumerados`, 2026-10-26: alguien ordenó la tabla y el N° era la fórmula FILA()-1): queda la anterior y el paso falla en `estado.json` | procesador (cuando cambia la planilla); `planilla_escritura.py` después de registrar | Formulador, Sistema QUEMPIN, registro de proyectos, Flujo de Caja | `requerimientos.py` |
 | `publicado/precios-referencia.json`: precio reajustado por UF por hoja, sin proveedores ni documentos | Cotizador Histórico (`driver.py precios`, y tras cada `visualizador`); procesador cuando cambia la foto del tablero | Formulador | `Cotizador Historico/Sistema/precios_referencia.py` |
 | `publicado/documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN (al emitir/editar/eliminar en el equipo donde se hizo, y el procesador) | Formulador, Análisis Financiero, registro de proyectos, Flujo de Caja | `Sistema QUEMPIN/app/integraciones/ecosistema.py` |
 | `publicado/licitaciones.json` (2026-10-13): resultado en Mercado Público de cada requerimiento con código, quién ganó y por cuánto, OC emitidas a QUEMPIN y lo que debe revisar una persona; también deja mensajes `actualizar-requerimiento` con `fuente.herramienta = mercado-publico` y `fuente.motivo` | procesador (`mercado_publico.py`, cada vuelta) | Formulador (Seguimiento, «Oferta y adjudicación»), bandeja de pendientes, `/Sugerencias_Requerimientos` | `Sistema Intercambio/mercado_publico.py` |
@@ -181,6 +182,39 @@ no el de la carpeta.
   datos» del AF otro arriba de sus envíos. Las noches y los fines de semana no
   cuentan: con el PC apagado el procesador espera, y eso no es una falla. La
   tarea corre también a batería desde ese día.
+
+## Lo que se escribe en la Planilla (`planilla_escritura.py`, cada 10 minutos, 2026-10-26)
+
+Pedido del usuario: que un proyecto creado en el Formulador sin N° de
+requerimiento quede en la Planilla «siguiendo el formato exacto que ya
+existe», y que el N° de cada proyecto se mantenga aunque alguien vuelva a
+ordenar la tabla. Ese día alguien ordenó la tabla «Proyectos» y, como el N°
+era la fórmula `=SI(B<>"";FILA()-1;"")`, 55 requerimientos cambiaron de N°
+(el freno de `requerimientos.renumerados` evitó que se publicara). Se
+devolvieron los N° de la publicación anterior y quedaron fijos.
+
+- **Siempre con Excel** (`planilla_excel.ps1`, por COM; nunca openpyxl, ver
+  `requerimientos.py`). Excel abre el archivo de OneDrive como el documento
+  de SharePoint, con coautoría; `Workbooks.Open` puede volver antes de que el
+  libro esté listo y el script espera. Si se abre solo para lectura (alguien
+  la tiene tomada), no escribe y reintenta en la vuelta siguiente. Respaldo
+  antes de cada escritura en `%LOCALAPPDATA%\QUEMPIN\respaldos-planilla` (30).
+- **Fija los N°**: toda fila con datos cuyo N° sigue siendo fórmula pasa a
+  número fijo, con el N° de la última publicación si ya estaba (por título y
+  referencia), o el que muestra la fórmula si es nueva. Una fila nueva cuyo
+  N° ya tiene otro requerimiento no se renumera sola: queda el aviso.
+- **Registra** los `nuevo-requerimiento` del Formulador: una fila al final de
+  la lista (la primera vacía de la tabla, que ya trae el formato), N° fijo,
+  y título, ubicación e ID de licitación tal como está el proyecto al
+  escribir. Después republica `requerimientos.json`.
+- Tarea «Registrar en la Planilla QUEMPIN» (`tarea_planilla.cmd`, sesión
+  interactiva del usuario, como la del procesador). Solo abre Excel si hay
+  un pedido o la planilla cambió y tiene un N° en fórmula; log en
+  `logs/planilla_AAAA-MM.log` (solo las vueltas que hicieron algo).
+- PowerShell: texto y número se escriben en líneas distintas (el binder de
+  COM recuerda el tipo de la primera escritura de cada línea), y el .ps1 va
+  con BOM (PowerShell 5.1 lo lee como ANSI sin él). No hace falta cambiar la
+  política de ejecución: la del usuario es RemoteSigned.
 
 ## Monitor de Mercado Público (`mercado_publico.py`, 2026-10-13)
 

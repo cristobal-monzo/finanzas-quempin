@@ -159,3 +159,33 @@ def test_una_sugerencia_superada_por_otra_mas_nueva_se_archiva_reemplazada(tmp_p
     assert decisiones["otro00001"] == "pendiente"
     assert ic.resultados_recientes(raiz)["vieja0001"]["estado"] == "reemplazado"
     assert "vieja0001" not in [m["id"] for m in ic.leer_buzon(raiz)[0]]
+
+
+# ── la planilla ordenada (N° = FILA()-1) ─────────────────────────────────────
+
+def test_planilla_ordenada_no_se_publica_y_queda_la_anterior(tmp_path):
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    filas = [_fila(n, titulo=f"Proyecto {n}") for n in range(280, 290)]
+    rq.publicar(raiz, _planilla(tmp_path, filas))
+    # Se ordena la tabla: los títulos quedan bajo otros N°.
+    corridas = [[f[0]] + f[1:5] + [filas[(i + 3) % 10][5]] + f[6:] for i, f in enumerate(filas)]
+    with pytest.raises(rq.PlanillaRenumerada) as error:
+        rq.publicar(raiz, _planilla(tmp_path, corridas))
+    assert len(error.value.movidos) == 10
+    assert "cambió el N°" in str(error.value)
+    publicada = ic.leer_publicacion(raiz, "requerimientos")["datos"]["requerimientos"]
+    assert publicada[0]["titulo"] == "Proyecto 280"
+    rq.publicar(raiz, _planilla(tmp_path, corridas), aceptar_renumeracion=True)
+    assert ic.leer_publicacion(raiz, "requerimientos")["datos"]["requerimientos"][0]["titulo"] == "Proyecto 283"
+
+
+def test_filas_nuevas_y_un_titulo_corregido_si_se_publican(tmp_path):
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    filas = [_fila(n, titulo=f"Proyecto {n}") for n in range(280, 285)]
+    rq.publicar(raiz, _planilla(tmp_path, filas))
+    filas[1][5] = "Proyecto 281 (corregido)"
+    filas += [_fila(285, titulo="Nuevo"), _fila(286, titulo="Otro nuevo")]
+    rq.publicar(raiz, _planilla(tmp_path, filas))
+    assert len(ic.leer_publicacion(raiz, "requerimientos")["datos"]["requerimientos"]) == 7
+    assert rq.renumerados([{"numero": 1, "titulo": "A"}, {"numero": 2, "titulo": "B"}],
+                          [{"numero": 2, "titulo": "A"}, {"numero": 1, "titulo": "B"}]) == [(1, 2, "A"), (2, 1, "B")]

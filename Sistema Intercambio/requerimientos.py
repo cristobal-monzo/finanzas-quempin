@@ -9,7 +9,9 @@ primero que se asigna a un proyecto y ya prefija las carpetas de SharePoint
 («280. UMAG - …»), así que es la **clave común de proyecto** del intercambio
 (plan de integración, 2026-09-30, §5.2).
 
-Este módulo hace dos cosas, y ninguna escribe la planilla:
+Este módulo hace dos cosas, y ninguna escribe la planilla (lo único que se
+escribe en ella, con Excel, está en ``planilla_escritura.py``: los N° fijos y
+los proyectos nuevos del Formulador, desde el 2026-10-26):
 
 1. **Publica** una copia de solo lectura en ``publicado/requerimientos.json``
    (``publicar``), para que el Formulador cree proyectos desde un
@@ -191,8 +193,61 @@ def datos_publicacion(ruta_planilla: Path) -> dict:
     }
 
 
-def publicar(raiz_intercambio: Path, ruta_planilla: Path) -> Path:
+def _clave_fila(r: dict) -> tuple:
+    return (normalizar_encabezado(r.get("titulo")), normalizar_encabezado(r.get("referencia")))
+
+
+def renumerados(anteriores: list[dict], nuevos: list[dict]) -> list[tuple]:
+    """(N° publicado, N° de ahora, título) de los requerimientos que siguen en
+    la planilla con el mismo título y referencia, pero bajo otro N°.
+
+    Hasta el 2026-10-26 el N° de casi todas las filas era la fórmula
+    =SI(B<>"";FILA()-1;""): ese día alguien ordenó la tabla y 55
+    requerimientos cambiaron de N°. Desde entonces planilla_escritura.py deja
+    cada N° fijo, pero una fila nueva escrita a mano tiene la fórmula hasta
+    su vuelta siguiente. El N° es la clave de las carpetas, del Formulador y
+    del Análisis Financiero, así que publicarlo corrido cruzaría proyectos
+    en todas las herramientas."""
+    nuevo_por_n = por_numero(nuevos)
+    donde: dict = {}
+    for r in nuevos:
+        donde.setdefault(_clave_fila(r), []).append(r["numero"])
+    salida = []
+    for r in anteriores:
+        clave = _clave_fila(r)
+        if not clave[0]:
+            continue
+        actual = nuevo_por_n.get(r["numero"])
+        if actual is not None and _clave_fila(actual) == clave:
+            continue
+        otros = donde.get(clave) or []
+        if len(otros) == 1:
+            salida.append((r["numero"], otros[0], r.get("titulo")))
+    return salida
+
+
+# Desde cuántos N° movidos se frena la publicación. Uno o dos pueden ser una
+# corrección a mano (un N° repetido que alguien arregla); más es un orden.
+UMBRAL_RENUMERADOS = 3
+
+
+class PlanillaRenumerada(RuntimeError):
+    def __init__(self, movidos: list[tuple]):
+        self.movidos = movidos
+        ejemplos = "; ".join(f"{a} → {b} «{(t or '').strip()[:40]}»" for a, b, t in movidos[:4])
+        super().__init__(
+            f"La Planilla le cambió el N° a {len(movidos)} requerimientos ({ejemplos}…): ¿se ordenó la tabla? "
+            "El N° es la fórmula FILA()-1. Se mantiene la publicación anterior hasta que la Planilla vuelva "
+            "a sus N° (o se acepte con aceptar_renumeracion=True).")
+
+
+def publicar(raiz_intercambio: Path, ruta_planilla: Path, aceptar_renumeracion: bool = False) -> Path:
     datos = datos_publicacion(ruta_planilla)
+    previa = intercambio.leer_publicacion(raiz_intercambio, PUBLICACION)
+    if previa and not aceptar_renumeracion:
+        movidos = renumerados((previa.get("datos") or {}).get("requerimientos") or [], datos["requerimientos"])
+        if len(movidos) >= UMBRAL_RENUMERADOS:
+            raise PlanillaRenumerada(movidos)
     sobre = {"esquema": intercambio.ESQUEMA, "herramienta": HERRAMIENTA, "generado": intercambio.ahora_iso(), "datos": datos}
     errores = esquemas.validar_publicacion(PUBLICACION, sobre)
     if errores:

@@ -123,3 +123,4 @@ tmp/
 # Contrasena de los tableros publicados (2026-10-05): con ella se cifran sus
 # datos (Visualizador Web/candado.py). Si se versiona, el cifrado no protege nada.
 **/.contrasena_tableros*
+**/planilla_escritura_estado*.json
