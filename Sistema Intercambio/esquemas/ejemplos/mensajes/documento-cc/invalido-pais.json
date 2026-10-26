@@ -1,0 +1,30 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c1d2e3f4a5b6c1d2e3f4a5b6",
+  "tipo": "documento-cc",
+  "destino": "centro-costos",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "NB",
+    "enviado": "2026-10-23T16:00:00-03:00"
+  },
+  "pais": "AR",
+  "carpeta": "280. Obra de ejemplo",
+  "proyecto": {
+    "req": "280",
+    "titulo": "Obra de ejemplo"
+  },
+  "archivos": [
+    {
+      "nombre": "Factura 1234 Ferretería.pdf",
+      "bytes": 182344,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "nombre": "boleta bencina.JPG",
+      "bytes": 912003,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "nota": "Compras de la semana"
+}

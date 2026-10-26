@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "documento-cc (Portal QUEMPIN → Centro de Costos)",
+  "description": "Facturas, boletas o comprobantes que alguien sube desde el Portal («Subir documentos») para un proyecto. Los archivos viajan aparte, en buzon/adjuntos/<id>/, y se escriben antes que el mensaje. El procesador copia cada uno a «Facturas y Boletas/<país>/<carpeta>/» del sitio del Centro de Costos (la misma carpeta que lee /Registro_Centro_de_Costos) y verifica tamaño y sha256. Si un archivo todavía no llega (OneDrive sincronizando), el mensaje espera; a los 7 días se rechaza. 'nueva' permite crear la carpeta del proyecto si no existe.",
+  "destino": "centro-costos",
+  "type": "object",
+  "properties": {
+    "pais": {
+      "enum": ["CL", "PE"]
+    },
+    "carpeta": {
+      "type": "string",
+      "pattern": "^[^.\\s\\\\/:*?\"<>|][^\\\\/:*?\"<>|]{0,119}$",
+      "description": "Nombre de la carpeta del proyecto en «Facturas y Boletas/<país>/», tal cual («280. UMAG - Conexión», «Gastos Generales»)"
+    },
+    "nueva": {
+      "type": "boolean",
+      "description": "true: crear la carpeta si no existe"
+    },
+    "proyecto": {
+      "type": "object",
+      "description": "Informativo: el proyecto del Recorrido que se eligió",
+      "properties": {
+        "req": { "type": "string", "pattern": "^[0-9]{1,5}$" },
+        "titulo": { "type": "string" }
+      }
+    },
+    "archivos": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "pattern": "^[^.\\\\/:*?\"<>|][^\\\\/:*?\"<>|]{0,150}\\.([Pp][Dd][Ff]|[Pp][Nn][Gg]|[Jj][Pp][Ee]?[Gg]|[Hh][Ee][Ii][Cc])$"
+          },
+          "bytes": { "type": "integer", "minimum": 1, "maximum": 26214400 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        },
+        "required": ["nombre", "bytes", "sha256"]
+      }
+    },
+    "nota": { "type": "string" }
+  },
+  "required": ["pais", "carpeta", "archivos"]
+}

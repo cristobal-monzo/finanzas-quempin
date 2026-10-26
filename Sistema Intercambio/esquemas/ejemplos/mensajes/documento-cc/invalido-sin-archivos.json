@@ -1,0 +1,19 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c1d2e3f4a5b6c1d2e3f4a5b6",
+  "tipo": "documento-cc",
+  "destino": "centro-costos",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "NB",
+    "enviado": "2026-10-23T16:00:00-03:00"
+  },
+  "pais": "CL",
+  "carpeta": "280. Obra de ejemplo",
+  "proyecto": {
+    "req": "280",
+    "titulo": "Obra de ejemplo"
+  },
+  "archivos": [],
+  "nota": "Compras de la semana"
+}

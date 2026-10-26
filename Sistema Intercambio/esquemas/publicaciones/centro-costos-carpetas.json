@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "centro-costos-carpetas.json (las carpetas de proyecto del Centro de Costos)",
+  "description": "Las carpetas de «Facturas y Boletas/<país>/» del sitio del Centro de Costos, para que el Portal ofrezca a qué proyecto subir un documento. 'req' es el N° con que empieza el nombre («280. UMAG…»), o null. 'documentos' cuenta los PDF e imágenes que tiene.",
+  "dueno": "procesador",
+  "type": "object",
+  "properties": {
+    "paises": {
+      "type": "object",
+      "properties": {
+        "CL": { "type": "array", "items": { "type": "object", "properties": {
+          "nombre": { "type": "string", "minLength": 1 },
+          "req": { "type": ["string", "null"] },
+          "documentos": { "type": "integer", "minimum": 0 }
+        }, "required": ["nombre", "documentos"] } },
+        "PE": { "type": "array", "items": { "type": "object", "properties": {
+          "nombre": { "type": "string", "minLength": 1 },
+          "req": { "type": ["string", "null"] },
+          "documentos": { "type": "integer", "minimum": 0 }
+        }, "required": ["nombre", "documentos"] } }
+      }
+    }
+  },
+  "required": ["paises"]
+}

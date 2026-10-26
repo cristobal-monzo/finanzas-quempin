@@ -33,6 +33,9 @@ y solo si algo cambió desde la última vez:
    dice ``enProcesador``; el equipo lo ve en su tablero).
 7c. UF del día: una vez al día, para que el tablero del Cotizador tenga una
    UF reciente de respaldo si mindicador.cl no responde (2026-10-19).
+7d. Documentos subidos desde el Portal -> «Facturas y Boletas/<país>/<proyecto>/»
+   del Centro de Costos, y la lista de esas carpetas (``documentos_cc.py``,
+   2026-10-23).
 8. ``proyectos.json``: el cruce de claves, con todo lo anterior.
 9. ``estado.json``: el pulso que muestran las herramientas («al día hace 6
    min»): qué corrió, qué quedó pendiente por destinatario y cuán nueva es
@@ -63,6 +66,7 @@ RAIZ_FINANZAS = AQUI.parent
 if str(AQUI) not in sys.path:
     sys.path.insert(0, str(AQUI))
 
+import documentos_cc  # noqa: E402
 import esquemas  # noqa: E402
 import formulaciones  # noqa: E402
 import intercambio  # noqa: E402
@@ -309,6 +313,16 @@ def paso_uf(raiz: Path, previo, forzar):
     return salida.splitlines()[-1] if salida else "UF guardada", hoy
 
 
+def paso_documentos_cc(raiz: Path, previo, forzar):
+    raices = {"CL": RAIZ_FACTURAS_CL, "PE": RAIZ_FACTURAS_CL.parent / "Perú"}
+    r = documentos_cc.atender(raiz, raices)
+    carpetas = documentos_cc.publicar_carpetas(raiz, {p: b for p, b in raices.items() if b.is_dir()})
+    detalle = (f"{r['archivos']} archivo(s) de {r['aplicados']} envío(s) a Facturas y Boletas; "
+               f"{r['esperan']} esperan; {r['rechazados']} rechazado(s); "
+               + ", ".join(f"{n} carpetas {p}" for p, n in carpetas.items()))
+    return detalle, None
+
+
 def paso_proyectos(raiz: Path, previo, forzar):
     carpetas = proyectos.carpetas_de_proyectos(AQUI, RAIZ_FACTURAS_CL if RAIZ_FACTURAS_CL.is_dir() else None)
     r = proyectos.publicar(raiz, carpetas)
@@ -326,6 +340,7 @@ PASOS = (
     ("mercado-publico", paso_mercado_publico),
     ("oportunidades", paso_oportunidades),
     ("uf", paso_uf),
+    ("documentos-cc", paso_documentos_cc),
     ("proyectos", paso_proyectos),
 )
 

@@ -37,6 +37,7 @@ Formulación de proyectos - Documentos/.Herramientas formulación/Intercambio/
 ├── intercambio.json     manifiesto: así se reconoce la carpeta correcta
 ├── LEEME.md             explicación para personas; la deja el procesador desde LEEME-carpeta.md (en git)
 ├── buzon/               mensajes que una herramienta le envía a otra
+│   └── adjuntos/<id>/   archivos de un documento-cc (Portal «Subir documentos» → Centro de Costos, 2026-10-23)
 ├── procesado/AAAA-MM/   mensajes ya atendidos, con su resultado
 └── publicado/           lo que cada herramienta publica para las demás
     ├── analisis-financiero.json

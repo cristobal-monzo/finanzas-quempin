@@ -12,7 +12,8 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 
 | Carpeta o archivo | Qué hay |
 |---|---|
-| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN y sugerencias para la Planilla de Ingreso. |
+| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, sugerencias para la Planilla de Ingreso y documentos para el Centro de Costos. |
+| `buzon/adjuntos/` | Los archivos (facturas, boletas) que se suben desde «Subir documentos» del Portal, uno por envío, hasta que el procesador los deja en el Centro de Costos. |
 | `procesado/` | Envíos ya atendidos, por mes, con su resultado: aplicado, sin cambios, reemplazado por uno más reciente, rechazado o descartado. |
 | `publicado/` | Lo que cada herramienta comparte con las demás (ver abajo). Un archivo se reescribe solo cuando cambia lo que dice. |
 | `publicado/formulador/` | Un archivo por cada proyecto del Formulador: así el equipo ve los mismos proyectos. |
@@ -30,6 +31,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 | `precios-referencia.json` | Cotizador Histórico | precios de compra reajustados, en el Formulador |
 | `licitaciones.json` | el procesador (Mercado Público) | quién ganó cada licitación de la Planilla |
 | `proyectos.json` | el procesador | el cruce N° de requerimiento ↔ TAG ↔ formulaciones ↔ cotizaciones ↔ carpetas |
+| `centro-costos-carpetas.json` | el procesador | las carpetas de proyecto de «Facturas y Boletas», para «Subir documentos» del Portal |
 | `estado.json` | el procesador, en cada vuelta | el pulso: si el procesador está corriendo |
 
 ## El procesador
@@ -39,6 +41,12 @@ trabajo, con el computador encendido. Aplica los envíos, republica lo que
 cambió y deja `estado.json`. Si pasan más de 4 horas hábiles sin una vuelta,
 el Formulador y la pestaña «Ingresar datos» lo avisan en rojo: lo enviado queda
 esperando hasta que vuelva a correr.
+
+Los documentos subidos desde el Portal («Subir documentos») los copia a
+«Facturas y Boletas/<país>/<proyecto>/» del sitio del Centro de Costos, sin
+pisar ningún archivo. Desde ahí se registran con `/Registro_Centro_de_Costos`,
+igual que los subidos a SharePoint. Si un archivo no termina de llegar en 7
+días, el envío se rechaza y el Portal lo muestra como «No se pudo».
 
 ## Lo que espera a una persona
 

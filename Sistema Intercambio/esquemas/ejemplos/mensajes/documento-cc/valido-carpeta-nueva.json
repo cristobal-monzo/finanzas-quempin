@@ -1,0 +1,11 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c1d2e3f4a5b6c1d2e3f4a5b7",
+  "tipo": "documento-cc",
+  "destino": "centro-costos",
+  "origen": {"herramienta": "portal", "enviado": "2026-10-23T16:05:00-03:00"},
+  "pais": "PE",
+  "carpeta": "Obra nueva Lima",
+  "nueva": true,
+  "archivos": [{"nombre": "factura.heic", "bytes": 1, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]
+}

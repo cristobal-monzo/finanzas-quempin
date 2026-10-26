@@ -1,0 +1,22 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "procesador",
+  "generado": "2026-10-23T16:00:00-03:00",
+  "datos": {
+    "paises": {
+      "CL": [
+        {
+          "nombre": "280. Obra de ejemplo",
+          "req": "280",
+          "documentos": -1
+        },
+        {
+          "nombre": "Gastos Generales",
+          "req": null,
+          "documentos": 40
+        }
+      ],
+      "PE": []
+    }
+  }
+}
