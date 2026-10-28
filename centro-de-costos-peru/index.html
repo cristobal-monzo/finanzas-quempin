@@ -299,22 +299,17 @@
   .viz-kpi .pill.warn { color: var(--status-warning); }
   .viz-kpi .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
 
-  /* Botón de copiar nombre de archivo (junto a N° Ref. en la tabla) */
-  .copy-archivo-btn {
-    background: none;
-    border: none;
+  /* Enlace que abre el documento en SharePoint (junto a N° Ref. en la tabla) */
+  .abrir-archivo-btn {
     padding: 2px;
     margin-left: 4px;
-    cursor: pointer;
     color: var(--text-muted);
+    text-decoration: none;
     display: inline-flex;
     align-items: center;
     vertical-align: middle;
   }
-  .copy-archivo-btn:hover, .copy-archivo-btn:focus-visible { color: var(--brand-orange-ink, var(--brand-orange)); }
-  .copy-archivo-btn .icon-check { display: none; }
-  .copy-archivo-btn.copied .icon-copy { display: none; }
-  .copy-archivo-btn.copied .icon-check { display: inline; color: var(--status-good); }
+  .abrir-archivo-btn:hover, .abrir-archivo-btn:focus-visible { color: var(--brand-orange-ink, var(--brand-orange)); }
 
   /* Notas "i" explicativas junto a KPIs y títulos de gráficos */
   .info-badge {
@@ -617,9 +612,9 @@
     /* 16 px: con menos, Safari de iPhone hace zoom al tocar el campo. */
     .viz-field input, .viz-field select, .viz-field.dates input { width: 100%; min-width: 0; font-size: 16px; }
     .viz-clearbtn { justify-self: start; }
-    /* Área táctil: el ícono de copiar y los ítems de leyenda medían ~17 px
+    /* Área táctil: el ícono de abrir y los ítems de leyenda medían ~17 px
        de alto. Margen negativo = mismo aspecto, más superficie para el dedo. */
-    .copy-archivo-btn { padding: 6px; margin: -4px -4px -4px 0; }
+    .abrir-archivo-btn { padding: 6px; margin: -4px -4px -4px 0; }
     .viz-linkbtn { padding: 7px 12px; }
     .viz-resultcount { justify-self: end; }
 
@@ -989,7 +984,7 @@ var QuempinCandado = (function () {
   return { abrir: abrir, derivar: derivar, descifrar: descifrar, descifrarBytes: descifrarBytes, abrirArchivo: abrirArchivo };
 })();
 </script>
-<script id="cc-data-b64" type="text/plain">{"v":2,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"uZfjuHwDsjMxB6Dp","comp":"gzip","datos":"WbXuwDgXg+kvazKsdJYty8stcGsQMqBHviVt/z8xaBsdBWcPTkYfx+4AFrI5vbcSO+PcIVz/4RRvWLjoNit9iHRBpTGl2drnfmbOEVBMhy2p61Kvuq0UiFt8x4DzRmJvzcNVnTe7G7O1qITvEWVHDeICbPVtpOceVIGf41WA0Woz4BANZr5dZ95k6TdLbcmwFrzyFQ7uUb61mA=="}</script>
+<script id="cc-data-b64" type="text/plain">{"v":2,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"iS3YW/WFdpSw8Wv1","comp":"gzip","datos":"D/eQBwcd70iSIagmmfLu05VG4520VJq2uHp5WU2N04oC0W4bOsKTjff8x2pR51AEA55HO5U67pAl9gC59o5+9JFyNmAmB92HgGZo9EA+yUlFGwhXsMWho6i9tL/njgrovxu8gup1pTJ/b/eG5QCqvtufuX8Las2JQ0W2ASn+l6jAes2wFTeNxcPCeAOpbcR/ADse7eIXCoGbQg=="}</script>
 <script>
 (function () {
   // ---------- theme persistence ----------
@@ -1094,43 +1089,14 @@ var QuempinCandado = (function () {
     });
   }
 
-  // ---------- copiar nombre de archivo ----------
-  var COPY_ICON_SVG = '<svg class="icon-copy" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-  var CHECK_ICON_SVG = '<svg class="icon-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-  function nombreArchivoSinRutaNiExtension(archivo) {
-    var base = String(archivo).split(/[\\/]/).pop();
-    return base.replace(/\.[^.]+$/, '');
-  }
-  function copyArchivoBtnHtml(archivo) {
-    if (!archivo) return '';
-    var nombre = nombreArchivoSinRutaNiExtension(archivo);
-    return ' <button type="button" class="copy-archivo-btn" data-archivo="' + esc(nombre) + '" title="Copiar nombre de archivo" aria-label="Copiar nombre de archivo">' + COPY_ICON_SVG + CHECK_ICON_SVG + '</button>';
-  }
-  function copyArchivoOrigen(btn) {
-    var nombre = btn.dataset.archivo;
-    function marcarCopiado() {
-      btn.classList.add('copied');
-      clearTimeout(btn._copyTimeout);
-      btn._copyTimeout = setTimeout(function () { btn.classList.remove('copied'); }, 1200);
-    }
-    function fallbackCopy() {
-      try {
-        var ta = document.createElement('textarea');
-        ta.value = nombre;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        var ok = document.execCommand('copy');
-        document.body.removeChild(ta);
-        if (ok) marcarCopiado();
-      } catch (e) {}
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(nombre).then(marcarCopiado, fallbackCopy);
-    } else {
-      fallbackCopy();
-    }
+  // ---------- abrir el documento en SharePoint ----------
+  // El build arma el enlace (enlace_archivo) solo si el archivo está en la
+  // carpeta: sin enlace no hay ícono. Lo abre quien tiene acceso al sitio.
+  var ABRIR_ICON_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>';
+  function abrirArchivoHtml(d) {
+    if (!d.enlace_archivo) return '';
+    var titulo = 'Abrir el documento de ' + d.ref;
+    return ' <a class="abrir-archivo-btn" href="' + esc(d.enlace_archivo) + '" target="_blank" rel="noopener" title="' + esc(titulo) + '" aria-label="' + esc(titulo) + '">' + ABRIR_ICON_SVG + '</a>';
   }
   function norm(s) {
     return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -1699,7 +1665,7 @@ var QuempinCandado = (function () {
       rows.push(
         '<tr class="doc-row' + (expanded ? ' is-expanded' : '') + '" data-ref="' + esc(d.ref) + '">' +
         '<td class="c-tg"><span class="expand-toggle" aria-hidden="true">' + (expanded ? '▾' : '▸') + '</span></td>' +
-        '<td class="c-ref">' + esc(d.ref) + (d.pendiente_revision ? ' <span title="Pendiente de revisión" style="color:var(--status-warning)">●</span>' : '') + copyArchivoBtnHtml(d.archivo_origen) + '</td>' +
+        '<td class="c-ref">' + esc(d.ref) + (d.pendiente_revision ? ' <span title="Pendiente de revisión" style="color:var(--status-warning)">●</span>' : '') + abrirArchivoHtml(d) + '</td>' +
         '<td class="c-proy"><span class="proj-tag"><span class="proj-dot" style="' + pSwatchStyle + '"></span>' + esc(d.proyecto) + '</span></td>' +
         '<td class="c-fecha">' + fmtDate(d.fecha) + '</td>' +
         '<td class="c-prov">' + esc(d.proveedor_tag) + '</td>' +
@@ -1746,14 +1712,13 @@ var QuempinCandado = (function () {
       }
       tr.addEventListener('click', toggle);
       tr.addEventListener('keydown', function (e) {
+        // Enter sobre el enlace del documento lo abre, no expande la fila.
+        if (e.target !== tr) return;
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
       });
     });
-    tbody.querySelectorAll('.copy-archivo-btn').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        copyArchivoOrigen(btn);
-      });
+    tbody.querySelectorAll('.abrir-archivo-btn').forEach(function (a) {
+      a.addEventListener('click', function (e) { e.stopPropagation(); });
     });
 
     renderPagination(allDocs.length, totalPages, paginationEl);
