@@ -62,6 +62,17 @@ def test_extraer_datos_saneados_incluye_archivo_origen(tmp_path):
     assert data["documentos"][0]["archivo_origen"] == "TEST-001_Proveedor_2026-08-01.jpg"
 
 
+def test_enlace_documento_apunta_a_la_carpeta_peru(tmp_path):
+    carpeta = tmp_path / "Lima Caldera"
+    carpeta.mkdir()
+    (carpeta / "LIMA-001_Sodimac_01-10-2026.pdf").write_bytes(b"%PDF")
+    assert bv.enlace_documento("Lima Caldera\\LIMA-001_Sodimac_01-10-2026.pdf", tmp_path) == (
+        "https://quempinspa2020.sharepoint.com/Documentos%20compartidos/Centro%20de%20Costos/"
+        "Facturas%20y%20Boletas/Per%C3%BA/Lima%20Caldera/LIMA-001_Sodimac_01-10-2026.pdf"
+    )
+    assert bv.enlace_documento("Lima Caldera\\LIMA-002.pdf", tmp_path) is None
+
+
 def test_extraer_datos_saneados_lee_columnas_igv_pen(tmp_path):
     ruta = _wb_con_un_documento(tmp_path, None)
     data = bv.extraer_datos_saneados(ruta)

@@ -65,6 +65,39 @@ def test_extraer_datos_saneados_archivo_origen_ausente_es_none(tmp_path):
     ruta = _wb_con_un_documento(tmp_path, None)
     data = bv.extraer_datos_saneados(ruta)
     assert data["documentos"][0]["archivo_origen"] is None
+    assert data["documentos"][0]["enlace_archivo"] is None
+
+
+def test_enlace_documento_abre_el_archivo_en_sharepoint(tmp_path):
+    carpeta = tmp_path / "289. KeyProcess"
+    carpeta.mkdir()
+    (carpeta / "KEYP-003_E&E_Limitada_22-10-2026.pdf").write_bytes(b"%PDF")
+    enlace = bv.enlace_documento("289. KeyProcess\\KEYP-003_E&E_Limitada_22-10-2026.pdf", tmp_path)
+    # Cada tramo codificado: el espacio, el "&" y la tilde no rompen la dirección.
+    assert enlace == (
+        "https://quempinspa2020.sharepoint.com/Documentos%20compartidos/Centro%20de%20Costos/"
+        "Facturas%20y%20Boletas/Chile/289.%20KeyProcess/KEYP-003_E%26E_Limitada_22-10-2026.pdf"
+    )
+    assert bv.enlace_documento("Fiscalía/FQYQ-001.pdf", tmp_path / "no-existe").endswith(
+        "/Chile/Fiscal%C3%ADa/FQYQ-001.pdf")
+
+
+def test_enlace_documento_sin_archivo_en_la_carpeta_no_da_enlace(tmp_path):
+    # La carpeta del proyecto cambió de nombre después del run: el enlace
+    # abriría un «no encontrado».
+    assert bv.enlace_documento("Fiscalía Quilpué y Quintero\\FQYQ-001.jpeg", tmp_path) is None
+    assert bv.enlace_documento(None, tmp_path) is None
+    assert bv.enlace_documento("", tmp_path) is None
+
+
+def test_enlace_documento_sin_la_carpeta_en_este_equipo_da_enlace_igual(tmp_path):
+    assert bv.enlace_documento("UMAG\\UMAG-001.pdf", tmp_path / "no-existe").endswith("/Chile/UMAG/UMAG-001.pdf")
+
+
+def test_extraer_datos_saneados_incluye_enlace_archivo(tmp_path):
+    ruta = _wb_con_un_documento(tmp_path, "UMAG\\TEST-001_Proveedor_01-07-2026.pdf")
+    data = bv.extraer_datos_saneados(ruta, raiz_docs=tmp_path / "no-existe")
+    assert data["documentos"][0]["enlace_archivo"].endswith("/Chile/UMAG/TEST-001_Proveedor_01-07-2026.pdf")
 
 
 def test_unificar_variantes_elige_la_forma_con_tilde():

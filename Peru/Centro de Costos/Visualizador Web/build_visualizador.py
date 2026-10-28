@@ -28,6 +28,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import openpyxl
 
@@ -37,6 +38,14 @@ RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Centro de Costos Perú.xlsx"
 RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "centro-de-costos-peru.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
+
+# Los documentos de Perú viven en la carpeta compartida con Chile, en «Perú/»
+# (RAIZ_DOCS de Centro de Costos/Sistema/auditor_centro_costos.py con
+# pais="PE"). Ver enlace_documento en la version de Chile.
+RAIZ_DOCS = (RAIZ.parents[2] / "Centro de Costos" / "Sitio de comunicación - Centro de Costos 1"
+             / "Facturas y Boletas" / "Perú")
+SHAREPOINT = "https://quempinspa2020.sharepoint.com"
+RUTA_WEB_DOCS = ("Documentos compartidos", "Centro de Costos", "Facturas y Boletas", "Perú")
 
 # Candado (2026-10-05): los datos van cifrados con la contraseña de los tableros.
 sys.path.insert(0, str(RAIZ.parents[2] / "Visualizador Web"))
@@ -50,7 +59,22 @@ REF_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 ROJO_SUFIJO = "C00000"
 
 
-def extraer_datos_saneados(ruta_excel=RUTA_EXCEL):
+def enlace_documento(archivo_origen, raiz_docs=RAIZ_DOCS):
+    """El enlace de SharePoint que abre el documento, o None -- igual que en
+    la version de Chile: sin enlace si la carpeta está en este equipo y el
+    archivo ya no está ahí."""
+    if not archivo_origen:
+        return None
+    partes = [p for p in str(archivo_origen).replace("\\", "/").split("/") if p]
+    if not partes:
+        return None
+    raiz = Path(raiz_docs)
+    if raiz.is_dir() and not raiz.joinpath(*partes).is_file():
+        return None
+    return SHAREPOINT + "/" + "/".join(quote(p, safe="") for p in (*RUTA_WEB_DOCS, *partes))
+
+
+def extraer_datos_saneados(ruta_excel=RUTA_EXCEL, raiz_docs=RAIZ_DOCS):
     """Lee Master + Detalle y arma el snapshot saneado. Ver la version de
     Chile (Centro de Costos/Visualizador Web/build_visualizador.py) para el
     detalle de cada decision de saneado -- identica aca salvo las 3
@@ -96,6 +120,7 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL):
             "estado": d.get("Estado"),
             "pendiente_revision": pendiente,
             "archivo_origen": d.get("Archivo origen"),
+            "enlace_archivo": enlace_documento(d.get("Archivo origen"), raiz_docs),
             "items": [],
         })
 

@@ -66,18 +66,22 @@ Centro de Costos/Visualizador Web/
 
 ## Botón de copiar archivo + notas "i" (2026-07-20)
 
-- **Botón de copiar nombre de archivo**: junto al N° Ref. de cada fila de la
-  tabla, un ícono pequeño copia al portapapeles el nombre del archivo de
-  origen (ej. `UMAG-001_Shell_2026-07-15.jpg`) — pensado para ubicar rápido
-  la foto original en `Sitio de comunicación - Centro de Costos 1/` sin tener
-  que buscarla a mano por fecha/proveedor. Solo copia el nombre, nunca la
-  ruta ni el proyecto. Requirió agregar `archivo_origen` (columna "Archivo
-  origen" de `Master`) al snapshot exportado por `build_visualizador.py` —
-  antes no viajaba al HTML en absoluto. Si no hay `archivo_origen` para un
-  documento, no se renderiza el botón en esa fila. Usa
-  `navigator.clipboard.writeText` con fallback a `document.execCommand
-  ('copy')` (necesario porque el clipboard API moderno no siempre está
-  disponible dentro del sandbox de un Claude Artifact).
+- **Ícono que abre el documento** (2026-10-28, antes copiaba el nombre del
+  archivo): junto al N° Ref. de cada fila, un enlace abre la factura o
+  boleta en SharePoint, en otra pestaña. El build arma el enlace
+  (`enlace_documento()` → `enlace_archivo` en el snapshot) desde "Archivo
+  origen" (`<carpeta del proyecto>\<nombre>`) sobre
+  `https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de
+  Costos/Facturas y Boletas/Chile/` (Perú: `…/Perú/`), cada tramo codificado.
+  Es la misma carpeta del acceso directo `Sitio de comunicación - Centro de
+  Costos 1/`. Si esa carpeta está en el equipo que arma el tablero y el
+  archivo ya no está ahí (carpeta del proyecto renombrada después del run),
+  la fila no lleva ícono: el enlace abriría un «no encontrado». Sin la
+  carpeta en el equipo, el enlace va sin revisar. Funciona en el teléfono y
+  no necesita «Conectar carpeta»: el permiso lo da SharePoint, así que solo
+  abre quien tiene acceso al sitio. La ruta y el nombre viajan cifrados con
+  el resto del snapshot; la base de la dirección ya era pública en el portal.
+  Al hacer clic el ícono no expande la fila (`closest('button, a')`).
 - **Notas "i" explicativas**: 4 círculos con "i" (KPI "Gasto total (s/IVA)",
   KPI "Pendientes de revisión", gráfico "Top proveedores", gráfico "Gasto
   mensual acumulado") muestran una explicación corta al pasar el mouse
