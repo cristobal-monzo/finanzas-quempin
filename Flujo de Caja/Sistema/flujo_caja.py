@@ -10,8 +10,8 @@ que ya producen módulos anteriores"). Cada movimiento dice de dónde salió:
 | Línea | Clase | Fuente |
 |---|---|---|
 | Egresos pagados | real | Centro de Costos: documentos «Pagado» (foto del tablero) |
-| Facturas por pagar | comprometido | Centro de Costos: documentos «Pendiente» |
-| Órdenes de compra sin factura | comprometido | Sistema QUEMPIN: OC (61) que todavía no calzan con una factura |
+| Facturas por pagar | comprometido | Centro de Costos: documentos «Pendiente» (incluye las OC con proyecto, que el Centro de Costos trae a su libro) |
+| Órdenes de compra sin factura | comprometido | Sistema QUEMPIN: OC (61) que no están en el Centro de Costos y todavía no calzan con una factura |
 | Cuotas por cobrar | comprometido | Sistema QUEMPIN: cuotas de las cotizaciones de proyectos adjudicados |
 | Ventas según Análisis Financiero | estimado | Excel del Análisis Financiero: «Monto de Venta (sin IVA)» + IVA, al cierre o en estados de pago mensuales |
 | Ofertas por adjudicar | probable | Planilla de Ingreso: «Ofertado» × tasa histórica de adjudicación |
@@ -52,6 +52,8 @@ import intercambio  # noqa: E402
 import ubicacion  # noqa: E402
 
 RUTA_FOTO_CC = RAIZ_FINANZAS / "Centro de Costos" / "Visualizador Web" / "data" / "centro-de-costos.json"
+# OC que el Centro de Costos ya trajo a su libro (gitignoreado: lleva montos).
+RUTA_ORDENES_CC = RAIZ_FINANZAS / "Centro de Costos" / "Sistema" / "ordenes_compra.json"
 RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Flujo de Caja.xlsx"
 # La venta de cada proyecto no viaja por la carpeta de intercambio (la ve toda
 # la biblioteca de Formulación): se lee del Excel del Análisis Financiero, que
@@ -191,19 +193,43 @@ def egresos_centro_costos(documentos: list[dict], hoy: date, sup: dict) -> tuple
     return movs, avisos
 
 
-def egresos_ordenes_de_compra(docs: list[dict], documentos_cc: list[dict], hoy: date, sup: dict) -> tuple[list[dict], list[str]]:
+def _es_orden_de_compra_cc(doc: dict) -> bool:
+    return str(doc.get("tipo_documento") or "").strip().lower().startswith("orden de compra")
+
+
+def leer_ordenes_en_cc(ruta: Path | None = None) -> set[str]:
+    """Folios de las OC que ya maneja el Centro de Costos: las que están en su
+    libro como costo del proyecto, las que ya reemplazó su factura y las que
+    llegaron con la factura ya registrada. Vacío si no está el registro."""
+    try:
+        with open(ruta or RUTA_ORDENES_CC, encoding="utf-8") as f:
+            return {str(folio) for folio in (json.load(f).get("ordenes") or {})}
+    except (OSError, ValueError, AttributeError):
+        return set()
+
+
+def egresos_ordenes_de_compra(docs: list[dict], documentos_cc: list[dict], hoy: date, sup: dict,
+                              folios_en_cc: set[str] = frozenset()) -> tuple[list[dict], list[str]]:
     """OC emitidas en Sistema QUEMPIN que todavía no calzan con una factura
     del Centro de Costos (mismo total ± toleranciaOC, fechada desde la OC en
     adelante y dentro de diasOCSinFactura). Una OC más antigua se da por
-    facturada. Sin RUT en Centro de Costos, el cruce es por monto y fecha."""
+    facturada. Sin RUT en Centro de Costos, el cruce es por monto y fecha.
+
+    Las OC que ya están en el Centro de Costos (folios_en_cc, o una fila
+    «Orden de Compra» de la foto) no se cuentan aquí: el libro las trae como
+    documento pendiente y egresos_centro_costos ya las suma; cuando llega su
+    factura, la factura las reemplaza allá."""
     movs, avisos = [], []
-    facturas = [(_fecha(d.get("fecha")), _numero(d.get("total_con_iva"))) for d in documentos_cc]
+    en_cc = {str(f) for f in folios_en_cc}
+    en_cc |= {str(d.get("n_documento")) for d in documentos_cc if _es_orden_de_compra_cc(d)}
+    facturas = [(_fecha(d.get("fecha")), _numero(d.get("total_con_iva")))
+                for d in documentos_cc if not _es_orden_de_compra_cc(d)]
     facturas = [(f, t) for f, t in facturas if f and t]
     usadas = set()
     viejas = otras_monedas = 0
     for oc in sorted((x for x in docs if x.get("tipo") == "61"), key=lambda x: str(x.get("fecha"))):
         f, total = _fecha(oc.get("fecha")), _numero(oc.get("total"))
-        if f is None or not total:
+        if f is None or not total or str(oc.get("folio")) in en_cc:
             continue
         if oc.get("moneda") != "CLP":
             otras_monedas += 1
@@ -571,7 +597,8 @@ def _datos(raiz, nombre) -> dict:
 
 
 def armar(raiz_intercambio: Path | None, ruta_foto_cc: Path = RUTA_FOTO_CC, hoy: date | None = None,
-          sup: dict | None = None, ruta_excel_af: Path = RUTA_EXCEL_AF) -> dict:
+          sup: dict | None = None, ruta_excel_af: Path = RUTA_EXCEL_AF,
+          ruta_ordenes_cc: Path | None = None) -> dict:
     """El flujo completo, desde lo que publicaron las demás herramientas."""
     hoy = hoy or date.today()
     sup = sup or leer_parametros()
@@ -592,7 +619,8 @@ def armar(raiz_intercambio: Path | None, ruta_foto_cc: Path = RUTA_FOTO_CC, hoy:
 
     movs = []
     for armador in (lambda: egresos_centro_costos(documentos_cc, hoy, sup),
-                    lambda: egresos_ordenes_de_compra(docs, documentos_cc, hoy, sup)):
+                    lambda: egresos_ordenes_de_compra(docs, documentos_cc, hoy, sup,
+                                                      leer_ordenes_en_cc(ruta_ordenes_cc))):
         m, a = armador()
         movs += m
         avisos += a

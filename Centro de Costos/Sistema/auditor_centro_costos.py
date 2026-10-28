@@ -32,9 +32,12 @@ import shutil
 import sys
 import time
 import unicodedata
+import urllib.error
+import urllib.request
 import zipfile
 from contextlib import contextmanager
-from datetime import datetime
+from copy import copy
+from datetime import datetime, timedelta
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -63,6 +66,9 @@ RUTA_JSON = RAIZ / "datos_extraidos.json"
 RUTA_RECONCILIACION = RAIZ / "reconciliacion_archivos.json"
 RUTA_BACKUPS = RAIZ_MODULO / "Excel" / "Respaldos"
 RUTA_CORRECCIONES = RAIZ / "correcciones_manuales.json"
+# Ordenes de compra de Sistema QUEMPIN que el Centro de Costos ya trajo (y su
+# entrada de datos, armada desde la OC): ver seccion ORDENES DE COMPRA.
+RUTA_ORDENES_COMPRA = RAIZ / "ordenes_compra.json"
 RUTA_ERRORES_MD = RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costos" / "ERRORES.md"
 RUTA_LOGS = RAIZ / "logs"
 RAIZ_VISUALIZADOR_WEB = RAIZ_MODULO / "Visualizador Web"
@@ -112,11 +118,14 @@ PAISES = {
         "ruta_json": RUTA_JSON,
         "ruta_reconciliacion": RUTA_RECONCILIACION,
         "ruta_correcciones": RUTA_CORRECCIONES,
+        "ruta_ordenes_compra": RUTA_ORDENES_COMPRA,
         "ruta_errores_md": RUTA_ERRORES_MD,
         "ruta_logs": RUTA_LOGS,
         "ruta_visualizador_web": RAIZ_VISUALIZADOR_WEB,
         "ruta_excel_sitio_comunicacion": RUTA_EXCEL_SITIO_COMUNICACION,
         "prefijos_proyecto": PREFIJOS_PROYECTO,
+        # Valor de 'pais' de las OC de Sistema QUEMPIN que van a este libro.
+        "pais_quempin": "Chile",
     },
     "PE": {
         # Razón social a la que van dirigidos los documentos de Perú (pedido
@@ -130,6 +139,7 @@ PAISES = {
         "ruta_json": RAIZ_PERU / "datos_extraidos_peru.json",
         "ruta_reconciliacion": RAIZ_PERU / "reconciliacion_archivos_peru.json",
         "ruta_correcciones": RAIZ_PERU / "correcciones_manuales_peru.json",
+        "ruta_ordenes_compra": RAIZ_PERU / "ordenes_compra_peru.json",
         "ruta_errores_md": (
             RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costos" / "ERRORES_PERU.md"
         ),
@@ -138,6 +148,7 @@ PAISES = {
         # Peru no tiene (todavia) un sitio de comunicacion SharePoint propio.
         "ruta_excel_sitio_comunicacion": None,
         "prefijos_proyecto": {},
+        "pais_quempin": "Peru",
     },
 }
 
@@ -156,6 +167,7 @@ def configurar_pais(pais="CL"):
     global PAIS_ACTUAL, RUTA_EXCEL, RAIZ_DOCS, RUTA_BACKUPS, RUTA_JSON
     global RUTA_RECONCILIACION, RUTA_CORRECCIONES, RUTA_ERRORES_MD, RUTA_LOGS
     global RAIZ_VISUALIZADOR_WEB, RUTA_EXCEL_SITIO_COMUNICACION, PREFIJOS_PROYECTO
+    global RUTA_ORDENES_COMPRA, PAIS_QUEMPIN
     global MONEDA, SIMBOLO_MONEDA, NOMBRE_IMPUESTO_CORTO, TASA_IMPUESTO, NOMBRE_IMPUESTO_PCT
     global ENCABEZADOS_MASTER, ENCABEZADOS_DETALLE, ENCABEZADOS_PROYECTO
     global MONEY_FORMAT, LEYENDA_MASTER, RAZON_SOCIAL
@@ -169,6 +181,8 @@ def configurar_pais(pais="CL"):
     RUTA_JSON = cfg["ruta_json"]
     RUTA_RECONCILIACION = cfg["ruta_reconciliacion"]
     RUTA_CORRECCIONES = cfg["ruta_correcciones"]
+    RUTA_ORDENES_COMPRA = cfg["ruta_ordenes_compra"]
+    PAIS_QUEMPIN = cfg["pais_quempin"]
     RUTA_ERRORES_MD = cfg["ruta_errores_md"]
     RUTA_LOGS = cfg["ruta_logs"]
     RAIZ_VISUALIZADOR_WEB = cfg["ruta_visualizador_web"]
@@ -473,7 +487,7 @@ PATRON_NREF = re.compile(r"^[A-Za-zÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑ0-9]*-\d+$")
 # dejaba esas 8 guias de despacho fuera de TODA verificacion aritmetica, y
 # les habria calculado impuesto 0 si no hubieran traido 'iva' explicito.
 # Normalizar en un solo lugar cierra las tres puertas a la vez.
-TIPOS_AFECTOS = frozenset({"factura", "guia de despacho"})
+TIPOS_AFECTOS = frozenset({"factura", "guia de despacho", "orden de compra"})
 
 
 def clave_tipo_documento(valor):
@@ -2094,7 +2108,7 @@ def separar_documento_combinado(proyecto_fisico, archivo, cantidad, raiz_docs=No
 
 
 def eliminar_documento(n_ref, ws_master, ws_detalle, raiz_docs=None, ruta_backups=None,
-                       archivar_fuente=True):
+                       archivar_fuente=True, motivo="eliminado"):
     """Borra del libro un documento registrado por error (t�picamente el mismo
     documento tributario registrado dos veces desde dos escaneos distintos) y
     devuelve un resumen de lo que se saco.
@@ -2117,6 +2131,9 @@ def eliminar_documento(n_ref, ws_master, ws_detalle, raiz_docs=None, ruta_backup
     posterior puede estar referenciada en correcciones, notas o respaldos. Queda
     un hueco en la secuencia, que es lo correcto.
 
+    'motivo' va en el nombre del archivo archivado ("eliminado", o
+    "reemplazada por factura" para una orden de compra, ver cerrar_ordenes).
+
     Quien llama es responsable de haber hecho backup, de regenerar los pies y
     las hojas de proyecto, y de guardar el libro."""
     raiz_docs = raiz_docs if raiz_docs is not None else RAIZ_DOCS
@@ -2134,6 +2151,11 @@ def eliminar_documento(n_ref, ws_master, ws_detalle, raiz_docs=None, ruta_backup
     for fila in filas_detalle:
         ws_detalle.delete_rows(fila)
     ws_master.delete_rows(fila_master)
+    # openpyxl sube las filas de abajo pero no traduce sus formulas: la K de
+    # la fila que paso a 'fila_master' seguiria sumando el N Ref de la fila
+    # siguiente. reordenar_por_fecha solo las reescribe si el orden cambia.
+    for r in range(fila_master, ultima_fila_datos(ws_master) + 1):
+        escribir_formulas_master(ws_master, r)
 
     ruta_archivada = None
     if archivar_fuente and archivo_origen:
@@ -2145,7 +2167,7 @@ def eliminar_documento(n_ref, ws_master, ws_detalle, raiz_docs=None, ruta_backup
             destino_dir = carpeta_mes(ruta_backups, ahora)
             marca = ahora.strftime("%Y-%m-%d %H%M")
             ruta_archivada = destino_dir / (
-                f"{ruta_fuente.stem} - eliminado {n_ref} - {marca}{ruta_fuente.suffix}"
+                f"{ruta_fuente.stem} - {motivo} {n_ref} - {marca}{ruta_fuente.suffix}"
             )
             shutil.move(str(ruta_fuente), str(ruta_archivada))
 
@@ -2902,21 +2924,21 @@ def reordenar_por_fecha(ws_master, ws_detalle, primera_fila_libre_master, primer
     orden = sorted(info_filas, key=_clave_orden_fecha)
     filas_origen = [f[1] for f in orden]
 
-    if filas_origen == list(range(2, ultima_master + 1)):
-        return  # ya esta en el orden correcto, no tocar nada
+    if filas_origen != list(range(2, ultima_master + 1)):
+        snapshots_master = [capturar_fila(ws_master, r, ncols_master) for r in filas_origen]
+        for i, snap in enumerate(snapshots_master):
+            escribir_snapshot_fila(ws_master, 2 + i, snap)
+            escribir_formulas_master(ws_master, 2 + i)  # ajusta $A<fila> de K/M a la nueva posicion
 
-    snapshots_master = [capturar_fila(ws_master, r, ncols_master) for r in filas_origen]
-    for i, snap in enumerate(snapshots_master):
-        escribir_snapshot_fila(ws_master, 2 + i, snap)
-        escribir_formulas_master(ws_master, 2 + i)  # ajusta $A<fila> de K/M a la nueva posicion
-
-    n_ref_orden = [ws_master.cell(row=2 + i, column=1).value for i in range(len(snapshots_master))]
+    n_ref_orden = [ws_master.cell(row=r, column=1).value for r in range(2, ultima_master + 1)]
 
     ultima_detalle = primera_fila_libre_detalle - 1
     if ultima_detalle < 2:
         return
 
-    ncols_detalle = len(ENCABEZADOS_DETALLE)
+    # Detalle se reagrupa aunque Master ya estuviera en orden: el saldo de una
+    # orden de compra parcialmente facturada (cerrar_ordenes) se agrega como
+    # item al final de Detalle, lejos del bloque de su N Ref.
     grupos = {}
     orden_original_grupos = []
     for r in range(2, ultima_detalle + 1):
@@ -2924,17 +2946,23 @@ def reordenar_por_fecha(ws_master, ws_detalle, primera_fila_libre_master, primer
         if n_ref_d not in grupos:
             grupos[n_ref_d] = []
             orden_original_grupos.append(n_ref_d)
-        grupos[n_ref_d].append(capturar_fila(ws_detalle, r, ncols_detalle))
+        grupos[n_ref_d].append(r)
 
-    fila = 2
+    filas_detalle_origen = []
     vistos = set()
     for n_ref in n_ref_orden + orden_original_grupos:
         if n_ref in vistos:
             continue
         vistos.add(n_ref)
-        for snap in grupos.get(n_ref, []):
-            escribir_snapshot_fila(ws_detalle, fila, snap)
-            fila += 1
+        filas_detalle_origen.extend(grupos.get(n_ref, []))
+
+    if filas_detalle_origen == list(range(2, ultima_detalle + 1)):
+        return  # ya esta agrupado en el orden correcto, no tocar nada
+
+    ncols_detalle = len(ENCABEZADOS_DETALLE)
+    snapshots_detalle = [capturar_fila(ws_detalle, r, ncols_detalle) for r in filas_detalle_origen]
+    for i, snap in enumerate(snapshots_detalle):
+        escribir_snapshot_fila(ws_detalle, 2 + i, snap)
 
 
 # ── PIES DE TABLA (regenerados en cada corrida) ─────────────────────────────
@@ -3291,6 +3319,9 @@ ORDEN_SEVERIDAD = {"error": 0, "revisar": 1, "estimado": 2}
 TIPOS_DOCUMENTO_CONOCIDOS = frozenset({
     "factura", "factura exenta", "boleta", "guia de despacho",
     "nota de credito",
+    # Las trae Sistema QUEMPIN, no un agente (ver ORDENES DE COMPRA): cuentan
+    # como costo hasta que se registra la factura que las reemplaza.
+    "orden de compra", "orden de compra exenta",
 })
 
 # Un documento fechado despues de hoy no existe. Se deja un dia de holgura
@@ -4262,6 +4293,599 @@ def sincronizar_registro_errores(ws_master, datos, pendientes=None, hoy=None,
     }
 
 
+# ── ORDENES DE COMPRA DE SISTEMA QUEMPIN ────────────────────────────────────
+# Pedido del usuario (2026-10-27): una OC emitida en Sistema QUEMPIN y asociada
+# a un proyecto cuenta como gasto de ese proyecto desde que se emite, sin
+# esperar la factura. No la lee un agente desde el PDF: Sistema QUEMPIN ya
+# guarda cada linea, su precio y el RUT del proveedor en
+# <Carpeta compartida QUEMPIN>/documentos/61/<año>/<folio>.json, y el PDF en
+# salida/. Decisiones del usuario del mismo dia:
+#   - Entra con la proxima actualizacion del Centro de Costos ('run'), no la
+#     trae el procesador del intercambio por su cuenta.
+#   - Cuando se registra la factura del proveedor por esa OC, la factura la
+#     REEMPLAZA: la OC sale del libro y queda la factura con su monto real. Si
+#     la factura es parcial, la OC queda solo por el saldo.
+#   - Una OC en otra moneda se pasa a pesos con el valor observado del dia de
+#     la OC (mindicador.cl). Cuando llega la factura en pesos, esta manda.
+#   - Una OC sin proyecto no entra.
+# Es la segunda excepcion a la regla de oro, despues de eliminar_documento():
+# las filas de una OC las escribe el script desde Sistema QUEMPIN, no son
+# historial del usuario, y cambian cuando llega su factura (cerrar_ordenes).
+#
+# El registro (RUTA_ORDENES_COMPRA, ignorado por git: lleva montos) guarda
+# por folio el estado de cada OC -- "en_cc", "reemplazada" o
+# "facturada_antes" -- y la entrada de datos armada al traerla, que 'run' y
+# 'status' suman a datos_extraidos.json mientras la OC sigue en el libro.
+
+TIPO_DOCUMENTO_OC = "Orden de Compra"
+TIPO_DOCUMENTO_OC_EXENTA = "Orden de Compra Exenta"
+# Item que lleva, en negativo, lo ya facturado de una OC facturada en parte.
+NOMBRE_ITEM_FACTURADO = "Facturado"
+# Una factura cierra su OC si su neto llega al de la OC con esta diferencia
+# como maximo (la misma tolerancia con que Flujo de Caja las cruzaba).
+TOLERANCIA_OC = 0.02
+# La factura puede venir fechada antes que su OC: a veces la OC se emite
+# despues de comprar, para dejar constancia.
+DIAS_FACTURA_ANTES_DE_OC = 30
+INDICADOR_MINDICADOR = {"USD": "dolar", "EUR": "euro", "UF": "uf"}
+URL_MINDICADOR = "https://mindicador.cl/api/{indicador}/{fecha}"
+# Mismas esperas que el Cotizador: mindicador.cl a veces tarda mas de 10 s.
+ESPERAS_MINDICADOR = (10, 25)
+# Un fin de semana o feriado no tiene valor observado: se usa el ultimo dia
+# habil anterior, hasta esta cantidad de dias atras.
+DIAS_ATRAS_TIPO_CAMBIO = 7
+
+# Sistema QUEMPIN no pide la categoria de cada linea. Se deduce de su
+# descripcion y, si no dice nada, de la referencia y el motivo de la OC; lo que
+# no calza queda en Materiales, que es lo que compran casi todas. Se corrige en
+# el Excel como cualquier otra categoria. Palabras sin tildes ni mayusculas
+# (se comparan contra clave_tipo_documento del texto).
+CATEGORIAS_OC_POR_PALABRA = (
+    ("Servicios", ("servicio", "servicios", "asesoria", "mano de obra", "mantencion",
+                   "supervision", "elaboracion", "capacitacion", "certificacion",
+                   "inspeccion", "calibracion", "honorarios")),
+    ("Arriendo", ("arriendo", "alquiler")),
+    ("Despachos", ("flete", "despacho", "envio")),
+    ("Seguridad Industrial", ("epp", "casco", "guantes", "arnes")),
+    ("Combustible", ("combustible", "petroleo", "bencina", "diesel")),
+)
+
+
+class TipoCambioNoDisponibleError(Exception):
+    """No se pudo obtener el valor de una moneda en pesos desde mindicador.cl."""
+
+
+def ubicar_carpeta_quempin():
+    """La carpeta compartida de Sistema QUEMPIN (biblioteca «Cotizaciones y OC»),
+    o None si no esta sincronizada en este equipo. Misma regla que las demas
+    herramientas: Sistema Intercambio/ubicacion.py (QUEMPIN_CARPETA_COMPARTIDA
+    la fija a mano)."""
+    try:
+        with _modulo_hermano_fresco(RAIZ_MODULO.parent / "Sistema Intercambio", "ubicacion") as ubicacion:
+            return ubicacion.ubicar_carpeta_quempin(RAIZ_MODULO)
+    except Exception as e:
+        print(f"  [WARN] No se pudo ubicar la carpeta de Sistema QUEMPIN ({e}).")
+        return None
+
+
+def proyectos_publicados():
+    """Los proyectos que publica el procesador del intercambio (proyectos.json):
+    de ahi sale el nombre «N°. Nombre» de la carpeta de un proyecto que todavia
+    no tiene carpeta en Facturas y Boletas. Lista vacia si no esta."""
+    try:
+        with _modulo_hermano_fresco(RAIZ_MODULO.parent / "Sistema Intercambio", "ubicacion") as ubicacion:
+            raiz = ubicacion.ubicar_intercambio(RAIZ_MODULO)
+        with open(Path(raiz) / "publicado" / "proyectos.json", encoding="utf-8") as f:
+            return ((json.load(f).get("datos") or {}).get("proyectos")) or []
+    except (Exception, SystemExit):
+        return []
+
+
+def cargar_ordenes_compra(ruta=None):
+    ruta = ruta if ruta is not None else RUTA_ORDENES_COMPRA
+    if not ruta.exists():
+        return {"ordenes": {}}
+    with open(ruta, "r", encoding="utf-8") as f:
+        registro = json.load(f)
+    registro.setdefault("ordenes", {})
+    return registro
+
+
+def guardar_ordenes_compra(registro, ruta=None):
+    ruta = ruta if ruta is not None else RUTA_ORDENES_COMPRA
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    temporal = ruta.with_name(f".{ruta.name}.tmp")
+    with open(temporal, "w", encoding="utf-8") as f:
+        json.dump(registro, f, ensure_ascii=False, indent=2)
+    temporal.replace(ruta)
+
+
+def entradas_ordenes_compra(registro):
+    """Las entradas de datos de las OC que siguen en el libro: 'run' y 'status'
+    las suman a las de datos_extraidos.json, asi que se validan, se escriben y
+    se enlazan con sus hallazgos igual que una factura."""
+    return [o["entrada"] for o in registro["ordenes"].values()
+            if o.get("estado") == "en_cc" and o.get("entrada")]
+
+
+def _numero_oc(valor):
+    """Sistema QUEMPIN guarda los montos como texto decimal ("2400000.00")."""
+    try:
+        return float(str(valor).strip())
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def leer_ordenes_quempin(carpeta_quempin, pais_quempin=None):
+    """Las OC (tipo 61) de Sistema QUEMPIN de este pais, tal como las guarda el
+    programa, una por folio. Lista vacia si no esta la carpeta."""
+    pais_quempin = pais_quempin or PAIS_QUEMPIN
+    if carpeta_quempin is None:
+        return []
+    base = Path(carpeta_quempin) / "documentos" / "61"
+    if not base.is_dir():
+        return []
+    por_folio = {}
+    # Primero el archivo que se llama como su folio: una copia en conflicto de
+    # OneDrive ("612616-LAPTOP.json") no reemplaza al original.
+    for ruta in sorted(base.rglob("*.json"), key=lambda r: (not r.stem.isdigit(), str(r))):
+        try:
+            with open(ruta, encoding="utf-8") as f:
+                oc = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if not isinstance(oc, dict) or str(oc.get("tipo")) != "61" or not oc.get("folio"):
+            continue
+        if clave_tipo_documento(oc.get("pais") or "Chile") != clave_tipo_documento(pais_quempin):
+            continue
+        por_folio.setdefault(str(oc["folio"]), oc)
+    return [por_folio[f] for f in sorted(por_folio)]
+
+
+def codigo_moneda_oc(oc):
+    """Codigo de la moneda de una OC: "Local" (o vacio) es la del libro, "SOL"
+    de documentos antiguos es PEN; el resto tal cual (USD, EUR, UF, CLP)."""
+    moneda = str(oc.get("moneda") or "").strip().upper()
+    if moneda in ("", "LOCAL"):
+        return MONEDA
+    return "PEN" if moneda == "SOL" else moneda
+
+
+def consultar_tipo_cambio(moneda, fecha):
+    """(valor en pesos de 1 'moneda', dia del valor) segun mindicador.cl para
+    'fecha' (date), o el del ultimo dia habil anterior. Lanza
+    TipoCambioNoDisponibleError si no contesta o no hay valor."""
+    indicador = INDICADOR_MINDICADOR.get(moneda)
+    if indicador is None:
+        raise TipoCambioNoDisponibleError(f"mindicador.cl no publica {moneda}")
+    for atras in range(DIAS_ATRAS_TIPO_CAMBIO + 1):
+        dia = fecha - timedelta(days=atras)
+        url = URL_MINDICADOR.format(indicador=indicador, fecha=dia.strftime("%d-%m-%Y"))
+        for intento, espera in enumerate(ESPERAS_MINDICADOR):
+            try:
+                with urllib.request.urlopen(url, timeout=espera) as respuesta:
+                    datos = json.loads(respuesta.read().decode("utf-8"))
+                break
+            except (urllib.error.URLError, OSError, ValueError) as exc:
+                if intento + 1 == len(ESPERAS_MINDICADOR):
+                    raise TipoCambioNoDisponibleError(
+                        f"no se pudo consultar mindicador.cl ({exc})") from exc
+        serie = datos.get("serie") or []
+        if serie and serie[0].get("valor"):
+            return float(serie[0]["valor"]), dia
+    raise TipoCambioNoDisponibleError(
+        f"mindicador.cl no tiene {moneda} entre el {fecha - timedelta(days=DIAS_ATRAS_TIPO_CAMBIO):%d-%m-%Y} "
+        f"y el {fecha:%d-%m-%Y}")
+
+
+def categoria_linea_oc(descripcion, texto_oc=""):
+    """Categoria de una linea de OC: ver CATEGORIAS_OC_POR_PALABRA."""
+    for texto in (descripcion, texto_oc):
+        palabras = clave_tipo_documento(texto)
+        for categoria, claves in CATEGORIAS_OC_POR_PALABRA:
+            if any(re.search(rf"\b{re.escape(c)}\b", palabras) for c in claves):
+                return categoria
+    return "Materiales"
+
+
+def _rut_normalizado(rut):
+    return re.sub(r"[^0-9kK]", "", str(rut or "")).upper()
+
+
+def _proveedor_conocido(rut, razon_social, datos):
+    """La razon social con que el libro ya conoce a este proveedor: misma regla
+    que el Paso 2 del skill (nunca crear una variante nueva del mismo
+    proveedor). Primero por RUT; si no, por el nombre sin mayusculas."""
+    rut_n = _rut_normalizado(rut)
+    if rut_n:
+        for d in datos:
+            if d.get("proveedor") and _rut_normalizado(d.get("rut_proveedor")) == rut_n:
+                return d["proveedor"]
+    clave = _clave_proveedor(razon_social)
+    for d in datos:
+        if d.get("proveedor") and _clave_proveedor(d["proveedor"]) == clave:
+            return d["proveedor"]
+    return razon_social
+
+
+def _tipo_proyecto_conocido(proyecto, datos):
+    """El tipo de proyecto mas usado en las entradas de ese proyecto ("" si
+    el proyecto es nuevo: se completa en el Excel)."""
+    conteo = {}
+    for d in datos:
+        if d.get("proyecto") == proyecto and d.get("tipo_proyecto"):
+            conteo[d["tipo_proyecto"]] = conteo.get(d["tipo_proyecto"], 0) + 1
+    return max(conteo, key=conteo.get) if conteo else ""
+
+
+def entrada_desde_oc(oc, proyecto, archivo, datos=(), tipo_cambio=1.0, nota_cambio=""):
+    """La entrada de datos de una OC (mismo esquema que datos_extraidos.json),
+    en la moneda del libro. Los precios van con el descuento ya aplicado --
+    la convencion del libro para las facturas con descuento ("precio unitario
+    ya refleja el descuento") -- asi la suma de los items es el neto de la OC."""
+    totales = oc.get("totales") or {}
+    lineas = oc.get("items") or []
+    bruto = sum(_numero_oc(i.get("cantidad")) * _numero_oc(i.get("precio_unitario")) for i in lineas)
+    neto_oc = _numero_oc(totales.get("neto"))
+    factor = neto_oc / bruto if bruto > 0 and neto_oc > 0 else 1.0
+    decimales = 0 if MONEDA == "CLP" else 2
+    texto_oc = f"{oc.get('referencia') or ''} {oc.get('motivo') or ''}"
+
+    items = []
+    for linea in lineas:
+        cantidad = _numero_oc(linea.get("cantidad"))
+        if cantidad <= 0:
+            continue
+        descripcion = " ".join(str(linea.get("descripcion") or "").split())
+        detalles = " ".join(" ".join(str(d).split()) for d in linea.get("detalles") or [] if str(d).strip())
+        items.append({
+            "nombre_item": descripcion or "Ítem de la orden de compra",
+            "descripcion": f"{descripcion}. {detalles}" if detalles else descripcion,
+            "categoria_item": categoria_linea_oc(descripcion, texto_oc),
+            "cantidad": int(cantidad) if cantidad == int(cantidad) else cantidad,
+            "p_unitario_sin_iva": round(_numero_oc(linea.get("precio_unitario")) * factor * tipo_cambio,
+                                        decimales) or 0,
+        })
+    if decimales == 0:
+        for item in items:
+            item["p_unitario_sin_iva"] = int(item["p_unitario_sin_iva"])
+
+    neto = total_sin_iva_items(items)
+    exenta = bool(oc.get("exento_impuesto")) or _numero_oc(totales.get("iva")) <= 0
+    principal = max(items, key=lambda i: i["cantidad"] * i["p_unitario_sin_iva"]) if items else None
+    contraparte = oc.get("contraparte") or {}
+    folio = str(oc.get("folio"))
+    fecha = datetime.strptime(str(oc.get("fecha")), "%Y-%m-%d")
+    total_oc = _numero_oc(totales.get("total"))
+    return {
+        "archivo": archivo,
+        "proyecto": proyecto,
+        "tipo_proyecto": _tipo_proyecto_conocido(proyecto, datos),
+        "fecha": fecha.strftime("%d-%m-%Y"),
+        "n_documento": folio,
+        "tipo_documento": TIPO_DOCUMENTO_OC_EXENTA if exenta else TIPO_DOCUMENTO_OC,
+        "proveedor": _proveedor_conocido(contraparte.get("rut"), contraparte.get("razon_social") or "", datos),
+        "rut_proveedor": contraparte.get("rut") or "",
+        "categoria": principal["categoria_item"] if principal else "Materiales",
+        # Todavia no se paga: Flujo de Caja la cuenta como por pagar.
+        "estado": "Pendiente",
+        "iva": 0 if exenta else round(neto * TASA_IMPUESTO, decimales),
+        "items": items,
+        "notas": (f"Orden de compra {folio} de Sistema QUEMPIN ({oc.get('autor') or 's/autor'}), "
+                  f"{total_oc:,.2f} {codigo_moneda_oc(oc)} con impuesto{nota_cambio}. Cuenta como costo "
+                  f"del proyecto hasta que se registre su factura, que la reemplaza."),
+        # Marca que esta entrada es una OC (no la escribio un agente).
+        "oc_folio": folio,
+    }
+
+
+def _nombre_carpeta_publicado(req, proyectos):
+    """«N°. Nombre» del proyecto como ya se llama en la biblioteca de Gestion
+    (o en la de Formulacion), o «N°. Titulo» de la Planilla de Ingreso."""
+    for p in proyectos:
+        if str(p.get("req") or "") != req:
+            continue
+        carpetas = p.get("carpetas") or {}
+        for tipo in ("ejecucion", "oferta"):
+            for ruta in carpetas.get(tipo) or []:
+                nombre = re.split(r"[\\/]", str(ruta))[-1].strip()
+                m = re.match(r"^0*(\d+)[.\-_]", nombre)
+                if m and m.group(1) == req:
+                    return nombre
+        if p.get("titulo"):
+            return f"{req}. {p['titulo']}"
+    return None
+
+
+def carpeta_para_oc(raiz_docs, oc, proyectos=()):
+    """(carpeta, ya_existe) en Facturas y Boletas para el PDF de la OC: la del
+    proyecto si ya existe -- por su N° de requerimiento, o por su TAG (el
+    prefijo del N Ref) -- o una nueva «N°. Nombre». (None, False) si no hay
+    como saber cual es."""
+    proyecto = oc.get("proyecto") or {}
+    req = str(proyecto.get("req") or "").strip()
+    tag = str(proyecto.get("tag") or "").strip()
+    subcarpetas = (sorted(h for h in raiz_docs.iterdir() if h.is_dir() and not h.name.startswith(("_", ".")))
+                   if raiz_docs.is_dir() else [])
+    if req.isdigit():
+        req = str(int(req))
+        for h in subcarpetas:
+            m = re.match(r"^0*(\d+)[.\-_]", h.name)
+            if m and m.group(1) == req:
+                return h, True
+        nombre = _nombre_carpeta_publicado(req, proyectos)
+        if nombre:
+            nombre = re.sub(r'[<>:"/\\|?*]', "", nombre).strip(" .")
+            return raiz_docs / nombre, False
+    if tag:
+        for h in subcarpetas:
+            if prefijo_para_proyecto(normalizar_nombre_proyecto(h.name)) == tag:
+                return h, True
+    return None, False
+
+
+def _neto_entrada(dato):
+    return total_sin_iva_items(dato.get("items") or [])
+
+
+def _mismo_proveedor(a, b):
+    """Por RUT si las dos entradas lo traen; si no, por la etiqueta corta del
+    proveedor, que ya junta las variantes de una misma razon social
+    ("Comercial ANWO S.A." y "ANWO S.A." son "Anwo")."""
+    rut_a, rut_b = _rut_normalizado(a.get("rut_proveedor")), _rut_normalizado(b.get("rut_proveedor"))
+    if rut_a and rut_b:
+        return rut_a == rut_b
+    tag_a = generar_tag_proveedor(a.get("proveedor") or "") if a.get("proveedor") else ""
+    tag_b = generar_tag_proveedor(b.get("proveedor") or "") if b.get("proveedor") else ""
+    return bool(tag_a) and tag_a.lower() == tag_b.lower()
+
+
+def facturas_de_oc(oc_dato, datos):
+    """(vinculadas, dudosas): las entradas de datos que corresponden a esta OC.
+
+    Primero las que lo dicen: "oc": "<folio>", que el agente anota al
+    registrar una factura que menciona la OC (o que el usuario confirma). Si
+    ninguna lo dice, la UNICA que calza sola: mismo proyecto y proveedor, neto
+    a TOLERANCIA_OC del de la OC y no mas de DIAS_FACTURA_ANTES_DE_OC dias
+    anterior a ella. Si calzan varias no se adivina: van en 'dudosas' y
+    'status' pide anotar "oc" en la que corresponda."""
+    folio = normalizar_n_documento(str(oc_dato.get("n_documento")))
+    candidatas = [d for d in datos if not d.get("oc_folio")]
+    vinculadas = [d for d in candidatas
+                  if d.get("oc") and normalizar_n_documento(str(d["oc"]).strip()) == folio]
+    if vinculadas:
+        return vinculadas, []
+    neto_oc = _neto_entrada(oc_dato)
+    fecha_oc, _ = _fecha_documento(oc_dato.get("fecha"))
+    posibles = []
+    for d in candidatas:
+        if d.get("oc") or d.get("proyecto") != oc_dato.get("proyecto"):
+            continue
+        if clave_tipo_documento(d.get("tipo_documento")).startswith("nota de cr"):
+            continue
+        if neto_oc <= 0 or abs(_neto_entrada(d) - neto_oc) > TOLERANCIA_OC * neto_oc:
+            continue
+        fecha, fecha_valida = _fecha_documento(d.get("fecha"))
+        if fecha_valida and fecha_oc and fecha < fecha_oc - timedelta(days=DIAS_FACTURA_ANTES_DE_OC):
+            continue
+        if _mismo_proveedor(d, oc_dato):
+            posibles.append(d)
+    if len(posibles) == 1:
+        return posibles, []
+    return [], posibles
+
+
+def traer_ordenes_compra(raiz_docs, registro, datos, carpeta_quempin, proyectos=(),
+                         aplicar=True, consultar_cambio=None, hoy=None):
+    """PASO 3B: las OC de Sistema QUEMPIN con proyecto que el registro todavia
+    no tiene. Con aplicar=True copia el PDF a la carpeta del proyecto en
+    Facturas y Boletas (la crea si hace falta), y anota la OC en el registro
+    con su entrada de datos: el inventario del PASO 4 la ve como un documento
+    pendiente mas. Con aplicar=False ('status') no toca nada y solo dice que
+    haria.
+
+    Una OC cuya factura ya esta en datos_extraidos.json por el total no se
+    trae ("facturada_antes"): se contaria dos veces.
+
+    Devuelve (traidas, avisos); cada traida es un dict con folio, accion
+    ("traer" o "facturada_antes"), carpeta, carpeta_nueva y entrada."""
+    consultar_cambio = consultar_cambio or consultar_tipo_cambio
+    hoy = (hoy or datetime.now()).strftime("%Y-%m-%d")
+    traidas, avisos = [], []
+    sin_proyecto = 0
+    for oc in leer_ordenes_quempin(carpeta_quempin):
+        folio = str(oc["folio"])
+        if folio in registro["ordenes"]:
+            continue
+        proyecto_oc = oc.get("proyecto") or {}
+        if not (proyecto_oc.get("req") or proyecto_oc.get("tag")):
+            sin_proyecto += 1
+            continue
+        if _numero_oc((oc.get("totales") or {}).get("neto")) <= 0:
+            continue
+        carpeta, existe = carpeta_para_oc(raiz_docs, oc, proyectos)
+        if carpeta is None:
+            avisos.append(f"OC {folio}: no hay carpeta en Facturas y Boletas para el proyecto "
+                          f"{proyecto_oc.get('req') or proyecto_oc.get('tag')} ni nombre con que crearla.")
+            continue
+
+        moneda = codigo_moneda_oc(oc)
+        tipo_cambio, nota_cambio = 1.0, ""
+        if moneda != MONEDA:
+            if MONEDA != "CLP" or moneda not in INDICADOR_MINDICADOR:
+                avisos.append(f"OC {folio}: en {moneda}, sin tipo de cambio a {MONEDA}; no entra.")
+                continue
+            try:
+                tipo_cambio, dia = consultar_cambio(moneda, datetime.strptime(oc["fecha"], "%Y-%m-%d").date())
+            except TipoCambioNoDisponibleError as e:
+                avisos.append(f"OC {folio}: en {moneda}, {e}; entra en la proxima corrida.")
+                continue
+            nota_cambio = (f", pasada a pesos a ${tipo_cambio:,.2f} por {moneda} "
+                           f"(valor del {dia:%d-%m-%Y}, mindicador.cl)")
+
+        origen_pdf = Path(carpeta_quempin) / str(oc.get("ruta_pdf") or "").replace("\\", "/")
+        if not oc.get("ruta_pdf") or not origen_pdf.is_file():
+            avisos.append(f"OC {folio}: su PDF no esta en la carpeta de Sistema QUEMPIN "
+                          f"({oc.get('ruta_pdf') or 'sin ruta'}); entra cuando se sincronice.")
+            continue
+
+        archivo = f"OC {folio}{origen_pdf.suffix.lower()}"
+        entrada = entrada_desde_oc(oc, normalizar_nombre_proyecto(carpeta.name), archivo, datos,
+                                   tipo_cambio, nota_cambio)
+        vinculadas, _ = facturas_de_oc(entrada, datos)
+        if vinculadas and sum(_neto_entrada(d) for d in vinculadas) >= _neto_entrada(entrada) * (1 - TOLERANCIA_OC):
+            if aplicar:
+                registro["ordenes"][folio] = {
+                    "estado": "facturada_antes", "fecha": hoy,
+                    "facturas": [clave_documento(d.get("proyecto"), d.get("archivo")) for d in vinculadas],
+                }
+            traidas.append({"folio": folio, "accion": "facturada_antes", "carpeta": carpeta.name,
+                            "carpeta_nueva": not existe, "entrada": entrada})
+            continue
+
+        if aplicar:
+            carpeta.mkdir(parents=True, exist_ok=True)
+            destino = carpeta / archivo
+            if not destino.exists():
+                shutil.copy2(origen_pdf, destino)
+            registro["ordenes"][folio] = {
+                "estado": "en_cc", "traida": hoy, "carpeta": carpeta.name, "archivo": archivo,
+                "pdf_quempin": str(oc.get("ruta_pdf")), "entrada": entrada,
+            }
+        traidas.append({"folio": folio, "accion": "traer", "carpeta": carpeta.name,
+                        "carpeta_nueva": not existe, "entrada": entrada})
+    if sin_proyecto:
+        avisos.append(f"{sin_proyecto} OC de Sistema QUEMPIN sin proyecto asociado: no entran al "
+                      f"Centro de Costos.")
+    return traidas, avisos
+
+
+def ordenes_en_master(ws_master):
+    """folio -> N Ref de las ordenes de compra que estan en Master."""
+    ordenes = {}
+    for r in range(2, ultima_fila_datos(ws_master) + 1):
+        if clave_tipo_documento(ws_master.cell(row=r, column=6).value).startswith("orden de compra"):
+            folio = normalizar_n_documento(str(ws_master.cell(row=r, column=5).value))
+            ordenes[folio] = ws_master.cell(row=r, column=1).value
+    return ordenes
+
+
+def _escribir_saldo_oc(ws_master, ws_detalle, n_ref, oc_dato, facturado, refs):
+    """Deja la OC por el saldo: un item NOMBRE_ITEM_FACTURADO con lo ya
+    facturado en negativo (se reescribe si ya estaba) y el impuesto de Master
+    sobre el saldo. Los items de la OC no se tocan."""
+    neto_oc = _neto_entrada(oc_dato)
+    tasa = calcular_iva_documento(oc_dato, neto_oc) / neto_oc if neto_oc else 0
+    filas = _n_ref_a_filas_detalle(ws_detalle, n_ref)
+    fila = next((f for f in filas if ws_detalle.cell(row=f, column=5).value == NOMBRE_ITEM_FACTURADO), None)
+    base = filas[0] if filas else None
+    if fila is None:
+        fila = ultima_fila_datos(ws_detalle) + 1
+    valores = [
+        n_ref,
+        ws_detalle.cell(row=base, column=2).value if base else oc_dato.get("proyecto"),
+        ws_detalle.cell(row=base, column=3).value if base else oc_dato.get("tipo_proyecto", ""),
+        ws_detalle.cell(row=base, column=4).value if base else oc_dato.get("n_documento"),
+        NOMBRE_ITEM_FACTURADO,
+        f"Parte de la orden de compra ya facturada ({', '.join(refs)}): la OC queda por el saldo.",
+        ws_detalle.cell(row=base, column=7).value if base else oc_dato.get("categoria"),
+        1, -facturado, -facturado, round(-facturado * (1 + tasa)),
+    ]
+    for c, v in enumerate(valores, 1):
+        cell = ws_detalle.cell(row=fila, column=c, value=v)
+        cell.font = NORMAL_FONT
+        cell.border = THIN_BORDER
+        if base:
+            cell.fill = copy(ws_detalle.cell(row=base, column=c).fill)
+    for c in (9, 10, 11):
+        ws_detalle.cell(row=fila, column=c).number_format = MONEY_FORMAT
+
+    fila_m = _mapa_filas_por_n_ref(ws_master).get(n_ref)
+    if fila_m:
+        ws_master.cell(row=fila_m, column=12, value=round((neto_oc - facturado) * tasa))
+
+
+def cerrar_ordenes(ws_master, ws_detalle, registro, datos, hoy=None):
+    """PASO 6B: aplica a cada OC del libro las facturas suyas ya registradas.
+
+    - Facturada por completo (a TOLERANCIA_OC): la OC sale de Master y Detalle
+      (eliminar_documento) y queda la factura. El PDF NO se archiva aca: si el
+      libro no se puede guardar despues, la OC tiene que seguir donde estaba.
+      main() lo archiva con archivar_ordenes_reemplazadas() despues de guardar.
+    - Facturada en parte: queda por el saldo (_escribir_saldo_oc).
+
+    Usa el neto del LIBRO de cada factura, no el del JSON: si alguien lo
+    corrigio a mano, manda la correccion.
+
+    Modifica 'registro' en memoria (quien llama lo guarda despues de guardar
+    el libro). Devuelve (cambios, avisos)."""
+    hoy = (hoy or datetime.now()).strftime("%Y-%m-%d")
+    cambios, avisos = [], []
+    en_master = ordenes_en_master(ws_master)
+    if not en_master:
+        return cambios, avisos
+    n_ref_por_documento = mapa_documento_a_n_ref(ws_master, datos, ws_detalle=ws_detalle)
+    neto_por_n_ref = _neto_por_n_ref(ws_detalle)
+    for folio, orden in registro["ordenes"].items():
+        n_ref_oc = en_master.get(normalizar_n_documento(folio))
+        if orden.get("estado") != "en_cc" or not orden.get("entrada") or not n_ref_oc:
+            continue
+        oc_dato = orden["entrada"]
+        vinculadas, dudosas = facturas_de_oc(oc_dato, datos)
+        refs = []
+        for d in vinculadas:
+            n_ref = n_ref_por_documento.get(clave_documento(d.get("proyecto"), d.get("archivo")))
+            if n_ref and n_ref != n_ref_oc and n_ref not in refs:
+                refs.append(n_ref)
+        if not refs:
+            if dudosas:
+                avisos.append(f"OC {folio} ({n_ref_oc}): {len(dudosas)} documentos podrian ser su "
+                              f"factura; anotar \"oc\": \"{folio}\" en el que corresponda.")
+            continue
+        facturado = sum(neto_por_n_ref.get(r, 0) for r in refs)
+        neto_oc = round(_neto_entrada(oc_dato))
+        if facturado >= neto_oc * (1 - TOLERANCIA_OC):
+            fila_m = _mapa_filas_por_n_ref(ws_master)[n_ref_oc]
+            archivo_origen = ws_master.cell(row=fila_m, column=15).value
+            eliminar_documento(n_ref_oc, ws_master, ws_detalle, archivar_fuente=False)
+            orden.update(estado="reemplazada", reemplazada=hoy, n_ref=n_ref_oc, facturas=refs)
+            orden.pop("facturado", None)
+            cambios.append({"folio": folio, "n_ref": n_ref_oc, "accion": "reemplazada",
+                            "proyecto": oc_dato.get("proyecto"), "facturas": refs, "facturado": facturado, "neto_oc": neto_oc,
+                            "archivo_origen": archivo_origen})
+        elif facturado != orden.get("facturado") or refs != orden.get("facturas"):
+            _escribir_saldo_oc(ws_master, ws_detalle, n_ref_oc, oc_dato, facturado, refs)
+            orden.update(n_ref=n_ref_oc, facturas=refs, facturado=facturado)
+            cambios.append({"folio": folio, "n_ref": n_ref_oc, "accion": "saldo",
+                            "proyecto": oc_dato.get("proyecto"), "facturas": refs, "facturado": facturado, "neto_oc": neto_oc})
+    return cambios, avisos
+
+
+def archivar_ordenes_reemplazadas(cambios, raiz_docs=None, ruta_backups=None):
+    """Mueve a Excel/Respaldos/<Mes Año>/ el PDF de cada OC reemplazada por su
+    factura, una vez guardado el libro. Si quedara en la carpeta, el proximo
+    'run' lo veria como pendiente. Devuelve los avisos de lo que no se pudo
+    mover."""
+    raiz_docs = raiz_docs if raiz_docs is not None else RAIZ_DOCS
+    ruta_backups = ruta_backups if ruta_backups is not None else RUTA_BACKUPS
+    avisos = []
+    for c in cambios:
+        if c["accion"] != "reemplazada" or not c.get("archivo_origen"):
+            continue
+        ruta_fuente = raiz_docs / str(c["archivo_origen"]).replace("\\", "/")
+        if not ruta_fuente.exists():
+            continue
+        marca = datetime.now().strftime("%Y-%m-%d %H%M")
+        destino = carpeta_mes(ruta_backups, datetime.now()) / (
+            f"{ruta_fuente.stem} - reemplazada por factura {c['n_ref']} - {marca}{ruta_fuente.suffix}")
+        try:
+            shutil.move(str(ruta_fuente), str(destino))
+        except OSError as e:
+            avisos.append(f"OC {c['folio']}: no se pudo archivar {ruta_fuente.name} ({e}); sacarlo a "
+                          f"mano de la carpeta del proyecto o el proximo 'run' lo vera pendiente.")
+    return avisos
+
+
 # ── RENOMBRADO Y CONVERSIÓN DE ARCHIVOS ─────────────────────────────────────
 # Renombra cada foto/PDF a "<N Ref>_<TagProveedor>_<Fecha ISO>.<ext>" y convierte
 # HEIC->JPG. Cubre documentos nuevos y, retroactivamente, los ya registrados en
@@ -4977,6 +5601,34 @@ def main(pais="CL"):
     print(f"  Documentos ya en Master: {len(filas_master)}")
     print(f"  Archivos ya cubiertos (Master + reconciliacion): {len(archivos_registrados)}")
 
+    # PASO 3B -- antes del inventario: el PDF de cada OC nueva queda en la
+    # carpeta de su proyecto y el PASO 4 lo ve como un documento pendiente mas.
+    # El registro se guarda ya: si el libro no se puede guardar, la OC queda
+    # traida y se escribe en la proxima corrida.
+    _paso("PASO 3B", "Traer ordenes de compra de Sistema QUEMPIN")
+    registro_oc = cargar_ordenes_compra()
+    carpeta_quempin = ubicar_carpeta_quempin()
+    ocs_traidas, avisos_oc = [], []
+    if carpeta_quempin is None:
+        print("  [INFO] La carpeta de Sistema QUEMPIN no esta sincronizada en este equipo: "
+              "no se traen ordenes de compra.")
+    else:
+        ocs_traidas, avisos_oc = traer_ordenes_compra(
+            RAIZ_DOCS, registro_oc, cargar_datos_json(RUTA_JSON), carpeta_quempin,
+            proyectos_publicados())
+        if ocs_traidas:
+            guardar_ordenes_compra(registro_oc)
+        for t in ocs_traidas:
+            if t["accion"] == "traer":
+                print(f"  [OK] OC {t['folio']} -> {t['carpeta']}"
+                      f"{' (carpeta nueva)' if t['carpeta_nueva'] else ''}")
+            else:
+                print(f"  [INFO] OC {t['folio']}: su factura ya esta registrada por el total; no entra.")
+        if not ocs_traidas:
+            print("  Sin ordenes de compra nuevas.")
+    for aviso in avisos_oc:
+        print(f"  [WARN] {aviso}")
+
     _paso("PASO 4", "Inventariar archivos")
     pendientes, omitidos = inventariar_archivos(RAIZ_DOCS, archivos_registrados)
     print(f"  Pendientes: {len(pendientes)}")
@@ -4985,6 +5637,10 @@ def main(pais="CL"):
     _paso("PASO 5", "Cargar datos extraidos")
     datos_json = cargar_datos_json(RUTA_JSON)
     print(f"  Entradas en {RUTA_JSON.name}: {len(datos_json)}")
+    entradas_oc = entradas_ordenes_compra(registro_oc)
+    if entradas_oc:
+        datos_json = datos_json + entradas_oc
+        print(f"  Ordenes de compra en el libro o por escribir: {len(entradas_oc)}")
 
     # PASO 5B -- ANTES de escribir nada. Hasta la auditoria del 2026-09-10 el
     # cuadre de impuesto corria en el PASO 13, o sea despues de guardar el
@@ -5169,6 +5825,29 @@ def main(pais="CL"):
     # informe.
     guardar_registro_errores(registro_errores)
 
+    # PASO 6B -- con las facturas de esta corrida ya escritas: la factura
+    # reemplaza a su OC, o la deja por el saldo. El registro de OC y el PDF de
+    # las reemplazadas se tocan recien despues de guardar el libro (PASO 12).
+    _paso("PASO 6B", "Cerrar ordenes de compra facturadas")
+    cambios_oc, avisos_cierre_oc = cerrar_ordenes(ws_master, ws_detalle, registro_oc, datos_json)
+    avisos_oc.extend(avisos_cierre_oc)
+    for c in cambios_oc:
+        if c["proyecto"]:
+            proyectos_tocados.add(c["proyecto"])
+        if c["accion"] == "reemplazada":
+            print(f"  [OK] OC {c['folio']} ({c['n_ref']}) reemplazada por su factura "
+                  f"({', '.join(c['facturas'])}).")
+        else:
+            print(f"  [OK] OC {c['folio']} ({c['n_ref']}) facturada en parte "
+                  f"({', '.join(c['facturas'])}): queda por el saldo.")
+    for aviso in avisos_cierre_oc:
+        print(f"  [WARN] {aviso}")
+    if not cambios_oc and not avisos_cierre_oc:
+        print("  Sin cambios.")
+    if cambios_oc:
+        fila_master = ultima_fila_datos(ws_master) + 1
+        fila_detalle = ultima_fila_datos(ws_detalle) + 1
+
     _paso("PASO 7", "Reordenar por fecha (mas reciente arriba)")
     reordenar_por_fecha(ws_master, ws_detalle, fila_master, fila_detalle)
 
@@ -5236,6 +5915,9 @@ def main(pais="CL"):
     except PermissionError:
         _informe_parcial("El archivo esta abierto en Excel. Cierralo y vuelve a ejecutar.")
         return
+    if cambios_oc:
+        avisos_oc.extend(archivar_ordenes_reemplazadas(cambios_oc))
+        guardar_ordenes_compra(registro_oc)
 
     _paso("PASO 12b", "Reflejar en Sitio de comunicacion")
     reflejar_a_sitio_comunicacion()
@@ -5317,6 +5999,22 @@ def main(pais="CL"):
     else:
         print("   Sin hallazgos.")
 
+    print("\n8. ORDENES DE COMPRA (Sistema QUEMPIN)")
+    lineas_oc = (
+        [f"   * OC {t['folio']}: traida a {t['carpeta']}" for t in ocs_traidas if t["accion"] == "traer"]
+        + [f"   * OC {t['folio']}: no entra, su factura ya estaba registrada" for t in ocs_traidas
+           if t["accion"] == "facturada_antes"]
+        + [f"   * OC {c['folio']} ({c['n_ref']}): reemplazada por {', '.join(c['facturas'])}"
+           for c in cambios_oc if c["accion"] == "reemplazada"]
+        + [f"   * OC {c['folio']} ({c['n_ref']}): queda por el saldo, facturado en "
+           f"{', '.join(c['facturas'])}" for c in cambios_oc if c["accion"] == "saldo"]
+        + [f"   * [WARN] {a}" for a in avisos_oc]
+    )
+    if lineas_oc:
+        _imprimir_lista_truncada(lineas_oc, lambda linea: linea)
+    else:
+        print("   Sin hallazgos.")
+
     imprimir_informe_hallazgos(registro_errores, duplicados_evitados)
 
     print("\n" + "-" * 70)
@@ -5328,6 +6026,9 @@ def main(pais="CL"):
     print(f"  {'Copias exactas evitadas (auto-resueltas):':<44} {len(duplicados_evitados)}")
     print(f"  {'Limitaciones (faltan datos en JSON):':<44} {len(limitaciones)}")
     print(f"  {'Archivos renombrados/convertidos:':<44} {renombrados}")
+    print(f"  {'Ordenes de compra traidas/reemplazadas:':<44} "
+          f"{sum(1 for t in ocs_traidas if t['accion'] == 'traer')}/"
+          f"{sum(1 for c in cambios_oc if c['accion'] == 'reemplazada')}")
     print(f"  {'Correcciones manuales pendientes de confirmar:':<44} {len(correcciones_pendientes)}")
     print(f"  {'Hallazgos abiertos (error/revisar/estimado):':<44} "
           f"{len(abiertos_ahora)} "

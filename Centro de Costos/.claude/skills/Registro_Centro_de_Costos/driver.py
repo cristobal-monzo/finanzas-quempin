@@ -185,6 +185,44 @@ def cmd_status(pais="CL"):
     datos_json = acc.cargar_datos_json(acc.RUTA_JSON)
     print(f"\nEntradas en datos_extraidos.json: {len(datos_json)}")
 
+    # Ordenes de compra (PASO 3B y 6B de 'run'): que traeria y que cerraria,
+    # sin copiar ni anotar nada. Las que ya estan en el registro se suman al
+    # JSON igual que en 'run', asi se validan y cuentan como cualquier otra.
+    print("\nÓrdenes de compra de Sistema QUEMPIN:")
+    registro_oc = acc.cargar_ordenes_compra()
+    carpeta_quempin = acc.ubicar_carpeta_quempin()
+    ocs_por_traer = []
+    if carpeta_quempin is None:
+        print("  La carpeta de Sistema QUEMPIN no está sincronizada: 'run' no traería ninguna.")
+    else:
+        traidas, avisos_oc = acc.traer_ordenes_compra(
+            acc.RAIZ_DOCS, registro_oc, datos_json, carpeta_quempin, acc.proyectos_publicados(),
+            aplicar=False)
+        ocs_por_traer = [t for t in traidas if t["accion"] == "traer"]
+        for t in traidas:
+            if t["accion"] == "traer":
+                print(f"  - Traería OC {t['folio']} a {t['carpeta']}"
+                      f"{' (carpeta nueva)' if t['carpeta_nueva'] else ''}")
+            else:
+                print(f"  - OC {t['folio']}: su factura ya está registrada por el total; no entraría.")
+        for aviso in avisos_oc:
+            print(f"  [WARN] {aviso}")
+    entradas_oc = acc.entradas_ordenes_compra(registro_oc)
+    for entrada in entradas_oc:
+        vinculadas, dudosas = acc.facturas_de_oc(entrada, datos_json)
+        if vinculadas:
+            facturado = sum(acc._neto_entrada(d) for d in vinculadas)
+            completa = facturado >= acc._neto_entrada(entrada) * (1 - acc.TOLERANCIA_OC)
+            print(f"  - OC {entrada['n_documento']}: "
+                  f"{'su factura la reemplazaría' if completa else 'quedaría por el saldo'} "
+                  f"({', '.join(d['archivo'] for d in vinculadas)})")
+        elif dudosas:
+            print(f"  - OC {entrada['n_documento']}: {len(dudosas)} documentos podrían ser su factura "
+                  f"({', '.join(d['archivo'] for d in dudosas)}); anotar \"oc\": "
+                  f"\"{entrada['n_documento']}\" en el que corresponda.")
+    print(f"  En el libro o por escribir: {len(entradas_oc)} | nuevas por traer: {len(ocs_por_traer)}")
+    datos_json = datos_json + entradas_oc
+
     sin_datos = []
     for info in pendientes:
         dato = acc.buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"])
@@ -207,8 +245,9 @@ def cmd_status(pais="CL"):
             lambda par: f"  - [{par[0]['proyecto']}] {par[0]['archivo']}: {par[1]['n_documento']}")
         print("  Separar cada archivo con 'driver.py separar' y dar una entrada por documento.")
 
-    escribibles = len(pendientes) - len(sin_datos) - len(mezclados)
-    print(f"\nSi corres 'run' ahora se registrarían: {escribibles} documento(s).")
+    escribibles = len(pendientes) - len(sin_datos) - len(mezclados) + len(ocs_por_traer)
+    print(f"\nSi corres 'run' ahora se registrarían: {escribibles} documento(s)"
+          f"{f' (incluye {len(ocs_por_traer)} OC nueva(s))' if ocs_por_traer else ''}.")
 
     # 'status' corre EXACTAMENTE la misma validacion que 'run' (PASO 5B), no
     # una version reducida: hasta la auditoria del 2026-09-10 'status' solo

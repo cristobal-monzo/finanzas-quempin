@@ -137,3 +137,18 @@ def test_no_renumera_los_n_ref_que_quedan(tmp_path):
 
     refs = [ws_m.cell(row=r, column=1).value for r in range(2, acc.ultima_fila_datos(ws_m) + 1)]
     assert refs == ["PROY-002", "UMAG-001"]
+
+
+def test_las_formulas_de_las_filas_que_suben_apuntan_a_su_propia_fila(tmp_path):
+    """openpyxl no traduce formulas al borrar una fila: sin reescribirlas, la
+    K de la fila que sube seguiria sumando el N Ref de la fila de abajo."""
+    ws_m, ws_d = _libro(tmp_path, DOCS)
+    for r in range(2, 5):
+        acc.escribir_formulas_master(ws_m, r)
+
+    acc.eliminar_documento("PROY-001", ws_m, ws_d, raiz_docs=tmp_path, ruta_backups=tmp_path / "resp",
+                           archivar_fuente=False)
+
+    for r in (2, 3):
+        assert ws_m.cell(row=r, column=11).value == f"=SUMIF(Detalle!$A:$A,$A{r},Detalle!$J:$J)"
+        assert ws_m.cell(row=r, column=13).value == f"=K{r}+L{r}"

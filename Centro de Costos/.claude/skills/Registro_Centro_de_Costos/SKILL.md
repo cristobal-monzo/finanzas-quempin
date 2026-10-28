@@ -101,6 +101,13 @@ Si corres 'run' ahora se registrarían: N documento(s).
 ======================================================================
 ```
 
+**Órdenes de compra** (agregado 2026-10-28): `status` también lista, en
+«Órdenes de compra de Sistema QUEMPIN», las OC con proyecto que `run`
+traería (las copia como `OC <folio>.pdf` a la carpeta del proyecto y las
+registra como «Orden de Compra», estado «Pendiente», sin pasar por el
+Paso 2: sus datos salen de Sistema QUEMPIN) y las que ya están en el libro
+con su factura encontrada o dudosa. Las OC sin proyecto no entran.
+
 **Paso 2 — si `status` reporta "Pendientes SIN datos (o sin items) en el
 JSON: N > 0", completar esas entradas antes de seguir a `run`** (pedido del
 usuario, 2026-08-18): esos documentos no necesitan que el usuario prepare el
@@ -174,6 +181,13 @@ misma pregunta N veces):
    $20.000 corresponde de verdad a ese proyecto o a Gastos Generales).
 3. Agregar la entrada a `Sistema/datos_extraidos.json` con el esquema
    completo y seguir con el siguiente pendiente.
+   **Si es la factura de una orden de compra** (el documento cita el N° de
+   OC, o `status` lista una OC abierta del mismo proyecto y proveedor),
+   agregar `"oc": "<folio>"` a la entrada: `run` deja entonces a la OC
+   por el saldo o la saca del libro (la factura la reemplaza, pedido del
+   usuario 2026-10-28). Sin `"oc"`, `run` solo las cruza si hay una única
+   factura del mismo proveedor con el mismo neto (±2 %); si `status` dice
+   que varias podrían serlo, preguntar al usuario cuál es y anotarla.
 4. Si un documento resulta ilegible al punto de no poder completarlo, o el
    usuario no tiene la respuesta a mano, dejarlo fuera del JSON por ahora y
    anotarlo en la tabla del Paso 4 en vez de bloquear el resto — `run` solo

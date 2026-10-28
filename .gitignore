@@ -23,6 +23,9 @@
 # numeros de documento tributario y nombres de archivo reales.
 **/errores_detectados*.json
 **/clientes_pendientes.json
+# Ordenes de compra que el Centro de Costos trajo de Sistema QUEMPIN
+# (agregado 2026-10-28): lleva proveedores, folios y montos reales.
+**/ordenes_compra*.json
 
 # Carpeta de intercambio entre herramientas (agregado 2026-09-30): mensajes
 # del Formulador con costos por proyecto y la lista publicada por Análisis

@@ -60,6 +60,23 @@ def test_orden_de_compra_sin_factura_queda_comprometida_y_con_factura_no():
     assert any("se dan por facturadas" in a for a in avisos)
 
 
+def test_orden_de_compra_que_ya_esta_en_el_centro_de_costos_no_se_cuenta_dos_veces(tmp_path):
+    docs = [_oc("612620", "2026-09-15", 100000), _oc("612621", "2026-09-20", 300000), _oc("612622", "2026-09-22", 50000)]
+    # 612620: en el libro como documento pendiente (lo suma egresos_centro_costos).
+    # 612621: ya reemplazada por su factura, que llego en dos partes.
+    cc = [dict(_cc("PROY-001", "2026-09-15", 100000, estado="Pendiente", tipo="Orden de Compra"), n_documento="612620")]
+    registro = tmp_path / "ordenes_compra.json"
+    registro.write_text(json.dumps({"ordenes": {"612620": {"estado": "en_cc"}, "612621": {"estado": "reemplazada"}}}),
+                        encoding="utf-8")
+    movs, _ = fc.egresos_ordenes_de_compra(docs, cc, HOY, SUP, fc.leer_ordenes_en_cc(registro))
+    assert [m["referencia"] for m in movs] == ["612622"]
+    # Sin el registro, la fila «Orden de Compra» de la foto igual la deja fuera,
+    # y no cuenta como la factura de otra OC del mismo monto.
+    movs, _ = fc.egresos_ordenes_de_compra([_oc("612620", "2026-09-15", 100000), _oc("612623", "2026-09-10", 100000)],
+                                           cc, HOY, SUP)
+    assert [m["referencia"] for m in movs] == ["612623"]
+
+
 def test_cuotas_de_la_ultima_cotizacion_de_cada_proyecto_adjudicado():
     reqs = [{"numero": 280, "estado": "Adjudicado"}, {"numero": 281, "estado": "Ofertado"}]
     docs = [

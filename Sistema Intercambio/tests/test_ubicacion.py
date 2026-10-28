@@ -6,7 +6,8 @@ import ubicacion as ub
 
 @pytest.fixture(autouse=True)
 def _sin_variables(monkeypatch):
-    for v in ("QUEMPIN_INTERCAMBIO", "QUEMPIN_PLANILLA_REQUERIMIENTOS", "QUEMPIN_ONEDRIVE"):
+    for v in ("QUEMPIN_INTERCAMBIO", "QUEMPIN_PLANILLA_REQUERIMIENTOS", "QUEMPIN_ONEDRIVE",
+              "QUEMPIN_CARPETA_COMPARTIDA"):
         monkeypatch.delenv(v, raising=False)
 
 
@@ -39,3 +40,12 @@ def test_sin_biblioteca_devuelve_none(tmp_path):
 def test_variables_de_entorno_mandan(tmp_path, monkeypatch):
     monkeypatch.setenv("QUEMPIN_INTERCAMBIO", str(tmp_path / "X"))
     assert ub.ubicar_intercambio(tmp_path) == tmp_path / "X"
+
+
+def test_carpeta_compartida_de_sistema_quempin(tmp_path, monkeypatch):
+    base = _onedrive(tmp_path)
+    assert ub.ubicar_carpeta_quempin(base / "Formulación de proyectos - Documentos") == (
+        base / "Cotizaciones y OC - Documentos" / "Carpeta compartida QUEMPIN")
+    assert ub.ubicar_carpeta_quempin(tmp_path) is None
+    monkeypatch.setenv("QUEMPIN_CARPETA_COMPARTIDA", str(tmp_path / "Y"))
+    assert ub.ubicar_carpeta_quempin(tmp_path) == tmp_path / "Y"

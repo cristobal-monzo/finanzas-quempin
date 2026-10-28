@@ -13,7 +13,8 @@ Financiero: si la biblioteca no está sincronizada, se devuelve None y quien
 llama queda inactivo con un aviso; nunca se crea una biblioteca falsa.
 
 Variables de entorno para fijarlas a mano (pruebas, otro equipo):
-QUEMPIN_INTERCAMBIO, QUEMPIN_PLANILLA_REQUERIMIENTOS, QUEMPIN_ONEDRIVE.
+QUEMPIN_INTERCAMBIO, QUEMPIN_PLANILLA_REQUERIMIENTOS, QUEMPIN_ONEDRIVE,
+QUEMPIN_CARPETA_COMPARTIDA.
 """
 
 import os
@@ -22,6 +23,10 @@ from pathlib import Path
 
 BIBLIOTECA_FORMULACION = "Formulación de proyectos - Documentos"
 BIBLIOTECA_GESTION = "Gestión de Proyectos - Documentos"
+# Sistema QUEMPIN guarda ahí sus cotizaciones y órdenes de compra (un JSON por
+# documento en «documentos/<tipo>/<año>/», el PDF en «salida/»).
+BIBLIOTECA_COTIZACIONES = "Cotizaciones y OC - Documentos"
+CARPETA_COMPARTIDA_QUEMPIN = "Carpeta compartida QUEMPIN"
 CARPETA_HERRAMIENTAS = ".Herramientas formulación"
 CARPETA_INTERCAMBIO = "Intercambio"
 # La planilla vive en la raíz de la biblioteca (es la que abre el equipo).
@@ -76,6 +81,19 @@ def ubicar_intercambio(desde: Path | None = None) -> Path | None:
     if formulacion is None:
         return None
     return hija(hija(formulacion, CARPETA_HERRAMIENTAS), CARPETA_INTERCAMBIO)
+
+
+def ubicar_carpeta_quempin(desde: Path | None = None) -> Path | None:
+    """La carpeta compartida de Sistema QUEMPIN, o None si la biblioteca de
+    cotizaciones y OC no está sincronizada en este equipo."""
+    fija = os.environ.get("QUEMPIN_CARPETA_COMPARTIDA")
+    if fija:
+        return Path(fija)
+    cotizaciones = biblioteca(BIBLIOTECA_COTIZACIONES, desde)
+    if cotizaciones is None:
+        return None
+    ruta = hija(cotizaciones, CARPETA_COMPARTIDA_QUEMPIN)
+    return ruta if ruta.is_dir() else None
 
 
 def ubicar_planilla(desde: Path | None = None) -> Path | None:
