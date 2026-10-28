@@ -41,7 +41,8 @@
             "type": "array"
           },
           "ordenes": {
-            "type": "array"
+            "type": "array",
+            "description": "Las OC (61) del proyecto. Desde el 2026-10-28 cada una lleva 'enCentroCostos' (true o false) si el equipo del procesador tiene el registro de OC del Centro de Costos de su país; sin registro, el campo no va."
           },
           "carpetas": {
             "type": "object"

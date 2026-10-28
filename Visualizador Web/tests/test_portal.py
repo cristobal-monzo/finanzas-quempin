@@ -29,6 +29,8 @@ PORTAL = VISUALIZADOR / "portal" / "index.html"
 BASES = ("/formulacion-proyectos-quempin/", "/finanzas-quempin/", "/calculadora-tecnica-quempin/")
 TIPOS = {"marco", "excel", "programa", "archivo", "ayuda", "inicio", "vista"}
 LS_PROYECTOS = "qpn.formulacion.proyectos.v1"
+# Lo que el portal carga del Formulador (mismo sitio), con el nombre global de cada uno
+FORMULADOR_JS = {"pulso.js": "QPulso", "calc.js": "QCalc", "pegar.js": "QPegar", "busqueda.js": "CHBusqueda"}
 
 
 def _bloque(id_):
@@ -357,12 +359,14 @@ def _sitio(raiz: Path):
     pagina("/finanzas-quempin/oportunidades/", "Oportunidades", "op")
     pagina("/formulacion-proyectos-quempin/", "Formulador", "formulador", CABECERA_FORMULADOR)
     pagina("/formulacion-proyectos-quempin/gantt/", "Carta Gantt", "gantt", CABECERA_GANTT)
-    # El pulso del procesador que lee «Configuración y conexiones» (el del Formulador, si está en este equipo)
+    # El pulso del procesador que lee «Configuración y conexiones» y, desde el 2026-10-28, lo que «Proyectos en ejecución»
+    # usa del Formulador: sus reglas de cálculo, su lector de filas pegadas y el buscador del Cotizador (si está en este equipo)
     formulador = _hermano("Formulación de proyectos")
-    pulso = formulador / "quempin-formulacion" / "js" / "pulso.js" if formulador else None
-    if pulso and pulso.exists():
-        (raiz / "formulacion-proyectos-quempin" / "js").mkdir(parents=True, exist_ok=True)
-        (raiz / "formulacion-proyectos-quempin" / "js" / "pulso.js").write_bytes(pulso.read_bytes())
+    for nombre in FORMULADOR_JS:
+        js = formulador / "quempin-formulacion" / "js" / nombre if formulador else None
+        if js and js.exists():
+            (raiz / "formulacion-proyectos-quempin" / "js").mkdir(parents=True, exist_ok=True)
+            (raiz / "formulacion-proyectos-quempin" / "js" / nombre).write_bytes(js.read_bytes())
     pagina("/calculadora-tecnica-quempin/", "Calculadora Técnica", "calc")
     for ruta, herr in (("DiametroTuberia", "diametro"), ("Hidrogeno", "hidrogeno"),
                        ("GasNatural-GLP", "gas"), ("OtrosGases", "otros")):
@@ -1685,9 +1689,10 @@ def test_cada_tarjeta_abre_la_herramienta_donde_se_hace(navegador, sitio):
     assert pagina.locator("#dlgRecorrido .rc-paso").evaluate_all("ps => ps.map((p) => p.dataset.est)")[3] == "espera"
     pagina.locator("#dlgRecorrido .cx-enlace", has_text="Mercado Público").click()
     assert pagina.evaluate("window.__abiertas")[-1].startswith("https://www.mercadopublico.cl/")
-    # La herramienta de cada etapa, desde su columna
+    # La herramienta de cada etapa, desde su columna: la de Ejecución es «Proyectos en ejecución» (2026-10-28)
     pagina.locator('.rc-col[data-etapa="ejecucion"] .rc-donde').click()
-    _marco(pagina, "analisis", "af")
+    pagina.locator("#vistaEjecucion").wait_for()
+    assert "En ejecución" in _pestanas(pagina)
     assert not errores
     pagina.context.close()
 
@@ -3502,5 +3507,363 @@ def test_lo_agregado_a_mano_es_de_su_semana_y_se_copia_con_lo_suyo(navegador, si
     pagina.locator('#plProyecto tr[data-clave="pro:obra-externa"]').wait_for(state="detached")
     pagina.locator('.pl-vista[data-vista="personal"]').click()
     assert "x-pedro-soto" not in pagina.evaluate(JS_PERSONAL)
+    assert not errores
+    pagina.context.close()
+
+
+# ---- Proyectos en ejecución (2026-10-28) ------------------------------------------------------------------------------
+# Pedido del usuario: el resumen de cada proyecto en ejecución, con su carpeta de Gestión de Proyectos; costos potenciales
+# desde cotizaciones reales que se evalúan y se simulan al tiro (no van al Centro de Costos); el avance, que llega a las
+# demás herramientas; los días trabajados para estimar la mano de obra real, y los indicadores por día-hombre.
+EJ = f"publicado/ejecucion/{DISPOSITIVO}.json"
+JS_EJ_KPIS = """() => Object.fromEntries([...document.querySelectorAll('#ejProyecto .ej-kpi')].map((k) =>
+    [k.querySelector('.ej-kpi-et').textContent, k.querySelector('.ej-kpi-v').textContent]))"""
+JS_EJ_IND = """() => Object.fromEntries([...document.querySelectorAll('#ejProyecto .ej-ind tbody tr')].map((tr) =>
+    [tr.dataset.ind, [...tr.querySelectorAll('td')].map((td) => td.textContent.trim())]))"""
+JS_EJ_MO = """() => document.querySelector('#ejProyecto .ej-cat[aria-label="Mano de obra"] .ej-cat-cab span').textContent"""
+
+
+def _con_formulador_js(*nombres):
+    """¿Sirve el sitio de prueba estos scripts del Formulador? (solo si su repositorio está en este equipo)"""
+    f = _hermano("Formulación de proyectos")
+    return bool(f) and all((f / "quempin-formulacion" / "js" / n).exists() for n in nombres)
+
+
+def _formulacion_908():
+    """Una formulación adjudicada de mentira para el N° 908: $1.000.000 en materiales (un estanque de $800.000 y 50 m de
+    cañería), $500.000 en equipos, $600.000 en mano de obra (10 días-hombre de nivel 2) y $400.000 en otros; utilidad
+    50 %: precio neto $3.750.000."""
+    datos = {"uid": "f908", "codigo": "QMPN-2026-908", "version": 1, "titulo": "En obra", "estado": "Adjudicada", "responsable": "LC",
+             "modificado": _dia(-30, "10:00:00Z"), "vinculos": {"requerimiento": {"numero": 908}},
+             "parametros": {"moneda": "CLP", "iva": 19, "gastosGenerales": 0, "imprevistos": 0, "tarifaN1": 45000, "tarifaN2": 60000,
+                            "tarifaN3": 75000, "margenObjetivo": 30, "margenMinimo": 20, "metaUtilidadDH": 0},
+             "partidas": [{"uid": "p1", "descripcion": "Sala de calderas", "unidad": "gl", "cantidad": 1, "utilidadTipo": "pct", "utilidadValor": 50}],
+             "materiales": [{"uid": "m1", "descripcion": "Estanque inoxidable 100 L", "partida": "p1", "unidad": "Un.", "cantidad": 1, "costoUnitario": 800000},
+                            {"uid": "m2", "descripcion": "Cañería de cobre 1/2", "partida": "p1", "unidad": "m", "cantidad": 50, "costoUnitario": 4000}],
+             "equipos": [{"uid": "e1", "descripcion": "Arriendo de andamio", "partida": "p1", "unidad": "día", "cantidad": 10, "costoUnitario": 50000}],
+             "manoObra": [{"uid": "h1", "descripcion": "Instalación", "partida": "p1", "n1p": 0, "n1d": 0, "n2p": 2, "n2d": 5, "n3p": 0, "n3d": 0}],
+             "otros": [{"uid": "o1", "descripcion": "Viáticos", "partida": "p1", "unidad": "día", "cantidad": 40, "costoUnitario": 10000}]}
+    return {"esquema": "quempin.intercambio/1", "herramienta": "formulador", "tipo": "proyecto",
+            "resumen": {"precioNeto": 3750000, "errores": 0, "alertas": 0,
+                        "costosAF": {"Materiales": 1000000, "Equipos": 500000, "Mano de Obra": 600000, "Otros": 400000}},
+            "datos": datos}
+
+
+def _ejecucion_de_prueba():
+    """La carpeta del Recorrido, con el N° 908 en obra: su formulación, su presupuesto y su gasto en el Análisis Financiero
+    ($300.000 en materiales y $50.000 en otros), tres OC (una que el Centro de Costos todavía no trae, una que ya está ahí y
+    una que el procesador no sabe) y ES y LC asignados el lunes de esta semana en la Planificación."""
+    import copy
+    from datetime import date
+    archivos = copy.deepcopy(_intercambio_de_prueba())
+    demo = next(p for p in archivos["publicado/analisis-financiero.json"]["datos"]["proyectos"] if p["tag"] == "DEMO")
+    demo.update({"proyectados": {"Materiales": 1000000, "Equipos": 500000, "Mano de Obra": 600000, "Otros": 400000},
+                 "reales": {"Materiales": 300000, "Equipos": 0, "Mano de Obra": None, "Otros": 50000}})
+    c908 = next(c for c in archivos["publicado/proyectos.json"]["datos"]["proyectos"] if c["req"] == "908")
+    c908["ordenes"] = [
+        {"folio": "612900", "fecha": _dia(-2), "contraparte": "Ferretería Demo", "referencia": "Codos y tees", "moneda": "CLP", "neto": 120000, "enCentroCostos": False},
+        {"folio": "612901", "fecha": _dia(-20), "contraparte": "Andamios Demo", "referencia": "Arriendo", "moneda": "CLP", "neto": 50000, "enCentroCostos": True},
+        {"folio": "612902", "fecha": _dia(-1), "contraparte": "Otro Demo", "referencia": "Sin confirmar", "moneda": "CLP", "neto": 70000}]
+    archivos["publicado/formulador/f908.json"] = _formulacion_908()
+    semana, lunes = _semana_de(date.today())
+    archivos[f"publicado/planificacion/{semana}/pruebaplan001.json"] = _sobre_plan(semana, lunes, "pruebaplan001", asignaciones=[
+        {"dia": lunes.isoformat(), "persona": p, "proyecto": "req:908", "activa": True, "t": _instante(-3600), "por": "NB"} for p in ("ES", "LC")],
+        proyectos={"req:908": {"titulo": "En obra"}})
+    return archivos
+
+
+def _ejecucion_con_datos(navegador, sitio, usuario="LC", proyecto=None, **kw):
+    """El portal con la carpeta de prueba, en «Proyectos en ejecución» (y, con proyecto, en su resumen)."""
+    pagina, errores = _abrir_portal(navegador, sitio, **kw)
+    if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
+        pagina.context.close()
+        pytest.skip("este Chromium no conecta carpetas")
+    pagina.evaluate(JS_CONECTAR, 30)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _ejecucion_de_prueba())
+    pagina.evaluate("""([u, d, p]) => {
+        localStorage.setItem('quempin_usuario', u);
+        localStorage.setItem('quempin_portal_dispositivo', d);
+        if (p) localStorage.setItem('quempin_portal_ejecucion', JSON.stringify({ proyecto: p }));
+    }""", [usuario, DISPOSITIVO, proyecto])
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Proyectos en ejecución")
+    pagina.locator("#ejProyecto .ej-kpis" if proyecto else "#ejTarjetas .ej-tarjeta").first.wait_for()
+    return pagina, errores
+
+
+def _esperar_kpi(pagina, etiqueta, valor):
+    pagina.wait_for_function("""([e, v]) => [...document.querySelectorAll('#ejProyecto .ej-kpi')].some((k) =>
+        k.querySelector('.ej-kpi-et').textContent === e && k.querySelector('.ej-kpi-v').textContent === v)""", arg=[etiqueta, valor])
+
+
+def _esperar_aviso(pagina, comienzo):
+    pagina.wait_for_function("(c) => document.getElementById('aviso').textContent.startsWith(c)", arg=comienzo)
+
+
+def test_proyectos_en_ejecucion_en_el_registro_y_en_el_esquema():
+    reg = _registro()
+    h = next(x for x in reg["herramientas"] if x["id"] == "ejecucion")
+    assert (h["grupo"], h["tipo"], h["vista"]) == ("finanzas", "vista", "vistaEjecucion")
+    assert [x["id"] for x in reg["herramientas"] if x["grupo"] == "finanzas"][:2] == ["planificacion", "ejecucion"]
+    assert "ejecucion-proyectos" in _esquemas().publicaciones()
+    # Lo que carga del Formulador: la ruta que pide el portal y, si el Formulador está en este equipo, el nombre que exporta
+    html = PORTAL.read_text(encoding="utf-8")
+    formulador = _hermano("Formulación de proyectos")
+    for nombre, glob in FORMULADOR_JS.items():
+        assert "js/" + nombre in html, nombre
+        if formulador:
+            assert glob in (formulador / "quempin-formulacion" / "js" / nombre).read_text(encoding="utf-8"), nombre
+    # Las categorías son las del Análisis Financiero (las mismas claves de datos-proyecto y presupuesto-proyecto)
+    cats = _esquemas().cargar("publicaciones/ejecucion-proyectos")["properties"]["items"]["items"]["properties"]["categoria"]["enum"]
+    assert cats == ["Materiales", "Equipos", "Mano de Obra", "Otros"]
+    assert all(f"k: '{c}'" in html for c in cats)
+
+
+def test_proyectos_en_ejecucion_sin_biblioteca_dice_que_conectar(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _menu(pagina, "Proyectos en ejecución")
+    pagina.locator("#ejVacio").wait_for()
+    texto = pagina.locator("#ejVacio").inner_text()
+    assert "Conecta" in texto or "Chrome o Edge" in texto
+    assert pagina.locator("#ejLista").is_hidden() and pagina.locator("#ejProyecto").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_proyectos_en_ejecucion_lista_y_resumen(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio)
+    claves = lambda: pagina.locator("#ejTarjetas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    # Los que el Recorrido pone en Ejecución; el terminado (909) no, y el adjudicado hace mucho (910) va plegado abajo
+    assert {"req-908", "req-907", "tag-SOLO"} <= set(claves()) and "req-909" not in claves() and "req-910" not in claves()
+    assert "req-910" in pagina.locator("#ejTarjetasAntiguas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    assert claves()[0] == "req-908", "lo de LC primero"
+    assert "Margen estimado 33 %" in pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').inner_text()
+    pagina.locator("#ejBuscar").fill("sin número")
+    assert claves() == ["tag-SOLO"]
+    pagina.locator("#ejBuscar").fill("")
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').click()
+    pagina.locator("#ejProyecto .ej-kpis").wait_for()
+    # Venta de su formulación; costo estimado = lo presupuestado (nada se pasa todavía); margen y avance del Análisis
+    assert pagina.evaluate(JS_EJ_KPIS) == {"Venta neta": "$3.750.000", "Costo estimado al cierre": "$2.500.000",
+                                            "Margen estimado": "33 %", "Avance": "40 %"}
+    # Materiales: lo gastado más la OC que el Centro de Costos todavía no trae; la que ya está ahí y la que no se sabe no suman
+    assert pagina.locator('#ejProyecto .ej-cat[aria-label="Materiales"] .ej-cat-cab span').inner_text() == "$420.000 de $1.000.000 · quedan $580.000"
+    estados = pagina.locator("#ejProyecto .ej-ocs li").evaluate_all("ls => ls.map((l) => [l.dataset.folio, l.querySelector('.rc-chip').textContent])")
+    assert estados == [["612902", "Por confirmar"], ["612900", "Comprometida"], ["612901", "En el gasto"]]
+    # Su carpeta de Gestión de Proyectos, con QUEMPIN.exe
+    pagina.locator("#ejProyecto .ej-cab .cx-boton", has_text="Gestión de Proyectos").click()
+    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/908.%20En%20obra"
+    # Quién va esta semana sale de la Planificación semanal
+    assert "ES y LC" in pagina.locator("#ejProyecto .ej-equipo").inner_text()
+    pagina.locator(".ej-volver").click()
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').wait_for()
+    assert not errores
+    pagina.context.close()
+
+
+def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejProyecto .ej-compras .cx-boton").click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    pagina.locator("#ejCDesc").fill("Estanque inoxidable 100 L")
+    pagina.locator("#ejCProv").fill("Inox Demo")
+    pagina.locator("#ejCPrecio").fill("950.000")
+    evaluacion = pagina.locator("#ejCEval").inner_text()
+    assert "Total $950.000 sin IVA" in evaluacion
+    assert "materiales se pasa del presupuesto en $370.000" in evaluacion
+    if _con_formulador_js("calc.js"):
+        # La línea más parecida del presupuesto de su formulación, con su costo unitario
+        assert pagina.locator("#ejCLinea").input_value() == "m1"
+        assert "Presupuestado $800.000 c/u en M1" in evaluacion and "19 % más cara" in evaluacion
+    assert pagina.locator("#ejCEval .ej-eval-chip").inner_text() == "No conviene"
+    pagina.locator("#ejCGuardar").click()
+    pagina.locator("#dlgEjCosto").wait_for(state="hidden")
+    _esperar_kpi(pagina, "Margen estimado", "23 %")
+    assert pagina.evaluate(JS_EJ_KPIS)["Costo estimado al cierre"] == "$2.870.000"
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(s["datos"]["items"]) == 1)
+    it = sobre["datos"]["items"][0]
+    assert (it["tipo"], it["proyecto"], it["categoria"], it["precio"], it["estado"], it["simular"]) == ("costo", "req:908", "Materiales", 950000, "evaluar", True)
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    # Sin simularla, el proyecto vuelve a como estaba
+    fila = lambda i: pagina.locator(f'#ejProyecto .ej-tabla tr[data-id="{i}"]')
+    fila(it["id"]).locator(".ej-c-sim input").uncheck()
+    _esperar_kpi(pagina, "Margen estimado", "33 %")
+    # Otra cotización para lo mismo, más barata: entra sin simular, para compararlas
+    fila(it["id"]).locator('.ej-ico[title^="Otra cotización"]').click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    pagina.locator("#ejCProv").fill("Otro Inox")
+    pagina.locator("#ejCPrecio").fill("700.000")
+    evaluacion = pagina.locator("#ejCEval").inner_text()
+    assert "La más conveniente de las 2 cotizaciones" in evaluacion
+    if _con_formulador_js("calc.js"):
+        # Más barata que su línea: si materiales igual se pasa, es por lo ya gastado; se revisa, no es «No conviene»
+        assert "13 % más barata" in evaluacion and "ya van $420.000 de $1.000.000" in evaluacion
+        assert pagina.locator("#ejCEval .ej-eval-chip").inner_text() == "Revisar"
+    pagina.locator("#ejCGuardar").click()
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(s["datos"]["items"]) == 2)
+    por = {x["proveedor"]: x for x in sobre["datos"]["items"]}
+    assert por["Otro Inox"]["grupo"] == por["Inox Demo"]["grupo"] == por["Inox Demo"]["id"]
+    assert por["Otro Inox"]["simular"] is False
+    # Simular la más barata: materiales llega a $1.120.000 y el margen a 30 %
+    fila(por["Otro Inox"]["id"]).locator(".ej-c-sim input").check()
+    _esperar_kpi(pagina, "Margen estimado", "30 %")
+    # Aprobarla descarta la otra; Ctrl Z lo deshace
+    fila(por["Otro Inox"]["id"]).locator(".ej-estado").select_option("aprobada")
+    estados = lambda s: {x["proveedor"]: x["estado"] for x in s["datos"]["items"]}
+    _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Otro Inox": "aprobada", "Inox Demo": "descartada"})
+    # La descartada sale de «Por decidir y aprobadas»; en «Todas» se ve, tachada y fuera del costo
+    assert fila(por["Inox Demo"]["id"]).count() == 0
+    pagina.locator("#ejProyecto .ej-filtro", has_text="Todas").click()
+    assert "fuera" in fila(por["Inox Demo"]["id"]).get_attribute("class")
+    pagina.locator("#tituloEjecucion").click()
+    pagina.keyboard.press("Control+z")
+    _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Otro Inox": "evaluar", "Inox Demo": "evaluar"})
+    assert not errores
+    pagina.context.close()
+
+
+def test_pegar_una_cotizacion_agrega_sus_filas(navegador, sitio):
+    if not _con_formulador_js("pegar.js"):
+        pytest.skip("el Formulador (js/pegar.js) no está en este equipo")
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejProyecto .ej-compras .cx-enlace", has_text="Pegar").click()
+    pagina.locator("#dlgEjPegar").wait_for()
+    pagina.locator("#ejPegarTexto").fill("Codo de cobre 1/2\t10\tUn.\t1.190\nTee de cobre 1/2\t5\tUn.\t2.380\nTotal\t\t\t35.700")
+    pagina.locator("#ejPProv").fill("Ferretería Demo")
+    pagina.locator("#ejPIva").check()
+    assert pagina.locator("#ejPAgregar").inner_text() == "Agregar 2 filas"
+    assert "2 filas por $20.000 sin IVA" in pagina.locator("#ejPPrevia").inner_text()
+    pagina.locator("#ejPAgregar").click()
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(s["datos"]["items"]) == 2)
+    assert sorted((x["descripcion"], x["cantidad"], x["precio"], x["proveedor"], x["simular"]) for x in sobre["datos"]["items"]) == [
+        ("Codo de cobre 1/2", 10, 1000, "Ferretería Demo", True), ("Tee de cobre 1/2", 5, 2000, "Ferretería Demo", True)]
+    assert "Simulando 2 gastos por $20.000" in pagina.locator("#ejProyecto .ej-sim").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_avance_se_pide_al_analisis_y_lo_ven_las_demas_vistas(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejAvNum").fill("60")
+    pagina.locator("#ejProyecto .ej-av-form .cx-boton").click()
+    _esperar_aviso(pagina, "Avance 60 %")
+    pedidos = lambda: {n: m for n, m in pagina.evaluate(JS_BUZON).items()
+                       if m.get("tipo") == "datos-proyecto" and (m.get("origen") or {}).get("herramienta") == "portal"}
+    (nombre, m), = pedidos().items()
+    assert m["proyecto"] == {"tag": "DEMO"} and m["valores"] == {"% Avance": 0.6} and m["reemplaza"] == {"% Avance": 0.4}
+    assert "_portal_datos-proyecto_" in nombre and m["origen"]["usuario"] == "LC" and _esquemas().validar_mensaje(m) == []
+    assert pagina.locator("#ejProyecto .ej-av-num b").inner_text() == "60 %"
+    # El Recorrido ya lo muestra, sin cambiar de etapa, y su «Registrar avance» lleva a este resumen
+    _menu(pagina, "Recorrido de proyectos")
+    tarjeta = pagina.locator('.rc-tarjeta[data-clave="req-908"]')
+    assert "Avance 60 % por aplicar" in tarjeta.locator(".rc-chip").all_inner_texts()
+    tarjeta.locator(".rc-accion").click()
+    pagina.locator("#ejProyecto .ej-kpis").wait_for()
+    # Otro pedido encima reemplaza lo pedido (el Análisis los aplica en orden), y la fecha de término va en el mismo
+    pagina.locator("#ejAvNum").fill("70")
+    pagina.locator("#ejAvFin").fill(_dia(45))
+    pagina.locator("#ejProyecto .ej-av-form .cx-boton").click()
+    _esperar_aviso(pagina, "Avance 70 %")
+    nuevo = next(x for n, x in pedidos().items() if n != nombre)
+    assert nuevo["valores"] == {"% Avance": 0.7, "Fecha de cierre": _dia(45)}
+    assert nuevo["reemplaza"] == {"% Avance": 0.6, "Fecha de cierre": _dia(30)}
+    # Retirar el último pedido lo saca del buzón
+    pagina.locator("#ejProyecto .ej-linea.tinte .cx-desmarcar", has_text="Retirar").click()
+    _esperar_aviso(pagina, "Se retiró")
+    assert list(pedidos()) == [nombre]
+    assert pagina.locator("#ejProyecto .ej-av-num b").inner_text() == "60 %"
+    assert not errores
+    pagina.context.close()
+
+
+def test_los_dias_trabajados_estiman_la_mano_de_obra_real(navegador, sitio):
+    from datetime import date
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    hoy = date.today().isoformat()
+    pagina.locator("#ejDiaFecha").fill(hoy)
+    for per in ("NB", "SV"):
+        pagina.locator(".ej-quienes label", has_text=per).locator("input").check()
+    pagina.locator("#ejProyecto .ej-dias-form .cx-boton").click()
+    dias = lambda s: sorted((x["fecha"], x["persona"], x["nivel"], x.get("origen", "")) for x in s["datos"]["items"]
+                            if x["tipo"] == "dia" and not x.get("borrado"))
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(dias(s)) == 2)
+    assert dias(sobre) == [(hoy, "NB", 2, ""), (hoy, "SV", 2, "")]
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    # Su costo, a la tarifa del nivel 2 de la formulación, es la mano de obra real del resumen y de los indicadores
+    pagina.wait_for_function("(js) => eval(js)().startsWith('$120.000')", arg=JS_EJ_MO)
+    assert pagina.evaluate(JS_EJ_MO) == "$120.000 de $600.000 · quedan $480.000"
+    ind = pagina.evaluate(JS_EJ_IND)
+    assert ind["costoDH"][1] == "$60.000" and ind["dh"][1] == "2"
+    if _con_formulador_js("calc.js"):
+        assert ind["dh"][0] == "10" and ind["costoDH"][0] == "$60.000"
+    # Lo que la Planificación tiene de este proyecto (ES y LC el lunes) se trae de una vez
+    pagina.locator("#ejProyecto .ej-linea.tinte .cx-desmarcar", has_text="Traerlos").click()
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(dias(s)) == 4)
+    assert {(p, o) for f, p, n, o in dias(sobre)} >= {("ES", "planificacion"), ("LC", "planificacion")}
+    pagina.wait_for_function("(js) => eval(js)().startsWith('$240.000')", arg=JS_EJ_MO)
+    # Subir a ES al nivel 3 recalcula su costo
+    pagina.locator('.ej-nivel select[aria-label^="Nivel de ES"]').select_option("3")
+    pagina.wait_for_function("(js) => eval(js)().startsWith('$255.000')", arg=JS_EJ_MO)
+    # Y se lleva al Análisis Financiero como su mano de obra real (no al Centro de Costos)
+    pagina.locator("#ejProyecto .cx-desmarcar", has_text="Llevarle").click()
+    _esperar_aviso(pagina, "Se pidió dejar")
+    (m,) = [x for x in pagina.evaluate(JS_BUZON).values() if x.get("tipo") == "datos-proyecto" and (x.get("origen") or {}).get("herramienta") == "portal"]
+    assert m["valores"] == {"Mano de Obra Real": 255000} and m["reemplaza"] == {"Mano de Obra Real": None}
+    assert _esquemas().validar_mensaje(m) == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_lo_anotado_en_otro_navegador_aparece_y_manda_lo_mas_reciente(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    otro = {"esquema": "quempin.intercambio/1", "herramienta": "ejecucion", "tipo": "ejecucion-proyectos", "generado": _instante(0),
+            "autor": "NB", "datos": {"dispositivo": "otronavegador1", "items": [
+                {"id": "cotronavegador001", "proyecto": "req:908", "tipo": "costo", "t": _instante(-30), "creado": _instante(-60), "por": "NB",
+                 "descripcion": "Quemador de prueba", "categoria": "Equipos", "cantidad": 1, "precio": 300000, "estado": "evaluar", "simular": True},
+                {"id": "notaotronavegador1", "proyecto": "tag:DEMO", "tipo": "nota", "t": _instante(-20), "por": "NB", "texto": "Nota con el TAG"},
+                {"id": "cmalaotronavegador", "proyecto": "req:908", "tipo": "costo", "t": _instante(-10), "descripcion": "Categoría que no existe",
+                 "categoria": "Herramientas", "cantidad": 1, "precio": 1}]}}
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["publicado/ejecucion/otronavegador1.json", json.dumps(otro)])
+    pagina.locator("#ejActualizar").click()
+    fila = pagina.locator('#ejProyecto .ej-tabla tr[data-id="cotronavegador001"]')
+    fila.wait_for()
+    assert "Categoría que no existe" not in pagina.locator("#ejProyecto").inner_text()
+    assert "Nota con el TAG" in pagina.locator("#ejProyecto").inner_text(), "lo anotado con su TAG también es del proyecto"
+    # Cabe en equipos: el costo estimado no cambia
+    assert "cabe en lo presupuestado" in pagina.locator("#ejProyecto .ej-sim").inner_text()
+    # Descartarla aquí gana (es el cambio más reciente), aunque el otro archivo la siga teniendo por decidir
+    fila.locator(".ej-estado").select_option("descartada")
+    sobre = _esperar_archivo(pagina, EJ, lambda s: any(x["id"] == "cotronavegador001" for x in s["datos"]["items"]))
+    assert next(x for x in sobre["datos"]["items"] if x["id"] == "cotronavegador001")["estado"] == "descartada"
+    pagina.locator("#ejActualizar").click()
+    pagina.locator("#ejProyecto .ej-filtro", has_text="Descartadas").click()
+    assert "fuera" in pagina.locator('#ejProyecto .ej-tabla tr[data-id="cotronavegador001"]').get_attribute("class")
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho", [360, 390])
+def test_proyectos_en_ejecucion_cabe_en_el_telefono(navegador, sitio, ancho):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", ancho=ancho, alto=844, movil=True)
+    item = {"id": "ctelefono00001", "proyecto": "req:908", "tipo": "costo", "t": _instante(-30), "por": "LC",
+            "descripcion": "Estanque inoxidable de 100 litros con serpentín de cobre", "categoria": "Materiales", "cantidad": 1,
+            "precio": 950000, "proveedor": "Proveedor con un nombre bastante largo SpA", "estado": "evaluar", "simular": True}
+    sobre = {"esquema": "quempin.intercambio/1", "herramienta": "ejecucion", "tipo": "ejecucion-proyectos", "generado": _instante(0),
+             "datos": {"dispositivo": "otronavegador1", "items": [item]}}
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["publicado/ejecucion/otronavegador1.json", json.dumps(sobre)])
+    pagina.locator("#ejActualizar").click()
+    pagina.locator('#ejProyecto .ej-tabla tr[data-id="ctelefono00001"]').wait_for()
+    derecha = """() => Math.max(...[...document.querySelectorAll('#vistaEjecucion *')]
+        .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))"""
+    assert pagina.evaluate(derecha) <= ancho + 0.5
+    chicos = pagina.evaluate("""() => [...document.querySelectorAll('#vistaEjecucion input, #vistaEjecucion select, #vistaEjecucion textarea')]
+        .filter((e) => e.getClientRects().length && !['checkbox', 'range'].includes(e.type) && parseFloat(getComputedStyle(e).fontSize) < 16)
+        .map((e) => e.id || e.className)""")
+    assert chicos == []
+    # La lista también
+    pagina.locator(".ej-volver").click()
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').wait_for()
+    assert pagina.evaluate(derecha) <= ancho + 0.5
     assert not errores
     pagina.context.close()

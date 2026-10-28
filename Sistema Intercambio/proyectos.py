@@ -20,9 +20,19 @@ para que alguien lo complete donde corresponde (no aquí).
 
 Un TAG que aparece con dos ``req`` distintos no se adivina: va a
 ``conflictos``.
+
+Cada orden de compra dice además si ya está en el Centro de Costos
+(``enCentroCostos``, 2026-10-28): desde ese día el Centro de Costos trae a su
+libro las OC con proyecto hasta que su factura las reemplaza, así que su monto
+ya cuenta en los costos reales del Análisis Financiero. Lo dice el registro de
+OC del Centro de Costos (el mismo que lee Flujo de Caja); sin registro en este
+equipo el campo no va: no se sabe. Lo usa «Proyectos en ejecución» del Portal
+para no contar dos veces una compra.
 """
 
+import json
 import re
+import unicodedata
 from pathlib import Path
 
 import formulaciones
@@ -35,6 +45,12 @@ HERRAMIENTA = "procesador"
 # sigue vivo. Lo descartado y lo no adjudicado solo entra si algo lo nombra.
 ESTADOS_VIVOS = {"Evaluación", "Ofertado", "Adjudicado"}
 _CARPETA_CON_NUMERO = re.compile(r"^\s*(\d{1,4})\s*[.\-_)]\s*(.+)$")
+# El registro de OC de cada Centro de Costos (gitignoreado: lleva montos), por país
+RAIZ_FINANZAS = Path(__file__).resolve().parent.parent
+RUTAS_ORDENES_CC = {
+    "chile": RAIZ_FINANZAS / "Centro de Costos" / "Sistema" / "ordenes_compra.json",
+    "peru": RAIZ_FINANZAS / "Peru" / "Centro de Costos" / "ordenes_compra_peru.json",
+}
 
 # Dónde buscar carpetas de proyecto, por biblioteca: subcarpetas que agrupan
 # (se mira también un nivel dentro de ellas).
@@ -51,6 +67,26 @@ def _req(valor) -> str | None:
 def _tag(valor) -> str | None:
     texto = str(valor or "").strip().upper()
     return texto or None
+
+
+def _pais(valor) -> str:
+    """«Perú», «Peru», «PERÚ» → «peru»."""
+    texto = unicodedata.normalize("NFD", str(valor or "")).encode("ascii", "ignore").decode()
+    return texto.strip().lower()
+
+
+def folios_en_centro_costos(rutas: dict | None = None) -> dict[str, set[str]]:
+    """{país: folios} de las OC que ya maneja el Centro de Costos de ese país:
+    las que están en su libro, las que ya reemplazó su factura y las que
+    llegaron con la factura registrada. Un país sin registro no va (no se sabe)."""
+    salida = {}
+    for pais, ruta in (rutas if rutas is not None else RUTAS_ORDENES_CC).items():
+        try:
+            with open(ruta, encoding="utf-8") as f:
+                salida[pais] = {str(folio) for folio in (json.load(f).get("ordenes") or {})}
+        except (OSError, ValueError, AttributeError):
+            continue
+    return salida
 
 
 # ── CARPETAS ─────────────────────────────────────────────────────────────────
@@ -98,8 +134,11 @@ def _datos(raiz, nombre) -> dict:
 
 
 def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: list[dict],
-           documentos: list[dict], carpetas: dict) -> dict:
-    """Función pura: el cruce completo a partir de lo publicado."""
+           documentos: list[dict], carpetas: dict, en_cc: dict | None = None) -> dict:
+    """Función pura: el cruce completo a partir de lo publicado. en_cc: los
+    folios de OC que ya están en el Centro de Costos, por país
+    (folios_en_centro_costos)."""
+    en_cc = en_cc or {}
     entradas: dict[str, dict] = {}
 
     def entrada(req: str) -> dict:
@@ -148,6 +187,8 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
         ficha = {"folio": doc.get("folio"), "pais": doc.get("pais"), "fecha": doc.get("fecha"),
                  "referencia": doc.get("referencia"), "moneda": doc.get("moneda"), "neto": doc.get("neto"),
                  "contraparte": (doc.get("contraparte") or {}).get("razon_social")}
+        if doc.get("tipo") != "60" and _pais(doc.get("pais")) in en_cc:
+            ficha["enCentroCostos"] = str(doc.get("folio")) in en_cc[_pais(doc.get("pais"))]
         if req:
             entrada(req)["cotizaciones" if doc.get("tipo") == "60" else "ordenes"].append(ficha)
         else:
@@ -182,7 +223,7 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
     return {"proyectos": lista, "sinVincular": sin_req, "conflictos": conflictos}
 
 
-def publicar(raiz: Path, carpetas: dict | None = None) -> dict:
+def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | None = None) -> dict:
     """Arma el cruce desde lo publicado en 'raiz' y lo publica. Devuelve un
     resumen {'proyectos', 'sin_tag_req', 'conflictos'}."""
     datos = cruzar(
@@ -191,6 +232,7 @@ def publicar(raiz: Path, carpetas: dict | None = None) -> dict:
         formulaciones.leer_repositorio(raiz),
         _datos(raiz, "documentos-comerciales").get("documentos") or [],
         carpetas if carpetas is not None else carpetas_de_proyectos(raiz),
+        folios_en_centro_costos(rutas_ordenes_cc),
     )
     intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)
     return {"proyectos": len(datos["proyectos"]), "sin_tag_req": len(datos["sinVincular"]["tags"]),

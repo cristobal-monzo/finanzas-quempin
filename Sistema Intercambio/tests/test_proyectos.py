@@ -60,6 +60,29 @@ def test_un_tag_con_varios_req_no_es_conflicto():
     assert datos["conflictos"] == []
 
 
+def test_cada_oc_dice_si_ya_esta_en_el_centro_de_costos(tmp_path):
+    """2026-10-28: el Centro de Costos trae las OC con proyecto (su registro ordenes_compra.json); «Proyectos en
+    ejecución» del Portal cuenta como comprometida solo la que todavía no está ahí. Sin registro de ese país, no se sabe."""
+    registro = tmp_path / "ordenes_compra.json"
+    registro.write_text(json.dumps({"ordenes": {"612609": {"estado": "en_cc"}, "612600": {"estado": "reemplazada"}}}),
+                        encoding="utf-8")
+    en_cc = pj.folios_en_centro_costos({"chile": registro, "peru": tmp_path / "no-existe.json"})
+    assert en_cc == {"chile": {"612609", "612600"}}
+    docs = [{"tipo": "61", "folio": "612609", "pais": "Chile", "proyecto": {"req": "261"}},
+            {"tipo": "61", "folio": "612610", "pais": "Chile", "proyecto": {"req": "261"}},
+            {"tipo": "61", "folio": "7001", "pais": "Perú", "proyecto": {"req": "261"}},
+            {"tipo": "60", "folio": "602695", "pais": "Chile", "proyecto": {"req": "261"}}]
+    (p,) = [p for p in pj.cruzar(REQS, [], [], docs, {}, en_cc)["proyectos"] if p["req"] == "261"]
+    por_folio = {o["folio"]: o for o in p["ordenes"]}
+    assert por_folio["612609"]["enCentroCostos"] is True
+    assert por_folio["612610"]["enCentroCostos"] is False
+    assert "enCentroCostos" not in por_folio["7001"]          # Perú sin registro en este equipo: no se sabe
+    assert "enCentroCostos" not in p["cotizaciones"][0]
+    # Sin ningún registro (antes de que el Centro de Costos traiga OC), el campo no va
+    (p,) = [p for p in pj.cruzar(REQS, [], [], docs, {})["proyectos"] if p["req"] == "261"]
+    assert all("enCentroCostos" not in o for o in p["ordenes"])
+
+
 def test_carpetas_con_numero_bajan_por_las_agrupadoras(tmp_path):
     for ruta in ("0 OFERTAS ADJUDICADAS/261. FACH 1 - CALDERA", "0 OFERTAS PRESENTADAS/0 Ofertas Cerradas 2026/220. Vilcún",
                  "280. UMAG - Conexión", "Carpeta modelo", ".HERRAMIENTAS FORMULACIÓN/999. no", "29. Concepción"):
