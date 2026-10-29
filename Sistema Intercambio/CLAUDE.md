@@ -184,6 +184,10 @@ no el de la carpeta.
   esperando 5 min desde el último cambio. Estado en
   `carpetas_proyecto_estado.json` (gitignoreado). `proyectos.json` publica
   `carpetas.facturasProyecto` para el botón del Portal.
+  Una carpeta del CC sin N° no se renombra (el CC reconoce lo registrado por
+  «carpetarchivo» y lo tomaría por nuevo): se anota en `equivalencias` del
+  estado, `{"281": "Chile/H2 Green"}`. El 2026-10-29 se anotaron 281 y 284 y
+  se crearon a mano las carpetas del CC de 164, 297, 308 y 314.
 - **Un paso que falla no frena a los demás** y queda en `estado.json` y en
   `logs/procesador_AAAA-MM.log` (una línea por vuelta, con los segundos de la
   vuelta y de cada paso de 10 s o más desde el 2026-10-25: `sistema-quempin`

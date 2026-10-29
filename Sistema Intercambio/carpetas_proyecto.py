@@ -37,6 +37,12 @@ equipo que sí tiene el sitio, hace tres cosas:
 
 Lo que hizo queda en ``carpetas_proyecto_estado.json`` (junto a este archivo,
 gitignoreado: lleva nombres de proveedores).
+
+Una carpeta del Centro de Costos sin N° («H2 Green») no se renombra para
+ponérselo: el Centro de Costos reconoce las facturas ya registradas por
+«carpeta\\archivo» (Archivo origen) y con otro nombre las tomaría por nuevas.
+Se anota en ``equivalencias`` del mismo estado, {"281": "Chile/H2 Green"}, y
+cuenta como la carpeta de ese N° (pedido del usuario, 2026-10-29).
 """
 
 import json
@@ -129,9 +135,18 @@ def ganados(requerimientos: list[dict], proyectos_af: list[dict], repositorio: l
 
 # ── LAS CARPETAS ─────────────────────────────────────────────────────────────
 
-def carpetas_cc(raices: dict[str, Path]) -> dict[str, Path]:
-    """{req: carpeta} de «Facturas y Boletas/<país>/» con N° adelante (Chile primero)."""
+def carpetas_cc(raices: dict[str, Path], equivalencias: dict | None = None) -> dict[str, Path]:
+    """{req: carpeta} de «Facturas y Boletas/<país>/» con N° adelante (Chile
+    primero), y las sin N° anotadas en 'equivalencias' ({req: «Chile/Nombre»})."""
     salida: dict[str, Path] = {}
+    nombres_pais = {Path(b).name.casefold(): p for p, b in raices.items() if b is not None}
+    for req, rel in (equivalencias or {}).items():
+        pais, _, nombre = str(rel).partition("/")
+        base = raices.get(nombres_pais.get(pais.casefold(), ""))
+        if _req(req) and base is not None and Path(base).is_dir():
+            carpeta = next((h for h in documentos_cc._subcarpetas(Path(base)) if _clave(h.name) == _clave(nombre)), None)
+            if carpeta is not None:
+                salida[_req(req)] = carpeta
     for pais in ("CL", "PE"):
         base = raices.get(pais)
         if base is None or not Path(base).is_dir():
@@ -252,7 +267,7 @@ def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None,
     adjudicados = ganados(_datos(raiz, "requerimientos").get("requerimientos") or [],
                           _datos(raiz, "analisis-financiero").get("proyectos") or [],
                           formulaciones.leer_repositorio(raiz))
-    en_cc = carpetas_cc(raices)
+    en_cc = carpetas_cc(raices, estado.get("equivalencias"))
     en_gestion = carpetas_gestion(gestion)
 
     def crear_cc(req, nombre, pais):

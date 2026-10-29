@@ -224,6 +224,18 @@ def test_sin_el_sitio_del_cc_no_hace_nada(e, tmp_path):
     assert r["creadasCC"] == [] and not e["estado"].exists()
 
 
+def test_una_carpeta_sin_numero_cuenta_por_su_equivalencia(e):
+    """«H2 Green» no se renombra (el CC reconoce lo registrado por «carpetarchivo»): se anota que es la del 281."""
+    e["estado"].write_text(json.dumps({"equivalencias": {"281": "Chile/h2 green"}}), encoding="utf-8")
+    r = _vuelta(e)
+    assert "281. H2 Green" in r["creadasGestion"]
+    assert r["creadasCC"] == [] and sorted(h.name for h in e["chile"].iterdir()) == ["289. KeyProcess", "H2 Green"]
+    _factura(e["gestion"] / "281. H2 Green" / FAC, "Factura H2.pdf")
+    assert _vuelta(e)["copiados"] == 1
+    assert (e["chile"] / "H2 Green" / "Factura H2.pdf").exists()
+    assert json.loads(e["estado"].read_text(encoding="utf-8"))["equivalencias"] == {"281": "Chile/h2 green"}
+
+
 def test_proyectos_publica_donde_esta_facturas_del_proyecto(e):
     (e["gestion"] / "289. KeyProcess" / FAC).mkdir()
     rutas = proyectos.carpetas_con_numero(e["gestion"])
