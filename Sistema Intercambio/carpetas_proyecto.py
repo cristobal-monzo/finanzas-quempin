@@ -48,6 +48,7 @@ gitignoreado).
 import json
 import os
 import re
+import stat
 import unicodedata
 from datetime import datetime
 from pathlib import Path
@@ -211,10 +212,18 @@ def _vacia(carpeta: Path) -> bool:
         return False
 
 
-def _quitar(carpeta: Path) -> None:
-    for h in carpeta.iterdir():
-        h.unlink()
-    carpeta.rmdir()
+def _quitar(carpeta: Path) -> bool:
+    """Borra la carpeta vacía. OneDrive deja las carpetas sincronizadas con el
+    atributo «solo lectura», que en Windows impide borrarlas: se le quita antes."""
+    try:
+        for h in carpeta.iterdir():
+            os.chmod(h, stat.S_IWRITE)
+            h.unlink()
+        os.chmod(carpeta, stat.S_IWRITE)
+        carpeta.rmdir()
+        return True
+    except OSError:
+        return False
 
 
 # ── EL PASO ──────────────────────────────────────────────────────────────────
@@ -239,9 +248,9 @@ def _datos(raiz, nombre) -> dict:
 
 def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None, ruta_estado: Path = RUTA_ESTADO) -> dict:
     """Las dos cosas del docstring. 'raices' = {'CL': .../Chile, 'PE': .../Perú}.
-    Devuelve {'creadasCC', 'accesos', 'conArchivos'}."""
+    Devuelve {'creadasCC', 'accesos', 'conArchivos', 'sinQuitar'}."""
     estado = leer_estado(ruta_estado)
-    r = {"creadasCC": [], "accesos": [], "conArchivos": []}
+    r = {"creadasCC": [], "accesos": [], "conArchivos": [], "sinQuitar": []}
     if not any(b is not None and Path(b).is_dir() for b in raices.values()):
         return r           # el sitio del Centro de Costos no está en este equipo: nada que hacer
     hoy = datetime.now().isoformat(timespec="seconds")
@@ -287,10 +296,10 @@ def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None, ruta_esta
         url = enlace_web(en_cc[req])
         vieja = _hija(carpeta, SUB_FACTURAS)
         if vieja is not None and vieja.is_dir():
-            if _vacia(vieja):
-                _quitar(vieja)
-            else:
+            if not _vacia(vieja):
                 r["conArchivos"].append(carpeta.name)
+            elif not _quitar(vieja):
+                r["sinQuitar"].append(carpeta.name)
         archivo = _hija(carpeta, ACCESO_FACTURAS)
         if archivo is None and req in accesos:
             continue       # lo borraron: no vuelve

@@ -336,6 +336,8 @@ def paso_carpetas_proyecto(raiz: Path, previo, forzar):
     if r["conArchivos"]:
         partes.append(f"una carpeta «{carpetas_proyecto.SUB_FACTURAS}» con archivos (pasarlos al Centro de Costos): "
                       + ", ".join(r["conArchivos"]))
+    if r["sinQuitar"]:
+        partes.append(f"no se pudo quitar la carpeta vacía «{carpetas_proyecto.SUB_FACTURAS}» de: " + ", ".join(r["sinQuitar"]))
     return "; ".join(partes) or "sin cambios", "ok"
 
 

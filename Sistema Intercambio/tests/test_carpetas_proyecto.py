@@ -3,6 +3,8 @@
 adjudicarse y el acceso directo web «Facturas del proyecto» en Gestión
 (carpetas_proyecto.py). Bibliotecas falsas en una carpeta temporal."""
 import json
+import os
+import stat
 
 import pytest
 
@@ -152,6 +154,8 @@ def test_la_carpeta_vacia_de_antes_se_reemplaza_y_con_archivos_se_avisa(e):
     vieja = e["gestion"] / "289. KeyProcess" / cp.SUB_FACTURAS
     vieja.mkdir()
     (vieja / "desktop.ini").write_text("[.ShellClassInfo]")
+    os.chmod(vieja / "desktop.ini", stat.S_IREAD)
+    os.chmod(vieja, stat.S_IREAD)          # como las deja OneDrive: solo lectura
     con_archivos = e["gestion"] / "281. H2 Green" / cp.SUB_FACTURAS
     con_archivos.mkdir()
     (con_archivos / "Factura.pdf").write_bytes(b"%PDF")
@@ -170,6 +174,13 @@ def test_una_carpeta_sin_numero_cuenta_por_su_equivalencia(e):
     assert cp.url_de_acceso(e["gestion"] / "281. H2 Green" / URL) == WEB + "Chile/H2%20Green"
     assert cp.enlaces_web(e["raices"], e["estado"])["281"] == [WEB + "Chile/H2%20Green"]
     assert json.loads(e["estado"].read_text(encoding="utf-8"))["equivalencias"] == {"281": "Chile/h2 green"}
+
+
+def test_si_no_se_puede_quitar_la_carpeta_vieja_avisa_y_sigue(e, monkeypatch):
+    (e["gestion"] / "289. KeyProcess" / cp.SUB_FACTURAS).mkdir()
+    monkeypatch.setattr(cp, "_quitar", lambda carpeta: False)
+    r = _vuelta(e)
+    assert r["sinQuitar"] == ["289. KeyProcess"] and r["accesos"] == ["289. KeyProcess"]
 
 
 def test_sin_el_sitio_del_cc_no_hace_nada(e, tmp_path):
