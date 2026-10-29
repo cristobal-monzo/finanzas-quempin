@@ -1,66 +1,70 @@
 # -*- coding: utf-8 -*-
 """
 carpetas_proyecto.py -- La carpeta de facturas de cada proyecto adjudicado, y
-«Facturas del proyecto» de Gestión de Proyectos conectada al Centro de Costos.
+el acceso directo «Facturas del proyecto» de Gestión de Proyectos a ella.
 
 Pedido del usuario (2026-10-28): cuando un proyecto se adjudica o pasa a
 ejecución (en el Formulador o en el Portal), que se cree su carpeta para
 recibir las facturas del Centro de Costos aunque todavía no haya ninguna; y
-que la carpeta del proyecto en «Gestión de Proyectos» tenga una subcarpeta
-«Facturas del proyecto» por donde también se puedan ingresar facturas al
-Centro de Costos. QUEMPIN.exe 1.3.15 arma esa carpeta al pasar la oferta a
-Gestión (``Formulación/`` con la copia de la oferta y ``Facturas del
-proyecto/``; Sistema QUEMPIN app/carpetas.py).
+que la carpeta del proyecto en «Gestión de Proyectos» tenga «Facturas del
+proyecto», un acceso directo a esa carpeta del Centro de Costos.
 
-Un acceso directo no sirve: un ``.lnk`` guarda la ruta de OneDrive de un solo
-computador y el sitio del Centro de Costos no está sincronizado en todos. Por
-eso «Facturas del proyecto» es una carpeta común y este paso, que corre en el
-equipo que sí tiene el sitio, hace tres cosas:
+Primero fue una carpeta común que este paso copiaba al Centro de Costos; el
+2026-10-29 el usuario la vio vacía y sin enlace con las facturas y eligió un
+acceso directo web: ``Facturas del proyecto.url`` abre en el navegador la
+carpeta del proyecto en SharePoint, con las facturas que ya tiene, y lo que
+se sube ahí entra directo al Centro de Costos. Un ``.lnk`` no sirve: guarda la
+ruta de OneDrive de un solo computador, y el sitio del Centro de Costos no
+está sincronizado en todos. La dirección web es la misma en todos (necesita
+acceso al sitio).
+
+Este paso corre en el equipo que tiene el sitio sincronizado y hace dos cosas:
 
 1. **Crea la carpeta del Centro de Costos** («Facturas y Boletas/<país>/
    <N°. Nombre>») de cada proyecto que se adjudica: el Formulador lo marca
    «Adjudicada», la Planilla lo pasa a «Adjudicado» o aparece en el Análisis
-   Financiero con su N°. También de cada carpeta de Gestión que ya tiene
-   «Facturas del proyecto». Solo si no hay ya una carpeta con ese N°. Lo que
-   estaba adjudicado la primera vez que corrió este paso queda anotado como
-   conocido y no se toca: muchas de esas carpetas existen sin N° («UMAG»,
-   «H2 Green») y crear otra las duplicaría.
-2. **Crea «Facturas del proyecto»** en cada carpeta de proyecto de la raíz de
-   Gestión que ya tiene su carpeta en el Centro de Costos, una sola vez por
-   proyecto: si alguien la borra, no vuelve.
-3. **Copia al Centro de Costos** las facturas y boletas (pdf e imágenes) que
-   se dejan en «Facturas del proyecto», también de los proyectos ya
-   entregados (las facturas llegan tarde). Cada archivo se copia una vez,
-   nunca se pisa uno que ya está (mismo contenido = repetido, mismo nombre =
-   «(2)», como ``documentos_cc``) y espera ``MINUTOS_QUIETO`` desde su último
-   cambio, por si todavía se está guardando. El original queda en Gestión.
-
-Lo que hizo queda en ``carpetas_proyecto_estado.json`` (junto a este archivo,
-gitignoreado: lleva nombres de proveedores).
+   Financiero con su N°. También de cada carpeta de la raíz de Gestión que ya
+   tiene «Formulación» (la arma QUEMPIN.exe al pasar la oferta a Gestión).
+   Solo si no hay ya una carpeta con ese N°. Lo que estaba adjudicado la
+   primera vez que corrió este paso queda anotado como conocido y no se toca:
+   muchas de esas carpetas existen sin N° («UMAG», «H2 Green») y crear otra
+   las duplicaría.
+2. **Deja «Facturas del proyecto.url»** en cada carpeta de proyecto de la raíz
+   de Gestión con carpeta en el Centro de Costos. Si la carpeta del CC cambia,
+   lo actualiza; si alguien lo borra, no vuelve. Una carpeta «Facturas del
+   proyecto» vacía (la versión anterior) se reemplaza; con archivos no se toca
+   y se avisa, para pasarlos a mano al Centro de Costos.
 
 Una carpeta del Centro de Costos sin N° («H2 Green») no se renombra para
 ponérselo: el Centro de Costos reconoce las facturas ya registradas por
 «carpeta\\archivo» (Archivo origen) y con otro nombre las tomaría por nuevas.
-Se anota en ``equivalencias`` del mismo estado, {"281": "Chile/H2 Green"}, y
-cuenta como la carpeta de ese N° (pedido del usuario, 2026-10-29).
+Se anota en ``equivalencias`` del estado, {"281": "Chile/H2 Green"}, y cuenta
+como la carpeta de ese N° (pedido del usuario, 2026-10-29).
+
+Lo que hizo queda en ``carpetas_proyecto_estado.json`` (junto a este archivo,
+gitignoreado).
 """
 
 import json
 import os
 import re
-import time
 import unicodedata
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import documentos_cc
 import formulaciones
 import intercambio
-import ubicacion
 
-SUB_FACTURAS = "Facturas del proyecto"   # el mismo nombre de Sistema QUEMPIN app/carpetas.py
+SUB_FACTURAS = "Facturas del proyecto"
+ACCESO_FACTURAS = SUB_FACTURAS + ".url"
+SUB_FORMULACION = "Formulación"           # la misma de Sistema QUEMPIN app/carpetas.py
+# La carpeta «Facturas y Boletas» en SharePoint (la misma de Centro de Costos/
+# Visualizador Web/build_visualizador.py, que abre cada documento desde el tablero)
+SHAREPOINT = "https://quempinspa2020.sharepoint.com"
+RUTA_WEB_FACTURAS = ("Documentos compartidos", "Centro de Costos", "Facturas y Boletas")
 RUTA_ESTADO = Path(__file__).resolve().parent / "carpetas_proyecto_estado.json"
-MINUTOS_QUIETO = 5
 LARGO_NOMBRE = 80
 _CON_NUMERO = re.compile(r"^\s*(\d{1,4})\s*[.\-_)]\s*(.*)$")
 _PROHIBIDOS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
@@ -158,80 +162,59 @@ def carpetas_cc(raices: dict[str, Path], equivalencias: dict | None = None) -> d
     return salida
 
 
-def carpetas_gestion(gestion: Path | None) -> list[tuple[str, Path, bool]]:
-    """[(req, carpeta, en_la_raiz)] de las carpetas de proyecto con N° de
-    Gestión: las de la raíz (en curso) y las de los grupos «0 …»
-    (entregados), un nivel."""
-    salida = []
+def carpetas_gestion(gestion: Path | None) -> list[Path]:
+    """Las carpetas de proyecto con N° de la raíz de Gestión (las en curso;
+    las de los grupos «0 …» ya se entregaron)."""
     if gestion is None or not Path(gestion).is_dir():
-        return salida
-
-    def recorrer(carpeta: Path, raiz: bool):
-        for h in documentos_cc._subcarpetas(carpeta):
-            m = _CON_NUMERO.match(h.name)
-            if m and _req(m.group(1)):
-                salida.append((_req(m.group(1)), h, raiz))
-            elif raiz and h.name.startswith("0 "):
-                recorrer(h, False)
-
-    recorrer(Path(gestion), True)
-    return salida
+        return []
+    return [h for h in documentos_cc._subcarpetas(Path(gestion)) if _req((_CON_NUMERO.match(h.name) or [None, None])[1])]
 
 
-def subcarpeta_facturas(proyecto: Path) -> Path | None:
-    return next((h for h in documentos_cc._subcarpetas(proyecto) if _clave(h.name) == _clave(SUB_FACTURAS)), None)
+def _req_de(carpeta: Path) -> str:
+    return _req(_CON_NUMERO.match(carpeta.name).group(1))
 
 
-# ── LA COPIA ─────────────────────────────────────────────────────────────────
-
-def _archivos(carpeta: Path) -> list[Path]:
-    salida = []
-    for base, dirs, nombres in os.walk(carpeta):
-        dirs[:] = sorted(d for d in dirs if not d.startswith("."))
-        for n in sorted(nombres):
-            if n.startswith((".", "~$")) or Path(n).suffix.lower() not in documentos_cc.EXTENSIONES:
-                continue
-            salida.append(Path(base) / n)
-    return salida
+def _hija(carpeta: Path, nombre: str) -> Path | None:
+    try:
+        return next((h for h in carpeta.iterdir() if _clave(h.name) == _clave(nombre)), None)
+    except OSError:
+        return None
 
 
-def copiar_facturas(req: str, origen: Path, destino: Path, estado: dict, ahora: float) -> list[str]:
-    """Copia a 'destino' lo nuevo de 'origen'. Devuelve el detalle de lo copiado."""
-    vistos = estado.setdefault("vistos", {})
-    copiados = estado.setdefault("copiados", {})
-    detalle = []
-    for archivo in _archivos(origen):
-        rel = f"{req}/{archivo.relative_to(origen).as_posix()}"
-        try:
-            st = archivo.stat()
-        except OSError:
-            continue
-        if ahora - st.st_mtime < MINUTOS_QUIETO * 60 or st.st_size == 0:
-            continue       # todavía se está guardando (o subiendo de otro equipo)
-        firma = [st.st_size, st.st_mtime_ns]
-        previo = vistos.get(rel)
-        if previo and previo[:2] == firma and previo[2] in copiados:
-            continue
-        try:
-            sha = documentos_cc._sha256(archivo)
-        except OSError:
-            continue       # OneDrive no lo pudo bajar: en la próxima vuelta
-        vistos[rel] = firma + [sha]
-        if sha in copiados:
-            continue
-        a = {"nombre": archivo.name, "bytes": st.st_size, "sha256": sha}
-        repetido = documentos_cc._repetido(destino, a)
-        if repetido is not None:
-            guardado = repetido.name
-            detalle.append(f"{archivo.name}: ya estaba en {destino.name} como «{guardado}»")
-        else:
-            final = documentos_cc._libre(destino, archivo.name)
-            documentos_cc._copiar(archivo, final, sha)
-            guardado = final.name
-            detalle.append(f"{archivo.name} → {destino.parent.name}/{destino.name}/{guardado}")
-        copiados[sha] = {"req": req, "desde": rel, "guardado": f"{destino.parent.name}/{destino.name}/{guardado}",
-                         "repetido": repetido is not None, "fecha": datetime.now().isoformat(timespec="seconds")}
-    return detalle
+def enlace_web(carpeta_cc: Path) -> str:
+    """La dirección de la carpeta del Centro de Costos en SharePoint:
+    …/Facturas y Boletas/<país>/<carpeta>."""
+    partes = (*RUTA_WEB_FACTURAS, carpeta_cc.parent.name, carpeta_cc.name)
+    return SHAREPOINT + "/" + "/".join(quote(unicodedata.normalize("NFC", p), safe="") for p in partes)
+
+
+def contenido_acceso(url: str) -> bytes:
+    """Un acceso directo de Internet de Windows (.url): solo ASCII, CRLF."""
+    return f"[InternetShortcut]\r\nURL={url}\r\n".encode("ascii")
+
+
+def url_de_acceso(ruta: Path) -> str | None:
+    try:
+        for linea in ruta.read_text(encoding="ascii", errors="replace").splitlines():
+            if linea.startswith("URL="):
+                return linea[4:].strip()
+    except OSError:
+        pass
+    return None
+
+
+def _vacia(carpeta: Path) -> bool:
+    """Sin nada más que el desktop.ini que pone Windows u OneDrive."""
+    try:
+        return all(h.is_file() and h.name.lower() == "desktop.ini" for h in carpeta.iterdir())
+    except OSError:
+        return False
+
+
+def _quitar(carpeta: Path) -> None:
+    for h in carpeta.iterdir():
+        h.unlink()
+    carpeta.rmdir()
 
 
 # ── EL PASO ──────────────────────────────────────────────────────────────────
@@ -254,13 +237,11 @@ def _datos(raiz, nombre) -> dict:
     return sobre.get("datos") if isinstance(sobre, dict) and isinstance(sobre.get("datos"), dict) else {}
 
 
-def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None,
-            ruta_estado: Path = RUTA_ESTADO, ahora: float | None = None) -> dict:
-    """Las tres cosas del docstring. 'raices' = {'CL': .../Chile, 'PE': .../Perú}.
-    Devuelve {'creadasCC', 'creadasGestion', 'copiados', 'sinCarpetaCC', 'detalle'}."""
-    ahora = time.time() if ahora is None else ahora
+def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None, ruta_estado: Path = RUTA_ESTADO) -> dict:
+    """Las dos cosas del docstring. 'raices' = {'CL': .../Chile, 'PE': .../Perú}.
+    Devuelve {'creadasCC', 'accesos', 'conArchivos'}."""
     estado = leer_estado(ruta_estado)
-    r = {"creadasCC": [], "creadasGestion": [], "copiados": 0, "sinCarpetaCC": [], "detalle": []}
+    r = {"creadasCC": [], "accesos": [], "conArchivos": []}
     if not any(b is not None and Path(b).is_dir() for b in raices.values()):
         return r           # el sitio del Centro de Costos no está en este equipo: nada que hacer
     hoy = datetime.now().isoformat(timespec="seconds")
@@ -290,48 +271,40 @@ def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None,
             crear_cc(req, g["nombre"], g["pais"])
         conocidos.add(req)
     estado["conocidos"] = sorted(conocidos, key=int)
-    # ... y lo que ya tiene «Facturas del proyecto» en Gestión (QUEMPIN.exe 1.3.15 o a mano)
-    for req, carpeta, en_raiz in en_gestion:
-        if en_raiz and req not in en_cc and subcarpeta_facturas(carpeta) is not None:
+    # ... y lo que QUEMPIN.exe ya pasó a Gestión (tiene «Formulación»)
+    for carpeta in en_gestion:
+        req = _req_de(carpeta)
+        if req not in en_cc and _hija(carpeta, SUB_FORMULACION) is not None:
             g = adjudicados.get(req) or {}
             crear_cc(req, carpeta.name, g.get("pais") or _pais(carpeta.name))
 
-    # 2. «Facturas del proyecto» en lo que está en curso y ya tiene carpeta en el CC (una vez)
-    hechas = estado.setdefault("facturasGestion", {})
-    for req, carpeta, en_raiz in en_gestion:
-        if not en_raiz or req not in en_cc or req in hechas:
-            continue
-        if subcarpeta_facturas(carpeta) is None:
-            (carpeta / SUB_FACTURAS).mkdir(exist_ok=True)
-            r["creadasGestion"].append(carpeta.name)
-        hechas[req] = {"carpeta": carpeta.name, "fecha": hoy}
-
-    # 3. Lo que se dejó en «Facturas del proyecto» → Centro de Costos
-    for req, carpeta, en_raiz in en_gestion:
-        sub = subcarpeta_facturas(carpeta)
-        if sub is None:
-            continue
+    # 2. «Facturas del proyecto.url» en lo que está en curso y tiene carpeta en el CC
+    accesos = estado.setdefault("accesos", {})
+    for carpeta in en_gestion:
+        req = _req_de(carpeta)
         if req not in en_cc:
-            if _archivos(sub):
-                r["sinCarpetaCC"].append(carpeta.name)
             continue
-        detalle = copiar_facturas(req, sub, en_cc[req], estado, ahora)
-        r["copiados"] += sum(1 for d in detalle if "→" in d)
-        r["detalle"].extend(detalle)
+        url = enlace_web(en_cc[req])
+        vieja = _hija(carpeta, SUB_FACTURAS)
+        if vieja is not None and vieja.is_dir():
+            if _vacia(vieja):
+                _quitar(vieja)
+            else:
+                r["conArchivos"].append(carpeta.name)
+        archivo = _hija(carpeta, ACCESO_FACTURAS)
+        if archivo is None and req in accesos:
+            continue       # lo borraron: no vuelve
+        if archivo is not None and url_de_acceso(archivo) == url:
+            accesos.setdefault(req, url)
+            continue
+        (archivo or carpeta / ACCESO_FACTURAS).write_bytes(contenido_acceso(url))
+        accesos[req] = url
+        r["accesos"].append(carpeta.name)
 
     guardar_estado(estado, ruta_estado)
     return r
 
 
-def con_facturas(gestion: Path | None, rutas: dict[str, list[str]]) -> dict[str, list[str]]:
-    """Para proyectos.json: {req: [«…/<proyecto>/Facturas del proyecto»]} de
-    las carpetas de Gestión (rutas relativas) que la tienen."""
-    salida: dict[str, list[str]] = {}
-    if gestion is None or not Path(gestion).is_dir():
-        return salida
-    for req, lista in (rutas or {}).items():
-        for rel in lista:
-            sub = subcarpeta_facturas(Path(gestion) / rel)
-            if sub is not None:
-                salida.setdefault(req, []).append(f"{rel}/{sub.name}")
-    return salida
+def enlaces_web(raices: dict[str, Path], ruta_estado: Path = RUTA_ESTADO) -> dict[str, list[str]]:
+    """Para proyectos.json: {req: [dirección web de su carpeta del Centro de Costos]}."""
+    return {req: [enlace_web(c)] for req, c in carpetas_cc(raices, leer_estado(ruta_estado).get("equivalencias")).items()}

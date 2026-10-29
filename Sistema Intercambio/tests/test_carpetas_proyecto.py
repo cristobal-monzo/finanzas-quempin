@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*-
 """Las carpetas de facturas de los proyectos: la del Centro de Costos al
-adjudicarse, «Facturas del proyecto» en Gestión y la copia de lo que se deja
-ahí (carpetas_proyecto.py). Bibliotecas falsas en una carpeta temporal."""
+adjudicarse y el acceso directo web «Facturas del proyecto» en Gestión
+(carpetas_proyecto.py). Bibliotecas falsas en una carpeta temporal."""
 import json
-import os
-import time
 
 import pytest
 
 import carpetas_proyecto as cp
 import formulaciones
 import intercambio
-import proyectos
 
-FAC = cp.SUB_FACTURAS
-HACE_UNA_HORA = time.time() - 3600
+URL = cp.ACCESO_FACTURAS
+WEB = "https://quempinspa2020.sharepoint.com/Documentos%20compartidos/Centro%20de%20Costos/Facturas%20y%20Boletas/"
 
 
 @pytest.fixture
@@ -58,17 +55,8 @@ def _formulacion(raiz, uid, estado, req=None, carpeta=None, codigo="QMPN-2026-1"
         json.dumps({"esquema": intercambio.ESQUEMA, "tipo": "proyecto", "datos": datos}), encoding="utf-8")
 
 
-def _vuelta(e, ahora=None):
-    return cp.atender(e["raiz"], e["raices"], e["gestion"], e["estado"], ahora)
-
-
-def _factura(carpeta, nombre="Factura 1.pdf", contenido=b"%PDF factura", viejo=True):
-    carpeta.mkdir(parents=True, exist_ok=True)
-    ruta = carpeta / nombre
-    ruta.write_bytes(contenido)
-    if viejo:
-        os.utime(ruta, (HACE_UNA_HORA, HACE_UNA_HORA))
-    return ruta
+def _vuelta(e):
+    return cp.atender(e["raiz"], e["raices"], e["gestion"], e["estado"])
 
 
 def test_nombre_de_carpeta():
@@ -76,6 +64,13 @@ def test_nombre_de_carpeta():
     assert cp.nombre_carpeta("322", "Instalación: caldera/vapor?") == "322. Instalación caldera vapor"
     assert cp.nombre_carpeta("7", "") == "7. Proyecto"
     assert len(cp.nombre_carpeta("1", "x" * 200)) <= cp.LARGO_NOMBRE
+
+
+def test_enlace_web_y_acceso_directo(e):
+    url = cp.enlace_web(e["chile"] / "289. KeyProcess")
+    assert url == WEB + "Chile/289.%20KeyProcess"
+    assert cp.enlace_web(e["raices"]["PE"] / "FACH1") == WEB + "Per%C3%BA/FACH1"
+    assert cp.contenido_acceso(url) == f"[InternetShortcut]\r\nURL={url}\r\n".encode("ascii")
 
 
 def test_ganados_prefiere_la_carpeta_de_la_oferta(e):
@@ -95,8 +90,7 @@ def test_la_primera_vuelta_solo_anota_lo_adjudicado_y_no_crea_carpetas_en_el_cc(
     assert r["creadasCC"] == []
     # «281. H2 Green» ya estaba adjudicado: no se crea otra carpeta junto a «H2 Green»
     assert sorted(h.name for h in e["chile"].iterdir()) == ["289. KeyProcess", "H2 Green"]
-    estado = json.loads(e["estado"].read_text(encoding="utf-8"))
-    assert estado["conocidos"] == ["281", "289"]
+    assert json.loads(e["estado"].read_text(encoding="utf-8"))["conocidos"] == ["281", "289"]
 
 
 def test_lo_que_se_adjudica_despues_tiene_su_carpeta_en_el_cc(e):
@@ -124,119 +118,61 @@ def test_peru_va_a_su_carpeta(e):
     assert _vuelta(e)["creadasCC"] == ["Perú/340. Molino"]
 
 
-def test_facturas_del_proyecto_en_gestion_cuando_hay_carpeta_en_el_cc(e):
-    r = _vuelta(e)
-    assert r["creadasGestion"] == ["289. KeyProcess"]
-    assert (e["gestion"] / "289. KeyProcess" / FAC).is_dir()
-    assert (e["gestion"] / "289. KeyProcess" / "Compras").is_dir()      # lo demás no se toca
-    # Sin carpeta con N° en el CC («H2 Green» no tiene N°) no se crea
-    assert not (e["gestion"] / "281. H2 Green" / FAC).exists()
-    # Ni en los entregados
-    assert not (e["gestion"] / "0 Proyectos Entregados 2026" / "296. Llay llay" / FAC).exists()
-    # Una sola vez: si alguien la borra, no vuelve
-    (e["gestion"] / "289. KeyProcess" / FAC).rmdir()
-    assert _vuelta(e)["creadasGestion"] == []
-    assert not (e["gestion"] / "289. KeyProcess" / FAC).exists()
-
-
-def test_una_carpeta_de_gestion_con_facturas_del_proyecto_recibe_su_carpeta_en_el_cc(e):
-    # Como la deja QUEMPIN.exe 1.3.15, aunque el proyecto ya estuviera adjudicado antes
-    (e["gestion"] / "281. H2 Green" / FAC).mkdir()
+def test_lo_que_quempin_exe_paso_a_gestion_recibe_su_carpeta_en_el_cc(e):
     (e["gestion"] / "314. UA Reactor" / "Formulación").mkdir(parents=True)
-    (e["gestion"] / "314. UA Reactor" / FAC).mkdir()
     r = _vuelta(e)
-    assert r["creadasCC"] == ["Chile/281. H2 Green", "Chile/314. UA Reactor"]
+    assert r["creadasCC"] == ["Chile/314. UA Reactor"]
+    assert cp.url_de_acceso(e["gestion"] / "314. UA Reactor" / URL) == WEB + "Chile/314.%20UA%20Reactor"
 
 
-def test_copia_al_cc_lo_que_se_deja_en_facturas_del_proyecto(e):
-    _vuelta(e)
-    sub = e["gestion"] / "289. KeyProcess" / FAC
-    _factura(sub, "Factura 10.pdf", b"%PDF diez")
-    _factura(sub / "Octubre", "Boleta.jpg", b"jpg")
-    _factura(sub, "Notas.docx", b"no")              # no es factura ni boleta
-    _factura(sub, "~$Temporal.pdf", b"x")
+def test_acceso_directo_a_la_carpeta_del_cc(e):
     r = _vuelta(e)
-    assert r["copiados"] == 2
-    cc = e["chile"] / "289. KeyProcess"
-    assert sorted(h.name for h in cc.iterdir()) == ["Boleta.jpg", "Factura 10.pdf"]
-    assert (cc / "Factura 10.pdf").read_bytes() == b"%PDF diez"
-    assert (sub / "Factura 10.pdf").exists()        # el original queda en Gestión
-    # Cada archivo se copia una vez, aunque en el CC lo renombren o lo muevan
-    (cc / "Factura 10.pdf").rename(cc / "812 Proveedor.pdf")
-    assert _vuelta(e)["copiados"] == 0
-    assert sorted(h.name for h in cc.iterdir()) == ["812 Proveedor.pdf", "Boleta.jpg"]
+    assert r["accesos"] == ["289. KeyProcess"]
+    acceso = e["gestion"] / "289. KeyProcess" / URL
+    assert acceso.read_bytes() == cp.contenido_acceso(WEB + "Chile/289.%20KeyProcess")
+    assert (e["gestion"] / "289. KeyProcess" / "Compras").is_dir()      # lo demás no se toca
+    # Sin carpeta con N° en el CC («H2 Green» no tiene N°) no hay acceso; ni en los entregados
+    assert not (e["gestion"] / "281. H2 Green" / URL).exists()
+    assert not (e["gestion"] / "0 Proyectos Entregados 2026" / "296. Llay llay" / URL).exists()
+    # Al día: no se reescribe
+    assert _vuelta(e)["accesos"] == []
+    # Si alguien lo borra, no vuelve
+    acceso.unlink()
+    assert _vuelta(e)["accesos"] == [] and not acceso.exists()
 
 
-def test_no_pisa_ni_repite(e):
+def test_si_cambia_la_carpeta_del_cc_el_acceso_se_actualiza(e):
     _vuelta(e)
-    cc = e["chile"] / "289. KeyProcess"
-    (cc / "Factura 1.pdf").write_bytes(b"otra factura")
-    (cc / "Ya subida.pdf").write_bytes(b"%PDF igual")
-    sub = e["gestion"] / "289. KeyProcess" / FAC
-    _factura(sub, "Factura 1.pdf", b"%PDF nueva")
-    _factura(sub, "Copia local.pdf", b"%PDF igual")
+    (e["chile"] / "289. KeyProcess").rename(e["chile"] / "289. KeyProcess H2")
+    assert _vuelta(e)["accesos"] == ["289. KeyProcess"]
+    assert cp.url_de_acceso(e["gestion"] / "289. KeyProcess" / URL) == WEB + "Chile/289.%20KeyProcess%20H2"
+
+
+def test_la_carpeta_vacia_de_antes_se_reemplaza_y_con_archivos_se_avisa(e):
+    vieja = e["gestion"] / "289. KeyProcess" / cp.SUB_FACTURAS
+    vieja.mkdir()
+    (vieja / "desktop.ini").write_text("[.ShellClassInfo]")
+    con_archivos = e["gestion"] / "281. H2 Green" / cp.SUB_FACTURAS
+    con_archivos.mkdir()
+    (con_archivos / "Factura.pdf").write_bytes(b"%PDF")
+    e["estado"].write_text(json.dumps({"equivalencias": {"281": "Chile/H2 Green"}}), encoding="utf-8")
     r = _vuelta(e)
-    assert r["copiados"] == 1
-    assert (cc / "Factura 1.pdf").read_bytes() == b"otra factura"
-    assert (cc / "Factura 1 (2).pdf").read_bytes() == b"%PDF nueva"
-    assert not (cc / "Copia local.pdf").exists()
-    assert any("ya estaba" in d for d in r["detalle"])
-
-
-def test_espera_a_que_el_archivo_termine_de_guardarse(e):
-    _vuelta(e)
-    sub = e["gestion"] / "289. KeyProcess" / FAC
-    _factura(sub, "Recien.pdf", b"%PDF", viejo=False)
-    assert _vuelta(e)["copiados"] == 0
-    assert _vuelta(e, ahora=time.time() + cp.MINUTOS_QUIETO * 60 + 1)["copiados"] == 1
-
-
-def test_un_archivo_que_cambia_se_copia_otra_vez(e):
-    _vuelta(e)
-    sub = e["gestion"] / "289. KeyProcess" / FAC
-    _factura(sub, "Factura.pdf", b"%PDF v1")
-    assert _vuelta(e)["copiados"] == 1
-    ruta = _factura(sub, "Factura.pdf", b"%PDF v2 corregida")
-    os.utime(ruta, (HACE_UNA_HORA + 60, HACE_UNA_HORA + 60))
-    assert _vuelta(e)["copiados"] == 1
-    assert (e["chile"] / "289. KeyProcess" / "Factura (2).pdf").read_bytes() == b"%PDF v2 corregida"
-
-
-def test_tambien_de_los_proyectos_entregados(e):
-    _vuelta(e)
-    (e["chile"] / "296. Llay llay").mkdir()
-    _factura(e["gestion"] / "0 Proyectos Entregados 2026" / "296. Llay llay" / FAC, "Tardia.pdf")
-    assert _vuelta(e)["copiados"] == 1
-    assert (e["chile"] / "296. Llay llay" / "Tardia.pdf").exists()
-
-
-def test_con_facturas_sin_carpeta_en_el_cc_lo_avisa(e):
-    _vuelta(e)
-    sub = e["gestion"] / "0 Proyectos Entregados 2026" / "296. Llay llay" / FAC
-    _factura(sub, "Factura.pdf")
-    r = _vuelta(e)
-    assert r["copiados"] == 0 and r["sinCarpetaCC"] == ["296. Llay llay"]
-
-
-def test_sin_el_sitio_del_cc_no_hace_nada(e, tmp_path):
-    (e["gestion"] / "314. UA Reactor" / FAC).mkdir(parents=True)
-    r = cp.atender(e["raiz"], {"CL": tmp_path / "no", "PE": tmp_path / "no2"}, e["gestion"], e["estado"])
-    assert r["creadasCC"] == [] and not e["estado"].exists()
+    assert not vieja.exists() and (e["gestion"] / "289. KeyProcess" / URL).is_file()
+    assert r["conArchivos"] == ["281. H2 Green"]
+    assert (con_archivos / "Factura.pdf").exists() and (e["gestion"] / "281. H2 Green" / URL).is_file()
 
 
 def test_una_carpeta_sin_numero_cuenta_por_su_equivalencia(e):
-    """«H2 Green» no se renombra (el CC reconoce lo registrado por «carpetarchivo»): se anota que es la del 281."""
+    """«H2 Green» no se renombra (el CC reconoce lo registrado por «carpeta\\archivo»): se anota que es la del 281."""
     e["estado"].write_text(json.dumps({"equivalencias": {"281": "Chile/h2 green"}}), encoding="utf-8")
     r = _vuelta(e)
-    assert "281. H2 Green" in r["creadasGestion"]
-    assert r["creadasCC"] == [] and sorted(h.name for h in e["chile"].iterdir()) == ["289. KeyProcess", "H2 Green"]
-    _factura(e["gestion"] / "281. H2 Green" / FAC, "Factura H2.pdf")
-    assert _vuelta(e)["copiados"] == 1
-    assert (e["chile"] / "H2 Green" / "Factura H2.pdf").exists()
+    assert "281. H2 Green" in r["accesos"] and r["creadasCC"] == []
+    assert cp.url_de_acceso(e["gestion"] / "281. H2 Green" / URL) == WEB + "Chile/H2%20Green"
+    assert cp.enlaces_web(e["raices"], e["estado"])["281"] == [WEB + "Chile/H2%20Green"]
     assert json.loads(e["estado"].read_text(encoding="utf-8"))["equivalencias"] == {"281": "Chile/h2 green"}
 
 
-def test_proyectos_publica_donde_esta_facturas_del_proyecto(e):
-    (e["gestion"] / "289. KeyProcess" / FAC).mkdir()
-    rutas = proyectos.carpetas_con_numero(e["gestion"])
-    assert cp.con_facturas(e["gestion"], rutas) == {"289": [f"289. KeyProcess/{FAC}"]}
+def test_sin_el_sitio_del_cc_no_hace_nada(e, tmp_path):
+    (e["gestion"] / "314. UA Reactor" / "Formulación").mkdir(parents=True)
+    r = cp.atender(e["raiz"], {"CL": tmp_path / "no", "PE": tmp_path / "no2"}, e["gestion"], e["estado"])
+    assert r["creadasCC"] == [] and r["accesos"] == [] and not e["estado"].exists()

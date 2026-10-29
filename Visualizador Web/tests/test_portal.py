@@ -4031,17 +4031,27 @@ def _carpetas_908(**carpetas):
     return cambiar
 
 
+WEB_908 = "https://quempinspa2020.sharepoint.com/Documentos%20compartidos/Centro%20de%20Costos/Facturas%20y%20Boletas/Chile/908.%20En%20obra"
+
+
 def test_proyectos_en_ejecucion_abre_facturas_del_proyecto(navegador, sitio):
-    """La carpeta de Gestión trae «Facturas del proyecto» (2026-10-28): lo que se deja ahí llega al Centro de Costos."""
+    """«Facturas del proyecto» (2026-10-29) abre en SharePoint la carpeta del proyecto en el Centro de Costos."""
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_carpetas_908(
-        oferta=["0 OFERTAS ADJUDICADAS/908. En obra"], ejecucion=["908. En obra"],
-        facturasProyecto=["908. En obra/Facturas del proyecto"]))
+        oferta=["0 OFERTAS ADJUDICADAS/908. En obra"], ejecucion=["908. En obra"], facturasWeb=[WEB_908]))
     cab = pagina.locator("#ejProyecto .ej-cab")
     boton = cab.locator('[data-foco="carpeta-facturas"]')
     assert "Centro de Costos" in boton.get_attribute("title")
     boton.click()
-    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/908.%20En%20obra/Facturas%20del%20proyecto"
+    assert pagina.evaluate("window.__abiertas")[-1] == WEB_908
     assert cab.locator('[data-foco="trasladar"]').count() == 0 and cab.locator(".ej-pista").count() == 0
+    assert not errores
+    pagina.context.close()
+
+
+def test_facturas_del_proyecto_solo_abre_el_sitio_de_quempin(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_carpetas_908(
+        ejecucion=["908. En obra"], facturasWeb=["https://otro.example.com/908"]))
+    assert pagina.locator('#ejProyecto .ej-cab [data-foco="carpeta-facturas"]').count() == 0
     assert not errores
     pagina.context.close()
 
@@ -4063,7 +4073,7 @@ def test_proyectos_en_ejecucion_sin_facturas_del_proyecto_lo_explica(navegador, 
         oferta=["0 OFERTAS ADJUDICADAS/908. En obra"], ejecucion=["908. En obra"]))
     cab = pagina.locator("#ejProyecto .ej-cab")
     assert cab.locator('[data-foco="trasladar"]').count() == 0
-    assert "todavía no tiene «Facturas del proyecto»" in cab.locator(".ej-pista").inner_text()
+    assert "Todavía no tiene carpeta con su N° en el Centro de Costos" in cab.locator(".ej-pista").inner_text()
     assert not errores
     pagina.context.close()
 

@@ -34,9 +34,9 @@ y solo si algo cambió desde la última vez:
 7c. UF del día: una vez al día, para que el tablero del Cotizador tenga una
    UF reciente de respaldo si mindicador.cl no responde (2026-10-19).
 7d. Carpetas de facturas de los proyectos (``carpetas_proyecto.py``,
-   2026-10-28): crea la del Centro de Costos de lo recién adjudicado, crea
-   «Facturas del proyecto» en Gestión de Proyectos y copia al Centro de
-   Costos lo que se deja ahí.
+   2026-10-28): crea la del Centro de Costos de lo recién adjudicado y deja
+   en cada proyecto de Gestión de Proyectos el acceso directo web «Facturas
+   del proyecto» a esa carpeta (2026-10-29).
 7e. Documentos subidos desde el Portal -> «Facturas y Boletas/<país>/<proyecto>/»
    del Centro de Costos, y la lista de esas carpetas (``documentos_cc.py``,
    2026-10-23).
@@ -328,14 +328,15 @@ def paso_carpetas_proyecto(raiz: Path, previo, forzar):
     r = carpetas_proyecto.atender(raiz, _raices_facturas(),
                                   ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, AQUI),
                                   carpetas_proyecto.RUTA_ESTADO)
-    partes = [f"{r['copiados']} factura(s) de Gestión al Centro de Costos"]
+    partes = []
     if r["creadasCC"]:
         partes.append("carpeta nueva en el Centro de Costos: " + ", ".join(r["creadasCC"]))
-    if r["creadasGestion"]:
-        partes.append(f"«{carpetas_proyecto.SUB_FACTURAS}» en: " + ", ".join(r["creadasGestion"]))
-    if r["sinCarpetaCC"]:
-        partes.append("con facturas pero sin carpeta en el Centro de Costos: " + ", ".join(r["sinCarpetaCC"]))
-    return "; ".join(partes), "ok"
+    if r["accesos"]:
+        partes.append(f"«{carpetas_proyecto.ACCESO_FACTURAS}» en: " + ", ".join(r["accesos"]))
+    if r["conArchivos"]:
+        partes.append(f"una carpeta «{carpetas_proyecto.SUB_FACTURAS}» con archivos (pasarlos al Centro de Costos): "
+                      + ", ".join(r["conArchivos"]))
+    return "; ".join(partes) or "sin cambios", "ok"
 
 
 def paso_documentos_cc(raiz: Path, previo, forzar):
@@ -350,6 +351,8 @@ def paso_documentos_cc(raiz: Path, previo, forzar):
 
 def paso_proyectos(raiz: Path, previo, forzar):
     carpetas = proyectos.carpetas_de_proyectos(AQUI, RAIZ_FACTURAS_CL if RAIZ_FACTURAS_CL.is_dir() else None)
+    # La dirección web de la carpeta del Centro de Costos (2026-10-29), para «Facturas del proyecto» del Portal
+    carpetas["facturasWeb"] = carpetas_proyecto.enlaces_web(_raices_facturas(), carpetas_proyecto.RUTA_ESTADO)
     r = proyectos.publicar(raiz, carpetas)
     return (f"{r['proyectos']} proyectos; {r['sin_tag_req']} TAG sin N° de requerimiento; "
             f"{r['conflictos']} conflicto(s)"), "ok"

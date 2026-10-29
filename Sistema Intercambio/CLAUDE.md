@@ -168,26 +168,28 @@ no el de la carpeta.
 - **Carpetas de facturas de los proyectos** (`carpetas_proyecto.py`, paso
   `carpetas-proyecto`). Pedido del usuario (2026-10-28): al adjudicarse o
   pasar a ejecución un proyecto, su carpeta del Centro de Costos aunque no
-  tenga facturas, y en su carpeta de Gestión de Proyectos una subcarpeta
-  «Facturas del proyecto» por donde ingresar facturas al Centro de Costos
-  (QUEMPIN.exe 1.3.15 la crea junto a «Formulación», la copia de la oferta).
-  No es un acceso directo: un `.lnk` guarda la ruta de un solo computador.
-  El paso (solo si el sitio del Centro de Costos está en este equipo) crea
+  tenga facturas, y en su carpeta de Gestión de Proyectos «Facturas del
+  proyecto» conectada a ella. Primero fue una carpeta común que el paso
+  copiaba al CC; el 2026-10-29 el usuario la vio vacía y sin enlace y eligió
+  un acceso directo web: `Facturas del proyecto.url` abre en SharePoint la
+  carpeta del proyecto en el CC (las facturas que ya tiene; lo que se sube
+  entra directo). Un `.lnk` no sirve: guarda la ruta de un solo computador.
+  El paso (solo si el sitio del CC está en este equipo) crea
   «Facturas y Boletas/<país>/<N°. Nombre>» de lo que se adjudica después de
   su primera vuelta (Formulador «Adjudicada», Planilla «Adjudicado» o ficha
   del Análisis con N°; lo de antes queda en `conocidos`, porque muchas de
-  esas carpetas existen sin N°) y de cada carpeta de la raíz de Gestión que
-  ya tiene «Facturas del proyecto»; crea «Facturas del proyecto» una vez en
-  las carpetas de la raíz de Gestión con carpeta en el CC; y copia al CC lo
-  nuevo de cada «Facturas del proyecto» (también de los entregados), una vez
-  por contenido, con `_repetido`/`_libre`/`_copiar` de `documentos_cc` y
-  esperando 5 min desde el último cambio. Estado en
+  esas carpetas existen sin N°) y de cada carpeta de la raíz de Gestión con
+  «Formulación» (la arma QUEMPIN.exe); y deja el `.url` en cada carpeta de la
+  raíz de Gestión con carpeta en el CC (lo actualiza si la carpeta del CC
+  cambia; si lo borran, no vuelve; una carpeta «Facturas del proyecto» vacía
+  de antes se reemplaza, con archivos se avisa). Estado en
   `carpetas_proyecto_estado.json` (gitignoreado). `proyectos.json` publica
-  `carpetas.facturasProyecto` para el botón del Portal.
+  `carpetas.facturasWeb` (la dirección) para el botón del Portal.
   Una carpeta del CC sin N° no se renombra (el CC reconoce lo registrado por
-  «carpetarchivo» y lo tomaría por nuevo): se anota en `equivalencias` del
-  estado, `{"281": "Chile/H2 Green"}`. El 2026-10-29 se anotaron 281 y 284 y
-  se crearon a mano las carpetas del CC de 164, 297, 308 y 314.
+  carpeta y nombre de archivo, «Archivo origen», y lo tomaría por nuevo): se
+  anota en `equivalencias` del estado, `{"281": "Chile/H2 Green"}`. El
+  2026-10-29 se anotaron 281 y 284 y se crearon a mano las carpetas del CC de
+  164, 297, 308 y 314.
 - **Un paso que falla no frena a los demás** y queda en `estado.json` y en
   `logs/procesador_AAAA-MM.log` (una línea por vuelta, con los segundos de la
   vuelta y de cada paso de 10 s o más desde el 2026-10-25: `sistema-quempin`

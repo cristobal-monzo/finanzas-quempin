@@ -53,9 +53,9 @@ Cuando un proyecto se adjudica (en el Formulador, la Planilla o el Análisis
 Financiero), el procesador crea su carpeta «N°. Nombre» en «Facturas y
 Boletas» aunque todavía no tenga facturas. La carpeta del proyecto en «Gestión
 de Proyectos» trae «Formulación» (la copia de la oferta) y «Facturas del
-proyecto»: las facturas y boletas (pdf o imagen) que se dejen en esta última
-las copia el procesador a la carpeta del proyecto en el Centro de Costos, una
-vez cada una y sin pisar nada; el original queda en Gestión.
+proyecto», un acceso directo que abre esa carpeta del Centro de Costos en
+SharePoint: ahí se ven sus facturas y lo que se sube entra al Centro de
+Costos.
 
 ## Lo que espera a una persona
 
