@@ -49,6 +49,14 @@ pisar ningún archivo. Desde ahí se registran con `/Registro_Centro_de_Costos`,
 igual que los subidos a SharePoint. Si un archivo no termina de llegar en 7
 días, el envío se rechaza y el Portal lo muestra como «No se pudo».
 
+Cuando un proyecto se adjudica (en el Formulador, la Planilla o el Análisis
+Financiero), el procesador crea su carpeta «N°. Nombre» en «Facturas y
+Boletas» aunque todavía no tenga facturas. La carpeta del proyecto en «Gestión
+de Proyectos» trae «Formulación» (la copia de la oferta) y «Facturas del
+proyecto»: las facturas y boletas (pdf o imagen) que se dejen en esta última
+las copia el procesador a la carpeta del proyecto en el Centro de Costos, una
+vez cada una y sin pisar nada; el original queda en Gestión.
+
 ## Lo que espera a una persona
 
 - **Sugerencias para la Planilla de Ingreso** (estado, valor ofertado o

@@ -33,7 +33,11 @@ y solo si algo cambió desde la última vez:
    dice ``enProcesador``; el equipo lo ve en su tablero).
 7c. UF del día: una vez al día, para que el tablero del Cotizador tenga una
    UF reciente de respaldo si mindicador.cl no responde (2026-10-19).
-7d. Documentos subidos desde el Portal -> «Facturas y Boletas/<país>/<proyecto>/»
+7d. Carpetas de facturas de los proyectos (``carpetas_proyecto.py``,
+   2026-10-28): crea la del Centro de Costos de lo recién adjudicado, crea
+   «Facturas del proyecto» en Gestión de Proyectos y copia al Centro de
+   Costos lo que se deja ahí.
+7e. Documentos subidos desde el Portal -> «Facturas y Boletas/<país>/<proyecto>/»
    del Centro de Costos, y la lista de esas carpetas (``documentos_cc.py``,
    2026-10-23).
 8. ``proyectos.json``: el cruce de claves, con todo lo anterior.
@@ -66,6 +70,7 @@ RAIZ_FINANZAS = AQUI.parent
 if str(AQUI) not in sys.path:
     sys.path.insert(0, str(AQUI))
 
+import carpetas_proyecto  # noqa: E402
 import documentos_cc  # noqa: E402
 import esquemas  # noqa: E402
 import formulaciones  # noqa: E402
@@ -313,8 +318,28 @@ def paso_uf(raiz: Path, previo, forzar):
     return salida.splitlines()[-1] if salida else "UF guardada", hoy
 
 
+def _raices_facturas() -> dict:
+    return {"CL": RAIZ_FACTURAS_CL, "PE": RAIZ_FACTURAS_CL.parent / "Perú"}
+
+
+def paso_carpetas_proyecto(raiz: Path, previo, forzar):
+    if not RAIZ_FACTURAS_CL.is_dir():
+        return "el sitio del Centro de Costos no está sincronizado en este equipo", None
+    r = carpetas_proyecto.atender(raiz, _raices_facturas(),
+                                  ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, AQUI),
+                                  carpetas_proyecto.RUTA_ESTADO)
+    partes = [f"{r['copiados']} factura(s) de Gestión al Centro de Costos"]
+    if r["creadasCC"]:
+        partes.append("carpeta nueva en el Centro de Costos: " + ", ".join(r["creadasCC"]))
+    if r["creadasGestion"]:
+        partes.append(f"«{carpetas_proyecto.SUB_FACTURAS}» en: " + ", ".join(r["creadasGestion"]))
+    if r["sinCarpetaCC"]:
+        partes.append("con facturas pero sin carpeta en el Centro de Costos: " + ", ".join(r["sinCarpetaCC"]))
+    return "; ".join(partes), "ok"
+
+
 def paso_documentos_cc(raiz: Path, previo, forzar):
-    raices = {"CL": RAIZ_FACTURAS_CL, "PE": RAIZ_FACTURAS_CL.parent / "Perú"}
+    raices = _raices_facturas()
     r = documentos_cc.atender(raiz, raices)
     carpetas = documentos_cc.publicar_carpetas(raiz, {p: b for p, b in raices.items() if b.is_dir()})
     detalle = (f"{r['archivos']} archivo(s) de {r['aplicados']} envío(s) a Facturas y Boletas; "
@@ -340,6 +365,7 @@ PASOS = (
     ("mercado-publico", paso_mercado_publico),
     ("oportunidades", paso_oportunidades),
     ("uf", paso_uf),
+    ("carpetas-proyecto", paso_carpetas_proyecto),
     ("documentos-cc", paso_documentos_cc),
     ("proyectos", paso_proyectos),
 )

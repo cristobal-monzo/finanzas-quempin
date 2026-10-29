@@ -109,6 +109,7 @@ tmp/
 
 # Procesador del intercambio (2026-10-01): firmas de lo ya procesado y su candado.
 **/procesador_estado*.json
+**/carpetas_proyecto_estado*.json
 **/.procesador.lock
 # Monitor de Mercado Público (2026-10-13): caché de lo consultado. Son datos
 # públicos, pero cambian en cada vuelta. El ticket NUNCA vive en el repo: va

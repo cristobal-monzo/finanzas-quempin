@@ -35,6 +35,7 @@ import re
 import unicodedata
 from pathlib import Path
 
+import carpetas_proyecto
 import formulaciones
 import intercambio
 import ubicacion
@@ -117,12 +118,18 @@ def carpetas_con_numero(raiz: Path, profundidad: int = 2) -> dict[str, list[str]
 
 
 def carpetas_de_proyectos(desde: Path | None = None, raiz_facturas: Path | None = None) -> dict:
-    """{'oferta': {...}, 'ejecucion': {...}, 'facturas': {...}} con rutas
-    relativas a cada biblioteca (cada colega tiene OneDrive en otra ruta)."""
+    """{'oferta': {...}, 'ejecucion': {...}, 'facturas': {...}, 'facturasProyecto': {...}}
+    con rutas relativas a cada biblioteca (cada colega tiene OneDrive en otra
+    ruta). 'facturasProyecto': la subcarpeta «Facturas del proyecto» de la
+    carpeta de Gestión (2026-10-28, carpetas_proyecto.py), en la misma
+    biblioteca que 'ejecucion'."""
+    gestion = ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, desde)
+    ejecucion = carpetas_con_numero(gestion)
     return {
         "oferta": carpetas_con_numero(ubicacion.biblioteca(ubicacion.BIBLIOTECA_FORMULACION, desde)),
-        "ejecucion": carpetas_con_numero(ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, desde)),
+        "ejecucion": ejecucion,
         "facturas": carpetas_con_numero(raiz_facturas, profundidad=1) if raiz_facturas else {},
+        "facturasProyecto": carpetas_proyecto.con_facturas(gestion, ejecucion),
     }
 
 

@@ -159,10 +159,31 @@ procesar` con su Python 3.11); Mercado Público (este paso consulta siempre:
 lo que cambia está en la API, no en la carpeta); la UF del día (una consulta
 diaria a mindicador.cl con `Cotizador_Historico/driver.py uf`: la UF de
 respaldo del tablero del Cotizador ya no llega al lunes con una semana de
-antigüedad); `proyectos.json`, y `estado.json`. El paso `esquemas` deja
+antigüedad); las carpetas de facturas de los proyectos
+(`carpetas_proyecto.py`, 2026-10-28, ver abajo); los documentos del Portal
+(`documentos_cc.py`); `proyectos.json`, y `estado.json`. El paso `esquemas` deja
 además `LEEME.md` desde `LEEME-carpeta.md` cuando cambia: edita ese archivo,
 no el de la carpeta.
 
+- **Carpetas de facturas de los proyectos** (`carpetas_proyecto.py`, paso
+  `carpetas-proyecto`). Pedido del usuario (2026-10-28): al adjudicarse o
+  pasar a ejecución un proyecto, su carpeta del Centro de Costos aunque no
+  tenga facturas, y en su carpeta de Gestión de Proyectos una subcarpeta
+  «Facturas del proyecto» por donde ingresar facturas al Centro de Costos
+  (QUEMPIN.exe 1.3.15 la crea junto a «Formulación», la copia de la oferta).
+  No es un acceso directo: un `.lnk` guarda la ruta de un solo computador.
+  El paso (solo si el sitio del Centro de Costos está en este equipo) crea
+  «Facturas y Boletas/<país>/<N°. Nombre>» de lo que se adjudica después de
+  su primera vuelta (Formulador «Adjudicada», Planilla «Adjudicado» o ficha
+  del Análisis con N°; lo de antes queda en `conocidos`, porque muchas de
+  esas carpetas existen sin N°) y de cada carpeta de la raíz de Gestión que
+  ya tiene «Facturas del proyecto»; crea «Facturas del proyecto» una vez en
+  las carpetas de la raíz de Gestión con carpeta en el CC; y copia al CC lo
+  nuevo de cada «Facturas del proyecto» (también de los entregados), una vez
+  por contenido, con `_repetido`/`_libre`/`_copiar` de `documentos_cc` y
+  esperando 5 min desde el último cambio. Estado en
+  `carpetas_proyecto_estado.json` (gitignoreado). `proyectos.json` publica
+  `carpetas.facturasProyecto` para el botón del Portal.
 - **Un paso que falla no frena a los demás** y queda en `estado.json` y en
   `logs/procesador_AAAA-MM.log` (una línea por vuelta, con los segundos de la
   vuelta y de cada paso de 10 s o más desde el 2026-10-25: `sistema-quempin`

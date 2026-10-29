@@ -5099,7 +5099,8 @@
     if (f) enlace('Seguimiento', RC_IR.seguimiento(f.uid));
     if (t.tag && t.af) { enlace('Análisis Financiero', RC_IR.af(t.tag)); enlace('Centro de Costos', RC_IR.cc(t.tag)); }
     if (t.lic && RC_MP.test(texto(t.lic.url))) enlace('Ficha en Mercado Público', { web: texto(t.lic.url) }, true);
-    [['oferta', 'formulacion', 'Carpeta de la oferta'], ['ejecucion', 'gestion', 'Carpeta de ejecución']].forEach(([k, bib, txt]) => {
+    [['oferta', 'formulacion', 'Carpeta de la oferta'], ['ejecucion', 'gestion', 'Carpeta de ejecución'],
+      ['facturasProyecto', 'gestion', 'Facturas del proyecto']].forEach(([k, bib, txt]) => {
       const c = rcCarpeta((t.carpetas[k] || [])[0], bib);
       if (c && !MOVIL.matches) enlace(txt, { enlace: enlaceCarpeta(c) }, true);
     });
@@ -9872,10 +9873,13 @@
       chips.forEach((c) => { const x = crear('span', 'rc-chip', c.texto); if (c.nivel) x.dataset.nivel = c.nivel; ch.append(x); });
       cab.append(ch);
     }
-    // Abrir: su carpeta de Gestión de Proyectos (QUEMPIN.exe) y las herramientas donde tiene algo
+    // Abrir: su carpeta de Gestión de Proyectos (QUEMPIN.exe) y las herramientas donde tiene algo. Desde
+    // 2026-10-28 la carpeta de Gestión trae «Formulación» y «Facturas del proyecto»: lo que se deja en esta
+    // última lo copia el procesador al Centro de Costos (Sistema Intercambio/carpetas_proyecto.py).
     const acc = crear('div', 'cx-acc');
     const gestion = rcCarpeta((t.carpetas.ejecucion || [])[0], 'gestion');
     const oferta = rcCarpeta((t.carpetas.oferta || [])[0], 'formulacion');
+    const facturas = gestion && rcCarpeta((t.carpetas.facturasProyecto || [])[0], 'gestion');
     const carpeta = (c, txt, pri) => {
       const b = ejBoton(txt, pri ? 'cx-boton' : 'cx-enlace', () => {
         abrirEnlace(enlaceCarpeta(c));
@@ -9884,10 +9888,25 @@
       b.title = [NOMBRE_BIBLIOTECA[c.biblioteca]].concat(c.ruta).join(' › ');
       b.dataset.foco = 'carpeta-' + c.biblioteca;
       acc.append(b);
+      return b;
     };
     if (!MOVIL.matches) {
       if (gestion) carpeta(gestion, 'Carpeta en Gestión de Proyectos', true);
-      if (oferta) carpeta(oferta, gestion ? 'Carpeta de la oferta' : 'Carpeta de la oferta (aún no está en Gestión)', !gestion);
+      if (facturas) {
+        const b = carpeta(facturas, 'Facturas del proyecto', false);
+        b.dataset.foco = 'carpeta-facturas';
+        b.title += '\nLas facturas y boletas que dejes aquí llegan solas al Centro de Costos (en unas dos horas).';
+      }
+      if (oferta && !gestion) {
+        // QUEMPIN.exe 1.3.15 pregunta antes, arma la carpeta en Gestión y deja el original en Adjudicadas
+        const b = ejBoton('Pasar a Gestión de Proyectos', 'cx-boton', () => {
+          abrirEnlace('quempin://trasladar/formulacion/' + oferta.ruta.map(encodeURIComponent).join('/'));
+          avisar('Pasando «' + oferta.nombre + '» a Gestión de Proyectos: confirma en la ventana de QUEMPIN.exe.', { texto: '¿No se abrió?', ir: () => infoCarpeta(oferta) });
+        }, 'proyectos');
+        b.dataset.foco = 'trasladar';
+        acc.append(b);
+      }
+      if (oferta) carpeta(oferta, gestion ? 'Carpeta de la oferta' : 'Carpeta de la oferta (aún no está en Gestión)', false);
     }
     const ir = (txt, x) => acc.append(ejBoton(txt, 'cx-enlace', () => rcIr(x)));
     if (t.formulacion) ir('Seguimiento', RC_IR.seguimiento(t.formulacion.uid));
@@ -9896,8 +9915,10 @@
     ir('Subir documentos', { herr: 'subir-cc' });
     cab.append(acc);
     if (!gestion && !MOVIL.matches) {
-      cab.append(crear('p', 'ej-pista', oferta ? 'Todavía no tiene carpeta en Gestión de Proyectos: el Formulador ofrece copiarla al quedar Adjudicada, o se crea a mano con su N° adelante («' + (t.req || 'N°') + '. Nombre»).'
+      cab.append(crear('p', 'ej-pista', oferta ? 'Todavía no tiene carpeta en Gestión de Proyectos. «Pasar a Gestión de Proyectos» la crea con «Formulación» (la copia de la oferta) y «Facturas del proyecto», y deja el original en 0 OFERTAS ADJUDICADAS; lo hace QUEMPIN.exe 1.3.15 o más nuevo, que pregunta antes.'
         : 'No se encontró su carpeta en Formulación de proyectos ni en Gestión de Proyectos: el procesador las reconoce por el N° adelante («' + (t.req || 'N°') + '. Nombre»).'));
+    } else if (gestion && !facturas && !MOVIL.matches) {
+      cab.append(crear('p', 'ej-pista', 'Su carpeta de Gestión todavía no tiene «Facturas del proyecto»: el procesador la agrega cuando el proyecto tiene su carpeta con N° en el Centro de Costos. También puedes crearla a mano con ese nombre; lo que dejes ahí llega solo al Centro de Costos.'));
     }
     return cab;
   }

@@ -3749,14 +3749,18 @@ def _ejecucion_de_prueba():
     return archivos
 
 
-def _ejecucion_con_datos(navegador, sitio, usuario="LC", proyecto=None, **kw):
-    """El portal con la carpeta de prueba, en «Proyectos en ejecución» (y, con proyecto, en su resumen)."""
+def _ejecucion_con_datos(navegador, sitio, usuario="LC", proyecto=None, cambiar=None, **kw):
+    """El portal con la carpeta de prueba, en «Proyectos en ejecución» (y, con proyecto, en su resumen).
+    cambiar(archivos): para ajustar la carpeta de prueba antes de escribirla."""
     pagina, errores = _abrir_portal(navegador, sitio, **kw)
     if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
         pagina.context.close()
         pytest.skip("este Chromium no conecta carpetas")
     pagina.evaluate(JS_CONECTAR, 30)
-    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _ejecucion_de_prueba())
+    archivos = _ejecucion_de_prueba()
+    if cambiar:
+        cambiar(archivos)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, archivos)
     pagina.evaluate("""([u, d, p]) => {
         localStorage.setItem('quempin_usuario', u);
         localStorage.setItem('quempin_portal_dispositivo', d);
@@ -4016,6 +4020,50 @@ def test_lo_anotado_en_otro_navegador_aparece_y_manda_lo_mas_reciente(navegador,
     pagina.locator("#ejActualizar").click()
     pagina.locator("#ejProyecto .ej-filtro", has_text="Descartadas").click()
     assert "fuera" in pagina.locator('#ejProyecto .ej-tabla tr[data-id="cotronavegador001"]').get_attribute("class")
+    assert not errores
+    pagina.context.close()
+
+
+def _carpetas_908(**carpetas):
+    def cambiar(archivos):
+        c908 = next(c for c in archivos["publicado/proyectos.json"]["datos"]["proyectos"] if c["req"] == "908")
+        c908["carpetas"] = carpetas
+    return cambiar
+
+
+def test_proyectos_en_ejecucion_abre_facturas_del_proyecto(navegador, sitio):
+    """La carpeta de Gestión trae «Facturas del proyecto» (2026-10-28): lo que se deja ahí llega al Centro de Costos."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_carpetas_908(
+        oferta=["0 OFERTAS ADJUDICADAS/908. En obra"], ejecucion=["908. En obra"],
+        facturasProyecto=["908. En obra/Facturas del proyecto"]))
+    cab = pagina.locator("#ejProyecto .ej-cab")
+    boton = cab.locator('[data-foco="carpeta-facturas"]')
+    assert "Centro de Costos" in boton.get_attribute("title")
+    boton.click()
+    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/908.%20En%20obra/Facturas%20del%20proyecto"
+    assert cab.locator('[data-foco="trasladar"]').count() == 0 and cab.locator(".ej-pista").count() == 0
+    assert not errores
+    pagina.context.close()
+
+
+def test_proyectos_en_ejecucion_pasa_la_oferta_a_gestion(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_carpetas_908(
+        oferta=["0 OFERTAS PRESENTADAS/908. En obra"]))
+    cab = pagina.locator("#ejProyecto .ej-cab")
+    assert cab.locator('[data-foco="carpeta-facturas"]').count() == 0
+    assert "«Facturas del proyecto»" in cab.locator(".ej-pista").inner_text()
+    cab.locator('[data-foco="trasladar"]').click()
+    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://trasladar/formulacion/0%20OFERTAS%20PRESENTADAS/908.%20En%20obra"
+    assert not errores
+    pagina.context.close()
+
+
+def test_proyectos_en_ejecucion_sin_facturas_del_proyecto_lo_explica(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_carpetas_908(
+        oferta=["0 OFERTAS ADJUDICADAS/908. En obra"], ejecucion=["908. En obra"]))
+    cab = pagina.locator("#ejProyecto .ej-cab")
+    assert cab.locator('[data-foco="trasladar"]').count() == 0
+    assert "todavía no tiene «Facturas del proyecto»" in cab.locator(".ej-pista").inner_text()
     assert not errores
     pagina.context.close()
 
