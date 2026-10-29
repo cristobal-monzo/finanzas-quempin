@@ -1948,6 +1948,24 @@ def _celda_personal(pagina, persona, dia):
     return pagina.locator(f'#plPersonal tr[data-persona="{persona}"] td[data-dia="{dia}"] .pl-celda')
 
 
+def _mas(pagina, id_):
+    """Un botón del menú «Más» de la Planificación (2026-10-28), con el menú abierto."""
+    if pagina.locator("#plMasLista").is_hidden():
+        pagina.locator("#plMas").click()
+    return pagina.locator(id_)
+
+
+def _alarma(pagina):
+    """La lista de los proyectos sin asignar, desplegada desde su cifra del resumen (2026-10-28)."""
+    if pagina.locator("#plAlarma").is_hidden():
+        pagina.locator("#plResumen .pl-kpi-alarma").click()
+    return pagina.locator("#plAlarma")
+
+
+# La cuenta de la alarma, junto a la Planificación en el Inicio (ya no en la cabecera, 2026-10-28)
+ALERTA_N = '.ini-item[data-herr="planificacion"] .pl-alerta-n'
+
+
 def _celda_proyecto(pagina, clave, dia):
     return pagina.locator(f'#plProyecto tr[data-clave="{clave}"] td[data-dia="{dia}"] .pl-celda')
 
@@ -1988,14 +2006,12 @@ def test_la_planificacion_sin_biblioteca_dice_que_conectar(navegador, sitio):
 
 
 def test_la_alarma_muestra_los_proyectos_activos_sin_asignar(navegador, sitio):
-    """Pedido del 2026-10-20: si un proyecto activo no se asigna en la semana actual, una alarma. Se ve en la cabecera
-    (desde cualquier herramienta), en el menú y en el Inicio, y la vista dice cuáles son."""
+    """Pedido del 2026-10-20: si un proyecto activo no se asigna en la semana actual, una alarma. Se ve en el menú y en
+    el Inicio (en la cabecera ya no, a pedido del 2026-10-28), y la vista dice cuáles son."""
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
-    alerta = pagina.locator("#plAlertaCab")
-    alerta.wait_for()
-    assert " ".join(alerta.inner_text().split()) == "3 sin asignar"
-    assert all(t in alerta.get_attribute("title") for t in ACTIVOS.values())
     item = pagina.locator('.ini-item[data-herr="planificacion"]')
+    item.locator(".pl-alerta-n").wait_for()
+    assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
     assert item.locator(".pl-alerta-n").inner_text() == "3"
     assert item.locator(".ini-sub").inner_text() == "3 proyectos sin asignar esta semana"
     assert item.locator(".ini-fuera").count() == 0, "se abre dentro del portal"
@@ -2003,16 +2019,16 @@ def test_la_alarma_muestra_los_proyectos_activos_sin_asignar(navegador, sitio):
     pagina.locator("#grupo-finanzas").click()
     assert pagina.locator('#menu .menu-item[data-herr="planificacion"] .pl-alerta-n').inner_text() == "3"
     pagina.keyboard.press("Escape")
-    alerta.click()
-    pagina.locator("#plAlarma").wait_for()
+    item.click()
+    _alarma(pagina).wait_for()
     assert _pestanas(pagina) == ["Inicio", "Planificación"]
     assert pagina.locator("#plAlarma").get_attribute("data-nivel") == "bad"
     assert pagina.locator("#plAlarma .pl-alarma-tit").inner_text() == "3 proyectos activos sin nadie asignado esta semana"
-    assert pagina.locator("#plAlarma .pl-alarma-p").all_inner_texts() == list(ACTIVOS.values())
+    assert _alarma(pagina).locator(".pl-alarma-p").all_inner_texts() == list(ACTIVOS.values())
     assert [int(x) for x in pagina.locator("#plResumen .rc-kpi-n").all_inner_texts()][:2] == [3, 3]
     assert pagina.locator("#plSemanaRango").inner_text().startswith("Esta semana · ") and pagina.locator("#plHoy").is_disabled()
     # Cada proyecto de la alarma lleva a su fila en «Por proyecto», donde los sin asignar van primero
-    pagina.locator("#plAlarma .pl-alarma-p", has_text="En obra").click()
+    _alarma(pagina).locator(".pl-alarma-p", has_text="En obra").click()
     assert pagina.locator('.pl-vista[data-vista="proyecto"]').get_attribute("aria-pressed") == "true"
     assert pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)") == list(ACTIVOS)
     assert pagina.locator("#plProyecto tr.alarma").count() == 3
@@ -2037,7 +2053,7 @@ def test_asignar_por_personal_queda_en_la_carpeta_del_equipo(navegador, sitio):
     pop.locator('input[data-op="c|req:908"]').check()
     assert pagina.evaluate(JS_PERSONAL)["LC"][0] == ["En obra"]
     assert "LC va a En obra el lunes" in pagina.locator("#aviso").inner_text()
-    assert pagina.locator("#plAlertaN").inner_text() == "2"
+    assert pagina.locator(ALERTA_N).inner_text() == "2"
     # Queda en la carpeta, en el archivo de este navegador, con quién lo hizo; y cumple el esquema del catálogo
     archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
     sobre = _esperar_archivo(pagina, archivo)
@@ -2215,7 +2231,7 @@ def test_casos_borde_de_varios_dias_cambiar_e_imprimir(navegador, sitio):
     pop = pagina.locator("#plPop")
     aviso = lambda: pagina.locator("#aviso").inner_text()
     # «Siguiente sin nadie» recorre todos los de la alarma, aunque se deje alguno pendiente
-    pagina.locator("#plAlarma .pl-alarma-p").first.click()
+    _alarma(pagina).locator(".pl-alarma-p").first.click()
     titulos = [pagina.locator("#plPopTit").inner_text()]
     for _ in range(2):
         pagina.locator("#plPopSiguiente").click()
@@ -2224,11 +2240,11 @@ def test_casos_borde_de_varios_dias_cambiar_e_imprimir(navegador, sitio):
     pagina.keyboard.press("Escape")
     pagina.locator('.pl-vista[data-vista="personal"]').click()
     # El sábado: al quitarle lo último su columna se esconde, pero la ventanita sigue en el sábado (no salta al lunes)
-    pagina.locator("#plSabado").check()
+    _mas(pagina, "#plSabado").check()
     _celda_personal(pagina, "ES", 5).click()
     pop.locator('input[data-op="c|req:908"]').check()
     pagina.keyboard.press("Escape")
-    pagina.locator("#plSabado").click()          # ya no se pide, pero queda a la vista porque tiene algo
+    _mas(pagina, "#plSabado").click()          # ya no se pide, pero queda a la vista porque tiene algo
     assert pagina.locator("#plSabado").is_disabled()
     _celda_personal(pagina, "ES", 5).click()
     pop.locator('input[data-op="c|req:908"]').uncheck()
@@ -2273,7 +2289,7 @@ def test_casos_borde_de_varios_dias_cambiar_e_imprimir(navegador, sitio):
         window.__hojas = [...document.querySelectorAll('#plDoc .pl-doc-hoja')].map((s) => s.innerText);
         window.dispatchEvent(new Event('afterprint'));
     }; }""")
-    pagina.locator("#plImprimir").click()
+    _mas(pagina, "#plImprimir").click()
     dlg = pagina.locator("#dlgPlExportar")
     assert dlg.locator("#plExpPers input:checked").evaluate_all("xs => xs.map((x) => x.value)") == ["ES", "LC"]
     dlg.locator("#plExpTabla").uncheck()
@@ -2331,17 +2347,17 @@ def test_la_alarma_abre_el_proyecto_y_sigue_con_el_siguiente(navegador, sitio):
     nombres = list(ACTIVOS.values())
     pop = pagina.locator("#plPop")
     sig = pagina.locator("#plPopSiguiente")
-    pagina.locator("#plAlarma .pl-alarma-p", has_text=nombres[0]).click()
+    _alarma(pagina).locator(".pl-alarma-p", has_text=nombres[0]).click()
     assert pagina.locator('.pl-vista[data-vista="proyecto"]').get_attribute("aria-pressed") == "true"
     assert pop.is_visible() and pagina.locator("#plPopTit").inner_text() == nombres[0]
     assert sig.inner_text() == f"Siguiente sin nadie: {nombres[1]} ›"
     pop.locator('input[data-op="c|LC"]').check()
-    assert pagina.locator("#plAlertaN").inner_text() == "2"
+    assert pagina.locator(ALERTA_N).inner_text() == "2"
     sig.click()
     assert pagina.locator("#plPopTit").inner_text() == nombres[1]
     # Si esa semana no se trabaja en él, se marca desde la misma ventanita
     pop.locator('[data-op="pausa"]').click()
-    assert pagina.locator("#plAlertaN").inner_text() == "1"
+    assert pagina.locator(ALERTA_N).inner_text() == "1"
     assert pop.locator('[data-op="pausa"]').get_attribute("aria-pressed") == "true"
     sig.click()
     assert pagina.locator("#plPopTit").inner_text() == nombres[2] and sig.is_hidden()
@@ -2374,20 +2390,20 @@ def test_sin_trabajo_esta_semana_no_cuenta_como_alarma(navegador, sitio):
     pagina, errores = _plan_con_datos(navegador, sitio, vista="proyecto")
     fila = pagina.locator('#plProyecto tr[data-clave="tag:SOLO"]')
     fila.locator(".pl-pausar").click()
-    assert pagina.locator("#plAlertaN").inner_text() == "2"
+    assert pagina.locator(ALERTA_N).inner_text() == "2"
     assert "pausa" in fila.get_attribute("class") and fila.locator(".rc-chip:not(.pl-avance)").inner_text() == "Sin trabajo esta semana"
     assert "Obra sin número" not in pagina.locator("#plAlarma").inner_text()
     assert pagina.locator("#plResumen .rc-kpi").nth(1).locator(".rc-kpi-sub").inner_text() == "Y 1 sin trabajo esta semana"
     # Los que no se trabajan van al final
     assert pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)")[-1] == "tag:SOLO"
     fila.locator(".pl-pausar", has_text="Volver a planificar").click()
-    assert pagina.locator("#plAlertaN").inner_text() == "3"
+    assert pagina.locator(ALERTA_N).inner_text() == "3"
     # Asignarle a alguien también lo saca de la pausa
     fila.locator(".pl-pausar").click()
     _celda_proyecto(pagina, "tag:SOLO", 3).click()
     pagina.locator('#plPop input[data-op="c|MP"]').check()
     assert "Ya no está «sin trabajo esta semana»" in pagina.locator("#aviso").inner_text()
-    assert "pausa" not in (fila.get_attribute("class") or "") and pagina.locator("#plAlertaN").inner_text() == "2"
+    assert "pausa" not in (fila.get_attribute("class") or "") and pagina.locator(ALERTA_N).inner_text() == "2"
     assert not errores
     pagina.context.close()
 
@@ -2443,13 +2459,13 @@ def test_otras_semanas_copiar_la_anterior_compartir_e_imprimir(navegador, sitio)
     pagina.locator("#plDespues").click()
     assert pagina.locator("#plSemanaRango").inner_text().startswith("Esta semana")
     pagina.locator("#plPersonal .pl-celda").first.wait_for()
-    pagina.locator("#plCopiar").click()
+    _mas(pagina, "#plCopiar").click()
     pagina.wait_for_function("document.getElementById('aviso').textContent.startsWith('Se copió')")
     assert pagina.locator("#aviso").inner_text().startswith(f"Se copió 1 asignación de la semana {anterior}.")
     assert pagina.evaluate(JS_PERSONAL)["LC"][3] == ["En obra"]
     # Compartir (2026-10-23): por persona, lo de cada uno día por día; también por día, como antes
     jueves = (lunes + timedelta(days=3)).day
-    pagina.locator("#plCompartir").click()
+    _mas(pagina, "#plCompartir").click()
     texto = pagina.locator("#plTextoArea").input_value()
     assert texto.startswith(f"*Planificación semana {numero} · ")
     assert f"\n*LC*\n• Lun {lunes.day}: sin proyecto\n" in texto and f"\n• Jue {jueves}: En obra\n" in texto
@@ -2462,7 +2478,7 @@ def test_otras_semanas_copiar_la_anterior_compartir_e_imprimir(navegador, sitio)
     assert pagina.evaluate("navigator.clipboard.readText()").replace("\r\n", "\n") == texto     # Windows lo guarda con \r\n
     assert pagina.locator("#dlgPlTexto").is_hidden()
     # El orden elegido queda para la próxima vez
-    pagina.locator("#plCompartir").click()
+    _mas(pagina, "#plCompartir").click()
     assert pagina.locator('#plTextoModo [data-modo="dia"]').get_attribute("aria-pressed") == "true"
     pagina.keyboard.press("Escape")
     # Imprimir o PDF (2026-10-23): un documento propio para el papel, el mismo desde cualquier vista: la tabla de la
@@ -2475,7 +2491,7 @@ def test_otras_semanas_copiar_la_anterior_compartir_e_imprimir(navegador, sitio)
         window.__hoja = document.querySelector('#plDoc .pl-doc-hoja') ? document.querySelector('#plDoc .pl-doc-hoja').innerText : '';
         window.dispatchEvent(new Event('afterprint'));
     }; }""")
-    pagina.locator("#plImprimir").click()
+    _mas(pagina, "#plImprimir").click()
     dlg = pagina.locator("#dlgPlExportar")
     assert dlg.is_visible()
     assert dlg.locator("#plExpPers input:checked").evaluate_all("xs => xs.map((x) => x.value)") == ["LC"]
@@ -2494,7 +2510,7 @@ def test_otras_semanas_copiar_la_anterior_compartir_e_imprimir(navegador, sitio)
     assert pagina.evaluate("document.getElementById('plDoc').childElementCount") == 0
     assert not pagina.evaluate("document.title").startswith("Planificación semana")
     # Sin nada elegido no se imprime
-    pagina.locator("#plImprimir").click()
+    _mas(pagina, "#plImprimir").click()
     dlg.locator("#plExpTabla").uncheck()
     dlg.locator("#plExpHojas").uncheck()
     assert dlg.locator("#plExpImprimir").is_disabled() and dlg.locator("#plExpCuenta").inner_text() == "Elige qué imprimir."
@@ -2520,6 +2536,165 @@ def test_las_semanas_cruzan_el_cambio_de_ano(navegador, sitio):
     pagina.locator("#plAntes").click()
     assert (pagina.locator("#plSemanaN").inner_text(), pagina.locator("#plSemanaRango").inner_text()) == (
         "Semana 52 de 2026", "21 al 25 de diciembre")
+    assert not errores
+    pagina.context.close()
+
+
+# ---- La vista simple y el arrastre (2026-10-28) ------------------------------------------------------------------
+
+def _dias_de(lunes):
+    from datetime import timedelta
+    return [lunes + timedelta(days=i) for i in range(5)]
+
+
+def test_la_vista_simple_sin_alarma_en_la_cabecera(navegador, sitio):
+    """Pedido del 2026-10-28: «demasiada información en pantalla». La alarma ya no va en la cabecera del portal (sigue en
+    el Inicio y el menú); las cifras van en una línea y la lista de los sin asignar se despliega desde la suya; lo de
+    vez en cuando va en «Más»; los paneles de General van plegados y se recuerda cuál se abrió."""
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general", ancho=1366, alto=768)
+    assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
+    assert pagina.locator('.ini-item[data-herr="planificacion"] .pl-alerta-n').inner_text() == "3"
+    # Las cifras, en una sola línea y bajas
+    cajas = pagina.locator("#plResumen .rc-kpi").evaluate_all("bs => bs.map((b) => b.getBoundingClientRect().toJSON())")
+    assert len({round(c["y"]) for c in cajas}) == 1 and max(c["height"] for c in cajas) <= 34, cajas
+    # La lista de los sin asignar, plegada hasta tocar su cifra
+    alarma = pagina.locator("#plResumen .pl-kpi-alarma")
+    assert pagina.locator("#plAlarma").is_hidden() and alarma.get_attribute("aria-expanded") == "false"
+    assert (alarma.locator(".rc-kpi-n").inner_text(), alarma.locator(".rc-kpi-et").inner_text()) == ("3", "sin asignar")
+    alarma.click()
+    assert pagina.locator("#plAlarma").is_visible() and alarma.get_attribute("aria-expanded") == "true"
+    assert _alarma(pagina).locator(".pl-alarma-p").all_inner_texts() == list(ACTIVOS.values())
+    alarma.click()
+    assert pagina.locator("#plAlarma").is_hidden()
+    # «Más»: copiar, compartir, imprimir, el estado de los proyectos y el sábado; se cierra al tocar fuera o con Esc
+    for id_ in ("#plCopiar", "#plCompartir", "#plImprimir", "#plProyectos", "#plSabado"):
+        assert pagina.locator(id_).is_hidden(), id_
+    pagina.locator("#plMas").click()
+    assert pagina.locator("#plMas").get_attribute("aria-expanded") == "true"
+    assert [" ".join(t.split()) for t in pagina.locator("#plMasLista .pl-mas-op").all_inner_texts()] == [
+        "Copiar la semana anterior", "Compartir", "Imprimir o PDF", "Estado de los proyectos", "Mostrar el sábado"]
+    pagina.keyboard.press("Escape")
+    assert pagina.locator("#plMasLista").is_hidden() and pagina.locator("#plMas").get_attribute("aria-expanded") == "false"
+    pagina.locator("#plMas").click()
+    pagina.locator("#tituloPlan").click()
+    assert pagina.locator("#plMasLista").is_hidden()
+    pagina.locator("#plMas").click()
+    _mas(pagina, "#plProyectos").click()
+    assert pagina.locator("#dlgPlProyectos").is_visible() and pagina.locator("#plMasLista").is_hidden()
+    pagina.keyboard.press("Escape")
+    # Los paneles de General: plegados, con una línea de lo que dicen; el abierto queda abierto al volver
+    paneles = pagina.locator("#plGeneral details.pl-panel")
+    assert paneles.evaluate_all("ds => ds.map((d) => [d.dataset.panel, d.open])") == [
+        ["proyectos", False], ["personal", False], ["vehiculos", False]]
+    assert pagina.locator('#plGeneral [data-panel="proyectos"] .pl-panel-res').inner_text() == "0 con alguien · 3 sin asignar"
+    pagina.locator('#plGeneral [data-panel="personal"] summary').click()
+    pagina.reload()
+    pagina.locator("#plGeneral details.pl-panel").first.wait_for()
+    assert pagina.locator("#plGeneral details.pl-panel").evaluate_all("ds => ds.map((d) => d.open)") == [False, True, False]
+    assert not errores
+    pagina.context.close()
+
+
+def test_arrastrar_un_proyecto_a_una_persona_y_moverlo(navegador, sitio):
+    """Pedido del 2026-10-28: en «Por personal», los proyectos activos a la vista para arrastrarlos al día y la persona.
+    Lo ya asignado se arrastra a otra casilla y se mueve, en un paso que se deshace."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    lun, mar = _dias_de(lunes)[:2]
+    panel = pagina.locator("#plPersonal .pl-arr")
+    assert panel.locator("h2").inner_text() == "Proyectos activos"
+    # Los tres sin nadie, juntos y primero
+    assert panel.locator(".pl-arr-grupo").all_inner_texts()[0].upper() == "SIN ASIGNAR · 3"
+    assert panel.locator(".pl-arr-item").evaluate_all("bs => bs.map((b) => b.dataset.clave)") == ["req:907", "req:908", "tag:SOLO"]
+    panel.locator('.pl-arr-item[data-clave="req:908"]').drag_to(_celda_personal(pagina, "LC", 0))
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == ["En obra"]
+    assert f"LC va a En obra el lunes {lun.day}" in pagina.locator("#aviso").inner_text()
+    assert pagina.locator("#plPop").is_hidden(), "soltar no abre la ventanita"
+    # Ya no está entre los sin asignar
+    assert panel.locator(".pl-arr-grupo").all_inner_texts()[0].upper() == "SIN ASIGNAR · 2"
+    assert panel.locator('.pl-arr-item[data-clave="req:908"] .pl-arr-marca').inner_text() == "1 día"
+    # Soltarlo donde ya está no hace nada
+    panel.locator('.pl-arr-item[data-clave="req:908"]').drag_to(_celda_personal(pagina, "LC", 0))
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == ["En obra"]
+    # Moverlo a otra persona y otro día
+    _celda_personal(pagina, "LC", 0).locator(".pl-chip", has_text="En obra").drag_to(_celda_personal(pagina, "ES", 1))
+    vista = pagina.evaluate(JS_PERSONAL)
+    assert vista["LC"][0] == [] and vista["ES"][1] == ["En obra"]
+    assert (f"ES va a En obra el martes {mar.day} en vez de LC, que ya no va a En obra el lunes {lun.day}"
+            in pagina.locator("#aviso").inner_text())
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, archivo, lambda s: any(x["persona"] == "ES" and x["activa"] for x in s["datos"]["asignaciones"]))
+    activas = sorted((x["dia"], x["persona"], x["proyecto"]) for x in sobre["datos"]["asignaciones"] if x["activa"])
+    assert activas == [(mar.isoformat(), "ES", "req:908")]
+    # Mover también es una sola tanda: un Ctrl Z lo deja como antes de moverlo
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    vista = pagina.evaluate(JS_PERSONAL)
+    assert vista["LC"][0] == ["En obra"] and vista["ES"][1] == []
+    # El mismo día, a otra persona: va ella en vez de la primera
+    _celda_personal(pagina, "LC", 0).locator(".pl-chip").drag_to(_celda_personal(pagina, "NB", 0))
+    vista = pagina.evaluate(JS_PERSONAL)
+    assert vista["LC"][0] == [] and vista["NB"][0] == ["En obra"]
+    assert f"NB va a En obra el lunes {lun.day} en vez de LC." in pagina.locator("#aviso").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_elegir_en_el_panel_y_tocar_las_casillas(navegador, sitio):
+    """Sin arrastrar (con el dedo, o para varias casillas seguidas): se toca el proyecto del panel y después las casillas;
+    otra vez en la misma lo quita; «Listo» o Esc lo termina y la casilla vuelve a abrir su ventanita."""
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    item = pagina.locator('#plPersonal .pl-arr-item[data-clave="tag:SOLO"]')
+    item.click()
+    assert pagina.locator('#plPersonal .pl-arr-item[data-clave="tag:SOLO"]').get_attribute("aria-pressed") == "true"
+    assert "Toca las casillas donde va Obra sin número" in pagina.locator("#plPersonal .pl-arr-colocando").inner_text()
+    _celda_personal(pagina, "MP", 0).click()
+    _celda_personal(pagina, "MP", 1).click()
+    _celda_personal(pagina, "SV", 1).click()
+    vista = pagina.evaluate(JS_PERSONAL)
+    assert vista["MP"][:2] == [["Obra sin número"], ["Obra sin número"]] and vista["SV"][1] == ["Obra sin número"]
+    assert pagina.locator("#plPop").is_hidden()
+    _celda_personal(pagina, "MP", 1).click()
+    assert pagina.evaluate(JS_PERSONAL)["MP"][1] == []
+    pagina.keyboard.press("Escape")
+    assert pagina.locator("#plPersonal .pl-arr-colocando").count() == 0
+    assert pagina.locator('#plPersonal .pl-arr-item[aria-pressed="true"]').count() == 0
+    _celda_personal(pagina, "MP", 2).click()
+    assert pagina.locator("#plPop").is_visible()
+    pagina.keyboard.press("Escape")
+    # «Listo» también lo termina
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:907"]').click()
+    pagina.locator("#plPersonal .pl-arr-listo").click()
+    assert pagina.locator('#plPersonal .pl-arr-item[aria-pressed="true"]').count() == 0
+    assert not errores
+    pagina.context.close()
+
+
+def test_arrastrar_personas_por_proyecto_y_en_general(navegador, sitio):
+    """«Algo similar para las otras formas»: en «Por proyecto» se arrastra a las personas del panel al proyecto y el día
+    (y de un proyecto a otro); en General, a alguien sin proyecto a un proyecto de ese día."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    _, lunes = _semana_de(date.today())
+    panel = pagina.locator("#plProyecto .pl-arr")
+    assert panel.locator("h2").inner_text() == "Personal"
+    assert panel.locator(".pl-arr-item").evaluate_all("bs => bs.map((b) => b.dataset.persona)") == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
+    panel.locator('.pl-arr-item[data-persona="ES"]').drag_to(_celda_proyecto(pagina, "req:908", 2))
+    assert _celda_proyecto(pagina, "req:908", 2).locator(".pl-per").all_inner_texts() == ["ES"]
+    assert panel.locator('.pl-arr-item[data-persona="ES"] .s').inner_text() == "1 de 5 días"
+    # De un proyecto a otro el mismo día: cambia de proyecto
+    _celda_proyecto(pagina, "req:908", 2).locator(".pl-per").drag_to(_celda_proyecto(pagina, "tag:SOLO", 2))
+    assert _celda_proyecto(pagina, "req:908", 2).locator(".pl-per").count() == 0
+    assert _celda_proyecto(pagina, "tag:SOLO", 2).locator(".pl-per").all_inner_texts() == ["ES"]
+    assert "ES cambia de En obra a Obra sin número" in pagina.locator("#aviso").inner_text()
+    # En General: alguien sin proyecto el miércoles, al proyecto de ese día
+    pagina.locator('.pl-vista[data-vista="general"]').click()
+    mie = _dias_de(lunes)[2].isoformat()
+    bloque = pagina.locator(f'#plGeneral [data-ancla="j|tag:SOLO|{mie}"]')
+    pagina.locator(f'#plGeneral [data-ancla="p|NB|{mie}"]').drag_to(bloque)
+    assert bloque.locator(".pl-per").all_inner_texts() == ["NB", "ES"]
+    assert pagina.locator(f'#plGeneral [data-ancla="p|NB|{mie}"]').count() == 0
     assert not errores
     pagina.context.close()
 
@@ -2626,7 +2801,7 @@ def test_asignar_un_vehiculo_a_una_persona_en_un_proyecto(navegador, sitio):
     celda = _celda_proyecto(pagina, "req:908", 0)
     # Sin vehículos asignados, el resumen los cuenta libres
     kpi = pagina.locator("#plResumen .pl-kpi-veh")
-    assert (kpi.locator(".rc-kpi-n").inner_text(), kpi.locator(".rc-kpi-et").inner_text()) == ("0", "Vehículos en uso")
+    assert (kpi.locator(".rc-kpi-n").inner_text(), kpi.locator(".rc-kpi-et").inner_text()) == ("0", "vehículos en uso")
     assert kpi.locator(".rc-kpi-sub").inner_text() == "Quempineta libre · RAM libre"
     celda.click()
     assert pop.locator(".pl-op-veh").count() == 0, "solo bajo quienes van"
@@ -2734,7 +2909,7 @@ def test_vehiculo_varios_dias_cambiar_y_copiar_la_semana(navegador, sitio):
     # La semana que viene: copiar esta trae las asignaciones con sus vehículos
     pagina.locator("#plDespues").click()
     pagina.locator("#plProyecto .pl-celda").first.wait_for()
-    pagina.locator("#plCopiar").click()
+    _mas(pagina, "#plCopiar").click()
     pagina.wait_for_function("document.getElementById('aviso').textContent.startsWith('Se copiaron')")
     assert aviso().startswith(f"Se copiaron 5 asignaciones de la semana {lunes.isocalendar()[1]} (con sus vehículos).")
     assert [_vehs(_celda_proyecto(pagina, "req:908", i)) for i in range(5)] == [[["Quempineta", ""]]] * 5
@@ -2785,7 +2960,7 @@ def test_un_vehiculo_en_dos_lugares_a_la_vez_se_avisa_y_se_comparte(navegador, s
     assert lunes_ram.get_attribute("data-nivel") is None
     assert pagina.locator(f'#plVehiculos tr[data-iso="{mar}"] td[data-veh="ram"]').get_attribute("data-nivel") == "warn"
     # Compartir: por persona, en qué vehículo va a cada proyecto; por día, quiénes van y en qué
-    pagina.locator("#plCompartir").click()
+    _mas(pagina, "#plCompartir").click()
     texto = pagina.locator("#plTextoArea").input_value()
     linea_es = next(x for x in texto.split("\n*ES*\n")[1].split("\n") if x.startswith(f"• Lun {lunes.day}:"))
     assert "En obra, con LC, en la RAM" in linea_es and "Obra sin número" in linea_es and linea_es.endswith("en la RAM")
@@ -2802,7 +2977,7 @@ def test_un_vehiculo_en_dos_lugares_a_la_vez_se_avisa_y_se_comparte(navegador, s
             [...s.querySelectorAll('thead th')].map((th) => th.textContent), [...s.querySelectorAll('td.veh')].map((td) => td.textContent)]);
         window.dispatchEvent(new Event('afterprint'));
     }; }""")
-    pagina.locator("#plImprimir").click()
+    _mas(pagina, "#plImprimir").click()
     pagina.locator("#plExpImprimir").click()
     tabla = pagina.evaluate("window.__tabla")
     assert "Vehículo: RAM" in tabla[1][1], tabla[1]           # ES, el lunes
@@ -2852,7 +3027,9 @@ def test_los_vehiculos_caben_sin_desbordes(navegador, sitio, ancho):
     lun = lunes.isoformat()
     for vista in ("general", "personal", "proyecto"):
         pagina.locator(f'.pl-vista[data-vista="{vista}"]').click()
-        pagina.locator(f"#pl{vista.capitalize()} .pl-veh >> visible=true").first.wait_for()     # en el teléfono, el lunes
+        if movil and vista != "general":
+            pagina.locator('#plDiasMovil .pl-dia-tab').first.click()      # el teléfono muestra hoy; los vehículos van el lunes
+        pagina.locator(f"#pl{vista.capitalize()} .pl-veh >> visible=true").first.wait_for()
         d = pagina.evaluate(JS_DESBORDES)
         assert d["doc"] <= ancho and not d["fuera"], (vista, d)
         fuera = pagina.evaluate("""(ancho) => [...document.querySelectorAll('#vistaPlan *')].filter((e) => e.getClientRects().length
@@ -2948,7 +3125,7 @@ def test_agregar_una_persona_escrita_y_asignarla(navegador, sitio):
     # En «Por proyecto» va con su nombre corto, y el texto para WhatsApp con el entero
     pagina.locator('.pl-vista[data-vista="proyecto"]').click()
     assert _celda_proyecto(pagina, "req:908", 0).locator(".pl-per").all_inner_texts() == ["Juan P."]
-    pagina.locator("#plCompartir").click()
+    _mas(pagina, "#plCompartir").click()
     assert "*Juan Pérez*" in pagina.locator("#plTextoArea").input_value()
     pagina.keyboard.press("Escape")
     # La semana siguiente no está: es temporal. En «Agregar» aparece entre los de semanas anteriores y se suma con un toque
@@ -2974,7 +3151,7 @@ def test_agregar_una_persona_escrita_y_asignarla(navegador, sitio):
     assert pagina.locator('#plPersonal tr[data-persona="x-juan-perez"]').count() == 0
     pagina.locator("#plHoy").click()
     fila.wait_for()
-    assert fila.locator(".pl-quien-txt span").inner_text() == "1 proyecto"
+    assert fila.locator(".pl-quien-txt span").inner_text() == "1 de 5 días · 1 proyecto"
     pagina.locator('#plPersonal [data-agregar="persona"]').click()
     pagina.locator('#plAgregados button[data-k="x-juan-perez"][data-accion="quitar"]').click()
     pagina.locator("#plAgregarCerrar").click()
@@ -2983,7 +3160,7 @@ def test_agregar_una_persona_escrita_y_asignarla(navegador, sitio):
     # Ctrl Z lo vuelve a la lista
     pagina.locator("#tituloPlan").click()
     pagina.keyboard.press("Control+z")
-    assert fila.locator(".pl-quien-txt span").inner_text() == "1 proyecto"
+    assert fila.locator(".pl-quien-txt span").inner_text() == "1 de 5 días · 1 proyecto"
     sobre = _esperar_archivo(pagina, LISTA, lambda s: sorted((x["semana"], x["activa"]) for x in s["datos"]["personas"]) == [(semana, True), (siguiente, False)])
     assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
     assert not errores
@@ -3124,7 +3301,7 @@ def test_un_proyecto_cerrado_sale_de_la_planificacion(navegador, sitio):
     pagina.locator('.pl-vista[data-vista="proyecto"]').click()
     claves = pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
     assert sorted(claves) == ["pro:obra-externa", "tag:SOLO"], claves
-    assert " ".join(pagina.locator("#plAlertaCab").inner_text().split()) == "2 sin asignar"
+    assert pagina.locator(ALERTA_N).inner_text() == "2"
     assert not errores
     pagina.context.close()
 
@@ -3282,7 +3459,7 @@ def test_lo_cerrado_en_otro_navegador_sale_de_la_planificacion(navegador, sitio)
     pagina.locator('.pl-vista[data-vista="proyecto"]').click()
     claves = pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
     assert sorted(claves) == ["req:908", "tag:SOLO"], claves
-    pagina.locator("#plProyectos").click()
+    _mas(pagina, "#plProyectos").click()
     assert _proyectos_del_dialogo(pagina, "Cerrados en la planificación") == ["req-907"]
     assert "Cerrado por NB" in pagina.locator('#dlgPlProyectos li[data-tarjeta="req-907"]').inner_text()
     assert not errores
@@ -3491,11 +3668,11 @@ def test_lo_agregado_a_mano_es_de_su_semana_y_se_copia_con_lo_suyo(navegador, si
     # En esta semana, copiar la anterior los trae: Pedro (con lo suyo) y Obra externa como activo; Ana no tenía nada
     pagina.locator("#plDespues").click()
     pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
-    pagina.locator("#plCopiar").click()
+    _mas(pagina, "#plCopiar").click()
     pagina.wait_for_function("document.getElementById('aviso').textContent.startsWith('Se copiaron')")
     p = pagina.evaluate(JS_PERSONAL)
     assert p["x-pedro-soto"][3] == ["En obra"] and p["LC"][3] == ["Obra externa"] and "x-ana-rojas" not in p
-    assert pagina.locator('#plPersonal tr[data-persona="x-pedro-soto"] .pl-quien-txt span').inner_text() == "1 proyecto"
+    assert pagina.locator('#plPersonal tr[data-persona="x-pedro-soto"] .pl-quien-txt span').inner_text() == "1 de 5 días · 1 proyecto"
     pagina.locator('.pl-vista[data-vista="proyecto"]').click()
     assert pagina.locator('#plProyecto tr[data-clave="pro:obra-externa"] .pl-proy-txt .s').inner_text() == "agregado a mano"
     sobre = _esperar_archivo(pagina, LISTA, lambda s: len(s["datos"]["personas"]) == 1 and len(s["datos"]["proyectos"]) == 1)

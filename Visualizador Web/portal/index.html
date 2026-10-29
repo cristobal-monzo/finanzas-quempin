@@ -265,14 +265,7 @@
   .usr-op[aria-selected="true"] { background: var(--tinte); border-color: var(--brand-orange); box-shadow: inset 0 -3px 0 var(--brand-orange); }
 
   /* ---- Alarma de la Planificación semanal (2026-10-20): proyectos activos sin nadie asignado en la semana de hoy.
-     En la cabecera, así se ve desde cualquier herramienta; en el menú y en el Inicio, junto a la herramienta. ---- */
-  .cab-alerta {
-    flex: 0 0 auto; height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px 0 10px;
-    border: 1px solid #ff6b5e; border-radius: 999px; background: #3a1712; color: #ffd9d4;
-    font-size: 13px; font-weight: 900; white-space: nowrap; cursor: pointer;
-  }
-  .cab-alerta:hover { background: #4f1e17; }
-  .cab-alerta svg { flex: 0 0 auto; color: #ff8a7d; }
+     En el menú y en el Inicio, junto a la herramienta (desde el 2026-10-28 ya no en la cabecera, a pedido). ---- */
   .pl-alerta-n {
     flex: 0 0 auto; min-width: 22px; height: 22px; padding: 0 7px; display: inline-grid; place-items: center;
     border-radius: 999px; border: 1px solid var(--estado-bad); color: var(--estado-bad);
@@ -1002,7 +995,6 @@
   .pl-tabla thead th:last-child { border-top-right-radius: 11px; }
   .pl-th-nom { width: 200px; }
   .pl-t-proyecto .pl-th-nom { width: 280px; }
-  .pl-th-tot { width: 112px; }
   .pl-th-txt { display: inline-flex; align-items: baseline; gap: 6px; }
   .pl-th-txt b { font-size: 15px; font-weight: 900; color: var(--text-primary); }
   .pl-tabla thead th.hoy { color: var(--text-primary); box-shadow: inset 0 -3px 0 var(--brand-orange); }
@@ -1105,11 +1097,6 @@
   .pl-tabla tr.pl-sep th { padding: 8px 12px; background: var(--page-plane); font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
   .pl-tabla .pl-nada td { padding: 18px 12px; font-size: 13.5px; color: var(--texto-suave); text-align: center; }
   /* La semana de una fila, a la derecha: cuántos días y un cuadrito por día */
-  .pl-tot { padding: 9px 10px !important; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
-  .pl-mini { display: flex; gap: 3px; margin-top: 6px; }
-  .pl-mini span { width: 12px; height: 7px; border-radius: 2px; background: var(--gridline); }
-  .pl-mini .si { background: var(--estado-ok); }
-  .pl-mini .aus { background: repeating-linear-gradient(135deg, var(--baseline) 0 2px, transparent 2px 4px); }
   /* La vista general: un tablero por día */
   .pl-tablero { display: grid; grid-template-columns: repeat(var(--pl-n, 5), minmax(0, 1fr)); gap: 8px; align-items: start; }
   .pl-dia { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 0 8px 8px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-1); }
@@ -1163,7 +1150,6 @@
   /* «Vehículos en la semana»: un día por fila y un vehículo por columna; cada uso, el proyecto (abre su ventanita) y
      quiénes lo llevan; en naranjo, un vehículo en dos lugares a la vez. Con tres paneles, el de proyectos va a la
      izquierda y los otros dos uno sobre otro a la derecha. */
-  .pl-paneles:has(> .pl-panel-veh) > .pl-panel:first-child { grid-row: span 2; }
   .pl-panel.resaltada { animation: pl-resalta 1.8s ease-out; }
   .pl-vehs-t .dia { width: 66px; }
   .pl-vehs-t th, .pl-vehs-t td { vertical-align: top; }
@@ -1189,8 +1175,6 @@
   .pl-veh-choque { display: block; padding: 0 4px 3px 8px; font-size: 12px; font-weight: 700; color: var(--brand-orange-ink); }
   .pl-vehs-t tfoot th, .pl-vehs-t tfoot td { padding-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
   .pl-vehs-t tfoot td { padding-left: 6px; }
-  /* El resumen con la cifra de los vehículos: cinco en una fila; más angosto, tres y la de los vehículos al doble */
-  .pl-resumen.con-veh { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   /* El día a la vista en el teléfono (las tablas muestran uno a la vez) */
   .pl-dias-movil { display: none; }
   .pl-dia-tab {
@@ -1430,18 +1414,137 @@
   .pl-doc-dias .pl-doc-p b { font-size: 13px; }
   .pl-doc-dias .libre td { color: #8a8984; }
   .pl-doc-dias .aus td { font-style: italic; font-weight: 700; }
-  @container plan (max-width: 1340px) { .pl-th-nom { width: 176px; } .pl-t-proyecto .pl-th-nom { width: 240px; } .pl-th-tot { width: 100px; } }
+  /* ---- La vista más simple (2026-10-28): la barra, el resumen en una línea, «Más», los paneles plegados y el arrastre ---- */
+  .pl-cab h1 { font-size: 20px; }
+  .pl-acciones { gap: 8px; }
+  .pl-mas-menu { position: relative; }
+  .pl-mas-menu #plMas svg:last-child { transition: transform 0.15s; }
+  .pl-mas-menu #plMas[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
+  .pl-mas-lista {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 250px; padding: 6px;
+    display: flex; flex-direction: column; gap: 2px; border-radius: 12px; border: 1px solid var(--border-hairline);
+    background: var(--surface-card); box-shadow: 0 10px 28px rgba(0,0,0,0.16);
+  }
+  .pl-mas-lista[hidden] { display: none; }
+  .pl-mas-op {
+    min-height: 38px; padding: 0 10px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--text-primary); font: inherit; font-size: 13.5px; font-weight: 700; text-align: left; cursor: pointer;
+  }
+  .pl-mas-op:hover:not(:disabled), .pl-mas-op:focus-visible { background: var(--page-plane); }
+  .pl-mas-op:disabled { opacity: 0.45; cursor: default; }
+  .pl-mas-op svg { flex: 0 0 auto; color: var(--text-secondary); }
+  .pl-mas-op input { width: 16px; height: 16px; margin: 0; accent-color: var(--brand-orange); }
+  label.pl-mas-op { border-top: 1px solid var(--gridline); border-radius: 0 0 8px 8px; margin-top: 4px; padding-top: 4px; }
+  /* El resumen: cifras chicas en una fila, sin tarjetas; el detalle va en su título */
+  .pl-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .pl-resumen .rc-kpi {
+    position: relative; min-height: 30px; padding: 0 11px; display: inline-flex; align-items: center; gap: 5px; border-radius: 999px;
+    border: 1px solid var(--border-hairline); background: transparent; box-shadow: none; cursor: pointer;
+  }
+  .pl-resumen .rc-kpi:hover { border-color: var(--brand-orange); background: var(--surface-card); }
+  .pl-resumen .rc-kpi svg { flex: 0 0 auto; color: var(--texto-suave); }
+  .pl-resumen .rc-kpi-n { grid-row: auto; min-width: 0; font-size: 14px; }
+  .pl-resumen .rc-kpi-et { align-self: center; font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+  .pl-resumen .rc-kpi-sub { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pl-resumen .rc-kpi[data-nivel="bad"] { border-color: color-mix(in srgb, var(--estado-bad) 45%, transparent); background: color-mix(in srgb, var(--estado-bad) 7%, transparent); }
+  .pl-resumen .rc-kpi[data-nivel="bad"] svg, .pl-resumen .rc-kpi[data-nivel="bad"] .rc-kpi-et { color: var(--estado-bad); }
+  .pl-resumen .rc-kpi[data-nivel="warn"] { border-color: color-mix(in srgb, var(--estado-warn) 55%, transparent); }
+  .pl-resumen .rc-kpi[data-nivel="warn"] svg { color: var(--brand-orange-ink); }
+  /* Un vehículo en dos lugares a la vez sí se dice a la vista */
+  .pl-resumen .pl-kpi-veh[data-nivel="warn"] { max-width: 100%; flex-wrap: wrap; padding-top: 4px; padding-bottom: 4px; text-align: left; }
+  .pl-resumen .pl-kpi-veh[data-nivel="warn"] .rc-kpi-sub {
+    position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal;
+    font-size: 12.5px; font-weight: 700; color: var(--brand-orange-ink);
+  }
+  .pl-kpi-alarma svg:last-of-type { transition: transform 0.15s; }
+  .pl-kpi-alarma[aria-expanded="true"] svg:last-of-type { transform: rotate(180deg); }
+  .pl-resumen + .pl-alarma { margin-top: -4px; }
+  /* Los paneles de abajo de General: plegados, una línea cada uno */
+  .pl-paneles { display: flex; flex-direction: column; gap: 8px; }
+  details.pl-panel { padding: 0 16px; }
+  details.pl-panel[open] { padding-bottom: 10px; }
+  .pl-panel > summary {
+    min-height: 44px; display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; list-style: none; cursor: pointer;
+  }
+  .pl-panel > summary::-webkit-details-marker { display: none; }
+  .pl-panel > summary h2 { margin: 0; font-size: 14px; }
+  .pl-panel-res { font-size: 12.5px; color: var(--texto-suave); }
+  .pl-panel[data-nivel="warn"] .pl-panel-res { color: var(--brand-orange-ink); font-weight: 700; }
+  .pl-panel > summary svg { margin-left: auto; color: var(--texto-suave); transition: transform 0.15s; }
+  .pl-panel[open] > summary svg { transform: rotate(180deg); }
+  .pl-panel > summary:hover h2 { color: var(--brand-orange-ink); }
+  /* El arrastre: la tabla y, al costado, el panel de lo que se pone en las casillas */
+  .pl-con-arr { display: grid; grid-template-columns: minmax(0, 1fr) 236px; gap: 12px; align-items: start; }
+  .pl-con-tabla { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  .pl-arr {
+    position: sticky; top: 8px; max-height: calc(100dvh - 140px); min-height: 0; display: flex; flex-direction: column; gap: 8px;
+    padding: 12px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
+  }
+  .pl-arr h2 { margin: 0; font-size: 14px; font-weight: 900; }
+  .pl-arr-pista { margin: 0; font-size: 12px; line-height: 1.45; color: var(--texto-suave); }
+  .pl-arr-colocando { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--tinte); color: var(--tinte-texto); }
+  .pl-arr-colocando p { margin: 0; font-size: 12.5px; line-height: 1.45; }
+  .pl-arr-listo { align-self: flex-start; min-height: 30px; padding: 0 14px; }
+  .pl-arr-buscar {
+    width: 100%; min-height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--gridline);
+    background: var(--page-plane); color: var(--text-primary); font: inherit; font-size: 13px;
+  }
+  .pl-arr-buscar:focus { outline: 2px solid var(--brand-orange); outline-offset: -1px; }
+  .pl-arr-lista { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin: 0 -4px; padding: 0 4px 2px; }
+  .pl-arr-grupo { margin: 6px 0 0; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
+  .pl-arr-grupo:first-child { margin-top: 0; }
+  .pl-arr-grupo[data-nivel="bad"] { color: var(--estado-bad); }
+  .pl-arr-grupo[data-nivel="warn"] { color: var(--brand-orange-ink); }
+  .pl-arr-item {
+    --pc: var(--baseline);
+    flex: 0 0 auto; width: 100%; min-height: 36px; padding: 5px 8px; display: flex; align-items: center; gap: 8px; border-radius: 8px;
+    border: 1px solid var(--gridline); border-left: 3px solid var(--pc); background: var(--surface-card); color: var(--text-primary);
+    font: inherit; text-align: left; cursor: grab;
+  }
+  .pl-arr[data-tipo="persona"] .pl-arr-item { border-left-width: 1px; }
+  .pl-arr-item:hover { border-color: var(--baseline); border-left-color: var(--pc); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+  .pl-arr-item:active { cursor: grabbing; }
+  .pl-arr-item[aria-pressed="true"] { background: var(--tinte); border-color: var(--brand-orange); box-shadow: inset 0 0 0 1px var(--brand-orange); }
+  .pl-arr-item .pl-dot { display: none; }
+  .pl-arr-item .pl-avatar { width: 28px; height: 28px; font-size: 12px; }
+  .pl-arr-item .pl-avatar.tuya { border-color: var(--brand-orange); background: var(--brand-orange); color: #000000; }
+  .pl-arr-txt { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+  .pl-arr-txt .t { font-size: 12.5px; font-weight: 700; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-arr-txt .s { font-size: 12px; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-arr-marca { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+  .pl-arrastrable { cursor: grab; }
+  .pl-celda .pl-chip.pl-arrastrable:hover, .pl-celda .pl-per.pl-arrastrable:hover, .pl-bloque .pl-per.pl-arrastrable:hover { box-shadow: 0 0 0 2px var(--baseline); }
+  .pl-origen { opacity: 0.4; }
+  /* Mientras se arrastra: la casilla donde cae, en naranjo; donde no se puede, en rojo y dice por qué */
+  .pl-arrastrando .pl-celda .pl-mas { display: none; }
+  .pl-soltar-si { outline: 2px dashed var(--brand-orange) !important; outline-offset: -3px; background: var(--tinte) !important; }
+  .pl-soltar-no { outline: 2px dashed var(--estado-bad) !important; outline-offset: -3px; cursor: no-drop; }
+  .pl-soltar-no::after {
+    content: attr(data-no); position: absolute; right: 6px; bottom: 6px; padding: 1px 7px; border-radius: 999px;
+    background: var(--estado-bad); color: #ffffff; font-size: 12px; font-weight: 700; pointer-events: none;
+  }
+  .pl-bloque { position: relative; }
+  /* Con algo elegido en el panel, cada casilla lo recibe al tocarla */
+  .pl-colocando .pl-celda { cursor: copy; }
+  .pl-colocando .pl-celda:hover { box-shadow: inset 0 0 0 2px var(--brand-orange); background: var(--tinte); }
+  .pl-colocando .pl-celda .pl-mas { display: none; }
+  @container plan (max-width: 1340px) { .pl-th-nom { width: 176px; } .pl-t-proyecto .pl-th-nom { width: 240px; } .pl-con-arr { grid-template-columns: minmax(0, 1fr) 212px; } }
   @container plan (max-width: 1180px) {
-    .pl-acciones .cx-enlace span:not(.sr) { display: none; }
+    .pl-acciones .cx-enlace:not(#plMas) span:not(.sr) { display: none; }
     .pl-acciones { margin-left: 0; }
-    .pl-paneles { grid-template-columns: minmax(0, 1fr); }
-    .pl-paneles:has(> .pl-panel-veh) > .pl-panel:first-child { grid-row: auto; }
-    .pl-resumen.con-veh { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .pl-resumen.con-veh .pl-kpi-veh { grid-column: span 2; }
   }
   @container plan (max-width: 1100px) { .pl-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  @container plan (max-width: 900px) { .plan .rc-cab p { display: none; } .pl-th-tot { width: 86px; } .pl-mini { display: none; } }
-  @container plan (max-width: 760px) { .pl-resumen, .pl-resumen.con-veh { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* Angosto: el panel del arrastre va arriba de la tabla, en una franja que se desliza; con el dedo se toca y se colocan */
+  @container plan (max-width: 900px) {
+    .plan .rc-cab p { display: none; }
+    .pl-con-arr { grid-template-columns: minmax(0, 1fr); }
+    .pl-arr { order: -1; position: static; max-height: none; padding: 10px; }
+    .pl-arr .pl-arr-pista { display: none; }
+    .pl-arr-buscar { display: none; }
+    .pl-arr-lista { flex-direction: row; flex-wrap: wrap; max-height: 128px; padding-bottom: 2px; }
+    .pl-arr-grupo { display: none; }
+    .pl-arr-item { width: auto; max-width: 100%; flex: 0 1 auto; }
+  }
   /* El teléfono: un día a la vez en las tablas, que eligen los botones de días */
   @container plan (max-width: 720px) {
     .pl-dias-movil:not([hidden]) { display: flex; gap: 4px; }
@@ -1449,7 +1552,6 @@
     .pl-tabla[data-foco="2"] [data-dia]:not([data-dia="2"]), .pl-tabla[data-foco="3"] [data-dia]:not([data-dia="3"]),
     .pl-tabla[data-foco="4"] [data-dia]:not([data-dia="4"]), .pl-tabla[data-foco="5"] [data-dia]:not([data-dia="5"]) { display: none; }
     .pl-th-nom, .pl-t-proyecto .pl-th-nom { width: 44%; }
-    .pl-th-tot { width: 76px; }
     .pl-tablero { grid-template-columns: minmax(0, 1fr); }
     .pl-semana { flex: 1 1 100%; min-width: 0; justify-content: space-between; }
     .pl-sem-txt { min-width: 0; flex: 1 1 auto; overflow: hidden; }
@@ -1459,11 +1561,9 @@
   }
   @container plan (max-width: 600px) {
     .plan { padding: 12px 16px 24px; }
-    .pl-resumen .rc-kpi { min-height: 50px; padding: 6px 12px; }
-    .pl-resumen .rc-kpi-n { font-size: 22px; }
-    .pl-resumen .rc-kpi-sub { display: none; }
-    .pl-resumen .pl-kpi-veh .rc-kpi-sub { display: block; }      /* ocupa la fila entera: cabe dónde va cada uno */
     .pl-vista svg { display: none; }
+    .pl-resumen { gap: 5px; }
+    .pl-resumen .rc-kpi { padding: 0 9px; }
     .pl-cob .q { display: none; }
   }
 
@@ -1872,9 +1972,7 @@
     .rc-buscar input { font-size: 16px; }
     .sc-input { font-size: 16px; }   /* Subir documentos: con 14 px el iPhone hace zoom al escribir */
     .ini-item { min-height: 48px; }
-    /* Planificación: en la cabecera no cabe la alarma junto a Usuario y Proyecto (sigue en el menú, el Inicio y su vista);
-       la ventanita sube desde abajo */
-    .cab-alerta { display: none; }
+    /* Planificación: la ventanita sube desde abajo */
     .pl-pop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-height: 78dvh; }
     /* Con la ventanita abierta abajo, el aviso (con su «Deshacer») va arriba: no tapa «Listo» ni «Siguiente» */
     body:has(#plPop:not([hidden])) .aviso { bottom: auto; top: 72px; }
@@ -1938,9 +2036,6 @@
     <button class="cab-btn cab-buscar" id="btnBuscar" type="button" aria-controls="buscador" aria-expanded="false" aria-label="Buscar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
     </button>
-    <!-- La alarma de la Planificación semanal (2026-10-20): los proyectos activos sin nadie asignado esta semana.
-         La pinta plPintarAlarmaGlobal() cuando ya se leyó la carpeta del equipo; sin datos no aparece. -->
-    <button class="cab-alerta" id="plAlertaCab" type="button" hidden><span class="n" id="plAlertaN"></span><span class="txt"> sin asignar</span></button>
     <!-- Un solo modo claro/oscuro para el portal y todas las herramientas abiertas en él -->
     <button class="cab-btn" id="btnTema" type="button" aria-label="Modo oscuro" title="Modo oscuro"></button>
     <!-- Quién trabaja (2026-10-16): sus iniciales quedan en 'quempin_usuario', la misma clave del
@@ -2064,10 +2159,9 @@
              planificado en la carpeta de intercambio (publicado › planificacion) -->
         <section class="vista-plan sin-barra" id="vistaPlan" aria-labelledby="tituloPlan" hidden>
           <div class="plan">
-            <header class="rc-cab">
+            <header class="rc-cab pl-cab">
               <div>
-                <h1 id="tituloPlan">Planificación semanal</h1>
-                <p>Quién va a qué proyecto activo cada día, y en qué vehículo: hasta tres proyectos por persona en un día.</p>
+                <h1 id="tituloPlan" title="Quién va a qué proyecto activo cada día, y en qué vehículo: hasta tres proyectos por persona en un día">Planificación semanal</h1>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="plPunto"></span>
@@ -2087,17 +2181,24 @@
                   <button class="pl-hoy" id="plHoy" type="button">Esta semana</button>
                 </div>
                 <div class="pl-vistas" id="plVistas" role="group" aria-label="Cómo ver la semana"></div>
+                <!-- Lo de todos los días a la vista («Agregar»); lo demás en «Más», para que la barra no abrume (2026-10-28) -->
                 <div class="pl-acciones">
-                  <label class="rc-mios" title="Mostrar también el sábado"><input type="checkbox" id="plSabado"><span>Sábado</span></label>
                   <button class="cx-enlace" id="plAgregar" type="button" title="Una persona o un proyecto que no están en la lista, solo para la semana a la vista"></button>
-                  <button class="cx-enlace" id="plProyectos" type="button" title="De dónde sale cada proyecto, cómo va, y dar por cerrado uno que ya terminó"></button>
-                  <button class="cx-enlace" id="plCopiar" type="button" title="Agrega lo de la semana anterior, día por día, sin borrar nada de esta"></button>
-                  <button class="cx-enlace" id="plCompartir" type="button" title="Lo de cada persona, listo para pegar en WhatsApp o en un correo"></button>
-                  <button class="cx-enlace" id="plImprimir" type="button" title="Imprimir o guardar en PDF la tabla de la semana y una hoja para cada persona"></button>
+                  <div class="pl-mas-menu">
+                    <button class="cx-enlace" id="plMas" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="plMasLista" title="Copiar, compartir, imprimir y el estado de los proyectos"></button>
+                    <div class="pl-mas-lista" id="plMasLista" role="group" aria-label="Más acciones de la semana" hidden>
+                      <button class="pl-mas-op" id="plCopiar" type="button" title="Agrega lo de la semana anterior, día por día, sin borrar nada de esta"></button>
+                      <button class="pl-mas-op" id="plCompartir" type="button" title="Lo de cada persona, listo para pegar en WhatsApp o en un correo"></button>
+                      <button class="pl-mas-op" id="plImprimir" type="button" title="Imprimir o guardar en PDF la tabla de la semana y una hoja para cada persona"></button>
+                      <button class="pl-mas-op" id="plProyectos" type="button" title="De dónde sale cada proyecto, cómo va, y dar por cerrado uno que ya terminó"></button>
+                      <label class="pl-mas-op" title="Mostrar también el sábado"><input type="checkbox" id="plSabado"><span>Mostrar el sábado</span></label>
+                    </div>
+                  </div>
                 </div>
               </div>
+              <!-- Las cifras de la semana, en una línea; «sin asignar» despliega la lista de esos proyectos (#plAlarma) -->
+              <div class="pl-resumen" id="plResumen" role="group" aria-label="La semana en cifras"></div>
               <div class="pl-alarma" id="plAlarma" hidden></div>
-              <div class="rc-resumen pl-resumen" id="plResumen" role="group" aria-label="La semana en cifras: cada una abre su vista"></div>
               <div class="pl-dias-movil" id="plDiasMovil" role="group" aria-label="Día a la vista"></div>
               <p class="rc-leyendo" id="plEstadoSemana" role="status" hidden></p>
               <div id="plGeneral"></div>
@@ -2264,7 +2365,7 @@
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
       <li><strong>Recorrido de los proyectos</strong> (arriba en el Inicio y en el menú): cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre, con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Las cifras de arriba filtran el tablero y «Solo mis proyectos» deja los tuyos. Lee la carpeta del equipo, así que necesita la biblioteca conectada en este navegador.</li>
-      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Un proyecto activo sin nadie en la semana aparece en rojo arriba («sin asignar»); al tocarlo se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Con «Agregar» (o en la ventanita de un proyecto, «Otra persona») se escribe el nombre de alguien que no está en la lista, o un proyecto que no está en ejecución en el Recorrido (con su N° de la Planilla adelante, si lo tiene): es temporal y queda solo en esa semana (no pasa a las siguientes; «Copiar la semana anterior» lo lleva junto con lo suyo, y en «Agregar» se vuelve a sumar con un toque). Quitarlo no borra lo ya asignado. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
+      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Junto a «Por personal» están los proyectos activos, y junto a «Por proyecto», las personas: se arrastran a la casilla de un día, o se tocan y después se van tocando casillas (otra vez en la misma, lo quita). Lo ya asignado también se arrastra a otra casilla: se mueve, y con Ctrl se copia; en General se arrastra a una persona a un proyecto de ese día. Las cifras de la semana van en una línea arriba: «sin asignar» despliega los proyectos activos sin nadie en la semana, y al tocar uno se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». Copiar la semana anterior, Compartir, Imprimir, el estado de los proyectos y el sábado están en «Más». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Con «Agregar» (o en la ventanita de un proyecto, «Otra persona») se escribe el nombre de alguien que no está en la lista, o un proyecto que no está en ejecución en el Recorrido (con su N° de la Planilla adelante, si lo tiene): es temporal y queda solo en esa semana (no pasa a las siguientes; «Copiar la semana anterior» lo lleva junto con lo suyo, y en «Agregar» se vuelve a sumar con un toque). Quitarlo no borra lo ya asignado. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
       <li><strong>Proyectos en ejecución</strong> (en Control y finanzas): el resumen de cada proyecto en obra. Arriba, su venta, el costo estimado al cierre, el margen y el avance; después, cómo va su presupuesto por categoría (lo gastado en el Centro de Costos, lo comprometido en órdenes de compra y lo simulado). En «Gastos proyectados y cotizaciones» se anota cada cotización que llega (o se pegan sus filas de una vez) o un gasto que se espera hacer: se compara con lo presupuestado, con lo que QUEMPIN ha pagado y con las otras cotizaciones para lo mismo, y lo marcado en «Simular» cambia al tiro el costo, el margen y los indicadores; no es un costo real (al Centro de Costos solo llegan facturas y órdenes de compra). En «Mano de obra» se anotan los días trabajados (o se traen de la Planificación semanal): su costo, con la tarifa de cada nivel, es la mano de obra real del resumen y se puede llevar al Análisis Financiero. El avance y la fecha de término se piden desde aquí al Análisis Financiero, y el Recorrido y la Planificación los muestran desde ya. También abre su carpeta de Gestión de Proyectos, sus órdenes de compra, quién va esta semana, y sus pendientes y notas. Todo se guarda en la carpeta del equipo.</li>
       <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
@@ -5162,9 +5263,15 @@
     pop: null,                // la ventanita abierta: { tipo: persona | proyecto | nuevo, iso, ancla, … }
     diaMovil: null,           // el día que muestran las tablas en el teléfono
     foco: null,               // el proyecto que «Por proyecto» resalta al pintarse
-    focoVeh: false            // «Vehículos en la semana», que General muestra al pintarse (desde el resumen)
+    focoVeh: false,           // «Vehículos en la semana», que General muestra al pintarse (desde el resumen)
+    alarmaAbierta: false,     // la lista de los proyectos sin asignar, desplegada bajo el resumen
+    // Los paneles de abajo de General que están abiertos (plegados de entrada: 2026-10-28)
+    paneles: new Set(Array.isArray(plPrefs.paneles) ? plPrefs.paneles.filter((x) => typeof x === 'string') : []),
+    arrastre: null,           // lo que se está arrastrando: { tipo: proyecto | persona, clave?, per?, desde?: { per, iso, clave } }
+    armado: null,             // lo elegido en el panel para ir tocando casillas: { tipo: proyecto, clave } o { tipo: persona, per }
+    arrQ: ''                  // lo escrito en el buscador del panel de arrastre
   };
-  const plGuardarPrefs = () => guardar(LS_PL, { vista: planif.vista, sabado: planif.sabado, texto: planif.texto });
+  const plGuardarPrefs = () => guardar(LS_PL, { vista: planif.vista, sabado: planif.sabado, texto: planif.texto, paneles: [...planif.paneles] });
 
   // ---- Semanas: de lunes a sábado, con el número ISO 8601 (la semana es del año de su jueves) -------------------
   const plMas = (f, n) => new Date(f.getFullYear(), f.getMonth(), f.getDate() + n);
@@ -6268,21 +6375,23 @@
   }
   function plElegirVista(id) {
     planif.vista = id;
+    planif.armado = null;
+    planif.arrQ = '';
     plGuardarPrefs();
     plCerrarPop(false);
     plPintar();
+  }
+  // «Más»: lo que se usa de vez en cuando con la semana (copiar, compartir, imprimir, el estado, el sábado)
+  function plMasMenu(abrir) {
+    $('#plMasLista').hidden = !abrir;
+    $('#plMas').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    if (abrir) { plCerrarPop(false); const b = $('#plMasLista button:not(:disabled)'); if (b) b.focus(); }
   }
   // Desde la alarma: «Por proyecto», con ese proyecto a la vista y, con abrir, su ventanita en hoy (o en el primer día)
   function plEnfocar(clave, abrir) {
     planif.foco = clave;
     planif.focoAbrir = !!abrir;
     plElegirVista('proyecto');
-  }
-  // La alarma de la cabecera: la semana de hoy en la Planificación
-  function plIrAlarma() {
-    planif.lunes = plLunesDe(new Date());
-    planif.diaMovil = null;
-    abrir('planificacion');
   }
 
   // ---- Subir documentos al Centro de Costos (2026-10-23) --------------------------------------------------------
@@ -6609,14 +6718,7 @@
   function plPintarAlarmaGlobal() {
     const l = plSinAsignarHoy() || [];
     const n = l.length;
-    const b = $('#plAlertaCab');
-    b.hidden = !n;
     const que = n === 1 ? 'Un proyecto activo sin nadie asignado esta semana' : n + ' proyectos activos sin nadie asignado esta semana';
-    if (n) {
-      $('#plAlertaN').textContent = String(n);
-      b.title = que + ': ' + l.map((p) => p.titulo).join(', ') + '. Toca para planificar.';
-      b.setAttribute('aria-label', 'Alarma de la planificación. ' + b.title);
-    }
     // Junto al nombre de la herramienta, en el menú y en el Inicio (donde además lo dice su línea de abajo)
     document.querySelectorAll('.menu-item[data-herr="planificacion"], .ini-item[data-herr="planificacion"]').forEach((el) => {
       let s = el.querySelector('.pl-alerta-n');
@@ -6719,7 +6821,8 @@
     const caja = $('#plAlarma');
     const l = m.sinAsignar;
     caja.textContent = '';
-    caja.hidden = !l.length;
+    if (!l.length) planif.alarmaAbierta = false;
+    caja.hidden = !planif.alarmaAbierta;      // plegada: la despliega la cifra «sin asignar» del resumen
     if (!l.length) return;
     const actual = s.id === plHoyId();
     const futura = s.lunes > new Date();
@@ -6744,7 +6847,9 @@
     txt.append(ul, crear('span', 'pl-alarma-pista', 'Toca uno para asignar a alguien al menos un día o, si esa semana no se trabaja en él, marcarlo «Sin trabajo esta semana».'));
     caja.append(ico, txt);
   }
-  // Las cifras de la semana; cada una abre la vista donde se ve. La de los vehículos lleva a «Vehículos en la semana».
+  /* Las cifras de la semana, en una línea discreta (2026-10-28: antes eran cinco tarjetas y la alarma, una caja roja);
+     cada una abre la vista donde se ve, el detalle va al pasar encima. «Sin asignar» despliega la lista de esos
+     proyectos, y la de los vehículos lleva a «Vehículos en la semana». */
   function plPintarResumen(s, m, dias) {
     const cont = $('#plResumen');
     cont.textContent = '';
@@ -6758,12 +6863,12 @@
     const pausados = m.activos.filter((p) => m.pausas.has(p.clave) && !m.dias.has(p.clave)).length;
     const actual = s.id === plHoyId();
     const cifras = [
-      { n: m.activos.length, et: 'Proyectos activos', vista: 'proyecto',
+      { n: m.activos.length, et: m.activos.length === 1 ? 'proyecto activo' : 'proyectos activos', vista: 'proyecto',
         sub: m.activos.some((p) => p.mano) ? 'Con ' + pl(m.activos.filter((p) => p.mano).length, 'agregado', 'agregados') + ' a mano' : 'En ejecución, según el Recorrido' },
-      { n: m.sinAsignar.length, et: 'Sin asignar', sub: pausados ? 'Y ' + pausados + ' sin trabajo ' + plEsta(s) : 'Sin nadie ningún día de la semana',
-        vista: 'proyecto', nivel: m.sinAsignar.length ? (actual ? 'bad' : 'warn') : '' },
-      { n: asignados, et: 'Días asignados', sub: 'De ' + pl(disponibles, 'día-persona disponible', 'días-persona disponibles'), vista: 'personal' },
-      { n: disponibles - asignados, et: 'Días libres', sub: ausentes ? 'Sin proyecto; aparte, ' + pl(ausentes, 'día de ausencia', 'días de ausencia') : 'Personas sin proyecto ese día', vista: 'personal' }
+      { n: m.sinAsignar.length, et: 'sin asignar', sub: pausados ? 'Y ' + pausados + ' sin trabajo ' + plEsta(s) : 'Sin nadie ningún día de la semana',
+        alarma: m.sinAsignar.length > 0, vista: 'proyecto', nivel: m.sinAsignar.length ? (actual ? 'bad' : 'warn') : '' },
+      { n: asignados, et: asignados === 1 ? 'día asignado' : 'días asignados', sub: 'De ' + pl(disponibles, 'día-persona disponible', 'días-persona disponibles'), vista: 'personal' },
+      { n: disponibles - asignados, et: disponibles - asignados === 1 ? 'día libre' : 'días libres', sub: ausentes ? 'Sin proyecto; aparte, ' + pl(ausentes, 'día de ausencia', 'días de ausencia') : 'Personas sin proyecto ese día', vista: 'personal' }
     ];
     if (PL_VEHICULOS.length) {
       // Cuántos se usan y cuántos días cada uno; si uno va a dos lugares a la vez, eso primero
@@ -6771,19 +6876,28 @@
       const choques = usos.flatMap((u) => u.dias.filter((d) => m.usoVeh(d.iso, u.v.id).length > 1).map((d) => ({ v: u.v, d, n: m.usoVeh(d.iso, u.v.id).length })));
       const enUso = usos.filter((u) => u.dias.length).length;
       const detalle = usos.map((u) => u.v.nombre + ' ' + (u.dias.length ? pl(u.dias.length, 'día', 'días') : 'libre')).join(' · ');
-      cifras.push({ n: enUso, et: enUso === 1 ? 'Vehículo en uso' : 'Vehículos en uso', vista: 'general', veh: true, nivel: choques.length ? 'warn' : '',
+      cifras.push({ n: enUso, et: enUso === 1 ? 'vehículo en uso' : 'vehículos en uso', vista: 'general', veh: true, nivel: choques.length ? 'warn' : '',
         sub: choques.length ? mayuscula(plLaVeh(choques[0].v)) + ' en ' + choques[0].n + ' lugares ' + plElDia(choques[0].d) + (choques.length > 1 ? ' y ' + (choques.length - 1) + ' más' : '') : detalle,
         titulo: (choques.length ? choques.map((x) => mayuscula(plLaVeh(x.v)) + ' va a ' + x.n + ' lugares a la vez ' + plElDia(x.d)).join('. ') + '. ' : detalle + '. ')
           + 'Ver dónde va cada vehículo, en la vista General' });
     }
-    cont.classList.toggle('con-veh', PL_VEHICULOS.length > 0);
     cifras.forEach((k) => {
-      const b = crear('button', 'rc-kpi' + (k.veh ? ' pl-kpi-veh' : ''));
+      const b = crear('button', 'rc-kpi' + (k.veh ? ' pl-kpi-veh' : '') + (k.alarma ? ' pl-kpi-alarma' : ''));
       b.type = 'button';
       if (k.nivel) b.dataset.nivel = k.nivel;
+      if (k.veh) b.append(icono('vehiculo', 15));
+      else if (k.alarma) b.append(icono('alerta', 15));
       b.append(crear('span', 'rc-kpi-n', String(k.n)), crear('span', 'rc-kpi-et', k.et), crear('span', 'rc-kpi-sub', k.sub));
-      b.title = k.titulo || 'Ver ' + PL_VISTAS.find((v) => v.id === k.vista).nombre.toLowerCase();
-      b.addEventListener('click', () => { planif.focoVeh = !!k.veh; plElegirVista(k.vista); });
+      if (k.alarma) {
+        b.append(icono('flecha', 14));
+        b.setAttribute('aria-expanded', planif.alarmaAbierta ? 'true' : 'false');
+        b.setAttribute('aria-controls', 'plAlarma');
+        b.title = k.sub + '. Toca para ver cuáles son';
+        b.addEventListener('click', () => { planif.alarmaAbierta = !planif.alarmaAbierta; plPintarAlarma(s, m); b.setAttribute('aria-expanded', planif.alarmaAbierta ? 'true' : 'false'); });
+      } else {
+        b.title = (k.titulo || k.sub + '. Ver ' + PL_VISTAS.find((v) => v.id === k.vista).nombre.toLowerCase());
+        b.addEventListener('click', () => { planif.focoVeh = !!k.veh; plElegirVista(k.vista); });
+      }
       cont.append(b);
     });
   }
@@ -6816,9 +6930,6 @@
       th.append(c);
       tr.append(th);
     });
-    const thf = crear('th', 'pl-th-tot', 'Semana');
-    thf.scope = 'col';
-    tr.append(thf);
     thead.append(tr);
     t.append(thead);
   }
@@ -6898,15 +7009,6 @@
     }).filter(Boolean);
     return partes.length ? ', ' + unir(partes) : '';
   }
-  // La semana de una fila: cuántos días tiene algo y un cuadrito por día
-  function plTotal(dias, estadoDe, txt) {
-    const td = crear('td', 'pl-tot');
-    const mini = crear('span', 'pl-mini');
-    mini.setAttribute('aria-hidden', 'true');
-    dias.forEach((d) => mini.append(crear('span', estadoDe(d) || null)));
-    td.append(crear('span', null, txt), mini);
-    return td;
-  }
   // Por personal: una fila por persona, sus proyectos de cada día (hasta 3) y sus ausencias.
   function plPintarPersonal(s, m, dias) {
     const cont = $('#plPersonal');
@@ -6928,13 +7030,18 @@
         const [td, b] = plCelda('p|' + per + '|' + d.iso, d);
         if (a) { aus++; b.classList.add('ausente'); b.append(crear('span', 'pl-aus', plAusencia(a.motivo).nombre)); }
         else if (lista.length) con++;
-        lista.forEach((c) => { proyectos.add(c); b.append(plChip(m, c, m.vehiculo(d.iso, per, c), d)); });
+        lista.forEach((c) => {
+          proyectos.add(c);
+          const chip = plChip(m, c, m.vehiculo(d.iso, per, c), d);
+          plArrastrable(chip, { tipo: 'proyecto', clave: c, desde: { per, iso: d.iso, clave: c } }, m.titulo(c));
+          b.append(chip);
+        });
         if (lista.length > PL_MAX) { b.classList.add('exceso'); b.append(crear('span', 'pl-lleno', lista.length + ' de ' + PL_MAX + ': quita ' + (lista.length - PL_MAX))); }
         else if (lista.length === PL_MAX) b.append(crear('span', 'pl-lleno', 'Completo'));
         else if (!a) plAgregar(b, lista.length ? null : 'Asignar');
         b.setAttribute('aria-label', plNom(per) + ', ' + plFechaLarga(d) + ': ' + (a ? plAusencia(a.motivo).nombre.toLowerCase()
           : lista.length ? lista.map((c) => m.titulo(c) + plVehsTexto(m, d.iso, c, [per])).join('; ') : 'sin proyecto') + '. Cambiar');
-        b.addEventListener('click', () => plAbrirPersona(per, d.iso));
+        b.addEventListener('click', () => plColocar({ per, iso: d.iso }) || plAbrirPersona(per, d.iso));
         return td;
       });
       const th = crear('th');
@@ -6944,17 +7051,19 @@
       const mano = PL_PER_MANO.test(per);
       const enLista = !mano || plManoActivas(s).includes(per);
       // Una persona escrita a mano se ve por su círculo punteado; si ya la quitaron de la lista, lo dice
+      // Lo de la semana va bajo el nombre (2026-10-28: antes, en una columna «Semana» al final)
       tx.append(crear('b', null, per === estado.usuario ? per + ' · tú' : plNom(per)),
-        crear('span', null, !enLista ? 'Fuera de la lista' : proyectos.size ? pl(proyectos.size, 'proyecto', 'proyectos') : aus === dias.length ? 'Ausente' : 'Sin proyectos'));
+        crear('span', null, !enLista ? 'Fuera de la lista' : aus === dias.length ? 'Ausente' : proyectos.size ? con + ' de ' + pl(dias.length - aus, 'día', 'días') + ' · ' + pl(proyectos.size, 'proyecto', 'proyectos') : 'Sin proyectos'));
       q.append(crear('span', 'pl-avatar' + (mano ? ' mano' : ''), plIniciales(per)), tx);
       if (mano) th.title = plNom(per) + (enLista ? ': agregada a mano en la planificación' : ': ya no está en la lista de la planificación');
       th.append(q);
-      tr.append(th, ...celdas, plTotal(dias, (d) => (m.ausencias.has(d.iso + '|' + per) ? 'aus' : (m.porPersona.get(d.iso + '|' + per) || []).length ? 'si' : ''),
-        con + ' de ' + (dias.length - aus) + ' días'));
+      tr.append(th, ...celdas);
       tb.append(tr);
     });
     t.append(tb);
-    cont.append(t, plBotonAgregar('persona', 'Agregar persona', 'Alguien que no está en la lista: escribe su nombre y queda solo en esta semana'));
+    const tabla = crear('div', 'pl-con-tabla');
+    tabla.append(t, plBotonAgregar('persona', 'Agregar persona', 'Alguien que no está en la lista: escribe su nombre y queda solo en esta semana'));
+    cont.append(plConArrastre(tabla, plPanelArrastre(s, m, dias, 'proyecto')));
   }
   // Al pie de «Por personal» y «Por proyecto»: agregar a mano lo que no está en la lista
   function plBotonAgregar(modo, txt, titulo) {
@@ -6982,7 +7091,7 @@
     if (otros.length) {
       const tr = crear('tr', 'pl-sep');
       const th = crear('th', null, 'También en la semana: otras actividades y proyectos que ya no están en ejecución');
-      th.colSpan = dias.length + 2;
+      th.colSpan = dias.length + 1;
       th.scope = 'rowgroup';
       tr.append(th);
       tb.append(tr);
@@ -6991,7 +7100,7 @@
     if (!m.activos.length && !otros.length) {
       const tr = crear('tr', 'pl-nada');
       const td = crear('td', null, 'No hay proyectos en ejecución en el Recorrido. Cuando un proyecto se adjudica o tiene su ficha en el Análisis Financiero, aparece aquí; uno que no está, agrégalo abajo.');
-      td.colSpan = dias.length + 2;
+      td.colSpan = dias.length + 1;
       tr.append(td);
       tb.append(tr);
     }
@@ -7004,7 +7113,9 @@
     est.append(icono('bandera', 14), crear('span', null, 'Estado de los proyectos'));
     est.addEventListener('click', () => plAbrirProyectos());
     pie.append(plBotonAgregar('proyecto', 'Agregar proyecto', 'Un proyecto que no está en ejecución en el Recorrido: escribe su nombre y queda solo en esta semana'), est);
-    cont.append(t, pie);
+    const tabla = crear('div', 'pl-con-tabla');
+    tabla.append(t, pie);
+    cont.append(plConArrastre(tabla, plPanelArrastre(s, m, dias, 'persona')));
     if (planif.foco) {
       const f = cont.querySelector('tr[data-clave="' + CSS.escape(planif.foco) + '"]');
       const abrir = planif.focoAbrir;
@@ -7053,7 +7164,8 @@
     // Cómo va según el Recorrido (su avance, o lo que le falta), con el detalle al pasar encima (2026-10-26)
     const como = p.activo && !p.mano ? plEstadoDe(plTarjeta(p.tarjeta)) : null;
     if (como) { const c = plChipEstado(como.texto, como.nivel); c.title = como.titulo; c.classList.add('pl-avance'); est.append(c); }
-    if (alarma) est.append(plChipEstado(s.id === plHoyId() ? 'Sin asignar esta semana' : 'Sin asignar', s.id === plHoyId() ? 'bad' : 'warn'));
+    // Sin asignar ya lo dicen la raya roja de la fila y el panel del costado (2026-10-28: una etiqueta menos)
+    if (alarma) th.title = 'Sin nadie asignado ' + plEsta(s);
     else if (pausa && !diasCon.length) est.append(plChipEstado('Sin trabajo ' + plEsta(s) + (pausa.nota ? ': ' + pausa.nota : ''), ''));
     else if (diasCon.length) est.append(plChipEstado(pl(diasCon.length, 'día', 'días') + ' · ' + pl(personas.size, 'persona', 'personas'), 'ok'));
     if (p.activo && !diasCon.length) {
@@ -7068,16 +7180,18 @@
     dias.forEach((d) => {
       const [td, c] = plCelda('j|' + p.clave + '|' + d.iso, d);
       const van = plOrdenPersonas(m.porProyecto.get(d.iso + '|' + p.clave) || []);
-      if (van.length) { const w = crear('span', 'pl-pers'); van.forEach((x) => w.append(plPersona(x))); c.append(w); }
+      if (van.length) {
+        const w = crear('span', 'pl-pers');
+        van.forEach((x) => w.append(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: p.clave } }, plNom(x))));
+        c.append(w);
+      }
       const vs = van.length ? plVehs(m, d, p.clave, van) : null;
       if (vs) c.append(vs);
       plAgregar(c, van.length ? null : 'Asignar');
       c.setAttribute('aria-label', p.titulo + ', ' + plFechaLarga(d) + ': ' + (van.length ? plNoms(van) + plVehsTexto(m, d.iso, p.clave, van) : 'nadie') + '. Cambiar');
-      c.addEventListener('click', () => plAbrirProyecto(p.clave, d.iso));
+      c.addEventListener('click', () => plColocar({ clave: p.clave, iso: d.iso }) || plAbrirProyecto(p.clave, d.iso));
       tr.append(td);
     });
-    tr.append(plTotal(dias, (d) => ((m.porProyecto.get(d.iso + '|' + p.clave) || []).length ? 'si' : ''),
-      diasCon.length ? pl(diasCon.length, 'día', 'días') : 'Ningún día'));
     return tr;
   }
   // General: un tablero por día con cada proyecto y quiénes van, quiénes quedan sin proyecto y quiénes faltan; abajo, lo que
@@ -7113,7 +7227,7 @@
           if (p.lugar) b.append(crear('span', 's', p.lugar));
           const van = plOrdenPersonas(m.porProyecto.get(d.iso + '|' + c) || []);
           const w = crear('span', 'pl-pers');
-          van.forEach((x) => w.append(plPersona(x)));
+          van.forEach((x) => w.append(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: c } }, plNom(x))));
           b.append(w);
           const vs = plVehs(m, d, c, van);
           if (vs) b.append(vs);
@@ -7139,6 +7253,8 @@
           const a = m.ausencias.get(d.iso + '|' + per);
           b.title = a ? plNom(per) + ': ' + plAusencia(a.motivo).nombre.toLowerCase() + ' ' + plElDia(d) : plNom(per) + ' no tiene proyecto ' + plElDia(d) + ': asignarle uno';
           b.setAttribute('aria-label', b.title);
+          // Sin proyecto: se arrastra a un proyecto de ese día (o de otro)
+          if (!a) { b.title += ', o arrástralo a un proyecto'; plArrastrable(b, { tipo: 'persona', per }, plNom(per)); }
           b.addEventListener('click', () => plAbrirPersona(per, d.iso));
           f.append(b);
         });
@@ -7158,10 +7274,27 @@
     const veh = planif.focoVeh && $('#plVehiculos');
     planif.focoVeh = false;
     if (veh) {
+      veh.open = true;
       veh.scrollIntoView({ block: 'center', behavior: REDUCIR.matches ? 'auto' : 'smooth' });
       veh.classList.add('resaltada');
       setTimeout(() => veh.classList.remove('resaltada'), 1800);
     }
+  }
+  /* Un panel de abajo de General, plegado con una línea de lo que dice (2026-10-28: los tres abiertos eran demasiado);
+     abierto o cerrado queda recordado en este navegador. */
+  function plPlegable(id, titulo, resumen) {
+    const det = crear('details', 'pl-panel');
+    det.dataset.panel = id;
+    det.open = planif.paneles.has(id);
+    const sum = crear('summary');
+    sum.append(crear('h2', null, titulo), crear('span', 'pl-panel-res', resumen), icono('flecha', 16));
+    det.append(sum);
+    det.addEventListener('toggle', () => {
+      if (det.open === planif.paneles.has(id)) return;
+      if (det.open) planif.paneles.add(id); else planif.paneles.delete(id);
+      plGuardarPrefs();
+    });
+    return det;
   }
   function plPaneles(s, m, dias) {
     const w = crear('div', 'pl-paneles');
@@ -7178,11 +7311,12 @@
       return t;
     };
     // Lo que cubre cada proyecto activo
-    const a = crear('section', 'pl-panel');
-    a.append(crear('h2', null, 'Proyectos activos en la semana'));
+    const sin = new Set(m.sinAsignar.map((p) => p.clave));
+    const conAlguien = m.activos.filter((p) => m.dias.has(p.clave)).length;
+    const a = plPlegable('proyectos', 'Proyectos activos en la semana',
+      pl(conAlguien, 'con alguien', 'con alguien') + (sin.size ? ' · ' + sin.size + ' sin asignar' : ''));
     const ta = tabla('Proyecto', [['Quiénes', 'q'], ['Días', 'n']]);
     const tba = crear('tbody');
-    const sin = new Set(m.sinAsignar.map((p) => p.clave));
     m.activos.slice().sort((x, y) => (sin.has(y.clave) - sin.has(x.clave)) || plPorTitulo(x, y)).forEach((p) => {
       const tr = crear('tr');
       const th = crear('th');
@@ -7227,8 +7361,8 @@
     ta.append(tba);
     a.append(ta);
     // La carga de cada persona: cuántos proyectos tiene cada día (hasta 3)
-    const b = crear('section', 'pl-panel');
-    b.append(crear('h2', null, 'Personal en la semana'));
+    const conProy = m.personas.filter((per) => dias.some((d) => (m.porPersona.get(d.iso + '|' + per) || []).length)).length;
+    const b = plPlegable('personal', 'Personal en la semana', conProy + ' de ' + pl(m.personas.length, 'persona', 'personas') + ' con proyecto');
     const tb = tabla('Persona', [['Días', 'n']]);
     const tbb = crear('tbody');
     m.personas.forEach((per) => {
@@ -7265,9 +7399,12 @@
   /* Dónde va cada vehículo cada día y con quiénes (tocar uno abre ese proyecto ese día, donde se cambia); «Libre» si
      nadie lo lleva, y en naranjo si va a dos lugares a la vez: personas que no comparten proyecto ese día. */
   function plPanelVehiculos(m, dias) {
-    const sec = crear('section', 'pl-panel pl-panel-veh');
+    const choques = dias.filter((d) => PL_VEHICULOS.some((v) => m.usoVeh(d.iso, v.id).length > 1)).length;
+    const sec = plPlegable('vehiculos', 'Vehículos en la semana', choques ? pl(choques, 'día', 'días') + ' con un vehículo en dos lugares'
+      : PL_VEHICULOS.map((v) => { const n = dias.filter((d) => m.usoVeh(d.iso, v.id).length).length; return v.nombre + ' ' + (n ? pl(n, 'día', 'días') : 'libre'); }).join(' · '));
+    sec.classList.add('pl-panel-veh');
     sec.id = 'plVehiculos';
-    sec.append(crear('h2', null, 'Vehículos en la semana'));
+    if (choques) sec.dataset.nivel = 'warn';
     const t = crear('table', 'pl-cob pl-vehs-t');
     const thead = crear('thead'), tr = crear('tr');
     const th0 = crear('th', 'dia', 'Día');
@@ -7329,6 +7466,211 @@
     t.append(thead, tb, tf);
     sec.append(t);
     return sec;
+  }
+
+  // ---- Arrastrar a las casillas (2026-10-28) --------------------------------------------------------------------
+  /* Junto a «Por personal», los proyectos activos; junto a «Por proyecto», las personas. Se arrastran a la casilla de un
+     día, o se tocan y después se van tocando casillas (así también con el dedo). Lo ya asignado en una casilla también
+     se arrastra: a otra casilla se mueve y, con Ctrl, se copia. En General se arrastran las personas a un proyecto de un
+     día. Tocar la casilla y elegir en la ventanita sigue igual. Lo arrastrado: { tipo: 'proyecto', clave } o { tipo:
+     'persona', per }, con desde: { per, iso, clave } si sale de una casilla. */
+  function plConArrastre(tabla, panel) {
+    const w = crear('div', 'pl-con-arr' + (planif.armado ? ' pl-colocando' : ''));
+    w.append(tabla, panel);
+    return w;
+  }
+  function plArrastrable(el, x, nombre) {
+    el.draggable = true;
+    el.classList.add('pl-arrastrable');
+    if (x.desde) el.title = (el.title || nombre) + ' · Arrástralo a otra casilla para moverlo (con Ctrl, se copia)';
+    el.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      planif.arrastre = Object.assign({}, x, { m: plModelo(plSemanaVista()) });     // el modelo, una vez: dragover llega muy seguido
+      plCerrarPop(false);
+      e.dataTransfer.effectAllowed = x.desde ? 'copyMove' : 'copy';
+      e.dataTransfer.setData('text/plain', nombre);
+      $('#vistaPlan').classList.add('pl-arrastrando');
+      requestAnimationFrame(() => el.classList.add('pl-origen'));
+    });
+    el.addEventListener('dragend', plArrFin);
+    return el;
+  }
+  // La casilla (o el proyecto de un día, en General) que tiene el puntero: { el, iso, per } o { el, iso, clave }
+  function plDestino(t) {
+    const b = t && t.closest ? t.closest('#vistaPlan [data-ancla]') : null;
+    const [k, x, iso] = b ? b.dataset.ancla.split('|') : [];
+    return k === 'p' ? { el: b, per: x, iso } : k === 'j' ? { el: b, clave: x, iso } : null;
+  }
+  // Lo arrastrado (o elegido en el panel) en ese destino: la asignación que quedaría, o null si no encaja ahí
+  function plObjetivo(x, d) {
+    if (!x || !d) return null;
+    if (x.tipo === 'proyecto' && d.per) return { per: d.per, iso: d.iso, clave: x.clave };
+    if (x.tipo === 'persona' && d.clave) return { per: x.per, iso: d.iso, clave: d.clave };
+    return null;
+  }
+  // Por qué no se puede soltar ahí, en corto para la casilla ('' si se puede; 'mismo' si es de donde salió)
+  function plPorQueNo(m, x, a, copiar) {
+    const d = x.desde;
+    if (d && d.per === a.per && d.iso === a.iso && d.clave === a.clave) return 'mismo';
+    const suyos = m.porPersona.get(a.iso + '|' + a.per) || [];
+    if (m.ausencias.has(a.iso + '|' + a.per)) return 'Ausente';
+    if (suyos.includes(a.clave)) return 'Ya está';
+    const libera = d && !copiar && d.per === a.per && d.iso === a.iso ? 1 : 0;   // cambiar de proyecto el mismo día deja su lugar
+    if (suyos.length - libera >= PL_MAX) return 'Ya tiene ' + PL_MAX;
+    return '';
+  }
+  let plArrMarcada = null;
+  function plArrMarcar(el, no) {
+    if (plArrMarcada && plArrMarcada !== el) { plArrMarcada.classList.remove('pl-soltar-si', 'pl-soltar-no'); delete plArrMarcada.dataset.no; }
+    plArrMarcada = el;
+    if (!el) return;
+    el.classList.toggle('pl-soltar-si', !no);
+    el.classList.toggle('pl-soltar-no', !!no);
+    if (no) el.dataset.no = no; else delete el.dataset.no;
+  }
+  function plArrSobre(e) {
+    const x = planif.arrastre;
+    if (!x) return;
+    const d = plDestino(e.target);
+    const a = plObjetivo(x, d);
+    const copiar = e.ctrlKey || e.metaKey;
+    const no = a ? plPorQueNo(x.m, x, a, copiar) : '';
+    if (!a || no) { plArrMarcar(a && no !== 'mismo' ? d.el : null, no); return; }     // sin preventDefault no se suelta
+    e.preventDefault();
+    e.dataTransfer.dropEffect = x.desde && !copiar ? 'move' : 'copy';
+    plArrMarcar(d.el, '');
+  }
+  function plArrSoltar(e) {
+    const x = planif.arrastre;
+    if (!x) return;
+    e.preventDefault();
+    const a = plObjetivo(x, plDestino(e.target));
+    const copiar = e.ctrlKey || e.metaKey;
+    plArrFin();
+    if (a) plSoltar(x, a, copiar);
+  }
+  function plArrFin() {
+    planif.arrastre = null;
+    plArrMarcar(null);
+    $('#vistaPlan').classList.remove('pl-arrastrando');
+    document.querySelectorAll('#vistaPlan .pl-origen').forEach((el) => el.classList.remove('pl-origen'));
+  }
+  /* Soltar: lo del panel (o copiado con Ctrl) se asigna como en la ventanita; lo que sale de una casilla se mueve en una
+     sola tanda (un aviso, un Deshacer). El vehículo sigue a la persona si se queda en el mismo día. */
+  function plSoltar(x, a, copiar) {
+    const s = plSemanaVista();
+    if (!x.desde || copiar) return plAsignarDias(s, a.per, a.clave, [a.iso], true);
+    const m = plModelo(s);
+    if (plPorQueNo(m, x, a, false)) return false;
+    const d = x.desde;
+    const cambios = [{ tipo: 'asig', dia: d.iso, persona: d.per, clave: d.clave, activa: false }, { tipo: 'asig', dia: a.iso, persona: a.per, clave: a.clave, activa: true }];
+    const v = d.per === a.per && d.iso === a.iso ? m.vehiculo(d.iso, d.per, d.clave) : '';
+    if (v) cambios.push({ tipo: 'veh', dia: a.iso, persona: a.per, clave: a.clave, vehiculo: v });
+    if (m.pausas.has(a.clave)) cambios.push({ tipo: 'pau', clave: a.clave, activa: false });
+    const dd = plElDia(plDiaDe(s, d.iso)), da = plElDia(plDiaDe(s, a.iso));
+    const msg = d.per === a.per && d.clave === a.clave ? plNom(a.per) + ' va a ' + m.titulo(a.clave) + ' ' + da + ' en vez ' + dd.replace(/^el /, 'del ') + '.'
+      : d.per === a.per ? plNom(a.per) + ' cambia de ' + m.titulo(d.clave) + ' a ' + m.titulo(a.clave) + ' ' + da + (d.iso === a.iso ? '' : ' (estaba ' + dd + ')') + '.'
+      : plNom(a.per) + ' va a ' + m.titulo(a.clave) + ' ' + da + ' en vez de ' + plNom(d.per)
+        + (d.iso === a.iso && d.clave === a.clave ? '' : ', que ya no va a ' + m.titulo(d.clave) + ' ' + dd) + '.';
+    return plCambiar(s, cambios, msg);
+  }
+  // Con algo elegido en el panel, tocar una casilla lo pone ahí (o lo quita, si ya estaba). Devuelve si lo hizo.
+  function plColocar(d) {
+    const a = plObjetivo(planif.armado, d);
+    if (!a) return false;
+    const s = plSemanaVista();
+    const ya = (plModelo(s).porPersona.get(a.iso + '|' + a.per) || []).includes(a.clave);
+    plAsignarDias(s, a.per, a.clave, [a.iso], !ya);
+    return true;
+  }
+  // El panel: los proyectos activos (primero los sin asignar) o las personas, para arrastrar o elegir
+  function plPanelArrastre(s, m, dias, tipo) {
+    const proy = tipo === 'proyecto';
+    const aside = crear('aside', 'pl-arr');
+    aside.dataset.tipo = tipo;
+    aside.setAttribute('aria-label', proy ? 'Proyectos activos para poner en las casillas' : 'Personal para poner en las casillas');
+    aside.append(crear('h2', null, proy ? 'Proyectos activos' : 'Personal'));
+    const elegido = planif.armado && planif.armado.tipo === tipo ? planif.armado : null;
+    if (elegido) {
+      const bar = crear('div', 'pl-arr-colocando');
+      bar.setAttribute('role', 'status');
+      const p = crear('p');
+      p.append('Toca las casillas donde va ', crear('b', null, proy ? m.titulo(elegido.clave) : plNom(elegido.per)), '. Otra vez en la misma casilla, lo quita.');
+      const listo = crear('button', 'cx-boton pl-arr-listo', 'Listo');
+      listo.type = 'button';
+      listo.addEventListener('click', () => { planif.armado = null; plPintar(); });
+      bar.append(p, listo);
+      aside.append(bar);
+    } else {
+      aside.append(crear('p', 'pl-arr-pista', (proy ? 'Arrastra uno a la casilla de una persona y un día' : 'Arrastra a alguien a la casilla de un proyecto y un día')
+        + ', o tócalo y después toca las casillas. Lo ya asignado también se arrastra: se mueve, o con Ctrl se copia.'));
+    }
+    // Los grupos: [título, nivel, [{ x, nombre, meta, marca }]]
+    let grupos;
+    if (proy) {
+      const sin = new Set(m.sinAsignar.map((p) => p.clave));
+      const item = (p) => ({ x: { tipo, clave: p.clave }, nombre: p.titulo, meta: [p.req ? 'N° ' + p.req : '', p.lugar].filter(Boolean).join(' · '),
+        marca: m.dias.has(p.clave) ? pl(m.dias.get(p.clave).length, 'día', 'días') : '' });
+      const orden = m.activos.slice().sort(plPorTitulo);
+      grupos = [['Sin asignar', s.id === plHoyId() ? 'bad' : 'warn', orden.filter((p) => sin.has(p.clave)).map(item)],
+        ['Con alguien esta semana', '', orden.filter((p) => m.dias.has(p.clave)).map(item)],
+        ['Sin trabajo esta semana', '', orden.filter((p) => !sin.has(p.clave) && !m.dias.has(p.clave)).map(item)]];
+    } else {
+      grupos = [['', '', m.personas.map((per) => {
+        const aus = dias.filter((d) => m.ausencias.has(d.iso + '|' + per)).length;
+        const con = dias.filter((d) => (m.porPersona.get(d.iso + '|' + per) || []).length).length;
+        return { x: { tipo, per }, nombre: plNom(per), meta: aus === dias.length ? 'Ausente' : con + ' de ' + pl(dias.length - aus, 'día', 'días') };
+      })]];
+    }
+    const total = grupos.reduce((n, g) => n + g[2].length, 0);
+    const lista = crear('div', 'pl-arr-lista');
+    const pintarLista = () => {
+      lista.textContent = '';
+      const q = norm(planif.arrQ);
+      grupos.forEach(([titulo, nivel, items]) => {
+        const vis = items.filter((it) => !q || norm(it.nombre + ' ' + (it.meta || '')).includes(q));
+        if (!vis.length) return;
+        if (titulo) {
+          const h = crear('h3', 'pl-arr-grupo', titulo + ' · ' + vis.length);
+          if (nivel) h.dataset.nivel = nivel;
+          lista.append(h);
+        }
+        vis.forEach((it) => {
+          const sel = elegido && (proy ? elegido.clave === it.x.clave : elegido.per === it.x.per);
+          const b = crear('button', 'pl-arr-item');
+          b.type = 'button';
+          b.setAttribute('aria-pressed', sel ? 'true' : 'false');
+          if (proy) { b.dataset.clave = it.x.clave; b.style.setProperty('--pc', m.color(it.x.clave)); b.append(crear('span', 'pl-dot')); }
+          else {
+            b.dataset.persona = it.x.per;
+            b.append(crear('span', 'pl-avatar' + (PL_PER_MANO.test(it.x.per) ? ' mano' : '') + (it.x.per === estado.usuario ? ' tuya' : ''), plIniciales(it.x.per)));
+          }
+          const tx = crear('span', 'pl-arr-txt');
+          tx.append(crear('span', 't', it.nombre));
+          if (it.meta) tx.append(crear('span', 's', it.meta));
+          b.append(tx);
+          if (it.marca) b.append(crear('span', 'pl-arr-marca', it.marca));
+          b.title = it.nombre + (it.meta ? ' · ' + it.meta : '') + (sel ? '. Tocar otra vez deja de ponerlo' : '. Arrástralo a una casilla, o tócalo y después toca las casillas');
+          plArrastrable(b, it.x, it.nombre);
+          b.addEventListener('click', () => { planif.armado = sel ? null : it.x; plPintar(); });
+          lista.append(b);
+        });
+      });
+      if (!lista.childElementCount) lista.append(crear('p', 'pl-arr-pista', total ? 'Nada con «' + planif.arrQ + '».' : proy ? 'No hay proyectos en ejecución en el Recorrido.' : 'No hay personas en la lista.'));
+    };
+    if (total > 12) {
+      const bus = crear('input', 'pl-arr-buscar');
+      bus.type = 'search';
+      bus.placeholder = proy ? 'Buscar proyecto' : 'Buscar persona';
+      bus.setAttribute('aria-label', bus.placeholder);
+      bus.autocomplete = 'off';
+      bus.value = planif.arrQ;
+      bus.addEventListener('input', () => { planif.arrQ = bus.value; pintarLista(); });
+      aside.append(bus);
+    }
+    pintarLista();
+    aside.append(lista);
+    return aside;
   }
 
   // ---- La ventanita de una casilla ------------------------------------------------------------------------
@@ -11224,8 +11566,19 @@
     const b = $(id);
     b.append(icono(ico, 16), crear('span', null, txt));
     b.setAttribute('aria-label', txt);
-    b.addEventListener('click', ir);
+    b.addEventListener('click', () => { plMasMenu(false); ir(); });
   });
+  $('#vistaPlan').addEventListener('dragover', plArrSobre);
+  $('#vistaPlan').addEventListener('drop', plArrSoltar);
+  // Esc deja de poner lo elegido en el panel (si no hay una ventanita abierta, que se cierra primero)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && planif.armado && !$('#vistaPlan').hidden && $('#plPop').hidden) { planif.armado = null; plPintar(); }
+  });
+  $('#plMas').append(crear('span', null, 'Más'), icono('flecha', 16));
+  $('#plMas').setAttribute('aria-label', 'Más acciones');
+  $('#plMas').addEventListener('click', () => plMasMenu($('#plMasLista').hidden));
+  document.addEventListener('pointerdown', (e) => { if (!$('#plMasLista').hidden && !e.target.closest('.pl-mas-menu')) plMasMenu(false); });
+  $('#plMasLista').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); plMasMenu(false); $('#plMas').focus(); } });
   $('#plActualizar').append(icono('recargar', 16));
   $('#plActualizar').addEventListener('click', () => {
     if (rc.sinDatos === 'permiso') { rcPedirPermiso(); return; }
@@ -11237,8 +11590,6 @@
   $('#plPopX').addEventListener('click', () => plCerrarPop(true));
   $('#plPopListo').addEventListener('click', () => plCerrarPop(true));
   $('#plPopSiguiente').addEventListener('click', (e) => plEnfocar(e.currentTarget.dataset.clave, true));
-  $('#plAlertaCab').prepend(icono('alerta', 16));
-  $('#plAlertaCab').addEventListener('click', plIrAlarma);
   $('#plCopiarTexto').addEventListener('click', plCopiarTexto);
   document.querySelectorAll('#plTextoModo .pl-vista').forEach((b) => b.addEventListener('click', () => {
     planif.texto = b.dataset.modo;
