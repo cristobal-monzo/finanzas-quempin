@@ -497,6 +497,10 @@
   /* «Copiar para el Formulador» (2026-10-14): mismas filas, en el formato que entiende su «Pegar desde Excel» */
   .viz-cart-copybtn-sec { background: transparent; color: var(--text-primary); border: 1.5px solid var(--brand-orange); margin-top: 6px; }
   .viz-cart-note { font-size: 10.5px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.4; }
+  /* «Llevar a un proyecto…» (2026-10-29): la acción principal, sobre la tabla para Excel */
+  .viz-cart-proyecto { border-top: 1px solid var(--gridline); padding-top: 10px; }
+  .viz-cart-proyecto .viz-cart-copybtn { margin-top: 0; }
+  .viz-cart-estado { color: var(--text-primary); font-weight: 700; }
 
   .viz-toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 960; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); background: #000; color: #fff; border-left: 3px solid #ff5100; border-radius: 10px; padding: 10px 10px 10px 14px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
   .viz-toast .toast-btn { font-family: inherit; font-size: 12.5px; font-weight: 900; background: #ff5100; color: #000; border: none; border-radius: 7px; padding: 7px 11px; cursor: pointer; white-space: nowrap; }
@@ -946,6 +950,11 @@
       <p>Busca un producto y usa <b>Agregar</b> en la compra que quieras cotizar.</p>
     </div>
     <div class="viz-cart-totals" id="cartTotals"></div>
+    <div class="viz-cart-proyecto">
+      <button type="button" id="btnLlevarProyecto" class="viz-cart-copybtn" disabled>Llevar a un proyecto…</button>
+      <p class="viz-cart-note">A uno en formulación o en ejecución: lo eliges en el paso siguiente.</p>
+      <p class="viz-cart-note viz-cart-estado" id="llevarEstado" role="status" hidden></p>
+    </div>
     <div class="viz-cart-export">
       <label class="viz-cart-label" for="exportText">Tabla para pegar en Excel</label>
       <p class="viz-cart-meta" id="exportMeta"></p>
@@ -2280,7 +2289,9 @@
     var exportTextEl = document.getElementById('exportText');
     var copyBtn = document.getElementById('btnCopiarTodo');
     var copyFormBtn = document.getElementById('btnCopiarFormulador');
+    var llevarBtn = document.getElementById('btnLlevarProyecto');
     document.getElementById('cartVaciarBtn').hidden = !cart.length;
+    document.getElementById('llevarEstado').hidden = true;
     actualizarMarcasCarrito();
 
     if (!cart.length) {
@@ -2290,12 +2301,14 @@
       exportTextEl.value = '';
       copyBtn.disabled = true;
       copyFormBtn.disabled = true;
+      llevarBtn.disabled = true;
       return;
     }
     emptyEl.style.display = 'none';
     try { exportTextEl.value = construirTextoExport(); } catch (e) { console.error('construirTextoExport failed:', e); }
     copyBtn.disabled = false;
     copyFormBtn.disabled = false;
+    llevarBtn.disabled = false;
 
     listEl.innerHTML = cart.map(function (l) {
       var subtotal = l.cantidad * l.precio_reajustado_hoy_con_iva;
@@ -2449,6 +2462,64 @@
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(listo, respaldo);
     else respaldo();
+  });
+
+  // ---------- llevar la cotización a un proyecto (2026-10-29) ----------
+  // Pedido del usuario: que el carrito exporte sus costos a un proyecto en formulación o en ejecución. Los
+  // proyectos del equipo los conoce el Portal QUEMPIN (lee la carpeta del equipo), así que el carrito le manda
+  // sus líneas y el Portal pregunta a cuál: dentro del Portal, a la ventana de arriba; abierto suelto, el
+  // Portal se abre en otra pestaña y las pide cuando está listo. Viajan como mensaje entre ventanas del mismo
+  // sitio: el carrito sigue sin guardarse en el navegador.
+  var PORTAL_LLEVAR = 'https://cristobal-monzo.github.io/finanzas-quempin/portal/#/llevar-cotizacion';
+  var PORTAL_ORIGEN = 'https://cristobal-monzo.github.io';
+  var llevarPendiente = null;   // { ventana, datos, reloj }: el Portal recién abierto todavía no las pide
+
+  // Las líneas con lo que el Portal necesita: el costo NETO (como «Copiar para el Formulador»), su proveedor,
+  // su hoja (con ella «Proyectos en ejecución» compara contra lo pagado) y la compra de donde sale el precio.
+  function datosParaProyecto() {
+    var nav = document.getElementById('modNav');
+    var peru = /-peru$/.test((nav && nav.getAttribute('data-nav-activo')) || '');
+    var dec = peru ? 100 : 1;   // soles con centavos; pesos enteros
+    return {
+      v: 1, origen: 'cotizador-historico', moneda: peru ? 'PEN' : 'CLP',
+      uf: peru ? null : DATA.uf_hoy, ufFecha: peru ? '' : String(DATA.uf_fecha || ''),
+      filas: cart.map(function (l) {
+        return {
+          descripcion: limpiarParaTsv(l.hoja || l.nombre_item), unidad: 'Un.', cantidad: l.cantidad,
+          costoUnitario: Math.round(l.precio_reajustado_hoy * dec) / dec,
+          proveedor: l.proveedor_tag || '', ref: l.hoja_clave || '', categoria: l.categoria_item || '',
+          compra: l.fecha || '', nRef: l.n_ref || ''
+        };
+      })
+    };
+  }
+  function estadoLlevar(txt) {
+    var el = document.getElementById('llevarEstado');
+    el.textContent = txt;
+    el.hidden = false;
+  }
+  document.getElementById('btnLlevarProyecto').addEventListener('click', function () {
+    if (!cart.length) return;
+    var datos = datosParaProyecto();
+    if (window.parent !== window && document.documentElement.hasAttribute('data-en-portal')) {
+      window.parent.postMessage({ tipo: 'quempin-cotizacion', datos: datos }, location.origin);
+      return;
+    }
+    var ventana = window.open(PORTAL_LLEVAR, '_blank');
+    if (!ventana) {
+      estadoLlevar('El navegador no dejó abrir el Portal QUEMPIN: permite las ventanas emergentes de este sitio, o usa «Copiar para el Formulador».');
+      return;
+    }
+    if (llevarPendiente) clearTimeout(llevarPendiente.reloj);
+    llevarPendiente = { ventana: ventana, datos: datos, reloj: setTimeout(function () { llevarPendiente = null; }, 120000) };
+    estadoLlevar('El Portal QUEMPIN se abrió en otra pestaña: elige ahí el proyecto.');
+  });
+  window.addEventListener('message', function (ev) {
+    var p = llevarPendiente;
+    if (!p || ev.source !== p.ventana || ev.origin !== PORTAL_ORIGEN || !ev.data || ev.data.tipo !== 'quempin-portal-listo') return;
+    clearTimeout(p.reloj);
+    llevarPendiente = null;
+    p.ventana.postMessage({ tipo: 'quempin-cotizacion', datos: p.datos }, PORTAL_ORIGEN);
   });
 
   // ---------- explorador de carpetas (categoria > subcategoria > hoja) ----------

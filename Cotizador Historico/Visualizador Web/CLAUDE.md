@@ -420,6 +420,24 @@ nunca se escribe en ningún almacenamiento del navegador.
   (`js/pegar.js`, paso 3). Va por el portapapeles y no por el navegador: el
   carrito sigue sin persistir. `test_template.py` lo exige en los dos países.
 
+- **«Llevar a un proyecto…»** (2026-10-29, Chile y Perú; pedido del usuario:
+  que el carrito exporte sus costos a un proyecto específico en formulación o
+  en ejecución): es la acción principal del panel, sobre la tabla para Excel.
+  Los proyectos del equipo los conoce el **Portal QUEMPIN** (lee la carpeta del
+  equipo), así que el carrito le manda sus líneas como mensaje entre ventanas
+  (`postMessage`, tipo `quempin-cotizacion`, armado por `datosParaProyecto()`):
+  dentro del Portal (`<html data-en-portal>`), a la ventana de arriba; abierto
+  suelto, abre `…/portal/#/llevar-cotizacion` en otra pestaña y le contesta
+  cuando el Portal avisa `quempin-portal-listo` (solo a esa ventana y desde
+  `cristobal-monzo.github.io`). Cada línea lleva el costo **neto** (como
+  «Copiar para el Formulador»; en soles con centavos), su proveedor, su
+  `hoja_clave` (con ella «Proyectos en ejecución» compara contra lo pagado), la
+  categoría del Centro de Costos y la compra de donde sale el precio. La moneda
+  sale del país del tablero (`data-nav-activo`). Nada pasa por el
+  almacenamiento del navegador ni por la dirección: `test_template.py` lo
+  vigila. Qué hace el Portal con ellas:
+  `../../Visualizador Web/portal/docs/llevar-cotizacion.md`.
+
 - Cada tarjeta de producto, cada fila de la tabla de compras y cada
   tarjeta de la vista sin agrupar tienen el mismo bloque cantidad (−/+) +
   "Agregar" (`renderAgregar`), atendido por **un solo listener delegado**

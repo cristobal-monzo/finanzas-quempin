@@ -77,6 +77,9 @@ def test_el_carrito_nunca_usa_el_almacenamiento_del_navegador():
     seccion = js[inicio:fin]
     assert "localStorage" not in seccion and "sessionStorage" not in seccion
     assert "indexedDB" not in js
+    # Tampoco al llevarlo a un proyecto (2026-10-29): va como mensaje al Portal
+    llevar = js[js.index("// ---------- llevar la cotización"):js.index("// ---------- explorador de carpetas")]
+    assert "localStorage" not in llevar and "sessionStorage" not in llevar
 
 
 @pytest.mark.parametrize("ruta", [TEMPLATE_CL, TEMPLATE_PE], ids=["chile", "peru"])
@@ -130,3 +133,26 @@ def test_la_cotizacion_se_copia_para_el_formulador(ruta):
     assert "Math.round(l.precio_reajustado_hoy)" in html
     assert "copyFormBtn.disabled = !cart.length" not in html   # se habilita junto con «Copiar tabla para Excel»
     assert "copyFormBtn.disabled = true" in html and "copyFormBtn.disabled = false" in html
+
+
+@pytest.mark.parametrize("ruta", [TEMPLATE_CL, TEMPLATE_PE], ids=["chile", "peru"])
+def test_la_cotizacion_se_lleva_a_un_proyecto_por_el_portal(ruta):
+    """2026-10-29: «Llevar a un proyecto…» manda las líneas del carrito al Portal QUEMPIN, que conoce los proyectos
+    en formulación y en ejecución: a la ventana de arriba si el Cotizador está abierto dentro del Portal, o al Portal
+    recién abierto cuando él avisa que está listo. Van como mensaje entre ventanas: ni por el almacenamiento del
+    navegador ni en la dirección (el Portal las valida, ver Visualizador Web/tests/test_portal.py)."""
+    if not ruta.exists():
+        pytest.skip("no esta el template")
+    html = _leer(ruta)
+    js = _script_app(html)
+    assert 'id="btnLlevarProyecto"' in html
+    seccion = js[js.index("// ---------- llevar la cotización"):js.index("// ---------- explorador de carpetas")]
+    assert "localStorage" not in seccion and "sessionStorage" not in seccion
+    assert "postMessage({ tipo: 'quempin-cotizacion', datos: datos }, location.origin)" in seccion
+    assert "hasAttribute('data-en-portal')" in seccion
+    # Al Portal recién abierto solo se le contesta a él, desde su sitio, cuando avisa que está listo
+    assert "ev.source !== p.ventana" in seccion and "ev.origin !== PORTAL_ORIGEN" in seccion and "'quempin-portal-listo'" in seccion
+    assert "portal/#/llevar-cotizacion'" in seccion and "window.open(PORTAL_LLEVAR, '_blank')" in seccion
+    # El costo es el neto, como «Copiar para el Formulador»; la moneda sale del país del tablero
+    assert "Math.round(l.precio_reajustado_hoy * dec) / dec" in seccion and "moneda: peru ? 'PEN' : 'CLP'" in seccion
+    assert "llevarBtn.disabled = true" in html and "llevarBtn.disabled = false" in html
