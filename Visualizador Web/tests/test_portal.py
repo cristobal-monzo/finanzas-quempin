@@ -2699,6 +2699,114 @@ def test_arrastrar_personas_por_proyecto_y_en_general(navegador, sitio):
     pagina.context.close()
 
 
+def test_diez_vueltas_dias_grupos_jornadas_y_compartir(navegador, sitio):
+    """Revisión de usabilidad del 2026-10-29 (diez vueltas): hoy lleva su marca y los días que ya pasaron van apagados,
+    también en «Qué días»; una casilla vacía muestra «Asignar» solo al pasar el mouse; «Por proyecto» titula sus grupos
+    con su cuenta y «Sin trabajo esta semana» es un botón; las dos cifras de días son una sola, en jornadas; y en
+    Compartir, quien no tiene nada en la semana va en una línea."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    hoy = date.today().weekday()
+    clases = pagina.locator("#plProyecto thead th[data-dia]").evaluate_all("ths => ths.map((t) => t.className)")
+    assert clases == ["hoy" if i == hoy else "pasado" if i < hoy else "" for i in range(len(clases))]
+    # «Asignar» aparece al pasar encima; quieta, la casilla vacía muestra solo el «+»
+    asignar = _celda_proyecto(pagina, "req:907", 2).locator(".pl-mas > span")
+    assert asignar.is_hidden()
+    _celda_proyecto(pagina, "req:907", 2).hover()
+    assert asignar.is_visible()
+    # Los tres activos sin nadie: un solo grupo, sin título
+    assert pagina.locator("#plProyecto tr.pl-sep").count() == 0
+    _celda_proyecto(pagina, "req:908", 0).click()
+    pop = pagina.locator("#plPop")
+    assert pop.locator(".pl-dia-op.hoy").count() == (1 if hoy < 5 else 0)
+    assert pop.locator(".pl-dia-op.pasado").count() == min(hoy, 5)
+    pop.locator('input[data-op="c|LC"]').check()
+    pagina.keyboard.press("Escape")
+    pagina.locator('#plProyecto tr[data-clave="tag:SOLO"] .pl-pausar').click()
+    grupos = pagina.locator("#plProyecto tr.pl-sep th").evaluate_all(
+        "ths => ths.map((t) => [t.firstChild.textContent, (t.querySelector('.pl-sep-n') || {}).textContent])")
+    assert grupos == [["Sin nadie asignado esta semana", "1"], ["Con alguien asignado", "1"], ["Sin trabajo esta semana", "1"]]
+    claves = pagina.locator("#plProyecto tr[data-clave]").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
+    assert claves == ["req:907", "req:908", "tag:SOLO"]
+    assert pagina.locator("#plProyecto .pl-pausar").evaluate_all("bs => bs.map((b) => b.tagName)") == ["BUTTON", "BUTTON"]
+    # Una cifra para el equipo: cada persona cada día es una jornada
+    jornadas = len(_registro()["personal"]) * 5
+    kpi = pagina.locator("#plResumen .rc-kpi").nth(2)
+    assert (kpi.locator(".rc-kpi-n").inner_text(), kpi.locator(".rc-kpi-et").inner_text()) == ("1", f"de {jornadas} jornadas con proyecto")
+    assert kpi.locator(".rc-kpi-sub").text_content() == f"Cada persona cada día es una jornada: {jornadas - 1} libres (sin proyecto)"
+    assert pagina.locator("#plResumen .rc-kpi").count() == 4
+    # Compartir: NB no tiene nada en la semana, una línea; LC, día por día
+    _mas(pagina, "#plCompartir").click()
+    texto = pagina.locator("#plTextoArea").input_value()
+    assert "\n*NB*\n• Sin proyectos esta semana\n" in texto and "\n*LC*\n• Lun " in texto
+    assert not errores
+    pagina.context.close()
+
+
+def test_diez_vueltas_en_el_telefono(navegador, sitio):
+    """En el teléfono General muestra un día a la vez, como las tablas (hoy, si es de la semana); la lista para asignar
+    tocando va plegada en una línea hasta pedirla; «Agregar» dice su nombre y «Esta semana» no se muestra en ella."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general", ancho=390, alto=844, movil=True)
+    hoy = date.today().weekday()
+    a_la_vista = "ds => ds.filter((d) => d.getClientRects().length).map((d) => d.dataset.dia)"
+    assert pagina.locator("#plDiasMovil").is_visible()
+    assert pagina.locator("#plGeneral .pl-dia").evaluate_all(a_la_vista) == [str(hoy if hoy < 5 else 0)]
+    pagina.locator("#plDiasMovil .pl-dia-tab").nth(1).click()
+    assert pagina.locator("#plGeneral .pl-dia").evaluate_all(a_la_vista) == ["1"]
+    assert pagina.locator("#plAgregar").inner_text().strip() == "Agregar"
+    assert pagina.locator("#plHoy").is_hidden()
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    panel = pagina.locator("#plPersonal .pl-arr")
+    abrir = panel.locator(".pl-arr-abrir")
+    assert panel.locator(".pl-arr-lista").is_hidden() and abrir.get_attribute("aria-expanded") == "false"
+    assert abrir.inner_text().strip() == "Asignar tocando"
+    abrir.click()
+    assert panel.locator(".pl-arr-lista").is_visible() and panel.locator(".pl-arr-pista-corta").is_visible()
+    panel.locator('.pl-arr-item[data-clave="req:908"]').click()
+    assert "Toca las casillas donde va En obra" in panel.locator(".pl-arr-colocando").inner_text()
+    # Ocultar la lista también deja de poner lo elegido
+    panel.locator(".pl-arr-abrir").click()
+    assert panel.locator(".pl-arr-lista").is_hidden() and panel.locator(".pl-arr-colocando").count() == 0
+    d = pagina.evaluate(JS_DESBORDES)
+    assert d["doc"] <= 390 and not d["fuera"], d
+    assert not errores
+    pagina.context.close()
+
+
+def test_diez_vueltas_vehiculo_ocupado_y_semana_vacia(navegador, sitio):
+    """Un vehículo que ese día va a otra parte dice quién lo lleva (antes, solo un punto naranjo). Una semana que viene
+    sin nada ofrece «Copiar la semana N» a la vista (antes, solo en «Más»), y se va al copiar; una que ya pasó, no."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="proyecto")
+    semana, lunes = _semana_con_vehiculos(pagina)
+    _celda_proyecto(pagina, "req:908", 1).click()
+    ram = pagina.locator('#plPop [data-op="v|ES|ram"]')
+    assert "ocupado" in ram.get_attribute("class") and ram.locator(".pl-veh-op-q").inner_text() == "la lleva NB"
+    assert pagina.locator('#plPop [data-op="v|ES|quempineta"] .pl-veh-op-q').inner_text() == "la lleva MP"     # a Obra sin número
+    pagina.keyboard.press("Escape")
+    # Esta semana tiene algo: sin franja. La siguiente está vacía: «Copiar la semana N»
+    assert pagina.locator("#plSemanaVacia").is_hidden()
+    pagina.locator("#plDespues").click()
+    franja = pagina.locator("#plSemanaVacia")
+    franja.wait_for()
+    numero = lunes.isocalendar()[1]
+    assert franja.locator("button").inner_text() == f"Copiar la semana {numero}"
+    franja.locator("button").click()
+    pagina.wait_for_function("document.getElementById('aviso').textContent.startsWith('Se copiaron')")
+    assert pagina.locator("#plSemanaVacia").is_hidden()
+    siguiente = (lunes + timedelta(days=7)).isocalendar()
+    _esperar_archivo(pagina, f"publicado/planificacion/{siguiente[0]}-W{siguiente[1]:02d}/{DISPOSITIVO}.json",
+                     lambda sobre: len(sobre["datos"]["asignaciones"]) == 7)
+    # Una semana que ya pasó, aunque esté vacía, no la ofrece
+    pagina.locator("#plHoy").click()
+    pagina.locator("#plAntes").click()
+    pagina.locator("#plProyecto .pl-celda").first.wait_for()
+    assert pagina.locator("#plSemanaVacia").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
 @pytest.mark.parametrize("ancho", [390, 1024, 1366])
 def test_la_planificacion_cabe_sin_desbordes(navegador, sitio, ancho):
     movil = ancho < 760
@@ -2721,7 +2829,7 @@ def test_la_planificacion_cabe_sin_desbordes(navegador, sitio, ancho):
             assert visibles == (1 if movil else 5), (vista, visibles)
             assert pagina.locator("#plDiasMovil").is_visible() == movil
         # La ventanita queda dentro de la pantalla
-        pagina.locator("#plGeneral .pl-nuevo" if vista == "general" else f"#pl{vista.capitalize()} .pl-celda >> visible=true").first.click()
+        pagina.locator("#plGeneral .pl-nuevo >> visible=true" if vista == "general" else f"#pl{vista.capitalize()} .pl-celda >> visible=true").first.click()
         caja = pagina.locator("#plPop").bounding_box()
         assert caja["x"] >= 0 and caja["x"] + caja["width"] <= ancho and caja["y"] >= 0 and caja["y"] + caja["height"] <= 844, (vista, caja)
         # Dentro de ella, con la franja «Qué días» y toda la semana elegida, nada se sale de lado ni queda con letra chica
@@ -3027,7 +3135,7 @@ def test_los_vehiculos_caben_sin_desbordes(navegador, sitio, ancho):
     lun = lunes.isoformat()
     for vista in ("general", "personal", "proyecto"):
         pagina.locator(f'.pl-vista[data-vista="{vista}"]').click()
-        if movil and vista != "general":
+        if movil:
             pagina.locator('#plDiasMovil .pl-dia-tab').first.click()      # el teléfono muestra hoy; los vehículos van el lunes
         pagina.locator(f"#pl{vista.capitalize()} .pl-veh >> visible=true").first.wait_for()
         d = pagina.evaluate(JS_DESBORDES)

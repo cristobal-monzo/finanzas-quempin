@@ -446,6 +446,28 @@ y que se pueda revertir si no le gusta.
     `porGuardar` antes de escribir, así un cambio hecho mientras se escribe (marcar
     a alguien y tocar su vehículo enseguida) vuelve a la lista y se guarda en la
     vuelta siguiente; antes quedaba fuera del archivo hasta el próximo cambio.
+  - **Revisión de usabilidad del 2026-10-29** (pedido del usuario: «un loop de 10 vueltas analizando la usabilidad y
+    claridad de información y el UX/UI del planificador completo»), con capturas de los datos reales fuera del repo:
+    - **Hoy y lo pasado**: cada día lleva `hoy` o `pasado` (`plDiaDe(...).pasado`, `plClaseDia`) en las tablas, el
+      tablero, los días del teléfono y «Qué días». Lo pasado va apagado (sigue editable); hoy, en «Qué días» y en los días
+      del teléfono, es un punto naranjo y no un borde, que se confundía con el día elegido.
+    - **Casillas vacías**: con mouse (`@media (hover: hover)`), solo un «+» tenue; «Asignar» aparece al pasar encima o
+      con el teclado. Con el dedo, entero como antes.
+    - **Por proyecto con grupos**: «Sin nadie asignado esta semana», «Con alguien asignado» y «Sin trabajo esta semana»,
+      cada uno con su cuenta (`tr.pl-sep`, `.pl-sep-n`; solo si hay más de un grupo). `.pl-pausar` es un botón, no un
+      enlace rojo subrayado.
+    - **Una cifra para el equipo**: «22 de 45 jornadas con proyecto» (cada persona cada día es una jornada; libres y
+      ausencias en su detalle) reemplaza «días asignados» y «días libres», que se leían como días del calendario.
+    - **Teléfono**: General muestra un día a la vez, como las tablas (`.pl-tablero[data-foco]`, `#plDiasMovil` también
+      en General); el panel para asignar tocando va plegado en una línea («Asignar tocando», `planif.arrAbierto`,
+      `.pl-arr.abierto`; con algo elegido queda abierto y «Ocultar» lo suelta); «Agregar» con su nombre y sin «Esta
+      semana» deshabilitado.
+    - **Vehículos**: en la ventanita, uno que ese día va a otra parte dice quién lo lleva (`.pl-veh-op-q`, «la lleva
+      EV»; antes, un punto naranjo); en las etiquetas, quién lo lleva va separado («RAM │ EV»).
+    - **Semana vacía** (esta o una que viene, sin asignaciones ni ausencias): `#plSemanaVacia` ofrece «Copiar la semana
+      N» a la vista (`plPintarVacia` → `plCopiarAnterior`), que antes estaba solo en «Más».
+    - Compartir por persona: quien no tiene nada en la semana va en una línea («Sin proyectos esta semana»).
+    - Pruebas: desde `test_diez_vueltas_dias_grupos_jornadas_y_compartir`.
   - **El personal** es el bloque `"personal"` del registro (NB, ES, LC, CM, MP,
     SV, EV y, desde el 2026-10-26, RL): incluye a todos los `"usuarios"` y puede
     tener más (EV y RL se planifican pero no eligen usuario en las herramientas).
@@ -514,9 +536,9 @@ y que se pueda revertir si no le gusta.
     («4 de 3: quita 1»).
   - **La alarma**: un proyecto activo sin nadie ningún día de la semana de hoy,
     salvo que se marque «Sin trabajo esta semana» (una pausa de esa semana, que
-    también se quita al asignarle a alguien). Se ve en la cabecera (`#plAlertaCab`,
-    desde cualquier herramienta; no en el teléfono, donde no cabe), en el menú y en
-    el Inicio (número y línea en rojo), y la vista la detalla arriba. Para eso el
+    también se quita al asignarle a alguien). Se ve en el menú y en el Inicio (número
+    y línea en rojo; desde el 2026-10-28 ya no en la cabecera), y en la vista, la cifra
+    «sin asignar» del resumen despliega la lista. Para eso el
     portal lee la carpeta al abrirse aunque no abra en el Inicio, sin pedir permisos.
   - **Dónde se guarda**: en la carpeta de intercambio, en
     `publicado/planificacion/<AAAA-Www>/<dispositivo>.json` (esquema
