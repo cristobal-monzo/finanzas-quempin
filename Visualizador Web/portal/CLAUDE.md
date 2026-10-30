@@ -18,6 +18,7 @@ Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 | Recorrido (`recorrido`) | `#vistaRecorrido` | `rc*`, `rc` | [docs/recorrido.md](docs/recorrido.md) |
 | Planificación semanal (`planificacion`) | `#vistaPlan` | `pl*`, `planif` | [docs/planificacion.md](docs/planificacion.md) |
 | Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
+| Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
 | Subir documentos (`subir-cc`) | `#vistaSubir` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |
 | Configuración y conexiones (`conexiones`) | `#vistaConexiones` | `portal-conexiones` | [docs/interfaz.md](docs/interfaz.md) |
 
