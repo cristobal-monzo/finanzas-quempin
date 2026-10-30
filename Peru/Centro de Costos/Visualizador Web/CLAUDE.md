@@ -13,7 +13,7 @@ archivo solo documenta lo que difiere para Perú. Ver también
 - **Fuente de datos**: `Peru/Centro de Costos/Excel/Centro de Costos Perú.xlsx`
   (nunca `Centro de Costos/Excel/Centro de Costos.xlsx` — son libros
   completamente separados desde el split por país del 2026-08-21, ver
-  `Centro de Costos/CLAUDE.md` § "Split por país").
+  `Centro de Costos/docs/flujo-y-libro.md`, «Split por país»).
 - **Moneda**: PEN (`S/`), impuesto IGV 18% (no IVA 19% / CLP) — columnas
   `Total sin IGV (PEN)`, `IGV 18% (PEN)`, `Total con IGV (PEN)` en vez de
   las de Chile. `template.html` formatea con `Intl.NumberFormat('es-PE',
