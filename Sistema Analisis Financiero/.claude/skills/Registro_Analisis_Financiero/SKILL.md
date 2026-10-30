@@ -1,180 +1,53 @@
 ---
 name: Registro_Analisis_Financiero
-description: Usar cuando el usuario escribe "/Registro_Analisis_Financiero" explícitamente. Si en cambio pide en lenguaje natural (sin el "/") actualizar Análisis Financiero, refrescar los indicadores de proyectos, ver el estado de Análisis de Proyectos 2026.xlsx, evaluar rentabilidad/KPIs de un proyecto, o revisar/confirmar un cliente detectado como similar a uno existente, pedir confirmación antes de invocarlo -- puede que el usuario quiera /Actualizar_Finanzas en vez de este (ver CLAUDE.md raíz § Invocación de skills). Desde el 2026-10-13 este skill también publica el tablero del AF al terminar (absorbió a /Actualizar_AF: ese nombre antiguo es este skill). Consolida los costos reales por proyecto y categoría desde Centro de Costos hacia Análisis de Proyectos 2026.xlsx (hojas Proyectos/Detalle Costos Reales/Indicadores/Clientes/Glosario KPIs), calcula la Nota del Proyecto (0-100, sobre el margen estimado al cierre), el margen acumulado y la recompra por cliente, avisa alertas de datos/sobrecosto, y crea la carpeta de facturas para proyectos nuevos agregados a mano en el Excel.
+description: Consolida los costos reales de Centro de Costos en Análisis de Proyectos 2026.xlsx, calcula KPIs y Nota del Proyecto, avisa alertas, crea carpetas de proyectos nuevos y publica el tablero de AF. Usar SOLO si el usuario escribe "/Registro_Analisis_Financiero" (antes /Actualizar_AF); si pide con palabras actualizar AF, refrescar indicadores, evaluar la rentabilidad de un proyecto o confirmar un cliente, confirma primero, porque puede querer /Actualizar_Finanzas.
 ---
 
-# Registro Análisis Financiero
+# Registro: Análisis Financiero
 
-Herramienta de línea de comandos (Python + openpyxl), **solo lectura** sobre
-`Centro de Costos/Excel/Centro de Costos.xlsx` -- nunca lo escribe. Todas las
-rutas de este documento son relativas a la raíz de esta carpeta
-(`Sistema Analisis Financiero/`) -- el Excel que este skill mantiene
-(`Análisis de Proyectos 2026.xlsx`) vive en la carpeta hermana
-`../Análisis Financiero/`, no acá (reorganizado 2026-07-21, ver `CLAUDE.md`).
-El driver vive en `.claude/skills/Registro_Analisis_Financiero/driver.py`.
+**Solo lectura** sobre `Centro de Costos.xlsx`. Las rutas son relativas a `Sistema Analisis Financiero/`; el Excel que
+mantiene vive en `../Análisis Financiero/`. `driver.py` es `.claude/skills/Registro_Analisis_Financiero/driver.py`, corrido
+con `py -3.14`. Rol y reglas: `../../CLAUDE.md`.
 
-Ver `../../CLAUDE.md` para el rol del agente (analista financiero, no solo
-pipeline) y `docs/specs/2026-07-20-analisis-financiero-design.md`
-(raíz de `Finanzas QUEMPIN/`) para el diseño completo.
-
-## Comandos
-
-**`status`** -- solo lectura: qué carpetas de proyecto se crearían, qué
-categorías de Centro de Costos caen en "Otros" por no tener mapeo explícito.
-
-```
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" status
-```
-
-**`run`** -- ejecución real: backup de `Análisis de Proyectos 2026.xlsx`, crea
-carpetas de proyecto nuevas en
-`Centro de Costos/Sitio de comunicación - Centro de Costos 1/Facturas y
-Boletas/<Nombre>/`, regenera la hoja "Detalle Costos Reales" y las fórmulas
-de "Proyectos"/"Indicadores", y al final regenera el visualizador web
-(`Visualizador Web/build/index.html`) -- si este último paso falla, no
-aborta el `run` ni pierde el Excel ya guardado, solo agrega un aviso al
-resumen. Idempotente: correrlo sin cambios en Centro de Costos no altera
-nada.
-
-```
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" run
-```
-
-También corre automáticamente al final de cada `run` de
-`/Registro_Centro_de_Costos` (PASO 12d) -- no hace falta correrlo aparte
-salvo que se quiera refrescar sin correr todo Centro de Costos.
-
-**`confirmar-cliente`** -- confirma clientes marcados "Pendiente de revisión"
-(fuente roja en la columna "Cliente" de "Proyectos"): sin argumentos, solo
-lista los pendientes; `--todos` aplica la sugerencia de todos; una lista de
-TAGs aplica solo esos. Recolorea la celda a azul marino y marca la entrada
-como "Confirmado" en `Sistema/clientes_pendientes.json`.
-
-```
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" confirmar-cliente
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" confirmar-cliente --todos
-```
-
-Si la sugerencia automática no es el cliente correcto, edita
-`cliente_sugerido` en `Sistema/clientes_pendientes.json` antes de confirmar
-(mismo patrón que `correcciones_manuales.json` de Centro de Costos).
-
-**`visualizador`** -- regenera solo el dashboard HTML
-(`Visualizador Web/build/index.html`) a partir del `Análisis de
-Proyectos.xlsx` actual, sin correr todo `run`. Ya se corre automáticamente
-al final de `run` -- usar este comando aparte solo para refrescar el
-dashboard sin tocar el Excel (por ejemplo tras un cambio manual en el
-Excel que no ameríta un `run` completo).
-
-```
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador
-```
-
-**`intercambio`** -- costos proyectados enviados desde el Formulador de
-proyectos, y valores ingresados en la pestaña «Ingresar datos» del tablero
-(`datos-proyecto`, 2026-10-02), por el buzón de la carpeta de intercambio,
-`Formulación de proyectos - Documentos/.Herramientas formulación/Intercambio/buzon/` (ver `CLAUDE.md` §
-"Costos proyectados desde el Formulador"). Sin argumentos es solo lectura:
-qué se aplicaría en el próximo `run` y qué envíos esperan una decisión
-(pisarían un valor escrito a mano que quien envió no vio). `run` aplica solo
-lo seguro; lo demás se resuelve acá:
-
-```
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio confirmar <id>   # reemplaza y corre run
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio descartar <id>   # archiva sin tocar el Excel
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio publicar         # lista para el Formulador, sin escribir el Excel
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" intercambio cargar <archivo.json> ...  # un envío descargado -> buzón
-```
-
-`cargar` es para los archivos que la pestaña «Ingresar datos» descarga cuando
-el navegador no puede escribir en la carpeta (Firefox, Safari, teléfono) y
-alguien los manda por correo: valida cada uno contra el catálogo y las reglas
-de este módulo y lo deja en el buzón tal cual (mismo id, nunca dos veces). Se
-aplica en el próximo `run` o en la próxima vuelta del procesador.
-
-`confirmar` corre un `run` completo: si se hace, publicar el tablero (ver
-«Publicar el tablero» abajo). Solo Chile (`--pais PE` informa que no está activo).
-
-**`formulaciones`** -- el repositorio de presupuestos del Formulador
-(`publicado/formulador/` de la misma carpeta; pedido del usuario
-2026-09-30). Sin argumentos es solo lectura. Muestra los presupuestos nuevos o
-cambiados desde la última revisión, los entregados por archivo que esperan en
-el buzón, y los *Adjudicada* con su estado frente al Análisis Financiero
-(`CARGADO`, `EN BUZÓN`, `CARGAR`, `ELEGIR TAG`). Cómo usarlo con el usuario
-está en `/Actualizar_Finanzas` § «Presupuestos del Formulador»: el TAG lo
-confirma siempre el usuario.
-
-```
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones incorporar            # entregas por archivo -> repositorio
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones revisadas             # después de mostrárselas al usuario
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" formulaciones cargar <uid|código [vN]> <TAG> [--nombre "Proyecto nuevo"]
-```
-
-`cargar` deja en el buzón el mismo envío que haría el Formulador, con lo que
-el usuario vio como If-Match. Se aplica en el próximo `run`. Los costos salen
-del `resumen` que calcula el propio Formulador; Python no recalcula precios.
-
-## Publicar el tablero (antes `/Actualizar_AF`)
-
-Desde la fusión del 2026-10-13 este skill publica su tablero al terminar.
-Procedimiento común en
-[`docs/actualizar-un-modulo.md`](../../../../docs/actualizar-un-modulo.md).
-Lo propio de este módulo:
-
-- **Cuándo correr `run`**: si `status` muestra algo pendiente (carpetas
-  nuevas, avisos que ameriten atención) **o** si el usuario pide un refresco
-  — corrigió algo a mano en `Análisis de Proyectos 2026.xlsx`, confirmó un
-  cliente pendiente, o Centro de Costos acaba de correr. `run` ya regenera
-  `Visualizador Web/build/index.html`.
-- **Publicar** es obligatorio si se corrió `run`: desde la raíz del repo,
-  `py -3.14 "Visualizador Web/publicar.py" af` (copia el tablero con sus
-  reportes PDF cifrados y verifica que abran) y commit + push en
-  `.worktrees/gh-pages`. Con «sin publicar», no se publica y se avisa.
-
-## Perú (`--pais CL|PE`)
-
-Los 4 comandos aceptan `--pais CL|PE` (default `CL`, sin cambio de
-comportamiento si se omite). Con `--pais PE` leen/escriben
-`Peru/Análisis Financiero/Análisis de Proyectos Perú.xlsx` y
-`Peru/Centro de Costos/Excel/Centro de Costos Perú.xlsx` en vez de los
-Excel de Chile.
-
-```
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" status --pais PE
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" run --pais PE
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" confirmar-cliente --pais PE
-python ".claude/skills/Registro_Analisis_Financiero/driver.py" visualizador --pais PE
-```
-
-## Gotchas
-
-- **Mano de Obra Real es 100% manual** -- no hay categoría equivalente en
-  Centro de Costos hoy. No esperar que `run` la complete sola.
-- **Las columnas manuales de "Proyectos" nunca se tocan** (TAG, Nombre,
-  % Avance, fechas, Venta, proyectados, Mano de Obra Real) -- si algo ahí se
-  ve mal, es un dato cargado a mano, no un bug de este script. **Única
-  excepción (2026-09-30):** los 4 costos proyectados que llegan desde el
-  Formulador por el buzón de Intercambio, solo en los casos seguros; esas
-  celdas llevan una nota de Excel con su procedencia. Desde el 2026-10-02
-  también lo ingresado en la pestaña «Ingresar datos» del tablero (todas las
-  columnas manuales menos TAG y Nombre, con la misma regla); eso no lleva
-  nota: es un valor manual, como si se hubiera tecleado en el Excel.
-- **TAG proyecto debe calzar con el prefijo de Centro de Costos**
-  (`PREFIJOS_PROYECTO` en `auditor_centro_costos.py`) -- si no calzan, los
-  costos reales de ese proyecto quedan en $0 (el `SUMIFS` no encuentra
-  filas). Desde 2026-08-05 `run` avisa esto explícitamente (mismo aviso que
-  "Categoría queda vacía", ambos comparten el mismo lookup por prefijo --
-  ver `asegurar_categoria_proyectos`), pero solo lo detecta si el TAG no
-  tiene NINGÚN documento en Centro de Costos; revisar igual a mano si el
-  proyecto sí tiene facturas y aun así aparece en $0.
-
-## Troubleshooting
-
-| Síntoma | Causa / fix |
+| Comando | Qué hace |
 |---|---|
-| Costos reales en $0 para un proyecto con compras registradas | El TAG en "Proyectos" no calza con el prefijo real del `N° Ref.` en Centro de Costos -- revisar `PREFIJOS_PROYECTO` |
-| `[AVISO] No se encontró .../Centro de Costos.xlsx` | Confirmar que `Centro de Costos/Excel/Centro de Costos.xlsx` existe |
-| Categoría cae en "Otros" sin avisar en años anteriores pero ahora sí | Es esperado: cualquier `categoria_item` que no esté en `MAPEO_CATEGORIA_BUCKET` cae en "Otros" con aviso -- si merece su propio bucket, hay que agregarla a mano en `analisis_financiero.py` |
-| `[ERROR] No se pudo guardar ...` | El Excel está abierto en otra aplicación -- cerrarlo y volver a correr `run` |
+| `status` | Solo lee: carpetas de proyecto que se crearían y categorías de CC que caen en «Otros» |
+| `run` | Respaldo, carpetas nuevas en `Facturas y Boletas/<Nombre>/`, «Detalle Costos Reales», fórmulas y tablero (si este falla, avisa y el Excel queda). Idempotente. Corre solo al final de cada `run` de CC (PASO 12d) |
+| `confirmar-cliente [--todos \| <TAG>...]` | Clientes «Pendiente de revisión» (fuente roja): sin argumentos los lista. Recolorea a azul marino y marca «Confirmado» en `Sistema/clientes_pendientes.json`. Si la sugerencia no sirve, edita ahí `cliente_sugerido` antes de confirmar |
+| `visualizador` | Solo el tablero, sin tocar el Excel |
+| `intercambio` | Solo lee: qué se aplicaría en el próximo `run` y qué envíos esperan decisión |
+| `intercambio confirmar <id>` / `descartar <id>` | Reemplaza y corre `run` (publica después) / archiva sin tocar el Excel |
+| `intercambio publicar` | La lista para el Formulador, sin escribir el Excel |
+| `intercambio cargar <archivo.json> ...` | Envíos descargados de «Ingresar datos» (Firefox, Safari, teléfono) → buzón: valida y deja tal cual (mismo id, nunca dos veces) |
+| `formulaciones` | Solo lee el repositorio de presupuestos: nuevos, cambiados, en buzón y *Adjudicada* (`CARGADO`, `EN BUZÓN`, `CARGAR`, `ELEGIR TAG`). Uso con el usuario: `/Actualizar_Finanzas` |
+| `formulaciones incorporar` / `revisadas` | Entregas por archivo → repositorio / tras mostrárselas al usuario |
+| `formulaciones cargar <uid\|código [vN]> <TAG> [--nombre "Nuevo"]` | Deja en el buzón el mismo envío del Formulador, con lo que el usuario vio como If-Match. El TAG lo confirma siempre el usuario; Python no recalcula precios |
+
+Canal y reglas de seguridad: [`docs/intercambio.md`](../../../docs/intercambio.md). `intercambio` y `formulaciones` son solo Chile.
+
+**Perú**: `status`, `run`, `confirmar-cliente` y `visualizador` aceptan `--pais PE` (`Peru/Análisis Financiero/Análisis de
+Proyectos Perú.xlsx` y `Peru/Centro de Costos/Excel/Centro de Costos Perú.xlsx`).
+
+## Publicar el tablero
+
+Procedimiento común: [`docs/actualizar-un-modulo.md`](../../../../docs/actualizar-un-modulo.md).
+
+- **Corre `run`** si `status` muestra algo pendiente o el usuario pide un refresco (corrigió el libro a mano, confirmó un
+  cliente, o CC acaba de correr).
+- **Publicar es obligatorio si corriste `run`**: desde la raíz del repo, `py -3.14 "Visualizador Web/publicar.py" af` (copia
+  con los PDF cifrados y verifica) y commit + push en `.worktrees/gh-pages`. Con «sin publicar», no publiques y avisa.
+
+## Cuidados
+
+- **Mano de Obra Real es manual**: `run` no la completa.
+- **Las columnas manuales de «Proyectos» no se tocan** (TAG, Nombre, % Avance, fechas, Venta, proyectados, Mano de Obra Real):
+  si algo se ve mal, es un dato cargado a mano. Excepción: lo que llega por el buzón, solo en los casos seguros.
+- **El TAG debe calzar con el prefijo de CC** (`PREFIJOS_PROYECTO`): si no, los costos reales quedan en $0. `run` lo avisa si
+  el TAG no tiene ningún documento; revísalo a mano si tiene facturas y aun así da $0.
+
+| Síntoma | Causa y solución |
+|---|---|
+| Costos reales en $0 con compras registradas | TAG distinto del prefijo real del `N° Ref.`: revisa `PREFIJOS_PROYECTO` |
+| `[AVISO] No se encontró .../Centro de Costos.xlsx` | Confirma que `Centro de Costos/Excel/Centro de Costos.xlsx` existe |
+| Una categoría cae en «Otros» con aviso | Esperado si no está en `MAPEO_CATEGORIA_BUCKET`; si merece su bucket, agrégala en `analisis_financiero.py` |
+| `[ERROR] No se pudo guardar ...` | El Excel está abierto: ciérralo y vuelve a correr |

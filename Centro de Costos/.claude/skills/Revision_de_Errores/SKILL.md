@@ -1,6 +1,6 @@
 ---
 name: Revision_de_Errores
-description: Recorrido guiado, uno por uno, de los hallazgos abiertos, las celdas rojas y los ítems agrupados del Centro de Costos: muestra la foto, pide el valor correcto y lo aplica con rastro. Usar SOLO si el usuario escribe "/Revision_de_Errores"; si pide con palabras revisar errores, celdas rojas o ítems agrupados, confirma primero.
+description: Recorrido guiado, uno por uno, de los hallazgos abiertos, las celdas rojas y los ítems agrupados del Centro de Costos. Muestra la foto, pide el valor correcto y lo aplica con rastro. Usar SOLO si el usuario escribe "/Revision_de_Errores"; si pide con palabras revisar errores, celdas rojas o ítems agrupados, confirma primero.
 ---
 
 # Revisión de errores: Centro de Costos

@@ -1,6 +1,6 @@
 ---
 name: Registro_Flujo_de_Caja
-description: Use when the user types "/Registro_Flujo_de_Caja" explicitly. If the user instead asks in natural language without the leading "/" — "cómo viene la caja", "flujo de caja", "qué vamos a cobrar y pagar los próximos meses" — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Builds QUEMPIN's cash flow (Chile) only from what the other tools already publish — Centro de Costos, Sistema QUEMPIN, the Planilla de Ingreso and Análisis Financiero — and writes its Excel and its dashboard. Nothing is typed in by hand except the opening cash balance.
+description: Arma el flujo de caja de Chile (Excel y tablero) solo con lo que publican Centro de Costos, Sistema QUEMPIN, la Planilla de Ingreso y Análisis Financiero; a mano solo va el saldo inicial. Usar SOLO si el usuario escribe "/Registro_Flujo_de_Caja"; ante «cómo viene la caja» o «qué vamos a cobrar y pagar», confirma primero.
 ---
 
 # Flujo de Caja

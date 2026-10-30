@@ -1,6 +1,6 @@
 ---
 name: Sugerencias_Requerimientos
-description: Use when the user types "/Sugerencias_Requerimientos" explicitly. If the user instead asks in natural language without the leading "/" — "qué hay que pasar a la planilla de ingreso", "sugerencias de la planilla", "qué requerimientos se adjudicaron según el Formulador" — ask for confirmation before invoking (see root CLAUDE.md § Invocación de skills), never auto-invoke. Lists the suggestions other tools sent for the Planilla de Ingreso de Requerimientos (estado, valor ofertado/adjudicado) that still need to be typed in by hand, closes the ones already in the sheet, and discards one on request. Never writes the Planilla.
+description: Lista las sugerencias de otras herramientas para la Planilla de Ingreso (estado, valor ofertado o adjudicado) que faltan por escribir a mano, cierra las que ya están y descarta una si se pide. Nunca escribe la Planilla. Usar SOLO si el usuario escribe "/Sugerencias_Requerimientos"; ante «qué hay que pasar a la planilla» o «sugerencias de la planilla», confirma primero.
 ---
 
 # Sugerencias para la Planilla de Ingreso de Requerimientos

@@ -88,13 +88,16 @@ GitHub Pages, repo público `cristobal-monzo/finanzas-quempin`, rama huérfana `
 (solo los estáticos, nunca código ni `docs/`), worktree en `.worktrees/gh-pages`. Las URL
 son estructurales y no cambian: `https://cristobal-monzo.github.io/finanzas-quempin/<subruta>/`.
 
-| Clave | Subruta | `build/index.html` de |
+| Clave | Subruta | Build |
 |---|---|---|
-| `cc` / `ccpe` | `centro-de-costos` / `-peru` | `Centro de Costos/Visualizador Web/` / `Peru/Centro de Costos/Visualizador Web/` |
-| `af` / `afpe` | `analisis-financiero` / `-peru` | `Sistema Analisis Financiero/Visualizador Web/` / `Peru/Análisis Financiero/Visualizador Web/` |
-| `cot` / `cotpe` | `cotizador-historico` / `-peru` | `Cotizador Historico/Visualizador Web/` / `Peru/Cotizador Historico/Visualizador Web/` |
-| `fc` | `flujo-de-caja` (solo Chile) | `Flujo de Caja/Visualizador Web/` |
-| `op` | `oportunidades` (solo Chile) | `Sistema Intercambio/Visualizador Web/` |
+| `cc` | `centro-de-costos` | `Centro de Costos/Visualizador Web/build/index.html` |
+| `ccpe` | `centro-de-costos-peru` | `Peru/Centro de Costos/Visualizador Web/build/index.html` |
+| `af` | `analisis-financiero` | `Sistema Analisis Financiero/Visualizador Web/build/index.html` |
+| `afpe` | `analisis-financiero-peru` | `Peru/Análisis Financiero/Visualizador Web/build/index.html` |
+| `cot` | `cotizador-historico` | `Cotizador Historico/Visualizador Web/build/index.html` |
+| `cotpe` | `cotizador-historico-peru` | `Peru/Cotizador Historico/Visualizador Web/build/index.html` |
+| `fc` | `flujo-de-caja` (solo Chile) | `Flujo de Caja/Visualizador Web/build/index.html` |
+| `op` | `oportunidades` (solo Chile) | `Sistema Intercambio/Visualizador Web/build/index.html` |
 
 ```
 py -3.14 "Visualizador Web/publicar.py" cc af cot fc op     # o --todos

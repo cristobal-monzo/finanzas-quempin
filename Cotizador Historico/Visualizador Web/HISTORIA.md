@@ -183,3 +183,95 @@ Lo que no cambió: el motor (`busqueda.js` no se tocó, la paridad con Python
 sigue igual), la exportación a Excel, la regla de no persistir el carrito
 (ahora con un test que la vigila) y el explorador de carpetas, salvo que la
 vista de una hoja usa la misma tarjeta y tabla que el buscador.
+
+## Reglas de `clasificarItem` (hasta el 2026-09-08)
+
+Ya no existen: la clasificación pasó a `Sistema/catalogo_taxonomia.py` (`REGLAS`). Se conservan por el porqué de cada caso.
+
+Cada paso solo se evalúa si el anterior no calzó:
+
+1. **`OVERRIDES_CATEGORIA`** — excepciones de nombre completo a categoría
+   (y opcionalmente subcategoría forzada): "adaptador broca" → Herramientas
+   Manuales (no Consumibles, aunque contenga "broca"); "bolso" →
+   Herramientas Manuales, subcategoría forzada "Contenedores";
+   "ferreteria"/"ferretería" → Herramientas Manuales, subcategoría forzada
+   "Materiales de Ferretería".
+2. Todo lo que diga inox/inoxidable va a "Piping Inoxidable", **salvo que
+   sea una herramienta** (`GRUPOS_HERRAMIENTA` = eléctricas + manuales) **o
+   un instrumento de medición** (`GRUPOS_INSTRUMENTACION`, excepción
+   agregada 2026-08-31 — ver paso 5b) — tiene prioridad incluso sobre
+   Válvulas y Control/Bombas. Requiere medida igual que el resto de piping.
+   La excepción de instrumentación corrigió un bug real encontrado al
+   agregar esa categoría: 2× "Manometro glic. ... inox." y 1×
+   "Manovacuómetro ... caja inox" caían en Piping Inoxidable solo por
+   mencionar el material de su caja, no por ser piping.
+3. `GRUPOS_PIPING` (cobre/bronce/galvanizado/PPR — el inoxidable ya se
+   interceptó en el paso 2). Incluye "tubería"/"tapagorro" desde 2026-08-19
+   — antes solo estaban ahí los accesorios (codo, tee, copla, etc.) y las
+   tuberías/tapagorros PPR reales caían en el catch-all "Otros / Servicios"
+   en vez de "Piping PPR" (bug real, no solo cobertura nueva).
+4. **`GRUPOS_SOLDADURA`** ("Soldadura" 🔥): gas MAPP, soldadura, fundente,
+   electrodos, varillas — no exige medida.
+5. Válvulas y Control (incluye "alimat" — una válvula de llenado
+   automático con manómetro incorporado, así que items como "Alimat 1/2"
+   con manómetro intermedio" quedan aquí y no en Instrumentación, evaluados
+   en este paso antes de llegar al 5b), Herramientas Eléctricas,
+   Herramientas Manuales (incluye huincha, cortatubos/corta tubos,
+   cuchillo, calafatera, dado, remachadora — evaluada antes que "remache"
+   la capture como consumible, porque la contiene como substring).
+5b. **`GRUPOS_INSTRUMENTACION`** ("Instrumentación" 🌡️, agregada
+   2026-08-31, pedido explícito del usuario): manómetro, vacuómetro,
+   termocupla, termopar, termómetro, multímetro, caudalímetro, sonda,
+   medidor, indicador — instrumentos de medición, agrupados aparte de la
+   categoría del equipo que miden (antes un manómetro cría bajo "Válvulas y
+   Control" y un vacuómetro bajo "Bombas y Equipos Mecánicos", solo porque
+   compartían grupo de palabras clave con esos equipos). "manómetro" salió
+   de `GRUPOS_VALVULA`, "vacuómetro" de `GRUPOS_BOMBA`, y "termocupla"/
+   "sonda" de `GRUPOS_CALEFACCION` (ver paso 8) para venir aquí. Evaluado
+   **después** de Válvulas y Control (paso 5, para que "Alimat ... con
+   manómetro" siga siendo una válvula) y **antes** de Bombas/Calefacción
+   (para que "Sonda ST07-H Caldera Ivar" caiga aquí y no en Calefacción por
+   la palabra "Caldera"). "medidor"/"indicador" son deliberadamente
+   genéricos (pedido explícito del usuario, riesgo aceptado de que algo
+   no-instrumento los contenga a futuro). Ícono repetido con "Calefacción y
+   Control" (🌡️) — decisión explícita del usuario pese a la duplicidad
+   visual; ya hay precedente de ícono compartido entre dos categorías
+   (⚙️ en Bombas y en Piping Acero Galvanizado).
+6. Bombas y Equipos Mecánicos (el vacuómetro ya se interceptó en el paso
+   5b).
+7. **`GRUPOS_MATERIALES_ELECTRICOS`** ("Materiales Eléctricos" ⚡):
+   "conduit" (casi cualquier ítem que diga conduit es eléctrico),
+   "eléctrico".
+8. **`GRUPOS_QUIMICOS`** ("Productos Químicos" 🧪): Solutech,
+   tapagotera(s).
+9. **`GRUPOS_CALEFACCION`** ("Calefacción y Control" 🌡️, agregada
+   2026-08-19): presostato, termostato, contactor, caldera, radiador —
+   cluster real de 8 ítems, evaluada antes que Transporte para no perder
+   items que además dijeran algo transportable. "termocupla"/"sonda"
+   salieron de aquí el 2026-08-31 hacia `GRUPOS_INSTRUMENTACION` (paso 5b)
+   — son sensores de medición, no equipos de control de calefacción en sí.
+10. **`GRUPOS_TRANSPORTE`** ("Transporte" 🚚): flete, arriendo, peaje,
+   combustible/gasolina/bencina/petróleo/diesel/parafina, pasaje, equipaje,
+   transporte, estacionamiento, despacho, envío, encomienda, embarque
+   (estas últimas seis agregadas 2026-08-19 — la categoría ya existía y el
+   dato crudo de Centro de Costos ya los marcaba como Transporte/Despachos,
+   pero al clasificador le faltaban las palabras). La subcategoría la
+   decide `subcategoriaTransporte`: Combustible (agrupa el ítem del
+   combustible con su impuesto específico asociado), Peajes, Arriendo de
+   Vehículos, Pasajes y Equipaje, Despachos y Fletes (flete/despacho/envío/
+   encomienda), Estacionamiento, o "Otros Gastos de Transporte" (incluye
+   "embarque", sin subcategoría propia).
+11. **`GRUPOS_ALIMENTOS`** ("Alimentos" 🍽️, agregada 2026-08-19): toda la
+    comida/bebida en una sola categoría — sandwich, café, muffin, agua
+    (con espacio final para no matchear "aguarrás"), leche, bebida,
+    colación, Red Bull, alimentación, ingrediente, almuerzo, desayuno,
+    restaurant(e), supermercado, panadería. Antes repartida sin estructura
+    propia entre las etiquetas manuales `Alimentación`/`Viáticos-
+    Alojamiento` del Excel de Centro de Costos.
+12. Consumibles con medida obligatoria (pernos, tornillos, remaches,
+    autoperforantes, brocas) y sin medida (esmalte, pintura, rodillo,
+    brocha, aguarrás, espuma, cinta, lubricante, bolsas, libros,
+    marcadores).
+13. Seguridad (EPP, incluye "overol", y desde 2026-08-19 cofia, cubre
+    calzado, visor, plantilla, desinfectante).
+14. "Otros / Servicios" como categoría de respaldo final.

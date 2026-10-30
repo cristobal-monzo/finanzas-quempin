@@ -1,6 +1,6 @@
 ---
 name: Registro_Centro_de_Costos
-description: Registra facturas y boletas en Centro de Costos.xlsx (status, run, confirmar, visualizador, separar, separar-registrado, eliminar) y publica su tablero salvo «sin publicar». Usar SOLO si el usuario escribe "/Registro_Centro_de_Costos". Ante «actualiza el centro de costos» o «actualiza cc» sin la barra, pregunta primero: puede querer esta skill o /Actualizar_Finanzas. Los nombres antiguos /Actualizar_CC y /Actualizar_Base_de_Datos son esta skill.
+description: Registra facturas y boletas en Centro de Costos.xlsx (status, run, confirmar, visualizador, separar, separar-registrado, eliminar) y publica su tablero salvo «sin publicar». Usar SOLO si el usuario escribe "/Registro_Centro_de_Costos" (antes /Actualizar_CC y /Actualizar_Base_de_Datos). Ante «actualiza el centro de costos» sin la barra, pregunta primero, porque puede querer esta skill o /Actualizar_Finanzas.
 ---
 
 # Registro: Centro de Costos
