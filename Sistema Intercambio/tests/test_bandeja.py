@@ -39,7 +39,7 @@ def test_el_buzon_dice_que_hacer_por_herramienta():
              "sistema-quempin": {"pendientes": 0}}
     lista = bandeja.desde_estado(_estado(buzon=buzon), datetime(2026, 10, 13, 10, 30))
     assert len(lista) == 1
-    assert lista[0].texto.startswith("6 sugerencia(s)") and "Sugerencias_Requerimientos" in lista[0].accion
+    assert lista[0].texto.startswith("6 envio(s) para la Planilla") and "Sugerencias_Requerimientos" in lista[0].accion
 
 
 def test_sin_requerimiento_cuenta_proyectos_y_cotizaciones_de_chile():

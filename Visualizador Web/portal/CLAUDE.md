@@ -18,6 +18,7 @@ Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 | Recorrido (`recorrido`) | `#vistaRecorrido` | `rc*`, `rc` | [docs/recorrido.md](docs/recorrido.md) |
 | Planificación semanal (`planificacion`) | `#vistaPlan` | `pl*`, `planif` | [docs/planificacion.md](docs/planificacion.md) |
 | Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
+| Planilla de Ingreso (`planilla`) | `#vistaPlanilla` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
 | Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
 | Subir documentos (`subir-cc`) | `#vistaSubir` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |
 | Configuración y conexiones (`conexiones`) | `#vistaConexiones` | `portal-conexiones` | [docs/interfaz.md](docs/interfaz.md) |
@@ -45,8 +46,8 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   `test_lo_que_esconde_el_portal_existe_en_cada_herramienta`.
 - **Sin barras de desplazamiento y sin desplazarse en el Inicio** (clase
   `sin-barra`; lo miden `test_el_inicio_y_el_menu_caben_sin_barras` y compañía).
-- **Lo que no se abre dentro**: Planilla (Excel web, `url` del registro), Control
-  de Documentos (aún sin enlace web) y QUEMPIN.exe (`quempin://`).
+- **Lo que no se abre dentro**: el Excel de respaldo de la Planilla (`url` del
+  registro), Control de Documentos (aún sin enlace web) y QUEMPIN.exe (`quempin://`).
 - **Datos**: en la página no va ningún dato; todo se arma en el navegador desde la
   carpeta de Intercambio, con la conexión guardada (IndexedDB `qpn-intercambio`,
   la del Formulador). Nunca crea un Intercambio nuevo. El Recorrido solo lee.
@@ -54,7 +55,8 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   (`quempin_portal_dispositivo`), para que OneDrive nunca junte dos versiones; se
   une todo y en cada casilla manda el cambio más reciente (`t`), también si es
   borrar. Lo que no alcanza a guardarse espera en `quempin_portal_*_pendiente`.
-  Formatos en `Sistema Intercambio/esquemas/`.
+  Formatos en `Sistema Intercambio/esquemas/`. Excepción: la Planilla de Ingreso
+  escribe en el buzón, porque su dueño es el Excel ([docs/planilla.md](docs/planilla.md)).
 - **Sin datos reales en el repositorio**: las pruebas usan datos de mentira; las
   vistas previas con datos reales se arman fuera del repo, en un Chromium aislado.
 

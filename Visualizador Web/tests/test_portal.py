@@ -166,7 +166,8 @@ def test_conexiones_bien_referenciadas():
         if h["grupo"] in {"formular", "finanzas", "cotizar"}:
             assert h["id"] in usadas or (h.get("alias") and h["familia"] in usadas), h["id"]
     tareas = [t["nombre"] for t in cx["procesador"]["tareas"]]
-    assert tareas == ["Procesar intercambio QUEMPIN", "Actualizar Finanzas QUEMPIN", "Oportunidades Mercado Publico QUEMPIN"]
+    assert tareas == ["Procesar intercambio QUEMPIN", "Registrar en la Planilla QUEMPIN", "Actualizar Finanzas QUEMPIN",
+                      "Oportunidades Mercado Publico QUEMPIN"]
     assert por_id["planilla"]["url"].startswith("https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/")
 
 
@@ -499,7 +500,7 @@ def test_inicio_muestra_todas_las_herramientas_por_grupo(navegador, sitio):
     assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item')].map(b => b.dataset.herr)") == esperadas
     # Lo que se abre fuera del portal (Excel, Sistema QUEMPIN) lleva la flecha ↗; las vistas del portal, no
     fuera = [h["id"] for h in reg["herramientas"] if h["id"] in esperadas and h["tipo"] not in ("marco", "vista")]
-    assert fuera == ["planilla", "cotizacion", "orden-compra"]
+    assert fuera == ["cotizacion", "orden-compra"]
     assert pagina.locator("#iniGrupos .ini-item:has(.ini-fuera)").count() == len(fuera)
     assert _pestanas(pagina) == ["Inicio"]
     assert pagina.locator("iframe").count() == 0
@@ -796,10 +797,16 @@ def test_la_contrasena_escrita_en_una_herramienta_abre_las_demas(navegador, siti
 
 def test_excel_y_programa_no_se_abren_dentro(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
+    # La Planilla de Ingreso es una vista del portal desde el 2026-10-29; su Excel de respaldo se abre aparte, desde Conexiones
     _menu(pagina, "Planilla de Ingreso")
+    assert pagina.evaluate("window.__abiertas") == []
+    assert pagina.locator("#vistaPlanilla").is_visible() and pagina.locator("iframe").count() == 0
+    _menu(pagina, "Configuración y conexiones")
+    pagina.locator("#cx-planilla .cx-enlace", has_text="Abrir en Excel para la web").click()
     abiertas = pagina.evaluate("window.__abiertas")
     assert len(abiertas) == 1 and abiertas[0].startswith("https://quempinspa2020.sharepoint.com/")
-    assert pagina.locator("iframe").count() == 0
+    for nombre in ("Conexiones", "Planilla"):
+        pagina.locator("#pestanas .pestana", has_text=nombre).locator(".x").click()
     # Cotizar y comprar abre QUEMPIN.exe en su sección con quempin:// (Sistema QUEMPIN 1.3.8)
     _menu(pagina, "Emitir cotización")
     pagina.locator('.ini-item[data-herr="orden-compra"]').click()
@@ -4413,5 +4420,313 @@ def test_llevar_la_cotizacion_cabe_en_el_telefono(navegador, sitio, ancho):
     assert afuera == []
     assert pagina.evaluate("() => parseFloat(getComputedStyle(document.getElementById('llBuscar')).fontSize)") >= 16
     assert pagina.locator("#llLlevar").is_visible() and pagina.locator("#llCancelar").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+# ---- Planilla de Ingreso en el portal (2026-10-29) --------------------------------------------------------------------
+# Pedido del usuario: la Planilla de Ingreso replicada en el portal, donde desde ahora se ingresan los requerimientos, con
+# el Excel de respaldo y los dos al día. La vista lee publicado/requerimientos.json y escribe en el buzón
+# («nuevo-requerimiento», «editar-requerimiento»); el Excel lo recibe con Sistema Intercambio/planilla_escritura.py,
+# que tiene sus propias pruebas.
+
+def _planilla_con_datos(navegador, sitio, usuario=None, extra=None, **kw):
+    """El portal con la carpeta de prueba (y lo que agregue extra), en la Planilla de Ingreso."""
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario, **kw)
+    if extra:
+        pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, extra)
+        pagina.reload()
+        pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Planilla de Ingreso")
+    pagina.locator("#pqFilas tr").first.wait_for()
+    return pagina, errores
+
+
+def _ns(pagina):
+    return pagina.locator("#pqFilas tr").evaluate_all("trs => trs.map((t) => +t.dataset.n)")
+
+
+def _pedidos_planilla(pagina, tipo):
+    return [m for m in pagina.evaluate(JS_BUZON).values() if m.get("tipo") == tipo and m.get("destino") == "planilla-requerimientos"]
+
+
+def _pedido(numero, tipo, herramienta="portal", minutos=-5, **cuerpo):
+    from datetime import datetime, timedelta
+    enviado = (datetime.now().astimezone() + timedelta(minutes=minutos)).isoformat(timespec="seconds")
+    m = {"esquema": "quempin.intercambio/1", "id": f"{tipo[:5]}{numero}{herramienta[:3]}x", "tipo": tipo, "destino": "planilla-requerimientos",
+         "origen": {"herramienta": herramienta, "usuario": "CM", "enviado": enviado}}
+    m.update(cuerpo)
+    m.setdefault("requerimiento", {"numero": numero})
+    nombre = enviado[:19].replace("-", "").replace(":", "").replace("T", "-") + f"_{herramienta}_{tipo}_{m['id']}.json"
+    return nombre, m
+
+
+def test_sin_la_carpeta_la_planilla_deja_abrir_el_excel(navegador, sitio):
+    """Un teléfono no abre carpetas: la vista dice qué falta y el Excel sigue a mano, como antes del 2026-10-29."""
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _menu(pagina, "Planilla de Ingreso")
+    pagina.locator("#pqVacio .cx-enlace", has_text="Abrir el Excel de respaldo").wait_for()
+    assert pagina.locator("#pqVacio a.cx-enlace").get_attribute("href").startswith("https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/")
+    assert pagina.locator("#pqContenido").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel():
+    """Las columnas que el portal muestra y deja cambiar son las mismas en el portal, en el esquema editar-requerimiento y en
+    planilla_escritura.EDITABLES: las que el equipo llena de verdad (las de 45 % o más vacías quedan solo en el Excel)."""
+    portal = PORTAL.read_text(encoding="utf-8")
+    columnas = re.findall(r"\{ id: '([a-zA-Z]+)', et: '[^']+', clase: 'c-", portal)
+    esquema = json.loads((RAIZ / "Sistema Intercambio" / "esquemas" / "mensajes" / "editar-requerimiento.json").read_text(encoding="utf-8"))
+    cambios = esquema["properties"]["cambios"]["properties"]
+    escritor = (RAIZ / "Sistema Intercambio" / "planilla_escritura.py").read_text(encoding="utf-8")
+    editables = re.findall(r'"([a-zA-Z]+)"', re.search(r"^EDITABLES = \(([^)]*)\)", escritor, re.M).group(1))
+    assert columnas[0] == "numero" and columnas[1:] == list(cambios) == editables
+    estados = re.search(r"const PQ_ESTADOS = \[([^\]]*)\]", portal).group(1)
+    canales = re.search(r"const PQ_CANALES = \[([^\]]*)\]", portal).group(1)
+    assert re.findall(r"'([^']+)'", estados) == cambios["estado"]["enum"]
+    assert re.findall(r"'([^']+)'", canales) == cambios["canal"]["enum"]
+    nuevo = json.loads((RAIZ / "Sistema Intercambio" / "esquemas" / "mensajes" / "nuevo-requerimiento.json").read_text(encoding="utf-8"))
+    assert set(nuevo["properties"]["requerimiento"]["properties"]["canal"]["enum"]) == set(cambios["canal"]["enum"])
+
+
+def test_la_planilla_muestra_las_columnas_que_se_usan_del_mas_nuevo_al_mas_antiguo(navegador, sitio):
+    pagina, errores = _planilla_con_datos(navegador, sitio)
+    assert _pestanas(pagina) == ["Inicio", "Planilla"]
+    assert pagina.locator("iframe").count() == 0
+    assert pagina.locator("#pqCabeza th").all_inner_texts() == [
+        "N°", "Estado", "Canal", "Capt.", "Eval.", "Título", "Cliente", "Ubicación", "ID o referencia", "Apertura", "Cierre"]
+    assert _ns(pagina) == list(range(913, 899, -1))
+    fila = pagina.locator('#pqFilas tr[data-n="900"]')
+    assert fila.locator("td.c-ubic").inner_text() == "Valparaíso"
+    assert fila.locator(".pq-est").inner_text() == "Evaluación"
+    assert "faltan 2 días" in fila.locator("td.c-ci").inner_text()
+    assert "Al día con el Excel" in pagina.locator("#pqSinc").inner_text()
+    assert pagina.locator("#pqCuenta").inner_text() == "14 requerimientos"
+    # Por estado (con su cuenta) y buscando
+    assert pagina.locator('#pqEstados [data-estado="Ofertado"]').text_content() == "Ofertado 3"
+    pagina.locator('#pqEstados [data-estado="Ofertado"]').click()
+    assert _ns(pagina) == [913, 906, 905]
+    pagina.locator('#pqEstados [data-estado=""]').click()
+    pagina.locator("#pqBuscar").fill("calderas glp")
+    assert _ns(pagina) == [901] and pagina.locator("#pqCuenta").inner_text() == "1 de 14"
+    pagina.locator("#pqBuscar").fill("no existe")
+    assert _ns(pagina) == [] and "Ningún requerimiento calza" in pagina.locator("#pqNada").inner_text()
+    # El Excel de siempre queda a mano, de respaldo
+    assert pagina.locator("#pqExcel").get_attribute("href").startswith("https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/")
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_requerimiento_nuevo_se_ve_al_instante_y_queda_en_el_buzon(navegador, sitio):
+    from datetime import date, timedelta
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    # El siguiente N° libre: después del mayor de la Planilla, de las carpetas y de las formulaciones
+    assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 914"
+    assert (dlg.locator("#pqEstado").input_value(), dlg.locator("#pqCanal").input_value(), dlg.locator("#pqCaptador").input_value()) == (
+        "Evaluación", "Mercado Público", "ES")
+    assert dlg.locator("#pqApF").input_value() == date.today().isoformat()
+    dlg.locator("#pqGuardar").click()
+    assert "Falta el título" in dlg.locator("#pqPista").inner_text() and dlg.is_visible()
+    cierre = (date.today() + timedelta(days=6)).isoformat()
+    dlg.locator("#pqTitulo").fill("  Reparación de quemador   hospital ")
+    dlg.locator("#pqCanal").select_option("Postventa")
+    dlg.locator("#pqUbicacion").fill("Talca")
+    dlg.locator("#pqCiF").fill(cierre)
+    dlg.locator("#pqCiH").fill("15:00")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert m["requerimiento"] == {"numero": 914, "titulo": "Reparación de quemador hospital", "estado": "Evaluación", "canal": "Postventa",
+                                  "captador": "ES", "ubicacion": "Talca", "apertura": date.today().isoformat(), "cierre": cierre + "T15:00"}
+    assert m["numeroLibre"] is True and m["fuente"] == {"herramienta": "portal"} and m["origen"]["usuario"] == "ES"
+    assert _esquemas().validar_mensaje(m) == []
+    # Se ve desde ya, marcado como nuevo, y lo que falta pasar al Excel se dice arriba
+    fila = pagina.locator('#pqFilas tr[data-n="914"]')
+    assert "pq-nueva" in fila.get_attribute("class") and fila.locator(".pq-nuevo-tag").text_content() == "nuevo"
+    assert _ns(pagina)[0] == 914
+    assert "1 cambio espera pasar al Excel" in pagina.locator("#pqSinc").inner_text()
+    # El que sigue ya no repite el N°
+    pagina.locator("#pqNuevo").click()
+    assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 915"
+    dlg.locator("#pqCancelar").click()
+    # Lo que todavía no llega al Excel se puede retirar
+    pagina.locator("#pqSinc summary").click()
+    assert "Por pasar al Excel" in pagina.locator("#pqSinc .pq-cambios").inner_text()
+    pagina.locator("#pqSinc .pq-retirar").click()
+    pagina.locator('#pqFilas tr[data-n="914"]').wait_for(state="detached")
+    assert _pedidos_planilla(pagina, "nuevo-requerimiento") == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_evaluador_y_cliente_se_ingresan_y_se_cambian_en_la_planilla(navegador, sitio):
+    """Eval. y Cliente: las dos columnas que la regla del 45 % dejaba fuera y el usuario dejó (2026-10-30)."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#pqEvaluador").input_value() == "" and dlg.locator("#pqCliente").input_value() == ""
+    dlg.locator("#pqTitulo").fill("Cambio de quemador")
+    dlg.locator("#pqEvaluador").fill(" cm ")
+    dlg.locator("#pqCliente").fill("Colegio de prueba")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert (m["requerimiento"]["evaluador"], m["requerimiento"]["cliente"]) == ("CM", "Colegio de prueba")
+    assert _esquemas().validar_mensaje(m) == []
+    fila = pagina.locator('#pqFilas tr[data-n="914"]')
+    assert (fila.locator("td.c-eval").inner_text(), fila.locator("td.c-cli").inner_text()) == ("CM", "Colegio de prueba")
+    # Se busca por cliente, y lo ya escrito se sugiere al escribir
+    pagina.locator("#pqBuscar").fill("colegio de prueba")
+    assert _ns(pagina) == [914]
+    pagina.locator("#pqBuscar").fill("")
+    # En una fila que ya existe viaja solo lo cambiado, con lo que se veía
+    pagina.locator('#pqFilas tr[data-n="900"] .pq-abrir').click()
+    assert dlg.locator("#pqEvaluador").input_value() == "LC"
+    assert dlg.locator("#pqClientes option[value='Colegio de prueba']").count() == 1
+    dlg.locator("#pqEvaluador").fill("cm")
+    dlg.locator("#pqCliente").fill("Liceo de prueba")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert m["cambios"] == {"evaluador": "CM", "cliente": "Liceo de prueba"}
+    assert m["reemplaza"] == {"evaluador": "LC", "cliente": None}
+    assert _esquemas().validar_mensaje(m) == []
+    fila = pagina.locator('#pqFilas tr[data-n="900"]')
+    assert fila.locator("td.c-eval").inner_text() == "CM" and fila.locator("td.c-cli").inner_text() == "Liceo de prueba"
+    assert not errores
+    pagina.context.close()
+
+
+def test_cambiar_un_requerimiento_manda_solo_lo_cambiado_y_lo_que_se_veia(navegador, sitio):
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="LC")
+    pagina.locator('#pqFilas tr[data-n="900"] .pq-abrir').click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#dlgPqTit").inner_text() == "Requerimiento N° 900"
+    assert dlg.locator("#pqUbicacion").input_value() == "Valparaíso"
+    # El canal está vacío en el Excel: se ve vacío, no como «Mercado Público»
+    assert dlg.locator("#pqCanal").input_value() == ""
+    # Guardar sin cambiar nada no manda nada
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert _pedidos_planilla(pagina, "editar-requerimiento") == []
+    # Un clic en cualquier parte de la fila también la abre
+    pagina.locator('#pqFilas tr[data-n="900"] td.c-capt').click()
+    dlg.locator("#pqEstado").select_option("Ofertado")
+    dlg.locator("#pqUbicacion").fill("")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert m["requerimiento"] == {"numero": 900, "titulo": "LICEO"}
+    assert m["cambios"] == {"estado": "Ofertado", "ubicacion": None}
+    assert m["reemplaza"] == {"estado": "Evaluación", "ubicacion": "Valparaíso"}
+    assert _esquemas().validar_mensaje(m) == []
+    fila = pagina.locator('#pqFilas tr[data-n="900"]')
+    assert fila.locator(".pq-est").inner_text() == "Ofertado"
+    assert fila.locator(".pq-punto").count() == 2
+    # Otro cambio a la misma fila parte de lo que ya se cambió
+    fila.locator(".pq-abrir").click()
+    assert "Estado, Ubicación" in dlg.locator("#pqPista").inner_text()
+    dlg.locator("#pqEstado").select_option("Adjudicado")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    segundo = [x for x in _pedidos_planilla(pagina, "editar-requerimiento") if x["id"] != m["id"]][0]
+    assert segundo["cambios"] == {"estado": "Adjudicado"} and segundo["reemplaza"] == {"estado": "Ofertado"}
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_planilla_muestra_lo_que_espera_de_todo_el_equipo_y_lo_que_no_se_pudo(navegador, sitio):
+    from datetime import date
+    mes = date.today().strftime("%Y-%m")
+    n1, editar = _pedido(905, "editar-requerimiento", requerimiento={"numero": 905, "titulo": "Oferta esperando"},
+                         cambios={"referencia": "1-1-LE26"}, reemplaza={"referencia": None})
+    n2, formulador = _pedido(920, "nuevo-requerimiento", herramienta="formulador", requerimiento={"numero": 920, "titulo": "Del Formulador"},
+                             fuente={"herramienta": "formulador", "uid": "f920"})
+    n3, choque = _pedido(911, "nuevo-requerimiento", minutos=-3, requerimiento={"numero": 911, "titulo": "Otro con el mismo N°"},
+                         fuente={"herramienta": "portal"}, numeroLibre=True)
+    n4, rechazado = _pedido(907, "editar-requerimiento", minutos=-60, requerimiento={"numero": 907, "titulo": "Adjudicada sin ficha"},
+                            cambios={"estado": "Descartado"})
+    rechazado["resultado"] = {"estado": "rechazado", "fecha": date.today().isoformat(), "detalle": ["El N° 907 no está en la planilla."]}
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra={
+        "buzon/" + n1: editar, "buzon/" + n2: formulador, "buzon/" + n3: choque, f"procesado/{mes}/" + n4: rechazado})
+    assert pagina.locator('#pqFilas tr[data-n="905"] td.c-ref').inner_text() == "1-1-LE26"
+    assert pagina.locator('#pqFilas tr[data-n="905"] td.c-ref .pq-punto').count() == 1
+    assert "pq-nueva" in pagina.locator('#pqFilas tr[data-n="920"]').get_attribute("class")
+    # Un N° que ya tiene otra fila: las dos se ven, y la nueva dice que tomará el siguiente
+    assert pagina.locator('#pqFilas tr[data-n="911"]').count() == 2
+    assert "ya es «Descartada»" in pagina.locator('#pqFilas tr[data-n="911"].pq-nueva .pq-choque').inner_text()
+    assert "3 cambios esperan pasar al Excel" in pagina.locator("#pqSinc").inner_text()
+    pagina.locator("#pqSinc .pq-avisos").wait_for()
+    avisos = pagina.locator("#pqSinc .pq-avisos").inner_text()
+    assert "N° 907" in avisos and "no se pudo" in avisos
+    # El siguiente N° salta también lo que espera
+    pagina.locator("#pqNuevo").click()
+    assert pagina.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 921"
+    pagina.locator("#pqCancelar").click()
+    # Lo que espera desde hace más de media hora se avisa: ¿está encendido el computador?
+    n5, viejo = _pedido(906, "editar-requerimiento", minutos=-90, requerimiento={"numero": 906}, cambios={"canal": "Otro"})
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"buzon/" + n5: viejo})
+    pagina.locator("#pqActualizar").click()
+    pagina.locator('#pqSinc[data-nivel="warn"]').wait_for()
+    assert "computador del procesador" in pagina.locator("#pqSinc").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_planilla_dice_que_filas_del_excel_no_se_ven(navegador, sitio):
+    """Un N° repetido o una fila sin N° no llegan a las herramientas: una réplica no puede esconderlas en silencio."""
+    datos = _intercambio_de_prueba()
+    sobre = datos["publicado/requerimientos.json"]
+    sobre["datos"]["avisos"] = ["El N° 905 aparece más de una vez en la planilla: se usa la primera fila; la fila 40 «Repetida» no se ve en las herramientas.",
+                                "La fila 1995 «Sin número» no tiene N° en la planilla: no se ve en las herramientas."]
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra={"publicado/requerimientos.json": sobre})
+    fuera = pagina.locator("#pqSinc .pq-fuera")
+    assert fuera.locator("summary").inner_text() == "2 filas del Excel no se ven aquí: les falta un N° propio"
+    fuera.locator("summary").click()
+    assert "la fila 40 «Repetida»" in fuera.inner_text() and "La fila 1995 «Sin número»" in fuera.inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_recorrido_lleva_a_la_fila_de_la_planilla(navegador, sitio):
+    """«Actualizar la Planilla» del Recorrido (antes abría el Excel) abre la fila de ese N° en la Planilla del portal."""
+    pagina, errores = _recorrido_con_datos(navegador, sitio)
+    tarjeta = pagina.locator('.rc-tarjeta[data-clave="req-912"]')
+    assert tarjeta.locator(".rc-accion").inner_text() == "Actualizar la Planilla"
+    tarjeta.locator(".rc-accion").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    dlg.wait_for()
+    assert dlg.locator("#dlgPqTit").inner_text() == "Requerimiento N° 912"
+    assert dlg.locator("#pqTitulo").input_value() == "Cerró sin oferta"
+    assert _pestanas(pagina) == ["Inicio", "Recorrido", "Planilla"]
+    dlg.locator("#pqEstado").select_option("Descartado")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    # De vuelta en el Recorrido, ya no pide nada: quedó descartado
+    pagina.locator("#pestanas .ir", has_text="Recorrido").click()
+    assert pagina.locator('.rc-tarjeta[data-clave="req-912"]').count() == 0
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho", [360, 390, 820])
+def test_la_planilla_cabe_sin_desbordes(navegador, sitio, ancho):
+    movil = ancho < 760
+    pagina, errores = _planilla_con_datos(navegador, sitio, ancho=ancho, alto=844, movil=movil)
+    derecha = """() => Math.max(...[...document.querySelectorAll('#vistaPlanilla *')]
+        .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))"""
+    assert pagina.evaluate(derecha) <= ancho + 0.5
+    # En lo angosto, cada fila es una tarjeta con sus datos nombrados
+    assert pagina.locator("#pqTabla thead").is_hidden()
+    assert pagina.locator('#pqFilas tr[data-n="900"] td.c-ubic').get_attribute("data-et") == "Ubicación"
+    pagina.locator("#pqNuevo").click()
+    assert pagina.evaluate(derecha.replace("#vistaPlanilla", "#dlgPlanilla")) <= ancho + 0.5
+    if movil:
+        chicos = pagina.evaluate("""() => [...document.querySelectorAll('#dlgPlanilla input, #dlgPlanilla select')]
+            .filter((e) => e.getClientRects().length && parseFloat(getComputedStyle(e).fontSize) < 16).map((e) => e.id)""")
+        assert chicos == []
     assert not errores
     pagina.context.close()

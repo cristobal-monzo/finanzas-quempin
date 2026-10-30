@@ -1,0 +1,25 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c0ffee00c0ffee00c0ffee00",
+  "tipo": "editar-requerimiento",
+  "destino": "planilla-requerimientos",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "NB",
+    "enviado": "2026-10-29T18:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 321,
+    "titulo": "Calefacción central CESFAM"
+  },
+  "cambios": {
+    "estado": "Ofertado",
+    "cierre": "2026-11-13T15:00",
+    "ubicacion": null
+  },
+  "reemplaza": {
+    "estado": "Evaluación",
+    "cierre": "2026-11-13T15:01",
+    "ubicacion": "Peñalolén"
+  }
+}

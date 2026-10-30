@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Lo que se escribe en la Planilla de Ingreso: N° fijos y proyectos nuevos del Formulador.
+"""Lo que se escribe en la Planilla de Ingreso: N° fijos, proyectos nuevos del Formulador y del Portal, y lo que
+se cambia en el Portal.
 
 Siempre sobre una planilla armada en tmp_path, y sin Excel: «escribir» se reemplaza por una versión
 con openpyxl que aplica las mismas operaciones (la real, planilla_excel.ps1, se probó a mano sobre una
-copia de la planilla el 2026-10-26)."""
+copia de la planilla el 2026-10-26 y el 2026-10-29)."""
 import json
+import os
+from datetime import date, datetime, timedelta
 
 import openpyxl
 import pytest
@@ -13,9 +16,11 @@ import intercambio as ic
 import planilla_escritura as pe
 import requerimientos as rq
 
-ENCABEZADOS = ["N°", "Estado", "Canal", "Capt.", "Eval.", "Título", "Ubicación", "ID o Referencia", "Apertura",
+# Las columnas de la planilla real desde el 2026-10-27, con «Cliente» entre Título y Ubicación
+ENCABEZADOS = ["N°", "Estado", "Canal", "Capt.", "Eval.", "Título", "Cliente", "Ubicación", "ID o Referencia", "Apertura",
                "Cierre", "Visita", "Eº visita", "Visitador", "Presupuesto (IVA inc.)", "Valor ofertado (IVA inc)",
                "Valor adjudicado (IVA inc)", "Entrega (días)", "Plazo Oferta (días)"]
+COLUMNAS = pe.columnas_de(ENCABEZADOS)
 
 
 def _planilla(tmp_path, filas, vacias=3):
@@ -26,7 +31,7 @@ def _planilla(tmp_path, filas, vacias=3):
     hoja.append(ENCABEZADOS)
     for i, (numero, titulo) in enumerate(filas, start=2):
         hoja.append([numero if numero is not None else f'=IF(B{i}<>"",ROW()-1, "")', "Evaluación", "Otro", "NB", "NB",
-                     titulo, "Valdivia", "-"])
+                     titulo, None, "Valdivia", "-", datetime(2026, 10, 20)])
     for j in range(vacias):
         hoja.append([f'=IF(B{len(filas) + 2 + j}<>"",ROW()-1, "")'])
     ruta = tmp_path / "Planilla.xlsx"
@@ -42,6 +47,32 @@ def _filas(filas):
 
 def _pub(*pares):
     return [{"numero": n, "titulo": t, "referencia": "-"} for n, t in pares]
+
+
+# ── las columnas, por su encabezado ──────────────────────────────────────────
+
+def test_las_columnas_se_ubican_por_su_encabezado_y_no_por_su_letra():
+    """El 2026-10-27 alguien insertó «Cliente» en G: con las letras fijas de antes, la ubicación iba a «Cliente»."""
+    assert {k: COLUMNAS[k]["letra"] for k in ("estado", "titulo", "ubicacion", "referencia", "apertura", "cierre", "presupuesto")} == {
+        "estado": "B", "titulo": "F", "ubicacion": "H", "referencia": "I", "apertura": "J", "cierre": "K", "presupuesto": "O"}
+    antes = pe.columnas_de([e for e in ENCABEZADOS if e != "Cliente"])
+    assert antes["ubicacion"]["letra"] == "G" and antes["referencia"]["letra"] == "H"
+    assert COLUMNAS["ubicacion"]["encabezado"] == "Ubicación"
+
+
+def test_eval_y_cliente_se_escriben_en_su_columna():
+    """Las dos columnas que el usuario dejó en el Portal (2026-10-30), con «Cliente» donde está en la Planilla real."""
+    assert (COLUMNAS["evaluador"]["letra"], COLUMNAS["cliente"]["letra"]) == ("E", "G")
+    valores, _, borrar, encabezados = pe._celdas({"evaluador": "CM", "cliente": "Colegio de prueba", "ubicacion": None}, COLUMNAS)
+    assert valores == {"E": "CM", "G": "Colegio de prueba"} and borrar == ["H"]
+    assert encabezados == {"E": "Eval.", "G": "Cliente", "H": "Ubicación"}
+    assert {"evaluador", "cliente"} <= set(pe.EDITABLES) <= set(pe.ESCRIBIBLES)
+
+
+def test_leer_filas_toma_la_referencia_de_su_columna(tmp_path):
+    ruta = _planilla(tmp_path, [(1, "A")])
+    (f,) = pe.leer_filas(ruta)
+    assert (f["titulo"], f["referencia"]) == ("A", "-")
 
 
 # ── plan_fijar ───────────────────────────────────────────────────────────────
@@ -74,32 +105,116 @@ def test_titulos_repetidos_se_reparten_en_orden():
 
 # ── fila_de_mensaje ──────────────────────────────────────────────────────────
 
-def _mensaje(numero=4, **req):
+def _mensaje(numero=4, herramienta="formulador", enviado="2026-10-26T16:00:00-03:00", **req):
     r = {"numero": numero, "titulo": "Caldera gimnasio"}
     r.update(req)
-    return {"esquema": ic.ESQUEMA, "id": f"nuevo{numero:04d}", "tipo": pe.TIPO_NUEVO, "destino": rq.DESTINO,
-            "origen": {"herramienta": "formulador", "usuario": "NB", "enviado": "2026-10-26T16:00:00-03:00"},
-            "requerimiento": r, "fuente": {"herramienta": "formulador", "uid": "f1e2d3c4b5a6", "codigo": f"{numero}. Caldera gimnasio"}}
+    m = {"esquema": ic.ESQUEMA, "id": f"nuevo{numero:04d}{herramienta[:3]}", "tipo": pe.TIPO_NUEVO, "destino": rq.DESTINO,
+         "origen": {"herramienta": herramienta, "usuario": "NB", "enviado": enviado}, "requerimiento": r,
+         "fuente": {"herramienta": herramienta}}
+    if herramienta == "formulador":
+        m["fuente"].update({"uid": "f1e2d3c4b5a6", "codigo": f"{numero}. Caldera gimnasio"})
+    else:
+        m["numeroLibre"] = True
+    return m
 
 
 def test_fila_nueva_con_el_formato_de_las_demas():
-    op = pe.fila_de_mensaje(_mensaje(captador="CM", evaluador="NB"), None, hoy=__import__("datetime").date(2026, 10, 26))
-    assert op == {"op": "nueva", "numero": 4,
-                  "valores": {"B": "Evaluación", "C": "Otro", "D": "CM", "E": "NB", "F": "Caldera gimnasio", "H": "-"},
-                  "fechas": {"I": "2026-10-26"}}
+    op = pe.fila_de_mensaje(_mensaje(captador="CM", evaluador="NB"), None, COLUMNAS, hoy=date(2026, 10, 26))
+    assert op["op"] == "nueva" and op["numero"] == 4
+    assert op["valores"] == {"B": "Evaluación", "C": "Otro", "D": "CM", "E": "NB", "F": "Caldera gimnasio", "I": "-"}
+    assert op["fechas"] == {"J": "2026-10-26"}
+    # Excel revisa que cada letra siga teniendo ese encabezado antes de escribir
+    assert op["encabezados"]["I"] == "ID o Referencia" and op["encabezados"]["J"] == "Apertura"
 
 
 def test_lo_del_proyecto_al_escribir_manda_y_un_id_de_licitacion_es_mercado_publico():
     formulacion = {"datos": {"titulo": "Caldera gimnasio municipal", "ubicacion": "Ciudad Ficticia", "idLicitacion": "1234-5-LE26"}}
-    op = pe.fila_de_mensaje(_mensaje(), formulacion)
+    op = pe.fila_de_mensaje(_mensaje(), formulacion, COLUMNAS)
     assert op["valores"]["F"] == "Caldera gimnasio municipal"
-    assert op["valores"]["G"] == "Ciudad Ficticia"
-    assert op["valores"]["H"] == "1234-5-LE26"
+    assert op["valores"]["H"] == "Ciudad Ficticia"
+    assert op["valores"]["I"] == "1234-5-LE26"
     assert op["valores"]["C"] == "Mercado Público"
 
 
 def test_un_titulo_que_parece_formula_va_con_apostrofo():
-    assert pe.fila_de_mensaje(_mensaje(titulo="=HOLA"), None)["valores"]["F"] == "'=HOLA"
+    assert pe.fila_de_mensaje(_mensaje(titulo="=HOLA"), None, COLUMNAS)["valores"]["F"] == "'=HOLA"
+
+
+@pytest.mark.parametrize("texto, escrito", [
+    ("-2+3", "'-2+3"), ("@SUMA", "'@SUMA"), ("+56", "'+56"),   # serían fórmulas
+    ("10-2", "'10-2"), ("1/2", "'1/2"), ("00123", "'00123"),   # serían fecha o número
+    ("-", "-"), ("12. Ciudad de prueba", "12. Ciudad de prueba"), ("1234-56-LP26", "1234-56-LP26"),   # quedan como están
+])
+def test_lo_que_excel_reinterpretaria_va_con_apostrofo(texto, escrito):
+    assert pe._texto_celda(texto) == escrito
+
+
+def test_la_fila_del_portal_lleva_su_cierre_con_hora_y_vacios_sin_escribir():
+    op = pe.fila_de_mensaje(_mensaje(herramienta="portal", canal="Postventa", referencia="", cierre="2026-11-05T15:00"), None, COLUMNAS)
+    assert op["fechas"]["K"] == "2026-11-05T15:00"
+    assert op["valores"]["C"] == "Postventa" and op["valores"]["I"] == "-"
+
+
+# ── quién manda cuando una casilla cambió en los dos lados ───────────────────
+
+def _editar(numero, cambios, reemplaza=None, enviado="2026-10-29T12:00:00-03:00", titulo="A", id_=None):
+    m = {"esquema": ic.ESQUEMA, "id": id_ or f"editar{numero:04d}{enviado[11:13]}{enviado[14:16]}{enviado[17:19]}",
+         "tipo": pe.TIPO_EDITAR, "destino": rq.DESTINO,
+         "origen": {"herramienta": "portal", "usuario": "LC", "enviado": enviado},
+         "requerimiento": {"numero": numero, "titulo": titulo}, "cambios": cambios}
+    if reemplaza is not None:
+        m["reemplaza"] = reemplaza
+    return m
+
+
+def _hora(texto):
+    return datetime.fromisoformat(texto)
+
+
+def test_si_el_excel_todavia_tiene_lo_que_se_vio_se_escribe():
+    m = _editar(5, {"estado": "Ofertado"}, {"estado": "Evaluación"})
+    cambios, detalle = pe.ganador_editar(m, {"estado": "Evaluación"}, {}, _hora("2026-10-29T13:00:00-03:00"))
+    assert cambios == {"estado": "Ofertado"} and detalle == []
+
+
+def test_lo_que_ya_dice_el_excel_no_se_reescribe():
+    m = _editar(5, {"estado": "Ofertado", "cierre": "2026-11-13T15:00"}, {"estado": "Evaluación"})
+    cambios, _ = pe.ganador_editar(m, {"estado": "Ofertado", "cierre": "2026-11-13T15:00"}, {}, _hora("2026-10-29T13:00:00-03:00"))
+    assert cambios == {}
+
+
+def test_cambiada_en_los_dos_lados_manda_el_cambio_mas_reciente():
+    actual = {"estado": "Descartado"}          # alguien la cambió en el Excel
+    m = _editar(5, {"estado": "Ofertado"}, {"estado": "Evaluación"}, enviado="2026-10-29T12:00:00-03:00")
+    # El Excel se guardó después del cambio del Portal: queda lo del Excel
+    cambios, detalle = pe.ganador_editar(m, actual, {}, _hora("2026-10-29T12:30:00-03:00"))
+    assert cambios == {} and "Descartado" in detalle[0] and "más reciente" in detalle[0]
+    # El cambio del Portal es posterior: se escribe, y lo dice
+    cambios, detalle = pe.ganador_editar(m, actual, {}, _hora("2026-10-29T11:30:00-03:00"))
+    assert cambios == {"estado": "Ofertado"} and "reemplaza" in detalle[0]
+
+
+def test_lo_que_escribio_el_portal_cuenta_desde_cuando_se_cambio_en_el_portal():
+    """Un cambio del Portal más nuevo que otro del Portal ya escrito gana, aunque el libro se haya guardado después
+    (el guardado fue el de este mismo módulo)."""
+    escritas = {"5|estado": {"valor": "Descartado", "enviado": "2026-10-29T11:00:00-03:00"}}
+    m = _editar(5, {"estado": "Ofertado"}, {"estado": "Evaluación"}, enviado="2026-10-29T11:05:00-03:00")
+    cambios, _ = pe.ganador_editar(m, {"estado": "Descartado"}, escritas, _hora("2026-10-29T11:10:00-03:00"))
+    assert cambios == {"estado": "Ofertado"}
+    # Si después una persona la cambió en el Excel, vale la hora del libro
+    cambios, _ = pe.ganador_editar(m, {"estado": "Adjudicado"}, escritas, _hora("2026-10-29T11:10:00-03:00"))
+    assert cambios == {}
+
+
+def test_las_fechas_se_comparan_hasta_el_minuto():
+    m = _editar(5, {"apertura": "2026-10-21T11:20"}, {"apertura": "2026-10-21T11:20"})
+    assert pe.ganador_editar(m, {"apertura": "2026-10-21T11:20"}, {}, _hora("2026-10-29T13:00:00-03:00"))[0] == {}
+
+
+def test_las_celdas_de_un_cambio():
+    valores, fechas, borrar, encabezados = pe._celdas({"ubicacion": None, "cierre": "2026-11-13T15:00", "titulo": " Liceo "}, COLUMNAS)
+    assert valores == {"F": "Liceo"} and fechas == {"K": "2026-11-13T15:00"} and borrar == ["H"]
+    assert set(encabezados) == {"F", "H", "K"}
 
 
 # ── la vuelta ────────────────────────────────────────────────────────────────
@@ -110,21 +225,41 @@ def entorno(tmp_path, monkeypatch):
     monkeypatch.setattr(pe, "ESTADO", tmp_path / "estado.json")
     escritas = []
 
-    def falso_escribir(ruta, operaciones, limite=600):
+    def falso_escribir(ruta, operaciones, columnas=None, limite=600):
         escritas.append(operaciones)
         libro = openpyxl.load_workbook(ruta)
         hoja = libro[rq.HOJA]
+        encabezados = [c.value for c in hoja[1]]
         resultados = []
+
+        def poner(fila, o):
+            for letra, esperado in (o.get("encabezados") or {}).items():
+                assert hoja[f"{letra}1"].value == esperado, (letra, esperado)
+            for letra, v in o["valores"].items():
+                hoja[f"{letra}{fila}"] = v
+            for letra, v in (o.get("fechas") or {}).items():
+                hoja[f"{letra}{fila}"] = datetime.fromisoformat(v)
+            for letra in o.get("borrar") or []:
+                hoja[f"{letra}{fila}"] = None
+
         for i, o in enumerate(operaciones):
             if o["op"] == "fijar":
                 hoja.cell(o["fila"], 1).value = o["numero"]
                 resultados.append({"i": i, "ok": True, "fila": o["fila"]})
-            else:
+            elif o["op"] == "nueva":
                 fila = max(r for r in range(2, hoja.max_row + 1) if hoja.cell(r, 2).value or r == 2) + 1
                 hoja.cell(fila, 1).value = o["numero"]
-                for letra, v in o["valores"].items():
-                    hoja[f"{letra}{fila}"] = v
+                poner(fila, o)
                 resultados.append({"i": i, "ok": True, "fila": fila})
+            else:
+                col_t = encabezados.index("Título") + 1
+                filas = [r for r in range(2, hoja.max_row + 1)
+                         if hoja.cell(r, 1).value == o["numero"] and hoja.cell(r, col_t).value in (o["titulo"], o.get("tituloNuevo"))]
+                if len(filas) != 1:
+                    resultados.append({"i": i, "ok": False, "fila": 0, "detalle": f"{len(filas)} filas"})
+                    continue
+                poner(filas[0], o)
+                resultados.append({"i": i, "ok": True, "fila": filas[0]})
         libro.save(ruta)
         return {"estado": "ok", "detalle": "", "resultados": resultados}
 
@@ -143,13 +278,25 @@ def entorno(tmp_path, monkeypatch):
     return raiz, escritas
 
 
+def _archivados(raiz):
+    return {m["id"]: m["resultado"] for m in (json.loads(p.read_text(encoding="utf-8")) for p in (raiz / "procesado").rglob("*.json"))}
+
+
+def _publicados(raiz):
+    return {x["numero"]: x for x in ic.leer_publicacion(raiz, "requerimientos")["datos"]["requerimientos"]}
+
+
+def _hace(minutos):
+    return (datetime.now().astimezone() - timedelta(minutes=minutos)).isoformat(timespec="seconds")
+
+
 def test_registra_el_proyecto_nuevo_y_republica_la_planilla(tmp_path, entorno):
     raiz, escritas = entorno
     ruta = _planilla(tmp_path, [(1, "A"), (2, "B"), (3, "C")])
     rq.publicar(raiz, ruta)
     ic.enviar(raiz, _mensaje(4))
     r = pe.vuelta(raiz, ruta)
-    assert r["detalle"] == "0 N° fijados, 1 requerimiento(s) registrado(s)"
+    assert r["detalle"] == "0 N° fijados, 1 requerimiento(s) registrado(s), 0 cambiado(s)"
     assert ic.leer_buzon(raiz, destino=rq.DESTINO, tipo=pe.TIPO_NUEVO)[0] == []
     publicados = ic.leer_publicacion(raiz, "requerimientos")["datos"]["requerimientos"]
     assert [(x["numero"], x["titulo"]) for x in publicados][-1] == (4, "Caldera gimnasio")
@@ -167,8 +314,125 @@ def test_un_n_que_ya_tomo_otro_no_se_escribe(tmp_path, entorno):
     assert escritas == []
     assert "ya es «B»" in r["avisos"][0]
     assert ic.leer_buzon(raiz, destino=rq.DESTINO, tipo=pe.TIPO_NUEVO)[0] == []
-    archivado = [json.loads(p.read_text(encoding="utf-8")) for p in (raiz / "procesado").rglob("*.json")]
-    assert archivado[0]["resultado"]["estado"] == "rechazado"
+    assert list(_archivados(raiz).values())[0]["estado"] == "rechazado"
+
+
+def test_el_del_portal_con_un_n_tomado_queda_con_el_siguiente_libre(tmp_path, entorno):
+    """Dos personas agregan un requerimiento en el Portal a la vez y las dos ven el N° 3 libre."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _mensaje(3, herramienta="portal", enviado=_hace(5), titulo="Primera"))
+    ic.enviar(raiz, _mensaje(3, herramienta="portal", enviado=_hace(4), titulo="Segunda", canal="Postventa"))
+    r = pe.vuelta(raiz, ruta)
+    assert r["detalle"].endswith("2 requerimiento(s) registrado(s), 0 cambiado(s)")
+    pub = _publicados(raiz)
+    assert (pub[3]["titulo"], pub[4]["titulo"], pub[4]["canal"]) == ("Primera", "Segunda", "Postventa")
+    resultado = [x for x in _archivados(raiz).values() if any("N° 4" in d for d in x["detalle"])][0]
+    assert resultado["estado"] == "aplicado" and any("quedó con el N° 4" in d for d in resultado["detalle"])
+
+
+def test_un_cambio_del_portal_se_escribe_en_la_fila_de_su_n(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    m = _editar(2, {"estado": "Ofertado", "ubicacion": None, "cierre": "2026-11-13T15:00"},
+                {"estado": "Evaluación", "ubicacion": "Valdivia", "cierre": None}, enviado=_hace(1), titulo="B")
+    ic.enviar(raiz, m)
+    r = pe.vuelta(raiz, ruta)
+    assert r["detalle"].endswith("1 cambiado(s)")
+    (op,) = escritas[0]
+    assert op["op"] == "editar" and op["titulo"] == "B" and op["borrar"] == ["H"]
+    pub = _publicados(raiz)
+    assert (pub[2]["estado"], pub[2]["ubicacion"], pub[2]["cierre"]) == ("Ofertado", None, "2026-11-13T15:00")
+    assert pub[1]["estado"] == "Evaluación"
+    assert _archivados(raiz)[m["id"]]["estado"] == "aplicado"
+    # Lo escrito queda anotado: decide quién manda si esa casilla vuelve a cambiar en los dos lados
+    assert json.loads(pe.ESTADO.read_text(encoding="utf-8"))["escritas"]["2|estado"]["valor"] == "Ofertado"
+
+
+def test_un_cambio_del_titulo_y_otro_despues_a_la_misma_fila(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _editar(1, {"titulo": "A corregido"}, {"titulo": "A"}, enviado=_hace(3), titulo="A"))
+    ic.enviar(raiz, _editar(1, {"canal": "Mercado Público"}, {"canal": "Otro"}, enviado=_hace(2), titulo="A corregido"))
+    pe.vuelta(raiz, ruta)
+    assert [o["titulo"] for o in escritas[0]] == ["A", "A corregido"]
+    pub = _publicados(raiz)
+    assert (pub[1]["titulo"], pub[1]["canal"]) == ("A corregido", "Mercado Público")
+
+
+def test_un_cambio_a_una_fila_que_se_crea_en_la_misma_vuelta_va_junto(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _mensaje(2, herramienta="portal", enviado=_hace(3), titulo="Nueva"))
+    m = _editar(2, {"ubicacion": "Talca"}, {"ubicacion": None}, enviado=_hace(2), titulo="Nueva")
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    (op,) = escritas[0]
+    assert op["op"] == "nueva" and op["valores"]["H"] == "Talca"
+    assert _publicados(raiz)[2]["ubicacion"] == "Talca"
+    assert _archivados(raiz)[m["id"]]["estado"] == "aplicado"
+
+
+def test_un_cambio_a_una_fila_que_quedo_con_otro_n_la_sigue(tmp_path, entorno):
+    """Dos personas tomaron el N° 2 a la vez: el cambio que veía la segunda fila no cae en la de la primera."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _mensaje(2, herramienta="portal", enviado=_hace(5), titulo="Primera"))
+    segunda = _mensaje(2, herramienta="portal", enviado=_hace(4), titulo="Segunda")
+    segunda["id"] = "nuevosegunda1"
+    ic.enviar(raiz, segunda)
+    ic.enviar(raiz, _editar(2, {"ubicacion": "Talca"}, {"ubicacion": None}, enviado=_hace(3), titulo="Segunda"))
+    pe.vuelta(raiz, ruta)
+    pub = _publicados(raiz)
+    assert (pub[2]["titulo"], pub[2]["ubicacion"]) == ("Primera", None)
+    assert (pub[3]["titulo"], pub[3]["ubicacion"]) == ("Segunda", "Talca")
+
+
+def test_un_cambio_a_un_n_que_ahora_es_de_otro_no_se_escribe(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    m = _editar(2, {"estado": "Adjudicado"}, {"estado": "Evaluación"}, enviado=_hace(2), titulo="Otra cosa")
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    assert escritas == [] and _publicados(raiz)[2]["estado"] == "Evaluación"
+    resultado = _archivados(raiz)[m["id"]]
+    assert resultado["estado"] == "rechazado" and "ahora es «B»" in resultado["detalle"][0]
+
+
+def test_un_cambio_cuya_fila_no_llega_todavia_espera(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _editar(9, {"estado": "Ofertado"}, enviado=_hace(5), titulo="Otra"))
+    pe.vuelta(raiz, ruta)
+    assert escritas == [] and len(ic.leer_buzon(raiz, destino=rq.DESTINO, tipo=pe.TIPO_EDITAR)[0]) == 1
+    # Un día después se rechaza
+    viejo = _editar(8, {"estado": "Ofertado"}, enviado=_hace(60 * 25), titulo="Otra")
+    ic.enviar(raiz, viejo)
+    pe.vuelta(raiz, ruta)
+    assert _archivados(raiz)[viejo["id"]]["estado"] == "rechazado"
+
+
+def test_lo_que_se_cambia_en_el_excel_llega_al_portal_en_la_vuelta(tmp_path, entorno):
+    """Sin nada en el buzón: si el Excel cambió, se republica sin esperar al procesador (cada 2 horas)."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    assert pe.vuelta(raiz, ruta)["detalle"].startswith("N° ya fijos")
+    libro = openpyxl.load_workbook(ruta)
+    libro[rq.HOJA]["B2"] = "Ofertado"
+    libro.save(ruta)
+    st = os.stat(ruta)
+    os.utime(ruta, (st.st_atime, st.st_mtime + 5))
+    r = pe.vuelta(raiz, ruta)
+    assert "republicada" in r["detalle"] and escritas == []
+    assert _publicados(raiz)[1]["estado"] == "Ofertado"
 
 
 def test_fija_las_formulas_de_filas_que_alguien_agrego_a_mano(tmp_path, entorno):
@@ -178,3 +442,13 @@ def test_fija_las_formulas_de_filas_que_alguien_agrego_a_mano(tmp_path, entorno)
     r = pe.vuelta(raiz, ruta)
     assert r["detalle"].startswith("1 N° fijados")
     assert escritas[0] == [{"op": "fijar", "fila": 3, "titulo": "B", "numero": 2}]
+
+
+def test_simular_no_escribe_ni_archiva(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _editar(1, {"estado": "Ofertado"}, {"estado": "Evaluación"}, enviado=_hace(1)))
+    r = pe.vuelta(raiz, ruta, simular=True)
+    assert [o["op"] for o in r["operaciones"]] == ["editar"]
+    assert escritas == [] and _archivados(raiz) == {}

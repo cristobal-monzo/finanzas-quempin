@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "nuevo-requerimiento (Formulador → Planilla de Ingreso)",
-  "description": "Un proyecto creado en el Formulador sin N° de requerimiento (2026-10-26). El Formulador reserva el siguiente N° libre (el que ya llevan su código y su carpeta) y planilla_escritura.py lo escribe como fila nueva de la Planilla con Excel, cada 10 minutos. Si ese N° ya lo tomó otro requerimiento, no se escribe: queda rechazado con el motivo.",
+  "title": "nuevo-requerimiento (Formulador o Portal → Planilla de Ingreso)",
+  "description": "Un requerimiento nuevo para la Planilla de Ingreso. Lo mandan el Formulador (un proyecto creado sin N° de requerimiento, 2026-10-26: reserva el siguiente N° libre, el que ya llevan su código y su carpeta) y, desde el 2026-10-29, la vista «Planilla de Ingreso» del Portal QUEMPIN, donde el equipo ingresa los requerimientos. planilla_escritura.py lo escribe como fila nueva de la Planilla con Excel, cada 10 minutos. Si ese N° ya lo tomó otro requerimiento: el del Formulador no se escribe y queda rechazado con el motivo; con numeroLibre (el Portal, que todavía no usó ese N° en ninguna carpeta) toma el siguiente libre y lo dice en el resultado.",
   "destino": "planilla-requerimientos",
   "type": "object",
   "properties": {
@@ -28,6 +28,7 @@
         "canal": {
           "enum": [
             "Mercado Público",
+            "Postventa",
             "Sitio Web",
             "RRSS",
             "Ferias",
@@ -38,6 +39,9 @@
           "type": "string"
         },
         "evaluador": {
+          "type": "string"
+        },
+        "cliente": {
           "type": "string"
         },
         "ubicacion": {
@@ -86,6 +90,9 @@
       "required": [
         "herramienta"
       ]
+    },
+    "numeroLibre": {
+      "type": "boolean"
     }
   },
   "required": [

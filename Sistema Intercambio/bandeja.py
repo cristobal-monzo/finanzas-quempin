@@ -33,8 +33,9 @@ DETENIDO_HORAS_HABILES = 4
 
 # Que hacer con lo que espera en el buzon de cada herramienta.
 ACCION_BUZON = {
-    "planilla-requerimientos": ("sugerencia(s) para la Planilla de Ingreso",
-                                "revisarlas con /Sugerencias_Requerimientos"),
+    "planilla-requerimientos": ("envio(s) para la Planilla de Ingreso",
+                                "las sugerencias: /Sugerencias_Requerimientos; lo ingresado en el Portal "
+                                "pasa solo al Excel en 10 minutos"),
     "sistema-quempin": ("envio(s) para Sistema QUEMPIN (borradores de cotizacion o registros)",
                         "abrir Sistema QUEMPIN: los toma al iniciar"),
     "analisis-financiero": ("envio(s) al Analisis Financiero",

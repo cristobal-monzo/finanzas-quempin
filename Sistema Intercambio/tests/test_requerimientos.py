@@ -46,6 +46,14 @@ def test_lee_por_nombre_de_columna_y_limpia_valores(tmp_path):
     assert r["referencia"] == "123-45-LE26"
 
 
+def test_cliente_se_publica_si_la_planilla_tiene_la_columna(tmp_path):
+    con_cliente = ENCABEZADOS[:6] + ["Cliente"] + ENCABEZADOS[6:]
+    fila = _fila(7)
+    ruta = _planilla(tmp_path, [fila[:6] + ["Colegio de prueba"] + fila[6:]], encabezados=con_cliente)
+    (r,) = rq.leer_planilla(ruta)
+    assert r["cliente"] == "Colegio de prueba" and r["ubicacion"] == "Valdivia"
+
+
 def test_columnas_en_otro_orden_no_corren_nada(tmp_path):
     orden = list(reversed(ENCABEZADOS))
     ruta = _planilla(tmp_path, [list(reversed(_fila(7, titulo="Horno")))], encabezados=orden)
@@ -58,6 +66,15 @@ def test_numero_repetido_se_avisa(tmp_path):
     avisos = []
     (r,) = rq.leer_planilla(ruta, avisos)
     assert r["titulo"] == "Primera" and "N° 5" in avisos[0]
+    assert "fila 3 «Segunda»" in avisos[0]          # el Portal lo muestra: esa fila solo se ve en el Excel
+
+
+def test_una_fila_con_datos_y_sin_numero_se_avisa(tmp_path):
+    """El 2026-10-29 había dos así al fondo de la tabla: no llegaban a ninguna herramienta y nadie lo veía."""
+    ruta = _planilla(tmp_path, [_fila(5), [None, "Descartado", None, None, None, "Sin número"], [None, None]])
+    avisos = []
+    assert [r["numero"] for r in rq.leer_planilla(ruta, avisos)] == [5]
+    assert len(avisos) == 1 and "fila 3 «Sin número»" in avisos[0]
 
 
 def test_sin_columna_numero_es_error_claro(tmp_path):
@@ -189,3 +206,56 @@ def test_filas_nuevas_y_un_titulo_corregido_si_se_publican(tmp_path):
     assert len(ic.leer_publicacion(raiz, "requerimientos")["datos"]["requerimientos"]) == 7
     assert rq.renumerados([{"numero": 1, "titulo": "A"}, {"numero": 2, "titulo": "B"}],
                           [{"numero": 2, "titulo": "A"}, {"numero": 1, "titulo": "B"}]) == [(1, 2, "A"), (2, 1, "B")]
+
+
+# ── «Ubicación» como dato geográfico de Excel (2026-10-29) ───────────────────
+
+_RICO = "http://schemas.microsoft.com/office/spreadsheetml/2017/richdata"
+
+
+def _con_dato_geografico(ruta, celdas):
+    """Convierte cada celda {«G2»: «Valparaíso»} en un tipo de dato vinculado, como lo guarda Excel: la celda
+    queda con el error #VALUE! y vm=«n», y el nombre va en xl/richData (por metadata.xml)."""
+    import re
+    import zipfile
+
+    with zipfile.ZipFile(ruta) as z:
+        partes = {n: z.read(n) for n in z.namelist()}
+    hoja = partes["xl/worksheets/sheet1.xml"].decode("utf-8")
+    rvs, bks, vms = [], [], []
+    for i, (ref, nombre) in enumerate(celdas.items()):
+        # Una entidad «núcleo» antes de la de la celda, como en la planilla real: el índice no es el de la celda
+        rvs.append(f'<rv s="0"><v>536870912</v><v>{nombre} Province</v><v>id{i}</v><v>en-US</v><v>Map</v></rv>')
+        rvs.append(f'<rv s="1"><v>#VALUE!</v><v>en-US</v><v>id{i}</v><v>536870912</v><v>{nombre}</v></rv>')
+        bks.append(f'<bk><extLst><ext uri="{{3e2802c4-a4d2-4d8b-9148-e3be6c30e623}}"><xlrd:rvb i="{2 * i + 1}"/></ext></extLst></bk>')
+        vms.append(f'<bk><rc t="1" v="{i}"/></bk>')
+        hoja, n = re.subn(rf'<c r="{ref}"[^>]*?(/>|>.*?</c>)', f'<c r="{ref}" t="e" vm="{i + 1}"><v>#VALUE!</v></c>', hoja)
+        assert n == 1, ref
+    partes["xl/worksheets/sheet1.xml"] = hoja.encode("utf-8")
+    partes["xl/richData/rdrichvaluestructure.xml"] = (
+        f'<rvStructures xmlns="{_RICO}" count="2"><s t="_linkedentity2"><k n="%EntityServiceId"/><k n="_DisplayString"/>'
+        '<k n="%EntityId"/><k n="%EntityCulture"/><k n="_Icon"/></s><s t="_linkedentity2core"><k n="_CRID"/>'
+        '<k n="%EntityCulture"/><k n="%EntityId"/><k n="%EntityServiceId"/><k n="_DisplayString"/></s></rvStructures>').encode()
+    partes["xl/richData/rdrichvalue.xml"] = f'<rvData xmlns="{_RICO}" count="{len(rvs)}">{"".join(rvs)}</rvData>'.encode()
+    partes["xl/metadata.xml"] = (
+        f'<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:xlrd="{_RICO}">'
+        '<metadataTypes count="1"><metadataType name="XLRICHVALUE"/></metadataTypes>'
+        f'<futureMetadata name="XLRICHVALUE" count="{len(bks)}">{"".join(bks)}</futureMetadata>'
+        f'<valueMetadata count="{len(vms)}">{"".join(vms)}</valueMetadata></metadata>').encode()
+    with zipfile.ZipFile(ruta, "w", zipfile.ZIP_DEFLATED) as z:
+        for n, datos in partes.items():
+            z.writestr(n, datos)
+
+
+def test_la_ubicacion_como_dato_geografico_se_lee_por_su_nombre(tmp_path):
+    """En la planilla real 256 de 323 ubicaciones son datos geográficos: openpyxl solo ve #VALUE!."""
+    ruta = _planilla(tmp_path, [_fila(1, ubicacion="x"), _fila(2, ubicacion="Talca"), _fila(3, ubicacion="x")])
+    _con_dato_geografico(ruta, {"G2": "Valparaíso", "G4": "Viña del Mar"})
+    assert rq.entidades_vinculadas(ruta) == {(2, 7): "Valparaíso", (4, 7): "Viña del Mar"}
+    assert [r["ubicacion"] for r in rq.leer_planilla(ruta)] == ["Valparaíso", "Talca", "Viña del Mar"]
+
+
+def test_sin_datos_vinculados_no_cambia_nada(tmp_path):
+    ruta = _planilla(tmp_path, [_fila(1, ubicacion="#VALUE!")])
+    assert rq.entidades_vinculadas(ruta) == {}
+    assert rq.leer_planilla(ruta)[0]["ubicacion"] is None

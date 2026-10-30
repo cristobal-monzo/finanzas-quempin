@@ -7,6 +7,7 @@ sincronizada por OneDrive con JSON de formato común (`quempin.intercambio/1`).
 | Tema | Detalle (léelo solo al tocarlo) |
 |---|---|
 | Qué hace cada tipo de mensaje y publicación | [docs/tipos.md](docs/tipos.md) |
+| El Excel y el Portal: columnas, quién gana, frenos (`planilla_escritura.py`) | [docs/planilla.md](docs/planilla.md) |
 | Monitor de resultados (`mercado_publico.py`) | [docs/mercado-publico.md](docs/mercado-publico.md) |
 | Oportunidades, compras ágiles, calibración, correo y bases (`oportunidades.py`, `compra_agil.py`, `calibrar_oportunidades.py`, `alertas_oportunidades.py`, `bases_oportunidades.py`) | [docs/oportunidades.md](docs/oportunidades.md) |
 | Carpetas de facturas de los proyectos (`carpetas_proyecto.py`) | [docs/carpetas-proyecto.md](docs/carpetas-proyecto.md) |
@@ -69,7 +70,7 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
 
 - **Mensajes**: `presupuesto-proyecto`, `venta-proyecto` y `datos-proyecto` → Análisis
   Financiero; `formulacion` → Formulador; `borrador-cotizacion` y `registro-documento` →
-  Sistema QUEMPIN; `actualizar-requerimiento` y `nuevo-requerimiento` → Planilla;
+  Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento` y `editar-requerimiento` → Planilla;
   `documento-cc` → Centro de Costos.
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
@@ -133,8 +134,15 @@ Solo abre Excel si hay un pedido o la planilla cambió y tiene un N° en fórmul
   Excel abre el archivo como documento de SharePoint con coautoría; `Workbooks.Open` puede volver
   antes de que el libro esté listo. Abierto solo para lectura: no escribe y reintenta. Respaldo antes
   de cada escritura en `%LOCALAPPDATA%\QUEMPIN\respaldos-planilla` (30).
-- **Registra** los `nuevo-requerimiento` del Formulador: una fila en la primera vacía de la tabla,
-  con N° fijo y los datos del proyecto al escribir, y republica `requerimientos.json`.
+- **El Excel y el Portal se actualizan mutuamente** ([docs/planilla.md](docs/planilla.md)): escribe los
+  `nuevo-requerimiento` y `editar-requerimiento` del buzón, y si el archivo cambió republica
+  `requerimientos.json` sin abrir Excel. Si una casilla cambió en los dos lados, manda el cambio más reciente.
+- **Registra** una fila nueva en la primera vacía después del último N°, con N° fijo. Del Formulador, con los
+  datos del proyecto al escribir; del Portal, con los del pedido y el siguiente N° libre si ya lo tomaron.
+- **Columnas por su encabezado, nunca por su letra**: alguien insertó «Cliente» en G el 2026-10-27. Python
+  calcula cada letra y Excel revisa que siga teniendo ese encabezado antes de escribir. Antes de cambiar una
+  fila se confirma su título.
+- **Con ese computador apagado**, lo del Portal espera en el buzón y el Portal lo avisa pasada media hora.
 - **PowerShell**: texto y número se escriben en líneas distintas (el binder de COM recuerda el tipo de
   la primera escritura de cada línea), y el `.ps1` va con BOM (PowerShell 5.1 lo lee como ANSI sin él).
 

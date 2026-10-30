@@ -12,7 +12,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 
 | Carpeta o archivo | Qué hay |
 |---|---|
-| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, sugerencias para la Planilla de Ingreso y documentos para el Centro de Costos. |
+| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, lo ingresado en la Planilla de Ingreso del Portal, sugerencias para la Planilla y documentos para el Centro de Costos. |
 | `buzon/adjuntos/` | Los archivos (facturas, boletas) que se suben desde «Subir documentos» del Portal, uno por envío, hasta que el procesador los deja en el Centro de Costos. |
 | `procesado/` | Envíos ya atendidos, por mes, con su resultado: aplicado, sin cambios, reemplazado por uno más reciente, rechazado o descartado. |
 | `publicado/` | Lo que cada herramienta comparte con las demás (ver abajo). Un archivo se reescribe solo cuando cambia lo que dice. |
@@ -26,7 +26,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 
 | Archivo | Quién lo escribe | Para qué |
 |---|---|---|
-| `requerimientos.json` | el procesador, cuando cambia la Planilla de Ingreso | el N° de requerimiento en el Formulador y en Sistema QUEMPIN |
+| `requerimientos.json` | el computador del procesador, cuando cambia el Excel de la Planilla de Ingreso (cada 10 minutos) | la Planilla de Ingreso del Portal y el N° de requerimiento en el Formulador y en Sistema QUEMPIN |
 | `analisis-financiero.json` | Análisis Financiero | los proyectos en ejecución y sus costos, en el Formulador |
 | `documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN | cotizaciones y OC emitidas, clientes y proveedores, último N° del Control de Documentos |
 | `precios-referencia.json` | Cotizador Histórico | precios de compra reajustados, en el Formulador |
@@ -57,13 +57,22 @@ proyecto», un acceso directo que abre esa carpeta del Centro de Costos en
 SharePoint: ahí se ven sus facturas y lo que se sube entra al Centro de
 Costos.
 
+## La Planilla de Ingreso
+
+Desde el 2026-10-29 se ingresa y se cambia en la «Planilla de Ingreso» del
+Portal QUEMPIN. El Excel de la raíz de la biblioteca queda de respaldo. Cada 10
+minutos, el computador del procesador pasa al Excel lo del Portal y publica lo
+que se haya cambiado en el Excel. Si una casilla cambió en los dos lados, queda
+el cambio más reciente. El Portal muestra las columnas que se usan de verdad; las
+demás se siguen llenando en el Excel.
+
 ## Lo que espera a una persona
 
 - **Sugerencias para la Planilla de Ingreso** (estado, valor ofertado o
-  adjudicado, del Formulador o de Mercado Público). Nadie escribe la Planilla
-  por programa: se pasa a mano desde «Pendientes del equipo» del Formulador,
-  y el procesador cierra la sugerencia cuando la Planilla ya lo muestra. Si
-  llega una más nueva para lo mismo, la anterior se archiva sola.
+  adjudicado, del Formulador o de Mercado Público). Se pasan a mano desde
+  «Pendientes del equipo» del Formulador, y el procesador cierra la sugerencia
+  cuando la Planilla ya lo muestra. Si llega una más nueva para lo mismo, la
+  anterior se archiva sola.
 - **Borradores de cotización:** se revisan y emiten en Sistema QUEMPIN, en
   «Borradores del Formulador».
 - **Envíos al Análisis Financiero** que pisarían un valor escrito a mano:

@@ -39,6 +39,12 @@
               "null"
             ]
           },
+          "cliente": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "ubicacion": {
             "type": [
               "string",

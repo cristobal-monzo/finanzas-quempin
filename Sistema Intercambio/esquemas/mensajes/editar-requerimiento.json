@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "editar-requerimiento (Portal → Planilla de Ingreso)",
+  "description": "Las casillas de un requerimiento que alguien cambió en la vista «Planilla de Ingreso» del Portal QUEMPIN (2026-10-29): solo las columnas que el Portal muestra, las que el equipo llena de verdad. planilla_escritura.py las escribe con Excel en la fila de ese N°, cada 10 minutos. 'reemplaza' lleva lo que esa persona veía en cada casilla: si el Excel ya tiene otra cosa, alguien la cambió también ahí y manda el cambio más reciente. null deja la casilla vacía. 'requerimiento.titulo' es el título que se veía (para confirmar la fila).",
+  "destino": "planilla-requerimientos",
+  "type": "object",
+  "properties": {
+    "requerimiento": {
+      "type": "object",
+      "properties": {
+        "numero": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "titulo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "numero"
+      ],
+      "additionalProperties": false
+    },
+    "cambios": {
+      "type": "object",
+      "properties": {
+        "estado": {
+          "enum": [
+            "Evaluación",
+            "Ofertado",
+            "Adjudicado",
+            "No adjudicado",
+            "Descartado"
+          ]
+        },
+        "canal": {
+          "enum": [
+            "Mercado Público",
+            "Postventa",
+            "Sitio Web",
+            "RRSS",
+            "Ferias",
+            "Otro"
+          ]
+        },
+        "captador": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evaluador": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "titulo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cliente": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ubicacion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "referencia": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apertura": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cierre": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "reemplaza": {
+      "type": "object",
+      "properties": {
+        "estado": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "canal": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "captador": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evaluador": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "titulo": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cliente": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ubicacion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "referencia": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apertura": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cierre": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "requerimiento",
+    "cambios"
+  ]
+}

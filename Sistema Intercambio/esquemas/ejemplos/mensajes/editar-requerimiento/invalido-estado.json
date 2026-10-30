@@ -1,0 +1,17 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c0ffee00c0ffee00c0ffee00",
+  "tipo": "editar-requerimiento",
+  "destino": "planilla-requerimientos",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "NB",
+    "enviado": "2026-10-29T18:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 321
+  },
+  "cambios": {
+    "estado": "Ganado"
+  }
+}

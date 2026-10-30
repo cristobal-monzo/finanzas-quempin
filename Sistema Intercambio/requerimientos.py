@@ -3,15 +3,17 @@
 requerimientos.py -- La Planilla de Ingreso de Requerimientos, vista por las
 demás herramientas.
 
-La planilla es de las personas: la lleva a mano el equipo comercial en la
-raíz de la biblioteca «Formulación de proyectos - Documentos». Su N° es lo
-primero que se asigna a un proyecto y ya prefija las carpetas de SharePoint
-(«280. UMAG - …»), así que es la **clave común de proyecto** del intercambio
-(plan de integración, 2026-09-30, §5.2).
+Vive en la raíz de la biblioteca «Formulación de proyectos - Documentos». Desde
+el 2026-10-29 se ingresa y se cambia en la vista «Planilla de Ingreso» del
+Portal QUEMPIN, y este Excel queda de respaldo, al día en los dos sentidos. Su
+N° es lo primero que se asigna a un proyecto y ya prefija las carpetas de
+SharePoint («280. UMAG - …»), así que es la **clave común de proyecto** del
+intercambio (plan de integración, 2026-09-30, §5.2).
 
 Este módulo hace dos cosas, y ninguna escribe la planilla (lo único que se
-escribe en ella, con Excel, está en ``planilla_escritura.py``: los N° fijos y
-los proyectos nuevos del Formulador, desde el 2026-10-26):
+escribe en ella, con Excel, está en ``planilla_escritura.py``: los N° fijos,
+los proyectos nuevos del Formulador y del Portal, y lo que se cambia en el
+Portal):
 
 1. **Publica** una copia de solo lectura en ``publicado/requerimientos.json``
    (``publicar``), para que el Formulador cree proyectos desde un
@@ -56,6 +58,7 @@ COLUMNAS = {
     "capt": "captador",
     "eval": "evaluador",
     "titulo": "titulo",
+    "cliente": "cliente",
     "ubicacion": "ubicacion",
     "id o referencia": "referencia",
     "apertura": "apertura",
@@ -125,9 +128,84 @@ def _numero(valor) -> int | None:
 
 # ── LECTURA ──────────────────────────────────────────────────────────────────
 
+_NS_HOJA = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+_NS_RICO = "{http://schemas.microsoft.com/office/spreadsheetml/2017/richdata}"
+_NS_REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+
+
+def _columna_n(ref: str) -> int:
+    n = 0
+    for c in re.match(r"[A-Z]+", ref).group():
+        n = n * 26 + ord(c) - 64
+    return n
+
+
+def entidades_vinculadas(ruta: Path, hoja: str = HOJA) -> dict[tuple, str]:
+    """{(fila, columna): nombre} de las celdas con un tipo de dato vinculado de Excel.
+
+    «Ubicación» se escribe casi siempre como dato geográfico (Datos › Geografía): Excel la muestra
+    como «Valparaíso», pero en el archivo la celda guarda el error #VALUE! y apunta (atributo vm)
+    a xl/richData, donde está el nombre. openpyxl no sigue ese puntero, así que hasta el 2026-10-29
+    se publicaban vacías 256 de 323 ubicaciones. Camino: vm → metadata.xml (valueMetadata → futureMetadata
+    XLRICHVALUE) → rdrichvalue.xml → su estructura en rdrichvaluestructure.xml → la clave _DisplayString."""
+    import zipfile
+    from xml.etree import ElementTree as ET
+
+    try:
+        z = zipfile.ZipFile(ruta)
+    except (OSError, zipfile.BadZipFile):
+        return {}
+    with z:
+        nombres = set(z.namelist())
+        if not {"xl/metadata.xml", "xl/richData/rdrichvalue.xml", "xl/richData/rdrichvaluestructure.xml"} <= nombres:
+            return {}
+        libro = ET.fromstring(z.read("xl/workbook.xml"))
+        rid = next((s.get(_NS_REL + "id") for s in libro.iter(_NS_HOJA + "sheet") if s.get("name") == hoja), None)
+        rels = ET.fromstring(z.read("xl/_rels/workbook.xml.rels"))
+        destino = next((r.get("Target") for r in rels if r.get("Id") == rid), None)
+        if not destino:
+            return {}
+        parte = destino.lstrip("/") if destino.startswith("/") else "xl/" + destino
+        estructuras = [[k.get("n") for k in s] for s in ET.fromstring(z.read("xl/richData/rdrichvaluestructure.xml"))]
+        nombres_rv = []
+        for rv in ET.fromstring(z.read("xl/richData/rdrichvalue.xml")):
+            claves = estructuras[int(rv.get("s"))] if int(rv.get("s", -1)) < len(estructuras) else []
+            valores = dict(zip(claves, (x.text for x in rv)))
+            nombres_rv.append((valores.get("_DisplayString") or "").strip() or None)
+        meta = ET.fromstring(z.read("xl/metadata.xml"))
+        tipos = [t.get("name") for t in meta.iter(_NS_HOJA + "metadataType")]
+        futuro = []
+        for fm in meta.iter(_NS_HOJA + "futureMetadata"):
+            if fm.get("name") == "XLRICHVALUE":
+                futuro = [next((int(x.get("i")) for x in bk.iter(_NS_RICO + "rvb")), None) for bk in fm.iter(_NS_HOJA + "bk")]
+        valor_meta = []
+        for vm in meta.iter(_NS_HOJA + "valueMetadata"):
+            for bk in vm.iter(_NS_HOJA + "bk"):
+                rc = bk.find(_NS_HOJA + "rc")
+                ok = rc is not None and 0 < int(rc.get("t")) <= len(tipos) and tipos[int(rc.get("t")) - 1] == "XLRICHVALUE"
+                valor_meta.append(int(rc.get("v")) if ok else None)
+        salida = {}
+        with z.open(parte) as f:
+            for _, c in ET.iterparse(f):
+                if c.tag != _NS_HOJA + "c":
+                    continue
+                vm = c.get("vm")
+                if vm and vm.isdigit() and 0 < int(vm) <= len(valor_meta):
+                    k = valor_meta[int(vm) - 1]
+                    i = futuro[k] if k is not None and k < len(futuro) else None
+                    nombre = nombres_rv[i] if i is not None and i < len(nombres_rv) else None
+                    if nombre:
+                        ref = c.get("r")
+                        salida[(int(re.search(r"\d+", ref).group()), _columna_n(ref))] = nombre
+                c.clear()
+        return salida
+
+
 def leer_planilla(ruta: Path, avisos: list | None = None) -> list[dict]:
     """Una fila por requerimiento con N°. Solo lectura (read_only + valores).
-    Un N° repetido se queda con la primera fila y lo dice en 'avisos'."""
+    Un N° repetido se queda con la primera fila. Lo que por eso no llega a las
+    herramientas (la fila repetida, una fila con datos y sin N°) lo dice en
+    'avisos': el Portal lo muestra, porque esas filas solo se ven en el Excel."""
     import openpyxl
 
     libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
@@ -142,20 +220,29 @@ def leer_planilla(ruta: Path, avisos: list | None = None) -> list[dict]:
                 indices[clave] = i
         if "numero" not in indices:
             raise ValueError(f"la hoja «{hoja.title}» no tiene la columna N°")
+        vinculadas = entidades_vinculadas(ruta, hoja.title)
         salida, vistos = [], set()
-        for fila in filas:
+        for n_fila, fila in enumerate(filas, start=2):
             numero = _numero(fila[indices["numero"]] if indices["numero"] < len(fila) else None)
+            titulo = _valor(fila[indices["titulo"]], "titulo") if "titulo" in indices and indices["titulo"] < len(fila) else None
             if numero is None:
+                estado = _valor(fila[indices["estado"]], "estado") if "estado" in indices and indices["estado"] < len(fila) else None
+                if (titulo or estado) and avisos is not None:
+                    avisos.append(f"La fila {n_fila} «{titulo or estado}» no tiene N° en la planilla: no se ve en las herramientas.")
                 continue
             if numero in vistos:
                 if avisos is not None:
-                    avisos.append(f"El N° {numero} aparece más de una vez en la planilla: se usa la primera fila.")
+                    avisos.append(f"El N° {numero} aparece más de una vez en la planilla: se usa la primera fila; "
+                                  f"la fila {n_fila} «{titulo or ''}» no se ve en las herramientas.")
                 continue
             vistos.add(numero)
             registro = {"numero": numero}
             for clave, i in indices.items():
                 if clave != "numero":
-                    registro[clave] = _valor(fila[i] if i < len(fila) else None, clave)
+                    valor = _valor(fila[i] if i < len(fila) else None, clave)
+                    if valor is None and (n_fila, i + 1) in vinculadas and clave not in NUMERICAS:
+                        valor = vinculadas[(n_fila, i + 1)]
+                    registro[clave] = valor
             for clave in ("estado", "titulo"):
                 registro.setdefault(clave, None)
             salida.append(registro)
