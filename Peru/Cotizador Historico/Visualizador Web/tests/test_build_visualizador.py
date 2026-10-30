@@ -60,6 +60,23 @@ def test_extraer_indice_saneado_precio_es_nominal(tmp_path):
     assert item["precio_reajustado_hoy_con_iva"] == 354
 
 
+def test_enlaces_documentos_apuntan_a_la_carpeta_peru(tmp_path):
+    items = [
+        {"n_ref": "LIMA-001", "archivo_origen": "Lima Caldera\\LIMA-001_Sodimac.pdf"},
+        {"n_ref": "LIMA-002", "archivo_origen": "Lima Caldera\\LIMA-002_Sodimac.pdf"},
+    ]
+    enlaces = bv.enlaces_documentos(items, [{"n_ref": "LIMA-001"}], tmp_path / "no-existe")
+    assert enlaces == {
+        "LIMA-001": "https://quempinspa2020.sharepoint.com/Documentos%20compartidos/Centro%20de%20Costos/"
+                    "Facturas%20y%20Boletas/Per%C3%BA/Lima%20Caldera/LIMA-001_Sodimac.pdf",
+    }
+
+
+def test_extraer_indice_saneado_sin_archivo_origen_no_trae_enlaces(tmp_path):
+    ruta = _wb_con_un_item(tmp_path)
+    assert bv.extraer_indice_saneado(ruta)["documentos"] == {}
+
+
 def test_extraer_indice_saneado_sin_items_no_falla(tmp_path):
     wb = openpyxl.Workbook()
     ws_detalle = wb.active

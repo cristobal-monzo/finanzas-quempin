@@ -80,22 +80,20 @@ def _fechas_por_ref(ws_master):
     return fechas
 
 
-def _proyecto_proveedor_por_ref(ws_master):
-    """dict {n_ref: (proyecto, proveedor_tag)} -- ambas columnas son
-    opcionales (None si Master no las tiene), a diferencia de N Ref./Fecha
-    que _fechas_por_ref exige porque son estructurales."""
+def _meta_por_ref(ws_master):
+    """dict {n_ref: (proyecto, proveedor_tag, archivo_origen)} -- las tres
+    columnas son opcionales (None si Master no las tiene), a diferencia de
+    N Ref./Fecha que _fechas_por_ref exige porque son estructurales.
+    'Archivo origen' ('<carpeta del proyecto>\\<nombre>') es lo que el
+    dashboard usa para abrir la factura en SharePoint (2026-10-29)."""
     cols = mapear_encabezados(ws_master)
     col_ref = cols["N° Ref."]
-    col_proyecto = cols.get("Proyecto")
-    col_proveedor = cols.get("Proveedor")
+    opcionales = [cols.get(c) for c in ("Proyecto", "Proveedor", "Archivo origen")]
     meta = {}
     for fila in ws_master.iter_rows(min_row=2):
         n_ref = fila[col_ref - 1].value
         if n_ref:
-            meta[n_ref] = (
-                fila[col_proyecto - 1].value if col_proyecto else None,
-                fila[col_proveedor - 1].value if col_proveedor else None,
-            )
+            meta[n_ref] = tuple(fila[c - 1].value if c else None for c in opcionales)
     return meta
 
 
@@ -159,7 +157,7 @@ def cargar_items_detalle(ruta_excel=None, pais="CL"):
             ws_detalle = wb["Detalle"]
             ws_master = wb["Master"]
             fechas = _fechas_por_ref(ws_master)
-            meta = _proyecto_proveedor_por_ref(ws_master)
+            meta = _meta_por_ref(ws_master)
             cols = mapear_encabezados(ws_detalle)
             col_ref = cols["N° Ref."]
             col_nombre = cols["Nombre Ítem"]
@@ -199,7 +197,7 @@ def cargar_items_detalle(ruta_excel=None, pais="CL"):
             elif excluido_motivo is None and precio == 0:
                 excluido_motivo = "precio_cero"
 
-            proyecto, proveedor_tag = meta.get(n_ref, (None, None))
+            proyecto, proveedor_tag, archivo_origen = meta.get(n_ref, (None, None, None))
             items.append({
                 "n_ref": n_ref,
                 "nombre_item": fila[col_nombre - 1].value or "",
@@ -207,6 +205,7 @@ def cargar_items_detalle(ruta_excel=None, pais="CL"):
                 "categoria_item": fila[col_categoria - 1].value if col_categoria else None,
                 "proyecto": proyecto,
                 "proveedor_tag": proveedor_tag,
+                "archivo_origen": archivo_origen,
                 "precio_unitario_sin_iva": precio,
                 "total_sin_iva": fila[col_total_sin_iva - 1].value,
                 "total_con_iva": fila[col_total_con_iva - 1].value,

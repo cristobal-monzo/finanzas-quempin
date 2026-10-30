@@ -43,6 +43,7 @@ RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 # Candado (2026-10-05): los datos van cifrados con la contraseña de los tableros.
 sys.path.insert(0, str(RAIZ.parents[2] / "Visualizador Web"))
 import candado  # noqa: E402
+import documentos  # noqa: E402
 
 
 def _catalogo_categorias():
@@ -61,11 +62,22 @@ def _catalogo_categorias():
     }
 
 
-def extraer_indice_saneado(ruta_excel=None):
+def enlaces_documentos(items, indexados, raiz_docs=None):
+    """{N° Ref.: enlace de SharePoint} de los documentos con alguna compra en
+    el catalogo, sobre la carpeta «Perú/». Ver la version de Chile."""
+    refs = {c["n_ref"] for c in indexados}
+    archivos = {it["n_ref"]: it.get("archivo_origen") for it in items if it["n_ref"] in refs}
+    enlaces = {ref: documentos.enlace_documento(archivo, "PE", raiz_docs)
+               for ref, archivo in archivos.items()}
+    return {ref: enlace for ref, enlace in enlaces.items() if enlace}
+
+
+def extraer_indice_saneado(ruta_excel=None, raiz_docs=None):
     """Lee Detalle+Master de Centro de Costos Peru.xlsx (pais="PE") y arma
     el indice completo SIN reajuste (ver ch.armar_indice_completo_sin_reajuste)
     -- a diferencia de la version de Chile, no pide ninguna UF ni incrusta
-    uf_hoy/uf_fecha/uf_fuente en el snapshot."""
+    uf_hoy/uf_fecha/uf_fuente en el snapshot. raiz_docs reemplaza la carpeta
+    de los documentos en los tests."""
     items = ch.cargar_items_detalle(ruta_excel, pais="PE")
     excluidos_count = sum(1 for it in items if it["excluido_motivo"] is not None)
     reajustados, sin_uf_count = ch.armar_indice_completo_sin_reajuste(items)
@@ -82,6 +94,7 @@ def extraer_indice_saneado(ruta_excel=None):
         "categorias": _catalogo_categorias(),
         "busqueda": ch.busqueda.config_para_snapshot(medidas_presentes),
         "sugerencias": ch.busqueda.catalogo_sugerencias(reajustados),
+        "documentos": enlaces_documentos(items, reajustados, raiz_docs),
         "items": reajustados,
     }
 

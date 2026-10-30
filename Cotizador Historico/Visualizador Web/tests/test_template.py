@@ -102,6 +102,22 @@ def test_el_javascript_de_la_pantalla_es_valido(ruta, tmp_path):
 
 
 @pytest.mark.parametrize("ruta", [TEMPLATE_CL, TEMPLATE_PE], ids=["chile", "peru"])
+def test_cada_compra_abre_su_documento(ruta):
+    """2026-10-29: junto al N° Ref. de cada compra, en la tabla y en la tarjeta, el mismo ícono
+    del Centro de Costos abre la factura en SharePoint, en otra pestaña. El enlace lo arma el
+    build (DATA.documentos); sin enlace solo se ve el N° Ref."""
+    if not ruta.exists():
+        pytest.skip("no esta el template")
+    js = _script_app(_leer(ruta))
+    assert "var enlace = DATA.documentos[nRef];" in js
+    assert "if (!enlace) return esc(nRef);" in js
+    assert '<a class="abrir-archivo-btn" href="\' + esc(enlace) + \'" target="_blank" rel="noopener"' in js
+    assert "esc(it.nombre_item) + ' · ' + refConDocumento(it.n_ref)" in js            # tabla de compras
+    assert "'</span><span>' + refConDocumento(item.n_ref) + '</span></div>'" in js   # tarjeta sin agrupar
+    assert "esc(it.n_ref)" not in js and "esc(item.n_ref)" not in js
+
+
+@pytest.mark.parametrize("ruta", [TEMPLATE_CL, TEMPLATE_PE], ids=["chile", "peru"])
 def test_la_cotizacion_se_copia_para_el_formulador(ruta):
     """2026-10-14: «Copiar para el Formulador» deja en el portapapeles las líneas del carrito con el
     encabezado que reconoce «Pegar desde Excel» del Formulador (js/pegar.js) y el costo NETO

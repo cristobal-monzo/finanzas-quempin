@@ -14,7 +14,7 @@ bv = importlib.util.module_from_spec(_spec)
 sys.modules["build_visualizador_ch"] = bv
 _spec.loader.exec_module(bv)
 
-HEADERS_MASTER = ["N° Ref.", "Fecha", "Proyecto", "Proveedor"]
+HEADERS_MASTER = ["N° Ref.", "Fecha", "Proyecto", "Proveedor", "Archivo origen"]
 HEADERS_DETALLE = [
     "N° Ref.", "Nombre Ítem", "Descripción", "Categoría Ítem",
     "P. Unitario sin IVA", "Total sin IVA (CLP)", "Total con IVA (CLP)",
@@ -28,8 +28,8 @@ def _wb_con_dos_items(tmp_path):
     for c, h in enumerate(HEADERS_MASTER, 1):
         ws_master.cell(row=1, column=c, value=h)
     filas_master = [
-        ("UMAG-014", datetime(2026, 1, 1), "UMAG", "Ferretería XYZ"),
-        ("UMAG-020", datetime(2026, 1, 1), "UMAG", "Ferretería XYZ"),
+        ("UMAG-014", datetime(2026, 1, 1), "UMAG", "Ferretería XYZ", "UMAG\\UMAG-014_Ferretería_XYZ.pdf"),
+        ("UMAG-020", datetime(2026, 1, 1), "UMAG", "Ferretería XYZ", None),
     ]
     for r, fila in enumerate(filas_master, 2):
         for c, v in enumerate(fila, 1):
@@ -105,6 +105,39 @@ def test_extraer_indice_saneado_conserva_categoria_proyecto_proveedor(tmp_path, 
     assert bomba["proyecto"] == "UMAG"
     assert bomba["proveedor_tag"] == "Ferretería XYZ"
     assert bomba["precio_reajustado_hoy"] == 90000  # UF sin cambio (36000 -> 36000)
+
+
+def test_extraer_indice_saneado_trae_el_enlace_de_cada_documento(tmp_path, monkeypatch):
+    # 2026-10-29: el ícono junto al N° Ref. abre la factura, como en el
+    # Centro de Costos. Un enlace por documento, no por ítem.
+    ruta = _wb_con_dos_items(tmp_path)
+    monkeypatch.setattr(bv.ch, "consultar_uf_api", lambda fecha: 36000.0)
+    monkeypatch.setattr(bv.ch, "RUTA_CACHE_UF", tmp_path / "uf_cache.json")
+
+    data = bv.extraer_indice_saneado(ruta, fecha_hoy=date(2026, 7, 20), raiz_docs=tmp_path / "no-existe")
+
+    # UMAG-020 no tiene "Archivo origen": no lleva ícono.
+    assert data["documentos"] == {
+        "UMAG-014": "https://quempinspa2020.sharepoint.com/Documentos%20compartidos/Centro%20de%20Costos/"
+                    "Facturas%20y%20Boletas/Chile/UMAG/UMAG-014_Ferreter%C3%ADa_XYZ.pdf",
+    }
+    assert all("archivo_origen" not in it for it in data["items"])
+
+
+def test_enlaces_documentos_solo_de_lo_que_esta_en_el_catalogo(tmp_path):
+    carpeta = tmp_path / "UMAG"
+    carpeta.mkdir()
+    (carpeta / "UMAG-001.pdf").write_bytes(b"%PDF")
+    items = [
+        {"n_ref": "UMAG-001", "archivo_origen": "UMAG\\UMAG-001.pdf"},
+        {"n_ref": "UMAG-001", "archivo_origen": "UMAG\\UMAG-001.pdf"},
+        # Archivo que ya no está en la carpeta: abriría un «no encontrado».
+        {"n_ref": "UMAG-002", "archivo_origen": "UMAG\\UMAG-002.pdf"},
+        # Documento sin compras en el catálogo (ej. una nota de crédito).
+        {"n_ref": "UMAG-003", "archivo_origen": "UMAG\\UMAG-001.pdf"},
+    ]
+    indexados = [{"n_ref": "UMAG-001"}, {"n_ref": "UMAG-001"}, {"n_ref": "UMAG-002"}]
+    assert list(bv.enlaces_documentos(items, indexados, tmp_path)) == ["UMAG-001"]
 
 
 def test_build_escribe_snapshot_json_y_html(tmp_path, monkeypatch):

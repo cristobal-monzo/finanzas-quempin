@@ -429,6 +429,11 @@
   .viz-refcard .viz-add .rc-addbtn { flex: 1; }
   .viz-refcard mark, .viz-groupcard mark, .viz-compras mark { background: rgba(255,81,0,0.28); color: inherit; border-radius: 2px; padding: 0 1px; }
 
+  /* Enlace que abre el documento en SharePoint (junto al N° Ref.), el mismo
+     ícono del Centro de Costos */
+  .abrir-archivo-btn { padding: 2px; margin-left: 2px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; vertical-align: middle; }
+  .abrir-archivo-btn:hover, .abrir-archivo-btn:focus-visible { color: var(--brand-orange-ink, var(--brand-orange)); }
+
   /* ---------- cantidad + agregar (compartido) ---------- */
   .viz-add { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
   .viz-qty { display: inline-flex; align-items: stretch; border: 1px solid var(--baseline); border-radius: 8px; overflow: hidden; background: var(--surface-1); flex: 0 0 auto; }
@@ -707,6 +712,9 @@
     .viz-compras .tc-accion .viz-add { justify-content: flex-start; flex-wrap: wrap; }
     .viz-compras tbody tr:hover { background: transparent; }
     .viz-compras tr.is-cheapest { background: rgba(12,163,12,0.07); }
+    /* Área táctil del ícono: margen negativo = mismo aspecto, más superficie
+       para el dedo. */
+    .abrir-archivo-btn { padding: 6px; margin: -4px -4px -4px 0; }
   }
   @media (max-width: 640px) {
     .viz-container { padding: 0 16px; }
@@ -1633,6 +1641,18 @@
       '</div>';
   }
 
+  // El mismo ícono del Centro de Costos junto al N° Ref.: abre la factura en
+  // SharePoint (2026-10-29). El build arma un enlace por documento
+  // (DATA.documentos) solo si el archivo está en la carpeta: sin enlace no hay
+  // ícono. Lo abre quien tiene acceso al sitio.
+  var ABRIR_ICON_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>';
+  function refConDocumento(nRef) {
+    var enlace = DATA.documentos[nRef];
+    if (!enlace) return esc(nRef);
+    var titulo = 'Abrir el documento de ' + nRef;
+    return esc(nRef) + ' <a class="abrir-archivo-btn" href="' + esc(enlace) + '" target="_blank" rel="noopener" title="' + esc(titulo) + '" aria-label="' + esc(titulo) + '">' + ABRIR_ICON_SVG + '</a>';
+  }
+
   // Tabla comparativa de las compras de un producto. Reemplaza a la grilla de
   // tarjetas, que repetia en cada compra el mismo titulo, los mismos chips y
   // la misma explicacion: con 5 compras de la misma valvula habia que leer 5
@@ -1670,7 +1690,7 @@
           '<td data-label="Fecha" class="tc-fecha">' + fmtDate(it.fecha) + '</td>' +
           '<td data-label="Proyecto">' + esc(it.proyecto || '—') + '</td>' +
           '<td data-label="Detalle" class="tc-desc">' + highlight(it.descripcion || it.nombre_item, consulta) +
-          '<span class="tc-sub">' + esc(it.nombre_item) + ' · ' + esc(it.n_ref) + '</span></td>' +
+          '<span class="tc-sub">' + esc(it.nombre_item) + ' · ' + refConDocumento(it.n_ref) + '</span></td>' +
           (sinAccion ? '' : '<td class="tc-accion">' + renderAgregar(it._idx, 'Agregar') + '</td>') +
           '</tr>';
       }).join('') + '</tbody></table></div>';
@@ -1692,7 +1712,7 @@
       '<div class="rc-desc">' + highlight(item.descripcion, consulta) + '</div>' +
       chipsMotivos(motivos, consulta) +
       '<div class="rc-meta"><span>' + esc(item.proveedor_tag || 'Proveedor no registrado') + '</span><span>' + fmtDate(item.fecha) +
-      '</span><span>' + esc(item.proyecto || '—') + '</span><span>' + esc(item.n_ref) + '</span></div>' +
+      '</span><span>' + esc(item.proyecto || '—') + '</span><span>' + refConDocumento(item.n_ref) + '</span></div>' +
       '<div class="rc-price">' +
       '<div class="rc-price-main">' + fmt(precioDe(item)) + ' <span class="rc-price-iva">c/IVA</span></div>' +
       '<div class="rc-price-sub">' + fmt(item.precio_reajustado_hoy) + ' s/IVA reajustado hoy · pagado ' + fmt(item.precio_original_sin_iva) + ' s/IVA</div>' +

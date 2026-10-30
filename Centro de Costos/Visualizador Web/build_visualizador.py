@@ -29,7 +29,6 @@ import sys
 import unicodedata
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote
 
 import openpyxl
 
@@ -40,17 +39,14 @@ RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "centro-de-costos.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
 
-# Los documentos, en el acceso directo de OneDrive y en SharePoint: la misma
-# carpeta (RAIZ_DOCS de Sistema/auditor_centro_costos.py para Chile). El botón
-# junto al N° Ref. abre el documento en SharePoint (2026-10-28): lo ve solo
-# quien tiene acceso al sitio, en el computador o en el teléfono.
-RAIZ_DOCS = RAIZ_MODULO / "Sitio de comunicación - Centro de Costos 1" / "Facturas y Boletas" / "Chile"
-SHAREPOINT = "https://quempinspa2020.sharepoint.com"
-RUTA_WEB_DOCS = ("Documentos compartidos", "Centro de Costos", "Facturas y Boletas", "Chile")
-
 # Candado (2026-10-05): los datos van cifrados con la contraseña de los tableros.
 sys.path.insert(0, str(RAIZ.parents[1] / "Visualizador Web"))
 import candado  # noqa: E402
+# El botón junto al N° Ref. abre el documento en SharePoint (2026-10-28): la
+# regla del enlace es la misma del Cotizador y vive en Visualizador Web/.
+import documentos  # noqa: E402
+
+RAIZ_DOCS = documentos.raiz_docs("CL")
 
 REF_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 # Debe coincidir con ROJO ("C00000") en Sistema/auditor_centro_costos.py, el
@@ -120,22 +116,10 @@ def unificar_variantes(docs):
 
 
 def enlace_documento(archivo_origen, raiz_docs=RAIZ_DOCS):
-    """El enlace de SharePoint que abre el documento, o None.
-
-    'Archivo origen' guarda '<carpeta del proyecto>\\<nombre>'. Si la carpeta
-    sincronizada está en este equipo y el archivo ya no está ahí (la carpeta
-    del proyecto cambió de nombre después del run), no hay enlace: abriría un
-    «no encontrado». Sin la carpeta (otro equipo, tests) no se puede revisar y
-    el enlace va igual."""
-    if not archivo_origen:
-        return None
-    partes = [p for p in str(archivo_origen).replace("\\", "/").split("/") if p]
-    if not partes:
-        return None
-    raiz = Path(raiz_docs)
-    if raiz.is_dir() and not raiz.joinpath(*partes).is_file():
-        return None
-    return SHAREPOINT + "/" + "/".join(quote(p, safe="") for p in (*RUTA_WEB_DOCS, *partes))
+    """El enlace de SharePoint que abre el documento, o None. Ver
+    Visualizador Web/documentos.py: sin enlace si la carpeta está en este
+    equipo y el archivo ya no está ahí."""
+    return documentos.enlace_documento(archivo_origen, "CL", raiz_docs)
 
 
 def extraer_datos_saneados(ruta_excel=RUTA_EXCEL, raiz_docs=RAIZ_DOCS):

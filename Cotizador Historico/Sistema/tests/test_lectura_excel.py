@@ -262,10 +262,10 @@ def _crear_excel_prueba_enriquecido(tmp_path):
         ws_detalle.cell(row=2, column=c, value=v)
 
     ws_master = wb.create_sheet("Master")
-    encabezados_m = ["N° Ref.", "Fecha", "Proyecto", "Proveedor"]
+    encabezados_m = ["N° Ref.", "Fecha", "Proyecto", "Proveedor", "Archivo origen"]
     for c, h in enumerate(encabezados_m, 1):
         ws_master.cell(row=1, column=c, value=h)
-    fila_m = ("UMAG-010", datetime(2026, 3, 10), "UMAG", "Ferretería XYZ")
+    fila_m = ("UMAG-010", datetime(2026, 3, 10), "UMAG", "Ferretería XYZ", "UMAG\\UMAG-010_Ferreteria_XYZ.pdf")
     for c, v in enumerate(fila_m, 1):
         ws_master.cell(row=2, column=c, value=v)
 
@@ -280,6 +280,8 @@ def test_cargar_items_detalle_incluye_categoria_proyecto_proveedor_si_existen(tm
     assert items[0]["categoria_item"] == "Equipos-Herramientas"
     assert items[0]["proyecto"] == "UMAG"
     assert items[0]["proveedor_tag"] == "Ferretería XYZ"
+    # Con él, el dashboard abre la factura en SharePoint (2026-10-29).
+    assert items[0]["archivo_origen"] == "UMAG\\UMAG-010_Ferreteria_XYZ.pdf"
 
 
 def test_cargar_items_detalle_categoria_proyecto_proveedor_none_si_no_existen(tmp_path):
@@ -294,3 +296,4 @@ def test_cargar_items_detalle_categoria_proyecto_proveedor_none_si_no_existen(tm
     assert items[0]["categoria_item"] is None
     assert items[0]["proyecto"] is None
     assert items[0]["proveedor_tag"] is None
+    assert items[0]["archivo_origen"] is None

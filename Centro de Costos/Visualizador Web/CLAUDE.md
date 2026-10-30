@@ -69,7 +69,9 @@ Centro de Costos/Visualizador Web/
 - **Ícono que abre el documento** (2026-10-28, antes copiaba el nombre del
   archivo): junto al N° Ref. de cada fila, un enlace abre la factura o
   boleta en SharePoint, en otra pestaña. El build arma el enlace
-  (`enlace_documento()` → `enlace_archivo` en el snapshot) desde "Archivo
+  (`enlace_documento()` → `enlace_archivo` en el snapshot; desde el
+  2026-10-29 la regla vive una sola vez en `../../Visualizador
+  Web/documentos.py`, compartida con Perú y con el Cotizador) desde "Archivo
   origen" (`<carpeta del proyecto>\<nombre>`) sobre
   `https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de
   Costos/Facturas y Boletas/Chile/` (Perú: `…/Perú/`), cada tramo codificado.

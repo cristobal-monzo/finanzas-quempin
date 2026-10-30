@@ -194,6 +194,19 @@ todo lo demás le deja espacio (rediseño del 2026-09-21, ver `HISTORIA.md`).
   (≤720px) cada fila se apila como tarjeta con sus etiquetas. La vista de
   una hoja en el explorador usa **la misma tarjeta y la misma tabla**
   (`resumirCompras` es la única cuenta de promedio/mínimo/proveedores).
+- **Abrir la factura de una compra** (2026-10-29, pedido del usuario: «igual
+  que el botón del Centro de Costos»): junto al N° Ref., en la tabla de
+  compras y en la tarjeta sin agrupar, el mismo ícono del Centro de Costos
+  abre el documento en SharePoint, en otra pestaña (`refConDocumento`). El
+  build arma **un enlace por documento**, no por ítem, en `DATA.documentos`
+  (`{N° Ref.: enlace}`, `enlaces_documentos()`), desde "Archivo origen" de
+  `Master` —que `cargar_items_detalle` ahora lee— con la regla compartida de
+  `../../Visualizador Web/documentos.py`: la misma del Centro de Costos, sin
+  enlace si el archivo ya no está en la carpeta sincronizada (al 2026-10-29,
+  811 de 812 documentos; al que falta le cambiaron la carpeta). Sin
+  enlace solo se ve el N° Ref. Lo abre quien tiene acceso al sitio, también
+  en el teléfono. El carrito no lleva el ícono: su foco atrapado solo recorre
+  botones y campos.
 - **Por qué apareció cada resultado** (`chipsMotivos`): chips que dicen qué
   término calzó en qué campo, con la medida destacada, usando **la palabra
   que escribió el usuario** (`palabrasDeConsulta`) y no la raíz interna del
