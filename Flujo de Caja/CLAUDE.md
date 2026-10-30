@@ -1,7 +1,7 @@
 # CLAUDE.md — Flujo de Caja
 
 Módulo implementado el 2026-10-01/02 (plan de integración de herramientas,
-fase 4: `Proyectos Claude/2026-09-30-plan-integracion-herramientas.md`).
+fase 4: `Proyectos Claude/Documentación/Planes y análisis/2026-09-30-plan-integracion-herramientas.md`).
 Solo Chile.
 
 ## Qué es

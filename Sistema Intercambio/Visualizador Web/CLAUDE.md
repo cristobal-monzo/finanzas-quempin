@@ -3,7 +3,7 @@
 Ver el doc maestro compartido en
 [`../../Visualizador Web/CLAUDE.md`](../../Visualizador%20Web/CLAUDE.md)
 (rol, manual de marca, política de datos, hosting) y el motor en
-[`../CLAUDE.md`](../CLAUDE.md) § Oportunidades de negocio.
+[`../docs/oportunidades.md`](../docs/oportunidades.md).
 
 Pedido del usuario (2026-10-13): «realiza mejoras en UX/UI, que sea más claro
 cuáles son las oportunidades más relevantes, y publica en GitHub con
@@ -78,5 +78,5 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   contrato muestran el plazo de entrega. La prueba en Chromium cubre una que
   cierra en 10 horas (viva) y otra en 3 (descartada).
 - Las oportunidades con nota 85 o más llegan además **por correo**
-  (`../alertas_oportunidades.py`, ver `../CLAUDE.md`): el correo enlaza a
+  (`../alertas_oportunidades.py`, ver `../docs/oportunidades.md`): el correo enlaza a
   este tablero.
