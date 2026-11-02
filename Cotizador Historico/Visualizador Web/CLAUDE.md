@@ -6,9 +6,11 @@ aquí: [`HISTORIA.md`](HISTORIA.md). URL fija: `https://cristobal-monzo.github.i
 
 ## Piezas
 
-- `template.html` (308 KB: Grep, no lo leas entero): estructura, CSS y JS, sin datos.
+- `template.html` (147 KB: Grep, no lo leas entero): estructura, CSS y JS, sin datos. **Chile y Perú usan el mismo**: lo propio
+  del país son los marcadores `__CH_...__` que resuelve `PLANTILLA_PAIS` de cada build, y lo que depende de la UF lo decide el
+  JS (`CON_UF`, porque el snapshot de Perú no trae `uf_hoy`).
 - `busqueda.js`: el motor del navegador, compartido con Perú; el build lo inyecta en `__CH_BUSQUEDA_JS__`.
-- `build_visualizador.py`: lee el Excel (solo lectura) con `cargar_items_detalle`, pide la UF de hoy **una sola vez**
+- `build_visualizador.py`, aquí y en `Peru/Cotizador Historico/Visualizador Web/`: lee el Excel (solo lectura) con `cargar_items_detalle`, pide la UF de hoy **una sola vez**
   (`reajustar_todos`), escribe `data/cotizador-historico.json` (auditable) e incrusta todo cifrado en `build/index.html`.
   `data/` y `build/` están gitignorados y no se editan a mano. `driver.py visualizador` lo regenera.
 
@@ -40,8 +42,6 @@ aquí: [`HISTORIA.md`](HISTORIA.md). URL fija: `https://cristobal-monzo.github.i
 - **Factura de una compra**: ícono junto al N° Ref. (`refConDocumento`), un enlace por documento en `DATA.documentos`, con
   la regla única de `../../Visualizador Web/documentos.py`. El carrito no lo lleva: su foco atrapado solo recorre botones y
   campos.
-- **Chile y Perú comparten el template línea por línea**, salvo las ~14 líneas del país (título, pestaña activa, moneda,
-  pie, UF o soles). `tests/test_template.py` lo exige: edita Chile y aplica igual en Perú.
 - El campo de búsqueda usa 16 px: con menos, Safari de iPhone hace zoom al tocarlo. `.viz-compras` fija `color` explícito.
 
 ## Fuera de alcance

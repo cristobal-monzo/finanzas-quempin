@@ -17,6 +17,7 @@ import http.server
 import importlib.util
 import json
 import re
+import shutil
 import threading
 from pathlib import Path
 
@@ -77,8 +78,10 @@ def test_cabecera_del_portal():
 def test_no_carga_nada_de_otro_sitio_ni_lleva_datos():
     html = PORTAL.read_text(encoding="utf-8")
     assert not re.search(r"<script[^>]+\bsrc=", html), "sin scripts externos"
-    assert not re.search(r"<link[^>]+stylesheet", html) and "@import" not in html, "sin hojas de estilo externas"
-    assert not re.search(r"url\(\s*['\"]?https?:", html), "las fuentes van embebidas"
+    # La única hoja que enlaza es la de las fuentes, del mismo sitio (2026-10-30): publicar.py la copia con él.
+    assert re.findall(r"<link[^>]+stylesheet[^>]*>", html) == ['<link rel="stylesheet" href="../marca/fuentes.css">']
+    assert "@import" not in html, "sin hojas de estilo de otro sitio"
+    assert not re.search(r"url\(\s*['\"]?https?:", html), "ninguna fuente de otro sitio"
     # Solo lee la clave del candado y los proyectos del Formulador: nunca los escribe.
     assert not re.search(r"setItem\(\s*(LS_CLAVE_TABLEROS|LS_FORMULADOR|'quempin_viz_clave'|'qpn\.formulacion)", html)
     assert "innerHTML = ICONOS" in html and html.count("innerHTML") == 1, "los textos se escriben con textContent"
@@ -324,6 +327,7 @@ def _sitio(raiz: Path):
 
     (raiz / "finanzas-quempin" / "portal").mkdir(parents=True)
     (raiz / "finanzas-quempin" / "portal" / "index.html").write_bytes(PORTAL.read_bytes())
+    shutil.copytree(PORTAL.parents[1] / "marca", raiz / "finanzas-quempin" / "marca")
     pagina("/finanzas-quempin/", "Herramientas QUEMPIN", "indice")
     pagina("/finanzas-quempin/centro-de-costos/", "Centro de Costos", "cc", CABECERA_TABLERO + CANDADO + """
       <a id="aAF" href="../analisis-financiero/#proyecto=DEMO">Ficha en Análisis Financiero</a>
@@ -1240,7 +1244,11 @@ def test_conexiones_en_el_telefono(navegador, sitio):
 def _plantilla_tablero(subruta, compilado):
     """El template de un tablero publicado (el AF de Perú se arma con el de Chile)."""
     t = RAIZ / Path(compilado).parent.parent / "template.html"
-    return t if t.exists() else RAIZ / "Sistema Analisis Financiero" / "Visualizador Web" / "template.html"
+    if t.exists():
+        return t
+    # AF y el Cotizador de Perú usan la plantilla de Chile
+    modulo = "Cotizador Historico" if subruta.startswith("cotizador") else "Sistema Analisis Financiero"
+    return RAIZ / modulo / "Visualizador Web" / "template.html"
 
 
 def test_lo_que_esconde_el_portal_existe_en_cada_herramienta():

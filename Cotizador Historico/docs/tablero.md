@@ -153,11 +153,8 @@ todo lo demás le deja espacio (rediseño del 2026-09-21, ver [`HISTORIA.md`](..
 `.viz-compras` fija `color` explícito: viene de cuando la página corría en modo quirks (sin eso, en
 modo oscuro las celdas quedaban negras sobre negro). Hoy declara `<!DOCTYPE>`.
 
-**Chile y Perú comparten este template línea por línea**, salvo las ~14
-líneas propias del país (título, pestaña activa, moneda, pie, UF/soles y el
-`S/` de los rangos de precio). `tests/test_template.py` lo exige: un cambio
-de pantalla aplicado a un solo país hace fallar la suite. Para propagar un
-cambio, se edita el de Chile y se aplica igual al de Perú.
+**Chile y Perú usan la misma plantilla** (desde el 2026-10-30): el título, la pestaña activa, la moneda y el pie son marcadores
+que resuelve `PLANTILLA_PAIS` de cada build, y lo que depende de la UF lo decide el JS (`CON_UF`).
 
 **La marca ya no se adivina.** `extraerMarcaModelo` ("la primera palabra
 capitalizada que no sea preposición") producía chips como "Precio" o "Cod".

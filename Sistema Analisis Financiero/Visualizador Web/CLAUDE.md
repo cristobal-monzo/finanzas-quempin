@@ -6,7 +6,7 @@ Cada pestaña, la ficha del proyecto y las auditorías en detalle: [`../docs/tab
 
 ## Piezas
 
-- `template.html` (389 KB: Grep, no lo leas entero): estructura, CSS y JS, sin datos. **Chile y Perú usan el mismo**
+- `template.html` (214 KB: Grep, no lo leas entero): estructura, CSS y JS, sin datos. **Chile y Perú usan el mismo**
   (`build(pais)`, `PAISES_VIZ`); `Peru/Análisis Financiero/Visualizador Web/build_visualizador.py` es un envoltorio.
 - `ingreso.js`: la pestaña «Ingresar datos». La inserta el build, junto con `Sistema Intercambio/esquemas.js` y
   `pulso.js` (los originales); funciona en Node (`tests/test_ingreso.py`).

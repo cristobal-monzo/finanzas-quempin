@@ -29,6 +29,17 @@ import cotizador_historico as ch  # noqa: E402
 
 RUTA_EXCEL = ch.RUTA_EXCEL_CENTRO_COSTOS
 RUTA_TEMPLATE = RAIZ / "template.html"
+# La plantilla es una sola para Chile y Peru (2026-10-30). Esto es lo unico que
+# cambia en su HTML; lo que depende de la UF lo decide el JS, con DATA.uf_hoy.
+PLANTILLA_PAIS = {
+    "__CH_TITULO__": "Cotizador Histórico",
+    "__CH_NAV_ACTIVO__": "cotizador-historico",
+    "__CH_SIMBOLO__": "$",
+    "__CH_PIE__": ("Cotizador Histórico — datos reales de <strong>Centro de Costos.xlsx</strong>, reajustados a\n"
+                   "      la UF vigente al generar este archivo."),
+    "__CH_LOCALE__": "es-CL",
+    "__CH_MONEDA__": "CLP",
+}
 RUTA_BUSQUEDA_JS = RAIZ / "busqueda.js"
 RUTA_DATA_JSON = RAIZ / "data" / "cotizador-historico.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
@@ -148,6 +159,8 @@ def build(uf_manual=None, fuente_manual=None):
     # template.html, Chile y Peru divergieron sin que nadie lo notara.
     with io.open(RUTA_BUSQUEDA_JS, "r", encoding="utf-8") as f:
         html = template.replace("__CH_BUSQUEDA_JS__", f.read())
+    for marcador, valor in PLANTILLA_PAIS.items():
+        html = html.replace(marcador, valor)
     try:
         html = candado.incrustar(html, "__CH_DATA_B64__", data_json_text)
     except (ValueError, candado.SinContrasena) as e:

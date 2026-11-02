@@ -30,7 +30,19 @@ sys.path.insert(0, str(RAIZ_MODULO.parent.parent / "Cotizador Historico" / "Sist
 import cotizador_historico as ch  # noqa: E402
 
 RUTA_EXCEL = ch.RUTA_EXCEL_CENTRO_COSTOS_PERU
-RUTA_TEMPLATE = RAIZ / "template.html"
+# La plantilla es una sola para Chile y Peru (2026-10-30), como el motor de
+# busqueda. Esto es lo unico que cambia en su HTML; lo que depende de la UF lo
+# decide el JS: el snapshot de Peru no trae uf_hoy.
+RUTA_TEMPLATE = RAIZ_MODULO.parent.parent / "Cotizador Historico" / "Visualizador Web" / "template.html"
+PLANTILLA_PAIS = {
+    "__CH_TITULO__": "Cotizador Histórico Perú",
+    "__CH_NAV_ACTIVO__": "cotizador-historico-peru",
+    "__CH_SIMBOLO__": "S/",
+    "__CH_PIE__": ("Cotizador Historico Perú — datos reales de <strong>Centro de Costos Perú.xlsx</strong>, precios históricos\n"
+                   "      en soles, sin reajuste por índice (Perú no tiene un equivalente a la UF chilena)."),
+    "__CH_LOCALE__": "es-PE",
+    "__CH_MONEDA__": "PEN",
+}
 # El motor de busqueda es UNO SOLO para los dos paises y vive en el modulo de
 # Chile. Peru no tiene ni debe tener su propia copia: cuando la taxonomia
 # vivia duplicada en los dos templates, Peru se quedo sin una categoria que
@@ -132,6 +144,8 @@ def build():
         return 1
     with io.open(RUTA_BUSQUEDA_JS, "r", encoding="utf-8") as f:
         html = template.replace("__CH_BUSQUEDA_JS__", f.read())
+    for marcador, valor in PLANTILLA_PAIS.items():
+        html = html.replace(marcador, valor)
     try:
         html = candado.incrustar(html, "__CH_DATA_B64__", data_json_text)
     except (ValueError, candado.SinContrasena) as e:

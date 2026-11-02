@@ -6,7 +6,7 @@ Decisiones y arreglos en detalle: [`../docs/tablero.md`](../docs/tablero.md). UR
 
 ## Piezas
 
-- `template.html` (292 KB: Grep, no lo leas entero): estructura, CSS y JS, sin datos. Se edita solo si cambia el diseño.
+- `template.html` (123 KB: Grep, no lo leas entero): estructura, CSS y JS, sin datos. Se edita solo si cambia el diseño.
 - `build_visualizador.py`: lee `Centro de Costos.xlsx`, arma el snapshot saneado (`data/centro-de-costos.json`, solo un
   subproducto auditable) y lo incrusta cifrado en `build/index.html`. `driver.py visualizador` lo regenera; también corre
   al final de cada `run` (PASO 12c) y, si falla, no aborta el `run`.

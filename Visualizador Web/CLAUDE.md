@@ -15,6 +15,10 @@ original: `docs/specs/2026-07-19-visualizador-web-design.md`.
   QUEMPIN.pdf` y `LOGO QUEMPIN.PNG`. Nunca inventes paleta, tipografía ni variante
   de logo. Si el manual no cubre un caso, extrapola de la paleta y anótalo en el
   `CLAUDE.md` del módulo.
+- **Fuentes y logos: una sola copia, en `marca/`** (`fuentes.css`, `logo.png`, `favicon.png`; `marca.py`). Las plantillas
+  llevan `__MARCA_FUENTES__`, `__MARCA_LOGO__` y `__MARCA_FAVICON__`, que `candado.incrustar()` reemplaza: cada tablero sigue
+  siendo un solo archivo. El hub y el Portal enlazan `marca/fuentes.css`. **No pegues base64 en una plantilla**: `test_marca.py`
+  lo rechaza.
 - **Todo tablero lleva** al menos un gráfico interactivo (no una imagen), una tabla
   ordenable con búsqueda y filtro, un buscador de texto libre y filtros por las
   dimensiones del módulo. Un «consultor IA» es opcional: requiere backend o API key.
@@ -54,11 +58,13 @@ escritorio ni achicando la ventana.
 
 ## Navegación y código compartido entre plantillas
 
-8 tableros y 7 templates: CC y Cotizador en Chile y Perú, AF (uno para los dos países), Flujo
-de Caja y Oportunidades.
+8 tableros y 6 plantillas: CC en Chile y en Perú (dos plantillas que ya divergieron), AF y el
+Cotizador (una para los dos países, con marcadores que pone cada build), Flujo de Caja y
+Oportunidades.
 
 - **Navegación** (`<nav class="viz-modnav">` y su JS): **idéntica en todos**; solo cambia
-  `data-nav-activo`, la subruta (en AF la pone el build, `__AF_NAV_ACTIVO__`).
+  `data-nav-activo`, la subruta (en AF y el Cotizador la pone el build: `__AF_NAV_ACTIVO__`,
+  `__CH_NAV_ACTIVO__`).
   `tests/test_navegacion_tableros.py` falla si una copia diverge: cámbiala en todas.
 - **Módulo nuevo** = una pestaña en todos los templates y en `MODULOS` de ese test.
   Publícalos juntos (`publicar.py --todos`) o uno enlazará a un tablero que el resto no
@@ -80,7 +86,7 @@ de Caja y Oportunidades.
 Página estática sin datos ni contraseña («Herramientas QUEMPIN»: las seis etapas y una
 tarjeta por tablero, en el orden del recorrido, con Oportunidades primero). Su dirección
 abre el Portal; dentro de un marco o con `?indice` se ve el índice. Se edita a mano y se
-copia a `.worktrees/gh-pages/index.html`. Sistema QUEMPIN se nombra pero no se enlaza.
+publica con `publicar.py hub`. Sistema QUEMPIN se nombra pero no se enlaza.
 
 ## Hosting: cómo publicar (única copia de esta receta)
 
@@ -110,7 +116,8 @@ git -C ".worktrees/gh-pages" push
   y lo deja en el índice de git; si algo no abre, no toca gh-pages. **Nunca copies tableros
   a mano** (AF quedaría sin sus reportes) ni te saltes la verificación: una vez se publicó
   AF cifrado con la contraseña de prueba de los tests y nadie pudo abrirlo.
-- El hub y el Portal sí se copian a mano: no llevan datos.
+- **El hub y el Portal** no llevan datos: `py -3.14 "Visualizador Web/publicar.py" portal hub` los copia con los archivos de
+  `marca/` que enlazan. `--todos` no los incluye. Sin `marca/` en `gh-pages` se verían con la letra del sistema.
 - Antes de publicar, revisa `git status`/`git log` de `gh-pages` y avisa a las otras sesiones.
 - Si cambia la mecánica, cámbiala solo aquí: las skills enlazan a esta sección.
 

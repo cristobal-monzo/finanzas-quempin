@@ -3,8 +3,8 @@
 build_visualizador.py -- genera el tablero web de Flujo de Caja (solo Chile).
 
 Pide los datos a flujo_caja.armar() -- la misma función que escribe el
-Excel -- y los inyecta en template.html junto con las fuentes Lato y el logo,
-que se toman del módulo de marca (brand.py) en vez de duplicarlos aquí.
+Excel -- y los inyecta en template.html; candado.incrustar pone las fuentes
+Lato y el logo (Visualizador Web/marca.py).
 
 Salidas (gitignoreadas, son datos de la empresa):
   data/flujo-caja.json   snapshot de lo inyectado
@@ -20,16 +20,14 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent                 # Flujo de Caja/Visualizador Web
 RAIZ_FINANZAS = RAIZ.parents[1]
 sys.path.insert(0, str(RAIZ.parent / "Sistema"))
-sys.path.insert(0, str(RAIZ_FINANZAS / "Sistema Analisis Financiero" / "Reportes"))
 sys.path.insert(0, str(RAIZ_FINANZAS / "Visualizador Web"))
-import brand  # noqa: E402
 import candado  # noqa: E402  (2026-10-05: los datos van cifrados con la contraseña de los tableros)
 import flujo_caja as fc  # noqa: E402
 
 RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "flujo-caja.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
-MARCADORES = ("__FC_FUENTES__", "__FC_LOGO__", "__FC_DATA_B64__")
+MARCADORES = ("__MARCA_FUENTES__", "__MARCA_LOGO__", "__FC_DATA_B64__")
 
 
 def renderizar(datos: dict, template: str | None = None) -> str:
@@ -37,9 +35,7 @@ def renderizar(datos: dict, template: str | None = None) -> str:
     for marcador in MARCADORES:
         if marcador not in template:
             raise ValueError(f"Falta {marcador} en template.html")
-    html = (template.replace("__FC_FUENTES__", brand.cargar_font_face_lato())
-            .replace("__FC_LOGO__", brand.cargar_logo_base64()))
-    return candado.incrustar(html, "__FC_DATA_B64__", json.dumps(datos, ensure_ascii=False))
+    return candado.incrustar(template, "__FC_DATA_B64__", json.dumps(datos, ensure_ascii=False))
 
 
 def _escribir(ruta: Path, texto: str) -> None:

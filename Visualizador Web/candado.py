@@ -18,7 +18,7 @@ La contrasena se lee, en este orden, de:
 2. el archivo .contrasena_tableros en la raiz del repo (una linea; gitignored).
 Si no hay ninguna, el build falla: nunca se genera un tablero sin cifrar.
 
-Cambiar la contrasena: editar ese archivo, regenerar y publicar los 7 tableros.
+Cambiar la contrasena: editar ese archivo, regenerar y publicar todos los tableros.
 Un navegador que recordaba la anterior la vuelve a pedir solo.
 """
 import base64
@@ -34,13 +34,15 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+import marca
+
 RAIZ_REPO = Path(__file__).resolve().parents[1]
 RUTA_CONTRASENA = RAIZ_REPO / ".contrasena_tableros"
 VARIABLE_CONTRASENA = "QUEMPIN_TABLEROS_CONTRASENA"
 RUTA_JS = Path(__file__).resolve().with_name("candado.js")
 MARCADOR_JS = "__CANDADO_JS__"
 
-# La sal es publica (va en el sobre) y es la misma en los 7 tableros: asi la
+# La sal es publica (va en el sobre) y es la misma en todos los tableros: asi la
 # clave que el navegador recuerda al escribir la contrasena en uno abre tambien
 # los demas, como hacia la barrera anterior.
 SAL = b"quempin-tableros-2026"
@@ -149,7 +151,7 @@ def archivos_citados(datos) -> list[str]:
 
 
 def incrustar(html: str, marcador_datos: str, texto: str, contrasena: str | None = None) -> str:
-    """Pone candado.js y el sobre con `texto` cifrado en la plantilla ya armada.
+    """Pone la marca, candado.js y el sobre con `texto` cifrado en la plantilla ya armada.
 
     Va al final de cada build: el sobre es lo ultimo que se reemplaza, asi
     ningun texto suyo puede pasar por un marcador.
@@ -158,7 +160,7 @@ def incrustar(html: str, marcador_datos: str, texto: str, contrasena: str | None
         if marcador not in html:
             raise ValueError(f"la plantilla no tiene el marcador {marcador}")
     sobre = cifrar(texto, contrasena)
-    return html.replace(MARCADOR_JS, RUTA_JS.read_text(encoding="utf-8")).replace(marcador_datos, sobre)
+    return marca.incrustar(html).replace(MARCADOR_JS, RUTA_JS.read_text(encoding="utf-8")).replace(marcador_datos, sobre)
 
 
 def leer_datos(html: str, id_script: str, contrasena: str):

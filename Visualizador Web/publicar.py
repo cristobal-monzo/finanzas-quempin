@@ -3,6 +3,7 @@
 
     py -3.14 "Visualizador Web/publicar.py" cc af cot fc op   # los que se regeneraron
     py -3.14 "Visualizador Web/publicar.py" --todos
+    py -3.14 "Visualizador Web/publicar.py" portal hub        # las dos paginas sin datos
 
 Por cada tablero: copia su build/index.html a .worktrees/gh-pages/<subruta>/,
 sincroniza la carpeta reportes/ (los archivos cifrados que el tablero baja al
@@ -14,6 +15,9 @@ Por que existe (2026-10-08): publicar era copiar un archivo a mano y correr
 candado.py sobre el. Desde que los reportes PDF del AF van cifrados aparte, un
 tablero son varios archivos, y copiar solo el index.html dejaria botones que no
 abren nada. Si algo no abre, no se toca gh-pages.
+
+El hub y el Portal (2026-10-30) no llevan datos ni candado: se copian tal cual,
+con los archivos de marca que enlazan. Sin ellos se verian con la letra del sistema.
 """
 import argparse
 import shutil
@@ -40,6 +44,14 @@ TABLEROS = {
     # Oportunidades en Mercado Público (2026-10-13): solo Chile.
     "op": ("oportunidades", "Sistema Intercambio/Visualizador Web/build/index.html"),
 }
+
+# Paginas sin datos: clave -> (destino en gh-pages, origen).
+ESTATICOS = {
+    "hub": ("index.html", "Visualizador Web/index.html"),
+    "portal": ("portal/index.html", "Visualizador Web/portal/index.html"),
+}
+CARPETA_MARCA = "Visualizador Web/marca"
+ARCHIVOS_MARCA = ("fuentes.css", "favicon.png")
 
 
 def _sincronizar_carpeta(origen: Path, destino: Path) -> tuple[int, int]:
@@ -83,23 +95,42 @@ def preparar(clave: str, contrasena: str, raiz_gh_pages: Path = RAIZ_GH_PAGES) -
     return subruta
 
 
+def preparar_estatico(clave: str, raiz_gh_pages: Path = RAIZ_GH_PAGES) -> str:
+    """Copia el hub o el Portal con los archivos de marca que enlazan. Devuelve su destino."""
+    destino, origen = ESTATICOS[clave]
+    if not (RAIZ / origen).exists():
+        raise RuntimeError(f"{clave}: no existe {origen}")
+    copia = raiz_gh_pages / destino
+    copia.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(RAIZ / origen, copia)
+    carpeta = raiz_gh_pages / "marca"
+    carpeta.mkdir(exist_ok=True)
+    for nombre in ARCHIVOS_MARCA:
+        shutil.copy2(RAIZ / CARPETA_MARCA / nombre, carpeta / nombre)
+    print(f"[OK] {clave:<6} -> {destino} y marca/")
+    return destino
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("tableros", nargs="*", metavar="tablero", help="subconjunto de: " + ", ".join(TABLEROS))
+    ap.add_argument("tableros", nargs="*", metavar="tablero", help="subconjunto de: " + ", ".join([*TABLEROS, *ESTATICOS]))
     ap.add_argument("--todos", action="store_true", help="todos los tableros")
     args = ap.parse_args(argv)
     claves = list(TABLEROS) if args.todos else args.tableros
-    desconocidos = [c for c in claves if c not in TABLEROS]
+    desconocidos = [c for c in claves if c not in TABLEROS and c not in ESTATICOS]
     if not claves or desconocidos:
-        ap.error(f"indica tableros ({', '.join(TABLEROS)}) o --todos" + (f"; desconocidos: {desconocidos}" if desconocidos else ""))
+        ap.error(f"indica tableros ({', '.join([*TABLEROS, *ESTATICOS])}) o --todos" + (f"; desconocidos: {desconocidos}" if desconocidos else ""))
     if not (RAIZ_GH_PAGES / ".git").exists():
         print(f"[ERROR] No está el worktree de gh-pages en {RAIZ_GH_PAGES} (git worktree list).")
         return 1
-    contrasena = candado.leer_contrasena()
+    contrasena = candado.leer_contrasena() if any(c in TABLEROS for c in claves) else None
     subrutas = []
     for clave in claves:
         try:
-            subrutas.append(preparar(clave, contrasena))
+            if clave in ESTATICOS:
+                subrutas += [preparar_estatico(clave), "marca"]
+            else:
+                subrutas.append(preparar(clave, contrasena))
         except RuntimeError as error:
             print(f"[NO ABRE] {error}")
             print("No se publica nada más: regenera ese tablero y vuelve a correr esto.")

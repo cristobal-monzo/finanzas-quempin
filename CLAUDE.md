@@ -13,7 +13,7 @@ lee su `CLAUDE.md`** (carga solo al leer archivos de esa carpeta).
 | `Flujo de Caja/` | Proyección de caja, solo Chile; consumidor puro de CC, Sistema QUEMPIN, Planilla y AF |
 | `Sistema Intercambio/` | Protocolo entre herramientas, procesador, Planilla, Oportunidades de Mercado Público |
 | `Visualizador Web/` | Reglas comunes de los tableros, hub, Portal QUEMPIN, candado y publicación |
-| `Peru/` | Tableros de Perú (CC, AF, Cotizador) con `template.html` propio: un cambio en un tablero de Chile suele valer también allí |
+| `Peru/` | Tableros de Perú. AF y el Cotizador comparten la plantilla de Chile; **CC tiene la suya**, que ya divergió |
 | `docs/` | `actualizar-un-modulo.md` (procedimiento común de las skills), `specs/` (diseños), `plans/` (ya ejecutados; no leer salvo que se pida) |
 
 ## Entorno y ramas

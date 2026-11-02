@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""La navegacion entre tableros es la misma en las 7 plantillas.
+"""La navegacion entre tableros es la misma en todas las plantillas.
 
 Desde el 2026-10-01 la cabecera de cada tablero lleva un selector de pais
 (Chile / Peru) y solo las 3 pestanas de los modulos; antes eran 6 pestanas,
@@ -16,14 +16,13 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 
-# Plantilla -> valor de data-nav-activo. Analisis Financiero usa una sola
-# plantilla para los dos paises: su build reemplaza el marcador.
+# Plantilla -> valor de data-nav-activo. Analisis Financiero y el Cotizador usan
+# una sola plantilla para los dos paises: su build reemplaza el marcador.
 PLANTILLAS = {
     "Centro de Costos/Visualizador Web/template.html": "centro-de-costos",
     "Peru/Centro de Costos/Visualizador Web/template.html": "centro-de-costos-peru",
     "Sistema Analisis Financiero/Visualizador Web/template.html": "__AF_NAV_ACTIVO__",
-    "Cotizador Historico/Visualizador Web/template.html": "cotizador-historico",
-    "Peru/Cotizador Historico/Visualizador Web/template.html": "cotizador-historico-peru",
+    "Cotizador Historico/Visualizador Web/template.html": "__CH_NAV_ACTIVO__",
     # Flujo de Caja (2026-10-01): solo Chile, ver SOLO_CHILE en el JS.
     "Flujo de Caja/Visualizador Web/template.html": "flujo-de-caja",
     # Oportunidades en Mercado Público (2026-10-13): solo Chile, como Flujo de Caja.

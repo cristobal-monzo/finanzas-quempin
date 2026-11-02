@@ -8,8 +8,7 @@ Ver el doc maestro compartido en
 - **Fuente de datos**: `flujo_caja.armar()` — la misma función que escribe el
   Excel. `build_visualizador.py` guarda el snapshot en `data/flujo-caja.json`
   y la página en `build/index.html` (ambos gitignoreados).
-- **Marca**: fuentes Lato y logo desde `brand.py` de Análisis Financiero
-  (`cargar_font_face_lato()`, `cargar_logo_base64()`), no copiados aquí.
+- **Marca**: fuentes Lato y logo con `__MARCA_FUENTES__` y `__MARCA_LOGO__` (`Visualizador Web/marca.py`), no copiados aquí.
   Tokens de color, cabecera, gate y navegación iguales a los demás tableros.
 - **Navegación**: la pestaña «Flujo de Caja» está en los 6 templates
   (`test_navegacion_tableros.py`). Solo existe para Chile: su pestaña apunta

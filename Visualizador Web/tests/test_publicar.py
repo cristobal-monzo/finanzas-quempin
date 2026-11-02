@@ -2,6 +2,7 @@
 """publicar.py (2026-10-08): copia un tablero con su carpeta reportes/ a gh-pages
 y solo si todo abre con la contraseña. Tableros y gh-pages falsos, en tmp_path."""
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -76,3 +77,15 @@ def test_la_tabla_de_tableros_es_la_de_la_receta_de_publicacion():
     for subruta, build in publicar.TABLEROS.values():
         assert f"`{subruta}`" in receta
         assert f"`{build}`" in receta
+
+
+@pytest.mark.parametrize("clave,destino", [("hub", "index.html"), ("portal", "portal/index.html")])
+def test_el_hub_y_el_portal_se_copian_con_los_archivos_de_marca_que_enlazan(tmp_path, clave, destino):
+    gh = tmp_path / "gh-pages"
+    gh.mkdir()
+    assert publicar.preparar_estatico(clave, raiz_gh_pages=gh) == destino
+    pagina = (gh / destino).read_text(encoding="utf-8")
+    enlaces = re.findall(r'href="((?:\.\./)?marca/[^"]+)"', pagina)
+    assert enlaces
+    for enlace in enlaces:
+        assert ((gh / destino).parent / enlace).resolve().is_file(), enlace

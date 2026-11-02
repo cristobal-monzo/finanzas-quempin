@@ -14,7 +14,10 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(RAIZ / "Sistema Analisis Financiero" / "Reportes"))
+sys.path.insert(0, str(RAIZ / "Visualizador Web"))
 import brand  # noqa: E402
+import candado  # noqa: E402
+import marca  # noqa: E402
 
 OFICIALES = {
     "orange": "#ff5100",   # Pantone Orange 021 C
@@ -54,3 +57,22 @@ def test_cada_pagina_usa_los_colores_del_manual(ruta):
     assert valores("orange") == {OFICIALES["orange"]} and valores("black") == {OFICIALES["black"]}
     tinta = valores("orange-ink")
     assert NARANJO_PROFUNDO in tinta and tinta <= {NARANJO_PROFUNDO, NARANJO_PROFUNDO_OSCURO}, tinta
+
+
+@pytest.mark.parametrize("ruta", PAGINAS, ids=lambda p: str(p.relative_to(RAIZ).parent))
+def test_las_paginas_no_llevan_copias_de_las_fuentes_ni_del_logo(ruta):
+    """Una sola copia, en marca/ (2026-10-30): cada plantilla llevaba 161 KB de base64."""
+    assert not re.search(r"base64,[A-Za-z0-9+/=]{200,}", ruta.read_text(encoding="utf-8"))
+
+
+def test_candado_incrustar_pone_fuentes_y_logos():
+    html = candado.incrustar(f"{marca.MARCADOR_FUENTES}|{marca.MARCADOR_LOGO}|{marca.MARCADOR_FAVICON}|"
+                             f"{candado.MARCADOR_JS}|__X__", "__X__", "{}", "clave")
+    assert "__MARCA_" not in html
+    assert html.count("@font-face") == 3
+    assert html.count("data:image/png;base64,") == 2
+
+
+def test_brand_usa_la_misma_copia():
+    assert brand.cargar_font_face_lato() == marca.fuentes()
+    assert brand.cargar_logo_base64() == marca.logo()

@@ -22,9 +22,9 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   corre `Actualizar_Finanzas/driver.py oportunidades`, que lo arma y lo publica
   solo si Mercado Público respondió (el build termina con código 3 cuando usó
   la caché). `/Actualizar_Finanzas run` también lo regenera con los demás.
-- **Marca**: fuentes Lato y logo desde `brand.py` de Análisis Financiero.
+- **Marca**: fuentes Lato y logo con `__MARCA_FUENTES__` y `__MARCA_LOGO__` (`Visualizador Web/marca.py`).
   Tokens de color, cabecera, gate, navegación y menús iguales a los demás
-  tableros. Pestaña «Oportunidades» en los 7 templates; solo existe para Chile
+  tableros. Pestaña «Oportunidades» en todas las plantillas; solo existe para Chile
   (`SOLO_CHILE`).
 - **Lo más relevante primero** (el pedido):
   - Los 4 KPIs: prioritarias, cuántas cierran en 5 días o menos, nuevas desde

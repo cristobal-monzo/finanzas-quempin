@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-brand.py -- Kit de marca QUEMPIN para reportes PDF. Reextrae en tiempo de
-ejecucion la tipografia Lato (embebida en base64) y el logo desde
-Centro de Costos/Visualizador Web/template.html, que ya los extrajo del
-manual oficial (Material grafico QUEMPIN/OFICIAL MANUAL DE MARCA GRAFICA
-QUEMPIN.pdf) -- evita reincrustar archivos binarios nuevos y se mantiene
-sincronizado si ese template cambia. Los 4 colores oficiales si se
-hardcodean acá (son valores triviales, ya usados en 2+ lugares del repo).
+brand.py -- Kit de marca QUEMPIN para reportes PDF. La tipografia Lato y el logo
+vienen de Visualizador Web/marca/, la unica copia, que salio del manual oficial
+(Material grafico QUEMPIN/OFICIAL MANUAL DE MARCA GRAFICA QUEMPIN.pdf).
 """
 
 import sys
-from functools import lru_cache
 from pathlib import Path
 
 from graficos import formatear_valor
@@ -23,9 +18,9 @@ if str(RAIZ.parent / "Sistema") not in sys.path:
 # ahi, no se repiten aca: el semaforo del PDF tiene que mover sus colores el
 # dia que se muevan esos cortes, sin que nadie se acuerde de sincronizarlos.
 from analisis_financiero import clasificar_evaluacion  # noqa: E402
-RUTA_TEMPLATE_CC = (
-    RAIZ.parent.parent / "Centro de Costos" / "Visualizador Web" / "template.html"
-)
+
+sys.path.insert(0, str(RAIZ.parents[1] / "Visualizador Web"))
+import marca  # noqa: E402
 
 COLOR_NARANJO = "#ff5100"      # Pantone Orange 021 C
 COLOR_NEGRO = "#000000"        # Black C
@@ -330,40 +325,14 @@ PLANTILLA_DOCUMENTO = """<!doctype html>
 </html>"""
 
 
-@lru_cache(maxsize=1)
-def _texto_template_cc() -> str:
-    """El template de Centro de Costos pesa ~1 MB (fuentes y logo en base64)
-    y se leia una vez por cada llamada a cargar_font_face_lato /
-    cargar_logo_base64 -- 3 lecturas por reporte, 60 en una corrida de 20.
-    Se cachea: es un archivo versionado que no cambia dentro de una corrida."""
-    return RUTA_TEMPLATE_CC.read_text(encoding="utf-8")
-
-
-@lru_cache(maxsize=1)
 def cargar_font_face_lato() -> str:
-    """Extrae las 3 reglas @font-face (Lato 400/700/900, base64) desde el
-    template del visualizador de Centro de Costos."""
-    texto = _texto_template_cc()
-    bloques = []
-    pos = 0
-    for _ in range(3):
-        inicio = texto.index("@font-face", pos)
-        fin = texto.index("}", inicio) + 1
-        bloques.append(texto[inicio:fin])
-        pos = fin
-    return "\n".join(bloques)
+    """Las 3 reglas @font-face (Lato 400/700/900, base64), de Visualizador Web/marca/."""
+    return marca.fuentes()
 
 
-@lru_cache(maxsize=1)
 def cargar_logo_base64() -> str:
-    """Extrae el data URI completo del logo (data:image/png;base64,...) desde
-    el header (.viz-logo) del template del visualizador de Centro de Costos."""
-    texto = _texto_template_cc()
-    marcador = 'class="viz-logo">'
-    i = texto.index(marcador)
-    inicio_src = texto.index('src="data:image/png;base64,', i) + len('src="')
-    fin_src = texto.index('"', inicio_src)
-    return texto[inicio_src:fin_src]
+    """El data URI completo del logo (data:image/png;base64,...), de Visualizador Web/marca/."""
+    return marca.logo()
 
 
 def encabezado_html(titulo: str, generado_el: str) -> str:

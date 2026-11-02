@@ -5,9 +5,9 @@ Público (solo Chile; 2026-10-13).
 
 Pide la evaluación a oportunidades.revisar() -- la misma que publica
 oportunidades.json para las demás herramientas -- y la inyecta en
-template.html junto con las fuentes Lato y el logo, que se toman del módulo
-de marca (brand.py) en vez de duplicarlos aquí. Los datos van cifrados con la
-contraseña de los tableros (Visualizador Web/candado.py), como los demás.
+template.html. candado.incrustar pone las fuentes Lato y el logo
+(Visualizador Web/marca.py) y cifra los datos con la contraseña de los
+tableros, como en los demás.
 
 Si Mercado Público no responde (sin ticket, sin red), arma el tablero con la
 última evaluación guardada en la caché, lo dice en sus avisos y termina con
@@ -33,9 +33,7 @@ RAIZ = Path(__file__).resolve().parent                 # Sistema Intercambio/Vis
 RAIZ_INTERCAMBIO = RAIZ.parent
 RAIZ_FINANZAS = RAIZ.parents[1]
 sys.path.insert(0, str(RAIZ_FINANZAS / "Visualizador Web"))
-sys.path.insert(0, str(RAIZ_FINANZAS / "Sistema Analisis Financiero" / "Reportes"))
 sys.path.insert(0, str(RAIZ_INTERCAMBIO))
-import brand  # noqa: E402
 import candado  # noqa: E402  (los datos van cifrados con la contraseña de los tableros)
 import mercado_publico  # noqa: E402
 import oportunidades  # noqa: E402
@@ -43,7 +41,7 @@ import oportunidades  # noqa: E402
 RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "oportunidades.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
-MARCADORES = ("__OP_FUENTES__", "__OP_LOGO__", "__OP_DATA_B64__")
+MARCADORES = ("__MARCA_FUENTES__", "__MARCA_LOGO__", "__OP_DATA_B64__")
 CODIGO_CON_CACHE = 3
 
 
@@ -52,9 +50,7 @@ def renderizar(datos: dict, template: str | None = None) -> str:
     for marcador in MARCADORES:
         if marcador not in template:
             raise ValueError(f"Falta {marcador} en template.html")
-    html = (template.replace("__OP_FUENTES__", brand.cargar_font_face_lato())
-            .replace("__OP_LOGO__", brand.cargar_logo_base64()))
-    return candado.incrustar(html, "__OP_DATA_B64__", json.dumps(datos, ensure_ascii=False))
+    return candado.incrustar(template, "__OP_DATA_B64__", json.dumps(datos, ensure_ascii=False))
 
 
 def _escribir(ruta: Path, texto: str) -> None:

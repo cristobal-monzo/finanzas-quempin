@@ -200,9 +200,9 @@ def test_cada_plantilla_abre_sus_datos_con_el_candado(ruta):
         assert resto not in html
 
 
-def test_estan_las_7_plantillas():
-    # 7 desde el 2026-10-13: Oportunidades en Mercado Público (Sistema Intercambio).
-    assert len(PLANTILLAS) == 7, [str(p) for p in PLANTILLAS]
+def test_estan_las_6_plantillas():
+    # 8 tableros y 6 plantillas desde el 2026-10-30: AF y el Cotizador usan una para los dos países.
+    assert len(PLANTILLAS) == 6, [str(p) for p in PLANTILLAS]
 
 
 @hay_git
