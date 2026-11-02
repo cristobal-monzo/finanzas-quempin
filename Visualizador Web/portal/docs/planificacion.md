@@ -174,8 +174,8 @@ proyecto y en general, con UX profesional):
   mismo; la semana es la unión de todos y en cada casilla manda el cambio más
   reciente (`t`), también si es quitar, con un reloj que nunca queda detrás de
   lo ya visto. Lo que no alcanza a guardarse espera en `quempin_portal_plan_pendiente`
-  y se reintenta. La vista relee cada 30 segundos (solo los archivos que
-  cambiaron). Es la primera vista del portal que escribe en la carpeta.
+  y se reintenta. La vista relee cada 3 segundos (solo los archivos que
+  cambiaron; ver «Trabajar a la vez»). Es la primera vista del portal que escribe en la carpeta.
 - Pruebas: `test_portal.py`, desde `test_la_planificacion_semanal_en_el_registro`
   (alarma, máximo, guardado y esquema, unión de dos computadores, ausencias,
   deshacer, semanas y cambio de año, copiar, compartir, imprimir, teléfono; y
@@ -194,3 +194,20 @@ arrastrar proyectos a persona + día, como una opción más, y quitar la alerta 
 - Panel de arrastre (`.pl-arr`): proyectos en Por personal, personas en Por proyecto. Las etiquetas se arrastran entre
   casillas para mover (Ctrl copia), en un solo paso de deshacer. También se puede elegir en el panel y tocar casillas.
 - Bajo 900 px el panel va sobre la tabla y se acomoda en varias filas: nada se desliza de lado (las pruebas lo exigen).
+
+**Trabajar a la vez** (2026-11-02, pedido del usuario: que se actualice lo más rápido posible para revisarla y trabajarla
+en paralelo):
+- **Cuánto tarda de verdad**: navegador → carpeta local (menos de 1 s) → OneDrive de quien cambia → SharePoint → OneDrive de
+  quien mira → la vista. Lo que la página controla es el último tramo; lo demás depende de OneDrive de cada computador. Sano,
+  menos de 30 s (medido el 2026-10-27); con la cola llena, más de una hora (medido el 2026-11-02 en el PC de CM).
+- **La vista**: `PL_RELEER_SEG` bajó de 30 a 3; `plVigilar` corre cada segundo y también al volver a la pestaña o a la ventana.
+  `plCargar` lee además `cierres/` (`plCierresCambiaron`): si alguien cerró o reabrió un proyecto, relee el Recorrido.
+- **Lo que llega de otro**: `plNotarAjenos` compara lo efectivo antes y después y, si no es de este dispositivo, ilumina 6 s
+  (`.recien.ajeno`, `planif.recienAjeno`) y la línea de arriba dice «LC acaba de cambiar 2 casillas» durante `PL_AJENO_SEG`.
+- **No interrumpe** (`plRepintarLlegado`): a medio arrastrar espera a que se suelte (`planif.repintar`, lo pinta `plArrFin`);
+  el foco sigue en la casilla o en el buscador del panel, con el cursor donde estaba.
+- **Avisos honestos**: decía «Guardado en la carpeta del equipo» y «Al día…» aunque nada hubiera salido del computador; ahora,
+  «Guardado · OneDrive lo lleva al equipo» y «Sin cambios esta semana». El navegador no puede saber qué subió OneDrive. Una
+  lectura o escritura de más de `PL_ATASCO_SEG` dice «La carpeta del equipo no responde: recarga la página (F5)», en rojo.
+- **Tras un error al guardar**, se reintenta solo cada `PL_REINTENTO_SEG`, no en cada lectura: el aviso parpadearía.
+- Pruebas: desde `test_lo_que_cambia_un_colega_llega_solo_y_se_ve_quien_fue`.

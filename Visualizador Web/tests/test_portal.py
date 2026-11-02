@@ -2088,7 +2088,7 @@ def test_asignar_por_personal_queda_en_la_carpeta_del_equipo(navegador, sitio):
     assert d["proyectos"]["req:908"]["titulo"] == "En obra"
     esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
     assert esquemas.validar_publicacion("planificacion-semana", sobre) == []
-    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'Guardado en la carpeta del equipo'")
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'Guardado · OneDrive lo lleva al equipo'")
     # Al volver a abrir el portal sigue ahí
     pagina.reload()
     pagina.locator('#plPersonal tr[data-persona="LC"] .pl-chip').first.wait_for()
@@ -2612,6 +2612,8 @@ def test_la_vista_simple_sin_alarma_en_la_cabecera(navegador, sitio):
         ["proyectos", False], ["personal", False], ["vehiculos", False]]
     assert pagina.locator('#plGeneral [data-panel="proyectos"] .pl-panel-res').inner_text() == "0 con alguien · 3 sin asignar"
     pagina.locator('#plGeneral [data-panel="personal"] summary').click()
+    # El navegador avisa que se abrió un momento después del clic: recargar antes perdería lo que se guarda ahí
+    pagina.wait_for_function("(JSON.parse(localStorage.getItem('quempin_portal_plan')).paneles || []).includes('personal')")
     pagina.reload()
     pagina.locator("#plGeneral details.pl-panel").first.wait_for()
     assert pagina.locator("#plGeneral details.pl-panel").evaluate_all("ds => ds.map((d) => d.open)") == [False, True, False]
@@ -3143,9 +3145,96 @@ def test_un_cambio_mientras_se_guarda_tambien_llega_a_la_carpeta(navegador, siti
     archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
     sobre = _esperar_archivo(pagina, archivo, lambda s: [x["vehiculo"] for x in s["datos"].get("vehiculos", [])] == ["ram"])
     assert [(x["persona"], x["activa"]) for x in sobre["datos"]["asignaciones"]] == [("ES", True)]
-    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'Guardado en la carpeta del equipo'")
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'Guardado · OneDrive lo lleva al equipo'")
     assert pagina.evaluate("localStorage.getItem('quempin_portal_plan_pendiente')") is None, "nada quedó esperando"
     assert not errores
+    pagina.context.close()
+
+
+def _cambio_de_otro(semana, lunes, dia, persona="MP", por="NB", dispositivo="otro0001"):
+    from datetime import timedelta
+    d = (lunes + timedelta(days=dia)).isoformat()
+    return {f"publicado/planificacion/{semana}/{dispositivo}.json": _sobre_plan(semana, lunes, dispositivo, [
+        {"dia": d, "persona": persona, "proyecto": "req:908", "activa": True, "t": _instante(1), "por": por}])}
+
+
+def test_lo_que_cambia_un_colega_llega_solo_y_se_ve_quien_fue(navegador, sitio):
+    """Pedido del 2026-11-02: que el equipo pueda trabajar a la vez. Sin tocar nada, lo que llega a la carpeta aparece en
+    segundos (antes, hasta 35), iluminado y con quién fue. Lo propio no se anuncia como ajeno."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    _esperar_archivo(pagina, f"publicado/planificacion/{semana}/{DISPOSITIVO}.json", lambda s: len(s["datos"]["asignaciones"]) == 1)
+    pagina.wait_for_timeout(3500)      # una vuelta de lectura completa con lo propio ya en la carpeta
+    assert "acaba de cambiar" not in pagina.locator("#plFrescura").inner_text(), "lo propio no es de un colega"
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _cambio_de_otro(semana, lunes, 1))
+    pagina.locator('#plPersonal tr[data-persona="MP"] td[data-dia="1"] .pl-chip').wait_for(timeout=5000)
+    assert pagina.locator("#plFrescura").inner_text() == "NB acaba de cambiar 1 casilla"
+    assert "ajeno" in _celda_personal(pagina, "MP", 1).get_attribute("class")
+    assert not errores
+    pagina.context.close()
+
+
+def test_lo_que_llega_no_interrumpe_el_arrastre_ni_el_foco(navegador, sitio):
+    """Con revisiones cada pocos segundos, repintar en cualquier momento botaría lo que se lleva en la mano o el foco."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    # El foco sigue en la casilla donde se estaba moviendo con las flechas
+    _celda_personal(pagina, "LC", 2).focus()
+    ancla = pagina.evaluate("document.activeElement.dataset.ancla")
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _cambio_de_otro(semana, lunes, 1))
+    pagina.locator('#plPersonal tr[data-persona="MP"] td[data-dia="1"] .pl-chip').wait_for(timeout=5000)
+    assert pagina.evaluate("document.activeElement.dataset.ancla") == ancla
+    # A medio arrastrar no se repinta: lo arrastrado sigue en la página y lo nuevo aparece al soltar
+    pagina.evaluate("""() => {
+        const el = document.querySelector('#plPersonal .pl-arrastrable, #vistaPlan .pl-arr .pl-arrastrable');
+        window.__llevado = el;
+        el.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() }));
+    }""")
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _cambio_de_otro(semana, lunes, 3, por="ES", dispositivo="otro0002"))
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'ES acaba de cambiar 1 casilla'", timeout=6000)
+    assert pagina.evaluate("window.__llevado.isConnected"), "lo que se lleva en la mano sigue ahí"
+    assert pagina.locator('#plPersonal tr[data-persona="MP"] td[data-dia="3"] .pl-chip').count() == 0
+    pagina.evaluate("window.__llevado.dispatchEvent(new DragEvent('dragend', { bubbles: true }))")
+    pagina.locator('#plPersonal tr[data-persona="MP"] td[data-dia="3"] .pl-chip').wait_for(timeout=1000)
+    assert not errores
+    pagina.context.close()
+
+
+def test_si_la_carpeta_no_responde_la_vista_lo_dice(navegador, sitio):
+    """Un aviso que sigue en verde sin estar recibiendo nada es lo que ya pasó en el Formulador (2026-10-27)."""
+    from datetime import datetime, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    pagina.evaluate("() => { FileSystemDirectoryHandle.prototype.getDirectoryHandle = () => new Promise(() => {}); }")
+    pagina.wait_for_timeout(4500)      # empezó una lectura que nunca termina
+    pagina.clock.set_system_time(datetime.now() + timedelta(minutes=2))
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent.includes('no responde')", timeout=4000)
+    assert "bad" in pagina.locator("#plPunto").get_attribute("class")
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_error_al_guardar_se_reintenta_solo_sin_parpadear(navegador, sitio):
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, _ = _semana_de(date.today())
+    pagina.evaluate("""() => { window.__original = FileSystemFileHandle.prototype.createWritable; window.__intentos = 0;
+        FileSystemFileHandle.prototype.createWritable = async function () { window.__intentos++; throw new Error('sin permiso'); }; }""")
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent.startsWith('No se pudo guardar')")
+    primero = pagina.evaluate("window.__intentos")
+    pagina.wait_for_timeout(7000)      # varias vueltas de lectura
+    assert pagina.evaluate("window.__intentos") == primero, "no insiste en cada vuelta"
+    pagina.evaluate("() => { FileSystemFileHandle.prototype.createWritable = window.__original; }")
+    pagina.locator("#plReintentar").click()
+    _esperar_archivo(pagina, f"publicado/planificacion/{semana}/{DISPOSITIVO}.json", lambda s: len(s["datos"]["asignaciones"]) == 1)
+    assert len(errores) <= primero + 1 and all("sin permiso" in e for e in errores)
     pagina.context.close()
 
 
