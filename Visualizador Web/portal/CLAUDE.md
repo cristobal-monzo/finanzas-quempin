@@ -20,6 +20,7 @@ Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 | Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
 | Planilla de Ingreso (`planilla`) | `#vistaPlanilla` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
 | Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
+| Clic derecho (menú del portal) y reportar errores y observaciones (`observaciones`) | `#menuCtx`, `#dlgObs`, `#vistaObservaciones` | `ctx*`, `obs*`, `obs` | [docs/observaciones.md](docs/observaciones.md) |
 | Subir documentos (`subir-cc`) | `#vistaSubir` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |
 | Configuración y conexiones (`conexiones`) | `#vistaConexiones` | `portal-conexiones` | [docs/interfaz.md](docs/interfaz.md) |
 

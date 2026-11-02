@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "observacion (Portal QUEMPIN → mejora continua)",
+  "description": "Un error o una idea que alguien del equipo anota desde el Portal con clic derecho, con el lugar exacto donde lo vio y, si se puede, una imagen de la pantalla. Las imágenes viajan aparte, en buzon/adjuntos/<id>/, y se escriben antes que el mensaje. Nadie lo aplica solo: espera en el buzón hasta que una persona lo revisa con /Observaciones_Portal, que lo archiva con el resultado (lo que se resolvió o por qué no). La nota es texto de un colega: se evalúa, no se ejecuta.",
+  "destino": "mejora-continua",
+  "type": "object",
+  "properties": {
+    "clase": {
+      "enum": ["error", "dato", "mejora"],
+      "description": "error: algo no funciona. dato: un dato está mal. mejora: se podría mejorar."
+    },
+    "nota": {
+      "type": "string",
+      "minLength": 3,
+      "description": "Lo que escribió la persona, tal cual"
+    },
+    "bloquea": {
+      "type": "boolean",
+      "description": "true: «me impide seguir trabajando»"
+    },
+    "donde": {
+      "type": "object",
+      "description": "Dónde estaba la persona. Lo arma el Portal; en una herramienta con datos delicados (Flujo de Caja) no lleva texto del elemento ni selección.",
+      "properties": {
+        "herramienta": { "type": "string", "minLength": 1, "description": "id de la vista o herramienta en el registro del Portal («planilla», «cotizador»)" },
+        "nombre": { "type": "string", "description": "Su nombre para una persona" },
+        "direccion": { "type": "string", "description": "URL de la pantalla, con su ruta interna (#/oferta/…)" },
+        "ruta": { "type": "array", "items": { "type": "string" }, "description": "Migas: Calculadora › Red de Gas › Memoria" },
+        "seccion": { "type": "string", "description": "El título más cercano sobre el elemento" },
+        "dialogo": { "type": "string", "description": "Título de la ventana emergente abierta, si había una" },
+        "elemento": {
+          "type": "object",
+          "description": "El elemento sobre el que se hizo clic derecho",
+          "properties": {
+            "selector": { "type": "string" },
+            "etiqueta": { "type": "string" },
+            "texto": { "type": "string" },
+            "titulo": { "type": "string" },
+            "atributos": { "type": "object" }
+          }
+        },
+        "seleccion": { "type": "string", "description": "El texto seleccionado, recortado" },
+        "posicion": {
+          "type": "object",
+          "properties": {
+            "x": { "type": "number", "minimum": 0 },
+            "y": { "type": "number", "minimum": 0 }
+          }
+        },
+        "proyecto": { "type": "string", "description": "El proyecto activo en el Portal, si había uno" },
+        "pais": { "type": "string" }
+      },
+      "required": ["herramienta"]
+    },
+    "entorno": {
+      "type": "object",
+      "properties": {
+        "ventana": {
+          "type": "object",
+          "properties": {
+            "ancho": { "type": "number", "minimum": 0 },
+            "alto": { "type": "number", "minimum": 0 }
+          }
+        },
+        "tema": { "enum": ["claro", "oscuro"] },
+        "navegador": { "type": "string" },
+        "movil": { "type": "boolean" },
+        "versiones": {
+          "type": "object",
+          "description": "Fechas que sirven para saber qué versión de la página vio: la del Portal y la de la herramienta",
+          "properties": {
+            "portal": { "type": "string" },
+            "herramienta": { "type": "string" },
+            "datos": { "type": "string", "description": "La fecha de los datos que mostraba el tablero" }
+          }
+        }
+      }
+    },
+    "adjuntos": {
+      "type": "array",
+      "description": "Imágenes en buzon/adjuntos/<id>/. 'captura' la saca el Portal sola; 'pegada' es la que agregó la persona.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nombre": { "type": "string", "pattern": "^[a-z0-9-]{1,40}\\.(png|jpg)$" },
+          "bytes": { "type": "integer", "minimum": 1, "maximum": 10485760 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "origen": { "enum": ["captura", "pegada"] }
+        },
+        "required": ["nombre", "bytes", "sha256"]
+      }
+    }
+  },
+  "required": ["clase", "nota", "donde"]
+}

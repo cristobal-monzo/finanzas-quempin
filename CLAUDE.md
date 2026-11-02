@@ -36,7 +36,7 @@ lee su `CLAUDE.md`** (carga solo al leer archivos de esa carpeta).
 
 ## Skills: solo con «/»
 
-Pedido del usuario: las 9 skills se invocan únicamente si escribe su nombre con
+Pedido del usuario: las 10 skills se invocan únicamente si escribe su nombre con
 «/». Si describe la intención con palabras («actualiza el centro de costos»,
 «¿cuánto debería costar un taladro?»), pregunta «¿Te refieres a
 `/Registro_Centro_de_Costos`?» y espera el sí; vale también para las de solo
@@ -55,6 +55,7 @@ skill nueva: dilo en una línea y sigue.
 | Cuánto debería costar algo hoy; publicar el tablero del Cotizador | `/Cotizador_Historico` |
 | Flujo de caja (Excel y tablero) | `/Registro_Flujo_de_Caja` |
 | Sugerencias del Formulador para la Planilla de Ingreso | `/Sugerencias_Requerimientos` |
+| Errores y observaciones que el equipo reporta en el Portal | `/Observaciones_Portal` |
 | Reorganizar las carpetas de un proyecto | `/Organizar_Proyecto` |
 
 Cada skill de registro publica su tablero al terminar (URL fija, nunca un link

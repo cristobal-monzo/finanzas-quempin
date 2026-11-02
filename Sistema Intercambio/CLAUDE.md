@@ -34,7 +34,7 @@ El usuario decidió ponerla ahí sabiendo que quien entra a la biblioteca ve
 ├── intercambio.json     manifiesto: así se reconoce la carpeta correcta
 ├── esquemas.json        el catálogo completo, para las herramientas de otros repos
 ├── LEEME.md             lo deja el procesador desde LEEME-carpeta.md: edita ese
-├── buzon/               mensajes entre herramientas (adjuntos/<id>/: archivos de un documento-cc)
+├── buzon/               mensajes entre herramientas (adjuntos/<id>/: archivos de un documento-cc o imágenes de una observacion)
 ├── procesado/AAAA-MM/   mensajes ya atendidos, con su resultado
 └── publicado/           lo que cada herramienta comparte
     ├── formulador/      repositorio de formulaciones: un archivo por proyecto
@@ -71,7 +71,8 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
 - **Mensajes**: `presupuesto-proyecto`, `venta-proyecto` y `datos-proyecto` → Análisis
   Financiero; `formulacion` → Formulador; `borrador-cotizacion` y `registro-documento` →
   Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento` y `editar-requerimiento` → Planilla;
-  `documento-cc` → Centro de Costos.
+  `documento-cc` → Centro de Costos; `observacion` → mejora continua (la atiende una persona con
+  `/Observaciones_Portal`, `observaciones.py`).
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
   `oportunidades`, `proyectos`, `centro-costos-carpetas`, `estado`, `planificacion-semana`,

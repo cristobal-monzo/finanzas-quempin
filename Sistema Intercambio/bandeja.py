@@ -41,6 +41,8 @@ ACCION_BUZON = {
     "analisis-financiero": ("envio(s) al Analisis Financiero",
                             "se aplican en el run del AF; los que piden decision: "
                             "'Registro_Analisis_Financiero/driver.py intercambio'"),
+    "mejora-continua": ("observacion(es) del equipo desde el Portal",
+                        "revisarlas con /Observaciones_Portal"),
 }
 
 

@@ -1,0 +1,36 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "d1e2f3a4b5c6d1e2f3a4b5c6",
+  "tipo": "observacion",
+  "destino": "mejora-continua",
+  "origen": {"herramienta": "portal", "usuario": "NB", "enviado": "2026-10-30T11:20:00-03:00"},
+  "clase": "error",
+  "nota": "Al apretar Calcular no pasa nada",
+  "bloquea": true,
+  "donde": {
+    "herramienta": "calculadora",
+    "nombre": "Calculadora Técnica",
+    "direccion": "https://ejemplo.invalid/calculadora-tecnica-quempin/#/gas",
+    "ruta": ["Calculadora Técnica", "Red de Gas"],
+    "seccion": "Prueba de hermeticidad",
+    "elemento": {
+      "selector": "main > section:nth-of-type(2) > button.calcular",
+      "etiqueta": "button",
+      "texto": "Calcular",
+      "atributos": {"id": "btnCalcular"}
+    },
+    "posicion": {"x": 640, "y": 412},
+    "proyecto": "280. Obra de ejemplo",
+    "pais": "CL"
+  },
+  "entorno": {
+    "ventana": {"ancho": 1366, "alto": 800},
+    "tema": "claro",
+    "navegador": "Chrome/141",
+    "movil": false,
+    "versiones": {"portal": "10/30/2026 09:00:00", "herramienta": "10/29/2026 18:30:00"}
+  },
+  "adjuntos": [
+    {"nombre": "captura.png", "bytes": 182344, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "origen": "captura"}
+  ]
+}

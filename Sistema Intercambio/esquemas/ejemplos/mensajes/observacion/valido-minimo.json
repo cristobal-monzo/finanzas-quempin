@@ -1,0 +1,10 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "d1e2f3a4b5c6d1e2f3a4b5c7",
+  "tipo": "observacion",
+  "destino": "mejora-continua",
+  "origen": {"herramienta": "portal", "usuario": "LC", "enviado": "2026-10-30T11:25:00-03:00"},
+  "clase": "mejora",
+  "nota": "Sería útil ordenar esta lista por fecha",
+  "donde": {"herramienta": "flujo-caja", "nombre": "Flujo de Caja"}
+}

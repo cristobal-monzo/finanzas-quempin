@@ -1,0 +1,10 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "d1e2f3a4b5c6d1e2f3a4b5c8",
+  "tipo": "observacion",
+  "destino": "mejora-continua",
+  "origen": {"herramienta": "portal", "usuario": "NB", "enviado": "2026-10-30T11:20:00-03:00"},
+  "clase": "queja",
+  "nota": "Al apretar Calcular no pasa nada",
+  "donde": {"herramienta": "calculadora"}
+}
