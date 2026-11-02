@@ -1902,9 +1902,6 @@
   .ej-tabla > tbody > tr > td { padding: 8px; border-top: 1px solid var(--gridline); vertical-align: top; }
   .ej-tabla > tbody > tr.fuera > td { color: var(--texto-suave); }
   .ej-tabla > tbody > tr.fuera .ej-c-desc b { text-decoration: line-through; text-decoration-color: var(--baseline); }
-  .ej-tabla > tbody > tr.ej-grupo > td { padding: 10px 8px 2px; border-top: 1px solid var(--gridline); font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
-  .ej-tabla > tbody > tr.ej-grupo + tr > td { border-top-color: transparent; }
-  .ej-tabla > tbody > tr.en-grupo > td:first-child { box-shadow: inset 3px 0 0 var(--gridline); }
   .ej-tabla > tbody > tr.recien > td { background: var(--tinte); transition: background-color 1.2s ease; }
   .ej-num { text-align: right !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .ej-tabla input[type="checkbox"] { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--brand-orange); cursor: pointer; }
@@ -1924,10 +1921,14 @@
   .ej-eval-chip[data-nivel="warn"]::before { background: var(--estado-warn); }
   .ej-eval-chip[data-nivel="bad"] { border-color: var(--estado-bad); background: transparent; color: var(--estado-bad); }
   .ej-eval-chip[data-nivel="bad"]::before { background: var(--estado-bad); }
-  .ej-estado, .ej-form select {
+  .ej-estado, .ej-prov, .ej-form select {
     height: 32px; max-width: 100%; padding: 0 8px; border-radius: 8px; border: 1px solid var(--baseline);
     background: var(--surface-card); color: var(--text-primary); font-size: 13px; cursor: pointer;
   }
+  /* La columna Proveedor: el menú con cada cotización del ítem y su valor, para compararlas y elegir */
+  .ej-tabla .ej-prov { display: block; width: 230px; max-width: 100%; text-overflow: ellipsis; }
+  .ej-prov:disabled { cursor: default; opacity: 0.7; }
+  .ej-prov-nota { display: block; max-width: 230px; margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--texto-suave); overflow-wrap: anywhere; }
   .ej-acc { display: inline-flex; gap: 2px; }
   .ej-ico {
     width: 30px; height: 30px; display: inline-grid; place-items: center; border: 0; border-radius: 8px; background: transparent;
@@ -1976,6 +1977,19 @@
   .ej-ancho { grid-column: 1 / -1; }
   .ej-form .pl-campo select { height: 42px; font-size: 15px; }
   .ej-campo { display: flex; flex-direction: column; gap: 5px; }
+  /* Los proveedores de un ítem en el diálogo: uno por cotización; con uno solo, sin marco ni «Elegir» */
+  .ej-provs { display: flex; flex-direction: column; gap: 10px; }
+  .ej-prov-fila { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 10px; padding: 8px 12px 12px; border-radius: 10px; border: 1px solid var(--gridline); }
+  .ej-prov-fila.elegida { border-color: var(--brand-orange); background: var(--tinte); }
+  .ej-provs.uno .ej-prov-fila { padding: 0; border: 0; }
+  .ej-provs.uno .ej-prov-cab, .ej-campo:has(> .ej-provs.uno) > .ej-et { display: none; }
+  .ej-prov-cab { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; min-height: 30px; }
+  .ej-prov-el { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 900; cursor: pointer; }
+  .ej-prov-el input { width: 16px; height: 16px; margin: 0; accent-color: var(--brand-orange); cursor: pointer; }
+  .ej-prov-dif { flex: 1 1 auto; min-width: 0; font-size: 12.5px; color: var(--text-secondary); }
+  .ej-p-prov, .ej-p-nota { grid-column: span 2; }
+  .ej-p-iva { min-height: 42px; }
+  .ej-otro-prov { align-self: flex-start; margin-top: 2px; }
   /* La cotización del Cotizador Histórico, a un proyecto (2026-10-29) */
   #dlgLlevar { width: min(620px, calc(100vw - 24px)); }
   .ll-lineas summary { cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
@@ -2046,23 +2060,18 @@
     .ej-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .ej-c-cat { display: none; }
   }
-  /* Angosto: la tabla de compras pasa a tarjetas (sin desplazarse de lado) */
-  @container ejecucion (max-width: 760px) {
-    .ej-tres { grid-template-columns: minmax(0, 1fr); }
-    .ejecucion .rc-cab p { display: none; }
-    .ej-filtros { margin-left: 0; }
+  /* La tabla de compras pasa a tarjetas (sin desplazarse de lado): con sus nueve columnas, en menos no se lee «Qué se compra» */
+  @container ejecucion (max-width: 1060px) {
     .ej-tabla > thead { display: none; }
     .ej-tabla, .ej-tabla > tbody, .ej-tabla > tfoot { display: block; }
     .ej-tabla > tbody > tr, .ej-tabla > tfoot > tr {
       display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 4px 8px; padding: 10px 0; border-top: 1px solid var(--gridline);
     }
     .ej-tabla > tbody > tr > td { padding: 0; border: 0; }
-    .ej-tabla > tbody > tr.ej-grupo { display: block; padding: 10px 0 0; }
-    .ej-tabla > tbody > tr.ej-grupo > td { display: block; padding: 0; border: 0; }
-    .ej-tabla > tbody > tr.ej-grupo + tr { border-top-color: transparent; }
-    .ej-tabla > tbody > tr.en-grupo > td:first-child { box-shadow: none; }
-    .ej-tabla td.ej-c-sim { grid-row: 1 / 4; }
-    .ej-tabla td.ej-c-que { grid-column: 2 / 4; }
+    .ej-tabla td.ej-c-sim { grid-row: 1 / 5; }
+    .ej-tabla td.ej-c-que, .ej-tabla td.ej-c-prov { grid-column: 2 / 4; }
+    .ej-tabla .ej-prov { width: 100%; max-width: 420px; }
+    .ej-prov-nota { max-width: none; }
     .ej-tabla td.ej-c-cant, .ej-tabla td.ej-c-pu { display: none; }
     .ej-tabla td.ej-c-tot { grid-column: 2; text-align: left !important; font-weight: 900; }
     .ej-tabla td.ej-c-tot::after { content: attr(data-detalle); margin-left: 6px; font-weight: 400; color: var(--texto-suave); }
@@ -2072,6 +2081,11 @@
     .ej-tabla > tfoot > tr { grid-template-columns: minmax(0, 1fr) auto; }
     .ej-tabla > tfoot td { display: block; padding: 10px 0 0; border: 0; }
     .ej-tabla > tfoot td:empty { display: none; }
+  }
+  @container ejecucion (max-width: 760px) {
+    .ej-tres { grid-template-columns: minmax(0, 1fr); }
+    .ejecucion .rc-cab p { display: none; }
+    .ej-filtros { margin-left: 0; }
     .ej-form { grid-template-columns: minmax(0, 1fr); }
     .ej-tarifas { grid-template-columns: minmax(0, 1fr); }
   }
@@ -2085,7 +2099,9 @@
   /* En el teléfono los campos van a 16 px: con menos, el iPhone hace zoom al tocarlos */
   @media (max-width: 760px) {
     .ej-form { grid-template-columns: minmax(0, 1fr); }
-    .ej-nuevo input[type="text"], .ej-nuevo textarea, .ej-nuevo select, .ej-estado, .ej-form select, .ej-form .pl-campo select, .ej-form .pl-campo input,
+    .ej-prov-fila { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ej-p-prov, .ej-p-nota { grid-column: 1 / -1; }
+    .ej-nuevo input[type="text"], .ej-nuevo textarea, .ej-nuevo select, .ej-estado, .ej-prov, .ej-form select, .ej-form .pl-campo select, .ej-form .pl-campo input,
     .ej-av-form .pl-campo input, #dlgEjVenta .pl-campo input, .ej-pegar, #ejBuscar, .ej-dias-fila .pl-campo input,
     .ej-dias-fila .pl-campo select, .ej-nivel select, .ej-tarifas .pl-campo input { font-size: 16px; }
   }
@@ -2762,8 +2778,8 @@
   </form>
 </dialog>
 
-<!-- Proyectos en ejecución: una cotización (agregarla, cambiarla u otra para lo mismo), con su evaluación mientras se escribe
-     (ejAbrirCosto, ejPintarEvaluacion) -->
+<!-- Proyectos en ejecución: un ítem con la cotización de cada proveedor (agregarlo o cambiarlo), con la evaluación del elegido
+     mientras se escribe (ejAbrirCosto, ejPintarEvaluacion) -->
 <dialog id="dlgEjCosto" aria-labelledby="dlgEjCostoTit">
   <form class="dlg" id="ejCostoForm" novalidate>
     <h2 id="dlgEjCostoTit">Agregar una cotización</h2>
@@ -2774,18 +2790,17 @@
       <label class="pl-campo ej-ancho"><span>Qué se compra</span><input id="ejCDesc" type="text" maxlength="200" autocomplete="off" placeholder="Ej.: Estanque inoxidable 100 L con serpentín"></label>
       <div class="ej-campo ej-ancho"><span class="ej-et" id="ejCCatEt">Categoría</span><div class="pl-vistas ej-cats" id="ejCCat" role="radiogroup" aria-labelledby="ejCCatEt"></div></div>
       <label class="pl-campo ej-ancho" id="ejCLineaCampo"><span>Lo que reemplaza del presupuesto <i>(opcional)</i></span><select id="ejCLinea"></select></label>
-      <label class="pl-campo"><span>Proveedor</span><input id="ejCProv" type="text" maxlength="120" autocomplete="off" list="ejProveedores"></label>
-      <label class="pl-campo"><span>N° de cotización <i>(opcional)</i></span><input id="ejCCot" type="text" maxlength="60" autocomplete="off"></label>
       <label class="pl-campo"><span>Cantidad</span><input id="ejCCant" type="text" inputmode="decimal" autocomplete="off"></label>
       <label class="pl-campo"><span>Unidad</span><input id="ejCUnidad" type="text" maxlength="12" autocomplete="off" list="ejUnidades"></label>
-      <label class="pl-campo"><span>Precio unitario</span><input id="ejCPrecio" type="text" inputmode="decimal" autocomplete="off" placeholder="$ sin IVA"></label>
-      <label class="pl-campo"><span>Fecha de la cotización</span><input id="ejCFecha" type="date"></label>
-      <label class="rc-mios ej-iva ej-ancho"><input type="checkbox" id="ejCIva"><span>El precio incluye IVA (se guarda sin IVA)</span></label>
+      <div class="ej-campo ej-ancho">
+        <span class="ej-et" id="ejCProvsEt">Proveedores</span>
+        <div class="ej-provs" id="ejCProvs" role="group" aria-labelledby="ejCProvsEt"></div>
+        <button class="cx-enlace ej-otro-prov" id="ejCOtroProv" type="button">Agregar otro proveedor</button>
+      </div>
       <label class="pl-campo"><span>Estado</span><select id="ejCEstado"></select></label>
       <label class="pl-campo" id="ejCOCCampo"><span>N° de la orden de compra</span><input id="ejCOC" type="text" inputmode="numeric" maxlength="12" autocomplete="off" list="ejOCs"></label>
-      <label class="pl-campo ej-ancho"><span>Nota <i>(opcional)</i></span><input id="ejCNota" type="text" maxlength="300" autocomplete="off" placeholder="Ej.: plazo de entrega 10 días, incluye despacho"></label>
     </div>
-    <section class="ej-eval" id="ejCEval" aria-live="polite" aria-label="Evaluación de la cotización"></section>
+    <section class="ej-eval" id="ejCEval" aria-live="polite" aria-label="Evaluación del proveedor elegido"></section>
     </div>
     <datalist id="ejUnidades"></datalist>
     <datalist id="ejProveedores"></datalist>
@@ -9869,7 +9884,7 @@
     deshacer: [], recien: new Set(), relojRecien: null,
     libs: new Map(), precios: null, preciosLm: 0, buscador: null, parecidas: new Map(), calc: new Map(),
     modelo: null,             // el resumen pintado
-    editando: null,           // el diálogo de una cotización: { id, grupo, base, creado, ref, cat, proyecto, simular }
+    editando: null,           // el diálogo de un ítem: { xs, grupo, ref, cat, proyecto, simular, oc, lineaTocada, previo, quitadas, auto }
     pegadas: null,            // lo que lee el diálogo de pegar
     diasForm: null,           // los días trabajados por anotar: { clave, fecha, jornada, personas, nombres }
     sucios: new Map(),        // lo escrito en los campos del resumen, que sobrevive a cada repintado (id → valor)
@@ -9952,7 +9967,7 @@
         proveedor: ejTxt(x.proveedor, 120), cotizacion: ejTxt(x.cotizacion, 60),
         fecha: /^\d{4}-\d{2}-\d{2}$/.test(texto(x.fecha)) ? x.fecha : '',
         estado: EJ_ESTADOS.some((s) => s.id === x.estado) ? x.estado : 'evaluar',
-        simular: x.simular !== false, grupo: EJ_ID.test(texto(x.grupo)) ? x.grupo : '',
+        simular: x.simular !== false, grupo: EJ_ID.test(texto(x.grupo)) ? x.grupo : '', elegida: x.elegida === true,
         oc: /^\d{1,12}$/.test(texto(x.oc)) ? texto(x.oc) : '',
         linea: /^[A-Za-z0-9_-]{1,40}$/.test(texto(x.linea)) ? texto(x.linea) : '',
         ref: ejTxt(x.ref, 80), nota: ejTxt(x.nota, 300)
@@ -10313,6 +10328,16 @@
   }
   // Las otras cotizaciones para lo mismo (el grupo lleva el id de la primera, que lo tiene recién al guardar la segunda)
   const ejHermanas = (it, costos) => (it.grupo ? costos.filter((x) => x.id !== it.id && (x.grupo === it.grupo || x.id === it.grupo)) : []);
+  /* Un ítem con varios proveedores son sus cotizaciones, con el mismo grupo. La que se ve en su fila y puede contar: la
+     comprada o aprobada; si no, la elegida en el menú Proveedor, la que se simula o, si no, la más barata. */
+  function ejElegida(xs) {
+    const ultima = (f) => xs.filter(f).sort((a, b) => (a.t < b.t ? 1 : -1))[0];
+    return ultima((x) => x.estado === 'comprada') || ultima((x) => x.estado === 'aprobada') || ultima((x) => x.elegida)
+      || ultima((x) => x.simular && x.estado === 'evaluar') || xs.find((x) => x.estado !== 'descartada' && x.precio > 0) || xs[0];
+  }
+  const ejItems = (costos) => ejBloques(costos).map((xs) => ({ xs, it: ejElegida(xs) }));
+  // Lo que les pasa a los demás proveedores de un ítem según su estado: aprobarlo, comprarlo o descartarlo los deja descartados
+  const ejEstadoOtra = (est) => (est === 'evaluar' ? 'evaluar' : 'descartada');
 
   /* La mano de obra de los días trabajados (pedido del usuario, 2026-10-28: «indicar días en que se ha trabajado para
      estimar los costos reales asociados a mano de obra», sin que sea la única forma de ingresarla). Cada persona y día es
@@ -10352,7 +10377,8 @@
   function ejModelo(t) {
     const form = ejFormulacion(t);
     const calc = ejCalculo(form);
-    const costos = ejDe(t, 'costo');
+    // Se simula un proveedor por ítem, aunque dos navegadores hayan elegido a la vez (en cada id manda el cambio más reciente)
+    const costos = ejItems(ejDe(t, 'costo')).flatMap(({ xs, it }) => xs.map((x) => (x !== it && x.simular ? Object.assign({}, x, { simular: false }) : x)));
     const ocs = ejOCs(t, costos);
     const par = (form && form.datos.parametros) || {};
     const pres = ejPresupuesto(t, form, calc);
@@ -10409,14 +10435,14 @@
     return { filas, dhCierre };
   }
   /* El costo estimado al cierre: por categoría, lo gastado + comprometido + simulado o, si es menos, lo presupuestado. op:
-     { quitar: id } no cuenta esa cotización y { agregar: cotización } la cuenta como simulada: así se evalúa una sin
-     tocarla. EAC0: sin nada simulado. */
+     { quitar: Set de ids } no cuenta esas cotizaciones y { agregar: cotización } la cuenta como simulada: así se evalúa una
+     sin tocarla. EAC0: sin nada simulado. */
   function ejCuentas(m, op) {
     op = op || {};
     const cats = m.base.map((b) => Object.assign({}, b, { C: b.Coc, Q: 0 }));
     const por = new Map(cats.map((c) => [c.k, c]));
     m.costos.forEach((it) => {
-      if (op.quitar && it.id === op.quitar) return;
+      if (op.quitar && op.quitar.has(it.id)) return;
       const como = ejCuentaComo(it, m.folios);
       if (como === 'q') por.get(it.categoria).Q += it.cantidad * it.precio;
       else if (como === 'c') por.get(it.categoria).C += it.cantidad * it.precio;
@@ -10441,8 +10467,9 @@
   // El semáforo del margen, contra la meta y el mínimo de su formulación; sin presupuesto no lo lleva (le falta lo por venir)
   const ejNivelMargen = (mg, m) => (mg === null || !m.pres ? '' : mg >= m.margenes.objetivo ? 'ok' : mg >= m.margenes.minimo ? 'warn' : 'bad');
   /* La evaluación de una cotización (la guardada o la que se está escribiendo): cada comparación con su nivel, y la peor
-     como veredicto. Que sea la más barata entre las de lo mismo informa, pero no la hace conveniente. */
-  function ejEvaluar(it, m) {
+     como veredicto. Que sea la más barata entre las de lo mismo informa, pero no la hace conveniente. dialogo: { otras, ids },
+     lo escrito en el diálogo en vez de lo guardado. */
+  function ejEvaluar(it, m, dialogo) {
     const puntos = [];
     const total = it.cantidad * it.precio;
     const l = it.linea ? m.lineas.find((x) => x.uid === it.linea) || null : null;
@@ -10463,7 +10490,8 @@
           + ', ' + pl(Number(h.n) || 0, 'compra', 'compras') + (ultima ? '; la última, ' + ejPesos(p.ultimo) + ' el ' + ultima : '') + '): '
           + (it.precio > p.maximo ? 'esta cotización está sobre el máximo.' : Math.abs(dif) < 0.005 ? 'igual al promedio.' : dif < 0 ? Math.round(-dif * 100) + ' % bajo el promedio.' : Math.round(dif * 100) + ' % sobre el promedio.') });
     }
-    const otras = ejHermanas(it, m.costos).filter((x) => x.estado !== 'descartada' && x.precio > 0);
+    const hermanas = ejHermanas(it, m.costos);
+    const otras = (dialogo ? dialogo.otras : hermanas.filter((x) => x.estado !== 'descartada')).filter((x) => x.precio > 0);
     if (otras.length && total > 0) {
       const mejor = otras.reduce((a, x) => (x.cantidad * x.precio < a.cantidad * a.precio ? x : a));
       const tm = mejor.cantidad * mejor.precio;
@@ -10471,8 +10499,10 @@
         ? { tipo: 'otras', nivel: 'ok', texto: 'La más conveniente de las ' + (otras.length + 1) + ' cotizaciones para esto.' }
         : { tipo: 'otras', nivel: 'warn', texto: Math.round((total / tm - 1) * 100) + ' % más cara que la de ' + (mejor.proveedor || 'otro proveedor') + ' (' + ejPesos(tm) + ').' });
     }
-    const con = ejCuentas(m, { quitar: it.id, agregar: it });
-    const sin = ejCuentas(m, { quitar: it.id });
+    // Se simula un proveedor a la vez: se evalúa como si este reemplazara a los otros del ítem
+    const quitar = new Set([it.id].concat(hermanas.map((x) => x.id), dialogo ? dialogo.ids : []));
+    const con = ejCuentas(m, { quitar, agregar: it });
+    const sin = ejCuentas(m, { quitar });
     const c = con.cats.find((x) => x.k === it.categoria);
     const cat = EJ_CAT.get(it.categoria).nombre.toLowerCase();
     if (c && c.P !== null && total > 0) {
@@ -10739,7 +10769,7 @@
       if (!m.pres) s.title = 'Sin presupuesto: solo con lo gastado, comprometido y proyectado que está anotado';
       f2.append(s);
     } else f2.append(crear('span', null, m.venta ? 'Sin presupuesto ni gastos anotados' : 'Sin venta: anótala en su resumen'));
-    const decidir = m.costos.filter((x) => x.estado === 'evaluar').length;
+    const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
     if (decidir) f2.append(crear('span', null, '· ' + pl(decidir, 'compra por decidir', 'compras por decidir')));
     b.append(f2);
     if (t.chips.length) {
@@ -11129,9 +11159,10 @@
       .sort((a, b) => Math.min(...b.map((x) => Date.parse(x.creado))) - Math.min(...a.map((x) => Date.parse(x.creado))));
   }
   function ejComprasEl(m) {
-    const { s } = ejPanel('Gastos proyectados y cotizaciones', m.costos.length ? pl(m.costos.length, 'anotado', 'anotados') : '');
+    const items = ejItems(m.costos);
+    const { s } = ejPanel('Gastos proyectados y cotizaciones', items.length ? pl(items.length, 'anotado', 'anotados') : '');
     s.classList.add('ej-compras');
-    s.append(crear('p', 'ej-pista', 'Anota cada cotización que llega, o un gasto que se espera hacer, para decidir la compra: se compara con lo presupuestado y con lo que QUEMPIN ha pagado, y lo marcado en «Simular» cambia al tiro el costo estimado, el margen y los indicadores. No es un costo real: al Centro de Costos solo llegan las facturas y las órdenes de compra.'));
+    s.append(crear('p', 'ej-pista', 'Anota cada ítem que se espera comprar, con la cotización de uno o varios proveedores: en la columna Proveedor se comparan y se elige uno. Se contrasta con lo presupuestado y con lo que QUEMPIN ha pagado, y lo marcado en «Simular» cambia al tiro el costo estimado, el margen y los indicadores. No es un costo real: al Centro de Costos solo llegan las facturas y las órdenes de compra.'));
     const barra = crear('div', 'ej-barra-compras');
     const agregar = ejBoton('Agregar gasto o cotización', 'cx-boton', () => ejAbrirCosto(null), 'mas');
     agregar.disabled = !rc.dir;
@@ -11144,7 +11175,7 @@
     filtros.setAttribute('role', 'group');
     filtros.setAttribute('aria-label', 'Qué compras mostrar');
     EJ_FILTROS.forEach((f) => {
-      const n = m.costos.filter(f.es).length;
+      const n = items.filter((x) => f.es(x.it)).length;
       if (f.id !== 'vigentes' && f.id !== 'todas' && !n) return;
       const b = crear('button', 'ej-filtro', f.nombre + ' (' + n + ')');
       b.type = 'button';
@@ -11188,16 +11219,16 @@
       s.append(p);
     }
     const filtro = EJ_FILTROS.find((f) => f.id === ej.filtro) || EJ_FILTROS[0];
-    const bloques = ejBloques(m.costos).map((xs) => xs.filter(filtro.es)).filter((xs) => xs.length);
+    const visibles = items.filter((x) => filtro.es(x.it));
     if (!m.costos.length) {
       s.append(crear('p', 'ej-nada', 'Todavía no hay gastos proyectados ni cotizaciones. Agrega el primero con «Agregar gasto o cotización», o pega las filas de la cotización de un proveedor.'));
       return s;
     }
-    if (!bloques.length) { s.append(crear('p', 'ej-nada', 'Nada en «' + filtro.nombre + '».')); return s; }
+    if (!visibles.length) { s.append(crear('p', 'ej-nada', 'Nada en «' + filtro.nombre + '».')); return s; }
     const tabla = crear('table', 'ej-tabla');
     const thead = crear('thead');
     const trh = crear('tr');
-    [['Simular', ''], ['Qué se compra', ''], ['Cantidad', 'ej-num'], ['Precio unit.', 'ej-num'], ['Total', 'ej-num'], ['Evaluación', ''], ['Estado', ''], ['', '']].forEach(([x, c]) => {
+    [['Simular', ''], ['Qué se compra', ''], ['Proveedor', ''], ['Cantidad', 'ej-num'], ['Precio unit.', 'ej-num'], ['Total', 'ej-num'], ['Evaluación', ''], ['Estado', ''], ['', '']].forEach(([x, c]) => {
       const th = crear('th', c, x);
       th.scope = 'col';
       trh.append(th);
@@ -11205,26 +11236,11 @@
     trh.lastChild.append(crear('span', 'sr', 'Acciones'));
     thead.append(trh);
     const tbody = crear('tbody');
-    bloques.forEach((xs) => {
-      const grupo = xs[0].grupo && m.costos.filter((x) => x.grupo === xs[0].grupo).length > 1;
-      if (grupo) {
-        const todas = m.costos.filter((x) => x.grupo === xs[0].grupo);
-        const vivas = todas.filter((x) => x.estado !== 'descartada' && x.precio > 0);
-        const mejor = vivas.length ? vivas.reduce((a, x) => (x.cantidad * x.precio < a.cantidad * a.precio ? x : a)) : null;
-        const tr = crear('tr', 'ej-grupo');
-        const td = crear('td');
-        td.colSpan = 8;
-        td.textContent = pl(todas.length, 'cotización', 'cotizaciones') + ' para «' + xs[0].descripcion + '»'
-          + (mejor ? ' · la más conveniente: ' + (mejor.proveedor || 'sin proveedor') + ', ' + ejPesos(mejor.cantidad * mejor.precio) : '') + ' · se simula una a la vez';
-        tr.append(td);
-        tbody.append(tr);
-      }
-      xs.forEach((it) => tbody.append(ejFilaEl(it, m, grupo)));
-    });
+    visibles.forEach((x) => tbody.append(ejFilaEl(x.it, x.xs, m)));
     const tfoot = crear('tfoot');
     const trf = crear('tr');
     const t1 = crear('td', null, 'Lo simulado suma');
-    t1.colSpan = 4;
+    t1.colSpan = 5;
     const t2 = crear('td', 'ej-num', ejPesos(m.tot.Q));
     const t3 = crear('td');
     t3.colSpan = 3;
@@ -11235,52 +11251,59 @@
     s.append(tabla);
     return s;
   }
-  function ejFilaEl(it, m, enGrupo) {
+  // Una fila por ítem, con los datos de su proveedor elegido. clave: no cambia al elegir otro, para que el foco siga ahí.
+  function ejFilaEl(it, xs, m) {
     const como = ejCuentaComo(it, m.folios);
     const ev = ejEvaluar(it, m);
     const fuera = it.estado === 'descartada' || (it.estado === 'comprada' && !como);
-    const tr = crear('tr', [enGrupo ? 'en-grupo' : '', fuera ? 'fuera' : '', ej.recien.has(it.id) ? 'recien' : ''].filter(Boolean).join(' '));
+    const clave = it.grupo || it.id;
+    const tr = crear('tr', [fuera ? 'fuera' : '', xs.some((x) => ej.recien.has(x.id)) ? 'recien' : ''].filter(Boolean).join(' '));
     tr.dataset.id = it.id;
+    tr.dataset.item = clave;
     // Simular
     const tdS = crear('td', 'ej-c-sim');
     const cb = crear('input');
     cb.type = 'checkbox';
     cb.checked = como !== '';
     cb.disabled = !rc.dir || it.estado === 'comprada' || it.estado === 'descartada';
-    cb.dataset.foco = 'sim-' + it.id;
+    cb.dataset.foco = 'sim-' + clave;
     cb.setAttribute('aria-label', 'Simular la compra de ' + it.descripcion);
     cb.title = it.estado === 'comprada' ? (como ? 'Comprada: cuenta como comprometida hasta que su OC ' + it.oc + ' aparezca en Sistema QUEMPIN' : 'Comprada: la cuenta su orden de compra o, sin OC, su factura en el Centro de Costos')
       : it.estado === 'descartada' ? 'Descartada: no cuenta' : 'Contarla en el costo estimado y el margen de arriba';
     cb.addEventListener('change', () => ejSimularItem(it, cb.checked));
     tdS.append(cb);
-    // Qué se compra: abre la cotización
+    // Qué se compra: abre el ítem con sus proveedores
     const tdQ = crear('td', 'ej-c-que');
     const q = crear('button', 'ej-c-desc');
     q.type = 'button';
-    q.dataset.foco = 'abrir-' + it.id;
+    q.dataset.foco = 'abrir-' + clave;
     q.append(crear('b', null, it.descripcion));
-    q.append(crear('span', null, [EJ_CAT.get(it.categoria).nombre, it.proveedor || 'Sin proveedor', it.cotizacion ? 'cot. ' + it.cotizacion : '', it.fecha ? ejFechaCorta(it.fecha) : '',
+    q.append(crear('span', null, [EJ_CAT.get(it.categoria).nombre, it.cotizacion ? 'cot. ' + it.cotizacion : '', it.fecha ? ejFechaCorta(it.fecha) : '',
       it.estado === 'comprada' && it.oc ? 'OC ' + it.oc : ''].filter(Boolean).join(' · ')));
     if (it.nota) q.append(crear('span', null, it.nota));
-    q.title = 'Ver o cambiar esta cotización';
+    q.title = 'Ver o cambiar este ítem y sus proveedores';
     q.addEventListener('click', () => ejAbrirCosto(it));
     tdQ.append(q);
-    // Una OC de Sistema QUEMPIN que parece ser esta compra (mismo proveedor y monto): marcarla comprada con un toque
-    const oc = it.estado === 'aprobada' || it.estado === 'evaluar' ? ejOCParecida(it, m) : null;
-    if (oc) {
+    // Una OC de Sistema QUEMPIN que parece ser esta compra, con cualquiera de sus proveedores (mismo proveedor y monto): marcarla comprada con un toque
+    const conOC = it.estado === 'aprobada' || it.estado === 'evaluar' ? [it].concat(xs.filter((x) => x !== it)).map((x) => ({ x, oc: ejOCParecida(x, m) })).find((c) => c.oc) : null;
+    if (conOC) {
       const sug = crear('div', 'ej-sugerida');
-      sug.append(document.createTextNode('¿Es la OC ' + oc.folio + ' (' + ejPesos(oc.neto) + ')? '));
+      sug.append(document.createTextNode('¿Es la OC ' + conOC.oc.folio + ' (' + ejPesos(conOC.oc.neto) + ')' + (conOC.x !== it && conOC.x.proveedor ? ', de ' + conOC.x.proveedor : '') + '? '));
       const b = crear('button', null, 'Marcar comprada');
       b.type = 'button';
-      b.addEventListener('click', () => ejPoner([Object.assign({}, it, { estado: 'comprada', oc: oc.folio, simular: false })], it.descripcion + ': comprada con la OC ' + oc.folio + '.'));
+      b.addEventListener('click', () => ejCambiarEstado(Object.assign({}, conOC.x, { oc: conOC.oc.folio }), 'comprada', m));
       sug.append(b);
       tdQ.append(sug);
     }
+    // Proveedor: cada cotización con su valor
+    const tdPr = crear('td', 'ej-c-prov');
+    tdPr.append(ejMenuProveedor(it, xs, clave));
+    if (xs.length > 1) tdPr.append(crear('small', 'ej-prov-nota', ejNotaProveedor(it, xs)));
     const tdC = crear('td', 'ej-c-cant ej-num', ejCantidad(it.cantidad) + (it.unidad ? ' ' + it.unidad : ''));
     const tdP = crear('td', 'ej-c-pu ej-num', ejPesos(it.precio));
     const tdT = crear('td', 'ej-c-tot ej-num', ejPesos(ev.total));
     tdT.dataset.detalle = ejCantidad(it.cantidad) + (it.unidad ? ' ' + it.unidad : '') + ' × ' + ejPesos(it.precio);
-    // Evaluación: el veredicto; el detalle, en la cotización
+    // Evaluación: el veredicto; el detalle, en el ítem
     const tdE = crear('td', 'ej-c-eval');
     const chip = crear('button', 'ej-eval-chip', ev.corto);
     chip.type = 'button';
@@ -11293,32 +11316,55 @@
     const tdEs = crear('td', 'ej-c-est');
     const sel = crear('select', 'ej-estado');
     sel.setAttribute('aria-label', 'Estado de ' + it.descripcion);
-    sel.dataset.foco = 'estado-' + it.id;
+    sel.dataset.foco = 'estado-' + clave;
     sel.disabled = !rc.dir;
     EJ_ESTADOS.forEach((e) => { const o = crear('option', null, e.nombre); o.value = e.id; o.selected = e.id === it.estado; sel.append(o); });
-    sel.addEventListener('change', () => ejCambiarEstado(it, sel.value, m));
+    sel.addEventListener('change', () => { const est = sel.value; sel.value = it.estado; ejCambiarEstado(it, est, m); });
     tdEs.append(sel);
-    // Otra cotización para lo mismo, y eliminar
+    // Eliminar el ítem
     const tdA = crear('td', 'ej-c-acc');
     const acc = crear('div', 'ej-acc');
-    const otra = crear('button', 'ej-ico');
-    otra.type = 'button';
-    otra.append(icono('copiar', 16));
-    otra.title = 'Otra cotización para lo mismo, para compararlas';
-    otra.setAttribute('aria-label', 'Otra cotización para ' + it.descripcion);
-    otra.disabled = !rc.dir;
-    otra.addEventListener('click', () => ejAbrirCosto(null, { base: it }));
     const borrar = crear('button', 'ej-ico');
     borrar.type = 'button';
     borrar.append(icono('basurero', 16));
-    borrar.title = 'Eliminar esta cotización';
+    borrar.title = xs.length > 1 ? 'Eliminar este ítem, con sus ' + xs.length + ' proveedores' : 'Eliminar este ítem';
     borrar.setAttribute('aria-label', 'Eliminar ' + it.descripcion);
     borrar.disabled = !rc.dir;
-    borrar.addEventListener('click', () => ejPoner([{ id: it.id, proyecto: it.proyecto, tipo: 'costo', creado: it.creado, borrado: true }], 'Se eliminó «' + it.descripcion + '».'));
-    acc.append(otra, borrar);
+    borrar.addEventListener('click', () => ejBorrarItem(it, xs));
+    acc.append(borrar);
     tdA.append(acc);
-    tr.append(tdS, tdQ, tdC, tdP, tdT, tdE, tdEs, tdA);
+    tr.append(tdS, tdQ, tdPr, tdC, tdP, tdT, tdE, tdEs, tdA);
     return tr;
+  }
+  // El menú de la columna Proveedor: cada cotización del ítem con su valor, de la más barata a la más cara, y agregar otra
+  function ejMenuProveedor(it, xs, clave) {
+    const sel = crear('select', 'ej-prov');
+    sel.setAttribute('aria-label', 'Proveedor de ' + it.descripcion);
+    sel.dataset.foco = 'prov-' + clave;
+    sel.disabled = !rc.dir || it.estado === 'comprada';
+    xs.forEach((x) => { const o = crear('option', null, (x.proveedor || 'Sin proveedor') + ' · ' + ejPesos(x.precio)); o.value = x.id; sel.append(o); });
+    const otro = crear('option', null, '+ Agregar otro proveedor…');
+    otro.value = '';
+    sel.append(otro);
+    sel.value = it.id;
+    sel.title = it.estado === 'comprada' ? 'Ya comprada: para elegir otro proveedor, cambia primero su estado' : xs.map((x) => (x.proveedor || 'Sin proveedor') + ': ' + ejPesos(x.precio)).join('\n');
+    sel.addEventListener('change', () => {
+      const id = sel.value;
+      sel.value = it.id;
+      if (id) ejElegirProveedor(it, xs.find((x) => x.id === id)); else ejAbrirCosto(it, { otro: true });
+    });
+    return sel;
+  }
+  // Bajo el menú: cuántos proveedores hay y, si el elegido no es el más barato, cuánto se ahorraría con el que lo es
+  function ejNotaProveedor(it, xs) {
+    const n = pl(xs.length, 'proveedor', 'proveedores');
+    const mejor = xs.find((x) => x.precio > 0);
+    if (!mejor || !(it.precio > 0)) return n;
+    const dif = it.cantidad * it.precio - mejor.cantidad * mejor.precio;
+    return n + ' · ' + (dif < 0.5 ? 'el más barato' : (mejor.proveedor || 'Otro') + ', ' + ejPesos(dif) + ' menos');
+  }
+  function ejBorrarItem(it, xs) {
+    ejPoner(xs.map((x) => ({ id: x.id, proyecto: x.proyecto, tipo: 'costo', creado: x.creado, borrado: true })), 'Se eliminó «' + it.descripcion + '».');
   }
   // Una OC del proyecto sin compra anotada, del mismo proveedor (o sin decirlo) y con el mismo neto (±2 %, como el Centro de Costos)
   function ejOCParecida(it, m) {
@@ -11328,14 +11374,21 @@
     return m.ocs.find((o) => !ligadas.has(o.folio) && o.moneda === 'CLP' && Math.abs(o.neto - total) <= 0.02 * total
       && (!it.proveedor || !o.proveedor || ejParecido(it.proveedor, o.proveedor) >= 0.5)) || null;
   }
-  // Marcar o no «Simular»: entre las cotizaciones para lo mismo, una a la vez
+  // Marcar o no «Simular»: entre los proveedores de un ítem, uno a la vez, y ese queda como el elegido
   function ejSimularItem(it, si) {
-    const m = ej.modelo;
-    const cambios = [Object.assign({}, it, { simular: si })];
-    if (si && m) ejHermanas(it, m.costos).filter((x) => x.simular && (x.estado === 'evaluar' || x.estado === 'aprobada')).forEach((x) => cambios.push(Object.assign({}, x, { simular: false })));
+    const otras = ej.modelo ? ejHermanas(it, ej.modelo.costos) : [];
+    const cambios = [Object.assign({}, it, { simular: si }, otras.length ? { elegida: true } : null)];
+    otras.filter((x) => x.elegida || (si && x.simular && (x.estado === 'evaluar' || x.estado === 'aprobada'))).forEach((x) => cambios.push(Object.assign({}, x, { simular: false, elegida: false })));
     ejPoner(cambios);
   }
-  // Todas las por decidir a la vez; de las que compiten por lo mismo, solo la más conveniente
+  // Elegir otro proveedor en el menú: toma el estado y el «Simular» del que estaba, que sigue en el menú como alternativa
+  function ejElegirProveedor(it, nueva) {
+    if (!nueva || nueva.id === it.id) return;
+    ejPoner([Object.assign({}, nueva, { estado: it.estado, simular: it.simular, elegida: true }),
+      Object.assign({}, it, { estado: ejEstadoOtra(it.estado), simular: false, elegida: false })],
+      '«' + it.descripcion + '»: se elige ' + (nueva.proveedor || 'la cotización sin proveedor') + ', ' + ejPesos(nueva.precio) + ' c/u.');
+  }
+  // Todas las por decidir a la vez; de cada ítem con varios proveedores, el elegido o, si no, el más barato
   function ejSimularTodas(m, si) {
     const cambios = [];
     const vistos = new Set();
@@ -11345,24 +11398,24 @@
       const rivales = [it].concat(ejHermanas(it, m.costos)).filter((x) => x.estado === 'evaluar' || x.estado === 'aprobada');
       vistos.add(it.grupo || it.id);
       if (rivales.some((x) => x.estado === 'aprobada')) return;      // ya se eligió una: queda esa
-      const mejor = rivales.reduce((a, x) => (x.cantidad * x.precio < a.cantidad * a.precio ? x : a));
+      const mejor = rivales.find((x) => x.elegida) || rivales.reduce((a, x) => (x.cantidad * x.precio < a.cantidad * a.precio ? x : a));
       rivales.forEach((x) => { if (x.simular !== (x === mejor)) cambios.push(Object.assign({}, x, { simular: x === mejor })); });
     });
     if (!cambios.length) return;
-    ejPoner(cambios, si ? 'Se simulan las compras por decidir (de las que compiten por lo mismo, la más conveniente).' : 'Nada simulado.');
+    ejPoner(cambios, si ? 'Se simulan las compras por decidir (de cada ítem con varios proveedores, el elegido o el más barato).' : 'Nada simulado.');
   }
-  /* Cambiar el estado. Aprobar o comprar una de varias cotizaciones para lo mismo descarta las demás que estaban por
-     decidir; comprar pide el N° de su orden de compra (con ella el Centro de Costos la trae como costo). */
+  /* Cambiar el estado de un ítem, en su proveedor elegido: aprobarlo, comprarlo o descartarlo deja descartados a los demás, y
+     volver a «por decidir» los trae de vuelta. Comprar pide el N° de su orden de compra (con ella el Centro de Costos la trae
+     como costo). */
   function ejCambiarEstado(it, est, m) {
     if (est === it.estado) return;
     if (est === 'comprada' && !it.oc) { ejAbrirCosto(it, { estado: 'comprada' }); return; }
-    const cambios = [Object.assign({}, it, { estado: est, simular: est === 'aprobada' ? true : est === 'evaluar' ? it.simular : false })];
-    let msg = '«' + it.descripcion + '»: ' + EJ_ESTADOS.find((e) => e.id === est).nombre.toLowerCase() + '.';
-    if ((est === 'aprobada' || est === 'comprada') && m) {
-      const otras = ejHermanas(it, m.costos).filter((x) => x.estado === 'evaluar' || (x.estado === 'aprobada' && est === 'comprada'));
-      otras.forEach((x) => cambios.push(Object.assign({}, x, { estado: 'descartada', simular: false })));
-      if (otras.length) msg += otras.length === 1 ? ' La otra cotización para lo mismo queda descartada.' : ' Las otras ' + otras.length + ' cotizaciones para lo mismo quedan descartadas.';
-    }
+    const hermanas = m ? ejHermanas(it, m.costos) : [];
+    const cambios = [Object.assign({}, it, { estado: est, simular: est === 'aprobada' ? true : est === 'evaluar' ? it.simular : false }, hermanas.length ? { elegida: true } : null)];
+    let msg = '«' + it.descripcion + '»: ' + EJ_ESTADOS.find((e) => e.id === est).nombre.toLowerCase() + (est === 'comprada' ? ' con la OC ' + it.oc : '') + '.';
+    const otras = hermanas.filter((x) => x.estado !== 'comprada' && (x.estado !== ejEstadoOtra(est) || x.elegida));
+    otras.forEach((x) => cambios.push(Object.assign({}, x, { estado: ejEstadoOtra(est), simular: false, elegida: false })));
+    if (est !== 'evaluar' && otras.length) msg += otras.length === 1 ? ' El otro proveedor queda descartado.' : ' Los otros ' + otras.length + ' proveedores quedan descartados.';
     ejPoner(cambios, msg);
   }
 
@@ -11857,7 +11910,7 @@
     return s;
   }
 
-  // ---- El diálogo de un gasto o cotización ------------------------------------------------------------------------
+  // ---- El diálogo de un ítem con sus proveedores -------------------------------------------------------------------
   function ejElegirCat(k) {
     if (!ej.editando) return;
     ej.editando.cat = EJ_CAT.has(k) ? k : 'Materiales';
@@ -11896,20 +11949,75 @@
     const ligadas = new Set(m.costos.map((x) => x.oc).filter(Boolean));
     llenar('#ejOCs', m.ocs.filter((o) => !ligadas.has(o.folio) || (ej.editando && ej.editando.oc === o.folio)).map((o) => [o.folio, [o.proveedor, ejPesos(o.neto)].filter(Boolean).join(' · ')]));
   }
-  /* it: la cotización que se cambia (o null para una nueva). op.base: «otra cotización para lo mismo» que ella; op.estado:
-     el estado que se pidió en la tabla (comprada: aquí se escribe su OC). */
+  // Un proveedor en el diálogo: quién, a cuánto y los datos de su cotización. x: la guardada, o nada para uno nuevo.
+  function ejFilaProv(x) {
+    const f = crear('div', 'ej-prov-fila');
+    f.dataset.id = x ? x.id : '';
+    const cab = crear('div', 'ej-prov-cab');
+    const el = crear('label', 'ej-prov-el');
+    const r = crear('input', 'ej-p-el');
+    r.type = 'radio';
+    r.name = 'ejCElegido';
+    el.append(r, crear('span'));
+    const quitar = crear('button', 'ej-ico ej-p-quitar');
+    quitar.type = 'button';
+    quitar.append(icono('cerrar', 16));
+    quitar.title = 'Quitar este proveedor';
+    quitar.setAttribute('aria-label', 'Quitar este proveedor');
+    cab.append(el, crear('span', 'ej-prov-dif'), quitar);
+    const campo = (clase, et, opcional, atributos, valor) => {
+      const l = crear('label', 'pl-campo ' + clase);
+      const s = crear('span', null, et);
+      if (opcional) s.append(' ', crear('i', null, '(opcional)'));
+      const i = crear('input');
+      Object.entries(atributos).forEach(([k, v]) => i.setAttribute(k, v));
+      i.value = valor;
+      l.append(s, i);
+      return l;
+    };
+    const iva = crear('label', 'rc-mios ej-iva ej-p-iva');
+    const cb = crear('input');
+    cb.type = 'checkbox';
+    iva.append(cb, crear('span', null, 'Incluye IVA'));
+    f.append(cab,
+      campo('ej-p-prov', 'Proveedor', false, { type: 'text', maxlength: 120, autocomplete: 'off', list: 'ejProveedores' }, x ? x.proveedor : ''),
+      campo('ej-p-precio', 'Precio unitario', false, { type: 'text', inputmode: 'decimal', autocomplete: 'off', placeholder: '$ sin IVA' }, x ? ejCantidad(x.precio) : ''),
+      iva,
+      campo('ej-p-cot', 'N° de cotización', false, { type: 'text', maxlength: 60, autocomplete: 'off' }, x ? x.cotizacion : ''),
+      campo('ej-p-fecha', 'Fecha', false, { type: 'date' }, x ? x.fecha : plISO(new Date())),
+      campo('ej-p-nota', 'Nota', true, { type: 'text', maxlength: 300, autocomplete: 'off', placeholder: 'Ej.: plazo 10 días, incluye despacho' }, x ? x.nota : ''));
+    return f;
+  }
+  function ejAgregarProv() {
+    if (!ej.editando) return;
+    const f = ejFilaProv(null);
+    $('#ejCProvs').append(f);
+    ejPintarEvaluacion();
+    f.querySelector('.ej-p-prov input').focus();
+  }
+  function ejQuitarProv(f) {
+    const e = ej.editando;
+    if (!e) return;
+    const x = e.xs.find((y) => y.id === f.dataset.id);
+    if (x) e.quitadas.push(x);
+    f.remove();
+    ejPintarEvaluacion();
+    $('#ejCOtroProv').focus();
+  }
+  /* it: el ítem que se cambia, en su proveedor elegido (o null para uno nuevo). op.otro: se abre para agregarle un proveedor;
+     op.estado: el estado que se pidió en la tabla (comprada: aquí se escribe su OC). */
   function ejAbrirCosto(it, op) {
     op = op || {};
     const m = ej.modelo;
     if (!m || (!it && !rc.dir)) return;
-    const base = it || op.base || null;
-    ej.editando = { id: it ? it.id : null, grupo: it ? it.grupo : '', base: op.base || null, creado: it ? it.creado : null, ref: it ? it.ref : '',
-      simular: it ? it.simular : !op.base, proyecto: it ? it.proyecto : ejClave(m.t), cat: 'Materiales', oc: it ? it.oc : '', lineaTocada: !!it || !!op.base, previo: it || null };
-    $('#dlgEjCostoTit').textContent = it ? it.descripcion : op.base ? 'Otra cotización para «' + op.base.descripcion + '»' : 'Agregar un gasto o cotización';
+    const xs = it ? ejItems(m.costos).map((x) => x.xs).find((ys) => ys.some((y) => y.id === it.id)) || [it] : [];
+    ej.editando = { xs, grupo: it ? it.grupo : '', ref: it ? it.ref : '', simular: it ? it.simular : true, proyecto: it ? it.proyecto : ejClave(m.t), cat: 'Materiales',
+      oc: it ? it.oc : '', lineaTocada: !!it, previo: it || null, quitadas: [], auto: !it };
+    $('#dlgEjCostoTit').textContent = it ? it.descripcion : 'Agregar un gasto o cotización';
     const pista = $('#ejCostoPista');
     pista.className = 'ej-dlg-pista';
-    pista.textContent = op.base ? 'Se compara con las otras cotizaciones para lo mismo; se simula una a la vez.'
-      : it ? '' : 'Una cotización que llegó o un gasto que se espera hacer. Queda por decidir y simulada: arriba cambian al tiro el costo estimado, el margen y los indicadores.';
+    pista.textContent = op.otro ? 'Escribe la cotización del otro proveedor: se compara con las demás y en la tabla se elige una.'
+      : it ? '' : 'Una cotización que llegó o un gasto que se espera hacer, con uno o varios proveedores para compararlos. El elegido queda por decidir y simulado: arriba cambian al tiro el costo estimado, el margen y los indicadores.';
     const cats = $('#ejCCat');
     cats.textContent = '';
     EJ_CATS.forEach((c) => {
@@ -11920,30 +12028,33 @@
       b.addEventListener('click', () => { ejElegirCat(c.k); ejPintarEvaluacion(); });
       cats.append(b);
     });
-    $('#ejCDesc').value = base ? base.descripcion : '';
-    ejElegirCat(base ? base.categoria : 'Materiales');
-    ejOpcionesLinea(m, base ? base.linea : '');
-    $('#ejCProv').value = it ? it.proveedor : '';
-    $('#ejCCot').value = it ? it.cotizacion : '';
-    $('#ejCCant').value = base ? ejCantidad(base.cantidad) : '1';
-    $('#ejCUnidad').value = base ? base.unidad : 'Un.';
-    $('#ejCPrecio').value = it ? ejCantidad(it.precio) : '';
-    $('#ejCFecha').value = it ? it.fecha : plISO(new Date());
-    $('#ejCIva').checked = false;
+    $('#ejCDesc').value = it ? it.descripcion : '';
+    ejElegirCat(it ? it.categoria : 'Materiales');
+    ejOpcionesLinea(m, it ? it.linea : '');
+    $('#ejCCant').value = it ? ejCantidad(it.cantidad) : '1';
+    $('#ejCUnidad').value = it ? it.unidad : 'Un.';
+    const provs = $('#ejCProvs');
+    provs.textContent = '';
+    (xs.length ? xs : [null]).forEach((x) => {
+      const f = ejFilaProv(x);
+      f.querySelector('.ej-p-el').checked = !x || x.id === it.id;
+      provs.append(f);
+    });
     const est = $('#ejCEstado');
     est.textContent = '';
     EJ_ESTADOS.forEach((e) => { const o = crear('option', null, e.nombre); o.value = e.id; est.append(o); });
     est.value = op.estado || (it ? it.estado : 'evaluar');
     $('#ejCOC').value = it ? it.oc : '';
     ejMostrarOC();
-    $('#ejCNota').value = it ? it.nota : '';
     ejDatalists(m);
     $('#ejCBorrar').hidden = !it;
     $('#ejCBorrar').disabled = !rc.dir;
+    $('#ejCOtroProv').disabled = !rc.dir;
     $('#ejCGuardar').disabled = !rc.dir;
     ejPintarEvaluacion();
     $('#dlgEjCosto').showModal();
-    (op.estado === 'comprada' ? $('#ejCOC') : op.base ? $('#ejCProv') : it ? $('#ejCPrecio') : $('#ejCDesc')).focus();
+    if (op.otro) ejAgregarProv();
+    else (op.estado === 'comprada' ? $('#ejCOC') : it ? provs.querySelector('.ej-p-el:checked').closest('.ej-prov-fila').querySelector('.ej-p-precio input') : $('#ejCDesc')).focus();
     if (!ej.precios) ejPrecios().then(() => { if ($('#dlgEjCosto').open) ejPintarEvaluacion(); });
     if (!window.QCalc && m.form) {
       ejLib('calc').then((x) => {
@@ -11954,57 +12065,83 @@
       });
     }
   }
-  // Lo escrito en el diálogo, como una cotización (el precio, sin IVA)
-  function ejLeerCosto() {
+  // Lo común a todos los proveedores del ítem en el diálogo
+  function ejLeerItem() {
     const e = ej.editando;
-    const precio = ejNumero($('#ejCPrecio').value);
     const cantidad = ejNumero($('#ejCCant').value);
-    const fecha = $('#ejCFecha').value;
-    return {
-      id: e.id || 'nueva', proyecto: e.proyecto, tipo: 'costo', creado: e.creado || undefined,
-      descripcion: ejTxt($('#ejCDesc').value, 200), categoria: e.cat, linea: $('#ejCLinea').value || '',
-      proveedor: ejTxt($('#ejCProv').value, 120), cotizacion: ejTxt($('#ejCCot').value, 60), fecha: /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : '',
-      cantidad: cantidad === null ? NaN : cantidad, unidad: ejTxt($('#ejCUnidad').value, 12),
-      precio: precio === null ? NaN : $('#ejCIva').checked ? Math.round(precio / (1 + EJ_IVA) * 100) / 100 : precio,
-      estado: $('#ejCEstado').value, oc: texto($('#ejCOC').value).replace(/\D/g, '').slice(0, 12), nota: ejTxt($('#ejCNota').value, 300),
-      grupo: e.grupo || (e.base ? e.base.grupo || e.base.id : ''), ref: e.ref || '', simular: e.simular
-    };
+    return { proyecto: e.proyecto, tipo: 'costo', descripcion: ejTxt($('#ejCDesc').value, 200), categoria: e.cat, linea: $('#ejCLinea').value || '',
+      cantidad: cantidad === null ? NaN : cantidad, unidad: ejTxt($('#ejCUnidad').value, 12), ref: e.ref || '' };
   }
-  // La evaluación mientras se escribe: el veredicto, cada comparación y con qué compra del Cotizador se compara
+  // Los proveedores escritos en el diálogo (el precio, sin IVA). vacia: nada escrito, no cuenta.
+  function ejLeerProvs() {
+    return [...document.querySelectorAll('#ejCProvs .ej-prov-fila')].map((el) => {
+      const v = (c) => el.querySelector(c + ' input').value;
+      const precio = texto(v('.ej-p-precio')) ? ejNumero(v('.ej-p-precio')) : null;
+      const fecha = v('.ej-p-fecha');
+      const f = { el, id: el.dataset.id, elegida: el.querySelector('.ej-p-el').checked, proveedor: ejTxt(v('.ej-p-prov'), 120), cotizacion: ejTxt(v('.ej-p-cot'), 60),
+        fecha: /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : '', nota: ejTxt(v('.ej-p-nota'), 300),
+        precio: precio === null ? NaN : el.querySelector('.ej-p-iva input').checked ? Math.round(precio / (1 + EJ_IVA) * 100) / 100 : precio };
+      f.vacia = !f.proveedor && !f.cotizacion && !f.nota && !texto(v('.ej-p-precio'));
+      return f;
+    });
+  }
+  const ejDatosProv = (f) => ({ proveedor: f.proveedor, cotizacion: f.cotizacion, fecha: f.fecha, nota: f.nota, precio: f.precio });
+  /* Cada proveedor frente al más barato, y cuál está elegido: en un ítem nuevo, el más barato mientras no se elija otro a mano.
+     Devuelve lo escrito. */
+  function ejPintarProvs(cantidad) {
+    const filas = ejLeerProvs();
+    const conPrecio = filas.filter((f) => f.precio > 0);
+    const min = conPrecio.length ? Math.min(...conPrecio.map((f) => f.precio)) : 0;
+    const marcar = (elegida) => filas.forEach((f) => { f.elegida = f === elegida; f.el.querySelector('.ej-p-el').checked = f.elegida; });
+    if (ej.editando.auto && conPrecio.length) marcar(conPrecio.find((f) => f.precio === min));
+    else if (!filas.some((f) => f.elegida)) marcar(filas[0]);
+    $('#ejCProvs').classList.toggle('uno', filas.length < 2);
+    filas.forEach((f) => {
+      f.el.classList.toggle('elegida', f.elegida && filas.length > 1);
+      f.el.querySelector('.ej-prov-el span').textContent = f.elegida ? 'Elegido' : 'Elegir';
+      f.el.querySelector('.ej-prov-dif').textContent = conPrecio.length < 2 || !(f.precio > 0) ? ''
+        : f.precio === min ? 'El más barato' : ejPesos((f.precio - min) * (cantidad > 0 ? cantidad : 1)) + ' más (' + Math.round((f.precio / min - 1) * 100) + ' %)';
+    });
+    return filas;
+  }
+  // La evaluación del proveedor elegido mientras se escribe: el veredicto, cada comparación y con qué compra del Cotizador se compara
   function ejPintarEvaluacion() {
     const box = $('#ejCEval');
-    const m = ej.modelo;
+    const m = ej.modelo, e = ej.editando;
     const enRefs = document.activeElement && box.contains(document.activeElement);
     box.textContent = '';
-    if (!m || !ej.editando) return;
-    const d = ejLeerCosto();
-    // Una nueva: la línea del presupuesto más parecida, mientras no se elija otra a mano
-    if (!ej.editando.lineaTocada && d.descripcion) {
-      const l = ejLineaSugerida(d.descripcion, d.categoria, m.lineas);
+    if (!m || !e) return;
+    const item = ejLeerItem();
+    // Uno nuevo: la línea del presupuesto más parecida, mientras no se elija otra a mano
+    if (!e.lineaTocada && item.descripcion) {
+      const l = ejLineaSugerida(item.descripcion, item.categoria, m.lineas);
       $('#ejCLinea').value = l ? l.uid : '';
-      d.linea = l ? l.uid : '';
+      item.linea = l ? l.uid : '';
     }
-    if (!d.descripcion || !(d.precio > 0) || !(d.cantidad > 0)) {
+    const vivas = ejPintarProvs(item.cantidad).filter((f) => !f.vacia);
+    const el = vivas.find((f) => f.elegida) || vivas[0];
+    if (!item.descripcion || !el || !(el.precio > 0) || !(item.cantidad > 0)) {
       box.append(crear('p', 'ej-pista', 'Escribe qué se compra, la cantidad y el precio para ver si conviene.'));
       return;
     }
-    const ev = ejEvaluar(d, m);
+    const d = Object.assign({}, item, ejDatosProv(el), { id: el.id || 'nueva', grupo: e.grupo });
+    const ev = ejEvaluar(d, m, { otras: vivas.filter((f) => f !== el).map((f) => ({ proveedor: f.proveedor, precio: f.precio, cantidad: item.cantidad })), ids: e.xs.map((x) => x.id) });
     const h = crear('h3');
     const chip = crear('span', 'ej-eval-chip', ev.corto);
     if (ev.nivel) chip.dataset.nivel = ev.nivel;
-    h.append(chip, document.createTextNode('Total ' + ejPesos(ev.total) + ' sin IVA'));
+    h.append(chip, document.createTextNode('Total ' + ejPesos(ev.total) + ' sin IVA' + (vivas.length > 1 && el.proveedor ? ' · ' + el.proveedor : '')));
     box.append(h);
     if (ev.puntos.length) {
       const ul = crear('ul');
       ev.puntos.forEach((p) => { const li = crear('li', null, p.texto); li.dataset.nivel = p.nivel; ul.append(li); });
       box.append(ul);
     } else box.append(crear('p', 'ej-pista', 'Sin presupuesto, precio histórico ni venta con que compararla todavía.'));
-    if (d.linea && !ej.editando.lineaTocada) box.append(crear('p', 'ej-pista', 'Se compara con la línea más parecida del presupuesto: elige otra arriba si no es esa.'));
+    if (d.linea && !e.lineaTocada) box.append(crear('p', 'ej-pista', 'Se compara con la línea más parecida del presupuesto: elige otra arriba si no es esa.'));
     if (EJ_CAT.get(d.categoria).historico) {
       if (!ej.precios) { if (rc.dir) box.append(crear('p', 'ej-pista', 'Buscando lo que QUEMPIN ha pagado por algo parecido…')); return; }
       const ps = ejParecidas(d.descripcion);
       if (!ps.length) { box.append(crear('p', 'ej-pista', 'El Cotizador Histórico no tiene compras parecidas.')); return; }
-      box.append(crear('p', 'ej-pista', ev.hoja && !ej.editando.ref ? 'Se compara con la compra más parecida del Cotizador Histórico; si no es lo mismo, elige otra o «Con ninguna»:'
+      box.append(crear('p', 'ej-pista', ev.hoja && !e.ref ? 'Se compara con la compra más parecida del Cotizador Histórico; si no es lo mismo, elige otra o «Con ninguna»:'
         : 'Comparar con lo que QUEMPIN ha pagado por:'));
       const refs = crear('div', 'ej-refs');
       const elegida = ev.hoja ? ev.hoja.clave : '-';
@@ -12029,34 +12166,40 @@
     ev.preventDefault();
     const m = ej.modelo, e = ej.editando;
     if (!m || !e || !rc.dir) return;
-    const d = ejLeerCosto();
+    const item = ejLeerItem();
+    const filas = ejLeerProvs();
+    const vivas = filas.filter((f) => !f.vacia);
     const pista = $('#ejCostoPista');
     const error = (msg, campo) => { pista.textContent = msg; pista.className = 'ej-dlg-pista error'; campo.focus(); };
-    if (!d.descripcion) { error('Escribe qué se compra.', $('#ejCDesc')); return; }
-    if (!(d.cantidad > 0)) { error('La cantidad tiene que ser mayor que cero.', $('#ejCCant')); return; }
-    if (!(d.precio >= 0)) { error('Escribe el precio unitario, por ejemplo 125.000.', $('#ejCPrecio')); return; }
-    const nuevo = !e.id;
-    d.id = e.id || ejNuevoId('c');
-    if (!d.creado) delete d.creado;
+    const campoPrecio = (f) => f.el.querySelector('.ej-p-precio input');
+    if (!item.descripcion) { error('Escribe qué se compra.', $('#ejCDesc')); return; }
+    if (!(item.cantidad > 0)) { error('La cantidad tiene que ser mayor que cero.', $('#ejCCant')); return; }
+    if (!vivas.length) { error('Escribe el precio unitario, por ejemplo 125.000.', campoPrecio(filas[0])); return; }
+    const mala = vivas.find((f) => !(f.precio >= 0));
+    if (mala) { error('Escribe el precio unitario' + (mala.proveedor ? ' de ' + mala.proveedor : '') + ', por ejemplo 125.000.', campoPrecio(mala)); return; }
+    const nuevo = !e.xs.length;
     const previo = e.previo;
-    if (nuevo) d.simular = !e.base;
-    if (d.estado === 'descartada' || d.estado === 'comprada') d.simular = false;
-    else if (d.estado === 'aprobada' && (!previo || previo.estado !== 'aprobada')) d.simular = true;
-    if (d.estado !== 'comprada') d.oc = '';             // la OC dice que se compró
-    const cambios = [];
-    // Otra para lo mismo: las dos quedan en el grupo de la primera
-    if (e.base && !e.base.grupo) cambios.push(Object.assign({}, e.base, { grupo: e.base.id }));
-    cambios.push(d);
-    // Aprobar o comprar una descarta las demás por decidir para lo mismo
-    if (d.grupo && (d.estado === 'aprobada' || d.estado === 'comprada') && (!previo || previo.estado !== d.estado)) {
-      m.costos.filter((x) => x.grupo === d.grupo && x.id !== d.id && (x.estado === 'evaluar' || (x.estado === 'aprobada' && d.estado === 'comprada')))
-        .forEach((x) => cambios.push(Object.assign({}, x, { estado: 'descartada', simular: false })));
-    }
-    // Simular esta deja de simular las otras para lo mismo
-    if (d.simular && d.grupo) m.costos.filter((x) => x.grupo === d.grupo && x.id !== d.id && x.simular && !cambios.some((c) => c.id === x.id)).forEach((x) => cambios.push(Object.assign({}, x, { simular: false })));
+    const estado = $('#ejCEstado').value;
+    const oc = estado === 'comprada' ? texto($('#ejCOC').value).replace(/\D/g, '').slice(0, 12) : '';     // la OC dice que se compró
+    let simular = e.simular;
+    if (estado === 'descartada' || estado === 'comprada') simular = false;
+    else if (estado === 'aprobada' && (!previo || previo.estado !== 'aprobada')) simular = true;
+    const el = vivas.find((f) => f.elegida) || vivas[0];
+    vivas.forEach((f) => { if (!f.id) f.id = ejNuevoId('c'); });
+    const grupo = e.grupo || (vivas.length > 1 ? vivas[0].id : '');          // varios: en el grupo del primero
+    const cambios = vivas.map((f) => {
+      const antes = e.xs.find((x) => x.id === f.id);
+      const d = Object.assign({}, item, ejDatosProv(f), { id: f.id, grupo, oc: f === el ? oc : '', estado: f === el ? estado : ejEstadoOtra(estado),
+        simular: f === el && simular, elegida: f === el && vivas.length > 1 });
+      if (antes) d.creado = antes.creado;
+      return d;
+    });
+    // Los proveedores que se quitaron o se dejaron en blanco
+    e.quitadas.concat(filas.filter((f) => f.vacia && f.id).map((f) => e.xs.find((x) => x.id === f.id)).filter(Boolean))
+      .forEach((x) => cambios.push({ id: x.id, proyecto: x.proyecto, tipo: 'costo', creado: x.creado, borrado: true }));
     $('#dlgEjCosto').close();
     ej.editando = null;
-    ejPoner(cambios, nuevo ? '«' + d.descripcion + '» anotada' + (d.simular ? ' y simulada: arriba se ve cómo cambia el proyecto.' : '.') : 'Se guardó «' + d.descripcion + '».');
+    ejPoner(cambios, nuevo ? '«' + item.descripcion + '» anotada' + (vivas.length > 1 ? ' con ' + vivas.length + ' proveedores' : '') + (simular ? ' y simulada: arriba se ve cómo cambia el proyecto.' : '.') : 'Se guardó «' + item.descripcion + '».');
   }
 
   // ---- Pegar una cotización completa ----------------------------------------------------------------------------------
@@ -12884,11 +13027,14 @@
     const x = e.target;
     if (x && x.id && /^(INPUT|TEXTAREA|SELECT)$/.test(x.tagName) && x.type !== 'checkbox') ej.sucios.set(x.id, x.value);
   }));
-  // El diálogo de un gasto o cotización
+  // El diálogo de un ítem con sus proveedores
   $('#ejCostoForm').addEventListener('submit', ejGuardarCosto);
   ['#ejCostoX', '#ejCCancelar'].forEach((s) => $(s).addEventListener('click', () => { $('#dlgEjCosto').close(); ej.editando = null; }));
-  ['#ejCDesc', '#ejCCant', '#ejCPrecio', '#ejCUnidad'].forEach((s) => $(s).addEventListener('input', ejPintarEvaluacion));
-  $('#ejCIva').addEventListener('change', ejPintarEvaluacion);
+  ['#ejCDesc', '#ejCCant', '#ejCUnidad'].forEach((s) => $(s).addEventListener('input', ejPintarEvaluacion));
+  $('#ejCProvs').addEventListener('input', (e) => { if (ej.editando && e.target.matches('.ej-p-el')) ej.editando.auto = false; ejPintarEvaluacion(); });
+  $('#ejCProvs').addEventListener('click', (e) => { const b = e.target.closest('.ej-p-quitar'); if (b) ejQuitarProv(b.closest('.ej-prov-fila')); });
+  $('#ejCOtroProv').prepend(icono('mas', 15));
+  $('#ejCOtroProv').addEventListener('click', ejAgregarProv);
   $('#ejCLinea').addEventListener('change', () => { if (ej.editando) ej.editando.lineaTocada = true; ejPintarEvaluacion(); });
   $('#ejCEstado').addEventListener('change', () => { ejMostrarOC(); if ($('#ejCEstado').value === 'comprada') $('#ejCOC').focus(); });
   $('#ejCBorrar').addEventListener('click', () => {
@@ -12896,7 +13042,7 @@
     if (!it || !rc.dir) return;
     $('#dlgEjCosto').close();
     ej.editando = null;
-    ejPoner([{ id: it.id, proyecto: it.proyecto, tipo: 'costo', creado: it.creado, borrado: true }], 'Se eliminó «' + it.descripcion + '».');
+    ejBorrarItem(it, e.xs);
   });
   $('#dlgEjCosto').addEventListener('close', () => { ej.editando = null; });
   // Pegar una cotización
