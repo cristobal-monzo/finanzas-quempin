@@ -989,7 +989,10 @@
   }
   .pl-celda:hover { background: var(--page-plane); }
   .pl-celda:focus-visible { outline-offset: -2px; }
-  @media (prefers-reduced-motion: no-preference) { .pl-celda.recien, .pl-bloque.recien { animation: pl-resalta 1.8s ease-out; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .pl-celda.recien, .pl-bloque.recien { animation: pl-resalta 1.8s ease-out; }
+    .pl-celda.recien.ajeno, .pl-bloque.recien.ajeno { animation-duration: 6s; }      /* lo que cambió un colega: hay que alcanzar a verlo */
+  }
   .pl-mas {
     align-self: flex-start; min-height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 6px;
     border-radius: 6px; border: 1px dashed var(--baseline); color: var(--texto-suave); font-size: 12px; font-weight: 700;
@@ -5710,7 +5713,10 @@
   // casilla, en el resumen de arriba, en «Vehículos en la semana» de la vista General, al compartir y al imprimir. Un
   // vehículo con personas que no comparten proyecto ese día está en dos lugares a la vez: se avisa, sin impedirlo.
   const PL_MAX = 3;                      // proyectos de una persona en un día
-  const PL_RELEER_SEG = 30;              // con la vista abierta, cada cuánto se miran los cambios del equipo
+  const PL_RELEER_SEG = 3;               // con la vista abierta, cada cuánto se miran los cambios del equipo
+  const PL_AJENO_SEG = 15;               // cuánto rato dice la línea de arriba quién acaba de cambiar algo
+  const PL_ATASCO_SEG = 60;              // leyendo o guardando más que esto, la carpeta no está respondiendo
+  const PL_REINTENTO_SEG = 30;           // tras un error al guardar, cada cuánto se reintenta solo
   const PL_DIAS = [
     { nombre: 'Lunes', corto: 'Lun', letra: 'L' }, { nombre: 'Martes', corto: 'Mar', letra: 'M' },
     { nombre: 'Miércoles', corto: 'Mié', letra: 'X' }, { nombre: 'Jueves', corto: 'Jue', letra: 'J' },
@@ -5768,7 +5774,9 @@
     porGuardar: new Set(), guardando: false, otraVez: false, relojGuardar: null, guardado: 0, errorGuardar: null,
     deshacer: [],             // tandas de cambios para deshacer, la última al final
     recien: new Set(), relojRecien: null,   // las casillas (anclas) de la última tanda, que se iluminan
-    leyendo: null, error: null,
+    recienAjeno: false, ajeno: null,        // esa tanda llegó de otro computador; quién y cuándo, para la línea de arriba
+    repintar: false,                        // llegó algo con un arrastre a medias: se pinta al soltar
+    leyendo: null, error: null, leyendoDesde: 0, guardandoDesde: 0, falloGuardar: 0,
     pop: null,                // la ventanita abierta: { tipo: persona | proyecto | nuevo, iso, ancla, … }
     diaMovil: null,           // el día que muestran las tablas en el teléfono
     foco: null,               // el proyecto que «Por proyecto» resalta al pintarse
@@ -6096,6 +6104,15 @@
     plRecalcularCierres();
     return c.ef;
   }
+  // Si alguien dio por cerrado o reabrió un proyecto: sale o vuelve a las listas, y eso lo arma el Recorrido.
+  async function plCierresCambiaron(dir) {
+    const c = plCierres();
+    if (!c.leida) return false;       // la primera lectura la hace el Recorrido
+    const firma = () => [...c.archivos.values()].map((x) => x.lm + ':' + x.size).join();
+    const antes = firma();
+    await plLeerCierres(dir);
+    return firma() !== antes;
+  }
   async function plEscribirCierres(dir) {
     const c = plCierres();
     const carpeta = await plCarpeta(dir, PL_CIERRES, true);
@@ -6133,6 +6150,7 @@
   // Lee una semana: solo los archivos que cambiaron desde la última vez. Devuelve si algo cambió.
   async function plLeerSemana(dir, id) {
     const s = plSemana(id);
+    const yaLeida = !!s.leida;
     const carpeta = await plCarpeta(dir, id, false);
     let cambio = !s.leida;
     const vistos = new Set();
@@ -6157,8 +6175,27 @@
     }
     s.archivos.forEach((x, n) => { if (!vistos.has(n)) { s.archivos.delete(n); cambio = true; } });
     s.leida = Date.now();
-    if (cambio) plRecalcular(s);
+    if (cambio) {
+      const antes = s.ef;
+      plRecalcular(s);
+      if (yaLeida) plNotarAjenos(s, antes);
+    }
     return cambio;
+  }
+  /* Lo que acaba de llegar de otro computador: se ilumina y la línea de arriba dice quién fue. Lo de este navegador ya se
+     vio al hacerlo, y una semana que recién se abre no cuenta: ahí todo sería nuevo. */
+  function plNotarAjenos(s, antes) {
+    if (!planif.lunes || s.id !== plSemanaId(planif.lunes)) return;
+    const yo = plDispositivo();
+    const ajenos = [];
+    PL_TIPOS.forEach((tipo) => s.ef[tipo].forEach((e, k) => {
+      const a = antes[tipo].get(k);
+      if (e.de !== yo && (!a || a.t !== e.t)) ajenos.push(Object.assign({ tipo }, e));
+    }));
+    if (!ajenos.length) return;
+    const quien = [...new Set(ajenos.map((e) => e.por || 'Otro computador'))].join(', ');
+    planif.ajeno = { quien, n: ajenos.length, cuando: Date.now() };
+    plMarcarRecien(ajenos.filter((e) => e.tipo !== 'pau'), plModelo(s), true);
   }
   // Lo mismo con la lista de lo agregado a mano
   async function plLeerLista(dir) {
@@ -6312,6 +6349,7 @@
     if (planif.guardando) { planif.otraVez = true; return; }
     if (!planif.porGuardar.size) return;
     planif.guardando = true;
+    planif.guardandoDesde = Date.now();
     plPintarFrescura();
     try {
       if (!rc.dir) throw new Error('La biblioteca del equipo no está conectada con permiso en este navegador.');
@@ -6327,6 +6365,7 @@
     } catch (e) {
       console.error(e);
       planif.errorGuardar = e;
+      planif.falloGuardar = Date.now();
     }
     planif.guardando = false;
     plGuardarPendiente();
@@ -6529,10 +6568,11 @@
     return true;
   }
   // Las casillas de la última tanda se iluminan un momento al repintarse: se ve qué llenó «Toda la semana» o varios días.
-  function plMarcarRecien(es, m) {
+  function plMarcarRecien(es, m, ajeno) {
     planif.recien = new Set(es.flatMap((e) => ['p|' + e.persona + '|' + e.dia].concat(e.proyecto ? ['j|' + m.canon(e.proyecto) + '|' + e.dia] : [])));
+    planif.recienAjeno = !!ajeno;
     clearTimeout(planif.relojRecien);
-    planif.relojRecien = setTimeout(() => { planif.recien = new Set(); }, 1800);
+    planif.relojRecien = setTimeout(() => { planif.recien = new Set(); }, ajeno ? 6000 : 1800);
   }
   function plDeshacer() {
     const u = planif.deshacer.pop();
@@ -6853,16 +6893,22 @@
     if (!dir) return Promise.resolve();
     if (!planif.lunes) planif.lunes = plLunesDe(new Date());
     const ids = Array.from(new Set([plHoyId(), plSemanaId(planif.lunes)]));
+    let cierres = false;
+    planif.leyendoDesde = Date.now();
     planif.leyendo = (async () => {
       let cambio = await plLeerLista(dir);      // primero lo agregado a mano: los nombres y los proyectos de la semana
       for (const id of ids) cambio = (await plLeerSemana(dir, id)) || cambio;
+      cierres = await plCierresCambiaron(dir);
       planif.error = null;
       return cambio;
     })().catch((e) => { console.error(e); planif.error = e; return true; }).then((cambio) => {
       planif.leyendo = null;
-      if (planif.porGuardar.size && !planif.guardando && !planif.error) plGuardar();    // lo que esperaba, ahora que se lee la carpeta
+      // Lo que esperaba, ahora que se lee la carpeta. Tras un error, sin insistir en cada vuelta: el aviso parpadearía.
+      const reintentar = !planif.errorGuardar || Date.now() - planif.falloGuardar > PL_REINTENTO_SEG * 1000;
+      if (planif.porGuardar.size && !planif.guardando && !planif.error && reintentar) plGuardar();
+      if (cierres && !rc.leyendo) rcCargar();
       if (cambio || siempre) {
-        if (!$('#vistaPlan').hidden) plPintar();
+        plRepintarLlegado();
         plPintarAlarmaGlobal();
         if (!$('#vistaEjecucion').hidden) ejPintar();      // el equipo de la semana y los días por traer
       } else if (!$('#vistaPlan').hidden) plPintarFrescura();
@@ -6870,6 +6916,23 @@
       if (planif.lunes && !plSemana(plSemanaId(planif.lunes)).leida && !planif.error && rc.dir) plCargar(true);
     });
     return planif.leyendo;
+  }
+  /* Lo que llega del equipo no interrumpe a quien está trabajando: con algo a medio arrastrar se espera a que lo suelte
+     (repintar borraría lo que lleva en la mano), y el foco sigue en la casilla o en el buscador donde estaba. */
+  function plRepintarLlegado() {
+    if ($('#vistaPlan').hidden) return;
+    if (planif.arrastre) { planif.repintar = true; return; }
+    const a = document.activeElement;
+    const dentro = a && $('#vistaPlan').contains(a) && !$('#plPop').contains(a);
+    const ancla = dentro ? a.dataset.ancla : null;
+    const buscador = dentro && a.classList.contains('pl-arr-buscar');
+    const cursor = buscador ? a.selectionStart : 0;
+    plPintar();
+    if (ancla) { const b = plAncla(ancla); if (b) b.focus({ preventScroll: true }); }
+    else if (buscador) {
+      const b = $('#vistaPlan .pl-arr-buscar');
+      if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(cursor, cursor); }
+    }
   }
   // Con la vista abierta, los cambios del equipo: cada PL_RELEER_SEG segundos, y solo se relee lo que cambió.
   function plVigilar() {
@@ -7304,7 +7367,14 @@
     $('#plReintentar').hidden = !planif.errorGuardar;
     if (planif.errorGuardar) {
       txt.textContent = 'No se pudo guardar en la carpeta del equipo';
-      txt.title = 'Lo cambiado espera en este navegador y se vuelve a intentar con el próximo cambio o con «Reintentar». ' + (planif.errorGuardar.message || '');
+      txt.title = 'Lo cambiado espera en este navegador y se vuelve a intentar solo, con el próximo cambio o con «Reintentar». ' + (planif.errorGuardar.message || '');
+      punto.className = 'cx-punto bad';
+      return;
+    }
+    const tope = Date.now() - PL_ATASCO_SEG * 1000;
+    if ((planif.leyendo && planif.leyendoDesde < tope) || (planif.guardando && planif.guardandoDesde < tope)) {
+      txt.textContent = 'La carpeta del equipo no responde: recarga la página (F5)';
+      txt.title = 'Lleva más de un minuto sin terminar de leer o guardar, así que esta vista no está recibiendo los cambios del equipo.';
       punto.className = 'cx-punto bad';
       return;
     }
@@ -7313,9 +7383,12 @@
     const s = planif.lunes ? planif.semanas.get(plSemanaId(planif.lunes)) : null;
     let u = null;
     if (s) PL_TIPOS.forEach((tipo) => s.ef[tipo].forEach((e) => { if (!u || e.t > u.t) u = e; }));
-    txt.textContent = Date.now() - planif.guardado < 8000 ? 'Guardado en la carpeta del equipo'
-      : u ? 'Último cambio: ' + (u.por || 'sin usuario') + ', ' + plCuando(u.t) : 'Al día con la carpeta del equipo';
-    txt.title = 'Se guarda en la carpeta de intercambio (publicado › planificacion), así todo el equipo ve la misma semana. Lo que cambian los demás llega con OneDrive, y esta vista lo revisa cada ' + PL_RELEER_SEG + ' segundos.';
+    const aj = planif.ajeno && Date.now() - planif.ajeno.cuando < PL_AJENO_SEG * 1000 ? planif.ajeno : null;
+    const linea = aj ? aj.quien + ' acaba de cambiar ' + pl(aj.n, 'casilla', 'casillas')
+      : Date.now() - planif.guardado < 8000 ? 'Guardado · OneDrive lo lleva al equipo'
+      : u ? 'Último cambio: ' + (u.por || 'sin usuario') + ', ' + plCuando(u.t) : 'Sin cambios esta semana';
+    if (txt.textContent !== linea) txt.textContent = linea;    // el lector de pantalla anuncia cada cambio de esta línea
+    txt.title = 'Lo que cambias queda guardado en este computador y OneDrive lo lleva a la carpeta del equipo: cuánto tarda depende de OneDrive de cada computador. Esta vista revisa lo que llega cada ' + PL_RELEER_SEG + ' segundos.';
     punto.className = 'cx-punto ok';
   }
   function plPintarBarra(s, dias) {
@@ -7466,7 +7539,7 @@
   function plCelda(ancla, d) {
     const td = crear('td', plClaseDia(d).trim() || null);
     td.dataset.dia = String(d.i);
-    const b = crear('button', 'pl-celda' + (planif.recien.has(ancla) ? ' recien' : ''));
+    const b = crear('button', 'pl-celda' + (planif.recien.has(ancla) ? ' recien' + (planif.recienAjeno ? ' ajeno' : '') : ''));
     b.type = 'button';
     b.dataset.ancla = ancla;
     td.append(b);
@@ -7764,7 +7837,7 @@
         claves.forEach((c) => {
           const p = m.proyectos.get(c) || {};
           const li = crear('li');
-          const b = crear('button', 'pl-bloque' + (p.otra ? ' otra' : '') + (planif.recien.has('j|' + c + '|' + d.iso) ? ' recien' : ''));
+          const b = crear('button', 'pl-bloque' + (p.otra ? ' otra' : '') + (planif.recien.has('j|' + c + '|' + d.iso) ? ' recien' + (planif.recienAjeno ? ' ajeno' : '') : ''));
           b.type = 'button';
           b.dataset.ancla = 'j|' + c + '|' + d.iso;
           b.style.setProperty('--pc', m.color(c));
@@ -8099,6 +8172,7 @@
     plArrMarcar(null);
     $('#vistaPlan').classList.remove('pl-arrastrando');
     document.querySelectorAll('#vistaPlan .pl-origen').forEach((el) => el.classList.remove('pl-origen'));
+    if (planif.repintar) { planif.repintar = false; plPintar(); }      // lo que llegó del equipo mientras se arrastraba
   }
   /* Soltar: lo del panel (o copiado con Ctrl) se asigna como en la ventanita; lo que sale de una casilla se mueve en una
      sola tanda (un aviso, un Deshacer). El vehículo sigue a la persona si se queda en el mismo día. */
@@ -14126,8 +14200,12 @@
   $('#vistaPlan').addEventListener('scroll', plColocarPop, { passive: true });
   window.addEventListener('resize', plColocarPop);
   // Lo que espera guardarse no espera al próximo cambio si la pestaña se esconde
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && planif.porGuardar.size) plGuardar(); });
-  setInterval(plVigilar, 5000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { if (planif.porGuardar.size) plGuardar(); }
+    else plVigilar();         // al volver a la pestaña, lo que llegó mientras tanto, sin esperar la vuelta
+  });
+  window.addEventListener('focus', plVigilar);
+  setInterval(plVigilar, 1000);
   // Proyectos en ejecución
   ejRecuperarPendiente();
   $('#ejActualizar').append(icono('recargar', 16));
