@@ -72,7 +72,7 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
   Financiero; `formulacion` → Formulador; `borrador-cotizacion` y `registro-documento` →
   Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento` y `editar-requerimiento` → Planilla;
   `documento-cc` → Centro de Costos; `observacion` → mejora continua (la atiende una persona con
-  `/Observaciones_Portal`, `observaciones.py`).
+  `/Observaciones_Portal`, `observaciones.py`); `pedir-vuelta` → procesador.
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
   `oportunidades`, `proyectos`, `centro-costos-carpetas`, `estado`, `planificacion-semana`,
@@ -108,6 +108,11 @@ app.integraciones.ecosistema procesar`, con su Python 3.11) → Mercado Público
 lo que cambia está en la API) → la UF del día (`Cotizador_Historico/driver.py uf`) → carpetas de
 facturas → documentos del Portal (`documentos_cc.py`) → `proyectos.json` → `estado.json`.
 
+- **A pedido**: «Actualizar datos» del Recorrido en el Portal deja un `pedir-vuelta` en el buzón. La tarea «Pedidos al
+  procesador QUEMPIN» (`tarea_pedidos.cmd`, cada minuto) corre `procesar.py --si-hay-pedido`: sin pedido termina sin
+  escribir nada; con uno da una vuelta normal, salvo que la última sea de hace menos de 5 minutos (el pedido espera).
+  Cada vuelta, también la de cada 2 horas, archiva los pedidos que vio al empezar. Tarda unos 5 minutos en total: el
+  minuto de la tarea, unos 2 de la vuelta y lo que OneDrive demore en llevar y traer (más de una hora, si está atrasado).
 - **Un paso que falla no frena a los demás**: queda en `estado.json` y en
   `logs/procesador_AAAA-MM.log` (una línea por vuelta, con los segundos de cada paso de 10 s o más).
 - Un envío pendiente no dispara un `run` en cada vuelta: se reintenta cuando cambia algo.

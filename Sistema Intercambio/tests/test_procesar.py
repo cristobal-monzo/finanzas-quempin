@@ -140,6 +140,72 @@ def test_buzon_resumido_por_destino(entorno):
     assert b["analisis-financiero"]["pendientes"] == 1
 
 
+def _pedir_vuelta(raiz, id_="pedido0001"):
+    ic.enviar(raiz, {"esquema": ic.ESQUEMA, "id": id_, "tipo": pr.TIPO_PEDIDO, "destino": pr.DESTINO_PEDIDOS,
+                     "origen": {"herramienta": "portal", "usuario": "LC", "enviado": ic.ahora_iso()}})
+
+
+def _estado_con_vuelta_de_hace(raiz, minutos):
+    from datetime import datetime, timedelta
+    corrida = (datetime.now().astimezone() - timedelta(minutes=minutos)).isoformat(timespec="seconds")
+    ic.publicar(raiz, "estado", "procesador", {"procesador": {"ultimaCorrida": corrida}})
+
+
+def test_la_vuelta_atiende_los_pedidos_del_portal(entorno):
+    raiz = entorno["raiz"]
+    _pedir_vuelta(raiz)
+    r = _vuelta(entorno)
+    assert r["pedidos"] == 1 and pr._pedidos(raiz) == []
+    assert ic.resultados_recientes(raiz, destino=pr.DESTINO_PEDIDOS)["pedido0001"]["estado"] == "aplicado"
+    # El pulso que publica ya no lo cuenta como pendiente
+    assert "procesador" not in ic.leer_publicacion(raiz, "estado")["datos"]["buzon"]
+
+
+def test_el_pedido_que_llega_durante_la_vuelta_pide_otra(entorno):
+    raiz = entorno["raiz"]
+
+    def _llega_uno(raiz_, previo, forzar):
+        _pedir_vuelta(raiz_, "pedido0002")
+        return "ok", None
+
+    _pedir_vuelta(raiz)
+    r = _vuelta(entorno, pasos=pr.PASOS + (("llega", _llega_uno),))
+    assert r["pedidos"] == 1
+    assert [m["id"] for m in pr._pedidos(raiz)] == ["pedido0002"]
+    assert ic.leer_publicacion(raiz, "estado")["datos"]["buzon"]["procesador"]["pendientes"] == 1
+
+
+def test_hay_pedido_respeta_la_separacion_entre_vueltas(entorno):
+    raiz = entorno["raiz"]
+    assert pr.hay_pedido(raiz) is False
+    _pedir_vuelta(raiz)
+    assert pr.hay_pedido(raiz) is True      # sin pulso todavía
+    _estado_con_vuelta_de_hace(raiz, 1)
+    assert pr.hay_pedido(raiz) is False     # queda esperando en el buzón
+    assert len(pr._pedidos(raiz)) == 1
+    _estado_con_vuelta_de_hace(raiz, 6)
+    assert pr.hay_pedido(raiz) is True
+
+
+def test_si_hay_pedido_sin_pedido_no_corre_ni_anota_nada(entorno, monkeypatch):
+    monkeypatch.setattr(pr, "CARPETA_LOGS", entorno["tmp"] / "logs")
+    monkeypatch.setattr(pr.ubicacion, "ubicar_intercambio", lambda _: entorno["raiz"])
+    monkeypatch.setattr(pr, "procesar", lambda **kw: pytest.fail("corrió sin que nadie lo pidiera"))
+    assert pr.main(["--si-hay-pedido"]) == 0
+    assert not (entorno["tmp"] / "logs").exists()
+
+
+def test_si_hay_pedido_con_pedido_da_la_vuelta_y_lo_anota(entorno, monkeypatch):
+    raiz = entorno["raiz"]
+    monkeypatch.setattr(pr, "CARPETA_LOGS", entorno["tmp"] / "logs")
+    monkeypatch.setattr(pr, "RUTA_ESTADO_LOCAL", entorno["estado"])
+    monkeypatch.setattr(pr.ubicacion, "ubicar_intercambio", lambda _: raiz)
+    _pedir_vuelta(raiz)
+    assert pr.main(["--si-hay-pedido"]) == 0
+    assert pr._pedidos(raiz) == []
+    assert " pedidos=1 " in next((entorno["tmp"] / "logs").glob("procesador_*.log")).read_text(encoding="utf-8")
+
+
 def test_avisos_de_sistema_quempin_quedan_en_el_detalle(tmp_path, monkeypatch):
     (tmp_path / "app" / "integraciones").mkdir(parents=True)
     (tmp_path / "app" / "integraciones" / "ecosistema.py").write_text("", encoding="utf-8")

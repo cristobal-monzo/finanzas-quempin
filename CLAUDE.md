@@ -28,8 +28,8 @@ lee su `CLAUDE.md`** (carga solo al leer archivos de esa carpeta).
 - Rama de trabajo: la del árbol principal, `auditoria-proceso-errores`
   (`master` quedó atrás el 2026-10-20). Las otras sesiones trabajan en
   `.worktrees/<rama>` y mergean aquí.
-- **Las 4 tareas programadas corren el código de este árbol** (`Sistema
-  Intercambio/tarea_procesador.cmd` y `tarea_planilla.cmd`,
+- **Las 5 tareas programadas corren el código de este árbol** (`Sistema
+  Intercambio/tarea_procesador.cmd`, `tarea_pedidos.cmd` y `tarea_planilla.cmd`,
   `.claude/skills/Actualizar_Finanzas/tarea_programada.cmd` y
   `tarea_oportunidades.cmd`). Un cambio de código se prueba en un worktree;
   aquí solo entra terminado.

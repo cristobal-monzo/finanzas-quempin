@@ -16,8 +16,9 @@ el usuario elegido y con una casilla para ver solo sus proyectos):
   biblioteca guardada en este navegador (IndexedDB `qpn-intercambio`, la del
   Formulador). Lee `publicado/requerimientos`, `proyectos`,
   `analisis-financiero`, `licitaciones`, `estado`, `publicado/formulador/*.json`
-  y los `borrador-cotizacion` del `buzon/`. **Nunca escribe en la carpeta**, y
-  en la página no va ningún dato: se arma en el navegador de cada persona.
+  y los `borrador-cotizacion` del `buzon/`. **Lo único que escribe en la carpeta
+  es el pedido de «Actualizar datos»**, y en la página no va ningún dato: se arma
+  en el navegador de cada persona.
   Sin conexión, sin permiso o en un navegador que no abre carpetas, dice qué
   hacer y da el botón (`Conectar biblioteca` reutiliza `conectarBiblioteca`).
 - **Las reglas** (`rcArmar`, `rcTarjetaReq`): entra lo vivo en la Planilla
@@ -57,3 +58,13 @@ el usuario elegido y con una casilla para ver solo sus proyectos):
 - Se relee al volver a la pestaña si pasó más de un minuto, o con ↻. La
   vista previa con datos reales se arma fuera del repo (almacenamiento privado
   de un Chromium aislado), nunca con capturas dentro del repo.
+- **Actualizar datos** (2026-11-02, pedido del usuario: ↻ no cambiaba «Datos del
+  procesador hace X», porque solo relee la carpeta). El botón deja un `pedir-vuelta`
+  en el `buzon/` (`rcPedirVuelta`) y la tarea del computador del procesador lo toma
+  ([Sistema Intercambio/CLAUDE.md](../../../Sistema%20Intercambio/CLAUDE.md)). Mientras espera, el botón se
+  desactiva y la línea dice «Actualización pedida hace X: tarda unos 5 min»; desde
+  los 15 min, que el procesador aún no responde, con el punto en amarillo. Cada 10 s
+  mira solo los nombres del buzón y `estado.json`, y relee todo cuando el pedido
+  salió del buzón y el pulso cambió (`rcVueltaRevisar`, `rcVueltaHecha`): OneDrive
+  trae esos dos cambios por separado. Lo pendiente sale del buzón, no del navegador:
+  sigue al recargar y también se ve el pedido de un colega.

@@ -1683,6 +1683,110 @@ def test_el_recorrido_pone_cada_proyecto_en_su_etapa(navegador, sitio):
     pagina.context.close()
 
 
+JS_BUZON_VUELTA = """async () => {
+    const raiz = await navigator.storage.getDirectory();
+    const bib = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+    const inter = await (await bib.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio');
+    const buzon = await inter.getDirectoryHandle('buzon');
+    const salida = [];
+    for await (const [n, h] of buzon.entries()) {
+        if (n.includes('_pedir-vuelta_')) salida.push({ nombre: n, mensaje: JSON.parse(await (await h.getFile()).text()) });
+    }
+    return salida;
+}"""
+
+JS_PROCESADOR_ATIENDE = """async ({ borrar, pulso }) => {
+    // Lo que deja una vuelta en la carpeta, por partes: OneDrive trae el buzón y el pulso por separado.
+    const raiz = await navigator.storage.getDirectory();
+    const bib = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+    const inter = await (await bib.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio');
+    if (borrar) {
+        const buzon = await inter.getDirectoryHandle('buzon');
+        for await (const n of buzon.keys()) if (n.includes('_pedir-vuelta_')) await buzon.removeEntry(n);
+    }
+    if (pulso) {
+        const pub = await inter.getDirectoryHandle('publicado');
+        const w = await (await pub.getFileHandle('estado.json', { create: true })).createWritable();
+        await w.write(JSON.stringify({ esquema: 'quempin.intercambio/1', datos: { procesador: {
+            ultimaCorrida: new Date(Date.now() + 1000).toISOString(), pasos: {} } } }));
+        await w.close();
+    }
+}"""
+
+
+def test_actualizar_datos_pide_una_vuelta_y_espera_que_llegue(navegador, sitio):
+    pagina, errores = _recorrido_con_datos(navegador, sitio, usuario="LC")
+    boton = pagina.locator("#rcPedirVuelta")
+    assert boton.inner_text() == "Actualizar datos" and boton.is_enabled()
+    boton.click()
+    pagina.locator("#rcFrescura", has_text="Actualización pedida").wait_for()
+    assert boton.is_disabled() and boton.inner_text() == "Actualizando…"
+    # Deja en el buzón un mensaje que cumple su esquema, con el nombre de siempre
+    enviados = pagina.evaluate(JS_BUZON_VUELTA)
+    assert len(enviados) == 1
+    m = enviados[0]["mensaje"]
+    assert _esquemas().validar_mensaje(m) == [] and m["origen"]["usuario"] == "LC"
+    intercambio = _cargar("intercambio_para_test_portal", RAIZ / "Sistema Intercambio" / "intercambio.py")
+    assert intercambio.nombre_mensaje(m) == enviados[0]["nombre"]
+    # Recargar no lo olvida: lo pendiente es lo que hay en el buzón
+    pagina.reload()
+    pagina.locator("#vistaRecorrido").wait_for()
+    pagina.locator("#rcFrescura", has_text="Actualización pedida").wait_for()
+    assert boton.is_disabled()
+    # Con solo una de las dos cosas todavía no terminó: lo que se ve sigue siendo lo de antes
+    pagina.evaluate(JS_PROCESADOR_ATIENDE, {"borrar": True, "pulso": False})
+    pagina.locator("#rcActualizar").click()
+    pagina.locator("#rcFrescura", has_text="Actualización pedida").wait_for()
+    assert boton.is_disabled()
+    # Con el pulso nuevo termina solo, sin tocar nada, y relee
+    pagina.evaluate(JS_PROCESADOR_ATIENDE, {"borrar": False, "pulso": True})
+    pagina.locator("#rcFrescura", has_text="Datos del procesador hace un momento").wait_for(timeout=15000)
+    assert boton.is_enabled() and boton.inner_text() == "Actualizar datos"
+    assert "actualizados" in pagina.locator("#aviso").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_vuelta_del_horario_no_da_por_atendido_un_pedido_que_sigue_en_el_buzon(navegador, sitio):
+    pagina, errores = _recorrido_con_datos(navegador, sitio)
+    pagina.locator("#rcPedirVuelta").click()
+    pagina.locator("#rcFrescura", has_text="Actualización pedida").wait_for()
+    pagina.evaluate(JS_PROCESADOR_ATIENDE, {"borrar": False, "pulso": True})
+    pagina.locator("#rcActualizar").click()
+    pagina.wait_for_function("!document.querySelector('#rcFrescura').textContent.startsWith('Actualizando')")
+    assert "Actualización pedida" in pagina.locator("#rcFrescura").inner_text()
+    assert pagina.locator("#rcPedirVuelta").is_disabled()
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_pedido_de_un_colega_que_lleva_mucho_dice_que_no_responde(navegador, sitio):
+    from datetime import datetime, timedelta
+    pagina, errores = _portal_con_datos(navegador, sitio)
+    enviado = (datetime.now().astimezone() - timedelta(minutes=40)).isoformat(timespec="seconds")
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"buzon/x_portal_pedir-vuelta_abcdef.json": {
+        "esquema": "quempin.intercambio/1", "id": "abcdef", "tipo": "pedir-vuelta", "destino": "procesador",
+        "origen": {"herramienta": "portal", "usuario": "NB", "enviado": enviado}}})
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcFrescura", has_text="hace 40 min: el procesador aún no responde").wait_for()
+    assert pagina.locator("#rcPedirVuelta").is_disabled()
+    assert "warn" in pagina.locator("#rcPunto").get_attribute("class")
+    assert "apagado" in pagina.locator("#rcFrescura").get_attribute("title")
+    assert not errores
+    pagina.context.close()
+
+
+def test_sin_la_carpeta_no_se_ofrece_actualizar_datos(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.locator("#iniRecorrido").click()
+    pagina.locator("#rcVacio").wait_for()
+    assert pagina.locator("#rcPedirVuelta").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
 def test_cada_tarjeta_abre_la_herramienta_donde_se_hace(navegador, sitio):
     pagina, errores = _recorrido_con_datos(navegador, sitio)
     pagina.locator('.rc-tarjeta[data-clave="req-900"] .rc-accion').click()

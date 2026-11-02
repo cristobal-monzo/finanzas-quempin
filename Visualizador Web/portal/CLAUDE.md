@@ -51,7 +51,8 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   registro), Control de Documentos (aún sin enlace web) y QUEMPIN.exe (`quempin://`).
 - **Datos**: en la página no va ningún dato; todo se arma en el navegador desde la
   carpeta de Intercambio, con la conexión guardada (IndexedDB `qpn-intercambio`,
-  la del Formulador). Nunca crea un Intercambio nuevo. El Recorrido solo lee.
+  la del Formulador). Nunca crea un Intercambio nuevo. El Recorrido solo lee, salvo el
+  pedido de «Actualizar datos» al procesador ([docs/recorrido.md](docs/recorrido.md)).
 - **Escritura en la carpeta**: un archivo por navegador
   (`quempin_portal_dispositivo`), para que OneDrive nunca junte dos versiones; se
   une todo y en cada casilla manda el cambio más reciente (`t`), también si es

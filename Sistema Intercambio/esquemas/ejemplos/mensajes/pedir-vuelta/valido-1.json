@@ -1,0 +1,7 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "e1f2a3b4c5d6e1f2a3b4c5d6",
+  "tipo": "pedir-vuelta",
+  "destino": "procesador",
+  "origen": {"herramienta": "portal", "usuario": "LC", "enviado": "2026-11-02T14:10:00-03:00"}
+}

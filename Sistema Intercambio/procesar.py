@@ -52,7 +52,12 @@ módulos de Finanzas corren en su propio proceso, igual que en
 
 Nunca escribe la Planilla de Ingreso ni publica nada en GitHub.
 
-Uso:  py -3.14 procesar.py [--forzar]
+A pedido (2026-11-02): el botón «Actualizar datos» del Portal deja un mensaje
+``pedir-vuelta`` en el buzón, y otra tarea (``tarea_pedidos.cmd``, cada minuto)
+corre ``--si-hay-pedido``, que da una vuelta normal solo si hay uno. Cada vuelta
+archiva los pedidos que vio al empezar: el que llegó después pide otra.
+
+Uso:  py -3.14 procesar.py [--forzar | --si-hay-pedido]
 """
 
 import hashlib
@@ -89,6 +94,9 @@ ARCHIVO_PAQUETE = "esquemas.json"
 ARCHIVO_LEEME = "LEEME.md"
 LEEME_VERSIONADO = AQUI / "LEEME-carpeta.md"
 PUBLICACION_ESTADO = "estado"
+DESTINO_PEDIDOS = "procesador"
+TIPO_PEDIDO = "pedir-vuelta"
+PEDIDO_SEPARACION_SEG = 5 * 60   # un pedido espera en el buzón si la última vuelta es más reciente que esto
 
 DRIVER_AF = RAIZ_FINANZAS / "Sistema Analisis Financiero" / ".claude" / "skills" / "Registro_Analisis_Financiero" / "driver.py"
 DRIVER_COTIZADOR = RAIZ_FINANZAS / "Cotizador Historico" / ".claude" / "skills" / "Cotizador_Historico" / "driver.py"
@@ -428,6 +436,31 @@ class Ocupado(Exception):
     """Otra corrida del procesador sigue en curso."""
 
 
+def _pedidos(raiz: Path) -> list:
+    return intercambio.leer_buzon(raiz, destino=DESTINO_PEDIDOS, tipo=TIPO_PEDIDO)[0]
+
+
+def _archivar_pedidos(raiz: Path, pedidos: list, avisos: list) -> None:
+    for pedido in pedidos:
+        try:
+            intercambio.archivar(raiz, pedido, "aplicado", ["Atendido por la vuelta del procesador."])
+        except OSError as error:   # sigue en el buzón: pedirá otra vuelta
+            avisos.append(f"pedidos: {str(error)[:200]}")
+
+
+def hay_pedido(raiz: Path) -> bool:
+    """Hay un pedido en el buzón y la última vuelta no es tan reciente: el botón se puede apretar muchas veces, y
+    cada vuelta consulta a Mercado Público (hasta 120 llamadas)."""
+    if not _pedidos(raiz):
+        return False
+    estado = intercambio.leer_publicacion(raiz, PUBLICACION_ESTADO) or {}
+    try:
+        ultima = datetime.fromisoformat(estado["datos"]["procesador"]["ultimaCorrida"])
+        return (datetime.now().astimezone() - ultima).total_seconds() >= PEDIDO_SEPARACION_SEG
+    except (KeyError, TypeError, ValueError):
+        return True
+
+
 def _tomar_candado() -> None:
     try:
         descriptor = os.open(RUTA_CANDADO, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -456,6 +489,7 @@ def procesar(raiz: Path | None = None, forzar: bool = False, pasos=PASOS,
         inicio = time.perf_counter()
         firmas = _leer_json(ruta_estado, {})
         resultado, avisos = {}, []
+        pedidos = _pedidos(raiz)   # antes de los pasos: lo que se pida mientras corre puede no alcanzar a verse en esta vuelta
         for nombre, paso in pasos:
             t0 = time.perf_counter()
             try:
@@ -467,8 +501,9 @@ def procesar(raiz: Path | None = None, forzar: bool = False, pasos=PASOS,
                 resultado[nombre] = {"ok": False, "detalle": str(error)[:500], "seg": round(time.perf_counter() - t0, 1)}
                 avisos.append(f"{nombre}: {str(error)[:200]}")
         _guardar_json(ruta_estado, firmas)
+        _archivar_pedidos(raiz, pedidos, avisos)
         publicar_estado(raiz, resultado, time.perf_counter() - inicio, avisos)
-        return {"activo": True, "pasos": resultado, "avisos": avisos}
+        return {"activo": True, "pasos": resultado, "avisos": avisos, "pedidos": len(pedidos)}
     finally:
         RUTA_CANDADO.unlink(missing_ok=True)
 
@@ -486,7 +521,8 @@ def _registrar(resultado: dict) -> None:
         partes = [f"{n}={'ok' if p['ok'] else 'FALLA'}" + (f"({p['seg']:.0f}s)" if p.get("seg", 0) >= PASO_LENTO_SEG else "")
                   for n, p in pasos.items()]
         total = f" {sum(p.get('seg', 0) for p in pasos.values()):.0f}s" if pasos else ""
-        linea = f"{datetime.now():%Y-%m-%d %H:%M:%S} {'activo' if resultado.get('activo') else 'inactivo'}{total} " + " ".join(partes)
+        pedidos = f" pedidos={resultado['pedidos']}" if resultado.get("pedidos") else ""
+        linea = f"{datetime.now():%Y-%m-%d %H:%M:%S} {'activo' if resultado.get('activo') else 'inactivo'}{total}{pedidos} " + " ".join(partes)
         with open(ruta, "a", encoding="utf-8") as f:
             f.write(linea + "".join(f"\n    {a}" for a in resultado.get("avisos", [])) + "\n")
     except OSError:
@@ -499,6 +535,10 @@ def main(argv=None) -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     except AttributeError:
         pass
+    if "--si-hay-pedido" in argv:
+        raiz = ubicacion.ubicar_intercambio(AQUI)
+        if raiz is None or not intercambio.es_carpeta_de_intercambio(raiz) or not hay_pedido(raiz):
+            return 0
     try:
         resultado = procesar(forzar="--forzar" in argv)
     except Ocupado as error:

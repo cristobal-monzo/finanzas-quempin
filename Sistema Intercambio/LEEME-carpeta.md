@@ -12,7 +12,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 
 | Carpeta o archivo | Qué hay |
 |---|---|
-| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, lo ingresado en la Planilla de Ingreso del Portal, sugerencias para la Planilla, documentos para el Centro de Costos y las observaciones que el equipo reporta con clic derecho en el Portal. |
+| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, lo ingresado en la Planilla de Ingreso del Portal, sugerencias para la Planilla, documentos para el Centro de Costos, las observaciones que el equipo reporta con clic derecho en el Portal y los pedidos de «Actualizar datos» al procesador. |
 | `buzon/adjuntos/` | Los archivos (facturas, boletas) que se suben desde «Subir documentos» del Portal, uno por envío, hasta que el procesador los deja en el Centro de Costos; y las imágenes de pantalla de una observación, hasta que se revisa. |
 | `procesado/` | Envíos ya atendidos, por mes, con su resultado: aplicado, sin cambios, reemplazado por uno más reciente, rechazado o descartado. |
 | `publicado/` | Lo que cada herramienta comparte con las demás (ver abajo). Un archivo se reescribe solo cuando cambia lo que dice. |

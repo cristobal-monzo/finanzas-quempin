@@ -1,0 +1,7 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "e1f2a3b4c5d6e1f2a3b4c5d7",
+  "tipo": "pedir-vuelta",
+  "destino": "analisis-financiero",
+  "origen": {"herramienta": "portal", "enviado": "2026-11-02T14:10:00-03:00"}
+}

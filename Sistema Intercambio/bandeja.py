@@ -43,6 +43,8 @@ ACCION_BUZON = {
                             "'Registro_Analisis_Financiero/driver.py intercambio'"),
     "mejora-continua": ("observacion(es) del equipo desde el Portal",
                         "revisarlas con /Observaciones_Portal"),
+    "procesador": ("pedido(s) de actualizar datos desde el Portal",
+                   "se atienden solos en minutos; si siguen ahi, revisar la tarea «Pedidos al procesador QUEMPIN»"),
 }
 
 
