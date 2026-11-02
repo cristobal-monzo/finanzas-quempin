@@ -2113,6 +2113,107 @@
   }
 
 
+
+  /* ---- Clic derecho y observaciones (2026-10-30) ---- */
+  #menuCtx {
+    position: fixed; inset: auto; margin: 0; width: max-content; min-width: 250px; max-width: min(360px, calc(100vw - 16px));
+    max-height: calc(100dvh - 16px); padding: 5px; border-radius: 10px; outline: 0;
+  }
+  #menuCtx[open] { flex-direction: column; overflow-y: auto; animation: none; }
+  #menuCtx::backdrop { background: transparent; }
+  .ctx-lista { display: flex; flex-direction: column; }
+  .ctx-item {
+    display: flex; align-items: center; gap: 9px; width: 100%; min-height: 32px; padding: 5px 9px; border: 0; border-radius: 6px;
+    background: transparent; color: var(--text-primary); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
+  }
+  .ctx-item:hover, .ctx-item:focus-visible { background: var(--gridline); outline: 0; }
+  .ctx-ico { flex: 0 0 16px; display: grid; place-items: center; color: var(--text-secondary); }
+  .ctx-txt { flex: 1 1 auto; min-width: 0; }
+  .ctx-item kbd { flex: 0 0 auto; margin-left: 14px; font: inherit; font-size: 11.5px; color: var(--texto-suave); }
+  .ctx-sep { flex: 0 0 auto; height: 1px; margin: 4px 6px; background: var(--border-hairline); }
+  .ctx-reportar { font-weight: 900; color: var(--brand-orange-ink); }
+  .ctx-reportar .ctx-ico { color: var(--brand-orange-ink); }
+  .ctx-pista { margin: 4px 0 0; padding: 5px 9px 3px; border-top: 1px solid var(--border-hairline); font-size: 11.5px; color: var(--texto-suave); }
+  @media (pointer: coarse) {
+    .ctx-item { min-height: 44px; font-size: 15px; }
+    .ctx-pista, .ctx-item kbd, .obs-con-teclado { display: none; }
+  }
+  #dlgObs { width: min(600px, calc(100vw - 24px)); }
+  .obs-clases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; border: 0; }
+  .obs-clase {
+    position: relative; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 7px 10px; border: 1px solid var(--baseline); border-radius: 10px;
+    color: var(--text-secondary); font-size: 13.5px; font-weight: 700; line-height: 1.2; cursor: pointer;
+  }
+  .obs-clase svg { flex: 0 0 auto; }
+  .obs-clase input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+  .obs-clase:has(input:checked) { border-color: var(--brand-orange); background: var(--tinte); color: var(--text-primary); }
+  .obs-clase:has(input:focus-visible) { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+  .obs-campo select, .obs-campo textarea {
+    padding: 9px 12px; border: 1px solid var(--baseline); border-radius: 8px; background: var(--surface-1); color: var(--text-primary);
+    font: inherit; font-size: 15px; font-weight: 400;
+  }
+  .obs-campo select { height: 42px; padding-block: 0; }
+  .obs-campo textarea { min-height: 100px; resize: vertical; line-height: 1.45; }
+  .obs-campo select:focus, .obs-campo textarea:focus { outline: 2px solid var(--brand-orange); outline-offset: 1px; border-color: transparent; }
+  .obs-datos { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+  .obs-bloquea { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-size: 14px; font-weight: 700; color: var(--text-primary); cursor: pointer; }
+  .obs-bloquea input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-orange); cursor: pointer; }
+  .obs-quien { flex-direction: row; align-items: center; gap: 8px; font-weight: 700; }
+  .obs-quien select { width: auto; height: 36px; }
+  .dlg p.obs-nota-chica { font-size: 13px; line-height: 1.45; color: var(--texto-suave); }
+  .dlg p.obs-acceso { padding: 9px 12px; border-radius: 8px; background: var(--page-plane); font-size: 13.5px; line-height: 1.45; color: var(--text-primary); }
+  .dlg p.obs-acceso.mal { background: var(--tinte); color: var(--tinte-texto); font-weight: 700; }
+  .obs-zona { display: flex; flex-direction: column; gap: 6px; }
+  .obs-zona[hidden] { display: none; }
+  .obs-fotos { display: flex; flex-wrap: wrap; gap: 8px; }
+  #obsFotos { display: contents; }
+  .obs-foto {
+    position: relative; flex: 0 0 auto; width: 150px; height: 94px; margin: 0; overflow: hidden;
+    border: 1px solid var(--border-hairline); border-radius: 8px; background: var(--page-plane);
+  }
+  .obs-foto-ver { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+  .obs-foto img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+  .obs-foto.grande { width: 100%; height: auto; }
+  .obs-foto.grande .obs-foto-ver { height: auto; cursor: zoom-out; }
+  .obs-foto.grande img { height: auto; object-fit: contain; }
+  .obs-foto figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 8px; background: var(--surface-card); font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .obs-foto-x {
+    position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px;
+    background: var(--surface-card); color: var(--text-primary); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .obs-foto-nota { display: grid; place-items: center; padding: 8px; font-size: 12.5px; line-height: 1.35; text-align: center; color: var(--texto-suave); }
+  .obs-agregar {
+    position: relative; flex: 0 0 auto; width: 150px; height: 94px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px 8px;
+    border: 1px dashed var(--baseline); border-radius: 8px; color: var(--text-secondary); font-size: 12.5px; line-height: 1.3; text-align: center; cursor: pointer;
+  }
+  .obs-agregar[hidden] { display: none; }
+  .obs-agregar:hover, .obs-agregar:focus-within { border-color: var(--brand-orange); background: var(--tinte); }
+  .obs-agregar input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  #dlgObs .dlg-acc { flex-wrap: wrap; }
+  #obsEnviar:disabled { opacity: 0.55; cursor: not-allowed; }
+  .obs-cuerpo { display: flex; flex-direction: column; gap: 12px; }
+  .obs-cuerpo[hidden] { display: none; }
+  .obs-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .obs-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .obs-fila {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 16px; border-radius: 12px;
+    border: 1px solid var(--border-hairline); background: var(--surface-card);
+  }
+  .obs-fila-vacia { font-size: 14px; color: var(--texto-suave); }
+  .obs-fila-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .obs-fila-clase { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+  .obs-fila-bloquea { font-size: 12.5px; font-weight: 900; color: var(--estado-bad); }
+  .obs-fila-nota { margin: 0; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .obs-fila-res { margin: 2px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--page-plane); font-size: 13.5px; line-height: 1.45; color: var(--text-secondary); overflow-wrap: anywhere; }
+  .obs-fila-res strong { color: var(--text-primary); }
+  .obs-retirar { margin-top: 2px; }
+  @media (max-width: 760px) {
+    .obs-campo select, .obs-campo textarea { font-size: 16px; }
+  }
+  @media (max-width: 480px) {
+    .obs-clases { grid-template-columns: minmax(0, 1fr); }
+  }
+
   /* ---- Acabado común de diálogos y listas (2026-10-19) ----
      El título y los botones quedan fijos y solo se desplaza el contenido; ✕ para cerrar.
      Las listas desplegables entran con un leve desliz y llevan su nota separada por una línea. */
@@ -2335,7 +2436,7 @@
               <span class="ini-rc-txt"><span class="ini-rc-tit">Recorrido de los proyectos</span><span class="ini-rc-sub" id="iniRecorridoSub">Dónde va cada proyecto del equipo y qué sigue en cada uno</span></span>
               <span class="ini-rc-ir" id="iniRecorridoIr"><span>Ver el recorrido</span></span>
             </button>
-            <p class="ini-pie"><kbd>Ctrl K</kbd> busca una herramienta, una pestaña de calculadora o un proyecto · <button type="button" id="iniAyuda">Cómo usar el portal</button> · <button type="button" id="iniConexiones">Configuración y conexiones</button></p>
+            <p class="ini-pie"><kbd>Ctrl K</kbd> busca una herramienta, una pestaña de calculadora o un proyecto · <button type="button" id="iniAyuda">Cómo usar el portal</button> · <button type="button" id="iniConexiones">Configuración y conexiones</button> · <button type="button" id="iniObs">Reportar un error u observación</button></p>
           </div>
         </section>
         <!-- Recorrido de proyectos (2026-10-20): lo arma rcPintar() con lo que publica la carpeta de intercambio -->
@@ -2421,6 +2522,31 @@
               <div id="plGeneral"></div>
               <div id="plPersonal" hidden></div>
               <div id="plProyecto" hidden></div>
+            </div>
+          </div>
+        </section>
+        <!-- Errores y observaciones (2026-10-30): lo que el equipo reporta con clic derecho y qué pasó con cada cosa
+             (buzon y procesado de la carpeta de intercambio; se revisa con /Observaciones_Portal) -->
+        <section class="vista-subir sin-barra" id="vistaObservaciones" aria-labelledby="tituloObs" hidden>
+          <div class="subir">
+            <header class="rc-cab">
+              <div>
+                <h1 id="tituloObs">Errores y observaciones</h1>
+                <p>Lo que el equipo anota con clic derecho en el portal y sus herramientas. Cada nota se revisa, y aquí queda lo que pasó con ella.</p>
+              </div>
+              <div class="rc-frescura">
+                <button class="cx-boton" id="obsNueva" type="button">Reportar</button>
+                <button class="acc-btn" id="obsActualizar" type="button" title="Volver a leer la carpeta del equipo" aria-label="Volver a leer la carpeta del equipo"></button>
+              </div>
+            </header>
+            <div class="rc-vacio" id="obsVacio" hidden></div>
+            <div class="rc-leyendo" id="obsLeyendo" role="status">Leyendo la carpeta del equipo…</div>
+            <div class="obs-cuerpo" id="obsContenido" hidden>
+              <div class="obs-barra">
+                <label class="rc-mios"><input type="checkbox" id="obsMias"><span>Solo las mías</span><b id="obsMiasQuien" hidden></b></label>
+                <span class="rc-cuenta" id="obsCuenta" role="status"></span>
+              </div>
+              <ul class="obs-lista" id="obsLista"></ul>
             </div>
           </div>
         </section>
@@ -2618,6 +2744,48 @@
   </form>
 </dialog>
 
+<!-- Clic derecho: el menú del portal y la ventana para reportar un error u observación (2026-10-30) -->
+<dialog id="menuCtx" aria-label="Opciones" autofocus tabindex="-1">
+  <div class="ctx-lista" id="menuCtxLista" role="menu"></div>
+  <p class="ctx-pista">Shift + clic derecho: menú del navegador</p>
+</dialog>
+<dialog id="dlgObs" aria-labelledby="dlgObsTit">
+  <form class="dlg" id="obsForm" novalidate>
+    <h2 id="dlgObsTit">Reportar un error u observación</h2>
+    <button class="dlg-x" id="obsX" type="button" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <p class="donde" id="obsDonde" hidden></p>
+    <label class="pl-campo obs-campo" id="obsHerrCampo" hidden>¿De qué herramienta se trata?<select id="obsHerr"></select></label>
+    <fieldset class="obs-clases" id="obsClases"><legend class="sr">Qué tipo de observación es</legend></fieldset>
+    <label class="pl-campo obs-campo">Cuéntalo con tus palabras
+      <textarea id="obsNota" rows="4" maxlength="4000" placeholder="Qué hiciste, qué esperabas y qué pasó. O qué te gustaría que hiciera."></textarea>
+    </label>
+    <div class="obs-datos">
+      <label class="obs-bloquea"><input type="checkbox" id="obsBloquea">Me impide seguir trabajando</label>
+      <label class="pl-campo obs-campo obs-quien">Quién reporta<select id="obsQuien"></select></label>
+    </div>
+    <p class="obs-nota-chica" id="obsSinCaptura" hidden>De esta herramienta no se guarda imagen ni lo que muestra la pantalla, porque esta carpeta la ve toda la biblioteca. Evita escribir cifras en la nota.</p>
+    <div class="obs-zona" id="obsZonaImagen">
+      <div class="obs-fotos">
+        <div id="obsFotos"></div>
+        <label class="obs-agregar" id="obsAgregar">
+          <input type="file" id="obsArchivo" multiple accept="image/png,image/jpeg">
+          <span id="obsAgregarIco"></span>
+          <span>Agregar una imagen<span class="obs-con-teclado">, o pegarla con Ctrl V</span></span>
+        </label>
+      </div>
+      <p class="obs-nota-chica" id="obsSinFoto" hidden>No se pudo sacar la imagen de esta pantalla. Si ayuda, agrega una.</p>
+      <p class="obs-nota-chica">La imagen queda en la carpeta del equipo, que ve toda la biblioteca: si muestra algo que no corresponde, quítala con la ✕.</p>
+    </div>
+    <p class="obs-acceso" id="obsAcceso" role="status" hidden></p>
+    <div class="dlg-acc">
+      <button class="cx-enlace" id="obsCancelar" type="button">Cancelar</button>
+      <button class="cx-enlace" id="obsConectar" type="button" hidden>Conectar biblioteca</button>
+      <button class="cx-enlace" id="obsCompartir" type="button" hidden>Compartir</button>
+      <button class="btn-pri" id="obsEnviar" type="submit">Enviar</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="dlgAyuda" aria-labelledby="dlgAyudaTit">
   <form method="dialog" class="dlg">
     <h2 id="dlgAyudaTit">Cómo usar el portal</h2>
@@ -2634,6 +2802,7 @@
       <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él. Si tiene carpeta, el botón de la carpeta, a su lado, la abre en el Explorador de archivos del computador (con QUEMPIN.exe 1.3.10 o más nuevo).</li>
       <li><strong>Planilla de Ingreso</strong> (en Formulación de proyectos): cada requerimiento con su N°. «Nuevo requerimiento» lo agrega con el siguiente N° libre, y al tocar una fila se cambia. El equipo lo ve al instante; un punto naranjo marca lo que todavía no llega al Excel. El Excel de siempre queda de respaldo: cada 10 minutos recibe lo de aquí y lo que se cambie en él llega aquí; si una casilla cambió en los dos lados, queda el cambio más reciente. Aquí están las columnas que se usan de verdad; las demás (visita, presupuesto, valores) se llenan en el Excel.</li>
       <li><strong>Sistema QUEMPIN.</strong> «Cotizar y comprar» abre el programa QUEMPIN.exe en la pantalla que elijas; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
+      <li><strong>Clic derecho.</strong> En el portal y dentro de cada herramienta abre el menú del portal: copiar y pegar, actualizar, abrir aparte y <strong>reportar un error u observación</strong>. La nota queda con el lugar exacto donde la hiciste y, si se puede, una imagen de la pantalla; en «Errores y observaciones» (en Ayuda) ves qué pasó con ella. Para el menú del navegador (revisar ortografía, guardar una imagen), Shift + clic derecho.</li>
       <li><strong>Abrir aparte</strong> (↗, arriba a la derecha) lleva la herramienta activa a su propia pestaña del navegador, en su dirección de siempre.</li>
       <li>La contraseña es la del equipo, la misma de siempre, y se escribe una sola vez por navegador.</li>
       <li><strong>Configuración y conexiones</strong> (en Ayuda) muestra las carpetas, programas y permisos que necesita cada herramienta, dónde está cada uno y si este navegador ya los tiene conectados.</li>
@@ -2935,7 +3104,7 @@
      "breve": "Real frente a presupuesto, y su Nota",
      "desc": "El costo real frente a lo presupuestado y la venta de cada proyecto, con su Nota.",
      "claves": "analisis financiero rentabilidad margen nota venta cierre"},
-    {"id": "flujo-caja", "nombre": "Flujo de Caja", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "fc_viz_theme",
+    {"id": "flujo-caja", "nombre": "Flujo de Caja", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "fc_viz_theme", "sinCaptura": true,
      "ruta": "/finanzas-quempin/flujo-de-caja/", "breve": "Pagos y cobros, mes a mes",
      "desc": "Lo pagado, lo comprometido y lo por cobrar, mes a mes.",
      "claves": "flujo caja pagos cobros cuotas mes"},
@@ -2981,7 +3150,10 @@
      "claves": "ayuda portal atajos como usar"},
     {"id": "conexiones", "nombre": "Configuración y conexiones", "corto": "Conexiones", "grupo": "ayuda", "tipo": "vista", "vista": "vistaConexiones", "icono": "engranaje",
      "desc": "Las carpetas, programas y permisos que necesita cada herramienta: dónde están y cómo dejarlos conectados.",
-     "claves": "configuracion conexiones conectar carpeta carpetas intercambio buzon sincronizar sincronizacion onedrive sharepoint biblioteca permiso contrasena programa exe procesador facturas control de documentos"}
+     "claves": "configuracion conexiones conectar carpeta carpetas intercambio buzon sincronizar sincronizacion onedrive sharepoint biblioteca permiso contrasena programa exe procesador facturas control de documentos"},
+    {"id": "observaciones", "nombre": "Errores y observaciones", "corto": "Observaciones", "grupo": "ayuda", "tipo": "vista", "vista": "vistaObservaciones", "icono": "nota",
+     "desc": "Lo que el equipo reporta con clic derecho y qué pasó con cada cosa.",
+     "claves": "observacion observaciones error errores reportar reporte problema falla mejora mejorar idea sugerencia nota clic derecho"}
   ]
 }
 </script>
@@ -3008,17 +3180,17 @@
      "pasos": ["Ábrela en SharePoint y elige «Agregar acceso directo a Mis archivos»: aparece en el Explorador de archivos, dentro de «OneDrive - QUEMPIN SPA».",
                "Si usas Sistema QUEMPIN, agrega «Cotizaciones y OC» de la misma forma: las dos bibliotecas tienen que quedar en la misma carpeta.",
                "En el Formulador: Configuración › «Carpeta compartida (OneDrive)» › Conectar carpeta, y elige esta biblioteca completa, no una carpeta de adentro."],
-     "usan": ["formulador", "gantt", "planilla", "ingresar", "recorrido", "planificacion", "ejecucion", "subir-cc", "cotizacion", "orden-compra"],
+     "usan": ["formulador", "gantt", "planilla", "ingresar", "recorrido", "planificacion", "ejecucion", "subir-cc", "observaciones", "cotizacion", "orden-compra"],
      "estado": "biblioteca",
      "falta": "El Formulador no comparte los presupuestos con el equipo ni guarda el Excel en la carpeta de cada oferta, y Sistema QUEMPIN no recibe sus borradores."},
     {"id": "intercambio", "tipo": "Carpeta", "nombre": "Carpeta de intercambio", "corto": "Carpeta de intercambio",
      "para": "El buzón y la cartelera por donde las herramientas se pasan los datos: «buzon» (pedidos que esperan), «publicado» (lo que cada una publica) y «procesado» (lo ya atendido). Su LEEME.md lo explica.",
      "ruta": ["OneDrive - QUEMPIN SPA", "Formulación de proyectos - Documentos", ".HERRAMIENTAS FORMULACIÓN", "Intercambio"],
      "web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos/.HERRAMIENTAS FORMULACIÓN/Intercambio",
-     "pasos": ["No se conecta aparte: queda conectada al conectar la biblioteca completa en el Formulador. La Planilla de Ingreso, «Ingresar avance», el Recorrido de proyectos, la Planificación semanal, «Proyectos en ejecución» y «Subir documentos» usan esa misma conexión, porque están en el mismo sitio web.",
+     "pasos": ["No se conecta aparte: queda conectada al conectar la biblioteca completa en el Formulador. La Planilla de Ingreso, «Ingresar avance», el Recorrido de proyectos, la Planificación semanal, «Proyectos en ejecución», «Subir documentos» y las observaciones usan esa misma conexión, porque están en el mismo sitio web.",
                "Sistema QUEMPIN y el procesador la encuentran solos cuando la biblioteca está en OneDrive.",
                "No muevas, renombres ni edites sus archivos a mano."],
-     "usan": ["formulador", "gantt", "planilla", "ingresar", "recorrido", "planificacion", "ejecucion", "subir-cc", "cotizacion", "orden-compra", "procesador"],
+     "usan": ["formulador", "gantt", "planilla", "ingresar", "recorrido", "planificacion", "ejecucion", "subir-cc", "observaciones", "cotizacion", "orden-compra", "procesador"],
      "estado": "procesador",
      "falta": "Lo que se envía queda esperando. Sin conexión, el Formulador descarga cada envío para dejarlo a mano en «buzon»."},
     {"id": "planilla", "tipo": "Excel", "nombre": "Planilla de Ingreso de Requerimientos", "corto": "Planilla de Ingreso",
@@ -3209,7 +3381,12 @@
     // Proyectos en ejecución: un casco de obra
     casco: '<path d="M3.5 17.5h17"/><path d="M5.5 17.5V15a6.5 6.5 0 0 1 13 0v2.5"/><path d="M10 9V6.5a2 2 0 0 1 4 0V9"/>',
     basurero: '<path d="M4 7h16M9.5 7V4.5h5V7"/><path d="M6.5 7l1 13h9l1-13"/>',
-    lapiz: '<path d="M4 20l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L8 18.5z"/><path d="M13.5 7l3 3"/>'
+    lapiz: '<path d="M4 20l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L8 18.5z"/><path d="M13.5 7l3 3"/>',
+    // Clic derecho: una nota, un enlace, cortar y buscar
+    nota: '<path d="M5 4h14a1 1 0 0 1 1 1v10l-5 5H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 20v-5h5"/><path d="M8 9h8M8 13h4"/>',
+    enlace: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/>',
+    tijera: '<circle cx="6" cy="6.5" r="2.5"/><circle cx="6" cy="17.5" r="2.5"/><path d="M8.2 8l11.8 9M8.2 16L20 7"/>',
+    lupa: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'
   };
   function icono(nombre, tam) {
     const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -3462,6 +3639,7 @@
     filas.forEach((p) => {
       const activa = p.familia === estado.activa;
       const w = crear('div', 'pestana' + (activa ? ' activa' : '') + (p.inicio ? ' solo' : ''));
+      w.dataset.familia = p.familia;
       const ir = crear('button', 'ir');
       // Inicio va como una casita; cada herramienta, con el ícono de su grupo y su nombre corto
       const i = crear('span', 'ico');
@@ -3572,6 +3750,7 @@
     if (familia === 'subir-cc') scAlMostrar();
     if (familia === 'ejecucion') ejAlMostrar();
     if (familia === 'planilla') pqAlMostrar();
+    if (familia === 'observaciones') obsAlMostrar();
     guardarPestanas();
   }
   function cerrar(familia) {
@@ -3746,6 +3925,7 @@
       abrir(destino.id, destino.url ? { url: destino.url } : {});
     }, true);
     doc.addEventListener('keydown', teclas, true);
+    doc.addEventListener('contextmenu', (e) => ctxDesdeEvento(e, p));
     // Lo que muestra (la ruta del Formulador, el proyecto de un tablero) se recuerda para la próxima visita.
     w.addEventListener('hashchange', () => {
       try { p.ultima = w.location.pathname + w.location.search + w.location.hash; } catch (e) { return; }
@@ -5037,6 +5217,7 @@
       ejAlRecorrido();
       pqAlRecorrido();
       llAlRecorrido();
+      obsAlRecorrido();
     });
     return rc.leyendo;
   }
@@ -5509,6 +5690,7 @@
     pintarInicioRecorrido();
     if (!$('#vistaPlan').hidden) plPintar();     // la Planificación semanal también marca lo suyo
     if (!$('#vistaEjecucion').hidden) ejPintar();
+    if (!$('#vistaObservaciones').hidden) obsPintar();
   }
 
   // ---- Planificación semanal (2026-10-20) -----------------------------------------------------------
@@ -12706,6 +12888,7 @@
       return;
     }
     if (e.key === 'Escape') {
+      if ($('#menuCtx').open || $('#dlgObs').open) return;     // lo cierra el navegador: son modales
       // En la ventanita, Escape primero sale de «Cambiar»; después la cierra
       if (!$('#plPop').hidden) {
         e.preventDefault();
@@ -12718,6 +12901,974 @@
       if (!$('#resultados').hidden || portal.classList.contains('buscando')) { e.preventDefault(); cerrarBusqueda(); }
     }
   }
+
+  // ---- Clic derecho: el menú del portal (2026-10-30) ----------------------------------------------------------------------
+  // Vale en el portal y dentro de cada herramienta (enganchar). Shift + clic derecho deja el del navegador, igual que adentro
+  // de la ventana de reportar (corrector ortográfico, pegar). Si una herramienta tiene su propio menú y hace preventDefault, se
+  // respeta. Una de las opciones es reportar un error u observación: ver más abajo y docs/observaciones.md.
+  const CTX_SIN_TEXTO = /^(button|submit|reset|checkbox|radio|file|range|color|image|hidden)$/i;
+  const ctxElemento = (t) => (t && t.nodeType === 1 ? t : t && t.parentElement) || null;
+  function ctxCampo(el) {
+    const c = el.closest('input, textarea, [contenteditable]:not([contenteditable="false"])');
+    return !c || (c.tagName === 'INPUT' && CTX_SIN_TEXTO.test(c.type)) ? null : c;
+  }
+  const ctxEsValor = (c) => !!c && (c.tagName === 'INPUT' || c.tagName === 'TEXTAREA');
+  function ctxElegidoEnCampo(c) {
+    try { return ctxEsValor(c) && c.selectionStart !== null ? c.value.slice(c.selectionStart, c.selectionEnd) : ''; } catch (e) { return ''; }
+  }
+  // Lo que hay en el punto del clic, tomado en ese momento: después el menú se lleva el foco.
+  function ctxLugar(e, p) {
+    const el = ctxElemento(e.target);
+    const doc = el.ownerDocument;
+    const teclado = e.button !== 2 && !e.clientX && !e.clientY;     // la tecla de menú o Shift + F10
+    const r = el.getBoundingClientRect();
+    const x = Math.max(0, teclado ? r.left + Math.min(r.width / 2, 40) : e.clientX);
+    const y = Math.max(0, teclado ? r.top + Math.min(r.height / 2, 20) : e.clientY);
+    const m = p && p.marco ? p.marco.getBoundingClientRect() : { left: 0, top: 0 };
+    const campo = ctxCampo(el);
+    const foco = el.closest(OBS_ELEMENTO) || el;
+    const rf = foco.getBoundingClientRect();
+    return {
+      p, doc, el, foco, teclado, x, y, xPortal: x + m.left, yPortal: y + m.top,
+      rect: { x: rf.left, y: rf.top, ancho: rf.width, alto: rf.height },
+      campo, enlace: el.closest('a[href]'),
+      seleccion: (campo ? ctxElegidoEnCampo(campo) : String(doc.getSelection() || '')).trim(),
+      desde: ctxEsValor(campo) ? campo.selectionStart : null, hasta: ctxEsValor(campo) ? campo.selectionEnd : null
+    };
+  }
+  function ctxCopiar(txt, ok) {
+    const mal = () => avisar('El navegador no dejó copiar. Usa Ctrl C.');
+    try { navigator.clipboard.writeText(txt).then(() => { if (ok) avisar(ok); }, mal); } catch (e) { mal(); }
+  }
+  function ctxEnfocar(l) {
+    const c = l.campo;
+    try { l.doc.defaultView.focus(); } catch (e) { /* nada */ }
+    c.focus();
+    if (ctxEsValor(c) && l.desde !== null) { try { c.setSelectionRange(l.desde, l.hasta); } catch (e) { /* sin selección (number, date) */ } }
+  }
+  // insertText y delete dejan que el campo avise su cambio y que Ctrl Z lo deshaga, como si se hubiera tecleado.
+  function ctxPegarTexto(l, txt) {
+    ctxEnfocar(l);
+    if (l.doc.execCommand('insertText', false, txt) || !ctxEsValor(l.campo)) return;
+    l.campo.setRangeText(txt, l.campo.selectionStart, l.campo.selectionEnd, 'end');
+    l.campo.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  async function ctxPegar(l) {
+    let txt = '';
+    try { txt = await navigator.clipboard.readText(); } catch (e) {
+      ctxEnfocar(l);
+      avisar('El navegador no dejó pegar desde el menú. Usa Ctrl V.');
+      return;
+    }
+    if (txt) ctxPegarTexto(l, txt);
+  }
+  function ctxCortar(l) {
+    ctxCopiar(l.seleccion);
+    ctxEnfocar(l);
+    l.doc.execCommand('delete');
+  }
+  function ctxSeleccionarTodo(l) {
+    ctxEnfocar(l);
+    if (ctxEsValor(l.campo)) l.campo.select(); else l.doc.execCommand('selectAll');
+  }
+  function ctxRecargar(p) {
+    if (p.familia !== estado.activa) activar(p.familia);
+    const w = ventanaDe(p);
+    if (!w) return;
+    p.cargando = true;
+    if (p.cargador) p.cargador.hidden = false;
+    try { w.location.reload(); } catch (e) { p.marco.src = p.ultima || p.url; }
+  }
+  function ctxDireccion(p) {
+    let href = p.ultima || p.url;
+    try { const w = ventanaDe(p); if (w && w.location.href !== 'about:blank') href = w.location.href; } catch (e) { /* la pedida */ }
+    return new URL(href, location.href).href;
+  }
+  const ctxAparte = (url) => { window.open(url, '_blank', 'noopener'); };
+  const ctxConMarco = (p) => !!p && !esVista(p);
+  // Las opciones, en grupos: primero lo que depende de dónde se hizo clic, después reportar y lo de siempre.
+  function ctxOpciones(l) {
+    const grupos = [];
+    const propio = [];
+    const pest = !l.p && l.el.closest('.pestana[data-familia]');
+    const lanzador = !l.p && !pest && l.el.closest('[data-herr]');
+    const tab = pest && pestanaDe(pest.dataset.familia);
+    if (tab) {
+      if (ctxConMarco(tab)) {
+        propio.push({ txt: 'Actualizar', ico: 'recargar', ir: () => ctxRecargar(tab) });
+        propio.push({ txt: 'Abrir aparte', ico: 'fuera', ir: () => ctxAparte(ctxDireccion(tab)) });
+      }
+      propio.push({ txt: 'Cerrar esta pestaña', ico: 'cerrar', ir: () => cerrar(tab.familia) });
+      if (estado.pestanas.length > 1) {
+        propio.push({ txt: 'Cerrar las demás', ir: () => {
+          estado.pestanas.filter((x) => x !== tab).forEach((x) => cerrar(x.familia));
+          activar(tab.familia);
+        } });
+      }
+    }
+    if (lanzador) {
+      const h = HERR.get(lanzador.dataset.herr);
+      if (h) {
+        propio.push({ txt: 'Abrir ' + h.nombre, ico: iconoDe(h), ir: () => abrir(h.id) });
+        if (h.tipo === 'marco') propio.push({ txt: 'Abrir aparte', ico: 'fuera', ir: () => ctxAparte(new URL(urlDe(h), location.href).href) });
+      }
+    }
+    if (l.campo) {
+      const clave = l.campo.type === 'password';
+      const editable = !l.campo.disabled && !l.campo.readOnly;
+      if (l.seleccion && editable && !clave) propio.push({ txt: 'Cortar', ico: 'tijera', tecla: 'Ctrl X', ir: () => ctxCortar(l) });
+      if (l.seleccion && !clave) propio.push({ txt: 'Copiar', ico: 'copiar', tecla: 'Ctrl C', ir: () => ctxCopiar(l.seleccion) });
+      if (editable) propio.push({ txt: 'Pegar', ico: 'portapapeles', tecla: 'Ctrl V', ir: () => ctxPegar(l) });
+      propio.push({ txt: 'Seleccionar todo', tecla: 'Ctrl A', ir: () => ctxSeleccionarTodo(l) });
+    } else if (l.seleccion) {
+      propio.push({ txt: 'Copiar', ico: 'copiar', tecla: 'Ctrl C', ir: () => ctxCopiar(l.seleccion) });
+    }
+    if (l.enlace && /^https?:/i.test(l.enlace.href)) {
+      propio.push({ txt: 'Abrir el enlace en otra pestaña', ico: 'fuera', ir: () => ctxAparte(l.enlace.href) });
+      propio.push({ txt: 'Copiar el enlace', ico: 'enlace', ir: () => ctxCopiar(l.enlace.href, 'Enlace copiado.') });
+    }
+    if (propio.length) grupos.push(propio);
+    grupos.push([{ txt: 'Reportar un error u observación…', ico: 'nota', clase: 'ctx-reportar', ir: () => obsAbrir(l) }]);
+    const comunes = [];
+    const activa = pestanaDe(estado.activa);
+    if (!tab && ctxConMarco(activa)) {
+      comunes.push({ txt: 'Actualizar esta herramienta', ico: 'recargar', ir: () => ctxRecargar(activa) });
+      comunes.push({ txt: 'Abrir aparte', ico: 'fuera', ir: () => ctxAparte(ctxDireccion(activa)) });
+    }
+    comunes.push({ txt: 'Copiar el enlace a esta pantalla', ico: 'enlace', ir: () => ctxCopiar(ctxConMarco(activa) ? ctxDireccion(activa) : location.href, 'Enlace copiado.') });
+    comunes.push({ txt: 'Buscar', ico: 'lupa', tecla: 'Ctrl K', ir: enfocarBuscador });
+    if (estado.activa !== 'observaciones') comunes.push({ txt: 'Ver las observaciones', ico: 'ayuda', ir: () => abrir('observaciones') });
+    grupos.push(comunes);
+    return grupos;
+  }
+  function ctxMostrar(l) {
+    const menu = $('#menuCtx');
+    const lista = $('#menuCtxLista');
+    lista.textContent = '';
+    ctxOpciones(l).forEach((grupo, i) => {
+      if (i) { const sep = crear('div', 'ctx-sep'); sep.setAttribute('role', 'separator'); lista.append(sep); }
+      grupo.forEach((op) => {
+        const b = crear('button', 'ctx-item' + (op.clase ? ' ' + op.clase : ''));
+        b.type = 'button';
+        b.setAttribute('role', 'menuitem');
+        const ico = crear('span', 'ctx-ico');
+        if (op.ico) ico.append(icono(op.ico, 16));
+        b.append(ico, crear('span', 'ctx-txt', op.txt));
+        if (op.tecla) b.append(crear('kbd', null, op.tecla));
+        b.addEventListener('click', () => { ctxCerrar(); op.ir(); });
+        lista.append(b);
+      });
+    });
+    menu.style.left = '0';
+    menu.style.top = '0';
+    if (!menu.open) menu.showModal();
+    const r = menu.getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(l.xPortal, window.innerWidth - r.width - 8)) + 'px';
+    menu.style.top = Math.max(8, Math.min(l.yPortal, window.innerHeight - r.height - 8)) + 'px';
+    // Con el teclado parte en la primera opción; con el mouse, en ninguna: la primera flecha lleva a la primera.
+    (l.teclado ? lista.querySelector('.ctx-item') : menu).focus();
+  }
+  function ctxCerrar() { const m = $('#menuCtx'); if (m.open) m.close(); }
+  function ctxDesdeEvento(e, p) {
+    if (e.defaultPrevented || e.shiftKey) return;
+    const el = ctxElemento(e.target);
+    if (!el || el.closest('#dlgObs')) return;
+    e.preventDefault();
+    ctxMostrar(ctxLugar(e, p));
+  }
+  // Otro clic derecho con el menú abierto lo cierra y abre el de ese punto, como en el navegador.
+  function ctxOtroPunto(e) {
+    ctxCerrar();
+    const x = e.clientX, y = e.clientY;
+    const el = document.elementFromPoint(x, y);
+    if (!el) return;
+    const p = el.tagName === 'IFRAME' ? estado.pestanas.find((t) => t.marco === el) : null;
+    if (!p) { ctxMostrar(ctxLugar({ target: el, clientX: x, clientY: y, button: 2 }, null)); return; }
+    let dentro = null;
+    const m = el.getBoundingClientRect();
+    try { dentro = el.contentDocument.elementFromPoint(x - m.left, y - m.top); } catch (err) { dentro = null; }
+    if (dentro) ctxMostrar(ctxLugar({ target: dentro, clientX: x - m.left, clientY: y - m.top, button: 2 }, p));
+  }
+  function ctxTeclas(e) {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault();
+    const items = Array.from($('#menuCtxLista').querySelectorAll('.ctx-item'));
+    const i = items.indexOf(document.activeElement);
+    const n = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : e.key === 'ArrowDown' ? (i + 1) % items.length : (i <= 0 ? items.length : i) - 1;
+    if (items[n]) items[n].focus();
+  }
+  document.addEventListener('contextmenu', (e) => {
+    if ($('#menuCtx').open) {
+      e.preventDefault();
+      if (e.target === $('#menuCtx')) ctxOtroPunto(e);
+      return;
+    }
+    ctxDesdeEvento(e, null);
+  });
+  $('#menuCtx').addEventListener('click', (e) => {
+    // El clic no sigue hasta el documento, que cerraría la ventanita abierta de la Planificación.
+    e.stopPropagation();
+    if (e.target === $('#menuCtx')) ctxCerrar();
+  });
+  $('#menuCtx').addEventListener('keydown', ctxTeclas);
+  window.addEventListener('blur', ctxCerrar);
+
+  // ---- Reportar un error u observación (2026-10-30) ---------------------------------------------------------------------
+  // Queda como mensaje «observacion» en el buzón, con su lugar exacto y las imágenes en «buzon/adjuntos/<id>/»; nadie lo aplica
+  // solo: lo revisa una persona con /Observaciones_Portal (Sistema Intercambio/observaciones.py), y su respuesta se ve en la
+  // vista «Errores y observaciones». Flujo de Caja lleva sinCaptura en el registro: su resultado no debe quedar en esta carpeta,
+  // que ve toda la biblioteca, así que de ahí no sale imagen ni lo que muestra la pantalla.
+  const OBS_ELEMENTO = 'button, a, label, summary, th, td, li, h1, h2, h3, h4, h5, input, select, textarea, [role="button"], [role="tab"], [role="menuitem"], [data-herr]';
+  const OBS_TITULOS = 'h1, h2, h3, h4, legend, caption, summary';
+  const OBS_PESTANAS = '[role="tab"][aria-selected="true"], [role="tab"].is-active, .viz-tab-btn.is-active, .viz-tab-btn.active, .viz-modnav-tab.is-active';
+  const OBS_ARCHIVO = /_observacion_([A-Za-z0-9_-]{6,64})\.json$/;
+  const OBS_TIPOS_IMAGEN = { 'image/png': 'png', 'image/jpeg': 'jpg' };
+  const OBS_IMAGENES_MAX = 3;
+  const OBS_IMAGEN_BYTES = 10 * 1024 * 1024;
+  const OBS_NODOS_MAX = 60000;
+  const OBS_CAPTURA_MS = 8000;
+  const OBS_ANCHO_MAX = 1920;
+  const OBS_MESES = 3;
+  const OBS_CLASES = {
+    error: { txt: 'Algo no funciona', ico: 'alerta' },
+    dato: { txt: 'Un dato está mal', ico: 'tabla' },
+    mejora: { txt: 'Se podría mejorar', ico: 'lapiz' }
+  };
+  const OBS_ESTADOS = {
+    pendiente: ['warn', 'Por revisar'], aplicado: ['ok', 'Resuelta'], 'sin-cambios': ['', 'Sin cambios'],
+    reemplazado: ['', 'Repetida'], rechazado: ['', 'No se aplicará'], descartado: ['', 'Descartada']
+  };
+  const obs = {
+    lugar: null, herr: null, sinCaptura: false, donde: null, entorno: null, captura: null, fotoEnCurso: null, imagenes: [],
+    acceso: null, dir: null, enviando: false, aviso: null,
+    lista: [], leyendo: null, leido: 0, soloMias: false
+  };
+  const obsCorto = (s, max) => { const t = texto(s).replace(/\s+/g, ' '); return t.length > max ? t.slice(0, max - 1) + '…' : t; };
+
+  // ---- Dónde estaba la persona ---------------------------------------------------------------------------------------
+  function obsSelector(el) {
+    const partes = [];
+    for (let n = el, i = 0; n && n.nodeType === 1 && n.tagName !== 'HTML' && i < 6; n = n.parentElement, i++) {
+      if (n.id && /^[A-Za-z][\w-]*$/.test(n.id)) { partes.unshift('#' + n.id); break; }
+      let s = n.tagName.toLowerCase();
+      const clases = Array.from(n.classList).filter((c) => /^[A-Za-z_][\w-]*$/.test(c)).slice(0, 2);
+      if (clases.length) s += '.' + clases.join('.');
+      const hermanos = n.parentElement ? Array.from(n.parentElement.children).filter((x) => x.tagName === n.tagName) : [];
+      if (hermanos.length > 1) s += ':nth-of-type(' + (hermanos.indexOf(n) + 1) + ')';
+      partes.unshift(s);
+    }
+    return partes.join(' > ');
+  }
+  // El título más cercano: el del propio elemento o el último antes de él, subiendo por sus contenedores.
+  function obsSeccion(el) {
+    for (let n = el; n && n.tagName !== 'BODY' && n.tagName !== 'HTML'; n = n.parentElement) {
+      let vistos = 0;
+      for (let s = n; s && vistos < 40; s = s.previousElementSibling, vistos++) {
+        if (s.matches(OBS_TITULOS)) return obsCorto(s.textContent, 120);
+        if (s !== n) {
+          const dentro = s.querySelectorAll(OBS_TITULOS);
+          if (dentro.length) return obsCorto(dentro[dentro.length - 1].textContent, 120);
+        }
+      }
+    }
+    return '';
+  }
+  function obsElemento(foco, sinDatos) {
+    const salida = { selector: obsSelector(foco), etiqueta: foco.tagName.toLowerCase() };
+    const atributos = {};
+    ['id', 'name', 'role', 'type'].forEach((a) => { if (foco.getAttribute(a)) atributos[a] = obsCorto(foco.getAttribute(a), 80); });
+    if (!sinDatos) {
+      Array.from(foco.attributes).filter((a) => a.name.startsWith('data-')).slice(0, 6).forEach((a) => { atributos[a.name] = obsCorto(a.value, 80); });
+      const clave = foco.tagName === 'INPUT' && foco.type === 'password';
+      const valor = /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName) ? foco.value : foco.innerText || foco.textContent;
+      if (!clave && texto(valor)) salida.texto = obsCorto(valor, 200);
+      const titulo = foco.getAttribute('title') || foco.getAttribute('aria-label');
+      if (titulo) salida.titulo = obsCorto(titulo, 200);
+    }
+    if (Object.keys(atributos).length) salida.atributos = atributos;
+    return salida;
+  }
+  function obsPestanasInternas(doc) {
+    const vistas = [];
+    doc.querySelectorAll(OBS_PESTANAS).forEach((t) => {
+      const txt = obsCorto(t.textContent, 60);
+      if (txt && !t.closest('#pestanas') && t.getClientRects().length && !vistas.includes(txt)) vistas.push(txt);
+    });
+    return vistas.slice(0, 4);
+  }
+  function obsNavegador() {
+    const m = navigator.userAgent.match(/(Edg|Firefox|Chrome|Version)\/(\d+)/);
+    return m ? (m[1] === 'Version' ? 'Safari' : m[1] === 'Edg' ? 'Edge' : m[1]) + '/' + m[2] : '';
+  }
+  // La herramienta de un clic: la pestaña o el botón que se tocó, la del marco, o la pestaña activa.
+  function obsHerrDe(l) {
+    if (l.p) return l.p.herr;
+    const pest = l.el.closest('.pestana[data-familia]');
+    const tab = pest && pestanaDe(pest.dataset.familia);
+    if (tab) return tab.herr;
+    const lanzador = l.el.closest('[data-herr]');
+    if (lanzador && HERR.has(lanzador.dataset.herr)) return lanzador.dataset.herr;
+    const activa = pestanaDe(estado.activa);
+    return activa ? activa.herr : 'inicio';
+  }
+  function obsDonde() {
+    const l = obs.lugar;
+    const h = HERR.get(obs.herr);
+    const donde = { herramienta: obs.herr || 'portal', nombre: h ? h.nombre : 'El portal en general' };
+    const proyecto = proyectoActual();
+    if (proyecto) donde.proyecto = nombreProyecto(proyecto);
+    if (h && h.peru) donde.pais = estado.pais === 'pe' ? 'PE' : 'CL';
+    if (!l) { donde.ruta = [donde.nombre]; return donde; }
+    const activa = pestanaDe(estado.activa);
+    try { donde.direccion = l.p ? l.doc.defaultView.location.href : ctxConMarco(activa) ? ctxDireccion(activa) : location.href; } catch (e) { donde.direccion = location.href; }
+    donde.ruta = [donde.nombre].concat(obsPestanasInternas(l.doc));
+    const seccion = obsSeccion(l.foco);
+    if (seccion) donde.seccion = seccion;
+    const dlg = l.el.closest('dialog[open], [role="dialog"]');
+    const tit = dlg && dlg.querySelector('h1, h2, h3');
+    if (tit) donde.dialogo = obsCorto(tit.textContent, 120);
+    donde.elemento = obsElemento(l.foco, obs.sinCaptura);
+    if (l.seleccion && !obs.sinCaptura && !(l.campo && l.campo.type === 'password')) donde.seleccion = obsCorto(l.seleccion, 500);
+    donde.posicion = { x: Math.round(l.x), y: Math.round(l.y) };
+    return donde;
+  }
+  function obsEntorno() {
+    const l = obs.lugar;
+    const versiones = { portal: document.lastModified };
+    if (l && l.p) {
+      versiones.herramienta = l.doc.lastModified;
+      const d = l.doc.getElementById('vizGenerated');
+      if (d && /\d/.test(d.textContent)) versiones.datos = obsCorto(d.textContent, 80);
+    }
+    const w = (l && l.doc.defaultView) || window;
+    return {
+      ventana: { ancho: w.innerWidth, alto: w.innerHeight }, tema: oscuroAhora() ? 'oscuro' : 'claro',
+      navegador: obsNavegador(), movil: MOVIL.matches, versiones
+    };
+  }
+
+  // ---- La imagen de la pantalla, sin librerías ----------------------------------------------------------------------------
+  // La página se copia a un <svg><foreignObject>, se dibuja en un canvas y sale un PNG. Una imagen SVG no carga nada de afuera,
+  // así que las hojas de estilo y las imágenes van incrustadas en la copia. Lo que no alcanza (fuentes web, fondos con url(),
+  // lo sticky) queda parecido: sirve para ver dónde estaba la persona, no para imprimir.
+  function obsImagenADatos(o, doc, cache) {
+    const r = o.getBoundingClientRect();
+    if (!o.complete || !o.naturalWidth || !r.width) return null;
+    const ancho = Math.min(o.naturalWidth, Math.ceil(r.width * 2));
+    const clave = (o.currentSrc || o.src) + '|' + ancho;
+    if (cache.has(clave)) return cache.get(clave);
+    const k = doc.createElement('canvas');
+    k.width = ancho;
+    k.height = Math.max(1, Math.round(o.naturalHeight * ancho / o.naturalWidth));
+    k.getContext('2d').drawImage(o, 0, 0, k.width, k.height);
+    const url = k.toDataURL();
+    cache.set(clave, url);
+    return url;
+  }
+  // La copia se hace en el acto, antes de abrir la ventana de reportar; serializarla y dibujarla pueden esperar.
+  function obsCopiarPagina(doc) {
+    const raiz = doc.documentElement;
+    const orig = raiz.querySelectorAll('*');
+    if (orig.length > OBS_NODOS_MAX) throw new Error('página demasiado grande (' + orig.length + ' elementos)');
+    const w = doc.defaultView;
+    const clon = raiz.cloneNode(true);
+    const copia = clon.querySelectorAll('*');
+    const fuera = [];
+    const cache = new Map();
+    for (let i = 0; i < orig.length; i++) {
+      const o = orig[i], c = copia[i], tag = o.tagName;
+      if (/^(SCRIPT|NOSCRIPT|IFRAME|VIDEO|AUDIO|OBJECT|EMBED|TEMPLATE)$/.test(tag)) { fuera.push(c); continue; }
+      if (tag === 'LINK') {
+        if (!/stylesheet/i.test(o.rel)) { fuera.push(c); continue; }
+        let css = '';
+        try { css = Array.from(o.sheet.cssRules, (r) => r.cssText).join('\n'); } catch (e) { /* de otro sitio */ }
+        const s = doc.createElement('style');
+        s.textContent = css;
+        c.replaceWith(s);
+        continue;
+      }
+      if (tag === 'IMG') {
+        let url = null;
+        try { url = obsImagenADatos(o, doc, cache); } catch (e) { url = null; }
+        c.removeAttribute('srcset');
+        if (url) c.setAttribute('src', url); else c.removeAttribute('src');
+      } else if (tag === 'CANVAS') {
+        try {
+          const r = o.getBoundingClientRect();
+          const im = doc.createElement('img');
+          im.src = o.toDataURL();
+          if (o.id) im.id = o.id;
+          if (o.className) im.className = o.className;
+          im.style.cssText = (o.getAttribute('style') || '') + ';width:' + r.width + 'px;height:' + r.height + 'px';
+          c.replaceWith(im);
+        } catch (e) { /* dibujó algo de otro sitio: queda vacío */ }
+        continue;
+      } else if (tag === 'INPUT') {
+        // Una clave nunca sale de su campo, y lo oculto no se ve.
+        if (o.type === 'password' || o.type === 'hidden' || o.type === 'file') c.removeAttribute('value');
+        else if (o.type === 'checkbox' || o.type === 'radio') { if (o.checked) c.setAttribute('checked', ''); else c.removeAttribute('checked'); }
+        else c.setAttribute('value', o.value);
+      } else if (tag === 'TEXTAREA') {
+        c.textContent = o.value;
+      } else if (tag === 'SELECT') {
+        Array.from(c.options).forEach((op, n) => {
+          if (o.options[n] && o.options[n].selected) op.setAttribute('selected', ''); else op.removeAttribute('selected');
+        });
+      }
+      if (o.scrollTop || o.scrollLeft) {
+        Array.from(c.children).forEach((h) => { h.style.translate = (-o.scrollLeft) + 'px ' + (-o.scrollTop) + 'px'; });
+      }
+    }
+    fuera.forEach((c) => c.remove());
+    // Un comentario con «--» dejaría la copia sin poder leerse como XML.
+    const comentarios = doc.createTreeWalker(clon, 128);
+    const sobran = [];
+    while (comentarios.nextNode()) sobran.push(comentarios.currentNode);
+    sobran.forEach((c) => c.remove());
+    // La página desplazada: con position y no con transform, que movería también lo fijo.
+    const cuerpo = clon.querySelector('body');
+    if (cuerpo && (w.scrollX || w.scrollY)) {
+      cuerpo.style.position = 'relative';
+      cuerpo.style.top = (-w.scrollY) + 'px';
+      cuerpo.style.left = (-w.scrollX) + 'px';
+    }
+    const extra = doc.createElement('style');
+    extra.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}' +
+      'dialog[open]{position:fixed;inset:0;margin:auto;z-index:99999}';
+    clon.appendChild(extra);
+    const fondo = (e) => { const f = e ? w.getComputedStyle(e).backgroundColor : ''; return f && f !== 'rgba(0, 0, 0, 0)' && f !== 'transparent' ? f : ''; };
+    // Lo de <html> va también en la raíz del svg: ahí es donde :root[data-theme] encuentra el modo.
+    const atributos = Array.from(raiz.attributes).filter((a) => /^[A-Za-z_:][-\w:.]*$/.test(a.name) && a.name !== 'xmlns')
+      .map((a) => a.name + '="' + a.value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"').join(' ');
+    return { clon, atributos, ancho: w.innerWidth, alto: w.innerHeight, fondo: fondo(doc.body) || fondo(raiz) || '#ffffff' };
+  }
+  async function obsDibujable(pagina) {
+    const xml = new XMLSerializer().serializeToString(pagina.clon).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" ' + pagina.atributos + ' width="' + pagina.ancho + '" height="' + pagina.alto + '">' +
+      '<foreignObject x="0" y="0" width="100%" height="100%">' + xml + '</foreignObject></svg>';
+    const img = new Image();
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    await img.decode();
+    return img;
+  }
+  const obsBlob = (canvas, tipo, calidad) => new Promise((listo) => canvas.toBlob(listo, tipo, calidad));
+  async function obsRevelar(capas, marca) {
+    const base = capas[0].pagina;
+    const esc = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2, OBS_ANCHO_MAX / base.ancho);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(base.ancho * esc);
+    canvas.height = Math.round(base.alto * esc);
+    const g = canvas.getContext('2d');
+    for (const capa of capas) {
+      const img = await obsDibujable(capa.pagina);
+      g.fillStyle = capa.pagina.fondo;
+      g.fillRect(capa.x * esc, capa.y * esc, capa.pagina.ancho * esc, capa.pagina.alto * esc);
+      g.drawImage(img, capa.x * esc, capa.y * esc, capa.pagina.ancho * esc, capa.pagina.alto * esc);
+    }
+    g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--brand-orange').trim() || '#ff5100';
+    const r = marca.rect;
+    if (r.ancho * r.alto < base.ancho * base.alto * 0.5) {
+      g.lineWidth = 2 * esc;
+      g.setLineDash([6 * esc, 4 * esc]);
+      g.strokeRect((r.x - 2) * esc, (r.y - 2) * esc, (r.ancho + 4) * esc, (r.alto + 4) * esc);
+      g.setLineDash([]);
+    }
+    g.lineWidth = 4 * esc;
+    g.beginPath();
+    g.arc(marca.x * esc, marca.y * esc, 16 * esc, 0, Math.PI * 2);
+    g.stroke();
+    let blob = await obsBlob(canvas, 'image/png');
+    if (blob && blob.size > 2.5 * 1024 * 1024) blob = await obsBlob(canvas, 'image/jpeg', 0.85);
+    return blob;
+  }
+  // Se copia lo que se ve: la herramienta del clic o, si fue en el portal, el portal con la herramienta activa en su marco.
+  function obsSacarFoto(l) {
+    const capas = [];
+    try {
+      if (l.p) {
+        capas.push({ pagina: obsCopiarPagina(l.doc), x: 0, y: 0 });
+      } else {
+        capas.push({ pagina: obsCopiarPagina(document), x: 0, y: 0 });
+        const activa = pestanaDe(estado.activa);
+        if (ctxConMarco(activa) && activa.marco && !activa.cargando) {
+          try {
+            const m = activa.marco.getBoundingClientRect();
+            capas.push({ pagina: obsCopiarPagina(activa.marco.contentDocument), x: m.left, y: m.top });
+          } catch (e) { /* queda el portal, con el hueco del marco */ }
+        }
+      }
+    } catch (e) {
+      console.warn('Sin imagen de la pantalla:', e);
+      obs.captura = { falla: true };
+      return;
+    }
+    const esta = { enCurso: true };
+    obs.captura = esta;
+    const tiempo = new Promise((_, no) => setTimeout(() => no(new Error('tardó demasiado')), OBS_CAPTURA_MS));
+    const marca = { x: l.x, y: l.y, rect: l.rect };
+    const enCurso = new Promise((listo) => setTimeout(listo, 30))      // deja pintar la ventana primero
+      .then(() => Promise.race([obsRevelar(capas, marca), tiempo]))
+      .then((blob) => {
+        if (obs.captura !== esta) return;
+        if (!blob) throw new Error('sin imagen');
+        obs.captura = { blob, url: URL.createObjectURL(blob) };
+      })
+      .catch((e) => {
+        console.warn('Sin imagen de la pantalla:', e);
+        if (obs.captura === esta) obs.captura = { falla: true };
+      })
+      .then(() => {
+        if (obs.fotoEnCurso === enCurso) obs.fotoEnCurso = null;
+        if ($('#dlgObs').open) obsPintarFotos();
+      });
+    obs.fotoEnCurso = enCurso;
+  }
+  function obsQuitarCaptura() {
+    if (obs.captura && obs.captura.url) URL.revokeObjectURL(obs.captura.url);
+    obs.captura = null;
+  }
+
+  // ---- La ventana de reportar -------------------------------------------------------------------------------------------
+  function obsLineaDonde() {
+    const d = obs.donde;
+    if (!d) return '';
+    const partes = (d.ruta || []).slice();
+    if (d.dialogo) partes.push(d.dialogo);
+    else if (d.seccion && !partes.includes(d.seccion)) partes.push(d.seccion);
+    const e = d.elemento;
+    const que = e && (e.texto || e.titulo);
+    return partes.join(' › ') + (que ? ' · «' + obsCorto(que, 60) + '»' : '');
+  }
+  function obsLlenarHerramientas() {
+    const s = $('#obsHerr');
+    if (s.options.length) return;
+    const op = (v, t) => { const o = crear('option', null, t); o.value = v; s.append(o); };
+    op('portal', 'El portal en general');
+    REG.herramientas.filter((h) => h.tipo !== 'inicio' && !h.alias && h.id !== 'observaciones').forEach((h) => op(h.id, h.nombre));
+  }
+  function obsLlenarQuien() {
+    const s = $('#obsQuien');
+    if (!s.options.length) {
+      const o = crear('option', null, 'Sin indicar');
+      o.value = '';
+      s.append(o);
+      PERSONAL.forEach((p) => { const x = crear('option', null, p); x.value = p; s.append(x); });
+    }
+    s.value = estado.usuario || '';
+  }
+  // Una herramienta sin captura lo es también si es la que se ve detrás, aunque el clic haya sido en el portal.
+  function obsSinCaptura() {
+    const activa = pestanaDe(estado.activa);
+    const de = (id) => !!(HERR.get(id) || {}).sinCaptura;
+    return de(obs.herr) || (!!obs.lugar && !!activa && de(activa.herr));
+  }
+  // Se abre con un clic derecho (l), o desde un botón: entonces se pregunta de qué herramienta se trata.
+  function obsAbrir(l) {
+    const dlg = $('#dlgObs');
+    if (dlg.open) return;
+    obs.lugar = l || null;
+    obsQuitarCaptura();
+    obs.aviso = null;
+    obs.acceso = null;
+    if (l) {
+      obs.herr = obsHerrDe(l);
+    } else {
+      obsLlenarHerramientas();
+      const activa = pestanaDe(estado.activa);
+      $('#obsHerr').value = activa && activa.herr !== 'observaciones' ? activa.herr : 'portal';
+      obs.herr = $('#obsHerr').value;
+    }
+    obs.sinCaptura = obsSinCaptura();
+    // Se fija ahora: mientras se escribe, la herramienta de atrás puede recargarse.
+    obs.donde = l ? obsDonde() : null;
+    obs.entorno = obsEntorno();
+    $('#obsHerrCampo').hidden = !!l;
+    if (l && !obs.sinCaptura && typeof window.showDirectoryPicker === 'function') obsSacarFoto(l);
+    obsLlenarQuien();
+    obsPintarLugar();
+    obsPintarFotos();
+    obsPintarAcceso();
+    dlg.showModal();
+    if (!window.matchMedia('(pointer: coarse)').matches) $('#obsNota').focus();
+    obsPreparar();
+  }
+  function obsPintarLugar() {
+    const linea = obsLineaDonde();
+    $('#obsDonde').textContent = linea;
+    $('#obsDonde').hidden = !linea;
+    $('#obsSinCaptura').hidden = !obs.sinCaptura;
+    $('#obsZonaImagen').hidden = obs.sinCaptura || typeof window.showDirectoryPicker !== 'function';
+    if (obs.sinCaptura) {
+      obs.imagenes.forEach((i) => URL.revokeObjectURL(i.url));
+      obs.imagenes = [];
+      obsQuitarCaptura();
+    }
+  }
+  function obsTarjetaFoto(url, pie, quitar) {
+    const f = crear('figure', 'obs-foto');
+    const b = crear('button', 'obs-foto-ver');
+    b.type = 'button';
+    b.title = 'Ver más grande';
+    b.setAttribute('aria-label', 'Ver más grande: ' + pie);
+    const im = crear('img');
+    im.src = url;
+    im.alt = pie;
+    b.append(im);
+    b.addEventListener('click', () => f.classList.toggle('grande'));
+    const x = crear('button', 'obs-foto-x');
+    x.type = 'button';
+    x.title = 'Quitar';
+    x.setAttribute('aria-label', 'Quitar ' + pie);
+    x.append(icono('cerrar', 14));
+    x.addEventListener('click', () => { quitar(); obsPintarFotos(); });
+    f.append(b, x, crear('figcaption', null, pie));
+    return f;
+  }
+  function obsPintarFotos() {
+    const cont = $('#obsFotos');
+    cont.textContent = '';
+    const c = obs.captura;
+    if (c && c.enCurso) cont.append(crear('div', 'obs-foto obs-foto-nota', 'Sacando la imagen de la pantalla…'));
+    if (c && c.url) cont.append(obsTarjetaFoto(c.url, 'Imagen de la pantalla', obsQuitarCaptura));
+    obs.imagenes.forEach((i, n) => {
+      cont.append(obsTarjetaFoto(i.url, i.file.name || 'Imagen pegada', () => { URL.revokeObjectURL(i.url); obs.imagenes.splice(n, 1); }));
+    });
+    $('#obsAgregar').hidden = obs.imagenes.length >= OBS_IMAGENES_MAX;
+    $('#obsSinFoto').hidden = !(c && c.falla);
+  }
+  function obsAgregarImagenes(lista) {
+    if (obs.sinCaptura) return;
+    const malas = [];
+    Array.from(lista || []).forEach((f) => {
+      if (!OBS_TIPOS_IMAGEN[f.type]) { malas.push((f.name || 'la imagen') + ' (solo PNG o JPG)'); return; }
+      if (!f.size || f.size > OBS_IMAGEN_BYTES) { malas.push((f.name || 'la imagen') + ' (hasta 10 MB)'); return; }
+      if (obs.imagenes.length >= OBS_IMAGENES_MAX) { malas.push((f.name || 'la imagen') + ' (hasta ' + OBS_IMAGENES_MAX + ')'); return; }
+      obs.imagenes.push({ file: f, url: URL.createObjectURL(f) });
+    });
+    obs.aviso = malas.length ? 'No se agregó: ' + malas.join('; ') + '.' : null;
+    obsPintarFotos();
+    obsPintarAcceso();
+  }
+  // Qué se puede hacer desde este navegador: enviar, pedir permiso al enviar, conectar la biblioteca o, sin carpetas, copiar el reporte.
+  async function obsPreparar() {
+    if (typeof window.showDirectoryPicker !== 'function') { obs.acceso = 'navegador'; obs.dir = null; obsPintarAcceso(); return; }
+    let c = {};
+    try { c = await leerCarpetas(); } catch (e) { c = {}; }
+    rc.carpetas = c;
+    if (!c.intercambio) { obs.acceso = 'conectar'; obs.dir = null; obsPintarAcceso(); return; }
+    obs.dir = await intercambioLegible(c);
+    obs.acceso = obs.dir ? 'listo' : 'permiso';
+    obsPintarAcceso();
+  }
+  function obsPintarAcceso() {
+    const a = obs.acceso;
+    const info = $('#obsAcceso');
+    const enviar = $('#obsEnviar');
+    $('#obsConectar').hidden = a !== 'conectar';
+    $('#obsCompartir').hidden = !(a === 'navegador' && typeof navigator.share === 'function');
+    let txt = obs.aviso || '';
+    if (!txt && a === 'conectar') txt = 'Para enviarla, conecta una vez la biblioteca «' + BIBLIOTECA_FORMULACION + '» en este navegador: es la carpeta por donde viaja.';
+    if (!txt && a === 'permiso') txt = 'Al enviar, el navegador pedirá permiso para escribir en la carpeta del equipo: elige «Ver y editar archivos».';
+    if (!txt && a === 'navegador') txt = 'Este navegador no puede escribir en la carpeta del equipo. Copia el reporte y mándaselo a quien mantiene el portal, o envíalo desde Chrome o Edge de escritorio.';
+    info.textContent = txt;
+    info.hidden = !txt;
+    info.classList.toggle('mal', !!obs.aviso);
+    enviar.disabled = obs.enviando || !a || a === 'conectar';
+    enviar.textContent = obs.enviando ? 'Enviando…' : a === 'navegador' ? 'Copiar el reporte' : 'Enviar';
+  }
+  function obsLimpiar() {
+    $('#obsNota').value = '';
+    $('#obsBloquea').checked = false;
+    document.querySelector('input[name="obsClase"]').checked = true;
+    obs.imagenes.forEach((i) => URL.revokeObjectURL(i.url));
+    obs.imagenes = [];
+    obsQuitarCaptura();
+    obs.aviso = null;
+  }
+  const obsClaseElegida = () => document.querySelector('input[name="obsClase"]:checked').value;
+  function obsMensaje(id, enviado, adjuntos) {
+    const origen = { herramienta: 'portal', enviado };
+    const quien = $('#obsQuien').value;
+    if (quien) origen.usuario = quien;
+    const msg = {
+      esquema: 'quempin.intercambio/1', id, tipo: 'observacion', destino: 'mejora-continua', origen,
+      clase: obsClaseElegida(), nota: $('#obsNota').value.trim(), donde: obs.donde || obsDonde(), entorno: obs.entorno
+    };
+    if ($('#obsBloquea').checked) msg.bloquea = true;
+    if (adjuntos.length) msg.adjuntos = adjuntos;
+    return msg;
+  }
+  function obsTextoReporte() {
+    const m = obsMensaje('', scAhora(), []);
+    const d = m.donde;
+    return ['Observación para el Portal QUEMPIN', OBS_CLASES[m.clase].txt + (m.bloquea ? ' · me impide seguir trabajando' : ''), m.nota, '',
+      'Dónde: ' + (d.ruta || [d.nombre]).join(' › '), d.seccion ? 'Sección: ' + d.seccion : '', d.dialogo ? 'Ventana: ' + d.dialogo : '',
+      d.elemento && d.elemento.texto ? 'Elemento: ' + d.elemento.texto : '', d.direccion ? 'Dirección: ' + d.direccion : '',
+      m.origen.usuario ? 'Quién: ' + m.origen.usuario : '', 'Cuándo: ' + m.origen.enviado].filter((x, i) => x || i === 3).join('\n');
+  }
+  function obsCopiarReporte() {
+    const mal = () => { obs.aviso = 'El navegador no dejó copiar. Selecciona el texto de la nota y cópialo.'; obsPintarAcceso(); };
+    try {
+      navigator.clipboard.writeText(obsTextoReporte()).then(() => {
+        $('#dlgObs').close();
+        obsLimpiar();
+        avisar('Reporte copiado: pégalo en un mensaje a quien mantiene el portal.');
+      }, mal);
+    } catch (e) { mal(); }
+  }
+  async function obsArchivosFinales() {
+    if (obs.fotoEnCurso) await obs.fotoEnCurso;
+    const archivos = [];
+    if (obs.captura && obs.captura.blob) {
+      const b = obs.captura.blob;
+      archivos.push({ nombre: 'captura.' + (OBS_TIPOS_IMAGEN[b.type] || 'png'), blob: b, origen: 'captura' });
+    }
+    obs.imagenes.forEach((i, n) => archivos.push({ nombre: 'imagen-' + (n + 1) + '.' + OBS_TIPOS_IMAGEN[i.file.type], blob: i.file, origen: 'pegada' }));
+    return archivos;
+  }
+  // Las imágenes primero y el mensaje al final: nadie lo ve antes de que estén escritas.
+  async function obsEnviar(ev) {
+    if (ev) ev.preventDefault();
+    if (obs.enviando) return;
+    if ($('#obsNota').value.trim().length < 3) {
+      obs.aviso = 'Cuenta en pocas palabras qué pasó o qué se podría mejorar.';
+      obsPintarAcceso();
+      $('#obsNota').focus();
+      return;
+    }
+    if (obs.acceso === 'navegador') { obsCopiarReporte(); return; }
+    if (obs.acceso === 'conectar') return;
+    obs.aviso = null;
+    obs.enviando = true;
+    obsPintarAcceso();
+    try {
+      if (obs.acceso !== 'listo') {
+        const h = rc.carpetas && (rc.carpetas.biblioteca || rc.carpetas.intercambio);
+        if (h) await h.requestPermission({ mode: 'readwrite' });   // sin esperas antes: el navegador solo pregunta si viene del clic
+        obs.dir = await intercambioLegible(rc.carpetas || {});
+        if (!obs.dir) throw Object.assign(new Error('sin permiso'), { name: 'NotAllowedError' });
+        obs.acceso = 'listo';
+      }
+      const id = scId();
+      const buzon = await obs.dir.getDirectoryHandle('buzon', { create: true });
+      const archivos = await obsArchivosFinales();
+      const adjuntos = [];
+      if (archivos.length) {
+        const carpeta = await (await buzon.getDirectoryHandle('adjuntos', { create: true })).getDirectoryHandle(id, { create: true });
+        for (const a of archivos) {
+          const datos = await a.blob.arrayBuffer();
+          const h = await carpeta.getFileHandle(a.nombre, { create: true });
+          const w = await h.createWritable();
+          await w.write(datos);
+          await w.close();
+          adjuntos.push({ nombre: a.nombre, bytes: datos.byteLength, sha256: await scSha(datos), origen: a.origen });
+        }
+      }
+      const enviado = scAhora();
+      const msg = obsMensaje(id, enviado, adjuntos);
+      const nombre = enviado.slice(0, 19).replace(/[-:]/g, '').replace('T', '-') + '_portal_observacion_' + id + '.json';
+      const h = await buzon.getFileHandle(nombre, { create: true });
+      const w = await h.createWritable();
+      await w.write(JSON.stringify(msg, null, 1));
+      await w.close();
+      obs.lista.unshift(obsFicha(msg, nombre, true));
+      $('#dlgObs').close();
+      obsLimpiar();
+      avisar('Gracias: tu observación quedó registrada y se revisará.', { texto: 'Ver las observaciones', ir: () => abrir('observaciones') });
+      if (!$('#vistaObservaciones').hidden) obsPintar();
+    } catch (err) {
+      console.error(err);
+      const permiso = !!err && err.name === 'NotAllowedError';
+      obs.aviso = 'No se pudo enviar: ' + (permiso ? 'falta el permiso para escribir en la carpeta del equipo.' : 'revisa que OneDrive esté funcionando y vuelve a intentarlo. Lo que escribiste sigue aquí.');
+      if (permiso) obs.acceso = 'permiso';
+    } finally {
+      obs.enviando = false;
+      if ($('#dlgObs').open) obsPintarAcceso();
+    }
+  }
+  $('#obsForm').addEventListener('submit', obsEnviar);
+  $('#obsNota').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); obsEnviar(); }
+  });
+  $('#obsNota').addEventListener('input', () => { if (obs.aviso) { obs.aviso = null; obsPintarAcceso(); } });
+  // Cerrar con ✕ o Escape guarda lo escrito hasta la próxima vez; Cancelar lo borra.
+  $('#obsX').addEventListener('click', () => $('#dlgObs').close());
+  $('#obsCancelar').addEventListener('click', () => { $('#dlgObs').close(); obsLimpiar(); });
+  $('#dlgObs').addEventListener('click', (e) => e.stopPropagation());
+  $('#obsConectar').addEventListener('click', async () => { await conectarBiblioteca(); await obsPreparar(); rcCargar(); });
+  $('#obsCompartir').addEventListener('click', () => {
+    navigator.share({ title: 'Observación para el Portal QUEMPIN', text: obsTextoReporte() }).then(() => { $('#dlgObs').close(); obsLimpiar(); }, () => { /* no la compartió */ });
+  });
+  $('#obsHerr').addEventListener('change', () => {
+    obs.herr = $('#obsHerr').value;
+    obs.sinCaptura = obsSinCaptura();
+    obsPintarLugar();
+    obsPintarFotos();
+  });
+  $('#obsArchivo').addEventListener('change', (e) => { obsAgregarImagenes(e.target.files); e.target.value = ''; });
+  $('#dlgObs').addEventListener('paste', (e) => {
+    const imagenes = Array.from((e.clipboardData && e.clipboardData.files) || []).filter((f) => f.type.startsWith('image/'));
+    if (!imagenes.length || obs.sinCaptura) return;
+    e.preventDefault();
+    obsAgregarImagenes(imagenes);
+  });
+  $('#dlgObs').addEventListener('dragover', (e) => { if (!obs.sinCaptura) e.preventDefault(); });
+  $('#dlgObs').addEventListener('drop', (e) => {
+    if (obs.sinCaptura || !e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    obsAgregarImagenes(e.dataTransfer.files);
+  });
+  Object.entries(OBS_CLASES).forEach(([id, c], i) => {
+    const l = crear('label', 'obs-clase');
+    const r = crear('input');
+    r.type = 'radio';
+    r.name = 'obsClase';
+    r.value = id;
+    r.checked = !i;
+    l.append(r, icono(c.ico, 17), crear('span', null, c.txt));
+    $('#obsClases').append(l);
+  });
+  $('#obsAgregarIco').append(icono('mas', 18));
+
+  // ---- La vista: lo reportado y qué pasó con cada cosa --------------------------------------------------------------------
+  function obsFicha(m, archivo, pendiente) {
+    const r = m.resultado || {};
+    const d = m.donde && typeof m.donde === 'object' ? m.donde : {};
+    return {
+      id: texto(m.id), archivo, enviado: texto(m.origen && m.origen.enviado), usuario: texto(m.origen && m.origen.usuario),
+      clase: texto(m.clase), nota: texto(m.nota), bloquea: !!m.bloquea,
+      lugar: (Array.isArray(d.ruta) && d.ruta.length ? d.ruta.map(texto) : [texto(d.nombre) || texto(d.herramienta)]).filter(Boolean).join(' › '),
+      n: Array.isArray(m.adjuntos) ? m.adjuntos.length : 0,
+      estado: pendiente ? 'pendiente' : texto(r.estado), detalle: Array.isArray(r.detalle) ? r.detalle.map(texto).filter(Boolean) : []
+    };
+  }
+  async function obsLeer(dir) {
+    const fichas = new Map();
+    const leer = async (carpeta, pendiente) => {
+      if (!carpeta) return;
+      try {
+        for await (const [n, h] of carpeta.entries()) {
+          if (h.kind !== 'file' || !OBS_ARCHIVO.test(n)) continue;
+          let m;
+          try { m = JSON.parse(rcSinBom(await (await h.getFile()).text())); } catch (e) { continue; }
+          if (!m || m.tipo !== 'observacion') continue;
+          fichas.set(texto(m.id), obsFicha(m, n, pendiente));     // el mismo id en procesado manda: se lee después
+        }
+      } catch (e) { /* sin permiso o a medio sincronizar */ }
+    };
+    await leer(await rcSub(dir, 'buzon'), true);
+    const hoy = new Date();
+    for (let i = OBS_MESES - 1; i >= 0; i--) {
+      const f = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      await leer(await rcSub(dir, 'procesado', f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0')), false);
+    }
+    return Array.from(fichas.values());
+  }
+  function obsAlMostrar() {
+    if (!rc.leyendo && (!rc.dir || !rc.leido || Date.now() - rc.leido > RC_RELEER_SEG * 1000)) rcCargar();   // al terminar llama a obsAlRecorrido
+    else if (rc.dir) obsCargar();
+    obsPintar();
+  }
+  function obsAlRecorrido() {
+    if ($('#vistaObservaciones').hidden) return;
+    if (rc.dir) obsCargar(); else obsPintar();
+  }
+  function obsCargar() {
+    if (obs.leyendo) return obs.leyendo;
+    const dir = rc.dir;
+    if (!dir) return Promise.resolve();
+    obs.leyendo = obsLeer(dir).then((lista) => { obs.lista = lista; obs.leido = Date.now(); }).catch((e) => { console.error(e); }).then(() => {
+      obs.leyendo = null;
+      obsPintar();
+    });
+    return obs.leyendo;
+  }
+  function obsPintar() {
+    const hay = !!rc.dir;
+    $('#obsLeyendo').hidden = hay || !rc.leyendo;
+    $('#obsContenido').hidden = !hay;
+    $('#obsVacio').hidden = hay || !!rc.leyendo || !rc.sinDatos;
+    if (!hay && !rc.leyendo && rc.sinDatos) {
+      pintarSinCarpeta($('#obsVacio'), rc.sinDatos, {
+        navegador: 'Las observaciones viajan por la carpeta del equipo, y este navegador no puede abrir carpetas del computador. Igual puedes reportar: «Reportar», arriba, deja el reporte listo para copiarlo y mandarlo por mensaje.',
+        conectar: 'Las observaciones viajan por la carpeta de intercambio. Conecta una vez la biblioteca «' + BIBLIOTECA_FORMULACION + '» en este navegador (la misma conexión del Formulador) y acepta «Ver y editar archivos».'
+      });
+    }
+    if (!hay) return;
+    const mias = !!estado.usuario && obs.soloMias;
+    $('#obsMiasQuien').textContent = estado.usuario;
+    $('#obsMiasQuien').hidden = !estado.usuario;
+    $('#obsMias').disabled = !estado.usuario;
+    $('#obsMias').checked = mias;
+    const lista = obs.lista.filter((o) => !mias || o.usuario === estado.usuario).sort((a, b) =>
+      (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1) || b.enviado.localeCompare(a.enviado));
+    const por = lista.filter((o) => o.estado === 'pendiente').length;
+    $('#obsCuenta').textContent = lista.length ? por + ' por revisar de ' + pl(lista.length, 'observación', 'observaciones') : '';
+    const ul = $('#obsLista');
+    ul.textContent = '';
+    if (!lista.length) {
+      ul.append(crear('li', 'obs-fila obs-fila-vacia', obs.leyendo ? 'Leyendo…' : mias ? 'Todavía no has reportado nada.' : 'Todavía no hay observaciones. Con clic derecho, en cualquier pantalla, puedes reportar un error o una idea.'));
+      return;
+    }
+    lista.forEach((o) => ul.append(obsFila(o)));
+  }
+  function obsFila(o) {
+    const li = crear('li', 'obs-fila');
+    const cab = crear('div', 'obs-fila-cab');
+    const [nivel, txt] = Object.hasOwn(OBS_ESTADOS, o.estado) ? OBS_ESTADOS[o.estado] : ['', o.estado || 'Revisada'];
+    const pill = crear('span', 'sc-pill', txt);
+    if (nivel) pill.dataset.nivel = nivel;
+    cab.append(pill);
+    if (Object.hasOwn(OBS_CLASES, o.clase)) cab.append(crear('span', 'obs-fila-clase', OBS_CLASES[o.clase].txt));
+    if (o.bloquea && o.estado === 'pendiente') cab.append(crear('span', 'obs-fila-bloquea', 'Impide trabajar'));
+    li.append(cab, crear('p', 'obs-fila-nota', o.nota));
+    const fecha = o.enviado ? new Date(o.enviado) : null;
+    const cuando = fecha && !isNaN(fecha) ? fecha.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    li.append(crear('span', 'sc-env-det', [o.lugar, o.usuario, cuando, o.n ? pl(o.n, 'imagen', 'imágenes') : ''].filter(Boolean).join(' · ')));
+    if (o.detalle.length) {
+      const res = crear('p', 'obs-fila-res');
+      res.append(crear('strong', null, 'Respuesta: '), o.detalle.join(' '));
+      li.append(res);
+    }
+    if (o.estado === 'pendiente' && estado.usuario && o.usuario === estado.usuario) {
+      const b = crear('button', 'cx-enlace obs-retirar', 'Retirar');
+      b.type = 'button';
+      b.addEventListener('click', () => obsRetirar(o, b));
+      li.append(b);
+    }
+    return li;
+  }
+  // El mensaje se borra primero, para que nunca quede uno esperando imágenes que ya no van a llegar.
+  async function obsRetirar(o, b) {
+    if (b.dataset.seguro !== 'si') {
+      b.dataset.seguro = 'si';
+      b.textContent = '¿Retirarla? Toca otra vez';
+      setTimeout(() => { if (b.isConnected) { b.dataset.seguro = ''; b.textContent = 'Retirar'; } }, 5000);
+      return;
+    }
+    b.disabled = true;
+    try {
+      const buzon = await rc.dir.getDirectoryHandle('buzon');
+      await buzon.removeEntry(o.archivo);
+      const delArchivo = OBS_ARCHIVO.exec(o.archivo)[1];
+      try { await (await buzon.getDirectoryHandle('adjuntos')).removeEntry(delArchivo, { recursive: true }); } catch (e) { /* no llevaba imágenes */ }
+      obs.lista = obs.lista.filter((x) => x.id !== o.id);
+      avisar('Se retiró tu observación.');
+    } catch (err) {
+      console.error(err);
+      avisar('No se pudo retirar: ' + (err && err.name === 'NotAllowedError' ? 'falta el permiso para escribir en la carpeta del equipo.' : 'revisa que OneDrive esté funcionando y vuelve a intentarlo.'));
+      b.disabled = false;
+    }
+    obsPintar();
+  }
+  $('#obsActualizar').append(icono('recargar', 16));
+  $('#obsActualizar').addEventListener('click', () => {
+    if (rc.sinDatos === 'permiso') { rcPedirPermiso(); return; }
+    rcCargar();
+  });
+  $('#obsMias').addEventListener('change', (e) => { obs.soloMias = e.target.checked; obsPintar(); });
+  $('#obsNueva').addEventListener('click', () => obsAbrir(null));
+  $('#iniObs').addEventListener('click', () => obsAbrir(null));
 
   // ---- Tema ----------------------------------------------------------------------------------------
   function oscuroAhora() {
@@ -13106,18 +14257,11 @@
 
   $('#btnRecargar').addEventListener('click', () => {
     const p = pestanaDe(estado.activa);
-    const w = ventanaDe(p);
-    if (!w) return;
-    p.cargando = true;
-    if (p.cargador) p.cargador.hidden = false;
-    try { w.location.reload(); } catch (e) { p.marco.src = p.ultima || p.url; }
+    if (p) ctxRecargar(p);
   });
   $('#btnAparte').addEventListener('click', () => {
     const p = pestanaDe(estado.activa);
-    if (!p) return;
-    let href = p.ultima || p.url;
-    try { const w = ventanaDe(p); if (w && w.location.href !== 'about:blank') href = w.location.href; } catch (e) { /* la pedida */ }
-    $('#btnAparte').href = new URL(href, location.href).href;
+    if (p) $('#btnAparte').href = ctxDireccion(p);
   });
 
   window.addEventListener('storage', (e) => {
