@@ -79,7 +79,11 @@
           },
           "grupo": {
             "type": "string",
-            "description": "costo: las cotizaciones para lo mismo comparten grupo (el id de la primera); se simula una a la vez"
+            "description": "costo: las cotizaciones de un mismo ítem, una por proveedor, comparten grupo (el id de la primera); se simula una a la vez"
+          },
+          "elegida": {
+            "type": "boolean",
+            "description": "costo: el proveedor elegido en el menú de la fila de su ítem, aunque no se simule"
           },
           "oc": {
             "type": "string",

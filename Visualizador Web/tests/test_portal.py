@@ -3893,6 +3893,16 @@ def _esperar_kpi(pagina, etiqueta, valor):
         k.querySelector('.ej-kpi-et').textContent === e && k.querySelector('.ej-kpi-v').textContent === v)""", arg=[etiqueta, valor])
 
 
+def _prov(pagina, n=0):
+    """La tarjeta del proveedor n en el diálogo de un ítem."""
+    return pagina.locator("#ejCProvs .ej-prov-fila").nth(n)
+
+
+def _escribir_prov(pagina, n, proveedor, precio):
+    _prov(pagina, n).locator(".ej-p-prov input").fill(proveedor)
+    _prov(pagina, n).locator(".ej-p-precio input").fill(precio)
+
+
 def _esperar_aviso(pagina, comienzo):
     pagina.wait_for_function("(c) => document.getElementById('aviso').textContent.startsWith(c)", arg=comienzo)
 
@@ -3963,8 +3973,7 @@ def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
     pagina.locator("#ejProyecto .ej-compras .cx-boton").click()
     pagina.locator("#dlgEjCosto").wait_for()
     pagina.locator("#ejCDesc").fill("Estanque inoxidable 100 L")
-    pagina.locator("#ejCProv").fill("Inox Demo")
-    pagina.locator("#ejCPrecio").fill("950.000")
+    _escribir_prov(pagina, 0, "Inox Demo", "950.000")
     evaluacion = pagina.locator("#ejCEval").inner_text()
     assert "Total $950.000 sin IVA" in evaluacion
     assert "materiales se pasa del presupuesto en $370.000" in evaluacion
@@ -3985,36 +3994,242 @@ def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
     fila = lambda i: pagina.locator(f'#ejProyecto .ej-tabla tr[data-id="{i}"]')
     fila(it["id"]).locator(".ej-c-sim input").uncheck()
     _esperar_kpi(pagina, "Margen estimado", "33 %")
-    # Otra cotización para lo mismo, más barata: entra sin simular, para compararlas
-    fila(it["id"]).locator('.ej-ico[title^="Otra cotización"]').click()
+    # Otro proveedor para lo mismo, más barato, desde el menú de la fila: se evalúa al marcarlo «Elegir»
+    fila(it["id"]).locator(".ej-prov").select_option(label="+ Agregar otro proveedor…")
     pagina.locator("#dlgEjCosto").wait_for()
-    pagina.locator("#ejCProv").fill("Otro Inox")
-    pagina.locator("#ejCPrecio").fill("700.000")
+    _escribir_prov(pagina, 1, "Otro Inox", "700.000")
+    assert "36 % más cara que la de Otro Inox ($700.000)" in pagina.locator("#ejCEval").inner_text()
+    _prov(pagina, 1).locator(".ej-p-el").check()
     evaluacion = pagina.locator("#ejCEval").inner_text()
     assert "La más conveniente de las 2 cotizaciones" in evaluacion
     if _con_formulador_js("calc.js"):
         # Más barata que su línea: si materiales igual se pasa, es por lo ya gastado; se revisa, no es «No conviene»
         assert "13 % más barata" in evaluacion and "ya van $420.000 de $1.000.000" in evaluacion
         assert pagina.locator("#ejCEval .ej-eval-chip").inner_text() == "Revisar"
+    _prov(pagina, 0).locator(".ej-p-el").check()
     pagina.locator("#ejCGuardar").click()
     sobre = _esperar_archivo(pagina, EJ, lambda s: len(s["datos"]["items"]) == 2)
     por = {x["proveedor"]: x for x in sobre["datos"]["items"]}
     assert por["Otro Inox"]["grupo"] == por["Inox Demo"]["grupo"] == por["Inox Demo"]["id"]
     assert por["Otro Inox"]["simular"] is False
-    # Simular la más barata: materiales llega a $1.120.000 y el margen a 30 %
+    # Sigue el elegido; elegir el más barato no simula lo que no se simulaba
+    fila(it["id"]).locator(".ej-prov").select_option(label="Otro Inox · $700.000")
+    fila(por["Otro Inox"]["id"]).wait_for()
+    _esperar_kpi(pagina, "Margen estimado", "33 %")
+    # Simularlo: materiales llega a $1.120.000 y el margen a 30 %
     fila(por["Otro Inox"]["id"]).locator(".ej-c-sim input").check()
     _esperar_kpi(pagina, "Margen estimado", "30 %")
     # Aprobarla descarta la otra; Ctrl Z lo deshace
     fila(por["Otro Inox"]["id"]).locator(".ej-estado").select_option("aprobada")
     estados = lambda s: {x["proveedor"]: x["estado"] for x in s["datos"]["items"]}
     _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Otro Inox": "aprobada", "Inox Demo": "descartada"})
-    # La descartada sale de «Por decidir y aprobadas»; en «Todas» se ve, tachada y fuera del costo
+    # Una fila por ítem; la descartada sigue en su menú, como alternativa
     assert fila(por["Inox Demo"]["id"]).count() == 0
-    pagina.locator("#ejProyecto .ej-filtro", has_text="Todas").click()
-    assert "fuera" in fila(por["Inox Demo"]["id"]).get_attribute("class")
+    assert fila(por["Otro Inox"]["id"]).locator(".ej-prov option").all_inner_texts()[:2] == ["Otro Inox · $700.000", "Inox Demo · $950.000"]
     pagina.locator("#tituloEjecucion").click()
     pagina.keyboard.press("Control+z")
     _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Otro Inox": "evaluar", "Inox Demo": "evaluar"})
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_item_con_varios_proveedores_se_compara_y_se_elige_en_la_tabla(navegador, sitio):
+    """Pedido del usuario (2026-10-30): al agregar un ítem, distintos proveedores; en la tabla, una columna con un menú con el
+    nombre y el valor de cada uno, para comparar las cotizaciones y elegir el mejor."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejProyecto .ej-compras .cx-boton").click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    # Con un proveedor es un formulario simple, sin «Elegir» ni ✕
+    assert pagina.locator("#ejCProvs .ej-prov-cab").is_hidden()
+    pagina.locator("#ejCDesc").fill("Estanque inoxidable 100 L")
+    pagina.locator("#ejCCant").fill("2")
+    _escribir_prov(pagina, 0, "Inox Caro", "475.000")
+    pagina.locator("#ejCOtroProv").click()
+    assert pagina.evaluate("document.activeElement.closest('.ej-p-prov') !== null"), "el foco va al proveedor nuevo"
+    # El IVA es de cada proveedor: se guarda sin IVA. Un ítem nuevo elige solo al más barato
+    _escribir_prov(pagina, 1, "Inox Barato", "416.500")
+    _prov(pagina, 1).locator(".ej-p-iva input").check()
+    assert _prov(pagina, 1).locator(".ej-p-el").is_checked()
+    assert _prov(pagina, 1).locator(".ej-prov-dif").inner_text() == "El más barato"
+    assert _prov(pagina, 0).locator(".ej-prov-dif").inner_text() == "$250.000 más (36 %)"
+    assert "Total $700.000 sin IVA · Inox Barato" in pagina.locator("#ejCEval").inner_text()
+    # Un tercero en blanco no cuenta, y uno con nombre sin precio se pide
+    pagina.locator("#ejCOtroProv").click()
+    _prov(pagina, 2).locator(".ej-p-prov input").fill("Sin Precio")
+    pagina.locator("#ejCGuardar").click()
+    assert "Escribe el precio unitario de Sin Precio" in pagina.locator("#ejCostoPista").inner_text()
+    _prov(pagina, 2).locator(".ej-p-prov input").fill("")
+    pagina.locator("#ejCGuardar").click()
+    pagina.locator("#dlgEjCosto").wait_for(state="hidden")
+
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(s["datos"]["items"]) == 2)
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    por = {x["proveedor"]: x for x in sobre["datos"]["items"]}
+    barato, caro = por["Inox Barato"], por["Inox Caro"]
+    assert barato["grupo"] == caro["grupo"] == caro["id"] and barato["precio"] == 350000 and barato["cantidad"] == caro["cantidad"] == 2
+    assert (barato["elegida"], barato["simular"], caro["elegida"], caro["simular"]) == (True, True, False, False)
+    _esperar_kpi(pagina, "Margen estimado", "30 %")
+
+    # Una sola fila, con el menú: de más barato a más caro, con su valor
+    filas = pagina.locator("#ejProyecto .ej-tabla > tbody > tr")
+    menu = lambda: filas.locator(".ej-prov")
+    tot = lambda: filas.locator(".ej-c-tot").inner_text()
+    assert filas.count() == 1
+    assert "Proveedor" in pagina.locator("#ejProyecto .ej-tabla > thead").inner_text()
+    assert menu().locator("option").all_inner_texts() == ["Inox Barato · $350.000", "Inox Caro · $475.000", "+ Agregar otro proveedor…"]
+    assert filas.locator(".ej-prov-nota").inner_text() == "2 proveedores · el más barato"
+    assert tot() == "$700.000"
+    assert pagina.locator("#ejProyecto .ej-filtro", has_text="Por decidir").inner_text() == "Por decidir y aprobadas (1)"
+
+    # Elegir el otro cambia al tiro la fila y el proyecto; el foco sigue en el menú al repintar
+    menu().focus()
+    menu().select_option(label="Inox Caro · $475.000")
+    _esperar_kpi(pagina, "Margen estimado", "23 %")
+    assert tot() == "$950.000" and filas.locator(".ej-c-pu").inner_text() == "$475.000"
+    assert filas.locator(".ej-prov-nota").inner_text() == "2 proveedores · Inox Barato, $250.000 menos"
+    assert "ej-prov" in pagina.evaluate("document.activeElement.className")
+    pagina.locator("#tituloEjecucion").click()
+    pagina.keyboard.press("Control+z")
+    _esperar_kpi(pagina, "Margen estimado", "30 %")
+    menu().select_option(label="Inox Caro · $475.000")
+    _esperar_kpi(pagina, "Margen estimado", "23 %")
+    sel = lambda s: {x["proveedor"]: (x["elegida"], x["simular"]) for x in s["datos"]["items"] if not x.get("borrado")}
+    _esperar_archivo(pagina, EJ, lambda s: sel(s) == {"Inox Caro": (True, True), "Inox Barato": (False, False)})
+
+    # La elección sobrevive a no simular nada: «Simular todas» respeta lo elegido, no el más barato
+    pagina.locator("#ejProyecto .ej-sim .cx-desmarcar", has_text="No simular ninguna").click()
+    _esperar_kpi(pagina, "Margen estimado", "33 %")
+    assert menu().locator("option:checked").inner_text() == "Inox Caro · $475.000"
+    pagina.locator("#ejProyecto .ej-sim .cx-desmarcar", has_text="Simular todas").click()
+    _esperar_kpi(pagina, "Margen estimado", "23 %")
+
+    # Otro proveedor desde el menú: se abre el ítem con el foco en la tarjeta nueva, y no cambia al elegido
+    menu().select_option(label="+ Agregar otro proveedor…")
+    pagina.locator("#dlgEjCosto").wait_for()
+    assert pagina.locator("#ejCProvs .ej-prov-fila").count() == 3
+    assert pagina.evaluate("document.activeElement.closest('.ej-p-prov') !== null")
+    assert _prov(pagina, 2).locator(".ej-p-prov input").input_value() == ""
+    _escribir_prov(pagina, 2, "Inox Medio", "400.000")
+    pagina.locator("#ejCGuardar").click()
+    pagina.locator("#dlgEjCosto").wait_for(state="hidden")
+    assert menu().locator("option").all_inner_texts()[:3] == ["Inox Barato · $350.000", "Inox Medio · $400.000", "Inox Caro · $475.000"]
+    assert menu().locator("option:checked").inner_text() == "Inox Caro · $475.000"
+    assert filas.locator(".ej-prov-nota").inner_text() == "3 proveedores · Inox Barato, $250.000 menos"
+
+    # Quitar un proveedor en el diálogo: desaparece del menú y de los archivos del equipo
+    filas.locator(".ej-c-desc").click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    assert _prov(pagina, 2).locator(".ej-p-el").is_checked(), "se abre con el elegido marcado"
+    _prov(pagina, 0).locator(".ej-p-quitar").click()
+    assert pagina.locator("#ejCProvs .ej-prov-fila").count() == 2
+    pagina.locator("#ejCGuardar").click()
+    pagina.locator("#dlgEjCosto").wait_for(state="hidden")
+    assert menu().locator("option").all_inner_texts()[:2] == ["Inox Medio · $400.000", "Inox Caro · $475.000"]
+    _esperar_archivo(pagina, EJ, lambda s: next(x for x in s["datos"]["items"] if x["id"] == barato["id"]).get("borrado") is True)
+
+    # El estado es del ítem: aprobar descarta a los demás, que siguen en el menú; elegir otro le pasa la aprobación
+    estados = lambda s: {x["proveedor"]: x["estado"] for x in s["datos"]["items"] if not x.get("borrado")}
+    filas.locator(".ej-estado").select_option("aprobada")
+    _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Inox Caro": "aprobada", "Inox Medio": "descartada"})
+    assert filas.count() == 1 and tot() == "$950.000"
+    menu().select_option(label="Inox Medio · $400.000")
+    _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Inox Medio": "aprobada", "Inox Caro": "descartada"})
+    assert filas.locator(".ej-estado").input_value() == "aprobada" and tot() == "$800.000"
+    # Volver a «Por decidir» trae de vuelta a los demás, y la fila sigue en el elegido
+    filas.locator(".ej-estado").select_option("evaluar")
+    _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Inox Medio": "evaluar", "Inox Caro": "evaluar"})
+    assert tot() == "$800.000"
+    # Descartar descarta el ítem entero: sale de la vista, con un solo conteo en su filtro
+    filas.locator(".ej-estado").select_option("descartada")
+    _esperar_archivo(pagina, EJ, lambda s: set(estados(s).values()) == {"descartada"})
+    assert "Nada en «Por decidir y aprobadas»" in pagina.locator("#ejProyecto .ej-compras").inner_text()
+    pagina.locator("#ejProyecto .ej-filtro", has_text="Descartadas").click()
+    assert pagina.locator("#ejProyecto .ej-filtro", has_text="Descartadas").inner_text() == "Descartadas (1)"
+    assert filas.count() == 1 and "fuera" in filas.get_attribute("class")
+    # Comprado, el menú se bloquea: la OC dice a quién se le compró
+    filas.locator(".ej-estado").select_option("comprada")
+    pagina.locator("#dlgEjCosto").wait_for()
+    pagina.locator("#ejCOC").fill("612950")
+    pagina.locator("#ejCGuardar").click()
+    pagina.locator("#dlgEjCosto").wait_for(state="hidden")
+    pagina.locator("#ejProyecto .ej-filtro", has_text="Compradas").click()
+    assert menu().is_disabled() and tot() == "$800.000"
+    # El basurero elimina el ítem completo; Ctrl Z lo trae de vuelta
+    filas.locator(".ej-c-acc .ej-ico").click()
+    _esperar_archivo(pagina, EJ, lambda s: not estados(s))
+    assert pagina.locator("#ejProyecto .ej-tabla").count() == 0
+    pagina.locator("#tituloEjecucion").click()
+    pagina.keyboard.press("Control+z")
+    _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Inox Medio": "comprada", "Inox Caro": "descartada"})
+    assert not errores
+    pagina.context.close()
+
+
+def test_una_oc_de_otro_proveedor_del_item_lo_marca_comprado(navegador, sitio):
+    """La OC puede ser de un proveedor que no es el elegido: al marcarla, ese queda comprado y el otro descartado."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejProyecto .ej-compras .cx-boton").click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    pagina.locator("#ejCDesc").fill("Codos y tees")
+    _escribir_prov(pagina, 0, "Ferretería Demo", "120.000")
+    pagina.locator("#ejCOtroProv").click()
+    _escribir_prov(pagina, 1, "Otra Ferretería", "90.000")
+    pagina.locator("#ejCGuardar").click()
+    pagina.locator("#dlgEjCosto").wait_for(state="hidden")
+    fila = pagina.locator("#ejProyecto .ej-tabla > tbody > tr")
+    assert fila.locator(".ej-c-tot").inner_text() == "$90.000"
+    sugerida = fila.locator(".ej-sugerida")
+    assert "¿Es la OC 612900 ($120.000), de Ferretería Demo?" in sugerida.inner_text()
+    sugerida.locator("button").click()
+    estados = lambda s: {x["proveedor"]: (x["estado"], x["oc"]) for x in s["datos"]["items"]}
+    _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Ferretería Demo": ("comprada", "612900"), "Otra Ferretería": ("descartada", "")})
+    assert not errores
+    pagina.context.close()
+
+
+def _item_de_prueba(i, proveedor, precio, t=-60, **kw):
+    return dict({"id": i, "proyecto": "req:908", "tipo": "costo", "t": _instante(t), "por": "NB", "descripcion": "Estanque inoxidable de 100 litros con serpentín de cobre",
+                 "categoria": "Materiales", "cantidad": 1, "precio": precio, "proveedor": proveedor, "estado": "evaluar", "simular": False, "grupo": "cgrupoprueba1"}, **kw)
+
+
+def _sobre_de_otro(*items):
+    return ["publicado/ejecucion/otronavegador1.json", json.dumps({"esquema": "quempin.intercambio/1", "herramienta": "ejecucion", "tipo": "ejecucion-proyectos",
+            "generado": _instante(0), "datos": {"dispositivo": "otronavegador1", "items": list(items)}})]
+
+
+def test_dos_navegadores_que_eligen_a_la_vez_no_cuentan_el_item_dos_veces(navegador, sitio):
+    """En cada id manda el cambio más reciente, así que dos elecciones a la vez dejan dos marcados: cuenta solo el más reciente."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, _sobre_de_otro(
+        _item_de_prueba("cgrupoprueba1", "Primero", 950000, t=-90, simular=True, elegida=True),
+        _item_de_prueba("cgrupoprueba2", "Segundo", 700000, t=-30, simular=True, elegida=True)))
+    pagina.locator("#ejActualizar").click()
+    fila = pagina.locator('#ejProyecto .ej-tabla > tbody > tr[data-item="cgrupoprueba1"]')
+    fila.wait_for()
+    assert fila.get_attribute("data-id") == "cgrupoprueba2" and fila.locator(".ej-c-tot").inner_text() == "$700.000"
+    assert "Simulando 1 gasto por $700.000" in pagina.locator("#ejProyecto .ej-sim").inner_text()
+    _esperar_kpi(pagina, "Margen estimado", "30 %")
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho", [780, 900, 1024, 1100, 1280])
+def test_la_tabla_de_compras_no_se_sale_del_panel(navegador, sitio, ancho):
+    """Con la columna Proveedor son nueve: en cada ancho cabe y «Qué se compra» se puede leer, o pasa a tarjetas."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", ancho=ancho, alto=900)
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, _sobre_de_otro(
+        _item_de_prueba("cgrupoprueba1", "Proveedor con un nombre bastante largo SpA", 950000, simular=True),
+        _item_de_prueba("cgrupoprueba2", "Otro proveedor con el nombre igual de largo Ltda.", 1250000)))
+    pagina.locator("#ejActualizar").click()
+    pagina.locator('#ejProyecto .ej-tabla > tbody > tr[data-item="cgrupoprueba1"]').wait_for()
+    medida = pagina.evaluate("""() => {
+        const t = document.querySelector('#ejProyecto .ej-tabla');
+        const v = document.querySelector('#vistaEjecucion');
+        return { sobra: t.getBoundingClientRect().right - t.parentElement.getBoundingClientRect().right, desplaza: v.scrollWidth > v.clientWidth,
+                 que: t.querySelector('.ej-c-que').getBoundingClientRect().width };
+    }""")
+    assert medida["sobra"] <= 0.5 and not medida["desplaza"], medida
+    assert medida["que"] >= 200, medida
     assert not errores
     pagina.context.close()
 
@@ -4200,7 +4415,8 @@ def test_proyectos_en_ejecucion_cabe_en_el_telefono(navegador, sitio, ancho):
             "descripcion": "Estanque inoxidable de 100 litros con serpentín de cobre", "categoria": "Materiales", "cantidad": 1,
             "precio": 950000, "proveedor": "Proveedor con un nombre bastante largo SpA", "estado": "evaluar", "simular": True}
     sobre = {"esquema": "quempin.intercambio/1", "herramienta": "ejecucion", "tipo": "ejecucion-proyectos", "generado": _instante(0),
-             "datos": {"dispositivo": "otronavegador1", "items": [item]}}
+             "datos": {"dispositivo": "otronavegador1", "items": [dict(item, grupo="ctelefono00001"),
+                 dict(item, id="ctelefono00002", grupo="ctelefono00001", proveedor="Otro proveedor con el nombre igual de largo Ltda.", precio=1250000, simular=False)]}}
     pagina.evaluate(JS_ESCRIBIR_TEXTO, ["publicado/ejecucion/otronavegador1.json", json.dumps(sobre)])
     pagina.locator("#ejActualizar").click()
     pagina.locator('#ejProyecto .ej-tabla tr[data-id="ctelefono00001"]').wait_for()
@@ -4211,6 +4427,16 @@ def test_proyectos_en_ejecucion_cabe_en_el_telefono(navegador, sitio, ancho):
         .filter((e) => e.getClientRects().length && !['checkbox', 'range'].includes(e.type) && parseFloat(getComputedStyle(e).fontSize) < 16)
         .map((e) => e.id || e.className)""")
     assert chicos == []
+    # El ítem con sus dos proveedores en el diálogo también cabe, con los campos a 16 px
+    pagina.locator('#ejProyecto .ej-tabla tr[data-id="ctelefono00001"] .ej-c-desc').click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    assert pagina.locator("#ejCProvs .ej-prov-fila").count() == 2
+    assert pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#dlgEjCosto *')]
+        .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))""") <= ancho + 0.5
+    assert pagina.evaluate("""() => [...document.querySelectorAll('#dlgEjCosto input, #dlgEjCosto select')]
+        .filter((e) => e.getClientRects().length && !['checkbox', 'radio'].includes(e.type) && parseFloat(getComputedStyle(e).fontSize) < 16)
+        .map((e) => e.id || e.parentElement.className)""") == []
+    pagina.locator("#ejCCancelar").click()
     # La lista también
     pagina.locator(".ej-volver").click()
     pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').wait_for()

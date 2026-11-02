@@ -22,16 +22,28 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   pasa, gastado + comprometido + simulado (`ejCuentas`): lo que todavía no se compra se estima con el presupuesto. Sin
   presupuesto, el margen es «con lo anotado» y no lleva semáforo; sin presupuesto ni nada anotado, no hay margen. Una OC
   sin `enCentroCostos` (el procesador no lo sabe) no se suma: así nunca se cuenta dos veces.
-- **Gastos proyectados y cotizaciones**: cada uno con categoría, la línea del presupuesto que reemplaza (las de su
-  formulación, con las reglas del Formulador: `js/calc.js`; para una nueva se propone la más parecida), proveedor,
-  cantidad, precio sin IVA, estado (por decidir, aprobada, comprada con su OC, descartada) y si se simula. El diálogo
-  (`#dlgEjCosto`) evalúa mientras se escribe, al lado del formulario (`ejEvaluar`): contra su línea (hasta 3 % más cara
+- **Gastos proyectados y cotizaciones**: cada ítem con categoría, la línea del presupuesto que reemplaza (las de su
+  formulación, con las reglas del Formulador: `js/calc.js`; para uno nuevo se propone la más parecida), cantidad y uno o
+  varios proveedores (nombre, precio sin IVA, N° de cotización, fecha y nota), estado (por decidir, aprobada, comprada con
+  su OC, descartada) y si se simula. El diálogo (`#dlgEjCosto`) evalúa al proveedor elegido mientras se escribe, al lado
+  del formulario (`ejEvaluar`): contra su línea (hasta 3 % más cara
   bien, hasta 15 % revisar), contra lo que QUEMPIN pagó (`publicado/precios-referencia.json` con el buscador del Cotizador,
   `js/busqueda.js`; se compara sola con la hoja más parecida si cubre la mitad de lo pedido, y se elige otra o ninguna),
-  contra las otras cotizaciones para lo mismo (`grupo`: se simula una a la vez; aprobar o comprar una descarta las demás
-  por decidir), contra lo que queda en su categoría y contra el margen. Una más barata que su línea no queda «No conviene»
-  aunque la categoría ya venga gastada. «Pegar una cotización» lee las filas con el lector del Formulador (`js/pegar.js`).
-  Una OC del proyecto con el mismo proveedor y neto (±2 %) se ofrece para marcarla comprada.
+  contra los otros proveedores, contra lo que queda en su categoría y contra el margen. Una más barata que su línea no
+  queda «No conviene» aunque la categoría ya venga gastada. «Pegar una cotización» lee las filas con el lector del
+  Formulador (`js/pegar.js`) y deja un ítem por fila, con un proveedor. Una OC del proyecto con el mismo proveedor y neto
+  (±2 %) se ofrece para marcarla comprada.
+- **Varios proveedores por ítem** (2026-10-30, pedido del usuario: «distintos proveedores a un mismo item» y en la tabla
+  «un menú desplegable en una columna que sea de proveedor», con el nombre y el valor, para comparar y elegir): cada
+  proveedor es una cotización guardada aparte con el mismo `grupo` (el `id` de la primera), así que dos navegadores pueden
+  agregar proveedores sin pisarse. La tabla muestra una fila por ítem (`ejItems`) con los datos del proveedor elegido
+  (`ejElegida`: comprada, aprobada, `elegida`, simulada o, si no, la más barata); el menú (`ejMenuProveedor`) los lista de
+  más barato a más caro y termina en «+ Agregar otro proveedor…». Se simula uno a la vez: elegir otro le pasa el estado y el
+  «Simular» (`ejElegirProveedor`). El estado de la fila es del ítem: aprobar, comprar o descartar deja descartados a los
+  demás y volver a «Por decidir» los trae de vuelta (`ejEstadoOtra`); comprado, el menú se bloquea. En el diálogo, la
+  cantidad es una sola para todos, el IVA se marca por proveedor, un ítem nuevo elige solo al más barato mientras no se
+  elija otro a mano, y un proveedor en blanco no cuenta. El basurero de la fila elimina el ítem completo; un proveedor se
+  quita con la ✕ de su tarjeta en el diálogo.
 - **Mano de obra**: los días trabajados, una cosa por persona y día (id fijo: el mismo día de la misma persona no se
   duplica entre navegadores), con jornada y nivel; su costo, a las tarifas del proyecto, de su formulación o del
   Formulador. Se traen de la Planificación semanal (las últimas 4 semanas, hasta hoy), y «Llevarle» manda su total al
