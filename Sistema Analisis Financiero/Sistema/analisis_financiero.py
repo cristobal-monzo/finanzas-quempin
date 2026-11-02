@@ -210,7 +210,6 @@ ALINEACION_ENCABEZADO = Alignment(vertical="center", wrap_text=True)
 
 FORMATO_MONEDA = '_ "$"* #,##0_ ;_ "$"* \\-#,##0_ ;_ "$"* "-"_ ;_ @_ '
 FORMATO_PORCENTAJE = "0.0%"
-FORMATO_RATIO = "0.00"
 FORMATO_ENTERO = "0"
 # Formato fijo DD-MM-AAAA para columnas de fecha -- pedido del usuario 2026-07-28,
 # mismo estandar que Centro de Costos (ver DATE_FORMAT en auditor_centro_costos.py).

@@ -23,9 +23,9 @@ el promedio/rango hacia abajo. Arreglado en `cargar_items_detalle`
   `https://claude.ai/code/artifact/e589aa77-07bd-48c8-aa31-cb7c8fb1d0ab`,
   ya no se actualiza). URL fija actual:
   `https://cristobal-monzo.github.io/finanzas-quempin/cotizador-historico/`
-  — ver [`/Actualizar_Cotizador`](../Actualizar_Cotizador/SKILL.md) para
+  — ver [`/Actualizar_Cotizador`](SKILL.md) para
   los comandos exactos de publicación y
-  [../../Visualizador Web/CLAUDE.md](../../Visualizador%20Web/CLAUDE.md)
+  [../../Visualizador Web/CLAUDE.md](../../../Visualizador%20Web/CLAUDE.md)
   § Hosting para la arquitectura completa.
 - Flujo para actualizar: `python driver.py visualizador` (regenera
   `Visualizador Web/build/index.html` a partir de `Centro de Costos.xlsx` y

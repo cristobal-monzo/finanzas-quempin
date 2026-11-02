@@ -75,7 +75,6 @@ NUMERICAS = {"presupuesto", "valorOfertado", "valorAdjudicado", "entregaDias", "
 # Lo que la planilla y una sugerencia comparten (clave de la sugerencia ->
 # clave de la planilla publicada).
 CAMPOS_SUGERIBLES = {"estado": "estado", "valorOfertado": "valorOfertado", "valorAdjudicado": "valorAdjudicado"}
-ENCABEZADO_DE = {v: k for k, v in COLUMNAS.items()}
 TITULO_COLUMNA = {"estado": "Estado", "valorOfertado": "Valor ofertado (IVA inc)",
                   "valorAdjudicado": "Valor adjudicado (IVA inc)"}
 

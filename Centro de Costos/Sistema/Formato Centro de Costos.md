@@ -7,8 +7,8 @@ genéricas que cualquier módulo futuro debería seguir (estilo de encabezado,
 paleta de colores, regla de oro de no reescribir filas, preservación de
 formato manual, etc.), ver [Formato.md](Formato.md).
 
-Complementa también a [CLAUDE.md](CLAUDE.md) (qué hace el módulo) y a
-[.claude/skills/Registro_Centro_de_Costos/MEMORY.md](.claude/skills/Registro_Centro_de_Costos/MEMORY.md)
+Complementa también a [CLAUDE.md](../CLAUDE.md) (qué hace el módulo) y a
+[.claude/skills/Registro_Centro_de_Costos/MEMORY.md](../.claude/skills/Registro_Centro_de_Costos/MEMORY.md)
 (preferencias de color/formato a nivel de decisión del usuario).
 
 **Cómo se mantiene**: lo que sigue se levantó leyendo directamente el

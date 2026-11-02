@@ -76,8 +76,8 @@ si el agente los considera necesarios. La comparación ad-hoc queda
 explícitamente fuera de este estándar — ver "Pendientes" en `MEMORY.md`.
 
 Ver diseño completo:
-[`docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`](../docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md)
+[`docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md`](../../docs/specs/2026-07-21-analisis-financiero-reportes-pdf-design.md)
 (addendum §10 para este estándar)
 y el plan de implementación
-[`docs/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md`](../docs/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md)
+[`docs/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md`](../../docs/plans/2026-07-21-analisis-financiero-reportes-pdf-implementacion.md)
 (rutas relativas a la raíz de `Finanzas QUEMPIN/`).

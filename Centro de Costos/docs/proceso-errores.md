@@ -67,7 +67,7 @@ Ahora cualquier hallazgo cuya clase declare una columna de `Master`
 correcciones comparten una apertura del libro, un respaldo y un guardado**.
 La puerta de entrada es "hay un hallazgo abierto que dice que esta celda está
 mal", no "escríbeme cualquier celda". Ver
-[Revision_de_Errores/SKILL.md](.claude/skills/Revision_de_Errores/SKILL.md) §
+[Revision_de_Errores/SKILL.md](../.claude/skills/Revision_de_Errores/SKILL.md) §
 `hallazgos`/`resolver`/`descartar`.
 
 **Copias exactas: se resuelven solas.** Dos entradas con el mismo emisor,
@@ -117,7 +117,7 @@ persona mirando el documento.
 **Cómo se mide todo esto**: `Sistema/bench/` monta un Centro de Costos
 desechable con un corpus anonimizado de defectos conocidos y reporta recall,
 falsos positivos, tasa de errores sin resolver, resolución automática y tiempos.
-Ver [bench/README.md](Sistema/bench/README.md). Si tocas el proceso de errores,
+Ver [bench/README.md](../Sistema/bench/README.md). Si tocas el proceso de errores,
 corre el benchmark antes y después — es la única forma de saber si mejoraste
 algo o solo moviste texto de consola.
 

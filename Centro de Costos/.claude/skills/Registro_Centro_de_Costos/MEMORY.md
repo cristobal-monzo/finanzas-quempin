@@ -17,8 +17,8 @@ manuales pendientes de recolorear en el Excel).
   vale la pena recordar, pendientes que dependen de una decisión del
   usuario. **No** historial fechado de corridas (va en
   [HISTORIAL.md](HISTORIAL.md)) ni preferencias de color/formato (van en
-  [Formato Centro de Costos.md](../../../Formato%20Centro%20de%20Costos.md)
-  / [Formato.md](../../../Formato.md) si son genéricas para todos los
+  [Formato Centro de Costos.md](../../../Sistema/Formato%20Centro%20de%20Costos.md)
+  / [Formato.md](../../../Sistema/Formato.md) si son genéricas para todos los
   módulos) — así este archivo se mantiene corto y solo con lo que hay que
   releer en cada corrida.
 - **HISTORIAL.md** — bitácora fechada de corridas reales del pipeline:
@@ -42,9 +42,9 @@ manual en el Excel, va en `ERRORES.md`.
 Todo lo referente a formato (colores, fuente, formato de número/fecha,
 paleta por proyecto, prefijos de N° Ref., preservación de formato manual
 entre corridas) vive en
-[Formato Centro de Costos.md](../../../Formato%20Centro%20de%20Costos.md)
+[Formato Centro de Costos.md](../../../Sistema/Formato%20Centro%20de%20Costos.md)
 (estado real específico de este módulo, verificado leyendo el `.xlsx`) y en
-[Formato.md](../../../Formato.md) (patrón genérico reutilizable por futuros
+[Formato.md](../../../Sistema/Formato.md) (patrón genérico reutilizable por futuros
 módulos) — no se duplica acá. Si el usuario pide "recordar" una preferencia
 de formato/color nueva, se agrega como entrada fechada en el historial de
 `Formato Centro de Costos.md` (o `Formato.md` si aplica a todos los
@@ -214,7 +214,7 @@ módulos), no en este archivo.
   individual como nota de la celda (`corregir ... --nota "IVA: $X / IEF: $Y
   / IEV/FEPP: $Z"`, agregado 2026-08-19 a `corregir_valor_manual()` — queda
   como comentario de Excel en la celda + en la columna "Nota" de la tabla de
-  [ERRORES.md](.claude/skills/Registro_Centro_de_Costos/ERRORES.md)), ya que
+  [ERRORES.md](ERRORES.md)), ya que
   el valor combinado por sí solo no es auto-explicativo.
   **Cuando el IVA/IEF/IEV impresos no cuadran entre sí** (pedido 2026-08-19,
   extiende la regla de arriba): en varios documentos reales el "IVA (19%)"
@@ -338,7 +338,7 @@ módulos), no en este archivo.
   `../../../../Visualizador Web/CLAUDE.md` § Hosting (raíz del repo), no se
   repite acá. No
   hace falta este paso si `run` no registró documentos nuevos, ni si se
-  usó [`/Actualizar_Base_de_Datos`](../Actualizar_Base_de_Datos/SKILL.md)
+  usó [`/Actualizar_Base_de_Datos`](SKILL.md)
   a propósito para no publicar todavía.
 - Flujo para actualizar: `python driver.py visualizador` (regenera
   `Visualizador Web/build/index.html` desde el Excel actual) → publicar
@@ -379,7 +379,7 @@ negocio vigentes basta este archivo.
   correspondiente en `Master` para cada documento afectado — esto es una
   excepción deliberada a la regla de oro de no reescribir filas ya creadas,
   documentarla en
-  [ERRORES.md](.claude/skills/Registro_Centro_de_Costos/ERRORES.md) cuando
+  [ERRORES.md](ERRORES.md) cuando
   se haga.
 
 - El pipeline anterior (perdido, corría en `Plantillas/`) tenía renombrado

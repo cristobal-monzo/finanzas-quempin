@@ -15,6 +15,6 @@ memoria de diseño/decisiones del módulo completo).
   `https://claude.ai/code/artifact/70801be3-a58d-4424-b8cf-53d2b3630934`,
   ya no se actualiza). URL fija actual:
   `https://cristobal-monzo.github.io/finanzas-quempin/analisis-financiero/`
-  — ver [`/Actualizar_AF`](../Actualizar_AF/SKILL.md) para los comandos
+  — ver [`/Actualizar_AF`](SKILL.md) para los comandos
   exactos de publicación y [`../../../Visualizador Web/CLAUDE.md`](../../../Visualizador%20Web/CLAUDE.md)
   § Hosting para la arquitectura completa.

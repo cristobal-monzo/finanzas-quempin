@@ -61,7 +61,6 @@ UNIDADES_PULGADA = {'"', "''", '”', '“', 'plg', 'plgs', 'pulg', 'pulgs', 'pu
 UNIDADES_MM = {'mm'}
 UNIDADES_CM = {'cm'}
 UNIDADES_M = {'m', 'mt', 'mts', 'metro', 'metros'}
-UNIDADES_LONGITUD = UNIDADES_PULGADA | UNIDADES_MM | UNIDADES_CM | UNIDADES_M
 
 CORTES_ADMIN = re.compile(
     r'\b(cod|codigo|codigos|ref|factura|boleta|guia|doc|documento|folio|pedido|neto|ingreso|serie|sku|ean)\b\.?',

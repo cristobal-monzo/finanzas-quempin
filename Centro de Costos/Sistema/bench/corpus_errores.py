@@ -316,8 +316,6 @@ RECETA = {
     "CATEGORIA_VACIA": 1,
 }
 
-CLASES_INYECTADAS = tuple(RECETA)
-TOTAL_DEFECTOS = sum(RECETA.values())
 
 
 def generar_corpus(n_documentos=240, semilla=20260910, hoy=None):
