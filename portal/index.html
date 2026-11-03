@@ -697,8 +697,10 @@
   .rc-cab > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; min-width: 0; }
   .rc-cab h1 { margin: 0; font-size: 22px; font-weight: 900; line-height: 1.2; }
   .rc-cab p { margin: 0; font-size: 14px; line-height: 1.4; color: var(--texto-suave); }
-  .rc-frescura { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--texto-suave); }
+  .rc-frescura { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--texto-suave); }
   .rc-frescura .acc-btn { height: 30px; padding: 0 8px; }
+  .rc-frescura .cx-enlace { min-height: 30px; padding: 0 10px; font-size: 13px; }
+  .rc-frescura .cx-enlace:disabled { opacity: 0.6; cursor: progress; }
   /* Resumen: cuatro cifras que también filtran el tablero */
   .rc-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .rc-kpi {
@@ -2453,7 +2455,8 @@
               <div class="rc-frescura">
                 <span class="cx-punto" id="rcPunto"></span>
                 <span id="rcFrescura" role="status">Leyendo la carpeta del equipo…</span>
-                <button class="acc-btn" id="rcActualizar" type="button" title="Volver a leer la carpeta del equipo" aria-label="Volver a leer la carpeta del equipo"></button>
+                <button class="cx-enlace" id="rcPedirVuelta" type="button" title="Le pide al procesador una vuelta ahora, sin esperar la de cada 2 horas. Tarda unos 5 min." hidden>Actualizar datos</button>
+                <button class="acc-btn" id="rcActualizar" type="button" title="Volver a leer la carpeta del equipo (no hace correr al procesador)" aria-label="Volver a leer la carpeta del equipo"></button>
               </div>
             </header>
             <div class="rc-vacio" id="rcVacio" hidden></div>
@@ -4759,7 +4762,7 @@
   const DIA = 86400000;
   const MAXIMO = Number.MAX_SAFE_INTEGER;
   const rc = {
-    tarjetas: [], datos: null, leido: 0, leyendo: null, carpetas: null, pulso: null, dir: null,
+    tarjetas: [], datos: null, leido: 0, leyendo: null, carpetas: null, pulso: null, dir: null, vuelta: null,
     foco: null, q: '', mios: !!(leer(LS_RC, {}) || {}).mios
   };
 
@@ -4955,6 +4958,7 @@
     t.req = n;
     t.planilla = r; t.formulacion = f; t.af = af; t.lic = lic;
     t.carpetas = (c && c.carpetas && typeof c.carpetas === 'object') ? c.carpetas : {};
+    t.fichaAjena = (c && Array.isArray(c.fichaAjena)) ? c.fichaAjena.map((x) => texto(x).toUpperCase()) : [];
     if (g) rcConGestion(t, g);
     t.cotizaciones = c && Array.isArray(c.cotizaciones) ? c.cotizaciones : [];
     t.tag = texto((af && af.tag) || (c && c.tag)).toUpperCase() || null;
@@ -5120,15 +5124,19 @@
     const cruce = new Map(), lic = new Map(), afPorReq = new Map(), afPorTag = new Map();
     d.cruce.forEach((c) => { const n = rcNum(c && c.req); if (n) cruce.set(n, c); });
     d.licitaciones.forEach((l) => { const n = rcNum(l && l.req); if (n) lic.set(n, l); });
+    /* Una ficha que el procesador marcó como de otro proyecto (fichaAjena: cada uno tiene su carpeta en el Centro de
+       Costos, mismo_proyecto.py) no se une con el N° aunque lo lleve (2026-11-03, pedido del usuario: la ficha UMAG,
+       «UMAG Linea de H2», llevaba el N° 280 y el 280 mostraba sus costos). */
+    const ajena = (n, p) => { const c = cruce.get(n); return !!(c && Array.isArray(c.fichaAjena) && c.fichaAjena.map((x) => texto(x).toUpperCase()).includes(texto(p.tag).toUpperCase())); };
     d.af.forEach((p) => {
       if (!p || !texto(p.tag)) return;
       afPorTag.set(texto(p.tag).toUpperCase(), p);
       const n = rcNum(p.req);
-      if (n) afPorReq.set(n, p);
+      if (n && !ajena(n, p)) afPorReq.set(n, p);
     });
     cruce.forEach((c, n) => {      // el TAG que declaró otra herramienta (el Formulador, Sistema QUEMPIN)
       const p = afPorTag.get(texto(c.tag).toUpperCase());
-      if (p && !afPorReq.has(n) && !rcNum(p.req)) afPorReq.set(n, p);
+      if (p && !afPorReq.has(n) && !rcNum(p.req) && !ajena(n, p)) afPorReq.set(n, p);
     });
     // Formulaciones del repositorio: la última versión de cada código manda, como en el Formulador.
     const porCodigo = new Map();
@@ -5263,6 +5271,7 @@
       datosProyecto: buzon.filter((m) => m && m.tipo === 'datos-proyecto' && m.destino === 'analisis-financiero' && m.proyecto && m.valores && typeof m.valores === 'object'),
       afMensajes: af && af.datos && af.datos.mensajes && typeof af.datos.mensajes === 'object' ? af.datos.mensajes : {},
       cierres,
+      pedidosVuelta: buzon.filter((m) => m && m.tipo === RC_VUELTA_TIPO && m.destino === RC_VUELTA_DESTINO),
       estado: est && est.datos ? est.datos : null,
       falta: [!req && 'la Planilla de Ingreso', !af && 'el Análisis Financiero'].filter(Boolean)
     };
@@ -5287,6 +5296,7 @@
       rc.dir = dir;      // la Planificación semanal lee y guarda en la misma carpeta
     })().catch((e) => { console.error(e); rcSinDatos('error'); }).then(() => {
       rc.leyendo = null;
+      rcVueltaAlLeer();
       if (!$('#vistaRecorrido').hidden) rcPintar();
       pintarInicioRecorrido();
       plAlRecorrido();
@@ -5313,6 +5323,70 @@
     const h = rc.carpetas && (rc.carpetas.biblioteca || rc.carpetas.intercambio);
     if (!h) { rcCargar(); return; }
     h.requestPermission({ mode: 'readwrite' }).catch(() => null).then(() => rcCargar());
+  }
+
+  // ---- Pedir una vuelta al procesador ---------------------------------------------------------------
+  // ↻ solo vuelve a leer la carpeta; «Datos del procesador hace X» cambia cuando el procesador corre, y corre en su
+  // computador. «Actualizar datos» deja un pedido en el buzón y una tarea de ese computador lo toma (procesar.py
+  // --si-hay-pedido). Lo pendiente es lo que hay en el buzón, no algo de este navegador: sigue al recargar y también
+  // se ve el pedido de un colega.
+  const RC_VUELTA_TIPO = 'pedir-vuelta';
+  const RC_VUELTA_DESTINO = 'procesador';
+  const RC_VUELTA_ARCHIVO = /_pedir-vuelta_.*\.json$/i;
+  const RC_VUELTA_REVISAR_SEG = 10;
+  const RC_VUELTA_TARDA_MIN = 15;      // desde aquí dice que no responde: lo normal son unos 5 min
+  const rcCorrida = (est) => (est && est.procesador && est.procesador.ultimaCorrida) || '';
+  // Hecha cuando el pedido salió del buzón y el pulso dice que corrió: OneDrive trae esos dos cambios por separado, y
+  // con uno solo lo que se ve todavía es lo de antes.
+  const rcVueltaHecha = (hayPedido, corrida) => !hayPedido && !!corrida && (corrida !== rc.vuelta.corrida || Date.parse(corrida) >= rc.vuelta.desde);
+  function rcVueltaEsperar(desde, corrida) {
+    if (!rc.vuelta) rc.vuelta = { desde, corrida, reloj: setInterval(rcVueltaRevisar, RC_VUELTA_REVISAR_SEG * 1000) };
+  }
+  function rcVueltaAlLeer() {
+    if (!rc.leido || !rc.datos) return;
+    const corrida = rcCorrida(rc.datos.estado);
+    const pedidos = rc.datos.pedidosVuelta;
+    if (pedidos.length) {
+      rcVueltaEsperar(Math.min(...pedidos.map((m) => Date.parse(m.origen && m.origen.enviado) || Date.now())), corrida);
+    } else if (rc.vuelta && rcVueltaHecha(false, corrida)) {
+      clearInterval(rc.vuelta.reloj);
+      rc.vuelta = null;
+      avisar('Datos del procesador actualizados.');
+    }
+  }
+  // Mira solo los nombres del buzón y el pulso; la carpeta entera se relee cuando ya se hizo.
+  async function rcVueltaRevisar() {
+    if (!rc.vuelta || !rc.dir || rc.leyendo || document.hidden) return;
+    let hayPedido = false;
+    const buzon = await rcSub(rc.dir, 'buzon');
+    try {
+      if (buzon) for await (const n of buzon.keys()) if (RC_VUELTA_ARCHIVO.test(n)) { hayPedido = true; break; }
+    } catch (e) { return; }
+    const pub = await rcSub(rc.dir, 'publicado');
+    const est = pub ? await rcJson(pub, 'estado.json') : null;
+    if (rc.vuelta && rcVueltaHecha(hayPedido, rcCorrida(est && est.datos))) rcCargar();
+    else rcPintarFrescura();
+  }
+  async function rcPedirVuelta() {
+    if (rc.vuelta || !rc.dir) return;
+    const enviado = scAhora();
+    const id = scId();
+    const origen = { herramienta: 'portal', enviado };
+    if (estado.usuario) origen.usuario = estado.usuario;
+    const msg = { esquema: 'quempin.intercambio/1', id, tipo: RC_VUELTA_TIPO, destino: RC_VUELTA_DESTINO, origen };
+    const nombre = enviado.slice(0, 19).replace(/[-:]/g, '').replace('T', '-') + '_portal_' + RC_VUELTA_TIPO + '_' + id + '.json';
+    try {
+      const buzon = await rc.dir.getDirectoryHandle('buzon', { create: true });
+      const w = await (await buzon.getFileHandle(nombre, { create: true })).createWritable();
+      await w.write(JSON.stringify(msg, null, 2) + '\n');
+      await w.close();
+    } catch (err) {
+      console.error(err);
+      avisar('No se pudo pedir la actualización: revisa que OneDrive esté funcionando y vuelve a intentarlo.');
+      return;
+    }
+    rcVueltaEsperar(Date.now(), rcCorrida(rc.datos && rc.datos.estado));
+    rcPintarFrescura();
   }
 
   // ---- Filtros, resumen y orden ---------------------------------------------------------------------
@@ -5349,11 +5423,26 @@
   function rcPintarFrescura() {
     const txt = $('#rcFrescura');
     const punto = $('#rcPunto');
+    const boton = $('#rcPedirVuelta');
+    boton.hidden = !rc.leido;
+    boton.disabled = !!rc.vuelta;
+    boton.textContent = rc.vuelta ? 'Actualizando…' : 'Actualizar datos';
     if (rc.leyendo) { txt.textContent = rc.leido ? 'Actualizando…' : 'Leyendo la carpeta del equipo…'; return; }
     if (!rc.leido) { txt.textContent = 'Sin datos de la carpeta del equipo'; punto.className = 'cx-punto'; txt.title = ''; return; }
     const l = rc.pulso;
+    const haceTexto = (m) => (m < 1 ? 'hace un momento' : m < 60 ? 'hace ' + m + ' min' : m < 48 * 60 ? 'hace ' + Math.round(m / 60) + ' h' : 'hace ' + Math.round(m / 1440) + ' días');
+    if (rc.vuelta) {
+      const pedida = Math.max(0, Math.round((Date.now() - rc.vuelta.desde) / 60000));
+      const tarda = pedida >= RC_VUELTA_TARDA_MIN;
+      txt.textContent = 'Actualización pedida ' + haceTexto(pedida) + (tarda ? ': el procesador aún no responde' : ': tarda unos 5 min');
+      txt.title = tarda
+        ? 'El pedido sigue en el buzón y se atiende apenas se pueda. El computador del procesador puede estar apagado, o su OneDrive atrasado.'
+        : 'El computador del procesador toma el pedido y da una vuelta completa; lo demás es lo que OneDrive demora en llevar y traer los archivos.';
+      punto.className = 'cx-punto ' + (tarda ? 'warn' : (l ? l.nivel : ''));
+      return;
+    }
     const min = l ? l.minutos : null;
-    const hace = min === null ? '' : min < 1 ? 'hace un momento' : min < 60 ? 'hace ' + min + ' min' : min < 48 * 60 ? 'hace ' + Math.round(min / 60) + ' h' : 'hace ' + Math.round(min / 1440) + ' días';
+    const hace = min === null ? '' : haceTexto(min);
     txt.textContent = l ? (l.detenido ? 'Procesador detenido: datos de ' + hace : 'Datos del procesador ' + hace) : 'Leído de la carpeta del equipo';
     txt.title = (l ? l.texto + ' ' : '') + 'Las formulaciones del equipo se leen al momento; la Planilla, el Análisis y Mercado Público, de la última vuelta del procesador.';
     punto.className = 'cx-punto ' + (l ? l.nivel : '');
@@ -11440,7 +11529,9 @@
   function ejSinFicha(m) {
     const t = m.t;
     const out = [];
-    const sueltas = ((rc.datos && rc.datos.af) || []).filter((p) => p && texto(p.tag) && !rcNum(p.req) && !(Number(p.avance) >= 1));
+    // Sin las fichas que el procesador sabe que son otro proyecto (su propia carpeta en el Centro de Costos)
+    const sueltas = ((rc.datos && rc.datos.af) || []).filter((p) => p && texto(p.tag) && !rcNum(p.req) && !(Number(p.avance) >= 1)
+      && !(t.fichaAjena || []).includes(texto(p.tag).toUpperCase()));
     // La carpeta del Centro de Costos lleva el mismo nombre que su ficha («317. Quimetal -Flujómetros» ↔ «Quimetal -Flujómetros»)
     const nombres = [].concat(t.carpetas.facturas || [], t.carpetas.ejecucion || [], t.carpetas.oferta || []).map((x) => rcSinNumero(texto(x).split('/').pop())).concat([t.titulo]);
     let mejor = null, puntaje = 0;
@@ -14164,6 +14255,7 @@
     rcCargar();
     rcPintarFrescura();
   });
+  $('#rcPedirVuelta').addEventListener('click', rcPedirVuelta);
   $('#rcMios').addEventListener('change', (e) => {
     rc.mios = e.target.checked;
     guardar(LS_RC, { mios: rc.mios });
