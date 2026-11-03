@@ -1699,6 +1699,12 @@
   .pq-est[data-estado="Adjudicado"]::before { background: var(--estado-ok); }
   .pq-est[data-estado="No adjudicado"]::before { background: var(--estado-bad); }
   .pq-est[data-estado="Descartado"] { color: var(--texto-suave); }
+  /* Ya tiene formulación en el Formulador */
+  .pq-form { display: inline-block; margin: 2px 0 0; padding: 1px 8px; border: 1px solid var(--estado-ok); border-radius: 999px; background: transparent; color: var(--text-primary); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .pq-form::before { content: "✓ "; color: var(--estado-ok); }
+  .pq-form:hover { background: var(--baseline); }
+  .pq-form.fuera { border-color: var(--baseline); color: var(--texto-suave); font-weight: 600; }
+  .pq-form.fuera::before { color: var(--texto-suave); }
   .pq-quedan { display: block; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
   .pq-quedan.pronto { color: var(--brand-orange-ink); }
   /* Lo cambiado aquí que el Excel todavía no tiene */
@@ -9676,7 +9682,7 @@
   const PQ_PAGINA = 150;               // filas a la vista; el resto con «Mostrar más»
   const PQ_ESPERA_MIN = 30;            // un cambio que espera más que esto: ¿está encendido el computador del procesador?
   const pq = { q: '', estado: '', mostrar: PQ_PAGINA, cambios: [], leyendo: null, leido: 0, abierta: null, inicial: null,
-    guardando: false, irA: null, verCambios: false };
+    guardando: false, irA: null, verCambios: false, conForm: false };
 
   // La Planilla del Excel con lo ingresado o cambiado en el portal que todavía espera en el buzón, en orden de envío.
   // meta (por fila): los campos que el Excel todavía no tiene, si es nueva y, si su N° ya lo tiene otra fila, cuál.
@@ -9730,10 +9736,33 @@
   }
   const pqMeta = (r) => (rc.datos && rc.datos.planillaMeta ? rc.datos.planillaMeta.get(r) : null) || null;
   const pqFilas = () => ((rc.datos && rc.datos.requerimientos) || []).slice().sort((a, b) => b.numero - a.numero);
+  /* Los N° que ya tienen formulación en el Formulador (2026-11-03, pedido del usuario): la última versión de cada
+     código, unida al N° como en el Recorrido (reqDe). Las perdidas o descartadas también cuentan, marcadas aparte. */
+  let pqFormCache = { de: null, mapa: new Map() };
+  function pqFormulaciones() {
+    const lista = rc.datos && rc.datos.formulaciones;
+    if (pqFormCache.de === lista) return pqFormCache.mapa;
+    const porCodigo = new Map();
+    (lista || []).forEach((x) => {
+      const f = x.datos;
+      if (!f || !f.uid || f.eliminado) return;
+      const req = reqDe(f);
+      if (!req) return;
+      const ficha = { uid: String(f.uid), codigo: texto(f.codigo) || String(f.uid), version: parseInt(f.version, 10) || 1,
+        estado: texto(f.estado) || 'Borrador', responsable: texto(f.responsable).toUpperCase(), modificado: texto(f.modificado), req };
+      const previo = porCodigo.get(ficha.codigo);
+      if (!previo || previo.version < ficha.version || (previo.version === ficha.version && previo.modificado < ficha.modificado)) porCodigo.set(ficha.codigo, ficha);
+    });
+    const mapa = new Map();
+    porCodigo.forEach((f) => { const p = mapa.get(f.req); if (!p || p.modificado < f.modificado) mapa.set(f.req, f); });
+    pqFormCache = { de: lista, mapa };
+    return mapa;
+  }
+  const pqForm = (r) => pqFormulaciones().get(String(r.numero)) || null;
   const pqBuscable = (r) => norm(['n' + r.numero, r.numero, r.titulo, r.cliente, r.ubicacion, r.referencia, r.captador, r.evaluador, r.canal, r.estado].join(' '));
   function pqFiltradas() {
     const q = norm(pq.q).trim().split(/\s+/).filter(Boolean);
-    return pqFilas().filter((r) => (!pq.estado || texto(r.estado) === pq.estado) && q.every((x) => pqBuscable(r).includes(x)));
+    return pqFilas().filter((r) => (!pq.estado || texto(r.estado) === pq.estado) && (!pq.conForm || pqForm(r)) && q.every((x) => pqBuscable(r).includes(x)));
   }
   /* El N° de un requerimiento nuevo: el siguiente al mayor que ya se usa en la Planilla, en lo que espera en el buzón, en
      las carpetas de proyecto y en las formulaciones (como el Formulador). Si dos personas lo toman a la vez, el Excel le
@@ -10131,6 +10160,14 @@
       b.addEventListener('click', () => { pq.estado = id; pq.mostrar = PQ_PAGINA; pqPintarEstados(); pqPintarTabla(); });
       caja.append(b);
     });
+    const nf = filas.filter(pqForm).length;
+    const b = crear('button', 'pl-vista pq-con-form');
+    b.type = 'button';
+    b.title = 'Solo los requerimientos que ya tienen una formulación en el Formulador';
+    b.setAttribute('aria-pressed', String(pq.conForm));
+    b.append(document.createTextNode('Con formulación '), crear('b', null, String(nf)));
+    b.addEventListener('click', () => { pq.conForm = !pq.conForm; pq.mostrar = PQ_PAGINA; pqPintarEstados(); pqPintarTabla(); });
+    caja.append(b);
   }
   function pqPintarTabla() {
     const cab = $('#pqCabeza');
@@ -10178,6 +10215,15 @@
         b.title = v ? 'Abrir el N° ' + r.numero + ': ' + v : 'Abrir el N° ' + r.numero;
         b.addEventListener('click', () => pqAbrir(r));
         td.append(b);
+        const fo = pqForm(r);
+        if (fo) {
+          const fuera = RC_FUERA.includes(fo.estado);
+          const a = crear('button', 'pq-form' + (fuera ? ' fuera' : ''), 'Formulado · ' + fo.estado);
+          a.type = 'button';
+          a.title = 'Formulación ' + fo.codigo + ' v' + fo.version + (fo.responsable ? ' (' + fo.responsable + ')' : '') + ': abrirla en el Formulador';
+          a.addEventListener('click', () => rcIr(RC_IR.ficha(fo.uid)));
+          td.append(a);
+        }
         if (mt && mt.choque) td.append(crear('span', 'pq-choque', 'El N° ' + r.numero + ' ya es «' + mt.choque + '»: al pasar al Excel queda con el siguiente libre.'));
       } else if (PQ_FECHAS.includes(c.id)) {
         td.textContent = pqFecha(v);
