@@ -1683,6 +1683,33 @@ def test_el_recorrido_pone_cada_proyecto_en_su_etapa(navegador, sitio):
     pagina.context.close()
 
 
+def test_una_ficha_de_otro_proyecto_no_se_une_con_el_n(navegador, sitio):
+    """2026-11-03, caso real: la ficha UMAG («UMAG Linea de H2», ya entregado) llevaba el N° 280, que es otro proyecto con
+    su propia carpeta en el Centro de Costos, y el 280 mostraba sus costos. El procesador lo marca en fichaAjena."""
+    pagina, errores = _abrir_portal(navegador, sitio)
+    if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
+        pagina.context.close()
+        pytest.skip("este Chromium no conecta carpetas")
+    archivos = _intercambio_de_prueba()
+    reqs = archivos["publicado/requerimientos.json"]["datos"]["requerimientos"]
+    reqs.append({"numero": 914, "estado": "Adjudicado", "evaluador": "CM", "titulo": "Conexión del laboratorio", "cierre": _dia(-12)})
+    archivos["publicado/proyectos.json"]["datos"]["proyectos"].append(
+        {"req": "914", "tag": None, "fichaAjena": ["VIEJ"], "formulaciones": [], "cotizaciones": [], "ordenes": [], "carpetas": {}})
+    archivos["publicado/analisis-financiero.json"]["datos"]["proyectos"].append(
+        {"tag": "VIEJ", "nombre": "Laboratorio antiguo", "avance": 1, "req": "914", "cierre": _dia(-250), "venta": {"cargada": True}})
+    pagina.evaluate(JS_CONECTAR, 30)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, archivos)
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    tarjeta = lambda c: pagina.locator(f'.rc-tarjeta[data-clave="{c}"]')
+    assert tarjeta("req-914").count() == 1 and "VIEJ" not in tarjeta("req-914").inner_text()
+    assert tarjeta("tag-VIEJ").count() == 1       # la ficha antigua sigue como su propio proyecto
+    assert not errores
+    pagina.context.close()
+
+
 JS_BUZON_VUELTA = """async () => {
     const raiz = await navigator.storage.getDirectory();
     const bib = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');

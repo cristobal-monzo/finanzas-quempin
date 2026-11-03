@@ -4958,6 +4958,7 @@
     t.req = n;
     t.planilla = r; t.formulacion = f; t.af = af; t.lic = lic;
     t.carpetas = (c && c.carpetas && typeof c.carpetas === 'object') ? c.carpetas : {};
+    t.fichaAjena = (c && Array.isArray(c.fichaAjena)) ? c.fichaAjena.map((x) => texto(x).toUpperCase()) : [];
     if (g) rcConGestion(t, g);
     t.cotizaciones = c && Array.isArray(c.cotizaciones) ? c.cotizaciones : [];
     t.tag = texto((af && af.tag) || (c && c.tag)).toUpperCase() || null;
@@ -5123,15 +5124,19 @@
     const cruce = new Map(), lic = new Map(), afPorReq = new Map(), afPorTag = new Map();
     d.cruce.forEach((c) => { const n = rcNum(c && c.req); if (n) cruce.set(n, c); });
     d.licitaciones.forEach((l) => { const n = rcNum(l && l.req); if (n) lic.set(n, l); });
+    /* Una ficha que el procesador marcó como de otro proyecto (fichaAjena: cada uno tiene su carpeta en el Centro de
+       Costos, mismo_proyecto.py) no se une con el N° aunque lo lleve (2026-11-03, pedido del usuario: la ficha UMAG,
+       «UMAG Linea de H2», llevaba el N° 280 y el 280 mostraba sus costos). */
+    const ajena = (n, p) => { const c = cruce.get(n); return !!(c && Array.isArray(c.fichaAjena) && c.fichaAjena.map((x) => texto(x).toUpperCase()).includes(texto(p.tag).toUpperCase())); };
     d.af.forEach((p) => {
       if (!p || !texto(p.tag)) return;
       afPorTag.set(texto(p.tag).toUpperCase(), p);
       const n = rcNum(p.req);
-      if (n) afPorReq.set(n, p);
+      if (n && !ajena(n, p)) afPorReq.set(n, p);
     });
     cruce.forEach((c, n) => {      // el TAG que declaró otra herramienta (el Formulador, Sistema QUEMPIN)
       const p = afPorTag.get(texto(c.tag).toUpperCase());
-      if (p && !afPorReq.has(n) && !rcNum(p.req)) afPorReq.set(n, p);
+      if (p && !afPorReq.has(n) && !rcNum(p.req) && !ajena(n, p)) afPorReq.set(n, p);
     });
     // Formulaciones del repositorio: la última versión de cada código manda, como en el Formulador.
     const porCodigo = new Map();
@@ -11524,7 +11529,9 @@
   function ejSinFicha(m) {
     const t = m.t;
     const out = [];
-    const sueltas = ((rc.datos && rc.datos.af) || []).filter((p) => p && texto(p.tag) && !rcNum(p.req) && !(Number(p.avance) >= 1));
+    // Sin las fichas que el procesador sabe que son otro proyecto (su propia carpeta en el Centro de Costos)
+    const sueltas = ((rc.datos && rc.datos.af) || []).filter((p) => p && texto(p.tag) && !rcNum(p.req) && !(Number(p.avance) >= 1)
+      && !(t.fichaAjena || []).includes(texto(p.tag).toUpperCase()));
     // La carpeta del Centro de Costos lleva el mismo nombre que su ficha («317. Quimetal -Flujómetros» ↔ «Quimetal -Flujómetros»)
     const nombres = [].concat(t.carpetas.facturas || [], t.carpetas.ejecucion || [], t.carpetas.oferta || []).map((x) => rcSinNumero(texto(x).split('/').pop())).concat([t.titulo]);
     let mejor = null, puntaje = 0;

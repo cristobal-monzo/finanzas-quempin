@@ -872,3 +872,63 @@ def test_cargar_archivo_deja_el_envio_en_el_buzon_una_sola_vez(entorno, tmp_path
     malo = tmp_path / "malo.json"
     malo.write_text(json.dumps(_datos(valores={"% Avance": 40})), encoding="utf-8")
     assert pf.cargar_archivo(entorno["raiz"], malo)[0] is False
+
+
+# ── UNA FICHA, UNA CARPETA, UN N° (mismo_proyecto, 2026-11-03) ───────────────
+# Caso real: la ficha UMAG es «UMAG Linea de H2» (carpeta «UMAG», 45 facturas);
+# el presupuesto del N° 280 «UMAG - Conexión y PH Lab 1», que tiene su propia
+# carpeta, le pisó los proyectados.
+
+CARPETAS_UMAG = [{"nombre": "UMAG", "req": None, "documentos": 45},
+                 {"nombre": "280. UMAG - Conexión y PH Lab 1", "req": "280", "documentos": 1}]
+
+
+def _plan_carpetas(mensajes, estado=None, filas=None, nombres=None):
+    filas = filas if filas is not None else {"UMAG": 2}
+    actuales = {t: {**{c: None for c in pf.CATEGORIAS}, pf.CLAVE_VENTA: None, pf.COLUMNA_REQ: None} for t in filas}
+    return pf.planificar(mensajes, filas, actuales, estado or {"valores": {}, "confirmados": []},
+                         nombres_por_tag=nombres if nombres is not None else {"UMAG": "UMAG"},
+                         carpetas_cc=CARPETAS_UMAG)
+
+
+def test_un_presupuesto_del_n_de_otra_carpeta_queda_pendiente():
+    m = _mensaje(tag="UMAG", fuente={"codigo": "280. UMAG - Conexión y PH Lab 1", "version": 1, "titulo": "x"})
+    [d] = _plan_carpetas([m])
+    assert d["accion"] == "pendiente"
+    assert "proyectos distintos" in d["detalle"][0] and "280. UMAG" in d["detalle"][0]
+
+
+def test_una_venta_o_un_n_ingresado_a_la_ficha_de_otra_carpeta_quedan_pendientes():
+    venta = _venta(tag="UMAG", proyecto={"tag": "UMAG", "req": "280"})
+    datos = _datos(tag="UMAG", valores={pf.COLUMNA_REQ: 280}, id_="tablero02")
+    assert [d["accion"] for d in _plan_carpetas([venta, datos])] == ["pendiente", "pendiente"]
+
+
+def test_la_ficha_de_su_propia_carpeta_y_la_que_se_crea_si_se_aplican():
+    nueva = _datos(id_="tablero03", proyecto={"tag": "UML1", "nombre": "UMAG - Conexión y PH Lab1", "crear": True},
+                   valores={pf.COLUMNA_REQ: 280, "Materiales": 100000})
+    presupuesto = _mensaje(id_="envio280", tag="UML1", enviado="2026-11-03T10:00:00-03:00",
+                           fuente={"codigo": "280. UMAG - Conexión y PH Lab 1", "version": 1, "titulo": "x"})
+    acciones = [d["accion"] for d in _plan_carpetas([nueva, presupuesto])]
+    assert acciones[0] == "crear" and acciones[1] in ("aplicar", "pendiente")
+    assert "proyectos distintos" not in " ".join(_plan_carpetas([nueva, presupuesto])[1]["detalle"])
+
+
+def test_sin_n_en_el_envio_o_confirmado_no_se_frena():
+    sin_n = _mensaje(tag="UMAG")
+    con_n = _mensaje(id_="envio002", tag="UMAG", fuente={"codigo": "280. UMAG - Conexión y PH Lab 1", "version": 1, "titulo": "x"})
+    estado = {"valores": {}, "confirmados": ["envio002"]}
+    assert [d["accion"] for d in _plan_carpetas([sin_n])] == ["aplicar"]
+    assert [d["accion"] for d in _plan_carpetas([con_n], estado=estado)] == ["aplicar"]
+
+
+def test_una_carpeta_vacia_con_el_nombre_de_la_ficha_no_es_otro_proyecto():
+    """KPH2 «Instalación H2 KeyProcess»: su carpeta quedó vacía y las facturas
+    están en «289. KeyProcess». Es el mismo proyecto."""
+    carpetas = [{"nombre": "Instalación H2 KeyProcess", "req": None, "documentos": 0},
+                {"nombre": "289. KeyProcess", "req": "289", "documentos": 8}]
+    venta = _venta(tag="KPH2", proyecto={"tag": "KPH2", "req": "289"})
+    [d] = pf.planificar([venta], {"KPH2": 2}, {"KPH2": {pf.CLAVE_VENTA: None, pf.COLUMNA_REQ: None}},
+                        {"valores": {}, "confirmados": []},
+                        nombres_por_tag={"KPH2": "Instalación H2 KeyProcess"}, carpetas_cc=carpetas)
+    assert d["accion"] == "aplicar"

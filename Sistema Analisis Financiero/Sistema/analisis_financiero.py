@@ -2293,7 +2293,13 @@ def preparar_intercambio(ws_proyectos, filas_validas: list[dict], raiz_intercamb
     mensajes, avisos_buzon = pf.leer_buzon(raiz_intercambio)
     avisos += avisos_buzon
     actuales = {tag: pf.valores_actuales(ws_proyectos, fila, columnas) for tag, fila in filas_por_tag.items()}
-    decisiones = pf.planificar(mensajes, filas_por_tag, actuales, estado)
+    # Las carpetas del Centro de Costos dicen qué ficha es qué proyecto (mismo_proyecto.py):
+    # un envío del N° X a la ficha de otra carpeta queda pendiente.
+    nombres = {pf.normalizar_tag(f["tag"]): f.get("nombre") for f in filas_validas}
+    sobre_cc = pf.intercambio.leer_publicacion(raiz_intercambio, "centro-costos-carpetas") or {}
+    carpetas_cc = (((sobre_cc.get("datos") or {}).get("paises") or {}).get("CL")) or []
+    decisiones = pf.planificar(mensajes, filas_por_tag, actuales, estado,
+                               nombres_por_tag=nombres, carpetas_cc=carpetas_cc)
     nuevas = []
     if not dry_run:
         nuevas = pf.aplicar(ws_proyectos, decisiones, filas_por_tag, columnas, _primera_fila_libre(ws_proyectos),

@@ -21,6 +21,10 @@ el usuario elegido y con una casilla para ver solo sus proyectos):
   en el navegador de cada persona.
   Sin conexión, sin permiso o en un navegador que no abre carpetas, dice qué
   hacer y da el botón (`Conectar biblioteca` reutiliza `conectarBiblioteca`).
+- **Una ficha de otro proyecto no se une** (2026-11-03): si el procesador pone su TAG en `fichaAjena` del N° (su
+  carpeta del Centro de Costos es otra, `Sistema Intercambio/mismo_proyecto.py`), `rcArmar` no la une aunque lleve
+  ese N°, y «Unirla con el N°» de Proyectos en ejecución no la propone (`ejSinFicha`): va como su propio proyecto.
+  Caso: la ficha UMAG («UMAG Linea de H2») y el N° 280.
 - **Las reglas** (`rcArmar`, `rcTarjetaReq`): entra lo vivo en la Planilla
   (Evaluación, Ofertado, Adjudicado), lo que tiene formulación (si la Planilla
   no lo cerró), lo que tiene ficha en el Análisis, los presupuestos sin N° y

@@ -123,3 +123,38 @@ def test_publicar_desde_la_carpeta_cumple_su_esquema(tmp_path):
     assert esquemas.validar_publicacion("proyectos", sobre) == []
     assert sobre["datos"]["gestion"] == [{"carpeta": "Rengo Incinerador", "req": None}]
     assert sobre["datos"]["proyectos"][0]["formulaciones"][0]["uid"] == "a1"
+
+
+# Caso real del 2026-11-03: la ficha UMAG («UMAG Linea de H2», carpeta «UMAG»
+# con facturas) llevaba el N° 280, que es otro proyecto con su propia carpeta.
+CARPETAS_CC = [{"nombre": "UMAG", "req": None, "documentos": 45},
+               {"nombre": "280. UMAG - Conexión y PH Lab 1", "req": "280", "documentos": 1},
+               {"nombre": "Instalación H2 KeyProcess", "req": None, "documentos": 0},
+               {"nombre": "289. KeyProcess", "req": "289", "documentos": 8}]
+
+
+def test_la_ficha_de_otra_carpeta_no_se_une_con_el_n_venga_de_quien_venga():
+    datos = pj.cruzar(
+        REQS + [{"numero": 289, "estado": "Adjudicado", "titulo": "KeyProcess"}],
+        [{"tag": "UMAG", "req": "280", "nombre": "UMAG"},
+         {"tag": "KPH2", "req": "289", "nombre": "Instalación H2 KeyProcess"}],
+        [_formulacion("a1", req=280, tag="UMAG")],
+        [{"tipo": "60", "folio": "6020099", "pais": "Chile", "proyecto": {"req": "280", "tag": "UMAG"}}],
+        {}, carpetas_cc=CARPETAS_CC,
+    )
+    por_req = {p["req"]: p for p in datos["proyectos"]}
+    assert por_req["280"]["tag"] is None
+    assert por_req["280"]["fichaAjena"] == ["UMAG"]
+    assert [c["req"] for c in datos["conflictos"]] == ["280"]
+    assert "proyectos distintos" in datos["conflictos"][0]["detalle"]
+    assert por_req["289"]["tag"] == "KPH2"         # su carpeta vacía no es otro proyecto
+    assert "fichaAjena" not in por_req["289"]
+
+
+def test_la_ficha_propia_del_n_si_se_une():
+    datos = pj.cruzar(REQS, [{"tag": "UMAG", "req": None, "nombre": "UMAG"},
+                             {"tag": "UML1", "req": "280", "nombre": "UMAG - Conexión y PH Lab1"}],
+                      [_formulacion("a1", req=280, tag="UMAG")], [], {}, carpetas_cc=CARPETAS_CC)
+    (p,) = [p for p in datos["proyectos"] if p["req"] == "280"]
+    assert p["tag"] == "UML1"                      # la formulación que recuerda UMAG no la confunde
+    assert p["fichaAjena"] == ["UMAG"]

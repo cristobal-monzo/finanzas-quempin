@@ -64,6 +64,11 @@ común en `../Sistema Intercambio/CLAUDE.md`; lógica en
   escribir cuando es seguro" terminarían divergiendo. Una venta a un TAG que
   no existe espera (no crea el proyecto). Un presupuesto y una venta del
   mismo TAG son independientes.
+- **Un envío del N° X a la ficha de otro proyecto queda pendiente** (2026-11-03, `_otro_proyecto`): el N° sale de
+  `proyecto.req`, del código de la oferta («280. …») o del valor que escribe el tablero; si la ficha tiene su carpeta
+  con facturas en el Centro de Costos y el N° otra (`publicado/centro-costos-carpetas.json`, Sistema
+  Intercambio/`mismo_proyecto.py`), no se aplica. `confirmar` lo deja pasar. Caso real: el presupuesto del 280 pisó
+  los proyectados de UMAG («UMAG Linea de H2»).
 - **«N° Requerimiento»** (columna nueva al final de "Proyectos", manual,
   amarilla): el N° de la Planilla de Ingreso, la clave común de proyecto.
   Un envío que trae `proyecto.req` la completa **solo si está vacía**. Al

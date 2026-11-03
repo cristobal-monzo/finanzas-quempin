@@ -144,6 +144,19 @@ def sin_requerimiento(af: dict | None, documentos: dict | None) -> list[Pendient
     return salida
 
 
+def desde_cruce(proyectos: dict | None) -> list[Pendiente]:
+    """Los conflictos del registro de proyectos (proyectos.py): un N° con dos
+    TAG, o una ficha del AF que es otro proyecto (cada uno con su carpeta del
+    Centro de Costos, 2026-11-03: UMAG y el 280)."""
+    salida = []
+    for c in (proyectos or {}).get("conflictos") or []:
+        if isinstance(c, dict) and c.get("detalle"):
+            salida.append(Pendiente("medio", f"Proyectos · N° {c.get('req')}: {c['detalle']}",
+                                    "corregir el N° Requerimiento de la ficha en «Ingresar datos» del tablero del AF "
+                                    "o el TAG elegido en el Formulador"))
+    return salida
+
+
 def desde_licitaciones(licitaciones: dict | None) -> list[Pendiente]:
     """Lo que el monitor de Mercado Público no puede decidir solo: resultados
     que contradicen la planilla, licitaciones resueltas que siguen en
@@ -177,6 +190,7 @@ def pendientes(raiz_intercambio: Path | None, extras: list[Pendiente] = (), ahor
         base += sin_requerimiento(_leer_datos(raiz_intercambio, "analisis-financiero"),
                                   _leer_datos(raiz_intercambio, "documentos-comerciales"))
         base += desde_licitaciones(_leer_datos(raiz_intercambio, "licitaciones"))
+        base += desde_cruce(_leer_datos(raiz_intercambio, "proyectos"))
     todos = base + list(extras)
     return sorted(todos, key=lambda p: 0 if p.nivel == "alto" else 1)
 

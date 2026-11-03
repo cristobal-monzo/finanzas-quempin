@@ -47,7 +47,9 @@ el mapa de `main()`.
 
 Un **proyecto** = una subcarpeta: basta crearla y dejar caer los documentos. Para que el `N° Ref.`
 (`<PREFIJO>-<secuencia>`) tenga un prefijo elegido, agrégalo a `PREFIJOS_PROYECTO`; si no, se deriva
-uno y se avisa por consola.
+uno y se avisa por consola. **El prefijo es el TAG del proyecto en todas las herramientas: nunca se repite.**
+Uno derivado salta los que ya usa otro proyecto (`registrar_duenos_prefijo`, desde Master): «280. UMAG - Conexión y PH
+Lab 1» derivaba «UMAG», el de otro proyecto, y el Portal le sumaba sus costos (2026-11-03; ahora `UML1`).
 
 **¡Cuidado con los nombres!** `Sitio de comunicación - Centro de Costos 1/` (dentro de este módulo) es
 la fuente; `OneDrive - QUEMPIN SPA/Sitio de comunicación - Centro de costos/` (fuera, minúscula, sin

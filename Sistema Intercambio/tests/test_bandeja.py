@@ -70,3 +70,9 @@ def test_lee_la_carpeta_y_pone_primero_lo_alto(tmp_path):
 def test_sin_carpeta_lo_dice():
     lista = bandeja.pendientes(None)
     assert len(lista) == 1 and lista[0].nivel == "alto"
+
+
+def test_los_conflictos_del_cruce_de_proyectos_llegan_a_la_bandeja():
+    lista = bandeja.desde_cruce({"conflictos": [{"req": "280", "tags": ["UMAG"], "detalle": "La ficha UMAG y el N° 280 son proyectos distintos."}]})
+    assert len(lista) == 1 and "N° 280" in lista[0].texto and "proyectos distintos" in lista[0].texto
+    assert bandeja.desde_cruce(None) == []

@@ -53,6 +53,10 @@ Lleva montos y nombres reales. **Las pruebas usan siempre `tmp_path`, nunca esta
   con `resultado = {estado, fecha, detalle, ...}`. Estados finales: `aplicado`,
   `sin-cambios`, `reemplazado`, `rechazado`, `descartado`. Si no puede decidir, queda en
   el buzón y lo informa.
+- **Una ficha, una carpeta, un N°** (`mismo_proyecto.py`, 2026-11-03): si la ficha del AF tiene su carpeta con
+  facturas en el Centro de Costos y el N° tiene otra, son dos proyectos. El AF deja pendiente el envío del N° a esa
+  ficha y el cruce (`proyectos.py`) no los une: `fichaAjena` del N°, `conflictos` y la bandeja. Caso: la ficha UMAG
+  («UMAG Linea de H2», entregado) llevaba el N° 280 («280. UMAG - Conexión y PH Lab 1»).
 - **Lo publicado se reemplaza completo**, con escritura atómica (temporal + `os.replace`).
   **Si los datos no cambiaron, no se reescribe** (OneDrive subiría y bajaría copias
   idénticas). `generado` dice cuándo cambió el dato; el pulso está en `estado.json`.

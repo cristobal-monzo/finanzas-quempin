@@ -78,7 +78,8 @@ RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Sistema Analisis Financiero"
 RAIZ_PERU = RAIZ_MODULO.parent / "Peru" / "Centro de Costos"
 
 PREFIJOS_PROYECTO = {
-    "UMAG": "UMAG",
+    "UMAG": "UMAG",                          # UMAG Linea de H2 (entregado en 2026)
+    "UMAG - Conexión y PH Lab1": "UML1",     # N° 280 (carpeta «280. UMAG - Conexión y PH Lab 1»): otro proyecto
     "Cesfam Limache": "CFLI",
     "Cesfam Constitución": "CCON",
     "Gastos Generales": "GGEN",
@@ -670,6 +671,7 @@ def leer_master(ws_master):
             "fecha": ws_master.cell(row=r, column=4).value,
         })
 
+    registrar_duenos_prefijo(filas)
     return filas, max_seq, docs_registrados
 
 
@@ -1979,14 +1981,51 @@ def _guardar_y_suprimir_aviso(wb, ruta_excel):
         )
 
 
+# Prefijo de N Ref -> proyecto que ya lo usa en Master (lo llena leer_master).
+# Un prefijo es el TAG del proyecto en Analisis Financiero, el Portal y el
+# Formulador: dos proyectos con el mismo prefijo suman sus costos como si
+# fueran uno. Paso real (2026-11-03): la carpeta «280. UMAG - Conexion y PH
+# Lab 1» derivaba «UMAG», el prefijo del proyecto «UMAG» (UMAG Linea de H2,
+# entregado), y el Portal le mostraba los costos de ese otro proyecto.
+_DUENOS_PREFIJO: dict = {}
+_DERIVADOS: dict = {}
+
+
+def registrar_duenos_prefijo(filas):
+    """Anota que proyecto usa cada prefijo segun las filas de Master
+    (leer_master), para que un proyecto nuevo nunca derive uno ajeno."""
+    _DUENOS_PREFIJO.clear()
+    _DERIVADOS.clear()
+    for f in filas:
+        n_ref, proyecto = f.get("n_ref"), f.get("proyecto")
+        if isinstance(n_ref, str) and "-" in n_ref and proyecto:
+            _DUENOS_PREFIJO.setdefault(n_ref.rsplit("-", 1)[0], str(proyecto))
+
+
 def prefijo_para_proyecto(proyecto):
     if proyecto in PREFIJOS_PROYECTO:
         return PREFIJOS_PROYECTO[proyecto]
-    letras = re.sub(r"[^A-Za-zÁÉÍÓÚÑ]", "", proyecto).upper()
-    derivado = (letras[:4] or "PROY")
+    if proyecto in _DERIVADOS:
+        return _DERIVADOS[proyecto]
+    # Ya tiene documentos con un prefijo derivado: lo sigue usando.
+    propio = sorted(p for p, dueno in _DUENOS_PREFIJO.items() if dueno == proyecto)
+    if propio:
+        _DERIVADOS[proyecto] = propio[0]
+        return propio[0]
+    ocupados = {p for nombre, p in PREFIJOS_PROYECTO.items() if nombre != proyecto}
+    ocupados |= {p for p, dueno in _DUENOS_PREFIJO.items() if dueno != proyecto}
+    ocupados |= {p for nombre, p in _DERIVADOS.items() if nombre != proyecto}
+    letras = re.sub(r"[^A-Za-zÁÉÍÓÚÑ]", "", proyecto).upper() or "PROY"
+    candidatos = ([letras[:4]] + [letras[:3] + str(n) for n in range(2, 10)]
+                  + [letras[:2] + str(n) for n in range(10, 100)])
+    derivado = next(c for c in candidatos if c not in ocupados)
+    if derivado != letras[:4]:
+        print(f"  [WARN] El prefijo '{letras[:4]}' ya es de otro proyecto: '{proyecto}' "
+              f"es un proyecto aparte y no puede compartirlo.")
     print(f"  [WARN] Proyecto '{proyecto}' no tiene prefijo de N Ref definido en "
           f"PREFIJOS_PROYECTO. Usando '{derivado}' derivado automaticamente -- "
           f"agregalo a PREFIJOS_PROYECTO si no es el que quieres.")
+    _DERIVADOS[proyecto] = derivado
     return derivado
 
 

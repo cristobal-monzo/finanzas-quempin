@@ -37,6 +37,7 @@ from pathlib import Path
 
 import formulaciones
 import intercambio
+import mismo_proyecto
 import ubicacion
 
 PUBLICACION = "proyectos"
@@ -157,11 +158,17 @@ def _datos(raiz, nombre) -> dict:
 
 
 def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: list[dict],
-           documentos: list[dict], carpetas: dict, en_cc: dict | None = None) -> dict:
+           documentos: list[dict], carpetas: dict, en_cc: dict | None = None,
+           carpetas_cc: list[dict] | None = None) -> dict:
     """Función pura: el cruce completo a partir de lo publicado. en_cc: los
     folios de OC que ya están en el Centro de Costos, por país
-    (folios_en_centro_costos)."""
+    (folios_en_centro_costos). carpetas_cc: las carpetas del Centro de Costos
+    de Chile (centro-costos-carpetas): un TAG cuya ficha tiene su carpeta y un
+    N° que tiene otra son dos proyectos (mismo_proyecto) y no se unen, venga el
+    vínculo de quien venga; va a ``conflictos`` y a ``fichaAjena`` del N°."""
     en_cc = en_cc or {}
+    nombre_af = {_tag(p.get("tag")): p.get("nombre") for p in proyectos_af if _tag(p.get("tag"))}
+    conflictos = []
     entradas: dict[str, dict] = {}
 
     def entrada(req: str) -> dict:
@@ -181,9 +188,18 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
     # varios req (mantenciones JUNJI); un req con dos TAG es un conflicto.
     tags_por_req: dict[str, set] = {}
 
-    def vincular(req, tag):
-        if req and tag:
-            tags_por_req.setdefault(req, set()).add(tag)
+    def vincular(req, tag, quien="El Análisis Financiero"):
+        if not (req and tag):
+            return
+        ajena = mismo_proyecto.carpeta_ajena(nombre_af.get(tag), req, carpetas_cc)
+        if ajena:
+            entrada(req).setdefault("fichaAjena", [])
+            if tag not in entrada(req)["fichaAjena"]:
+                entrada(req)["fichaAjena"].append(tag)
+                conflictos.append({"req": req, "tags": [tag], "detalle": f"{quien} une el N° {req} con la ficha {tag}. "
+                                   + mismo_proyecto.motivo(tag, nombre_af.get(tag), req, ajena)})
+            return
+        tags_por_req.setdefault(req, set()).add(tag)
 
     for p in proyectos_af:
         vincular(_req(p.get("req")), _tag(p.get("tag")))
@@ -196,7 +212,7 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
         req = _req((vinculos.get("requerimiento") or {}).get("numero") if isinstance(vinculos.get("requerimiento"), dict)
                    else vinculos.get("requerimiento"))
         tag = _tag((vinculos.get("analisisFinanciero") or {}).get("tag"))
-        vincular(req, tag)
+        vincular(req, tag, f"La formulación «{d.get('codigo') or d.get('uid')}»")
         ficha = {"uid": d.get("uid"), "codigo": d.get("codigo"), "version": d.get("version"),
                  "titulo": d.get("titulo"), "estado": d.get("estado"), "tag": tag}
         if req:
@@ -206,7 +222,7 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
     for doc in documentos:
         proyecto = doc.get("proyecto") or {}
         req, tag = _req(proyecto.get("req")), _tag(proyecto.get("tag"))
-        vincular(req, tag)
+        vincular(req, tag, f"El documento {doc.get('folio')} de Sistema QUEMPIN")
         ficha = {"folio": doc.get("folio"), "pais": doc.get("pais"), "fecha": doc.get("fecha"),
                  "referencia": doc.get("referencia"), "moneda": doc.get("moneda"), "neto": doc.get("neto"),
                  "contraparte": (doc.get("contraparte") or {}).get("razon_social")}
@@ -217,7 +233,6 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
         else:
             sin_req["documentos"] += 1
 
-    conflictos = []
     for req, tags in sorted(tags_por_req.items(), key=lambda par: int(par[0])):
         e = entrada(req)
         if len(tags) == 1:
@@ -258,6 +273,7 @@ def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | 
         _datos(raiz, "documentos-comerciales").get("documentos") or [],
         carpetas if carpetas is not None else carpetas_de_proyectos(raiz),
         folios_en_centro_costos(rutas_ordenes_cc),
+        carpetas_cc=((_datos(raiz, "centro-costos-carpetas").get("paises") or {}).get("CL")) or [],
     )
     datos["gestion"] = gestion if gestion is not None else proyectos_en_gestion(ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, raiz))
     intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)

@@ -84,6 +84,7 @@ RAIZ_SISTEMA_INTERCAMBIO = RAIZ_FINANZAS / "Sistema Intercambio"
 if str(RAIZ_SISTEMA_INTERCAMBIO) not in sys.path:
     sys.path.insert(0, str(RAIZ_SISTEMA_INTERCAMBIO))
 import intercambio  # noqa: E402
+import mismo_proyecto  # noqa: E402
 
 import ubicacion  # noqa: E402
 
@@ -464,7 +465,19 @@ def valores_actuales(ws, fila: int, columnas: dict) -> dict:
             for c, col in COLUMNAS_ESCRIBIBLES.items() if col in columnas}
 
 
-def planificar(mensajes: list[dict], filas_por_tag: dict, actuales_por_tag: dict, estado: dict) -> list[dict]:
+def req_del_mensaje(mensaje: dict) -> str | None:
+    """El N° de la Planilla del que habla el envío: el que escribe un ingreso
+    del tablero, el ``proyecto.req`` de una venta o presupuesto, o el N° de
+    adelante del código de su oferta («280. UMAG - …»)."""
+    if mensaje.get("tipo") == TIPO_DATOS:
+        valor = (mensaje.get("valores") or {}).get(COLUMNA_REQ)
+        return mismo_proyecto._req(valor)
+    req = mismo_proyecto._req((mensaje.get("proyecto") or {}).get("req"))
+    return req or mismo_proyecto.req_de_carpeta((mensaje.get("fuente") or {}).get("codigo"))
+
+
+def planificar(mensajes: list[dict], filas_por_tag: dict, actuales_por_tag: dict, estado: dict,
+               nombres_por_tag: dict | None = None, carpetas_cc: list[dict] | None = None) -> list[dict]:
     """Una decisión por mensaje ('aplicar', 'crear', 'sin-cambios',
     'pendiente', 'reemplazado' o 'rechazado'). Función pura: no escribe
     nada. 'mensajes' viene ordenado por fecha de envío y se decide en ese
@@ -472,7 +485,15 @@ def planificar(mensajes: list[dict], filas_por_tag: dict, actuales_por_tag: dict
     ingreso del tablero ve lo que acaba de aplicar otro). De varios del
     Formulador del mismo tipo para el mismo TAG solo cuenta el último (un
     presupuesto y una venta del mismo TAG son independientes: escriben
-    columnas distintas); los del tablero se aplican todos."""
+    columnas distintas); los del tablero se aplican todos.
+
+    nombres_por_tag y carpetas_cc (las carpetas del Centro de Costos de Chile,
+    centro-costos-carpetas): un envío del N° X a una ficha que es otro
+    proyecto, porque cada uno tiene su carpeta (mismo_proyecto), queda
+    pendiente. Caso real del 2026-11-02: el presupuesto del 280 «UMAG -
+    Conexión y PH Lab 1» pisó los proyectados de la ficha UMAG, que es «UMAG
+    Linea de H2»."""
+    nombres_por_tag = {normalizar_tag(t): n for t, n in (nombres_por_tag or {}).items()}
     decisiones = []
     vigentes = []
     ultimo: dict[tuple[str, str], dict] = {}
@@ -499,14 +520,43 @@ def planificar(mensajes: list[dict], filas_por_tag: dict, actuales_por_tag: dict
                 "detalle": [f"Llegó un envío más reciente para {tag} ({fuente_legible(ultimo[(tag, tipo)])})."],
             })
             continue
+        otro = _otro_proyecto(mensaje, tag, filas, nombres_por_tag, carpetas_cc, estado)
+        if otro:
+            decisiones.append(otro)
+            continue
         decidir = _decidir_datos if tipo == TIPO_DATOS else _decidir
         d = decidir(mensaje, tag, filas, actuales, estado)
+        if d["accion"] == "crear":
+            nombres_por_tag[tag] = d.get("nombre")
         decisiones.append(d)
         if d["accion"] in ("aplicar", "crear"):
             filas.setdefault(tag, None)
             for clave, _antes, despues in d["cambios"]:
                 actuales.setdefault(tag, {})[clave] = despues
     return decisiones
+
+
+def _otro_proyecto(mensaje, tag, filas_por_tag, nombres_por_tag, carpetas_cc, estado) -> dict | None:
+    """La decisión 'pendiente' si el envío es de un N° que tiene su carpeta en
+    el Centro de Costos y la ficha 'tag' tiene otra con facturas; si no, None.
+    Un 'confirmar' por consola lo deja pasar (la persona sabe que es el mismo)."""
+    if not carpetas_cc or mensaje["id"] in estado.get("confirmados", []):
+        return None
+    req = req_del_mensaje(mensaje)
+    if not req:
+        return None
+    nombre = nombres_por_tag.get(tag)
+    if nombre is None and tag not in filas_por_tag and mensaje["proyecto"].get("crear"):
+        nombre = mensaje["proyecto"].get("nombre")
+    ajena = mismo_proyecto.carpeta_ajena(nombre, req, carpetas_cc)
+    if not ajena:
+        return None
+    return {"mensaje": mensaje, "accion": "pendiente", "tag": tag, "costos": {}, "detalle": [
+        mismo_proyecto.motivo(tag, nombre, req, ajena),
+        f"No se aplica a {tag}: descártalo (driver.py intercambio descartar {mensaje['id']}) y vuelve a "
+        f"enviarlo eligiendo la ficha del N° {req}. Si de verdad son el mismo proyecto: "
+        f"driver.py intercambio confirmar {mensaje['id']}.",
+    ]}
 
 
 def _decidir_datos(mensaje, tag, filas_por_tag, actuales_por_tag, estado) -> dict:
