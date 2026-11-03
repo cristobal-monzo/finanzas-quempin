@@ -1,0 +1,18 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "procesador",
+  "generado": "2026-11-03T10:00:00-03:00",
+  "datos": {
+    "proyectos": [],
+    "gestion": [
+      {
+        "carpeta": "280. UMAG - Conexión",
+        "req": "280"
+      },
+      {
+        "carpeta": "Rengo Incinerador",
+        "req": null
+      }
+    ]
+  }
+}

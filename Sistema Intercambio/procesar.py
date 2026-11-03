@@ -363,9 +363,11 @@ def paso_proyectos(raiz: Path, previo, forzar):
     carpetas = proyectos.carpetas_de_proyectos(AQUI, RAIZ_FACTURAS_CL if RAIZ_FACTURAS_CL.is_dir() else None)
     # La dirección web de la carpeta del Centro de Costos (2026-10-29), para «Facturas del proyecto» del Portal
     carpetas["facturasWeb"] = carpetas_proyecto.enlaces_web(_raices_facturas(), carpetas_proyecto.RUTA_ESTADO)
-    r = proyectos.publicar(raiz, carpetas)
+    # Las carpetas de proyecto de la raíz de Gestión, con o sin N° (2026-11-03): todas van a «Proyectos en ejecución»
+    gestion = proyectos.proyectos_en_gestion(ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, AQUI))
+    r = proyectos.publicar(raiz, carpetas, gestion=gestion)
     return (f"{r['proyectos']} proyectos; {r['sin_tag_req']} TAG sin N° de requerimiento; "
-            f"{r['conflictos']} conflicto(s)"), "ok"
+            f"{r['conflictos']} conflicto(s); {r['gestion']} en Gestión de Proyectos"), "ok"
 
 
 PASOS = (

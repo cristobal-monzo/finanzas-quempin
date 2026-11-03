@@ -32,7 +32,9 @@ el usuario elegido y con una casilla para ver solo sus proyectos):
   formulación Enviada o cotización emitida (Oferta, con el resultado de
   Mercado Público); borrador esperando en Sistema QUEMPIN, o formulación con
   precio y sin errores (Cotización); formulación en curso (Formulación); y si
-  no, Requerimiento. Lo que lleva más de 60 días sin moverse va plegado al pie
+  no, Requerimiento. **Con carpeta en la raíz de Gestión de Proyectos** (2026-11-03, `gestion` de `proyectos.json`) está
+  en Ejecución aunque la Planilla no diga «Adjudicado» (lo avisa: falta marcarlo o la carpeta lleva el N° de otro) y no se
+  pliega; una carpeta sin N° se une por el nombre con su proyecto o es una tarjeta sola que pide el N° (`rcTarjetaGestion`). Lo que lleva más de 60 días sin moverse va plegado al pie
   de su etapa; una oferta con más de 45 días sin respuesta pide confirmar el
   resultado. Los datos que no calzan entre herramientas (la Planilla dice
   «Ofertado» y ya hay ficha en el Análisis) salen como «datos por revisar».

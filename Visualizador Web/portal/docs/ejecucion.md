@@ -10,7 +10,14 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
 - **Qué es**: la vista `ejecucion` (`tipo: vista`, `#vistaEjecucion`, segunda de Control y finanzas), funciones `ej*`,
   estado `ej`. La lista son los proyectos que el Recorrido pone en Ejecución (`rcArmar`; los de más de 60 días, plegados
   abajo), con su avance, su margen estimado y lo que hay por decidir; al elegir uno (recordado en
-  `quempin_portal_ejecucion`), su resumen. El proyecto elegido arriba en el portal la lleva a él (`ejAlElegirProyecto`), y
+  `quempin_portal_ejecucion`), su resumen.
+- **Todo lo de Gestión de Proyectos** (2026-11-03, pedido del usuario: «todos los proyectos que se encuentran en la carpeta
+  de gestión de proyectos deben verse», sin las carpetas complementarias): el procesador publica en `proyectos.json` las
+  carpetas de la raíz de Gestión (`gestion`, sin las agrupadoras «0 …» ni archivos) y `ejTarjetas` suma cada proyecto con
+  carpeta ahí (`t.gestion`), nunca plegado. Si ya terminó (Cierre en el Recorrido) va al final, con el aviso de mover su
+  carpeta a «0 Proyectos Entregados». Una carpeta sin N° se une por el nombre con un proyecto adjudicado (`rcGestionDe`:
+  el mismo nombre o dos palabras en común, ≥ 75 % y uno solo) y pide el N°; sin parecido va sola (`gestion-<carpeta>`):
+  se ve con su carpeta, pero sin N° ni TAG no se le anota nada (`ejSinClaveEl`) ni recibe cotizaciones de «Llevar». El proyecto elegido arriba en el portal la lleva a él (`ejAlElegirProyecto`), y
   el Recorrido la abre desde su ficha («Su resumen en ejecución»), desde «Registrar avance» y desde su columna Ejecución
   (`RC_ETAPAS`, `RC_IR.ejecucion`).
 - **De dónde sale cada cifra** (`ejModelo`, solo calcula): la venta es la escrita aquí o, si no, el precio neto de su

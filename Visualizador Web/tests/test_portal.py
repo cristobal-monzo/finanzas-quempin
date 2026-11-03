@@ -4178,6 +4178,60 @@ def test_proyectos_en_ejecucion_lista_y_resumen(navegador, sitio):
     pagina.context.close()
 
 
+def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegador, sitio):
+    """Pedido del usuario (2026-11-03): todos los proyectos de la carpeta de Gestión de Proyectos se ven en «Proyectos en
+    ejecución», sin las carpetas complementarias (esas las deja fuera el procesador: proyectos_en_gestion)."""
+    def en_gestion(archivos):
+        archivos["publicado/proyectos.json"]["datos"]["gestion"] = [
+            {"carpeta": "905. Oferta esperando", "req": "905"},          # la Planilla todavía dice «Ofertado»
+            {"carpeta": "909. Terminada", "req": "909"},                 # 100 % de avance en el Análisis Financiero
+            {"carpeta": "910. Adjudicada hace mucho", "req": "910"},     # iba plegada por antigua
+            {"carpeta": "Obra sin número - Valparaíso", "req": None},    # la ficha SOLO del Análisis, por el nombre
+            {"carpeta": "Rengo Incinerador", "req": None}]               # sin N° ni nada que se le parezca
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, cambiar=en_gestion)
+    claves = lambda sel: pagina.locator(sel + " .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    vivas = claves("#ejTarjetas")
+    assert {"req-905", "req-909", "req-910", "tag-SOLO", "gestion-Rengo Incinerador"} <= set(vivas)
+    assert "req-910" not in claves("#ejTarjetasAntiguas"), "lo que está en Gestión no va plegado"
+    assert vivas[-1] == "req-909", "lo que ya terminó, al final"
+    assert [c for c in vivas if c.startswith("gestion-")] == ["gestion-Rengo Incinerador"], "«Obra sin número» no se repite: es SOLO"
+    assert "no lleva el N°" in pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="gestion-Rengo Incinerador"]').inner_text()
+    avisos = lambda: pagina.locator("#ejProyecto .rc-avisos").inner_text()
+
+    def resumen(clave):
+        pagina.locator(f'#ejTarjetas .ej-tarjeta[data-clave="{clave}"]').click()
+        pagina.locator("#ejProyecto .ej-cab").wait_for()
+
+    def carpeta():
+        pagina.locator("#ejProyecto .ej-cab .cx-boton", has_text="Gestión de Proyectos").click()
+        return pagina.evaluate("window.__lanzados")[-1]
+
+    resumen("req-905")
+    assert "la Planilla de Ingreso dice «Ofertado» para el N° 905" in avisos()
+    assert carpeta() == "quempin://carpeta/gestion/905.%20Oferta%20esperando"
+    pagina.locator(".ej-volver").click()
+    resumen("req-909")
+    assert "Ya no está en ejecución" in pagina.locator("#ejProyecto .ej-cab").inner_text()
+    assert "su carpeta sigue en la raíz de Gestión de Proyectos" in avisos()
+    pagina.locator(".ej-volver").click()
+    resumen("tag-SOLO")
+    assert carpeta() == "quempin://carpeta/gestion/Obra%20sin%20n%C3%BAmero%20-%20Valpara%C3%ADso"
+    assert "se reconoció por el nombre" in avisos()
+    pagina.locator(".ej-volver").click()
+    # Sin N° ni TAG no hay a qué anotarle nada: su carpeta y cómo unirla, sin cifras ni compras
+    resumen("gestion-Rengo Incinerador")
+    assert pagina.locator("#ejProyecto .ej-sin-clave").is_visible()
+    assert pagina.locator("#ejProyecto .ej-kpis, #ejProyecto .ej-compras").count() == 0
+    assert carpeta() == "quempin://carpeta/gestion/Rengo%20Incinerador"
+    # El Recorrido cuenta lo mismo: lo que está en Gestión va en Ejecución
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    col = pagina.evaluate(JS_COLUMNAS)
+    assert {"req-905", "req-910", "tag-SOLO", "gestion-Rengo Incinerador"} <= set(col["ejecucion"]) and "req-905" not in col["oferta"]
+    assert not errores
+    pagina.context.close()
+
+
 def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
     pagina.locator("#ejProyecto .ej-compras .cx-boton").click()

@@ -93,6 +93,21 @@ def test_carpetas_con_numero_bajan_por_las_agrupadoras(tmp_path):
     assert set(c) == {"261", "220", "280", "29"}
 
 
+def test_proyectos_en_gestion_son_las_carpetas_de_la_raiz_sin_las_complementarias(tmp_path):
+    """Pedido del usuario (2026-11-03): todos los proyectos de Gestión de Proyectos en «Proyectos en ejecución», sin las
+    carpetas complementarias: las agrupadoras «0 …», lo oculto y los archivos quedan fuera; las sin N° entran."""
+    for ruta in ("0 Carpeta modelo", "0 Proyectos Entregados 2026/303. Quemador Osorno", "036. Quilpué - Fiscalía",
+                 "314. UA Reactor", "Rengo Incinerador", ".oculta"):
+        (tmp_path / ruta).mkdir(parents=True)
+    (tmp_path / "Proyecto ECIFA - Acceso directo.lnk").write_bytes(b"")
+    (tmp_path / "manual.pdf").write_bytes(b"")
+    assert pj.proyectos_en_gestion(tmp_path) == [
+        {"carpeta": "036. Quilpué - Fiscalía", "req": "36"},
+        {"carpeta": "314. UA Reactor", "req": "314"},
+        {"carpeta": "Rengo Incinerador", "req": None}]
+    assert pj.proyectos_en_gestion(None) == [] and pj.proyectos_en_gestion(tmp_path / "no-existe") == []
+
+
 def test_publicar_desde_la_carpeta_cumple_su_esquema(tmp_path):
     raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
     ic.publicar(raiz, "requerimientos", "planilla-requerimientos", {"fuente": "x", "requerimientos": REQS})
@@ -102,8 +117,9 @@ def test_publicar_desde_la_carpeta_cumple_su_esquema(tmp_path):
     (repo / "a1.json").write_text(json.dumps({"esquema": ic.ESQUEMA, "herramienta": "formulador", "tipo": "proyecto",
                                               "historia": [], "datos": dict(f["datos"], modificado="2026-10-01")}),
                                   encoding="utf-8")
-    r = pj.publicar(raiz, carpetas={})
-    assert r["proyectos"] == 2
+    r = pj.publicar(raiz, carpetas={}, gestion=[{"carpeta": "Rengo Incinerador", "req": None}])
+    assert (r["proyectos"], r["gestion"]) == (2, 1)
     sobre = ic.leer_publicacion(raiz, "proyectos")
     assert esquemas.validar_publicacion("proyectos", sobre) == []
+    assert sobre["datos"]["gestion"] == [{"carpeta": "Rengo Incinerador", "req": None}]
     assert sobre["datos"]["proyectos"][0]["formulaciones"][0]["uid"] == "a1"

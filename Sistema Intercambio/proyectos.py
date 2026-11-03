@@ -116,6 +116,27 @@ def carpetas_con_numero(raiz: Path, profundidad: int = 2) -> dict[str, list[str]
     return salida
 
 
+def proyectos_en_gestion(raiz: Path | None) -> list[dict]:
+    """[{'carpeta': nombre, 'req': N° o None}] de las carpetas de proyecto de la
+    raíz de «Gestión de Proyectos», con o sin N° adelante (2026-11-03, pedido
+    del usuario: todas deben verse en «Proyectos en ejecución» del Portal).
+    Quedan fuera los archivos y las carpetas complementarias, las agrupadoras
+    «0 …» («0 Carpeta modelo», «0 Proyectos Entregados 2026»). Solo lista nombres."""
+    if raiz is None or not Path(raiz).is_dir():
+        return []
+    try:
+        hijas = sorted(h for h in Path(raiz).iterdir() if h.is_dir() and not h.name.startswith("."))
+    except OSError:
+        return []
+    salida = []
+    for hija in hijas:
+        if hija.name.startswith(CARPETAS_AGRUPADORAS):
+            continue
+        coincide = _CARPETA_CON_NUMERO.match(hija.name)
+        salida.append({"carpeta": hija.name, "req": _req(int(coincide.group(1))) if coincide else None})   # «036.» → «36»
+    return salida
+
+
 def carpetas_de_proyectos(desde: Path | None = None, raiz_facturas: Path | None = None) -> dict:
     """{'oferta': {...}, 'ejecucion': {...}, 'facturas': {...}} con rutas
     relativas a cada biblioteca (cada colega tiene OneDrive en otra ruta).
@@ -225,9 +246,11 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
     return {"proyectos": lista, "sinVincular": sin_req, "conflictos": conflictos}
 
 
-def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | None = None) -> dict:
-    """Arma el cruce desde lo publicado en 'raiz' y lo publica. Devuelve un
-    resumen {'proyectos', 'sin_tag_req', 'conflictos'}."""
+def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | None = None,
+             gestion: list[dict] | None = None) -> dict:
+    """Arma el cruce desde lo publicado en 'raiz' y lo publica. gestion: las
+    carpetas de la raíz de Gestión (proyectos_en_gestion). Devuelve un resumen
+    {'proyectos', 'sin_tag_req', 'conflictos', 'gestion'}."""
     datos = cruzar(
         _datos(raiz, "requerimientos").get("requerimientos") or [],
         _datos(raiz, "analisis-financiero").get("proyectos") or [],
@@ -236,6 +259,7 @@ def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | 
         carpetas if carpetas is not None else carpetas_de_proyectos(raiz),
         folios_en_centro_costos(rutas_ordenes_cc),
     )
+    datos["gestion"] = gestion if gestion is not None else proyectos_en_gestion(ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, raiz))
     intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)
     return {"proyectos": len(datos["proyectos"]), "sin_tag_req": len(datos["sinVincular"]["tags"]),
-            "conflictos": len(datos["conflictos"])}
+            "conflictos": len(datos["conflictos"]), "gestion": len(datos["gestion"])}
