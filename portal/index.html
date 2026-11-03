@@ -4898,15 +4898,64 @@
     t.antiguo = rcDias(fin, hoy) < -RC_DIAS_ANTIGUO;
     t.orden = -fin.getTime();
   }
+  /* Las carpetas de proyecto de la raíz de «Gestión de Proyectos» (2026-11-03, pedido del usuario: todas deben verse en
+     «Proyectos en ejecución», sin las complementarias, que el procesador ya deja fuera). Estar ahí dice que se adjudicó y
+     está en obra: su proyecto va a Ejecución aunque la Planilla no lo diga (lo avisa), y no se pliega por antiguo. */
+  const RC_GESTION_PARECIDO = 0.75;    // una carpeta sin N° se une por el nombre solo con un proyecto que se le parezca así
+  function rcConGestion(t, carpeta) {
+    t.gestion = carpeta;
+    t.carpetas = Object.assign({}, t.carpetas, { ejecucion: [carpeta].concat((t.carpetas.ejecucion || []).filter((x) => x !== carpeta)) });
+  }
+  // Su carpeta está en Gestión y la Planilla no dice «Adjudicado»: falta marcarlo, o la carpeta lleva el N° de otro
+  function rcAvisoGestion(t) {
+    const r = t.planilla;
+    if (!r) return 'Su carpeta está en Gestión de Proyectos, pero el N° ' + t.req + ' no está en la Planilla de Ingreso: revisa el N° adelante del nombre de la carpeta o regístralo en la Planilla.';
+    const pe = texto(r.estado);
+    return 'Su carpeta está en Gestión de Proyectos, pero la Planilla de Ingreso ' + (pe ? 'dice «' + pe + '»' : 'no tiene estado') + ' para el N° ' + t.req
+      + (texto(r.titulo) ? ' («' + rcLegible(r.titulo) + '»)' : '') + ': si se adjudicó, márcalo «Adjudicado»; si es otro proyecto, corrige el N° adelante del nombre de la carpeta.';
+  }
+  /* Una carpeta de Gestión sin N° adelante: el proyecto adjudicado (en ejecución o cerrado) que más se le parece por el
+     nombre, si es uno solo y se parece bastante («Junji Región de Valparaíso» ↔ JUNJ «Junji's Valparaiso»; no «Maipu -
+     Calderas CESFAMs» ↔ «Llay llay Caldera CESFAM»). Con las palabras de «Proyectos en ejecución» (ejPalabras), pero el
+     mismo nombre o al menos dos palabras en común: un título de una palabra («Catedral», «En obra») no se une con todo. */
+  function rcParecido(a, b) {
+    if (norm(a).trim() === norm(b).trim()) return 1;
+    const x = ejPalabras(a), y = ejPalabras(b);
+    let n = 0;
+    x.forEach((w) => { if (y.has(w)) n++; });
+    return n >= 2 ? n / Math.min(x.size, y.size) : 0;
+  }
+  function rcGestionDe(carpeta, tarjetas) {
+    let mejor = null, puntaje = 0, empate = false;
+    tarjetas.forEach((t) => {
+      if (t.gestion || !(t.req || t.tag) || (t.etapa !== 'ejecucion' && t.etapa !== 'cierre')) return;
+      const nombres = [t.titulo, t.af && t.af.nombre, t.planilla && t.planilla.titulo, t.formulacion && t.formulacion.titulo].map(texto).filter(Boolean);
+      const x = Math.max(0, ...nombres.map((n) => rcParecido(carpeta, n)));
+      if (x > puntaje) { mejor = t; puntaje = x; empate = false; } else if (x > 0 && x === puntaje) empate = true;
+    });
+    return mejor && !empate && puntaje >= RC_GESTION_PARECIDO ? mejor : null;
+  }
+  // Una carpeta de Gestión sin N° y sin proyecto que se le parezca: va sola, en ejecución, y pide su N°.
+  function rcTarjetaGestion(carpeta) {
+    const t = rcBase('gestion-' + carpeta);
+    rcConGestion(t, carpeta);
+    t.titulo = carpeta;
+    t.etapa = 'ejecucion';
+    t.accion = { tipo: 'hacer', corto: 'Ponerle su N°', nivel: 'warn', ir: RC_IR.herr('planilla'),
+      texto: 'Está en Gestión de Proyectos, pero su carpeta no lleva adelante el N° de la Planilla de Ingreso («N°. Nombre») y no se encontró su ficha en el Análisis Financiero: sin el N° no se une con su oferta, su avance ni sus facturas. Búscalo en la Planilla de Ingreso y renombra la carpeta; si no tiene, regístralo ahí.' };
+    t.chips.push({ texto: 'Sin N°', nivel: 'warn' });
+    return t;
+  }
   // Un requerimiento de la Planilla, con lo que cuelga de él en las demás herramientas.
   function rcTarjetaReq(n, x, hoy) {
-    const { r, c, f, af, lic } = x;
+    const { r, c, f, af, lic, g } = x;
     const t = rcBase('req-' + n);
     const pe = r ? texto(r.estado) : '';
     const fe = f ? f.estado : '';
     t.req = n;
     t.planilla = r; t.formulacion = f; t.af = af; t.lic = lic;
     t.carpetas = (c && c.carpetas && typeof c.carpetas === 'object') ? c.carpetas : {};
+    if (g) rcConGestion(t, g);
     t.cotizaciones = c && Array.isArray(c.cotizaciones) ? c.cotizaciones : [];
     t.tag = texto((af && af.tag) || (c && c.tag)).toUpperCase() || null;
     const carpeta = (t.carpetas.oferta || t.carpetas.ejecucion || [])[0];
@@ -4930,7 +4979,7 @@
       if (pe && pe !== 'Adjudicado') t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
       return t;
     }
-    if (pe === 'Adjudicado' || fe === 'Adjudicada') {
+    if (pe === 'Adjudicado' || fe === 'Adjudicada' || t.gestion) {
       t.etapa = 'ejecucion';
       t.accion = f
         ? { tipo: 'hacer', corto: 'Pasar a ejecución', nivel: 'warn', ir: RC_IR.seguimiento(f.uid),
@@ -4938,6 +4987,7 @@
         : { tipo: 'hacer', corto: 'Crear su ficha en el Análisis', nivel: 'warn', ir: RC_IR.herr('ingresar'),
             texto: 'Adjudicado y sin ficha en el Análisis Financiero. Créala en «Ingresar avance» con su TAG y este N°, para seguir su avance y sus costos.' };
       if (fe === 'Adjudicada' && pe && pe !== 'Adjudicado') t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
+      else if (t.gestion && pe !== 'Adjudicado') t.avisos.push(rcAvisoGestion(t));
       const ref = cierre || rcFecha(r && r.apertura);
       t.antiguo = !!ref && rcDias(ref, hoy) < -RC_DIAS_ANTIGUO;
       t.orden = ref ? -ref.getTime() : MAXIMO;
@@ -5112,9 +5162,19 @@
       if ((!r || RC_VIVOS.includes(texto(r.estado))) && !RC_FUERA.includes(f.estado)) nums.add(n);
     });
     afPorReq.forEach((p, n) => nums.add(n));
+    // ... y lo que tiene carpeta en la raíz de Gestión de Proyectos (2026-11-03), aunque nada más lo nombre
+    const gesPorReq = new Map(), gesSinNum = [];
+    (d.gestion || []).forEach((g) => {
+      const carpeta = texto(g && g.carpeta);
+      const n = rcNum(g && g.req);
+      if (!carpeta) return;
+      if (!n) gesSinNum.push(carpeta);
+      else if (!gesPorReq.has(n)) gesPorReq.set(n, carpeta);
+    });
+    gesPorReq.forEach((g, n) => nums.add(n));
     const tarjetas = [];
     nums.forEach((n) => tarjetas.push(rcTarjetaReq(n, { r: porNum.get(n) || null, c: cruce.get(n) || null, f: formPorReq.get(n) || null,
-      af: afPorReq.get(n) || null, lic: lic.get(n) || null, borrador: borradores.has(n) }, hoy)));
+      af: afPorReq.get(n) || null, lic: lic.get(n) || null, borrador: borradores.has(n), g: gesPorReq.get(n) || null }, hoy)));
     sinReq.forEach((f) => tarjetas.push(rcTarjetaSinReq(f, hoy)));
     const unidos = new Set(afPorReq.values());
     afPorTag.forEach((p) => { if (!unidos.has(p)) tarjetas.push(rcTarjetaAF(p, hoy)); });
@@ -5122,6 +5182,19 @@
     tarjetas.forEach((t) => {
       const e = t.etapa === 'ejecucion' ? rcCierreDe(t, cierres) : null;
       if (e && e.cerrado) rcCerradoEnPlan(t, e, hoy);
+    });
+    // Las carpetas de Gestión sin N°: con el proyecto que se les parece o, si no, solas
+    gesSinNum.forEach((carpeta) => {
+      const t = rcGestionDe(carpeta, tarjetas);
+      if (!t) { tarjetas.push(rcTarjetaGestion(carpeta)); return; }
+      rcConGestion(t, carpeta);
+      t.avisos.push('Su carpeta en Gestión de Proyectos («' + carpeta + '») no lleva su N° adelante y se reconoció por el nombre: '
+        + (t.req ? 'renómbrala «' + t.req + '. ' + carpeta + '»' : 'ponle adelante su N° de la Planilla de Ingreso («N°. Nombre»)') + ' para que las herramientas la unan sin adivinar.');
+    });
+    tarjetas.forEach((t) => {
+      if (!t.gestion) return;
+      if (t.etapa === 'ejecucion') t.antiguo = false;
+      else t.avisos.push('Ya terminó, pero su carpeta sigue en la raíz de Gestión de Proyectos: si se entregó, muévela a «0 Proyectos Entregados» de su año; si sigue en obra, corrige su avance o reábrelo.');
     });
     // El avance pedido al Análisis Financiero que todavía espera al procesador (2026-10-28, «Proyectos en ejecución»): se ve
     // desde ya, sin cambiar la etapa, que sigue saliendo del Análisis Financiero
@@ -5182,6 +5255,7 @@
       planillaInfo: req && req.datos ? { actualizado: texto(req.datos.actualizado), generado: texto(req.generado),
         avisos: Array.isArray(req.datos.avisos) ? req.datos.avisos.map(texto).filter(Boolean) : [] } : null,
       cruce: lista(cruce, 'proyectos'), af: lista(af, 'proyectos'),
+      gestion: lista(cruce, 'gestion'),      // las carpetas de proyecto de la raíz de Gestión de Proyectos (2026-11-03)
       licitaciones: lista(lic, 'licitaciones'),
       formulaciones: repo.filter((x) => x && x.datos && typeof x.datos === 'object'),
       borradores: buzon.filter((m) => m && m.tipo === 'borrador-cotizacion' && m.destino === 'sistema-quempin'),
@@ -5603,7 +5677,7 @@
       b.addEventListener('click', () => rcIr(ir));
       enl.append(b);
     };
-    if (t.etapa === 'ejecucion') enlace('Su resumen en ejecución', RC_IR.ejecucion(t.clave));
+    if (t.etapa === 'ejecucion' || t.gestion) enlace('Su resumen en ejecución', RC_IR.ejecucion(t.clave));
     if (t.req) enlace('Formulador', RC_IR.req(t.req));
     else if (f) enlace('Formulador', RC_IR.ficha(f.uid));
     if (f) enlace('Seguimiento', RC_IR.seguimiento(f.uid));
@@ -10451,7 +10525,9 @@
 
   // ---- Cada proyecto: de dónde sale cada cifra (solo calcula) ----------------------------------------------------------
   // Los de esta vista: los que el Recorrido pone en Ejecución (los de más de 60 días sin moverse van aparte)
-  const ejTarjetas = () => rc.tarjetas.filter((t) => t.etapa === 'ejecucion' && (t.req || t.tag));
+  // Los que el Recorrido pone en Ejecución y, desde el 2026-11-03, todo proyecto con carpeta en la raíz de Gestión de
+  // Proyectos: también si ya terminó (lo avisa) o si su carpeta no lleva N° (se ve, pero sin N° ni TAG no se le anota nada)
+  const ejTarjetas = () => rc.tarjetas.filter((t) => (t.etapa === 'ejecucion' && (t.req || t.tag)) || t.gestion);
   // Sus claves: su N° y su TAG. Lo anotado con el TAG sigue siendo del proyecto cuando recibe su N° (o al revés).
   const ejClaves = (t) => [t.req ? 'req:' + t.req : '', t.tag ? 'tag:' + t.tag : ''].filter(Boolean);
   const ejClave = (t) => ejClaves(t)[0];
@@ -10942,7 +11018,8 @@
   }
 
   // ---- La lista -------------------------------------------------------------------------------------------------------
-  const ejOrden = (a, b) => (rcMia(b) - rcMia(a)) || a.orden - b.orden || plComparar(a.titulo, b.titulo);
+  // Lo tuyo primero; lo que ya terminó y sigue en Gestión de Proyectos, al final
+  const ejOrden = (a, b) => (rcMia(b) - rcMia(a)) || ((a.etapa !== 'ejecucion') - (b.etapa !== 'ejecucion')) || a.orden - b.orden || plComparar(a.titulo, b.titulo);
   function ejPintarLista() {
     const u = estado.usuario;
     const mios = $('#ejMios');
@@ -10952,13 +11029,14 @@
     const q = norm(ej.q).trim().split(/\s+/).filter(Boolean);
     const todas = ejTarjetas();
     const alcance = todas.filter((t) => (!ej.mios || !u || rcMia(t)) && q.every((x) => t.buscar.includes(x)));
-    const vivas = alcance.filter((t) => !t.antiguo).sort(ejOrden);
-    const viejas = alcance.filter((t) => t.antiguo).sort(ejOrden);
+    const plegada = (t) => t.antiguo && !t.gestion;      // lo que está en Gestión de Proyectos nunca va plegado
+    const vivas = alcance.filter((t) => !plegada(t)).sort(ejOrden);
+    const viejas = alcance.filter(plegada).sort(ejOrden);
     const caja = $('#ejTarjetas');
     caja.textContent = '';
     vivas.forEach((t) => caja.append(ejTarjetaEl(t)));
     if (!vivas.length) {
-      caja.append(crear('p', 'ej-nada', !todas.length ? 'No hay proyectos en ejecución: entran aquí cuando se adjudican (Planilla «Adjudicado», formulación «Adjudicada» o ficha en el Análisis Financiero).'
+      caja.append(crear('p', 'ej-nada', !todas.length ? 'No hay proyectos en ejecución: entran aquí cuando se adjudican (Planilla «Adjudicado», formulación «Adjudicada» o ficha en el Análisis Financiero) y cuando su carpeta está en Gestión de Proyectos.'
         : alcance.length ? 'Los proyectos que calzan llevan más de 60 días sin moverse: están abajo.' : 'Ningún proyecto en ejecución calza con lo buscado.'));
     }
     $('#ejAntiguos').hidden = !viejas.length;
@@ -10991,7 +11069,8 @@
     b.append(f1);
     const f2 = crear('span', 'ej-t-fila');
     const nivel = ejNivelMargen(m.margen, m);
-    if (m.margen !== null) {
+    if (!ejClave(t)) f2.append(crear('span', null, 'Su carpeta no lleva el N° de la Planilla de Ingreso'));
+    else if (m.margen !== null) {
       const s = crear('span', 'ej-semaforo' + (nivel ? '' : ' sin'), (m.pres ? 'Margen estimado ' : 'Margen con lo anotado ') + ejPct(m.margen));
       if (nivel) s.dataset.nivel = nivel;
       if (!m.pres) s.title = 'Sin presupuesto: solo con lo gastado, comprometido y proyectado que está anotado';
@@ -11047,12 +11126,16 @@
     ej.modelo = m;
     if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, fecha: plISO(new Date()), jornada: 1, personas: new Set(), nombres: {} };
     raiz.textContent = '';
-    raiz.append(ejBoton('Todos los proyectos en ejecución', 'cx-enlace ej-volver', ejVolver, 'izquierda'), ejCabEl(m), ejKpisEl(m));
+    // Una carpeta de Gestión sin N° ni TAG (2026-11-03): se ve, pero no hay a qué anotarle compras, días ni avance
+    const sinClave = !ejClave(t);
+    raiz.append(ejBoton('Todos los proyectos en ejecución', 'cx-enlace ej-volver', ejVolver, 'izquierda'), ejCabEl(m));
+    if (!sinClave) raiz.append(ejKpisEl(m));
     if (t.avisos.length) {
       const ul = crear('ul', 'rc-avisos');
       t.avisos.forEach((x) => { const li = crear('li'); li.append(icono('alerta', 16), crear('span', null, x)); ul.append(li); });
       raiz.append(ul);
     }
+    if (sinClave) { raiz.append(ejSinClaveEl(t)); vista.scrollTop = desplazado; return; }
     const dos = crear('div', 'ej-dos');
     dos.append(ejPresupuestoEl(m), ejAvanceEl(m));
     const mo = crear('div', 'ej-dos');
@@ -11070,6 +11153,14 @@
     if (!ej.precios && m.costos.some((x) => EJ_CAT.get(x.categoria).historico)) {
       ejPrecios().then((d) => { if (d && !vista.hidden && ej.clave === t.clave && !document.querySelector('dialog[open]')) ejPintar(); });
     }
+  }
+  function ejSinClaveEl(t) {
+    const { s } = ejPanel('Le falta su N° de requerimiento');
+    s.classList.add('ej-sin-clave');
+    s.append(crear('p', 'ej-linea', 'Su carpeta «' + t.gestion + '» está en Gestión de Proyectos, pero no lleva adelante el N° de la Planilla de Ingreso ni se encontró su ficha en el Análisis Financiero. Sin ese N° no se une con su oferta, su avance ni sus facturas, y no se le pueden anotar compras, días trabajados ni avance.'),
+      crear('p', 'ej-pista', 'Búscalo en la Planilla de Ingreso y renombra la carpeta «N°. ' + t.gestion + '»; si no tiene, regístralo ahí. Con la próxima vuelta del procesador aparece aquí con todo lo suyo.'),
+      ejBoton('Buscarlo en la Planilla de Ingreso', 'cx-enlace', () => abrir('planilla')));
+    return s;
   }
   function ejCabEl(m) {
     const t = m.t;
@@ -11133,7 +11224,7 @@
     if (!gestion && !MOVIL.matches) {
       cab.append(crear('p', 'ej-pista', oferta ? 'Todavía no tiene carpeta en Gestión de Proyectos. «Pasar a Gestión de Proyectos» la crea con «Formulación» (la copia de la oferta) y deja el original en 0 OFERTAS ADJUDICADAS; lo hace QUEMPIN.exe 1.3.16 o más nuevo, que pregunta antes. Después el procesador le agrega «Facturas del proyecto», el acceso directo a su carpeta del Centro de Costos.'
         : 'No se encontró su carpeta en Formulación de proyectos ni en Gestión de Proyectos: el procesador las reconoce por el N° adelante («' + (t.req || 'N°') + '. Nombre»).'));
-    } else if (gestion && !facturas && !MOVIL.matches) {
+    } else if (gestion && !facturas && ejClave(t) && !MOVIL.matches) {
       cab.append(crear('p', 'ej-pista', 'Todavía no tiene carpeta con su N° en el Centro de Costos («' + (t.req || 'N°') + '. Nombre» en Facturas y Boletas): el procesador la crea al adjudicarse el proyecto y entonces agrega «Facturas del proyecto» a su carpeta de Gestión.'));
     }
     return cab;
@@ -12650,7 +12741,8 @@
   }
   // Los que pueden recibirla. «Proyectos en ejecución» lleva sus cuentas en pesos, y el Formulador no convierte monedas.
   function llDestinos(moneda) {
-    const ejec = moneda === 'CLP' ? ejTarjetas().sort(ejOrden) : [];
+    // Los de Gestión que ya terminaron o no tienen N° ni TAG se ven en «Proyectos en ejecución», pero no reciben compras
+    const ejec = moneda === 'CLP' ? ejTarjetas().filter((t) => t.etapa === 'ejecucion' && ejClave(t)).sort(ejOrden) : [];
     const form = rc.tarjetas.filter((t) => t.formulacion && RC_ANTES_DE_OFERTAR.includes(t.etapa) && !t.antiguo
       && ejMoneda(ejFormulacion(t)) === moneda).sort((a, b) => (rcMia(b) - rcMia(a)) || rcOrden(a, b));
     return { ejec, form };
