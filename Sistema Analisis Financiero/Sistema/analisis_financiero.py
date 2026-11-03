@@ -87,6 +87,9 @@ PAISES = {
     },
     "PE": {
         "ruta_excel_af": RAIZ_PERU / "Análisis Financiero" / "Análisis de Proyectos Perú.xlsx",
+        # La copia para el equipo (2026-11-02): el Excel de Chile ya vive en la carpeta que
+        # abre el símbolo de carpeta del Portal; el de Perú, en el OneDrive de quien administra.
+        "ruta_excel_equipo": RUTA_EXCEL.with_name("Análisis de Proyectos Perú.xlsx"),
         "ruta_excel_cc": RAIZ_PERU / "Centro de Costos" / "Excel" / "Centro de Costos Perú.xlsx",
         "raiz_facturas_cc": (
             RAIZ_CENTRO_COSTOS / "Sitio de comunicación - Centro de Costos 1" / "Facturas y Boletas" / "Perú"
@@ -2628,6 +2631,12 @@ def ejecutar(
         wb.save(ruta_excel_af)
     except PermissionError as exc:
         resumen["error"] = f"No se pudo guardar {ruta_excel_af} (¿archivo abierto?): {exc}"
+
+    if libro_del_pais and resumen["error"] is None and cfg.get("ruta_excel_equipo"):
+        try:
+            shutil.copy2(ruta_excel_af, cfg["ruta_excel_equipo"])
+        except OSError as exc:
+            resumen["avisos"].append(f"No se pudo actualizar la copia para el equipo ({exc}); se reintenta en la próxima corrida.")
 
     # Solo con el Excel ya guardado: si no se pudo guardar, los envíos del
     # Formulador siguen en el buzón y se aplican en la próxima corrida.

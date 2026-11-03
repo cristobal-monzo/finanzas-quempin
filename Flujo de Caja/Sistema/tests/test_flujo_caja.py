@@ -323,3 +323,51 @@ def test_calidad_cuenta_las_cotizaciones_sin_proyecto(tmp_path):
     assert datos["calidad"] == {"cotizacionesSinProyecto": 2, "saldoEstimado": bool(SUP.get("saldoInicial"))}
     datos = fc.armar(None, tmp_path / "no-existe.json", hoy=HOY, sup=dict(SUP, saldoInicial=1000), ruta_excel_af=tmp_path / "no-existe.xlsx")
     assert datos["calidad"] == {"cotizacionesSinProyecto": 0, "saldoEstimado": True}
+
+
+
+# ── LA COPIA PARA EL EQUIPO (2026-11-02) ──
+
+def test_la_copia_para_el_equipo_deja_el_mismo_excel(tmp_path, capsys):
+    excel = tmp_path / "Flujo de Caja.xlsx"
+    excel.write_bytes(b"contenido")
+    carpeta = tmp_path / "equipo"
+    carpeta.mkdir()
+    assert fc.copiar_para_el_equipo(excel, carpeta) is True
+    assert (carpeta / excel.name).read_bytes() == b"contenido"
+    assert "[OK]" in capsys.readouterr().out
+
+
+def test_sin_el_acceso_directo_o_con_la_copia_abierta_solo_avisa(tmp_path, capsys, monkeypatch):
+    excel = tmp_path / "Flujo de Caja.xlsx"
+    excel.write_bytes(b"contenido")
+    assert fc.copiar_para_el_equipo(excel, None) is False
+    assert "acceso directo" in capsys.readouterr().out
+
+    def bloqueada(*a, **k):
+        raise PermissionError("abierta")
+    monkeypatch.setattr(fc.shutil, "copy2", bloqueada)
+    assert fc.copiar_para_el_equipo(excel, tmp_path) is False
+    assert "[WARN]" in capsys.readouterr().out
+
+
+def test_el_acceso_directo_se_encuentra_en_la_raiz_de_onedrive_o_en_el_modulo(tmp_path, monkeypatch):
+    onedrive, modulo = tmp_path / "OneDrive", tmp_path / "modulo"
+    (onedrive / "Finanzas").mkdir(parents=True)
+    (modulo / "Excel").mkdir(parents=True)
+    monkeypatch.setenv("QUEMPIN_ONEDRIVE", str(onedrive))
+    monkeypatch.setattr(fc, "RAIZ_MODULO", modulo)
+    assert fc.carpeta_equipo() is None
+    (onedrive / "Sitio de comunicación - Flujo de Caja").mkdir()
+    assert fc.carpeta_equipo() == onedrive / "Sitio de comunicación - Flujo de Caja"
+    (modulo / "Flujo de Caja").mkdir()
+    assert fc.carpeta_equipo() == modulo / "Flujo de Caja"
+
+
+def test_un_excel_de_prueba_nunca_sale_a_la_carpeta_del_equipo(tmp_path, monkeypatch):
+    def no_debe_copiar(*a, **k):
+        raise AssertionError("copió a la carpeta del equipo")
+    monkeypatch.setattr(fc, "copiar_para_el_equipo", no_debe_copiar)
+    monkeypatch.setattr(fc.ubicacion, "ubicar_intercambio", lambda *a, **k: None)
+    datos = fc.ejecutar(ruta_excel=tmp_path / "Flujo de Caja.xlsx", hoy=HOY)
+    assert datos["excel"]

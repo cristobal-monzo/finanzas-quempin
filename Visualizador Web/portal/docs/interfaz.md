@@ -149,3 +149,17 @@ las iniciales que el Formulador tenía antes (`qpn.formulacion.iniciales` o su
 se oculta el botón de usuario del Formulador (`#usuarioBtn`). En el teléfono el
 botón muestra solo las iniciales (o un ícono sin usuario) y su ventana va fija
 a la pantalla; bajo 380 px la cabecera se junta un poco.
+
+## Carpeta de respaldo (2026-11-02)
+
+Pedido del usuario: un símbolo pequeño de carpeta que lleva directo a la carpeta con el Excel o los documentos de
+respaldo de cada herramienta. Va en su fila del Inicio (`.ini-respaldo`) y junto a las pestañas (`#btnRespaldo`), y
+lo define el campo `respaldo` del registro. `test_la_carpeta_de_respaldo_en_el_registro` fija qué herramienta abre qué.
+
+- **Siempre en el sitio del equipo**, nunca en el OneDrive personal de alguien: ahí otra cuenta no entra y esta página
+  es pública. Por eso Flujo de Caja y los Excel de Perú dejan una copia en cada corrida (Flujo de Caja: `copiar_para_el_equipo`;
+  Centro de Costos: `ruta_excel_sitio_comunicacion`; Análisis Financiero: `ruta_excel_equipo`).
+- **Formulador y Seguimiento**: con un proyecto elegido que tiene carpeta, la de ese proyecto; sin él, la biblioteca.
+- **Sin símbolo**: Oportunidades, Recorrido, Planificación, Proyectos en ejecución, Carta Gantt y observaciones solo
+  tienen archivos del Intercambio, que no se editan a mano; las calculadoras no guardan datos.
+- **Abierta aparte** (fuera del portal), una herramienta no lo muestra.

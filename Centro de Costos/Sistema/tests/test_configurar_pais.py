@@ -28,7 +28,7 @@ def test_configurar_pais_pe_cambia_moneda_impuesto_y_rutas():
         assert acc.PREFIJOS_PROYECTO == {}
         assert acc.RAIZ_DOCS.name == "Perú"
         assert acc.RUTA_EXCEL.name == "Centro de Costos Perú.xlsx"
-        assert acc.RUTA_EXCEL_SITIO_COMUNICACION is None
+        assert acc.RUTA_EXCEL_SITIO_COMUNICACION.name == "Centro de Costos Perú.xlsx"
         assert acc.MONEY_FORMAT == '"S/"#,##0'
         assert acc.ENCABEZADOS_MASTER[10] == "Total sin IGV (PEN)"
         assert acc.ENCABEZADOS_MASTER[11] == "IGV 18% (PEN)"
@@ -45,3 +45,11 @@ def test_configurar_pais_pais_desconocido_lanza_value_error():
     except ValueError as e:
         assert "AR" in str(e)
     assert acc.PAIS_ACTUAL == "CL"  # no quedo a medio configurar
+
+
+
+def test_cada_pais_refleja_su_propio_excel_en_la_carpeta_del_equipo():
+    chile, peru = acc.PAISES["CL"], acc.PAISES["PE"]
+    assert chile["ruta_excel_sitio_comunicacion"].name == "Centro de Costos.xlsx"
+    assert peru["ruta_excel_sitio_comunicacion"].name == "Centro de Costos Perú.xlsx"
+    assert peru["ruta_excel_sitio_comunicacion"].parent == chile["ruta_excel_sitio_comunicacion"].parent

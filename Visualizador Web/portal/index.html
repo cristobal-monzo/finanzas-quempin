@@ -383,6 +383,15 @@
   .ini-nom { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ini-sub { font-size: 12px; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ini-fuera { flex: 0 0 auto; display: inline-flex; color: var(--texto-suave); }
+  /* La carpeta de respaldo (2026-11-02): un símbolo pequeño al final de la fila, con su propio clic */
+  .ini-lista li.con-respaldo { position: relative; }
+  .ini-lista li.con-respaldo .ini-item { padding-right: 38px; }
+  .ini-respaldo {
+    position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; color: var(--texto-suave);
+  }
+  .ini-respaldo:hover { background: var(--gridline); color: var(--brand-orange-ink); }
   /* Ya abierta en una pestaña: un punto naranjo junto al nombre */
   .ini-item.abierta .ini-nom::after {
     content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 7px; vertical-align: 2px;
@@ -2299,6 +2308,8 @@
     .rc-buscar input { font-size: 16px; }
     .sc-input { font-size: 16px; }   /* Subir documentos: con 14 px el iPhone hace zoom al escribir */
     .ini-item { min-height: 48px; }
+    .ini-lista li.con-respaldo .ini-item { padding-right: 50px; }
+    .ini-respaldo { right: 2px; width: 44px; height: 44px; }
     /* Planificación: la ventanita sube desde abajo */
     .pl-pop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-height: 78dvh; }
     /* Con la ventanita abierta abajo, el aviso (con su «Deshacer») va arriba: no tapa «Listo» ni «Siguiente» */
@@ -2417,6 +2428,8 @@
             <option value="cl">Chile</option>
             <option value="pe">Perú</option>
           </select>
+          <!-- La carpeta con el Excel o los documentos de respaldo de la herramienta abierta (campo respaldo del registro) -->
+          <a class="acc-btn" id="btnRespaldo" href="#" target="_blank" rel="noopener" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></a>
           <button class="acc-btn" id="btnRecargar" type="button" hidden aria-label="Volver a cargar esta herramienta">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
           </button>
@@ -2814,6 +2827,7 @@
       <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él. Si tiene carpeta, el botón de la carpeta, a su lado, la abre en el Explorador de archivos del computador (con QUEMPIN.exe 1.3.10 o más nuevo).</li>
       <li><strong>Planilla de Ingreso</strong> (en Formulación de proyectos): cada requerimiento con su N°. «Nuevo requerimiento» lo agrega con el siguiente N° libre, y al tocar una fila se cambia. El equipo lo ve al instante; un punto naranjo marca lo que todavía no llega al Excel. El Excel de siempre queda de respaldo: cada 10 minutos recibe lo de aquí y lo que se cambie en él llega aquí; si una casilla cambió en los dos lados, queda el cambio más reciente. Aquí están las columnas que se usan de verdad; las demás (visita, presupuesto, valores) se llenan en el Excel.</li>
       <li><strong>Sistema QUEMPIN.</strong> «Cotizar y comprar» abre el programa QUEMPIN.exe en la pantalla que elijas; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
+      <li><strong>Carpeta de respaldo.</strong> El símbolo pequeño de carpeta, en la fila de cada herramienta en el Inicio y junto a las pestañas, abre en SharePoint la carpeta con su Excel o sus documentos de respaldo. La herramienta sin nada de eso no lo lleva.</li>
       <li><strong>Clic derecho.</strong> En el portal y dentro de cada herramienta abre el menú del portal: copiar y pegar, actualizar, abrir aparte y <strong>reportar un error u observación</strong>. La nota queda con el lugar exacto donde la hiciste y, si se puede, una imagen de la pantalla; en «Errores y observaciones» (en Ayuda) ves qué pasó con ella. Para el menú del navegador (revisar ortografía, guardar una imagen), Shift + clic derecho.</li>
       <li><strong>Abrir aparte</strong> (↗, arriba a la derecha) lleva la herramienta activa a su propia pestaña del navegador, en su dirección de siempre.</li>
       <li>La contraseña es la del equipo, la misma de siempre, y se escribe una sola vez por navegador.</li>
@@ -3036,6 +3050,9 @@
      tema: la clave de modo claro/oscuro de esa herramienta, que el botón del portal también fija.
      proyecto: cómo se abre con el proyecto elegido (formulador, seguimiento, gantt, tag, af).
      pestanas: las de una calculadora (su id es el data-tab de la Calculadora: assets/gases.js).
+     respaldo: la carpeta de SharePoint con su Excel o sus documentos de respaldo (web), lo que hay ahí (archivo,
+               archivoPeru) y, con porProyecto, si con un proyecto elegido lleva a la carpeta de ese proyecto. La
+               herramienta que solo tiene archivos de datos del Intercambio no lo lleva: no se editan a mano.
      usuarios: las iniciales del equipo para el selector de usuario (2026-10-16); las mismas del Formulador
                (js/usuario.js) y de Sistema QUEMPIN (app/config.py, USUARIOS): si el equipo cambia, en los tres.
      personal: a quiénes se asigna en la Planificación semanal (pedido del 2026-10-20). Incluye a todos los
@@ -3067,16 +3084,19 @@
      "claves": "licitacion licitaciones compra agil compras agiles mercado publico oportunidad oportunidades"},
     {"id": "planilla", "nombre": "Planilla de Ingreso", "corto": "Planilla", "grupo": "formular", "tipo": "vista", "vista": "vistaPlanilla", "icono": "tabla",
      "url": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos%20compartidos/Planilla%20de%20Ingreso%20de%20Requerimientos.xlsx?web=1",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos", "archivo": "Planilla de Ingreso de Requerimientos.xlsx"},
      "breve": "Cada requerimiento y su N°",
      "desc": "Cada requerimiento del equipo con su N°: se ingresan y se cambian aquí. El Excel de siempre queda de respaldo y se pone al día solo, en los dos sentidos.",
      "claves": "planilla ingreso planilla de proyectos requerimiento requerimientos solicitud numero nuevo agregar ingresar registrar estado canal captador cierre apertura licitacion excel respaldo sharepoint"},
     {"id": "formulador", "nombre": "Formulador", "grupo": "formular", "tipo": "marco", "incrustar": "formulador", "tema": "quempin_fp_theme",
      "ruta": "/formulacion-proyectos-quempin/", "proyecto": "formulador", "breve": "Presupuesto de cada oferta",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos", "archivo": "el Excel de cada oferta, en su carpeta", "porProyecto": true},
      "desc": "El presupuesto de cada oferta: partidas, costos, utilidad, precio y evaluación.",
      "claves": "formulador formulacion de proyectos presupuesto presupuestos partidas costos utilidad precio oferta evaluacion pendientes"},
     {"id": "cotizador", "nombre": "Cotizador Histórico", "corto": "Cotizador", "grupo": "formular", "tipo": "marco", "incrustar": "tablero", "tema": "ch_viz_theme",
      "ruta": "/finanzas-quempin/cotizador-historico/", "peru": "/finanzas-quempin/cotizador-historico-peru/",
      "breve": "Lo pagado por cada material",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos", "archivo": "Centro de Costos.xlsx", "archivoPeru": "Centro de Costos Perú.xlsx"},
      "desc": "Lo que QUEMPIN pagó por cada material, reajustado por UF.",
      "claves": "cotizador historico precio precios material materiales uf referencia"},
     {"id": "gantt", "nombre": "Carta Gantt", "grupo": "formular", "tipo": "marco", "incrustar": "gantt", "tema": "quempin_gantt_theme",
@@ -3086,6 +3106,7 @@
      "claves": "gantt carta programa plazo plazos cronograma ruta critica"},
     {"id": "proyectos", "nombre": "Seguimiento", "grupo": "formular", "tipo": "marco",
      "ruta": "/formulacion-proyectos-quempin/", "familia": "formulador", "alias": true, "proyecto": "seguimiento", "requiereProyecto": true,
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos", "archivo": "el Excel de cada oferta, en su carpeta", "porProyecto": true},
      "breve": "Un proyecto: su etapa y qué sigue",
      "desc": "El seguimiento de un proyecto: en qué etapa va, qué sigue y en qué herramienta se hace. Sin proyecto elegido, primero pide elegirlo (la lista de todos está en el Formulador; el equipo completo, en el Recorrido).",
      "claves": "proyecto proyectos etapa avance que sigue seguimiento recorrido"},
@@ -3100,32 +3121,39 @@
     {"id": "centro-costos", "nombre": "Centro de Costos", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "cc_viz_theme",
      "ruta": "/finanzas-quempin/centro-de-costos/", "peru": "/finanzas-quempin/centro-de-costos-peru/", "proyecto": "tag",
      "breve": "Gasto real, factura por factura",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos", "archivo": "Centro de Costos.xlsx", "archivoPeru": "Centro de Costos Perú.xlsx"},
      "desc": "El gasto real de cada proyecto, factura por factura.",
      "claves": "centro costos factura facturas boleta boletas gasto gastos real proveedor"},
     {"id": "subir-cc", "nombre": "Subir documentos", "corto": "Subir", "grupo": "finanzas", "tipo": "vista", "vista": "vistaSubir", "icono": "subir",
      "breve": "Facturas y boletas de un proyecto",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos/Facturas y Boletas", "archivo": "las facturas y boletas de cada proyecto"},
      "desc": "Sube facturas, boletas y comprobantes de un proyecto: el procesador los deja en la carpeta del proyecto en el Centro de Costos.",
      "claves": "subir cargar enviar documento documentos factura facturas boleta boletas comprobante foto fotos pdf centro costos gasto rendicion"},
     {"id": "ingresar", "nombre": "Ingresar avance", "grupo": "finanzas", "tipo": "marco",
      "ruta": "/finanzas-quempin/analisis-financiero/", "familia": "analisis", "alias": true, "proyecto": "af", "pestanaTablero": "tabIngreso",
      "breve": "Avance, fechas y mano de obra",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Análisis Financiero", "archivo": "Análisis de Proyectos 2026.xlsx"},
      "desc": "Avance, fechas y mano de obra real de un proyecto, en la pestaña «Ingresar datos» del Análisis Financiero.",
      "claves": "ingresar avance fechas registrar mano de obra datos"},
     {"id": "analisis", "nombre": "Análisis Financiero", "corto": "Análisis", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "af_viz_theme",
      "ruta": "/finanzas-quempin/analisis-financiero/", "peru": "/finanzas-quempin/analisis-financiero-peru/", "proyecto": "af", "pestanaTablero": "tabResumen",
      "breve": "Real frente a presupuesto, y su Nota",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Análisis Financiero", "archivo": "Análisis de Proyectos 2026.xlsx", "archivoPeru": "Análisis de Proyectos Perú.xlsx"},
      "desc": "El costo real frente a lo presupuestado y la venta de cada proyecto, con su Nota.",
      "claves": "analisis financiero rentabilidad margen nota venta cierre"},
     {"id": "flujo-caja", "nombre": "Flujo de Caja", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "fc_viz_theme", "sinCaptura": true,
      "ruta": "/finanzas-quempin/flujo-de-caja/", "breve": "Pagos y cobros, mes a mes",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Flujo de Caja", "archivo": "Flujo de Caja.xlsx"},
      "desc": "Lo pagado, lo comprometido y lo por cobrar, mes a mes.",
      "claves": "flujo caja pagos cobros cuotas mes"},
     {"id": "cotizacion", "nombre": "Emitir cotización", "grupo": "cotizar", "tipo": "programa", "accion": "«Nueva Cotización»",
      "enlace": "quempin://cotizacion", "breve": "Sistema QUEMPIN · tipo 60",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/EntornoQuempin/Documentos compartidos/Orden Interno/Control Cotizaciones y OC", "archivo": "el Control de Documentos"},
      "desc": "Las cotizaciones (tipo 60) se emiten en Sistema QUEMPIN, desde el borrador que deja el Formulador.",
      "claves": "cotizar cotizacion cotizaciones emitir folio 60 pdf cliente sistema quempin exe programa"},
     {"id": "orden-compra", "nombre": "Orden de compra", "grupo": "cotizar", "tipo": "programa", "accion": "«Nueva Orden de Compra»",
      "enlace": "quempin://orden-compra", "breve": "Sistema QUEMPIN · tipo 61",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/EntornoQuempin/Documentos compartidos/Orden Interno/Control Cotizaciones y OC", "archivo": "el Control de Documentos"},
      "desc": "Las órdenes de compra (tipo 61) a proveedores, con sus cuotas de pago, se emiten en Sistema QUEMPIN.",
      "claves": "orden ordenes compra oc proveedor 61 sistema quempin exe programa"},
     {"id": "diametro", "nombre": "Diámetro de tubería", "corto": "Diámetro", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
@@ -3259,6 +3287,14 @@
      "pasos": ["Hace falta en el computador del procesador, agregada igual que las otras dos bibliotecas, y en el tuyo si abres desde «Proyectos en ejecución» la carpeta de un proyecto (QUEMPIN.exe la busca ahí)."],
      "usan": ["procesador", "ejecucion"],
      "falta": "El cruce de proyectos no muestra la carpeta de ejecución de cada N°, y el botón de la carpeta de Gestión no la encuentra en este computador."},
+    {"id": "flujo", "tipo": "Carpeta de SharePoint", "nombre": "Copia de Flujo de Caja", "corto": "Copia de Flujo de Caja",
+     "para": "La copia para el equipo del Excel de Flujo de Caja. Es la caja de la empresa: la ve quien entra a esta carpeta del sitio. La pone al día cada corrida de Flujo de Caja.",
+     "en": "SharePoint",
+     "ruta": ["Sitio de comunicación", "Documentos", "Flujo de Caja"],
+     "web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Flujo de Caja",
+     "pasos": ["Hace falta solo en el computador del procesador: ábrela en SharePoint y elige «Agregar acceso directo a Mis archivos». Déjala en la raíz de OneDrive, sin moverla ni cambiarle el nombre."],
+     "usan": ["procesador", "flujo-caja"],
+     "falta": "La carpeta de respaldo de Flujo de Caja se queda con la última copia que recibió, o vacía."},
     {"id": "contrasena", "tipo": "En el navegador", "nombre": "Contraseña del equipo", "corto": "Contraseña", "icono": "llave",
      "para": "Abre los tableros y el Formulador. Es la misma para todos y se escribe una vez por navegador: al entrar a una herramienta se abren las demás.",
      "pasos": ["Pídesela a quien administra las herramientas QUEMPIN. No la compartas fuera del equipo.",
@@ -3275,7 +3311,7 @@
   ],
   "procesador": {
     "id": "procesador", "nombre": "El computador del procesador", "corto": "El procesador",
-    "para": "Un computador de QUEMPIN hace el trabajo automático con cuatro tareas programadas de Windows. Necesita estar encendido, con OneDrive al día y las tres bibliotecas más la carpeta del Centro de Costos. Si está apagado, todo espera y nada se pierde.",
+    "para": "Un computador de QUEMPIN hace el trabajo automático con cuatro tareas programadas de Windows. Necesita estar encendido, con OneDrive al día y las tres bibliotecas más las carpetas del Centro de Costos y de Flujo de Caja. Si está apagado, todo espera y nada se pierde.",
     "tareas": [
       {"nombre": "Procesar intercambio QUEMPIN", "cuando": "Cada 2 horas", "hace": "Atiende el buzón, renueva lo publicado y deja su pulso."},
       {"nombre": "Registrar en la Planilla QUEMPIN", "cuando": "Cada 10 minutos", "hace": "Pasa al Excel de la Planilla de Ingreso lo que se ingresa o cambia en el portal (y lo del Formulador), y trae al portal lo que se cambió en el Excel."},
@@ -3679,6 +3715,7 @@
     const h = p && HERR.get(p.herr);
     $('#btnRecargar').hidden = !p || esVista(p);
     $('#btnAparte').hidden = !p || esVista(p);
+    enlazarRespaldo($('#btnRespaldo'), h);
     $('#pais').hidden = !(h && h.peru);    // solo en los tableros que existen en Chile y en Perú
     pintarDato();
   }
@@ -4146,6 +4183,10 @@
         REG.herramientas.filter((h) => h.grupo === g.id).forEach((h) => {
           const li = crear('li');
           li.append(itemHerramienta(h));
+          if (h.respaldo) {
+            li.classList.add('con-respaldo');
+            li.append(respaldoInicio(h));
+          }
           ul.append(li);
         });
         sec.append(h2, ul);
@@ -4160,6 +4201,7 @@
       const nom = b.querySelector('.ini-nom');
       if (si) nom.dataset.estado = 'abierta'; else delete nom.dataset.estado;
     });
+    cont.querySelectorAll('.ini-respaldo').forEach((a) => enlazarRespaldo(a, HERR.get(a.dataset.herr)));
     plPintarAlarmaGlobal();    // la Planificación semanal lleva su alarma junto a su nombre
     // La línea del Recorrido: con la biblioteca ya conectada y con permiso, dice cuánto espera (sin pedir nada).
     pintarInicioRecorrido();
@@ -4206,6 +4248,41 @@
     $('#dlgInfoDonde').hidden = false;
     $('#dlgInfoDesc').textContent = 'Si la movieron de lugar, el programa la busca por su nombre en Formulación de proyectos y en Gestión de Proyectos.';
     $('#dlgInfo').showModal();
+  }
+
+  // ---- Carpeta de respaldo (2026-11-02) --------------------------------------------------------------
+  // Pedido del usuario: un símbolo pequeño de carpeta que lleva directo a donde está el Excel o los documentos de
+  // respaldo de cada herramienta (campo respaldo del registro). Es un enlace a SharePoint y no pasa por QUEMPIN.exe:
+  // sirve también en el teléfono y SharePoint decide quién entra. El Formulador guarda un Excel por oferta: con un
+  // proyecto elegido que tiene carpeta, lleva a esa.
+  function respaldoDe(h) {
+    const r = h && h.respaldo;
+    if (!r) return null;
+    const pr = r.porProyecto ? proyectoActual() : null;
+    const c = pr && pr.carpeta;
+    if (c) {
+      const base = CX_POR_ID.get(c.biblioteca === 'gestion' ? 'gestion' : 'biblioteca').web;
+      return { href: encodeURI(base) + '/' + c.ruta.map(encodeURIComponent).join('/'), titulo: 'Carpeta del proyecto, con el Excel de su oferta: ' + c.nombre };
+    }
+    const archivo = estado.pais === 'pe' && h.peru && r.archivoPeru ? r.archivoPeru : r.archivo;
+    return { href: encodeURI(r.web), titulo: 'Carpeta de respaldo: ' + archivo };
+  }
+  function enlazarRespaldo(a, h) {
+    const r = respaldoDe(h);
+    a.hidden = !r;
+    if (!r) return;
+    a.href = r.href;
+    a.title = r.titulo;
+    a.setAttribute('aria-label', r.titulo);
+  }
+  function respaldoInicio(h) {
+    const a = crear('a', 'ini-respaldo');
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.dataset.herr = h.id;
+    a.append(icono('proyectos', 15));
+    a.addEventListener('click', () => enlazarRespaldo(a, h));   // el proyecto o el país pudieron cambiar desde que se pintó
+    return a;
   }
 
   // ---- Diálogos ------------------------------------------------------------------------------------
@@ -14271,6 +14348,7 @@
       const h = HERR.get(p.herr);
       if (h && h.peru) navegar(p, urlDe(h));
     });
+    enlazarRespaldo($('#btnRespaldo'), HERR.get((pestanaDe(estado.activa) || {}).herr));
     avisar(estado.pais === 'pe' ? 'Los tableros se abren con los datos de Perú.' : 'Los tableros se abren con los datos de Chile.');
   });
 

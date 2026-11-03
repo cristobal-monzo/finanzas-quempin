@@ -153,7 +153,9 @@ PAISES = {
         "ruta_logs": RAIZ_PERU / "logs",
         "ruta_visualizador_web": RAIZ_PERU / "Visualizador Web",
         # Peru no tiene (todavia) un sitio de comunicacion SharePoint propio.
-        "ruta_excel_sitio_comunicacion": None,
+        # La copia para el equipo (2026-11-02): el Excel de Perú vive en el OneDrive de
+        # quien administra y el símbolo de carpeta del Portal abre esta carpeta.
+        "ruta_excel_sitio_comunicacion": RAIZ_SITIO_COMUNICACION / "Centro de Costos Perú.xlsx",
         "prefijos_proyecto": {},
         "pais_quempin": "Peru",
     },
@@ -5222,9 +5224,9 @@ def reflejar_a_sitio_comunicacion(ruta_excel=None, ruta_sitio=None):
     skill Revision_de_Errores (corregir/desglosar solo tocan el Excel local;
     sin este paso aparte, la copia compartida queda desactualizada). No falla
     si el destino esta bloqueado, solo advierte -- igual que en 'run'.
-    Perú no tiene (todavía) un sitio de comunicación propio configurado
-    (ruta_sitio resuelve a None): en ese caso se omite con un [INFO], no se
-    intenta copiar a un destino inexistente. Devuelve True si la copia se
+    Un país sin sitio de comunicación configurado (ruta_sitio resuelve a None)
+    se omite con un [INFO], no se intenta copiar a un destino inexistente.
+    Devuelve True si la copia se
     actualizo, False si no se pudo o no aplica."""
     ruta_excel = ruta_excel or RUTA_EXCEL
     ruta_sitio = ruta_sitio if ruta_sitio is not None else RUTA_EXCEL_SITIO_COMUNICACION
