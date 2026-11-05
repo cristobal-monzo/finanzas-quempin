@@ -413,26 +413,22 @@ a diferencia del tema visual (que sí usa `localStorage`) o del estado de
 "gate desbloqueado" (que usa `sessionStorage`), el contenido del carrito
 nunca se escribe en ningún almacenamiento del navegador.
 
-- **«Copiar para el Formulador»** (2026-10-14, Chile y Perú): copia al
-  portapapeles las líneas del carrito como `Descripción · Unidad · Cantidad ·
-  Costo unitario neto` (la hoja, `Un.`, la cantidad y `precio_reajustado_hoy`
-  redondeado), el formato que reconoce «Pegar desde Excel» del Formulador
-  (`js/pegar.js`, paso 3). Va por el portapapeles y no por el navegador: el
-  carrito sigue sin persistir. `test_template.py` lo exige en los dos países.
-
-- **«Llevar a un proyecto…»** (2026-10-29, Chile y Perú; pedido del usuario:
+- **«Exportar a un proyecto…»** (2026-10-29, Chile y Perú; pedido del usuario:
   que el carrito exporte sus costos a un proyecto específico en formulación o
-  en ejecución): es la acción principal del panel, sobre la tabla para Excel.
+  en ejecución; desde el 2026-10-30 reemplaza a «Copiar para el Formulador» y
+  el proyecto y la categoría de cada ítem se eligen en el diálogo del Portal):
+  es la acción principal del panel, sobre la tabla para Excel.
   Los proyectos del equipo los conoce el **Portal QUEMPIN** (lee la carpeta del
   equipo), así que el carrito le manda sus líneas como mensaje entre ventanas
   (`postMessage`, tipo `quempin-cotizacion`, armado por `datosParaProyecto()`):
   dentro del Portal (`<html data-en-portal>`), a la ventana de arriba; abierto
   suelto, abre `…/portal/#/llevar-cotizacion` en otra pestaña y le contesta
   cuando el Portal avisa `quempin-portal-listo` (solo a esa ventana y desde
-  `cristobal-monzo.github.io`). Cada línea lleva el costo **neto** (como
-  «Copiar para el Formulador»; en soles con centavos), su proveedor, su
-  `hoja_clave` (con ella «Proyectos en ejecución» compara contra lo pagado), la
-  categoría del Centro de Costos y la compra de donde sale el precio. La moneda
+  `cristobal-monzo.github.io`). Cada línea lleva el costo **neto** (en soles con
+  centavos), su proveedor, su `hoja_clave` (con ella «Proyectos en ejecución»
+  compara contra lo pagado), la categoría del Centro de Costos (vacía si el
+  ítem nunca tuvo: el Portal le pone Materiales) y la compra de donde sale el
+  precio. La moneda
   sale del país del tablero (`data-nav-activo`). Nada pasa por el
   almacenamiento del navegador ni por la dirección: `test_template.py` lo
   vigila. Qué hace el Portal con ellas:

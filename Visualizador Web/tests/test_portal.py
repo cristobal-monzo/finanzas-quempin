@@ -4229,13 +4229,16 @@ def _cotizacion(moneda="CLP"):
                  "ref": "", "categoria": "Equipos-Herramientas", "compra": "", "nRef": ""}]}
 
 
+JS_LL_CATS = "() => [...document.querySelectorAll('#llLineas .ll-cat')].map((s) => s.value)"
+
+
 JS_LL_GRUPOS = """() => Object.fromEntries([...document.querySelectorAll('#llLista .ll-grupo')].map((s) =>
     [s.querySelector('h3').textContent, [...s.querySelectorAll('.ll-item')].map((b) => b.dataset.clave)]))"""
 
 
 def _llevar(navegador, sitio, datos=None, cambiar=None, **kw):
     """El portal con la carpeta de prueba de «Proyectos en ejecución», el Cotizador abierto aquí dentro y su carrito
-    recién mandado con «Llevar a un proyecto…»: el diálogo ya muestra los proyectos."""
+    recién mandado con «Exportar a un proyecto…»: el diálogo ya muestra los proyectos."""
     pagina, errores = _abrir_portal(navegador, sitio, **kw)
     if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
         pagina.context.close()
@@ -4262,9 +4265,9 @@ def _llevar(navegador, sitio, datos=None, cambiar=None, **kw):
 
 
 def test_la_categoria_propuesta_sale_de_la_tabla_del_analisis_financiero():
-    """La categoría que el diálogo propone para la cotización sale de la categoría del Centro de Costos de cada compra,
-    con la misma tabla con que el Análisis Financiero reparte el gasto real (MAPEO_CATEGORIA_BUCKET): sin tildes, y lo que
-    no está va a «Otros» como allá."""
+    """La categoría que el diálogo propone para cada ítem sale de la categoría del Centro de Costos de su compra, con la
+    misma tabla con que el Análisis Financiero reparte el gasto real (MAPEO_CATEGORIA_BUCKET): sin tildes, y lo que no
+    está va a «Otros» como allá. Un ítem que nunca tuvo categoría va a «Materiales» (ver la prueba de abajo)."""
     import ast
     import unicodedata
     fuente = (RAIZ / "Sistema Analisis Financiero" / "Sistema" / "analisis_financiero.py").read_text(encoding="utf-8")
@@ -4275,6 +4278,26 @@ def test_la_categoria_propuesta_sale_de_la_tabla_del_analisis_financiero():
     bloque = re.search(r"const LL_BUCKET = \{(.*?)\};", html, re.S).group(1)
     js = {(a or b): v for a, b, v in re.findall(r"(?:'([^']+)'|([\w-]+)): '(\w+)'", bloque)}
     assert js == esperado
+
+
+def test_cada_item_de_la_cotizacion_lleva_su_categoria(navegador, sitio):
+    """Pedido del 2026-10-30: el diálogo asigna una categoría a cada ítem, dejando la que tenga; si nunca tuvo, «Materiales»."""
+    datos = _cotizacion()
+    datos["filas"][0]["categoria"] = ""
+    datos["filas"][1]["categoria"] = "Transporte"
+    pagina, errores = _llevar(navegador, sitio, datos=datos)
+    assert pagina.evaluate(JS_LL_CATS) == ["Materiales", "Otros", "Equipos"]
+    assert pagina.locator("#llLineas .ll-cat").first.get_attribute("aria-label") == 'Categoría de Codo de Cobre 1/2"'
+    # Se cambia ítem por ítem, y elegir un proyecto no borra lo cambiado
+    pagina.locator("#llLineas .ll-cat").nth(1).select_option("Equipos")
+    pagina.locator('#llLista .ll-item[data-clave="req-908"]').click()
+    assert pagina.evaluate(JS_LL_CATS) == ["Materiales", "Equipos", "Equipos"]
+    pagina.locator("#llLlevar").click()
+    pagina.locator("#dlgLlevar").wait_for(state="hidden")
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(s["datos"]["items"]) == 3)
+    assert [x["categoria"] for x in sobre["datos"]["items"]] == ["Materiales", "Equipos", "Equipos"]
+    assert not errores
+    pagina.context.close()
 
 
 def test_la_cotizacion_del_cotizador_va_a_un_proyecto_en_ejecucion(navegador, sitio):
@@ -4289,8 +4312,8 @@ def test_la_cotizacion_del_cotizador_va_a_un_proyecto_en_ejecucion(navegador, si
     assert grupos["En formulación"][0] == "f-fz" and set(grupos["En formulación"]) == {"f-fz", "req-901", "req-902"}
     assert pagina.locator("#llResumen").inner_text() == "3 líneas por $37.900 sin IVA, con lo que QUEMPIN pagó actualizado por UF (la del 26-10-2026)."
     assert len(pagina.locator("#llLineas tr").all()) == 3
-    # La categoría con más plata entre sus compras (ferretería y materiales son Materiales); sin proyecto, no se lleva
-    assert pagina.locator("#llCat .pl-vista[aria-pressed='true']").inner_text() == "Materiales"
+    # Cada ítem con la categoría de su compra (ferretería y materiales son Materiales); sin proyecto, no se exporta
+    assert pagina.evaluate(JS_LL_CATS) == ["Materiales", "Materiales", "Equipos"]
     assert pagina.locator("#llLlevar").is_disabled() and pagina.locator("#llPista").inner_text() == "Elige el proyecto."
     # El buscador filtra los dos grupos, y Enter elige el primero que coincide
     pagina.locator("#llBuscar").fill("en obra")
@@ -4298,8 +4321,8 @@ def test_la_cotizacion_del_cotizador_va_a_un_proyecto_en_ejecucion(navegador, si
     assert "Ninguno coincide" in pagina.locator("#llLista .ll-grupo").nth(1).inner_text()
     pagina.locator("#llBuscar").press("Enter")
     assert pagina.locator("#dlgLlevar").is_visible(), "Enter elige, no lleva"
-    assert pagina.locator("#llLlevar").inner_text() == "Llevar a N° 908"
-    assert "Quedan en materiales de N° 908" in pagina.locator("#llPista").inner_text()
+    assert pagina.locator("#llLlevar").inner_text() == "Exportar a N° 908"
+    assert "Quedan en N° 908" in pagina.locator("#llPista").inner_text()
     pagina.locator("#llLlevar").click()
     pagina.locator("#dlgLlevar").wait_for(state="hidden")
     # «Proyectos en ejecución» con el 908 a la vista y lo nuevo simulado
@@ -4315,7 +4338,7 @@ def test_la_cotizacion_del_cotizador_va_a_un_proyecto_en_ejecucion(navegador, si
     assert (codo["proveedor"], codo["ref"], codo["cotizacion"]) == ("Ferretería Demo", "codo cobre 1 2", "")
     assert codo["nota"] == "Del Cotizador Histórico: lo pagado el 04-09-2026 (N° Ref. DEMO-101), actualizado por UF."
     assert por["Taladro percutor (ficticio)"]["nota"] == "Del Cotizador Histórico: lo pagado, actualizado por UF."
-    assert {x["categoria"] for x in por.values()} == {"Materiales"}
+    assert (codo["categoria"], por["Taladro percutor (ficticio)"]["categoria"]) == ("Materiales", "Equipos")
     # Se deshace con el aviso, como cualquier cambio de esa vista
     pagina.locator("#aviso button", has_text="Deshacer").click()
     _esperar_archivo(pagina, EJ, lambda s: all(x.get("borrado") for x in s["datos"]["items"]))
@@ -4324,21 +4347,23 @@ def test_la_cotizacion_del_cotizador_va_a_un_proyecto_en_ejecucion(navegador, si
 
 
 def test_la_cotizacion_del_cotizador_va_a_un_proyecto_en_formulacion(navegador, sitio):
-    """En uno en formulación, el Formulador abre el proyecto en la tabla de esa categoría y, cuando ya lo muestra, recibe
-    las filas para su «Pegar desde Excel» (la prueba del Formulador, .prueba/pegar/portal.js, revisa que abra el diálogo
-    con ellas). La cotización no queda en el navegador: ni en la dirección que la pestaña recuerda."""
+    """En uno en formulación, el Formulador abre el proyecto en la primera tabla que recibe algo y, cuando ya lo muestra,
+    recibe todas las filas con su tabla, para un solo diálogo (la prueba del Formulador, .prueba/pegar/portal.js, revisa
+    que lo abra con ellas). La cotización no queda en el navegador: ni en la dirección que la pestaña recuerda."""
     pagina, errores = _llevar(navegador, sitio)
-    pagina.locator('#llCat .pl-vista[data-cat="Equipos"]').click()
+    for i in range(2):
+        pagina.locator("#llLineas .ll-cat").nth(i).select_option("Equipos")
+    pagina.locator("#llLineas .ll-cat").nth(2).select_option("Otros")
     pagina.locator('#llLista .ll-item[data-clave="req-901"]').click()
-    assert pagina.locator("#llLlevar").inner_text() == "Llevar a N° 901"
-    assert pagina.locator("#llPista").inner_text().startswith("Se abre QMPN-2026-901 en el Formulador, en equipos")
+    assert pagina.locator("#llLlevar").inner_text() == "Exportar a N° 901"
+    assert pagina.locator("#llPista").inner_text().startswith("Se abre QMPN-2026-901 en el Formulador")
     pagina.locator("#llLlevar").click()
     pagina.locator("#dlgLlevar").wait_for(state="hidden")
     _esperar(pagina, "formulador", "hash", "#/p/f901/equipos")
     marco = _marco(pagina, "formulador")
     pagina.wait_for_timeout(700)
     assert marco.evaluate("() => document.body.dataset.recibido") is None, "espera a que el Formulador muestre su tabla"
-    # El Formulador de mentira muestra recién ahora su «Pegar desde Excel», y anota lo que recibe
+    # El Formulador de mentira muestra recién ahora su tabla, y anota lo que recibe
     marco.evaluate("""() => {
         addEventListener('message', (e) => { document.body.dataset.recibido = JSON.stringify(e.data); });
         const b = document.createElement('button');
@@ -4347,9 +4372,11 @@ def test_la_cotizacion_del_cotizador_va_a_un_proyecto_en_formulacion(navegador, 
     }""")
     pagina.wait_for_function("() => !!document.getElementById('marco-formulador').contentDocument.body.dataset.recibido")
     m = json.loads(marco.evaluate("() => document.body.dataset.recibido"))
-    assert (m["tipo"], m["proyecto"], m["lista"]) == ("quempin-pegar-costos", "f901", "equipos")
-    assert m["texto"].split("\n") == ["Descripción\tUnidad\tCantidad\tCosto unitario neto", 'Codo de Cobre 1/2"\tUn.\t10\t1190',
-                                      'Válvula de Bola Bronce 3/4"\tUn.\t2\t8500', "Taladro percutor (ficticio)\tUn.\t1\t9000"]
+    assert (m["tipo"], m["proyecto"], m["lista"]) == ("quempin-costos-cotizacion", "f901", "equipos")
+    assert m["filas"] == [
+        {"descripcion": 'Codo de Cobre 1/2"', "unidad": "Un.", "cantidad": 10, "costoUnitario": 1190, "lista": "equipos"},
+        {"descripcion": 'Válvula de Bola Bronce 3/4"', "unidad": "Un.", "cantidad": 2, "costoUnitario": 8500, "lista": "equipos"},
+        {"descripcion": "Taladro percutor (ficticio)", "unidad": "Un.", "cantidad": 1, "costoUnitario": 9000, "lista": "otros"}]
     assert m["origen"] == "Costos del Cotizador Histórico: lo que QUEMPIN pagó, actualizado por UF (la del 26-10-2026)."
     assert pagina.evaluate(JS_LEER_INTERCAMBIO, EJ) is None, "nada en «Proyectos en ejecución»"
     guardado = pagina.evaluate("() => JSON.stringify(Object.assign({}, localStorage, sessionStorage))")
@@ -4405,13 +4432,13 @@ def test_el_cotizador_abierto_suelto_manda_su_cotizacion_al_portal_que_abre(nave
 
 
 @pytest.mark.parametrize("ancho", [360, 390])
-def test_llevar_la_cotizacion_cabe_en_el_telefono(navegador, sitio, ancho):
+def test_exportar_la_cotizacion_cabe_en_el_telefono(navegador, sitio, ancho):
     pagina, errores = _llevar(navegador, sitio, ancho=ancho, alto=760, movil=True)
-    pagina.locator("#llLineasSum").click()
     afuera = pagina.evaluate("""() => [...document.querySelectorAll('#dlgLlevar *')].filter((e) => e.getClientRects().length
         && e.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5).map((e) => e.id || e.className || e.tagName)""")
     assert afuera == []
     assert pagina.evaluate("() => parseFloat(getComputedStyle(document.getElementById('llBuscar')).fontSize)") >= 16
+    assert pagina.evaluate("() => parseFloat(getComputedStyle(document.querySelector('#llLineas .ll-cat')).fontSize)") >= 16
     assert pagina.locator("#llLlevar").is_visible() and pagina.locator("#llCancelar").is_visible()
     assert not errores
     pagina.context.close()

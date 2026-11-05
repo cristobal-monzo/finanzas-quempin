@@ -494,10 +494,8 @@
   .viz-cart-textarea { width: 100%; font-family: 'Lato', monospace; font-size: 11px; padding: 8px; border-radius: 7px; border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); resize: vertical; white-space: pre; }
   .viz-cart-copybtn { width: 100%; font-family: inherit; font-size: 13.5px; font-weight: 900; padding: 11px; border-radius: 8px; border: none; background: var(--brand-orange); color: #000; cursor: pointer; margin-top: 8px; }
   .viz-cart-copybtn:disabled { opacity: 0.4; cursor: default; }
-  /* «Copiar para el Formulador» (2026-10-14): mismas filas, en el formato que entiende su «Pegar desde Excel» */
-  .viz-cart-copybtn-sec { background: transparent; color: var(--text-primary); border: 1.5px solid var(--brand-orange); margin-top: 6px; }
   .viz-cart-note { font-size: 10.5px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.4; }
-  /* «Llevar a un proyecto…» (2026-10-29): la acción principal, sobre la tabla para Excel */
+  /* «Exportar a un proyecto…» (2026-10-29): la acción principal, sobre la tabla para Excel */
   .viz-cart-proyecto { border-top: 1px solid var(--gridline); padding-top: 10px; }
   .viz-cart-proyecto .viz-cart-copybtn { margin-top: 0; }
   .viz-cart-estado { color: var(--text-primary); font-weight: 700; }
@@ -951,8 +949,8 @@
     </div>
     <div class="viz-cart-totals" id="cartTotals"></div>
     <div class="viz-cart-proyecto">
-      <button type="button" id="btnLlevarProyecto" class="viz-cart-copybtn" disabled>Llevar a un proyecto…</button>
-      <p class="viz-cart-note">A uno en formulación o en ejecución: lo eliges en el paso siguiente.</p>
+      <button type="button" id="btnLlevarProyecto" class="viz-cart-copybtn" disabled>Exportar a un proyecto…</button>
+      <p class="viz-cart-note">A uno en formulación o en ejecución, con la categoría de cada ítem: los eliges en el paso siguiente.</p>
       <p class="viz-cart-note viz-cart-estado" id="llevarEstado" role="status" hidden></p>
     </div>
     <div class="viz-cart-export">
@@ -960,8 +958,7 @@
       <p class="viz-cart-meta" id="exportMeta"></p>
       <textarea id="exportText" class="viz-cart-textarea" readonly rows="4" placeholder="Agrega referencias para generar la tabla…"></textarea>
       <button type="button" id="btnCopiarTodo" class="viz-cart-copybtn" disabled>Copiar tabla para Excel</button>
-      <button type="button" id="btnCopiarFormulador" class="viz-cart-copybtn viz-cart-copybtn-sec" disabled>Copiar para el Formulador</button>
-      <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas). Para el Formulador: paso 3 › Materiales › «Pegar desde Excel», con el costo neto actualizado por UF. La cotización no se guarda: se borra al recargar la página.</p>
+      <p class="viz-cart-note">Pega directo en Excel: las columnas quedan separadas solas (están tabuladas). La cotización no se guarda: se borra al recargar la página.</p>
     </div>
   </aside>
 
@@ -2288,7 +2285,6 @@
     var totalsEl = document.getElementById('cartTotals');
     var exportTextEl = document.getElementById('exportText');
     var copyBtn = document.getElementById('btnCopiarTodo');
-    var copyFormBtn = document.getElementById('btnCopiarFormulador');
     var llevarBtn = document.getElementById('btnLlevarProyecto');
     document.getElementById('cartVaciarBtn').hidden = !cart.length;
     document.getElementById('llevarEstado').hidden = true;
@@ -2300,14 +2296,12 @@
       totalsEl.innerHTML = '';
       exportTextEl.value = '';
       copyBtn.disabled = true;
-      copyFormBtn.disabled = true;
       llevarBtn.disabled = true;
       return;
     }
     emptyEl.style.display = 'none';
     try { exportTextEl.value = construirTextoExport(); } catch (e) { console.error('construirTextoExport failed:', e); }
     copyBtn.disabled = false;
-    copyFormBtn.disabled = false;
     llevarBtn.disabled = false;
 
     listEl.innerHTML = cart.map(function (l) {
@@ -2431,51 +2425,20 @@
 
   document.getElementById('btnCopiarTodo').addEventListener('click', copiarTextoExport);
 
-  // ---------- la cotización para el Formulador de proyectos (2026-10-14) ----------
-  // Las mismas líneas, en el formato que reconoce su «Pegar desde Excel» (js/pegar.js del Formulador):
-  // descripción, unidad, cantidad y costo unitario NETO actualizado por UF (el Formulador formula sin IVA).
-  // Va por el portapapeles: el carrito no se guarda en el navegador (solo en memoria, a propósito).
-  function construirTextoFormulador() {
-    var lineas = ['Descripción\tUnidad\tCantidad\tCosto unitario neto'];
-    cart.forEach(function (l) {
-      lineas.push([limpiarParaTsv(l.hoja || l.nombre_item), 'Un.', l.cantidad, Math.round(l.precio_reajustado_hoy)].join('\t'));
-    });
-    return lineas.join('\n');
-  }
-  document.getElementById('btnCopiarFormulador').addEventListener('click', function () {
-    var btn = document.getElementById('btnCopiarFormulador');
-    var texto = construirTextoFormulador();
-    function listo() {
-      btn.textContent = '✓ Copiada: pégala en el Formulador';
-      setTimeout(function () { btn.textContent = 'Copiar para el Formulador'; }, 1800);
-    }
-    function respaldo() {
-      var ta = document.createElement('textarea');
-      ta.value = texto;
-      ta.setAttribute('readonly', '');
-      ta.style.cssText = 'position:fixed;top:-1000px;left:0;opacity:0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { if (document.execCommand('copy')) listo(); } catch (e) {}
-      ta.remove();
-      btn.focus();
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(listo, respaldo);
-    else respaldo();
-  });
-
-  // ---------- llevar la cotización a un proyecto (2026-10-29) ----------
-  // Pedido del usuario: que el carrito exporte sus costos a un proyecto en formulación o en ejecución. Los
-  // proyectos del equipo los conoce el Portal QUEMPIN (lee la carpeta del equipo), así que el carrito le manda
-  // sus líneas y el Portal pregunta a cuál: dentro del Portal, a la ventana de arriba; abierto suelto, el
-  // Portal se abre en otra pestaña y las pide cuando está listo. Viajan como mensaje entre ventanas del mismo
-  // sitio: el carrito sigue sin guardarse en el navegador.
+  // ---------- exportar la cotización a un proyecto (2026-10-29) ----------
+  // Pedido del usuario: que el carrito exporte sus costos a un proyecto en formulación o en ejecución, con la
+  // categoría de cada ítem (2026-10-30: reemplaza a «Copiar para el Formulador»). Los proyectos del equipo los
+  // conoce el Portal QUEMPIN (lee la carpeta del equipo), así que el carrito le manda sus líneas y el Portal
+  // pregunta a cuál: dentro del Portal, a la ventana de arriba; abierto suelto, el Portal se abre en otra pestaña
+  // y las pide cuando está listo. Viajan como mensaje entre ventanas del mismo sitio: el carrito sigue sin
+  // guardarse en el navegador.
   var PORTAL_LLEVAR = 'https://cristobal-monzo.github.io/finanzas-quempin/portal/#/llevar-cotizacion';
   var PORTAL_ORIGEN = 'https://cristobal-monzo.github.io';
   var llevarPendiente = null;   // { ventana, datos, reloj }: el Portal recién abierto todavía no las pide
 
-  // Las líneas con lo que el Portal necesita: el costo NETO (como «Copiar para el Formulador»), su proveedor,
-  // su hoja (con ella «Proyectos en ejecución» compara contra lo pagado) y la compra de donde sale el precio.
+  // Las líneas con lo que el Portal necesita: el costo NETO (el Formulador formula sin IVA), su categoría (con ella
+  // propone la de cada línea), su proveedor, su hoja (con ella «Proyectos en ejecución» compara contra lo pagado) y
+  // la compra de donde sale el precio.
   function datosParaProyecto() {
     var nav = document.getElementById('modNav');
     var peru = /-peru$/.test((nav && nav.getAttribute('data-nav-activo')) || '');
@@ -2507,7 +2470,7 @@
     }
     var ventana = window.open(PORTAL_LLEVAR, '_blank');
     if (!ventana) {
-      estadoLlevar('El navegador no dejó abrir el Portal QUEMPIN: permite las ventanas emergentes de este sitio, o usa «Copiar para el Formulador».');
+      estadoLlevar('El navegador no dejó abrir el Portal QUEMPIN: permite las ventanas emergentes de este sitio.');
       return;
     }
     if (llevarPendiente) clearTimeout(llevarPendiente.reloj);
