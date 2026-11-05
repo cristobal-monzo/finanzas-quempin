@@ -77,34 +77,43 @@ RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Sistema Analisis Financiero"
 # JSON/dashboards. El codigo de arriba (este archivo) es compartido.
 RAIZ_PERU = RAIZ_MODULO.parent / "Peru" / "Centro de Costos"
 
+# El TAG de un proyecto es su N° de la Planilla de Ingreso (pedido del usuario
+# 2026-11-05): «261. FACH 1» -> 261. Solo los proyectos sin N° conservan su
+# sigla de letras. La sigla anterior de cada uno esta en TAGS_ANTIGUOS
+# (Sistema Analisis Financiero/Sistema/presupuestos_formulador.py), que la
+# traduce si todavia llega en un mensaje. Una carpeta nueva «N°. Nombre» toma
+# su N° sola (_numero_de_carpeta).
 PREFIJOS_PROYECTO = {
-    "UMAG": "UMAG",                          # UMAG Linea de H2 (entregado en 2026)
-    "UMAG - Conexión y PH Lab1": "UML1",     # N° 280 (carpeta «280. UMAG - Conexión y PH Lab 1»): otro proyecto
+    "UMAG": "UMAG",                          # UMAG Linea de H2 (entregado en 2026), sin N°
+    "UMAG - Conexión y PH Lab1": "280",      # carpeta «280. UMAG - Conexión y PH Lab 1»: otro proyecto
     "Cesfam Limache": "CFLI",
     "Cesfam Constitución": "CCON",
     "Gastos Generales": "GGEN",
     "Microturbina LER": "MLER",
-    "Fiscalía Quilpué y Quintero": "FQYQ",
+    "Fiscalía Quilpué y Quintero": "36",     # carpeta «036. Fiscalía Quilpué y Quintero»
     "ESFOCAR": "ESFO",
     "CONAF Puerto Montt": "CPMO",
     "Bomba Wilo Conchalí": "BWIL",
-    "CESFAM Chillán": "CCHI",
-    "Caldera Valdivia": "CVAL",
+    "CESFAM Chillán": "175",
+    "Caldera Valdivia": "270",
     "Calderas Antofagasta": "CANT",
     "Comisaría Conchalí": "COMC",
-    "Cremación Concepción": "CREM",
+    "Cremación Concepción": "29",
     "Junji's Valparaiso": "JUNJ",
     "Putaendo Hospital Pinel": "HPIN",
-    "FACH2": "FCH2",
-    "FACH1": "FCH1",
+    "FACH2": "259",
+    "FACH1": "261",
     "Limache Estanque 600L": "LIMA",
-    "Catedral": "CATE",
-    "USACH": "USAC",
-    "Quimetal -Flujómetros": "QUIM",
-    "Fuga quintero": "FUGQ",
-    "Llay llay Caldera CESFAM": "LLAY",
-    "KeyProcess": "KPH2",                    # N° 289 «Instalación H2 KeyProcess»: su TAG en el Análisis Financiero
-    "H2 Green": "H2GN",                      # N° 281 «Instalación y fabricación sistema H2»: su TAG en la Planilla
+    "Catedral": "250",
+    "USACH": "283",
+    "Quimetal -Flujómetros": "317",
+    "Fuga quintero": "319",
+    "Llay llay Caldera CESFAM": "296",
+    "KeyProcess": "289",                     # N° 289 «Instalación H2 KeyProcess»
+    "UA Reactor": "314",
+    "Licanten Caldera Nueva": "284",
+    "H2 Green": "281",
+    "SERVICIOS DE MANTENIMIENTO CORRECTIVO PARA INCINERADOR": "303",
 }
 # "Junji V2" (JUN2) existio entre el 2026-09-10 y el 2026-09-11: era el
 # reingreso de facturas que en "Junji's Valparaiso" se habian cargado cortadas,
@@ -2011,6 +2020,20 @@ def registrar_duenos_prefijo(filas):
             _DUENOS_PREFIJO.setdefault(n_ref.rsplit("-", 1)[0], str(proyecto))
 
 
+def _numero_de_carpeta(proyecto):
+    """N° de la Planilla de la carpeta «N°. Nombre» del proyecto, sin ceros a la
+    izquierda («036. Fiscalía» -> '36'), o '' si su carpeta no lleva N°."""
+    try:
+        carpetas = [h.name for h in RAIZ_DOCS.iterdir() if h.is_dir()]
+    except OSError:
+        return ""
+    for nombre in carpetas:
+        m = re.match(r"^0*(\d+)[.\-_]", nombre)
+        if m and normalizar_nombre_proyecto(nombre) == proyecto:
+            return m.group(1)
+    return ""
+
+
 def prefijo_para_proyecto(proyecto):
     if proyecto in PREFIJOS_PROYECTO:
         return PREFIJOS_PROYECTO[proyecto]
@@ -2021,6 +2044,11 @@ def prefijo_para_proyecto(proyecto):
     if propio:
         _DERIVADOS[proyecto] = propio[0]
         return propio[0]
+    numero = _numero_de_carpeta(proyecto)
+    if numero:
+        # Proyecto con N° de la Planilla: ese N° es su TAG (nunca se repite).
+        _DERIVADOS[proyecto] = numero
+        return numero
     ocupados = {p for nombre, p in PREFIJOS_PROYECTO.items() if nombre != proyecto}
     ocupados |= {p for p, dueno in _DUENOS_PREFIJO.items() if dueno != proyecto}
     ocupados |= {p for nombre, p in _DERIVADOS.items() if nombre != proyecto}

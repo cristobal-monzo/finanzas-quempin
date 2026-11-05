@@ -221,8 +221,21 @@ def _pesos(valor) -> str:
     return "(vacío)" if valor is None else f"«{valor}»"
 
 
+# Siglas que el TAG tuvo antes de ser el N° de la Planilla (2026-11-05). Un
+# Formulador o un Portal que guardo la sigla vieja sigue cayendo en su proyecto.
+TAGS_ANTIGUOS = {
+    "UML1": "280", "FQYQ": "36", "CCHI": "175", "CVAL": "270", "CREM": "29",
+    "FCH2": "259", "FCH1": "261", "CATE": "250", "USAC": "283", "QUIM": "317",
+    "FUGQ": "319", "LLAY": "296", "LLYC": "296", "KPH2": "289", "KEYP": "289",
+    "UARE": "314", "LICA": "284", "H2GN": "281", "QUOS": "303",
+}
+
+
 def normalizar_tag(tag) -> str:
-    return str(tag or "").strip().upper()
+    if isinstance(tag, float) and tag.is_integer():
+        tag = int(tag)
+    t = str(tag if tag is not None else "").strip().upper()
+    return TAGS_ANTIGUOS.get(t, t)
 
 
 def _legible(clave: str, valor) -> str:
@@ -975,8 +988,18 @@ def _palabras(texto) -> set:
 
 def sugerir_tag(item: dict, proyectos_af: list[dict]) -> str:
     """TAG del Análisis Financiero más parecido (título y cliente), si hay uno
-    claro. La misma idea que usa el Formulador al enviar costos."""
+    claro. La misma idea que usa el Formulador al enviar costos. Desde el
+    2026-11-05 el TAG es el N° de la Planilla: si el código de la formulación
+    lleva N° («303. Cotización Osorno») gana la ficha con ese TAG o ese N° de
+    requerimiento, y sin ficha se sugiere el N° mismo (ficha nueva)."""
     d = item["datos"]
+    m = re.match(r"^\s*0*(\d+)\s*[.\-_]", str(d.get("codigo") or ""))
+    if m:
+        numero = m.group(1)
+        for p in proyectos_af:
+            if normalizar_tag(p.get("tag")) == numero or str(p.get("req") or "").strip().lstrip("0") == numero:
+                return normalizar_tag(p.get("tag"))
+        return numero
     mias = _palabras(f"{d.get('titulo')} {d.get('cliente')}")
     if not mias:
         return ""

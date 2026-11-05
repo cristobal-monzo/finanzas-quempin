@@ -1017,6 +1017,16 @@ def agrupar_por_proyecto_y_subcategoria(items_detalle: list[dict]) -> dict[tuple
 
 # ── LECTURA DE LA HOJA "PROYECTOS" ───────────────────────────────────────────
 
+def tag_de_celda(valor):
+    """El TAG es texto aunque sea un N° de la Planilla: un 303 escrito a mano
+    en Excel queda como número y debe ser el mismo proyecto que «303»."""
+    if isinstance(valor, float) and valor.is_integer():
+        valor = int(valor)
+    if isinstance(valor, int):
+        return str(valor)
+    return valor
+
+
 def leer_filas_proyectos(ws_proyectos) -> tuple[list[dict], list[str]]:
     """Recorre la hoja 'Proyectos' desde la fila 2. Filas sin TAG o sin
     Nombre se saltan con aviso. TAG duplicado: se queda con la primera
@@ -1026,7 +1036,7 @@ def leer_filas_proyectos(ws_proyectos) -> tuple[list[dict], list[str]]:
     tags_vistos = set()
 
     for fila_idx in range(2, ws_proyectos.max_row + 1):
-        tag = ws_proyectos.cell(row=fila_idx, column=1).value
+        tag = tag_de_celda(ws_proyectos.cell(row=fila_idx, column=1).value)
         nombre = ws_proyectos.cell(row=fila_idx, column=2).value
 
         if not tag or not nombre:
@@ -2232,10 +2242,13 @@ def valores_fila_proyectos(ws_proyectos, fila: int) -> dict:
     """Las COLUMNAS_ENTRADA_KPIS de una fila de 'Proyectos', keyed por
     encabezado del esquema (no del archivo, que puede tener otro texto en
     columnas de fórmula)."""
-    return {
+    valores = {
         nombre: ws_proyectos.cell(row=fila, column=HEADERS_PROYECTOS.index(nombre) + 1).value
         for nombre in COLUMNAS_ENTRADA_KPIS
     }
+    if "TAG proyecto" in valores:
+        valores["TAG proyecto"] = tag_de_celda(valores["TAG proyecto"])
+    return valores
 
 
 def costos_por_bucket(agrupado: dict[tuple[str, str], float]) -> dict[str, dict[str, float]]:

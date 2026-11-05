@@ -48,7 +48,7 @@ import documentos  # noqa: E402
 # pais="PE"). La regla del enlace está en Visualizador Web/documentos.py.
 RAIZ_DOCS = documentos.raiz_docs("PE")
 
-REF_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
+REF_RE = re.compile(r"^[A-Z0-9]+-\d+$")  # TAG de letras o N° de la Planilla (303-001)
 # Debe coincidir con ROJO ("C00000") en Centro de Costos/Sistema/
 # auditor_centro_costos.py -- ver esa constante para el detalle del bug
 # real que este criterio "endswith" corrige (openpyxl no siempre antepone

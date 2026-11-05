@@ -43,3 +43,15 @@ def test_siguiente_n_ref_usa_el_prefijo_propio():
     max_seq = {"UMAG": 45}
     assert acc.siguiente_n_ref("UMAG - Conexión y PH Lab1", max_seq) == "UMA2-001"
     assert acc.siguiente_n_ref("UMAG", max_seq) == "UMAG-046"
+
+
+def test_una_carpeta_con_n_de_la_planilla_usa_ese_n_como_tag(tmp_path, monkeypatch):
+    """Pedido del usuario (2026-11-05): el TAG es el N° de la Planilla."""
+    (tmp_path / "303. Cotización Osorno").mkdir()
+    (tmp_path / "036. Fiscalía Quilpué").mkdir()
+    (tmp_path / "Sin número").mkdir()
+    monkeypatch.setattr(acc, "RAIZ_DOCS", tmp_path)
+    assert acc.prefijo_para_proyecto("Cotización Osorno") == "303"
+    assert acc.prefijo_para_proyecto("Fiscalía Quilpué") == "36"
+    assert acc.prefijo_para_proyecto("Sin número") == "SINN"
+    assert acc.siguiente_n_ref("Cotización Osorno", {}) == "303-001"

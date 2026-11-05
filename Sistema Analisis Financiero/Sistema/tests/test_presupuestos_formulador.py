@@ -927,12 +927,29 @@ def test_una_carpeta_vacia_con_el_nombre_de_la_ficha_no_es_otro_proyecto():
     están en «289. KeyProcess». Es el mismo proyecto."""
     carpetas = [{"nombre": "Instalación H2 KeyProcess", "req": None, "documentos": 0},
                 {"nombre": "289. KeyProcess", "req": "289", "documentos": 8}]
-    venta = _venta(tag="KPH2", proyecto={"tag": "KPH2", "req": "289"})
-    [d] = pf.planificar([venta], {"KPH2": 2}, {"KPH2": {pf.CLAVE_VENTA: None, pf.COLUMNA_REQ: None}},
+    venta = _venta(tag="KPHX", proyecto={"tag": "KPHX", "req": "289"})
+    [d] = pf.planificar([venta], {"KPHX": 2}, {"KPHX": {pf.CLAVE_VENTA: None, pf.COLUMNA_REQ: None}},
                         {"valores": {}, "confirmados": []},
-                        nombres_por_tag={"KPH2": "Instalación H2 KeyProcess"}, carpetas_cc=carpetas)
+                        nombres_por_tag={"KPHX": "Instalación H2 KeyProcess"}, carpetas_cc=carpetas)
     assert d["accion"] == "aplicar"
 
+
+
+def test_un_tag_antiguo_cae_en_su_n_de_la_planilla():
+    """Desde el 2026-11-05 el TAG es el N° de la Planilla: un Formulador o un
+    Portal que guardó la sigla vieja sigue llegando a su proyecto."""
+    assert pf.normalizar_tag("quos") == "303"
+    assert pf.normalizar_tag("UML1") == "280"
+    assert pf.normalizar_tag(303) == "303"
+    assert pf.normalizar_tag(303.0) == "303"
+    assert pf.normalizar_tag("UMAG") == "UMAG"
+
+
+def test_se_sugiere_el_tag_por_el_n_del_codigo():
+    item = {"datos": {"codigo": "303. Cotización Osorno [303]", "titulo": "Cotización Osorno", "cliente": ""}}
+    assert pf.sugerir_tag(item, [{"tag": "303", "nombre": "Incinerador", "req": 303}]) == "303"
+    assert pf.sugerir_tag(item, [{"tag": "OTRO", "nombre": "x", "req": "303"}]) == "OTRO"
+    assert pf.sugerir_tag(item, []) == "303"
 
 
 # ── LA COPIA PARA EL EQUIPO (2026-11-02: el Excel de Perú, para el símbolo de carpeta del Portal) ──

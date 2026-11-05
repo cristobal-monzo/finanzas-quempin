@@ -48,7 +48,7 @@ import documentos  # noqa: E402
 
 RAIZ_DOCS = documentos.raiz_docs("CL")
 
-REF_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
+REF_RE = re.compile(r"^[A-Z0-9]+-\d+$")  # TAG de letras o N° de la Planilla (303-001)
 # Debe coincidir con ROJO ("C00000") en Sistema/auditor_centro_costos.py, el
 # unico lugar que realmente escribe esta fuente (ROJO_FONT) para marcar una
 # celda "requiere revision" -- si ese valor cambia, actualizar tambien aca.

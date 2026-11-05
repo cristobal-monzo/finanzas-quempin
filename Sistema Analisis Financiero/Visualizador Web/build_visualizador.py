@@ -189,7 +189,7 @@ def sumar_costos_reales_por_bucket(ws_detalle, tag: str) -> dict:
     en el cache de la formula."""
     sumas = {"Materiales": 0.0, "Equipos": 0.0, "Otros": 0.0}
     for fila in range(2, ws_detalle.max_row + 1):
-        fila_tag = ws_detalle.cell(row=fila, column=1).value
+        fila_tag = af.tag_de_celda(ws_detalle.cell(row=fila, column=1).value)
         bucket = ws_detalle.cell(row=fila, column=3).value
         total = ws_detalle.cell(row=fila, column=4).value
         if fila_tag == tag and bucket in sumas and total is not None:
@@ -205,7 +205,7 @@ def leer_detalle_subcategorias(ws_detalle) -> dict[str, list[dict]]:
     Excel, aunque acá sea un literal y no una fórmula)."""
     filas_por_tag: dict[str, list[dict]] = {}
     for fila in range(2, ws_detalle.max_row + 1):
-        tag = ws_detalle.cell(row=fila, column=1).value
+        tag = af.tag_de_celda(ws_detalle.cell(row=fila, column=1).value)
         total = ws_detalle.cell(row=fila, column=4).value
         if not tag or total is None:
             continue
