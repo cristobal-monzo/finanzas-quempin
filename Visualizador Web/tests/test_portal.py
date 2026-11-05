@@ -5016,7 +5016,11 @@ def test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel():
     cambios = esquema["properties"]["cambios"]["properties"]
     escritor = (RAIZ / "Sistema Intercambio" / "planilla_escritura.py").read_text(encoding="utf-8")
     editables = re.findall(r'"([a-zA-Z]+)"', re.search(r"^EDITABLES = \(([^)]*)\)", escritor, re.M).group(1))
-    assert columnas[0] == "numero" and columnas[1:] == list(cambios) == editables
+    # El esquema lleva además los montos que exporta el Formulador: el Portal no los muestra como columnas
+    solo_formulador = re.findall(r'"([a-zA-Z]+)"', re.search(r"^SOLO_FORMULADOR = \(([^)]*)\)", escritor, re.M).group(1))
+    assert columnas[0] == "numero" and columnas[1:] == [c for c in cambios if c not in solo_formulador] == editables
+    for c in solo_formulador:
+        assert re.search(c + r": '[^']+'", portal), f"el Portal no le da nombre a {c} en la lista de cambios"
     estados = re.search(r"const PQ_ESTADOS = \[([^\]]*)\]", portal).group(1)
     canales = re.search(r"const PQ_CANALES = \[([^\]]*)\]", portal).group(1)
     assert re.findall(r"'([^']+)'", estados) == cambios["estado"]["enum"]

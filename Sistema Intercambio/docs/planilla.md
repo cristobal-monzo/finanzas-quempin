@@ -13,6 +13,10 @@ módulo es el puente, en los dos sentidos:
   `editar-requerimiento` en el buzón; esta vuelta los escribe. Mientras esperan,
   el Portal los muestra a todos los navegadores encima de lo publicado, con un
   punto naranjo, y se pueden retirar.
+- **Formulador → Excel** (2026-11-02): «Exportar a la Planilla» muestra qué cambiaría y deja un
+  `editar-requerimiento` con lo que la persona marcó. Además de las columnas del Portal, puede llevar
+  `SOLO_FORMULADOR`: Presupuesto, Valor ofertado y Valor adjudicado. Un proyecto sin N° va por `nuevo-requerimiento`.
+  Las sugerencias `actualizar-requerimiento` siguen igual y se cierran solas cuando la planilla ya muestra lo sugerido.
 - **Excel → Portal**: si el archivo cambió, la vuelta republica
   `requerimientos.json` sin abrir Excel. Antes eso esperaba al procesador (hasta
   2 horas).

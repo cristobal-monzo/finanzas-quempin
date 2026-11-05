@@ -12,6 +12,7 @@ from datetime import date, datetime, timedelta
 import openpyxl
 import pytest
 
+import esquemas
 import intercambio as ic
 import planilla_escritura as pe
 import requerimientos as rq
@@ -209,6 +210,24 @@ def test_lo_que_escribio_el_portal_cuenta_desde_cuando_se_cambio_en_el_portal():
 def test_las_fechas_se_comparan_hasta_el_minuto():
     m = _editar(5, {"apertura": "2026-10-21T11:20"}, {"apertura": "2026-10-21T11:20"})
     assert pe.ganador_editar(m, {"apertura": "2026-10-21T11:20"}, {}, _hora("2026-10-29T13:00:00-03:00"))[0] == {}
+
+
+def test_un_monto_exportado_se_compara_como_numero():
+    m = _editar(5, {"valorOfertado": 1190000}, {"valorOfertado": None})
+    assert pe.ganador_editar(m, {"valorOfertado": 1190000.0}, {}, _hora("2026-11-02T13:00:00-03:00"))[0] == {}
+    m = _editar(5, {"valorOfertado": 1190000}, {"valorOfertado": 900000})
+    cambios, detalle = pe.ganador_editar(m, {"valorOfertado": 900000.0}, {}, _hora("2026-11-02T13:00:00-03:00"))
+    assert cambios == {"valorOfertado": 1190000} and detalle == []
+
+
+def test_las_celdas_de_lo_que_exporta_el_formulador():
+    valores, fechas, borrar, encabezados = pe._celdas({"valorOfertado": 1190000, "cliente": "Municipalidad"}, COLUMNAS)
+    assert valores == {"P": 1190000, "G": "Municipalidad"} and not fechas and not borrar
+    assert encabezados == {"P": "Valor ofertado (IVA inc)", "G": "Cliente"}
+
+
+def test_el_formulador_escribe_los_montos_pero_el_portal_no_los_muestra():
+    assert set(pe.SOLO_FORMULADOR) <= set(pe.ESCRIBIBLES) and not set(pe.SOLO_FORMULADOR) & set(pe.EDITABLES)
 
 
 def test_las_celdas_de_un_cambio():
@@ -451,6 +470,61 @@ def test_un_cambio_cuya_fila_no_llega_todavia_espera(tmp_path, entorno):
     ic.enviar(raiz, viejo)
     pe.vuelta(raiz, ruta)
     assert _archivados(raiz)[viejo["id"]]["estado"] == "rechazado"
+
+
+def _exportar(numero, cambios, reemplaza, titulo, enviado):
+    """Lo que deja «Exportar a la Planilla» del Formulador (js/herramientas.js, mensajeEditarRequerimiento)."""
+    m = _editar(numero, cambios, reemplaza, enviado=enviado, titulo=titulo, id_=f"exportar{numero:04d}")
+    m["origen"]["herramienta"] = "formulador"
+    m["fuente"] = {"herramienta": "formulador", "uid": "f1e2d3c4b5a6", "codigo": f"{numero}. {titulo}"}
+    return m
+
+
+def test_lo_que_exporta_el_formulador_queda_escrito_en_su_fila(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "Caldera gimnasio")])
+    rq.publicar(raiz, ruta)
+    m = _exportar(2, {"estado": "Ofertado", "valorOfertado": 11900000, "cliente": "Municipalidad"},
+                  {"estado": "Evaluación", "valorOfertado": None, "cliente": None}, "Caldera gimnasio", _hace(2))
+    assert esquemas.validar_mensaje(m) == []
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    (op,) = escritas[0]
+    assert op["op"] == "editar" and op["valores"] == {"B": "Ofertado", "P": 11900000, "G": "Municipalidad"}
+    fila = _publicados(raiz)[2]
+    assert (fila["estado"], fila["valorOfertado"], fila["cliente"]) == ("Ofertado", 11900000, "Municipalidad")
+    assert _archivados(raiz)[m["id"]]["estado"] == "aplicado"
+    # Exportar lo mismo otra vez no reescribe nada
+    otra = _exportar(2, {"valorOfertado": 11900000}, {"valorOfertado": None}, "Caldera gimnasio", _hace(1))
+    otra["id"] = "exportar0002b"
+    ic.enviar(raiz, otra)
+    pe.vuelta(raiz, ruta)
+    assert len(escritas) == 1 and _archivados(raiz)[otra["id"]]["estado"] == "sin-cambios"
+
+
+def test_lo_que_exporta_el_formulador_a_una_fila_nueva_va_con_ella(tmp_path, entorno):
+    """Un proyecto sin fila: el registro (nuevo-requerimiento) y los valores que el registro no lleva, juntos."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _mensaje(2, enviado=_hace(3), estado="Ofertado"))
+    m = _exportar(2, {"valorOfertado": 5950000}, {"valorOfertado": None}, "Caldera gimnasio", _hace(2))
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    (op,) = escritas[0]
+    assert op["op"] == "nueva" and op["valores"]["B"] == "Ofertado" and op["valores"]["P"] == 5950000
+    assert _archivados(raiz)[m["id"]]["estado"] == "aplicado"
+
+
+def test_lo_que_exporta_el_formulador_a_un_n_que_es_de_otro_no_se_escribe(tmp_path, entorno):
+    """El 2026-11-02 la planilla volvió a numerar con fórmula y se corrieron 104 N°: el título que se vio manda."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    m = _exportar(2, {"valorOfertado": 5950000}, {"valorOfertado": None}, "Caldera gimnasio", _hace(2))
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    assert escritas == [] and _archivados(raiz)[m["id"]]["estado"] == "rechazado"
 
 
 def test_lo_que_se_cambia_en_el_excel_llega_al_portal_en_la_vuelta(tmp_path, entorno):

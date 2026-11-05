@@ -1,0 +1,30 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c0ffee00c0ffee00c0ffee01",
+  "tipo": "editar-requerimiento",
+  "destino": "planilla-requerimientos",
+  "origen": {
+    "herramienta": "formulador",
+    "usuario": "NB",
+    "enviado": "2026-11-02T18:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 999,
+    "titulo": "Caldera de prueba"
+  },
+  "cambios": {
+    "estado": "Ofertado",
+    "valorOfertado": 11900000,
+    "cliente": "Cliente de prueba"
+  },
+  "reemplaza": {
+    "estado": "Evaluación",
+    "valorOfertado": null,
+    "cliente": null
+  },
+  "fuente": {
+    "herramienta": "formulador",
+    "uid": "abc123",
+    "codigo": "999. Caldera de prueba"
+  }
+}

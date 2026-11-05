@@ -38,8 +38,9 @@ fila se deshace y queda rechazada para que lo decida una persona.
    Formulador no se escribe y queda ``rechazado`` (su carpeta y su código ya
    llevan ese N°: lo decide una persona); el del Portal (``numeroLibre``) toma
    el siguiente libre y lo dice.
-3. **Aplica lo que se cambia en el Portal** (mensaje ``editar-requerimiento``):
-   las casillas que alguien cambió, en la fila de ese N°. Si la misma casilla
+3. **Aplica lo que se cambia en el Portal o se exporta desde el Formulador**
+   (mensaje ``editar-requerimiento``): las casillas que alguien cambió o eligió
+   exportar, en la fila de ese N°. Si la misma casilla
    cambió también en el Excel, **manda el cambio más reciente**, como en el
    resto del Portal (``ganador_editar``).
 4. **Republica la Planilla** cuando el Excel cambió (``requerimientos.publicar``):
@@ -95,6 +96,8 @@ FECHAS = ("apertura", "cierre")
 # también, contadas en toda la planilla, pero se llenan en casi toda fila reciente y el usuario las dejó
 # (2026-10-30). El esquema editar-requerimiento y el Portal (PQ_COLUMNAS) llevan la misma lista.
 EDITABLES = ("estado", "canal", "captador", "evaluador", "titulo", "cliente", "ubicacion", "referencia", "apertura", "cierre")
+# Las que el Portal no muestra y sí exporta el Formulador («Exportar a la Planilla», 2026-11-02): el mismo mensaje.
+SOLO_FORMULADOR = ("presupuesto", "valorOfertado", "valorAdjudicado")
 # Un cambio que llega antes que la fila que lo crea (OneDrive sincroniza los archivos en cualquier orden)
 # espera esto antes de rechazarse.
 ESPERA_FILA = timedelta(hours=24)
@@ -261,6 +264,9 @@ def fila_de_mensaje(m: dict, formulacion: dict | None, columnas: dict, hoy: date
 def _comparable(clave: str, v) -> str:
     if v is None:
         return ""
+    # Un monto puede venir como 1190000 (el mensaje) o 1190000.0 (la celda): es el mismo valor
+    if clave in SOLO_FORMULADOR and isinstance(v, (int, float)):
+        return str(round(v))
     s = str(v).strip()
     return s[:16] if clave in FECHAS else s
 

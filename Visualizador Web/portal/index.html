@@ -9822,7 +9822,9 @@
     { id: 'cierre', et: 'Cierre', clase: 'c-ci', tarjeta: 'Cierre' }
   ];
   const PQ_CAMPOS = PQ_COLUMNAS.map((c) => c.id).filter((c) => c !== 'numero');
-  const PQ_NOMBRE = Object.fromEntries(PQ_COLUMNAS.map((c) => [c.id, c.et]));
+  // Con los montos que exporta el Formulador: no son columnas de aquí, pero salen en la lista de cambios
+  const PQ_NOMBRE = Object.assign(Object.fromEntries(PQ_COLUMNAS.map((c) => [c.id, c.et])),
+    { presupuesto: 'Presupuesto', valorOfertado: 'Valor ofertado', valorAdjudicado: 'Valor adjudicado' });
   const PQ_FECHAS = ['apertura', 'cierre'];
   const PQ_DESTINO = 'planilla-requerimientos';
   const PQ_TIPOS = ['nuevo-requerimiento', 'editar-requerimiento'];

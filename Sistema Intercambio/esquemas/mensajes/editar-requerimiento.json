@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "editar-requerimiento (Portal → Planilla de Ingreso)",
-  "description": "Las casillas de un requerimiento que alguien cambió en la vista «Planilla de Ingreso» del Portal QUEMPIN (2026-10-29): solo las columnas que el Portal muestra, las que el equipo llena de verdad. planilla_escritura.py las escribe con Excel en la fila de ese N°, cada 10 minutos. 'reemplaza' lleva lo que esa persona veía en cada casilla: si el Excel ya tiene otra cosa, alguien la cambió también ahí y manda el cambio más reciente. null deja la casilla vacía. 'requerimiento.titulo' es el título que se veía (para confirmar la fila).",
+  "title": "editar-requerimiento (Portal o Formulador → Planilla de Ingreso)",
+  "description": "Las casillas de un requerimiento que alguien cambió en la vista «Planilla de Ingreso» del Portal QUEMPIN (2026-10-29): solo las columnas que el Portal muestra, las que el equipo llena de verdad. planilla_escritura.py las escribe con Excel en la fila de ese N°, cada 10 minutos. 'reemplaza' lleva lo que esa persona veía en cada casilla: si el Excel ya tiene otra cosa, alguien la cambió también ahí y manda el cambio más reciente. null deja la casilla vacía. 'requerimiento.titulo' es el título que se veía (para confirmar la fila). Presupuesto, valor ofertado y valor adjudicado (con IVA) no son columnas del Portal: los exporta el Formulador con «Exportar a la Planilla» (2026-11-02), después de que una persona revisa qué cambia; ahí 'fuente' dice de qué proyecto vienen.",
   "destino": "planilla-requerimientos",
   "type": "object",
   "properties": {
@@ -98,6 +98,18 @@
               "type": "null"
             }
           ]
+        },
+        "presupuesto": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "valorOfertado": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "valorAdjudicado": {
+          "type": "number",
+          "exclusiveMinimum": 0
         }
       },
       "additionalProperties": false
@@ -164,9 +176,48 @@
             "string",
             "null"
           ]
+        },
+        "presupuesto": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "valorOfertado": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "valorAdjudicado": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false
+    },
+    "fuente": {
+      "type": "object",
+      "properties": {
+        "herramienta": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uid": {
+          "type": "string"
+        },
+        "codigo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "herramienta"
+      ]
     }
   },
   "required": [
