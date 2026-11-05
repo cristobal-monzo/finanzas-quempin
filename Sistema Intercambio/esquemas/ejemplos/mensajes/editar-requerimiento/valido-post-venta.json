@@ -1,0 +1,20 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c0ffee00c0ffee00c0ffee05",
+  "tipo": "editar-requerimiento",
+  "destino": "planilla-requerimientos",
+  "origen": {
+    "herramienta": "formulador",
+    "usuario": "NB",
+    "enviado": "2026-11-02T18:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 321
+  },
+  "cambios": {
+    "estado": "Post-venta"
+  },
+  "reemplaza": {
+    "estado": "Adjudicado"
+  }
+}

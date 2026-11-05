@@ -223,6 +223,8 @@ def test_las_celdas_de_un_cambio():
 def entorno(tmp_path, monkeypatch):
     raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
     monkeypatch.setattr(pe, "ESTADO", tmp_path / "estado.json")
+    # La lista de Estado del Excel ya está al día: tiene su propia prueba
+    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS)}), encoding="utf-8")
     escritas = []
 
     def falso_escribir(ruta, operaciones, columnas=None, limite=600):
@@ -251,6 +253,8 @@ def entorno(tmp_path, monkeypatch):
                 hoja.cell(fila, 1).value = o["numero"]
                 poner(fila, o)
                 resultados.append({"i": i, "ok": True, "fila": fila})
+            elif o["op"] == "estados":
+                resultados.append({"i": i, "ok": True, "fila": 0})
             else:
                 col_t = encabezados.index("Título") + 1
                 filas = [r for r in range(2, hoja.max_row + 1)
@@ -452,3 +456,52 @@ def test_simular_no_escribe_ni_archiva(tmp_path, entorno):
     r = pe.vuelta(raiz, ruta, simular=True)
     assert [o["op"] for o in r["operaciones"]] == ["editar"]
     assert escritas == [] and _archivados(raiz) == {}
+
+
+# ── la lista de Estado del Excel y lo que sigue a la vuelta (2026-11-02) ─────
+
+def test_la_lista_de_estado_del_excel_se_pone_al_dia_una_vez(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text("{}", encoding="utf-8")
+    pe.vuelta(raiz, ruta)
+    (op,) = escritas[0]
+    assert op["op"] == "estados" and op["lista"] == list(rq.ESTADOS) and op["encabezados"] == {op["letra"]: "Estado"}
+    assert "Post-venta" in op["lista"] and "Cerrado" in op["lista"]
+    assert pe.vuelta(raiz, ruta)["detalle"] == "sin cambios" and len(escritas) == 1
+
+
+def test_si_excel_no_puede_cambiar_la_lista_lo_intenta_tres_veces(tmp_path, entorno, monkeypatch):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(pe, "escribir", lambda r, ops, c=None, limite=600: (escritas.append(ops), {"estado": "ok", "resultados": [{"i": 0, "ok": False}]})[1])
+    for _ in range(5):
+        pe.vuelta(raiz, ruta)
+    assert len(escritas) == pe.INTENTOS_LISTA
+
+
+def test_la_vuelta_dice_los_n_que_cambiaron_y_lo_que_cambio_el_formulador(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _mensaje(2, herramienta="portal", enviado=_hace(5), titulo="Otra con el 2"))
+    del_formulador = _editar(1, {"estado": "Ofertado"}, {"estado": "Evaluación"}, enviado=_hace(1), titulo="A")
+    del_formulador["origen"]["herramienta"] = "formulador"
+    ic.enviar(raiz, del_formulador)
+    r = pe.vuelta(raiz, ruta)
+    assert r["renumerados"] == [(2, 3, "Otra con el 2")]
+    assert r["delFormulador"] == [1]
+
+
+def test_main_corre_la_vuelta_de_las_carpetas_con_lo_de_la_planilla(monkeypatch, tmp_path):
+    vistas = []
+    monkeypatch.setattr(pe, "LOGS", tmp_path / "logs")
+    monkeypatch.setattr(pe, "vuelta", lambda simular=False: {"activo": True, "detalle": "1 cambiado(s)", "renumerados": [(2, 3, "X")], "delFormulador": [1]})
+    monkeypatch.setattr(pe.carpetas_oferta, "vuelta", lambda **kw: (vistas.append(kw), {"movidas": [{"nombre": "1. A"}], "creadas": []})[1])
+    pe.main([])
+    assert vistas == [{"renumerados": [(2, 3, "X")], "del_formulador": [1]}]
+    linea = (tmp_path / "logs").glob("planilla_*.log").__next__().read_text(encoding="utf-8")
+    assert "movidas: 1. A" in linea and "renumerados" not in linea

@@ -120,7 +120,7 @@ def casos(raiz, config: dict | None = None, ruta: Path = RUTA_CACHE, reqs: list[
             continue
         ev = op.Evaluador(config, op.Historia(otros), [m for m in mercado if m.get("codigo") != codigo], ahora, uf)
         r = ev.evaluar(ficha)
-        salida.append({"req": req.get("numero"), "codigo": codigo, "ofertada": lab, "ganada": requerimientos.normalizar_encabezado(req.get("estado") or "") == "adjudicado",
+        salida.append({"req": req.get("numero"), "codigo": codigo, "ofertada": lab, "ganada": requerimientos.normalizar_encabezado(req.get("estado") or "") in op.ESTADOS_GANADOS,
                        "compraAgil": bool(ficha.get("compraAgil")), "puntaje": r["puntaje"], "categoria": r["categoria"],
                        "criterios": {k: c["puntaje"] for k, c in r["criterios"].items()}, "nombre": ficha.get("nombre"),
                        "evaluada": bool(req.get("evaluador")), "parecidas": r["parecidas"]})

@@ -1,0 +1,16 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c0ffee00c0ffee00c0ffee01",
+  "tipo": "mover-carpeta",
+  "destino": "carpetas-proyecto",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "NB",
+    "enviado": "2026-11-02T18:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 321,
+    "titulo": "Calefacción central CESFAM"
+  },
+  "estado": "Adjudicado"
+}

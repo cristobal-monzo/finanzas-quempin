@@ -406,3 +406,11 @@ def test_dato_nuevo_reemplaza_la_sugerencia_anterior_del_monitor(carpeta, tmp_pa
     (nuevo,) = _sugerencias(raiz)
     assert nuevo["id"] != viejo["id"] and nuevo["cambios"]["valorAdjudicado"] == 2380000
     assert ic.resultados_recientes(raiz)[viejo["id"]]["estado"] == "reemplazado"
+
+
+def test_ganada_no_vuelve_atras_un_proyecto_en_post_venta_o_cerrado():
+    lic = mp.leer_licitacion(_licitacion("1234-56-LE26"), "1234-56-LE26")
+    for estado in ("Post-venta", "Cerrado"):
+        assert mp.decidir(_req(280, estado=estado, valorAdjudicado=5), lic, [])["cambios"] is None, estado
+    perdida = mp.leer_licitacion(_licitacion("1-2-LE26", adjudicados=[("99.999.999-9", "Otra SpA", 1, 900000)]), "1-2-LE26")
+    assert "dice «Cerrado»" in mp.decidir(_req(1, estado="Cerrado"), perdida, [])["revisar"]

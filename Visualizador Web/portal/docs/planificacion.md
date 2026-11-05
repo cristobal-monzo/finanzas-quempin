@@ -146,7 +146,11 @@ proyecto y en general, con UX profesional):
   la casilla para pedir ahí el 100 % de avance (un `datos-proyecto` al buzón con
   `origen.herramienta` `portal` y `reemplaza` el avance que se vio, como «Ingresar
   avance»). También «Dar por cerrado» / «Reabrir» en la ficha del Recorrido
-  (`rcVerDetalle`). El cierre se guarda para todas las claves del proyecto (`req:`
+  (`rcVerDetalle`). Desde el 2026-11-02, uno con fila en la Planilla se cierra con su
+  Estado: «Dar por cerrado» lo deja «Cerrado» (`estCambiar`, con el aviso si mueve su
+  carpeta) y la marca queda para quién, cuándo y la nota; se reabre cambiando su
+  Estado, y «Deshacer» retira también esos pedidos (`u.pedidos`). Post-venta sale de
+  los activos, pero agregado a mano a una semana se planifica. El cierre se guarda para todas las claves del proyecto (`req:`
   y `tag:`) en `publicado/planificacion/cierres/<dispositivo>.json` (esquema
   `planificacion-cierres`; `plCierres`, `plLeerCierres`, que lee `rcLeer`,
   `plEscribirCierres`; misma unión por navegador, el más reciente manda;

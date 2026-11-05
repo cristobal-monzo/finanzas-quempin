@@ -187,3 +187,9 @@ def test_sin_el_sitio_del_cc_no_hace_nada(e, tmp_path):
     (e["gestion"] / "314. UA Reactor" / "Formulación").mkdir(parents=True)
     r = cp.atender(e["raiz"], {"CL": tmp_path / "no", "PE": tmp_path / "no2"}, e["gestion"], e["estado"])
     assert r["creadasCC"] == [] and r["accesos"] == [] and not e["estado"].exists()
+
+
+def test_post_venta_y_cerrado_tambien_son_ganados(e):
+    _formulacion(e["raiz"], "a", "Post-venta", req="330", carpeta="330. Entregada")
+    g = cp.ganados([{"numero": 331, "estado": "Cerrado", "titulo": "TERMINADA"}], [], formulaciones.leer_repositorio(e["raiz"]))
+    assert set(g) == {"330", "331"}

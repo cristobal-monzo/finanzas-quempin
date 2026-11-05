@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "mover-carpeta (Portal o Formulador → carpetas de los proyectos)",
+  "description": "Alguien vio el aviso de adónde va la carpeta de un proyecto por su Estado y lo confirmó (2026-11-02). carpetas_oferta.py la mueve cada 10 minutos, y reintenta si algo está abierto. El mensaje solo dice el N° y el estado: el lugar lo decide la tabla de ese módulo, nunca quien pide. Se atiende cuando la Planilla ya dice ese estado; si después de 30 minutos dice otro, queda reemplazado. 'crear': si el proyecto todavía no tiene carpeta, crearla (botón «Crear carpeta» de un navegador sin la biblioteca completa).",
+  "destino": "carpetas-proyecto",
+  "type": "object",
+  "properties": {
+    "requerimiento": {
+      "type": "object",
+      "properties": {
+        "numero": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "titulo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "numero"
+      ],
+      "additionalProperties": false
+    },
+    "estado": {
+      "enum": [
+        "Evaluación",
+        "Ofertado",
+        "Adjudicado",
+        "Post-venta",
+        "Cerrado",
+        "No adjudicado",
+        "Descartado"
+      ]
+    },
+    "crear": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "requerimiento",
+    "estado"
+  ]
+}

@@ -17,6 +17,7 @@ import functools
 import http.server
 import importlib.util
 import json
+import os
 import re
 import shutil
 import threading
@@ -3512,9 +3513,10 @@ def test_un_proyecto_cerrado_sale_de_la_planificacion(navegador, sitio):
     assert "Proyecto cerrado" in texto and "40 % de avance" in texto, texto
     assert pagina.locator("#dlgRecorrido .rc-paso").evaluate_all("ps => ps.map((p) => p.dataset.est)")[4:] == ["hecha", "hecha"]
     pagina.keyboard.press("Escape")
-    # 100 % y todavía «Adjudicada»: propone marcarla Cerrada
+    # 100 % y todavía «Adjudicada»: propone dejarlo «Cerrado», en su Estado, ahí mismo
     pagina.locator('.rc-tarjeta[data-clave="req-909"] .rc-abrir').click()
-    assert "márcalo «Cerrada»" in pagina.locator("#dlgRecorrido").inner_text()
+    assert "déjalo «Cerrado» en su Estado" in pagina.locator("#dlgRecorrido").inner_text()
+    assert pagina.locator("#dlgRecorrido .est-fila select").input_value() == "Adjudicado"
     pagina.keyboard.press("Escape")
     # En la Planificación queda solo lo que sigue en obra (y lo agregado a mano que no está cerrado)
     _menu(pagina, "Planificación semanal")
@@ -3589,7 +3591,11 @@ def test_el_estado_de_los_proyectos_y_dar_por_cerrado_uno_sin_formulador(navegad
     assert [(x["clave"], x["cerrado"], x["nota"], x["af"], x["por"]) for x in sobre["datos"]["proyectos"]] == [
         ("req:907", True, "Entregado el 20-10, con acta", False, "LC")]
     assert _esquemas().validar_publicacion("planificacion-cierres", sobre) == []
-    # En el Recorrido está en el «Cierre», con quién lo cerró y su nota, y desde ahí se reabre
+    # Con fila en la Planilla, lo que lo cierra es su Estado (2026-11-02): «Cerrado», que ve todo el portal al instante
+    (estado,) = [m for m in pagina.evaluate(JS_BUZON).values() if m.get("tipo") == "editar-requerimiento"]
+    assert (estado["requerimiento"]["numero"], estado["cambios"], estado["reemplaza"]) == (907, {"estado": "Cerrado"}, {"estado": "Adjudicado"})
+    assert _esquemas().validar_mensaje(estado) == []
+    # En el Recorrido está en el «Cierre», con quién lo cerró y su nota, y desde ahí se reabre cambiando su Estado
     _menu(pagina, "Recorrido de proyectos")
     pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
     col = pagina.evaluate(JS_COLUMNAS)
@@ -3597,7 +3603,9 @@ def test_el_estado_de_los_proyectos_y_dar_por_cerrado_uno_sin_formulador(navegad
     pagina.locator('.rc-tarjeta[data-clave="req-907"] .rc-abrir').click()
     texto = pagina.locator("#dlgRecorrido").inner_text()
     assert "Dado por cerrado en la Planificación semanal por LC" in texto and "«Entregado el 20-10, con acta»" in texto, texto
-    pagina.locator('#dlgRecorrido [data-op="reabrir"]').click()
+    assert pagina.locator('#dlgRecorrido [data-op="reabrir"]').count() == 0, "con fila en la Planilla se reabre por su Estado"
+    pagina.locator("#dlgRecorrido .est-fila select").select_option("Adjudicado")
+    pagina.locator('#dlgRecorrido [data-op="cerrar"]').wait_for()
     assert pagina.locator('#dlgRecorrido [data-op="cerrar"]').is_visible(), "vuelve a ejecución y se puede volver a cerrar"
     pagina.keyboard.press("Escape")
     assert "req-907" in pagina.evaluate(JS_COLUMNAS)["ejecucion"]
@@ -3623,6 +3631,11 @@ def test_dar_por_cerrado_pide_el_100_al_analisis_y_se_deshace(navegador, sitio):
     assert dlg.locator("#plCerrarAF").is_checked()
     assert "hoy tiene 40 %" in dlg.locator(".pl-cerrar-af").inner_text()
     dlg.locator("#plCerrarOk").click()
+    # Cerrado mueve su carpeta de Gestión a «0 Proyectos Entregados»: primero el aviso (el 100 % ya se decidió en el formulario)
+    aviso = pagina.locator("#dlgEstado")
+    aviso.wait_for()
+    assert "0 Proyectos Entregados" in aviso.inner_text() and pagina.locator("#estAF").is_hidden(), aviso.inner_text()
+    pagina.locator("#estOk").click()
     pagina.wait_for_function("() => !document.querySelector('#plProyAviso').hidden")      # espera a escribir en el buzón
     assert "El 100 % de avance llega al Análisis Financiero en la próxima vuelta del procesador." in dlg.locator("#plProyAviso").inner_text()
     buzon = {n: m for n, m in pagina.evaluate(JS_BUZON).items() if m.get("tipo") == "datos-proyecto" and m.get("origen", {}).get("herramienta") == "portal"}
@@ -4499,7 +4512,19 @@ def test_proyectos_en_ejecucion_pasa_la_oferta_a_gestion(navegador, sitio):
     assert cab.locator('[data-foco="carpeta-facturas"]').count() == 0
     assert "«Facturas del proyecto»" in cab.locator(".ej-pista").inner_text()
     cab.locator('[data-foco="trasladar"]').click()
-    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://trasladar/formulacion/0%20OFERTAS%20PRESENTADAS/908.%20En%20obra"
+    # Desde el 2026-11-02 la pasa el computador del procesador, después de decir qué va a pasar; QUEMPIN.exe ya no
+    aviso = pagina.locator("#dlgEstado")
+    aviso.wait_for()
+    texto = aviso.inner_text()
+    assert "Se crea su carpeta en Gestión de Proyectos" in texto and "Formulación de proyectos › 0 OFERTAS ADJUDICADAS" in texto, texto
+    pagina.locator("#estOk").click()
+    cab = pagina.locator("#ejProyecto .ej-cab")
+    cab.locator(".ej-pista", has_text="se está pasando").wait_for()
+    assert cab.locator('[data-foco="trasladar"]').count() == 0
+    (m,) = [m for m in pagina.evaluate(JS_BUZON).values() if m.get("tipo") == "mover-carpeta"]
+    assert (m["requerimiento"]["numero"], m["estado"], m["destino"]) == (908, "Adjudicado", "carpetas-proyecto")
+    assert _esquemas().validar_mensaje(m) == []
+    assert not [u for u in pagina.evaluate("window.__lanzados") if u.startswith("quempin://trasladar")]
     assert not errores
     pagina.context.close()
 
@@ -4822,6 +4847,194 @@ def test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel():
     assert set(nuevo["properties"]["requerimiento"]["properties"]["canal"]["enum"]) == set(cambios["canal"]["enum"])
 
 
+# ---- El estado de un proyecto y su carpeta (2026-11-02) ---------------------------------------------------------------
+
+def _repo_formulador():
+    """El Formulador con que se comparan las copias: QUEMPIN_FORMULADOR_REPO (una rama de trabajo) o el de junto a este."""
+    fija = os.environ.get("QUEMPIN_FORMULADOR_REPO")
+    if fija:
+        return Path(fija)
+    f = _hermano("Formulación de proyectos")
+    return f / "quempin-formulacion" if f else None
+
+
+def _objeto_js(texto, nombre):
+    return json.loads(re.search(r"const " + nombre + r" = (\{.*?\n\s*\});", texto, re.S).group(1))
+
+
+def _funcion_js(texto, nombre):
+    return re.search(r"\n([ \t]*)(function " + nombre + r"\(.*?\r?\n\1\})", texto, re.S).group(2)
+
+
+CASOS_CARPETA = [
+    ["Ofertado", ["325. Obra"], None], ["Adjudicado", ["0 OFERTAS PRESENTADAS", "325. Obra"], None],
+    ["Adjudicado", ["0 OFERTAS ADJUDICADAS", "325. Obra"], ["325. Obra"]], ["Cerrado", ["0 OFERTAS ADJUDICADAS", "325. Obra"], ["325. Obra"]],
+    ["Post-venta", None, ["0 Proyectos Entregados 2025", "325. Obra"]],
+    ["Descartado", ["0 OFERTAS PRESENTADAS", "0 Ofertas Cerradas 2025", "325. Obra"], None], ["No adjudicado", ["325. Obra"], ["325. Obra"]],
+    ["Evaluación", ["0 OFERTAS ADJUDICADAS", "325. Obra"], ["325. Obra"]], ["Inventado", ["325. Obra"], None],
+    ["Cerrado", ["0 ofertas adjudicadas", "325. Obra"], None], ["Post-venta", ["0 OFERTAS ADJUDICADAS", "325. Obra"], None],
+]
+TITULOS_CARPETA = ["Calefacción gimnasio", "  Doble   espacio ", 'Con / barra: y "comillas"?', "Con % y # en el título",
+                   "325. Ya trae su N°", "324. Trae otro N°", "Termina en punto.", "X" * 200, "", "Quilpué & Quintero (2)"]
+
+
+def test_la_carpeta_de_cada_estado_es_la_misma_en_el_portal_el_procesador_y_el_formulador(navegador):
+    """Dónde queda la carpeta según el estado, su nombre y sus subcarpetas: el aviso del Portal y del Formulador tiene que
+    decir lo mismo que hace después el procesador (Sistema Intercambio/carpetas_oferta.py)."""
+    import subprocess
+    import sys
+    codigo = ("import json, sys\nimport carpetas_oferta as co\nd = json.loads(sys.stdin.read())\n"
+              "print(json.dumps({'planes': [co.plan(e, f, g, 2026) for e, f, g in d['casos']],"
+              " 'nombres': [co.nombre_carpeta(325, t) for t in d['titulos']], 'destinos': co.DESTINOS,"
+              " 'estructura': list(co.ESTRUCTURA), 'largo': co.LARGO_NOMBRE}, ensure_ascii=False))")
+    r = subprocess.run([sys.executable, "-c", codigo], cwd=RAIZ / "Sistema Intercambio", capture_output=True, encoding="utf-8",
+                       input=json.dumps({"casos": CASOS_CARPETA, "titulos": TITULOS_CARPETA}), env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+    assert r.returncode == 0, r.stderr
+    py = json.loads(r.stdout)
+    portal = PORTAL.read_text(encoding="utf-8")
+    assert _objeto_js(portal, "PQ_CARPETA") == py["destinos"]
+    assert re.findall(r"'([^']+)'", re.search(r"const PQ_ESTRUCTURA = \[([^\]]*)\]", portal).group(1)) == py["estructura"]
+    assert int(re.search(r"const PQ_LARGO_CARPETA = (\d+);", portal).group(1)) == py["largo"]
+    ctx = navegador.new_context()
+    pagina = ctx.new_page()
+    fuente = ["const PQ_CARPETA = " + json.dumps(py["destinos"]) + ";", "const PQ_LARGO_CARPETA = " + str(py["largo"]) + ";"]
+    fuente += [_funcion_js(portal, n) for n in ("pqNombreCarpeta", "pqMismoGrupo", "pqPlanCarpeta")]
+    js = pagina.evaluate("""([fuente, casos, titulos]) => (new Function(fuente + '\\nreturn { planes: arguments[0].map(([e, f, g]) => pqPlanCarpeta(e, f, g, 2026)), nombres: arguments[1].map((t) => pqNombreCarpeta(325, t)) };'))(casos, titulos)""",
+                         ["\n".join(fuente), CASOS_CARPETA, TITULOS_CARPETA])
+    assert js == {"planes": py["planes"], "nombres": py["nombres"]}
+    repo = _repo_formulador()
+    oferta = repo / "js" / "oferta.js" if repo else None
+    if oferta and oferta.exists():
+        texto = oferta.read_text(encoding="utf-8")
+        assert _objeto_js(texto, "DESTINOS") == py["destinos"]
+        assert re.findall(r"'([^']+)'", re.search(r"const ESTRUCTURA = \[([^\]]*)\]", texto).group(1)) == py["estructura"]
+        assert int(re.search(r"const MAX_NOMBRE = (\d+);", texto).group(1)) == py["largo"]
+        pagina.add_script_tag(content=texto)
+        planes = pagina.evaluate("(casos) => casos.map(([e, f, g]) => window.QOferta.planCarpeta(e, f, g, 2026))", CASOS_CARPETA)
+        assert planes == py["planes"]
+        flujo = (repo / "js" / "flujo.js").read_text(encoding="utf-8")
+        formulador = dict(re.findall(r"'([^']+)': '([^']+)'", re.search(r"const EN_PLANILLA = \{([^}]*)\}", flujo).group(1)))
+        fx = (RAIZ / "Sistema Intercambio" / "formulaciones.py").read_text(encoding="utf-8")
+        python = dict(re.findall(r'"([^"]+)": "([^"]+)"', re.search(r"^EN_PLANILLA = \{(.*?)\}", fx, re.S | re.M).group(1)))
+        assert formulador == {k: v for k, v in python.items() if v != "Evaluación"}, "los estados del Formulador y su nombre en la Planilla"
+    ctx.close()
+
+
+JS_ARBOL = """async () => {
+    const out = [];
+    async function rec(d, pre) { for await (const [n, h] of d.entries()) if (h.kind === 'directory') { out.push(pre + n); if (!n.startsWith('.')) await rec(h, pre + n + '/'); } }
+    await rec(await (await navigator.storage.getDirectory()).getDirectoryHandle('Formulación de proyectos - Documentos'), '');
+    return out.filter((x) => !x.startsWith('.HERRAMIENTAS')).sort();
+}"""
+
+
+def test_un_requerimiento_nuevo_nace_con_su_carpeta(navegador, sitio):
+    """Pedido del 2026-11-02: al ingresar un requerimiento, su carpeta queda al tiro en Formulación de proyectos, con las
+    subcarpetas de siempre, para subir ahí las bases; desde su fila se abre."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    dlg.locator("#pqTitulo").fill("Reparación de quemador / hospital")
+    assert "Su carpeta: «914. Reparación de quemador - hospital»" in dlg.locator("#pqCarpeta").inner_text()
+    assert "ANTECEDENTES, DOCUMENTOS EN TRABAJO, ENTREGABLES, VISITA TÉCNICA" in dlg.locator("#pqCarpeta").inner_text()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    pagina.wait_for_function("() => document.getElementById('aviso').textContent.includes('ya está en')")
+    assert "Su carpeta «914. Reparación de quemador - hospital» ya está en Formulación de proyectos" in pagina.locator("#aviso").inner_text()
+    arbol = pagina.evaluate(JS_ARBOL)
+    assert [x for x in arbol if x.startswith("914.")] == ["914. Reparación de quemador - hospital"] + [
+        "914. Reparación de quemador - hospital/" + s for s in ("ANTECEDENTES", "DOCUMENTOS EN TRABAJO", "ENTREGABLES", "VISITA TÉCNICA")]
+    # La fila nueva ya tiene su botón para abrirla
+    pagina.locator('#pqFilas tr[data-n="914"] .pq-ir-carpeta').click()
+    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/formulacion/914.%20Reparaci%C3%B3n%20de%20quemador%20-%20hospital"
+    # Una fila sin carpeta (de antes) la crea con un botón
+    pagina.locator('#pqFilas tr[data-n="902"] .pq-abrir').click()
+    assert "Todavía no tiene carpeta" in dlg.locator("#pqCarpeta").inner_text()
+    dlg.locator("#pqCarpeta button", has_text="Crear carpeta").click()
+    pagina.wait_for_function("() => document.getElementById('aviso').textContent.includes('ya está en')")
+    assert "902. Formulación lista/ANTECEDENTES" in pagina.evaluate(JS_ARBOL)
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_estado_se_cambia_en_la_fila_y_avisa_antes_de_mover_la_carpeta(navegador, sitio):
+    """Pedido del 2026-11-02: el estado se cambia desde la Planilla, con Post-venta y Cerrado, y se ve en todo el portal; si
+    la carpeta se va a mover, se avisa antes."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="LC")
+    sel = lambda n: pagina.locator(f'#pqFilas tr[data-n="{n}"] .pq-est-caja select')  # noqa: E731
+    assert [o for o in sel(901).locator("option").all_inner_texts()] == ["Evaluación", "Ofertado", "Adjudicado", "Post-venta", "Cerrado", "No adjudicado", "Descartado"]
+    # Sin carpeta que mover: cambia ahí mismo
+    sel(901).select_option("Descartado")
+    pagina.locator('#pqFilas tr[data-n="901"] .pq-est[data-estado="Descartado"]').wait_for()
+    (m,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert (m["requerimiento"]["numero"], m["cambios"], m["reemplaza"]) == (901, {"estado": "Descartado"}, {"estado": "Evaluación"})
+    assert pagina.locator("#dlgEstado").is_hidden()
+    # Con carpeta: el aviso dice adónde va; cancelar deja todo como estaba
+    sel(900).select_option("Ofertado")
+    aviso = pagina.locator("#dlgEstado")
+    aviso.wait_for()
+    assert aviso.locator("#dlgEstTit").inner_text() == "N° 900: de «Evaluación» a «Ofertado»"
+    assert "Pasa de Formulación de proyectos a Formulación de proyectos › 0 OFERTAS PRESENTADAS." in aviso.inner_text()
+    pagina.locator("#estCancelar").click()
+    assert sel(900).input_value() == "Evaluación" and len(_pedidos_planilla(pagina, "editar-requerimiento")) == 1
+    sel(900).select_option("Ofertado")
+    pagina.locator("#estOk").click()
+    pagina.locator('#pqFilas tr[data-n="900"] .pq-est[data-estado="Ofertado"]').wait_for()
+    movers = [x for x in pagina.evaluate(JS_BUZON).values() if x.get("tipo") == "mover-carpeta"]
+    assert [(x["requerimiento"]["numero"], x["estado"]) for x in movers] == [(900, "Ofertado")]
+    assert "1 carpeta se mueve" in pagina.locator("#pqSinc").inner_text()
+    # Post-venta, con ficha en el Análisis sin el 100 %: ofrece dejarlo en 100 %; no mueve nada (ya está en Gestión)
+    sel(908).select_option("Post-venta")
+    aviso.wait_for()
+    assert aviso.locator("#estCarpeta").is_hidden() and "hoy tiene 40 %" in aviso.locator("#estAF").inner_text()
+    pagina.locator("#estOk").click()
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-est[data-estado="Post-venta"]').wait_for()
+    avance = [x for x in pagina.evaluate(JS_BUZON).values() if x.get("tipo") == "datos-proyecto" and x.get("origen", {}).get("herramienta") == "portal"]
+    assert [x["valores"] for x in avance] == [{"% Avance": 1}]
+    # Se ve en todo el portal: el Recorrido lo lleva al «Cierre» en post-venta y la Planificación ya no lo cuenta
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    col = pagina.evaluate(JS_COLUMNAS)
+    assert "req-908" in col["cierre"] and "req-901" not in sum(col.values(), []), col
+    assert "Post-venta" in pagina.locator('.rc-tarjeta[data-clave="req-908"]').inner_text()
+    _menu(pagina, "Planificación semanal")
+    pagina.locator("#plResumen .rc-kpi").first.wait_for()
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    assert pagina.locator('#plProyecto tr[data-clave="req:908"]').count() == 0
+    assert not errores
+    pagina.context.close()
+
+
+def test_una_carpeta_que_no_esta_donde_dice_su_estado_se_mueve_con_el_aviso(navegador, sitio):
+    """Un estado cambiado directo en el Excel no mueve la carpeta (ahí no hay cómo avisar antes): la Planilla del portal lo
+    muestra y se mueve con un botón, después del aviso."""
+    def cambiar(archivos):
+        cruce = archivos["publicado/proyectos.json"]["datos"]["proyectos"]
+        cruce.append({"req": "905", "tag": None, "formulaciones": [], "cotizaciones": [], "ordenes": [], "carpetas": {"oferta": ["905. Oferta esperando"]}})
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
+    archivos = _intercambio_de_prueba()
+    cambiar(archivos)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"publicado/proyectos.json": archivos["publicado/proyectos.json"]})
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Planilla de Ingreso")
+    pagina.locator("#pqFilas tr").first.wait_for()
+    fuera = pagina.locator('#pqSinc details[data-lista="carpetas"]')
+    assert fuera.locator("summary").inner_text() == "1 carpeta no está donde dice su estado"
+    fuera.locator("summary").click()
+    assert "N° 905 «Ofertado»: 905. Oferta esperando, en Formulación de proyectos. Le corresponde Formulación de proyectos › 0 OFERTAS PRESENTADAS." in fuera.inner_text()
+    fuera.locator("button", has_text="Mover").click()
+    pagina.locator("#dlgEstado").wait_for()
+    assert pagina.locator("#dlgEstTit").inner_text() == "N° 905: mover su carpeta"
+    pagina.locator("#estOk").click()
+    pagina.locator('#pqSinc details[data-lista="carpetas"]').wait_for(state="detached")
+    (m,) = [x for x in pagina.evaluate(JS_BUZON).values() if x.get("tipo") == "mover-carpeta"]
+    assert (m["requerimiento"], m["estado"]) == ({"numero": 905, "titulo": "Oferta esperando"}, "Ofertado")
+    assert _pedidos_planilla(pagina, "editar-requerimiento") == [], "el estado no cambió"
+    assert not errores
+    pagina.context.close()
+
+
 def test_la_planilla_muestra_las_columnas_que_se_usan_del_mas_nuevo_al_mas_antiguo(navegador, sitio):
     pagina, errores = _planilla_con_datos(navegador, sitio)
     assert _pestanas(pagina) == ["Inicio", "Planilla"]
@@ -4949,7 +5162,15 @@ def test_cambiar_un_requerimiento_manda_solo_lo_cambiado_y_lo_que_se_veia(navega
     dlg.locator("#pqEstado").select_option("Ofertado")
     dlg.locator("#pqUbicacion").fill("")
     dlg.locator("#pqGuardar").click()
+    # Ofertado lleva su carpeta a «0 OFERTAS PRESENTADAS»: el aviso va antes (2026-11-02)
+    aviso = pagina.locator("#dlgEstado")
+    aviso.wait_for()
+    assert "«900. Liceo de prueba»" in aviso.inner_text() and "Formulación de proyectos › 0 OFERTAS PRESENTADAS" in aviso.inner_text()
+    pagina.locator("#estOk").click()
     dlg.wait_for(state="hidden")
+    (mover,) = [x for x in pagina.evaluate(JS_BUZON).values() if x.get("tipo") == "mover-carpeta"]
+    assert (mover["requerimiento"]["numero"], mover["estado"], mover["destino"]) == (900, "Ofertado", "carpetas-proyecto")
+    assert _esquemas().validar_mensaje(mover) == []
     (m,) = _pedidos_planilla(pagina, "editar-requerimiento")
     assert m["requerimiento"] == {"numero": 900, "titulo": "LICEO"}
     assert m["cambios"] == {"estado": "Ofertado", "ubicacion": None}
@@ -4963,6 +5184,9 @@ def test_cambiar_un_requerimiento_manda_solo_lo_cambiado_y_lo_que_se_veia(navega
     assert "Estado, Ubicación" in dlg.locator("#pqPista").inner_text()
     dlg.locator("#pqEstado").select_option("Adjudicado")
     dlg.locator("#pqGuardar").click()
+    pagina.locator("#dlgEstado").wait_for()
+    assert "Se crea su carpeta en Gestión de Proyectos" in pagina.locator("#dlgEstado").inner_text()
+    pagina.locator("#estOk").click()
     dlg.wait_for(state="hidden")
     segundo = [x for x in _pedidos_planilla(pagina, "editar-requerimiento") if x["id"] != m["id"]][0]
     assert segundo["cambios"] == {"estado": "Adjudicado"} and segundo["reemplaza"] == {"estado": "Ofertado"}

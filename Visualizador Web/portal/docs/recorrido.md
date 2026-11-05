@@ -21,12 +21,14 @@ el usuario elegido y con una casilla para ver solo sus proyectos):
   Sin conexión, sin permiso o en un navegador que no abre carpetas, dice qué
   hacer y da el botón (`Conectar biblioteca` reutiliza `conectarBiblioteca`).
 - **Las reglas** (`rcArmar`, `rcTarjetaReq`): entra lo vivo en la Planilla
-  (Evaluación, Ofertado, Adjudicado), lo que tiene formulación (si la Planilla
-  no lo cerró), lo que tiene ficha en el Análisis, los presupuestos sin N° y
-  las fichas del Análisis sin N°. La etapa sale de lo más avanzado que haya:
-  formulación «Cerrada» (Cierre, aunque el Análisis no tenga el 100 %: lo avisa;
-  `rcCerrada`, desde el 2026-10-26); ficha en el Análisis (Ejecución, o Cierre con
-  100 % de avance, que si sigue «Adjudicada» propone marcarla Cerrada); Adjudicado sin
+  (Evaluación, Ofertado, Adjudicado, Post-venta, Cerrado), lo que tiene formulación
+  (si la Planilla no lo cerró), lo que tiene ficha en el Análisis, los presupuestos
+  sin N° y las fichas del Análisis sin N°. Desde el 2026-11-02 el Estado de la
+  Planilla manda (se cambia en el detalle, `estSelector`; ver docs/planilla.md):
+  «Cerrado» o formulación «Cerrada» van al Cierre aunque el Análisis no tenga el
+  100 % (lo avisa; `rcCerrada`); «Post-venta», al Cierre sin plegarse
+  (`rcPostVenta`); ficha en el Análisis (Ejecución, o Cierre con 100 % de avance,
+  que si sigue «Adjudicado» propone dejarlo «Cerrado»); Adjudicado sin
   ficha (Ejecución: «Pasar a ejecución» o «Crear su ficha»); Ofertado,
   formulación Enviada o cotización emitida (Oferta, con el resultado de
   Mercado Público); borrador esperando en Sistema QUEMPIN, o formulación con

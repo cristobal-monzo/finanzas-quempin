@@ -107,3 +107,19 @@ def test_publicar_desde_la_carpeta_cumple_su_esquema(tmp_path):
     sobre = ic.leer_publicacion(raiz, "proyectos")
     assert esquemas.validar_publicacion("proyectos", sobre) == []
     assert sobre["datos"]["proyectos"][0]["formulaciones"][0]["uid"] == "a1"
+
+
+def test_toda_fila_con_carpeta_tiene_su_entrada_y_los_ganados_siguen_vivos():
+    """2026-11-02: el Portal abre y mueve la carpeta desde cualquier fila de la Planilla, aunque ya no siga viva; Post-venta y
+    Cerrado entran aunque no tengan nada colgando."""
+    reqs = [{"numero": 1, "estado": "Descartado", "titulo": "Vieja"}, {"numero": 2, "estado": "Cerrado", "titulo": "Terminada"},
+            {"numero": 3, "estado": "Post-venta", "titulo": "Entregada"}, {"numero": 4, "estado": "Descartado", "titulo": "Sin carpeta"}]
+    datos = pj.cruzar(reqs, [], [], [], {"oferta": {"1": ["0 OFERTAS PRESENTADAS/0 Ofertas Cerradas 2025/1. Vieja"]}, "ejecucion": {"9": ["9. Sin fila"]}})
+    por_req = {p["req"]: p for p in datos["proyectos"]}
+    assert set(por_req) == {"1", "2", "3"}
+    assert por_req["1"]["estado"] == "Descartado" and por_req["1"]["carpetas"]["oferta"] == ["0 OFERTAS PRESENTADAS/0 Ofertas Cerradas 2025/1. Vieja"]
+
+
+def test_las_carpetas_de_oferta_se_ven_dentro_de_cerradas(tmp_path):
+    (tmp_path / "0 OFERTAS PRESENTADAS" / "0 Ofertas Cerradas 2026" / "54. Perdida").mkdir(parents=True)
+    assert pj.carpetas_con_numero(tmp_path, profundidad=3) == {"54": ["0 OFERTAS PRESENTADAS/0 Ofertas Cerradas 2026/54. Perdida"]}

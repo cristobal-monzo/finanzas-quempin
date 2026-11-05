@@ -57,6 +57,7 @@ from urllib.parse import quote
 import documentos_cc
 import formulaciones
 import intercambio
+import requerimientos
 
 SUB_FACTURAS = "Facturas del proyecto"
 ACCESO_FACTURAS = SUB_FACTURAS + ".url"
@@ -99,7 +100,7 @@ def _pais(texto) -> str:
 
 # ── QUÉ ESTÁ ADJUDICADO ──────────────────────────────────────────────────────
 
-def ganados(requerimientos: list[dict], proyectos_af: list[dict], repositorio: list[dict]) -> dict[str, dict]:
+def ganados(filas_planilla: list[dict], proyectos_af: list[dict], repositorio: list[dict]) -> dict[str, dict]:
     """{req: {'nombre', 'pais'}} de lo adjudicado o en ejecución, con el mejor
     nombre que se tenga: la carpeta de la oferta, el código del Formulador
     («N°. Nombre»), el título de la Planilla o el nombre del Análisis."""
@@ -114,12 +115,12 @@ def ganados(requerimientos: list[dict], proyectos_af: list[dict], repositorio: l
 
     for p in proyectos_af:
         anotar(_req(p.get("req")), p.get("nombre"), _pais(p.get("pais")), 1)
-    for r in requerimientos:
-        if r.get("estado") == "Adjudicado":
+    for r in filas_planilla:
+        if r.get("estado") in requerimientos.ESTADOS_GANADOS:
             anotar(_req(r.get("numero")), r.get("titulo"), "CL", 2)
     for item in repositorio:
         d = item.get("datos") or {}
-        if d.get("eliminado") or d.get("estado") != "Adjudicada":
+        if d.get("eliminado") or d.get("estado") not in ("Adjudicada", "Post-venta", "Cerrada"):
             continue
         v = d.get("vinculos") or {}
         req = v.get("requerimiento")

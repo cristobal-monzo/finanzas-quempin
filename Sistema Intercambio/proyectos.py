@@ -43,7 +43,7 @@ PUBLICACION = "proyectos"
 HERRAMIENTA = "procesador"
 # Estados de la Planilla que entran aunque no tengan nada colgando: lo que
 # sigue vivo. Lo descartado y lo no adjudicado solo entra si algo lo nombra.
-ESTADOS_VIVOS = {"Evaluación", "Ofertado", "Adjudicado"}
+ESTADOS_VIVOS = {"Evaluación", "Ofertado", "Adjudicado", "Post-venta", "Cerrado"}
 _CARPETA_CON_NUMERO = re.compile(r"^\s*(\d{1,4})\s*[.\-_)]\s*(.+)$")
 # El registro de OC de cada Centro de Costos (gitignoreado: lleva montos), por país
 RAIZ_FINANZAS = Path(__file__).resolve().parent.parent
@@ -122,7 +122,8 @@ def carpetas_de_proyectos(desde: Path | None = None, raiz_facturas: Path | None 
     procesar.py agrega 'facturasWeb': la dirección en SharePoint de la carpeta
     del Centro de Costos (carpetas_proyecto.py, 2026-10-29)."""
     return {
-        "oferta": carpetas_con_numero(ubicacion.biblioteca(ubicacion.BIBLIOTECA_FORMULACION, desde)),
+        # Tres niveles: «0 OFERTAS PRESENTADAS › 0 Ofertas Cerradas 2026 › 54. Nombre» (carpetas_oferta.py las lleva ahí)
+        "oferta": carpetas_con_numero(ubicacion.biblioteca(ubicacion.BIBLIOTECA_FORMULACION, desde), profundidad=3),
         "ejecucion": carpetas_con_numero(ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, desde)),
         "facturas": carpetas_con_numero(raiz_facturas, profundidad=1) if raiz_facturas else {},
     }
@@ -204,6 +205,12 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
         else:
             conflictos.append({"req": req, "tags": sorted(tags),
                                "detalle": f"El requerimiento {req} aparece con {len(tags)} TAG distintos."})
+    # Toda fila de la Planilla con su carpeta (2026-11-02): el Portal la abre y la
+    # mueve desde su fila, aunque el proyecto ya no siga vivo.
+    for tipo in ("oferta", "ejecucion"):
+        for req in (carpetas or {}).get(tipo) or {}:
+            if req in por_numero:
+                entrada(req)
     # Título y estado de la Planilla también para lo que entró solo porque
     # algo lo nombra (un requerimiento no adjudicado con una OC, por ejemplo).
     for req, e in entradas.items():

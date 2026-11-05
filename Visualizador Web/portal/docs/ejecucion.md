@@ -67,6 +67,9 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
 - **Colores del gráfico**: gastado gris 11, comprometido gris 7, simulado naranjo (en oscuro, grises más claros), con
   leyenda y las cifras escritas en cada fila: con los grises de la marca el validador de paleta no aprueba el croma, así
   que el color nunca es lo único que distingue.
+- **Su Estado** (2026-11-02) se cambia en la cabecera del resumen (`estSelector`): Post-venta o Cerrado lo sacan de la lista.
+  «Pasar a Gestión de Proyectos» ya no abre QUEMPIN.exe: avisa qué va a pasar y deja un `mover-carpeta` (`estMoverCarpeta`),
+  que atiende el computador del procesador. Ver docs/planilla.md.
 - Con siete herramientas en Control y finanzas, el Inicio junta un poco sus filas con poco alto (≤ 640 px de marco).
 - Pruebas: desde `test_proyectos_en_ejecucion_en_el_registro_y_en_el_esquema` en `test_portal.py` (datos de mentira:
   `_ejecucion_de_prueba`); las que usan `js/calc.js` o `js/pegar.js` del Formulador miran lo de ellos solo si su

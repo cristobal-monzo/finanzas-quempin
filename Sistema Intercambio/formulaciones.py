@@ -29,7 +29,7 @@ terminan divergiendo. Tampoco borra archivos del repositorio.
 
 import re
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import intercambio
@@ -38,6 +38,14 @@ RUTA_REPOSITORIO = (intercambio.CARPETA_PUBLICADO, "formulador")
 TIPO_ENTREGA = "formulacion"
 DESTINO = "formulador"
 MAX_HISTORIA = 50
+# Cómo se dice cada estado en la Planilla de Ingreso y en el Formulador (js/flujo.js, EN_PLANILLA; test_portal.py los compara)
+EN_PLANILLA = {"Borrador": "Evaluación", "En revisión": "Evaluación", "Enviada": "Ofertado", "Adjudicada": "Adjudicado",
+               "Post-venta": "Post-venta", "Cerrada": "Cerrado", "Perdida": "No adjudicado", "Descartada": "Descartado"}
+AL_FORMULADOR = {"Evaluación": "En revisión", "Ofertado": "Enviada", "Adjudicado": "Adjudicada", "Post-venta": "Post-venta",
+                 "Cerrado": "Cerrada", "No adjudicado": "Perdida", "Descartado": "Descartada"}
+FIRMA_PLANILLA = "Planilla de Ingreso"
+ESPERA_EDICION = timedelta(minutes=10)
+_CON_NUMERO = re.compile(r"^\s*(\d{1,5})\s*\.")
 # Qué revisó el usuario con Claude: {"revisadas": {uid: modificado}, "fecha": iso}.
 # Solo lleva identificadores y fechas, pero se ignora en git igual que los
 # demás estados.
@@ -183,6 +191,92 @@ def incorporar_buzon(raiz: Path) -> list[dict]:
 def entregas_en_buzon(raiz: Path) -> list[dict]:
     mensajes, _ = intercambio.leer_buzon(raiz, destino=DESTINO, tipo=TIPO_ENTREGA)
     return mensajes
+
+
+# ── EL ESTADO QUE VIENE DE LA PLANILLA ───────────────────────────────────────
+# Pedido del usuario (2026-11-02): que un cambio de estado hecho en cualquier parte se vea en todas. El Estado de la
+# Planilla manda; lo que cambia ahí (en el Portal o en el Excel) llega al presupuesto del Formulador con la misma
+# regla de siempre del repositorio: una versión nueva, con la anterior en su historia, que cada navegador se trae.
+
+def _instante(texto) -> datetime | None:
+    try:
+        d = datetime.fromisoformat(str(texto).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return d if d.tzinfo else d.astimezone()
+
+
+def _numero_req(datos: dict) -> int | None:
+    v = (datos.get("vinculos") or {}).get("requerimiento")
+    texto = str((v.get("numero") if isinstance(v, dict) else v) or "").strip()
+    return int(texto) if texto.isdigit() and int(texto) > 0 else None
+
+
+def _numero_propio(datos: dict) -> int | None:
+    """El N° que dicen el nombre de su carpeta o su código «N°. Nombre»."""
+    for nombre in (((datos.get("vinculos") or {}).get("carpetaOferta") or {}).get("nombre"), datos.get("codigo")):
+        m = _CON_NUMERO.match(str(nombre or ""))
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def vigentes_por_req(repositorio: list[dict]) -> dict[int, dict]:
+    """El presupuesto que manda en cada N°, con la regla del Portal (rcArmar): la última versión de cada código y,
+    entre códigos del mismo N° (un borrador duplicado, por ejemplo), el modificado más recientemente."""
+    por_codigo: dict = {}
+    for item in repositorio:
+        d = item["datos"]
+        if d.get("eliminado"):
+            continue
+        codigo = str(d.get("codigo") or item["uid"])
+        version = int(d["version"]) if str(d.get("version") or "").isdigit() else 1
+        previo = por_codigo.get(codigo)
+        if previo is None or (version, item["mod"]) > previo[0]:
+            por_codigo[codigo] = ((version, item["mod"]), item)
+    salida: dict[int, dict] = {}
+    for _, item in por_codigo.values():
+        n = _numero_req(item["datos"])
+        if n and (n not in salida or salida[n]["mod"] < item["mod"]):
+            salida[n] = item
+    return salida
+
+
+def alinear_estados(raiz: Path, requerimientos: list[dict], vistos: dict | None, omitir=(), ahora: datetime | None = None,
+                    simular: bool = False) -> tuple[dict, list[str]]:
+    """Lleva al Formulador lo que cambió en la Planilla desde la vuelta anterior. Devuelve (vistos, cambiados).
+
+    Solo lo que cambió: la primera vez (vistos None) y en una fila nueva se anota lo que hay, porque lo que ya estaba
+    distinto no se sabe quién lo tiene bien (medido el 2026-11-02: 9 presupuestos, 2 unidos a un N° equivocado).
+    'omitir': los N° que cambió el propio Formulador en esta vuelta. Un presupuesto editado hace menos de
+    ESPERA_EDICION espera a la vuelta siguiente, para no cruzarse con alguien que lo tiene abierto, y uno cuya carpeta o
+    código dicen otro N° no se toca: ese vínculo está en duda."""
+    ahora = ahora or datetime.now().astimezone()
+    actuales = {str(r["numero"]): r["estado"] for r in requerimientos if isinstance(r.get("numero"), int) and r.get("estado")}
+    if vistos is None:
+        return actuales, []
+    nuevos, cambiados = dict(vistos), []
+    cambiaron = {n: e for n, e in actuales.items() if vistos.get(n) != e}
+    if not cambiaron:
+        return nuevos, cambiados
+    vigentes = vigentes_por_req(leer_repositorio(raiz))
+    for n, estado in cambiaron.items():
+        item = vigentes.get(int(n))
+        d = item["datos"] if item else {}
+        if (n not in vistos or item is None or int(n) in omitir or estado not in AL_FORMULADOR
+                or EN_PLANILLA.get(d.get("estado") or "Borrador") == estado or _numero_propio(d) not in (None, int(n))):
+            nuevos[n] = estado
+            continue
+        modificado = _instante(item["mod"])
+        if modificado and ahora - modificado < ESPERA_EDICION:
+            continue
+        if not simular:
+            sello = ahora.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+            _escribir(raiz, dict(d, estado=AL_FORMULADOR[estado], modificado=sello, modificadoPor=FIRMA_PLANILLA),
+                      item["historia"] + [item["mod"]], item["resumen"], FIRMA_PLANILLA)
+        nuevos[n] = estado
+        cambiados.append(f"{titulo_legible(d)} → {AL_FORMULADOR[estado]}")
+    return nuevos, cambiados
 
 
 # ── REVISIÓN CON CLAUDE ──────────────────────────────────────────────────────

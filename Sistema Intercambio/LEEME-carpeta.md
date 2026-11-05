@@ -66,6 +66,14 @@ que se haya cambiado en el Excel. Si una casilla cambió en los dos lados, queda
 el cambio más reciente. El Portal muestra las columnas que se usan de verdad; las
 demás se siguen llenando en el Excel.
 
+Desde el 2026-11-02 cada requerimiento nuevo tiene su carpeta «N°. Título» en
+la raíz de la biblioteca, con ANTECEDENTES, DOCUMENTOS EN TRABAJO, ENTREGABLES y
+VISITA TÉCNICA. Cuando su Estado cambia, la carpeta va adonde corresponde
+(Ofertado: 0 OFERTAS PRESENTADAS; No adjudicado o Descartado: 0 Ofertas Cerradas
+del año; Adjudicado: una copia en Gestión de Proyectos y el original en 0 OFERTAS
+ADJUDICADAS; Cerrado: Gestión › 0 Proyectos Entregados del año). Las herramientas
+avisan antes y la mueve el computador del procesador (envío «mover-carpeta»).
+
 ## Lo que espera a una persona
 
 - **Sugerencias para la Planilla de Ingreso** (estado, valor ofertado o

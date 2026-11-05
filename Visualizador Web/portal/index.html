@@ -1695,8 +1695,45 @@
   .pq-est[data-estado="Evaluación"]::before { background: var(--brand-orange); }
   .pq-est[data-estado="Ofertado"]::before { background: transparent; box-shadow: inset 0 0 0 2px var(--estado-warn); }
   .pq-est[data-estado="Adjudicado"]::before { background: var(--estado-ok); }
+  .pq-est[data-estado="Post-venta"]::before { background: transparent; box-shadow: inset 0 0 0 2px var(--estado-ok); }
+  .pq-est[data-estado="Cerrado"]::before { background: var(--text-primary); }
   .pq-est[data-estado="No adjudicado"]::before { background: var(--estado-bad); }
   .pq-est[data-estado="Descartado"] { color: var(--texto-suave); }
+  /* El estado se cambia ahí mismo: la etiqueta es la cara de una lista del navegador, que queda encima, transparente */
+  .pq-est-caja { position: relative; display: inline-flex; max-width: 100%; vertical-align: middle; }
+  .pq-est-caja .pq-est::after {
+    content: ""; flex: 0 0 auto; width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent;
+    border-top: 4.5px solid currentColor; opacity: 0.6;
+  }
+  .pq-est-caja select { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; font-size: 13px; }
+  .pq-est-caja select:disabled { cursor: progress; }
+  .pq-est-caja:hover .pq-est { border-color: var(--baseline); }
+  .pq-est-caja:focus-within .pq-est { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+  /* Abrir la carpeta desde la fila, y lo que dice de ella el diálogo */
+  .pq-ir-carpeta {
+    display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 22px; margin-left: 4px; padding: 0;
+    border: 0; border-radius: 6px; background: transparent; color: var(--texto-suave); cursor: pointer; vertical-align: -5px;
+  }
+  .pq-ir-carpeta:hover { color: var(--brand-orange-ink); background: var(--page-plane); }
+  .pq-carpeta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 9px 12px; border-radius: 10px;
+    border: 1px solid var(--gridline); background: var(--page-plane); font-size: 13.5px; line-height: 1.4;
+  }
+  .pq-carpeta-txt { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+  .pq-carpeta-txt b { display: block; color: var(--text-primary); }
+  .pq-carpeta-txt span { display: block; color: var(--texto-suave); }
+  .pq-carpeta-txt span.pide { color: var(--tinte-texto); font-weight: 700; }
+  .pq-carpeta .cx-enlace { min-height: 32px; }
+  .pq-fuera-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; }
+  /* El aviso antes de mover una carpeta */
+  #dlgEstado { width: min(560px, calc(100vw - 24px)); }
+  .est-carpeta { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--tinte-borde); background: var(--tinte); color: var(--tinte-texto); }
+  .est-carpeta h3 { margin: 0; font-size: 14px; font-weight: 900; }
+  .dlg p.est-nombre { margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+  .est-carpeta ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; line-height: 1.45; }
+  /* Su estado en el detalle del Recorrido y en Proyectos en ejecución */
+  .est-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13.5px; font-weight: 700; color: var(--texto-suave); }
+  .est-fila .pq-est { font-size: 13px; padding: 3px 11px; color: var(--text-primary); }
   .pq-quedan { display: block; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
   .pq-quedan.pronto { color: var(--brand-orange-ink); }
   /* Lo cambiado aquí que el Excel todavía no tiene */
@@ -1752,7 +1789,7 @@
     .pq-excel { flex: 1 1 100%; justify-content: center; }
   }
   @media (max-width: 760px) {
-    #pqBuscar, #dlgPlanilla .pl-campo input, #dlgPlanilla .pl-campo select, .pq-fecha input { font-size: 16px; }
+    #pqBuscar, #dlgPlanilla .pl-campo input, #dlgPlanilla .pl-campo select, .pq-fecha input, .pq-est-caja select { font-size: 16px; }
     #dlgPlanilla .ej-form { grid-template-columns: minmax(0, 1fr); }
   }
 
@@ -2923,8 +2960,26 @@
     <datalist id="pqUsuarios"></datalist>
     <datalist id="pqLugares"></datalist>
     <datalist id="pqClientes"></datalist>
+    <div class="pq-carpeta" id="pqCarpeta" hidden></div>
     <p class="ej-pista" id="pqNota"></p>
     <div class="dlg-acc"><button class="cx-enlace pq-formular" id="pqFormular" type="button" hidden>Ir al Formulador</button><button class="cx-enlace" id="pqCancelar" type="button">Cancelar</button><button class="btn-pri" id="pqGuardar" type="submit">Agregar a la Planilla</button></div>
+  </form>
+</dialog>
+
+<!-- Cambiar el estado de un proyecto cuando eso mueve su carpeta (o pedir que la muevan): el aviso va antes (estPreguntar) -->
+<dialog id="dlgEstado" aria-labelledby="dlgEstTit">
+  <form class="dlg" id="estForm" novalidate>
+    <h2 id="dlgEstTit"></h2>
+    <button class="dlg-x" id="estX" type="button" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <p class="ej-dlg-pista" id="estPista"></p>
+    <section class="est-carpeta" id="estCarpeta" hidden>
+      <h3>Su carpeta se va a mover</h3>
+      <p class="est-nombre" id="estNombre"></p>
+      <ul id="estPasos"></ul>
+    </section>
+    <label class="pl-cerrar-af" id="estAF" hidden><input type="checkbox" id="estAFCheck" checked><span id="estAFTxt"></span></label>
+    <p class="ej-pista" id="estNota"></p>
+    <div class="dlg-acc"><button class="cx-enlace" id="estCancelar" type="button">Cancelar</button><button class="btn-pri" id="estOk" type="submit"></button></div>
   </form>
 </dialog>
 
@@ -3354,6 +3409,7 @@
     // El mismo engranaje de «Configuración» del Formulador
     engranaje: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     nube: '<path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.6A3.7 3.7 0 0 1 17.5 18z"/>',
+    carpeta: '<path d="M3.5 7.5a2 2 0 0 1 2-2h3.8l2 2.2h7.2a2 2 0 0 1 2 2V17.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
     tabla: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 15h18M9 4v16"/>',
     ventana: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8.5h18"/><path d="M6 6.3h.01M8.5 6.3h.01" stroke-width="2.4"/>',
     persona: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
@@ -4748,7 +4804,11 @@
     { id: 'cierre', titulo: 'Cierre', corto: 'Cierre', herr: 'analisis' }
   ];
   const RC_ANTES_DE_OFERTAR = ['requerimiento', 'formulacion', 'cotizacion'];
-  const RC_VIVOS = ['Evaluación', 'Ofertado', 'Adjudicado'];       // estados de la Planilla que siguen en curso
+  // Estados de la Planilla que entran al recorrido: los que siguen en curso y los adjudicados que ya terminaron
+  const RC_VIVOS = ['Evaluación', 'Ofertado', 'Adjudicado', 'Post-venta', 'Cerrado'];
+  const RC_GANADOS = ['Adjudicado', 'Post-venta', 'Cerrado'];
+  // Lo que queda diciendo la formulación cuando la Planilla cambia (el procesador se lo lleva en su vuelta de 10 minutos)
+  const RC_FORM_DE = { 'Ofertado': 'Enviada', 'Adjudicado': 'Adjudicada', 'Post-venta': 'Post-venta', 'Cerrado': 'Cerrada', 'No adjudicado': 'Perdida', 'Descartado': 'Descartada' };
   const RC_EN_FORMULACION = ['Borrador', 'En revisión'];
   const RC_FUERA = ['Perdida', 'Descartada'];      // formulaciones que no siguen (Cerrada sí: va al «Cierre»)
   const RC_DIAS_ANTIGUO = 60;          // lo que lleva más que esto sin moverse va plegado al pie de su etapa
@@ -4853,24 +4913,38 @@
           texto: 'Su término (' + rcCorta(fin, hoy) + ') ya pasó con ' + Math.round(avance * 100) + ' % de avance. Actualiza el avance o la fecha en su resumen de «Proyectos en ejecución».' }
       : { tipo: 'curso', corto: 'Registrar avance', nivel: '', ir: RC_IR.ejecucion(t.clave),
           texto: 'En ejecución. Registra el avance, la fecha de término y los días trabajados en su resumen de «Proyectos en ejecución», donde también se evalúan las compras con sus cotizaciones; las facturas llegan solas al Centro de Costos.'
-            + ' Cuando termine, márcalo «Cerrada» en el Seguimiento del Formulador, deja su avance en 100 % o dalo por cerrado («Dar por cerrado», en su ficha o en «Estado de los proyectos»): sale de la Planificación semanal.' };
+            + ' Cuando termine, déjalo «Cerrado» o «Post-venta» en su Estado (en la Planilla de Ingreso o en su resumen) o su avance en 100 %: sale de la Planificación semanal.' };
     if (fin) t.chips.push(atrasado ? { texto: 'Término vencido', nivel: 'warn' } : { texto: 'Termina el ' + rcCorta(fin, hoy), nivel: '' });
     t.orden = fin ? fin.getTime() : MAXIMO;
     if (af.venta && af.venta.cargada === false) t.avisos.push('Falta su monto de venta en el Análisis Financiero: sin él no entra completo a sus indicadores.');
   }
-  /* Marcado «Cerrada» en el Formulador (2026-10-26): va al «Cierre» aunque el Análisis Financiero no tenga el 100 %, y
-     sale de la Planificación semanal. Plegado, como los terminados, cuando lleva más de 60 días cerrado. */
-  function rcCerrada(t, f, hoy) {
+  /* Cerrado (en la Planilla desde el 2026-11-02; antes, solo «Cerrada» en el Formulador): va al «Cierre» aunque el Análisis
+     Financiero no tenga el 100 %, y sale de la Planificación semanal. Plegado, como los terminados, cuando lleva más de 60
+     días cerrado. */
+  const rcIrCierre = (t) => (t.af && t.tag ? RC_IR.af(t.tag) : t.formulacion ? RC_IR.seguimiento(t.formulacion.uid) : RC_IR.planilla(t.req));
+  function rcCerrada(t, hoy) {
+    const r = t.planilla, f = t.formulacion;
     const finAF = rcFecha(t.af && t.af.cierre);       // su término en el Análisis, si ya pasó; si no, el último cambio
-    const fin = finAF && rcDias(finAF, hoy) <= 0 ? finAF : rcFecha(f.modificado) || finAF;
+    const fin = finAF && rcDias(finAF, hoy) <= 0 ? finAF : rcFecha(f && f.modificado) || finAF || rcFecha(r && r.cierre) || rcFecha(r && r.apertura);
     const avance = t.af ? Math.max(0, Math.min(1, Number(t.af.avance) || 0)) : null;
     t.etapa = 'cierre';
-    t.accion = { tipo: 'listo', corto: 'Cerrado', nivel: '', ir: t.af ? RC_IR.af(texto(t.af.tag).toUpperCase()) : RC_IR.seguimiento(f.uid),
+    t.accion = { tipo: 'listo', corto: 'Cerrado', nivel: '', ir: rcIrCierre(t),
       texto: 'Proyecto cerrado: su ejecución terminó y ya no aparece en la Planificación semanal.'
         + (t.af ? ' Su resultado está en el Análisis Financiero.' : '') };
     t.chips = [{ texto: 'Cerrado', nivel: 'ok' }].concat(t.chips.filter((c) => /^Terminó/.test(c.texto)));
-    if (avance !== null && avance < 1) t.avisos.push('Está «Cerrada» en el Formulador, pero el Análisis Financiero tiene ' + Math.round(avance * 100) + ' % de avance: déjalo en 100 % en «Ingresar avance» para que su resultado cuente en el sesgo real.');
+    if (avance !== null && avance < 1) t.avisos.push('Está cerrado, pero el Análisis Financiero tiene ' + Math.round(avance * 100) + ' % de avance: déjalo en 100 % en «Ingresar avance» para que su resultado cuente en el sesgo real.');
     t.antiguo = !!fin && rcDias(fin, hoy) < -RC_DIAS_ANTIGUO;
+    t.orden = fin ? -fin.getTime() : MAXIMO;
+  }
+  /* Post-venta (2026-11-02): ya se entregó y se sigue atendiendo. Queda a la vista en el «Cierre», sin plegarse, y sale de
+     la Planificación semanal salvo que se agregue a mano a una semana. */
+  function rcPostVenta(t, hoy) {
+    const fin = rcFecha(t.af && t.af.cierre);
+    t.etapa = 'cierre';
+    t.accion = { tipo: 'curso', corto: 'En post-venta', nivel: '', ir: rcIrCierre(t),
+      texto: 'Entregado y en post-venta: se sigue atendiendo. Ya no aparece solo en la Planificación semanal (se puede agregar a mano a una semana). Cuando termine del todo, déjalo «Cerrado».' };
+    t.chips = [{ texto: 'Post-venta', nivel: '' }].concat(t.chips.filter((c) => /^Terminó/.test(c.texto)));
+    t.antiguo = false;
     t.orden = fin ? -fin.getTime() : MAXIMO;
   }
   /* Dado por cerrado en la Planificación semanal (2026-10-26): un proyecto en ejecución que ya terminó y se entregó,
@@ -4903,7 +4977,8 @@
     const { r, c, f, af, lic } = x;
     const t = rcBase('req-' + n);
     const pe = r ? texto(r.estado) : '';
-    const fe = f ? f.estado : '';
+    // El Estado que se acaba de cambiar manda desde ya: la formulación se pone al día en la vuelta de 10 minutos
+    const fe = !f ? '' : !x.estadoPedido ? f.estado : RC_FORM_DE[pe] || (RC_EN_FORMULACION.includes(f.estado) ? f.estado : 'En revisión');
     t.req = n;
     t.planilla = r; t.formulacion = f; t.af = af; t.lic = lic;
     t.carpetas = (c && c.carpetas && typeof c.carpetas === 'object') ? c.carpetas : {};
@@ -4918,16 +4993,21 @@
     t.cierre = cierre;
     const dondeMarca = f ? RC_IR.seguimiento(f.uid) : RC_IR.planilla(n);
 
-    if (af) {
-      rcEtapaAF(t, af, hoy);
-      if (fe === 'Cerrada') rcCerrada(t, f, hoy);
-      else if (t.etapa === 'cierre' && fe === 'Adjudicada') t.avisos.push('Tiene 100 % de avance: márcalo «Cerrada» en el Seguimiento del Formulador para que quede descrito como terminado.');
-      if (pe && pe !== 'Adjudicado') t.avisos.push('La Planilla de Ingreso dice «' + pe + '», pero el proyecto ya tiene ficha en el Análisis Financiero: corresponde «Adjudicado».');
+    // El Estado de la Planilla manda sobre el avance y la formulación: se cambia desde aquí o desde donde sea y va a todas partes
+    if (af) rcEtapaAF(t, af, hoy);
+    if (pe === 'Cerrado' || fe === 'Cerrada') {
+      rcCerrada(t, hoy);
+      if (pe && pe !== 'Cerrado') t.avisos.push('En el Formulador está «Cerrada», pero la Planilla de Ingreso dice «' + pe + '»: déjalo «Cerrado» en su Estado.');
       return t;
     }
-    if (fe === 'Cerrada') {
-      rcCerrada(t, f, hoy);
-      if (pe && pe !== 'Adjudicado') t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
+    if (pe === 'Post-venta' || fe === 'Post-venta') {
+      rcPostVenta(t, hoy);
+      if (pe && pe !== 'Post-venta') t.avisos.push('En el Formulador está en post-venta, pero la Planilla de Ingreso dice «' + pe + '»: déjalo «Post-venta» en su Estado.');
+      return t;
+    }
+    if (af) {
+      if (t.etapa === 'cierre' && (pe === 'Adjudicado' || fe === 'Adjudicada')) t.avisos.push('Tiene 100 % de avance: déjalo «Cerrado» en su Estado para que quede descrito como terminado.');
+      if (pe && !RC_GANADOS.includes(pe)) t.avisos.push('La Planilla de Ingreso dice «' + pe + '», pero el proyecto ya tiene ficha en el Análisis Financiero: corresponde «Adjudicado».');
       return t;
     }
     if (pe === 'Adjudicado' || fe === 'Adjudicada') {
@@ -5113,15 +5193,31 @@
     });
     afPorReq.forEach((p, n) => nums.add(n));
     const tarjetas = [];
-    nums.forEach((n) => tarjetas.push(rcTarjetaReq(n, { r: porNum.get(n) || null, c: cruce.get(n) || null, f: formPorReq.get(n) || null,
-      af: afPorReq.get(n) || null, lic: lic.get(n) || null, borrador: borradores.has(n) }, hoy)));
+    const metaPlanilla = d.planillaMeta;
+    nums.forEach((n) => {
+      const r = porNum.get(n) || null;
+      const meta = r && metaPlanilla ? metaPlanilla.get(r) : null;
+      tarjetas.push(rcTarjetaReq(n, { r, c: cruce.get(n) || null, f: formPorReq.get(n) || null, af: afPorReq.get(n) || null, lic: lic.get(n) || null,
+        borrador: borradores.has(n), estadoPedido: !!(meta && meta.campos.has('estado')) }, hoy));
+    });
     sinReq.forEach((f) => tarjetas.push(rcTarjetaSinReq(f, hoy)));
     const unidos = new Set(afPorReq.values());
     afPorTag.forEach((p) => { if (!unidos.has(p)) tarjetas.push(rcTarjetaAF(p, hoy)); });
     const cierres = d.cierres || new Map();
     tarjetas.forEach((t) => {
-      const e = t.etapa === 'ejecucion' ? rcCierreDe(t, cierres) : null;
-      if (e && e.cerrado) rcCerradoEnPlan(t, e, hoy);
+      const e = rcCierreDe(t, cierres);
+      if (!e || !e.cerrado) return;
+      // Con fila en la Planilla manda su Estado: la marca queda para decir quién lo cerró y por qué. Sin fila (un proyecto
+      // del Análisis Financiero sin N°), la marca es lo único que lo cierra.
+      // Una marca de antes (o que llegó antes que su Estado) cierra uno que la Planilla todavía tiene «Adjudicado», con el aviso
+      const pe = t.planilla ? texto(t.planilla.estado) : '';
+      if (pe === 'Cerrado') {
+        t.cierrePlan = e;
+        t.accion.texto = 'Dado por cerrado en la Planificación semanal' + (e.por ? ' por ' + e.por : '') + ' el ' + rcCorta(new Date(e.t), hoy) + (e.nota ? ': «' + e.nota + '»' : '') + '. ' + t.accion.texto;
+      } else if (t.etapa === 'ejecucion' && (!t.planilla || pe === 'Adjudicado')) {
+        rcCerradoEnPlan(t, e, hoy);
+        if (t.planilla) t.avisos.push('La Planilla de Ingreso todavía dice «Adjudicado»: déjalo «Cerrado» en su Estado para que se vea así en todas las herramientas.');
+      }
     });
     // El avance pedido al Análisis Financiero que todavía espera al procesador (2026-10-28, «Proyectos en ejecución»): se ve
     // desde ya, sin cambiar la etapa, que sigue saliendo del Análisis Financiero
@@ -5179,6 +5275,8 @@
     const planilla = pqMezclar(lista(req, 'requerimientos'), planillaPedidos);
     return {
       requerimientos: planilla.filas, requerimientosExcel: lista(req, 'requerimientos'), planillaPedidos, planillaMeta: planilla.meta,
+      // Las carpetas que alguien pidió mover y todavía no se mueven
+      carpetaPedidos: buzon.filter((m) => m && m.tipo === EST_TIPO && m.requerimiento && typeof m.requerimiento === 'object'),
       planillaInfo: req && req.datos ? { actualizado: texto(req.datos.actualizado), generado: texto(req.generado),
         avisos: Array.isArray(req.datos.avisos) ? req.datos.avisos.map(texto).filter(Boolean) : [] } : null,
       cruce: lista(cruce, 'proyectos'), af: lista(af, 'proyectos'),
@@ -5555,6 +5653,13 @@
     });
     const etapa = RC_ETAPAS.find((e) => e.id === t.etapa);
     cuerpo.append(ol);
+    // Su Estado se cambia aquí mismo (2026-11-02). Sin fila en la Planilla no tiene: queda «Dar por cerrado», abajo.
+    if (t.planilla && t.req) {
+      estAlCambiar.clave = t.clave;
+      const fe = crear('div', 'est-fila');
+      fe.append(crear('span', null, 'Estado'), estSelector(t.planilla));
+      cuerpo.append(fe);
+    }
     const a = t.accion;
     const sigue = crear('section', 'rc-sigue');
     sigue.dataset.tipo = a.tipo;
@@ -5615,8 +5720,9 @@
     });
     if (rcFacturasWeb(t)) enlace('Facturas del proyecto', { web: rcFacturasWeb(t) }, true);
     if (enl.childElementCount) cuerpo.append(crear('h3', 'rc-det-h', 'Abrir'), enl);
-    // En ejecución: darlo por cerrado si ya terminó; cerrado en la Planificación: reabrirlo (2026-10-26)
-    if ((t.etapa === 'ejecucion' || t.cierrePlan) && rcClavesCierre(t).length) {
+    // En ejecución: darlo por cerrado si ya terminó, con su nota. Cerrado en la Planificación sin fila en la Planilla (un
+    // proyecto del Análisis Financiero sin N°): reabrirlo (2026-10-26). Con fila, se reabre cambiando su Estado, arriba.
+    if ((t.etapa === 'ejecucion' || (t.cierrePlan && !t.planilla)) && rcClavesCierre(t).length) {
       const acc = crear('div', 'cx-acc');
       const b = crear('button', 'cx-enlace', t.cierrePlan ? 'Reabrir: sigue en obra' : 'Dar por cerrado');
       b.type = 'button';
@@ -6390,9 +6496,10 @@
     const aMano = plProyManoActivos(s).map((e) => {
       const req = e.clave.startsWith('req:') ? e.clave.slice(4) : null;
       const t = req ? rc.tarjetas.find((x) => x.req === req) : null;     // su tarjeta del Recorrido, aunque esté en otra etapa
+      // Uno en post-venta se sigue atendiendo: agregado a mano, se planifica
       return { clave: e.clave, req, tag: (t && t.tag) || null, titulo: e.titulo, lugar: plLugar(e.titulo, e.lugar), sitio: e.lugar,
-        avance: null, tarjeta: t ? t.clave : null, activo: true, otra: false, mano: true, cerrado: !!t && t.etapa === 'cierre' };
-    }).filter((p) => !p.cerrado);       // cerrado (en el Formulador o con 100 % de avance): sale, como los del Recorrido
+        avance: null, tarjeta: t ? t.clave : null, activo: true, otra: false, mano: true, cerrado: !!t && t.etapa === 'cierre' && t.accion.tipo !== 'curso' };
+    }).filter((p) => !p.cerrado);       // cerrado (en su Estado o con 100 % de avance): sale, como los del Recorrido
     return delRecorrido.concat(aMano).filter((p) => !vistos.has(p.clave) && vistos.add(p.clave)).sort(plPorTitulo);
   }
   const plComparar = (a, b) => a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' });
@@ -9264,6 +9371,18 @@
   async function plDarPorCerrado(t, nota, conAF) {
     if (!rc.dir || t.etapa !== 'ejecucion' || !rcClavesCierre(t).length) return false;
     const pedirAF = conAF && !!t.af && !!t.tag && plAvanceAF(t) < 1;
+    // Con fila en la Planilla, lo que lo cierra es su Estado (2026-11-02), con el aviso si mueve su carpeta: se ve en todo el
+    // portal. La marca deja quién lo cerró, cuándo y la nota.
+    if (t.planilla) {
+      const hecho = await estCambiar(t.req, 'Cerrado', { af: pedirAF, silencio: true });
+      if (!hecho) return false;
+      plRecordar({ cierres: plPonerCierres(t, true, nota, !!hecho.buzon), buzon: hecho.buzon, pedidos: hecho.ids, titulo: t.titulo });
+      planif.cerrar = null;
+      plAlCambiarCierres();
+      plAvisarCierre(t.titulo + ' queda cerrado: pasa al «Cierre» del Recorrido y sale de la planificación. Su Estado queda «Cerrado» en la Planilla.'
+        + (hecho.buzon ? ' El 100 % de avance llega al Análisis Financiero en la próxima vuelta del procesador.' : ''), true);
+      return true;
+    }
     let buzon = null;
     if (pedirAF) {
       try { buzon = await plPedirAvanceCompleto(t); } catch (e) {
@@ -9279,9 +9398,15 @@
       + (buzon ? ' El 100 % de avance llega al Análisis Financiero en la próxima vuelta del procesador.' : ''), true);
     return true;
   }
-  function plReabrir(t) {
+  async function plReabrir(t) {
     if (!rc.dir || !t.cierrePlan) return;
-    plRecordar({ cierres: plPonerCierres(t, false), buzon: null, titulo: t.titulo });
+    let pedidos = [];
+    if (t.planilla) {
+      const hecho = await estCambiar(t.req, 'Adjudicado', { af: false, silencio: true });
+      if (!hecho) return;
+      pedidos = hecho.ids;
+    }
+    plRecordar({ cierres: plPonerCierres(t, false), buzon: null, pedidos, titulo: t.titulo });
     plAlCambiarCierres();
     const u = plTarjeta(t.clave);
     plAvisarCierre(u && u.etapa === 'ejecucion' ? t.titulo + ' vuelve a ejecución: aparece otra vez en la planificación.'
@@ -9302,6 +9427,19 @@
         // Ya no espera: el Recorrido y «Proyectos en ejecución» dejan de mostrarlo como pedido
         if (rc.datos) { rc.datos.datosProyecto = (rc.datos.datosProyecto || []).filter((m) => u.buzon.indexOf(m.id) < 0); plAlCambiarCierres(); }
       } catch (e) { extra = ' El 100 % de avance ya llegó al Análisis Financiero: cámbialo en «Ingresar avance».'; }
+    }
+    // El cambio de Estado (y el de su carpeta), si todavía espera; si ya pasó al Excel, hay que cambiarlo de nuevo
+    let quedo = false;
+    for (const id of u.pedidos || []) {
+      try { if (!await pqSacarDelBuzon(id)) quedo = true; } catch (e) { quedo = true; }
+    }
+    if ((u.pedidos || []).length && rc.datos) {
+      const fuera = new Set(u.pedidos);
+      rc.datos.planillaPedidos = (rc.datos.planillaPedidos || []).filter((m) => !fuera.has(m.id));
+      rc.datos.carpetaPedidos = (rc.datos.carpetaPedidos || []).filter((m) => !fuera.has(m.id));
+      pq.cambios = pq.cambios.filter((x) => !fuera.has(x.id));
+      estAlCambiar();
+      if (quedo) extra += ' Su Estado ya había pasado al Excel: cámbialo de nuevo en la Planilla.';
     }
     plAvisarCierre('Se deshizo el último cambio de ' + u.titulo + '.' + extra, false);
   }
@@ -9329,7 +9467,7 @@
     const cerrados = rc.tarjetas.filter((t) => t.cierrePlan).sort((a, b) => b.cierrePlan.t.localeCompare(a.cierrePlan.t)).slice(0, PL_CERRADOS_MAX);
     if (planif.cerrar && !delRc.some((p) => p.tarjeta === planif.cerrar)) planif.cerrar = null;
     $('#plProyPista').textContent = rc.leido
-      ? 'Uno que ya terminó y se entregó, dalo por cerrado: sale de la planificación para todo el equipo y pasa al «Cierre» del Recorrido. Los demás salen solos al llegar al 100 % de avance o quedar «Cerrada» en el Formulador.'
+      ? 'Uno que ya terminó y se entregó, dalo por cerrado: su Estado queda «Cerrado», sale de la planificación para todo el equipo y pasa al «Cierre» del Recorrido. Los demás salen solos al llegar al 100 % de avance o al cambiar su Estado.'
       : 'Leyendo la carpeta del equipo…';
     const av = $('#plProyAviso');
     av.textContent = '';
@@ -9488,7 +9626,7 @@
      Solo las columnas que el equipo llena de verdad: las que tenían 45 % o más de casillas vacías o ilegibles (visita,
      visitador, presupuesto, valores, entrega y el contador de plazo) siguen solo en el Excel. Eval. y Cliente también las
      tenían contadas en toda la Planilla, pero se llenan en casi toda fila reciente y el usuario las dejó (2026-10-30). */
-  const PQ_ESTADOS = ['Evaluación', 'Ofertado', 'Adjudicado', 'No adjudicado', 'Descartado'];
+  const PQ_ESTADOS = ['Evaluación', 'Ofertado', 'Adjudicado', 'Post-venta', 'Cerrado', 'No adjudicado', 'Descartado'];
   const PQ_CANALES = ['Mercado Público', 'Postventa', 'Sitio Web', 'RRSS', 'Ferias', 'Otro'];
   // Las mismas del esquema editar-requerimiento y de planilla_escritura.EDITABLES (test_portal.py las compara)
   const PQ_COLUMNAS = [
@@ -9509,11 +9647,265 @@
   const PQ_FECHAS = ['apertura', 'cierre'];
   const PQ_DESTINO = 'planilla-requerimientos';
   const PQ_TIPOS = ['nuevo-requerimiento', 'editar-requerimiento'];
-  const PQ_ARCHIVO = /_portal_(nuevo|editar)-requerimiento_[A-Za-z0-9_-]{6,64}\.json$/;
+  const PQ_ARCHIVO = /_(portal_(nuevo|editar)-requerimiento|(portal|formulador)_mover-carpeta)_[A-Za-z0-9_-]{6,64}\.json$/;
   const PQ_PAGINA = 150;               // filas a la vista; el resto con «Mostrar más»
   const PQ_ESPERA_MIN = 30;            // un cambio que espera más que esto: ¿está encendido el computador del procesador?
   const pq = { q: '', estado: '', mostrar: PQ_PAGINA, cambios: [], leyendo: null, leido: 0, abierta: null, inicial: null,
-    guardando: false, irA: null, verCambios: false };
+    guardando: false, irA: null, verCambios: false, nuevas: new Map() };
+
+  /* ---- El estado de un proyecto y su carpeta (2026-11-02) ---------------------------------------------------------------
+     Pedido del usuario: que al crearse un proyecto en la Planilla se cree su carpeta en «Formulación de proyectos», con la
+     estructura de siempre, y que esa sea la carpeta principal del proyecto; que el estado se cambie desde la Planilla, con
+     dos estados nuevos (Post-venta y Cerrado); que un cambio hecho en cualquier parte se refleje en todo el portal, y que si
+     la carpeta se va a mover se avise antes.
+     El Estado vive en la Planilla, así que toda vista lo cambia con estCambiar: deja un «editar-requerimiento» (se ve al
+     instante, pqMezclar) y, después del aviso, un «mover-carpeta». Las dos cosas las hace el computador del procesador cada
+     10 minutos (planilla_escritura.py y carpetas_oferta.py): el navegador no puede mover carpetas, y QUEMPIN.exe, que lo
+     hacía antes, solo servía en el computador de quien lo pedía y sin reintentar. La carpeta nueva sí se crea aquí, al tiro,
+     para poder subir las bases de inmediato; lo escrito directo en el Excel lo crea esa vuelta. */
+  // Dónde queda la carpeta según su estado: la misma tabla de Sistema Intercambio/carpetas_oferta.py (DESTINOS) y del Formulador
+  // (js/oferta.js), que test_portal.py compara. «*» es el año en que se mueve; ya en cualquier año de ese grupo, no se mueve.
+  const PQ_CARPETA = {
+    "Evaluación": { "formulacion": [] },
+    "Ofertado": { "formulacion": ["0 OFERTAS PRESENTADAS"] },
+    "Adjudicado": { "formulacion": ["0 OFERTAS ADJUDICADAS"], "gestion": [], "crear": true },
+    "Post-venta": { "formulacion": ["0 OFERTAS ADJUDICADAS"], "gestion": [] },
+    "Cerrado": { "formulacion": ["0 OFERTAS ADJUDICADAS"], "gestion": ["0 Proyectos Entregados *"] },
+    "No adjudicado": { "formulacion": ["0 OFERTAS PRESENTADAS", "0 Ofertas Cerradas *"] },
+    "Descartado": { "formulacion": ["0 OFERTAS PRESENTADAS", "0 Ofertas Cerradas *"] }
+  };
+  const PQ_ESTRUCTURA = ['ANTECEDENTES', 'DOCUMENTOS EN TRABAJO', 'ENTREGABLES', 'VISITA TÉCNICA'];
+  const PQ_SIN_CARPETA_NUEVA = ['No adjudicado', 'Descartado'];
+  const PQ_LARGO_CARPETA = 70;
+  const EST_TIPO = 'mover-carpeta';
+  const EST_DESTINO = 'carpetas-proyecto';
+  // «N°. Título» apto para una carpeta, o '' sin título (carpetas_oferta.nombre_carpeta; test_portal.py compara los dos)
+  function pqNombreCarpeta(numero, titulo) {
+    let t = String(titulo === null || titulo === undefined ? '' : titulo).normalize('NFC');
+    const m = /^\s*(\d{1,5})\s*\.\s*(.*)$/.exec(t);
+    if (m && Number(m[1]) === Number(numero)) t = m[2];
+    t = t.replace(/[\\/:*?"<>|#%\x00-\x1f]+/g, '-').replace(/\s+/g, ' ').replace(/^[ .-]+|[ .-]+$/g, '');
+    return t ? (Number(numero) + '. ' + t).slice(0, PQ_LARGO_CARPETA).replace(/[ .-]+$/, '') : '';
+  }
+  function pqMismoGrupo(actual, objetivo) {
+    const clave = (s) => String(s).normalize('NFC').trim().toLowerCase();
+    return actual.length === objetivo.length && objetivo.every((o, i) => (o.endsWith('*') ? clave(actual[i]).startsWith(clave(o.slice(0, -1))) : clave(actual[i]) === clave(o)));
+  }
+  // Lo que hay que hacer para que la carpeta quede donde dice el estado (carpetas_oferta.plan; test_portal.py compara los dos)
+  function pqPlanCarpeta(est, rutaF, rutaG, anio) {
+    const hay = rutaF || rutaG || [''];
+    const sal = { formulacion: null, gestion: null, nombre: hay[hay.length - 1] };
+    const d = PQ_CARPETA[est];
+    if (!d) return sal;
+    const conAnio = (g) => g.map((x) => x.replace('*', String(anio)));
+    if (rutaF && !pqMismoGrupo(rutaF.slice(0, -1), d.formulacion)) sal.formulacion = { desde: rutaF.slice(0, -1), hasta: conAnio(d.formulacion) };
+    if (!d.gestion) return sal;
+    if (rutaG) {
+      if (!pqMismoGrupo(rutaG.slice(0, -1), d.gestion)) sal.gestion = { accion: 'mover', desde: rutaG.slice(0, -1), hasta: conAnio(d.gestion) };
+    } else if (rutaF && d.crear) sal.gestion = { accion: 'crear', desde: null, hasta: conAnio(d.gestion) };
+    return sal;
+  }
+  // Dónde está la carpeta de un N°: { f, g } (tramos dentro de cada biblioteca, de proyectos.json más lo creado aquí recién)
+  function pqCarpetasDe(n) {
+    const d = rc.datos;
+    if (!d) return { f: null, g: null, varias: false };
+    if (!d.cruceN || d.cruceDe !== d.cruce) {
+      d.cruceN = new Map();
+      d.cruceDe = d.cruce;
+      (d.cruce || []).forEach((c) => { const k = rcNum(c && c.req); if (k) d.cruceN.set(k, c); });
+    }
+    const car = (d.cruceN.get(String(n)) || {}).carpetas || {};
+    const tramos = (x) => texto(x).split('/').map(texto).filter(Boolean);
+    const fs = (car.oferta || []).map(tramos), gs = (car.ejecucion || []).map(tramos);
+    return { f: fs[0] || pq.nuevas.get(Number(n)) || null, g: gs[0] || null, varias: fs.length > 1 || gs.length > 1 };
+  }
+  const estMueve = (p) => !!(p.formulacion || p.gestion);
+  const estDonde = (bib, grupo) => [NOMBRE_BIBLIOTECA[bib]].concat(grupo).join(' › ');
+  // Lo que le pasará a la carpeta, en palabras
+  function estPasos(p, rutas) {
+    const pasos = [];
+    const crea = p.gestion && p.gestion.accion === 'crear';
+    if (crea) pasos.push('Se crea su carpeta en ' + NOMBRE_BIBLIOTECA.gestion + ', con la copia completa de la oferta en la subcarpeta «Formulación».');
+    if (p.formulacion) pasos.push((crea ? 'El original pasa de ' : 'Pasa de ') + estDonde('formulacion', p.formulacion.desde) + ' a ' + estDonde('formulacion', p.formulacion.hasta) + '.');
+    if (p.gestion && !crea) pasos.push('Su carpeta de ' + NOMBRE_BIBLIOTECA.gestion + ' pasa de ' + estDonde('gestion', p.gestion.desde) + ' a ' + estDonde('gestion', p.gestion.hasta) + '.');
+    if (!p.gestion && rutas.g) pasos.push('Su carpeta de ' + NOMBRE_BIBLIOTECA.gestion + ' queda donde está.');
+    return pasos;
+  }
+  const est = { responder: null };
+  function estResponder(v) {
+    const r = est.responder;
+    est.responder = null;
+    const d = $('#dlgEstado');
+    if (d.open) d.close();
+    if (r) r(v);
+  }
+  // El aviso. o: { titulo, pista, boton, plan, rutas, af }; af: el texto de la casilla del 100 % de avance, o null.
+  // Devuelve { af } si se aceptó, o null.
+  function estPreguntar(o) {
+    $('#dlgEstTit').textContent = o.titulo;
+    $('#estPista').textContent = o.pista || '';
+    const mueve = !!o.plan && estMueve(o.plan);
+    $('#estCarpeta').hidden = !mueve;
+    if (mueve) {
+      $('#estNombre').textContent = '«' + o.plan.nombre + '»';
+      const ul = $('#estPasos');
+      ul.textContent = '';
+      estPasos(o.plan, o.rutas).forEach((x) => ul.append(crear('li', null, x)));
+    }
+    $('#estAF').hidden = !o.af;
+    $('#estAFTxt').textContent = o.af || '';
+    $('#estAFCheck').checked = true;
+    $('#estNota').textContent = mueve ? 'La mueve el computador del procesador en unos 10 minutos; si hay un archivo abierto, reintenta. Nada se borra.' : '';
+    $('#estOk').textContent = o.boton;
+    return new Promise((ok) => {
+      est.responder = ok;
+      const d = $('#dlgEstado');
+      if (!d.open) d.showModal();
+      $('#estOk').focus();
+    });
+  }
+  // Se puede pedir también el 100 % de avance al Análisis Financiero: un proyecto que se entregó, si su ficha no lo tiene
+  function estPideAF(t, nuevo) {
+    return !!t && !!t.af && !!t.tag && (nuevo === 'Cerrado' || nuevo === 'Post-venta') && plAvanceAF(t) < 1;
+  }
+  const estTarjetaDe = (n) => rc.tarjetas.find((x) => x.req === String(n)) || null;
+  const estFila = (n) => ((rc.datos && rc.datos.requerimientos) || []).find((r) => r.numero === Number(n)) || null;
+  // Todo lo que muestra el estado de un proyecto se pone al día
+  function estAlCambiar() {
+    pqRemezclar();
+    if (!$('#vistaPlanilla').hidden) pqPintar();
+    plAlCambiarCierres();
+    if ($('#dlgRecorrido').open && estAlCambiar.clave) rcVerDetalle(estAlCambiar.clave);
+  }
+  /* Cambia el Estado de un N°, desde cualquier vista. Si eso mueve su carpeta, primero el aviso. op.af: ya se decidió lo del
+     100 % de avance (la Planificación lo pregunta en su formulario); op.silencio: quien llama dice lo que pasó.
+     Devuelve lo dejado en el buzón ({ ids, buzon }), o null si se canceló o no se pudo. */
+  async function estCambiar(n, nuevo, op) {
+    const o = op || {};
+    const r = estFila(n);
+    if (!r || !rc.dir) return null;
+    const antes = texto(r.estado);
+    if (antes === nuevo) return { ids: [], buzon: null };
+    const t = estTarjetaDe(n);
+    const rutas = pqCarpetasDe(n);
+    const plan = rutas.varias ? null : pqPlanCarpeta(nuevo, rutas.f, rutas.g, new Date().getFullYear());
+    const mueve = !!plan && estMueve(plan);
+    const preguntaAF = o.af === undefined && estPideAF(t, nuevo);
+    let conAF = !!o.af;
+    if (mueve || preguntaAF) {
+      const v = await estPreguntar({
+        titulo: 'N° ' + n + ': de «' + (antes || 'sin estado') + '» a «' + nuevo + '»',
+        pista: texto(r.titulo), boton: mueve ? 'Cambiar y mover la carpeta' : 'Cambiar el estado', plan, rutas,
+        af: preguntaAF ? 'Dejar también su avance en 100 % en el Análisis Financiero (hoy tiene ' + Math.round(plAvanceAF(t) * 100) + ' %). Llega en la próxima vuelta del procesador.' : null
+      });
+      if (!v) return null;
+      if (preguntaAF) conAF = v.af;
+    }
+    const salida = { ids: [], buzon: null };
+    try {
+      const req = { numero: Number(n) };
+      if (texto(r.titulo)) req.titulo = texto(r.titulo);
+      salida.ids.push((await pqEnviar('editar-requerimiento', { requerimiento: req, cambios: { estado: nuevo }, reemplaza: { estado: antes || null } })).id);
+      if (mueve) salida.ids.push((await pqEnviarMover(n, nuevo)).id);
+      if (conAF && t && t.af && t.tag && plAvanceAF(t) < 1) salida.buzon = await plPedirAvanceCompleto(t);
+      // Reabierto desde aquí: la marca de «Dar por cerrado» deja de cerrarlo
+      if (t && t.cierrePlan && nuevo !== 'Cerrado') plPonerCierres(t, false);
+    } catch (err) {
+      console.error(err);
+      avisar(err && err.name === 'NotAllowedError' ? 'Falta el permiso para escribir en la carpeta del equipo: usa «Volver a leer» arriba y acepta «Ver y editar archivos».'
+        : 'No se pudo guardar el cambio de estado: revisa que OneDrive esté funcionando y vuelve a intentarlo.');
+      return null;
+    }
+    estAlCambiar();
+    if (!o.silencio) avisar('N° ' + n + ': ahora «' + nuevo + '»' + (mueve ? '. Su carpeta se mueve en unos 10 minutos.' : '. Pasa al Excel en unos 10 minutos.'));
+    return salida;
+  }
+  // Mover la carpeta sin cambiar el estado: lo cambiaron en el Excel, o estaba así de antes. También con el aviso.
+  async function estMoverCarpeta(n) {
+    const r = estFila(n);
+    if (!r || !rc.dir) return false;
+    const rutas = pqCarpetasDe(n);
+    const estadoActual = texto(r.estado);
+    const plan = pqPlanCarpeta(estadoActual, rutas.f, rutas.g, new Date().getFullYear());
+    if (!estMueve(plan)) return false;
+    const v = await estPreguntar({ titulo: 'N° ' + n + ': mover su carpeta', pista: 'Su estado es «' + estadoActual + '». ' + texto(r.titulo), boton: 'Mover la carpeta', plan, rutas, af: null });
+    if (!v) return false;
+    try { await pqEnviarMover(n, estadoActual); } catch (err) {
+      console.error(err);
+      avisar('No se pudo pedir: revisa que OneDrive esté funcionando y vuelve a intentarlo.');
+      return false;
+    }
+    estAlCambiar();
+    avisar('Su carpeta se mueve en unos 10 minutos.');
+    return true;
+  }
+  // Crea la carpeta en la raíz de la biblioteca, con las subcarpetas de siempre. { nombre, ruta } o null si este navegador no puede
+  async function pqCrearCarpeta(n, titulo) {
+    const nombre = pqNombreCarpeta(n, titulo);
+    const c = rc.carpetas || await leerCarpetas();
+    if (!nombre || !c.biblioteca || (await permisoDe(c.biblioteca)) !== 'granted') return null;
+    const clave = nombreClave(nombre);
+    const delN = new RegExp('^\\s*' + Number(n) + '\\s*\\.');
+    for await (const [m, h] of c.biblioteca.entries()) {
+      if (h.kind === 'directory' && (nombreClave(m) === clave || delN.test(m))) { pq.nuevas.set(Number(n), [m]); return { nombre: m, ruta: [m], ya: true }; }
+    }
+    const dir = await c.biblioteca.getDirectoryHandle(nombre, { create: true });
+    for (const sub of PQ_ESTRUCTURA) await dir.getDirectoryHandle(sub, { create: true });
+    pq.nuevas.set(Number(n), [nombre]);
+    return { nombre, ruta: [nombre] };
+  }
+  // El botón «Crear carpeta» de una fila sin carpeta. Sin la biblioteca completa en este navegador, se lo pide al procesador.
+  async function estCrearCarpeta(n) {
+    const r = estFila(n);
+    if (!r || !rc.dir) return;
+    const estadoActual = texto(r.estado) || 'Evaluación';
+    let c = null;
+    try { c = await pqCrearCarpeta(n, r.titulo); } catch (err) { console.error(err); }
+    try {
+      if (!c) await pqEnviarMover(n, estadoActual, { crear: true });
+      else if (estadoActual !== 'Evaluación') await pqEnviarMover(n, estadoActual);
+    } catch (err) {
+      console.error(err);
+      avisar('No se pudo crear la carpeta: revisa que OneDrive esté funcionando y vuelve a intentarlo.');
+      return;
+    }
+    estAlCambiar();
+    pqPintarCarpeta();
+    avisar(c ? 'Su carpeta «' + c.nombre + '» ya está en ' + NOMBRE_BIBLIOTECA.formulacion + '.' : 'Su carpeta se crea en unos 10 minutos.',
+      c ? { texto: 'Abrir', ir: () => estAbrir(rcCarpeta(c.ruta.join('/'), 'formulacion')) } : undefined);
+  }
+  function estAbrir(c) {
+    if (!c) return;
+    abrirEnlace(enlaceCarpeta(c));
+    avisar('Abriendo «' + c.nombre + '» en el Explorador de archivos…', { texto: '¿No se abrió?', ir: () => infoCarpeta(c) });
+  }
+  // La carpeta principal de un N°: la de Gestión si tiene (donde sigue el proyecto) y si no, la de Formulación
+  function estPrincipal(n) {
+    const rutas = pqCarpetasDe(n);
+    return rutas.g ? rcCarpeta(rutas.g.join('/'), 'gestion') : rutas.f ? rcCarpeta(rutas.f.join('/'), 'formulacion') : null;
+  }
+  /* El estado de una fila: la etiqueta de siempre con una lista del navegador encima. despues(resultado): al terminar. */
+  function estSelector(r, despues) {
+    const v = texto(r.estado);
+    const caja = crear('span', 'pq-est-caja');
+    const et = crear('span', 'pq-est', v || 'Sin estado');
+    et.dataset.estado = v;
+    et.setAttribute('aria-hidden', 'true');
+    const s = crear('select');
+    s.setAttribute('aria-label', 'Estado del N° ' + r.numero);
+    s.title = 'Cambiar el estado del N° ' + r.numero;
+    pqOpciones(s, PQ_ESTADOS, v, true);
+    s.addEventListener('change', async () => {
+      const nuevo = s.value;
+      s.disabled = true;
+      const hecho = nuevo ? await estCambiar(r.numero, nuevo) : null;
+      s.disabled = false;
+      if (!hecho) s.value = v;
+      else if (despues) despues(hecho, nuevo);
+    });
+    caja.append(et, s);
+    return caja;
+  }
 
   // La Planilla del Excel con lo ingresado o cambiado en el portal que todavía espera en el buzón, en orden de envío.
   // meta (por fila): los campos que el Excel todavía no tiene, si es nueva y, si su N° ya lo tiene otra fila, cuál.
@@ -9628,12 +10020,12 @@
           if (h.kind !== 'file' || !PQ_ARCHIVO.test(n)) continue;
           let m;
           try { m = JSON.parse(rcSinBom(await (await h.getFile()).text())); } catch (e) { continue; }
-          if (!m || !PQ_TIPOS.includes(m.tipo) || !m.requerimiento || typeof m.requerimiento !== 'object') continue;
+          if (!m || (!PQ_TIPOS.includes(m.tipo) && m.tipo !== EST_TIPO) || !m.requerimiento || typeof m.requerimiento !== 'object') continue;
           const r = m.resultado || {};
           salida.push({
             id: texto(m.id), tipo: m.tipo, enviado: texto(m.origen && m.origen.enviado), usuario: texto(m.origen && m.origen.usuario),
             numero: Number.isInteger(r.requerimiento) ? r.requerimiento : m.requerimiento.numero, titulo: texto(m.requerimiento.titulo),
-            campos: m.cambios && typeof m.cambios === 'object' ? Object.keys(m.cambios) : [],
+            campos: m.cambios && typeof m.cambios === 'object' ? Object.keys(m.cambios) : [], pedido: texto(m.estado),
             estado: enCamino ? 'camino' : texto(r.estado), detalle: Array.isArray(r.detalle) ? r.detalle.map(texto) : []
           });
         }
@@ -9650,41 +10042,62 @@
 
   // ---- Enviar y retirar ---------------------------------------------------------------------------------------------
   // Deja el pedido en el buzón con el nombre de siempre (intercambio.nombre_mensaje) y lo suma a la Planilla desde ya.
-  async function pqEnviar(tipo, cuerpo) {
+  async function pqEnviar(tipo, cuerpo, destino = PQ_DESTINO) {
     const enviado = scAhora();
     const id = scId();
     const origen = { herramienta: 'portal', enviado };
     if (estado.usuario) origen.usuario = estado.usuario;
-    const msg = Object.assign({ esquema: 'quempin.intercambio/1', id, tipo, destino: PQ_DESTINO, origen }, cuerpo);
+    const msg = Object.assign({ esquema: 'quempin.intercambio/1', id, tipo, destino, origen }, cuerpo);
     const nombre = enviado.slice(0, 19).replace(/[-:]/g, '').replace('T', '-') + '_portal_' + tipo + '_' + id + '.json';
     const buzon = await rc.dir.getDirectoryHandle('buzon', { create: true });
     const w = await (await buzon.getFileHandle(nombre, { create: true })).createWritable();
     await w.write(JSON.stringify(msg, null, 2) + '\n');
     await w.close();
-    rc.datos.planillaPedidos = (rc.datos.planillaPedidos || []).concat([msg]);
+    if (destino === PQ_DESTINO) rc.datos.planillaPedidos = (rc.datos.planillaPedidos || []).concat([msg]);
+    else rc.datos.carpetaPedidos = (rc.datos.carpetaPedidos || []).concat([msg]);
     pq.cambios.unshift({ id, tipo, enviado, usuario: estado.usuario || '', numero: msg.requerimiento.numero, titulo: texto(msg.requerimiento.titulo),
-      campos: msg.cambios ? Object.keys(msg.cambios) : [], estado: 'camino', detalle: [] });
+      campos: msg.cambios ? Object.keys(msg.cambios) : [], estado: 'camino', detalle: [], pedido: texto(msg.estado) });
     pqRemezclar();
     return msg;
   }
+  function pqEnviarMover(n, estadoNuevo, extra) {
+    const r = estFila(n);
+    const req = { numero: Number(n) };
+    if (r && texto(r.titulo)) req.titulo = texto(r.titulo);
+    return pqEnviar(EST_TIPO, Object.assign({ requerimiento: req, estado: estadoNuevo }, extra), EST_DESTINO);
+  }
   // Retira del buzón lo que todavía no llega al Excel (lo busca por su id, como ejRetirarAF)
   async function pqRetirar(c) {
+    // Retirar un cambio de estado retira también el pedido de mover su carpeta, que iba con él
+    const conCarpeta = c.tipo === 'editar-requerimiento' && c.campos.includes('estado');
+    const moverlo = conCarpeta ? ((rc.datos && rc.datos.carpetaPedidos) || []).filter((m) => m.requerimiento.numero === c.numero).map((m) => m.id) : [];
     try {
-      const buzon = await rc.dir.getDirectoryHandle('buzon');
-      let nombre = null;
-      for await (const n of buzon.keys()) if (n.indexOf(c.id) >= 0 && /\.json$/i.test(n)) { nombre = n; break; }
-      if (!nombre) { avisar('Ya pasó al Excel: no se puede retirar. Si hace falta, cámbialo de nuevo.'); pqCargar(); return; }
-      await buzon.removeEntry(nombre);
+      if (!await pqSacarDelBuzon(c.id)) {
+        avisar(c.tipo === EST_TIPO ? 'Esa carpeta ya se movió: no se puede retirar. Si hace falta, cambia su estado de nuevo.' : 'Ya pasó al Excel: no se puede retirar. Si hace falta, cámbialo de nuevo.');
+        pqCargar();
+        return;
+      }
+      for (const id of moverlo) await pqSacarDelBuzon(id);
     } catch (err) {
       console.error(err);
       avisar('No se pudo retirar: revisa que OneDrive esté funcionando y vuelve a intentarlo.');
       return;
     }
-    rc.datos.planillaPedidos = (rc.datos.planillaPedidos || []).filter((m) => m.id !== c.id);
-    pq.cambios = pq.cambios.filter((x) => x.id !== c.id);
-    pqRemezclar();
+    const fuera = new Set([c.id].concat(moverlo));
+    rc.datos.planillaPedidos = (rc.datos.planillaPedidos || []).filter((m) => !fuera.has(m.id));
+    rc.datos.carpetaPedidos = (rc.datos.carpetaPedidos || []).filter((m) => !fuera.has(m.id));
+    pq.cambios = pq.cambios.filter((x) => !fuera.has(x.id));
+    estAlCambiar();
     pqPintar();
-    avisar(c.tipo === 'nuevo-requerimiento' ? 'Se retiró el N° ' + c.numero + ': no llega al Excel.' : 'Se retiró el cambio: el Excel queda como estaba.');
+    avisar(c.tipo === 'nuevo-requerimiento' ? 'Se retiró el N° ' + c.numero + ': no llega al Excel.' : c.tipo === EST_TIPO ? 'Se retiró: la carpeta queda donde está.' : 'Se retiró el cambio: el Excel queda como estaba.');
+  }
+  // true si estaba y se sacó; false si ya no está (se atendió)
+  async function pqSacarDelBuzon(id) {
+    const buzon = await rc.dir.getDirectoryHandle('buzon');
+    for await (const n of buzon.keys()) {
+      if (n.indexOf(id) >= 0 && /\.json$/i.test(n)) { await buzon.removeEntry(n); return true; }
+    }
+    return false;
   }
 
   // ---- El diálogo: un requerimiento nuevo o los datos de uno ---------------------------------------------------------
@@ -9755,9 +10168,54 @@
     $('#pqGuardar').disabled = false;
     $('#pqFormular').hidden = nuevo;
     pq.inicial = pqLeerForm();
+    pqPintarCarpeta();
     const dlg = $('#dlgPlanilla');
     if (!dlg.open) dlg.showModal();
     (nuevo ? $('#pqTitulo') : $('#pqEstado')).focus();
+  }
+  // La carpeta del proyecto en el diálogo: la que se va a crear, dónde está, adónde debería ir según su estado o su botón
+  function pqPintarCarpeta() {
+    const caja = $('#pqCarpeta');
+    const a = pq.abierta;
+    caja.textContent = '';
+    caja.hidden = !a;
+    if (!a) return;
+    const txt = crear('div', 'pq-carpeta-txt');
+    caja.append(txt);
+    const boton = (et, ir) => {
+      const b = crear('button', 'cx-enlace', et);
+      b.type = 'button';
+      b.addEventListener('click', ir);
+      caja.append(b);
+    };
+    if (a.nuevo) {
+      const nombre = pqNombreCarpeta(a.numero, $('#pqTitulo').value);
+      txt.append(crear('b', null, nombre ? 'Su carpeta: «' + nombre + '»' : 'Su carpeta se crea con el N° y el título'),
+        crear('span', null, 'En ' + NOMBRE_BIBLIOTECA.formulacion + ', con ' + PQ_ESTRUCTURA.join(', ') + '. Ahí van las bases técnicas y los documentos complementarios.'));
+      return;
+    }
+    const fila = a.fila || {};
+    const estadoActual = texto(fila.estado);
+    const rutas = pqCarpetasDe(a.numero);
+    const pedido = ((rc.datos && rc.datos.carpetaPedidos) || []).some((m) => m.requerimiento.numero === a.numero);
+    const principal = estPrincipal(a.numero);
+    if (!principal) {
+      txt.append(crear('b', null, 'Todavía no tiene carpeta'), crear('span', null, pedido ? 'Se crea en unos 10 minutos.'
+        : 'Se busca por su N° adelante («' + a.numero + '. Nombre») en las dos bibliotecas.'));
+      if (!pedido && !MOVIL.matches && pqNombreCarpeta(a.numero, fila.titulo)) boton('Crear carpeta', () => estCrearCarpeta(a.numero));
+      return;
+    }
+    const ruta = rutas.g || rutas.f;
+    txt.append(crear('b', null, '«' + principal.nombre + '»'), crear('span', null, estDonde(rutas.g ? 'gestion' : 'formulacion', ruta.slice(0, -1))));
+    if (rutas.g && rutas.f) txt.append(crear('span', null, 'La oferta original está en ' + estDonde('formulacion', rutas.f.slice(0, -1)) + '.'));
+    const plan = pqPlanCarpeta(estadoActual, rutas.f, rutas.g, new Date().getFullYear());
+    if (rutas.varias) txt.append(crear('span', 'pide', 'Hay más de una carpeta con este N°: se revisan a mano.'));
+    else if (pedido) txt.append(crear('span', 'pide', 'Se está moviendo: lo hace el computador del procesador en unos 10 minutos.'));
+    if (!MOVIL.matches) boton('Abrir', () => estAbrir(principal));
+    if (!rutas.varias && !pedido && estMueve(plan) && !MOVIL.matches) {
+      txt.append(crear('span', 'pide', 'Según su estado («' + estadoActual + '») no está donde corresponde.'));
+      boton(plan.gestion && plan.gestion.accion === 'crear' ? 'Pasar a Gestión' : 'Mover', () => estMoverCarpeta(a.numero).then(pqPintarCarpeta));
+    }
   }
   function pqError(msg, campo) {
     const p = $('#pqPista');
@@ -9792,10 +10250,37 @@
       if (texto(a.fila.titulo)) req.titulo = texto(a.fila.titulo);
       cuerpo = { requerimiento: req, cambios, reemplaza };
     }
+    // Un cambio de estado que mueve la carpeta: primero el aviso, igual que desde la fila
+    let mueve = false, conAF = false;
+    const t = !a.nuevo && cambios.estado ? estTarjetaDe(a.numero) : null;
+    if (!a.nuevo && cambios.estado) {
+      const rutas = pqCarpetasDe(a.numero);
+      const plan = rutas.varias ? null : pqPlanCarpeta(cambios.estado, rutas.f, rutas.g, new Date().getFullYear());
+      mueve = !!plan && estMueve(plan);
+      const preguntaAF = estPideAF(t, cambios.estado);
+      if (mueve || preguntaAF) {
+        const v = await estPreguntar({
+          titulo: 'N° ' + a.numero + ': de «' + (texto(a.fila.estado) || 'sin estado') + '» a «' + cambios.estado + '»',
+          pista: f.titulo || '', boton: mueve ? 'Cambiar y mover la carpeta' : 'Cambiar el estado', plan, rutas,
+          af: preguntaAF ? 'Dejar también su avance en 100 % en el Análisis Financiero (hoy tiene ' + Math.round(plAvanceAF(t) * 100) + ' %). Llega en la próxima vuelta del procesador.' : null
+        });
+        if (!v) return;
+        conAF = preguntaAF && v.af;
+      }
+    }
     pq.guardando = true;
     $('#pqGuardar').disabled = true;
+    let carpetaNueva = null;
     try {
       await pqEnviar(a.nuevo ? 'nuevo-requerimiento' : 'editar-requerimiento', cuerpo);
+      if (mueve) await pqEnviarMover(a.numero, cambios.estado);
+      if (conAF) await plPedirAvanceCompleto(t);
+      // Lo nuevo sale con su carpeta, para poder subir las bases de inmediato. Sin la biblioteca completa en este navegador,
+      // o si algo falla, la crea el procesador en su vuelta (carpetas_oferta.py): el requerimiento ya quedó.
+      if (a.nuevo && !PQ_SIN_CARPETA_NUEVA.includes(f.estado)) {
+        carpetaNueva = await pqCrearCarpeta(a.numero, f.titulo).catch((err) => { console.error(err); return null; });
+        if (carpetaNueva && f.estado && f.estado !== 'Evaluación') await pqEnviarMover(a.numero, f.estado);
+      }
     } catch (err) {
       console.error(err);
       pqError(err && err.name === 'NotAllowedError' ? 'Falta el permiso para escribir en la carpeta del equipo: usa «Volver a leer» arriba y acepta «Ver y editar archivos».'
@@ -9809,10 +10294,17 @@
     const fila = (rc.datos.requerimientos || []).find((r) => r.numero === a.numero && (!a.nuevo || pqMeta(r)));
     if (fila && pq.estado && texto(fila.estado) !== pq.estado) pq.estado = '';
     if (fila && pq.q && !pqBuscable(fila).includes(norm(pq.q).trim())) { pq.q = ''; $('#pqBuscar').value = ''; }
+    estAlCambiar();
     pqPintar();
     pqResaltar(a.numero);
-    avisar(a.nuevo ? 'N° ' + a.numero + ' agregado a la Planilla. Pasa al Excel en unos 10 minutos.'
-      : 'N° ' + a.numero + ': ' + Object.keys(cambios).map((c) => PQ_NOMBRE[c]).join(', ') + ' cambiado. Pasa al Excel en unos 10 minutos.');
+    if (a.nuevo) {
+      const sinCarpeta = PQ_SIN_CARPETA_NUEVA.includes(f.estado);
+      avisar('N° ' + a.numero + ' agregado a la Planilla. '
+        + (carpetaNueva ? 'Su carpeta «' + carpetaNueva.nombre + '» ya está en ' + NOMBRE_BIBLIOTECA.formulacion + '. ' : sinCarpeta ? '' : 'Su carpeta se crea en unos 20 minutos. ') + 'Pasa al Excel en unos 10 minutos.',
+      carpetaNueva && !MOVIL.matches ? { texto: 'Abrir la carpeta', ir: () => estAbrir(rcCarpeta(carpetaNueva.ruta.join('/'), 'formulacion')) } : undefined);
+    } else {
+      avisar('N° ' + a.numero + ': ' + Object.keys(cambios).map((c) => PQ_NOMBRE[c]).join(', ') + ' cambiado. ' + (mueve ? 'Su carpeta se mueve en unos 10 minutos.' : 'Pasa al Excel en unos 10 minutos.'));
+    }
   }
   function pqResaltar(n) {
     const tr = document.querySelector('#pqFilas tr[data-n="' + n + '"]');
@@ -9902,6 +10394,11 @@
       p.append(crear('b', null, 'Al día con el Excel.'),
         document.createTextNode(' Lo de aquí pasa al Excel en unos 10 minutos, y lo del Excel llega aquí igual.'));
     }
+    const carpetasEsperan = (rc.datos.carpetaPedidos || []).length;
+    if (carpetasEsperan) {
+      p.append(document.createTextNode(' '), crear('b', null, pl(carpetasEsperan, 'carpeta se mueve', 'carpetas se mueven')),
+        document.createTextNode(' en la próxima vuelta (unos 10 minutos).'));
+    }
     cuerpo.append(p);
     // Lo del portal que no quedó en el Excel esta semana: rechazado, o la casilla cambió después en el Excel
     const semana = Date.now() - 7 * 86400000;
@@ -9909,8 +10406,32 @@
     if (malos.length) {
       const ul = crear('ul', 'pq-avisos');
       malos.slice(0, 3).forEach((c) => ul.append(crear('li', null, 'N° ' + c.numero + (c.titulo ? ' «' + c.titulo + '»' : '') + ': '
-        + (c.estado === 'rechazado' ? 'no se pudo pasar al Excel. ' : 'quedó lo del Excel, que se cambió después. ') + (c.detalle[0] || ''))));
+        + (c.tipo === EST_TIPO ? 'su carpeta no se movió. ' : c.estado === 'rechazado' ? 'no se pudo pasar al Excel. ' : 'quedó lo del Excel, que se cambió después. ') + (c.detalle[0] || ''))));
       cuerpo.append(ul);
+    }
+    // Las carpetas de proyectos en curso que no están donde dice su estado: se cambió en el Excel, donde no hay cómo avisar antes
+    // de moverla, o ya estaban así. No se mueven solas. Las ofertas perdidas y descartadas de antes no se listan (son decenas):
+    // en su fila también se pueden mover.
+    const fuera2 = estFueraDeLugar();
+    if (fuera2.length) {
+      const d = crear('details', 'pq-fuera');
+      d.dataset.lista = 'carpetas';
+      d.append(crear('summary', null, pl(fuera2.length, 'carpeta no está donde dice su estado', 'carpetas no están donde dice su estado')));
+      const lista = crear('ul', 'pq-cambios');
+      fuera2.forEach(({ r, plan }) => {
+        const li = crear('li', 'pq-fuera-fila');
+        const dato = plan.formulacion || plan.gestion;
+        const bib = plan.formulacion ? 'formulacion' : 'gestion';
+        const tx = crear('span', 'sc-env-det');
+        tx.append(crear('b', null, 'N° ' + r.numero + ' «' + texto(r.estado) + '»'), document.createTextNode(': ' + plan.nombre + ', en ' + estDonde(bib, dato.desde) + '. Le corresponde ' + estDonde(bib, dato.hasta) + '.'));
+        const b = crear('button', 'cx-enlace pq-retirar', 'Mover');
+        b.type = 'button';
+        b.addEventListener('click', () => estMoverCarpeta(r.numero));
+        li.append(tx, b);
+        lista.append(li);
+      });
+      d.append(lista);
+      cuerpo.append(d);
     }
     // Lo que está en el Excel y aquí no se ve: un N° repetido o una fila sin N° (lo dice requerimientos.leer_planilla)
     const fuera = (rc.datos.planillaInfo && rc.datos.planillaInfo.avisos) || [];
@@ -9930,13 +10451,15 @@
     const ul = crear('ul', 'pq-cambios');
     const NIVEL = { camino: ['warn', 'Por pasar al Excel'], aplicado: ['ok', 'En el Excel'], 'sin-cambios': ['ok', 'Ya estaba en el Excel'],
       reemplazado: ['warn', 'Quedó lo del Excel'], rechazado: ['bad', 'No se pudo'] };
+    const NIVEL_CARPETA = { camino: ['warn', 'Por mover'], aplicado: ['ok', 'Movida'], 'sin-cambios': ['ok', 'Ya estaba ahí'],
+      reemplazado: ['warn', 'No se movió'], rechazado: ['bad', 'No se pudo'] };
     pq.cambios.forEach((c) => {
       const li = crear('li');
       const cab = crear('div', 'sc-env-cab');
-      const [nivel, txt] = NIVEL[c.estado] || ['', c.estado];
+      const [nivel, txt] = (c.tipo === EST_TIPO ? NIVEL_CARPETA : NIVEL)[c.estado] || ['', c.estado];
       const pill = crear('span', 'sc-pill', txt);
       pill.dataset.nivel = nivel;
-      const que = c.tipo === 'nuevo-requerimiento' ? 'nuevo' : c.campos.map((x) => PQ_NOMBRE[x] || x).join(', ');
+      const que = c.tipo === 'nuevo-requerimiento' ? 'nuevo' : c.tipo === EST_TIPO ? 'carpeta, por su estado «' + c.pedido + '»' : c.campos.map((x) => PQ_NOMBRE[x] || x).join(', ');
       cab.append(crear('span', 'sc-env-nom', 'N° ' + c.numero + (c.titulo ? ' · ' + c.titulo : '') + ' · ' + que), pill);
       const f = new Date(c.enviado);
       li.append(cab, crear('span', 'sc-env-det', [c.usuario, isNaN(f) ? '' : pqCuando(f)].filter(Boolean).join(' · ')));
@@ -9953,6 +10476,18 @@
     });
     det.append(ul);
     cuerpo.append(det);
+  }
+  function estFueraDeLugar() {
+    const esperan = new Set(((rc.datos && rc.datos.carpetaPedidos) || []).map((m) => m.requerimiento.numero));
+    const anio = new Date().getFullYear();
+    return pqFilas().map((r) => {
+      if (!RC_VIVOS.includes(texto(r.estado)) || esperan.has(r.numero)) return null;
+      const rutas = pqCarpetasDe(r.numero);
+      if (rutas.varias) return null;
+      const plan = pqPlanCarpeta(texto(r.estado), rutas.f, rutas.g, anio);
+      // Pasar a Gestión uno que no tiene carpeta ahí no se ofrece aquí: de los de antes, muchos la tienen sin N°
+      return plan.formulacion || (plan.gestion && plan.gestion.accion === 'mover') ? { r, plan } : null;
+    }).filter(Boolean);
   }
   function pqPintarEstados() {
     const caja = $('#pqEstados');
@@ -10008,13 +10543,30 @@
         td.textContent = String(r.numero);
         if (mt && mt.nuevo) td.append(crear('span', 'pq-nuevo-tag', 'nuevo'));
       } else if (c.id === 'estado') {
-        if (v) { const p = crear('span', 'pq-est', v); p.dataset.estado = v; td.append(p); }
+        // Una fila nueva que todavía no llega al Excel se cambia en su diálogo: no tiene dónde caer otro mensaje suelto
+        if (mt && mt.nuevo) { if (v) { const p = crear('span', 'pq-est', v); p.dataset.estado = v; td.append(p); } }
+        else {
+          td.append(estSelector(r, (hecho, nuevo) => {
+            if (pq.estado && pq.estado !== nuevo) { pq.estado = ''; pqPintarEstados(); pqPintarTabla(); }
+            pqResaltar(r.numero);
+          }));
+        }
       } else if (c.id === 'titulo') {
         const b = crear('button', 'pq-abrir', v || '(sin título)');
         b.type = 'button';
         b.title = v ? 'Abrir el N° ' + r.numero + ': ' + v : 'Abrir el N° ' + r.numero;
         b.addEventListener('click', () => pqAbrir(r));
         td.append(b);
+        const carpeta = MOVIL.matches ? null : estPrincipal(r.numero);
+        if (carpeta) {
+          const ir = crear('button', 'pq-ir-carpeta');
+          ir.type = 'button';
+          ir.title = 'Abrir su carpeta: ' + [NOMBRE_BIBLIOTECA[carpeta.biblioteca]].concat(carpeta.ruta).join(' › ');
+          ir.setAttribute('aria-label', 'Abrir la carpeta del N° ' + r.numero);
+          ir.append(icono('carpeta', 16));
+          ir.addEventListener('click', () => estAbrir(carpeta));
+          td.append(ir);
+        }
         if (mt && mt.choque) td.append(crear('span', 'pq-choque', 'El N° ' + r.numero + ' ya es «' + mt.choque + '»: al pasar al Excel queda con el siguiente libre.'));
       } else if (PQ_FECHAS.includes(c.id)) {
         td.textContent = pqFecha(v);
@@ -10038,7 +10590,7 @@
       }
       tr.append(td);
     });
-    tr.addEventListener('click', (e) => { if (!e.target.closest('button, a')) pqAbrir(r); });
+    tr.addEventListener('click', (e) => { if (!e.target.closest('button, a, .pq-est-caja')) pqAbrir(r); });
     return tr;
   }
   // Mientras se mira, lo del equipo y lo del Excel llegan solos (cada 2 minutos, y nunca con el diálogo abierto)
@@ -11087,6 +11639,12 @@
       chips.forEach((c) => { const x = crear('span', 'rc-chip', c.texto); if (c.nivel) x.dataset.nivel = c.nivel; ch.append(x); });
       cab.append(ch);
     }
+    // Su Estado se cambia aquí mismo (2026-11-02): Post-venta o Cerrado lo sacan de esta lista, con el aviso si mueven su carpeta
+    if (t.planilla && t.req) {
+      const fe = crear('div', 'est-fila');
+      fe.append(crear('span', null, 'Estado'), estSelector(t.planilla));
+      cab.append(fe);
+    }
     // Abrir: su carpeta de Gestión de Proyectos (QUEMPIN.exe) y las herramientas donde tiene algo. Desde
     // 2026-10-28 la carpeta de Gestión trae «Formulación» (la copia de la oferta) y, desde el 2026-10-29, el
     // acceso directo web «Facturas del proyecto» a su carpeta del Centro de Costos en SharePoint, que el
@@ -11112,13 +11670,11 @@
       b.title = 'Su carpeta del Centro de Costos en SharePoint: las facturas que ya tiene, y lo que subas ahí entra al Centro de Costos.';
       acc.append(b);
     }
+    const pedidoMover = !!t.req && ((rc.datos && rc.datos.carpetaPedidos) || []).some((x) => String(x.requerimiento.numero) === t.req);
     if (!MOVIL.matches) {
-      if (oferta && !gestion) {
-        // QUEMPIN.exe 1.3.15 pregunta antes, arma la carpeta en Gestión y deja el original en Adjudicadas
-        const b = ejBoton('Pasar a Gestión de Proyectos', 'cx-boton', () => {
-          abrirEnlace('quempin://trasladar/formulacion/' + oferta.ruta.map(encodeURIComponent).join('/'));
-          avisar('Pasando «' + oferta.nombre + '» a Gestión de Proyectos: confirma en la ventana de QUEMPIN.exe.', { texto: '¿No se abrió?', ir: () => infoCarpeta(oferta) });
-        }, 'proyectos');
+      if (oferta && !gestion && t.planilla && !pedidoMover) {
+        // Con el aviso de lo que pasa; lo hace el computador del procesador (carpetas_oferta.py), que deja el original en Adjudicadas
+        const b = ejBoton('Pasar a Gestión de Proyectos', 'cx-boton', () => estMoverCarpeta(t.req), 'proyectos');
         b.dataset.foco = 'trasladar';
         acc.append(b);
       }
@@ -11131,7 +11687,8 @@
     ir('Subir documentos', { herr: 'subir-cc' });
     cab.append(acc);
     if (!gestion && !MOVIL.matches) {
-      cab.append(crear('p', 'ej-pista', oferta ? 'Todavía no tiene carpeta en Gestión de Proyectos. «Pasar a Gestión de Proyectos» la crea con «Formulación» (la copia de la oferta) y deja el original en 0 OFERTAS ADJUDICADAS; lo hace QUEMPIN.exe 1.3.16 o más nuevo, que pregunta antes. Después el procesador le agrega «Facturas del proyecto», el acceso directo a su carpeta del Centro de Costos.'
+      cab.append(crear('p', 'ej-pista', pedidoMover ? 'Su carpeta se está pasando a Gestión de Proyectos: lo hace el computador del procesador en unos 10 minutos.'
+        : oferta ? 'Todavía no tiene carpeta en Gestión de Proyectos. «Pasar a Gestión de Proyectos» la crea con «Formulación» (la copia de la oferta) y deja el original en 0 OFERTAS ADJUDICADAS; antes te dice qué va a pasar. Después el procesador le agrega «Facturas del proyecto», el acceso directo a su carpeta del Centro de Costos.'
         : 'No se encontró su carpeta en Formulación de proyectos ni en Gestión de Proyectos: el procesador las reconoce por el N° adelante («' + (t.req || 'N°') + '. Nombre»).'));
     } else if (gestion && !facturas && !MOVIL.matches) {
       cab.append(crear('p', 'ej-pista', 'Todavía no tiene carpeta con su N° en el Centro de Costos («' + (t.req || 'N°') + '. Nombre» en Facturas y Boletas): el procesador la crea al adjudicarse el proyecto y entonces agrega «Facturas del proyecto» a su carpeta de Gestión.'));
@@ -14131,6 +14688,11 @@
     if (a) rcIr(RC_IR.req(a.numero));
   });
   $('#dlgPlanilla').addEventListener('close', () => { pq.abierta = null; });
+  $('#pqTitulo').addEventListener('input', () => { if (pq.abierta && pq.abierta.nuevo) pqPintarCarpeta(); });
+  $('#estForm').addEventListener('submit', (e) => { e.preventDefault(); estResponder({ af: !$('#estAF').hidden && $('#estAFCheck').checked }); });
+  $('#estX').addEventListener('click', () => estResponder(null));
+  $('#estCancelar').addEventListener('click', () => estResponder(null));
+  $('#dlgEstado').addEventListener('close', () => estResponder(null));
   // Planificación semanal
   plRecuperarPendiente();
   $('#plAntes').append(icono('izquierda', 18));

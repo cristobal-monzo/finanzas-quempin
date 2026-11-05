@@ -11,6 +11,7 @@ sincronizada por OneDrive con JSON de formato común (`quempin.intercambio/1`).
 | Monitor de resultados (`mercado_publico.py`) | [docs/mercado-publico.md](docs/mercado-publico.md) |
 | Oportunidades, compras ágiles, calibración, correo y bases (`oportunidades.py`, `compra_agil.py`, `calibrar_oportunidades.py`, `alertas_oportunidades.py`, `bases_oportunidades.py`) | [docs/oportunidades.md](docs/oportunidades.md) |
 | Carpetas de facturas de los proyectos (`carpetas_proyecto.py`) | [docs/carpetas-proyecto.md](docs/carpetas-proyecto.md) |
+| La carpeta de cada proyecto: se crea con su fila y sigue su Estado (`carpetas_oferta.py`) | [docs/carpetas-oferta.md](docs/carpetas-oferta.md) |
 | Tablero de Oportunidades | `Visualizador Web/CLAUDE.md` de esta carpeta |
 
 ## Dónde está
@@ -71,7 +72,7 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
 - **Mensajes**: `presupuesto-proyecto`, `venta-proyecto` y `datos-proyecto` → Análisis
   Financiero; `formulacion` → Formulador; `borrador-cotizacion` y `registro-documento` →
   Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento` y `editar-requerimiento` → Planilla;
-  `documento-cc` → Centro de Costos; `observacion` → mejora continua (la atiende una persona con
+  `documento-cc` → Centro de Costos; `mover-carpeta` → carpetas de los proyectos (`carpetas_oferta.py`); `observacion` → mejora continua (la atiende una persona con
   `/Observaciones_Portal`, `observaciones.py`).
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
@@ -138,6 +139,8 @@ Solo abre Excel si hay un pedido o la planilla cambió y tiene un N° en fórmul
 - **El Excel y el Portal se actualizan mutuamente** ([docs/planilla.md](docs/planilla.md)): escribe los
   `nuevo-requerimiento` y `editar-requerimiento` del buzón, y si el archivo cambió republica
   `requerimientos.json` sin abrir Excel. Si una casilla cambió en los dos lados, manda el cambio más reciente.
+- **Al terminar, la carpeta de cada proyecto** (`carpetas_oferta.py`, [docs/carpetas-oferta.md](docs/carpetas-oferta.md)): crea la de
+  cada fila nueva, mueve la que alguien pidió mover según su Estado y lleva el Estado al Formulador.
 - **Registra** una fila nueva en la primera vacía después del último N°, con N° fijo. Del Formulador, con los
   datos del proyecto al escribir; del Portal, con los del pedido y el siguiente N° libre si ya lo tomaron.
 - **Columnas por su encabezado, nunca por su letra**: alguien insertó «Cliente» en G el 2026-10-27. Python

@@ -14,6 +14,9 @@
 #       Si ese N° ya está en la columna A, no se escribe nada.
 #   { op: "editar", numero, titulo, tituloNuevo?, valores, fechas, borrar: ["H"], encabezados }
 #       las casillas cambiadas en el Portal, en la fila de ese N° cuyo título es «titulo» (o ya «tituloNuevo»).
+#   { op: "estados", lista: ["Evaluación", ...], letra: "B", encabezados: { "B": "Estado" } }
+#       la lista desplegable de la columna Estado, los colores de sus estados nuevos y su línea en el Glosario.
+#       Una sola vez: ya hecha, deja todo igual.
 # Las letras las calcula planilla_escritura.py por el encabezado; «encabezados» dice cuál esperaba en cada
 # letra, y si alguien movió una columna entretanto la operación no se escribe (se reintenta).
 # Salida: { estado: "ok"|"ocupada"|"error", detalle, resultados: [{ i, ok, fila, detalle }] }.
@@ -155,6 +158,61 @@ try {
                 # Otro cambio a la misma fila en esta vuelta la busca ya con su título nuevo
                 if ($o.tituloNuevo) { $datos[$hallas[0], $colT] = [string]$o.tituloNuevo }
                 [void]$resultados.Add(@{ i = $i; ok = $true; fila = $fila; detalle = "N° $($o.numero) cambiado en la fila $fila" })
+            }
+            elseif ($o.op -eq 'estados') {
+                Revisar-Encabezados $o
+                $col = Columna $o.letra
+                $rango = $hoja.Range($hoja.Cells.Item($primera + 1, $col), $hoja.Cells.Item($hoja.Rows.Count, $col))      # hasta el final, como estaba
+                # La hoja está protegida, sin contraseña («Listado Requerimientos» y «Glosario»: sheet, objects y scenarios).
+                # Con la protección puesta, Validation.Delete funciona y Validation.Add no: borraría la lista y no podría
+                # reponerla (visto el 2026-11-02 en una copia). Se quita solo para esto y queda igual que estaba.
+                $protegida = [bool]$hoja.ProtectContents
+                if ($protegida) { [void]$hoja.Unprotect() }
+                try {
+                    $viejaLista = $null
+                    for ($k = $primera + 1; $k -le $ultima -and -not $viejaLista; $k++) {
+                        try { $viejaLista = [string]$hoja.Cells.Item($k, $col).Validation.Formula1 } catch {}
+                    }
+                    [void]$rango.Validation.Delete()
+                    try { [void]$rango.Validation.Add(3, 1, 1, ($o.lista -join ',')) }      # lista, detener, entre
+                    catch {
+                        if ($viejaLista) { [void]$rango.Validation.Add(3, 1, 1, $viejaLista) }
+                        throw
+                    }
+                    # Los colores de cada fila van por una regla por estado, sobre toda la tabla. Excel lee la fórmula
+                    # relativa a la celda activa, por eso se elige la primera de la tabla antes de agregarla.
+                    $tablaDatos = $hoja.Range($hoja.Cells.Item($primera + 1, 1), $hoja.Cells.Item($ultima, $tabla.Range.Columns.Count))
+                    [void]$hoja.Activate()
+                    [void]$hoja.Cells.Item($primera + 1, 1).Select()
+                    foreach ($par in @(@('Post-venta', 0xF7EBDD), @('Cerrado', 0xB4E0C6))) {      # BGR: azul y verde claros
+                        $formula = '=$' + $o.letra + ($primera + 1) + '="' + $par[0] + '"'
+                        $ya = $false
+                        foreach ($regla in @($tablaDatos.FormatConditions)) { try { if ([string]$regla.Formula1 -eq $formula) { $ya = $true } } catch {} }
+                        if (-not $ya) {
+                            $regla = $tablaDatos.FormatConditions.Add(2, 0, $formula)      # por expresión
+                            $regla.Interior.Color = [int]$par[1]
+                        }
+                    }
+                }
+                finally {
+                    if ($protegida) { [void]$hoja.Protect([Type]::Missing, $true, $true, $true) }
+                }
+                # El Glosario dice qué es cada estado (si no está esa hoja, no es un problema)
+                try {
+                    $glosario = $wb.Worksheets.Item('Glosario')
+                    $linea = $glosario.Range('A1:A40').Find('Estado')
+                    if ($linea) {
+                        $celda = $glosario.Cells.Item($linea.Row, 2)
+                        $texto = [string]$celda.Value2
+                        if ($texto -notmatch 'Post-venta') {
+                            $bloqueada = [bool]$glosario.ProtectContents
+                            if ($bloqueada) { [void]$glosario.Unprotect() }
+                            try { $celda.Value2 = $texto.TrimEnd() + ' Adjudicado: en ejecución. Post-venta: entregado, se sigue atendiendo. Cerrado: adjudicado y ya terminó.' }
+                            finally { if ($bloqueada) { [void]$glosario.Protect([Type]::Missing, $true, $true, $true) } }
+                        }
+                    }
+                } catch {}
+                [void]$resultados.Add(@{ i = $i; ok = $true; fila = 0; detalle = 'lista de Estado al día' })
             }
             else { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = "operación desconocida: $($o.op)" }) }
         }

@@ -38,6 +38,10 @@ Hace cuatro cosas, y ninguna borra ni mueve filas:
    lo que el equipo escribe en el Excel llega al Portal y a las demás
    herramientas en esta misma vuelta, sin esperar al procesador (cada 2 horas).
 
+Al terminar corre la vuelta de las carpetas de los proyectos (``carpetas_oferta.py``,
+2026-11-02). Y una sola vez deja en el Excel la lista de la columna Estado con
+los estados nuevos, Post-venta y Cerrado, para que también se puedan elegir ahí.
+
 Las columnas se ubican por su encabezado, nunca por su letra: el 2026-10-27
 alguien insertó «Cliente» entre Título y Ubicación, y con las letras fijas de
 entonces una fila nueva habría escrito la ubicación en «Cliente».
@@ -64,6 +68,7 @@ import tempfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import carpetas_oferta
 import esquemas
 import intercambio
 import requerimientos
@@ -90,6 +95,7 @@ EDITABLES = ("estado", "canal", "captador", "evaluador", "titulo", "cliente", "u
 # Un cambio que llega antes que la fila que lo crea (OneDrive sincroniza los archivos en cualquier orden)
 # espera esto antes de rechazarse.
 ESPERA_FILA = timedelta(hours=24)
+INTENTOS_LISTA = 3
 
 
 def _es_formula(valor) -> bool:
@@ -336,11 +342,11 @@ def _leer_estado() -> dict:
         return {}
 
 
-def _guardar_estado(firma: str, escritas: dict) -> None:
+def _guardar_estado(firma: str, escritas: dict, lista: dict | None = None) -> None:
     # Lo escrito desde el Portal: solo lo de los últimos 60 días sirve para decidir quién manda
     limite = (datetime.now().astimezone() - timedelta(days=60)).isoformat()
     escritas = {k: v for k, v in escritas.items() if str(v.get("enviado") or "") >= limite[:10]}
-    ESTADO.write_text(json.dumps({"firma": firma, "escritas": escritas}, ensure_ascii=False), encoding="utf-8")
+    ESTADO.write_text(json.dumps(dict(lista or {}, firma=firma, escritas=escritas), ensure_ascii=False), encoding="utf-8")
 
 
 def _publicar(raiz: Path, planilla: Path, avisos: list) -> bool:
@@ -363,7 +369,10 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     previo = _leer_estado()
     escritas = dict(previo.get("escritas") or {})
     firma = _firma(planilla)
-    if not nuevos_m and not editar_m and previo.get("firma") == firma:
+    # La lista de la columna Estado del Excel: una vez, y a la tercera se deja de intentar (queda en el log)
+    lista = {k: previo[k] for k in ("listaEstados", "intentosEstados") if k in previo}
+    falta_lista = previo.get("listaEstados") != list(requerimientos.ESTADOS) and int(previo.get("intentosEstados") or 0) < INTENTOS_LISTA
+    if not nuevos_m and not editar_m and not falta_lista and previo.get("firma") == firma:
         return {"activo": True, "detalle": "sin cambios"}
     modificada = datetime.fromtimestamp(planilla.stat().st_mtime).astimezone()
     cambio_excel = previo.get("firma") != firma
@@ -372,7 +381,11 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     filas = leer_filas(planilla)
     publicados = ((intercambio.leer_publicacion(raiz, requerimientos.PUBLICACION) or {}).get("datos") or {}).get("requerimientos") or []
     ops, avisos = plan_fijar(filas, publicados)
-    tomados = numeros_tomados(filas) | {o["numero"] for o in ops}
+    op_lista = None
+    if falta_lista and "estado" in columnas:
+        c = columnas["estado"]
+        op_lista = {"op": "estados", "lista": list(requerimientos.ESTADOS), "letra": c["letra"], "encabezados": {c["letra"]: c["encabezado"]}}
+    tomados = numeros_tomados(filas) | {o["numero"] for o in ops if "numero" in o}
     # Lo que ya lleva un N° fuera de la planilla: los demás pedidos y las carpetas de proyecto
     reservados = {int(x["requerimiento"]["numero"]) for x in nuevos_m if isinstance((x.get("requerimiento") or {}).get("numero"), int)}
     for p in ((intercambio.leer_publicacion(raiz, "proyectos") or {}).get("datos") or {}).get("proyectos") or []:
@@ -474,6 +487,8 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         escribir_m.append((m, op, detalle, cambios))
         ops.append(op)
 
+    if op_lista is not None:
+        ops.append(op_lista)
     if simular:
         return {"activo": True, "simulado": True, "operaciones": ops, "avisos": avisos,
                 "archivar": [(x[0]["id"], x[1], x[2]) for x in archivar]}
@@ -481,7 +496,7 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         intercambio.archivar(raiz, m, estado, detalle, extra=extra or None)
 
     if not ops:
-        _guardar_estado(firma, escritas)
+        _guardar_estado(firma, escritas, lista)
         publicada = _publicar(raiz, planilla, avisos) if cambio_excel else False
         return {"activo": True, "detalle": "N° ya fijos; nada que escribir" + ("; planilla republicada" if publicada else ""),
                 "avisos": avisos}
@@ -493,7 +508,14 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         return {"activo": True, "detalle": f"planilla {resultado.get('estado')}: {resultado.get('detalle')}", "avisos": avisos}
     por_i = {r["i"]: r for r in resultado.get("resultados") or []}
     fijados = sum(1 for i, o in enumerate(ops) if o["op"] == "fijar" and (por_i.get(i) or {}).get("ok"))
+    if op_lista is not None:
+        if (por_i.get(ops.index(op_lista)) or {}).get("ok"):
+            lista = {"listaEstados": op_lista["lista"]}
+        else:
+            lista = {"intentosEstados": int(previo.get("intentosEstados") or 0) + 1}
     registrados = editados = 0
+    # Para la vuelta de las carpetas: lo que cambió el propio Formulador (no se le devuelve) y los N° que cambiaron al escribir
+    del_formulador, renumerados = [], []
     for m, op, detalle, cambios in escribir_m:
         r = por_i.get(ops.index(op)) or {}
         if not r.get("ok"):
@@ -502,6 +524,8 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         if m["tipo"] == TIPO_NUEVO:
             registrados += 1
             texto = [f"Registrado en la planilla: N° {op['numero']}, fila {r.get('fila')}."] + detalle
+            if op["numero"] != m["requerimiento"]["numero"]:
+                renumerados.append((m["requerimiento"]["numero"], op["numero"], m["requerimiento"].get("titulo")))
         elif op["op"] == "nueva":
             texto = detalle
         else:
@@ -509,13 +533,16 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
             texto = [f"Cambiado en la planilla: N° {op['numero']}, fila {r.get('fila')}."] + detalle
             for campo, valor in cambios.items():
                 escritas[f"{op['numero']}|{campo}"] = {"valor": valor, "enviado": m["origen"]["enviado"]}
+            if m["origen"]["herramienta"] == "formulador":
+                del_formulador.append(op["numero"])
         intercambio.archivar(raiz, m, "aplicado", texto, extra={"requerimiento": op["numero"], "fila": r.get("fila")})
     fallidos = [r for r in resultado.get("resultados") or [] if not r.get("ok")]
-    _guardar_estado(_firma(planilla) if not fallidos else previo.get("firma") or "", escritas)
+    _guardar_estado(_firma(planilla) if not fallidos else previo.get("firma") or "", escritas, lista)
     # Las demás herramientas lo ven ya, sin esperar la vuelta del procesador (cada 2 horas)
     _publicar(raiz, planilla, avisos)
     return {"activo": True, "detalle": f"{fijados} N° fijados, {registrados} requerimiento(s) registrado(s), {editados} cambiado(s)",
-            "avisos": avisos + [r.get("detalle") for r in fallidos if r.get("detalle")]}
+            "avisos": avisos + [r.get("detalle") for r in fallidos if r.get("detalle")],
+            "delFormulador": del_formulador, "renumerados": renumerados}
 
 
 LOGS = AQUI.parent / "logs"
@@ -527,10 +554,19 @@ def main(argv=None) -> int:
         resultado = vuelta(simular="--simular" in argv)
     except Exception as error:  # noqa: BLE001 -- queda en el log; la vuelta siguiente reintenta
         resultado = {"activo": True, "detalle": f"error: {error}"}
+    # La carpeta de cada proyecto (2026-11-02), con lo que acaba de escribirse en el Excel ya publicado
+    if "--simular" not in argv:
+        try:
+            carpetas = carpetas_oferta.resumen(carpetas_oferta.vuelta(renumerados=resultado.pop("renumerados", None),
+                                                                      del_formulador=resultado.pop("delFormulador", ())))
+            if carpetas:
+                resultado["carpetas"] = carpetas
+        except Exception as error:  # noqa: BLE001 -- queda en el log; la vuelta siguiente reintenta
+            resultado["carpetas"] = f"error: {error}"
     linea = json.dumps(resultado, ensure_ascii=False, default=str)
     print(json.dumps(resultado, ensure_ascii=False, indent=1, default=str) if "--simular" in argv else linea)
     # Una línea por vuelta que hizo algo (las «sin cambios» de cada 10 minutos no se anotan)
-    if "--simular" not in argv and resultado.get("detalle") != "sin cambios":
+    if "--simular" not in argv and (resultado.get("detalle") != "sin cambios" or resultado.get("carpetas")):
         LOGS.mkdir(exist_ok=True)
         with open(LOGS / f"planilla_{datetime.now():%Y-%m}.log", "a", encoding="utf-8") as log:
             log.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} {linea}\n")

@@ -38,3 +38,31 @@ que de verdad se usan).
   fila es una tarjeta.
 - **Pruebas**: desde `test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel` en `test_portal.py` (datos de mentira,
   sobre `_intercambio_de_prueba`). El escritor tiene las suyas en `Sistema Intercambio/tests/test_planilla_escritura.py`.
+
+## El estado y la carpeta de cada proyecto (2026-11-02)
+
+Pedido del usuario: al crearse un proyecto en la Planilla, su carpeta en «Formulación de proyectos» con la estructura de siempre,
+como carpeta principal del proyecto; cambiar el estado desde la Planilla, con **Post-venta** (entregado, se sigue atendiendo) y
+**Cerrado** (adjudicado y terminado); que un cambio hecho en cualquier parte se vea en todo el portal, y un aviso antes de que la
+carpeta se mueva. Funciones `est*` y `pqCarpetasDe`, `pqPlanCarpeta`, `pqNombreCarpeta`, `pqCrearCarpeta`; diálogo `#dlgEstado`.
+
+- **El Estado vive en la Planilla.** Toda vista lo cambia con `estCambiar(n, nuevo)`: la Planilla (la etiqueta de cada fila es una
+  lista, `estSelector`, y su diálogo), el detalle del Recorrido, «Proyectos en ejecución» y «Dar por cerrado» de la Planificación.
+  Deja un `editar-requerimiento`, que `pqMezclar` muestra al instante en todas las vistas, y `rcArmar` le da precedencia sobre lo
+  que dice la formulación (`x.estadoPedido`, `RC_FORM_DE`) hasta que el procesador se la lleve al Formulador.
+- **El aviso** (`estPreguntar`): si el nuevo estado mueve la carpeta, dice de dónde a dónde (`estPasos`) antes de cambiar nada; al
+  aceptar se deja también un `mover-carpeta`. Para Cerrado o Post-venta con ficha en el Análisis bajo el 100 %, ofrece pedirlo.
+- **Adónde va** (`PQ_CARPETA`): la misma tabla de `Sistema Intercambio/carpetas_oferta.py` (`DESTINOS`) y del Formulador
+  (`js/oferta.js`); `test_la_carpeta_de_cada_estado_es_la_misma_en_el_portal_el_procesador_y_el_formulador` compara las tres, el
+  nombre y las subcarpetas (con `QUEMPIN_FORMULADOR_REPO` apunta a una rama de trabajo del Formulador). Dónde está ahora cada
+  carpeta lo dice `proyectos.json` (`carpetas.oferta`, `carpetas.ejecucion`), más lo creado en este navegador (`pq.nuevas`).
+- **Quién mueve**: el computador del procesador, en la vuelta de 10 minutos (`carpetas_oferta.py`). El navegador no puede mover
+  carpetas, y QUEMPIN.exe (`quempin://trasladar`, que lo hacía antes) dependía del computador de quien lo pedía.
+- **La carpeta nueva** se crea aquí al guardar el requerimiento (`pqCrearCarpeta`, en la raíz de la biblioteca, con
+  `PQ_ESTRUCTURA`), si este navegador tiene la biblioteca completa; si no, la crea el procesador. Una fila sin carpeta tiene
+  «Crear carpeta» en su diálogo. Lo que entra «Descartado» o «No adjudicado» no lleva carpeta.
+- **Lo cambiado en el Excel** no mueve nada solo (ahí no hay cómo avisar antes): la franja `#pqSinc` lista las carpetas de
+  proyectos en curso que no están donde dice su estado (`estFueraDeLugar`), cada una con «Mover», y el diálogo de cada fila lo dice.
+- **Retirar** un cambio de estado retira también el pedido de mover su carpeta.
+- **«Dar por cerrado»** de un proyecto con fila en la Planilla cambia su Estado a Cerrado y además deja la marca (quién, cuándo,
+  nota). Una marca sola cierra un proyecto sin fila, o uno que la Planilla todavía tiene «Adjudicado» (con un aviso).
