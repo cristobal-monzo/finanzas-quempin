@@ -21,7 +21,6 @@ import re
 import shutil
 import threading
 from pathlib import Path
-from urllib.parse import quote
 
 import pytest
 
@@ -6034,94 +6033,5 @@ def test_la_vista_de_observaciones_sin_desbordes(navegador, sitio, ancho):
     derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#vistaObservaciones *')]
         .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))""")
     assert derecha <= ancho + 0.5, derecha
-    assert not errores
-    pagina.context.close()
-
-
-# ---- Carpeta de respaldo (2026-11-02) -------------------------------------------------------------
-_WEB_CC = "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos"
-_WEB_AF = "https://quempinspa2020.sharepoint.com/Documentos compartidos/Análisis Financiero"
-_WEB_FORMULACION = "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos"
-_WEB_CONTROL = "https://quempinspa2020.sharepoint.com/sites/EntornoQuempin/Documentos compartidos/Orden Interno/Control Cotizaciones y OC"
-RESPALDOS = {
-    "planilla": _WEB_FORMULACION, "formulador": _WEB_FORMULACION, "proyectos": _WEB_FORMULACION,
-    "cotizador": _WEB_CC, "centro-costos": _WEB_CC, "subir-cc": _WEB_CC + "/Facturas y Boletas",
-    "ingresar": _WEB_AF, "analisis": _WEB_AF,
-    "flujo-caja": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Flujo de Caja",
-    "cotizacion": _WEB_CONTROL, "orden-compra": _WEB_CONTROL,
-}
-
-
-def test_la_carpeta_de_respaldo_en_el_registro():
-    herramientas = {h["id"]: h for h in _registro()["herramientas"]}
-    con_respaldo = {i: h["respaldo"]["web"] for i, h in herramientas.items() if "respaldo" in h}
-    assert con_respaldo == RESPALDOS
-    for i, h in herramientas.items():
-        r = h.get("respaldo")
-        if r:
-            assert r["archivo"], i
-            assert bool(h.get("peru")) == bool(r.get("archivoPeru")), i
-    # Las mismas carpetas que muestra Configuración y conexiones
-    cx = {e["id"]: e for e in _conexiones()["elementos"]}
-    assert cx["biblioteca"]["web"] == _WEB_FORMULACION
-    assert cx["control"]["web"] == _WEB_CONTROL
-    assert cx["facturas"]["web"] == RESPALDOS["subir-cc"]
-    assert cx["flujo"]["web"] == RESPALDOS["flujo-caja"]
-
-
-def test_la_carpeta_de_respaldo_se_abre_desde_el_inicio_y_las_pestanas(navegador, sitio):
-    pagina, errores = _abrir_portal(navegador, sitio)
-    fila = pagina.locator('.ini-respaldo[data-herr="centro-costos"]')
-    assert fila.is_visible()
-    assert fila.get_attribute("href") == quote(_WEB_CC, safe=":/")
-    assert fila.get_attribute("target") == "_blank" and fila.get_attribute("rel") == "noopener"
-    assert fila.get_attribute("aria-label") == "Carpeta de respaldo: Centro de Costos.xlsx"
-    assert pagina.locator('.ini-respaldo[data-herr="cotizacion"]').is_visible()     # Sistema QUEMPIN no abre pestaña
-    assert pagina.locator('.ini-respaldo[data-herr="planificacion"]').count() == 0   # sin Excel ni documentos
-    # No se monta sobre el nombre de la fila
-    cajas = pagina.evaluate("""() => {
-        const a = document.querySelector('.ini-respaldo[data-herr="orden-compra"]').getBoundingClientRect();
-        const f = document.querySelector('.ini-item[data-herr="orden-compra"] .ini-fuera').getBoundingClientRect();
-        return [f.right, a.left];
-    }""")
-    assert cajas[0] <= cajas[1]
-    boton = pagina.locator("#btnRespaldo")
-    assert boton.is_hidden()                  # en el Inicio no hay herramienta abierta
-    pagina.locator('.ini-item[data-herr="centro-costos"]').click()
-    assert boton.is_visible()
-    assert boton.get_attribute("href") == quote(_WEB_CC, safe=":/")
-    # Perú: la misma carpeta, otro Excel
-    pagina.locator("#pais").select_option("pe")
-    assert boton.get_attribute("title") == "Carpeta de respaldo: Centro de Costos Perú.xlsx"
-    pagina.locator("#pais").select_option("cl")
-    # Una vista del portal también la lleva; una sin respaldo, no
-    pagina.locator(".pestana.solo .ir").click()
-    pagina.locator('.ini-item[data-herr="planilla"]').click()
-    assert boton.is_visible() and boton.get_attribute("title").endswith("Planilla de Ingreso de Requerimientos.xlsx")
-    pagina.locator(".pestana.solo .ir").click()
-    pagina.locator('.ini-item[data-herr="planificacion"]').click()
-    assert boton.is_hidden()
-    assert not errores
-    pagina.context.close()
-
-
-def test_la_carpeta_de_respaldo_del_formulador_es_la_del_proyecto(navegador, sitio):
-    pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.evaluate("d => localStorage.setItem('qpn.formulacion.proyectos.v1', JSON.stringify(d))", _proyectos_con_carpeta())
-    pagina.reload()
-    pagina.locator("#vistaInicio").wait_for()
-    fila = pagina.locator('.ini-respaldo[data-herr="formulador"]')
-    assert fila.get_attribute("href") == quote(_WEB_FORMULACION, safe=":/")     # sin proyecto, la biblioteca
-    pagina.locator('.ini-item[data-herr="formulador"]').click()
-    boton = pagina.locator("#btnRespaldo")
-    assert boton.get_attribute("title").startswith("Carpeta de respaldo:")
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Obra de prueba").click()
-    assert boton.get_attribute("href") == quote(_WEB_FORMULACION, safe=":/") + "/0%20OFERTAS%20PRESENTADAS/312.%20Gimnasio%20de%20prueba"
-    assert "312. Gimnasio de prueba" in boton.get_attribute("title")
-    # Ya copiada a Gestión de Proyectos: esa copia
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Mantención de prueba").click()
-    assert boton.get_attribute("href") == "https://quempinspa2020.sharepoint.com/sites/Proyectos/Documentos%20compartidos/250.%20Obra%20de%20prueba"
     assert not errores
     pagina.context.close()

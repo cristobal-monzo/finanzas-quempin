@@ -38,7 +38,7 @@ el mapa de `main()`.
 | `Excel/Centro de Costos.xlsx` | El libro maestro: el único que el script escribe |
 | `Excel/Respaldos/<Mes Año>/` | Respaldos automáticos de cada `run`. No borrar sin confirmar con el usuario |
 | `Sitio de comunicación - Centro de Costos 1/Facturas y Boletas/<Chile\|Perú>/<Proyecto>/` | **Fuente oficial** (`RAIZ_DOCS`, acceso directo de OneDrive a SharePoint): aquí suben los colegas |
-| `Sitio de comunicación - Centro de Costos 1/Centro de Costos.xlsx` y `Centro de Costos Perú.xlsx` | Reflejo de solo lectura (PASO 12b; Perú desde 2026-11-02); lo abre el símbolo de carpeta del Portal. Si está bloqueado, `[WARN]` sin abortar |
+| `Sitio de comunicación - Centro de Costos 1/Centro de Costos.xlsx` | Reflejo de solo lectura (PASO 12b); si está bloqueado, `[WARN]` sin abortar |
 | `Facturas y Boletas/` | Legado: el script no la lee. No se borra ni se deposita ahí |
 | `Sistema/reconciliacion_archivos.json` | Mapeo de los 24 documentos del bootstrap y de las copias exactas. **No lo borres** o se verían como pendientes |
 | `Sistema/correcciones_manuales.json` | Bitácora de correcciones (azul marino) |

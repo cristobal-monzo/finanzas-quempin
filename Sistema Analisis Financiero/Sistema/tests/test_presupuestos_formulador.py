@@ -952,36 +952,3 @@ def test_se_sugiere_el_tag_por_el_n_del_codigo():
     assert pf.sugerir_tag(item, []) == "303"
 
 
-# ── LA COPIA PARA EL EQUIPO (2026-11-02: el Excel de Perú, para el símbolo de carpeta del Portal) ──
-
-def test_la_copia_para_el_equipo_sale_del_excel_ya_guardado(entorno, monkeypatch):
-    copia = entorno["tmp"] / "Copia para el equipo.xlsx"
-    monkeypatch.setitem(af.PAISES, "ZZ", dict(
-        af.PAISES["CL"], ruta_excel_af=entorno["af"], ruta_excel_cc=entorno["cc"], raiz_facturas_cc=entorno["facturas"],
-        raiz_intercambio=None, ruta_estado_intercambio=None, ruta_excel_equipo=copia,
-    ))
-    monkeypatch.setattr(af, "actualizar_visualizador_af", lambda pais="CL": True)
-    resumen = af.ejecutar(raiz_respaldos=entorno["respaldos"], ruta_clientes_pendientes=entorno["tmp"] / "clientes_pendientes.json", pais="ZZ")
-    assert resumen["error"] is None
-    assert copia.read_bytes() == entorno["af"].read_bytes()
-
-
-def test_con_otro_excel_o_con_la_copia_bloqueada_no_pasa_nada(entorno, monkeypatch):
-    copia = entorno["tmp"] / "Copia para el equipo.xlsx"
-    monkeypatch.setitem(af.PAISES, "ZZ", dict(af.PAISES["CL"], raiz_intercambio=None, ruta_estado_intercambio=None, ruta_excel_equipo=copia))
-    monkeypatch.setattr(af, "actualizar_visualizador_af", lambda pais="CL": True)
-    # Un libro que no es el del país (las pruebas) no sale a la carpeta del equipo
-    resumen = af.ejecutar(entorno["af"], entorno["cc"], entorno["facturas"], entorno["respaldos"],
-                          ruta_clientes_pendientes=entorno["tmp"] / "clientes_pendientes.json", pais="ZZ")
-    assert resumen["error"] is None and not copia.exists()
-    # Con la copia abierta por alguien, solo un aviso: el Excel propio quedó bien
-    monkeypatch.setitem(af.PAISES["ZZ"], "ruta_excel_af", entorno["af"])
-    monkeypatch.setitem(af.PAISES["ZZ"], "ruta_excel_cc", entorno["cc"])
-    monkeypatch.setitem(af.PAISES["ZZ"], "raiz_facturas_cc", entorno["facturas"])
-
-    def bloqueada(*a, **k):
-        raise PermissionError("abierta")
-    monkeypatch.setattr(af.shutil, "copy2", bloqueada)
-    resumen = af.ejecutar(raiz_respaldos=entorno["respaldos"], ruta_clientes_pendientes=entorno["tmp"] / "clientes_pendientes.json", pais="ZZ")
-    assert resumen["error"] is None
-    assert any("copia para el equipo" in a for a in resumen["avisos"])

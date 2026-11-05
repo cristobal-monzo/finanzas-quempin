@@ -29,15 +29,13 @@ viaja sin la regla que lo produjo.
 
 No se publica en la carpeta de intercambio: es la caja de la empresa, y esa
 carpeta la ve todo el que entra a la biblioteca de Formulación. Sale a su
-Excel (``Excel/Flujo de Caja.xlsx``), a la copia de ese Excel en la carpeta del
-equipo (``copiar_para_el_equipo``) y a su tablero (con contraseña).
+Excel (``Excel/Flujo de Caja.xlsx``) y a su tablero (con contraseña).
 """
 
 import json
 import math
 import os
 import re
-import shutil
 import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -62,12 +60,6 @@ RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Flujo de Caja.xlsx"
 # vive aquí al lado, como la foto del Centro de Costos.
 RUTA_EXCEL_AF = RAIZ_FINANZAS / "Análisis Financiero" / "Análisis de Proyectos 2026.xlsx"
 RUTA_PARAMETROS = RAIZ / "parametros_flujo_caja.json"   # saldo inicial y ajustes (gitignoreado)
-# La copia para el equipo (pedido del usuario, 2026-11-02): el Excel de arriba vive
-# en el OneDrive de quien administra las finanzas, donde nadie más entra, y el
-# símbolo de carpeta del Portal abre «Documentos compartidos/Flujo de Caja» en el
-# sitio del equipo, igual que el Centro de Costos y el Análisis Financiero. Llega a
-# este computador con un acceso directo de OneDrive, en la raíz de OneDrive o aquí.
-NOMBRE_ACCESO_EQUIPO = re.compile(r"Flujo de Caja( \d+)?$")
 
 SUPUESTOS = {
     "saldoInicial": 0,
@@ -770,33 +762,6 @@ def escribir_excel(datos: dict, ruta: Path = RUTA_EXCEL) -> Path:
     return ruta
 
 
-def carpeta_equipo() -> Path | None:
-    """El acceso directo de OneDrive a la carpeta del equipo, o None si este computador no lo tiene."""
-    for padre in (RAIZ_MODULO, ubicacion.raiz_onedrive(RAIZ)):
-        if padre is None or not padre.is_dir():
-            continue
-        for carpeta in sorted(padre.iterdir()):
-            if carpeta.is_dir() and NOMBRE_ACCESO_EQUIPO.search(carpeta.name):
-                return carpeta
-    return None
-
-
-def copiar_para_el_equipo(ruta_excel: Path, carpeta: Path | None) -> bool:
-    """Deja la copia del Excel ya guardado. Si no se puede solo avisa: el Excel de
-    aquí quedó bien y la próxima corrida lo vuelve a intentar."""
-    if carpeta is None:
-        print("  [WARN] Sin copia para el equipo: este computador no tiene el acceso directo de OneDrive "
-              "a «Documentos compartidos/Flujo de Caja». La carpeta del Portal queda como estaba.")
-        return False
-    try:
-        shutil.copy2(ruta_excel, carpeta / ruta_excel.name)
-    except OSError as error:        # abierta por alguien, o sin sincronizar
-        print(f"  [WARN] No se pudo actualizar la copia para el equipo ({error}); se reintenta en la próxima corrida.")
-        return False
-    print(f"  [OK] Copia para el equipo: {carpeta / ruta_excel.name}")
-    return True
-
-
 def ejecutar(raiz_intercambio: Path | None = None, ruta_excel: Path = RUTA_EXCEL, escribir: bool = True,
              hoy: date | None = None) -> dict:
     """status (escribir=False) o run. Devuelve los datos y, en run, la ruta del Excel o el error."""
@@ -810,7 +775,4 @@ def ejecutar(raiz_intercambio: Path | None = None, ruta_excel: Path = RUTA_EXCEL
             datos["excel"] = str(escribir_excel(datos, ruta_excel))
         except PermissionError as error:
             datos["avisos"].append(f"No se pudo guardar el Excel (¿abierto?): {error}")
-        # Con otro Excel (las pruebas) no sale nada a la carpeta del equipo
-        if datos["excel"] and ruta_excel == RUTA_EXCEL:
-            copiar_para_el_equipo(ruta_excel, carpeta_equipo())
     return datos

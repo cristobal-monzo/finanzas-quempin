@@ -59,12 +59,6 @@ Reglas que no son parámetros:
 - `Visualizador Web/build/index.html` — tablero con contraseña, subruta
   `flujo-de-caja` en GitHub Pages (ver `Visualizador Web/CLAUDE.md`).
 
-- Copia del Excel en `Documentos compartidos/Flujo de Caja`, en el sitio del equipo
-  (pedido del usuario, 2026-11-02): la abre el símbolo de carpeta del Portal. La deja
-  `copiar_para_el_equipo` en cada `run`, a través de un acceso directo de OneDrive
-  en este computador (`carpeta_equipo`); sin él, solo un `[WARN]`. Quien entra a esa
-  carpeta ve la caja de la empresa.
-
 **Nunca** se publica en la carpeta de intercambio: esa carpeta la ve toda la
 biblioteca de Formulación, y esto es la caja de la empresa.
 
