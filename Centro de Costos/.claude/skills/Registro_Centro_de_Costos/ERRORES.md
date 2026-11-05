@@ -559,3 +559,14 @@ el valor — ver
   creadas (excepción deliberada a la regla de oro del módulo), así que
   corresponde hacerlo vía `/Revision_de_Errores` y dejar constancia acá,
   no en un `run` normal.
+
+- **2026-11-05 — Nota de crédito 427 de Vex Chile archivada sin registrar
+  (Fiscalía Quilpué y Quintero)**: `Documento (3).pdf` era la nota de
+  crédito 427 (27-07-2026) que anula la factura 10595 (15-07-2026) por cambio
+  de tamaño del extractor. La 10595 nunca entró al libro y el 2026-10-27 el
+  usuario decidió registrar solo la factura de reemplazo 10623 como costo
+  final, así que registrar la nota restaba de más. Seguía como «pendiente
+  sin datos» y bloqueaba `/Actualizar_Finanzas`. Por decisión del usuario se
+  sacó de la carpeta compartida a `Excel/Respaldos/Noviembre 2026/`, con el
+  motivo en el nombre. Regla: una nota de crédito cuya factura original no
+  está en el libro no se registra; se archiva.

@@ -104,6 +104,7 @@ PREFIJOS_PROYECTO = {
     "Fuga quintero": "FUGQ",
     "Llay llay Caldera CESFAM": "LLAY",
     "KeyProcess": "KPH2",                    # N° 289 «Instalación H2 KeyProcess»: su TAG en el Análisis Financiero
+    "H2 Green": "H2GN",                      # N° 281 «Instalación y fabricación sistema H2»: su TAG en la Planilla
 }
 # "Junji V2" (JUN2) existio entre el 2026-09-10 y el 2026-09-11: era el
 # reingreso de facturas que en "Junji's Valparaiso" se habian cargado cortadas,
