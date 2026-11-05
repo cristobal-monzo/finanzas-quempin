@@ -163,3 +163,21 @@ lo define el campo `respaldo` del registro. `test_la_carpeta_de_respaldo_en_el_r
 - **Sin símbolo**: Oportunidades, Recorrido, Planificación, Proyectos en ejecución, Carta Gantt y observaciones solo
   tienen archivos del Intercambio, que no se editan a mano; las calculadoras no guardan datos.
 - **Abierta aparte** (fuera del portal), una herramienta no lo muestra.
+
+## La explicación en un ícono ⓘ (2026-11-05)
+
+Pedido del usuario: pantallas de gestión de proyectos mucho más limpias, sin texto explicativo a la vista; lo que
+explica va en un ícono. Regla para lo que venga: **en la pantalla, el dato y la acción; el porqué y el cómo, en un ⓘ**.
+
+- **Componente único**: `info(contenido, etiqueta)` devuelve el ⓘ (texto, nodo o lista); `lineaInfo(clase, corto, largo)`
+  arma una línea de pocas palabras con su ⓘ (p. ej. «Sin carpeta en el Centro de Costos ⓘ»). En el HTML se escribe
+  `<span class="info" data-etiqueta="…">el texto</span>` y `infoPreparar()` lo convierte al arrancar. Un solo globo
+  (`#infoPop`, `popover="manual"`, en la capa superior, también sobre los diálogos).
+- **Cómo se abre**: al pasar el mouse (se cierra al salir) o al tocarlo (queda abierto hasta tocar fuera o Esc). El clic en
+  el ⓘ no llega a la tarjeta, etiqueta o resumen donde está. El texto sigue en la página, escondido (`.info-txt`), como
+  `aria-describedby` del botón: las pruebas lo leen con `text_content()`.
+- **Dónde quedó**: el subtítulo de cada vista (Recorrido, Planificación, Planilla, En ejecución, Subir, Observaciones); en
+  «Proyectos en ejecución», la explicación de cada panel (`ejPanel(titulo, extra, ayuda)`) y las carpetas que faltan; la
+  sincronización con el Excel y el pie del diálogo de la Planilla; los envíos recientes de Subir; el usuario de la cabecera.
+- **Lo que no se esconde**: avisos que piden algo (un cambio que lleva mucho sin llegar al Excel, un pedido esperando, lo
+  que trae la Planificación), cifras y estados. Las cifras del Recorrido dejan su explicación en el `title` de la tarjeta.

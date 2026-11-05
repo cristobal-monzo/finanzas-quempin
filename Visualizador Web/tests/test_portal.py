@@ -4683,7 +4683,10 @@ def test_proyectos_en_ejecucion_pasa_la_oferta_a_gestion(navegador, sitio):
         oferta=["0 OFERTAS PRESENTADAS/908. En obra"]))
     cab = pagina.locator("#ejProyecto .ej-cab")
     assert cab.locator('[data-foco="carpeta-facturas"]').count() == 0
-    assert "«Facturas del proyecto»" in cab.locator(".ej-pista").inner_text()
+    # Lo que falta, en pocas palabras; el porqué, en su ⓘ (2026-11-05)
+    pista = cab.locator(".ej-pista")
+    assert pista.inner_text().strip() == "Sin carpeta en Gestión de Proyectos"
+    assert "«Facturas del proyecto»" in pista.locator(".info-txt").text_content()
     cab.locator('[data-foco="trasladar"]').click()
     assert pagina.evaluate("window.__lanzados")[-1] == "quempin://trasladar/formulacion/0%20OFERTAS%20PRESENTADAS/908.%20En%20obra"
     assert not errores
@@ -4695,7 +4698,22 @@ def test_proyectos_en_ejecucion_sin_facturas_del_proyecto_lo_explica(navegador, 
         oferta=["0 OFERTAS ADJUDICADAS/908. En obra"], ejecucion=["908. En obra"]))
     cab = pagina.locator("#ejProyecto .ej-cab")
     assert cab.locator('[data-foco="trasladar"]').count() == 0
-    assert "Todavía no tiene carpeta con su N° en el Centro de Costos" in cab.locator(".ej-pista").inner_text()
+    pista = cab.locator(".ej-pista")
+    assert pista.inner_text().strip() == "Sin carpeta en el Centro de Costos"
+    # La explicación se abre al tocar su ⓘ y se cierra con Esc o tocando fuera
+    pop = pagina.locator("#infoPop")
+    assert pop.is_hidden()
+    pista.locator(".info-i").click()
+    pop.wait_for()
+    assert "Todavía no tiene carpeta con su N° en el Centro de Costos" in pop.inner_text()
+    assert pista.locator(".info-i").get_attribute("aria-expanded") == "true"
+    pagina.keyboard.press("Escape")
+    pop.wait_for(state="hidden")
+    assert pista.locator(".info-i").get_attribute("aria-expanded") == "false"
+    pista.locator(".info-i").click()
+    pop.wait_for()
+    pagina.locator("#ejProyecto .ej-cab h2").click()
+    pop.wait_for(state="hidden")
     assert not errores
     pagina.context.close()
 
