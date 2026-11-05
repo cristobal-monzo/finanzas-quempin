@@ -3,6 +3,8 @@ setlocal
 
 rem Wrapper para el Programador de tareas de Windows.
 rem Corre /Actualizar_Finanzas run sobre los datos reales y deja log en logs\.
+rem --con-pendientes: la tarea no puede leer las facturas nuevas del Centro de
+rem Costos; registra las que tienen datos y deja las otras en la bandeja.
 
 set "PROYECTO=C:\Users\quemp\OneDrive - QUEMPIN SPA\Escritorio\Proyectos Claude\Finanzas QUEMPIN"
 set "PYTHON=C:\Users\quemp\AppData\Local\Python\pythoncore-3.14-64\python.exe"
@@ -20,7 +22,7 @@ echo ============================================================>> "%LOG%"
 echo Inicio: %DATE% %TIME%>> "%LOG%"
 echo ============================================================>> "%LOG%"
 
-"%PYTHON%" "%DRIVER%" run >> "%LOG%" 2>&1
+"%PYTHON%" "%DRIVER%" run --con-pendientes >> "%LOG%" 2>&1
 set "CODIGO=%ERRORLEVEL%"
 
 echo.>> "%LOG%"

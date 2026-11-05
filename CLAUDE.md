@@ -65,8 +65,12 @@ agrega solo lo propio.
 
 ## `/Actualizar_Finanzas`
 
-`py -3.14 ".claude/skills/Actualizar_Finanzas/driver.py" status|run`. `run`
-corre, cada módulo en **su propio proceso** (los `build_visualizador.py` y
+`py -3.14 ".claude/skills/Actualizar_Finanzas/driver.py" status|run`. **Siempre
+empieza por las facturas del Centro de Costos que faltan por registrar** (pedido
+del usuario, 2026-11-05): el agente las completa con el Paso 2 de
+`/Registro_Centro_de_Costos`, y `run` se detiene sin escribir nada (código 3) si
+queda alguna sin datos, salvo `--con-pendientes` (lo usa la tarea de los lunes).
+Después `run` corre, cada módulo en **su propio proceso** (los `build_visualizador.py` y
 `driver.py` homónimos chocan en `sys.modules`): entregas de presupuestos,
 Centro de Costos (encadena AF y los tableros de CC y AF); en paralelo el
 tablero del Cotizador, el estado de los PDF y los presupuestos del Formulador;

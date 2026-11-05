@@ -1,25 +1,42 @@
 ---
 name: Actualizar_Finanzas
-description: Corre todo Finanzas en orden (Centro de Costos con AF y sus tableros, Cotizador, reportes desactualizados, procesador del Intercambio, Flujo de Caja y Oportunidades) y termina con la bandeja de pendientes. Usar SOLO si el usuario escribe "/Actualizar_Finanzas"; ante «actualiza todo», «deja todo al día» o un estado de todos los módulos, confirma primero. Si solo nombra Centro de Costos, usa /Registro_Centro_de_Costos.
+description: Empieza SIEMPRE revisando y registrando las facturas del Centro de Costos que faltan por registrar; después corre todo Finanzas en orden (CC con AF y sus tableros, Cotizador, reportes desactualizados, procesador del Intercambio, Flujo de Caja y Oportunidades) y termina con la bandeja de pendientes. Usar SOLO si el usuario escribe "/Actualizar_Finanzas"; ante «actualiza las finanzas», «actualiza todo», «deja todo al día» o un estado de todos los módulos, confirma primero. Si solo nombra Centro de Costos, usa /Registro_Centro_de_Costos.
 ---
 
 # Actualizar Finanzas
 
 ```
 py -3.14 ".claude/skills/Actualizar_Finanzas/driver.py" status
-py -3.14 ".claude/skills/Actualizar_Finanzas/driver.py" run [--sin-publicar]
+py -3.14 ".claude/skills/Actualizar_Finanzas/driver.py" run [--sin-publicar] [--con-pendientes]
 py -3.14 ".claude/skills/Actualizar_Finanzas/driver.py" oportunidades
 ```
+
+## Paso 1, siempre: las facturas del Centro de Costos que faltan por registrar
+
+Pedido del usuario (2026-11-05): toda actualización de Finanzas, se llegue por `/Actualizar_Finanzas` o por «actualiza
+todo» ya confirmado, **empieza por el Centro de Costos**. Nunca te lo saltes, aunque el pedido no nombre facturas.
+
+1. Desde `Centro de Costos/`: `py -3.14 ".claude/skills/Registro_Centro_de_Costos/driver.py" status` (unos 3 s).
+2. Por cada «Pendiente SIN datos», haz el **Paso 2 de
+   [Registro_Centro_de_Costos](../../../Centro%20de%20Costos/.claude/skills/Registro_Centro_de_Costos/SKILL.md)**: abre la
+   foto o PDF, extrae los datos a `Sistema/datos_extraidos.json` y pregunta solo lo que el documento no resuelve (agrupa
+   las preguntas por proyecto). Revisa también lo que ese `status` diga de OC y documentos mezclados.
+3. Vuelve a correr ese `status` hasta que diga `0`, o queden solo las que no se pueden completar (ilegibles, sin
+   respuesta del usuario, no son un documento de costo): esas se nombran al reportar, con su motivo.
+
+`run` lo hace cumplir: empieza con ese mismo `status` y, si queda alguna factura sin datos, **se detiene sin escribir nada**
+(código 3) y las lista. Usa `--con-pendientes` solo para las del punto 3 que no se pudieron completar, nunca para
+saltarte la revisión. La corrida programada de los lunes lo usa porque no puede leer facturas: registra las que tienen
+datos y deja las demás en la bandeja.
 
 ## `status`: siempre antes de `run`
 
 Solo lectura sobre los 5 drivers (CC, AF, Reportes PDF, Cotizador, Flujo de Caja) y los Presupuestos del Formulador.
-
-**Si mostró pendientes de CC sin datos en `datos_extraidos.json`, complétalos antes**, con el Paso 2 de
-[Registro_Centro_de_Costos](../../../Centro%20de%20Costos/.claude/skills/Registro_Centro_de_Costos/SKILL.md): `run` los
-corre como subproceso y no puede preguntar nada. Si te lo saltas, seguirán pendientes después de `run`.
+Cierra con el bloque «FACTURA(S) QUE FALTAN POR REGISTRAR» si el Paso 1 dejó alguna.
 
 ## `run`: la cadena completa
+
+Antes de todo, el `status` del CC del Paso 1 (ver arriba): sin facturas sin datos, o con `--con-pendientes`, sigue.
 
 0. Presupuestos entregados por archivo (desde navegadores sin la carpeta): van a `publicado/formulador/`. Si falla, sigue.
 1. **CC `run`**: registra documentos y encadena AF (PASO 12d), el tablero de CC (12c) y el de AF. **Si falla, la cadena se
@@ -57,7 +74,9 @@ Los muestra `formulaciones` de [Registro_Analisis_Financiero](../../../Sistema%2
 
 ## Al reportar
 
-Corto: documentos registrados, tableros regenerados y publicados, y qué falta. **Resume la BANDEJA DE PENDIENTES**
+Corto: **primero las facturas del Paso 1** (cuántas se registraron y cuáles quedaron sin registrar, con su motivo, más la
+tabla de posibles errores del Paso 4 de `/Registro_Centro_de_Costos` si notaste alguno), luego tableros regenerados y
+publicados, y qué falta. **Resume la BANDEJA DE PENDIENTES**
 (`Sistema Intercambio/bandeja.py`, cierra `status` y `run`): `[!]` marca lo detenido o fallando. Si un módulo falló, di cuál
 y que el resto se completó.
 

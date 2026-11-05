@@ -49,10 +49,21 @@ Tablero de Oportunidades a diario (2026-10-13, pedido del usuario): 'oportunidad
 arma y publica solo ese tablero; lo corre su propia tarea programada todos
 los dias (tarea_oportunidades.cmd). 'run' lo sigue incluyendo.
 
+Facturas por registrar primero, siempre (2026-11-05, pedido del usuario):
+'run' empieza con el 'status' del Centro de Costos, antes de escribir nada.
+Si hay facturas sin datos en datos_extraidos.json se DETIENE (codigo 3) y las
+lista: el 'run' del CC corre como subproceso y no puede leerlas, asi que antes
+se registraba lo demas y ellas quedaban pendientes sin que nadie lo notara (el
+lunes 02-11 la bandeja no las mostro: solo leia el formato de 'status'). El
+agente las completa con el Paso 2 de /Registro_Centro_de_Costos y vuelve a
+correr. '--con-pendientes' sigue igual, dejandolas en la bandeja: para las que
+no se pudieron completar y para la corrida programada, que no puede leerlas.
+
 Uso:
   python driver.py status               # solo lectura: que haria cada modulo, sin tocar nada
-  python driver.py run                  # cadena completa y publica los tableros regenerados
+  python driver.py run                  # facturas del CC primero; cadena completa y publica
   python driver.py run --sin-publicar   # cadena completa, sin publicar
+  python driver.py run --con-pendientes # sigue aunque haya facturas sin datos (quedan en la bandeja)
   python driver.py oportunidades        # solo el tablero de Oportunidades, y lo publica si quedo al dia
 """
 
@@ -158,6 +169,51 @@ _RE_REPORTES = re.compile(r"(\d+) reporte\(s\) pendiente\(s\)/desactualizado\(s\
 _RE_CC_STATUS = re.compile(r"\[(ERROR|REVISAR|ESTIMADO)\] (\d+) hallazgo\(s\)")
 _RE_CC_RUN = re.compile(r"Hallazgos abiertos \(error/revisar/estimado\):\s+(\d+)")
 _RE_CC_SIN_DATOS = re.compile(r"Pendientes SIN datos .*?: (\d+)")
+# Lo mismo en la salida de 'run' del CC: una linea por archivo, sin total.
+_RE_CC_SIN_DATOS_RUN = re.compile(r"\[WARN\] Sin datos para: (.+)")
+# Las lineas que 'status' del CC lista bajo el total: "  - [Proyecto] archivo".
+_RE_CC_ITEM = re.compile(r"^  - \[(.+?)\] (.+)$")
+CODIGO_FACTURAS_POR_REGISTRAR = 3
+
+
+def _facturas_sin_datos(salida_cc):
+    """(cantidad, ["Proyecto/archivo", ...]) de las facturas que el CC no
+    puede registrar porque les faltan los datos. Lee la salida de 'status'
+    (total + lista, que el CC trunca a 15) o la de 'run' (una linea cada una)."""
+    salida = salida_cc or ""
+    m = _RE_CC_SIN_DATOS.search(salida)
+    if m:
+        nombres = []
+        for linea in salida[m.end():].splitlines()[1:]:
+            item = _RE_CC_ITEM.match(linea)
+            if not item:
+                break
+            nombres.append(f"{item.group(1)}/{item.group(2)}")
+        return int(m.group(1)), nombres
+    nombres = [n.strip().replace("\\", "/") for n in _RE_CC_SIN_DATOS_RUN.findall(salida)]
+    return len(nombres), nombres
+
+
+def _aviso_facturas(salida_cc, detenido):
+    """Bloque visible con las facturas que faltan por registrar. Devuelve
+    cuantas son."""
+    cantidad, nombres = _facturas_sin_datos(salida_cc)
+    if not cantidad:
+        return 0
+    print("\n" + "=" * 72)
+    print(f"  CENTRO DE COSTOS -- {cantidad} FACTURA(S) QUE FALTAN POR REGISTRAR")
+    print("=" * 72)
+    for nombre in nombres:
+        print(f"  - {nombre}")
+    if len(nombres) < cantidad:
+        print(f"  ... y {cantidad - len(nombres)} más (ver el status del Centro de Costos arriba).")
+    print("\n  Completarlas ANTES de 'run': Paso 2 de /Registro_Centro_de_Costos (abrir cada")
+    print("  archivo, extraer sus datos a Sistema/datos_extraidos.json, preguntar solo lo que")
+    print("  el documento no resuelve).")
+    if detenido:
+        print("\n  [DETENIDO] No se escribió nada. Completarlas y volver a correr 'run'. Las que no")
+        print("  se puedan completar: 'run --con-pendientes', y nombrarlas al reportar con su motivo.")
+    return cantidad
 
 
 def _extras_bandeja(bandeja, salida_cc="", salida_reportes="", salida_presupuestos=""):
@@ -186,10 +242,11 @@ def _extras_bandeja(bandeja, salida_cc="", salida_reportes="", salida_presupuest
     if abiertos:
         extras.append(bandeja.Pendiente(
             "medio", f"{abiertos} hallazgo(s) del Centro de Costos por revisar.", "/Revision_de_Errores"))
-    m = _RE_CC_SIN_DATOS.search(salida_cc or "")
-    if m and int(m.group(1)):
+    cantidad, nombres = _facturas_sin_datos(salida_cc)
+    if cantidad:
+        lista = ", ".join(nombres[:3]) + (" ..." if cantidad > 3 else "")
         extras.append(bandeja.Pendiente(
-            "medio", f"{m.group(1)} documento(s) del Centro de Costos sin datos extraidos (no se registran).",
+            "medio", f"{cantidad} factura(s) del Centro de Costos sin registrar (faltan sus datos): {lista}.",
             "completar datos_extraidos.json (Paso 2 de /Registro_Centro_de_Costos)"))
     return extras
 
@@ -480,6 +537,7 @@ def cmd_status():
     ]
     salidas = _ejecutar_varios(trabajos)
     resultados = [(titulo, ok) for titulo, ok, _ in salidas]
+    _aviso_facturas(salidas[0][2], detenido=False)
     _aviso_presupuestos(salidas[4][2])
 
     # En 'status' ningun build se regenera, asi que todos saldran como "sin
@@ -512,12 +570,26 @@ def _aviso_presupuestos(salida):
         print("    usuario y usar 'driver.py formulaciones cargar <uid> <TAG>' (se aplica en el run).")
 
 
-def cmd_run(publicar=True):
+def cmd_run(publicar=True, con_pendientes=False):
     # Marca de tiempo previa a todo: sirve para distinguir que build/index.html
     # se regenero de verdad en esta corrida y cual quedo igual que antes.
     momento_inicio = datetime.now().timestamp()
     inicio = time.perf_counter()
     resultados = []
+
+    # Primero, SIEMPRE, las facturas del Centro de Costos que faltan por
+    # registrar (pedido del usuario, 2026-11-05). Solo lee, unos 3 s. Si hay
+    # alguna sin datos, nada se escribe hasta completarlas (ver el docstring).
+    ok_rev, salida_rev = _ejecutar(
+        "Centro de Costos -- facturas que faltan por registrar (status)",
+        DRIVER_CENTRO_COSTOS, ["status"], obligatorio=not con_pendientes,
+    )
+    if not ok_rev and not con_pendientes:
+        print("\n  [DETENIDO] No se pudo revisar qué facturas faltan por registrar: no se escribió nada.")
+        return 1
+    if _aviso_facturas(salida_rev, detenido=not con_pendientes) and not con_pendientes:
+        return CODIGO_FACTURAS_POR_REGISTRAR
+    resultados.append(("Revisión de facturas del Centro de Costos por registrar", ok_rev))
 
     # 0. Presupuestos entregados por archivo (navegadores sin acceso a la
     #    carpeta): al repositorio del Formulador. Solo escribe en
@@ -670,14 +742,15 @@ def cmd_oportunidades(publicar=True):
 def main():
     comandos = ("status", "run", "oportunidades")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
-        print("Uso: python driver.py [status|run [--sin-publicar]|oportunidades [--sin-publicar]]")
+        print("Uso: python driver.py [status|run [--sin-publicar] [--con-pendientes]|oportunidades [--sin-publicar]]")
         return 2
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     if sys.argv[1] == "status":
         return cmd_status()
     if sys.argv[1] == "oportunidades":
         return cmd_oportunidades(publicar="--sin-publicar" not in sys.argv[2:])
-    return cmd_run(publicar="--sin-publicar" not in sys.argv[2:])
+    return cmd_run(publicar="--sin-publicar" not in sys.argv[2:],
+                   con_pendientes="--con-pendientes" in sys.argv[2:])
 
 
 if __name__ == "__main__":
