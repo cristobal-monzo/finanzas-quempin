@@ -204,6 +204,7 @@
     border: 1px solid var(--border-hairline); box-shadow: var(--sombra);
   }
   .pop-nota { margin: 2px 4px 10px; font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
+  .pop-nota-info { display: flex; align-items: center; gap: 2px; font-weight: 700; color: var(--text-primary); }
   .pop-nota.aviso { color: var(--tinte-texto); background: var(--tinte); border-radius: 8px; padding: 8px 10px; margin: 0 0 10px; }
   .pop-proyecto input {
     width: 100%; height: 40px; padding: 0 12px; margin-bottom: 8px;
@@ -383,6 +384,15 @@
   .ini-nom { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ini-sub { font-size: 12px; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ini-fuera { flex: 0 0 auto; display: inline-flex; color: var(--texto-suave); }
+  /* La carpeta de respaldo (2026-11-02): un símbolo pequeño al final de la fila, con su propio clic */
+  .ini-lista li.con-respaldo { position: relative; }
+  .ini-lista li.con-respaldo .ini-item { padding-right: 38px; }
+  .ini-respaldo {
+    position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; color: var(--texto-suave);
+  }
+  .ini-respaldo:hover { background: var(--gridline); color: var(--brand-orange-ink); }
   /* Ya abierta en una pestaña: un punto naranjo junto al nombre */
   .ini-item.abierta .ini-nom::after {
     content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 7px; vertical-align: 2px;
@@ -600,6 +610,7 @@
   .sc-paso { display: flex; flex-direction: column; gap: 10px; }
   .sc-paso + .sc-paso { padding-top: 14px; border-top: 1px solid var(--gridline); }
   .sc-paso h2, .sc-envios h2 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 900; }
+  .sc-envios h2 { gap: 4px; }
   .sc-n {
     width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
     background: var(--brand-orange); color: #000000; font-size: 13px; font-weight: 900;
@@ -694,9 +705,8 @@
   #rcContenido[hidden] { display: none; }
   /* Cabecera en una línea: título y explicación a la izquierda, la frescura de los datos a la derecha */
   .rc-cab { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 24px; }
-  .rc-cab > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; min-width: 0; }
+  .rc-cab > div:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
   .rc-cab h1 { margin: 0; font-size: 22px; font-weight: 900; line-height: 1.2; }
-  .rc-cab p { margin: 0; font-size: 14px; line-height: 1.4; color: var(--texto-suave); }
   .rc-frescura { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--texto-suave); }
   .rc-frescura .acc-btn { height: 30px; padding: 0 8px; }
   .rc-frescura .cx-enlace { min-height: 30px; padding: 0 10px; font-size: 13px; }
@@ -704,17 +714,18 @@
   /* Resumen: cuatro cifras que también filtran el tablero */
   .rc-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .rc-kpi {
-    min-height: 58px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; column-gap: 12px;
+    position: relative; min-height: 48px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px;
     padding: 8px 14px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
     color: var(--text-primary); text-align: left; cursor: pointer; transition: border-color 0.12s, background-color 0.12s;
   }
   .rc-kpi:hover { border-color: var(--brand-orange); }
   .rc-kpi[aria-pressed="true"] { border-color: var(--brand-orange); background: var(--tinte); box-shadow: inset 0 -3px 0 var(--brand-orange); }
-  .rc-kpi-n { grid-row: 1 / 3; min-width: 1.6ch; font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .rc-kpi-n { min-width: 1.6ch; font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
   .rc-kpi[data-nivel="bad"] .rc-kpi-n { color: var(--estado-bad); }
   .rc-kpi[data-nivel="warn"] .rc-kpi-n { color: var(--brand-orange-ink); }
-  .rc-kpi-et { align-self: end; font-size: 14px; font-weight: 900; line-height: 1.25; }
-  .rc-kpi-sub { align-self: start; font-size: 12px; line-height: 1.35; color: var(--texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-kpi-et { font-size: 14px; font-weight: 900; line-height: 1.25; }
+  /* La explicación de la cifra queda para los lectores de pantalla y en el title de la tarjeta (2026-11-05) */
+  .rc-kpi-sub { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   /* Filtros */
   .rc-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
   .rc-mios {
@@ -878,16 +889,14 @@
   .rc-det-h { margin: 4px 0 -4px; font-size: 13px; font-weight: 900; }
   @container recorrido (max-width: 1340px) { .rc-col-tit h2 { font-size: 13.5px; } }
   @container recorrido (max-width: 1100px) { .rc-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } .rc-col-tit h2 { font-size: 14px; } }
-  @container recorrido (max-width: 900px) { .rc-cab p { display: none; } }
   @container recorrido (max-width: 760px) { .rc-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @container recorrido (max-width: 600px) {
     .rc-tablero { grid-template-columns: minmax(0, 1fr); }
     .rc-cuenta { margin-left: 0; }
     .rc-buscar { flex: 1 1 100%; }
     .recorrido { padding: 12px 16px 24px; }
-    .rc-kpi { min-height: 50px; padding: 6px 12px; }
+    .rc-kpi { min-height: 44px; padding: 6px 12px; }
     .rc-kpi-n { font-size: 22px; }
-    .rc-kpi-sub { display: none; }
   }
   @media (max-width: 560px) {
     .rc-paso .et { display: none; }
@@ -1100,7 +1109,6 @@
   .pl-bloque .t { font-size: 13px; font-weight: 900; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .pl-bloque .s { margin-top: -3px; font-size: 12px; color: var(--texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pl-bloque.otra { border-left-style: dotted; }
-  .pl-dia-vacio { margin: 6px 2px 0; font-size: 12.5px; color: var(--texto-suave); text-align: center; }
   .pl-libres { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
   .pl-libres .et { flex: 1 1 100%; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
   .pl-nuevo { margin-top: 0; }
@@ -1519,7 +1527,6 @@
   @container plan (max-width: 1100px) { .pl-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   /* Angosto: el panel del arrastre va arriba de la tabla, en una franja que se desliza; con el dedo se toca y se colocan */
   @container plan (max-width: 900px) {
-    .plan .rc-cab p { display: none; }
     .pl-con-arr { grid-template-columns: minmax(0, 1fr); }
     .pl-arr { order: -1; position: static; max-height: none; padding: 10px; }
     .pl-arr .pl-arr-pista { display: none; }
@@ -1715,6 +1722,8 @@
   #dlgPlanilla { width: min(620px, calc(100vw - 24px)); }
   #dlgPlanilla .dlg-acc .cx-enlace { min-height: 44px; }
   .pq-formular { margin-right: auto; }
+  .pq-nota { display: inline-flex; align-self: center; }
+  .pq-nota:has(+ .pq-formular[hidden]) { margin-right: auto; }
   .pq-fecha { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 6px; }
   .pq-fecha legend { grid-column: 1 / -1; padding: 0; margin-bottom: 5px; font-size: 13px; font-weight: 900; color: var(--text-primary); }
   .pq-fecha legend i { font-style: normal; font-weight: 700; color: var(--texto-suave); }
@@ -2073,7 +2082,6 @@
   }
   @container ejecucion (max-width: 760px) {
     .ej-tres { grid-template-columns: minmax(0, 1fr); }
-    .ejecucion .rc-cab p { display: none; }
     .ej-filtros { margin-left: 0; }
     .ej-form { grid-template-columns: minmax(0, 1fr); }
     .ej-tarifas { grid-template-columns: minmax(0, 1fr); }
@@ -2263,6 +2271,24 @@
     .dlg-acc .btn-pri { flex: 1 1 auto; }
   }
 
+  /* ---- La explicación en un ícono (2026-11-05): lo que antes era un párrafo bajo un título es un ⓘ que se abre al pasar
+     el mouse o al tocarlo (info(), infoPreparar()). Un solo globo (#infoPop, popover) para todos. ---- */
+  .info { display: inline-flex; flex: 0 0 auto; vertical-align: middle; margin: -4px 0; }
+  .info:not(.lista) { display: none; }
+  .info-i { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%;
+    background: none; color: var(--texto-suave); cursor: help; font: inherit; }
+  .info-i:hover, .info-i[aria-expanded="true"] { color: var(--brand-orange-ink); background: var(--tinte); }
+  .info-i:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+  .info-txt[hidden] { display: none; }
+  .info-pop { position: fixed; inset: auto; margin: 0; box-sizing: border-box; width: max-content; max-width: min(340px, calc(100vw - 24px));
+    padding: 10px 13px; border: 1px solid var(--border-hairline); border-radius: 10px; background: var(--surface-card);
+    color: var(--text-primary); box-shadow: var(--sombra); font-family: inherit; font-size: 13px; font-weight: 400; line-height: 1.5; text-align: left;
+    white-space: normal; text-transform: none; letter-spacing: normal; overflow-wrap: anywhere; }
+  .info-pop:not(:popover-open) { display: none; }
+  .info-pop strong, .info-pop b { font-weight: 800; }
+  /* Una línea corta con su ⓘ: el estado en pocas palabras y el porqué a un toque */
+  .linea-info { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin: 0; font-size: 13px; line-height: 1.5; color: var(--texto-suave); }
+
   /* ---- Teléfono: el menú se despliega encima y el buscador va en su propia fila ---- */
   @media (max-width: 760px) {
     .cab { gap: 4px; padding-right: 8px; }
@@ -2299,6 +2325,8 @@
     .rc-buscar input { font-size: 16px; }
     .sc-input { font-size: 16px; }   /* Subir documentos: con 14 px el iPhone hace zoom al escribir */
     .ini-item { min-height: 48px; }
+    .ini-lista li.con-respaldo .ini-item { padding-right: 50px; }
+    .ini-respaldo { right: 2px; width: 44px; height: 44px; }
     /* Planificación: la ventanita sube desde abajo */
     .pl-pop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-height: 78dvh; }
     /* Con la ventanita abierta abajo, el aviso (con su «Deshacer») va arriba: no tapa «Listo» ni «Siguiente» */
@@ -2375,19 +2403,19 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="pop-proyecto pop-usuario" id="popUsuario" role="dialog" aria-label="Elegir usuario" hidden>
-        <p class="pop-nota">¿Quién eres? En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres; aquí el selector de proyectos muestra primero los tuyos y el Recorrido los marca.</p>
+        <p class="pop-nota pop-nota-info">¿Quién eres? <span class="info" data-etiqueta="Para qué sirve elegir tu usuario">En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres; aquí el selector de proyectos muestra primero los tuyos y el Recorrido los marca.</span></p>
         <ul class="usuarios" id="listaUsuarios" role="listbox" aria-label="Iniciales del equipo"></ul>
         <button class="pop-item" id="sinUsuario" type="button" role="option"><span class="t">Sin usuario</span><span class="s">Lo que hagas no queda a nombre de nadie</span></button>
       </div>
     </div>
     <div class="proyecto">
-      <button class="btn-proyecto" id="btnProyecto" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="popProyecto">
+      <button class="btn-proyecto" id="btnProyecto" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="popProyecto" title="Elige el proyecto una vez: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él">
         <span class="et">Proyecto</span>
         <span class="val" id="proyectoActual">Elegir</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="pop-proyecto" id="popProyecto" role="dialog" aria-label="Elegir proyecto" hidden>
-        <p class="pop-nota" id="popNota">Elige el proyecto una vez: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él.</p>
+        <p class="pop-nota" id="popNota" hidden></p>
         <label class="sr" for="filtroProyecto">Buscar proyecto</label>
         <input id="filtroProyecto" type="search" autocomplete="off" placeholder="Código, nombre, cliente o N°">
         <ul class="pop-lista sin-barra" id="listaProyectos" role="listbox" aria-label="Proyectos"></ul>
@@ -2417,6 +2445,8 @@
             <option value="cl">Chile</option>
             <option value="pe">Perú</option>
           </select>
+          <!-- La carpeta con el Excel o los documentos de respaldo de la herramienta abierta (campo respaldo del registro) -->
+          <a class="acc-btn" id="btnRespaldo" href="#" target="_blank" rel="noopener" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></a>
           <button class="acc-btn" id="btnRecargar" type="button" hidden aria-label="Volver a cargar esta herramienta">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
           </button>
@@ -2456,7 +2486,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloRecorrido">Recorrido de los proyectos</h1>
-                <p>Cada proyecto del equipo en su etapa: qué sigue y quién lo tiene.</p>
+                <span class="info" data-etiqueta="Qué muestra el Recorrido">Cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre: qué sigue, quién lo tiene y en qué herramienta se hace. Toca una tarjeta para ver su detalle; las cifras de arriba filtran el tablero.</span>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="rcPunto"></span>
@@ -2489,7 +2519,8 @@
           <div class="plan">
             <header class="rc-cab pl-cab">
               <div>
-                <h1 id="tituloPlan" title="Quién va a qué proyecto activo cada día, y en qué vehículo: hasta tres proyectos por persona en un día">Planificación semanal</h1>
+                <h1 id="tituloPlan">Planificación semanal</h1>
+                <span class="info" data-etiqueta="Cómo se usa la Planificación">Quién va a qué proyecto activo cada día, y en qué vehículo: hasta tres proyectos por persona en un día. Toca una casilla para asignar, o arrastra a alguien a un día. Lo que guardas lo ve el equipo en la carpeta compartida.</span>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="plPunto"></span>
@@ -2544,7 +2575,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloObs">Errores y observaciones</h1>
-                <p>Lo que el equipo anota con clic derecho en el portal y sus herramientas. Cada nota se revisa, y aquí queda lo que pasó con ella.</p>
+                <span class="info" data-etiqueta="Qué son las observaciones">Lo que el equipo anota con clic derecho en el portal y sus herramientas. Cada nota se revisa, y aquí queda lo que pasó con ella.</span>
               </div>
               <div class="rc-frescura">
                 <button class="cx-boton" id="obsNueva" type="button">Reportar</button>
@@ -2569,7 +2600,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloSubir">Subir documentos al Centro de Costos</h1>
-                <p>Facturas, boletas y comprobantes de un proyecto. Llegan a su carpeta de «Facturas y Boletas» en la próxima vuelta del procesador.</p>
+                <span class="info" data-etiqueta="Adónde llegan los documentos">Facturas, boletas y comprobantes de un proyecto. Llegan a su carpeta de «Facturas y Boletas» en la próxima vuelta del procesador (cada 2 horas).</span>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="scPunto"></span>
@@ -2607,7 +2638,7 @@
                     <input type="file" id="scArchivo" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,application/pdf,image/jpeg,image/png,image/heic">
                     <span class="sc-zona-ico" id="scZonaIco"></span>
                     <span class="sc-zona-tit">Arrastra aquí los archivos o <u>elígelos</u></span>
-                    <span class="sc-zona-sub">PDF, JPG, PNG o HEIC (fotos del teléfono), hasta 25 MB cada uno</span>
+                    <span class="sc-zona-sub">PDF, JPG, PNG o HEIC · hasta 25 MB</span>
                   </label>
                   <ul class="sc-archivos" id="scArchivos"></ul>
                   <label class="sc-nota-et" for="scNota">Nota para quien registra <span>(opcional)</span></label>
@@ -2619,8 +2650,7 @@
                 </div>
               </form>
               <aside class="sc-envios" aria-labelledby="scTEnvios">
-                <h2 id="scTEnvios">Envíos recientes</h2>
-                <p class="sc-nota">Del equipo, de este mes y el anterior. «En camino» espera la vuelta del procesador (cada 2 horas); después cada documento se registra con <strong>/Registro_Centro_de_Costos</strong>, como los que se suben a SharePoint.</p>
+                <h2 id="scTEnvios">Envíos recientes <span class="info" data-etiqueta="Qué son los envíos recientes">Del equipo, de este mes y el anterior. «En camino» espera la vuelta del procesador (cada 2 horas); después cada documento se registra con <strong>/Registro_Centro_de_Costos</strong>, como los que se suben a SharePoint.</span></h2>
                 <ul class="sc-env-lista" id="scEnvios"></ul>
               </aside>
             </div>
@@ -2633,7 +2663,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloPlanilla">Planilla de Ingreso</h1>
-                <p>Cada requerimiento con su N°. Se ingresa y se cambia aquí; el Excel queda de respaldo y se pone al día solo.</p>
+                <span class="info" data-etiqueta="Cómo funciona la Planilla">Cada requerimiento con su N°. Se ingresa y se cambia aquí; el Excel queda de respaldo y se pone al día solo, en los dos sentidos. Toca una fila para cambiarla.</span>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="pqPunto"></span>
@@ -2676,7 +2706,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloEjecucion">Proyectos en ejecución</h1>
-                <p>Cómo va cada proyecto: lo gastado, lo que viene con sus cotizaciones, la mano de obra y cómo terminaría.</p>
+                <span class="info" data-etiqueta="Qué muestra Proyectos en ejecución">Cómo va cada proyecto: lo gastado, lo que viene con sus cotizaciones, la mano de obra y cómo terminaría. Toca un proyecto para ver su resumen.</span>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="ejPunto"></span>
@@ -2814,6 +2844,7 @@
       <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él. Si tiene carpeta, el botón de la carpeta, a su lado, la abre en el Explorador de archivos del computador (con QUEMPIN.exe 1.3.10 o más nuevo).</li>
       <li><strong>Planilla de Ingreso</strong> (en Formulación de proyectos): cada requerimiento con su N°. «Nuevo requerimiento» lo agrega con el siguiente N° libre, y al tocar una fila se cambia. El equipo lo ve al instante; un punto naranjo marca lo que todavía no llega al Excel. El Excel de siempre queda de respaldo: cada 10 minutos recibe lo de aquí y lo que se cambie en él llega aquí; si una casilla cambió en los dos lados, queda el cambio más reciente. Aquí están las columnas que se usan de verdad; las demás (visita, presupuesto, valores) se llenan en el Excel.</li>
       <li><strong>Sistema QUEMPIN.</strong> «Cotizar y comprar» abre el programa QUEMPIN.exe en la pantalla que elijas; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
+      <li><strong>Carpeta de respaldo.</strong> El símbolo pequeño de carpeta, en la fila de cada herramienta en el Inicio y junto a las pestañas, abre en SharePoint la carpeta con su Excel o sus documentos de respaldo. La herramienta sin nada de eso no lo lleva.</li>
       <li><strong>Clic derecho.</strong> En el portal y dentro de cada herramienta abre el menú del portal: copiar y pegar, actualizar, abrir aparte y <strong>reportar un error u observación</strong>. La nota queda con el lugar exacto donde la hiciste y, si se puede, una imagen de la pantalla; en «Errores y observaciones» (en Ayuda) ves qué pasó con ella. Para el menú del navegador (revisar ortografía, guardar una imagen), Shift + clic derecho.</li>
       <li><strong>Abrir aparte</strong> (↗, arriba a la derecha) lleva la herramienta activa a su propia pestaña del navegador, en su dirección de siempre.</li>
       <li>La contraseña es la del equipo, la misma de siempre, y se escribe una sola vez por navegador.</li>
@@ -2932,8 +2963,7 @@
     <datalist id="pqUsuarios"></datalist>
     <datalist id="pqLugares"></datalist>
     <datalist id="pqClientes"></datalist>
-    <p class="ej-pista" id="pqNota"></p>
-    <div class="dlg-acc"><button class="cx-enlace pq-formular" id="pqFormular" type="button" hidden>Ir al Formulador</button><button class="cx-enlace" id="pqCancelar" type="button">Cancelar</button><button class="btn-pri" id="pqGuardar" type="submit">Agregar a la Planilla</button></div>
+    <div class="dlg-acc"><span class="pq-nota" id="pqNota"></span><button class="cx-enlace pq-formular" id="pqFormular" type="button" hidden>Ir al Formulador</button><button class="cx-enlace" id="pqCancelar" type="button">Cancelar</button><button class="btn-pri" id="pqGuardar" type="submit">Agregar a la Planilla</button></div>
   </form>
 </dialog>
 
@@ -3036,6 +3066,9 @@
      tema: la clave de modo claro/oscuro de esa herramienta, que el botón del portal también fija.
      proyecto: cómo se abre con el proyecto elegido (formulador, seguimiento, gantt, tag, af).
      pestanas: las de una calculadora (su id es el data-tab de la Calculadora: assets/gases.js).
+     respaldo: la carpeta de SharePoint con su Excel o sus documentos de respaldo (web), lo que hay ahí (archivo,
+               archivoPeru) y, con porProyecto, si con un proyecto elegido lleva a la carpeta de ese proyecto. La
+               herramienta que solo tiene archivos de datos del Intercambio no lo lleva: no se editan a mano.
      usuarios: las iniciales del equipo para el selector de usuario (2026-10-16); las mismas del Formulador
                (js/usuario.js) y de Sistema QUEMPIN (app/config.py, USUARIOS): si el equipo cambia, en los tres.
      personal: a quiénes se asigna en la Planificación semanal (pedido del 2026-10-20). Incluye a todos los
@@ -3067,16 +3100,19 @@
      "claves": "licitacion licitaciones compra agil compras agiles mercado publico oportunidad oportunidades"},
     {"id": "planilla", "nombre": "Planilla de Ingreso", "corto": "Planilla", "grupo": "formular", "tipo": "vista", "vista": "vistaPlanilla", "icono": "tabla",
      "url": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos%20compartidos/Planilla%20de%20Ingreso%20de%20Requerimientos.xlsx?web=1",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos", "archivo": "Planilla de Ingreso de Requerimientos.xlsx"},
      "breve": "Cada requerimiento y su N°",
      "desc": "Cada requerimiento del equipo con su N°: se ingresan y se cambian aquí. El Excel de siempre queda de respaldo y se pone al día solo, en los dos sentidos.",
      "claves": "planilla ingreso planilla de proyectos requerimiento requerimientos solicitud numero nuevo agregar ingresar registrar estado canal captador cierre apertura licitacion excel respaldo sharepoint"},
     {"id": "formulador", "nombre": "Formulador", "grupo": "formular", "tipo": "marco", "incrustar": "formulador", "tema": "quempin_fp_theme",
      "ruta": "/formulacion-proyectos-quempin/", "proyecto": "formulador", "breve": "Presupuesto de cada oferta",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos", "archivo": "el Excel de cada oferta, en su carpeta", "porProyecto": true},
      "desc": "El presupuesto de cada oferta: partidas, costos, utilidad, precio y evaluación.",
      "claves": "formulador formulacion de proyectos presupuesto presupuestos partidas costos utilidad precio oferta evaluacion pendientes"},
     {"id": "cotizador", "nombre": "Cotizador Histórico", "corto": "Cotizador", "grupo": "formular", "tipo": "marco", "incrustar": "tablero", "tema": "ch_viz_theme",
      "ruta": "/finanzas-quempin/cotizador-historico/", "peru": "/finanzas-quempin/cotizador-historico-peru/",
      "breve": "Lo pagado por cada material",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos", "archivo": "Centro de Costos.xlsx", "archivoPeru": "Centro de Costos Perú.xlsx"},
      "desc": "Lo que QUEMPIN pagó por cada material, reajustado por UF.",
      "claves": "cotizador historico precio precios material materiales uf referencia"},
     {"id": "gantt", "nombre": "Carta Gantt", "grupo": "formular", "tipo": "marco", "incrustar": "gantt", "tema": "quempin_gantt_theme",
@@ -3086,6 +3122,7 @@
      "claves": "gantt carta programa plazo plazos cronograma ruta critica"},
     {"id": "proyectos", "nombre": "Seguimiento", "grupo": "formular", "tipo": "marco",
      "ruta": "/formulacion-proyectos-quempin/", "familia": "formulador", "alias": true, "proyecto": "seguimiento", "requiereProyecto": true,
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos", "archivo": "el Excel de cada oferta, en su carpeta", "porProyecto": true},
      "breve": "Un proyecto: su etapa y qué sigue",
      "desc": "El seguimiento de un proyecto: en qué etapa va, qué sigue y en qué herramienta se hace. Sin proyecto elegido, primero pide elegirlo (la lista de todos está en el Formulador; el equipo completo, en el Recorrido).",
      "claves": "proyecto proyectos etapa avance que sigue seguimiento recorrido"},
@@ -3100,32 +3137,39 @@
     {"id": "centro-costos", "nombre": "Centro de Costos", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "cc_viz_theme",
      "ruta": "/finanzas-quempin/centro-de-costos/", "peru": "/finanzas-quempin/centro-de-costos-peru/", "proyecto": "tag",
      "breve": "Gasto real, factura por factura",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos", "archivo": "Centro de Costos.xlsx", "archivoPeru": "Centro de Costos Perú.xlsx"},
      "desc": "El gasto real de cada proyecto, factura por factura.",
      "claves": "centro costos factura facturas boleta boletas gasto gastos real proveedor"},
     {"id": "subir-cc", "nombre": "Subir documentos", "corto": "Subir", "grupo": "finanzas", "tipo": "vista", "vista": "vistaSubir", "icono": "subir",
      "breve": "Facturas y boletas de un proyecto",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos/Facturas y Boletas", "archivo": "las facturas y boletas de cada proyecto"},
      "desc": "Sube facturas, boletas y comprobantes de un proyecto: el procesador los deja en la carpeta del proyecto en el Centro de Costos.",
      "claves": "subir cargar enviar documento documentos factura facturas boleta boletas comprobante foto fotos pdf centro costos gasto rendicion"},
     {"id": "ingresar", "nombre": "Ingresar avance", "grupo": "finanzas", "tipo": "marco",
      "ruta": "/finanzas-quempin/analisis-financiero/", "familia": "analisis", "alias": true, "proyecto": "af", "pestanaTablero": "tabIngreso",
      "breve": "Avance, fechas y mano de obra",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Análisis Financiero", "archivo": "Análisis de Proyectos 2026.xlsx"},
      "desc": "Avance, fechas y mano de obra real de un proyecto, en la pestaña «Ingresar datos» del Análisis Financiero.",
      "claves": "ingresar avance fechas registrar mano de obra datos"},
     {"id": "analisis", "nombre": "Análisis Financiero", "corto": "Análisis", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "af_viz_theme",
      "ruta": "/finanzas-quempin/analisis-financiero/", "peru": "/finanzas-quempin/analisis-financiero-peru/", "proyecto": "af", "pestanaTablero": "tabResumen",
      "breve": "Real frente a presupuesto, y su Nota",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Análisis Financiero", "archivo": "Análisis de Proyectos 2026.xlsx", "archivoPeru": "Análisis de Proyectos Perú.xlsx"},
      "desc": "El costo real frente a lo presupuestado y la venta de cada proyecto, con su Nota.",
      "claves": "analisis financiero rentabilidad margen nota venta cierre"},
     {"id": "flujo-caja", "nombre": "Flujo de Caja", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "fc_viz_theme", "sinCaptura": true,
      "ruta": "/finanzas-quempin/flujo-de-caja/", "breve": "Pagos y cobros, mes a mes",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Flujo de Caja", "archivo": "Flujo de Caja.xlsx"},
      "desc": "Lo pagado, lo comprometido y lo por cobrar, mes a mes.",
      "claves": "flujo caja pagos cobros cuotas mes"},
     {"id": "cotizacion", "nombre": "Emitir cotización", "grupo": "cotizar", "tipo": "programa", "accion": "«Nueva Cotización»",
      "enlace": "quempin://cotizacion", "breve": "Sistema QUEMPIN · tipo 60",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/EntornoQuempin/Documentos compartidos/Orden Interno/Control Cotizaciones y OC", "archivo": "el Control de Documentos"},
      "desc": "Las cotizaciones (tipo 60) se emiten en Sistema QUEMPIN, desde el borrador que deja el Formulador.",
      "claves": "cotizar cotizacion cotizaciones emitir folio 60 pdf cliente sistema quempin exe programa"},
     {"id": "orden-compra", "nombre": "Orden de compra", "grupo": "cotizar", "tipo": "programa", "accion": "«Nueva Orden de Compra»",
      "enlace": "quempin://orden-compra", "breve": "Sistema QUEMPIN · tipo 61",
+     "respaldo": {"web": "https://quempinspa2020.sharepoint.com/sites/EntornoQuempin/Documentos compartidos/Orden Interno/Control Cotizaciones y OC", "archivo": "el Control de Documentos"},
      "desc": "Las órdenes de compra (tipo 61) a proveedores, con sus cuotas de pago, se emiten en Sistema QUEMPIN.",
      "claves": "orden ordenes compra oc proveedor 61 sistema quempin exe programa"},
     {"id": "diametro", "nombre": "Diámetro de tubería", "corto": "Diámetro", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
@@ -3259,6 +3303,14 @@
      "pasos": ["Hace falta en el computador del procesador, agregada igual que las otras dos bibliotecas, y en el tuyo si abres desde «Proyectos en ejecución» la carpeta de un proyecto (QUEMPIN.exe la busca ahí)."],
      "usan": ["procesador", "ejecucion"],
      "falta": "El cruce de proyectos no muestra la carpeta de ejecución de cada N°, y el botón de la carpeta de Gestión no la encuentra en este computador."},
+    {"id": "flujo", "tipo": "Carpeta de SharePoint", "nombre": "Copia de Flujo de Caja", "corto": "Copia de Flujo de Caja",
+     "para": "La copia para el equipo del Excel de Flujo de Caja. Es la caja de la empresa: la ve quien entra a esta carpeta del sitio. La pone al día cada corrida de Flujo de Caja.",
+     "en": "SharePoint",
+     "ruta": ["Sitio de comunicación", "Documentos", "Flujo de Caja"],
+     "web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Flujo de Caja",
+     "pasos": ["Hace falta solo en el computador del procesador: ábrela en SharePoint y elige «Agregar acceso directo a Mis archivos». Déjala en la raíz de OneDrive, sin moverla ni cambiarle el nombre."],
+     "usan": ["procesador", "flujo-caja"],
+     "falta": "La carpeta de respaldo de Flujo de Caja se queda con la última copia que recibió, o vacía."},
     {"id": "contrasena", "tipo": "En el navegador", "nombre": "Contraseña del equipo", "corto": "Contraseña", "icono": "llave",
      "para": "Abre los tableros y el Formulador. Es la misma para todos y se escribe una vez por navegador: al entrar a una herramienta se abren las demás.",
      "pasos": ["Pídesela a quien administra las herramientas QUEMPIN. No la compartas fuera del equipo.",
@@ -3275,7 +3327,7 @@
   ],
   "procesador": {
     "id": "procesador", "nombre": "El computador del procesador", "corto": "El procesador",
-    "para": "Un computador de QUEMPIN hace el trabajo automático con cuatro tareas programadas de Windows. Necesita estar encendido, con OneDrive al día y las tres bibliotecas más la carpeta del Centro de Costos. Si está apagado, todo espera y nada se pierde.",
+    "para": "Un computador de QUEMPIN hace el trabajo automático con cuatro tareas programadas de Windows. Necesita estar encendido, con OneDrive al día y las tres bibliotecas más las carpetas del Centro de Costos y de Flujo de Caja. Si está apagado, todo espera y nada se pierde.",
     "tareas": [
       {"nombre": "Procesar intercambio QUEMPIN", "cuando": "Cada 2 horas", "hace": "Atiende el buzón, renueva lo publicado y deja su pulso."},
       {"nombre": "Registrar en la Planilla QUEMPIN", "cuando": "Cada 10 minutos", "hace": "Pasa al Excel de la Planilla de Ingreso lo que se ingresa o cambia en el portal (y lo del Formulador), y trae al portal lo que se cambió en el Excel."},
@@ -3360,6 +3412,7 @@
     barras: '<path d="M3 21h18"/><path d="M6 17v-6M11 17V5M16 17v-9"/>',
     billetera: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 14h2"/>',
     ayuda: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7"/><path d="M12 17h.01"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6h.01" stroke-width="2.6"/>',
     // El mismo engranaje de «Configuración» del Formulador
     engranaje: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     nube: '<path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.6A3.7 3.7 0 0 1 17.5 18z"/>',
@@ -3429,6 +3482,113 @@
     clearTimeout(relojAviso);
     relojAviso = setTimeout(() => { a.hidden = true; }, accion ? 9000 : 4200);
   }
+
+  // ---- La explicación en un ícono (2026-11-05) ----------------------------------------------------
+  /* Lo que antes era un párrafo bajo un título va en un ⓘ: se abre al pasar el mouse (y se cierra al salir) o al tocarlo
+     (queda abierto hasta tocar fuera o Esc). El texto sigue en la página, escondido, como descripción del botón para los
+     lectores de pantalla. contenido: un texto, un nodo o una lista de los dos. */
+  let infoN = 0;
+  function info(contenido, etiqueta) {
+    const w = crear('span', 'info lista');
+    const b = crear('button', 'info-i');
+    b.type = 'button';
+    b.setAttribute('aria-label', etiqueta || 'Qué es esto');
+    b.setAttribute('aria-expanded', 'false');
+    b.append(icono('info', 18));
+    const t = crear('span', 'info-txt');
+    t.hidden = true;
+    t.id = 'infoTxt' + (++infoN);
+    [].concat(contenido).forEach((x) => { if (x !== null && x !== undefined && x !== '') t.append(typeof x === 'string' ? document.createTextNode(x) : x); });
+    b.setAttribute('aria-describedby', t.id);
+    w.append(b, t);
+    return w;
+  }
+  // Una línea corta con su ⓘ: lo que pasa en pocas palabras, y el detalle a un toque
+  function lineaInfo(clase, corto, largo, etiqueta) {
+    const p = crear('p', 'linea-info' + (clase ? ' ' + clase : ''));
+    p.append(crear('span', null, corto), info(largo, etiqueta));
+    return p;
+  }
+  // Los ⓘ escritos en el HTML: <span class="info" data-etiqueta="…">el texto</span>
+  function infoPreparar(raiz) {
+    raiz.querySelectorAll('.info:not(.lista)').forEach((w) => w.replaceWith(info([...w.childNodes], w.dataset.etiqueta)));
+  }
+  const infoPop = crear('div', 'info-pop');
+  infoPop.id = 'infoPop';
+  infoPop.setAttribute('popover', 'manual');
+  infoPop.setAttribute('role', 'tooltip');
+  let infoDe = null, infoFijo = false, infoReloj = null;
+  function infoAbrir(b, fijo) {
+    clearTimeout(infoReloj);
+    infoFijo = fijo;
+    if (infoDe === b && infoPop.matches(':popover-open')) return;
+    infoCerrar();
+    const t = document.getElementById(b.getAttribute('aria-describedby'));
+    if (!t || typeof infoPop.showPopover !== 'function') return;
+    infoFijo = fijo;
+    // Junto a su botón, para que un toque dentro del globo cuente como dentro del menú o diálogo donde está
+    b.parentNode.append(infoPop);
+    infoPop.replaceChildren(...[...t.childNodes].map((n) => n.cloneNode(true)));
+    infoPop.showPopover();
+    infoDe = b;
+    b.setAttribute('aria-expanded', 'true');
+    infoPoner();
+  }
+  function infoCerrar() {
+    clearTimeout(infoReloj);
+    if (infoDe) infoDe.setAttribute('aria-expanded', 'false');
+    infoDe = null;
+    infoFijo = false;
+    if (infoPop.matches(':popover-open')) infoPop.hidePopover();
+  }
+  function infoPoner() {
+    if (!infoDe || !infoDe.isConnected) { infoCerrar(); return; }
+    const r = infoDe.getBoundingClientRect(), w = infoPop.offsetWidth, h = infoPop.offsetHeight, m = 8;
+    const x = Math.max(m, Math.min(r.left - 10, innerWidth - w - m));
+    let y = r.bottom + 6;
+    if (y + h > innerHeight - m && r.top - 6 - h >= m) y = r.top - 6 - h;
+    infoPop.style.left = Math.round(x) + 'px';
+    infoPop.style.top = Math.round(y) + 'px';
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('.info-i');
+    if (b) {
+      // Solo abre el globo: no cuenta como clic en la tarjeta, la etiqueta o el resumen donde está
+      e.preventDefault();
+      e.stopPropagation();
+      if (infoDe === b && infoFijo) infoCerrar(); else infoAbrir(b, true);
+      return;
+    }
+    if (infoPop.contains(e.target)) { e.preventDefault(); e.stopPropagation(); return; }
+    if (infoDe) infoCerrar();
+  }, true);
+  document.addEventListener('pointerover', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const b = e.target.closest && e.target.closest('.info-i');
+    if (b) { if (!(infoFijo && infoDe === b)) { clearTimeout(infoReloj); infoReloj = setTimeout(() => infoAbrir(b, infoFijo && infoDe === b), 150); } return; }
+    if (infoPop.contains(e.target)) { clearTimeout(infoReloj); return; }
+    if (infoDe && !infoFijo) { clearTimeout(infoReloj); infoReloj = setTimeout(infoCerrar, 200); }
+    else clearTimeout(infoReloj);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !infoDe) return;
+    const b = infoDe;
+    infoCerrar();
+    b.focus();
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+  addEventListener('scroll', () => { if (infoDe) infoPoner(); }, true);
+  addEventListener('resize', () => { if (infoDe) infoPoner(); });
+  // Si la vista se repinta con el globo abierto (llegan datos del equipo), sigue abierto junto al ⓘ que reemplazó al suyo:
+  // el que tiene la misma etiqueta, si hay uno solo a la vista; si no, se cierra.
+  setInterval(() => {
+    if (!infoDe || infoDe.isConnected) return;
+    const et = infoDe.getAttribute('aria-label'), fijo = infoFijo;
+    const otros = [...document.querySelectorAll('.info-i')].filter((x) => x.getAttribute('aria-label') === et && x.getClientRects().length);
+    infoCerrar();
+    if (otros.length === 1) infoAbrir(otros[0], fijo);
+  }, 300);
 
   // ---- Estado ------------------------------------------------------------------------------------
   const estado = {
@@ -3679,6 +3839,7 @@
     const h = p && HERR.get(p.herr);
     $('#btnRecargar').hidden = !p || esVista(p);
     $('#btnAparte').hidden = !p || esVista(p);
+    enlazarRespaldo($('#btnRespaldo'), h);
     $('#pais').hidden = !(h && h.peru);    // solo en los tableros que existen en Chile y en Perú
     pintarDato();
   }
@@ -3974,7 +4135,9 @@
     setTimeout(() => { selectorRecien = false; }, 0);
     const pop = $('#popProyecto');
     const n = $('#popNota');
-    n.textContent = nota || 'Elige el proyecto una vez: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él.';
+    // Solo cuando hay algo que decir (p. ej. «Elige el proyecto para ver su Seguimiento»); lo de siempre va en el title del botón
+    n.textContent = nota || '';
+    n.hidden = !nota;
     n.classList.toggle('aviso', !!nota);
     $('#filtroProyecto').value = '';
     pintarListaProyectos();
@@ -4146,6 +4309,10 @@
         REG.herramientas.filter((h) => h.grupo === g.id).forEach((h) => {
           const li = crear('li');
           li.append(itemHerramienta(h));
+          if (h.respaldo) {
+            li.classList.add('con-respaldo');
+            li.append(respaldoInicio(h));
+          }
           ul.append(li);
         });
         sec.append(h2, ul);
@@ -4160,6 +4327,7 @@
       const nom = b.querySelector('.ini-nom');
       if (si) nom.dataset.estado = 'abierta'; else delete nom.dataset.estado;
     });
+    cont.querySelectorAll('.ini-respaldo').forEach((a) => enlazarRespaldo(a, HERR.get(a.dataset.herr)));
     plPintarAlarmaGlobal();    // la Planificación semanal lleva su alarma junto a su nombre
     // La línea del Recorrido: con la biblioteca ya conectada y con permiso, dice cuánto espera (sin pedir nada).
     pintarInicioRecorrido();
@@ -4206,6 +4374,41 @@
     $('#dlgInfoDonde').hidden = false;
     $('#dlgInfoDesc').textContent = 'Si la movieron de lugar, el programa la busca por su nombre en Formulación de proyectos y en Gestión de Proyectos.';
     $('#dlgInfo').showModal();
+  }
+
+  // ---- Carpeta de respaldo (2026-11-02) --------------------------------------------------------------
+  // Pedido del usuario: un símbolo pequeño de carpeta que lleva directo a donde está el Excel o los documentos de
+  // respaldo de cada herramienta (campo respaldo del registro). Es un enlace a SharePoint y no pasa por QUEMPIN.exe:
+  // sirve también en el teléfono y SharePoint decide quién entra. El Formulador guarda un Excel por oferta: con un
+  // proyecto elegido que tiene carpeta, lleva a esa.
+  function respaldoDe(h) {
+    const r = h && h.respaldo;
+    if (!r) return null;
+    const pr = r.porProyecto ? proyectoActual() : null;
+    const c = pr && pr.carpeta;
+    if (c) {
+      const base = CX_POR_ID.get(c.biblioteca === 'gestion' ? 'gestion' : 'biblioteca').web;
+      return { href: encodeURI(base) + '/' + c.ruta.map(encodeURIComponent).join('/'), titulo: 'Carpeta del proyecto, con el Excel de su oferta: ' + c.nombre };
+    }
+    const archivo = estado.pais === 'pe' && h.peru && r.archivoPeru ? r.archivoPeru : r.archivo;
+    return { href: encodeURI(r.web), titulo: 'Carpeta de respaldo: ' + archivo };
+  }
+  function enlazarRespaldo(a, h) {
+    const r = respaldoDe(h);
+    a.hidden = !r;
+    if (!r) return;
+    a.href = r.href;
+    a.title = r.titulo;
+    a.setAttribute('aria-label', r.titulo);
+  }
+  function respaldoInicio(h) {
+    const a = crear('a', 'ini-respaldo');
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.dataset.herr = h.id;
+    a.append(icono('proyectos', 15));
+    a.addEventListener('click', () => enlazarRespaldo(a, h));   // el proyecto o el país pudieron cambiar desde que se pintó
+    return a;
   }
 
   // ---- Diálogos ------------------------------------------------------------------------------------
@@ -5533,7 +5736,8 @@
       if (k.alerta && n[k.id]) b.dataset.nivel = k.alerta;
       b.setAttribute('aria-pressed', rc.foco === k.id ? 'true' : 'false');
       b.append(crear('span', 'rc-kpi-n', String(n[k.id])), crear('span', 'rc-kpi-et', k.et), crear('span', 'rc-kpi-sub', k.sub));
-      b.title = rc.foco === k.id ? 'Mostrar todo otra vez' : 'Mostrar solo: ' + k.et.toLowerCase();
+      // La explicación de cada cifra, al pasar el mouse (2026-11-05: ya no va escrita debajo)
+      b.title = rc.foco === k.id ? 'Mostrar todo otra vez' : k.sub + '. Toca para ver solo esos.';
       b.addEventListener('click', () => {
         rc.foco = rc.foco === k.id ? null : k.id;
         rcPintar();
@@ -5727,7 +5931,8 @@
     const a = t.accion;
     const sigue = crear('section', 'rc-sigue');
     sigue.dataset.tipo = a.tipo;
-    sigue.append(crear('h3', null, (a.tipo === 'espera' ? 'En espera' : a.tipo === 'listo' ? 'Terminado' : 'Qué sigue') + ' · etapa ' + (RC_ETAPAS.indexOf(etapa) + 1) + ' de 6, ' + etapa.titulo),
+    // La etapa ya se ve en los seis pasos de arriba (2026-11-05: sin repetirla aquí)
+    sigue.append(crear('h3', null, a.tipo === 'espera' ? 'En espera' : a.tipo === 'listo' ? 'Terminado' : 'Qué sigue'),
       crear('p', null, a.texto));
     if (a.ir) {
       const acc = crear('div', 'cx-acc');
@@ -7671,7 +7876,7 @@
     b.type = 'button';
     b.title = 'Agrega lo de la semana anterior, día por día; después se cambia lo que haga falta';
     b.addEventListener('click', plCopiarAnterior);
-    caja.append(crear('p', null, 'La semana ' + plNum(s) + ' está vacía. Cópiale la anterior y cambia lo que haga falta, o toca una casilla para empezar.'), b);
+    caja.append(crear('p', null, 'Semana ' + plNum(s) + ' sin planificar'), b);
   }
   function plPintarDiasMovil(dias) {
     const cont = $('#plDiasMovil');
@@ -8024,9 +8229,8 @@
           ul.append(li);
         });
         col.append(ul);
-      } else {
-        col.append(crear('p', 'pl-dia-vacio', 'Sin asignaciones'));
       }
+      // Sin nadie, la cabecera del día ya dice «Nadie asignado» (2026-11-05: sin repetirlo abajo)
       const libres = m.personas.filter((per) => !m.ausencias.has(d.iso + '|' + per) && !(m.porPersona.get(d.iso + '|' + per) || []).length);
       const ausentes = m.personas.filter((per) => m.ausencias.has(d.iso + '|' + per));
       [[libres, 'Sin proyecto', 'libre'], [ausentes, 'Ausentes', 'aus']].forEach(([lista, et, clase]) => {
@@ -9936,13 +10140,14 @@
     pqListas();
     const pista = $('#pqPista');
     pista.classList.remove('error');
-    pista.textContent = nuevo ? 'Queda con el N° ' + n + ', el siguiente libre. El equipo lo ve al instante aquí y pasa al Excel en unos 10 minutos.'
+    // Nuevo: el título ya dice su N°; el resto de la explicación va en el ⓘ del pie (2026-11-05)
+    pista.textContent = nuevo ? ''
       : mt && mt.choque ? 'El N° ' + n + ' ya es «' + mt.choque + '» en el Excel: al pasar, este requerimiento queda con el siguiente N° libre.'
         : mt && mt.nuevo ? 'Recién agregado: todavía no llega al Excel.'
           : mt && mt.campos.size ? 'Lo marcado con un punto naranjo en la tabla (' + [...mt.campos].map((c) => PQ_NOMBRE[c]).join(', ') + ') todavía no llega al Excel.' : '';
-    $('#pqNota').textContent = nuevo
-      ? 'Las demás columnas del Excel (visita, presupuesto, valores ofertado y adjudicado…) se siguen llenando en el Excel cuando hacen falta.'
-      : 'Lo que cambies aquí lo ve el equipo al instante y pasa al Excel en unos 10 minutos. Las demás columnas del Excel se cambian en el Excel.';
+    $('#pqNota').replaceChildren(info(nuevo
+      ? 'Queda con el N° ' + n + ', el siguiente libre. El equipo lo ve al instante aquí y pasa al Excel en unos 10 minutos. Las demás columnas del Excel (visita, presupuesto, valores ofertado y adjudicado…) se siguen llenando en el Excel cuando hacen falta.'
+      : 'Lo que cambies aquí lo ve el equipo al instante y pasa al Excel en unos 10 minutos. Las demás columnas del Excel se cambian en el Excel.', 'Qué pasa al guardar'));
     $('#pqGuardar').textContent = nuevo ? 'Agregar a la Planilla' : 'Guardar cambios';
     $('#pqGuardar').disabled = false;
     $('#pqFormular').hidden = nuevo;
@@ -10087,12 +10292,13 @@
     } else if (n) {
       const tarde = espera !== null && espera > PQ_ESPERA_MIN;
       if (tarde) caja.dataset.nivel = 'warn';
-      p.append(crear('b', null, pl(n, 'cambio espera', 'cambios esperan') + ' pasar al Excel'),
-        document.createTextNode(tarde ? ' desde hace ' + pqHace(espera) + ': ¿está encendido el computador del procesador? Aquí ya se ven, con un punto naranjo.'
-          : '. Aquí ya se ven (con un punto naranjo) y el Excel los recibe en unos 10 minutos.'));
+      p.append(crear('b', null, pl(n, 'cambio espera', 'cambios esperan') + ' pasar al Excel'));
+      if (tarde) p.append(document.createTextNode(' desde hace ' + pqHace(espera) + ': ¿está encendido el computador del procesador? Aquí ya se ven, con un punto naranjo.'));
+      else p.append(' ', info('Aquí ya se ven (con un punto naranjo) y el Excel los recibe en unos 10 minutos.', 'Cuándo llegan al Excel'));
     } else {
-      p.append(crear('b', null, 'Al día con el Excel.'),
-        document.createTextNode(' Lo de aquí pasa al Excel en unos 10 minutos, y lo del Excel llega aquí igual.'));
+      // Lo normal, en dos palabras; cómo funciona, en el ⓘ (2026-11-05)
+      p.append(crear('b', null, 'Al día con el Excel'), ' ',
+        info('Lo de aquí pasa al Excel en unos 10 minutos, y lo del Excel llega aquí igual. El Excel queda de respaldo en SharePoint.', 'Cómo se sincroniza con el Excel'));
     }
     cuerpo.append(p);
     // Lo del portal que no quedó en el Excel esta semana: rechazado, o la casilla cambió después en el Excel
@@ -11210,7 +11416,7 @@
       if (nivel) s.dataset.nivel = nivel;
       if (!m.pres) s.title = 'Sin presupuesto: solo con lo gastado, comprometido y proyectado que está anotado';
       f2.append(s);
-    } else f2.append(crear('span', null, m.venta ? 'Sin presupuesto ni gastos anotados' : 'Sin venta: anótala en su resumen'));
+    } else f2.append(crear('span', null, m.venta ? 'Sin presupuesto ni gastos' : 'Sin venta'));
     const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
     if (decidir) f2.append(crear('span', null, '· ' + pl(decidir, 'compra por decidir', 'compras por decidir')));
     b.append(f2);
@@ -11233,11 +11439,13 @@
   }
 
   // ---- El resumen de un proyecto ------------------------------------------------------------------------------------
-  function ejPanel(titulo, extra) {
+  // ayuda (2026-11-05): lo que antes era el párrafo de explicación del panel, en un ⓘ junto a su título
+  function ejPanel(titulo, extra, ayuda) {
     const s = crear('section', 'ej-panel');
     const cab = crear('div', 'ej-panel-cab');
     const h = crear('h3', null, titulo);
     if (extra) h.append(crear('small', null, extra));
+    if (ayuda) h.append(info(ayuda, 'Cómo funciona: ' + titulo.toLowerCase()));
     cab.append(h);
     s.append(cab);
     return { s, cab };
@@ -11292,9 +11500,11 @@
   function ejSinClaveEl(t) {
     const { s } = ejPanel('Le falta su N° de requerimiento');
     s.classList.add('ej-sin-clave');
-    s.append(crear('p', 'ej-linea', 'Su carpeta «' + t.gestion + '» está en Gestión de Proyectos, pero no lleva adelante el N° de la Planilla de Ingreso ni se encontró su ficha en el Análisis Financiero. Sin ese N° no se une con su oferta, su avance ni sus facturas, y no se le pueden anotar compras, días trabajados ni avance.'),
-      crear('p', 'ej-pista', 'Búscalo en la Planilla de Ingreso y renombra la carpeta «N°. ' + t.gestion + '»; si no tiene, regístralo ahí. Con la próxima vuelta del procesador aparece aquí con todo lo suyo.'),
-      ejBoton('Buscarlo en la Planilla de Ingreso', 'cx-enlace', () => abrir('planilla')));
+    const p = crear('p', 'ej-linea');
+    p.append(crear('span', null, 'Su carpeta «' + t.gestion + '» no lleva adelante el N° de la Planilla de Ingreso. '),
+      info('Tampoco se encontró su ficha en el Análisis Financiero. Sin ese N° no se une con su oferta, su avance ni sus facturas, y no se le pueden anotar compras, días trabajados ni avance. '
+        + 'Búscalo en la Planilla de Ingreso y renombra la carpeta «N°. ' + t.gestion + '»; si no tiene, regístralo ahí. Con la próxima vuelta del procesador aparece aquí con todo lo suyo.', 'Cómo se arregla'));
+    s.append(p, ejBoton('Buscarlo en la Planilla de Ingreso', 'cx-enlace', () => abrir('planilla')));
     return s;
   }
   function ejCabEl(m) {
@@ -11357,10 +11567,10 @@
     ir('Subir documentos', { herr: 'subir-cc' });
     cab.append(acc);
     if (!gestion && !MOVIL.matches) {
-      cab.append(crear('p', 'ej-pista', oferta ? 'Todavía no tiene carpeta en Gestión de Proyectos. «Pasar a Gestión de Proyectos» la crea con «Formulación» (la copia de la oferta) y deja el original en 0 OFERTAS ADJUDICADAS; lo hace QUEMPIN.exe 1.3.16 o más nuevo, que pregunta antes. Después el procesador le agrega «Facturas del proyecto», el acceso directo a su carpeta del Centro de Costos.'
-        : 'No se encontró su carpeta en Formulación de proyectos ni en Gestión de Proyectos: el procesador las reconoce por el N° adelante («' + (t.req || 'N°') + '. Nombre»).'));
+      cab.append(oferta ? lineaInfo('ej-pista', 'Sin carpeta en Gestión de Proyectos', '«Pasar a Gestión de Proyectos» la crea con «Formulación» (la copia de la oferta) y deja el original en 0 OFERTAS ADJUDICADAS; lo hace QUEMPIN.exe 1.3.16 o más nuevo, que pregunta antes. Después el procesador le agrega «Facturas del proyecto», el acceso directo a su carpeta del Centro de Costos.', 'Cómo se crea')
+        : lineaInfo('ej-pista', 'Sin carpeta de oferta ni de Gestión', 'No se encontró su carpeta en Formulación de proyectos ni en Gestión de Proyectos: el procesador las reconoce por el N° adelante («' + (t.req || 'N°') + '. Nombre»).', 'Por qué'));
     } else if (gestion && !facturas && ejClave(t) && !MOVIL.matches) {
-      cab.append(crear('p', 'ej-pista', 'Todavía no tiene carpeta con su N° en el Centro de Costos («' + (t.req || 'N°') + '. Nombre» en Facturas y Boletas): el procesador la crea al adjudicarse el proyecto y entonces agrega «Facturas del proyecto» a su carpeta de Gestión.'));
+      cab.append(lineaInfo('ej-pista', 'Sin carpeta en el Centro de Costos', 'Todavía no tiene carpeta con su N° en el Centro de Costos («' + (t.req || 'N°') + '. Nombre» en Facturas y Boletas): el procesador la crea al adjudicarse el proyecto y entonces agrega «Facturas del proyecto» a su carpeta de Gestión.', 'Cuándo se crea'));
     }
     return cab;
   }
@@ -11408,7 +11618,9 @@
   }
   // El presupuesto por categoría: lo gastado, comprometido y simulado contra lo presupuestado (la raya), en la misma escala
   function ejPresupuestoEl(m) {
-    const { s } = ejPanel('Cómo va el presupuesto', m.pres ? m.pres.fuente : 'sin presupuesto');
+    const { s } = ejPanel('Cómo va el presupuesto', m.pres ? m.pres.fuente : 'sin presupuesto', m.pres
+      ? 'Lo que todavía no se compra se estima con lo presupuestado: el costo estimado de cada categoría es lo presupuestado o, si se pasa, lo gastado más lo comprometido y lo simulado.'
+      : 'Sin presupuesto, el costo estimado es lo gastado más lo comprometido y lo simulado. Con una formulación o los proyectados en el Análisis Financiero, se compara con lo presupuestado.');
     const ley = crear('ul', 'ej-leyenda');
     [['', m.mo.fuente === 'dias' ? 'Gastado (Centro de Costos y días trabajados)' : 'Gastado (Centro de Costos)'], ['c', 'Comprometido (OC sin factura)'], ['q', 'Simulado (lo marcado)'], ['t', 'Presupuestado']].forEach(([k, txt]) => {
       if (k === 't' && !m.pres) return;
@@ -11456,15 +11668,13 @@
     const tot = crear('div', 'ej-total');
     tot.append(crear('span', null, 'Costo estimado al cierre'), crear('b', null, ejPesos(m.tot.EAC) + (m.pres ? ' de ' + ejPesos(m.tot.P) + ' presupuestados' : '')));
     s.append(tot);
-    s.append(crear('p', 'ej-pista', m.pres ? 'Lo que todavía no se compra se estima con lo presupuestado: el costo estimado de cada categoría es lo presupuestado o, si se pasa, lo gastado más lo comprometido y lo simulado.'
-      : 'Sin presupuesto, el costo estimado es lo gastado más lo comprometido y lo simulado. Con una formulación o los proyectados en el Análisis Financiero, se compara con lo presupuestado.'));
     return s;
   }
   // El avance: el del Análisis Financiero (o el que se pidió), el de su Carta Gantt, a qué ritmo va el gasto, y cambiarlo
   function ejAvanceEl(m) {
     const t = m.t;
     const av = m.avance;
-    const { s } = ejPanel('Avance', '');
+    const { s } = ejPanel('Avance', '', t.af && t.tag ? 'Lo que guardas llega al Análisis Financiero con la próxima vuelta del procesador, y de ahí al Recorrido, la Planificación semanal y el Formulador. Solo se escribe si allá sigue el valor que ves aquí.' : '');
     const num = crear('div', 'ej-av-num');
     num.append(crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)),
       crear('span', null, av.pedido ? 'pedido ' + plCuando(texto(av.pedido.origen && av.pedido.origen.enviado)) + (av.pedido.origen && av.pedido.origen.usuario ? ' por ' + av.pedido.origen.usuario : '')
@@ -11562,7 +11772,6 @@
     enviar.disabled = !rc.dir || ej.enviando;
     enviar.dataset.foco = 'enviar-avance';
     f.append(rLab, nLab, fLab, enviar);
-    f.append(crear('p', 'ej-pista ej-av-fecha', 'Llega al Análisis Financiero con la próxima vuelta del procesador, y de ahí al Recorrido, la Planificación semanal y el Formulador. Solo se escribe si allá sigue el valor que ves aquí.'));
     f.addEventListener('submit', (e) => { e.preventDefault(); ejEnviarAvance(m, Number(n.value), fe.value); });
     if (av.valor === 1 && t.etapa === 'ejecucion' && rcClavesCierre(t).length) {
       const cerrar = ejBoton('Ya terminó: dar por cerrado', 'cx-enlace ej-av-fecha', () => plAbrirProyectos(t.clave));
@@ -11600,8 +11809,10 @@
       }
       return out;
     }
-    out.push(crear('p', 'ej-pista', 'Para fijar su avance, sus fechas y su venta en el Análisis Financiero, crea su ficha en «Ingresar avance» con su TAG (el mismo prefijo de sus facturas en el Centro de Costos) y su N°.'));
-    out.push(ejBoton('Crear su ficha en «Ingresar avance»', 'cx-enlace', () => abrir('ingresar')));
+    const fila = crear('div', 'cx-acc');
+    fila.append(ejBoton('Crear su ficha en «Ingresar avance»', 'cx-enlace', () => abrir('ingresar')),
+      info('Para fijar su avance, sus fechas y su venta en el Análisis Financiero, crea su ficha en «Ingresar avance» con su TAG (el mismo prefijo de sus facturas en el Centro de Costos) y su N°.', 'Para qué sirve la ficha'));
+    out.push(fila);
     return out;
   }
 
@@ -11616,9 +11827,9 @@
   }
   function ejComprasEl(m) {
     const items = ejItems(m.costos);
-    const { s } = ejPanel('Gastos proyectados y cotizaciones', items.length ? pl(items.length, 'anotado', 'anotados') : '');
+    const { s } = ejPanel('Gastos proyectados y cotizaciones', items.length ? pl(items.length, 'anotado', 'anotados') : '',
+      'Anota cada ítem que se espera comprar, con la cotización de uno o varios proveedores: en la columna Proveedor se comparan y se elige uno. Se contrasta con lo presupuestado y con lo que QUEMPIN ha pagado, y lo marcado en «Simular» cambia al tiro el costo estimado, el margen y los indicadores. No es un costo real: al Centro de Costos solo llegan las facturas y las órdenes de compra.');
     s.classList.add('ej-compras');
-    s.append(crear('p', 'ej-pista', 'Anota cada ítem que se espera comprar, con la cotización de uno o varios proveedores: en la columna Proveedor se comparan y se elige uno. Se contrasta con lo presupuestado y con lo que QUEMPIN ha pagado, y lo marcado en «Simular» cambia al tiro el costo estimado, el margen y los indicadores. No es un costo real: al Centro de Costos solo llegan las facturas y las órdenes de compra.'));
     const barra = crear('div', 'ej-barra-compras');
     const agregar = ejBoton('Agregar gasto o cotización', 'cx-boton', () => ejAbrirCosto(null), 'mas');
     agregar.disabled = !rc.dir;
@@ -11655,7 +11866,7 @@
           p.append(document.createTextNode('el margen estimado pasa de ' + ejPct(m.margen0) + ' a '), crear('b', null, ejPct(m.margen)),
             document.createTextNode(' (el costo estimado sube ' + ejPesos(m.tot.EAC - m.tot.EAC0) + ').'));
         } else p.append(document.createTextNode('el costo estimado pasa de ' + ejPesos(m.tot.EAC0) + ' a '), crear('b', null, ejPesos(m.tot.EAC)), document.createTextNode('.'));
-      } else p.append(document.createTextNode('Nada simulado: arriba se ve el proyecto con lo gastado y comprometido. Marca «Simular» en un gasto o cotización para ver cómo cambia.'));
+      } else p.append(document.createTextNode('Nada simulado.'));
       if (porDecidir.length) {
         const todas = crear('button', 'cx-desmarcar', 'Simular todas las por decidir');
         todas.type = 'button';
@@ -11677,7 +11888,7 @@
     const filtro = EJ_FILTROS.find((f) => f.id === ej.filtro) || EJ_FILTROS[0];
     const visibles = items.filter((x) => filtro.es(x.it));
     if (!m.costos.length) {
-      s.append(crear('p', 'ej-nada', 'Todavía no hay gastos proyectados ni cotizaciones. Agrega el primero con «Agregar gasto o cotización», o pega las filas de la cotización de un proveedor.'));
+      s.append(crear('p', 'ej-nada', 'Sin gastos ni cotizaciones todavía.'));
       return s;
     }
     if (!visibles.length) { s.append(crear('p', 'ej-nada', 'Nada en «' + filtro.nombre + '».')); return s; }
@@ -11907,7 +12118,7 @@
     });
     s.append(ul);
     const sum = m.ocs.filter((o) => o.estado === 'comprometida').reduce((a, o) => a + o.neto, 0);
-    if (sum > 0) s.append(crear('p', 'ej-pista', ejPesos(sum) + ' comprometidos en órdenes que el Centro de Costos todavía no trae: se suman al costo estimado.'));
+    if (sum > 0) s.append(lineaInfo('ej-pista', ejPesos(sum) + ' comprometidos sin factura', 'Órdenes que el Centro de Costos todavía no trae: se suman al costo estimado.', 'Qué es lo comprometido'));
     return s;
   }
   // Quién va al proyecto esta semana, día por día, y en qué vehículo (de la Planificación semanal)
@@ -11938,7 +12149,8 @@
     });
     const pausa = mod.pausas.get(c);
     if (alguien) s.append(ul);
-    else s.append(crear('p', 'ej-nada', pausa ? 'Esta semana no se trabaja en él (marcado en la Planificación).' : t.etapa === 'ejecucion' && !t.antiguo ? 'Nadie asignado esta semana.' : 'Nadie asignado esta semana: no aparece en la Planificación porque no está en ejecución o lleva más de 60 días sin moverse.'));
+    else if (pausa || (t.etapa === 'ejecucion' && !t.antiguo)) s.append(crear('p', 'ej-nada', pausa ? 'Esta semana no se trabaja en él.' : 'Nadie asignado esta semana.'));
+    else s.append(lineaInfo('ej-nada', 'Nadie asignado esta semana.', 'No aparece en la Planificación porque no está en ejecución o lleva más de 60 días sin moverse.', 'Por qué'));
     return s;
   }
   function ejNotasEl(m) {
@@ -12069,8 +12281,8 @@
   const ejSemanasAtras = (n) => Array.from({ length: n }, (x, k) => plSemanaId(plMas(plLunesDe(new Date()), -7 * k)));
   function ejManoObraEl(m) {
     const t = m.t, mo = m.mo, f = ej.diasForm;
-    const { s } = ejPanel('Mano de obra: días trabajados', mo.dh ? ejCantidad(mo.dh) + ' días-hombre · ' + ejPesos(mo.costo) : '');
-    s.append(crear('p', 'ej-pista', 'Anota quién trabajó cada día: su costo se estima con la tarifa de su nivel y pasa a ser la mano de obra real de este resumen y de sus indicadores. También se puede escribir directo en «Ingresar avance»; desde aquí se lleva al Análisis Financiero con un toque.'));
+    const { s } = ejPanel('Mano de obra: días trabajados', mo.dh ? ejCantidad(mo.dh) + ' días-hombre · ' + ejPesos(mo.costo) : '',
+      'Anota quién trabajó cada día: su costo se estima con la tarifa de su nivel y pasa a ser la mano de obra real de este resumen y de sus indicadores. También se puede escribir directo en «Ingresar avance»; desde aquí se lleva al Análisis Financiero con un toque.');
     // Anotar: el día, la jornada y quiénes
     const form = crear('form', 'ej-dias-form');
     form.noValidate = true;
@@ -12136,7 +12348,8 @@
     const porTraer = ejPorTraer(m, ejSemanasAtras(2));
     if (porTraer.length && rc.dir) {
       const p = crear('p', 'ej-linea tinte');
-      p.append(document.createTextNode('La Planificación semanal tiene ' + pl(porTraer.length, 'día-hombre', 'días-hombre') + ' de este proyecto, hasta hoy, sin anotar aquí.'));
+      p.append(document.createTextNode(pl(porTraer.length, 'día-hombre', 'días-hombre') + ' de la Planificación semanal sin anotar aquí.'));
+      p.title = 'Lo asignado a este proyecto en la Planificación semanal, hasta hoy, que todavía no está entre los días trabajados';
       const b = crear('button', 'cx-desmarcar', 'Traerlos');
       b.type = 'button';
       b.dataset.foco = 'traer';
@@ -12332,8 +12545,10 @@
 
   // ---- Indicadores ---------------------------------------------------------------------------------------------------
   function ejIndicadoresEl(m) {
-    const { s } = ejPanel('Indicadores', 'presupuestados y estimados hoy');
     const { filas, dhCierre } = ejIndicadores(m);
+    const { s } = ejPanel('Indicadores', 'presupuestados y estimados hoy', 'Se recalculan con cada gasto o cotización simulada y cada día trabajado. '
+      + (dhCierre ? 'Los días-hombre al cierre se estiman en ' + ejCantidad(dhCierre) + (m.mo.dhP ? ' (los presupuestados o, si ya se pasaron, los trabajados).' : ' (los trabajados divididos por el avance).') : 'Sin días-hombre presupuestados ni trabajados, los indicadores por día-hombre quedan sin dato.')
+      + (m.calc ? '' : ' Lo presupuestado sale de su formulación' + (m.form ? ', con las reglas del Formulador (no se pudieron cargar).' : ': este proyecto no tiene.')));
     const tabla = crear('table', 'ej-ind');
     const thead = crear('thead');
     const trh = crear('tr');
@@ -12360,9 +12575,6 @@
     });
     tabla.append(thead, tbody);
     s.append(tabla);
-    s.append(crear('p', 'ej-pista', 'Se recalculan con cada gasto o cotización simulada y cada día trabajado. '
-      + (dhCierre ? 'Los días-hombre al cierre se estiman en ' + ejCantidad(dhCierre) + (m.mo.dhP ? ' (los presupuestados o, si ya se pasaron, los trabajados).' : ' (los trabajados divididos por el avance).') : 'Sin días-hombre presupuestados ni trabajados, los indicadores por día-hombre quedan sin dato.')
-      + (m.calc ? '' : ' Lo presupuestado sale de su formulación' + (m.form ? ', con las reglas del Formulador (no se pudieron cargar).' : ': este proyecto no tiene.'))));
     return s;
   }
 
@@ -14241,6 +14453,7 @@
   function estilarTodos() { estado.pestanas.forEach((p) => { if (p.marco) estilarMarco(p); }); }
 
   // ---- Arranque ------------------------------------------------------------------------------------
+  infoPreparar(document);
   try {
     const t = localStorage.getItem(LS.tema);
     if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
@@ -14271,6 +14484,7 @@
       const h = HERR.get(p.herr);
       if (h && h.peru) navegar(p, urlDe(h));
     });
+    enlazarRespaldo($('#btnRespaldo'), HERR.get((pestanaDe(estado.activa) || {}).herr));
     avisar(estado.pais === 'pe' ? 'Los tableros se abren con los datos de Perú.' : 'Los tableros se abren con los datos de Chile.');
   });
 
