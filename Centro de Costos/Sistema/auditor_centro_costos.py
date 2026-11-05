@@ -98,6 +98,12 @@ PREFIJOS_PROYECTO = {
     "FACH2": "FCH2",
     "FACH1": "FCH1",
     "Limache Estanque 600L": "LIMA",
+    "Catedral": "CATE",
+    "USACH": "USAC",
+    "Quimetal -Flujómetros": "QUIM",
+    "Fuga quintero": "FUGQ",
+    "Llay llay Caldera CESFAM": "LLAY",
+    "KeyProcess": "KPH2",                    # N° 289 «Instalación H2 KeyProcess»: su TAG en el Análisis Financiero
 }
 # "Junji V2" (JUN2) existio entre el 2026-09-10 y el 2026-09-11: era el
 # reingreso de facturas que en "Junji's Valparaiso" se habian cargado cortadas,
