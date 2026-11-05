@@ -495,7 +495,8 @@ LEYENDA_PROYECTO = [
     "⚠️ Vista de sólo lectura: ninguna celda es editable. Editar los ítems en la hoja Detalle.",
 ]
 
-PATRON_NREF = re.compile(r"^[A-Za-zÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑ0-9]*-\d+$")
+# Prefijo de letras o N° de la Planilla (303-001, desde el 2026-11-05).
+PATRON_NREF = re.compile(r"^[A-Za-zÁÉÍÓÚÑ0-9]+-\d+$")
 
 # ── TIPO DE DOCUMENTO: UNA SOLA FUENTE DE VERDAD ────────────────────────────
 # El tipo lo escribe un agente al extraer el documento, asi que la misma cosa

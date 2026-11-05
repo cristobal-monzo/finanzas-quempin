@@ -55,3 +55,11 @@ def test_una_carpeta_con_n_de_la_planilla_usa_ese_n_como_tag(tmp_path, monkeypat
     assert acc.prefijo_para_proyecto("Fiscalía Quilpué") == "36"
     assert acc.prefijo_para_proyecto("Sin número") == "SINN"
     assert acc.siguiente_n_ref("Cotización Osorno", {}) == "303-001"
+
+
+def test_master_reconoce_un_n_ref_con_n_de_la_planilla():
+    """Con PATRON_NREF solo de letras, leer_master cortaba Master en la primera
+    fila «261-001» y todo el libro parecía sin registrar (2026-11-05)."""
+    for ref in ("261-001", "36-010", "UMAG-045", "CFLI-002"):
+        assert acc.PATRON_NREF.match(ref)
+    assert not acc.PATRON_NREF.match("Cursiva = celda editable a mano")
