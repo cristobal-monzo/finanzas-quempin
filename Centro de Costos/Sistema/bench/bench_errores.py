@@ -58,7 +58,7 @@ from sandbox import acc  # noqa: E402
 
 # Documentos sanos de control: los primeros 20 del corpus nunca reciben
 # defecto (ver corpus_errores.generar_corpus).
-RE_OK = re.compile(r"\[OK\] (?P<proy>[^\\]+)\\(?P<archivo>\S+) -> (?P<nref>[A-Z]+-\d+)")
+RE_OK = re.compile(r"\[OK\] (?P<proy>[^\\]+)\\(?P<archivo>\S+) -> (?P<nref>[A-Z0-9]+-\d+)")
 RE_SECCION = re.compile(r"^\s*(\d)\. [A-ZÁÉÍÓÚÑ]")
 
 # Secciones del INFORME DE AUDITORIA que son HALLAZGOS (7 = notas del JSON, no

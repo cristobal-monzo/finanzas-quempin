@@ -224,9 +224,9 @@ def _pesos(valor) -> str:
 # Siglas que el TAG tuvo antes de ser el N° de la Planilla (2026-11-05). Un
 # Formulador o un Portal que guardo la sigla vieja sigue cayendo en su proyecto.
 TAGS_ANTIGUOS = {
-    "UML1": "280", "FQYQ": "36", "CCHI": "175", "CVAL": "270", "CREM": "29",
-    "FCH2": "259", "FCH1": "261", "CATE": "250", "USAC": "283", "QUIM": "317",
-    "FUGQ": "319", "LLAY": "296", "LLYC": "296", "KPH2": "289", "KEYP": "289",
+    "UML1": "280", "FQYQ": "40", "CCHI": "175", "CVAL": "270", "CREM": "31",
+    "FCH2": "259", "FCH1": "261", "CATE": "250", "USAC": "286", "QUIM": "327",
+    "FUGQ": "320", "LLAY": "296", "LLYC": "296", "KPH2": "289", "KEYP": "289",
     "UARE": "314", "LICA": "284", "H2GN": "281", "QUOS": "303",
 }
 

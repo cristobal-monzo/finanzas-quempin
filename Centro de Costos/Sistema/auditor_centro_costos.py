@@ -90,7 +90,7 @@ PREFIJOS_PROYECTO = {
     "Cesfam Constitución": "CCON",
     "Gastos Generales": "GGEN",
     "Microturbina LER": "MLER",
-    "Fiscalía Quilpué y Quintero": "36",     # carpeta «036. Fiscalía Quilpué y Quintero»
+    "Fiscalía Quilpué y Quintero": "40",     # N° 40 en la Planilla (la carpeta dice «036.»)
     "ESFOCAR": "ESFO",
     "CONAF Puerto Montt": "CPMO",
     "Bomba Wilo Conchalí": "BWIL",
@@ -98,16 +98,16 @@ PREFIJOS_PROYECTO = {
     "Caldera Valdivia": "270",
     "Calderas Antofagasta": "CANT",
     "Comisaría Conchalí": "COMC",
-    "Cremación Concepción": "29",
+    "Cremación Concepción": "31",            # N° 31 «Mantención hornos crematorios»
     "Junji's Valparaiso": "JUNJ",
     "Putaendo Hospital Pinel": "HPIN",
     "FACH2": "259",
     "FACH1": "261",
     "Limache Estanque 600L": "LIMA",
     "Catedral": "250",
-    "USACH": "283",
-    "Quimetal -Flujómetros": "317",
-    "Fuga quintero": "319",
+    "USACH": "286",                          # N° 286 (la carpeta dice «283.»)
+    "Quimetal -Flujómetros": "327",          # N° 327 «Medidores en Quimetal» (la carpeta dice «317.»)
+    "Fuga quintero": "320",                  # N° 320 «Reparación de fuga de refrigerante» (la carpeta dice «319.»)
     "Llay llay Caldera CESFAM": "296",
     "KeyProcess": "289",                     # N° 289 «Instalación H2 KeyProcess»
     "UA Reactor": "314",
