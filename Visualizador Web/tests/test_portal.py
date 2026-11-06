@@ -6035,3 +6035,53 @@ def test_la_vista_de_observaciones_sin_desbordes(navegador, sitio, ancho):
     assert derecha <= ancho + 0.5, derecha
     assert not errores
     pagina.context.close()
+
+
+# ---- Apodo del proyecto y postventas (2026-11-06) -----------------------------------------------------------------------
+# Pedido del usuario: el apodo de la columna «Apodo» del Análisis Financiero se ve como «270 - Caldera Valdivia»; una
+# postventa se asocia a su proyecto original por su N° o su nombre, y queda en «ID o referencia» («164. Talca»).
+
+def test_una_postventa_se_asocia_a_su_proyecto_original_por_su_n(navegador, sitio):
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#pqOriginalCampo").is_hidden() and dlg.locator("#pqReferenciaCampo").is_visible()
+    dlg.locator("#pqTitulo").fill("Cambio de acuastato")
+    dlg.locator("#pqCanal").select_option("Postventa")
+    assert dlg.locator("#pqOriginalCampo").is_visible() and dlg.locator("#pqReferenciaCampo").is_hidden()
+    # Sugiere los requerimientos de la Planilla como «N°. Título»
+    assert dlg.locator("#pqProyectos option").count() > 0
+    assert all(v.split(". ", 1)[0].isdigit() for v in dlg.locator("#pqProyectos option").evaluate_all("(o) => o.map((x) => x.value)"))
+    dlg.locator("#pqOriginal").fill("900")
+    dlg.locator("#pqOriginal").press("Tab")
+    original = dlg.locator("#pqOriginal").input_value()
+    assert original.startswith("900. ") and "liceo" in original.lower()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert m["requerimiento"]["canal"] == "Postventa" and m["requerimiento"]["referencia"] == original
+    assert _esquemas().validar_mensaje(m) == []
+    # Al abrirla de nuevo, el proyecto original se ve en su campo y no cuenta como cambio
+    pagina.locator('#pqFilas tr[data-n="914"] .pq-abrir').click()
+    assert dlg.locator("#pqOriginal").input_value() == original and dlg.locator("#pqReferenciaCampo").is_hidden()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert _pedidos_planilla(pagina, "editar-requerimiento") == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_apodo_del_analisis_financiero_da_nombre_al_proyecto(navegador, sitio):
+    af = [{"tag": "DEMO", "nombre": "Obra demo", "apodo": "Caldera Demo Valparaíso", "avance": 0.4, "req": "908",
+           "venta": {"cargada": True}}]
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra={
+        "publicado/analisis-financiero.json": _sobre("analisis-financiero", {"proyectos": af})})
+    pagina.locator("#pqNuevo").click()
+    pagina.locator("#pqCanal").select_option("Postventa")
+    valores = pagina.locator("#pqProyectos option").evaluate_all("(o) => o.map((x) => x.value)")
+    assert "908. Caldera Demo Valparaíso" in valores
+    pagina.locator("#pqOriginal").fill("caldera demo")
+    pagina.locator("#pqOriginal").press("Tab")
+    assert pagina.locator("#pqOriginal").input_value() == "908. Caldera Demo Valparaíso"
+    assert not errores
+    pagina.context.close()

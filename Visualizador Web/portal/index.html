@@ -2942,13 +2942,15 @@
       <label class="pl-campo"><span>Evaluador <i>(quien lo evalúa)</i></span><input id="pqEvaluador" type="text" maxlength="12" autocomplete="off" list="pqUsuarios"></label>
       <label class="pl-campo"><span>Cliente</span><input id="pqCliente" type="text" maxlength="120" autocomplete="off" list="pqClientes"></label>
       <label class="pl-campo"><span>Ubicación</span><input id="pqUbicacion" type="text" maxlength="80" autocomplete="off" list="pqLugares" placeholder="Comuna de los trabajos"></label>
-      <label class="pl-campo ej-ancho"><span>ID o referencia</span><input id="pqReferencia" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="El ID de Mercado Público, o una referencia que lo identifique"></label>
+      <label class="pl-campo ej-ancho" id="pqOriginalCampo" hidden><span>Proyecto original <i>(de cuál es esta postventa)</i></span><input id="pqOriginal" type="text" maxlength="80" autocomplete="off" spellcheck="false" list="pqProyectos" placeholder="Escribe su N° o su nombre"></label>
+      <label class="pl-campo ej-ancho" id="pqReferenciaCampo"><span>ID o referencia</span><input id="pqReferencia" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="El ID de Mercado Público, o una referencia que lo identifique"></label>
       <fieldset class="pq-fecha"><legend>Apertura <i>(cuándo llegó)</i></legend><input id="pqApF" type="date" aria-label="Fecha de apertura"><input id="pqApH" type="time" aria-label="Hora de apertura (opcional)"></fieldset>
       <fieldset class="pq-fecha"><legend>Cierre <i>(plazo para ofertar)</i></legend><input id="pqCiF" type="date" aria-label="Fecha de cierre"><input id="pqCiH" type="time" aria-label="Hora de cierre (opcional)"></fieldset>
     </div>
     <datalist id="pqUsuarios"></datalist>
     <datalist id="pqLugares"></datalist>
     <datalist id="pqClientes"></datalist>
+    <datalist id="pqProyectos"></datalist>
     <div class="dlg-acc"><span class="pq-nota" id="pqNota"></span><button class="cx-enlace pq-formular" id="pqFormular" type="button" hidden>Ir al Formulador</button><button class="cx-enlace" id="pqCancelar" type="button">Cancelar</button><button class="btn-pri" id="pqGuardar" type="submit">Agregar a la Planilla</button></div>
   </form>
 </dialog>
@@ -3617,7 +3619,22 @@
   function proyectoActual() {
     return estado.proyecto ? estado.proyectos.find((p) => p.codigo === estado.proyecto) || null : null;
   }
-  const nombreProyecto = (p) => p.codigo + (p.titulo ? ' · ' + p.titulo : '');
+  /* Apodo de cada proyecto (columna «Apodo» del Análisis Financiero, 2026-11-05): «270 - Caldera Valdivia». Se llena al
+     leer la carpeta de intercambio (rcArmar); mientras no llega, el nombre de siempre. */
+  const APODOS = { porReq: new Map(), porTag: new Map() };
+  function leerApodos(fichas) {
+    APODOS.porReq.clear(); APODOS.porTag.clear();
+    (fichas || []).forEach((p) => {
+      if (!p || !texto(p.tag) || !texto(p.apodo)) return;
+      APODOS.porTag.set(texto(p.tag).toUpperCase(), texto(p.apodo));
+      if (rcNum(p.req)) APODOS.porReq.set(rcNum(p.req), texto(p.apodo));
+    });
+  }
+  const apodoDe = (req, tag) => APODOS.porReq.get(rcNum(req)) || APODOS.porTag.get(texto(tag).toUpperCase()) || '';
+  const nombreProyecto = (p) => {
+    const a = apodoDe(p.req, p.tag);
+    return a ? (rcNum(p.req) || texto(p.tag).toUpperCase()) + ' - ' + a : p.codigo + (p.titulo ? ' · ' + p.titulo : '');
+  };
 
   // ---- Usuario (2026-10-16): quién trabaja, con las iniciales del equipo ---------------------------
   const usuarioValido = (v) => { const s = texto(v).toUpperCase(); return USUARIOS.includes(s) ? s : ''; };
@@ -5095,7 +5112,8 @@
     t.cotizaciones = c && Array.isArray(c.cotizaciones) ? c.cotizaciones : [];
     t.tag = texto((af && af.tag) || (c && c.tag)).toUpperCase() || null;
     const carpeta = (t.carpetas.oferta || t.carpetas.ejecucion || [])[0];
-    t.titulo = rcSinNumero(texto(carpeta).split('/').pop()) || (f && f.titulo) || rcLegible(r && r.titulo) || texto(af && af.nombre) || 'Requerimiento ' + n;
+    // El apodo del Análisis Financiero manda («Caldera Valdivia»); el N° va aparte, como siempre
+    t.titulo = texto(af && af.apodo) || rcSinNumero(texto(carpeta).split('/').pop()) || (f && f.titulo) || rcLegible(r && r.titulo) || texto(af && af.nombre) || 'Requerimiento ' + n;
     t.lugar = texto(r && r.ubicacion) || texto(af && af.cliente);
     [t.responsable, t.respDe] = rcResponsable([f && f.responsable, 'responsable de la formulación'],
       [r && r.evaluador, 'evaluador en la Planilla'], [r && r.captador, 'captador en la Planilla']);
@@ -5241,7 +5259,7 @@
     const t = rcBase('tag-' + texto(af.tag).toUpperCase());
     t.tag = texto(af.tag).toUpperCase();
     t.af = af;
-    t.titulo = texto(af.nombre) || t.tag;
+    t.titulo = texto(af.apodo) || texto(af.nombre) || t.tag;
     t.lugar = texto(af.cliente);
     rcEtapaAF(t, af, hoy);
     t.avisos.push('No tiene N° de requerimiento: escríbelo en «Ingresar avance» para unirlo con su oferta y su Planilla.');
@@ -5263,6 +5281,7 @@
     d.af.forEach((p) => {
       if (!p || !texto(p.tag)) return;
       afPorTag.set(texto(p.tag).toUpperCase(), p);
+
       const n = rcNum(p.req);
       if (n && !ajena(n, p)) afPorReq.set(n, p);
     });
@@ -5421,6 +5440,8 @@
       const datos = await rcLeer(dir);
       await cargarPulso();
       rc.datos = datos;
+      leerApodos(datos.af);
+      pintarProyecto();          // el selector ya puede decir «303 - Incinerador Osorno»
       rc.pulso = lecturaPulso(datos.estado);
       rc.tarjetas = rcArmar(datos, new Date());
       rc.leido = Date.now();
@@ -10027,7 +10048,28 @@
     const fecha = (pre) => { const f = $('#pq' + pre + 'F').value, h = $('#pq' + pre + 'H').value; return f ? (h ? f + 'T' + h.slice(0, 5) : f) : null; };
     const capt = t('pqCaptador'), ev = t('pqEvaluador');
     return { estado: $('#pqEstado').value || null, canal: $('#pqCanal').value || null, captador: capt ? capt.toUpperCase() : null,
-      evaluador: ev ? ev.toUpperCase() : null, titulo: t('pqTitulo'), cliente: t('pqCliente'), ubicacion: t('pqUbicacion'), referencia: t('pqReferencia'), apertura: fecha('Ap'), cierre: fecha('Ci') };
+      evaluador: ev ? ev.toUpperCase() : null, titulo: t('pqTitulo'), cliente: t('pqCliente'), ubicacion: t('pqUbicacion'),
+      // Una postventa guarda su proyecto original en «ID o referencia», como «164. Talca» (2026-11-06)
+      referencia: $('#pqCanal').value === 'Postventa' ? pqOriginal(t('pqOriginal')) : t('pqReferencia'), apertura: fecha('Ap'), cierre: fecha('Ci') };
+  }
+  /* El proyecto original de una postventa, por su N° o por su nombre: «303» o «quemador» → «303. Quemador Osorno».
+     Lo que no calza con un solo requerimiento queda tal como se escribió. */
+  function pqOriginal(txt) {
+    if (!txt) return null;
+    // Ya escrito como «N°. nombre» (o copiado de las sugerencias): se respeta tal cual
+    if (/^\s*\d{1,6}\s*\.\s*\S/.test(txt)) return txt;
+    const filas = pqFilas().filter((r) => rcNum(r.numero) && texto(r.titulo));
+    const nombre = (r) => (rcNum(r.numero) + '. ' + (apodoDe(r.numero) || rcLegible(r.titulo))).slice(0, 80);
+    const m = /^\s*(?:n[°º.]?\s*)?0*(\d{1,6})\s*$/i.exec(txt);
+    if (m) { const r = filas.find((x) => rcNum(x.numero) === rcNum(m[1])); return r ? nombre(r) : txt; }
+    const q = norm(txt);
+    const hallas = filas.filter((r) => norm([r.titulo, apodoDe(r.numero)].join(' ')).includes(q));
+    return hallas.length === 1 ? nombre(hallas[0]) : txt;
+  }
+  function pqVerOriginal() {
+    const pv = $('#pqCanal').value === 'Postventa';
+    $('#pqOriginalCampo').hidden = !pv;
+    $('#pqReferenciaCampo').hidden = pv;
   }
   // Sugerencias al escribir: el equipo y los captadores de la Planilla; las ubicaciones, de la más usada a la menos
   function pqListas() {
@@ -10041,6 +10083,11 @@
     llenar($('#pqUsuarios'), [...new Set(USUARIOS.concat(contar('captador'), contar('evaluador')))]);
     llenar($('#pqLugares'), contar('ubicacion'));
     llenar($('#pqClientes'), contar('cliente'));
+    // Para el proyecto original de una postventa: primero los adjudicados, del más nuevo al más antiguo
+    const orden = (r) => (/^adjudicad/i.test(texto(r.estado)) ? 0 : 1);
+    llenar($('#pqProyectos'), filas.filter((r) => rcNum(r.numero) && texto(r.titulo))
+      .sort((a, b) => orden(a) - orden(b) || rcNum(b.numero) - rcNum(a.numero))
+      .map((r) => (rcNum(r.numero) + '. ' + (apodoDe(r.numero) || rcLegible(r.titulo))).slice(0, 80)));
   }
   function pqAbrir(fila) {
     if (!rc.dir || !rc.datos) return;
@@ -10058,6 +10105,8 @@
     $('#pqCliente').value = texto(v.cliente);
     $('#pqUbicacion').value = texto(v.ubicacion);
     $('#pqReferencia').value = texto(v.referencia);
+    $('#pqOriginal').value = texto(v.canal) === 'Postventa' ? texto(v.referencia) : '';
+    pqVerOriginal();
     pqPonerFecha('Ap', v.apertura);
     pqPonerFecha('Ci', v.cierre);
     pqListas();
@@ -14489,6 +14538,14 @@
   });
   $('#pqMas').addEventListener('click', () => { pq.mostrar += PQ_PAGINA; pqPintarTabla(); });
   $('#pqForm').addEventListener('submit', pqGuardar);
+  // Postventa: «ID o referencia» pasa a ser el proyecto original (su N° o su nombre, con sugerencias)
+  $('#pqCanal').addEventListener('change', () => {
+    const pv = $('#pqCanal').value === 'Postventa';
+    if (pv && !$('#pqOriginal').value) $('#pqOriginal').value = $('#pqReferencia').value === '-' ? '' : $('#pqReferencia').value;
+    if (!pv && !$('#pqReferencia').value) $('#pqReferencia').value = $('#pqOriginal').value;
+    pqVerOriginal();
+  });
+  $('#pqOriginal').addEventListener('change', () => { const v = pqOriginal($('#pqOriginal').value.trim()); if (v) $('#pqOriginal').value = v; });
   $('#pqX').addEventListener('click', () => $('#dlgPlanilla').close());
   $('#pqCancelar').addEventListener('click', () => $('#dlgPlanilla').close());
   $('#pqFormular').addEventListener('click', () => {
