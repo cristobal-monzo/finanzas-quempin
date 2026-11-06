@@ -3,7 +3,7 @@
 `index.html`: un solo archivo sin build ni datos, publicado en
 <https://cristobal-monzo.github.io/finanzas-quempin/portal/>. Es la puerta única
 del equipo (el hub redirige aquí; `?indice` muestra el índice antiguo). Una
-ventana: menú ☰, buscador (Ctrl K), proyecto elegido una vez y pestañas con las
+ventana: menú ☰, buscador (Ctrl K) y pestañas con las
 herramientas dentro (iframes del mismo sitio). Sin contraseña propia: cada
 herramienta pide la del equipo, que el navegador recuerda.
 
@@ -18,7 +18,7 @@ Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 | Recorrido (`recorrido`) | `#vistaRecorrido` | `rc*`, `rc` | [docs/recorrido.md](docs/recorrido.md) |
 | Planificación semanal (`planificacion`) | `#vistaPlan` | `pl*`, `planif` | [docs/planificacion.md](docs/planificacion.md) |
 | Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
-| Planilla de Ingreso (`planilla`) | `#vistaPlanilla` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
+| Requerimientos, antes «Planilla de Ingreso» (`planilla`) | `#vistaPlanilla` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
 | Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
 | Clic derecho (menú del portal) y reportar errores y observaciones (`observaciones`) | `#menuCtx`, `#dlgObs`, `#vistaObservaciones` | `ctx*`, `obs*`, `obs` | [docs/observaciones.md](docs/observaciones.md) |
 | Subir documentos (`subir-cc`) | `#vistaSubir` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |

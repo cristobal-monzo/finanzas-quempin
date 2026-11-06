@@ -695,48 +695,38 @@ def test_la_calculadora_que_cambia_sola_mueve_su_pestana(navegador, sitio):
     pagina.context.close()
 
 
-def test_el_proyecto_elegido_abre_cada_herramienta_en_el(navegador, sitio):
+def test_sin_selector_de_proyecto_cada_herramienta_abre_su_vista_general(navegador, sitio):
+    """2026-11-06, pedido del usuario: el selector de proyecto de la cabecera «no aporta» y se quitó."""
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
-    # La Carta Gantt es una herramienta aparte (2026-10-20): sin proyecto abre su lista, sin pedir uno
+    assert pagina.locator("#btnProyecto").count() == 0 and pagina.locator("#btnCarpeta").count() == 0
+    # Lo que quedó guardado del selector de antes ya no manda
+    pagina.evaluate("localStorage.setItem('quempin_portal_proyecto', JSON.stringify('QMPN-2026-001'))")
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    assert pagina.evaluate("localStorage.getItem('quempin_portal_proyecto')") is None
     _menu(pagina, "Carta Gantt")
-    assert not pagina.locator("#popProyecto").is_visible()
     _marco(pagina, "gantt", "gantt")
     _esperar(pagina, "gantt", "hash", "#/")
-    # Con un proyecto elegido, abre su carta en su propia pestaña, aparte del Formulador
-    pagina.locator("#btnProyecto").click()
-    assert pagina.locator("#listaProyectos .pop-item .t").all_inner_texts() == ["QMPN-2026-001 · Obra de prueba",
-                                                                                "QMPN-2026-002 · Mantención de prueba"]
-    pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-001").click()
-    assert "QMPN-2026-001" in pagina.locator("#proyectoActual").inner_text()
-    _esperar(pagina, "gantt", "hash", "#/proyecto/u2")
-    assert pagina.evaluate("document.getElementById('marco-gantt').contentDocument.documentElement.dataset.enPortal") == "gantt"
     _menu(pagina, "Formulador")
     formulador = _marco(pagina, "formulador", "formulador")
-    _esperar(pagina, "formulador", "hash", "#/req/7")
-    assert _pestanas(pagina) == ["Inicio", "Carta Gantt · QMPN-2026-001", "Formulador · QMPN-2026-001"]
-    pagina.locator("#pestanas .x").first.click()
-    assert _pestanas(pagina) == ["Inicio", "Formulador · QMPN-2026-001"]
-    _menu(pagina, "Centro de Costos")
-    cc = _marco(pagina, "centro-costos", "cc")
-    _esperar(pagina, "centro-costos", "hash", "#tag=DEMO")
-    # Sin proyecto: las abiertas vuelven a su vista general
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Sin proyecto").click()
-    _esperar(pagina, "centro-costos", "hash", "")
     _esperar(pagina, "formulador", "hash", "#/")
+    assert _pestanas(pagina) == ["Inicio", "Carta Gantt", "Formulador"]
+    _menu(pagina, "Centro de Costos")
+    _marco(pagina, "centro-costos", "cc")
+    _esperar(pagina, "centro-costos", "hash", "")
     # Buscar por N° de requerimiento abre el seguimiento de ese proyecto
     pagina.locator("#buscar").fill("7")
     assert pagina.locator("#resultados .res-tit").first.inner_text() == "QMPN-2026-001 · Obra de prueba"
     pagina.keyboard.press("Enter")
     _esperar(pagina, "formulador", "hash", "#/p/u2/seguimiento")
-    # Un proyecto nuevo guardado por el Formulador aparece sin recargar el portal
+    # Un proyecto nuevo guardado por el Formulador aparece en el buscador sin recargar el portal
     formulador.evaluate("""k => {
         const d = JSON.parse(localStorage.getItem(k));
         d.proyectos.push({uid: 'u5', codigo: 'QMPN-2026-004', version: 1, titulo: 'Nuevo', estado: 'Borrador', modificado: '2026-10-05T10:00:00Z'});
         localStorage.setItem(k, JSON.stringify(d));
     }""", LS_PROYECTOS)
-    pagina.locator("#btnProyecto").click()
-    pagina.wait_for_function("() => document.querySelectorAll('#listaProyectos .pop-item').length === 4")   # + «Sin proyecto»
+    pagina.locator("#buscar").fill("QMPN-2026-004")
+    pagina.locator("#resultados .res-tit", has_text="QMPN-2026-004").wait_for()
     assert not errores
     pagina.context.close()
 
@@ -754,18 +744,13 @@ def test_ingresar_datos_y_analisis_son_una_sola_pestana(navegador, sitio):
     pagina.context.close()
 
 
-def test_el_seguimiento_pide_el_proyecto(navegador, sitio):
-    """2026-10-25: sin proyecto, «Seguimiento» abría la misma lista que «Formulador», con otro nombre.
-    Ahora pide elegir el proyecto y abre su seguimiento."""
+def test_el_seguimiento_abre_la_lista_del_formulador(navegador, sitio):
+    """Sin selector de proyecto (2026-11-06), «Seguimiento» abre la lista del Formulador, donde se elige el proyecto."""
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
     _menu(pagina, "Seguimiento")
-    assert pagina.locator("#popProyecto").is_visible()
-    assert pagina.locator("#popNota").inner_text() == "Elige el proyecto para ver su Seguimiento."
-    assert _pestanas(pagina) == ["Inicio"]
-    pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-002").click()
     _marco(pagina, "formulador", "formulador")
-    _esperar(pagina, "formulador", "hash", "#/p/u3/seguimiento")
-    assert _pestanas(pagina) == ["Inicio", "Seguimiento · QMPN-2026-002"]
+    _esperar(pagina, "formulador", "hash", "#/")
+    assert _pestanas(pagina) == ["Inicio", "Seguimiento"]
     assert not errores
     pagina.context.close()
 
@@ -811,14 +796,14 @@ def test_la_contrasena_escrita_en_una_herramienta_abre_las_demas(navegador, siti
 def test_excel_y_programa_no_se_abren_dentro(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     # La Planilla de Ingreso es una vista del portal desde el 2026-10-29; su Excel de respaldo se abre aparte, desde Conexiones
-    _menu(pagina, "Planilla de Ingreso")
+    _menu(pagina, "Requerimientos")
     assert pagina.evaluate("window.__abiertas") == []
     assert pagina.locator("#vistaPlanilla").is_visible() and pagina.locator("iframe").count() == 0
     _menu(pagina, "Configuración y conexiones")
     pagina.locator("#cx-planilla .cx-enlace", has_text="Abrir en Excel para la web").click()
     abiertas = pagina.evaluate("window.__abiertas")
     assert len(abiertas) == 1 and abiertas[0].startswith("https://quempinspa2020.sharepoint.com/")
-    for nombre in ("Conexiones", "Planilla"):
+    for nombre in ("Conexiones", "Requerimientos"):
         pagina.locator("#pestanas .pestana", has_text=nombre).locator(".x").click()
     # Cotizar y comprar abre QUEMPIN.exe en su sección con quempin:// (Sistema QUEMPIN 1.3.8)
     _menu(pagina, "Emitir cotización")
@@ -1342,13 +1327,6 @@ def test_el_usuario_se_elige_una_vez_y_ordena_los_proyectos(navegador, sitio):
     # Se guarda tal cual (no JSON): así lo lee el Formulador
     assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "LC"
     assert "Trabajas como LC" in pagina.locator("#aviso").inner_text()
-    # El selector de proyectos muestra primero los suyos
-    pagina.locator("#btnProyecto").click()
-    assert pagina.locator("#listaProyectos .pop-grupo").all_text_contents() == ["Tus proyectos (LC)", "Del equipo"]
-    titulos = pagina.locator("#listaProyectos li").all_inner_texts()
-    assert titulos[1].startswith("QMPN-2026-001") and titulos[3].startswith("QMPN-2026-002"), titulos
-    assert "a cargo de CM" in titulos[3]
-    pagina.keyboard.press("Escape")
     # El buscador dice cuál es suyo y encuentra por iniciales
     pagina.locator("#buscar").fill("cm")
     assert "a cargo de CM" in pagina.locator("#resultados").inner_text()
@@ -1358,8 +1336,6 @@ def test_el_usuario_se_elige_una_vez_y_ordena_los_proyectos(navegador, sitio):
     pagina.locator("#sinUsuario").click()
     assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == ""
     assert pagina.locator("#usuarioActual").inner_text() == "¿Quién eres?"
-    pagina.locator("#btnProyecto").click()
-    assert pagina.locator("#listaProyectos .pop-grupo").count() == 0
     assert not errores
     pagina.context.close()
 
@@ -1408,63 +1384,7 @@ def test_telefono_con_usuario_y_proyecto_sin_desbordes(navegador, sitio, ancho):
     pagina.context.close()
 
 
-# ---- La carpeta del proyecto en el Explorador (2026-10-19, QUEMPIN.exe 1.3.10) -------------------------
-def _proyectos_con_carpeta():
-    datos = json.loads(json.dumps(PROYECTOS))
-    datos["proyectos"][1]["vinculos"]["carpetaOferta"] = {
-        "nombre": "312. Gimnasio de prueba", "ruta": ["0 OFERTAS PRESENTADAS", "312. Gimnasio de prueba"], "numero": "312"}
-    # Adjudicada y copiada a Gestión de Proyectos: el original quedó en Adjudicadas y se abre la copia
-    datos["proyectos"][2]["vinculos"] = {"carpetaOferta": {
-        "nombre": "250. Obra de prueba", "ruta": ["0 OFERTAS ADJUDICADAS", "250. Obra de prueba"], "numero": "250",
-        "gestion": {"copiada": "2026-10-19T12:00:00.000Z"}}}
-    datos["proyectos"].append({"uid": "u5", "codigo": "QMPN-2026-009", "version": 1, "titulo": "Ruta mala", "estado": "Borrador",
-                               "modificado": "2026-10-01T09:00:00Z", "vinculos": {"carpetaOferta": {"nombre": "x", "ruta": ["..", "x"]}}})
-    return datos
-
-
-def test_la_carpeta_del_proyecto_se_abre_en_el_explorador(navegador, sitio):
-    pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.evaluate("d => localStorage.setItem('qpn.formulacion.proyectos.v1', JSON.stringify(d))", _proyectos_con_carpeta())
-    pagina.reload()
-    pagina.locator("#vistaInicio").wait_for()
-    boton = pagina.locator("#btnCarpeta")
-    assert boton.is_hidden()          # sin proyecto elegido
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Obra de prueba").click()
-    assert boton.is_visible()
-    assert "312. Gimnasio de prueba" in boton.get_attribute("title")
-    boton.click()
-    assert pagina.evaluate("window.__lanzados") == ["quempin://carpeta/formulacion/0%20OFERTAS%20PRESENTADAS/312.%20Gimnasio%20de%20prueba"]
-    assert "Abriendo «312. Gimnasio de prueba» en el Explorador" in pagina.locator("#aviso").inner_text()
-    pagina.locator("#aviso button", has_text="¿No se abrió?").click()
-    texto = pagina.locator("#dlgInfo").inner_text()
-    assert "1.3.10" in texto and "Formulación de proyectos › 0 OFERTAS PRESENTADAS › 312. Gimnasio de prueba" in texto
-    pagina.locator("#dlgInfo button", has_text="Entendido").click()
-    # Uno ya copiado a Gestión de Proyectos abre esa copia
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Mantención de prueba").click()
-    boton.click()
-    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/250.%20Obra%20de%20prueba"
-    # Sin carpeta, o con una ruta que no es de la biblioteca, no hay botón
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Ruta mala").click()
-    assert boton.is_hidden()
-    assert not errores
-    pagina.context.close()
-
-
-def test_en_el_telefono_no_hay_boton_de_carpeta(navegador, sitio):
-    pagina, errores = _abrir_portal(navegador, sitio, ancho=390, alto=844, movil=True)
-    pagina.evaluate("d => { localStorage.setItem('qpn.formulacion.proyectos.v1', JSON.stringify(d)); localStorage.setItem('quempin_portal_proyecto', JSON.stringify('QMPN-2026-001')); }", _proyectos_con_carpeta())
-    pagina.reload()
-    pagina.locator("#vistaInicio").wait_for()
-    assert pagina.locator("#btnCarpeta").is_hidden()
-    d = pagina.evaluate(JS_DESBORDES)
-    assert d["doc"] <= 390 and not d["fuera"], d
-    assert not errores
-    pagina.context.close()
-
-
+# ---- Las carpetas en el Explorador (2026-10-19, QUEMPIN.exe 1.3.10): hoy desde Proyectos en ejecución -------------------
 def test_sistema_quempin_atiende_las_carpetas_que_pide_el_portal():
     """quempin://carpeta/<formulacion|gestion>/… es lo que lee app/carpetas.py de Sistema QUEMPIN."""
     sistema = _hermano("Sistema QUEMPIN")
@@ -1656,14 +1576,14 @@ def test_el_recorrido_pone_cada_proyecto_en_su_etapa(navegador, sitio):
     accion = lambda c: pagina.locator(f'.rc-tarjeta[data-clave="{c}"] .rc-accion, .rc-tarjeta[data-clave="{c}"] .rc-espera').inner_text().strip()
     assert accion("req-900") == "Formular"
     assert accion("f-fz") == "Escribir el N° de requerimiento"
-    assert accion("req-912") == "Actualizar la Planilla"
+    assert accion("req-912") == "Actualizar Requerimientos"
     assert accion("req-901") == "Seguir formulando"
     assert accion("req-902") == "Preparar la cotización"
     assert accion("req-903") == "Emitir en Sistema QUEMPIN"
     assert accion("req-904") == "Marcar como Enviada"
     assert accion("req-905") == "Esperando respuesta"
     assert accion("req-906") == "Marcar como Adjudicada"
-    assert accion("req-913") == "Avisar a la Planilla"
+    assert accion("req-913") == "Avisar en Requerimientos"
     assert accion("req-907") == "Crear su ficha en el Análisis"
     assert accion("req-908") == "Registrar avance"
     assert accion("req-909") == "Ver su resultado"
@@ -4972,7 +4892,7 @@ def _planilla_con_datos(navegador, sitio, usuario=None, extra=None, **kw):
         pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, extra)
         pagina.reload()
         pagina.locator("#vistaInicio").wait_for()
-    _menu(pagina, "Planilla de Ingreso")
+    _menu(pagina, "Requerimientos")
     pagina.locator("#pqFilas tr").first.wait_for()
     return pagina, errores
 
@@ -4999,7 +4919,7 @@ def _pedido(numero, tipo, herramienta="portal", minutos=-5, **cuerpo):
 def test_sin_la_carpeta_la_planilla_deja_abrir_el_excel(navegador, sitio):
     """Un teléfono no abre carpetas: la vista dice qué falta y el Excel sigue a mano, como antes del 2026-10-29."""
     pagina, errores = _abrir_portal(navegador, sitio)
-    _menu(pagina, "Planilla de Ingreso")
+    _menu(pagina, "Requerimientos")
     pagina.locator("#pqVacio .cx-enlace", has_text="Abrir el Excel de respaldo").wait_for()
     assert pagina.locator("#pqVacio a.cx-enlace").get_attribute("href").startswith("https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/")
     assert pagina.locator("#pqContenido").is_hidden()
@@ -5031,7 +4951,7 @@ def test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel():
 
 def test_la_planilla_muestra_las_columnas_que_se_usan_del_mas_nuevo_al_mas_antiguo(navegador, sitio):
     pagina, errores = _planilla_con_datos(navegador, sitio)
-    assert _pestanas(pagina) == ["Inicio", "Planilla"]
+    assert _pestanas(pagina) == ["Inicio", "Requerimientos"]
     assert pagina.locator("iframe").count() == 0
     assert pagina.locator("#pqCabeza th").all_inner_texts() == [
         "N°", "Estado", "Canal", "Capt.", "Eval.", "Título", "Cliente", "Ubicación", "ID o referencia", "Apertura", "Cierre"]
@@ -5234,13 +5154,13 @@ def test_el_recorrido_lleva_a_la_fila_de_la_planilla(navegador, sitio):
     """«Actualizar la Planilla» del Recorrido (antes abría el Excel) abre la fila de ese N° en la Planilla del portal."""
     pagina, errores = _recorrido_con_datos(navegador, sitio)
     tarjeta = pagina.locator('.rc-tarjeta[data-clave="req-912"]')
-    assert tarjeta.locator(".rc-accion").inner_text() == "Actualizar la Planilla"
+    assert tarjeta.locator(".rc-accion").inner_text() == "Actualizar Requerimientos"
     tarjeta.locator(".rc-accion").click()
     dlg = pagina.locator("#dlgPlanilla")
     dlg.wait_for()
     assert dlg.locator("#dlgPqTit").inner_text() == "Requerimiento N° 912"
     assert dlg.locator("#pqTitulo").input_value() == "Cerró sin oferta"
-    assert _pestanas(pagina) == ["Inicio", "Recorrido", "Planilla"]
+    assert _pestanas(pagina) == ["Inicio", "Recorrido", "Requerimientos"]
     dlg.locator("#pqEstado").select_option("Descartado")
     dlg.locator("#pqGuardar").click()
     dlg.wait_for(state="hidden")
@@ -5377,15 +5297,15 @@ def test_el_menu_se_abre_donde_se_hizo_clic_y_siempre_cabe(navegador, sitio):
 
 def test_escape_cierra_el_menu_y_no_lo_que_quedo_detras(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#popProyecto").wait_for()
-    pagina.locator("#popProyecto").click(button="right", position={"x": 5, "y": 5})
+    pagina.locator("#btnUsuario").click()
+    pagina.locator("#popUsuario").wait_for()
+    pagina.locator("#popUsuario").click(button="right", position={"x": 5, "y": 5})
     pagina.locator("#menuCtx[open]").wait_for()
     pagina.keyboard.press("Escape")
     assert pagina.locator("#menuCtx").evaluate("(m) => m.open") is False
-    assert pagina.locator("#popProyecto").is_visible()
+    assert pagina.locator("#popUsuario").is_visible()
     pagina.keyboard.press("Escape")
-    assert pagina.locator("#popProyecto").is_hidden()
+    assert pagina.locator("#popUsuario").is_hidden()
     assert not errores
     pagina.context.close()
 
@@ -5540,8 +5460,6 @@ def test_reportar_llega_al_buzon_y_se_revisa_con_la_linea_de_comandos(navegador,
     import sys
 
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", proyectos=True)
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-001").click()
     _menu(pagina, "Análisis Financiero")
     marco = _marco(pagina, "analisis", "af")
     marco.locator('.viz-tab-btn[data-tab="tabProyectos"]').click()
@@ -5583,7 +5501,7 @@ def test_reportar_llega_al_buzon_y_se_revisa_con_la_linea_de_comandos(navegador,
     assert d["elemento"]["selector"] == "#botonRaro"
     assert d["elemento"]["texto"] == "Calcular" and d["elemento"]["titulo"] == "Calcula el margen"
     assert d["elemento"]["atributos"]["data-fila"] == "7"
-    assert d["proyecto"].startswith("QMPN-2026-")
+    assert "proyecto" not in d          # sin selector de proyecto (2026-11-06)
     assert msg["entorno"]["tema"] in ("claro", "oscuro") and msg["entorno"]["navegador"].startswith("Chrome/")
     assert {a["nombre"]: a["origen"] for a in msg["adjuntos"]} == {"captura.png": "captura", "imagen-1.png": "pegada"}
 

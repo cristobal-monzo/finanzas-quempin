@@ -81,7 +81,8 @@ grupos y herramientas. Cada herramienta lleva:
 - `tipo`: marco, excel, programa, archivo, ayuda, inicio o vista (una sección
   propia del portal, en su pestaña: `vista` es su id).
 - `ruta` y `peru`.
-- `requiereProyecto`: sin proyecto elegido, abre el selector en vez de la
+- **Sin selector de proyecto** (quitado el 2026-11-06, pedido del usuario: «no aporta»;
+  `quempin_portal_proyecto` se borra al abrir). Antes, `requiereProyecto`: sin proyecto elegido, abría el selector en vez de la
   herramienta. Lo lleva Seguimiento desde el 2026-10-25: sin proyecto era la
   misma lista del Formulador con otro nombre.
 - `familia` y `alias`: la misma página va en una sola pestaña. El
@@ -110,7 +111,8 @@ Una herramienta nueva es una entrada ahí. Un tablero nuevo va además en
 - `window.open('')` (los reportes PDF del Análisis) no se toca.
 - Si una herramienta se va a otra por su cuenta (el selector de
   calculadora), la pestaña la sigue.
-- **Proyecto elegido**: lee, nunca escribe, `qpn.formulacion.proyectos.v1` del
+- **Proyecto elegido** (histórico: el selector ya no existe; cada herramienta abre en su vista general y el buscador
+  lleva al Seguimiento de un proyecto): lee, nunca escribe, `qpn.formulacion.proyectos.v1` del
 Formulador, con la última versión de cada código. Se abre así:
 
 | Herramienta | Dirección |
@@ -136,12 +138,12 @@ una herramienta guarda la contraseña, las que esperaban con el candado se
 recargan solas. Se mantienen 8 herramientas cargadas como máximo.
 
 **Usuario** (2026-10-16, pedido del usuario: «un selector de usuario» con
-NB, ES, LC, CM, MP, SV): botón `#btnUsuario` junto a Proyecto. Guarda las
+NB, ES, LC, CM, MP, SV): botón `#btnUsuario` en la cabecera. Guarda las
 iniciales **tal cual, sin JSON**, en `quempin_usuario`, la misma clave del
 Formulador (`js/usuario.js`), que las usa como responsable de lo que se crea,
 autor en el Control de Documentos y «Mis proyectos»; cada uno se entera del
-cambio del otro por el evento `storage`. El selector de proyectos muestra
-primero «Tus proyectos» (el `responsable` del Formulador). Sin elección, adopta
+cambio del otro por el evento `storage`. El buscador marca
+«Tu proyecto» (el `responsable` del Formulador). Sin elección, adopta
 las iniciales que el Formulador tenía antes (`qpn.formulacion.iniciales` o su
 «Responsable por defecto»), solo leyéndolas. La lista va en el registro
 (`"usuarios"`) y debe ser la misma del Formulador y de Sistema QUEMPIN

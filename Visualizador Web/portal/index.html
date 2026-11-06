@@ -184,7 +184,6 @@
   .chip.es-calc { background: var(--tinte); color: var(--tinte-texto); border-color: var(--tinte-borde); }
 
   .cab-buscar { display: none; }
-  .proyecto { position: relative; flex: 0 0 auto; }
   .btn-proyecto {
     height: 38px; max-width: 300px;
     display: inline-flex; align-items: center; gap: 8px; padding: 0 12px;
@@ -194,8 +193,6 @@
   .btn-proyecto:hover { border-color: #6b6a66; }
   .btn-proyecto .et { font-size: 10.5px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: #ff8a4d; }
   .btn-proyecto .val { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* La carpeta del proyecto elegido (2026-10-19): QUEMPIN.exe la abre en el Explorador de archivos */
-  .btn-carpeta { margin-left: -4px; }
   .cab-btn[hidden] { display: none; }
   .pop-proyecto {
     position: absolute; right: 0; top: 48px; width: min(380px, calc(100vw - 24px));
@@ -2294,12 +2291,7 @@
     .buscador input { font-size: 16px; height: 42px; }
     .buscador kbd { display: none; }
     .btn-proyecto { max-width: 136px; padding: 0 10px; }
-    /* En el teléfono no hay Explorador de archivos ni QUEMPIN.exe */
-    .btn-carpeta { display: none; }
     .btn-proyecto .et { display: none; }
-    /* El proyecto elegido usa lo que queda de la fila: un código largo se corta con «…» (completo en su title) */
-    .proyecto { flex: 0 1 auto; min-width: 0; }
-    .proyecto .btn-proyecto { max-width: 100%; }
     /* Usuario en el teléfono: solo las iniciales; sin elegir, un ícono de persona con borde naranjo */
     .btn-usuario { min-width: 40px; padding: 0 9px; justify-content: center; }
     .btn-usuario > svg:last-child { display: none; }
@@ -2392,30 +2384,11 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="pop-proyecto pop-usuario" id="popUsuario" role="dialog" aria-label="Elegir usuario" hidden>
-        <p class="pop-nota pop-nota-info">¿Quién eres? <span class="info" data-etiqueta="Para qué sirve elegir tu usuario">En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres; aquí el selector de proyectos muestra primero los tuyos y el Recorrido los marca.</span></p>
+        <p class="pop-nota pop-nota-info">¿Quién eres? <span class="info" data-etiqueta="Para qué sirve elegir tu usuario">En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres; aquí el Recorrido los marca.</span></p>
         <ul class="usuarios" id="listaUsuarios" role="listbox" aria-label="Iniciales del equipo"></ul>
         <button class="pop-item" id="sinUsuario" type="button" role="option"><span class="t">Sin usuario</span><span class="s">Lo que hagas no queda a nombre de nadie</span></button>
       </div>
     </div>
-    <div class="proyecto">
-      <button class="btn-proyecto" id="btnProyecto" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="popProyecto" title="Elige el proyecto una vez: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él">
-        <span class="et">Proyecto</span>
-        <span class="val" id="proyectoActual">Elegir</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="pop-proyecto" id="popProyecto" role="dialog" aria-label="Elegir proyecto" hidden>
-        <p class="pop-nota" id="popNota" hidden></p>
-        <label class="sr" for="filtroProyecto">Buscar proyecto</label>
-        <input id="filtroProyecto" type="search" autocomplete="off" placeholder="Código, nombre, cliente o N°">
-        <ul class="pop-lista sin-barra" id="listaProyectos" role="listbox" aria-label="Proyectos"></ul>
-        <p class="pop-vacio" id="sinProyectos" hidden>Aquí aparecen los proyectos del Formulador guardados en este navegador. Ábrelo una vez y vuelve.</p>
-      </div>
-    </div>
-    <!-- La carpeta del proyecto elegido en el Explorador de archivos (2026-10-19): QUEMPIN.exe 1.3.10 atiende
-         quempin://carpeta/… (Sistema QUEMPIN app/carpetas.py). Solo si el proyecto tiene carpeta de oferta. -->
-    <button class="cab-btn btn-carpeta" id="btnCarpeta" type="button" hidden aria-label="Abrir la carpeta del proyecto" title="Abrir la carpeta del proyecto">
-      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5L12 11l2.5 2.5"/></svg>
-    </button>
   </header>
 
   <div class="cuerpo">
@@ -2649,8 +2622,8 @@
           <div class="planilla">
             <header class="rc-cab">
               <div>
-                <h1 id="tituloPlanilla">Planilla de Ingreso</h1>
-                <span class="info" data-etiqueta="Cómo funciona la Planilla">Cada requerimiento con su N°. Se ingresa y se cambia aquí; el Excel queda de respaldo y se pone al día solo, en los dos sentidos. Toca una fila para cambiarla.</span>
+                <h1 id="tituloPlanilla">Requerimientos</h1>
+                <span class="info" data-etiqueta="Cómo funciona Requerimientos">Cada requerimiento con su N°. Se ingresa y se cambia aquí; el Excel queda de respaldo y se pone al día solo, en los dos sentidos. Toca una fila para cambiarla.</span>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="pqPunto"></span>
@@ -2664,7 +2637,7 @@
               <div class="pq-barra">
                 <button class="cx-boton pq-nuevo" id="pqNuevo" type="button"><span>Nuevo requerimiento</span></button>
                 <div class="rc-buscar">
-                  <label class="sr" for="pqBuscar">Buscar en la Planilla de Ingreso</label>
+                  <label class="sr" for="pqBuscar">Buscar en Requerimientos</label>
                   <input id="pqBuscar" type="search" autocomplete="off" spellcheck="false" placeholder="Buscar N°, título, ciudad o ID">
                 </div>
                 <div class="pq-estados" id="pqEstados" role="group" aria-label="Ver por estado"></div>
@@ -2676,7 +2649,7 @@
               </div>
               <div class="pq-caja">
                 <table class="pq-tabla" id="pqTabla">
-                  <caption class="sr">Requerimientos de la Planilla de Ingreso, del más nuevo al más antiguo. Cada fila se abre para cambiarla.</caption>
+                  <caption class="sr">Requerimientos, del más nuevo al más antiguo. Cada fila se abre para cambiarla.</caption>
                   <thead><tr id="pqCabeza"></tr></thead>
                   <tbody id="pqFilas"></tbody>
                 </table>
@@ -2829,7 +2802,7 @@
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
       <li><strong>Usuario.</strong> Elige tus iniciales arriba a la derecha, una vez por navegador. En el Formulador quedas como responsable de los proyectos que crees y como autor de la evaluación de costos en el Control de Documentos, y su lista y el selector de proyectos muestran primero los tuyos. En Sistema QUEMPIN las iniciales se eligen en Configuración › Mi perfil.</li>
       <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él. Si tiene carpeta, el botón de la carpeta, a su lado, la abre en el Explorador de archivos del computador (con QUEMPIN.exe 1.3.10 o más nuevo).</li>
-      <li><strong>Planilla de Ingreso</strong> (en Formulación de proyectos): cada requerimiento con su N°. «Nuevo requerimiento» lo agrega con el siguiente N° libre, y al tocar una fila se cambia. El equipo lo ve al instante; un punto naranjo marca lo que todavía no llega al Excel. El Excel de siempre queda de respaldo: cada 10 minutos recibe lo de aquí y lo que se cambie en él llega aquí; si una casilla cambió en los dos lados, queda el cambio más reciente. Aquí están las columnas que se usan de verdad; las demás (visita, presupuesto, valores) se llenan en el Excel.</li>
+      <li><strong>Requerimientos</strong> (en Formulación de proyectos): cada requerimiento con su N°. «Nuevo requerimiento» lo agrega con el siguiente N° libre, y al tocar una fila se cambia. El equipo lo ve al instante; un punto naranjo marca lo que todavía no llega al Excel. El Excel de siempre queda de respaldo: cada 10 minutos recibe lo de aquí y lo que se cambie en él llega aquí; si una casilla cambió en los dos lados, queda el cambio más reciente. Aquí están las columnas que se usan de verdad; las demás (visita, presupuesto, valores) se llenan en el Excel.</li>
       <li><strong>Sistema QUEMPIN.</strong> «Cotizar y comprar» abre el programa QUEMPIN.exe en la pantalla que elijas; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
       <li><strong>Clic derecho.</strong> En el portal y dentro de cada herramienta abre el menú del portal: copiar y pegar, actualizar, abrir aparte y <strong>reportar un error u observación</strong>. La nota queda con el lugar exacto donde la hiciste y, si se puede, una imagen de la pantalla; en «Errores y observaciones» (en Ayuda) ves qué pasó con ella. Para el menú del navegador (revisar ortografía, guardar una imagen), Shift + clic derecho.</li>
       <li><strong>Abrir aparte</strong> (↗, arriba a la derecha) lleva la herramienta activa a su propia pestaña del navegador, en su dirección de siempre.</li>
@@ -3083,7 +3056,7 @@
      "ruta": "/finanzas-quempin/oportunidades/", "breve": "Mercado Público, con puntaje",
      "desc": "Licitaciones y compras ágiles que calzan con el trabajo de QUEMPIN, con su puntaje y su cierre.",
      "claves": "licitacion licitaciones compra agil compras agiles mercado publico oportunidad oportunidades"},
-    {"id": "planilla", "nombre": "Planilla de Ingreso", "corto": "Planilla", "grupo": "formular", "tipo": "vista", "vista": "vistaPlanilla", "icono": "tabla",
+    {"id": "planilla", "nombre": "Requerimientos", "corto": "Requerimientos", "grupo": "formular", "tipo": "vista", "vista": "vistaPlanilla", "icono": "tabla",
      "url": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos%20compartidos/Planilla%20de%20Ingreso%20de%20Requerimientos.xlsx?web=1",
      "breve": "Cada requerimiento y su N°",
      "desc": "Cada requerimiento del equipo con su N°: se ingresan y se cambian aquí. El Excel de siempre queda de respaldo y se pone al día solo, en los dos sentidos.",
@@ -3103,9 +3076,9 @@
      "desc": "El programa de trabajo de cada proyecto, con su ruta crítica, en PDF y Excel. Herramienta propia desde el 2026-10-20: con un proyecto elegido abre su carta.",
      "claves": "gantt carta programa plazo plazos cronograma ruta critica"},
     {"id": "proyectos", "nombre": "Seguimiento", "grupo": "formular", "tipo": "marco",
-     "ruta": "/formulacion-proyectos-quempin/", "familia": "formulador", "alias": true, "proyecto": "seguimiento", "requiereProyecto": true,
+     "ruta": "/formulacion-proyectos-quempin/", "familia": "formulador", "alias": true, "proyecto": "seguimiento",
      "breve": "Un proyecto: su etapa y qué sigue",
-     "desc": "El seguimiento de un proyecto: en qué etapa va, qué sigue y en qué herramienta se hace. Sin proyecto elegido, primero pide elegirlo (la lista de todos está en el Formulador; el equipo completo, en el Recorrido).",
+     "desc": "El seguimiento de un proyecto: en qué etapa va, qué sigue y en qué herramienta se hace. Abre la lista del Formulador para elegir el proyecto (el equipo completo está en el Recorrido).",
      "claves": "proyecto proyectos etapa avance que sigue seguimiento recorrido"},
     {"id": "planificacion", "nombre": "Planificación semanal", "corto": "Planificación", "grupo": "finanzas", "tipo": "vista", "vista": "vistaPlan", "icono": "calendario",
      "breve": "Quién va a qué proyecto cada día",
@@ -3217,14 +3190,14 @@
      "para": "El buzón y la cartelera por donde las herramientas se pasan los datos: «buzon» (pedidos que esperan), «publicado» (lo que cada una publica) y «procesado» (lo ya atendido). Su LEEME.md lo explica.",
      "ruta": ["OneDrive - QUEMPIN SPA", "Formulación de proyectos - Documentos", ".HERRAMIENTAS FORMULACIÓN", "Intercambio"],
      "web": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos compartidos/.HERRAMIENTAS FORMULACIÓN/Intercambio",
-     "pasos": ["No se conecta aparte: queda conectada al conectar la biblioteca completa en el Formulador. La Planilla de Ingreso, «Ingresar avance», el Recorrido de proyectos, la Planificación semanal, «Proyectos en ejecución», «Subir documentos» y las observaciones usan esa misma conexión, porque están en el mismo sitio web.",
+     "pasos": ["No se conecta aparte: queda conectada al conectar la biblioteca completa en el Formulador. Requerimientos, «Ingresar avance», el Recorrido de proyectos, la Planificación semanal, «Proyectos en ejecución», «Subir documentos» y las observaciones usan esa misma conexión, porque están en el mismo sitio web.",
                "Sistema QUEMPIN y el procesador la encuentran solos cuando la biblioteca está en OneDrive.",
                "No muevas, renombres ni edites sus archivos a mano."],
      "usan": ["formulador", "gantt", "planilla", "ingresar", "recorrido", "planificacion", "ejecucion", "subir-cc", "observaciones", "cotizacion", "orden-compra", "procesador"],
      "estado": "procesador",
      "falta": "Lo que se envía queda esperando. Sin conexión, el Formulador descarga cada envío para dejarlo a mano en «buzon»."},
     {"id": "planilla", "tipo": "Excel", "nombre": "Planilla de Ingreso de Requerimientos", "corto": "Planilla de Ingreso",
-     "para": "Cada requerimiento con su N°, la clave del proyecto en todas las herramientas. Desde el 2026-10-29 se ingresa y se cambia en la «Planilla de Ingreso» del portal; este Excel queda de respaldo y se pone al día solo cada 10 minutos, en los dos sentidos (lo hace el computador del procesador, con Excel).",
+     "para": "Cada requerimiento con su N°, la clave del proyecto en todas las herramientas. Desde el 2026-10-29 se ingresa y se cambia en «Requerimientos» del portal; este Excel queda de respaldo y se pone al día solo cada 10 minutos, en los dos sentidos (lo hace el computador del procesador, con Excel).",
      "ruta": ["OneDrive - QUEMPIN SPA", "Formulación de proyectos - Documentos", "Planilla de Ingreso de Requerimientos.xlsx"],
      "abrir": "planilla",
      "pasos": ["La que vale es la de la raíz de la biblioteca. La copia que hay en «.HERRAMIENTAS FORMULACIÓN» es antigua.",
@@ -3560,13 +3533,11 @@
   const estado = {
     pestanas: [],               // { familia, herr, url (la pedida), ultima (la que muestra), marco, cargador, cargando, usado }
     activa: 'inicio',           // familia activa, o 'inicio'
-    proyecto: leer(LS.proyecto, null),   // código del proyecto elegido (la última versión manda)
     pais: leer(LS.pais, 'cl') === 'pe' ? 'pe' : 'cl',
     // abierto: el único grupo desplegado del menú (así cabe sin barra de desplazamiento)
     menu: Object.assign({ abierto: 'formular' }, leer(LS.menu, {}) || {}),
     proyectos: [],
-    usuario: '',                // las iniciales de quien trabaja (leerUsuario), o ''
-    pendiente: null             // herramienta que espera que se elija un proyecto (las que tienen requiereProyecto)
+    usuario: ''                 // las iniciales de quien trabaja (leerUsuario), o ''
   };
   delete estado.menu.cerrados;  // de versiones anteriores del portal
   delete estado.menu.oculto;
@@ -3615,9 +3586,6 @@
       });
     });
     return Array.from(porCodigo.values()).sort((a, b) => b.modificado.localeCompare(a.modificado));
-  }
-  function proyectoActual() {
-    return estado.proyecto ? estado.proyectos.find((p) => p.codigo === estado.proyecto) || null : null;
   }
   /* Apodo de cada proyecto (columna «Apodo» del Análisis Financiero, 2026-11-05): «270 - Caldera Valdivia». Se llena al
      leer la carpeta de intercambio (rcArmar); mientras no llega, el nombre de siempre. */
@@ -3674,19 +3642,10 @@
     return null;
   }
   const baseDe = (h) => (estado.pais === 'pe' && h.peru ? h.peru : h.ruta);
+  /* Sin selector de proyecto (quitado el 2026-11-06, pedido del usuario: «no aporta»): el Formulador, su Seguimiento y
+     la Carta Gantt abren en su lista; los tableros, en su vista general. */
   function hashProyecto(h) {
-    if (!h.proyecto) return '';
-    const p = proyectoActual();
-    const enc = encodeURIComponent;
-    switch (h.proyecto) {
-      case 'formulador': return p ? (p.req ? '#/req/' + enc(p.req) : p.tag ? '#/tag/' + enc(p.tag) : '#/p/' + enc(p.uid) + '/ficha') : '#/';
-      case 'seguimiento': return p ? '#/p/' + enc(p.uid) + '/seguimiento' : '#/';
-      // La Carta Gantt (herramienta aparte del Formulador desde el 2026-10-20): la carta del proyecto, o su lista
-      case 'gantt': return p ? '#/proyecto/' + enc(p.uid) : '#/';
-      case 'tag': return p && p.tag && baseDe(h) === h.ruta ? '#tag=' + enc(p.tag) : '';   // el de Perú no lee #tag=
-      case 'af': return p && p.tag ? '#proyecto=' + enc(p.tag) : '';
-      default: return '';
-    }
+    return ['formulador', 'seguimiento', 'gantt'].includes(h.proyecto) ? '#/' : '';
   }
   function urlDe(h, sub) {
     const hp = hashProyecto(h);
@@ -3781,9 +3740,7 @@
   // El nombre corto va en la pestaña; el completo, en su title.
   function etiqueta(p, completa) {
     const h = HERR.get(p.herr);
-    const pr = proyectoActual();
-    const nombre = h ? (completa ? h.nombre : h.corto || h.nombre) : p.herr;
-    return nombre + (h && h.proyecto && pr && hashProyecto(h) && hashProyecto(h) !== '#/' ? ' · ' + pr.codigo : '');
+    return h ? (completa ? h.nombre : h.corto || h.nombre) : p.herr;
   }
   function pintarPestanas() {
     const cont = $('#pestanas');
@@ -3979,11 +3936,6 @@
       activar(h.id);
       return;
     }
-    if (h.requiereProyecto && !proyectoActual() && !op.url) {
-      estado.pendiente = id;
-      abrirSelector('Elige el proyecto para ver su ' + h.nombre + '.');
-      return;
-    }
     const familia = familiaDe(h);
     const hp = op.url ? '' : hashProyecto(h);
     const url = op.url || urlDe(h, op.pestana);
@@ -4003,9 +3955,7 @@
     activar(familia);
     // «Ingresar datos» y «Análisis Financiero» son la misma página: la pestaña del tablero dice cuál.
     if (h.pestanaTablero && !op.url && (nueva ? h.alias : antes !== id || h.alias)) {
-      const pr = proyectoActual();
-      const pestana = !h.alias && hp && pr && pr.tag ? 'tabProyectos' : h.pestanaTablero;
-      clicCuandoEste(p, '.viz-tab-btn[data-tab="' + pestana + '"]');
+      clicCuandoEste(p, '.viz-tab-btn[data-tab="' + h.pestanaTablero + '"]');
     }
   }
 
@@ -4095,102 +4045,8 @@
     } catch (e) { /* nada */ }
   }
 
-  // ---- Proyecto elegido ---------------------------------------------------------------------------
-  function pintarProyecto() {
-    const p = proyectoActual();
-    const val = $('#proyectoActual');
-    val.textContent = p ? (MOVIL.matches ? p.codigo : nombreProyecto(p)) : 'Elegir';
-    $('#btnProyecto').title = p ? 'Proyecto: ' + nombreProyecto(p) : 'Elegir un proyecto';
-    const c = p && p.carpeta;
-    const bc = $('#btnCarpeta');
-    bc.hidden = !c;
-    const t = c ? 'Abrir la carpeta «' + c.nombre + '»' + (c.biblioteca === 'gestion' ? ' de Gestión de Proyectos' : '') + ' en el Explorador de archivos' : 'Abrir la carpeta del proyecto';
-    bc.title = t;
-    bc.setAttribute('aria-label', t);
-  }
-  let selectorRecien = false;   // el clic que lo abrió (p. ej. en «Carta Gantt») no lo cierra al llegar al documento
-  function abrirSelector(nota) {
-    cerrarFlotantes();
-    selectorRecien = true;
-    setTimeout(() => { selectorRecien = false; }, 0);
-    const pop = $('#popProyecto');
-    const n = $('#popNota');
-    // Solo cuando hay algo que decir (p. ej. «Elige el proyecto para ver su Seguimiento»); lo de siempre va en el title del botón
-    n.textContent = nota || '';
-    n.hidden = !nota;
-    n.classList.toggle('aviso', !!nota);
-    $('#filtroProyecto').value = '';
-    pintarListaProyectos();
-    pop.hidden = false;
-    $('#btnProyecto').setAttribute('aria-expanded', 'true');
-    $('#filtroProyecto').focus();
-  }
-  function cerrarSelector(devolverFoco) {
-    const pop = $('#popProyecto');
-    if (pop.hidden) return;
-    pop.hidden = true;
-    $('#btnProyecto').setAttribute('aria-expanded', 'false');
-    if (devolverFoco) $('#btnProyecto').focus();
-  }
-  function pintarListaProyectos() {
-    const ul = $('#listaProyectos');
-    ul.textContent = '';
-    const q = norm($('#filtroProyecto').value).trim();
-    const lista = estado.proyectos.filter((p) => !q || q.split(/\s+/).every((t) => norm([p.codigo, p.titulo, p.cliente, p.req ? 'n ' + p.req : '', p.tag, p.responsable].join(' ')).includes(t)));
-    $('#sinProyectos').hidden = estado.proyectos.length > 0;
-    const fila = (p) => {
-      const li = crear('li');
-      const b = crear('button', 'pop-item');
-      b.type = 'button';
-      b.setAttribute('role', 'option');
-      if (p.ninguno) {
-        b.append(crear('span', 't', 'Sin proyecto'), crear('span', 's', 'Las herramientas abren en su vista general'));
-        b.addEventListener('click', () => elegirProyecto(null));
-      } else {
-        b.setAttribute('aria-selected', p.codigo === estado.proyecto ? 'true' : 'false');
-        const sub = [p.cliente, p.req ? 'N° ' + p.req : '', p.estado, p.responsable && !esMio(p) ? 'a cargo de ' + p.responsable : ''].filter(Boolean).join(' · ');
-        b.append(crear('span', 't', nombreProyecto(p)), crear('span', 's', sub || 'Sin datos de cliente'));
-        b.addEventListener('click', () => elegirProyecto(p.codigo));
-      }
-      li.append(b);
-      ul.append(li);
-    };
-    if (estado.proyecto) fila({ ninguno: true });
-    // Con usuario, primero sus proyectos (su responsable en el Formulador) y después los del equipo
-    const mios = lista.filter(esMio);
-    const grupos = mios.length ? [['Tus proyectos (' + estado.usuario + ')', mios], ['Del equipo', lista.filter((p) => !esMio(p))]] : [[null, lista]];
-    grupos.forEach(([titulo, ps]) => {
-      if (!ps.length) return;
-      if (titulo) { const g = crear('li', 'pop-grupo', titulo); g.setAttribute('role', 'presentation'); ul.append(g); }
-      ps.forEach(fila);
-    });
-    if (estado.proyectos.length && !lista.length) ul.append(crear('li', 'pop-vacio', 'Ningún proyecto calza con lo buscado.'));
-  }
-  function elegirProyecto(codigo) {
-    estado.proyecto = codigo;
-    guardar(LS.proyecto, codigo);
-    cerrarSelector(false);
-    pintarProyecto();
-    ejAlElegirProyecto();     // «Proyectos en ejecución» se va a él si está en ejecución
-    // Las herramientas abiertas que siguen al proyecto se van a él.
-    estado.pestanas.forEach((p) => {
-      const h = HERR.get(p.herr);
-      if (!h || !h.proyecto) return;
-      const url = urlDe(h);
-      if (url !== p.url) navegar(p, url);
-    });
-    const pendiente = estado.pendiente;
-    estado.pendiente = null;
-    if (pendiente && codigo) { abrir(pendiente); return; }
-    pintarPestanas();
-    if (estado.activa === 'inicio') pintarInicio();
-    const p = proyectoActual();
-    avisar(p ? 'Proyecto elegido: ' + nombreProyecto(p) + '.' : 'Sin proyecto elegido.');
-  }
   function refrescarProyectos() {
     estado.proyectos = leerProyectos();
-    pintarProyecto();
-    if (!$('#popProyecto').hidden) pintarListaProyectos();
     if (estado.activa === 'inicio') pintarInicio();
     pintarPestanas();
   }
@@ -4335,13 +4191,6 @@
   // Adjudicadas), la busca por su nombre en las dos bibliotecas (Sistema QUEMPIN app/carpetas.py).
   const NOMBRE_BIBLIOTECA = { formulacion: 'Formulación de proyectos', gestion: 'Gestión de Proyectos' };
   const enlaceCarpeta = (c) => 'quempin://carpeta/' + c.biblioteca + '/' + c.ruta.map(encodeURIComponent).join('/');
-  function abrirCarpeta() {
-    const p = proyectoActual();
-    const c = p && p.carpeta;
-    if (!c) return;
-    abrirEnlace(enlaceCarpeta(c));
-    avisar('Abriendo «' + c.nombre + '» en el Explorador de archivos…', { texto: '¿No se abrió?', ir: () => infoCarpeta(c) });
-  }
   function infoCarpeta(c) {
     $('#dlgInfoTit').textContent = 'Si la carpeta no se abrió';
     $('#dlgInfoTxt').textContent = 'El botón le pide a QUEMPIN.exe que abra la carpeta en el Explorador de archivos de este computador. Necesita la versión 1.3.10 o más nueva, abierta una vez desde su carpeta, y la biblioteca sincronizada en OneDrive. Si el navegador pregunta, marca «Permitir siempre» y elige «Abrir». La carpeta es:';
@@ -5151,8 +5000,8 @@
       // El Formulador ya la cerró y la Planilla sigue diciendo que está viva: solo falta cambiarla en su fila
       const debe = fe === 'Perdida' ? 'No adjudicado' : 'Descartado';
       t.etapa = 'oferta';
-      t.accion = { tipo: 'hacer', corto: 'Avisar a la Planilla', nivel: 'warn', ir: RC_IR.planilla(n),
-        texto: 'En el Formulador quedó «' + fe + '». Falta que la Planilla de Ingreso diga «' + debe + '»: cámbialo en su fila de la Planilla del portal.' };
+      t.accion = { tipo: 'hacer', corto: 'Avisar en Requerimientos', nivel: 'warn', ir: RC_IR.planilla(n),
+        texto: 'En el Formulador quedó «' + fe + '». Falta que la Planilla de Ingreso diga «' + debe + '»: cámbialo en su fila de Requerimientos.' };
       t.orden = cierre ? rcDias(cierre, hoy) : MAXIMO;      // como las demás ofertas: la más antigua arriba
       return t;
     }
@@ -5170,19 +5019,19 @@
         if (cierre && rcDias(cierre, hoy) >= 0) t.chips.push(rcCierre(cierre, hoy));
       } else if (res === 'ganada') {
         t.accion = { tipo: 'hacer', corto: 'Marcar como Adjudicada', nivel: 'warn', ir: dondeMarca,
-          texto: 'Mercado Público ya la adjudicó a QUEMPIN. Márcala Adjudicada' + (f ? ' en el Seguimiento del Formulador' : ' en la Planilla de Ingreso') + ' y pásala a ejecución.' };
+          texto: 'Mercado Público ya la adjudicó a QUEMPIN. Márcala Adjudicada' + (f ? ' en el Seguimiento del Formulador' : ' en Requerimientos') + ' y pásala a ejecución.' };
         t.chips.push({ texto: 'Ganada en Mercado Público', nivel: 'ok' });
       } else if (resuelta) {
         const que = { otro: 'la adjudicó a otro proveedor', desierta: 'la declaró desierta', revocada: 'la revocó' }[res];
         t.accion = { tipo: 'hacer', corto: 'Marcar «No adjudicado»', nivel: 'warn', ir: dondeMarca,
-          texto: 'Mercado Público ' + que + '. Márcala «No adjudicado» en la Planilla de Ingreso' + (f ? ', o como Perdida en el Seguimiento del Formulador, que se lo avisa' : '') + '.' };
+          texto: 'Mercado Público ' + que + '. Márcala «No adjudicado» en Requerimientos' + (f ? ', o como Perdida en el Seguimiento del Formulador, que se lo avisa' : '') + '.' };
         t.chips.push({ texto: { otro: 'Adjudicada a otro', desierta: 'Desierta', revocada: 'Revocada' }[res], nivel: '' });
       } else if (fe === 'Enviada' && pe !== 'Ofertado') {
-        t.accion = { tipo: 'hacer', corto: 'Avisar a la Planilla', nivel: 'warn', ir: RC_IR.planilla(n),
-          texto: 'La oferta se envió. Falta que la Planilla de Ingreso diga «Ofertado»: cámbialo en su fila de la Planilla del portal (el valor ofertado va en el Excel).' };
+        t.accion = { tipo: 'hacer', corto: 'Avisar en Requerimientos', nivel: 'warn', ir: RC_IR.planilla(n),
+          texto: 'La oferta se envió. Falta que la Planilla de Ingreso diga «Ofertado»: cámbialo en su fila de Requerimientos (el valor ofertado va en el Excel).' };
       } else if (dias !== null && dias > RC_DIAS_SIN_RESPUESTA) {
         t.accion = { tipo: 'hacer', corto: 'Confirmar el resultado', nivel: '', ir: dondeMarca,
-          texto: 'Lleva ' + dias + ' días sin respuesta. Confirma con el cliente o en Mercado Público si se adjudicó, y déjalo en la Planilla de Ingreso.' };
+          texto: 'Lleva ' + dias + ' días sin respuesta. Confirma con el cliente o en Mercado Público si se adjudicó, y déjalo en Requerimientos.' };
       } else {
         t.accion = { tipo: 'espera', corto: 'Esperando respuesta', nivel: '', ir: f ? RC_IR.seguimiento(f.uid) : null,
           texto: 'Oferta enviada, esperando la respuesta del cliente' + (res === 'en-evaluacion' ? ' (en Mercado Público está en evaluación)' : '') + '. Cuando llegue, márcala Adjudicada o Perdida.' };
@@ -5228,8 +5077,8 @@
     } else {
       t.etapa = 'requerimiento';
       t.accion = vencida
-        ? { tipo: 'hacer', corto: 'Actualizar la Planilla', nivel: '', ir: RC_IR.planilla(n),
-            texto: 'Cerró el ' + rcCorta(cierre, hoy) + ' sin formulación. Si no se ofertó, márcalo «Descartado» en la Planilla de Ingreso; si se ofertó, «Ofertado».' }
+        ? { tipo: 'hacer', corto: 'Actualizar Requerimientos', nivel: '', ir: RC_IR.planilla(n),
+            texto: 'Cerró el ' + rcCorta(cierre, hoy) + ' sin formulación. Si no se ofertó, márcalo «Descartado» en Requerimientos; si se ofertó, «Ofertado».' }
         : { tipo: 'hacer', corto: 'Formular', nivel, ir: RC_IR.req(n),
             texto: 'Decide si se oferta. Para ofertar, crea su formulación en el Formulador: queda unida a este N° y a su carpeta.' };
       t.antiguo = vencida && rcDias(cierre, hoy) < -RC_DIAS_ANTIGUO;
@@ -5441,7 +5290,6 @@
       await cargarPulso();
       rc.datos = datos;
       leerApodos(datos.af);
-      pintarProyecto();          // el selector ya puede decir «303 - Incinerador Osorno»
       rc.pulso = lecturaPulso(datos.estado);
       rc.tarjetas = rcArmar(datos, new Date());
       rc.leido = Date.now();
@@ -7340,7 +7188,6 @@
       sc.leido = Date.now();
     })().catch((e) => { console.error(e); }).then(() => {
       sc.leyendo = null;
-      scProponer();
       scPintar();
     });
     return sc.leyendo;
@@ -7389,16 +7236,6 @@
       });
     }
     return { carpetas, nuevas };
-  }
-  // Con un proyecto elegido en el portal, su carpeta queda propuesta (una vez por visita).
-  function scProponer() {
-    if (sc.propuesto || sc.eleccion || !sc.carpetas) return;
-    sc.propuesto = true;
-    const p = proyectoActual();
-    if (!p || !p.req) return;
-    const { carpetas, nuevas } = scOpciones();
-    const c = carpetas.find((x) => x.req === String(p.req)) || nuevas.find((x) => x.req === String(p.req));
-    if (c) sc.eleccion = Object.assign({ pais: sc.pais }, c);
   }
   function scElegir(op) {
     sc.eleccion = Object.assign({ pais: sc.pais }, op);
@@ -8627,7 +8464,6 @@
   function plAbrir(pop) {
     // Tocar otra vez la casilla de la ventanita abierta la cierra
     if (planif.pop && planif.pop.ancla === pop.ancla && !$('#plPop').hidden) { plCerrarPop(false); return; }
-    cerrarSelector(false);
     cerrarUsuario(false);
     planif.pop = pop;
     plPopRecien = true;
@@ -10122,7 +9958,7 @@
     $('#pqNota').replaceChildren(info(nuevo
       ? 'Queda con el N° ' + n + ', el siguiente libre. El equipo lo ve al instante aquí y pasa al Excel en unos 10 minutos. Las demás columnas del Excel (visita, presupuesto, valores ofertado y adjudicado…) se siguen llenando en el Excel cuando hacen falta.'
       : 'Lo que cambies aquí lo ve el equipo al instante y pasa al Excel en unos 10 minutos. Las demás columnas del Excel se cambian en el Excel.', 'Qué pasa al guardar'));
-    $('#pqGuardar').textContent = nuevo ? 'Agregar a la Planilla' : 'Guardar cambios';
+    $('#pqGuardar').textContent = nuevo ? 'Agregar a Requerimientos' : 'Guardar cambios';
     $('#pqGuardar').disabled = false;
     $('#pqFormular').hidden = nuevo;
     pq.inicial = pqLeerForm();
@@ -10182,7 +10018,7 @@
     if (fila && pq.q && !pqBuscable(fila).includes(norm(pq.q).trim())) { pq.q = ''; $('#pqBuscar').value = ''; }
     pqPintar();
     pqResaltar(a.numero);
-    avisar(a.nuevo ? 'N° ' + a.numero + ' agregado a la Planilla. Pasa al Excel en unos 10 minutos.'
+    avisar(a.nuevo ? 'N° ' + a.numero + ' agregado a Requerimientos. Pasa al Excel en unos 10 minutos.'
       : 'N° ' + a.numero + ': ' + Object.keys(cambios).map((c) => PQ_NOMBRE[c]).join(', ') + ' cambiado. Pasa al Excel en unos 10 minutos.');
   }
   function pqResaltar(n) {
@@ -10221,8 +10057,8 @@
     $('#pqVacio').hidden = hay || !!rc.leyendo || !rc.sinDatos;
     if (!hay && !rc.leyendo && rc.sinDatos) {
       pintarSinCarpeta($('#pqVacio'), rc.sinDatos, {
-        navegador: 'La Planilla de Ingreso se lee y se escribe en la carpeta del equipo, y este navegador no puede abrir carpetas del computador. El Excel de respaldo sí se abre en cualquier navegador.',
-        conectar: 'La Planilla de Ingreso se lee y se escribe en la carpeta de intercambio. Conecta una vez la biblioteca «' + BIBLIOTECA_FORMULACION + '» en este navegador (la misma conexión del Formulador) y acepta «Ver y editar archivos».'
+        navegador: 'Requerimientos se lee y se escribe en la carpeta del equipo, y este navegador no puede abrir carpetas del computador. El Excel de respaldo sí se abre en cualquier navegador.',
+        conectar: 'Requerimientos se lee y se escribe en la carpeta de intercambio. Conecta una vez la biblioteca «' + BIBLIOTECA_FORMULACION + '» en este navegador (la misma conexión del Formulador) y acepta «Ver y editar archivos».'
       });
       // Sin carpeta (un teléfono, otro computador), el Excel sigue a mano: antes del 2026-10-29 era lo único que abría
       const acc = $('#pqVacio .cx-acc');
@@ -10246,9 +10082,9 @@
     if (rc.leyendo) { txt.textContent = rc.leido ? 'Actualizando…' : 'Leyendo la carpeta del equipo…'; return; }
     const info = rc.datos && rc.datos.planillaInfo;
     const f = info ? new Date(info.actualizado) : null;
-    if (!rc.dir || !f || isNaN(f)) { txt.textContent = rc.dir ? 'Planilla leída de la carpeta del equipo' : 'Sin la carpeta del equipo'; punto.className = 'cx-punto'; txt.title = ''; return; }
+    if (!rc.dir || !f || isNaN(f)) { txt.textContent = rc.dir ? 'Requerimientos leídos de la carpeta del equipo' : 'Sin la carpeta del equipo'; punto.className = 'cx-punto'; txt.title = ''; return; }
     txt.textContent = 'Excel guardado el ' + pqCuando(f);
-    txt.title = 'La Planilla del portal es la del Excel más lo ingresado o cambiado aquí que todavía no llega a él. Cada 10 minutos el computador del procesador pasa al Excel lo del portal y trae aquí lo que se cambió en el Excel.';
+    txt.title = 'Requerimientos es la Planilla del Excel más lo ingresado o cambiado aquí que todavía no llega a él. Cada 10 minutos el computador del procesador pasa al Excel lo del portal y trae aquí lo que se cambió en el Excel.';
     const espera = pqEsperaMin();
     punto.className = 'cx-punto ' + (espera !== null && espera > PQ_ESPERA_MIN ? 'warn' : 'ok');
   }
@@ -10368,7 +10204,7 @@
     $('#pqCuenta').textContent = filas.length === todas ? pl(todas, 'requerimiento', 'requerimientos') : filas.length + ' de ' + todas;
     const nada = $('#pqNada');
     nada.hidden = filas.length > 0;
-    nada.textContent = !todas ? 'La Planilla todavía no tiene requerimientos.' : 'Ningún requerimiento calza' + (pq.q.trim() ? ' con «' + pq.q.trim() + '»' : '')
+    nada.textContent = !todas ? 'Todavía no hay requerimientos.' : 'Ningún requerimiento calza' + (pq.q.trim() ? ' con «' + pq.q.trim() + '»' : '')
       + (pq.estado ? ' en «' + pq.estado + '»' : '') + '.';
     const resto = filas.length - pq.mostrar;
     const mas = $('#pqMas');
@@ -11322,16 +11158,6 @@
     abrir('ejecucion');
     $('#vistaEjecucion').scrollTop = 0;
   }
-  // El proyecto elegido arriba (del Formulador): si está en ejecución, la vista se va a él
-  function ejAlElegirProyecto() {
-    const p = proyectoActual();
-    const t = p && p.req ? ejTarjetas().find((x) => x.req === p.req) : null;
-    if (!t || t.clave === ej.clave) return;
-    ej.clave = t.clave;
-    ejGuardarPrefs();
-    if (!$('#vistaEjecucion').hidden) ejPintar();
-  }
-
   // ---- La lista -------------------------------------------------------------------------------------------------------
   // Lo tuyo primero; lo que ya terminó y sigue en Gestión de Proyectos, al final
   const ejOrden = (a, b) => (rcMia(b) - rcMia(a)) || ((a.etapa !== 'ejecucion') - (b.etapa !== 'ejecucion')) || a.orden - b.orden || plComparar(a.titulo, b.titulo);
@@ -11477,8 +11303,8 @@
     const p = crear('p', 'ej-linea');
     p.append(crear('span', null, 'Su carpeta «' + t.gestion + '» no lleva adelante el N° de la Planilla de Ingreso. '),
       info('Tampoco se encontró su ficha en el Análisis Financiero. Sin ese N° no se une con su oferta, su avance ni sus facturas, y no se le pueden anotar compras, días trabajados ni avance. '
-        + 'Búscalo en la Planilla de Ingreso y renombra la carpeta «N°. ' + t.gestion + '»; si no tiene, regístralo ahí. Con la próxima vuelta del procesador aparece aquí con todo lo suyo.', 'Cómo se arregla'));
-    s.append(p, ejBoton('Buscarlo en la Planilla de Ingreso', 'cx-enlace', () => abrir('planilla')));
+        + 'Búscalo en Requerimientos y renombra la carpeta «N°. ' + t.gestion + '»; si no tiene, regístralo ahí. Con la próxima vuelta del procesador aparece aquí con todo lo suyo.', 'Cómo se arregla'));
+    s.append(p, ejBoton('Buscarlo en Requerimientos', 'cx-enlace', () => abrir('planilla')));
     return s;
   }
   function ejCabEl(m) {
@@ -13076,12 +12902,10 @@
     return d.ejec.concat(d.form).find((t) => t.clave === ll.clave) || null;
   };
   const llNombre = (t) => (t.req ? 'N° ' + t.req : t.tag || (t.formulacion ? t.formulacion.codigo : t.titulo));
-  // El proyecto elegido arriba en el portal, si puede recibirla; si no, el único que puede
+  // El único proyecto que puede recibirla, si hay uno solo
   function llPropuesto(dest) {
-    const p = proyectoActual();
     const todos = dest.ejec.concat(dest.form);
-    const t = p ? todos.find((x) => (p.req && x.req === p.req) || (x.formulacion && x.formulacion.codigo === p.codigo)) : null;
-    return t ? t.clave : todos.length === 1 ? todos[0].clave : null;
+    return todos.length === 1 ? todos[0].clave : null;
   }
 
   function llAbrir(datos) {
@@ -13276,7 +13100,7 @@
     estado.proyectos.forEach((p) => items.push({
       titulo: nombreProyecto(p), sub: [esMio(p) ? 'Tu proyecto' : 'Proyecto', p.cliente, p.req ? 'N° ' + p.req : '', p.responsable && !esMio(p) ? 'a cargo de ' + p.responsable : ''].filter(Boolean).join(' · '), tipo: 'Proyecto',
       texto: norm([p.codigo, p.titulo, p.cliente, p.req, p.req ? 'n' + p.req : '', p.tag, p.responsable, 'proyecto'].join(' ')),
-      ir: () => { elegirProyecto(p.codigo); abrir('proyectos'); }
+      ir: () => abrir('proyectos', { url: baseDe(HERR.get('proyectos')) + '#/p/' + encodeURIComponent(p.uid) + '/seguimiento' })
     }));
     // Los proyectos del Recorrido (si ya se leyó la carpeta del equipo): llevan a su detalle
     rc.tarjetas.forEach((t) => items.push({
@@ -13343,14 +13167,12 @@
   }
   function enfocarBuscador() {
     if (MOVIL.matches) mostrarBuscadorMovil(true);
-    cerrarSelector(false);
     window.focus();
     $('#buscar').focus();
     $('#buscar').select();
   }
 
   function cerrarFlotantes() {
-    cerrarSelector(false);
     cerrarUsuario(false);
     plCerrarPop(false);
     if (!$('#resultados').hidden && document.activeElement !== $('#buscar')) cerrarBusqueda();
@@ -13384,7 +13206,6 @@
         if (planif.pop && planif.pop.cambiar) { planif.pop.cambiar = null; plPintarPop(true); } else plCerrarPop(true);
         return;
       }
-      if (!$('#popProyecto').hidden) { e.preventDefault(); cerrarSelector(true); return; }
       if (!$('#popUsuario').hidden) { e.preventDefault(); cerrarUsuario(true); return; }
       if (menuAbierto()) { e.preventDefault(); mostrarMenu(false, true); return; }
       if (!$('#resultados').hidden || portal.classList.contains('buscando')) { e.preventDefault(); cerrarBusqueda(); }
@@ -13704,8 +13525,6 @@
     const l = obs.lugar;
     const h = HERR.get(obs.herr);
     const donde = { herramienta: obs.herr || 'portal', nombre: h ? h.nombre : 'El portal en general' };
-    const proyecto = proyectoActual();
-    if (proyecto) donde.proyecto = nombreProyecto(proyecto);
     if (h && h.peru) donde.pais = estado.pais === 'pe' ? 'PE' : 'CL';
     if (!l) { donde.ruta = [donde.nombre]; return donde; }
     const activa = pestanaDe(estado.activa);
@@ -14463,7 +14282,7 @@
 
   construirMenu();
   estado.proyectos = leerProyectos();
-  pintarProyecto();
+  try { localStorage.removeItem(LS.proyecto); } catch (e) { /* nada */ }   // el del selector que ya no existe
   estado.usuario = leerUsuario();
   pintarUsuario();
   $('#btnUsuario').addEventListener('click', () => { if ($('#popUsuario').hidden) abrirUsuario(); else cerrarUsuario(true); });
@@ -14471,7 +14290,7 @@
 
   $('#btnMenu').addEventListener('click', () => { cerrarFlotantes(); mostrarMenu(!menuAbierto()); });
   $('#velo').addEventListener('click', () => mostrarMenu(false));
-  MOVIL.addEventListener('change', () => { mostrarMenu(false); mostrarBuscadorMovil(false); pintarProyecto(); });
+  MOVIL.addEventListener('change', () => { mostrarMenu(false); mostrarBuscadorMovil(false); });
   $('#btnInicio').addEventListener('click', () => abrir('inicio'));
   $('#iniAyuda').addEventListener('click', () => abrir('ayuda'));
   $('#iniConexiones').addEventListener('click', () => abrir('conexiones'));
@@ -14709,18 +14528,6 @@
     e.preventDefault();
   }, { passive: false });
 
-  $('#btnCarpeta').addEventListener('click', abrirCarpeta);
-  $('#btnProyecto').addEventListener('click', () => {
-    if ($('#popProyecto').hidden) { estado.pendiente = null; abrirSelector(); } else cerrarSelector(true);
-  });
-  $('#filtroProyecto').addEventListener('input', pintarListaProyectos);
-  $('#filtroProyecto').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const primero = $('#listaProyectos .pop-item');
-      if (primero) { e.preventDefault(); primero.click(); }
-    }
-  });
-
   const campo = $('#buscar');
   campo.addEventListener('input', () => { elegido = campo.value.trim() ? 0 : -1; pintarResultados(); });
   campo.addEventListener('focus', () => { if (campo.value.trim()) pintarResultados(); });
@@ -14745,8 +14552,6 @@
 
   document.addEventListener('keydown', teclas);
   document.addEventListener('click', (e) => {
-    const pop = $('#popProyecto');
-    if (!pop.hidden && !selectorRecien && !pop.contains(e.target) && !$('#btnProyecto').contains(e.target)) cerrarSelector(false);
     const popU = $('#popUsuario');
     if (!popU.hidden && !usuarioRecien && !popU.contains(e.target) && !$('#btnUsuario').contains(e.target)) cerrarUsuario(false);
     // La ventanita de la Planificación: tocar fuera la cierra (otra casilla abre la suya). Se mira el camino del clic, no
@@ -14774,7 +14579,6 @@
       estado.usuario = leerUsuario();
       pintarUsuario();
       rcAlCambiarUsuario();
-      if (!$('#popProyecto').hidden) pintarListaProyectos();
     }
     // La contraseña o el usuario recién escritos en una herramienta marcan su paso en «Preparar este computador»
     if ((e.key === LS_CLAVE_TABLEROS || e.key === LS.usuario || e.key === null) && cxArmada && !$('#vistaConexiones').hidden) pintarEstadoConexiones();

@@ -17,7 +17,7 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   carpeta ahí (`t.gestion`), nunca plegado. Si ya terminó (Cierre en el Recorrido) va al final, con el aviso de mover su
   carpeta a «0 Proyectos Entregados». Una carpeta sin N° se une por el nombre con un proyecto adjudicado (`rcGestionDe`:
   el mismo nombre o dos palabras en común, ≥ 75 % y uno solo) y pide el N°; sin parecido va sola (`gestion-<carpeta>`):
-  se ve con su carpeta, pero sin N° ni TAG no se le anota nada (`ejSinClaveEl`) ni recibe cotizaciones de «Llevar». El proyecto elegido arriba en el portal la lleva a él (`ejAlElegirProyecto`), y
+  se ve con su carpeta, pero sin N° ni TAG no se le anota nada (`ejSinClaveEl`) ni recibe cotizaciones de «Llevar». Y
   el Recorrido la abre desde su ficha («Su resumen en ejecución»), desde «Registrar avance» y desde su columna Ejecución
   (`RC_ETAPAS`, `RC_IR.ejecucion`).
 - **De dónde sale cada cifra** (`ejModelo`, solo calcula): la venta es la escrita aquí o, si no, el precio neto de su

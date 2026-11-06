@@ -1,8 +1,9 @@
-# Portal — Planilla de Ingreso
+# Portal — Requerimientos (antes «Planilla de Ingreso»)
 
 Detalle de referencia: léelo solo al tocar esta parte. Las reglas generales están en `../CLAUDE.md`.
 
-**Planilla de Ingreso** (2026-10-29, pedido del usuario: «que la planilla de proyectos sea replicada en el portal», que desde
+Se llama **Requerimientos** en el portal desde el 2026-11-06 (pedido del usuario); el Excel sigue siendo la Planilla de
+Ingreso de Requerimientos. **Planilla de Ingreso** (2026-10-29, pedido del usuario: «que la planilla de proyectos sea replicada en el portal», que desde
 ahora los proyectos se ingresen ahí y que el Excel quede de respaldo, «actualizándose mutuamente», solo con las columnas
 que de verdad se usan).
 
