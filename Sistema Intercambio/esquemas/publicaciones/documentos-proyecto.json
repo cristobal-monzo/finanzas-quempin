@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "documentos-proyecto.json (las facturas del Centro de Costos de cada proyecto)",
+  "description": "Las facturas, boletas, notas de crédito, guías y órdenes de compra registradas en el Centro de Costos (Chile), para que «Proyectos en ejecución» del Portal muestre lo gastado de cada proyecto y se asocien a sus gastos proyectados y cotizados (2026-11-06). Sale del snapshot saneado del tablero del Centro de Costos. 'tag' es el prefijo del N° Ref. (la clave del Análisis Financiero); montos en pesos sin IVA (una nota de crédito resta); la 'categoria' de cada ítem es la del Análisis Financiero, con su mismo mapeo; 'enlace' abre el documento en SharePoint.",
+  "dueno": "procesador",
+  "type": "object",
+  "properties": {
+    "actualizado": { "type": ["string", "null"] },
+    "documentos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": { "type": "string", "pattern": "^[A-Z0-9]+-\\d+$" },
+          "tag": { "type": "string", "pattern": "^[A-Z0-9]{2,10}$" },
+          "proyecto": { "type": "string" },
+          "fecha": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "tipo": { "type": "string" },
+          "numero": { "type": "string" },
+          "proveedor": { "type": "string" },
+          "resumen": { "type": "string" },
+          "categoria": { "enum": ["Materiales", "Equipos", "Otros"] },
+          "neto": { "type": "number" },
+          "estado": { "type": "string" },
+          "pendiente": { "type": "boolean" },
+          "enlace": { "type": ["string", "null"], "pattern": "^https://quempinspa2020\\.sharepoint\\.com/" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nombre": { "type": "string" },
+                "cantidad": { "type": "number" },
+                "unitario": { "type": "number" },
+                "neto": { "type": "number" },
+                "categoria": { "enum": ["Materiales", "Equipos", "Otros"] }
+              },
+              "required": ["nombre", "neto", "categoria"]
+            }
+          }
+        },
+        "required": ["ref", "tag", "neto", "categoria", "items"]
+      }
+    }
+  },
+  "required": ["documentos"]
+}

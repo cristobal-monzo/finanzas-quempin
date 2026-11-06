@@ -1,0 +1,24 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "procesador",
+  "generado": "2026-11-06T16:00:00-03:00",
+  "datos": {
+    "actualizado": "2026-11-06 14:10",
+    "documentos": [
+      {
+        "ref": "950-003", "tag": "950", "proyecto": "950. Obra de ejemplo", "fecha": "2026-11-04", "tipo": "Factura",
+        "numero": "1234", "proveedor": "Ferretería de Ejemplo SpA", "resumen": "Cañería y fittings", "categoria": "Materiales",
+        "neto": 150000, "estado": "Pagado", "pendiente": false,
+        "enlace": "https://quempinspa2020.sharepoint.com/Documentos%20compartidos/Centro%20de%20Costos/Facturas%20y%20Boletas/Chile/950.%20Obra/950-003.pdf",
+        "items": [
+          { "nombre": "Cañería cobre 1/2", "cantidad": 20, "unitario": 5000, "neto": 100000, "categoria": "Materiales" },
+          { "nombre": "Despacho", "cantidad": 1, "unitario": 50000, "neto": 50000, "categoria": "Otros" }
+        ]
+      },
+      {
+        "ref": "DEMO-001", "tag": "DEMO", "fecha": null, "tipo": "Nota de Crédito", "categoria": "Otros", "neto": -20000,
+        "enlace": null, "items": []
+      }
+    ]
+  }
+}

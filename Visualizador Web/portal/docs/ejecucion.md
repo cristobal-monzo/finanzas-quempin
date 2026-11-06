@@ -64,7 +64,7 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   (`afMensajes`): el Recorrido muestra «Avance 60 % por aplicar» y la Planificación lo cuenta, sin cambiar la etapa. Un
   pedido se retira mientras espera. Sin ficha en el Análisis, propone unirlo con una ficha sin N° del mismo nombre que su
   carpeta del Centro de Costos (manda su «N° Requerimiento») o crearla en «Ingresar avance».
-- **Lo demás del resumen**: su carpeta de Gestión de Proyectos (y la de la oferta) por `quempin://carpeta`, sus OC con
+- **Lo demás del resumen**: sus accesos (ver abajo, 2026-11-06), sus OC con
   su estado, quién va esta semana (de la Planificación), sus pendientes y notas, la Carta Gantt (su avance, con «Usar»),
   y «a este ritmo de gasto» (lo gastado entre el avance).
 - **Dónde se guarda**: `publicado/ejecucion/<dispositivo>.json` (esquema `ejecucion-proyectos`), un archivo por navegador
@@ -78,3 +78,47 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
 - Pruebas: desde `test_proyectos_en_ejecucion_en_el_registro_y_en_el_esquema` en `test_portal.py` (datos de mentira:
   `_ejecucion_de_prueba`); las que usan `js/calc.js` o `js/pegar.js` del Formulador miran lo de ellos solo si su
   repositorio está en este equipo. La vista previa con datos reales se arma fuera del repositorio.
+
+## Mejoras del 2026-11-06
+
+Pedido del usuario: abrir la carpeta del proyecto en el Explorador con «Facturas del proyecto» en segundo lugar y sin
+los accesos al Centro de Costos, al Análisis Financiero ni a la Carta Gantt; ver en cada proyecto sus costos registrados
+en el Centro de Costos y asociar cada factura a uno o varios de sus gastos proyectados y cotizados; una tabla «Cómo va el
+proyecto» más clara y con lo gastado; la mano de obra en un calendario del mes con día completo o medio día, para anotar
+varios días de una vez; y una revisión de la interfaz.
+
+- **Accesos** (`ejCabEl`): «Carpeta del proyecto» (la de Gestión o, si no pasó ahí, la de la oferta, por
+  `quempin://carpeta`; no en el teléfono), «Facturas del proyecto» (SharePoint), «Pasar a Gestión de Proyectos» si
+  corresponde, «Seguimiento» y «Subir documentos». Sin «Carpeta de la oferta» cuando ya está en Gestión (su copia está
+  en «Formulación»).
+- **Las facturas del Centro de Costos** (`ejLeerDocumentos`, `ejDocumentosEl`): las lee de
+  `publicado/documentos-proyecto.json` (esquema `documentos-proyecto`, paso `documentos-proyecto` del procesador, desde el
+  snapshot del tablero del CC), por el TAG o el N° del proyecto (`ejDocumentosDe`). Tabla con fecha, N° Ref. (abre el
+  documento en SharePoint), proveedor y detalle, neto y «Corresponde a»; filtros Todas / Sin asociar / Asociadas, búsqueda
+  que solo esconde filas (no repinta) y las 12 primeras con «Ver las N». Un documento en rojo en el CC dice «Por revisar».
+- **Lo gastado** de materiales, equipos y otros sale de esas facturas, sumando sus ítems con la categoría del Análisis
+  Financiero (`ejDocPorCat`): es lo mismo que suma el Análisis (comprobado el 2026-11-06: 27 de 27 proyectos iguales),
+  pero al día con el último registro del CC. Sin la publicación o sin documentos del proyecto, los reales del Análisis
+  (`m.gastoFuente`). La mano de obra no cambia: los días anotados o la «Mano de Obra Real».
+- **Asociar** (`ejAbrirAsociar`, `#dlgEjAsociar`, se arma en JS): una cosa del archivo por factura, tipo `asociacion`
+  (id `as-<clave>-<ref>`, su `ref` y `destinos`: `i:<grupo o id>` de un ítem y `l:<uid>` de una línea del presupuesto de su
+  formulación; vacía = «No es de ningún gasto anotado»). El diálogo propone primero lo parecido (lo que dice la factura,
+  el mismo proveedor, la categoría: «Parece») y puede marcar como comprados los ítems por decidir o aprobados (sin OC:
+  la cuenta su factura). **Lo facturado** de cada destino (`ejFacturado`) reparte el neto de la factura entre sus destinos
+  según lo cotizado o presupuestado de cada uno; en `ejCuentas` un ítem simulado o comprometido cuenta solo lo que falta
+  facturar, para no sumar dos veces lo que ya está en lo gastado. La fila del ítem dice «Facturado $X de $Y» (en rojo si
+  pasa lo cotizado en más de 2 %).
+- **Cómo va el proyecto** (`ejPresupuestoEl`): «Gastado a la fecha» en grande con su barra contra el presupuesto y una
+  raya en el avance, y una tabla por categoría: presupuestado, gastado, comprometido, simulado, al cierre y queda (o se
+  pasa), con la barra de antes bajo cada nombre y el total. En ≤ 700 px de vista, tarjetas. El KPI nuevo «Gastado a la
+  fecha» va segundo; la tarjeta de la lista también dice lo gastado.
+- **Mano de obra** (`ejManoObraEl`, `ejAnotarDias`, `ejQuitarDias`): quiénes (y otra persona escrita a mano), la jornada
+  (1 día / ½ día) y el calendario del mes con flechas (no pasa del mes de hoy; los días que no llegan, apagados). Un toque
+  marca o desmarca un día; con el mouse, arrastrar marca todos los que toca; «Lunes a viernes» marca los hábiles del mes
+  hasta hoy. «Anotar N DH» deja un `dia` por persona y día marcado (uno ya anotado cambia su jornada) y «Quitar N días
+  anotados» borra lo de los elegidos (o de todos) en esos días. Cada casilla muestra las iniciales de lo anotado (½ si es
+  medio día). Lo marcado vive en `ej.diasForm.dias` y no repinta la página. La lista de días quedó plegada debajo.
+- **Accesos a cada parte** (`ejSaltosEl`): una fila fija arriba (Cómo va, Facturas con las sin asociar, Gastos
+  proyectados con las por decidir, Mano de obra, OC/equipo/notas) que se envuelve en lo angosto (sin desplazarse de lado).
+- Pruebas: `test_las_facturas_del_centro_de_costos_se_ven_y_se_asocian_a_sus_gastos` y
+  `test_el_calendario_anota_varios_dias_de_una_vez_y_medio_dia` en `test_portal.py`; `Sistema Intercambio/tests/test_documentos_proyecto.py`.

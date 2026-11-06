@@ -77,6 +77,7 @@ if str(AQUI) not in sys.path:
 
 import carpetas_proyecto  # noqa: E402
 import documentos_cc  # noqa: E402
+import documentos_proyecto  # noqa: E402
 import esquemas  # noqa: E402
 import formulaciones  # noqa: E402
 import intercambio  # noqa: E402
@@ -103,6 +104,8 @@ DRIVER_COTIZADOR = RAIZ_FINANZAS / "Cotizador Historico" / ".claude" / "skills" 
 EXCEL_AF = RAIZ_FINANZAS / "Análisis Financiero" / "Análisis de Proyectos 2026.xlsx"
 EXCEL_CC = RAIZ_FINANZAS / "Centro de Costos" / "Excel" / "Centro de Costos.xlsx"
 FOTO_COTIZADOR = RAIZ_FINANZAS / "Cotizador Historico" / "Visualizador Web" / "data" / "cotizador-historico.json"
+# El snapshot saneado que el Centro de Costos arma en cada run (PASO 12c): sus facturas, para «Proyectos en ejecución»
+FOTO_CC = RAIZ_FINANZAS / "Centro de Costos" / "Visualizador Web" / "data" / "centro-de-costos.json"
 UF_ULTIMA = RAIZ_FINANZAS / "Cotizador Historico" / "Sistema" / "uf_ultima.json"
 RAIZ_FACTURAS_CL = (RAIZ_FINANZAS / "Centro de Costos" / "Sitio de comunicación - Centro de Costos 1"
                     / "Facturas y Boletas" / "Chile")
@@ -259,6 +262,18 @@ def paso_precios(raiz: Path, previo, forzar):
     return salida.splitlines()[-1] if salida else "publicados", firma
 
 
+def paso_documentos_proyecto(raiz: Path, previo, forzar):
+    """Las facturas del Centro de Costos de cada proyecto (2026-11-06), para que
+    el Portal las muestre y se asocien a sus gastos proyectados y cotizados."""
+    firma = firma_archivo(FOTO_CC)
+    if firma is None:
+        return "el tablero del Centro de Costos no se ha generado", None
+    if firma == previo and intercambio.leer_publicacion(raiz, documentos_proyecto.NOMBRE) and not forzar:
+        return "sin cambios", None
+    r = documentos_proyecto.publicar(raiz, FOTO_CC)
+    return f"{r['documentos']} documento(s) de {r['proyectos']} proyecto(s)", firma
+
+
 def paso_sistema_quempin(raiz: Path, previo, forzar):
     if not (RAIZ_SISTEMA_QUEMPIN / "app" / "integraciones" / "ecosistema.py").exists():
         return "Sistema QUEMPIN no está en este equipo", None
@@ -376,6 +391,7 @@ PASOS = (
     ("requerimientos", paso_requerimientos),
     ("analisis-financiero", paso_analisis_financiero),
     ("precios-referencia", paso_precios),
+    ("documentos-proyecto", paso_documentos_proyecto),
     ("sistema-quempin", paso_sistema_quempin),
     ("mercado-publico", paso_mercado_publico),
     ("oportunidades", paso_oportunidades),

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ejecucion/<dispositivo>.json (Proyectos en ejecución del Portal)",
-  "description": "Lo que el equipo anota en «Proyectos en ejecución» del Portal QUEMPIN (2026-10-28) sobre cada proyecto en ejecución: los gastos proyectados y las cotizaciones por decidir ('costo', en pesos sin IVA, con su estado: por decidir, aprobada, comprada o descartada, y si se simula), la venta corregida ('venta'; monto null vuelve a la calculada), las notas ('nota'), los pendientes ('pendiente'), los días trabajados ('dia': una persona un día, con su jornada y su nivel, para estimar la mano de obra real) y las tarifas por nivel del proyecto ('tarifas'). Nada de esto es un costo real ni llega al Centro de Costos, que registra solo facturas y órdenes de compra. Cada cosa va con la clave de su proyecto: su N° de la Planilla de Ingreso ('req:<N°>') o su TAG del Análisis Financiero ('tag:<TAG>'). Cada navegador escribe solo su archivo (publicado/ejecucion/<dispositivo>.json) y lo vigente es la unión de todos: en cada 'id' manda el cambio más reciente ('t'), también si es 'borrado'.",
+  "description": "Lo que el equipo anota en «Proyectos en ejecución» del Portal QUEMPIN (2026-10-28) sobre cada proyecto en ejecución: los gastos proyectados y las cotizaciones por decidir ('costo', en pesos sin IVA, con su estado: por decidir, aprobada, comprada o descartada, y si se simula), la venta corregida ('venta'; monto null vuelve a la calculada), las notas ('nota'), los pendientes ('pendiente'), los días trabajados ('dia': una persona un día, con su jornada y su nivel, para estimar la mano de obra real) las tarifas por nivel del proyecto ('tarifas') y a qué gastos proyectados o cotizados corresponde cada factura del Centro de Costos ('asociacion', 2026-11-06: 'ref' es su N° Ref. y 'destinos' los ítems, 'i:<grupo o id>', y las líneas del presupuesto de su formulación, 'l:<uid>'). Nada de esto es un costo real ni llega al Centro de Costos, que registra solo facturas y órdenes de compra. Cada cosa va con la clave de su proyecto: su N° de la Planilla de Ingreso ('req:<N°>') o su TAG del Análisis Financiero ('tag:<TAG>'). Cada navegador escribe solo su archivo (publicado/ejecucion/<dispositivo>.json) y lo vigente es la unión de todos: en cada 'id' manda el cambio más reciente ('t'), también si es 'borrado'.",
   "dueno": "ejecucion",
   "type": "object",
   "properties": {
@@ -23,7 +23,7 @@
             "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10})$"
           },
           "tipo": {
-            "enum": ["costo", "nota", "pendiente", "venta", "dia", "tarifas"]
+            "enum": ["costo", "nota", "pendiente", "venta", "dia", "tarifas", "asociacion"]
           },
           "t": {
             "type": "string",
@@ -94,10 +94,6 @@
             "type": "string",
             "description": "costo: el uid de la línea del presupuesto de su formulación que reemplaza"
           },
-          "ref": {
-            "type": "string",
-            "description": "costo: la hoja del Cotizador Histórico con que se compara ('-': ninguna; vacío: la más parecida)"
-          },
           "nota": {
             "type": "string"
           },
@@ -137,6 +133,15 @@
           "origen": {
             "enum": ["", "planificacion"],
             "description": "dia: 'planificacion' si se trajo de la Planificación semanal"
+          },
+          "ref": {
+            "type": "string",
+            "description": "costo: la hoja del Cotizador Histórico con que se compara ('-': ninguna; vacío: la más parecida); asociacion: el N° Ref. de la factura en el Centro de Costos"
+          },
+          "destinos": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^(i:[a-z0-9-]{6,40}|l:[A-Za-z0-9_-]{1,40})$" },
+            "description": "asociacion: los gastos a que corresponde la factura; vacía, no corresponde a ninguno"
           },
           "n1": {
             "type": "number",

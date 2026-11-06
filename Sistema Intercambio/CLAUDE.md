@@ -79,12 +79,13 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
   `/Observaciones_Portal`, `observaciones.py`); `pedir-vuelta` → procesador.
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
-  `oportunidades`, `proyectos`, `centro-costos-carpetas`, `estado`, `planificacion-semana`,
+  `oportunidades`, `proyectos`, `centro-costos-carpetas`, `documentos-proyecto`, `estado`, `planificacion-semana`,
   `planificacion-lista`, `planificacion-cierres` y `ejecucion-proyectos`.
 - **Copias en otros repositorios** (si cambias uno, vuelve a copiarlo): Sistema QUEMPIN lleva
   `intercambio.py`, `ubicacion.py` y `esquemas.py` (`tests/test_copias_intercambio.py` avisa);
   el Formulador, `esquemas.js`.
-- Centro de Costos no publica aquí: sus costos reales llegan por la publicación de AF. Flujo
+- Centro de Costos no publica aquí: sus totales llegan por la publicación de AF, y sus documentos
+  uno por uno los publica el procesador (`documentos-proyecto`, desde el snapshot de su tablero). Flujo
   de Caja tampoco, a propósito: su resultado es la caja de la empresa y esta carpeta la ve toda
   la biblioteca.
 
