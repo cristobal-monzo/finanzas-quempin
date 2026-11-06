@@ -1049,6 +1049,27 @@
   .pl-per.libre { border-style: dashed; color: var(--text-secondary); }
   .pl-per.libre.tuya, .pl-per.aus.tuya { border-color: var(--brand-orange); background: var(--tinte); color: var(--tinte-texto); }
   .pl-per.aus { border-style: dashed; color: var(--texto-suave); text-decoration: line-through; }
+  /* Quitar con un toque (2026-11-06, observación del equipo): la ✕ de cada proyecto de una persona, o de cada persona
+     de un proyecto, en una casilla (plQuitarX). Con el mouse aparece al pasar sobre ese proyecto o esa persona, sin mover
+     nada (solo cambia su opacidad), y el «+» de la esquina se esconde mientras tanto: quedaba encima de la ✕ del último.
+     Con el dedo se ve siempre (y ahí no hay «+»). En las personas va en la esquina, sobre el borde. */
+  .pl-quitar {
+    flex: 0 0 auto; width: 20px; height: 20px; margin: -2px -5px -2px auto; display: inline-grid; place-items: center;
+    border-radius: 4px; color: var(--text-secondary); cursor: pointer; transition: opacity 0.12s;
+  }
+  .pl-quitar:hover { background: color-mix(in srgb, var(--estado-bad) 18%, transparent); color: var(--estado-bad); }
+  .pl-per { position: relative; }
+  .pl-per .pl-quitar {
+    position: absolute; top: -7px; right: -7px; width: 16px; height: 16px; margin: 0; border-radius: 50%;
+    border: 1px solid var(--baseline); background: var(--surface-card);
+  }
+  .pl-per .pl-quitar:hover { background: var(--surface-card); border-color: var(--estado-bad); }
+  .pl-per .pl-quitar svg { width: 10px; height: 10px; }
+  @media (hover: hover) {
+    .pl-chip:not(:hover) > .pl-quitar, .pl-per:not(:hover) > .pl-quitar { opacity: 0; pointer-events: none; }
+    .pl-celda:has(.pl-chip:hover, .pl-per:hover) .pl-mas.flota { opacity: 0; pointer-events: none; }
+  }
+  .pl-arrastrando .pl-quitar, .pl-colocando .pl-quitar { display: none; }
   .pl-quien { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .pl-avatar {
     flex: 0 0 auto; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%;
@@ -7858,6 +7879,11 @@
   // Tab; Enter abre la ventanita. En el teléfono solo se recorren las casillas a la vista (las del día elegido).
   function plTeclasTabla(e) {
     const c = e.target.closest && e.target.closest('.pl-celda');
+    if (c && (e.key === 'Delete' || e.key === 'Backspace') && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      e.preventDefault();
+      plQuitarCasilla(c);
+      return;
+    }
     const paso = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0], Home: [0, -99], End: [0, 99] }[e.key];
     if (!c || !paso || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     e.preventDefault();
@@ -7887,6 +7913,46 @@
     s.title = m.titulo(c) + (p.lugar ? ' · ' + p.lugar : '') + (p.otra ? ' (otra actividad)' : p.activo === false ? ' (ya no está en ejecución)' : '')
       + (v ? ', en ' + plLaVeh(v) : '');
     return s;
+  }
+  /* Quitar con un toque (2026-11-06, observación del equipo: «acceso rápido para eliminar asignaciones»): una ✕ en un
+     proyecto de una persona un día (o en una persona de un proyecto). Va dentro del botón de la casilla, así que no es
+     un botón: la toma plQuitarToque antes que la casilla. Con el teclado, Supr en la casilla (plQuitarCasilla). Sin la
+     carpeta conectada no se puede guardar, y no se pone. */
+  function plQuitarX(el, per, d, clave, m) {
+    if (!rc.dir) return el;
+    const x = crear('span', 'pl-quitar');
+    Object.assign(x.dataset, { per, iso: d.iso, clave });
+    x.title = 'Quitar: ' + plNom(per) + ' ya no va a ' + m.titulo(clave) + ' ' + plElDia(d);
+    x.setAttribute('aria-hidden', 'true');
+    x.append(icono('cerrar', 12));
+    const t = el.querySelector(':scope > .t');       // en un proyecto, junto a su nombre, arriba a la derecha
+    if (t) t.after(x); else el.append(x);
+    return el;
+  }
+  function plQuitarToque(e) {
+    const x = e.target.closest && e.target.closest('#vistaPlan .pl-quitar');
+    if (!x) return;
+    e.preventDefault();
+    e.stopPropagation();                          // la casilla no abre su ventanita
+    plCerrarPop(false);
+    plAsignarDias(plSemanaVista(), x.dataset.per, x.dataset.clave, [x.dataset.iso], false);
+  }
+  /* Supr en una casilla: quita lo que tiene ese día (los proyectos de la persona, o las personas del proyecto), en un
+     paso que se deshace. La casilla sigue con el foco. */
+  function plQuitarCasilla(c) {
+    if (!rc.dir || !c.dataset.ancla) return false;
+    const [k, x, iso] = c.dataset.ancla.split('|');
+    const s = plSemanaVista(), m = plModelo(s), d = plDiaDe(s, iso);
+    const pares = k === 'p' ? (m.porPersona.get(iso + '|' + x) || []).map((clave) => ({ per: x, clave }))
+      : (m.porProyecto.get(iso + '|' + x) || []).map((per) => ({ per, clave: x }));
+    if (!pares.length) return false;
+    const pers = pares.map((p) => p.per);
+    const hecho = plCambiar(s, pares.map((p) => ({ tipo: 'asig', dia: iso, persona: p.per, clave: p.clave, activa: false })),
+      (k === 'p' ? plNom(x) + ' ya no va a ' + unir(pares.map((p) => m.titulo(p.clave)))
+        : plNoms(pers) + (pers.length > 1 ? ' ya no van a ' : ' ya no va a ') + m.titulo(x)) + ' ' + plElDia(d) + '.');
+    const otra = document.querySelector('#vistaPlan .pl-celda[data-ancla="' + CSS.escape(c.dataset.ancla) + '"]');
+    if (otra) otra.focus();
+    return hecho;
   }
   // Un vehículo, con su ícono («RAM»); con quiénes lo llevan si no son todos los de la casilla («RAM · ES LC»); en
   // naranjo si ese día va a dos lugares a la vez (choque: lo que dice su título)
@@ -7946,13 +8012,14 @@
           proyectos.add(c);
           const chip = plChip(m, c, m.vehiculo(d.iso, per, c), d);
           plArrastrable(chip, { tipo: 'proyecto', clave: c, desde: { per, iso: d.iso, clave: c } }, m.titulo(c));
-          b.append(chip);
+          b.append(plQuitarX(chip, per, d, c, m));
         });
         if (lista.length > PL_MAX) { b.classList.add('exceso'); b.append(crear('span', 'pl-lleno', lista.length + ' de ' + PL_MAX + ': quita ' + (lista.length - PL_MAX))); }
         else if (lista.length === PL_MAX) b.append(crear('span', 'pl-lleno', 'Completo'));
         else if (!a) plAgregar(b, lista.length ? null : 'Asignar');
         b.setAttribute('aria-label', plNom(per) + ', ' + plFechaLarga(d) + ': ' + (a ? plAusencia(a.motivo).nombre.toLowerCase()
           : lista.length ? lista.map((c) => m.titulo(c) + plVehsTexto(m, d.iso, c, [per])).join('; ') : 'sin proyecto') + '. Cambiar');
+        if (lista.length && rc.dir) b.setAttribute('aria-keyshortcuts', 'Delete');      // Supr la deja sin proyectos
         b.addEventListener('click', () => plColocar({ per, iso: d.iso }) || plAbrirPersona(per, d.iso));
         return td;
       });
@@ -8108,8 +8175,9 @@
       const van = plOrdenPersonas(m.porProyecto.get(d.iso + '|' + p.clave) || []);
       if (van.length) {
         const w = crear('span', 'pl-pers');
-        van.forEach((x) => w.append(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: p.clave } }, plNom(x))));
+        van.forEach((x) => w.append(plQuitarX(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: p.clave } }, plNom(x)), x, d, p.clave, m)));
         c.append(w);
+        if (rc.dir) c.setAttribute('aria-keyshortcuts', 'Delete');      // Supr quita a todos de ese día
       }
       const vs = van.length ? plVehs(m, d, p.clave, van) : null;
       if (vs) c.append(vs);
@@ -8154,7 +8222,7 @@
           if (p.lugar) b.append(crear('span', 's', p.lugar));
           const van = plOrdenPersonas(m.porProyecto.get(d.iso + '|' + c) || []);
           const w = crear('span', 'pl-pers');
-          van.forEach((x) => w.append(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: c } }, plNom(x))));
+          van.forEach((x) => w.append(plQuitarX(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: c } }, plNom(x)), x, d, c, m)));
           b.append(w);
           const vs = plVehs(m, d, c, van);
           if (vs) b.append(vs);
@@ -15208,6 +15276,7 @@
     b.addEventListener('click', () => { plMasMenu(false); ir(); });
   });
   $('#vistaPlan').addEventListener('dragover', plArrSobre);
+  $('#vistaPlan').addEventListener('click', plQuitarToque, true);      // antes que la casilla: la ✕ no abre su ventanita
   $('#vistaPlan').addEventListener('drop', plArrSoltar);
   // Esc deja de poner lo elegido en el panel (si no hay una ventanita abierta, que se cierra primero)
   document.addEventListener('keydown', (e) => {
