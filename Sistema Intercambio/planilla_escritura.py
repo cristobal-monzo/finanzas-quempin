@@ -18,7 +18,15 @@ este módulo es el puente con el Excel, en los dos sentidos.
 
 Hace cuatro cosas, y ninguna borra ni mueve filas:
 
-1. **Fija los N°** (``plan_fijar``): cada fila con datos cuyo N° todavía es
+**Desde el 2026-11-06 el N° lo pone la fórmula del Excel** (decisión del
+usuario: «el número se agrega solo en el Excel, completa el resto de
+casillas»). La columna N° está protegida desde el 2026-11-03 y este módulo ya
+no la escribe: el punto 1 quedó apagado (``FIJAR_N``) y una fila nueva se
+escribe sin N°; el que le da la fórmula vuelve en el resultado. Si el
+Formulador ya había reservado otro N° (su carpeta y su código lo llevan), la
+fila se deshace y queda rechazada para que lo decida una persona.
+
+1. **Fija los N°** (apagado, ver arriba) (``plan_fijar``): cada fila con datos cuyo N° todavía es
    la fórmula pasa a tener su N° escrito como número, igual que las filas
    en que el equipo ya lo escribía a mano. El N° es el de la
    última publicación (``publicado/requerimientos.json``) cuando la fila ya
@@ -90,6 +98,8 @@ EDITABLES = ("estado", "canal", "captador", "evaluador", "titulo", "cliente", "u
 # Un cambio que llega antes que la fila que lo crea (OneDrive sincroniza los archivos en cualquier orden)
 # espera esto antes de rechazarse.
 ESPERA_FILA = timedelta(hours=24)
+# Ver el docstring: el N° es la fórmula de la Planilla y su columna está protegida (2026-11-06).
+FIJAR_N = False
 
 
 def _es_formula(valor) -> bool:
@@ -371,7 +381,7 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     columnas = leer_columnas(planilla)
     filas = leer_filas(planilla)
     publicados = ((intercambio.leer_publicacion(raiz, requerimientos.PUBLICACION) or {}).get("datos") or {}).get("requerimientos") or []
-    ops, avisos = plan_fijar(filas, publicados)
+    ops, avisos = plan_fijar(filas, publicados) if FIJAR_N else ([], [])
     tomados = numeros_tomados(filas) | {o["numero"] for o in ops}
     # Lo que ya lleva un N° fuera de la planilla: los demás pedidos y las carpetas de proyecto
     reservados = {int(x["requerimiento"]["numero"]) for x in nuevos_m if isinstance((x.get("requerimiento") or {}).get("numero"), int)}
@@ -416,6 +426,8 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
                 formulacion = None
         op = fila_de_mensaje(m, formulacion, columnas)
         op["numero"] = numero
+        # El N° lo da la fórmula: uno que ya está en una carpeta y un código tiene que coincidir
+        op["exigeNumero"] = not m.get("numeroLibre")
         tomados.add(numero)
         nuevas[(pedido, norma(m["requerimiento"].get("titulo")))] = op
         escribir_m.append((m, op, detalle, {}))
@@ -496,9 +508,21 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     registrados = editados = 0
     for m, op, detalle, cambios in escribir_m:
         r = por_i.get(ops.index(op)) or {}
+        if not r.get("ok") and m["tipo"] == TIPO_NUEVO and "le daba el N°" in str(r.get("detalle") or ""):
+            # El N° reservado (carpeta y código) no es el que da la fórmula: reintentar no lo arregla
+            intercambio.archivar(raiz, m, "rechazado", [f"No se registró: {r['detalle']}. El proyecto ya lleva el N° "
+                                                        f"{op['numero']} en su carpeta y su código; lo decide una persona."],
+                                 extra={"requerimiento": op["numero"]})
+            avisos.append(f"N° {op['numero']}: {r['detalle']}.")
+            continue
         if not r.get("ok"):
             avisos.append(f"N° {op['numero']}: {r.get('detalle') or 'no se escribió'} (se reintenta).")
             continue
+        real = r.get("numero")
+        if op["op"] == "nueva" and isinstance(real, (int, float)) and int(real) != op["numero"]:
+            # La fórmula le dio otro N° (solo pasa con numeroLibre: si no, el Excel deshace la fila)
+            detalle = detalle + [f"La fórmula de la Planilla le dio el N° {int(real)} (se pidió el {op['numero']})."]
+            op["numero"] = int(real)
         if m["tipo"] == TIPO_NUEVO:
             registrados += 1
             texto = [f"Registrado en la planilla: N° {op['numero']}, fila {r.get('fila')}."] + detalle

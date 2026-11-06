@@ -90,10 +90,14 @@ try {
                 # El formato de fecha de la última fila de arriba que tiene una fecha en esa columna
                 for ($k = $fila - 1; $k -gt $primera; $k--) {
                     $arriba = $hoja.Cells.Item($k, $col)
-                    if ($arriba.Value2 -is [double] -and ([string]$arriba.NumberFormat) -match '[dmy]') { $celda.NumberFormat = $arriba.NumberFormat; break }
+                    # Con la hoja protegida no se puede dar formato (2026-11-06): la columna ya lo trae
+                    if ($arriba.Value2 -is [double] -and ([string]$arriba.NumberFormat) -match '[dmy]') { try { $celda.NumberFormat = $arriba.NumberFormat } catch { }; break }
                 }
                 $formatos = [string[]]@('yyyy-MM-dd', "yyyy-MM-dd'T'HH:mm")
-                $celda.Value2 = ([datetime]::ParseExact([string]$p.Value, $formatos, [System.Globalization.CultureInfo]::InvariantCulture, 'None')).ToOADate()
+                $fecha = [datetime]::ParseExact([string]$p.Value, $formatos, [System.Globalization.CultureInfo]::InvariantCulture, 'None')
+                # Como fecha (Value) y no como número de serie (Value2): Excel le pone formato de fecha aunque la
+                # hoja esté protegida y no deje dar formato (2026-11-06: la fila nueva mostraba «46321»)
+                if (([string]$celda.NumberFormat) -match '[dmy]') { $celda.Value2 = $fecha.ToOADate() } else { $celda.Value = $fecha }
             }
         }
         if ($o.borrar) {
@@ -136,9 +140,23 @@ try {
                     $fila = $primera + $k - 1
                     $datos[$k, 1] = $numero      # la siguiente fila nueva de esta vuelta va debajo
                 }
-                $hoja.Cells.Item($fila, 1).Value2 = $numero
+                # El N° lo pone la fórmula de la columna (protegida desde el 2026-11-03): no se escribe (2026-11-06)
                 Escribir-Valores $fila $o
-                [void]$resultados.Add(@{ i = $i; ok = $true; fila = $fila; detalle = "N° $($o.numero) en la fila $fila" })
+                try { $hoja.Calculate() } catch { }
+                $real = $hoja.Cells.Item($fila, 1).Value2
+                if (-not ($real -is [double])) { $real = $null }
+                if ($o.exigeNumero -and ($null -eq $real -or $real -ne $numero)) {
+                    # Su carpeta y su código ya llevan el N° pedido: se deshace la fila y lo decide una persona
+                    $letras = @()
+                    if ($o.valores) { $letras += @($o.valores.PSObject.Properties | ForEach-Object { $_.Name }) }
+                    if ($o.fechas) { $letras += @($o.fechas.PSObject.Properties | ForEach-Object { $_.Name }) }
+                    foreach ($letra in $letras) { [void]$hoja.Cells.Item($fila, (Columna $letra)).ClearContents() }
+                    $dio = if ($null -eq $real) { 'ninguno' } else { [string][int]$real }
+                    [void]$resultados.Add(@{ i = $i; ok = $false; fila = $fila; detalle = "la fórmula de la Planilla le daba el N° $dio, no el $($o.numero): no se escribió" })
+                    continue
+                }
+                $n = if ($null -eq $real) { $numero } else { $real }
+                [void]$resultados.Add(@{ i = $i; ok = $true; fila = $fila; numero = $n; detalle = "N° $n en la fila $fila" })
             }
             elseif ($o.op -eq 'editar') {
                 Revisar-Encabezados $o

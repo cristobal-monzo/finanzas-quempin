@@ -248,9 +248,14 @@ def entorno(tmp_path, monkeypatch):
                 resultados.append({"i": i, "ok": True, "fila": o["fila"]})
             elif o["op"] == "nueva":
                 fila = max(r for r in range(2, hoja.max_row + 1) if hoja.cell(r, 2).value or r == 2) + 1
-                hoja.cell(fila, 1).value = o["numero"]
+                # Como el Excel desde el 2026-11-06: el N° lo da la fórmula =SI(B<>"";FILA()-1;"")
+                real = fila - 1
+                if o.get("exigeNumero") and real != o["numero"]:
+                    resultados.append({"i": i, "ok": False, "fila": fila, "detalle": f"la fórmula le daba el N° {real}"})
+                    continue
+                hoja.cell(fila, 1).value = real
                 poner(fila, o)
-                resultados.append({"i": i, "ok": True, "fila": fila})
+                resultados.append({"i": i, "ok": True, "fila": fila, "numero": real})
             else:
                 col_t = encabezados.index("Título") + 1
                 filas = [r for r in range(2, hoja.max_row + 1)
@@ -330,6 +335,35 @@ def test_el_del_portal_con_un_n_tomado_queda_con_el_siguiente_libre(tmp_path, en
     assert (pub[3]["titulo"], pub[4]["titulo"], pub[4]["canal"]) == ("Primera", "Segunda", "Postventa")
     resultado = [x for x in _archivados(raiz).values() if any("N° 4" in d for d in x["detalle"])][0]
     assert resultado["estado"] == "aplicado" and any("quedó con el N° 4" in d for d in resultado["detalle"])
+
+
+def test_el_n_lo_da_la_formula_y_el_del_portal_lo_acepta(tmp_path, entorno):
+    """2026-11-06: la vuelta no escribe el N°, lo da la fórmula. El del Portal
+    pidió el 5 (vio una lista vieja) y queda con el que da la fórmula, el 3."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _mensaje(5, herramienta="portal", enviado=_hace(5), titulo="Postventa de A", canal="Postventa",
+                             referencia="1. A"))
+    pe.vuelta(raiz, ruta)
+    [op] = escritas[0]
+    assert op["op"] == "nueva" and "A" not in op["valores"] and op["exigeNumero"] is False
+    pub = _publicados(raiz)
+    assert (pub[3]["titulo"], pub[3]["canal"], pub[3]["referencia"]) == ("Postventa de A", "Postventa", "1. A")
+    resultado = list(_archivados(raiz).values())[0]
+    assert resultado["estado"] == "aplicado" and any("le dio el N° 3" in d for d in resultado["detalle"])
+
+
+def test_el_del_formulador_con_otro_n_de_la_formula_queda_rechazado(tmp_path, entorno):
+    """Su carpeta y su código ya llevan el N° pedido: si la fórmula da otro, no se escribe."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B"), (3, "C")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _mensaje(7))
+    r = pe.vuelta(raiz, ruta)
+    assert any("le daba el N° 4" in a for a in r["avisos"])
+    assert ic.leer_buzon(raiz, destino=rq.DESTINO, tipo=pe.TIPO_NUEVO)[0] == []
+    assert list(_archivados(raiz).values())[0]["estado"] == "rechazado"
 
 
 def test_un_cambio_del_portal_se_escribe_en_la_fila_de_su_n(tmp_path, entorno):
@@ -435,13 +469,14 @@ def test_lo_que_se_cambia_en_el_excel_llega_al_portal_en_la_vuelta(tmp_path, ent
     assert _publicados(raiz)[1]["estado"] == "Ofertado"
 
 
-def test_fija_las_formulas_de_filas_que_alguien_agrego_a_mano(tmp_path, entorno):
+def test_ya_no_fija_los_n_en_formula(tmp_path, entorno):
+    """Decisión del usuario (2026-11-06): el N° es la fórmula del Excel y su
+    columna está protegida; la vuelta no la escribe."""
     raiz, escritas = entorno
     ruta = _planilla(tmp_path, [(1, "A"), (None, "B")])
     rq.publicar(raiz, ruta)
-    r = pe.vuelta(raiz, ruta)
-    assert r["detalle"].startswith("1 N° fijados")
-    assert escritas[0] == [{"op": "fijar", "fila": 3, "titulo": "B", "numero": 2}]
+    pe.vuelta(raiz, ruta)
+    assert not any(o["op"] == "fijar" for ops in escritas for o in ops)
 
 
 def test_simular_no_escribe_ni_archiva(tmp_path, entorno):
