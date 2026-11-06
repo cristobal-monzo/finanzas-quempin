@@ -2081,6 +2081,160 @@
     .ej-cab h2 { font-size: 19px; }
     .ej-tarjetas { grid-template-columns: minmax(0, 1fr); }
   }
+  /* ---- 2026-11-06: accesos a cada parte, «Cómo va el proyecto» en tabla, las facturas del Centro de Costos y el
+     calendario de la mano de obra ---- */
+  .ej-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .ej-saltos { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 -4px; padding: 6px 4px; background: var(--page-plane); }
+  @container ejecucion (max-width: 760px) { .ej-saltos { position: static; } .ej-salto { min-height: 30px; padding: 0 10px; } }
+  .ej-salto {
+    flex: 0 0 auto; display: inline-flex; align-items: baseline; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px;
+    border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .ej-salto small { font-size: 12px; font-weight: 700; color: var(--texto-suave); }
+  .ej-salto:hover { border-color: var(--brand-orange); }
+  .ej-panel[id] { scroll-margin-top: 52px; }
+  #ejSecMas { scroll-margin-top: 52px; }
+  /* Cómo va el proyecto: lo gastado en grande y la tabla por categoría */
+  .ej-gastado { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; padding: 10px 12px; border-radius: 12px; background: var(--page-plane); }
+  .ej-gastado-num { display: flex; flex-direction: column; gap: 1px; }
+  .ej-gastado-num span { font-size: 12.5px; font-weight: 900; color: var(--texto-suave); }
+  .ej-gastado-num b { font-size: 26px; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .ej-gastado-barra { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding-bottom: 3px; font-size: 12.5px; color: var(--text-secondary); }
+  .ej-gastado-barra .ej-medidor { position: relative; height: 10px; overflow: visible; }
+  .ej-raya-avance { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--brand-orange); }
+  .ej-como { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .ej-como tr.ej-cat { display: table-row; }       /* .ej-cat era la fila de la lista de barras de antes */
+  .ej-como > thead > tr > th { padding: 0 6px 6px; text-align: left; font-size: 12px; font-weight: 700; color: var(--texto-suave); white-space: nowrap; }
+  .ej-como > tbody > tr > th, .ej-como > tbody > tr > td { padding: 8px 6px; border-top: 1px solid var(--gridline); vertical-align: top; }
+  .ej-como > tbody > tr > th { min-width: 130px; text-align: left; font-weight: 700; }
+  .ej-como > tbody > tr > th b { display: block; margin-bottom: 6px; font-weight: 900; }
+  .ej-como .ej-pista-barra { height: 8px; }
+  .ej-como td.fuerte { font-weight: 900; color: var(--text-primary); }
+  .ej-como td.bad { color: var(--estado-bad); font-weight: 900; }
+  .ej-como > tbody > tr > td { color: var(--text-secondary); }
+  .ej-como > tfoot > tr > th, .ej-como > tfoot > tr > td { padding: 9px 6px 0; border-top: 2px solid var(--gridline); font-weight: 900; text-align: left; }
+  .ej-como > tfoot > tr > td.ej-num { text-align: right; }
+  /* Las facturas del Centro de Costos */
+  .ej-docs-buscar {
+    flex: 1 1 220px; min-width: 0; max-width: 360px; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--baseline);
+    background: var(--surface-1); color: var(--text-primary); font: inherit; font-size: 13.5px;
+  }
+  .ej-docs > tbody > tr > td { vertical-align: top; }
+  .ej-d-fecha { white-space: nowrap; color: var(--text-secondary); }
+  .ej-d-doc { white-space: nowrap; }
+  .ej-d-doc small { display: block; font-size: 12px; color: var(--texto-suave); }
+  .ej-d-doc .rc-chip { margin-top: 3px; }
+  .ej-d-ref { display: inline-flex; align-items: center; gap: 4px; font-weight: 900; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  a.ej-d-ref { color: var(--brand-orange-ink); text-decoration: none; }
+  a.ej-d-ref:hover { text-decoration: underline; }
+  .ej-d-prov { min-width: 0; }
+  .ej-d-prov b { display: block; font-weight: 700; overflow-wrap: anywhere; }
+  .ej-d-prov span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12.5px; color: var(--texto-suave); }
+  .ej-d-neto { font-weight: 900; }
+  .ej-d-asoc { min-width: 180px; }
+  .ej-d-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 3px; }
+  .ej-d-chip {
+    max-width: 240px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--tinte-borde); background: var(--tinte); color: var(--tinte-texto);
+    font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ej-d-chip.linea { border-color: var(--gridline); background: var(--page-plane); color: var(--text-primary); }
+  .ej-d-ninguno { display: block; font-size: 12.5px; color: var(--texto-suave); }
+  .ej-d-asoc .cx-desmarcar { padding-left: 0; }
+  .ej-facturado { font-size: 12px !important; font-weight: 700; color: var(--text-secondary) !important; }
+  .ej-facturado::before { content: "✓ "; color: var(--estado-ok); }
+  .ej-facturado.sobre { color: var(--estado-bad) !important; }
+  #dlgEjAsociar { width: min(640px, calc(100vw - 24px)); }
+  .ej-as-doc { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 10px; background: var(--page-plane); }
+  .ej-as-cab { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
+  .ej-as-items { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+  .ej-as-items li { display: flex; justify-content: space-between; gap: 10px; color: var(--text-secondary); }
+  .ej-as-lista { display: flex; flex-direction: column; gap: 2px; max-height: min(46vh, 420px); overflow-y: auto; }
+  .ej-as-lista .ej-sec { margin: 8px 0 2px; }
+  .ej-as-op { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .ej-as-op:hover { background: var(--page-plane); }
+  .ej-as-op:has(input:checked) { background: var(--tinte); }
+  .ej-as-op input { flex: 0 0 auto; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--brand-orange); }
+  .ej-as-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: 14px; }
+  .ej-as-txt b { font-weight: 700; overflow-wrap: anywhere; }
+  .ej-as-txt span { font-size: 12.5px; color: var(--texto-suave); }
+  .ej-as-parece { margin-left: 8px; padding: 0 6px; border-radius: 999px; background: var(--brand-orange); color: #000000; font-size: 11px; font-weight: 900; vertical-align: 1px; }
+  .ej-as-monto { flex: 0 0 auto; font-size: 13.5px; font-weight: 700; }
+  .ej-as-comprar { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; cursor: pointer; }
+  .ej-as-comprar input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-orange); }
+  /* El calendario de la mano de obra */
+  .ej-cal-caja { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; border: 1px solid var(--gridline); background: var(--page-plane); }
+  .ej-cal-arriba { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 14px; }
+  .ej-cal-arriba .ej-quienes { flex: 1 1 260px; }
+  .ej-cal-jornada { display: flex; flex-direction: column; gap: 4px; }
+  .ej-jornada .pl-vista[aria-checked="true"] { background: var(--brand-black); color: #ffffff; }
+  :root[data-theme="dark"] .ej-jornada .pl-vista[aria-checked="true"] { background: #3a3835; }
+  @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .ej-jornada .pl-vista[aria-checked="true"] { background: #3a3835; } }
+  .ej-cal-otra input[type="text"] { max-width: 280px; background: var(--surface-card); }
+  .ej-cal-nav { display: flex; align-items: center; gap: 8px; }
+  .ej-cal-tit { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 2px 10px; }
+  .ej-cal-tit b { font-size: 15px; font-weight: 900; }
+  .ej-cal-tit span { font-size: 12.5px; color: var(--texto-suave); }
+  .ej-cal-nav .ej-ico { border: 1px solid var(--gridline); background: var(--surface-card); }
+  .ej-cal-nav .ej-ico:disabled { opacity: 0.35; cursor: default; }
+  .ej-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  .ej-cal-sem { padding-bottom: 2px; text-align: center; font-size: 11.5px; font-weight: 900; color: var(--texto-suave); }
+  .ej-cal-sem.finde { opacity: 0.7; }
+  .ej-cal-dia {
+    position: relative; min-width: 0; min-height: 54px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 4px 5px;
+    border-radius: 8px; border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer;
+  }
+  .ej-cal-dia.finde { background: transparent; }
+  .ej-cal-dia:hover:not(:disabled) { border-color: var(--brand-orange); }
+  .ej-cal-dia:disabled { opacity: 0.4; cursor: default; }
+  .ej-cal-dia.hoy .ej-cal-n { color: var(--brand-orange-ink); }
+  .ej-cal-dia.hoy::after { content: ""; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--brand-orange); }
+  .ej-cal-dia[aria-pressed="true"] { border-color: var(--brand-orange); background: var(--tinte); box-shadow: inset 0 0 0 1px var(--brand-orange); }
+  .ej-cal-dia.recien { background: var(--tinte); }
+  .ej-cal-n { font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .ej-cal-marcas { display: flex; flex-wrap: wrap; gap: 2px; }
+  .ej-cal-per { padding: 0 4px; border-radius: 4px; background: var(--ej-gastado); color: var(--surface-card); font-size: 10.5px; font-weight: 900; line-height: 15px; }
+  .ej-cal-per.medio { background: var(--ej-comprometido); color: var(--text-primary); }
+  .ej-cal-per.mas { background: transparent; color: var(--texto-suave); }
+  .ej-cal-atajos { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .ej-cal-atajos .cx-desmarcar { padding-left: 0; }
+  .ej-cal-acc { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--gridline); }
+  .ej-cal-resumen { flex: 1 1 200px; margin: 0; font-size: 13.5px; color: var(--text-secondary); }
+  .ej-dias-det summary { cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
+  .ej-dias-det[open] summary { margin-bottom: 8px; }
+  @container ejecucion (max-width: 1180px) { .ej-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  /* La tabla de «Cómo va» y la de las facturas pasan a tarjetas en lo angosto (sin desplazarse de lado) */
+  @container ejecucion (max-width: 700px) {
+    .ej-como > thead { display: none; }
+    .ej-como, .ej-como > tbody, .ej-como > tfoot { display: block; }
+    .ej-como > tbody > tr, .ej-como > tbody > tr.ej-cat, .ej-como > tfoot > tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 10px; padding: 10px 0; border-top: 1px solid var(--gridline); }
+    .ej-como > tbody > tr > th, .ej-como > tbody > tr > td, .ej-como > tfoot > tr > th, .ej-como > tfoot > tr > td { padding: 0; border: 0; text-align: left !important; }
+    .ej-como > tbody > tr > th, .ej-como > tfoot > tr > th { grid-column: 1 / -1; }
+    .ej-como td::before { content: attr(data-et); display: block; font-size: 11.5px; font-weight: 700; color: var(--texto-suave); }
+    .ej-como td:empty { display: none; }
+  }
+  @container ejecucion (max-width: 1060px) {
+    .ej-docs > thead { display: none; }
+    .ej-docs, .ej-docs > tbody { display: block; }
+    .ej-docs > tbody > tr { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 0; border-top: 1px solid var(--gridline); }
+    .ej-docs > tbody > tr[hidden] { display: none; }
+    .ej-docs > tbody > tr > td { padding: 0; border: 0; }
+    .ej-docs td.ej-d-prov { grid-column: 2; }
+    .ej-docs td.ej-d-neto { grid-column: 3; }
+    .ej-docs td.ej-d-asoc { grid-column: 2 / -1; }
+  }
+  @container ejecucion (max-width: 700px) {
+    .ej-docs > tbody > tr { grid-template-columns: minmax(0, 1fr) auto; }
+    .ej-docs td.ej-d-fecha { grid-column: 1; }
+    .ej-docs td.ej-d-doc, .ej-docs td.ej-d-prov, .ej-docs td.ej-d-asoc { grid-column: 1 / -1; }
+    .ej-docs td.ej-d-neto { grid-column: 2; grid-row: 1; }
+  }
+  @container ejecucion (max-width: 560px) {
+    .ej-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ej-kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .ej-cal-dia { min-height: 44px; padding: 3px; }
+    .ej-cal-per { font-size: 9.5px; padding: 0 2px; }
+  }
+  @media (max-width: 760px) { .ej-docs-buscar, #ejAsBuscar, .ej-cal-otra input[type="text"] { font-size: 16px; } }
   /* En el teléfono los campos van a 16 px: con menos, el iPhone hace zoom al tocarlos */
   @media (max-width: 760px) {
     .ej-form { grid-template-columns: minmax(0, 1fr); }
@@ -10313,7 +10467,8 @@
     { id: 'descartadas', nombre: 'Descartadas', es: (it) => it.estado === 'descartada' },
     { id: 'todas', nombre: 'Todas', es: () => true }
   ];
-  const EJ_TIPOS = ['costo', 'nota', 'pendiente', 'venta', 'dia', 'tarifas'];
+  const EJ_TIPOS = ['costo', 'nota', 'pendiente', 'venta', 'dia', 'tarifas', 'asociacion'];
+  const EJ_DESTINO = /^(i:[a-z0-9-]{6,40}|l:[A-Za-z0-9_-]{1,40})$/;      // un ítem (su grupo o id) o una línea del presupuesto
   const EJ_IVA = 0.19;                                    // Chile: el Análisis Financiero y el Centro de Costos van sin IVA
   const EJ_MARGEN = { objetivo: 30, minimo: 20 };         // los de un proyecto nuevo del Formulador (js/store.js)
   // Lo que cuesta un día-hombre según su nivel, si el proyecto no tiene formulación ni tarifas propias (las del Formulador)
@@ -10342,10 +10497,13 @@
     porGuardar: false, guardando: false, otraVez: false, relojGuardar: null, guardado: 0, errorGuardar: null,
     deshacer: [], recien: new Set(), relojRecien: null,
     libs: new Map(), precios: null, preciosLm: 0, buscador: null, parecidas: new Map(), calc: new Map(),
+    docs: null,               // las facturas del Centro de Costos: { porTag: Map(TAG → documentos), actualizado, lm, size }
+    docsFiltro: 'todas', docsQ: '', todosDocs: false, asociando: null,
     modelo: null,             // el resumen pintado
     editando: null,           // el diálogo de un ítem: { xs, grupo, ref, cat, proyecto, simular, oc, lineaTocada, previo, quitadas, auto }
     pegadas: null,            // lo que lee el diálogo de pegar
-    diasForm: null,           // los días trabajados por anotar: { clave, fecha, jornada, personas, nombres }
+    diasForm: null,           // el calendario de días trabajados: { clave, mes, jornada, personas, nombres, dias (los marcados) }
+    diasAbiertos: null,
     sucios: new Map(),        // lo escrito en los campos del resumen, que sobrevive a cada repintado (id → valor)
     tarifasAbiertas: false, todosDias: false, todasNotas: false, enviando: false
   };
@@ -10446,6 +10604,11 @@
       const ns = ['n1', 'n2', 'n3'].map((k) => monto(x[k]));
       if (ns.some((n) => !(n > 0))) return null;
       return Object.assign(e, { n1: ns[0], n2: ns[1], n3: ns[2] });
+    }
+    // A qué gastos proyectados o cotizados corresponde una factura del Centro de Costos (2026-11-06); vacía: a ninguno
+    if (x.tipo === 'asociacion') {
+      if (!/^[A-Z0-9]+-\d+$/.test(texto(x.ref)) || !Array.isArray(x.destinos)) return null;
+      return Object.assign(e, { ref: texto(x.ref), destinos: [...new Set(x.destinos.filter((d) => typeof d === 'string' && EJ_DESTINO.test(d)))].slice(0, 50) });
     }
     // La venta neta escrita aquí; null vuelve a la que se calcula
     if (x.monto !== null && !(monto(x.monto) > 0)) return null;
@@ -10653,6 +10816,36 @@
       return d;
     } catch (e) { return ej.precios; }
   }
+  /* Las facturas del Centro de Costos de cada proyecto (2026-11-06): publicado/documentos-proyecto.json, que el procesador
+     arma desde el snapshot del tablero del Centro de Costos (esquema documentos-proyecto). Se relee solo si cambió. Cada
+     documento va con su TAG (el prefijo del N° Ref.) y cada ítem con la categoría del Análisis Financiero. */
+  const EJ_DOC_CATS = new Set(['Materiales', 'Equipos', 'Otros']);
+  async function ejLeerDocumentos(dir) {
+    let f;
+    try { f = await (await (await dir.getDirectoryHandle('publicado')).getFileHandle('documentos-proyecto.json')).getFile(); }
+    catch (e) { const habia = !!ej.docs; ej.docs = null; return habia; }   // el procesador todavía no lo publica
+    if (ej.docs && ej.docs.lm === f.lastModified && ej.docs.size === f.size) return false;
+    let d = null;
+    try { d = (JSON.parse(rcSinBom(await f.text())) || {}).datos; } catch (e) { return false; }   // a medio sincronizar
+    if (!d || !Array.isArray(d.documentos)) return false;
+    const porTag = new Map();
+    const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 0);
+    d.documentos.forEach((x) => {
+      if (!x || !/^[A-Z0-9]+-\d+$/.test(texto(x.ref)) || !/^[A-Z0-9]{2,10}$/.test(texto(x.tag))) return;
+      const enlace = /^https:\/\/quempinspa2020\.sharepoint\.com\//.test(texto(x.enlace)) ? texto(x.enlace) : '';
+      const items = (Array.isArray(x.items) ? x.items : []).filter((i) => i && typeof i === 'object').map((i) => ({
+        nombre: ejTxt(i.nombre, 160), cantidad: num(i.cantidad), unitario: num(i.unitario), neto: num(i.neto),
+        categoria: EJ_DOC_CATS.has(i.categoria) ? i.categoria : 'Otros' }));
+      const doc = { ref: texto(x.ref), tag: texto(x.tag), fecha: /^\d{4}-\d{2}-\d{2}$/.test(texto(x.fecha)) ? x.fecha : '', tipo: ejTxt(x.tipo, 40),
+        numero: ejTxt(x.numero, 40), proveedor: ejTxt(x.proveedor, 120), resumen: ejTxt(x.resumen, 300), neto: num(x.neto),
+        categoria: EJ_DOC_CATS.has(x.categoria) ? x.categoria : 'Otros', estado: ejTxt(x.estado, 40), pendiente: x.pendiente === true, enlace, items };
+      if (!porTag.has(doc.tag)) porTag.set(doc.tag, []);
+      porTag.get(doc.tag).push(doc);
+    });
+    porTag.forEach((xs) => xs.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.ref.localeCompare(a.ref)));
+    ej.docs = { porTag, actualizado: texto(d.actualizado), lm: f.lastModified, size: f.size };
+    return true;
+  }
   /* Las hojas del Cotizador parecidas a lo que se compra; «bien»: cubre al menos la mitad de lo pedido y no es de otra
      medida. Con ella se compara sola, y la evaluación dice cuál es: si no es lo mismo, se elige otra o ninguna. */
   function ejParecidas(desc) {
@@ -10829,11 +11022,58 @@
     dias.forEach((d) => { dh += d.jornada; costo += d.jornada * tarifas['n' + d.nivel]; });
     return { dias, dh, costo, tarifas, dhP: calc && calc.totals.dh > 0 ? calc.totals.dh : null, moP: calc ? calc.totals.mo : null };
   }
+  /* Las facturas del Centro de Costos de un proyecto (2026-11-06): las de su TAG o su N° (el TAG es el N° de la Planilla
+     desde el 2026-11-05; los antiguos, siglas). null: el procesador todavía no las publica. */
+  function ejDocumentosDe(t) {
+    if (!ej.docs) return null;
+    const tags = [...new Set([t.tag, t.req].map((x) => texto(x).toUpperCase()).filter(Boolean))];
+    return tags.flatMap((k) => ej.docs.porTag.get(k) || []);
+  }
+  // Lo de cada documento por categoría del Análisis Financiero: sus ítems o, sin detalle, el documento entero
+  function ejDocPorCat(d) {
+    const por = { Materiales: 0, Equipos: 0, Otros: 0 };
+    if (d.items.length) d.items.forEach((i) => { por[i.categoria] += i.neto; }); else por[d.categoria] += d.neto;
+    return por;
+  }
+  // A qué gastos corresponde cada factura (N° Ref. → destinos), la anotación más reciente de cada una
+  function ejAsociaciones(t) {
+    const por = new Map();
+    ejDe(t, 'asociacion').forEach((a) => { if (!por.has(a.ref) || por.get(a.ref).t < a.t) por.set(a.ref, a); });
+    return por;
+  }
+  const ejKeyItem = (it) => 'i:' + (it.grupo || it.id);
+  /* Lo facturado de cada gasto: el neto de cada factura asociada se reparte entre sus destinos según lo cotizado o
+     presupuestado de cada uno (iguales si ninguno tiene monto). Los destinos que ya no existen no se cuentan. */
+  function ejFacturado(docs, asoc, items, lineas) {
+    const peso = new Map();
+    items.forEach(({ it }) => peso.set(ejKeyItem(it), Math.max(0, it.cantidad * it.precio)));
+    lineas.forEach((l) => peso.set('l:' + l.uid, Math.max(0, l.subtotal)));
+    const fact = new Map();      // destino → { monto, refs }
+    (docs || []).forEach((d) => {
+      const a = asoc.get(d.ref);
+      const ds = a ? a.destinos.filter((x) => peso.has(x)) : [];
+      if (!ds.length) return;
+      const total = ds.reduce((s, x) => s + peso.get(x), 0);
+      ds.forEach((x) => {
+        const f = fact.get(x) || { monto: 0, refs: [] };
+        f.monto += d.neto * (total > 0 ? peso.get(x) / total : 1 / ds.length);
+        f.refs.push(d.ref);
+        fact.set(x, f);
+      });
+    });
+    return fact;
+  }
   function ejModelo(t) {
     const form = ejFormulacion(t);
     const calc = ejCalculo(form);
     // Se simula un proveedor por ítem, aunque dos navegadores hayan elegido a la vez (en cada id manda el cambio más reciente)
     const costos = ejItems(ejDe(t, 'costo')).flatMap(({ xs, it }) => xs.map((x) => (x !== it && x.simular ? Object.assign({}, x, { simular: false }) : x)));
+    const docs = ejDocumentosDe(t);
+    const asoc = ejAsociaciones(t);
+    const lineas = ejLineas(form, calc);
+    const facturado = ejFacturado(docs, asoc, ejItems(costos), lineas);
+    // Lo gastado de materiales, equipos y otros: sus facturas del Centro de Costos, si hay; si no, los reales del Análisis
+    const gastoCC = docs && docs.length ? docs.reduce((a, d) => { const p = ejDocPorCat(d); Object.keys(p).forEach((k) => { a[k] += p[k]; }); return a; }, { Materiales: 0, Equipos: 0, Otros: 0 }) : null;
     const ocs = ejOCs(t, costos);
     const par = (form && form.datos.parametros) || {};
     const pres = ejPresupuesto(t, form, calc);
@@ -10844,11 +11084,12 @@
     mo.af = moAF;
     mo.fuente = mo.dias.length ? 'dias' : moAF !== null ? 'af' : '';
     const m = {
-      t, form, calc, costos, ocs, folios: new Set(ocs.map((o) => o.folio)), pres, venta: ejVenta(t, form, calc), lineas: ejLineas(form, calc), mo,
+      t, form, calc, costos, ocs, folios: new Set(ocs.map((o) => o.folio)), pres, venta: ejVenta(t, form, calc), lineas, mo,
+      docs, asoc, facturado, gastoFuente: gastoCC ? 'cc' : 'af',
       margenes: { objetivo: (Number(par.margenObjetivo) || EJ_MARGEN.objetivo) / 100, minimo: (Number(par.margenMinimo) || EJ_MARGEN.minimo) / 100 },
       metaDH: Number(par.metaUtilidadDH) > 0 ? Number(par.metaUtilidadDH) : 0,
       base: EJ_CATS.map((c) => ({ k: c.k, nombre: c.nombre, P: pres ? pres.por[c.k] : null,
-        G: c.k === 'Mano de Obra' && mo.dias.length ? mo.costo : Math.max(0, Number(reales[c.k]) || 0),
+        G: c.k === 'Mano de Obra' ? (mo.dias.length ? mo.costo : Math.max(0, Number(reales[c.k]) || 0)) : gastoCC ? gastoCC[c.k] : Math.max(0, Number(reales[c.k]) || 0),
         Coc: ocs.filter((o) => o.estado === 'comprometida' && o.cat === c.k).reduce((a, o) => a + o.neto, 0) }))
     };
     Object.assign(m, ejCuentas(m));
@@ -10899,8 +11140,11 @@
     m.costos.forEach((it) => {
       if (op.quitar && op.quitar.has(it.id)) return;
       const como = ejCuentaComo(it, m.folios);
-      if (como === 'q') por.get(it.categoria).Q += it.cantidad * it.precio;
-      else if (como === 'c') por.get(it.categoria).C += it.cantidad * it.precio;
+      // Lo ya facturado de un ítem está en lo gastado: se simula o compromete solo lo que falta facturar (2026-11-06)
+      const f = m.facturado ? m.facturado.get(ejKeyItem(it)) : null;
+      const monto = Math.max(0, it.cantidad * it.precio - (f ? f.monto : 0));
+      if (como === 'q') por.get(it.categoria).Q += monto;
+      else if (como === 'c') por.get(it.categoria).C += monto;
     });
     if (op.agregar && por.has(op.agregar.categoria)) por.get(op.agregar.categoria).Q += op.agregar.cantidad * op.agregar.precio;
     const tot = { P: 0, G: 0, C: 0, Q: 0, EAC: 0, EAC0: 0 };
@@ -11076,6 +11320,7 @@
     ej.leyendo = (async () => {
       let cambio = await ejLeer(dir);
       if (todo || !ej.ganttLeido) { await ejLeerGantt(dir); cambio = true; }
+      if (await ejLeerDocumentos(dir)) cambio = true;
       ej.error = null;
       return cambio;
     })().catch((e) => { console.error(e); ej.error = e; return true; }).then((cambio) => {
@@ -11208,6 +11453,13 @@
     f1.append(crear('span', null, 'Avance'), med, crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)));
     if (av.pedido) f1.title = 'Pedido al Análisis Financiero: llega con la próxima vuelta del procesador';
     b.append(f1);
+    // Lo gastado hasta hoy (2026-11-06)
+    if (ejClave(t) && (m.tot.G > 0.5 || m.pres)) {
+      const fg = crear('span', 'ej-t-fila ej-t-gasto');
+      fg.append(crear('span', null, 'Gastado'), crear('b', null, ejPesos(m.tot.G)));
+      if (m.pres && m.tot.P > 0) fg.append(crear('span', null, ejPct(m.tot.G / m.tot.P) + ' de ' + ejPesos(m.tot.P)));
+      b.append(fg);
+    }
     const f2 = crear('span', 'ej-t-fila');
     const nivel = ejNivelMargen(m.margen, m);
     if (!ejClave(t)) f2.append(crear('span', null, 'Su carpeta no lleva el N° de la Planilla de Ingreso'));
@@ -11267,7 +11519,7 @@
     const foco = a && raiz.contains(a) && a.dataset ? a.dataset.foco : null;
     const m = ejModelo(t);
     ej.modelo = m;
-    if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, fecha: plISO(new Date()), jornada: 1, personas: new Set(), nombres: {} };
+    if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, mes: plISO(new Date()).slice(0, 7), jornada: 1, personas: new Set(), nombres: {}, dias: new Set() };
     raiz.textContent = '';
     // Una carpeta de Gestión sin N° ni TAG (2026-11-03): se ve, pero no hay a qué anotarle compras, días ni avance
     const sinClave = !ejClave(t);
@@ -11279,13 +11531,16 @@
       raiz.append(ul);
     }
     if (sinClave) { raiz.append(ejSinClaveEl(t)); vista.scrollTop = desplazado; return; }
+    // El orden (2026-11-06): cómo va y el avance; las facturas reales; lo que viene; la mano de obra; lo demás
+    raiz.append(ejSaltosEl(m));
     const dos = crear('div', 'ej-dos');
     dos.append(ejPresupuestoEl(m), ejAvanceEl(m));
     const mo = crear('div', 'ej-dos');
     mo.append(ejManoObraEl(m), ejIndicadoresEl(m));
-    raiz.append(dos, ejComprasEl(m), mo);
+    raiz.append(dos, ejDocumentosEl(m), ejComprasEl(m), mo);
     const tres = crear('div', 'ej-tres');
     tres.append(ejOCsEl(m), ejEquipoEl(m), ejNotasEl(m));
+    tres.id = 'ejSecMas';
     raiz.append(tres);
     // Lo que se estaba escribiendo (una nota, un pendiente, el avance) sigue escrito después de repintar
     ej.sucios.forEach((v, id) => { const x = raiz.querySelector('#' + CSS.escape(id)); if (x && x.value !== v) x.value = v; });
@@ -11296,6 +11551,25 @@
     if (!ej.precios && m.costos.some((x) => EJ_CAT.get(x.categoria).historico)) {
       ejPrecios().then((d) => { if (d && !vista.hidden && ej.clave === t.clave && !document.querySelector('dialog[open]')) ejPintar(); });
     }
+  }
+  // Saltar a cada parte del resumen (2026-11-06): la página es larga; una fila de accesos con lo que hay en cada una
+  function ejSaltosEl(m) {
+    const nav = crear('nav', 'ej-saltos');
+    nav.setAttribute('aria-label', 'Partes del resumen');
+    const docs = m.docs || [];
+    const sinAsoc = docs.filter((d) => !m.asoc.get(d.ref)).length;
+    const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
+    [['ejSecComoVa', 'Cómo va', ''], ['ejSecFacturas', 'Facturas', docs.length ? String(docs.length) + (sinAsoc ? ' · ' + sinAsoc + ' sin asociar' : '') : ''],
+      ['ejSecGastos', 'Gastos proyectados', decidir ? decidir + ' por decidir' : ''], ['ejSecMO', 'Mano de obra', m.mo.dh ? ejCantidad(m.mo.dh) + ' DH' : ''],
+      ['ejSecMas', 'OC, equipo y notas', '']].forEach(([id, txt, extra]) => {
+      const b = crear('button', 'ej-salto');
+      b.type = 'button';
+      b.append(crear('span', null, txt));
+      if (extra) b.append(crear('small', null, extra));
+      b.addEventListener('click', () => { const x = document.getElementById(id); if (x) x.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      nav.append(b);
+    });
+    return nav;
   }
   function ejSinClaveEl(t) {
     const { s } = ejPanel('Le falta su N° de requerimiento');
@@ -11341,30 +11615,29 @@
       acc.append(b);
       return b;
     };
-    if (!MOVIL.matches && gestion) carpeta(gestion, 'Carpeta en Gestión de Proyectos', true);
+    /* Los accesos (2026-11-06, pedido del usuario): primero la carpeta del proyecto en el Explorador de archivos (la de
+       Gestión de Proyectos o, si todavía no pasa ahí, la de su oferta), después «Facturas del proyecto». Sin el Centro de
+       Costos, el Análisis Financiero ni la Carta Gantt: lo que importa de ellos ya está en este resumen. */
+    const proyecto = gestion || oferta;
+    if (!MOVIL.matches && proyecto) carpeta(proyecto, 'Carpeta del proyecto', true);
     if (facturas) {
-      const b = ejBoton('Facturas del proyecto', 'cx-enlace', () => window.open(facturas, '_blank', 'noopener'), 'proyectos');
+      const b = ejBoton('Facturas del proyecto', proyecto && !MOVIL.matches ? 'cx-enlace' : 'cx-boton', () => window.open(facturas, '_blank', 'noopener'), 'documento');
       b.dataset.foco = 'carpeta-facturas';
       b.title = 'Su carpeta del Centro de Costos en SharePoint: las facturas que ya tiene, y lo que subas ahí entra al Centro de Costos.';
       acc.append(b);
     }
-    if (!MOVIL.matches) {
-      if (oferta && !gestion) {
-        // QUEMPIN.exe 1.3.15 pregunta antes, arma la carpeta en Gestión y deja el original en Adjudicadas
-        const b = ejBoton('Pasar a Gestión de Proyectos', 'cx-boton', () => {
-          abrirEnlace('quempin://trasladar/formulacion/' + oferta.ruta.map(encodeURIComponent).join('/'));
-          avisar('Pasando «' + oferta.nombre + '» a Gestión de Proyectos: confirma en la ventana de QUEMPIN.exe.', { texto: '¿No se abrió?', ir: () => infoCarpeta(oferta) });
-        }, 'proyectos');
-        b.dataset.foco = 'trasladar';
-        acc.append(b);
-      }
-      if (oferta) carpeta(oferta, gestion ? 'Carpeta de la oferta' : 'Carpeta de la oferta (aún no está en Gestión)', false);
+    if (!MOVIL.matches && oferta && !gestion) {
+      // QUEMPIN.exe 1.3.15 pregunta antes, arma la carpeta en Gestión y deja el original en Adjudicadas
+      const b = ejBoton('Pasar a Gestión de Proyectos', 'cx-enlace', () => {
+        abrirEnlace('quempin://trasladar/formulacion/' + oferta.ruta.map(encodeURIComponent).join('/'));
+        avisar('Pasando «' + oferta.nombre + '» a Gestión de Proyectos: confirma en la ventana de QUEMPIN.exe.', { texto: '¿No se abrió?', ir: () => infoCarpeta(oferta) });
+      }, 'derecha');
+      b.dataset.foco = 'trasladar';
+      acc.append(b);
     }
-    const ir = (txt, x) => acc.append(ejBoton(txt, 'cx-enlace', () => rcIr(x)));
-    if (t.formulacion) ir('Seguimiento', RC_IR.seguimiento(t.formulacion.uid));
-    if (t.tag && t.af) { ir('Análisis Financiero', RC_IR.af(t.tag)); ir('Centro de Costos', RC_IR.cc(t.tag)); }
-    if (t.formulacion) ir('Carta Gantt', { herr: 'gantt', url: HERR.get('gantt').ruta + '#/proyecto/' + encodeURIComponent(t.formulacion.uid) });
-    ir('Subir documentos', { herr: 'subir-cc' });
+    const ir = (txt, x, ico) => acc.append(ejBoton(txt, 'cx-enlace', () => rcIr(x), ico));
+    if (t.formulacion) ir('Seguimiento', RC_IR.seguimiento(t.formulacion.uid), 'ruta');
+    ir('Subir documentos', { herr: 'subir-cc' }, 'subir');
     cab.append(acc);
     if (!gestion && !MOVIL.matches) {
       cab.append(oferta ? lineaInfo('ej-pista', 'Sin carpeta en Gestión de Proyectos', '«Pasar a Gestión de Proyectos» la crea con «Formulación» (la copia de la oferta) y deja el original en 0 OFERTAS ADJUDICADAS; lo hace QUEMPIN.exe 1.3.16 o más nuevo, que pregunta antes. Después el procesador le agrega «Facturas del proyecto», el acceso directo a su carpeta del Centro de Costos.', 'Cómo se crea')
@@ -11395,6 +11668,12 @@
     kv.append(corregir);
     box.append(kv);
     const tot = m.tot;
+    // Lo gastado hasta hoy (2026-11-06, pedido del usuario): facturas del Centro de Costos y mano de obra
+    const subG = [];
+    if (m.pres && tot.P > 0) subG.push(crear('b', null, ejPct(tot.G / tot.P)), ' del presupuesto');
+    else subG.push('Sin presupuesto con que compararlo');
+    if (tot.C > 0.5) subG.push(' · ' + ejPesos(tot.C) + ' comprometidos en OC');
+    box.append(ejKpi('Gastado a la fecha', ejPesos(tot.G), subG));
     const sub = [];
     if (m.pres) {
       sub.push('Presupuesto ' + ejPesos(tot.P));
@@ -11412,34 +11691,63 @@
       ejNivelMargen(m.margen, m) === 'ok' ? '' : ejNivelMargen(m.margen, m)));
     const av = m.avance;
     const gs = ejGastoSobreAvance(m);
-    const subA = m.pres && tot.P > 0 ? ['Gastado y comprometido: ', crear('b', null, ejPct((tot.G + tot.C) / tot.P)), ' del presupuesto'] : 'Sin presupuesto con que comparar el gasto';
+    const subA = gs ? ['Va gastado más de lo que avanza: ', crear('b', null, ejPct((tot.G + tot.C) / tot.P)), ' del presupuesto'] : av.fin ? 'Término ' + rcCorta(av.fin, new Date()) : 'Sin fecha de término';
     box.append(ejKpi('Avance', av.valor === null ? 'Sin dato' : ejPct(av.valor), av.pedido ? 'Pedido: llega con la próxima vuelta del procesador' : subA, gs ? 'warn' : ''));
     return box;
   }
-  // El presupuesto por categoría: lo gastado, comprometido y simulado contra lo presupuestado (la raya), en la misma escala
+  /* Cómo va el proyecto (2026-11-06, pedido del usuario: «más clara y que muestre además lo que se lleva gastado»): una
+     tabla por categoría con lo presupuestado, lo gastado hasta hoy, lo comprometido en OC, lo simulado, lo estimado al
+     cierre y cuánto queda (o cuánto se pasa); bajo cada nombre, la barra de lo usado contra lo presupuestado (la raya). */
   function ejPresupuestoEl(m) {
-    const { s } = ejPanel('Cómo va el presupuesto', m.pres ? m.pres.fuente : 'sin presupuesto', m.pres
-      ? 'Lo que todavía no se compra se estima con lo presupuestado: el costo estimado de cada categoría es lo presupuestado o, si se pasa, lo gastado más lo comprometido y lo simulado.'
-      : 'Sin presupuesto, el costo estimado es lo gastado más lo comprometido y lo simulado. Con una formulación o los proyectados en el Análisis Financiero, se compara con lo presupuestado.');
-    const ley = crear('ul', 'ej-leyenda');
-    [['', m.mo.fuente === 'dias' ? 'Gastado (Centro de Costos y días trabajados)' : 'Gastado (Centro de Costos)'], ['c', 'Comprometido (OC sin factura)'], ['q', 'Simulado (lo marcado)'], ['t', 'Presupuestado']].forEach(([k, txt]) => {
-      if (k === 't' && !m.pres) return;
-      const li = crear('li');
-      li.append(crear('i', k), document.createTextNode(txt));
-      ley.append(li);
-    });
-    s.append(ley);
+    const fuenteG = m.gastoFuente === 'cc' ? 'las facturas del Centro de Costos' : 'los costos reales del Análisis Financiero';
+    const { s } = ejPanel('Cómo va el proyecto', m.pres ? m.pres.fuente : 'sin presupuesto',
+      'Gastado: ' + fuenteG + (m.mo.fuente === 'dias' ? ' y, en mano de obra, los días trabajados anotados aquí' : '') + '. Comprometido: las órdenes de compra que el Centro de Costos todavía no trae. '
+      + 'Simulado: lo marcado en «Simular» en los gastos proyectados, menos lo ya facturado. '
+      + (m.pres ? 'Al cierre: lo presupuestado o, si se pasa, lo gastado más lo comprometido y lo simulado (lo que todavía no se compra se estima con el presupuesto).'
+        : 'Sin presupuesto, el cierre es lo gastado más lo comprometido y lo simulado.'));
+    s.id = 'ejSecComoVa';
+    const tot = m.tot;
+    // Lo gastado hasta hoy, en grande, con lo que se lleva del presupuesto y del avance
+    const res = crear('div', 'ej-gastado');
+    const g = crear('div', 'ej-gastado-num');
+    g.append(crear('span', null, 'Gastado a la fecha'), crear('b', null, ejPesos(tot.G)));
+    res.append(g);
+    if (m.pres && tot.P > 0) {
+      const p = crear('div', 'ej-gastado-barra');
+      const med = crear('div', 'ej-medidor');
+      const b = crear('span');
+      b.style.width = Math.min(100, Math.round(100 * tot.G / tot.P)) + '%';
+      med.append(b);
+      if (m.avance.valor !== null) {
+        const raya = crear('i', 'ej-raya-avance');
+        raya.style.left = Math.round(m.avance.valor * 100) + '%';
+        raya.title = 'Avance ' + ejPct(m.avance.valor);
+        med.append(raya);
+      }
+      p.append(med, crear('span', null, ejPct(tot.G / tot.P) + ' del presupuesto' + (m.avance.valor !== null ? ' · avance ' + ejPct(m.avance.valor) : '')));
+      res.append(p);
+    }
+    s.append(res);
     const filas = m.cats.filter((c) => (c.P || 0) > 0 || c.usado > 0);
+    if (!filas.length) { s.append(crear('p', 'ej-nada', 'Todavía no tiene presupuesto ni gasto registrado.')); return s; }
     const escala = Math.max(1, ...m.cats.map((c) => Math.max(c.P || 0, c.usado)));
-    const ul = crear('ul', 'ej-cats-lista');
+    const tabla = crear('table', 'ej-como');
+    const cols = [['Categoría', ''], ['Presupuestado', 'ej-num'], ['Gastado', 'ej-num'], ['Comprometido', 'ej-num'], ['Simulado', 'ej-num'], ['Al cierre', 'ej-num'], [m.pres ? 'Queda' : '', 'ej-num']];
+    const thead = crear('thead');
+    const trh = crear('tr');
+    cols.forEach(([x, c]) => { const th = crear('th', c, x); th.scope = 'col'; trh.append(th); });
+    thead.append(trh);
+    const tbody = crear('tbody');
+    const celda = (v, et, clase) => { const td = crear('td', 'ej-num' + (clase ? ' ' + clase : ''), v); td.dataset.et = et; return td; };
+    const monto = (v) => (v > 0.5 || v < -0.5 ? ejPesos(v) : '—');
     filas.forEach((c) => {
-      const li = crear('li', 'ej-cat');
-      li.setAttribute('aria-label', c.nombre);
-      const cab = crear('div', 'ej-cat-cab');
-      cab.append(crear('b', null, c.nombre));
-      const val = crear('span', null, c.P !== null ? ejPesos(c.usado) + ' de ' + ejPesos(c.P) + ' · ' + (c.queda >= -0.5 ? 'quedan ' + ejPesos(c.queda) : 'se pasa en ' + ejPesos(-c.queda)) : ejPesos(c.usado));
-      if (c.queda !== null && c.queda < -0.5) val.className = 'bad';
-      cab.append(val);
+      const tr = crear('tr', 'ej-cat');
+      tr.dataset.cat = c.k;
+      tr.setAttribute('aria-label', c.nombre);
+      const th = crear('th');
+      th.scope = 'row';
+      th.append(crear('b', null, c.nombre));
+      // La barra: gastado, comprometido y simulado contra lo presupuestado (la raya), todas en la misma escala
       const pista = crear('div', 'ej-pista-barra');
       const segs = crear('div', 'ej-segs');
       [['', c.G, 'Gastado'], ['c', c.C, 'Comprometido'], ['q', c.Q, 'Simulado']].forEach(([k, v, et]) => {
@@ -11456,18 +11764,34 @@
         tope.title = 'Presupuestado en ' + c.nombre.toLowerCase() + ': ' + ejPesos(c.P);
         pista.append(tope);
       }
-      li.append(cab, pista);
-      const det = [c.G > 0 ? 'Gastado ' + ejPesos(c.G) : '', c.C > 0 ? 'OC ' + ejPesos(c.C) : '', c.Q > 0 ? 'Simulado ' + ejPesos(c.Q) : ''].filter(Boolean);
-      if (det.length > 1 || (det.length === 1 && c.P === null)) li.append(crear('span', 'ej-pista', det.join(' · ')));
-      ul.append(li);
+      th.append(pista);
+      const q = c.queda;
+      tr.append(th, celda(c.P !== null ? ejPesos(c.P) : '—', 'Presupuestado'), celda(monto(c.G), 'Gastado', 'fuerte'), celda(monto(c.C), 'Comprometido'),
+        celda(monto(c.Q), 'Simulado'), celda(ejPesos(c.EAC), 'Al cierre'),
+        celda(q === null ? '' : q >= -0.5 ? ejPesos(q) : 'se pasa ' + ejPesos(-q), m.pres ? (q !== null && q < -0.5 ? 'Se pasa' : 'Queda') : '', q !== null && q < -0.5 ? 'bad' : ''));
+      tbody.append(tr);
     });
-    if (filas.length) s.append(ul);
-    else s.append(crear('p', 'ej-nada', 'Todavía no tiene presupuesto ni gasto registrado.'));
+    const tfoot = crear('tfoot');
+    const trf = crear('tr');
+    const thf = crear('th', null, 'Total');
+    thf.scope = 'row';
+    const qt = tot.queda;
+    trf.append(thf, celda(m.pres ? ejPesos(tot.P) : '—', 'Presupuestado'), celda(ejPesos(tot.G), 'Gastado', 'fuerte'), celda(monto(tot.C), 'Comprometido'),
+      celda(monto(tot.Q), 'Simulado'), celda(ejPesos(tot.EAC), 'Al cierre'),
+      celda(qt === null ? '' : qt >= -0.5 ? ejPesos(qt) : 'se pasa ' + ejPesos(-qt), m.pres ? (qt !== null && qt < -0.5 ? 'Se pasa' : 'Queda') : '', qt !== null && qt < -0.5 ? 'bad' : ''));
+    tfoot.append(trf);
+    tabla.append(thead, tbody, tfoot);
+    s.append(tabla);
+    const ley = crear('ul', 'ej-leyenda');
+    [['', 'Gastado'], ['c', 'Comprometido'], ['q', 'Simulado'], ['t', 'Presupuestado']].forEach(([k, txt]) => {
+      if (k === 't' && !m.pres) return;
+      const li = crear('li');
+      li.append(crear('i', k), document.createTextNode(txt));
+      ley.append(li);
+    });
+    s.append(ley);
     const sin = m.cats.filter((c) => !((c.P || 0) > 0 || c.usado > 0)).map((c) => c.nombre.toLowerCase());
-    if (sin.length && filas.length) s.append(crear('p', 'ej-pista', 'Sin presupuesto ni gasto en ' + unir(sin) + '.'));
-    const tot = crear('div', 'ej-total');
-    tot.append(crear('span', null, 'Costo estimado al cierre'), crear('b', null, ejPesos(m.tot.EAC) + (m.pres ? ' de ' + ejPesos(m.tot.P) + ' presupuestados' : '')));
-    s.append(tot);
+    if (sin.length) s.append(crear('p', 'ej-pista', 'Sin presupuesto ni gasto en ' + unir(sin) + '.'));
     return s;
   }
   // El avance: el del Análisis Financiero (o el que se pidió), el de su Carta Gantt, a qué ritmo va el gasto, y cambiarlo
@@ -11630,6 +11954,7 @@
     const { s } = ejPanel('Gastos proyectados y cotizaciones', items.length ? pl(items.length, 'anotado', 'anotados') : '',
       'Anota cada ítem que se espera comprar, con la cotización de uno o varios proveedores: en la columna Proveedor se comparan y se elige uno. Se contrasta con lo presupuestado y con lo que QUEMPIN ha pagado, y lo marcado en «Simular» cambia al tiro el costo estimado, el margen y los indicadores. No es un costo real: al Centro de Costos solo llegan las facturas y las órdenes de compra.');
     s.classList.add('ej-compras');
+    s.id = 'ejSecGastos';
     const barra = crear('div', 'ej-barra-compras');
     const agregar = ejBoton('Agregar gasto o cotización', 'cx-boton', () => ejAbrirCosto(null), 'mas');
     agregar.disabled = !rc.dir;
@@ -11748,6 +12073,8 @@
     q.append(crear('span', null, [EJ_CAT.get(it.categoria).nombre, it.cotizacion ? 'cot. ' + it.cotizacion : '', it.fecha ? ejFechaCorta(it.fecha) : '',
       it.estado === 'comprada' && it.oc ? 'OC ' + it.oc : ''].filter(Boolean).join(' · ')));
     if (it.nota) q.append(crear('span', null, it.nota));
+    const fx = ejFacturadoEl(it, m);
+    if (fx) q.append(fx);
     q.title = 'Ver o cambiar este ítem y sus proveedores';
     q.addEventListener('click', () => ejAbrirCosto(it));
     tdQ.append(q);
@@ -11884,6 +12211,326 @@
     otras.forEach((x) => cambios.push(Object.assign({}, x, { estado: ejEstadoOtra(est), simular: false, elegida: false })));
     if (est !== 'evaluar' && otras.length) msg += otras.length === 1 ? ' El otro proveedor queda descartado.' : ' Los otros ' + otras.length + ' proveedores quedan descartados.';
     ejPoner(cambios, msg);
+  }
+
+  // ---- Las facturas del Centro de Costos y a qué gastos corresponden (2026-11-06) ------------------------------------
+  /* Pedido del usuario: ver en cada proyecto los costos registrados en el Centro de Costos y asociar cada factura a uno o
+     varios de sus gastos proyectados y cotizados. Una asociación es una cosa del archivo por factura (tipo 'asociacion',
+     su N° Ref. y sus destinos: los ítems, 'i:<grupo o id>', y las líneas del presupuesto de su formulación, 'l:<uid>').
+     Lo facturado de un ítem ya está en lo gastado: de él se simula o compromete solo lo que falta facturar. */
+  const EJ_DOCS_FILTROS = [
+    { id: 'todas', nombre: 'Todas', es: () => true },
+    { id: 'sin', nombre: 'Sin asociar', es: (d, a) => !a },
+    { id: 'con', nombre: 'Asociadas', es: (d, a) => !!a }
+  ];
+  const EJ_DOCS_MAX = 12;
+  const ejIdAsoc = (t, ref) => ('as-' + ejSlugClave(ejClave(t)) + '-' + ref.toLowerCase()).slice(0, 40);
+  // Los destinos que se pueden elegir: los ítems (no descartados) y las líneas del presupuesto de su formulación
+  function ejDestinos(m) {
+    const out = [];
+    ejItems(m.costos).forEach(({ it, xs }) => {
+      if (xs.every((x) => x.estado === 'descartada')) return;
+      out.push({ k: ejKeyItem(it), tipo: 'item', nombre: it.descripcion, it, xs, monto: it.cantidad * it.precio, cat: it.categoria,
+        sub: [EJ_CAT.get(it.categoria).nombre, it.proveedor, (EJ_ESTADOS.find((e) => e.id === it.estado) || {}).nombre].filter(Boolean).join(' · ') });
+    });
+    m.lineas.filter((l) => l.cat !== 'Mano de Obra').forEach((l) => out.push({ k: 'l:' + l.uid, tipo: 'linea', nombre: l.descripcion, l, monto: l.subtotal, cat: l.cat,
+      sub: [l.code, l.partida, EJ_CAT.get(l.cat).nombre].filter(Boolean).join(' · ') }));
+    return out;
+  }
+  // Los destinos de una factura que todavía existen (un ítem borrado ya no cuenta)
+  function ejDestinosDe(m, ref, todos) {
+    const a = m.asoc.get(ref);
+    if (!a || !a.destinos.length) return [];
+    const por = new Map((todos || ejDestinos(m)).map((d) => [d.k, d]));
+    return a.destinos.map((k) => por.get(k)).filter(Boolean);
+  }
+  const ejDocNombre = (d) => [d.tipo || 'Documento', d.numero ? 'N° ' + d.numero : ''].filter(Boolean).join(' ');
+  function ejDocumentosEl(m) {
+    const docs = m.docs;
+    const total = docs ? docs.reduce((a, d) => a + d.neto, 0) : 0;
+    const { s, cab } = ejPanel('Facturas del Centro de Costos', docs && docs.length ? pl(docs.length, 'documento', 'documentos') + ' · ' + ejPesos(total) : '',
+      'Las facturas, boletas, notas de crédito y órdenes de compra registradas en el Centro de Costos con su TAG, sin IVA. Asocia cada una a los gastos proyectados o cotizados y a las líneas del presupuesto a que corresponde: '
+      + 'así se ve cuánto se lleva facturado de cada uno y lo que ya se facturó deja de simularse. Si una factura es de varios gastos, su monto se reparte según lo cotizado o presupuestado de cada uno.'
+      + (ej.docs && ej.docs.actualizado ? ' Centro de Costos al ' + ej.docs.actualizado + '.' : ''));
+    s.id = 'ejSecFacturas';
+    s.classList.add('ej-facturas');
+    const fw = rcFacturasWeb(m.t);
+    if (fw) { const b = ejBoton('Abrir la carpeta', 'cx-enlace', () => window.open(fw, '_blank', 'noopener'), 'fuera'); b.title = 'Su carpeta del Centro de Costos en SharePoint'; cab.append(b); }
+    if (docs === null) { s.append(lineaInfo('ej-nada', 'Las facturas todavía no llegan a la carpeta del equipo.', 'Las publica el procesador desde el Centro de Costos en su próxima vuelta (cada 2 horas). Mientras, lo gastado sale del Análisis Financiero.', 'Cuándo llegan')); return s; }
+    if (!docs.length) { s.append(crear('p', 'ej-nada', 'Sin documentos registrados con su TAG en el Centro de Costos.')); return s; }
+    const todos = ejDestinos(m);
+    const asociada = (d) => ejDestinosDe(m, d.ref, todos).length > 0 || !!(m.asoc.get(d.ref) && !m.asoc.get(d.ref).destinos.length);
+    // Filtros y búsqueda (la búsqueda solo esconde filas: no repinta, para no perder lo escrito)
+    const barra = crear('div', 'ej-barra-compras');
+    const filtros = crear('div', 'ej-filtros');
+    filtros.setAttribute('role', 'group');
+    filtros.setAttribute('aria-label', 'Qué facturas mostrar');
+    EJ_DOCS_FILTROS.forEach((f) => {
+      const n = docs.filter((d) => f.es(d, asociada(d))).length;
+      const b = crear('button', 'ej-filtro', f.nombre + ' (' + n + ')');
+      b.type = 'button';
+      b.dataset.foco = 'docs-' + f.id;
+      b.setAttribute('aria-pressed', ej.docsFiltro === f.id ? 'true' : 'false');
+      b.addEventListener('click', () => { ej.docsFiltro = f.id; ejPintar(); });
+      filtros.append(b);
+    });
+    const bus = crear('input', 'ej-docs-buscar');
+    bus.type = 'search'; bus.id = 'ejDocBuscar'; bus.autocomplete = 'off'; bus.placeholder = 'Buscar proveedor, ítem o N° Ref.';
+    bus.setAttribute('aria-label', 'Buscar entre las facturas del proyecto');
+    bus.value = ej.docsQ;
+    barra.append(bus, filtros);
+    s.append(barra);
+    const filtro = EJ_DOCS_FILTROS.find((f) => f.id === ej.docsFiltro) || EJ_DOCS_FILTROS[0];
+    const visibles = docs.filter((d) => filtro.es(d, asociada(d)));
+    const tabla = crear('table', 'ej-tabla ej-docs');
+    const thead = crear('thead');
+    const trh = crear('tr');
+    [['Fecha', ''], ['Documento', ''], ['Proveedor y detalle', ''], ['Neto', 'ej-num'], ['Corresponde a', '']].forEach(([x, c]) => { const th = crear('th', c, x); th.scope = 'col'; trh.append(th); });
+    thead.append(trh);
+    const tbody = crear('tbody');
+    const max = ej.todosDocs || ej.docsQ ? visibles.length : EJ_DOCS_MAX;
+    visibles.forEach((d, i) => {
+      const tr = crear('tr', ej.recien.has(ejIdAsoc(m.t, d.ref)) ? 'recien' : '');
+      tr.dataset.ref = d.ref;
+      tr.dataset.buscar = norm([d.ref, d.tipo, d.numero, d.proveedor, d.resumen].concat(d.items.map((x) => x.nombre)).join(' '));
+      if (i >= max) tr.dataset.extra = '1';
+      tr.hidden = i >= max;
+      const tdF = crear('td', 'ej-d-fecha', d.fecha ? ejFechaCorta(d.fecha) : '—');
+      const tdD = crear('td', 'ej-d-doc');
+      const nom = crear('span', 'ej-d-nom');
+      if (d.enlace) {
+        const a = crear('a', 'ej-d-ref');
+        a.href = d.enlace; a.target = '_blank'; a.rel = 'noopener';
+        a.append(document.createTextNode(d.ref), icono('fuera', 12));
+        a.title = 'Abrir el documento en SharePoint';
+        nom.append(a);
+      } else nom.append(crear('span', 'ej-d-ref', d.ref));
+      tdD.append(nom, crear('small', null, ejDocNombre(d)));
+      if (d.pendiente) { const c = crear('span', 'rc-chip', 'Por revisar'); c.dataset.nivel = 'warn'; c.title = 'El Centro de Costos lo marcó en rojo: algún dato está por revisar'; tdD.append(c); }
+      const tdP = crear('td', 'ej-d-prov');
+      tdP.append(crear('b', null, d.proveedor || 'Sin proveedor'));
+      const det = d.resumen || d.items.map((x) => x.nombre).filter(Boolean).join(', ');
+      if (det) { const sp = crear('span', null, det); sp.title = d.items.map((x) => '• ' + x.nombre + ': ' + ejPesos(x.neto) + ' (' + x.categoria + ')').join('\n') || det; tdP.append(sp); }
+      const tdN = crear('td', 'ej-num ej-d-neto', ejPesos(d.neto));
+      tdN.dataset.et = 'Neto';
+      const tdA = crear('td', 'ej-d-asoc');
+      const ds = ejDestinosDe(m, d.ref, todos);
+      const a = m.asoc.get(d.ref);
+      if (ds.length) {
+        const ch = crear('div', 'ej-d-chips');
+        ds.forEach((x) => { const c = crear('span', 'ej-d-chip' + (x.tipo === 'linea' ? ' linea' : ''), x.nombre); c.title = (x.tipo === 'linea' ? 'Línea del presupuesto: ' : 'Gasto proyectado: ') + x.sub; ch.append(c); });
+        tdA.append(ch);
+      } else if (a && !a.destinos.length) tdA.append(crear('span', 'ej-d-ninguno', 'A ningún gasto anotado'));
+      const b = crear('button', 'cx-desmarcar', ds.length || (a && !a.destinos.length) ? 'Cambiar' : 'Asociar');
+      b.type = 'button';
+      b.disabled = !rc.dir;
+      b.dataset.foco = 'asociar-' + d.ref;
+      b.setAttribute('aria-label', (ds.length ? 'Cambiar a qué gastos corresponde ' : 'Asociar a sus gastos ') + d.ref);
+      b.addEventListener('click', () => ejAbrirAsociar(d));
+      tdA.append(b);
+      tr.append(tdF, tdD, tdP, tdN, tdA);
+      tbody.append(tr);
+    });
+    tabla.append(thead, tbody);
+    if (!visibles.length) s.append(crear('p', 'ej-nada', 'Nada en «' + filtro.nombre + '».'));
+    else s.append(tabla);
+    const nada = crear('p', 'ej-nada ej-docs-nada', 'Ninguna factura calza con lo buscado.');
+    nada.hidden = true;
+    s.append(nada);
+    const mas = crear('button', 'cx-desmarcar ej-docs-mas', ej.todosDocs ? 'Ver menos' : 'Ver las ' + visibles.length + ' facturas');
+    mas.type = 'button';
+    mas.hidden = visibles.length <= EJ_DOCS_MAX || !!ej.docsQ;
+    mas.addEventListener('click', () => { ej.todosDocs = !ej.todosDocs; ejPintar(); });
+    s.append(mas);
+    const filtrar = () => {
+      const q = norm(bus.value).trim().split(/\s+/).filter(Boolean);
+      ej.docsQ = bus.value;
+      let n = 0;
+      tbody.querySelectorAll('tr').forEach((tr) => {
+        const calza = q.every((x) => tr.dataset.buscar.includes(x));
+        tr.hidden = !calza || (!q.length && !ej.todosDocs && tr.dataset.extra === '1');
+        if (calza) n++;
+      });
+      nada.hidden = !visibles.length || n > 0;
+      mas.hidden = visibles.length <= EJ_DOCS_MAX || q.length > 0;
+    };
+    bus.addEventListener('input', filtrar);
+    if (ej.docsQ) filtrar();
+    // Lo que falta asociar, en una línea
+    const sinAsoc = docs.filter((d) => !asociada(d));
+    if (sinAsoc.length && todos.length) {
+      s.append(crear('p', 'ej-pista', pl(sinAsoc.length, 'documento sin asociar', 'documentos sin asociar') + ' por ' + ejPesos(sinAsoc.reduce((x, d) => x + d.neto, 0)) + '.'));
+    } else if (!todos.length) {
+      s.append(lineaInfo('ej-pista', 'Sin gastos proyectados ni presupuesto a que asociarlas.', 'Anota los gastos en «Gastos proyectados y cotizaciones» o formula el proyecto en el Formulador: sus líneas del presupuesto también se pueden elegir.', 'Cómo'));
+    }
+    return s;
+  }
+
+  // El diálogo: a qué gastos corresponde una factura (se arma una vez)
+  function ejDlgAsociar() {
+    let d = $('#dlgEjAsociar');
+    if (d) return d;
+    d = crear('dialog');
+    d.id = 'dlgEjAsociar';
+    d.setAttribute('aria-labelledby', 'ejAsTit');
+    const f = crear('form', 'dlg');
+    f.noValidate = true;
+    const h = crear('h2', null, '¿A qué gastos corresponde?');
+    h.id = 'ejAsTit';
+    const x = crear('button', 'dlg-x');
+    x.type = 'button';
+    x.setAttribute('aria-label', 'Cerrar');
+    x.append(icono('cerrar', 18));
+    x.addEventListener('click', () => d.close());
+    const res = crear('div', 'ej-as-doc');
+    res.id = 'ejAsDoc';
+    const bus = crear('input', 'ej-docs-buscar');
+    bus.type = 'search'; bus.id = 'ejAsBuscar'; bus.autocomplete = 'off'; bus.placeholder = 'Buscar un gasto o una línea del presupuesto';
+    bus.setAttribute('aria-label', 'Buscar un gasto o una línea del presupuesto');
+    const lista = crear('div', 'ej-as-lista');
+    lista.id = 'ejAsLista';
+    const comprar = crear('label', 'ej-as-comprar');
+    comprar.id = 'ejAsComprarCampo';
+    const cb = crear('input');
+    cb.type = 'checkbox'; cb.id = 'ejAsComprar'; cb.checked = true;
+    comprar.append(cb, document.createTextNode('Marcar como comprados los gastos elegidos que siguen por decidir o aprobados'));
+    const pista = crear('p', 'ej-dlg-pista');
+    pista.id = 'ejAsPista';
+    const acc = crear('div', 'dlg-acc');
+    const ninguno = crear('button', 'cx-enlace ej-borrar', 'No es de ningún gasto anotado');
+    ninguno.type = 'button'; ninguno.id = 'ejAsNinguno';
+    const cancelar = crear('button', 'cx-enlace', 'Cancelar');
+    cancelar.type = 'button';
+    cancelar.addEventListener('click', () => d.close());
+    const ok = crear('button', 'btn-pri', 'Guardar');
+    ok.type = 'submit'; ok.id = 'ejAsGuardar';
+    acc.append(ninguno, cancelar, ok);
+    f.append(h, x, res, bus, lista, comprar, pista, acc);
+    d.append(f);
+    document.body.append(d);
+    bus.addEventListener('input', () => {
+      const q = norm(bus.value).trim().split(/\s+/).filter(Boolean);
+      lista.querySelectorAll('.ej-as-op').forEach((l) => { l.hidden = !q.every((w) => l.dataset.buscar.includes(w)); });
+    });
+    lista.addEventListener('change', ejAsPintarPista);
+    f.addEventListener('submit', (e) => { e.preventDefault(); ejGuardarAsociacion(false); });
+    ninguno.addEventListener('click', () => ejGuardarAsociacion(true));
+    d.addEventListener('close', () => { ej.asociando = null; });
+    return d;
+  }
+  function ejAbrirAsociar(doc) {
+    const m = ej.modelo;
+    if (!m || !rc.dir) return;
+    const d = ejDlgAsociar();
+    const todos = ejDestinos(m);
+    const a = m.asoc.get(doc.ref);
+    const elegidos = new Set(a ? a.destinos : []);
+    ej.asociando = { ref: doc.ref, clave: m.t.clave, previo: a || null };
+    // La factura: quién, cuánto y su detalle
+    const res = $('#ejAsDoc');
+    res.textContent = '';
+    const c = crear('div', 'ej-as-cab');
+    c.append(crear('b', null, (doc.proveedor || 'Sin proveedor')), crear('b', 'ej-num', ejPesos(doc.neto)));
+    res.append(c, crear('span', 'ej-pista', [doc.ref, ejDocNombre(doc), doc.fecha ? ejFechaCorta(doc.fecha) : ''].filter(Boolean).join(' · ')));
+    if (doc.items.length) {
+      const ul = crear('ul', 'ej-as-items');
+      doc.items.slice(0, 8).forEach((i) => { const li = crear('li'); li.append(crear('span', null, i.nombre || 'Ítem'), crear('span', 'ej-num', ejPesos(i.neto))); ul.append(li); });
+      if (doc.items.length > 8) ul.append(crear('li', 'ej-pista', 'y ' + pl(doc.items.length - 8, 'ítem más', 'ítems más')));
+      res.append(ul);
+    }
+    // Las opciones: primero lo que se le parece (por lo que dice la factura y su proveedor), después el resto
+    const textoDoc = [doc.resumen].concat(doc.items.map((i) => i.nombre)).join(' ');
+    const puntaje = (x) => {
+      let p = ejParecido(textoDoc, x.nombre);
+      if (x.tipo === 'item' && doc.proveedor && x.xs.some((y) => y.proveedor && ejParecido(y.proveedor, doc.proveedor) >= 0.75)) p += 0.6;   // el mismo proveedor, no una palabra suelta en común
+      const cats = new Set(doc.items.length ? doc.items.map((i) => i.categoria) : [doc.categoria]);
+      if (cats.has(x.cat)) p += 0.1;
+      return p;
+    };
+    const ops = todos.map((x) => ({ x, p: puntaje(x) })).sort((u, v) => (elegidos.has(v.x.k) - elegidos.has(u.x.k)) || v.p - u.p);
+    const lista = $('#ejAsLista');
+    lista.textContent = '';
+    const grupo = (titulo, xs) => {
+      if (!xs.length) return;
+      lista.append(crear('h3', 'ej-sec', titulo));
+      xs.forEach(({ x, p }) => {
+        const l = crear('label', 'ej-as-op');
+        l.dataset.buscar = norm(x.nombre + ' ' + x.sub);
+        const cb = crear('input');
+        cb.type = 'checkbox'; cb.value = x.k; cb.checked = elegidos.has(x.k);
+        const txt = crear('span', 'ej-as-txt');
+        const n = crear('b', null, x.nombre);
+        if (p >= 0.6 && !elegidos.has(x.k)) n.append(crear('span', 'ej-as-parece', 'Parece'));
+        const f = m.facturado.get(x.k);
+        const ya = f ? f.refs.filter((r) => r !== doc.ref) : [];
+        txt.append(n, crear('span', null, x.sub + (ya.length ? ' · ya facturado ' + ejPesos(f.monto * (ya.length / f.refs.length)) + ' en ' + pl(ya.length, 'documento', 'documentos') : '')));
+        l.append(cb, txt, crear('span', 'ej-num ej-as-monto', ejPesos(x.monto)));
+        lista.append(l);
+      });
+    };
+    grupo('Gastos proyectados y cotizados', ops.filter((o) => o.x.tipo === 'item'));
+    grupo('Presupuesto de su formulación' + (m.t.formulacion ? ' ' + m.t.formulacion.codigo : ''), ops.filter((o) => o.x.tipo === 'linea'));
+    if (!todos.length) lista.append(crear('p', 'ej-nada', 'Este proyecto todavía no tiene gastos proyectados ni presupuesto con líneas. Anótalos en «Gastos proyectados y cotizaciones».'));
+    $('#ejAsBuscar').value = '';
+    $('#ejAsBuscar').hidden = todos.length < 8;
+    $('#ejAsNinguno').hidden = !todos.length;
+    $('#ejAsComprar').checked = true;
+    ejAsPintarPista();
+    d.showModal();
+    const primero = lista.querySelector('input');
+    if (primero) primero.focus();
+  }
+  // Bajo la lista: cómo se reparte la factura entre lo elegido, y si hay algo por marcar comprado
+  function ejAsPintarPista() {
+    const m = ej.modelo;
+    const as = ej.asociando;
+    if (!m || !as) return;
+    const doc = (m.docs || []).find((x) => x.ref === as.ref);
+    const ks = [...document.querySelectorAll('#ejAsLista input:checked')].map((x) => x.value);
+    const por = new Map(ejDestinos(m).map((x) => [x.k, x]));
+    const xs = ks.map((k) => por.get(k)).filter(Boolean);
+    const porComprar = xs.filter((x) => x.tipo === 'item' && (x.it.estado === 'evaluar' || x.it.estado === 'aprobada'));
+    $('#ejAsComprarCampo').hidden = !porComprar.length;
+    const p = $('#ejAsPista');
+    p.classList.remove('error');
+    if (!doc || xs.length < 2) { p.textContent = ''; return; }
+    const total = xs.reduce((a, x) => a + Math.max(0, x.monto), 0);
+    p.textContent = 'Se reparte según lo cotizado o presupuestado de cada uno: ' + xs.map((x) => x.nombre + ' ' + ejPesos(doc.neto * (total > 0 ? Math.max(0, x.monto) / total : 1 / xs.length))).join(' · ') + '.';
+  }
+  function ejGuardarAsociacion(ninguno) {
+    const m = ej.modelo;
+    const as = ej.asociando;
+    if (!m || !as || !rc.dir || m.t.clave !== as.clave) return;
+    const ks = ninguno ? [] : [...document.querySelectorAll('#ejAsLista input:checked')].map((x) => x.value);
+    if (!ninguno && !ks.length && !as.previo) { const p = $('#ejAsPista'); p.textContent = 'Elige al menos un gasto, o «No es de ningún gasto anotado».'; p.classList.add('error'); return; }
+    const comprar = !ninguno && $('#ejAsComprar').checked;
+    $('#dlgEjAsociar').close();
+    const t = m.t;
+    const cambios = [{ id: ejIdAsoc(t, as.ref), proyecto: ejClave(t), tipo: 'asociacion', ref: as.ref, destinos: ks, creado: as.previo ? as.previo.creado : undefined }];
+    let comprados = 0;
+    if (comprar) {
+      const por = new Map(ejDestinos(m).map((x) => [x.k, x]));
+      ks.map((k) => por.get(k)).filter((x) => x && x.tipo === 'item' && (x.it.estado === 'evaluar' || x.it.estado === 'aprobada')).forEach((x) => {
+        comprados++;
+        const otras = ejHermanas(x.it, m.costos);
+        cambios.push(Object.assign({}, x.it, { estado: 'comprada', simular: false }, otras.length ? { elegida: true } : null));
+        otras.filter((y) => y.estado !== 'comprada' && y.estado !== 'descartada').forEach((y) => cambios.push(Object.assign({}, y, { estado: 'descartada', simular: false, elegida: false })));
+      });
+    }
+    const msg = ninguno ? as.ref + ': no corresponde a ningún gasto anotado.' : !ks.length ? as.ref + ': sin asociar.'
+      : as.ref + ' asociada a ' + pl(ks.length, 'gasto', 'gastos') + (comprados ? '; ' + pl(comprados, 'queda comprado', 'quedan comprados') : '') + ': lo facturado ya no se simula.';
+    ejPoner(cambios, msg);
+  }
+  // En la fila de un gasto: cuánto lleva facturado y en cuántos documentos
+  function ejFacturadoEl(it, m) {
+    const f = m.facturado.get(ejKeyItem(it));
+    if (!f || !f.refs.length) return null;
+    const total = it.cantidad * it.precio;
+    const el = crear('span', 'ej-facturado');
+    el.append(document.createTextNode('Facturado ' + ejPesos(f.monto) + (total > 0 ? ' de ' + ejPesos(total) : '')));
+    if (total > 0 && f.monto > total * 1.02) { el.classList.add('sobre'); el.append(document.createTextNode(' · ' + ejPesos(f.monto - total) + ' más de lo cotizado')); }
+    el.title = 'En ' + f.refs.join(', ');
+    return el;
   }
 
   // ---- Órdenes de compra, equipo de la semana, pendientes y notas ----------------------------------------------------
@@ -12079,32 +12726,34 @@
     return out;
   }
   const ejSemanasAtras = (n) => Array.from({ length: n }, (x, k) => plSemanaId(plMas(plLunesDe(new Date()), -7 * k)));
+  /* La mano de obra en un calendario del mes (2026-11-06, pedido del usuario: «un cuadro tipo calendario con el mes actual
+     mediante el cual se puedan ir seleccionando los días en que se ha trabajado, con 1/2 día o 1 día entero, para
+     distribuir los días de trabajo en una sola acción»). Se marcan los días (un toque o, con el mouse, arrastrando), se
+     eligen quiénes y la jornada, y «Anotar» deja un día trabajado por persona y día, de una vez. Cada casilla muestra lo
+     ya anotado ese día. Lo marcado vive en ej.diasForm.dias y no repinta la página al marcar. */
+  const EJ_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const ejMesDe = (iso) => iso.slice(0, 7);
+  function ejMesMas(mes, n) {
+    const [a, m] = mes.split('-').map(Number);
+    const d = new Date(a, m - 1 + n, 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  const ejNombreMes = (mes) => { const [a, m] = mes.split('-').map(Number); return EJ_MESES[m - 1].replace(/^./, (c) => c.toUpperCase()) + ' ' + a; };
+  const ejIniciales = (d) => (PL_PER_MANO.test(d.persona) ? (ejNomPer(d).split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase() || '·') : d.persona);
   function ejManoObraEl(m) {
     const t = m.t, mo = m.mo, f = ej.diasForm;
     const { s } = ejPanel('Mano de obra: días trabajados', mo.dh ? ejCantidad(mo.dh) + ' días-hombre · ' + ejPesos(mo.costo) : '',
-      'Anota quién trabajó cada día: su costo se estima con la tarifa de su nivel y pasa a ser la mano de obra real de este resumen y de sus indicadores. También se puede escribir directo en «Ingresar avance»; desde aquí se lleva al Análisis Financiero con un toque.');
-    // Anotar: el día, la jornada y quiénes
-    const form = crear('form', 'ej-dias-form');
-    form.noValidate = true;
-    const fila = crear('div', 'ej-dias-fila');
-    const lf = crear('label', 'pl-campo');
-    lf.append(crear('span', null, 'Día'));
-    const fe = crear('input');
-    fe.type = 'date'; fe.id = 'ejDiaFecha'; fe.value = f.fecha; fe.max = plISO(new Date());
-    fe.addEventListener('change', () => { f.fecha = fe.value; });
-    lf.append(fe);
-    const lj = crear('label', 'pl-campo');
-    lj.append(crear('span', null, 'Jornada'));
-    const jo = crear('select');
-    jo.id = 'ejDiaJornada';
-    EJ_JORNADAS.forEach((x) => { const o = crear('option', null, x.nombre); o.value = String(x.j); o.selected = x.j === f.jornada; jo.append(o); });
-    jo.addEventListener('change', () => { f.jornada = Number(jo.value) || 1; });
-    lj.append(jo);
-    fila.append(lf, lj);
-    form.append(fila);
+      'Marca en el calendario los días trabajados (un toque, o arrastrando con el mouse), elige quiénes y si fue día completo o medio día, y «Anotar» los deja todos de una vez. '
+      + 'Su costo se estima con la tarifa del nivel de cada uno y pasa a ser la mano de obra real de este resumen y de sus indicadores. También se puede escribir directo en «Ingresar avance»; desde aquí se lleva al Análisis Financiero con un toque.');
+    s.id = 'ejSecMO';
+    const hoy = plISO(new Date());
+    const porDia = new Map();
+    mo.dias.forEach((d) => { if (!porDia.has(d.fecha)) porDia.set(d.fecha, []); porDia.get(d.fecha).push(d); });
+    const box = crear('div', 'ej-cal-caja');
+    // Quiénes y la jornada
     const quienes = crear('div', 'pl-exp-pers ej-quienes');
     quienes.setAttribute('role', 'group');
-    quienes.setAttribute('aria-label', 'Quiénes trabajaron ese día');
+    quienes.setAttribute('aria-label', 'Quiénes trabajaron');
     const manos = [...new Set(mo.dias.filter((d) => PL_PER_MANO.test(d.persona)).map((d) => d.persona).concat(Object.keys(f.nombres)))];
     PERSONAL.concat(manos).forEach((per) => {
       const l = crear('label', 'pl-exp-per' + (estado.usuario === per ? ' tuya' : ''));
@@ -12112,14 +12761,14 @@
       cb.type = 'checkbox';
       cb.checked = f.personas.has(per);
       cb.dataset.foco = 'quien-' + per;
-      cb.addEventListener('change', () => { if (cb.checked) f.personas.add(per); else f.personas.delete(per); });
+      cb.dataset.per = per;
+      cb.addEventListener('change', () => { if (cb.checked) f.personas.add(per); else f.personas.delete(per); pintar(); });
       const nombre = PL_PER_MANO.test(per) ? f.nombres[per] || (mo.dias.find((d) => d.persona === per) || {}).nombre || plNom(per) : per;
       l.append(cb, document.createTextNode(nombre));
-      l.title = 'Nivel ' + ejNivelDe(per) + ' (' + ejPesos(mo.tarifas['n' + ejNivelDe(per)]) + ' por día)';
+      l.title = nombre + ': nivel ' + ejNivelDe(per) + ' (' + ejPesos(mo.tarifas['n' + ejNivelDe(per)]) + ' por día)';
       quienes.append(l);
     });
-    form.append(quienes);
-    const otra = crear('div', 'ej-nuevo');
+    const otra = crear('div', 'ej-nuevo ej-cal-otra');
     const oi = crear('input');
     oi.type = 'text'; oi.id = 'ejDiaOtra'; oi.maxLength = 60; oi.autocomplete = 'off';
     oi.placeholder = 'Otra persona: su nombre';
@@ -12136,14 +12785,153 @@
       ej.sucios.delete('ejDiaOtra');
       ejPintar();
     });
-    const ok = crear('button', 'cx-boton', 'Anotar los días');
-    ok.type = 'submit';
-    ok.disabled = !rc.dir;
+    otra.append(oi, ob);
+    const jor = crear('div', 'pl-vistas ej-jornada');
+    jor.setAttribute('role', 'radiogroup');
+    jor.setAttribute('aria-label', 'Jornada');
+    EJ_JORNADAS.forEach((x) => {
+      const b = crear('button', 'pl-vista', x.j === 1 ? '1 día' : '½ día');
+      b.type = 'button';
+      b.title = x.nombre;
+      b.dataset.jornada = String(x.j);
+      b.dataset.foco = 'jornada-' + x.j;
+      b.setAttribute('role', 'radio');
+      b.addEventListener('click', () => { f.jornada = x.j; pintar(); });
+      jor.append(b);
+    });
+    const arriba = crear('div', 'ej-cal-arriba');
+    const jl = crear('div', 'ej-cal-jornada');
+    jl.append(crear('span', 'ej-et', 'Jornada'), jor);
+    arriba.append(quienes, jl);
+    box.append(arriba, otra);
+    // El mes: navegar, la grilla y lo anotado en cada día
+    const nav = crear('div', 'ej-cal-nav');
+    const antes = crear('button', 'ej-ico');
+    antes.type = 'button';
+    antes.append(icono('izquierda', 16));
+    antes.setAttribute('aria-label', 'Mes anterior');
+    antes.dataset.foco = 'mes-antes';
+    antes.addEventListener('click', () => { f.mes = ejMesMas(f.mes, -1); ejPintar(); });
+    const despues = crear('button', 'ej-ico');
+    despues.type = 'button';
+    despues.append(icono('derecha', 16));
+    despues.setAttribute('aria-label', 'Mes siguiente');
+    despues.dataset.foco = 'mes-despues';
+    despues.disabled = f.mes >= ejMesDe(hoy);
+    despues.addEventListener('click', () => { f.mes = ejMesMas(f.mes, 1); ejPintar(); });
+    const delMes = mo.dias.filter((d) => ejMesDe(d.fecha) === f.mes);
+    const tit = crear('div', 'ej-cal-tit');
+    tit.append(crear('b', null, ejNombreMes(f.mes)), crear('span', null, delMes.length
+      ? ejCantidad(delMes.reduce((a, d) => a + d.jornada, 0)) + ' DH · ' + ejPesos(delMes.reduce((a, d) => a + d.jornada * mo.tarifas['n' + d.nivel], 0)) : 'Nada anotado'));
+    nav.append(antes, tit, despues);
+    box.append(nav);
+    const grilla = crear('div', 'ej-cal');
+    grilla.setAttribute('role', 'grid');
+    grilla.setAttribute('aria-label', 'Días de ' + ejNombreMes(f.mes) + ': marca los trabajados');
+    ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach((x, i) => { const c = crear('span', 'ej-cal-sem' + (i > 4 ? ' finde' : ''), x); c.setAttribute('aria-hidden', 'true'); grilla.append(c); });
+    const [ano, mes] = f.mes.split('-').map(Number);
+    const primero = new Date(ano, mes - 1, 1);
+    const enMes = new Date(ano, mes, 0).getDate();
+    for (let i = 0; i < (primero.getDay() + 6) % 7; i++) grilla.append(crear('span', 'ej-cal-vacio'));
+    const celdas = [];
+    for (let n = 1; n <= enMes; n++) {
+      const iso = f.mes + '-' + String(n).padStart(2, '0');
+      const fecha = new Date(ano, mes - 1, n);
+      const ds = porDia.get(iso) || [];
+      const b = crear('button', 'ej-cal-dia' + ((fecha.getDay() + 6) % 7 > 4 ? ' finde' : '') + (iso === hoy ? ' hoy' : '') + (ds.length ? ' con' : '') + (ds.some((d) => ej.recien.has(d.id)) ? ' recien' : ''));
+      b.type = 'button';
+      b.dataset.iso = iso;
+      b.dataset.foco = 'dia-' + iso;
+      b.disabled = iso > hoy || !rc.dir;
+      b.append(crear('span', 'ej-cal-n', String(n)));
+      if (ds.length) {
+        const marcas = crear('span', 'ej-cal-marcas');
+        const ord = plOrdenPersonas([...new Set(ds.map((d) => d.persona))]).map((p) => ds.find((d) => d.persona === p));
+        ord.slice(0, 3).forEach((d) => marcas.append(crear('span', 'ej-cal-per' + (d.jornada < 1 ? ' medio' : ''), ejIniciales(d) + (d.jornada < 1 ? '½' : ''))));
+        if (ord.length > 3) marcas.append(crear('span', 'ej-cal-per mas', '+' + (ord.length - 3)));
+        b.append(marcas);
+      }
+      const dh = ds.reduce((a, d) => a + d.jornada, 0);
+      b.setAttribute('aria-label', n + ' de ' + EJ_MESES[mes - 1] + (ds.length ? ': ' + ejCantidad(dh) + ' días-hombre, ' + unir(ds.map((d) => ejNomPer(d) + (d.jornada < 1 ? ' medio día' : ''))) : ': nada anotado'));
+      b.title = ds.length ? ds.map((d) => ejNomPer(d) + ': ' + (d.jornada === 1 ? 'día completo' : 'medio día') + ', nivel ' + d.nivel).join('\n') : '';
+      celdas.push(b);
+      grilla.append(b);
+    }
+    box.append(grilla);
+    // Marcar días: un toque cambia uno; con el mouse, arrastrar marca (o desmarca) todos los que toca
+    let arrastre = null;
+    const marcar = (b, si) => { if (!b || b.disabled) return; if (si) f.dias.add(b.dataset.iso); else f.dias.delete(b.dataset.iso); b.setAttribute('aria-pressed', si ? 'true' : 'false'); };
+    grilla.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest('.ej-cal-dia');
+      if (!b || b.disabled || e.button > 0) return;
+      e.preventDefault();
+      arrastre = { si: !f.dias.has(b.dataset.iso), raton: e.pointerType !== 'touch' };
+      marcar(b, arrastre.si);
+      pintar();
+    });
+    grilla.addEventListener('pointermove', (e) => {
+      if (!arrastre || !arrastre.raton) return;
+      const x = document.elementFromPoint(e.clientX, e.clientY);
+      const b = x && x.closest ? x.closest('.ej-cal-dia') : null;
+      if (b && grilla.contains(b) && f.dias.has(b.dataset.iso) !== arrastre.si) { marcar(b, arrastre.si); pintar(); }
+    });
+    const soltar = () => { arrastre = null; };
+    grilla.addEventListener('pointerup', soltar);
+    grilla.addEventListener('pointercancel', soltar);
+    grilla.addEventListener('pointerleave', soltar);
+    grilla.addEventListener('click', (e) => {      // con el teclado (Enter o Espacio), sin puntero
+      const b = e.target.closest('.ej-cal-dia');
+      if (!b || e.detail !== 0) return;
+      marcar(b, !f.dias.has(b.dataset.iso));
+      pintar();
+    });
+    // Atajos y acciones
+    const atajos = crear('div', 'ej-cal-atajos');
+    const habiles = crear('button', 'cx-desmarcar', 'Lunes a viernes');
+    habiles.type = 'button';
+    habiles.title = 'Marcar los días hábiles de este mes, hasta hoy';
+    habiles.dataset.foco = 'habiles';
+    habiles.addEventListener('click', () => { celdas.forEach((b) => { if (!b.classList.contains('finde')) marcar(b, true); }); pintar(); });
+    const limpiar = crear('button', 'cx-desmarcar', 'Desmarcar');
+    limpiar.type = 'button';
+    limpiar.dataset.foco = 'desmarcar';
+    limpiar.addEventListener('click', () => { celdas.forEach((b) => marcar(b, false)); f.dias.clear(); pintar(); });
+    atajos.append(habiles, limpiar);
+    const acc = crear('div', 'ej-cal-acc');
+    const resumen = crear('p', 'ej-cal-resumen');
+    resumen.setAttribute('aria-live', 'polite');
+    const ok = crear('button', 'cx-boton', 'Anotar');
+    ok.type = 'button';
+    ok.id = 'ejDiasAnotar';
     ok.dataset.foco = 'anotar-dias';
-    otra.append(oi, ob, ok);
-    form.append(otra);
-    form.addEventListener('submit', (e) => { e.preventDefault(); ejAnotarDias(m); });
-    s.append(form);
+    ok.addEventListener('click', () => ejAnotarDias(m));
+    const quitar = crear('button', 'cx-enlace', 'Quitar lo anotado');
+    quitar.type = 'button';
+    quitar.id = 'ejDiasQuitar';
+    quitar.dataset.foco = 'quitar-dias';
+    quitar.addEventListener('click', () => ejQuitarDias(m));
+    acc.append(resumen, quitar, ok);
+    box.append(atajos, acc);
+    // Lo que dicen los botones según lo marcado (sin repintar la página)
+    const pintar = () => {
+      celdas.forEach((b) => b.setAttribute('aria-pressed', f.dias.has(b.dataset.iso) ? 'true' : 'false'));
+      jor.querySelectorAll('.pl-vista').forEach((b) => { const si = Number(b.dataset.jornada) === f.jornada; b.setAttribute('aria-checked', si ? 'true' : 'false'); b.classList.toggle('activa', si); });
+      quienes.querySelectorAll('input').forEach((cb) => { cb.checked = f.personas.has(cb.dataset.per); });
+      const nd = f.dias.size;
+      const np = f.personas.size;
+      const borrables = ejDiasPorQuitar(m);
+      ok.disabled = !rc.dir || !nd || !np;
+      quitar.disabled = !rc.dir || !borrables.length;
+      quitar.textContent = borrables.length ? 'Quitar ' + pl(borrables.length, 'día anotado', 'días anotados') : 'Quitar lo anotado';
+      if (!nd) { resumen.textContent = 'Marca los días trabajados en el calendario.'; ok.textContent = 'Anotar'; return; }
+      if (!np) { resumen.textContent = pl(nd, 'día marcado', 'días marcados') + ': elige quiénes trabajaron.'; ok.textContent = 'Anotar'; return; }
+      const dh = nd * np * f.jornada;
+      const costo = [...f.personas].reduce((a, per) => a + nd * f.jornada * mo.tarifas['n' + ejNivelDe(per)], 0);
+      resumen.textContent = pl(nd, 'día', 'días') + ' × ' + pl(np, 'persona', 'personas') + (f.jornada < 1 ? ', medio día' : '') + ' = ' + ejCantidad(dh) + ' DH · ' + ejPesos(costo);
+      ok.textContent = 'Anotar ' + ejCantidad(dh) + ' DH';
+    };
+    pintar();
+    s.append(box);
     // Lo que la Planificación ya tiene de este proyecto, hasta hoy
     const porTraer = ejPorTraer(m, ejSemanasAtras(2));
     if (porTraer.length && rc.dir) {
@@ -12160,7 +12948,7 @@
     // Las tarifas, y el nivel de cada persona en este proyecto
     const tar = mo.tarifas;
     const pt = crear('p', 'ej-linea');
-    pt.append(document.createTextNode('Tarifas por día-hombre (' + tar.fuente + '): '), crear('b', null, EJ_NIVELES.map((x) => 'nivel ' + x.n + ' ' + ejPesos(tar['n' + x.n])).join(' · ')));
+    pt.append(document.createTextNode('Tarifas por día-hombre (' + tar.fuente + '): '), crear('b', null, EJ_NIVELES.map((x) => 'N' + x.n + ' ' + ejPesos(tar['n' + x.n])).join(' · ')));
     const ct = crear('button', 'cx-desmarcar', ej.tarifasAbiertas ? 'Cerrar' : 'Cambiar');
     ct.type = 'button';
     ct.disabled = !rc.dir;
@@ -12188,18 +12976,20 @@
       });
       s.append(niv);
     }
-    // Los días anotados, del más nuevo al más antiguo
+    // Los días anotados, del más nuevo al más antiguo, plegados (el calendario ya los muestra)
     if (mo.dias.length) {
-      const porFecha = new Map();
-      mo.dias.forEach((d) => { if (!porFecha.has(d.fecha)) porFecha.set(d.fecha, []); porFecha.get(d.fecha).push(d); });
-      const fechas = [...porFecha.keys()];
-      const max = ej.todosDias ? fechas.length : 6;
+      const fechas = [...porDia.keys()];
+      const det = crear('details', 'ej-dias-det');
+      det.open = ej.diasAbiertos === t.clave;
+      det.addEventListener('toggle', () => { ej.diasAbiertos = det.open ? t.clave : null; });
+      det.append(crear('summary', null, 'Ver la lista de días anotados (' + pl(fechas.length, 'fecha', 'fechas') + ')'));
+      const max = ej.todosDias ? fechas.length : 8;
       const ul = crear('ul', 'ej-lista ej-dias');
       fechas.slice(0, max).forEach((fecha) => {
-        const ds = porFecha.get(fecha);
+        const ds = porDia.get(fecha);
         const li = crear('li', ds.some((d) => ej.recien.has(d.id)) ? 'recien' : '');
         const dia = plDesdeISO(fecha);
-        li.append(crear('span', 'ej-dia' + (fecha === plISO(new Date()) ? ' hoy' : ''), PL_DIAS[(dia.getDay() + 6) % 7] ? PL_DIAS[(dia.getDay() + 6) % 7].corto + ' ' + rcCorta(dia, new Date()) : rcCorta(dia, new Date())));
+        li.append(crear('span', 'ej-dia' + (fecha === hoy ? ' hoy' : ''), PL_DIAS[(dia.getDay() + 6) % 7] ? PL_DIAS[(dia.getDay() + 6) % 7].corto + ' ' + rcCorta(dia, new Date()) : rcCorta(dia, new Date())));
         const txt = crear('span', 'ej-li-txt ej-dia-per');
         ds.forEach((d) => {
           const chip = crear('span', 'ej-per');
@@ -12219,13 +13009,14 @@
         li.append(txt, der);
         ul.append(li);
       });
-      s.append(ul);
-      if (fechas.length > 6) {
+      det.append(ul);
+      if (fechas.length > 8) {
         const mas = crear('button', 'cx-desmarcar', ej.todosDias ? 'Ver menos' : 'Ver los ' + fechas.length + ' días');
         mas.type = 'button';
-        mas.addEventListener('click', () => { ej.todosDias = !ej.todosDias; ejPintar(); });
-        s.append(mas);
+        mas.addEventListener('click', () => { ej.todosDias = !ej.todosDias; ej.diasAbiertos = t.clave; ejPintar(); });
+        det.append(mas);
       }
+      s.append(det);
     }
     // Con el Análisis Financiero: su «Mano de Obra Real», y llevarle la de los días
     const pedidos = t.af && t.tag ? ejPedidosAF(t.tag).filter((x) => 'Mano de Obra Real' in x.valores) : [];
@@ -12251,6 +13042,11 @@
       s.append(p);
     }
     return s;
+  }
+  // Lo anotado que «Quitar» borraría: en los días marcados, de las personas elegidas (o de todas, si no se elige a nadie)
+  function ejDiasPorQuitar(m) {
+    const f = ej.diasForm;
+    return m.mo.dias.filter((d) => f.dias.has(d.fecha) && (!f.personas.size || f.personas.has(d.persona)));
   }
   function ejTarifasForm(m) {
     const tar = m.mo.tarifas;
@@ -12287,22 +13083,33 @@
     });
     return f;
   }
+  // Anotar de una vez: cada día marcado (hasta hoy) por cada persona elegida, con la jornada elegida (un día ya anotado cambia)
   function ejAnotarDias(m) {
     const t = m.t, f = ej.diasForm;
     if (!rc.dir) return;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(f.fecha) || f.fecha > plISO(new Date())) { avisar('Elige el día trabajado: hoy o uno anterior.'); return; }
-    if (!f.personas.size) { avisar('Marca quiénes trabajaron ese día.'); return; }
+    const hoy = plISO(new Date());
+    const dias = [...f.dias].filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x) && x <= hoy).sort();
+    if (!dias.length) { avisar('Marca en el calendario los días trabajados: hoy o anteriores.'); return; }
+    if (!f.personas.size) { avisar('Elige quiénes trabajaron esos días.'); return; }
     const clave = ejClave(t);
-    const cambios = [...f.personas].map((per) => {
-      const id = ejIdDia(t, f.fecha, per);
+    const cambios = [];
+    dias.forEach((fecha) => f.personas.forEach((per) => {
+      const id = ejIdDia(t, fecha, per);
       const previo = ej.datos.ef.get(id);
       const vivo = previo && !previo.borrado ? previo : null;
-      return { id, proyecto: clave, tipo: 'dia', fecha: f.fecha, persona: per, nombre: PL_PER_MANO.test(per) ? f.nombres[per] || plNom(per) : '',
-        jornada: f.jornada, nivel: vivo ? vivo.nivel : ejNivelDe(per), origen: '', nota: '', creado: previo ? previo.creado : undefined };
-    });
+      cambios.push({ id, proyecto: clave, tipo: 'dia', fecha, persona: per, nombre: PL_PER_MANO.test(per) ? f.nombres[per] || (vivo && vivo.nombre) || plNom(per) : '',
+        jornada: f.jornada, nivel: vivo ? vivo.nivel : ejNivelDe(per), origen: vivo ? vivo.origen : '', nota: vivo ? vivo.nota : '', creado: previo ? previo.creado : undefined });
+    }));
     const n = cambios.reduce((a, d) => a + d.jornada, 0);
-    f.personas.clear();
-    ejPoner(cambios, 'Se anotó ' + (n === 1 ? '1 día-hombre' : ejCantidad(n) + ' días-hombre') + ' el ' + ejFechaCorta(f.fecha) + ': la mano de obra real y los indicadores se recalcularon.');
+    f.dias.clear();
+    ejPoner(cambios, 'Se anotó ' + (n === 1 ? '1 día-hombre' : ejCantidad(n) + ' días-hombre') + ' en ' + pl(dias.length, 'día', 'días') + ': la mano de obra real y los indicadores se recalcularon.');
+  }
+  function ejQuitarDias(m) {
+    const xs = ejDiasPorQuitar(m);
+    if (!xs.length || !rc.dir) return;
+    ej.diasForm.dias.clear();
+    ejPoner(xs.map((d) => ({ id: d.id, proyecto: d.proyecto, tipo: 'dia', creado: d.creado, borrado: true })),
+      'Se quitaron ' + pl(xs.length, 'día anotado', 'días anotados') + ' (' + ejCantidad(xs.reduce((a, d) => a + d.jornada, 0)) + ' DH).');
   }
   // Trae de la Planificación semanal las asignaciones de este proyecto de las últimas 4 semanas, hasta hoy, que faltan aquí
   async function ejTraerPlanificacion(m) {
