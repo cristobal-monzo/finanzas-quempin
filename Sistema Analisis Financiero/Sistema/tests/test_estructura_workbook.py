@@ -16,7 +16,7 @@ def test_crea_las_3_hojas_con_encabezados_si_no_existe_el_archivo(tmp_path):
     assert ws.cell(row=1, column=2).value == "Nombre del proyecto"
     assert ws.cell(row=1, column=3).value == "Cliente"
     ultima_col = len(af.HEADERS_PROYECTOS)
-    assert ws.cell(row=1, column=ultima_col).value == "N° Requerimiento"
+    assert ws.cell(row=1, column=ultima_col).value == "Apodo"
 
 
 def test_elimina_hoja1_vacia_al_migrar_un_archivo_existente(tmp_path):
@@ -64,7 +64,7 @@ def test_agrega_encabezados_nuevos_a_una_hoja_existente_sin_tocar_los_viejos(tmp
 
     ws = wb[af.HOJA_PROYECTOS]
     assert ws.cell(row=1, column=1).value == "TAG proyecto"
-    assert ws.cell(row=1, column=ultima_col).value == "N° Requerimiento"
+    assert ws.cell(row=1, column=ultima_col).value == "Apodo"
     assert ws.cell(row=2, column=1).value == "UMAG"
 
 
@@ -262,6 +262,6 @@ def test_columna_nueva_sobre_la_leyenda_la_reemplaza_y_la_leyenda_se_corre(tmp_p
     af.aplicar_resaltado_celdas_manuales(wb)
 
     ws = wb[af.HOJA_PROYECTOS]
-    assert ws.cell(row=1, column=col_leyenda_vieja).value == "N° Requerimiento"
-    assert ws.column_dimensions[openpyxl.utils.get_column_letter(col_leyenda_vieja)].width == 12
+    assert ws.cell(row=1, column=col_leyenda_vieja).value == "Apodo"
+    assert ws.column_dimensions[openpyxl.utils.get_column_letter(col_leyenda_vieja)].width == 28
     assert ws.cell(row=1, column=col_leyenda_vieja + 1).value == af.LEYENDA_RESALTADO_MANUAL

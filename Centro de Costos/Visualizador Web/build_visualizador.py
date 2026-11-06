@@ -38,6 +38,9 @@ RUTA_EXCEL = RAIZ_MODULO / "Excel" / "Centro de Costos.xlsx"
 RUTA_TEMPLATE = RAIZ / "template.html"
 RUTA_DATA_JSON = RAIZ / "data" / "centro-de-costos.json"
 RUTA_BUILD_HTML = RAIZ / "build" / "index.html"
+# Solo lectura, para el apodo de cada proyecto (columna «Apodo», 2026-11-05):
+# el tablero muestra «270 - Caldera Valdivia». Mismo libro que ya lee Flujo de Caja.
+RUTA_EXCEL_AF = RAIZ_MODULO.parent / "Análisis Financiero" / "Análisis de Proyectos 2026.xlsx"
 
 # Candado (2026-10-05): los datos van cifrados con la contraseña de los tableros.
 sys.path.insert(0, str(RAIZ.parents[1] / "Visualizador Web"))
@@ -122,7 +125,48 @@ def enlace_documento(archivo_origen, raiz_docs=RAIZ_DOCS):
     return documentos.enlace_documento(archivo_origen, "CL", raiz_docs)
 
 
-def extraer_datos_saneados(ruta_excel=RUTA_EXCEL, raiz_docs=RAIZ_DOCS):
+def leer_apodos_af(ruta=RUTA_EXCEL_AF) -> dict:
+    """{TAG: apodo} de la hoja «Proyectos» del Análisis Financiero. Sin el libro
+    o sin la columna, {}: el tablero cae al nombre del proyecto."""
+    try:
+        wb = openpyxl.load_workbook(str(ruta), read_only=True, data_only=True)
+    except Exception:
+        return {}
+    try:
+        if "Proyectos" not in wb.sheetnames:
+            return {}
+        filas = wb["Proyectos"].iter_rows(values_only=True)
+        encabezado = [str(c or "").strip() for c in next(filas, ())]
+        if "TAG proyecto" not in encabezado or "Apodo" not in encabezado:
+            return {}
+        i_tag, i_apodo = encabezado.index("TAG proyecto"), encabezado.index("Apodo")
+        apodos = {}
+        for f in filas:
+            tag = f[i_tag] if i_tag < len(f) else None
+            apodo = f[i_apodo] if i_apodo < len(f) else None
+            if isinstance(tag, float) and tag.is_integer():
+                tag = int(tag)
+            if tag not in (None, "") and str(apodo or "").strip():
+                apodos[str(tag).strip().upper()] = str(apodo).strip()
+        return apodos
+    finally:
+        wb.close()
+
+
+def etiquetas_proyecto(docs, apodos) -> dict:
+    """{nombre del proyecto: «TAG - apodo»}. El TAG es el prefijo del N° Ref.
+    (261-012 -> 261); sin apodo va el nombre («CFLI - Cesfam Limache»)."""
+    salida = {}
+    for d in docs:
+        nombre, ref = d.get("proyecto"), str(d.get("ref") or "")
+        if not nombre or nombre in salida or "-" not in ref:
+            continue
+        tag = ref.rsplit("-", 1)[0].upper()
+        salida[nombre] = f"{tag} - {apodos.get(tag) or nombre}"
+    return salida
+
+
+def extraer_datos_saneados(ruta_excel=RUTA_EXCEL, raiz_docs=RAIZ_DOCS, ruta_af=None):
     """Lee Master + Detalle y arma el snapshot saneado (sin razón social
     en el nivel de tabla — esa sí se incluye porque el visualizador
     de Detalles la muestra al expandir cada fila, resuelto con el usuario
@@ -226,6 +270,7 @@ def extraer_datos_saneados(ruta_excel=RUTA_EXCEL, raiz_docs=RAIZ_DOCS):
             "n_pendientes": sum(1 for d in docs if d["pendiente_revision"]),
         },
         "documentos": docs,
+        "etiquetas_proyecto": etiquetas_proyecto(docs, leer_apodos_af(ruta_af) if ruta_af else {}),
     }
     return output
 
@@ -242,7 +287,7 @@ def build():
         print(f"[ERROR] No existe la plantilla: {RUTA_TEMPLATE}")
         return 1
 
-    data = extraer_datos_saneados()
+    data = extraer_datos_saneados(ruta_af=RUTA_EXCEL_AF)
 
     RUTA_DATA_JSON.parent.mkdir(parents=True, exist_ok=True)
     with io.open(RUTA_DATA_JSON, "w", encoding="utf-8") as f:

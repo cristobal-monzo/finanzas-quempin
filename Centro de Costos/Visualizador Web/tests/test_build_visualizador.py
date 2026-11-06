@@ -168,3 +168,30 @@ def test_pendiente_coincide_con_el_color_real_de_auditor_centro_costos(tmp_path)
         assert data["documentos"][0]["pendiente_revision"] is debe_marcar, (
             f"build_visualizador y auditor_centro_costos discreparon para {font.color.rgb}"
         )
+
+
+# ── TAG + apodo (pedido del usuario 2026-11-05: «270 - Caldera Valdivia») ──
+
+def test_etiqueta_de_cada_proyecto_es_tag_y_apodo():
+    docs = [{"proyecto": "Caldera Valdivia", "ref": "270-003"},
+            {"proyecto": "Caldera Valdivia", "ref": "270-001"},
+            {"proyecto": "Cesfam Limache", "ref": "CFLI-002"},
+            {"proyecto": None, "ref": "X-1"}]
+    assert bv.etiquetas_proyecto(docs, {"270": "Caldera Valdivia Casa Prochelle"}) == {
+        "Caldera Valdivia": "270 - Caldera Valdivia Casa Prochelle",
+        "Cesfam Limache": "CFLI - Cesfam Limache",
+    }
+
+
+def test_lee_el_apodo_del_analisis_financiero(tmp_path):
+    ruta = tmp_path / "af.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Proyectos"
+    ws.append(["TAG proyecto", "Nombre del proyecto", "Apodo"])
+    ws.append([270, "Caldera Valdivia", "Caldera Valdivia"])
+    ws.append(["cfli", "Cesfam Limache", "Mantenimiento Cesfam Limache"])
+    ws.append(["UMAG", "UMAG", None])
+    wb.save(ruta)
+    assert bv.leer_apodos_af(ruta) == {"270": "Caldera Valdivia", "CFLI": "Mantenimiento Cesfam Limache"}
+    assert bv.leer_apodos_af(tmp_path / "no-existe.xlsx") == {}

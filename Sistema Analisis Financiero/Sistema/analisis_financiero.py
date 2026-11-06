@@ -127,6 +127,10 @@ HEADERS_PROYECTOS = [
     # final, para no correr ninguna letra ni fórmula existente. Manual; lo
     # completa también un envío del Formulador que lo traiga, solo si está vacío.
     "N° Requerimiento",
+    # 2026-11-05 (pedido del usuario): apodo de 1 a 4 palabras -- equipo o
+    # tarea + ciudad, «Caldera Valdivia» -- que los tableros muestran como
+    # «270 - Caldera Valdivia» (etiqueta_proyecto). Manual; vacío = el nombre.
+    "Apodo",
 ]
 HEADERS_DETALLE_COSTOS_REALES = [
     "TAG proyecto", "Subcategoría", "Bucket", "Total sin IVA",
@@ -256,6 +260,7 @@ ESTILO_COLUMNAS_PROYECTOS_POR_NOMBRE = {
     "Margen Real": (COLOR_DERIVADO, FORMATO_MONEDA, 14),
     "Desviación % (Real vs Proyectado)": (COLOR_DERIVADO, FORMATO_PORCENTAJE, 16),
     "N° Requerimiento": (COLOR_IDENTIFICACION, FORMATO_ENTERO, 12),
+    "Apodo": (COLOR_IDENTIFICACION, None, 28),
 }
 # columna (letra) -> (color de encabezado, formato numérico o None, ancho sugerido)
 ESTILO_COLUMNAS_PROYECTOS = {
@@ -380,6 +385,7 @@ NOMBRES_COLUMNAS_MANUALES_PROYECTOS = [
     "Costos Materiales Proyectados", "Costos Equipos Proyectados",
     "Mano de Obra Proyectada", "Otros Costos Proyectados", "Mano de Obra Real",
     "N° Requerimiento",
+    "Apodo",
 ]
 COLOR_RESALTADO_MANUAL = "FFF2CC"  # amarillo pastel -- no se reutiliza en ningún otro relleno del libro
 FUENTE_RESALTADO_MANUAL = Font(name="Calibri", size=11, italic=True)
@@ -1022,6 +1028,14 @@ def tag_de_celda(valor):
     if isinstance(valor, int):
         return str(valor)
     return valor
+
+
+def etiqueta_proyecto(tag, nombre, apodo=None) -> str:
+    """«270 - Caldera Valdivia»: TAG y apodo, como lo muestran los tableros y
+    los menús. Sin apodo, el nombre; sin TAG, solo el texto."""
+    texto = str(apodo or "").strip() or str(nombre or "").strip()
+    tag = str(tag or "").strip()
+    return f"{tag} - {texto}" if tag and texto else (tag or texto)
 
 
 def leer_filas_proyectos(ws_proyectos) -> tuple[list[dict], list[str]]:
@@ -2357,6 +2371,7 @@ def proyectos_para_catalogo(ws_proyectos, filas_validas: list[dict], agrupado) -
             "req": ws_proyectos.cell(row=fila_info["fila"], column=HEADERS_PROYECTOS.index(pf.COLUMNA_REQ) + 1).value,
             "venta": valores.get(pf.COLUMNA_VENTA),
             "cierre": valores.get("Fecha de cierre"),
+            "apodo": ws_proyectos.cell(row=fila_info["fila"], column=HEADERS_PROYECTOS.index("Apodo") + 1).value,
             # Lo que falta ejecutar, a precio de presupuesto (el mismo término
             # de costo_estimado_al_cierre): lo usa Flujo de Caja para proyectar
             # egresos sin recalcular nada por su cuenta.

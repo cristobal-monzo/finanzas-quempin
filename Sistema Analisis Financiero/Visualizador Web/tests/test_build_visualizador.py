@@ -295,8 +295,9 @@ def test_extraer_datos_saneados_separa_completos_e_incompletos(tmp_path):
     assert data["proyectos"][0]["tag"] == "UMAG"
     assert len(data["pendientes"]) == 1
     pendiente = data["pendientes"][0]
-    assert pendiente["nombre"] == "Cesfam Limache"
-    assert pendiente["mensaje"] == "Cesfam Limache — Falta ingresar información en 'Análisis de Proyectos'"
+    # El tablero muestra TAG + apodo (sin apodo, el nombre): pedido 2026-11-05.
+    assert pendiente["nombre"] == "CFLI - Cesfam Limache"
+    assert pendiente["mensaje"] == "CFLI - Cesfam Limache — Falta ingresar información en 'Análisis de Proyectos'"
     assert pendiente["link"] == bv.URL_PLANILLA_PENDIENTE
     assert re.match(r"^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$", data["generado"])
 

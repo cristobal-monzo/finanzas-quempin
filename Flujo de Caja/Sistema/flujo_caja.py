@@ -385,7 +385,7 @@ def ingresos_ventas_af(proyectos: list[dict], cubiertos: set, ultimo_gasto: dict
         entran.append(tag)
         en_cuotas += len(pagos) > 1
         for i, (cobro, monto) in enumerate(pagos, start=1):
-            concepto = f"{tag} · {p.get('nombre') or ''} · venta + IVA" + (f" (estado de pago {i}/{len(pagos)})" if len(pagos) > 1 else "")
+            concepto = f"{_etiqueta(p)} · venta + IVA" + (f" (estado de pago {i}/{len(pagos)})" if len(pagos) > 1 else "")
             if (hoy - cobro).days > sup["diasCobroDadoPorHecho"]:
                 dadas += 1
                 vencido, concepto = False, concepto + " (cobro dado por hecho)"
@@ -416,11 +416,20 @@ def _req(valor) -> str | None:
     return str(int(n)) if n is not None and n == int(n) else str(valor).strip()
 
 
+def _etiqueta(p: dict) -> str:
+    """«270 - Caldera Valdivia»: TAG + apodo (sin apodo, el nombre), como lo
+    muestran todos los tableros desde el 2026-11-05."""
+    tag = str(p.get("tag") or "").strip()
+    texto = str(p.get("apodo") or "").strip() or str(p.get("nombre") or "").strip()
+    return f"{tag} - {texto}" if tag and texto else (tag or texto)
+
+
 def leer_proyectos_af(ruta: Path = RUTA_EXCEL_AF) -> tuple[list[dict], list[str]]:
     """Los proyectos de la hoja «Proyectos» del Excel del Análisis Financiero,
     con su venta (solo lectura: ese libro lo escribe su propio módulo)."""
     columnas = {"tag": "TAG proyecto", "nombre": "Nombre del proyecto", "categoria": "Categoría", "avance": "% Avance",
-                "inicio": "Fecha de inicio", "cierre": "Fecha de cierre", "venta": "Monto de Venta (sin IVA)"}
+                "inicio": "Fecha de inicio", "cierre": "Fecha de cierre", "venta": "Monto de Venta (sin IVA)",
+                "apodo": "Apodo"}
     try:
         import openpyxl
         libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
@@ -509,7 +518,7 @@ def egresos_por_ejecutar(proyectos_af: list[dict], comprometido_por_tag: dict, h
         for i, parte in enumerate(partes):
             mes = _sumar_meses(inicio, i)
             movs.append(_movimiento(max(mes, hoy) if i == 0 else mes, "egreso", "estimado", parte,
-                                    f"{p.get('tag')} · {p.get('nombre') or ''} (por ejecutar, {i + 1}/{meses})",
+                                    f"{_etiqueta(p)} (por ejecutar, {i + 1}/{meses})",
                                     "Análisis Financiero", str(p.get("tag")), str(p.get("tag"))))
     return movs, avisos
 

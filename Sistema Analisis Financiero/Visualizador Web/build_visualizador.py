@@ -152,6 +152,13 @@ def leer_proyectos(ws_proyectos) -> list[dict]:
         p = {"fila": fila}
         p.update({clave: valores[encabezado] for encabezado, clave in CLAVE_POR_ENCABEZADO.items()})
         p["req"] = _req(ws_proyectos.cell(row=fila, column=col_req).value) if col_req else None
+        # Pedido del usuario (2026-11-05): el tablero muestra «270 - Caldera
+        # Valdivia» (TAG + apodo) en gráficos, tablas y menús; el nombre del
+        # Excel queda en 'nombre_proyecto'.
+        col_apodo = af.HEADERS_PROYECTOS.index("Apodo") + 1
+        p["apodo"] = ws_proyectos.cell(row=fila, column=col_apodo).value
+        p["nombre_proyecto"] = p["nombre"]
+        p["nombre"] = af.etiqueta_proyecto(p["tag"], p["nombre"], p["apodo"])
         proyectos.append(p)
     return proyectos
 

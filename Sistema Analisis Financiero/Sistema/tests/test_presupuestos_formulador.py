@@ -689,7 +689,7 @@ def test_los_campos_del_tablero_son_columnas_manuales_de_proyectos():
     de "Proyectos" -- nunca una fórmula ni Cliente/Categoría."""
     assert set(pf.COLUMNAS_ESCRIBIBLES.values()) <= set(af.NOMBRES_COLUMNAS_MANUALES_PROYECTOS)
     assert set(af.NOMBRES_COLUMNAS_MANUALES_PROYECTOS) - set(pf.COLUMNAS_ESCRIBIBLES.values()) == {
-        "TAG proyecto", "Nombre del proyecto"}
+        "TAG proyecto", "Nombre del proyecto", "Apodo"}  # el apodo se escribe en el Excel
 
 
 def test_el_procesador_atiende_los_mismos_tipos_que_este_modulo():
@@ -952,3 +952,9 @@ def test_se_sugiere_el_tag_por_el_n_del_codigo():
     assert pf.sugerir_tag(item, []) == "303"
 
 
+def test_la_etiqueta_es_tag_y_apodo():
+    """Pedido del usuario (2026-11-05): «270 - Caldera Valdivia» en tableros y menús."""
+    assert pf._etiqueta("270", "Caldera Valdivia", None) == "270 - Caldera Valdivia"
+    assert pf._etiqueta("303", "SERVICIOS DE MANTENIMIENTO", "Incinerador Osorno") == "303 - Incinerador Osorno"
+    assert af.etiqueta_proyecto("UMAG", "UMAG", "Línea H2 Punta Arenas") == "UMAG - Línea H2 Punta Arenas"
+    assert af.etiqueta_proyecto("", "Sin TAG", "") == "Sin TAG"

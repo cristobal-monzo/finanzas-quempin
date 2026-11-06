@@ -231,6 +231,13 @@ TAGS_ANTIGUOS = {
 }
 
 
+def _etiqueta(tag, nombre, apodo) -> str:
+    """Espejo de analisis_financiero.etiqueta_proyecto (este módulo no lo importa)."""
+    texto = str(apodo or "").strip() or str(nombre or "").strip()
+    tag = str(tag or "").strip()
+    return f"{tag} - {texto}" if tag and texto else (tag or texto)
+
+
 def normalizar_tag(tag) -> str:
     if isinstance(tag, float) and tag.is_integer():
         tag = int(tag)
@@ -867,6 +874,9 @@ def publicar_catalogo(raiz_intercambio: Path, proyectos_af: list[dict], estado: 
         venta = _numero(p.get("venta"))
         proyectos.append({
             "tag": p["tag"], "nombre": _json_simple(p.get("nombre")),
+            # «270 - Caldera Valdivia»: como lo muestran los tableros y menús.
+            "apodo": _json_simple(p.get("apodo")),
+            "etiqueta": _etiqueta(p["tag"], p.get("nombre"), p.get("apodo")),
             "cliente": _json_simple(p.get("cliente")), "categoria": _json_simple(p.get("categoria")),
             "avance": _json_simple(p.get("avance")),
             "proyectados": {c: _json_simple(_numero(p["proyectados"].get(c))) for c in CATEGORIAS},

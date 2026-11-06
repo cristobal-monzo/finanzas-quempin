@@ -1012,6 +1012,10 @@
   // ---------- app (runs only after a correct password) ----------
   function initApp(DATA) {
   var DOCS = DATA.documentos;
+  // «270 - Caldera Valdivia»: TAG + apodo del proyecto (columna «Apodo» del
+  // Análisis Financiero, pedido 2026-11-05). El filtro sigue usando el nombre.
+  var ETIQUETAS_PROYECTO = DATA.etiquetas_proyecto || {};
+  function etiquetaProyecto(nombre) { return (nombre && ETIQUETAS_PROYECTO[nombre]) || nombre; }
   var root = document.getElementById('vizRoot');
   var tooltip = document.getElementById('vizTooltip');
 
@@ -1184,15 +1188,17 @@
 
   // ---------- populate filter selects ----------
   function uniqSorted(arr) { return Array.from(new Set(arr.filter(Boolean))).sort(textCollator.compare); }
-  function fillSelect(id, values) {
+  function fillSelect(id, values, etiqueta) {
     var sel = document.getElementById(id);
     values.forEach(function (v) {
       var opt = document.createElement('option');
-      opt.value = v; opt.textContent = v;
+      opt.value = v; opt.textContent = etiqueta ? etiqueta(v) : v;
       sel.appendChild(opt);
     });
   }
-  fillSelect('fProyecto', uniqSorted(DOCS.map(function (d) { return d.proyecto; })));
+  fillSelect('fProyecto', uniqSorted(DOCS.map(function (d) { return d.proyecto; })).sort(function (a, b) {
+    return String(etiquetaProyecto(a)).localeCompare(String(etiquetaProyecto(b)), 'es', { numeric: true });
+  }), etiquetaProyecto);
   fillSelect('fTipoProyecto', uniqSorted(DOCS.map(function (d) { return d.tipo_proyecto; })));
   fillSelect('fCategoria', uniqSorted(DOCS.map(function (d) { return d.categoria; })));
   fillSelect('fEstado', uniqSorted(DOCS.map(function (d) { return d.estado; })));
@@ -1219,7 +1225,7 @@
   // categoría, tipo de documento y nombre + descripción de cada ítem:
   // buscar "3/4", "Junji" o "boleta" ahora encuentra algo.
   DOCS.forEach(function (d) {
-    d._hay = norm([d.ref, d.n_documento, d.proyecto, d.categoria, d.tipo_documento,
+    d._hay = norm([d.ref, d.n_documento, etiquetaProyecto(d.proyecto), d.categoria, d.tipo_documento,
       d.proveedor_tag, d.proveedor_razon_social, d.resumen_items]
       .concat((d.items || []).map(function (it) { return (it.nombre_item || '') + ' ' + (it.descripcion || ''); }))
       .join(' '));
@@ -1373,7 +1379,8 @@
     var chips = [];
     CHIPS.forEach(function (c) {
       if (!state[c[0]]) return;
-      chips.push({ quitar: [c[0]], k: c[1], v: c[0] === 'search' ? '“' + state.search.trim() + '”' : state[c[0]] });
+      chips.push({ quitar: [c[0]], k: c[1], v: c[0] === 'search' ? '“' + state.search.trim() + '”'
+        : (c[0] === 'proyecto' ? etiquetaProyecto(state.proyecto) : state[c[0]]) });
     });
     if (state.desde || state.hasta) chips.push({ quitar: ['desde', 'hasta'], k: 'Período', v: textoPeriodo() });
     var cont = document.getElementById('activeChips');
@@ -1591,8 +1598,8 @@
       ? 'Descuenta ' + notas.length + (notas.length === 1 ? ' nota' : ' notas') + ' de crédito (' + fmt(Math.abs(sumaCampo(notas, 'total_con_iva'))) + ')'
       : (docs.length ? 'Promedio ' + fmt(totalConIva / docs.length) + ' por documento' : 'Sin documentos');
     var subProy = top && proyectos.length > 1 && totalConIva > 0
-      ? 'Mayor: ' + top.proyecto + ' (' + fmtPct(top.monto / totalConIva * 100) + ')'
-      : (top ? top.proyecto : 'Sin gasto en estos filtros');
+      ? 'Mayor: ' + etiquetaProyecto(top.proyecto) + ' (' + fmtPct(top.monto / totalConIva * 100) + ')'
+      : (top ? etiquetaProyecto(top.proyecto) : 'Sin gasto en estos filtros');
     var kpis = [
       { label: 'Gasto total (c/IVA)', value: fmt(totalConIva), sub: subTotal, accent: true },
       { label: 'Gasto total (s/IVA)', value: fmt(totalSinIva), sub: 'Impuestos: ' + fmt(totalConIva - totalSinIva), info: 'gastoSinIva' },
@@ -1655,8 +1662,10 @@
       ? 'En estos filtros solo hay montos negativos (notas de crédito): no hay gasto que graficar.'
       : 'Sin datos para los filtros actuales.') + '</div>';
   }
-  function ariaResumen(titulo, items, labelKey, valueKey) {
-    return (titulo || 'Gráfico') + ': ' + items.slice(0, 5).map(function (it) { return it[labelKey] + ' ' + fmt(it[valueKey]); }).join(', ');
+  function ariaResumen(titulo, items, labelKey, valueKey, etiquetar) {
+    return (titulo || 'Gráfico') + ': ' + items.slice(0, 5).map(function (it) {
+      return (etiquetar ? etiquetar(it[labelKey]) : it[labelKey]) + ' ' + fmt(it[valueKey]);
+    }).join(', ');
   }
 
   // ---------- SVG chart: horizontal ranking bars ----------
@@ -1681,13 +1690,15 @@
     var W = el.clientWidth || 480;
     // Columna de etiquetas proporcional al ancho (antes 100 px fijos, que
     // cortaban "Junji's Valpa…" o "Cremación Con…" a 14 caracteres).
-    var padL = Math.round(Math.min(190, Math.max(96, W * 0.34))), padR = 60, rowH = 28, padTB = 2;
+    // Con etiqueta (TAG + apodo, «250 - Calderas Catedral Santiago») hay más texto: hasta 230 px.
+    var etiquetar = opts.label || null;
+    var padL = Math.round(Math.min(etiquetar ? 230 : 190, Math.max(96, W * 0.34))), padR = 60, rowH = 28, padTB = 2;
     var maxChars = Math.max(10, Math.floor((padL - 12) / 6.2));
     var H = top.length * rowH + padTB * 2;
     var innerW = Math.max(40, W - padL - padR);
     var max = Math.max.apply(null, top.map(function (i) { return i[valueKey]; }));
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="' +
-      esc(ariaResumen(opts.title, top, labelKey, valueKey)) + '">' + (colorMap ? HATCH_DEFS : '');
+      esc(ariaResumen(opts.title, top, labelKey, valueKey, etiquetar)) + '">' + (colorMap ? HATCH_DEFS : '');
     top.forEach(function (it, i) {
       var y = padTB + i * rowH;
       var w = Math.max(innerW * (it[valueKey] / max), 2);
@@ -1697,7 +1708,7 @@
         '<rect class="col-hit" x="0" y="' + y + '" width="' + W + '" height="' + rowH + '"/>' +
         '<text class="rank-label" x="' + (padL - 8) + '" y="' + (y + rowH / 2 + 4) + '" text-anchor="end" font-size="11.5"' +
         (activo ? ' font-weight="700" fill="var(--text-primary)"' : ' fill="var(--text-secondary)"') + '>' +
-        esc(truncateLabel(it[labelKey], maxChars)) + '</text>' +
+        esc(truncateLabel(etiquetar ? etiquetar(it[labelKey]) : it[labelKey], maxChars)) + '</text>' +
         '<rect class="bar-rect" x="' + padL + '" y="' + (y + 5) + '" width="' + w + '" height="' + (rowH - 10) + '" rx="4" fill="' + color + '"/>' +
         '<text x="' + (padL + w + 6) + '" y="' + (y + rowH / 2 + 4) + '" font-size="10.5" fill="var(--text-muted)">' + fmtCompact(it[valueKey]) + '</text>' +
         '</g>';
@@ -1717,7 +1728,7 @@
       var activo = !!opts.active && opts.active === it[labelKey];
       g.addEventListener('mousemove', function (e) {
         bar.classList.add('is-hover');
-        showTooltip(e, it[labelKey], [fmt(it[valueKey]), fmtPct(it[valueKey] / base * 100) + ' del total filtrado'],
+        showTooltip(e, etiquetar ? etiquetar(it[labelKey]) : it[labelKey], [fmt(it[valueKey]), fmtPct(it[valueKey] / base * 100) + ' del total filtrado'],
           opts.onSelect ? (activo ? 'Clic para quitar el filtro' : 'Clic para filtrar') : '');
       });
       g.addEventListener('mouseleave', function () { bar.classList.remove('is-hover'); hideTooltip(); });
@@ -2073,7 +2084,7 @@
         '<tr class="doc-row' + (expanded ? ' is-expanded' : '') + '" data-ref="' + esc(d.ref) + '" role="button" tabindex="0" aria-expanded="' + expanded + '" aria-label="Ver detalle del documento ' + esc(d.ref) + '">' +
         '<td class="c-tg"><span class="expand-toggle" aria-hidden="true">' + (expanded ? '▾' : '▸') + '</span></td>' +
         '<td class="c-ref">' + hl(d.ref, terms) + (d.pendiente_revision ? ' <span class="pend-dot" title="Pendiente de revisión">●</span>' : '') + abrirArchivoHtml(d) + '</td>' +
-        '<td class="c-proy"><span class="proj-tag"><span class="proj-dot" style="' + swatchStyleFor(proyectoColorVar[d.proyecto]) + '"></span>' + hl(d.proyecto, terms) + '</span></td>' +
+        '<td class="c-proy"><span class="proj-tag"><span class="proj-dot" style="' + swatchStyleFor(proyectoColorVar[d.proyecto]) + '"></span>' + hl(etiquetaProyecto(d.proyecto), terms) + '</span></td>' +
         '<td class="c-fecha">' + fmtDate(d.fecha) + '</td>' +
         '<td class="c-prov cell-prov"><span class="prov">' + hl(d.proveedor_tag, terms) + '</span>' +
         (sub ? '<span class="row-sub" title="' + esc(sub) + '">' + hl(sub, terms) + '</span>' : '') + '</td>' +
@@ -2092,7 +2103,7 @@
         // compramos a este proveedor?" era imposible sin conocer su tag.
         var acciones = [];
         if (d.proveedor_tag) acciones.push(['proveedor', d.proveedor_tag, state.proveedor === d.proveedor_tag ? 'Quitar filtro de proveedor' : 'Ver todo lo de ' + d.proveedor_tag]);
-        if (d.proyecto) acciones.push(['proyecto', d.proyecto, state.proyecto === d.proyecto ? 'Quitar filtro de proyecto' : 'Ver solo ' + d.proyecto]);
+        if (d.proyecto) acciones.push(['proyecto', d.proyecto, state.proyecto === d.proyecto ? 'Quitar filtro de proyecto' : 'Ver solo ' + etiquetaProyecto(d.proyecto)]);
         rows.push(
           '<tr class="detail-row"><td colspan="8"><div class="detail-panel">' +
           '<div class="detail-actions">' + acciones.map(function (a) {
@@ -2253,7 +2264,7 @@
   function renderCharts(filtered) {
     var proyectoAgg = aggregate(filtered, 'proyecto');
     renderRankingChart('chartProyecto', proyectoAgg, 'proyecto', 'monto', {
-      limit: 8, colorMap: proyectoColorVar, noun: ['proyecto', 'proyectos'], title: 'Gasto por proyecto',
+      limit: 8, colorMap: proyectoColorVar, noun: ['proyecto', 'proyectos'], title: 'Gasto por proyecto', label: etiquetaProyecto,
       active: state.proyecto, onSelect: function (v) { toggleFilter('proyecto', v); }
     });
     document.getElementById('btnVerTodosProyectos').style.display = proyectoAgg.length > 8 ? '' : 'none';
@@ -2326,7 +2337,7 @@
   var modalProyectosCtl = setupModal('modalProyectos', function (close) {
     var items = aggregate(getFiltered(), 'proyecto');
     renderRankingChart('chartProyectoFull', items, 'proyecto', 'monto', {
-      limit: items.length, colorMap: proyectoColorVar, noun: ['proyecto', 'proyectos'], title: 'Gasto por proyecto',
+      limit: items.length, colorMap: proyectoColorVar, noun: ['proyecto', 'proyectos'], title: 'Gasto por proyecto', label: etiquetaProyecto,
       active: state.proyecto, onSelect: function (v) { close(); toggleFilter('proyecto', v); }
     });
   });
