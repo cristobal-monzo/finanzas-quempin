@@ -318,17 +318,17 @@ módulos), no en este archivo.
   `verificar_aritmetica` no marque falsa inconsistencia). Precedente:
   factura Danus Conexiones N° 383431 (`MLER-001`, 2026-07-17), descuento
   10% sobre Sub Total.
-- **`H2GN-001` es PROVISORIO: antes de registrar cualquier documento nuevo de
+- **`281-001` es PROVISORIO: antes de registrar cualquier documento nuevo de
   «H2 Green», avisa al usuario** (pedido 2026-11-05). Se registró desde el
   comprobante SWIFT de Afex (transferencia 247039 a Toyota Tsusho Korea,
   USD 5.000 al dólar observado del 20-10-2026) como el estanque de
   almacenamiento de hidrógeno. El usuario subirá la invoice de Toyota Tsusho
   para reemplazarlo: cuando aparezca en `H2 Green/`, dile que reemplaza a
-  `H2GN-001` y pregunta antes de registrarla, porque tendrá otro N° y la
+  `281-001` y pregunta antes de registrarla, porque tendrá otro N° y la
   detección de duplicados no la ve (sacar el provisorio: `driver.py
-  eliminar`). Proyecto H2 Green = N° 281, prefijo `H2GN` (su TAG en la
+  eliminar`). Proyecto H2 Green = N° 281, prefijo `281` (su N° en la
   Planilla), `I+D+i`.
-- **«UMAG - Conexión y PH Lab1» (N° 280, `UML1`) es `I+D+i`** (decisión del
+- **«UMAG - Conexión y PH Lab1» (N° 280, TAG `280`) es `I+D+i`** (decisión del
   usuario 2026-11-05).
 
 ## Visualizador web
