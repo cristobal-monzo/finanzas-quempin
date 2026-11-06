@@ -2748,6 +2748,84 @@ def test_elegir_en_el_panel_y_tocar_las_casillas(navegador, sitio):
     pagina.context.close()
 
 
+def test_quitar_una_asignacion_con_un_toque(navegador, sitio):
+    """Observación del equipo del 2026-11-06, «acceso rápido para eliminar asignaciones»: cada proyecto de una casilla
+    lleva una ✕ que lo quita sin abrir la ventanita, en un paso que se deshace y queda en el archivo; con el teclado,
+    Supr en la casilla quita lo de ese día y la casilla sigue con el foco. En «Por proyecto» y en General la ✕ va en
+    cada persona. Con el mouse se ve solo sobre la casilla."""
+    import re
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    lun = _dias_de(lunes)[0]
+    # Dos proyectos a LC y uno a ES el lunes, eligiendo en el panel y tocando las casillas
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:907"]').click()
+    _celda_personal(pagina, "LC", 0).click()
+    _celda_personal(pagina, "ES", 0).click()
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:908"]').click()
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.keyboard.press("Escape")
+    assert sorted(pagina.evaluate(JS_PERSONAL)["LC"][0]) == ["Adjudicada sin ficha", "En obra"]
+    celda = _celda_personal(pagina, "LC", 0)
+    x = celda.locator(".pl-chip", has_text="En obra").locator(".pl-quitar")
+    assert x.get_attribute("title") == f"Quitar: LC ya no va a En obra el lunes {lun.day}"
+    # Quieta, la ✕ no se ve, tampoco sobre otra parte de la casilla; sobre su proyecto, sí, y el «+» de la esquina se
+    # esconde (quedaba encima de la ✕ del último proyecto)
+    chip = celda.locator(".pl-chip", has_text="En obra")
+    mas = celda.locator(".pl-mas.flota")
+    oculta = "e => getComputedStyle(e).opacity === '0' && getComputedStyle(e).pointerEvents === 'none'"
+    pagina.mouse.move(1, 1)
+    pagina.wait_for_function(oculta, arg=x.element_handle())
+    celda.hover(position={"x": 4, "y": 4})
+    pagina.wait_for_function(oculta, arg=x.element_handle())
+    pagina.wait_for_function("e => getComputedStyle(e).opacity === '1'", arg=mas.element_handle())
+    chip.hover()
+    pagina.wait_for_function("e => getComputedStyle(e).opacity === '1'", arg=x.element_handle())
+    pagina.wait_for_function(oculta, arg=mas.element_handle())
+    x.click()
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == ["Adjudicada sin ficha"]
+    assert pagina.locator("#plPop").is_hidden(), "la ✕ no abre la ventanita"
+    assert f"LC ya no va a En obra el lunes {lun.day}" in pagina.locator("#aviso").inner_text()
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    _esperar_archivo(pagina, archivo, lambda s: any(a["persona"] == "LC" and a["proyecto"] == "req:908" and not a["activa"]
+                                                   for a in s["datos"]["asignaciones"]))
+    # Se deshace como cualquier cambio
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    assert sorted(pagina.evaluate(JS_PERSONAL)["LC"][0]) == ["Adjudicada sin ficha", "En obra"]
+    # Supr en la casilla quita los dos del día, en un solo paso, y la casilla sigue con el foco
+    assert celda.get_attribute("aria-keyshortcuts") == "Delete"
+    celda.focus()
+    pagina.keyboard.press("Delete")
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == []
+    assert re.search(rf"LC ya no va a (Adjudicada sin ficha y En obra|En obra y Adjudicada sin ficha) el lunes {lun.day}\.",
+                     pagina.locator("#aviso").inner_text())
+    assert pagina.evaluate("() => document.activeElement.dataset.ancla") == f"p|LC|{lun.isoformat()}"
+    pagina.keyboard.press("Delete")          # vacía: no pasa nada
+    assert pagina.evaluate(JS_PERSONAL)["ES"][0] == ["Adjudicada sin ficha"]
+    # Por proyecto: la ✕ en la persona
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    c907 = _celda_proyecto(pagina, "req:907", 0)
+    assert c907.locator(".pl-per").all_inner_texts() == ["ES"]
+    c907.locator(".pl-per", has_text="ES").hover()
+    c907.locator(".pl-per", has_text="ES").locator(".pl-quitar").click()
+    assert c907.locator(".pl-per").count() == 0
+    assert pagina.locator("#plPop").is_hidden()
+    assert f"ES ya no va a Adjudicada sin ficha el lunes {lun.day}" in pagina.locator("#aviso").inner_text()
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    # En General, también
+    pagina.locator('.pl-vista[data-vista="general"]').click()
+    bloque = pagina.locator(f'#plGeneral [data-ancla="j|req:907|{lun.isoformat()}"]')
+    assert bloque.locator(".pl-per").all_inner_texts() == ["ES"]
+    bloque.locator(".pl-per").hover()
+    bloque.locator(".pl-quitar").click()
+    assert pagina.locator(f'#plGeneral [data-ancla="j|req:907|{lun.isoformat()}"]').count() == 0
+    assert pagina.locator("#plPop").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
 def test_arrastrar_personas_por_proyecto_y_en_general(navegador, sitio):
     """«Algo similar para las otras formas»: en «Por proyecto» se arrastra a las personas del panel al proyecto y el día
     (y de un proyecto a otro); en General, a alguien sin proyecto a un proyecto de ese día."""

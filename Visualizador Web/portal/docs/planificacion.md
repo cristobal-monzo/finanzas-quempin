@@ -195,6 +195,18 @@ arrastrar proyectos a persona + día, como una opción más, y quitar la alerta 
   casillas para mover (Ctrl copia), en un solo paso de deshacer. También se puede elegir en el panel y tocar casillas.
 - Bajo 900 px el panel va sobre la tabla y se acomoda en varias filas: nada se desliza de lado (las pruebas lo exigen).
 
+**Quitar con un toque** (2026-11-06, observación del equipo desde el Portal: «acceso rápido para eliminar asignaciones»):
+- Cada proyecto de una persona en «Por personal», y cada persona de un proyecto en «Por proyecto» y en General, lleva una
+  ✕ (`plQuitarX`, `.pl-quitar`) que lo quita ese día sin abrir la ventanita: `plAsignarDias(..., false)`, con su aviso y su
+  Deshacer, y se lleva el vehículo. Va dentro del botón de la casilla, así que es un `span`: la toma `plQuitarToque`, en
+  captura sobre `#vistaPlan`, antes que la casilla. Sin la carpeta conectada no se pone.
+- Con el mouse aparece al pasar sobre ese proyecto o esa persona (solo cambia la opacidad, nada se mueve) y el «+» de la
+  esquina se esconde mientras tanto: quedaba encima de la ✕ del último proyecto. Con el dedo se ve siempre. No se ve
+  mientras se arrastra o se colocan cosas desde el panel.
+- Con el teclado: Supr (o Retroceso) en una casilla quita todo lo de ese día en un paso (`plQuitarCasilla`), y la casilla
+  sigue con el foco; las casillas con algo lo anuncian con `aria-keyshortcuts="Delete"`.
+- Prueba: `test_quitar_una_asignacion_con_un_toque`.
+
 **Trabajar a la vez** (2026-11-02, pedido del usuario: que se actualice lo más rápido posible para revisarla y trabajarla
 en paralelo):
 - **Cuánto tarda de verdad**: navegador → carpeta local (menos de 1 s) → OneDrive de quien cambia → SharePoint → OneDrive de
