@@ -76,6 +76,7 @@ Uso:
   python driver.py separar-registrado --plan pedido.json --aplicar
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -314,7 +315,12 @@ def cmd_status(pais="CL"):
     return 0
 
 
-def cmd_run(pais="CL"):
+def cmd_run(args=(), pais="CL"):
+    """'--sin-intercambio' apaga el PASO 12e (la vuelta del procesador del
+    Intercambio): lo usa Actualizar_Finanzas, que corre el procesador mas
+    tarde, despues del Cotizador."""
+    if "--sin-intercambio" in args:
+        os.environ[acc.VARIABLE_SIN_INTERCAMBIO] = "1"
     acc.main(pais=pais)
     return 0
 
@@ -483,7 +489,7 @@ def main():
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
         print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador|"
               "separar --proyecto P --archivo A --cantidad N|eliminar N_REF ... [--aplicar]|"
-              "separar-registrado --plan pedido.json [--aplicar]] [--pais CL|PE]")
+              "separar-registrado --plan pedido.json [--aplicar]|run [--sin-intercambio]] [--pais CL|PE]")
         return 2
 
     comando = sys.argv[1]
@@ -501,7 +507,7 @@ def main():
         return cmd_eliminar(resto, pais=pais)
     if comando == "separar-registrado":
         return cmd_separar_registrado(resto, pais=pais)
-    return cmd_run(pais=pais)
+    return cmd_run(resto, pais=pais)
 
 
 if __name__ == "__main__":

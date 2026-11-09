@@ -95,11 +95,11 @@ def test_run_con_pendientes_sigue(driver, monkeypatch):
     llamadas = _simular(driver, monkeypatch, STATUS_CON_PENDIENTES)
     assert driver.cmd_run(con_pendientes=True) == 0
     assert llamadas[0] == ("CC", ("status",))
-    assert ("CC", ("run",)) in llamadas                # el run del CC corrió
+    assert ("CC", ("run", "--sin-intercambio")) in llamadas                # el run del CC corrió
 
 
 def test_run_sin_pendientes_sigue_sin_flag(driver, monkeypatch):
     llamadas = _simular(driver, monkeypatch, STATUS_SIN_PENDIENTES)
     assert driver.cmd_run() == 0
     assert llamadas[0] == ("CC", ("status",))
-    assert ("CC", ("run",)) in llamadas
+    assert ("CC", ("run", "--sin-intercambio")) in llamadas

@@ -40,7 +40,8 @@ Cierra con el bloque «FACTURA(S) QUE FALTAN POR REGISTRAR» si el Paso 1 dejó 
 Antes de todo, el `status` del CC del Paso 1 (ver arriba): sin facturas sin datos, o con `--con-pendientes`, sigue.
 
 0. Presupuestos entregados por archivo (desde navegadores sin la carpeta): van a `publicado/formulador/`. Si falla, sigue.
-1. **CC `run`**: registra documentos y encadena AF (PASO 12d), el tablero de CC (12c) y el de AF. **Si falla, la cadena se
+1. **CC `run --sin-intercambio`**: registra documentos y encadena AF (PASO 12d), el tablero de CC (12c) y el de AF (sin su
+   PASO 12e, porque el procesador corre en el paso 5). **Si falla, la cadena se
    detiene**: ningún tablero se actualiza sobre datos a medio escribir.
 2. Cotizador `visualizador`. 3. Reportes PDF `status`: lista los desactualizados.
 4. Presupuestos del Formulador (solo lectura, tras el run de AF).

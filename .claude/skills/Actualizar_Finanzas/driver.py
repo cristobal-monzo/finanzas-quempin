@@ -606,7 +606,9 @@ def cmd_run(publicar=True, con_pendientes=False):
     #    visualizador de AF. Si esto falla no tiene sentido seguir.
     ok_cc, salida_cc = _ejecutar(
         "Centro de Costos -- run (encadena Analisis Financiero y sus 2 tableros)",
-        DRIVER_CENTRO_COSTOS, ["run"], obligatorio=True,
+        # '--sin-intercambio': el procesador corre en el paso 4, despues del
+        # Cotizador; sin el flag el CC le daria una vuelta extra (PASO 12e).
+        DRIVER_CENTRO_COSTOS, ["run", "--sin-intercambio"], obligatorio=True,
     )
     resultados.append(("Centro de Costos + Analisis Financiero + tableros CC/AF", ok_cc))
     if not ok_cc:
