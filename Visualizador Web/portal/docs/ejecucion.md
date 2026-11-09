@@ -122,3 +122,20 @@ varios días de una vez; y una revisión de la interfaz.
   proyectados con las por decidir, Mano de obra, OC/equipo/notas) que se envuelve en lo angosto (sin desplazarse de lado).
 - Pruebas: `test_las_facturas_del_centro_de_costos_se_ven_y_se_asocian_a_sus_gastos` y
   `test_el_calendario_anota_varios_dias_de_una_vez_y_medio_dia` en `test_portal.py`; `Sistema Intercambio/tests/test_documentos_proyecto.py`.
+
+## Revisión de UX/UI del 2026-11-09 (loop de mejoras)
+
+Pedido del usuario: una herramienta que aporte al seguimiento del estado de cada proyecto, y luego al menos diez vueltas
+de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más visual.
+
+- **Mapa de salud** (`ejMapaEl`, `#ejMapa`, arriba de las tarjetas): cada proyecto es un punto según su avance
+  (horizontal) y lo gastado y comprometido sobre el presupuesto (vertical; `ejPosMapa`). La diagonal es «gasta lo que
+  avanza»; la franja amarilla, la tolerancia (`EJ_GASTO_SOBRE_AVANCE`), y lo de encima, «gasta más de lo que avanza».
+  Al pasar o enfocar un punto dice su estado y por qué, y resalta su tarjeta; al tocarlo abre el proyecto. Se dibuja al
+  ancho que tiene (`ejMapaAncho`, se repinta al cambiar la ventana). Al lado, cuántos hay en cada estado: tocar uno filtra
+  las tarjetas (`ej.salud`, no se recuerda). Los que no tienen presupuesto o avance van en una línea bajo los estados.
+- **El estado** (`ejSalud`, `EJ_SALUD`): «En riesgo», «Atención», «En línea» o «Sin datos», con sus motivos: margen
+  estimado contra la meta y el mínimo, lo gastado contra el avance (más del doble de la tolerancia, en riesgo), si
+  terminaría sobre el presupuesto y los avisos del Recorrido. La tarjeta lo dice con ícono y palabra (`.ej-salud`) y su
+  raya de color sale de ahí. Nunca solo el color: íconos `visto`, `exclama`, `cruz`, `guion`.
+- Prueba: `test_el_mapa_de_salud_ubica_cada_proyecto_y_filtra_por_estado`.

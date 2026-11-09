@@ -1824,6 +1824,67 @@
   .ej-semaforo[data-nivel="ok"]::before { background: var(--estado-ok); }
   .ej-semaforo[data-nivel="warn"]::before { background: var(--estado-warn); }
   .ej-semaforo[data-nivel="bad"]::before { background: var(--estado-bad); }
+  /* Mapa de salud (2026-11-09): avance (horizontal) contra gastado y comprometido sobre el presupuesto (vertical). La diagonal
+     es «gasta lo que avanza»; sobre la franja de tolerancia, gasta más de lo que avanza. El estado nunca va solo en el color:
+     cada punto lleva su N°, la leyenda dice cuántos hay de cada uno y el detalle sale al pasar o enfocar el punto. */
+  .ej-mapa {
+    display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 6px 20px; padding: 14px 16px 12px;
+    border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
+  }
+  .ej-mapa-cab { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .ej-mapa-cab h2 { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 900; }
+  .ej-mapa-cab small { font-size: 12.5px; color: var(--texto-suave); }
+  .ej-mapa-graf { position: relative; min-width: 0; }
+  .ej-mapa svg { display: block; width: 100%; height: auto; overflow: visible; font-family: inherit; }
+  .ej-mapa .eje { stroke: var(--baseline); stroke-width: 1; }
+  .ej-mapa .reja { stroke: var(--gridline); stroke-width: 1; }
+  .ej-mapa .eje-txt { fill: var(--texto-suave); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .ej-mapa .eje-tit { fill: var(--text-secondary); font-size: 12.5px; font-weight: 700; }
+  .ej-mapa .zona-mala { fill: var(--estado-bad); opacity: 0.08; }
+  .ej-mapa .zona-ojo { fill: var(--estado-warn); opacity: 0.10; }
+  .ej-mapa .diagonal { stroke: var(--text-secondary); stroke-width: 1.5; stroke-dasharray: 5 4; fill: none; }
+  .ej-mapa .zona-txt { fill: var(--texto-suave); font-size: 12px; font-style: italic; }
+  .ej-mapa .punto { cursor: pointer; outline: none; }
+  .ej-mapa .punto .area { fill: transparent; }
+  .ej-mapa .punto .marca { stroke: var(--surface-card); stroke-width: 2.5; fill: var(--baseline); transition: r 0.12s; }
+  .ej-mapa .punto[data-nivel="ok"] .marca { fill: var(--estado-ok); }
+  .ej-mapa .punto[data-nivel="warn"] .marca { fill: var(--estado-warn); }
+  .ej-mapa .punto[data-nivel="bad"] .marca { fill: var(--estado-bad); }
+  .ej-mapa .punto .etq { fill: var(--text-primary); font-size: 12.5px; font-weight: 900; paint-order: stroke; stroke: var(--surface-card); stroke-width: 3px; }
+  .ej-mapa .punto:hover .marca, .ej-mapa .punto:focus-visible .marca, .ej-mapa .punto.resalta .marca { r: 10; stroke: var(--text-primary); }
+  .ej-mapa .punto.tuya .marca { stroke: var(--brand-orange); stroke-width: 3; }
+  .ej-mapa-tip {
+    position: absolute; z-index: 2; pointer-events: none; max-width: 260px; padding: 8px 10px; border-radius: 8px;
+    background: var(--text-primary); color: var(--surface-card); font-size: 12.5px; line-height: 1.4; box-shadow: var(--sombra);
+    transform: translate(-50%, calc(-100% - 14px));
+  }
+  .ej-mapa-tip b { display: block; font-size: 13px; }
+  .ej-mapa-lado { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .ej-estado-fil {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--border-hairline);
+    background: var(--page-plane); color: var(--text-primary); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
+  }
+  .ej-estado-fil:hover { border-color: var(--baseline); }
+  .ej-estado-fil[aria-pressed="true"] { border-color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-primary); }
+  .ej-estado-fil b { margin-left: auto; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .ej-estado-fil[data-cuenta="0"] { opacity: 0.55; }
+  .ej-pin { flex: 0 0 auto; width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 50%; color: #000000; background: var(--baseline); }
+  .ej-pin[data-nivel="ok"] { background: var(--estado-ok); }
+  .ej-pin[data-nivel="warn"] { background: var(--estado-warn); }
+  .ej-pin[data-nivel="bad"] { background: var(--estado-bad); }
+  .ej-pin svg { width: 12px; height: 12px; }
+  .ej-mapa-nota { margin: 2px 0 0; font-size: 12px; line-height: 1.4; color: var(--texto-suave); }
+  .ej-mapa-nota button { padding: 0; border: 0; background: none; color: var(--brand-orange-ink); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+  @container ejecucion (max-width: 720px) {
+    .ej-mapa { grid-template-columns: 1fr; padding: 12px; }
+    .ej-mapa-lado { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ej-mapa-nota { grid-column: 1 / -1; }
+  }
+  /* El estado en la tarjeta: la misma pastilla del mapa, con su palabra */
+  .ej-salud { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; font-size: 12px; font-weight: 900; color: var(--text-secondary); white-space: nowrap; }
+  .ej-salud .ej-pin { width: 16px; height: 16px; }
+  .ej-salud ~ .ej-resp { margin-left: 0; }
+  .ej-tarjeta.resalta { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
   .ej-antiguos summary { cursor: pointer; padding: 6px 2px; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
   .ej-antiguos[open] summary { margin-bottom: 8px; }
   /* El resumen de un proyecto */
@@ -2861,6 +2922,8 @@
                 </div>
                 <span class="rc-cuenta" id="ejCuenta" aria-live="polite"></span>
               </div>
+              <!-- Mapa de salud (2026-11-09): cada proyecto según su avance y lo que lleva gastado del presupuesto; lo arma ejMapaEl() -->
+              <section class="ej-mapa" id="ejMapa" aria-labelledby="ejMapaTit" hidden></section>
               <div class="ej-tarjetas" id="ejTarjetas"></div>
               <details class="ej-antiguos" id="ejAntiguos" hidden>
                 <summary id="ejAntiguosTxt"></summary>
@@ -3565,7 +3628,12 @@
     nota: '<path d="M5 4h14a1 1 0 0 1 1 1v10l-5 5H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 20v-5h5"/><path d="M8 9h8M8 13h4"/>',
     enlace: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/>',
     tijera: '<circle cx="6" cy="6.5" r="2.5"/><circle cx="6" cy="17.5" r="2.5"/><path d="M8.2 8l11.8 9M8.2 16L20 7"/>',
-    lupa: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'
+    lupa: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    // El estado de un proyecto en ejecución (2026-11-09): el color nunca va solo
+    visto: '<path d="M5 12.5l4.5 4.5L19 7.5" stroke-width="3"/>',
+    exclama: '<path d="M12 5.5v8.5" stroke-width="3"/><path d="M12 18.6h.01" stroke-width="3.6"/>',
+    cruz: '<path d="M7 7l10 10M17 7L7 17" stroke-width="3"/>',
+    guion: '<path d="M7 12h10" stroke-width="3"/>'
   };
   function icono(nombre, tam) {
     const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -10627,7 +10695,8 @@
     diasForm: null,           // el calendario de días trabajados: { clave, mes, jornada, personas, nombres, dias (los marcados) }
     diasAbiertos: null,
     sucios: new Map(),        // lo escrito en los campos del resumen, que sobrevive a cada repintado (id → valor)
-    tarifasAbiertas: false, todosDias: false, todasNotas: false, enviando: false
+    tarifasAbiertas: false, todosDias: false, todasNotas: false, enviando: false,
+    salud: null               // el estado elegido en la leyenda del Mapa de salud (ok, warn, bad, sin); null: todos
   };
   const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro });
 
@@ -11538,34 +11607,197 @@
     $('#ejMiosTxt').textContent = u ? 'Solo mis proyectos' : 'Solo mis proyectos (elige tu usuario)';
     const q = norm(ej.q).trim().split(/\s+/).filter(Boolean);
     const todas = ejTarjetas();
-    const alcance = todas.filter((t) => (!ej.mios || !u || rcMia(t)) && q.every((x) => t.buscar.includes(x)));
+    // Cada proyecto se calcula una vez por repintado: lo usan el mapa y las tarjetas
+    const modelos = new Map(todas.map((t) => [t.clave, ejModelo(t)]));
+    const saludes = new Map(todas.map((t) => [t.clave, ejSalud(t, modelos.get(t.clave))]));
+    const buscadas = todas.filter((t) => (!ej.mios || !u || rcMia(t)) && q.every((x) => t.buscar.includes(x)));
+    const alcance = buscadas.filter((t) => !ej.salud || saludes.get(t.clave).nivel === ej.salud);
     const plegada = (t) => t.antiguo && !t.gestion;      // lo que está en Gestión de Proyectos nunca va plegado
     const vivas = alcance.filter((t) => !plegada(t)).sort(ejOrden);
     const viejas = alcance.filter(plegada).sort(ejOrden);
+    // El mapa muestra lo buscado (sin el filtro de estado, que se elige en él mismo) y no lo plegado por antiguo
+    const mapa = $('#ejMapa');
+    const enMapa = buscadas.filter((t) => !plegada(t));
+    mapa.hidden = !todas.length;
+    mapa.textContent = '';
+    if (todas.length) mapa.append(...ejMapaEl(enMapa, modelos, saludes));
     const caja = $('#ejTarjetas');
     caja.textContent = '';
-    vivas.forEach((t) => caja.append(ejTarjetaEl(t)));
+    vivas.forEach((t) => caja.append(ejTarjetaEl(t, modelos.get(t.clave), saludes.get(t.clave))));
     if (!vivas.length) {
       caja.append(crear('p', 'ej-nada', !todas.length ? 'No hay proyectos en ejecución: entran aquí cuando se adjudican (Planilla «Adjudicado», formulación «Adjudicada» o ficha en el Análisis Financiero) y cuando su carpeta está en Gestión de Proyectos.'
-        : alcance.length ? 'Los proyectos que calzan llevan más de 60 días sin moverse: están abajo.' : 'Ningún proyecto en ejecución calza con lo buscado.'));
+        : alcance.length ? 'Los proyectos que calzan llevan más de 60 días sin moverse: están abajo.' : ej.salud ? 'Ningún proyecto «' + EJ_SALUD[ej.salud].nombre + '» calza con lo buscado.' : 'Ningún proyecto en ejecución calza con lo buscado.'));
     }
     $('#ejAntiguos').hidden = !viejas.length;
     $('#ejAntiguosTxt').textContent = pl(viejas.length, 'proyecto lleva', 'proyectos llevan') + ' más de 60 días sin moverse';
     const v = $('#ejTarjetasAntiguas');
     v.textContent = '';
-    viejas.forEach((t) => v.append(ejTarjetaEl(t)));
+    viejas.forEach((t) => v.append(ejTarjetaEl(t, modelos.get(t.clave), saludes.get(t.clave))));
     $('#ejCuenta').textContent = pl(vivas.length + viejas.length, 'proyecto', 'proyectos') + (alcance.length < todas.length ? ' de ' + todas.length : '');
   }
-  function ejTarjetaEl(t) {
-    const m = ejModelo(t);
+  /* ---- El estado de cada proyecto y el Mapa de salud (2026-11-09) ----------------------------------------------------
+     Pedido del usuario: una herramienta que aporte al seguimiento del estado de cada proyecto y una pestaña mucho más
+     visual. El estado junta lo que antes era solo la raya de color de la tarjeta: el margen contra la meta y el mínimo de
+     su formulación, lo gastado y comprometido contra el avance (EJ_GASTO_SOBRE_AVANCE; el doble, en riesgo), si se pasa
+     del presupuesto y los avisos del Recorrido. Sin presupuesto o sin avance no se puede ubicar en el mapa: «Sin datos». */
+  const EJ_SALUD = {
+    bad: { nombre: 'En riesgo', icono: 'cruz' }, warn: { nombre: 'Atención', icono: 'exclama' },
+    ok: { nombre: 'En línea', icono: 'visto' }, sin: { nombre: 'Sin datos', icono: 'guion' }
+  };
+  function ejSalud(t, m) {
+    if (!ejClave(t)) return { nivel: 'sin', motivos: ['Su carpeta no lleva el N° de la Planilla de Ingreso'] };
+    let nivel = 'ok';
+    const motivos = [];
+    const marcar = (n, txt) => { motivos.push(txt); if (n === 'bad' || nivel === 'ok') nivel = n; };
+    const nm = ejNivelMargen(m.margen, m);
+    if (nm === 'bad') marcar('bad', 'Margen estimado ' + ejPct(m.margen) + ': bajo el mínimo de ' + ejPct(m.margenes.minimo));
+    else if (nm === 'warn') marcar('warn', 'Margen estimado ' + ejPct(m.margen) + ': bajo la meta de ' + ejPct(m.margenes.objetivo));
+    const gs = ejGastoSobreAvance(m);
+    if (gs) marcar(gs.gasto - gs.avance > 2 * EJ_GASTO_SOBRE_AVANCE ? 'bad' : 'warn', 'Lleva ' + ejPct(gs.gasto) + ' del presupuesto con ' + ejPct(gs.avance) + ' de avance');
+    if (m.pres && m.tot.EAC > m.tot.P + 0.5) marcar('warn', 'Terminaría ' + ejPesos(m.tot.EAC - m.tot.P) + ' sobre el presupuesto');
+    t.chips.filter((c) => c.nivel === 'warn' || c.nivel === 'bad').forEach((c) => marcar(c.nivel, c.texto));
+    if (nivel === 'ok' && (!m.pres || m.avance.valor === null)) {
+      return { nivel: 'sin', motivos: [!m.pres && m.avance.valor === null ? 'Sin presupuesto ni avance' : !m.pres ? 'Sin presupuesto' : 'Sin avance'] };
+    }
+    if (nivel === 'ok') motivos.push('Gasta de acuerdo con lo que avanza' + (m.margen !== null ? ' y el margen está en la meta' : ''));
+    return { nivel, motivos };
+  }
+  function ejPinEl(nivel, tam) {
+    const p = crear('span', 'ej-pin');
+    p.dataset.nivel = nivel;
+    p.append(icono(EJ_SALUD[nivel].icono, tam || 12));
+    return p;
+  }
+  // Dónde va cada proyecto: avance (0 a 1) y lo gastado y comprometido sobre el presupuesto. Sin uno de los dos, null.
+  const ejPosMapa = (m) => (m.pres && m.tot.P > 0 && m.avance.valor !== null ? { x: m.avance.valor, y: (m.tot.G + m.tot.C) / m.tot.P } : null);
+  function ejMapaEl(tarjetas, modelos, saludes) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const sv = (tag, at, txt) => { const e = document.createElementNS(NS, tag); Object.entries(at || {}).forEach(([k, v]) => e.setAttribute(k, String(v))); if (txt !== undefined) e.textContent = txt; return e; };
+    const cab = crear('div', 'ej-mapa-cab');
+    const h = crear('h2', null, 'Mapa de salud');
+    h.id = 'ejMapaTit';
+    h.append(info('Cada punto es un proyecto: a la derecha, más avance; arriba, más gastado y comprometido en OC del presupuesto. Sobre la diagonal '
+        + 'gasta más de lo que avanza: hasta ' + ejPct(EJ_GASTO_SOBRE_AVANCE) + ' de diferencia está bien (franja amarilla), más es «Atención» y el doble, «En riesgo». '
+        + 'El estado también mira el margen estimado contra la meta y el mínimo de su formulación y los avisos del Recorrido. Los que no tienen presupuesto o avance no se pueden ubicar y quedan abajo, en «Sin datos».', 'Cómo leer el Mapa de salud'));
+    cab.append(h, crear('small', null, 'Avance contra lo gastado del presupuesto · toca un punto para abrir el proyecto'));
+    // El gráfico: 0 a 100 % de avance; arriba, al menos 120 % del presupuesto (lo que se pasa cabe a la vista)
+    const pos = tarjetas.map((t) => ({ t, m: modelos.get(t.clave), s: saludes.get(t.clave), p: ejPosMapa(modelos.get(t.clave)) }));
+    const ubicados = pos.filter((x) => x.p);
+    // Se dibuja al ancho que tiene (la letra queda de su tamaño): el de la lista menos la columna de los estados
+    const ancho = (ejMapaAncho = $('#ejLista').clientWidth || 960) - 34;
+    const W = Math.max(300, ancho > 720 ? ancho - 260 : ancho), H = ancho > 720 ? 250 : 220, L = 62, R = 14, T = 10, B = 38;
+    const yMax = Math.max(1.2, Math.ceil((Math.max(0, ...ubicados.map((x) => x.p.y)) + 0.1) * 5) / 5);
+    const X = (v) => L + (W - L - R) * Math.max(0, Math.min(1, v));
+    const Y = (v) => T + (H - T - B) * (1 - Math.max(0, Math.min(yMax, v)) / yMax);
+    const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'group', 'aria-label': 'Mapa de salud: ' + pl(ubicados.length, 'proyecto ubicado', 'proyectos ubicados') + ' según su avance y lo gastado del presupuesto' });
+    // Zonas: la de tolerancia (amarilla) y la de gastar más de lo que avanza (roja), sobre la diagonal
+    const tol = EJ_GASTO_SOBRE_AVANCE;
+    svg.append(sv('polygon', { class: 'zona-mala', points: [[0, tol], [1, 1 + tol], [1, yMax], [0, yMax]].map(([a, b]) => X(a) + ',' + Y(b)).join(' ') }));
+    svg.append(sv('polygon', { class: 'zona-ojo', points: [[0, 0], [1, 1], [1, 1 + tol], [0, tol]].map(([a, b]) => X(a) + ',' + Y(b)).join(' ') }));
+    for (let i = 0; i <= 4; i++) {
+      const v = i / 4;
+      svg.append(sv('line', { class: 'reja', x1: X(v), x2: X(v), y1: T, y2: H - B }), sv('text', { class: 'eje-txt', x: X(v), y: H - B + 15, 'text-anchor': i === 0 ? 'start' : i === 4 ? 'end' : 'middle' }, Math.round(v * 100) + ' %'));
+    }
+    for (let v = 0; v <= yMax + 1e-9; v += yMax > 1.6 ? 0.5 : 0.25) {
+      svg.append(sv('line', { class: 'reja', x1: L, x2: W - R, y1: Y(v), y2: Y(v) }), sv('text', { class: 'eje-txt', x: L - 6, y: Y(v) + 4, 'text-anchor': 'end' }, Math.round(v * 100) + ' %'));
+    }
+    svg.append(sv('line', { class: 'eje', x1: L, x2: W - R, y1: H - B, y2: H - B }), sv('line', { class: 'eje', x1: L, x2: L, y1: T, y2: H - B }));
+    svg.append(sv('line', { class: 'diagonal', x1: X(0), y1: Y(0), x2: X(1), y2: Y(1) }));
+    svg.append(sv('text', { class: 'zona-txt', x: X(0.03), y: Y(Math.min(yMax, 1.08)), 'text-anchor': 'start' }, 'Gasta más de lo que avanza'));
+    svg.append(sv('text', { class: 'zona-txt', x: X(0.97), y: Y(0.12), 'text-anchor': 'end' }, 'Avanza más de lo que gasta'));
+    svg.append(sv('text', { class: 'eje-tit', x: (L + W - R) / 2, y: H - 3, 'text-anchor': 'middle' }, 'Avance →'));
+    const yTit = sv('text', { class: 'eje-tit', x: 12, y: (T + H - B) / 2, 'text-anchor': 'middle', transform: 'rotate(-90 12 ' + (T + H - B) / 2 + ')' }, 'Gastado del presupuesto →');
+    svg.append(yTit);
+    const graf = crear('div', 'ej-mapa-graf');
+    const tip = crear('div', 'ej-mapa-tip');
+    tip.hidden = true;
+    tip.setAttribute('role', 'status');
+    const mostrar = (x, g) => {
+      tip.textContent = '';
+      tip.append(crear('b', null, (rcEtiqueta(x.t) ? rcEtiqueta(x.t) + ' · ' : '') + x.t.titulo),
+        document.createTextNode(EJ_SALUD[x.s.nivel].nombre + ': ' + x.s.motivos.join(' · ')),
+        crear('br'), document.createTextNode('Avance ' + ejPct(x.p.x) + ' · gastado y comprometido ' + ejPct(x.p.y) + ' del presupuesto'));
+      const r = graf.getBoundingClientRect(), c = g.querySelector('.marca').getBoundingClientRect();
+      tip.style.left = Math.min(r.width - 130, Math.max(130, c.left + c.width / 2 - r.left)) + 'px';
+      tip.style.top = (c.top - r.top) + 'px';
+      tip.hidden = false;
+      const card = document.querySelector('#ejLista .ej-tarjeta[data-clave="' + CSS.escape(x.t.clave) + '"]');
+      if (card) card.classList.add('resalta');
+    };
+    const ocultar = () => { tip.hidden = true; document.querySelectorAll('#ejLista .ej-tarjeta.resalta').forEach((c) => c.classList.remove('resalta')); };
+    // Los en riesgo, encima de los demás
+    const orden = { sin: 0, ok: 1, warn: 2, bad: 3 };
+    ubicados.slice().sort((a, b) => orden[a.s.nivel] - orden[b.s.nivel]).forEach((x) => {
+      const cx = X(x.p.x), cy = Y(x.p.y);
+      const g = sv('g', { class: 'punto' + (rcMia(x.t) ? ' tuya' : ''), tabindex: 0, role: 'button', 'data-clave': x.t.clave, 'data-nivel': x.s.nivel,
+        'aria-label': (rcEtiqueta(x.t) || '') + ' ' + x.t.titulo + ': ' + EJ_SALUD[x.s.nivel].nombre + ', avance ' + ejPct(x.p.x) + ', gastado ' + ejPct(x.p.y) + ' del presupuesto' });
+      g.append(sv('circle', { class: 'area', cx, cy, r: 16 }), sv('circle', { class: 'marca', cx, cy, r: 7.5 }));
+      const etq = x.t.req ? x.t.req : x.t.tag || '';
+      if (etq) g.append(sv('text', { class: 'etq', x: cx + (cx > W - 70 ? -12 : 12), y: cy + 4, 'text-anchor': cx > W - 70 ? 'end' : 'start' }, etq));
+      g.addEventListener('pointerenter', () => mostrar(x, g));
+      g.addEventListener('pointerleave', ocultar);
+      g.addEventListener('focus', () => mostrar(x, g));
+      g.addEventListener('blur', ocultar);
+      g.addEventListener('click', () => { ocultar(); ejElegir(x.t.clave); });
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ocultar(); ejElegir(x.t.clave); } });
+      svg.append(g);
+    });
+    graf.append(svg, tip);
+    // Al lado: cuántos hay en cada estado, que además filtran las tarjetas
+    const lado = crear('div', 'ej-mapa-lado');
+    lado.setAttribute('role', 'group');
+    lado.setAttribute('aria-label', 'Filtrar por estado');
+    ['bad', 'warn', 'ok', 'sin'].forEach((n) => {
+      const cuenta = pos.filter((x) => x.s.nivel === n).length;
+      const b = crear('button', 'ej-estado-fil');
+      b.type = 'button';
+      b.dataset.nivel = n;
+      b.dataset.cuenta = String(cuenta);
+      b.setAttribute('aria-pressed', String(ej.salud === n));
+      b.append(ejPinEl(n), crear('span', null, EJ_SALUD[n].nombre), crear('b', null, String(cuenta)));
+      b.title = ej.salud === n ? 'Mostrar todos los proyectos' : 'Mostrar solo los proyectos «' + EJ_SALUD[n].nombre + '»';
+      b.addEventListener('click', () => { ej.salud = ej.salud === n ? null : n; ejPintarLista(); const x = $('#ejMapa .ej-estado-fil[data-nivel="' + n + '"]'); if (x) x.focus(); });
+      lado.append(b);
+    });
+    const sin = pos.filter((x) => !x.p);
+    if (sin.length) {
+      const p = crear('p', 'ej-mapa-nota');
+      p.append(document.createTextNode('Fuera del mapa, sin presupuesto o avance: '));
+      sin.forEach((x, i) => {
+        const b = crear('button', null, rcEtiqueta(x.t) || x.t.titulo);
+        b.type = 'button';
+        b.title = x.t.titulo + ': ' + x.s.motivos.join(' · ');
+        b.addEventListener('click', () => ejElegir(x.t.clave));
+        p.append(b, document.createTextNode(i < sin.length - 1 ? ', ' : '.'));
+      });
+      lado.append(p);
+    }
+    return [cab, graf, lado];
+  }
+  // Al cambiar el ancho de la ventana, el mapa se vuelve a dibujar a su medida
+  let ejMapaAncho = 0, ejRelojMapa = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(ejRelojMapa);
+    ejRelojMapa = setTimeout(() => {
+      if (!$('#vistaEjecucion').hidden && !$('#ejLista').hidden && Math.abs($('#ejLista').clientWidth - ejMapaAncho) > 30) ejPintarLista();
+    }, 200);
+  });
+  function ejTarjetaEl(t, m, salud) {
+    m = m || ejModelo(t);
+    salud = salud || ejSalud(t, m);
     const b = crear('button', 'ej-tarjeta' + (rcMia(t) ? ' tuya' : ''));
     b.type = 'button';
     b.dataset.clave = t.clave;
+    b.dataset.salud = salud.nivel;
     const cab = crear('span', 'ej-t-cab');
     if (rcEtiqueta(t)) cab.append(crear('span', 'ej-n', rcEtiqueta(t)));
     cab.append(crear('span', 'ej-t-tit', t.titulo));
     if (t.responsable) { const r = crear('span', 'ej-resp', t.responsable); r.title = (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) + ' (' + t.respDe + ')'; cab.append(r); }
     b.append(cab);
+    const est = crear('span', 'ej-salud');
+    est.append(ejPinEl(salud.nivel), document.createTextNode(EJ_SALUD[salud.nivel].nombre));
+    est.title = salud.motivos.join(' · ');
+    cab.insertBefore(est, cab.querySelector('.ej-resp'));
     const sub = [rcLegible(t.lugar), t.req && t.tag ? 'TAG ' + t.tag : ''].filter(Boolean).join(' · ');
     if (sub) b.append(crear('span', 'ej-t-sub', sub));
     const f1 = crear('span', 'ej-t-fila');
@@ -11601,8 +11833,7 @@
       t.chips.slice(0, 3).forEach((c) => { const x = crear('span', 'rc-chip', c.texto); if (c.nivel) x.dataset.nivel = c.nivel; ch.append(x); });
       b.append(ch);
     }
-    const gasto = ejGastoSobreAvance(m);
-    b.dataset.nivel = nivel === 'bad' ? 'bad' : nivel === 'warn' || gasto || t.chips.some((c) => c.nivel === 'warn') ? 'warn' : '';
+    b.dataset.nivel = salud.nivel === 'bad' || salud.nivel === 'warn' ? salud.nivel : '';
     b.addEventListener('click', () => ejElegir(t.clave));
     return b;
   }

@@ -4277,6 +4277,36 @@ def test_proyectos_en_ejecucion_lista_y_resumen(navegador, sitio):
     pagina.context.close()
 
 
+def test_el_mapa_de_salud_ubica_cada_proyecto_y_filtra_por_estado(navegador, sitio):
+    """Pedido del usuario (2026-11-09): una herramienta para seguir el estado de cada proyecto y una pestaña más visual.
+    El 908 va en línea (40 % de avance, 14 % gastado y comprometido, margen sobre la meta); el que no tiene N° pide atención;
+    el 907, sin presupuesto ni avance, queda fuera del mapa en «Sin datos»."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio)
+    pagina.locator("#ejMapa .punto").first.wait_for()
+    puntos = pagina.locator("#ejMapa .punto").evaluate_all("gs => gs.map((g) => [g.dataset.clave, g.dataset.nivel])")
+    assert ["req-908", "ok"] in puntos and not any(c == "req-907" for c, _ in puntos), puntos
+    cuentas = pagina.locator("#ejMapa .ej-estado-fil").evaluate_all("bs => Object.fromEntries(bs.map((b) => [b.dataset.nivel, b.dataset.cuenta]))")
+    assert cuentas == {"bad": "0", "warn": "1", "ok": "1", "sin": "1"}, cuentas
+    assert "N° 907" in pagina.locator("#ejMapa .ej-mapa-nota").inner_text()
+    # La tarjeta dice su estado con palabra, no solo con color
+    assert "En línea" in pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"] .ej-salud').inner_text()
+    # La leyenda filtra las tarjetas y se vuelve a tocar para ver todas
+    pagina.locator('#ejMapa .ej-estado-fil[data-nivel="sin"]').click()
+    claves = lambda: pagina.locator("#ejTarjetas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    assert claves() == ["req-907"]
+    assert pagina.locator('#ejMapa .ej-estado-fil[data-nivel="sin"]').get_attribute("aria-pressed") == "true"
+    pagina.locator('#ejMapa .ej-estado-fil[data-nivel="sin"]').click()
+    assert "req-908" in claves()
+    # Pasar sobre un punto dice por qué y resalta su tarjeta; tocarlo abre el proyecto
+    pagina.locator('#ejMapa .punto[data-clave="req-908"]').hover()
+    assert "Avance 40 %" in pagina.locator("#ejMapa .ej-mapa-tip").inner_text()
+    assert "resalta" in pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').get_attribute("class")
+    pagina.locator('#ejMapa .punto[data-clave="req-908"]').click()
+    pagina.locator("#ejProyecto .ej-kpis").wait_for()
+    assert not errores
+    pagina.context.close()
+
+
 def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegador, sitio):
     """Pedido del usuario (2026-11-03): todos los proyectos de la carpeta de Gestión de Proyectos se ven en «Proyectos en
     ejecución», sin las carpetas complementarias (esas las deja fuera el procesador: proyectos_en_gestion)."""
