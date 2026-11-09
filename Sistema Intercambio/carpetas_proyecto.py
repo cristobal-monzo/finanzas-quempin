@@ -67,12 +67,14 @@ SHAREPOINT = "https://quempinspa2020.sharepoint.com"
 RUTA_WEB_FACTURAS = ("Documentos compartidos", "Centro de Costos", "Facturas y Boletas")
 RUTA_ESTADO = Path(__file__).resolve().parent / "carpetas_proyecto_estado.json"
 LARGO_NOMBRE = 80
-_CON_NUMERO = re.compile(r"^\s*(\d{1,4})\s*[.\-_)]\s*(.*)$")
+_CON_NUMERO = re.compile(r"^\s*(\d{1,4}t?)\s*[.\-_)]\s*(.*)$", re.IGNORECASE)
 _PROHIBIDOS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 
 
 def _req(valor) -> str | None:
     texto = str(valor or "").strip()
+    if re.fullmatch(r"\d{3,4}t", texto, re.IGNORECASE):     # N° temporal (2026-11-09)
+        return texto.lower()
     return str(int(texto)) if texto.isdigit() and int(texto) > 0 else None
 
 

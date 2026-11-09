@@ -45,7 +45,7 @@ HERRAMIENTA = "procesador"
 # Estados de la Planilla que entran aunque no tengan nada colgando: lo que
 # sigue vivo. Lo descartado y lo no adjudicado solo entra si algo lo nombra.
 ESTADOS_VIVOS = {"Evaluación", "Ofertado", "Adjudicado"}
-_CARPETA_CON_NUMERO = re.compile(r"^\s*(\d{1,4})\s*[.\-_)]\s*(.+)$")
+_CARPETA_CON_NUMERO = re.compile(r"^\s*(\d{1,4}t?)\s*[.\-_)]\s*(.+)$", re.IGNORECASE)
 # El registro de OC de cada Centro de Costos (gitignoreado: lleva montos), por país
 RAIZ_FINANZAS = Path(__file__).resolve().parent.parent
 RUTAS_ORDENES_CC = {
@@ -62,7 +62,14 @@ def _req(valor) -> str | None:
     texto = str(valor if valor is not None else "").strip()
     if texto.endswith(".0"):
         texto = texto[:-2]
+    if es_temporal(texto):
+        return texto.lower()
     return texto if texto.isdigit() and int(texto) > 0 else None
+
+
+def _n_carpeta(grupo: str) -> str | None:
+    """N° del comienzo de una carpeta: «036» → «36»; «001T» → «001t» (temporal)."""
+    return grupo.lower() if es_temporal(grupo) else _req(int(grupo)) if grupo.isdigit() else None
 
 
 def _tag(valor) -> str | None:
@@ -108,8 +115,9 @@ def carpetas_con_numero(raiz: Path, profundidad: int = 2) -> dict[str, list[str]
             return
         for hija in hijas:
             coincide = _CARPETA_CON_NUMERO.match(hija.name)
-            if coincide:
-                salida.setdefault(str(int(coincide.group(1))), []).append(hija.relative_to(raiz).as_posix())
+            n = _n_carpeta(coincide.group(1)) if coincide else None
+            if n:
+                salida.setdefault(n, []).append(hija.relative_to(raiz).as_posix())
             elif nivel < profundidad and hija.name.startswith(CARPETAS_AGRUPADORAS):
                 recorrer(hija, nivel + 1)
 
@@ -117,24 +125,73 @@ def carpetas_con_numero(raiz: Path, profundidad: int = 2) -> dict[str, list[str]
     return salida
 
 
-def proyectos_en_gestion(raiz: Path | None) -> list[dict]:
+ARCHIVO_TEMPORALES = "tags-temporales.json"
+_TEMPORAL = re.compile(r"^\d{3,4}t$")
+
+
+def es_temporal(valor) -> bool:
+    """«001t» (2026-11-09, pedido del usuario): número temporal de un proyecto sin N° de la
+    Planilla, para no asociarlo a un N° puntual. TAG: «001t - Nombre simplificado»."""
+    return bool(_TEMPORAL.match(str(valor or "").strip().lower()))
+
+
+def tag_temporal(numero: str, nombre: str) -> str:
+    return f"{numero.strip().lower()} - {nombre.strip()}"
+
+
+def leer_temporales(raiz: Path | None) -> dict[str, dict]:
+    """{carpeta de Gestión: {'n': '001t', 'nombre': ...}} de ``tags-temporales.json`` en la carpeta de
+    Intercambio. Vive ahí y no en git: lleva nombres reales de proyectos. Sin archivo, {}."""
+    if raiz is None:
+        return {}
+    try:
+        with open(Path(raiz) / ARCHIVO_TEMPORALES, encoding="utf-8") as f:
+            carpetas = (json.load(f) or {}).get("carpetas") or {}
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return {c: v for c, v in carpetas.items()
+            if isinstance(v, dict) and es_temporal(v.get("n")) and str(v.get("nombre") or "").strip()}
+
+
+def asignar_temporales(carpetas_sin_n: list[str], tabla: dict[str, dict]) -> dict[str, dict]:
+    """Tabla completa: respeta lo ya asignado (un N° temporal no se reasigna ni se reutiliza) y da
+    el siguiente 00Nt, con el nombre de la carpeta, a la carpeta sin N° que aún no lo tiene."""
+    salida = {c: dict(v) for c, v in tabla.items()}
+    usados = {int(v["n"][:-1]) for v in salida.values()}
+    for carpeta in sorted(carpetas_sin_n):
+        if carpeta not in salida:
+            n = max(usados, default=0) + 1
+            usados.add(n)
+            salida[carpeta] = {"n": f"{n:03d}t", "nombre": carpeta}
+    return salida
+
+
+def proyectos_en_gestion(raiz: Path | None, temporales: dict[str, dict] | None = None) -> list[dict]:
     """[{'carpeta': nombre, 'req': N° o None}] de las carpetas de proyecto de la
     raíz de «Gestión de Proyectos», con o sin N° adelante (2026-11-03, pedido
     del usuario: todas deben verse en «Proyectos en ejecución» del Portal).
     Quedan fuera los archivos y las carpetas complementarias, las agrupadoras
-    «0 …» («0 Carpeta modelo», «0 Proyectos Entregados 2026»). Solo lista nombres."""
+    «0 …» («0 Carpeta modelo», «0 Proyectos Entregados 2026»). Solo lista nombres.
+    ``temporales`` (2026-11-09): a la carpeta sin N° que figura ahí se le pone su N°
+    temporal en ``req`` («001t») y su ``tag`` («001t - Nombre»)."""
     if raiz is None or not Path(raiz).is_dir():
         return []
     try:
         hijas = sorted(h for h in Path(raiz).iterdir() if h.is_dir() and not h.name.startswith("."))
     except OSError:
         return []
+    temporales = temporales or {}
     salida = []
     for hija in hijas:
         if hija.name.startswith(CARPETAS_AGRUPADORAS):
             continue
         coincide = _CARPETA_CON_NUMERO.match(hija.name)
-        salida.append({"carpeta": hija.name, "req": _req(int(coincide.group(1))) if coincide else None})   # «036.» → «36»
+        fila = {"carpeta": hija.name, "req": _n_carpeta(coincide.group(1)) if coincide else None}   # «036.» → «36»
+        t = temporales.get(hija.name)
+        if t and fila["req"] is None:
+            fila["req"] = t["n"].lower()
+            fila["tag"] = tag_temporal(t["n"], t["nombre"])
+        salida.append(fila)
     return salida
 
 
@@ -275,7 +332,8 @@ def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | 
         folios_en_centro_costos(rutas_ordenes_cc),
         carpetas_cc=((_datos(raiz, "centro-costos-carpetas").get("paises") or {}).get("CL")) or [],
     )
-    datos["gestion"] = gestion if gestion is not None else proyectos_en_gestion(ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, raiz))
+    datos["gestion"] = gestion if gestion is not None else proyectos_en_gestion(
+        ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, raiz), leer_temporales(raiz))
     intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)
     return {"proyectos": len(datos["proyectos"]), "sin_tag_req": len(datos["sinVincular"]["tags"]),
             "conflictos": len(datos["conflictos"]), "gestion": len(datos["gestion"])}

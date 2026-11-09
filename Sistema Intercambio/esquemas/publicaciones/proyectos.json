@@ -74,7 +74,12 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "N° de la Planilla o, desde el 2026-11-09, un N° temporal («001t») de la tabla tags-temporales.json del Intercambio."
+          },
+          "tag": {
+            "type": "string",
+            "description": "Solo con N° temporal: «001t - Nombre simplificado»."
           }
         },
         "required": [
