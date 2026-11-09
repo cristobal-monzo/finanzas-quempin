@@ -1881,9 +1881,29 @@
     .ej-mapa-nota { grid-column: 1 / -1; }
   }
   /* El estado en la tarjeta: la misma pastilla del mapa, con su palabra */
+  .ej-t-meta { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: -3px; }
+  .ej-t-meta .ej-t-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ej-salud { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; font-size: 12px; font-weight: 900; color: var(--text-secondary); white-space: nowrap; }
   .ej-salud .ej-pin { width: 16px; height: 16px; }
   .ej-salud ~ .ej-resp { margin-left: 0; }
+  /* La tarjeta (vuelta 2): anillo de avance, barra del presupuesto con la raya del avance y lo que falta hacer */
+  .ej-t-cuerpo { display: flex; align-items: center; gap: 14px; padding-top: 2px; }
+  .ej-anillo { position: relative; flex: 0 0 auto; width: 64px; height: 64px; display: grid; place-items: center; align-content: center; }
+  .ej-anillo svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ej-anillo .pista { fill: none; stroke: var(--gridline); stroke-width: 5; }
+  .ej-anillo .arco { fill: none; stroke: var(--text-primary); stroke-width: 5; stroke-linecap: round; }
+  .ej-anillo.pedido .arco { stroke: var(--brand-orange); }
+  .ej-anillo b { position: relative; font-size: 15px; white-space: nowrap; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .ej-anillo small { position: relative; font-size: 10px; color: var(--texto-suave); line-height: 1.3; }
+  .ej-t-datos { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  .ej-t-pres { display: flex; flex-direction: column; gap: 5px; }
+  .ej-t-pres-txt b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .ej-t-barra { position: relative; display: flex; gap: 2px; height: 10px; border-radius: 999px; background: var(--gridline); }
+  .ej-t-barra .ej-seg { height: 100%; border-radius: 999px; background: var(--ej-gastado); }
+  .ej-t-barra .ej-seg.c { background: var(--ej-comprometido); }
+  .ej-t-tareas { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
+  .ej-t-tarea { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--tinte); color: var(--tinte-texto); font-size: 12px; font-weight: 700; }
+  .ej-t-tarea svg { flex: 0 0 auto; }
   .ej-tarjeta.resalta { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
   .ej-antiguos summary { cursor: pointer; padding: 6px 2px; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
   .ej-antiguos[open] summary { margin-bottom: 8px; }
@@ -11792,42 +11812,69 @@
     const cab = crear('span', 'ej-t-cab');
     if (rcEtiqueta(t)) cab.append(crear('span', 'ej-n', rcEtiqueta(t)));
     cab.append(crear('span', 'ej-t-tit', t.titulo));
-    if (t.responsable) { const r = crear('span', 'ej-resp', t.responsable); r.title = (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) + ' (' + t.respDe + ')'; cab.append(r); }
     b.append(cab);
+    /* La tarjeta más visual (2026-11-09, vuelta 2 del loop de UX): el avance en un anillo, el presupuesto en una barra con
+       la raya del avance (si lo gastado pasa la raya, gasta más de lo que avanza) y abajo lo que falta hacer, con números. */
+    // Bajo el título: dónde y su TAG; a la derecha, su estado (con palabra) y quién lo lleva
+    const meta = crear('span', 'ej-t-meta');
+    meta.append(crear('span', 'ej-t-sub', [rcLegible(t.lugar), t.req && t.tag ? 'TAG ' + t.tag : ''].filter(Boolean).join(' · ')));
     const est = crear('span', 'ej-salud');
     est.append(ejPinEl(salud.nivel), document.createTextNode(EJ_SALUD[salud.nivel].nombre));
     est.title = salud.motivos.join(' · ');
-    cab.insertBefore(est, cab.querySelector('.ej-resp'));
-    const sub = [rcLegible(t.lugar), t.req && t.tag ? 'TAG ' + t.tag : ''].filter(Boolean).join(' · ');
-    if (sub) b.append(crear('span', 'ej-t-sub', sub));
-    const f1 = crear('span', 'ej-t-fila');
-    const med = crear('span', 'ej-medidor');
+    meta.append(est);
+    if (t.responsable) { const r = crear('span', 'ej-resp', t.responsable); r.title = (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) + ' (' + t.respDe + ')'; meta.append(r); }
+    b.append(meta);
+    const cuerpo = crear('span', 'ej-t-cuerpo');
     const av = m.avance;
-    const barra = crear('span');
-    barra.style.width = Math.round((av.valor || 0) * 100) + '%';
-    med.append(barra);
-    f1.append(crear('span', null, 'Avance'), med, crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)));
-    if (av.pedido) f1.title = 'Pedido al Análisis Financiero: llega con la próxima vuelta del procesador';
-    b.append(f1);
-    // Lo gastado hasta hoy (2026-11-06)
-    if (ejClave(t) && (m.tot.G > 0.5 || m.pres)) {
-      const fg = crear('span', 'ej-t-fila ej-t-gasto');
-      fg.append(crear('span', null, 'Gastado'), crear('b', null, ejPesos(m.tot.G)));
-      if (m.pres && m.tot.P > 0) fg.append(crear('span', null, ejPct(m.tot.G / m.tot.P) + ' de ' + ejPesos(m.tot.P)));
-      b.append(fg);
+    cuerpo.append(ejAnilloEl(av.valor, av.pedido ? 'pedido' : ''));
+    const datos = crear('span', 'ej-t-datos');
+    if (!ejClave(t)) datos.append(crear('span', 'ej-t-fila', 'Su carpeta no lleva el N° de la Planilla de Ingreso'));
+    else {
+      // El presupuesto: gastado y comprometido contra lo presupuestado, con la raya del avance
+      const fp = crear('span', 'ej-t-pres');
+      const leer = crear('span', 'ej-t-pres-txt');
+      if (m.pres && m.tot.P > 0) {
+        const med = crear('span', 'ej-t-barra');
+        [['', m.tot.G], ['c', m.tot.C]].forEach(([k, v]) => {
+          if (!(v > 0)) return;
+          const x = crear('span', 'ej-seg' + (k ? ' ' + k : ''));
+          x.style.width = Math.min(100, 100 * v / m.tot.P) + '%';
+          med.append(x);
+        });
+        if (av.valor !== null) { const r = crear('i', 'ej-raya-avance'); r.style.left = Math.round(av.valor * 100) + '%'; med.append(r); }
+        leer.append(crear('span', null, 'Gastado '), crear('b', null, ejPesos(m.tot.G)), crear('span', null, ' de ' + ejPesos(m.tot.P)));
+        fp.append(leer, med);
+        fp.title = ejPct(m.tot.G / m.tot.P) + ' del presupuesto gastado' + (m.tot.C > 0.5 ? ', ' + ejPesos(m.tot.C) + ' comprometidos en OC' : '')
+          + (av.valor !== null ? '; la raya naranja es el avance (' + ejPct(av.valor) + ')' : '');
+      } else if (m.tot.G > 0.5) {
+        leer.append(crear('span', null, 'Gastado '), crear('b', null, ejPesos(m.tot.G)), crear('span', null, ' · sin presupuesto'));
+        fp.append(leer);
+      } else fp.append(crear('span', 'ej-t-pres-txt', 'Sin presupuesto ni gastos registrados'));
+      datos.append(fp);
+      const nivel = ejNivelMargen(m.margen, m);
+      if (m.margen !== null) {
+        const s = crear('span', 'ej-semaforo' + (nivel ? '' : ' sin'), (m.pres ? 'Margen estimado ' : 'Margen con lo anotado ') + ejPct(m.margen));
+        if (nivel) s.dataset.nivel = nivel;
+        if (!m.pres) s.title = 'Sin presupuesto: solo con lo gastado, comprometido y proyectado que está anotado';
+        datos.append(s);
+      } else if (!m.venta) datos.append(crear('span', 'ej-t-fila', 'Sin venta'));
     }
-    const f2 = crear('span', 'ej-t-fila');
-    const nivel = ejNivelMargen(m.margen, m);
-    if (!ejClave(t)) f2.append(crear('span', null, 'Su carpeta no lleva el N° de la Planilla de Ingreso'));
-    else if (m.margen !== null) {
-      const s = crear('span', 'ej-semaforo' + (nivel ? '' : ' sin'), (m.pres ? 'Margen estimado ' : 'Margen con lo anotado ') + ejPct(m.margen));
-      if (nivel) s.dataset.nivel = nivel;
-      if (!m.pres) s.title = 'Sin presupuesto: solo con lo gastado, comprometido y proyectado que está anotado';
-      f2.append(s);
-    } else f2.append(crear('span', null, m.venta ? 'Sin presupuesto ni gastos' : 'Sin venta'));
-    const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
-    if (decidir) f2.append(crear('span', null, '· ' + pl(decidir, 'compra por decidir', 'compras por decidir')));
-    b.append(f2);
+    cuerpo.append(datos);
+    b.append(cuerpo);
+    // Lo que falta hacer en el proyecto: cada cosa con su número (lo mismo que dice su resumen)
+    if (ejClave(t)) {
+      const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
+      const sinAsoc = (m.docs || []).filter((d) => !m.asoc.get(d.ref)).length;
+      const pend = ejDe(t, 'pendiente').filter((x) => !x.listo).length;
+      const tareas = [[decidir, 'billetera', pl(decidir, 'compra por decidir', 'compras por decidir')],
+        [sinAsoc, 'documento', pl(sinAsoc, 'factura sin asociar', 'facturas sin asociar')],
+        [pend, 'portapapeles', pl(pend, 'pendiente', 'pendientes')]].filter(([n]) => n > 0);
+      if (tareas.length) {
+        const ul = crear('span', 'ej-t-tareas');
+        tareas.forEach(([, ico, txt]) => { const x = crear('span', 'ej-t-tarea'); x.append(icono(ico, 14), crear('span', null, txt)); ul.append(x); });
+        b.append(ul);
+      }
+    }
     if (t.chips.length) {
       const ch = crear('span', 'rc-chips');
       t.chips.slice(0, 3).forEach((c) => { const x = crear('span', 'rc-chip', c.texto); if (c.nivel) x.dataset.nivel = c.nivel; ch.append(x); });
@@ -11836,6 +11883,27 @@
     b.dataset.nivel = salud.nivel === 'bad' || salud.nivel === 'warn' ? salud.nivel : '';
     b.addEventListener('click', () => ejElegir(t.clave));
     return b;
+  }
+  // El avance en un anillo (2026-11-09): el número adentro; sin dato, el anillo vacío con un guion
+  function ejAnilloEl(valor, extra) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const caja = crear('span', 'ej-anillo' + (extra ? ' ' + extra : ''));
+    caja.setAttribute('role', 'img');
+    caja.setAttribute('aria-label', valor === null ? 'Avance sin dato' : 'Avance ' + ejPct(valor) + (extra === 'pedido' ? ', pedido al Análisis Financiero' : ''));
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 44 44');
+    svg.setAttribute('aria-hidden', 'true');
+    const c = (cl, d) => {
+      const e = document.createElementNS(NS, 'circle');
+      e.setAttribute('class', cl); e.setAttribute('cx', '22'); e.setAttribute('cy', '22'); e.setAttribute('r', '18');
+      if (d !== undefined) { e.setAttribute('pathLength', '100'); e.setAttribute('stroke-dasharray', d + ' 100'); }
+      return e;
+    };
+    svg.append(c('pista'));
+    if (valor > 0) svg.append(c('arco', Math.min(100, Math.round(valor * 100))));
+    caja.append(svg, crear('b', null, valor === null ? '—' : ejPct(valor)), crear('small', null, 'avance'));
+    if (extra === 'pedido') caja.title = 'Pedido al Análisis Financiero: llega con la próxima vuelta del procesador';
+    return caja;
   }
   // Lo gastado y comprometido frente al avance: con 40 % de avance y 60 % del presupuesto gastado, se avisa
   function ejGastoSobreAvance(m) {

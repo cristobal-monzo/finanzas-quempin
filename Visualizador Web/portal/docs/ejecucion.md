@@ -139,3 +139,7 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   terminaría sobre el presupuesto y los avisos del Recorrido. La tarjeta lo dice con ícono y palabra (`.ej-salud`) y su
   raya de color sale de ahí. Nunca solo el color: íconos `visto`, `exclama`, `cruz`, `guion`.
 - Prueba: `test_el_mapa_de_salud_ubica_cada_proyecto_y_filtra_por_estado`.
+- **Vuelta 2, la tarjeta de la lista** (`ejTarjetaEl`, `ejAnilloEl`): el avance en un anillo (naranjo si es un pedido que
+  espera), lo gastado y comprometido en una barra contra el presupuesto con la raya naranja del avance (si la barra pasa
+  la raya, gasta más de lo que avanza), el margen y, abajo, lo que falta hacer con su número (compras por decidir,
+  facturas sin asociar, pendientes). Bajo el título, dónde y su TAG, con el estado y el responsable a la derecha.
