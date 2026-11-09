@@ -33,6 +33,10 @@ y solo si algo cambió desde la última vez:
    dice ``enProcesador``; el equipo lo ve en su tablero).
 7c. UF del día: una vez al día, para que el tablero del Cotizador tenga una
    UF reciente de respaldo si mindicador.cl no responde (2026-10-19).
+7c2. Proyectos entregados (``cierre_entregados.py``, 2026-11-09): mueve a
+   «0 Proyectos Entregados <año>» la carpeta que pidió el Portal al cerrar un
+   proyecto, y lo que ya está ahí con la Planilla en «Adjudicado» lo pide
+   «Cerrado» con un mensaje (la Planilla la escribe planilla_escritura.py).
 7d. Carpetas de facturas de los proyectos (``carpetas_proyecto.py``,
    2026-10-28): crea la del Centro de Costos de lo recién adjudicado y deja
    en cada proyecto de Gestión de Proyectos el acceso directo web «Facturas
@@ -76,6 +80,7 @@ if str(AQUI) not in sys.path:
     sys.path.insert(0, str(AQUI))
 
 import carpetas_proyecto  # noqa: E402
+import cierre_entregados  # noqa: E402
 import documentos_cc  # noqa: E402
 import documentos_proyecto  # noqa: E402
 import esquemas  # noqa: E402
@@ -359,6 +364,15 @@ def _raices_facturas() -> dict:
     return {"CL": RAIZ_FACTURAS_CL, "PE": RAIZ_FACTURAS_CL.parent / "Perú"}
 
 
+def paso_entregados(raiz: Path, previo, forzar):
+    """Las carpetas que el Portal pidió llevar a «0 Proyectos Entregados», y lo que ya está ahí con la Planilla en
+    «Adjudicado» pasa a «Cerrado» (cierre_entregados.py, 2026-11-09). Corre en cada vuelta: lo que cambia son las
+    carpetas, no un archivo con firma. Su «firma» es lo que ya se pidió cerrar una vez."""
+    detalle, estado, _ = cierre_entregados.vuelta(raiz, ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, AQUI),
+                                                  previo if isinstance(previo, dict) else {})
+    return detalle, estado
+
+
 def paso_carpetas_proyecto(raiz: Path, previo, forzar):
     if not RAIZ_FACTURAS_CL.is_dir():
         return "el sitio del Centro de Costos no está sincronizado en este equipo", None
@@ -411,6 +425,7 @@ PASOS = (
     ("mercado-publico", paso_mercado_publico),
     ("oportunidades", paso_oportunidades),
     ("uf", paso_uf),
+    ("entregados", paso_entregados),
     ("carpetas-proyecto", paso_carpetas_proyecto),
     ("documentos-cc", paso_documentos_cc),
     ("proyectos", paso_proyectos),

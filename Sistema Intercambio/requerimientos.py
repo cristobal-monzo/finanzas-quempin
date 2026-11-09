@@ -77,6 +77,11 @@ NUMERICAS = {"presupuesto", "valorOfertado", "valorAdjudicado", "entregaDias", "
 CAMPOS_SUGERIBLES = {"estado": "estado", "valorOfertado": "valorOfertado", "valorAdjudicado": "valorAdjudicado"}
 TITULO_COLUMNA = {"estado": "Estado", "valorOfertado": "Valor ofertado (IVA inc)",
                   "valorAdjudicado": "Valor adjudicado (IVA inc)"}
+# Los estados de un requerimiento: los mismos del esquema editar-requerimiento y del Portal (PQ_ESTADOS). «Cerrado»
+# (2026-11-09, pedido del usuario): un proyecto adjudicado que ya se entregó; lo pone el Portal o el procesador cuando
+# su carpeta pasa a «0 Proyectos Entregados» (cierre_entregados.py). Para quien pregunta si se ganó, cuentan los dos.
+ESTADOS = ("Evaluación", "Ofertado", "Adjudicado", "Cerrado", "No adjudicado", "Descartado")
+ESTADOS_GANADOS = ("Adjudicado", "Cerrado")
 
 _ERROR_EXCEL = re.compile(r"^#(VALUE|REF|N/A|NAME|DIV/0|NUM|NULL|SPILL|CALC)[!?]?$", re.IGNORECASE)
 
@@ -255,7 +260,7 @@ def resumen(requerimientos: list[dict]) -> dict:
     for r in requerimientos:
         estado = r.get("estado") or "(sin estado)"
         por_estado[estado] = por_estado.get(estado, 0) + 1
-    adjudicados = por_estado.get("Adjudicado", 0)
+    adjudicados = sum(por_estado.get(e, 0) for e in ESTADOS_GANADOS)
     perdidos = por_estado.get("No adjudicado", 0)
     return {
         "total": len(requerimientos),
@@ -405,6 +410,9 @@ def decidir_sugerencia(mensaje: dict, requerimiento: dict | None) -> dict:
     for clave, nuevo in mensaje["cambios"].items():
         actual = requerimiento.get(CAMPOS_SUGERIBLES[clave])
         if _igual(actual, nuevo):
+            continue
+        # «Adjudicado» ya quedó atrás: el proyecto se entregó y está «Cerrado»
+        if clave == "estado" and nuevo == "Adjudicado" and actual in ESTADOS_GANADOS:
             continue
         falta[clave] = nuevo
         if clave in reemplaza and not _igual(actual, reemplaza[clave]):

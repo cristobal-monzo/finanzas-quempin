@@ -281,3 +281,19 @@ def test_sin_datos_vinculados_no_cambia_nada(tmp_path):
     ruta = _planilla(tmp_path, [_fila(1, ubicacion="#VALUE!")])
     assert rq.entidades_vinculadas(ruta) == {}
     assert rq.leer_planilla(ruta)[0]["ubicacion"] is None
+
+
+def test_cerrado_cuenta_como_ganado(tmp_path):
+    """2026-11-09: un proyecto entregado («Cerrado») se ganó; si no, la tasa de adjudicación bajaría sola."""
+    reqs = [{"numero": i, "estado": e} for i, e in enumerate(["Adjudicado", "Cerrado", "No adjudicado", "No adjudicado"], 1)]
+    assert rq.resumen(reqs)["tasaAdjudicacion"] == 0.5
+    assert rq.ESTADOS_GANADOS == ("Adjudicado", "Cerrado")
+
+
+def test_una_sugerencia_de_adjudicado_ya_superada_cuenta_como_aplicada():
+    m = {"esquema": ic.ESQUEMA, "id": "sug000001", "tipo": rq.TIPO_SUGERENCIA, "destino": rq.DESTINO,
+         "origen": {"herramienta": "mercado-publico", "enviado": "2026-11-09T10:00:00-03:00"},
+         "requerimiento": {"numero": 1}, "cambios": {"estado": "Adjudicado"}, "fuente": {"herramienta": "mercado-publico"}}
+    assert rq.decidir_sugerencia(m, {"numero": 1, "estado": "Cerrado"})["accion"] == "aplicado"
+    assert rq.decidir_sugerencia(m, {"numero": 1, "estado": "Ofertado"})["accion"] == "pendiente"
+

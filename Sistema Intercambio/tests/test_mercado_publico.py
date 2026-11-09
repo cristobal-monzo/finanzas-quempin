@@ -162,6 +162,10 @@ def test_planilla_adjudicada_sin_valor_solo_completa_el_valor():
     lic = mp.leer_licitacion(_licitacion("1234-56-LE26"), "1234-56-LE26")
     assert mp.decidir(_req(280, estado="Adjudicado"), lic, [])["cambios"] == {"valorAdjudicado": 1190000}
     assert mp.decidir(_req(280, estado="Adjudicado", valorAdjudicado=5), lic, [])["cambios"] is None   # no pisa
+    # Ya entregado (2026-11-09): «Cerrado» también es ganado, no se le sugiere volver a «Adjudicado»
+    assert mp.decidir(_req(280, estado="Cerrado", valorAdjudicado=5), lic, [])["cambios"] is None
+    perdida = mp.leer_licitacion(_licitacion("1-2-LE26", adjudicados=[("99.999.999-9", "Otra SpA", 1, 900000)]), "1-2-LE26")
+    assert "«Cerrado»" in mp.decidir(_req(1, estado="Cerrado"), perdida, [])["revisar"]
 
 
 def test_perdida_sugiere_no_adjudicado_solo_si_estaba_ofertado():

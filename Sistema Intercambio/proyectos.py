@@ -44,7 +44,8 @@ PUBLICACION = "proyectos"
 HERRAMIENTA = "procesador"
 # Estados de la Planilla que entran aunque no tengan nada colgando: lo que
 # sigue vivo. Lo descartado y lo no adjudicado solo entra si algo lo nombra.
-ESTADOS_VIVOS = {"Evaluación", "Ofertado", "Adjudicado"}
+# «Cerrado» (2026-11-09): ya entregado, pero sigue siendo un proyecto con sus carpetas, su TAG y sus documentos.
+ESTADOS_VIVOS = {"Evaluación", "Ofertado", "Adjudicado", "Cerrado"}
 _CARPETA_CON_NUMERO = re.compile(r"^\s*(\d{1,4}t?)\s*[.\-_)]\s*(.+)$", re.IGNORECASE)
 # El registro de OC de cada Centro de Costos (gitignoreado: lleva montos), por país
 RAIZ_FINANZAS = Path(__file__).resolve().parent.parent

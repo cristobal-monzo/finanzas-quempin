@@ -83,7 +83,8 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
   Financiero; `formulacion` → Formulador; `borrador-cotizacion` y `registro-documento` →
   Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento` y `editar-requerimiento` → Planilla;
   `documento-cc` → Centro de Costos; `observacion` → mejora continua (la atiende una persona con
-  `/Observaciones_Portal`, `observaciones.py`); `pedir-vuelta` → procesador.
+  `/Observaciones_Portal`, `observaciones.py`); `pedir-vuelta` → procesador; `mover-carpeta` → carpetas
+  de los proyectos (`cierre_entregados.py`).
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
   `oportunidades`, `proyectos`, `centro-costos-carpetas`, `documentos-proyecto`, `estado`, `planificacion-semana`,
@@ -118,8 +119,9 @@ de sugerencias → Análisis Financiero (`run` solo si llegaron envíos no inten
 cuyo esquema declara `destino: analisis-financiero`; si no, y cambió CC o el libro, solo
 `intercambio publicar`) → precios de referencia → Sistema QUEMPIN (`python -m
 app.integraciones.ecosistema procesar`, con su Python 3.11) → Mercado Público (consulta siempre:
-lo que cambia está en la API) → la UF del día (`Cotizador_Historico/driver.py uf`) → carpetas de
-facturas → documentos del Portal (`documentos_cc.py`) → `proyectos.json` → `estado.json`.
+lo que cambia está en la API) → la UF del día (`Cotizador_Historico/driver.py uf`) → proyectos
+entregados (`cierre_entregados.py`, cada vuelta) → carpetas de facturas → documentos del Portal
+(`documentos_cc.py`) → `proyectos.json` → `estado.json`.
 
 - **A pedido**: «Actualizar datos» del Recorrido en el Portal deja un `pedir-vuelta` en el buzón. La tarea «Pedidos al
   procesador QUEMPIN» (`tarea_pedidos.cmd`, cada minuto) corre `procesar.py --si-hay-pedido`: sin pedido termina sin
@@ -188,6 +190,20 @@ adjudicarse. Cada herramienta guarda el `req` en su dato (AF: columna «N° Requ
 `vinculos.requerimiento`; Sistema QUEMPIN: `proyecto.req`) y `proyectos.py` **solo junta**: una entrada
 por requerimiento vivo o nombrado por algo, con su TAG, formulaciones, cotizaciones, OC y carpetas. Un
 `req` con dos TAG va a `conflictos`, no se adivina; un TAG sin `req`, a `sinVincular`.
+
+## Proyectos entregados y el estado «Cerrado» (2026-11-09)
+
+Pedido del usuario: un proyecto cuya carpeta se mueve a mano a «0 Proyectos Entregados <año>» de Gestión de Proyectos
+queda «Cerrado» en la Planilla en la vuelta siguiente; y al cambiar uno a «Cerrado» en el Portal, una opción para mover
+su carpeta ahí. Paso `entregados` del procesador (`cierre_entregados.py`; detalle en [docs/tipos.md](docs/tipos.md)):
+
+- **El procesador sigue sin escribir la Planilla**: pide el «Cerrado» con un `editar-requerimiento` y lo escribe
+  `planilla_escritura.py`. Solo cierra lo que la Planilla tiene «Adjudicado», una vez por N° (`cerrados` en su estado:
+  si alguien lo reabre, se respeta), y como máximo 5 por vuelta (`--confirmar` para más).
+- **Mover** solo lo pedido desde el Portal (`mover-carpeta`), con un cambio de nombre en el mismo disco; nunca pisa.
+- «Cerrado» cuenta como ganado en todo lo que preguntaba por «Adjudicado» (`requerimientos.ESTADOS_GANADOS`: tasa de
+  adjudicación, Mercado Público, Oportunidades, Flujo de Caja, carpetas del Centro de Costos, el Portal).
+- `py -3.14 cierre_entregados.py` dice qué cerraría, sin tocar nada.
 
 ## Respaldo diario (2026-11-09)
 

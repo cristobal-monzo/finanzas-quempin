@@ -117,7 +117,7 @@ def ganados(requerimientos: list[dict], proyectos_af: list[dict], repositorio: l
     for p in proyectos_af:
         anotar(_req(p.get("req")), p.get("nombre"), _pais(p.get("pais")), 1)
     for r in requerimientos:
-        if r.get("estado") == "Adjudicado":
+        if r.get("estado") in ("Adjudicado", "Cerrado"):      # requerimientos.ESTADOS_GANADOS
             anotar(_req(r.get("numero")), r.get("titulo"), "CL", 2)
     for item in repositorio:
         d = item.get("datos") or {}

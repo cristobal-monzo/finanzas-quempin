@@ -494,6 +494,10 @@ def _estado_planilla(req: dict) -> str:
     return requerimientos.normalizar_encabezado(req.get("estado") or "")
 
 
+# «Adjudicado» y «Cerrado» (entregado, 2026-11-09): los dos dicen que se ganó
+_GANADOS = {requerimientos.normalizar_encabezado(e) for e in requerimientos.ESTADOS_GANADOS}
+
+
 def valor_con_iva(lic: dict | None, ordenes: list[dict]) -> tuple[int | None, str]:
     """El valor adjudicado con IVA y de dónde sale. Si las OC de esa
     adquisición suman exactamente el neto adjudicado, se usa su total real
@@ -533,7 +537,7 @@ def decidir(req: dict, lic: dict | None, ordenes: list[dict]) -> dict:
                           + (f" de {ordenes[0]['comprador']}" if ordenes[0].get("comprador") else ""))
         motivo = "Mercado Público: " + "; ".join(partes) + (f". Valor: {_pesos(valor)} ({como})." if valor else ".")
         cambios = {}
-        if estado != "adjudicado":
+        if estado not in _GANADOS:
             cambios["estado"] = "Adjudicado"
         if valor and not req.get("valorAdjudicado"):
             cambios["valorAdjudicado"] = valor
@@ -548,9 +552,9 @@ def decidir(req: dict, lic: dict | None, ordenes: list[dict]) -> dict:
             motivo = f"Mercado Público: {codigo} {TEXTO_RESULTADO[resultado].lower()}."
         if estado == "ofertado":
             return {"cambios": {"estado": "No adjudicado"}, "motivo": motivo, "revisar": None}
-        if estado == "adjudicado":
+        if estado in _GANADOS:
             return {"cambios": None, "motivo": motivo,
-                    "revisar": f"La planilla dice «Adjudicado», pero {motivo[len('Mercado Público: '):]} ¿Es el código correcto?"}
+                    "revisar": f"La planilla dice «{req.get('estado')}», pero {motivo[len('Mercado Público: '):]} ¿Es el código correcto?"}
         if estado in ("evaluacion", ""):
             return {"cambios": None, "motivo": motivo,
                     "revisar": f"Sigue en «{req.get('estado') or 'sin estado'}» y la licitación ya se resolvió "

@@ -242,6 +242,8 @@ def test_las_celdas_de_un_cambio():
 def entorno(tmp_path, monkeypatch):
     raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
     monkeypatch.setattr(pe, "ESTADO", tmp_path / "estado.json")
+    # La lista de Estado del Excel ya está al día: tiene su propia prueba
+    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS)}), encoding="utf-8")
     escritas = []
 
     def falso_escribir(ruta, operaciones, columnas=None, limite=600):
@@ -265,6 +267,8 @@ def entorno(tmp_path, monkeypatch):
             if o["op"] == "fijar":
                 hoja.cell(o["fila"], 1).value = o["numero"]
                 resultados.append({"i": i, "ok": True, "fila": o["fila"]})
+            elif o["op"] == "estados":
+                resultados.append({"i": i, "ok": True, "fila": 0})
             elif o["op"] == "nueva":
                 fila = max(r for r in range(2, hoja.max_row + 1) if hoja.cell(r, 2).value or r == 2) + 1
                 # Como el Excel desde el 2026-11-06: el N° lo da la fórmula =SI(B<>"";FILA()-1;"")
@@ -561,3 +565,38 @@ def test_simular_no_escribe_ni_archiva(tmp_path, entorno):
     r = pe.vuelta(raiz, ruta, simular=True)
     assert [o["op"] for o in r["operaciones"]] == ["editar"]
     assert escritas == [] and _archivados(raiz) == {}
+
+
+# ── la lista de Estado del Excel (2026-11-09: «Cerrado») ────────────────────
+
+def test_la_lista_de_estado_del_excel_se_pone_al_dia_una_vez(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text("{}", encoding="utf-8")
+    pe.vuelta(raiz, ruta)
+    (op,) = escritas[0]
+    assert op["op"] == "estados" and op["lista"] == list(rq.ESTADOS) and op["encabezados"] == {op["letra"]: "Estado"}
+    assert "Cerrado" in op["lista"]
+    assert pe.vuelta(raiz, ruta)["detalle"] == "sin cambios" and len(escritas) == 1
+
+
+def test_si_excel_no_puede_cambiar_la_lista_lo_intenta_tres_veces(tmp_path, entorno, monkeypatch):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(pe, "escribir", lambda r, ops, c=None, limite=600: (escritas.append(ops), {"estado": "ok", "resultados": [{"i": 0, "ok": False}]})[1])
+    for _ in range(5):
+        pe.vuelta(raiz, ruta)
+    assert len(escritas) == pe.INTENTOS_LISTA
+
+
+def test_la_lista_del_excel_es_la_del_esquema_y_la_operacion_existe():
+    esquema = json.loads((esquemas.CARPETA / "mensajes" / "editar-requerimiento.json").read_text(encoding="utf-8"))
+    assert list(rq.ESTADOS) == esquema["properties"]["cambios"]["properties"]["estado"]["enum"]
+    ps1 = pe.SCRIPT_EXCEL.read_text(encoding="utf-8-sig")
+    assert "$o.op -eq 'estados'" in ps1
+    # Vuelve a proteger la hoja con los mismos permisos que tenía (ordenar, filtrar...), no con los de fábrica
+    assert "Proteccion-De $hoja" in ps1 and "Proteger-Como $hoja $como" in ps1 and "Protect([Type]::Missing, $true" not in ps1
+    assert pe.SCRIPT_EXCEL.read_bytes()[:3] == bytes([0xEF, 0xBB, 0xBF]), "el .ps1 va con BOM (PowerShell 5.1)"

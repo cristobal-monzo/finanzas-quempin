@@ -95,7 +95,8 @@ RANGO_TIPO_UTM = {
 # UnidadTiempoDuracionContrato -> meses (1 horas, 2 días, 3 semanas, 4 meses, 5 años).
 UNIDAD_A_MESES = {1: 1 / 720, 2: 1 / 30, 3: 7 / 30, 4: 1, 5: 12}
 
-ESTADOS_OFERTADOS = {"adjudicado", "no adjudicado", "ofertado", "evaluacion"}
+ESTADOS_GANADOS = {requerimientos.normalizar_encabezado(e) for e in requerimientos.ESTADOS_GANADOS}   # con «cerrado»
+ESTADOS_OFERTADOS = ESTADOS_GANADOS | {"no adjudicado", "ofertado", "evaluacion"}
 K_PARECIDAS = 7
 SIMILITUD_PARECIDA = 0.25
 SIN_FICHA = "sin ficha todavía (se pide en la próxima vuelta)"
@@ -218,7 +219,7 @@ class Historia:
             codigo = mp.codigo_de(r.get("referencia"))
             self.items.append({
                 "req": r.get("numero"), "titulo": mp._texto(r.get("titulo"), 120), "estado": r.get("estado") or "",
-                "ofertado": estado in ESTADOS_OFERTADOS, "ganado": estado == "adjudicado",
+                "ofertado": estado in ESTADOS_OFERTADOS, "ganado": estado in ESTADOS_GANADOS,
                 "perdido": estado == "no adjudicado", "codigo": codigo, "unidad": unidad_de(codigo),
                 "compraAgil": mp.es_compra_agil(codigo or ""),
                 "raices": raices(r.get("titulo")),

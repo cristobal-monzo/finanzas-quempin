@@ -12,7 +12,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 
 | Carpeta o archivo | Qué hay |
 |---|---|
-| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, lo ingresado en la Planilla de Ingreso del Portal, sugerencias para la Planilla, documentos para el Centro de Costos, las observaciones que el equipo reporta con clic derecho en el Portal y los pedidos de «Actualizar datos» al procesador. |
+| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, lo ingresado en la Planilla de Ingreso del Portal, sugerencias para la Planilla, documentos para el Centro de Costos, las observaciones que el equipo reporta con clic derecho en el Portal, los pedidos de «Actualizar datos» al procesador y los de llevar la carpeta de un proyecto cerrado a «0 Proyectos Entregados». |
 | `buzon/adjuntos/` | Los archivos (facturas, boletas) que se suben desde «Subir documentos» del Portal, uno por envío, hasta que el procesador los deja en el Centro de Costos; y las imágenes de pantalla de una observación, hasta que se revisa. |
 | `procesado/` | Envíos ya atendidos, por mes, con su resultado: aplicado, sin cambios, reemplazado por uno más reciente, rechazado o descartado. |
 | `publicado/` | Lo que cada herramienta comparte con las demás (ver abajo). Un archivo se reescribe solo cuando cambia lo que dice. |
@@ -50,6 +50,12 @@ Los documentos subidos desde el Portal («Subir documentos») los copia a
 pisar ningún archivo. Desde ahí se registran con `/Registro_Centro_de_Costos`,
 igual que los subidos a SharePoint. Si un archivo no termina de llegar en 7
 días, el envío se rechaza y el Portal lo muestra como «No se pudo».
+
+Cuando la carpeta de un proyecto pasa a «0 Proyectos Entregados <año>» en
+«Gestión de Proyectos», el procesador lo marca «Cerrado» en la Planilla de
+Ingreso (si estaba «Adjudicado»). Y al cambiar un proyecto a «Cerrado» desde la
+Planilla del Portal, se puede pedir ahí mismo que su carpeta pase a esa
+carpeta: la mueve el procesador, sin pisar ninguna otra.
 
 Cuando un proyecto se adjudica (en el Formulador, la Planilla o el Análisis
 Financiero), el procesador crea su carpeta «N°. Nombre» en «Facturas y

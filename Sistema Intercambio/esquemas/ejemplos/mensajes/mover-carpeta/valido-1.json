@@ -1,0 +1,16 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "ca7e0000ca7e0000ca7e0001",
+  "tipo": "mover-carpeta",
+  "destino": "carpetas-proyecto",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "NB",
+    "enviado": "2026-11-09T18:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 296,
+    "titulo": "Sala de calderas de prueba"
+  },
+  "estado": "Cerrado"
+}

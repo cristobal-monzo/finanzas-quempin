@@ -31,7 +31,15 @@ que de verdad se usan).
   - lo que no quedó en el Excel esta semana (`rechazado`, `reemplazado`);
   - las filas del Excel que aquí no se ven: N° repetido o sin N°, de `datos.avisos` de la publicación;
   - lo último del portal con su resultado, con «Retirar» para lo que todavía espera.
-- **El Recorrido** abre la fila de un N° con `RC_IR.planilla(n)` → `pqIrA(n)`.
+- **«Cerrado» y su carpeta** (2026-11-09, pedido del usuario): «Cerrado» es un estado más (adjudicado y ya entregado). Al
+  elegirlo en una fila que ya existe aparece `#pqMoverCampo` (`pqVerMover`): «Mover su carpeta a «0 Proyectos Entregados
+  <año>»», con la carpeta de su N° en la raíz de Gestión (`pqCarpetaGestion`, de `rc.datos.gestion`). Marcada si recién se
+  cierra; sin marcar si la fila ya estaba «Cerrado»; deshabilitada si no hay una sola carpeta con ese N°. Al guardar deja,
+  además del `editar-requerimiento`, un `mover-carpeta` (`pqEnviarMover`) y un `pedir-vuelta` (`rcPedirVuelta`): la mueve el
+  procesador (`Sistema Intercambio/cierre_entregados.py`). Al revés también: una carpeta movida a mano a los entregados pasa
+  la fila a «Cerrado» en la vuelta siguiente del procesador.
+- **El Recorrido** abre la fila de un N° con `RC_IR.planilla(n)` → `pqIrA(n)`. Un «Cerrado» va a su «Cierre»
+  (`rcCerradoPlanilla`); para los avisos de «corresponde Adjudicado» cuenta como ganado (`RC_GANADOS`).
 - **Sin carpeta conectada** (un teléfono, otro computador) la vista dice qué falta y ofrece abrir el Excel, que era lo que
   hacía antes de ser una vista.
 - **No se borran filas**: el N° es la clave de carpetas, formulaciones y fichas. Lo que no sigue queda «Descartado».

@@ -5521,6 +5521,123 @@ def test_cambiar_un_requerimiento_manda_solo_lo_cambiado_y_lo_que_se_veia(navega
     pagina.context.close()
 
 
+# ── «Cerrado» y la carpeta a «0 Proyectos Entregados» (2026-11-09) ──────────
+
+def _con_gestion(*carpetas, estados=None):
+    """La carpeta de prueba con estas carpetas en la raíz de Gestión de Proyectos (proyectos.json, «gestion») y, si se
+    dan, otros estados en la Planilla."""
+    base = _intercambio_de_prueba()
+    sobre = base["publicado/proyectos.json"]
+    sobre["datos"]["gestion"] = [{"carpeta": c, "req": c.split(".")[0]} for c in carpetas]
+    extra = {"publicado/proyectos.json": sobre}
+    if estados:
+        reqs = base["publicado/requerimientos.json"]
+        for r in reqs["datos"]["requerimientos"]:
+            r["estado"] = estados.get(r["numero"], r["estado"])
+        extra["publicado/requerimientos.json"] = reqs
+    return extra
+
+
+def _mover_pedidos(pagina):
+    return [m for m in pagina.evaluate(JS_BUZON).values() if m.get("tipo") == "mover-carpeta"]
+
+
+def test_cerrar_un_requerimiento_ofrece_mover_su_carpeta_a_los_entregados(navegador, sitio):
+    """Pedido del 2026-11-09: al cambiar un proyecto a «Cerrado» desde el Portal, una opción para llevar su carpeta de
+    Gestión de Proyectos a «0 Proyectos Entregados <año>». La mueve el procesador (cierre_entregados.py)."""
+    from datetime import date
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="NB", extra=_con_gestion("908. En obra"))
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-abrir').click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert "Cerrado" in dlg.locator("#pqEstado option").all_inner_texts()
+    # Solo aparece al elegir «Cerrado», ya marcada y diciendo qué carpeta y adónde
+    assert dlg.locator("#pqMoverCampo").is_hidden()
+    dlg.locator("#pqEstado").select_option("Cerrado")
+    assert dlg.locator("#pqMoverCampo").is_visible() and dlg.locator("#pqMover").is_checked()
+    assert dlg.locator("#pqMoverTxt").inner_text() == f"Mover su carpeta a «0 Proyectos Entregados {date.today().year}»"
+    assert "908. En obra" in dlg.locator("#pqMoverDe").inner_text()
+    # Volver a otro estado la esconde
+    dlg.locator("#pqEstado").select_option("Adjudicado")
+    assert dlg.locator("#pqMoverCampo").is_hidden()
+    dlg.locator("#pqEstado").select_option("Cerrado")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (editar,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert editar["cambios"] == {"estado": "Cerrado"} and editar["reemplaza"] == {"estado": "Adjudicado"}
+    (mover,) = _mover_pedidos(pagina)
+    assert mover["destino"] == "carpetas-proyecto" and mover["estado"] == "Cerrado"
+    assert mover["requerimiento"] == {"numero": 908, "titulo": "En obra"} and mover["origen"]["usuario"] == "NB"
+    assert _esquemas().validar_mensaje(editar) == [] and _esquemas().validar_mensaje(mover) == []
+    # Y una vuelta del procesador, para que no espere la de cada 2 horas
+    assert any(m.get("tipo") == "pedir-vuelta" for m in pagina.evaluate(JS_BUZON).values())
+    assert "Su carpeta pasa a «0 Proyectos Entregados»" in pagina.locator("#aviso").inner_text()
+    assert pagina.locator('#pqFilas tr[data-n="908"] .pq-est').inner_text() == "Cerrado"
+    assert not errores
+    pagina.context.close()
+
+
+def test_cerrar_sin_mover_la_carpeta_o_sin_carpeta_en_gestion(navegador, sitio):
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra=_con_gestion("908. En obra"))
+    dlg = pagina.locator("#dlgPlanilla")
+    # Desmarcada: solo cambia el estado
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-abrir').click()
+    dlg.locator("#pqEstado").select_option("Cerrado")
+    dlg.locator("#pqMover").uncheck()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert len(_pedidos_planilla(pagina, "editar-requerimiento")) == 1 and _mover_pedidos(pagina) == []
+    # Sin carpeta con su N° en Gestión: la opción se ve, pero no se puede marcar
+    pagina.locator('#pqFilas tr[data-n="907"] .pq-abrir').click()
+    dlg.locator("#pqEstado").select_option("Cerrado")
+    assert dlg.locator("#pqMoverCampo").is_visible() and dlg.locator("#pqMover").is_disabled()
+    assert not dlg.locator("#pqMover").is_checked()
+    assert "Sin carpeta con el N° 907" in dlg.locator("#pqMoverTxt").inner_text()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert _mover_pedidos(pagina) == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_requerimiento_ya_cerrado_con_su_carpeta_en_gestion_no_la_mueve_sin_pedirlo(navegador, sitio):
+    """Abrir una fila ya «Cerrado» para cambiar otra cosa no mueve nada; la opción está, sin marcar."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra=_con_gestion("908. En obra", estados={908: "Cerrado"}))
+    dlg = pagina.locator("#dlgPlanilla")
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-abrir').click()
+    assert dlg.locator("#pqMoverCampo").is_visible() and not dlg.locator("#pqMover").is_checked()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert _mover_pedidos(pagina) == [] and "No cambiaste nada" in pagina.locator("#aviso").inner_text()
+    # Marcada sin cambiar nada más: solo el pedido de mover
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-abrir').click()
+    dlg.locator("#pqMover").check()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert len(_mover_pedidos(pagina)) == 1 and _pedidos_planilla(pagina, "editar-requerimiento") == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_cerrado_en_la_planilla_va_al_cierre_del_recorrido(navegador, sitio):
+    """908 tiene ficha en el Análisis (40 % de avance): «Cerrado» en la Planilla lo lleva al «Cierre», sin el aviso de que
+    corresponde «Adjudicado», y pide dejar el avance en 100 %."""
+    pagina, errores = _portal_con_datos(navegador, sitio)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _con_gestion(estados={908: "Cerrado"}))
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    columnas = pagina.evaluate(JS_COLUMNAS)
+    assert "req-908" in columnas["cierre"] and "req-908" not in columnas["ejecucion"]
+    tarjeta = pagina.locator('#rcTablero .rc-tarjeta[data-clave="req-908"]')
+    tarjeta.click()
+    texto_ficha = pagina.locator("body").inner_text()
+    assert "corresponde «Adjudicado»" not in texto_ficha
+    assert "40 % de avance" in texto_ficha
+    assert not errores
+    pagina.context.close()
+
+
 def test_la_planilla_muestra_lo_que_espera_de_todo_el_equipo_y_lo_que_no_se_pudo(navegador, sitio):
     from datetime import date
     mes = date.today().strftime("%Y-%m")

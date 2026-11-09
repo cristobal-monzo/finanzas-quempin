@@ -17,6 +17,15 @@ módulo es el puente, en los dos sentidos:
   `editar-requerimiento` con lo que la persona marcó. Además de las columnas del Portal, puede llevar
   `SOLO_FORMULADOR`: Presupuesto, Valor ofertado y Valor adjudicado. Un proyecto sin N° va por `nuevo-requerimiento`.
   Las sugerencias `actualizar-requerimiento` siguen igual y se cierran solas cuando la planilla ya muestra lo sugerido.
+- **Procesador → Excel** (2026-11-09): `{estado: "Cerrado"}` para lo que está en «0 Proyectos Entregados» de Gestión con la
+  Planilla en «Adjudicado» (`cierre_entregados.py`). Es un `editar-requerimiento` como los demás, con `reemplaza`.
+- **La lista de Estado del Excel** (operación `estados` de `planilla_excel.ps1`, una vez; a la tercera que falla deja de
+  intentar): agrega «Cerrado» a la lista desplegable después de «Adjudicado», sin cambiar el orden ni los mensajes que ya
+  tiene, en las mismas celdas que ya tenían validación (medido en una copia el 2026-11-09: `B4:B287` y `B289` hasta el
+  final, separada con «;», el separador de listas de Windows en español), más el color de la fila y su línea en el Glosario.
+  La hoja está protegida sin contraseña: se quita la protección solo para esto y vuelve con los mismos permisos
+  (`Proteccion-De`/`Proteger-Como`; con la protección puesta, `Validation.Add` falla). `Intersect` se llama por
+  `.Application` (directo, PowerShell no encuentra la sobrecarga). Probada en una copia de la Planilla real.
 - **Excel → Portal**: si el archivo cambió, la vuelta republica
   `requerimientos.json` sin abrir Excel. Antes eso esperaba al procesador (hasta
   2 horas).

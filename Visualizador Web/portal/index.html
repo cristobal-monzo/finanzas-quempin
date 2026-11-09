@@ -1713,6 +1713,7 @@
   .pq-est[data-estado="Evaluación"]::before { background: var(--brand-orange); }
   .pq-est[data-estado="Ofertado"]::before { background: transparent; box-shadow: inset 0 0 0 2px var(--estado-warn); }
   .pq-est[data-estado="Adjudicado"]::before { background: var(--estado-ok); }
+  .pq-est[data-estado="Cerrado"]::before { background: transparent; box-shadow: inset 0 0 0 2px var(--estado-ok); }
   .pq-est[data-estado="No adjudicado"]::before { background: var(--estado-bad); }
   .pq-est[data-estado="Descartado"] { color: var(--texto-suave); }
   /* Ya tiene formulación en el Formulador */
@@ -1731,6 +1732,15 @@
   #dlgPlanilla { width: min(620px, calc(100vw - 24px)); }
   #dlgPlanilla .dlg-acc .cx-enlace { min-height: 44px; }
   .pq-formular { margin-right: auto; }
+  /* «Cerrado» con su carpeta en Gestión: llevarla a «0 Proyectos Entregados» (2026-11-09) */
+  .pq-mover { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-hairline); border-radius: 10px; cursor: pointer; }
+  .pq-mover input { flex: 0 0 auto; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--brand-orange); cursor: pointer; }
+  .pq-mover input:disabled { cursor: default; }
+  .pq-mover span { display: grid; gap: 2px; min-width: 0; }
+  .pq-mover b { font-size: 14px; color: var(--text-primary); }
+  .pq-mover small { font-size: 12px; color: var(--texto-suave); overflow-wrap: anywhere; }
+  .pq-mover:has(input:disabled) { cursor: default; }
+  .pq-mover:has(input:disabled) b { color: var(--texto-suave); font-weight: 600; }
   .pq-nota { display: inline-flex; align-self: center; }
   .pq-nota:has(+ .pq-formular[hidden]) { margin-right: auto; }
   .pq-fecha { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 6px; }
@@ -3324,6 +3334,7 @@
       <label class="pl-campo ej-ancho"><span>Título</span><input id="pqTitulo" type="text" maxlength="250" autocomplete="off" placeholder="Descripción breve del requerimiento"></label>
       <label class="pl-campo"><span>Estado</span><select id="pqEstado"></select></label>
       <label class="pl-campo"><span>Canal</span><select id="pqCanal"></select></label>
+      <label class="pq-mover ej-ancho" id="pqMoverCampo" hidden><input type="checkbox" id="pqMover"><span><b id="pqMoverTxt">Mover su carpeta a «0 Proyectos Entregados»</b><small id="pqMoverDe"></small></span></label>
       <label class="pl-campo"><span>Captador <i>(quien lo recibe)</i></span><input id="pqCaptador" type="text" maxlength="12" autocomplete="off" list="pqUsuarios"></label>
       <label class="pl-campo"><span>Evaluador <i>(quien lo evalúa)</i></span><input id="pqEvaluador" type="text" maxlength="12" autocomplete="off" list="pqUsuarios"></label>
       <label class="pl-campo"><span>Cliente</span><input id="pqCliente" type="text" maxlength="120" autocomplete="off" list="pqClientes"></label>
@@ -5218,6 +5229,7 @@
   ];
   const RC_ANTES_DE_OFERTAR = ['requerimiento', 'formulacion', 'cotizacion'];
   const RC_VIVOS = ['Evaluación', 'Ofertado', 'Adjudicado'];       // estados de la Planilla que siguen en curso
+  const RC_GANADOS = ['Adjudicado', 'Cerrado'];    // se adjudicó; «Cerrado» (2026-11-09): y ya se entregó
   const RC_EN_FORMULACION = ['Borrador', 'En revisión'];
   const RC_FUERA = ['Perdida', 'Descartada'];      // formulaciones que no siguen (Cerrada sí: va al «Cierre»)
   const RC_DIAS_ANTIGUO = 60;          // lo que lleva más que esto sin moverse va plegado al pie de su etapa
@@ -5349,6 +5361,21 @@
     t.antiguo = !!fin && rcDias(fin, hoy) < -RC_DIAS_ANTIGUO;
     t.orden = fin ? -fin.getTime() : MAXIMO;
   }
+  /* «Cerrado» en la Planilla de Ingreso (2026-11-09): entregado. Lo pone el Portal o el procesador cuando su carpeta pasa a
+     «0 Proyectos Entregados» (cierre_entregados.py). Va al «Cierre» aunque el Análisis Financiero no tenga el 100 %, como
+     lo marcado «Cerrada» en el Formulador, y sale de la Planificación semanal. */
+  function rcCerradoPlanilla(t, hoy) {
+    const fin = rcFecha(t.af && t.af.cierre);
+    const avance = t.af ? Math.max(0, Math.min(1, Number(t.af.avance) || 0)) : null;
+    t.etapa = 'cierre';
+    t.accion = { tipo: 'listo', corto: 'Cerrado', nivel: '', ir: t.af ? RC_IR.af(texto(t.af.tag).toUpperCase()) : RC_IR.planilla(t.req),
+      texto: 'Proyecto entregado: la Planilla de Ingreso lo dice «Cerrado» y ya no aparece en la Planificación semanal.'
+        + (t.af ? ' Su resultado está en el Análisis Financiero.' : '') };
+    t.chips = [{ texto: 'Cerrado', nivel: 'ok' }].concat(t.chips.filter((c) => /^Terminó/.test(c.texto)));
+    if (avance !== null && avance < 1) t.avisos.push('Está «Cerrado» en la Planilla de Ingreso, pero el Análisis Financiero tiene ' + Math.round(avance * 100) + ' % de avance: déjalo en 100 % en «Ingresar avance» para que su resultado cuente en el sesgo real.');
+    t.antiguo = !!fin && rcDias(fin, hoy) < -RC_DIAS_ANTIGUO;
+    t.orden = fin ? -fin.getTime() : MAXIMO;
+  }
   /* Dado por cerrado en la Planificación semanal (2026-10-26): un proyecto en ejecución que ya terminó y se entregó,
      aunque no haya pasado por el Formulador ni tenga el 100 % en el Análisis Financiero. Va al «Cierre» como los
      terminados; e es lo último que se guardó para su N° o su TAG (plCierres). */
@@ -5448,13 +5475,18 @@
     if (af) {
       rcEtapaAF(t, af, hoy);
       if (fe === 'Cerrada') rcCerrada(t, f, hoy);
+      else if (pe === 'Cerrado') rcCerradoPlanilla(t, hoy);
       else if (t.etapa === 'cierre' && fe === 'Adjudicada') t.avisos.push('Tiene 100 % de avance: márcalo «Cerrada» en el Seguimiento del Formulador para que quede descrito como terminado.');
-      if (pe && pe !== 'Adjudicado') t.avisos.push('La Planilla de Ingreso dice «' + pe + '», pero el proyecto ya tiene ficha en el Análisis Financiero: corresponde «Adjudicado».');
+      if (pe && !RC_GANADOS.includes(pe)) t.avisos.push('La Planilla de Ingreso dice «' + pe + '», pero el proyecto ya tiene ficha en el Análisis Financiero: corresponde «Adjudicado».');
       return t;
     }
     if (fe === 'Cerrada') {
       rcCerrada(t, f, hoy);
-      if (pe && pe !== 'Adjudicado') t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
+      if (pe && !RC_GANADOS.includes(pe)) t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
+      return t;
+    }
+    if (pe === 'Cerrado') {
+      rcCerradoPlanilla(t, hoy);
       return t;
     }
     if (pe === 'Adjudicado' || fe === 'Adjudicada' || t.gestion) {
@@ -5464,8 +5496,8 @@
             texto: 'Adjudicado. Pásalo a ejecución desde el Seguimiento del Formulador: sus costos y su venta llegan al Análisis Financiero en un solo envío.' }
         : { tipo: 'hacer', corto: 'Crear su ficha en el Análisis', nivel: 'warn', ir: RC_IR.herr('ingresar'),
             texto: 'Adjudicado y sin ficha en el Análisis Financiero. Créala en «Ingresar avance» con su TAG y este N°, para seguir su avance y sus costos.' };
-      if (fe === 'Adjudicada' && pe && pe !== 'Adjudicado') t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
-      else if (t.gestion && pe !== 'Adjudicado' && !rcEsTemporal(n)) t.avisos.push(rcAvisoGestion(t));
+      if (fe === 'Adjudicada' && pe && !RC_GANADOS.includes(pe)) t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
+      else if (t.gestion && !RC_GANADOS.includes(pe) && !rcEsTemporal(n)) t.avisos.push(rcAvisoGestion(t));
       const ref = cierre || rcFecha(r && r.apertura);
       t.antiguo = !!ref && rcDias(ref, hoy) < -RC_DIAS_ANTIGUO;
       t.orden = ref ? -ref.getTime() : MAXIMO;
@@ -10249,7 +10281,9 @@
      Solo las columnas que el equipo llena de verdad: las que tenían 45 % o más de casillas vacías o ilegibles (visita,
      visitador, presupuesto, valores, entrega y el contador de plazo) siguen solo en el Excel. Eval. y Cliente también las
      tenían contadas en toda la Planilla, pero se llenan en casi toda fila reciente y el usuario las dejó (2026-10-30). */
-  const PQ_ESTADOS = ['Evaluación', 'Ofertado', 'Adjudicado', 'No adjudicado', 'Descartado'];
+  // «Cerrado» (2026-11-09): adjudicado y ya entregado. Al elegirlo, el diálogo ofrece llevar su carpeta de Gestión de
+  // Proyectos a «0 Proyectos Entregados <año>» (pqVerMover); lo hace el procesador (cierre_entregados.py).
+  const PQ_ESTADOS = ['Evaluación', 'Ofertado', 'Adjudicado', 'Cerrado', 'No adjudicado', 'Descartado'];
   const PQ_CANALES = ['Mercado Público', 'Postventa', 'Sitio Web', 'RRSS', 'Ferias', 'Otro'];
   // Las mismas del esquema editar-requerimiento y de planilla_escritura.EDITABLES (test_portal.py las compara)
   const PQ_COLUMNAS = [
@@ -10517,6 +10551,48 @@
     $('#pqOriginalCampo').hidden = !pv;
     $('#pqReferenciaCampo').hidden = pv;
   }
+  /* «Cerrado» y su carpeta (2026-11-09, pedido del usuario: al cambiar un proyecto a «Cerrado», una opción para mover su
+     carpeta a la de entregados). La carpeta es la de su N° en la raíz de Gestión de Proyectos (proyectos.json, «gestion»);
+     si hay dos con el mismo N°, ninguna: eso lo decide una persona. El procesador la mueve (mensaje mover-carpeta,
+     cierre_entregados.py) cuando la Planilla ya dice «Cerrado», y nunca pisa otra con el mismo nombre. */
+  const PQ_ENTREGADOS = '0 Proyectos Entregados';
+  function pqCarpetaGestion(n) {
+    const hay = ((rc.datos && rc.datos.gestion) || []).filter((g) => texto(g && g.carpeta) && rcNum(g.req) === rcNum(n));
+    return hay.length === 1 ? texto(hay[0].carpeta) : null;
+  }
+  // Se muestra al elegir «Cerrado» en una fila que ya existe. Marcada si recién se cierra; sin marcar si ya estaba cerrado
+  // (abrir la fila para cambiar otra cosa no debe mover nada).
+  function pqVerMover(alAbrir) {
+    const a = pq.abierta;
+    const campo = $('#pqMoverCampo');
+    const caja = $('#pqMover');
+    const visible = !!a && !a.nuevo && $('#pqEstado').value === 'Cerrado';
+    const aparece = campo.hidden;
+    campo.hidden = !visible;
+    if (!visible) return;
+    const carpeta = pqCarpetaGestion(a.numero);
+    caja.disabled = !carpeta;
+    // Lo que la persona ya marcó o desmarcó se respeta mientras siga en «Cerrado»
+    if (alAbrir === true || aparece || !carpeta) caja.checked = !!carpeta && texto(a.fila && a.fila.estado) !== 'Cerrado';
+    $('#pqMoverTxt').textContent = carpeta ? 'Mover su carpeta a «' + PQ_ENTREGADOS + ' ' + new Date().getFullYear() + '»'
+      : 'Sin carpeta con el N° ' + a.numero + ' en Gestión de Proyectos';
+    $('#pqMoverDe').textContent = carpeta ? 'Gestión de Proyectos › ' + carpeta : 'Si ya está en «' + PQ_ENTREGADOS + '», no hay nada que mover.';
+  }
+  async function pqEnviarMover(numero, titulo) {
+    const enviado = scAhora();
+    const id = scId();
+    const origen = { herramienta: 'portal', enviado };
+    if (estado.usuario) origen.usuario = estado.usuario;
+    const requerimiento = { numero };
+    if (titulo) requerimiento.titulo = titulo;
+    const msg = { esquema: 'quempin.intercambio/1', id, tipo: 'mover-carpeta', destino: 'carpetas-proyecto', origen, requerimiento, estado: 'Cerrado' };
+    const nombre = enviado.slice(0, 19).replace(/[-:]/g, '').replace('T', '-') + '_portal_mover-carpeta_' + id + '.json';
+    const buzon = await rc.dir.getDirectoryHandle('buzon', { create: true });
+    const w = await (await buzon.getFileHandle(nombre, { create: true })).createWritable();
+    await w.write(JSON.stringify(msg, null, 2) + '\n');
+    await w.close();
+    return msg;
+  }
   // Sugerencias al escribir: el equipo y los captadores de la Planilla; las ubicaciones, de la más usada a la menos
   function pqListas() {
     const filas = pqFilas();
@@ -10530,7 +10606,7 @@
     llenar($('#pqLugares'), contar('ubicacion'));
     llenar($('#pqClientes'), contar('cliente'));
     // Para el proyecto original de una postventa: primero los adjudicados, del más nuevo al más antiguo
-    const orden = (r) => (/^adjudicad/i.test(texto(r.estado)) ? 0 : 1);
+    const orden = (r) => (/^(adjudicad|cerrad)/i.test(texto(r.estado)) ? 0 : 1);
     llenar($('#pqProyectos'), filas.filter((r) => rcNum(r.numero) && texto(r.titulo))
       .sort((a, b) => orden(a) - orden(b) || rcNum(b.numero) - rcNum(a.numero))
       .map((r) => (rcNum(r.numero) + '. ' + (apodoDe(r.numero) || rcLegible(r.titulo))).slice(0, 80)));
@@ -10553,6 +10629,7 @@
     $('#pqReferencia').value = texto(v.referencia);
     $('#pqOriginal').value = texto(v.canal) === 'Postventa' ? texto(v.referencia) : '';
     pqVerOriginal();
+    pqVerMover(true);
     pqPonerFecha('Ap', v.apertura);
     pqPonerFecha('Ci', v.cierre);
     pqListas();
@@ -10590,6 +10667,7 @@
       if (!f[campo] && $('#pq' + pre + 'H').value) { pqError('Falta la fecha de ' + nombre + ' de esa hora.', $('#pq' + pre + 'F')); return; }
     }
     let cuerpo, cambios = null;
+    const mover = !a.nuevo && !$('#pqMoverCampo').hidden && $('#pqMover').checked && !$('#pqMover').disabled ? pqCarpetaGestion(a.numero) : null;
     if (a.nuevo) {
       const req = { numero: a.numero };
       PQ_CAMPOS.forEach((c) => { if (f[c] !== null) req[c] = f[c]; });
@@ -10602,15 +10680,16 @@
         cambios[c] = f[c];
         reemplaza[c] = a.fila[c] === null || a.fila[c] === undefined || a.fila[c] === '' ? null : String(a.fila[c]);
       });
-      if (!Object.keys(cambios).length) { $('#dlgPlanilla').close(); avisar('No cambiaste nada: el N° ' + a.numero + ' queda como estaba.'); return; }
+      if (!Object.keys(cambios).length && !mover) { $('#dlgPlanilla').close(); avisar('No cambiaste nada: el N° ' + a.numero + ' queda como estaba.'); return; }
       const req = { numero: a.numero };
       if (texto(a.fila.titulo)) req.titulo = texto(a.fila.titulo);
-      cuerpo = { requerimiento: req, cambios, reemplaza };
+      cuerpo = Object.keys(cambios).length ? { requerimiento: req, cambios, reemplaza } : null;
     }
     pq.guardando = true;
     $('#pqGuardar').disabled = true;
     try {
-      await pqEnviar(a.nuevo ? 'nuevo-requerimiento' : 'editar-requerimiento', cuerpo);
+      if (cuerpo) await pqEnviar(a.nuevo ? 'nuevo-requerimiento' : 'editar-requerimiento', cuerpo);
+      if (mover) await pqEnviarMover(a.numero, texto(a.fila.titulo));
     } catch (err) {
       console.error(err);
       pqError(err && err.name === 'NotAllowedError' ? 'Falta el permiso para escribir en la carpeta del equipo: usa «Volver a leer» arriba y acepta «Ver y editar archivos».'
@@ -10626,8 +10705,12 @@
     if (fila && pq.q && !pqBuscable(fila).includes(norm(pq.q).trim())) { pq.q = ''; $('#pqBuscar').value = ''; }
     pqPintar();
     pqResaltar(a.numero);
+    // La carpeta la mueve el procesador: se le pide una vuelta para que no espere la de cada 2 horas
+    if (mover) rcPedirVuelta().catch((err) => console.error(err));
+    const carpeta = mover ? ' Su carpeta pasa a «' + PQ_ENTREGADOS + '» ' + (rcSinTareaDePedidos() ? 'en la próxima vuelta del procesador.' : 'en unos minutos.') : '';
     avisar(a.nuevo ? 'N° ' + a.numero + ' agregado a Requerimientos. Pasa al Excel en unos 10 minutos.'
-      : 'N° ' + a.numero + ': ' + Object.keys(cambios).map((c) => PQ_NOMBRE[c]).join(', ') + ' cambiado. Pasa al Excel en unos 10 minutos.');
+      : !cuerpo ? 'N° ' + a.numero + ':' + carpeta
+        : 'N° ' + a.numero + ': ' + Object.keys(cambios).map((c) => PQ_NOMBRE[c]).join(', ') + ' cambiado. Pasa al Excel en unos 10 minutos.' + carpeta);
   }
   function pqResaltar(n) {
     const tr = document.querySelector('#pqFilas tr[data-n="' + n + '"]');
@@ -16246,6 +16329,7 @@
     pqVerOriginal();
   });
   $('#pqOriginal').addEventListener('change', () => { const v = pqOriginal($('#pqOriginal').value.trim()); if (v) $('#pqOriginal').value = v; });
+  $('#pqEstado').addEventListener('change', () => pqVerMover(false));
   $('#pqX').addEventListener('click', () => $('#dlgPlanilla').close());
   $('#pqCancelar').addEventListener('click', () => $('#dlgPlanilla').close());
   $('#pqFormular').addEventListener('click', () => {
