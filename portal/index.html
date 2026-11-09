@@ -1824,16 +1824,211 @@
   .ej-semaforo[data-nivel="ok"]::before { background: var(--estado-ok); }
   .ej-semaforo[data-nivel="warn"]::before { background: var(--estado-warn); }
   .ej-semaforo[data-nivel="bad"]::before { background: var(--estado-bad); }
+  /* Mapa de salud (2026-11-09): avance (horizontal) contra gastado y comprometido sobre el presupuesto (vertical). La diagonal
+     es «gasta lo que avanza»; sobre la franja de tolerancia, gasta más de lo que avanza. El estado nunca va solo en el color:
+     cada punto lleva su N°, la leyenda dice cuántos hay de cada uno y el detalle sale al pasar o enfocar el punto. */
+  .ej-mapa {
+    display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 6px 20px; padding: 14px 16px 12px;
+    border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
+  }
+  .ej-mapa-cab { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .ej-mapa-cab h2 { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 900; }
+  .ej-mapa-cab small { font-size: 12.5px; color: var(--texto-suave); }
+  .ej-mapa-graf { position: relative; min-width: 0; }
+  .ej-mapa svg { display: block; width: 100%; height: auto; overflow: visible; font-family: inherit; }
+  .ej-mapa .eje { stroke: var(--baseline); stroke-width: 1; }
+  .ej-mapa .reja { stroke: var(--gridline); stroke-width: 1; }
+  .ej-mapa .eje-txt { fill: var(--texto-suave); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .ej-mapa .eje-tit { fill: var(--text-secondary); font-size: 12.5px; font-weight: 700; }
+  .ej-mapa .zona-mala { fill: var(--estado-bad); opacity: 0.08; }
+  .ej-mapa .zona-ojo { fill: var(--estado-warn); opacity: 0.10; }
+  .ej-mapa .diagonal { stroke: var(--text-secondary); stroke-width: 1.5; stroke-dasharray: 5 4; fill: none; }
+  .ej-mapa .zona-txt { fill: var(--texto-suave); font-size: 12px; font-style: italic; }
+  .ej-mapa .punto { cursor: pointer; outline: none; }
+  .ej-mapa .punto .area { fill: transparent; }
+  .ej-mapa .punto .marca { stroke: var(--surface-card); stroke-width: 2.5; fill: var(--baseline); transition: r 0.12s; }
+  .ej-mapa .punto[data-nivel="ok"] .marca { fill: var(--estado-ok); }
+  .ej-mapa .punto[data-nivel="warn"] .marca { fill: var(--estado-warn); }
+  .ej-mapa .punto[data-nivel="bad"] .marca { fill: var(--estado-bad); }
+  .ej-mapa .punto .etq { fill: var(--text-primary); font-size: 12.5px; font-weight: 900; paint-order: stroke; stroke: var(--surface-card); stroke-width: 3px; }
+  .ej-mapa .punto:hover .marca, .ej-mapa .punto:focus-visible .marca, .ej-mapa .punto.resalta .marca { r: 10; stroke: var(--text-primary); }
+  .ej-mapa .punto.tuya .marca { stroke: var(--brand-orange); stroke-width: 3; }
+  .ej-mapa-tip {
+    position: absolute; z-index: 2; pointer-events: none; max-width: 260px; padding: 8px 10px; border-radius: 8px;
+    background: var(--text-primary); color: var(--surface-card); font-size: 12.5px; line-height: 1.4; box-shadow: var(--sombra);
+    transform: translate(-50%, calc(-100% - 14px));
+  }
+  .ej-mapa-tip b { display: block; font-size: 13px; }
+  .ej-mapa-lado { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .ej-estado-fil {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--border-hairline);
+    background: var(--page-plane); color: var(--text-primary); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
+  }
+  .ej-estado-fil:hover { border-color: var(--baseline); }
+  .ej-estado-fil[aria-pressed="true"] { border-color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-primary); }
+  .ej-estado-fil b { margin-left: auto; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .ej-estado-fil[data-cuenta="0"] { opacity: 0.55; }
+  .ej-pin { flex: 0 0 auto; width: 18px; height: 18px; display: inline-grid; place-items: center; border-radius: 50%; color: #000000; background: var(--baseline); }
+  .ej-pin[data-nivel="ok"] { background: var(--estado-ok); }
+  .ej-pin[data-nivel="warn"] { background: var(--estado-warn); }
+  .ej-pin[data-nivel="bad"] { background: var(--estado-bad); }
+  .ej-pin svg { width: 12px; height: 12px; }
+  .ej-mapa-nota { margin: 2px 0 0; font-size: 12px; line-height: 1.4; color: var(--texto-suave); }
+  .ej-mapa-nota button { padding: 0; border: 0; background: none; color: var(--brand-orange-ink); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+  @container ejecucion (max-width: 720px) {
+    .ej-mapa { grid-template-columns: 1fr; padding: 12px; }
+    .ej-mapa-lado { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ej-mapa-nota { grid-column: 1 / -1; }
+  }
+  /* El estado en la tarjeta: la misma pastilla del mapa, con su palabra */
+  .ej-t-meta { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: -3px; }
+  .ej-t-meta .ej-t-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ej-salud { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; font-size: 12px; font-weight: 900; color: var(--text-secondary); white-space: nowrap; }
+  .ej-salud .ej-pin { width: 16px; height: 16px; }
+  .ej-salud ~ .ej-resp { margin-left: 0; }
+  /* La tarjeta (vuelta 2): anillo de avance, barra del presupuesto con la raya del avance y lo que falta hacer */
+  .ej-t-cuerpo { display: flex; align-items: center; gap: 14px; padding-top: 2px; }
+  .ej-anillo { position: relative; flex: 0 0 auto; width: 64px; height: 64px; display: grid; place-items: center; align-content: center; }
+  .ej-anillo svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ej-anillo .pista { fill: none; stroke: var(--gridline); stroke-width: 5; }
+  .ej-anillo .arco { fill: none; stroke: var(--text-primary); stroke-width: 5; stroke-linecap: round; }
+  .ej-anillo.pedido .arco { stroke: var(--brand-orange); }
+  .ej-anillo b { position: relative; font-size: 15px; white-space: nowrap; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .ej-anillo small { position: relative; font-size: 10px; color: var(--texto-suave); line-height: 1.3; }
+  .ej-t-datos { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  .ej-t-pres { display: flex; flex-direction: column; gap: 5px; }
+  .ej-t-pres-txt b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .ej-t-barra { position: relative; display: flex; gap: 2px; height: 10px; border-radius: 999px; background: var(--gridline); }
+  .ej-t-barra .ej-seg { height: 100%; border-radius: 999px; background: var(--ej-gastado); }
+  .ej-t-barra .ej-seg.c { background: var(--ej-comprometido); }
+  .ej-t-tareas { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
+  .ej-t-tarea { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--tinte); color: var(--tinte-texto); font-size: 12px; font-weight: 700; }
+  .ej-t-tarea svg { flex: 0 0 auto; }
+  /* Lo que espera el equipo (vuelta 11), sobre las tarjetas */
+  .ej-espera { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .ej-espera-tit { font-size: 13px; font-weight: 900; color: var(--text-secondary); margin-right: 2px; }
+  .ej-espera-op {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px 0 10px; border-radius: 999px;
+    border: 1px solid var(--tinte-borde); background: var(--tinte); color: var(--tinte-texto); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .ej-espera-op b { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .ej-espera-op:hover { border-color: var(--brand-orange); }
+  .ej-espera-op[aria-pressed="true"] { background: var(--brand-orange); border-color: var(--brand-orange); color: #000000; }
+  /* Equipo esta semana (vuelta 10): la semana en una tira */
+  .ej-semana { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; }
+  .ej-semana li { min-width: 0; min-height: 64px; display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 8px; background: var(--page-plane); border: 1px solid var(--gridline); }
+  .ej-semana li.vacio { background: none; border-style: dashed; }
+  .ej-semana li.hoy { border-color: var(--brand-orange); box-shadow: inset 0 0 0 1px var(--brand-orange); }
+  .ej-sem-dia { font-size: 11.5px; font-weight: 900; color: var(--texto-suave); white-space: nowrap; }
+  .ej-semana li.hoy .ej-sem-dia { color: var(--brand-orange-ink); }
+  .ej-sem-pers { display: flex; flex-wrap: wrap; gap: 3px; }
+  .ej-sem-per { padding: 0 5px; border-radius: 5px; background: var(--text-primary); color: var(--surface-card); font-size: 11px; font-weight: 900; line-height: 17px; }
+  .ej-sem-per.tuya { background: var(--brand-orange); color: #000000; }
+  .ej-sem-veh { display: flex; align-items: center; gap: 3px; min-width: 0; font-size: 10.5px; color: var(--text-secondary); }
+  .ej-sem-veh span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ej-eq-res { margin: 8px 0 0; font-size: 13px; color: var(--text-secondary); }
+  @container ejecucion (max-width: 640px) { .ej-semana { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  /* Facturas asociadas y compras por estado (vuelta 8) */
+  .ej-asociar {
+    min-height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--brand-orange); background: var(--surface-card);
+    color: var(--brand-orange-ink); font: inherit; font-size: 13px; font-weight: 900; cursor: pointer;
+  }
+  .ej-asociar:hover:not(:disabled) { background: var(--tinte); }
+  .ej-asociar:disabled { opacity: 0.5; cursor: default; }
+  .ej-prog { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 8px; }
+  .ej-prog-txt { display: flex; align-items: baseline; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+  .ej-prog-txt b { color: var(--text-primary); font-size: 14px; }
+  .ej-prog .ej-mini { height: 10px; }
+  .ej-mini-seg.falta { background: repeating-linear-gradient(135deg, var(--estado-warn) 0 5px, transparent 5px 9px); }
+  .ej-embudo { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 8px; }
+  .ej-embudo-barra { display: flex; gap: 2px; height: 12px; }
+  .ej-embudo-seg { flex: 1 1 0; min-width: 6px; border-radius: 4px; background: var(--ej-gastado); }
+  .ej-embudo-seg[data-estado="evaluar"] { background: var(--estado-warn); }
+  .ej-embudo-seg[data-estado="aprobada"] { background: var(--ej-comprometido); }
+  .ej-embudo-ley { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .ej-embudo-et { display: inline-flex; align-items: baseline; gap: 5px; padding: 2px 0; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+  .ej-embudo-et:disabled { cursor: default; opacity: 0.55; }
+  .ej-embudo-et:not(:disabled):hover span { text-decoration: underline; }
+  .ej-embudo-et i { width: 10px; height: 10px; border-radius: 3px; background: var(--ej-gastado); align-self: center; }
+  .ej-embudo-et[data-estado="evaluar"] i { background: var(--estado-warn); }
+  .ej-embudo-et[data-estado="aprobada"] i { background: var(--ej-comprometido); }
+  .ej-embudo-et b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .ej-embudo-et small { font-size: 12px; color: var(--texto-suave); }
+  /* Mano de obra (vuelta 7): lo trabajado en gráfico y el calendario detrás de «Anotar días trabajados» */
+  .ej-mo-res { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 20px; padding: 10px 12px; border-radius: 10px; background: var(--page-plane); }
+  .ej-mo-res > .ej-pista { grid-column: 1 / -1; }
+  .ej-mo-tot { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ej-mo-num { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+  .ej-mo-num b { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .ej-mo-num span { font-size: 13px; color: var(--text-secondary); }
+  .ej-mo-ritmo { font-size: 12px; color: var(--texto-suave); }
+  .ej-mo-pers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .ej-mo-pers li { display: grid; grid-template-columns: minmax(28px, max-content) minmax(40px, 1fr) max-content; align-items: center; gap: 8px; font-size: 12.5px; }
+  .ej-mo-quien { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+  .ej-mo-barra { height: 8px; border-radius: 999px; background: var(--gridline); overflow: hidden; }
+  .ej-mo-barra > span { display: block; height: 100%; border-radius: 999px; background: var(--ej-gastado); }
+  .ej-mo-dh { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ej-cal-abrir { align-self: flex-start; }
+  @container ejecucion (max-width: 640px) { .ej-mo-res { grid-template-columns: 1fr; } }
+  /* Por hacer (vuelta 3): lo que el proyecto espera, cada cosa con su botón */
+  .ej-porhacer { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--tinte-borde); background: var(--surface-card); }
+  .ej-porhacer.al-dia { border-color: var(--border-hairline); }
+  .ej-porhacer h3 { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; }
+  .ej-porhacer h3 small { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--brand-orange); color: #000000; font-size: 12px; text-align: center; }
+  .ej-porhacer.al-dia h3 { margin: 0 0 4px; }
+  .ej-porhacer.al-dia p { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-secondary); }
+  .ej-porhacer ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 8px; }
+  .ej-tarea { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; border-radius: 10px; background: var(--page-plane); border: 1px solid var(--gridline); }
+  .ej-tarea-ico { flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-card); border: 1px solid var(--gridline); color: var(--text-secondary); }
+  .ej-tarea[data-nivel="warn"] .ej-tarea-ico { color: #000000; background: var(--estado-warn); border-color: transparent; }
+  .ej-tarea[data-nivel="ok"] .ej-tarea-ico { color: #000000; background: var(--estado-ok); border-color: transparent; }
+  .ej-tarea-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .ej-tarea-txt b { font-size: 13.5px; }
+  .ej-tarea-txt small { font-size: 12px; line-height: 1.35; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .ej-tarea > button { flex: 0 0 auto; white-space: nowrap; }
+  @container ejecucion (max-width: 520px) { .ej-porhacer ul { grid-template-columns: 1fr; } }
+  /* Al llegar a una parte desde «Por hacer» o los accesos, se marca un momento */
+  @keyframes ej-destello { from { box-shadow: 0 0 0 3px var(--brand-orange); } to { box-shadow: 0 0 0 3px transparent; } }
+  .ej-destello { animation: ej-destello 1.6s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .ej-destello { animation: none; } }
+  .ej-tarjeta.resalta { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
   .ej-antiguos summary { cursor: pointer; padding: 6px 2px; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
   .ej-antiguos[open] summary { margin-bottom: 8px; }
   /* El resumen de un proyecto */
-  .ej-volver { align-self: flex-start; }
-  .ej-cab { display: flex; flex-direction: column; gap: 6px; }
+  .ej-volver {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin: -4px 0 -4px -4px; padding: 4px 8px 4px 4px;
+    border: 0; border-radius: 8px; background: none; color: var(--brand-orange-ink); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+  }
+  .ej-volver:hover { background: var(--tinte); }
+  .ej-cab {
+    position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 14px 20px;
+    border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); overflow: hidden;
+  }
+  .ej-cab::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--baseline); }
+  .ej-cab[data-salud="ok"]::before { background: var(--estado-ok); }
+  .ej-cab[data-salud="warn"]::before { background: var(--estado-warn); }
+  .ej-cab[data-salud="bad"]::before { background: var(--estado-bad); }
+  .ej-cab-fila { display: flex; align-items: flex-start; gap: 16px; }
+  .ej-cab-quien { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .ej-cab-estado {
+    flex: 0 1 280px; min-width: 0; display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; border-radius: 10px;
+    background: var(--page-plane); border: 1px solid var(--gridline);
+  }
+  .ej-cab-estado .ej-pin { width: 24px; height: 24px; margin-top: 1px; }
+  .ej-cab-estado-txt { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .ej-cab-estado-txt b { font-size: 14.5px; }
+  .ej-cab-estado-txt small { font-size: 12px; line-height: 1.35; color: var(--text-secondary); }
+  .ej-cab .ej-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .ej-cab .ej-sub .rc-chips { display: inline-flex; }
+  @container ejecucion (max-width: 640px) {
+    .ej-cab-fila { flex-direction: column; gap: 10px; }
+    .ej-cab-estado { flex-basis: auto; width: 100%; }
+  }
   .ej-cab h2 { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 22px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
   .ej-cab h2 .ej-n { font-size: 13px; }
   .ej-sub { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-secondary); }
   .ej-cab .rc-chips { margin: 0; }
-  .ej-cab .cx-acc { margin-top: 4px; }
+  .ej-cab .cx-acc { margin-top: 0; padding-top: 10px; border-top: 1px solid var(--gridline); }
   .ej-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .ej-kpi { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 11px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); }
   .ej-kpi-et { font-size: 12.5px; font-weight: 900; color: var(--texto-suave); }
@@ -1841,6 +2036,14 @@
   .ej-kpi[data-nivel="bad"] .ej-kpi-v { color: var(--estado-bad); }
   .ej-kpi[data-nivel="warn"] .ej-kpi-v { color: var(--brand-orange-ink); }
   .ej-kpi-sub { font-size: 12.5px; line-height: 1.4; color: var(--text-secondary); }
+  .ej-mini { position: relative; display: flex; gap: 2px; height: 8px; margin: 4px 0 3px; border-radius: 999px; background: var(--gridline); }
+  .ej-mini-seg { height: 100%; border-radius: 999px; background: var(--ej-gastado); }
+  .ej-mini-seg.c { background: var(--ej-comprometido); }
+  .ej-mini-seg.pasa, .ej-mini-seg.n-bad { background: var(--estado-bad); }
+  .ej-mini-seg.n-warn { background: var(--estado-warn); }
+  .ej-mini-seg.av { background: var(--text-primary); }
+  .ej-mini-seg.pedido { background: var(--brand-orange); }
+  .ej-mini-marca { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ej-tope); }
   .ej-kpi-sub b { color: var(--text-primary); }
   .ej-kpi .cx-desmarcar { align-self: flex-start; margin-top: 2px; }
   .ej-dos { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
@@ -1882,6 +2085,22 @@
   .ej-av-num span { font-size: 13px; color: var(--texto-suave); }
   .ej-av-medidor { height: 10px; }
   .ej-av-form { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: end; gap: 8px 10px; padding-top: 10px; border-top: 1px solid var(--gridline); }
+  .ej-av-rapidos { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .ej-av-chip {
+    min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--baseline); background: var(--surface-card);
+    color: var(--text-primary); font: inherit; font-size: 13.5px; font-weight: 900; cursor: pointer; font-variant-numeric: tabular-nums;
+  }
+  .ej-av-chip:hover { border-color: var(--brand-orange); }
+  .ej-av-chip.suave { border-color: transparent; background: none; color: var(--brand-orange-ink); font-weight: 700; text-decoration: underline; }
+  .ej-av-medidor { position: relative; overflow: visible; }
+  .ej-av-medidor > span { position: relative; z-index: 1; background: var(--text-primary); }
+  .ej-av-previa {
+    position: absolute; top: 0; bottom: 0; z-index: 2; border-radius: 999px;
+    background: repeating-linear-gradient(135deg, var(--brand-orange) 0 5px, color-mix(in srgb, var(--brand-orange) 55%, transparent) 5px 9px);
+  }
+  .ej-av-previa.baja { background: repeating-linear-gradient(135deg, var(--estado-bad) 0 5px, transparent 5px 9px); }
+  .ej-av-cambio { font-style: normal; font-size: 22px; font-weight: 900; color: var(--brand-orange-ink); font-variant-numeric: tabular-nums; }
+  .ej-av-cambio:empty { display: none; }
   .ej-av-form input[type="range"] { width: 100%; accent-color: var(--brand-orange); }
   .ej-av-form .pl-campo input { height: 38px; }
   .ej-av-fecha { grid-column: 1 / -1; }
@@ -2113,6 +2332,9 @@
   }
   .ej-salto small { font-size: 12px; font-weight: 700; color: var(--texto-suave); }
   .ej-salto:hover { border-color: var(--brand-orange); }
+  .ej-salto[aria-current="true"] { border-color: var(--text-primary); background: var(--text-primary); color: var(--surface-card); }
+  .ej-salto[aria-current="true"] small { color: inherit; opacity: 0.75; }
+  .ej-saltos { box-shadow: 0 6px 8px -8px rgba(0,0,0,0.25); }
   .ej-panel[id] { scroll-margin-top: 52px; }
   #ejSecMas { scroll-margin-top: 52px; }
   /* Cómo va el proyecto: lo gastado en grande y la tabla por categoría */
@@ -2266,6 +2488,16 @@
     .ej-dias-fila .pl-campo select, .ej-nivel select, .ej-tarifas .pl-campo input { font-size: 16px; }
   }
 
+  /* Teléfono (2026-11-09, vuelta 9 del loop de UX): las cifras más compactas para que «Por hacer» quede cerca */
+  @container ejecucion (max-width: 640px) {
+    .ej-kpi { padding: 8px 12px 9px; }
+    .ej-kpi-v { font-size: 20px; }
+    .ej-kpi-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ej-kpis > .ej-kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .ej-tarea-txt small { -webkit-line-clamp: 1; }
+    .ej-tarea { padding: 7px 8px; gap: 8px; }
+    .ej-tarea-ico { width: 30px; height: 30px; }
+  }
   /* ---- Diálogos y aviso ---- */
   dialog {
     width: min(560px, calc(100vw - 24px)); padding: 0; border-radius: 14px;
@@ -2522,7 +2754,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@d8375b0 2026-11-09">
+<meta name="quempin-version" content="master@599589b 2026-11-09">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -2862,6 +3094,10 @@
                 </div>
                 <span class="rc-cuenta" id="ejCuenta" aria-live="polite"></span>
               </div>
+              <!-- Mapa de salud (2026-11-09): cada proyecto según su avance y lo que lleva gastado del presupuesto; lo arma ejMapaEl() -->
+              <section class="ej-mapa" id="ejMapa" aria-labelledby="ejMapaTit" hidden></section>
+              <!-- Lo que espera el equipo (2026-11-09): lo arma ejEsperaEl() -->
+              <div class="ej-espera" id="ejEspera" role="group" aria-label="Lo que espera al equipo" hidden></div>
               <div class="ej-tarjetas" id="ejTarjetas"></div>
               <details class="ej-antiguos" id="ejAntiguos" hidden>
                 <summary id="ejAntiguosTxt"></summary>
@@ -3566,7 +3802,12 @@
     nota: '<path d="M5 4h14a1 1 0 0 1 1 1v10l-5 5H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 20v-5h5"/><path d="M8 9h8M8 13h4"/>',
     enlace: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3A4 4 0 0 0 11 18.7l1-1"/>',
     tijera: '<circle cx="6" cy="6.5" r="2.5"/><circle cx="6" cy="17.5" r="2.5"/><path d="M8.2 8l11.8 9M8.2 16L20 7"/>',
-    lupa: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>'
+    lupa: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    // El estado de un proyecto en ejecución (2026-11-09): el color nunca va solo
+    visto: '<path d="M5 12.5l4.5 4.5L19 7.5" stroke-width="3"/>',
+    exclama: '<path d="M12 5.5v8.5" stroke-width="3"/><path d="M12 18.6h.01" stroke-width="3.6"/>',
+    cruz: '<path d="M7 7l10 10M17 7L7 17" stroke-width="3"/>',
+    guion: '<path d="M7 12h10" stroke-width="3"/>'
   };
   function icono(nombre, tam) {
     const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -10628,7 +10869,9 @@
     diasForm: null,           // el calendario de días trabajados: { clave, mes, jornada, personas, nombres, dias (los marcados) }
     diasAbiertos: null,
     sucios: new Map(),        // lo escrito en los campos del resumen, que sobrevive a cada repintado (id → valor)
-    tarifasAbiertas: false, todosDias: false, todasNotas: false, enviando: false
+    tarifasAbiertas: false, todosDias: false, todasNotas: false, enviando: false,
+    salud: null,              // el estado elegido en la leyenda del Mapa de salud (ok, warn, bad, sin); null: todos
+    espera: null              // lo que espera el equipo elegido en la lista (decidir, facturas, pendientes); null: todo
   };
   const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro });
 
@@ -11539,73 +11782,320 @@
     $('#ejMiosTxt').textContent = u ? 'Solo mis proyectos' : 'Solo mis proyectos (elige tu usuario)';
     const q = norm(ej.q).trim().split(/\s+/).filter(Boolean);
     const todas = ejTarjetas();
-    const alcance = todas.filter((t) => (!ej.mios || !u || rcMia(t)) && q.every((x) => t.buscar.includes(x)));
+    // Cada proyecto se calcula una vez por repintado: lo usan el mapa y las tarjetas
+    const modelos = new Map(todas.map((t) => [t.clave, ejModelo(t)]));
+    const saludes = new Map(todas.map((t) => [t.clave, ejSalud(t, modelos.get(t.clave))]));
+    const buscadas = todas.filter((t) => (!ej.mios || !u || rcMia(t)) && q.every((x) => t.buscar.includes(x)));
+    const esperas = new Map(todas.map((t) => [t.clave, ejEspera(t, modelos.get(t.clave))]));
+    const alcance = buscadas.filter((t) => (!ej.salud || saludes.get(t.clave).nivel === ej.salud) && (!ej.espera || esperas.get(t.clave)[ej.espera] > 0));
     const plegada = (t) => t.antiguo && !t.gestion;      // lo que está en Gestión de Proyectos nunca va plegado
     const vivas = alcance.filter((t) => !plegada(t)).sort(ejOrden);
     const viejas = alcance.filter(plegada).sort(ejOrden);
+    // El mapa muestra lo buscado (sin el filtro de estado, que se elige en él mismo) y no lo plegado por antiguo
+    const mapa = $('#ejMapa');
+    const enMapa = buscadas.filter((t) => !plegada(t));
+    mapa.hidden = !todas.length;
+    mapa.textContent = '';
+    if (todas.length) mapa.append(...ejMapaEl(enMapa, modelos, saludes));
+    ejEsperaEl(enMapa, esperas);
     const caja = $('#ejTarjetas');
     caja.textContent = '';
-    vivas.forEach((t) => caja.append(ejTarjetaEl(t)));
+    vivas.forEach((t) => caja.append(ejTarjetaEl(t, modelos.get(t.clave), saludes.get(t.clave))));
     if (!vivas.length) {
       caja.append(crear('p', 'ej-nada', !todas.length ? 'No hay proyectos en ejecución: entran aquí cuando se adjudican (Planilla «Adjudicado», formulación «Adjudicada» o ficha en el Análisis Financiero) y cuando su carpeta está en Gestión de Proyectos.'
-        : alcance.length ? 'Los proyectos que calzan llevan más de 60 días sin moverse: están abajo.' : 'Ningún proyecto en ejecución calza con lo buscado.'));
+        : alcance.length ? 'Los proyectos que calzan llevan más de 60 días sin moverse: están abajo.' : ej.salud ? 'Ningún proyecto «' + EJ_SALUD[ej.salud].nombre + '» calza con lo buscado.' : 'Ningún proyecto en ejecución calza con lo buscado.'));
     }
     $('#ejAntiguos').hidden = !viejas.length;
     $('#ejAntiguosTxt').textContent = pl(viejas.length, 'proyecto lleva', 'proyectos llevan') + ' más de 60 días sin moverse';
     const v = $('#ejTarjetasAntiguas');
     v.textContent = '';
-    viejas.forEach((t) => v.append(ejTarjetaEl(t)));
+    viejas.forEach((t) => v.append(ejTarjetaEl(t, modelos.get(t.clave), saludes.get(t.clave))));
     $('#ejCuenta').textContent = pl(vivas.length + viejas.length, 'proyecto', 'proyectos') + (alcance.length < todas.length ? ' de ' + todas.length : '');
   }
-  function ejTarjetaEl(t) {
-    const m = ejModelo(t);
+  /* ---- El estado de cada proyecto y el Mapa de salud (2026-11-09) ----------------------------------------------------
+     Pedido del usuario: una herramienta que aporte al seguimiento del estado de cada proyecto y una pestaña mucho más
+     visual. El estado junta lo que antes era solo la raya de color de la tarjeta: el margen contra la meta y el mínimo de
+     su formulación, lo gastado y comprometido contra el avance (EJ_GASTO_SOBRE_AVANCE; el doble, en riesgo), si se pasa
+     del presupuesto y los avisos del Recorrido. Sin presupuesto o sin avance no se puede ubicar en el mapa: «Sin datos». */
+  const EJ_SALUD = {
+    bad: { nombre: 'En riesgo', icono: 'cruz' }, warn: { nombre: 'Atención', icono: 'exclama' },
+    ok: { nombre: 'En línea', icono: 'visto' }, sin: { nombre: 'Sin datos', icono: 'guion' }
+  };
+  function ejSalud(t, m) {
+    if (!ejClave(t)) return { nivel: 'sin', motivos: ['Su carpeta no lleva el N° de la Planilla de Ingreso'] };
+    let nivel = 'ok';
+    const motivos = [];
+    const marcar = (n, txt) => { motivos.push(txt); if (n === 'bad' || nivel === 'ok') nivel = n; };
+    const nm = ejNivelMargen(m.margen, m);
+    if (nm === 'bad') marcar('bad', 'Margen estimado ' + ejPct(m.margen) + ': bajo el mínimo de ' + ejPct(m.margenes.minimo));
+    else if (nm === 'warn') marcar('warn', 'Margen estimado ' + ejPct(m.margen) + ': bajo la meta de ' + ejPct(m.margenes.objetivo));
+    const gs = ejGastoSobreAvance(m);
+    if (gs) marcar(gs.gasto - gs.avance > 2 * EJ_GASTO_SOBRE_AVANCE ? 'bad' : 'warn', 'Lleva ' + ejPct(gs.gasto) + ' del presupuesto con ' + ejPct(gs.avance) + ' de avance');
+    if (m.pres && m.tot.EAC > m.tot.P + 0.5) marcar('warn', 'Terminaría ' + ejPesos(m.tot.EAC - m.tot.P) + ' sobre el presupuesto');
+    t.chips.filter((c) => c.nivel === 'warn' || c.nivel === 'bad').forEach((c) => marcar(c.nivel, c.texto));
+    if (nivel === 'ok' && (!m.pres || m.avance.valor === null)) {
+      return { nivel: 'sin', motivos: [!m.pres && m.avance.valor === null ? 'Sin presupuesto ni avance' : !m.pres ? 'Sin presupuesto' : 'Sin avance'] };
+    }
+    if (nivel === 'ok') motivos.push('Gasta de acuerdo con lo que avanza' + (m.margen !== null ? ' y el margen está en la meta' : ''));
+    return { nivel, motivos };
+  }
+  // Lo que espera cada proyecto (lo mismo que su tarjeta y su «Por hacer»): compras por decidir, facturas sin asociar, pendientes
+  const EJ_ESPERA = [
+    { id: 'decidir', ico: 'billetera', uno: 'compra por decidir', varios: 'compras por decidir' },
+    { id: 'facturas', ico: 'documento', uno: 'factura sin asociar', varios: 'facturas sin asociar' },
+    { id: 'pendientes', ico: 'portapapeles', uno: 'pendiente', varios: 'pendientes' }
+  ];
+  function ejEspera(t, m) {
+    if (!ejClave(t)) return { decidir: 0, facturas: 0, pendientes: 0 };
+    return {
+      decidir: ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length,
+      facturas: (m.docs || []).filter((d) => !m.asoc.get(d.ref)).length,
+      pendientes: ejDe(t, 'pendiente').filter((x) => !x.listo).length
+    };
+  }
+  function ejPinEl(nivel, tam) {
+    const p = crear('span', 'ej-pin');
+    p.dataset.nivel = nivel;
+    p.append(icono(EJ_SALUD[nivel].icono, tam || 12));
+    return p;
+  }
+  // Dónde va cada proyecto: avance (0 a 1) y lo gastado y comprometido sobre el presupuesto. Sin uno de los dos, null.
+  const ejPosMapa = (m) => (m.pres && m.tot.P > 0 && m.avance.valor !== null ? { x: m.avance.valor, y: (m.tot.G + m.tot.C) / m.tot.P } : null);
+  function ejMapaEl(tarjetas, modelos, saludes) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const sv = (tag, at, txt) => { const e = document.createElementNS(NS, tag); Object.entries(at || {}).forEach(([k, v]) => e.setAttribute(k, String(v))); if (txt !== undefined) e.textContent = txt; return e; };
+    const cab = crear('div', 'ej-mapa-cab');
+    const h = crear('h2', null, 'Mapa de salud');
+    h.id = 'ejMapaTit';
+    h.append(info('Cada punto es un proyecto: a la derecha, más avance; arriba, más gastado y comprometido en OC del presupuesto. Sobre la diagonal '
+        + 'gasta más de lo que avanza: hasta ' + ejPct(EJ_GASTO_SOBRE_AVANCE) + ' de diferencia está bien (franja amarilla), más es «Atención» y el doble, «En riesgo». '
+        + 'El estado también mira el margen estimado contra la meta y el mínimo de su formulación y los avisos del Recorrido. Los que no tienen presupuesto o avance no se pueden ubicar y quedan abajo, en «Sin datos».', 'Cómo leer el Mapa de salud'));
+    cab.append(h, crear('small', null, 'Avance contra lo gastado del presupuesto · toca un punto para abrir el proyecto'));
+    // El gráfico: 0 a 100 % de avance; arriba, al menos 120 % del presupuesto (lo que se pasa cabe a la vista)
+    const pos = tarjetas.map((t) => ({ t, m: modelos.get(t.clave), s: saludes.get(t.clave), p: ejPosMapa(modelos.get(t.clave)) }));
+    const ubicados = pos.filter((x) => x.p);
+    // Se dibuja al ancho que tiene (la letra queda de su tamaño): el de la lista menos la columna de los estados
+    const ancho = (ejMapaAncho = $('#ejLista').clientWidth || 960) - 34;
+    const W = Math.max(300, ancho > 720 ? ancho - 260 : ancho), H = ancho > 720 ? 250 : 220, L = 62, R = 14, T = 10, B = 38;
+    const yMax = Math.max(1.2, Math.ceil((Math.max(0, ...ubicados.map((x) => x.p.y)) + 0.1) * 5) / 5);
+    const X = (v) => L + (W - L - R) * Math.max(0, Math.min(1, v));
+    const Y = (v) => T + (H - T - B) * (1 - Math.max(0, Math.min(yMax, v)) / yMax);
+    const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'group', 'aria-label': 'Mapa de salud: ' + pl(ubicados.length, 'proyecto ubicado', 'proyectos ubicados') + ' según su avance y lo gastado del presupuesto' });
+    // Zonas: la de tolerancia (amarilla) y la de gastar más de lo que avanza (roja), sobre la diagonal
+    const tol = EJ_GASTO_SOBRE_AVANCE;
+    svg.append(sv('polygon', { class: 'zona-mala', points: [[0, tol], [1, 1 + tol], [1, yMax], [0, yMax]].map(([a, b]) => X(a) + ',' + Y(b)).join(' ') }));
+    svg.append(sv('polygon', { class: 'zona-ojo', points: [[0, 0], [1, 1], [1, 1 + tol], [0, tol]].map(([a, b]) => X(a) + ',' + Y(b)).join(' ') }));
+    for (let i = 0; i <= 4; i++) {
+      const v = i / 4;
+      svg.append(sv('line', { class: 'reja', x1: X(v), x2: X(v), y1: T, y2: H - B }), sv('text', { class: 'eje-txt', x: X(v), y: H - B + 15, 'text-anchor': i === 0 ? 'start' : i === 4 ? 'end' : 'middle' }, Math.round(v * 100) + ' %'));
+    }
+    for (let v = 0; v <= yMax + 1e-9; v += yMax > 1.6 ? 0.5 : 0.25) {
+      svg.append(sv('line', { class: 'reja', x1: L, x2: W - R, y1: Y(v), y2: Y(v) }), sv('text', { class: 'eje-txt', x: L - 6, y: Y(v) + 4, 'text-anchor': 'end' }, Math.round(v * 100) + ' %'));
+    }
+    svg.append(sv('line', { class: 'eje', x1: L, x2: W - R, y1: H - B, y2: H - B }), sv('line', { class: 'eje', x1: L, x2: L, y1: T, y2: H - B }));
+    svg.append(sv('line', { class: 'diagonal', x1: X(0), y1: Y(0), x2: X(1), y2: Y(1) }));
+    svg.append(sv('text', { class: 'zona-txt', x: X(0.03), y: Y(Math.min(yMax, 1.08)), 'text-anchor': 'start' }, 'Gasta más de lo que avanza'));
+    svg.append(sv('text', { class: 'zona-txt', x: X(0.97), y: Y(0.12), 'text-anchor': 'end' }, 'Avanza más de lo que gasta'));
+    svg.append(sv('text', { class: 'eje-tit', x: (L + W - R) / 2, y: H - 3, 'text-anchor': 'middle' }, 'Avance →'));
+    const yTit = sv('text', { class: 'eje-tit', x: 12, y: (T + H - B) / 2, 'text-anchor': 'middle', transform: 'rotate(-90 12 ' + (T + H - B) / 2 + ')' }, 'Gastado del presupuesto →');
+    svg.append(yTit);
+    const graf = crear('div', 'ej-mapa-graf');
+    const tip = crear('div', 'ej-mapa-tip');
+    tip.hidden = true;
+    tip.setAttribute('role', 'status');
+    const mostrar = (x, g) => {
+      tip.textContent = '';
+      tip.append(crear('b', null, (rcEtiqueta(x.t) ? rcEtiqueta(x.t) + ' · ' : '') + x.t.titulo),
+        document.createTextNode(EJ_SALUD[x.s.nivel].nombre + ': ' + x.s.motivos.join(' · ')),
+        crear('br'), document.createTextNode('Avance ' + ejPct(x.p.x) + ' · gastado y comprometido ' + ejPct(x.p.y) + ' del presupuesto'));
+      const r = graf.getBoundingClientRect(), c = g.querySelector('.marca').getBoundingClientRect();
+      tip.style.left = Math.min(r.width - 130, Math.max(130, c.left + c.width / 2 - r.left)) + 'px';
+      tip.style.top = (c.top - r.top) + 'px';
+      tip.hidden = false;
+      const card = document.querySelector('#ejLista .ej-tarjeta[data-clave="' + CSS.escape(x.t.clave) + '"]');
+      if (card) card.classList.add('resalta');
+    };
+    const ocultar = () => { tip.hidden = true; document.querySelectorAll('#ejLista .ej-tarjeta.resalta').forEach((c) => c.classList.remove('resalta')); };
+    // Los en riesgo, encima de los demás
+    const orden = { sin: 0, ok: 1, warn: 2, bad: 3 };
+    ubicados.slice().sort((a, b) => orden[a.s.nivel] - orden[b.s.nivel]).forEach((x) => {
+      const cx = X(x.p.x), cy = Y(x.p.y);
+      const g = sv('g', { class: 'punto' + (rcMia(x.t) ? ' tuya' : ''), tabindex: 0, role: 'button', 'data-clave': x.t.clave, 'data-nivel': x.s.nivel,
+        'aria-label': (rcEtiqueta(x.t) || '') + ' ' + x.t.titulo + ': ' + EJ_SALUD[x.s.nivel].nombre + ', avance ' + ejPct(x.p.x) + ', gastado ' + ejPct(x.p.y) + ' del presupuesto' });
+      g.append(sv('circle', { class: 'area', cx, cy, r: 16 }), sv('circle', { class: 'marca', cx, cy, r: 7.5 }));
+      const etq = x.t.req ? x.t.req : x.t.tag || '';
+      if (etq) g.append(sv('text', { class: 'etq', x: cx + (cx > W - 70 ? -12 : 12), y: cy + 4, 'text-anchor': cx > W - 70 ? 'end' : 'start' }, etq));
+      g.addEventListener('pointerenter', () => mostrar(x, g));
+      g.addEventListener('pointerleave', ocultar);
+      g.addEventListener('focus', () => mostrar(x, g));
+      g.addEventListener('blur', ocultar);
+      g.addEventListener('click', () => { ocultar(); ejElegir(x.t.clave); });
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ocultar(); ejElegir(x.t.clave); } });
+      svg.append(g);
+    });
+    graf.append(svg, tip);
+    // Al lado: cuántos hay en cada estado, que además filtran las tarjetas
+    const lado = crear('div', 'ej-mapa-lado');
+    lado.setAttribute('role', 'group');
+    lado.setAttribute('aria-label', 'Filtrar por estado');
+    ['bad', 'warn', 'ok', 'sin'].forEach((n) => {
+      const cuenta = pos.filter((x) => x.s.nivel === n).length;
+      const b = crear('button', 'ej-estado-fil');
+      b.type = 'button';
+      b.dataset.nivel = n;
+      b.dataset.cuenta = String(cuenta);
+      b.setAttribute('aria-pressed', String(ej.salud === n));
+      b.append(ejPinEl(n), crear('span', null, EJ_SALUD[n].nombre), crear('b', null, String(cuenta)));
+      b.title = ej.salud === n ? 'Mostrar todos los proyectos' : 'Mostrar solo los proyectos «' + EJ_SALUD[n].nombre + '»';
+      b.addEventListener('click', () => { ej.salud = ej.salud === n ? null : n; ejPintarLista(); const x = $('#ejMapa .ej-estado-fil[data-nivel="' + n + '"]'); if (x) x.focus(); });
+      lado.append(b);
+    });
+    const sin = pos.filter((x) => !x.p);
+    if (sin.length) {
+      const p = crear('p', 'ej-mapa-nota');
+      p.append(document.createTextNode('Fuera del mapa, sin presupuesto o avance: '));
+      sin.forEach((x, i) => {
+        const b = crear('button', null, rcEtiqueta(x.t) || x.t.titulo);
+        b.type = 'button';
+        b.title = x.t.titulo + ': ' + x.s.motivos.join(' · ');
+        b.addEventListener('click', () => ejElegir(x.t.clave));
+        p.append(b, document.createTextNode(i < sin.length - 1 ? ', ' : '.'));
+      });
+      lado.append(p);
+    }
+    return [cab, graf, lado];
+  }
+  // Al cambiar el ancho de la ventana, el mapa se vuelve a dibujar a su medida
+  let ejMapaAncho = 0, ejRelojMapa = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(ejRelojMapa);
+    ejRelojMapa = setTimeout(() => {
+      if (!$('#vistaEjecucion').hidden && !$('#ejLista').hidden && Math.abs($('#ejLista').clientWidth - ejMapaAncho) > 30) ejPintarLista();
+    }, 200);
+  });
+  /* Lo que espera el equipo (2026-11-09, vuelta 11 del loop de UX): sobre las tarjetas, cuántas compras hay por decidir,
+     facturas sin asociar y pendientes en todos los proyectos a la vista, y en cuántos; tocar uno deja solo esos proyectos. */
+  function ejEsperaEl(tarjetas, esperas) {
+    const caja = $('#ejEspera');
+    caja.textContent = '';
+    const filas = EJ_ESPERA.map((e) => {
+      const con = tarjetas.filter((t) => esperas.get(t.clave)[e.id] > 0);
+      return { e, n: con.reduce((a, t) => a + esperas.get(t.clave)[e.id], 0), proyectos: con.length };
+    });
+    if (ej.espera && !filas.some((f) => f.e.id === ej.espera && f.n)) ej.espera = null;
+    const hay = filas.filter((f) => f.n);
+    caja.hidden = !hay.length;
+    if (!hay.length) return;
+    caja.append(crear('span', 'ej-espera-tit', 'Espera al equipo'));
+    hay.forEach(({ e, n, proyectos }) => {
+      const b = crear('button', 'ej-espera-op');
+      b.type = 'button';
+      b.dataset.espera = e.id;
+      b.setAttribute('aria-pressed', String(ej.espera === e.id));
+      b.append(icono(e.ico, 15), crear('b', null, String(n)), crear('span', null, (n === 1 ? e.uno : e.varios) + ' en ' + pl(proyectos, 'proyecto', 'proyectos')));
+      b.title = ej.espera === e.id ? 'Mostrar todos los proyectos' : 'Mostrar solo los proyectos con ' + e.varios;
+      b.addEventListener('click', () => { ej.espera = ej.espera === e.id ? null : e.id; ejPintarLista(); const x = $('#ejEspera [data-espera="' + e.id + '"]'); if (x) x.focus(); });
+      caja.append(b);
+    });
+  }
+  function ejTarjetaEl(t, m, salud) {
+    m = m || ejModelo(t);
+    salud = salud || ejSalud(t, m);
     const b = crear('button', 'ej-tarjeta' + (rcMia(t) ? ' tuya' : ''));
     b.type = 'button';
     b.dataset.clave = t.clave;
+    b.dataset.salud = salud.nivel;
     const cab = crear('span', 'ej-t-cab');
     if (rcEtiqueta(t)) cab.append(crear('span', 'ej-n', rcEtiqueta(t)));
     cab.append(crear('span', 'ej-t-tit', t.titulo));
-    if (t.responsable) { const r = crear('span', 'ej-resp', t.responsable); r.title = (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) + ' (' + t.respDe + ')'; cab.append(r); }
     b.append(cab);
-    const sub = [rcLegible(t.lugar), t.req && t.tag ? 'TAG ' + t.tag : ''].filter(Boolean).join(' · ');
-    if (sub) b.append(crear('span', 'ej-t-sub', sub));
-    const f1 = crear('span', 'ej-t-fila');
-    const med = crear('span', 'ej-medidor');
+    /* La tarjeta más visual (2026-11-09, vuelta 2 del loop de UX): el avance en un anillo, el presupuesto en una barra con
+       la raya del avance (si lo gastado pasa la raya, gasta más de lo que avanza) y abajo lo que falta hacer, con números. */
+    // Bajo el título: dónde y su TAG; a la derecha, su estado (con palabra) y quién lo lleva
+    const meta = crear('span', 'ej-t-meta');
+    meta.append(crear('span', 'ej-t-sub', [rcLegible(t.lugar), t.req && t.tag ? 'TAG ' + t.tag : ''].filter(Boolean).join(' · ')));
+    const est = crear('span', 'ej-salud');
+    est.append(ejPinEl(salud.nivel), document.createTextNode(EJ_SALUD[salud.nivel].nombre));
+    est.title = salud.motivos.join(' · ');
+    meta.append(est);
+    if (t.responsable) { const r = crear('span', 'ej-resp', t.responsable); r.title = (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) + ' (' + t.respDe + ')'; meta.append(r); }
+    b.append(meta);
+    const cuerpo = crear('span', 'ej-t-cuerpo');
     const av = m.avance;
-    const barra = crear('span');
-    barra.style.width = Math.round((av.valor || 0) * 100) + '%';
-    med.append(barra);
-    f1.append(crear('span', null, 'Avance'), med, crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)));
-    if (av.pedido) f1.title = 'Pedido al Análisis Financiero: llega con la próxima vuelta del procesador';
-    b.append(f1);
-    // Lo gastado hasta hoy (2026-11-06)
-    if (ejClave(t) && (m.tot.G > 0.5 || m.pres)) {
-      const fg = crear('span', 'ej-t-fila ej-t-gasto');
-      fg.append(crear('span', null, 'Gastado'), crear('b', null, ejPesos(m.tot.G)));
-      if (m.pres && m.tot.P > 0) fg.append(crear('span', null, ejPct(m.tot.G / m.tot.P) + ' de ' + ejPesos(m.tot.P)));
-      b.append(fg);
+    cuerpo.append(ejAnilloEl(av.valor, av.pedido ? 'pedido' : ''));
+    const datos = crear('span', 'ej-t-datos');
+    if (!ejClave(t)) datos.append(crear('span', 'ej-t-fila', 'Su carpeta no lleva el N° de la Planilla de Ingreso'));
+    else {
+      // El presupuesto: gastado y comprometido contra lo presupuestado, con la raya del avance
+      const fp = crear('span', 'ej-t-pres');
+      const leer = crear('span', 'ej-t-pres-txt');
+      if (m.pres && m.tot.P > 0) {
+        const med = crear('span', 'ej-t-barra');
+        [['', m.tot.G], ['c', m.tot.C]].forEach(([k, v]) => {
+          if (!(v > 0)) return;
+          const x = crear('span', 'ej-seg' + (k ? ' ' + k : ''));
+          x.style.width = Math.min(100, 100 * v / m.tot.P) + '%';
+          med.append(x);
+        });
+        if (av.valor !== null) { const r = crear('i', 'ej-raya-avance'); r.style.left = Math.round(av.valor * 100) + '%'; med.append(r); }
+        leer.append(crear('span', null, 'Gastado '), crear('b', null, ejPesos(m.tot.G)), crear('span', null, ' de ' + ejPesos(m.tot.P)));
+        fp.append(leer, med);
+        fp.title = ejPct(m.tot.G / m.tot.P) + ' del presupuesto gastado' + (m.tot.C > 0.5 ? ', ' + ejPesos(m.tot.C) + ' comprometidos en OC' : '')
+          + (av.valor !== null ? '; la raya naranja es el avance (' + ejPct(av.valor) + ')' : '');
+      } else if (m.tot.G > 0.5) {
+        leer.append(crear('span', null, 'Gastado '), crear('b', null, ejPesos(m.tot.G)), crear('span', null, ' · sin presupuesto'));
+        fp.append(leer);
+      } else fp.append(crear('span', 'ej-t-pres-txt', 'Sin presupuesto ni gastos registrados'));
+      datos.append(fp);
+      const nivel = ejNivelMargen(m.margen, m);
+      if (m.margen !== null) {
+        const s = crear('span', 'ej-semaforo' + (nivel ? '' : ' sin'), (m.pres ? 'Margen estimado ' : 'Margen con lo anotado ') + ejPct(m.margen));
+        if (nivel) s.dataset.nivel = nivel;
+        if (!m.pres) s.title = 'Sin presupuesto: solo con lo gastado, comprometido y proyectado que está anotado';
+        datos.append(s);
+      } else if (!m.venta) datos.append(crear('span', 'ej-t-fila', 'Sin venta'));
     }
-    const f2 = crear('span', 'ej-t-fila');
-    const nivel = ejNivelMargen(m.margen, m);
-    if (!ejClave(t)) f2.append(crear('span', null, 'Su carpeta no lleva el N° de la Planilla de Ingreso'));
-    else if (m.margen !== null) {
-      const s = crear('span', 'ej-semaforo' + (nivel ? '' : ' sin'), (m.pres ? 'Margen estimado ' : 'Margen con lo anotado ') + ejPct(m.margen));
-      if (nivel) s.dataset.nivel = nivel;
-      if (!m.pres) s.title = 'Sin presupuesto: solo con lo gastado, comprometido y proyectado que está anotado';
-      f2.append(s);
-    } else f2.append(crear('span', null, m.venta ? 'Sin presupuesto ni gastos' : 'Sin venta'));
-    const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
-    if (decidir) f2.append(crear('span', null, '· ' + pl(decidir, 'compra por decidir', 'compras por decidir')));
-    b.append(f2);
+    cuerpo.append(datos);
+    b.append(cuerpo);
+    // Lo que falta hacer en el proyecto: cada cosa con su número (lo mismo que dice su resumen)
+    if (ejClave(t)) {
+      const es = ejEspera(t, m);
+      const tareas = EJ_ESPERA.map((e) => [es[e.id], e.ico, pl(es[e.id], e.uno, e.varios)]).filter(([n]) => n > 0);
+      if (tareas.length) {
+        const ul = crear('span', 'ej-t-tareas');
+        tareas.forEach(([, ico, txt]) => { const x = crear('span', 'ej-t-tarea'); x.append(icono(ico, 14), crear('span', null, txt)); ul.append(x); });
+        b.append(ul);
+      }
+    }
     if (t.chips.length) {
       const ch = crear('span', 'rc-chips');
       t.chips.slice(0, 3).forEach((c) => { const x = crear('span', 'rc-chip', c.texto); if (c.nivel) x.dataset.nivel = c.nivel; ch.append(x); });
       b.append(ch);
     }
-    const gasto = ejGastoSobreAvance(m);
-    b.dataset.nivel = nivel === 'bad' ? 'bad' : nivel === 'warn' || gasto || t.chips.some((c) => c.nivel === 'warn') ? 'warn' : '';
+    b.dataset.nivel = salud.nivel === 'bad' || salud.nivel === 'warn' ? salud.nivel : '';
     b.addEventListener('click', () => ejElegir(t.clave));
     return b;
+  }
+  // El avance en un anillo (2026-11-09): el número adentro; sin dato, el anillo vacío con un guion
+  function ejAnilloEl(valor, extra) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const caja = crear('span', 'ej-anillo' + (extra ? ' ' + extra : ''));
+    caja.setAttribute('role', 'img');
+    caja.setAttribute('aria-label', valor === null ? 'Avance sin dato' : 'Avance ' + ejPct(valor) + (extra === 'pedido' ? ', pedido al Análisis Financiero' : ''));
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 44 44');
+    svg.setAttribute('aria-hidden', 'true');
+    const c = (cl, d) => {
+      const e = document.createElementNS(NS, 'circle');
+      e.setAttribute('class', cl); e.setAttribute('cx', '22'); e.setAttribute('cy', '22'); e.setAttribute('r', '18');
+      if (d !== undefined) { e.setAttribute('pathLength', '100'); e.setAttribute('stroke-dasharray', d + ' 100'); }
+      return e;
+    };
+    svg.append(c('pista'));
+    if (valor > 0) svg.append(c('arco', Math.min(100, Math.round(valor * 100))));
+    caja.append(svg, crear('b', null, valor === null ? '—' : ejPct(valor)), crear('small', null, 'avance'));
+    if (extra === 'pedido') caja.title = 'Pedido al Análisis Financiero: llega con la próxima vuelta del procesador';
+    return caja;
   }
   // Lo gastado y comprometido frente al avance: con 40 % de avance y 60 % del presupuesto gastado, se avisa
   function ejGastoSobreAvance(m) {
@@ -11644,11 +12134,11 @@
     const foco = a && raiz.contains(a) && a.dataset ? a.dataset.foco : null;
     const m = ejModelo(t);
     ej.modelo = m;
-    if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, mes: plISO(new Date()).slice(0, 7), jornada: 1, personas: new Set(), nombres: {}, dias: new Set() };
+    if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, mes: plISO(new Date()).slice(0, 7), jornada: 1, personas: new Set(), nombres: {}, dias: new Set(), abierto: null };
     raiz.textContent = '';
     // Una carpeta de Gestión sin N° ni TAG (2026-11-03): se ve, pero no hay a qué anotarle compras, días ni avance
     const sinClave = !ejClave(t);
-    raiz.append(ejBoton('Todos los proyectos en ejecución', 'cx-enlace ej-volver', ejVolver, 'izquierda'), ejCabEl(m));
+    raiz.append(ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda'), ejCabEl(m));
     if (!sinClave) raiz.append(ejKpisEl(m));
     if (t.avisos.length) {
       const ul = crear('ul', 'rc-avisos');
@@ -11657,7 +12147,7 @@
     }
     if (sinClave) { raiz.append(ejSinClaveEl(t)); vista.scrollTop = desplazado; return; }
     // El orden (2026-11-06): cómo va y el avance; las facturas reales; lo que viene; la mano de obra; lo demás
-    raiz.append(ejSaltosEl(m));
+    raiz.append(ejPorHacerEl(m), ejSaltosEl(m));
     const dos = crear('div', 'ej-dos');
     dos.append(ejPresupuestoEl(m), ejAvanceEl(m));
     const mo = crear('div', 'ej-dos');
@@ -11677,6 +12167,105 @@
       ejPrecios().then((d) => { if (d && !vista.hidden && ej.clave === t.clave && !document.querySelector('dialog[open]')) ejPintar(); });
     }
   }
+  /* Por hacer (2026-11-09, vuelta 3 del loop de UX): lo que el proyecto está esperando de alguien, primero y con su botón,
+     que lo hace ahí mismo o lleva a la parte donde se hace. Sigue el camino de la información: las facturas del Centro de
+     Costos se asocian a sus gastos, las compras se deciden, los días de la Planificación se traen y lo anotado se lleva al
+     Análisis Financiero, que lo reparte al Recorrido, la Planificación y el Formulador. Sin nada pendiente, «Todo al día». */
+  function ejIrA(id, despues) {
+    const x = document.getElementById(id);
+    if (!x) return;
+    x.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    x.classList.remove('ej-destello');
+    void x.offsetWidth;
+    x.classList.add('ej-destello');
+    if (despues) setTimeout(despues, 350);
+  }
+  function ejTareas(m) {
+    const t = m.t, mo = m.mo, av = m.avance;
+    const out = [];
+    const docs = m.docs || [];
+    const sin = docs.filter((d) => !m.asoc.get(d.ref));
+    if (sin.length) {
+      out.push({ id: 'facturas', ico: 'documento', nivel: 'warn', txt: pl(sin.length, 'factura sin asociar', 'facturas sin asociar'),
+        det: ejPesos(sin.reduce((a, d) => a + (Number(d.neto) || 0), 0)) + ' del Centro de Costos sin decir a qué gasto corresponden', boton: 'Asociar',
+        ir: () => { ej.docsFiltro = 'sin'; ejPintar(); ejIrA('ejSecFacturas'); } });
+    }
+    const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar');
+    if (decidir.length) {
+      out.push({ id: 'decidir', ico: 'billetera', nivel: 'warn', txt: pl(decidir.length, 'compra por decidir', 'compras por decidir'),
+        det: 'Apruébala, cómprala o descártala en los gastos proyectados', boton: 'Decidir',
+        ir: () => { ej.filtro = 'vigentes'; ejGuardarPrefs(); ejPintar(); ejIrA('ejSecGastos'); } });
+    }
+    const porTraer = rc.dir ? ejPorTraer(m, ejSemanasAtras(2)) : [];
+    if (porTraer.length) {
+      out.push({ id: 'traer', ico: 'calendario', nivel: '', txt: pl(porTraer.length, 'día-hombre', 'días-hombre') + ' de la Planificación',
+        det: 'Asignados en la Planificación semanal y sin anotar como trabajados', boton: 'Traerlos', hace: true, ir: () => ejTraerPlanificacion(m) });
+    }
+    if (t.af && t.tag && mo.dias.length && Math.round(mo.costo) !== Math.round(mo.af || 0)
+      && !ejPedidosAF(t.tag).some((x) => 'Mano de Obra Real' in x.valores)) {
+      out.push({ id: 'llevar-mo', ico: 'derecha', nivel: '', txt: 'Mano de obra real: ' + ejPesos(mo.costo),
+        det: 'El Análisis Financiero tiene ' + (mo.af !== null ? ejPesos(mo.af) : 'nada') + '; llévale lo de los días anotados', boton: 'Llevarla', hace: true,
+        ir: () => ejLlevarManoObra(m) });
+    }
+    if (t.af && t.tag) {
+      const g = ejGanttDe(t);
+      if (av.valor === 1 && t.etapa === 'ejecucion' && rcClavesCierre(t).length) {
+        out.push({ id: 'cerrar', ico: 'bandera', nivel: 'ok', txt: 'Avance 100 %', det: 'Si ya terminó, dalo por cerrado: pasa al Cierre del Recorrido', boton: 'Dar por cerrado', ir: () => plAbrirProyectos(t.clave) });
+      } else if (g && g.resumen && g.resumen.avance > 0 && Math.round(g.resumen.avance) !== Math.round((av.valor || 0) * 100) && !av.pedido) {
+        out.push({ id: 'gantt', ico: 'barras', nivel: '', txt: 'La Carta Gantt dice ' + Math.round(g.resumen.avance) + ' %',
+          det: 'El Análisis Financiero tiene ' + (av.valor === null ? 'sin avance' : ejPct(av.valor)), boton: 'Revisar el avance', ir: () => ejIrA('ejSecAvance') });
+      }
+      if (!av.fin) {
+        out.push({ id: 'fin', ico: 'reloj', nivel: '', txt: 'Sin fecha de término', det: 'Sin ella no se sabe si va atrasado', boton: 'Fijarla',
+          ir: () => ejIrA('ejSecAvance', () => { const f = $('#ejAvFin'); if (f) f.focus(); }) });
+      }
+    } else {
+      out.push({ id: 'ficha', ico: 'alerta', nivel: 'warn', txt: 'Sin ficha en el Análisis Financiero', det: 'Sin ella no se puede fijar su avance ni su fecha de término',
+        boton: 'Ver cómo', ir: () => ejIrA('ejSecAvance') });
+    }
+    const pend = ejDe(t, 'pendiente').filter((x) => !x.listo);
+    if (pend.length) {
+      out.push({ id: 'pendientes', ico: 'portapapeles', nivel: '', txt: pl(pend.length, 'pendiente', 'pendientes') + ' del equipo',
+        det: pend.slice(0, 2).map((x) => x.texto).join(' · '), boton: 'Ver', ir: () => ejIrA('ejSecMas') });
+    }
+    return out;
+  }
+  function ejPorHacerEl(m) {
+    const tareas = ejTareas(m);
+    const s = crear('section', 'ej-porhacer');
+    s.setAttribute('aria-labelledby', 'ejPorHacerTit');
+    const h = crear('h3', null, tareas.length ? 'Por hacer' : 'Todo al día');
+    h.id = 'ejPorHacerTit';
+    if (tareas.length) h.append(crear('small', null, String(tareas.length)));
+    s.append(h);
+    if (!tareas.length) {
+      s.classList.add('al-dia');
+      const p = crear('p');
+      p.append(ejPinEl('ok'), document.createTextNode(' Las facturas están asociadas, no hay compras por decidir y lo anotado ya llegó al Análisis Financiero.'));
+      s.append(p);
+      return s;
+    }
+    const ul = crear('ul');
+    tareas.forEach((x) => {
+      const li = crear('li', 'ej-tarea');
+      li.dataset.tarea = x.id;
+      if (x.nivel) li.dataset.nivel = x.nivel;
+      const ico = crear('span', 'ej-tarea-ico');
+      ico.append(icono(x.ico, 18));
+      const txt = crear('span', 'ej-tarea-txt');
+      txt.append(crear('b', null, x.txt));
+      if (x.det) txt.append(crear('small', null, x.det));
+      const b = crear('button', x.hace ? 'cx-boton' : 'cx-enlace', x.boton);
+      b.type = 'button';
+      b.dataset.foco = 'tarea-' + x.id;
+      if (x.hace) b.disabled = !rc.dir || ej.enviando;
+      b.addEventListener('click', x.ir);
+      li.append(ico, txt, b);
+      ul.append(li);
+    });
+    s.append(ul);
+    return s;
+  }
   // Saltar a cada parte del resumen (2026-11-06): la página es larga; una fila de accesos con lo que hay en cada una
   function ejSaltosEl(m) {
     const nav = crear('nav', 'ej-saltos');
@@ -11684,18 +12273,43 @@
     const docs = m.docs || [];
     const sinAsoc = docs.filter((d) => !m.asoc.get(d.ref)).length;
     const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
-    [['ejSecComoVa', 'Cómo va', ''], ['ejSecFacturas', 'Facturas', docs.length ? String(docs.length) + (sinAsoc ? ' · ' + sinAsoc + ' sin asociar' : '') : ''],
+    [['ejSecComoVa', 'Cómo va', ''], ['ejSecAvance', 'Avance', m.avance.valor === null ? '' : ejPct(m.avance.valor)], ['ejSecFacturas', 'Facturas', docs.length ? String(docs.length) + (sinAsoc ? ' · ' + sinAsoc + ' sin asociar' : '') : ''],
       ['ejSecGastos', 'Gastos proyectados', decidir ? decidir + ' por decidir' : ''], ['ejSecMO', 'Mano de obra', m.mo.dh ? ejCantidad(m.mo.dh) + ' DH' : ''],
       ['ejSecMas', 'OC, equipo y notas', '']].forEach(([id, txt, extra]) => {
       const b = crear('button', 'ej-salto');
       b.type = 'button';
       b.append(crear('span', null, txt));
       if (extra) b.append(crear('small', null, extra));
-      b.addEventListener('click', () => { const x = document.getElementById(id); if (x) x.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      b.dataset.sec = id;
+      b.addEventListener('click', () => ejIrA(id));
       nav.append(b);
     });
+    requestAnimationFrame(ejMarcarSalto);
     return nav;
   }
+  /* La parte a la vista se marca en los accesos (2026-11-09, vuelta 5): así se sabe dónde se está en una página larga */
+  function ejMarcarSalto() {
+    const nav = document.querySelector('#ejProyecto .ej-saltos');
+    if (!nav || $('#ejProyecto').hidden) return;
+    const borde = nav.getBoundingClientRect().bottom + 24;
+    let activa = null, arriba = -Infinity;
+    // La última parte que ya pasó bajo los accesos; dos lado a lado (Cómo va y Avance) cuentan como la primera
+    nav.querySelectorAll('.ej-salto').forEach((b) => {
+      const x = document.getElementById(b.dataset.sec);
+      const top = x ? x.getBoundingClientRect().top : Infinity;
+      if (top <= borde && top > arriba + 4) { activa = b; arriba = top; }
+    });
+    const v = $('#vistaEjecucion');
+    if (v.scrollTop < 8) activa = null;                                     // arriba de todo: ninguna
+    else if (v.scrollTop + v.clientHeight >= v.scrollHeight - 4) activa = nav.querySelector('.ej-salto:last-child');   // al fondo, la última
+    nav.querySelectorAll('.ej-salto').forEach((b) => { if (b === activa) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+  }
+  let ejRelojSalto = 0;
+  const ejVigilarSaltos = () => {
+    const v = document.getElementById('vistaEjecucion');
+    if (v) v.addEventListener('scroll', () => { cancelAnimationFrame(ejRelojSalto); ejRelojSalto = requestAnimationFrame(ejMarcarSalto); }, { passive: true });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ejVigilarSaltos); else ejVigilarSaltos();
   function ejSinClaveEl(t) {
     const { s } = ejPanel('Le falta su N° de requerimiento');
     s.classList.add('ej-sin-clave');
@@ -11708,20 +12322,36 @@
   }
   function ejCabEl(m) {
     const t = m.t;
+    /* La cabecera (2026-11-09, vuelta 4 del loop de UX): una tarjeta con la raya del color de su estado; a la izquierda
+       quién es (N°, nombre, dónde, quién lo lleva, su formulación y sus avisos en una línea) y a la derecha su estado con
+       el motivo principal; abajo, sus accesos. */
+    const salud = ejSalud(t, m);
     const cab = crear('header', 'ej-cab');
+    cab.dataset.salud = salud.nivel;
+    const fila = crear('div', 'ej-cab-fila');
+    const quien = crear('div', 'ej-cab-quien');
     const h = crear('h2');
     if (rcEtiqueta(t)) h.append(crear('span', 'ej-n', rcEtiqueta(t)));
     h.append(crear('span', null, t.titulo));
-    cab.append(h);
-    const sub = [rcLegible(t.lugar), t.responsable ? (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) : 'Sin responsable',
-      t.req && t.tag ? 'TAG ' + t.tag : '', t.formulacion ? 'Formulación ' + t.formulacion.codigo + ' «' + t.formulacion.estado + '»' : 'Sin formulación'].filter(Boolean).join(' · ');
-    cab.append(crear('p', 'ej-sub', sub));
+    quien.append(h);
+    const sub = crear('p', 'ej-sub');
+    sub.append(document.createTextNode([rcLegible(t.lugar), t.responsable ? (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) : 'Sin responsable',
+      t.req && t.tag ? 'TAG ' + t.tag : '', t.formulacion ? 'Formulación ' + t.formulacion.codigo + ' «' + t.formulacion.estado + '»' : 'Sin formulación'].filter(Boolean).join(' · ')));
     const chips = t.etapa === 'ejecucion' ? t.chips.slice() : [{ texto: 'Ya no está en ejecución: ' + (RC_ETAPAS.find((e) => e.id === t.etapa) || {}).titulo, nivel: 'ok' }];
     if (chips.length) {
-      const ch = crear('div', 'rc-chips');
+      const ch = crear('span', 'rc-chips');
       chips.forEach((c) => { const x = crear('span', 'rc-chip', c.texto); if (c.nivel) x.dataset.nivel = c.nivel; ch.append(x); });
-      cab.append(ch);
+      sub.append(ch);
     }
+    quien.append(sub);
+    const est = crear('div', 'ej-cab-estado');
+    est.dataset.nivel = salud.nivel;
+    const estTxt = crear('span', 'ej-cab-estado-txt');
+    estTxt.append(crear('b', null, EJ_SALUD[salud.nivel].nombre), crear('small', null, salud.motivos[0] || ''));
+    est.append(ejPinEl(salud.nivel, 16), estTxt);
+    est.title = salud.motivos.join(' · ');
+    fila.append(quien, est);
+    cab.append(fila);
     // Abrir: su carpeta de Gestión de Proyectos (QUEMPIN.exe) y las herramientas donde tiene algo. Desde
     // 2026-10-28 la carpeta de Gestión trae «Formulación» (la copia de la oferta) y, desde el 2026-10-29, el
     // acceso directo web «Facturas del proyecto» a su carpeta del Centro de Costos en SharePoint, que el
@@ -11772,10 +12402,22 @@
     }
     return cab;
   }
-  function ejKpi(et, valor, sub, nivel) {
+  /* Un gráfico chico bajo la cifra (2026-11-09, vuelta 5): segmentos [clase, fracción], marcas [fracción, título] y la raya
+     del avance; la escala es 0 a 1 (las fracciones ya vienen sobre el máximo). */
+  function ejMini(segs, marcas, raya, titulo) {
+    const b = crear('span', 'ej-mini');
+    b.setAttribute('aria-hidden', 'true');
+    if (titulo) b.title = titulo;
+    segs.forEach(([cl, f]) => { if (!(f > 0)) return; const x = crear('span', 'ej-mini-seg' + (cl ? ' ' + cl : '')); x.style.width = Math.min(100, f * 100) + '%'; b.append(x); });
+    (marcas || []).forEach(([f, tt]) => { const x = crear('i', 'ej-mini-marca'); x.style.left = Math.min(100, Math.max(0, f * 100)) + '%'; x.title = tt; b.append(x); });
+    if (raya !== null && raya !== undefined) { const r = crear('i', 'ej-raya-avance'); r.style.left = Math.round(Math.min(1, raya) * 100) + '%'; b.append(r); }
+    return b;
+  }
+  function ejKpi(et, valor, sub, nivel, graf) {
     const k = crear('div', 'ej-kpi');
     if (nivel) k.dataset.nivel = nivel;
     k.append(crear('span', 'ej-kpi-et', et), crear('span', 'ej-kpi-v', valor));
+    if (graf) k.append(graf);
     if (sub) { const s = crear('span', 'ej-kpi-sub'); (Array.isArray(sub) ? sub : [sub]).forEach((x) => s.append(typeof x === 'string' ? document.createTextNode(x) : x)); k.append(s); }
     return k;
   }
@@ -11798,26 +12440,34 @@
     if (m.pres && tot.P > 0) subG.push(crear('b', null, ejPct(tot.G / tot.P)), ' del presupuesto');
     else subG.push('Sin presupuesto con que compararlo');
     if (tot.C > 0.5) subG.push(' · ' + ejPesos(tot.C) + ' comprometidos en OC');
-    box.append(ejKpi('Gastado a la fecha', ejPesos(tot.G), subG));
+    const avv = m.avance.valor;
+    box.append(ejKpi('Gastado a la fecha', ejPesos(tot.G), subG, '', m.pres && tot.P > 0
+      ? ejMini([['', tot.G / tot.P], ['c', tot.C / tot.P]], [], avv, 'Gastado y comprometido contra el presupuesto; la raya naranja es el avance') : null));
     const sub = [];
     if (m.pres) {
       sub.push('Presupuesto ' + ejPesos(tot.P));
       if (tot.EAC > tot.P + 0.5) sub.push(' · se pasa en ', crear('b', null, ejPesos(tot.EAC - tot.P)));
     } else sub.push('Sin presupuesto: lo gastado, comprometido y simulado');
     if (tot.Q > 0) sub.push(' · ' + ejPesos(tot.Q) + ' simulados');
-    box.append(ejKpi('Costo estimado al cierre', ejPesos(tot.EAC), sub, m.pres && tot.EAC > tot.P + 0.5 ? 'warn' : ''));
+    const escC = Math.max(tot.P || 0, tot.EAC) || 1;
+    box.append(ejKpi('Costo estimado al cierre', ejPesos(tot.EAC), sub, m.pres && tot.EAC > tot.P + 0.5 ? 'warn' : '', m.pres && tot.P > 0
+      ? ejMini([['', Math.min(tot.EAC, tot.P) / escC], ['pasa', Math.max(0, tot.EAC - tot.P) / escC]], [[tot.P / escC, 'Presupuesto ' + ejPesos(tot.P)]], null, 'Al cierre contra el presupuesto (la marca)') : null));
     const subM = [];
     if (m.margenP !== null) subM.push('Presupuestado ' + ejPct(m.margenP));
     else subM.push('Sin presupuesto: solo con lo anotado');
     subM.push(' · meta ' + ejPct(m.margenes.objetivo));
     if (m.margen !== null && m.margen0 !== null && Math.abs(m.margen0 - m.margen) > 0.0005) subM.push(' · ', crear('b', null, (m.margen < m.margen0 ? '−' : '+') + ejPuntos(m.margen0 - m.margen)), ' por lo simulado');
     const sinMargen = !m.venta ? 'Falta la venta para calcularlo.' : 'Sin presupuesto ni gastos anotados: anota lo que se espera gastar para estimarlo.';
+    const escM = Math.max(0.5, (m.margenes.objetivo || 0) + 0.15, (m.margen || 0) + 0.05);
+    const nivM = ejNivelMargen(m.margen, m);
     box.append(ejKpi(m.pres ? 'Margen estimado' : 'Margen con lo anotado', m.margen === null ? '—' : ejPct(m.margen), m.margen === null ? sinMargen : subM,
-      ejNivelMargen(m.margen, m) === 'ok' ? '' : ejNivelMargen(m.margen, m)));
+      nivM === 'ok' ? '' : nivM, m.margen === null ? null : ejMini([[nivM ? 'n-' + nivM : '', Math.max(0, m.margen) / escM]],
+        [[m.margenes.minimo / escM, 'Mínimo ' + ejPct(m.margenes.minimo)], [m.margenes.objetivo / escM, 'Meta ' + ejPct(m.margenes.objetivo)]], null, 'El margen contra el mínimo y la meta (las marcas)')));
     const av = m.avance;
     const gs = ejGastoSobreAvance(m);
     const subA = gs ? ['Va gastado más de lo que avanza: ', crear('b', null, ejPct((tot.G + tot.C) / tot.P)), ' del presupuesto'] : av.fin ? 'Término ' + rcCorta(av.fin, new Date()) : 'Sin fecha de término';
-    box.append(ejKpi('Avance', av.valor === null ? 'Sin dato' : ejPct(av.valor), av.pedido ? 'Pedido: llega con la próxima vuelta del procesador' : subA, gs ? 'warn' : ''));
+    box.append(ejKpi('Avance', av.valor === null ? 'Sin dato' : ejPct(av.valor), av.pedido ? 'Pedido: llega con la próxima vuelta del procesador' : subA, gs ? 'warn' : '',
+      av.valor === null ? null : ejMini([[av.pedido ? 'pedido' : 'av', av.valor]], [], null, 'Avance del proyecto')));
     return box;
   }
   /* Cómo va el proyecto (2026-11-06, pedido del usuario: «más clara y que muestre además lo que se lleva gastado»): una
@@ -11924,8 +12574,12 @@
     const t = m.t;
     const av = m.avance;
     const { s } = ejPanel('Avance', '', t.af && t.tag ? 'Lo que guardas llega al Análisis Financiero con la próxima vuelta del procesador, y de ahí al Recorrido, la Planificación semanal y el Formulador. Solo se escribe si allá sigue el valor que ves aquí.' : '');
+    s.id = 'ejSecAvance';
     const num = crear('div', 'ej-av-num');
-    num.append(crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)),
+    const cambio = crear('em', 'ej-av-cambio');
+    cambio.id = 'ejAvCambio';
+    cambio.setAttribute('aria-live', 'polite');
+    num.append(crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)), cambio,
       crear('span', null, av.pedido ? 'pedido ' + plCuando(texto(av.pedido.origen && av.pedido.origen.enviado)) + (av.pedido.origen && av.pedido.origen.usuario ? ' por ' + av.pedido.origen.usuario : '')
         : t.af ? 'en el Análisis Financiero' : 'sin ficha en el Análisis Financiero'));
     s.append(num);
@@ -11937,7 +12591,10 @@
     med.setAttribute('aria-label', 'Avance del proyecto');
     const b = crear('span');
     b.style.width = Math.round((av.valor || 0) * 100) + '%';
-    med.append(b);
+    const previa = crear('i', 'ej-av-previa');
+    previa.id = 'ejAvPrevia';
+    previa.hidden = true;
+    med.append(b, previa);
     s.append(med);
     if (av.pedido) {
       const p = crear('p', 'ej-linea tinte');
@@ -11973,6 +12630,7 @@
           r.value = n.value = String(Math.round(g.resumen.avance));
           ej.sucios.set('ejAvRango', r.value);
           ej.sucios.set('ejAvNum', n.value);
+          n.dispatchEvent(new Event('input', { bubbles: true }));
           n.focus();
         });
         p.append(u);
@@ -11993,40 +12651,99 @@
     else s.append(...ejSinFicha(m));
     return s;
   }
+  /* Cambiar el avance (2026-11-09, vuelta 6 del loop de UX): botones rápidos (+5, +10, +25, terminado), la barra muestra
+     en naranjo lo que se va a guardar y el botón dice qué guarda; sin cambios, no se puede apretar. Lo escrito sobrevive al
+     repintado (ej.sucios). */
   function ejAvanceForm(m) {
     const t = m.t, av = m.avance;
     const f = crear('form', 'ej-av-form');
     f.noValidate = true;
     const pct = Math.round((av.valor || 0) * 100);
-    const rLab = crear('label', 'pl-campo');
+    const finActual = av.fin ? plISO(av.fin) : '';
+    const inicial = (id, v) => (ej.sucios.has(id) ? ej.sucios.get(id) : v);
+    const rapidos = crear('div', 'ej-av-rapidos');
+    rapidos.setAttribute('role', 'group');
+    rapidos.setAttribute('aria-label', 'Cambiar el avance rápido');
+    const rLab = crear('label', 'pl-campo ej-av-rango');
     rLab.append(crear('span', null, 'Nuevo avance'));
     const r = crear('input');
-    r.type = 'range'; r.min = '0'; r.max = '100'; r.step = '5'; r.value = String(pct); r.id = 'ejAvRango';
+    r.type = 'range'; r.min = '0'; r.max = '100'; r.step = '5'; r.id = 'ejAvRango';
+    r.value = String(inicial('ejAvRango', pct));
     rLab.append(r);
-    const nLab = crear('label', 'pl-campo');
+    const nLab = crear('label', 'pl-campo ej-av-pct');
     nLab.append(crear('span', null, '%'));
     const n = crear('input');
-    n.type = 'number'; n.min = '0'; n.max = '100'; n.step = '1'; n.value = String(pct); n.id = 'ejAvNum'; n.inputMode = 'numeric';
+    n.type = 'number'; n.min = '0'; n.max = '100'; n.step = '1'; n.id = 'ejAvNum'; n.inputMode = 'numeric';
+    n.value = String(inicial('ejAvNum', pct));
     nLab.append(n);
-    r.addEventListener('input', () => { n.value = r.value; });
-    n.addEventListener('input', () => { r.value = n.value; });
     const fLab = crear('label', 'pl-campo ej-av-fecha');
     fLab.append(crear('span', null, 'Fecha de término'));
     const fe = crear('input');
     fe.type = 'date'; fe.id = 'ejAvFin';
-    fe.value = av.fin ? plISO(av.fin) : '';
+    fe.value = inicial('ejAvFin', finActual);
     fLab.append(fe);
-    const enviar = crear('button', 'cx-boton', 'Guardar en el Análisis Financiero');
+    const enviar = crear('button', 'cx-boton');
     enviar.type = 'submit';
-    enviar.disabled = !rc.dir || ej.enviando;
     enviar.dataset.foco = 'enviar-avance';
-    f.append(rLab, nLab, fLab, enviar);
+    const poner = (v) => {
+      v = Math.max(0, Math.min(100, Math.round(v)));
+      r.value = n.value = String(v);
+      ej.sucios.set('ejAvRango', r.value);
+      ej.sucios.set('ejAvNum', n.value);
+      actualizar();
+    };
+    [['+5', 5], ['+10', 10], ['+25', 25]].forEach(([txt, d]) => {
+      const b = crear('button', 'ej-av-chip', txt);
+      b.type = 'button';
+      b.title = 'Sumar ' + d + ' puntos al avance';
+      b.addEventListener('click', () => poner((Number(n.value) || 0) + d));
+      rapidos.append(b);
+    });
+    const fin = crear('button', 'ej-av-chip', 'Terminado 100 %');
+    fin.type = 'button';
+    fin.addEventListener('click', () => poner(100));
+    rapidos.append(fin);
+    const deshacer = crear('button', 'ej-av-chip suave', 'Como estaba');
+    deshacer.type = 'button';
+    deshacer.addEventListener('click', () => {
+      ['ejAvRango', 'ejAvNum', 'ejAvFin'].forEach((id) => ej.sucios.delete(id));
+      fe.value = finActual;
+      poner(pct);
+      ['ejAvRango', 'ejAvNum'].forEach((id) => ej.sucios.delete(id));
+    });
+    rapidos.append(deshacer);
+    // Lo que se va a guardar, en la barra del panel (el naranjo) y en el botón
+    function actualizar() {
+      const v = Math.max(0, Math.min(100, Math.round(Number(n.value) || 0)));
+      const cambiaAv = v !== pct || av.valor === null;
+      const cambiaFin = /^\d{4}-\d{2}-\d{2}$/.test(fe.value) && fe.value !== finActual;
+      const prev = document.getElementById('ejAvPrevia');
+      if (prev) {
+        prev.style.left = Math.min(v, pct) + '%';
+        prev.style.width = Math.abs(v - pct) + '%';
+        prev.hidden = !cambiaAv || v === pct;
+        prev.classList.toggle('baja', v < pct);
+      }
+      const cambio = document.getElementById('ejAvCambio');
+      if (cambio) cambio.textContent = cambiaAv && v !== pct ? '→ ' + v + ' %' : '';
+      enviar.textContent = cambiaAv && cambiaFin ? 'Guardar ' + v + ' % y la fecha en el Análisis Financiero'
+        : cambiaAv ? 'Guardar ' + v + ' % en el Análisis Financiero' : cambiaFin ? 'Guardar la fecha en el Análisis Financiero' : 'Sin cambios que guardar';
+      enviar.disabled = !rc.dir || ej.enviando || !(cambiaAv || cambiaFin);
+      deshacer.hidden = !(cambiaAv && v !== pct) && !cambiaFin;
+    }
+    r.addEventListener('input', () => { n.value = r.value; ej.sucios.set('ejAvNum', n.value); actualizar(); });
+    n.addEventListener('input', () => { r.value = n.value; ej.sucios.set('ejAvRango', r.value); actualizar(); });
+    fe.addEventListener('input', actualizar);
+    fe.addEventListener('change', actualizar);
+    f.append(rapidos, rLab, nLab, fLab, enviar);
     f.addEventListener('submit', (e) => { e.preventDefault(); ejEnviarAvance(m, Number(n.value), fe.value); });
     if (av.valor === 1 && t.etapa === 'ejecucion' && rcClavesCierre(t).length) {
       const cerrar = ejBoton('Ya terminó: dar por cerrado', 'cx-enlace ej-av-fecha', () => plAbrirProyectos(t.clave));
       cerrar.title = 'Pasa al «Cierre» del Recorrido y sale de la Planificación semanal';
       f.append(cerrar);
     }
+    requestAnimationFrame(actualizar);
+    actualizar();
     return f;
   }
   // Sin ficha en el Análisis Financiero: unirlo con una ficha sin N° que se le parezca, o crear la suya en «Ingresar avance»
@@ -12103,6 +12820,31 @@
     });
     if (m.costos.length) barra.append(filtros);
     s.append(barra);
+    // Vuelta 8 del loop de UX (2026-11-09): las compras por estado en una barra, con cuánto suma cada uno; tocar uno filtra
+    const vivos = items.filter((x) => x.it.estado !== 'descartada');
+    if (vivos.length) {
+      const montoDe = (x) => (Number(x.it.cantidad) || 0) * (Number(x.it.precio) || 0);
+      const grupos = [['evaluar', 'Por decidir', 'vigentes'], ['aprobada', 'Aprobadas', 'vigentes'], ['comprada', 'Compradas', 'compradas']]
+        .map(([id, nombre, filtro]) => { const xs = vivos.filter((x) => x.it.estado === id); return { id, nombre, filtro, n: xs.length, monto: xs.reduce((a, x) => a + montoDe(x), 0) }; });
+      const total = grupos.reduce((a, g) => a + g.monto, 0) || 1;
+      const emb = crear('div', 'ej-embudo');
+      const barraE = crear('div', 'ej-embudo-barra');
+      barraE.setAttribute('aria-hidden', 'true');
+      const ley = crear('div', 'ej-embudo-ley');
+      grupos.forEach((g) => {
+        if (g.n) { const x = crear('span', 'ej-embudo-seg'); x.dataset.estado = g.id; x.style.flexGrow = String(Math.max(g.monto / total, 0.04)); x.title = g.nombre + ': ' + ejPesos(g.monto); barraE.append(x); }
+        const b = crear('button', 'ej-embudo-et');
+        b.type = 'button';
+        b.dataset.estado = g.id;
+        b.disabled = !g.n;
+        b.append(crear('i'), crear('span', null, g.nombre), crear('b', null, g.n ? ejPesos(g.monto) : '—'), crear('small', null, g.n ? '(' + g.n + ')' : ''));
+        b.title = g.n ? 'Mostrar ' + g.nombre.toLowerCase() : 'No hay ' + g.nombre.toLowerCase();
+        b.addEventListener('click', () => { ej.filtro = g.filtro; ejGuardarPrefs(); ejPintar(); });
+        ley.append(b);
+      });
+      emb.append(barraE, ley);
+      s.append(emb);
+    }
     // Lo simulado, en una línea: cuánto suma y cómo mueve el margen
     const simuladas = m.costos.filter((it) => ejCuentaComo(it, m.folios) === 'q');
     const porDecidir = m.costos.filter((it) => it.estado === 'evaluar');
@@ -12385,6 +13127,15 @@
     if (!docs.length) { s.append(crear('p', 'ej-nada', 'Sin documentos registrados con su TAG en el Centro de Costos.')); return s; }
     const todos = ejDestinos(m);
     const asociada = (d) => ejDestinosDe(m, d.ref, todos).length > 0 || !!(m.asoc.get(d.ref) && !m.asoc.get(d.ref).destinos.length);
+    // Vuelta 8 del loop de UX (2026-11-09): cuánto de lo facturado ya dice a qué gasto corresponde, en una barra
+    const asoc = docs.filter(asociada);
+    const montoA = asoc.reduce((a, d) => a + Math.max(0, d.neto), 0), montoT = docs.reduce((a, d) => a + Math.max(0, d.neto), 0) || 1;
+    const prog = crear('div', 'ej-prog');
+    const pt = crear('div', 'ej-prog-txt');
+    pt.append(crear('b', null, asoc.length === docs.length ? 'Todas asociadas' : pl(asoc.length, 'asociada', 'asociadas') + ' de ' + docs.length),
+      crear('span', null, ejPesos(montoA) + ' de ' + ejPesos(montoT)));
+    prog.append(pt, ejMini([['', montoA / montoT], ['falta', (montoT - montoA) / montoT]], [], null, 'Lo facturado que ya está asociado (oscuro) y lo que falta (rayado)'));
+    s.append(prog);
     // Filtros y búsqueda (la búsqueda solo esconde filas: no repinta, para no perder lo escrito)
     const barra = crear('div', 'ej-barra-compras');
     const filtros = crear('div', 'ej-filtros');
@@ -12446,7 +13197,8 @@
         ds.forEach((x) => { const c = crear('span', 'ej-d-chip' + (x.tipo === 'linea' ? ' linea' : ''), x.nombre); c.title = (x.tipo === 'linea' ? 'Línea del presupuesto: ' : 'Gasto proyectado: ') + x.sub; ch.append(c); });
         tdA.append(ch);
       } else if (a && !a.destinos.length) tdA.append(crear('span', 'ej-d-ninguno', 'A ningún gasto anotado'));
-      const b = crear('button', 'cx-desmarcar', ds.length || (a && !a.destinos.length) ? 'Cambiar' : 'Asociar');
+      // Sin asociar, un botón que se ve (vuelta 8); ya asociada, el enlace discreto para cambiarla
+      const b = crear('button', ds.length || (a && !a.destinos.length) ? 'cx-desmarcar' : 'ej-asociar', ds.length || (a && !a.destinos.length) ? 'Cambiar' : 'Asociar');
       b.type = 'button';
       b.disabled = !rc.dir;
       b.dataset.foco = 'asociar-' + d.ref;
@@ -12481,11 +13233,8 @@
     };
     bus.addEventListener('input', filtrar);
     if (ej.docsQ) filtrar();
-    // Lo que falta asociar, en una línea
-    const sinAsoc = docs.filter((d) => !asociada(d));
-    if (sinAsoc.length && todos.length) {
-      s.append(crear('p', 'ej-pista', pl(sinAsoc.length, 'documento sin asociar', 'documentos sin asociar') + ' por ' + ejPesos(sinAsoc.reduce((x, d) => x + d.neto, 0)) + '.'));
-    } else if (!todos.length) {
+    // Lo que falta asociar ya lo dice la barra de arriba (vuelta 8); sin gastos ni presupuesto, a qué asociarlas
+    if (!todos.length) {
       s.append(lineaInfo('ej-pista', 'Sin gastos proyectados ni presupuesto a que asociarlas.', 'Anota los gastos en «Gastos proyectados y cotizaciones» o formula el proyecto en el Formulador: sus líneas del presupuesto también se pueden elegir.', 'Cómo'));
     }
     return s;
@@ -12704,21 +13453,28 @@
     if (!sem.leida) { s.append(crear('p', 'ej-nada', 'Leyendo la planificación de esta semana…')); return s; }
     const mod = plModelo(sem);
     const c = mod.canon(clave);
-    const ul = crear('ul', 'ej-lista ej-equipo');
+    /* La semana en una tira (2026-11-09, vuelta 10 del loop de UX): lunes a sábado, quién va cada día (sus iniciales) y en
+       qué vehículo, con hoy marcado; abajo, quiénes van en la semana. */
+    const caja = crear('div', 'ej-equipo');
+    const ol = crear('ol', 'ej-semana');
     let alguien = false;
+    const todos = new Set();
     plDias(sem).forEach((d) => {
-      const per = mod.porProyecto.get(d.iso + '|' + c) || [];
-      if (!per.length) return;
-      alguien = true;
-      const li = crear('li');
-      li.append(crear('span', 'ej-dia' + (d.hoy ? ' hoy' : ''), d.corto + ' ' + d.fecha.getDate()));
-      const txt = crear('span', 'ej-li-txt');
-      const vehs = [...new Set(per.map((p) => mod.vehiculo(d.iso, p, c)).filter(Boolean))].map((v) => (plVehiculo(v) || { nombre: v }).nombre);
-      txt.append(crear('b', null, plNoms(plOrdenPersonas(per))));
-      if (vehs.length) txt.append(crear('span', null, 'En ' + unir(vehs)));
-      li.append(txt);
-      ul.append(li);
+      const per = plOrdenPersonas(mod.porProyecto.get(d.iso + '|' + c) || []);
+      const li = crear('li', (d.hoy ? 'hoy' : '') + (per.length ? '' : ' vacio'));
+      li.append(crear('span', 'ej-sem-dia', d.corto + ' ' + d.fecha.getDate()));
+      const chips = crear('span', 'ej-sem-pers');
+      per.forEach((x) => { todos.add(x); const ch = crear('span', 'ej-sem-per' + (x === estado.usuario ? ' tuya' : ''), PL_PER_MANO.test(x) ? plNom(x).slice(0, 3) : x); ch.title = plNom(x); chips.append(ch); });
+      li.append(chips);
+      const vehs = [...new Set(per.map((x) => mod.vehiculo(d.iso, x, c)).filter(Boolean))].map((v) => (plVehiculo(v) || { nombre: v }).nombre);
+      if (vehs.length) { const v = crear('span', 'ej-sem-veh'); v.append(icono('vehiculo', 13), crear('span', null, unir(vehs))); li.append(v); }
+      li.setAttribute('aria-label', d.corto + ' ' + d.fecha.getDate() + ': ' + (per.length ? plNoms(per) + (vehs.length ? ', en ' + unir(vehs) : '') : 'nadie'));
+      if (per.length) alguien = true;
+      ol.append(li);
     });
+    caja.append(ol);
+    if (alguien) caja.append(crear('p', 'ej-eq-res', 'Esta semana: ' + plNoms(plOrdenPersonas([...todos]))));
+    const ul = caja;
     const pausa = mod.pausas.get(c);
     if (alguien) s.append(ul);
     else if (pausa || (t.etapa === 'ejecucion' && !t.antiguo)) s.append(crear('p', 'ej-nada', pausa ? 'Esta semana no se trabaja en él.' : 'Nadie asignado esta semana.'));
@@ -12865,6 +13621,52 @@
   }
   const ejNombreMes = (mes) => { const [a, m] = mes.split('-').map(Number); return EJ_MESES[m - 1].replace(/^./, (c) => c.toUpperCase()) + ' ' + a; };
   const ejIniciales = (d) => (PL_PER_MANO.test(d.persona) ? (ejNomPer(d).split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase() || '·') : d.persona);
+  // Lo trabajado, en gráfico: días-hombre contra los presupuestados (con la raya de lo esperable al avance) y por persona
+  function ejMoResumenEl(m) {
+    const mo = m.mo, av = m.avance.valor;
+    const caja = crear('div', 'ej-mo-res');
+    if (!mo.dias.length) {
+      caja.append(crear('p', 'ej-pista', mo.dhP ? 'Todavía no hay días trabajados anotados: el presupuesto considera ' + pl(mo.dhP, 'día-hombre', 'días-hombre') + '.' : 'Todavía no hay días trabajados anotados.'));
+      return caja;
+    }
+    const tot = crear('div', 'ej-mo-tot');
+    const num = crear('div', 'ej-mo-num');
+    num.append(crear('b', null, ejCantidad(mo.dh) + ' DH'), crear('span', null, (mo.dhP ? 'de ' + ejCantidad(mo.dhP) + ' presupuestados · ' : '') + ejPesos(mo.costo)));
+    tot.append(num);
+    if (mo.dhP) {
+      const esc = Math.max(mo.dhP, mo.dh);
+      tot.append(ejMini([[mo.dh > mo.dhP ? 'pasa' : 'av', Math.min(mo.dh, mo.dhP) / esc], ['pasa', Math.max(0, mo.dh - mo.dhP) / esc]],
+        [[mo.dhP / esc, 'Presupuestados: ' + ejCantidad(mo.dhP) + ' DH']], av, 'Días-hombre trabajados contra los presupuestados (la marca); la raya naranja es el avance'));
+      if (av !== null && av > 0) {
+        const esperado = mo.dhP * av;
+        tot.append(crear('small', 'ej-mo-ritmo', mo.dh > esperado * 1.15 ? 'Va con más días de los que su avance (' + ejPct(av) + ') supone: ~' + ejCantidad(Math.round(esperado)) + ' DH'
+          : mo.dh < esperado * 0.85 ? 'Va con menos días de los que su avance (' + ejPct(av) + ') supone: ~' + ejCantidad(Math.round(esperado)) + ' DH' : 'Acorde con su avance (' + ejPct(av) + ')'));
+      }
+    }
+    caja.append(tot);
+    // Por persona: sus días-hombre y su costo, de más a menos
+    const por = new Map();
+    mo.dias.forEach((d) => {
+      const x = por.get(d.persona) || { dh: 0, nombre: PL_PER_MANO.test(d.persona) ? d.nombre || plNom(d.persona) : d.persona };
+      x.dh += Number(d.jornada) || 0;
+      por.set(d.persona, x);
+    });
+    const filas = [...por.entries()].sort((a, b) => b[1].dh - a[1].dh);
+    const max = Math.max(...filas.map(([, x]) => x.dh), 1);
+    const ul = crear('ul', 'ej-mo-pers');
+    ul.setAttribute('aria-label', 'Días-hombre por persona');
+    filas.forEach(([per, x]) => {
+      const li = crear('li');
+      const barra = crear('span', 'ej-mo-barra');
+      const b = crear('span');
+      b.style.width = (100 * x.dh / max) + '%';
+      barra.append(b);
+      li.append(crear('b', 'ej-mo-quien', x.nombre), barra, crear('span', 'ej-mo-dh', ejCantidad(x.dh) + ' DH · ' + ejPesos(x.dh * mo.tarifas['n' + ejNivelDe(per)])));
+      ul.append(li);
+    });
+    caja.append(ul);
+    return caja;
+  }
   function ejManoObraEl(m) {
     const t = m.t, mo = m.mo, f = ej.diasForm;
     const { s } = ejPanel('Mano de obra: días trabajados', mo.dh ? ejCantidad(mo.dh) + ' días-hombre · ' + ejPesos(mo.costo) : '',
@@ -13056,6 +13858,20 @@
       ok.textContent = 'Anotar ' + ejCantidad(dh) + ' DH';
     };
     pintar();
+    /* Vuelta 7 del loop de UX (2026-11-09): arriba, lo trabajado en gráfico (días-hombre contra lo presupuestado y por
+       persona); el calendario se abre con «Anotar días trabajados» (abierto de entrada si todavía no hay nada anotado). */
+    if (f.abierto === null || f.abierto === undefined) f.abierto = !mo.dias.length;
+    s.append(ejMoResumenEl(m));
+    const abrir = crear('button', (f.abierto ? 'cx-enlace' : 'cx-boton') + ' ej-cal-abrir');
+    abrir.type = 'button';
+    abrir.setAttribute('aria-expanded', String(f.abierto));
+    abrir.setAttribute('aria-controls', 'ejCalCaja');
+    abrir.dataset.foco = 'cal-abrir';
+    abrir.append(icono(f.abierto ? 'cerrar' : 'calendario', 16), crear('span', null, f.abierto ? 'Ocultar el calendario' : 'Anotar días trabajados'));
+    abrir.addEventListener('click', () => { f.abierto = !f.abierto; ejPintar(); });
+    s.append(abrir);
+    box.id = 'ejCalCaja';
+    box.hidden = !f.abierto;
     s.append(box);
     // Lo que la Planificación ya tiene de este proyecto, hasta hoy
     const porTraer = ejPorTraer(m, ejSemanasAtras(2));
