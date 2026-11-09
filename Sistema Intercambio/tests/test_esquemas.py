@@ -28,7 +28,7 @@ RUTA_JS = RAIZ / "esquemas.js"
 PALABRAS_SOPORTADAS = {
     "$schema", "title", "description", "destino", "dueno",
     "type", "const", "enum", "required", "properties", "additionalProperties",
-    "items", "minItems", "minLength", "pattern", "minimum", "exclusiveMinimum", "maximum", "anyOf",
+    "items", "minItems", "minLength", "maxLength", "pattern", "minimum", "exclusiveMinimum", "maximum", "anyOf",
 }
 
 

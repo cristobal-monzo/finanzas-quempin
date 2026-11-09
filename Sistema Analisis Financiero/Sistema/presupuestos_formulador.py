@@ -142,6 +142,8 @@ CATEGORIAS = tuple(COLUMNA_POR_CATEGORIA)
 CLAVE_VENTA = "Monto de Venta"
 COLUMNA_VENTA = "Monto de Venta (sin IVA)"
 COLUMNA_REQ = "N° Requerimiento"
+COLUMNA_APODO = "Apodo"
+LARGO_APODO = 60
 COLUMNAS_INTERCAMBIO = {**COLUMNA_POR_CATEGORIA, CLAVE_VENTA: COLUMNA_VENTA}
 # Lo que escribe el tablero: clave del mensaje -> (columna de "Proyectos",
 # tipo de valor). Costos y venta usan la misma clave que el Formulador: así
@@ -156,6 +158,10 @@ CAMPOS_TABLERO = {
     **{c: (col, "pesos") for c, col in COLUMNA_POR_CATEGORIA.items()},
     "Mano de Obra Real": ("Mano de Obra Real", "pesos"),
     COLUMNA_REQ: (COLUMNA_REQ, "entero"),
+    # 2026-11-09 (pedido del usuario): el nombre que se ve, editable desde el
+    # Seguimiento del Portal y desde el Formulador. Solo el apodo: el
+    # «Nombre del proyecto» y la Planilla no cambian.
+    COLUMNA_APODO: (COLUMNA_APODO, "texto"),
 }
 # Toda columna que puede escribir este canal, venga de donde venga el envío.
 COLUMNAS_ESCRIBIBLES = {clave: columna for clave, (columna, _) in CAMPOS_TABLERO.items()}
@@ -252,6 +258,8 @@ def _legible(clave: str, valor) -> str:
     valor = _normalizar(clave, valor)
     if valor is None:
         return "(vacío)"
+    if tipo == "texto":
+        return f"«{valor}»"
     if isinstance(valor, float) and tipo == "fraccion":
         return f"{valor * 100:.1f}".replace(".", ",") + " %"
     if isinstance(valor, float) and tipo == "entero":
@@ -266,6 +274,9 @@ def _normalizar(clave: str, valor):
     número (float) o 'AAAA-MM-DD' para las fechas. Vacío -> None. Un texto
     que no es número ni fecha se devuelve tal cual: cuenta como valor
     escrito a mano."""
+    if TIPO_DE_CAMPO.get(clave) == "texto":
+        texto = " ".join(str(valor if valor is not None else "").split())
+        return texto or None
     if TIPO_DE_CAMPO.get(clave) == "fecha":
         if valor is None or (isinstance(valor, str) and not valor.strip()):
             return None
@@ -300,6 +311,8 @@ def _valor_celda(clave: str, valor):
     tipo = TIPO_DE_CAMPO.get(clave, "pesos")
     if valor is None:
         return None
+    if tipo == "texto":
+        return _normalizar(clave, valor)
     if tipo == "fecha":
         return datetime.strptime(valor, "%Y-%m-%d")
     if tipo == "fraccion":
@@ -405,6 +418,11 @@ def validar_datos(mensaje: dict) -> list[str]:
             errores.append(f"campo desconocido: {clave}")
         elif valor is None:
             continue
+        elif tipo == "texto":
+            if not isinstance(valor, str):
+                errores.append(f"{clave}: debe ser un texto")
+            elif len(valor.strip()) > LARGO_APODO:
+                errores.append(f"{clave}: hasta {LARGO_APODO} letras")
         elif tipo == "fecha":
             try:
                 datetime.strptime(str(valor), "%Y-%m-%d")
@@ -439,7 +457,9 @@ def valores_mensaje(mensaje: dict) -> dict:
         salida = {}
         for clave, valor in mensaje["valores"].items():
             tipo = TIPO_DE_CAMPO[clave]
-            if valor is None or tipo == "fecha":
+            if tipo == "texto":
+                salida[clave] = _normalizar(clave, valor)
+            elif valor is None or tipo == "fecha":
                 salida[clave] = valor
             elif tipo == "fraccion":
                 salida[clave] = float(valor)

@@ -58,6 +58,7 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
 - **Indicadores** (`ejIndicadores`): días-hombre, costo por día-hombre, utilidad y venta por día-hombre, incidencia de
   la mano de obra y margen, presupuestados (los `kpis` de `js/calc.js`) y estimados hoy; los días-hombre al cierre son
   los presupuestados o, si ya se pasaron, los trabajados.
+- **El nombre que se ve** (2026-11-09): el lápiz ✎ junto al título de la cabecera pide al Análisis Financiero solo el **Apodo** (`datos-proyecto`, `ejGuardarNombre`); vacío = se ve el «Nombre del proyecto». El nombre pedido se ve desde ya (`rcArmar`).
 - **El avance** (y la fecha de término) se pide al Análisis Financiero con un `datos-proyecto` al buzón (`ejEnviarAF`, el
   mismo que usa ahora «Dar por cerrado»); un pedido sobre otro que todavía espera lleva en `reemplaza` el valor del
   anterior (`ejVisto`). `rcLeer` lee esos pedidos del buzón (`datosProyecto`) y lo que dijo el Análisis de cada uno

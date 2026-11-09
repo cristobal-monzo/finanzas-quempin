@@ -4789,6 +4789,22 @@ def test_el_avance_se_pide_al_analisis_y_lo_ven_las_demas_vistas(navegador, siti
     pagina.context.close()
 
 
+def test_el_nombre_que_se_ve_se_cambia_con_el_lapiz(navegador, sitio):
+    """2026-11-09 (pedido del usuario): el lápiz junto al nombre pide al Análisis Financiero solo el apodo."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejProyecto .ej-cab .ej-renombrar").click()
+    pagina.locator("#ejNomTexto").fill("  H2   Green ")
+    pagina.locator("#ejNombreForm .btn-pri").click()
+    _esperar_aviso(pagina, "Nombre pedido")
+    (_, m), = [(n, x) for n, x in pagina.evaluate(JS_BUZON).items()
+               if x.get("tipo") == "datos-proyecto" and (x.get("origen") or {}).get("herramienta") == "portal"]
+    assert m["valores"] == {"Apodo": "H2 Green"} and list(m["reemplaza"]) == ["Apodo"]
+    assert _esquemas().validar_mensaje(m) == []
+    assert "H2 Green" in pagina.locator("#ejProyecto .ej-cab h2").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
 def test_los_dias_trabajados_estiman_la_mano_de_obra_real(navegador, sitio):
     from datetime import date
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")

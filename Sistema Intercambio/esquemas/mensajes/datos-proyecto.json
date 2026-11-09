@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "datos-proyecto (tablero de Análisis Financiero → Análisis Financiero)",
-  "description": "Valores manuales de un proyecto ingresados en la pestaña «Ingresar datos» del tablero: % de avance, fechas, monto de venta, los 4 costos proyectados, la mano de obra real y el N° de requerimiento. Las claves de costos y venta son las mismas de presupuesto-proyecto y venta-proyecto. Cada valor se escribe solo si la celda está vacía o si todavía tiene el valor que la persona vio ('reemplaza'); si no, el envío queda pendiente. null deja la celda vacía. Varios envíos al mismo proyecto se aplican todos, en orden de envío.",
+  "description": "Valores manuales de un proyecto ingresados en la pestaña «Ingresar datos» del tablero: % de avance, fechas, monto de venta, los 4 costos proyectados, la mano de obra real el N° de requerimiento y el apodo (el nombre que se ve; desde el Seguimiento del Portal y el Formulador). Las claves de costos y venta son las mismas de presupuesto-proyecto y venta-proyecto. Cada valor se escribe solo si la celda está vacía o si todavía tiene el valor que la persona vio ('reemplaza'); si no, el envío queda pendiente. null deja la celda vacía. Varios envíos al mismo proyecto se aplican todos, en orden de envío.",
   "destino": "analisis-financiero",
   "type": "object",
   "properties": {
@@ -100,6 +100,14 @@
           "minimum": 1,
           "maximum": 999999,
           "description": "N° de la Planilla de Ingreso de Requerimientos"
+        },
+        "Apodo": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 60,
+          "description": "El nombre que muestran los tableros («270 - Caldera Valdivia»). null o vacío = se ve el Nombre del proyecto"
         }
       },
       "additionalProperties": false

@@ -1,0 +1,20 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "c1d2e3f4a5b6c1d2e3f4a5b6",
+  "tipo": "datos-proyecto",
+  "destino": "analisis-financiero",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "Persona de prueba",
+    "enviado": "2026-11-09T12:00:00-03:00"
+  },
+  "proyecto": {
+    "tag": "OBRA"
+  },
+  "valores": {
+    "Apodo": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  "reemplaza": {
+    "Apodo": null
+  }
+}

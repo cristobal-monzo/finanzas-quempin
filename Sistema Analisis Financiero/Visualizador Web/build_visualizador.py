@@ -376,7 +376,7 @@ def calcular_categorias(kpis_proyectos_completos: list[dict]) -> list[dict]:
 # N° Requerimiento sale de la pestaña (pedido del usuario, 2026-10-05: «no
 # aporta»). El canal lo sigue aceptando: lo completan los envíos del
 # Formulador (`proyecto.req`) y un `datos-proyecto` que lo traiga.
-FUERA_DE_LA_PESTANA = {af.pf.COLUMNA_REQ}
+FUERA_DE_LA_PESTANA = {af.pf.COLUMNA_REQ, af.pf.COLUMNA_APODO}
 ROTULOS_INGRESO = {
     "% Avance": ("Avance y plazos", "% Avance"),
     "Fecha de inicio": ("Avance y plazos", "Inicio"),

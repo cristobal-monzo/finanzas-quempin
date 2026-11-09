@@ -689,7 +689,7 @@ def test_los_campos_del_tablero_son_columnas_manuales_de_proyectos():
     de "Proyectos" -- nunca una fórmula ni Cliente/Categoría."""
     assert set(pf.COLUMNAS_ESCRIBIBLES.values()) <= set(af.NOMBRES_COLUMNAS_MANUALES_PROYECTOS)
     assert set(af.NOMBRES_COLUMNAS_MANUALES_PROYECTOS) - set(pf.COLUMNAS_ESCRIBIBLES.values()) == {
-        "TAG proyecto", "Nombre del proyecto", "Apodo"}  # el apodo se escribe en el Excel
+        "TAG proyecto", "Nombre del proyecto"}  # el apodo, desde 2026-11-09, desde el Portal y el Formulador
 
 
 def test_el_procesador_atiende_los_mismos_tipos_que_este_modulo():
@@ -856,6 +856,23 @@ def test_run_ingreso_en_conflicto_no_escribe_nada_y_se_confirma(entorno):
     _correr(entorno)
     assert _celda(entorno["af"], "Monto de Venta (sin IVA)").value == 6000000
     assert _celda(entorno["af"], "% Avance").value == 0.5
+
+
+def test_run_cambia_el_apodo_y_respeta_el_que_se_vio(entorno):
+    """2026-11-09: el nombre que se ve se cambia desde el Portal o el Formulador
+    (solo el apodo). Un apodo que alguien cambió entre medio no se pisa."""
+    _enviar(entorno["raiz"], _datos(valores={"Apodo": "  H2   Green "}, reemplaza={"Apodo": None}))
+    _correr(entorno)
+    assert _celda(entorno["af"], "Apodo").value == "H2 Green"
+    _enviar(entorno["raiz"], _datos(id_="tablero02", valores={"Apodo": "Otro"}, reemplaza={"Apodo": "Viejo"}))
+    resumen = _correr(entorno)
+    assert resumen["intercambio"]["pendiente"]
+    assert _celda(entorno["af"], "Apodo").value == "H2 Green"
+    _enviar(entorno["raiz"], _datos(id_="tablero03", valores={"Apodo": ""}, reemplaza={"Apodo": "H2 Green"}))
+    _correr(entorno)
+    assert _celda(entorno["af"], "Apodo").value is None                        # vacío = se ve el nombre
+    assert pf.validar_datos(_datos(valores={"Apodo": "x" * 61}))
+    assert pf.validar_datos(_datos(valores={"Apodo": 5}))
 
 
 def test_cargar_archivo_deja_el_envio_en_el_buzon_una_sola_vez(entorno, tmp_path):
