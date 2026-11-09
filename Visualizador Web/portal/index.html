@@ -1929,13 +1929,40 @@
   .ej-antiguos summary { cursor: pointer; padding: 6px 2px; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
   .ej-antiguos[open] summary { margin-bottom: 8px; }
   /* El resumen de un proyecto */
-  .ej-volver { align-self: flex-start; }
-  .ej-cab { display: flex; flex-direction: column; gap: 6px; }
+  .ej-volver {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin: -4px 0 -4px -4px; padding: 4px 8px 4px 4px;
+    border: 0; border-radius: 8px; background: none; color: var(--brand-orange-ink); font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+  }
+  .ej-volver:hover { background: var(--tinte); }
+  .ej-cab {
+    position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 14px 20px;
+    border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); overflow: hidden;
+  }
+  .ej-cab::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--baseline); }
+  .ej-cab[data-salud="ok"]::before { background: var(--estado-ok); }
+  .ej-cab[data-salud="warn"]::before { background: var(--estado-warn); }
+  .ej-cab[data-salud="bad"]::before { background: var(--estado-bad); }
+  .ej-cab-fila { display: flex; align-items: flex-start; gap: 16px; }
+  .ej-cab-quien { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .ej-cab-estado {
+    flex: 0 1 280px; min-width: 0; display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; border-radius: 10px;
+    background: var(--page-plane); border: 1px solid var(--gridline);
+  }
+  .ej-cab-estado .ej-pin { width: 24px; height: 24px; margin-top: 1px; }
+  .ej-cab-estado-txt { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .ej-cab-estado-txt b { font-size: 14.5px; }
+  .ej-cab-estado-txt small { font-size: 12px; line-height: 1.35; color: var(--text-secondary); }
+  .ej-cab .ej-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .ej-cab .ej-sub .rc-chips { display: inline-flex; }
+  @container ejecucion (max-width: 640px) {
+    .ej-cab-fila { flex-direction: column; gap: 10px; }
+    .ej-cab-estado { flex-basis: auto; width: 100%; }
+  }
   .ej-cab h2 { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 22px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
   .ej-cab h2 .ej-n { font-size: 13px; }
   .ej-sub { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-secondary); }
   .ej-cab .rc-chips { margin: 0; }
-  .ej-cab .cx-acc { margin-top: 4px; }
+  .ej-cab .cx-acc { margin-top: 0; padding-top: 10px; border-top: 1px solid var(--gridline); }
   .ej-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .ej-kpi { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 11px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); }
   .ej-kpi-et { font-size: 12.5px; font-weight: 900; color: var(--texto-suave); }
@@ -11967,7 +11994,7 @@
     raiz.textContent = '';
     // Una carpeta de Gestión sin N° ni TAG (2026-11-03): se ve, pero no hay a qué anotarle compras, días ni avance
     const sinClave = !ejClave(t);
-    raiz.append(ejBoton('Todos los proyectos en ejecución', 'cx-enlace ej-volver', ejVolver, 'izquierda'), ejCabEl(m));
+    raiz.append(ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda'), ejCabEl(m));
     if (!sinClave) raiz.append(ejKpisEl(m));
     if (t.avisos.length) {
       const ul = crear('ul', 'rc-avisos');
@@ -12126,20 +12153,36 @@
   }
   function ejCabEl(m) {
     const t = m.t;
+    /* La cabecera (2026-11-09, vuelta 4 del loop de UX): una tarjeta con la raya del color de su estado; a la izquierda
+       quién es (N°, nombre, dónde, quién lo lleva, su formulación y sus avisos en una línea) y a la derecha su estado con
+       el motivo principal; abajo, sus accesos. */
+    const salud = ejSalud(t, m);
     const cab = crear('header', 'ej-cab');
+    cab.dataset.salud = salud.nivel;
+    const fila = crear('div', 'ej-cab-fila');
+    const quien = crear('div', 'ej-cab-quien');
     const h = crear('h2');
     if (rcEtiqueta(t)) h.append(crear('span', 'ej-n', rcEtiqueta(t)));
     h.append(crear('span', null, t.titulo));
-    cab.append(h);
-    const sub = [rcLegible(t.lugar), t.responsable ? (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) : 'Sin responsable',
-      t.req && t.tag ? 'TAG ' + t.tag : '', t.formulacion ? 'Formulación ' + t.formulacion.codigo + ' «' + t.formulacion.estado + '»' : 'Sin formulación'].filter(Boolean).join(' · ');
-    cab.append(crear('p', 'ej-sub', sub));
+    quien.append(h);
+    const sub = crear('p', 'ej-sub');
+    sub.append(document.createTextNode([rcLegible(t.lugar), t.responsable ? (rcMia(t) ? 'Tuyo' : 'A cargo de ' + t.responsable) : 'Sin responsable',
+      t.req && t.tag ? 'TAG ' + t.tag : '', t.formulacion ? 'Formulación ' + t.formulacion.codigo + ' «' + t.formulacion.estado + '»' : 'Sin formulación'].filter(Boolean).join(' · ')));
     const chips = t.etapa === 'ejecucion' ? t.chips.slice() : [{ texto: 'Ya no está en ejecución: ' + (RC_ETAPAS.find((e) => e.id === t.etapa) || {}).titulo, nivel: 'ok' }];
     if (chips.length) {
-      const ch = crear('div', 'rc-chips');
+      const ch = crear('span', 'rc-chips');
       chips.forEach((c) => { const x = crear('span', 'rc-chip', c.texto); if (c.nivel) x.dataset.nivel = c.nivel; ch.append(x); });
-      cab.append(ch);
+      sub.append(ch);
     }
+    quien.append(sub);
+    const est = crear('div', 'ej-cab-estado');
+    est.dataset.nivel = salud.nivel;
+    const estTxt = crear('span', 'ej-cab-estado-txt');
+    estTxt.append(crear('b', null, EJ_SALUD[salud.nivel].nombre), crear('small', null, salud.motivos[0] || ''));
+    est.append(ejPinEl(salud.nivel, 16), estTxt);
+    est.title = salud.motivos.join(' · ');
+    fila.append(quien, est);
+    cab.append(fila);
     // Abrir: su carpeta de Gestión de Proyectos (QUEMPIN.exe) y las herramientas donde tiene algo. Desde
     // 2026-10-28 la carpeta de Gestión trae «Formulación» (la copia de la oferta) y, desde el 2026-10-29, el
     // acceso directo web «Facturas del proyecto» a su carpeta del Centro de Costos en SharePoint, que el

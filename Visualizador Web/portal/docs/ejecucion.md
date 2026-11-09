@@ -149,3 +149,6 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   Carta Gantt distinto, sin fecha de término, sin ficha en el Análisis, avance 100 % («Dar por cerrado») y los
   pendientes. Sin nada, «Todo al día». `ejIrA` baja a una parte y la marca un momento (`.ej-destello`); lo usan también
   los accesos. Prueba: `test_por_hacer_dice_lo_que_espera_el_proyecto_y_lo_hace_ahi_mismo`.
+- **Vuelta 4, la cabecera** (`ejCabEl`): una tarjeta con la raya del color de su estado; N°, nombre y una línea con dónde,
+  quién lo lleva, su TAG, su formulación y sus avisos; a la derecha (abajo en lo angosto) su estado con el motivo
+  principal (`.ej-cab-estado`); abajo, los accesos. «Todos los proyectos» (`.ej-volver`) es un enlace discreto arriba.
