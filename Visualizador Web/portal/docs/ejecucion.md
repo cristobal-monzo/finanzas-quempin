@@ -176,3 +176,7 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   «Por hacer» en una línea, para que lo que hay que hacer quede cerca.
 - **Vuelta 10, equipo de la semana** (`ejEquipoEl`): la semana en una tira (`.ej-semana`): cada día con las iniciales de
   quién va (lo tuyo en naranjo) y su vehículo, hoy marcado y los días sin nadie punteados; abajo, «Esta semana: …».
+- **Vuelta 11, lo que espera al equipo** (`ejEspera`, `EJ_ESPERA`, `ejEsperaEl`, `#ejEspera`): sobre las tarjetas,
+  cuántas compras por decidir, facturas sin asociar y pendientes hay en los proyectos a la vista y en cuántos; tocar uno
+  deja solo esos proyectos (`ej.espera`, se combina con el estado del mapa). La tarjeta y «Por hacer» cuentan lo mismo.
+  Prueba: `test_lo_que_espera_al_equipo_se_cuenta_y_filtra_la_lista`.

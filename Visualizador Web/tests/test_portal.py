@@ -4401,6 +4401,20 @@ def test_las_facturas_y_las_compras_se_resumen_en_barras(navegador, sitio):
     pagina.context.close()
 
 
+def test_lo_que_espera_al_equipo_se_cuenta_y_filtra_la_lista(navegador, sitio):
+    """Vuelta 11 del loop de UX (2026-11-09): sobre las tarjetas, lo que espera en todos los proyectos; tocarlo filtra."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, cambiar=_documentos_908)
+    pagina.locator('#ejEspera [data-espera="facturas"]').wait_for()
+    assert " ".join(pagina.locator('#ejEspera [data-espera="facturas"]').inner_text().split()) == "2 facturas sin asociar en 1 proyecto"
+    pagina.locator('#ejEspera [data-espera="facturas"]').click()
+    claves = lambda: pagina.locator("#ejTarjetas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    assert claves() == ["req-908"]
+    pagina.locator('#ejEspera [data-espera="facturas"]').click()
+    assert len(claves()) > 1
+    assert not errores
+    pagina.context.close()
+
+
 def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegador, sitio):
     """Pedido del usuario (2026-11-03): todos los proyectos de la carpeta de Gestión de Proyectos se ven en «Proyectos en
     ejecución», sin las carpetas complementarias (esas las deja fuera el procesador: proyectos_en_gestion)."""

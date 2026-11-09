@@ -1904,6 +1904,16 @@
   .ej-t-tareas { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
   .ej-t-tarea { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--tinte); color: var(--tinte-texto); font-size: 12px; font-weight: 700; }
   .ej-t-tarea svg { flex: 0 0 auto; }
+  /* Lo que espera el equipo (vuelta 11), sobre las tarjetas */
+  .ej-espera { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .ej-espera-tit { font-size: 13px; font-weight: 900; color: var(--text-secondary); margin-right: 2px; }
+  .ej-espera-op {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px 0 10px; border-radius: 999px;
+    border: 1px solid var(--tinte-borde); background: var(--tinte); color: var(--tinte-texto); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .ej-espera-op b { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .ej-espera-op:hover { border-color: var(--brand-orange); }
+  .ej-espera-op[aria-pressed="true"] { background: var(--brand-orange); border-color: var(--brand-orange); color: #000000; }
   /* Equipo esta semana (vuelta 10): la semana en una tira */
   .ej-semana { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; }
   .ej-semana li { min-width: 0; min-height: 64px; display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 8px; background: var(--page-plane); border: 1px solid var(--gridline); }
@@ -3085,6 +3095,8 @@
               </div>
               <!-- Mapa de salud (2026-11-09): cada proyecto según su avance y lo que lleva gastado del presupuesto; lo arma ejMapaEl() -->
               <section class="ej-mapa" id="ejMapa" aria-labelledby="ejMapaTit" hidden></section>
+              <!-- Lo que espera el equipo (2026-11-09): lo arma ejEsperaEl() -->
+              <div class="ej-espera" id="ejEspera" role="group" aria-label="Lo que espera al equipo" hidden></div>
               <div class="ej-tarjetas" id="ejTarjetas"></div>
               <details class="ej-antiguos" id="ejAntiguos" hidden>
                 <summary id="ejAntiguosTxt"></summary>
@@ -10857,7 +10869,8 @@
     diasAbiertos: null,
     sucios: new Map(),        // lo escrito en los campos del resumen, que sobrevive a cada repintado (id → valor)
     tarifasAbiertas: false, todosDias: false, todasNotas: false, enviando: false,
-    salud: null               // el estado elegido en la leyenda del Mapa de salud (ok, warn, bad, sin); null: todos
+    salud: null,              // el estado elegido en la leyenda del Mapa de salud (ok, warn, bad, sin); null: todos
+    espera: null              // lo que espera el equipo elegido en la lista (decidir, facturas, pendientes); null: todo
   };
   const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro });
 
@@ -11772,7 +11785,8 @@
     const modelos = new Map(todas.map((t) => [t.clave, ejModelo(t)]));
     const saludes = new Map(todas.map((t) => [t.clave, ejSalud(t, modelos.get(t.clave))]));
     const buscadas = todas.filter((t) => (!ej.mios || !u || rcMia(t)) && q.every((x) => t.buscar.includes(x)));
-    const alcance = buscadas.filter((t) => !ej.salud || saludes.get(t.clave).nivel === ej.salud);
+    const esperas = new Map(todas.map((t) => [t.clave, ejEspera(t, modelos.get(t.clave))]));
+    const alcance = buscadas.filter((t) => (!ej.salud || saludes.get(t.clave).nivel === ej.salud) && (!ej.espera || esperas.get(t.clave)[ej.espera] > 0));
     const plegada = (t) => t.antiguo && !t.gestion;      // lo que está en Gestión de Proyectos nunca va plegado
     const vivas = alcance.filter((t) => !plegada(t)).sort(ejOrden);
     const viejas = alcance.filter(plegada).sort(ejOrden);
@@ -11782,6 +11796,7 @@
     mapa.hidden = !todas.length;
     mapa.textContent = '';
     if (todas.length) mapa.append(...ejMapaEl(enMapa, modelos, saludes));
+    ejEsperaEl(enMapa, esperas);
     const caja = $('#ejTarjetas');
     caja.textContent = '';
     vivas.forEach((t) => caja.append(ejTarjetaEl(t, modelos.get(t.clave), saludes.get(t.clave))));
@@ -11822,6 +11837,20 @@
     }
     if (nivel === 'ok') motivos.push('Gasta de acuerdo con lo que avanza' + (m.margen !== null ? ' y el margen está en la meta' : ''));
     return { nivel, motivos };
+  }
+  // Lo que espera cada proyecto (lo mismo que su tarjeta y su «Por hacer»): compras por decidir, facturas sin asociar, pendientes
+  const EJ_ESPERA = [
+    { id: 'decidir', ico: 'billetera', uno: 'compra por decidir', varios: 'compras por decidir' },
+    { id: 'facturas', ico: 'documento', uno: 'factura sin asociar', varios: 'facturas sin asociar' },
+    { id: 'pendientes', ico: 'portapapeles', uno: 'pendiente', varios: 'pendientes' }
+  ];
+  function ejEspera(t, m) {
+    if (!ejClave(t)) return { decidir: 0, facturas: 0, pendientes: 0 };
+    return {
+      decidir: ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length,
+      facturas: (m.docs || []).filter((d) => !m.asoc.get(d.ref)).length,
+      pendientes: ejDe(t, 'pendiente').filter((x) => !x.listo).length
+    };
   }
   function ejPinEl(nivel, tam) {
     const p = crear('span', 'ej-pin');
@@ -11943,6 +11972,31 @@
       if (!$('#vistaEjecucion').hidden && !$('#ejLista').hidden && Math.abs($('#ejLista').clientWidth - ejMapaAncho) > 30) ejPintarLista();
     }, 200);
   });
+  /* Lo que espera el equipo (2026-11-09, vuelta 11 del loop de UX): sobre las tarjetas, cuántas compras hay por decidir,
+     facturas sin asociar y pendientes en todos los proyectos a la vista, y en cuántos; tocar uno deja solo esos proyectos. */
+  function ejEsperaEl(tarjetas, esperas) {
+    const caja = $('#ejEspera');
+    caja.textContent = '';
+    const filas = EJ_ESPERA.map((e) => {
+      const con = tarjetas.filter((t) => esperas.get(t.clave)[e.id] > 0);
+      return { e, n: con.reduce((a, t) => a + esperas.get(t.clave)[e.id], 0), proyectos: con.length };
+    });
+    if (ej.espera && !filas.some((f) => f.e.id === ej.espera && f.n)) ej.espera = null;
+    const hay = filas.filter((f) => f.n);
+    caja.hidden = !hay.length;
+    if (!hay.length) return;
+    caja.append(crear('span', 'ej-espera-tit', 'Espera al equipo'));
+    hay.forEach(({ e, n, proyectos }) => {
+      const b = crear('button', 'ej-espera-op');
+      b.type = 'button';
+      b.dataset.espera = e.id;
+      b.setAttribute('aria-pressed', String(ej.espera === e.id));
+      b.append(icono(e.ico, 15), crear('b', null, String(n)), crear('span', null, (n === 1 ? e.uno : e.varios) + ' en ' + pl(proyectos, 'proyecto', 'proyectos')));
+      b.title = ej.espera === e.id ? 'Mostrar todos los proyectos' : 'Mostrar solo los proyectos con ' + e.varios;
+      b.addEventListener('click', () => { ej.espera = ej.espera === e.id ? null : e.id; ejPintarLista(); const x = $('#ejEspera [data-espera="' + e.id + '"]'); if (x) x.focus(); });
+      caja.append(b);
+    });
+  }
   function ejTarjetaEl(t, m, salud) {
     m = m || ejModelo(t);
     salud = salud || ejSalud(t, m);
@@ -12004,12 +12058,8 @@
     b.append(cuerpo);
     // Lo que falta hacer en el proyecto: cada cosa con su número (lo mismo que dice su resumen)
     if (ejClave(t)) {
-      const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
-      const sinAsoc = (m.docs || []).filter((d) => !m.asoc.get(d.ref)).length;
-      const pend = ejDe(t, 'pendiente').filter((x) => !x.listo).length;
-      const tareas = [[decidir, 'billetera', pl(decidir, 'compra por decidir', 'compras por decidir')],
-        [sinAsoc, 'documento', pl(sinAsoc, 'factura sin asociar', 'facturas sin asociar')],
-        [pend, 'portapapeles', pl(pend, 'pendiente', 'pendientes')]].filter(([n]) => n > 0);
+      const es = ejEspera(t, m);
+      const tareas = EJ_ESPERA.map((e) => [es[e.id], e.ico, pl(es[e.id], e.uno, e.varios)]).filter(([n]) => n > 0);
       if (tareas.length) {
         const ul = crear('span', 'ej-t-tareas');
         tareas.forEach(([, ico, txt]) => { const x = crear('span', 'ej-t-tarea'); x.append(icono(ico, 14), crear('span', null, txt)); ul.append(x); });
