@@ -104,6 +104,19 @@ def test_igualdad_estricta_verdadero_no_es_uno():
     assert esquemas.validar(True, {"enum": [1]}) != []
 
 
+@pytest.mark.parametrize("nombre", ["planificacion-semana", "planificacion-cierres", "planificacion-lista", "ejecucion-proyectos"])
+def test_clave_req_acepta_el_n_temporal(nombre):
+    # 2026-11-09: un proyecto de Gestión con N° temporal («001t») no se guardaba en la
+    # Planificación semanal: la clave «req:001t» no cumplía el esquema.
+    import re
+    texto = (EJEMPLOS / "publicaciones" / nombre / "valido-1.json").read_text(encoding="utf-8")
+    con = lambda n: json.loads(re.sub(r'"req:\d+"', '"req:' + n + '"', texto))
+    assert esquemas.validar_publicacion(nombre, con("001t")) == []
+    assert esquemas.validar_publicacion(nombre, con("1234t")) == []
+    assert esquemas.validar_publicacion(nombre, con("001x")) != []
+    assert esquemas.validar_publicacion(nombre, con("1t")) != []
+
+
 def test_publicacion_desconocida():
     assert esquemas.validar_publicacion("no-existe", {}) == ["publicación desconocida: 'no-existe'"]
 

@@ -2097,6 +2097,20 @@ def _celda_proyecto(pagina, clave, dia):
     return pagina.locator(f'#plProyecto tr[data-clave="{clave}"] td[data-dia="{dia}"] .pl-celda')
 
 
+def test_la_planificacion_acepta_el_n_temporal():
+    """2026-11-09: un proyecto con N° temporal («001t», de Gestión sin N° de la Planilla) no se guardaba en la
+    planificación: «req:001t» no pasaba las claves del portal (ni el esquema). Toda clave «req:» acepta el temporal."""
+    import re
+    portal = PORTAL.read_text(encoding="utf-8")
+    assert "req:\\d{1,6}|" not in portal and "req:\\d{1,6})" not in portal, "una clave req: sin el N° temporal"
+    for nombre in ("PL_CLAVE", "PL_CLAVE_CIERRE", "EJ_CLAVE"):
+        m = re.search(r"const " + nombre + r" = /(.+?)/;", portal)
+        assert m, nombre
+        patron = re.compile(m.group(1).replace("\\d", "[0-9]"))
+        assert patron.fullmatch("req:001t") and patron.fullmatch("req:289"), nombre
+        assert not patron.fullmatch("req:001x") and not patron.fullmatch("req:1t"), nombre
+
+
 def test_la_planificacion_semanal_en_el_registro():
     """Pedido del 2026-10-20: planificar la semana con el personal NB, ES, LC, CM, MP, SV y EV, como máximo 3 proyectos
     por persona en un día. Lee y guarda en la carpeta del equipo, y Configuración y conexiones lo dice."""

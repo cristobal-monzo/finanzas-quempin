@@ -16,7 +16,7 @@
         "properties": {
           "clave": {
             "type": "string",
-            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10})$"
+            "pattern": "^(req:(\\d{1,6}|\\d{3,4}t)|tag:[A-Z0-9]{2,10})$"
           },
           "titulo": {
             "type": "string"
