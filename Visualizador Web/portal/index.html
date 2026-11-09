@@ -2464,6 +2464,16 @@
     .ej-dias-fila .pl-campo select, .ej-nivel select, .ej-tarifas .pl-campo input { font-size: 16px; }
   }
 
+  /* Teléfono (2026-11-09, vuelta 9 del loop de UX): las cifras más compactas para que «Por hacer» quede cerca */
+  @container ejecucion (max-width: 640px) {
+    .ej-kpi { padding: 8px 12px 9px; }
+    .ej-kpi-v { font-size: 20px; }
+    .ej-kpi-sub { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ej-kpis > .ej-kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+    .ej-tarea-txt small { -webkit-line-clamp: 1; }
+    .ej-tarea { padding: 7px 8px; gap: 8px; }
+    .ej-tarea-ico { width: 30px; height: 30px; }
+  }
   /* ---- Diálogos y aviso ---- */
   dialog {
     width: min(560px, calc(100vw - 24px)); padding: 0; border-radius: 14px;

@@ -171,3 +171,6 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   (`.ej-asociar`; «Cambiar» sigue discreto). En los gastos proyectados, las compras por estado (`.ej-embudo`: por
   decidir, aprobadas, compradas, con su monto y cuántas); tocar uno filtra la tabla. Prueba:
   `test_las_facturas_y_las_compras_se_resumen_en_barras`.
+- **Vuelta 9, teléfono y oscuro**: revisados a 360 px (nada se sale) y en oscuro. En ≤ 640 px de vista, las cifras van
+  más compactas (número de 20 px, su detalle en dos líneas, la quinta a todo el ancho) y el detalle de cada tarea de
+  «Por hacer» en una línea, para que lo que hay que hacer quede cerca.
