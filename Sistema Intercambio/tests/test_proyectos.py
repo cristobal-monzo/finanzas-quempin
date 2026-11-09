@@ -108,6 +108,21 @@ def test_proyectos_en_gestion_son_las_carpetas_de_la_raiz_sin_las_complementaria
     assert pj.proyectos_en_gestion(None) == [] and pj.proyectos_en_gestion(tmp_path / "no-existe") == []
 
 
+def test_proyectos_entregados_son_las_carpetas_de_cada_entregados_del_anio(tmp_path):
+    """Pedido del usuario (2026-11-09): los proyectos cerrados, los de «0 Proyectos Entregados <año>», van en su propia
+    pestaña de «Proyectos en ejecución». Con o sin N°; ni archivos, ni lo oculto, ni las otras agrupadoras."""
+    for ruta in ("0 Carpeta modelo/Compras", "0 Proyectos Entregados 2025/AGCID",
+                 "0 Proyectos Entregados 2026/303. Quemador Osorno", "0 Proyectos Entregados 2026/.oculta",
+                 "0 PROYECTOS ENTREGADOS 2024/036. Quilpué", "314. UA Reactor"):
+        (tmp_path / ruta).mkdir(parents=True)
+    (tmp_path / "0 Proyectos Entregados 2026" / "acta.pdf").write_bytes(b"")
+    assert pj.proyectos_entregados(tmp_path) == [
+        {"carpeta": "036. Quilpué", "req": "36", "grupo": "0 PROYECTOS ENTREGADOS 2024"},
+        {"carpeta": "AGCID", "req": None, "grupo": "0 Proyectos Entregados 2025"},
+        {"carpeta": "303. Quemador Osorno", "req": "303", "grupo": "0 Proyectos Entregados 2026"}]
+    assert pj.proyectos_entregados(None) == [] and pj.proyectos_entregados(tmp_path / "no-existe") == []
+
+
 def test_publicar_desde_la_carpeta_cumple_su_esquema(tmp_path):
     raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
     ic.publicar(raiz, "requerimientos", "planilla-requerimientos", {"fuente": "x", "requerimientos": REQS})
@@ -117,11 +132,13 @@ def test_publicar_desde_la_carpeta_cumple_su_esquema(tmp_path):
     (repo / "a1.json").write_text(json.dumps({"esquema": ic.ESQUEMA, "herramienta": "formulador", "tipo": "proyecto",
                                               "historia": [], "datos": dict(f["datos"], modificado="2026-10-01")}),
                                   encoding="utf-8")
-    r = pj.publicar(raiz, carpetas={}, gestion=[{"carpeta": "Rengo Incinerador", "req": None}])
-    assert (r["proyectos"], r["gestion"]) == (2, 1)
+    r = pj.publicar(raiz, carpetas={}, gestion=[{"carpeta": "Rengo Incinerador", "req": None}],
+                    entregados=[{"carpeta": "303. Quemador Osorno", "req": "303", "grupo": "0 Proyectos Entregados 2026"}])
+    assert (r["proyectos"], r["gestion"], r["entregados"]) == (2, 1, 1)
     sobre = ic.leer_publicacion(raiz, "proyectos")
     assert esquemas.validar_publicacion("proyectos", sobre) == []
     assert sobre["datos"]["gestion"] == [{"carpeta": "Rengo Incinerador", "req": None}]
+    assert sobre["datos"]["entregados"][0]["grupo"] == "0 Proyectos Entregados 2026"
     assert sobre["datos"]["proyectos"][0]["formulaciones"][0]["uid"] == "a1"
 
 

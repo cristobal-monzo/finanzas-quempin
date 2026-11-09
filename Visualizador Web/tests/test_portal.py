@@ -2097,6 +2097,20 @@ def _celda_proyecto(pagina, clave, dia):
     return pagina.locator(f'#plProyecto tr[data-clave="{clave}"] td[data-dia="{dia}"] .pl-celda')
 
 
+def test_la_planificacion_acepta_el_n_temporal():
+    """2026-11-09: un proyecto con N° temporal («001t», de Gestión sin N° de la Planilla) no se guardaba en la
+    planificación: «req:001t» no pasaba las claves del portal (ni el esquema). Toda clave «req:» acepta el temporal."""
+    import re
+    portal = PORTAL.read_text(encoding="utf-8")
+    assert "req:\\d{1,6}|" not in portal and "req:\\d{1,6})" not in portal, "una clave req: sin el N° temporal"
+    for nombre in ("PL_CLAVE", "PL_CLAVE_CIERRE", "EJ_CLAVE"):
+        m = re.search(r"const " + nombre + r" = /(.+?)/;", portal)
+        assert m, nombre
+        patron = re.compile(m.group(1).replace("\\d", "[0-9]"))
+        assert patron.fullmatch("req:001t") and patron.fullmatch("req:289"), nombre
+        assert not patron.fullmatch("req:001x") and not patron.fullmatch("req:1t"), nombre
+
+
 def test_la_planificacion_semanal_en_el_registro():
     """Pedido del 2026-10-20: planificar la semana con el personal NB, ES, LC, CM, MP, SV y EV, como máximo 3 proyectos
     por persona en un día. Lee y guarda en la carpeta del equipo, y Configuración y conexiones lo dice."""
@@ -4487,6 +4501,61 @@ def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegad
     pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
     col = pagina.evaluate(JS_COLUMNAS)
     assert {"req-905", "req-910", "tag-SOLO", "gestion-Rengo Incinerador"} <= set(col["ejecucion"]) and "req-905" not in col["oferta"]
+    assert not errores
+    pagina.context.close()
+
+
+def test_ejecucion_solo_lo_de_gestion_y_los_entregados_en_su_pestana(navegador, sitio):
+    """Pedido del usuario (2026-11-09): en «Proyectos en ejecución» solo los proyectos con carpeta en Gestión de
+    Proyectos; los de «0 Proyectos Entregados <año>», en una segunda pestaña; y una casilla para ver solo los que tienen
+    al menos un dato anotado en su resumen."""
+    def carpetas(archivos):
+        datos = archivos["publicado/proyectos.json"]["datos"]
+        datos["gestion"] = [{"carpeta": "908. En obra", "req": "908"}, {"carpeta": "905. Oferta esperando", "req": "905"}]
+        datos["entregados"] = [{"carpeta": "909. Terminada", "req": "909", "grupo": "0 Proyectos Entregados 2026"},
+                               {"carpeta": "AGCID", "req": None, "grupo": "0 Proyectos Entregados 2025"}]
+        # 908 tiene un día anotado en su resumen; 905, 909 y AGCID, nada
+        archivos["publicado/ejecucion/otronavegador1.json"] = json.loads(_sobre_de_otro(
+            {"id": "dia-es-2026-11-02", "proyecto": "req:908", "tipo": "dia", "t": _instante(-60), "por": "LC", "persona": "ES",
+             "fecha": "2026-11-02", "jornada": 1, "nivel": 2})[1])
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, cambiar=carpetas)
+    claves = lambda: pagina.locator("#ejTarjetas .ej-tarjeta, #ejTarjetasAntiguas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    pestana = lambda p: pagina.locator(f'#ejPestanas [data-pestana="{p}"]')
+    # En ejecución: solo lo que tiene carpeta en la raíz (910 está adjudicado, pero sin carpeta en Gestión)
+    assert sorted(claves()) == ["req-905", "req-908"]
+    assert pestana("ejecucion").get_attribute("aria-selected") == "true"
+    assert pestana("ejecucion").locator("b").inner_text() == "2" and pestana("entregados").locator("b").inner_text() == "2"
+    # Solo con datos anotados
+    pagina.locator("#ejConDatos").check()
+    pagina.wait_for_function("document.querySelectorAll('#ejTarjetas .ej-tarjeta').length === 1")
+    assert claves() == ["req-908"] and pestana("ejecucion").locator("b").inner_text() == "1"
+    # Entregados: con N° (se une con su proyecto) y sin N° (va aparte); sin datos anotados no queda ninguno
+    pestana("entregados").click()
+    assert pestana("entregados").get_attribute("aria-selected") == "true"
+    assert claves() == [] and "Quita «Solo con datos anotados»" in pagina.locator("#ejTarjetas").inner_text()
+    pagina.locator("#ejConDatos").uncheck()
+    pagina.wait_for_function("document.querySelectorAll('#ejTarjetas .ej-tarjeta').length === 2")
+    assert sorted(claves()) == ["entregado-AGCID", "req-909"], "lo entregado no se pliega por antiguo"
+    # Se recuerda en este navegador
+    assert pagina.evaluate("JSON.parse(localStorage.getItem('quempin_portal_ejecucion')).pestana") == "entregados"
+    # Su resumen: su carpeta, dentro de la del año; sin N°, cómo unirla. Al volver, sigue en Entregados
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="entregado-AGCID"]').click()
+    pagina.locator("#ejProyecto .ej-cab").wait_for()
+    assert pagina.locator("#ejProyecto .ej-sin-clave").is_visible()
+    assert "«AGCID»" in pagina.locator("#ejProyecto .ej-sin-clave").inner_text()
+    pagina.locator("#ejProyecto .ej-cab .cx-boton", has_text="Carpeta del proyecto").click()
+    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/0%20Proyectos%20Entregados%202025/AGCID"
+    pagina.locator(".ej-volver").click()
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-909"]').wait_for()
+    # Con el teclado: las flechas cambian de pestaña
+    pestana("entregados").focus()
+    pagina.keyboard.press("ArrowLeft")
+    assert pestana("ejecucion").get_attribute("aria-selected") == "true"
+    assert pagina.evaluate("document.activeElement.dataset.pestana") == "ejecucion"
+    # El Recorrido no muestra la carpeta entregada suelta
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    assert not any("entregado-" in c for cs in pagina.evaluate(JS_COLUMNAS).values() for c in cs)
     assert not errores
     pagina.context.close()
 

@@ -52,7 +52,7 @@
         "properties": {
           "clave": {
             "type": "string",
-            "pattern": "^(req:\\d{1,6}|pro:[a-z0-9-]{1,40})$"
+            "pattern": "^(req:(\\d{1,6}|\\d{3,4}t)|pro:[a-z0-9-]{1,40})$"
           },
           "titulo": {
             "type": "string",

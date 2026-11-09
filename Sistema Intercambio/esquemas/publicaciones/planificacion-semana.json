@@ -32,7 +32,7 @@
           },
           "proyecto": {
             "type": "string",
-            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
+            "pattern": "^(req:(\\d{1,6}|\\d{3,4}t)|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
           },
           "activa": {
             "type": "boolean"
@@ -99,7 +99,7 @@
         "properties": {
           "proyecto": {
             "type": "string",
-            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
+            "pattern": "^(req:(\\d{1,6}|\\d{3,4}t)|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
           },
           "activa": {
             "type": "boolean"
@@ -137,7 +137,7 @@
           },
           "proyecto": {
             "type": "string",
-            "pattern": "^(req:\\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
+            "pattern": "^(req:(\\d{1,6}|\\d{3,4}t)|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$"
           },
           "vehiculo": {
             "enum": [
