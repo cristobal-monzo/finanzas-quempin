@@ -157,3 +157,8 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   lado a lado cuentan como la primera). Cada KPI salvo la venta lleva un gráfico chico (`ejMini`): gastado y
   comprometido con la raya del avance, el cierre contra el presupuesto (lo que se pasa en rojo), el margen contra el
   mínimo y la meta, y el avance. Prueba: `test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico`.
+- **Vuelta 6, cambiar el avance** (`ejAvanceForm`): botones +5, +10, +25 y «Terminado 100 %», «Como estaba» para
+  volver; la barra del panel muestra en naranjo rayado el tramo que se va a guardar (`#ejAvPrevia`; rojo si baja) y
+  junto al número «→ 50 %» (`#ejAvCambio`). El botón dice qué guarda («Guardar 50 % en el Análisis Financiero», «… y la
+  fecha», «Guardar la fecha…») y sin cambios queda en «Sin cambios que guardar», desactivado. Lo escrito sobrevive al
+  repintado. Prueba: `test_el_avance_se_cambia_con_botones_rapidos_y_el_boton_dice_que_guarda`.

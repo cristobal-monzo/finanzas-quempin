@@ -4339,6 +4339,27 @@ def test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico(n
     pagina.context.close()
 
 
+def test_el_avance_se_cambia_con_botones_rapidos_y_el_boton_dice_que_guarda(navegador, sitio):
+    """Vuelta 6 del loop de UX (2026-11-09): sin cambios no se guarda; +10 muestra 40 % → 50 % y lo guarda."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    boton = pagina.locator("#ejProyecto .ej-av-form .cx-boton")
+    pagina.wait_for_function("() => document.querySelector('#ejProyecto .ej-av-form .cx-boton').disabled")
+    assert boton.inner_text() == "Sin cambios que guardar"
+    pagina.locator("#ejProyecto .ej-av-chip", has_text="+10").click()
+    assert pagina.locator("#ejAvNum").input_value() == "50"
+    assert pagina.locator("#ejAvCambio").inner_text() == "→ 50 %"
+    assert pagina.locator("#ejAvPrevia").is_visible()
+    assert boton.inner_text() == "Guardar 50 % en el Análisis Financiero" and boton.is_enabled()
+    # «Como estaba» vuelve atrás
+    pagina.locator("#ejProyecto .ej-av-chip", has_text="Como estaba").click()
+    assert pagina.locator("#ejAvNum").input_value() == "40" and boton.is_disabled()
+    pagina.locator("#ejProyecto .ej-av-chip", has_text="+10").click()
+    boton.click()
+    _esperar_aviso(pagina, "Avance 50 %")
+    assert not errores
+    pagina.context.close()
+
+
 def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegador, sitio):
     """Pedido del usuario (2026-11-03): todos los proyectos de la carpeta de Gestión de Proyectos se ven en «Proyectos en
     ejecución», sin las carpetas complementarias (esas las deja fuera el procesador: proyectos_en_gestion)."""

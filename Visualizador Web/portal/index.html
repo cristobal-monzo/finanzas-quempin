@@ -2019,6 +2019,22 @@
   .ej-av-num span { font-size: 13px; color: var(--texto-suave); }
   .ej-av-medidor { height: 10px; }
   .ej-av-form { display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: end; gap: 8px 10px; padding-top: 10px; border-top: 1px solid var(--gridline); }
+  .ej-av-rapidos { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .ej-av-chip {
+    min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--baseline); background: var(--surface-card);
+    color: var(--text-primary); font: inherit; font-size: 13.5px; font-weight: 900; cursor: pointer; font-variant-numeric: tabular-nums;
+  }
+  .ej-av-chip:hover { border-color: var(--brand-orange); }
+  .ej-av-chip.suave { border-color: transparent; background: none; color: var(--brand-orange-ink); font-weight: 700; text-decoration: underline; }
+  .ej-av-medidor { position: relative; overflow: visible; }
+  .ej-av-medidor > span { position: relative; z-index: 1; background: var(--text-primary); }
+  .ej-av-previa {
+    position: absolute; top: 0; bottom: 0; z-index: 2; border-radius: 999px;
+    background: repeating-linear-gradient(135deg, var(--brand-orange) 0 5px, color-mix(in srgb, var(--brand-orange) 55%, transparent) 5px 9px);
+  }
+  .ej-av-previa.baja { background: repeating-linear-gradient(135deg, var(--estado-bad) 0 5px, transparent 5px 9px); }
+  .ej-av-cambio { font-style: normal; font-size: 22px; font-weight: 900; color: var(--brand-orange-ink); font-variant-numeric: tabular-nums; }
+  .ej-av-cambio:empty { display: none; }
   .ej-av-form input[type="range"] { width: 100%; accent-color: var(--brand-orange); }
   .ej-av-form .pl-campo input { height: 38px; }
   .ej-av-fecha { grid-column: 1 / -1; }
@@ -12443,7 +12459,10 @@
     const { s } = ejPanel('Avance', '', t.af && t.tag ? 'Lo que guardas llega al Análisis Financiero con la próxima vuelta del procesador, y de ahí al Recorrido, la Planificación semanal y el Formulador. Solo se escribe si allá sigue el valor que ves aquí.' : '');
     s.id = 'ejSecAvance';
     const num = crear('div', 'ej-av-num');
-    num.append(crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)),
+    const cambio = crear('em', 'ej-av-cambio');
+    cambio.id = 'ejAvCambio';
+    cambio.setAttribute('aria-live', 'polite');
+    num.append(crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)), cambio,
       crear('span', null, av.pedido ? 'pedido ' + plCuando(texto(av.pedido.origen && av.pedido.origen.enviado)) + (av.pedido.origen && av.pedido.origen.usuario ? ' por ' + av.pedido.origen.usuario : '')
         : t.af ? 'en el Análisis Financiero' : 'sin ficha en el Análisis Financiero'));
     s.append(num);
@@ -12455,7 +12474,10 @@
     med.setAttribute('aria-label', 'Avance del proyecto');
     const b = crear('span');
     b.style.width = Math.round((av.valor || 0) * 100) + '%';
-    med.append(b);
+    const previa = crear('i', 'ej-av-previa');
+    previa.id = 'ejAvPrevia';
+    previa.hidden = true;
+    med.append(b, previa);
     s.append(med);
     if (av.pedido) {
       const p = crear('p', 'ej-linea tinte');
@@ -12491,6 +12513,7 @@
           r.value = n.value = String(Math.round(g.resumen.avance));
           ej.sucios.set('ejAvRango', r.value);
           ej.sucios.set('ejAvNum', n.value);
+          n.dispatchEvent(new Event('input', { bubbles: true }));
           n.focus();
         });
         p.append(u);
@@ -12511,40 +12534,99 @@
     else s.append(...ejSinFicha(m));
     return s;
   }
+  /* Cambiar el avance (2026-11-09, vuelta 6 del loop de UX): botones rápidos (+5, +10, +25, terminado), la barra muestra
+     en naranjo lo que se va a guardar y el botón dice qué guarda; sin cambios, no se puede apretar. Lo escrito sobrevive al
+     repintado (ej.sucios). */
   function ejAvanceForm(m) {
     const t = m.t, av = m.avance;
     const f = crear('form', 'ej-av-form');
     f.noValidate = true;
     const pct = Math.round((av.valor || 0) * 100);
-    const rLab = crear('label', 'pl-campo');
+    const finActual = av.fin ? plISO(av.fin) : '';
+    const inicial = (id, v) => (ej.sucios.has(id) ? ej.sucios.get(id) : v);
+    const rapidos = crear('div', 'ej-av-rapidos');
+    rapidos.setAttribute('role', 'group');
+    rapidos.setAttribute('aria-label', 'Cambiar el avance rápido');
+    const rLab = crear('label', 'pl-campo ej-av-rango');
     rLab.append(crear('span', null, 'Nuevo avance'));
     const r = crear('input');
-    r.type = 'range'; r.min = '0'; r.max = '100'; r.step = '5'; r.value = String(pct); r.id = 'ejAvRango';
+    r.type = 'range'; r.min = '0'; r.max = '100'; r.step = '5'; r.id = 'ejAvRango';
+    r.value = String(inicial('ejAvRango', pct));
     rLab.append(r);
-    const nLab = crear('label', 'pl-campo');
+    const nLab = crear('label', 'pl-campo ej-av-pct');
     nLab.append(crear('span', null, '%'));
     const n = crear('input');
-    n.type = 'number'; n.min = '0'; n.max = '100'; n.step = '1'; n.value = String(pct); n.id = 'ejAvNum'; n.inputMode = 'numeric';
+    n.type = 'number'; n.min = '0'; n.max = '100'; n.step = '1'; n.id = 'ejAvNum'; n.inputMode = 'numeric';
+    n.value = String(inicial('ejAvNum', pct));
     nLab.append(n);
-    r.addEventListener('input', () => { n.value = r.value; });
-    n.addEventListener('input', () => { r.value = n.value; });
     const fLab = crear('label', 'pl-campo ej-av-fecha');
     fLab.append(crear('span', null, 'Fecha de término'));
     const fe = crear('input');
     fe.type = 'date'; fe.id = 'ejAvFin';
-    fe.value = av.fin ? plISO(av.fin) : '';
+    fe.value = inicial('ejAvFin', finActual);
     fLab.append(fe);
-    const enviar = crear('button', 'cx-boton', 'Guardar en el Análisis Financiero');
+    const enviar = crear('button', 'cx-boton');
     enviar.type = 'submit';
-    enviar.disabled = !rc.dir || ej.enviando;
     enviar.dataset.foco = 'enviar-avance';
-    f.append(rLab, nLab, fLab, enviar);
+    const poner = (v) => {
+      v = Math.max(0, Math.min(100, Math.round(v)));
+      r.value = n.value = String(v);
+      ej.sucios.set('ejAvRango', r.value);
+      ej.sucios.set('ejAvNum', n.value);
+      actualizar();
+    };
+    [['+5', 5], ['+10', 10], ['+25', 25]].forEach(([txt, d]) => {
+      const b = crear('button', 'ej-av-chip', txt);
+      b.type = 'button';
+      b.title = 'Sumar ' + d + ' puntos al avance';
+      b.addEventListener('click', () => poner((Number(n.value) || 0) + d));
+      rapidos.append(b);
+    });
+    const fin = crear('button', 'ej-av-chip', 'Terminado 100 %');
+    fin.type = 'button';
+    fin.addEventListener('click', () => poner(100));
+    rapidos.append(fin);
+    const deshacer = crear('button', 'ej-av-chip suave', 'Como estaba');
+    deshacer.type = 'button';
+    deshacer.addEventListener('click', () => {
+      ['ejAvRango', 'ejAvNum', 'ejAvFin'].forEach((id) => ej.sucios.delete(id));
+      fe.value = finActual;
+      poner(pct);
+      ['ejAvRango', 'ejAvNum'].forEach((id) => ej.sucios.delete(id));
+    });
+    rapidos.append(deshacer);
+    // Lo que se va a guardar, en la barra del panel (el naranjo) y en el botón
+    function actualizar() {
+      const v = Math.max(0, Math.min(100, Math.round(Number(n.value) || 0)));
+      const cambiaAv = v !== pct || av.valor === null;
+      const cambiaFin = /^\d{4}-\d{2}-\d{2}$/.test(fe.value) && fe.value !== finActual;
+      const prev = document.getElementById('ejAvPrevia');
+      if (prev) {
+        prev.style.left = Math.min(v, pct) + '%';
+        prev.style.width = Math.abs(v - pct) + '%';
+        prev.hidden = !cambiaAv || v === pct;
+        prev.classList.toggle('baja', v < pct);
+      }
+      const cambio = document.getElementById('ejAvCambio');
+      if (cambio) cambio.textContent = cambiaAv && v !== pct ? '→ ' + v + ' %' : '';
+      enviar.textContent = cambiaAv && cambiaFin ? 'Guardar ' + v + ' % y la fecha en el Análisis Financiero'
+        : cambiaAv ? 'Guardar ' + v + ' % en el Análisis Financiero' : cambiaFin ? 'Guardar la fecha en el Análisis Financiero' : 'Sin cambios que guardar';
+      enviar.disabled = !rc.dir || ej.enviando || !(cambiaAv || cambiaFin);
+      deshacer.hidden = !(cambiaAv && v !== pct) && !cambiaFin;
+    }
+    r.addEventListener('input', () => { n.value = r.value; ej.sucios.set('ejAvNum', n.value); actualizar(); });
+    n.addEventListener('input', () => { r.value = n.value; ej.sucios.set('ejAvRango', r.value); actualizar(); });
+    fe.addEventListener('input', actualizar);
+    fe.addEventListener('change', actualizar);
+    f.append(rapidos, rLab, nLab, fLab, enviar);
     f.addEventListener('submit', (e) => { e.preventDefault(); ejEnviarAvance(m, Number(n.value), fe.value); });
     if (av.valor === 1 && t.etapa === 'ejecucion' && rcClavesCierre(t).length) {
       const cerrar = ejBoton('Ya terminó: dar por cerrado', 'cx-enlace ej-av-fecha', () => plAbrirProyectos(t.clave));
       cerrar.title = 'Pasa al «Cierre» del Recorrido y sale de la Planificación semanal';
       f.append(cerrar);
     }
+    requestAnimationFrame(actualizar);
+    actualizar();
     return f;
   }
   // Sin ficha en el Análisis Financiero: unirlo con una ficha sin N° que se le parezca, o crear la suya en «Ingresar avance»
