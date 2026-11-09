@@ -45,7 +45,6 @@ Uso:  py -3.14 cierre_entregados.py              (dice qué haría, sin tocar na
 """
 
 import os
-import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -67,7 +66,6 @@ TIPO_EDITAR = "editar-requerimiento"
 CERRADO = "Cerrado"
 SE_CIERRAN = ("Adjudicado",)                 # lo que pasa solo a «Cerrado» (requerimientos.ESTADOS_GANADOS sin él)
 GRUPO = "0 Proyectos Entregados"             # + « <año>»: así se llaman en Gestión (2025 y 2026, medido el 2026-11-09)
-_GRUPO = re.compile(r"^0\s+proyectos\s+entregados\b", re.IGNORECASE)
 MAX_CIERRES = 5
 ESPERA_PLANILLA = timedelta(minutes=30)      # OneDrive puede traer el mover-carpeta antes que el cambio de estado
 REINTENTAR_HASTA = timedelta(days=7)         # una carpeta con algo abierto
@@ -89,14 +87,17 @@ def _hijas(carpeta: Path) -> list[Path]:
 
 
 def grupos_entregados(gestion: Path) -> list[Path]:
-    """Las carpetas «0 Proyectos Entregados <año>» de la raíz de Gestión."""
-    return [h for h in _hijas(gestion) if _GRUPO.match(h.name)]
+    """Las carpetas «0 Proyectos Entregados <año>» de la raíz de Gestión (la misma regla de proyectos.py)."""
+    return [h for h in _hijas(gestion) if proyectos._es_de_entregados(h.name)]
 
 
 def entregadas(gestion: Path) -> list[dict]:
-    """[{'carpeta', 'grupo', 'req' (int o None), 'ruta'}] de los proyectos que ya están en algún «0 Proyectos Entregados»."""
-    return [{"carpeta": h.name, "grupo": g.name, "req": _numero(h.name), "ruta": h}
-            for g in grupos_entregados(gestion) for h in _hijas(g)]
+    """[{'carpeta', 'grupo', 'req' (int o None), 'ruta'}] de los proyectos que ya están en algún «0 Proyectos Entregados».
+    Sale de proyectos.proyectos_entregados, lo mismo que publica proyectos.json para la pestaña «Entregados» del Portal;
+    aquí solo vale un N° de la Planilla (no uno temporal «001t»)."""
+    return [{"carpeta": e["carpeta"], "grupo": e["grupo"], "ruta": Path(gestion) / e["grupo"] / e["carpeta"],
+             "req": int(e["req"]) if str(e.get("req") or "").isdigit() else None}
+            for e in proyectos.proyectos_entregados(gestion)]
 
 
 def en_raiz(gestion: Path) -> dict[int, list[Path]]:
