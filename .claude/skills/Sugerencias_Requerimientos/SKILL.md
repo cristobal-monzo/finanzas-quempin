@@ -1,6 +1,7 @@
 ---
 name: Sugerencias_Requerimientos
 description: Lista las sugerencias de otras herramientas para la Planilla de Ingreso (estado, valor ofertado o adjudicado) que faltan por escribir a mano, cierra las que ya están y descarta una si se pide. Nunca escribe la Planilla. Usar SOLO si el usuario escribe "/Sugerencias_Requerimientos"; ante «qué hay que pasar a la planilla» o «sugerencias de la planilla», confirma primero.
+model: sonnet
 ---
 
 # Sugerencias para la Planilla de Ingreso de Requerimientos

@@ -25,9 +25,9 @@ lee su `CLAUDE.md`** (carga solo al leer archivos de esa carpeta).
 - Pruebas: `py -3.14 -m pytest` desde esta raíz (`pytest.ini` junta todas las
   suites). Corre la suite completa antes de dar algo por bueno: por probar
   carpeta por carpeta se coló una divergencia entre el tablero y el Excel.
-- Rama de trabajo: la del árbol principal, `auditoria-proceso-errores`
-  (`master` quedó atrás el 2026-10-20). Las otras sesiones trabajan en
-  `.worktrees/<rama>` y mergean aquí.
+- Tronco: `master` (desde el 2026-11-09; `auditoria-proceso-errores` quedó
+  fusionada). La carpeta principal no cambia de rama: cada tema va en
+  `.worktrees/<rama>` desde `master` y entra con merge cuando pasan las pruebas.
 - **Las 5 tareas programadas corren el código de este árbol** (`Sistema
   Intercambio/tarea_procesador.cmd`, `tarea_pedidos.cmd` y `tarea_planilla.cmd`,
   `.claude/skills/Actualizar_Finanzas/tarea_programada.cmd` y
@@ -43,7 +43,10 @@ Pedido del usuario: las 10 skills se invocan únicamente si escribe su nombre co
 lectura. Las frases-gatillo de cada `SKILL.md` sirven para saber cuál ofrecer,
 no para invocar. Un nombre antiguo (`/Actualizar_CC`,
 `/Actualizar_Base_de_Datos`, `/Actualizar_AF`, `/Actualizar_Cotizador`) es la
-skill nueva: dilo en una línea y sigue.
+skill nueva: dilo en una línea y sigue. Las skills mecánicas (Actualizar_Finanzas,
+Registro_Centro_de_Costos, Registro_Flujo_de_Caja, Sugerencias_Requerimientos)
+llevan `model: sonnet` en su `SKILL.md`; las que piden criterio quedan en el modelo
+de la sesión.
 
 | Cuándo | Skill |
 |---|---|

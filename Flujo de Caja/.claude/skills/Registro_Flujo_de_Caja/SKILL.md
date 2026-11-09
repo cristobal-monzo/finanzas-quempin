@@ -1,6 +1,7 @@
 ---
 name: Registro_Flujo_de_Caja
 description: Arma el flujo de caja de Chile (Excel y tablero) solo con lo que publican Centro de Costos, Sistema QUEMPIN, la Planilla de Ingreso y Análisis Financiero; a mano solo va el saldo inicial. Usar SOLO si el usuario escribe "/Registro_Flujo_de_Caja"; ante «cómo viene la caja» o «qué vamos a cobrar y pagar», confirma primero.
+model: sonnet
 ---
 
 # Flujo de Caja
