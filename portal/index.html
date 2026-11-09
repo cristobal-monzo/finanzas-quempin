@@ -2756,7 +2756,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@7dc1685 2026-11-09">
+<meta name="quempin-version" content="master@a6598ec 2026-11-09">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -5245,7 +5245,14 @@
   const dos = (n) => String(n).padStart(2, '0');
   const rcCorta = (f, hoy) => dos(f.getDate()) + '-' + dos(f.getMonth() + 1) + (f.getFullYear() === hoy.getFullYear() ? '' : '-' + String(f.getFullYear()).slice(2));
   const pl = (n, uno, varios) => n + ' ' + (n === 1 ? uno : varios);
-  const rcNum = (v) => { const s = texto(v).replace(/\.0$/, ''); return /^\d{1,6}$/.test(s) && +s > 0 ? String(+s) : null; };
+  /* N° temporal «001t» (2026-11-09, pedido del usuario): de un proyecto de Gestión sin N° de la Planilla, para no
+     asociarlo a un N° puntual. El procesador lo lee de tags-temporales.json del Intercambio. TAG: «001t - Nombre». */
+  const rcEsTemporal = (n) => /^\d{3,4}t$/.test(texto(n));
+  const rcNum = (v) => {
+    const s = texto(v).replace(/\.0$/, '');
+    if (/^\d{3,4}t$/i.test(s)) return s.toLowerCase();
+    return /^\d{1,6}$/.test(s) && +s > 0 ? String(+s) : null;
+  };
   function rcCierre(f, hoy) {
     const d = rcDias(f, hoy);
     if (d < 0) return { texto: 'Cerró el ' + rcCorta(f, hoy), nivel: '' };
@@ -5458,7 +5465,7 @@
         : { tipo: 'hacer', corto: 'Crear su ficha en el Análisis', nivel: 'warn', ir: RC_IR.herr('ingresar'),
             texto: 'Adjudicado y sin ficha en el Análisis Financiero. Créala en «Ingresar avance» con su TAG y este N°, para seguir su avance y sus costos.' };
       if (fe === 'Adjudicada' && pe && pe !== 'Adjudicado') t.avisos.push('Falta avisar «Adjudicado» a la Planilla de Ingreso.');
-      else if (t.gestion && pe !== 'Adjudicado') t.avisos.push(rcAvisoGestion(t));
+      else if (t.gestion && pe !== 'Adjudicado' && !rcEsTemporal(n)) t.avisos.push(rcAvisoGestion(t));
       const ref = cierre || rcFecha(r && r.apertura);
       t.antiguo = !!ref && rcDias(ref, hoy) < -RC_DIAS_ANTIGUO;
       t.orden = ref ? -ref.getTime() : MAXIMO;
@@ -5639,11 +5646,12 @@
     });
     afPorReq.forEach((p, n) => nums.add(n));
     // ... y lo que tiene carpeta en la raíz de Gestión de Proyectos (2026-11-03), aunque nada más lo nombre
-    const gesPorReq = new Map(), gesSinNum = [];
+    const gesPorReq = new Map(), gesSinNum = [], gesNombreTemp = new Map();
     (d.gestion || []).forEach((g) => {
       const carpeta = texto(g && g.carpeta);
       const n = rcNum(g && g.req);
       if (!carpeta) return;
+      if (n && rcEsTemporal(n)) gesNombreTemp.set(n, texto(g.tag).replace(/^\S+\s+-\s+/, '') || carpeta);
       if (!n) gesSinNum.push(carpeta);
       else if (!gesPorReq.has(n)) gesPorReq.set(n, carpeta);
     });
@@ -5651,6 +5659,7 @@
     const tarjetas = [];
     nums.forEach((n) => tarjetas.push(rcTarjetaReq(n, { r: porNum.get(n) || null, c: cruce.get(n) || null, f: formPorReq.get(n) || null,
       af: afPorReq.get(n) || null, lic: lic.get(n) || null, borrador: borradores.has(n), g: gesPorReq.get(n) || null }, hoy)));
+    tarjetas.forEach((t) => { if (t.req && gesNombreTemp.has(t.req)) t.titulo = gesNombreTemp.get(t.req); });
     sinReq.forEach((f) => tarjetas.push(rcTarjetaSinReq(f, hoy)));
     const unidos = new Set(afPorReq.values());
     afPorTag.forEach((p) => { if (!unidos.has(p)) tarjetas.push(rcTarjetaAF(p, hoy)); });
