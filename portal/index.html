@@ -2756,7 +2756,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@aa31270 2026-11-09">
+<meta name="quempin-version" content="master@1a244a4 2026-11-09">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -6410,14 +6410,14 @@
   const mayuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const PL_TIPOS = ['asig', 'aus', 'pau', 'veh'];                          // las casillas de una semana
   // pro: un proyecto escrito a mano en la planificación (2026-10-26), que no viene del Recorrido
-  const PL_CLAVE = /^(req:\d{1,6}|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$/;
+  const PL_CLAVE = /^(req:(\d{1,6}|\d{3,4}t)|tag:[A-Z0-9]{2,10}|otra:[a-z0-9-]{1,40}|pro:[a-z0-9-]{1,40})$/;
   const PL_INSTANTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
   // Una persona escrita a mano (2026-10-26): «x-» y su nombre sin tildes («x-juan-perez»); el nombre va en la lista
   const PL_PER_MANO = /^x-[a-z0-9-]{1,30}$/;
   const plPerValida = (x) => PERSONAL.includes(x) || PL_PER_MANO.test(texto(x));
   const PL_LISTA = 'lista';     // publicado/planificacion/lista/<dispositivo>.json: las personas y proyectos agregados a mano
   const PL_CIERRES = 'cierres'; // publicado/planificacion/cierres/<dispositivo>.json: los proyectos dados por cerrados
-  const PL_CLAVE_CIERRE = /^(req:\d{1,6}|tag:[A-Z0-9]{2,10})$/;
+  const PL_CLAVE_CIERRE = /^(req:(\d{1,6}|\d{3,4}t)|tag:[A-Z0-9]{2,10})$/;
   const PL_CERRADOS_MAX = 12;   // los cerrados más recientes que muestra «Estado de los proyectos», para reabrirlos
   // «Juan Pérez» → «juan-perez»: la parte de la clave que sale del nombre
   const plSlug = (txt, max) => norm(txt).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, max).replace(/-+$/, '');
@@ -6702,7 +6702,7 @@
     });
     lista(d.proyectos).forEach((x) => {
       const titulo = x ? plNombreLimpio(x.titulo) : '';
-      if (!x || !/^(req:\d{1,6}|pro:[a-z0-9-]{1,40})$/.test(texto(x.clave)) || !titulo || !instante(x.t)) return;
+      if (!x || !/^(req:(\d{1,6}|\d{3,4}t)|pro:[a-z0-9-]{1,40})$/.test(texto(x.clave)) || !titulo || !instante(x.t)) return;
       const e = { clave: x.clave, titulo, lugar: plNombreLimpio(x.lugar), semana: semana(x), activa: x.activa === true, t: x.t, por: por(x.por), de };
       plPoner(r.proyectos, plKLista(e), e);
     });
@@ -10935,7 +10935,7 @@
   const EJ_TOLERANCIA = { linea: 0.03, lineaMala: 0.15, historico: 0.15 };
   const EJ_GASTO_SOBRE_AVANCE = 0.15;                     // gastado el 60 % del presupuesto con 40 % de avance: se avisa
   const EJ_RELEER_SEG = 30;
-  const EJ_CLAVE = /^(req:\d{1,6}|tag:[A-Z0-9]{2,10})$/;
+  const EJ_CLAVE = /^(req:(\d{1,6}|\d{3,4}t)|tag:[A-Z0-9]{2,10})$/;
   const EJ_ID = /^[a-z0-9-]{6,40}$/;
   const EJ_UNIDADES = ['Un.', 'kg', 'm', 'm2', 'm3', 'gl', 'km', 'día', 'hr', 'lt', 'noche'];   // las del Formulador
   const EJ_LIBS = { calc: ['js/calc.js', 'QCalc'], pegar: ['js/pegar.js', 'QPegar'], busqueda: ['js/busqueda.js', 'CHBusqueda'] };
