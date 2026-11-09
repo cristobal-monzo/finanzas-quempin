@@ -1,6 +1,6 @@
 ---
 name: Actualizar_Finanzas
-description: Empieza SIEMPRE revisando y registrando las facturas del Centro de Costos que faltan por registrar; después corre todo Finanzas en orden (CC con AF y sus tableros, Cotizador, reportes desactualizados, procesador del Intercambio, Flujo de Caja y Oportunidades) y termina con la bandeja de pendientes. Usar SOLO si el usuario escribe "/Actualizar_Finanzas"; ante «actualiza las finanzas», «actualiza todo», «deja todo al día» o un estado de todos los módulos, confirma primero. Si solo nombra Centro de Costos, usa /Registro_Centro_de_Costos.
+description: Empieza SIEMPRE revisando y registrando las facturas del Centro de Costos que faltan por registrar; después corre todo Finanzas en orden (CC con AF y sus tableros, Cotizador, reportes desactualizados, procesador del Intercambio, Flujo de Caja y Oportunidades) y termina con la bandeja de pendientes. Usar si el usuario escribe "/Actualizar_Finanzas" o, sin preguntar, «actualiza finanzas», «actualizar finanzas», «actualiza las finanzas», «actualiza todo» o «actualizar todo»; ante otras frases («deja todo al día», un estado de todos los módulos), confirma primero. Si solo nombra Centro de Costos, usa /Registro_Centro_de_Costos.
 model: sonnet
 ---
 

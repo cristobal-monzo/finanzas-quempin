@@ -41,7 +41,10 @@ Pedido del usuario: las 10 skills se invocan únicamente si escribe su nombre co
 «¿cuánto debería costar un taladro?»), pregunta «¿Te refieres a
 `/Registro_Centro_de_Costos`?» y espera el sí; vale también para las de solo
 lectura. Las frases-gatillo de cada `SKILL.md` sirven para saber cuál ofrecer,
-no para invocar. Un nombre antiguo (`/Actualizar_CC`,
+no para invocar. **Excepción** (pedido del usuario, 2026-11-09): «actualiza
+finanzas», «actualizar finanzas», «actualiza las finanzas», «actualiza todo» o
+«actualizar todo», en cualquier mayúscula, corren `/Actualizar_Finanzas` directo,
+sin preguntar. Un nombre antiguo (`/Actualizar_CC`,
 `/Actualizar_Base_de_Datos`, `/Actualizar_AF`, `/Actualizar_Cotizador`) es la
 skill nueva: dilo en una línea y sigue. Las skills mecánicas (Actualizar_Finanzas,
 Registro_Centro_de_Costos, Registro_Flujo_de_Caja, Sugerencias_Requerimientos)
