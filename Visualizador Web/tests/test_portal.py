@@ -2049,6 +2049,28 @@ def _esperar_archivo(pagina, ruta, hasta=lambda sobre: True):
         pagina.wait_for_timeout(150)
 
 
+def test_el_uso_del_portal_se_cuenta_anonimo_y_llega_a_la_carpeta(navegador, sitio):
+    """2026-11-09: para saber qué herramientas usa el equipo. Cada apertura de una herramienta cuenta una vez por día
+    (volver a la misma pestaña sin pasar por otra no); al dejar la pestaña se guarda en publicado/uso-portal/, sin usuario."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC")       # abre la Planificación semanal
+    for _ in range(2):
+        pagina.locator("#pestanas .ir", has_text="Inicio").click()
+        pagina.locator('.ini-item[data-herr="flujo-caja"]').click()
+        _marco(pagina, "flujo-caja", "fc")
+    pagina.locator("#pestanas .ir", has_text="Flujo de Caja").click()     # la misma pestaña: no cuenta
+    hoy = date.today().isoformat()
+    local = json.loads(pagina.evaluate("localStorage.getItem('quempin_portal_uso')"))
+    assert local[hoy]["flujo-caja"] == 2 and local[hoy]["planificacion"] == 1 and "inicio" not in local[hoy]
+    pagina.evaluate("""() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+        document.dispatchEvent(new Event('visibilitychange')); }""")
+    sobre = _esperar_archivo(pagina, f"publicado/uso-portal/{DISPOSITIVO}.json")
+    assert sobre["herramienta"] == "portal" and "autor" not in sobre and "usuario" not in json.dumps(sobre["datos"])
+    assert {(d["herramienta"], d["aperturas"]) for d in sobre["datos"]["dias"]} >= {("flujo-caja", 2), ("planificacion", 1)}
+    assert not errores
+    pagina.context.close()
+
+
 def _celda_personal(pagina, persona, dia):
     return pagina.locator(f'#plPersonal tr[data-persona="{persona}"] td[data-dia="{dia}"] .pl-celda')
 

@@ -4280,6 +4280,7 @@
     });
     pintarPestanas();
     marcarMenu();
+    usoAnotar(actual ? actual.herr : 'inicio');
     try { history.replaceState(null, '', '#/' + (actual ? actual.herr : '')); } catch (e) { /* nada */ }
     if (familia === 'inicio') pintarInicio();
     if (familia === 'conexiones') pintarConexiones();
@@ -4355,8 +4356,8 @@
     cerrarFlotantes();
     mostrarMenu(false);
     if (h.tipo === 'inicio') { activar('inicio'); return; }
-    if (h.tipo === 'excel') { abrirExcel(h); return; }
-    if (h.tipo === 'programa') { abrirPrograma(h); return; }
+    if (h.tipo === 'excel') { usoAnotar(h.id); abrirExcel(h); return; }
+    if (h.tipo === 'programa') { usoAnotar(h.id); abrirPrograma(h); return; }
     if (h.tipo === 'archivo') { mostrarInfo(h); return; }
     if (h.tipo === 'ayuda') { $('#dlgAyuda').showModal(); return; }
     if (h.tipo === 'vista') {
@@ -6527,6 +6528,64 @@
     planif.reloj = Math.max(Date.now(), planif.reloj + 1);
     return new Date(planif.reloj).toISOString();
   }
+
+  // ---- Uso del Portal (2026-11-09): cuántas veces se abre cada herramienta, anónimo ---------------------------
+  /* Para decidir qué mejorar con datos: por día y herramienta, en este navegador (sin usuario). Se cuenta en
+     localStorage y se guarda en publicado/uso-portal/<dispositivo>.json como mucho cada 2 minutos; sin la carpeta
+     conectada espera en este navegador. Lo suma Sistema Intercambio/uso_portal.py. Últimos 90 días. */
+  const LS_USO = 'quempin_portal_uso';
+  const USO_DIAS = 90;
+  const uso = { ultima: null, reloj: null, guardando: false };
+  const usoFecha = (t) => t.getFullYear() + '-' + dos(t.getMonth() + 1) + '-' + dos(t.getDate());
+  function usoLeer() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(LS_USO) || '{}'); } catch (e) { d = null; }
+    return d && typeof d === 'object' && !Array.isArray(d) ? d : {};
+  }
+  function usoAnotar(herr) {
+    if (!herr || herr === uso.ultima) return;     // volver a la misma pestaña sin pasar por otra no cuenta
+    uso.ultima = herr;
+    if (herr === 'inicio') return;
+    const d = usoLeer();
+    const hoy = usoFecha(new Date());
+    d[hoy] = d[hoy] || {};
+    d[hoy][herr] = (d[hoy][herr] | 0) + 1;
+    const limite = usoFecha(new Date(Date.now() - USO_DIAS * 864e5));
+    Object.keys(d).forEach((f) => { if (f < limite) delete d[f]; });
+    try { localStorage.setItem(LS_USO, JSON.stringify(d)); } catch (e) { /* sin almacenamiento: no se cuenta */ }
+    if (!uso.reloj) uso.reloj = setTimeout(usoGuardar, 120000);
+  }
+  function usoSobre() {
+    const d = usoLeer();
+    const dias = [];
+    Object.keys(d).sort().forEach((f) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || !d[f] || typeof d[f] !== 'object') return;
+      Object.keys(d[f]).sort().forEach((h) => {
+        const n = d[f][h] | 0;
+        if (n > 0 && h) dias.push({ fecha: f, herramienta: String(h).slice(0, 64), aperturas: n });
+      });
+    });
+    return { esquema: 'quempin.intercambio/1', herramienta: 'portal', generado: new Date().toISOString(),
+      datos: { dispositivo: plDispositivo(), dias } };
+  }
+  async function usoGuardar() {
+    uso.reloj = null;
+    if (uso.guardando || !rc.dir) return;       // sin la carpeta: queda en este navegador y se guarda la próxima vez
+    uso.guardando = true;
+    try {
+      const sobre = usoSobre();
+      await exigirEsquema(rc.dir, 'uso-portal', sobre);
+      const carpeta = await (await rc.dir.getDirectoryHandle('publicado', { create: true })).getDirectoryHandle('uso-portal', { create: true });
+      const w = await (await carpeta.getFileHandle(plDispositivo() + '.json', { create: true })).createWritable();
+      await w.write(JSON.stringify(sobre, null, 1));
+      await w.close();
+    } catch (e) { console.warn('Uso del Portal: no se guardó', e); }
+    uso.guardando = false;
+  }
+  // Al dejar la pestaña (otra ventana, cerrar) se guarda lo que esperaba, sin aguardar los 2 minutos.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && uso.reloj) { clearTimeout(uso.reloj); usoGuardar(); }
+  });
   // proyectos y personas: los nombres de lo usado en la semana (las personas, solo las escritas a mano)
   const plVacia = () => ({ asig: new Map(), aus: new Map(), pau: new Map(), veh: new Map(), proyectos: {}, personas: {} });
   const plKAsig = (e) => e.dia + '|' + e.persona + '|' + e.proyecto;      // también la del vehículo de esa asignación

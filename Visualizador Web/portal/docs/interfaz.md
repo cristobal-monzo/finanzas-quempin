@@ -169,3 +169,10 @@ explica va en un ícono. Regla para lo que venga: **en la pantalla, el dato y la
   sincronización con el Excel y el pie del diálogo de la Planilla; los envíos recientes de Subir; el usuario de la cabecera.
 - **Lo que no se esconde**: avisos que piden algo (un cambio que lleva mucho sin llegar al Excel, un pedido esperando, lo
   que trae la Planificación), cifras y estados. Las cifras del Recorrido dejan su explicación en el `title` de la tarjeta.
+
+## Uso del Portal (2026-11-09)
+
+`usoAnotar` (llamado desde `activar` y `abrir`) cuenta por día cuántas veces se abre cada herramienta en este
+navegador, en `quempin_portal_uso` (90 días). Volver a la misma pestaña sin pasar por otra no cuenta; el Inicio no
+cuenta. Se guarda en `publicado/uso-portal/<dispositivo>.json` como mucho cada 2 minutos y al ocultar la pestaña,
+**sin usuario**. Lo suma `Sistema Intercambio/uso_portal.py`.

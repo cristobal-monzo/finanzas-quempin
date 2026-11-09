@@ -87,7 +87,8 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
   `oportunidades`, `proyectos`, `centro-costos-carpetas`, `documentos-proyecto`, `estado`, `planificacion-semana`,
-  `planificacion-lista`, `planificacion-cierres` y `ejecucion-proyectos`.
+  `planificacion-lista`, `planificacion-cierres`, `ejecucion-proyectos` y `uso-portal` (qué abre el
+  equipo en el Portal, anónimo; `py -3.14 uso_portal.py --dias 30` lo suma).
 - **Copias en otros repositorios** (si cambias uno, vuelve a copiarlo): Sistema QUEMPIN lleva
   `intercambio.py`, `ubicacion.py` y `esquemas.py` (`tests/test_copias_intercambio.py` avisa);
   el Formulador, `esquemas.js`.
