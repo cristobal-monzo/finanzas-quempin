@@ -85,6 +85,7 @@ import mercado_publico  # noqa: E402
 import oportunidades  # noqa: E402
 import proyectos  # noqa: E402
 import requerimientos  # noqa: E402
+import respaldo  # noqa: E402
 import ubicacion  # noqa: E402
 
 RUTA_ESTADO_LOCAL = AQUI / "procesador_estado.json"    # firmas de lo ya procesado (gitignoreado)
@@ -341,6 +342,19 @@ def paso_uf(raiz: Path, previo, forzar):
     return salida.splitlines()[-1] if salida else "UF guardada", hoy
 
 
+def paso_respaldo(raiz: Path, previo, forzar):
+    """Un zip al día de publicado/, buzon/, procesado/ y la Planilla, fuera de
+    OneDrive (respaldo.py). Una falla no detiene al resto del procesador."""
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    if previo == hoy and not forzar:
+        return "respaldo del día ya hecho", None
+    try:
+        zip_, n = respaldo.respaldar(raiz, ubicacion.ubicar_planilla(AQUI))
+    except OSError as e:
+        return f"respaldo no se pudo escribir ({e}); se reintenta en la próxima vuelta", None
+    return f"{n} archivos en {zip_}", hoy
+
+
 def _raices_facturas() -> dict:
     return {"CL": RAIZ_FACTURAS_CL, "PE": RAIZ_FACTURAS_CL.parent / "Perú"}
 
@@ -399,6 +413,7 @@ PASOS = (
     ("carpetas-proyecto", paso_carpetas_proyecto),
     ("documentos-cc", paso_documentos_cc),
     ("proyectos", paso_proyectos),
+    ("respaldo", paso_respaldo),
 )
 
 

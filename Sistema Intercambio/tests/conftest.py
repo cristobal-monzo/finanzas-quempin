@@ -38,6 +38,8 @@ def _sin_mercado_publico_real(tmp_path, monkeypatch):
     monkeypatch.setattr(oportunidades, "RUTA_ESTADO", tmp_path / "oportunidades_estado.json")
     monkeypatch.setattr(mercado_publico, "ruta_ticket", lambda: tmp_path / "sin-ticket" / "mp.ticket")
     monkeypatch.delenv(mercado_publico.VARIABLE_TICKET, raising=False)
+    # El respaldo diario nunca escribe en %LOCALAPPDATA% real (2026-11-09).
+    monkeypatch.setenv("QUEMPIN_RESPALDO_DESTINO", str(tmp_path / "respaldos"))
 
     # Compra Ágil (otra API) y el correo de alertas: ninguna prueba sale a la
     # red ni manda un correo de verdad (2026-10-14).
