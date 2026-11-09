@@ -97,6 +97,38 @@
     },
     "resumen": {
       "type": "object"
+    },
+    "avisos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "desaparecidos": {
+      "description": "N° que estaban publicados y ya no están en la Planilla (fila borrada), con la fecha en que faltaron. Se arrastran hasta que el N° vuelva.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "numero": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "titulo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "desde": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "numero",
+          "desde"
+        ]
+      }
     }
   },
   "required": [

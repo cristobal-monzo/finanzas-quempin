@@ -327,13 +327,46 @@ class PlanillaRenumerada(RuntimeError):
             "a sus N° (o se acepte con aceptar_renumeracion=True).")
 
 
+def desaparecidos(previos: dict, nuevos: list[dict], hoy: str) -> list[dict]:
+    """[{numero, titulo, desde}] de los N° que estaban publicados y ya no están
+    en la Planilla, ni con otro N° (eso es `renumerados`).
+
+    El freno de renumeración no ve una fila borrada: el N° desaparecía en
+    silencio y con él el cruce con carpetas, Formulador y AF (2026-11-09). Se
+    arrastran de una publicación a la siguiente, con la fecha en que faltaron,
+    hasta que el N° vuelva: si no, el aviso duraría una sola vuelta."""
+    numeros = {r["numero"] for r in nuevos}
+    claves = {_clave_fila(r) for r in nuevos}
+    salida = {}
+    for d in previos.get("desaparecidos") or []:
+        if isinstance(d, dict) and isinstance(d.get("numero"), int) and d["numero"] not in numeros:
+            salida[d["numero"]] = d
+    for r in previos.get("requerimientos") or []:
+        n = r.get("numero")
+        if n in numeros or n in salida or (_clave_fila(r)[0] and _clave_fila(r) in claves):
+            continue
+        salida[n] = {"numero": n, "titulo": r.get("titulo"), "desde": hoy}
+    return [salida[n] for n in sorted(salida)]
+
+
+def aviso_desaparecido(d: dict) -> str:
+    return (f"N° {d['numero']} «{(d.get('titulo') or '').strip()[:50]}» ya no está en la Planilla "
+            f"(falta desde el {d['desde']}): si se borró la fila, ese N° deja de cruzar con sus carpetas, "
+            "el Formulador y el AF. Restáurala o confirma que se eliminó a propósito.")
+
+
 def publicar(raiz_intercambio: Path, ruta_planilla: Path, aceptar_renumeracion: bool = False) -> Path:
     datos = datos_publicacion(ruta_planilla)
     previa = intercambio.leer_publicacion(raiz_intercambio, PUBLICACION)
+    previos = (previa or {}).get("datos") or {}
     if previa and not aceptar_renumeracion:
-        movidos = renumerados((previa.get("datos") or {}).get("requerimientos") or [], datos["requerimientos"])
+        movidos = renumerados(previos.get("requerimientos") or [], datos["requerimientos"])
         if len(movidos) >= UMBRAL_RENUMERADOS:
             raise PlanillaRenumerada(movidos)
+    faltan = desaparecidos(previos, datos["requerimientos"], datetime.now().date().isoformat())
+    if faltan:
+        datos["desaparecidos"] = faltan
+        datos["avisos"] = datos["avisos"] + [aviso_desaparecido(d) for d in faltan]
     sobre = {"esquema": intercambio.ESQUEMA, "herramienta": HERRAMIENTA, "generado": intercambio.ahora_iso(), "datos": datos}
     errores = esquemas.validar_publicacion(PUBLICACION, sobre)
     if errores:

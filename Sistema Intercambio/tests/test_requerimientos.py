@@ -99,6 +99,28 @@ def test_publicar_cumple_su_esquema(tmp_path):
     assert sobre["datos"]["requerimientos"][0]["numero"] == 280
 
 
+def test_una_fila_borrada_se_avisa_hasta_que_vuelva(tmp_path):
+    """2026-11-09: el freno de renumeración no veía una fila borrada; el N° desaparecía en silencio."""
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    rq.publicar(raiz, _planilla(tmp_path, [_fila(5, titulo="Horno"), _fila(6, titulo="Caldera")]))
+    rq.publicar(raiz, _planilla(tmp_path, [_fila(5, titulo="Horno")]))
+    sobre = ic.leer_publicacion(raiz, "requerimientos")
+    assert esquemas.validar_publicacion("requerimientos", sobre) == []
+    (d,) = sobre["datos"]["desaparecidos"]
+    assert d["numero"] == 6 and d["titulo"] == "Caldera"
+    assert any("N° 6 «Caldera» ya no está" in a for a in sobre["datos"]["avisos"])
+    rq.publicar(raiz, _planilla(tmp_path, [_fila(5, titulo="Horno"), _fila(7, titulo="Nuevo")]))
+    assert [x["numero"] for x in ic.leer_publicacion(raiz, "requerimientos")["datos"]["desaparecidos"]] == [6]
+    rq.publicar(raiz, _planilla(tmp_path, [_fila(5, titulo="Horno"), _fila(6, titulo="Caldera"), _fila(7, titulo="Nuevo")]))
+    datos = ic.leer_publicacion(raiz, "requerimientos")["datos"]
+    assert "desaparecidos" not in datos and datos["avisos"] == []
+
+
+def test_un_n_que_cambia_de_numero_no_es_desaparecido():
+    previos = {"requerimientos": [{"numero": 6, "titulo": "Caldera", "referencia": "R1"}]}
+    assert rq.desaparecidos(previos, [{"numero": 9, "titulo": "Caldera", "referencia": "R1"}], "2026-11-09") == []
+
+
 # ── sugerencias ──────────────────────────────────────────────────────────────
 
 def _sugerencia(numero=280, cambios=None, reemplaza=None, id_="sug00001"):

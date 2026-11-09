@@ -148,6 +148,9 @@ Solo abre Excel si hay un pedido o la planilla cambió y tiene un N° en fórmul
   es nueva. Una fila nueva cuyo N° ya tiene otro requerimiento no se renumera: queda el aviso.
 - **Freno**: `requerimientos.json` no se publica si la planilla le cambió el N° a 3 o más
   requerimientos (`requerimientos.renumerados`): queda la anterior y el paso falla en `estado.json`.
+- **Fila borrada** (2026-11-09): un N° publicado que ya no está, ni con otro N°, va a `desaparecidos` (con la
+  fecha en que faltó) y a `avisos`, que el Portal muestra. Se arrastra de una publicación a otra hasta que vuelva.
+- **Bandeja**: un envío que espera más de 5 días hábiles en el buzón sube a «alto» (`ESTANCADO_DIAS_HABILES`).
 - **Siempre con Excel** (`planilla_excel.ps1`, por COM; **nunca openpyxl**, ver `requerimientos.py`).
   Excel abre el archivo como documento de SharePoint con coautoría; `Workbooks.Open` puede volver
   antes de que el libro esté listo. Abierto solo para lectura: no escribe y reintenta. Respaldo antes
