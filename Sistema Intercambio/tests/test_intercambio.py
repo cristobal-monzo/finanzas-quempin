@@ -143,6 +143,52 @@ def test_resultados_recientes_filtra_por_destino(tmp_path):
     assert set(ic.resultados_recientes(raiz, destino="sistema-quempin")) == {"parasq01"}
 
 
+def _ejemplo_publicacion(nombre, archivo):
+    ruta = ic._catalogo().CARPETA / "ejemplos" / "publicaciones" / nombre / archivo
+    return json.loads(ruta.read_text(encoding="utf-8"))["datos"]
+
+
+def test_publicar_valida_su_esquema_y_si_no_cumple_deja_la_anterior(tmp_path):
+    """Desde el 2026-11-06 publicar valida contra el catálogo: lo que no cumple no se escribe (8 de 17
+    publicaciones se validaban antes, cada una por su cuenta). Queda la anterior y quien publica falla a la vista."""
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    valido = _ejemplo_publicacion("contrapartes", "valido-1.json")
+    ruta = ic.publicar(raiz, "contrapartes", "sistema-quempin", valido)
+    antes = ruta.read_bytes()
+    invalido = _ejemplo_publicacion("contrapartes", "invalido-sin-proveedores.json")
+    with pytest.raises(ic.PublicacionInvalida, match="contrapartes no cumple su esquema"):
+        ic.publicar(raiz, "contrapartes", "sistema-quempin", invalido)
+    assert ruta.read_bytes() == antes
+    assert not list((raiz / "publicado").glob(".*.tmp"))
+    assert ic.errores_de_publicacion("contrapartes", "sistema-quempin", invalido)
+    assert ic.errores_de_publicacion("contrapartes", "sistema-quempin", valido) == []
+
+
+def test_publicar_sin_esquema_o_sin_validar_escribe_igual(tmp_path):
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    ic.publicar(raiz, "demo", "prueba", {"cualquier": "cosa"})        # sin esquema en el catálogo
+    assert ic.leer_publicacion(raiz, "demo")["datos"] == {"cualquier": "cosa"}
+    # Solo para pruebas que simulan una publicación parcial de otra herramienta
+    ic.publicar(raiz, "contrapartes", "sistema-quempin", {"clientes": []}, validar=False)
+    assert ic.leer_publicacion(raiz, "contrapartes")["datos"] == {"clientes": []}
+
+
+def test_publicar_valida_lo_que_queda_en_el_archivo_y_con_el_paquete_de_la_carpeta(tmp_path):
+    """Valida la forma ya pasada por JSON (una tupla queda lista) y, con 'paquete' (el esquemas.json de la
+    carpeta, que usa la copia de Sistema QUEMPIN), los esquemas de ese paquete y no los de esquemas/."""
+    raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
+    valido = _ejemplo_publicacion("contrapartes", "valido-1.json")
+    con_tuplas = {k: tuple(v) if isinstance(v, list) else v for k, v in valido.items()}
+    assert ic.errores_de_publicacion("contrapartes", "sistema-quempin", con_tuplas) == []
+    paquete = ic._catalogo().paquete()
+    paquete = dict(paquete, publicaciones={"solo-esta": {"type": "object", "required": ["n"]}})
+    assert ic.errores_de_publicacion("contrapartes", "x", {"nada": 1}, paquete) == []   # el paquete no la conoce
+    with pytest.raises(ic.PublicacionInvalida):
+        ic.publicar(raiz, "solo-esta", "x", {"otra": 1}, paquete=paquete)
+    ic.publicar(raiz, "solo-esta", "x", {"n": 1}, paquete=paquete)
+    assert ic.leer_publicacion(raiz, "solo-esta")["datos"] == {"n": 1}
+
+
 def test_publicar_lo_mismo_no_reescribe_el_archivo(tmp_path):
     """Una publicación igual a la anterior no se reescribe: OneDrive no la vuelve a subir y
     «generado» queda en el último cambio real (2026-10-19)."""

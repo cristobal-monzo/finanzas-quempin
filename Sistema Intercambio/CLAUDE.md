@@ -64,6 +64,13 @@ Lleva montos y nombres reales. **Las pruebas usan siempre `tmp_path`, nunca esta
   `origen {herramienta, enviado, usuario?}`. El contenido lo valida su destinatario.
 - `intercambio.py` solo implementa el sobre (leer y validar el buzón, archivar, publicar,
   leer publicaciones, `enviar(raiz, mensaje)`): no conoce ningún tipo.
+- **`publicar` valida contra el catálogo antes de escribir** (2026-11-06): lo que no cumple el esquema de esa
+  publicación levanta `PublicacionInvalida` y no toca el archivo (un nombre sin esquema se publica igual).
+  `paquete=` valida con el `esquemas.json` de la carpeta (Sistema QUEMPIN no tiene `esquemas/`); `validar=False`
+  solo para fixtures parciales de pruebas. El Portal hace lo mismo con `esquemas.js` antes de escribir.
+- `estado.json` dice además qué código corrió la vuelta (`codigo {rama, commit, sucio}`: fuera de `master`, o con
+  código modificado sin commit, el pulso lo avisa) y si está la tarea de pedidos (`pedidos.tarea`: sin ella, un
+  «Actualizar datos» del Portal espera la vuelta de cada 2 horas).
 
 ## Catálogo: `esquemas/`
 

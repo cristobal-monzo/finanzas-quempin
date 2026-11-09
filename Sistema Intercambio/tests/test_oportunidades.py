@@ -257,7 +257,7 @@ def test_no_publica_funcionarios_ni_contactos(evaluador):
 @pytest.fixture
 def carpeta(tmp_path):
     raiz = ic.asegurar_carpeta(tmp_path / "Herramientas" / "Intercambio")
-    ic.publicar(raiz, rq.PUBLICACION, rq.HERRAMIENTA, {"requerimientos": HISTORIA})
+    ic.publicar(raiz, rq.PUBLICACION, rq.HERRAMIENTA, {"requerimientos": HISTORIA}, validar=False)  # parcial
     return raiz
 
 

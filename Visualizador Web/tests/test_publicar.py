@@ -89,3 +89,91 @@ def test_el_hub_y_el_portal_se_copian_con_los_archivos_de_marca_que_enlazan(tmp_
     assert enlaces
     for enlace in enlaces:
         assert ((gh / destino).parent / enlace).resolve().is_file(), enlace
+
+
+# ---- Auditoría del flujo de entrega (2026-11-06): sello, CI y gh-pages al día -------------------------------------
+
+def _repo(carpeta: Path) -> Path:
+    import subprocess
+    carpeta.mkdir(parents=True, exist_ok=True)
+    for args in (["init", "-q", "-b", "master"], ["config", "user.email", "t@t"], ["config", "user.name", "t"]):
+        subprocess.run(["git", "-C", str(carpeta), *args], check=True)
+    return carpeta
+
+
+def _commit(repo: Path, rel: str, texto: str):
+    import subprocess
+    (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+    (repo / rel).write_text(texto, encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "--all"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", rel], check=True)
+
+
+def test_el_sello_de_version_va_en_el_head_y_reemplaza_al_anterior():
+    html = "<html><head><title>x</title></head><body></body></html>"
+    una = publicar.con_sello(html, "master@abc1234 2026-11-06")
+    assert '<meta name="quempin-version" content="master@abc1234 2026-11-06">\n</head>' in una
+    dos = publicar.con_sello(una, "master@def5678 2026-11-07")
+    assert dos.count("quempin-version") == 1 and "def5678" in dos
+
+
+def test_el_portal_publicado_lleva_su_sello(tmp_path):
+    gh = tmp_path / "gh-pages"
+    gh.mkdir()
+    publicar.preparar_estatico("portal", raiz_gh_pages=gh, sello="master@abc1234 2026-11-06")
+    assert '<meta name="quempin-version" content="master@abc1234 2026-11-06">' in (gh / "portal" / "index.html").read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def repo_con_portal(tmp_path, monkeypatch):
+    """Un repo de mentira con el Portal commiteado, y gh (GitHub CLI) de mentira que responde lo que diga 'ci'."""
+    import subprocess
+    repo = _repo(tmp_path / "repo")
+    _commit(repo, "Visualizador Web/portal/index.html", "<html><head></head></html>")
+    monkeypatch.setattr(publicar, "RAIZ", repo)
+    ci = {"corridas": []}
+    real = subprocess.run
+
+    def run(cmd, *a, **kw):
+        if cmd[0] == "gh":
+            return subprocess.CompletedProcess(cmd, 0, json.dumps(ci["corridas"]), "")
+        return real(cmd, *a, **kw)
+    monkeypatch.setattr(publicar.subprocess, "run", run)
+    return repo, ci
+
+
+def test_el_portal_se_publica_solo_commiteado_y_con_el_ci_en_verde(repo_con_portal):
+    repo, ci = repo_con_portal
+    assert publicar.revisar_codigo(["cc"]) == []                       # los tableros con datos no son código
+    assert "no tiene CI" in publicar.revisar_codigo(["portal"])[0]
+    ci["corridas"] = [{"status": "in_progress", "conclusion": "", "url": "u"}]
+    assert "aún corre" in publicar.revisar_codigo(["portal"])[0]
+    ci["corridas"] = [{"status": "completed", "conclusion": "failure", "url": "u"}]
+    assert "falló" in publicar.revisar_codigo(["portal"])[0]
+    ci["corridas"] = [{"status": "completed", "conclusion": "success", "url": "u"}]
+    assert publicar.revisar_codigo(["portal", "hub"]) == []
+    (repo / "Visualizador Web" / "portal" / "index.html").write_text("<html><head></head><body>sin commit</body></html>", encoding="utf-8")
+    assert publicar.revisar_codigo(["portal"]) == ["hay cambios sin commit en: Visualizador Web/portal/index.html"]
+    ci["corridas"] = []
+    assert publicar.revisar_codigo(["portal"], sin_ci=True) == ["hay cambios sin commit en: Visualizador Web/portal/index.html"]
+    assert publicar.sello_de_version().startswith("master@")
+
+
+def test_no_se_publica_si_otra_sesion_publico_despues(tmp_path):
+    import subprocess
+    origen = tmp_path / "origen.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "gh-pages", str(origen)], check=True)
+    una = _repo(tmp_path / "una")
+    subprocess.run(["git", "-C", str(una), "checkout", "-q", "-b", "gh-pages"], check=True)
+    _commit(una, "index.html", "1")
+    subprocess.run(["git", "-C", str(una), "remote", "add", "origin", str(origen)], check=True)
+    subprocess.run(["git", "-C", str(una), "push", "-q", "origin", "gh-pages"], check=True)
+    otra = tmp_path / "otra"
+    subprocess.run(["git", "clone", "-q", "-b", "gh-pages", str(origen), str(otra)], check=True)
+    assert publicar.revisar_gh_pages(una) == []
+    subprocess.run(["git", "-C", str(otra), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(otra), "config", "user.name", "t"], check=True)
+    _commit(otra, "index.html", "2")
+    subprocess.run(["git", "-C", str(otra), "push", "-q", "origin", "gh-pages"], check=True)
+    problemas = publicar.revisar_gh_pages(una)
+    assert len(problemas) == 1 and "1 commit(s) atrás" in problemas[0] and "pull --ff-only" in problemas[0]

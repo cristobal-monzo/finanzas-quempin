@@ -37,9 +37,9 @@ def e(tmp_path):
 
 def _publicar(raiz, requerimientos=None, af=None):
     if requerimientos is not None:
-        intercambio.publicar(raiz, "requerimientos", "procesador", {"requerimientos": requerimientos})
+        intercambio.publicar(raiz, "requerimientos", "procesador", {"requerimientos": requerimientos}, validar=False)  # parcial
     if af is not None:
-        intercambio.publicar(raiz, "analisis-financiero", "procesador", {"proyectos": af})
+        intercambio.publicar(raiz, "analisis-financiero", "procesador", {"proyectos": af}, validar=False)  # parcial
 
 
 def _formulacion(raiz, uid, estado, req=None, carpeta=None, codigo="QMPN-2026-1", titulo="Obra", pais=None):

@@ -23,9 +23,9 @@ const fs = require('fs');
 const casos = JSON.parse(fs.readFileSync(0, 'utf8'));
 const f = (a) => new Date(a[0], a[1] - 1, a[2], a[3], a[4]);   // [año, mes, día, hora, minuto] locales
 const salida = casos.map((c) => {
-  const estado = c.ultima ? { procesador: { ultimaCorrida: f(c.ultima).toISOString(), pasos: c.pasos || {} } } : null;
+  const estado = c.ultima ? { procesador: { ultimaCorrida: f(c.ultima).toISOString(), pasos: c.pasos || {} }, codigo: c.codigo } : null;
   const l = QPulso.lectura(estado, f(c.ahora));
-  return l && { nivel: l.nivel, detenido: l.detenido, habiles: l.minutosHabiles, texto: l.texto };
+  return l && { nivel: l.nivel, detenido: l.detenido, enPrueba: l.enPrueba, habiles: l.minutosHabiles, texto: l.texto };
 });
 process.stdout.write(JSON.stringify(salida));
 """
@@ -70,6 +70,24 @@ def test_un_paso_con_falla_se_ve(tmp_path):
     (r,) = _leer([{"ultima": [2026, 10, 12, 10, 0], "ahora": [2026, 10, 12, 10, 5],
                    "pasos": {"precios-referencia": {"ok": False}, "proyectos": {"ok": True}}}], tmp_path)
     assert r["nivel"] == "warn" and "con problemas en: precios-referencia" in r["texto"]
+
+
+def test_el_procesador_con_codigo_en_prueba_se_ve(tmp_path):
+    """Auditoría del 2026-11-06: las tareas corren lo que esté abierto en la carpeta principal de Finanzas. Fuera de
+    master, o con código modificado sin commit, se avisa en el idioma del equipo; en master limpio, nada."""
+    vuelta = {"ultima": [2026, 10, 12, 10, 0], "ahora": [2026, 10, 12, 10, 5]}
+    limpio, otra_rama, sucio, sin_dato = _leer([
+        dict(vuelta, codigo={"rama": "master", "commit": "a1b2c3d", "sucio": False}),
+        dict(vuelta, codigo={"rama": "flujo-entrega", "commit": "a1b2c3d", "sucio": False}),
+        dict(vuelta, codigo={"rama": "master", "commit": "a1b2c3d", "sucio": True}),
+        vuelta,
+    ], tmp_path)
+    assert limpio["nivel"] == "ok" and not limpio["enPrueba"] and "versión en prueba" not in limpio["texto"]
+    for r in (otra_rama, sucio):
+        assert r["nivel"] == "warn" and r["enPrueba"]
+        assert r["texto"].endswith("El procesador está corriendo una versión en prueba de su código: "
+                                   "avisa a quien administra las herramientas QUEMPIN.")
+    assert sin_dato["nivel"] == "ok" and not sin_dato["enPrueba"]
 
 
 def test_sin_estado_no_hay_lectura(tmp_path):

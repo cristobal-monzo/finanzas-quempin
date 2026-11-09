@@ -121,6 +121,69 @@ def test_un_paso_que_falla_no_frena_a_los_demas(entorno, monkeypatch):
     assert ic.leer_publicacion(entorno["raiz"], "estado")["datos"]["avisos"] == ["roto: se cayó"]
 
 
+def test_estado_dice_que_codigo_corre_y_si_esta_la_tarea_de_pedidos(entorno, monkeypatch):
+    """Auditoría del 2026-11-06: las tareas corren lo que esté abierto en la carpeta principal de Finanzas, que estuvo
+    semanas en una rama de trabajo; y «Actualizar datos» se publicó sin la tarea que lo atiende."""
+    r = _vuelta(entorno)
+    datos = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]
+    assert datos["codigo"] == {"rama": "master", "commit": "abc1234", "sucio": False} and datos["pedidos"] == {"tarea": True}
+    assert not any(a.startswith("código:") for a in r["avisos"])
+    monkeypatch.setattr(pr, "codigo_en_uso", lambda repo=None: {"rama": "otra-rama", "commit": "def5678", "sucio": False})
+    monkeypatch.setattr(pr, "tarea_de_pedidos_instalada", lambda: False)
+    r = _vuelta(entorno)
+    datos = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]
+    assert datos["pedidos"] == {"tarea": False}
+    assert [a for a in datos["avisos"] if a.startswith("código:")] == [
+        "código: el procesador corre la rama «otra-rama» (def5678), no master. "
+        "Las tareas programadas corren lo que esté abierto en la carpeta principal de Finanzas."]
+    assert r["avisos"] == datos["avisos"]
+    # Sin git ni schtasks (otro equipo): no van los campos, y el estado sigue cumpliendo su esquema
+    monkeypatch.setattr(pr, "codigo_en_uso", lambda repo=None: None)
+    monkeypatch.setattr(pr, "tarea_de_pedidos_instalada", lambda: None)
+    _vuelta(entorno)
+    datos = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]
+    assert "codigo" not in datos and "pedidos" not in datos
+
+
+def test_avisos_de_codigo():
+    assert pr.avisos_de_codigo(None) == []
+    assert pr.avisos_de_codigo({"rama": "master", "commit": "a1", "sucio": False}) == []
+    assert pr.avisos_de_codigo({"rama": "master", "commit": "a1", "sucio": True}) == [
+        "código: la carpeta principal de Finanzas tiene código modificado sin commit (a1)."]
+    assert pr.avisos_de_codigo({"rama": "x", "commit": "a1", "sucio": True})[0].startswith("código: el procesador corre la rama «x»")
+
+
+@pytest.mark.con_git_real
+def test_codigo_en_uso_lee_rama_commit_y_solo_el_codigo_sucio(tmp_path):
+    import shutil
+    import subprocess
+
+    codigo = pr.codigo_en_uso
+    if shutil.which("git") is None:
+        pytest.skip("git no está instalado en esta máquina")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+    git("init", "-b", "master")
+    git("config", "user.email", "prueba@example.com")
+    git("config", "user.name", "Prueba")
+    (repo / "paso.py").write_text("x = 1\n", encoding="utf-8")
+    (repo / "LEEME.md").write_text("hola\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "uno")
+    c = codigo(repo)
+    assert c["rama"] == "master" and len(c["commit"]) >= 7 and c["sucio"] is False
+    (repo / "LEEME.md").write_text("cambio\n", encoding="utf-8")
+    assert codigo(repo)["sucio"] is False             # un .md editado no cambia lo que corre
+    (repo / "paso.py").write_text("x = 2\n", encoding="utf-8")
+    assert codigo(repo)["sucio"] is True
+    git("switch", "-c", "otra")
+    assert codigo(repo)["rama"] == "otra"
+    assert codigo(tmp_path / "no-es-repo") is None
+
+
 def test_sin_carpeta_queda_inactivo(tmp_path):
     assert pr.procesar(tmp_path / "no-existe")["activo"] is False
 
@@ -148,7 +211,7 @@ def _pedir_vuelta(raiz, id_="pedido0001"):
 def _estado_con_vuelta_de_hace(raiz, minutos):
     from datetime import datetime, timedelta
     corrida = (datetime.now().astimezone() - timedelta(minutes=minutos)).isoformat(timespec="seconds")
-    ic.publicar(raiz, "estado", "procesador", {"procesador": {"ultimaCorrida": corrida}})
+    ic.publicar(raiz, "estado", "procesador", {"procesador": {"ultimaCorrida": corrida}}, validar=False)  # parcial
 
 
 def test_la_vuelta_atiende_los_pedidos_del_portal(entorno):

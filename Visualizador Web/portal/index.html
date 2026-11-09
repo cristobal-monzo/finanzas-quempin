@@ -4670,6 +4670,45 @@
     }
     return pulsoCargado;
   }
+  // ---- Lo que el Portal publica cumple su esquema (2026-11-06) ------------------------------------------
+  // Antes de escribir su archivo de la Planificación o de Proyectos en ejecución, se valida contra el catálogo de la
+  // carpeta (esquemas.json, que deja el procesador) con el mismo validador de Python (esquemas.js, que el Formulador
+  // publica en su js/). Lo que no cumple no se escribe: el cambio queda pendiente y la vista dice que no se guardó.
+  // Sin el validador o sin el catálogo (o con uno anterior a esa publicación) se escribe como antes.
+  let esquemasCargados = null;
+  function cargarEsquemas() {
+    if (window.QEsquemas) return Promise.resolve();
+    if (!esquemasCargados) {
+      esquemasCargados = new Promise((listo) => {
+        const s = document.createElement('script');
+        s.src = HERR.get('formulador').ruta + 'js/esquemas.js';
+        s.onload = () => listo();
+        s.onerror = () => listo();
+        document.head.append(s);
+      });
+    }
+    return esquemasCargados;
+  }
+  // El catálogo se vuelve a leer solo cuando cambia el archivo (su fecha o su tamaño).
+  const catalogoCarpeta = { dir: null, paquete: null, marca: '' };
+  async function catalogoDeLaCarpeta(dir) {
+    let f = null;
+    try { f = await (await dir.getFileHandle('esquemas.json')).getFile(); } catch (e) { f = null; }
+    const marca = f ? f.lastModified + ':' + f.size : '';
+    if (catalogoCarpeta.dir === dir && catalogoCarpeta.marca === marca) return catalogoCarpeta.paquete;
+    let p = null;
+    try { p = f ? JSON.parse(rcSinBom(await f.text())) : null; } catch (e) { p = null; }
+    Object.assign(catalogoCarpeta, { dir, paquete: p && p.publicaciones && p.sobrePublicacion ? p : null, marca });
+    return catalogoCarpeta.paquete;
+  }
+  async function exigirEsquema(dir, nombre, sobre) {
+    await cargarEsquemas();
+    const paquete = await catalogoDeLaCarpeta(dir);
+    if (!window.QEsquemas || !paquete || !paquete.publicaciones[nombre]) return;
+    // Se valida lo que queda en el archivo: JSON quita lo undefined (como intercambio.publicar en Python)
+    const errores = window.QEsquemas.validarPublicacion(nombre, JSON.parse(JSON.stringify(sobre)), paquete);
+    if (errores.length) throw new Error('No se guardó: el archivo no cumple su esquema (' + nombre + ': ' + errores.slice(0, 3).join('; ') + ').');
+  }
   function lecturaPulso(est) {
     let l = null;
     try { l = window.QPulso ? window.QPulso.lectura(est) : null; } catch (e) { l = null; }
@@ -5511,6 +5550,11 @@
   const RC_VUELTA_ARCHIVO = /_pedir-vuelta_.*\.json$/i;
   const RC_VUELTA_REVISAR_SEG = 10;
   const RC_VUELTA_TARDA_MIN = 15;      // desde aquí dice que no responde: lo normal son unos 5 min
+  // estado.json dice si en el computador del procesador está la tarea que atiende el pedido al momento (2026-11-06:
+  // el botón se publicó antes que la tarea y prometía 5 minutos). Sin ella, el pedido espera la vuelta de cada 2 horas,
+  // y así se dice; «no responde» recién pasadas 2 horas y media, como el pulso.
+  const RC_VUELTA_SIN_TAREA_TARDA_MIN = 150;
+  const rcSinTareaDePedidos = () => !!(rc.datos && rc.datos.estado && rc.datos.estado.pedidos && rc.datos.estado.pedidos.tarea === false);
   const rcCorrida = (est) => (est && est.procesador && est.procesador.ultimaCorrida) || '';
   // Hecha cuando el pedido salió del buzón y el pulso dice que corrió: OneDrive trae esos dos cambios por separado, y
   // con uno solo lo que se ve todavía es lo de antes.
@@ -5600,20 +5644,27 @@
     const txt = $('#rcFrescura');
     const punto = $('#rcPunto');
     const boton = $('#rcPedirVuelta');
+    const sinTarea = rcSinTareaDePedidos();
     boton.hidden = !rc.leido;
     boton.disabled = !!rc.vuelta;
     boton.textContent = rc.vuelta ? 'Actualizando…' : 'Actualizar datos';
+    boton.title = sinTarea
+      ? 'Le pide al procesador una vuelta. En su computador falta la tarea que la da al momento: se atiende en la próxima vuelta (cada 2 horas).'
+      : 'Le pide al procesador una vuelta ahora, sin esperar la de cada 2 horas. Tarda unos 5 min.';
     if (rc.leyendo) { txt.textContent = rc.leido ? 'Actualizando…' : 'Leyendo la carpeta del equipo…'; return; }
     if (!rc.leido) { txt.textContent = 'Sin datos de la carpeta del equipo'; punto.className = 'cx-punto'; txt.title = ''; return; }
     const l = rc.pulso;
     const haceTexto = (m) => (m < 1 ? 'hace un momento' : m < 60 ? 'hace ' + m + ' min' : m < 48 * 60 ? 'hace ' + Math.round(m / 60) + ' h' : 'hace ' + Math.round(m / 1440) + ' días');
     if (rc.vuelta) {
       const pedida = Math.max(0, Math.round((Date.now() - rc.vuelta.desde) / 60000));
-      const tarda = pedida >= RC_VUELTA_TARDA_MIN;
-      txt.textContent = 'Actualización pedida ' + haceTexto(pedida) + (tarda ? ': el procesador aún no responde' : ': tarda unos 5 min');
+      const tarda = pedida >= (sinTarea ? RC_VUELTA_SIN_TAREA_TARDA_MIN : RC_VUELTA_TARDA_MIN);
+      txt.textContent = 'Actualización pedida ' + haceTexto(pedida) +
+        (tarda ? ': el procesador aún no responde' : sinTarea ? ': se atiende en la próxima vuelta (cada 2 horas)' : ': tarda unos 5 min');
       txt.title = tarda
         ? 'El pedido sigue en el buzón y se atiende apenas se pueda. El computador del procesador puede estar apagado, o su OneDrive atrasado.'
-        : 'El computador del procesador toma el pedido y da una vuelta completa; lo demás es lo que OneDrive demora en llevar y traer los archivos.';
+        : sinTarea
+          ? 'En el computador del procesador falta la tarea que atiende estos pedidos al momento: el pedido espera la vuelta de cada 2 horas. Avisa a quien administra las herramientas QUEMPIN.'
+          : 'El computador del procesador toma el pedido y da una vuelta completa; lo demás es lo que OneDrive demora en llevar y traer los archivos.';
       punto.className = 'cx-punto ' + (tarda ? 'warn' : (l ? l.nivel : ''));
       return;
     }
@@ -6463,8 +6514,9 @@
       const r = plLeerCierresArchivo(JSON.parse(rcSinBom(await f.text())));
       if (r) plAdoptarCierres(r);
     } catch (e) { /* todavía no existe */ }
-    const h = await carpeta.getFileHandle(nombre, { create: true });
     const sobre = plSobreCierres();
+    await exigirEsquema(dir, 'planificacion-cierres', sobre);
+    const h = await carpeta.getFileHandle(nombre, { create: true });
     const w = await h.createWritable();
     await w.write(JSON.stringify(sobre, null, 1));
     await w.close();
@@ -6598,8 +6650,9 @@
       const r = plLeerListaArchivo(JSON.parse(rcSinBom(await f.text())));
       if (r) plAdoptarLista(r);
     } catch (e) { /* todavía no existe */ }
-    const h = await carpeta.getFileHandle(nombre, { create: true });
     const sobre = plSobreLista();
+    await exigirEsquema(dir, 'planificacion-lista', sobre);
+    const h = await carpeta.getFileHandle(nombre, { create: true });
     const w = await h.createWritable();
     await w.write(JSON.stringify(sobre, null, 1));
     await w.close();
@@ -6622,8 +6675,9 @@
       const r = plLeerArchivo(JSON.parse(rcSinBom(await f.text())), id, s.lunes);
       if (r) plAdoptar(s, r);
     } catch (e) { /* todavía no existe */ }
-    const h = await carpeta.getFileHandle(nombre, { create: true });
     const sobre = plSobre(s);
+    await exigirEsquema(dir, 'planificacion-semana', sobre);
+    const h = await carpeta.getFileHandle(nombre, { create: true });
     const w = await h.createWritable();
     await w.write(JSON.stringify(sobre, null, 1));
     await w.close();
@@ -10754,8 +10808,9 @@
       const r = ejLeerArchivo(JSON.parse(rcSinBom(await f.text())));
       if (r) ejAdoptar(r);
     } catch (e) { /* todavía no existe */ }
-    const h = await carpeta.getFileHandle(nombre, { create: true });
     const sobre = ejSobre();
+    await exigirEsquema(dir, 'ejecucion-proyectos', sobre);
+    const h = await carpeta.getFileHandle(nombre, { create: true });
     const w = await h.createWritable();
     await w.write(JSON.stringify(sobre, null, 1));
     await w.close();
@@ -10843,6 +10898,7 @@
       const x = a.nuevo ? { id: a.id, proyecto: a.proyecto, tipo: a.tipo, creado: a.creado, borrado: true } : Object.assign({}, a);
       delete x.nuevo;
       Object.assign(x, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() });
+      if (!x.creado) x.creado = x.t;
       ej.datos.mias.set(x.id, x);
     });
     ejRecalcular();
@@ -14418,6 +14474,9 @@
   function obsEntorno() {
     const l = obs.lugar;
     const versiones = { portal: document.lastModified };
+    // El sello que publicar.py le pone al Portal al publicarlo (2026-11-06): rama, commit y fecha del código que se vio
+    const sello = document.querySelector('meta[name="quempin-version"]');
+    if (sello && sello.content) versiones.codigo = sello.content;
     if (l && l.p) {
       versiones.herramienta = l.doc.lastModified;
       const d = l.doc.getElementById('vizGenerated');

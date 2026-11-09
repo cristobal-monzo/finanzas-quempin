@@ -35,6 +35,40 @@
       "items": {
         "type": "string"
       }
+    },
+    "codigo": {
+      "description": "Qué código corrió esta vuelta (2026-11-06): rama y commit del repositorio de Finanzas, y si hay código modificado sin commit. Fuera de master o sucio, la vuelta lo avisa y pulso.js lo muestra.",
+      "type": "object",
+      "properties": {
+        "rama": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sucio": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "rama",
+        "commit",
+        "sucio"
+      ]
+    },
+    "pedidos": {
+      "description": "Si en el equipo del procesador está la tarea que atiende «Actualizar datos» del Portal (procesar.py --si-hay-pedido cada minuto). Sin ella el pedido espera la vuelta de cada 2 horas, y el Portal lo dice.",
+      "type": "object",
+      "properties": {
+        "tarea": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tarea"
+      ]
     }
   },
   "required": [

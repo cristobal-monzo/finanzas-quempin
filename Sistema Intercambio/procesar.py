@@ -433,6 +433,59 @@ def resumen_buzon(raiz: Path) -> dict:
     return por_destino
 
 
+# Lo que corre el procesador (2026-11-06, auditoría del flujo de entrega): las tareas programadas ejecutan los .py
+# tal como estén en la carpeta principal de Finanzas. Esa carpeta estuvo semanas en una rama de trabajo
+# («auditoria-proceso-errores», 63 commits adelante de master): un cambio de rama ahí cambiaba en el acto el código
+# del procesador y de la Planilla. Cada vuelta dice qué rama y commit corrió, y avisa si no es la de producción o si
+# hay código modificado sin commit.
+RAMA_PRODUCCION = "master"
+EXTENSIONES_CODIGO = (".py", ".ps1", ".cmd", ".bat", ".js", ".json", ".html", ".css", ".yml")
+# La tarea que atiende «Actualizar datos» del Portal (procesar.py --si-hay-pedido, cada minuto). Si no está instalada,
+# el pedido espera la vuelta de cada 2 horas, y el Portal lo dice en vez de prometer unos minutos.
+TAREA_PEDIDOS = "Pedidos al procesador QUEMPIN"
+
+
+def codigo_en_uso(repo: Path | None = None) -> dict | None:
+    """{rama, commit, sucio} del repositorio desde el que corre el procesador; None si git no responde. 'sucio'
+    cuenta solo archivos de código (un .md editado a mano no cambia lo que corre)."""
+    repo = repo or AQUI.parent
+
+    def git(*args):
+        r = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=30)
+        return r.stdout if r.returncode == 0 else None
+    try:
+        rama, commit = git("rev-parse", "--abbrev-ref", "HEAD"), git("rev-parse", "--short", "HEAD")
+        cambios = git("status", "--porcelain", "--untracked-files=no")
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if rama is None or commit is None or cambios is None:
+        return None
+    rutas = [linea[3:].strip().strip('"') for linea in cambios.splitlines() if len(linea) > 3]
+    sucio = any(r.lower().endswith(EXTENSIONES_CODIGO) for r in rutas)
+    return {"rama": rama.strip(), "commit": commit.strip(), "sucio": sucio}
+
+
+def avisos_de_codigo(codigo: dict | None) -> list[str]:
+    if not codigo:
+        return []
+    if codigo["rama"] != RAMA_PRODUCCION:
+        return [f"código: el procesador corre la rama «{codigo['rama']}» ({codigo['commit']}), no {RAMA_PRODUCCION}. "
+                f"Las tareas programadas corren lo que esté abierto en la carpeta principal de Finanzas."]
+    if codigo["sucio"]:
+        return [f"código: la carpeta principal de Finanzas tiene código modificado sin commit ({codigo['commit']})."]
+    return []
+
+
+def tarea_de_pedidos_instalada() -> bool | None:
+    """Si la tarea programada que atiende «Actualizar datos» existe en este equipo; None si no se pudo saber."""
+    try:
+        r = subprocess.run(["schtasks", "/query", "/tn", TAREA_PEDIDOS], capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.returncode == 0
+
+
 def publicar_estado(raiz: Path, pasos: dict, duracion: float, avisos: list) -> None:
     datos = {
         "procesador": {"ultimaCorrida": intercambio.ahora_iso(), "duracionSeg": round(duracion, 1),
@@ -441,6 +494,13 @@ def publicar_estado(raiz: Path, pasos: dict, duracion: float, avisos: list) -> N
         "buzon": resumen_buzon(raiz),
         "avisos": avisos,
     }
+    codigo = codigo_en_uso()
+    if codigo:
+        datos["codigo"] = codigo
+        avisos.extend(avisos_de_codigo(codigo))
+    tarea = tarea_de_pedidos_instalada()
+    if tarea is not None:
+        datos["pedidos"] = {"tarea": tarea}
     sobre = {"esquema": intercambio.ESQUEMA, "herramienta": "procesador", "generado": intercambio.ahora_iso(), "datos": datos}
     errores = esquemas.validar_publicacion(PUBLICACION_ESTADO, sobre)
     if errores:

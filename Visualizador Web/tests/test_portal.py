@@ -377,6 +377,10 @@ def _sitio(raiz: Path):
         if js and js.exists():
             (raiz / "formulacion-proyectos-quempin" / "js").mkdir(parents=True, exist_ok=True)
             (raiz / "formulacion-proyectos-quempin" / "js" / nombre).write_bytes(js.read_bytes())
+    # El validador que el Portal carga del Formulador antes de escribir sus archivos (2026-11-06). Su fuente es
+    # Sistema Intercambio/esquemas.js (el Formulador lleva una copia textual): así se prueba también sin el Formulador.
+    (raiz / "formulacion-proyectos-quempin" / "js").mkdir(parents=True, exist_ok=True)
+    (raiz / "formulacion-proyectos-quempin" / "js" / "esquemas.js").write_bytes((RAIZ / "Sistema Intercambio" / "esquemas.js").read_bytes())
     pagina("/calculadora-tecnica-quempin/", "Calculadora Técnica", "calc")
     for ruta, herr in (("DiametroTuberia", "diametro"), ("Hidrogeno", "hidrogeno"),
                        ("GasNatural-GLP", "gas"), ("OtrosGases", "otros")):
@@ -1489,6 +1493,8 @@ def _intercambio_de_prueba():
         "publicado/formulador/fx.json": _formulacion("fx", "QMPN-2026-778", None, "Borrador", "LC", eliminado=True),
         "buzon/b903.json": sobre_msg,
         "buzon/otro.json": {"tipo": "datos-proyecto", "destino": "analisis-financiero"},
+        # El catálogo que deja el procesador: con él, todo lo que el Portal escribe en estas pruebas se valida (2026-11-06)
+        "esquemas.json": _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py").paquete(),
     }
 
 
@@ -1721,6 +1727,30 @@ def test_un_pedido_de_un_colega_que_lleva_mucho_dice_que_no_responde(navegador, 
     assert pagina.locator("#rcPedirVuelta").is_disabled()
     assert "warn" in pagina.locator("#rcPunto").get_attribute("class")
     assert "apagado" in pagina.locator("#rcFrescura").get_attribute("title")
+    assert not errores
+    pagina.context.close()
+
+
+def test_sin_la_tarea_de_pedidos_dice_que_espera_la_vuelta_de_cada_2_horas(navegador, sitio):
+    """Auditoría del 2026-11-06: el botón se publicó antes que la tarea «Pedidos al procesador QUEMPIN» y prometía unos
+    5 minutos mientras el pedido esperaba hasta 2 horas. estado.json dice si la tarea está, y el Portal no promete."""
+    from datetime import datetime, timedelta
+    pagina, errores = _portal_con_datos(navegador, sitio)
+    ahora = datetime.now().astimezone()
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {
+        "publicado/estado.json": _sobre("procesador", {"procesador": {"ultimaCorrida": ahora.isoformat(timespec="seconds")},
+                                                       "publicaciones": {}, "buzon": {}, "pedidos": {"tarea": False}}),
+        "buzon/x_portal_pedir-vuelta_abcdef.json": {
+            "esquema": "quempin.intercambio/1", "id": "abcdef", "tipo": "pedir-vuelta", "destino": "procesador",
+            "origen": {"herramienta": "portal", "usuario": "NB",
+                       "enviado": (ahora - timedelta(minutes=40)).isoformat(timespec="seconds")}}})
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Recorrido de proyectos")
+    # 40 minutos con la tarea sería «no responde»; sin ella, todavía es lo esperable
+    pagina.locator("#rcFrescura", has_text="hace 40 min: se atiende en la próxima vuelta (cada 2 horas)").wait_for()
+    assert "falta la tarea" in pagina.locator("#rcFrescura").get_attribute("title")
+    assert "cada 2 horas" in pagina.locator("#rcPedirVuelta").get_attribute("title")
     assert not errores
     pagina.context.close()
 
@@ -2666,7 +2696,10 @@ def test_la_vista_simple_sin_alarma_en_la_cabecera(navegador, sitio):
     # El navegador avisa que se abrió un momento después del clic: recargar antes perdería lo que se guarda ahí
     pagina.wait_for_function("(JSON.parse(localStorage.getItem('quempin_portal_plan')).paneles || []).includes('personal')")
     pagina.reload()
-    pagina.locator("#plGeneral details.pl-panel").first.wait_for()
+    # Los paneles se pintan antes de que la vista recupere cuál estaba abierto: se espera ese estado en vez de leerlo
+    # apenas aparece el primero (en el runner de GitHub se leía [False, False, False]).
+    pagina.wait_for_function("""() => [...document.querySelectorAll('#plGeneral details.pl-panel')]
+        .map((d) => d.open).join() === 'false,true,false'""")
     assert pagina.locator("#plGeneral details.pl-panel").evaluate_all("ds => ds.map((d) => d.open)") == [False, True, False]
     assert not errores
     pagina.context.close()
@@ -3334,6 +3367,34 @@ def test_lo_que_llega_no_interrumpe_el_arrastre_ni_el_foco(navegador, sitio):
     pagina.context.close()
 
 
+def test_lo_que_no_cumple_el_esquema_de_la_carpeta_no_se_escribe(navegador, sitio):
+    """Auditoría 2026-11-06: el Portal valida con el catálogo de la carpeta (esquemas.json) antes de crear el archivo.
+    Aquí el catálogo pide un campo que el Portal no manda: la semana no se escribe y la vista lo dice."""
+    import copy
+    import json
+    from datetime import date
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, _ = _semana_de(date.today())
+    paquete = copy.deepcopy(esquemas.paquete())      # paquete() guarda el suyo: no se toca
+    paquete["publicaciones"]["planificacion-semana"]["required"].append("campoNuevo")
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["esquemas.json", json.dumps(paquete, ensure_ascii=False)])
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent.startsWith('No se pudo guardar')")
+    assert "campoNuevo" in pagina.locator("#plFrescura").get_attribute("title")
+    assert pagina.evaluate(JS_LEER_INTERCAMBIO, f"publicado/planificacion/{semana}/{DISPOSITIVO}.json") is None
+    # Con el catálogo de verdad (el que deja el procesador) se guarda
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["esquemas.json", json.dumps(esquemas.paquete(), ensure_ascii=False)])
+    pagina.locator("#plReintentar").click()
+    sobre = _esperar_archivo(pagina, f"publicado/planificacion/{semana}/{DISPOSITIVO}.json")
+    assert esquemas.validar_publicacion("planificacion-semana", sobre) == []
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'Guardado · OneDrive lo lleva al equipo'")
+    assert not errores
+    pagina.context.close()
+
+
 def test_si_la_carpeta_no_responde_la_vista_lo_dice(navegador, sitio):
     """Un aviso que sigue en verde sin estar recibiendo nada es lo que ya pasó en el Formulador (2026-10-27)."""
     from datetime import datetime, timedelta
@@ -3890,7 +3951,14 @@ def _subir_con_datos(navegador, sitio, **kw):
         "CL": [{"nombre": "280. Obra de ejemplo", "req": "280", "documentos": 12}, {"nombre": "Gastos Generales", "req": None, "documentos": 3}],
         "PE": [{"nombre": "Obra Lima", "req": None, "documentos": 0}]}})})
     _menu(pagina, "Subir documentos")
-    pagina.locator("#scLista .sc-op").first.wait_for()
+    # La lista se pinta dos veces: al abrir la vista y cuando termina de leer las carpetas del Centro de Costos
+    # (scCargar, asíncrono). Esperar solo la primera opción dejaba leerla a medio armar: en el runner de GitHub, más
+    # lento, faltaba «12 documentos» y el CI estuvo rojo del 29-10 al 05-11 (pasaba en el equipo de la oficina).
+    pagina.wait_for_function("""() => {
+        const t = [...document.querySelectorAll('#scLista .sc-op')].map((o) => o.innerText);
+        return t.some((x) => x.includes('280. Obra de ejemplo') && x.includes('12 documentos'))
+            && t.some((x) => x.startsWith('908. En obra'));
+    }""")
     return pagina, errores
 
 

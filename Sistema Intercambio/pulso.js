@@ -24,6 +24,9 @@
   // verde hasta 2 h y media, para no marcar «atrasado» entre dos corridas.
   const VERDE_HASTA_MIN = 150;
   const DETENIDO_HORAS_HABILES = 4;
+  // La rama con la que corre el procesador en producción (2026-11-06). estado.json dice qué código corrió cada
+  // vuelta: en otra rama, o con código modificado sin commit, la carpeta la está llenando una versión en prueba.
+  const RAMA_PRODUCCION = 'master';
 
   /* Minutos de horario hábil entre dos fechas (Date). */
   function minutosHabiles(desde, hasta, horario) {
@@ -49,7 +52,7 @@
     return `hace ${Math.round(min / 1440)} días`;
   }
 
-  /* { nivel: 'ok'|'warn'|'bad', detenido, texto, minutos, minutosHabiles }, o
+  /* { nivel: 'ok'|'warn'|'bad', detenido, enPrueba, texto, minutos, minutosHabiles }, o
      null si no hay estado. 'ahora' se puede fijar (pruebas). */
   function lectura(estado, ahora) {
     const ultima = estado && estado.procesador && estado.procesador.ultimaCorrida;
@@ -61,12 +64,15 @@
     const pasos = estado.procesador.pasos || {};
     const fallas = Object.keys(pasos).filter((k) => pasos[k] && pasos[k].ok === false);
     const detenido = habiles > DETENIDO_HORAS_HABILES * 60;
-    const nivel = detenido ? 'bad' : fallas.length ? 'warn' : min <= VERDE_HASTA_MIN ? 'ok' : 'warn';
+    const codigo = estado.codigo;
+    const enPrueba = !!(codigo && (codigo.rama !== RAMA_PRODUCCION || codigo.sucio === true));
+    const nivel = detenido ? 'bad' : fallas.length || enPrueba ? 'warn' : min <= VERDE_HASTA_MIN ? 'ok' : 'warn';
     const texto = detenido
       ? `El procesador del intercambio no corre desde ${haceCuanto(min)}: lo que se envíe a las demás herramientas queda esperando hasta que vuelva a correr. Avisa a quien administra las herramientas QUEMPIN.`
-      : `Las demás herramientas revisaron la carpeta ${haceCuanto(min)}` + (fallas.length ? ` (con problemas en: ${fallas.join(', ')})` : '') + '.';
-    return { nivel, detenido, texto, minutos: min, minutosHabiles: habiles };
+      : `Las demás herramientas revisaron la carpeta ${haceCuanto(min)}` + (fallas.length ? ` (con problemas en: ${fallas.join(', ')})` : '') + '.' +
+        (enPrueba ? ' El procesador está corriendo una versión en prueba de su código: avisa a quien administra las herramientas QUEMPIN.' : '');
+    return { nivel, detenido, enPrueba, texto, minutos: min, minutosHabiles: habiles };
   }
 
-  root.QPulso = { lectura, minutosHabiles, HORARIO, VERDE_HASTA_MIN, DETENIDO_HORAS_HABILES };
+  root.QPulso = { lectura, minutosHabiles, HORARIO, VERDE_HASTA_MIN, DETENIDO_HORAS_HABILES, RAMA_PRODUCCION };
 })(typeof window !== 'undefined' ? window : globalThis);

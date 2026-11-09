@@ -10,6 +10,21 @@ import bases_oportunidades  # noqa: E402
 import compra_agil  # noqa: E402
 import mercado_publico  # noqa: E402
 import oportunidades  # noqa: E402
+import procesar  # noqa: E402
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "con_git_real: no reemplaza procesar.codigo_en_uso (la prueba usa su propio repo)")
+
+
+@pytest.fixture(autouse=True)
+def _sin_git_ni_tareas_del_equipo(request, monkeypatch):
+    """estado.json dice qué rama corre el procesador y si está la tarea de pedidos (2026-11-06). En las pruebas eso
+    no depende de la rama del worktree ni de las tareas del equipo que las corre: producción limpia, con la tarea."""
+    monkeypatch.setattr(procesar, "tarea_de_pedidos_instalada", lambda: True)
+    if request.node.get_closest_marker("con_git_real"):
+        return
+    monkeypatch.setattr(procesar, "codigo_en_uso", lambda repo=None: {"rama": "master", "commit": "abc1234", "sucio": False})
 
 
 @pytest.fixture(autouse=True)

@@ -91,7 +91,7 @@ def carpeta(tmp_path):
     raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
 
     def con_planilla(reqs):
-        ic.publicar(raiz, rq.PUBLICACION, rq.HERRAMIENTA, {"requerimientos": reqs})
+        ic.publicar(raiz, rq.PUBLICACION, rq.HERRAMIENTA, {"requerimientos": reqs}, validar=False)  # parcial
         return raiz
     return con_planilla
 
