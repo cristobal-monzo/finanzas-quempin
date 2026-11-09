@@ -1904,6 +1904,20 @@
   .ej-t-tareas { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
   .ej-t-tarea { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--tinte); color: var(--tinte-texto); font-size: 12px; font-weight: 700; }
   .ej-t-tarea svg { flex: 0 0 auto; }
+  /* Equipo esta semana (vuelta 10): la semana en una tira */
+  .ej-semana { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; }
+  .ej-semana li { min-width: 0; min-height: 64px; display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 8px; background: var(--page-plane); border: 1px solid var(--gridline); }
+  .ej-semana li.vacio { background: none; border-style: dashed; }
+  .ej-semana li.hoy { border-color: var(--brand-orange); box-shadow: inset 0 0 0 1px var(--brand-orange); }
+  .ej-sem-dia { font-size: 11.5px; font-weight: 900; color: var(--texto-suave); white-space: nowrap; }
+  .ej-semana li.hoy .ej-sem-dia { color: var(--brand-orange-ink); }
+  .ej-sem-pers { display: flex; flex-wrap: wrap; gap: 3px; }
+  .ej-sem-per { padding: 0 5px; border-radius: 5px; background: var(--text-primary); color: var(--surface-card); font-size: 11px; font-weight: 900; line-height: 17px; }
+  .ej-sem-per.tuya { background: var(--brand-orange); color: #000000; }
+  .ej-sem-veh { display: flex; align-items: center; gap: 3px; min-width: 0; font-size: 10.5px; color: var(--text-secondary); }
+  .ej-sem-veh span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ej-eq-res { margin: 8px 0 0; font-size: 13px; color: var(--text-secondary); }
+  @container ejecucion (max-width: 640px) { .ej-semana { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   /* Facturas asociadas y compras por estado (vuelta 8) */
   .ej-asociar {
     min-height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--brand-orange); background: var(--surface-card);
@@ -13388,21 +13402,28 @@
     if (!sem.leida) { s.append(crear('p', 'ej-nada', 'Leyendo la planificación de esta semana…')); return s; }
     const mod = plModelo(sem);
     const c = mod.canon(clave);
-    const ul = crear('ul', 'ej-lista ej-equipo');
+    /* La semana en una tira (2026-11-09, vuelta 10 del loop de UX): lunes a sábado, quién va cada día (sus iniciales) y en
+       qué vehículo, con hoy marcado; abajo, quiénes van en la semana. */
+    const caja = crear('div', 'ej-equipo');
+    const ol = crear('ol', 'ej-semana');
     let alguien = false;
+    const todos = new Set();
     plDias(sem).forEach((d) => {
-      const per = mod.porProyecto.get(d.iso + '|' + c) || [];
-      if (!per.length) return;
-      alguien = true;
-      const li = crear('li');
-      li.append(crear('span', 'ej-dia' + (d.hoy ? ' hoy' : ''), d.corto + ' ' + d.fecha.getDate()));
-      const txt = crear('span', 'ej-li-txt');
-      const vehs = [...new Set(per.map((p) => mod.vehiculo(d.iso, p, c)).filter(Boolean))].map((v) => (plVehiculo(v) || { nombre: v }).nombre);
-      txt.append(crear('b', null, plNoms(plOrdenPersonas(per))));
-      if (vehs.length) txt.append(crear('span', null, 'En ' + unir(vehs)));
-      li.append(txt);
-      ul.append(li);
+      const per = plOrdenPersonas(mod.porProyecto.get(d.iso + '|' + c) || []);
+      const li = crear('li', (d.hoy ? 'hoy' : '') + (per.length ? '' : ' vacio'));
+      li.append(crear('span', 'ej-sem-dia', d.corto + ' ' + d.fecha.getDate()));
+      const chips = crear('span', 'ej-sem-pers');
+      per.forEach((x) => { todos.add(x); const ch = crear('span', 'ej-sem-per' + (x === estado.usuario ? ' tuya' : ''), PL_PER_MANO.test(x) ? plNom(x).slice(0, 3) : x); ch.title = plNom(x); chips.append(ch); });
+      li.append(chips);
+      const vehs = [...new Set(per.map((x) => mod.vehiculo(d.iso, x, c)).filter(Boolean))].map((v) => (plVehiculo(v) || { nombre: v }).nombre);
+      if (vehs.length) { const v = crear('span', 'ej-sem-veh'); v.append(icono('vehiculo', 13), crear('span', null, unir(vehs))); li.append(v); }
+      li.setAttribute('aria-label', d.corto + ' ' + d.fecha.getDate() + ': ' + (per.length ? plNoms(per) + (vehs.length ? ', en ' + unir(vehs) : '') : 'nadie'));
+      if (per.length) alguien = true;
+      ol.append(li);
     });
+    caja.append(ol);
+    if (alguien) caja.append(crear('p', 'ej-eq-res', 'Esta semana: ' + plNoms(plOrdenPersonas([...todos]))));
+    const ul = caja;
     const pausa = mod.pausas.get(c);
     if (alguien) s.append(ul);
     else if (pausa || (t.etapa === 'ejecucion' && !t.antiguo)) s.append(crear('p', 'ej-nada', pausa ? 'Esta semana no se trabaja en él.' : 'Nadie asignado esta semana.'));

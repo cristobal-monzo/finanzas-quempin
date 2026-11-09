@@ -174,3 +174,5 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
 - **Vuelta 9, teléfono y oscuro**: revisados a 360 px (nada se sale) y en oscuro. En ≤ 640 px de vista, las cifras van
   más compactas (número de 20 px, su detalle en dos líneas, la quinta a todo el ancho) y el detalle de cada tarea de
   «Por hacer» en una línea, para que lo que hay que hacer quede cerca.
+- **Vuelta 10, equipo de la semana** (`ejEquipoEl`): la semana en una tira (`.ej-semana`): cada día con las iniciales de
+  quién va (lo tuyo en naranjo) y su vehículo, hoy marcado y los días sin nadie punteados; abajo, «Esta semana: …».
