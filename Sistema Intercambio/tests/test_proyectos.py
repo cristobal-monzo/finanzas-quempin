@@ -158,3 +158,31 @@ def test_la_ficha_propia_del_n_si_se_une():
     (p,) = [p for p in datos["proyectos"] if p["req"] == "280"]
     assert p["tag"] == "UML1"                      # la formulación que recuerda UMAG no la confunde
     assert p["fichaAjena"] == ["UMAG"]
+
+
+def test_gestion_pone_el_n_temporal_a_las_carpetas_sin_n(tmp_path):
+    """2026-11-09 (pedido del usuario): «001t» y TAG «001t - Nombre» para las carpetas de Gestión sin N°,
+    desde una tabla del Intercambio; una carpeta con N° real no lo cambia."""
+    for ruta in ("314. UA Reactor", "Rengo Incinerador", "Inppamet"):
+        (tmp_path / ruta).mkdir()
+    tabla = {"Rengo Incinerador": {"n": "009t", "nombre": "Rengo Incinerador"},
+             "314. UA Reactor": {"n": "001t", "nombre": "Otro"}}
+    assert pj.proyectos_en_gestion(tmp_path, tabla) == [
+        {"carpeta": "314. UA Reactor", "req": "314"},
+        {"carpeta": "Inppamet", "req": None},
+        {"carpeta": "Rengo Incinerador", "req": "009t", "tag": "009t - Rengo Incinerador"}]
+
+
+def test_asignar_temporales_respeta_lo_asignado_y_no_reutiliza(tmp_path):
+    previa = {"B": {"n": "002t", "nombre": "B corto"}}
+    t = pj.asignar_temporales(["C", "A", "B"], previa)
+    assert t["B"] == {"n": "002t", "nombre": "B corto"}
+    assert (t["A"]["n"], t["C"]["n"]) == ("003t", "004t")
+
+
+def test_leer_temporales_ignora_lo_mal_formado(tmp_path):
+    (tmp_path / pj.ARCHIVO_TEMPORALES).write_text(json.dumps({"carpetas": {
+        "A": {"n": "001t", "nombre": "A"}, "B": {"n": "12", "nombre": "B"}, "C": {"n": "002t", "nombre": " "}}}),
+        encoding="utf-8")
+    assert pj.leer_temporales(tmp_path) == {"A": {"n": "001t", "nombre": "A"}}
+    assert pj.leer_temporales(tmp_path / "no") == {} and pj.leer_temporales(None) == {}
