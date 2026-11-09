@@ -2019,6 +2019,16 @@ def registrar_duenos_prefijo(filas):
             _DUENOS_PREFIJO.setdefault(n_ref.rsplit("-", 1)[0], str(proyecto))
 
 
+def _n_de_nombre_carpeta(nombre):
+    """N° del comienzo del nombre de una carpeta: «036. Fiscalía» -> '36'; «001t. Hospital» -> '001t'
+    (N° temporal de un proyecto sin N° de la Planilla, 2026-11-09); None si no lleva."""
+    m = re.match(r"^(\d{3,4}t)[.\-_]", nombre, re.IGNORECASE)
+    if m:
+        return m.group(1).lower()
+    m = re.match(r"^0*(\d+)[.\-_]", nombre)
+    return m.group(1) if m else None
+
+
 def _numero_de_carpeta(proyecto):
     """N° de la Planilla de la carpeta «N°. Nombre» del proyecto, sin ceros a la
     izquierda («036. Fiscalía» -> '36'), o '' si su carpeta no lleva N°."""
@@ -2027,9 +2037,9 @@ def _numero_de_carpeta(proyecto):
     except OSError:
         return ""
     for nombre in carpetas:
-        m = re.match(r"^0*(\d+)[.\-_]", nombre)
-        if m and normalizar_nombre_proyecto(nombre) == proyecto:
-            return m.group(1)
+        n = _n_de_nombre_carpeta(nombre)
+        if n and normalizar_nombre_proyecto(nombre) == proyecto:
+            return n
     return ""
 
 
@@ -2080,7 +2090,7 @@ def normalizar_nombre_proyecto(nombre_carpeta):
     (numero de proyecto/cliente) no aporta nada al usuario en dashboards/Excel.
     Ademas, si 'Nombre' termina en 'palabra espacio numero' (ej. 'FACH 2'),
     junta el espacio ('FACH2') -- pedido del usuario 2026-09-03."""
-    nombre = re.sub(r"^\d+[.\-_]\s*", "", nombre_carpeta).strip()
+    nombre = re.sub(r"^\d+t?[.\-_]\s*", "", nombre_carpeta, flags=re.IGNORECASE).strip()
     nombre = re.sub(r"^(\S.*\S|\S)\s+(\d+)$", r"\1\2", nombre)
     return nombre or nombre_carpeta
 
@@ -4664,8 +4674,7 @@ def _nombre_carpeta_publicado(req, proyectos):
         for tipo in ("ejecucion", "oferta"):
             for ruta in carpetas.get(tipo) or []:
                 nombre = re.split(r"[\\/]", str(ruta))[-1].strip()
-                m = re.match(r"^0*(\d+)[.\-_]", nombre)
-                if m and m.group(1) == req:
+                if _n_de_nombre_carpeta(nombre) == req:
                     return nombre
         if p.get("titulo"):
             return f"{req}. {p['titulo']}"
@@ -4682,11 +4691,10 @@ def carpeta_para_oc(raiz_docs, oc, proyectos=()):
     tag = str(proyecto.get("tag") or "").strip()
     subcarpetas = (sorted(h for h in raiz_docs.iterdir() if h.is_dir() and not h.name.startswith(("_", ".")))
                    if raiz_docs.is_dir() else [])
-    if req.isdigit():
-        req = str(int(req))
+    if req.isdigit() or re.fullmatch(r"\d{3,4}t", req, re.IGNORECASE):
+        req = str(int(req)) if req.isdigit() else req.lower()
         for h in subcarpetas:
-            m = re.match(r"^0*(\d+)[.\-_]", h.name)
-            if m and m.group(1) == req:
+            if _n_de_nombre_carpeta(h.name) == req:
                 return h, True
         nombre = _nombre_carpeta_publicado(req, proyectos)
         if nombre:

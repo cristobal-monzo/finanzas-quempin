@@ -6393,3 +6393,20 @@ def test_el_apodo_del_analisis_financiero_da_nombre_al_proyecto(navegador, sitio
     assert pagina.locator("#pqOriginal").input_value() == "908. Caldera Demo Valparaíso"
     assert not errores
     pagina.context.close()
+
+
+def test_un_proyecto_de_gestion_con_n_temporal_se_ve_como_001t_nombre(navegador, sitio):
+    """2026-11-09 (pedido del usuario): una carpeta de Gestión sin N° con número temporal («001t») sale en «Proyectos en
+    ejecución» con ese N° y su nombre corto, sin los avisos de «falta su N°» ni «no está en la Planilla»."""
+    def en_gestion(archivos):
+        archivos["publicado/proyectos.json"]["datos"]["gestion"] = [
+            {"carpeta": "Rengo Incinerador", "req": "001t", "tag": "001t - Incinerador Rengo"}]
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, cambiar=en_gestion)
+    vivas = pagina.locator("#ejTarjetas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    assert "req-001t" in vivas and "gestion-Rengo Incinerador" not in vivas
+    tarjeta = pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-001t"]').inner_text()
+    assert "Incinerador Rengo" in tarjeta and "no lleva el N°" not in tarjeta
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-001t"]').click()
+    pagina.locator("#ejProyecto .ej-cab").wait_for()
+    assert "no está en la Planilla" not in pagina.locator("#ejProyecto").inner_text()
+    assert not errores

@@ -186,3 +186,13 @@ def test_leer_temporales_ignora_lo_mal_formado(tmp_path):
         encoding="utf-8")
     assert pj.leer_temporales(tmp_path) == {"A": {"n": "001t", "nombre": "A"}}
     assert pj.leer_temporales(tmp_path / "no") == {} and pj.leer_temporales(None) == {}
+
+
+def test_carpetas_con_n_temporal_se_reconocen_como_con_n(tmp_path):
+    """2026-11-09: «001t. Nombre» es una carpeta con N° temporal; «036.» sigue sin ceros."""
+    for ruta in ("001t. Hospital San José", "036. Fiscalía", "Rengo Incinerador"):
+        (tmp_path / ruta).mkdir()
+    assert pj.carpetas_con_numero(tmp_path, profundidad=1) == {
+        "001t": ["001t. Hospital San José"], "36": ["036. Fiscalía"]}
+    assert [f["req"] for f in pj.proyectos_en_gestion(tmp_path)] == ["001t", "36", None]
+    assert pj._req("001T") == "001t" and pj._req("5t") is None and pj._req("12") == "12"

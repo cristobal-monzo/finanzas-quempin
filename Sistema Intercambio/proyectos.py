@@ -45,7 +45,7 @@ HERRAMIENTA = "procesador"
 # Estados de la Planilla que entran aunque no tengan nada colgando: lo que
 # sigue vivo. Lo descartado y lo no adjudicado solo entra si algo lo nombra.
 ESTADOS_VIVOS = {"Evaluación", "Ofertado", "Adjudicado"}
-_CARPETA_CON_NUMERO = re.compile(r"^\s*(\d{1,4})\s*[.\-_)]\s*(.+)$")
+_CARPETA_CON_NUMERO = re.compile(r"^\s*(\d{1,4}t?)\s*[.\-_)]\s*(.+)$", re.IGNORECASE)
 # El registro de OC de cada Centro de Costos (gitignoreado: lleva montos), por país
 RAIZ_FINANZAS = Path(__file__).resolve().parent.parent
 RUTAS_ORDENES_CC = {
@@ -62,7 +62,14 @@ def _req(valor) -> str | None:
     texto = str(valor if valor is not None else "").strip()
     if texto.endswith(".0"):
         texto = texto[:-2]
+    if es_temporal(texto):
+        return texto.lower()
     return texto if texto.isdigit() and int(texto) > 0 else None
+
+
+def _n_carpeta(grupo: str) -> str | None:
+    """N° del comienzo de una carpeta: «036» → «36»; «001T» → «001t» (temporal)."""
+    return grupo.lower() if es_temporal(grupo) else _req(int(grupo)) if grupo.isdigit() else None
 
 
 def _tag(valor) -> str | None:
@@ -108,8 +115,9 @@ def carpetas_con_numero(raiz: Path, profundidad: int = 2) -> dict[str, list[str]
             return
         for hija in hijas:
             coincide = _CARPETA_CON_NUMERO.match(hija.name)
-            if coincide:
-                salida.setdefault(str(int(coincide.group(1))), []).append(hija.relative_to(raiz).as_posix())
+            n = _n_carpeta(coincide.group(1)) if coincide else None
+            if n:
+                salida.setdefault(n, []).append(hija.relative_to(raiz).as_posix())
             elif nivel < profundidad and hija.name.startswith(CARPETAS_AGRUPADORAS):
                 recorrer(hija, nivel + 1)
 
@@ -178,7 +186,7 @@ def proyectos_en_gestion(raiz: Path | None, temporales: dict[str, dict] | None =
         if hija.name.startswith(CARPETAS_AGRUPADORAS):
             continue
         coincide = _CARPETA_CON_NUMERO.match(hija.name)
-        fila = {"carpeta": hija.name, "req": _req(int(coincide.group(1))) if coincide else None}   # «036.» → «36»
+        fila = {"carpeta": hija.name, "req": _n_carpeta(coincide.group(1)) if coincide else None}   # «036.» → «36»
         t = temporales.get(hija.name)
         if t and fila["req"] is None:
             fila["req"] = t["n"].lower()
