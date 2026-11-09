@@ -143,3 +143,9 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   espera), lo gastado y comprometido en una barra contra el presupuesto con la raya naranja del avance (si la barra pasa
   la raya, gasta más de lo que avanza), el margen y, abajo, lo que falta hacer con su número (compras por decidir,
   facturas sin asociar, pendientes). Bajo el título, dónde y su TAG, con el estado y el responsable a la derecha.
+- **Vuelta 3, «Por hacer»** (`ejTareas`, `ejPorHacerEl`, bajo los KPI): lo que el proyecto espera, cada cosa con su
+  botón: facturas sin asociar (filtra «Sin asociar» y baja a ellas), compras por decidir, días de la Planificación sin
+  anotar («Traerlos», `ejTraerPlanificacion`), la mano de obra real que no llegó al Análisis («Llevarla»), el avance de la
+  Carta Gantt distinto, sin fecha de término, sin ficha en el Análisis, avance 100 % («Dar por cerrado») y los
+  pendientes. Sin nada, «Todo al día». `ejIrA` baja a una parte y la marca un momento (`.ej-destello`); lo usan también
+  los accesos. Prueba: `test_por_hacer_dice_lo_que_espera_el_proyecto_y_lo_hace_ahi_mismo`.

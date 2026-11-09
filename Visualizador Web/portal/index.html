@@ -1904,6 +1904,27 @@
   .ej-t-tareas { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
   .ej-t-tarea { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--tinte); color: var(--tinte-texto); font-size: 12px; font-weight: 700; }
   .ej-t-tarea svg { flex: 0 0 auto; }
+  /* Por hacer (vuelta 3): lo que el proyecto espera, cada cosa con su botón */
+  .ej-porhacer { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--tinte-borde); background: var(--surface-card); }
+  .ej-porhacer.al-dia { border-color: var(--border-hairline); }
+  .ej-porhacer h3 { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; }
+  .ej-porhacer h3 small { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--brand-orange); color: #000000; font-size: 12px; text-align: center; }
+  .ej-porhacer.al-dia h3 { margin: 0 0 4px; }
+  .ej-porhacer.al-dia p { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-secondary); }
+  .ej-porhacer ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 8px; }
+  .ej-tarea { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; border-radius: 10px; background: var(--page-plane); border: 1px solid var(--gridline); }
+  .ej-tarea-ico { flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-card); border: 1px solid var(--gridline); color: var(--text-secondary); }
+  .ej-tarea[data-nivel="warn"] .ej-tarea-ico { color: #000000; background: var(--estado-warn); border-color: transparent; }
+  .ej-tarea[data-nivel="ok"] .ej-tarea-ico { color: #000000; background: var(--estado-ok); border-color: transparent; }
+  .ej-tarea-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .ej-tarea-txt b { font-size: 13.5px; }
+  .ej-tarea-txt small { font-size: 12px; line-height: 1.35; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .ej-tarea > button { flex: 0 0 auto; white-space: nowrap; }
+  @container ejecucion (max-width: 520px) { .ej-porhacer ul { grid-template-columns: 1fr; } }
+  /* Al llegar a una parte desde «Por hacer» o los accesos, se marca un momento */
+  @keyframes ej-destello { from { box-shadow: 0 0 0 3px var(--brand-orange); } to { box-shadow: 0 0 0 3px transparent; } }
+  .ej-destello { animation: ej-destello 1.6s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .ej-destello { animation: none; } }
   .ej-tarjeta.resalta { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
   .ej-antiguos summary { cursor: pointer; padding: 6px 2px; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
   .ej-antiguos[open] summary { margin-bottom: 8px; }
@@ -11955,7 +11976,7 @@
     }
     if (sinClave) { raiz.append(ejSinClaveEl(t)); vista.scrollTop = desplazado; return; }
     // El orden (2026-11-06): cómo va y el avance; las facturas reales; lo que viene; la mano de obra; lo demás
-    raiz.append(ejSaltosEl(m));
+    raiz.append(ejPorHacerEl(m), ejSaltosEl(m));
     const dos = crear('div', 'ej-dos');
     dos.append(ejPresupuestoEl(m), ejAvanceEl(m));
     const mo = crear('div', 'ej-dos');
@@ -11975,6 +11996,105 @@
       ejPrecios().then((d) => { if (d && !vista.hidden && ej.clave === t.clave && !document.querySelector('dialog[open]')) ejPintar(); });
     }
   }
+  /* Por hacer (2026-11-09, vuelta 3 del loop de UX): lo que el proyecto está esperando de alguien, primero y con su botón,
+     que lo hace ahí mismo o lleva a la parte donde se hace. Sigue el camino de la información: las facturas del Centro de
+     Costos se asocian a sus gastos, las compras se deciden, los días de la Planificación se traen y lo anotado se lleva al
+     Análisis Financiero, que lo reparte al Recorrido, la Planificación y el Formulador. Sin nada pendiente, «Todo al día». */
+  function ejIrA(id, despues) {
+    const x = document.getElementById(id);
+    if (!x) return;
+    x.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    x.classList.remove('ej-destello');
+    void x.offsetWidth;
+    x.classList.add('ej-destello');
+    if (despues) setTimeout(despues, 350);
+  }
+  function ejTareas(m) {
+    const t = m.t, mo = m.mo, av = m.avance;
+    const out = [];
+    const docs = m.docs || [];
+    const sin = docs.filter((d) => !m.asoc.get(d.ref));
+    if (sin.length) {
+      out.push({ id: 'facturas', ico: 'documento', nivel: 'warn', txt: pl(sin.length, 'factura sin asociar', 'facturas sin asociar'),
+        det: ejPesos(sin.reduce((a, d) => a + (Number(d.neto) || 0), 0)) + ' del Centro de Costos sin decir a qué gasto corresponden', boton: 'Asociar',
+        ir: () => { ej.docsFiltro = 'sin'; ejPintar(); ejIrA('ejSecFacturas'); } });
+    }
+    const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar');
+    if (decidir.length) {
+      out.push({ id: 'decidir', ico: 'billetera', nivel: 'warn', txt: pl(decidir.length, 'compra por decidir', 'compras por decidir'),
+        det: 'Apruébala, cómprala o descártala en los gastos proyectados', boton: 'Decidir',
+        ir: () => { ej.filtro = 'vigentes'; ejGuardarPrefs(); ejPintar(); ejIrA('ejSecGastos'); } });
+    }
+    const porTraer = rc.dir ? ejPorTraer(m, ejSemanasAtras(2)) : [];
+    if (porTraer.length) {
+      out.push({ id: 'traer', ico: 'calendario', nivel: '', txt: pl(porTraer.length, 'día-hombre', 'días-hombre') + ' de la Planificación',
+        det: 'Asignados en la Planificación semanal y sin anotar como trabajados', boton: 'Traerlos', hace: true, ir: () => ejTraerPlanificacion(m) });
+    }
+    if (t.af && t.tag && mo.dias.length && Math.round(mo.costo) !== Math.round(mo.af || 0)
+      && !ejPedidosAF(t.tag).some((x) => 'Mano de Obra Real' in x.valores)) {
+      out.push({ id: 'llevar-mo', ico: 'derecha', nivel: '', txt: 'Mano de obra real: ' + ejPesos(mo.costo),
+        det: 'El Análisis Financiero tiene ' + (mo.af !== null ? ejPesos(mo.af) : 'nada') + '; llévale lo de los días anotados', boton: 'Llevarla', hace: true,
+        ir: () => ejLlevarManoObra(m) });
+    }
+    if (t.af && t.tag) {
+      const g = ejGanttDe(t);
+      if (av.valor === 1 && t.etapa === 'ejecucion' && rcClavesCierre(t).length) {
+        out.push({ id: 'cerrar', ico: 'bandera', nivel: 'ok', txt: 'Avance 100 %', det: 'Si ya terminó, dalo por cerrado: pasa al Cierre del Recorrido', boton: 'Dar por cerrado', ir: () => plAbrirProyectos(t.clave) });
+      } else if (g && g.resumen && g.resumen.avance > 0 && Math.round(g.resumen.avance) !== Math.round((av.valor || 0) * 100) && !av.pedido) {
+        out.push({ id: 'gantt', ico: 'barras', nivel: '', txt: 'La Carta Gantt dice ' + Math.round(g.resumen.avance) + ' %',
+          det: 'El Análisis Financiero tiene ' + (av.valor === null ? 'sin avance' : ejPct(av.valor)), boton: 'Revisar el avance', ir: () => ejIrA('ejSecAvance') });
+      }
+      if (!av.fin) {
+        out.push({ id: 'fin', ico: 'reloj', nivel: '', txt: 'Sin fecha de término', det: 'Sin ella no se sabe si va atrasado', boton: 'Fijarla',
+          ir: () => ejIrA('ejSecAvance', () => { const f = $('#ejAvFin'); if (f) f.focus(); }) });
+      }
+    } else {
+      out.push({ id: 'ficha', ico: 'alerta', nivel: 'warn', txt: 'Sin ficha en el Análisis Financiero', det: 'Sin ella no se puede fijar su avance ni su fecha de término',
+        boton: 'Ver cómo', ir: () => ejIrA('ejSecAvance') });
+    }
+    const pend = ejDe(t, 'pendiente').filter((x) => !x.listo);
+    if (pend.length) {
+      out.push({ id: 'pendientes', ico: 'portapapeles', nivel: '', txt: pl(pend.length, 'pendiente', 'pendientes') + ' del equipo',
+        det: pend.slice(0, 2).map((x) => x.texto).join(' · '), boton: 'Ver', ir: () => ejIrA('ejSecMas') });
+    }
+    return out;
+  }
+  function ejPorHacerEl(m) {
+    const tareas = ejTareas(m);
+    const s = crear('section', 'ej-porhacer');
+    s.setAttribute('aria-labelledby', 'ejPorHacerTit');
+    const h = crear('h3', null, tareas.length ? 'Por hacer' : 'Todo al día');
+    h.id = 'ejPorHacerTit';
+    if (tareas.length) h.append(crear('small', null, String(tareas.length)));
+    s.append(h);
+    if (!tareas.length) {
+      s.classList.add('al-dia');
+      const p = crear('p');
+      p.append(ejPinEl('ok'), document.createTextNode(' Las facturas están asociadas, no hay compras por decidir y lo anotado ya llegó al Análisis Financiero.'));
+      s.append(p);
+      return s;
+    }
+    const ul = crear('ul');
+    tareas.forEach((x) => {
+      const li = crear('li', 'ej-tarea');
+      li.dataset.tarea = x.id;
+      if (x.nivel) li.dataset.nivel = x.nivel;
+      const ico = crear('span', 'ej-tarea-ico');
+      ico.append(icono(x.ico, 18));
+      const txt = crear('span', 'ej-tarea-txt');
+      txt.append(crear('b', null, x.txt));
+      if (x.det) txt.append(crear('small', null, x.det));
+      const b = crear('button', x.hace ? 'cx-boton' : 'cx-enlace', x.boton);
+      b.type = 'button';
+      b.dataset.foco = 'tarea-' + x.id;
+      if (x.hace) b.disabled = !rc.dir || ej.enviando;
+      b.addEventListener('click', x.ir);
+      li.append(ico, txt, b);
+      ul.append(li);
+    });
+    s.append(ul);
+    return s;
+  }
   // Saltar a cada parte del resumen (2026-11-06): la página es larga; una fila de accesos con lo que hay en cada una
   function ejSaltosEl(m) {
     const nav = crear('nav', 'ej-saltos');
@@ -11989,7 +12109,7 @@
       b.type = 'button';
       b.append(crear('span', null, txt));
       if (extra) b.append(crear('small', null, extra));
-      b.addEventListener('click', () => { const x = document.getElementById(id); if (x) x.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+      b.addEventListener('click', () => ejIrA(id));
       nav.append(b);
     });
     return nav;
@@ -12222,6 +12342,7 @@
     const t = m.t;
     const av = m.avance;
     const { s } = ejPanel('Avance', '', t.af && t.tag ? 'Lo que guardas llega al Análisis Financiero con la próxima vuelta del procesador, y de ahí al Recorrido, la Planificación semanal y el Formulador. Solo se escribe si allá sigue el valor que ves aquí.' : '');
+    s.id = 'ejSecAvance';
     const num = crear('div', 'ej-av-num');
     num.append(crear('b', null, av.valor === null ? 'Sin dato' : ejPct(av.valor)),
       crear('span', null, av.pedido ? 'pedido ' + plCuando(texto(av.pedido.origen && av.pedido.origen.enviado)) + (av.pedido.origen && av.pedido.origen.usuario ? ' por ' + av.pedido.origen.usuario : '')

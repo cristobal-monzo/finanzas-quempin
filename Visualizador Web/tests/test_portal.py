@@ -4307,6 +4307,24 @@ def test_el_mapa_de_salud_ubica_cada_proyecto_y_filtra_por_estado(navegador, sit
     pagina.context.close()
 
 
+def test_por_hacer_dice_lo_que_espera_el_proyecto_y_lo_hace_ahi_mismo(navegador, sitio):
+    """Vuelta 3 del loop de UX (2026-11-09): al abrir un proyecto, primero lo que está esperando de alguien, con su botón."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908)
+    tareas = lambda: pagina.locator("#ejProyecto .ej-porhacer .ej-tarea").evaluate_all("ls => ls.map((l) => l.dataset.tarea)")
+    pagina.wait_for_function("() => document.querySelectorAll('#ejProyecto .ej-porhacer .ej-tarea').length > 0")
+    assert {"facturas", "traer"} <= set(tareas()), tareas()
+    assert "2 facturas sin asociar" in pagina.locator('#ejProyecto .ej-tarea[data-tarea="facturas"]').inner_text()
+    # «Asociar» deja a la vista solo las facturas sin asociar
+    pagina.locator('#ejProyecto .ej-tarea[data-tarea="facturas"] button').click()
+    pagina.wait_for_function("() => [...document.querySelectorAll('#ejProyecto .ej-filtro')].some((b) => b.textContent.startsWith('Sin asociar') && b.getAttribute('aria-pressed') === 'true')")
+    # «Traerlos» anota los días de la Planificación y la tarea se va
+    pagina.locator('#ejProyecto .ej-tarea[data-tarea="traer"] button').click()
+    _esperar_archivo(pagina, EJ, lambda s: sum(1 for x in s["datos"]["items"] if x["tipo"] == "dia" and x.get("origen") == "planificacion") == 2)
+    pagina.wait_for_function("() => !document.querySelector('#ejProyecto .ej-tarea[data-tarea=\"traer\"]')")
+    assert not errores
+    pagina.context.close()
+
+
 def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegador, sitio):
     """Pedido del usuario (2026-11-03): todos los proyectos de la carpeta de Gestión de Proyectos se ven en «Proyectos en
     ejecución», sin las carpetas complementarias (esas las deja fuera el procesador: proyectos_en_gestion)."""
