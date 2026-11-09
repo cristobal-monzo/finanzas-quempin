@@ -60,6 +60,10 @@ Sin documentos registrables no toca ninguna fila de datos: solo crea el respaldo
 y hojas de proyecto. Regenera además `Visualizador Web/build/index.html`; si eso falla, deja un `[WARN]`,
 el Excel queda guardado y se regenera con `driver.py visualizador`.
 
+Al final corre el procesador del Intercambio (PASO 12e, `procesar.py --forzar`, unos minutos): así el Portal
+(«Proyectos en ejecución», Planilla) ve lo registrado sin esperar la tarea de cada 2 h. Si falla, solo avisa.
+`run --sin-intercambio` lo omite.
+
 ## Paso 4: tabla de resumen, siempre al terminar
 
 | Posible error | Ubicación en Master | Descripción | Solución posible |

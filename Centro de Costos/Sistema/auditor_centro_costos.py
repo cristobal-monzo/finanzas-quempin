@@ -27,8 +27,10 @@ Reglas:
 
 import importlib
 import json
+import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import unicodedata
@@ -73,6 +75,10 @@ RUTA_ERRORES_MD = RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costo
 RUTA_LOGS = RAIZ / "logs"
 RAIZ_VISUALIZADOR_WEB = RAIZ_MODULO / "Visualizador Web"
 RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Sistema Analisis Financiero"
+PROCESADOR_INTERCAMBIO = RAIZ_MODULO.parent / "Sistema Intercambio" / "procesar.py"
+# Quien ya corre el procesador despues (Actualizar_Finanzas) lo apaga con esta
+# variable para no darle dos vueltas: ver actualizar_intercambio().
+VARIABLE_SIN_INTERCAMBIO = "QUEMPIN_SIN_INTERCAMBIO"
 # Perú no tiene codigo propio (ver spec maestro): solo aloja Excel/respaldos/
 # JSON/dashboards. El codigo de arriba (este archivo) es compartido.
 RAIZ_PERU = RAIZ_MODULO.parent / "Peru" / "Centro de Costos"
@@ -5386,6 +5392,44 @@ def actualizar_analisis_financiero(pais="CL"):
         return False
 
 
+def actualizar_intercambio(pais="CL"):
+    """PASO 12e (pedido del usuario, 2026-11-09): cada 'run' del Centro de
+    Costos termina con una vuelta del procesador del Intercambio
+    ('procesar.py --forzar'), para que lo recien registrado se vea en el
+    Portal («Proyectos en ejecucion», Planilla, estado.json) sin esperar la
+    tarea de cada 2 horas. Corre aparte (subproceso) porque el procesador es
+    otra herramienta con su propio candado: si ya hay una vuelta en curso,
+    sale avisando y no pasa nada. Solo Chile: el Intercambio no tiene datos
+    de Peru. Si falla, no aborta el run, solo advierte."""
+    if pais != "CL":
+        print(f"  [INFO] El Intercambio solo publica datos de Chile -- paso omitido para {pais}.")
+        return False
+    if os.environ.get(VARIABLE_SIN_INTERCAMBIO) == "1":
+        print("  [INFO] Omitido: quien llamo este run corre el procesador despues.")
+        return False
+    if not PROCESADOR_INTERCAMBIO.exists():
+        print(f"  [WARN] No existe {PROCESADOR_INTERCAMBIO}, se omite este paso.")
+        return False
+    try:
+        proceso = subprocess.run(
+            [sys.executable, str(PROCESADOR_INTERCAMBIO), "--forzar"],
+            cwd=str(PROCESADOR_INTERCAMBIO.parent), capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
+        )
+    except OSError as e:
+        print(f"  [WARN] No se pudo correr el procesador del Intercambio ({e}).")
+        return False
+    salida = ((proceso.stdout or "") + (proceso.stderr or "")).rstrip()
+    for linea in salida.splitlines():
+        print(f"  {linea}")
+    if proceso.returncode != 0:
+        print(f"  [WARN] El procesador del Intercambio termino con codigo {proceso.returncode}. "
+              "El Centro de Costos si quedo guardado; correr 'py -3.14 procesar.py --forzar' "
+              "en Sistema Intercambio despues.")
+        return False
+    return True
+
+
 # --- MAIN ---------------------------------------------------------------------
 
 def _imprimir_lista_truncada(items, formatear, limite=15):
@@ -6013,6 +6057,9 @@ def main(pais="CL"):
 
     _paso("PASO 12d", "Actualizar Análisis Financiero")
     actualizar_analisis_financiero(pais=pais)
+
+    _paso("PASO 12e", "Actualizar Intercambio (procesador)")
+    actualizar_intercambio(pais=pais)
 
     _paso("PASO 13", "Verificaciones aritmeticas (sobre todo el JSON)")
     inconsistencias = verificar_aritmetica(datos_json)
