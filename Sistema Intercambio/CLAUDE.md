@@ -188,6 +188,6 @@ por requerimiento vivo o nombrado por algo, con su TAG, formulaciones, cotizacio
 ## Respaldo diario (2026-11-09)
 
 Paso `respaldo` del procesador (`respaldo.py`): una vez al día, un zip con `publicado/`, `buzon/`, `procesado/` y la
-Planilla en `%LOCALAPPDATA%\QUEMPIN\respaldos-intercambio\intercambio-AAAA-MM-DD.zip` (fuera de OneDrive; los últimos
+Planilla en `Proyectos Claude\Copias de seguridad\intercambio-AAAA-MM-DD.zip` (los últimos
 30). `QUEMPIN_RESPALDO_DESTINO` lo lleva a otro disco. Restaurar: pausar el procesador, cerrar el Portal y copiar de
 vuelta desde el zip.

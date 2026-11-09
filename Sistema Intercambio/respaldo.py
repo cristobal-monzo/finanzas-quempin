@@ -6,9 +6,8 @@ Lo que el Portal guarda vive solo en la carpeta de Intercambio (OneDrive):
 no permite volver *todo* a como estaba un día. Este módulo deja un ``.zip``
 por día con esas carpetas y la Planilla de Ingreso.
 
-Destino: FUERA de OneDrive, para que un error de sincronización no se lleve
-también el respaldo. Por defecto ``%LOCALAPPDATA%\\QUEMPIN\\respaldos-intercambio``;
-``QUEMPIN_RESPALDO_DESTINO`` lo cambia (p. ej. a un disco externo). Se guardan
+Destino (pedido del usuario, 2026-11-09): la carpeta «Copias de seguridad» dentro
+de «Proyectos Claude», junto a las herramientas; ``QUEMPIN_RESPALDO_DESTINO`` lo cambia (p. ej. a un disco externo). Se guardan
 los últimos ``DIAS_A_GUARDAR`` zips.
 
 Restaurar: abrir el zip del día y copiar los archivos de vuelta a la carpeta de
@@ -17,7 +16,6 @@ Intercambio (cerrar antes el Portal y pausar el procesador).
 from __future__ import annotations
 
 import os
-import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -31,8 +29,11 @@ def destino() -> Path:
     propio = os.environ.get("QUEMPIN_RESPALDO_DESTINO")
     if propio:
         return Path(propio)
-    base = os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()
-    return Path(base) / "QUEMPIN" / "respaldos-intercambio"
+    # «Proyectos Claude» = la carpeta que contiene «Finanzas QUEMPIN» (vale también desde un worktree)
+    for padre in Path(__file__).resolve().parents:
+        if (padre / "Finanzas QUEMPIN").is_dir():
+            return padre / "Copias de seguridad"
+    return Path(__file__).resolve().parents[2] / "Copias de seguridad"
 
 
 def nombre_del_dia(fecha: datetime | None = None) -> str:
