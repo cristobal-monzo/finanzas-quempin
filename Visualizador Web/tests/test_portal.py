@@ -4360,6 +4360,28 @@ def test_el_avance_se_cambia_con_botones_rapidos_y_el_boton_dice_que_guarda(nave
     pagina.context.close()
 
 
+def test_la_mano_de_obra_se_ve_en_grafico_y_el_calendario_se_abre_al_anotar(navegador, sitio):
+    """Vuelta 7 del loop de UX (2026-11-09): con días anotados, arriba lo trabajado por persona y el calendario plegado."""
+    from datetime import date, timedelta
+    ayer = (date.today() - timedelta(days=1)).isoformat()
+
+    def con_dias(archivos):
+        archivos["publicado/ejecucion/otronavegador1.json"] = json.loads(_sobre_de_otro(*[
+            {"id": f"dia-{p.lower()}-{ayer}", "proyecto": "req:908", "tipo": "dia", "t": _instante(-60), "por": "LC", "persona": p, "fecha": ayer,
+             "jornada": j, "nivel": 2} for p, j in (("ES", 1), ("LC", 0.5))])[1])
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=con_dias)
+    pagina.locator("#ejProyecto .ej-mo-pers li").first.wait_for()
+    pers = pagina.locator("#ejProyecto .ej-mo-pers li").all_inner_texts()
+    assert pers[0].startswith("ES") and "1 DH" in pers[0] and "0,5 DH" in pers[1], pers
+    assert "1,5 DH" in pagina.locator("#ejProyecto .ej-mo-num").inner_text()
+    assert pagina.locator("#ejCalCaja").is_hidden()
+    pagina.locator("#ejProyecto .ej-cal-abrir").click()
+    pagina.locator("#ejCalCaja").wait_for()
+    assert pagina.locator("#ejProyecto .ej-cal-abrir").get_attribute("aria-expanded") == "true"
+    assert not errores
+    pagina.context.close()
+
+
 def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegador, sitio):
     """Pedido del usuario (2026-11-03): todos los proyectos de la carpeta de Gestión de Proyectos se ven en «Proyectos en
     ejecución», sin las carpetas complementarias (esas las deja fuera el procesador: proyectos_en_gestion)."""

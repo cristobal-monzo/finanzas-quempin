@@ -162,3 +162,7 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   junto al número «→ 50 %» (`#ejAvCambio`). El botón dice qué guarda («Guardar 50 % en el Análisis Financiero», «… y la
   fecha», «Guardar la fecha…») y sin cambios queda en «Sin cambios que guardar», desactivado. Lo escrito sobrevive al
   repintado. Prueba: `test_el_avance_se_cambia_con_botones_rapidos_y_el_boton_dice_que_guarda`.
+- **Vuelta 7, mano de obra** (`ejMoResumenEl`): arriba, lo trabajado en gráfico (días-hombre contra los presupuestados,
+  con la raya del avance y si va con más o menos días de los que el avance supone; cada persona con su barra, sus DH y
+  su costo). El calendario (`#ejCalCaja`) se abre con «Anotar días trabajados» (`ej.diasForm.abierto`; abierto de
+  entrada si no hay nada anotado). Prueba: `test_la_mano_de_obra_se_ve_en_grafico_y_el_calendario_se_abre_al_anotar`.

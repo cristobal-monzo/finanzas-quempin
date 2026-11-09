@@ -1904,6 +1904,22 @@
   .ej-t-tareas { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
   .ej-t-tarea { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--tinte); color: var(--tinte-texto); font-size: 12px; font-weight: 700; }
   .ej-t-tarea svg { flex: 0 0 auto; }
+  /* Mano de obra (vuelta 7): lo trabajado en gráfico y el calendario detrás de «Anotar días trabajados» */
+  .ej-mo-res { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 20px; padding: 10px 12px; border-radius: 10px; background: var(--page-plane); }
+  .ej-mo-res > .ej-pista { grid-column: 1 / -1; }
+  .ej-mo-tot { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .ej-mo-num { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+  .ej-mo-num b { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .ej-mo-num span { font-size: 13px; color: var(--text-secondary); }
+  .ej-mo-ritmo { font-size: 12px; color: var(--texto-suave); }
+  .ej-mo-pers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .ej-mo-pers li { display: grid; grid-template-columns: minmax(28px, max-content) minmax(40px, 1fr) max-content; align-items: center; gap: 8px; font-size: 12.5px; }
+  .ej-mo-quien { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+  .ej-mo-barra { height: 8px; border-radius: 999px; background: var(--gridline); overflow: hidden; }
+  .ej-mo-barra > span { display: block; height: 100%; border-radius: 999px; background: var(--ej-gastado); }
+  .ej-mo-dh { color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ej-cal-abrir { align-self: flex-start; }
+  @container ejecucion (max-width: 640px) { .ej-mo-res { grid-template-columns: 1fr; } }
   /* Por hacer (vuelta 3): lo que el proyecto espera, cada cosa con su botón */
   .ej-porhacer { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--tinte-borde); background: var(--surface-card); }
   .ej-porhacer.al-dia { border-color: var(--border-hairline); }
@@ -12017,7 +12033,7 @@
     const foco = a && raiz.contains(a) && a.dataset ? a.dataset.foco : null;
     const m = ejModelo(t);
     ej.modelo = m;
-    if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, mes: plISO(new Date()).slice(0, 7), jornada: 1, personas: new Set(), nombres: {}, dias: new Set() };
+    if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, mes: plISO(new Date()).slice(0, 7), jornada: 1, personas: new Set(), nombres: {}, dias: new Set(), abierto: null };
     raiz.textContent = '';
     // Una carpeta de Gestión sin N° ni TAG (2026-11-03): se ve, pero no hay a qué anotarle compras, días ni avance
     const sinClave = !ejClave(t);
@@ -13465,6 +13481,52 @@
   }
   const ejNombreMes = (mes) => { const [a, m] = mes.split('-').map(Number); return EJ_MESES[m - 1].replace(/^./, (c) => c.toUpperCase()) + ' ' + a; };
   const ejIniciales = (d) => (PL_PER_MANO.test(d.persona) ? (ejNomPer(d).split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase() || '·') : d.persona);
+  // Lo trabajado, en gráfico: días-hombre contra los presupuestados (con la raya de lo esperable al avance) y por persona
+  function ejMoResumenEl(m) {
+    const mo = m.mo, av = m.avance.valor;
+    const caja = crear('div', 'ej-mo-res');
+    if (!mo.dias.length) {
+      caja.append(crear('p', 'ej-pista', mo.dhP ? 'Todavía no hay días trabajados anotados: el presupuesto considera ' + pl(mo.dhP, 'día-hombre', 'días-hombre') + '.' : 'Todavía no hay días trabajados anotados.'));
+      return caja;
+    }
+    const tot = crear('div', 'ej-mo-tot');
+    const num = crear('div', 'ej-mo-num');
+    num.append(crear('b', null, ejCantidad(mo.dh) + ' DH'), crear('span', null, (mo.dhP ? 'de ' + ejCantidad(mo.dhP) + ' presupuestados · ' : '') + ejPesos(mo.costo)));
+    tot.append(num);
+    if (mo.dhP) {
+      const esc = Math.max(mo.dhP, mo.dh);
+      tot.append(ejMini([[mo.dh > mo.dhP ? 'pasa' : 'av', Math.min(mo.dh, mo.dhP) / esc], ['pasa', Math.max(0, mo.dh - mo.dhP) / esc]],
+        [[mo.dhP / esc, 'Presupuestados: ' + ejCantidad(mo.dhP) + ' DH']], av, 'Días-hombre trabajados contra los presupuestados (la marca); la raya naranja es el avance'));
+      if (av !== null && av > 0) {
+        const esperado = mo.dhP * av;
+        tot.append(crear('small', 'ej-mo-ritmo', mo.dh > esperado * 1.15 ? 'Va con más días de los que su avance (' + ejPct(av) + ') supone: ~' + ejCantidad(Math.round(esperado)) + ' DH'
+          : mo.dh < esperado * 0.85 ? 'Va con menos días de los que su avance (' + ejPct(av) + ') supone: ~' + ejCantidad(Math.round(esperado)) + ' DH' : 'Acorde con su avance (' + ejPct(av) + ')'));
+      }
+    }
+    caja.append(tot);
+    // Por persona: sus días-hombre y su costo, de más a menos
+    const por = new Map();
+    mo.dias.forEach((d) => {
+      const x = por.get(d.persona) || { dh: 0, nombre: PL_PER_MANO.test(d.persona) ? d.nombre || plNom(d.persona) : d.persona };
+      x.dh += Number(d.jornada) || 0;
+      por.set(d.persona, x);
+    });
+    const filas = [...por.entries()].sort((a, b) => b[1].dh - a[1].dh);
+    const max = Math.max(...filas.map(([, x]) => x.dh), 1);
+    const ul = crear('ul', 'ej-mo-pers');
+    ul.setAttribute('aria-label', 'Días-hombre por persona');
+    filas.forEach(([per, x]) => {
+      const li = crear('li');
+      const barra = crear('span', 'ej-mo-barra');
+      const b = crear('span');
+      b.style.width = (100 * x.dh / max) + '%';
+      barra.append(b);
+      li.append(crear('b', 'ej-mo-quien', x.nombre), barra, crear('span', 'ej-mo-dh', ejCantidad(x.dh) + ' DH · ' + ejPesos(x.dh * mo.tarifas['n' + ejNivelDe(per)])));
+      ul.append(li);
+    });
+    caja.append(ul);
+    return caja;
+  }
   function ejManoObraEl(m) {
     const t = m.t, mo = m.mo, f = ej.diasForm;
     const { s } = ejPanel('Mano de obra: días trabajados', mo.dh ? ejCantidad(mo.dh) + ' días-hombre · ' + ejPesos(mo.costo) : '',
@@ -13656,6 +13718,20 @@
       ok.textContent = 'Anotar ' + ejCantidad(dh) + ' DH';
     };
     pintar();
+    /* Vuelta 7 del loop de UX (2026-11-09): arriba, lo trabajado en gráfico (días-hombre contra lo presupuestado y por
+       persona); el calendario se abre con «Anotar días trabajados» (abierto de entrada si todavía no hay nada anotado). */
+    if (f.abierto === null || f.abierto === undefined) f.abierto = !mo.dias.length;
+    s.append(ejMoResumenEl(m));
+    const abrir = crear('button', (f.abierto ? 'cx-enlace' : 'cx-boton') + ' ej-cal-abrir');
+    abrir.type = 'button';
+    abrir.setAttribute('aria-expanded', String(f.abierto));
+    abrir.setAttribute('aria-controls', 'ejCalCaja');
+    abrir.dataset.foco = 'cal-abrir';
+    abrir.append(icono(f.abierto ? 'cerrar' : 'calendario', 16), crear('span', null, f.abierto ? 'Ocultar el calendario' : 'Anotar días trabajados'));
+    abrir.addEventListener('click', () => { f.abierto = !f.abierto; ejPintar(); });
+    s.append(abrir);
+    box.id = 'ejCalCaja';
+    box.hidden = !f.abierto;
     s.append(box);
     // Lo que la Planificación ya tiene de este proyecto, hasta hoy
     const porTraer = ejPorTraer(m, ejSemanasAtras(2));
