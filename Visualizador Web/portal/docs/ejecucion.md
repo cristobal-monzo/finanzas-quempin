@@ -152,3 +152,8 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
 - **Vuelta 4, la cabecera** (`ejCabEl`): una tarjeta con la raya del color de su estado; N°, nombre y una línea con dónde,
   quién lo lleva, su TAG, su formulación y sus avisos; a la derecha (abajo en lo angosto) su estado con el motivo
   principal (`.ej-cab-estado`); abajo, los accesos. «Todos los proyectos» (`.ej-volver`) es un enlace discreto arriba.
+- **Vuelta 5, accesos y cifras**: los accesos (`ejSaltosEl`, ahora con «Avance») marcan con `aria-current` la parte a la
+  vista (`ejMarcarSalto`, al desplazar `#vistaEjecucion`; arriba de todo ninguna, al fondo la última, Cómo va y Avance
+  lado a lado cuentan como la primera). Cada KPI salvo la venta lleva un gráfico chico (`ejMini`): gastado y
+  comprometido con la raya del avance, el cierre contra el presupuesto (lo que se pasa en rojo), el margen contra el
+  mínimo y la meta, y el avance. Prueba: `test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico`.

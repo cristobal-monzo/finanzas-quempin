@@ -1970,6 +1970,14 @@
   .ej-kpi[data-nivel="bad"] .ej-kpi-v { color: var(--estado-bad); }
   .ej-kpi[data-nivel="warn"] .ej-kpi-v { color: var(--brand-orange-ink); }
   .ej-kpi-sub { font-size: 12.5px; line-height: 1.4; color: var(--text-secondary); }
+  .ej-mini { position: relative; display: flex; gap: 2px; height: 8px; margin: 4px 0 3px; border-radius: 999px; background: var(--gridline); }
+  .ej-mini-seg { height: 100%; border-radius: 999px; background: var(--ej-gastado); }
+  .ej-mini-seg.c { background: var(--ej-comprometido); }
+  .ej-mini-seg.pasa, .ej-mini-seg.n-bad { background: var(--estado-bad); }
+  .ej-mini-seg.n-warn { background: var(--estado-warn); }
+  .ej-mini-seg.av { background: var(--text-primary); }
+  .ej-mini-seg.pedido { background: var(--brand-orange); }
+  .ej-mini-marca { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ej-tope); }
   .ej-kpi-sub b { color: var(--text-primary); }
   .ej-kpi .cx-desmarcar { align-self: flex-start; margin-top: 2px; }
   .ej-dos { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
@@ -2242,6 +2250,9 @@
   }
   .ej-salto small { font-size: 12px; font-weight: 700; color: var(--texto-suave); }
   .ej-salto:hover { border-color: var(--brand-orange); }
+  .ej-salto[aria-current="true"] { border-color: var(--text-primary); background: var(--text-primary); color: var(--surface-card); }
+  .ej-salto[aria-current="true"] small { color: inherit; opacity: 0.75; }
+  .ej-saltos { box-shadow: 0 6px 8px -8px rgba(0,0,0,0.25); }
   .ej-panel[id] { scroll-margin-top: 52px; }
   #ejSecMas { scroll-margin-top: 52px; }
   /* Cómo va el proyecto: lo gastado en grande y la tabla por categoría */
@@ -12129,18 +12140,43 @@
     const docs = m.docs || [];
     const sinAsoc = docs.filter((d) => !m.asoc.get(d.ref)).length;
     const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
-    [['ejSecComoVa', 'Cómo va', ''], ['ejSecFacturas', 'Facturas', docs.length ? String(docs.length) + (sinAsoc ? ' · ' + sinAsoc + ' sin asociar' : '') : ''],
+    [['ejSecComoVa', 'Cómo va', ''], ['ejSecAvance', 'Avance', m.avance.valor === null ? '' : ejPct(m.avance.valor)], ['ejSecFacturas', 'Facturas', docs.length ? String(docs.length) + (sinAsoc ? ' · ' + sinAsoc + ' sin asociar' : '') : ''],
       ['ejSecGastos', 'Gastos proyectados', decidir ? decidir + ' por decidir' : ''], ['ejSecMO', 'Mano de obra', m.mo.dh ? ejCantidad(m.mo.dh) + ' DH' : ''],
       ['ejSecMas', 'OC, equipo y notas', '']].forEach(([id, txt, extra]) => {
       const b = crear('button', 'ej-salto');
       b.type = 'button';
       b.append(crear('span', null, txt));
       if (extra) b.append(crear('small', null, extra));
+      b.dataset.sec = id;
       b.addEventListener('click', () => ejIrA(id));
       nav.append(b);
     });
+    requestAnimationFrame(ejMarcarSalto);
     return nav;
   }
+  /* La parte a la vista se marca en los accesos (2026-11-09, vuelta 5): así se sabe dónde se está en una página larga */
+  function ejMarcarSalto() {
+    const nav = document.querySelector('#ejProyecto .ej-saltos');
+    if (!nav || $('#ejProyecto').hidden) return;
+    const borde = nav.getBoundingClientRect().bottom + 24;
+    let activa = null, arriba = -Infinity;
+    // La última parte que ya pasó bajo los accesos; dos lado a lado (Cómo va y Avance) cuentan como la primera
+    nav.querySelectorAll('.ej-salto').forEach((b) => {
+      const x = document.getElementById(b.dataset.sec);
+      const top = x ? x.getBoundingClientRect().top : Infinity;
+      if (top <= borde && top > arriba + 4) { activa = b; arriba = top; }
+    });
+    const v = $('#vistaEjecucion');
+    if (v.scrollTop < 8) activa = null;                                     // arriba de todo: ninguna
+    else if (v.scrollTop + v.clientHeight >= v.scrollHeight - 4) activa = nav.querySelector('.ej-salto:last-child');   // al fondo, la última
+    nav.querySelectorAll('.ej-salto').forEach((b) => { if (b === activa) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+  }
+  let ejRelojSalto = 0;
+  const ejVigilarSaltos = () => {
+    const v = document.getElementById('vistaEjecucion');
+    if (v) v.addEventListener('scroll', () => { cancelAnimationFrame(ejRelojSalto); ejRelojSalto = requestAnimationFrame(ejMarcarSalto); }, { passive: true });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ejVigilarSaltos); else ejVigilarSaltos();
   function ejSinClaveEl(t) {
     const { s } = ejPanel('Le falta su N° de requerimiento');
     s.classList.add('ej-sin-clave');
@@ -12233,10 +12269,22 @@
     }
     return cab;
   }
-  function ejKpi(et, valor, sub, nivel) {
+  /* Un gráfico chico bajo la cifra (2026-11-09, vuelta 5): segmentos [clase, fracción], marcas [fracción, título] y la raya
+     del avance; la escala es 0 a 1 (las fracciones ya vienen sobre el máximo). */
+  function ejMini(segs, marcas, raya, titulo) {
+    const b = crear('span', 'ej-mini');
+    b.setAttribute('aria-hidden', 'true');
+    if (titulo) b.title = titulo;
+    segs.forEach(([cl, f]) => { if (!(f > 0)) return; const x = crear('span', 'ej-mini-seg' + (cl ? ' ' + cl : '')); x.style.width = Math.min(100, f * 100) + '%'; b.append(x); });
+    (marcas || []).forEach(([f, tt]) => { const x = crear('i', 'ej-mini-marca'); x.style.left = Math.min(100, Math.max(0, f * 100)) + '%'; x.title = tt; b.append(x); });
+    if (raya !== null && raya !== undefined) { const r = crear('i', 'ej-raya-avance'); r.style.left = Math.round(Math.min(1, raya) * 100) + '%'; b.append(r); }
+    return b;
+  }
+  function ejKpi(et, valor, sub, nivel, graf) {
     const k = crear('div', 'ej-kpi');
     if (nivel) k.dataset.nivel = nivel;
     k.append(crear('span', 'ej-kpi-et', et), crear('span', 'ej-kpi-v', valor));
+    if (graf) k.append(graf);
     if (sub) { const s = crear('span', 'ej-kpi-sub'); (Array.isArray(sub) ? sub : [sub]).forEach((x) => s.append(typeof x === 'string' ? document.createTextNode(x) : x)); k.append(s); }
     return k;
   }
@@ -12259,26 +12307,34 @@
     if (m.pres && tot.P > 0) subG.push(crear('b', null, ejPct(tot.G / tot.P)), ' del presupuesto');
     else subG.push('Sin presupuesto con que compararlo');
     if (tot.C > 0.5) subG.push(' · ' + ejPesos(tot.C) + ' comprometidos en OC');
-    box.append(ejKpi('Gastado a la fecha', ejPesos(tot.G), subG));
+    const avv = m.avance.valor;
+    box.append(ejKpi('Gastado a la fecha', ejPesos(tot.G), subG, '', m.pres && tot.P > 0
+      ? ejMini([['', tot.G / tot.P], ['c', tot.C / tot.P]], [], avv, 'Gastado y comprometido contra el presupuesto; la raya naranja es el avance') : null));
     const sub = [];
     if (m.pres) {
       sub.push('Presupuesto ' + ejPesos(tot.P));
       if (tot.EAC > tot.P + 0.5) sub.push(' · se pasa en ', crear('b', null, ejPesos(tot.EAC - tot.P)));
     } else sub.push('Sin presupuesto: lo gastado, comprometido y simulado');
     if (tot.Q > 0) sub.push(' · ' + ejPesos(tot.Q) + ' simulados');
-    box.append(ejKpi('Costo estimado al cierre', ejPesos(tot.EAC), sub, m.pres && tot.EAC > tot.P + 0.5 ? 'warn' : ''));
+    const escC = Math.max(tot.P || 0, tot.EAC) || 1;
+    box.append(ejKpi('Costo estimado al cierre', ejPesos(tot.EAC), sub, m.pres && tot.EAC > tot.P + 0.5 ? 'warn' : '', m.pres && tot.P > 0
+      ? ejMini([['', Math.min(tot.EAC, tot.P) / escC], ['pasa', Math.max(0, tot.EAC - tot.P) / escC]], [[tot.P / escC, 'Presupuesto ' + ejPesos(tot.P)]], null, 'Al cierre contra el presupuesto (la marca)') : null));
     const subM = [];
     if (m.margenP !== null) subM.push('Presupuestado ' + ejPct(m.margenP));
     else subM.push('Sin presupuesto: solo con lo anotado');
     subM.push(' · meta ' + ejPct(m.margenes.objetivo));
     if (m.margen !== null && m.margen0 !== null && Math.abs(m.margen0 - m.margen) > 0.0005) subM.push(' · ', crear('b', null, (m.margen < m.margen0 ? '−' : '+') + ejPuntos(m.margen0 - m.margen)), ' por lo simulado');
     const sinMargen = !m.venta ? 'Falta la venta para calcularlo.' : 'Sin presupuesto ni gastos anotados: anota lo que se espera gastar para estimarlo.';
+    const escM = Math.max(0.5, (m.margenes.objetivo || 0) + 0.15, (m.margen || 0) + 0.05);
+    const nivM = ejNivelMargen(m.margen, m);
     box.append(ejKpi(m.pres ? 'Margen estimado' : 'Margen con lo anotado', m.margen === null ? '—' : ejPct(m.margen), m.margen === null ? sinMargen : subM,
-      ejNivelMargen(m.margen, m) === 'ok' ? '' : ejNivelMargen(m.margen, m)));
+      nivM === 'ok' ? '' : nivM, m.margen === null ? null : ejMini([[nivM ? 'n-' + nivM : '', Math.max(0, m.margen) / escM]],
+        [[m.margenes.minimo / escM, 'Mínimo ' + ejPct(m.margenes.minimo)], [m.margenes.objetivo / escM, 'Meta ' + ejPct(m.margenes.objetivo)]], null, 'El margen contra el mínimo y la meta (las marcas)')));
     const av = m.avance;
     const gs = ejGastoSobreAvance(m);
     const subA = gs ? ['Va gastado más de lo que avanza: ', crear('b', null, ejPct((tot.G + tot.C) / tot.P)), ' del presupuesto'] : av.fin ? 'Término ' + rcCorta(av.fin, new Date()) : 'Sin fecha de término';
-    box.append(ejKpi('Avance', av.valor === null ? 'Sin dato' : ejPct(av.valor), av.pedido ? 'Pedido: llega con la próxima vuelta del procesador' : subA, gs ? 'warn' : ''));
+    box.append(ejKpi('Avance', av.valor === null ? 'Sin dato' : ejPct(av.valor), av.pedido ? 'Pedido: llega con la próxima vuelta del procesador' : subA, gs ? 'warn' : '',
+      av.valor === null ? null : ejMini([[av.pedido ? 'pedido' : 'av', av.valor]], [], null, 'Avance del proyecto')));
     return box;
   }
   /* Cómo va el proyecto (2026-11-06, pedido del usuario: «más clara y que muestre además lo que se lleva gastado»): una

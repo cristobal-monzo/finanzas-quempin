@@ -4325,6 +4325,20 @@ def test_por_hacer_dice_lo_que_espera_el_proyecto_y_lo_hace_ahi_mismo(navegador,
     pagina.context.close()
 
 
+def test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico(navegador, sitio):
+    """Vuelta 5 del loop de UX (2026-11-09)."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908, alto=700)
+    actual = lambda: pagina.evaluate("() => (document.querySelector('#ejProyecto .ej-salto[aria-current=\"true\"]') || {}).dataset?.sec || null")
+    assert actual() is None, "arriba de todo, ninguna"
+    pagina.locator("#ejProyecto .ej-salto", has_text="Facturas").click()
+    pagina.wait_for_function("() => (document.querySelector('#ejProyecto .ej-salto[aria-current=\"true\"]') || {}).dataset?.sec === 'ejSecFacturas'")
+    # Gastado, costo al cierre, margen y avance llevan su barra chica; la venta no
+    con = pagina.locator("#ejProyecto .ej-kpi").evaluate_all("ks => ks.map((k) => [k.querySelector('.ej-kpi-et').textContent, !!k.querySelector('.ej-mini')])")
+    assert dict(con) == {"Venta neta": False, "Gastado a la fecha": True, "Costo estimado al cierre": True, "Margen estimado": True, "Avance": True}, con
+    assert not errores
+    pagina.context.close()
+
+
 def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegador, sitio):
     """Pedido del usuario (2026-11-03): todos los proyectos de la carpeta de Gestión de Proyectos se ven en «Proyectos en
     ejecución», sin las carpetas complementarias (esas las deja fuera el procesador: proyectos_en_gestion)."""
