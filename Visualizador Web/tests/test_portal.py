@@ -4382,6 +4382,25 @@ def test_la_mano_de_obra_se_ve_en_grafico_y_el_calendario_se_abre_al_anotar(nave
     pagina.context.close()
 
 
+def test_las_facturas_y_las_compras_se_resumen_en_barras(navegador, sitio):
+    """Vuelta 8 del loop de UX (2026-11-09): cuánto de lo facturado está asociado y las compras por estado, que filtran."""
+    def con_todo(archivos):
+        _documentos_908(archivos)
+        archivos["publicado/ejecucion/otronavegador1.json"] = json.loads(_sobre_de_otro(
+            _item_de_prueba("cgrupouno00001", "Ferretería Uno", 210000, grupo="cgrupouno00001"),
+            _item_de_prueba("cgrupodos00001", "Aceros Dos", 500000, grupo="cgrupodos00001", estado="comprada"))[1])
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=con_todo)
+    pagina.locator("#ejProyecto .ej-prog").wait_for()
+    assert pagina.locator("#ejProyecto .ej-prog-txt").inner_text().startswith("0 asociadas de 2")
+    et = lambda e: pagina.locator(f'#ejProyecto .ej-embudo-et[data-estado="{e}"]')
+    assert "$210.000" in et("evaluar").inner_text() and "$500.000" in et("comprada").inner_text()
+    assert et("aprobada").is_disabled()
+    et("comprada").click()
+    pagina.wait_for_function("() => [...document.querySelectorAll('#ejSecGastos .ej-filtro')].some((b) => b.textContent.startsWith('Compradas') && b.getAttribute('aria-pressed') === 'true')")
+    assert not errores
+    pagina.context.close()
+
+
 def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegador, sitio):
     """Pedido del usuario (2026-11-03): todos los proyectos de la carpeta de Gestión de Proyectos se ven en «Proyectos en
     ejecución», sin las carpetas complementarias (esas las deja fuera el procesador: proyectos_en_gestion)."""
@@ -4860,7 +4879,7 @@ def test_las_facturas_del_centro_de_costos_se_ven_y_se_asocian_a_sus_gastos(nave
     pagina.locator('#ejProyecto .ej-tabla tr[data-id="cestanque000001"]').wait_for()
     assert pagina.evaluate(JS_EJ_COMO, "Materiales")["Simulado"] == "$800.000"
     # Asociar la factura: el estanque se propone primero («Parece»), y también se puede elegir su línea del presupuesto
-    pagina.locator('#ejProyecto .ej-docs tr[data-ref="DEMO-002"] .cx-desmarcar', has_text="Asociar").click()
+    pagina.locator('#ejProyecto .ej-docs tr[data-ref="DEMO-002"] .ej-asociar', has_text="Asociar").click()
     dlg = pagina.locator("#dlgEjAsociar")
     dlg.wait_for()
     primera = dlg.locator(".ej-as-op").first

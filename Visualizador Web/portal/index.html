@@ -1904,6 +1904,32 @@
   .ej-t-tareas { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px solid var(--gridline); }
   .ej-t-tarea { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 6px; border-radius: 999px; background: var(--tinte); color: var(--tinte-texto); font-size: 12px; font-weight: 700; }
   .ej-t-tarea svg { flex: 0 0 auto; }
+  /* Facturas asociadas y compras por estado (vuelta 8) */
+  .ej-asociar {
+    min-height: 28px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--brand-orange); background: var(--surface-card);
+    color: var(--brand-orange-ink); font: inherit; font-size: 13px; font-weight: 900; cursor: pointer;
+  }
+  .ej-asociar:hover:not(:disabled) { background: var(--tinte); }
+  .ej-asociar:disabled { opacity: 0.5; cursor: default; }
+  .ej-prog { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 8px; }
+  .ej-prog-txt { display: flex; align-items: baseline; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+  .ej-prog-txt b { color: var(--text-primary); font-size: 14px; }
+  .ej-prog .ej-mini { height: 10px; }
+  .ej-mini-seg.falta { background: repeating-linear-gradient(135deg, var(--estado-warn) 0 5px, transparent 5px 9px); }
+  .ej-embudo { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 8px; }
+  .ej-embudo-barra { display: flex; gap: 2px; height: 12px; }
+  .ej-embudo-seg { flex: 1 1 0; min-width: 6px; border-radius: 4px; background: var(--ej-gastado); }
+  .ej-embudo-seg[data-estado="evaluar"] { background: var(--estado-warn); }
+  .ej-embudo-seg[data-estado="aprobada"] { background: var(--ej-comprometido); }
+  .ej-embudo-ley { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .ej-embudo-et { display: inline-flex; align-items: baseline; gap: 5px; padding: 2px 0; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+  .ej-embudo-et:disabled { cursor: default; opacity: 0.55; }
+  .ej-embudo-et:not(:disabled):hover span { text-decoration: underline; }
+  .ej-embudo-et i { width: 10px; height: 10px; border-radius: 3px; background: var(--ej-gastado); align-self: center; }
+  .ej-embudo-et[data-estado="evaluar"] i { background: var(--estado-warn); }
+  .ej-embudo-et[data-estado="aprobada"] i { background: var(--ej-comprometido); }
+  .ej-embudo-et b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .ej-embudo-et small { font-size: 12px; color: var(--texto-suave); }
   /* Mano de obra (vuelta 7): lo trabajado en gráfico y el calendario detrás de «Anotar días trabajados» */
   .ej-mo-res { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 20px; padding: 10px 12px; border-radius: 10px; background: var(--page-plane); }
   .ej-mo-res > .ej-pista { grid-column: 1 / -1; }
@@ -12719,6 +12745,31 @@
     });
     if (m.costos.length) barra.append(filtros);
     s.append(barra);
+    // Vuelta 8 del loop de UX (2026-11-09): las compras por estado en una barra, con cuánto suma cada uno; tocar uno filtra
+    const vivos = items.filter((x) => x.it.estado !== 'descartada');
+    if (vivos.length) {
+      const montoDe = (x) => (Number(x.it.cantidad) || 0) * (Number(x.it.precio) || 0);
+      const grupos = [['evaluar', 'Por decidir', 'vigentes'], ['aprobada', 'Aprobadas', 'vigentes'], ['comprada', 'Compradas', 'compradas']]
+        .map(([id, nombre, filtro]) => { const xs = vivos.filter((x) => x.it.estado === id); return { id, nombre, filtro, n: xs.length, monto: xs.reduce((a, x) => a + montoDe(x), 0) }; });
+      const total = grupos.reduce((a, g) => a + g.monto, 0) || 1;
+      const emb = crear('div', 'ej-embudo');
+      const barraE = crear('div', 'ej-embudo-barra');
+      barraE.setAttribute('aria-hidden', 'true');
+      const ley = crear('div', 'ej-embudo-ley');
+      grupos.forEach((g) => {
+        if (g.n) { const x = crear('span', 'ej-embudo-seg'); x.dataset.estado = g.id; x.style.flexGrow = String(Math.max(g.monto / total, 0.04)); x.title = g.nombre + ': ' + ejPesos(g.monto); barraE.append(x); }
+        const b = crear('button', 'ej-embudo-et');
+        b.type = 'button';
+        b.dataset.estado = g.id;
+        b.disabled = !g.n;
+        b.append(crear('i'), crear('span', null, g.nombre), crear('b', null, g.n ? ejPesos(g.monto) : '—'), crear('small', null, g.n ? '(' + g.n + ')' : ''));
+        b.title = g.n ? 'Mostrar ' + g.nombre.toLowerCase() : 'No hay ' + g.nombre.toLowerCase();
+        b.addEventListener('click', () => { ej.filtro = g.filtro; ejGuardarPrefs(); ejPintar(); });
+        ley.append(b);
+      });
+      emb.append(barraE, ley);
+      s.append(emb);
+    }
     // Lo simulado, en una línea: cuánto suma y cómo mueve el margen
     const simuladas = m.costos.filter((it) => ejCuentaComo(it, m.folios) === 'q');
     const porDecidir = m.costos.filter((it) => it.estado === 'evaluar');
@@ -13001,6 +13052,15 @@
     if (!docs.length) { s.append(crear('p', 'ej-nada', 'Sin documentos registrados con su TAG en el Centro de Costos.')); return s; }
     const todos = ejDestinos(m);
     const asociada = (d) => ejDestinosDe(m, d.ref, todos).length > 0 || !!(m.asoc.get(d.ref) && !m.asoc.get(d.ref).destinos.length);
+    // Vuelta 8 del loop de UX (2026-11-09): cuánto de lo facturado ya dice a qué gasto corresponde, en una barra
+    const asoc = docs.filter(asociada);
+    const montoA = asoc.reduce((a, d) => a + Math.max(0, d.neto), 0), montoT = docs.reduce((a, d) => a + Math.max(0, d.neto), 0) || 1;
+    const prog = crear('div', 'ej-prog');
+    const pt = crear('div', 'ej-prog-txt');
+    pt.append(crear('b', null, asoc.length === docs.length ? 'Todas asociadas' : pl(asoc.length, 'asociada', 'asociadas') + ' de ' + docs.length),
+      crear('span', null, ejPesos(montoA) + ' de ' + ejPesos(montoT)));
+    prog.append(pt, ejMini([['', montoA / montoT], ['falta', (montoT - montoA) / montoT]], [], null, 'Lo facturado que ya está asociado (oscuro) y lo que falta (rayado)'));
+    s.append(prog);
     // Filtros y búsqueda (la búsqueda solo esconde filas: no repinta, para no perder lo escrito)
     const barra = crear('div', 'ej-barra-compras');
     const filtros = crear('div', 'ej-filtros');
@@ -13062,7 +13122,8 @@
         ds.forEach((x) => { const c = crear('span', 'ej-d-chip' + (x.tipo === 'linea' ? ' linea' : ''), x.nombre); c.title = (x.tipo === 'linea' ? 'Línea del presupuesto: ' : 'Gasto proyectado: ') + x.sub; ch.append(c); });
         tdA.append(ch);
       } else if (a && !a.destinos.length) tdA.append(crear('span', 'ej-d-ninguno', 'A ningún gasto anotado'));
-      const b = crear('button', 'cx-desmarcar', ds.length || (a && !a.destinos.length) ? 'Cambiar' : 'Asociar');
+      // Sin asociar, un botón que se ve (vuelta 8); ya asociada, el enlace discreto para cambiarla
+      const b = crear('button', ds.length || (a && !a.destinos.length) ? 'cx-desmarcar' : 'ej-asociar', ds.length || (a && !a.destinos.length) ? 'Cambiar' : 'Asociar');
       b.type = 'button';
       b.disabled = !rc.dir;
       b.dataset.foco = 'asociar-' + d.ref;
@@ -13097,11 +13158,8 @@
     };
     bus.addEventListener('input', filtrar);
     if (ej.docsQ) filtrar();
-    // Lo que falta asociar, en una línea
-    const sinAsoc = docs.filter((d) => !asociada(d));
-    if (sinAsoc.length && todos.length) {
-      s.append(crear('p', 'ej-pista', pl(sinAsoc.length, 'documento sin asociar', 'documentos sin asociar') + ' por ' + ejPesos(sinAsoc.reduce((x, d) => x + d.neto, 0)) + '.'));
-    } else if (!todos.length) {
+    // Lo que falta asociar ya lo dice la barra de arriba (vuelta 8); sin gastos ni presupuesto, a qué asociarlas
+    if (!todos.length) {
       s.append(lineaInfo('ej-pista', 'Sin gastos proyectados ni presupuesto a que asociarlas.', 'Anota los gastos en «Gastos proyectados y cotizaciones» o formula el proyecto en el Formulador: sus líneas del presupuesto también se pueden elegir.', 'Cómo'));
     }
     return s;

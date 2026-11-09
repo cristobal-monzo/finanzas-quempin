@@ -166,3 +166,8 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   con la raya del avance y si va con más o menos días de los que el avance supone; cada persona con su barra, sus DH y
   su costo). El calendario (`#ejCalCaja`) se abre con «Anotar días trabajados» (`ej.diasForm.abierto`; abierto de
   entrada si no hay nada anotado). Prueba: `test_la_mano_de_obra_se_ve_en_grafico_y_el_calendario_se_abre_al_anotar`.
+- **Vuelta 8, facturas y compras en barras**: en las facturas, cuánto de lo facturado ya está asociado (`.ej-prog`:
+  oscuro lo asociado, rayado lo que falta; reemplaza la línea final «N documentos sin asociar») y «Asociar» es un botón
+  (`.ej-asociar`; «Cambiar» sigue discreto). En los gastos proyectados, las compras por estado (`.ej-embudo`: por
+  decidir, aprobadas, compradas, con su monto y cuántas); tocar uno filtra la tabla. Prueba:
+  `test_las_facturas_y_las_compras_se_resumen_en_barras`.
