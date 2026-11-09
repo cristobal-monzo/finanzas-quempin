@@ -87,6 +87,34 @@
           "req"
         ]
       }
+    },
+    "entregados": {
+      "type": "array",
+      "description": "Desde el 2026-11-09: las carpetas de proyecto dentro de las «0 Proyectos Entregados <año>» de la raíz de «Gestión de Proyectos», con o sin N° adelante; «grupo» es la carpeta del año. El Portal las muestra en la pestaña «Entregados» de «Proyectos en ejecución».",
+      "items": {
+        "type": "object",
+        "properties": {
+          "carpeta": {
+            "type": "string",
+            "minLength": 1
+          },
+          "req": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "grupo": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "carpeta",
+          "req",
+          "grupo"
+        ]
+      }
     }
   },
   "required": [

@@ -2116,6 +2116,21 @@
   /* Las compras y cotizaciones */
   .ej-barra-compras { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .ej-filtros { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+  /* Las pestañas de la lista (2026-11-09): En ejecución / Entregados */
+  .ej-pestanas { display: flex; align-items: center; gap: 4px; margin: 0 0 12px; border-bottom: 1px solid var(--gridline); }
+  .ej-pestanas-lista { display: flex; gap: 4px; min-width: 0; }
+  .ej-pestanas [role="tab"] {
+    min-height: 40px; padding: 0 14px; margin-bottom: -1px; border: 0; border-bottom: 3px solid transparent; background: transparent;
+    color: var(--text-secondary); font: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .ej-pestanas [role="tab"]:hover { color: var(--text-primary); }
+  .ej-pestanas [role="tab"][aria-selected="true"] { border-bottom-color: var(--brand-orange); color: var(--text-primary); }
+  .ej-pestanas [role="tab"] b {
+    display: inline-block; min-width: 22px; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--page-plane);
+    border: 1px solid var(--gridline); font-size: 12px; font-weight: 900; text-align: center;
+  }
+  .ej-pestanas [role="tab"][aria-selected="true"] b { background: var(--brand-orange); border-color: var(--brand-orange); color: #000000; }
+  .ej-pestanas .info { margin-left: 4px; }
   .ej-filtro {
     min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--gridline); background: transparent;
     color: var(--text-secondary); font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
@@ -3087,8 +3102,18 @@
             <div class="rc-vacio" id="ejVacio" hidden></div>
             <div class="rc-leyendo" id="ejLeyendo" role="status">Leyendo la carpeta del equipo…</div>
             <div id="ejLista" hidden>
+              <!-- Dos pestañas (2026-11-09): la raíz de Gestión de Proyectos y sus «0 Proyectos Entregados <año>» (ejTarjetas) -->
+              <div class="ej-pestanas" id="ejPestanas">
+                <div class="ej-pestanas-lista" role="tablist" aria-label="Qué proyectos mostrar">
+                  <button type="button" role="tab" id="ejPestEjecucion" data-pestana="ejecucion" aria-controls="ejListaCuerpo" aria-selected="true">En ejecución <b>0</b></button>
+                  <button type="button" role="tab" id="ejPestEntregados" data-pestana="entregados" aria-controls="ejListaCuerpo" aria-selected="false" tabindex="-1">Entregados <b>0</b></button>
+                </div>
+                <span class="info" data-etiqueta="Qué va en cada pestaña">«En ejecución»: los proyectos con su carpeta en la raíz de Gestión de Proyectos. «Entregados»: los que tienen su carpeta en «0 Proyectos Entregados» de su año. Un proyecto cambia de pestaña cuando se mueve su carpeta, con la próxima vuelta del procesador.</span>
+              </div>
+              <div id="ejListaCuerpo" role="tabpanel" aria-labelledby="ejPestEjecucion">
               <div class="rc-filtros">
                 <label class="rc-mios"><input type="checkbox" id="ejMios"><span id="ejMiosTxt">Solo mis proyectos</span></label>
+                <label class="rc-mios" title="Los que tienen al menos un dato anotado en su resumen: una cotización, días trabajados, una nota, una factura asociada…"><input type="checkbox" id="ejConDatos"><span>Solo con datos anotados</span></label>
                 <div class="rc-buscar">
                   <label class="sr" for="ejBuscar">Buscar un proyecto en ejecución</label>
                   <input id="ejBuscar" type="search" autocomplete="off" spellcheck="false" placeholder="Buscar N°, nombre, ciudad o TAG">
@@ -3104,6 +3129,7 @@
                 <summary id="ejAntiguosTxt"></summary>
                 <div class="ej-tarjetas" id="ejTarjetasAntiguas"></div>
               </details>
+              </div>
             </div>
             <div id="ejProyecto" hidden></div>
           </div>
@@ -5228,7 +5254,7 @@
   const DIA = 86400000;
   const MAXIMO = Number.MAX_SAFE_INTEGER;
   const rc = {
-    tarjetas: [], datos: null, leido: 0, leyendo: null, carpetas: null, pulso: null, dir: null, vuelta: null,
+    tarjetas: [], entregadas: [], datos: null, leido: 0, leyendo: null, carpetas: null, pulso: null, dir: null, vuelta: null,
     foco: null, q: '', mios: !!(leer(LS_RC, {}) || {}).mios
   };
 
@@ -5401,10 +5427,10 @@
     x.forEach((w) => { if (y.has(w)) n++; });
     return n >= 2 ? n / Math.min(x.size, y.size) : 0;
   }
-  function rcGestionDe(carpeta, tarjetas) {
+  function rcGestionDe(carpeta, tarjetas, fuera = (t) => t.gestion) {
     let mejor = null, puntaje = 0, empate = false;
     tarjetas.forEach((t) => {
-      if (t.gestion || !(t.req || t.tag) || (t.etapa !== 'ejecucion' && t.etapa !== 'cierre')) return;
+      if (fuera(t) || !(t.req || t.tag) || (t.etapa !== 'ejecucion' && t.etapa !== 'cierre')) return;
       const nombres = [t.titulo, t.af && t.af.nombre, t.planilla && t.planilla.titulo, t.formulacion && t.formulacion.titulo].map(texto).filter(Boolean);
       const x = Math.max(0, ...nombres.map((n) => rcParecido(carpeta, n)));
       if (x > puntaje) { mejor = t; puntaje = x; empate = false; } else if (x > 0 && x === puntaje) empate = true;
@@ -5420,6 +5446,55 @@
     t.accion = { tipo: 'hacer', corto: 'Ponerle su N°', nivel: 'warn', ir: RC_IR.herr('planilla'),
       texto: 'Está en Gestión de Proyectos, pero su carpeta no lleva adelante el N° de la Planilla de Ingreso («N°. Nombre») y no se encontró su ficha en el Análisis Financiero: sin el N° no se une con su oferta, su avance ni sus facturas. Búscalo en la Planilla de Ingreso y renombra la carpeta; si no tiene, regístralo ahí.' };
     t.chips.push({ texto: 'Sin N°', nivel: 'warn' });
+    return t;
+  }
+  /* Las carpetas de «0 Proyectos Entregados <año>» (2026-11-09, pedido del usuario: los proyectos que ya se cerraron van en
+     su propia pestaña de «Proyectos en ejecución»). Marca t.entregado = { carpeta, grupo } en el proyecto de cada una: por
+     su N° o, sin N°, por el nombre (rcGestionDe, sin los que siguen en la raíz de Gestión: «Capredena» entregado no es
+     «297. CAPREDENA» en obra). Las que no calzan con ninguno vuelven como tarjetas aparte (rcTarjetaEntregada), que solo
+     ve esta pestaña: el Recorrido no las muestra. Corre después de rcArmar, con sus tarjetas. */
+  function rcEntregadas(d, tarjetas) {
+    const porReq = new Map();
+    tarjetas.forEach((t) => { if (t.req && !porReq.has(t.req)) porReq.set(t.req, t); });
+    const porNum = new Map();
+    d.requerimientos.forEach((r) => { const n = rcNum(r && r.numero); if (n) porNum.set(n, r); });
+    const sueltas = [];
+    (d.entregados || []).forEach((g) => {
+      const carpeta = texto(g && g.carpeta), grupo = texto(g && g.grupo);
+      if (!carpeta) return;
+      const n = rcNum(g.req);
+      let t = n ? porReq.get(n) : rcGestionDe(carpeta, tarjetas, (x) => x.gestion || x.entregado);
+      if (!t) {
+        t = rcTarjetaEntregada(carpeta, grupo, n, n ? porNum.get(n) || null : null);
+        sueltas.push(t);
+        if (n) porReq.set(n, t);
+      }
+      if (t.entregado) {
+        t.avisos.push('Tiene otra carpeta en los entregados («' + grupo + '/' + carpeta + '»): deja una sola.');
+        return;
+      }
+      t.entregado = { carpeta, grupo };
+      const ruta = grupo ? grupo + '/' + carpeta : carpeta;
+      if (!(t.carpetas.ejecucion || []).includes(ruta) && !t.gestion) t.carpetas = Object.assign({}, t.carpetas, { ejecucion: [ruta].concat(t.carpetas.ejecucion || []) });
+      if (t.gestion) t.avisos.push('Tiene carpeta en la raíz de Gestión de Proyectos y otra en «' + grupo + '»: si ya se entregó, deja solo la de los entregados; si sigue en obra, quita la otra.');
+      else if (!n && t.req) t.avisos.push('Su carpeta en «' + grupo + '» («' + carpeta + '») no lleva su N° adelante y se reconoció por el nombre: renómbrala «' + t.req + '. ' + carpeta + '».');
+    });
+    sueltas.forEach((t) => {
+      t.buscar = norm([t.req ? 'n' + t.req + ' n° ' + t.req : '', t.titulo, t.lugar, t.entregado && t.entregado.grupo, t.planilla && t.planilla.titulo].join(' '));
+    });
+    return sueltas;
+  }
+  // Una carpeta entregada que no calza con ningún proyecto del Recorrido: se ve en «Entregados» con su carpeta y su N°, si lo lleva
+  function rcTarjetaEntregada(carpeta, grupo, n, r) {
+    const t = rcBase('entregado-' + (n || carpeta));
+    t.req = n;
+    t.planilla = r;
+    t.titulo = rcSinNumero(carpeta);
+    t.lugar = texto(r && r.ubicacion);
+    t.etapa = 'cierre';
+    const anio = /\b(\d{4})\b/.exec(grupo);
+    t.orden = anio ? -Number(anio[1]) : MAXIMO;
+    if (!n) t.chips.push({ texto: 'Sin N°', nivel: '' });
     return t;
   }
   // Un requerimiento de la Planilla, con lo que cuelga de él en las demás herramientas.
@@ -5752,6 +5827,10 @@
         avisos: Array.isArray(req.datos.avisos) ? req.datos.avisos.map(texto).filter(Boolean) : [] } : null,
       cruce: lista(cruce, 'proyectos'), af: lista(af, 'proyectos'),
       gestion: lista(cruce, 'gestion'),      // las carpetas de proyecto de la raíz de Gestión de Proyectos (2026-11-03)
+      entregados: lista(cruce, 'entregados'),    // ... y las de sus «0 Proyectos Entregados <año>» (2026-11-09)
+      // Si el procesador ya publica esas listas: sin ellas, «Proyectos en ejecución» sigue con lo que el Recorrido pone en Ejecución
+      hayGestion: !!(cruce && cruce.datos && Array.isArray(cruce.datos.gestion)),
+      hayEntregados: !!(cruce && cruce.datos && Array.isArray(cruce.datos.entregados)),
       licitaciones: lista(lic, 'licitaciones'),
       formulaciones: repo.filter((x) => x && x.datos && typeof x.datos === 'object'),
       borradores: buzon.filter((m) => m && m.tipo === 'borrador-cotizacion' && m.destino === 'sistema-quempin'),
@@ -5780,6 +5859,7 @@
       leerApodos(datos.af);
       rc.pulso = lecturaPulso(datos.estado);
       rc.tarjetas = rcArmar(datos, new Date());
+      rc.entregadas = rcEntregadas(datos, rc.tarjetas);
       rc.leido = Date.now();
       rc.sinDatos = null;
       rc.dir = dir;      // la Planificación semanal lee y guarda en la misma carpeta
@@ -6269,7 +6349,7 @@
       b.addEventListener('click', () => rcIr(ir));
       enl.append(b);
     };
-    if (t.etapa === 'ejecucion' || t.gestion) enlace('Su resumen en ejecución', RC_IR.ejecucion(t.clave));
+    if (t.etapa === 'ejecucion' || t.gestion || t.entregado) enlace('Su resumen en ejecución', RC_IR.ejecucion(t.clave));
     if (t.req) enlace('Formulador', RC_IR.req(t.req));
     else if (f) enlace('Formulador', RC_IR.ficha(f.uid));
     if (f) enlace('Seguimiento', RC_IR.seguimiento(f.uid));
@@ -10938,12 +11018,14 @@
   const EJ_ID = /^[a-z0-9-]{6,40}$/;
   const EJ_UNIDADES = ['Un.', 'kg', 'm', 'm2', 'm3', 'gl', 'km', 'día', 'hr', 'lt', 'noche'];   // las del Formulador
   const EJ_LIBS = { calc: ['js/calc.js', 'QCalc'], pegar: ['js/pegar.js', 'QPegar'], busqueda: ['js/busqueda.js', 'CHBusqueda'] };
-  const LS_EJ = 'quempin_portal_ejecucion';                 // { proyecto, mios, filtro }: lo elegido en este navegador
+  const LS_EJ = 'quempin_portal_ejecucion';                 // { proyecto, mios, filtro, pestana, conDatos }: lo elegido en este navegador
   const LS_EJ_PENDIENTE = 'quempin_portal_ejecucion_pendiente';   // lo que aún no llega a la carpeta
   const ejPrefs = leer(LS_EJ, {}) || {};
   const ej = {
     clave: typeof ejPrefs.proyecto === 'string' ? ejPrefs.proyecto : null,   // la tarjeta del Recorrido a la vista; null: la lista
     mios: ejPrefs.mios === true, q: '',
+    pestana: ejPrefs.pestana === 'entregados' ? 'entregados' : 'ejecucion',   // En ejecución (raíz de Gestión) o Entregados
+    conDatos: ejPrefs.conDatos === true,     // solo los proyectos con algo anotado en su resumen
     filtro: EJ_FILTROS.some((f) => f.id === ejPrefs.filtro) ? ejPrefs.filtro : 'vigentes',
     datos: { archivos: new Map(), mias: new Map(), ef: new Map(), leida: 0 },
     gantt: { porUid: new Map(), porReq: new Map() }, ganttLeido: 0,
@@ -10963,7 +11045,7 @@
     salud: null,              // el estado elegido en la leyenda del Mapa de salud (ok, warn, bad, sin); null: todos
     espera: null              // lo que espera el equipo elegido en la lista (decidir, facturas, pendientes); null: todo
   };
-  const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro });
+  const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro, pestana: ej.pestana, conDatos: ej.conDatos });
 
   // ---- Utilidades ---------------------------------------------------------------------------------------------------
   const ejPesos = (n) => (n < -0.5 ? '−$' : '$') + Math.round(Math.abs(n)).toLocaleString('es-CL');
@@ -11326,16 +11408,31 @@
   }
 
   // ---- Cada proyecto: de dónde sale cada cifra (solo calcula) ----------------------------------------------------------
-  // Los de esta vista: los que el Recorrido pone en Ejecución (los de más de 60 días sin moverse van aparte)
-  // Los que el Recorrido pone en Ejecución y, desde el 2026-11-03, todo proyecto con carpeta en la raíz de Gestión de
-  // Proyectos: también si ya terminó (lo avisa) o si su carpeta no lleva N° (se ve, pero sin N° ni TAG no se le anota nada)
-  const ejTarjetas = () => rc.tarjetas.filter((t) => (t.etapa === 'ejecucion' && (t.req || t.tag)) || t.gestion);
+  /* Los de esta vista, en dos pestañas (2026-11-09, pedido del usuario: «solo deben aparecer proyectos que se encuentren
+     dentro de la carpeta de Gestión de Proyectos»; los cerrados, en otra pestaña con los de la carpeta de entregados):
+     - «En ejecución»: los que tienen carpeta en la raíz de Gestión de Proyectos (t.gestion), también si ya terminaron (lo
+       avisa) o si su carpeta no lleva N° (se ve, pero sin N° ni TAG no se le anota nada). Mientras el procesador no publique
+       esas carpetas (rc.datos.hayGestion), los que el Recorrido pone en Ejecución, como antes.
+     - «Entregados»: los que tienen carpeta en «0 Proyectos Entregados <año>» (t.entregado) y no en la raíz.
+     Lo que no tiene carpeta en ninguna de las dos no sale aquí; el Recorrido lo sigue abriendo con su clave (ejPintar). */
+  const ejHayGestion = () => !!(rc.datos && rc.datos.hayGestion);
+  const ejTodas = () => rc.tarjetas.concat(rc.entregadas || []);
+  const ejTarjetas = (pestana = ej.pestana) => (pestana === 'entregados'
+    ? ejTodas().filter((t) => t.entregado && !t.gestion)
+    : rc.tarjetas.filter((t) => t.gestion || (!ejHayGestion() && t.etapa === 'ejecucion' && (t.req || t.tag))));
   // Sus claves: su N° y su TAG. Lo anotado con el TAG sigue siendo del proyecto cuando recibe su N° (o al revés).
   const ejClaves = (t) => [t.req ? 'req:' + t.req : '', t.tag ? 'tag:' + t.tag : ''].filter(Boolean);
   const ejClave = (t) => ejClaves(t)[0];
   function ejDe(t, tipo) {
     const ks = new Set(ejClaves(t));
     return [...ej.datos.ef.values()].filter((e) => e.tipo === tipo && !e.borrado && ks.has(e.proyecto));
+  }
+  // Las claves con algo anotado en su resumen (una cotización, un día, una nota, una venta, una factura asociada…): el
+  // filtro «Solo con datos anotados» (2026-11-09). Una vez por repintado de la lista.
+  function ejConDatosSet() {
+    const s = new Set();
+    ej.datos.ef.forEach((e) => { if (e && !e.borrado && e.proyecto) s.add(e.proyecto); });
+    return s;
   }
   // Su formulación completa, del repositorio del equipo (la misma que eligió el Recorrido)
   function ejFormulacion(t) {
@@ -11830,7 +11927,7 @@
       return;
     }
     // El elegido se sigue mostrando aunque haya salido de ejecución (lo recién dado por cerrado), mientras exista
-    const t = ej.clave ? rc.tarjetas.find((x) => x.clave === ej.clave) || null : null;
+    const t = ej.clave ? ejTodas().find((x) => x.clave === ej.clave) || null : null;
     $('#ejLista').hidden = !!t;
     $('#ejProyecto').hidden = !t;
     if (t) ejPintarProyecto(t); else ejPintarLista();
@@ -11857,6 +11954,9 @@
   function ejAbrirProyecto(clave) {
     if ((clave || null) !== ej.clave) ej.sucios.clear();
     ej.clave = clave || null;
+    // Al volver a la lista, la pestaña donde está (2026-11-09)
+    const t = ej.clave ? ejTodas().find((x) => x.clave === ej.clave) : null;
+    if (t && (t.gestion || t.entregado)) ej.pestana = t.gestion ? 'ejecucion' : 'entregados';
     ejGuardarPrefs();
     abrir('ejecucion');
     $('#vistaEjecucion').scrollTop = 0;
@@ -11864,6 +11964,24 @@
   // ---- La lista -------------------------------------------------------------------------------------------------------
   // Lo tuyo primero; lo que ya terminó y sigue en Gestión de Proyectos, al final
   const ejOrden = (a, b) => (rcMia(b) - rcMia(a)) || ((a.etapa !== 'ejecucion') - (b.etapa !== 'ejecucion')) || a.orden - b.orden || plComparar(a.titulo, b.titulo);
+  // La lista vacía: por qué
+  function ejNadaEn(entregados, sinFiltro) {
+    if (ej.conDatos && sinFiltro) return 'Ningún proyecto de esta pestaña tiene datos anotados en su resumen. Quita «Solo con datos anotados» para ver los ' + sinFiltro + '.';
+    if (entregados) return rc.datos && !rc.datos.hayEntregados
+      ? 'Las carpetas de «0 Proyectos Entregados» llegan con la próxima vuelta del procesador.'
+      : 'No hay carpetas de proyecto en «0 Proyectos Entregados» de Gestión de Proyectos.';
+    return ejHayGestion() ? 'No hay carpetas de proyecto en la raíz de Gestión de Proyectos.'
+      : 'No hay proyectos en ejecución: entran aquí cuando se adjudican y cuando su carpeta está en Gestión de Proyectos.';
+  }
+  // Cambiar de pestaña
+  function ejElegirPestana(id) {
+    if (id === ej.pestana) return;
+    ej.pestana = id;
+    ej.salud = null;
+    ej.espera = null;
+    ejGuardarPrefs();
+    ejPintarLista();
+  }
   function ejPintarLista() {
     const u = estado.usuario;
     const mios = $('#ejMios');
@@ -11871,14 +11989,27 @@
     mios.disabled = !u;
     $('#ejMiosTxt').textContent = u ? 'Solo mis proyectos' : 'Solo mis proyectos (elige tu usuario)';
     const q = norm(ej.q).trim().split(/\s+/).filter(Boolean);
-    const todas = ejTarjetas();
+    const entregados = ej.pestana === 'entregados';
+    // Solo con datos anotados: con algo guardado con su N° o su TAG
+    const anotadas = ejConDatosSet();
+    const conDatos = (t) => ejClaves(t).some((k) => anotadas.has(k));
+    const listas = { ejecucion: ejTarjetas('ejecucion'), entregados: ejTarjetas('entregados') };
+    document.querySelectorAll('#ejPestanas [data-pestana]').forEach((b) => {
+      const id = b.dataset.pestana, n = listas[id].filter((t) => !ej.conDatos || conDatos(t)).length;
+      b.setAttribute('aria-selected', String(id === ej.pestana));
+      b.tabIndex = id === ej.pestana ? 0 : -1;
+      b.querySelector('b').textContent = String(n);
+      if (id === ej.pestana) $('#ejListaCuerpo').setAttribute('aria-labelledby', b.id);
+    });
+    $('#ejConDatos').checked = ej.conDatos;
+    const todas = listas[ej.pestana].filter((t) => !ej.conDatos || conDatos(t));
     // Cada proyecto se calcula una vez por repintado: lo usan el mapa y las tarjetas
     const modelos = new Map(todas.map((t) => [t.clave, ejModelo(t)]));
     const saludes = new Map(todas.map((t) => [t.clave, ejSalud(t, modelos.get(t.clave))]));
     const buscadas = todas.filter((t) => (!ej.mios || !u || rcMia(t)) && q.every((x) => t.buscar.includes(x)));
     const esperas = new Map(todas.map((t) => [t.clave, ejEspera(t, modelos.get(t.clave))]));
     const alcance = buscadas.filter((t) => (!ej.salud || saludes.get(t.clave).nivel === ej.salud) && (!ej.espera || esperas.get(t.clave)[ej.espera] > 0));
-    const plegada = (t) => t.antiguo && !t.gestion;      // lo que está en Gestión de Proyectos nunca va plegado
+    const plegada = (t) => !entregados && t.antiguo && !t.gestion;      // lo de Gestión y lo entregado nunca va plegado
     const vivas = alcance.filter((t) => !plegada(t)).sort(ejOrden);
     const viejas = alcance.filter(plegada).sort(ejOrden);
     // El mapa muestra lo buscado (sin el filtro de estado, que se elige en él mismo) y no lo plegado por antiguo
@@ -11892,7 +12023,7 @@
     caja.textContent = '';
     vivas.forEach((t) => caja.append(ejTarjetaEl(t, modelos.get(t.clave), saludes.get(t.clave))));
     if (!vivas.length) {
-      caja.append(crear('p', 'ej-nada', !todas.length ? 'No hay proyectos en ejecución: entran aquí cuando se adjudican (Planilla «Adjudicado», formulación «Adjudicada» o ficha en el Análisis Financiero) y cuando su carpeta está en Gestión de Proyectos.'
+      caja.append(crear('p', 'ej-nada', !todas.length ? ejNadaEn(entregados, listas[ej.pestana].length)
         : alcance.length ? 'Los proyectos que calzan llevan más de 60 días sin moverse: están abajo.' : ej.salud ? 'Ningún proyecto «' + EJ_SALUD[ej.salud].nombre + '» calza con lo buscado.' : 'Ningún proyecto en ejecución calza con lo buscado.'));
     }
     $('#ejAntiguos').hidden = !viejas.length;
@@ -12404,9 +12535,10 @@
     const { s } = ejPanel('Le falta su N° de requerimiento');
     s.classList.add('ej-sin-clave');
     const p = crear('p', 'ej-linea');
-    p.append(crear('span', null, 'Su carpeta «' + t.gestion + '» no lleva adelante el N° de la Planilla de Ingreso. '),
+    const carpeta = t.gestion || (t.entregado && t.entregado.carpeta) || t.titulo;
+    p.append(crear('span', null, 'Su carpeta «' + carpeta + '» no lleva adelante el N° de la Planilla de Ingreso. '),
       info('Tampoco se encontró su ficha en el Análisis Financiero. Sin ese N° no se une con su oferta, su avance ni sus facturas, y no se le pueden anotar compras, días trabajados ni avance. '
-        + 'Búscalo en Requerimientos y renombra la carpeta «N°. ' + t.gestion + '»; si no tiene, regístralo ahí. Con la próxima vuelta del procesador aparece aquí con todo lo suyo.', 'Cómo se arregla'));
+        + 'Búscalo en Requerimientos y renombra la carpeta «N°. ' + carpeta + '»; si no tiene, regístralo ahí. Con la próxima vuelta del procesador aparece aquí con todo lo suyo.', 'Cómo se arregla'));
     s.append(p, ejBoton('Buscarlo en Requerimientos', 'cx-enlace', () => abrir('planilla')));
     return s;
   }
@@ -14767,7 +14899,7 @@
   // Los que pueden recibirla. «Proyectos en ejecución» lleva sus cuentas en pesos, y el Formulador no convierte monedas.
   function llDestinos(moneda) {
     // Los de Gestión que ya terminaron o no tienen N° ni TAG se ven en «Proyectos en ejecución», pero no reciben compras
-    const ejec = moneda === 'CLP' ? ejTarjetas().filter((t) => t.etapa === 'ejecucion' && ejClave(t)).sort(ejOrden) : [];
+    const ejec = moneda === 'CLP' ? ejTarjetas('ejecucion').filter((t) => t.etapa === 'ejecucion' && ejClave(t)).sort(ejOrden) : [];
     const form = rc.tarjetas.filter((t) => t.formulacion && RC_ANTES_DE_OFERTAR.includes(t.etapa) && !t.antiguo
       && ejMoneda(ejFormulacion(t)) === moneda).sort((a, b) => (rcMia(b) - rcMia(a)) || rcOrden(a, b));
     return { ejec, form };
@@ -16340,6 +16472,19 @@
   });
   $('#ejReintentar').addEventListener('click', () => { ej.errorGuardar = null; ej.porGuardar = true; ejGuardar(); });
   $('#ejMios').addEventListener('change', (e) => { ej.mios = e.target.checked; ejGuardarPrefs(); ejPintar(); });
+  $('#ejConDatos').addEventListener('change', (e) => { ej.conDatos = e.target.checked; ejGuardarPrefs(); ejPintar(); });
+  // Las pestañas: clic, o las flechas, Inicio y Fin (el foco va con la elegida)
+  document.querySelectorAll('#ejPestanas [role="tab"]').forEach((b) => {
+    b.addEventListener('click', () => { ejElegirPestana(b.dataset.pestana); });
+    b.addEventListener('keydown', (e) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+      e.preventDefault();
+      const otra = e.key === 'Home' ? 'ejecucion' : e.key === 'End' ? 'entregados' : b.dataset.pestana === 'ejecucion' ? 'entregados' : 'ejecucion';
+      const x = $('#ejPestanas [data-pestana="' + otra + '"]');
+      x.click();
+      x.focus();
+    });
+  });
   $('#ejBuscar').addEventListener('input', (e) => { ej.q = e.target.value; ejPintar(); });
   $('#ejBuscar').addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;

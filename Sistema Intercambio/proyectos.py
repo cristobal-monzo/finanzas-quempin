@@ -195,6 +195,37 @@ def proyectos_en_gestion(raiz: Path | None, temporales: dict[str, dict] | None =
     return salida
 
 
+def _es_de_entregados(nombre: str) -> bool:
+    """«0 Proyectos Entregados 2026» y las de otros años (sin importar mayúsculas ni tildes)."""
+    sin_tildes = unicodedata.normalize("NFD", nombre).encode("ascii", "ignore").decode().lower()
+    return nombre.startswith(CARPETAS_AGRUPADORAS) and "entregad" in sin_tildes
+
+
+def proyectos_entregados(raiz: Path | None) -> list[dict]:
+    """[{'carpeta', 'req', 'grupo'}] de las carpetas de proyecto dentro de las
+    «0 Proyectos Entregados <año>» de la raíz de Gestión de Proyectos (2026-11-09,
+    pedido del usuario: los proyectos que ya se cerraron van en su propia pestaña de
+    «Proyectos en ejecución» del Portal). ``grupo`` es la carpeta del año. Con o sin
+    N° adelante; sin archivos ni lo oculto. Solo lista nombres."""
+    if raiz is None or not Path(raiz).is_dir():
+        return []
+    salida = []
+    try:
+        grupos = sorted(h for h in Path(raiz).iterdir() if h.is_dir() and _es_de_entregados(h.name))
+    except OSError:
+        return []
+    for grupo in grupos:
+        try:
+            hijas = sorted(h for h in grupo.iterdir() if h.is_dir() and not h.name.startswith("."))
+        except OSError:
+            continue
+        for hija in hijas:
+            coincide = _CARPETA_CON_NUMERO.match(hija.name)
+            salida.append({"carpeta": hija.name, "req": _n_carpeta(coincide.group(1)) if coincide else None,
+                           "grupo": grupo.name})
+    return salida
+
+
 def carpetas_de_proyectos(desde: Path | None = None, raiz_facturas: Path | None = None) -> dict:
     """{'oferta': {...}, 'ejecucion': {...}, 'facturas': {...}} con rutas
     relativas a cada biblioteca (cada colega tiene OneDrive en otra ruta).
@@ -319,10 +350,11 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
 
 
 def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | None = None,
-             gestion: list[dict] | None = None) -> dict:
+             gestion: list[dict] | None = None, entregados: list[dict] | None = None) -> dict:
     """Arma el cruce desde lo publicado en 'raiz' y lo publica. gestion: las
-    carpetas de la raíz de Gestión (proyectos_en_gestion). Devuelve un resumen
-    {'proyectos', 'sin_tag_req', 'conflictos', 'gestion'}."""
+    carpetas de la raíz de Gestión (proyectos_en_gestion); entregados: las de sus
+    «0 Proyectos Entregados <año>» (proyectos_entregados). Devuelve un resumen
+    {'proyectos', 'sin_tag_req', 'conflictos', 'gestion', 'entregados'}."""
     datos = cruzar(
         _datos(raiz, "requerimientos").get("requerimientos") or [],
         _datos(raiz, "analisis-financiero").get("proyectos") or [],
@@ -334,6 +366,9 @@ def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | 
     )
     datos["gestion"] = gestion if gestion is not None else proyectos_en_gestion(
         ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, raiz), leer_temporales(raiz))
+    datos["entregados"] = entregados if entregados is not None else proyectos_entregados(
+        ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, raiz))
     intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)
     return {"proyectos": len(datos["proyectos"]), "sin_tag_req": len(datos["sinVincular"]["tags"]),
-            "conflictos": len(datos["conflictos"]), "gestion": len(datos["gestion"])}
+            "conflictos": len(datos["conflictos"]), "gestion": len(datos["gestion"]),
+            "entregados": len(datos["entregados"])}

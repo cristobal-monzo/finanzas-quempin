@@ -20,6 +20,19 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   se ve con su carpeta, pero sin N° ni TAG no se le anota nada (`ejSinClaveEl`) ni recibe cotizaciones de «Llevar». Y
   el Recorrido la abre desde su ficha («Su resumen en ejecución»), desde «Registrar avance» y desde su columna Ejecución
   (`RC_ETAPAS`, `RC_IR.ejecucion`).
+- **Dos pestañas y «Solo con datos anotados»** (2026-11-09, pedido del usuario: «solo deben aparecer proyectos que se
+  encuentren dentro de la carpeta de Gestión de Proyectos»; los que ya se cerraron, en una segunda pestaña con los de la
+  carpeta de entregados; y una casilla para ver solo los que tienen al menos un dato en su página): `ejTarjetas(pestana)`.
+  «En ejecución» = solo lo que tiene carpeta en la raíz de Gestión (`t.gestion`); un adjudicado sin carpeta ahí ya no sale
+  (el Recorrido lo sigue abriendo por su clave). Si `proyectos.json` aún no trae `gestion` (`rc.datos.hayGestion`), la
+  regla de antes. «Entregados» = lo que tiene carpeta en una «0 Proyectos Entregados <año>» (`entregados` de
+  `proyectos.json`, `proyectos_entregados`) y no en la raíz, nunca plegado. `rcEntregadas` corre tras `rcArmar`: une cada
+  carpeta con su proyecto por el N° o, sin N°, por el nombre (`rcGestionDe`, sin los que están en la raíz) y marca
+  `t.entregado = {carpeta, grupo}`; las que no calzan son tarjetas aparte (`entregado-<N° o carpeta>`, en `rc.entregadas`)
+  que el Recorrido no muestra. Una carpeta en la raíz y otra en los entregados lo avisa y va en «En ejecución».
+  «Solo con datos anotados» (`#ejConDatos`, `ejConDatosSet`): con al menos una cosa sin borrar en `publicado/ejecucion/`
+  con su N° o su TAG. La pestaña y la casilla se recuerdan (`quempin_portal_ejecucion`: `pestana`, `conDatos`); las
+  pestañas se cambian con las flechas. Prueba: `test_ejecucion_solo_lo_de_gestion_y_los_entregados_en_su_pestana`.
 - **De dónde sale cada cifra** (`ejModelo`, solo calcula): la venta es la escrita aquí o, si no, el precio neto de su
   formulación, su cotización emitida o el valor adjudicado de la Planilla sin IVA (el monto del Análisis Financiero no
   viaja por la carpeta). Por categoría (las cuatro del Análisis Financiero): lo presupuestado (sus proyectados o, si no,
