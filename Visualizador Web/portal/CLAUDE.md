@@ -15,6 +15,7 @@ Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 
 | Vista (`id` en el registro) | Sección | Funciones y estado | Detalle |
 |---|---|---|---|
+| Inicio, las herramientas por área | `#vistaInicio` | `ini*`, `ini` | [docs/interfaz.md](docs/interfaz.md) |
 | Recorrido (`recorrido`) | `#vistaRecorrido` | `rc*`, `rc` | [docs/recorrido.md](docs/recorrido.md) |
 | Planificación semanal (`planificacion`) | `#vistaPlan` | `pl*`, `planif` | [docs/planificacion.md](docs/planificacion.md) |
 | Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
@@ -45,8 +46,9 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   de cada marco con `data-en-portal` y le agrega `ESTILO_INCRUSTADO`. Si cambias
   la cabecera de una herramienta, corre
   `test_lo_que_esconde_el_portal_existe_en_cada_herramienta`.
-- **Sin barras de desplazamiento y sin desplazarse en el Inicio** (clase
-  `sin-barra`; lo miden `test_el_inicio_y_el_menu_caben_sin_barras` y compañía).
+- **Sin barras de desplazamiento y sin desplazarse en el Inicio** en el computador (clase
+  `sin-barra`; lo miden `test_el_inicio_y_el_menu_caben_sin_barras` y
+  `test_las_herramientas_caben_en_el_inicio`).
 - **Lo que no se abre dentro**: el Excel de respaldo de la Planilla (`url` del
   registro), Control de Documentos (aún sin enlace web) y QUEMPIN.exe (`quempin://`).
 - **Datos**: en la página no va ningún dato; todo se arma en el navegador desde la

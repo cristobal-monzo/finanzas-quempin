@@ -360,112 +360,82 @@
     background: var(--page-plane); color: var(--text-secondary); font-size: 14px;
   }
 
-  /* ---- Inicio: todas las herramientas a la vista, sin desplazarse (2026-10-16) ----
-     Cuatro columnas, una por grupo. Con menos ancho van dos, y si además falta alto se
-     esconde la línea breve de cada herramienta. Las medidas son las del marco (container). */
+  /* ---- Inicio: las herramientas por área (2026-11-10) ----
+     Pedido del usuario: el saludo y las cuatro áreas del trabajo (Ofertar, Ejecutar, Controlar y Calcular), cada una con
+     sus herramientas como botones grandes con su ícono, sin cifras ni gráficos. Las áreas de a dos; los botones del
+     mismo ancho en las cuatro (seis por fila). Antes, el mismo día, se probaron un «centro de trabajo» con etapas y
+     listas («mucha información y algo confusa») y «Tres áreas», con la franja «Hoy» y un gráfico por área. Sin
+     desplazarse en el computador; en el teléfono, una columna. Las medidas son las del marco (container). */
   .vista-inicio { position: absolute; inset: 0; overflow-y: auto; container: inicio / size; }
-  .inicio { max-width: 1180px; margin: 0 auto; padding: 22px 24px 14px; display: flex; flex-direction: column; gap: 14px; }
-  .ini-grupos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: start; }
-  .ini-grupo { padding: 12px 6px 6px; border-radius: 14px; border: 1px solid var(--border-hairline); background: var(--surface-card); }
-  .ini-grupo h2 { margin: 0 10px 6px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; }
-  .ini-grupo h2 .ico { color: var(--brand-orange); display: inline-flex; flex: 0 0 auto; }
-  .ini-lista { list-style: none; margin: 0; padding: 0; }
+  .inicio { max-width: 1340px; margin: 0 auto; padding: 28px 32px 20px; display: flex; flex-direction: column; gap: 18px; }
+
+  /* El saludo y, sin usuario, sus iniciales para elegirlo */
+  .ini-cab { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .ini-cab h1 { margin: 0; font-size: 27px; font-weight: 900; letter-spacing: -0.01em; line-height: 1.15; }
+  .ini-cab h1 b { color: var(--brand-orange-ink); }
+  .ini-quien { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 13px; font-weight: 700; color: var(--tinte-texto); }
+  .ini-quien button {
+    min-width: 40px; height: 32px; padding: 0 8px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--tinte-borde); background: var(--tinte); color: var(--text-primary);
+    font-size: 13px; font-weight: 900; letter-spacing: 0.04em;
+  }
+  .ini-quien button:hover { border-color: var(--brand-orange); }
+
+  /* Las cuatro áreas */
+  .ini-areas { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ini-area {
+    min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px 14px;
+    border-radius: 14px; border: 1px solid var(--border-hairline); background: var(--surface-card);
+  }
+  .ini-area h2 { margin: 0 2px; font-size: 13px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--texto-suave); }
+
+  /* Las herramientas: un botón con su ícono; ↗ si se abre fuera del portal, un punto naranjo si ya tiene pestaña */
+  .ini-tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .ini-tiles > li { min-width: 0; display: flex; }
   .ini-item {
-    width: 100%; min-height: 44px;
-    display: flex; align-items: center; gap: 8px;
-    padding: 4px 10px; border: 0; border-radius: 8px;
-    background: transparent; color: var(--text-primary); text-align: left; cursor: pointer;
+    position: relative; flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 14px 2px 12px; border-radius: 10px; border: 1px solid var(--gridline); background: var(--surface-card);
+    color: var(--text-primary); font-size: 12px; font-weight: 700; line-height: 1.2; text-align: center; cursor: pointer;
   }
-  .ini-item:hover { background: var(--page-plane); box-shadow: inset 3px 0 0 var(--brand-orange); }
-  .ini-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  .ini-nom { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ini-sub { font-size: 12px; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ini-fuera { flex: 0 0 auto; display: inline-flex; color: var(--texto-suave); }
-  /* Ya abierta en una pestaña: un punto naranjo junto al nombre */
-  .ini-item.abierta .ini-nom::after {
-    content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 7px; vertical-align: 2px;
-    border-radius: 50%; background: var(--brand-orange);
+  .ini-item:hover { border-color: var(--brand-orange); }
+  .ini-ico { flex: 0 0 auto; width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; background: var(--tinte); color: var(--brand-orange-ink); }
+  .ini-nom { max-width: 100%; overflow-wrap: break-word; hyphens: manual; }
+  .ini-fuera { position: absolute; top: 5px; right: 6px; display: inline-flex; color: var(--texto-suave); }
+  .ini-item.abierta::before {
+    content: ""; position: absolute; top: 7px; left: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand-orange);
   }
-  .ini-pie { margin: 0; font-size: 12.5px; color: var(--texto-suave); text-align: center; }
-  .ini-pie kbd { font: inherit; font-size: 11.5px; padding: 0 5px; border: 1px solid var(--baseline); border-radius: 5px; }
-  .ini-pie button { border: 0; padding: 0; background: transparent; color: var(--brand-orange-ink); font: inherit; font-weight: 700; cursor: pointer; }
-  @container inicio (max-width: 900px) { .ini-grupos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @container inicio (max-width: 900px) and (max-height: 700px) {
-    .ini-sub, .ini-pie { display: none; }
-    .ini-item { min-height: 33px; }
+  .ini-item .pl-alerta-n { position: absolute; top: 4px; right: 4px; height: 20px; min-width: 20px; padding: 0 5px; background: var(--surface-card); }
+
+  /* Menos ancho: todo más junto (los nombres de una palabra larga se cortan en sílabas: iniNombre) */
+  @container inicio (max-width: 1320px) {
+    .inicio { padding-left: 16px; padding-right: 16px; }
+    .ini-tiles { gap: 6px; }
   }
-  @container inicio (max-height: 430px) {
-    .ini-sub, .ini-pie { display: none; }
-    .ini-item { min-height: 33px; }
+  @container inicio (max-width: 1180px) {
+    .inicio { padding-top: 18px; gap: 12px; }
+    .ini-areas { gap: 12px; }
+    .ini-area { padding: 14px 12px; }
+    .ini-item { padding: 10px 2px 9px; }
+    .ini-ico { width: 38px; height: 38px; }
   }
-  /* Con siete herramientas en «Control y finanzas» (2026-10-28, Proyectos en ejecución): con poco alto, las filas se
-     juntan un poco, sin perder su línea breve */
-  @container inicio (min-width: 901px) and (max-height: 640px) {
-    .ini-item { min-height: 38px; padding-top: 2px; padding-bottom: 2px; }
-    .ini-grupo { padding-top: 10px; }
+  /* Poco alto (1280 × 600): más bajo */
+  @container inicio (min-width: 901px) and (max-height: 620px) {
+    .inicio { padding-top: 16px; gap: 12px; }
+    .ini-areas { gap: 12px; }
+    .ini-area { padding: 12px 14px 14px; gap: 8px; }
   }
-  @container inicio (max-width: 520px) { .ini-grupos { grid-template-columns: 1fr; } }
-  /* El Recorrido de proyectos en el Inicio (2026-10-20), debajo de las herramientas: lo que le espera al
-     usuario, en una fila de tarjetas (las mismas del tablero, con su etapa), o el acceso directo */
-  .ini-rc { padding: 12px 14px 14px; border-radius: 14px; border: 1px solid var(--tinte-borde); background: var(--tinte); display: flex; flex-direction: column; gap: 10px; }
-  .ini-rc-cab { display: flex; align-items: center; gap: 12px; }
-  .ini-rc-cab .ico { flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: var(--brand-orange); color: #000000; }
-  h2.ini-rc-tit { margin: 0; display: flex; align-items: center; gap: 8px; line-height: 1.3; }
-  .ini-rc-tit b { padding: 0 7px; border-radius: 999px; background: var(--brand-orange); color: #000000; font-size: 12px; font-weight: 900; letter-spacing: 0.04em; }
-  p.ini-rc-sub { margin: 0; }
-  .ini-rc-ver {
-    flex: 0 0 auto; min-height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 10px;
-    border: 1px solid var(--tinte-borde); background: var(--surface-card); color: var(--brand-orange-ink); font-size: 13.5px; font-weight: 900; cursor: pointer;
+  /* Angosto (tableta vertical, teléfono, ventana chica): una columna que se desplaza sin barra */
+  @container inicio (max-width: 900px) {
+    .inicio { padding: 14px 14px 24px; }
+    .ini-areas { grid-template-columns: minmax(0, 1fr); }
   }
-  .ini-rc-ver:hover { border-color: var(--brand-orange); }
-  .ini-rc-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-  .ini-rc-lista > li { min-width: 0; display: flex; }
-  .ini-rc-lista .rc-tarjeta { flex: 1 1 auto; min-width: 0; margin-top: 0; display: flex; flex-direction: column; }
-  .ini-rc-lista .rc-tarjeta.tuya { border-color: var(--border-hairline); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-  .ini-rc-lista .rc-abrir { flex: 1 1 auto; }
-  .ini-rc-lista .rc-resp, .ini-rc-lista .rc-tag, .ini-rc-lista .rc-sub { display: none; }
-  .ini-rc-lista .rc-chip:nth-child(n+3) { display: none; }     /* las dos primeras (el cierre va primero); el resto, en su detalle */
-  .ini-rc-mas {
-    flex: 1 1 auto; min-height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    border: 1px dashed var(--tinte-borde); border-radius: 10px; background: transparent; color: var(--brand-orange-ink);
-    font-size: 13.5px; font-weight: 700; cursor: pointer;
+  /* Teléfono: de a tres (la calculadora, sus cuatro en una fila) */
+  @container inicio (max-width: 600px) {
+    .ini-cab h1 { font-size: 23px; }
+    .ini-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ini-area[data-grupo="calcular"] .ini-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .ini-item { min-height: 76px; }
   }
-  .ini-rc-mas .n { font-size: 24px; font-weight: 900; line-height: 1.1; }
-  .ini-rc-mas:hover { border-color: var(--brand-orange); background: var(--surface-card); }
-  /* La etapa de la tarjeta, en el Inicio: seis tramos, el suyo en naranjo */
-  .rc-etapa { margin-left: auto; flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
-  .rc-etapa > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .rc-segs { flex: 0 0 auto; display: inline-flex; gap: 2px; }
-  .rc-segs span { width: 7px; height: 6px; border-radius: 2px; background: var(--gridline); }
-  .rc-segs .hecha { background: var(--baseline); }
-  .rc-segs .aqui { background: var(--brand-orange); }
-  @container inicio (max-width: 900px) { .ini-rc-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @container inicio (max-width: 520px) { .ini-rc-lista { grid-template-columns: minmax(0, 1fr); } .ini-rc-ver span { display: none; } }
-  /* Con poco alto, todo sigue sin desplazarse: títulos de una línea y sin la línea de ayuda (está en el menú) */
-  @container inicio (max-height: 700px) {
-    .ini-rc .rc-tit { -webkit-line-clamp: 1; }
-    .ini-rc .rc-chips { flex-wrap: nowrap; }
-    .ini-rc .rc-chip:nth-child(n+2) { display: none; }
-    .ini-rc-mas { min-height: 72px; }
-    .inicio:has(.ini-rc:not([hidden])) .ini-pie { display: none; }
-  }
-  .ini-recorrido {
-    width: 100%; display: flex; align-items: center; gap: 14px; padding: 10px 16px;
-    border: 1px solid var(--tinte-borde); border-radius: 14px; background: var(--tinte);
-    color: var(--text-primary); text-align: left; cursor: pointer;
-  }
-  .ini-recorrido:hover { border-color: var(--brand-orange); }
-  .ini-recorrido .ico { flex: 0 0 auto; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--brand-orange); color: #000000; }
-  .ini-rc-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .ini-rc-tit { font-size: 15px; font-weight: 900; }
-  .ini-rc-sub { font-size: 13px; color: var(--tinte-texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ini-rc-ir { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 900; color: var(--brand-orange-ink); }
-  @container inicio (max-height: 560px) {
-    .ini-recorrido { padding: 6px 12px; }
-    .ini-recorrido .ico { width: 30px; height: 30px; }
-    .ini-rc-sub { display: none; }
-  }
-  @container inicio (max-width: 520px) { .ini-rc-ir span { display: none; } }
 
   /* ---- Configuración y conexiones (2026-10-16): qué necesita cada herramienta y dónde está ---- */
   .vista-conexiones { position: absolute; inset: 0; overflow-y: auto; background: var(--page-plane); container: conexiones / inline-size; }
@@ -2788,12 +2758,10 @@
     .menu-item, .grupo-cab { min-height: 46px; font-size: 15px; }
     .grupo-items .menu-item { min-height: 44px; }
     .pestana .ir { max-width: 150px; }
-    .inicio { padding: 16px 16px 24px; }
     .conexiones { padding: 16px 16px 24px; }
     .recorrido { padding: 16px 16px 24px; }
     .rc-buscar input { font-size: 16px; }
     .sc-input { font-size: 16px; }   /* Subir documentos: con 14 px el iPhone hace zoom al escribir */
-    .ini-item { min-height: 48px; }
     /* Planificación: la ventanita sube desde abajo */
     .pl-pop { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; max-height: 78dvh; }
     /* Con la ventanita abierta abajo, el aviso (con su «Deshacer») va arriba: no tapa «Listo» ni «Siguiente» */
@@ -2902,28 +2870,30 @@
 
       <div class="escenario" id="escenario">
         <section class="vista-inicio sin-barra" id="vistaInicio" aria-labelledby="tituloInicio">
+          <!-- Las herramientas por área (2026-11-10): lo arma pintarInicio() con el registro (portal-registro) -->
           <div class="inicio">
-            <h1 class="sr" id="tituloInicio">Inicio: todas las herramientas de QUEMPIN</h1>
-            <div class="ini-grupos" id="iniGrupos"></div>
-            <!-- El Recorrido de proyectos en el Inicio, debajo de las herramientas (2026-10-20): lo que le espera al
-                 usuario elegido (pintarInicioRecorrido); si nada le espera, el acceso directo de abajo -->
-            <section class="ini-rc" id="iniRc" aria-labelledby="iniRcTit" hidden>
-              <header class="ini-rc-cab">
-                <span class="ico" id="iniRcIco"></span>
-                <div class="ini-rc-txt">
-                  <h2 class="ini-rc-tit" id="iniRcTit">Te esperan</h2>
-                  <p class="ini-rc-sub" id="iniRcSub"></p>
-                </div>
-                <button class="ini-rc-ver" id="iniRcVer" type="button"><span>Ver el recorrido</span></button>
-              </header>
-              <ul class="ini-rc-lista" id="iniRcLista"></ul>
-            </section>
-            <button class="ini-recorrido" id="iniRecorrido" type="button">
-              <span class="ico" id="iniRecorridoIco"></span>
-              <span class="ini-rc-txt"><span class="ini-rc-tit">Recorrido de los proyectos</span><span class="ini-rc-sub" id="iniRecorridoSub">Dónde va cada proyecto del equipo y qué sigue en cada uno</span></span>
-              <span class="ini-rc-ir" id="iniRecorridoIr"><span>Ver el recorrido</span></span>
-            </button>
-            <p class="ini-pie"><kbd>Ctrl K</kbd> busca una herramienta, una pestaña de calculadora o un proyecto · <button type="button" id="iniAyuda">Cómo usar el portal</button> · <button type="button" id="iniConexiones">Configuración y conexiones</button> · <button type="button" id="iniObs">Reportar un error u observación</button></p>
+            <header class="ini-cab">
+              <h1 id="tituloInicio">Hola</h1>
+              <div class="ini-quien" id="iniQuien" hidden><span>¿Quién eres?</span></div>
+            </header>
+            <div class="ini-areas" id="iniAreas">
+              <section class="ini-area" data-grupo="ofertar" aria-labelledby="iniTitOfertar">
+                <h2 id="iniTitOfertar">Ofertar</h2>
+                <ul class="ini-tiles"></ul>
+              </section>
+              <section class="ini-area" data-grupo="ejecutar" aria-labelledby="iniTitEjecutar">
+                <h2 id="iniTitEjecutar">Ejecutar</h2>
+                <ul class="ini-tiles"></ul>
+              </section>
+              <section class="ini-area" data-grupo="controlar" aria-labelledby="iniTitControlar">
+                <h2 id="iniTitControlar">Controlar</h2>
+                <ul class="ini-tiles"></ul>
+              </section>
+              <section class="ini-area" data-grupo="calcular" aria-labelledby="iniTitCalcular">
+                <h2 id="iniTitCalcular">Calcular</h2>
+                <ul class="ini-tiles"></ul>
+              </section>
+            </div>
           </div>
         </section>
         <!-- Recorrido de proyectos (2026-10-20): lo arma rcPintar() con lo que publica la carpeta de intercambio -->
@@ -3300,16 +3270,16 @@
     <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <ul>
       <li><strong>Todo en una ventana.</strong> Las herramientas se abren aquí, como pestañas, una por herramienta: las cuatro calculadoras comparten la suya, y el Formulador y su seguimiento también. Puedes pasar de una a otra sin perder lo que estabas haciendo.</li>
-      <li><strong>Recorrido de los proyectos</strong> (arriba en el Inicio y en el menú): cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre, con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Las cifras de arriba filtran el tablero y «Solo mis proyectos» deja los tuyos. Lee la carpeta del equipo, así que necesita la biblioteca conectada en este navegador.</li>
-      <li><strong>Planificación semanal</strong> (en Control y finanzas): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Junto a «Por personal» están los proyectos activos, y junto a «Por proyecto», las personas: se arrastran a la casilla de un día, o se tocan y después se van tocando casillas (otra vez en la misma, lo quita). Lo ya asignado también se arrastra a otra casilla: se mueve, y con Ctrl se copia; en General se arrastra a una persona a un proyecto de ese día. Las cifras de la semana van en una línea arriba: «sin asignar» despliega los proyectos activos sin nadie en la semana, y al tocar uno se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». Copiar la semana anterior, Compartir, Imprimir, el estado de los proyectos y el sábado están en «Más». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Con «Agregar» (o en la ventanita de un proyecto, «Otra persona») se escribe el nombre de alguien que no está en la lista, o un proyecto que no está en ejecución en el Recorrido (con su N° de la Planilla adelante, si lo tiene): es temporal y queda solo en esa semana (no pasa a las siguientes; «Copiar la semana anterior» lo lleva junto con lo suyo, y en «Agregar» se vuelve a sumar con un toque). Quitarlo no borra lo ya asignado. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
-      <li><strong>Proyectos en ejecución</strong> (en Control y finanzas): el resumen de cada proyecto en obra. Arriba, su venta, el costo estimado al cierre, el margen y el avance; después, cómo va su presupuesto por categoría (lo gastado en el Centro de Costos, lo comprometido en órdenes de compra y lo simulado). En «Gastos proyectados y cotizaciones» se anota cada cotización que llega (o se pegan sus filas de una vez) o un gasto que se espera hacer: se compara con lo presupuestado, con lo que QUEMPIN ha pagado y con las otras cotizaciones para lo mismo, y lo marcado en «Simular» cambia al tiro el costo, el margen y los indicadores; no es un costo real (al Centro de Costos solo llegan facturas y órdenes de compra). En «Mano de obra» se anotan los días trabajados (o se traen de la Planificación semanal): su costo, con la tarifa de cada nivel, es la mano de obra real del resumen y se puede llevar al Análisis Financiero. El avance y la fecha de término se piden desde aquí al Análisis Financiero, y el Recorrido y la Planificación los muestran desde ya. También abre su carpeta de Gestión de Proyectos, sus órdenes de compra, quién va esta semana, y sus pendientes y notas. Todo se guarda en la carpeta del equipo.</li>
-      <li><strong>El Inicio</strong> las muestra en cuatro grupos: formulación de proyectos, control y finanzas, cotizar y comprar, y la calculadora. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
+      <li><strong>Recorrido de los proyectos</strong> (en el menú, y en el Inicio con «Ver el recorrido» o tocando una etapa): cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre, con lo que sigue, quién lo tiene y un botón que abre la herramienta donde se hace. Las cifras de arriba filtran el tablero y «Solo mis proyectos» deja los tuyos. Lee la carpeta del equipo, así que necesita la biblioteca conectada en este navegador.</li>
+      <li><strong>Planificación semanal</strong> (en Ejecutar proyectos): quién va a qué proyecto activo cada día, con hasta tres proyectos por persona en un día. Se ve en general, por personal o por proyecto; cada casilla se toca para cambiarla (o se llega con las flechas y Enter), y también se anotan las ausencias y otras actividades. En «Qué días», arriba de la ventanita, se eligen varios días o «Toda la semana»: lo que se marca vale para todos ellos de una vez, y «Cambiar» pasa a alguien de un proyecto a otro en un paso. Junto a «Por personal» están los proyectos activos, y junto a «Por proyecto», las personas: se arrastran a la casilla de un día, o se tocan y después se van tocando casillas (otra vez en la misma, lo quita). Lo ya asignado también se arrastra a otra casilla: se mueve, y con Ctrl se copia; en General se arrastra a una persona a un proyecto de ese día. Las cifras de la semana van en una línea arriba: «sin asignar» despliega los proyectos activos sin nadie en la semana, y al tocar uno se abre su ventanita, hasta que se asigna o se marca «Sin trabajo esta semana». Copiar la semana anterior, Compartir, Imprimir, el estado de los proyectos y el sábado están en «Más». En la misma ventanita, bajo cada persona asignada, se toca el vehículo con que va (Quempineta o RAM; otro toque lo quita): el resumen de arriba y «Vehículos en la semana», en General, dicen dónde va cada uno cada día, y avisan si uno queda en dos lugares a la vez. «Compartir» deja lo de cada persona listo para WhatsApp, e «Imprimir o PDF» saca la tabla de la semana y una hoja para cada persona. Con «Agregar» (o en la ventanita de un proyecto, «Otra persona») se escribe el nombre de alguien que no está en la lista, o un proyecto que no está en ejecución en el Recorrido (con su N° de la Planilla adelante, si lo tiene): es temporal y queda solo en esa semana (no pasa a las siguientes; «Copiar la semana anterior» lo lleva junto con lo suyo, y en «Agregar» se vuelve a sumar con un toque). Quitarlo no borra lo ya asignado. Se guarda en la carpeta del equipo: todos ven la misma semana.</li>
+      <li><strong>Proyectos en ejecución</strong> (en Ejecutar proyectos): el resumen de cada proyecto en obra. Arriba, su venta, el costo estimado al cierre, el margen y el avance; después, cómo va su presupuesto por categoría (lo gastado en el Centro de Costos, lo comprometido en órdenes de compra y lo simulado). En «Gastos proyectados y cotizaciones» se anota cada cotización que llega (o se pegan sus filas de una vez) o un gasto que se espera hacer: se compara con lo presupuestado, con lo que QUEMPIN ha pagado y con las otras cotizaciones para lo mismo, y lo marcado en «Simular» cambia al tiro el costo, el margen y los indicadores; no es un costo real (al Centro de Costos solo llegan facturas y órdenes de compra). En «Mano de obra» se anotan los días trabajados (o se traen de la Planificación semanal): su costo, con la tarifa de cada nivel, es la mano de obra real del resumen y se puede llevar al Análisis Financiero. El avance y la fecha de término se piden desde aquí al Análisis Financiero, y el Recorrido y la Planificación los muestran desde ya. También abre su carpeta de Gestión de Proyectos, sus órdenes de compra, quién va esta semana, y sus pendientes y notas. Todo se guarda en la carpeta del equipo.</li>
+      <li><strong>El Inicio</strong>: las herramientas de cada área del trabajo (ofertar, ejecutar, controlar y calcular), cada una con su ícono. Lo que cada proyecto espera está en el <strong>Recorrido de proyectos</strong>. Elige tu usuario para ver lo tuyo en cada herramienta. <strong>☰</strong> (arriba a la izquierda) abre el menú con todas, encima de la herramienta; se cierra solo al elegir una.</li>
       <li><strong>Modo claro u oscuro</strong> (☾ arriba): vale para el portal y todas las herramientas. El país de los tableros (Chile o Perú) se elige junto a las pestañas, en los tableros que tienen los dos.</li>
       <li><strong>Buscar</strong> (Ctrl K) encuentra herramientas, cada pestaña de las calculadoras y tus proyectos. Prueba «factura», «quemador» o el N° de un requerimiento.</li>
       <li><strong>Usuario.</strong> Elige tus iniciales arriba a la derecha, una vez por navegador. En el Formulador quedas como responsable de los proyectos que crees y como autor de la evaluación de costos en el Control de Documentos, y su lista y el selector de proyectos muestran primero los tuyos. En Sistema QUEMPIN las iniciales se eligen en Configuración › Mi perfil.</li>
       <li><strong>Proyecto.</strong> Elígelo una vez arriba a la derecha: el Formulador, el Centro de Costos y el Análisis Financiero abren ya en él. Si tiene carpeta, el botón de la carpeta, a su lado, la abre en el Explorador de archivos del computador (con QUEMPIN.exe 1.3.10 o más nuevo).</li>
-      <li><strong>Requerimientos</strong> (en Formulación de proyectos): cada requerimiento con su N°. «Nuevo requerimiento» lo agrega con el siguiente N° libre, y al tocar una fila se cambia. El equipo lo ve al instante; un punto naranjo marca lo que todavía no llega al Excel. El Excel de siempre queda de respaldo: cada 10 minutos recibe lo de aquí y lo que se cambie en él llega aquí; si una casilla cambió en los dos lados, queda el cambio más reciente. Aquí están las columnas que se usan de verdad; las demás (visita, presupuesto, valores) se llenan en el Excel.</li>
-      <li><strong>Sistema QUEMPIN.</strong> «Cotizar y comprar» abre el programa QUEMPIN.exe en la pantalla que elijas; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
+      <li><strong>Requerimientos</strong> (en Captar y ofertar): cada requerimiento con su N°. «Nuevo requerimiento» lo agrega con el siguiente N° libre, y al tocar una fila se cambia. El equipo lo ve al instante; un punto naranjo marca lo que todavía no llega al Excel. El Excel de siempre queda de respaldo: cada 10 minutos recibe lo de aquí y lo que se cambie en él llega aquí; si una casilla cambió en los dos lados, queda el cambio más reciente. Aquí están las columnas que se usan de verdad; las demás (visita, presupuesto, valores) se llenan en el Excel.</li>
+      <li><strong>Sistema QUEMPIN.</strong> «Emitir cotización» y «Orden de compra» abren el programa QUEMPIN.exe en esa pantalla; la primera vez el navegador pregunta si puede abrirlo: marca «Permitir siempre» y elige «Abrir».</li>
       <li><strong>Clic derecho.</strong> En el portal y dentro de cada herramienta abre el menú del portal: copiar y pegar, actualizar, abrir aparte y <strong>reportar un error u observación</strong>. La nota queda con el lugar exacto donde la hiciste y, si se puede, una imagen de la pantalla; en «Errores y observaciones» (en Ayuda) ves qué pasó con ella. Para el menú del navegador (revisar ortografía, guardar una imagen), Shift + clic derecho.</li>
       <li><strong>Abrir aparte</strong> (↗, arriba a la derecha) lleva la herramienta activa a su propia pestaña del navegador, en su dirección de siempre.</li>
       <li>La contraseña es la del equipo, la misma de siempre, y se escribe una sola vez por navegador.</li>
@@ -3568,10 +3538,10 @@
   "personal": ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"],
   "vehiculos": [{"id": "quempineta", "nombre": "Quempineta", "articulo": "la"}, {"id": "ram", "nombre": "RAM", "articulo": "la"}],
   "grupos": [
-    {"id": "formular", "nombre": "Formulación de proyectos", "corto": "Formulación", "icono": "portapapeles"},
-    {"id": "finanzas", "nombre": "Control y finanzas", "corto": "Finanzas", "icono": "barras"},
-    {"id": "cotizar", "nombre": "Cotizar y comprar", "corto": "Cotizar", "icono": "documento"},
-    {"id": "calcular", "nombre": "Calculadora", "corto": "Calculadora", "icono": "calculadora"},
+    {"id": "ofertar", "nombre": "Captar y ofertar", "corto": "Ofertar", "icono": "portapapeles"},
+    {"id": "ejecutar", "nombre": "Ejecutar proyectos", "corto": "Ejecutar", "icono": "casco"},
+    {"id": "controlar", "nombre": "Control financiero", "corto": "Controlar", "icono": "barras"},
+    {"id": "calcular", "nombre": "Calculadora", "corto": "Calcular", "icono": "calculadora"},
     {"id": "ayuda", "nombre": "Ayuda", "corto": "Ayuda", "icono": "ayuda"}
   ],
   "herramientas": [
@@ -3580,86 +3550,86 @@
     {"id": "recorrido", "nombre": "Recorrido de proyectos", "corto": "Recorrido", "grupo": "arriba", "tipo": "vista", "vista": "vistaRecorrido", "icono": "ruta",
      "desc": "Cada proyecto del equipo en su etapa, de la Planilla de Ingreso al cierre: lo que sigue, quién lo tiene y la herramienta donde se hace.",
      "claves": "recorrido etapa etapas tablero flujo pendientes que sigue proyectos del equipo mis proyectos responsable cierre plazo vencimiento ejecucion"},
-    {"id": "oportunidades", "nombre": "Oportunidades", "grupo": "formular", "tipo": "marco", "incrustar": "tablero", "tema": "op_viz_theme",
+    {"id": "oportunidades", "nombre": "Oportunidades", "icono": "oportunidad", "grupo": "ofertar", "tipo": "marco", "incrustar": "tablero", "tema": "op_viz_theme",
      "ruta": "/finanzas-quempin/oportunidades/", "breve": "Mercado Público, con puntaje",
      "desc": "Licitaciones y compras ágiles que calzan con el trabajo de QUEMPIN, con su puntaje y su cierre.",
      "claves": "licitacion licitaciones compra agil compras agiles mercado publico oportunidad oportunidades"},
-    {"id": "planilla", "nombre": "Requerimientos", "corto": "Requerimientos", "grupo": "formular", "tipo": "vista", "vista": "vistaPlanilla", "icono": "tabla",
+    {"id": "planilla", "nombre": "Requerimientos", "corto": "Requerimientos", "grupo": "ofertar", "tipo": "vista", "vista": "vistaPlanilla", "icono": "requerimiento",
      "url": "https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/Documentos%20compartidos/Planilla%20de%20Ingreso%20de%20Requerimientos.xlsx?web=1",
      "breve": "Cada requerimiento y su N°",
      "desc": "Cada requerimiento del equipo con su N°: se ingresan y se cambian aquí. El Excel de siempre queda de respaldo y se pone al día solo, en los dos sentidos.",
      "claves": "planilla ingreso planilla de proyectos requerimiento requerimientos solicitud numero nuevo agregar ingresar registrar estado canal captador cierre apertura licitacion excel respaldo sharepoint"},
-    {"id": "formulador", "nombre": "Formulador", "grupo": "formular", "tipo": "marco", "incrustar": "formulador", "tema": "quempin_fp_theme",
+    {"id": "formulador", "nombre": "Formulador", "icono": "formulario", "grupo": "ofertar", "tipo": "marco", "incrustar": "formulador", "tema": "quempin_fp_theme",
      "ruta": "/formulacion-proyectos-quempin/", "proyecto": "formulador", "breve": "Presupuesto de cada oferta",
      "desc": "El presupuesto de cada oferta: partidas, costos, utilidad, precio y evaluación.",
      "claves": "formulador formulacion de proyectos presupuesto presupuestos partidas costos utilidad precio oferta evaluacion pendientes"},
-    {"id": "cotizador", "nombre": "Cotizador Histórico", "corto": "Cotizador", "grupo": "formular", "tipo": "marco", "incrustar": "tablero", "tema": "ch_viz_theme",
-     "ruta": "/finanzas-quempin/cotizador-historico/", "peru": "/finanzas-quempin/cotizador-historico-peru/",
-     "breve": "Lo pagado por cada material",
-     "desc": "Lo que QUEMPIN pagó por cada material, reajustado por UF.",
-     "claves": "cotizador historico precio precios material materiales uf referencia"},
-    {"id": "gantt", "nombre": "Carta Gantt", "grupo": "formular", "tipo": "marco", "incrustar": "gantt", "tema": "quempin_gantt_theme",
-     "ruta": "/formulacion-proyectos-quempin/gantt/", "proyecto": "gantt",
-     "breve": "Programa y ruta crítica",
-     "desc": "El programa de trabajo de cada proyecto, con su ruta crítica, en PDF y Excel. Herramienta propia desde el 2026-10-20: con un proyecto elegido abre su carta.",
-     "claves": "gantt carta programa plazo plazos cronograma ruta critica"},
-    {"id": "proyectos", "nombre": "Seguimiento", "grupo": "formular", "tipo": "marco",
+    {"id": "proyectos", "nombre": "Seguimiento", "icono": "seguimiento", "grupo": "ofertar", "tipo": "marco",
      "ruta": "/formulacion-proyectos-quempin/", "familia": "formulador", "alias": true, "proyecto": "seguimiento",
      "breve": "Un proyecto: su etapa y qué sigue",
      "desc": "El seguimiento de un proyecto: en qué etapa va, qué sigue y en qué herramienta se hace. Abre la lista del Formulador para elegir el proyecto (el equipo completo está en el Recorrido).",
      "claves": "proyecto proyectos etapa avance que sigue seguimiento recorrido"},
-    {"id": "planificacion", "nombre": "Planificación semanal", "corto": "Planificación", "grupo": "finanzas", "tipo": "vista", "vista": "vistaPlan", "icono": "calendario",
-     "breve": "Quién va a qué proyecto cada día",
-     "desc": "La semana del equipo: quién va a qué proyecto activo cada día, en general, por personal o por proyecto, con alarma para los proyectos sin nadie asignado.",
-     "claves": "planificacion planificar semana semanal personal equipo asignar asignacion turnos dia dias calendario agenda terreno obra obras proyectos activos ejecucion alarma sin asignar ausencia vacaciones"},
-    {"id": "ejecucion", "nombre": "Proyectos en ejecución", "corto": "En ejecución", "grupo": "finanzas", "tipo": "vista", "vista": "vistaEjecucion", "icono": "casco",
+    {"id": "cotizador", "nombre": "Cotizador Histórico", "corto": "Cotizador", "icono": "etiqueta", "grupo": "ofertar", "tipo": "marco", "incrustar": "tablero", "tema": "ch_viz_theme",
+     "ruta": "/finanzas-quempin/cotizador-historico/", "peru": "/finanzas-quempin/cotizador-historico-peru/",
+     "breve": "Lo pagado por cada material",
+     "desc": "Lo que QUEMPIN pagó por cada material, reajustado por UF.",
+     "claves": "cotizador historico precio precios material materiales uf referencia"},
+    {"id": "cotizacion", "nombre": "Emitir cotización", "grupo": "ofertar", "icono": "emitir", "tipo": "programa", "accion": "«Nueva Cotización»",
+     "enlace": "quempin://cotizacion", "breve": "Sistema QUEMPIN · tipo 60",
+     "desc": "Las cotizaciones (tipo 60) se emiten en Sistema QUEMPIN, desde el borrador que deja el Formulador.",
+     "claves": "cotizar cotizacion cotizaciones emitir folio 60 pdf cliente sistema quempin exe programa"},
+    {"id": "ejecucion", "nombre": "Proyectos en ejecución", "corto": "En ejecución", "grupo": "ejecutar", "tipo": "vista", "vista": "vistaEjecucion", "icono": "casco",
      "breve": "Resumen, compras y avance",
      "desc": "El resumen de cada proyecto en ejecución: cómo va su presupuesto, las compras por decidir con sus cotizaciones y cómo terminaría el proyecto si se hacen, su avance, el equipo de la semana y su carpeta de Gestión de Proyectos.",
      "claves": "ejecucion en ejecucion proyecto proyectos resumen obra obras compra compras cotizacion cotizaciones proveedor proveedores costo costos potenciales simular simulacion margen presupuesto avance gestion de proyectos carpeta orden de compra notas pendientes"},
-    {"id": "centro-costos", "nombre": "Centro de Costos", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "cc_viz_theme",
-     "ruta": "/finanzas-quempin/centro-de-costos/", "peru": "/finanzas-quempin/centro-de-costos-peru/", "proyecto": "tag",
-     "breve": "Gasto real, factura por factura",
-     "desc": "El gasto real de cada proyecto, factura por factura.",
-     "claves": "centro costos factura facturas boleta boletas gasto gastos real proveedor"},
-    {"id": "subir-cc", "nombre": "Subir documentos", "corto": "Subir", "grupo": "finanzas", "tipo": "vista", "vista": "vistaSubir", "icono": "subir",
+    {"id": "planificacion", "nombre": "Planificación semanal", "corto": "Planificación", "grupo": "ejecutar", "tipo": "vista", "vista": "vistaPlan", "icono": "calendario",
+     "breve": "Quién va a qué proyecto cada día",
+     "desc": "La semana del equipo: quién va a qué proyecto activo cada día, en general, por personal o por proyecto, con alarma para los proyectos sin nadie asignado.",
+     "claves": "planificacion planificar semana semanal personal equipo asignar asignacion turnos dia dias calendario agenda terreno obra obras proyectos activos ejecucion alarma sin asignar ausencia vacaciones"},
+    {"id": "gantt", "nombre": "Carta Gantt", "grupo": "ejecutar", "icono": "gantt", "tipo": "marco", "incrustar": "gantt", "tema": "quempin_gantt_theme",
+     "ruta": "/formulacion-proyectos-quempin/gantt/", "proyecto": "gantt",
+     "breve": "Programa y ruta crítica",
+     "desc": "El programa de trabajo de cada proyecto, con su ruta crítica, en PDF y Excel. Herramienta propia desde el 2026-10-20: con un proyecto elegido abre su carta.",
+     "claves": "gantt carta programa plazo plazos cronograma ruta critica"},
+    {"id": "orden-compra", "nombre": "Orden de compra", "grupo": "ejecutar", "icono": "carro", "tipo": "programa", "accion": "«Nueva Orden de Compra»",
+     "enlace": "quempin://orden-compra", "breve": "Sistema QUEMPIN · tipo 61",
+     "desc": "Las órdenes de compra (tipo 61) a proveedores, con sus cuotas de pago, se emiten en Sistema QUEMPIN.",
+     "claves": "orden ordenes compra oc proveedor 61 sistema quempin exe programa"},
+    {"id": "subir-cc", "nombre": "Subir documentos", "corto": "Subir", "grupo": "ejecutar", "tipo": "vista", "vista": "vistaSubir", "icono": "subir",
      "breve": "Facturas y boletas de un proyecto",
      "desc": "Sube facturas, boletas y comprobantes de un proyecto: el procesador los deja en la carpeta del proyecto en el Centro de Costos.",
      "claves": "subir cargar enviar documento documentos factura facturas boleta boletas comprobante foto fotos pdf centro costos gasto rendicion"},
-    {"id": "ingresar", "nombre": "Ingresar avance", "grupo": "finanzas", "tipo": "marco",
+    {"id": "ingresar", "nombre": "Ingresar avance", "grupo": "ejecutar", "icono": "avance", "tipo": "marco",
      "ruta": "/finanzas-quempin/analisis-financiero/", "familia": "analisis", "alias": true, "proyecto": "af", "pestanaTablero": "tabIngreso",
      "breve": "Avance, fechas y mano de obra",
      "desc": "Avance, fechas y mano de obra real de un proyecto, en la pestaña «Ingresar datos» del Análisis Financiero.",
      "claves": "ingresar avance fechas registrar mano de obra datos"},
-    {"id": "analisis", "nombre": "Análisis Financiero", "corto": "Análisis", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "af_viz_theme",
+    {"id": "centro-costos", "nombre": "Centro de Costos", "icono": "recibo", "grupo": "controlar", "tipo": "marco", "incrustar": "tablero", "tema": "cc_viz_theme",
+     "ruta": "/finanzas-quempin/centro-de-costos/", "peru": "/finanzas-quempin/centro-de-costos-peru/", "proyecto": "tag",
+     "breve": "Gasto real, factura por factura",
+     "desc": "El gasto real de cada proyecto, factura por factura.",
+     "claves": "centro costos factura facturas boleta boletas gasto gastos real proveedor"},
+    {"id": "analisis", "nombre": "Análisis Financiero", "corto": "Análisis", "icono": "tendencia", "grupo": "controlar", "tipo": "marco", "incrustar": "tablero", "tema": "af_viz_theme",
      "ruta": "/finanzas-quempin/analisis-financiero/", "peru": "/finanzas-quempin/analisis-financiero-peru/", "proyecto": "af", "pestanaTablero": "tabResumen",
      "breve": "Real frente a presupuesto, y su Nota",
      "desc": "El costo real frente a lo presupuestado y la venta de cada proyecto, con su Nota.",
      "claves": "analisis financiero rentabilidad margen nota venta cierre"},
-    {"id": "flujo-caja", "nombre": "Flujo de Caja", "grupo": "finanzas", "tipo": "marco", "incrustar": "tablero", "tema": "fc_viz_theme", "sinCaptura": true,
+    {"id": "flujo-caja", "nombre": "Flujo de Caja", "icono": "flujo", "grupo": "controlar", "tipo": "marco", "incrustar": "tablero", "tema": "fc_viz_theme", "sinCaptura": true,
      "ruta": "/finanzas-quempin/flujo-de-caja/", "breve": "Pagos y cobros, mes a mes",
      "desc": "Lo pagado, lo comprometido y lo por cobrar, mes a mes.",
      "claves": "flujo caja pagos cobros cuotas mes"},
-    {"id": "cotizacion", "nombre": "Emitir cotización", "grupo": "cotizar", "tipo": "programa", "accion": "«Nueva Cotización»",
-     "enlace": "quempin://cotizacion", "breve": "Sistema QUEMPIN · tipo 60",
-     "desc": "Las cotizaciones (tipo 60) se emiten en Sistema QUEMPIN, desde el borrador que deja el Formulador.",
-     "claves": "cotizar cotizacion cotizaciones emitir folio 60 pdf cliente sistema quempin exe programa"},
-    {"id": "orden-compra", "nombre": "Orden de compra", "grupo": "cotizar", "tipo": "programa", "accion": "«Nueva Orden de Compra»",
-     "enlace": "quempin://orden-compra", "breve": "Sistema QUEMPIN · tipo 61",
-     "desc": "Las órdenes de compra (tipo 61) a proveedores, con sus cuotas de pago, se emiten en Sistema QUEMPIN.",
-     "claves": "orden ordenes compra oc proveedor 61 sistema quempin exe programa"},
-    {"id": "diametro", "nombre": "Diámetro de tubería", "corto": "Diámetro", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
+    {"id": "diametro", "nombre": "Diámetro de tubería", "corto": "Diámetro", "icono": "diametro", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
      "ruta": "/calculadora-tecnica-quempin/DiametroTuberia/", "normas": "GLP · Gas natural · Hidrógeno", "pestanas": [],
      "breve": "Cálculo rápido de la cañería",
      "desc": "Gas, potencia, largo y codos: el menor diámetro comercial que cumple la pérdida de carga.",
      "claves": "diametro tuberia tuberias cañeria caneria calculo rapido perdida de carga calculadora"},
-    {"id": "hidrogeno", "nombre": "Hidrógeno", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
+    {"id": "hidrogeno", "nombre": "Hidrógeno", "icono": "h2", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
      "ruta": "/calculadora-tecnica-quempin/Hidrogeno/", "normas": "ASME B31.12 · NFPA 2",
      "pestanas": [{"id": "flujo", "nombre": "Tubería y flujo"}, {"id": "almacenamiento", "nombre": "Almacenamiento"},
                   {"id": "memoria", "nombre": "Memoria de cálculo"}],
      "breve": "ASME B31.12 · NFPA 2",
      "desc": "Tubería y flujo, almacenamiento y memoria de cálculo de redes ramificadas.",
      "claves": "hidrogeno h2 calculadora"},
-    {"id": "gas", "nombre": "Gas natural / GLP", "corto": "Gas / GLP", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
+    {"id": "gas", "nombre": "Gas natural / GLP", "corto": "Gas / GLP", "icono": "llama", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
      "ruta": "/calculadora-tecnica-quempin/GasNatural-GLP/", "normas": "D.S. N°66",
      "pestanas": [{"id": "red-gas", "nombre": "Red de gas"}, {"id": "almacenamiento", "nombre": "Almacenamiento GLP"},
                   {"id": "combustion", "nombre": "Combustión"}, {"id": "quemador", "nombre": "Quemador atmosférico"},
@@ -3667,7 +3637,7 @@
      "breve": "D.S. N°66 · red, estanque, quemador",
      "desc": "Red de gas, cilindros y estanque GLP, combustión y quemador atmosférico.",
      "claves": "gas natural glp gn propano calculadora"},
-    {"id": "otros-gases", "nombre": "Otros gases", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
+    {"id": "otros-gases", "nombre": "Otros gases", "icono": "moleculas", "grupo": "calcular", "tipo": "marco", "familia": "calculadora", "incrustar": "calculadora", "tema": "quempin_h2_theme",
      "ruta": "/calculadora-tecnica-quempin/OtrosGases/", "normas": "CO₂ · NH₃ · gas definido por sus constantes",
      "pestanas": [{"id": "gas", "nombre": "Propiedades del gas"}, {"id": "flujo", "nombre": "Tubería y flujo"},
                   {"id": "almacenamiento", "nombre": "Almacenamiento"}, {"id": "memoria", "nombre": "Memoria de cálculo"}],
@@ -3740,13 +3710,13 @@
      "usan": ["cotizacion", "orden-compra"],
      "falta": "No llegan a tu computador el programa, su carpeta compartida ni el Control de Documentos."},
     {"id": "sistema", "tipo": "Programa", "nombre": "Sistema QUEMPIN (QUEMPIN.exe)", "corto": "QUEMPIN.exe",
-     "para": "Emite las cotizaciones (60) y las órdenes de compra (61) con su folio. «Cotizar y comprar» lo abre desde el portal, y desde la versión 1.3.10 abre la carpeta de cada proyecto en el Explorador (también la de Gestión de Proyectos, desde «Proyectos en ejecución») y, al adjudicarse, la copia a Gestión de Proyectos (el original pasa a 0 OFERTAS ADJUDICADAS).",
+     "para": "Emite las cotizaciones (60) y las órdenes de compra (61) con su folio. «Emitir cotización» y «Orden de compra» lo abren desde el portal, y desde la versión 1.3.10 abre la carpeta de cada proyecto en el Explorador (también la de Gestión de Proyectos, desde «Proyectos en ejecución») y, al adjudicarse, la copia a Gestión de Proyectos (el original pasa a 0 OFERTAS ADJUDICADAS).",
      "ruta": ["OneDrive - QUEMPIN SPA", "Cotizaciones y OC - Documentos", "QUEMPIN.exe"],
      "pasos": ["Ábrelo una vez con doble clic desde esa carpeta (versión 1.3.10 o más nueva). «Crear acceso directo.bat», en la Carpeta compartida QUEMPIN, lo deja en el Escritorio.",
                "La primera vez pide la Carpeta compartida QUEMPIN (botón Examinar…), tu nombre, iniciales, cargo y correo. Quedan solo en tu computador y se cambian en Configuración › Mi perfil.",
                "La primera vez que el portal lo abre, el navegador pregunta: marca «Permitir siempre» y elige «Abrir»."],
      "usan": ["cotizacion", "orden-compra", "ejecucion"],
-     "falta": "Los botones de «Cotizar y comprar» y el de la carpeta del proyecto no hacen nada: abre el programa una vez desde su carpeta."},
+     "falta": "Los botones de «Emitir cotización», «Orden de compra» y el de la carpeta del proyecto no hacen nada: abre el programa una vez desde su carpeta."},
     {"id": "compartida", "tipo": "Carpeta", "nombre": "Carpeta compartida QUEMPIN", "corto": "Carpeta compartida",
      "para": "Los datos comunes de Sistema QUEMPIN: clientes, proveedores, documentos emitidos y sus PDF, más su guía LEEME.md y las versiones anteriores del programa.",
      "ruta": ["OneDrive - QUEMPIN SPA", "Cotizaciones y OC - Documentos", "Carpeta compartida QUEMPIN"],
@@ -3923,7 +3893,24 @@
     visto: '<path d="M5 12.5l4.5 4.5L19 7.5" stroke-width="3"/>',
     exclama: '<path d="M12 5.5v8.5" stroke-width="3"/><path d="M12 18.6h.01" stroke-width="3.6"/>',
     cruz: '<path d="M7 7l10 10M17 7L7 17" stroke-width="3"/>',
-    guion: '<path d="M7 12h10" stroke-width="3"/>'
+    guion: '<path d="M7 12h10" stroke-width="3"/>',
+    // Las herramientas (2026-11-10, el Inicio «Tres áreas»): un dibujo propio cada una, el mismo en el Inicio y en su pestaña
+    oportunidad: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/><path d="M11 8v6M8 11h6"/>',
+    requerimiento: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>',
+    formulario: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/>',
+    seguimiento: '<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>',
+    etiqueta: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
+    emitir: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 15h6M12 12v6"/>',
+    gantt: '<path d="M4 4v16h16"/><path d="M7 8h6M10 12h7M8 16h5"/>',
+    carro: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l3 12h11l2-8H6.5"/>',
+    avance: '<path d="M4 20h16"/><path d="M7 16v-4M12 16V8M17 16v-7"/>',
+    recibo: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+    tendencia: '<path d="M3 20h18"/><path d="M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/>',
+    flujo: '<path d="M4 8h14l-3-3M20 16H6l3 3"/>',
+    diametro: '<circle cx="12" cy="12" r="8"/><path d="M6 18L18 6"/>',
+    h2: '<path d="M4 6v12M12 6v12M4 12h8"/><path d="M15 13.5a2.5 2.5 0 0 1 5 0c0 2-5 3-5 5h5"/>',
+    llama: '<path d="M12 3c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-4 2-7 2 1 3 3 3 5 1-2 1-5 1-9z"/>',
+    moleculas: '<circle cx="8" cy="15" r="4"/><circle cx="16" cy="9" r="3"/><circle cx="17" cy="18" r="2"/>'
   };
   function icono(nombre, tam) {
     const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -4068,7 +4055,7 @@
     activa: 'inicio',           // familia activa, o 'inicio'
     pais: leer(LS.pais, 'cl') === 'pe' ? 'pe' : 'cl',
     // abierto: el único grupo desplegado del menú (así cabe sin barra de desplazamiento)
-    menu: Object.assign({ abierto: 'formular' }, leer(LS.menu, {}) || {}),
+    menu: Object.assign({ abierto: 'ofertar' }, leer(LS.menu, {}) || {}),
     proyectos: [],
     usuario: ''                 // las iniciales de quien trabaja (leerUsuario), o ''
   };
@@ -4641,65 +4628,6 @@
     rcAlCambiarUsuario();
     if (cxArmada && !$('#vistaConexiones').hidden) pintarEstadoConexiones();
     if (cambia) avisar(nuevo ? 'Trabajas como ' + nuevo + ': lo que formules o registres queda a tu nombre.' : 'Sin usuario: lo que hagas no queda a nombre de nadie.');
-  }
-
-  // ---- Inicio --------------------------------------------------------------------------------------
-  // Una herramienta como fila del Inicio: nombre, línea breve y ↗ si se abre fuera del portal.
-  function itemHerramienta(h) {
-    const b = crear('button', 'ini-item');
-    b.type = 'button';
-    b.dataset.herr = h.id;
-    const t = crear('span', 'ini-txt');
-    t.append(crear('span', 'ini-nom', h.nombre));
-    if (h.breve) t.append(crear('span', 'ini-sub', h.breve));
-    b.append(t);
-    b.title = h.desc || h.nombre;
-    if (h.tipo !== 'marco' && h.tipo !== 'vista') {
-      // Se abre fuera del portal: Excel o Sistema QUEMPIN
-      const f = crear('span', 'ini-fuera');
-      f.append(icono('fuera', 15));
-      b.append(f);
-      b.append(crear('span', 'sr', h.tipo === 'programa' ? ' (abre Sistema QUEMPIN)' : ' (abre Excel)'));
-    }
-    b.addEventListener('click', () => abrir(h.id));
-    return b;
-  }
-  // Todas las herramientas a la vista, una columna por grupo (sin Ayuda, que está en el pie y el menú).
-  function pintarInicio() {
-    const cont = $('#iniGrupos');
-    if (!cont.childElementCount) {   // no depende de datos: se arma una vez
-      REG.grupos.filter((g) => g.id !== 'ayuda').forEach((g) => {
-        const sec = crear('section', 'ini-grupo');
-        sec.setAttribute('aria-labelledby', 'ini-' + g.id);
-        const h2 = crear('h2');
-        h2.id = 'ini-' + g.id;
-        const i = crear('span', 'ico'); i.append(icono(g.icono));
-        h2.append(i, crear('span', null, g.nombre));
-        const ul = crear('ul', 'ini-lista');
-        REG.herramientas.filter((h) => h.grupo === g.id).forEach((h) => {
-          const li = crear('li');
-          li.append(itemHerramienta(h));
-          ul.append(li);
-        });
-        sec.append(h2, ul);
-        cont.append(sec);
-      });
-    }
-    // Las que ya tienen su pestaña abierta llevan un punto: volver a elegirlas va a esa pestaña.
-    const abiertas = new Set(estado.pestanas.map((p) => p.herr));
-    cont.querySelectorAll('.ini-item').forEach((b) => {
-      const si = abiertas.has(b.dataset.herr);
-      b.classList.toggle('abierta', si);
-      const nom = b.querySelector('.ini-nom');
-      if (si) nom.dataset.estado = 'abierta'; else delete nom.dataset.estado;
-    });
-    plPintarAlarmaGlobal();    // la Planificación semanal lleva su alarma junto a su nombre
-    // La línea del Recorrido: con la biblioteca ya conectada y con permiso, dice cuánto espera (sin pedir nada).
-    pintarInicioRecorrido();
-    if (!rc.leyendo && (!rc.intentado || (rc.leido && Date.now() - rc.leido > 5 * RC_RELEER_SEG * 1000))) {
-      rc.intentado = true;
-      rcCargar();
-    }
   }
 
   // ---- Sistema QUEMPIN (QUEMPIN.exe) ---------------------------------------------------------------
@@ -6480,63 +6408,101 @@
     if (!$('#dlgRecorrido').open) $('#dlgRecorrido').showModal();
   }
 
-  // ---- En el Inicio, debajo de las herramientas, y cambios de usuario --------------------------------
-  /* Pedido del usuario (2026-10-20): una vista previa del recorrido enfocada en el usuario elegido. Lo que le
-     espera (la cifra «Te esperan» del tablero), lo urgente primero, cada tarjeta con su etapa y su botón. Si
-     nada le espera, o no hay usuario o datos, queda un acceso directo al recorrido que dice cómo va el equipo. */
-  const RC_INICIO_MAX = 4;      // una fila; con más, la última casilla es «+N más»
-  // Entre etapas distintas: lo urgente primero y después en el orden del recorrido
-  const rcOrdenInicio = (a, b) => rcPeso(a) - rcPeso(b) || rcEtapaN(a) - rcEtapaN(b) || rcOrden(a, b);
-  function rcAbrirDesdeInicio(foco) {
-    rc.foco = foco || null;
-    abrir('recorrido');
+  // ---- Inicio: las herramientas por área (2026-11-10) -------------------------------------------------
+  /* Pedido del usuario: el saludo y las herramientas de cada área del trabajo como botones con su ícono, sin cifras ni
+     gráficos. Lo único que depende de la carpeta del equipo es la alarma de la Planificación semanal en su botón
+     (plPintarAlarmaGlobal); por eso el Inicio sigue pidiendo la lectura del Recorrido. */
+  const ini = { cuadro: 0 };
+  const iniVisible = () => !$('#vistaInicio').hidden;
+  // El nombre de cada botón: el corto, salvo donde cabe uno más claro. Los de una palabra larga llevan guiones suaves
+  // entre sílabas: con poco ancho (1024 px) se cortan ahí y no en cualquier letra. Los de dos palabras se cortan en el
+  // espacio (con guiones suaves, el navegador cortaría «Análisis Finan-ciero»).
+  const INI_NOMBRE = { analisis: 'Análisis Financiero', 'subir-cc': 'Subir docs.' };
+  const INI_SILABAS = new Map(['Opor-tu-ni-da-des', 'Re-que-ri-mien-tos', 'For-mu-la-dor', 'Se-gui-mien-to', 'Co-ti-za-dor',
+    'Pla-ni-fi-ca-ción', 'Diá-me-tro', 'Hi-dró-ge-no'].map((w) => [w.replace(/-/g, ''), w.replace(/-/g, '­')]));
+  const iniNombre = (h) => { const n = INI_NOMBRE[h.id] || h.corto || h.nombre; return INI_SILABAS.get(n) || n; };
+
+  // Una herramienta como botón: su ícono, su nombre y ↗ si se abre fuera del portal
+  function iniBoton(h) {
+    const b = crear('button', 'ini-item');
+    b.type = 'button';
+    b.dataset.herr = h.id;
+    const ico = crear('span', 'ini-ico');
+    ico.append(icono(iconoDe(h), 24));
+    b.append(ico, crear('span', 'ini-nom', iniNombre(h)));
+    b.title = h.nombre + (h.desc ? ': ' + h.desc : h.breve ? ': ' + h.breve : '');
+    if (h.tipo !== 'marco' && h.tipo !== 'vista') {
+      // Se abre fuera del portal: Excel o Sistema QUEMPIN
+      const f = crear('span', 'ini-fuera');
+      f.append(icono('fuera', 12));
+      b.append(f, crear('span', 'sr', h.tipo === 'programa' ? ' (abre Sistema QUEMPIN)' : ' (abre Excel)'));
+    }
+    b.addEventListener('click', () => abrir(h.id));
+    return b;
   }
-  function pintarInicioRecorrido() {
-    const u = estado.usuario;
-    const tuyas = rc.leido && u ? rc.tarjetas.filter(RC_FOCOS.accion.es).sort(rcOrdenInicio) : [];
-    $('#iniRc').hidden = !tuyas.length;
-    $('#iniRecorrido').hidden = !!tuyas.length;
-    if (!tuyas.length) { pintarInicioAcceso(); return; }
-    const tit = $('#iniRcTit');
-    tit.textContent = '';
-    tit.append(crear('span', null, tuyas.length === 1 ? 'Te espera 1 proyecto' : 'Te esperan ' + tuyas.length + ' proyectos'), crear('b', null, u));
-    const n = rcCifras(rc.tarjetas.filter(rcMia));
-    const partes = [];
-    if (n.cierran) partes.push(pl(n.cierran, 'cierra esta semana', 'cierran esta semana'));
-    if (n.esperan) partes.push(pl(n.esperan, 'espera respuesta', 'esperan respuesta'));
-    if (n.ejecucion) partes.push(n.ejecucion + ' en ejecución');
-    $('#iniRcSub').textContent = partes.length ? 'De tus proyectos, ' + partes.join(' · ') : 'Lo más urgente primero, con el botón para hacerlo';
-    const lista = $('#iniRcLista');
-    lista.textContent = '';
-    const caben = tuyas.length > RC_INICIO_MAX ? RC_INICIO_MAX - 1 : tuyas.length;
-    tuyas.slice(0, caben).forEach((t) => { const li = crear('li'); li.append(rcTarjetaEl(t, true)); lista.append(li); });
-    if (caben < tuyas.length) {
-      const b = crear('button', 'ini-rc-mas');
-      b.type = 'button';
-      b.append(crear('span', 'n', '+' + (tuyas.length - caben)), crear('span', null, 'Ver los ' + tuyas.length + ' que te esperan'));
-      b.title = 'Abrir el recorrido con solo lo que te espera';
-      b.addEventListener('click', () => rcAbrirDesdeInicio('accion'));
-      const li = crear('li');
-      li.append(b);
-      lista.append(li);
+  function pintarInicio() {
+    document.querySelectorAll('#iniAreas .ini-area').forEach((sec) => {
+      const ul = sec.querySelector('.ini-tiles');
+      if (ul.childElementCount) return;      // no depende de datos: se arma una vez
+      REG.herramientas.filter((h) => h.grupo === sec.dataset.grupo).forEach((h) => {
+        const li = crear('li');
+        li.append(iniBoton(h));
+        ul.append(li);
+      });
+    });
+    // Las que ya tienen su pestaña abierta llevan un punto: volver a elegirlas va a esa pestaña.
+    const abiertas = new Set(estado.pestanas.map((p) => p.herr));
+    document.querySelectorAll('#iniAreas .ini-item').forEach((b) => {
+      const si = abiertas.has(b.dataset.herr);
+      b.classList.toggle('abierta', si);
+      let s = b.querySelector('.sr.abierta-sr');
+      if (si && !s) { s = crear('span', 'sr abierta-sr', ' (ya abierta)'); b.append(s); }
+      if (!si && s) s.remove();
+    });
+    estado.proyectos = leerProyectos();      // el Formulador pudo cambiarlos mientras tanto (los usa el buscador)
+    plPintarAlarmaGlobal();    // la Planificación semanal lleva su alarma en su botón
+    iniPintarDatos();
+    if (!rc.leyendo && (!rc.intentado || (rc.leido && Date.now() - rc.leido > 5 * RC_RELEER_SEG * 1000))) {
+      rc.intentado = true;
+      rcCargar();
     }
   }
-  function pintarInicioAcceso() {
-    const sub = $('#iniRecorridoSub');
-    if (!rc.leido) { sub.textContent = 'Dónde va cada proyecto del equipo y qué sigue en cada uno'; return; }
-    const n = rcCifras(rc.tarjetas);
-    const equipo = [];
-    if (!estado.usuario && n.accion) equipo.push(pl(n.accion, 'requiere acción', 'requieren acción'));
-    if (n.cierran) equipo.push(pl(n.cierran, 'cierra esta semana', 'cierran esta semana'));
-    if (n.esperan) equipo.push(pl(n.esperan, 'espera respuesta', 'esperan respuesta'));
-    if (n.ejecucion) equipo.push(n.ejecucion + ' en ejecución');
-    sub.textContent = (estado.usuario ? 'Nada te espera por ahora' : 'Elige tu usuario para ver aquí lo que te espera')
-      + (equipo.length ? '. En el equipo, ' + equipo.join(' · ') : '');
+  // Lo que cambia con los datos o el usuario, una vez por cuadro aunque lo pidan varias lecturas seguidas. Con el Inicio
+  // escondido no se pinta: se pinta al volver a él.
+  function pintarInicioRecorrido() {
+    if (ini.cuadro) return;
+    ini.cuadro = requestAnimationFrame(() => { ini.cuadro = 0; iniPintarDatos(); });
   }
+  function iniPintarDatos() {
+    if (!iniVisible()) return;
+    iniPintarSaludo();
+  }
+  // El saludo; sin usuario, se elige aquí mismo con un clic (también está arriba, en la cabecera)
+  function iniPintarSaludo() {
+    const hoy = new Date();
+    const h = hoy.getHours();
+    const t = $('#tituloInicio');
+    t.textContent = h < 12 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
+    if (estado.usuario) t.append(', ', crear('b', null, estado.usuario));
+    t.title = hoy.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' }) + ' · semana ' + (+plHoyId().slice(-2));
+    const q = $('#iniQuien');
+    q.hidden = !!estado.usuario;
+    if (!estado.usuario && !q.querySelector('button')) {
+      USUARIOS.forEach((u) => {
+        const b = crear('button', null, u);
+        b.type = 'button';
+        b.dataset.usuario = u;
+        b.title = 'Trabajar como ' + u;
+        b.addEventListener('click', () => elegirUsuario(u));
+        q.append(b);
+      });
+    }
+  }
+
   // «Solo mis proyectos» se recuerda aunque no haya usuario: vuelve a valer al elegir uno.
   function rcAlCambiarUsuario() {
     if (!$('#vistaRecorrido').hidden) rcPintar();
-    pintarInicioRecorrido();
+    iniPintarDatos();      // al momento: es lo que la persona acaba de cambiar
     if (!$('#vistaPlan').hidden) plPintar();     // la Planificación semanal también marca lo suyo
     if (!$('#vistaEjecucion').hidden) ejPintar();
     if (!$('#vistaObservaciones').hidden) obsPintar();
@@ -8381,6 +8347,7 @@
       s.textContent = String(n);
       s.title = que;
     });
+    pintarInicioRecorrido();     // el aviso del Inicio
   }
 
   // ---- Pintar ---------------------------------------------------------------------------------------------
@@ -12269,6 +12236,7 @@
       ej.leyendo = null;
       if (ej.porGuardar && !ej.guardando && !ej.error) ejGuardar();    // lo que esperaba, ahora que se lee la carpeta
       if (cambio && !$('#vistaEjecucion').hidden) ejPintar(); else ejPintarFrescura();
+      pintarInicioRecorrido();
     });
     return ej.leyendo;
   }
@@ -16672,7 +16640,6 @@
   });
   $('#obsMias').addEventListener('change', (e) => { obs.soloMias = e.target.checked; obsPintar(); });
   $('#obsNueva').addEventListener('click', () => obsAbrir(null));
-  $('#iniObs').addEventListener('click', () => obsAbrir(null));
 
   // ---- Tema ----------------------------------------------------------------------------------------
   function oscuroAhora() {
@@ -16788,15 +16755,7 @@
   $('#velo').addEventListener('click', () => mostrarMenu(false));
   MOVIL.addEventListener('change', () => { mostrarMenu(false); mostrarBuscadorMovil(false); });
   $('#btnInicio').addEventListener('click', () => abrir('inicio'));
-  $('#iniAyuda').addEventListener('click', () => abrir('ayuda'));
-  $('#iniConexiones').addEventListener('click', () => abrir('conexiones'));
   // Recorrido de proyectos
-  $('#iniRecorrido').addEventListener('click', () => rcAbrirDesdeInicio());
-  $('#iniRecorridoIco').append(icono('ruta', 22));
-  $('#iniRecorridoIr').append(icono('derecha', 16));
-  $('#iniRcIco').append(icono('ruta', 20));
-  $('#iniRcVer').append(icono('derecha', 16));
-  $('#iniRcVer').addEventListener('click', () => rcAbrirDesdeInicio());
   $('#rcActualizar').append(icono('recargar', 16));
   $('#rcActualizar').addEventListener('click', () => {
     if (rc.sinDatos === 'permiso') { rcPedirPermiso(); return; }
