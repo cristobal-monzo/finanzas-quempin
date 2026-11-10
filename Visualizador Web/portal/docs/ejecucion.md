@@ -42,8 +42,12 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   pasa, gastado + comprometido + simulado (`ejCuentas`): lo que todavía no se compra se estima con el presupuesto. Sin
   presupuesto, el margen es «con lo anotado» y no lleva semáforo; sin presupuesto ni nada anotado, no hay margen. Una OC
   sin `enCentroCostos` (el procesador no lo sabe) no se suma: así nunca se cuenta dos veces.
-- **Gastos proyectados y cotizaciones**: cada ítem con categoría, la línea del presupuesto que reemplaza (las de su
-  formulación, con las reglas del Formulador: `js/calc.js`; para uno nuevo se propone la más parecida), cantidad y uno o
+- **Gastos proyectados y cotizaciones**: cada ítem con categoría, las líneas del presupuesto que reemplaza (las de su
+  formulación, con las reglas del Formulador: `js/calc.js`; para uno nuevo se propone la más parecida; 2026-11-10, pedido
+  del usuario: «hay cotizaciones que abordan más de un ítem de lo presupuestado», así que pueden ser varias de su
+  categoría: van una bajo otra con su ✕ y el menú agrega otra, `ejOpcionesLinea`; se guardan en `lineas` y la primera
+  también en `linea`, que es lo que traen las anotadas antes, `ejLineasDe`; con varias, el total se compara con lo que
+  suman), cantidad y uno o
   varios proveedores (nombre, precio sin IVA, N° de cotización, fecha y nota), estado (por decidir, aprobada, comprada con
   su OC, descartada) y si se simula. El diálogo (`#dlgEjCosto`) evalúa al proveedor elegido mientras se escribe, al lado
   del formulario (`ejEvaluar`): contra su línea (hasta 3 % más cara
@@ -213,3 +217,17 @@ cuántas cosas son y cuáles (`.ej-porhacer-res`); abierto o cerrado se recuerda
   etiquetas buscan un lugar libre (derecha, izquierda, arriba, abajo: `lugarEtq`) y lo tuyo se marca con la etiqueta en
   naranjo, no con un anillo; zonas más tenues. El acceso activo de la fila de partes va en tinte naranjo (no blanco en
   oscuro), las pastillas más chicas, y el estado de la cabecera es una caja sin relleno, más baja.
+
+## Trabajar a la vez (2026-11-10)
+
+Pedido del usuario: que se pueda trabajar a la vez en la Planificación y en Proyectos en ejecución, sin conectar
+servicios nuevos. La unión ya existía (en cada `id` manda el cambio más reciente); se agregó lo mismo que en la
+Planificación (detalle en [planificacion.md](planificacion.md), «Lo tuyo que otro reemplazó y quién más está»):
+- **Lo que llega de otro** (`ejNotarAjenos`, desde `ejLeer`): se ilumina 6 s y la línea de arriba dice «NB acaba de
+  cambiar 2 cosas» durante `PL_AJENO_SEG`. Se relee cada `EJ_RELEER_SEG` = 10 s (antes 30).
+- **Franja de lo reemplazado** (`#ejPisado`, `ej.pisado`): si eso reemplaza algo que este navegador cambió hace menos de
+  `PISADO_MIN` minutos, con otro valor (`ejValor` compara lo validado, sin quién ni cuándo): «NB cambió la cotización
+  «…» (N° 908)». «Volver a lo mío» (`ejVolverPisado`) lo repone con `ejPoner`, con su Deshacer.
+- **Presencia** (`#ejConmigo`): con un proyecto abierto, «NB también está en este proyecto» (`donde` = la clave de la
+  tarjeta).
+- Prueba: `test_en_ejecucion_se_ve_quien_cambio_algo_y_lo_tuyo_que_reemplazo`.

@@ -28,6 +28,7 @@
         "elegida": true,
         "oc": "",
         "linea": "m3ejemplo",
+        "lineas": ["m3ejemplo", "m4ejemplo"],
         "ref": "",
         "nota": "Plazo de entrega 10 días"
       },

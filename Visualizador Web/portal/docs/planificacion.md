@@ -223,3 +223,18 @@ en paralelo):
   lectura o escritura de más de `PL_ATASCO_SEG` dice «La carpeta del equipo no responde: recarga la página (F5)», en rojo.
 - **Tras un error al guardar**, se reintenta solo cada `PL_REINTENTO_SEG`, no en cada lectura: el aviso parpadearía.
 - Pruebas: desde `test_lo_que_cambia_un_colega_llega_solo_y_se_ve_quien_fue`.
+
+**Lo tuyo que otro reemplazó y quién más está** (2026-11-10, pedido del usuario: trabajar a la vez en la Planificación y en
+Proyectos en ejecución; se eligió lo que no necesita conectar servicios nuevos, sin Microsoft Graph):
+- **Franja de lo reemplazado** (`#plPisado`, `plNotarAjenos` → `planif.pisado`, `plPintarPisado`): si lo que llega de otro
+  computador reemplaza una casilla que este navegador cambió menos de `PISADO_MIN` (60) minutos antes y con otro valor
+  (`plValor`), dice quién y qué («Asignaste a LC el lunes 10 en Llay Llay; NB quitó esa asignación»). «Volver a lo mío»
+  (`plVolverPisado`) lo repone como un cambio nuevo, en un paso de Deshacer; «Dejar lo de NB» la cierra. Volver a cambiar
+  esa casilla la saca de la franja. El vehículo que se fue con una asignación no se cuenta aparte.
+- **Presencia** (`#plConmigo`, `pres*`, compartido con Ejecución): cada navegador deja en
+  `publicado/presencia/<dispositivo>.json` (esquema `presencia`) la semana que tiene a la vista, cada `PRES_RENOVAR_SEG` (90)
+  y vacío al salir de la vista o de la pestaña. Lee la carpeta cada `PRES_LEER_SEG` (15) y nombra a quien está en la misma
+  semana y lo renovó hace menos de `PRES_VIGENCIA_SEG` (300): «NB también está en esta semana». A la misma persona en otro
+  computador no la nombra.
+- Pruebas: `test_si_un_colega_reemplaza_lo_que_acabas_de_cambiar_se_avisa_y_se_puede_volver`,
+  `test_se_ve_quien_mas_esta_en_la_misma_semana`.
