@@ -5687,6 +5687,56 @@ def test_un_requerimiento_ya_cerrado_con_su_carpeta_en_gestion_no_la_mueve_sin_p
     pagina.context.close()
 
 
+def _gestion_908(archivos, estado=None):
+    archivos["publicado/proyectos.json"]["datos"]["gestion"] = [{"carpeta": "908. En obra", "req": "908"}]
+    if estado:
+        for r in archivos["publicado/requerimientos.json"]["datos"]["requerimientos"]:
+            if r["numero"] == 908:
+                r["estado"] = estado
+
+
+def test_marcar_cerrado_desde_proyectos_en_ejecucion(navegador, sitio):
+    """Pedido del 2026-11-10: en «Proyectos en ejecución» también se cambia el estado a «Cerrado», con la misma opción de
+    llevar su carpeta a «0 Proyectos Entregados» que en Requerimientos."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, usuario="NB", proyecto="req-908", cambiar=_gestion_908)
+    pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').click()
+    dlg = pagina.locator("#dlgEjCerrar")
+    assert "a «Cerrado»" in dlg.locator("#ejCerPista").inner_text()
+    assert dlg.locator("#ejCerMover").is_checked() and "908. En obra" in dlg.locator("#ejCerMoverDe").inner_text()
+    dlg.locator("#ejCerGuardar").click()
+    dlg.wait_for(state="hidden")
+    _esperar_aviso(pagina, "N° 908 marcado «Cerrado»")
+    (editar,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert editar["requerimiento"]["numero"] == 908 and editar["cambios"] == {"estado": "Cerrado"}
+    assert editar["origen"]["usuario"] == "NB" and _esquemas().validar_mensaje(editar) == []
+    (mover,) = _mover_pedidos(pagina)
+    assert mover["requerimiento"]["numero"] == 908 and _esquemas().validar_mensaje(mover) == []
+    assert any(m.get("tipo") == "pedir-vuelta" for m in pagina.evaluate(JS_BUZON).values())
+    # Ya «Cerrado» (el pedido espera en el buzón): el botón solo ofrece llevar la carpeta
+    assert pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').inner_text() == "Llevar su carpeta a entregados"
+    assert not errores
+    pagina.context.close()
+
+
+def test_marcar_cerrado_sin_mover_y_ya_cerrado_solo_mueve(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_gestion_908)
+    pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').click()
+    pagina.locator("#ejCerMover").uncheck()
+    pagina.locator("#ejCerGuardar").click()
+    _esperar_aviso(pagina, "N° 908 marcado «Cerrado»")
+    assert len(_pedidos_planilla(pagina, "editar-requerimiento")) == 1 and _mover_pedidos(pagina) == []
+    pagina.context.close()
+    # Ya «Cerrado» en la Planilla con su carpeta en Gestión: solo el pedido de mover
+    pagina, errores2 = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=lambda a: _gestion_908(a, "Cerrado"))
+    pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').click()
+    assert pagina.locator("#ejCerMover").is_checked() and pagina.locator("#ejCerMover").is_disabled()
+    pagina.locator("#ejCerGuardar").click()
+    _esperar_aviso(pagina, "N° 908:")
+    assert len(_mover_pedidos(pagina)) == 1 and _pedidos_planilla(pagina, "editar-requerimiento") == []
+    assert not errores and not errores2
+    pagina.context.close()
+
+
 def test_cerrado_en_la_planilla_va_al_cierre_del_recorrido(navegador, sitio):
     """908 tiene ficha en el Análisis (40 % de avance): «Cerrado» en la Planilla lo lleva al «Cierre», sin el aviso de que
     corresponde «Adjudicado», y pide dejar el avance en 100 %."""

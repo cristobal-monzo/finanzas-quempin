@@ -72,6 +72,13 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   la mano de obra y margen, presupuestados (los `kpis` de `js/calc.js`) y estimados hoy; los días-hombre al cierre son
   los presupuestados o, si ya se pasaron, los trabajados.
 - **El nombre que se ve** (2026-11-09): el lápiz ✎ junto al título de la cabecera pide al Análisis Financiero solo el **Apodo** (`datos-proyecto`, `ejGuardarNombre`); vacío = se ve el «Nombre del proyecto». El nombre pedido se ve desde ya (`rcArmar`).
+- **Marcar «Cerrado»** (2026-11-10, pedido del usuario: que en Proyectos en ejecución también se pueda cambiar el estado a
+  «Cerrado»): el acceso «Marcar «Cerrado»» de la cabecera (`ejCierreDe`, `ejAbrirCerrar`, `ejGuardarCerrar`, `#dlgEjCerrar`)
+  manda el mismo `editar-requerimiento` que Requerimientos (`pqEnviar`, con el N° entero de la Planilla) y, marcada de
+  entrada si tiene carpeta con su N° en la raíz de Gestión, el `mover-carpeta` a «0 Proyectos Entregados <año>»
+  (`pqEnviarMover`) más una vuelta del procesador. Si la Planilla ya dice «Cerrado» y la carpeta sigue en Gestión, el
+  acceso dice «Llevar su carpeta a entregados» y solo pide moverla. Sin N° o sin fila en la Planilla, no aparece. Pruebas:
+  `test_marcar_cerrado_desde_proyectos_en_ejecucion`, `test_marcar_cerrado_sin_mover_y_ya_cerrado_solo_mueve`.
 - **El avance** (y la fecha de término) se pide al Análisis Financiero con un `datos-proyecto` al buzón (`ejEnviarAF`, el
   mismo que usa ahora «Dar por cerrado»); un pedido sobre otro que todavía espera lleva en `reemplaza` el valor del
   anterior (`ejVisto`). `rcLeer` lee esos pedidos del buzón (`datosProyecto`) y lo que dijo el Análisis de cada uno
