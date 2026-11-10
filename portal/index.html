@@ -13,6 +13,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Crect x='10' y='50' width='44' height='5' fill='%23ff5100'/%3E%3Ctext x='32' y='42' font-family='Arial,sans-serif' font-size='34' font-weight='900' text-anchor='middle' fill='%23fff'%3EQ%3C/text%3E%3C/svg%3E">
 <!-- Lato, la tipografía del manual de marca: una sola copia, también para el índice. -->
 <link rel="stylesheet" href="../marca/fuentes.css">
+<!-- Cajas de números: seleccionar todo al entrar y punto de miles al escribir (una sola copia, también en los tableros). -->
+<script src="../numeros.js"></script>
 <style>
   :root {
     color-scheme: light;
@@ -2811,7 +2813,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@19cbe66 2026-11-10">
+<meta name="quempin-version" content="master@503989f 2026-11-10">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -3428,7 +3430,7 @@
       <label class="pl-campo ej-ancho"><span>Qué se compra</span><input id="ejCDesc" type="text" maxlength="200" autocomplete="off" placeholder="Ej.: Estanque inoxidable 100 L con serpentín"></label>
       <div class="ej-campo ej-ancho"><span class="ej-et" id="ejCCatEt">Categoría</span><div class="pl-vistas ej-cats" id="ejCCat" role="radiogroup" aria-labelledby="ejCCatEt"></div></div>
       <div class="pl-campo ej-ancho" id="ejCLineaCampo"><span id="ejCLineaEt">Lo que reemplaza del presupuesto <i>(opcional: una o varias líneas)</i></span><div class="ej-lineas" id="ejCLineas" role="list" aria-labelledby="ejCLineaEt" hidden></div><select id="ejCLinea" aria-labelledby="ejCLineaEt"></select></div>
-      <label class="pl-campo"><span>Cantidad</span><input id="ejCCant" type="text" inputmode="decimal" autocomplete="off"></label>
+      <label class="pl-campo"><span>Cantidad</span><input id="ejCCant" type="text" inputmode="decimal" data-num autocomplete="off"></label>
       <label class="pl-campo"><span>Unidad</span><input id="ejCUnidad" type="text" maxlength="12" autocomplete="off" list="ejUnidades"></label>
       <div class="ej-campo ej-ancho">
         <span class="ej-et" id="ejCProvsEt">Proveedores</span>
@@ -3473,7 +3475,7 @@
     <h2 id="dlgEjVentaTit">Venta del proyecto</h2>
     <button class="dlg-x" id="ejVentaX" type="button" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <p id="ejVentaPista"></p>
-    <label class="pl-campo"><span>Venta neta, sin IVA</span><input id="ejVMonto" type="text" inputmode="decimal" autocomplete="off"></label>
+    <label class="pl-campo"><span>Venta neta, sin IVA</span><input id="ejVMonto" type="text" inputmode="numeric" data-num="entero" autocomplete="off"></label>
     <label class="pl-campo"><span>Por qué <i>(opcional)</i></span><input id="ejVNota" type="text" maxlength="200" autocomplete="off" placeholder="Ej.: adicional aprobado por el cliente el 20-10"></label>
     <p class="ej-dlg-pista">Solo cambia lo que muestra esta herramienta al equipo. La venta del Análisis Financiero se corrige en «Ingresar avance».</p>
     <div class="dlg-acc"><button class="cx-enlace" id="ejVQuitar" type="button" hidden>Volver a la calculada</button><button class="cx-enlace" id="ejVCancelar" type="button">Cancelar</button><button class="btn-pri" id="ejVGuardar" type="submit">Guardar</button></div>
