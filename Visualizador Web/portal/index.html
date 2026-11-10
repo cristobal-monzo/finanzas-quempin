@@ -1807,6 +1807,8 @@
   /* Mapa de salud (2026-11-09): avance (horizontal) contra gastado y comprometido sobre el presupuesto (vertical). La diagonal
      es «gasta lo que avanza»; sobre la franja de tolerancia, gasta más de lo que avanza. El estado nunca va solo en el color:
      cada punto lleva su N°, la leyenda dice cuántos hay de cada uno y el detalle sale al pasar o enfocar el punto. */
+  #ejListaCuerpo { display: flex; flex-direction: column; gap: 12px; }   /* 2026-11-10: filtros, mapa, «Espera al equipo» y tarjetas no se tocan */
+  #ejListaCuerpo[hidden] { display: none; }
   .ej-mapa {
     display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 6px 20px; padding: 14px 16px 12px;
     border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
