@@ -78,7 +78,8 @@ def test_cabecera_del_portal():
 
 def test_no_carga_nada_de_otro_sitio_ni_lleva_datos():
     html = PORTAL.read_text(encoding="utf-8")
-    assert not re.search(r"<script[^>]+\bsrc=", html), "sin scripts externos"
+    # El único script enlazado es el de las cajas de números, del mismo sitio (2026-11-10): publicar.py lo copia con él.
+    assert re.findall(r"<script[^>]+\bsrc=[^>]*>", html) == ['<script src="../numeros.js">'], "sin scripts externos"
     # La única hoja que enlaza es la de las fuentes, del mismo sitio (2026-10-30): publicar.py la copia con él.
     assert re.findall(r"<link[^>]+stylesheet[^>]*>", html) == ['<link rel="stylesheet" href="../marca/fuentes.css">']
     assert "@import" not in html, "sin hojas de estilo de otro sitio"
