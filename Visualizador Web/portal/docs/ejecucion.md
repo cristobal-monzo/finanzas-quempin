@@ -42,8 +42,12 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   pasa, gastado + comprometido + simulado (`ejCuentas`): lo que todavía no se compra se estima con el presupuesto. Sin
   presupuesto, el margen es «con lo anotado» y no lleva semáforo; sin presupuesto ni nada anotado, no hay margen. Una OC
   sin `enCentroCostos` (el procesador no lo sabe) no se suma: así nunca se cuenta dos veces.
-- **Gastos proyectados y cotizaciones**: cada ítem con categoría, la línea del presupuesto que reemplaza (las de su
-  formulación, con las reglas del Formulador: `js/calc.js`; para uno nuevo se propone la más parecida), cantidad y uno o
+- **Gastos proyectados y cotizaciones**: cada ítem con categoría, las líneas del presupuesto que reemplaza (las de su
+  formulación, con las reglas del Formulador: `js/calc.js`; para uno nuevo se propone la más parecida; 2026-11-10, pedido
+  del usuario: «hay cotizaciones que abordan más de un ítem de lo presupuestado», así que pueden ser varias de su
+  categoría: van una bajo otra con su ✕ y el menú agrega otra, `ejOpcionesLinea`; se guardan en `lineas` y la primera
+  también en `linea`, que es lo que traen las anotadas antes, `ejLineasDe`; con varias, el total se compara con lo que
+  suman), cantidad y uno o
   varios proveedores (nombre, precio sin IVA, N° de cotización, fecha y nota), estado (por decidir, aprobada, comprada con
   su OC, descartada) y si se simula. El diálogo (`#dlgEjCosto`) evalúa al proveedor elegido mientras se escribe, al lado
   del formulario (`ejEvaluar`): contra su línea (hasta 3 % más cara

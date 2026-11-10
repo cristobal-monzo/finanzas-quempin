@@ -92,7 +92,12 @@
           },
           "linea": {
             "type": "string",
-            "description": "costo: el uid de la línea del presupuesto de su formulación que reemplaza"
+            "description": "costo: el uid de la primera línea del presupuesto de su formulación que reemplaza (todas van en lineas)"
+          },
+          "lineas": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,40}$"},
+            "description": "costo: los uid de las líneas del presupuesto de su formulación que reemplaza (una cotización puede cubrir varias); sin él, vale linea"
           },
           "nota": {
             "type": "string"

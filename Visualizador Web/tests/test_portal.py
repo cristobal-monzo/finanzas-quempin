@@ -4575,7 +4575,7 @@ def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
     assert "materiales se pasa del presupuesto en $370.000" in evaluacion
     if _con_formulador_js("calc.js"):
         # La línea más parecida del presupuesto de su formulación, con su costo unitario
-        assert pagina.locator("#ejCLinea").input_value() == "m1"
+        assert pagina.locator("#ejCLineas .ej-lin").all_inner_texts() == ["M1 (P1) · Estanque inoxidable 100 L $800.000"]
         assert "Presupuestado $800.000 c/u en M1" in evaluacion and "19 % más cara" in evaluacion
     assert pagina.locator("#ejCEval .ej-eval-chip").inner_text() == "No conviene"
     pagina.locator("#ejCGuardar").click()
@@ -4625,6 +4625,57 @@ def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
     pagina.locator("#tituloEjecucion").click()
     pagina.keyboard.press("Control+z")
     _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Otro Inox": "evaluar", "Inox Demo": "evaluar"})
+    assert not errores
+    pagina.context.close()
+
+
+def test_una_cotizacion_reemplaza_varias_lineas_del_presupuesto(navegador, sitio):
+    """2026-11-10, pedido del usuario: «hay cotizaciones que abordan más de un ítem de lo presupuestado»."""
+    if not _con_formulador_js("calc.js"):
+        pytest.skip("sin el Formulador en este equipo no hay líneas del presupuesto")
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejProyecto .ej-compras .cx-boton").click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    pagina.locator("#ejCDesc").fill("Estanque inoxidable 100 L")
+    _escribir_prov(pagina, 0, "Inox Demo", "950.000")
+    lineas = lambda: pagina.locator("#ejCLineas .ej-lin").all_inner_texts()
+    assert len(lineas()) == 1 and lineas()[0].startswith("M1 ")
+    # La propuesta queda y se agrega otra desde el menú, que ya no ofrece la elegida
+    menu = pagina.locator("#ejCLinea")
+    assert menu.locator("option").first.inner_text() == "+ Agregar otra línea del presupuesto…"
+    assert "m1" not in [o.get_attribute("value") for o in menu.locator("option").all()]
+    menu.select_option("m2")
+    assert [x.split(" ")[0] for x in lineas()] == ["M1", "M2"]
+    assert "Suman $1.000.000 presupuestados." in pagina.locator("#ejCLineas").inner_text()
+    assert menu.locator("option").first.inner_text() == "No quedan más líneas de materiales"
+    evaluacion = pagina.locator("#ejCEval").inner_text()
+    assert "Presupuestado $1.000.000 en total en 2 líneas (M1, M2): esta es 5 % más barata." in evaluacion
+    assert "y sus líneas M1, M2 estaban presupuestadas en $1.000.000" in evaluacion
+    # Cambiar la descripción ya no cambia lo elegido a mano
+    pagina.locator("#ejCDesc").fill("Estanque y cañería")
+    assert [x.split(" ")[0] for x in lineas()] == ["M1", "M2"]
+    pagina.locator("#ejCGuardar").click()
+    pagina.locator("#dlgEjCosto").wait_for(state="hidden")
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(s["datos"]["items"]) == 1)
+    it = sobre["datos"]["items"][0]
+    assert (it["lineas"], it["linea"]) == (["m1", "m2"], "m1")
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    # Al abrirla de nuevo siguen las dos; la ✕ quita una
+    pagina.locator(f'#ejProyecto .ej-tabla tr[data-id="{it["id"]}"] .ej-c-desc').click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    assert [x.split(" ")[0] for x in lineas()] == ["M1", "M2"]
+    pagina.locator("#ejCLineas .ej-lin", has_text="M1").get_by_role("button").click()
+    assert [x.split(" ")[0] for x in lineas()] == ["M2"]
+    assert pagina.evaluate("document.activeElement.id") == "ejCLinea"
+    assert "Presupuestado $200.000 en total en M2" in pagina.locator("#ejCEval").inner_text()
+    pagina.locator("#ejCGuardar").click()
+    _esperar_archivo(pagina, EJ, lambda s: s["datos"]["items"][0].get("lineas") == ["m2"])
+    # Cambiar de categoría deja fuera las líneas de la otra
+    pagina.locator(f'#ejProyecto .ej-tabla tr[data-id="{it["id"]}"] .ej-c-desc').click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    pagina.locator("#ejCCat .pl-vista", has_text="Equipos").click()
+    assert lineas() == [] and pagina.locator("#ejCLinea option").first.inner_text() == "Ninguna: no estaba en el presupuesto"
+    pagina.locator("#ejCostoX").click()
     assert not errores
     pagina.context.close()
 

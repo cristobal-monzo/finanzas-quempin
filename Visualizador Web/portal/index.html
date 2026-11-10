@@ -2247,6 +2247,16 @@
   .ej-p-prov, .ej-p-nota { grid-column: span 2; }
   .ej-p-iva { min-height: 42px; }
   .ej-otro-prov { align-self: flex-start; margin-top: 2px; }
+  /* Las líneas del presupuesto que reemplaza un ítem (una cotización puede cubrir varias) */
+  .ej-lineas { display: flex; flex-direction: column; gap: 6px; }
+  .ej-lineas[hidden] { display: none; }
+  .ej-lin {
+    display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 4px 4px 4px 12px; border-radius: 10px;
+    border: 1px solid var(--gridline); background: var(--page-plane); font-size: 14px; font-weight: 700; color: var(--text-primary);
+  }
+  .ej-lin-txt { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .ej-lin-txt small { font-weight: 700; color: var(--texto-suave); white-space: nowrap; }
+  .ej-lin-suma { font-size: 13px; font-weight: 700; color: var(--texto-suave); }
   /* La cotización del Cotizador Histórico, a un proyecto (2026-10-29) */
   #dlgLlevar { width: min(620px, calc(100vw - 24px)); }
   .ll-lineas summary { cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
@@ -3430,7 +3440,7 @@
     <div class="ej-form">
       <label class="pl-campo ej-ancho"><span>Qué se compra</span><input id="ejCDesc" type="text" maxlength="200" autocomplete="off" placeholder="Ej.: Estanque inoxidable 100 L con serpentín"></label>
       <div class="ej-campo ej-ancho"><span class="ej-et" id="ejCCatEt">Categoría</span><div class="pl-vistas ej-cats" id="ejCCat" role="radiogroup" aria-labelledby="ejCCatEt"></div></div>
-      <label class="pl-campo ej-ancho" id="ejCLineaCampo"><span>Lo que reemplaza del presupuesto <i>(opcional)</i></span><select id="ejCLinea"></select></label>
+      <div class="pl-campo ej-ancho" id="ejCLineaCampo"><span id="ejCLineaEt">Lo que reemplaza del presupuesto <i>(opcional: una o varias líneas)</i></span><div class="ej-lineas" id="ejCLineas" role="list" aria-labelledby="ejCLineaEt" hidden></div><select id="ejCLinea" aria-labelledby="ejCLineaEt"></select></div>
       <label class="pl-campo"><span>Cantidad</span><input id="ejCCant" type="text" inputmode="decimal" autocomplete="off"></label>
       <label class="pl-campo"><span>Unidad</span><input id="ejCUnidad" type="text" maxlength="12" autocomplete="off" list="ejUnidades"></label>
       <div class="ej-campo ej-ancho">
@@ -11147,6 +11157,9 @@
   // Una cotización contra la línea que reemplaza: hasta 3 % más cara está bien, hasta 15 % se revisa, más no conviene.
   // Contra lo que QUEMPIN ha pagado: hasta 15 % sobre el promedio está bien; sobre el máximo, no conviene.
   const EJ_TOLERANCIA = { linea: 0.03, lineaMala: 0.15, historico: 0.15 };
+  // Una cotización puede cubrir varias líneas del presupuesto (2026-11-10, pedido del usuario); lo anotado antes trae solo «linea»
+  const EJ_MAX_LINEAS = 30;
+  const ejLineasDe = (it) => (Array.isArray(it.lineas) && it.lineas.length ? it.lineas : it.linea ? [it.linea] : []);
   const EJ_GASTO_SOBRE_AVANCE = 0.15;                     // gastado el 60 % del presupuesto con 40 % de avance: se avisa
   const EJ_RELEER_SEG = 30;
   const EJ_CLAVE = /^(req:(\d{1,6}|\d{3,4}t)|tag:[A-Z0-9]{2,10})$/;
@@ -11246,6 +11259,7 @@
       const descripcion = ejTxt(x.descripcion, 200);
       const cantidad = monto(x.cantidad), precio = monto(x.precio);
       if (!descripcion || !EJ_CAT.has(x.categoria) || cantidad === null || precio === null) return null;
+      const lineas = [...new Set((Array.isArray(x.lineas) && x.lineas.length ? x.lineas : [x.linea]).map(texto).filter((u) => /^[A-Za-z0-9_-]{1,40}$/.test(u)))].slice(0, EJ_MAX_LINEAS);
       return Object.assign(e, {
         descripcion, categoria: x.categoria, cantidad, precio, unidad: ejTxt(x.unidad, 12),
         proveedor: ejTxt(x.proveedor, 120), cotizacion: ejTxt(x.cotizacion, 60),
@@ -11253,7 +11267,8 @@
         estado: EJ_ESTADOS.some((s) => s.id === x.estado) ? x.estado : 'evaluar',
         simular: x.simular !== false, grupo: EJ_ID.test(texto(x.grupo)) ? x.grupo : '', elegida: x.elegida === true,
         oc: /^\d{1,12}$/.test(texto(x.oc)) ? texto(x.oc) : '',
-        linea: /^[A-Za-z0-9_-]{1,40}$/.test(texto(x.linea)) ? texto(x.linea) : '',
+        // Las líneas del presupuesto que reemplaza (antes una sola, «linea», que se sigue leyendo y escribiendo con la primera)
+        lineas, linea: lineas[0] || '',
         ref: ejTxt(x.ref, 80), nota: ejTxt(x.nota, 300)
       });
     }
@@ -11861,7 +11876,16 @@
   function ejEvaluar(it, m, dialogo) {
     const puntos = [];
     const total = it.cantidad * it.precio;
-    const l = it.linea ? m.lineas.find((x) => x.uid === it.linea) || null : null;
+    const ls = ejLineasDe(it).map((u) => m.lineas.find((x) => x.uid === u)).filter(Boolean);
+    const l = ls.length === 1 ? ls[0] : null;
+    const subLineas = ls.reduce((a, x) => a + x.subtotal, 0);
+    if (ls.length > 1 && subLineas > 0) {
+      // Varias líneas: el total de la cotización contra lo que suman en el presupuesto
+      const dif = total / subLineas - 1;
+      puntos.push({ tipo: 'linea', nivel: dif <= EJ_TOLERANCIA.linea ? 'ok' : dif <= EJ_TOLERANCIA.lineaMala ? 'warn' : 'bad',
+        texto: 'Presupuestado ' + ejPesos(subLineas) + ' en total en ' + ls.length + ' líneas (' + ls.map((x) => x.code).join(', ') + '): '
+          + (Math.abs(dif) < 0.005 ? 'lo mismo.' : dif < 0 ? 'esta es ' + Math.round(-dif * 100) + ' % más barata.' : 'esta es ' + Math.round(dif * 100) + ' % más cara.') });
+    }
     if (l) {
       const mismaUnidad = l.unitario > 0 && (!it.unidad || !l.unidad || norm(it.unidad) === norm(l.unidad));
       const dif = mismaUnidad ? it.precio / l.unitario - 1 : total / l.subtotal - 1;
@@ -11899,7 +11923,8 @@
       puntos.push(c.queda >= -0.5
         ? { tipo: 'queda', nivel: 'ok', texto: 'Cabe en ' + cat + ': quedarían ' + ejPesos(c.queda) + ' de ' + ejPesos(c.P) + ' presupuestados.' }
         : { tipo: 'queda', nivel: 'bad', texto: 'Con esta compra, ' + cat + ' se pasa del presupuesto en ' + ejPesos(-c.queda) + ': ya van ' + ejPesos(usado) + ' de ' + ejPesos(c.P)
-            + (l ? ', y su línea ' + l.code + ' estaba presupuestada en ' + ejPesos(l.subtotal) : '') + '.' });
+            + (l ? ', y su línea ' + l.code + ' estaba presupuestada en ' + ejPesos(l.subtotal)
+              : ls.length > 1 ? ', y sus líneas ' + ls.map((x) => x.code).join(', ') + ' estaban presupuestadas en ' + ejPesos(subLineas) : '') + '.' });
     }
     if (con.margen !== null && total > 0) {
       const baja = sin.margen !== null ? sin.margen - con.margen : 0;
@@ -11923,7 +11948,7 @@
     const cuentan = puntos.filter((p) => p.tipo !== 'otras' || p.nivel !== 'ok');
     const nivel = cuentan.length ? cuentan.reduce((a, p) => (peso[p.nivel] > peso[a] ? p.nivel : a), 'ok') : '';
     const corto = !puntos.length ? 'Sin referencias' : { ok: 'Conveniente', warn: 'Revisar', bad: 'No conviene' }[nivel] || 'Sin referencias';
-    return { nivel, corto, puntos, total, con, sin, hoja: h, linea: l };
+    return { nivel, corto, puntos, total, con, sin, hoja: h, linea: ls[0] || null, lineas: ls };
   }
 
   // ---- El avance: el del Análisis Financiero, lo pedido que espera en el buzón y el de su Carta Gantt -------------------
@@ -14525,23 +14550,73 @@
     ej.editando.cat = EJ_CAT.has(k) ? k : 'Materiales';
     document.querySelectorAll('#ejCCat .pl-vista').forEach((b) => b.setAttribute('aria-checked', b.dataset.cat === ej.editando.cat ? 'true' : 'false'));
     document.querySelectorAll('#ejCCat .pl-vista').forEach((b) => b.setAttribute('aria-pressed', b.dataset.cat === ej.editando.cat ? 'true' : 'false'));
-    if (ej.modelo) ejOpcionesLinea(ej.modelo, $('#ejCLinea').value);
+    if (ej.modelo) {
+      // Las líneas de otra categoría ya no corresponden (las que el modelo aún no conoce se dejan)
+      const ms = ej.modelo.lineas;
+      ej.editando.lineas = ej.editando.lineas.filter((u) => { const l = ms.find((x) => x.uid === u); return !l || l.cat === ej.editando.cat; });
+      ejOpcionesLinea(ej.modelo);
+    }
   }
-  function ejOpcionesLinea(m, actual) {
-    const sel = $('#ejCLinea');
-    const cat = ej.editando.cat;
+  const ejNombreLinea = (l) => l.code + (l.partida ? ' (' + l.partida + ')' : '') + ' · ' + l.descripcion;
+  /* Las líneas del presupuesto que reemplaza el ítem, una bajo otra con su ✕, y el menú con las que quedan de su categoría
+     para agregar otra (ej.editando.lineas) */
+  function ejOpcionesLinea(m) {
+    const e = ej.editando;
+    const sel = $('#ejCLinea'), caja = $('#ejCLineas');
+    const cat = e.cat;
     const lineas = m.lineas.filter((l) => l.cat === cat);
-    sel.textContent = '';
+    const elegidas = e.lineas.map((u) => lineas.find((l) => l.uid === u)).filter(Boolean);
     $('#ejCLineaCampo').hidden = !m.lineas.length;
-    const o0 = crear('option', null, lineas.length ? 'Ninguna: no estaba en el presupuesto' : 'Su formulación no tiene ' + EJ_CAT.get(cat).nombre.toLowerCase());
+    caja.textContent = '';
+    caja.hidden = !elegidas.length;
+    elegidas.forEach((l) => {
+      const c = crear('div', 'ej-lin');
+      c.setAttribute('role', 'listitem');
+      const t = crear('span', 'ej-lin-txt', ejNombreLinea(l) + ' ');
+      t.append(crear('small', null, ejPesos(l.subtotal)));
+      const x = crear('button', 'ej-ico');
+      x.type = 'button';
+      x.append(icono('cerrar', 16));
+      x.title = 'Quitar ' + l.code;
+      x.setAttribute('aria-label', 'Quitar la línea ' + ejNombreLinea(l));
+      x.addEventListener('click', () => ejQuitarLinea(l.uid));
+      c.append(t, x);
+      caja.append(c);
+    });
+    if (elegidas.length > 1) caja.append(crear('span', 'ej-lin-suma', 'Suman ' + ejPesos(elegidas.reduce((a, l) => a + l.subtotal, 0)) + ' presupuestados.'));
+    sel.textContent = '';
+    const libres = lineas.filter((l) => !e.lineas.includes(l.uid));
+    const o0 = crear('option', null, !lineas.length ? 'Su formulación no tiene ' + EJ_CAT.get(cat).nombre.toLowerCase()
+      : !elegidas.length ? 'Ninguna: no estaba en el presupuesto'
+      : libres.length && e.lineas.length < EJ_MAX_LINEAS ? '+ Agregar otra línea del presupuesto…' : 'No quedan más líneas de ' + EJ_CAT.get(cat).nombre.toLowerCase());
     o0.value = '';
     sel.append(o0);
-    lineas.forEach((l) => {
-      const o = crear('option', null, l.code + (l.partida ? ' (' + l.partida + ')' : '') + ' · ' + l.descripcion + ' · ' + ejPesos(l.subtotal));
-      o.value = l.uid;
-      sel.append(o);
-    });
-    sel.value = lineas.some((l) => l.uid === actual) ? actual : '';
+    if (e.lineas.length < EJ_MAX_LINEAS) {
+      libres.forEach((l) => {
+        const o = crear('option', null, ejNombreLinea(l) + ' · ' + ejPesos(l.subtotal));
+        o.value = l.uid;
+        sel.append(o);
+      });
+    }
+    sel.value = '';
+  }
+  function ejAgregarLinea(u) {
+    const e = ej.editando;
+    if (!e || !u || !ej.modelo) return;
+    e.lineaTocada = true;
+    if (!e.lineas.includes(u) && e.lineas.length < EJ_MAX_LINEAS) e.lineas.push(u);
+    ejOpcionesLinea(ej.modelo);
+    ejPintarEvaluacion();
+    $('#ejCLinea').focus();
+  }
+  function ejQuitarLinea(u) {
+    const e = ej.editando;
+    if (!e || !ej.modelo) return;
+    e.lineaTocada = true;
+    e.lineas = e.lineas.filter((x) => x !== u);
+    ejOpcionesLinea(ej.modelo);
+    ejPintarEvaluacion();
+    $('#ejCLinea').focus();
   }
   function ejMostrarOC() { $('#ejCOCCampo').hidden = $('#ejCEstado').value !== 'comprada'; }
   function ejDatalists(m) {
@@ -14621,7 +14696,7 @@
     if (!m || (!it && !rc.dir)) return;
     const xs = it ? ejItems(m.costos).map((x) => x.xs).find((ys) => ys.some((y) => y.id === it.id)) || [it] : [];
     ej.editando = { xs, grupo: it ? it.grupo : '', ref: it ? it.ref : '', simular: it ? it.simular : true, proyecto: it ? it.proyecto : ejClave(m.t), cat: 'Materiales',
-      oc: it ? it.oc : '', lineaTocada: !!it, previo: it || null, quitadas: [], auto: !it };
+      oc: it ? it.oc : '', lineaTocada: !!it, lineas: it ? ejLineasDe(it).slice() : [], previo: it || null, quitadas: [], auto: !it };
     $('#dlgEjCostoTit').textContent = it ? it.descripcion : 'Agregar un gasto o cotización';
     const pista = $('#ejCostoPista');
     pista.className = 'ej-dlg-pista';
@@ -14639,7 +14714,6 @@
     });
     $('#ejCDesc').value = it ? it.descripcion : '';
     ejElegirCat(it ? it.categoria : 'Materiales');
-    ejOpcionesLinea(m, it ? it.linea : '');
     $('#ejCCant').value = it ? ejCantidad(it.cantidad) : '1';
     $('#ejCUnidad').value = it ? it.unidad : 'Un.';
     const provs = $('#ejCProvs');
@@ -14669,7 +14743,7 @@
       ejLib('calc').then((x) => {
         if (!x || !$('#dlgEjCosto').open || !ej.modelo) return;
         ej.modelo = ejModelo(ej.modelo.t);
-        ejOpcionesLinea(ej.modelo, $('#ejCLinea').value);
+        ejOpcionesLinea(ej.modelo);
         ejPintarEvaluacion();
       });
     }
@@ -14678,7 +14752,7 @@
   function ejLeerItem() {
     const e = ej.editando;
     const cantidad = ejNumero($('#ejCCant').value);
-    return { proyecto: e.proyecto, tipo: 'costo', descripcion: ejTxt($('#ejCDesc').value, 200), categoria: e.cat, linea: $('#ejCLinea').value || '',
+    return { proyecto: e.proyecto, tipo: 'costo', descripcion: ejTxt($('#ejCDesc').value, 200), categoria: e.cat, linea: e.lineas[0] || '', lineas: e.lineas.slice(),
       cantidad: cantidad === null ? NaN : cantidad, unidad: ejTxt($('#ejCUnidad').value, 12), ref: e.ref || '' };
   }
   // Los proveedores escritos en el diálogo (el precio, sin IVA). vacia: nada escrito, no cuenta.
@@ -14724,8 +14798,10 @@
     // Uno nuevo: la línea del presupuesto más parecida, mientras no se elija otra a mano
     if (!e.lineaTocada && item.descripcion) {
       const l = ejLineaSugerida(item.descripcion, item.categoria, m.lineas);
-      $('#ejCLinea').value = l ? l.uid : '';
-      item.linea = l ? l.uid : '';
+      const nuevas = l ? [l.uid] : [];
+      if (nuevas.join() !== e.lineas.join()) { e.lineas = nuevas; ejOpcionesLinea(m); }
+      item.lineas = nuevas.slice();
+      item.linea = nuevas[0] || '';
     }
     const vivas = ejPintarProvs(item.cantidad).filter((f) => !f.vacia);
     const el = vivas.find((f) => f.elegida) || vivas[0];
@@ -14745,7 +14821,7 @@
       ev.puntos.forEach((p) => { const li = crear('li', null, p.texto); li.dataset.nivel = p.nivel; ul.append(li); });
       box.append(ul);
     } else box.append(crear('p', 'ej-pista', 'Sin presupuesto, precio histórico ni venta con que compararla todavía.'));
-    if (d.linea && !e.lineaTocada) box.append(crear('p', 'ej-pista', 'Se compara con la línea más parecida del presupuesto: elige otra arriba si no es esa.'));
+    if (d.linea && !e.lineaTocada) box.append(crear('p', 'ej-pista', 'Se compara con la línea más parecida del presupuesto: si no es esa, quítala o agrega otras arriba.'));
     if (EJ_CAT.get(d.categoria).historico) {
       if (!ej.precios) { if (rc.dir) box.append(crear('p', 'ej-pista', 'Buscando lo que QUEMPIN ha pagado por algo parecido…')); return; }
       const ps = ejParecidas(d.descripcion);
@@ -16734,7 +16810,7 @@
   $('#ejCProvs').addEventListener('click', (e) => { const b = e.target.closest('.ej-p-quitar'); if (b) ejQuitarProv(b.closest('.ej-prov-fila')); });
   $('#ejCOtroProv').prepend(icono('mas', 15));
   $('#ejCOtroProv').addEventListener('click', ejAgregarProv);
-  $('#ejCLinea').addEventListener('change', () => { if (ej.editando) ej.editando.lineaTocada = true; ejPintarEvaluacion(); });
+  $('#ejCLinea').addEventListener('change', (ev) => ejAgregarLinea(ev.target.value));
   $('#ejCEstado').addEventListener('change', () => { ejMostrarOC(); if ($('#ejCEstado').value === 'comprada') $('#ejCOC').focus(); });
   $('#ejCBorrar').addEventListener('click', () => {
     const e = ej.editando, it = e && e.previo;
