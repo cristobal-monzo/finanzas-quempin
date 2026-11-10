@@ -4348,6 +4348,10 @@ def test_por_hacer_dice_lo_que_espera_el_proyecto_y_lo_hace_ahi_mismo(navegador,
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908)
     tareas = lambda: pagina.locator("#ejProyecto .ej-porhacer .ej-tarea").evaluate_all("ls => ls.map((l) => l.dataset.tarea)")
     pagina.wait_for_function("() => document.querySelectorAll('#ejProyecto .ej-porhacer .ej-tarea').length > 0")
+    # Desplegable (2026-11-10): cerrado de entrada, con lo que espera resumido; abierto se queda abierto al repintar
+    assert pagina.locator("#ejProyecto details.ej-porhacer").get_attribute("open") is None
+    assert "facturas sin asociar" in pagina.locator("#ejProyecto .ej-porhacer-res").inner_text()
+    pagina.locator("#ejProyecto .ej-porhacer > summary").click()
     assert {"facturas", "traer"} <= set(tareas()), tareas()
     assert "2 facturas sin asociar" in pagina.locator('#ejProyecto .ej-tarea[data-tarea="facturas"]').inner_text()
     # «Asociar» deja a la vista solo las facturas sin asociar

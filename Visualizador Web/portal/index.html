@@ -2515,6 +2515,43 @@
     .ej-dias-fila .pl-campo select, .ej-nivel select, .ej-tarifas .pl-campo input { font-size: 16px; }
   }
 
+  /* Ajuste de la interfaz (2026-11-10, pedido del usuario): textos más chicos, cajas alineadas, «Por hacer» desplegable */
+  .ej-porhacer { padding: 0; }
+  .ej-porhacer > summary { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 9px 14px; cursor: pointer; list-style: none; }
+  .ej-porhacer > summary::-webkit-details-marker { display: none; }
+  .ej-porhacer > summary::after { content: ""; flex: 0 0 auto; margin-left: auto; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform 0.15s; color: var(--texto-suave); }
+  .ej-porhacer[open] > summary::after { transform: rotate(-135deg); }
+  .ej-porhacer > summary:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; border-radius: 12px; }
+  .ej-porhacer h3, .ej-porhacer.al-dia h3 { margin: 0; flex: 0 0 auto; font-size: 14px; }
+  .ej-porhacer-res { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--texto-suave); }
+  .ej-porhacer[open] .ej-porhacer-res { visibility: hidden; }
+  .ej-porhacer > ul, .ej-porhacer > p { padding: 0 14px 12px; }
+  .ej-porhacer.al-dia p { font-size: 12.5px; }
+  .ej-porhacer ul { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px; }
+  .ej-tarea { gap: 8px; padding: 6px 8px; }
+  .ej-tarea-ico { width: 28px; height: 28px; border-radius: 7px; }
+  .ej-tarea-txt b { font-size: 13px; }
+  .ej-tarea-txt small { font-size: 11.5px; }
+  .ej-kpi { gap: 1px; padding: 9px 12px 10px; }
+  .ej-kpi-et { font-size: 11.5px; letter-spacing: 0.01em; }
+  .ej-kpi-v { font-size: 20px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .ej-kpi-sub { font-size: 11.5px; line-height: 1.35; }
+  .ej-cab h2 { font-size: 19px; align-items: center; }
+  .ej-cab h2 .ej-n { font-size: 12px; }
+  .ej-panel { gap: 8px; padding: 12px 14px 14px; border-radius: 12px; }
+  .ej-panel-cab { min-height: 30px; }
+  .ej-panel-cab h3 { font-size: 15px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+  .ej-panel-cab h3 small { margin-left: 0; font-size: 12px; }
+  .ej-t-cab { align-items: center; }
+  .ej-t-tit { font-size: 14px; }
+  .ej-t-sub { font-size: 12px; }
+  .ej-t-fila, .ej-t-datos { font-size: 12.5px; }
+  .ej-t-meta { margin-top: 0; }
+  .ej-cal-dia { min-height: 40px; padding: 3px 5px; }
+  .ej-quienes .pl-exp-per { min-height: 30px; font-size: 12.5px; }
+  .ej-av-num b { font-size: 24px; }
+  .ej-av-num span { font-size: 12.5px; }
+  .ej-gastado-num b { font-size: 21px; }
   /* Teléfono (2026-11-09, vuelta 9 del loop de UX): las cifras más compactas para que «Por hacer» quede cerca */
   @container ejecucion (max-width: 640px) {
     .ej-kpi { padding: 8px 12px 9px; }
@@ -12547,12 +12584,17 @@
   }
   function ejPorHacerEl(m) {
     const tareas = ejTareas(m);
-    const s = crear('section', 'ej-porhacer');
-    s.setAttribute('aria-labelledby', 'ejPorHacerTit');
+    // 2026-11-10, pedido del usuario: lo pendiente en un desplegable, no siempre a la vista (se recuerda abierto o cerrado)
+    const s = crear('details', 'ej-porhacer');
+    s.open = !!ej.porHacerAbierto;
+    s.addEventListener('toggle', () => { ej.porHacerAbierto = s.open; });
+    const sum = crear('summary');
     const h = crear('h3', null, tareas.length ? 'Por hacer' : 'Todo al día');
     h.id = 'ejPorHacerTit';
     if (tareas.length) h.append(crear('small', null, String(tareas.length)));
-    s.append(h);
+    sum.append(h);
+    if (tareas.length) sum.append(crear('span', 'ej-porhacer-res', tareas.map((x) => x.txt).join(' · ')));
+    s.append(sum);
     if (!tareas.length) {
       s.classList.add('al-dia');
       const p = crear('p');

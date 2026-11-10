@@ -201,3 +201,11 @@ de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más vis
   cuántas compras por decidir, facturas sin asociar y pendientes hay en los proyectos a la vista y en cuántos; tocar uno
   deja solo esos proyectos (`ej.espera`, se combina con el estado del mapa). La tarjeta y «Por hacer» cuentan lo mismo.
   Prueba: `test_lo_que_espera_al_equipo_se_cuenta_y_filtra_la_lista`.
+
+## Ajuste de la interfaz del 2026-11-10
+
+Pedido del usuario: textos mejor cuadrados, cajas alineadas, tamaños de letra más chicos y «lo pendiente» en un menú
+desplegable. «Por hacer» (`ejPorHacerEl`) es un `<details class="ej-porhacer">`, cerrado de entrada: el resumen dice
+cuántas cosas son y cuáles (`.ej-porhacer-res`); abierto o cerrado se recuerda mientras la vista está abierta
+(`ej.porHacerAbierto`). Un bloque CSS «Ajuste de la interfaz» (antes de las reglas de teléfono) baja las cifras (KPI
+20 px, avance 24 px, gastado 21 px), títulos de panel a 15 px, paddings de paneles y tareas, y el alto del calendario.
