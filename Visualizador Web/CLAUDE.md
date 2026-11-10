@@ -71,6 +71,11 @@ Oportunidades.
   muestra. Solo Chile = `SOLO_CHILE` del JS (hoy `flujo-de-caja`, `oportunidades`). **País
   nuevo** = otra `<option>` (su `value` es el sufijo de la subruta) y ese sufijo en el JS.
 - **Enlace «Formulador de proyectos ↗»** (`a.viz-modnav-herr`): va en ese mismo HTML.
+- **Cajas de números** (`numeros.js`, pedido del usuario 2026-11-10): un clic selecciona todo y lo que se escribe
+  lleva punto de miles. Va incrustado junto a `candado.js` (`candado.incrustar`); el Portal y el hub lo enlazan
+  (`../numeros.js`, que `publicar.py` copia). Toma solas las `type="number"` (su `.value` sigue sin formato); una
+  caja de texto con montos lleva `data-num` (`="entero"` sin decimales). Un N° de OC o de requerimiento no: es un
+  código. Copias idénticas en el Formulador (`js/`) y la Calculadora (`assets/`): `tests/test_numeros.py`.
 - **Menús desplegables**: bloque CSS idéntico en todos, tras `.viz-modnav-pais option`
   (flecha propia y, con `@supports (appearance: base-select)`, lista con la paleta; Chrome
   y Edge 135+). Un tablero nuevo lo copia tal cual. La regla de `base-select` debe pesar lo

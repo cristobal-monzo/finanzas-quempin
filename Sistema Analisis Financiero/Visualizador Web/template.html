@@ -3074,6 +3074,8 @@
       var falta = c.requerido && !p.gastos_generales && efectivo(p.tag, c.clave) == null;
       var input = '<input type="' + (esFecha ? 'date' : 'text') + '" class="' + clasesCampo(p, c) + '"' +
         (c.tipo === 'fecha' ? '' : ' inputmode="' + (c.tipo === 'fraccion' ? 'decimal' : 'numeric') + '"') +
+        // Punto de miles al escribir (numeros.js): montos y avance; el N° de requerimiento ('entero') es un código
+        (c.tipo === 'fraccion' ? ' data-num' : c.tipo === 'fecha' || c.tipo === 'entero' ? '' : ' data-num="entero"') +
         ' data-tag="' + esc(p.tag) + '" data-clave="' + esc(c.clave) + '" value="' + esc(texto) + '"' +
         ' placeholder="' + (falta ? 'falta' : '') + '" autocomplete="off"' +
         ' aria-label="' + esc(c.etiqueta + ' — ' + p.nombre) + '" title="' + esc(tituloCampo(p, c)) + '">';

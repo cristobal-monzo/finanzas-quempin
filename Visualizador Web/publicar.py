@@ -65,6 +65,9 @@ ESTATICOS = {
 }
 CARPETA_MARCA = "Visualizador Web/marca"
 ARCHIVOS_MARCA = ("fuentes.css", "favicon.png")
+# Código común que el hub y el Portal enlazan desde la raíz de gh-pages (../numeros.js). Los tableros
+# lo llevan incrustado (candado.incrustar).
+ARCHIVOS_COMUNES = ("numeros.js",)
 FLUJO_CI = "tests.yml"
 META_VERSION = "quempin-version"
 
@@ -192,7 +195,9 @@ def preparar_estatico(clave: str, raiz_gh_pages: Path = RAIZ_GH_PAGES, sello: st
     carpeta.mkdir(exist_ok=True)
     for nombre in ARCHIVOS_MARCA:
         shutil.copy2(RAIZ / CARPETA_MARCA / nombre, carpeta / nombre)
-    print(f"[OK] {clave:<6} -> {destino} y marca/")
+    for nombre in ARCHIVOS_COMUNES:
+        shutil.copy2(RAIZ / "Visualizador Web" / nombre, raiz_gh_pages / nombre)
+    print(f"[OK] {clave:<6} -> {destino}, marca/ y {', '.join(ARCHIVOS_COMUNES)}")
     return destino
 
 
@@ -224,7 +229,7 @@ def main(argv=None) -> int:
     for clave in claves:
         try:
             if clave in ESTATICOS:
-                subrutas += [preparar_estatico(clave, sello=sello), "marca"]
+                subrutas += [preparar_estatico(clave, sello=sello), "marca", *ARCHIVOS_COMUNES]
             else:
                 subrutas.append(preparar(clave, contrasena))
         except RuntimeError as error:
