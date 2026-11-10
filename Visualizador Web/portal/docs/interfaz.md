@@ -2,10 +2,36 @@
 
 Detalle de referencia: léelo solo al tocar esta parte. Las reglas generales están en `../CLAUDE.md`.
 
+## El Inicio: las herramientas por área (2026-11-10)
+
+Pedido del usuario: el Inicio con el saludo y las herramientas de cada área del trabajo, cada una con su ícono, sin
+cifras ni gráficos. Sección `#vistaInicio`; funciones `ini*` y estado `ini`, después del Recorrido. Reemplaza al
+«Inicio minimalista» del 2026-10-16 (más abajo, como historia).
+
+- **Saludo**: «Buenos días, LC» (la fecha y la semana van en su title); sin usuario, sus iniciales para elegirlo con
+  un clic (`#iniQuien`).
+- **Cuatro áreas** (`#iniAreas`, los grupos del registro en el orden del menú): Ofertar, Ejecutar, Controlar y
+  Calcular, de a dos. Cada herramienta es un botón con su ícono y su nombre (`iniBoton`); ↗ si se abre fuera del
+  portal, un punto naranjo si ya tiene pestaña y, en la Planificación semanal, su alarma (`plPintarAlarmaGlobal`: es
+  lo único que viene de la carpeta, por eso el Inicio sigue pidiendo la lectura del Recorrido). Seis botones por fila,
+  del mismo ancho en las cuatro áreas.
+- **Íconos**: uno por herramienta, en `ICONOS` y en el campo `icono` del registro, así su pestaña lleva el mismo
+  (`test_el_inicio_son_las_herramientas_por_area` revisa que ninguno se repita ni falte).
+- **Nombres**: el `corto`, salvo «Análisis Financiero» y «Subir docs.» (`INI_NOMBRE`). Los de una palabra larga
+  llevan guiones suaves entre sílabas (`INI_SILABAS`): desde 1280 px caben enteros y más angosto se cortan en una
+  sílaba, nunca en cualquier letra.
+- **Sin desplazarse en el computador** (1366×657, 1536×730, 1280×600 y 1024×640, `JS_BARRAS`). Hasta 900 px de
+  ancho del Inicio, una columna que se desplaza sin barra; hasta 600 px, los botones de a tres.
+  `test_las_herramientas_caben_en_el_inicio` lo mide.
+- **Historia del mismo día**: antes se probaron un «centro de trabajo» (las seis etapas, «Requiere atención»,
+  «Continuar» y la lista de herramientas: «mucha información y algo confusa») y «Tres áreas» (una franja negra
+  «Hoy» con lo urgente y una tarjeta por área con su acción, su cifra y un gráfico). Lo que cada proyecto espera
+  sigue en el Recorrido de proyectos; Buscar, Ayuda, Conexiones y Reportar, en el menú ☰, Ctrl K y el clic derecho.
+  Maquetas y plan: `docs/plans/2026-11-10-inicio-tres-areas/`.
+
 **Cambios del 2026-10-16** (pedido del usuario):
-- **Cuatro grupos y la ayuda**: Formulación de proyectos, Control y
-  finanzas, Cotizar y comprar, Calculadora (al final, antes de Ayuda).
-  `test_los_grupos_del_pedido_del_2026_10_16` fija el orden.
+- **Cuatro grupos y la ayuda** (desde el 2026-11-10 son los de la etapa del
+  trabajo, arriba; `test_los_grupos_por_etapa_del_trabajo` fija el orden).
 - **Inicio minimalista**: todas las herramientas en cuatro columnas, una por
   grupo, con su línea `breve`; lo que se abre fuera (Excel, QUEMPIN.exe)
   lleva ↗. Cabe sin desplazarse desde 1024×640: con menos ancho van dos
