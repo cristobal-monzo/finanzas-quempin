@@ -209,3 +209,7 @@ desplegable. «Por hacer» (`ejPorHacerEl`) es un `<details class="ej-porhacer">
 cuántas cosas son y cuáles (`.ej-porhacer-res`); abierto o cerrado se recuerda mientras la vista está abierta
 (`ej.porHacerAbierto`). Un bloque CSS «Ajuste de la interfaz» (antes de las reglas de teléfono) baja las cifras (KPI
 20 px, avance 24 px, gastado 21 px), títulos de panel a 15 px, paddings de paneles y tareas, y el alto del calendario.
+- **Segunda vuelta (2026-11-10)**: el mapa deja un margen interior (`P`) para que un punto en 0 no tape los ejes, las
+  etiquetas buscan un lugar libre (derecha, izquierda, arriba, abajo: `lugarEtq`) y lo tuyo se marca con la etiqueta en
+  naranjo, no con un anillo; zonas más tenues. El acceso activo de la fila de partes va en tinte naranjo (no blanco en
+  oscuro), las pastillas más chicas, y el estado de la cabecera es una caja sin relleno, más baja.
