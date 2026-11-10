@@ -132,10 +132,16 @@ def test_registro_bien_formado():
             assert len(h.get("corto", h["nombre"])) <= 18, h["id"]
 
 
-def test_los_grupos_del_pedido_del_2026_10_16():
-    """Cuatro grupos y la ayuda; la calculadora al final, antes de la ayuda."""
-    assert [g["nombre"] for g in _registro()["grupos"]] == [
-        "Formulación de proyectos", "Control y finanzas", "Cotizar y comprar", "Calculadora", "Ayuda"]
+def test_los_grupos_por_etapa_del_trabajo():
+    """Pedido del 2026-11-10 (el Inicio como centro de trabajo): las herramientas por etapa del trabajo, en el Inicio y en
+    el menú; lo de Sistema QUEMPIN va en la etapa donde se usa. La calculadora al final, antes de la ayuda."""
+    reg = _registro()
+    assert [g["nombre"] for g in reg["grupos"]] == [
+        "Captar y ofertar", "Ejecutar proyectos", "Control financiero", "Calculadora", "Ayuda"]
+    de = lambda g: [h["id"] for h in reg["herramientas"] if h["grupo"] == g]
+    assert de("ofertar") == ["oportunidades", "planilla", "formulador", "proyectos", "cotizador", "cotizacion"]
+    assert de("ejecutar") == ["ejecucion", "planificacion", "gantt", "orden-compra", "subir-cc", "ingresar"]
+    assert de("controlar") == ["centro-costos", "analisis", "flujo-caja"]
 
 
 def test_la_ayuda_sin_indice_anterior_y_con_configuracion():
@@ -167,7 +173,7 @@ def test_conexiones_bien_referenciadas():
     por_id = {h["id"]: h for h in reg["herramientas"]}
     usadas = {u for e in elementos for u in e["usan"]}
     for h in reg["herramientas"]:
-        if h["grupo"] in {"formular", "finanzas", "cotizar"}:
+        if h["grupo"] in {"ofertar", "ejecutar", "controlar"}:
             assert h["id"] in usadas or (h.get("alias") and h["familia"] in usadas), h["id"]
     tareas = [t["nombre"] for t in cx["procesador"]["tareas"]]
     assert tareas == ["Procesar intercambio QUEMPIN", "Registrar en la Planilla QUEMPIN", "Actualizar Finanzas QUEMPIN",
@@ -508,17 +514,16 @@ JS_BARRAS = """() => ['.vista-inicio', '.menu-lista', '.pestanas-lista'].map((s)
 def test_inicio_muestra_todas_las_herramientas_por_grupo(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     grupos = pagina.locator("#menu .grupo-cab").all_inner_texts()
-    assert [g.strip() for g in grupos] == ["Formulación de proyectos", "Control y finanzas", "Cotizar y comprar",
+    assert [g.strip() for g in grupos] == ["Captar y ofertar", "Ejecutar proyectos", "Control financiero",
                                            "Calculadora", "Ayuda"]
-    assert pagina.locator("#iniGrupos .ini-grupo h2").all_inner_texts() == [
-        "Formulación de proyectos", "Control y finanzas", "Cotizar y comprar", "Calculadora"]
+    assert pagina.locator("#iniAreas .ini-area h2").all_text_contents() == ["Ofertar", "Ejecutar", "Controlar", "Calcular"]
     reg = _registro()
-    esperadas = [h["id"] for h in reg["herramientas"] if h["grupo"] in {"formular", "finanzas", "cotizar", "calcular"}]
-    assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item')].map(b => b.dataset.herr)") == esperadas
+    esperadas = [h["id"] for h in reg["herramientas"] if h["grupo"] in {"ofertar", "ejecutar", "controlar", "calcular"}]
+    assert pagina.evaluate("[...document.querySelectorAll('#iniAreas .ini-item')].map(b => b.dataset.herr)") == esperadas
     # Lo que se abre fuera del portal (Excel, Sistema QUEMPIN) lleva la flecha ↗; las vistas del portal, no
     fuera = [h["id"] for h in reg["herramientas"] if h["id"] in esperadas and h["tipo"] not in ("marco", "vista")]
     assert fuera == ["cotizacion", "orden-compra"]
-    assert pagina.locator("#iniGrupos .ini-item:has(.ini-fuera)").count() == len(fuera)
+    assert pagina.locator("#iniAreas .ini-item:has(.ini-fuera)").count() == len(fuera)
     assert _pestanas(pagina) == ["Inicio"]
     assert pagina.locator("iframe").count() == 0
     # Una herramienta del Inicio se abre en su pestaña
@@ -534,17 +539,17 @@ def test_el_inicio_y_el_menu_caben_sin_barras(navegador, sitio, ancho, alto):
     """Pedido del 2026-10-16: el Inicio con todas las herramientas sin desplazarse, y ninguna barra vertical."""
     pagina, errores = _abrir_portal(navegador, sitio, ancho=ancho, alto=alto)
     assert pagina.evaluate(JS_BARRAS) == []
-    # Sin menú fijo al lado, las cuatro columnas caben desde 1024 px
-    columnas = "getComputedStyle(document.getElementById('iniGrupos')).gridTemplateColumns.split(' ').length"
-    assert pagina.evaluate(columnas) == 4
+    # Las cuatro áreas, de a dos (2026-11-10)
+    columnas = "getComputedStyle(document.getElementById('iniAreas')).gridTemplateColumns.split(' ').length"
+    assert pagina.evaluate(columnas) == 2
     assert pagina.evaluate("getComputedStyle(document.querySelector('.menu-lista')).scrollbarWidth") == "none"
     # El menú (☰), con su grupo más largo desplegado, tampoco desborda; va encima y no achica el Inicio
     _menu(pagina, "Seguimiento")
     pagina.locator("#pestanas .ir", has_text="Inicio").click()
     pagina.locator("#btnMenu").click()
-    assert pagina.locator('#menu .grupo-cab[aria-expanded="true"]').inner_text().strip() == "Formulación de proyectos"
+    assert pagina.locator('#menu .grupo-cab[aria-expanded="true"]').inner_text().strip() == "Captar y ofertar"
     assert pagina.evaluate(JS_BARRAS) == []
-    assert pagina.evaluate(columnas) == 4
+    assert pagina.evaluate(columnas) == 2
     assert not errores
     pagina.context.close()
 
@@ -553,11 +558,11 @@ def test_el_menu_despliega_un_grupo_a_la_vez(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     pagina.locator("#btnMenu").click()          # el menú con nombres
     abiertos = lambda: pagina.locator('#menu .grupo-cab[aria-expanded="true"]').all_inner_texts()
-    assert [g.strip() for g in abiertos()] == ["Formulación de proyectos"]
-    pagina.locator("#grupo-finanzas").click()
-    assert [g.strip() for g in abiertos()] == ["Control y finanzas"]
-    assert pagina.locator("#items-formular").is_hidden()
-    pagina.locator("#grupo-finanzas").click()
+    assert [g.strip() for g in abiertos()] == ["Captar y ofertar"]
+    pagina.locator("#grupo-ejecutar").click()
+    assert [g.strip() for g in abiertos()] == ["Ejecutar proyectos"]
+    assert pagina.locator("#items-ofertar").is_hidden()
+    pagina.locator("#grupo-ejecutar").click()
     assert abiertos() == []
     # Abrir una herramienta (aquí desde el Inicio) despliega su grupo
     pagina.keyboard.press("Escape")
@@ -1029,7 +1034,7 @@ def test_el_inicio_marca_las_herramientas_ya_abiertas(navegador, sitio):
     pagina.locator('.ini-item[data-herr="flujo-caja"]').click()
     _marco(pagina, "flujo-caja", "fc")
     pagina.locator("#pestanas .ir").first.click()
-    assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item.abierta')].map(b => b.dataset.herr)") == ["flujo-caja"]
+    assert pagina.evaluate("[...document.querySelectorAll('#iniAreas .ini-item.abierta')].map(b => b.dataset.herr)") == ["flujo-caja"]
     assert not errores
     pagina.context.close()
 
@@ -1079,7 +1084,7 @@ def _estado_cx(pagina, esperar=None):
 
 def test_configuracion_y_conexiones_en_su_pestana(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator("#iniConexiones").click()
+    _menu(pagina, "Configuración y conexiones")
     assert _pestanas(pagina) == ["Inicio", "Conexiones"]
     assert pagina.locator("#vistaConexiones").is_visible() and pagina.locator("#vistaInicio").is_hidden()
     assert pagina.url.endswith("#/conexiones")
@@ -1098,14 +1103,15 @@ def test_configuracion_y_conexiones_en_su_pestana(navegador, sitio):
     filas = pagina.evaluate("""() => [...document.querySelectorAll('#cxNecesita tbody tr')].map(tr =>
         [tr.querySelector('th').textContent, [...tr.querySelectorAll('.cx-chip')].map(c => c.textContent)])""")
     por_nombre = dict(filas)
-    for juntas in ("Formulador y Seguimiento", "Centro de Costos y Análisis Financiero",
-                   "Emitir cotización y Orden de compra"):
+    for juntas in ("Formulador y Seguimiento", "Centro de Costos y Análisis Financiero"):
         assert juntas in por_nombre, juntas
+    # Emitir cotización y Orden de compra necesitan lo mismo, pero desde el 2026-11-10 van en etapas distintas
+    assert por_nombre["Emitir cotización"] == por_nombre["Orden de compra"]
     assert filas[-1] == ["Calculadora (todas)", []]
     assert {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"} <= set(por_nombre["Formulador y Seguimiento"])
     # La Carta Gantt, herramienta aparte (2026-10-20): la carpeta del equipo para compartir sus cartas
     assert set(por_nombre["Carta Gantt"]) == {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"}
-    assert "QUEMPIN.exe" in por_nombre["Emitir cotización y Orden de compra"]
+    assert "QUEMPIN.exe" in por_nombre["Emitir cotización"]
     # Un dato de la tabla lleva a su tarjeta; «Lo usan» abre la herramienta
     pagina.locator("#cxNecesita .cx-chip", has_text="QUEMPIN.exe").first.click()
     pagina.wait_for_function("() => document.getElementById('cx-sistema').classList.contains('resaltada')")
@@ -1546,7 +1552,7 @@ def _cifras(pagina):
 
 def test_el_recorrido_sin_biblioteca_dice_que_conectar(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator("#iniRecorrido").click()
+    _menu(pagina, "Recorrido de proyectos")
     assert _pestanas(pagina) == ["Inicio", "Recorrido"]
     assert pagina.url.endswith("#/recorrido") and pagina.locator("iframe").count() == 0
     pagina.locator("#rcVacio").wait_for()
@@ -1757,7 +1763,7 @@ def test_sin_la_tarea_de_pedidos_dice_que_espera_la_vuelta_de_cada_2_horas(naveg
 
 def test_sin_la_carpeta_no_se_ofrece_actualizar_datos(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator("#iniRecorrido").click()
+    _menu(pagina, "Recorrido de proyectos")
     pagina.locator("#rcVacio").wait_for()
     assert pagina.locator("#rcPedirVuelta").is_hidden()
     assert not errores
@@ -1852,95 +1858,72 @@ def test_las_cifras_y_el_buscador_filtran_el_recorrido(navegador, sitio):
     pagina.locator("#resultados .res", has_text="N° 908").first.click()
     assert pagina.locator("#dlgRecorrido").is_visible() and pagina.locator("#dlgRcTit").inner_text() == "N° 908 · En obra"
     pagina.keyboard.press("Escape")
-    # El Inicio dice lo que te espera, y lleva al recorrido
-    pagina.locator("#pestanas .ir").first.click()
-    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 5 proyectos"
-    pagina.locator("#iniRcVer").click()
-    assert pagina.locator("#vistaRecorrido").is_visible()
     assert not errores
     pagina.context.close()
 
 
-def _inicio_tarjetas(pagina):
-    return pagina.locator("#iniRcLista .rc-tarjeta").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
-
-
-def test_el_inicio_muestra_lo_que_te_espera(navegador, sitio):
-    """Pedido del 2026-10-20: debajo de las herramientas, una vista previa del recorrido enfocada en el usuario
-    elegido; si no tiene pendientes, un acceso directo al recorrido."""
-    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
-    previa = pagina.locator("#iniRc")
-    previa.locator(".rc-tarjeta").first.wait_for()
-    assert pagina.locator("#iniRecorrido").is_hidden()
-    # Debajo de las herramientas, antes de la línea de ayuda
-    assert pagina.evaluate("[...document.querySelector('.inicio').children].map((e) => e.id || e.className)") == [
-        "tituloInicio", "iniGrupos", "iniRc", "iniRecorrido", "ini-pie"]
-    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 5 proyectos" and pagina.locator("#iniRcTit b").inner_text() == "LC"
-    assert pagina.locator("#iniRcSub").inner_text() == "De tus proyectos, 2 cierran esta semana · 1 en ejecución"
-    # Lo urgente primero (rojo, después ámbar) y, entre iguales, en el orden del recorrido; con más de cuatro, «+N más»
-    assert _inicio_tarjetas(pagina) == ["req-900", "req-904", "f-fz"]
-    etapa = lambda c: pagina.locator(f'#iniRc .rc-tarjeta[data-clave="{c}"] .rc-etapa').inner_text()
-    assert [etapa(c) for c in ("req-900", "req-904", "f-fz")] == ["Requerimiento", "Oferta", "Requerimiento"]
-    assert pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-segs .aqui').count() == 1
-    assert pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-segs .hecha').count() == 3
-    mas = pagina.locator("#iniRcLista .ini-rc-mas")
-    assert mas.inner_text().split("\n") == ["+2", "Ver los 5 que te esperan"]
-    # Cada tarjeta abre su detalle y su botón la herramienta donde se hace
-    pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-abrir').click()
-    assert pagina.locator("#dlgRcTit").inner_text() == "N° 904 · Cotización emitida"
-    pagina.keyboard.press("Escape")
-    pagina.locator('#iniRc .rc-tarjeta[data-clave="req-900"] .rc-accion').click()
-    _esperar(pagina, "formulador", "hash", "#/req/900")
-    # «+2 más» abre el recorrido con solo lo que te espera; «Ver el recorrido», el tablero completo
+def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
+    """Pedido del 2026-11-10: el Inicio solo con las herramientas de cada área, con sus íconos nuevos; sin la franja
+    «Hoy», cifras ni gráficos. Lo único que viene de la carpeta es la alarma de la Planificación en su botón."""
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", ancho=1366, alto=657)
+    alarma = pagina.locator('#iniAreas .ini-item[data-herr="planificacion"] .pl-alerta-n')
+    alarma.wait_for()
+    assert alarma.inner_text() == "3"
+    assert pagina.locator("#tituloInicio b").inner_text() == "LC" and pagina.locator("#iniQuien").is_hidden()
+    # Cuatro áreas de a dos, cada herramienta con su propio ícono (el mismo de su pestaña)
+    assert pagina.evaluate("getComputedStyle(document.getElementById('iniAreas')).gridTemplateColumns.split(' ').length") == 2
+    reg = _registro()
+    for g in ("ofertar", "ejecutar", "controlar", "calcular"):
+        ids = pagina.locator(f'.ini-area[data-grupo="{g}"] .ini-item').evaluate_all("bs => bs.map((b) => b.dataset.herr)")
+        assert ids == [h["id"] for h in reg["herramientas"] if h["grupo"] == g], g
+    iconos = [h.get("icono") for h in reg["herramientas"] if h["grupo"] in {"ofertar", "ejecutar", "controlar", "calcular"}]
+    assert all(iconos) and len(set(iconos)) == len(iconos), "cada herramienta con su propio ícono"
+    portal = PORTAL.read_text(encoding="utf-8")
+    assert all(f"\n    {i}: '" in portal.replace("\r\n", "\n") for i in iconos), "un ícono del registro que no está en ICONOS"
+    assert pagina.locator("#iniAreas .ini-item .ini-ico svg path, #iniAreas .ini-item .ini-ico svg circle, #iniAreas .ini-item .ini-ico svg rect").count() > 19
+    # Nada de lo de antes: ni «Hoy», ni cifras, ni gráficos
+    assert pagina.locator("#iniHoy, #iniEmbudo, #iniSalud, .ini-cifra, .ini-pri").count() == 0
+    # Un botón abre su herramienta
+    pagina.locator('.ini-item[data-herr="planificacion"]').click()
+    assert pagina.locator("#vistaPlan").is_visible()
+    # Sin usuario: las iniciales para elegirse con un clic
     pagina.locator("#pestanas .ir").first.click()
-    mas.click()
-    assert pagina.locator("#vistaRecorrido").is_visible() and pagina.locator("#rcFoco").inner_text().strip() == "Mostrando: Te esperan"
-    assert sorted(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == ["f-fz", "req-900", "req-903", "req-904", "req-906"]
-    pagina.locator("#pestanas .ir").first.click()
-    pagina.locator("#iniRcVer").click()
-    assert pagina.locator("#rcFoco").is_hidden() and len(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == 14
-    pagina.locator("#pestanas .ir").first.click()
-    # Otro usuario, elegido arriba: la vista previa cambia sin recargar
-    elegir = lambda u: (pagina.locator("#btnUsuario").click(), pagina.locator(f'#listaUsuarios .usr-op[data-usuario="{u}"]').click())
-    elegir("CM")
-    assert _inicio_tarjetas(pagina) == ["req-901", "req-902"] and pagina.locator("#iniRcLista .ini-rc-mas").count() == 0
-    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 2 proyectos"
-    assert pagina.locator("#iniRcSub").inner_text() == "Lo más urgente primero, con el botón para hacerlo"
-    # Nada pendiente: queda el acceso directo, que dice cómo va el equipo
-    elegir("ES")
-    assert previa.is_hidden() and pagina.locator("#iniRecorrido").is_visible()
-    assert pagina.locator("#iniRecorridoSub").inner_text() == (
-        "Nada te espera por ahora. En el equipo, 2 cierran esta semana · 1 espera respuesta · 3 en ejecución")
     pagina.locator("#btnUsuario").click()
     pagina.locator("#sinUsuario").click()
-    assert previa.is_hidden() and pagina.locator("#iniRecorridoSub").inner_text() == (
-        "Elige tu usuario para ver aquí lo que te espera. En el equipo, 10 requieren acción · 2 cierran esta semana"
-        " · 1 espera respuesta · 3 en ejecución")
-    pagina.locator("#iniRecorrido").click()
-    assert pagina.locator("#vistaRecorrido").is_visible()
+    assert pagina.locator("#iniQuien button").all_inner_texts() == ["NB", "ES", "LC", "CM", "MP", "SV"]
+    pagina.locator('#iniQuien button[data-usuario="CM"]').click()
+    assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "CM" and pagina.locator("#tituloInicio b").inner_text() == "CM"
     assert not errores
     pagina.context.close()
 
 
-@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1024, 768), (390, 844)])
-def test_lo_que_te_espera_cabe_en_el_inicio(navegador, sitio, ancho, alto):
-    """Con la vista previa el Inicio sigue sin barras en el escritorio, y en el teléfono no se sale por el lado."""
+@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1024, 640), (1280, 600), (390, 844)])
+def test_las_herramientas_caben_en_el_inicio(navegador, sitio, ancho, alto):
+    """Sin barras en el computador; en el teléfono, una columna que no se sale por el lado. Ningún texto bajo 12 px, y
+    desde 1280 px los nombres caben enteros (más angosto, los de una palabra larga se cortan en una sílaba)."""
     movil = ancho < 760
-    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", ancho=ancho, alto=alto, movil=movil)
-    pagina.locator("#iniRc .rc-tarjeta").first.wait_for()
+    pagina, errores = _abrir_portal(navegador, sitio, ancho=ancho, alto=alto, movil=movil)
+    pagina.locator("#iniAreas .ini-item").first.wait_for()
+    pagina.wait_for_timeout(200)
     if not movil:
         assert pagina.evaluate(JS_BARRAS) == []
+    columnas = "getComputedStyle(document.getElementById('iniAreas')).gridTemplateColumns.split(' ').length"
+    assert pagina.evaluate(columnas) == (1 if movil else 2)
+    if ancho >= 1280:
+        cortados = pagina.evaluate("""() => [...document.querySelectorAll('#iniAreas .ini-nom')].filter((n) => {
+            const una = !n.textContent.includes(' ');
+            return una && n.getClientRects().length > 0 && n.getBoundingClientRect().height > parseFloat(getComputedStyle(n).lineHeight) * 1.5;
+        }).map((n) => n.textContent)""")
+        assert not cortados, cortados
     d = pagina.evaluate(JS_DESBORDES)
     assert d["doc"] <= ancho and not d["fuera"], d
-    derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#iniRc *')]
+    derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#vistaInicio *')]
         .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))""")
     assert derecha <= ancho + 0.5, derecha
-    chicos = pagina.evaluate("""() => [...document.querySelectorAll('#iniRc *')]
+    chicos = pagina.evaluate("""() => [...document.querySelectorAll('#vistaInicio *')]
         .filter((e) => e.getClientRects().length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
         .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName)""")
     assert not chicos, chicos
-    columnas = "getComputedStyle(document.getElementById('iniRcLista')).gridTemplateColumns.split(' ').length"
-    assert pagina.evaluate(columnas) == (1 if movil else 4)
     assert not errores
     pagina.context.close()
 
@@ -2116,7 +2099,7 @@ def test_la_planificacion_semanal_en_el_registro():
     por persona en un día. Lee y guarda en la carpeta del equipo, y Configuración y conexiones lo dice."""
     reg = _registro()
     h = {x["id"]: x for x in reg["herramientas"]}["planificacion"]
-    assert h["tipo"] == "vista" and h["vista"] == "vistaPlan" and h["grupo"] == "finanzas"
+    assert h["tipo"] == "vista" and h["vista"] == "vistaPlan" and h["grupo"] == "ejecutar"
     assert reg["personal"] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
     assert set(reg["usuarios"]) <= set(reg["personal"]), "quien usa las herramientas también se planifica"
     usan = {e["id"]: e["usan"] for e in _conexiones()["elementos"]}
@@ -2154,10 +2137,9 @@ def test_la_alarma_muestra_los_proyectos_activos_sin_asignar(navegador, sitio):
     item.locator(".pl-alerta-n").wait_for()
     assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
     assert item.locator(".pl-alerta-n").inner_text() == "3"
-    assert item.locator(".ini-sub").inner_text() == "3 proyectos sin asignar esta semana"
     assert item.locator(".ini-fuera").count() == 0, "se abre dentro del portal"
     pagina.locator("#btnMenu").click()
-    pagina.locator("#grupo-finanzas").click()
+    pagina.locator("#grupo-ejecutar").click()
     assert pagina.locator('#menu .menu-item[data-herr="planificacion"] .pl-alerta-n').inner_text() == "3"
     pagina.keyboard.press("Escape")
     item.click()
@@ -4251,8 +4233,8 @@ def _esperar_aviso(pagina, comienzo):
 def test_proyectos_en_ejecucion_en_el_registro_y_en_el_esquema():
     reg = _registro()
     h = next(x for x in reg["herramientas"] if x["id"] == "ejecucion")
-    assert (h["grupo"], h["tipo"], h["vista"]) == ("finanzas", "vista", "vistaEjecucion")
-    assert [x["id"] for x in reg["herramientas"] if x["grupo"] == "finanzas"][:2] == ["planificacion", "ejecucion"]
+    assert (h["grupo"], h["tipo"], h["vista"]) == ("ejecutar", "vista", "vistaEjecucion")
+    assert [x["id"] for x in reg["herramientas"] if x["grupo"] == "ejecutar"][:2] == ["ejecucion", "planificacion"]
     assert "ejecucion-proyectos" in _esquemas().publicaciones()
     # Lo que carga del Formulador: la ruta que pide el portal y, si el Formulador está en este equipo, el nombre que exporta
     html = PORTAL.read_text(encoding="utf-8")
@@ -5946,6 +5928,13 @@ def _abrir_reporte(pagina, objetivo):
     pagina.locator("#dlgObs[open]").wait_for()
 
 
+def _reportar_sin_clic_derecho(pagina):
+    """«Reportar» en Errores y observaciones (el Inicio ya no lleva el enlace, 2026-11-10): sin lugar, se elige la herramienta."""
+    if pagina.locator("#vistaObservaciones").is_hidden():
+        _menu(pagina, "Errores y observaciones")
+    pagina.locator("#obsNueva").click()
+
+
 def _esperar_envio(pagina):
     pagina.wait_for_function("() => !document.getElementById('dlgObs').open")
 
@@ -5967,7 +5956,7 @@ def _observacion_unica(pagina):
 def test_el_clic_derecho_abre_el_menu_del_portal_y_no_el_del_navegador(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     pagina.evaluate("window.addEventListener('contextmenu', (e) => { window.__nativo = !e.defaultPrevented; })")
-    pagina.locator(".ini-pie").click(button="right", position={"x": 5, "y": 5})
+    pagina.locator("#tituloInicio").click(button="right", position={"x": 5, "y": 5})
     opciones = _opciones_ctx(pagina)
     assert "Reportar un error u observación…" in opciones
     assert "Buscar" in opciones and "Ver las observaciones" in opciones
@@ -5982,7 +5971,7 @@ def test_el_clic_derecho_abre_el_menu_del_portal_y_no_el_del_navegador(navegador
 def test_shift_clic_derecho_deja_el_menu_del_navegador(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     pagina.evaluate("window.addEventListener('contextmenu', (e) => { window.__nativo = !e.defaultPrevented; })")
-    objetivo = pagina.locator(".ini-pie")
+    objetivo = pagina.locator("#tituloInicio")
     pagina.keyboard.down("Shift")
     objetivo.click(button="right")
     pagina.keyboard.up("Shift")
@@ -6027,7 +6016,7 @@ def test_escape_cierra_el_menu_y_no_lo_que_quedo_detras(navegador, sitio):
 
 def test_el_menu_se_recorre_con_las_flechas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator(".ini-pie").click(button="right", position={"x": 5, "y": 5})
+    pagina.locator("#tituloInicio").click(button="right", position={"x": 5, "y": 5})
     pagina.locator("#menuCtx[open]").wait_for()
     enfocado = "() => document.activeElement.textContent"
     pagina.keyboard.press("ArrowDown")
@@ -6395,7 +6384,7 @@ def test_flujo_de_caja_no_guarda_imagen_ni_lo_que_muestra_la_pantalla(navegador,
 
 def test_pegar_una_imagen_en_la_ventana_la_agrega(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.evaluate("""(bytes) => {
         const d = new DataTransfer();
@@ -6417,9 +6406,9 @@ def test_pegar_una_imagen_en_la_ventana_la_agrega(navegador, sitio):
     pagina.context.close()
 
 
-def test_desde_el_inicio_se_elige_la_herramienta(navegador, sitio):
+def test_sin_clic_derecho_se_elige_la_herramienta(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="NB")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     assert pagina.locator("#obsHerrCampo").is_visible()
     assert pagina.locator("#obsDonde").is_hidden()
@@ -6444,7 +6433,7 @@ def test_desde_el_inicio_se_elige_la_herramienta(navegador, sitio):
 
 def test_dentro_de_una_ventana_del_portal_dice_cual(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio)
-    pagina.locator("#iniAyuda").click()
+    _menu(pagina, "Cómo usar el portal")
     pagina.locator("#dlgAyuda[open]").wait_for()
     _abrir_reporte(pagina, pagina.locator("#dlgAyuda li").first)
     assert "Cómo usar el portal" in pagina.locator("#obsDonde").inner_text()
@@ -6461,17 +6450,17 @@ def test_dentro_de_una_ventana_del_portal_dice_cual(navegador, sitio):
 
 def test_lo_escrito_sigue_al_cerrar_y_cancelar_lo_borra(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio)
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.locator("#obsNota").fill("Un borrador")
     pagina.locator("#obsBloquea").check()
     pagina.keyboard.press("Escape")
     pagina.wait_for_function("() => !document.getElementById('dlgObs').open")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     assert pagina.locator("#obsNota").input_value() == "Un borrador"
     assert pagina.locator("#obsBloquea").is_checked()
     pagina.locator("#obsCancelar").click()
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     assert pagina.locator("#obsNota").input_value() == ""
     assert not pagina.locator("#obsBloquea").is_checked()
     assert not errores
@@ -6480,7 +6469,7 @@ def test_lo_escrito_sigue_al_cerrar_y_cancelar_lo_borra(navegador, sitio):
 
 def test_una_nota_vacia_no_se_envia(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio)
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     _esperar_acceso(pagina)
     pagina.locator("#obsNota").fill("ok")
@@ -6500,7 +6489,7 @@ def test_sin_biblioteca_pide_conectarla(navegador, sitio):
     if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
         pagina.context.close()
         pytest.skip("este Chromium no conecta carpetas")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.locator("#obsConectar").wait_for()
     assert "conecta una vez la biblioteca" in pagina.locator("#obsAcceso").inner_text()
@@ -6517,7 +6506,7 @@ def test_sin_permiso_lo_pide_al_enviar(navegador, sitio):
         FileSystemDirectoryHandle.prototype.queryPermission = async () => window.__permiso;
         FileSystemDirectoryHandle.prototype.requestPermission = async () => { window.__pidio++; window.__permiso = 'granted'; return 'granted'; };
     }""")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.wait_for_function("() => document.getElementById('obsAcceso').textContent.includes('pedirá permiso')")
     pagina.locator("#obsNota").fill("Una nota con permiso")
@@ -6535,7 +6524,7 @@ def test_si_niegan_el_permiso_lo_escrito_sigue_ahi(navegador, sitio):
         FileSystemDirectoryHandle.prototype.queryPermission = async () => 'prompt';
         FileSystemDirectoryHandle.prototype.requestPermission = async () => 'denied';
     }""")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.wait_for_function("() => document.getElementById('obsAcceso').textContent.includes('pedirá permiso')")
     pagina.locator("#obsNota").fill("Una nota sin permiso")
@@ -6634,7 +6623,7 @@ def test_la_vista_sin_biblioteca_dice_que_conectar_y_igual_deja_reportar(navegad
 def test_reportar_en_el_telefono_cabe_y_no_hace_zoom(navegador, sitio, ancho):
     pagina, errores = _portal_con_datos(navegador, sitio, ancho=ancho, alto=740, movil=True)
     # Un teléfono: mantener apretado dispara contextmenu sobre lo tocado
-    pagina.evaluate("""() => document.querySelector('.ini-pie').dispatchEvent(
+    pagina.evaluate("""() => document.querySelector('#tituloInicio').dispatchEvent(
         new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 0, clientX: 300, clientY: 400 }))""")
     pagina.locator("#menuCtx[open]").wait_for()
     caja = pagina.locator("#menuCtx").bounding_box()
