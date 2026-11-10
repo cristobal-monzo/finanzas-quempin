@@ -1850,8 +1850,8 @@
   .ej-mapa .reja { stroke: var(--gridline); stroke-width: 1; }
   .ej-mapa .eje-txt { fill: var(--texto-suave); font-size: 12px; font-variant-numeric: tabular-nums; }
   .ej-mapa .eje-tit { fill: var(--text-secondary); font-size: 12.5px; font-weight: 700; }
-  .ej-mapa .zona-mala { fill: var(--estado-bad); opacity: 0.08; }
-  .ej-mapa .zona-ojo { fill: var(--estado-warn); opacity: 0.10; }
+  .ej-mapa .zona-mala { fill: var(--estado-bad); opacity: 0.06; }
+  .ej-mapa .zona-ojo { fill: var(--estado-warn); opacity: 0.08; }
   .ej-mapa .diagonal { stroke: var(--text-secondary); stroke-width: 1.5; stroke-dasharray: 5 4; fill: none; }
   .ej-mapa .zona-txt { fill: var(--texto-suave); font-size: 12px; font-style: italic; }
   .ej-mapa .punto { cursor: pointer; outline: none; }
@@ -1862,7 +1862,9 @@
   .ej-mapa .punto[data-nivel="bad"] .marca { fill: var(--estado-bad); }
   .ej-mapa .punto .etq { fill: var(--text-primary); font-size: 12.5px; font-weight: 900; paint-order: stroke; stroke: var(--surface-card); stroke-width: 3px; }
   .ej-mapa .punto:hover .marca, .ej-mapa .punto:focus-visible .marca, .ej-mapa .punto.resalta .marca { r: 10; stroke: var(--text-primary); }
-  .ej-mapa .punto.tuya .marca { stroke: var(--brand-orange); stroke-width: 3; }
+  .ej-mapa .punto.tuya .etq { fill: var(--brand-orange-ink); }
+  :root[data-theme="dark"] .ej-mapa .punto.tuya .etq { fill: var(--brand-orange); }
+  @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .ej-mapa .punto.tuya .etq { fill: var(--brand-orange); } }
   .ej-mapa-tip {
     position: absolute; z-index: 2; pointer-events: none; max-width: 260px; padding: 8px 10px; border-radius: 8px;
     background: var(--text-primary); color: var(--surface-card); font-size: 12.5px; line-height: 1.4; box-shadow: var(--sombra);
@@ -2021,13 +2023,13 @@
   .ej-cab-fila { display: flex; align-items: flex-start; gap: 16px; }
   .ej-cab-quien { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .ej-cab-estado {
-    flex: 0 1 280px; min-width: 0; display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; border-radius: 10px;
-    background: var(--page-plane); border: 1px solid var(--gridline);
+    flex: 0 1 260px; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px;
+    background: transparent; border: 1px solid var(--gridline);
   }
-  .ej-cab-estado .ej-pin { width: 24px; height: 24px; margin-top: 1px; }
+  .ej-cab-estado .ej-pin { width: 20px; height: 20px; flex: 0 0 auto; }
   .ej-cab-estado-txt { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  .ej-cab-estado-txt b { font-size: 14.5px; }
-  .ej-cab-estado-txt small { font-size: 12px; line-height: 1.35; color: var(--text-secondary); }
+  .ej-cab-estado-txt b { font-size: 13.5px; }
+  .ej-cab-estado-txt small { font-size: 11.5px; line-height: 1.35; color: var(--text-secondary); }
   .ej-cab .ej-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
   .ej-cab .ej-sub .rc-chips { display: inline-flex; }
   @container ejecucion (max-width: 640px) {
@@ -2036,7 +2038,7 @@
   }
   .ej-cab h2 { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 22px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
   .ej-cab h2 .ej-n { font-size: 13px; }
-  .ej-renombrar { align-self: center; border: 0; background: none; color: var(--text-secondary); opacity: .7; font-size: 16px; line-height: 1; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+  .ej-renombrar { align-self: center; border: 0; background: none; color: var(--text-secondary); opacity: .55; font-size: 14px; line-height: 1; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
   .ej-renombrar:hover, .ej-renombrar:focus-visible { opacity: 1; background: color-mix(in srgb, currentColor 10%, transparent); }
   .ej-sub { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-secondary); }
   .ej-cab .rc-chips { margin: 0; }
@@ -2354,13 +2356,13 @@
   .ej-saltos { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 -4px; padding: 6px 4px; background: var(--page-plane); }
   @container ejecucion (max-width: 760px) { .ej-saltos { position: static; } .ej-salto { min-height: 30px; padding: 0 10px; } }
   .ej-salto {
-    flex: 0 0 auto; display: inline-flex; align-items: baseline; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px;
-    border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+    flex: 0 0 auto; display: inline-flex; align-items: baseline; gap: 6px; min-height: 30px; padding: 0 11px; border-radius: 999px;
+    border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
   }
-  .ej-salto small { font-size: 12px; font-weight: 700; color: var(--texto-suave); }
+  .ej-salto small { font-size: 11.5px; font-weight: 600; color: var(--texto-suave); }
   .ej-salto:hover { border-color: var(--brand-orange); }
-  .ej-salto[aria-current="true"] { border-color: var(--text-primary); background: var(--text-primary); color: var(--surface-card); }
-  .ej-salto[aria-current="true"] small { color: inherit; opacity: 0.75; }
+  .ej-salto[aria-current="true"] { border-color: var(--brand-orange); background: var(--tinte); color: var(--tinte-texto); box-shadow: inset 0 0 0 1px var(--brand-orange); }
+  .ej-salto[aria-current="true"] small { color: inherit; opacity: 0.8; }
   .ej-saltos { box-shadow: 0 6px 8px -8px rgba(0,0,0,0.25); }
   .ej-panel[id] { scroll-margin-top: 52px; }
   #ejSecMas { scroll-margin-top: 52px; }
@@ -2818,7 +2820,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@c2c1888 2026-11-10">
+<meta name="quempin-version" content="master@a71f9ab 2026-11-10">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -12223,16 +12225,16 @@
     h.append(info('Cada punto es un proyecto: a la derecha, más avance; arriba, más gastado y comprometido en OC del presupuesto. Sobre la diagonal '
         + 'gasta más de lo que avanza: hasta ' + ejPct(EJ_GASTO_SOBRE_AVANCE) + ' de diferencia está bien (franja amarilla), más es «Atención» y el doble, «En riesgo». '
         + 'El estado también mira el margen estimado contra la meta y el mínimo de su formulación y los avisos del Recorrido. Los que no tienen presupuesto o avance no se pueden ubicar y quedan abajo, en «Sin datos».', 'Cómo leer el Mapa de salud'));
-    cab.append(h, crear('small', null, 'Avance contra lo gastado del presupuesto · toca un punto para abrir el proyecto'));
+    cab.append(h, crear('small', null, 'Avance contra lo gastado del presupuesto · en naranjo, los tuyos · toca un punto para abrirlo'));
     // El gráfico: 0 a 100 % de avance; arriba, al menos 120 % del presupuesto (lo que se pasa cabe a la vista)
     const pos = tarjetas.map((t) => ({ t, m: modelos.get(t.clave), s: saludes.get(t.clave), p: ejPosMapa(modelos.get(t.clave)) }));
     const ubicados = pos.filter((x) => x.p);
     // Se dibuja al ancho que tiene (la letra queda de su tamaño): el de la lista menos la columna de los estados
     const ancho = (ejMapaAncho = $('#ejLista').clientWidth || 960) - 34;
-    const W = Math.max(300, ancho > 720 ? ancho - 260 : ancho), H = ancho > 720 ? 250 : 220, L = 62, R = 14, T = 10, B = 38;
+    const W = Math.max(300, ancho > 720 ? ancho - 260 : ancho), H = ancho > 720 ? 250 : 220, L = 58, R = 22, T = 10, B = 38, P = 12;   // P: margen interior, un punto en 0 no tapa los ejes
     const yMax = Math.max(1.2, Math.ceil((Math.max(0, ...ubicados.map((x) => x.p.y)) + 0.1) * 5) / 5);
-    const X = (v) => L + (W - L - R) * Math.max(0, Math.min(1, v));
-    const Y = (v) => T + (H - T - B) * (1 - Math.max(0, Math.min(yMax, v)) / yMax);
+    const X = (v) => L + P + (W - L - R - P) * Math.max(0, Math.min(1, v));
+    const Y = (v) => T + (H - T - B - P) * (1 - Math.max(0, Math.min(yMax, v)) / yMax);
     const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'group', 'aria-label': 'Mapa de salud: ' + pl(ubicados.length, 'proyecto ubicado', 'proyectos ubicados') + ' según su avance y lo gastado del presupuesto' });
     // Zonas: la de tolerancia (amarilla) y la de gastar más de lo que avanza (roja), sobre la diagonal
     const tol = EJ_GASTO_SOBRE_AVANCE;
@@ -12240,7 +12242,7 @@
     svg.append(sv('polygon', { class: 'zona-ojo', points: [[0, 0], [1, 1], [1, 1 + tol], [0, tol]].map(([a, b]) => X(a) + ',' + Y(b)).join(' ') }));
     for (let i = 0; i <= 4; i++) {
       const v = i / 4;
-      svg.append(sv('line', { class: 'reja', x1: X(v), x2: X(v), y1: T, y2: H - B }), sv('text', { class: 'eje-txt', x: X(v), y: H - B + 15, 'text-anchor': i === 0 ? 'start' : i === 4 ? 'end' : 'middle' }, Math.round(v * 100) + ' %'));
+      svg.append(sv('line', { class: 'reja', x1: X(v), x2: X(v), y1: T, y2: H - B }), sv('text', { class: 'eje-txt', x: X(v), y: H - B + 15, 'text-anchor': 'middle' }, Math.round(v * 100) + ' %'));
     }
     for (let v = 0; v <= yMax + 1e-9; v += yMax > 1.6 ? 0.5 : 0.25) {
       svg.append(sv('line', { class: 'reja', x1: L, x2: W - R, y1: Y(v), y2: Y(v) }), sv('text', { class: 'eje-txt', x: L - 6, y: Y(v) + 4, 'text-anchor': 'end' }, Math.round(v * 100) + ' %'));
@@ -12250,7 +12252,7 @@
     svg.append(sv('text', { class: 'zona-txt', x: X(0.03), y: Y(Math.min(yMax, 1.08)), 'text-anchor': 'start' }, 'Gasta más de lo que avanza'));
     svg.append(sv('text', { class: 'zona-txt', x: X(0.97), y: Y(0.12), 'text-anchor': 'end' }, 'Avanza más de lo que gasta'));
     svg.append(sv('text', { class: 'eje-tit', x: (L + W - R) / 2, y: H - 3, 'text-anchor': 'middle' }, 'Avance →'));
-    const yTit = sv('text', { class: 'eje-tit', x: 12, y: (T + H - B) / 2, 'text-anchor': 'middle', transform: 'rotate(-90 12 ' + (T + H - B) / 2 + ')' }, 'Gastado del presupuesto →');
+    const yTit = sv('text', { class: 'eje-tit', x: 12, y: (T + H - B) / 2, 'text-anchor': 'middle', transform: 'rotate(-90 12 ' + (T + H - B) / 2 + ')' }, 'Gastado →');
     svg.append(yTit);
     const graf = crear('div', 'ej-mapa-graf');
     const tip = crear('div', 'ej-mapa-tip');
@@ -12271,13 +12273,28 @@
     const ocultar = () => { tip.hidden = true; document.querySelectorAll('#ejLista .ej-tarjeta.resalta').forEach((c) => c.classList.remove('resalta')); };
     // Los en riesgo, encima de los demás
     const orden = { sin: 0, ok: 1, warn: 2, bad: 3 };
+    const ocupadas = [];
+    const lugarEtq = (cx, cy, largo) => {
+      const op = [[cx + 12, cy + 4, 'start'], [cx - 12, cy + 4, 'end'], [cx, cy - 12, 'middle'], [cx, cy + 20, 'middle']];
+      const caja = ([x, y, a]) => { const x0 = a === 'start' ? x : a === 'end' ? x - largo : x - largo / 2; return [x0, y - 11, x0 + largo, y + 2]; };
+      const libre = (c) => c[0] >= L - 4 && c[2] <= W && ocupadas.every((o) => c[2] < o[0] || c[0] > o[2] || c[3] < o[1] || c[1] > o[3]);
+      const elegida = op.find((o) => libre(caja(o))) || op[cx > W - 70 ? 1 : 0];
+      ocupadas.push(caja(elegida));
+      return elegida;
+    };
+    ubicados.forEach((x) => ocupadas.push([X(x.p.x) - 9, Y(x.p.y) - 9, X(x.p.x) + 9, Y(x.p.y) + 9]));
     ubicados.slice().sort((a, b) => orden[a.s.nivel] - orden[b.s.nivel]).forEach((x) => {
       const cx = X(x.p.x), cy = Y(x.p.y);
       const g = sv('g', { class: 'punto' + (rcMia(x.t) ? ' tuya' : ''), tabindex: 0, role: 'button', 'data-clave': x.t.clave, 'data-nivel': x.s.nivel,
         'aria-label': (rcEtiqueta(x.t) || '') + ' ' + x.t.titulo + ': ' + EJ_SALUD[x.s.nivel].nombre + ', avance ' + ejPct(x.p.x) + ', gastado ' + ejPct(x.p.y) + ' del presupuesto' });
       g.append(sv('circle', { class: 'area', cx, cy, r: 16 }), sv('circle', { class: 'marca', cx, cy, r: 7.5 }));
       const etq = x.t.req ? x.t.req : x.t.tag || '';
-      if (etq) g.append(sv('text', { class: 'etq', x: cx + (cx > W - 70 ? -12 : 12), y: cy + 4, 'text-anchor': cx > W - 70 ? 'end' : 'start' }, etq));
+      if (etq) {
+        ocupadas.splice(ocupadas.findIndex((o) => o[0] === cx - 9 && o[1] === cy - 9), 1);   // su propio punto no le estorba
+        const [ex, ey, ea] = lugarEtq(cx, cy, String(etq).length * 7.5 + 2);
+        ocupadas.push([cx - 9, cy - 9, cx + 9, cy + 9]);
+        g.append(sv('text', { class: 'etq', x: ex, y: ey, 'text-anchor': ea }, etq));
+      }
       g.addEventListener('pointerenter', () => mostrar(x, g));
       g.addEventListener('pointerleave', ocultar);
       g.addEventListener('focus', () => mostrar(x, g));
