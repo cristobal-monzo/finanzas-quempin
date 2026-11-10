@@ -3376,6 +3376,69 @@ def test_lo_que_cambia_un_colega_llega_solo_y_se_ve_quien_fue(navegador, sitio):
     pagina.context.close()
 
 
+def test_si_un_colega_reemplaza_lo_que_acabas_de_cambiar_se_avisa_y_se_puede_volver(navegador, sitio):
+    """2026-11-10, pedido del usuario: trabajar a la vez sin pisarse sin saberlo. En cada casilla manda el cambio más
+    reciente; si el de un colega reemplaza uno tuyo de hace poco, una franja dice quién y qué, y «Volver a lo mío» lo
+    repone como un cambio nuevo. Lo de un colega que no toca lo tuyo no la muestra."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    mio = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    _esperar_archivo(pagina, mio, lambda s: len(s["datos"]["asignaciones"]) == 1)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _cambio_de_otro(semana, lunes, 1))
+    pagina.locator('#plPersonal tr[data-persona="MP"] td[data-dia="1"] .pl-chip').wait_for(timeout=5000)
+    assert pagina.locator("#plPisado").is_hidden(), "lo de otro que no toca lo tuyo no es un reemplazo"
+    # NB quita lo que LC acababa de asignar
+    otro = _cambio_de_otro(semana, lunes, 0, persona="LC", dispositivo="otro0002")
+    cambio = next(iter(otro.values()))["datos"]["asignaciones"][0]
+    cambio["activa"] = False
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, otro)
+    franja = pagina.locator("#plPisado")
+    franja.wait_for(timeout=6000)
+    txt = franja.inner_text()
+    assert "NB cambió algo que tú acababas de cambiar" in txt and "Asignaste a LC el lunes" in txt and "NB quitó esa asignación" in txt, txt
+    assert pagina.locator('#plPersonal tr[data-persona="LC"] td[data-dia="0"] .pl-chip').count() == 0
+    franja.get_by_role("button", name="Volver a lo mío").click()
+    assert franja.is_hidden()
+    pagina.locator('#plPersonal tr[data-persona="LC"] td[data-dia="0"] .pl-chip').wait_for(timeout=2000)
+    _esperar_aviso(pagina, "Volvió lo tuyo")
+    _esperar_archivo(pagina, mio, lambda s: any(a["persona"] == "LC" and a["activa"] and a["t"] > cambio["t"] for a in s["datos"]["asignaciones"]))
+    assert not errores
+    pagina.context.close()
+
+
+def _presencia(dispositivo, por, vista, donde, segundos=0):
+    return {"esquema": "quempin.intercambio/1", "herramienta": "portal", "generado": _instante(segundos),
+            "datos": {"dispositivo": dispositivo, "por": por, "vista": vista, "donde": donde, "t": _instante(segundos)}}
+
+
+def test_se_ve_quien_mas_esta_en_la_misma_semana(navegador, sitio):
+    """2026-11-10: cada navegador deja en publicado/presencia/ qué semana o proyecto tiene a la vista, y al salir lo
+    vacía. Se nombra solo a quien está en la misma semana y lo renovó hace poco (no a quien cerró sin salir)."""
+    from datetime import date
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, _ = _semana_de(date.today())
+    propia = f"publicado/presencia/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, propia, lambda s: s["datos"]["vista"] == "planificacion")
+    assert sobre["datos"]["donde"] == semana and sobre["datos"]["por"] == "LC"
+    assert esquemas.validar_publicacion("presencia", sobre) == []
+    assert pagina.locator("#plConmigo").is_hidden()
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {
+        "publicado/presencia/otro0001.json": _presencia("otro0001", "NB", "planificacion", semana),
+        "publicado/presencia/otro0002.json": _presencia("otro0002", "ES", "planificacion", "2020-W01"),
+        "publicado/presencia/otro0003.json": _presencia("otro0003", "MP", "planificacion", semana, -600)})
+    pagina.wait_for_function("document.getElementById('plConmigo').textContent === 'NB también está en esta semana'", timeout=20000)
+    assert pagina.locator("#plConmigo").is_visible()
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
+    _esperar_archivo(pagina, propia, lambda s: s["datos"]["vista"] == "" and s["datos"]["donde"] == "")
+    assert not errores
+    pagina.context.close()
+
+
 def test_lo_que_llega_no_interrumpe_el_arrastre_ni_el_foco(navegador, sitio):
     """Con revisiones cada pocos segundos, repintar en cualquier momento botaría lo que se lleva en la mano o el foco."""
     from datetime import date
@@ -3448,6 +3511,8 @@ def test_un_error_al_guardar_se_reintenta_solo_sin_parpadear(navegador, sitio):
     from datetime import date
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
     semana, _ = _semana_de(date.today())
+    # La presencia (2026-11-10) también escribe, una vez al abrir y luego cada 90 s: que no entre en la cuenta
+    _esperar_archivo(pagina, f"publicado/presencia/{DISPOSITIVO}.json")
     pagina.evaluate("""() => { window.__original = FileSystemFileHandle.prototype.createWritable; window.__intentos = 0;
         FileSystemFileHandle.prototype.createWritable = async function () { window.__intentos++; throw new Error('sin permiso'); }; }""")
     _celda_personal(pagina, "LC", 0).click()
@@ -4791,6 +4856,28 @@ def _item_de_prueba(i, proveedor, precio, t=-60, **kw):
 def _sobre_de_otro(*items):
     return ["publicado/ejecucion/otronavegador1.json", json.dumps({"esquema": "quempin.intercambio/1", "herramienta": "ejecucion", "tipo": "ejecucion-proyectos",
             "generado": _instante(0), "datos": {"dispositivo": "otronavegador1", "items": list(items)}})]
+
+
+def test_en_ejecucion_se_ve_quien_cambio_algo_y_lo_tuyo_que_reemplazo(navegador, sitio):
+    """2026-11-10, trabajar a la vez: como en la Planificación, lo que llega de otro dice quién fue, y si reemplaza una
+    cotización que este navegador acababa de cambiar, la franja lo dice y «Volver a lo mío» la repone."""
+    def con_lo_mio(archivos):
+        archivos[EJ] = {"esquema": "quempin.intercambio/1", "herramienta": "ejecucion", "tipo": "ejecucion-proyectos", "generado": _instante(-60),
+                        "datos": {"dispositivo": DISPOSITIVO, "items": [_item_de_prueba("cgrupoprueba1", "Ferretería Uno", 210000, por="LC")]}}
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=con_lo_mio)
+    suyo = _item_de_prueba("cgrupoprueba1", "Ferretería Uno", 250000, t=0)
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, _sobre_de_otro(suyo))
+    franja = pagina.locator("#ejPisado")
+    franja.wait_for(timeout=20000)
+    assert pagina.locator("#ejFrescura").inner_text() == "NB acaba de cambiar 1 cosa"
+    txt = franja.inner_text()
+    assert "NB cambió algo que tú acababas de cambiar" in txt and "NB cambió la cotización «Estanque inoxidable" in txt and "(N° 908)" in txt, txt
+    franja.get_by_role("button", name="Volver a lo mío").click()
+    assert franja.is_hidden()
+    _esperar_aviso(pagina, "Volvió lo tuyo")
+    _esperar_archivo(pagina, EJ, lambda s: any(i["id"] == "cgrupoprueba1" and i["precio"] == 210000 and i["t"] > suyo["t"] for i in s["datos"]["items"]))
+    assert not errores
+    pagina.context.close()
 
 
 def test_dos_navegadores_que_eligen_a_la_vez_no_cuentan_el_item_dos_veces(navegador, sitio):

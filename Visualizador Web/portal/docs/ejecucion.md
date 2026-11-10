@@ -213,3 +213,17 @@ cuántas cosas son y cuáles (`.ej-porhacer-res`); abierto o cerrado se recuerda
   etiquetas buscan un lugar libre (derecha, izquierda, arriba, abajo: `lugarEtq`) y lo tuyo se marca con la etiqueta en
   naranjo, no con un anillo; zonas más tenues. El acceso activo de la fila de partes va en tinte naranjo (no blanco en
   oscuro), las pastillas más chicas, y el estado de la cabecera es una caja sin relleno, más baja.
+
+## Trabajar a la vez (2026-11-10)
+
+Pedido del usuario: que se pueda trabajar a la vez en la Planificación y en Proyectos en ejecución, sin conectar
+servicios nuevos. La unión ya existía (en cada `id` manda el cambio más reciente); se agregó lo mismo que en la
+Planificación (detalle en [planificacion.md](planificacion.md), «Lo tuyo que otro reemplazó y quién más está»):
+- **Lo que llega de otro** (`ejNotarAjenos`, desde `ejLeer`): se ilumina 6 s y la línea de arriba dice «NB acaba de
+  cambiar 2 cosas» durante `PL_AJENO_SEG`. Se relee cada `EJ_RELEER_SEG` = 10 s (antes 30).
+- **Franja de lo reemplazado** (`#ejPisado`, `ej.pisado`): si eso reemplaza algo que este navegador cambió hace menos de
+  `PISADO_MIN` minutos, con otro valor (`ejValor` compara lo validado, sin quién ni cuándo): «NB cambió la cotización
+  «…» (N° 908)». «Volver a lo mío» (`ejVolverPisado`) lo repone con `ejPoner`, con su Deshacer.
+- **Presencia** (`#ejConmigo`): con un proyecto abierto, «NB también está en este proyecto» (`donde` = la clave de la
+  tarjeta).
+- Prueba: `test_en_ejecucion_se_ve_quien_cambio_algo_y_lo_tuyo_que_reemplazo`.
