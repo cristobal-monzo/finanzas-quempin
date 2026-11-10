@@ -19,6 +19,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 | `publicado/formulador/` | Un archivo por cada proyecto del Formulador: así el equipo ve los mismos proyectos. |
 | `publicado/planificacion/` | La Planificación semanal del Portal QUEMPIN: quién va a qué proyecto cada día. Una carpeta por semana y, dentro, un archivo por computador; el Portal los junta. |
 | `publicado/ejecucion/` | «Proyectos en ejecución» del Portal QUEMPIN: las cotizaciones y gastos que se esperan, los días trabajados, la venta corregida, las notas y los pendientes de cada proyecto en obra. Un archivo por computador; el Portal los junta. No son costos reales: no llegan al Centro de Costos. |
+| `publicado/presencia/` | Qué semana de la Planificación o qué proyecto en ejecución tiene abierto cada computador en el Portal, para avisar «NB también está en esta semana». Un archivo por computador; lo que no se renovó en 5 minutos no cuenta. |
 | `publicado/uso-portal/` | Cuántas veces se abre cada herramienta del Portal QUEMPIN por día, sin nombres: un archivo por computador. Sirve para saber qué usa el equipo y mejorar eso primero. |
 | `esquemas.json` | El formato de cada envío y de cada publicación. |
 | `intercambio.json` | Marca que identifica esta carpeta. |

@@ -871,6 +871,17 @@
   #plContenido { display: flex; flex-direction: column; gap: 12px; }
   #plContenido[hidden] { display: none; }
   .pl-reintentar { min-height: 30px; padding: 0 10px; }
+  /* Trabajar a la vez (2026-11-10): quién más está aquí, y lo tuyo que otro reemplazó */
+  .conmigo { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--estado-warn); font-weight: 600; }
+  .pisado {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; border-radius: 12px;
+    border: 1px solid var(--estado-warn); box-shadow: inset 4px 0 0 var(--estado-warn); background: var(--surface-card);
+  }
+  .pisado[hidden] { display: none; }
+  .pisado-txt { flex: 1 1 260px; min-width: 0; }
+  .pisado-txt ul { margin: 4px 0 0; padding-left: 18px; color: var(--texto-suave); }
+  .pisado .cx-enlace { min-height: 32px; padding: 0 12px; }
+  .ejecucion > .pisado { margin-bottom: 12px; }
   /* La barra: la semana, las tres vistas y lo que se hace con la semana */
   .pl-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
   .pl-semana, .pl-vistas {
@@ -2940,6 +2951,7 @@
               <div class="rc-frescura">
                 <span class="cx-punto" id="plPunto"></span>
                 <span id="plFrescura" role="status">Leyendo la carpeta del equipo…</span>
+                <span class="conmigo" id="plConmigo" role="status" hidden></span>
                 <button class="cx-enlace pl-reintentar" id="plReintentar" type="button" hidden>Reintentar</button>
                 <button class="acc-btn" id="plActualizar" type="button" title="Volver a leer la carpeta del equipo" aria-label="Volver a leer la carpeta del equipo"></button>
               </div>
@@ -2971,6 +2983,8 @@
                 </div>
               </div>
               <!-- Las cifras de la semana, en una línea; «sin asignar» despliega la lista de esos proyectos (#plAlarma) -->
+              <!-- Lo tuyo que otro reemplazó al trabajar a la vez (2026-11-10): lo arma pisPintar -->
+              <div class="pisado" id="plPisado" role="alert" hidden></div>
               <div class="pl-resumen" id="plResumen" role="group" aria-label="La semana en cifras"></div>
               <div class="pl-alarma" id="plAlarma" hidden></div>
               <!-- Una semana que viene, vacía: copiar la anterior a la vista (2026-10-29; antes solo en «Más») -->
@@ -3126,10 +3140,12 @@
               <div class="rc-frescura">
                 <span class="cx-punto" id="ejPunto"></span>
                 <span id="ejFrescura" role="status">Leyendo la carpeta del equipo…</span>
+                <span class="conmigo" id="ejConmigo" role="status" hidden></span>
                 <button class="cx-enlace pl-reintentar" id="ejReintentar" type="button" hidden>Reintentar</button>
                 <button class="acc-btn" id="ejActualizar" type="button" title="Volver a leer la carpeta del equipo" aria-label="Volver a leer la carpeta del equipo"></button>
               </div>
             </header>
+            <div class="pisado" id="ejPisado" role="alert" hidden></div>
             <div class="rc-vacio" id="ejVacio" hidden></div>
             <div class="rc-leyendo" id="ejLeyendo" role="status">Leyendo la carpeta del equipo…</div>
             <div id="ejLista" hidden>
@@ -6581,6 +6597,7 @@
     deshacer: [],             // tandas de cambios para deshacer, la última al final
     recien: new Set(), relojRecien: null,   // las casillas (anclas) de la última tanda, que se iluminan
     recienAjeno: false, ajeno: null,        // esa tanda llegó de otro computador; quién y cuándo, para la línea de arriba
+    pisado: null,             // lo tuyo que otro reemplazó (2026-11-10): { semana, items: [{ tipo, k, mio, suyo }] }
     repintar: false,                        // llegó algo con un arrastre a medias: se pinta al soltar
     leyendo: null, error: null, leyendoDesde: 0, guardandoDesde: 0, falloGuardar: 0,
     pop: null,                // la ventanita abierta: { tipo: persona | proyecto | nuevo, iso, ancla, … }
@@ -6726,6 +6743,117 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && uso.reloj) { clearTimeout(uso.reloj); usoGuardar(); }
   });
+
+  // ---- Trabajar a la vez (2026-11-10): quién más está aquí, y lo tuyo que otro reemplazó ------------------------
+  /* Pedido del usuario: que en la Planificación semanal y en Proyectos en ejecución se pueda trabajar a la vez sin pisarse
+     sin saberlo. Las dos vistas ya juntan lo de todos (en cada casilla o cosa manda el cambio más reciente); esto agrega:
+     - Presencia: cada navegador deja en publicado/presencia/<dispositivo>.json (esquema presencia) qué semana o qué
+       proyecto tiene a la vista, cada PRES_RENOVAR_SEG mientras la vista está abierta, y vacío al salir. Lo que no se
+       renovó en PRES_VIGENCIA_SEG no cuenta (un computador que se apagó). Llega con OneDrive, como todo lo demás.
+     - Pisado: si llega de otro un cambio que reemplaza uno tuyo hecho menos de PISADO_MIN minutos antes, con otro valor,
+       una franja dice quién y qué, con «Volver a lo mío» (otro cambio, con su Deshacer) y «Dejar lo de …». */
+  const PRES_RENOVAR_SEG = 90;
+  const PRES_VIGENCIA_SEG = 300;
+  const PRES_LEER_SEG = 15;
+  const PISADO_MIN = 60;
+  const pres = { escrito: '|', escritoEn: 0, escribiendo: false, leidoEn: 0, leyendo: false, otros: [] };
+  // Lo que este navegador tiene a la vista: la semana de la Planificación o el proyecto de Proyectos en ejecución
+  function presAhora() {
+    if (document.visibilityState === 'visible' && planif.lunes && !$('#vistaPlan').hidden) return { vista: 'planificacion', donde: plSemanaId(planif.lunes) };
+    if (document.visibilityState === 'visible' && ej.clave && !$('#vistaEjecucion').hidden) return { vista: 'ejecucion', donde: ej.clave };
+    return { vista: '', donde: '' };
+  }
+  function presVigilar() {
+    if (!rc.dir) return;
+    const a = presAhora();
+    const clave = a.vista + '|' + a.donde;
+    if (clave !== pres.escrito || (a.vista && Date.now() - pres.escritoEn > PRES_RENOVAR_SEG * 1000)) presEscribir(a);
+    if (a.vista && Date.now() - pres.leidoEn > PRES_LEER_SEG * 1000) presLeer();
+    else if (!a.vista && pres.otros.length) { pres.otros = []; presPintar(); }
+  }
+  async function presEscribir(a) {
+    if (pres.escribiendo) return;
+    pres.escribiendo = true;
+    const clave = a.vista + '|' + a.donde;
+    try {
+      const sobre = { esquema: 'quempin.intercambio/1', herramienta: 'portal', generado: new Date().toISOString(),
+        datos: { dispositivo: plDispositivo(), por: /^[A-Z]{2,3}$/.test(estado.usuario || '') ? estado.usuario : '', vista: a.vista, donde: a.donde, t: new Date().toISOString() } };
+      await exigirEsquema(rc.dir, 'presencia', sobre);
+      const carpeta = await (await rc.dir.getDirectoryHandle('publicado', { create: true })).getDirectoryHandle('presencia', { create: true });
+      const w = await (await carpeta.getFileHandle(plDispositivo() + '.json', { create: true })).createWritable();
+      await w.write(JSON.stringify(sobre, null, 1));
+      await w.close();
+    } catch (e) { console.warn('Presencia: no se guardó', e); }      // se reintenta al renovar
+    pres.escrito = clave;
+    pres.escritoEn = Date.now();
+    pres.escribiendo = false;
+  }
+  async function presLeer() {
+    if (pres.leyendo) return;
+    pres.leyendo = true;
+    pres.leidoEn = Date.now();
+    const otros = [];
+    try {
+      const carpeta = await (await rc.dir.getDirectoryHandle('publicado')).getDirectoryHandle('presencia');
+      const mio = plDispositivo() + '.json';
+      const limite = Date.now() - PRES_VIGENCIA_SEG * 1000, tope = Date.now() + PRES_VIGENCIA_SEG * 1000;
+      for await (const [n, h] of carpeta.entries()) {
+        if (h.kind !== 'file' || !/\.json$/i.test(n) || n === mio) continue;
+        try {
+          const f = await h.getFile();
+          if (f.lastModified < limite) continue;          // no se tocó en todo ese rato: ya no está
+          const sobre = JSON.parse(rcSinBom(await f.text()));
+          const d = sobre && sobre.esquema === 'quempin.intercambio/1' && sobre.datos;
+          const t = d ? Date.parse(d.t) : NaN;
+          if (!(t > limite && t < tope) || !['planificacion', 'ejecucion'].includes(d.vista) || typeof d.donde !== 'string') continue;
+          const por = /^[A-Z]{2,3}$/.test(texto(d.por)) ? d.por : '';
+          if (por && por === estado.usuario) continue;    // la misma persona en otro computador
+          otros.push({ por, vista: d.vista, donde: d.donde.slice(0, 40) });
+        } catch (e) { /* a medio sincronizar */ }
+      }
+    } catch (e) { /* nadie ha dejado su presencia todavía */ }
+    pres.otros = otros;
+    pres.leyendo = false;
+    presPintar();
+  }
+  // «LC también está en esta semana», «LC y NB también están en este proyecto»
+  function presTexto(vista, donde) {
+    const ps = [...new Set(pres.otros.filter((o) => o.vista === vista && o.donde === donde).map((o) => o.por || 'Otro computador'))];
+    if (!ps.length) return '';
+    return unir(ps) + (ps.length > 1 ? ' también están ' : ' también está ') + (vista === 'planificacion' ? 'en esta semana' : 'en este proyecto');
+  }
+  function presPintar() {
+    [['#plConmigo', 'planificacion', planif.lunes ? plSemanaId(planif.lunes) : ''], ['#ejConmigo', 'ejecucion', ej.clave || '']].forEach(([sel, vista, donde]) => {
+      const el = $(sel);
+      const t = donde ? presTexto(vista, donde) : '';
+      el.hidden = !t;
+      if (el.textContent !== t) el.textContent = t;
+      el.title = t ? 'Lo que cambia cada uno llega al otro con OneDrive. Si los dos cambian lo mismo, queda lo último y esta vista avisa a quien le reemplazaron lo suyo.' : '';
+    });
+  }
+  // La franja de lo tuyo que otro reemplazó: quién, qué (hasta 4 líneas) y los dos botones. Sin p, se esconde.
+  function pisPintar(caja, p, volver, dejar) {
+    caja.textContent = '';
+    caja.hidden = !p;
+    if (!p) return;
+    const txt = crear('div', 'pisado-txt');
+    const n = p.lineas.length;
+    txt.append(crear('strong', null, p.quien + ' cambió ' + (n === 1 ? 'algo' : n + ' cosas') + ' que tú acababas de cambiar'));
+    const ul = crear('ul');
+    p.lineas.slice(0, 4).forEach((l) => ul.append(crear('li', null, l)));
+    if (n > 4) ul.append(crear('li', null, 'y ' + (n - 4) + ' más'));
+    txt.append(ul);
+    const b1 = crear('button', 'cx-enlace', 'Volver a lo mío');
+    b1.type = 'button';
+    b1.addEventListener('click', volver);
+    const b2 = crear('button', 'cx-enlace', 'Dejar lo de ' + p.quien);
+    b2.type = 'button';
+    b2.addEventListener('click', dejar);
+    caja.append(txt, b1, b2);
+  }
+  const pisQuien = (items) => unir([...new Set(items.map((x) => x.suyo.por || 'Otro computador'))]);
+  const sinMarca = (e) => { const x = Object.assign({}, e); delete x.t; delete x.por; delete x.de; return x; };
+  const pisReciente = (mio, suyo) => Date.parse(suyo.t) - Date.parse(mio.t) < PISADO_MIN * 60000;
   // proyectos y personas: los nombres de lo usado en la semana (las personas, solo las escritas a mano)
   const plVacia = () => ({ asig: new Map(), aus: new Map(), pau: new Map(), veh: new Map(), proyectos: {}, personas: {} });
   const plKAsig = (e) => e.dia + '|' + e.persona + '|' + e.proyecto;      // también la del vehículo de esa asignación
@@ -7052,15 +7180,75 @@
   function plNotarAjenos(s, antes) {
     if (!planif.lunes || s.id !== plSemanaId(planif.lunes)) return;
     const yo = plDispositivo();
-    const ajenos = [];
+    const ajenos = [], pisados = [];
     PL_TIPOS.forEach((tipo) => s.ef[tipo].forEach((e, k) => {
       const a = antes[tipo].get(k);
-      if (e.de !== yo && (!a || a.t !== e.t)) ajenos.push(Object.assign({ tipo }, e));
+      if (e.de === yo || (a && a.t === e.t)) return;
+      ajenos.push(Object.assign({ tipo }, e));
+      // Reemplaza algo que este navegador acababa de cambiar, con otro valor (2026-11-10)
+      if (a && a.de === yo && plValor(tipo, a) !== plValor(tipo, e) && pisReciente(a, e)) pisados.push({ tipo, k, mio: a, suyo: e });
     }));
     if (!ajenos.length) return;
     const quien = [...new Set(ajenos.map((e) => e.por || 'Otro computador'))].join(', ');
     planif.ajeno = { quien, n: ajenos.length, cuando: Date.now() };
     plMarcarRecien(ajenos.filter((e) => e.tipo !== 'pau'), plModelo(s), true);
+    if (!pisados.length) return;
+    // Se suma a lo que ya avisaba en esa semana; de una misma casilla queda lo tuyo de antes del primer reemplazo
+    const items = new Map((planif.pisado && planif.pisado.semana === s.id ? planif.pisado.items : []).map((x) => [x.tipo + '#' + x.k, x]));
+    pisados.forEach((x) => { const v = items.get(x.tipo + '#' + x.k); items.set(x.tipo + '#' + x.k, v ? Object.assign({}, x, { mio: v.mio }) : x); });
+    planif.pisado = { semana: s.id, items: [...items.values()] };
+  }
+  // Lo que cuenta de una casilla al comparar dos versiones
+  const plValor = (tipo, e) => (tipo === 'asig' ? String(e.activa) : tipo === 'aus' ? e.motivo : tipo === 'pau' ? e.activa + '|' + e.nota : e.vehiculo);
+  // Una línea de la franja: qué habías hecho y qué hizo el otro
+  function plPisadoTexto(s, m, x) {
+    const { tipo, mio, suyo } = x;
+    const per = mio.persona ? plNom(mio.persona) : '';
+    const dia = mio.dia ? plElDia(plDiaDe(s, mio.dia)) : '';
+    const proy = mio.proyecto ? m.titulo(m.canon(mio.proyecto)) : '';
+    const quien = suyo.por || 'otro computador';
+    if (tipo === 'asig') return mio.activa ? 'Asignaste a ' + per + ' ' + dia + ' en ' + proy + '; ' + quien + ' quitó esa asignación.'
+      : 'Quitaste a ' + per + ' ' + dia + ' de ' + proy + '; ' + quien + ' volvió a poner esa asignación.';
+    if (tipo === 'aus') {
+      const nom = (id) => (PL_AUSENCIAS.find((a) => a.id === id) || { nombre: 'sin ausencia' }).nombre.toLowerCase();
+      return per + ' ' + dia + ': pusiste «' + nom(mio.motivo) + '» y ' + quien + ' «' + nom(suyo.motivo) + '».';
+    }
+    if (tipo === 'pau') {
+      if (mio.activa === suyo.activa) return proy + ': cambiaste la nota de «sin trabajo esta semana» y ' + quien + ' escribió otra.';
+      return mio.activa ? 'Marcaste ' + proy + ' sin trabajo esta semana; ' + quien + ' lo desmarcó.' : 'Desmarcaste ' + proy + ' sin trabajo esta semana; ' + quien + ' lo volvió a marcar.';
+    }
+    const v = (id) => (plVehiculo(id) ? plLaVeh(plVehiculo(id)) : 'sin vehículo');
+    return per + ' ' + dia + ' en ' + proy + ': pusiste ' + v(mio.vehiculo) + ' y ' + quien + ' ' + v(suyo.vehiculo) + '.';
+  }
+  function plPintarPisado() {
+    const p = planif.pisado;
+    if (!p || !planif.lunes || p.semana !== plSemanaId(planif.lunes)) { pisPintar($('#plPisado'), null); return; }
+    const s = plSemana(p.semana);
+    const m = plModelo(s);
+    // El vehículo que se fue con una asignación no se cuenta aparte
+    const asig = new Set(p.items.filter((x) => x.tipo === 'asig').map((x) => x.k));
+    const lineas = p.items.filter((x) => !(x.tipo === 'veh' && asig.has(x.k))).map((x) => plPisadoTexto(s, m, x));
+    pisPintar($('#plPisado'), { quien: pisQuien(p.items), lineas }, plVolverPisado, () => { planif.pisado = null; plPintarPisado(); });
+  }
+  // «Volver a lo mío»: lo tuyo vuelve como un cambio nuevo (le gana al del otro y le llega), en un paso de Deshacer
+  function plVolverPisado() {
+    const p = planif.pisado;
+    if (!p) return;
+    planif.pisado = null;
+    const s = plSemana(p.semana);
+    const tanda = [];
+    p.items.forEach(({ tipo, k, mio, suyo }) => {
+      tanda.push({ tipo, e: sinMarca(suyo) });
+      s.mias[tipo].set(k, Object.assign(sinMarca(mio), { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
+    });
+    plRecalcular(s);
+    planif.deshacer.push({ semana: s.id, tanda });
+    if (planif.deshacer.length > 40) planif.deshacer.shift();
+    plProgramarGuardado(s.id);
+    plMarcarRecien(tanda.filter((x) => x.tipo !== 'pau').map((x) => x.e), plModelo(s));
+    plPintar();
+    plPintarAlarmaGlobal();
+    avisar('Volvió lo tuyo; le llega a ' + pisQuien(p.items) + ' con OneDrive.', { texto: 'Deshacer', ir: plDeshacer });
   }
   // Lo mismo con la lista de lo agregado a mano
   async function plLeerLista(dir) {
@@ -7380,6 +7568,11 @@
     const poner = (tipo, e, antes) => {
       tanda.push({ tipo, e: Object.assign({}, e, antes) });
       s.mias[tipo].set(plK(tipo, e), Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() }));
+      // Lo que vuelves a cambiar sale de la franja de lo reemplazado: «Volver a lo mío» ya no lo tocaría
+      if (planif.pisado && planif.pisado.semana === s.id) {
+        planif.pisado.items = planif.pisado.items.filter((x) => !(x.tipo === tipo && x.k === plK(tipo, e)));
+        if (!planif.pisado.items.length) planif.pisado = null;
+      }
       plRecalcular(s);
     };
     // El vehículo de una casilla tal como va quedando la tanda, también si ya no está asignada: el cambio más reciente
@@ -8199,6 +8392,8 @@
     const dias = plDias(s);
     if (planif.diaMovil === null || planif.diaMovil >= dias.length) planif.diaMovil = Math.max(0, dias.findIndex((d) => d.hoy));
     plPintarBarra(s, dias);
+    plPintarPisado();
+    presPintar();
     const leida = s.leida > 0;
     const estadoSemana = $('#plEstadoSemana');
     estadoSemana.hidden = leida && !planif.error;
@@ -11128,7 +11323,7 @@
   const EJ_MAX_LINEAS = 30;
   const ejLineasDe = (it) => (Array.isArray(it.lineas) && it.lineas.length ? it.lineas : it.linea ? [it.linea] : []);
   const EJ_GASTO_SOBRE_AVANCE = 0.15;                     // gastado el 60 % del presupuesto con 40 % de avance: se avisa
-  const EJ_RELEER_SEG = 30;
+  const EJ_RELEER_SEG = 10;                               // 2026-11-10: antes 30; para trabajar a la vez
   const EJ_CLAVE = /^(req:(\d{1,6}|\d{3,4}t)|tag:[A-Z0-9]{2,10})$/;
   const EJ_ID = /^[a-z0-9-]{6,40}$/;
   const EJ_UNIDADES = ['Un.', 'kg', 'm', 'm2', 'm3', 'gl', 'km', 'día', 'hr', 'lt', 'noche'];   // las del Formulador
@@ -11147,6 +11342,7 @@
     leyendo: null, error: null,
     porGuardar: false, guardando: false, otraVez: false, relojGuardar: null, guardado: 0, errorGuardar: null,
     deshacer: [], recien: new Set(), relojRecien: null,
+    ajeno: null, pisado: null,  // 2026-11-10: lo que llegó de otro (quién, cuántas, cuándo) y lo tuyo que reemplazó ([{ id, mio, suyo }])
     libs: new Map(), precios: null, preciosLm: 0, buscador: null, parecidas: new Map(), calc: new Map(),
     docs: null,               // las facturas del Centro de Costos: { porTag: Map(TAG → documentos), actualizado, lm, size }
     docsFiltro: 'todas', docsQ: '', todosDocs: false, asociando: null,
@@ -11304,6 +11500,7 @@
   // Lee los archivos del equipo: solo los que cambiaron desde la última vez. Devuelve si algo cambió.
   async function ejLeer(dir) {
     const d = ej.datos;
+    const yaLeida = !!d.leida;
     const carpeta = await ejCarpeta(dir, false);
     let cambio = !d.leida;
     const vistos = new Set();
@@ -11328,8 +11525,61 @@
     }
     d.archivos.forEach((x, n) => { if (!vistos.has(n)) { d.archivos.delete(n); cambio = true; } });
     d.leida = Date.now();
-    if (cambio) ejRecalcular();
+    if (cambio) {
+      const antes = d.ef;
+      ejRecalcular();
+      if (yaLeida) ejNotarAjenos(antes);
+    }
     return cambio;
+  }
+  /* Lo que acaba de llegar de otro computador (2026-11-10, como en la Planificación): se ilumina, la línea de arriba dice
+     quién fue y, si reemplaza algo que este navegador acababa de cambiar, la franja de lo reemplazado lo dice. */
+  function ejNotarAjenos(antes) {
+    const yo = plDispositivo();
+    const ajenos = [], pisados = [];
+    ej.datos.ef.forEach((e, id) => {
+      const a = antes.get(id);
+      if (e.de === yo || (a && a.t === e.t)) return;
+      ajenos.push(e);
+      if (a && a.de === yo && ejValor(a) !== ejValor(e) && pisReciente(a, e)) pisados.push({ id, mio: a, suyo: e });
+    });
+    if (!ajenos.length) return;
+    ej.ajeno = { quien: unir([...new Set(ajenos.map((e) => e.por || 'Otro computador'))]), n: ajenos.length, cuando: Date.now() };
+    ajenos.forEach((e) => ej.recien.add(e.id));
+    clearTimeout(ej.relojRecien);
+    ej.relojRecien = setTimeout(() => {
+      ej.recien.clear();
+      document.querySelectorAll('#ejProyecto .recien').forEach((x) => x.classList.remove('recien'));
+    }, 6000);
+    if (!pisados.length) return;
+    const items = new Map((ej.pisado || []).map((x) => [x.id, x]));
+    pisados.forEach((x) => { const v = items.get(x.id); items.set(x.id, v ? Object.assign({}, x, { mio: v.mio }) : x); });
+    ej.pisado = [...items.values()];
+  }
+  // Lo que cuenta de una cosa al comparar dos versiones: lo validado, sin quién ni cuándo
+  function ejValor(e) {
+    const v = ejValidar(e, '9999') || e;
+    return JSON.stringify(Object.keys(v).filter((k) => !['t', 'por', 'de', 'creado'].includes(k)).sort().map((k) => [k, v[k]]));
+  }
+  function ejPisadoTexto({ mio, suyo }) {
+    const e = mio.borrado ? suyo : mio;
+    const que = e.tipo === 'costo' ? 'la cotización «' + (e.descripcion || '') + '»' : e.tipo === 'nota' ? 'una nota'
+      : e.tipo === 'pendiente' ? 'el pendiente «' + (e.texto || '') + '»' : e.tipo === 'dia' ? 'el día ' + (e.fecha || '') + ' de ' + plNom(e.persona)
+      : e.tipo === 'tarifas' ? 'las tarifas' : e.tipo === 'asociacion' ? 'la factura ' + (e.ref || '') : 'la venta corregida';
+    const donde = mio.proyecto.startsWith('req:') ? 'N° ' + mio.proyecto.slice(4) : mio.proyecto.slice(4);
+    const quien = suyo.por || 'Otro computador';
+    return quien + (suyo.borrado ? ' borró ' : mio.borrado ? ' volvió a poner lo que borraste: ' : ' cambió ') + que + ' (' + donde + ').';
+  }
+  function ejPintarPisado() {
+    const p = ej.pisado && ej.pisado.length ? ej.pisado : null;
+    pisPintar($('#ejPisado'), p && { quien: pisQuien(p), lineas: p.map(ejPisadoTexto) }, ejVolverPisado, () => { ej.pisado = null; ejPintarPisado(); });
+  }
+  // «Volver a lo mío»: lo tuyo vuelve como un cambio nuevo, con su Deshacer
+  function ejVolverPisado() {
+    const p = ej.pisado;
+    if (!p) return;
+    ej.pisado = null;
+    ejPoner(p.map((x) => sinMarca(x.mio)), 'Volvió lo tuyo; le llega a ' + pisQuien(p) + ' con OneDrive.');
   }
   async function ejEscribir(dir) {
     const d = ej.datos;
@@ -11412,6 +11662,8 @@
       ej.datos.mias.set(x.id, x);
       ej.recien.add(x.id);
     });
+    // Lo que vuelves a cambiar sale de la franja de lo reemplazado
+    if (ej.pisado) { ej.pisado = ej.pisado.filter((x) => !cambios.some((c) => c.id === x.id)); if (!ej.pisado.length) ej.pisado = null; }
     ejRecalcular();
     ej.deshacer.push(antes);
     if (ej.deshacer.length > 40) ej.deshacer.shift();
@@ -12038,7 +12290,10 @@
     if (ej.guardando || ej.porGuardar) { txt.textContent = 'Guardando en la carpeta del equipo…'; txt.title = ''; punto.className = 'cx-punto warn'; return; }
     if (!rc.leido) { txt.textContent = rc.leyendo ? 'Leyendo la carpeta del equipo…' : 'Sin datos de la carpeta del equipo'; txt.title = ''; punto.className = 'cx-punto'; return; }
     const l = rc.pulso;
-    txt.textContent = Date.now() - ej.guardado < 8000 ? 'Guardado en la carpeta del equipo' : l && l.detenido ? 'El procesador está detenido' : 'Al día con la carpeta del equipo';
+    const aj = ej.ajeno && Date.now() - ej.ajeno.cuando < PL_AJENO_SEG * 1000 ? ej.ajeno : null;
+    const linea = aj ? aj.quien + ' acaba de cambiar ' + pl(aj.n, 'cosa', 'cosas')
+      : Date.now() - ej.guardado < 8000 ? 'Guardado · OneDrive lo lleva al equipo' : l && l.detenido ? 'El procesador está detenido' : 'Al día con la carpeta del equipo';
+    if (txt.textContent !== linea) txt.textContent = linea;
     txt.title = 'Las cotizaciones, la venta corregida, las notas y los pendientes se guardan en la carpeta de intercambio (publicado › ejecucion), así todo el equipo ve lo mismo; esta vista revisa cada '
       + EJ_RELEER_SEG + ' segundos lo que cambian los demás. El avance llega al Análisis Financiero con la próxima vuelta del procesador.' + (l ? ' ' + l.texto : '');
     punto.className = 'cx-punto ' + (l && l.nivel !== 'ok' ? l.nivel : 'ok');
@@ -12048,6 +12303,8 @@
     $('#ejLeyendo').hidden = hay || !!rc.sinDatos;
     $('#ejVacio').hidden = hay || !rc.sinDatos;
     ejPintarFrescura();
+    ejPintarPisado();
+    presPintar();
     if (!hay) {
       $('#ejLista').hidden = true;
       $('#ejProyecto').hidden = true;
@@ -16794,6 +17051,9 @@
   ['#ejVentaX', '#ejVCancelar'].forEach((s) => $(s).addEventListener('click', () => $('#dlgEjVenta').close()));
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && ej.porGuardar) ejGuardar(); });
   setInterval(ejVigilar, 5000);
+  // Trabajar a la vez: la presencia de este navegador y la de los demás
+  setInterval(presVigilar, 3000);
+  document.addEventListener('visibilitychange', presVigilar);
   // La cotización del Cotizador Histórico, a un proyecto
   $('#llForm').addEventListener('submit', llLlevar);
   ['#llX', '#llCancelar'].forEach((s) => $(s).addEventListener('click', () => $('#dlgLlevar').close()));
