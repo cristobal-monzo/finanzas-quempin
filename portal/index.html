@@ -1837,6 +1837,7 @@
   /* Mapa de salud (2026-11-09): avance (horizontal) contra gastado y comprometido sobre el presupuesto (vertical). La diagonal
      es «gasta lo que avanza»; sobre la franja de tolerancia, gasta más de lo que avanza. El estado nunca va solo en el color:
      cada punto lleva su N°, la leyenda dice cuántos hay de cada uno y el detalle sale al pasar o enfocar el punto. */
+  #ejListaCuerpo > .rc-filtros { margin-bottom: 10px; }   /* 2026-11-10: la fila de filtros no toca el Mapa de salud */
   .ej-mapa {
     display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 6px 20px; padding: 14px 16px 12px;
     border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card);
@@ -2820,7 +2821,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@a71f9ab 2026-11-10">
+<meta name="quempin-version" content="master@4cf4190 2026-11-10">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
