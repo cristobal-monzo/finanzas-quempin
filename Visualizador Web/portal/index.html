@@ -11236,6 +11236,14 @@
           a.title = 'Formulación ' + fo.codigo + ' v' + fo.version + (fo.responsable ? ' (' + fo.responsable + ')' : '') + ': abrirla en el Formulador';
           a.addEventListener('click', () => rcIr(RC_IR.ficha(fo.uid)));
           td.append(a);
+        } else if (!(mt && mt.choque) && ['Evaluación', 'Ofertado', 'Adjudicado'].includes(texto(r.estado))) {
+          // Sin formulación: pasa directo al Formulador con el diálogo de nuevo proyecto de este N° (2026-11-11), también
+          // recién ingresado (el Formulador lo toma del buzón con N° provisorio). Con choque no: ese N° va a cambiar.
+          const f = crear('button', 'pq-form', 'Formular →');
+          f.type = 'button';
+          f.title = 'Crear la formulación del N° ' + r.numero + ' en el Formulador';
+          f.addEventListener('click', () => rcIr({ herr: 'formulador', url: HERR.get('formulador').ruta + '#/req/' + encodeURIComponent(r.numero) + '/crear' }));
+          td.append(f);
         }
         if (mt && mt.choque) td.append(crear('span', 'pq-choque', 'El N° ' + r.numero + ' ya es «' + mt.choque + '»: al pasar al Excel queda con el siguiente libre.'));
       } else if (PQ_FECHAS.includes(c.id)) {
