@@ -26,6 +26,11 @@ que de verdad se usan).
     dos personas lo toman a la vez, el Excel le da al segundo el siguiente libre y el resultado lo dice.
 - **Las columnas** (`PQ_COLUMNAS`) son las mismas del esquema `editar-requerimiento` y de `planilla_escritura.EDITABLES`; lo
   revisa `test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel`. Para agregar una, en los tres.
+- **Presupuesto del mandante** (2026-11-11, pedido del usuario): una caja opcional del formulario (`#pqPresupuesto`, pesos con IVA,
+  `data-num="entero"`), tanto al ingresar como al editar. No es columna de la tabla ni de `PQ_COLUMNAS`: va por `PQ_ENVIAR` en el
+  mismo `nuevo-requerimiento` / `editar-requerimiento` (los dos esquemas y `planilla_escritura.ESCRIBIBLES` ya traían
+  `presupuesto`, columna «Presupuesto (IVA Inc)» del Excel). Vaciarla no borra la casilla del Excel (el esquema exige un
+  número mayor que 0): se vacía en el Excel.
 - **Se dice todo** en la franja `#pqSinc`:
   - lo que espera y desde cuándo (más de media hora: ¿está encendido el computador del procesador?);
   - lo que no quedó en el Excel esta semana (`rechazado`, `reemplazado`);

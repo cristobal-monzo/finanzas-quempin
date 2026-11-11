@@ -5645,6 +5645,41 @@ def test_un_requerimiento_nuevo_se_ve_al_instante_y_queda_en_el_buzon(navegador,
     pagina.context.close()
 
 
+def test_el_presupuesto_del_mandante_se_ingresa_y_se_cambia_en_la_planilla(navegador, sitio):
+    """La caja «Presupuesto del mandante» (2026-11-11): entero en pesos, opcional; viaja en el mismo mensaje."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#pqPresupuesto").input_value() == ""
+    dlg.locator("#pqTitulo").fill("Cambio de quemador")
+    dlg.locator("#pqPresupuesto").fill("12500000")
+    assert dlg.locator("#pqPresupuesto").input_value() == "12.500.000"
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert m["requerimiento"]["presupuesto"] == 12500000
+    assert _esquemas().validar_mensaje(m) == []
+    # Sin presupuesto no se envía la clave
+    pagina.locator("#pqSinc summary").click()
+    pagina.locator("#pqSinc .pq-retirar").click()
+    pagina.locator("#pqNuevo").click()
+    dlg.locator("#pqTitulo").fill("Otro requerimiento")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert "presupuesto" not in m["requerimiento"]
+    # En una fila que ya existe viaja como cambio, con lo que se veía
+    pagina.locator('#pqFilas tr[data-n="900"] .pq-abrir').click()
+    dlg.locator("#pqPresupuesto").fill("8.000.000")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert m["cambios"] == {"presupuesto": 8000000}
+    assert _esquemas().validar_mensaje(m) == []
+    assert not errores
+    pagina.context.close()
+
+
 def test_evaluador_y_cliente_se_ingresan_y_se_cambian_en_la_planilla(navegador, sitio):
     """Eval. y Cliente: las dos columnas que la regla del 45 % dejaba fuera y el usuario dejó (2026-10-30)."""
     pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
