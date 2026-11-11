@@ -53,8 +53,7 @@ escritorio ni achicando la ventana.
   py -3.14 "Visualizador Web/auditoria_movil.py" cc --capturas <carpeta fuera del repo>
   ```
 
-  Termina con código 1 si algo se sale de la pantalla o queda un campo bajo 16 px. Las
-  capturas muestran datos reales: nunca dentro del repo.
+  Termina con código 1 si algo se sale de la pantalla o queda un campo bajo 16 px.
 
 ## Navegación y código compartido entre plantillas
 
