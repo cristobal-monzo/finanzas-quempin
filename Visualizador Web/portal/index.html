@@ -1633,18 +1633,18 @@
   .pq-estados .pl-vista b { font-weight: 700; opacity: 0.65; font-variant-numeric: tabular-nums; }
   .pq-barra .rc-cuenta { margin-left: auto; }
   .pq-sinc {
-    display: flex; align-items: flex-start; gap: 6px 14px; padding: 6px 8px 6px 12px; border-radius: 10px;
-    border: 1px solid var(--border-hairline); background: var(--surface-card); font-size: 13px; line-height: 1.45; color: var(--text-secondary);
+    display: flex; align-items: flex-start; gap: 6px 14px; padding: 2px 4px; border-radius: 8px;
+    border: 1px solid transparent; background: transparent; font-size: 12px; line-height: 1.45; color: var(--text-secondary);
   }
   .pq-sinc-cuerpo { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 0; }
   .pq-excel { flex: 0 0 auto; min-height: 30px; }
   .pq-sinc[data-nivel="warn"] { border-color: var(--tinte-borde); background: var(--tinte); color: var(--tinte-texto); }
   .pq-sinc-txt { flex: 1 1 360px; min-width: 0; margin: 0; }
-  .pq-sinc-txt b { color: var(--text-primary); }
+  .pq-sinc-txt b { font-weight: 600; }
   .pq-sinc[data-nivel="warn"] .pq-sinc-txt b { color: inherit; }
   .pq-sinc .cx-punto { flex: 0 0 auto; }
   .pq-sinc details { flex: 1 1 100%; }
-  .pq-sinc summary { width: fit-content; cursor: pointer; font-weight: 700; color: var(--brand-orange-ink); }
+  .pq-sinc summary { width: fit-content; cursor: pointer; font-weight: 400; color: var(--text-secondary); }
   .pq-sinc[data-nivel="warn"] summary { color: inherit; }
   .pq-cambios { list-style: none; margin: 6px 0 2px; padding: 0; display: flex; flex-direction: column; color: var(--text-secondary); }
   .pq-cambios li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; padding: 7px 0; border-top: 1px solid var(--gridline); }
@@ -1652,7 +1652,8 @@
   .pq-cambios .sc-env-cab { grid-column: 1 / -1; }
   .pq-retirar { grid-column: 2; grid-row: 2 / span 2; min-height: 30px; }
   .pq-avisos { flex: 1 1 100%; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
-  .pq-avisos li { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--estado-bad); background: var(--surface-card); color: var(--text-primary); font-size: 13px; }
+  .pq-avisos li { padding-left: 12px; position: relative; color: var(--text-secondary); font-size: 12px; }
+  .pq-avisos li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--estado-bad); }
   /* La tabla */
   .pq-caja { border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); overflow: clip; }
   .pq-tabla { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13.5px; }
