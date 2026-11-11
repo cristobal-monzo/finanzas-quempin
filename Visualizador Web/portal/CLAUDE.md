@@ -61,8 +61,8 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   borrar. Lo que no alcanza a guardarse espera en `quempin_portal_*_pendiente`.
   Formatos en `Sistema Intercambio/esquemas/`. Excepción: la Planilla de Ingreso
   escribe en el buzón, porque su dueño es el Excel ([docs/planilla.md](docs/planilla.md)).
-- **Sin datos reales en el repositorio**: las pruebas usan datos de mentira; las
-  vistas previas con datos reales se arman fuera del repo, en un Chromium aislado.
+- Las pruebas usan datos de mentira; las vistas previas con datos reales se arman
+  en un Chromium aislado.
 
 ## Subir documentos (`sc*`)
 

@@ -1,6 +1,6 @@
 # CLAUDE.md — Finanzas QUEMPIN
 
-Repositorio público (nada de datos reales) con los módulos financieros de
+Repositorio público con los módulos financieros de
 QUEMPIN SpA: herramientas Python/openpyxl que mantienen un Excel al día desde
 sus documentos fuente, cada una con su tablero web. **Antes de tocar un módulo
 lee su `CLAUDE.md`** (carga solo al leer archivos de esa carpeta).
