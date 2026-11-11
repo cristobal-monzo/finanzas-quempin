@@ -78,8 +78,8 @@ siendo `/Registro_Centro_de_Costos`. Solo Chrome y Edge de escritorio
 - `py -3.14 -m pytest "Visualizador Web/tests/test_portal.py"`: el registro, los
   enlaces que leen AF, CC, Formulador y Calculadora, y el portal en Chromium sobre
   un sitio de mentira. Teléfono: `py -3.14 "Visualizador Web/auditoria_movil.py" portal`.
-- **Publicar**: avisa a las otras sesiones, `py -3.14 "Visualizador Web/publicar.py" portal` (copia `index.html` y los archivos
-  de `marca/` que enlaza), commit y push en `.worktrees/gh-pages`. Sin datos, no pasa por el candado.
+- **Publicar**: avisa a las otras sesiones, `py -3.14 "Visualizador Web/publicar.py" portal --subir` (espera el CI, copia `index.html` y los archivos
+  de `marca/` que enlaza, hace commit y push de `gh-pages` y verifica en línea). Sin datos, no pasa por el candado.
 - **Revertir**: `git revert` del commit en `gh-pages`.
 - Pendientes: los contadores de «Pendientes del equipo» leídos de la carpeta y un
   enlace web al Control de Documentos.

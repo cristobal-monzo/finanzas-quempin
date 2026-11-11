@@ -159,6 +159,43 @@ def test_el_portal_se_publica_solo_commiteado_y_con_el_ci_en_verde(repo_con_port
     assert publicar.sello_de_version().startswith("master@")
 
 
+def test_con_subir_espera_el_ci_que_corre_y_no_el_que_fallo(repo_con_portal):
+    repo, ci = repo_con_portal
+    vueltas = []
+
+    def dormir(_):
+        vueltas.append(1)
+        # Recién empujado no hay CI; después corre; después termina
+        ci["corridas"] = [{"status": "in_progress", "conclusion": "", "url": "u"}] if len(vueltas) == 1 else \
+            [{"status": "completed", "conclusion": "success", "url": "u"}]
+    assert publicar.esperar_codigo(["portal"], dormir=dormir) == [] and len(vueltas) == 2
+    ci["corridas"] = [{"status": "completed", "conclusion": "failure", "url": "u"}]
+    vueltas.clear()
+    assert "falló" in publicar.esperar_codigo(["portal"], dormir=dormir)[0] and not vueltas
+    ci["corridas"] = [{"status": "in_progress", "conclusion": "", "url": "u"}]
+    assert "aún corre" in publicar.esperar_codigo(["portal"], espera_max=0, dormir=lambda _: None)[0]
+
+
+def test_con_subir_verifica_que_github_pages_sirva_lo_mismo(tmp_path):
+    (tmp_path / "portal").mkdir()
+    (tmp_path / "portal" / "index.html").write_bytes(b"nuevo")
+    (tmp_path / "numeros.js").write_bytes(b"js")
+    rutas = publicar._archivos_publicados(["portal/index.html", "numeros.js", "no-existe"], tmp_path)
+    assert rutas == ["numeros.js", "portal/index.html"]
+    servido = {"portal/index.html": b"viejo", "numeros.js": b"js"}
+    vueltas = []
+
+    def bajar(url):
+        return servido[url.split(publicar.URL_BASE)[1].split("?")[0]]
+
+    def dormir(_):
+        vueltas.append(1)
+        servido["portal/index.html"] = b"nuevo"     # Pages termina de desplegar
+    assert publicar.verificar_en_linea(rutas, tmp_path, bajar=bajar, dormir=dormir) == [] and len(vueltas) == 1
+    servido["portal/index.html"] = b"viejo"
+    assert publicar.verificar_en_linea(rutas, tmp_path, espera_max=0, bajar=bajar, dormir=dormir) == ["portal/index.html"]
+
+
 def test_no_se_publica_si_otra_sesion_publico_despues(tmp_path):
     import subprocess
     origen = tmp_path / "origen.git"
