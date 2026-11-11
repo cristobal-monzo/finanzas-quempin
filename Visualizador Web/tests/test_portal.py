@@ -5626,6 +5626,11 @@ def test_un_requerimiento_nuevo_se_ve_al_instante_y_queda_en_el_buzon(navegador,
     assert "pq-nueva" in fila.get_attribute("class") and fila.locator(".pq-nuevo-tag").text_content() == "nuevo"
     assert _ns(pagina)[0] == 914
     assert "1 cambio espera pasar al Excel" in pagina.locator("#pqSinc").inner_text()
+    # Recién ingresado ya se puede formular (2026-11-11): abre el Formulador con el diálogo de nuevo proyecto de ese N°
+    fila.locator(".pq-form", has_text="Formular").click()
+    _esperar(pagina, "formulador", "hash", "#/req/914/crear")
+    _menu(pagina, "Requerimientos")
+    pagina.locator('#pqFilas tr[data-n="914"]').wait_for()
     # El que sigue ya no repite el N°
     pagina.locator("#pqNuevo").click()
     assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 915"
@@ -5903,6 +5908,8 @@ def test_la_planilla_muestra_lo_que_espera_de_todo_el_equipo_y_lo_que_no_se_pudo
     # Un N° que ya tiene otra fila: las dos se ven, y la nueva dice que tomará el siguiente
     assert pagina.locator('#pqFilas tr[data-n="911"]').count() == 2
     assert "ya es «Descartada»" in pagina.locator('#pqFilas tr[data-n="911"].pq-nueva .pq-choque').inner_text()
+    # Con choque no se ofrece formular: su N° va a cambiar
+    assert pagina.locator('#pqFilas tr[data-n="911"].pq-nueva .pq-form').count() == 0
     assert "3 cambios esperan pasar al Excel" in pagina.locator("#pqSinc").inner_text()
     pagina.locator("#pqSinc .pq-avisos").wait_for()
     avisos = pagina.locator("#pqSinc .pq-avisos").inner_text()

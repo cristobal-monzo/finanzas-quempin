@@ -40,6 +40,10 @@ que de verdad se usan).
   la fila a «Cerrado» en la vuelta siguiente del procesador.
 - **El Recorrido** abre la fila de un N° con `RC_IR.planilla(n)` → `pqIrA(n)`. Un «Cerrado» va a su «Cierre»
   (`rcCerradoPlanilla`); para los avisos de «corresponde Adjudicado» cuenta como ganado (`RC_GANADOS`).
+- **«Formular →»** (2026-11-11, pedido del usuario: el ingreso de proyectos es solo por aquí): en una fila en Evaluación,
+  Ofertado o Adjudicado sin formulación, también recién ingresada, abre el Formulador en `#/req/<N>/crear` (el diálogo de
+  nuevo proyecto con ese N°; lo provisorio lo toma del buzón). No sale si la fila choca con otra (`mt.choque`). Plan
+  contra los choques de N°: `Documentación/Planes y análisis/2026-11-11-n-de-requerimiento-sin-choques.md`.
 - **Sin carpeta conectada** (un teléfono, otro computador) la vista dice qué falta y ofrece abrir el Excel, que era lo que
   hacía antes de ser una vista.
 - **No se borran filas**: el N° es la clave de carpetas, formulaciones y fichas. Lo que no sigue queda «Descartado».
