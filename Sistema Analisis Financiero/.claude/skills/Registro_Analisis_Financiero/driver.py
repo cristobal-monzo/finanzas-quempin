@@ -210,7 +210,7 @@ def cmd_intercambio(args: list[str], pais: str = "CL") -> int:
             ok, texto = af.pf.cargar_archivo(raiz, Path(archivo))
             print(f"[{'OK' if ok else 'ERROR'}] {texto}")
             codigo = codigo if ok else 1
-        print("     Se aplican en el próximo run (o en la próxima vuelta del procesador, cada 2 horas).")
+        print("     Se aplican en el próximo run (o en la próxima vuelta del procesador, cada 5 minutos).")
         return codigo
 
     if args and args[0] in ("confirmar", "descartar"):

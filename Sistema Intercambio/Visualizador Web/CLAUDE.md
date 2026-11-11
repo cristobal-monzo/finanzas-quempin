@@ -16,6 +16,8 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   snapshot en `data/oportunidades.json` y la página en `build/index.html`
   (ambos gitignoreados: llevan la historia de la Planilla). Sin respuesta de
   Mercado Público usa la caché y lo avisa. `--sin-red` arma solo la página.
+  Mientras consulta marca la API en uso (`mercado_publico.usando_api`, 2026-11-11):
+  el procesador corre cada 5 minutos y deja su turno de Mercado Público para después.
 - **Publicado** en `oportunidades/` de gh-pages, clave `op` de
   `Visualizador Web/publicar.py`. Se actualiza **a diario** (desde el
   2026-10-14): la tarea «Oportunidades Mercado Publico QUEMPIN», a las 09:00,

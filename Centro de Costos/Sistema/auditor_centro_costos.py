@@ -5397,9 +5397,9 @@ def actualizar_intercambio(pais="CL"):
     Costos termina con una vuelta del procesador del Intercambio
     ('procesar.py --forzar'), para que lo recien registrado se vea en el
     Portal («Proyectos en ejecucion», Planilla, estado.json) sin esperar la
-    tarea de cada 2 horas. Corre aparte (subproceso) porque el procesador es
+    vuelta de cada 5 minutos. Corre aparte (subproceso) porque el procesador es
     otra herramienta con su propio candado: si ya hay una vuelta en curso,
-    sale avisando y no pasa nada. Solo Chile: el Intercambio no tiene datos
+    espera a que termine (hasta 10 minutos, procesar.ESPERA_FORZADA_SEG). Solo Chile: el Intercambio no tiene datos
     de Peru. Si falla, no aborta el run, solo advierte."""
     if pais != "CL":
         print(f"  [INFO] El Intercambio solo publica datos de Chile -- paso omitido para {pais}.")

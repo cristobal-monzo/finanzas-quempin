@@ -36,12 +36,12 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 | `proyectos.json` | el procesador | el cruce N° de requerimiento ↔ TAG ↔ formulaciones ↔ cotizaciones ↔ carpetas |
 | `documentos-proyecto.json` | el procesador, desde el Centro de Costos | las facturas de cada proyecto, en «Proyectos en ejecución» del Portal |
 | `centro-costos-carpetas.json` | el procesador | las carpetas de proyecto de «Facturas y Boletas», para «Subir documentos» del Portal |
-| `estado.json` | el procesador, en cada vuelta | el pulso: si el procesador está corriendo |
+| `estado.json` | el procesador, cuando algo cambia (y al menos cada 15 minutos) | el pulso: si el procesador está corriendo |
 
 ## El procesador
 
-Un computador del equipo corre el **procesador** cada 2 horas, en horario de
-trabajo, con el computador encendido. Aplica los envíos, republica lo que
+Un computador del equipo corre el **procesador** cada 5 minutos (Mercado
+Público, cada 3 horas), con el computador encendido. Aplica los envíos, republica lo que
 cambió y deja `estado.json`. Si pasan más de 4 horas hábiles sin una vuelta,
 el Formulador y la pestaña «Ingresar datos» lo avisan en rojo: lo enviado queda
 esperando hasta que vuelva a correr.

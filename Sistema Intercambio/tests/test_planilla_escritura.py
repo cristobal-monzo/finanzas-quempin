@@ -532,7 +532,7 @@ def test_lo_que_exporta_el_formulador_a_un_n_que_es_de_otro_no_se_escribe(tmp_pa
 
 
 def test_lo_que_se_cambia_en_el_excel_llega_al_portal_en_la_vuelta(tmp_path, entorno):
-    """Sin nada en el buzón: si el Excel cambió, se republica sin esperar al procesador (cada 2 horas)."""
+    """Sin nada en el buzón: si el Excel cambió, se republica sin esperar al procesador (cada 5 minutos)."""
     raiz, escritas = entorno
     ruta = _planilla(tmp_path, [(1, "A")])
     rq.publicar(raiz, ruta)

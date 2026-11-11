@@ -38,6 +38,10 @@ def _sin_mercado_publico_real(tmp_path, monkeypatch):
     monkeypatch.setattr(oportunidades, "RUTA_ESTADO", tmp_path / "oportunidades_estado.json")
     monkeypatch.setattr(mercado_publico, "ruta_ticket", lambda: tmp_path / "sin-ticket" / "mp.ticket")
     monkeypatch.delenv(mercado_publico.VARIABLE_TICKET, raising=False)
+    # El candado del procesador y la marca «API en uso» viven en %LOCALAPPDATA% (2026-11-11): ninguna prueba
+    # bloquea ni libera los del equipo que las corre.
+    monkeypatch.setattr(mercado_publico, "ruta_api_en_uso", lambda: tmp_path / "mp-en-uso.lock")
+    monkeypatch.setattr(procesar, "RUTA_CANDADO", tmp_path / "procesador.lock")
     # El respaldo diario nunca escribe en %LOCALAPPDATA% real (2026-11-09).
     monkeypatch.setenv("QUEMPIN_RESPALDO_DESTINO", str(tmp_path / "respaldos"))
 

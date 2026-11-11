@@ -1756,9 +1756,9 @@ def test_sin_la_tarea_de_pedidos_dice_que_espera_la_vuelta_de_cada_2_horas(naveg
     pagina.locator("#vistaInicio").wait_for()
     _menu(pagina, "Recorrido de proyectos")
     # 40 minutos con la tarea sería «no responde»; sin ella, todavía es lo esperable
-    pagina.locator("#rcFrescura", has_text="hace 40 min: se atiende en la próxima vuelta (cada 2 horas)").wait_for()
+    pagina.locator("#rcFrescura", has_text="hace 40 min: se atiende en la próxima vuelta (cada 5 minutos)").wait_for()
     assert "falta la tarea" in pagina.locator("#rcFrescura").get_attribute("title")
-    assert "cada 2 horas" in pagina.locator("#rcPedirVuelta").get_attribute("title")
+    assert "cada 5 minutos" in pagina.locator("#rcPedirVuelta").get_attribute("title")
     assert not errores
     pagina.context.close()
 
@@ -5763,7 +5763,7 @@ def test_cerrar_un_requerimiento_ofrece_mover_su_carpeta_a_los_entregados(navega
     assert mover["destino"] == "carpetas-proyecto" and mover["estado"] == "Cerrado"
     assert mover["requerimiento"] == {"numero": 908, "titulo": "En obra"} and mover["origen"]["usuario"] == "NB"
     assert _esquemas().validar_mensaje(editar) == [] and _esquemas().validar_mensaje(mover) == []
-    # Y una vuelta del procesador, para que no espere la de cada 2 horas
+    # Y una vuelta del procesador, para que no espere la de cada 5 minutos
     assert any(m.get("tipo") == "pedir-vuelta" for m in pagina.evaluate(JS_BUZON).values())
     assert "Su carpeta pasa a «0 Proyectos Entregados»" in pagina.locator("#aviso").inner_text()
     assert pagina.locator('#pqFilas tr[data-n="908"] .pq-est').inner_text() == "Cerrado"

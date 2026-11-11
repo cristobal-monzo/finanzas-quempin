@@ -6,10 +6,11 @@ una corrida grande y otra.
 Plan de integración (2026-09-30, §5.5). Antes, el lado Python solo se movía
 cuando corría ``/Actualizar_Finanzas`` (tarea programada dom/mar/jue a las
 23:00, o a la mañana siguiente si el PC estaba apagado): un envío hecho un
-miércoles se aplicaba el viernes. Este procesador corre cada 2 horas (su
-propia tarea programada, ver ``tarea_procesador.cmd``; el usuario eligió 2 horas
-en vez de 15 minutos el 2026-10-02) y hace solo lo barato,
-y solo si algo cambió desde la última vez:
+miércoles se aplicaba el viernes. Este procesador corre cada 5 minutos (su
+propia tarea programada, ver ``tarea_procesador.cmd``; cada 2 horas del
+2026-10-02 al 2026-11-11, cuando el usuario pidió cada 5 minutos con Mercado
+Público cada 3 horas y la UF una vez al día, ver ``TURNO_SEG``) y hace solo lo
+barato, y solo si algo cambió desde la última vez:
 
 1. ``esquemas.json``: deja el catálogo en la carpeta (las herramientas de
    otros repositorios validan con él), y el ``LEEME.md`` para personas, que
@@ -27,7 +28,7 @@ y solo si algo cambió desde la última vez:
    borradores inválidos y sus publicaciones (con su propio Python).
 7. Mercado Público: resultado de las licitaciones de la Planilla y órdenes
    de compra a QUEMPIN -> ``licitaciones.json`` y sugerencias para la
-   Planilla (``mercado_publico.py``; consulta la API en cada vuelta).
+   Planilla (``mercado_publico.py``; consulta la API cada 3 horas).
 7b. Oportunidades: licitaciones publicadas del rubro con su evaluación previa
    -> ``oportunidades.json`` (``oportunidades.py``; solo si su configuración
    dice ``enProcesador``; el equipo lo ve en su tablero).
@@ -61,6 +62,13 @@ A pedido (2026-11-02): el botón «Actualizar datos» del Portal deja un mensaje
 corre ``--si-hay-pedido``, que da una vuelta normal solo si hay uno. Cada vuelta
 archiva los pedidos que vio al empezar: el que llegó después pide otra.
 
+Cada 5 minutos sin cargar OneDrive (2026-11-11): una vuelta sin novedades no
+escribe nada en carpetas sincronizadas. El candado vive en %LOCALAPPDATA%,
+``procesador_estado.json`` y el estado de las carpetas se guardan solo si
+cambiaron, el log anota solo las vueltas con algo que contar y ``estado.json``
+se reescribe si cambió su contenido, si la vuelta atendió un pedido, o cada
+``LATIDO_SEG`` para que el pulso siga vivo.
+
 Uso:  py -3.14 procesar.py [--forzar | --si-hay-pedido]
 """
 
@@ -71,7 +79,7 @@ import socket
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent                     # Sistema Intercambio
@@ -93,9 +101,18 @@ import requerimientos  # noqa: E402
 import respaldo  # noqa: E402
 import ubicacion  # noqa: E402
 
+def carpeta_local() -> Path:
+    """%LOCALAPPDATA%\\QUEMPIN: de este equipo y fuera de OneDrive (ahí está también el ticket de Mercado Público)."""
+    return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "QUEMPIN"
+
+
 RUTA_ESTADO_LOCAL = AQUI / "procesador_estado.json"    # firmas de lo ya procesado (gitignoreado)
-RUTA_CANDADO = AQUI / ".procesador.lock"
+# El candado, fuera de OneDrive (2026-11-11): en la carpeta del repo se creaba y borraba en cada vuelta, y cada
+# 5 minutos OneDrive habría subido y mandado a la papelera un archivo. driver.py de Actualizar_Finanzas lo espera
+# en la misma ruta (CANDADO_PROCESADOR; test_el_driver_espera_el_mismo_candado).
+RUTA_CANDADO = carpeta_local() / "procesador.lock"
 CANDADO_VENCE_SEG = 30 * 60
+ESPERA_FORZADA_SEG = 10 * 60   # --forzar (el run de Actualizar_Finanzas) espera a la vuelta en curso, no se la salta
 CARPETA_LOGS = RAIZ_FINANZAS / "logs"
 ARCHIVO_PAQUETE = "esquemas.json"
 ARCHIVO_LEEME = "LEEME.md"
@@ -103,7 +120,23 @@ LEEME_VERSIONADO = AQUI / "LEEME-carpeta.md"
 PUBLICACION_ESTADO = "estado"
 DESTINO_PEDIDOS = "procesador"
 TIPO_PEDIDO = "pedir-vuelta"
-PEDIDO_SEPARACION_SEG = 5 * 60   # un pedido espera en el buzón si la última vuelta es más reciente que esto
+# Un pedido espera en el buzón si la última vuelta es más reciente que esto. Eran 5 minutos porque cada vuelta
+# consultaba Mercado Público; desde que la API tiene su turno (TURNO_SEG), una vuelta a pedido es barata.
+PEDIDO_SEPARACION_SEG = 60
+
+# Cada cuánto corre cada paso (pedido del usuario, 2026-11-11). La vuelta es cada 5 minutos y los pasos que no
+# están aquí corren en todas, pero solo hacen algo si cambió lo suyo (sus firmas). Los que consultan la API de
+# Mercado Público van cada 3 horas: eran 50-170 s de cada vuelta, y el ticket es personal. La UF y el respaldo ya
+# corren una vez al día por su fecha (paso_uf, paso_respaldo).
+TURNO_SEG = {"mercado-publico": 3 * 3600, "oportunidades": 3 * 3600}
+PASOS_CON_API = ("mercado-publico", "oportunidades")   # esperan si el tablero de Oportunidades está consultando
+REINTENTO_SEG = 30 * 60      # lo que falló (un paso con turno, la UF, el respaldo) se reintenta antes
+CLAVE_TURNOS = "_turnos"     # en procesador_estado.json: {paso: {cuando, ok}} de la última vez que le tocó
+FIRMA_SIGUE = "sigue"        # un paso con turno que quedó a medias corre de nuevo en la vuelta siguiente
+INTENTO = "intento "         # firma de la UF o el respaldo que falló: «intento <fecha ISO>»
+# estado.json sin novedades se reescribe igual cada tanto, para que el pulso de las herramientas siga vivo
+# («revisaron la carpeta hace X min»; verde hasta 150 min en pulso.js).
+LATIDO_SEG = 15 * 60
 
 DRIVER_AF = RAIZ_FINANZAS / "Sistema Analisis Financiero" / ".claude" / "skills" / "Registro_Analisis_Financiero" / "driver.py"
 DRIVER_COTIZADOR = RAIZ_FINANZAS / "Cotizador Historico" / ".claude" / "skills" / "Cotizador_Historico" / "driver.py"
@@ -300,9 +333,10 @@ def paso_sistema_quempin(raiz: Path, previo, forzar):
 
 
 def paso_mercado_publico(raiz: Path, previo, forzar):
-    """Siempre consulta: lo que cambia está en Mercado Público, no en la
-    carpeta. Sin ticket o con el ticket rechazado, el paso falla y la bandeja
-    de pendientes lo muestra con qué hacer."""
+    """Consulta cada vez que le toca (TURNO_SEG): lo que cambia está en Mercado
+    Público, no en la carpeta. Sin ticket o con el ticket rechazado, el paso
+    falla y la bandeja de pendientes lo muestra con qué hacer. Si se acabó el
+    presupuesto de llamadas, sigue en la vuelta siguiente, sin esperar su turno."""
     r = mercado_publico.revisar(raiz)
     partes = [f"{r['licitaciones']} licitación(es), {r['ordenes']} OC, {r['llamadas']} consulta(s)"]
     if r["sugeridas"]:
@@ -311,7 +345,7 @@ def paso_mercado_publico(raiz: Path, previo, forzar):
         partes.append(f"{len(r['revisar'])} por revisar")
     if r["incompleta"]:
         partes.append("sigue en la próxima vuelta")
-    return "; ".join(partes), "ok"
+    return "; ".join(partes), FIRMA_SIGUE if r["incompleta"] else "ok"
 
 
 def paso_oportunidades(raiz: Path, previo, forzar):
@@ -328,7 +362,25 @@ def paso_oportunidades(raiz: Path, previo, forzar):
               f"{r['llamadas']} consulta(s)"]
     if r["incompleta"]:
         partes.append("sigue en la próxima vuelta")
-    return "; ".join(partes), "ok"
+    return "; ".join(partes), FIRMA_SIGUE if r["incompleta"] else "ok"
+
+
+def _intento_fallido() -> tuple[str, str]:
+    """(firma «intento <ahora>», hora del reintento): con vueltas cada 5 minutos, lo que falló no se repite en
+    cada una (mindicador.cl colgado eran hasta 120 s por vuelta)."""
+    ahora = datetime.now().astimezone()
+    return INTENTO + ahora.isoformat(timespec="seconds"), (ahora + timedelta(seconds=REINTENTO_SEG)).strftime("%H:%M")
+
+
+def _reintento_pendiente(previo) -> str | None:
+    """La hora del reintento si 'previo' es un intento fallido de hace menos de REINTENTO_SEG; None si ya toca."""
+    if not (isinstance(previo, str) and previo.startswith(INTENTO)):
+        return None
+    try:
+        proximo = datetime.fromisoformat(previo[len(INTENTO):]) + timedelta(seconds=REINTENTO_SEG)
+    except ValueError:
+        return None
+    return proximo.strftime("%H:%M") if datetime.now().astimezone() < proximo else None
 
 
 def paso_uf(raiz: Path, previo, forzar):
@@ -339,11 +391,15 @@ def paso_uf(raiz: Path, previo, forzar):
     guardada = _leer_json(Path(os.environ.get("QUEMPIN_UF_ULTIMA") or UF_ULTIMA), {}).get("fecha")
     if (guardada == hoy or previo == hoy) and not forzar:
         return "UF del día ya guardada", None
+    reintento = _reintento_pendiente(previo)
+    if reintento and not forzar:
+        return f"mindicador.cl no respondió; se reintenta a las {reintento}", None
     ok, salida = correr([sys.executable, str(DRIVER_COTIZADOR), "uf"], cwd=DRIVER_COTIZADOR.parent, limite=120)
     if not ok:
         # Es solo el respaldo del Cotizador: mindicador.cl caído no es una falla del procesador
-        # (no debe encender el aviso de las herramientas). Se reintenta en la próxima vuelta.
-        return "mindicador.cl no respondió; se reintenta en la próxima vuelta", None
+        # (no debe encender el aviso de las herramientas). Se reintenta en media hora.
+        firma, reintento = _intento_fallido()
+        return f"mindicador.cl no respondió; se reintenta a las {reintento}", firma
     return salida.splitlines()[-1] if salida else "UF guardada", hoy
 
 
@@ -353,10 +409,14 @@ def paso_respaldo(raiz: Path, previo, forzar):
     hoy = datetime.now().strftime("%Y-%m-%d")
     if previo == hoy and not forzar:
         return "respaldo del día ya hecho", None
+    reintento = _reintento_pendiente(previo)
+    if reintento and not forzar:
+        return f"respaldo del día pendiente; se reintenta a las {reintento}", None
     try:
         zip_, n = respaldo.respaldar(raiz, ubicacion.ubicar_planilla(AQUI))
     except OSError as e:
-        return f"respaldo no se pudo escribir ({e}); se reintenta en la próxima vuelta", None
+        firma, reintento = _intento_fallido()
+        return f"respaldo no se pudo escribir ({e}); se reintenta a las {reintento}", firma
     return f"{n} archivos en {zip_}", hoy
 
 
@@ -475,7 +535,7 @@ def resumen_buzon(raiz: Path) -> dict:
 RAMA_PRODUCCION = "master"
 EXTENSIONES_CODIGO = (".py", ".ps1", ".cmd", ".bat", ".js", ".json", ".html", ".css", ".yml")
 # La tarea que atiende «Actualizar datos» del Portal (procesar.py --si-hay-pedido, cada minuto). Si no está instalada,
-# el pedido espera la vuelta de cada 2 horas, y el Portal lo dice en vez de prometer unos minutos.
+# el pedido espera la vuelta de cada 5 minutos, y el Portal lo dice.
 TAREA_PEDIDOS = "Pedidos al procesador QUEMPIN"
 
 
@@ -490,7 +550,8 @@ def codigo_en_uso(repo: Path | None = None) -> dict | None:
         return r.stdout if r.returncode == 0 else None
     try:
         rama, commit = git("rev-parse", "--abbrev-ref", "HEAD"), git("rev-parse", "--short", "HEAD")
-        cambios = git("status", "--porcelain", "--untracked-files=no")
+        # --no-optional-locks: status no reescribe .git/index (está en OneDrive y la vuelta es cada 5 minutos)
+        cambios = git("--no-optional-locks", "status", "--porcelain", "--untracked-files=no")
     except (OSError, subprocess.SubprocessError):
         return None
     if rama is None or commit is None or cambios is None:
@@ -520,7 +581,25 @@ def tarea_de_pedidos_instalada() -> bool | None:
     return r.returncode == 0
 
 
-def publicar_estado(raiz: Path, pasos: dict, duracion: float, avisos: list) -> None:
+def _sin_reloj(datos) -> str:
+    """El contenido de estado.json sin lo que cambia en cada vuelta aunque no pase nada (la hora, lo que tardó)."""
+    d = json.loads(json.dumps(datos, ensure_ascii=False)) if isinstance(datos, dict) else {}
+    proc = d.get("procesador") if isinstance(d.get("procesador"), dict) else {}
+    for clave in ("ultimaCorrida", "duracionSeg"):
+        proc.pop(clave, None)
+    for paso in (proc.get("pasos") or {}).values():
+        if isinstance(paso, dict):
+            paso.pop("seg", None)
+    if isinstance(d.get("publicaciones"), dict):
+        d["publicaciones"].pop(PUBLICACION_ESTADO, None)   # su «generado» es esta misma vuelta
+    return json.dumps(d, ensure_ascii=False, sort_keys=True)
+
+
+def publicar_estado(raiz: Path, pasos: dict, duracion: float, avisos: list, siempre: bool = True) -> str:
+    """Publica el pulso. Con siempre=False (una vuelta sin pedidos ni --forzar) no lo reescribe si nada cambió y el
+    último tiene menos de LATIDO_SEG (2026-11-11: cada 5 minutos, OneDrive lo llevaría 288 veces al día a cada equipo
+    y SharePoint guardaría una versión de cada una). Devuelve «cambios», «latido» (sin cambios, pero tocaba) o «»
+    (no se escribió)."""
     datos = {
         "procesador": {"ultimaCorrida": intercambio.ahora_iso(), "duracionSeg": round(duracion, 1),
                        "equipo": socket.gethostname(), "pasos": pasos},
@@ -539,7 +618,18 @@ def publicar_estado(raiz: Path, pasos: dict, duracion: float, avisos: list) -> N
     errores = esquemas.validar_publicacion(PUBLICACION_ESTADO, sobre)
     if errores:
         raise ValueError("estado.json no cumple su esquema: " + "; ".join(errores[:3]))
+    previo = (intercambio.leer_publicacion(raiz, PUBLICACION_ESTADO) or {}).get("datos")
+    cambio = not isinstance(previo, dict) or _sin_reloj(previo) != _sin_reloj(datos)
+    if not cambio and not siempre:
+        try:
+            edad = (datetime.now().astimezone()
+                    - datetime.fromisoformat(previo["procesador"]["ultimaCorrida"])).total_seconds()
+        except (KeyError, TypeError, ValueError):
+            edad = None
+        if edad is not None and 0 <= edad < LATIDO_SEG:
+            return ""
     intercambio.publicar(raiz, PUBLICACION_ESTADO, "procesador", datos)
+    return "cambios" if cambio else "latido"
 
 
 # ── ORQUESTACIÓN ─────────────────────────────────────────────────────────────
@@ -561,8 +651,8 @@ def _archivar_pedidos(raiz: Path, pedidos: list, avisos: list) -> None:
 
 
 def hay_pedido(raiz: Path) -> bool:
-    """Hay un pedido en el buzón y la última vuelta no es tan reciente: el botón se puede apretar muchas veces, y
-    cada vuelta consulta a Mercado Público (hasta 120 llamadas)."""
+    """Hay un pedido en el buzón y la última vuelta no es de hace menos de PEDIDO_SEPARACION_SEG: el botón se puede
+    apretar muchas veces. Una vuelta a pedido no adelanta el turno de Mercado Público (TURNO_SEG)."""
     if not _pedidos(raiz):
         return False
     estado = intercambio.leer_publicacion(raiz, PUBLICACION_ESTADO) or {}
@@ -573,36 +663,90 @@ def hay_pedido(raiz: Path) -> bool:
         return True
 
 
-def _tomar_candado() -> None:
-    try:
-        descriptor = os.open(RUTA_CANDADO, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError:
+def _tomar_candado(esperar_seg: float = 0, dormir=time.sleep) -> None:
+    """Toma el candado o levanta Ocupado. Con esperar_seg, antes espera a que la vuelta en curso termine."""
+    RUTA_CANDADO.parent.mkdir(parents=True, exist_ok=True)
+    limite = time.monotonic() + esperar_seg
+    while True:
         try:
-            edad = time.time() - RUTA_CANDADO.stat().st_mtime
-        except OSError:
-            edad = 0
-        if edad < CANDADO_VENCE_SEG:
-            raise Ocupado("otra corrida del procesador sigue en curso")
-        RUTA_CANDADO.unlink(missing_ok=True)
-        descriptor = os.open(RUTA_CANDADO, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            descriptor = os.open(RUTA_CANDADO, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            try:
+                edad = time.time() - RUTA_CANDADO.stat().st_mtime
+            except OSError:
+                edad = 0                    # justo lo soltaron (o no se puede leer): como recién tomado
+            if edad >= CANDADO_VENCE_SEG:
+                RUTA_CANDADO.unlink(missing_ok=True)
+            elif time.monotonic() < limite:
+                dormir(5)
+            else:
+                raise Ocupado("otra corrida del procesador sigue en curso")
     os.write(descriptor, str(os.getpid()).encode())
     os.close(descriptor)
 
 
+def _le_toca(nombre: str, firmas: dict, ahora: datetime) -> bool:
+    """Si un paso con turno (TURNO_SEG) corre en esta vuelta: pasó su turno desde la última vez, o REINTENTO_SEG si
+    esa vez falló, o quedó a medias. --forzar no lo adelanta: lo usan el run de Actualizar_Finanzas y cada registro
+    del Centro de Costos (PASO 12e), y con eso Mercado Público se consultaría varias veces al día."""
+    cada = TURNO_SEG.get(nombre)
+    if cada is None or firmas.get(nombre) == FIRMA_SIGUE:
+        return True
+    turno = (firmas.get(CLAVE_TURNOS) or {}).get(nombre)
+    try:
+        ultima = datetime.fromisoformat(turno["cuando"])
+    except (KeyError, TypeError, ValueError):
+        return True
+    espera = cada if turno.get("ok", True) else min(cada, REINTENTO_SEG)
+    return (ahora - ultima).total_seconds() >= espera
+
+
+def _sin_correr(previo, cuando: str | None) -> dict:
+    """La entrada de estado.json de un paso que no corrió en esta vuelta: lo que dijo la última vez que corrió (si
+    falló, la bandeja lo sigue mostrando), con cuándo fue."""
+    entrada = {"ok": True, "detalle": "espera su turno", "seg": 0}
+    if isinstance(previo, dict):
+        entrada.update({k: previo[k] for k in ("ok", "detalle") if k in previo})
+    if cuando:
+        entrada["ultimaVez"] = cuando
+    return entrada
+
+
+def _api_en_uso() -> bool:
+    try:
+        return mercado_publico.api_en_uso()
+    except OSError:
+        return False
+
+
 def procesar(raiz: Path | None = None, forzar: bool = False, pasos=PASOS,
-             ruta_estado: Path = RUTA_ESTADO_LOCAL) -> dict:
-    """Una vuelta completa. Devuelve {'activo', 'pasos', 'avisos'}."""
+             ruta_estado: Path = RUTA_ESTADO_LOCAL, esperar_seg: float = 0) -> dict:
+    """Una vuelta completa. Devuelve {'activo', 'pasos', 'avisos', 'pedidos', 'estado', 'conTurno', 'forzada'}:
+    'estado' es lo que hizo publicar_estado y 'conTurno' los pasos con turno que corrieron."""
     raiz = raiz or ubicacion.ubicar_intercambio(AQUI)
     if raiz is None or not intercambio.es_carpeta_de_intercambio(raiz):
         return {"activo": False, "pasos": {}, "avisos": [
             "No se encontró la carpeta de intercambio (biblioteca «Formulación de proyectos» sin sincronizar)."]}
-    _tomar_candado()
+    _tomar_candado(esperar_seg)
     try:
         inicio = time.perf_counter()
+        ahora = datetime.now().astimezone()
         firmas = _leer_json(ruta_estado, {})
-        resultado, avisos = {}, []
+        leidas = json.dumps(firmas, ensure_ascii=False, sort_keys=True)
+        turnos = dict(firmas.get(CLAVE_TURNOS) or {})
+        anteriores = (((intercambio.leer_publicacion(raiz, PUBLICACION_ESTADO) or {}).get("datos") or {})
+                      .get("procesador") or {}).get("pasos") or {}
+        resultado, avisos, con_turno = {}, [], []
         pedidos = _pedidos(raiz)   # antes de los pasos: lo que se pida mientras corre puede no alcanzar a verse en esta vuelta
         for nombre, paso in pasos:
+            # El tablero de Oportunidades está consultando la API: la consulta simultánea la rechaza. Sin anotar el
+            # intento, así corre en la vuelta siguiente.
+            if not _le_toca(nombre, firmas, ahora) or (nombre in PASOS_CON_API and _api_en_uso()):
+                resultado[nombre] = _sin_correr(anteriores.get(nombre), (turnos.get(nombre) or {}).get("cuando"))
+                if not resultado[nombre]["ok"]:     # la falla sigue a la vista hasta que vuelva a correr
+                    avisos.append(f"{nombre}: {str(resultado[nombre]['detalle'])[:200]}")
+                continue
             t0 = time.perf_counter()
             try:
                 detalle, firma = paso(raiz, firmas.get(nombre), forzar)
@@ -612,10 +756,20 @@ def procesar(raiz: Path | None = None, forzar: bool = False, pasos=PASOS,
             except Exception as error:  # noqa: BLE001 -- un paso nunca frena a los demás
                 resultado[nombre] = {"ok": False, "detalle": str(error)[:500], "seg": round(time.perf_counter() - t0, 1)}
                 avisos.append(f"{nombre}: {str(error)[:200]}")
-        _guardar_json(ruta_estado, firmas)
+            if nombre in TURNO_SEG:
+                cuando = ahora.isoformat(timespec="seconds")
+                turnos[nombre] = {"cuando": cuando, "ok": resultado[nombre]["ok"]}
+                resultado[nombre]["ultimaVez"] = cuando
+                con_turno.append(nombre)
+        if turnos:
+            firmas[CLAVE_TURNOS] = turnos
+        if json.dumps(firmas, ensure_ascii=False, sort_keys=True) != leidas:   # sin cambios, OneDrive no tiene nada que subir
+            _guardar_json(ruta_estado, firmas)
         _archivar_pedidos(raiz, pedidos, avisos)
-        publicar_estado(raiz, resultado, time.perf_counter() - inicio, avisos)
-        return {"activo": True, "pasos": resultado, "avisos": avisos, "pedidos": len(pedidos)}
+        estado = publicar_estado(raiz, resultado, time.perf_counter() - inicio, avisos,
+                                 siempre=forzar or bool(pedidos))
+        return {"activo": True, "pasos": resultado, "avisos": avisos, "pedidos": len(pedidos), "estado": estado,
+                "conTurno": con_turno, "forzada": forzar}
     finally:
         RUTA_CANDADO.unlink(missing_ok=True)
 
@@ -623,9 +777,21 @@ def procesar(raiz: Path | None = None, forzar: bool = False, pasos=PASOS,
 PASO_LENTO_SEG = 10   # desde aquí el log anota los segundos del paso
 
 
+def sin_novedad(resultado: dict) -> bool:
+    """Una vuelta que no hay que anotar en el log (2026-11-11): cada 5 minutos serían 288 líneas al día, y OneDrive
+    sube el archivo entero en cada una. Se anota si cambió el estado, atendió pedidos, corrió un paso con turno o
+    con --forzar, o un paso tardó PASO_LENTO_SEG o más. Una falla que se repite igual se anota la primera vez."""
+    pasos = resultado.get("pasos") or {}
+    return bool(resultado.get("activo") and resultado.get("estado") != "cambios" and not resultado.get("pedidos")
+                and not resultado.get("conTurno") and not resultado.get("forzada")
+                and all(p.get("seg", 0) < PASO_LENTO_SEG for p in pasos.values()))
+
+
 def _registrar(resultado: dict) -> None:
-    """Una línea por vuelta, con lo que tardó y los segundos de cada paso lento (2026-10-25): sistema-quempin
-    llegó dos veces al límite de 300 s y la UF tardó 91 s, y el log solo decía «ok» o «FALLA»."""
+    """Una línea por vuelta con novedades, con lo que tardó y los segundos de cada paso lento (2026-10-25):
+    sistema-quempin llegó dos veces al límite de 300 s y la UF tardó 91 s, y el log solo decía «ok» o «FALLA»."""
+    if sin_novedad(resultado):
+        return
     try:
         CARPETA_LOGS.mkdir(exist_ok=True)
         ruta = CARPETA_LOGS / f"procesador_{datetime.now():%Y-%m}.log"
@@ -651,8 +817,10 @@ def main(argv=None) -> int:
         raiz = ubicacion.ubicar_intercambio(AQUI)
         if raiz is None or not intercambio.es_carpeta_de_intercambio(raiz) or not hay_pedido(raiz):
             return 0
+    forzar = "--forzar" in argv
     try:
-        resultado = procesar(forzar="--forzar" in argv)
+        # --forzar (el run de Actualizar_Finanzas) espera a la vuelta de cada 5 minutos que esté en curso
+        resultado = procesar(forzar=forzar, esperar_seg=ESPERA_FORZADA_SEG if forzar else 0)
     except Ocupado as error:
         print(f"[INFO] {error}.")
         return 0

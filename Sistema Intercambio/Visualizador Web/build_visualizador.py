@@ -86,8 +86,15 @@ def construir(datos: dict | None = None, sin_red: bool = False,
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    sin_red = "--sin-red" in argv
     try:
-        datos, llamadas, al_dia = evaluar(sin_red="--sin-red" in argv)
+        # Mientras consulta, el procesador (cada 5 minutos) deja su turno de Mercado Público para después:
+        # la API rechaza las consultas simultáneas (mercado_publico.usando_api, 2026-11-11)
+        if sin_red:
+            datos, llamadas, al_dia = evaluar(sin_red=True)
+        else:
+            with mercado_publico.usando_api():
+                datos, llamadas, al_dia = evaluar()
         ruta = construir(datos)
     except candado.SinContrasena as e:
         print(f"[ERROR] {e}")

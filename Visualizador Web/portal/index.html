@@ -2919,7 +2919,7 @@
               <div class="rc-frescura">
                 <span class="cx-punto" id="rcPunto"></span>
                 <span id="rcFrescura" role="status">Leyendo la carpeta del equipo…</span>
-                <button class="cx-enlace" id="rcPedirVuelta" type="button" title="Le pide al procesador una vuelta ahora, sin esperar la de cada 2 horas. Tarda unos 5 min." hidden>Actualizar datos</button>
+                <button class="cx-enlace" id="rcPedirVuelta" type="button" title="Le pide al procesador una vuelta ahora, sin esperar la de cada 5 minutos. Tarda unos 5 min." hidden>Actualizar datos</button>
                 <button class="acc-btn" id="rcActualizar" type="button" title="Volver a leer la carpeta del equipo (no hace correr al procesador)" aria-label="Volver a leer la carpeta del equipo"></button>
               </div>
             </header>
@@ -3031,7 +3031,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloSubir">Subir documentos al Centro de Costos</h1>
-                <span class="info" data-etiqueta="Adónde llegan los documentos">Facturas, boletas y comprobantes de un proyecto. Llegan a su carpeta de «Facturas y Boletas» en la próxima vuelta del procesador (cada 2 horas).</span>
+                <span class="info" data-etiqueta="Adónde llegan los documentos">Facturas, boletas y comprobantes de un proyecto. Llegan a su carpeta de «Facturas y Boletas» en la próxima vuelta del procesador (cada 5 minutos).</span>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="scPunto"></span>
@@ -3081,7 +3081,7 @@
                 </div>
               </form>
               <aside class="sc-envios" aria-labelledby="scTEnvios">
-                <h2 id="scTEnvios">Envíos recientes <span class="info" data-etiqueta="Qué son los envíos recientes">Del equipo, de este mes y el anterior. «En camino» espera la vuelta del procesador (cada 2 horas); después cada documento se registra con <strong>/Registro_Centro_de_Costos</strong>, como los que se suben a SharePoint.</span></h2>
+                <h2 id="scTEnvios">Envíos recientes <span class="info" data-etiqueta="Qué son los envíos recientes">Del equipo, de este mes y el anterior. «En camino» espera la vuelta del procesador (cada 5 minutos); después cada documento se registra con <strong>/Registro_Centro_de_Costos</strong>, como los que se suben a SharePoint.</span></h2>
                 <ul class="sc-env-lista" id="scEnvios"></ul>
               </aside>
             </div>
@@ -5945,7 +5945,7 @@
   const RC_VUELTA_REVISAR_SEG = 10;
   const RC_VUELTA_TARDA_MIN = 15;      // desde aquí dice que no responde: lo normal son unos 5 min
   // estado.json dice si en el computador del procesador está la tarea que atiende el pedido al momento (2026-11-06:
-  // el botón se publicó antes que la tarea y prometía 5 minutos). Sin ella, el pedido espera la vuelta de cada 2 horas,
+  // el botón se publicó antes que la tarea y prometía 5 minutos). Sin ella, el pedido espera la vuelta de cada 5 minutos,
   // y así se dice; «no responde» recién pasadas 2 horas y media, como el pulso.
   const RC_VUELTA_SIN_TAREA_TARDA_MIN = 150;
   const rcSinTareaDePedidos = () => !!(rc.datos && rc.datos.estado && rc.datos.estado.pedidos && rc.datos.estado.pedidos.tarea === false);
@@ -6043,8 +6043,8 @@
     boton.disabled = !!rc.vuelta;
     boton.textContent = rc.vuelta ? 'Actualizando…' : 'Actualizar datos';
     boton.title = sinTarea
-      ? 'Le pide al procesador una vuelta. En su computador falta la tarea que la da al momento: se atiende en la próxima vuelta (cada 2 horas).'
-      : 'Le pide al procesador una vuelta ahora, sin esperar la de cada 2 horas. Tarda unos 5 min.';
+      ? 'Le pide al procesador una vuelta. En su computador falta la tarea que la da al momento: se atiende en la próxima vuelta (cada 5 minutos).'
+      : 'Le pide al procesador una vuelta ahora, sin esperar la de cada 5 minutos. Tarda unos 5 min.';
     if (rc.leyendo) { txt.textContent = rc.leido ? 'Actualizando…' : 'Leyendo la carpeta del equipo…'; return; }
     if (!rc.leido) { txt.textContent = 'Sin datos de la carpeta del equipo'; punto.className = 'cx-punto'; txt.title = ''; return; }
     const l = rc.pulso;
@@ -6053,11 +6053,11 @@
       const pedida = Math.max(0, Math.round((Date.now() - rc.vuelta.desde) / 60000));
       const tarda = pedida >= (sinTarea ? RC_VUELTA_SIN_TAREA_TARDA_MIN : RC_VUELTA_TARDA_MIN);
       txt.textContent = 'Actualización pedida ' + haceTexto(pedida) +
-        (tarda ? ': el procesador aún no responde' : sinTarea ? ': se atiende en la próxima vuelta (cada 2 horas)' : ': tarda unos 5 min');
+        (tarda ? ': el procesador aún no responde' : sinTarea ? ': se atiende en la próxima vuelta (cada 5 minutos)' : ': tarda unos 5 min');
       txt.title = tarda
         ? 'El pedido sigue en el buzón y se atiende apenas se pueda. El computador del procesador puede estar apagado, o su OneDrive atrasado.'
         : sinTarea
-          ? 'En el computador del procesador falta la tarea que atiende estos pedidos al momento: el pedido espera la vuelta de cada 2 horas. Avisa a quien administra las herramientas QUEMPIN.'
+          ? 'En el computador del procesador falta la tarea que atiende estos pedidos al momento: el pedido espera la vuelta de cada 5 minutos. Avisa a quien administra las herramientas QUEMPIN.'
           : 'El computador del procesador toma el pedido y da una vuelta completa; lo demás es lo que OneDrive demora en llevar y traer los archivos.';
       punto.className = 'cx-punto ' + (tarda ? 'warn' : (l ? l.nivel : ''));
       return;
@@ -8245,7 +8245,7 @@
     const min = l.minutos;
     const hace = min === null ? '' : min < 1 ? 'hace un momento' : min < 60 ? 'hace ' + min + ' min' : min < 48 * 60 ? 'hace ' + Math.round(min / 60) + ' h' : 'hace ' + Math.round(min / 1440) + ' días';
     txt.textContent = l.detenido ? 'Procesador detenido desde ' + hace : 'Última vuelta del procesador ' + hace;
-    txt.title = l.texto + ' El procesador deja los documentos en el Centro de Costos cada 2 horas.';
+    txt.title = l.texto + ' El procesador deja los documentos en el Centro de Costos cada 5 minutos.';
     punto.className = 'cx-punto ' + l.nivel;
   }
   function scPintarProyecto() {
@@ -11011,7 +11011,7 @@
     if (fila && pq.q && !pqBuscable(fila).includes(norm(pq.q).trim())) { pq.q = ''; $('#pqBuscar').value = ''; }
     pqPintar();
     pqResaltar(a.numero);
-    // La carpeta la mueve el procesador: se le pide una vuelta para que no espere la de cada 2 horas
+    // La carpeta la mueve el procesador: se le pide una vuelta para que no espere la de cada 5 minutos
     if (mover) rcPedirVuelta().catch((err) => console.error(err));
     const carpeta = mover ? ' Su carpeta pasa a «' + PQ_ENTREGADOS + '» ' + (rcSinTareaDePedidos() ? 'en la próxima vuelta del procesador.' : 'en unos minutos.') : '';
     avisar(a.nuevo ? 'N° ' + a.numero + ' agregado a Requerimientos. Pasa al Excel en unos 10 minutos.'
@@ -13245,7 +13245,7 @@
       const p = crear('p', 'ej-linea tinte');
       const antes = av.af === null ? 'sin avance' : ejPct(av.af);
       p.append(crear('span', null, av.msj && av.msj.estado === 'pendiente' ? 'El Análisis Financiero dejó esperando el pedido (' + [].concat(av.msj.detalle || []).join(' ') + ').'
-        : 'Pedido al Análisis Financiero: hoy tiene ' + antes + '. Llega con la próxima vuelta del procesador (cada 2 horas).'));
+        : 'Pedido al Análisis Financiero: hoy tiene ' + antes + '. Llega con la próxima vuelta del procesador (cada 5 minutos).'));
       const r = crear('button', 'cx-desmarcar', 'Retirar el pedido');
       r.type = 'button';
       r.dataset.foco = 'retirar';
@@ -13768,7 +13768,7 @@
     s.classList.add('ej-facturas');
     const fw = rcFacturasWeb(m.t);
     if (fw) { const b = ejBoton('Abrir la carpeta', 'cx-enlace', () => window.open(fw, '_blank', 'noopener'), 'fuera'); b.title = 'Su carpeta del Centro de Costos en SharePoint'; cab.append(b); }
-    if (docs === null) { s.append(lineaInfo('ej-nada', 'Las facturas todavía no llegan a la carpeta del equipo.', 'Las publica el procesador desde el Centro de Costos en su próxima vuelta (cada 2 horas). Mientras, lo gastado sale del Análisis Financiero.', 'Cuándo llegan')); return s; }
+    if (docs === null) { s.append(lineaInfo('ej-nada', 'Las facturas todavía no llegan a la carpeta del equipo.', 'Las publica el procesador desde el Centro de Costos en su próxima vuelta (cada 5 minutos). Mientras, lo gastado sale del Análisis Financiero.', 'Cuándo llegan')); return s; }
     if (!docs.length) { s.append(crear('p', 'ej-nada', 'Sin documentos registrados con su TAG en el Centro de Costos.')); return s; }
     const todos = ejDestinos(m);
     const asociada = (d) => ejDestinosDe(m, d.ref, todos).length > 0 || !!(m.asoc.get(d.ref) && !m.asoc.get(d.ref).destinos.length);

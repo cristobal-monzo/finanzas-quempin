@@ -33,6 +33,22 @@ def _cargar_build():
 build = _cargar_build()
 candado = build.candado
 
+
+def test_mientras_consulta_la_api_el_procesador_lo_sabe(monkeypatch, tmp_path):
+    """2026-11-11: el procesador corre cada 5 minutos; si le toca Mercado Público mientras el tablero consulta, lo
+    deja para la vuelta siguiente (la API rechaza las consultas simultáneas)."""
+    vistas = []
+
+    def _evaluar(sin_red=False, raiz=None):
+        vistas.append((sin_red, build.mercado_publico.api_en_uso()))
+        return {"oportunidades": [], "avisos": []}, 0, True
+    monkeypatch.setattr(build, "evaluar", _evaluar)
+    monkeypatch.setattr(build, "construir", lambda datos: tmp_path / "index.html")
+    assert build.main([]) == 0
+    assert build.main(["--sin-red"]) == 0
+    assert vistas == [(False, True), (True, False)]
+    assert not build.mercado_publico.api_en_uso()
+
 AHORA = datetime.now().replace(microsecond=0)
 HISTORIA = [
     {"numero": 1, "estado": "Adjudicado", "titulo": "Mantención preventiva caldera hospital", "referencia": "5000-1-LE26", "valorOfertado": 8_000_000},

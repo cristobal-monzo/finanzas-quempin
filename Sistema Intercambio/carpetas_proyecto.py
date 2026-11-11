@@ -252,6 +252,7 @@ def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None, ruta_esta
     """Las dos cosas del docstring. 'raices' = {'CL': .../Chile, 'PE': .../Perú}.
     Devuelve {'creadasCC', 'accesos', 'conArchivos', 'sinQuitar'}."""
     estado = leer_estado(ruta_estado)
+    leido = json.dumps(estado, ensure_ascii=False, sort_keys=True)
     r = {"creadasCC": [], "accesos": [], "conArchivos": [], "sinQuitar": []}
     if not any(b is not None and Path(b).is_dir() for b in raices.values()):
         return r           # el sitio del Centro de Costos no está en este equipo: nada que hacer
@@ -312,7 +313,9 @@ def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None, ruta_esta
         accesos[req] = url
         r["accesos"].append(carpeta.name)
 
-    guardar_estado(estado, ruta_estado)
+    # Solo si cambió (2026-11-11): el procesador corre cada 5 minutos y este archivo está en OneDrive
+    if json.dumps(estado, ensure_ascii=False, sort_keys=True) != leido:
+        guardar_estado(estado, ruta_estado)
     return r
 
 

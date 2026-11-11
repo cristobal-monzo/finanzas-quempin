@@ -1414,11 +1414,11 @@
           <h2 class="ing-titulo">Ingresar avance y datos de los proyectos</h2>
           <!-- Abierto la primera vez; después queda como lo dejó la persona (iniciarIngreso, af_ingreso_como) -->
           <details class="ing-como" id="ingComo">
-            <summary>Cómo funciona: escribes, revisas y envías; llega al Excel en la próxima vuelta (cada 2 horas)</summary>
+            <summary>Cómo funciona: escribes, revisas y envías; llega al Excel en la próxima vuelta (cada 5 minutos)</summary>
             <ol class="ing-pasos">
               <li><strong>Escribe</strong> lo que cambió: queda en naranjo y se guarda en este navegador hasta que lo envíes.</li>
               <li><strong>Revisa y envía</strong> con el botón que aparece abajo: antes de enviar se ve qué cambia.</li>
-              <li><strong>Llega al Excel</strong> en la próxima vuelta del procesador (cada 2 horas) y al tablero en su próxima publicación.</li>
+              <li><strong>Llega al Excel</strong> en la próxima vuelta del procesador (cada 5 minutos) y al tablero en su próxima publicación.</li>
             </ol>
             <p class="ing-texto">Si alguien cambió ese valor en el Excel después de que lo viste, tu envío no lo pisa: queda esperando una decisión.</p>
           </details>
@@ -3275,7 +3275,7 @@
       if (!pulso) return '';
       return pulso.detenido
         ? '<p class="ing-pulso detenido" role="alert">Lo que envías no se está aplicando. ' + esc(pulso.texto) + '</p>'
-        : '<p class="ing-pulso">' + esc(pulso.texto) + ' Lo enviado llega al Excel en la próxima vuelta (cada 2 horas).</p>';
+        : '<p class="ing-pulso">' + esc(pulso.texto) + ' Lo enviado llega al Excel en la próxima vuelta (cada 5 minutos).</p>';
     }
     function renderEnvios() {
       var caja = document.getElementById('ingEnvios');
@@ -3395,7 +3395,7 @@
         como.open = false;   // ya envió una vez: la explicación se pliega (el evento «toggle» lo recuerda)
         var n = listo.mensajes.length;
         mostrarMensaje('Listo: ' + (n === 1 ? 'se envió 1 proyecto' : 'se enviaron ' + n + ' proyectos') + '. ' +
-          'Llegan al Excel del Análisis Financiero en la próxima vuelta del procesador (cada 2 horas, con el computador ' +
+          'Llegan al Excel del Análisis Financiero en la próxima vuelta del procesador (cada 5 minutos, con el computador ' +
           'de la oficina encendido) y el tablero los muestra en su próxima publicación. Abajo ves en qué quedó cada uno.');
         renderTodo();
         return refrescarEnvios();
@@ -3536,7 +3536,7 @@
     div.className = 'aviso-enlace';
     div.setAttribute('role', 'status');
     div.innerHTML = 'El proyecto <b>' + esc(tag) + '</b> todavía no está en este tablero: aparece cuando se vuelve a publicar ' +
-      '(lo que envió el Formulador se aplica en la carpeta del equipo cada 2 horas).';
+      '(lo que envió el Formulador se aplica en la carpeta del equipo cada 5 minutos).';
     var destino = document.getElementById('tabProyectos');
     destino.insertBefore(div, destino.firstChild);
   }

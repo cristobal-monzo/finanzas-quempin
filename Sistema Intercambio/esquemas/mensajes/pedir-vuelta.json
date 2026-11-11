@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "pedir-vuelta (Portal QUEMPIN → procesador)",
-  "description": "Alguien apretó «Actualizar datos» en el Portal y pide una vuelta del procesador sin esperar a la de cada 2 horas. No lleva nada más que el sobre. La tarea de cada minuto lo ve (procesar.py --si-hay-pedido) y la vuelta lo archiva como aplicado; si el computador del procesador está apagado, espera en el buzón.",
+  "description": "Alguien apretó «Actualizar datos» en el Portal y pide una vuelta del procesador sin esperar a la de cada 5 minutos. No lleva nada más que el sobre. La tarea de cada minuto lo ve (procesar.py --si-hay-pedido) y la vuelta lo archiva como aplicado; si el computador del procesador está apagado, espera en el buzón.",
   "destino": "procesador",
   "type": "object",
   "properties": {}
