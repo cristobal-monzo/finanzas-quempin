@@ -5535,6 +5535,74 @@ def _pedido(numero, tipo, herramienta="portal", minutos=-5, **cuerpo):
     return nombre, m
 
 
+def test_al_guardar_uno_nuevo_su_n_se_vuelve_a_calcular(navegador, sitio):
+    """2026-11-12: el N° de un requerimiento nuevo se calcula de nuevo al guardar, con lo que llegó al buzón mientras se
+    escribía; el formulario abierto un rato no repite un N° que otro ya tomó."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 914"
+    # Mientras tanto, otra persona ingresó el 914 (llega con OneDrive)
+    nombre, otro = _pedido(914, "nuevo-requerimiento", minutos=-1, requerimiento={"numero": 914, "titulo": "El de otra persona"},
+                           fuente={"herramienta": "portal"}, numeroLibre=True)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"buzon/" + nombre: otro})
+    dlg.locator("#pqTitulo").fill("El mío")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    mio = next(m for m in _pedidos_planilla(pagina, "nuevo-requerimiento") if m["requerimiento"]["titulo"] == "El mío")
+    assert mio["requerimiento"]["numero"] == 915
+    _esperar_aviso(pagina, "El N° 914 lo tomó otro requerimiento mientras escribías")
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_formulador_abre_un_requerimiento_nuevo_con_sus_datos(navegador, sitio):
+    """2026-11-12: el Formulador ya no da N°; «Ingresar en Requerimientos» abre …/portal/#/planilla?nuevo=<JSON> (suelto)
+    o manda un mensaje (dentro del portal), y el portal abre «Nuevo requerimiento» con esos datos y su propio N°."""
+    import urllib.parse
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="ES")
+    datos = {"titulo": "Caldera del Formulador", "ubicacion": "Temuco", "referencia": "1234-5-LE26", "canal": "Mercado Público",
+             "cierre": "2026-12-01T15:00", "presupuesto": 5950000, "estado": "Inventado", "otro": "no se usa"}
+    url = pagina.url.split("#")[0] + "#/planilla?nuevo=" + urllib.parse.quote(json.dumps(datos))
+    pagina.goto(url)
+    pagina.reload()
+    dlg = pagina.locator("#dlgPlanilla")
+    dlg.wait_for(timeout=15000)
+    assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 914"
+    assert dlg.locator("#pqTitulo").input_value() == "Caldera del Formulador"
+    assert (dlg.locator("#pqUbicacion").input_value(), dlg.locator("#pqReferencia").input_value()) == ("Temuco", "1234-5-LE26")
+    assert dlg.locator("#pqCiF").input_value() == "2026-12-01" and dlg.locator("#pqEstado").input_value() == "Evaluación"
+    assert "#/planilla" in pagina.url and "nuevo=" not in pagina.url
+    dlg.locator("#pqCancelar").click()
+    # Desde un marco del portal (el Formulador adentro): el mensaje hace lo mismo; de otro lado, nada
+    pagina.evaluate("""() => window.postMessage({ tipo: 'quempin-nuevo-requerimiento', datos: { titulo: 'Desde la misma ventana' } }, location.origin)""")
+    pagina.wait_for_timeout(500)
+    assert dlg.is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_se_ve_quien_mas_esta_ingresando_un_requerimiento(navegador, sitio):
+    """2026-11-12: con el formulario de uno nuevo abierto, la presencia dice «planilla/nuevo», y se ve a quien más lo
+    tiene abierto: los dos podrían tomar el mismo N°."""
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.evaluate("(d) => localStorage.setItem('quempin_portal_dispositivo', d)", DISPOSITIVO)
+    pagina.reload()
+    _menu(pagina, "Requerimientos")
+    pagina.locator("#pqFilas tr").first.wait_for()
+    pagina.locator("#pqNuevo").click()
+    propia = f"publicado/presencia/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, propia, lambda s: s["datos"]["vista"] == "planilla")
+    assert sobre["datos"]["donde"] == "nuevo" and esquemas.validar_publicacion("presencia", sobre) == []
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"publicado/presencia/otro0001.json": _presencia("otro0001", "NB", "planilla", "nuevo")})
+    pagina.wait_for_function("document.getElementById('pqConmigo').textContent === 'NB también está ingresando un requerimiento'", timeout=20000)
+    pagina.locator("#pqCancelar").click()
+    _esperar_archivo(pagina, propia, lambda s: s["datos"]["vista"] == "")
+    assert not errores
+    pagina.context.close()
+
+
 def test_sin_la_carpeta_la_planilla_deja_abrir_el_excel(navegador, sitio):
     """Un teléfono no abre carpetas: la vista dice qué falta y el Excel sigue a mano, como antes del 2026-10-29."""
     pagina, errores = _abrir_portal(navegador, sitio)

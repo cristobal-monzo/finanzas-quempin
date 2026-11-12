@@ -242,8 +242,8 @@ def test_las_celdas_de_un_cambio():
 def entorno(tmp_path, monkeypatch):
     raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
     monkeypatch.setattr(pe, "ESTADO", tmp_path / "estado.json")
-    # La lista de Estado del Excel ya está al día: tiene su propia prueba
-    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS)}), encoding="utf-8")
+    # La lista de Estado del Excel ya está al día y la hoja ya está protegida: tienen su propia prueba
+    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS), "hojaProtegida": True}), encoding="utf-8")
     escritas = []
 
     def falso_escribir(ruta, operaciones, columnas=None, limite=600):
@@ -267,7 +267,7 @@ def entorno(tmp_path, monkeypatch):
             if o["op"] == "fijar":
                 hoja.cell(o["fila"], 1).value = o["numero"]
                 resultados.append({"i": i, "ok": True, "fila": o["fila"]})
-            elif o["op"] == "estados":
+            elif o["op"] in ("estados", "proteger"):
                 resultados.append({"i": i, "ok": True, "fila": 0})
             elif o["op"] == "nueva":
                 fila = max(r for r in range(2, hoja.max_row + 1) if hoja.cell(r, 2).value or r == 2) + 1
@@ -573,7 +573,7 @@ def test_la_lista_de_estado_del_excel_se_pone_al_dia_una_vez(tmp_path, entorno):
     raiz, escritas = entorno
     ruta = _planilla(tmp_path, [(1, "A")])
     rq.publicar(raiz, ruta)
-    pe.ESTADO.write_text("{}", encoding="utf-8")
+    pe.ESTADO.write_text(json.dumps({"hojaProtegida": True}), encoding="utf-8")
     pe.vuelta(raiz, ruta)
     (op,) = escritas[0]
     assert op["op"] == "estados" and op["lista"] == list(rq.ESTADOS) and op["encabezados"] == {op["letra"]: "Estado"}
@@ -585,7 +585,7 @@ def test_si_excel_no_puede_cambiar_la_lista_lo_intenta_tres_veces(tmp_path, ento
     raiz, escritas = entorno
     ruta = _planilla(tmp_path, [(1, "A")])
     rq.publicar(raiz, ruta)
-    pe.ESTADO.write_text("{}", encoding="utf-8")
+    pe.ESTADO.write_text(json.dumps({"hojaProtegida": True}), encoding="utf-8")
     monkeypatch.setattr(pe, "escribir", lambda r, ops, c=None, limite=600: (escritas.append(ops), {"estado": "ok", "resultados": [{"i": 0, "ok": False}]})[1])
     for _ in range(5):
         pe.vuelta(raiz, ruta)
@@ -600,3 +600,52 @@ def test_la_lista_del_excel_es_la_del_esquema_y_la_operacion_existe():
     # Vuelve a proteger la hoja con los mismos permisos que tenía (ordenar, filtrar...), no con los de fábrica
     assert "Proteccion-De $hoja" in ps1 and "Proteger-Como $hoja $como" in ps1 and "Protect([Type]::Missing, $true" not in ps1
     assert pe.SCRIPT_EXCEL.read_bytes()[:3] == bytes([0xEF, 0xBB, 0xBF]), "el .ps1 va con BOM (PowerShell 5.1)"
+
+
+# ── la hoja entera protegida con contraseña (2026-11-12) ─────────────────────
+
+def test_la_hoja_se_protege_una_vez_y_despues_no_abre_excel_por_eso(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS)}), encoding="utf-8")
+    pe.vuelta(raiz, ruta)
+    assert escritas == [[{"op": "proteger"}]]
+    assert json.loads(pe.ESTADO.read_text(encoding="utf-8"))["hojaProtegida"] is True
+    assert pe.vuelta(raiz, ruta)["detalle"] == "sin cambios" and len(escritas) == 1
+
+
+def test_si_no_se_puede_proteger_lo_intenta_tres_veces(tmp_path, entorno, monkeypatch):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS)}), encoding="utf-8")
+    monkeypatch.setattr(pe, "escribir", lambda r, ops, c=None, limite=600: (escritas.append(ops), {"estado": "ok", "resultados": [{"i": 0, "ok": False}]})[1])
+    for _ in range(5):
+        pe.vuelta(raiz, ruta)
+    assert len(escritas) == pe.INTENTOS_LISTA
+
+
+def test_la_clave_se_crea_una_vez_cifrada_y_la_variable_manda(tmp_path, monkeypatch):
+    import mercado_publico
+    # DPAPI de mentira (reversible): la prueba no depende de la clave de Windows de quien la corre
+    monkeypatch.setattr(mercado_publico, "_dpapi", lambda datos, proteger: bytes(reversed(datos)))
+    monkeypatch.delenv(pe.VARIABLE_CLAVE, raising=False)
+    ruta = tmp_path / "planilla.clave"
+    assert pe.clave_hoja(ruta, crear=False) == "" and not ruta.exists()
+    primera = pe.clave_hoja(ruta)
+    assert len(primera) >= 20 and ruta.read_bytes() != primera.encode()      # no queda en claro
+    assert pe.clave_hoja(ruta) == primera                                     # la misma cada vez
+    monkeypatch.setenv(pe.VARIABLE_CLAVE, "de-la-variable")
+    assert pe.clave_hoja(ruta) == "de-la-variable"
+
+
+def test_excel_desprotege_solo_con_la_clave_y_deja_la_hoja_entera_protegida():
+    ps1 = pe.SCRIPT_EXCEL.read_text(encoding="utf-8-sig")
+    assert "$o.op -eq 'proteger'" in ps1 and "$env:QUEMPIN_PLANILLA_CLAVE" in ps1
+    assert "$hoja.Unprotect($clave)" in ps1 and "$hoja.Cells.Locked = $true" in ps1
+    # Al final, antes de guardar: contenido protegido, filtrar sí, ordenar no
+    assert "$c[1] = $true; $c[12] = $false; $c[13] = $true" in ps1
+    assert ps1.index("Proteger-Como $hoja $c $clave") < ps1.index("$wb.Save()")
+    # La clave nunca va en el archivo de entrada
+    assert "clave" not in json.dumps({"protegerHoja": pe.PROTEGER_HOJA})

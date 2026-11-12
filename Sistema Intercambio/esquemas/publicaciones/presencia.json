@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "presencia/<dispositivo>.json (quién tiene abierta qué semana o qué proyecto en el Portal)",
-  "description": "Qué semana de la Planificación semanal o qué proyecto de Proyectos en ejecución tiene a la vista un navegador del Portal QUEMPIN (2026-11-10), para avisar «LC también está en esta semana». Se renueva mientras la vista está abierta; lo que no se renovó en unos minutos ya no cuenta. Sin vista («vista» vacía): ese navegador salió.",
+  "description": "Qué semana de la Planificación semanal o qué proyecto de Proyectos en ejecución tiene a la vista un navegador del Portal QUEMPIN (2026-11-10), para avisar «LC también está en esta semana». Desde el 2026-11-12 también «planilla» / «nuevo»: tiene abierto el formulario de un requerimiento nuevo («LC también está ingresando un requerimiento»: pueden tomar el mismo N°). Se renueva mientras la vista está abierta; lo que no se renovó en unos minutos ya no cuenta. Sin vista («vista» vacía): ese navegador salió.",
   "dueno": "portal",
   "type": "object",
   "properties": {
@@ -14,7 +14,7 @@
       "pattern": "^([A-Z]{2,3})?$"
     },
     "vista": {
-      "enum": ["", "planificacion", "ejecucion"]
+      "enum": ["", "planificacion", "ejecucion", "planilla"]
     },
     "donde": {
       "type": "string",

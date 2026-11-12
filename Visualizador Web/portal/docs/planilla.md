@@ -9,7 +9,8 @@ que de verdad se usan).
 
 - **Qué es**: la herramienta `planilla` (`tipo: vista`, `#vistaPlanilla`; antes `tipo: excel`), funciones `pq*`, estado `pq`,
   diálogo `#dlgPlanilla`. El registro conserva su `url`: es el botón «Excel de respaldo» y el de Configuración y conexiones.
-- **El puente con el Excel** no está aquí: es `Sistema Intercambio/planilla_escritura.py`, cada 10 minutos. Su detalle, con la
+- **El puente con el Excel** no está aquí: es `Sistema Intercambio/planilla_escritura.py`, cada minuto (el Excel está protegido
+  con contraseña desde el 2026-11-12: solo se ingresa y se cambia aquí). Su detalle, con la
   medición de cada columna, está en `Sistema Intercambio/docs/planilla.md`.
 - **Lee** `publicado/requerimientos.json` y pone encima lo que espera en el buzón (`pqMezclar`, llamado desde `rcLeer`): por eso
   el Recorrido y las demás vistas también ven al instante lo ingresado.
@@ -24,6 +25,13 @@ que de verdad se usan).
     ve vacía y no debe contar como cambio. Por lo mismo, un Estado o Canal vacío o fuera de la lista se muestra tal cual.
   - El N° nuevo es el siguiente al mayor de la Planilla, lo que espera, las carpetas y las formulaciones (`pqSiguienteN`). Si
     dos personas lo toman a la vez, el Excel le da al segundo el siguiente libre y el resultado lo dice.
+  - **Contra los choques de N°** (2026-11-12, plan `Documentación/Planes y análisis/2026-11-11-n-de-requerimiento-sin-choques.md`):
+    - al guardar uno nuevo se relee el buzón y la Planilla publicada (`pqReleer`) y el N° se calcula de nuevo: si otro lo
+      tomó mientras se escribía, queda el siguiente y el aviso lo dice;
+    - con el formulario de uno nuevo abierto, la presencia dice `planilla`/`nuevo` y `#pqConmigo` muestra «LC también está
+      ingresando un requerimiento»;
+    - el Formulador ya no da N°: «Ingresar en Requerimientos» manda `quempin-nuevo-requerimiento` (dentro del portal) o abre
+      `…/portal/#/planilla?nuevo=<JSON>`, y `pqNuevoCon` abre «Nuevo requerimiento» con esos datos (`PQ_PRELLENO`).
 - **Las columnas** (`PQ_COLUMNAS`) son las mismas del esquema `editar-requerimiento` y de `planilla_escritura.EDITABLES`; lo
   revisa `test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel`. Para agregar una, en los tres.
 - **Presupuesto del mandante** (2026-11-11, pedido del usuario): una caja opcional del formulario (`#pqPresupuesto`, pesos con IVA,

@@ -76,8 +76,21 @@ try {
             $p.AllowInsertingRows, $p.AllowInsertingHyperlinks, $p.AllowDeletingColumns, $p.AllowDeletingRows,
             $p.AllowSorting, $p.AllowFiltering, $p.AllowUsingPivotTables)
     }
-    function Proteger-Como($h, $c) {
-        [void]$h.Protect([Type]::Missing, $c[0], $c[1], $c[2], $c[3], $c[4], $c[5], $c[6], $c[7], $c[8], $c[9], $c[10], $c[11], $c[12], $c[13], $c[14])
+    function Proteger-Como($h, $c, $clave) {
+        $pw = if ($clave) { [string]$clave } else { [Type]::Missing }
+        [void]$h.Protect($pw, $c[0], $c[1], $c[2], $c[3], $c[4], $c[5], $c[6], $c[7], $c[8], $c[9], $c[10], $c[11], $c[12], $c[13], $c[14])
+    }
+
+    # La hoja entera protegida con contraseña (2026-11-12, decisión del usuario: se ingresa solo por el Portal). La
+    # contraseña llega por el entorno (planilla_escritura.py, cifrada con DPAPI). Se quita solo para escribir y al final
+    # vuelve con todas las celdas bloqueadas. Nunca Unprotect() sin contraseña: en una hoja con contraseña, Excel la
+    # pediría en un diálogo y, oculto, la tarea quedaría colgada. Una hoja sin contraseña se desprotege con cualquiera.
+    $clave = [string]$env:QUEMPIN_PLANILLA_CLAVE
+    $conClave = [bool]$pedido.protegerHoja -and [bool]$clave
+    $comoHoja = Proteccion-De $hoja
+    if ($conClave -and [bool]$hoja.ProtectContents) {
+        try { [void]$hoja.Unprotect($clave) } catch { }
+        if ([bool]$hoja.ProtectContents) { throw "la hoja está protegida con otra contraseña: no se escribe nada (revisa «py -3.14 planilla_escritura.py clave»)" }
     }
 
     # Cada letra todavía tiene el encabezado con que se calculó (nadie movió la columna entretanto)
@@ -285,11 +298,25 @@ try {
                 } catch {}
                 [void]$resultados.Add(@{ i = $i; ok = $true; fila = 0; detalle = 'lista de Estado al día' })
             }
+            elseif ($o.op -eq 'proteger') {
+                # La protección completa se pone al final, igual que en toda vuelta; esto solo la pide la primera vez
+                if ($conClave) { [void]$resultados.Add(@{ i = $i; ok = $true; fila = 0; detalle = 'hoja entera protegida con contraseña' }) }
+                else { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = 'sin contraseña: la hoja no se protegió' }) }
+            }
             else { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = "operación desconocida: $($o.op)" }) }
         }
         catch { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = "$($_.Exception.Message) (línea $($_.InvocationInfo.ScriptLineNumber))" }) }
     }
-    if (@($resultados | Where-Object { $_.ok }).Count -gt 0) { $wb.Save() }
+    if (@($resultados | Where-Object { $_.ok }).Count -gt 0) {
+        if ($conClave) {
+            # Todas las celdas bloqueadas, con contraseña; se puede filtrar, no ordenar (un orden ya cambió 55 N°)
+            $c = $comoHoja.Clone()
+            $c[1] = $true; $c[12] = $false; $c[13] = $true
+            $hoja.Cells.Locked = $true
+            Proteger-Como $hoja $c $clave
+        }
+        $wb.Save()
+    }
     Escribir-Salida @{ estado = 'ok'; detalle = ''; resultados = $resultados }
 }
 catch {

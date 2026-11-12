@@ -153,11 +153,20 @@ carpetas de facturas → documentos del Portal (`documentos_cc.py`) → `proyect
   a viernes, 08:30–19:00) desde la última vuelta. Con más de 4, aviso rojo. Las noches y los fines
   de semana no cuentan.
 
-## Lo que se escribe en la Planilla (`planilla_escritura.py`, cada 10 minutos)
+## Lo que se escribe en la Planilla (`planilla_escritura.py`, cada minuto)
 
 Tarea «Registrar en la Planilla QUEMPIN» (`tarea_planilla.cmd`, sesión interactiva del usuario).
 Solo abre Excel si hay un pedido o la planilla cambió y tiene un N° en fórmula; log en
 `logs/planilla_AAAA-MM.log`.
+
+- **Solo el Portal da N°** (2026-11-12, plan `Documentación/Planes y análisis/2026-11-11-n-de-requerimiento-sin-choques.md`):
+  el Formulador ya no manda `nuevo-requerimiento` («Ingresar en Requerimientos» abre el Portal) y **la hoja entera
+  está protegida con contraseña** (`PROTEGER_HOJA`). La genera `planilla_escritura.py` una vez y la guarda cifrada
+  con DPAPI en `%LOCALAPPDATA%\QUEMPIN\planilla.clave`; `py -3.14 planilla_escritura.py clave` la muestra (guárdala
+  aparte: sin ella, solo este usuario de este computador desprotege la hoja). El `.ps1` la recibe por el entorno,
+  desprotege solo con ella (nunca `Unprotect()` sin contraseña: Excel oculto la pediría y la tarea se colgaría),
+  escribe y deja todas las celdas bloqueadas (filtrar sí, ordenar no). Corre **cada minuto**: el N° provisorio de
+  un requerimiento del Portal se confirma en un par de minutos más lo que tarde OneDrive.
 
 - **El N° no se mueve** aunque alguien ordene la tabla. Una vez, con el N° como fórmula
   `=SI(B<>"";FILA()-1;"")`, un orden cambió 55 N°. Toda fila con datos pasa a número fijo, con el N°

@@ -28,7 +28,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 
 | Archivo | Quién lo escribe | Para qué |
 |---|---|---|
-| `requerimientos.json` | el computador del procesador, cuando cambia el Excel de la Planilla de Ingreso (cada 10 minutos) | la Planilla de Ingreso del Portal y el N° de requerimiento en el Formulador y en Sistema QUEMPIN |
+| `requerimientos.json` | el computador del procesador, cuando cambia el Excel de la Planilla de Ingreso (cada minuto) | la Planilla de Ingreso del Portal y el N° de requerimiento en el Formulador y en Sistema QUEMPIN |
 | `analisis-financiero.json` | Análisis Financiero | los proyectos en ejecución y sus costos, en el Formulador |
 | `documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN | cotizaciones y OC emitidas, clientes y proveedores, último N° del Control de Documentos |
 | `precios-referencia.json` | Cotizador Histórico | precios de compra reajustados, en el Formulador |
