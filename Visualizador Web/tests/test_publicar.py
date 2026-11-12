@@ -214,3 +214,18 @@ def test_no_se_publica_si_otra_sesion_publico_despues(tmp_path):
     subprocess.run(["git", "-C", str(otra), "push", "-q", "origin", "gh-pages"], check=True)
     problemas = publicar.revisar_gh_pages(una)
     assert len(problemas) == 1 and "1 commit(s) atrás" in problemas[0] and "pull --ff-only" in problemas[0]
+
+
+def test_en_linea_se_compara_con_el_commit_y_no_con_el_disco(tmp_path):
+    """2026-11-12: con core.autocrlf la copia del disco lleva CRLF y el commit (lo que sirve Pages) LF: no es una diferencia."""
+    import subprocess
+    repo = _repo(tmp_path / "gh")
+    subprocess.run(["git", "-C", str(repo), "config", "core.autocrlf", "false"], check=True)
+    (repo / "marca").mkdir()
+    (repo / "marca" / "fuentes.css").write_bytes(b"a\nb\n")      # write_text en Windows ya escribiría CRLF
+    subprocess.run(["git", "-C", str(repo), "add", "--all"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "css"], check=True)
+    (repo / "marca" / "fuentes.css").write_bytes(b"a\r\nb\r\n")       # como lo deja autocrlf en el disco
+    servido = {"marca/fuentes.css": b"a\nb\n"}
+    assert publicar.verificar_en_linea(["marca/fuentes.css"], repo, espera_max=0,
+                                       bajar=lambda u: servido[u.split(publicar.URL_BASE)[1].split("?")[0]], dormir=lambda _: None) == []

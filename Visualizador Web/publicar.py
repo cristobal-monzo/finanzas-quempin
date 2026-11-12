@@ -124,6 +124,14 @@ def _archivos_publicados(subrutas, raiz_gh_pages: Path = RAIZ_GH_PAGES) -> list[
     return sorted(set(salida))
 
 
+def _commiteado(ruta: str, raiz_gh_pages: Path = RAIZ_GH_PAGES) -> bytes:
+    """Lo que GitHub Pages va a servir: el archivo tal como quedó en el commit de gh-pages. La copia del disco puede
+    diferir en los fines de línea (core.autocrlf: en el disco CRLF, en el commit LF; visto con marca/fuentes.css,
+    2026-11-12). Fuera de un repo (pruebas), el archivo del disco."""
+    r = subprocess.run(["git", "-C", str(raiz_gh_pages), "show", f"HEAD:{ruta}"], capture_output=True)
+    return r.stdout if r.returncode == 0 else (raiz_gh_pages / ruta).read_bytes()
+
+
 def verificar_en_linea(rutas, raiz_gh_pages: Path = RAIZ_GH_PAGES, espera_max: float = 600, paso: float = 20,
                        bajar=None, dormir=None) -> list[str]:
     """Espera a que GitHub Pages sirva cada archivo idéntico al de gh-pages. Devuelve las rutas que no
@@ -142,7 +150,7 @@ def verificar_en_linea(rutas, raiz_gh_pages: Path = RAIZ_GH_PAGES, espera_max: f
         pendientes = []
         for ruta in faltan:
             try:
-                igual = bajar(f"{URL_BASE}{ruta}?v={int(time.time())}") == (raiz_gh_pages / ruta).read_bytes()
+                igual = bajar(f"{URL_BASE}{ruta}?v={int(time.time())}") == _commiteado(ruta, raiz_gh_pages)
             except Exception:
                 igual = False
             if not igual:
