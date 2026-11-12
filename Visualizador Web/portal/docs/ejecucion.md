@@ -243,7 +243,9 @@ navegación lateral»; y guardar la anterior «por si no se adopta bien». Maque
   `ejSaltosEl(m, true)` en columna, con ícono y, en naranjo, cuántas facturas sin asociar y compras por decidir hay);
   «Plegar» lo deja solo con íconos (`ej.idxPlegado`, `.ej-plegado`). Con menos de 1180 px de vista el índice pasa arriba
   en una fila: la tabla de compras necesita el ancho (`test_la_tabla_de_compras_no_se_sale_del_panel`).
-- **Arriba** (`.ej-v2-arriba`): «Todos los proyectos» y «Por hacer» (`ejPorHacerEl`, el mismo `<details>`) como un botón
+- **«Todos los proyectos»** (2026-11-12, pedido del usuario): el primer elemento del índice lateral (`.ej-volver` dentro
+  de `.ej-v2-idx`; plegado, solo el ícono; con menos de 1180 px, el primero de la fila). También en una carpeta sin N°.
+- **Arriba** (`.ej-v2-arriba`): «Por hacer» (`ejPorHacerEl`, el mismo `<details>`) como un botón
   chico cuya lista flota sobre la página. La cabecera (`ejCabEl`) va sin tarjeta.
 - **El resumen** (`ejResumenEl`, `#ejSecResumen`): el anillo del avance con «Registrar avance»; una sola barra con lo
   gastado, comprometido, simulado y lo que falta según el presupuesto (rayado), la raya naranja del avance y, si se
@@ -253,7 +255,6 @@ navegación lateral»; y guardar la anterior «por si no se adopta bien». Maque
   (`.ej-stat`, no cuentan como `.ej-kpi`): comprometido en OC y mano de obra real.
 - Debajo, las mismas partes de antes y en el mismo orden. `ejMarcarSalto` mide desde el borde de arriba de la vista
   cuando el índice va al costado; arriba de todo marca «Resumen».
-- **La página anterior**: «Ver la página anterior» (en el índice) y «Ver la página nueva» (arriba en la anterior) cambian
-  `ej.vistaAnterior`, que se recuerda en `quempin_portal_ejecucion`. La anterior es `ejPintarProyecto` tal como estaba;
-  en git, además, la etiqueta `portal-ejecucion-proyecto-v1`.
-- Prueba: `test_la_pagina_nueva_del_proyecto_y_la_anterior_a_un_clic`.
+- **La página anterior se eliminó** (2026-11-12, pedido del usuario: ya no hace falta). Quedó solo la etiqueta de git
+  `portal-ejecucion-proyecto-v1` con el código de antes (`ejPintarProyecto` v1, `vistaAnterior`).
+- Prueba: `test_la_pagina_del_proyecto_tiene_todos_los_proyectos_arriba_del_indice`.

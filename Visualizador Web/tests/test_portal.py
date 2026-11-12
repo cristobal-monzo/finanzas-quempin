@@ -4493,9 +4493,9 @@ def test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico(n
     pagina.context.close()
 
 
-def test_la_pagina_nueva_del_proyecto_y_la_anterior_a_un_clic(navegador, sitio):
+def test_la_pagina_del_proyecto_tiene_todos_los_proyectos_arriba_del_indice(navegador, sitio):
     """2026-11-12, pedido del usuario: un resumen grande, un índice angosto que se pliega, «Por hacer» como un botón chico
-    arriba y la página anterior a un clic, por si la nueva no se adopta bien (se recuerda)."""
+    arriba. Después (mismo día): la página anterior se eliminó y «Todos los proyectos» es lo primero del índice lateral."""
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908)
     assert pagina.locator("#ejProyecto.ej-v2 #ejSecResumen .ej-v2-medidor").count() == 1
     assert pagina.locator("#ejSecResumen .ej-v2-barra").is_visible()
@@ -4512,14 +4512,12 @@ def test_la_pagina_nueva_del_proyecto_y_la_anterior_a_un_clic(navegador, sitio):
     pagina.locator(".ej-idx-plegar").click()
     pagina.wait_for_function("() => document.querySelector('#ejProyecto').classList.contains('ej-plegado')")
     assert not pagina.locator("#ejProyecto .ej-salto[data-sec='ejSecFacturas'] > span").is_visible()
-    # La página anterior, a un clic y recordada
-    pagina.locator(".ej-cambiar-vista").click()
-    pagina.wait_for_function("() => !document.querySelector('#ejProyecto').classList.contains('ej-v2')")
-    assert pagina.locator("#ejProyecto .ej-v1-arriba .ej-volver").is_visible()
-    assert pagina.locator("#ejProyecto .ej-kpis").is_visible()
-    assert json.loads(pagina.evaluate("() => localStorage.getItem('quempin_portal_ejecucion')"))["vistaAnterior"] is True
-    pagina.locator(".ej-cambiar-vista", has_text="Ver la página nueva").click()
-    pagina.wait_for_function("() => document.querySelector('#ejProyecto').classList.contains('ej-v2')")
+    # «Todos los proyectos» es el primer elemento del índice (incluso plegado, solo con ícono) y no hay página anterior
+    assert pagina.locator("#ejProyecto .ej-v2-idx > :first-child").evaluate("e => e.classList.contains('ej-volver')")
+    assert pagina.locator("#ejProyecto .ej-v2-idx .ej-volver").is_visible()
+    assert pagina.locator("#ejProyecto .ej-v2-arriba .ej-volver").count() == 0
+    assert pagina.locator(".ej-cambiar-vista").count() == 0
+    assert "vistaAnterior" not in json.loads(pagina.evaluate("() => localStorage.getItem('quempin_portal_ejecucion')"))
     assert not errores
     pagina.context.close()
 
