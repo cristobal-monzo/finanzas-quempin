@@ -1495,6 +1495,16 @@
   .pl-arr-txt .t { font-size: 12.5px; font-weight: 700; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pl-arr-txt .s { font-size: 12px; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pl-arr-marca { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+  /* Los vehículos arriba del panel (2026-11-12): fichas como las del selector de la ventanita (.pl-veh-op) */
+  .pl-arr-vehs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pl-arr-veh {
+    min-height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; cursor: grab;
+    border: 1px solid var(--baseline); background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  }
+  .pl-arr-veh svg { flex: 0 0 auto; color: var(--text-secondary); }
+  .pl-arr-veh:hover { border-color: var(--brand-orange); }
+  .pl-arr-veh[aria-pressed="true"] { background: var(--tinte); border-color: var(--brand-orange); box-shadow: inset 0 0 0 1px var(--brand-orange); }
+  .pl-celda .pl-chip.pl-soltar-si, .pl-celda .pl-chip.pl-soltar-no, .pl-per.pl-soltar-si, .pl-per.pl-soltar-no { position: relative; }
   .pl-arrastrable { cursor: grab; }
   .pl-celda .pl-chip.pl-arrastrable:hover, .pl-celda .pl-per.pl-arrastrable:hover, .pl-bloque .pl-per.pl-arrastrable:hover { box-shadow: 0 0 0 2px var(--baseline); }
   .pl-origen { opacity: 0.4; }
@@ -7851,6 +7861,27 @@
         + (choques.length ? ' Ojo: ' + plDiasTexto(s, choques.map((x) => x.iso)) + ' ' + plLaVeh(v) + ' también va a ' + unir(donde) + '.' : '');
     });
   }
+  /* Un vehículo ('' lo quita) a quienes van a un proyecto un día, en una tanda (arrastrado desde el panel, 2026-11-12).
+     pares: [{ per, clave }]. Uno solo es como elegirlo en la ventanita; varios (la casilla de un proyecto), todos juntos. */
+  function plVehiculoPoner(s, id, iso, pares) {
+    if (pares.length === 1) return plVehiculoDias(s, pares[0].per, pares[0].clave, [iso], id);
+    const m = plModelo(s);
+    const cambia = pares.filter((p) => m.vehiculo(iso, p.per, p.clave) !== id);
+    if (!cambia.length) return false;
+    const v = plVehiculo(id);
+    const pers = cambia.map((p) => p.per);
+    const claves = [...new Set(cambia.map((p) => p.clave))];
+    const t = unir(claves.map((c) => m.titulo(c)));
+    const dia = plElDia(plDiaDe(s, iso));
+    return plCambiar(s, cambia.map((p) => ({ tipo: 'veh', dia: iso, persona: p.per, clave: p.clave, vehiculo: id })), () => {
+      if (!v) return plNoms(pers) + (pers.length > 1 ? ' ya no llevan' : ' ya no lleva') + ' vehículo a ' + t + ' ' + dia + '.';
+      const mm = plModelo(s);
+      const otros = mm.vehOtros(iso, id, pers[0], claves[0]);
+      const donde = [...new Set(otros.flat().map((y) => mm.titulo(y.clave) + ' (' + plNoms(y.personas) + ')'))];
+      return plNoms(pers) + (pers.length > 1 ? ' van' : ' va') + ' en ' + plLaVeh(v) + ' a ' + t + ' ' + dia + '.'
+        + (donde.length ? ' Ojo: ese día ' + plLaVeh(v) + ' también va a ' + unir(donde) + '.' : '');
+    });
+  }
   /* Cambiar a una persona de un proyecto a otro, los días en que estaba, en un paso: se quita y se pone en la misma
      tanda, así también sirve con el día completo (3 proyectos). Si ese día ya iba al otro, solo se quita del primero.
      El vehículo que llevaba se va con ella al otro proyecto, salvo que allá ya lleve uno. */
@@ -8873,7 +8904,7 @@
         b.setAttribute('aria-label', plNom(per) + ', ' + plFechaLarga(d) + ': ' + (a ? plAusencia(a.motivo).nombre.toLowerCase()
           : lista.length ? lista.map((c) => m.titulo(c) + plVehsTexto(m, d.iso, c, [per])).join('; ') : 'sin proyecto') + '. Cambiar');
         if (lista.length && rc.dir) b.setAttribute('aria-keyshortcuts', 'Delete');      // Supr la deja sin proyectos
-        b.addEventListener('click', () => plColocar({ per, iso: d.iso }) || plAbrirPersona(per, d.iso));
+        b.addEventListener('click', (e) => plColocar(plDestino(e.target) || { per, iso: d.iso }) || plAbrirPersona(per, d.iso));
         return td;
       });
       const th = crear('th');
@@ -9036,7 +9067,7 @@
       if (vs) c.append(vs);
       plAgregar(c, van.length ? null : 'Asignar');
       c.setAttribute('aria-label', p.titulo + ', ' + plFechaLarga(d) + ': ' + (van.length ? plNoms(van) + plVehsTexto(m, d.iso, p.clave, van) : 'nadie') + '. Cambiar');
-      c.addEventListener('click', () => plColocar({ clave: p.clave, iso: d.iso }) || plAbrirProyecto(p.clave, d.iso));
+      c.addEventListener('click', (e) => plColocar(plDestino(e.target) || { clave: p.clave, iso: d.iso }) || plAbrirProyecto(p.clave, d.iso));
       tr.append(td);
     });
     return tr;
@@ -9330,6 +9361,7 @@
     el.draggable = true;
     el.classList.add('pl-arrastrable');
     if (x.desde) el.title = (el.title || nombre) + ' · Arrástralo a otra casilla para moverlo (con Ctrl, se copia)';
+    if (x.desde) el.dataset.asig = x.desde.per + '|' + x.desde.iso + '|' + x.desde.clave;     // donde se suelta un vehículo
     el.addEventListener('dragstart', (e) => {
       e.stopPropagation();
       planif.arrastre = Object.assign({}, x, { m: plModelo(plSemanaVista()) });     // el modelo, una vez: dragover llega muy seguido
@@ -9346,17 +9378,35 @@
   function plDestino(t) {
     const b = t && t.closest ? t.closest('#vistaPlan [data-ancla]') : null;
     const [k, x, iso] = b ? b.dataset.ancla.split('|') : [];
-    return k === 'p' ? { el: b, per: x, iso } : k === 'j' ? { el: b, clave: x, iso } : null;
+    const d = k === 'p' ? { el: b, per: x, iso } : k === 'j' ? { el: b, clave: x, iso } : null;
+    // Un proyecto de una persona (o una persona de un proyecto) dentro de la casilla: ahí va un vehículo
+    const ch = d && t.closest('[data-asig]');
+    if (ch && b.contains(ch)) { const [per, , clave] = ch.dataset.asig.split('|'); d.asig = { per, clave }; d.chip = ch; }
+    return d;
+  }
+  /* Vehículos (2026-11-12, observación del equipo: «los vehículos deberían poder arrastrarse»): la Quempineta y la RAM
+     van arriba del panel. Se sueltan (o se toca uno y después) sobre un proyecto ya asignado: un proyecto de una
+     persona, una persona de un proyecto, la casilla de una persona con un solo proyecto ese día, o la de un proyecto
+     (todos los que van ese día). Lo arrastrado: { tipo: 'vehiculo', id }. El objetivo: { veh, iso, pares: [{ per, clave }] }. */
+  function plObjetivoVeh(x, d, m) {
+    let pares = [];
+    if (d.asig) pares = [d.asig];
+    else if (d.per) { const l = m.porPersona.get(d.iso + '|' + d.per) || []; if (l.length === 1) pares = [{ per: d.per, clave: l[0] }]; }
+    else if (d.clave) pares = (m.porProyecto.get(d.iso + '|' + d.clave) || []).map((per) => ({ per, clave: d.clave }));
+    return { veh: x.id, iso: d.iso, pares, el: d.chip || d.el, varios: !!d.per && !d.asig && (m.porPersona.get(d.iso + '|' + d.per) || []).length > 1 };
   }
   // Lo arrastrado (o elegido en el panel) en ese destino: la asignación que quedaría, o null si no encaja ahí
-  function plObjetivo(x, d) {
+  function plObjetivo(x, d, m) {
     if (!x || !d) return null;
+    if (x.tipo === 'vehiculo') return plObjetivoVeh(x, d, m || x.m || plModelo(plSemanaVista()));
     if (x.tipo === 'proyecto' && d.per) return { per: d.per, iso: d.iso, clave: x.clave };
     if (x.tipo === 'persona' && d.clave) return { per: x.per, iso: d.iso, clave: d.clave };
     return null;
   }
   // Por qué no se puede soltar ahí, en corto para la casilla ('' si se puede; 'mismo' si es de donde salió)
   function plPorQueNo(m, x, a, copiar) {
+    if (a.veh) return a.varios ? 'Suéltalo en un proyecto' : !a.pares.length ? 'Sin proyecto'
+      : a.pares.every((p) => m.vehiculo(a.iso, p.per, p.clave) === a.veh) ? 'Ya va' : '';
     const d = x.desde;
     if (d && d.per === a.per && d.iso === a.iso && d.clave === a.clave) return 'mismo';
     const suyos = m.porPersona.get(a.iso + '|' + a.per) || [];
@@ -9382,10 +9432,11 @@
     const a = plObjetivo(x, d);
     const copiar = e.ctrlKey || e.metaKey;
     const no = a ? plPorQueNo(x.m, x, a, copiar) : '';
-    if (!a || no) { plArrMarcar(a && no !== 'mismo' ? d.el : null, no); return; }     // sin preventDefault no se suelta
+    const el = a && a.el ? a.el : d && d.el;
+    if (!a || no) { plArrMarcar(a && no !== 'mismo' ? el : null, no); return; }     // sin preventDefault no se suelta
     e.preventDefault();
     e.dataTransfer.dropEffect = x.desde && !copiar ? 'move' : 'copy';
-    plArrMarcar(d.el, '');
+    plArrMarcar(el, '');
   }
   function plArrSoltar(e) {
     const x = planif.arrastre;
@@ -9394,7 +9445,8 @@
     const a = plObjetivo(x, plDestino(e.target));
     const copiar = e.ctrlKey || e.metaKey;
     plArrFin();
-    if (a) plSoltar(x, a, copiar);
+    if (a && a.veh) { if (!plPorQueNo(plModelo(plSemanaVista()), x, a)) plVehiculoPoner(plSemanaVista(), a.veh, a.iso, a.pares); }
+    else if (a) plSoltar(x, a, copiar);
   }
   function plArrFin() {
     planif.arrastre = null;
@@ -9427,6 +9479,14 @@
     const a = plObjetivo(planif.armado, d);
     if (!a) return false;
     const s = plSemanaVista();
+    if (a.veh) {
+      // Tocar donde ya va lo quita; donde no se puede, lo dice (y no abre la ventanita)
+      const m = plModelo(s);
+      if (!a.pares.length || a.varios) { avisar(a.varios ? 'Ese día tiene más de un proyecto: toca el proyecto donde va ' + plLaVeh(plVehiculo(a.veh)) + '.' : 'Ahí no hay nadie asignado: primero asigna el proyecto.'); return true; }
+      const ya = a.pares.every((p) => m.vehiculo(a.iso, p.per, p.clave) === a.veh);
+      plVehiculoPoner(s, ya ? '' : a.veh, a.iso, a.pares);
+      return true;
+    }
     const ya = (plModelo(s).porPersona.get(a.iso + '|' + a.per) || []).includes(a.clave);
     plAsignarDias(s, a.per, a.clave, [a.iso], !ya);
     return true;
@@ -9437,7 +9497,8 @@
     const aside = crear('aside', 'pl-arr');
     aside.dataset.tipo = tipo;
     aside.setAttribute('aria-label', proy ? 'Proyectos activos para poner en las casillas' : 'Personal para poner en las casillas');
-    const elegido = planif.armado && planif.armado.tipo === tipo ? planif.armado : null;
+    const elegido = planif.armado && (planif.armado.tipo === tipo || planif.armado.tipo === 'vehiculo') ? planif.armado : null;
+    const vehElegido = elegido && elegido.tipo === 'vehiculo' ? plVehiculo(elegido.id) : null;
     // En lo angosto va arriba de la tabla: plegado en una línea hasta pedirlo, así la semana se ve de entrada (2026-10-29)
     const abierto = planif.arrAbierto || !!elegido;
     aside.classList.toggle('abierto', abierto);
@@ -9454,7 +9515,8 @@
       const bar = crear('div', 'pl-arr-colocando');
       bar.setAttribute('role', 'status');
       const p = crear('p');
-      p.append('Toca las casillas donde va ', crear('b', null, proy ? m.titulo(elegido.clave) : plNom(elegido.per)), '. Otra vez en la misma casilla, lo quita.');
+      if (vehElegido) p.append('Toca los proyectos donde va ', crear('b', null, plLaVeh(vehElegido)), '. Otra vez en el mismo, lo quita.');
+      else p.append('Toca las casillas donde va ', crear('b', null, proy ? m.titulo(elegido.clave) : plNom(elegido.per)), '. Otra vez en la misma casilla, lo quita.');
       const listo = crear('button', 'cx-boton pl-arr-listo', 'Listo');
       listo.type = 'button';
       listo.addEventListener('click', () => { planif.armado = null; plPintar(); });
@@ -9462,8 +9524,29 @@
       aside.append(bar);
     } else {
       aside.append(crear('p', 'pl-arr-pista', (proy ? 'Arrastra uno a la casilla de una persona y un día' : 'Arrastra a alguien a la casilla de un proyecto y un día')
-        + ', o tócalo y después toca las casillas. Lo ya asignado también se arrastra: se mueve, o con Ctrl se copia.'));
+        + ', o tócalo y después toca las casillas. Lo ya asignado también se arrastra: se mueve, o con Ctrl se copia.'
+        + (PL_VEHICULOS.length ? ' Un vehículo se suelta sobre un proyecto ya asignado.' : '')));
       aside.append(crear('p', 'pl-arr-pista-corta', (proy ? 'Toca un proyecto' : 'Toca a alguien') + ' y después las casillas donde va.'));
+    }
+    // Los vehículos, arriba: se sueltan sobre un proyecto ya asignado (plObjetivoVeh)
+    if (PL_VEHICULOS.length) {
+      const fila = crear('div', 'pl-arr-vehs');
+      fila.setAttribute('role', 'group');
+      fila.setAttribute('aria-label', 'Vehículos');
+      PL_VEHICULOS.forEach((v) => {
+        const x = { tipo: 'vehiculo', id: v.id };
+        const sel = !!vehElegido && vehElegido.id === v.id;
+        const b = crear('button', 'pl-arr-veh');
+        b.type = 'button';
+        b.dataset.vehiculo = v.id;
+        b.setAttribute('aria-pressed', sel ? 'true' : 'false');
+        b.append(icono('vehiculo', 16), crear('span', null, v.nombre));
+        b.title = v.nombre + (sel ? '. Tocar otra vez deja de ponerlo' : '. Arrástralo a un proyecto ya asignado, o tócalo y después toca los proyectos');
+        plArrastrable(b, x, v.nombre);
+        b.addEventListener('click', () => { planif.armado = sel ? null : x; plPintar(); });
+        fila.append(b);
+      });
+      aside.append(fila);
     }
     // Los grupos: [título, nivel, [{ x, nombre, meta, marca }]]
     let grupos;
@@ -9496,7 +9579,7 @@
           lista.append(h);
         }
         vis.forEach((it) => {
-          const sel = elegido && (proy ? elegido.clave === it.x.clave : elegido.per === it.x.per);
+          const sel = !!elegido && !vehElegido && (proy ? elegido.clave === it.x.clave : elegido.per === it.x.per);
           const b = crear('button', 'pl-arr-item');
           b.type = 'button';
           b.setAttribute('aria-pressed', sel ? 'true' : 'false');
