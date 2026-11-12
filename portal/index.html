@@ -2560,6 +2560,133 @@
     .ej-tarea { padding: 7px 8px; gap: 8px; }
     .ej-tarea-ico { width: 30px; height: 30px; }
   }
+  /* ---- La página nueva del proyecto (2026-11-12): índice angosto, resumen grande, «Por hacer» como botón ---- */
+  .ej-v1-arriba { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ejecucion:has(> #ejProyecto.ej-v2:not([hidden])) { max-width: 1560px; }
+  #ejProyecto.ej-v2 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
+  #ejProyecto.ej-v2:has(> .ej-v2-idx) { grid-template-columns: 172px minmax(0, 1fr); }
+  #ejProyecto.ej-v2.ej-plegado:has(> .ej-v2-idx) { grid-template-columns: 40px minmax(0, 1fr); }
+  .ej-v2-cuerpo { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .ej-v2-idx { position: sticky; top: 0; z-index: 4; display: flex; flex-direction: column; gap: 4px; padding-top: 2px; }
+  .ej-idx-plegar {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 8px; border: 0; border-radius: 7px;
+    background: none; color: var(--texto-suave); font: inherit; font-size: 12px; cursor: pointer;
+  }
+  .ej-idx-plegar:hover { background: var(--surface-card); color: var(--text-primary); }
+  .ej-v2 .ej-saltos { position: static; flex-direction: column; flex-wrap: nowrap; gap: 1px; margin: 0; padding: 0; background: none; box-shadow: none; }
+  .ej-v2 .ej-salto {
+    position: relative; width: 100%; display: flex; align-items: center; gap: 9px; min-height: 34px; padding: 0 8px 0 12px; border: 0; border-radius: 8px;
+    background: none; color: var(--text-secondary); font-size: 13px; font-weight: 600; text-align: left;
+  }
+  .ej-v2 .ej-salto > svg { flex: 0 0 auto; }
+  .ej-v2 .ej-salto > span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ej-v2 .ej-salto small.ej-hay { flex: 0 0 auto; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--tinte); color: var(--brand-orange-ink); font-size: 11px; font-weight: 800; text-align: center; }
+  .ej-v2 .ej-salto:hover { border: 0; background: var(--surface-card); color: var(--text-primary); }
+  .ej-v2 .ej-salto[aria-current="true"] { border: 0; background: none; box-shadow: none; color: var(--text-primary); font-weight: 900; }
+  .ej-v2 .ej-salto[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--brand-orange); }
+  .ej-v2 .ej-cambiar-vista { align-self: flex-start; margin-top: 10px; font-size: 12px; }
+  .ej-plegado .ej-v2-idx :is(.ej-salto > span, .ej-idx-plegar > span, .ej-cambiar-vista > span) { display: none; }
+  .ej-plegado .ej-salto { justify-content: center; padding: 0; }
+  .ej-plegado .ej-salto small.ej-hay { position: absolute; top: 2px; right: 0; min-width: 8px; width: 8px; height: 8px; padding: 0; overflow: hidden; color: transparent; background: var(--brand-orange); }
+  .ej-v2-arriba { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+  /* «Por hacer»: un botón chico arriba a la derecha; al abrirlo, la lista flota sobre la página */
+  .ej-v2 .ej-porhacer { position: relative; flex: 0 1 auto; min-width: 0; max-width: 440px; border-radius: 10px; }
+  .ej-v2 .ej-porhacer > summary { padding: 5px 12px; gap: 8px; }
+  .ej-v2 .ej-porhacer h3 { font-size: 13px; }
+  .ej-v2 .ej-porhacer h3 small { font-size: 11px; }
+  .ej-v2 .ej-porhacer-res { max-width: 250px; font-size: 12px; }
+  .ej-v2 .ej-porhacer > ul, .ej-v2 .ej-porhacer > p {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 6; width: min(460px, calc(100vw - 32px)); margin: 0; padding: 10px;
+    border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); box-shadow: var(--sombra);
+  }
+  .ej-v2 .ej-porhacer > ul { grid-template-columns: minmax(0, 1fr); }
+  /* La cabecera, sin tarjeta: el nombre manda */
+  .ej-v2 .ej-cab { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .ej-v2 .ej-cab::before { display: none; }
+  .ej-v2 .ej-cab h2 { font-size: 26px; }
+  .ej-v2 .ej-cab .cx-acc { padding-top: 8px; border-top: 0; }
+  /* El resumen grande */
+  .ej-v2-resumen { gap: 16px; padding: 18px 22px; }
+  .ej-v2-hero { display: grid; grid-template-columns: 160px minmax(0, 1fr) 210px; gap: 28px; align-items: center; }
+  .ej-v2-av { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+  .ej-v2-av .ej-anillo { width: 132px; height: 132px; }
+  .ej-v2-av .ej-anillo .pista, .ej-v2-av .ej-anillo .arco { stroke-width: 4; }
+  .ej-v2-av .ej-anillo .arco { stroke: var(--brand-orange); }
+  .ej-v2-av .ej-anillo b { font-size: 28px; }
+  .ej-v2-av .ej-anillo small { font-size: 11.5px; }
+  .ej-v2-av-sub { font-size: 12.5px; color: var(--texto-suave); }
+  .ej-v2-av .cx-enlace { font-size: 13px; }
+  .ej-v2-et { display: block; font-size: 12.5px; color: var(--texto-suave); }
+  .ej-v2-grande { font-size: 30px; font-weight: 900; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .ej-v2-medio { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ej-v2-dinero { min-width: 0; }
+  .ej-v2-dinero-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+  .ej-v2-der { text-align: right; }
+  .ej-v2-barra { position: relative; display: flex; height: 26px; margin: 30px 0 10px; border-radius: 8px; background: var(--gridline); }
+  .ej-v2-barra > .ej-v2-seg { height: 100%; }
+  .ej-v2-barra > .ej-v2-seg:first-child { border-radius: 8px 0 0 8px; }
+  .ej-v2-seg.g { background: var(--brand-gray-11); }
+  .ej-v2-seg.c { background: var(--brand-gray-7); }
+  .ej-v2-seg.q { background: var(--brand-orange); }
+  .ej-v2-seg.r { background: repeating-linear-gradient(45deg, var(--baseline) 0 3px, transparent 3px 7px); }
+  .ej-v2-tope { position: absolute; top: -5px; bottom: -5px; border-left: 2px dashed var(--text-primary); }
+  .ej-v2-raya { position: absolute; top: -22px; bottom: -5px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--brand-orange); }
+  .ej-v2-raya span { position: absolute; top: -2px; left: 7px; font-size: 12px; font-weight: 800; color: var(--brand-orange-ink); white-space: nowrap; }
+  .ej-v2-raya.izq span { left: auto; right: 7px; }
+  .ej-v2-ley { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--texto-suave); }
+  .ej-v2-ley b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .ej-v2-ley i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px; vertical-align: -1px; }
+  .ej-v2-msg { display: flex; align-items: center; justify-content: flex-end; gap: 5px; margin: 8px 0 0; font-size: 13px; font-weight: 800; }
+  .ej-v2-msg[data-nivel="ok"] { color: var(--estado-ok); }
+  .ej-v2-msg[data-nivel="warn"] { color: var(--estado-warn); }
+  .ej-v2-nota { margin: 10px 0 0; font-size: 13px; color: var(--texto-suave); }
+  .ej-v2-margen { min-width: 0; }
+  .ej-v2-medidor { position: relative; }
+  .ej-v2-medidor svg { display: block; width: 100%; height: auto; }
+  .ej-v2-medidor .pista { fill: none; stroke: var(--gridline); stroke-width: 16; stroke-linecap: round; }
+  .ej-v2-medidor .arco { fill: none; stroke: var(--text-primary); stroke-width: 16; stroke-linecap: round; }
+  .ej-v2-medidor[data-nivel="ok"] .arco { stroke: var(--estado-ok); }
+  .ej-v2-medidor[data-nivel="warn"] .arco { stroke: var(--estado-warn); }
+  .ej-v2-medidor[data-nivel="bad"] .arco { stroke: var(--estado-bad); }
+  .ej-v2-medidor .marca { stroke: var(--text-primary); stroke-width: 2; }
+  .ej-v2-medidor .marca-t { fill: var(--texto-suave); font-size: 10px; }
+  .ej-v2-medidor b { position: absolute; left: 0; right: 0; top: 58%; text-align: center; font-size: 28px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .ej-v2-medidor[data-nivel="ok"] b { color: var(--estado-ok); }
+  .ej-v2-medidor[data-nivel="warn"] b { color: var(--estado-warn); }
+  .ej-v2-medidor[data-nivel="bad"] b { color: var(--estado-bad); }
+  .ej-v2-medidor small { display: block; margin-top: 2px; text-align: center; font-size: 11.5px; color: var(--texto-suave); }
+  /* Las cifras de abajo: la venta, el cierre, lo comprometido y la mano de obra (gastado, margen y avance ya están arriba) */
+  .ej-v2-resumen .ej-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding-top: 14px; border-top: 1px solid var(--gridline); }
+  .ej-v2-resumen .ej-kpis > .ej-kpi:is(:nth-child(2), :nth-child(4), :nth-child(5)) { display: none; }
+  .ej-v2-resumen .ej-kpis > :is(.ej-kpi, .ej-stat) { min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 0 16px; border: 0; border-radius: 0; background: none; }
+  .ej-v2-resumen .ej-kpis > :is(.ej-kpi, .ej-stat) + :is(.ej-kpi, .ej-stat) { border-left: 1px solid var(--gridline); }
+  .ej-v2-resumen .ej-kpis > :first-child { padding-left: 0; }
+  .ej-v2-resumen .ej-kpi-v { font-size: 19px; }
+  @container ejecucion (max-width: 1180px) {
+    .ej-v2-hero { grid-template-columns: 140px minmax(0, 1fr); }
+    .ej-v2-margen { grid-column: 1 / -1; justify-self: center; width: min(260px, 100%); }
+  }
+  /* Con menos de 1180 px el índice pasa arriba, en una fila: la tabla de compras necesita el ancho */
+  @container ejecucion (max-width: 1180px) {
+    #ejProyecto.ej-v2:has(> .ej-v2-idx), #ejProyecto.ej-v2.ej-plegado:has(> .ej-v2-idx) { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .ej-v2-idx { position: static; }
+    .ej-v2-idx .ej-idx-plegar { display: none; }
+    .ej-v2 .ej-saltos { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+    .ej-v2 .ej-salto, .ej-plegado .ej-salto { width: auto; min-height: 30px; padding: 0 10px; border: 1px solid var(--gridline); border-radius: 999px; background: var(--surface-card); }
+    .ej-plegado .ej-v2-idx .ej-salto > span { display: inline; }
+    .ej-v2 .ej-salto[aria-current="true"]::before { display: none; }
+    .ej-v2 .ej-salto[aria-current="true"] { border: 1px solid var(--brand-orange); background: var(--tinte); color: var(--tinte-texto); }
+    .ej-v2 .ej-cambiar-vista { margin-top: 0; }
+  }
+  @container ejecucion (max-width: 640px) {
+    .ej-v2-hero { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .ej-v2-resumen { padding: 14px; }
+    .ej-v2-resumen .ej-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; }
+    .ej-v2-resumen .ej-kpis > :is(.ej-kpi, .ej-stat), .ej-v2-resumen .ej-kpis > :is(.ej-kpi, .ej-stat) + :is(.ej-kpi, .ej-stat) { padding: 0; border-left: 0; }
+    .ej-v2 .ej-cab h2 { font-size: 21px; }
+    .ej-v2-arriba { flex-wrap: wrap; }
+    .ej-v2 .ej-porhacer-res { display: none; }
+  }
   /* ---- Diálogos y aviso ---- */
   dialog {
     width: min(560px, calc(100vw - 24px)); padding: 0; border-radius: 14px;
@@ -2814,7 +2941,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@d9ddc74 2026-11-11">
+<meta name="quempin-version" content="master@9bfc255 2026-11-12">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -11379,9 +11506,12 @@
     sucios: new Map(),        // lo escrito en los campos del resumen, que sobrevive a cada repintado (id → valor)
     tarifasAbiertas: false, todosDias: false, todasNotas: false, enviando: false,
     salud: null,              // el estado elegido en la leyenda del Mapa de salud (ok, warn, bad, sin); null: todos
-    espera: null              // lo que espera el equipo elegido en la lista (decidir, facturas, pendientes); null: todo
+    espera: null,             // lo que espera el equipo elegido en la lista (decidir, facturas, pendientes); null: todo
+    // 2026-11-12, pedido del usuario: la página nueva del proyecto, con la anterior a un clic por si no se adopta bien
+    vistaAnterior: ejPrefs.vistaAnterior === true,
+    idxPlegado: ejPrefs.idxPlegado === true   // el índice de la izquierda, solo con íconos
   };
-  const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro, pestana: ej.pestana, conDatos: ej.conDatos });
+  const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro, pestana: ej.pestana, conDatos: ej.conDatos, vistaAnterior: ej.vistaAnterior, idxPlegado: ej.idxPlegado });
 
   // ---- Utilidades ---------------------------------------------------------------------------------------------------
   const ejPesos = (n) => (n < -0.5 ? '−$' : '$') + Math.round(Math.abs(n)).toLocaleString('es-CL');
@@ -12784,7 +12914,13 @@
     raiz.textContent = '';
     // Una carpeta de Gestión sin N° ni TAG (2026-11-03): se ve, pero no hay a qué anotarle compras, días ni avance
     const sinClave = !ejClave(t);
-    raiz.append(ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda'), ejCabEl(m));
+    const nueva = !ej.vistaAnterior;
+    raiz.classList.toggle('ej-v2', nueva);
+    raiz.classList.toggle('ej-plegado', nueva && ej.idxPlegado);
+    if (nueva) { ejPintarV2(t, m, raiz, sinClave); ejRestaurar(raiz, vista, desplazado, foco, t, m); return; }
+    const volver = crear('div', 'ej-v1-arriba');
+    volver.append(ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda'), ejBoton('Ver la página nueva', 'cx-enlace ej-cambiar-vista', () => ejCambiarVista(false)));
+    raiz.append(volver, ejCabEl(m));
     if (!sinClave) raiz.append(ejKpisEl(m));
     if (t.avisos.length) {
       const ul = crear('ul', 'rc-avisos');
@@ -12803,6 +12939,10 @@
     tres.append(ejOCsEl(m), ejEquipoEl(m), ejNotasEl(m));
     tres.id = 'ejSecMas';
     raiz.append(tres);
+    ejRestaurar(raiz, vista, desplazado, foco, t, m);
+  }
+  // Después de pintar (las dos vistas): lo escrito, el desplazamiento, el foco y los precios de referencia
+  function ejRestaurar(raiz, vista, desplazado, foco, t, m) {
     // Lo que se estaba escribiendo (una nota, un pendiente, el avance) sigue escrito después de repintar
     ej.sucios.forEach((v, id) => { const x = raiz.querySelector('#' + CSS.escape(id)); if (x && x.value !== v) x.value = v; });
     vista.scrollTop = desplazado;
@@ -12812,6 +12952,169 @@
     if (!ej.precios && m.costos.some((x) => EJ_CAT.get(x.categoria).historico)) {
       ejPrecios().then((d) => { if (d && !vista.hidden && ej.clave === t.clave && !document.querySelector('dialog[open]')) ejPintar(); });
     }
+  }
+  /* La página nueva del proyecto (2026-11-12, pedido del usuario: «dale mayor relevancia al espacio general y no tanta a
+     la barra de navegación lateral»; «la sección de cosas por hacer no es tan importante»). Las mismas partes de siempre,
+     ordenadas así: a la izquierda un índice angosto que se pliega a íconos (los accesos de ejSaltosEl); arriba «Todos los
+     proyectos» y «Por hacer» como un botón chico que despliega la lista; la cabecera sin tarjeta; un resumen grande (el
+     anillo del avance, una sola barra con lo gastado, comprometido, simulado y lo que falta según el presupuesto, con la
+     raya del avance, y el margen en un medidor con el mínimo y la meta) y debajo las partes. La página anterior sigue a
+     un clic («Ver la página anterior», ej.vistaAnterior, se recuerda). */
+  function ejPintarV2(t, m, raiz, sinClave) {
+    const cuerpo = crear('div', 'ej-v2-cuerpo');
+    const arriba = crear('div', 'ej-v2-arriba');
+    arriba.append(ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda'));
+    cuerpo.append(arriba, ejCabEl(m));
+    if (t.avisos.length) {
+      const ul = crear('ul', 'rc-avisos');
+      t.avisos.forEach((x) => { const li = crear('li'); li.append(icono('alerta', 16), crear('span', null, x)); ul.append(li); });
+      cuerpo.append(ul);
+    }
+    if (sinClave) {
+      arriba.append(ejCambiarVistaEl());
+      cuerpo.append(ejSinClaveEl(t));
+      raiz.append(cuerpo);
+      return;
+    }
+    arriba.append(ejPorHacerEl(m));
+    const idx = crear('aside', 'ej-v2-idx');
+    idx.setAttribute('aria-label', 'Índice del proyecto');
+    const plegar = crear('button', 'ej-idx-plegar');
+    plegar.type = 'button';
+    plegar.append(icono(ej.idxPlegado ? 'derecha' : 'izquierda', 14), crear('span', null, ej.idxPlegado ? 'Mostrar' : 'Plegar'));
+    plegar.title = ej.idxPlegado ? 'Mostrar los nombres del índice' : 'Dejar el índice solo con íconos';
+    plegar.setAttribute('aria-expanded', String(!ej.idxPlegado));
+    plegar.addEventListener('click', () => { ej.idxPlegado = !ej.idxPlegado; ejGuardarPrefs(); ejPintar(); });
+    idx.append(plegar, ejSaltosEl(m, true), ejCambiarVistaEl());
+    cuerpo.append(ejResumenEl(m));
+    const dos = crear('div', 'ej-dos');
+    dos.append(ejPresupuestoEl(m), ejAvanceEl(m));
+    const mo = crear('div', 'ej-dos');
+    mo.append(ejManoObraEl(m), ejIndicadoresEl(m));
+    cuerpo.append(dos, ejDocumentosEl(m), ejComprasEl(m), mo);
+    const tres = crear('div', 'ej-tres');
+    tres.append(ejOCsEl(m), ejEquipoEl(m), ejNotasEl(m));
+    tres.id = 'ejSecMas';
+    cuerpo.append(tres);
+    raiz.append(idx, cuerpo);
+  }
+  function ejCambiarVistaEl() {
+    const b = ejBoton('Ver la página anterior', 'cx-enlace ej-cambiar-vista', () => ejCambiarVista(true), 'ventana');
+    b.title = 'La página del proyecto como era antes del 12-11-2026; se vuelve a la nueva con «Ver la página nueva»';
+    return b;
+  }
+  function ejCambiarVista(anterior) {
+    ej.vistaAnterior = anterior;
+    ejGuardarPrefs();
+    ejPintar();
+    $('#vistaEjecucion').scrollTop = 0;
+  }
+  // El resumen grande de arriba: avance, dinero y margen; debajo, la venta, el cierre, lo comprometido y la mano de obra
+  function ejResumenEl(m) {
+    const s = crear('section', 'ej-panel ej-v2-resumen');
+    s.id = 'ejSecResumen';
+    s.setAttribute('aria-label', 'Resumen del proyecto');
+    const tot = m.tot, av = m.avance;
+    const hero = crear('div', 'ej-v2-hero');
+    // El avance
+    const c1 = crear('div', 'ej-v2-av');
+    c1.append(ejAnilloEl(av.valor, av.pedido ? 'pedido' : ''),
+      crear('span', 'ej-v2-av-sub', av.pedido ? 'Pedido: llega con la próxima vuelta del procesador' : av.fin ? 'Término ' + rcCorta(av.fin, new Date()) : 'Sin fecha de término'));
+    if (rc.dir && m.t.af && m.t.tag) c1.append(ejBoton('Registrar avance', 'cx-enlace', () => ejIrA('ejSecAvance')));
+    // El dinero en una barra
+    const c2 = crear('div', 'ej-v2-dinero');
+    const cab = crear('div', 'ej-v2-dinero-cab');
+    const g = crear('div');
+    g.append(crear('span', 'ej-v2-et', 'Gastado a la fecha'), crear('b', 'ej-v2-grande', ejPesos(tot.G)));
+    const p = crear('div', 'ej-v2-der');
+    p.append(crear('span', 'ej-v2-et', 'Presupuesto'), crear('b', 'ej-v2-medio', m.pres && tot.P > 0 ? ejPesos(tot.P) : 'Sin presupuesto'));
+    cab.append(g, p);
+    c2.append(cab);
+    if (m.pres && tot.P > 0) {
+      const esc = Math.max(tot.P, tot.EAC);
+      const resto = Math.max(0, tot.EAC - tot.G - tot.C - tot.Q);
+      const segs = [['g', tot.G, 'Gastado'], ['c', tot.C, 'Comprometido en OC'], ['q', tot.Q, 'Simulado'], ['r', resto, 'Por gastar según el presupuesto']];
+      const bar = crear('div', 'ej-v2-barra');
+      bar.setAttribute('role', 'img');
+      bar.setAttribute('aria-label', segs.filter(([, v]) => v > 0.5).map(([, v, n]) => n + ' ' + ejPesos(v)).join(', ') + '; presupuesto ' + ejPesos(tot.P)
+        + (av.valor !== null ? '; avance ' + ejPct(av.valor) : ''));
+      segs.forEach(([k, v, n]) => {
+        if (!(v > 0.5)) return;
+        const x = crear('span', 'ej-v2-seg ' + k);
+        x.style.width = (100 * v / esc) + '%';
+        x.title = n + ' ' + ejPesos(v);
+        bar.append(x);
+      });
+      if (tot.EAC > tot.P + 0.5) { const x = crear('i', 'ej-v2-tope'); x.style.left = (100 * tot.P / esc) + '%'; x.title = 'Presupuesto ' + ejPesos(tot.P); bar.append(x); }
+      if (av.valor !== null) {
+        const pos = 100 * Math.min(1, av.valor) * tot.P / esc;
+        const r = crear('i', 'ej-v2-raya' + (pos > 75 ? ' izq' : ''));
+        r.style.left = pos + '%';
+        r.append(crear('span', null, 'Avance ' + ejPct(av.valor)));
+        bar.append(r);
+      }
+      c2.append(bar);
+      const ley = crear('div', 'ej-v2-ley');
+      segs.forEach(([k, v, n]) => {
+        if (!(v > 0.5) && k !== 'g') return;
+        const x = crear('span');
+        x.append(crear('i', 'ej-v2-seg ' + k), document.createTextNode(n + ' '), crear('b', null, ejPesos(v)));
+        if (k === 'g') x.append(document.createTextNode(' (' + ejPct(tot.G / tot.P) + ')'));
+        ley.append(x);
+      });
+      c2.append(ley);
+      if (av.valor !== null) {
+        const gs = ejGastoSobreAvance(m);
+        const msg = crear('p', 'ej-v2-msg', gs ? 'Gasta más de lo que avanza: lleva ' + ejPct(gs.gasto) + ' del presupuesto con ' + ejPct(gs.avance) + ' de avance'
+          : 'Gasta de acuerdo con lo que avanza');
+        msg.dataset.nivel = gs ? 'warn' : 'ok';
+        msg.prepend(icono(gs ? 'exclama' : 'visto', 14));
+        c2.append(msg);
+      }
+    } else c2.append(crear('p', 'ej-v2-nota', tot.G > 0.5 ? 'Sin presupuesto con que compararlo: lo gastado sale de las facturas y la mano de obra anotada.' : 'Sin presupuesto ni gastos registrados.'));
+    // El margen
+    const c3 = crear('div', 'ej-v2-margen');
+    c3.append(crear('span', 'ej-v2-et', m.pres ? 'Margen estimado' : 'Margen con lo anotado'), ejMedidorMargenEl(m));
+    hero.append(c1, c2, c3);
+    // Las cifras de abajo: las KPI de siempre (la venta con «Corregir», el cierre) y lo comprometido y la mano de obra
+    const kpis = ejKpisEl(m);
+    const stat = (et, v, sub) => { const k = crear('div', 'ej-stat'); k.append(crear('span', 'ej-kpi-et', et), crear('span', 'ej-kpi-v', v), crear('span', 'ej-kpi-sub', sub)); return k; };
+    kpis.append(stat('Comprometido en OC', ejPesos(tot.C), tot.C > 0.5 ? 'Órdenes de compra aún sin factura' : 'Sin OC pendientes de factura'),
+      stat('Mano de obra real', ejPesos(m.mo.costo || 0), m.mo.dh ? ejCantidad(m.mo.dh) + ' días-hombre anotados' : 'Sin días anotados'));
+    s.append(hero, kpis);
+    return s;
+  }
+  // El margen en un medidor de media vuelta, con las marcas del mínimo y la meta
+  function ejMedidorMargenEl(m) {
+    const mg = m.margen, min = m.margenes.minimo, meta = m.margenes.objetivo;
+    const tope = Math.max(0.4, (meta || 0) + 0.15, (mg || 0) + 0.05);
+    const ang = (v) => Math.PI * (1 - Math.min(Math.max(v, 0), tope) / tope);
+    const pt = (v, r) => [(110 + r * Math.cos(ang(v))).toFixed(1), (112 - r * Math.sin(ang(v))).toFixed(1)];
+    const nivel = ejNivelMargen(mg, m);
+    const caja = crear('div', 'ej-v2-medidor');
+    if (nivel) caja.dataset.nivel = nivel;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 -16 220 140');
+    svg.setAttribute('aria-hidden', 'true');
+    const el = (tag, at, txt) => {
+      const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      Object.entries(at).forEach(([k, v]) => e.setAttribute(k, v));
+      if (txt) e.textContent = txt;
+      svg.append(e);
+    };
+    el('path', { class: 'pista', d: 'M22 112 A88 88 0 0 1 198 112' });
+    if (mg !== null && mg > 0) { const [x, y] = pt(mg, 88); el('path', { class: 'arco', d: 'M22 112 A88 88 0 0 1 ' + x + ' ' + y }); }
+    [[min, 'mín'], [meta, 'meta']].forEach(([v, et]) => {
+      if (v === null || v === undefined) return;
+      const [a, b] = pt(v, 74), [c, d] = pt(v, 102), [tx, ty] = pt(v, 116);
+      el('line', { class: 'marca', x1: a, y1: b, x2: c, y2: d });
+      el('text', { class: 'marca-t', x: tx, y: ty, 'text-anchor': 'middle' }, et);
+    });
+    caja.setAttribute('role', 'img');
+    caja.setAttribute('aria-label', mg === null ? 'Margen sin calcular' : 'Margen ' + ejPct(mg) + ', mínimo ' + ejPct(min) + ', meta ' + ejPct(meta));
+    caja.append(svg, crear('b', null, mg === null ? '—' : ejPct(mg)),
+      crear('small', null, mg === null ? (!m.venta ? 'Falta la venta para calcularlo' : 'Sin presupuesto ni gastos anotados') : 'Mínimo ' + ejPct(min) + ' · meta ' + ejPct(meta)));
+    return caja;
   }
   /* Por hacer (2026-11-09, vuelta 3 del loop de UX): lo que el proyecto está esperando de alguien, primero y con su botón,
      que lo hace ahí mismo o lleva a la parte donde se hace. Sigue el camino de la información: las facturas del Centro de
@@ -12918,19 +13221,28 @@
     return s;
   }
   // Saltar a cada parte del resumen (2026-11-06): la página es larga; una fila de accesos con lo que hay en cada una
-  function ejSaltosEl(m) {
+  function ejSaltosEl(m, v2) {
     const nav = crear('nav', 'ej-saltos');
     nav.setAttribute('aria-label', 'Partes del resumen');
     const docs = m.docs || [];
     const sinAsoc = docs.filter((d) => !m.asoc.get(d.ref)).length;
     const decidir = ejItems(m.costos).filter((x) => x.it.estado === 'evaluar').length;
-    [['ejSecComoVa', 'Cómo va', ''], ['ejSecAvance', 'Avance', m.avance.valor === null ? '' : ejPct(m.avance.valor)], ['ejSecFacturas', 'Facturas', docs.length ? String(docs.length) + (sinAsoc ? ' · ' + sinAsoc + ' sin asociar' : '') : ''],
-      ['ejSecGastos', 'Gastos proyectados', decidir ? decidir + ' por decidir' : ''], ['ejSecMO', 'Mano de obra', m.mo.dh ? ejCantidad(m.mo.dh) + ' DH' : ''],
-      ['ejSecMas', 'OC, equipo y notas', '']].forEach(([id, txt, extra]) => {
+    // En la página nueva (v2), un índice vertical con íconos: lo que espera se ve como un número naranjo
+    const partes = v2
+      ? [['ejSecResumen', 'Resumen', '', 'inicio'], ['ejSecComoVa', 'Presupuesto', '', 'barras'], ['ejSecAvance', 'Avance', '', 'avance'],
+        ['ejSecFacturas', 'Facturas', sinAsoc ? String(sinAsoc) : '', 'recibo', sinAsoc ? pl(sinAsoc, 'factura sin asociar', 'facturas sin asociar') : ''],
+        ['ejSecGastos', 'Gastos proyectados', decidir ? String(decidir) : '', 'billetera', decidir ? pl(decidir, 'compra por decidir', 'compras por decidir') : ''],
+        ['ejSecMO', 'Mano de obra', '', 'persona'], ['ejSecMas', 'OC, equipo y notas', '', 'nota']]
+      : [['ejSecComoVa', 'Cómo va', ''], ['ejSecAvance', 'Avance', m.avance.valor === null ? '' : ejPct(m.avance.valor)], ['ejSecFacturas', 'Facturas', docs.length ? String(docs.length) + (sinAsoc ? ' · ' + sinAsoc + ' sin asociar' : '') : ''],
+        ['ejSecGastos', 'Gastos proyectados', decidir ? decidir + ' por decidir' : ''], ['ejSecMO', 'Mano de obra', m.mo.dh ? ejCantidad(m.mo.dh) + ' DH' : ''],
+        ['ejSecMas', 'OC, equipo y notas', '']];
+    partes.forEach(([id, txt, extra, ico, dice]) => {
       const b = crear('button', 'ej-salto');
       b.type = 'button';
+      if (ico) b.append(icono(ico, 16));
       b.append(crear('span', null, txt));
-      if (extra) b.append(crear('small', null, extra));
+      if (extra) { const x = crear('small', v2 ? 'ej-hay' : null, extra); if (dice) x.title = dice; b.append(x); }
+      if (v2) b.title = txt + (dice ? ': ' + dice : '');
       b.dataset.sec = id;
       b.addEventListener('click', () => ejIrA(id));
       nav.append(b);
@@ -12942,7 +13254,9 @@
   function ejMarcarSalto() {
     const nav = document.querySelector('#ejProyecto .ej-saltos');
     if (!nav || $('#ejProyecto').hidden) return;
-    const borde = nav.getBoundingClientRect().bottom + 24;
+    // El índice de la página nueva va al costado: la parte a la vista es la que pasó bajo el borde de arriba de la vista
+    const v2 = !!nav.closest('.ej-v2-idx') && getComputedStyle(nav).flexDirection === 'column';
+    const borde = v2 ? $('#vistaEjecucion').getBoundingClientRect().top + 140 : nav.getBoundingClientRect().bottom + 24;
     let activa = null, arriba = -Infinity;
     // La última parte que ya pasó bajo los accesos; dos lado a lado (Cómo va y Avance) cuentan como la primera
     nav.querySelectorAll('.ej-salto').forEach((b) => {
@@ -12951,7 +13265,7 @@
       if (top <= borde && top > arriba + 4) { activa = b; arriba = top; }
     });
     const v = $('#vistaEjecucion');
-    if (v.scrollTop < 8) activa = null;                                     // arriba de todo: ninguna
+    if (v.scrollTop < 8) activa = v2 ? nav.querySelector('.ej-salto') : null;   // arriba de todo: ninguna (en la nueva, el resumen)
     else if (v.scrollTop + v.clientHeight >= v.scrollHeight - 4) activa = nav.querySelector('.ej-salto:last-child');   // al fondo, la última
     nav.querySelectorAll('.ej-salto').forEach((b) => { if (b === activa) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
   }
