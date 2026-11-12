@@ -45,7 +45,7 @@ fila se deshace y queda rechazada para que lo decida una persona.
    resto del Portal (``ganador_editar``).
 4. **Republica la Planilla** cuando el Excel cambió (``requerimientos.publicar``):
    lo que el equipo escribe en el Excel llega al Portal y a las demás
-   herramientas en esta misma vuelta, sin esperar al procesador (cada 2 horas).
+   herramientas en esta misma vuelta, sin esperar al procesador (cada 5 minutos).
 
 Las columnas se ubican por su encabezado, nunca por su letra: el 2026-10-27
 alguien insertó «Cliente» entre Título y Ubicación, y con las letras fijas de
@@ -562,7 +562,7 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         intercambio.archivar(raiz, m, "aplicado", texto, extra={"requerimiento": op["numero"], "fila": r.get("fila")})
     fallidos = [r for r in resultado.get("resultados") or [] if not r.get("ok")]
     _guardar_estado(_firma(planilla) if not fallidos else previo.get("firma") or "", escritas, lista)
-    # Las demás herramientas lo ven ya, sin esperar la vuelta del procesador (cada 2 horas)
+    # Las demás herramientas lo ven ya, sin esperar la vuelta del procesador (cada 5 minutos)
     _publicar(raiz, planilla, avisos)
     return {"activo": True, "detalle": f"{fijados} N° fijados, {registrados} requerimiento(s) registrado(s), {editados} cambiado(s)",
             "avisos": avisos + [r.get("detalle") for r in fallidos if r.get("detalle")]}

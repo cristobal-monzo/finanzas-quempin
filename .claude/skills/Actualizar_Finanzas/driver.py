@@ -68,6 +68,7 @@ Uso:
 """
 
 import importlib.util
+import os
 import re
 import subprocess
 import sys
@@ -95,7 +96,7 @@ DRIVER_COTIZADOR = (
     / "Cotizador_Historico" / "driver.py"
 )
 # Procesador de la carpeta de intercambio (plan de integracion, 2026-10-01).
-# Corre solo cada 2 horas con su propia tarea; al final de este run se le
+# Corre solo cada 5 minutos con su propia tarea; al final de este run se le
 # fuerza una vuelta completa para que todo lo publicado salga de los datos
 # recien actualizados.
 PROCESADOR_INTERCAMBIO = RAIZ / "Sistema Intercambio" / "procesar.py"
@@ -686,8 +687,11 @@ def cmd_run(publicar=True, con_pendientes=False):
 # El procesador del intercambio también consulta la API de Mercado Público (su
 # monitor). Si las dos tareas arrancan juntas (al encender el equipo corren
 # las que se perdieron), la API rechaza las consultas simultáneas: se espera a
-# que el procesador suelte su candado, que vence a los 30 minutos.
-CANDADO_PROCESADOR = SISTEMA_INTERCAMBIO / ".procesador.lock"
+# que el procesador suelte su candado, que vence a los 30 minutos. Desde el 2026-11-11 el candado está fuera de
+# OneDrive (procesar.RUTA_CANDADO; test_el_driver_espera_el_mismo_candado), y mientras el tablero consulta, el
+# procesador deja su turno de Mercado Público para después (mercado_publico.usando_api).
+CANDADO_PROCESADOR = (Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+                      / "QUEMPIN" / "procesador.lock")
 ESPERA_PROCESADOR_SEG = 15 * 60
 
 

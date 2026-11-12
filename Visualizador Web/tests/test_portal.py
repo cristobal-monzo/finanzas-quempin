@@ -78,7 +78,8 @@ def test_cabecera_del_portal():
 
 def test_no_carga_nada_de_otro_sitio_ni_lleva_datos():
     html = PORTAL.read_text(encoding="utf-8")
-    assert not re.search(r"<script[^>]+\bsrc=", html), "sin scripts externos"
+    # El único script enlazado es el de las cajas de números, del mismo sitio (2026-11-10): publicar.py lo copia con él.
+    assert re.findall(r"<script[^>]+\bsrc=[^>]*>", html) == ['<script src="../numeros.js">'], "sin scripts externos"
     # La única hoja que enlaza es la de las fuentes, del mismo sitio (2026-10-30): publicar.py la copia con él.
     assert re.findall(r"<link[^>]+stylesheet[^>]*>", html) == ['<link rel="stylesheet" href="../marca/fuentes.css">']
     assert "@import" not in html, "sin hojas de estilo de otro sitio"
@@ -339,6 +340,7 @@ def _sitio(raiz: Path):
     (raiz / "finanzas-quempin" / "portal").mkdir(parents=True)
     (raiz / "finanzas-quempin" / "portal" / "index.html").write_bytes(PORTAL.read_bytes())
     shutil.copytree(PORTAL.parents[1] / "marca", raiz / "finanzas-quempin" / "marca")
+    shutil.copy2(PORTAL.parents[1] / "numeros.js", raiz / "finanzas-quempin" / "numeros.js")   # como lo deja publicar.py
     pagina("/finanzas-quempin/", "Herramientas QUEMPIN", "indice")
     pagina("/finanzas-quempin/centro-de-costos/", "Centro de Costos", "cc", CABECERA_TABLERO + CANDADO + """
       <a id="aAF" href="../analisis-financiero/#proyecto=DEMO">Ficha en Análisis Financiero</a>
@@ -1754,9 +1756,9 @@ def test_sin_la_tarea_de_pedidos_dice_que_espera_la_vuelta_de_cada_2_horas(naveg
     pagina.locator("#vistaInicio").wait_for()
     _menu(pagina, "Recorrido de proyectos")
     # 40 minutos con la tarea sería «no responde»; sin ella, todavía es lo esperable
-    pagina.locator("#rcFrescura", has_text="hace 40 min: se atiende en la próxima vuelta (cada 2 horas)").wait_for()
+    pagina.locator("#rcFrescura", has_text="hace 40 min: se atiende en la próxima vuelta (cada 5 minutos)").wait_for()
     assert "falta la tarea" in pagina.locator("#rcFrescura").get_attribute("title")
-    assert "cada 2 horas" in pagina.locator("#rcPedirVuelta").get_attribute("title")
+    assert "cada 5 minutos" in pagina.locator("#rcPedirVuelta").get_attribute("title")
     assert not errores
     pagina.context.close()
 
@@ -5624,6 +5626,11 @@ def test_un_requerimiento_nuevo_se_ve_al_instante_y_queda_en_el_buzon(navegador,
     assert "pq-nueva" in fila.get_attribute("class") and fila.locator(".pq-nuevo-tag").text_content() == "nuevo"
     assert _ns(pagina)[0] == 914
     assert "1 cambio espera pasar al Excel" in pagina.locator("#pqSinc").inner_text()
+    # Recién ingresado ya se puede formular (2026-11-11): abre el Formulador con el diálogo de nuevo proyecto de ese N°
+    fila.locator(".pq-form", has_text="Formular").click()
+    _esperar(pagina, "formulador", "hash", "#/req/914/crear")
+    _menu(pagina, "Requerimientos")
+    pagina.locator('#pqFilas tr[data-n="914"]').wait_for()
     # El que sigue ya no repite el N°
     pagina.locator("#pqNuevo").click()
     assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 915"
@@ -5634,6 +5641,41 @@ def test_un_requerimiento_nuevo_se_ve_al_instante_y_queda_en_el_buzon(navegador,
     pagina.locator("#pqSinc .pq-retirar").click()
     pagina.locator('#pqFilas tr[data-n="914"]').wait_for(state="detached")
     assert _pedidos_planilla(pagina, "nuevo-requerimiento") == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_presupuesto_del_mandante_se_ingresa_y_se_cambia_en_la_planilla(navegador, sitio):
+    """La caja «Presupuesto del mandante» (2026-11-11): entero en pesos, opcional; viaja en el mismo mensaje."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#pqPresupuesto").input_value() == ""
+    dlg.locator("#pqTitulo").fill("Cambio de quemador")
+    dlg.locator("#pqPresupuesto").fill("12500000")
+    assert dlg.locator("#pqPresupuesto").input_value() == "12.500.000"
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert m["requerimiento"]["presupuesto"] == 12500000
+    assert _esquemas().validar_mensaje(m) == []
+    # Sin presupuesto no se envía la clave
+    pagina.locator("#pqSinc summary").click()
+    pagina.locator("#pqSinc .pq-retirar").click()
+    pagina.locator("#pqNuevo").click()
+    dlg.locator("#pqTitulo").fill("Otro requerimiento")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert "presupuesto" not in m["requerimiento"]
+    # En una fila que ya existe viaja como cambio, con lo que se veía
+    pagina.locator('#pqFilas tr[data-n="900"] .pq-abrir').click()
+    dlg.locator("#pqPresupuesto").fill("8.000.000")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert m["cambios"] == {"presupuesto": 8000000}
+    assert _esquemas().validar_mensaje(m) == []
     assert not errores
     pagina.context.close()
 
@@ -5761,7 +5803,7 @@ def test_cerrar_un_requerimiento_ofrece_mover_su_carpeta_a_los_entregados(navega
     assert mover["destino"] == "carpetas-proyecto" and mover["estado"] == "Cerrado"
     assert mover["requerimiento"] == {"numero": 908, "titulo": "En obra"} and mover["origen"]["usuario"] == "NB"
     assert _esquemas().validar_mensaje(editar) == [] and _esquemas().validar_mensaje(mover) == []
-    # Y una vuelta del procesador, para que no espere la de cada 2 horas
+    # Y una vuelta del procesador, para que no espere la de cada 5 minutos
     assert any(m.get("tipo") == "pedir-vuelta" for m in pagina.evaluate(JS_BUZON).values())
     assert "Su carpeta pasa a «0 Proyectos Entregados»" in pagina.locator("#aviso").inner_text()
     assert pagina.locator('#pqFilas tr[data-n="908"] .pq-est').inner_text() == "Cerrado"
@@ -5901,6 +5943,8 @@ def test_la_planilla_muestra_lo_que_espera_de_todo_el_equipo_y_lo_que_no_se_pudo
     # Un N° que ya tiene otra fila: las dos se ven, y la nueva dice que tomará el siguiente
     assert pagina.locator('#pqFilas tr[data-n="911"]').count() == 2
     assert "ya es «Descartada»" in pagina.locator('#pqFilas tr[data-n="911"].pq-nueva .pq-choque').inner_text()
+    # Con choque no se ofrece formular: su N° va a cambiar
+    assert pagina.locator('#pqFilas tr[data-n="911"].pq-nueva .pq-form').count() == 0
     assert "3 cambios esperan pasar al Excel" in pagina.locator("#pqSinc").inner_text()
     pagina.locator("#pqSinc .pq-avisos").wait_for()
     avisos = pagina.locator("#pqSinc .pq-avisos").inner_text()

@@ -61,6 +61,15 @@ def _vuelta(e):
     return cp.atender(e["raiz"], e["raices"], e["gestion"], e["estado"])
 
 
+def test_una_vuelta_sin_cambios_no_reescribe_su_estado(e):
+    """El procesador corre cada 5 minutos (2026-11-11) y este estado está en OneDrive: sin cambios, no se toca."""
+    _vuelta(e)
+    _vuelta(e)
+    os.utime(e["estado"], (1_000_000, 1_000_000))
+    _vuelta(e)
+    assert e["estado"].stat().st_mtime == 1_000_000
+
+
 def test_nombre_de_carpeta():
     assert cp.nombre_carpeta("322", "322. Instalación Caldera Vapor") == "322. Instalación Caldera Vapor"
     assert cp.nombre_carpeta("322", "Instalación: caldera/vapor?") == "322. Instalación caldera vapor"

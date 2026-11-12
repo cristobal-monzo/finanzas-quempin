@@ -53,8 +53,7 @@ escritorio ni achicando la ventana.
   py -3.14 "Visualizador Web/auditoria_movil.py" cc --capturas <carpeta fuera del repo>
   ```
 
-  Termina con código 1 si algo se sale de la pantalla o queda un campo bajo 16 px. Las
-  capturas muestran datos reales: nunca dentro del repo.
+  Termina con código 1 si algo se sale de la pantalla o queda un campo bajo 16 px.
 
 ## Navegación y código compartido entre plantillas
 
@@ -71,6 +70,11 @@ Oportunidades.
   muestra. Solo Chile = `SOLO_CHILE` del JS (hoy `flujo-de-caja`, `oportunidades`). **País
   nuevo** = otra `<option>` (su `value` es el sufijo de la subruta) y ese sufijo en el JS.
 - **Enlace «Formulador de proyectos ↗»** (`a.viz-modnav-herr`): va en ese mismo HTML.
+- **Cajas de números** (`numeros.js`, pedido del usuario 2026-11-10): un clic selecciona todo y lo que se escribe
+  lleva punto de miles. Va incrustado junto a `candado.js` (`candado.incrustar`); el Portal y el hub lo enlazan
+  (`../numeros.js`, que `publicar.py` copia). Toma solas las `type="number"` (su `.value` sigue sin formato); una
+  caja de texto con montos lleva `data-num` (`="entero"` sin decimales). Un N° de OC o de requerimiento no: es un
+  código. Copias idénticas en el Formulador (`js/`) y la Calculadora (`assets/`): `tests/test_numeros.py`.
 - **Menús desplegables**: bloque CSS idéntico en todos, tras `.viz-modnav-pais option`
   (flecha propia y, con `@supports (appearance: base-select)`, lista con la paleta; Chrome
   y Edge 135+). Un tablero nuevo lo copia tal cual. La regla de `base-select` debe pesar lo
@@ -106,10 +110,13 @@ son estructurales y no cambian: `https://cristobal-monzo.github.io/finanzas-quem
 | `op` | `oportunidades` (solo Chile) | `Sistema Intercambio/Visualizador Web/build/index.html` |
 
 ```
-py -3.14 "Visualizador Web/publicar.py" cc af cot fc op     # o --todos
-git -C ".worktrees/gh-pages" commit -m "actualizar tableros: <cuáles>"
-git -C ".worktrees/gh-pages" push
+py -3.14 "Visualizador Web/publicar.py" cc af cot fc op --subir   # o --todos; portal hub igual
 ```
+
+`--subir` (2026-11-11) hace todo en un paso: si el CI del commit aún corre (o recién se empujó), lo espera hasta
+25 min; después copia y verifica como siempre, hace commit (`publicar: <claves> (<sello>)`) y push de `gh-pages` y
+espera hasta 10 min a que GitHub Pages sirva cada archivo **idéntico** (`[EN LÍNEA]`, o `[REVISAR]` con los que no).
+Sin `--subir` deja todo en el índice y el commit y el push quedan a mano, como antes.
 
 - `publicar.py` copia cada build, deja `reportes/` igual a la del build, **verifica con el
   candado** que abran con la contraseña del equipo (también cada archivo cifrado que citan)

@@ -61,7 +61,7 @@ y hojas de proyecto. Regenera además `Visualizador Web/build/index.html`; si es
 el Excel queda guardado y se regenera con `driver.py visualizador`.
 
 Al final corre el procesador del Intercambio (PASO 12e, `procesar.py --forzar`, unos minutos): así el Portal
-(«Proyectos en ejecución», Planilla) ve lo registrado sin esperar la tarea de cada 2 h. Si falla, solo avisa.
+(«Proyectos en ejecución», Planilla) ve lo registrado sin esperar la vuelta de cada 5 minutos. Si falla, solo avisa.
 `run --sin-intercambio` lo omite.
 
 ## Paso 4: tabla de resumen, siempre al terminar

@@ -13,6 +13,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Crect x='10' y='50' width='44' height='5' fill='%23ff5100'/%3E%3Ctext x='32' y='42' font-family='Arial,sans-serif' font-size='34' font-weight='900' text-anchor='middle' fill='%23fff'%3EQ%3C/text%3E%3C/svg%3E">
 <!-- Lato, la tipografía del manual de marca: una sola copia, también para el índice. -->
 <link rel="stylesheet" href="../marca/fuentes.css">
+<!-- Cajas de números: seleccionar todo al entrar y punto de miles al escribir (una sola copia, también en los tableros). -->
+<script src="../numeros.js"></script>
 <style>
   :root {
     color-scheme: light;
@@ -1631,18 +1633,18 @@
   .pq-estados .pl-vista b { font-weight: 700; opacity: 0.65; font-variant-numeric: tabular-nums; }
   .pq-barra .rc-cuenta { margin-left: auto; }
   .pq-sinc {
-    display: flex; align-items: flex-start; gap: 6px 14px; padding: 6px 8px 6px 12px; border-radius: 10px;
-    border: 1px solid var(--border-hairline); background: var(--surface-card); font-size: 13px; line-height: 1.45; color: var(--text-secondary);
+    display: flex; align-items: flex-start; gap: 6px 14px; padding: 2px 4px; border-radius: 8px;
+    border: 1px solid transparent; background: transparent; font-size: 12px; line-height: 1.45; color: var(--text-secondary);
   }
   .pq-sinc-cuerpo { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 0; }
   .pq-excel { flex: 0 0 auto; min-height: 30px; }
   .pq-sinc[data-nivel="warn"] { border-color: var(--tinte-borde); background: var(--tinte); color: var(--tinte-texto); }
   .pq-sinc-txt { flex: 1 1 360px; min-width: 0; margin: 0; }
-  .pq-sinc-txt b { color: var(--text-primary); }
+  .pq-sinc-txt b { font-weight: 600; }
   .pq-sinc[data-nivel="warn"] .pq-sinc-txt b { color: inherit; }
   .pq-sinc .cx-punto { flex: 0 0 auto; }
   .pq-sinc details { flex: 1 1 100%; }
-  .pq-sinc summary { width: fit-content; cursor: pointer; font-weight: 700; color: var(--brand-orange-ink); }
+  .pq-sinc summary { width: fit-content; cursor: pointer; font-weight: 400; color: var(--text-secondary); }
   .pq-sinc[data-nivel="warn"] summary { color: inherit; }
   .pq-cambios { list-style: none; margin: 6px 0 2px; padding: 0; display: flex; flex-direction: column; color: var(--text-secondary); }
   .pq-cambios li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; padding: 7px 0; border-top: 1px solid var(--gridline); }
@@ -1650,7 +1652,8 @@
   .pq-cambios .sc-env-cab { grid-column: 1 / -1; }
   .pq-retirar { grid-column: 2; grid-row: 2 / span 2; min-height: 30px; }
   .pq-avisos { flex: 1 1 100%; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
-  .pq-avisos li { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--estado-bad); background: var(--surface-card); color: var(--text-primary); font-size: 13px; }
+  .pq-avisos li { padding-left: 12px; position: relative; color: var(--text-secondary); font-size: 12px; }
+  .pq-avisos li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--estado-bad); }
   /* La tabla */
   .pq-caja { border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); overflow: clip; }
   .pq-tabla { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13.5px; }
@@ -2917,7 +2920,7 @@
               <div class="rc-frescura">
                 <span class="cx-punto" id="rcPunto"></span>
                 <span id="rcFrescura" role="status">Leyendo la carpeta del equipo…</span>
-                <button class="cx-enlace" id="rcPedirVuelta" type="button" title="Le pide al procesador una vuelta ahora, sin esperar la de cada 2 horas. Tarda unos 5 min." hidden>Actualizar datos</button>
+                <button class="cx-enlace" id="rcPedirVuelta" type="button" title="Le pide al procesador una vuelta ahora, sin esperar la de cada 5 minutos. Tarda unos 5 min." hidden>Actualizar datos</button>
                 <button class="acc-btn" id="rcActualizar" type="button" title="Volver a leer la carpeta del equipo (no hace correr al procesador)" aria-label="Volver a leer la carpeta del equipo"></button>
               </div>
             </header>
@@ -3029,7 +3032,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloSubir">Subir documentos al Centro de Costos</h1>
-                <span class="info" data-etiqueta="Adónde llegan los documentos">Facturas, boletas y comprobantes de un proyecto. Llegan a su carpeta de «Facturas y Boletas» en la próxima vuelta del procesador (cada 2 horas).</span>
+                <span class="info" data-etiqueta="Adónde llegan los documentos">Facturas, boletas y comprobantes de un proyecto. Llegan a su carpeta de «Facturas y Boletas» en la próxima vuelta del procesador (cada 5 minutos).</span>
               </div>
               <div class="rc-frescura">
                 <span class="cx-punto" id="scPunto"></span>
@@ -3079,7 +3082,7 @@
                 </div>
               </form>
               <aside class="sc-envios" aria-labelledby="scTEnvios">
-                <h2 id="scTEnvios">Envíos recientes <span class="info" data-etiqueta="Qué son los envíos recientes">Del equipo, de este mes y el anterior. «En camino» espera la vuelta del procesador (cada 2 horas); después cada documento se registra con <strong>/Registro_Centro_de_Costos</strong>, como los que se suben a SharePoint.</span></h2>
+                <h2 id="scTEnvios">Envíos recientes <span class="info" data-etiqueta="Qué son los envíos recientes">Del equipo, de este mes y el anterior. «En camino» espera la vuelta del procesador (cada 5 minutos); después cada documento se registra con <strong>/Registro_Centro_de_Costos</strong>, como los que se suben a SharePoint.</span></h2>
                 <ul class="sc-env-lista" id="scEnvios"></ul>
               </aside>
             </div>
@@ -3404,6 +3407,7 @@
       <label class="pl-campo"><span>Ubicación</span><input id="pqUbicacion" type="text" maxlength="80" autocomplete="off" list="pqLugares" placeholder="Comuna de los trabajos"></label>
       <label class="pl-campo ej-ancho" id="pqOriginalCampo" hidden><span>Proyecto original <i>(de cuál es esta postventa)</i></span><input id="pqOriginal" type="text" maxlength="80" autocomplete="off" spellcheck="false" list="pqProyectos" placeholder="Escribe su N° o su nombre"></label>
       <label class="pl-campo ej-ancho" id="pqReferenciaCampo"><span>ID o referencia</span><input id="pqReferencia" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="El ID de Mercado Público, o una referencia que lo identifique"></label>
+      <label class="pl-campo ej-ancho"><span>Presupuesto del mandante <i>(con IVA, si lo informa)</i></span><input id="pqPresupuesto" type="text" inputmode="numeric" data-num="entero" maxlength="16" autocomplete="off" placeholder="$ (opcional)"></label>
       <fieldset class="pq-fecha"><legend>Apertura <i>(cuándo llegó)</i></legend><input id="pqApF" type="date" aria-label="Fecha de apertura"><input id="pqApH" type="time" aria-label="Hora de apertura (opcional)"></fieldset>
       <fieldset class="pq-fecha"><legend>Cierre <i>(plazo para ofertar)</i></legend><input id="pqCiF" type="date" aria-label="Fecha de cierre"><input id="pqCiH" type="time" aria-label="Hora de cierre (opcional)"></fieldset>
     </div>
@@ -3427,7 +3431,7 @@
       <label class="pl-campo ej-ancho"><span>Qué se compra</span><input id="ejCDesc" type="text" maxlength="200" autocomplete="off" placeholder="Ej.: Estanque inoxidable 100 L con serpentín"></label>
       <div class="ej-campo ej-ancho"><span class="ej-et" id="ejCCatEt">Categoría</span><div class="pl-vistas ej-cats" id="ejCCat" role="radiogroup" aria-labelledby="ejCCatEt"></div></div>
       <div class="pl-campo ej-ancho" id="ejCLineaCampo"><span id="ejCLineaEt">Lo que reemplaza del presupuesto <i>(opcional: una o varias líneas)</i></span><div class="ej-lineas" id="ejCLineas" role="list" aria-labelledby="ejCLineaEt" hidden></div><select id="ejCLinea" aria-labelledby="ejCLineaEt"></select></div>
-      <label class="pl-campo"><span>Cantidad</span><input id="ejCCant" type="text" inputmode="decimal" autocomplete="off"></label>
+      <label class="pl-campo"><span>Cantidad</span><input id="ejCCant" type="text" inputmode="decimal" data-num autocomplete="off"></label>
       <label class="pl-campo"><span>Unidad</span><input id="ejCUnidad" type="text" maxlength="12" autocomplete="off" list="ejUnidades"></label>
       <div class="ej-campo ej-ancho">
         <span class="ej-et" id="ejCProvsEt">Proveedores</span>
@@ -3472,7 +3476,7 @@
     <h2 id="dlgEjVentaTit">Venta del proyecto</h2>
     <button class="dlg-x" id="ejVentaX" type="button" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <p id="ejVentaPista"></p>
-    <label class="pl-campo"><span>Venta neta, sin IVA</span><input id="ejVMonto" type="text" inputmode="decimal" autocomplete="off"></label>
+    <label class="pl-campo"><span>Venta neta, sin IVA</span><input id="ejVMonto" type="text" inputmode="numeric" data-num="entero" autocomplete="off"></label>
     <label class="pl-campo"><span>Por qué <i>(opcional)</i></span><input id="ejVNota" type="text" maxlength="200" autocomplete="off" placeholder="Ej.: adicional aprobado por el cliente el 20-10"></label>
     <p class="ej-dlg-pista">Solo cambia lo que muestra esta herramienta al equipo. La venta del Análisis Financiero se corrige en «Ingresar avance».</p>
     <div class="dlg-acc"><button class="cx-enlace" id="ejVQuitar" type="button" hidden>Volver a la calculada</button><button class="cx-enlace" id="ejVCancelar" type="button">Cancelar</button><button class="btn-pri" id="ejVGuardar" type="submit">Guardar</button></div>
@@ -5943,7 +5947,7 @@
   const RC_VUELTA_REVISAR_SEG = 10;
   const RC_VUELTA_TARDA_MIN = 15;      // desde aquí dice que no responde: lo normal son unos 5 min
   // estado.json dice si en el computador del procesador está la tarea que atiende el pedido al momento (2026-11-06:
-  // el botón se publicó antes que la tarea y prometía 5 minutos). Sin ella, el pedido espera la vuelta de cada 2 horas,
+  // el botón se publicó antes que la tarea y prometía 5 minutos). Sin ella, el pedido espera la vuelta de cada 5 minutos,
   // y así se dice; «no responde» recién pasadas 2 horas y media, como el pulso.
   const RC_VUELTA_SIN_TAREA_TARDA_MIN = 150;
   const rcSinTareaDePedidos = () => !!(rc.datos && rc.datos.estado && rc.datos.estado.pedidos && rc.datos.estado.pedidos.tarea === false);
@@ -6041,8 +6045,8 @@
     boton.disabled = !!rc.vuelta;
     boton.textContent = rc.vuelta ? 'Actualizando…' : 'Actualizar datos';
     boton.title = sinTarea
-      ? 'Le pide al procesador una vuelta. En su computador falta la tarea que la da al momento: se atiende en la próxima vuelta (cada 2 horas).'
-      : 'Le pide al procesador una vuelta ahora, sin esperar la de cada 2 horas. Tarda unos 5 min.';
+      ? 'Le pide al procesador una vuelta. En su computador falta la tarea que la da al momento: se atiende en la próxima vuelta (cada 5 minutos).'
+      : 'Le pide al procesador una vuelta ahora, sin esperar la de cada 5 minutos. Tarda unos 5 min.';
     if (rc.leyendo) { txt.textContent = rc.leido ? 'Actualizando…' : 'Leyendo la carpeta del equipo…'; return; }
     if (!rc.leido) { txt.textContent = 'Sin datos de la carpeta del equipo'; punto.className = 'cx-punto'; txt.title = ''; return; }
     const l = rc.pulso;
@@ -6051,11 +6055,11 @@
       const pedida = Math.max(0, Math.round((Date.now() - rc.vuelta.desde) / 60000));
       const tarda = pedida >= (sinTarea ? RC_VUELTA_SIN_TAREA_TARDA_MIN : RC_VUELTA_TARDA_MIN);
       txt.textContent = 'Actualización pedida ' + haceTexto(pedida) +
-        (tarda ? ': el procesador aún no responde' : sinTarea ? ': se atiende en la próxima vuelta (cada 2 horas)' : ': tarda unos 5 min');
+        (tarda ? ': el procesador aún no responde' : sinTarea ? ': se atiende en la próxima vuelta (cada 5 minutos)' : ': tarda unos 5 min');
       txt.title = tarda
         ? 'El pedido sigue en el buzón y se atiende apenas se pueda. El computador del procesador puede estar apagado, o su OneDrive atrasado.'
         : sinTarea
-          ? 'En el computador del procesador falta la tarea que atiende estos pedidos al momento: el pedido espera la vuelta de cada 2 horas. Avisa a quien administra las herramientas QUEMPIN.'
+          ? 'En el computador del procesador falta la tarea que atiende estos pedidos al momento: el pedido espera la vuelta de cada 5 minutos. Avisa a quien administra las herramientas QUEMPIN.'
           : 'El computador del procesador toma el pedido y da una vuelta completa; lo demás es lo que OneDrive demora en llevar y traer los archivos.';
       punto.className = 'cx-punto ' + (tarda ? 'warn' : (l ? l.nivel : ''));
       return;
@@ -8243,7 +8247,7 @@
     const min = l.minutos;
     const hace = min === null ? '' : min < 1 ? 'hace un momento' : min < 60 ? 'hace ' + min + ' min' : min < 48 * 60 ? 'hace ' + Math.round(min / 60) + ' h' : 'hace ' + Math.round(min / 1440) + ' días';
     txt.textContent = l.detenido ? 'Procesador detenido desde ' + hace : 'Última vuelta del procesador ' + hace;
-    txt.title = l.texto + ' El procesador deja los documentos en el Centro de Costos cada 2 horas.';
+    txt.title = l.texto + ' El procesador deja los documentos en el Centro de Costos cada 5 minutos.';
     punto.className = 'cx-punto ' + l.nivel;
   }
   function scPintarProyecto() {
@@ -10604,6 +10608,9 @@
     { id: 'cierre', et: 'Cierre', clase: 'c-ci', tarjeta: 'Cierre' }
   ];
   const PQ_CAMPOS = PQ_COLUMNAS.map((c) => c.id).filter((c) => c !== 'numero');
+  // Lo que el formulario envía: las columnas de la tabla y el presupuesto del mandante (2026-11-11, pedido del usuario). El
+  // presupuesto no es columna de la tabla; su casilla del Excel ya existe («Presupuesto (IVA Inc)») y los dos esquemas lo traen.
+  const PQ_ENVIAR = PQ_CAMPOS.concat(['presupuesto']);
   // Con los montos que exporta el Formulador: no son columnas de aquí, pero salen en la lista de cambios
   const PQ_NOMBRE = Object.assign(Object.fromEntries(PQ_COLUMNAS.map((c) => [c.id, c.et])),
     { presupuesto: 'Presupuesto', valorOfertado: 'Valor ofertado', valorAdjudicado: 'Valor adjudicado' });
@@ -10616,6 +10623,12 @@
   const pq = { q: '', estado: '', mostrar: PQ_PAGINA, cambios: [], leyendo: null, leido: 0, abierta: null, inicial: null,
     guardando: false, irA: null, verCambios: false, conForm: false };
 
+  // Un monto en pesos como número entero positivo; vacío, cero o ilegible, null. Acepta «12.500.000», «$ 12500000» y 12500000.
+  function pqMonto(v) {
+    if (typeof v === 'number') return Number.isFinite(v) && v > 0 ? Math.round(v) : null;
+    const d = texto(v).replace(/[^\d]/g, '');
+    return d && Number(d) > 0 ? Number(d) : null;
+  }
   // La Planilla del Excel con lo ingresado o cambiado en el portal que todavía espera en el buzón, en orden de envío.
   // meta (por fila): los campos que el Excel todavía no tiene, si es nueva y, si su N° ya lo tiene otra fila, cuál.
   function pqMezclar(excel, pedidos) {
@@ -10635,12 +10648,12 @@
         const ya = porN.get(r.numero);
         if (ya && norm(ya.titulo).trim() === norm(r.titulo).trim()) return;   // ya está en el Excel: se archiva en la vuelta
         const fila = { numero: r.numero };
-        PQ_CAMPOS.forEach((c) => { fila[c] = valor(r[c]); });
+        PQ_ENVIAR.forEach((c) => { fila[c] = c === 'presupuesto' ? pqMonto(r[c]) : valor(r[c]); });
         const mt = marca(fila);
         mt.nuevo = true;
         mt.choque = ya ? texto(ya.titulo) || 'otro requerimiento' : '';
         mt.mensajes.push(m);
-        PQ_CAMPOS.forEach((c) => mt.campos.add(c));
+        PQ_ENVIAR.forEach((c) => mt.campos.add(c));
         filas.push(fila);
         if (!ya) porN.set(r.numero, fila);
         return;
@@ -10650,8 +10663,8 @@
       if (!fila) return;
       const mt = marca(fila);
       Object.keys(m.cambios).forEach((c) => {
-        if (!PQ_CAMPOS.includes(c)) return;
-        fila[c] = valor(m.cambios[c]);
+        if (!PQ_ENVIAR.includes(c)) return;
+        fila[c] = c === 'presupuesto' ? pqMonto(m.cambios[c]) : valor(m.cambios[c]);
         mt.campos.add(c);
       });
       mt.mensajes.push(m);
@@ -10834,7 +10847,8 @@
     return { estado: $('#pqEstado').value || null, canal: $('#pqCanal').value || null, captador: capt ? capt.toUpperCase() : null,
       evaluador: ev ? ev.toUpperCase() : null, titulo: t('pqTitulo'), cliente: t('pqCliente'), ubicacion: t('pqUbicacion'),
       // Una postventa guarda su proyecto original en «ID o referencia», como «164. Talca» (2026-11-06)
-      referencia: $('#pqCanal').value === 'Postventa' ? pqOriginal(t('pqOriginal')) : t('pqReferencia'), apertura: fecha('Ap'), cierre: fecha('Ci') };
+      referencia: $('#pqCanal').value === 'Postventa' ? pqOriginal(t('pqOriginal')) : t('pqReferencia'), apertura: fecha('Ap'), cierre: fecha('Ci'),
+      presupuesto: pqMonto($('#pqPresupuesto').value) };
   }
   /* El proyecto original de una postventa, por su N° o por su nombre: «303» o «quemador» → «303. Quemador Osorno».
      Lo que no calza con un solo requerimiento queda tal como se escribió. */
@@ -10931,6 +10945,7 @@
     $('#pqCliente').value = texto(v.cliente);
     $('#pqUbicacion').value = texto(v.ubicacion);
     $('#pqReferencia').value = texto(v.referencia);
+    $('#pqPresupuesto').value = pqMonto(v.presupuesto) ? pqMonto(v.presupuesto).toLocaleString('es-CL') : '';
     $('#pqOriginal').value = texto(v.canal) === 'Postventa' ? texto(v.referencia) : '';
     pqVerOriginal();
     pqVerMover(true);
@@ -10945,7 +10960,7 @@
         : mt && mt.nuevo ? 'Recién agregado: todavía no llega al Excel.'
           : mt && mt.campos.size ? 'Lo marcado con un punto naranjo en la tabla (' + [...mt.campos].map((c) => PQ_NOMBRE[c]).join(', ') + ') todavía no llega al Excel.' : '';
     $('#pqNota').replaceChildren(info(nuevo
-      ? 'Queda con el N° ' + n + ', el siguiente libre. El equipo lo ve al instante aquí y pasa al Excel en unos 10 minutos. Las demás columnas del Excel (visita, presupuesto, valores ofertado y adjudicado…) se siguen llenando en el Excel cuando hacen falta.'
+      ? 'Queda con el N° ' + n + ', el siguiente libre. El equipo lo ve al instante aquí y pasa al Excel en unos 10 minutos. Las demás columnas del Excel (visita, valores ofertado y adjudicado…) se siguen llenando en el Excel cuando hacen falta.'
       : 'Lo que cambies aquí lo ve el equipo al instante y pasa al Excel en unos 10 minutos. Las demás columnas del Excel se cambian en el Excel.', 'Qué pasa al guardar'));
     $('#pqGuardar').textContent = nuevo ? 'Agregar a Requerimientos' : 'Guardar cambios';
     $('#pqGuardar').disabled = false;
@@ -10974,13 +10989,14 @@
     const mover = !a.nuevo && !$('#pqMoverCampo').hidden && $('#pqMover').checked && !$('#pqMover').disabled ? pqCarpetaGestion(a.numero) : null;
     if (a.nuevo) {
       const req = { numero: a.numero };
-      PQ_CAMPOS.forEach((c) => { if (f[c] !== null) req[c] = f[c]; });
+      PQ_ENVIAR.forEach((c) => { if (f[c] !== null) req[c] = f[c]; });
       cuerpo = { requerimiento: req, fuente: { herramienta: 'portal' }, numeroLibre: true };
     } else {
       cambios = {};
       const reemplaza = {};
-      PQ_CAMPOS.forEach((c) => {
+      PQ_ENVIAR.forEach((c) => {
         if (f[c] === pq.inicial[c]) return;
+        if (c === 'presupuesto' && f[c] === null) return;   // el esquema no deja vaciarlo desde aquí: se vacía en el Excel
         cambios[c] = f[c];
         reemplaza[c] = a.fila[c] === null || a.fila[c] === undefined || a.fila[c] === '' ? null : String(a.fila[c]);
       });
@@ -11009,7 +11025,7 @@
     if (fila && pq.q && !pqBuscable(fila).includes(norm(pq.q).trim())) { pq.q = ''; $('#pqBuscar').value = ''; }
     pqPintar();
     pqResaltar(a.numero);
-    // La carpeta la mueve el procesador: se le pide una vuelta para que no espere la de cada 2 horas
+    // La carpeta la mueve el procesador: se le pide una vuelta para que no espere la de cada 5 minutos
     if (mover) rcPedirVuelta().catch((err) => console.error(err));
     const carpeta = mover ? ' Su carpeta pasa a «' + PQ_ENTREGADOS + '» ' + (rcSinTareaDePedidos() ? 'en la próxima vuelta del procesador.' : 'en unos minutos.') : '';
     avisar(a.nuevo ? 'N° ' + a.numero + ' agregado a Requerimientos. Pasa al Excel en unos 10 minutos.'
@@ -11234,6 +11250,14 @@
           a.title = 'Formulación ' + fo.codigo + ' v' + fo.version + (fo.responsable ? ' (' + fo.responsable + ')' : '') + ': abrirla en el Formulador';
           a.addEventListener('click', () => rcIr(RC_IR.ficha(fo.uid)));
           td.append(a);
+        } else if (!(mt && mt.choque) && ['Evaluación', 'Ofertado', 'Adjudicado'].includes(texto(r.estado))) {
+          // Sin formulación: pasa directo al Formulador con el diálogo de nuevo proyecto de este N° (2026-11-11), también
+          // recién ingresado (el Formulador lo toma del buzón con N° provisorio). Con choque no: ese N° va a cambiar.
+          const f = crear('button', 'pq-form', 'Formular →');
+          f.type = 'button';
+          f.title = 'Crear la formulación del N° ' + r.numero + ' en el Formulador';
+          f.addEventListener('click', () => rcIr({ herr: 'formulador', url: HERR.get('formulador').ruta + '#/req/' + encodeURIComponent(r.numero) + '/crear' }));
+          td.append(f);
         }
         if (mt && mt.choque) td.append(crear('span', 'pq-choque', 'El N° ' + r.numero + ' ya es «' + mt.choque + '»: al pasar al Excel queda con el siguiente libre.'));
       } else if (PQ_FECHAS.includes(c.id)) {
@@ -13243,7 +13267,7 @@
       const p = crear('p', 'ej-linea tinte');
       const antes = av.af === null ? 'sin avance' : ejPct(av.af);
       p.append(crear('span', null, av.msj && av.msj.estado === 'pendiente' ? 'El Análisis Financiero dejó esperando el pedido (' + [].concat(av.msj.detalle || []).join(' ') + ').'
-        : 'Pedido al Análisis Financiero: hoy tiene ' + antes + '. Llega con la próxima vuelta del procesador (cada 2 horas).'));
+        : 'Pedido al Análisis Financiero: hoy tiene ' + antes + '. Llega con la próxima vuelta del procesador (cada 5 minutos).'));
       const r = crear('button', 'cx-desmarcar', 'Retirar el pedido');
       r.type = 'button';
       r.dataset.foco = 'retirar';
@@ -13766,7 +13790,7 @@
     s.classList.add('ej-facturas');
     const fw = rcFacturasWeb(m.t);
     if (fw) { const b = ejBoton('Abrir la carpeta', 'cx-enlace', () => window.open(fw, '_blank', 'noopener'), 'fuera'); b.title = 'Su carpeta del Centro de Costos en SharePoint'; cab.append(b); }
-    if (docs === null) { s.append(lineaInfo('ej-nada', 'Las facturas todavía no llegan a la carpeta del equipo.', 'Las publica el procesador desde el Centro de Costos en su próxima vuelta (cada 2 horas). Mientras, lo gastado sale del Análisis Financiero.', 'Cuándo llegan')); return s; }
+    if (docs === null) { s.append(lineaInfo('ej-nada', 'Las facturas todavía no llegan a la carpeta del equipo.', 'Las publica el procesador desde el Centro de Costos en su próxima vuelta (cada 5 minutos). Mientras, lo gastado sale del Análisis Financiero.', 'Cuándo llegan')); return s; }
     if (!docs.length) { s.append(crear('p', 'ej-nada', 'Sin documentos registrados con su TAG en el Centro de Costos.')); return s; }
     const todos = ejDestinos(m);
     const asociada = (d) => ejDestinosDe(m, d.ref, todos).length > 0 || !!(m.asoc.get(d.ref) && !m.asoc.get(d.ref).destinos.length);

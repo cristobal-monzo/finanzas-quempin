@@ -3,8 +3,8 @@
 Detalle de referencia: léelo solo al tocar esto. Las reglas generales están en `../CLAUDE.md`.
 
 El 97 % de los requerimientos viene de Mercado Público y su resultado se
-pasaba a mano (análisis del 2026-10-08, §6 punto 1). En cada vuelta del
-procesador, con la API pública de ChileCompra:
+pasaba a mano (análisis del 2026-10-08, §6 punto 1). Cada 3 horas, en la vuelta
+del procesador (`TURNO_SEG`, 2026-11-11; antes en cada vuelta), con la API pública de ChileCompra:
 
 1. Consulta las licitaciones de la Planilla con código en «ID o Referencia»
    que esperan resultado (Ofertado, Evaluación); después barre las órdenes

@@ -65,6 +65,9 @@ ESTATICOS = {
 }
 CARPETA_MARCA = "Visualizador Web/marca"
 ARCHIVOS_MARCA = ("fuentes.css", "favicon.png")
+# Código común que el hub y el Portal enlazan desde la raíz de gh-pages (../numeros.js). Los tableros
+# lo llevan incrustado (candado.incrustar).
+ARCHIVOS_COMUNES = ("numeros.js",)
 FLUJO_CI = "tests.yml"
 META_VERSION = "quempin-version"
 
@@ -89,6 +92,83 @@ def con_sello(html: str, texto: str) -> str:
     if "</head>" not in sin:
         raise RuntimeError("la página no tiene </head> para su sello de versión")
     return sin.replace("</head>", f'<meta name="{META_VERSION}" content="{texto}">\n</head>', 1)
+
+
+def esperar_codigo(claves, sin_ci: bool = False, espera_max: float = 1500, paso: float = 20, dormir=None) -> list[str]:
+    """Como revisar_codigo, pero mientras el CI corre (o todavía no aparece, recién empujado) espera
+    a que termine, hasta espera_max segundos. Lo demás (falló, cambios sin commit) no se espera."""
+    import time
+    dormir = dormir or time.sleep
+    inicio = time.monotonic()
+    while True:
+        problemas = revisar_codigo(claves, sin_ci=sin_ci)
+        transitorios = [p for p in problemas if "aún corre" in p or "no tiene CI" in p]
+        if not transitorios or len(transitorios) < len(problemas) or time.monotonic() - inicio >= espera_max:
+            return problemas
+        print(f"[ESPERA] {transitorios[0]}")
+        dormir(paso)
+
+
+URL_BASE = "https://cristobal-monzo.github.io/finanzas-quempin/"
+
+
+def _archivos_publicados(subrutas, raiz_gh_pages: Path = RAIZ_GH_PAGES) -> list[str]:
+    """Las rutas relativas (con /) de lo que se publicó: archivos sueltos y lo de cada carpeta."""
+    salida = []
+    for s in subrutas:
+        p = raiz_gh_pages / s
+        if p.is_dir():
+            salida += [f.relative_to(raiz_gh_pages).as_posix() for f in sorted(p.rglob("*")) if f.is_file()]
+        elif p.is_file():
+            salida.append(Path(s).as_posix())
+    return sorted(set(salida))
+
+
+def verificar_en_linea(rutas, raiz_gh_pages: Path = RAIZ_GH_PAGES, espera_max: float = 600, paso: float = 20,
+                       bajar=None, dormir=None) -> list[str]:
+    """Espera a que GitHub Pages sirva cada archivo idéntico al de gh-pages. Devuelve las rutas que no
+    quedaron iguales al vencer el plazo ([] = todo en línea)."""
+    import time
+    import urllib.request
+
+    def _bajar(url):
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"Cache-Control": "no-cache"}), timeout=30) as r:
+            return r.read()
+    bajar = bajar or _bajar
+    dormir = dormir or time.sleep
+    faltan = list(rutas)
+    inicio = time.monotonic()
+    while True:
+        pendientes = []
+        for ruta in faltan:
+            try:
+                igual = bajar(f"{URL_BASE}{ruta}?v={int(time.time())}") == (raiz_gh_pages / ruta).read_bytes()
+            except Exception:
+                igual = False
+            if not igual:
+                pendientes.append(ruta)
+        faltan = pendientes
+        if not faltan or time.monotonic() - inicio >= espera_max:
+            return faltan
+        print(f"[ESPERA] GitHub Pages todavía no sirve {len(faltan)} archivo(s)…")
+        dormir(paso)
+
+
+def subir(subrutas, mensaje: str, raiz_gh_pages: Path = RAIZ_GH_PAGES) -> int:
+    """Commit y push de gh-pages y verificación en línea. 0 = publicado e idéntico en línea."""
+    if not _git("diff", "--cached", "--name-only", repo=raiz_gh_pages):
+        print("[OK] gh-pages ya tenía exactamente esto: no hay nada que subir.")
+        return 0
+    _git("commit", "-q", "-m", mensaje, repo=raiz_gh_pages)
+    _git("push", "-q", "origin", "gh-pages", repo=raiz_gh_pages)
+    commit = _git("rev-parse", "--short", "HEAD", repo=raiz_gh_pages)
+    print(f"[OK] gh-pages {commit} empujado; se verifica en línea…")
+    faltan = verificar_en_linea(_archivos_publicados(subrutas, raiz_gh_pages), raiz_gh_pages)
+    if faltan:
+        print(f"[REVISAR] a los 10 minutos GitHub Pages aún no sirve igual: {', '.join(faltan[:5])}")
+        return 1
+    print(f"[EN LÍNEA] gh-pages {commit}: todo idéntico en {URL_BASE}")
+    return 0
 
 
 def revisar_codigo(claves, sin_ci: bool = False) -> list[str]:
@@ -192,7 +272,9 @@ def preparar_estatico(clave: str, raiz_gh_pages: Path = RAIZ_GH_PAGES, sello: st
     carpeta.mkdir(exist_ok=True)
     for nombre in ARCHIVOS_MARCA:
         shutil.copy2(RAIZ / CARPETA_MARCA / nombre, carpeta / nombre)
-    print(f"[OK] {clave:<6} -> {destino} y marca/")
+    for nombre in ARCHIVOS_COMUNES:
+        shutil.copy2(RAIZ / "Visualizador Web" / nombre, raiz_gh_pages / nombre)
+    print(f"[OK] {clave:<6} -> {destino}, marca/ y {', '.join(ARCHIVOS_COMUNES)}")
     return destino
 
 
@@ -201,6 +283,8 @@ def main(argv=None) -> int:
     ap.add_argument("tableros", nargs="*", metavar="tablero", help="subconjunto de: " + ", ".join([*TABLEROS, *ESTATICOS]))
     ap.add_argument("--todos", action="store_true", help="todos los tableros")
     ap.add_argument("--sin-ci", action="store_true", help="publicar el hub o el Portal sin revisar el CI de este commit")
+    ap.add_argument("--subir", action="store_true",
+                    help="todo de una vez: espera el CI si corre, hace commit y push de gh-pages y verifica que quede igual en línea")
     args = ap.parse_args(argv)
     claves = list(TABLEROS) if args.todos else args.tableros
     desconocidos = [c for c in claves if c not in TABLEROS and c not in ESTATICOS]
@@ -211,7 +295,7 @@ def main(argv=None) -> int:
         return 1
     problemas = revisar_gh_pages()
     try:
-        problemas += revisar_codigo(claves, sin_ci=args.sin_ci)
+        problemas += (esperar_codigo if args.subir else revisar_codigo)(claves, sin_ci=args.sin_ci)
     except RuntimeError as error:
         problemas.append(str(error))
     if problemas:
@@ -224,7 +308,7 @@ def main(argv=None) -> int:
     for clave in claves:
         try:
             if clave in ESTATICOS:
-                subrutas += [preparar_estatico(clave, sello=sello), "marca"]
+                subrutas += [preparar_estatico(clave, sello=sello), "marca", *ARCHIVOS_COMUNES]
             else:
                 subrutas.append(preparar(clave, contrasena))
         except RuntimeError as error:
@@ -232,6 +316,8 @@ def main(argv=None) -> int:
             print("No se publica nada más: regenera ese tablero y vuelve a correr esto.")
             return 1
     subprocess.run(["git", "-C", str(RAIZ_GH_PAGES), "add", "--all", "--", *subrutas], check=True)
+    if args.subir:
+        return subir(subrutas, f"publicar: {' '.join(claves)}" + (f" ({sello})" if sello else ""))
     print("\nListo en el índice de gh-pages. Para publicar:")
     print(f'  git -C "{RAIZ_GH_PAGES}" commit -m "actualizar tableros: ...' + (f' ({sello})' if sello else '') + '"')
     print(f'  git -C "{RAIZ_GH_PAGES}" push')

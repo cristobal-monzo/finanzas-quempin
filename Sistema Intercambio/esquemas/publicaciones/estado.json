@@ -59,7 +59,7 @@
       ]
     },
     "pedidos": {
-      "description": "Si en el equipo del procesador está la tarea que atiende «Actualizar datos» del Portal (procesar.py --si-hay-pedido cada minuto). Sin ella el pedido espera la vuelta de cada 2 horas, y el Portal lo dice.",
+      "description": "Si en el equipo del procesador está la tarea que atiende «Actualizar datos» del Portal (procesar.py --si-hay-pedido cada minuto). Sin ella el pedido espera la vuelta de cada 5 minutos, y el Portal lo dice.",
       "type": "object",
       "properties": {
         "tarea": {
