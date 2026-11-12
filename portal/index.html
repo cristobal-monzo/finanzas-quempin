@@ -2571,7 +2571,6 @@
     .ej-tarea-ico { width: 30px; height: 30px; }
   }
   /* ---- La página nueva del proyecto (2026-11-12): índice angosto, resumen grande, «Por hacer» como botón ---- */
-  .ej-v1-arriba { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .ejecucion:has(> #ejProyecto.ej-v2:not([hidden])) { max-width: 1560px; }
   #ejProyecto.ej-v2 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
   #ejProyecto.ej-v2:has(> .ej-v2-idx) { grid-template-columns: 172px minmax(0, 1fr); }
@@ -2594,8 +2593,10 @@
   .ej-v2 .ej-salto:hover { border: 0; background: var(--surface-card); color: var(--text-primary); }
   .ej-v2 .ej-salto[aria-current="true"] { border: 0; background: none; box-shadow: none; color: var(--text-primary); font-weight: 900; }
   .ej-v2 .ej-salto[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--brand-orange); }
-  .ej-v2 .ej-cambiar-vista { align-self: flex-start; margin-top: 10px; font-size: 12px; }
-  .ej-plegado .ej-v2-idx :is(.ej-salto > span, .ej-idx-plegar > span, .ej-cambiar-vista > span) { display: none; }
+  /* «Todos los proyectos»: lo primero del índice, con una línea que lo separa de los accesos */
+  .ej-v2-idx .ej-volver { align-self: stretch; min-height: 34px; margin: 0 0 6px; padding: 0 8px 0 6px; gap: 7px; border-bottom: 1px solid var(--gridline); border-radius: 8px 8px 0 0; }
+  .ej-plegado .ej-v2-idx :is(.ej-salto > span, .ej-idx-plegar > span, .ej-volver > span) { display: none; }
+  .ej-plegado .ej-v2-idx .ej-volver { justify-content: center; padding: 0; }
   .ej-plegado .ej-salto { justify-content: center; padding: 0; }
   .ej-plegado .ej-salto small.ej-hay { position: absolute; top: 2px; right: 0; min-width: 8px; width: 8px; height: 8px; padding: 0; overflow: hidden; color: transparent; background: var(--brand-orange); }
   .ej-v2-arriba { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
@@ -2686,7 +2687,9 @@
     .ej-plegado .ej-v2-idx .ej-salto > span { display: inline; }
     .ej-v2 .ej-salto[aria-current="true"]::before { display: none; }
     .ej-v2 .ej-salto[aria-current="true"] { border: 1px solid var(--brand-orange); background: var(--tinte); color: var(--tinte-texto); }
-    .ej-v2 .ej-cambiar-vista { margin-top: 0; }
+    .ej-v2-idx { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .ej-v2-idx .ej-volver { align-self: auto; margin: 0; border: 1px solid var(--brand-orange); border-radius: 999px; min-height: 30px; padding: 0 12px 0 8px; }
+    .ej-plegado .ej-v2-idx .ej-volver > span { display: inline; }
   }
   @container ejecucion (max-width: 640px) {
     .ej-v2-hero { grid-template-columns: minmax(0, 1fr); gap: 16px; }
@@ -2951,7 +2954,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@4bb5a7c 2026-11-12">
+<meta name="quempin-version" content="master@6bde2ff 2026-11-12">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -11646,10 +11649,9 @@
     salud: null,              // el estado elegido en la leyenda del Mapa de salud (ok, warn, bad, sin); null: todos
     espera: null,             // lo que espera el equipo elegido en la lista (decidir, facturas, pendientes); null: todo
     // 2026-11-12, pedido del usuario: la página nueva del proyecto, con la anterior a un clic por si no se adopta bien
-    vistaAnterior: ejPrefs.vistaAnterior === true,
     idxPlegado: ejPrefs.idxPlegado === true   // el índice de la izquierda, solo con íconos
   };
-  const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro, pestana: ej.pestana, conDatos: ej.conDatos, vistaAnterior: ej.vistaAnterior, idxPlegado: ej.idxPlegado });
+  const ejGuardarPrefs = () => guardar(LS_EJ, { proyecto: ej.clave, mios: ej.mios, filtro: ej.filtro, pestana: ej.pestana, conDatos: ej.conDatos, idxPlegado: ej.idxPlegado });
 
   // ---- Utilidades ---------------------------------------------------------------------------------------------------
   const ejPesos = (n) => (n < -0.5 ? '−$' : '$') + Math.round(Math.abs(n)).toLocaleString('es-CL');
@@ -13052,31 +13054,9 @@
     raiz.textContent = '';
     // Una carpeta de Gestión sin N° ni TAG (2026-11-03): se ve, pero no hay a qué anotarle compras, días ni avance
     const sinClave = !ejClave(t);
-    const nueva = !ej.vistaAnterior;
-    raiz.classList.toggle('ej-v2', nueva);
-    raiz.classList.toggle('ej-plegado', nueva && ej.idxPlegado);
-    if (nueva) { ejPintarV2(t, m, raiz, sinClave); ejRestaurar(raiz, vista, desplazado, foco, t, m); return; }
-    const volver = crear('div', 'ej-v1-arriba');
-    volver.append(ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda'), ejBoton('Ver la página nueva', 'cx-enlace ej-cambiar-vista', () => ejCambiarVista(false)));
-    raiz.append(volver, ejCabEl(m));
-    if (!sinClave) raiz.append(ejKpisEl(m));
-    if (t.avisos.length) {
-      const ul = crear('ul', 'rc-avisos');
-      t.avisos.forEach((x) => { const li = crear('li'); li.append(icono('alerta', 16), crear('span', null, x)); ul.append(li); });
-      raiz.append(ul);
-    }
-    if (sinClave) { raiz.append(ejSinClaveEl(t)); vista.scrollTop = desplazado; return; }
-    // El orden (2026-11-06): cómo va y el avance; las facturas reales; lo que viene; la mano de obra; lo demás
-    raiz.append(ejPorHacerEl(m), ejSaltosEl(m));
-    const dos = crear('div', 'ej-dos');
-    dos.append(ejPresupuestoEl(m), ejAvanceEl(m));
-    const mo = crear('div', 'ej-dos');
-    mo.append(ejManoObraEl(m), ejIndicadoresEl(m));
-    raiz.append(dos, ejDocumentosEl(m), ejComprasEl(m), mo);
-    const tres = crear('div', 'ej-tres');
-    tres.append(ejOCsEl(m), ejEquipoEl(m), ejNotasEl(m));
-    tres.id = 'ejSecMas';
-    raiz.append(tres);
+    raiz.classList.add('ej-v2');
+    raiz.classList.toggle('ej-plegado', ej.idxPlegado);
+    ejPintarV2(t, m, raiz, sinClave);
     ejRestaurar(raiz, vista, desplazado, foco, t, m);
   }
   // Después de pintar (las dos vistas): lo escrito, el desplazamiento, el foco y los precios de referencia
@@ -13096,12 +13076,17 @@
      ordenadas así: a la izquierda un índice angosto que se pliega a íconos (los accesos de ejSaltosEl); arriba «Todos los
      proyectos» y «Por hacer» como un botón chico que despliega la lista; la cabecera sin tarjeta; un resumen grande (el
      anillo del avance, una sola barra con lo gastado, comprometido, simulado y lo que falta según el presupuesto, con la
-     raya del avance, y el margen en un medidor con el mínimo y la meta) y debajo las partes. La página anterior sigue a
-     un clic («Ver la página anterior», ej.vistaAnterior, se recuerda). */
+     raya del avance, y el margen en un medidor con el mínimo y la meta) y debajo las partes. «Todos los proyectos» va
+     primero en el índice (2026-11-12, pedido del usuario); la página anterior se eliminó (queda la etiqueta de git
+     portal-ejecucion-proyecto-v1). */
   function ejPintarV2(t, m, raiz, sinClave) {
     const cuerpo = crear('div', 'ej-v2-cuerpo');
     const arriba = crear('div', 'ej-v2-arriba');
-    arriba.append(ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda'));
+    const idx = crear('aside', 'ej-v2-idx');
+    idx.setAttribute('aria-label', 'Índice del proyecto');
+    const volver = ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda');
+    volver.title = 'Volver a la lista de todos los proyectos';
+    idx.append(volver);
     cuerpo.append(arriba, ejCabEl(m));
     if (t.avisos.length) {
       const ul = crear('ul', 'rc-avisos');
@@ -13109,21 +13094,18 @@
       cuerpo.append(ul);
     }
     if (sinClave) {
-      arriba.append(ejCambiarVistaEl());
       cuerpo.append(ejSinClaveEl(t));
-      raiz.append(cuerpo);
+      raiz.append(idx, cuerpo);
       return;
     }
     arriba.append(ejPorHacerEl(m));
-    const idx = crear('aside', 'ej-v2-idx');
-    idx.setAttribute('aria-label', 'Índice del proyecto');
     const plegar = crear('button', 'ej-idx-plegar');
     plegar.type = 'button';
     plegar.append(icono(ej.idxPlegado ? 'derecha' : 'izquierda', 14), crear('span', null, ej.idxPlegado ? 'Mostrar' : 'Plegar'));
     plegar.title = ej.idxPlegado ? 'Mostrar los nombres del índice' : 'Dejar el índice solo con íconos';
     plegar.setAttribute('aria-expanded', String(!ej.idxPlegado));
     plegar.addEventListener('click', () => { ej.idxPlegado = !ej.idxPlegado; ejGuardarPrefs(); ejPintar(); });
-    idx.append(plegar, ejSaltosEl(m, true), ejCambiarVistaEl());
+    idx.append(plegar, ejSaltosEl(m, true));
     cuerpo.append(ejResumenEl(m));
     const dos = crear('div', 'ej-dos');
     dos.append(ejPresupuestoEl(m), ejAvanceEl(m));
@@ -13135,17 +13117,6 @@
     tres.id = 'ejSecMas';
     cuerpo.append(tres);
     raiz.append(idx, cuerpo);
-  }
-  function ejCambiarVistaEl() {
-    const b = ejBoton('Ver la página anterior', 'cx-enlace ej-cambiar-vista', () => ejCambiarVista(true), 'ventana');
-    b.title = 'La página del proyecto como era antes del 12-11-2026; se vuelve a la nueva con «Ver la página nueva»';
-    return b;
-  }
-  function ejCambiarVista(anterior) {
-    ej.vistaAnterior = anterior;
-    ejGuardarPrefs();
-    ejPintar();
-    $('#vistaEjecucion').scrollTop = 0;
   }
   // El resumen grande de arriba: avance, dinero y margen; debajo, la venta, el cierre, lo comprometido y la mano de obra
   function ejResumenEl(m) {
