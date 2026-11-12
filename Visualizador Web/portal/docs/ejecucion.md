@@ -231,3 +231,29 @@ Planificación (detalle en [planificacion.md](planificacion.md), «Lo tuyo que o
 - **Presencia** (`#ejConmigo`): con un proyecto abierto, «NB también está en este proyecto» (`donde` = la clave de la
   tarjeta).
 - Prueba: `test_en_ejecucion_se_ve_quien_cambio_algo_y_lo_tuyo_que_reemplazo`.
+
+## La página nueva del proyecto (2026-11-12)
+
+Pedido del usuario: renovar la página de un proyecto, con los mismos datos y herramientas, más visual y fácil de usar;
+«la sección de cosas por hacer no es tan importante»; «dale mayor relevancia al espacio general y no tanta a la barra de
+navegación lateral»; y guardar la anterior «por si no se adopta bien». Maqueta aprobada:
+`docs/plans/2026-11-10-proyecto-ejecucion-v2-maqueta.html` (datos ficticios).
+
+- **`ejPintarV2`** (`#ejProyecto.ej-v2`): a la izquierda un índice angosto y fijo (`.ej-v2-idx`: los accesos de
+  `ejSaltosEl(m, true)` en columna, con ícono y, en naranjo, cuántas facturas sin asociar y compras por decidir hay);
+  «Plegar» lo deja solo con íconos (`ej.idxPlegado`, `.ej-plegado`). Con menos de 1180 px de vista el índice pasa arriba
+  en una fila: la tabla de compras necesita el ancho (`test_la_tabla_de_compras_no_se_sale_del_panel`).
+- **Arriba** (`.ej-v2-arriba`): «Todos los proyectos» y «Por hacer» (`ejPorHacerEl`, el mismo `<details>`) como un botón
+  chico cuya lista flota sobre la página. La cabecera (`ejCabEl`) va sin tarjeta.
+- **El resumen** (`ejResumenEl`, `#ejSecResumen`): el anillo del avance con «Registrar avance»; una sola barra con lo
+  gastado, comprometido, simulado y lo que falta según el presupuesto (rayado), la raya naranja del avance y, si se
+  pasa, la marca del presupuesto; si gasta de acuerdo con lo que avanza o más; y el margen en un medidor de media
+  vuelta con el mínimo y la meta (`ejMedidorMargenEl`, SVG con `createElementNS`). Debajo, las KPI de siempre
+  (`ejKpisEl`) mostrando solo la venta y el cierre (gastado, margen y avance ya están arriba) más dos cifras
+  (`.ej-stat`, no cuentan como `.ej-kpi`): comprometido en OC y mano de obra real.
+- Debajo, las mismas partes de antes y en el mismo orden. `ejMarcarSalto` mide desde el borde de arriba de la vista
+  cuando el índice va al costado; arriba de todo marca «Resumen».
+- **La página anterior**: «Ver la página anterior» (en el índice) y «Ver la página nueva» (arriba en la anterior) cambian
+  `ej.vistaAnterior`, que se recuerda en `quempin_portal_ejecucion`. La anterior es `ejPintarProyecto` tal como estaba;
+  en git, además, la etiqueta `portal-ejecucion-proyecto-v1`.
+- Prueba: `test_la_pagina_nueva_del_proyecto_y_la_anterior_a_un_clic`.
