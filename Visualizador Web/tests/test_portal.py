@@ -2801,6 +2801,70 @@ def test_elegir_en_el_panel_y_tocar_las_casillas(navegador, sitio):
     pagina.context.close()
 
 
+def test_arrastrar_un_vehiculo_a_un_proyecto_asignado(navegador, sitio):
+    """Observación del equipo del 2026-11-12, «los vehículos deberían poder arrastrarse»: la Quempineta y la RAM van
+    arriba del panel. Se sueltan sobre un proyecto ya asignado (o se tocan y después el proyecto; otra vez lo quita); en
+    «Por proyecto», sobre la casilla de un proyecto, a todos los que van ese día. Queda en el archivo como en la ventanita."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    lun = _dias_de(lunes)[0]
+    # LC va a dos proyectos el lunes y ES a uno
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:907"]').click()
+    _celda_personal(pagina, "LC", 0).click()
+    _celda_personal(pagina, "ES", 0).click()
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:908"]').click()
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.keyboard.press("Escape")
+    panel = pagina.locator("#plPersonal .pl-arr")
+    assert panel.locator(".pl-arr-veh").evaluate_all("bs => bs.map((b) => b.dataset.vehiculo)") == ["quempineta", "ram"]
+    vehs = lambda celda, proy: celda.locator(".pl-chip", has_text=proy).locator(".pl-veh .n").all_inner_texts()
+    # A la casilla de ES, que ese día tiene un solo proyecto
+    panel.locator('.pl-arr-veh[data-vehiculo="ram"]').drag_to(_celda_personal(pagina, "ES", 0))
+    assert vehs(_celda_personal(pagina, "ES", 0), "Adjudicada sin ficha") == ["RAM"]
+    assert "ES va en la RAM a Adjudicada sin ficha" in pagina.locator("#aviso").inner_text()
+    assert pagina.locator("#plPop").is_hidden(), "soltar no abre la ventanita"
+    # A un proyecto de LC, que tiene dos: solo a ese
+    # (a mano y en pasos: al empezar a arrastrar se esconde el «+» de la casilla y el proyecto se corre de lugar)
+    panel.locator('.pl-arr-veh[data-vehiculo="quempineta"]').hover()
+    pagina.mouse.down()
+    pagina.mouse.move(400, 300, steps=3)
+    caja = _celda_personal(pagina, "LC", 0).locator(".pl-chip", has_text="En obra").bounding_box()
+    pagina.mouse.move(caja["x"] + caja["width"] / 2, caja["y"] + caja["height"] / 2, steps=5)
+    pagina.mouse.up()
+    assert vehs(_celda_personal(pagina, "LC", 0), "En obra") == ["Quempineta"]
+    assert vehs(_celda_personal(pagina, "LC", 0), "Adjudicada sin ficha") == []
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, archivo, lambda s: len([v for v in s["datos"].get("vehiculos", []) if v["vehiculo"]]) == 2)
+    assert sorted((v["dia"], v["persona"], v["proyecto"], v["vehiculo"]) for v in sobre["datos"]["vehiculos"] if v["vehiculo"]) == [
+        (lun.isoformat(), "ES", "req:907", "ram"), (lun.isoformat(), "LC", "req:908", "quempineta")]
+    # Tocando: la RAM y después el proyecto de ES, donde ya va, la quita
+    panel.locator('.pl-arr-veh[data-vehiculo="ram"]').click()
+    assert pagina.locator('#plPersonal .pl-arr-veh[data-vehiculo="ram"]').get_attribute("aria-pressed") == "true"
+    assert "Toca los proyectos donde va la RAM" in pagina.locator("#plPersonal .pl-arr-colocando").inner_text()
+    _celda_personal(pagina, "ES", 0).locator(".pl-chip").click()
+    assert vehs(_celda_personal(pagina, "ES", 0), "Adjudicada sin ficha") == []
+    assert pagina.locator("#plPop").is_hidden()
+    # …y en la casilla de LC, con dos proyectos, pide tocar uno
+    _celda_personal(pagina, "LC", 0).locator(".pl-chip", has_text="Adjudicada sin ficha").click()
+    assert vehs(_celda_personal(pagina, "LC", 0), "Adjudicada sin ficha") == ["RAM"]
+    pagina.keyboard.press("Escape")
+    assert pagina.locator('#plPersonal .pl-arr-veh[aria-pressed="true"]').count() == 0
+    # Por proyecto: sobre la casilla del proyecto, a todos los que van ese día, en un paso que se deshace
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    pagina.locator('#plProyecto .pl-arr-veh[data-vehiculo="quempineta"]').drag_to(_celda_proyecto(pagina, "req:907", 0))
+    assert "van en la Quempineta a Adjudicada sin ficha" in pagina.locator("#aviso").inner_text()
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    assert vehs(_celda_personal(pagina, "ES", 0), "Adjudicada sin ficha") == ["Quempineta"]
+    assert vehs(_celda_personal(pagina, "LC", 0), "Adjudicada sin ficha") == ["Quempineta"]
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    assert vehs(_celda_personal(pagina, "ES", 0), "Adjudicada sin ficha") == []
+    assert vehs(_celda_personal(pagina, "LC", 0), "Adjudicada sin ficha") == ["RAM"]
+    assert not errores
+    pagina.context.close()
+
+
 def test_quitar_una_asignacion_con_un_toque(navegador, sitio):
     """Observación del equipo del 2026-11-06, «acceso rápido para eliminar asignaciones»: cada proyecto de una casilla
     lleva una ✕ que lo quita sin abrir la ventanita, en un paso que se deshace y queda en el archivo; con el teclado,

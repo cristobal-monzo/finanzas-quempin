@@ -194,6 +194,12 @@ arrastrar proyectos a persona + día, como una opción más, y quitar la alerta 
 - Panel de arrastre (`.pl-arr`): proyectos en Por personal, personas en Por proyecto. Las etiquetas se arrastran entre
   casillas para mover (Ctrl copia), en un solo paso de deshacer. También se puede elegir en el panel y tocar casillas.
 - Bajo 900 px el panel va sobre la tabla y se acomoda en varias filas: nada se desliza de lado (las pruebas lo exigen).
+- **Vehículos arrastrables** (2026-11-12, observación del equipo: «los vehículos deberían poder arrastrarse»): fichas de
+  `PL_VEHICULOS` arriba del panel (`.pl-arr-veh`, `{ tipo: 'vehiculo', id }`). Se sueltan, o se tocan y después, sobre un
+  proyecto ya asignado: la etiqueta de una asignación (`data-asig` = `per|iso|clave`, lo pone `plArrastrable`), la
+  casilla de una persona con un solo proyecto ese día, o la casilla de un proyecto (todos los que van ese día).
+  `plObjetivoVeh` arma `{ veh, iso, pares }`; `plVehiculoPoner` lo guarda en una tanda (uno solo = `plVehiculoDias`).
+  Una casilla con varios proyectos dice «Suéltalo en un proyecto»; tocar donde ya va lo quita.
 
 **Quitar con un toque** (2026-11-06, observación del equipo desde el Portal: «acceso rápido para eliminar asignaciones»):
 - Cada proyecto de una persona en «Por personal», y cada persona de un proyecto en «Por proyecto» y en General, lleva una
