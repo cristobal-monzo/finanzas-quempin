@@ -4418,12 +4418,44 @@ def test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico(n
     """Vuelta 5 del loop de UX (2026-11-09)."""
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908, alto=700)
     actual = lambda: pagina.evaluate("() => (document.querySelector('#ejProyecto .ej-salto[aria-current=\"true\"]') || {}).dataset?.sec || null")
-    assert actual() is None, "arriba de todo, ninguna"
+    # En la página nueva (2026-11-12) el índice va al costado: arriba de todo marca el resumen
+    assert actual() == "ejSecResumen", "arriba de todo, el resumen"
     pagina.locator("#ejProyecto .ej-salto", has_text="Facturas").click()
     pagina.wait_for_function("() => (document.querySelector('#ejProyecto .ej-salto[aria-current=\"true\"]') || {}).dataset?.sec === 'ejSecFacturas'")
     # Gastado, costo al cierre, margen y avance llevan su barra chica; la venta no
     con = pagina.locator("#ejProyecto .ej-kpi").evaluate_all("ks => ks.map((k) => [k.querySelector('.ej-kpi-et').textContent, !!k.querySelector('.ej-mini')])")
     assert dict(con) == {"Venta neta": False, "Gastado a la fecha": True, "Costo estimado al cierre": True, "Margen estimado": True, "Avance": True}, con
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_pagina_nueva_del_proyecto_y_la_anterior_a_un_clic(navegador, sitio):
+    """2026-11-12, pedido del usuario: un resumen grande, un índice angosto que se pliega, «Por hacer» como un botón chico
+    arriba y la página anterior a un clic, por si la nueva no se adopta bien (se recuerda)."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908)
+    assert pagina.locator("#ejProyecto.ej-v2 #ejSecResumen .ej-v2-medidor").count() == 1
+    assert pagina.locator("#ejSecResumen .ej-v2-barra").is_visible()
+    assert pagina.locator("#ejSecResumen .ej-v2-raya").inner_text().startswith("Avance")
+    # Las cifras de abajo: la venta y el cierre (las KPI de siempre) más lo comprometido y la mano de obra
+    visibles = pagina.locator("#ejSecResumen .ej-kpis > *").evaluate_all(
+        "ks => ks.filter((k) => k.offsetParent).map((k) => k.querySelector('.ej-kpi-et').textContent)")
+    assert visibles == ["Venta neta", "Costo estimado al cierre", "Comprometido en OC", "Mano de obra real"], visibles
+    # «Por hacer» va en la fila de arriba, cerrado
+    assert pagina.locator("#ejProyecto .ej-v2-arriba details.ej-porhacer").get_attribute("open") is None
+    # Lo que espera se ve como número en el índice
+    assert pagina.locator("#ejProyecto .ej-salto[data-sec='ejSecFacturas'] .ej-hay").count() == 1
+    # El índice se pliega a íconos
+    pagina.locator(".ej-idx-plegar").click()
+    pagina.wait_for_function("() => document.querySelector('#ejProyecto').classList.contains('ej-plegado')")
+    assert not pagina.locator("#ejProyecto .ej-salto[data-sec='ejSecFacturas'] > span").is_visible()
+    # La página anterior, a un clic y recordada
+    pagina.locator(".ej-cambiar-vista").click()
+    pagina.wait_for_function("() => !document.querySelector('#ejProyecto').classList.contains('ej-v2')")
+    assert pagina.locator("#ejProyecto .ej-v1-arriba .ej-volver").is_visible()
+    assert pagina.locator("#ejProyecto .ej-kpis").is_visible()
+    assert json.loads(pagina.evaluate("() => localStorage.getItem('quempin_portal_ejecucion')"))["vistaAnterior"] is True
+    pagina.locator(".ej-cambiar-vista", has_text="Ver la página nueva").click()
+    pagina.wait_for_function("() => document.querySelector('#ejProyecto').classList.contains('ej-v2')")
     assert not errores
     pagina.context.close()
 
