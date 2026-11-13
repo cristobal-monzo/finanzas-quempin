@@ -7039,3 +7039,28 @@ def test_un_proyecto_de_gestion_con_n_temporal_se_ve_como_001t_nombre(navegador,
     pagina.locator("#ejProyecto .ej-cab").wait_for()
     assert "no está en la Planilla" not in pagina.locator("#ejProyecto").inner_text()
     assert not errores
+
+
+def test_el_buscador_ofrece_formulador_seguimiento_o_ejecucion_segun_la_etapa(navegador, sitio):
+    """Pedido del 2026-11-12: al buscar un proyecto reconocido, botones a su Formulador, su Seguimiento o «En ejecución»
+    según la etapa en que va. Un botón no va dentro de otro: la fila los lleva al lado del resultado."""
+    pagina, errores = _recorrido_con_datos(navegador, sitio, usuario="LC")
+    botones = lambda: pagina.locator("#resultados .res-fila").first.locator(".res-ir").all_inner_texts()
+    pagina.locator("#buscar").fill("908")                 # en obra
+    assert botones() == ["En ejecución"]
+    pagina.locator("#resultados .res-ir", has_text="En ejecución").click()
+    assert pagina.locator("#vistaEjecucion").is_visible() and pagina.locator("#ejProyecto").is_visible()
+    assert pagina.locator("#resultados").is_hidden()
+    pagina.locator("#buscar").fill("900")                 # requerimiento sin formulación: formularlo
+    assert botones() == ["Formulador"]
+    pagina.locator("#buscar").fill("909")                 # terminada, sin formulación ni obra: solo su detalle
+    assert pagina.locator("#resultados .res-fila").count() == 0 and pagina.locator("#resultados .res").count() == 1
+    pagina.locator("#buscar").fill("902")                 # con formulación, antes de ofertar
+    assert botones() == ["Formulador"]
+    pagina.locator("#resultados .res-ir", has_text="Formulador").click()
+    _esperar(pagina, "formulador", "hash", "#/p/f902/ficha")
+    # El proyecto del Formulador que el Recorrido ya tiene no sale dos veces
+    pagina.locator("#buscar").fill("QMPN-2026-902")
+    assert pagina.locator("#resultados .res").count() <= 1
+    assert not errores
+    pagina.context.close()
