@@ -258,3 +258,38 @@ navegación lateral»; y guardar la anterior «por si no se adopta bien». Maque
 - **La página anterior se eliminó** (2026-11-12, pedido del usuario: ya no hace falta). Quedó solo la etiqueta de git
   `portal-ejecucion-proyecto-v1` con el código de antes (`ejPintarProyecto` v1, `vistaAnterior`).
 - Prueba: `test_la_pagina_del_proyecto_tiene_todos_los_proyectos_arriba_del_indice`.
+
+## El presupuesto completo y los presupuestos actualizados (2026-11-13)
+
+Pedido del usuario: ver dentro del proyecto el presupuesto original con el desglose completo de sus costos y poder
+modificarlo para evaluar condiciones e indicadores al agregar o quitar costos; «que el presupuesto original sí se
+mantenga, pero que se pueda generar un presupuesto actualizado». Como una ventana grande («ocupa demasiado espacio si es un
+proyecto con muchos ítems») y como algo puntual, no para todos los proyectos. Maqueta aprobada (v2: buscador, orden por
+precio y la forma de la pestaña de costos del Formulador): `docs/plans/2026-11-12-presupuesto-actualizado-maqueta.html`.
+
+- **El acceso**: en «Cómo va el proyecto», el botón «Ver el presupuesto» (o «Presupuesto · N actualizados»), solo si el
+  proyecto tiene formulación en pesos con líneas (`m.prBase`). Abre `#dlgEjPres` (se arma en JS, `ejPrDlg`), casi a
+  pantalla completa; en el teléfono, entera y con la tabla en tarjetas.
+- **El original** (`ejPrBase`): las líneas de su formulación (`ejLineas`), cada una con cantidad × costo unitario = su
+  subtotal (la mano de obra en días-hombre: costo unitario = su total / sus DH). No se modifica. Sus indicadores son los del
+  Formulador (`js/calc.js`, `kpis`): costo total = costo directo + gastos generales e imprevistos; margen = utilidad /
+  venta (el precio neto de la formulación); utilidad por día-hombre; incidencia de la mano de obra = mano de obra / venta.
+- **Un presupuesto actualizado**: una cosa del archivo, tipo `presupuesto` (`ejPrCosa`, `ejValidar`), con solo lo que
+  cambia: `cambios` por línea (su `uid`: `cantidad`, `unitario`, `quitado`), `nuevos` (descripción, categoría, partida,
+  unidad, cantidad y costo unitario), `gg` (% de gastos generales e imprevistos; null, el de la formulación), `venta`
+  (null, el precio neto de la formulación) y `seguimiento`. Si la formulación cambia, los cambios se aplican sobre la
+  nueva (`ejPrAplicar`; un uid que ya no existe no cuenta). Se crea desde el original o como copia de otra versión
+  («+ Nuevo actualizado…»), se nombra, se guarda («Guardar»; nada se escribe antes), se descarta o se elimina.
+- **La ventana** (`ejPrPintar`, estado `ej.pr`): arriba las versiones y seis indicadores con el original y la diferencia;
+  las subpestañas Todos los costos / Materiales / Equipos / Mano de obra / Otros / Por partida (con su total, cuánto
+  cambió y cuántos cambios), el buscador (ID, descripción o partida), «Ordenar» (costo, costo unitario, alfabético,
+  mayor diferencia; también con un clic en el título de la columna) y «Mostrar» (la partida); la tabla con Original,
+  Subtotal y Diferencia, «Agregar costo», ✕ para quitar (↺ lo vuelve) y «Solo lo que cambió»; abajo el cierre con el % de
+  gastos generales y la venta, que se cambian («Usar la de la página» toma la venta de «Cómo va»).
+- **«Usar en «Cómo va el proyecto»»** (uno a la vez; `ejPrSeguimiento` en `ejModelo`): lo presupuestado de cada categoría
+  es el de siempre (Análisis Financiero o formulación) más lo que esa versión cambia en ella, y la fuente lo dice
+  («· con «Actualizado 1»»); su venta reemplaza a la calculada, pero no a la escrita en «Venta». Los gastos generales no
+  entran: «Cómo va» nunca los contó.
+- Las cajas de números llevan `data-num` y se llenan sin formato (`String(n)`): `numeros.js` les pone los puntos al
+  prepararlas; «800.000» puesto antes lo leería como 800,000.
+- Prueba: `test_el_presupuesto_completo_y_un_presupuesto_actualizado`.

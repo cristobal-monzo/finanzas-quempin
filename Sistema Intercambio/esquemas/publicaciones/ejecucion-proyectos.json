@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ejecucion/<dispositivo>.json (Proyectos en ejecución del Portal)",
-  "description": "Lo que el equipo anota en «Proyectos en ejecución» del Portal QUEMPIN (2026-10-28) sobre cada proyecto en ejecución: los gastos proyectados y las cotizaciones por decidir ('costo', en pesos sin IVA, con su estado: por decidir, aprobada, comprada o descartada, y si se simula), la venta corregida ('venta'; monto null vuelve a la calculada), las notas ('nota'), los pendientes ('pendiente'), los días trabajados ('dia': una persona un día, con su jornada y su nivel, para estimar la mano de obra real) las tarifas por nivel del proyecto ('tarifas') y a qué gastos proyectados o cotizados corresponde cada factura del Centro de Costos ('asociacion', 2026-11-06: 'ref' es su N° Ref. y 'destinos' los ítems, 'i:<grupo o id>', y las líneas del presupuesto de su formulación, 'l:<uid>'). Nada de esto es un costo real ni llega al Centro de Costos, que registra solo facturas y órdenes de compra. Cada cosa va con la clave de su proyecto: su N° de la Planilla de Ingreso ('req:<N°>') o su TAG del Análisis Financiero ('tag:<TAG>'). Cada navegador escribe solo su archivo (publicado/ejecucion/<dispositivo>.json) y lo vigente es la unión de todos: en cada 'id' manda el cambio más reciente ('t'), también si es 'borrado'.",
+  "description": "Lo que el equipo anota en «Proyectos en ejecución» del Portal QUEMPIN (2026-10-28) sobre cada proyecto en ejecución: los gastos proyectados y las cotizaciones por decidir ('costo', en pesos sin IVA, con su estado: por decidir, aprobada, comprada o descartada, y si se simula), la venta corregida ('venta'; monto null vuelve a la calculada), las notas ('nota'), los pendientes ('pendiente'), los días trabajados ('dia': una persona un día, con su jornada y su nivel, para estimar la mano de obra real) las tarifas por nivel del proyecto ('tarifas') y a qué gastos proyectados o cotizados corresponde cada factura del Centro de Costos ('asociacion', 2026-11-06: 'ref' es su N° Ref. y 'destinos' los ítems, 'i:<grupo o id>', y las líneas del presupuesto de su formulación, 'l:<uid>') y los presupuestos actualizados ('presupuesto', 2026-11-13: lo que cambia respecto del presupuesto de su formulación, que no se modifica: 'cambios' por línea, 'nuevos', el % 'gg' y la 'venta', y si se usa en «Cómo va el proyecto», 'seguimiento'). Nada de esto es un costo real ni llega al Centro de Costos, que registra solo facturas y órdenes de compra. Cada cosa va con la clave de su proyecto: su N° de la Planilla de Ingreso ('req:<N°>') o su TAG del Análisis Financiero ('tag:<TAG>'). Cada navegador escribe solo su archivo (publicado/ejecucion/<dispositivo>.json) y lo vigente es la unión de todos: en cada 'id' manda el cambio más reciente ('t'), también si es 'borrado'.",
   "dueno": "ejecucion",
   "type": "object",
   "properties": {
@@ -23,7 +23,7 @@
             "pattern": "^(req:(\\d{1,6}|\\d{3,4}t)|tag:[A-Z0-9]{2,10})$"
           },
           "tipo": {
-            "enum": ["costo", "nota", "pendiente", "venta", "dia", "tarifas", "asociacion"]
+            "enum": ["costo", "nota", "pendiente", "venta", "dia", "tarifas", "asociacion", "presupuesto"]
           },
           "t": {
             "type": "string",
@@ -147,6 +147,52 @@
             "type": "array",
             "items": { "type": "string", "pattern": "^(i:[a-z0-9-]{6,40}|l:[A-Za-z0-9_-]{1,40})$" },
             "description": "asociacion: los gastos a que corresponde la factura; vacía, no corresponde a ninguno"
+          },
+          "cambios": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "uid": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,40}$"},
+                "cantidad": {"type": "number", "minimum": 0},
+                "unitario": {"type": "number", "minimum": 0},
+                "quitado": {"type": "boolean"}
+              },
+              "required": ["uid"]
+            },
+            "description": "presupuesto: lo que cambia en cada línea del presupuesto de su formulación (su uid): su cantidad, su costo unitario sin IVA o si se quita"
+          },
+          "nuevos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string", "pattern": "^[a-z0-9-]{6,40}$"},
+                "descripcion": {"type": "string"},
+                "categoria": {"enum": ["Materiales", "Equipos", "Mano de Obra", "Otros"]},
+                "partida": {"type": "string", "description": "el código de su partida en la formulación (P1, PB…)"},
+                "unidad": {"type": "string"},
+                "cantidad": {"type": "number", "minimum": 0},
+                "unitario": {"type": "number", "minimum": 0}
+              },
+              "required": ["id", "categoria", "cantidad", "unitario"]
+            },
+            "description": "presupuesto: los costos que no estaban en su formulación"
+          },
+          "gg": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "presupuesto: el % de gastos generales e imprevistos sobre el costo directo; null, el de su formulación"
+          },
+          "venta": {
+            "type": ["number", "null"],
+            "exclusiveMinimum": 0,
+            "description": "presupuesto: la venta neta en pesos; null, el precio neto de su formulación"
+          },
+          "seguimiento": {
+            "type": "boolean",
+            "description": "presupuesto: si «Cómo va el proyecto» lo usa en vez del original (uno a la vez)"
           },
           "n1": {
             "type": "number",

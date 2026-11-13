@@ -4841,6 +4841,87 @@ def test_una_cotizacion_reemplaza_varias_lineas_del_presupuesto(navegador, sitio
     pagina.context.close()
 
 
+def _pr_kpi(pagina, k):
+    return pagina.locator(f'#dlgEjPres .ej-pr-kpi[data-k="{k}"] > b').inner_text()
+
+
+def _pr_filas(pagina):
+    return pagina.locator("#ejPrTabla tbody tr:not(.ej-pr-vacio)")
+
+
+def test_el_presupuesto_completo_y_un_presupuesto_actualizado(navegador, sitio):
+    """2026-11-13, pedido del usuario: ver el presupuesto original con el desglose completo de sus costos y generar un
+    presupuesto actualizado para evaluar los indicadores al agregar o quitar costos, sin perder el original; en una ventana
+    grande, con buscador y orden por precio como la pestaña de costos del Formulador."""
+    if not _con_formulador_js("calc.js"):
+        pytest.skip("sin el Formulador en este equipo no hay líneas del presupuesto")
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    abrir = pagina.locator("#ejSecComoVa .ej-pr-abrir")
+    assert abrir.inner_text() == "Ver el presupuesto"
+    abrir.click()
+    pagina.locator("#dlgEjPres").wait_for()
+    # El original: las cinco líneas de su formulación y los indicadores del Formulador, sin nada que cambiar
+    assert pagina.locator("#dlgEjPres .ej-pr-ver.on").inner_text().startswith("Original")
+    assert _pr_filas(pagina).count() == 5 and pagina.locator("#ejPrTabla input").count() == 0
+    assert (_pr_kpi(pagina, "costo"), _pr_kpi(pagina, "margen"), _pr_kpi(pagina, "dh"), _pr_kpi(pagina, "uDH")) == ("$2.500.000", "33 %", "10 DH", "$125.000")
+    # Buscador, que dice cuántas filas suma, y orden por costo unitario o, con un clic en su título, por subtotal
+    pagina.locator("#dlgEjPres .ej-pr-q").fill("cobre")
+    assert _pr_filas(pagina).count() == 1 and "filtrado · 1 de 5" in pagina.locator("#ejPrTabla tfoot").inner_text()
+    pagina.locator("#dlgEjPres .ej-pr-q").fill("")
+    pagina.locator('#dlgEjPres select[data-foco="pr-orden"]').select_option("pu-menor")
+    assert _pr_filas(pagina).first.locator("td").nth(1).inner_text() == "Cañería de cobre 1/2"
+    pagina.locator("#ejPrTabla th.ej-pr-ord", has_text="Subtotal").click()
+    assert _pr_filas(pagina).first.locator("td").nth(1).inner_text() == "Estanque inoxidable 100 L"
+    assert pagina.locator('#dlgEjPres select[data-foco="pr-orden"]').input_value() == "mayor"
+    # Una versión actualizada: 50 m más de cañería, sin el andamio y una válvula nueva
+    pagina.locator("#dlgEjPres .ej-pr-vers .cx-enlace", has_text="Crear un presupuesto actualizado").click()
+    assert pagina.locator("#dlgEjPres .ej-pr-ver.on").inner_text().startswith("Actualizado 1")
+    assert pagina.locator('#ejPrTabla input[data-foco="pr-p-m1"]').input_value() == "800.000"
+    pagina.locator('#ejPrTabla input[data-foco="pr-q-m2"]').fill("100")
+    pagina.locator('#ejPrTabla input[data-foco="pr-q-m2"]').press("Tab")
+    assert "ej-pr-cam" in (_pr_filas(pagina).filter(has_text="Cañería").get_attribute("class") or "")
+    pagina.locator('#ejPrTabla button[data-foco="pr-x-e1"]').click()
+    assert "quitado" in _pr_filas(pagina).filter(has_text="andamio").inner_text()
+    pagina.locator('#dlgEjPres button[data-foco="pr-agregar"]').click()
+    nueva = pagina.locator("#ejPrTabla tr.ej-pr-nue")
+    nueva.locator("input.ej-pr-dsc").fill("Válvula de bola")
+    nueva.locator("input.ej-pr-dsc").press("Tab")
+    pagina.locator("#ejPrTabla tr.ej-pr-nue td[data-et='Cantidad'] input").fill("2")
+    pagina.locator("#ejPrTabla tr.ej-pr-nue td[data-et='Cantidad'] input").press("Tab")
+    pagina.locator("#ejPrTabla tr.ej-pr-nue td[data-et='Costo unitario'] input").fill("25.000")
+    pagina.locator("#ejPrTabla tr.ej-pr-nue td[data-et='Costo unitario'] input").press("Tab")
+    # Los indicadores se recalculan contra el original: 2.500.000 + 200.000 − 500.000 + 50.000
+    assert _pr_kpi(pagina, "costo") == "$2.250.000" and _pr_kpi(pagina, "margen") == "40 %"
+    assert "Original $2.500.000" in pagina.locator('#dlgEjPres .ej-pr-kpi[data-k="costo"]').inner_text()
+    assert pagina.locator("#dlgEjPres .ej-pr-tab.on .ej-pr-cnt").inner_text() == "3"
+    pagina.locator('#dlgEjPres input[data-foco="pr-solo"]').check()
+    assert _pr_filas(pagina).count() == 3
+    pagina.locator('#ejPrAcc input[data-foco="pr-seg"]').check()
+    pagina.locator("#ejPrAcc .btn-pri").click()
+    sobre = _esperar_archivo(pagina, EJ, lambda s: any(x["tipo"] == "presupuesto" for x in s["datos"]["items"]))
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    pr = next(x for x in sobre["datos"]["items"] if x["tipo"] == "presupuesto")
+    assert (pr["nombre"], pr["seguimiento"], pr["gg"], pr["venta"]) == ("Actualizado 1", True, None, None)
+    assert sorted(pr["cambios"], key=lambda c: c["uid"]) == [{"uid": "e1", "quitado": True}, {"uid": "m2", "cantidad": 100}]
+    assert [(n["descripcion"], n["categoria"], n["cantidad"], n["unitario"]) for n in pr["nuevos"]] == [("Válvula de bola", "Materiales", 2, 25000)]
+    assert "guardado" in pagina.locator("#ejPrAcc .ej-pr-estado").inner_text()
+    # El original sigue igual
+    pagina.locator("#dlgEjPres .ej-pr-ver", has_text="Original").click()
+    assert _pr_kpi(pagina, "costo") == "$2.500.000" and pagina.locator("#ejPrTabla input").count() == 0
+    pagina.locator("#dlgEjPres .dlg-x").click()
+    pagina.locator("#dlgEjPres").wait_for(state="hidden")
+    # «Cómo va el proyecto» lo usa: materiales 1.000.000 + 200.000 + 50.000 y equipos sin el andamio
+    pagina.wait_for_function("() => document.querySelector('#ejSecComoVa .ej-pr-abrir').textContent === 'Presupuesto · 1 actualizado'")
+    assert "con «Actualizado 1»" in pagina.locator("#ejSecComoVa .ej-panel-cab").inner_text()
+    assert pagina.locator('#ejSecComoVa tr.ej-cat[data-cat="Materiales"] td').first.inner_text() == "$1.250.000"
+    # Al abrirlo de nuevo muestra el que está en uso
+    pagina.locator("#ejSecComoVa .ej-pr-abrir").click()
+    assert pagina.locator("#dlgEjPres .ej-pr-ver.on").inner_text().startswith("Actualizado 1")
+    assert _pr_kpi(pagina, "costo") == "$2.250.000"
+    assert not errores
+    pagina.context.close()
+
+
 def test_un_item_con_varios_proveedores_se_compara_y_se_elige_en_la_tabla(navegador, sitio):
     """Pedido del usuario (2026-10-30): al agregar un ítem, distintos proveedores; en la tabla, una columna con un menú con el
     nombre y el valor de cada uno, para comparar las cotizaciones y elegir el mejor."""

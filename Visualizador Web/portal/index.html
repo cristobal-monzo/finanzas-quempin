@@ -2221,6 +2221,148 @@
   .ej-costo-cuerpo .ej-eval:empty { display: flex; }
   @media (max-width: 900px) { .ej-costo-cuerpo { grid-template-columns: minmax(0, 1fr); } .ej-costo-cuerpo .ej-eval { position: static; } }
   #dlgEjVenta { width: min(480px, calc(100vw - 24px)); }
+  /* El presupuesto completo y sus versiones actualizadas (2026-11-13): una ventana grande, como la pestaña de costos del
+     Formulador (subpestañas con su cuadro de color, buscador, Ordenar y Mostrar, encabezados en mayúsculas) */
+  #dlgEjPres { width: min(1400px, calc(100vw - 24px)); height: calc(100dvh - 32px); }
+  #dlgEjPres .dlg { gap: 14px; }
+  #dlgEjPres .dlg-acc { margin-top: auto; }
+  .ej-pr-t th .ej-pr-sw { width: 9px; height: 9px; margin-right: 5px; vertical-align: 0; }
+  .ej-pr { display: flex; flex-direction: column; gap: 14px; padding-top: 2px; }
+  .ej-pr .pos { color: var(--estado-bad); }
+  .ej-pr .neg { color: var(--estado-ok); }
+  .ej-pr-vers { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .ej-pr-ver { display: flex; flex-direction: column; gap: 1px; min-height: 44px; padding: 6px 12px; border: 1px solid var(--gridline); border-radius: 10px; background: var(--page-plane); color: var(--text-primary); text-align: left; cursor: pointer; font: inherit; }
+  .ej-pr-ver b { display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; }
+  .ej-pr-ver > span { font-size: 12px; color: var(--texto-suave); }
+  .ej-pr-ver:hover { border-color: var(--baseline); }
+  .ej-pr-ver.on { background: var(--surface-card); border-color: var(--brand-orange); box-shadow: inset 0 -3px 0 var(--brand-orange); }
+  .ej-pr-seg { font-size: 11px; font-weight: 900; color: var(--estado-ok); }
+  .ej-pr-nueva, .ej-pr-filtro select, .ej-pr-sel { min-height: 36px; padding: 0 8px; border: 1px solid var(--gridline); border-radius: 8px; background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 13.5px; max-width: 280px; }
+  .ej-pr-nombre { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--texto-suave); }
+  .ej-pr-nombre input { width: 200px; min-height: 36px; padding: 0 10px; border: 1px solid var(--gridline); border-radius: 8px; background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 14px; }
+  .ej-pr-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--gridline); border-radius: 12px; }
+  .ej-pr-kpi { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 12px 14px; }
+  .ej-pr-kpi + .ej-pr-kpi { border-left: 1px solid var(--gridline); }
+  .ej-pr-k { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--texto-suave); }
+  .ej-pr-kpi > b { font-size: 21px; font-weight: 900; letter-spacing: -0.3px; text-align: left !important; }
+  .ej-pr-o { font-size: 12px; color: var(--texto-suave); }
+  .ej-pr-d { margin-left: 4px; padding: 1px 7px; border-radius: 9px; font-size: 11.5px; font-weight: 900; white-space: nowrap; background: var(--page-plane); color: var(--texto-suave); }
+  .ej-pr-d[data-nivel="ok"] { color: var(--estado-ok); background: color-mix(in srgb, var(--estado-ok) 13%, transparent); }
+  .ej-pr-d[data-nivel="bad"] { color: var(--estado-bad); background: color-mix(in srgb, var(--estado-bad) 12%, transparent); }
+  .ej-pr-mg { position: relative; display: block; height: 6px; margin: 4px 0 2px; border-radius: 3px; background: var(--gridline); }
+  .ej-pr-mg i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--estado-ok); }
+  .ej-pr-mg i[data-nivel="warn"] { background: var(--estado-warn); }
+  .ej-pr-mg i[data-nivel="bad"] { background: var(--estado-bad); }
+  .ej-pr-mg u { position: absolute; top: -3px; bottom: -3px; border-left: 2px solid var(--text-secondary); }
+  .ej-pr-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ej-pr-tab { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2px 8px; min-width: 150px; padding: 8px 12px; border: 1px solid var(--gridline); border-radius: 10px; background: var(--surface-card); color: var(--texto-suave); text-align: left; cursor: pointer; font: inherit; }
+  .ej-pr-tab:hover { border-color: var(--baseline); color: var(--text-primary); }
+  .ej-pr-tab.on { border-color: var(--brand-orange); box-shadow: inset 0 0 0 1px var(--brand-orange); background: var(--tinte); color: var(--text-primary); }
+  .ej-pr-tab > b { font-size: 13px; font-weight: 900; }
+  .ej-pr-tab > span:last-child { grid-column: 2 / -1; font-size: 12px; text-align: left !important; }
+  .ej-pr-tab em { font-style: normal; }
+  .ej-pr-cnt { min-width: 20px; padding: 0 6px; border: 1px solid var(--gridline); border-radius: 999px; font-size: 11px; line-height: 17px; text-align: center; color: var(--texto-suave); }
+  .ej-pr-cnt.cam { border-color: var(--brand-orange); background: var(--brand-orange); color: #000000; font-weight: 900; }
+  td .ej-pr-cnt { margin-left: 6px; }
+  .ej-pr-sw { display: inline-block; flex: 0 0 auto; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; }
+  .ej-pr-sw.mat { background: var(--brand-gray-11); }
+  .ej-pr-sw.eq { background: var(--brand-gray-7); }
+  .ej-pr-sw.mo { background: var(--brand-black); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2); }
+  .ej-pr-sw.otros { background: var(--surface-card) repeating-linear-gradient(45deg, var(--brand-orange) 0 2.5px, transparent 2.5px 6px); box-shadow: inset 0 0 0 1px var(--brand-gray-7); }
+  .ej-pr-sw.todo { background: conic-gradient(var(--brand-gray-11) 0 25%, var(--brand-gray-7) 0 50%, var(--brand-black) 0 75%, var(--brand-orange) 0); }
+  .ej-pr-sw.part { background: transparent; box-shadow: inset 0 0 0 2px var(--brand-gray-11); }
+  .ej-pr-barra { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+  .ej-pr-izq, .ej-pr-der { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .ej-pr-lock { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--texto-suave); }
+  .ej-pr-solo, .ej-pr-usa { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+  .ej-pr-q { width: 220px; min-height: 36px; padding: 0 10px; border: 1px solid var(--gridline); border-radius: 8px; background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 13.5px; }
+  .ej-pr .is-set { border-color: var(--brand-orange); box-shadow: inset 0 0 0 1px var(--brand-orange); }
+  .ej-pr-filtro { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
+  .ej-pr-tabla, .ej-pr-cierre { overflow-x: auto; border: 1px solid var(--border-hairline); border-radius: 10px; background: var(--surface-card); }
+  .ej-pr-cierre { align-self: flex-end; width: min(680px, 100%); }
+  .ej-pr-t { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .ej-pr-tabla .ej-pr-t { min-width: 980px; }
+  .ej-pr-t th { padding: 10px 8px; border-bottom: 1px solid var(--gridline); text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--texto-suave); white-space: nowrap; vertical-align: bottom; }
+  .ej-pr-t td { padding: 6px 8px; border-bottom: 1px solid var(--gridline); vertical-align: middle; }
+  .ej-pr-t th:first-child, .ej-pr-t td:first-child { padding-left: 14px; }
+  .ej-pr-t tbody tr:hover td { background: var(--surface-1); }
+  .ej-pr-t tfoot td { padding: 10px 8px; border-top: 1.5px solid var(--brand-gray-7); border-bottom: 0; font-weight: 900; }
+  .ej-pr-ord { cursor: pointer; user-select: none; }
+  .ej-pr-ord:hover, .ej-pr-ord.on { color: var(--text-primary); }
+  .ej-pr-ord.on { color: var(--brand-orange-ink); }
+  .ej-pr-flecha { margin-left: 4px; opacity: 0.55; }
+  .ej-pr-ord.on .ej-pr-flecha { opacity: 1; }
+  .ej-pr-code { width: 1%; font-size: 12px; font-weight: 900; color: var(--texto-suave); white-space: nowrap; }
+  .ej-pr-code .ej-pr-sw { width: 8px; height: 8px; margin-right: 6px; vertical-align: 1px; }
+  .ej-pr-pcode { display: inline-grid; place-items: center; min-width: 26px; height: 20px; margin-right: 6px; padding: 0 5px; border-radius: 4px; background: var(--brand-black); color: #ffffff; font-size: 11px; font-weight: 900; }
+  .ej-pr-ptxt { display: inline-block; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; color: var(--texto-suave); }
+  .ej-pr-sub { font-weight: 900; background: var(--surface-1); }
+  .ej-pr-mu { color: var(--texto-suave); }
+  .ej-pr-cam td { background: var(--tinte); }
+  .ej-pr-cam td:first-child { box-shadow: inset 3px 0 0 var(--brand-orange); }
+  .ej-pr-nue td:first-child { box-shadow: inset 3px 0 0 var(--brand-gray-11); }
+  .ej-pr-nue td { background: var(--surface-1); }
+  .ej-pr-qui td { color: var(--brand-gray-7); }
+  .ej-pr-qui td.ej-pr-desc > span:first-child, .ej-pr-qui td.ej-pr-sub { text-decoration: line-through; }
+  .ej-pr-tag { margin-left: 6px; padding: 1px 6px; border-radius: 8px; font-size: 10.5px; font-weight: 900; text-decoration: none; display: inline-block; }
+  .ej-pr-tag.n { background: var(--brand-gray-11); color: #ffffff; }
+  .ej-pr-tag.q { background: var(--brand-gray-7); color: #ffffff; }
+  .ej-pr-nuevo-dsc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .ej-pr-in { width: 110px; min-height: 32px; padding: 0 8px; border: 1px solid var(--gridline); border-radius: 6px; background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 13.5px; text-align: right; font-variant-numeric: tabular-nums; }
+  td[data-et="Cantidad"] .ej-pr-in { width: 80px; }
+  .ej-pr-in.ej-pr-dsc { flex: 1 1 180px; width: auto; min-width: 160px; text-align: left; }
+  .ej-pr-in.mod { border-color: var(--brand-orange); background: var(--tinte); font-weight: 900; }
+  .ej-pr-cierre .ej-pr-in { width: 130px; }
+  .ej-pr-gg .ej-pr-in { width: 64px; }
+  .ej-pr-x { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--texto-suave); cursor: pointer; font-size: 16px; }
+  .ej-pr-x:hover { background: var(--page-plane); color: var(--estado-bad); }
+  .ej-pr-acc-fila { width: 1%; }
+  .ej-pr-clic { cursor: pointer; }
+  .ej-pr-vacio td { padding: 22px; text-align: center; color: var(--texto-suave); }
+  .ej-pr-tot td { border-top: 1.5px solid var(--brand-gray-7); font-weight: 900; font-size: 15px; }
+  .ej-pr-gg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .ej-pr-usar { margin-left: 8px; padding: 2px 8px; border: 1px solid var(--gridline); border-radius: 8px; background: var(--surface-card); color: var(--brand-orange-ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .ej-pr-acc { flex-wrap: wrap; align-items: center; }
+  .ej-pr-estado { margin-right: auto; font-size: 13px; color: var(--texto-suave); }
+  .ej-pr-estado.sucio { color: var(--tinte-texto); }
+  .ej-pr-acc .ej-pr-usa { margin-right: 8px; }
+  .ej-pr-acc .btn-pri:disabled, .ej-pr-acc .cx-enlace:disabled { opacity: 0.45; cursor: default; }
+  .ej-pr-acc .ej-borrar { margin-right: 0; }
+  @media (max-width: 1100px) {
+    .ej-pr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .ej-pr-kpi:nth-child(4) { border-left: 0; }
+    .ej-pr-kpi:nth-child(n+4) { border-top: 1px solid var(--gridline); }
+  }
+  @media (max-width: 640px) {
+    #dlgEjPres { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+    #dlgEjPres[open] { max-height: 100dvh; }
+    .ej-pr-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ej-pr-kpi, .ej-pr-kpi + .ej-pr-kpi { border-left: 0; border-top: 1px solid var(--gridline); }
+    .ej-pr-kpi:nth-child(-n+2) { border-top: 0; }
+    .ej-pr-tab { min-width: 0; flex: 1 1 45%; }
+    .ej-pr-q, .ej-pr-nombre, .ej-pr-nombre input { width: 100%; }
+    .ej-pr-nombre { margin-left: 0; }
+    .ej-pr-q, .ej-pr-in, .ej-pr-sel, .ej-pr-nueva, .ej-pr-filtro select, .ej-pr-nombre input { font-size: 16px; }
+    .ej-pr-acc .ej-pr-usa, .ej-pr-estado { flex-basis: 100%; }
+    /* La tabla en tarjetas: descripción arriba y cada cifra con su nombre */
+    .ej-pr-tabla { overflow: visible; border: 0; background: none; }
+    .ej-pr-tabla .ej-pr-t { min-width: 0; }
+    .ej-pr-tabla thead { display: none; }
+    .ej-pr-tabla tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--gridline); border-radius: 10px; background: var(--surface-card); }
+    .ej-pr-tabla tbody tr.ej-pr-cam { background: var(--tinte); }
+    .ej-pr-tabla tbody tr.ej-pr-nue { background: var(--surface-1); }
+    .ej-pr-tabla tbody td, .ej-pr-tabla tbody tr:hover td { padding: 0; border: 0; background: none; box-shadow: none !important; }
+    .ej-pr-tabla td.ej-pr-code { grid-row: 1; grid-column: 1; }
+    .ej-pr-tabla td.ej-pr-acc-fila { grid-row: 1; grid-column: 2; justify-self: end; width: auto; }
+    .ej-pr-tabla td.ej-pr-desc { grid-column: 1 / -1; font-weight: 700; }
+    .ej-pr-tabla td.ej-num { text-align: left !important; }
+    .ej-pr-tabla td[data-et]:not(.ej-pr-desc):not([data-et=""])::before { content: attr(data-et); display: block; font-size: 11.5px; font-weight: 700; color: var(--texto-suave); }
+    .ej-pr-tabla td .ej-pr-in { width: 100% !important; }
+    .ej-pr-tabla tr.ej-pr-vacio { display: block; }
+    .ej-pr-tabla tfoot tr { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 10px 12px; }
+    .ej-pr-tabla tfoot td { padding: 0; border: 0; }
+    .ej-pr-tabla tfoot td[data-et]::before { content: attr(data-et) " "; font-weight: 700; color: var(--texto-suave); }
+  }
   #dlgEjCosto .dlg-acc .cx-enlace, #dlgEjPegar .dlg-acc .cx-enlace, #dlgEjVenta .dlg-acc .cx-enlace { min-height: 44px; }
   .ej-borrar { margin-right: auto; color: var(--estado-bad); }
   .dlg p.ej-dlg-pista { font-size: 13.5px; color: var(--texto-suave); }
@@ -11603,7 +11745,7 @@
     { id: 'descartadas', nombre: 'Descartadas', es: (it) => it.estado === 'descartada' },
     { id: 'todas', nombre: 'Todas', es: () => true }
   ];
-  const EJ_TIPOS = ['costo', 'nota', 'pendiente', 'venta', 'dia', 'tarifas', 'asociacion'];
+  const EJ_TIPOS = ['costo', 'nota', 'pendiente', 'venta', 'dia', 'tarifas', 'asociacion', 'presupuesto'];
   const EJ_DESTINO = /^(i:[a-z0-9-]{6,40}|l:[A-Za-z0-9_-]{1,40})$/;      // un ítem (su grupo o id) o una línea del presupuesto
   const EJ_IVA = 0.19;                                    // Chile: el Análisis Financiero y el Centro de Costos van sin IVA
   const EJ_MARGEN = { objetivo: 30, minimo: 20 };         // los de un proyecto nuevo del Formulador (js/store.js)
@@ -11757,6 +11899,23 @@
     if (x.tipo === 'asociacion') {
       if (!/^[A-Z0-9]+-\d+$/.test(texto(x.ref)) || !Array.isArray(x.destinos)) return null;
       return Object.assign(e, { ref: texto(x.ref), destinos: [...new Set(x.destinos.filter((d) => typeof d === 'string' && EJ_DESTINO.test(d)))].slice(0, 50) });
+    }
+    // Un presupuesto actualizado (2026-11-13): lo que cambia respecto del de su formulación, por línea (su uid), sus costos
+    // nuevos, el % de gastos generales e imprevistos (null: el de la formulación), la venta (null: la de la formulación) y si
+    // se usa en «Cómo va el proyecto»
+    if (x.tipo === 'presupuesto') {
+      const cambios = (Array.isArray(x.cambios) ? x.cambios : []).slice(0, 3000).filter((c) => c && EJ_PR_UID.test(texto(c.uid))).map((c) => {
+        const r = { uid: texto(c.uid) };
+        if (monto(c.cantidad) !== null) r.cantidad = c.cantidad;
+        if (monto(c.unitario) !== null) r.unitario = c.unitario;
+        if (c.quitado === true) r.quitado = true;
+        return r;
+      });
+      const nuevos = (Array.isArray(x.nuevos) ? x.nuevos : []).slice(0, 500)
+        .filter((n) => n && EJ_ID.test(texto(n.id)) && EJ_CAT.has(n.categoria) && monto(n.cantidad) !== null && monto(n.unitario) !== null)
+        .map((n) => ({ id: n.id, descripcion: ejTxt(n.descripcion, 200), categoria: n.categoria, partida: ejTxt(n.partida, 40), unidad: ejTxt(n.unidad, 12), cantidad: n.cantidad, unitario: n.unitario }));
+      const gg = typeof x.gg === 'number' && isFinite(x.gg) && x.gg >= 0 && x.gg <= 100 ? x.gg : null;
+      return Object.assign(e, { nombre: ejTxt(x.nombre, 60) || 'Presupuesto actualizado', cambios, nuevos, gg, venta: monto(x.venta) > 0 ? x.venta : null, seguimiento: x.seguimiento === true });
     }
     // La venta neta escrita aquí; null vuelve a la que se calcula
     if (x.monto !== null && !(monto(x.monto) > 0)) return null;
@@ -12297,7 +12456,15 @@
     const gastoCC = docs && docs.length ? docs.reduce((a, d) => { const p = ejDocPorCat(d); Object.keys(p).forEach((k) => { a[k] += p[k]; }); return a; }, { Materiales: 0, Equipos: 0, Otros: 0 }) : null;
     const ocs = ejOCs(t, costos);
     const par = (form && form.datos.parametros) || {};
-    const pres = ejPresupuesto(t, form, calc);
+    // El presupuesto completo y sus versiones actualizadas (2026-11-13); la que se usa en «Cómo va el proyecto» cambia lo
+    // presupuestado de cada categoría en lo que ella lo cambia, y su venta reemplaza a la calculada (no a la escrita aquí)
+    const prVersiones = ejPrVersiones(t);
+    const prBase = ejPrBase(calc, lineas);
+    const prSeg = ejPrSeguimiento(prVersiones, prBase);
+    let pres = ejPresupuesto(t, form, calc);
+    if (pres && prSeg) pres = { por: Object.fromEntries(EJ_CATS.map((c) => [c.k, Math.max(0, pres.por[c.k] + prSeg.delta[c.k])])), fuente: pres.fuente + ' · con «' + prSeg.v.nombre + '»' };
+    let venta = ejVenta(t, form, calc);
+    if (prSeg && prSeg.v.venta && !(venta && venta.manual)) venta = { monto: prSeg.v.venta, fuente: 'Venta del presupuesto «' + prSeg.v.nombre + '»' };
     const reales = (t.af && t.af.reales) || {};
     const mo = ejManoObra(t, form, calc);
     // La mano de obra real: la de los días anotados aquí y, si no hay ninguno, la «Mano de Obra Real» del Análisis Financiero
@@ -12305,7 +12472,7 @@
     mo.af = moAF;
     mo.fuente = mo.dias.length ? 'dias' : moAF !== null ? 'af' : '';
     const m = {
-      t, form, calc, costos, ocs, folios: new Set(ocs.map((o) => o.folio)), pres, venta: ejVenta(t, form, calc), lineas, mo,
+      t, form, calc, costos, ocs, folios: new Set(ocs.map((o) => o.folio)), pres, venta, lineas, mo, prVersiones, prBase, prSeg,
       docs, asoc, facturado, gastoFuente: gastoCC ? 'cc' : 'af',
       margenes: { objetivo: (Number(par.margenObjetivo) || EJ_MARGEN.objetivo) / 100, minimo: (Number(par.margenMinimo) || EJ_MARGEN.minimo) / 100 },
       metaDH: Number(par.metaUtilidadDH) > 0 ? Number(par.metaUtilidadDH) : 0,
@@ -13568,12 +13735,20 @@
      cierre y cuánto queda (o cuánto se pasa); bajo cada nombre, la barra de lo usado contra lo presupuestado (la raya). */
   function ejPresupuestoEl(m) {
     const fuenteG = m.gastoFuente === 'cc' ? 'las facturas del Centro de Costos' : 'los costos reales del Análisis Financiero';
-    const { s } = ejPanel('Cómo va el proyecto', m.pres ? m.pres.fuente : 'sin presupuesto',
+    const { s, cab } = ejPanel('Cómo va el proyecto', m.pres ? m.pres.fuente : 'sin presupuesto',
       'Gastado: ' + fuenteG + (m.mo.fuente === 'dias' ? ' y, en mano de obra, los días trabajados anotados aquí' : '') + '. Comprometido: las órdenes de compra que el Centro de Costos todavía no trae. '
       + 'Simulado: lo marcado en «Simular» en los gastos proyectados, menos lo ya facturado. '
       + (m.pres ? 'Al cierre: lo presupuestado o, si se pasa, lo gastado más lo comprometido y lo simulado (lo que todavía no se compra se estima con el presupuesto).'
         : 'Sin presupuesto, el cierre es lo gastado más lo comprometido y lo simulado.'));
     s.id = 'ejSecComoVa';
+    // El presupuesto completo, en una ventana grande (2026-11-13): solo un acceso aquí, para los casos puntuales
+    if (m.prBase) {
+      const n = m.prVersiones.length;
+      const b = ejBoton(n ? 'Presupuesto · ' + pl(n, 'actualizado', 'actualizados') : 'Ver el presupuesto', 'cx-enlace ej-pr-abrir', ejPrAbrir, 'tabla');
+      b.dataset.foco = 'ver-presupuesto';
+      b.title = 'El presupuesto de su formulación con todos sus costos, y versiones actualizadas para evaluar cambios';
+      cab.append(b);
+    }
     const tot = m.tot;
     // Lo gastado hasta hoy, en grande, con lo que se lleva del presupuesto y del avance
     const res = crear('div', 'ej-gastado');
@@ -13875,6 +14050,735 @@
     return out;
   }
 
+  // ---- El presupuesto completo y sus versiones actualizadas (2026-11-13) ----------------------------------------------
+  /* Pedido del usuario (2026-11-12/13): ver dentro del proyecto el presupuesto original con el desglose completo de sus
+     costos y poder modificarlo para evaluar condiciones e indicadores al agregar o quitar costos, sin perder el original:
+     «que se pueda generar un presupuesto actualizado». Como «una pestaña emergente grande», porque con muchos ítems ocupa
+     demasiado, y como algo puntual: no se aplica en todos los proyectos. Maqueta aprobada (v2, con buscador, orden y la
+     forma de la pestaña de costos del Formulador) en docs/plans/2026-11-12-presupuesto-actualizado-maqueta.html.
+     - El original son las líneas de su formulación (ejLineas, con las reglas del Formulador): no se modifica. Sus
+       indicadores son los del Formulador (costo total = costo directo + gastos generales e imprevistos; margen = utilidad
+       / venta; incidencia de la mano de obra = mano de obra / venta).
+     - Un presupuesto actualizado es una cosa del archivo (tipo 'presupuesto') con lo que cambia respecto del original:
+       cantidad, costo unitario o quitado por línea (por su uid), los costos nuevos, el % de gastos generales e imprevistos y
+       la venta. Si la formulación cambia después, los cambios se aplican sobre la versión nueva.
+     - «Usar en «Cómo va el proyecto»» (uno a la vez): lo presupuestado de cada categoría pasa a ser el de siempre más lo
+       que esa versión cambia en ella, y su venta (si la tiene) reemplaza a la calculada, no a la escrita aquí. */
+  const EJ_PR_SW = { Materiales: 'mat', Equipos: 'eq', 'Mano de Obra': 'mo', Otros: 'otros' };
+  const EJ_PR_PRE = { Materiales: 'M', Equipos: 'E', 'Mano de Obra': 'MO', Otros: 'O' };
+  const EJ_PR_ORDENES = [['', 'Como se ingresaron'], ['mayor', 'Mayor a menor costo'], ['menor', 'Menor a mayor costo'],
+    ['pu-mayor', 'Mayor a menor costo unitario'], ['pu-menor', 'Menor a mayor costo unitario'], ['az', 'Alfabético (A → Z)'], ['dif', 'Mayor diferencia con el original']];
+  const EJ_PR_UID = /^[A-Za-z0-9_-]{1,40}$/;
+  // Las versiones actualizadas del proyecto, de la más antigua a la más nueva
+  const ejPrVersiones = (t) => ejDe(t, 'presupuesto').sort((a, b) => (a.creado < b.creado ? -1 : a.creado > b.creado ? 1 : a.id < b.id ? -1 : 1));
+  // El original: cada línea con cantidad × costo unitario = su subtotal; la mano de obra en días-hombre
+  function ejPrBase(calc, lineas) {
+    if (!calc || !lineas.length) return null;
+    const T = calc.totals;
+    const items = lineas.map((l) => {
+      const mo = l.cat === 'Mano de Obra';
+      const conCant = l.cantidad > 0;
+      const q = conCant ? l.cantidad : 1;
+      return { id: l.uid, code: l.code, d: l.descripcion, cat: l.cat, partida: l.partida || '',
+        unidad: mo ? (conCant ? 'DH' : 'gl') : (l.unidad || 'Un.'), q0: q, p0: l.subtotal / q, q, p: l.subtotal / q, quitado: false };
+    });
+    const partidas = (calc.partidas || []).concat(calc.base ? [calc.base] : []).map((p) => ({ code: p.code, nombre: texto(p.descripcion) || p.code }));
+    return { items, partidas, gg0: T.cd > 0 ? (T.gg + T.imp) / T.cd * 100 : 0, venta0: T.precioNeto };
+  }
+  // Las líneas con los cambios de una versión, y sus costos nuevos al final
+  function ejPrAplicar(base, v) {
+    const ch = new Map((v ? v.cambios : []).map((c) => [c.uid, c]));
+    const items = base.items.map((b) => {
+      const c = ch.get(b.id) || {};
+      return Object.assign({}, b, { q: typeof c.cantidad === 'number' ? c.cantidad : b.q0, p: typeof c.unitario === 'number' ? c.unitario : b.p0, quitado: c.quitado === true });
+    });
+    (v ? v.nuevos : []).forEach((n) => items.push({ id: n.id, code: '', d: n.descripcion, cat: n.categoria, partida: n.partida, unidad: n.unidad || 'Un.',
+      q0: null, p0: null, q: n.cantidad, p: n.unitario, quitado: false, nuevo: true }));
+    return items;
+  }
+  const ejPrSub = (i) => (i.quitado ? 0 : i.q * i.p);
+  const ejPrSub0 = (i) => (i.nuevo ? 0 : i.q0 * i.p0);
+  // Cuánto cambió una línea: 'nue' nueva, 'qui' quitada, 'cam' otra cantidad o costo unitario, '' igual
+  const ejPrEstado = (i) => (i.nuevo ? 'nue' : i.quitado ? 'qui' : Math.abs(i.q - i.q0) > 1e-9 || Math.abs(i.p - i.p0) > 1e-6 ? 'cam' : '');
+  // Los indicadores de un presupuesto, con las reglas del Formulador (js/calc.js: kpis)
+  function ejPrCuentas(items, gg, V) {
+    const cat = Object.fromEntries(EJ_CATS.map((c) => [c.k, 0]));
+    let dh = 0;
+    items.forEach((i) => { if (i.quitado) return; cat[i.cat] += i.q * i.p; if (i.cat === 'Mano de Obra' && i.unidad === 'DH') dh += i.q; });
+    const cd = EJ_CATS.reduce((a, c) => a + cat[c.k], 0);
+    const ggm = cd * gg / 100;
+    const costo = cd + ggm;
+    const util = V > 0 ? V - costo : null;
+    return { cat, cd, ggm, costo, venta: V > 0 ? V : null, util, margen: util !== null ? util / V : null, dh,
+      uDH: util !== null && dh > 0 ? util / dh : null, inc: V > 0 ? cat['Mano de Obra'] / V : null };
+  }
+  // La versión que se usa en «Cómo va el proyecto»: cuánto cambia cada categoría y su venta
+  function ejPrSeguimiento(versiones, base) {
+    const v = base ? versiones.filter((x) => x.seguimiento).sort((a, b) => (a.t < b.t ? 1 : -1))[0] : null;
+    if (!v) return null;
+    const items = ejPrAplicar(base, v);
+    const delta = Object.fromEntries(EJ_CATS.map((c) => [c.k, 0]));
+    items.forEach((i) => { delta[i.cat] += ejPrSub(i) - ejPrSub0(i); });
+    return { v, delta };
+  }
+  // Una versión como cosa del archivo: solo lo que cambia respecto del original
+  function ejPrCosa(t, b, base) {
+    const cambios = b.items.filter((i) => !i.nuevo && ejPrEstado(i)).map((i) => {
+      const c = { uid: i.id };
+      if (i.quitado) c.quitado = true;
+      if (Math.abs(i.q - i.q0) > 1e-9) c.cantidad = i.q;
+      if (Math.abs(i.p - i.p0) > 1e-6) c.unitario = i.p;
+      return c;
+    });
+    const nuevos = b.items.filter((i) => i.nuevo).map((i) => ({ id: i.id, descripcion: i.d, categoria: i.cat, partida: i.partida, unidad: i.unidad, cantidad: i.q, unitario: i.p }));
+    return { id: b.id, proyecto: ejClave(t), tipo: 'presupuesto', nombre: ejTxt(b.nombre, 60) || 'Presupuesto actualizado', cambios, nuevos,
+      gg: Math.abs(b.gg - base.gg0) > 1e-9 ? b.gg : null, venta: b.venta, seguimiento: b.seguimiento, creado: b.creado || undefined };
+  }
+  /* La ventana del presupuesto (#dlgEjPres, se arma en JS): arriba las versiones y los indicadores; debajo las subpestañas
+     por categoría como la pestaña de costos del Formulador, con buscador, «Ordenar» y «Mostrar» (la partida); al final el
+     cierre (costo directo, gastos generales e imprevistos, costo total, venta y utilidad). En una versión actualizada se
+     cambian la cantidad y el costo unitario de cada línea, se quita una línea (✕, vuelve con ↺) o se agrega un costo; nada
+     se guarda hasta «Guardar». ej.pr: { clave, tab, q, orden, mostrar, solo, b (la versión a la vista; null: el original),
+     guardado (cómo estaba al abrirla, para saber si hay cambios) }. */
+  function ejPrCtx() {
+    const m = ej.modelo;
+    const pr = ej.pr;
+    if (!m || !pr || m.t.clave !== pr.clave || !m.prBase) return null;
+    return { m, t: m.t, base: m.prBase, vs: m.prVersiones };
+  }
+  function ejPrSucio() {
+    const pr = ej.pr;
+    if (!pr || !pr.b) return false;
+    const c = ejPrCtx();
+    return !c || !pr.b.guardada || JSON.stringify(ejPrCosa(c.t, pr.b, c.base)) !== pr.guardado;
+  }
+  const ejPrSalir = () => !ejPrSucio() || confirm('Hay cambios sin guardar en «' + ej.pr.b.nombre + '». ¿Dejarlos igual?');
+  const ejPrVenta = (c) => (ej.pr.b && ej.pr.b.venta > 0 ? ej.pr.b.venta : c.base.venta0);
+  function ejPrDlg() {
+    let d = $('#dlgEjPres');
+    if (d) return d;
+    d = crear('dialog');
+    d.id = 'dlgEjPres';
+    d.setAttribute('aria-labelledby', 'ejPrTit');
+    const f = crear('form', 'dlg');
+    f.noValidate = true;
+    // Enter en una caja la deja escrita (su «change»), no cierra nada
+    f.addEventListener('submit', (e) => { e.preventDefault(); const a = document.activeElement; if (a && a.matches('input')) a.blur(); });
+    const h = crear('h2');
+    h.id = 'ejPrTit';
+    const x = crear('button', 'dlg-x');
+    x.type = 'button';
+    x.setAttribute('aria-label', 'Cerrar');
+    x.append(icono('cerrar', 18));
+    x.addEventListener('click', () => { if (ejPrSalir()) d.close(); });
+    const cuerpo = crear('div', 'ej-pr');
+    cuerpo.id = 'ejPrCuerpo';
+    const acc = crear('div', 'dlg-acc ej-pr-acc');
+    acc.id = 'ejPrAcc';
+    f.append(h, x, cuerpo, acc);
+    d.append(f);
+    document.body.append(d);
+    d.addEventListener('cancel', (e) => { if (!ejPrSalir()) e.preventDefault(); });
+    d.addEventListener('close', () => { ej.pr = null; });
+    return d;
+  }
+  function ejPrAbrir() {
+    const m = ej.modelo;
+    if (!m || !m.prBase) return;
+    const d = ejPrDlg();
+    ej.pr = { clave: m.t.clave, tab: 'todo', q: '', orden: '', mostrar: '', solo: false, b: null, guardado: '' };
+    // Abre la que se usa en el seguimiento o, si no, la más nueva; sin versiones, el original
+    const vs = m.prVersiones;
+    const seg = vs.find((v) => v.seguimiento);
+    ejPrElegir(seg ? seg.id : vs.length ? vs[vs.length - 1].id : 'o');
+    d.showModal();
+    const f = d.querySelector('.dlg');
+    if (f) f.scrollTop = 0;
+  }
+  function ejPrElegir(id) {
+    const c = ejPrCtx();
+    if (!c) return;
+    const pr = ej.pr;
+    const v = id === 'o' ? null : c.vs.find((x) => x.id === id);
+    if (!v) { pr.b = null; pr.guardado = ''; }
+    else {
+      pr.b = { id: v.id, nombre: v.nombre, items: ejPrAplicar(c.base, v), gg: v.gg !== null ? v.gg : c.base.gg0, venta: v.venta, seguimiento: v.seguimiento, creado: v.creado, guardada: true };
+      pr.guardado = JSON.stringify(ejPrCosa(c.t, pr.b, c.base));
+    }
+    pr.solo = false;
+    ejPrPintar();
+  }
+  // Una versión nueva, copia del original o de otra versión (sin guardar hasta «Guardar»)
+  function ejPrNueva(desde) {
+    const c = ejPrCtx();
+    if (!c) return;
+    if (!rc.dir) { avisar('Conecta la carpeta de Intercambio para guardar un presupuesto actualizado.'); return; }
+    if (!ejPrSalir()) return;
+    const v = desde === 'o' ? null : c.vs.find((x) => x.id === desde) || null;
+    const items = ejPrAplicar(c.base, v).map((i) => (i.nuevo ? Object.assign({}, i, { id: ejNuevoId('prn-') }) : i));
+    const usados = new Set(c.vs.map((x) => x.nombre));
+    let n = c.vs.length + 1;
+    while (usados.has('Actualizado ' + n)) n++;
+    ej.pr.b = { id: ejNuevoId('pr-'), nombre: 'Actualizado ' + n, items, gg: v && v.gg !== null ? v.gg : c.base.gg0, venta: v ? v.venta : null, seguimiento: false, creado: '', guardada: false };
+    ej.pr.guardado = '';
+    ej.pr.solo = false;
+    ejPrPintar();
+  }
+  function ejPrPintar() {
+    const c = ejPrCtx();
+    if (!c) return;
+    const t = c.t;
+    $('#ejPrTit').textContent = 'Presupuesto · ' + (rcEtiqueta(t) ? rcEtiqueta(t) + ' ' : '') + t.titulo;
+    const d = $('#dlgEjPres');
+    const f = d.querySelector('.dlg');
+    const desplazado = f.scrollTop;
+    const a = document.activeElement;
+    const foco = a && d.contains(a) && a.dataset ? a.dataset.foco : null;
+    const cuerpo = $('#ejPrCuerpo');
+    cuerpo.textContent = '';
+    const tabla = crear('div', 'ej-pr-tabla');
+    tabla.id = 'ejPrTabla';
+    const cierre = crear('div', 'ej-pr-cierre');
+    cierre.id = 'ejPrCierre';
+    cuerpo.append(ejPrVersionesEl(c), ejPrKpisEl(c), ejPrTabsEl(c), ejPrBarraEl(c), tabla, cierre);
+    ejPrPintarTabla();
+    ejPrCierreEl(c, cierre);
+    ejPrAccEl(c);
+    f.scrollTop = desplazado;
+    if (foco) { const x = d.querySelector('[data-foco="' + CSS.escape(foco) + '"]'); if (x) x.focus({ preventScroll: true }); }
+  }
+  function ejPrVersionesEl(c) {
+    const pr = ej.pr;
+    const w = crear('div', 'ej-pr-vers');
+    const actual = pr.b ? pr.b.id : 'o';
+    const chip = (id, nombre, sub, seg) => {
+      const b = crear('button', 'ej-pr-ver' + (id === actual ? ' on' : ''));
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(id === actual));
+      b.dataset.foco = 'pr-ver-' + id;
+      const n = crear('b', null, nombre);
+      if (seg) n.append(crear('span', 'ej-pr-seg', 'en uso'));
+      b.append(n, crear('span', null, sub));
+      b.addEventListener('click', () => { if (id !== actual && ejPrSalir()) ejPrElegir(id); });
+      return b;
+    };
+    const f = c.t.formulacion;
+    const o = chip('o', 'Original', 'Formulación ' + f.codigo + (f.version > 1 ? ' v' + f.version : ''), false);
+    o.querySelector('b').prepend(icono('llave', 14));
+    o.title = 'El presupuesto de su formulación, tal como se vendió. No se modifica.';
+    w.append(o);
+    c.vs.forEach((v) => {
+      const b = chip(v.id, v.nombre, (v.por ? v.por + ', ' : '') + plCuando(v.t), v.seguimiento);
+      if (v.seguimiento) b.title = '«Cómo va el proyecto» usa este presupuesto';
+      w.append(b);
+    });
+    if (pr.b && !pr.b.guardada) w.append(chip(pr.b.id, pr.b.nombre, 'sin guardar', false));
+    // Otra versión: del original o copia de una de las actualizadas
+    if (rc.dir) {
+      if (!c.vs.length && !pr.b) {
+        const b = ejBoton('Crear un presupuesto actualizado', 'cx-enlace', () => ejPrNueva('o'), 'mas');
+        b.dataset.foco = 'pr-nueva';
+        w.append(b);
+      } else {
+        const s = crear('select', 'ej-pr-nueva');
+        s.setAttribute('aria-label', 'Nuevo presupuesto actualizado');
+        s.dataset.foco = 'pr-nueva';
+        const op = (v, txt) => { const x = crear('option', null, txt); x.value = v; return x; };
+        s.append(op('', '+ Nuevo actualizado…'), op('o', 'Copia del original'));
+        c.vs.forEach((v) => s.append(op(v.id, 'Copia de «' + v.nombre + '»')));
+        s.addEventListener('change', () => { const v = s.value; s.value = ''; if (v) ejPrNueva(v); });
+        w.append(s);
+      }
+    }
+    if (pr.b) {
+      const l = crear('label', 'ej-pr-nombre');
+      const x = crear('input');
+      x.type = 'text'; x.maxLength = 60; x.value = pr.b.nombre; x.autocomplete = 'off';
+      x.dataset.foco = 'pr-nombre';
+      x.addEventListener('change', () => { pr.b.nombre = ejTxt(x.value, 60) || pr.b.nombre; ejPrPintar(); });
+      l.append(crear('span', null, 'Nombre'), x);
+      w.append(l);
+    }
+    return w;
+  }
+  // Los indicadores arriba, como en la maqueta aprobada: en una versión actualizada, con el original y la diferencia
+  function ejPrKpisEl(c) {
+    const pr = ej.pr;
+    const m = c.m;
+    const o = ejPrCuentas(c.base.items, c.base.gg0, c.base.venta0);
+    const a = pr.b ? ejPrCuentas(pr.b.items, pr.b.gg, ejPrVenta(c)) : o;
+    const w = crear('div', 'ej-pr-kpis');
+    const pesos = (x) => (x === null ? '—' : ejPesos(x));
+    const dh = (x) => (x ? ejCantidad(x) + ' DH' : '—');
+    const tile = (nombre, k, fmt, mejor, ayuda, extra) => {
+      const d = crear('div', 'ej-pr-kpi');
+      d.dataset.k = k;
+      const et = crear('span', 'ej-pr-k', nombre);
+      if (ayuda) et.append(info(ayuda, 'Qué es: ' + nombre.toLowerCase()));
+      d.append(et, crear('b', 'ej-num', fmt(a[k])));
+      if (extra) d.append(extra);
+      if (pr.b) {
+        const s = crear('span', 'ej-pr-o', 'Original ' + fmt(o[k]));
+        const df = a[k] !== null && o[k] !== null ? a[k] - o[k] : 0;
+        const casi = fmt === ejPct ? Math.abs(df) < 0.0005 : Math.abs(df) < 0.5;
+        if (!casi) {
+          const ch = crear('span', 'ej-pr-d', (df > 0 ? '▲ ' : '▼ ') + (fmt === ejPct ? ejPuntos(df) : fmt(Math.abs(df))));
+          ch.dataset.nivel = mejor === 0 ? '' : (df > 0) === (mejor > 0) ? 'ok' : 'bad';
+          s.append(ch);
+        }
+        d.append(s);
+      }
+      return d;
+    };
+    // El margen con su barra, el mínimo y la meta de su formulación
+    let barra = null;
+    if (a.margen !== null) {
+      barra = crear('span', 'ej-pr-mg');
+      const r = crear('i');
+      r.style.width = Math.max(0, Math.min(100, a.margen / 0.5 * 100)) + '%';
+      r.dataset.nivel = a.margen >= m.margenes.objetivo ? 'ok' : a.margen >= m.margenes.minimo ? 'warn' : 'bad';
+      barra.append(r);
+      [m.margenes.minimo, m.margenes.objetivo].forEach((x) => { const u = crear('u'); u.style.left = Math.min(100, x / 0.5 * 100) + '%'; barra.append(u); });
+      barra.title = 'Mínimo ' + ejPct(m.margenes.minimo) + ' · meta ' + ejPct(m.margenes.objetivo);
+    }
+    w.append(tile('Costo total', 'costo', pesos, -1, 'Costo directo más gastos generales e imprevistos.'),
+      tile('Margen', 'margen', ejPct, 1, 'La venta menos el costo total, como parte de la venta. Mínimo ' + ejPct(m.margenes.minimo) + ', meta ' + ejPct(m.margenes.objetivo) + '.', barra),
+      tile('Utilidad', 'util', pesos, 1, ''),
+      tile('Días-hombre', 'dh', dh, 0, ''),
+      tile('Utilidad por día-hombre', 'uDH', pesos, 1, 'La utilidad dividida por los días-hombre de la mano de obra.'),
+      tile('Incidencia de la mano de obra', 'inc', ejPct, 0, 'La mano de obra como parte de la venta.'));
+    return w;
+  }
+  const ejPrItems = () => (ej.pr.b ? ej.pr.b.items : ejPrCtx().base.items);
+  function ejPrTabsEl(c) {
+    const pr = ej.pr;
+    const items = ejPrItems();
+    const w = crear('div', 'ej-pr-tabs');
+    w.setAttribute('role', 'tablist');
+    w.setAttribute('aria-label', 'Tipo de costo');
+    const tab = (k, sw, nombre, xs) => {
+      const b = crear('button', 'ej-pr-tab' + (pr.tab === k ? ' on' : ''));
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(pr.tab === k));
+      b.dataset.foco = 'pr-tab-' + k;
+      const n = xs ? xs.filter((i) => !i.quitado).length : (c.base.partidas.length || '');
+      const cam = pr.b && xs ? xs.filter((i) => ejPrEstado(i)).length : 0;
+      const cnt = crear('span', 'ej-pr-cnt' + (cam ? ' cam' : ''), String(cam || n));
+      if (cam) cnt.title = pl(cam, 'cambio', 'cambios');
+      b.append(crear('i', 'ej-pr-sw ' + sw), crear('b', null, nombre), cnt);
+      if (xs) {
+        const v = xs.reduce((s, i) => s + ejPrSub(i), 0);
+        const v0 = xs.reduce((s, i) => s + ejPrSub0(i), 0);
+        const val = crear('span', 'ej-num', ejPesos(v));
+        if (pr.b && Math.abs(v - v0) >= 0.5) val.append(crear('em', v > v0 ? 'pos' : 'neg', ' (' + (v > v0 ? '+' : '−') + ejPesos(Math.abs(v - v0)) + ')'));
+        b.append(val);
+      } else b.append(crear('span', null, 'El costo de cada partida'));
+      b.addEventListener('click', () => { pr.tab = k; ejPrPintar(); });
+      return b;
+    };
+    w.append(tab('todo', 'todo', 'Todos los costos', items));
+    EJ_CATS.forEach((cat) => w.append(tab(cat.k, EJ_PR_SW[cat.k], cat.nombre, items.filter((i) => i.cat === cat.k))));
+    w.append(tab('part', 'part', 'Por partida', null));
+    return w;
+  }
+  function ejPrBarraEl(c) {
+    const pr = ej.pr;
+    const w = crear('div', 'ej-pr-barra');
+    const izq = crear('div', 'ej-pr-izq');
+    if (!pr.b) {
+      const l = crear('span', 'ej-pr-lock');
+      l.append(icono('llave', 14), document.createTextNode('No se modifica'));
+      izq.append(l);
+    } else if (pr.tab !== 'part') {
+      const b = ejBoton('Agregar costo', 'cx-boton', ejPrAgregar, 'mas');
+      b.dataset.foco = 'pr-agregar';
+      const l = crear('label', 'ej-pr-solo');
+      const cb = crear('input');
+      cb.type = 'checkbox'; cb.checked = pr.solo; cb.dataset.foco = 'pr-solo';
+      cb.addEventListener('change', () => { pr.solo = cb.checked; ejPrPintarTabla(); });
+      l.append(cb, document.createTextNode('Solo lo que cambió'));
+      izq.append(b, l);
+    }
+    const der = crear('div', 'ej-pr-der');
+    const q = crear('input', 'ej-pr-q' + (pr.q ? ' is-set' : ''));
+    q.type = 'search'; q.placeholder = 'Buscar'; q.autocomplete = 'off'; q.value = pr.q; q.dataset.foco = 'pr-q';
+    q.setAttribute('aria-label', 'Buscar por descripción, ID o partida');
+    q.addEventListener('input', () => { pr.q = q.value; q.classList.toggle('is-set', !!pr.q); ejPrPintarTabla(); });
+    der.append(q);
+    const sel = (et, id, ops, v, al) => {
+      const l = crear('label', 'ej-pr-filtro');
+      const s = crear('select', v ? 'is-set' : '');
+      s.dataset.foco = 'pr-' + id;
+      ops.forEach(([val, txt]) => { const o = crear('option', null, txt); o.value = val; o.selected = val === v; s.append(o); });
+      s.addEventListener('change', () => al(s.value));
+      l.append(crear('span', null, et), s);
+      return l;
+    };
+    if (pr.tab !== 'part') {
+      der.append(sel('Ordenar', 'orden', EJ_PR_ORDENES.filter((o) => pr.b || o[0] !== 'dif'), pr.orden, (v) => { pr.orden = v; ejPrPintar(); }));
+      if (c.base.partidas.length > 1) {
+        der.append(sel('Mostrar', 'mostrar', [['', 'Todas las partidas']].concat(c.base.partidas.map((p) => [p.code, p.code + ' · ' + p.nombre])), pr.mostrar, (v) => { pr.mostrar = v; ejPrPintar(); }));
+      }
+    }
+    w.append(izq, der);
+    return w;
+  }
+  const ejPrPartidaDe = (c, code) => (c.base.partidas.find((p) => p.code === code) || {}).nombre || '';
+  const ejPrEnPartida = (i, code) => !code || i.partida === code || i.partida.split('+').includes(code);
+  function ejPrVisibles(c) {
+    const pr = ej.pr;
+    const q = norm(pr.q.trim());
+    let xs = ejPrItems().filter((i) => (pr.tab === 'todo' || i.cat === pr.tab) && ejPrEnPartida(i, pr.mostrar));
+    if (q) xs = xs.filter((i) => norm([i.code, i.d, i.partida, ejPrPartidaDe(c, i.partida)].join(' ')).includes(q));
+    if (pr.solo && pr.b) xs = xs.filter((i) => ejPrEstado(i));
+    const o = pr.orden;
+    const ord = (f) => { xs = xs.slice().sort(f); };
+    if (o === 'mayor') ord((a, b) => ejPrSub(b) - ejPrSub(a));
+    else if (o === 'menor') ord((a, b) => ejPrSub(a) - ejPrSub(b));
+    else if (o === 'pu-mayor') ord((a, b) => b.p - a.p);
+    else if (o === 'pu-menor') ord((a, b) => a.p - b.p);
+    else if (o === 'az') ord((a, b) => (!a.d - !b.d) || a.d.localeCompare(b.d, 'es', { sensitivity: 'base', numeric: true }));
+    else if (o === 'dif') ord((a, b) => Math.abs(ejPrSub(b) - ejPrSub0(b)) - Math.abs(ejPrSub(a) - ejPrSub0(a)));
+    return xs;
+  }
+  const ejPrDif = (d) => { const s = crear('span', d > 0.5 ? 'pos' : d < -0.5 ? 'neg' : null, Math.abs(d) >= 0.5 ? (d > 0 ? '+' : '−') + ejPesos(Math.abs(d)) : ''); return s; };
+  function ejPrTh(txt, k, num) {
+    const pr = ej.pr;
+    const th = crear('th', num ? 'ej-num' : null, txt);
+    th.scope = 'col';
+    if (!k) return th;
+    const pares = { sub: ['mayor', 'menor'], pu: ['pu-mayor', 'pu-menor'], az: ['az'], dif: ['dif'] }[k];
+    const on = pares.includes(pr.orden);
+    th.classList.add('ej-pr-ord');
+    if (on) th.classList.add('on');
+    th.tabIndex = 0;
+    th.dataset.foco = 'pr-th-' + k;
+    th.setAttribute('aria-sort', on ? (pr.orden === 'menor' || pr.orden === 'pu-menor' ? 'ascending' : 'descending') : 'none');
+    th.append(crear('span', 'ej-pr-flecha', on ? (pr.orden === 'menor' || pr.orden === 'pu-menor' ? '▲' : '▼') : '↕'));
+    const ir = () => {
+      pr.orden = k === 'sub' ? (pr.orden === 'mayor' ? 'menor' : 'mayor') : k === 'pu' ? (pr.orden === 'pu-mayor' ? 'pu-menor' : 'pu-mayor') : pr.orden === pares[0] ? '' : pares[0];
+      ejPrPintar();
+    };
+    th.addEventListener('click', ir);
+    th.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
+    return th;
+  }
+  function ejPrPintarTabla() {
+    const c = ejPrCtx();
+    if (!c) return;
+    const pr = ej.pr;
+    const w = $('#ejPrTabla');
+    w.textContent = '';
+    if (pr.tab === 'part') { ejPrPartidasEl(c, w); return; }
+    const ed = !!pr.b;
+    const xs = ejPrVisibles(c);
+    const tabla = crear('table', 'ej-pr-t');
+    const trh = crear('tr');
+    trh.append(ejPrTh('ID'), ejPrTh('Descripción', 'az'), ejPrTh('Partida'), ejPrTh('Cantidad', null, true), ejPrTh('Unidad'), ejPrTh('Costo unitario', 'pu', true));
+    if (ed) trh.append(ejPrTh('Original', null, true), ejPrTh('Subtotal', 'sub', true), ejPrTh('Diferencia', 'dif', true), crear('th'));
+    else trh.append(ejPrTh('Subtotal', 'sub', true));
+    const thead = crear('thead');
+    thead.append(trh);
+    const tbody = crear('tbody');
+    const celda = (et, clase, hijo) => { const td = crear('td', clase || null); td.dataset.et = et; if (hijo !== undefined && hijo !== null) td.append(hijo); return td; };
+    const caja = (i, f) => {
+      const x = crear('input', 'ej-pr-in');
+      x.type = 'text'; x.inputMode = 'decimal'; x.autocomplete = 'off';
+      x.setAttribute('data-num', '');
+      // Sin formato: numeros.js le pone los puntos al prepararla («800.000» antes de eso lo leería como 800,000)
+      x.value = String(Math.round(i[f] * 100) / 100);
+      x.dataset.foco = 'pr-' + f + '-' + i.id;
+      x.setAttribute('aria-label', (f === 'q' ? 'Cantidad de ' : 'Costo unitario de ') + (i.d || 'el costo nuevo'));
+      const orig = f === 'q' ? i.q0 : i.p0;
+      if (!i.nuevo && Math.abs(i[f] - orig) > 1e-6) { x.classList.add('mod'); x.title = 'Original: ' + (f === 'p' ? ejPesos(orig) : ejCantidad(orig)); }
+      x.addEventListener('change', () => {
+        const n = ejNumero(x.value);
+        if (n === null || n < 0) { x.value = ejCantidad(i[f]); return; }
+        i[f] = n;
+        ejPrPintar();
+      });
+      return x;
+    };
+    xs.forEach((i) => {
+      const e = ed ? ejPrEstado(i) : '';
+      const tr = crear('tr', e ? 'ej-pr-' + e : null);
+      const id = crear('td', 'ej-pr-code');
+      id.append(crear('i', 'ej-pr-sw ' + EJ_PR_SW[i.cat]), document.createTextNode(i.code || EJ_PR_PRE[i.cat] + '+'));
+      id.title = EJ_CAT.get(i.cat).nombre;
+      // Descripción, categoría y partida: escritas solo en un costo nuevo
+      let dsc, par;
+      if (ed && i.nuevo) {
+        dsc = crear('span', 'ej-pr-nuevo-dsc');
+        const x = crear('input', 'ej-pr-in ej-pr-dsc');
+        x.type = 'text'; x.maxLength = 200; x.value = i.d; x.placeholder = 'Descripción'; x.autocomplete = 'off';
+        x.dataset.foco = 'pr-d-' + i.id;
+        x.setAttribute('aria-label', 'Descripción del costo nuevo');
+        x.addEventListener('change', () => { i.d = ejTxt(x.value, 200); ejPrPintar(); });
+        const s = crear('select', 'ej-pr-sel');
+        s.dataset.foco = 'pr-c-' + i.id;
+        s.setAttribute('aria-label', 'Categoría del costo nuevo');
+        EJ_CATS.forEach((cat) => { const o = crear('option', null, cat.nombre); o.value = cat.k; o.selected = cat.k === i.cat; s.append(o); });
+        s.addEventListener('change', () => { i.cat = s.value; ejPrPintar(); });
+        dsc.append(x, s, crear('span', 'ej-pr-tag n', 'nuevo'));
+        par = crear('select', 'ej-pr-sel');
+        par.dataset.foco = 'pr-p-' + i.id;
+        par.setAttribute('aria-label', 'Partida del costo nuevo');
+        c.base.partidas.forEach((p) => { const o = crear('option', null, p.code + ' · ' + p.nombre); o.value = p.code; o.selected = p.code === i.partida; par.append(o); });
+        par.addEventListener('change', () => { i.partida = par.value; ejPrPintar(); });
+      } else {
+        dsc = crear('span', null, i.d);
+        if (e === 'qui') dsc.append(crear('span', 'ej-pr-tag q', 'quitado'));
+        par = crear('span', 'ej-pr-partida');
+        if (i.partida) par.append(crear('span', 'ej-pr-pcode', i.partida.includes('+') ? '÷' + i.partida.split('+').length : i.partida), crear('span', 'ej-pr-ptxt', i.partida.includes('+') ? i.partida : ejPrPartidaDe(c, i.partida)));
+      }
+      const tdD = celda('Descripción', 'ej-pr-desc', dsc);
+      tr.append(id, tdD, celda('Partida', null, par));
+      const editable = ed && !i.quitado;
+      tr.append(celda('Cantidad', 'ej-num', editable ? caja(i, 'q') : document.createTextNode(ejCantidad(i.q))), celda('Unidad', null, document.createTextNode(i.unidad)),
+        celda('Costo unitario', 'ej-num', editable ? caja(i, 'p') : document.createTextNode(ejPesos(i.p))));
+      if (ed) {
+        const b = crear('button', 'ej-pr-x');
+        b.type = 'button';
+        b.dataset.foco = 'pr-x-' + i.id;
+        if (i.quitado) {
+          b.textContent = '↺'; b.title = 'Volver a incluir'; b.setAttribute('aria-label', 'Volver a incluir ' + i.d);
+          b.addEventListener('click', () => { i.quitado = false; ejPrPintar(); });
+        } else {
+          b.append(icono('cerrar', 14)); b.title = i.nuevo ? 'Eliminar' : 'Quitar'; b.setAttribute('aria-label', (i.nuevo ? 'Eliminar ' : 'Quitar ') + (i.d || 'el costo nuevo'));
+          b.addEventListener('click', () => {
+            if (i.nuevo) pr.b.items.splice(pr.b.items.indexOf(i), 1); else i.quitado = true;
+            ejPrPintar();
+          });
+        }
+        tr.append(celda('Original', 'ej-num ej-pr-mu', document.createTextNode(i.nuevo ? '—' : ejPesos(ejPrSub0(i)))),
+          celda('Subtotal', 'ej-num ej-pr-sub', document.createTextNode(ejPesos(ejPrSub(i)))), celda('Diferencia', 'ej-num', ejPrDif(ejPrSub(i) - ejPrSub0(i))), celda('', 'ej-pr-acc-fila', b));
+      } else tr.append(celda('Subtotal', 'ej-num ej-pr-sub', document.createTextNode(ejPesos(ejPrSub(i)))));
+      tbody.append(tr);
+    });
+    if (!xs.length) {
+      const tr = crear('tr', 'ej-pr-vacio');
+      const td = crear('td', null, pr.q || pr.mostrar || pr.solo ? 'No hay costos con este filtro.' : 'Sin costos de este tipo.');
+      td.colSpan = ed ? 10 : 7;
+      tr.append(td);
+      tbody.append(tr);
+    }
+    // El total de lo que se ve; con filtro dice cuántas filas suma, como el Formulador
+    const todos = ejPrItems().filter((i) => pr.tab === 'todo' || i.cat === pr.tab);
+    const sum = xs.reduce((s, i) => s + ejPrSub(i), 0);
+    const sum0 = xs.reduce((s, i) => s + ejPrSub0(i), 0);
+    const tfoot = crear('tfoot');
+    const trf = crear('tr');
+    const et = crear('td', null, 'Total ' + (pr.tab === 'todo' ? 'costo directo' : EJ_CAT.get(pr.tab).nombre.toLowerCase()) + (xs.length !== todos.length ? ' filtrado · ' + xs.length + ' de ' + todos.length : ''));
+    et.colSpan = 6;
+    trf.append(et);
+    if (ed) trf.append(celda('Original', 'ej-num ej-pr-mu', document.createTextNode(ejPesos(sum0))), celda('Subtotal', 'ej-num', document.createTextNode(ejPesos(sum))), celda('Diferencia', 'ej-num', ejPrDif(sum - sum0)), crear('td'));
+    else trf.append(celda('Subtotal', 'ej-num', document.createTextNode(ejPesos(sum))));
+    tfoot.append(trf);
+    tabla.append(thead, tbody, tfoot);
+    w.append(tabla);
+  }
+  // Por partida: sus cuatro categorías y su costo directo (un costo repartido entre varias va en partes iguales)
+  function ejPrPartidasEl(c, w) {
+    const pr = ej.pr;
+    const ed = !!pr.b;
+    const q = norm(pr.q.trim());
+    const items = ejPrItems();
+    const reparto = (i, code, f) => { const ps = i.partida.split('+'); return ps.includes(code) ? f(i) / ps.length : 0; };
+    const tabla = crear('table', 'ej-pr-t');
+    const trh = crear('tr');
+    trh.append(ejPrTh('ID'), ejPrTh('Partida'));
+    EJ_CATS.forEach((cat) => { const th = ejPrTh(cat.nombre, null, true); th.prepend(crear('i', 'ej-pr-sw ' + EJ_PR_SW[cat.k])); trh.append(th); });
+    if (ed) trh.append(ejPrTh('Original', null, true), ejPrTh('Costo directo', null, true), ejPrTh('Diferencia', null, true));
+    else trh.append(ejPrTh('Costo directo', null, true));
+    const thead = crear('thead');
+    thead.append(trh);
+    const tbody = crear('tbody');
+    const td = (txt, clase, et) => { const x = crear('td', clase || 'ej-num', txt); if (et) x.dataset.et = et; return x; };
+    c.base.partidas.filter((p) => !q || norm(p.code + ' ' + p.nombre).includes(q)).forEach((p) => {
+      const tr = crear('tr', 'ej-pr-clic');
+      tr.tabIndex = 0;
+      tr.title = 'Ver los costos de ' + p.code;
+      const cd = items.reduce((s, i) => s + reparto(i, p.code, ejPrSub), 0);
+      const cd0 = items.reduce((s, i) => s + reparto(i, p.code, ejPrSub0), 0);
+      const nom = crear('td', 'ej-pr-desc', p.nombre);
+      const cam = ed ? items.filter((i) => ejPrEnPartida(i, p.code) && ejPrEstado(i)).length : 0;
+      if (cam) nom.append(crear('span', 'ej-pr-cnt cam', String(cam)));
+      tr.append(td(p.code, 'ej-pr-code'), nom);
+      EJ_CATS.forEach((cat) => tr.append(td(ejPesos(items.filter((i) => i.cat === cat.k).reduce((s, i) => s + reparto(i, p.code, ejPrSub), 0)), null, cat.nombre)));
+      if (ed) { tr.append(td(ejPesos(cd0), 'ej-num ej-pr-mu', 'Original'), td(ejPesos(cd), 'ej-num ej-pr-sub', 'Costo directo')); const x = td('', 'ej-num', 'Diferencia'); x.append(ejPrDif(cd - cd0)); tr.append(x); }
+      else tr.append(td(ejPesos(cd), 'ej-num ej-pr-sub', 'Costo directo'));
+      const ir = () => { pr.mostrar = p.code; pr.tab = 'todo'; pr.q = ''; ejPrPintar(); };
+      tr.addEventListener('click', ir);
+      tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ir(); } });
+      tbody.append(tr);
+    });
+    tabla.append(thead, tbody);
+    w.append(tabla);
+  }
+  function ejPrAgregar() {
+    const c = ejPrCtx();
+    const pr = ej.pr;
+    if (!c || !pr.b) return;
+    const cat = pr.tab !== 'todo' && pr.tab !== 'part' ? pr.tab : 'Materiales';
+    const id = ejNuevoId('prn-');
+    pr.b.items.push({ id, code: '', d: '', cat, partida: pr.mostrar || (c.base.partidas[0] || {}).code || '', unidad: cat === 'Mano de Obra' ? 'DH' : 'Un.',
+      q0: null, p0: null, q: 1, p: 0, quitado: false, nuevo: true });
+    pr.orden = ''; pr.q = ''; pr.solo = false;
+    ejPrPintar();
+    const x = $('#dlgEjPres').querySelector('[data-foco="pr-d-' + id + '"]');
+    if (x) { x.focus(); x.scrollIntoView({ block: 'nearest' }); }
+  }
+  // El cierre: costo directo, gastos generales e imprevistos (su % se cambia), costo total, venta (se cambia) y utilidad
+  function ejPrCierreEl(c, w) {
+    const pr = ej.pr;
+    const ed = !!pr.b;
+    const o = ejPrCuentas(c.base.items, c.base.gg0, c.base.venta0);
+    const a = ed ? ejPrCuentas(pr.b.items, pr.b.gg, ejPrVenta(c)) : o;
+    const tabla = crear('table', 'ej-pr-t ej-pr-cierre-t');
+    if (ed) {
+      const trh = crear('tr');
+      trh.append(crear('th'), ejPrTh('Original', null, true), ejPrTh('Actualizado', null, true), ejPrTh('Diferencia', null, true));
+      const th = crear('thead');
+      th.append(trh);
+      tabla.append(th);
+    }
+    const tbody = crear('tbody');
+    const fila = (et, k, cls, campo, bueno) => {
+      const tr = crear('tr', cls || null);
+      const e = crear('td');
+      e.append(et);
+      tr.append(e);
+      if (ed) {
+        tr.append(crear('td', 'ej-num ej-pr-mu', o[k] === null ? '—' : ejPesos(o[k])));
+        const v = crear('td', 'ej-num');
+        v.append(campo || document.createTextNode(a[k] === null ? '—' : ejPesos(a[k])));
+        const d = crear('td', 'ej-num');
+        if (a[k] !== null && o[k] !== null) { const s = ejPrDif(a[k] - o[k]); if (bueno && s.className) s.className = s.className === 'pos' ? 'neg' : 'pos'; d.append(s); }
+        tr.append(v, d);
+      } else tr.append(crear('td', 'ej-num', a[k] === null ? '—' : ejPesos(a[k])));
+      tbody.append(tr);
+    };
+    const caja = (valor, foco, etiqueta, al) => {
+      const x = crear('input', 'ej-pr-in');
+      x.type = 'text'; x.inputMode = 'decimal'; x.autocomplete = 'off';
+      x.setAttribute('data-num', '');
+      x.value = String(Math.round(valor * 100) / 100);
+      x.dataset.foco = foco;
+      x.setAttribute('aria-label', etiqueta);
+      x.addEventListener('change', () => { const n = ejNumero(x.value); if (n === null || n < 0) { x.value = ejCantidad(valor); return; } al(n); ejPrPintar(); });
+      return x;
+    };
+    const gg = ed ? pr.b.gg : c.base.gg0;
+    const etGG = crear('span', 'ej-pr-gg');
+    etGG.append(document.createTextNode('Gastos generales e imprevistos · '));
+    if (ed) {
+      const x = caja(Math.round(gg * 100) / 100, 'pr-gg', 'Porcentaje de gastos generales e imprevistos', (n) => { pr.b.gg = Math.min(100, n); });
+      if (Math.abs(gg - c.base.gg0) > 1e-9) x.classList.add('mod');
+      etGG.append(x, document.createTextNode(' %'));
+    } else etGG.append(document.createTextNode((Math.round(gg * 100) / 100).toLocaleString('es-CL') + ' %'));
+    fila(document.createTextNode('Costo directo'), 'cd');
+    fila(etGG, 'ggm');
+    fila(document.createTextNode('Costo total'), 'costo', 'ej-pr-tot');
+    // La venta: la de su formulación; en una versión se cambia (un adicional, un descuento) o se toma la de la página
+    const etV = crear('span', 'ej-pr-gg');
+    etV.append(document.createTextNode('Venta neta'), info('En el original, el precio neto de su formulación. En un presupuesto actualizado se puede cambiar, por ejemplo por un adicional aprobado o un descuento.', 'Qué venta es'));
+    let campoV = null;
+    if (ed) {
+      campoV = caja(ejPrVenta(c), 'pr-venta', 'Venta neta del presupuesto actualizado', (n) => { pr.b.venta = n > 0 && Math.abs(n - c.base.venta0) >= 0.5 ? n : null; });
+      if (pr.b.venta) campoV.classList.add('mod');
+      const vp = c.m.venta ? c.m.venta.monto : null;
+      if (vp && Math.abs(vp - ejPrVenta(c)) >= 0.5) {
+        const b = crear('button', 'ej-pr-usar', 'Usar la de la página: ' + ejPesos(vp));
+        b.type = 'button';
+        b.title = c.m.venta.fuente;
+        b.dataset.foco = 'pr-venta-pagina';
+        b.addEventListener('click', () => { pr.b.venta = Math.abs(vp - c.base.venta0) >= 0.5 ? vp : null; ejPrPintar(); });
+        etV.append(b);
+      }
+    }
+    fila(etV, 'venta', null, campoV, true);
+    fila(document.createTextNode('Utilidad · margen ' + ejPct(a.margen)), 'util', null, null, true);
+    tabla.append(tbody);
+    w.append(tabla);
+  }
+  // Abajo, fijo: usarlo en «Cómo va el proyecto», si hay cambios sin guardar, eliminar, descartar y guardar
+  function ejPrAccEl(c) {
+    const pr = ej.pr;
+    const acc = $('#ejPrAcc');
+    acc.textContent = '';
+    if (!pr.b) {
+      acc.append(crear('span', 'ej-pr-estado', 'El presupuesto de su formulación, tal como se vendió.'));
+      const b = crear('button', 'cx-enlace', 'Cerrar');
+      b.type = 'button';
+      b.addEventListener('click', () => $('#dlgEjPres').close());
+      acc.append(b);
+      return;
+    }
+    const l = crear('label', 'ej-pr-usa');
+    const cb = crear('input');
+    cb.type = 'checkbox'; cb.checked = pr.b.seguimiento; cb.dataset.foco = 'pr-seg';
+    cb.addEventListener('change', () => { pr.b.seguimiento = cb.checked; ejPrPintar(); });
+    l.append(cb, document.createTextNode('Usar en «Cómo va el proyecto»'), info('Si lo marcas, lo presupuestado de cada categoría y la venta de la página salen de este presupuesto actualizado; si no, del original. Solo uno a la vez.', 'Qué cambia'));
+    const sucio = ejPrSucio();
+    const n = pr.b.items.filter((i) => ejPrEstado(i)).length + (Math.abs(pr.b.gg - c.base.gg0) > 1e-9 ? 1 : 0) + (pr.b.venta ? 1 : 0);
+    const est = crear('span', 'ej-pr-estado');
+    est.append(crear('b', null, pl(n, 'cambio', 'cambios')), document.createTextNode(' respecto del original · ' + (sucio ? 'sin guardar' : 'guardado')));
+    if (sucio) est.classList.add('sucio');
+    acc.append(l, est);
+    if (pr.b.guardada) {
+      const del = crear('button', 'cx-enlace ej-borrar', 'Eliminar');
+      del.type = 'button';
+      del.addEventListener('click', ejPrEliminar);
+      acc.append(del);
+    }
+    const des = crear('button', 'cx-enlace', 'Descartar');
+    des.type = 'button';
+    des.disabled = !sucio;
+    des.addEventListener('click', () => { if (pr.b.guardada) ejPrElegir(pr.b.id); else ejPrElegir(c.vs.length ? c.vs[c.vs.length - 1].id : 'o'); });
+    const ok = crear('button', 'btn-pri', 'Guardar');
+    ok.type = 'button';
+    ok.disabled = !sucio;
+    ok.addEventListener('click', ejPrGuardar);
+    acc.append(des, ok);
+  }
+  function ejPrGuardar() {
+    const c = ejPrCtx();
+    const pr = ej.pr;
+    if (!c || !pr.b) return;
+    if (!rc.dir) { avisar('Conecta la carpeta de Intercambio para guardar el presupuesto.'); return; }
+    const sin = pr.b.items.find((i) => i.nuevo && !texto(i.d).trim());
+    if (sin) {
+      avisar('Escribe la descripción del costo nuevo antes de guardar.');
+      pr.tab = 'todo'; pr.q = ''; pr.solo = false; pr.mostrar = '';
+      ejPrPintar();
+      const x = $('#dlgEjPres').querySelector('[data-foco="pr-d-' + sin.id + '"]');
+      if (x) x.focus();
+      return;
+    }
+    const cosa = ejPrCosa(c.t, pr.b, c.base);
+    const cambios = [cosa];
+    // Uno a la vez en «Cómo va el proyecto»
+    if (cosa.seguimiento) c.vs.filter((v) => v.id !== cosa.id && v.seguimiento).forEach((v) => cambios.push(ejPrCosa(c.t, { id: v.id, nombre: v.nombre, items: ejPrAplicar(c.base, v), gg: v.gg !== null ? v.gg : c.base.gg0, venta: v.venta, seguimiento: false, creado: v.creado }, c.base)));
+    pr.b.guardada = true;
+    ejPoner(cambios, '«' + cosa.nombre + '» guardado. El original sigue igual.');
+    const c2 = ejPrCtx();
+    if (!c2) return;
+    const v = c2.vs.find((x) => x.id === cosa.id);
+    if (v) pr.b.creado = v.creado;
+    pr.guardado = JSON.stringify(ejPrCosa(c2.t, pr.b, c2.base));
+    ejPrPintar();
+  }
+  function ejPrEliminar() {
+    const c = ejPrCtx();
+    const pr = ej.pr;
+    if (!c || !pr.b || !pr.b.guardada) return;
+    if (!confirm('¿Eliminar «' + pr.b.nombre + '»? El original no cambia.')) return;
+    const v = c.vs.find((x) => x.id === pr.b.id);
+    if (!v) return;
+    ejPoner([{ id: v.id, proyecto: v.proyecto, tipo: 'presupuesto', creado: v.creado, borrado: true }], 'Se eliminó «' + v.nombre + '».');
+    ejPrElegir('o');
+  }
   // ---- Las compras y cotizaciones ------------------------------------------------------------------------------------
   /* En bloques: una compra sola, o las cotizaciones para lo mismo (su grupo) juntas, de la más barata a la más cara. Los
      bloques, del más nuevo al más antiguo (por cuándo se anotaron: cambiar uno no lo mueve de lugar). */
