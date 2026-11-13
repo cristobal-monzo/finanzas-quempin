@@ -40,7 +40,8 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   el cierre, el criterio plazo y una visita que ya pasó, con las tablas de
   `DATA.reglas` (las mismas de `oportunidades_config.json`). Una licitación que
   ya cerró no se muestra. `categoria()` y `evaluar()` del JS repiten
-  `Evaluador.categoria` y los tramos del plazo:
+  `Evaluador.categoria` (con el `op.tope` que calcula Python: tema, nota del
+  rubro, monto mínimo; 2026-11-13) y los tramos del plazo:
   `tests/test_tablero_oportunidades.py` las compara en Chromium.
 - **Visita a terreno** (2026-10-15): viene de la ficha de las bases (la API no
   la trae). Con varias fechas, `visitaDelDia` muestra la próxima y la da por

@@ -760,14 +760,14 @@ __MARCA_FUENTES__
     // Los puntajes vienen del build; lo que depende de la fecha (días para el
     // cierre, una visita que ya pasó) se recalcula con la fecha de hoy, con
     // las mismas tablas que usa oportunidades.py (DATA.reglas).
-    // Misma regla que Evaluador.categoria en oportunidades.py: puntaje, con tope si el rubro no es claro.
-    function categoria(puntaje, rubro) {
-      var cat = ORDEN_CAT[ORDEN_CAT.length - 1] || 'baja', tope = null;
+    // Misma regla que Evaluador.categoria en oportunidades.py: la categoría por puntaje, sin pasar
+    // de su tope (op.tope: el tema del rubro, la nota del rubro o el monto mínimo). El tope lo calcula
+    // Python (topesPorRubro, niveles de los temas, monto.minimo) porque no depende de los pesos.
+    function categoria(puntaje, tope) {
+      var cat = ORDEN_CAT[ORDEN_CAT.length - 1] || 'baja';
       for (var i = 0; i < CATS.length; i++) if (puntaje >= CATS[i].desde) { cat = CATS[i].id; break; }
-      (DATA.topesPorRubro || []).forEach(function (t) {
-        if (rubro < t.rubroMenorA && ORDEN_CAT.indexOf(cat) < ORDEN_CAT.indexOf(t.categoriaMaxima)) { cat = t.categoriaMaxima; tope = t; }
-      });
-      return { cat: cat, tope: tope };
+      if (tope && ORDEN_CAT.indexOf(tope.categoria) >= 0 && ORDEN_CAT.indexOf(cat) < ORDEN_CAT.indexOf(tope.categoria)) return { cat: tope.categoria, tope: tope };
+      return { cat: cat, tope: null };
     }
     // La visita que toca hoy: la próxima de sus fechas o, si ya pasaron todas, la última.
     function visitaDelDia(op) {
@@ -801,7 +801,7 @@ __MARCA_FUENTES__
       var total = 0, suma = 0;
       CRIT.forEach(function (c) { total += pesos[c.id]; suma += p[c.id] * pesos[c.id]; });
       var puntaje = total ? Math.round(suma / total * 10) / 10 : 0;
-      var c = descartar.length ? { cat: 'descartar', tope: null } : categoria(puntaje, p.rubro || 0);
+      var c = descartar.length ? { cat: 'descartar', tope: null } : categoria(puntaje, op.tope);
       return { puntaje: puntaje, cat: c.cat, tope: c.tope, descartar: descartar, dias: dias, p: p, total: total };
     }
 
@@ -997,7 +997,7 @@ __MARCA_FUENTES__
       var razones = el('ul', { clase: 'op-razones' });
       (op.aFavor || []).forEach(function (t) { razones.appendChild(el('li', { clase: 'favor' }, [el('span', { clase: 'ico', 'aria-label': 'A favor', texto: '✓' }), el('span', { texto: t })])); });
       (op.enContra || []).forEach(function (t) { razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: t })])); });
-      if (e.tope) razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: 'Rubro no del todo claro: no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '»' })]));
+      if (e.tope) razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: e.tope.motivo + ': no pasa de «' + NOMBRE_CAT[e.tope.categoria] + '»' })]));
       var ver = el('button', { clase: 'op-btn', type: 'button', texto: 'Ver evaluación' });
       ver.addEventListener('click', function () { abrirEnTabla(op.codigo); });
       var acciones = el('div', { clase: 'op-acciones' }, [ver, botonFormulador(op, 'op-btn-sec')]);
@@ -1015,7 +1015,7 @@ __MARCA_FUENTES__
     function detalle(op) {
       var e = op._e, izq = el('div'), der = el('div');
       if (e.descartar.length) izq.appendChild(el('div', { clase: 'op-descarte', texto: 'Se descarta: ' + e.descartar.join(' · ') }));
-      if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: 'Con rubro ' + Math.round(e.p.rubro) + ' (bajo ' + e.tope.rubroMenorA + ') no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '», aunque el puntaje dé para más.' }));
+      if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: e.tope.motivo + ': no pasa de «' + NOMBRE_CAT[e.tope.categoria] + '», aunque el puntaje dé para más.' }));
       izq.appendChild(el('h4', { texto: 'Cómo se arma el puntaje' }));
       var comp = el('div', { clase: 'op-composicion', role: 'img', 'aria-label': 'Aporte de cada criterio al puntaje' });
       CRIT.forEach(function (c) {
@@ -1358,9 +1358,18 @@ __MARCA_FUENTES__
       CRIT.forEach(function (c) { tb.appendChild(el('tr', null, [el('td', { texto: c.nombre }), el('td', { clase: 'num', texto: String(pesos[c.id]) }), el('td', { texto: c.descripcion || '' })])); });
       var reglas = vaciar(document.getElementById('opReglas'));
       CATS.forEach(function (c) { reglas.appendChild(el('li', null, [el('strong', { texto: c.nombre }), ': desde ' + c.desde + ' puntos.'])); });
+      var ru = DATA.rubro || {}, niv = ru.niveles || {};
+      ['alto', 'medio', 'bajo'].forEach(function (k) {
+        var n = niv[k], temas = (ru.temas || []).filter(function (t) { return t.interes === k; });
+        if (!n || !temas.length) return;
+        reglas.appendChild(el('li', null, [el('strong', { texto: n.nombre + ': ' }), temas.map(function (t) { return t.nombre; }).join(', ') + '. ' +
+          (n.maxEnNombre ? 'No pasa de «' + NOMBRE_CAT[n.maxEnNombre] + '»' : 'Puede llegar a «' + NOMBRE_CAT[ORDEN_CAT[0]] + '»') +
+          (n.maxEnDescripcion ? '; si el tema solo está en la descripción, de «' + NOMBRE_CAT[n.maxEnDescripcion] + '».' : '.')]));
+      });
       (DATA.topesPorRubro || []).forEach(function (t) {
         reglas.appendChild(el('li', { texto: 'Con el rubro bajo ' + t.rubroMenorA + ' puntos no pasa de «' + (NOMBRE_CAT[t.categoriaMaxima] || t.categoriaMaxima) + '», aunque el resto sea perfecto.' }));
       });
+      if (ru.montoMinimo) reglas.appendChild(el('li', { texto: 'Con un monto publicado bajo ' + clpCorto(ru.montoMinimo) + (ru.montoMinimoCompraAgil ? ' (' + clpCorto(ru.montoMinimoCompraAgil) + ' en una compra ágil)' : '') + ' no pasa de «Baja»: no paga el esfuerzo de ofertar.' }));
       reglas.appendChild(el('li', { texto: 'Se descarta sola si cierra en menos de un día, si la visita a terreno ya pasó (obligatoria u optativa), si el nombre la deja fuera del rubro (combustible, químicos…) o si el monto supera un máximo fijado en la configuración.' }));
       reglas.appendChild(el('li', { texto: 'La visita a terreno se lee en la ficha de las bases de Mercado Público (la API no la informa). Con varias fechas se muestra la próxima, y pasó cuando pasaron todas. Si la ficha no se pudo leer, la licitación es menor a 100 UTM o es una compra ágil sin mención, queda «sin confirmar»: revisa las bases.' }));
       var tramos = (REGLAS.plazoOferta || []).filter(function (t) { return !t.descarta; }).map(function (t) { return (t.menosDeDias === null ? 'más' : 'menos de ' + t.menosDeDias + ' días') + ': ' + t.puntaje; });
@@ -1368,7 +1377,7 @@ __MARCA_FUENTES__
       var h = (DATA.perfil || {}).historia || {}, m = (DATA.perfil || {}).montoHabitual || {};
       var hist = vaciar(document.getElementById('opHistoria'));
       hist.appendChild(el('li', { texto: 'Planilla de Ingreso: ' + (h.requerimientos || 0) + ' requerimientos, ' + (h.ofertados || 0) + ' ofertados, ' + (h.ganados || 0) + ' ganados y ' + (h.perdidos || 0) + ' perdidos.' }));
-      hist.appendChild(el('li', { texto: 'Para cada licitación se buscan las más parecidas de la Planilla: si se ofertaron y se ganaron, sube el rubro; si se descartaron, baja.' }));
+      hist.appendChild(el('li', { texto: 'Para cada licitación se buscan las más parecidas de la Planilla: si se ofertaron y se ganaron, el rubro sube un poco; si se descartaron, baja un poco (muchos descartes fueron por capacidad del momento, no por el trabajo).' }));
       if (m.p25) hist.appendChild(el('li', { texto: 'Monto habitual (lo ofertado): el centro va de ' + clpCorto(m.p25) + ' a ' + clpCorto(m.p75) + '; lo habitual, de ' + clpCorto(m.p10) + ' a ' + clpCorto(m.p90) + '. Sobre ' + clpCorto(m.maximo) + (m.maximoFijo ? ' se descarta.' : ' el criterio monto puntúa bajo, sin descartar.') }));
     }
 
