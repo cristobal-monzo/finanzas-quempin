@@ -7120,3 +7120,105 @@ def test_un_proyecto_de_gestion_con_n_temporal_se_ve_como_001t_nombre(navegador,
     pagina.locator("#ejProyecto .ej-cab").wait_for()
     assert "no está en la Planilla" not in pagina.locator("#ejProyecto").inner_text()
     assert not errores
+
+
+def test_el_menu_personal_elige_quienes_se_ven_y_agrega_personal_definitivo_o_temporal(navegador, sitio):
+    """Pedido del usuario (2026-11-13): un desplegable con una casilla por persona para elegir quiénes se ven en la
+    planificación, y dos botones: agregar personal definitivo (queda en todas las semanas desde la que se ve) o temporal
+    (solo esta semana). Ocultar es de este navegador y se recuerda; quien tiene algo en la semana sigue con su fila."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    filas = lambda: list(pagina.evaluate(JS_PERSONAL))
+    menu, lista = pagina.locator("#plPersonas"), pagina.locator("#plPersonasLista")
+    equipo = filas()
+    assert "SV" in equipo and menu.inner_text().split("\n")[0].strip() == "Personal"
+    menu.click()
+    assert lista.is_visible() and menu.get_attribute("aria-expanded") == "true"
+    assert lista.locator("input[data-per]").evaluate_all("cs => cs.map((c) => c.dataset.per)") == equipo
+    assert lista.locator(".pl-per-cuenta").inner_text() == f"{len(equipo)} de {len(equipo)}"
+    # Desmarcar a SV la saca de la tabla; el botón dice cuántos se ven
+    lista.locator('input[data-per="SV"]').uncheck()
+    assert "SV" not in filas() and lista.is_visible()
+    assert menu.locator(".pl-per-n").inner_text() == f"{len(equipo) - 1} de {len(equipo)}"
+    # Quien tiene algo en la semana sigue con su fila, y el menú lo dice
+    _celda_personal(pagina, "EV", 0).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    menu.click()
+    lista.locator('input[data-per="EV"]').uncheck()
+    assert "EV" in filas()
+    assert "Tiene algo esta semana" in lista.locator('label:has(input[data-per="EV"])').inner_text()
+    # «Todos» los vuelve a mostrar; Escape cierra
+    lista.locator("#plPersonasTodos").click()
+    assert filas() == equipo and menu.locator(".pl-per-n").count() == 0
+    lista.locator('input[data-per="SV"]').uncheck()
+    pagina.keyboard.press("Escape")
+    assert lista.is_hidden()
+    # Se recuerda en este navegador
+    pagina.reload()
+    pagina.locator("#plResumen .rc-kpi").first.wait_for()      # el portal vuelve a la pestaña que estaba abierta
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    assert "SV" not in filas()
+    # Personal definitivo: desde esta semana y también en la siguiente
+    menu.click()
+    lista.locator('[data-agregar-fija="1"]').click()
+    dlg = pagina.locator("#dlgPlAgregar")
+    assert dlg.is_visible() and pagina.locator("#dlgPlAgregarTit").inner_text() == "Agregar personal definitivo"
+    assert pagina.locator('#plAgregarDura [data-fija="1"]').get_attribute("aria-pressed") == "true"
+    pagina.locator("#plAgregarNombre").fill("pedro soto")
+    pagina.locator("#plAgregarOk").click()
+    assert dlg.is_hidden() and "x-pedro-soto" in filas()
+    sobre = _esperar_archivo(pagina, LISTA, lambda s: any(x["id"] == "x-pedro-soto" for x in s["datos"]["personas"]))
+    assert [(x["semana"], x.get("fija"), x["activa"]) for x in sobre["datos"]["personas"] if x["id"] == "x-pedro-soto"] == [(semana, True, True)]
+    assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
+    # Personal temporal: solo esta semana (el botón del diálogo cambia de uno a otro)
+    menu.click()
+    lista.locator('[data-agregar-fija="0"]').click()
+    assert pagina.locator("#dlgPlAgregarTit").inner_text() == "Agregar personal temporal"
+    pagina.locator('#plAgregarDura [data-fija="1"]').click()
+    assert pagina.locator("#dlgPlAgregarTit").inner_text() == "Agregar personal definitivo"
+    pagina.locator('#plAgregarDura [data-fija="0"]').click()
+    pagina.locator("#plAgregarNombre").fill("ana rojas")
+    pagina.locator("#plAgregarOk").click()
+    assert {"x-pedro-soto", "x-ana-rojas"} <= set(filas())
+    menu.click()
+    subs = lista.locator(".pl-per-txt").evaluate_all("ts => Object.fromEntries(ts.map((t) => [t.firstChild.textContent, (t.querySelector('small') || {}).textContent || '']))")
+    assert subs["Pedro Soto"] == "Definitivo" and subs["Ana Rojas"] == "Solo esta semana"
+    pagina.keyboard.press("Escape")
+    pagina.locator("#plDespues").click()
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    assert "x-pedro-soto" in filas() and "x-ana-rojas" not in filas()
+    # Quitarlo del personal definitivo (en «Agregar») lo saca de todas las semanas
+    pagina.locator("#plAgregar").click()
+    pagina.locator('#plAgregados button[data-k="x-pedro-soto"]').click()
+    pagina.locator("#plAgregarCerrar").click()
+    assert "x-pedro-soto" not in filas()
+    pagina.locator("#plAntes").click()
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    assert "x-pedro-soto" not in filas()
+
+
+def test_el_buscador_ofrece_formulador_seguimiento_o_ejecucion_segun_la_etapa(navegador, sitio):
+    """Pedido del 2026-11-12: al buscar un proyecto reconocido, botones a su Formulador, su Seguimiento o «En ejecución»
+    según la etapa en que va. Un botón no va dentro de otro: la fila los lleva al lado del resultado."""
+    pagina, errores = _recorrido_con_datos(navegador, sitio, usuario="LC")
+    botones = lambda: pagina.locator("#resultados .res-fila").first.locator(".res-ir").all_inner_texts()
+    pagina.locator("#buscar").fill("908")                 # en obra
+    assert botones() == ["En ejecución"]
+    pagina.locator("#resultados .res-ir", has_text="En ejecución").click()
+    assert pagina.locator("#vistaEjecucion").is_visible() and pagina.locator("#ejProyecto").is_visible()
+    assert pagina.locator("#resultados").is_hidden()
+    pagina.locator("#buscar").fill("900")                 # requerimiento sin formulación: formularlo
+    assert botones() == ["Formulador"]
+    pagina.locator("#buscar").fill("909")                 # terminada, sin formulación ni obra: solo su detalle
+    assert pagina.locator("#resultados .res-fila").count() == 0 and pagina.locator("#resultados .res").count() == 1
+    pagina.locator("#buscar").fill("902")                 # con formulación, antes de ofertar
+    assert botones() == ["Formulador"]
+    pagina.locator("#resultados .res-ir", has_text="Formulador").click()
+    _esperar(pagina, "formulador", "hash", "#/p/f902/ficha")
+    # El proyecto del Formulador que el Recorrido ya tiene no sale dos veces
+    pagina.locator("#buscar").fill("QMPN-2026-902")
+    assert pagina.locator("#resultados .res").count() <= 1
+    assert not errores
+    pagina.context.close()

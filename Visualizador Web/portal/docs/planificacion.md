@@ -252,3 +252,18 @@ Proyectos en ejecución; se eligió lo que no necesita conectar servicios nuevos
 - Sin la pista larga del panel de arrastre («Arrastra uno a la casilla…»): la explicación queda en el `title` de cada ficha.
 - Teléfono: el panel plegado es una sola línea (los vehículos se ven al desplegarlo) y «5 de 5 días · 2 proyectos» bajo el
   nombre pasa a dos líneas en vez de cortarse.
+
+**Menú «Personal» y personal definitivo** (2026-11-13, pedido del usuario: un desplegable con casillas de las personas que
+se ven en el planificador, y botones para agregar personal definitivo o temporal):
+- `#plPersonas` en la barra (antes de «Agregar»), lista `#plPersonasLista` (`plPersonasMenu`, `plPintarPersonasMenu`,
+  `plPintarBotonPersonas`): una casilla por persona (`plTodasPersonas`: el equipo y lo agregado a mano que vale esa semana),
+  «Todos» / «Ninguno», y abajo «Agregar personal definitivo» y «Agregar personal temporal» (`data-agregar-fija`).
+- **Ocultar es de este navegador**: `prefs.ocultas` en `quempin_portal_plan`. `plModelo` deja sin fila a quien está oculto,
+  **salvo que tenga algo esa semana** (asignación o ausencia): así nada asignado desaparece de los totales ni de las otras
+  vistas, y el menú lo dice («Tiene algo esta semana: sigue a la vista»). El botón muestra «7 de 8» cuando falta alguien.
+- **Personal definitivo** = una persona de la lista con `fija: true` (esquema `planificacion-lista`): una sola entrada por
+  persona (`plKLista` → `fija|x-…`), vale desde su `semana` en adelante (`plManoVale`, `plManoDe`). Se agrega en el diálogo
+  «Agregar» con «Definitivo» / «Solo esta semana» (`#plAgregarDura`, `planif.agregarFija`) y se quita ahí con «Quitar»
+  (`activa: false` en la entrada fija: sale de todas las semanas; lo ya asignado se sigue viendo). «Copiar la semana
+  anterior» no la duplica como temporal.
+- Prueba: `test_el_menu_personal_elige_quienes_se_ven_y_agrega_personal_definitivo_o_temporal`.
