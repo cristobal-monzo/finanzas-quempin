@@ -178,6 +178,21 @@
   .res-tit { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .res-sub { font-size: 12.5px; color: var(--texto-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .res-vacio { margin: 10px 12px; font-size: 14px; color: var(--text-secondary); }
+  /* Un proyecto reconocido (2026-11-12, pedido del usuario): a su lado, botones a su Formulador, su Seguimiento o
+     «En ejecución», según la etapa en que va */
+  .res-fila { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; border-radius: 8px; }
+  .res-fila > .res { flex: 1 1 240px; width: auto; }
+  .res-acc { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 8px 0 0; }
+  .res-ir {
+    font: inherit; font-size: 12.5px; font-weight: 600; min-height: 32px; padding: 4px 10px;
+    border: 1px solid var(--border-hairline); border-radius: 8px;
+    background: var(--surface-card); color: var(--text-primary); cursor: pointer; white-space: nowrap;
+  }
+  .res-ir:hover, .res-ir:focus-visible { background: var(--page-plane); border-color: var(--brand-orange); }
+  @media (max-width: 640px) {
+    .res-acc { padding: 0 10px 6px; }
+    .res-ir { font-size: 14px; min-height: 36px; }
+  }
   .chip {
     flex: 0 0 auto; font-size: 11.5px; font-weight: 700; line-height: 1.5;
     padding: 1px 8px; border-radius: 999px;
@@ -16084,19 +16099,48 @@
         ir: () => abrir(h.id, { pestana: s.id })
       }));
     });
-    estado.proyectos.forEach((p) => items.push({
-      titulo: nombreProyecto(p), sub: [esMio(p) ? 'Tu proyecto' : 'Proyecto', p.cliente, p.req ? 'N° ' + p.req : '', p.responsable && !esMio(p) ? 'a cargo de ' + p.responsable : ''].filter(Boolean).join(' · '), tipo: 'Proyecto',
-      texto: norm([p.codigo, p.titulo, p.cliente, p.req, p.req ? 'n' + p.req : '', p.tag, p.responsable, 'proyecto'].join(' ')),
-      ir: () => abrir('proyectos', { url: baseDe(HERR.get('proyectos')) + '#/p/' + encodeURIComponent(p.uid) + '/seguimiento' })
-    }));
     // Los proyectos del Recorrido (si ya se leyó la carpeta del equipo): llevan a su detalle
-    rc.tarjetas.forEach((t) => items.push({
-      titulo: (rcEtiqueta(t) ? rcEtiqueta(t) + ' · ' : '') + t.titulo,
-      sub: ['Recorrido', (RC_ETAPAS.find((e) => e.id === t.etapa) || {}).titulo, t.accion.corto, t.responsable && (rcMia(t) ? 'tuyo' : 'a cargo de ' + t.responsable)].filter(Boolean).join(' · '),
-      tipo: 'Etapa', texto: t.buscar + ' recorrido etapa',
-      ir: () => { abrir('recorrido'); rcVerDetalle(t.clave); }
-    }));
+    const porUid = new Map();
+    rc.tarjetas.forEach((t) => {
+      const it = {
+        titulo: (rcEtiqueta(t) ? rcEtiqueta(t) + ' · ' : '') + t.titulo,
+        sub: ['Recorrido', (RC_ETAPAS.find((e) => e.id === t.etapa) || {}).titulo, t.accion.corto, t.responsable && (rcMia(t) ? 'tuyo' : 'a cargo de ' + t.responsable)].filter(Boolean).join(' · '),
+        tipo: 'Etapa', texto: t.buscar + ' recorrido etapa',
+        ir: () => { abrir('recorrido'); rcVerDetalle(t.clave); },
+        accesos: accesosDeTarjeta(t)
+      };
+      if (t.formulacion && t.formulacion.uid) porUid.set(String(t.formulacion.uid), it);
+      items.push(it);
+    });
+    /* Los proyectos del Formulador de este navegador. Si el Recorrido ya tiene ese proyecto, va en su resultado (con lo
+       que se busca de los dos), no repetido. */
+    estado.proyectos.forEach((p) => {
+      const txt = norm([p.codigo, p.titulo, p.cliente, p.req, p.req ? 'n' + p.req : '', p.tag, p.responsable, 'proyecto'].join(' '));
+      const ya = porUid.get(String(p.uid));
+      if (ya) { ya.texto += ' ' + txt; return; }
+      const seguimiento = () => abrir('proyectos', { url: baseDe(HERR.get('proyectos')) + '#/p/' + encodeURIComponent(p.uid) + '/seguimiento' });
+      items.push({
+        titulo: nombreProyecto(p), sub: [esMio(p) ? 'Tu proyecto' : 'Proyecto', p.cliente, p.req ? 'N° ' + p.req : '', p.responsable && !esMio(p) ? 'a cargo de ' + p.responsable : ''].filter(Boolean).join(' · '), tipo: 'Proyecto',
+        texto: txt, ir: seguimiento,
+        accesos: [{ nombre: 'Formulador', ir: () => rcIr(RC_IR.ficha(p.uid)) }]
+          .concat(RC_EN_FORMULACION.includes(texto(p.estado) || 'Borrador') ? [] : [{ nombre: 'Seguimiento', ir: seguimiento }])
+      });
+    });
     return items;
+  }
+  /* Los botones de un proyecto reconocido, según la etapa en que va (2026-11-12, pedido del usuario): su Formulador si
+     tiene formulación (antes de ofertar, sin ella, por su N° para formularlo); su Seguimiento desde la oferta en adelante; «En ejecución» si está en obra o su carpeta sigue en
+     Gestión de Proyectos. */
+  function accesosDeTarjeta(t) {
+    const out = [];
+    const uid = t.formulacion && t.formulacion.uid;
+    const i = RC_ETAPAS.findIndex((e) => e.id === t.etapa);
+    const desdeOferta = i >= RC_ETAPAS.findIndex((e) => e.id === 'oferta');
+    if (uid) out.push({ nombre: 'Formulador', ir: () => rcIr(RC_IR.ficha(uid)) });
+    else if (t.req && !desdeOferta) out.push({ nombre: 'Formulador', ir: () => rcIr(RC_IR.req(t.req)) });   // para formularlo
+    if (uid && desdeOferta) out.push({ nombre: 'Seguimiento', ir: () => rcIr(RC_IR.seguimiento(uid)) });
+    if (t.etapa === 'ejecucion' || t.gestion || t.entregado) out.push({ nombre: 'En ejecución', ir: () => rcIr(RC_IR.ejecucion(t.clave)) });
+    return out;
   }
   function buscar(q) {
     const t = norm(q).trim().split(/\s+/).filter(Boolean);
@@ -16128,7 +16172,22 @@
       if (r.tipo) b.append(crear('span', 'chip' + (r.calc ? ' es-calc' : ''), r.tipo));
       b.addEventListener('mousedown', (e) => e.preventDefault());   // el campo no pierde el foco antes del clic
       b.addEventListener('click', () => irA(i));
-      caja.append(b);
+      if (!r.accesos || !r.accesos.length) { caja.append(b); return; }
+      // Un proyecto reconocido: la fila lleva además sus botones (no van dentro del botón: no se anidan)
+      const fila = crear('div', 'res-fila');
+      fila.setAttribute('role', 'presentation');
+      const acc = crear('div', 'res-acc');
+      r.accesos.forEach((a) => {
+        const x = crear('button', 'res-ir', a.nombre);
+        x.type = 'button';
+        x.tabIndex = -1;
+        x.title = 'Abrir ' + (a.nombre === 'En ejecución' ? 'su página en Proyectos en ejecución' : 'su ' + a.nombre);
+        x.addEventListener('mousedown', (e) => e.preventDefault());
+        x.addEventListener('click', () => { cerrarBusqueda(); a.ir(); });
+        acc.append(x);
+      });
+      fila.append(b, acc);
+      caja.append(fila);
     });
     if (!resultados.length) caja.append(crear('p', 'res-vacio', 'Nada calza con «' + q.trim() + '».'));
     caja.hidden = false;
