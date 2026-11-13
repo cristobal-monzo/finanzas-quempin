@@ -4478,6 +4478,24 @@ def test_por_hacer_dice_lo_que_espera_el_proyecto_y_lo_hace_ahi_mismo(navegador,
     pagina.context.close()
 
 
+@pytest.mark.parametrize("ancho", [420, 760, 1280])
+def test_la_lista_de_por_hacer_no_se_sale_de_la_columna(navegador, sitio, ancho):
+    """2026-11-12, pedido del usuario: la lista flotante de «Por hacer» se cortaba por la izquierda (medía 460 px y se
+    anclaba al botón, más angosto). Ahora se ancla a la fila de arriba y nunca pasa del ancho de la columna."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908, ancho=ancho)
+    pagina.locator("#ejProyecto .ej-porhacer > summary").click()
+    pagina.locator("#ejProyecto .ej-porhacer > ul").wait_for()
+    caja = pagina.evaluate("""() => {
+        const l = document.querySelector('#ejProyecto .ej-porhacer > ul').getBoundingClientRect();
+        const c = document.querySelector('#ejProyecto .ej-v2-arriba').getBoundingClientRect();
+        return { izq: l.left, der: l.right, cizq: c.left, cder: c.right };
+    }""")
+    assert caja["izq"] >= caja["cizq"] - 1 and caja["der"] <= caja["cder"] + 1, caja
+    assert caja["izq"] >= 0, caja
+    assert not errores
+    pagina.context.close()
+
+
 def test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico(navegador, sitio):
     """Vuelta 5 del loop de UX (2026-11-09)."""
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908, alto=700)

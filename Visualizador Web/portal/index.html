@@ -2599,15 +2599,15 @@
   .ej-plegado .ej-v2-idx .ej-volver { justify-content: center; padding: 0; }
   .ej-plegado .ej-salto { justify-content: center; padding: 0; }
   .ej-plegado .ej-salto small.ej-hay { position: absolute; top: 2px; right: 0; min-width: 8px; width: 8px; height: 8px; padding: 0; overflow: hidden; color: transparent; background: var(--brand-orange); }
-  .ej-v2-arriba { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+  .ej-v2-arriba { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
   /* «Por hacer»: un botón chico arriba a la derecha; al abrirlo, la lista flota sobre la página */
-  .ej-v2 .ej-porhacer { position: relative; flex: 0 1 auto; min-width: 0; max-width: 440px; border-radius: 10px; }
+  .ej-v2 .ej-porhacer { position: static; flex: 0 1 auto; min-width: 0; max-width: 440px; border-radius: 10px; }
   .ej-v2 .ej-porhacer > summary { padding: 5px 12px; gap: 8px; }
   .ej-v2 .ej-porhacer h3 { font-size: 13px; }
   .ej-v2 .ej-porhacer h3 small { font-size: 11px; }
   .ej-v2 .ej-porhacer-res { max-width: 250px; font-size: 12px; }
   .ej-v2 .ej-porhacer > ul, .ej-v2 .ej-porhacer > p {
-    position: absolute; right: 0; top: calc(100% + 6px); z-index: 6; width: min(460px, calc(100vw - 32px)); margin: 0; padding: 10px;
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 6; width: min(460px, 100%); box-sizing: border-box; margin: 0; padding: 10px;
     border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); box-shadow: var(--sombra);
   }
   .ej-v2 .ej-porhacer > ul { grid-template-columns: minmax(0, 1fr); }
