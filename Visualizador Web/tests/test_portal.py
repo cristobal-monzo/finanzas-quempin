@@ -2013,7 +2013,7 @@ def _plan_con_datos(navegador, sitio, usuario=None, vista=None, **kw):
     pagina, errores = _portal_con_datos(navegador, sitio, usuario, **kw)
     pagina.evaluate("""([d, v]) => {
         localStorage.setItem('quempin_portal_dispositivo', d);
-        if (v) localStorage.setItem('quempin_portal_plan', JSON.stringify({ vista: v }));
+        if (v) localStorage.setItem('quempin_portal_plan', JSON.stringify({ v: 2, vista: v }));
     }""", [DISPOSITIVO, vista])
     pagina.reload()
     pagina.locator("#vistaInicio").wait_for()

@@ -244,3 +244,11 @@ Proyectos en ejecución; se eligió lo que no necesita conectar servicios nuevos
   computador no la nombra.
 - Pruebas: `test_si_un_colega_reemplaza_lo_que_acabas_de_cambiar_se_avisa_y_se_puede_volver`,
   `test_se_ve_quien_mas_esta_en_la_misma_semana`.
+
+**«Por personal», la vista principal** (2026-11-12, pedido del usuario):
+- Va primera en los botones (`PL_VISTAS`) y es la de entrada. `quempin_portal_plan` lleva `v: 2` (`PL_PREFS_V`): una
+  «General» guardada sin `v` era la entrada de antes, no una elección, y abre una vez en «Por personal»; lo que se elija
+  después se respeta.
+- Sin la pista larga del panel de arrastre («Arrastra uno a la casilla…»): la explicación queda en el `title` de cada ficha.
+- Teléfono: el panel plegado es una sola línea (los vehículos se ven al desplegarlo) y «5 de 5 días · 2 proyectos» bajo el
+  nombre pasa a dos líneas en vez de cortarse.

@@ -1612,9 +1612,12 @@
     .pl-arr-abrir svg { transition: transform 0.15s; }
     .pl-arr.abierto .pl-arr-abrir svg { transform: rotate(180deg); }
     .pl-arr:not(.abierto) { padding-top: 6px; padding-bottom: 6px; }
-    .pl-arr:not(.abierto) .pl-arr-lista { display: none; }
+    .pl-arr:not(.abierto) .pl-arr-lista, .pl-arr:not(.abierto) .pl-arr-vehs { display: none; }
+    /* Plegado es de verdad una línea (2026-11-12): los vehículos van con la lista, al desplegarla */
     .pl-arr.abierto .pl-arr-pista-corta { display: block; margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--texto-suave); }
   }
+  /* «5 de 5 días · 2 proyectos» bajo el nombre se cortaba en «5 de 5 días · 2 …» (2026-11-12): en dos líneas se lee entero */
+  @container plan (max-width: 720px) { .pl-quien-txt span { white-space: normal; line-height: 1.25; } }
   /* El teléfono: General también muestra un día a la vez (antes, los cinco uno bajo otro y hoy al fondo); «Agregar» dice
      lo que hace (tenía solo un «+»), y «Esta semana» no se muestra si ya se está en ella: el rango ya lo dice */
   @container plan (max-width: 720px) {
@@ -6695,12 +6698,15 @@
     { id: 'permiso', nombre: 'Permiso' }, { id: 'otro', nombre: 'Otra ausencia' }
   ];
   const PL_VISTAS = [
+    { id: 'personal', nombre: 'Por personal', icono: 'persona' },   // la vista principal (pedido del usuario, 2026-11-12)
     { id: 'general', nombre: 'General', icono: 'cuadricula' },
-    { id: 'personal', nombre: 'Por personal', icono: 'persona' },
     { id: 'proyecto', nombre: 'Por proyecto', icono: 'proyectos' }
   ];
   const PL_COLORES = 10;                                       // --pl-c0 … --pl-c9
-  const LS_PL = 'quempin_portal_plan';                         // { vista, sabado }: lo elegido en este navegador
+  const LS_PL = 'quempin_portal_plan';                         // { vista, sabado, v }: lo elegido en este navegador
+  // v: 2 desde que «Por personal» es la vista principal (2026-11-12): una «General» guardada antes era la de entrada, no
+  // una elección, así que se abre en «Por personal» una vez; lo que se elija después se respeta
+  const PL_PREFS_V = 2;
   const LS_PL_DISPOSITIVO = 'quempin_portal_dispositivo';      // el nombre del archivo de este navegador
   const LS_PL_PENDIENTE = 'quempin_portal_plan_pendiente';     // lo que aún no llega a la carpeta
   const PERSONAL = Array.isArray(REG.personal) && REG.personal.length ? REG.personal : USUARIOS;
@@ -6727,7 +6733,7 @@
   };
   const plPrefs = leer(LS_PL, {}) || {};
   const planif = {
-    vista: PL_VISTAS.some((v) => v.id === plPrefs.vista) ? plPrefs.vista : 'general',
+    vista: PL_VISTAS.some((v) => v.id === plPrefs.vista) && (plPrefs.v === PL_PREFS_V || plPrefs.vista !== 'general') ? plPrefs.vista : 'personal',
     sabado: plPrefs.sabado === true,
     texto: plPrefs.texto === 'dia' ? 'dia' : 'persona',     // cómo se ordena el texto de Compartir
     lunes: null,              // el lunes de la semana a la vista
@@ -6757,7 +6763,7 @@
     arrQ: '',                 // lo escrito en el buscador del panel de arrastre
     arrAbierto: false         // en lo angosto el panel va plegado hasta pedirlo (2026-10-29)
   };
-  const plGuardarPrefs = () => guardar(LS_PL, { vista: planif.vista, sabado: planif.sabado, texto: planif.texto, paneles: [...planif.paneles] });
+  const plGuardarPrefs = () => guardar(LS_PL, { v: PL_PREFS_V, vista: planif.vista, sabado: planif.sabado, texto: planif.texto, paneles: [...planif.paneles] });
 
   // ---- Semanas: de lunes a sábado, con el número ISO 8601 (la semana es del año de su jueves) -------------------
   const plMas = (f, n) => new Date(f.getFullYear(), f.getMonth(), f.getDate() + n);
@@ -9532,9 +9538,6 @@
       bar.append(p, listo);
       aside.append(bar);
     } else {
-      aside.append(crear('p', 'pl-arr-pista', (proy ? 'Arrastra uno a la casilla de una persona y un día' : 'Arrastra a alguien a la casilla de un proyecto y un día')
-        + ', o tócalo y después toca las casillas. Lo ya asignado también se arrastra: se mueve, o con Ctrl se copia.'
-        + (PL_VEHICULOS.length ? ' Un vehículo se suelta sobre un proyecto ya asignado.' : '')));
       aside.append(crear('p', 'pl-arr-pista-corta', (proy ? 'Toca un proyecto' : 'Toca a alguien') + ' y después las casillas donde va.'));
     }
     // Los vehículos, arriba: se sueltan sobre un proyecto ya asignado (plObjetivoVeh)
