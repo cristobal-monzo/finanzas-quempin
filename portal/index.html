@@ -1416,8 +1416,25 @@
   .pl-cab h1 { font-size: 20px; }
   .pl-acciones { gap: 8px; }
   .pl-mas-menu { position: relative; }
-  .pl-mas-menu #plMas svg:last-child { transition: transform 0.15s; }
-  .pl-mas-menu #plMas[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
+  .pl-mas-menu #plMas svg:last-child, #plPersonas svg:last-child { transition: transform 0.15s; }
+  .pl-mas-menu #plMas[aria-expanded="true"] svg:last-child, #plPersonas[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
+  /* «Personal» (2026-11-13): quiénes se ven, con una casilla cada uno, y agregar personal definitivo o temporal */
+  #plPersonas { gap: 6px; }
+  #plPersonas.filtrado { border-color: var(--brand-orange); }
+  .pl-per-n { padding: 1px 7px; border-radius: 999px; background: var(--tinte); color: var(--brand-orange-ink); font-size: 12px; font-weight: 800; }
+  .pl-per-lista { width: 300px; max-width: calc(100vw - 32px); }
+  .pl-per-cab { display: flex; align-items: center; gap: 8px; padding: 4px 6px 6px 10px; border-bottom: 1px solid var(--gridline); margin-bottom: 4px; }
+  .pl-per-cab b { font-size: 13.5px; font-weight: 900; }
+  .pl-per-cuenta { font-size: 12px; font-weight: 700; color: var(--texto-suave); }
+  .pl-per-todos { margin-left: auto; min-height: 30px; padding: 0 8px; font-size: 13px; }
+  .pl-per-items { display: flex; flex-direction: column; gap: 2px; max-height: min(46vh, 380px); overflow-y: auto; }
+  label.pl-mas-op.pl-per-op { border-top: 0; border-radius: 8px; margin-top: 0; padding-top: 0; min-height: 36px; }
+  .pl-per-txt { display: flex; flex-direction: column; min-width: 0; padding: 4px 0; }
+  .pl-per-txt small { font-size: 11.5px; font-weight: 700; color: var(--texto-suave); }
+  .pl-per-acc { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--gridline); margin-top: 4px; padding-top: 4px; }
+  .pl-per-acc .pl-mas-op svg { color: var(--brand-orange-ink); }
+  /* En lo angosto el botón queda a la izquierda: la lista se abre hacia la derecha, si no se sale de la pantalla */
+  @container plan (max-width: 720px) { .pl-per-lista { left: 0; right: auto; } }
   .pl-mas-lista {
     position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 250px; padding: 6px;
     display: flex; flex-direction: column; gap: 2px; border-radius: 12px; border: 1px solid var(--border-hairline);
@@ -1538,7 +1555,7 @@
   .pl-colocando .pl-celda .pl-mas { display: none; }
   @container plan (max-width: 1340px) { .pl-th-nom { width: 176px; } .pl-t-proyecto .pl-th-nom { width: 240px; } .pl-con-arr { grid-template-columns: minmax(0, 1fr) 212px; } }
   @container plan (max-width: 1180px) {
-    .pl-acciones .cx-enlace:not(#plMas) span:not(.sr) { display: none; }
+    .pl-acciones .cx-enlace:not(#plMas):not(#plPersonas) span:not(.sr) { display: none; }
     .pl-acciones { margin-left: 0; }
   }
   @container plan (max-width: 1100px) { .pl-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -1639,7 +1656,7 @@
     .pl-tablero[data-foco="0"] > .pl-dia:not([data-dia="0"]), .pl-tablero[data-foco="1"] > .pl-dia:not([data-dia="1"]),
     .pl-tablero[data-foco="2"] > .pl-dia:not([data-dia="2"]), .pl-tablero[data-foco="3"] > .pl-dia:not([data-dia="3"]),
     .pl-tablero[data-foco="4"] > .pl-dia:not([data-dia="4"]), .pl-tablero[data-foco="5"] > .pl-dia:not([data-dia="5"]) { display: none; }
-    .pl-acciones .cx-enlace:not(#plMas) span:not(.sr) { display: inline; }
+    .pl-acciones .cx-enlace:not(#plMas):not(#plPersonas) span:not(.sr) { display: inline; }
     .pl-hoy:disabled { display: none; }
   }
 
@@ -2972,7 +2989,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@8a6946c 2026-11-13">
+<meta name="quempin-version" content="master@9fe676e 2026-11-13">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -3131,6 +3148,11 @@
                 <div class="pl-vistas" id="plVistas" role="group" aria-label="Cómo ver la semana"></div>
                 <!-- Lo de todos los días a la vista («Agregar»); lo demás en «Más», para que la barra no abrume (2026-10-28) -->
                 <div class="pl-acciones">
+                  <!-- Quiénes se ven y agregar personal definitivo o temporal (2026-11-13); lo arma plPintarPersonasMenu -->
+                  <div class="pl-mas-menu pl-per-menu">
+                    <button class="cx-enlace" id="plPersonas" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="plPersonasLista" title="Elegir quiénes se ven en la planificación y agregar personal"></button>
+                    <div class="pl-mas-lista pl-per-lista" id="plPersonasLista" role="group" aria-label="Personal en la planificación" hidden></div>
+                  </div>
                   <button class="cx-enlace" id="plAgregar" type="button" title="Una persona o un proyecto que no están en la lista, solo para la semana a la vista"></button>
                   <div class="pl-mas-menu">
                     <button class="cx-enlace" id="plMas" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="plMasLista" title="Copiar, compartir, imprimir y el estado de los proyectos"></button>
@@ -3528,6 +3550,10 @@
     <div class="pl-vistas pl-texto-modo" id="plAgregarModo" role="group" aria-label="Qué agregar">
       <button class="pl-vista" type="button" data-modo="persona">Persona</button>
       <button class="pl-vista" type="button" data-modo="proyecto">Proyecto</button>
+    </div>
+    <div class="pl-vistas pl-texto-modo" id="plAgregarDura" role="group" aria-label="Por cuánto tiempo">
+      <button class="pl-vista" type="button" data-fija="1">Definitivo</button>
+      <button class="pl-vista" type="button" data-fija="0">Solo esta semana</button>
     </div>
     <p id="plAgregarPista"></p>
     <label class="pl-campo"><span id="plAgregarEt">Nombre</span><input id="plAgregarNombre" type="text" maxlength="60" autocomplete="off"></label>
@@ -6751,6 +6777,7 @@
   const planif = {
     vista: PL_VISTAS.some((v) => v.id === plPrefs.vista) && (plPrefs.v === PL_PREFS_V || plPrefs.vista !== 'general') ? plPrefs.vista : 'personal',
     sabado: plPrefs.sabado === true,
+    ocultas: new Set(Array.isArray(plPrefs.ocultas) ? plPrefs.ocultas.filter((x) => typeof x === 'string').slice(0, 200) : []),   // quienes no se ven (2026-11-13)
     texto: plPrefs.texto === 'dia' ? 'dia' : 'persona',     // cómo se ordena el texto de Compartir
     lunes: null,              // el lunes de la semana a la vista
     semanas: new Map(),       // «2026-W43» → { id, lunes, archivos, mias, ef, leida }
@@ -6779,7 +6806,7 @@
     arrQ: '',                 // lo escrito en el buscador del panel de arrastre
     arrAbierto: false         // en lo angosto el panel va plegado hasta pedirlo (2026-10-29)
   };
-  const plGuardarPrefs = () => guardar(LS_PL, { v: PL_PREFS_V, vista: planif.vista, sabado: planif.sabado, texto: planif.texto, paneles: [...planif.paneles] });
+  const plGuardarPrefs = () => guardar(LS_PL, { v: PL_PREFS_V, vista: planif.vista, sabado: planif.sabado, texto: planif.texto, paneles: [...planif.paneles], ocultas: [...planif.ocultas] });
 
   // ---- Semanas: de lunes a sábado, con el número ISO 8601 (la semana es del año de su jueves) -------------------
   const plMas = (f, n) => new Date(f.getFullYear(), f.getMonth(), f.getDate() + n);
@@ -7118,7 +7145,8 @@
      asignado se sigue viendo con su nombre). Uno guardado antes, sin 'semana', es de la semana en que se escribió. */
   const plNombreLimpio = (v) => texto(v).replace(/\s+/g, ' ').trim().slice(0, 60);
   const plListaVacia = () => ({ personas: new Map(), proyectos: new Map() });
-  const plKLista = (e) => e.semana + '|' + (e.id || e.clave);
+  // Una persona del personal definitivo (2026-11-13, 'fija') es una sola para todas las semanas: «fija|x-juan-perez»
+  const plKLista = (e) => (e.fija ? 'fija' : e.semana) + '|' + (e.id || e.clave);
   function plLista() {
     if (!planif.lista) planif.lista = { archivos: new Map(), mias: plListaVacia(), ef: plListaVacia(), leida: 0 };
     return planif.lista;
@@ -7137,6 +7165,7 @@
       const nombre = x ? plNombreLimpio(x.nombre) : '';
       if (!x || !PL_PER_MANO.test(texto(x.id)) || !nombre || !instante(x.t)) return;
       const e = { id: x.id, nombre, semana: semana(x), activa: x.activa === true, t: x.t, por: por(x.por), de };
+      if (x.fija === true) e.fija = true;
       plPoner(r.personas, plKLista(e), e);
     });
     lista(d.proyectos).forEach((x) => {
@@ -7190,8 +7219,13 @@
   // El círculo de la fila: las iniciales («JP»)
   const plIniciales = (per) => (PL_PER_MANO.test(per || '') ? plNom(per).split(' ').slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') : per);
   const plNoms = (xs) => unir(xs.map(plNom));
+  // Una persona escrita a mano vale en la semana s si es de esa semana o del personal definitivo desde antes (2026-11-13)
+  const plManoVale = (e, s) => e.activa && (e.fija ? e.semana <= s.id : e.semana === s.id);
   // Las personas escritas a mano en la semana s, por nombre
-  const plManoActivas = (s) => [...plLista().ef.personas.values()].filter((e) => e.activa && e.semana === s.id).sort((a, b) => plComparar(a.nombre, b.nombre)).map((e) => e.id);
+  const plManoActivas = (s) => [...new Set([...plLista().ef.personas.values()].filter((e) => plManoVale(e, s))
+    .sort((a, b) => plComparar(a.nombre, b.nombre)).map((e) => e.id))];
+  // Su registro en la semana s: el definitivo primero, si no el de esa semana
+  const plManoDe = (s, id) => [plLista().ef.personas.get('fija|' + id), plLista().ef.personas.get(s.id + '|' + id)].find((e) => e && plManoVale(e, s)) || null;
   // Los proyectos escritos a mano en la semana s
   const plProyManoActivos = (s) => [...plLista().ef.proyectos.values()].filter((e) => e.activa && e.semana === s.id);
 
@@ -7677,7 +7711,8 @@
     const enLaSemana = new Set();
     s.ef.asig.forEach((e) => { if (e.activa) enLaSemana.add(e.persona); });
     ausencias.forEach((e) => enLaSemana.add(e.persona));
-    const personas = plOrdenPersonas([...new Set(PERSONAL.concat(plManoActivas(s), [...enLaSemana]))]);
+    // Las que se ocultaron en «Personal» (2026-11-13) no tienen fila, salvo que tengan algo esa semana: nada asignado se pierde
+    const personas = plOrdenPersonas([...new Set(PERSONAL.concat(plManoActivas(s)).filter((p) => !planif.ocultas.has(p)).concat([...enLaSemana]))]);
     const pausas = new Map();
     s.ef.pau.forEach((e) => { if (e.activa) pausas.set(canon(e.proyecto), e); });
     const colores = plColores([...proyectos.keys()]);
@@ -8015,7 +8050,8 @@
   }
   // «juan pérez» → «Juan Pérez»: cada palabra escrita toda en minúsculas parte con mayúscula
   const plCapital = (txt) => txt.split(' ').map((w) => (w === w.toLowerCase() ? mayuscula(w) : w)).join(' ');
-  function plAgregarPersona(txt, aviso = avisar) {
+  // fija: al personal definitivo, desde la semana a la vista en adelante (2026-11-13); si no, solo en esa semana
+  function plAgregarPersona(txt, aviso = avisar, fija = false) {
     const s = plSemanaVista();
     const nombre = plCapital(plNombreLimpio(txt));
     const delEquipo = PERSONAL.find((p) => p === nombre.toUpperCase());
@@ -8023,6 +8059,16 @@
     const slug = plSlug(nombre, 30);
     if (!slug) { aviso('Escribe el nombre de la persona.'); return null; }
     const id = 'x-' + slug;
+    const yaFija = plLista().ef.personas.get('fija|' + id);
+    planif.ocultas.delete(id);
+    if (fija) {
+      if (yaFija && plManoVale(yaFija, s)) { aviso(plNom(id) + ' ya está en el personal definitivo.'); return id; }
+      plGuardarPrefs();
+      plCambiarLista('personas', { id, nombre, semana: s.id, fija: true, activa: true },
+        nombre + ' queda en el personal desde ' + plEsta(s) + ', también en las semanas siguientes.');
+      return id;
+    }
+    plGuardarPrefs();
     if (plManoActivas(s).includes(id)) { aviso(plNom(id) + ' ya está en ' + plEsta(s) + '.'); return id; }
     plCambiarLista('personas', { id, nombre, semana: s.id, activa: true },
       nombre + ' queda solo en ' + plEsta(s) + ': toca su fila en «Por personal» para asignarle proyectos.');
@@ -8062,8 +8108,13 @@
   }
   function plQuitarPersona(id) {
     const s = plSemanaVista();
-    const e = plLista().ef.personas.get(s.id + '|' + id);
-    if (!e || !e.activa) return;
+    const e = plManoDe(s, id);
+    if (!e) return;
+    if (e.fija) {
+      plCambiarLista('personas', { id, nombre: e.nombre, semana: e.semana, fija: true, activa: false },
+        e.nombre + ' ya no está en el personal definitivo. Lo que tenía asignado se sigue viendo.');
+      return;
+    }
     plCambiarLista('personas', { id, nombre: e.nombre, semana: s.id, activa: false }, e.nombre + ' ya no está en ' + plEsta(s) + '. Lo que tenía asignado se sigue viendo.');
   }
   function plQuitarProyecto(clave) {
@@ -8212,9 +8263,99 @@
   }
   // «Más»: lo que se usa de vez en cuando con la semana (copiar, compartir, imprimir, el estado, el sábado)
   function plMasMenu(abrir) {
+    if (abrir) plPersonasMenu(false);
     $('#plMasLista').hidden = !abrir;
     $('#plMas').setAttribute('aria-expanded', abrir ? 'true' : 'false');
     if (abrir) { plCerrarPop(false); const b = $('#plMasLista button:not(:disabled)'); if (b) b.focus(); }
+  }
+  /* «Personal» (2026-11-13, pedido del usuario): una casilla por persona para elegir quiénes se ven, y agregar personal
+     definitivo o temporal. Ocultar es de este navegador (prefs.ocultas); quien tiene algo en la semana sigue con su fila,
+     así nada asignado desaparece de la vista. */
+  function plPersonasMenu(abrir) {
+    const lista = $('#plPersonasLista');
+    if (!lista || lista.hidden === !abrir) return;
+    if (abrir) { plMasMenu(false); plCerrarPop(false); plPintarPersonasMenu(); }
+    lista.hidden = !abrir;
+    $('#plPersonas').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    if (abrir) { const c = lista.querySelector('input'); if (c) c.focus(); }
+  }
+  // Todos los que pueden tener fila esa semana: el equipo y lo agregado a mano (definitivo y de esa semana)
+  const plTodasPersonas = (s) => plOrdenPersonas([...new Set(PERSONAL.concat(plManoActivas(s)))]);
+  function plPintarPersonasMenu() {
+    const lista = $('#plPersonasLista');
+    const s = plSemanaVista();
+    const m = plModelo(s);
+    const dias = plDias(s);
+    const todas = plTodasPersonas(s);
+    const tiene = (per) => dias.some((d) => (m.porPersona.get(d.iso + '|' + per) || []).length || m.ausencias.has(d.iso + '|' + per));
+    const act = document.activeElement;
+    const enfocada = act && lista.contains(act) ? (act.dataset.per ? '[data-per="' + CSS.escape(act.dataset.per) + '"]' : act.id ? '#' + act.id : '') : '';
+    lista.textContent = '';
+    const n = todas.filter((p) => !planif.ocultas.has(p)).length;
+    const cab = crear('div', 'pl-per-cab');
+    cab.append(crear('b', null, 'Quiénes se ven'), crear('span', 'pl-per-cuenta', n + ' de ' + todas.length));
+    const todos = crear('button', 'cx-enlace pl-per-todos', n === todas.length ? 'Ninguno' : 'Todos');
+    todos.type = 'button';
+    todos.id = 'plPersonasTodos';
+    todos.addEventListener('click', () => {
+      if (n === todas.length) todas.forEach((p) => planif.ocultas.add(p)); else todas.forEach((p) => planif.ocultas.delete(p));
+      plAlCambiarOcultas();
+    });
+    cab.append(todos);
+    const items = crear('div', 'pl-per-items');
+    todas.forEach((per) => {
+      const mano = PL_PER_MANO.test(per);
+      const l = crear('label', 'pl-mas-op pl-per-op');
+      const c = crear('input');
+      c.type = 'checkbox';
+      c.dataset.per = per;
+      c.checked = !planif.ocultas.has(per);
+      c.addEventListener('change', () => {
+        if (c.checked) planif.ocultas.delete(per); else planif.ocultas.add(per);
+        plAlCambiarOcultas();
+      });
+      const tx = crear('span', 'pl-per-txt');
+      tx.append(crear('span', null, per === estado.usuario ? per + ' · tú' : plNom(per)));
+      const de = mano ? plManoDe(s, per) : null;
+      const sub = [de ? (de.fija ? 'Definitivo' : 'Solo esta semana') : '', !c.checked && tiene(per) ? 'Tiene algo esta semana: sigue a la vista' : ''].filter(Boolean).join(' · ');
+      if (sub) tx.append(crear('small', null, sub));
+      l.append(c, tx);
+      items.append(l);
+    });
+    const acc = crear('div', 'pl-per-acc');
+    [['1', 'Agregar personal definitivo', 'En todas las semanas', 'Se suma al equipo desde la semana a la vista, en todas las semanas'],
+      ['0', 'Agregar personal temporal', 'Solo esta semana', 'De apoyo o un contratista: solo para la semana a la vista']].forEach(([f, txt, sub, titulo]) => {
+      const b = crear('button', 'pl-mas-op');
+      b.type = 'button';
+      b.dataset.agregarFija = f;
+      b.title = titulo;
+      b.disabled = !rc.dir;
+      const tx = crear('span', 'pl-per-txt');
+      tx.append(crear('span', null, txt), crear('small', null, sub));
+      b.append(icono('mas', 16), tx);
+      b.addEventListener('click', () => plAbrirAgregar('persona', f === '1'));
+      acc.append(b);
+    });
+    lista.append(cab, items, acc);
+    const x = enfocada && lista.querySelector(enfocada);
+    if (x) x.focus();
+  }
+  function plAlCambiarOcultas() {
+    plGuardarPrefs();
+    plPintar();
+  }
+  // El botón dice cuántos se ven cuando falta alguien («Personal · 6 de 8»); con la lista abierta, la repinta
+  function plPintarBotonPersonas(s) {
+    const b = $('#plPersonas');
+    const todas = plTodasPersonas(s);
+    const n = todas.filter((p) => !planif.ocultas.has(p)).length;
+    b.textContent = '';
+    b.append(icono('persona', 16), crear('span', null, 'Personal'));
+    if (n < todas.length) b.append(crear('span', 'pl-per-n', n + ' de ' + todas.length));
+    b.append(icono('flecha', 16));
+    b.setAttribute('aria-label', 'Personal: ' + n + ' de ' + todas.length + ' a la vista');
+    b.classList.toggle('filtrado', n < todas.length);
+    if (!$('#plPersonasLista').hidden) plPintarPersonasMenu();
   }
   // Desde la alarma: «Por proyecto», con ese proyecto a la vista y, con abrir, su ventanita en hoy (o en el primer día)
   function plEnfocar(clave, abrir) {
@@ -8585,6 +8726,7 @@
     const dias = plDias(s);
     if (planif.diaMovil === null || planif.diaMovil >= dias.length) planif.diaMovil = Math.max(0, dias.findIndex((d) => d.hoy));
     plPintarBarra(s, dias);
+    plPintarBotonPersonas(s);
     plPintarPisado();
     presPintar();
     const leida = s.leida > 0;
@@ -8949,7 +9091,7 @@
       tx.append(crear('b', null, per === estado.usuario ? per + ' · tú' : plNom(per)),
         crear('span', null, !enLista ? 'Fuera de la lista' : aus === dias.length ? 'Ausente' : proyectos.size ? con + ' de ' + pl(dias.length - aus, 'día', 'días') + ' · ' + pl(proyectos.size, 'proyecto', 'proyectos') : 'Sin proyectos'));
       q.append(crear('span', 'pl-avatar' + (mano ? ' mano' : ''), plIniciales(per)), tx);
-      if (mano) th.title = plNom(per) + (enLista ? ': agregada a mano en la planificación' : ': ya no está en la lista de la planificación');
+      if (mano) th.title = plNom(per) + (enLista ? ((plManoDe(s, per) || {}).fija ? ': personal definitivo agregado en la planificación' : ': agregada a mano solo en esta semana') :': ya no está en la lista de la planificación');
       th.append(q);
       tr.append(th, ...celdas);
       tb.append(tr);
@@ -10433,10 +10575,13 @@
 
   // ---- Agregar a mano: el diálogo (2026-10-26) --------------------------------------------------------------------
   // modo: 'persona' o 'proyecto'. Abajo, lo agregado a mano que sigue en la planificación, cada uno con «Quitar».
-  function plAbrirAgregar(modo) {
+  // fija (2026-11-13): una persona del personal definitivo; si no, temporal (solo la semana a la vista)
+  function plAbrirAgregar(modo, fija = false) {
     if (!rc.dir) return;
     plCerrarPop(false);
+    plPersonasMenu(false);
     planif.agregar = modo === 'proyecto' ? 'proyecto' : 'persona';
+    planif.agregarFija = !!fija;
     $('#plAgregarNombre').value = '';
     $('#plAgregarLugar').value = '';
     plPintarAgregar();
@@ -10446,22 +10591,27 @@
   function plPintarAgregar(error) {
     const proy = planif.agregar === 'proyecto';
     document.querySelectorAll('#plAgregarModo .pl-vista').forEach((b) => b.setAttribute('aria-pressed', b.dataset.modo === planif.agregar ? 'true' : 'false'));
+    const fija = !proy && planif.agregarFija;
+    $('#plAgregarDura').hidden = proy;
+    document.querySelectorAll('#plAgregarDura .pl-vista').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.fija === '1') === fija ? 'true' : 'false'));
+    $('#dlgPlAgregarTit').textContent = proy ? 'Agregar a la planificación' : fija ? 'Agregar personal definitivo' : 'Agregar personal temporal';
     const pista = $('#plAgregarPista');
     pista.classList.toggle('error', !!error);
     const s = plSemanaVista();
     const esta = plEsta(s);
     pista.textContent = error || (proy
       ? 'Un proyecto que no está en ejecución en el Recorrido. Queda solo en ' + esta + ' como un proyecto activo más: no pasa a las siguientes. Si tiene N° en la Planilla de Ingreso, escríbelo adelante («281. H2 Green»): cuando entre en ejecución será el mismo.'
-      : 'Alguien que no está en la lista: de apoyo, un contratista. Queda solo en ' + esta + ', para asignarle proyectos como a los demás: no pasa a las siguientes.');
+      : fija ? 'Queda en el personal desde ' + esta + ' en adelante, en todas las semanas.'
+      : 'De apoyo o un contratista: queda solo en ' + esta + ' y no pasa a las siguientes.');
     $('#plAgregarEt').textContent = proy ? 'Nombre del proyecto' : 'Nombre y apellido';
     $('#plAgregarNombre').placeholder = proy ? 'Galpón Quilicura, o 281. H2 Green' : 'Juan Pérez';
     $('#plAgregarLugarCampo').hidden = !proy;
-    $('#plAgregarOk').textContent = proy ? 'Agregar proyecto' : 'Agregar persona';
+    $('#plAgregarOk').textContent = proy ? 'Agregar proyecto' : fija ? 'Agregar al personal' : 'Agregar persona';
     const cont = $('#plAgregados');
     cont.textContent = '';
     const fila = (e) => (proy ? { k: e.clave, nom: e.titulo, sub: [e.clave.startsWith('req:') ? 'N° ' + e.clave.slice(4) : '', e.lugar].filter(Boolean).join(' · ') }
-      : { k: e.id, nom: e.nombre, sub: '' });
-    const lista = proy ? plProyManoActivos(s).sort(plPorTitulo).map(fila) : plManoActivas(s).map((id) => fila(plLista().ef.personas.get(s.id + '|' + id)));
+      : { k: e.id, nom: e.nombre, sub: e.fija && e.activa ? 'Personal definitivo' : '' });
+    const lista = proy ? plProyManoActivos(s).sort(plPorTitulo).map(fila) : plManoActivas(s).map((id) => fila(plManoDe(s, id)));
     /* Los de semanas anteriores que no están en esta, lo más reciente primero: vuelven con un toque (alguien de apoyo que
        sigue otra semana). Hasta 6. */
     const enEsta = new Set(lista.map((x) => x.k));
@@ -10497,7 +10647,7 @@
     };
     if (lista.length) {
       bloque((proy ? 'Proyectos agregados a mano en ' : 'Personas agregadas a mano en ') + esta,
-        lista.map((x) => Object.assign(x, { titulo: 'Sacar a ' + x.nom + ' de ' + esta + '. Lo ya asignado se sigue viendo' })), 'Quitar',
+        lista.map((x) => Object.assign(x, { titulo: 'Sacar a ' + x.nom + (x.sub ? ' del personal definitivo' : ' de ' + esta) + '. Lo ya asignado se sigue viendo' })), 'Quitar',
         (x) => { if (proy) plQuitarProyecto(x.k); else plQuitarPersona(x.k); });
     }
     if (previos.length) {
@@ -10516,7 +10666,7 @@
     let problema = '';
     const aviso = (txt) => { problema = txt; };
     const nombre = $('#plAgregarNombre').value;
-    const k = planif.agregar === 'proyecto' ? plAgregarProyecto(nombre, $('#plAgregarLugar').value, aviso) : plAgregarPersona(nombre, aviso);
+    const k = planif.agregar === 'proyecto' ? plAgregarProyecto(nombre, $('#plAgregarLugar').value, aviso) : plAgregarPersona(nombre, aviso, planif.agregarFija);
     if (problema) { plPintarAgregar(problema); $('#plAgregarNombre').focus(); return; }
     $('#dlgPlAgregar').close();
     if (planif.agregar === 'proyecto') { plEnfocar(k); return; }
@@ -17452,7 +17602,17 @@
   $('#plMas').append(crear('span', null, 'Más'), icono('flecha', 16));
   $('#plMas').setAttribute('aria-label', 'Más acciones');
   $('#plMas').addEventListener('click', () => plMasMenu($('#plMasLista').hidden));
-  document.addEventListener('pointerdown', (e) => { if (!$('#plMasLista').hidden && !e.target.closest('.pl-mas-menu')) plMasMenu(false); });
+  document.addEventListener('pointerdown', (e) => { if (!$('#plMasLista').hidden && !e.target.closest('.pl-mas-menu:not(.pl-per-menu)')) plMasMenu(false); });
+  $('#plPersonas').addEventListener('click', () => plPersonasMenu($('#plPersonasLista').hidden));
+  document.addEventListener('pointerdown', (e) => { if (!$('#plPersonasLista').hidden && !e.target.closest('.pl-per-menu')) plPersonasMenu(false); });
+  $('#plPersonasLista').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); plPersonasMenu(false); $('#plPersonas').focus(); } });
+  $('#plAgregarDura').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-fija]');
+    if (!b) return;
+    planif.agregarFija = b.dataset.fija === '1';
+    plPintarAgregar();
+    $('#plAgregarNombre').focus();
+  });
   $('#plMasLista').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); plMasMenu(false); $('#plMas').focus(); } });
   $('#plActualizar').append(icono('recargar', 16));
   $('#plActualizar').addEventListener('click', () => {
