@@ -2026,12 +2026,12 @@ def registrar_duenos_prefijo(filas):
 
 
 def _n_de_nombre_carpeta(nombre):
-    """N° del comienzo del nombre de una carpeta: «036. Fiscalía» -> '36'; «001t. Hospital» -> '001t'
+    """N° del comienzo del nombre de una carpeta: «036. Fiscalía» -> '36'; «330 - Escuela Naval» -> '330'; «001t. Hospital» -> '001t'
     (N° temporal de un proyecto sin N° de la Planilla, 2026-11-09); None si no lleva."""
-    m = re.match(r"^(\d{3,4}t)[.\-_]", nombre, re.IGNORECASE)
+    m = re.match(r"^(\d{3,4}t)\s*[.\-_]", nombre, re.IGNORECASE)
     if m:
         return m.group(1).lower()
-    m = re.match(r"^0*(\d+)[.\-_]", nombre)
+    m = re.match(r"^0*(\d+)\s*[.\-_]", nombre)
     return m.group(1) if m else None
 
 
