@@ -31,10 +31,10 @@ En cada vuelta (con el mismo cliente y ticket del monitor):
      pasada; palabra de `excluir` en el nombre; sin palabras del rubro ni
      parecido; monto sobre un `maximo` puesto a mano. El máximo que sale de la
      historia solo orienta, porque QUEMPIN ya ha ofertado licitaciones varias veces mayores que lo habitual.
-   - **Tope por rubro**: con rubro < 40 la categoría no pasa de «Baja», con
-     < 50 de «Evaluar» y con < 70 de «Buena». El tablero repite esta regla al
-     mover los pesos: si cambias una, cambia la otra (hay una prueba en
-     Chromium, `tests/test_tablero_oportunidades.py`).
+   - **Tope**: la categoría no pasa de lo que permite el tema del rubro, la
+     nota del rubro o el monto mínimo (ver «Temas con nivel de interés»). El
+     tablero aplica el mismo `tope` al mover los pesos (prueba en Chromium,
+     `tests/test_tablero_oportunidades.py`).
    - Se ordena por categoría y después por puntaje: una «Buena» por tope no
      pasa delante de una «Prioritaria».
 4. **Publica** `oportunidades.json` (paso del procesador, si está activo).
@@ -48,6 +48,42 @@ En cada vuelta (con el mismo cliente y ticket del monitor):
    `oportunidades/` de gh-pages como los demás tableros, con la pestaña en la
    navegación de los 7 y la tarjeta en el hub. Ver su `CLAUDE.md`. Reemplazó a
    la página suelta que se dejaba junto a la Planilla: un solo lugar, cifrado.
+
+**Temas con nivel de interés (2026-11-13, pedido del usuario: «no está
+encontrando verdaderas oportunidades de interés para la empresa [...] que sea
+mucho más intuitivo de utilizar y también de modificar»):**
+- Las frases del rubro ya no son dos listas (`nucleo`, `afines`) sino
+  **temas** (`rubro.temas`: Calderas, Calefacción, Agua caliente, Gas,
+  Hidrógeno, Climatización...), cada uno con su nivel: `alto` «Lo nuestro»,
+  `medio` «A veces», `bajo` «Rara vez». Una configuración antigua con
+  `nucleo`/`afines` se lee como dos temas (`temas_de`).
+- **El tema pone la categoría máxima** (`rubro.niveles`): «Rara vez» no pasa de
+  «Evaluar» aunque el monto y la región sean perfectos. Cada oportunidad lleva
+  `tema` y `tope` (`{categoria, motivo}`): el más estricto entre el tema, la nota
+  del rubro (`topesPorRubro`, ahora < 30 y < 45) y el **monto mínimo**
+  (`monto.minimo` 1 millón, `compraAgil.monto.minimo` 300 mil; lo más chico que
+  se ofertó fue 1,4 millones y 498 mil). El tope lo calcula Python; la página
+  solo lo aplica (`categoria(puntaje, op.tope)`).
+- **La historia corrige poco** (`rubro.historia`): ± 10 con 3 o más parecidas y
+  + 10 si se ganó una de las 3 más parecidas. Antes pesaba un 25 % y «Mantención
+  preventiva de calderas» sacaba 64 (salía «Buena») porque sus parecidas se
+  descartaron, mientras «Absorbente de vapor de agua», sin historia, sacaba 85.
+  Probado con peso 0 a 40: el AUC casi no cambia (0,782–0,788).
+- **No confundir** (`rubro.noConfundir`): frases que se borran antes de buscar
+  temas («vapor de agua», «peróxido de hidrógeno») y lugares con nombre del
+  rubro: en Atacama, «Caldera» es la comuna salvo «la caldera», «una caldera»
+  o «calderas» (`raices_del_rubro`). Excluir suma insumos clínicos
+  («absorbente», «esterilizador», «medio de contraste», «gases medicinales»),
+  «incendio» y «juego de living».
+- Niveles medidos en la Planilla: calderas 58 ofertadas de 123, calefacción 17
+  de 47, climatización 5 de 52 (por eso «Rara vez»).
+- Resultado: en la Planilla, AUC 0,782 → 0,787 y el orden del tablero
+  (categoría y después puntaje, `aucOrden` de `calibrar_oportunidades.py`)
+  0,767 → 0,785. En las 66 publicadas del 2026-11-13, las 8 «Prioritarias» son
+  mantenciones de calderas, calefacción, centrales térmicas y gas, y los 8
+  falsos positivos (absorbentes, esterilizadores, «Caldera» la comuna, medios
+  de contraste, gases medicinales) quedan descartados.
+- El correo exige además categoría «Prioritaria».
 
 **Decisiones medidas contra los datos reales (2026-10-13):**
 - **No se corta a raíces de 6 letras**, solo se pasa a singular. Con el corte,

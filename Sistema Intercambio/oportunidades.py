@@ -189,6 +189,78 @@ def coincidencias(raices_texto: list[str], frases: list[str]) -> list[str]:
     return [f for f in frases if contiene(raices_texto, f)]
 
 
+# ── RUBRO: TEMAS CON NIVEL DE INTERÉS (2026-11-13) ──────────────────────────
+# Pedido del usuario: «no está encontrando verdaderas oportunidades [...] que
+# sea mucho más intuitivo de utilizar y también de modificar». Las frases del
+# rubro se agrupan por tema (Calderas, Calefacción, Climatización...) y cada
+# tema tiene un nivel de interés. El nivel pone la categoría máxima: una
+# licitación de un tema «Rara vez» nunca sale «Prioritaria», por buenos que
+# sean el monto o la región. Antes la historia de la Planilla (202 descartes de
+# 305, muchos por capacidad del momento) bajaba la nota de «Mantención de
+# calderas» a 64 y la dejaba bajo «Absorbente de vapor de agua», que no tenía
+# historia.
+ORDEN_INTERES = ("alto", "medio", "bajo")
+NIVELES_INTERES = {
+    "alto": {"nombre": "Lo nuestro", "enNombre": 85, "enDescripcion": 60,
+             "maxEnNombre": None, "maxEnDescripcion": "buena", "prefiltro": 60},
+    "medio": {"nombre": "A veces", "enNombre": 55, "enDescripcion": 35,
+              "maxEnNombre": "buena", "maxEnDescripcion": "baja", "prefiltro": 30},
+    "bajo": {"nombre": "Rara vez", "enNombre": 30, "enDescripcion": 20,
+             "maxEnNombre": "evaluar", "maxEnDescripcion": "baja", "prefiltro": 15},
+}
+SEPARADOR = "·"          # marca dónde se borró una frase: dos palabras a sus lados no forman frase
+_ARTICULOS_ANTES = ("la", "una", "su", "nueva", "antigua")
+
+
+def temas_de(config: dict) -> list[dict]:
+    """Los temas del rubro. Una configuración antigua (núcleo y afines) se lee
+    como dos temas: «alto» y «medio»."""
+    r = config["rubro"]
+    if r.get("temas"):
+        return [t for t in r["temas"] if t.get("interes") in ORDEN_INTERES and t.get("frases")]
+    return [t for t in ({"id": "nucleo", "nombre": "Núcleo", "interes": "alto", "frases": r.get("nucleo") or []},
+                        {"id": "afines", "nombre": "Afines", "interes": "medio", "frases": r.get("afines") or []})
+            if t["frases"]]
+
+
+def niveles_de(config: dict) -> dict:
+    propios = config["rubro"].get("niveles") or {}
+    return {k: dict(NIVELES_INTERES[k], **(propios.get(k) or {})) for k in ORDEN_INTERES}
+
+
+def raices_del_rubro(texto, region, no_confundir: dict | None) -> list[str]:
+    """Las raíces del texto sin lo que se parece al rubro y no lo es
+    («peróxido de hidrógeno», «vapor de agua») ni los lugares con nombre del
+    rubro: en Atacama, «Caldera» es una comuna («Gobernación Marítima de
+    Caldera»), salvo «la caldera», «una caldera» o «calderas»."""
+    nc = no_confundir or {}
+    t = normalizar(texto)
+    reg = normalizar(region)
+    for lugar in nc.get("lugares") or []:
+        clave = normalizar(lugar.get("region"))
+        palabra = normalizar(lugar.get("palabra"))
+        if palabra and clave and clave in reg:
+            antes = "".join(rf"(?<!\b{a} )" for a in _ARTICULOS_ANTES)
+            t = re.sub(rf"\b{antes}{re.escape(palabra)}\b", f" {SEPARADOR} ", t)
+    rs = []
+    for trozo in t.split(SEPARADOR):
+        rs += raices(trozo) + [SEPARADOR]
+    for frase in nc.get("frases") or []:
+        f = raices(frase)
+        if not f:
+            continue
+        n, salida, i = len(f), [], 0
+        while i < len(rs):
+            if rs[i:i + n] == f:
+                salida.append(SEPARADOR)
+                i += n
+            else:
+                salida.append(rs[i])
+                i += 1
+        rs = salida
+    return rs
+
+
 # ── HISTORIA ─────────────────────────────────────────────────────────────────
 
 def unidad_de(codigo) -> str | None:
@@ -403,6 +475,8 @@ def _acotar(x: float) -> int:
 class Evaluador:
     def __init__(self, config: dict, historia: Historia, mercado: list[dict], ahora: datetime, uf: float):
         self.c, self.h, self.ahora, self.uf = config, historia, ahora, uf
+        self.temas, self.niveles = temas_de(config), niveles_de(config)
+        self.no_confundir = config["rubro"].get("noConfundir") or {}
         self.mercado = mercado
         self.mercado_vec = [(m, historia.vector(raices(m.get("nombre")))) for m in mercado]
         # Cada tipo con su propio rango: una compra ágil es de hasta 100 UTM y
@@ -425,21 +499,22 @@ class Evaluador:
         return rango
 
     # Prefiltro: solo con el nombre (antes de gastar una consulta en la ficha).
-    def prefiltro(self, nombre: str) -> float:
-        rs = raices(nombre)
-        r = self.c["rubro"]
-        nucleo, afines = coincidencias(rs, r["nucleo"]), coincidencias(rs, r["afines"])
-        if coincidencias(rs, r["excluir"]):
+    def prefiltro(self, nombre: str, region: str | None = None) -> float:
+        rs = raices_del_rubro(nombre, region, self.no_confundir)
+        if coincidencias(rs, self.c["rubro"]["excluir"]):
             return 0                 # con «combustible» o «producto químico» en el nombre se descartaría igual: no gastar la ficha
-        if not nucleo and not afines:
+        # El mejor tema manda; un segundo tema suma poco («calderas y climatización»).
+        puntos = sorted((self.niveles[t["interes"]]["prefiltro"] for t in self.temas if coincidencias(rs, t["frases"])), reverse=True)
+        if not puntos:
             return 60 * self.h.muy_parecida_ofertada(nombre)
         parecidas = self.h.parecidas(nombre, k=3)
         sim_ofertada = max((s for s, it in parecidas if it["ofertado"]), default=0)
-        return (60 if nucleo else 0) + (30 if afines else 0) + 60 * sim_ofertada
+        return puntos[0] + (min(30, puntos[1]) if len(puntos) > 1 else 0) + 60 * sim_ofertada
 
     def evaluar(self, ficha: dict, en_planilla: dict | None = None) -> dict:
         texto = " ".join(x for x in [ficha.get("nombre"), ficha.get("descripcion"), *ficha.get("productos", [])] if x)
-        rs = raices(texto)
+        rs = raices_del_rubro(texto, ficha.get("region"), self.no_confundir)
+        rs_nombre = raices_del_rubro(ficha.get("nombre"), ficha.get("region"), self.no_confundir)
         # La categoría de los ítems no entra: la de climatización junta calefacción con aire acondicionado.
         # Lo parecido se busca por el nombre: la Planilla guarda títulos, no descripciones.
         parecidas = self.h.parecidas(ficha.get("nombre") or "")
@@ -448,7 +523,7 @@ class Evaluador:
         # una licitación vista días después del build no queda como si nada.
         criterios, descartar_fijo, descartar_tiempo = {}, [], []
 
-        criterios["rubro"] = self._rubro(rs, ficha, parecidas, descartar_fijo)
+        criterios["rubro"] = self._rubro(rs, rs_nombre, ficha, parecidas, descartar_fijo)
         monto, fuente_monto = self._monto_clp(ficha)
         es_ca = bool(ficha.get("compraAgil"))
         criterios["monto"] = self._monto(monto, fuente_monto, descartar_fijo, self.rango_ca if es_ca else self.rango)
@@ -469,7 +544,8 @@ class Evaluador:
         total = sum(pesos[k] for k in pesos) or 1
         puntaje = round(sum(criterios[k]["puntaje"] * pesos[k] for k in pesos) / total, 1)
         descartar = descartar_fijo + descartar_tiempo
-        categoria = "descartar" if descartar else self.categoria(puntaje, criterios["rubro"]["puntaje"])
+        tope = self.tope(criterios["rubro"], monto, fuente_monto, es_ca)
+        categoria = "descartar" if descartar else self.categoria(puntaje, tope)
         a_favor, en_contra = self.a_favor_y_en_contra(criterios)
 
         ofertadas = [(s, it) for s, it in parecidas if it["ofertado"]]
@@ -498,6 +574,9 @@ class Evaluador:
             "categorias": ficha.get("categorias") or [],
             "puntaje": puntaje,
             "categoria": categoria,
+            # La categoría máxima (tema del rubro, monto mínimo): no depende de los pesos ni de la fecha.
+            "tope": tope,
+            "tema": criterios["rubro"].get("tema"),
             "descartar": descartar,
             "descartarFijo": descartar_fijo,
             "aFavor": a_favor,
@@ -523,15 +602,39 @@ class Evaluador:
         contra = sorted((x for x in validos if x[1]["puntaje"] <= 50), key=lambda x: -pesos[x[0]] * (100 - x[1]["puntaje"]))
         return [c["corto"] for _, c in favor[:3]], [c["corto"] for _, c in contra[:2]]
 
-    def categoria(self, puntaje: float, rubro: int) -> str:
-        """La categoría por puntaje, con tope si el rubro no es claro (la
-        misma regla repite la página al mover los pesos)."""
-        orden = [c["id"] for c in sorted(self.c["categorias"], key=lambda c: -c["desde"])]
+    def _orden_categorias(self) -> list[str]:
+        return [c["id"] for c in sorted(self.c["categorias"], key=lambda c: -c["desde"])]
+
+    def categoria(self, puntaje: float, tope: dict | None = None) -> str:
+        """La categoría por puntaje, sin pasar de su tope (la misma regla
+        repite la página al mover los pesos: `categoria()` del tablero)."""
+        orden = self._orden_categorias()
         cat = next((c["id"] for c in sorted(self.c["categorias"], key=lambda c: -c["desde"]) if puntaje >= c["desde"]), orden[-1])
-        for tope in self.c.get("topesPorRubro", []):
-            if rubro < tope["rubroMenorA"] and orden.index(cat) < orden.index(tope["categoriaMaxima"]):
-                cat = tope["categoriaMaxima"]
+        if tope and tope.get("categoria") in orden and orden.index(cat) < orden.index(tope["categoria"]):
+            cat = tope["categoria"]
         return cat
+
+    def tope(self, rubro: dict, monto: float | None, fuente_monto: str, es_ca: bool) -> dict | None:
+        """La categoría más alta que puede alcanzar, con su motivo: la más
+        estricta entre el tema del rubro, la nota del rubro (una palabra de
+        excluir en la descripción, parecidas siempre descartadas) y el monto
+        mínimo. No depende de los pesos: la página solo la aplica."""
+        orden = self._orden_categorias()
+        topes = []
+        if rubro.get("topeTema"):
+            topes.append((rubro["topeTema"], rubro["topeMotivo"]))
+        for t in self.c.get("topesPorRubro", []):
+            if rubro["puntaje"] < t["rubroMenorA"]:
+                topes.append((t["categoriaMaxima"], f"Rubro con {rubro['puntaje']} puntos (bajo {t['rubroMenorA']})"))
+        minimo = (self.c.get("compraAgil", {}).get("monto", {}) if es_ca else self.c["monto"]).get("minimo")
+        if minimo and monto and not fuente_monto.startswith("por tipo") and monto < minimo:
+            topes.append((self.c["monto"].get("categoriaBajoMinimo", "baja"),
+                          f"Muy chica: {_pesos(monto)}, bajo el mínimo de {_pesos(minimo)}"))
+        topes = [(c, m) for c, m in topes if c in orden]
+        if not topes:
+            return None
+        cat, motivo = max(topes, key=lambda x: orden.index(x[0]))
+        return {"categoria": cat, "motivo": motivo}
 
     def evaluar_sin_ficha(self, codigo: str, nombre: str, cierre: str | None, en_planilla, extra: dict | None = None) -> dict:
         """Candidata cuya ficha todavía no se pidió (tope de consultas): se
@@ -544,62 +647,81 @@ class Evaluador:
         return r
 
     # ── criterios ──
-    def _rubro(self, rs, ficha, parecidas, descartar) -> dict:
+    def _rubro(self, rs, rs_nombre, ficha, parecidas, descartar) -> dict:
         r = self.c["rubro"]
-        rs_nombre = raices(ficha.get("nombre"))
-        nucleo, afines, fuera = coincidencias(rs, r["nucleo"]), coincidencias(rs, r["afines"]), coincidencias(rs, r["excluir"])
+        # El mejor tema manda. El nombre es la señal fuerte; lo que solo aparece en la
+        # descripción pesa menos («guardavidas para la piscina temperada» no es climatizar una piscina).
+        mejor = None                                   # (puntaje, tema, en el nombre, frases)
+        for t in self.temas:
+            en_texto = coincidencias(rs, t["frases"])
+            if not en_texto:
+                continue
+            en_nombre = coincidencias(rs_nombre, t["frases"])
+            nivel = self.niveles[t["interes"]]
+            p = nivel["enNombre"] if en_nombre else nivel["enDescripcion"]
+            if mejor is None or p > mejor[0]:
+                mejor = (p, t, bool(en_nombre), en_nombre or en_texto)
+        fuera, en_nombre_fuera = coincidencias(rs, r["excluir"]), coincidencias(rs_nombre, r["excluir"])
         resta = coincidencias(rs, r.get("restar", []))
-        # El nombre es la señal fuerte; lo que solo aparece en la descripción pesa
-        # menos («guardavidas para la piscina temperada» no es climatizar una piscina).
-        nucleo_nombre, afines_nombre = coincidencias(rs_nombre, r["nucleo"]), coincidencias(rs_nombre, r["afines"])
-        if nucleo:
-            base = 85 if nucleo_nombre else 60
-        elif afines:
-            base = 55 if afines_nombre else 35
+        if mejor:
+            base, tema, nom, frases = mejor
+            nivel = self.niveles[tema["interes"]]
+            tope_tema = nivel["maxEnNombre" if nom else "maxEnDescripcion"]
+            tope_motivo = f"Tema «{tema['nombre']}» ({nivel['nombre'].lower()})" + ("" if nom else ", solo en la descripción")
+            motivo = [f"{tema['nombre']} ({nivel['nombre'].lower()}): {', '.join(frases[:3])}" + ("" if nom else " (solo en la descripción)")]
         else:
-            base = 15
-        donde = "" if (nucleo_nombre or (not nucleo and afines_nombre)) else " (solo en la descripción)"
-        motivo = [(f"núcleo: {', '.join(nucleo[:3])}" if nucleo else f"afín: {', '.join(afines[:3])}") + donde
-                  if (nucleo or afines) else "sin palabras del rubro"]
-        en_nombre = coincidencias(rs_nombre, r["excluir"])
+            base, tema, nom = 15, None, False
+            tope_tema, tope_motivo = "baja", "Sin palabras de ningún tema"
+            motivo = ["sin palabras del rubro"]
+        alto = bool(tema) and tema["interes"] == "alto"
         if fuera:
-            # Con el nombre del núcleo, una palabra de excluir que solo está en la
-            # descripción resta poco: «alimentación» eléctrica, «capacitación» del
+            # Con el nombre de un tema «Lo nuestro», una palabra de excluir que solo está en
+            # la descripción resta poco: «alimentación» eléctrica, «capacitación» del
             # personal o «pavimento» de la sala no cambian el trabajo (medido el
             # 2026-10-14: de 8 así, 4 se ofertaron, más que el promedio).
-            solo_descripcion = bool(nucleo_nombre) and not en_nombre
+            solo_descripcion = alto and nom and not en_nombre_fuera
             base -= r.get("restaExcluirSoloDescripcion", 35) if solo_descripcion else 35
             motivo.append(f"{'menciona' if solo_descripcion else 'fuera de rubro:'} {', '.join(fuera[:3])}"
                           + (" en la descripción" if solo_descripcion else ""))
         if resta:
-            base -= 10 if nucleo else 25      # «calderas y aire acondicionado» sigue siendo del rubro
+            base -= 10 if alto else 25      # «calderas y aire acondicionado» sigue siendo del rubro
             motivo.append(f"resta: {', '.join(resta[:3])}")
         ofertadas = sum(s for s, it in parecidas if it["ofertado"])
         todas = sum(s for s, _ in parecidas)
         if todas:
+            # La historia corrige poco y solo con varias parecidas: muchos descartes de la
+            # Planilla fueron por capacidad, distancia o plazo, no por el trabajo. Antes
+            # pesaba un 25 % y hundía «Mantención de calderas» bajo cosas sin historia.
+            h = r.get("historia") or {}
             p = ofertadas / todas
-            # La historia pesa poco: muchos descartes de la Planilla fueron por distancia o plazo, que ya miden otros criterios.
-            base = 0.75 * base + 0.25 * (100 * p) + (10 if any(it["ganado"] for s, it in parecidas[:3]) else 0)
+            if len(parecidas) >= h.get("minParecidas", 3):
+                base += h.get("peso", 20) * (p - 0.5)
+            if any(it["ganado"] for s, it in parecidas[:3]):
+                base += h.get("bonoGanada", 10)
             ganadas = [it for _, it in parecidas if it["ganado"]]
             motivo.append(f"{sum(1 for _, it in parecidas if it['ofertado'])} de {len(parecidas)} parecidas se ofertaron"
                           + (f", {len(ganadas)} ganada(s) (N° {', '.join(str(it['req']) for it in ganadas[:3])})" if ganadas else ""))
-        if en_nombre:
-            descartar.append("Fuera de rubro: " + ", ".join(en_nombre[:3]))
-        if not nucleo and not afines:
-            if fuera and not en_nombre:
+        if en_nombre_fuera:
+            descartar.append("Fuera de rubro: " + ", ".join(en_nombre_fuera[:3]))
+        if not tema:
+            if fuera and not en_nombre_fuera:
                 descartar.append("Fuera de rubro: " + ", ".join(fuera[:3]))
             elif not fuera and not self.h.muy_parecida_ofertada(ficha.get("nombre") or ""):
                 descartar.append("Sin relación clara con el rubro (ni palabras del rubro ni muy parecida a algo ofertado)")
+            else:
+                tope_tema, tope_motivo = "evaluar", "Sin tema, pero muy parecida a algo ya ofertado"
             base = min(base, 45)
-        if fuera and not (nucleo_nombre and not en_nombre):
+        if fuera and not (alto and nom and not en_nombre_fuera):
             corto = f"Fuera de rubro: {fuera[0]}"
-        elif nucleo:
-            corto = f"Del rubro: {nucleo[0]}" + ("" if nucleo_nombre else " (en la descripción)")
-        elif afines:
-            corto = f"Rubro afín: {afines[0]}" + ("" if afines_nombre else " (en la descripción)")
+        elif tema:
+            corto = ({"alto": "Del rubro", "medio": "Rubro afín", "bajo": "Rara vez se oferta"}[tema["interes"]]
+                     + f": {frases[0]}" + ("" if nom else " (en la descripción)"))
         else:
             corto = "Parecida a lo ya ofertado" if parecidas else "Sin palabras del rubro"
-        return {"puntaje": _acotar(base), "motivo": "; ".join(motivo), "corto": corto}
+        return {"puntaje": _acotar(base), "motivo": "; ".join(motivo), "corto": corto,
+                "tema": ({"id": tema["id"], "nombre": tema["nombre"], "interes": tema["interes"], "enNombre": nom}
+                         if tema else None),
+                "topeTema": tope_tema, "topeMotivo": tope_motivo}
 
     def _monto_clp(self, ficha) -> tuple[float | None, str]:
         m, moneda = ficha.get("montoEstimado"), (ficha.get("moneda") or "CLP").upper()
@@ -1025,7 +1147,7 @@ def _revisar_compras_agiles(cliente_ca, estado: dict, evaluador: Evaluador, conf
                 activas[codigo] = fila
     est["activas"] = activas
     est["consultado"] = ahora.isoformat(timespec="seconds")
-    candidatas = sorted(((evaluador.prefiltro(v["nombre"] or ""), c) for c, v in activas.items()), reverse=True)
+    candidatas = sorted(((evaluador.prefiltro(v["nombre"] or "", v.get("region")), c) for c, v in activas.items()), reverse=True)
     est["candidatas"] = [c for p, c in candidatas if p > 0][: cfg["maxCandidatas"]]
     for codigo in est["candidatas"]:
         previa = fichas.get(codigo)
@@ -1241,6 +1363,12 @@ def publicacion(oportunidades, evaluador: Evaluador, historia: Historia, config,
         "criterios": [{"id": i, "nombre": n, "peso": pesos[i], "descripcion": d} for i, n, d in CRITERIOS],
         "categorias": config["categorias"],
         "topesPorRubro": config.get("topesPorRubro", []),
+        # Lo que busca el motor, para que la página lo muestre (y, más adelante, lo deje cambiar).
+        "rubro": {"temas": [{k: t.get(k) for k in ("id", "nombre", "interes", "frases")} for t in evaluador.temas],
+                  "niveles": evaluador.niveles, "noConfundir": evaluador.no_confundir,
+                  "excluir": config["rubro"].get("excluir", []),
+                  "montoMinimo": config["monto"].get("minimo"),
+                  "montoMinimoCompraAgil": config.get("compraAgil", {}).get("monto", {}).get("minimo")},
         # Lo que la página recalcula con la fecha del día (una licitación se
         # mira días después de evaluada): misma tabla que usa Evaluador.
         "reglas": {"plazoOferta": config["plazoOferta"]["tramos"], "visitaPasada": config["visitaPasada"],

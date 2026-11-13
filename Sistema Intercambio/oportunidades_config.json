@@ -15,11 +15,10 @@
     "ejecucion": 5
   },
 
-  "_topesPorRubro": "Sin un rubro claro, una licitación no sube de cierta categoría aunque el resto de los criterios sea perfecto.",
+  "_topesPorRubro": "Además del tope que pone el nivel de interés de cada tema (rubro.niveles), una nota de rubro muy baja (una palabra de excluir en la descripción, parecidas que siempre se descartaron) limita la categoría.",
   "topesPorRubro": [
-    {"rubroMenorA": 40, "categoriaMaxima": "baja"},
-    {"rubroMenorA": 50, "categoriaMaxima": "evaluar"},
-    {"rubroMenorA": 70, "categoriaMaxima": "buena"}
+    {"rubroMenorA": 30, "categoriaMaxima": "baja"},
+    {"rubroMenorA": 45, "categoriaMaxima": "evaluar"}
   ],
 
   "categorias": [
@@ -30,29 +29,59 @@
   ],
 
   "rubro": {
-    "nucleo": [
-      "caldera", "sala de calderas", "calefacción", "agua caliente", "quemador", "boiler",
-      "central térmica", "sistema térmico", "generador de vapor", "vapor",
-      "hidrógeno", "incinerador", "horno crematorio", "intercambiador de calor", "red de gas",
-      "instalación de gas", "gas natural", "gas licuado", "calefón", "termo eléctrico"
+    "_temas": "Pedido del usuario (2026-11-13): que el motor sea fácil de entender y de cambiar. Cada tema junta las frases de un tipo de trabajo y tiene un nivel de interés: alto (Lo nuestro), medio (A veces) o bajo (Rara vez). El mejor tema que nombra la licitación da la nota del rubro y la categoría máxima (ver niveles). Niveles medidos contra la Planilla el 2026-11-13: calderas 58 ofertadas de 123, calefacción 17 de 47, climatización 5 de 52.",
+    "temas": [
+      {"id": "calderas", "nombre": "Calderas y centrales térmicas", "interes": "alto",
+       "frases": ["caldera", "sala de calderas", "central térmica", "sistema térmico", "quemador", "generador de vapor",
+                  "red de vapor", "caldera de vapor", "intercambiador de calor", "tren de gas"]},
+      {"id": "calefaccion", "nombre": "Calefacción", "interes": "alto",
+       "frases": ["calefacción", "calefacción central", "radiador de calefacción"]},
+      {"id": "agua-caliente", "nombre": "Agua caliente sanitaria", "interes": "alto",
+       "frases": ["agua caliente", "boiler", "calefón", "termo eléctrico", "estanque acumulador"]},
+      {"id": "gas", "nombre": "Instalaciones de gas", "interes": "alto",
+       "frases": ["red de gas", "instalación de gas", "gas natural", "gas licuado", "sello verde", "válvula de gas", "regularización de gas"]},
+      {"id": "hidrogeno", "nombre": "Hidrógeno", "interes": "alto",
+       "frases": ["hidrógeno"]},
+      {"id": "incineradores", "nombre": "Incineradores y hornos crematorios", "interes": "alto",
+       "frases": ["incinerador", "horno crematorio"]},
+      {"id": "vapor", "nombre": "Vapor", "interes": "medio",
+       "frases": ["vapor"]},
+      {"id": "solar-bombas", "nombre": "Solar térmico y bombas de calor", "interes": "medio",
+       "frases": ["paneles solares", "solar térmico", "colector solar", "bomba de calor"]},
+      {"id": "piscinas", "nombre": "Piscinas temperadas", "interes": "medio",
+       "frases": ["piscina temperada", "temperado de piscina"]},
+      {"id": "cocina", "nombre": "Hornos y cocina industrial", "interes": "medio",
+       "frases": ["horno industrial", "horno a gas", "horno panadero", "marmita", "chimenea"]},
+      {"id": "componentes", "nombre": "Salas de máquinas y componentes", "interes": "medio",
+       "frases": ["válvula termostática", "válvula motorizada", "bomba recirculadora", "sala de bombas", "sala de máquinas",
+                  "termoventilador", "calentador", "radiador"]},
+      {"id": "climatizacion", "nombre": "Climatización", "interes": "bajo",
+       "frases": ["climatización"]}
     ],
-    "afines": [
-      "climatización", "bomba de calor", "paneles solares", "solar térmico", "colector solar",
-      "piscina temperada", "temperado de piscina", "chimenea", "horno industrial", "horno a gas",
-      "horno panadero", "marmita", "estanque acumulador", "válvula termostática", "válvula motorizada",
-      "válvula de gas", "bomba recirculadora", "sala de bombas", "sala de máquinas", "tren de gas",
-      "termoventilador", "calentador", "radiador"
-    ],
-    "_excluir": "excluir: no es trabajo de QUEMPIN aunque nombre una caldera (combustible, químicos). En el nombre de la licitación, la descarta; en la descripción, resta. restar: resta poco si además hay palabras del núcleo.",
+    "_niveles": "Nota del rubro y categoría máxima según dónde aparece el tema: en el nombre de la licitación o solo en la descripción. prefiltro: cuánto suma al elegir qué fichas pedir. Si no se escriben, valen los de oportunidades.py (NIVELES_INTERES).",
+    "niveles": {
+      "alto": {"nombre": "Lo nuestro", "enNombre": 85, "enDescripcion": 60, "maxEnNombre": null, "maxEnDescripcion": "buena", "prefiltro": 60},
+      "medio": {"nombre": "A veces", "enNombre": 55, "enDescripcion": 35, "maxEnNombre": "buena", "maxEnDescripcion": "baja", "prefiltro": 30},
+      "bajo": {"nombre": "Rara vez", "enNombre": 30, "enDescripcion": 20, "maxEnNombre": "evaluar", "maxEnDescripcion": "baja", "prefiltro": 15}
+    },
+    "_noConfundir": "Frases que se parecen al rubro y no lo son: se borran del texto antes de buscar los temas (el resto del texto sigue contando). lugares: una palabra del rubro que en esa región es un lugar; en Atacama «Caldera» es una comuna, salvo «la caldera», «una caldera» o «calderas». Agregado el 2026-11-13: «Absorbente de vapor de agua», «esterilizador de peróxido de hidrógeno» y «Gobernación Marítima de Caldera» salían Prioritarias.",
+    "noConfundir": {
+      "frases": ["vapor de agua", "peróxido de hidrógeno"],
+      "lugares": [{"palabra": "caldera", "region": "atacama"}]
+    },
+    "_historia": "Cuánto corrige la nota del rubro lo que pasó con las licitaciones parecidas de la Planilla: con minParecidas o más, suma o resta hasta peso/2 según la fracción ofertada; bonoGanada si una de las 3 más parecidas se ganó.",
+    "historia": {"minParecidas": 3, "peso": 20, "bonoGanada": 10},
+    "_excluir": "excluir: no es trabajo de QUEMPIN aunque nombre una caldera (combustible, químicos, insumos clínicos). En el nombre de la licitación, la descarta; en la descripción, resta. restar: resta poco si además hay un tema «Lo nuestro».",
     "excluir": [
       "combustible", "suministro de petróleo", "petróleo diésel", "petróleo calefacción", "petróleo para calefacción", "petróleo para calderas de calefacción",
       "suministro diésel", "diésel caldera", "parafina", "leña", "suministro de pellet", "pavimento",
-      "pavimentación", "iluminación", "alumbrado", "vialidad", "autoclave", "esterilización",
+      "pavimentación", "iluminación", "alumbrado", "vialidad", "autoclave", "esterilización", "esterilizador",
       "producto químico", "medicamento", "alimentación", "capacitación", "factor de emisión",
       "base calefactora", "tala", "árbol", "letrero", "prótesis", "hidrogeológico", "aditivo", "granel",
-      "vehículo", "camioneta", "camión", "ambulancia", "automotriz", "radiador de motor", "engrase", "mueble"
+      "absorbente", "medio de contraste", "gases medicinales", "incendio",
+      "vehículo", "camioneta", "camión", "ambulancia", "automotriz", "radiador de motor", "engrase", "mueble", "juego de living"
     ],
-    "_restaExcluirSoloDescripcion": "Si el nombre es del núcleo y la palabra de excluir está solo en la descripción, resta esto en vez de 35 (medido 2026-10-14 contra la Planilla).",
+    "_restaExcluirSoloDescripcion": "Si el nombre es de un tema «Lo nuestro» y la palabra de excluir está solo en la descripción, resta esto en vez de 35 (medido 2026-10-14 contra la Planilla).",
     "restaExcluirSoloDescripcion": 10,
     "restar": ["aire acondicionado", "limpieza", "kit", "insumo", "vidrio"]
   },
@@ -83,6 +112,9 @@
     "idealDesde": null,
     "idealHasta": null,
     "maximo": null,
+    "_minimo": "Monto publicado bajo el cual no vale la pena el esfuerzo de ofertar (2026-11-13): la categoría no pasa de categoriaBajoMinimo. Lo más chico que QUEMPIN ofertó en una licitación fue 1,4 millones; en una compra ágil, 498 mil (compraAgil.monto.minimo). No aplica al monto estimado por el tipo de licitación.",
+    "minimo": 1000000,
+    "categoriaBajoMinimo": "baja",
     "_confianzaEstimadoPorTipo": "Si el comprador no publica el monto, se estima por el tipo de licitación y el criterio queda entre ese cálculo (este peso) y 60 neutro.",
     "confianzaEstimadoPorTipo": 0.3,
     "valorUTM": 71000,
@@ -152,7 +184,7 @@
     "paginasPorBusqueda": 2,
     "maxCandidatas": 40,
     "minimoHistoriaMonto": 8,
-    "monto": {"idealDesde": null, "idealHasta": null, "maximo": null},
+    "monto": {"idealDesde": null, "idealHasta": null, "maximo": null, "minimo": 300000},
     "_busquedas": "En orden de importancia (si la API está lenta, las últimas quedan para la próxima vuelta). Son las palabras de lo que QUEMPIN cotizó por compra ágil; climatización y otros afines casi nunca se ofertaron. «radiador» no se busca: en compras ágiles casi siempre es el de un vehículo (medido el 2026-10-15).",
     "busquedas": [
       "caldera", "calderas", "calefacción", "quemador", "agua caliente",

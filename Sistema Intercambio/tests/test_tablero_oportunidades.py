@@ -159,7 +159,7 @@ def test_la_plantilla_repite_las_reglas_de_python():
     """La categoría (con su tope por rubro) y el plazo se calculan en dos lados:
     si cambias una regla, cambia la otra (y el test del navegador de abajo)."""
     plantilla = build.RUTA_TEMPLATE.read_text(encoding="utf-8")
-    for pieza in ("Evaluador.categoria", "topesPorRubro", "rubroMenorA", "categoriaMaxima",
+    for pieza in ("Evaluador.categoria", "op.tope", "tope.categoria", "topesPorRubro",
                   "REGLAS.plazoOferta", "plazoOfertaCompraAgil", "menosDeDias", "visitaPasada", "obligatoriaODuda", "descartarFijo"):
         assert pieza in plantilla, pieza
     assert "innerHTML" not in plantilla, "los textos de la API se escriben con textContent"

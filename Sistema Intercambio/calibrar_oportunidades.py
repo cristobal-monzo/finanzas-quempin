@@ -139,6 +139,10 @@ def medir(lista: list[dict]) -> dict:
     cuenta con nota 0: el correo nunca la manda)."""
     def nota(c):
         return 0 if c["categoria"] == "descartar" else c["puntaje"]
+
+    def orden(c):
+        rango = {"prioritaria": 4, "buena": 3, "evaluar": 2, "baja": 1}.get(c["categoria"], 0)
+        return rango * 1000 + nota(c)
     tramos = []
     for desde, hasta in zip(TRAMOS, (None,) + TRAMOS[:-1]):
         dentro = [c for c in lista if nota(c) >= desde and (hasta is None or nota(c) < hasta)]
@@ -146,13 +150,16 @@ def medir(lista: list[dict]) -> dict:
     return {
         "casos": len(lista), "ofertadas": sum(c["ofertada"] for c in lista),
         "auc": auc([nota(c) for c in lista if c["ofertada"]], [nota(c) for c in lista if not c["ofertada"]]),
+        # El orden del tablero: primero la categoría (con su tope), después el puntaje.
+        "aucOrden": auc([orden(c) for c in lista if c["ofertada"]], [orden(c) for c in lista if not c["ofertada"]]),
         "tramos": tramos,
     }
 
 
 def _imprimir(nombre: str, m: dict) -> None:
     a = m["auc"]
-    print(f"{nombre}: {m['casos']} casos, {m['ofertadas']} ofertados; AUC {a:.3f}" if a is not None else f"{nombre}: sin casos")
+    print(f"{nombre}: {m['casos']} casos, {m['ofertadas']} ofertados; AUC {a:.3f} (orden del tablero {m['aucOrden']:.3f})"
+          if a is not None else f"{nombre}: sin casos")
     for t in m["tramos"]:
         if t["casos"]:
             rango = f"{t['desde']}+" if t["hasta"] is None else f"{t['desde']}–{t['hasta']}"

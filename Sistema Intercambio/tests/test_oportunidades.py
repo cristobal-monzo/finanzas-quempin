@@ -124,11 +124,55 @@ def test_rubro_nucleo_afin_y_fuera_de_rubro(evaluador):
     petroleo = _evaluar(evaluador, _ficha("1-3-LE26", "Suministro de petróleo para calefacción"))
     ajena = _evaluar(evaluador, _ficha("1-4-LE26", "Servicio de radiotaxis"))
     assert caldera["criterios"]["rubro"]["puntaje"] >= 70 and not caldera["descartar"]
-    assert "núcleo: caldera" in caldera["criterios"]["rubro"]["motivo"]
+    assert "(lo nuestro): caldera" in caldera["criterios"]["rubro"]["motivo"]
+    assert caldera["tema"]["id"] == "calderas" and caldera["tope"] is None
     assert clima["criterios"]["rubro"]["puntaje"] < 50
     assert clima["categoria"] in ("baja", "evaluar")           # tope por rubro, aunque lo demás sea perfecto
+    assert clima["tema"]["interes"] == "bajo" and clima["tope"]["categoria"] in ("baja", "evaluar")
     assert petroleo["descartar"] and "Fuera de rubro" in petroleo["descartar"][0]
     assert ajena["descartar"] and "Sin relación" in ajena["descartar"][0]
+
+
+def test_el_tema_pone_la_categoria_maxima_y_la_historia_no_hunde_lo_nuestro(config):
+    """2026-11-13: «Mantención de calderas» sacaba 64 de rubro (y salía «Buena»)
+    porque sus parecidas de la Planilla se descartaron, mientras una licitación
+    sin historia sacaba 85. Ahora la historia corrige poco y el tope lo pone el tema."""
+    historia = op.Historia([_req(i, "Mantención de calderas hospital", "Descartado", f"60{i}-{i}-LE26") for i in range(1, 8)])
+    ev = op.Evaluador(config, historia, [], AHORA, 40000)
+    r = _evaluar(ev, _ficha("1-1-LE26", "Mantención preventiva de calderas", region="Región Metropolitana de Santiago"))
+    assert r["criterios"]["rubro"]["puntaje"] >= 70 and r["tope"] is None
+    piscina = _evaluar(ev, _ficha("1-2-LE26", "Temperado de piscina municipal"))
+    assert piscina["tema"]["interes"] == "medio" and piscina["tope"]["categoria"] == "buena"
+    assert piscina["categoria"] in ("buena", "evaluar", "baja")
+
+
+@pytest.mark.parametrize("nombre, descripcion, region", [
+    # Casos reales del 2026-11-13 que salían «Prioritaria» o «Buena»:
+    ("ECS - ABSORBENTE ANH.Y VAPOR AGUA CON EQUIPO ASOCIADO", "", "Región Metropolitana de Santiago"),
+    ("CONVENIO DE MANTENIMIENTO PREVENTIVO Y CORRECTIVO PARA EL EQUIPO ESTERILIZADOR PEROXIDO DE HIDROGENO", "", "Región de la Araucanía"),
+    ("MMD - SUMINISTRO DE EQUIPAMIENTO PRIMARIO Y SECUNDARIO PARA REDES DE GASES MEDICINALES", "", "Región Metropolitana de Santiago"),
+    ("SERVICIO DE MANTENCIÓN, REPARACIÓN Y RESTAURACIÓN JUEGO DE LIVING DE LA GOBERNACIÓN MARÍTIMA DE CALDERA.", "", "Región de Atacama"),
+    ("Servicio de mantención y reparación para los centros de Atención IPS Caldera, Copiapó", "", "Región de Atacama"),
+    ("Contrato de Suministro de Medios de Contraste Iodados con calentador en comodato", "", "Región de Valparaíso"),
+])
+def test_lo_que_parece_del_rubro_y_no_lo_es_queda_fuera(evaluador, nombre, descripcion, region):
+    r = _evaluar(evaluador, _ficha("1-9-LE26", nombre, descripcion, region=region))
+    assert r["categoria"] in ("descartar", "baja"), (r["categoria"], r["criterios"]["rubro"]["motivo"])
+
+
+def test_en_atacama_caldera_es_una_comuna_salvo_la_caldera(evaluador):
+    atacama = "Región de Atacama"
+    assert evaluador.prefiltro("Gobernación Marítima de Caldera", atacama) == 0
+    assert evaluador.prefiltro("Reparación de la caldera del liceo", atacama) > 0
+    assert evaluador.prefiltro("Mantención de calderas", atacama) > 0
+    assert evaluador.prefiltro("Gobernación Marítima de Caldera") > 0       # sin región no se sabe: se pide la ficha
+    assert op.raices_del_rubro("vapor de agua y caldera", None, {"frases": ["vapor de agua"]}) == ["·", "caldera", "·"]
+
+
+def test_una_compra_muy_chica_no_pasa_de_baja(evaluador):
+    chica = evaluador.evaluar(dict(op.leer_ficha(_ficha("1-1-LE26", "Mantención caldera", monto=150_000), "1-1-LE26")))
+    assert chica["tope"]["categoria"] == "baja" and "Muy chica" in chica["tope"]["motivo"]
+    assert chica["categoria"] in ("baja", "descartar")
 
 
 # ── criterios ────────────────────────────────────────────────────────────────
@@ -236,11 +280,11 @@ def test_sin_ficha_lo_desconocido_queda_neutro(evaluador):
 
 
 def test_la_categoria_repite_la_regla_de_la_pagina(evaluador):
-    assert evaluador.categoria(90, 90) == "prioritaria"
-    assert evaluador.categoria(90, 60) == "buena"
-    assert evaluador.categoria(90, 45) == "evaluar"
-    assert evaluador.categoria(90, 30) == "baja"
-    assert evaluador.categoria(10, 90) == "baja"
+    assert evaluador.categoria(90) == "prioritaria"
+    assert evaluador.categoria(90, {"categoria": "buena", "motivo": "x"}) == "buena"
+    assert evaluador.categoria(90, {"categoria": "evaluar", "motivo": "x"}) == "evaluar"
+    assert evaluador.categoria(50, {"categoria": "buena", "motivo": "x"}) == "evaluar"   # el tope no sube
+    assert evaluador.categoria(10) == "baja"
 
 
 def test_no_publica_funcionarios_ni_contactos(evaluador):
