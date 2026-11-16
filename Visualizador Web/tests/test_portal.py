@@ -2495,6 +2495,7 @@ def test_asignar_en_el_tablero_general_elige_el_proyecto_y_despues_quienes(naveg
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general")
     _, lunes = _semana_de(date.today())
     pop = pagina.locator("#plPop")
+    _dia_general(pagina, 0)
     pagina.locator(f'#plGeneral [data-ancla="n|{lunes.isoformat()}"]').click()
     assert pagina.locator("#plPopTit").inner_text() == f"Asignar el lunes {lunes.day}"
     assert pop.locator(".pl-grupo h4").all_text_contents() == ["Sin nadie ese día"]
@@ -2507,6 +2508,65 @@ def test_asignar_en_el_tablero_general_elige_el_proyecto_y_despues_quienes(naveg
     pop.locator('[data-op="volver"]').click()
     assert pop.locator(".pl-grupo h4").all_text_contents() == ["Sin nadie esos días", "Ya tienen a alguien"]
     assert "van NB" in pop.locator('[data-op="n|req:908"]').inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_general_muestra_un_dia_en_grande_y_la_semana_al_lado(navegador, sitio):
+    """General (2026-11-16, el usuario eligió «Hoy con la semana al lado»): hoy en grande y, al lado, una línea por día
+    con cuántos tienen algo y una barra con el color de cada proyecto; tocar un día lo muestra en grande. Abajo, los
+    avisos de la semana: los proyectos sin nadie abren su lista."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general")
+    _, lunes = _semana_de(date.today())
+    hoy = date.today().weekday()
+    hoy = hoy if hoy < 5 else 0
+    dias = pagina.locator("#plGeneral .pl-sem-dia")
+    assert dias.evaluate_all("bs => bs.map((b) => b.getAttribute('aria-pressed'))") == ["true" if i == hoy else "false" for i in range(5)]
+    assert pagina.locator("#plGeneral .pl-dia").evaluate_all("ds => ds.map((d) => d.dataset.dia)") == [str(hoy)]
+    aviso = pagina.locator("#plGeneral .pl-sem-aviso", has_text="sin nadie")
+    assert aviso.inner_text() == "3 proyectos sin nadie esta semana"
+    aviso.click()
+    assert pagina.locator("#plAlarma").is_visible()
+    # Asignar dos personas el miércoles: su línea las cuenta y lleva el color del proyecto
+    _dia_general(pagina, 2)
+    assert pagina.evaluate("() => document.activeElement.dataset.dia") == "2"
+    mie = _dias_de(lunes)[2].isoformat()
+    pagina.locator(f'#plGeneral [data-ancla="n|{mie}"]').click()
+    pop = pagina.locator("#plPop")
+    pop.locator('[data-op="n|req:908"]').click()
+    pop.locator('input[data-op="c|NB"]').check()
+    pop.locator('input[data-op="c|ES"]').check()
+    pagina.keyboard.press("Escape")
+    linea = pagina.locator('#plGeneral .pl-sem-dia[data-dia="2"]')
+    assert linea.locator(".pl-sem-n").inner_text() == "2"
+    assert linea.locator(".pl-sem-barra i").count() == 1
+    assert "2 personas en 1 proyecto (En obra)" in linea.get_attribute("title")
+    assert pagina.locator('#plGeneral .pl-sem-dia[data-dia="1"] .pl-sem-barra.vacia').count() == 1
+    assert pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|req:908|{mie}"] .pl-per').all_inner_texts() == ["NB", "ES"]
+    assert pagina.locator("#plGeneral .pl-sem-aviso", has_text="sin nadie").inner_text() == "2 proyectos sin nadie esta semana"
+    assert not errores
+    pagina.context.close()
+
+
+def test_general_avisa_el_vehiculo_en_dos_lugares_y_las_ausencias(navegador, sitio):
+    """En «La semana» de General, el día con un vehículo en dos lugares lleva su ícono y un aviso que lo muestra en
+    grande; las ausencias van en una línea por persona."""
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    _, lunes = _semana_con_vehiculos(pagina)
+    _celda_personal(pagina, "SV", 3).click()
+    pagina.locator('#plPop [data-op="a|vacaciones"]').click()
+    pagina.keyboard.press("Escape")
+    pagina.locator('.pl-vista[data-vista="general"]').click()
+    alertas = pagina.locator("#plGeneral .pl-sem-dia").evaluate_all("bs => bs.map((b) => !!b.querySelector('.pl-sem-alerta svg'))")
+    assert alertas == [False, True, False, False, False]
+    assert "La RAM en 2 lugares a la vez" in pagina.locator('#plGeneral .pl-sem-dia[data-dia="1"]').get_attribute("title")
+    avisos = pagina.locator("#plGeneral .pl-sem-aviso")
+    martes = _dias_de(lunes)[1]
+    assert avisos.all_inner_texts()[-2:] == [f"Mar {martes.day}: RAM en 2 lugares", "SV: vacaciones, 1 día"]
+    avisos.filter(has_text="RAM en 2 lugares").click()
+    assert pagina.locator("#plGeneral .pl-dia-grande").get_attribute("data-dia") == "1"
+    assert pagina.locator('#plGeneral .pl-sem-dia[data-dia="1"]').get_attribute("aria-pressed") == "true"
     assert not errores
     pagina.context.close()
 
@@ -2666,6 +2726,12 @@ def test_las_semanas_cruzan_el_cambio_de_ano(navegador, sitio):
 
 
 # ---- La vista simple y el arrastre (2026-10-28) ------------------------------------------------------------------
+
+def _dia_general(pagina, i):
+    """General muestra un día en grande (2026-11-16): se elige en «La semana», al lado. Abre en hoy."""
+    pagina.locator(f'#plGeneral .pl-sem-dia[data-dia="{i}"]').click()
+    assert pagina.locator("#plGeneral .pl-dia-grande").get_attribute("data-dia") == str(i)
+
 
 def _dias_de(lunes):
     from datetime import timedelta
@@ -2933,6 +2999,7 @@ def test_quitar_una_asignacion_con_un_toque(navegador, sitio):
     pagina.keyboard.press("Control+z")
     # En General, también
     pagina.locator('.pl-vista[data-vista="general"]').click()
+    _dia_general(pagina, 0)
     bloque = pagina.locator(f'#plGeneral [data-ancla="j|req:907|{lun.isoformat()}"]')
     assert bloque.locator(".pl-per").all_inner_texts() == ["ES"]
     bloque.locator(".pl-per").hover()
@@ -2963,6 +3030,7 @@ def test_arrastrar_personas_por_proyecto_y_en_general(navegador, sitio):
     # En General: alguien sin proyecto el miércoles, al proyecto de ese día
     pagina.locator('.pl-vista[data-vista="general"]').click()
     mie = _dias_de(lunes)[2].isoformat()
+    _dia_general(pagina, 2)
     bloque = pagina.locator(f'#plGeneral [data-ancla="j|tag:SOLO|{mie}"]')
     pagina.locator(f'#plGeneral [data-ancla="p|NB|{mie}"]').drag_to(bloque)
     assert bloque.locator(".pl-per").all_inner_texts() == ["NB", "ES"]
@@ -3226,6 +3294,7 @@ def test_asignar_un_vehiculo_a_una_persona_en_un_proyecto(navegador, sitio):
     assert panel[0] == [lun, {"quempineta": "En obra ES", "ram": "En obra LC"}]
     assert all(dia[1] == {"quempineta": "Libre", "ram": "Libre"} for dia in panel[1:]) and len(panel) == 5
     assert pagina.locator("#plVehiculos tfoot td").all_inner_texts() == ["1 de 5 días", "1 de 5 días"]
+    _dia_general(pagina, 0)
     assert _vehs(pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|req:908|{lun}"]')) == [["Quempineta", "ES"], ["RAM", "LC"]]
     # Un uso del panel abre ese proyecto ese día; quitar a LC le quita también la RAM, y deshacer devuelve las dos cosas
     pagina.locator("#plVehiculos .pl-veh-uso", has_text="LC").click()
@@ -3332,6 +3401,7 @@ def test_un_vehiculo_en_dos_lugares_a_la_vez_se_avisa_y_se_comparte(navegador, s
     assert lunes_ram.get_attribute("data-nivel") == "warn" and "En 2 lugares a la vez" in lunes_ram.inner_text()
     assert pagina.evaluate(JS_PANEL_VEHICULOS)[0][1]["ram"] == "En obra ES LC / Obra sin número MP"
     # Si ES también va a Obra sin número en la RAM, viajan juntos: ya no está en dos lugares el lunes
+    _dia_general(pagina, 0)
     pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|tag:SOLO|{lun}"]').click()
     pop.locator('input[data-op="c|ES"]').check()
     pop.locator('[data-op="v|ES|ram"]').click()

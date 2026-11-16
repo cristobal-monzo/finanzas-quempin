@@ -10,8 +10,8 @@ proyecto y en general, con UX profesional):
 - **Qué es**: la vista `planificacion` (`tipo: vista`, `#vistaPlan`, primera de
   Control y finanzas, así está en el Inicio). Tres vistas de la misma semana
   (`quempin_portal_plan` recuerda cuál y si se muestra el sábado): **General**
-  (un tablero por día con cada proyecto y quiénes van, quiénes quedan sin
-  proyecto y quiénes faltan; abajo, lo que cubre cada proyecto y la carga de cada
+  (desde el 2026-11-16, un día en grande y la semana al lado: ver «General: el día en
+  grande» al final; abajo, lo que cubre cada proyecto y la carga de cada
   persona), **Por personal** y **Por proyecto** (tablas de lunes a viernes; el
   sábado aparece si se pide o si ya tiene algo). Cada casilla se toca y abre una
   ventanita junto a ella (`#plPop`; en el teléfono sube desde abajo y las tablas
@@ -267,3 +267,22 @@ se ven en el planificador, y botones para agregar personal definitivo o temporal
   (`activa: false` en la entrada fija: sale de todas las semanas; lo ya asignado se sigue viendo). «Copiar la semana
   anterior» no la duplica como temporal.
 - Prueba: `test_el_menu_personal_elige_quienes_se_ven_y_agrega_personal_definitivo_o_temporal`.
+
+**General: el día en grande y la semana al lado** (2026-11-16, el usuario eligió «Hoy con la semana al lado» entre 6
+maquetas del resumen general y 5 variantes de «Hoy en grande»):
+- `plPintarGeneral` arma `.pl-hoy-sem`: a la izquierda `plDiaGrande` (el mismo tablero de un día de antes, `.pl-dia
+  .pl-dia-grande`, con los proyectos en una grilla, «Sin proyecto», «Ausentes» y «Asignar»; la ✕, el arrastre y las
+  ventanitas no cambian) y a la derecha `plSemanaLado` («La semana», `.pl-sem-lado`).
+- **El día elegido** es `planif.diaMovil`, el mismo que eligen los botones de días del teléfono: abre en hoy (en otra
+  semana, el lunes). Cada línea de «La semana» (`.pl-sem-dia`, `data-dia`, `aria-pressed`) lo cambia y deja el foco en
+  ella. Ya no hay tablero de cinco columnas (`.pl-tablero` salió).
+- **Cada línea**: el día, una barra con un tramo por proyecto (`.pl-sem-barra i`, `--pc` = color del proyecto, ancho
+  según cuántos van; punteada si no hay nadie), cuántas personas tienen algo (`.pl-sem-n`) y el ícono del vehículo si
+  uno va a dos lugares ese día. El detalle va en el `title`.
+- **Avisos** (`.pl-sem-avisos`): «N proyectos sin nadie esta semana» (abre la lista de la alarma, como la cifra del
+  resumen), un vehículo en dos lugares por día (muestra ese día en grande) y las ausencias, una línea por persona y
+  motivo («SV: vacaciones, 1 día»).
+- Bajo 900 px de ancho la semana pasa abajo del día; en el teléfono el día se sigue eligiendo también arriba.
+- Pruebas: `test_general_muestra_un_dia_en_grande_y_la_semana_al_lado`,
+  `test_general_avisa_el_vehiculo_en_dos_lugares_y_las_ausencias`; las pruebas que tocan un día en General lo eligen
+  primero con `_dia_general`.
