@@ -1096,8 +1096,8 @@
   .pl-tabla tr.pl-sep th { padding: 8px 12px; background: var(--page-plane); font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
   .pl-tabla .pl-nada td { padding: 18px 12px; font-size: 13.5px; color: var(--texto-suave); text-align: center; }
   /* La semana de una fila, a la derecha: cuántos días y un cuadrito por día */
-  /* La vista general: un tablero por día */
-  .pl-tablero { display: grid; grid-template-columns: repeat(var(--pl-n, 5), minmax(0, 1fr)); gap: 8px; align-items: start; }
+  /* La vista general: el día elegido en grande y la semana al lado (2026-11-16) */
+  .pl-hoy-sem { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; align-items: start; }
   .pl-dia { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 0 8px 8px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-1); }
   .pl-dia.hoy { border-color: var(--tinte-borde); box-shadow: inset 0 3px 0 var(--brand-orange); }
   .pl-dia-cab { margin: 0 -8px; padding: 9px 10px 8px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--gridline); }
@@ -1119,7 +1119,48 @@
   .pl-libres { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
   .pl-libres .et { flex: 1 1 100%; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
   .pl-nuevo { margin-top: 0; }
-  /* Debajo del tablero: lo que cubre cada proyecto y la carga de cada persona */
+  .pl-dia-grande { padding: 0 12px 12px; gap: 10px; }
+  .pl-dia-grande .pl-dia-cab { margin: 0 -12px; padding: 11px 14px 10px; }
+  .pl-dia-grande .pl-dia-cab h3 { font-size: 17px; }
+  .pl-dia-grande .pl-dia-cab h3 b { font-size: 19px; }
+  .pl-dia-grande .pl-bloques { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .pl-dia-grande .pl-bloques > li { display: flex; }
+  .pl-dia-grande .pl-bloque { padding: 9px 11px 10px 12px; }
+  .pl-dia-grande .pl-bloque .t { font-size: 14px; }
+  .pl-dia-grande .pl-nuevo { align-self: flex-start; }
+  .pl-sem-lado { min-width: 0; padding: 10px 8px 12px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-1); }
+  .pl-sem-lado h3 { margin: 0 6px 6px; font-size: 12px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
+  .pl-sem-dias { display: flex; flex-direction: column; gap: 2px; }
+  .pl-sem-dia {
+    display: grid; grid-template-columns: 54px minmax(0, 1fr) 22px 14px; align-items: center; gap: 8px; width: 100%; min-height: 36px;
+    padding: 0 8px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text-primary);
+    font-size: 13px; text-align: left; cursor: pointer;
+  }
+  .pl-sem-dia:hover { background: var(--surface-card); border-color: var(--border-hairline); }
+  .pl-sem-dia[aria-pressed="true"] { background: var(--surface-card); border-color: var(--brand-orange); box-shadow: inset 3px 0 0 var(--brand-orange); }
+  .pl-sem-et { display: flex; align-items: baseline; gap: 5px; }
+  .pl-sem-et b { font-size: 14px; font-weight: 900; }
+  .pl-sem-dia.hoy .pl-sem-et { color: var(--brand-orange-ink); }
+  .pl-sem-dia.pasado:not([aria-pressed="true"]) .pl-sem-et, .pl-sem-dia.pasado:not([aria-pressed="true"]) .pl-sem-n { color: var(--text-secondary); }
+  .pl-sem-barra { display: flex; gap: 2px; height: 8px; min-width: 0; }
+  .pl-sem-barra i { --pc: var(--baseline); flex: 1 1 0; min-width: 3px; border-radius: 2px; background: var(--pc); }
+  .pl-sem-barra.vacia { border: 1px dashed var(--baseline); border-radius: 3px; }
+  .pl-sem-dia.pasado .pl-sem-barra i { opacity: 0.55; }
+  .pl-sem-n { text-align: right; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .pl-sem-alerta { display: inline-flex; color: var(--estado-warn); }
+  .pl-sem-avisos { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: 1px dashed var(--gridline); display: flex; flex-direction: column; gap: 6px; }
+  .pl-sem-aviso {
+    display: flex; align-items: center; gap: 6px; width: 100%; min-height: 30px; padding: 4px 9px; border-radius: 8px;
+    border: 1px solid var(--border-hairline); background: var(--surface-card); color: var(--text-secondary); font-size: 12.5px; text-align: left;
+  }
+  .pl-sem-aviso svg { flex: 0 0 auto; }
+  button.pl-sem-aviso { cursor: pointer; }
+  button.pl-sem-aviso:hover { border-color: var(--brand-orange); }
+  .pl-sem-aviso[data-nivel="bad"] { color: var(--estado-bad); font-weight: 700; border-color: color-mix(in srgb, var(--estado-bad) 45%, transparent); background: color-mix(in srgb, var(--estado-bad) 7%, transparent); }
+  .pl-sem-aviso[data-nivel="warn"] { color: var(--brand-orange-ink); font-weight: 700; border-color: color-mix(in srgb, var(--estado-warn) 55%, transparent); }
+  /* Angosto: la semana pasa abajo del día */
+  @container plan (max-width: 900px) { .pl-hoy-sem { grid-template-columns: minmax(0, 1fr); } }
+  /* Debajo: lo que cubre cada proyecto y la carga de cada persona */
   .pl-paneles { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 12px; align-items: start; }
   .pl-panel { min-width: 0; padding: 12px 16px 10px; border-radius: 12px; border: 1px solid var(--border-hairline); background: var(--surface-card); }
   .pl-panel h2 { margin: 0 0 4px; font-size: 15px; font-weight: 900; }
@@ -1558,7 +1599,6 @@
     .pl-acciones .cx-enlace:not(#plMas):not(#plPersonas) span:not(.sr) { display: none; }
     .pl-acciones { margin-left: 0; }
   }
-  @container plan (max-width: 1100px) { .pl-tablero { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   /* Angosto: el panel del arrastre va arriba de la tabla, en una franja que se desliza; con el dedo se toca y se colocan */
   @container plan (max-width: 900px) {
     .pl-con-arr { grid-template-columns: minmax(0, 1fr); }
@@ -1576,7 +1616,6 @@
     .pl-tabla[data-foco="2"] [data-dia]:not([data-dia="2"]), .pl-tabla[data-foco="3"] [data-dia]:not([data-dia="3"]),
     .pl-tabla[data-foco="4"] [data-dia]:not([data-dia="4"]), .pl-tabla[data-foco="5"] [data-dia]:not([data-dia="5"]) { display: none; }
     .pl-th-nom, .pl-t-proyecto .pl-th-nom { width: 44%; }
-    .pl-tablero { grid-template-columns: minmax(0, 1fr); }
     .pl-semana { flex: 1 1 100%; min-width: 0; justify-content: space-between; }
     .pl-sem-txt { min-width: 0; flex: 1 1 auto; overflow: hidden; }
     .pl-sem-n, .pl-sem-rango { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1653,9 +1692,6 @@
   /* El teléfono: General también muestra un día a la vez (antes, los cinco uno bajo otro y hoy al fondo); «Agregar» dice
      lo que hace (tenía solo un «+»), y «Esta semana» no se muestra si ya se está en ella: el rango ya lo dice */
   @container plan (max-width: 720px) {
-    .pl-tablero[data-foco="0"] > .pl-dia:not([data-dia="0"]), .pl-tablero[data-foco="1"] > .pl-dia:not([data-dia="1"]),
-    .pl-tablero[data-foco="2"] > .pl-dia:not([data-dia="2"]), .pl-tablero[data-foco="3"] > .pl-dia:not([data-dia="3"]),
-    .pl-tablero[data-foco="4"] > .pl-dia:not([data-dia="4"]), .pl-tablero[data-foco="5"] > .pl-dia:not([data-dia="5"]) { display: none; }
     .pl-acciones .cx-enlace:not(#plMas):not(#plPersonas) span:not(.sr) { display: inline; }
     .pl-hoy:disabled { display: none; }
   }
@@ -3131,7 +3167,7 @@
     .pl-doc-tabla + .pl-doc-hoja, .pl-doc-hoja + .pl-doc-hoja { break-before: page; }
   }
 </style>
-<meta name="quempin-version" content="master@9f9fe38 2026-11-13">
+<meta name="quempin-version" content="master@1c54e06 2026-11-16">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -9389,80 +9425,16 @@
   }
   // General: un tablero por día con cada proyecto y quiénes van, quiénes quedan sin proyecto y quiénes faltan; abajo, lo que
   // cubre cada proyecto en la semana y la carga de cada persona.
+  /* General (2026-11-16, el usuario eligió «Hoy con la semana al lado» entre 6 maquetas y 5 variantes): el día elegido en
+     grande y, al lado, la semana en una línea por día con los avisos. Abre en hoy (en otra semana, el lunes) y tocar un
+     día lo muestra en grande. El día elegido es el mismo que muestran las tablas en el teléfono (planif.diaMovil). */
   function plPintarGeneral(s, m, dias) {
     const cont = $('#plGeneral');
     cont.textContent = '';
-    const tab = crear('div', 'pl-tablero');
-    tab.style.setProperty('--pl-n', String(dias.length));
-    tab.dataset.foco = String(planif.diaMovil);        // en el teléfono, un día a la vez como las tablas (2026-10-29)
-    dias.forEach((d) => {
-      const col = crear('section', 'pl-dia' + plClaseDia(d));
-      col.dataset.dia = String(d.i);
-      col.setAttribute('aria-label', plFechaLarga(d));
-      const cab = crear('header', 'pl-dia-cab');
-      const h3 = crear('h3');
-      h3.append(crear('span', null, d.nombre), crear('b', null, String(d.fecha.getDate())));
-      cab.append(h3);
-      if (d.hoy) cab.append(crear('span', 'pl-hoy-pill', 'Hoy'));
-      const enObra = m.personas.filter((per) => (m.porPersona.get(d.iso + '|' + per) || []).length);
-      cab.append(crear('span', 'pl-dia-n', enObra.length ? pl(enObra.length, 'persona', 'personas') : 'Nadie asignado'));
-      col.append(cab);
-      const claves = m.ordenar([...new Set(m.personas.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
-      if (claves.length) {
-        const ul = crear('ul', 'pl-bloques');
-        claves.forEach((c) => {
-          const p = m.proyectos.get(c) || {};
-          const li = crear('li');
-          const b = crear('button', 'pl-bloque' + (p.otra ? ' otra' : '') + (planif.recien.has('j|' + c + '|' + d.iso) ? ' recien' + (planif.recienAjeno ? ' ajeno' : '') : ''));
-          b.type = 'button';
-          b.dataset.ancla = 'j|' + c + '|' + d.iso;
-          b.style.setProperty('--pc', m.color(c));
-          b.append(crear('span', 't', m.titulo(c)));
-          if (p.lugar) b.append(crear('span', 's', p.lugar));
-          const van = plOrdenPersonas(m.porProyecto.get(d.iso + '|' + c) || []);
-          const w = crear('span', 'pl-pers');
-          van.forEach((x) => w.append(plQuitarX(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: c } }, plNom(x)), x, d, c, m)));
-          b.append(w);
-          const vs = plVehs(m, d, c, van);
-          if (vs) b.append(vs);
-          b.setAttribute('aria-label', m.titulo(c) + ', ' + plFechaLarga(d) + ': ' + plNoms(van) + plVehsTexto(m, d.iso, c, van) + '. Cambiar quiénes van');
-          b.addEventListener('click', () => plAbrirProyecto(c, d.iso));
-          li.append(b);
-          ul.append(li);
-        });
-        col.append(ul);
-      }
-      // Sin nadie, la cabecera del día ya dice «Nadie asignado» (2026-11-05: sin repetirlo abajo)
-      const libres = m.personas.filter((per) => !m.ausencias.has(d.iso + '|' + per) && !(m.porPersona.get(d.iso + '|' + per) || []).length);
-      const ausentes = m.personas.filter((per) => m.ausencias.has(d.iso + '|' + per));
-      [[libres, 'Sin proyecto', 'libre'], [ausentes, 'Ausentes', 'aus']].forEach(([lista, et, clase]) => {
-        if (!lista.length) return;
-        const f = crear('div', 'pl-libres');
-        f.append(crear('span', 'et', et));
-        lista.forEach((per) => {
-          const b = plPersona(per, true);
-          b.classList.add(clase);
-          b.dataset.ancla = 'p|' + per + '|' + d.iso;
-          const a = m.ausencias.get(d.iso + '|' + per);
-          b.title = a ? plNom(per) + ': ' + plAusencia(a.motivo).nombre.toLowerCase() + ' ' + plElDia(d) : plNom(per) + ' no tiene proyecto ' + plElDia(d) + ': asignarle uno';
-          b.setAttribute('aria-label', b.title);
-          // Sin proyecto: se arrastra a un proyecto de ese día (o de otro)
-          if (!a) { b.title += ', o arrástralo a un proyecto'; plArrastrable(b, { tipo: 'persona', per }, plNom(per)); }
-          b.addEventListener('click', () => plAbrirPersona(per, d.iso));
-          f.append(b);
-        });
-        col.append(f);
-      });
-      const nuevo = crear('button', 'rc-nueva pl-nuevo');
-      nuevo.type = 'button';
-      nuevo.dataset.ancla = 'n|' + d.iso;
-      nuevo.append(icono('mas', 14), crear('span', null, 'Asignar'));
-      nuevo.title = 'Asignar un proyecto ' + plElDia(d);
-      nuevo.addEventListener('click', () => plAbrirNuevo(d.iso));
-      col.append(nuevo);
-      tab.append(col);
-    });
-    cont.append(tab, plPaneles(s, m, dias));
+    const d = dias[planif.diaMovil] || dias[0];
+    const w = crear('div', 'pl-hoy-sem');
+    w.append(plDiaGrande(m, d), plSemanaLado(s, m, dias, d));
+    cont.append(w, plPaneles(s, m, dias));
     // Desde la cifra de los vehículos en el resumen: su panel, a la vista y resaltado un momento
     const veh = planif.focoVeh && $('#plVehiculos');
     planif.focoVeh = false;
@@ -9472,6 +9444,152 @@
       veh.classList.add('resaltada');
       setTimeout(() => veh.classList.remove('resaltada'), 1800);
     }
+  }
+  // Un día en grande: sus proyectos con quiénes van y en qué vehículo, quién queda sin proyecto o ausente, y «Asignar»
+  function plDiaGrande(m, d) {
+    const col = crear('section', 'pl-dia pl-dia-grande' + plClaseDia(d));
+    col.dataset.dia = String(d.i);
+    col.setAttribute('aria-label', plFechaLarga(d));
+    const cab = crear('header', 'pl-dia-cab');
+    const h3 = crear('h3');
+    h3.append(crear('span', null, d.nombre), crear('b', null, String(d.fecha.getDate())));
+    cab.append(h3);
+    if (d.hoy) cab.append(crear('span', 'pl-hoy-pill', 'Hoy'));
+    const enObra = m.personas.filter((per) => (m.porPersona.get(d.iso + '|' + per) || []).length);
+    cab.append(crear('span', 'pl-dia-n', enObra.length ? pl(enObra.length, 'persona', 'personas') : 'Nadie asignado'));
+    col.append(cab);
+    const claves = m.ordenar([...new Set(m.personas.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
+    if (claves.length) {
+      const ul = crear('ul', 'pl-bloques');
+      claves.forEach((c) => {
+        const p = m.proyectos.get(c) || {};
+        const li = crear('li');
+        const b = crear('button', 'pl-bloque' + (p.otra ? ' otra' : '') + (planif.recien.has('j|' + c + '|' + d.iso) ? ' recien' + (planif.recienAjeno ? ' ajeno' : '') : ''));
+        b.type = 'button';
+        b.dataset.ancla = 'j|' + c + '|' + d.iso;
+        b.style.setProperty('--pc', m.color(c));
+        b.append(crear('span', 't', m.titulo(c)));
+        if (p.lugar) b.append(crear('span', 's', p.lugar));
+        const van = plOrdenPersonas(m.porProyecto.get(d.iso + '|' + c) || []);
+        const w = crear('span', 'pl-pers');
+        van.forEach((x) => w.append(plQuitarX(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: c } }, plNom(x)), x, d, c, m)));
+        b.append(w);
+        const vs = plVehs(m, d, c, van);
+        if (vs) b.append(vs);
+        b.setAttribute('aria-label', m.titulo(c) + ', ' + plFechaLarga(d) + ': ' + plNoms(van) + plVehsTexto(m, d.iso, c, van) + '. Cambiar quiénes van');
+        b.addEventListener('click', () => plAbrirProyecto(c, d.iso));
+        li.append(b);
+        ul.append(li);
+      });
+      col.append(ul);
+    }
+    // Sin nadie, la cabecera del día ya dice «Nadie asignado» (2026-11-05: sin repetirlo abajo)
+    const libres = m.personas.filter((per) => !m.ausencias.has(d.iso + '|' + per) && !(m.porPersona.get(d.iso + '|' + per) || []).length);
+    const ausentes = m.personas.filter((per) => m.ausencias.has(d.iso + '|' + per));
+    [[libres, 'Sin proyecto', 'libre'], [ausentes, 'Ausentes', 'aus']].forEach(([lista, et, clase]) => {
+      if (!lista.length) return;
+      const f = crear('div', 'pl-libres');
+      f.append(crear('span', 'et', et));
+      lista.forEach((per) => {
+        const b = plPersona(per, true);
+        b.classList.add(clase);
+        b.dataset.ancla = 'p|' + per + '|' + d.iso;
+        const a = m.ausencias.get(d.iso + '|' + per);
+        b.title = a ? plNom(per) + ': ' + plAusencia(a.motivo).nombre.toLowerCase() + ' ' + plElDia(d) : plNom(per) + ' no tiene proyecto ' + plElDia(d) + ': asignarle uno';
+        b.setAttribute('aria-label', b.title);
+        // Sin proyecto: se arrastra a un proyecto de ese día (o de otro)
+        if (!a) { b.title += ', o arrástralo a un proyecto'; plArrastrable(b, { tipo: 'persona', per }, plNom(per)); }
+        b.addEventListener('click', () => plAbrirPersona(per, d.iso));
+        f.append(b);
+      });
+      col.append(f);
+    });
+    const nuevo = crear('button', 'rc-nueva pl-nuevo');
+    nuevo.type = 'button';
+    nuevo.dataset.ancla = 'n|' + d.iso;
+    nuevo.append(icono('mas', 14), crear('span', null, 'Asignar'));
+    nuevo.title = 'Asignar un proyecto ' + plElDia(d);
+    nuevo.addEventListener('click', () => plAbrirNuevo(d.iso));
+    col.append(nuevo);
+    return col;
+  }
+  /* La semana al lado: una línea por día (cuántas personas tienen algo y una barra con el color de cada proyecto, ancha
+     según cuántos van) que lo muestra en grande, y abajo los avisos: proyectos sin nadie, un vehículo en dos lugares y
+     las ausencias. */
+  function plSemanaLado(s, m, dias, sel) {
+    const lado = crear('aside', 'pl-sem-lado');
+    lado.setAttribute('aria-label', 'La semana');
+    lado.append(crear('h3', null, 'La semana'));
+    const lista = crear('div', 'pl-sem-dias');
+    lista.setAttribute('role', 'group');
+    lista.setAttribute('aria-label', 'Día que se ve en grande');
+    const elegir = (i) => {
+      planif.diaMovil = i;
+      plPintar();
+      const x = $('#plGeneral .pl-sem-dia[data-dia="' + i + '"]');
+      if (x) x.focus({ preventScroll: true });
+    };
+    const choques = [];
+    dias.forEach((d) => {
+      const claves = m.ordenar([...new Set(m.personas.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))]);
+      const van = m.personas.filter((per) => (m.porPersona.get(d.iso + '|' + per) || []).length);
+      const dosLugares = PL_VEHICULOS.filter((v) => m.usoVeh(d.iso, v.id).length > 1);
+      dosLugares.forEach((v) => choques.push({ d, v, n: m.usoVeh(d.iso, v.id).length }));
+      const b = crear('button', 'pl-sem-dia' + plClaseDia(d));
+      b.type = 'button';
+      b.dataset.dia = String(d.i);
+      b.setAttribute('aria-pressed', d.i === sel.i ? 'true' : 'false');
+      const et = crear('span', 'pl-sem-et');
+      et.append(crear('span', null, d.corto), crear('b', null, String(d.fecha.getDate())));
+      const barra = crear('span', 'pl-sem-barra' + (claves.length ? '' : ' vacia'));
+      claves.forEach((c) => {
+        const i = crear('i');
+        i.style.setProperty('--pc', m.color(c));
+        i.style.flexGrow = String((m.porProyecto.get(d.iso + '|' + c) || []).length || 1);
+        barra.append(i);
+      });
+      const alerta = crear('span', 'pl-sem-alerta');
+      if (dosLugares.length) alerta.append(icono('vehiculo', 14));
+      b.append(et, barra, crear('span', 'pl-sem-n', String(van.length)), alerta);
+      b.title = plFechaLarga(d) + (d.hoy ? ' (hoy)' : '') + ': '
+        + (van.length ? pl(van.length, 'persona', 'personas') + ' en ' + pl(claves.length, 'proyecto', 'proyectos') + ' (' + claves.map(m.titulo).join(', ') + ')' : 'nadie asignado')
+        + dosLugares.map((v) => '. ' + mayuscula(plLaVeh(v)) + ' en ' + m.usoVeh(d.iso, v.id).length + ' lugares a la vez').join('')
+        + (d.i === sel.i ? '' : '. Verlo en grande');
+      b.setAttribute('aria-label', b.title);
+      b.addEventListener('click', () => elegir(d.i));
+      lista.append(b);
+    });
+    lado.append(lista);
+    const avisos = crear('ul', 'pl-sem-avisos');
+    const aviso = (texto, nivel, ico, accion, titulo) => {
+      const li = crear('li');
+      const x = crear(accion ? 'button' : 'span', 'pl-sem-aviso');
+      if (accion) { x.type = 'button'; x.addEventListener('click', accion); }
+      if (nivel) x.dataset.nivel = nivel;
+      if (ico) x.append(icono(ico, 14));
+      x.append(crear('span', null, texto));
+      if (titulo) x.title = titulo;
+      li.append(x);
+      avisos.append(li);
+    };
+    if (m.sinAsignar.length) {
+      aviso(pl(m.sinAsignar.length, 'proyecto', 'proyectos') + ' sin nadie ' + plEsta(s), s.id === plHoyId() ? 'bad' : 'warn', 'alerta', () => {
+        const k = $('#plResumen .pl-kpi-alarma');
+        if (k && !planif.alarmaAbierta) k.click();
+        const caja = $('#plAlarma');
+        if (caja && !caja.hidden) caja.scrollIntoView({ block: 'nearest', behavior: REDUCIR.matches ? 'auto' : 'smooth' });
+      }, 'Ver cuáles son: ' + m.sinAsignar.map((p) => p.titulo).join(', '));
+    }
+    choques.forEach((c) => aviso(c.d.corto + ' ' + c.d.fecha.getDate() + ': ' + c.v.nombre + ' en ' + c.n + ' lugares', 'warn', 'vehiculo',
+      () => elegir(c.d.i), mayuscula(plLaVeh(c.v)) + ' va a ' + c.n + ' lugares a la vez ' + plElDia(c.d) + '. Ver ese día en grande'));
+    // Las ausencias, una línea por persona: «MP: vacaciones, 5 días»
+    m.personas.forEach((per) => {
+      const motivos = new Map();
+      dias.forEach((d) => { const a = m.ausencias.get(d.iso + '|' + per); if (a) motivos.set(a.motivo, (motivos.get(a.motivo) || 0) + 1); });
+      motivos.forEach((n, motivo) => aviso(plNomCorto(per) + ': ' + plAusencia(motivo).nombre.toLowerCase() + ', ' + pl(n, 'día', 'días'), '', null, null));
+    });
+    if (avisos.childElementCount) lado.append(avisos);
+    return lado;
   }
   /* Un panel de abajo de General, plegado con una línea de lo que dice (2026-10-28: los tres abiertos eran demasiado);
      abierto o cerrado queda recordado en este navegador. */
