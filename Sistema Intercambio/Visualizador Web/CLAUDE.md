@@ -43,6 +43,11 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   `Evaluador.categoria` (con el `op.tope` que calcula Python: tema, nota del
   rubro, monto mínimo; 2026-11-13) y los tramos del plazo:
   `tests/test_tablero_oportunidades.py` las compara en Chromium.
+- **«Qué buscamos»** (2026-11-16, variante D1 elegida por el usuario): pestaña con
+  los temas en 4 columnas que se arrastran (o «Mover a»), regiones y montos. La lista
+  se recalcula al tiro con `resolverRubro`, `calcularTope` y `resolverMonto`, gemelas
+  de Python (ver `../docs/oportunidades.md`). Guardar va por el Portal
+  (`quempin-ajustes-oportunidades`): sin Portal, el botón queda apagado y lo dice.
 - **Visita a terreno** (2026-10-15): viene de la ficha de las bases (la API no
   la trae). Con varias fechas, `visitaDelDia` muestra la próxima y la da por
   pasada solo cuando pasaron todas. Sin dato dice «sin confirmar», no «no».
