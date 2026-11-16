@@ -79,6 +79,7 @@
       "producto químico", "medicamento", "alimentación", "capacitación", "factor de emisión",
       "base calefactora", "tala", "árbol", "letrero", "prótesis", "hidrogeológico", "aditivo", "granel",
       "absorbente", "medio de contraste", "gases medicinales", "incendio",
+      "coffee break", "catering", "banquetería", "cóctel",
       "vehículo", "camioneta", "camión", "ambulancia", "automotriz", "radiador de motor", "engrase", "mueble", "juego de living"
     ],
     "_restaExcluirSoloDescripcion": "Si el nombre es de un tema «Lo nuestro» y la palabra de excluir está solo en la descripción, resta esto en vez de 35 (medido 2026-10-14 contra la Planilla).",

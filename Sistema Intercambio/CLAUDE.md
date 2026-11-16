@@ -84,10 +84,10 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
   Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento` y `editar-requerimiento` → Planilla;
   `documento-cc` → Centro de Costos; `observacion` → mejora continua (la atiende una persona con
   `/Observaciones_Portal`, `observaciones.py`); `pedir-vuelta` → procesador; `mover-carpeta` → carpetas
-  de los proyectos (`cierre_entregados.py`).
+  de los proyectos (`cierre_entregados.py`); `ajustes-oportunidades` → oportunidades («Qué buscamos» del tablero).
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
-  `oportunidades`, `proyectos`, `centro-costos-carpetas`, `documentos-proyecto`, `estado`, `planificacion-semana`,
+  `oportunidades`, `oportunidades-ajustes`, `proyectos`, `centro-costos-carpetas`, `documentos-proyecto`, `estado`, `planificacion-semana`,
   `planificacion-lista`, `planificacion-cierres`, `ejecucion-proyectos`, `presencia` (quién tiene abierta qué
   semana o proyecto en el Portal, para trabajar a la vez) y `uso-portal` (qué abre el
   equipo en el Portal, anónimo; `py -3.14 uso_portal.py --dias 30` lo suma).

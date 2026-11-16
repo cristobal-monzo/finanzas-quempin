@@ -18638,11 +18638,44 @@
     const primera = $('#llLista .ll-item');
     if (primera) primera.click();
   });
+  // ---- «Qué buscamos» del tablero de Oportunidades (2026-11-16) ----------------------------------------
+  // El tablero no tiene la carpeta del equipo: manda los ajustes aquí y el Portal deja un «ajustes-oportunidades» en el
+  // buzón (lo aplica oportunidades.py en la próxima actualización del tablero). Contesta al tablero con el resultado.
+  async function opGuardarAjustes(m, ventana) {
+    const responder = (r) => { try { ventana.postMessage(Object.assign({ tipo: 'quempin-ajustes-oportunidades-resultado', pedido: m.pedido }, r), location.origin); } catch (e) { /* se cerró */ } };
+    if (!m.ajustes || typeof m.ajustes !== 'object' || Array.isArray(m.ajustes)) { responder({ ok: false, error: 'los ajustes no vienen bien armados.' }); return; }
+    if (!rc.dir) await rcCargar();
+    if (!rc.dir) {
+      responder({ ok: false, error: rc.sinDatos === 'navegador' ? 'este navegador no abre carpetas (usa Chrome o Edge de escritorio).'
+        : 'el Portal no tiene abierta la carpeta del equipo. Ábrela en el Recorrido y vuelve a guardar.' });
+      return;
+    }
+    const enviado = scAhora();
+    const id = scId();
+    const origen = { herramienta: 'portal', enviado };
+    if (estado.usuario) origen.usuario = estado.usuario;
+    const msg = { esquema: 'quempin.intercambio/1', id, tipo: 'ajustes-oportunidades', destino: 'oportunidades', origen, ajustes: m.ajustes };
+    const nombre = enviado.slice(0, 19).replace(/[-:]/g, '').replace('T', '-') + '_portal_ajustes-oportunidades_' + id + '.json';
+    try {
+      const buzon = await rc.dir.getDirectoryHandle('buzon', { create: true });
+      const w = await (await buzon.getFileHandle(nombre, { create: true })).createWritable();
+      await w.write(JSON.stringify(msg, null, 2) + '\n');
+      await w.close();
+    } catch (err) {
+      console.error(err);
+      responder({ ok: false, error: 'no se pudo escribir en la carpeta del equipo: revisa que OneDrive esté funcionando.' });
+      return;
+    }
+    responder({ ok: true, id, enviado });
+    avisar('«Qué buscamos» guardado: vale para todo el equipo desde la próxima actualización de Oportunidades.');
+  }
   // Llega del Cotizador abierto aquí dentro o del que abrió este Portal (ver el arranque): de otro lado, no se atiende
   window.addEventListener('message', (e) => {
     const m = e.data;
-    if (e.origin !== location.origin || !m || typeof m !== 'object' || !['quempin-cotizacion', 'quempin-nuevo-requerimiento'].includes(m.tipo)) return;
+    if (e.origin !== location.origin || !m || typeof m !== 'object'
+      || !['quempin-cotizacion', 'quempin-nuevo-requerimiento', 'quempin-ajustes-oportunidades'].includes(m.tipo)) return;
     const deAqui = estado.pestanas.some((p) => ventanaDe(p) === e.source);
+    if (m.tipo === 'quempin-ajustes-oportunidades') { if (deAqui) opGuardarAjustes(m, e.source); return; }
     if (m.tipo === 'quempin-nuevo-requerimiento') { if (deAqui) pqNuevoCon(m.datos); return; }
     if (!deAqui && !(window.opener && e.source === window.opener)) return;
     llAbrir(m.datos);

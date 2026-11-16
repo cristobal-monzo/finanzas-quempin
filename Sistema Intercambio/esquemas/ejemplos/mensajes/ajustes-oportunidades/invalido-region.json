@@ -1,0 +1,16 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "a1e5000000000000000a0001",
+  "tipo": "ajustes-oportunidades",
+  "destino": "oportunidades",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "NB",
+    "enviado": "2026-11-16T10:00:00-03:00"
+  },
+  "ajustes": {
+    "regiones": {
+      "arica": 150
+    }
+  }
+}

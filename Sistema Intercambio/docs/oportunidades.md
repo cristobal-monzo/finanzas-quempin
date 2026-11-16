@@ -85,6 +85,47 @@ mucho más intuitivo de utilizar y también de modificar»):**
   de contraste, gases medicinales) quedan descartados.
 - El correo exige además categoría «Prioritaria».
 
+**«Qué buscamos»: el equipo cambia el motor desde el tablero (2026-11-16,
+pedido del usuario: la variante D1 de las maquetas, «cuatro columnas que se
+arrastran»):**
+- Pestaña «Qué buscamos» del tablero: cada tema es una tarjeta en una de cuatro
+  columnas (Mucho / Algo / Poco interés / No es lo nuestro = `alto`, `medio`,
+  `bajo`, `no`). Se arrastra, o se toca y «Mover a» (en el celular no se
+  arrastra). Abierta, muestra sus frases para quitar o agregar. En «No es lo
+  nuestro» están además las palabras que descartan (`excluir`) y «no
+  confundir». Abajo, las regiones (Cerca 100 → Media 70 → Lejos 35 → No vamos
+  0) y los montos (mínimo de licitación y de compra ágil, máximo).
+- **La lista cambia al tiro**, antes de guardar. Lo que depende de esto se
+  calcula con funciones puras que la página repite: `resolver_rubro` (nota,
+  tema y tope del rubro con los niveles de hoy), `calcular_tope`,
+  `resolver_monto`, `_pesos` y `_acotar` (con el redondeo al par de Python).
+  Cada oportunidad lleva en `vivo` lo que no depende de los niveles: qué temas
+  nombra y dónde, cuánto restan excluir y la historia en cada caso
+  (`ajustes.altoNombre`, `altoDescripcion`, `otro`), la región, las dos notas
+  del monto (bajo y sobre el máximo) y el monto en pesos. La visita guarda
+  `porRegion` [a, b]: su nota es a + b · puntos de la región. Lo que depende
+  de esto va a `descartar` pero no a `descartarFijo`. Una frase nueva no se
+  ve hasta la próxima actualización (hay que buscar fichas). La prueba
+  `test_con_ajustes_la_pagina_calcula_igual_que_python` compara las dos.
+- **Nivel `no`**: un tema de «No es lo nuestro» en el nombre descarta, salvo
+  que un tema bueno también esté en el nombre («Calderas y climatización»
+  sigue). Una región en 0 descarta («No trabajamos en …»); un máximo puesto
+  a mano descarta lo que lo pasa (el de la historia solo orienta).
+- **Guardar**: el tablero no tiene la carpeta del equipo. Manda los ajustes al
+  Portal (`postMessage`, `quempin-ajustes-oportunidades`), que deja un
+  `ajustes-oportunidades` en el buzón y le contesta. Fuera del Portal no se
+  puede guardar, y la página lo dice. Lo guardado queda en este navegador
+  (`quempin_op_ajustes_pendiente`) hasta que el tablero lo trae aplicado.
+- **Aplicar**: `atender_ajustes` (en `revisar`, antes de evaluar; `status` no
+  lo hace) toma los del buzón en orden, gana el último completo
+  (`limpiar_ajustes` ignora temas y regiones que no existen), publica
+  `oportunidades-ajustes.json` con el historial y archiva. `revisar` pone
+  esos ajustes encima de `oportunidades_config.json` (`aplicar_ajustes`): el
+  archivo versionado no se toca (la carpeta principal queda limpia).
+  `publicacion` lleva en `rubro` todo lo editable y los últimos cambios.
+- Se agregaron a excluir «coffee break», «catering», «banquetería» y
+  «cóctel»: un servicio de café en la calle «Benigno Caldera» salía Buena.
+
 **Decisiones medidas contra los datos reales (2026-10-13):**
 - **No se corta a raíces de 6 letras**, solo se pasa a singular. Con el corte,
   «hidrogeológico» era «hidrógeno».

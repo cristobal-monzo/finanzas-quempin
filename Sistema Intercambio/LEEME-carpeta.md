@@ -33,6 +33,7 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 | `documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN | cotizaciones y OC emitidas, clientes y proveedores, último N° del Control de Documentos |
 | `precios-referencia.json` | Cotizador Histórico | precios de compra reajustados, en el Formulador |
 | `licitaciones.json` | el procesador (Mercado Público) | quién ganó cada licitación de la Planilla |
+| `oportunidades-ajustes.json` | Oportunidades, al actualizar su tablero | lo que el equipo cambió en «Qué buscamos»: qué temas, regiones y montos interesan, con quién lo cambió |
 | `proyectos.json` | el procesador | el cruce N° de requerimiento ↔ TAG ↔ formulaciones ↔ cotizaciones ↔ carpetas |
 | `documentos-proyecto.json` | el procesador, desde el Centro de Costos | las facturas de cada proyecto, en «Proyectos en ejecución» del Portal |
 | `centro-costos-carpetas.json` | el procesador | las carpetas de proyecto de «Facturas y Boletas», para «Subir documentos» del Portal |

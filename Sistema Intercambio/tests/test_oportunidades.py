@@ -467,3 +467,83 @@ def test_varios_recintos_se_busca_en_plural_y_las_frases_con_tilde_igual_calzan(
 def test_parecidas_empatadas_muestran_primero_las_recientes(evaluador):
     reqs = [r["req"] for _, r in evaluador.h.parecidas("Mantención de calderas", k=10) if _ == 1.0]
     assert reqs == sorted(reqs, reverse=True)
+
+
+# ── «Qué buscamos»: lo que el equipo cambia en el tablero (2026-11-16) ──────
+
+def _con_ajustes(config, ajustes):
+    return op.Evaluador(op.aplicar_ajustes(config, ajustes), op.Historia(HISTORIA), [], AHORA, 40000)
+
+
+def test_un_tema_en_no_es_lo_nuestro_descarta_solo_si_ningun_tema_bueno_esta_en_el_nombre(config):
+    ev = _con_ajustes(config, {"temas": {"climatizacion": {"interes": "no"}}})
+    clima = _evaluar(ev, _ficha("1-1-LE26", "Mantención sistema de climatización edificio"))
+    assert clima["descartar"] == ["No es lo nuestro: Climatización"] and clima["categoria"] == "descartar"
+    assert "No es lo nuestro: Climatización" not in clima["descartarFijo"]       # la página lo recalcula
+    ambos = _evaluar(ev, _ficha("1-2-LE26", "Mantención calderas y climatización del hospital"))
+    assert not ambos["descartar"] and ambos["tema"]["id"] == "calderas"
+
+
+def test_un_tema_que_sube_de_nivel_puede_llegar_mas_alto(config):
+    antes = _evaluar(op.Evaluador(config, op.Historia(HISTORIA), [], AHORA, 40000), _ficha("1-1-LE26", "Temperado de piscina municipal"))
+    despues = _evaluar(_con_ajustes(config, {"temas": {"piscinas": {"interes": "alto"}}}), _ficha("1-1-LE26", "Temperado de piscina municipal"))
+    assert antes["tope"]["categoria"] == "buena" and (despues["tope"] or {}).get("categoria") != "buena"
+    assert despues["criterios"]["rubro"]["puntaje"] > antes["criterios"]["rubro"]["puntaje"]
+
+
+def test_region_en_cero_y_monto_maximo_descartan(config):
+    ev = _con_ajustes(config, {"regiones": {"magallanes": 0}, "monto": {"maximo": 5_000_000}})
+    lejos = _evaluar(ev, _ficha("1-1-LE26", "Mantención calderas", region="Región de Magallanes y de la Antártica Chilena", monto=1_000_000))
+    assert lejos["descartar"] == ["No trabajamos en Magallanes"]
+    grande = _evaluar(ev, _ficha("1-2-LE26", "Mantención calderas", monto=10_000_000))
+    assert grande["descartar"] == ["Monto $10,0 M sobre el máximo de $5,0 M"]
+    chica = _evaluar(_con_ajustes(config, {"monto": {"minimo": 12_000_000}}), _ficha("1-3-LE26", "Mantención calderas", monto=10_000_000))
+    assert chica["tope"] == {"categoria": "baja", "motivo": "Muy chica: $10,0 M, bajo el mínimo de $12,0 M"}
+
+
+def test_limpiar_ajustes_ignora_lo_que_no_existe(config):
+    limpio, ignorado = op.limpiar_ajustes({
+        "temas": {"calderas": {"interes": "medio", "frases": ["caldera", "caldera", " x", "sala de calderas"]},
+                  "inventado": {"interes": "alto"}, "gas": {"interes": "muchisimo"}},
+        "regiones": {"arica": 0, "marte": 100, "maule": 300}, "monto": {"minimo": -5, "maximo": None},
+        "excluir": "no es lista"}, config)
+    assert limpio["temas"] == {"calderas": {"interes": "medio", "frases": ["caldera", "sala de calderas"]}}
+    assert limpio["regiones"] == {"arica": 0} and limpio["monto"] == {"maximo": None}
+    assert "excluir" not in limpio and len(ignorado) == 6
+
+
+def _ajustes_msg(id_, enviado, ajustes, usuario="NB"):
+    return {"esquema": ic.ESQUEMA, "id": id_, "tipo": op.TIPO_AJUSTES, "destino": op.HERRAMIENTA,
+            "origen": {"herramienta": "portal", "usuario": usuario, "enviado": enviado}, "ajustes": ajustes}
+
+
+def test_los_ajustes_del_buzon_se_publican_y_gana_el_ultimo(carpeta, config):
+    ic.enviar(carpeta, _ajustes_msg("aj0000000001", "2026-11-16T10:00:00-03:00", {"temas": {"climatizacion": {"interes": "no"}}}))
+    ic.enviar(carpeta, _ajustes_msg("aj0000000002", "2026-11-16T11:00:00-03:00",
+                                    {"temas": {"climatizacion": {"interes": "medio"}}, "regiones": {"arica": 0}}, usuario="ES"))
+    ic.enviar(carpeta, _ajustes_msg("aj0000000003", "2026-11-16T12:00:00-03:00", {"temas": {"inventado": {"interes": "alto"}}}))
+    avisos = op.atender_ajustes(carpeta, config)
+    sobre = ic.leer_publicacion(carpeta, op.PUBLICACION_AJUSTES)
+    assert esquemas.validar_publicacion(op.PUBLICACION_AJUSTES, sobre) == []
+    d = sobre["datos"]
+    assert d["mensaje"] == "aj0000000002" and d["usuario"] == "ES"
+    assert d["ajustes"] == {"temas": {"climatizacion": {"interes": "medio"}}, "regiones": {"arica": 0}}
+    assert [h["id"] for h in d["historial"]] == ["aj0000000002", "aj0000000001"]
+    assert "Climatización → A veces" in d["historial"][0]["cambios"] and "Arica y Parinacota: 0" in d["historial"][0]["cambios"]
+    assert len(avisos) == 2
+    assert ic.leer_buzon(carpeta, destino=op.HERRAMIENTA)[0] == []
+    archivados = {json.loads(p.read_text(encoding="utf-8"))["id"]: json.loads(p.read_text(encoding="utf-8"))["resultado"]["estado"]
+                  for p in (carpeta / "procesado").rglob("*.json")}
+    assert archivados == {"aj0000000001": "aplicado", "aj0000000002": "aplicado", "aj0000000003": "rechazado"}
+    # La evaluación los toma: Arica no va y Climatización queda «A veces».
+    r = op.revisar(carpeta, cliente=_cliente(ApiFalsa(fichas=[
+        _ficha("5000-70-LE26", "Mantención caldera hospital", region="Región de Arica y Parinacota")])), config=config, ahora=AHORA)
+    assert r["datos"]["rubro"]["regiones"]["arica"] == 0 and r["datos"]["rubro"]["ajustes"]["mensaje"] == "aj0000000002"
+    assert next(t for t in r["datos"]["rubro"]["temas"] if t["id"] == "climatizacion")["interes"] == "medio"
+    assert r["datos"]["oportunidades"][0]["descartar"] == ["No trabajamos en Arica y Parinacota"]
+
+
+def test_status_no_atiende_el_buzon(carpeta, config):
+    ic.enviar(carpeta, _ajustes_msg("aj0000000009", "2026-11-16T10:00:00-03:00", {"temas": {"climatizacion": {"interes": "no"}}}))
+    op.revisar(carpeta, cliente=_cliente(ApiFalsa()), config=config, ahora=AHORA, enviar=False, atender=False)
+    assert len(ic.leer_buzon(carpeta, destino=op.HERRAMIENTA)[0]) == 1
