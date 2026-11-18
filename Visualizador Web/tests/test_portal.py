@@ -908,14 +908,14 @@ def test_lo_publicado_de_nuevo_se_carga_sin_f5(navegador, tmp_path):
             f.write_text(f.read_text(encoding="utf-8") + "\n<!-- otra publicación -->", encoding="utf-8")
 
         def cargas(familia):
-            return pagina.evaluate(f"document.getElementById('marco-{familia}').contentDocument.body.dataset.cargas")
+            return pagina.evaluate(f"document.getElementById('marco-{familia}').contentDocument?.body?.dataset.cargas")
 
         # La escondida (Centro de Costos) se recarga en la próxima revisión; la que se ve (Flujo de Caja), recién tocada, avisa
         cambiar("finanzas-quempin/centro-de-costos")
         cambiar("finanzas-quempin/flujo-de-caja")
         pagina.mouse.move(400, 400)
         pagina.clock.fast_forward(301_000)
-        pagina.wait_for_function("() => document.getElementById('marco-centro-costos').contentDocument.body.dataset.cargas === '2'")
+        _esperar(pagina, "centro-costos", "cargas", "2")      # tolera el instante en que el marco recargado no tiene body
         _esperar_aviso(pagina, "Hay una versión nueva de «Flujo de Caja»")
         assert cargas("flujo-caja") == "1"
         # Diez minutos sin tocarla: se recarga sola
