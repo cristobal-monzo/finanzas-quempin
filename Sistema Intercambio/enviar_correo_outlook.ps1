@@ -1,7 +1,8 @@
 # enviar_correo_outlook.ps1 -- Entrega un correo a Outlook de este equipo
-# (COM) y espera a que salga. Lo llama alertas_oportunidades.py (2026-10-14).
+# (COM) y espera a que salga. Lo llaman alertas_oportunidades.py (2026-10-14)
+# y correo_rendiciones.py (2026-11-18, con adjuntos).
 #
-# Recibe la ruta de un JSON {para: [...], asunto, html}: asi ningun texto de
+# Recibe la ruta de un JSON {para: [...], asunto, html, adjuntos?: [...]}: asi ningun texto de
 # Mercado Publico pasa por la linea de comandos. Escribe "enviado" si salio de
 # la bandeja de salida, o "bandeja-de-salida" si quedo ahi (Outlook lo envia
 # al sincronizar, por ejemplo cuando se abre). Cualquier error: codigo 1.
@@ -15,6 +16,16 @@ $correo = $outlook.CreateItem(0)
 $correo.To = ($m.para -join ";")
 $correo.Subject = $m.asunto
 $correo.HTMLBody = $m.html
+# Adjuntos (2026-11-18, el PDF de cada rendicion): si uno no esta o Outlook no
+# lo toma, el correo no sale (error, codigo 1) y el procesador lo reintenta.
+$esperados = 0
+foreach ($a in @($m.adjuntos)) {
+    if (-not $a) { continue }
+    if (-not (Test-Path -LiteralPath $a -PathType Leaf)) { throw "no esta el adjunto $a" }
+    [void]$correo.Attachments.Add([string]$a)
+    $esperados++
+}
+if ($correo.Attachments.Count -ne $esperados) { throw "Outlook tomo $($correo.Attachments.Count) de $esperados adjuntos" }
 $correo.Send()
 
 # Si Outlook estaba cerrado, COM lo abre sin ventana y puede cerrarse antes de

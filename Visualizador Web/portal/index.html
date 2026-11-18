@@ -809,6 +809,7 @@
   .rd-saldo dd { margin: 0; font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
   .rd-estado { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text-secondary); }
   .rd-estado strong { color: var(--brand-orange-ink); }
+  .rd-ver-pdf { align-self: flex-start; font-size: 13px; padding: 2px 0; }
   .rd-boton { min-height: 42px; width: 100%; justify-content: center; font-size: 14.5px; }
   .rd-boton:disabled { opacity: 0.45; cursor: not-allowed; }
   .rd-boton.ocupado:disabled { cursor: progress; }
@@ -3653,7 +3654,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloRendir">Rendiciones</h1>
-                <span class="info" data-etiqueta="Cómo funciona Rendiciones">Sube la foto o el PDF de cada boleta o factura: se lee sola y llena su fila. Revisa lo marcado en naranjo, elige el proyecto de cada documento y descarga el PDF para entregarlo. «Enviar rendición» la guarda en el registro de rendiciones, deja cada documento en la carpeta de su proyecto del Centro de Costos y envía un correo automático con la persona, el monto total y el período. Lo que llevas se guarda en este navegador hasta que empiezas una rendición nueva.</span>
+                <span class="info" data-etiqueta="Cómo funciona Rendiciones">Sube la foto o el PDF de cada boleta o factura: se lee sola y llena su fila. Revisa lo marcado en naranjo, elige el proyecto de cada documento y descarga el PDF para entregarlo. «Enviar rendición» la guarda en el registro de rendiciones, deja cada documento en la carpeta de su proyecto del Centro de Costos y envía un correo automático con la persona, el monto total, el período y el PDF adjunto. Lo que llevas se guarda en este navegador hasta que empiezas una rendición nueva.</span>
               </div>
               <div class="rd-cab-acc">
                 <button class="rd-lector" id="rdLector" type="button"></button>
@@ -10137,6 +10138,7 @@ window.__qpnErrores = (function () {
         enviado: texto(r.enviado) || (g ? g.enviado : ''), usuario: texto(r.usuario), carpetas: docs.map((d) => texto(d.carpeta)),
         fechas: docs.map((d) => texto(d.fecha)).filter(Boolean), detalle: g ? g.detalle : [],
         correo: r.correo && texto(r.correo.fecha) ? r.correo : null,
+        pdf: /^rendiciones\/[^/]+\.pdf$/.test(texto(r.pdf)) ? texto(r.pdf) : '',
         estado: r.correo && texto(r.correo.fecha) ? 'correo' : g && g.estado === 'camino' ? 'camino' : 'aplicado'
       };
     });
@@ -10209,6 +10211,17 @@ window.__qpnErrores = (function () {
     const rid = scId().slice(0, 16);
     const pais = estado.pais === 'pe' ? 'PE' : 'CL';
     const enviados = [];
+    // El PDF va siempre con la rendición: el correo lo lleva adjunto para la revisión. Sin PDF no se envía.
+    let informe = null;
+    try { informe = await rdGenerarPdf({ datos: true }); } catch (e) { console.error(e); }
+    if (!informe || !informe.datos || !informe.datos.byteLength) {
+      rd.enviando = false;
+      rdPintar();
+      avisar('No se pudo armar el PDF que va en el correo, así que la rendición no se envió. Revisa la conexión y vuelve a intentarlo.');
+      return;
+    }
+    rd.enviando = true;
+    rdPintarResumen();
     try {
       const buzon = await rc.dir.getDirectoryHandle('buzon', { create: true });
       const adjuntos = await buzon.getDirectoryHandle('adjuntos', { create: true });
@@ -10236,6 +10249,16 @@ window.__qpnErrores = (function () {
         const origen = { herramienta: 'portal', enviado };
         if (estado.usuario) origen.usuario = estado.usuario;
         const rendicion = { id: rid, numero: texto(cab.numero) || rid, tipo: cab.tipo, deudor: texto(cab.deudor), total, cantidad: rd.docs.length, documentos };
+        if (!enviados.length) {
+          // El PDF viaja con el primer mensaje, aparte de los documentos: no se copia a la carpeta del proyecto
+          let nombrePdf = informe.nombre;
+          while (usados.has(nombrePdf.toLowerCase())) nombrePdf = nombrePdf.replace(/\.pdf$/i, '_.pdf');
+          const hp = await dir.getFileHandle(nombrePdf, { create: true });
+          const wp = await hp.createWritable();
+          await wp.write(informe.datos);
+          await wp.close();
+          rendicion.pdf = { nombre: nombrePdf, bytes: informe.datos.byteLength, sha256: await scSha(informe.datos) };
+        }
         if (texto(cab.periodo)) rendicion.periodo = texto(cab.periodo);
         if (texto(cab.unidad)) rendicion.unidad = texto(cab.unidad);
         const msg = {
@@ -10285,8 +10308,9 @@ window.__qpnErrores = (function () {
     } catch (e) { rd.logo = null; }
     return rd.logo;
   }
-  async function rdGenerarPdf() {
-    if (rd.haciendoPdf || !rd.docs.length) return;
+  // op.datos: no lo descarga; devuelve {nombre, datos} para enviarlo con la rendición (va adjunto en el correo)
+  async function rdGenerarPdf(op = {}) {
+    if (rd.haciendoPdf || !rd.docs.length) return null;
     rd.haciendoPdf = true;
     rdPintarResumen();
     try {
@@ -10486,11 +10510,13 @@ window.__qpnErrores = (function () {
         pdf.text('Página ' + i + ' de ' + n, W - M, H - 9, { align: 'right' });
       }
       const nombre = scLimpio(titulo + ' ' + (cab.deudor || '') + ' - ' + (cab.periodo || emitido), 120) + '.pdf';
+      if (op.datos) return { nombre, datos: pdf.output('arraybuffer') };
       pdf.save(nombre);
       cab.pdf = true;
       rdGuardar();
     } catch (e) {
       console.error(e);
+      if (op.datos) throw e;
       avisar('No se pudo armar el PDF' + (/conexi/i.test(String(e && e.message)) ? ': hace falta internet la primera vez.' : '. Vuelve a intentarlo.'));
     } finally {
       rd.haciendoPdf = false;
@@ -10705,7 +10731,7 @@ window.__qpnErrores = (function () {
       const faltan = docs.length && !leyendo ? rdFaltantes() : [];
       if (faltan.length) { nota.textContent = 'Para enviar falta ' + rdFaltaTexto(faltan) + '.'; nota.classList.add('mal'); }
       else if (docs.length && !rdConApellido(rd.cab.deudor)) { nota.textContent = 'Para enviar falta el nombre y apellido de la persona.'; nota.classList.add('mal'); }
-      else nota.textContent = docs.length ? 'Queda en el registro de rendiciones, cada documento llega a la carpeta de su proyecto y sale un correo automático con el total.' : '';
+      else nota.textContent = docs.length ? 'Queda en el registro de rendiciones, cada documento llega a la carpeta de su proyecto y sale un correo automático con el total y el PDF adjunto.' : '';
     }
   }
   function rdPintarEnvios() {
@@ -10729,9 +10755,33 @@ window.__qpnErrores = (function () {
       const fc = e.correo ? new Date(e.correo.fecha) : null;
       li.append(crear('span', 'sc-env-det', ['Enviada ' + cuando + (e.usuario ? ' por ' + e.usuario : ''),
         fc && !isNaN(fc) ? 'correo ' + fc.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')));
+      if (e.pdf) {
+        const b = crear('button', 'cx-enlace rd-ver-pdf', 'Ver PDF');
+        b.type = 'button';
+        b.addEventListener('click', () => rdAbrirPdfRegistro(e.pdf, b));
+        li.append(b);
+      }
       if (e.estado === 'rechazado' && e.detalle.length) li.append(crear('span', 'sc-env-det mal', e.detalle[0]));
       ul.append(li);
     });
+  }
+
+  // El PDF de una rendición del registro (publicado/rendiciones/<N°>.pdf), el mismo que fue adjunto en el correo
+  async function rdAbrirPdfRegistro(ruta, boton) {
+    const ventana = window.open('', '_blank');
+    try {
+      let d = await rcSub(rc.dir, 'publicado');
+      const partes = ruta.split('/');
+      for (const p of partes.slice(0, -1)) d = await d.getDirectoryHandle(p);
+      const archivo = await (await d.getFileHandle(partes[partes.length - 1])).getFile();
+      const url = URL.createObjectURL(archivo);
+      if (ventana) ventana.location.href = url; else window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      if (ventana) ventana.close();
+      boton.disabled = true;
+      avisar('Ese PDF todavía no llega a este computador (OneDrive). Prueba en unos minutos.');
+    }
   }
 
   // ---- Un documento en grande -------------------------------------------------------------------------------------

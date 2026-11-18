@@ -20,13 +20,15 @@
           "cantidad": { "type": "integer", "minimum": 1 },
           "usuario": { "type": "string" },
           "enviado": { "type": "string" },
+          "pdf": { "type": "string", "pattern": "^rendiciones/[^/]+\\.pdf$", "description": "Desde el 2026-11-18: el PDF de la rendición, relativo a publicado/ (va adjunto en el correo)" },
           "correo": {
             "type": "object",
             "description": "Desde el 2026-11-18: el correo automático de la rendición (correo_rendiciones.py). Sin esta clave, aún no sale.",
             "properties": {
               "fecha": { "type": "string", "minLength": 1 },
               "para": { "type": "array", "items": { "type": "string" } },
-              "estado": { "enum": ["enviado", "bandeja-de-salida"] }
+              "estado": { "enum": ["enviado", "bandeja-de-salida"] },
+              "adjunto": { "type": "string", "description": "El nombre del PDF que fue adjunto" }
             },
             "required": ["fecha", "estado"]
           },

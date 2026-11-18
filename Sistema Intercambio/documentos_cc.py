@@ -47,6 +47,7 @@ TIPO = "documento-cc"
 DESTINO = "centro-costos"
 PUBLICACION = "centro-costos-carpetas"
 PUBLICACION_RENDICIONES = "rendiciones"
+CARPETA_PDF_RENDICIONES = "rendiciones"      # publicado/rendiciones/<N°>.pdf: el PDF que va en el correo
 MAX_RENDICIONES = 300
 CARPETA_ADJUNTOS = "adjuntos"
 DIAS_ESPERA = 7
@@ -162,7 +163,8 @@ def atender(raiz: Path, raices: dict[str, Path], ahora: datetime | None = None) 
             continue
         enviado = _enviado(m)
         vencido = enviado is not None and ahora - enviado > timedelta(days=DIAS_ESPERA)
-        faltan = _faltantes(adjuntos, m["archivos"])
+        pdf = (m.get("rendicion") or {}).get("pdf")
+        faltan = _faltantes(adjuntos, m["archivos"] + ([pdf] if pdf else []))
         if faltan:
             if vencido:
                 rechazar(f"después de {DIAS_ESPERA} días no llegaron: " + ", ".join(faltan))
@@ -193,7 +195,8 @@ def atender(raiz: Path, raices: dict[str, Path], ahora: datetime | None = None) 
             # Los documentos ya están en su carpeta: si la publicación falla, se archiva igual (quien registra lee la
             # foto, como con cualquier documento) y el detalle lo dice.
             try:
-                publicar_rendicion(raiz, m, carpeta.name, guardados)
+                ruta_pdf = guardar_pdf(raiz, m, adjuntos) if pdf else None
+                publicar_rendicion(raiz, m, carpeta.name, guardados, ruta_pdf)
             except (OSError, ValueError, intercambio.PublicacionInvalida) as e:
                 detalle.append(f"rendiciones.json no se actualizó: {e}")
         intercambio.archivar(raiz, m, "aplicado", detalle,
@@ -207,7 +210,18 @@ def atender(raiz: Path, raices: dict[str, Path], ahora: datetime | None = None) 
 
 # ── LAS RENDICIONES, PARA EL REGISTRO DEL CENTRO DE COSTOS ──────────────────
 
-def publicar_rendicion(raiz: Path, mensaje: dict, carpeta: str, guardados: list[dict]) -> None:
+def guardar_pdf(raiz: Path, mensaje: dict, adjuntos: Path) -> str:
+    """Deja el PDF de la rendición en publicado/rendiciones/<N°>.pdf (va adjunto en el correo y el Portal lo abre desde
+    el registro). Devuelve su ruta relativa a publicado/."""
+    ren = mensaje["rendicion"]
+    nombre = re.sub(r"[^\w\- ]+", "_", ren.get("numero") or ren["id"]).strip(" _")[:80] or ren["id"]
+    carpeta = raiz / intercambio.CARPETA_PUBLICADO / CARPETA_PDF_RENDICIONES
+    carpeta.mkdir(parents=True, exist_ok=True)
+    _copiar(adjuntos / ren["pdf"]["nombre"], carpeta / f"{nombre}.pdf", ren["pdf"]["sha256"])
+    return f"{CARPETA_PDF_RENDICIONES}/{nombre}.pdf"
+
+
+def publicar_rendicion(raiz: Path, mensaje: dict, carpeta: str, guardados: list[dict], pdf: str | None = None) -> None:
     """Agrega a rendiciones.json los documentos de un documento-cc con «rendicion», con el nombre con que quedó
     cada uno en la carpeta. Idempotente: un archivo de la carpeta ya publicado no se repite (un reenvío trae los
     mismos archivos, que el paso anterior informa como repetidos con su nombre en la carpeta)."""
@@ -224,6 +238,8 @@ def publicar_rendicion(raiz: Path, mensaje: dict, carpeta: str, guardados: list[
             entrada["enviado"] = origen["enviado"]
         entrada["documentos"] = []
         lista.append(entrada)
+    if pdf:
+        entrada["pdf"] = pdf
     guardado = {_clave(g["nombre"]): g for g in guardados}
     ya = {(d.get("pais"), _clave(d.get("carpeta", "")), _clave(d.get("archivo", ""))) for d in entrada["documentos"]}
     for doc in ren["documentos"]:

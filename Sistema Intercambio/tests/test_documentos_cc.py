@@ -189,3 +189,20 @@ def test_sin_rendicion_no_se_publica_rendiciones(entorno):
     _enviar(entorno["raiz"])
     dc.atender(entorno["raiz"], entorno["raices"])
     assert intercambio.leer_publicacion(entorno["raiz"], dc.PUBLICACION_RENDICIONES) is None
+
+
+def test_rendicion_con_su_pdf_lo_deja_en_publicado_y_no_en_la_carpeta(entorno):
+    """El PDF de la rendición (va adjunto en el correo, 2026-11-18): viaja con un mensaje, espera si aún no llega, queda
+    en publicado/rendiciones/<N°>.pdf y no se copia a la carpeta del proyecto (no es un documento a registrar)."""
+    pdf = b"%PDF-1.4 rendicion completa"
+    meta = {"nombre": "Recuperación de Gastos Persona - Nov.pdf", "bytes": len(pdf), "sha256": hashlib.sha256(pdf).hexdigest()}
+    a = {"R - 1 Boleta 100.jpg": b"\xff\xd8 foto 1"}
+    m = _enviar(entorno["raiz"], archivos=a, rendicion=_rendicion(list(a), cantidad=1, total=1000, pdf=meta))
+    # El PDF aún no sincroniza: el mensaje espera
+    assert dc.atender(entorno["raiz"], entorno["raices"])["esperan"] == 1
+    (entorno["raiz"] / "buzon" / "adjuntos" / m["id"] / meta["nombre"]).write_bytes(pdf)
+    assert dc.atender(entorno["raiz"], entorno["raices"])["aplicados"] == 1
+    [ren] = intercambio.leer_publicacion(entorno["raiz"], dc.PUBLICACION_RENDICIONES)["datos"]["rendiciones"]
+    assert ren["pdf"] == "rendiciones/R-20261118-1000-NB.pdf"
+    assert (entorno["raiz"] / "publicado" / ren["pdf"]).read_bytes() == pdf
+    assert not list((entorno["chile"] / "280. Obra de ejemplo").glob("*.pdf"))

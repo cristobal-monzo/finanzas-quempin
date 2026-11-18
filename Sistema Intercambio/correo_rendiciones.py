@@ -14,6 +14,9 @@ persona, con nombre y apellido.
   gitignoreado). Una rendición con documentos en varias carpetas llega en
   varios mensajes: se espera hasta que lleguen todos o pasen ESPERA_INCOMPLETA
   desde que se envió; entonces sale con lo que llegó y lo dice.
+- **Siempre con el PDF adjunto** (pedido del usuario, 2026-11-18: «para la revisión de Nicolás y de Gonzalo»):
+  el Portal lo arma al enviar y documentos_cc.py lo deja en publicado/rendiciones/. Sin PDF el correo no
+  sale: espera, y pasado ESPERA_INCOMPLETA el paso falla en estado.json con el N° de la rendición.
 - Una rendición enviada hace más de DIAS_MAX días no genera correo (un equipo
   nuevo, sin el registro de lo enviado, no reenvía lo antiguo).
 - Sale por Outlook de este equipo (``enviar_correo_outlook.ps1``), a cualquier
@@ -120,8 +123,17 @@ def por_proyecto(ren: dict) -> list[tuple[str, int, int]]:
     return sorted(((c, n, v) for c, (n, v) in suma.items()), key=lambda x: -x[2])
 
 
+def ruta_pdf(raiz: Path, ren: dict) -> Path | None:
+    """El PDF de la rendición, si ya está en publicado/rendiciones/."""
+    rel = str(ren.get("pdf") or "")
+    if not re.match(r"^rendiciones/[^/\\]+\.pdf$", rel):
+        return None
+    ruta = raiz / intercambio.CARPETA_PUBLICADO / rel
+    return ruta if ruta.is_file() and ruta.stat().st_size > 0 else None
+
+
 def armar(ren: dict) -> tuple[str, str]:
-    """El asunto y el cuerpo HTML del correo de una rendición."""
+    """El asunto y el cuerpo HTML del correo de una rendición (siempre va con su PDF adjunto)."""
     e = html.escape
     nombre, total = persona(ren), pesos(ren.get("total"))
     asunto = f"Rendición de gastos {ren.get('numero', '')} · {nombre} · {total}"
@@ -155,18 +167,20 @@ def armar(ren: dict) -> tuple[str, str]:
     por un monto total de <b>{e(total)}</b>. Los gastos corresponden al período {e(texto_periodo(ren))}
     (documento más antiguo y más reciente de la rendición).</p>
   <table style="border-collapse:collapse;font-size:14px">{tabla}</table>{falta}
+  <p style="margin:12px 0 0 0">Se adjunta el PDF de la rendición para su revisión: el resumen y una página con la imagen de
+    cada documento.</p>
   <p style="margin:16px 0 0 0;font-size:12px;color:{GRIS}">Los documentos quedaron en la carpeta de cada proyecto del
     Centro de Costos. Registro de rendiciones: <a href="{URL_PORTAL}" style="color:{NARANJO}">Portal QUEMPIN</a>.</p>
 </div>"""
     return asunto, cuerpo
 
 
-def decidir(lista: list[dict], registro: dict, ahora: datetime) -> dict:
-    """Qué rendiciones llevan correo ahora: completas (o que ya esperaron ESPERA_INCOMPLETA), no enviadas antes y
-    de los últimos DIAS_MAX días."""
+def decidir(lista: list[dict], registro: dict, ahora: datetime, con_pdf=lambda ren: True) -> dict:
+    """Qué rendiciones llevan correo ahora: completas (o que ya esperaron ESPERA_INCOMPLETA), con su PDF, no enviadas
+    antes y de los últimos DIAS_MAX días. Sin PDF esperan; pasado ESPERA_INCOMPLETA van a 'sinPdf'."""
     ahora = _con_zona(ahora)
     ya = {x.get("id") for x in registro.get("enviados") or []}
-    enviar, esperan = [], []
+    enviar, esperan, sin_pdf = [], [], []
     for ren in lista:
         if ren.get("id") in ya or ren.get("correo"):
             continue
@@ -174,17 +188,21 @@ def decidir(lista: list[dict], registro: dict, ahora: datetime) -> dict:
         if cuando and ahora - cuando > timedelta(days=DIAS_MAX):
             continue
         completa = len(ren.get("documentos") or []) >= int(ren.get("cantidad") or 0)
-        if not completa and cuando and ahora - cuando < ESPERA_INCOMPLETA:
+        reciente = bool(cuando) and ahora - cuando < ESPERA_INCOMPLETA
+        if (not completa or not con_pdf(ren)) and reciente:
             esperan.append(ren)
             continue
+        if not con_pdf(ren):
+            sin_pdf.append(ren)
+            continue
         enviar.append(ren)
-    return {"enviar": enviar, "esperan": esperan}
+    return {"enviar": enviar, "esperan": esperan, "sinPdf": sin_pdf}
 
 
-def remitente_outlook(para: list[str], asunto: str, cuerpo: str) -> str:
+def remitente_outlook(para: list[str], asunto: str, cuerpo: str, adjuntos: list[Path]) -> str:
     import alertas_oportunidades  # solo al enviar de verdad: abre Outlook
     try:
-        return alertas_oportunidades.entregar_outlook(para, asunto, cuerpo)
+        return alertas_oportunidades.entregar_outlook(para, asunto, cuerpo, adjuntos)
     except alertas_oportunidades.ErrorCorreo as error:
         raise ErrorCorreo(str(error)) from error
 
@@ -199,8 +217,10 @@ def ejecutar(raiz: Path, enviar: bool = True, remitente=None, ahora: datetime | 
     pub = intercambio.leer_publicacion(raiz, PUBLICACION)
     lista = list(((pub or {}).get("datos") or {}).get("rendiciones") or [])
     registro = _leer(ruta_registro)
-    d = decidir(lista, registro, ahora)
-    salida = {"enviados": [], "esperan": [r.get("numero") for r in d["esperan"]], "errores": []}
+    d = decidir(lista, registro, ahora, con_pdf=lambda ren: ruta_pdf(raiz, ren) is not None)
+    salida = {"enviados": [], "esperan": [r.get("numero") for r in d["esperan"]],
+              "errores": [f"{r.get('numero')}: no llegó su PDF; el correo no sale sin él (reenvíala desde el Portal)"
+                          for r in d["sinPdf"]]}
     if not enviar or not d["enviar"]:
         salida["pendientes"] = [r.get("numero") for r in d["enviar"]]
         return salida
@@ -211,8 +231,12 @@ def ejecutar(raiz: Path, enviar: bool = True, remitente=None, ahora: datetime | 
     cambio = False
     for ren in d["enviar"]:
         asunto, cuerpo = armar(ren)
+        pdf = ruta_pdf(raiz, ren)
+        if pdf is None:          # se borró entre decidir y enviar: nunca sale sin él
+            salida["errores"].append(f"{ren.get('numero')}: no está su PDF")
+            continue
         try:
-            estado = remitente(para, asunto, cuerpo)
+            estado = remitente(para, asunto, cuerpo, [pdf])
         except Exception as error:  # noqa: BLE001 — un correo que no sale no frena al procesador; se reintenta
             salida["errores"].append(f"{ren.get('numero')}: {error}")
             continue
@@ -220,7 +244,7 @@ def ejecutar(raiz: Path, enviar: bool = True, remitente=None, ahora: datetime | 
         registro.setdefault("enviados", []).append({"id": ren.get("id"), "numero": ren.get("numero"), "fecha": momento,
                                                     "estado": estado})
         intercambio._escribir_json_atomico(ruta_registro, registro)
-        ren["correo"] = {"fecha": momento, "para": para, "estado": estado}
+        ren["correo"] = {"fecha": momento, "para": para, "estado": estado, "adjunto": pdf.name}
         salida["enviados"].append(ren.get("numero"))
         cambio = True
     if cambio:

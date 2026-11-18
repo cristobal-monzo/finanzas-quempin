@@ -379,11 +379,17 @@ def enviar_outlook(para: list[str], titulo: str, cuerpo: str) -> str:
     return entregar_outlook(para, titulo, cuerpo)
 
 
-def entregar_outlook(para: list[str], titulo: str, cuerpo: str) -> str:
-    """Entrega el correo a Outlook de este equipo, sin mirar el horario (lo usa también correo_rendiciones.py)."""
+def entregar_outlook(para: list[str], titulo: str, cuerpo: str, adjuntos: list[Path] | None = None) -> str:
+    """Entrega el correo a Outlook de este equipo, sin mirar el horario (lo usa también correo_rendiciones.py, con el
+    PDF adjunto). Un adjunto que no está levanta ErrorCorreo: nunca sale un correo sin lo que debía llevar."""
+    rutas = [str(Path(a).resolve()) for a in adjuntos or []]
+    for a in rutas:
+        if not Path(a).is_file():
+            raise ErrorCorreo(f"no está el adjunto {Path(a).name}")
     with tempfile.TemporaryDirectory() as carpeta:
         ruta = Path(carpeta) / "correo.json"
-        ruta.write_text(json.dumps({"para": para, "asunto": titulo, "html": cuerpo}, ensure_ascii=True), encoding="ascii")
+        ruta.write_text(json.dumps({"para": para, "asunto": titulo, "html": cuerpo, "adjuntos": rutas}, ensure_ascii=True),
+                        encoding="ascii")
         try:
             r = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
                                 "-File", str(SCRIPT_OUTLOOK), str(ruta)],

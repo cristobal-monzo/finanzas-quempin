@@ -4452,6 +4452,7 @@ RD_JSPDF = """(() => {
     getNumberOfPages() { return window.__pdf.paginas; }
     getTextWidth(s) { return String(s).length * 1.6; }
     save(n) { window.__pdf.guardado = n; }
+    output(t) { window.__pdf.salidas = (window.__pdf.salidas || 0) + 1; return new TextEncoder().encode('%PDF-1.4 rendicion de prueba').buffer; }
   }
   ['setPage', 'setFont', 'setFontSize', 'setTextColor', 'setDrawColor', 'setFillColor', 'setLineWidth', 'line', 'rect', 'roundedRect']
     .forEach((m) => { jsPDF.prototype[m] = function () {}; });
@@ -4567,6 +4568,10 @@ def test_rendiciones_de_la_foto_al_pdf_y_al_centro_de_costos(navegador, sitio, t
     assert set(mensajes) == {"280. Obra de ejemplo", "Gastos Generales"}
     m280 = mensajes["280. Obra de ejemplo"][1]
     ren = m280["rendicion"]
+    # El PDF de la rendición viaja con uno solo de los mensajes (va adjunto en el correo), aparte de los documentos
+    con_pdf = [m for _, m in mensajes.values() if m["rendicion"].get("pdf")]
+    assert len(con_pdf) == 1 and con_pdf[0]["rendicion"]["pdf"]["nombre"].endswith(".pdf")
+    assert all(a["nombre"] != con_pdf[0]["rendicion"]["pdf"]["nombre"] for a in con_pdf[0]["archivos"])
     assert ren["tipo"] == "recuperacion" and ren["deudor"] == "Persona de Ejemplo" and ren["total"] == 73280 and ren["cantidad"] == 2
     assert ren["id"] == mensajes["Gastos Generales"][1]["rendicion"]["id"]
     [doc] = ren["documentos"]
@@ -4599,11 +4604,12 @@ def test_rendiciones_de_la_foto_al_pdf_y_al_centro_de_costos(navegador, sitio, t
     (tmp_path / "dest.json").write_text(json.dumps({"para": ["a@ejemplo.cl", "b@ejemplo.cl"]}), encoding="utf-8")
     correo = subprocess.run([sys.executable, "-c", "import json, sys, correo_rendiciones as cr; from pathlib import Path; "
                              "salida = []; "
-                             "r = cr.ejecutar(Path(sys.argv[1]), remitente=lambda p, a, c: salida.append([p, a, c]) or 'enviado', "
+                             "r = cr.ejecutar(Path(sys.argv[1]), remitente=lambda p, a, c, adj: salida.append([p, a, c, [x.read_bytes().decode() for x in adj]]) or 'enviado', "
                              "ruta_registro=Path(sys.argv[2]) / 'reg.json', ruta_destinatarios=Path(sys.argv[2]) / 'dest.json'); "
                              "print(json.dumps([r, salida]))", str(raiz), str(tmp_path)],
                             cwd=RAIZ / "Sistema Intercambio", capture_output=True, text=True, check=True).stdout
-    resultado, [[para, asunto, cuerpo]] = json.loads(correo)
+    resultado, [[para, asunto, cuerpo, adjuntos]] = json.loads(correo)
+    assert adjuntos == ["%PDF-1.4 rendicion de prueba"]          # siempre con el PDF adjunto
     assert resultado["enviados"] == [r["numero"]] and para == ["a@ejemplo.cl", "b@ejemplo.cl"]
     assert asunto.endswith("· Persona de Ejemplo · $ 73.280") and "Correo automático generado" in cuerpo
     assert "período del 11-09-2026 al 14-10-2026" in cuerpo

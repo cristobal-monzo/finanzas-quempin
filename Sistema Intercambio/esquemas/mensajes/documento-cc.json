@@ -54,6 +54,16 @@
         "unidad": { "type": "string", "maxLength": 120 },
         "total": { "type": "integer", "minimum": 0 },
         "cantidad": { "type": "integer", "minimum": 1 },
+        "pdf": {
+          "type": "object",
+          "description": "Desde el 2026-11-18: el PDF de la rendición (resumen y una página por documento), que va adjunto en el correo. Viaja en buzon/adjuntos/<id>/ de uno solo de los mensajes de la rendición y no se copia a la carpeta del proyecto.",
+          "properties": {
+            "nombre": { "type": "string", "pattern": "\\.pdf$", "minLength": 5, "maxLength": 160 },
+            "bytes": { "type": "integer", "minimum": 1 },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "required": ["nombre", "bytes", "sha256"]
+        },
         "documentos": {
           "type": "array",
           "minItems": 1,

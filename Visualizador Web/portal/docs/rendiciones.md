@@ -69,6 +69,12 @@ ejecutivo, con el monto total, el período (del documento más antiguo al más r
   del PC donde corre, a los destinatarios de `rendiciones_destinatarios.json` (gitignoreado, junto al módulo). Sale una
   vez por rendición, cuando llegaron todos sus documentos (o a las 2 horas, con lo que llegó). Si ese PC está apagado,
   sale en su primera vuelta al encenderse. `py -3.14 correo_rendiciones.py vista` escribe el próximo como `.html`.
+- **Siempre con el PDF adjunto** (pedido del usuario, 2026-11-18: «para la revisión de Nicolás y de Gonzalo»):
+  «Enviar rendición» arma el PDF (`rdGenerarPdf({ datos: true })`) y lo manda en `rendicion.pdf` del primer mensaje,
+  aparte de los documentos (no se copia a la carpeta del proyecto). El procesador lo deja en
+  `publicado/rendiciones/<N°>.pdf` y lo anota en `pdf` del registro; el panel lo abre con «Ver PDF». Si el PDF no se
+  puede armar, el Portal no envía; si no llega, el correo no sale y a las 2 horas el paso falla en `estado.json`. El
+  script de Outlook también se niega si un adjunto falta.
 
 ## Lector con IA
 
