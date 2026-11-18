@@ -57,7 +57,7 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   (validador: ΔE 10,4 < 15). Hay leyenda y la tabla como gemela. Cada punto
   tiene un área de toque de 24 px, tooltip con el puntaje primero y abre su
   fila al tocarlo. Los rótulos #1 a #3 eligen un lado libre, para no pisarse.
-- **Por persona, en el navegador**: los pesos (`quempin_op_pesos`), el tema
+- **Por persona, en el navegador**: el orden de los criterios (`quempin_op_orden`, que fija los pesos), el tema
   (`op_viz_theme`) y qué códigos ya vio (`quempin_op_vistas`). Con eso se
   marca «Nueva» durante 24 horas lo que aparece desde la visita anterior; la
   primera visita no marca nada.

@@ -174,7 +174,31 @@ def test_la_ficha_propia_del_n_si_se_une():
                       [_formulacion("a1", req=280, tag="UMAG")], [], {}, carpetas_cc=CARPETAS_CC)
     (p,) = [p for p in datos["proyectos"] if p["req"] == "280"]
     assert p["tag"] == "UML1"                      # la formulación que recuerda UMAG no la confunde
-    assert p["fichaAjena"] == ["UMAG"]
+    assert "fichaAjena" not in p and datos["conflictos"] == []   # la ficha del N° manda (2026-11-18)
+
+
+# Caso real del 2026-11-18: el Formulador unió «314. UA Reactor» con CANT
+# («Calderas Antofagasta») y «312. Casinos UV» con JUNJ («Junji's Valparaiso»)
+# por palabras parecidas. La ficha 312 lleva el N° solo como TAG.
+def test_la_ficha_que_lleva_el_n_manda_sobre_el_tag_de_la_formulacion():
+    datos = pj.cruzar(
+        [{"numero": 314, "estado": "Adjudicado", "titulo": "UA Reactor"},
+         {"numero": 312, "estado": "Adjudicado", "titulo": "Casinos UV_Sello verde"}],
+        [{"tag": "CANT", "req": None, "nombre": "Calderas Antofagasta"},
+         {"tag": "JUNJ", "req": None, "nombre": "Junji's Valparaiso"},
+         {"tag": "314", "req": "314", "nombre": "UA Reactor"},
+         {"tag": "312", "req": None, "nombre": "Casinos UV_Sello verde"}],
+        [_formulacion("a1", req=314, tag="CANT"), _formulacion("a2", req=312, tag="JUNJ")],
+        [], {},
+        carpetas_cc=[{"nombre": "Calderas Antofagasta", "req": None, "documentos": 5},
+                     {"nombre": "Junji's Valparaiso", "req": None, "documentos": 9},
+                     {"nombre": "314. UA Reactor", "req": "314", "documentos": 3},
+                     {"nombre": "312. Casinos UV_Sello verde", "req": "312", "documentos": 2}],
+    )
+    por_req = {p["req"]: p for p in datos["proyectos"]}
+    assert por_req["314"]["tag"] == "314" and por_req["312"]["tag"] == "312"
+    assert [f["tag"] for f in por_req["312"]["formulaciones"]] == ["312"]
+    assert datos["conflictos"] == []
 
 
 def test_gestion_pone_el_n_temporal_a_las_carpetas_sin_n(tmp_path):

@@ -1016,6 +1016,28 @@ def _palabras(texto) -> set:
     return {w for w in re.split(r"[^a-z0-9]+", plano) if len(w) >= 3 and not w.isdigit() and w not in _COMUNES}
 
 
+def _numero_de(item: dict) -> str:
+    """N° de la Planilla de una formulación: su vínculo, o el del código («303. Cotización Osorno»)."""
+    d = item["datos"]
+    req = (d.get("vinculos") or {}).get("requerimiento")
+    req = req.get("numero") if isinstance(req, dict) else req
+    texto = str(req if req is not None else "").strip()
+    if texto.endswith(".0"):
+        texto = texto[:-2]
+    if texto.isdigit() and int(texto) > 0:
+        return str(int(texto))
+    m = re.match(r"^\s*0*(\d+)\s*[.\-_]", str(d.get("codigo") or ""))
+    return m.group(1) if m else ""
+
+
+def _ficha_del_numero(numero: str, proyectos_af: list[dict]) -> str:
+    """La ficha del Análisis Financiero que lleva ese N°, como TAG o en «N° Requerimiento»."""
+    for p in proyectos_af:
+        if normalizar_tag(p.get("tag")) == numero or str(p.get("req") or "").strip().lstrip("0") == numero:
+            return normalizar_tag(p.get("tag"))
+    return ""
+
+
 def sugerir_tag(item: dict, proyectos_af: list[dict]) -> str:
     """TAG del Análisis Financiero más parecido (título y cliente), si hay uno
     claro. La misma idea que usa el Formulador al enviar costos. Desde el
@@ -1023,13 +1045,9 @@ def sugerir_tag(item: dict, proyectos_af: list[dict]) -> str:
     lleva N° («303. Cotización Osorno») gana la ficha con ese TAG o ese N° de
     requerimiento, y sin ficha se sugiere el N° mismo (ficha nueva)."""
     d = item["datos"]
-    m = re.match(r"^\s*0*(\d+)\s*[.\-_]", str(d.get("codigo") or ""))
-    if m:
-        numero = m.group(1)
-        for p in proyectos_af:
-            if normalizar_tag(p.get("tag")) == numero or str(p.get("req") or "").strip().lstrip("0") == numero:
-                return normalizar_tag(p.get("tag"))
-        return numero
+    numero = _numero_de(item)
+    if numero:
+        return _ficha_del_numero(numero, proyectos_af) or numero
     mias = _palabras(f"{d.get('titulo')} {d.get('cliente')}")
     if not mias:
         return ""
@@ -1083,6 +1101,10 @@ def adjudicados_para_af(raiz_intercambio: Path, ruta_estado: Path = RUTA_ESTADO)
             continue
         costos = _costos_af(item)
         tag = _tag_de(item, estado)
+        # La ficha que lleva el N° manda sobre el TAG que la formulación recuerda (2026-11-18): el Formulador
+        # unió «314. UA Reactor» con CANT y «312. Casinos UV» con JUNJ por palabras parecidas.
+        numero = _numero_de(item)
+        tag = (_ficha_del_numero(numero, proyectos_af) if numero else "") or tag
         fila = {"item": item, "costos": costos, "tag": tag, "sugerido": "", "proyectados": None, "detalle": ""}
         if costos is None:
             fila.update(accion="sin-resumen", detalle="lo guardó una versión anterior del Formulador: ábrelo y guárdalo de nuevo")

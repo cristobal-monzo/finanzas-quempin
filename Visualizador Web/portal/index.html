@@ -265,7 +265,6 @@
     font-size: 12px; font-weight: 900; line-height: 1; white-space: nowrap;
   }
   .menu-item .pl-alerta-n { border-color: #ff6b5e; color: #ffb3aa; }
-  .ini-sub.pl-alerta-sub { color: var(--estado-bad); font-weight: 700; }
 
   /* ---- Cuerpo: menú + herramientas ----
      Menú (2026-10-16, tarde): sin franja fija a la izquierda. Solo aparece al tocar ☰, encima de
@@ -382,7 +381,7 @@
      sus herramientas como botones grandes con su ícono, sin cifras ni gráficos. Las áreas de a dos; los botones del
      mismo ancho en las cuatro (seis por fila). Antes, el mismo día, se probaron un «centro de trabajo» con etapas y
      listas («mucha información y algo confusa») y «Tres áreas», con la franja «Hoy» y un gráfico por área. Sin
-     desplazarse en el computador; en el teléfono, una columna. Las medidas son las del marco (container). */
+     desplazarse en el computador; en el teléfono, una columna. Desde el 2026-11-18, la semana de la Planificación abajo (#iniSemana). Las medidas son las del marco (container). */
   .vista-inicio { position: absolute; inset: 0; overflow-y: auto; container: inicio / size; }
   .inicio { max-width: 1340px; margin: 0 auto; padding: 28px 32px 20px; display: flex; flex-direction: column; gap: 18px; }
 
@@ -421,7 +420,48 @@
   .ini-item.abierta::before {
     content: ""; position: absolute; top: 7px; left: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand-orange);
   }
-  .ini-item .pl-alerta-n { position: absolute; top: 4px; right: 4px; height: 20px; min-width: 20px; padding: 0 5px; background: var(--surface-card); }
+
+  /* La semana de la Planificación (2026-11-18, el usuario eligió la maqueta V4): una franja bajo las áreas, un día por
+     columna con sus proyectos (los de más gente primero, hasta tres) y cuántas personas tienen algo. Hoy, en tinte. */
+  .ini-semana {
+    min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 14px;
+    border-radius: 14px; border: 1px solid var(--border-hairline); background: var(--surface-card);
+  }
+  .ini-sem-cab { display: flex; align-items: center; gap: 12px; }
+  .ini-semana h2 { margin: 0 2px; font-size: 13px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--texto-suave); }
+  .ini-sem-abrir {
+    margin-left: auto; padding: 4px 8px; border: 0; border-radius: 8px; background: none; cursor: pointer;
+    color: var(--brand-orange-ink); font-size: 13px; font-weight: 900;
+  }
+  .ini-sem-abrir::after { content: " →"; }
+  .ini-sem-abrir:hover { background: var(--tinte); }
+  .ini-sem-dias { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+  .ini-sem-dias > li { min-width: 0; display: flex; }
+  .ini-sem-dia {
+    flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px 9px;
+    border-radius: 10px; border: 1px solid var(--gridline); background: var(--surface-card);
+    color: var(--text-primary); text-align: left; cursor: pointer; font: inherit;
+  }
+  .ini-sem-dia:hover { border-color: var(--brand-orange); }
+  .ini-sem-dia.hoy { background: var(--tinte); border-color: var(--tinte-borde); }
+  .ini-sem-dia.hoy:hover { border-color: var(--brand-orange); }
+  .ini-sem-et { display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 900; }
+  .ini-sem-n { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--texto-suave); white-space: nowrap; }
+  .ini-sem-pr { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; line-height: 1.35; }
+  .ini-sem-pr i { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 2px; background: var(--pc); }
+  .ini-sem-pr span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ini-sem-pr b { flex: 0 0 auto; font-weight: 400; color: var(--texto-suave); }
+  .ini-sem-mas, .ini-sem-nadie { font-size: 12px; color: var(--texto-suave); }
+  .ini-sem-mas.m2 { display: none; }      /* «+N más» contando dos proyectos: solo con poco alto (abajo) */
+  /* Con la semana a la vista, las áreas más bajas: el Inicio sigue sin desplazarse en el computador */
+  .inicio:has(> .ini-semana:not([hidden])) { padding-top: 18px; gap: 10px; }
+  .inicio:has(> .ini-semana:not([hidden])) .ini-areas { gap: 12px; }
+  .inicio:has(> .ini-semana:not([hidden])) .ini-area { padding: 12px 12px; gap: 8px; }
+  .inicio:has(> .ini-semana:not([hidden])) .ini-item { padding: 8px 2px 7px; gap: 6px; }
+  .inicio:has(> .ini-semana:not([hidden])) .ini-ico { width: 34px; height: 34px; border-radius: 10px; }
+  .ini-semana { padding: 10px 12px 10px; gap: 6px; }
+  .ini-sem-dia { gap: 3px; }
+  .ini-sem-pr { line-height: 1.25; }
 
   /* Menos ancho: todo más junto (los nombres de una palabra larga se cortan en sílabas: iniNombre) */
   @container inicio (max-width: 1320px) {
@@ -441,6 +481,17 @@
     .ini-areas { gap: 12px; }
     .ini-area { padding: 12px 14px 14px; gap: 8px; }
   }
+  /* Con la semana y aún menos alto (1280 × 600): botones más bajos y dos proyectos por día */
+  @container inicio (min-width: 901px) and (max-height: 520px) {
+    .inicio:has(> .ini-semana:not([hidden])) { padding-top: 12px; gap: 10px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-cab h1 { font-size: 22px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-areas { gap: 10px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-area { padding: 10px 12px; gap: 6px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-item { padding: 6px 2px 5px; gap: 4px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-ico { width: 30px; height: 30px; border-radius: 9px; }
+    .ini-sem-pr.p3, .ini-sem-mas.m3 { display: none; }
+    .ini-sem-mas.m2 { display: block; }
+  }
   /* Angosto (tableta vertical, teléfono, ventana chica): una columna que se desplaza sin barra */
   @container inicio (max-width: 900px) {
     .inicio { padding: 14px 14px 24px; }
@@ -452,6 +503,7 @@
     .ini-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .ini-area[data-grupo="calcular"] .ini-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .ini-item { min-height: 76px; }
+    .ini-sem-dias { grid-auto-flow: row; }      /* la semana, un día por fila */
   }
 
   /* ---- Configuración y conexiones (2026-10-16): qué necesita cada herramienta y dónde está ---- */
@@ -3390,6 +3442,14 @@
                 <ul class="ini-tiles"></ul>
               </section>
             </div>
+            <!-- La semana de la Planificación (2026-11-18, maqueta V4): lo arma iniPintarSemana() al leer la carpeta -->
+            <section class="ini-semana" id="iniSemana" aria-labelledby="iniTitSemana" hidden>
+              <div class="ini-sem-cab">
+                <h2 id="iniTitSemana">Planificación semanal</h2>
+                <button type="button" class="ini-sem-abrir" id="iniSemAbrir">Abrir</button>
+              </div>
+              <ol class="ini-sem-dias" id="iniSemDias"></ol>
+            </section>
           </div>
         </section>
         <!-- Recorrido de proyectos (2026-10-20): lo arma rcPintar() con lo que publica la carpeta de intercambio -->
@@ -5131,6 +5191,7 @@
     }
     f.title = (HERR.get(p.herr) || {}).nombre || f.title;
     enganchar(p, w);
+    adAlCargar(p, w);
     if (p.familia === estado.activa) {
       try { history.replaceState(null, '', '#/' + p.herr); } catch (e) { /* nada */ }
     }
@@ -5188,6 +5249,159 @@
     estado.proyectos = leerProyectos();
     if (estado.activa === 'inicio') pintarInicio();
     pintarPestanas();
+  }
+
+  // ---- Al día sin F5 (2026-11-18) -------------------------------------------------------------------------------------
+  /* Pedido del usuario: que el equipo vea lo nuevo sin apretar F5. Cada AD_REVISAR_SEG, y al volver a la pestaña, el
+     Portal pregunta al sitio si cambió su propia página o la de una herramienta abierta (la página y sus scripts y hojas
+     de estilo del mismo sitio). GitHub Pages cambia el ETag de todos los archivos en cada publicación, así que un ETag
+     distinto solo hace bajar el archivo, y lo que decide es su contenido (SHA-256). Sin ETag (el sitio de las pruebas) se
+     compara siempre el contenido.
+     Lo nuevo se carga solo cuando no se pierde nada: una herramienta escondida o la ventana en otra pestaña, al tiro; lo
+     que está a la vista, después de AD_QUIETO_SEG sin tocarlo. Nunca con un diálogo abierto, un campo con el foco o algo
+     del Portal por guardar. Mientras espera, un aviso con «Actualizar».
+     Los datos del equipo ya llegan solos en Planificación, Ejecución y Requerimientos; el Inicio y el Recorrido se
+     releen cada AD_DATOS_SEG mientras se miran. */
+  const AD_REVISAR_SEG = 300;
+  const AD_QUIETO_SEG = 600;
+  const AD_DATOS_SEG = 120;
+  const ad = { portal: null, toque: Date.now(), revisando: false, revisado: 0, avisado: new Set() };
+  const adTocar = () => { ad.toque = Date.now(); };
+  ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'input'].forEach((t) =>
+    document.addEventListener(t, adTocar, { capture: true, passive: true }));
+  async function adHash(texto) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+    return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  }
+  const adMarca = (r) => r.headers.get('etag') || r.headers.get('last-modified') || '';
+  // La huella de cómo está cada archivo ahora. modo 'force-cache' para la base (la copia que se acaba de cargar).
+  async function adLeer(url, modo, antes) {
+    const r = await fetch(url, { cache: modo, credentials: 'same-origin' });
+    if (!r.ok) throw new Error(url + ': ' + r.status);
+    const marca = adMarca(r);
+    if (antes && marca && marca === antes.marca) { try { r.body && r.body.cancel(); } catch (e) { /* nada */ } return antes; }
+    return { marca, hash: await adHash(await r.text()), lm: r.headers.get('last-modified') || '' };
+  }
+  // Los archivos de una página que valen: ella misma y sus scripts y hojas de estilo del mismo sitio.
+  function adArchivos(doc, url) {
+    const urls = new Set([url.split('#')[0]]);
+    try {
+      doc.querySelectorAll('script[src], link[rel="stylesheet"][href]').forEach((el) => {
+        const u = new URL(el.src || el.href, doc.baseURI);
+        if (u.origin === location.origin) urls.add(u.href.split('#')[0]);
+      });
+    } catch (e) { /* nada */ }
+    return [...urls];
+  }
+  // La base de una página: cómo estaba cada archivo al cargarla. Si el servidor ya tiene otra publicación que la cargada
+  // (Last-Modified distinto al de la página), queda como «nueva» de entrada.
+  async function adBase(doc, url) {
+    const base = { archivos: new Map(), nueva: false };
+    for (const u of adArchivos(doc, url)) {
+      try { base.archivos.set(u, await adLeer(u, 'force-cache')); } catch (e) { /* no se vigila ese */ }
+    }
+    const pag = base.archivos.get(url.split('#')[0]);
+    const cargada = Date.parse(doc.lastModified), servida = pag && pag.lm ? Date.parse(pag.lm) : NaN;
+    if (!isNaN(cargada) && !isNaN(servida) && Math.abs(servida - cargada) > 2000 && servida > cargada) base.nueva = true;
+    return base;
+  }
+  async function adCambio(base) {
+    if (!base) return false;
+    if (base.nueva) return true;
+    for (const [u, antes] of base.archivos) {
+      let ahora;
+      try { ahora = await adLeer(u, 'no-cache', antes); } catch (e) { continue; }
+      if (ahora.hash !== antes.hash) { base.nueva = true; return true; }
+      base.archivos.set(u, ahora);    // otra publicación, el mismo contenido: la próxima vez basta el ETag
+    }
+    return false;
+  }
+  // Algo que se perdería al recargar: un diálogo abierto, un campo con el foco, lo del Portal por guardar.
+  function adOcupado(doc) {
+    try {
+      if ([...doc.querySelectorAll('dialog[open], [role="dialog"]')].some((d) => d.getClientRects().length)) return true;
+      const a = doc.activeElement;
+      if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return true;
+    } catch (e) { return true; }
+    return false;
+  }
+  function adPortalOcupado() {
+    if (adOcupado(document)) return true;
+    if (planif.porGuardar.size || planif.guardando || ej.porGuardar || ej.guardando) return true;
+    try { if (localStorage.getItem(LS_PL_PENDIENTE) || localStorage.getItem(LS_EJ_PENDIENTE)) return true; } catch (e) { /* nada */ }
+    return false;
+  }
+  const adQuieto = () => document.visibilityState === 'hidden' || Date.now() - ad.toque > AD_QUIETO_SEG * 1000;
+  function adAvisar(clave, msg, ir) {
+    if (ad.avisado.has(clave) || document.visibilityState !== 'visible') return;
+    ad.avisado.add(clave);
+    avisar(msg, { texto: 'Actualizar', ir });
+  }
+  function adRecargarMarco(p) {
+    const w = ventanaDe(p);
+    if (!w) return;
+    ad.avisado.delete('marco:' + p.familia);
+    p.ad = null;
+    p.cargando = true;
+    if (p.cargador) p.cargador.hidden = p.familia !== estado.activa;
+    try { w.location.reload(); } catch (e) { p.marco.src = p.ultima || p.url; }
+  }
+  // Al cargar una herramienta (alCargar), su base.
+  function adAlCargar(p, w) {
+    p.ad = null;
+    let doc = null, url = '';
+    try { doc = w.document; url = w.location.href; } catch (e) { return; }
+    if (!doc || !/^https?:/.test(url)) return;
+    ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'input'].forEach((t) =>
+      doc.addEventListener(t, () => { adTocar(); p.adToque = Date.now(); }, { capture: true, passive: true }));
+    p.adToque = Date.now();
+    const marco = p.marco;
+    adBase(doc, url).then((b) => { if (p.marco === marco) p.ad = b; });
+  }
+  async function adRevisar() {
+    if (ad.revisando || !navigator.onLine) return;
+    ad.revisando = true;
+    ad.revisado = Date.now();
+    try {
+      if (!ad.portal) ad.portal = await adBase(document, location.href);
+      else if (await adCambio(ad.portal)) {
+        if (adQuieto() && !adPortalOcupado()) { location.reload(); return; }
+        adAvisar('portal', 'Hay una versión nueva del Portal.', () => { if (!adPortalOcupado() || confirm('Hay algo sin guardar o abierto. ¿Actualizar igual?')) location.reload(); });
+      }
+      for (const p of estado.pestanas.slice()) {
+        if (!p.ad || !p.marco) continue;
+        const marco = p.marco;
+        if (!(await adCambio(p.ad)) || p.marco !== marco) continue;
+        const w = ventanaDe(p);
+        let doc = null;
+        try { doc = w && w.document; } catch (e) { doc = null; }
+        if (!doc) continue;
+        const aLaVista = p.familia === estado.activa && document.visibilityState === 'visible';
+        const quieta = !aLaVista || Date.now() - Math.max(p.adToque || 0, ad.toque) > AD_QUIETO_SEG * 1000;
+        if (quieta && !adOcupado(doc)) adRecargarMarco(p);
+        else if (aLaVista) adAvisar('marco:' + p.familia, 'Hay una versión nueva de «' + etiqueta(p, true) + '».', () => adRecargarMarco(p));
+      }
+    } finally { ad.revisando = false; }
+  }
+  // Los datos del equipo en el Inicio y el Recorrido, mientras se miran
+  function adDatos() {
+    if (document.visibilityState !== 'visible' || rc.leyendo || !rc.dir || !rc.leido) return;
+    if (estado.activa !== 'inicio' && estado.activa !== 'recorrido') return;
+    if (document.querySelector('dialog[open]')) return;
+    if (Date.now() - rc.leido > AD_DATOS_SEG * 1000) rcCargar();
+  }
+  function adIniciar() {
+    adRevisar();
+    setInterval(() => { if (Date.now() - ad.revisado >= AD_REVISAR_SEG * 1000) adRevisar(); }, 30000);
+    setInterval(adDatos, 30000);
+    document.addEventListener('visibilitychange', () => {
+      // Al irse a otra pestaña, lo que ya se sabe nuevo se carga sin que se note; al volver, se pregunta si pasó más de un minuto.
+      if (document.visibilityState === 'hidden') {
+        if (ad.portal && ad.portal.nueva) { setTimeout(() => { if (document.visibilityState === 'hidden' && !adPortalOcupado()) location.reload(); }, 3000); }
+        return;
+      }
+      if (Date.now() - ad.revisado > 60000) adRevisar();
+    });
   }
 
   // ---- Usuario elegido (2026-10-16) ---------------------------------------------------------------
@@ -7029,8 +7243,8 @@
 
   // ---- Inicio: las herramientas por área (2026-11-10) -------------------------------------------------
   /* Pedido del usuario: el saludo y las herramientas de cada área del trabajo como botones con su ícono, sin cifras ni
-     gráficos. Lo único que depende de la carpeta del equipo es la alarma de la Planificación semanal en su botón
-     (plPintarAlarmaGlobal); por eso el Inicio sigue pidiendo la lectura del Recorrido. */
+     gráficos. De la carpeta del equipo depende la semana de la Planificación (iniPintarSemana); por eso el Inicio sigue
+     pidiendo la lectura del Recorrido. La alarma de los sin asignar ya no va en su botón (pedido del 2026-11-18). */
   const ini = { cuadro: 0 };
   const iniVisible = () => !$('#vistaInicio').hidden;
   // El nombre de cada botón: el corto, salvo donde cabe uno más claro. Los de una palabra larga llevan guiones suaves
@@ -7060,6 +7274,10 @@
     return b;
   }
   function pintarInicio() {
+    if (!ini.semAbrir) {
+      ini.semAbrir = true;
+      $('#iniSemAbrir').addEventListener('click', () => abrir('planificacion'));
+    }
     document.querySelectorAll('#iniAreas .ini-area').forEach((sec) => {
       const ul = sec.querySelector('.ini-tiles');
       if (ul.childElementCount) return;      // no depende de datos: se arma una vez
@@ -7079,7 +7297,7 @@
       if (!si && s) s.remove();
     });
     estado.proyectos = leerProyectos();      // el Formulador pudo cambiarlos mientras tanto (los usa el buscador)
-    plPintarAlarmaGlobal();    // la Planificación semanal lleva su alarma en su botón
+    plPintarAlarmaGlobal();    // la alarma va en el menú
     iniPintarDatos();
     if (!rc.leyendo && (!rc.intentado || (rc.leido && Date.now() - rc.leido > 5 * RC_RELEER_SEG * 1000))) {
       rc.intentado = true;
@@ -7095,6 +7313,58 @@
   function iniPintarDatos() {
     if (!iniVisible()) return;
     iniPintarSaludo();
+    iniPintarSemana();
+  }
+  /* La semana de hoy de la Planificación (2026-11-18, maqueta V4): un día por columna con sus proyectos, los de más gente
+     primero y hasta tres, y cuántas personas tienen algo. Tocar un día abre la Planificación con ese día en grande.
+     Sin carpeta o sin leerla todavía, la franja no se muestra. */
+  const INI_SEM_MAX = 3;
+  function iniPintarSemana() {
+    const sec = $('#iniSemana');
+    const s = rc.leido && rc.dir ? planif.semanas.get(plHoyId()) : null;
+    sec.hidden = !(s && s.leida);
+    if (sec.hidden) return;
+    const m = plModelo(s);
+    const ul = $('#iniSemDias');
+    ul.textContent = '';
+    plDias(s).forEach((d) => {
+      const claves = [...new Set(m.personas.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))];
+      const cuantos = (c) => (m.porProyecto.get(d.iso + '|' + c) || []).length;
+      const orden = m.ordenar(claves).sort((a, b) => cuantos(b) - cuantos(a));
+      const van = m.personas.filter((per) => (m.porPersona.get(d.iso + '|' + per) || []).length).length;
+      const b = crear('button', 'ini-sem-dia' + (d.hoy ? ' hoy' : ''));
+      b.type = 'button';
+      b.dataset.dia = String(d.i);
+      const et = crear('span', 'ini-sem-et');
+      et.append(crear('span', null, d.corto + ' ' + d.fecha.getDate()));
+      if (van) et.append(crear('span', 'ini-sem-n', van + ' pers.'));
+      b.append(et);
+      orden.slice(0, INI_SEM_MAX).forEach((c, k) => {
+        const f = crear('span', 'ini-sem-pr p' + (k + 1));
+        const i = crear('i');
+        i.style.setProperty('--pc', m.color(c));
+        f.append(i, crear('span', null, m.titulo(c)), crear('b', null, String(cuantos(c))));
+        b.append(f);
+      });
+      // «+N más»: uno contando tres proyectos y otro contando dos, para las pantallas bajas (el CSS muestra uno)
+      [3, 2].forEach((n) => { if (orden.length > n) b.append(crear('span', 'ini-sem-mas m' + n, '+' + (orden.length - n) + ' más')); });
+      if (!orden.length) b.append(crear('span', 'ini-sem-nadie', 'Nadie asignado'));
+      b.title = plFechaLarga(d) + (d.hoy ? ' (hoy)' : '') + ': '
+        + (van ? pl(van, 'persona', 'personas') + ' en ' + pl(orden.length, 'proyecto', 'proyectos') + ' ('
+          + orden.map((c) => m.titulo(c) + ', ' + cuantos(c)).join('; ') + ')' : 'nadie asignado') + '. Verlo en la Planificación';
+      b.setAttribute('aria-label', b.title);
+      b.addEventListener('click', () => iniAbrirDia(d.i));
+      const li = crear('li');
+      li.append(b);
+      ul.append(li);
+    });
+  }
+  // La Planificación en la semana de hoy, en General con ese día en grande (las otras vistas no muestran un día solo)
+  function iniAbrirDia(i) {
+    planif.lunes = plLunesDe(new Date());
+    planif.diaMovil = i;
+    abrir('planificacion');
+    if (planif.vista !== 'general') plElegirVista('general');
   }
   // El saludo; sin usuario, se elige aquí mismo con un clic (también está arriba, en la cabecera)
   function iniPintarSaludo() {
@@ -10456,14 +10726,9 @@
     const l = plSinAsignarHoy() || [];
     const n = l.length;
     const que = n === 1 ? 'Un proyecto activo sin nadie asignado esta semana' : n + ' proyectos activos sin nadie asignado esta semana';
-    // Junto al nombre de la herramienta, en el menú y en el Inicio (donde además lo dice su línea de abajo)
-    document.querySelectorAll('.menu-item[data-herr="planificacion"], .ini-item[data-herr="planificacion"]').forEach((el) => {
+    // Junto al nombre de la herramienta, en el menú. En el Inicio ya no (pedido del usuario, 2026-11-18).
+    document.querySelectorAll('.menu-item[data-herr="planificacion"]').forEach((el) => {
       let s = el.querySelector('.pl-alerta-n');
-      const sub = el.querySelector('.ini-sub');
-      if (sub) {
-        sub.textContent = n ? pl(n, 'proyecto', 'proyectos') + ' sin asignar esta semana' : HERR.get('planificacion').breve;
-        sub.classList.toggle('pl-alerta-sub', !!n);
-      }
       if (!n) { if (s) s.remove(); return; }
       if (!s) { s = crear('span', 'pl-alerta-n'); el.append(s); }
       s.textContent = String(n);
@@ -20407,6 +20672,8 @@
   // Trabajar a la vez: la presencia de este navegador y la de los demás
   setInterval(presVigilar, 3000);
   document.addEventListener('visibilitychange', presVigilar);
+  // Al día sin F5: lo publicado de nuevo (el Portal y las herramientas abiertas) y los datos del Inicio y el Recorrido
+  adIniciar();
   // La cotización del Cotizador Histórico, a un proyecto
   $('#llForm').addEventListener('submit', llLlevar);
   ['#llX', '#llCancelar'].forEach((s) => $(s).addEventListener('click', () => $('#dlgLlevar').close()));

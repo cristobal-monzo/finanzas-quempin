@@ -879,6 +879,62 @@ def test_las_pestanas_vuelven_al_recargar_y_solo_carga_la_activa(navegador, siti
     pagina.context.close()
 
 
+def test_lo_publicado_de_nuevo_se_carga_sin_f5(navegador, tmp_path):
+    """Al día sin F5 (2026-11-18): una herramienta escondida que cambió en el sitio se recarga al tiro; la que se ve,
+    tras 10 minutos sin tocarla (antes, un aviso con «Actualizar»); el Portal también. Con el reloj de Playwright."""
+    _sitio(tmp_path)
+    servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(_Silencioso, directory=str(tmp_path)))
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+    sitio = f"http://127.0.0.1:{servidor.server_address[1]}"
+    ctx = navegador.new_context(viewport={"width": 1280, "height": 860})
+    ctx.add_init_script("if (window === window.top && !localStorage.getItem('quempin_viz_clave')) localStorage.setItem('quempin_viz_clave', 'clave-de-mentira');")
+    pagina = ctx.new_page()
+    errores = []
+    pagina.on("pageerror", lambda e: errores.append(str(e)))
+    try:
+        pagina.clock.install()
+        pagina.goto(sitio + "/finanzas-quempin/portal/")
+        pagina.locator("#vistaInicio").wait_for()
+        _menu(pagina, "Centro de Costos")
+        _marco(pagina, "centro-costos", "cc")
+        _menu(pagina, "Flujo de Caja")
+        _marco(pagina, "flujo-caja", "fc")
+        pagina.evaluate("window.__sinRecargar = 1")
+        pagina.clock.run_for(2000)
+        pagina.wait_for_timeout(500)                         # las bases se leen con fetch de verdad
+
+        def cambiar(ruta):
+            f = tmp_path / ruta / "index.html"
+            f.write_text(f.read_text(encoding="utf-8") + "\n<!-- otra publicación -->", encoding="utf-8")
+
+        def cargas(familia):
+            return pagina.evaluate(f"document.getElementById('marco-{familia}').contentDocument.body.dataset.cargas")
+
+        # La escondida (Centro de Costos) se recarga en la próxima revisión; la que se ve (Flujo de Caja), recién tocada, avisa
+        cambiar("finanzas-quempin/centro-de-costos")
+        cambiar("finanzas-quempin/flujo-de-caja")
+        pagina.mouse.move(400, 400)
+        pagina.clock.fast_forward(301_000)
+        pagina.wait_for_function("() => document.getElementById('marco-centro-costos').contentDocument.body.dataset.cargas === '2'")
+        _esperar_aviso(pagina, "Hay una versión nueva de «Flujo de Caja»")
+        assert cargas("flujo-caja") == "1"
+        # Diez minutos sin tocarla: se recarga sola
+        pagina.clock.fast_forward(601_000)
+        _esperar(pagina, "flujo-caja", "cargas", "2")
+        # Lo que cambió en las herramientas no recargó el Portal
+        assert pagina.evaluate("window.__sinRecargar") == 1
+        # El Portal nuevo, sin tocar nada: se recarga y vuelven sus pestañas
+        cambiar("finanzas-quempin/portal")
+        pagina.clock.fast_forward(301_000)
+        pagina.wait_for_function("() => window.__sinRecargar === undefined")
+        pagina.locator("#vistaInicio").wait_for(state="attached")
+        assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Flujo de Caja"]
+        assert not errores
+    finally:
+        ctx.close()
+        servidor.shutdown()
+
+
 def test_una_pestana_por_herramienta_y_no_mas_de_ocho_cargadas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     nombres = ["Centro de Costos", "Análisis Financiero", "Ingresar avance", "Flujo de Caja", "Cotizador Histórico",
@@ -1865,12 +1921,14 @@ def test_las_cifras_y_el_buscador_filtran_el_recorrido(navegador, sitio):
 
 
 def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
-    """Pedido del 2026-11-10: el Inicio solo con las herramientas de cada área, con sus íconos nuevos; sin la franja
-    «Hoy», cifras ni gráficos. Lo único que viene de la carpeta es la alarma de la Planificación en su botón."""
+    """Pedido del 2026-11-10: el Inicio con las herramientas de cada área, con sus íconos nuevos; sin la franja «Hoy»,
+    cifras ni gráficos. De la carpeta viene, desde el 2026-11-18, la semana de la Planificación bajo las áreas
+    (test_el_inicio_muestra_la_semana_de_la_planificacion). La alarma de los sin asignar ya no va en su botón
+    (pedido del 2026-11-18): sigue en el menú."""
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", ancho=1366, alto=657)
-    alarma = pagina.locator('#iniAreas .ini-item[data-herr="planificacion"] .pl-alerta-n')
-    alarma.wait_for()
-    assert alarma.inner_text() == "3"
+    pagina.locator(ALERTA_N).wait_for(state="attached")
+    assert pagina.locator(ALERTA_N).inner_text() == "3"
+    assert pagina.locator("#iniAreas .pl-alerta-n").count() == 0, "sin alarma en el Inicio"
     assert pagina.locator("#tituloInicio b").inner_text() == "LC" and pagina.locator("#iniQuien").is_hidden()
     # Cuatro áreas de a dos, cada herramienta con su propio ícono (el mismo de su pestaña)
     assert pagina.evaluate("getComputedStyle(document.getElementById('iniAreas')).gridTemplateColumns.split(' ').length") == 2
@@ -1895,6 +1953,73 @@ def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
     assert pagina.locator("#iniQuien button").all_inner_texts() == ["NB", "ES", "LC", "CM", "MP", "SV"]
     pagina.locator('#iniQuien button[data-usuario="CM"]').click()
     assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "CM" and pagina.locator("#tituloInicio b").inner_text() == "CM"
+    assert not errores
+    pagina.context.close()
+
+
+def _inicio_con_semana(navegador, sitio, **kw):
+    """El Inicio con la carpeta de prueba y esta semana planificada (lunes: cuatro proyectos; miércoles: uno)."""
+    from datetime import date, timedelta
+    semana, lunes = _semana_de(date.today())
+    d = lambda i: (lunes + timedelta(days=i)).isoformat()
+    asig = lambda i, per, p: {"dia": d(i), "persona": per, "proyecto": p, "activa": True, "t": _instante(-60), "por": "NB"}
+    usos = [(0, "NB", "req:908"), (0, "ES", "req:908"), (0, "LC", "req:908"), (0, "CM", "req:907"), (0, "MP", "tag:SOLO"),
+            (0, "SV", "otra:bodega"), (2, "NB", "req:907"), (2, "ES", "req:907")]
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", **kw)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {f"publicado/planificacion/{semana}/otro0001.json": _sobre_plan(
+        semana, lunes, "otro0001", [asig(*u) for u in usos], proyectos={"otra:bodega": {"titulo": "Bodega"}})})
+    pagina.reload()
+    pagina.locator("#iniSemana .ini-sem-dia").first.wait_for()
+    return pagina, errores
+
+
+def test_el_inicio_muestra_la_semana_de_la_planificacion(navegador, sitio):
+    """2026-11-18, el usuario eligió la maqueta V4: bajo las áreas, la semana de hoy, un día por columna con sus
+    proyectos (los de más gente primero, hasta tres) y cuántas personas tienen algo. Un día abre la Planificación con
+    ese día en grande; «Abrir», la Planificación."""
+    from datetime import date
+    pagina, errores = _inicio_con_semana(navegador, sitio, ancho=1366, alto=657)
+    dias = pagina.locator("#iniSemana .ini-sem-dia")
+    assert dias.count() == 5
+    hoy = date.today().weekday()
+    assert dias.evaluate_all("bs => bs.map((b) => b.classList.contains('hoy'))") == [i == hoy for i in range(5)]
+    lun = dias.nth(0)
+    assert lun.locator(".ini-sem-n").inner_text() == "6 pers."
+    filas = lun.locator(".ini-sem-pr").evaluate_all("fs => fs.map((f) => [f.children[1].textContent, f.children[2].textContent])")
+    assert len(filas) == 3 and filas[0] == ["En obra", "3"], filas
+    # Dos «+N más», uno para tres proyectos y otro para dos (pantallas bajas): se ve solo uno
+    assert lun.locator(".ini-sem-mas:visible").all_inner_texts() == ["+1 más"]
+    assert "6 personas en 4 proyectos" in lun.get_attribute("title") and "Bodega, 1" in lun.get_attribute("title")
+    assert dias.nth(1).locator(".ini-sem-nadie").inner_text() == "Nadie asignado"
+    assert dias.nth(2).locator(".ini-sem-n").inner_text() == "2 pers."
+    # Un día abre la Planificación en General con ese día en grande, aunque la última vista elegida fuera otra
+    pagina.evaluate("localStorage.setItem('quempin_portal_plan', JSON.stringify({ v: 2, vista: 'personal' }))")
+    pagina.reload()
+    dias.first.wait_for()
+    dias.nth(2).click()
+    assert pagina.locator("#vistaPlan").is_visible()
+    pagina.locator("#plGeneral .pl-dia-grande").wait_for()
+    assert pagina.locator("#plGeneral .pl-dia-grande").get_attribute("data-dia") == "2"
+    # «Abrir» va a la Planificación
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
+    pagina.locator("#iniSemAbrir").click()
+    assert pagina.locator("#vistaPlan").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1280, 600), (1024, 640), (390, 844)])
+def test_la_semana_cabe_en_el_inicio(navegador, sitio, ancho, alto):
+    """Con la semana planificada, el Inicio sigue sin barras en el computador; en el teléfono, un día por fila."""
+    movil = ancho < 760
+    pagina, errores = _inicio_con_semana(navegador, sitio, ancho=ancho, alto=alto, movil=movil)
+    pagina.wait_for_timeout(200)
+    if not movil:
+        assert pagina.evaluate(JS_BARRAS) == []
+    d = pagina.evaluate(JS_DESBORDES)
+    assert d["doc"] <= ancho and not d["fuera"], d
+    xs = pagina.locator("#iniSemana .ini-sem-dia").evaluate_all("bs => bs.map((b) => Math.round(b.getBoundingClientRect().left))")
+    assert len(set(xs)) == (1 if movil else 5), xs
     assert not errores
     pagina.context.close()
 
@@ -2075,7 +2200,7 @@ def _alarma(pagina):
 
 
 # La cuenta de la alarma, junto a la Planificación en el Inicio (ya no en la cabecera, 2026-10-28)
-ALERTA_N = '.ini-item[data-herr="planificacion"] .pl-alerta-n'
+ALERTA_N = '#menu .menu-item[data-herr="planificacion"] .pl-alerta-n'
 
 
 def _celda_proyecto(pagina, clave, dia):
@@ -2136,9 +2261,9 @@ def test_la_alarma_muestra_los_proyectos_activos_sin_asignar(navegador, sitio):
     el Inicio (en la cabecera ya no, a pedido del 2026-10-28), y la vista dice cuáles son."""
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
     item = pagina.locator('.ini-item[data-herr="planificacion"]')
-    item.locator(".pl-alerta-n").wait_for()
+    pagina.locator(ALERTA_N).wait_for(state="attached")
     assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
-    assert item.locator(".pl-alerta-n").inner_text() == "3"
+    assert item.locator(".pl-alerta-n").count() == 0, "en el Inicio ya no (2026-11-18)"
     assert item.locator(".ini-fuera").count() == 0, "se abre dentro del portal"
     pagina.locator("#btnMenu").click()
     pagina.locator("#grupo-ejecutar").click()
@@ -2744,7 +2869,7 @@ def test_la_vista_simple_sin_alarma_en_la_cabecera(navegador, sitio):
     vez en cuando va en «Más»; los paneles de General van plegados y se recuerda cuál se abrió."""
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general", ancho=1366, alto=768)
     assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
-    assert pagina.locator('.ini-item[data-herr="planificacion"] .pl-alerta-n').inner_text() == "3"
+    assert pagina.locator(ALERTA_N).inner_text() == "3"
     # Las cifras, en una sola línea y bajas
     cajas = pagina.locator("#plResumen .rc-kpi").evaluate_all("bs => bs.map((b) => b.getBoundingClientRect().toJSON())")
     assert len({round(c["y"]) for c in cajas}) == 1 and max(c["height"] for c in cajas) <= 34, cajas

@@ -57,6 +57,10 @@ Lleva montos y nombres reales. **Las pruebas usan siempre `tmp_path`, nunca esta
   facturas en el Centro de Costos y el N° tiene otra, son dos proyectos. El AF deja pendiente el envío del N° a esa
   ficha y el cruce (`proyectos.py`) no los une: `fichaAjena` del N°, `conflictos` y la bandeja. Caso: la ficha UMAG
   («UMAG Linea de H2», entregado) llevaba el N° 280 («280. UMAG - Conexión y PH Lab 1»).
+- **La ficha que lleva el N° manda** (2026-11-18): si una ficha del AF tiene el N° como TAG o en «N° Requerimiento»,
+  gana sobre el TAG que recuerda la formulación (`proyectos.py`, `presupuestos_formulador.adjudicados_para_af` y
+  `porReq` del Formulador). Caso: «314. UA Reactor» ≠ CANT («Calderas Antofagasta») y «312. Casinos UV» ≠ JUNJ
+  («Junji's Valparaiso»); el Formulador los había unido por palabras parecidas (Antofagasta, Valparaíso).
 - **Lo publicado se reemplaza completo**, con escritura atómica (temporal + `os.replace`).
   **Si los datos no cambiaron, no se reescribe** (OneDrive subiría y bajaría copias
   idénticas). `generado` dice cuándo cambió el dato; el pulso está en `estado.json`.

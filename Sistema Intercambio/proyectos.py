@@ -292,6 +292,15 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
 
     for p in proyectos_af:
         vincular(_req(p.get("req")), _tag(p.get("tag")))
+    # La ficha que lleva el N° (como TAG o en «N° Requerimiento») manda sobre el
+    # TAG que una formulación recuerda (2026-11-18, pedido del usuario): el
+    # Formulador unió «314. UA Reactor» con CANT («Calderas Antofagasta») y
+    # «312. Casinos UV» con JUNJ («Junji's Valparaiso») por palabras parecidas.
+    ficha_del_n = {}
+    for p in proyectos_af:
+        tag = _tag(p.get("tag"))
+        for n in {_req(p.get("req")), _req(tag) if tag and tag.isdigit() else None} - {None}:
+            ficha_del_n.setdefault(n, tag)
     sin_req = {"tags": [], "formulaciones": [], "documentos": 0}
     for item in repositorio:
         d = item.get("datos") or {}
@@ -301,6 +310,8 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
         req = _req((vinculos.get("requerimiento") or {}).get("numero") if isinstance(vinculos.get("requerimiento"), dict)
                    else vinculos.get("requerimiento"))
         tag = _tag((vinculos.get("analisisFinanciero") or {}).get("tag"))
+        if tag and req in ficha_del_n:
+            tag = ficha_del_n[req]
         vincular(req, tag, f"La formulación «{d.get('codigo') or d.get('uid')}»")
         ficha = {"uid": d.get("uid"), "codigo": d.get("codigo"), "version": d.get("version"),
                  "titulo": d.get("titulo"), "estado": d.get("estado"), "tag": tag}

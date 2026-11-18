@@ -5,7 +5,7 @@ Detalle de referencia: léelo solo al tocar esta parte. Las reglas generales est
 ## El Inicio: las herramientas por área (2026-11-10)
 
 Pedido del usuario: el Inicio con el saludo y las herramientas de cada área del trabajo, cada una con su ícono, sin
-cifras ni gráficos. Sección `#vistaInicio`; funciones `ini*` y estado `ini`, después del Recorrido. Reemplaza al
+cifras ni gráficos; desde el 2026-11-18, con la semana de la Planificación abajo. Sección `#vistaInicio`; funciones `ini*` y estado `ini`, después del Recorrido. Reemplaza al
 «Inicio minimalista» del 2026-10-16 (más abajo, como historia).
 
 - **Saludo**: «Buenos días, LC» (la fecha y la semana van en su title); sin usuario, sus iniciales para elegirlo con
@@ -15,6 +15,16 @@ cifras ni gráficos. Sección `#vistaInicio`; funciones `ini*` y estado `ini`, d
   portal, un punto naranjo si ya tiene pestaña y, en la Planificación semanal, su alarma (`plPintarAlarmaGlobal`: es
   lo único que viene de la carpeta, por eso el Inicio sigue pidiendo la lectura del Recorrido). Seis botones por fila,
   del mismo ancho en las cuatro áreas.
+- **La semana de la Planificación** (2026-11-18; el usuario eligió la maqueta V4 entre 6: «herramientas como hoy +
+  franja de la semana»): `#iniSemana`, bajo las áreas, la arma `iniPintarSemana` con la semana de hoy que ya lee
+  `plCargar` (la misma de la alarma). Un día por columna (`.ini-sem-dia`, hoy en tinte): sus proyectos con su color,
+  los de más gente primero y hasta tres (`INI_SEM_MAX`), «+N más», cuántas personas tienen algo y el detalle en el
+  `title`. Tocar un día abre la Planificación en General con ese día en grande (`iniAbrirDia`); «Abrir», la
+  Planificación. Sin carpeta o sin leerla, la franja no se ve. Con ella a la vista, las áreas se compactan
+  (`.inicio:has(> .ini-semana:not([hidden]))`) y con 520 px de alto o menos cada día muestra dos proyectos
+  (`.p3`/`.m3` se esconden, `.m2` cuenta desde dos). En el teléfono, un día por fila. Pruebas:
+  `test_el_inicio_muestra_la_semana_de_la_planificacion`, `test_la_semana_cabe_en_el_inicio` (el peor caso: tres
+  proyectos y «+1 más»; en 1024×640 quedan ~6 px libres).
 - **Íconos**: uno por herramienta, en `ICONOS` y en el campo `icono` del registro, así su pestaña lleva el mismo
   (`test_el_inicio_son_las_herramientas_por_area` revisa que ninguno se repita ni falte).
 - **Nombres**: el `corto`, salvo «Análisis Financiero» y «Subir docs.» (`INI_NOMBRE`). Los de una palabra larga
@@ -202,3 +212,19 @@ explica va en un ícono. Regla para lo que venga: **en la pantalla, el dato y la
 navegador, en `quempin_portal_uso` (90 días). Volver a la misma pestaña sin pasar por otra no cuenta; el Inicio no
 cuenta. Se guarda en `publicado/uso-portal/<dispositivo>.json` como mucho cada 2 minutos y al ocultar la pestaña,
 **sin usuario**. Lo suma `Sistema Intercambio/uso_portal.py`.
+
+## Al día sin F5 (2026-11-18)
+
+Pedido del usuario: el equipo no veía lo publicado porque no recargaba. Sección `ad*` de `index.html`.
+
+- Cada 5 minutos (y al volver a la pestaña, si pasó más de 1 minuto) el Portal pide al sitio su propia página y la de
+  cada herramienta abierta, con sus scripts y hojas de estilo del mismo sitio (`fetch` con `cache: 'no-cache'`).
+- GitHub Pages cambia el ETag y el Last-Modified de **todos** los archivos en cada publicación. Por eso el ETag
+  solo decide si bajar el archivo; lo que cuenta es el SHA-256 del contenido, contra la base tomada al cargar.
+- Lo nuevo se carga solo si no se pierde nada: herramienta escondida o ventana en otra pestaña, al tiro; lo que se
+  ve, después de 10 minutos sin tocarlo. Nunca con un diálogo abierto, un campo con el foco o algo por guardar
+  (`planif`/`ej` y sus `_pendiente`). Mientras tanto, un aviso con «Actualizar».
+- Los datos del equipo ya llegaban solos en Planificación, Ejecución y Requerimientos; el Inicio y el Recorrido se
+  releen cada 2 minutos mientras se miran.
+- Prueba: `test_lo_publicado_de_nuevo_se_carga_sin_f5` (reloj de Playwright con `fast_forward`; `run_for` corre
+  cada temporizador de 100 ms y tarda 100 s).

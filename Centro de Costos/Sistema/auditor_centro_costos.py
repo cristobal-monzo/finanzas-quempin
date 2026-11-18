@@ -2784,11 +2784,102 @@ def cargar_datos_json(ruta_json):
         return json.load(f)
 
 
-def buscar_dato_por_archivo(datos, proyecto, archivo):
+def buscar_dato_por_archivo(datos, proyecto, archivo, ya_registradas=None):
+    """La entrada del JSON de un archivo pendiente, por (proyecto, nombre).
+
+    `ya_registradas` (de entradas_ya_registradas()) son entradas cuyo documento
+    ya esta en Master: se saltan. El nombre de un archivo no es unico en el
+    tiempo: 'run' renombra cada documento registrado y el nombre original queda
+    libre, asi que el siguiente 'Documento (1).pdf' que alguien sube a la misma
+    carpeta calzaba con la entrada vieja y se registraba con los datos de OTRA
+    factura (2026-11-06: dos facturas distintas quedaron como copias de la
+    primera del proyecto). Sin entrada libre, el archivo queda sin datos y el
+    Paso 2 lo lee."""
     for d in datos:
         if d.get("archivo") == archivo and d.get("proyecto") == proyecto:
+            if ya_registradas and id(d) in ya_registradas:
+                continue
             return d
     return None
+
+
+def _clave_contenido(proyecto, n_documento, proveedor, fecha, neto):
+    """Lo que identifica a un documento por su contenido, igual en Master y en
+    el JSON. Con N Documento real basta el numero por emisor (no depende de
+    una fecha o un neto corregidos despues); sin numero (peajes 'N/A', 'S/N')
+    hacen falta la fecha y el neto, y sin neto no hay clave."""
+    tag = clave_tipo_documento(generar_tag_proveedor(str(proveedor or "")))
+    if es_n_documento_real(n_documento):
+        return ("n", proyecto, tag, normalizar_n_documento(str(n_documento).strip()))
+    if neto is None or fecha is None:
+        return None
+    return ("s", proyecto, tag, fecha.strftime("%Y-%m-%d"), round(neto))
+
+
+def entradas_ya_registradas(datos, ws_master, ws_detalle=None):
+    """{id(entrada): [N Ref, ...]} de las entradas del JSON cuyo documento ya
+    esta en Master, para que buscar_dato_por_archivo() no se las de a un
+    archivo nuevo que llego con el mismo nombre.
+
+    Una entrada esta usada cuando Master tiene AL MENOS tantos documentos con
+    su contenido como entradas con ese contenido hay en el JSON. Dos entradas
+    iguales con un solo registro (la misma compra fotografiada dos veces)
+    siguen libres: esa copia la resuelve validar_corpus() como copia exacta.
+    Sin ws_detalle no hay netos y solo se evaluan los documentos con numero."""
+    netos = {}
+    if ws_detalle is not None:
+        for r in range(2, ultima_fila_datos(ws_detalle) + 1):
+            n_ref = ws_detalle.cell(row=r, column=1).value
+            valor = ws_detalle.cell(row=r, column=10).value
+            if isinstance(n_ref, str) and isinstance(valor, (int, float)):
+                netos[n_ref] = netos.get(n_ref, 0) + valor
+
+    en_master = {}
+    for r in range(2, ultima_fila_datos(ws_master) + 1):
+        n_ref = ws_master.cell(row=r, column=1).value
+        if not isinstance(n_ref, str) or not PATRON_NREF.match(n_ref):
+            continue
+        fecha, _ = _fecha_documento(ws_master.cell(row=r, column=4).value)
+        clave = _clave_contenido(
+            ws_master.cell(row=r, column=2).value,
+            ws_master.cell(row=r, column=5).value,
+            ws_master.cell(row=r, column=8).value or ws_master.cell(row=r, column=7).value,
+            fecha, netos.get(n_ref) if ws_detalle is not None else None)
+        if clave:
+            en_master.setdefault(clave, []).append(n_ref)
+
+    por_clave = {}
+    for d in datos:
+        fecha, _ = _fecha_documento(d.get("fecha"))
+        clave = _clave_contenido(
+            d.get("proyecto"), d.get("n_documento"), d.get("proveedor"), fecha,
+            _neto_entrada(d) if ws_detalle is not None else None)
+        if clave:
+            por_clave.setdefault(clave, []).append(d)
+
+    usadas = {}
+    for clave, entradas in por_clave.items():
+        refs = en_master.get(clave, [])
+        if refs and len(refs) >= len(entradas):
+            for d in entradas:
+                usadas[id(d)] = refs
+    return usadas
+
+
+def nombres_ya_usados(pendientes, datos, ya_registradas):
+    """[(info, [N Ref])] de los pendientes que no tienen entrada libre pero si
+    una usada con su nombre: un archivo nuevo con el nombre de un documento
+    ya registrado. Sirve para decir por que quedo sin datos."""
+    resultado = []
+    for info in pendientes:
+        if buscar_dato_por_archivo(datos, info["proyecto"], info["archivo"], ya_registradas):
+            continue
+        refs = [r for d in datos
+                if d.get("archivo") == info["archivo"] and d.get("proyecto") == info["proyecto"]
+                and id(d) in ya_registradas for r in ya_registradas[id(d)]]
+        if refs:
+            resultado.append((info, sorted(set(refs))))
+    return resultado
 
 
 def total_sin_iva_items(items):
@@ -4362,9 +4453,11 @@ def sincronizar_registro_errores(ws_master, datos, pendientes=None, hoy=None,
     """
     if pendientes is None:
         pendientes, _omitidos = inventario_actual(ws_master)
+    ya_registradas = entradas_ya_registradas(datos, ws_master, ws_detalle)
     sin_datos = [
         info for info in pendientes
-        if not (buscar_dato_por_archivo(datos, info["proyecto"], info["archivo"]) or {}).get("items")
+        if not (buscar_dato_por_archivo(datos, info["proyecto"], info["archivo"],
+                                        ya_registradas) or {}).get("items")
     ]
     hallazgos, copias_exactas = validar_corpus(datos, archivos_sin_datos=sin_datos)
 
@@ -5777,10 +5870,17 @@ def main(pais="CL"):
     # bloqueado main() hacia 'return' antes de llegar al informe y la corrida
     # terminaba sin reportar un solo hallazgo. Validar aca cierra las dos.
     _paso("PASO 5B", "Validar documentos (antes de escribir)")
+    ya_registradas = entradas_ya_registradas(datos_json, ws_master, ws_detalle)
     sin_datos_en_json = [
         info for info in pendientes
-        if buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"]) is None
+        if buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"],
+                                   ya_registradas) is None
     ]
+    nombre_usado = {}
+    for info, refs in nombres_ya_usados(pendientes, datos_json, ya_registradas):
+        nombre_usado[clave_documento(info["proyecto"], info["archivo"])] = refs
+        print(f"  [WARN] {info['proyecto']}\\{info['archivo']}: ese nombre ya es de "
+              f"{', '.join(refs)}; no se reusan sus datos (falta leer este archivo).")
     hallazgos, copias_exactas = validar_corpus(datos_json, archivos_sin_datos=sin_datos_en_json)
     registro_errores = cargar_registro_errores()
     nuevos_hallazgos, reabiertos, desaparecidos = fusionar_hallazgos(registro_errores, hallazgos)
@@ -5837,12 +5937,19 @@ def main(pais="CL"):
     reconciliacion_actualizada = False
     for info in pendientes:
         clave = clave_documento(info["proyecto"], info["archivo"])
-        dato = buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"])
+        dato = buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"],
+                                       ya_registradas)
         if not dato:
+            refs_usadas = nombre_usado.get(clave)
             limitaciones.append({
                 "archivo": info["archivo"], "proyecto": info["proyecto"],
-                "detalle": "No se encontraron datos extraidos en el JSON para este archivo.",
-                "accion": "Agregar manualmente los datos (con items) al JSON y re-ejecutar.",
+                "detalle": (f"El nombre ya es de {', '.join(refs_usadas)} (registrado): sus datos "
+                            f"no sirven para este archivo." if refs_usadas else
+                            "No se encontraron datos extraidos en el JSON para este archivo."),
+                "accion": ("Renombrar el archivo, leerlo y agregar su entrada con el nombre nuevo; "
+                           "si es una copia del ya registrado, moverlo a Duplicados/."
+                           if refs_usadas else
+                           "Agregar manualmente los datos (con items) al JSON y re-ejecutar."),
             })
             print(f"  [WARN] Sin datos para: {info['proyecto']}\\{info['archivo']}")
             continue
