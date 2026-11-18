@@ -141,7 +141,9 @@ def test_los_grupos_por_etapa_del_trabajo():
         "Captar y ofertar", "Ejecutar proyectos", "Control financiero", "Calculadora", "Ayuda"]
     de = lambda g: [h["id"] for h in reg["herramientas"] if h["grupo"] == g]
     assert de("ofertar") == ["oportunidades", "planilla", "formulador", "proyectos", "cotizador", "cotizacion"]
-    assert de("ejecutar") == ["ejecucion", "planificacion", "gantt", "orden-compra", "subir-cc", "ingresar"]
+    assert de("ejecutar") == ["ejecucion", "planificacion", "gantt", "orden-compra", "subir-cc"]
+    # «Ingresar avance» vive dentro del Análisis Financiero (pedido del 2026-11-18): sin acceso propio en el Inicio ni en el menú
+    assert sorted(de("oculto")) == ["calculadora", "ingresar"]
     assert de("controlar") == ["centro-costos", "analisis", "rendiciones", "flujo-caja"]
 
 
@@ -742,13 +744,17 @@ def test_sin_selector_de_proyecto_cada_herramienta_abre_su_vista_general(navegad
     pagina.context.close()
 
 
-def test_ingresar_datos_y_analisis_son_una_sola_pestana(navegador, sitio):
+def test_ingresar_datos_vive_dentro_del_analisis(navegador, sitio):
+    """Pedido del 2026-11-18: «Ingresar avance» no tiene acceso propio en el Inicio ni en el menú; se llega por la
+    pestaña «Ingresar datos» del Análisis Financiero, que sigue siendo una sola pestaña del portal."""
     pagina, errores = _abrir_portal(navegador, sitio)
-    _menu(pagina, "Ingresar avance")
-    af = _marco(pagina, "analisis", "af")
-    _esperar(pagina, "analisis", "tab", "tabIngreso")
+    assert pagina.locator('.ini-item[data-herr="ingresar"]').count() == 0
+    pagina.locator("#btnMenu").click()
+    assert pagina.locator('#menu .menu-item[data-herr="ingresar"]').count() == 0
     _menu(pagina, "Análisis Financiero")
-    _esperar(pagina, "analisis", "tab", "tabResumen")
+    af = _marco(pagina, "analisis", "af")
+    af.locator("#tabBtnIngreso").click()
+    _esperar(pagina, "analisis", "tab", "tabIngreso")
     assert _pestanas(pagina) == ["Inicio", "Análisis"]
     assert af.evaluate("document.body.dataset.cargas") == "1"
     assert not errores
@@ -770,11 +776,8 @@ def test_la_direccion_de_una_herramienta_abre_esa_y_no_su_pareja(navegador, siti
     """…/portal/#/ingresar con la pestaña del Análisis Financiero de la visita anterior dejaba el Resumen con
     el nombre «Ingresar avance» (2026-10-25): las dos son la misma página y la pestaña del tablero dice cuál."""
     pagina, errores = _abrir_portal(navegador, sitio)
-    _menu(pagina, "Ingresar avance")
-    _marco(pagina, "analisis", "af")
-    _esperar(pagina, "analisis", "tab", "tabIngreso")
     _menu(pagina, "Análisis Financiero")
-    _esperar(pagina, "analisis", "tab", "tabResumen")
+    _marco(pagina, "analisis", "af")
     pagina.goto(sitio + "/finanzas-quempin/portal/?otra-visita#/ingresar")
     pagina.locator("#vistaInicio").wait_for(state="attached")
     _marco(pagina, "analisis", "af")
@@ -844,8 +847,6 @@ def test_el_pais_elige_el_tablero_de_peru(navegador, sitio):
     _menu(pagina, "Flujo de Caja")
     assert _marco(pagina, "flujo-caja", "fc").url.endswith("/flujo-de-caja/")        # solo existe en Chile
     assert pagina.locator("#pais").is_hidden()
-    _menu(pagina, "Ingresar avance")
-    _marco(pagina, "analisis", "af")                                                  # solo existe en Chile
     # De vuelta a Chile desde el Cotizador, que se cambia solo
     pagina.locator("#pestanas .ir", has_text="Cotizador").click()
     assert pagina.locator("#pais").input_value() == "pe"
@@ -937,7 +938,7 @@ def test_lo_publicado_de_nuevo_se_carga_sin_f5(navegador, tmp_path):
 
 def test_una_pestana_por_herramienta_y_no_mas_de_ocho_cargadas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    nombres = ["Centro de Costos", "Análisis Financiero", "Ingresar avance", "Flujo de Caja", "Cotizador Histórico",
+    nombres = ["Centro de Costos", "Análisis Financiero", "Flujo de Caja", "Cotizador Histórico",
                "Oportunidades", "Formulador", "Carta Gantt", "Seguimiento", "Diámetro de tubería", "Hidrógeno",
                "Gas natural / GLP", "Configuración y conexiones"]
     for nombre in nombres:
