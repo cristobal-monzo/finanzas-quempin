@@ -420,10 +420,25 @@ __MARCA_FUENTES__
     border: 1px solid var(--gridline); background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
 
   /* ---------- Cómo se evalúa ---------- */
-  .op-pesos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 22px; margin: 4px 0 12px; }
-  .op-peso { display: grid; grid-template-columns: minmax(0, 1fr) 36px; gap: 2px 8px; align-items: center; font-size: 13px; }
-  .op-peso input { grid-column: 1 / -1; width: 100%; }
-  .op-peso output { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-secondary); }
+  /* Pesos por orden (variante C, 2026-11-18): la lista se ordena y cada puesto trae su peso. */
+  .op-orden-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 28px; margin: 8px 0 12px; }
+  .op-orden { list-style: none; margin: 0; padding: 0; counter-reset: puesto; }
+  .op-orden li { counter-increment: puesto; display: flex; align-items: center; gap: 8px; padding: 5px 6px 5px 10px; margin-bottom: 5px;
+    border: 1px solid var(--gridline); border-radius: 8px; background: var(--surface-card); font-size: 13px; cursor: grab; }
+  .op-orden li::before { content: counter(puesto); font-weight: 700; color: var(--brand-orange); width: 14px; }
+  .op-orden li.arrastrando { opacity: .4; }
+  .op-orden li.sobre { border-color: var(--brand-orange); }
+  .op-orden li .nom { flex: 1; min-width: 0; }
+  .op-orden li button { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--gridline); background: var(--surface-1);
+    color: var(--text-primary); cursor: pointer; font-size: 13px; line-height: 1; }
+  .op-orden li button:disabled { opacity: .3; cursor: default; }
+  .op-reparto { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 0 10px; align-items: center; font-size: 13px; }
+  .op-reparto > span { height: 34px; display: flex; align-items: center; }
+  .op-reparto .barra { display: flex; align-items: center; gap: 8px; }
+  .op-reparto .barra i { display: block; height: 12px; border-radius: 3px; background: var(--brand-orange); }
+  .op-reparto .barra b { font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+  @media (max-width: 760px) { .op-orden-grid { grid-template-columns: minmax(0, 1fr); } }
+  #opPesosRestablecer[hidden] { display: none; }
   .op-pesos-nota { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
   .op-reglas { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
   .op-reglas strong { color: var(--text-primary); }
@@ -444,8 +459,6 @@ __MARCA_FUENTES__
     .viz-tabs::-webkit-scrollbar { display: none; }
     .viz-tab-btn { flex: 0 0 auto; padding: 9px 10px; }
     .op-filtros input[type=search], .op-filtros select { font-size: 16px; flex: 1 1 100%; }
-    /* 16 px también en los deslizadores de pesos: la auditoría móvil exige 16 px a todo campo. */
-    .op-peso input { font-size: 16px; }
     .op-filtros .op-cuenta { margin-left: 0; }
     .op-detalle { grid-template-columns: minmax(0, 1fr); margin: 0 0 10px; padding: 12px; }
     .op-crit { grid-template-columns: 104px minmax(0, 1fr) 32px; }
@@ -691,10 +704,14 @@ __MARCA_FUENTES__
 
     <section class="viz-tab-panel" id="tabMetodo" role="tabpanel">
       <section class="panel">
-        <h2>Pesos de la evaluación</h2>
-        <p class="sub">El puntaje de cada oportunidad es el promedio de sus 8 criterios con estos pesos. Muévelos para ver cómo cambia el orden: se guardan solo en este navegador.</p>
-        <div class="op-pesos" id="opPesos"></div>
-        <button class="op-btn-sec" id="opPesosRestablecer" type="button">Restablecer los pesos del equipo</button>
+        <h2>Qué pesa más
+          <details class="qb-i"><summary aria-label="Cómo funciona">i</summary><p>Ordena los criterios de más a menos importante: arrastra, o usa ↑ ↓. Cada puesto trae un peso fijo (el 1° pesa más) y el reparto de la derecha siempre suma 100 %. El puntaje de una oportunidad es el promedio de sus 8 criterios con ese reparto. La lista cambia al tiro. Tu orden queda solo en este navegador.</p></details>
+        </h2>
+        <div class="op-orden-grid">
+          <ol class="op-orden" id="opOrden" aria-label="Criterios de más a menos importante"></ol>
+          <div class="op-reparto" id="opReparto"></div>
+        </div>
+        <button class="op-btn-sec" id="opPesosRestablecer" type="button">Volver al orden del equipo</button>
         <p class="op-pesos-nota" id="opPesosNota"></p>
       </section>
       <section class="panel">
@@ -847,12 +864,36 @@ __MARCA_FUENTES__
     ORDEN_CAT.forEach(function (id, i) { RANGO_CAT[id] = i; });
     var REGLAS = DATA.reglas || { plazoOferta: [], visitaPasada: {} };
 
-    // ---------- pesos (por persona, en este navegador) ----------
-    var CLAVE_PESOS = 'quempin_op_pesos';
+    // ---------- pesos por orden (por persona, en este navegador) ----------
+    // Variante C (2026-11-18): la persona ordena los criterios y cada puesto trae su peso. Los pesos de los
+    // puestos son los del equipo de mayor a menor: sin mover nada da lo mismo que oportunidades_config.json
+    // y el reparto siempre suma lo mismo (no se puede «poner todo en 100»).
+    var CLAVE_ORDEN = 'quempin_op_orden', CLAVE_PESOS_VIEJA = 'quempin_op_pesos';
+    var ORDEN_EQUIPO = CRIT.map(function (c, i) { return [c, i]; })
+      .sort(function (a, b) { return b[0].peso - a[0].peso || a[1] - b[1]; }).map(function (x) { return x[0].id; });
+    var PUESTOS = ORDEN_EQUIPO.map(function (id) { return CRIT.filter(function (c) { return c.id === id; })[0].peso; });
+    function ordenValido(o) {
+      return Array.isArray(o) && o.length === CRIT.length && CRIT.every(function (c) { return o.indexOf(c.id) >= 0; });
+    }
+    var ordenCrit = ORDEN_EQUIPO.slice();
+    try {
+      var g = JSON.parse(localStorage.getItem(CLAVE_ORDEN) || 'null');
+      if (ordenValido(g)) ordenCrit = g;
+      else {   // pesos de la versión con deslizadores: se pasan a un orden (el más pesado primero)
+        var viejos = JSON.parse(localStorage.getItem(CLAVE_PESOS_VIEJA) || 'null');
+        if (viejos && typeof viejos === 'object') {
+          ordenCrit = ORDEN_EQUIPO.slice().sort(function (a, b) {
+            var pa = typeof viejos[a] === 'number' ? viejos[a] : 0, pb = typeof viejos[b] === 'number' ? viejos[b] : 0;
+            return pb - pa || ORDEN_EQUIPO.indexOf(a) - ORDEN_EQUIPO.indexOf(b);
+          });
+          localStorage.setItem(CLAVE_ORDEN, JSON.stringify(ordenCrit));
+        }
+        localStorage.removeItem(CLAVE_PESOS_VIEJA);
+      }
+    } catch (e) {}
     var pesos = {};
-    var guardados = null;
-    try { guardados = JSON.parse(localStorage.getItem(CLAVE_PESOS) || 'null'); } catch (e) {}
-    CRIT.forEach(function (c) { pesos[c.id] = guardados && typeof guardados[c.id] === 'number' ? guardados[c.id] : c.peso; });
+    function pesosDelOrden() { ordenCrit.forEach(function (id, i) { pesos[id] = PUESTOS[i]; }); }
+    pesosDelOrden();
     function pesosPropios() { return CRIT.some(function (c) { return pesos[c.id] !== c.peso; }); }
 
     // ---------- evaluación al día ----------
@@ -1546,25 +1587,49 @@ __MARCA_FUENTES__
     });
 
     // ---------- Cómo se evalúa ----------
+    var arrastradoCrit = null;
+    function moverCriterio(id, puesto) {
+      var desde = ordenCrit.indexOf(id);
+      puesto = Math.max(0, Math.min(ordenCrit.length - 1, puesto));
+      if (desde < 0 || desde === puesto) return;
+      ordenCrit.splice(desde, 1); ordenCrit.splice(puesto, 0, id);
+      pesosDelOrden();
+      try { localStorage.setItem(CLAVE_ORDEN, JSON.stringify(ordenCrit)); } catch (e) {}
+      pintarPesos(); todo();
+      var b = document.querySelector('#opOrden li[data-crit="' + id + '"]');
+      if (b) b.classList.add('movido');
+    }
     function pintarPesos() {
-      var caja = vaciar(document.getElementById('opPesos'));
-      CRIT.forEach(function (c) {
-        var salida = el('output', { texto: String(pesos[c.id]) });
-        var rango = el('input', { type: 'range', min: 0, max: 50, step: 1, value: pesos[c.id], 'aria-label': 'Peso de ' + c.nombre });
-        rango.addEventListener('input', function () {
-          pesos[c.id] = +rango.value; salida.textContent = rango.value;
-          try { localStorage.setItem(CLAVE_PESOS, JSON.stringify(pesos)); } catch (e) {}
-          todo();   // no vuelve a dibujar los deslizadores: cortaría el arrastre
-        });
-        caja.appendChild(el('label', { clase: 'op-peso', title: c.descripcion || '' }, [el('span', { texto: c.nombre }), salida, rango]));
+      var lista = vaciar(document.getElementById('opOrden'));
+      var reparto = vaciar(document.getElementById('opReparto'));
+      var total = PUESTOS.reduce(function (a, b) { return a + b; }, 0) || 1, mayor = Math.max.apply(null, PUESTOS) || 1;
+      ordenCrit.forEach(function (id, i) {
+        var c = CRIT.filter(function (x) { return x.id === id; })[0];
+        var sube = el('button', { type: 'button', 'aria-label': 'Subir ' + c.nombre, title: 'Subir', texto: '↑' });
+        var baja = el('button', { type: 'button', 'aria-label': 'Bajar ' + c.nombre, title: 'Bajar', texto: '↓' });
+        sube.disabled = i === 0; baja.disabled = i === ordenCrit.length - 1;
+        sube.addEventListener('click', function () { moverCriterio(id, i - 1); });
+        baja.addEventListener('click', function () { moverCriterio(id, i + 1); });
+        var fila = el('li', { draggable: 'true', 'data-crit': id, title: c.descripcion || '' }, [el('span', { clase: 'nom', texto: c.nombre }), sube, baja]);
+        fila.addEventListener('dragstart', function (ev) { arrastradoCrit = id; fila.classList.add('arrastrando'); ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', id); } catch (e) {} });
+        fila.addEventListener('dragend', function () { arrastradoCrit = null; fila.classList.remove('arrastrando'); });
+        fila.addEventListener('dragover', function (ev) { if (arrastradoCrit) { ev.preventDefault(); fila.classList.add('sobre'); } });
+        fila.addEventListener('dragleave', function () { fila.classList.remove('sobre'); });
+        fila.addEventListener('drop', function (ev) { ev.preventDefault(); fila.classList.remove('sobre'); if (arrastradoCrit) moverCriterio(arrastradoCrit, i); });
+        lista.appendChild(fila);
+        var pct = 100 * PUESTOS[i] / total;
+        var barra = el('i'); barra.style.width = (70 * PUESTOS[i] / mayor) + '%';
+        reparto.appendChild(el('span', { texto: c.nombre }));
+        reparto.appendChild(el('span', { clase: 'barra' }, [barra, el('b', { texto: pct.toLocaleString('es-CL', { maximumFractionDigits: 0 }) + ' %' })]));
       });
     }
     function pintarNotaPesos() {
-      document.getElementById('opPesosNota').textContent = pesosPropios() ? 'Estás viendo el orden con tus pesos, no con los del equipo.' : 'Son los pesos del equipo (oportunidades_config.json).';
+      document.getElementById('opPesosNota').textContent = pesosPropios() ? 'Estás viendo la lista con tu orden, no con el del equipo.' : 'Es el orden del equipo.';
+      document.getElementById('opPesosRestablecer').hidden = !pesosPropios();
     }
     document.getElementById('opPesosRestablecer').addEventListener('click', function () {
-      CRIT.forEach(function (c) { pesos[c.id] = c.peso; });
-      try { localStorage.removeItem(CLAVE_PESOS); } catch (e) {}
+      ordenCrit = ORDEN_EQUIPO.slice(); pesosDelOrden();
+      try { localStorage.removeItem(CLAVE_ORDEN); } catch (e) {}
       pintarPesos(); todo();
     });
     function pintarMetodo() {

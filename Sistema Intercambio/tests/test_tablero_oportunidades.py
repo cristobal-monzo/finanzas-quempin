@@ -178,7 +178,7 @@ def navegador():
         nav.close()
 
 
-def _abrir(navegador, tmp_path, ancho=1280, extra=(), pendiente=None):
+def _abrir(navegador, tmp_path, ancho=1280, extra=(), pendiente=None, almacen=None):
     datos, config = _datos(extra)
     ruta = build.construir(datos, ruta_json=tmp_path / "data.json", ruta_html=tmp_path / "index.html")
     pagina = navegador.new_page(viewport={"width": ancho, "height": 900})
@@ -187,6 +187,8 @@ def _abrir(navegador, tmp_path, ancho=1280, extra=(), pendiente=None):
     if pendiente is not None:
         # Lo guardado en este navegador que todavía no llega al tablero: la página lo usa como perfil.
         pagina.add_init_script(f"localStorage.setItem('quempin_op_ajustes_pendiente', {json.dumps(json.dumps(pendiente))});")
+    for clave, valor in (almacen or {}).items():
+        pagina.add_init_script(f"localStorage.setItem({json.dumps(clave)}, {json.dumps(json.dumps(valor))});")
     pagina.goto(ruta.as_uri())
     pagina.fill("#pwInput", candado.leer_contrasena())
     pagina.press("#pwInput", "Enter")
@@ -275,12 +277,45 @@ def test_las_recomendadas_son_las_mejores_y_un_peso_cambia_el_orden(navegador, t
     tarjetas.first.get_by_role("button", name="Ver evaluación").click()
     assert pagina.locator(f'#tOps tr.op-row[data-codigo="{mejor["codigo"]}"]').get_attribute("aria-expanded") == "true"
     assert pagina.locator("#tOps tr.detail-row .op-crit").count() == 8
-    # Con el peso del rubro en 0 cambia el puntaje en la tabla (los pesos son por persona).
+    # Con el rubro al último puesto cambia el puntaje en la tabla (el orden es por persona).
     antes = _filas(pagina)
     pagina.click('.viz-tab-btn[data-tab="tabMetodo"]')
-    pagina.locator('input[aria-label="Peso de Rubro"]').fill("0")
+    assert pagina.locator("#opPesosRestablecer").is_hidden()          # sin cambios, es el orden del equipo
+    for _ in range(7):
+        pagina.get_by_role("button", name="Bajar Rubro").click()
+    assert pagina.locator("#opOrden li").last.get_attribute("data-crit") == "rubro"
+    assert pagina.get_by_role("button", name="Bajar Rubro").is_disabled()
+    pct = [int(t.replace("%", "").strip()) for t in pagina.locator("#opReparto .barra b").all_inner_texts()]
+    assert sum(pct) == 100 and pct == sorted(pct, reverse=True)        # el reparto siempre suma 100 %
     pagina.click('.viz-tab-btn[data-tab="tabOportunidades"]')
     assert _filas(pagina) != antes
+    # Se queda al recargar y «Volver al orden del equipo» lo deshace.
+    pagina.reload()
+    pagina.click('.viz-tab-btn[data-tab="tabMetodo"]')
+    assert pagina.locator("#opOrden li").last.get_attribute("data-crit") == "rubro"
+    pagina.click("#opPesosRestablecer")
+    assert pagina.locator("#opOrden li").first.get_attribute("data-crit") == "rubro"
+    pagina.click('.viz-tab-btn[data-tab="tabOportunidades"]')
+    assert _filas(pagina) == antes
+    assert errores == []
+
+
+def test_arrastrar_un_criterio_cambia_su_puesto(navegador, tmp_path):
+    pagina, _, _, errores = _abrir(navegador, tmp_path)
+    pagina.click('.viz-tab-btn[data-tab="tabMetodo"]')
+    pagina.drag_and_drop('#opOrden li[data-crit="ejecucion"]', '#opOrden li[data-crit="rubro"]')
+    assert pagina.locator("#opOrden li").first.get_attribute("data-crit") == "ejecucion"
+    assert "tu orden" in pagina.locator("#opPesosNota").inner_text()
+    assert errores == []
+
+
+def test_los_pesos_viejos_de_los_deslizadores_pasan_a_un_orden(navegador, tmp_path):
+    viejos = {"rubro": 0, "monto": 40, "dificultad": 1, "visita": 1, "ubicacion": 1, "comprador": 1, "plazoOferta": 1, "ejecucion": 1}
+    pagina, _, _, errores = _abrir(navegador, tmp_path, almacen={"quempin_op_pesos": viejos})
+    pagina.click('.viz-tab-btn[data-tab="tabMetodo"]')
+    ids = pagina.locator("#opOrden li").evaluate_all("l => l.map(x => x.dataset.crit)")
+    assert ids[0] == "monto" and ids[-1] == "rubro"
+    assert pagina.evaluate("localStorage.getItem('quempin_op_pesos')") is None
     assert errores == []
 
 
