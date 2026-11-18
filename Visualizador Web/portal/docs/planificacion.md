@@ -186,7 +186,7 @@ proyecto y en general, con UX profesional):
 
 **Vista más simple y arrastre** (2026-10-28, pedido del usuario: mostraba demasiado a la vez, que «Por personal» permita
 arrastrar proyectos a persona + día, como una opción más, y quitar la alerta de la cabecera):
-- Sin alarma en la cabecera: el número queda en el Inicio y en el menú.
+- Sin alarma en la cabecera ni en el Inicio (2026-11-18): el número queda solo en el menú.
 - Resumen en una línea de pastillas; «N sin asignar» despliega `#plAlarma`. Un choque de vehículo se sigue diciendo con
   todas sus letras en su pastilla.
 - «Más» reúne copiar, compartir, imprimir, estado y sábado. Los paneles de General son `<details>` plegados
