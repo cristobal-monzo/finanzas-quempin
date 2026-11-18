@@ -6,6 +6,10 @@
 #
 # OJO: en este equipo el "python" del PATH es 3.11 y NO tiene openpyxl --
 # usar siempre "py -3.14". Ver CLAUDE.md, seccion "Entorno".
+#
+# Este archivo dice QUE se usa y POR QUE. Las versiones exactas de este equipo
+# estan en requirements.lock, que es lo que instala el CI. Despues de instalar o
+# actualizar algo aqui: py -3.14 fijar_dependencias.py (reescribe el lock).
 
 # Lectura/escritura de los libros .xlsx de todos los modulos.
 openpyxl>=3.1.5
@@ -31,3 +35,8 @@ cryptography>=46.0.0
 
 # Tests.
 pytest>=8.0
+
+# Reintento de las pruebas de punta a punta del Portal en el CI (--reruns, solo en
+# ese job): Chromium en el runner de GitHub falla a veces por causas ajenas al
+# codigo (ERR_NO_BUFFER_SPACE). Las demas suites corren sin reintentos.
+pytest-rerunfailures>=16.0

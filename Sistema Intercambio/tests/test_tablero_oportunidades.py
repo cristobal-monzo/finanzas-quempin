@@ -33,6 +33,22 @@ def _cargar_build():
 build = _cargar_build()
 candado = build.candado
 
+
+def test_mientras_consulta_la_api_el_procesador_lo_sabe(monkeypatch, tmp_path):
+    """2026-11-11: el procesador corre cada 5 minutos; si le toca Mercado Público mientras el tablero consulta, lo
+    deja para la vuelta siguiente (la API rechaza las consultas simultáneas)."""
+    vistas = []
+
+    def _evaluar(sin_red=False, raiz=None):
+        vistas.append((sin_red, build.mercado_publico.api_en_uso()))
+        return {"oportunidades": [], "avisos": []}, 0, True
+    monkeypatch.setattr(build, "evaluar", _evaluar)
+    monkeypatch.setattr(build, "construir", lambda datos: tmp_path / "index.html")
+    assert build.main([]) == 0
+    assert build.main(["--sin-red"]) == 0
+    assert vistas == [(False, True), (True, False)]
+    assert not build.mercado_publico.api_en_uso()
+
 AHORA = datetime.now().replace(microsecond=0)
 HISTORIA = [
     {"numero": 1, "estado": "Adjudicado", "titulo": "Mantención preventiva caldera hospital", "referencia": "5000-1-LE26", "valorOfertado": 8_000_000},
@@ -62,9 +78,10 @@ def _ficha(codigo, nombre, descripcion="", region="Región de Valparaíso", mont
     }
 
 
-def _datos(extra=()):
-    """extra: fichas más, evaluadas hoy (solo para el test que las pide)."""
-    config = op.cargar_config()
+def _datos(extra=(), config=None):
+    """extra: fichas más, evaluadas hoy (solo para el test que las pide). config: otra configuración
+    (la de «Qué buscamos» con ajustes, para comparar con la página)."""
+    config = config or op.cargar_config()
     historia = op.Historia(HISTORIA)
     ev = op.Evaluador(config, historia, [], AHORA, 40000)
     # Evaluada hace 3 días, cuando su visita obligatoria todavía no pasaba: la
@@ -143,7 +160,7 @@ def test_la_plantilla_repite_las_reglas_de_python():
     """La categoría (con su tope por rubro) y el plazo se calculan en dos lados:
     si cambias una regla, cambia la otra (y el test del navegador de abajo)."""
     plantilla = build.RUTA_TEMPLATE.read_text(encoding="utf-8")
-    for pieza in ("Evaluador.categoria", "topesPorRubro", "rubroMenorA", "categoriaMaxima",
+    for pieza in ("Evaluador.categoria", "op.tope", "tope.categoria", "topesPorRubro",
                   "REGLAS.plazoOferta", "plazoOfertaCompraAgil", "menosDeDias", "visitaPasada", "obligatoriaODuda", "descartarFijo"):
         assert pieza in plantilla, pieza
     assert "innerHTML" not in plantilla, "los textos de la API se escriben con textContent"
@@ -161,12 +178,15 @@ def navegador():
         nav.close()
 
 
-def _abrir(navegador, tmp_path, ancho=1280, extra=()):
+def _abrir(navegador, tmp_path, ancho=1280, extra=(), pendiente=None):
     datos, config = _datos(extra)
     ruta = build.construir(datos, ruta_json=tmp_path / "data.json", ruta_html=tmp_path / "index.html")
     pagina = navegador.new_page(viewport={"width": ancho, "height": 900})
     errores = []
     pagina.on("pageerror", lambda e: errores.append(str(e)))
+    if pendiente is not None:
+        # Lo guardado en este navegador que todavía no llega al tablero: la página lo usa como perfil.
+        pagina.add_init_script(f"localStorage.setItem('quempin_op_ajustes_pendiente', {json.dumps(json.dumps(pendiente))});")
     pagina.goto(ruta.as_uri())
     pagina.fill("#pwInput", candado.leer_contrasena())
     pagina.press("#pwInput", "Enter")
@@ -305,4 +325,90 @@ def test_llevar_al_formulador_lleva_los_datos_de_la_oportunidad(navegador, tmp_p
     assert agil["compraAgil"] is True and agil["monto"] == 2_000_000 and agil["tipo"] == "COT"
     # La visita que toca hoy: la próxima de sus fechas.
     assert del_detalle("5000-88-LE26")["visita"] == {"fecha": _en(3)[:16], "obligatoria": True, "pasada": False}
+    assert errores == []
+
+
+# ── «Qué buscamos» (2026-11-16, variante D1) ────────────────────────────────
+
+AJUSTES = {"temas": {"climatizacion": {"interes": "alto"}, "calderas": {"interes": "medio"}, "calefaccion": {"interes": "no"}},
+           "regiones": {"magallanes": 100, "valparaiso": 35},
+           "monto": {"minimo": 12_000_000, "minimoCompraAgil": 3_000_000, "maximo": None}}
+
+
+def _perfil_completo(datos, ajustes):
+    """Lo que la página manda al guardar: la versión completa, con los ajustes encima."""
+    rb = datos["rubro"]
+    temas = {t["id"]: {"interes": t["interes"], "frases": list(t["frases"])} for t in rb["temas"]}
+    for k, v in ajustes.get("temas", {}).items():
+        temas[k]["interes"] = v["interes"]
+    regiones = dict(rb["regiones"], **ajustes.get("regiones", {}))
+    monto = dict({"minimo": rb["montoMinimo"], "minimoCompraAgil": rb["montoMinimoCompraAgil"], "maximo": rb["montoMaximo"]},
+                 **ajustes.get("monto", {}))
+    return {"temas": temas, "excluir": list(rb["excluir"]), "noConfundir": list(rb["noConfundir"].get("frases", [])),
+            "regiones": regiones, "monto": monto}
+
+
+def _categorias_en_pagina(pagina):
+    pagina.locator("[data-tab=tabOportunidades]").click()
+    pagina.select_option("#fMostrar", "todas")
+    vivas = {f["codigo"]: f for f in _filas(pagina)}
+    pagina.select_option("#fMostrar", "descartadas")
+    vivas.update({f["codigo"]: f for f in _filas(pagina)})
+    return vivas
+
+
+def test_con_ajustes_la_pagina_calcula_igual_que_python(navegador, tmp_path):
+    """Lo que depende de «Qué buscamos» (niveles, regiones, montos) la página lo recalcula con resolverRubro,
+    calcularTope y resolverMonto: tienen que dar lo mismo que oportunidades.py con esos ajustes aplicados."""
+    base, config = _datos()
+    con, _ = _datos(config=op.aplicar_ajustes(config, AJUSTES))
+    pendiente = {"id": "pendiente-de-prueba", "enviado": AHORA.astimezone().isoformat(timespec="seconds"),
+                 "ajustes": _perfil_completo(base, AJUSTES)}
+    pagina, _, _, errores = _abrir(navegador, tmp_path, pendiente=pendiente)
+    nombres = {c["id"]: c["nombre"] for c in config["categorias"]}
+    nombres["descartar"] = "Descartada"
+    en_pagina = _categorias_en_pagina(pagina)
+    por_codigo = {o["codigo"]: o for o in con["oportunidades"]}
+    cambiaron = 0
+    for codigo in ("761391-91-LE26", "5000-92-LE26", "5000-93-LE26", "5000-94-LE26", "5000-95-LE26", "5000-88-LE26", "100-98-COT26"):
+        o = por_codigo[codigo]
+        assert en_pagina[codigo]["categoria"] == nombres[o["categoria"]], (codigo, o["categoria"], o["descartar"], o["tope"])
+        if o["categoria"] != "descartar":
+            assert en_pagina[codigo]["puntaje"] == round(o["puntaje"]), codigo
+        cambiaron += o["categoria"] != next(x for x in base["oportunidades"] if x["codigo"] == codigo)["categoria"]
+    assert cambiaron >= 3                                   # los ajustes sí mueven la lista
+    assert por_codigo["5000-92-LE26"]["descartar"] == []    # «calderas y calefacción»: calderas sigue en el nombre
+    pagina.locator("[data-tab=tabBuscamos]").click()
+    assert pagina.locator(".qb-col[data-nivel=no] [data-tema=calefaccion]").count() == 1
+    assert pagina.locator("#qbEstado").inner_text().startswith("Guardado")
+    assert errores == []
+
+
+def test_arrastrar_un_tema_cambia_la_lista_al_tiro_y_deshacer_vuelve(navegador, tmp_path):
+    pagina, datos, _, errores = _abrir(navegador, tmp_path)
+    pagina.locator("[data-tab=tabBuscamos]").click()
+    assert pagina.locator("#qbEstado").inner_text().startswith("Así busca el equipo")
+    assert pagina.locator("#qbGuardar").is_disabled()
+    clima = pagina.locator("[data-tema=climatizacion]")
+    clima.drag_to(pagina.locator(".qb-col[data-nivel=no]"))
+    pagina.locator(".qb-col[data-nivel=no] [data-tema=climatizacion]").wait_for()
+    assert pagina.locator("#qbEstado").inner_text().startswith("1 cambio sin guardar")
+    # Fuera del Portal no hay carpeta del equipo: no se puede guardar, y se dice dónde.
+    assert pagina.locator("#qbGuardar").is_disabled() and "Portal" in pagina.locator("#qbEfecto").inner_text()
+    assert _categorias_en_pagina(pagina)["5000-93-LE26"]["categoria"] == "Descartada"
+    # Tocar la tarjeta y «Mover a» hace lo mismo que arrastrar (en el celular no se arrastra).
+    pagina.locator("[data-tab=tabBuscamos]").click()
+    pagina.locator("[data-tema=climatizacion] > button").click()
+    pagina.locator("[data-tema=climatizacion] .qb-mover button", has_text="Mucho interés").click()
+    pagina.locator(".qb-col[data-nivel=alto] [data-tema=climatizacion]").wait_for()
+    # Una región en «No vamos» descarta lo de ahí; el tooltip dice los puntos.
+    mag = pagina.locator("#qbRegiones button", has_text="Magallanes")
+    while "No vamos" not in mag.inner_text():
+        mag.click()
+    assert _categorias_en_pagina(pagina)["5000-95-LE26"]["categoria"] == "Descartada"
+    pagina.locator("[data-tab=tabBuscamos]").click()
+    pagina.locator("#qbDeshacer").click()
+    assert pagina.locator("#qbEstado").inner_text().startswith("Así busca el equipo")
+    original = {o["codigo"]: o["categoria"] for o in datos["oportunidades"]}
+    assert _categorias_en_pagina(pagina)["5000-95-LE26"]["categoria"] != "Descartada" and original["5000-95-LE26"] != "descartar"
     assert errores == []

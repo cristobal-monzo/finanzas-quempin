@@ -239,7 +239,9 @@ def test_solo_notas_altas_abiertas_nuevas_y_fuera_de_la_planilla(reglas):
     datos = {"oportunidades": [
         _op("1-1-LE26", 91), _op("1-2-LE26", 84.9), _op("1-3-LE26", 95, categoria="descartar", descartar=["x"]),
         _op("1-4-LE26", 90, enPlanilla={"req": 300}), _op("1-5-LE26", 92, cierre="2026-10-14T09:00"),
-        _op("1-6-LE26", 88, ficha=False), _op("1-7-COT26", 86, cierre="2026-10-13T23:00"), _op("1-8-LE26", 89)]}
+        _op("1-6-LE26", 88, ficha=False), _op("1-7-COT26", 86, cierre="2026-10-13T23:00"), _op("1-8-LE26", 89),
+        # Nota alta con tope (tema «Rara vez» o monto bajo el mínimo): no es «Prioritaria» y no se avisa.
+        _op("1-9-LE26", 93, categoria="evaluar", tope={"categoria": "evaluar", "motivo": "Tema «Climatización» (rara vez)"})]}
     d = al.decidir(datos, {"enviados": [{"codigo": "1-8-LE26", "fecha": "2026-01-01"}]}, reglas, AHORA)
     # 1-5 cierra en 23 horas (una licitación pide 48); 1-7 es compra ágil y le bastan 12.
     assert [o["codigo"] for o in d["enviar"]] == ["1-1-LE26", "1-7-COT26"]

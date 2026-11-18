@@ -41,6 +41,10 @@ RUTA_CONTRASENA = RAIZ_REPO / ".contrasena_tableros"
 VARIABLE_CONTRASENA = "QUEMPIN_TABLEROS_CONTRASENA"
 RUTA_JS = Path(__file__).resolve().with_name("candado.js")
 MARCADOR_JS = "__CANDADO_JS__"
+# Cajas de números (2026-11-10): seleccionar todo al entrar y punto de miles al escribir. Va en el
+# mismo <script> que candado.js, así cada tablero la lleva sin tocar su plantilla. El Portal y el hub
+# la enlazan (../numeros.js) y publicar.py la copia junto a ellos.
+RUTA_NUMEROS_JS = Path(__file__).resolve().with_name("numeros.js")
 
 # La sal es publica (va en el sobre) y es la misma en todos los tableros: asi la
 # clave que el navegador recuerda al escribir la contrasena en uno abre tambien
@@ -160,7 +164,8 @@ def incrustar(html: str, marcador_datos: str, texto: str, contrasena: str | None
         if marcador not in html:
             raise ValueError(f"la plantilla no tiene el marcador {marcador}")
     sobre = cifrar(texto, contrasena)
-    return marca.incrustar(html).replace(MARCADOR_JS, RUTA_JS.read_text(encoding="utf-8")).replace(marcador_datos, sobre)
+    js = RUTA_JS.read_text(encoding="utf-8") + "\n" + RUTA_NUMEROS_JS.read_text(encoding="utf-8")
+    return marca.incrustar(html).replace(MARCADOR_JS, js).replace(marcador_datos, sobre)
 
 
 def leer_datos(html: str, id_script: str, contrasena: str):

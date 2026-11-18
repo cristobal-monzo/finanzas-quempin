@@ -1,6 +1,7 @@
 ---
 name: Registro_Centro_de_Costos
 description: Registra facturas y boletas en Centro de Costos.xlsx (status, run, confirmar, visualizador, separar, separar-registrado, eliminar) y publica su tablero salvo «sin publicar». Usar SOLO si el usuario escribe "/Registro_Centro_de_Costos" (antes /Actualizar_CC y /Actualizar_Base_de_Datos). Ante «actualiza el centro de costos» sin la barra, pregunta primero, porque puede querer esta skill o /Actualizar_Finanzas.
+model: sonnet
 ---
 
 # Registro: Centro de Costos
@@ -65,6 +66,10 @@ documento viejo, porque la clave es `proyecto\archivo`).
 Sin documentos registrables no toca ninguna fila de datos: solo crea el respaldo y regenera pies de tabla
 y hojas de proyecto. Regenera además `Visualizador Web/build/index.html`; si eso falla, deja un `[WARN]`,
 el Excel queda guardado y se regenera con `driver.py visualizador`.
+
+Al final corre el procesador del Intercambio (PASO 12e, `procesar.py --forzar`, unos minutos): así el Portal
+(«Proyectos en ejecución», Planilla) ve lo registrado sin esperar la vuelta de cada 5 minutos. Si falla, solo avisa.
+`run --sin-intercambio` lo omite.
 
 ## Paso 4: tabla de resumen, siempre al terminar
 

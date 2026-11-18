@@ -262,10 +262,11 @@ def _clave_proyecto(doc: dict) -> str | None:
 def ingresos_cotizaciones(docs: list[dict], requerimientos: list[dict], proyectos_af: list[dict],
                           hoy: date, sup: dict) -> tuple[list[dict], list[str], set]:
     """Cuotas de la última cotización de cada proyecto adjudicado (su N° está
-    «Adjudicado» en la Planilla, o su TAG existe en Análisis Financiero).
-    Devuelve también los N° de requerimiento ya cubiertos, para no contarlos
-    además como probables."""
-    adjudicados_req = {str(r["numero"]) for r in requerimientos if str(r.get("estado") or "").lower() == "adjudicado"}
+    «Adjudicado» o «Cerrado» en la Planilla, o su TAG existe en Análisis
+    Financiero). Un proyecto «Cerrado» (entregado, 2026-11-09) puede tener
+    cuotas por cobrar todavía. Devuelve también los N° de requerimiento ya
+    cubiertos, para no contarlos además como probables."""
+    adjudicados_req = {str(r["numero"]) for r in requerimientos if str(r.get("estado") or "").lower() in ("adjudicado", "cerrado")}
     tags_af = {str(p.get("tag")) for p in proyectos_af if p.get("tag")}
     ultimas: dict[str, dict] = {}
     for d in docs:

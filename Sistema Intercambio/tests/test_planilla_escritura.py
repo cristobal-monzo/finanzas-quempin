@@ -12,6 +12,7 @@ from datetime import date, datetime, timedelta
 import openpyxl
 import pytest
 
+import esquemas
 import intercambio as ic
 import planilla_escritura as pe
 import requerimientos as rq
@@ -211,6 +212,24 @@ def test_las_fechas_se_comparan_hasta_el_minuto():
     assert pe.ganador_editar(m, {"apertura": "2026-10-21T11:20"}, {}, _hora("2026-10-29T13:00:00-03:00"))[0] == {}
 
 
+def test_un_monto_exportado_se_compara_como_numero():
+    m = _editar(5, {"valorOfertado": 1190000}, {"valorOfertado": None})
+    assert pe.ganador_editar(m, {"valorOfertado": 1190000.0}, {}, _hora("2026-11-02T13:00:00-03:00"))[0] == {}
+    m = _editar(5, {"valorOfertado": 1190000}, {"valorOfertado": 900000})
+    cambios, detalle = pe.ganador_editar(m, {"valorOfertado": 900000.0}, {}, _hora("2026-11-02T13:00:00-03:00"))
+    assert cambios == {"valorOfertado": 1190000} and detalle == []
+
+
+def test_las_celdas_de_lo_que_exporta_el_formulador():
+    valores, fechas, borrar, encabezados = pe._celdas({"valorOfertado": 1190000, "cliente": "Municipalidad"}, COLUMNAS)
+    assert valores == {"P": 1190000, "G": "Municipalidad"} and not fechas and not borrar
+    assert encabezados == {"P": "Valor ofertado (IVA inc)", "G": "Cliente"}
+
+
+def test_el_formulador_escribe_los_montos_pero_el_portal_no_los_muestra():
+    assert set(pe.SOLO_FORMULADOR) <= set(pe.ESCRIBIBLES) and not set(pe.SOLO_FORMULADOR) & set(pe.EDITABLES)
+
+
 def test_las_celdas_de_un_cambio():
     valores, fechas, borrar, encabezados = pe._celdas({"ubicacion": None, "cierre": "2026-11-13T15:00", "titulo": " Liceo "}, COLUMNAS)
     assert valores == {"F": "Liceo"} and fechas == {"K": "2026-11-13T15:00"} and borrar == ["H"]
@@ -223,6 +242,8 @@ def test_las_celdas_de_un_cambio():
 def entorno(tmp_path, monkeypatch):
     raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
     monkeypatch.setattr(pe, "ESTADO", tmp_path / "estado.json")
+    # La lista de Estado del Excel ya está al día y la hoja ya está protegida: tienen su propia prueba
+    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS), "hojaProtegida": True}), encoding="utf-8")
     escritas = []
 
     def falso_escribir(ruta, operaciones, columnas=None, limite=600):
@@ -246,6 +267,8 @@ def entorno(tmp_path, monkeypatch):
             if o["op"] == "fijar":
                 hoja.cell(o["fila"], 1).value = o["numero"]
                 resultados.append({"i": i, "ok": True, "fila": o["fila"]})
+            elif o["op"] in ("estados", "proteger"):
+                resultados.append({"i": i, "ok": True, "fila": 0})
             elif o["op"] == "nueva":
                 fila = max(r for r in range(2, hoja.max_row + 1) if hoja.cell(r, 2).value or r == 2) + 1
                 # Como el Excel desde el 2026-11-06: el N° lo da la fórmula =SI(B<>"";FILA()-1;"")
@@ -453,8 +476,63 @@ def test_un_cambio_cuya_fila_no_llega_todavia_espera(tmp_path, entorno):
     assert _archivados(raiz)[viejo["id"]]["estado"] == "rechazado"
 
 
+def _exportar(numero, cambios, reemplaza, titulo, enviado):
+    """Lo que deja «Exportar a la Planilla» del Formulador (js/herramientas.js, mensajeEditarRequerimiento)."""
+    m = _editar(numero, cambios, reemplaza, enviado=enviado, titulo=titulo, id_=f"exportar{numero:04d}")
+    m["origen"]["herramienta"] = "formulador"
+    m["fuente"] = {"herramienta": "formulador", "uid": "f1e2d3c4b5a6", "codigo": f"{numero}. {titulo}"}
+    return m
+
+
+def test_lo_que_exporta_el_formulador_queda_escrito_en_su_fila(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "Caldera gimnasio")])
+    rq.publicar(raiz, ruta)
+    m = _exportar(2, {"estado": "Ofertado", "valorOfertado": 11900000, "cliente": "Municipalidad"},
+                  {"estado": "Evaluación", "valorOfertado": None, "cliente": None}, "Caldera gimnasio", _hace(2))
+    assert esquemas.validar_mensaje(m) == []
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    (op,) = escritas[0]
+    assert op["op"] == "editar" and op["valores"] == {"B": "Ofertado", "P": 11900000, "G": "Municipalidad"}
+    fila = _publicados(raiz)[2]
+    assert (fila["estado"], fila["valorOfertado"], fila["cliente"]) == ("Ofertado", 11900000, "Municipalidad")
+    assert _archivados(raiz)[m["id"]]["estado"] == "aplicado"
+    # Exportar lo mismo otra vez no reescribe nada
+    otra = _exportar(2, {"valorOfertado": 11900000}, {"valorOfertado": None}, "Caldera gimnasio", _hace(1))
+    otra["id"] = "exportar0002b"
+    ic.enviar(raiz, otra)
+    pe.vuelta(raiz, ruta)
+    assert len(escritas) == 1 and _archivados(raiz)[otra["id"]]["estado"] == "sin-cambios"
+
+
+def test_lo_que_exporta_el_formulador_a_una_fila_nueva_va_con_ella(tmp_path, entorno):
+    """Un proyecto sin fila: el registro (nuevo-requerimiento) y los valores que el registro no lleva, juntos."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _mensaje(2, enviado=_hace(3), estado="Ofertado"))
+    m = _exportar(2, {"valorOfertado": 5950000}, {"valorOfertado": None}, "Caldera gimnasio", _hace(2))
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    (op,) = escritas[0]
+    assert op["op"] == "nueva" and op["valores"]["B"] == "Ofertado" and op["valores"]["P"] == 5950000
+    assert _archivados(raiz)[m["id"]]["estado"] == "aplicado"
+
+
+def test_lo_que_exporta_el_formulador_a_un_n_que_es_de_otro_no_se_escribe(tmp_path, entorno):
+    """El 2026-11-02 la planilla volvió a numerar con fórmula y se corrieron 104 N°: el título que se vio manda."""
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    m = _exportar(2, {"valorOfertado": 5950000}, {"valorOfertado": None}, "Caldera gimnasio", _hace(2))
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    assert escritas == [] and _archivados(raiz)[m["id"]]["estado"] == "rechazado"
+
+
 def test_lo_que_se_cambia_en_el_excel_llega_al_portal_en_la_vuelta(tmp_path, entorno):
-    """Sin nada en el buzón: si el Excel cambió, se republica sin esperar al procesador (cada 2 horas)."""
+    """Sin nada en el buzón: si el Excel cambió, se republica sin esperar al procesador (cada 5 minutos)."""
     raiz, escritas = entorno
     ruta = _planilla(tmp_path, [(1, "A")])
     rq.publicar(raiz, ruta)
@@ -487,3 +565,87 @@ def test_simular_no_escribe_ni_archiva(tmp_path, entorno):
     r = pe.vuelta(raiz, ruta, simular=True)
     assert [o["op"] for o in r["operaciones"]] == ["editar"]
     assert escritas == [] and _archivados(raiz) == {}
+
+
+# ── la lista de Estado del Excel (2026-11-09: «Cerrado») ────────────────────
+
+def test_la_lista_de_estado_del_excel_se_pone_al_dia_una_vez(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text(json.dumps({"hojaProtegida": True}), encoding="utf-8")
+    pe.vuelta(raiz, ruta)
+    (op,) = escritas[0]
+    assert op["op"] == "estados" and op["lista"] == list(rq.ESTADOS) and op["encabezados"] == {op["letra"]: "Estado"}
+    assert "Cerrado" in op["lista"]
+    assert pe.vuelta(raiz, ruta)["detalle"] == "sin cambios" and len(escritas) == 1
+
+
+def test_si_excel_no_puede_cambiar_la_lista_lo_intenta_tres_veces(tmp_path, entorno, monkeypatch):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text(json.dumps({"hojaProtegida": True}), encoding="utf-8")
+    monkeypatch.setattr(pe, "escribir", lambda r, ops, c=None, limite=600: (escritas.append(ops), {"estado": "ok", "resultados": [{"i": 0, "ok": False}]})[1])
+    for _ in range(5):
+        pe.vuelta(raiz, ruta)
+    assert len(escritas) == pe.INTENTOS_LISTA
+
+
+def test_la_lista_del_excel_es_la_del_esquema_y_la_operacion_existe():
+    esquema = json.loads((esquemas.CARPETA / "mensajes" / "editar-requerimiento.json").read_text(encoding="utf-8"))
+    assert list(rq.ESTADOS) == esquema["properties"]["cambios"]["properties"]["estado"]["enum"]
+    ps1 = pe.SCRIPT_EXCEL.read_text(encoding="utf-8-sig")
+    assert "$o.op -eq 'estados'" in ps1
+    # Vuelve a proteger la hoja con los mismos permisos que tenía (ordenar, filtrar...), no con los de fábrica
+    assert "Proteccion-De $hoja" in ps1 and "Proteger-Como $hoja $como" in ps1 and "Protect([Type]::Missing, $true" not in ps1
+    assert pe.SCRIPT_EXCEL.read_bytes()[:3] == bytes([0xEF, 0xBB, 0xBF]), "el .ps1 va con BOM (PowerShell 5.1)"
+
+
+# ── la hoja entera protegida con contraseña (2026-11-12) ─────────────────────
+
+def test_la_hoja_se_protege_una_vez_y_despues_no_abre_excel_por_eso(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS)}), encoding="utf-8")
+    pe.vuelta(raiz, ruta)
+    assert escritas == [[{"op": "proteger"}]]
+    assert json.loads(pe.ESTADO.read_text(encoding="utf-8"))["hojaProtegida"] is True
+    assert pe.vuelta(raiz, ruta)["detalle"] == "sin cambios" and len(escritas) == 1
+
+
+def test_si_no_se_puede_proteger_lo_intenta_tres_veces(tmp_path, entorno, monkeypatch):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A")])
+    rq.publicar(raiz, ruta)
+    pe.ESTADO.write_text(json.dumps({"listaEstados": list(rq.ESTADOS)}), encoding="utf-8")
+    monkeypatch.setattr(pe, "escribir", lambda r, ops, c=None, limite=600: (escritas.append(ops), {"estado": "ok", "resultados": [{"i": 0, "ok": False}]})[1])
+    for _ in range(5):
+        pe.vuelta(raiz, ruta)
+    assert len(escritas) == pe.INTENTOS_LISTA
+
+
+def test_la_clave_se_crea_una_vez_cifrada_y_la_variable_manda(tmp_path, monkeypatch):
+    import mercado_publico
+    # DPAPI de mentira (reversible): la prueba no depende de la clave de Windows de quien la corre
+    monkeypatch.setattr(mercado_publico, "_dpapi", lambda datos, proteger: bytes(reversed(datos)))
+    monkeypatch.delenv(pe.VARIABLE_CLAVE, raising=False)
+    ruta = tmp_path / "planilla.clave"
+    assert pe.clave_hoja(ruta, crear=False) == "" and not ruta.exists()
+    primera = pe.clave_hoja(ruta)
+    assert len(primera) >= 20 and ruta.read_bytes() != primera.encode()      # no queda en claro
+    assert pe.clave_hoja(ruta) == primera                                     # la misma cada vez
+    monkeypatch.setenv(pe.VARIABLE_CLAVE, "de-la-variable")
+    assert pe.clave_hoja(ruta) == "de-la-variable"
+
+
+def test_excel_desprotege_solo_con_la_clave_y_deja_la_hoja_entera_protegida():
+    ps1 = pe.SCRIPT_EXCEL.read_text(encoding="utf-8-sig")
+    assert "$o.op -eq 'proteger'" in ps1 and "$env:QUEMPIN_PLANILLA_CLAVE" in ps1
+    assert "$hoja.Unprotect($clave)" in ps1 and "$hoja.Cells.Locked = $true" in ps1
+    # Al final, antes de guardar: contenido protegido, filtrar sí, ordenar no
+    assert "$c[1] = $true; $c[12] = $false; $c[13] = $true" in ps1
+    assert ps1.index("Proteger-Como $hoja $c $clave") < ps1.index("$wb.Save()")
+    # La clave nunca va en el archivo de entrada
+    assert "clave" not in json.dumps({"protegerHoja": pe.PROTEGER_HOJA})

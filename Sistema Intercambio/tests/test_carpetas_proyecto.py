@@ -37,9 +37,9 @@ def e(tmp_path):
 
 def _publicar(raiz, requerimientos=None, af=None):
     if requerimientos is not None:
-        intercambio.publicar(raiz, "requerimientos", "procesador", {"requerimientos": requerimientos})
+        intercambio.publicar(raiz, "requerimientos", "procesador", {"requerimientos": requerimientos}, validar=False)  # parcial
     if af is not None:
-        intercambio.publicar(raiz, "analisis-financiero", "procesador", {"proyectos": af})
+        intercambio.publicar(raiz, "analisis-financiero", "procesador", {"proyectos": af}, validar=False)  # parcial
 
 
 def _formulacion(raiz, uid, estado, req=None, carpeta=None, codigo="QMPN-2026-1", titulo="Obra", pais=None):
@@ -59,6 +59,15 @@ def _formulacion(raiz, uid, estado, req=None, carpeta=None, codigo="QMPN-2026-1"
 
 def _vuelta(e):
     return cp.atender(e["raiz"], e["raices"], e["gestion"], e["estado"])
+
+
+def test_una_vuelta_sin_cambios_no_reescribe_su_estado(e):
+    """El procesador corre cada 5 minutos (2026-11-11) y este estado está en OneDrive: sin cambios, no se toca."""
+    _vuelta(e)
+    _vuelta(e)
+    os.utime(e["estado"], (1_000_000, 1_000_000))
+    _vuelta(e)
+    assert e["estado"].stat().st_mtime == 1_000_000
 
 
 def test_nombre_de_carpeta():

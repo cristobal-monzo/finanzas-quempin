@@ -71,7 +71,8 @@
           "properties": {
             "portal": { "type": "string" },
             "herramienta": { "type": "string" },
-            "datos": { "type": "string", "description": "La fecha de los datos que mostraba el tablero" }
+            "datos": { "type": "string", "description": "La fecha de los datos que mostraba el tablero" },
+            "codigo": { "type": "string", "description": "El sello que Visualizador Web/publicar.py le pone al Portal al publicarlo: «rama@commit fecha» (2026-11-06)" }
           }
         }
       }

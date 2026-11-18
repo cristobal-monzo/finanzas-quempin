@@ -38,17 +38,23 @@ fila se deshace y queda rechazada para que lo decida una persona.
    Formulador no se escribe y queda ``rechazado`` (su carpeta y su código ya
    llevan ese N°: lo decide una persona); el del Portal (``numeroLibre``) toma
    el siguiente libre y lo dice.
-3. **Aplica lo que se cambia en el Portal** (mensaje ``editar-requerimiento``):
-   las casillas que alguien cambió, en la fila de ese N°. Si la misma casilla
+3. **Aplica lo que se cambia en el Portal o se exporta desde el Formulador**
+   (mensaje ``editar-requerimiento``): las casillas que alguien cambió o eligió
+   exportar, en la fila de ese N°. Si la misma casilla
    cambió también en el Excel, **manda el cambio más reciente**, como en el
    resto del Portal (``ganador_editar``).
 4. **Republica la Planilla** cuando el Excel cambió (``requerimientos.publicar``):
    lo que el equipo escribe en el Excel llega al Portal y a las demás
-   herramientas en esta misma vuelta, sin esperar al procesador (cada 2 horas).
+   herramientas en esta misma vuelta, sin esperar al procesador (cada 5 minutos).
 
 Las columnas se ubican por su encabezado, nunca por su letra: el 2026-10-27
 alguien insertó «Cliente» entre Título y Ubicación, y con las letras fijas de
 entonces una fila nueva habría escrito la ubicación en «Cliente».
+
+Una sola vez deja en el Excel la lista de la columna Estado con el estado nuevo
+«Cerrado» (2026-11-09), para que también se pueda elegir ahí (operación
+``estados`` de ``planilla_excel.ps1``; a la tercera vez que Excel no puede, deja
+de intentarlo y queda en el log).
 
 Por qué Excel y no openpyxl: ver ``requerimientos.py`` (openpyxl borra
 xl/metadata.xml y xl/richData). Excel abre el archivo de OneDrive con
@@ -59,7 +65,19 @@ para lectura, no se escribe nada y se reintenta en la vuelta siguiente.
 Antes de cada escritura queda un respaldo en
 ``%LOCALAPPDATA%\\QUEMPIN\\respaldos-planilla`` (los últimos 30).
 
-Uso:  py -3.14 planilla_escritura.py [--simular]     (la tarea cada 10 minutos)
+**Desde el 2026-11-12 la hoja entera está protegida con contraseña** (decisión
+del usuario: los requerimientos se ingresan solo por el Portal y el Excel queda
+de respaldo; ``PROTEGER_HOJA``). Este módulo es el único que la desprotege, para
+escribir, y la deja protegida otra vez (todas las celdas bloqueadas; filtrar sí,
+ordenar no). La contraseña se genera una vez y queda cifrada con DPAPI en
+``%LOCALAPPDATA%\\QUEMPIN\\planilla.clave``; ``clave`` la muestra.
+
+La tarea corre **cada minuto** (antes cada 10): sin pedidos ni cambios en el
+Excel termina sin abrirlo, así que un requerimiento del Portal queda confirmado
+en un par de minutos más lo que tarde OneDrive.
+
+Uso:  py -3.14 planilla_escritura.py [--simular]     (la tarea, cada minuto)
+      py -3.14 planilla_escritura.py clave           (muestra la contraseña de la hoja)
 """
 
 import json
@@ -95,11 +113,42 @@ FECHAS = ("apertura", "cierre")
 # también, contadas en toda la planilla, pero se llenan en casi toda fila reciente y el usuario las dejó
 # (2026-10-30). El esquema editar-requerimiento y el Portal (PQ_COLUMNAS) llevan la misma lista.
 EDITABLES = ("estado", "canal", "captador", "evaluador", "titulo", "cliente", "ubicacion", "referencia", "apertura", "cierre")
+# Las que el Portal no muestra y sí exporta el Formulador («Exportar a la Planilla», 2026-11-02): el mismo mensaje.
+SOLO_FORMULADOR = ("presupuesto", "valorOfertado", "valorAdjudicado")
 # Un cambio que llega antes que la fila que lo crea (OneDrive sincroniza los archivos en cualquier orden)
 # espera esto antes de rechazarse.
 ESPERA_FILA = timedelta(hours=24)
 # Ver el docstring: el N° es la fórmula de la Planilla y su columna está protegida (2026-11-06).
 FIJAR_N = False
+INTENTOS_LISTA = 3
+# La hoja entera protegida con contraseña (decisión del usuario, 2026-11-11: los requerimientos se ingresan solo por el
+# Portal y el Excel queda de respaldo). Solo este módulo la desprotege para escribir y la vuelve a proteger. La
+# contraseña se genera una vez y queda cifrada con DPAPI (la clave de Windows de este usuario), como el ticket de
+# Mercado Público; «py -3.14 planilla_escritura.py clave» la muestra para guardarla en otro lado.
+PROTEGER_HOJA = True
+VARIABLE_CLAVE = "QUEMPIN_PLANILLA_CLAVE"
+RUTA_CLAVE = Path(os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()) / "QUEMPIN" / "planilla.clave"
+
+
+def clave_hoja(ruta: Path | None = None, crear: bool = True) -> str:
+    """La contraseña de la hoja: la variable de entorno manda (pruebas); si no, el archivo cifrado; si no hay y
+    crear, una nueva al azar, que queda guardada antes de devolverla."""
+    fija = (os.environ.get(VARIABLE_CLAVE) or "").strip()
+    if fija:
+        return fija
+    import secrets
+    from mercado_publico import _dpapi
+    ruta = ruta or RUTA_CLAVE
+    if ruta.is_file():
+        return _dpapi(ruta.read_bytes(), proteger=False).decode("utf-8").strip()
+    if not crear:
+        return ""
+    nueva = secrets.token_urlsafe(18)
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    temporal = ruta.with_name(f".{ruta.name}.tmp")
+    temporal.write_bytes(_dpapi(nueva.encode("utf-8"), proteger=True))
+    os.replace(temporal, ruta)
+    return nueva
 
 
 def _es_formula(valor) -> bool:
@@ -261,6 +310,9 @@ def fila_de_mensaje(m: dict, formulacion: dict | None, columnas: dict, hoy: date
 def _comparable(clave: str, v) -> str:
     if v is None:
         return ""
+    # Un monto puede venir como 1190000 (el mensaje) o 1190000.0 (la celda): es el mismo valor
+    if clave in SOLO_FORMULADOR and isinstance(v, (int, float)):
+        return str(round(v))
     s = str(v).strip()
     return s[:16] if clave in FECHAS else s
 
@@ -321,12 +373,15 @@ def escribir(ruta: Path, operaciones: list[dict], columnas: dict | None = None, 
     with tempfile.TemporaryDirectory() as tmp:
         entrada, salida = Path(tmp) / "entrada.json", Path(tmp) / "salida.json"
         entrada.write_text(json.dumps({"ruta": str(ruta), "hoja": requerimientos.HOJA, "tabla": TABLA,
-                                       "columnaTitulo": titulo["letra"], "operaciones": operaciones},
+                                       "columnaTitulo": titulo["letra"], "operaciones": operaciones,
+                                       "protegerHoja": PROTEGER_HOJA},
                                       ensure_ascii=False), encoding="utf-8")
+        # La contraseña de la hoja va por el entorno del proceso, nunca en un archivo
+        entorno = dict(os.environ, **({VARIABLE_CLAVE: clave_hoja()} if PROTEGER_HOJA else {}))
         # Sin cambiar la política de ejecución: la del usuario (RemoteSigned) ya deja correr un script local
         proceso = subprocess.run(["powershell", "-NoProfile", "-File", str(SCRIPT_EXCEL),
                                   "-Entrada", str(entrada), "-Salida", str(salida)],
-                                 capture_output=True, text=True, timeout=limite)
+                                 capture_output=True, text=True, timeout=limite, env=entorno)
         if not salida.exists():
             return {"estado": "error", "detalle": (proceso.stderr or proceso.stdout or "Excel no respondió")[-500:], "resultados": []}
         return json.loads(salida.read_text(encoding="utf-8-sig"))
@@ -346,11 +401,11 @@ def _leer_estado() -> dict:
         return {}
 
 
-def _guardar_estado(firma: str, escritas: dict) -> None:
+def _guardar_estado(firma: str, escritas: dict, lista: dict | None = None) -> None:
     # Lo escrito desde el Portal: solo lo de los últimos 60 días sirve para decidir quién manda
     limite = (datetime.now().astimezone() - timedelta(days=60)).isoformat()
     escritas = {k: v for k, v in escritas.items() if str(v.get("enviado") or "") >= limite[:10]}
-    ESTADO.write_text(json.dumps({"firma": firma, "escritas": escritas}, ensure_ascii=False), encoding="utf-8")
+    ESTADO.write_text(json.dumps(dict(lista or {}, firma=firma, escritas=escritas), ensure_ascii=False), encoding="utf-8")
 
 
 def _publicar(raiz: Path, planilla: Path, avisos: list) -> bool:
@@ -373,7 +428,12 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     previo = _leer_estado()
     escritas = dict(previo.get("escritas") or {})
     firma = _firma(planilla)
-    if not nuevos_m and not editar_m and previo.get("firma") == firma:
+    # La lista de la columna Estado del Excel: una vez, y a la tercera se deja de intentar (queda en el log)
+    lista = {k: previo[k] for k in ("listaEstados", "intentosEstados", "hojaProtegida", "intentosProteger") if k in previo}
+    falta_lista = previo.get("listaEstados") != list(requerimientos.ESTADOS) and int(previo.get("intentosEstados") or 0) < INTENTOS_LISTA
+    # La hoja entera protegida con contraseña: una vez (después, cada escritura la deja así)
+    falta_proteger = PROTEGER_HOJA and not previo.get("hojaProtegida") and int(previo.get("intentosProteger") or 0) < INTENTOS_LISTA
+    if not nuevos_m and not editar_m and not falta_lista and not falta_proteger and previo.get("firma") == firma:
         return {"activo": True, "detalle": "sin cambios"}
     modificada = datetime.fromtimestamp(planilla.stat().st_mtime).astimezone()
     cambio_excel = previo.get("firma") != firma
@@ -382,6 +442,10 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     filas = leer_filas(planilla)
     publicados = ((intercambio.leer_publicacion(raiz, requerimientos.PUBLICACION) or {}).get("datos") or {}).get("requerimientos") or []
     ops, avisos = plan_fijar(filas, publicados) if FIJAR_N else ([], [])
+    op_lista = None
+    if falta_lista and "estado" in columnas:
+        c = columnas["estado"]
+        op_lista = {"op": "estados", "lista": list(requerimientos.ESTADOS), "letra": c["letra"], "encabezados": {c["letra"]: c["encabezado"]}}
     tomados = numeros_tomados(filas) | {o["numero"] for o in ops}
     # Lo que ya lleva un N° fuera de la planilla: los demás pedidos y las carpetas de proyecto
     reservados = {int(x["requerimiento"]["numero"]) for x in nuevos_m if isinstance((x.get("requerimiento") or {}).get("numero"), int)}
@@ -486,6 +550,11 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         escribir_m.append((m, op, detalle, cambios))
         ops.append(op)
 
+    if op_lista is not None:
+        ops.append(op_lista)
+    op_proteger = {"op": "proteger"} if falta_proteger else None
+    if op_proteger is not None:
+        ops.append(op_proteger)
     if simular:
         return {"activo": True, "simulado": True, "operaciones": ops, "avisos": avisos,
                 "archivar": [(x[0]["id"], x[1], x[2]) for x in archivar]}
@@ -493,7 +562,7 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         intercambio.archivar(raiz, m, estado, detalle, extra=extra or None)
 
     if not ops:
-        _guardar_estado(firma, escritas)
+        _guardar_estado(firma, escritas, lista)
         publicada = _publicar(raiz, planilla, avisos) if cambio_excel else False
         return {"activo": True, "detalle": "N° ya fijos; nada que escribir" + ("; planilla republicada" if publicada else ""),
                 "avisos": avisos}
@@ -505,6 +574,18 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         return {"activo": True, "detalle": f"planilla {resultado.get('estado')}: {resultado.get('detalle')}", "avisos": avisos}
     por_i = {r["i"]: r for r in resultado.get("resultados") or []}
     fijados = sum(1 for i, o in enumerate(ops) if o["op"] == "fijar" and (por_i.get(i) or {}).get("ok"))
+    if op_lista is not None:
+        if (por_i.get(ops.index(op_lista)) or {}).get("ok"):
+            lista = {"listaEstados": op_lista["lista"]}
+        else:
+            lista = {"intentosEstados": int(previo.get("intentosEstados") or 0) + 1}
+    lista.update({k: previo[k] for k in ("hojaProtegida", "intentosProteger") if k in previo})
+    if op_proteger is not None:
+        if (por_i.get(ops.index(op_proteger)) or {}).get("ok"):
+            lista = dict(lista, hojaProtegida=True)
+            lista.pop("intentosProteger", None)
+        else:
+            lista = dict(lista, intentosProteger=int(previo.get("intentosProteger") or 0) + 1)
     registrados = editados = 0
     for m, op, detalle, cambios in escribir_m:
         r = por_i.get(ops.index(op)) or {}
@@ -535,8 +616,8 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
                 escritas[f"{op['numero']}|{campo}"] = {"valor": valor, "enviado": m["origen"]["enviado"]}
         intercambio.archivar(raiz, m, "aplicado", texto, extra={"requerimiento": op["numero"], "fila": r.get("fila")})
     fallidos = [r for r in resultado.get("resultados") or [] if not r.get("ok")]
-    _guardar_estado(_firma(planilla) if not fallidos else previo.get("firma") or "", escritas)
-    # Las demás herramientas lo ven ya, sin esperar la vuelta del procesador (cada 2 horas)
+    _guardar_estado(_firma(planilla) if not fallidos else previo.get("firma") or "", escritas, lista)
+    # Las demás herramientas lo ven ya, sin esperar la vuelta del procesador (cada 5 minutos)
     _publicar(raiz, planilla, avisos)
     return {"activo": True, "detalle": f"{fijados} N° fijados, {registrados} requerimiento(s) registrado(s), {editados} cambiado(s)",
             "avisos": avisos + [r.get("detalle") for r in fallidos if r.get("detalle")]}
@@ -547,6 +628,11 @@ LOGS = AQUI.parent / "logs"
 
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["clave"]:
+        # Para guardarla en otro lado: sin ella (otro computador, otro usuario de Windows) nadie desprotege la hoja
+        print(f"Contraseña de la hoja «{requerimientos.HOJA}» de la Planilla: {clave_hoja()}")
+        print(f"Cifrada en {RUTA_CLAVE} (solo este usuario de Windows la lee). Guárdala también en tu gestor de contraseñas.")
+        return 0
     try:
         resultado = vuelta(simular="--simular" in argv)
     except Exception as error:  # noqa: BLE001 -- queda en el log; la vuelta siguiente reintenta

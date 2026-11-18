@@ -27,8 +27,10 @@ Reglas:
 
 import importlib
 import json
+import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import unicodedata
@@ -73,6 +75,10 @@ RUTA_ERRORES_MD = RAIZ_MODULO / ".claude" / "skills" / "Registro_Centro_de_Costo
 RUTA_LOGS = RAIZ / "logs"
 RAIZ_VISUALIZADOR_WEB = RAIZ_MODULO / "Visualizador Web"
 RAIZ_ANALISIS_FINANCIERO = RAIZ_MODULO.parent / "Sistema Analisis Financiero"
+PROCESADOR_INTERCAMBIO = RAIZ_MODULO.parent / "Sistema Intercambio" / "procesar.py"
+# Quien ya corre el procesador despues (Actualizar_Finanzas) lo apaga con esta
+# variable para no darle dos vueltas: ver actualizar_intercambio().
+VARIABLE_SIN_INTERCAMBIO = "QUEMPIN_SIN_INTERCAMBIO"
 # Perú no tiene codigo propio (ver spec maestro): solo aloja Excel/respaldos/
 # JSON/dashboards. El codigo de arriba (este archivo) es compartido.
 RAIZ_PERU = RAIZ_MODULO.parent / "Peru" / "Centro de Costos"
@@ -2019,6 +2025,16 @@ def registrar_duenos_prefijo(filas):
             _DUENOS_PREFIJO.setdefault(n_ref.rsplit("-", 1)[0], str(proyecto))
 
 
+def _n_de_nombre_carpeta(nombre):
+    """N° del comienzo del nombre de una carpeta: «036. Fiscalía» -> '36'; «330 - Escuela Naval» -> '330'; «001t. Hospital» -> '001t'
+    (N° temporal de un proyecto sin N° de la Planilla, 2026-11-09); None si no lleva."""
+    m = re.match(r"^(\d{3,4}t)\s*[.\-_]", nombre, re.IGNORECASE)
+    if m:
+        return m.group(1).lower()
+    m = re.match(r"^0*(\d+)\s*[.\-_]", nombre)
+    return m.group(1) if m else None
+
+
 def _numero_de_carpeta(proyecto):
     """N° de la Planilla de la carpeta «N°. Nombre» del proyecto, sin ceros a la
     izquierda («036. Fiscalía» -> '36'), o '' si su carpeta no lleva N°."""
@@ -2027,9 +2043,9 @@ def _numero_de_carpeta(proyecto):
     except OSError:
         return ""
     for nombre in carpetas:
-        m = re.match(r"^0*(\d+)[.\-_]", nombre)
-        if m and normalizar_nombre_proyecto(nombre) == proyecto:
-            return m.group(1)
+        n = _n_de_nombre_carpeta(nombre)
+        if n and normalizar_nombre_proyecto(nombre) == proyecto:
+            return n
     return ""
 
 
@@ -2080,7 +2096,7 @@ def normalizar_nombre_proyecto(nombre_carpeta):
     (numero de proyecto/cliente) no aporta nada al usuario en dashboards/Excel.
     Ademas, si 'Nombre' termina en 'palabra espacio numero' (ej. 'FACH 2'),
     junta el espacio ('FACH2') -- pedido del usuario 2026-09-03."""
-    nombre = re.sub(r"^\d+[.\-_]\s*", "", nombre_carpeta).strip()
+    nombre = re.sub(r"^\d+t?[.\-_]\s*", "", nombre_carpeta, flags=re.IGNORECASE).strip()
     nombre = re.sub(r"^(\S.*\S|\S)\s+(\d+)$", r"\1\2", nombre)
     return nombre or nombre_carpeta
 
@@ -4757,8 +4773,7 @@ def _nombre_carpeta_publicado(req, proyectos):
         for tipo in ("ejecucion", "oferta"):
             for ruta in carpetas.get(tipo) or []:
                 nombre = re.split(r"[\\/]", str(ruta))[-1].strip()
-                m = re.match(r"^0*(\d+)[.\-_]", nombre)
-                if m and m.group(1) == req:
+                if _n_de_nombre_carpeta(nombre) == req:
                     return nombre
         if p.get("titulo"):
             return f"{req}. {p['titulo']}"
@@ -4775,11 +4790,10 @@ def carpeta_para_oc(raiz_docs, oc, proyectos=()):
     tag = str(proyecto.get("tag") or "").strip()
     subcarpetas = (sorted(h for h in raiz_docs.iterdir() if h.is_dir() and not h.name.startswith(("_", ".")))
                    if raiz_docs.is_dir() else [])
-    if req.isdigit():
-        req = str(int(req))
+    if req.isdigit() or re.fullmatch(r"\d{3,4}t", req, re.IGNORECASE):
+        req = str(int(req)) if req.isdigit() else req.lower()
         for h in subcarpetas:
-            m = re.match(r"^0*(\d+)[.\-_]", h.name)
-            if m and m.group(1) == req:
+            if _n_de_nombre_carpeta(h.name) == req:
                 return h, True
         nombre = _nombre_carpeta_publicado(req, proyectos)
         if nombre:
@@ -5471,6 +5485,44 @@ def actualizar_analisis_financiero(pais="CL"):
         return False
 
 
+def actualizar_intercambio(pais="CL"):
+    """PASO 12e (pedido del usuario, 2026-11-09): cada 'run' del Centro de
+    Costos termina con una vuelta del procesador del Intercambio
+    ('procesar.py --forzar'), para que lo recien registrado se vea en el
+    Portal («Proyectos en ejecucion», Planilla, estado.json) sin esperar la
+    vuelta de cada 5 minutos. Corre aparte (subproceso) porque el procesador es
+    otra herramienta con su propio candado: si ya hay una vuelta en curso,
+    espera a que termine (hasta 10 minutos, procesar.ESPERA_FORZADA_SEG). Solo Chile: el Intercambio no tiene datos
+    de Peru. Si falla, no aborta el run, solo advierte."""
+    if pais != "CL":
+        print(f"  [INFO] El Intercambio solo publica datos de Chile -- paso omitido para {pais}.")
+        return False
+    if os.environ.get(VARIABLE_SIN_INTERCAMBIO) == "1":
+        print("  [INFO] Omitido: quien llamo este run corre el procesador despues.")
+        return False
+    if not PROCESADOR_INTERCAMBIO.exists():
+        print(f"  [WARN] No existe {PROCESADOR_INTERCAMBIO}, se omite este paso.")
+        return False
+    try:
+        proceso = subprocess.run(
+            [sys.executable, str(PROCESADOR_INTERCAMBIO), "--forzar"],
+            cwd=str(PROCESADOR_INTERCAMBIO.parent), capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
+        )
+    except OSError as e:
+        print(f"  [WARN] No se pudo correr el procesador del Intercambio ({e}).")
+        return False
+    salida = ((proceso.stdout or "") + (proceso.stderr or "")).rstrip()
+    for linea in salida.splitlines():
+        print(f"  {linea}")
+    if proceso.returncode != 0:
+        print(f"  [WARN] El procesador del Intercambio termino con codigo {proceso.returncode}. "
+              "El Centro de Costos si quedo guardado; correr 'py -3.14 procesar.py --forzar' "
+              "en Sistema Intercambio despues.")
+        return False
+    return True
+
+
 # --- MAIN ---------------------------------------------------------------------
 
 def _imprimir_lista_truncada(items, formatear, limite=15):
@@ -6112,6 +6164,9 @@ def main(pais="CL"):
 
     _paso("PASO 12d", "Actualizar Análisis Financiero")
     actualizar_analisis_financiero(pais=pais)
+
+    _paso("PASO 12e", "Actualizar Intercambio (procesador)")
+    actualizar_intercambio(pais=pais)
 
     _paso("PASO 13", "Verificaciones aritmeticas (sobre todo el JSON)")
     inconsistencias = verificar_aritmetica(datos_json)

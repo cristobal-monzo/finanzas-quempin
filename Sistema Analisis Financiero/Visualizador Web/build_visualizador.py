@@ -22,6 +22,7 @@ design.md para el diseno original.
 import importlib.util
 import io
 import json
+import re
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -135,6 +136,8 @@ def _req(valor) -> str | None:
     if isinstance(valor, (int, float)):
         return str(int(valor)) if float(valor).is_integer() and valor > 0 else None
     texto = str(valor).strip()
+    if re.fullmatch(r"\d{3,4}t", texto, re.IGNORECASE):     # N° temporal «001t» (2026-11-09)
+        return texto.lower()
     return texto if texto.isdigit() else None
 
 
@@ -376,7 +379,7 @@ def calcular_categorias(kpis_proyectos_completos: list[dict]) -> list[dict]:
 # N° Requerimiento sale de la pestaña (pedido del usuario, 2026-10-05: «no
 # aporta»). El canal lo sigue aceptando: lo completan los envíos del
 # Formulador (`proyecto.req`) y un `datos-proyecto` que lo traiga.
-FUERA_DE_LA_PESTANA = {af.pf.COLUMNA_REQ}
+FUERA_DE_LA_PESTANA = {af.pf.COLUMNA_REQ, af.pf.COLUMNA_APODO}
 ROTULOS_INGRESO = {
     "% Avance": ("Avance y plazos", "% Avance"),
     "Fecha de inicio": ("Avance y plazos", "Inicio"),

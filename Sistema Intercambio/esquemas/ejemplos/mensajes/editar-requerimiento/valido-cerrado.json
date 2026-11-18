@@ -1,0 +1,23 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "ca7e0000ca7e0000ca7e0004",
+  "tipo": "editar-requerimiento",
+  "destino": "planilla-requerimientos",
+  "origen": {
+    "herramienta": "procesador",
+    "enviado": "2026-11-09T18:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 296,
+    "titulo": "Sala de calderas de prueba"
+  },
+  "cambios": {
+    "estado": "Cerrado"
+  },
+  "reemplaza": {
+    "estado": "Adjudicado"
+  },
+  "fuente": {
+    "herramienta": "procesador"
+  }
+}

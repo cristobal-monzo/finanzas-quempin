@@ -12,13 +12,15 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 
 | Carpeta o archivo | Qué hay |
 |---|---|
-| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, lo ingresado en la Planilla de Ingreso del Portal, sugerencias para la Planilla, documentos para el Centro de Costos, las observaciones que el equipo reporta con clic derecho en el Portal y los pedidos de «Actualizar datos» al procesador. |
+| `buzon/` | Envíos que todavía no se atienden: costos y venta del Formulador para el Análisis Financiero, lo ingresado en «Ingresar datos» del tablero AF, borradores de cotización para Sistema QUEMPIN, lo ingresado en la Planilla de Ingreso del Portal, sugerencias para la Planilla, documentos para el Centro de Costos, las observaciones que el equipo reporta con clic derecho en el Portal, los pedidos de «Actualizar datos» al procesador y los de llevar la carpeta de un proyecto cerrado a «0 Proyectos Entregados». |
 | `buzon/adjuntos/` | Los archivos (facturas, boletas) que se suben desde «Subir documentos» del Portal, uno por envío, hasta que el procesador los deja en el Centro de Costos; y las imágenes de pantalla de una observación, hasta que se revisa. |
 | `procesado/` | Envíos ya atendidos, por mes, con su resultado: aplicado, sin cambios, reemplazado por uno más reciente, rechazado o descartado. |
 | `publicado/` | Lo que cada herramienta comparte con las demás (ver abajo). Un archivo se reescribe solo cuando cambia lo que dice. |
 | `publicado/formulador/` | Un archivo por cada proyecto del Formulador: así el equipo ve los mismos proyectos. |
 | `publicado/planificacion/` | La Planificación semanal del Portal QUEMPIN: quién va a qué proyecto cada día. Una carpeta por semana y, dentro, un archivo por computador; el Portal los junta. |
 | `publicado/ejecucion/` | «Proyectos en ejecución» del Portal QUEMPIN: las cotizaciones y gastos que se esperan, los días trabajados, la venta corregida, las notas y los pendientes de cada proyecto en obra. Un archivo por computador; el Portal los junta. No son costos reales: no llegan al Centro de Costos. |
+| `publicado/presencia/` | Qué semana de la Planificación o qué proyecto en ejecución tiene abierto cada computador en el Portal, para avisar «NB también está en esta semana». Un archivo por computador; lo que no se renovó en 5 minutos no cuenta. |
+| `publicado/uso-portal/` | Cuántas veces se abre cada herramienta del Portal QUEMPIN por día, sin nombres: un archivo por computador. Sirve para saber qué usa el equipo y mejorar eso primero. |
 | `esquemas.json` | El formato de cada envío y de cada publicación. |
 | `intercambio.json` | Marca que identifica esta carpeta. |
 
@@ -26,19 +28,21 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 
 | Archivo | Quién lo escribe | Para qué |
 |---|---|---|
-| `requerimientos.json` | el computador del procesador, cuando cambia el Excel de la Planilla de Ingreso (cada 10 minutos) | la Planilla de Ingreso del Portal y el N° de requerimiento en el Formulador y en Sistema QUEMPIN |
+| `requerimientos.json` | el computador del procesador, cuando cambia el Excel de la Planilla de Ingreso (cada minuto) | la Planilla de Ingreso del Portal y el N° de requerimiento en el Formulador y en Sistema QUEMPIN |
 | `analisis-financiero.json` | Análisis Financiero | los proyectos en ejecución y sus costos, en el Formulador |
 | `documentos-comerciales.json`, `contrapartes.json`, `folios.json` | Sistema QUEMPIN | cotizaciones y OC emitidas, clientes y proveedores, último N° del Control de Documentos |
 | `precios-referencia.json` | Cotizador Histórico | precios de compra reajustados, en el Formulador |
 | `licitaciones.json` | el procesador (Mercado Público) | quién ganó cada licitación de la Planilla |
+| `oportunidades-ajustes.json` | Oportunidades, al actualizar su tablero | lo que el equipo cambió en «Qué buscamos»: qué temas, regiones y montos interesan, con quién lo cambió |
 | `proyectos.json` | el procesador | el cruce N° de requerimiento ↔ TAG ↔ formulaciones ↔ cotizaciones ↔ carpetas |
+| `documentos-proyecto.json` | el procesador, desde el Centro de Costos | las facturas de cada proyecto, en «Proyectos en ejecución» del Portal |
 | `centro-costos-carpetas.json` | el procesador | las carpetas de proyecto de «Facturas y Boletas», para «Subir documentos» del Portal |
-| `estado.json` | el procesador, en cada vuelta | el pulso: si el procesador está corriendo |
+| `estado.json` | el procesador, cuando algo cambia (y al menos cada 15 minutos) | el pulso: si el procesador está corriendo |
 
 ## El procesador
 
-Un computador del equipo corre el **procesador** cada 2 horas, en horario de
-trabajo, con el computador encendido. Aplica los envíos, republica lo que
+Un computador del equipo corre el **procesador** cada 5 minutos (Mercado
+Público, cada 3 horas), con el computador encendido. Aplica los envíos, republica lo que
 cambió y deja `estado.json`. Si pasan más de 4 horas hábiles sin una vuelta,
 el Formulador y la pestaña «Ingresar datos» lo avisan en rojo: lo enviado queda
 esperando hasta que vuelva a correr.
@@ -48,6 +52,12 @@ Los documentos subidos desde el Portal («Subir documentos») los copia a
 pisar ningún archivo. Desde ahí se registran con `/Registro_Centro_de_Costos`,
 igual que los subidos a SharePoint. Si un archivo no termina de llegar en 7
 días, el envío se rechaza y el Portal lo muestra como «No se pudo».
+
+Cuando la carpeta de un proyecto pasa a «0 Proyectos Entregados <año>» en
+«Gestión de Proyectos», el procesador lo marca «Cerrado» en la Planilla de
+Ingreso (si estaba «Adjudicado»). Y al cambiar un proyecto a «Cerrado» desde la
+Planilla del Portal, se puede pedir ahí mismo que su carpeta pase a esa
+carpeta: la mueve el procesador, sin pisar ninguna otra.
 
 Cuando un proyecto se adjudica (en el Formulador, la Planilla o el Análisis
 Financiero), el procesador crea su carpeta «N°. Nombre» en «Facturas y

@@ -1,0 +1,4 @@
+# Los .js se comparten como copia textual con el Formulador (repo con LF): aquí también
+# se escriben con LF, o la prueba de la copia falla en la carpeta que git reescriba
+# con CRLF (core.autocrlf). 2026-11-09.
+*.js text eol=lf

@@ -78,6 +78,9 @@
       if (s.minLength !== undefined && largo(v) < s.minLength) {
         errores.push(ruta + ': debe tener al menos ' + s.minLength + ' caracter(es)');
       }
+      if (s.maxLength !== undefined && largo(v) > s.maxLength) {
+        errores.push(ruta + ': debe tener a lo más ' + s.maxLength + ' caracter(es)');
+      }
       if (s.pattern !== undefined && !new RegExp(s.pattern).test(v)) {
         errores.push(ruta + ': no tiene el formato esperado');
       }

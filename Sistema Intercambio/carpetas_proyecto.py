@@ -67,12 +67,14 @@ SHAREPOINT = "https://quempinspa2020.sharepoint.com"
 RUTA_WEB_FACTURAS = ("Documentos compartidos", "Centro de Costos", "Facturas y Boletas")
 RUTA_ESTADO = Path(__file__).resolve().parent / "carpetas_proyecto_estado.json"
 LARGO_NOMBRE = 80
-_CON_NUMERO = re.compile(r"^\s*(\d{1,4})\s*[.\-_)]\s*(.*)$")
+_CON_NUMERO = re.compile(r"^\s*(\d{1,4}t?)\s*[.\-_)]\s*(.*)$", re.IGNORECASE)
 _PROHIBIDOS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 
 
 def _req(valor) -> str | None:
     texto = str(valor or "").strip()
+    if re.fullmatch(r"\d{3,4}t", texto, re.IGNORECASE):     # N° temporal (2026-11-09)
+        return texto.lower()
     return str(int(texto)) if texto.isdigit() and int(texto) > 0 else None
 
 
@@ -115,7 +117,7 @@ def ganados(requerimientos: list[dict], proyectos_af: list[dict], repositorio: l
     for p in proyectos_af:
         anotar(_req(p.get("req")), p.get("nombre"), _pais(p.get("pais")), 1)
     for r in requerimientos:
-        if r.get("estado") == "Adjudicado":
+        if r.get("estado") in ("Adjudicado", "Cerrado"):      # requerimientos.ESTADOS_GANADOS
             anotar(_req(r.get("numero")), r.get("titulo"), "CL", 2)
     for item in repositorio:
         d = item.get("datos") or {}
@@ -250,6 +252,7 @@ def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None, ruta_esta
     """Las dos cosas del docstring. 'raices' = {'CL': .../Chile, 'PE': .../Perú}.
     Devuelve {'creadasCC', 'accesos', 'conArchivos', 'sinQuitar'}."""
     estado = leer_estado(ruta_estado)
+    leido = json.dumps(estado, ensure_ascii=False, sort_keys=True)
     r = {"creadasCC": [], "accesos": [], "conArchivos": [], "sinQuitar": []}
     if not any(b is not None and Path(b).is_dir() for b in raices.values()):
         return r           # el sitio del Centro de Costos no está en este equipo: nada que hacer
@@ -310,7 +313,9 @@ def atender(raiz: Path, raices: dict[str, Path], gestion: Path | None, ruta_esta
         accesos[req] = url
         r["accesos"].append(carpeta.name)
 
-    guardar_estado(estado, ruta_estado)
+    # Solo si cambió (2026-11-11): el procesador corre cada 5 minutos y este archivo está en OneDrive
+    if json.dumps(estado, ensure_ascii=False, sort_keys=True) != leido:
+        guardar_estado(estado, ruta_estado)
     return r
 
 

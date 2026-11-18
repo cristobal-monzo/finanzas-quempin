@@ -30,11 +30,16 @@ Reglas (ver LEEME.md):
 - Lo publicado se reemplaza completo en cada corrida, con escritura atómica
   (nunca queda un JSON a medio escribir si OneDrive sincroniza en ese
   momento).
+- Lo publicado cumple su esquema (2026-11-06): ``publicar`` lo valida contra
+  el catálogo (``esquemas.py``, al lado de este archivo) y, si no cumple, no
+  escribe nada y lanza ``PublicacionInvalida``. Queda la publicación anterior
+  y quien publicaba falla a la vista (en el procesador, el paso en
+  ``estado.json``).
 
 Este módulo no conoce ningún tipo de mensaje en particular: solo el sobre
 (esquema, id, tipo, origen, destino). Qué hace cada destinatario con cada
 tipo vive en su propio módulo (ej. ``presupuestos_formulador.py`` en
-Análisis Financiero).
+Análisis Financiero); la forma de cada publicación, en el catálogo.
 """
 
 import json
@@ -260,12 +265,59 @@ def _canonico(datos) -> str:
     return json.dumps(datos, ensure_ascii=False, sort_keys=True)
 
 
-def publicar(raiz: Path, nombre: str, herramienta: str, datos) -> Path:
+class PublicacionInvalida(ValueError):
+    """La publicación no cumple su esquema: no se escribió y quedó la anterior."""
+
+
+_CATALOGO = []
+
+
+def _catalogo():
+    """El ``esquemas.py`` que vive al lado de este archivo. En Sistema QUEMPIN los dos son
+    parte del paquete ``app.integraciones``; en Finanzas son módulos sueltos, y se carga por
+    su ruta para no depender de ``sys.path``. La misma copia textual sirve en los dos."""
+    if not _CATALOGO:
+        try:
+            from . import esquemas as modulo
+        except ImportError:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "_esquemas_del_intercambio", Path(__file__).resolve().with_name("esquemas.py"))
+            modulo = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(modulo)
+        _CATALOGO.append(modulo)
+    return _CATALOGO[0]
+
+
+def errores_de_publicacion(nombre: str, herramienta: str, datos, paquete: dict | None = None) -> list[str]:
+    """Errores de forma de lo que se publicaría (vacío = cumple). Valida lo mismo que
+    quedaría en el archivo, ya pasado por JSON (una tupla queda lista). 'paquete' es el
+    esquemas.json de la carpeta: lo usa la copia de Sistema QUEMPIN, que no lleva los
+    esquemas consigo. Un nombre que el catálogo no conoce no se valida."""
+    catalogo = _catalogo()
+    conocidas = paquete["publicaciones"] if paquete else catalogo.publicaciones()
+    if nombre not in conocidas:
+        return []
+    sobre = {"esquema": ESQUEMA, "herramienta": herramienta, "generado": ahora_iso(),
+             "datos": json.loads(_canonico(datos))}
+    return catalogo.validar_publicacion(nombre, sobre, paquete)
+
+
+def publicar(raiz: Path, nombre: str, herramienta: str, datos, *, validar: bool = True,
+             paquete: dict | None = None) -> Path:
     """Reemplaza publicado/<nombre>.json con un sobre común. Si ya publica
     exactamente los mismos datos, no lo reescribe (2026-10-19): el procesador
     reescribía 5 publicaciones iguales cada 2 horas, OneDrive las subía y
     bajaba a cada equipo y SharePoint guardaba una versión nueva de cada una.
-    Así «generado» dice cuándo cambió el dato, no cuándo se miró."""
+    Así «generado» dice cuándo cambió el dato, no cuándo se miró.
+
+    Antes valida los datos contra su esquema (2026-11-06): si no cumplen, lanza
+    ``PublicacionInvalida`` sin escribir nada. ``validar=False`` es solo para las
+    pruebas que simulan una publicación parcial de otra herramienta."""
+    if validar:
+        errores = errores_de_publicacion(nombre, herramienta, datos, paquete)
+        if errores:
+            raise PublicacionInvalida(f"{nombre} no cumple su esquema; no se publicó: " + "; ".join(errores[:3]))
     ruta = Path(raiz) / CARPETA_PUBLICADO / f"{nombre}.json"
     previo = leer_publicacion(raiz, nombre)
     if (previo is not None and previo.get("herramienta") == herramienta

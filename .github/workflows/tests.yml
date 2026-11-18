@@ -11,6 +11,17 @@ name: tests
 # Hasta el 2026-10-08 corria solo en master (el trabajo vive en otras ramas)
 # y fallaba desde el 2026-08-26 porque no instalaba Chromium: la prueba de
 # los reportes PDF (Reportes/motor_reportes.py) lo necesita.
+#
+# Desde el 2026-11-06 (auditoria del flujo de entrega):
+# - Instala requirements.lock (las versiones exactas del equipo de la oficina,
+#   ver fijar_dependencias.py), no la ultima version de cada libreria.
+# - Dos partes en paralelo. «modulos»: todo menos el Portal, sin reintentos.
+#   «portal»: las pruebas de punta a punta del Portal en Chromium, con hasta
+#   2 reintentos por prueba, porque el runner de GitHub a veces falla por
+#   causas ajenas al codigo (ERR_NO_BUFFER_SPACE). Una prueba que falla tres
+#   veces sigue dejando el CI en rojo.
+# - publicar.py no publica el Portal ni el hub si el CI de ese commit no
+#   quedo verde (Visualizador Web/CLAUDE.md).
 
 on:
   push:
@@ -19,7 +30,12 @@ on:
 
 jobs:
   pytest:
+    name: pytest (${{ matrix.parte }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        parte: [modulos, portal]
     steps:
       - uses: actions/checkout@v5
 
@@ -27,11 +43,16 @@ jobs:
         with:
           python-version: "3.14"
 
-      - name: Instalar dependencias
-        run: pip install -r requirements.txt
+      - name: Instalar dependencias (versiones fijas)
+        run: pip install -r requirements.lock
 
-      - name: Instalar Chromium (reportes PDF)
+      - name: Instalar Chromium (reportes PDF y Portal)
         run: python -m playwright install chromium
 
-      - name: Correr la suite completa
-        run: python -m pytest -q
+      - name: Modulos (todo menos el Portal)
+        if: matrix.parte == 'modulos'
+        run: python -m pytest -q --ignore="Visualizador Web/tests/test_portal.py"
+
+      - name: Portal (punta a punta, hasta 2 reintentos por prueba)
+        if: matrix.parte == 'portal'
+        run: python -m pytest -q "Visualizador Web/tests/test_portal.py" --reruns 2 --reruns-delay 2

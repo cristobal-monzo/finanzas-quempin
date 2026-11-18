@@ -14,6 +14,9 @@
 #       Si ese N° ya está en la columna A, no se escribe nada.
 #   { op: "editar", numero, titulo, tituloNuevo?, valores, fechas, borrar: ["H"], encabezados }
 #       las casillas cambiadas en el Portal, en la fila de ese N° cuyo título es «titulo» (o ya «tituloNuevo»).
+#   { op: "estados", lista: ["Evaluación", ...], letra: "B", encabezados: { "B": "Estado" } }
+#       la lista desplegable de la columna Estado, el color de «Cerrado» y su línea en el Glosario (2026-11-09).
+#       Una sola vez: ya hecha, deja todo igual.
 # Las letras las calcula planilla_escritura.py por el encabezado; «encabezados» dice cuál esperaba en cada
 # letra, y si alguien movió una columna entretanto la operación no se escribe (se reintenta).
 # Salida: { estado: "ok"|"ocupada"|"error", detalle, resultados: [{ i, ok, fila, detalle }] }.
@@ -64,6 +67,31 @@ try {
     $colT = if ($pedido.columnaTitulo) { [int]$hoja.Range("$($pedido.columnaTitulo)1").Column } else { 6 }
     function Celda($fila, $col) { $datos[($fila - $primera + 1), $col] }
     function Columna($letra) { [int]$hoja.Range("$($letra)1").Column }
+    # La protección de una hoja tal como está (sin contraseña), para dejarla igual después de quitarla: con los mismos
+    # permisos de ordenar, filtrar o dar formato que el equipo le haya dado. Mismo orden que Worksheet.Protect.
+    function Proteccion-De($h) {
+        $p = $h.Protection
+        , @($h.ProtectDrawingObjects, $h.ProtectContents, $h.ProtectScenarios, $false,
+            $p.AllowFormattingCells, $p.AllowFormattingColumns, $p.AllowFormattingRows, $p.AllowInsertingColumns,
+            $p.AllowInsertingRows, $p.AllowInsertingHyperlinks, $p.AllowDeletingColumns, $p.AllowDeletingRows,
+            $p.AllowSorting, $p.AllowFiltering, $p.AllowUsingPivotTables)
+    }
+    function Proteger-Como($h, $c, $clave) {
+        $pw = if ($clave) { [string]$clave } else { [Type]::Missing }
+        [void]$h.Protect($pw, $c[0], $c[1], $c[2], $c[3], $c[4], $c[5], $c[6], $c[7], $c[8], $c[9], $c[10], $c[11], $c[12], $c[13], $c[14])
+    }
+
+    # La hoja entera protegida con contraseña (2026-11-12, decisión del usuario: se ingresa solo por el Portal). La
+    # contraseña llega por el entorno (planilla_escritura.py, cifrada con DPAPI). Se quita solo para escribir y al final
+    # vuelve con todas las celdas bloqueadas. Nunca Unprotect() sin contraseña: en una hoja con contraseña, Excel la
+    # pediría en un diálogo y, oculto, la tarea quedaría colgada. Una hoja sin contraseña se desprotege con cualquiera.
+    $clave = [string]$env:QUEMPIN_PLANILLA_CLAVE
+    $conClave = [bool]$pedido.protegerHoja -and [bool]$clave
+    $comoHoja = Proteccion-De $hoja
+    if ($conClave -and [bool]$hoja.ProtectContents) {
+        try { [void]$hoja.Unprotect($clave) } catch { }
+        if ([bool]$hoja.ProtectContents) { throw "la hoja está protegida con otra contraseña: no se escribe nada (revisa «py -3.14 planilla_escritura.py clave»)" }
+    }
 
     # Cada letra todavía tiene el encabezado con que se calculó (nadie movió la columna entretanto)
     function Revisar-Encabezados($o) {
@@ -174,11 +202,121 @@ try {
                 if ($o.tituloNuevo) { $datos[$hallas[0], $colT] = [string]$o.tituloNuevo }
                 [void]$resultados.Add(@{ i = $i; ok = $true; fila = $fila; detalle = "N° $($o.numero) cambiado en la fila $fila" })
             }
+            elseif ($o.op -eq 'estados') {
+                Revisar-Encabezados $o
+                $col = Columna $o.letra
+                # La hoja está protegida sin contraseña. Con la protección puesta, Validation.Delete funciona y Validation.Add
+                # no: borraría la lista y no podría reponerla (visto el 2026-11-02 en una copia). Se quita solo para esto y
+                # vuelve exactamente como estaba, con los mismos permisos (ordenar, filtrar, dar formato...).
+                $protegida = [bool]$hoja.ProtectContents
+                $como = Proteccion-De $hoja
+                if ($protegida) { [void]$hoja.Unprotect() }
+                try {
+                    # Las mismas celdas que ya tienen validación en esa columna (medido: B4:B287 y B289 hasta el final de la
+                    # hoja); sin ninguna, desde la primera fila de datos hasta el final. SpecialCells no corre en hoja protegida.
+                    $desde = $hoja.Range($hoja.Cells.Item($primera + 1, $col), $hoja.Cells.Item($hoja.Rows.Count, $col))
+                    $rango = $desde
+                    # Por .Application: llamado directo, PowerShell no encuentra la sobrecarga de 2 argumentos (visto el 2026-11-09)
+                    try { $rango = $xl.Application.Intersect($hoja.Columns.Item($col).SpecialCells(-4174), $desde) } catch {}
+                    if (-not $rango) { $rango = $desde }
+                    # La lista que ya tiene: su orden y sus mensajes son los del equipo (2026-11-09, medido en una copia:
+                    # «Descartado;Ofertado;Evaluación;Adjudicado;No adjudicado», separada con «;», el separador de listas de
+                    # Windows en español). Solo se agrega lo que falta, después del estado que lo precede en «lista».
+                    $muestra = $null
+                    for ($k = $primera + 1; $k -le $ultima -and -not $muestra; $k++) {
+                        try { $v = $hoja.Cells.Item($k, $col).Validation; if ([int]$v.Type -eq 3) { $muestra = $v } } catch {}
+                    }
+                    $sep = [string]$xl.International(5)                 # xlListSeparator
+                    if (-not $sep) { $sep = ',' }
+                    $actual = New-Object System.Collections.ArrayList
+                    if ($muestra) { foreach ($x in ([string]$muestra.Formula1).Split(@(';', ','), [StringSplitOptions]::RemoveEmptyEntries)) { [void]$actual.Add($x.Trim()) } }
+                    $antes = $actual -join $sep
+                    for ($j = 0; $j -lt $o.lista.Count; $j++) {
+                        $x = [string]$o.lista[$j]
+                        if ($actual -contains $x) { continue }
+                        $donde = $actual.Count
+                        for ($q = $j - 1; $q -ge 0; $q--) { $w = $actual.IndexOf([string]$o.lista[$q]); if ($w -ge 0) { $donde = $w + 1; break } }
+                        $actual.Insert($donde, $x)
+                    }
+                    $nueva = $actual -join $sep
+                    $como_v = $null
+                    if ($muestra) {
+                        $como_v = @{ alerta = $muestra.AlertStyle; vacio = $muestra.IgnoreBlank; flecha = $muestra.InCellDropdown;
+                                     verEntrada = $muestra.ShowInput; verError = $muestra.ShowError; tituloEntrada = $muestra.InputTitle;
+                                     entrada = $muestra.InputMessage; tituloError = $muestra.ErrorTitle; error = $muestra.ErrorMessage }
+                    }
+                    if ($nueva -ne $antes) {
+                        [void]$rango.Validation.Delete()
+                        try {
+                            [void]$rango.Validation.Add(3, $(if ($como_v) { $como_v.alerta } else { 1 }), 1, $nueva)      # lista, (detener), entre
+                            if ($como_v) {
+                                $v = $rango.Validation
+                                $v.IgnoreBlank = $como_v.vacio; $v.InCellDropdown = $como_v.flecha; $v.ShowInput = $como_v.verEntrada
+                                $v.ShowError = $como_v.verError
+                                if ($como_v.tituloEntrada) { $v.InputTitle = $como_v.tituloEntrada }
+                                if ($como_v.entrada) { $v.InputMessage = $como_v.entrada }
+                                if ($como_v.tituloError) { $v.ErrorTitle = $como_v.tituloError }
+                                if ($como_v.error) { $v.ErrorMessage = $como_v.error }
+                            }
+                        }
+                        catch {
+                            if ($antes) { [void]$rango.Validation.Add(3, 1, 1, $antes) }
+                            throw
+                        }
+                    }
+                    # El color de la fila va por una regla por estado, sobre toda la tabla. Excel lee la fórmula relativa
+                    # a la celda activa, por eso se elige la primera de la tabla antes de agregarla.
+                    $tablaDatos = $hoja.Range($hoja.Cells.Item($primera + 1, 1), $hoja.Cells.Item($ultima, $tabla.Range.Columns.Count))
+                    [void]$hoja.Activate()
+                    [void]$hoja.Cells.Item($primera + 1, 1).Select()
+                    $formula = '=$' + $o.letra + ($primera + 1) + '="Cerrado"'
+                    $ya = $false
+                    foreach ($regla in @($tablaDatos.FormatConditions)) { try { if ([string]$regla.Formula1 -eq $formula) { $ya = $true } } catch {} }
+                    if (-not $ya) {
+                        $regla = $tablaDatos.FormatConditions.Add(2, 0, $formula)      # por expresión
+                        $regla.Interior.Color = 0xB4E0C6                               # BGR: verde claro
+                    }
+                }
+                finally {
+                    if ($protegida) { Proteger-Como $hoja $como }
+                }
+                # El Glosario dice qué es cada estado (si no está esa hoja, no es un problema)
+                try {
+                    $glosario = $wb.Worksheets.Item('Glosario')
+                    $linea = $glosario.Range('A1:A40').Find('Estado')
+                    if ($linea) {
+                        $celda = $glosario.Cells.Item($linea.Row, 2)
+                        $texto = [string]$celda.Value2
+                        if ($texto -notmatch 'Cerrado') {
+                            $bloqueada = [bool]$glosario.ProtectContents
+                            $comoG = Proteccion-De $glosario
+                            if ($bloqueada) { [void]$glosario.Unprotect() }
+                            try { $celda.Value2 = $texto.TrimEnd() + ' Cerrado: adjudicado y ya entregado (su carpeta pasa a «0 Proyectos Entregados»).' }
+                            finally { if ($bloqueada) { Proteger-Como $glosario $comoG } }
+                        }
+                    }
+                } catch {}
+                [void]$resultados.Add(@{ i = $i; ok = $true; fila = 0; detalle = 'lista de Estado al día' })
+            }
+            elseif ($o.op -eq 'proteger') {
+                # La protección completa se pone al final, igual que en toda vuelta; esto solo la pide la primera vez
+                if ($conClave) { [void]$resultados.Add(@{ i = $i; ok = $true; fila = 0; detalle = 'hoja entera protegida con contraseña' }) }
+                else { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = 'sin contraseña: la hoja no se protegió' }) }
+            }
             else { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = "operación desconocida: $($o.op)" }) }
         }
         catch { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = "$($_.Exception.Message) (línea $($_.InvocationInfo.ScriptLineNumber))" }) }
     }
-    if (@($resultados | Where-Object { $_.ok }).Count -gt 0) { $wb.Save() }
+    if (@($resultados | Where-Object { $_.ok }).Count -gt 0) {
+        if ($conClave) {
+            # Todas las celdas bloqueadas, con contraseña; se puede filtrar, no ordenar (un orden ya cambió 55 N°)
+            $c = $comoHoja.Clone()
+            $c[1] = $true; $c[12] = $false; $c[13] = $true
+            $hoja.Cells.Locked = $true
+            Proteger-Como $hoja $c $clave
+        }
+        $wb.Save()
+    }
     Escribir-Salida @{ estado = 'ok'; detalle = ''; resultados = $resultados }
 }
 catch {

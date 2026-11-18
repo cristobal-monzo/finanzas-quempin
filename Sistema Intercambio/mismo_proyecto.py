@@ -34,7 +34,7 @@ def nombre_de_carpeta(nombre: str) -> str:
     mismo que hace el Centro de Costos con la carpeta (sin el N° adelante y
     con «palabra número» del final junto)."""
     nombre = str(nombre or "")
-    limpio = re.sub(r"^\d+[.\-_]\s*", "", nombre).strip()
+    limpio = re.sub(r"^\d+t?[.\-_]\s*", "", nombre, flags=re.IGNORECASE).strip()
     limpio = re.sub(r"^(\S.*\S|\S)\s+(\d+)$", r"\1\2", limpio)
     return limpio or nombre
 
@@ -47,14 +47,21 @@ def clave(nombre) -> str:
 
 
 def req_de_carpeta(nombre) -> str | None:
-    m = re.match(r"^\s*(\d+)\s*[.\-_]", str(nombre or ""))
-    return str(int(m.group(1))) if m else None
+    m = re.match(r"^\s*(\d+t?)\s*[.\-_]", str(nombre or ""), re.IGNORECASE)
+    return _n(m.group(1)) if m else None
 
 
 def _req(valor) -> str | None:
     texto = str(valor if valor is not None else "").strip()
     if texto.endswith(".0"):
         texto = texto[:-2]
+    return _n(texto)
+
+
+def _n(texto: str) -> str | None:
+    """«036» → «36»; «001T» → «001t» (N° temporal de un proyecto sin N° de la Planilla, 2026-11-09)."""
+    if re.fullmatch(r"\d{3,4}t", texto, re.IGNORECASE):
+        return texto.lower()
     return str(int(texto)) if texto.isdigit() else None
 
 

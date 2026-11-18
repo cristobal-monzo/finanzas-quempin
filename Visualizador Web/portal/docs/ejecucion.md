@@ -17,9 +17,22 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   carpeta ahí (`t.gestion`), nunca plegado. Si ya terminó (Cierre en el Recorrido) va al final, con el aviso de mover su
   carpeta a «0 Proyectos Entregados». Una carpeta sin N° se une por el nombre con un proyecto adjudicado (`rcGestionDe`:
   el mismo nombre o dos palabras en común, ≥ 75 % y uno solo) y pide el N°; sin parecido va sola (`gestion-<carpeta>`):
-  se ve con su carpeta, pero sin N° ni TAG no se le anota nada (`ejSinClaveEl`) ni recibe cotizaciones de «Llevar». El proyecto elegido arriba en el portal la lleva a él (`ejAlElegirProyecto`), y
+  se ve con su carpeta, pero sin N° ni TAG no se le anota nada (`ejSinClaveEl`) ni recibe cotizaciones de «Llevar». Y
   el Recorrido la abre desde su ficha («Su resumen en ejecución»), desde «Registrar avance» y desde su columna Ejecución
   (`RC_ETAPAS`, `RC_IR.ejecucion`).
+- **Dos pestañas y «Solo con datos anotados»** (2026-11-09, pedido del usuario: «solo deben aparecer proyectos que se
+  encuentren dentro de la carpeta de Gestión de Proyectos»; los que ya se cerraron, en una segunda pestaña con los de la
+  carpeta de entregados; y una casilla para ver solo los que tienen al menos un dato en su página): `ejTarjetas(pestana)`.
+  «En ejecución» = solo lo que tiene carpeta en la raíz de Gestión (`t.gestion`); un adjudicado sin carpeta ahí ya no sale
+  (el Recorrido lo sigue abriendo por su clave). Si `proyectos.json` aún no trae `gestion` (`rc.datos.hayGestion`), la
+  regla de antes. «Entregados» = lo que tiene carpeta en una «0 Proyectos Entregados <año>» (`entregados` de
+  `proyectos.json`, `proyectos_entregados`) y no en la raíz, nunca plegado. `rcEntregadas` corre tras `rcArmar`: une cada
+  carpeta con su proyecto por el N° o, sin N°, por el nombre (`rcGestionDe`, sin los que están en la raíz) y marca
+  `t.entregado = {carpeta, grupo}`; las que no calzan son tarjetas aparte (`entregado-<N° o carpeta>`, en `rc.entregadas`)
+  que el Recorrido no muestra. Una carpeta en la raíz y otra en los entregados lo avisa y va en «En ejecución».
+  «Solo con datos anotados» (`#ejConDatos`, `ejConDatosSet`): con al menos una cosa sin borrar en `publicado/ejecucion/`
+  con su N° o su TAG. La pestaña y la casilla se recuerdan (`quempin_portal_ejecucion`: `pestana`, `conDatos`); las
+  pestañas se cambian con las flechas. Prueba: `test_ejecucion_solo_lo_de_gestion_y_los_entregados_en_su_pestana`.
 - **De dónde sale cada cifra** (`ejModelo`, solo calcula): la venta es la escrita aquí o, si no, el precio neto de su
   formulación, su cotización emitida o el valor adjudicado de la Planilla sin IVA (el monto del Análisis Financiero no
   viaja por la carpeta). Por categoría (las cuatro del Análisis Financiero): lo presupuestado (sus proyectados o, si no,
@@ -29,8 +42,12 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   pasa, gastado + comprometido + simulado (`ejCuentas`): lo que todavía no se compra se estima con el presupuesto. Sin
   presupuesto, el margen es «con lo anotado» y no lleva semáforo; sin presupuesto ni nada anotado, no hay margen. Una OC
   sin `enCentroCostos` (el procesador no lo sabe) no se suma: así nunca se cuenta dos veces.
-- **Gastos proyectados y cotizaciones**: cada ítem con categoría, la línea del presupuesto que reemplaza (las de su
-  formulación, con las reglas del Formulador: `js/calc.js`; para uno nuevo se propone la más parecida), cantidad y uno o
+- **Gastos proyectados y cotizaciones**: cada ítem con categoría, las líneas del presupuesto que reemplaza (las de su
+  formulación, con las reglas del Formulador: `js/calc.js`; para uno nuevo se propone la más parecida; 2026-11-10, pedido
+  del usuario: «hay cotizaciones que abordan más de un ítem de lo presupuestado», así que pueden ser varias de su
+  categoría: van una bajo otra con su ✕ y el menú agrega otra, `ejOpcionesLinea`; se guardan en `lineas` y la primera
+  también en `linea`, que es lo que traen las anotadas antes, `ejLineasDe`; con varias, el total se compara con lo que
+  suman), cantidad y uno o
   varios proveedores (nombre, precio sin IVA, N° de cotización, fecha y nota), estado (por decidir, aprobada, comprada con
   su OC, descartada) y si se simula. El diálogo (`#dlgEjCosto`) evalúa al proveedor elegido mientras se escribe, al lado
   del formulario (`ejEvaluar`): contra su línea (hasta 3 % más cara
@@ -58,13 +75,21 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
 - **Indicadores** (`ejIndicadores`): días-hombre, costo por día-hombre, utilidad y venta por día-hombre, incidencia de
   la mano de obra y margen, presupuestados (los `kpis` de `js/calc.js`) y estimados hoy; los días-hombre al cierre son
   los presupuestados o, si ya se pasaron, los trabajados.
+- **El nombre que se ve** (2026-11-09): el lápiz ✎ junto al título de la cabecera pide al Análisis Financiero solo el **Apodo** (`datos-proyecto`, `ejGuardarNombre`); vacío = se ve el «Nombre del proyecto». El nombre pedido se ve desde ya (`rcArmar`).
+- **Marcar «Cerrado»** (2026-11-10, pedido del usuario: que en Proyectos en ejecución también se pueda cambiar el estado a
+  «Cerrado»): el acceso «Marcar «Cerrado»» de la cabecera (`ejCierreDe`, `ejAbrirCerrar`, `ejGuardarCerrar`, `#dlgEjCerrar`)
+  manda el mismo `editar-requerimiento` que Requerimientos (`pqEnviar`, con el N° entero de la Planilla) y, marcada de
+  entrada si tiene carpeta con su N° en la raíz de Gestión, el `mover-carpeta` a «0 Proyectos Entregados <año>»
+  (`pqEnviarMover`) más una vuelta del procesador. Si la Planilla ya dice «Cerrado» y la carpeta sigue en Gestión, el
+  acceso dice «Llevar su carpeta a entregados» y solo pide moverla. Sin N° o sin fila en la Planilla, no aparece. Pruebas:
+  `test_marcar_cerrado_desde_proyectos_en_ejecucion`, `test_marcar_cerrado_sin_mover_y_ya_cerrado_solo_mueve`.
 - **El avance** (y la fecha de término) se pide al Análisis Financiero con un `datos-proyecto` al buzón (`ejEnviarAF`, el
   mismo que usa ahora «Dar por cerrado»); un pedido sobre otro que todavía espera lleva en `reemplaza` el valor del
   anterior (`ejVisto`). `rcLeer` lee esos pedidos del buzón (`datosProyecto`) y lo que dijo el Análisis de cada uno
   (`afMensajes`): el Recorrido muestra «Avance 60 % por aplicar» y la Planificación lo cuenta, sin cambiar la etapa. Un
   pedido se retira mientras espera. Sin ficha en el Análisis, propone unirlo con una ficha sin N° del mismo nombre que su
   carpeta del Centro de Costos (manda su «N° Requerimiento») o crearla en «Ingresar avance».
-- **Lo demás del resumen**: su carpeta de Gestión de Proyectos (y la de la oferta) por `quempin://carpeta`, sus OC con
+- **Lo demás del resumen**: sus accesos (ver abajo, 2026-11-06), sus OC con
   su estado, quién va esta semana (de la Planificación), sus pendientes y notas, la Carta Gantt (su avance, con «Usar»),
   y «a este ritmo de gasto» (lo gastado entre el avance).
 - **Dónde se guarda**: `publicado/ejecucion/<dispositivo>.json` (esquema `ejecucion-proyectos`), un archivo por navegador
@@ -78,3 +103,193 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
 - Pruebas: desde `test_proyectos_en_ejecucion_en_el_registro_y_en_el_esquema` en `test_portal.py` (datos de mentira:
   `_ejecucion_de_prueba`); las que usan `js/calc.js` o `js/pegar.js` del Formulador miran lo de ellos solo si su
   repositorio está en este equipo. La vista previa con datos reales se arma fuera del repositorio.
+
+## Mejoras del 2026-11-06
+
+Pedido del usuario: abrir la carpeta del proyecto en el Explorador con «Facturas del proyecto» en segundo lugar y sin
+los accesos al Centro de Costos, al Análisis Financiero ni a la Carta Gantt; ver en cada proyecto sus costos registrados
+en el Centro de Costos y asociar cada factura a uno o varios de sus gastos proyectados y cotizados; una tabla «Cómo va el
+proyecto» más clara y con lo gastado; la mano de obra en un calendario del mes con día completo o medio día, para anotar
+varios días de una vez; y una revisión de la interfaz.
+
+- **Accesos** (`ejCabEl`): «Carpeta del proyecto» (la de Gestión o, si no pasó ahí, la de la oferta, por
+  `quempin://carpeta`; no en el teléfono), «Facturas del proyecto» (SharePoint), «Pasar a Gestión de Proyectos» si
+  corresponde, «Seguimiento» y «Subir documentos». Sin «Carpeta de la oferta» cuando ya está en Gestión (su copia está
+  en «Formulación»).
+- **Las facturas del Centro de Costos** (`ejLeerDocumentos`, `ejDocumentosEl`): las lee de
+  `publicado/documentos-proyecto.json` (esquema `documentos-proyecto`, paso `documentos-proyecto` del procesador, desde el
+  snapshot del tablero del CC), por el TAG o el N° del proyecto (`ejDocumentosDe`). Tabla con fecha, N° Ref. (abre el
+  documento en SharePoint), proveedor y detalle, neto y «Corresponde a»; filtros Todas / Sin asociar / Asociadas, búsqueda
+  que solo esconde filas (no repinta) y las 12 primeras con «Ver las N». Un documento en rojo en el CC dice «Por revisar».
+- **Lo gastado** de materiales, equipos y otros sale de esas facturas, sumando sus ítems con la categoría del Análisis
+  Financiero (`ejDocPorCat`): es lo mismo que suma el Análisis (comprobado el 2026-11-06: 27 de 27 proyectos iguales),
+  pero al día con el último registro del CC. Sin la publicación o sin documentos del proyecto, los reales del Análisis
+  (`m.gastoFuente`). La mano de obra no cambia: los días anotados o la «Mano de Obra Real».
+- **Asociar** (`ejAbrirAsociar`, `#dlgEjAsociar`, se arma en JS): una cosa del archivo por factura, tipo `asociacion`
+  (id `as-<clave>-<ref>`, su `ref` y `destinos`: `i:<grupo o id>` de un ítem y `l:<uid>` de una línea del presupuesto de su
+  formulación; vacía = «No es de ningún gasto anotado»). El diálogo propone primero lo parecido (lo que dice la factura,
+  el mismo proveedor, la categoría: «Parece») y puede marcar como comprados los ítems por decidir o aprobados (sin OC:
+  la cuenta su factura). **Lo facturado** de cada destino (`ejFacturado`) reparte el neto de la factura entre sus destinos
+  según lo cotizado o presupuestado de cada uno; en `ejCuentas` un ítem simulado o comprometido cuenta solo lo que falta
+  facturar, para no sumar dos veces lo que ya está en lo gastado. La fila del ítem dice «Facturado $X de $Y» (en rojo si
+  pasa lo cotizado en más de 2 %).
+- **Cómo va el proyecto** (`ejPresupuestoEl`): «Gastado a la fecha» en grande con su barra contra el presupuesto y una
+  raya en el avance, y una tabla por categoría: presupuestado, gastado, comprometido, simulado, al cierre y queda (o se
+  pasa), con la barra de antes bajo cada nombre y el total. En ≤ 700 px de vista, tarjetas. El KPI nuevo «Gastado a la
+  fecha» va segundo; la tarjeta de la lista también dice lo gastado.
+- **Mano de obra** (`ejManoObraEl`, `ejAnotarDias`, `ejQuitarDias`): quiénes (y otra persona escrita a mano), la jornada
+  (1 día / ½ día) y el calendario del mes con flechas (no pasa del mes de hoy; los días que no llegan, apagados). Un toque
+  marca o desmarca un día; con el mouse, arrastrar marca todos los que toca; «Lunes a viernes» marca los hábiles del mes
+  hasta hoy. «Anotar N DH» deja un `dia` por persona y día marcado (uno ya anotado cambia su jornada) y «Quitar N días
+  anotados» borra lo de los elegidos (o de todos) en esos días. Cada casilla muestra las iniciales de lo anotado (½ si es
+  medio día). Lo marcado vive en `ej.diasForm.dias` y no repinta la página. La lista de días quedó plegada debajo.
+- **Accesos a cada parte** (`ejSaltosEl`): una fila fija arriba (Cómo va, Facturas con las sin asociar, Gastos
+  proyectados con las por decidir, Mano de obra, OC/equipo/notas) que se envuelve en lo angosto (sin desplazarse de lado).
+- Pruebas: `test_las_facturas_del_centro_de_costos_se_ven_y_se_asocian_a_sus_gastos` y
+  `test_el_calendario_anota_varios_dias_de_una_vez_y_medio_dia` en `test_portal.py`; `Sistema Intercambio/tests/test_documentos_proyecto.py`.
+
+## Revisión de UX/UI del 2026-11-09 (loop de mejoras)
+
+Pedido del usuario: una herramienta que aporte al seguimiento del estado de cada proyecto, y luego al menos diez vueltas
+de mejoras hasta que la pestaña se opere sin explicaciones y sea mucho más visual.
+
+- **Mapa de salud** (`ejMapaEl`, `#ejMapa`, arriba de las tarjetas): cada proyecto es un punto según su avance
+  (horizontal) y lo gastado y comprometido sobre el presupuesto (vertical; `ejPosMapa`). La diagonal es «gasta lo que
+  avanza»; la franja amarilla, la tolerancia (`EJ_GASTO_SOBRE_AVANCE`), y lo de encima, «gasta más de lo que avanza».
+  Al pasar o enfocar un punto dice su estado y por qué, y resalta su tarjeta; al tocarlo abre el proyecto. Se dibuja al
+  ancho que tiene (`ejMapaAncho`, se repinta al cambiar la ventana). Al lado, cuántos hay en cada estado: tocar uno filtra
+  las tarjetas (`ej.salud`, no se recuerda). Los que no tienen presupuesto o avance van en una línea bajo los estados.
+- **El estado** (`ejSalud`, `EJ_SALUD`): «En riesgo», «Atención», «En línea» o «Sin datos», con sus motivos: margen
+  estimado contra la meta y el mínimo, lo gastado contra el avance (más del doble de la tolerancia, en riesgo), si
+  terminaría sobre el presupuesto y los avisos del Recorrido. La tarjeta lo dice con ícono y palabra (`.ej-salud`) y su
+  raya de color sale de ahí. Nunca solo el color: íconos `visto`, `exclama`, `cruz`, `guion`.
+- Prueba: `test_el_mapa_de_salud_ubica_cada_proyecto_y_filtra_por_estado`.
+- **Vuelta 2, la tarjeta de la lista** (`ejTarjetaEl`, `ejAnilloEl`): el avance en un anillo (naranjo si es un pedido que
+  espera), lo gastado y comprometido en una barra contra el presupuesto con la raya naranja del avance (si la barra pasa
+  la raya, gasta más de lo que avanza), el margen y, abajo, lo que falta hacer con su número (compras por decidir,
+  facturas sin asociar, pendientes). Bajo el título, dónde y su TAG, con el estado y el responsable a la derecha.
+- **Vuelta 3, «Por hacer»** (`ejTareas`, `ejPorHacerEl`, bajo los KPI): lo que el proyecto espera, cada cosa con su
+  botón: facturas sin asociar (filtra «Sin asociar» y baja a ellas), compras por decidir, días de la Planificación sin
+  anotar («Traerlos», `ejTraerPlanificacion`), la mano de obra real que no llegó al Análisis («Llevarla»), el avance de la
+  Carta Gantt distinto, sin fecha de término, sin ficha en el Análisis, avance 100 % («Dar por cerrado») y los
+  pendientes. Sin nada, «Todo al día». `ejIrA` baja a una parte y la marca un momento (`.ej-destello`); lo usan también
+  los accesos. Prueba: `test_por_hacer_dice_lo_que_espera_el_proyecto_y_lo_hace_ahi_mismo`.
+- **Vuelta 4, la cabecera** (`ejCabEl`): una tarjeta con la raya del color de su estado; N°, nombre y una línea con dónde,
+  quién lo lleva, su TAG, su formulación y sus avisos; a la derecha (abajo en lo angosto) su estado con el motivo
+  principal (`.ej-cab-estado`); abajo, los accesos. «Todos los proyectos» (`.ej-volver`) es un enlace discreto arriba.
+- **Vuelta 5, accesos y cifras**: los accesos (`ejSaltosEl`, ahora con «Avance») marcan con `aria-current` la parte a la
+  vista (`ejMarcarSalto`, al desplazar `#vistaEjecucion`; arriba de todo ninguna, al fondo la última, Cómo va y Avance
+  lado a lado cuentan como la primera). Cada KPI salvo la venta lleva un gráfico chico (`ejMini`): gastado y
+  comprometido con la raya del avance, el cierre contra el presupuesto (lo que se pasa en rojo), el margen contra el
+  mínimo y la meta, y el avance. Prueba: `test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico`.
+- **Vuelta 6, cambiar el avance** (`ejAvanceForm`): botones +5, +10, +25 y «Terminado 100 %», «Como estaba» para
+  volver; la barra del panel muestra en naranjo rayado el tramo que se va a guardar (`#ejAvPrevia`; rojo si baja) y
+  junto al número «→ 50 %» (`#ejAvCambio`). El botón dice qué guarda («Guardar 50 % en el Análisis Financiero», «… y la
+  fecha», «Guardar la fecha…») y sin cambios queda en «Sin cambios que guardar», desactivado. Lo escrito sobrevive al
+  repintado. Prueba: `test_el_avance_se_cambia_con_botones_rapidos_y_el_boton_dice_que_guarda`.
+- **Vuelta 7, mano de obra** (`ejMoResumenEl`): arriba, lo trabajado en gráfico (días-hombre contra los presupuestados,
+  con la raya del avance y si va con más o menos días de los que el avance supone; cada persona con su barra, sus DH y
+  su costo). El calendario (`#ejCalCaja`) se abre con «Anotar días trabajados» (`ej.diasForm.abierto`; abierto de
+  entrada si no hay nada anotado). Prueba: `test_la_mano_de_obra_se_ve_en_grafico_y_el_calendario_se_abre_al_anotar`.
+- **Vuelta 8, facturas y compras en barras**: en las facturas, cuánto de lo facturado ya está asociado (`.ej-prog`:
+  oscuro lo asociado, rayado lo que falta; reemplaza la línea final «N documentos sin asociar») y «Asociar» es un botón
+  (`.ej-asociar`; «Cambiar» sigue discreto). En los gastos proyectados, las compras por estado (`.ej-embudo`: por
+  decidir, aprobadas, compradas, con su monto y cuántas); tocar uno filtra la tabla. Prueba:
+  `test_las_facturas_y_las_compras_se_resumen_en_barras`.
+- **Vuelta 9, teléfono y oscuro**: revisados a 360 px (nada se sale) y en oscuro. En ≤ 640 px de vista, las cifras van
+  más compactas (número de 20 px, su detalle en dos líneas, la quinta a todo el ancho) y el detalle de cada tarea de
+  «Por hacer» en una línea, para que lo que hay que hacer quede cerca.
+- **Vuelta 10, equipo de la semana** (`ejEquipoEl`): la semana en una tira (`.ej-semana`): cada día con las iniciales de
+  quién va (lo tuyo en naranjo) y su vehículo, hoy marcado y los días sin nadie punteados; abajo, «Esta semana: …».
+- **Vuelta 11, lo que espera al equipo** (`ejEspera`, `EJ_ESPERA`, `ejEsperaEl`, `#ejEspera`): sobre las tarjetas,
+  cuántas compras por decidir, facturas sin asociar y pendientes hay en los proyectos a la vista y en cuántos; tocar uno
+  deja solo esos proyectos (`ej.espera`, se combina con el estado del mapa). La tarjeta y «Por hacer» cuentan lo mismo.
+  Prueba: `test_lo_que_espera_al_equipo_se_cuenta_y_filtra_la_lista`.
+
+## Ajuste de la interfaz del 2026-11-10
+
+Pedido del usuario: textos mejor cuadrados, cajas alineadas, tamaños de letra más chicos y «lo pendiente» en un menú
+desplegable. «Por hacer» (`ejPorHacerEl`) es un `<details class="ej-porhacer">`, cerrado de entrada: el resumen dice
+cuántas cosas son y cuáles (`.ej-porhacer-res`); abierto o cerrado se recuerda mientras la vista está abierta
+(`ej.porHacerAbierto`). Un bloque CSS «Ajuste de la interfaz» (antes de las reglas de teléfono) baja las cifras (KPI
+20 px, avance 24 px, gastado 21 px), títulos de panel a 15 px, paddings de paneles y tareas, y el alto del calendario.
+- **Segunda vuelta (2026-11-10)**: el mapa deja un margen interior (`P`) para que un punto en 0 no tape los ejes, las
+  etiquetas buscan un lugar libre (derecha, izquierda, arriba, abajo: `lugarEtq`) y lo tuyo se marca con la etiqueta en
+  naranjo, no con un anillo; zonas más tenues. El acceso activo de la fila de partes va en tinte naranjo (no blanco en
+  oscuro), las pastillas más chicas, y el estado de la cabecera es una caja sin relleno, más baja.
+
+## Trabajar a la vez (2026-11-10)
+
+Pedido del usuario: que se pueda trabajar a la vez en la Planificación y en Proyectos en ejecución, sin conectar
+servicios nuevos. La unión ya existía (en cada `id` manda el cambio más reciente); se agregó lo mismo que en la
+Planificación (detalle en [planificacion.md](planificacion.md), «Lo tuyo que otro reemplazó y quién más está»):
+- **Lo que llega de otro** (`ejNotarAjenos`, desde `ejLeer`): se ilumina 6 s y la línea de arriba dice «NB acaba de
+  cambiar 2 cosas» durante `PL_AJENO_SEG`. Se relee cada `EJ_RELEER_SEG` = 10 s (antes 30).
+- **Franja de lo reemplazado** (`#ejPisado`, `ej.pisado`): si eso reemplaza algo que este navegador cambió hace menos de
+  `PISADO_MIN` minutos, con otro valor (`ejValor` compara lo validado, sin quién ni cuándo): «NB cambió la cotización
+  «…» (N° 908)». «Volver a lo mío» (`ejVolverPisado`) lo repone con `ejPoner`, con su Deshacer.
+- **Presencia** (`#ejConmigo`): con un proyecto abierto, «NB también está en este proyecto» (`donde` = la clave de la
+  tarjeta).
+- Prueba: `test_en_ejecucion_se_ve_quien_cambio_algo_y_lo_tuyo_que_reemplazo`.
+
+## La página nueva del proyecto (2026-11-12)
+
+Pedido del usuario: renovar la página de un proyecto, con los mismos datos y herramientas, más visual y fácil de usar;
+«la sección de cosas por hacer no es tan importante»; «dale mayor relevancia al espacio general y no tanta a la barra de
+navegación lateral»; y guardar la anterior «por si no se adopta bien». Maqueta aprobada:
+`docs/plans/2026-11-10-proyecto-ejecucion-v2-maqueta.html` (datos ficticios).
+
+- **`ejPintarV2`** (`#ejProyecto.ej-v2`): a la izquierda un índice angosto y fijo (`.ej-v2-idx`: los accesos de
+  `ejSaltosEl(m, true)` en columna, con ícono y, en naranjo, cuántas facturas sin asociar y compras por decidir hay);
+  «Plegar» lo deja solo con íconos (`ej.idxPlegado`, `.ej-plegado`). Con menos de 1180 px de vista el índice pasa arriba
+  en una fila: la tabla de compras necesita el ancho (`test_la_tabla_de_compras_no_se_sale_del_panel`).
+- **«Todos los proyectos»** (2026-11-12, pedido del usuario): el primer elemento del índice lateral (`.ej-volver` dentro
+  de `.ej-v2-idx`; plegado, solo el ícono; con menos de 1180 px, el primero de la fila). También en una carpeta sin N°.
+- **Arriba** (`.ej-v2-arriba`): «Por hacer» (`ejPorHacerEl`, el mismo `<details>`) como un botón
+  chico cuya lista flota sobre la página. La cabecera (`ejCabEl`) va sin tarjeta.
+- **El resumen** (`ejResumenEl`, `#ejSecResumen`): el anillo del avance con «Registrar avance»; una sola barra con lo
+  gastado, comprometido, simulado y lo que falta según el presupuesto (rayado), la raya naranja del avance y, si se
+  pasa, la marca del presupuesto; si gasta de acuerdo con lo que avanza o más; y el margen en un medidor de media
+  vuelta con el mínimo y la meta (`ejMedidorMargenEl`, SVG con `createElementNS`). Debajo, las KPI de siempre
+  (`ejKpisEl`) mostrando solo la venta y el cierre (gastado, margen y avance ya están arriba) más dos cifras
+  (`.ej-stat`, no cuentan como `.ej-kpi`): comprometido en OC y mano de obra real.
+- Debajo, las mismas partes de antes y en el mismo orden. `ejMarcarSalto` mide desde el borde de arriba de la vista
+  cuando el índice va al costado; arriba de todo marca «Resumen».
+- **La página anterior se eliminó** (2026-11-12, pedido del usuario: ya no hace falta). Quedó solo la etiqueta de git
+  `portal-ejecucion-proyecto-v1` con el código de antes (`ejPintarProyecto` v1, `vistaAnterior`).
+- Prueba: `test_la_pagina_del_proyecto_tiene_todos_los_proyectos_arriba_del_indice`.
+
+## El presupuesto completo y los presupuestos actualizados (2026-11-13)
+
+Pedido del usuario: ver dentro del proyecto el presupuesto original con el desglose completo de sus costos y poder
+modificarlo para evaluar condiciones e indicadores al agregar o quitar costos; «que el presupuesto original sí se
+mantenga, pero que se pueda generar un presupuesto actualizado». Como una ventana grande («ocupa demasiado espacio si es un
+proyecto con muchos ítems») y como algo puntual, no para todos los proyectos. Maqueta aprobada (v2: buscador, orden por
+precio y la forma de la pestaña de costos del Formulador): `docs/plans/2026-11-12-presupuesto-actualizado-maqueta.html`.
+
+- **El acceso**: en «Cómo va el proyecto», el botón «Ver el presupuesto» (o «Presupuesto · N actualizados»), solo si el
+  proyecto tiene formulación en pesos con líneas (`m.prBase`). Abre `#dlgEjPres` (se arma en JS, `ejPrDlg`), casi a
+  pantalla completa; en el teléfono, entera y con la tabla en tarjetas.
+- **El original** (`ejPrBase`): las líneas de su formulación (`ejLineas`), cada una con cantidad × costo unitario = su
+  subtotal (la mano de obra en días-hombre: costo unitario = su total / sus DH). No se modifica. Sus indicadores son los del
+  Formulador (`js/calc.js`, `kpis`): costo total = costo directo + gastos generales e imprevistos; margen = utilidad /
+  venta (el precio neto de la formulación); utilidad por día-hombre; incidencia de la mano de obra = mano de obra / venta.
+- **Un presupuesto actualizado**: una cosa del archivo, tipo `presupuesto` (`ejPrCosa`, `ejValidar`), con solo lo que
+  cambia: `cambios` por línea (su `uid`: `cantidad`, `unitario`, `quitado`), `nuevos` (descripción, categoría, partida,
+  unidad, cantidad y costo unitario), `gg` (% de gastos generales e imprevistos; null, el de la formulación), `venta`
+  (null, el precio neto de la formulación) y `seguimiento`. Si la formulación cambia, los cambios se aplican sobre la
+  nueva (`ejPrAplicar`; un uid que ya no existe no cuenta). Se crea desde el original o como copia de otra versión
+  («+ Nuevo actualizado…»), se nombra, se guarda («Guardar»; nada se escribe antes), se descarta o se elimina.
+- **La ventana** (`ejPrPintar`, estado `ej.pr`): arriba las versiones y seis indicadores con el original y la diferencia;
+  las subpestañas Todos los costos / Materiales / Equipos / Mano de obra / Otros / Por partida (con su total, cuánto
+  cambió y cuántos cambios), el buscador (ID, descripción o partida), «Ordenar» (costo, costo unitario, alfabético,
+  mayor diferencia; también con un clic en el título de la columna) y «Mostrar» (la partida); la tabla con Original,
+  Subtotal y Diferencia, «Agregar costo», ✕ para quitar (↺ lo vuelve) y «Solo lo que cambió»; abajo el cierre con el % de
+  gastos generales y la venta, que se cambian («Usar la de la página» toma la venta de «Cómo va»).
+- **«Usar en «Cómo va el proyecto»»** (uno a la vez; `ejPrSeguimiento` en `ejModelo`): lo presupuestado de cada categoría
+  es el de siempre (Análisis Financiero o formulación) más lo que esa versión cambia en ella, y la fuente lo dice
+  («· con «Actualizado 1»»); su venta reemplaza a la calculada, pero no a la escrita en «Venta». Los gastos generales no
+  entran: «Cómo va» nunca los contó.
+- Las cajas de números llevan `data-num` y se llenan sin formato (`String(n)`): `numeros.js` les pone los puntos al
+  prepararlas; «800.000» puesto antes lo leería como 800,000.
+- Prueba: `test_el_presupuesto_completo_y_un_presupuesto_actualizado`.

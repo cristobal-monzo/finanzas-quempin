@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ajustes-oportunidades (tablero de Oportunidades → oportunidades.py)",
+  "description": "Alguien cambió «Qué buscamos» en el tablero de Oportunidades, abierto dentro del Portal (2026-11-16, pedido del usuario: la variante D1, cuatro columnas que se arrastran): el nivel de interés de cada tema (alto «Mucho», medio «Algo», bajo «Poco» o no «No es lo nuestro») y sus frases, las palabras que descartan, las de «no confundir», el puntaje de cada región (0 = no trabajamos ahí) y los montos. Trae la versión completa de lo que se puede cambiar: gana la última. Lo aplica oportunidades.py (atender_ajustes) en la próxima actualización del tablero, ignora temas o regiones que no existen y publica oportunidades-ajustes.json con el historial.",
+  "destino": "oportunidades",
+  "type": "object",
+  "properties": {
+    "ajustes": {
+      "type": "object",
+      "properties": {
+        "temas": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "interes": {
+                "enum": [
+                  "alto",
+                  "medio",
+                  "bajo",
+                  "no"
+                ]
+              },
+              "frases": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 80
+                }
+              }
+            },
+            "required": [
+              "interes"
+            ]
+          }
+        },
+        "excluir": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          }
+        },
+        "noConfundir": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          }
+        },
+        "regiones": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "monto": {
+          "type": "object",
+          "properties": {
+            "minimo": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "minimoCompraAgil": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maximo": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "ajustes"
+  ]
+}

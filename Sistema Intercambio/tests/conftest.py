@@ -10,6 +10,21 @@ import bases_oportunidades  # noqa: E402
 import compra_agil  # noqa: E402
 import mercado_publico  # noqa: E402
 import oportunidades  # noqa: E402
+import procesar  # noqa: E402
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "con_git_real: no reemplaza procesar.codigo_en_uso (la prueba usa su propio repo)")
+
+
+@pytest.fixture(autouse=True)
+def _sin_git_ni_tareas_del_equipo(request, monkeypatch):
+    """estado.json dice qué rama corre el procesador y si está la tarea de pedidos (2026-11-06). En las pruebas eso
+    no depende de la rama del worktree ni de las tareas del equipo que las corre: producción limpia, con la tarea."""
+    monkeypatch.setattr(procesar, "tarea_de_pedidos_instalada", lambda: True)
+    if request.node.get_closest_marker("con_git_real"):
+        return
+    monkeypatch.setattr(procesar, "codigo_en_uso", lambda repo=None: {"rama": "master", "commit": "abc1234", "sucio": False})
 
 
 @pytest.fixture(autouse=True)
@@ -23,6 +38,12 @@ def _sin_mercado_publico_real(tmp_path, monkeypatch):
     monkeypatch.setattr(oportunidades, "RUTA_ESTADO", tmp_path / "oportunidades_estado.json")
     monkeypatch.setattr(mercado_publico, "ruta_ticket", lambda: tmp_path / "sin-ticket" / "mp.ticket")
     monkeypatch.delenv(mercado_publico.VARIABLE_TICKET, raising=False)
+    # El candado del procesador y la marca «API en uso» viven en %LOCALAPPDATA% (2026-11-11): ninguna prueba
+    # bloquea ni libera los del equipo que las corre.
+    monkeypatch.setattr(mercado_publico, "ruta_api_en_uso", lambda: tmp_path / "mp-en-uso.lock")
+    monkeypatch.setattr(procesar, "RUTA_CANDADO", tmp_path / "procesador.lock")
+    # El respaldo diario nunca escribe en %LOCALAPPDATA% real (2026-11-09).
+    monkeypatch.setenv("QUEMPIN_RESPALDO_DESTINO", str(tmp_path / "respaldos"))
 
     # Compra Ágil (otra API) y el correo de alertas: ninguna prueba sale a la
     # red ni manda un correo de verdad (2026-10-14).

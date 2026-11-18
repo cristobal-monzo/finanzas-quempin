@@ -1,0 +1,50 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "oportunidades",
+  "generado": "2026-11-16T10:05:00-03:00",
+  "datos": {
+    "actualizado": "2026-11-16T10:00:00-03:00",
+    "mensaje": "a1e5000000000000000a0001",
+    "usuario": "NB",
+    "ajustes": {
+      "temas": {
+        "climatizacion": {
+          "interes": "no"
+        },
+        "vapor": {
+          "interes": "alto",
+          "frases": [
+            "vapor",
+            "red de vapor"
+          ]
+        }
+      },
+      "excluir": [
+        "combustible",
+        "mueble"
+      ],
+      "noConfundir": [
+        "vapor de agua"
+      ],
+      "regiones": {
+        "arica": 0,
+        "maule": 100
+      },
+      "monto": {
+        "minimo": 2000000,
+        "minimoCompraAgil": 300000,
+        "maximo": null
+      }
+    },
+    "historial": [
+      {
+        "id": "a1e5000000000000000a0001",
+        "fecha": "2026-11-16T10:00:00-03:00",
+        "usuario": "NB",
+        "cambios": [
+          "Climatización → No es lo nuestro"
+        ]
+      }
+    ]
+  }
+}

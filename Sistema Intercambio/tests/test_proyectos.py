@@ -108,6 +108,21 @@ def test_proyectos_en_gestion_son_las_carpetas_de_la_raiz_sin_las_complementaria
     assert pj.proyectos_en_gestion(None) == [] and pj.proyectos_en_gestion(tmp_path / "no-existe") == []
 
 
+def test_proyectos_entregados_son_las_carpetas_de_cada_entregados_del_anio(tmp_path):
+    """Pedido del usuario (2026-11-09): los proyectos cerrados, los de «0 Proyectos Entregados <año>», van en su propia
+    pestaña de «Proyectos en ejecución». Con o sin N°; ni archivos, ni lo oculto, ni las otras agrupadoras."""
+    for ruta in ("0 Carpeta modelo/Compras", "0 Proyectos Entregados 2025/AGCID",
+                 "0 Proyectos Entregados 2026/303. Quemador Osorno", "0 Proyectos Entregados 2026/.oculta",
+                 "0 PROYECTOS ENTREGADOS 2024/036. Quilpué", "314. UA Reactor"):
+        (tmp_path / ruta).mkdir(parents=True)
+    (tmp_path / "0 Proyectos Entregados 2026" / "acta.pdf").write_bytes(b"")
+    assert pj.proyectos_entregados(tmp_path) == [
+        {"carpeta": "036. Quilpué", "req": "36", "grupo": "0 PROYECTOS ENTREGADOS 2024"},
+        {"carpeta": "AGCID", "req": None, "grupo": "0 Proyectos Entregados 2025"},
+        {"carpeta": "303. Quemador Osorno", "req": "303", "grupo": "0 Proyectos Entregados 2026"}]
+    assert pj.proyectos_entregados(None) == [] and pj.proyectos_entregados(tmp_path / "no-existe") == []
+
+
 def test_publicar_desde_la_carpeta_cumple_su_esquema(tmp_path):
     raiz = ic.asegurar_carpeta(tmp_path / "Intercambio")
     ic.publicar(raiz, "requerimientos", "planilla-requerimientos", {"fuente": "x", "requerimientos": REQS})
@@ -117,11 +132,13 @@ def test_publicar_desde_la_carpeta_cumple_su_esquema(tmp_path):
     (repo / "a1.json").write_text(json.dumps({"esquema": ic.ESQUEMA, "herramienta": "formulador", "tipo": "proyecto",
                                               "historia": [], "datos": dict(f["datos"], modificado="2026-10-01")}),
                                   encoding="utf-8")
-    r = pj.publicar(raiz, carpetas={}, gestion=[{"carpeta": "Rengo Incinerador", "req": None}])
-    assert (r["proyectos"], r["gestion"]) == (2, 1)
+    r = pj.publicar(raiz, carpetas={}, gestion=[{"carpeta": "Rengo Incinerador", "req": None}],
+                    entregados=[{"carpeta": "303. Quemador Osorno", "req": "303", "grupo": "0 Proyectos Entregados 2026"}])
+    assert (r["proyectos"], r["gestion"], r["entregados"]) == (2, 1, 1)
     sobre = ic.leer_publicacion(raiz, "proyectos")
     assert esquemas.validar_publicacion("proyectos", sobre) == []
     assert sobre["datos"]["gestion"] == [{"carpeta": "Rengo Incinerador", "req": None}]
+    assert sobre["datos"]["entregados"][0]["grupo"] == "0 Proyectos Entregados 2026"
     assert sobre["datos"]["proyectos"][0]["formulaciones"][0]["uid"] == "a1"
 
 
@@ -158,3 +175,41 @@ def test_la_ficha_propia_del_n_si_se_une():
     (p,) = [p for p in datos["proyectos"] if p["req"] == "280"]
     assert p["tag"] == "UML1"                      # la formulación que recuerda UMAG no la confunde
     assert p["fichaAjena"] == ["UMAG"]
+
+
+def test_gestion_pone_el_n_temporal_a_las_carpetas_sin_n(tmp_path):
+    """2026-11-09 (pedido del usuario): «001t» y TAG «001t - Nombre» para las carpetas de Gestión sin N°,
+    desde una tabla del Intercambio; una carpeta con N° real no lo cambia."""
+    for ruta in ("314. UA Reactor", "Rengo Incinerador", "Inppamet"):
+        (tmp_path / ruta).mkdir()
+    tabla = {"Rengo Incinerador": {"n": "009t", "nombre": "Rengo Incinerador"},
+             "314. UA Reactor": {"n": "001t", "nombre": "Otro"}}
+    assert pj.proyectos_en_gestion(tmp_path, tabla) == [
+        {"carpeta": "314. UA Reactor", "req": "314"},
+        {"carpeta": "Inppamet", "req": None},
+        {"carpeta": "Rengo Incinerador", "req": "009t", "tag": "009t - Rengo Incinerador"}]
+
+
+def test_asignar_temporales_respeta_lo_asignado_y_no_reutiliza(tmp_path):
+    previa = {"B": {"n": "002t", "nombre": "B corto"}}
+    t = pj.asignar_temporales(["C", "A", "B"], previa)
+    assert t["B"] == {"n": "002t", "nombre": "B corto"}
+    assert (t["A"]["n"], t["C"]["n"]) == ("003t", "004t")
+
+
+def test_leer_temporales_ignora_lo_mal_formado(tmp_path):
+    (tmp_path / pj.ARCHIVO_TEMPORALES).write_text(json.dumps({"carpetas": {
+        "A": {"n": "001t", "nombre": "A"}, "B": {"n": "12", "nombre": "B"}, "C": {"n": "002t", "nombre": " "}}}),
+        encoding="utf-8")
+    assert pj.leer_temporales(tmp_path) == {"A": {"n": "001t", "nombre": "A"}}
+    assert pj.leer_temporales(tmp_path / "no") == {} and pj.leer_temporales(None) == {}
+
+
+def test_carpetas_con_n_temporal_se_reconocen_como_con_n(tmp_path):
+    """2026-11-09: «001t. Nombre» es una carpeta con N° temporal; «036.» sigue sin ceros."""
+    for ruta in ("001t. Hospital San José", "036. Fiscalía", "Rengo Incinerador"):
+        (tmp_path / ruta).mkdir()
+    assert pj.carpetas_con_numero(tmp_path, profundidad=1) == {
+        "001t": ["001t. Hospital San José"], "36": ["036. Fiscalía"]}
+    assert [f["req"] for f in pj.proyectos_en_gestion(tmp_path)] == ["001t", "36", None]
+    assert pj._req("001T") == "001t" and pj._req("5t") is None and pj._req("12") == "12"

@@ -461,6 +461,72 @@ __MARCA_FUENTES__
     .op-mini { margin-left: 0; }
     .tabla-wrap { overflow-x: visible; }
   }
+
+  /* ---------- Qué buscamos (2026-11-16, variante D1: cuatro columnas que se arrastran) ---------- */
+  .qb-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 6px; }
+  .qb-top h2 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+  .qb-estado { font-size: 12.5px; color: var(--text-secondary); flex: 1 1 260px; }
+  .qb-estado.cambios { color: var(--brand-orange-ink); font-weight: 700; }
+  .qb-estado.error { color: var(--status-bad); font-weight: 700; }
+  .qb-acciones { display: flex; gap: 8px; }
+  .qb-acciones button[disabled] { opacity: .45; cursor: not-allowed; }
+  .qb-efecto { font-size: 13px; margin: 0 0 12px; min-height: 1.4em; color: var(--text-primary); }
+  .qb-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .qb-col { border-radius: 10px; padding: 10px; min-height: 220px; border: 2px dashed transparent;
+    background: color-mix(in srgb, var(--qb-color) 10%, var(--surface-card)); }
+  .qb-col.encima { border-color: var(--qb-color); }
+  .qb-col h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--qb-tinta); display: flex; justify-content: space-between; }
+  .qb-col h3 span { font-weight: 400; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+  .qb-col.alto { --qb-color: var(--brand-orange); --qb-tinta: var(--brand-orange-ink); }
+  .qb-col.medio { --qb-color: #f3a77f; --qb-tinta: var(--brand-orange-ink); }
+  .qb-col.bajo { --qb-color: var(--brand-gray-7); --qb-tinta: var(--text-secondary); }
+  .qb-col.no { --qb-color: var(--status-bad); --qb-tinta: var(--status-bad); }
+  .qb-tema { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 8px; margin-bottom: 7px; font-size: 13px; }
+  .qb-tema[draggable="true"] { cursor: grab; }
+  .qb-tema.arrastrando { opacity: .4; }
+  .qb-tema.movido { border-color: var(--brand-orange); }
+  .qb-tema > button { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 7px 9px; cursor: pointer; font-weight: 700; color: var(--text-primary); }
+  .qb-tema > button:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; border-radius: 8px; }
+  .qb-tema small { display: block; font-weight: 400; color: var(--text-muted); font-size: 11.5px; }
+  .qb-tema.fijo { border-style: dashed; }
+  .qb-abierto { padding: 0 9px 9px; display: flex; flex-direction: column; gap: 7px; }
+  .qb-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .qb-chip { display: inline-flex; align-items: center; gap: 2px; border-radius: 999px; padding: 1px 4px 1px 9px; font-size: 12px;
+    background: var(--surface-1); border: 1px solid var(--gridline); }
+  .qb-chip button { all: unset; cursor: pointer; padding: 0 5px; color: var(--text-muted); font-weight: 900; border-radius: 999px; }
+  .qb-chip button:hover, .qb-chip button:focus-visible { color: var(--status-bad); outline: 1px solid currentColor; }
+  .qb-nueva { font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px dashed var(--baseline);
+    background: var(--surface-card); color: var(--text-primary); width: 100%; }
+  .qb-mover { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11.5px; color: var(--text-muted); align-items: center; }
+  .qb-mover button { font: inherit; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--gridline);
+    background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
+  .qb-nota { font-size: 11.5px; color: var(--text-muted); margin: 0; }
+  .qb-fila2 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-top: 12px; }
+  .qb-caja { border: 1px solid var(--gridline); border-radius: 10px; padding: 12px; }
+  .qb-caja h3 { margin: 0 0 8px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .qb-reg { display: flex; flex-wrap: wrap; gap: 5px; }
+  .qb-reg button { font: inherit; font-size: 12px; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+  .qb-reg button small { opacity: .75; margin-left: 4px; }
+  .qb-reg .cerca { background: color-mix(in srgb, var(--brand-orange) 22%, var(--surface-card)); color: var(--text-primary); }
+  .qb-reg .media { background: color-mix(in srgb, #f3a77f 22%, var(--surface-card)); color: var(--text-primary); }
+  .qb-reg .lejos { background: var(--surface-1); color: var(--text-secondary); border-color: var(--gridline); }
+  .qb-reg .no { background: var(--surface-card); color: var(--text-muted); border-color: var(--gridline); text-decoration: line-through; }
+  .qb-monto { display: grid; grid-template-columns: 1fr 130px; gap: 6px 10px; align-items: center; font-size: 13px; margin: 6px 0; }
+  .qb-monto label { color: var(--text-secondary); }
+  .qb-monto input { font: inherit; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--gridline); background: var(--surface-card);
+    color: var(--text-primary); text-align: right; }
+  .qb-i { position: relative; display: inline-block; font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .qb-i summary { list-style: none; cursor: pointer; width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--text-muted);
+    color: var(--text-muted); display: grid; place-items: center; font-size: 11px; font-style: italic; font-weight: 700; }
+  .qb-i summary::-webkit-details-marker { display: none; }
+  .qb-i p { position: absolute; z-index: 5; left: 0; top: 22px; width: min(320px, 80vw); margin: 0; padding: 10px 12px; border-radius: 8px;
+    background: var(--surface-card); border: 1px solid var(--gridline); box-shadow: 0 6px 20px rgba(0,0,0,.18); color: var(--text-primary);
+    font-size: 12.5px; line-height: 1.5; }
+  .qb-hist { margin-top: 12px; font-size: 12.5px; color: var(--text-secondary); }
+  .qb-hist summary { cursor: pointer; }
+  .qb-hist ul { margin: 6px 0 0; padding-left: 18px; }
+  @media (max-width: 900px) { .qb-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } .qb-fila2 { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) { .qb-cols { grid-template-columns: 1fr; } .qb-col { min-height: 0; } }
 </style>
 </head>
 <body>
@@ -526,6 +592,7 @@ __MARCA_FUENTES__
 
     <div class="viz-tabs" role="tablist">
       <button class="viz-tab-btn active" type="button" role="tab" aria-selected="true" data-tab="tabOportunidades">Oportunidades</button>
+      <button class="viz-tab-btn" type="button" role="tab" aria-selected="false" data-tab="tabBuscamos">Qué buscamos</button>
       <button class="viz-tab-btn" type="button" role="tab" aria-selected="false" data-tab="tabMetodo">Cómo se evalúa</button>
       <button class="viz-tab-btn" type="button" role="tab" aria-selected="false" data-tab="tabMercado">Historia y competencia</button>
     </div>
@@ -587,6 +654,38 @@ __MARCA_FUENTES__
           </table>
         </div>
         <button class="op-mas" id="fMas" type="button" hidden>Mostrar más</button>
+      </section>
+    </section>
+
+    <section class="viz-tab-panel" id="tabBuscamos" role="tabpanel">
+      <section class="panel">
+        <div class="qb-top">
+          <h2>Qué buscamos
+            <details class="qb-i"><summary aria-label="Cómo funciona">i</summary><p>Arrastra cada tema a la columna de su interés (o tócalo y elige «Mover a»). «Mucho» puede llegar a Prioritaria; «Algo», a Buena; «Poco», a Evaluar; «No es lo nuestro» descarta lo que lo nombra. La lista cambia al tiro. Al guardar, el cambio vale para todo el equipo desde la próxima actualización del tablero (todos los días a las 09:00).</p></details>
+          </h2>
+          <span class="qb-estado" id="qbEstado" role="status"></span>
+          <span class="qb-acciones">
+            <button class="op-btn-sec" id="qbDeshacer" type="button">Deshacer</button>
+            <button class="op-btn" id="qbGuardar" type="button">Guardar cambios</button>
+          </span>
+        </div>
+        <p class="qb-efecto" id="qbEfecto" aria-live="polite"></p>
+        <div class="qb-cols" id="qbCols"></div>
+        <div class="qb-fila2">
+          <div class="qb-caja">
+            <h3>Dónde <details class="qb-i"><summary aria-label="Cómo funciona">i</summary><p>Toca una región para cambiarla: Cerca (100 puntos) → Media (70) → Lejos (35) → No vamos (descarta). Pesa en la ubicación y en lo que cuesta ir a una visita a terreno.</p></details></h3>
+            <div class="qb-reg" id="qbRegiones"></div>
+          </div>
+          <div class="qb-caja">
+            <h3>Cuánto <details class="qb-i"><summary aria-label="Cómo funciona">i</summary><p>Bajo el mínimo, una oportunidad no pasa de Baja: no paga el esfuerzo de ofertar. Sobre el máximo se descarta (garantías y caja). Vacío = sin límite. No aplica al monto estimado por el tipo de licitación.</p></details></h3>
+            <div class="qb-monto">
+              <label for="qbMinimo">Licitación desde</label><input id="qbMinimo" inputmode="numeric" autocomplete="off">
+              <label for="qbMinimoCA">Compra ágil desde</label><input id="qbMinimoCA" inputmode="numeric" autocomplete="off">
+              <label for="qbMaximo">Máximo</label><input id="qbMaximo" inputmode="numeric" autocomplete="off" placeholder="sin tope">
+            </div>
+          </div>
+        </div>
+        <details class="qb-hist" id="qbHistCaja" hidden><summary>Últimos cambios del equipo</summary><ul id="qbHist"></ul></details>
       </section>
     </section>
 
@@ -760,15 +859,107 @@ __MARCA_FUENTES__
     // Los puntajes vienen del build; lo que depende de la fecha (días para el
     // cierre, una visita que ya pasó) se recalcula con la fecha de hoy, con
     // las mismas tablas que usa oportunidades.py (DATA.reglas).
-    // Misma regla que Evaluador.categoria en oportunidades.py: puntaje, con tope si el rubro no es claro.
-    function categoria(puntaje, rubro) {
-      var cat = ORDEN_CAT[ORDEN_CAT.length - 1] || 'baja', tope = null;
+    // Misma regla que Evaluador.categoria en oportunidades.py: la categoría por puntaje, sin pasar
+    // de su tope (op.tope: el tema del rubro, la nota del rubro o el monto mínimo). El tope lo calcula
+    // Python (topesPorRubro, niveles de los temas, monto.minimo) porque no depende de los pesos.
+    function categoria(puntaje, tope) {
+      var cat = ORDEN_CAT[ORDEN_CAT.length - 1] || 'baja';
       for (var i = 0; i < CATS.length; i++) if (puntaje >= CATS[i].desde) { cat = CATS[i].id; break; }
-      (DATA.topesPorRubro || []).forEach(function (t) {
-        if (rubro < t.rubroMenorA && ORDEN_CAT.indexOf(cat) < ORDEN_CAT.indexOf(t.categoriaMaxima)) { cat = t.categoriaMaxima; tope = t; }
-      });
-      return { cat: cat, tope: tope };
+      if (tope && ORDEN_CAT.indexOf(tope.categoria) >= 0 && ORDEN_CAT.indexOf(cat) < ORDEN_CAT.indexOf(tope.categoria)) return { cat: tope.categoria, tope: tope };
+      return { cat: cat, tope: null };
     }
+    // ---------- Qué buscamos: las mismas reglas que oportunidades.py ----------
+    // resolver_rubro, calcular_tope, resolver_monto, _pesos y _acotar: lo que depende de los niveles de
+    // los temas, las regiones y los montos se recalcula aquí al moverlos. Si cambias una, cambia la otra
+    // (tests/test_tablero_oportunidades.py compara las dos con ajustes).
+    function redondearPar(x) {          // round() de Python: el .5 exacto va al par
+      var r = Math.round(x);
+      if (Math.abs(x - Math.trunc(x)) === 0.5 && r % 2 !== 0) r -= 1;
+      return r;
+    }
+    function acotar(x) { return Math.max(0, Math.min(100, redondearPar(x))); }
+    function miles(entero) { return String(entero).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+    function pesosTexto(v) {
+      if (v === null || v === undefined) return 'sin dato';
+      if (v >= 1e6) { var t = (v / 1e6).toFixed(1).split('.'); return '$' + miles(t[0]) + ',' + t[1] + ' M'; }
+      return '$' + miles(redondearPar(v));
+    }
+    function resolverRubro(vivo, interes, niveles, nombres) {
+      var mejor = null, noEs = [];
+      vivo.temas.forEach(function (m) {
+        var nv = interes[m.id];
+        if (nv === 'no') { if (m.enNombre) noEs.push(nombres[m.id] || m.id); return; }
+        if (!niveles[nv]) return;
+        var p = m.enNombre ? niveles[nv].enNombre : niveles[nv].enDescripcion;
+        if (mejor === null || p > mejor.p) mejor = { p: p, m: m, nv: nv };
+      });
+      var descartar = [], res;
+      if (mejor) {
+        var m = mejor.m, n = niveles[mejor.nv];
+        var caso = mejor.nv === 'alto' ? (m.enNombre ? 'altoNombre' : 'altoDescripcion') : 'otro';
+        res = { puntaje: acotar(mejor.p + vivo.ajustes[caso]), tema: m.id, interes: mejor.nv, enNombre: m.enNombre,
+          tope: n[m.enNombre ? 'maxEnNombre' : 'maxEnDescripcion'],
+          topeMotivo: 'Tema «' + (nombres[m.id] || m.id) + '» (' + n.nombre.toLowerCase() + ')' + (m.enNombre ? '' : ', solo en la descripción') };
+        if (noEs.length && !m.enNombre) descartar.push('No es lo nuestro: ' + noEs.join(', '));
+      } else {
+        var st = vivo.sinTema;
+        res = { puntaje: acotar(Math.min(15 + vivo.ajustes.otro, 45)), tema: null, interes: null, enNombre: false, tope: st.tope, topeMotivo: st.motivo };
+        if (noEs.length) descartar.push('No es lo nuestro: ' + noEs.join(', '));
+        else if (st.descarta) descartar.push(st.descarta);
+      }
+      res.descartar = descartar;
+      return res;
+    }
+    function calcularTope(orden, rubro, topesPorRubro, monto, porTipo, minimo, categoriaBajoMinimo) {
+      var topes = [];
+      if (rubro.tope) topes.push([rubro.tope, rubro.topeMotivo]);
+      topesPorRubro.forEach(function (t) {
+        if (rubro.puntaje < t.rubroMenorA) topes.push([t.categoriaMaxima, 'Rubro con ' + rubro.puntaje + ' puntos (bajo ' + t.rubroMenorA + ')']);
+      });
+      if (minimo && monto && !porTipo && monto < minimo) topes.push([categoriaBajoMinimo, 'Muy chica: ' + pesosTexto(monto) + ', bajo el mínimo de ' + pesosTexto(minimo)]);
+      var mejor = null;
+      topes.forEach(function (t) { if (orden.indexOf(t[0]) >= 0 && (mejor === null || orden.indexOf(t[0]) > orden.indexOf(mejor[0]))) mejor = t; });
+      return mejor ? { categoria: mejor[0], motivo: mejor[1] } : null;
+    }
+    function resolverMonto(vivo, maximoFijo) {
+      var maximo, fijo;
+      if (vivo.maximoFijo) { maximo = vivo.maximo; fijo = true; }
+      else if (maximoFijo) { maximo = maximoFijo; fijo = true; }
+      else { maximo = vivo.maximoHistoria; fijo = false; }
+      var sobre = !!maximo && vivo.valor > maximo;
+      return { puntaje: sobre ? vivo.sobre : vivo.bajo, sobre: sobre, maximo: maximo,
+        descarta: sobre && fijo ? 'Monto ' + pesosTexto(vivo.valor) + ' sobre el máximo de ' + pesosTexto(maximo) : null };
+    }
+
+    // El perfil que se muestra: el del equipo (DATA.rubro), lo guardado aquí que todavía no llega al
+    // tablero (quempin_op_ajustes_pendiente) o lo que se está cambiando.
+    var RB = DATA.rubro || {};
+    var NIVELES = RB.niveles || {};
+    var NOMBRE_TEMA = {};
+    (RB.temas || []).forEach(function (t) { NOMBRE_TEMA[t.id] = t.nombre; });
+    function clonar(x) { return JSON.parse(JSON.stringify(x)); }
+    function perfilDelEquipo() {
+      var temas = {};
+      (RB.temas || []).forEach(function (t) { temas[t.id] = { interes: t.interes, frases: (t.frases || []).slice() }; });
+      return { temas: temas, excluir: (RB.excluir || []).slice(), noConfundir: ((RB.noConfundir || {}).frases || []).slice(),
+        regiones: clonar(RB.regiones || {}),
+        monto: { minimo: RB.montoMinimo || null, minimoCompraAgil: RB.montoMinimoCompraAgil || null, maximo: RB.montoMaximo || null } };
+    }
+    var CLAVE_PENDIENTE = 'quempin_op_ajustes_pendiente';
+    var pendiente = null;
+    try { pendiente = JSON.parse(localStorage.getItem(CLAVE_PENDIENTE) || 'null'); } catch (e) { pendiente = null; }
+    // Ya llegó al tablero (lo aplicó la actualización), o después alguien guardó otra versión: se olvida.
+    var ajEquipo = RB.ajustes || {};
+    if (pendiente && (!pendiente.ajustes || !pendiente.id || ajEquipo.mensaje === pendiente.id ||
+        (ajEquipo.actualizado && pendiente.enviado && ajEquipo.actualizado >= pendiente.enviado) ||
+        (pendiente.enviado && Date.now() - Date.parse(pendiente.enviado) > 7 * 86400000))) {
+      pendiente = null;
+      try { localStorage.removeItem(CLAVE_PENDIENTE); } catch (e) {}
+    }
+    function perfilBase() { return pendiente && pendiente.ajustes ? pendiente.ajustes : perfilDelEquipo(); }
+    var perfil = clonar(perfilBase());
+    function interesDe(pf) { var r = {}; Object.keys(pf.temas).forEach(function (k) { r[k] = pf.temas[k].interes; }); return r; }
+
     // La visita que toca hoy: la próxima de sus fechas o, si ya pasaron todas, la última.
     function visitaDelDia(op) {
       var v = op.visita || {};
@@ -776,10 +967,33 @@ __MARCA_FUENTES__
       var futuras = fechas.filter(function (f) { var d = diasHasta(f); return d !== null && d >= 0; });
       return { fecha: futuras[0] || fechas[fechas.length - 1] || null, pasada: fechas.length > 0 && !futuras.length, mas: Math.max(0, futuras.length - 1) };
     }
-    function evaluar(op) {
+    function evaluar(op, pf) {
+      pf = pf || perfil;
       var p = {};
       CRIT.forEach(function (c) { p[c.id] = ((op.criterios || {})[c.id] || {}).puntaje || 0; });
       var descartar = (op.descartarFijo || op.descartar || []).slice();
+      var tope = op.tope;
+      // Lo que depende de «Qué buscamos» (niveles, regiones, montos), con las reglas de Python.
+      var v = op.vivo;
+      if (v && v.rubro) {
+        var rr = resolverRubro(v.rubro, interesDe(pf), NIVELES, NOMBRE_TEMA);
+        p.rubro = rr.puntaje;
+        descartar = descartar.concat(rr.descartar);
+        var pts = v.region ? pf.regiones[v.region] : RB.regionSinDato;
+        if (v.region && typeof pts === 'number') {
+          p.ubicacion = pts;
+          if (pts === 0) descartar.push('No trabajamos en ' + op.regionCorta);
+        }
+        var cv = (op.criterios || {}).visita || {};
+        if (cv.porRegion && typeof pts === 'number') p.visita = acotar(cv.porRegion[0] + cv.porRegion[1] * pts);
+        if (v.monto) {
+          var rm = resolverMonto(v.monto, op.compraAgil ? null : pf.monto.maximo);
+          p.monto = rm.puntaje;
+          if (rm.descarta) descartar.push(rm.descarta);
+        }
+        tope = calcularTope(ORDEN_CAT, rr, DATA.topesPorRubro || [], v.montoClp, v.porTipo,
+          op.compraAgil ? pf.monto.minimoCompraAgil : pf.monto.minimo, RB.categoriaBajoMinimo || 'baja');
+      }
       var dias = diasHasta(op.cierre);
       // Una compra ágil se cotiza en horas: tiene sus propios tramos (plazoOfertaCompraAgil).
       var tramos = op.compraAgil && REGLAS.plazoOfertaCompraAgil ? REGLAS.plazoOfertaCompraAgil : REGLAS.plazoOferta;
@@ -801,7 +1015,7 @@ __MARCA_FUENTES__
       var total = 0, suma = 0;
       CRIT.forEach(function (c) { total += pesos[c.id]; suma += p[c.id] * pesos[c.id]; });
       var puntaje = total ? Math.round(suma / total * 10) / 10 : 0;
-      var c = descartar.length ? { cat: 'descartar', tope: null } : categoria(puntaje, p.rubro || 0);
+      var c = descartar.length ? { cat: 'descartar', tope: null } : categoria(puntaje, tope);
       return { puntaje: puntaje, cat: c.cat, tope: c.tope, descartar: descartar, dias: dias, p: p, total: total };
     }
 
@@ -997,7 +1211,7 @@ __MARCA_FUENTES__
       var razones = el('ul', { clase: 'op-razones' });
       (op.aFavor || []).forEach(function (t) { razones.appendChild(el('li', { clase: 'favor' }, [el('span', { clase: 'ico', 'aria-label': 'A favor', texto: '✓' }), el('span', { texto: t })])); });
       (op.enContra || []).forEach(function (t) { razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: t })])); });
-      if (e.tope) razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: 'Rubro no del todo claro: no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '»' })]));
+      if (e.tope) razones.appendChild(el('li', { clase: 'contra' }, [el('span', { clase: 'ico', 'aria-label': 'En contra', texto: '!' }), el('span', { texto: e.tope.motivo + ': no pasa de «' + NOMBRE_CAT[e.tope.categoria] + '»' })]));
       var ver = el('button', { clase: 'op-btn', type: 'button', texto: 'Ver evaluación' });
       ver.addEventListener('click', function () { abrirEnTabla(op.codigo); });
       var acciones = el('div', { clase: 'op-acciones' }, [ver, botonFormulador(op, 'op-btn-sec')]);
@@ -1015,7 +1229,7 @@ __MARCA_FUENTES__
     function detalle(op) {
       var e = op._e, izq = el('div'), der = el('div');
       if (e.descartar.length) izq.appendChild(el('div', { clase: 'op-descarte', texto: 'Se descarta: ' + e.descartar.join(' · ') }));
-      if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: 'Con rubro ' + Math.round(e.p.rubro) + ' (bajo ' + e.tope.rubroMenorA + ') no pasa de «' + NOMBRE_CAT[e.tope.categoriaMaxima] + '», aunque el puntaje dé para más.' }));
+      if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: e.tope.motivo + ': no pasa de «' + NOMBRE_CAT[e.tope.categoria] + '», aunque el puntaje dé para más.' }));
       izq.appendChild(el('h4', { texto: 'Cómo se arma el puntaje' }));
       var comp = el('div', { clase: 'op-composicion', role: 'img', 'aria-label': 'Aporte de cada criterio al puntaje' });
       CRIT.forEach(function (c) {
@@ -1358,9 +1572,18 @@ __MARCA_FUENTES__
       CRIT.forEach(function (c) { tb.appendChild(el('tr', null, [el('td', { texto: c.nombre }), el('td', { clase: 'num', texto: String(pesos[c.id]) }), el('td', { texto: c.descripcion || '' })])); });
       var reglas = vaciar(document.getElementById('opReglas'));
       CATS.forEach(function (c) { reglas.appendChild(el('li', null, [el('strong', { texto: c.nombre }), ': desde ' + c.desde + ' puntos.'])); });
+      var ru = DATA.rubro || {}, niv = ru.niveles || {};
+      ['alto', 'medio', 'bajo'].forEach(function (k) {
+        var n = niv[k], temas = (ru.temas || []).filter(function (t) { return (perfil.temas[t.id] || t).interes === k; });
+        if (!n || !temas.length) return;
+        reglas.appendChild(el('li', null, [el('strong', { texto: n.nombre + ': ' }), temas.map(function (t) { return t.nombre; }).join(', ') + '. ' +
+          (n.maxEnNombre ? 'No pasa de «' + NOMBRE_CAT[n.maxEnNombre] + '»' : 'Puede llegar a «' + NOMBRE_CAT[ORDEN_CAT[0]] + '»') +
+          (n.maxEnDescripcion ? '; si el tema solo está en la descripción, de «' + NOMBRE_CAT[n.maxEnDescripcion] + '».' : '.')]));
+      });
       (DATA.topesPorRubro || []).forEach(function (t) {
         reglas.appendChild(el('li', { texto: 'Con el rubro bajo ' + t.rubroMenorA + ' puntos no pasa de «' + (NOMBRE_CAT[t.categoriaMaxima] || t.categoriaMaxima) + '», aunque el resto sea perfecto.' }));
       });
+      if (ru.montoMinimo) reglas.appendChild(el('li', { texto: 'Con un monto publicado bajo ' + clpCorto(ru.montoMinimo) + (ru.montoMinimoCompraAgil ? ' (' + clpCorto(ru.montoMinimoCompraAgil) + ' en una compra ágil)' : '') + ' no pasa de «Baja»: no paga el esfuerzo de ofertar.' }));
       reglas.appendChild(el('li', { texto: 'Se descarta sola si cierra en menos de un día, si la visita a terreno ya pasó (obligatoria u optativa), si el nombre la deja fuera del rubro (combustible, químicos…) o si el monto supera un máximo fijado en la configuración.' }));
       reglas.appendChild(el('li', { texto: 'La visita a terreno se lee en la ficha de las bases de Mercado Público (la API no la informa). Con varias fechas se muestra la próxima, y pasó cuando pasaron todas. Si la ficha no se pudo leer, la licitación es menor a 100 UTM o es una compra ágil sin mención, queda «sin confirmar»: revisa las bases.' }));
       var tramos = (REGLAS.plazoOferta || []).filter(function (t) { return !t.descarta; }).map(function (t) { return (t.menosDeDias === null ? 'más' : 'menos de ' + t.menosDeDias + ' días') + ': ' + t.puntaje; });
@@ -1368,7 +1591,7 @@ __MARCA_FUENTES__
       var h = (DATA.perfil || {}).historia || {}, m = (DATA.perfil || {}).montoHabitual || {};
       var hist = vaciar(document.getElementById('opHistoria'));
       hist.appendChild(el('li', { texto: 'Planilla de Ingreso: ' + (h.requerimientos || 0) + ' requerimientos, ' + (h.ofertados || 0) + ' ofertados, ' + (h.ganados || 0) + ' ganados y ' + (h.perdidos || 0) + ' perdidos.' }));
-      hist.appendChild(el('li', { texto: 'Para cada licitación se buscan las más parecidas de la Planilla: si se ofertaron y se ganaron, sube el rubro; si se descartaron, baja.' }));
+      hist.appendChild(el('li', { texto: 'Para cada licitación se buscan las más parecidas de la Planilla: si se ofertaron y se ganaron, el rubro sube un poco; si se descartaron, baja un poco (muchos descartes fueron por capacidad del momento, no por el trabajo).' }));
       if (m.p25) hist.appendChild(el('li', { texto: 'Monto habitual (lo ofertado): el centro va de ' + clpCorto(m.p25) + ' a ' + clpCorto(m.p75) + '; lo habitual, de ' + clpCorto(m.p10) + ' a ' + clpCorto(m.p90) + '. Sobre ' + clpCorto(m.maximo) + (m.maximoFijo ? ' se descarta.' : ' el criterio monto puntúa bajo, sin descartar.') }));
     }
 
@@ -1391,6 +1614,182 @@ __MARCA_FUENTES__
       });
     }
 
+    // ---------- Qué buscamos: el editor (variante D1) ----------
+    var COLUMNAS = [['alto', 'Mucho interés'], ['medio', 'Algo de interés'], ['bajo', 'Poco interés'], ['no', 'No es lo nuestro']];
+    var NIVEL_REGION = [['cerca', 'Cerca', 100], ['media', 'Media', 70], ['lejos', 'Lejos', 35], ['no', 'No vamos', 0]];
+    function nivelRegion(pts) { return pts >= 80 ? 0 : pts >= 50 ? 1 : pts > 0 ? 2 : 3; }
+    var ORDEN_REGIONES = Object.keys(RB.nombresRegion || {}).filter(function (k) { return k in (RB.regiones || {}); });
+    var abiertos = {}, arrastrado = null, enPortal = window.parent !== window, esperando = null, errorGuardar = '';
+    // Cuántas de las publicadas hoy nombran cada tema
+    var USO_TEMA = {};
+    OPS.forEach(function (op) { ((op.vivo && op.vivo.rubro && op.vivo.rubro.temas) || []).forEach(function (m) { USO_TEMA[m.id] = (USO_TEMA[m.id] || 0) + 1; }); });
+
+    function cambios(a, b) {
+      var n = 0;
+      Object.keys(a.temas).forEach(function (k) { if (!b.temas[k] || JSON.stringify(a.temas[k]) !== JSON.stringify(b.temas[k])) n++; });
+      if (JSON.stringify(a.excluir) !== JSON.stringify(b.excluir)) n++;
+      if (JSON.stringify(a.noConfundir) !== JSON.stringify(b.noConfundir)) n++;
+      Object.keys(a.regiones).forEach(function (k) { if (a.regiones[k] !== b.regiones[k]) n++; });
+      ['minimo', 'minimoCompraAgil', 'maximo'].forEach(function (k) { if ((a.monto[k] || null) !== (b.monto[k] || null)) n++; });
+      return n;
+    }
+    function cuentaCategorias(pf) {
+      var c = { prioritaria: 0, buena: 0, descartar: 0 };
+      OPS.forEach(function (op) { var e = evaluar(op, pf); if (e.cat in c) c[e.cat]++; });
+      return c;
+    }
+    function alCambiar() {
+      errorGuardar = '';
+      todo();
+      pintarBuscamos();
+    }
+    function editorFrases(lista, alCambiarLista, etiqueta) {
+      var caja = el('div', { clase: 'qb-abierto' });
+      var chips = el('div', { clase: 'qb-chips' });
+      lista.forEach(function (f, i) {
+        var quitar = el('button', { type: 'button', 'aria-label': 'Quitar «' + f + '»', texto: '×' });
+        quitar.addEventListener('click', function (ev) { ev.stopPropagation(); lista.splice(i, 1); alCambiarLista(); });
+        chips.appendChild(el('span', { clase: 'qb-chip' }, [f, quitar]));
+      });
+      caja.appendChild(chips);
+      var nueva = el('input', { clase: 'qb-nueva', type: 'text', maxlength: 80, placeholder: '+ ' + etiqueta + ' (Enter)', 'aria-label': etiqueta });
+      nueva.addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Enter') return;
+        var t = nueva.value.trim();
+        if (t.length >= 2 && !lista.some(function (x) { return norm(x) === norm(t); })) { lista.push(t); alCambiarLista(); }
+        else nueva.value = '';
+      });
+      caja.appendChild(nueva);
+      caja.appendChild(el('p', { clase: 'qb-nota', texto: 'Una frase nueva se busca desde la próxima actualización: hoy la lista no cambia por ella.' }));
+      return caja;
+    }
+    function tarjetaTema(id, base) {
+      var t = perfil.temas[id];
+      var abierto = !!abiertos[id];
+      var nTemas = USO_TEMA[id] || 0;
+      var movido = !base.temas[id] || base.temas[id].interes !== t.interes;
+      var carta = el('div', { clase: 'qb-tema' + (movido ? ' movido' : ''), draggable: 'true', 'data-tema': id });
+      var boton = el('button', { type: 'button', 'aria-expanded': abierto ? 'true' : 'false' },
+        [NOMBRE_TEMA[id] || id, el('small', { texto: t.frases.length + (t.frases.length === 1 ? ' frase' : ' frases') + (nTemas ? ' · ' + nTemas + ' hoy' : '') })]);
+      boton.addEventListener('click', function () { abiertos[id] = !abiertos[id]; pintarBuscamos(); });
+      carta.appendChild(boton);
+      carta.addEventListener('dragstart', function (ev) { arrastrado = id; carta.classList.add('arrastrando'); ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', id); } catch (e) {} });
+      carta.addEventListener('dragend', function () { arrastrado = null; carta.classList.remove('arrastrando'); });
+      if (abierto) {
+        var ed = editorFrases(t.frases, alCambiar, 'frase');
+        var mover = el('div', { clase: 'qb-mover' }, ['Mover a:']);
+        COLUMNAS.forEach(function (c) {
+          if (c[0] === t.interes) return;
+          var b = el('button', { type: 'button', texto: c[1] });
+          b.addEventListener('click', function () { t.interes = c[0]; alCambiar(); });
+          mover.appendChild(b);
+        });
+        ed.insertBefore(mover, ed.firstChild);
+        carta.appendChild(ed);
+      }
+      return carta;
+    }
+    function tarjetaLista(clave, titulo, lista) {
+      var abierto = !!abiertos[clave];
+      var carta = el('div', { clase: 'qb-tema fijo' });
+      var boton = el('button', { type: 'button', 'aria-expanded': abierto ? 'true' : 'false' },
+        [titulo, el('small', { texto: lista.length + (lista.length === 1 ? ' frase' : ' frases') })]);
+      boton.addEventListener('click', function () { abiertos[clave] = !abiertos[clave]; pintarBuscamos(); });
+      carta.appendChild(boton);
+      if (abierto) carta.appendChild(editorFrases(lista, alCambiar, 'frase'));
+      return carta;
+    }
+    function pintarBuscamos() {
+      var base = perfilBase();
+      var cols = vaciar(document.getElementById('qbCols'));
+      COLUMNAS.forEach(function (c) {
+        var ids = Object.keys(perfil.temas).filter(function (k) { return perfil.temas[k].interes === c[0]; });
+        var col = el('div', { clase: 'qb-col ' + c[0], 'data-nivel': c[0] }, [el('h3', null, [c[1], el('span', { texto: String(ids.length) })])]);
+        ids.forEach(function (id) { col.appendChild(tarjetaTema(id, base)); });
+        if (c[0] === 'no') {
+          col.appendChild(tarjetaLista('_excluir', 'Palabras que descartan', perfil.excluir));
+          col.appendChild(tarjetaLista('_noConfundir', 'No confundir con', perfil.noConfundir));
+        }
+        col.addEventListener('dragover', function (ev) { if (arrastrado) { ev.preventDefault(); col.classList.add('encima'); } });
+        col.addEventListener('dragleave', function () { col.classList.remove('encima'); });
+        col.addEventListener('drop', function (ev) {
+          ev.preventDefault();
+          col.classList.remove('encima');
+          if (arrastrado && perfil.temas[arrastrado] && perfil.temas[arrastrado].interes !== c[0]) { perfil.temas[arrastrado].interes = c[0]; alCambiar(); }
+        });
+        cols.appendChild(col);
+      });
+      var reg = vaciar(document.getElementById('qbRegiones'));
+      ORDEN_REGIONES.forEach(function (k) {
+        var n = nivelRegion(perfil.regiones[k]);
+        var b = el('button', { type: 'button', clase: NIVEL_REGION[n][0], title: perfil.regiones[k] + ' puntos',
+          'aria-label': RB.nombresRegion[k] + ': ' + NIVEL_REGION[n][1] }, [RB.nombresRegion[k], el('small', { texto: NIVEL_REGION[n][1] })]);
+        b.addEventListener('click', function () { perfil.regiones[k] = NIVEL_REGION[(n + 1) % NIVEL_REGION.length][2]; alCambiar(); });
+        reg.appendChild(b);
+      });
+      [['qbMinimo', 'minimo'], ['qbMinimoCA', 'minimoCompraAgil'], ['qbMaximo', 'maximo']].forEach(function (x) {
+        var inp = document.getElementById(x[0]);
+        if (document.activeElement !== inp) inp.value = perfil.monto[x[1]] ? miles(perfil.monto[x[1]]) : '';
+      });
+      var n = cambios(perfil, base);
+      var estado = document.getElementById('qbEstado');
+      estado.className = 'qb-estado' + (errorGuardar ? ' error' : n ? ' cambios' : '');
+      estado.textContent = errorGuardar ? errorGuardar
+        : esperando ? 'Guardando…'
+        : n ? n + (n === 1 ? ' cambio sin guardar' : ' cambios sin guardar') + '. La lista ya lo muestra.'
+        : pendiente ? 'Guardado. Vale para todo el equipo desde la próxima actualización (09:00).'
+        : 'Así busca el equipo' + (ajEquipo.usuario ? ' · último cambio: ' + ajEquipo.usuario + ', ' + fechaCorta(ajEquipo.actualizado) : '') + '.';
+      document.getElementById('qbDeshacer').disabled = !n || !!esperando;
+      var guardar = document.getElementById('qbGuardar');
+      guardar.disabled = !n || !enPortal || !!esperando;
+      guardar.title = enPortal ? '' : 'Para guardar, abre este tablero desde el Portal QUEMPIN.';
+      var efecto = document.getElementById('qbEfecto');
+      if (n) {
+        var antes = cuentaCategorias(base), ahora = cuentaCategorias(perfil);
+        efecto.textContent = 'Con estos cambios: ' + ahora.prioritaria + ' prioritarias, ' + ahora.buena + ' buenas y ' + ahora.descartar +
+          ' descartadas (antes ' + antes.prioritaria + ', ' + antes.buena + ' y ' + antes.descartar + ').' +
+          (enPortal ? '' : ' Para guardar, abre este tablero desde el Portal.');
+      } else efecto.textContent = '';
+      var hist = RB.historial || [];
+      document.getElementById('qbHistCaja').hidden = !hist.length;
+      var ul = vaciar(document.getElementById('qbHist'));
+      hist.forEach(function (h) { ul.appendChild(el('li', { texto: fechaHora(h.fecha) + (h.usuario ? ' · ' + h.usuario : '') + ': ' + (h.cambios || []).join('; ') })); });
+    }
+    [['qbMinimo', 'minimo'], ['qbMinimoCA', 'minimoCompraAgil'], ['qbMaximo', 'maximo']].forEach(function (x) {
+      var inp = document.getElementById(x[0]);
+      inp.addEventListener('change', function () {
+        var d = inp.value.replace(/[^0-9]/g, '');
+        perfil.monto[x[1]] = d ? Math.min(+d, 1e12) : null;
+        alCambiar();
+      });
+    });
+    document.getElementById('qbDeshacer').addEventListener('click', function () { perfil = clonar(perfilBase()); abiertos = {}; alCambiar(); });
+    // Guardar: el Portal (que tiene la carpeta del equipo) deja el pedido en el buzón; oportunidades.py lo aplica.
+    document.getElementById('qbGuardar').addEventListener('click', function () {
+      if (!enPortal || esperando) return;
+      esperando = 'qb' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      errorGuardar = '';
+      var pedido = esperando;
+      window.parent.postMessage({ tipo: 'quempin-ajustes-oportunidades', pedido: pedido, ajustes: clonar(perfil) }, location.origin);
+      setTimeout(function () {
+        if (esperando !== pedido) return;
+        esperando = null;
+        errorGuardar = 'El Portal no respondió: no se guardó. Vuelve a intentarlo.';
+        pintarBuscamos();
+      }, 15000);
+      pintarBuscamos();
+    });
+    window.addEventListener('message', function (ev) {
+      var m = ev.data;
+      if (ev.origin !== location.origin || ev.source !== window.parent || !m || m.tipo !== 'quempin-ajustes-oportunidades-resultado' || m.pedido !== esperando) return;
+      esperando = null;
+      if (m.ok) {
+        pendiente = { id: m.id, enviado: m.enviado, ajustes: clonar(perfil) };
+        try { localStorage.setItem(CLAVE_PENDIENTE, JSON.stringify(pendiente)); } catch (e) {}
+      } else errorGuardar = 'No se guardó: ' + (m.error || 'el Portal no pudo escribir en la carpeta del equipo.');
+      pintarBuscamos();
+    });
+
     function todo() {
       recalcular();
       pintarKpis();
@@ -1401,6 +1800,7 @@ __MARCA_FUENTES__
     }
     pintarPesos();
     todo();
+    pintarBuscamos();
     pintarMercado();
     etiquetarCeldas(document.getElementById('tCompetidores'));
 

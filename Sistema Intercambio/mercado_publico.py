@@ -8,7 +8,7 @@ pasaba a mano cuando alguien se acordaba de mirar: la Planilla tenía 22
 «Adjudicado» y 10 «Ofertado» sin valor, y con eso calcula la tasa de
 adjudicación que usa el Flujo de Caja (análisis del 2026-10-08, §6 punto 1).
 
-Qué hace, en cada vuelta del procesador:
+Qué hace, cada vez que le toca en el procesador (cada 3 horas, procesar.TURNO_SEG):
 
 1. Barre las **órdenes de compra emitidas a QUEMPIN** (por día, con el código
    de proveedor). Una OC es la prueba definitiva de que se ganó, y es la única
@@ -61,6 +61,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -146,6 +147,41 @@ class TopeDeLlamadas(ErrorMercadoPublico):
 def ruta_ticket() -> Path:
     base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
     return Path(base) / "QUEMPIN" / "mercado-publico.ticket"
+
+
+# ── LA API EN USO (2026-11-11) ───────────────────────────────────────────────
+# La API rechaza las consultas simultáneas con el mismo ticket. El tablero de Oportunidades (unos 8 minutos de
+# consultas) deja esta marca mientras consulta, y el procesador, que ahora corre cada 5 minutos, deja su turno de
+# Mercado Público para la vuelta siguiente. Al revés ya estaba cubierto: la tarea de Oportunidades espera el candado
+# del procesador (Actualizar_Finanzas/driver.py, _esperar_procesador). Vence como ese candado, a los 30 minutos.
+API_EN_USO_VENCE_SEG = 30 * 60
+
+
+def ruta_api_en_uso() -> Path:
+    return ruta_ticket().with_name("mercado-publico-en-uso.lock")
+
+
+def api_en_uso() -> bool:
+    try:
+        return time.time() - ruta_api_en_uso().stat().st_mtime < API_EN_USO_VENCE_SEG
+    except OSError:
+        return False
+
+
+@contextmanager
+def usando_api():
+    """Marca la API como en uso mientras dura el bloque (fuera de OneDrive, en %LOCALAPPDATA%\\QUEMPIN)."""
+    ruta = ruta_api_en_uso()
+    try:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        ruta.write_text(str(os.getpid()), encoding="utf-8")
+    except OSError:
+        ruta = None                 # sin la marca, el tablero igual se arma
+    try:
+        yield
+    finally:
+        if ruta is not None:
+            ruta.unlink(missing_ok=True)
 
 
 def _dpapi(datos: bytes, proteger: bool) -> bytes:
@@ -494,6 +530,10 @@ def _estado_planilla(req: dict) -> str:
     return requerimientos.normalizar_encabezado(req.get("estado") or "")
 
 
+# «Adjudicado» y «Cerrado» (entregado, 2026-11-09): los dos dicen que se ganó
+_GANADOS = {requerimientos.normalizar_encabezado(e) for e in requerimientos.ESTADOS_GANADOS}
+
+
 def valor_con_iva(lic: dict | None, ordenes: list[dict]) -> tuple[int | None, str]:
     """El valor adjudicado con IVA y de dónde sale. Si las OC de esa
     adquisición suman exactamente el neto adjudicado, se usa su total real
@@ -533,7 +573,7 @@ def decidir(req: dict, lic: dict | None, ordenes: list[dict]) -> dict:
                           + (f" de {ordenes[0]['comprador']}" if ordenes[0].get("comprador") else ""))
         motivo = "Mercado Público: " + "; ".join(partes) + (f". Valor: {_pesos(valor)} ({como})." if valor else ".")
         cambios = {}
-        if estado != "adjudicado":
+        if estado not in _GANADOS:
             cambios["estado"] = "Adjudicado"
         if valor and not req.get("valorAdjudicado"):
             cambios["valorAdjudicado"] = valor
@@ -548,9 +588,9 @@ def decidir(req: dict, lic: dict | None, ordenes: list[dict]) -> dict:
             motivo = f"Mercado Público: {codigo} {TEXTO_RESULTADO[resultado].lower()}."
         if estado == "ofertado":
             return {"cambios": {"estado": "No adjudicado"}, "motivo": motivo, "revisar": None}
-        if estado == "adjudicado":
+        if estado in _GANADOS:
             return {"cambios": None, "motivo": motivo,
-                    "revisar": f"La planilla dice «Adjudicado», pero {motivo[len('Mercado Público: '):]} ¿Es el código correcto?"}
+                    "revisar": f"La planilla dice «{req.get('estado')}», pero {motivo[len('Mercado Público: '):]} ¿Es el código correcto?"}
         if estado in ("evaluacion", ""):
             return {"cambios": None, "motivo": motivo,
                     "revisar": f"Sigue en «{req.get('estado') or 'sin estado'}» y la licitación ya se resolvió "

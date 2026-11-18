@@ -10,8 +10,8 @@ proyecto y en general, con UX profesional):
 - **Qué es**: la vista `planificacion` (`tipo: vista`, `#vistaPlan`, primera de
   Control y finanzas, así está en el Inicio). Tres vistas de la misma semana
   (`quempin_portal_plan` recuerda cuál y si se muestra el sábado): **General**
-  (un tablero por día con cada proyecto y quiénes van, quiénes quedan sin
-  proyecto y quiénes faltan; abajo, lo que cubre cada proyecto y la carga de cada
+  (desde el 2026-11-16, un día en grande y la semana al lado: ver «General: el día en
+  grande» al final; abajo, lo que cubre cada proyecto y la carga de cada
   persona), **Por personal** y **Por proyecto** (tablas de lunes a viernes; el
   sábado aparece si se pide o si ya tiene algo). Cada casilla se toca y abre una
   ventanita junto a ella (`#plPop`; en el teléfono sube desde abajo y las tablas
@@ -186,7 +186,7 @@ proyecto y en general, con UX profesional):
 
 **Vista más simple y arrastre** (2026-10-28, pedido del usuario: mostraba demasiado a la vez, que «Por personal» permita
 arrastrar proyectos a persona + día, como una opción más, y quitar la alerta de la cabecera):
-- Sin alarma en la cabecera: el número queda en el Inicio y en el menú.
+- Sin alarma en la cabecera ni en el Inicio (2026-11-18): el número queda solo en el menú.
 - Resumen en una línea de pastillas; «N sin asignar» despliega `#plAlarma`. Un choque de vehículo se sigue diciendo con
   todas sus letras en su pastilla.
 - «Más» reúne copiar, compartir, imprimir, estado y sábado. Los paneles de General son `<details>` plegados
@@ -194,6 +194,24 @@ arrastrar proyectos a persona + día, como una opción más, y quitar la alerta 
 - Panel de arrastre (`.pl-arr`): proyectos en Por personal, personas en Por proyecto. Las etiquetas se arrastran entre
   casillas para mover (Ctrl copia), en un solo paso de deshacer. También se puede elegir en el panel y tocar casillas.
 - Bajo 900 px el panel va sobre la tabla y se acomoda en varias filas: nada se desliza de lado (las pruebas lo exigen).
+- **Vehículos arrastrables** (2026-11-12, observación del equipo: «los vehículos deberían poder arrastrarse»): fichas de
+  `PL_VEHICULOS` arriba del panel (`.pl-arr-veh`, `{ tipo: 'vehiculo', id }`). Se sueltan, o se tocan y después, sobre un
+  proyecto ya asignado: la etiqueta de una asignación (`data-asig` = `per|iso|clave`, lo pone `plArrastrable`), la
+  casilla de una persona con un solo proyecto ese día, o la casilla de un proyecto (todos los que van ese día).
+  `plObjetivoVeh` arma `{ veh, iso, pares }`; `plVehiculoPoner` lo guarda en una tanda (uno solo = `plVehiculoDias`).
+  Una casilla con varios proyectos dice «Suéltalo en un proyecto»; tocar donde ya va lo quita.
+
+**Quitar con un toque** (2026-11-06, observación del equipo desde el Portal: «acceso rápido para eliminar asignaciones»):
+- Cada proyecto de una persona en «Por personal», y cada persona de un proyecto en «Por proyecto» y en General, lleva una
+  ✕ (`plQuitarX`, `.pl-quitar`) que lo quita ese día sin abrir la ventanita: `plAsignarDias(..., false)`, con su aviso y su
+  Deshacer, y se lleva el vehículo. Va dentro del botón de la casilla, así que es un `span`: la toma `plQuitarToque`, en
+  captura sobre `#vistaPlan`, antes que la casilla. Sin la carpeta conectada no se pone.
+- Con el mouse aparece al pasar sobre ese proyecto o esa persona (solo cambia la opacidad, nada se mueve) y el «+» de la
+  esquina se esconde mientras tanto: quedaba encima de la ✕ del último proyecto. Con el dedo se ve siempre. No se ve
+  mientras se arrastra o se colocan cosas desde el panel.
+- Con el teclado: Supr (o Retroceso) en una casilla quita todo lo de ese día en un paso (`plQuitarCasilla`), y la casilla
+  sigue con el foco; las casillas con algo lo anuncian con `aria-keyshortcuts="Delete"`.
+- Prueba: `test_quitar_una_asignacion_con_un_toque`.
 
 **Trabajar a la vez** (2026-11-02, pedido del usuario: que se actualice lo más rápido posible para revisarla y trabajarla
 en paralelo):
@@ -211,3 +229,60 @@ en paralelo):
   lectura o escritura de más de `PL_ATASCO_SEG` dice «La carpeta del equipo no responde: recarga la página (F5)», en rojo.
 - **Tras un error al guardar**, se reintenta solo cada `PL_REINTENTO_SEG`, no en cada lectura: el aviso parpadearía.
 - Pruebas: desde `test_lo_que_cambia_un_colega_llega_solo_y_se_ve_quien_fue`.
+
+**Lo tuyo que otro reemplazó y quién más está** (2026-11-10, pedido del usuario: trabajar a la vez en la Planificación y en
+Proyectos en ejecución; se eligió lo que no necesita conectar servicios nuevos, sin Microsoft Graph):
+- **Franja de lo reemplazado** (`#plPisado`, `plNotarAjenos` → `planif.pisado`, `plPintarPisado`): si lo que llega de otro
+  computador reemplaza una casilla que este navegador cambió menos de `PISADO_MIN` (60) minutos antes y con otro valor
+  (`plValor`), dice quién y qué («Asignaste a LC el lunes 10 en Llay Llay; NB quitó esa asignación»). «Volver a lo mío»
+  (`plVolverPisado`) lo repone como un cambio nuevo, en un paso de Deshacer; «Dejar lo de NB» la cierra. Volver a cambiar
+  esa casilla la saca de la franja. El vehículo que se fue con una asignación no se cuenta aparte.
+- **Presencia** (`#plConmigo`, `pres*`, compartido con Ejecución): cada navegador deja en
+  `publicado/presencia/<dispositivo>.json` (esquema `presencia`) la semana que tiene a la vista, cada `PRES_RENOVAR_SEG` (90)
+  y vacío al salir de la vista o de la pestaña. Lee la carpeta cada `PRES_LEER_SEG` (15) y nombra a quien está en la misma
+  semana y lo renovó hace menos de `PRES_VIGENCIA_SEG` (300): «NB también está en esta semana». A la misma persona en otro
+  computador no la nombra.
+- Pruebas: `test_si_un_colega_reemplaza_lo_que_acabas_de_cambiar_se_avisa_y_se_puede_volver`,
+  `test_se_ve_quien_mas_esta_en_la_misma_semana`.
+
+**«Por personal», la vista principal** (2026-11-12, pedido del usuario):
+- Va primera en los botones (`PL_VISTAS`) y es la de entrada. `quempin_portal_plan` lleva `v: 2` (`PL_PREFS_V`): una
+  «General» guardada sin `v` era la entrada de antes, no una elección, y abre una vez en «Por personal»; lo que se elija
+  después se respeta.
+- Sin la pista larga del panel de arrastre («Arrastra uno a la casilla…»): la explicación queda en el `title` de cada ficha.
+- Teléfono: el panel plegado es una sola línea (los vehículos se ven al desplegarlo) y «5 de 5 días · 2 proyectos» bajo el
+  nombre pasa a dos líneas en vez de cortarse.
+
+**Menú «Personal» y personal definitivo** (2026-11-13, pedido del usuario: un desplegable con casillas de las personas que
+se ven en el planificador, y botones para agregar personal definitivo o temporal):
+- `#plPersonas` en la barra (antes de «Agregar»), lista `#plPersonasLista` (`plPersonasMenu`, `plPintarPersonasMenu`,
+  `plPintarBotonPersonas`): una casilla por persona (`plTodasPersonas`: el equipo y lo agregado a mano que vale esa semana),
+  «Todos» / «Ninguno», y abajo «Agregar personal definitivo» y «Agregar personal temporal» (`data-agregar-fija`).
+- **Ocultar es de este navegador**: `prefs.ocultas` en `quempin_portal_plan`. `plModelo` deja sin fila a quien está oculto,
+  **salvo que tenga algo esa semana** (asignación o ausencia): así nada asignado desaparece de los totales ni de las otras
+  vistas, y el menú lo dice («Tiene algo esta semana: sigue a la vista»). El botón muestra «7 de 8» cuando falta alguien.
+- **Personal definitivo** = una persona de la lista con `fija: true` (esquema `planificacion-lista`): una sola entrada por
+  persona (`plKLista` → `fija|x-…`), vale desde su `semana` en adelante (`plManoVale`, `plManoDe`). Se agrega en el diálogo
+  «Agregar» con «Definitivo» / «Solo esta semana» (`#plAgregarDura`, `planif.agregarFija`) y se quita ahí con «Quitar»
+  (`activa: false` en la entrada fija: sale de todas las semanas; lo ya asignado se sigue viendo). «Copiar la semana
+  anterior» no la duplica como temporal.
+- Prueba: `test_el_menu_personal_elige_quienes_se_ven_y_agrega_personal_definitivo_o_temporal`.
+
+**General: el día en grande y la semana al lado** (2026-11-16, el usuario eligió «Hoy con la semana al lado» entre 6
+maquetas del resumen general y 5 variantes de «Hoy en grande»):
+- `plPintarGeneral` arma `.pl-hoy-sem`: a la izquierda `plDiaGrande` (el mismo tablero de un día de antes, `.pl-dia
+  .pl-dia-grande`, con los proyectos en una grilla, «Sin proyecto», «Ausentes» y «Asignar»; la ✕, el arrastre y las
+  ventanitas no cambian) y a la derecha `plSemanaLado` («La semana», `.pl-sem-lado`).
+- **El día elegido** es `planif.diaMovil`, el mismo que eligen los botones de días del teléfono: abre en hoy (en otra
+  semana, el lunes). Cada línea de «La semana» (`.pl-sem-dia`, `data-dia`, `aria-pressed`) lo cambia y deja el foco en
+  ella. Ya no hay tablero de cinco columnas (`.pl-tablero` salió).
+- **Cada línea**: el día, una barra con un tramo por proyecto (`.pl-sem-barra i`, `--pc` = color del proyecto, ancho
+  según cuántos van; punteada si no hay nadie), cuántas personas tienen algo (`.pl-sem-n`) y el ícono del vehículo si
+  uno va a dos lugares ese día. El detalle va en el `title`.
+- **Avisos** (`.pl-sem-avisos`): «N proyectos sin nadie esta semana» (abre la lista de la alarma, como la cifra del
+  resumen), un vehículo en dos lugares por día (muestra ese día en grande) y las ausencias, una línea por persona y
+  motivo («SV: vacaciones, 1 día»).
+- Bajo 900 px de ancho la semana pasa abajo del día; en el teléfono el día se sigue eligiendo también arriba.
+- Pruebas: `test_general_muestra_un_dia_en_grande_y_la_semana_al_lado`,
+  `test_general_avisa_el_vehiculo_en_dos_lugares_y_las_ausencias`; las pruebas que tocan un día en General lo eligen
+  primero con `_dia_general`.

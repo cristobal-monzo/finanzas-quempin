@@ -121,6 +121,69 @@ def test_un_paso_que_falla_no_frena_a_los_demas(entorno, monkeypatch):
     assert ic.leer_publicacion(entorno["raiz"], "estado")["datos"]["avisos"] == ["roto: se cayó"]
 
 
+def test_estado_dice_que_codigo_corre_y_si_esta_la_tarea_de_pedidos(entorno, monkeypatch):
+    """Auditoría del 2026-11-06: las tareas corren lo que esté abierto en la carpeta principal de Finanzas, que estuvo
+    semanas en una rama de trabajo; y «Actualizar datos» se publicó sin la tarea que lo atiende."""
+    r = _vuelta(entorno)
+    datos = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]
+    assert datos["codigo"] == {"rama": "master", "commit": "abc1234", "sucio": False} and datos["pedidos"] == {"tarea": True}
+    assert not any(a.startswith("código:") for a in r["avisos"])
+    monkeypatch.setattr(pr, "codigo_en_uso", lambda repo=None: {"rama": "otra-rama", "commit": "def5678", "sucio": False})
+    monkeypatch.setattr(pr, "tarea_de_pedidos_instalada", lambda: False)
+    r = _vuelta(entorno)
+    datos = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]
+    assert datos["pedidos"] == {"tarea": False}
+    assert [a for a in datos["avisos"] if a.startswith("código:")] == [
+        "código: el procesador corre la rama «otra-rama» (def5678), no master. "
+        "Las tareas programadas corren lo que esté abierto en la carpeta principal de Finanzas."]
+    assert r["avisos"] == datos["avisos"]
+    # Sin git ni schtasks (otro equipo): no van los campos, y el estado sigue cumpliendo su esquema
+    monkeypatch.setattr(pr, "codigo_en_uso", lambda repo=None: None)
+    monkeypatch.setattr(pr, "tarea_de_pedidos_instalada", lambda: None)
+    _vuelta(entorno)
+    datos = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]
+    assert "codigo" not in datos and "pedidos" not in datos
+
+
+def test_avisos_de_codigo():
+    assert pr.avisos_de_codigo(None) == []
+    assert pr.avisos_de_codigo({"rama": "master", "commit": "a1", "sucio": False}) == []
+    assert pr.avisos_de_codigo({"rama": "master", "commit": "a1", "sucio": True}) == [
+        "código: la carpeta principal de Finanzas tiene código modificado sin commit (a1)."]
+    assert pr.avisos_de_codigo({"rama": "x", "commit": "a1", "sucio": True})[0].startswith("código: el procesador corre la rama «x»")
+
+
+@pytest.mark.con_git_real
+def test_codigo_en_uso_lee_rama_commit_y_solo_el_codigo_sucio(tmp_path):
+    import shutil
+    import subprocess
+
+    codigo = pr.codigo_en_uso
+    if shutil.which("git") is None:
+        pytest.skip("git no está instalado en esta máquina")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+    git("init", "-b", "master")
+    git("config", "user.email", "prueba@example.com")
+    git("config", "user.name", "Prueba")
+    (repo / "paso.py").write_text("x = 1\n", encoding="utf-8")
+    (repo / "LEEME.md").write_text("hola\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "uno")
+    c = codigo(repo)
+    assert c["rama"] == "master" and len(c["commit"]) >= 7 and c["sucio"] is False
+    (repo / "LEEME.md").write_text("cambio\n", encoding="utf-8")
+    assert codigo(repo)["sucio"] is False             # un .md editado no cambia lo que corre
+    (repo / "paso.py").write_text("x = 2\n", encoding="utf-8")
+    assert codigo(repo)["sucio"] is True
+    git("switch", "-c", "otra")
+    assert codigo(repo)["rama"] == "otra"
+    assert codigo(tmp_path / "no-es-repo") is None
+
+
 def test_sin_carpeta_queda_inactivo(tmp_path):
     assert pr.procesar(tmp_path / "no-existe")["activo"] is False
 
@@ -148,7 +211,7 @@ def _pedir_vuelta(raiz, id_="pedido0001"):
 def _estado_con_vuelta_de_hace(raiz, minutos):
     from datetime import datetime, timedelta
     corrida = (datetime.now().astimezone() - timedelta(minutes=minutos)).isoformat(timespec="seconds")
-    ic.publicar(raiz, "estado", "procesador", {"procesador": {"ultimaCorrida": corrida}})
+    ic.publicar(raiz, "estado", "procesador", {"procesador": {"ultimaCorrida": corrida}}, validar=False)  # parcial
 
 
 def test_la_vuelta_atiende_los_pedidos_del_portal(entorno):
@@ -180,10 +243,11 @@ def test_hay_pedido_respeta_la_separacion_entre_vueltas(entorno):
     assert pr.hay_pedido(raiz) is False
     _pedir_vuelta(raiz)
     assert pr.hay_pedido(raiz) is True      # sin pulso todavía
-    _estado_con_vuelta_de_hace(raiz, 1)
+    _estado_con_vuelta_de_hace(raiz, 0.5)
     assert pr.hay_pedido(raiz) is False     # queda esperando en el buzón
     assert len(pr._pedidos(raiz)) == 1
-    _estado_con_vuelta_de_hace(raiz, 6)
+    # Un minuto basta (2026-11-11): la vuelta a pedido ya no consulta Mercado Público, que tiene su turno
+    _estado_con_vuelta_de_hace(raiz, 2)
     assert pr.hay_pedido(raiz) is True
 
 
@@ -270,3 +334,209 @@ def test_mindicador_caido_no_es_una_falla_del_procesador(entorno, tmp_path, monk
     r = _vuelta(entorno)
     assert r["pasos"]["uf"]["ok"] and "se reintenta" in r["pasos"]["uf"]["detalle"]
     assert not r["avisos"]
+
+
+# ── Cada 5 minutos (2026-11-11): turnos, OneDrive y vueltas que no se pisan ──
+
+def _contar_mercado_publico(monkeypatch, incompleta=False, falla=False):
+    llamadas = []
+
+    def _revisar(raiz):
+        llamadas.append(1)
+        if falla:
+            raise pr.mercado_publico.ErrorMercadoPublico("la API no respondió")
+        return {"licitaciones": 3, "ordenes": 1, "llamadas": 4, "sugeridas": [], "revisar": [], "incompleta": incompleta}
+    monkeypatch.setattr(pr.mercado_publico, "revisar", _revisar)
+    return llamadas
+
+
+def _turno_de_hace(e, paso, minutos):
+    from datetime import datetime, timedelta
+    firmas = json.loads(e["estado"].read_text(encoding="utf-8"))
+    cuando = datetime.now().astimezone() - timedelta(minutes=minutos)
+    firmas[pr.CLAVE_TURNOS][paso]["cuando"] = cuando.isoformat(timespec="seconds")
+    e["estado"].write_text(json.dumps(firmas), encoding="utf-8")
+
+
+def _estado_hace(raiz, minutos):
+    """Corre hacia atrás la hora del estado publicado, sin tocar nada más."""
+    from datetime import datetime, timedelta
+    sobre = ic.leer_publicacion(raiz, "estado")
+    corrida = datetime.now().astimezone() - timedelta(minutes=minutos)
+    sobre["datos"]["procesador"]["ultimaCorrida"] = corrida.isoformat(timespec="seconds")
+    ic._escribir_json_atomico(raiz / "publicado" / "estado.json", sobre)
+
+
+def test_mercado_publico_corre_cada_3_horas_y_entre_medio_queda_su_ultimo_resultado(entorno, monkeypatch):
+    llamadas = _contar_mercado_publico(monkeypatch)
+    r = _vuelta(entorno)
+    assert len(llamadas) == 1 and r["conTurno"] == ["mercado-publico", "oportunidades"]
+    r = _vuelta(entorno)
+    assert len(llamadas) == 1 and r["conTurno"] == []
+    paso = r["pasos"]["mercado-publico"]
+    assert paso["ok"] and paso["detalle"].startswith("3 licitación(es)") and paso["seg"] == 0 and paso["ultimaVez"]
+    _turno_de_hace(entorno, "mercado-publico", 2 * 60 + 50)
+    _vuelta(entorno)
+    assert len(llamadas) == 1
+    _turno_de_hace(entorno, "mercado-publico", 3 * 60 + 1)
+    _vuelta(entorno)
+    assert len(llamadas) == 2
+
+
+def test_mercado_publico_que_fallo_se_reintenta_en_media_hora_y_la_falla_se_sigue_viendo(entorno, monkeypatch):
+    llamadas = _contar_mercado_publico(monkeypatch, falla=True)
+    _vuelta(entorno)
+    _vuelta(entorno)                                         # los demás pasos pasan a «sin cambios»
+    r = _vuelta(entorno)
+    assert len(llamadas) == 1
+    assert r["pasos"]["mercado-publico"]["ok"] is False      # la bandeja y el pulso la siguen mostrando
+    assert r["avisos"] == ["mercado-publico: la API no respondió"]
+    assert r["estado"] == ""                                 # y el estado no cambia por eso
+    _turno_de_hace(entorno, "mercado-publico", 31)
+    _vuelta(entorno)
+    assert len(llamadas) == 2
+
+
+def test_mercado_publico_a_medias_sigue_en_la_vuelta_siguiente(entorno, monkeypatch):
+    llamadas = _contar_mercado_publico(monkeypatch, incompleta=True)
+    _vuelta(entorno)
+    _vuelta(entorno)
+    assert len(llamadas) == 2
+
+
+def test_forzar_no_adelanta_el_turno_de_mercado_publico(entorno, monkeypatch):
+    """--forzar lo usan el run de Actualizar_Finanzas y cada registro del Centro de Costos: la API sigue cada 3 h."""
+    llamadas = _contar_mercado_publico(monkeypatch)
+    _vuelta(entorno)
+    r = _vuelta(entorno, forzar=True)
+    assert len(llamadas) == 1
+    assert r["pasos"]["requerimientos"]["detalle"] != "sin cambios"   # lo local sí se rehace
+
+
+def test_con_el_tablero_de_oportunidades_consultando_la_api_espera_a_la_vuelta_siguiente(entorno, monkeypatch):
+    llamadas = _contar_mercado_publico(monkeypatch)
+    with pr.mercado_publico.usando_api():
+        r = _vuelta(entorno, forzar=True)
+    assert llamadas == [] and r["conTurno"] == []
+    assert r["pasos"]["proyectos"]["ok"]                           # lo demás corre igual
+    _vuelta(entorno)
+    assert len(llamadas) == 1                                      # sin anotar el intento: le toca en la siguiente
+
+
+def test_la_marca_de_la_api_en_uso_se_quita_y_vence():
+    import time
+    ruta = pr.mercado_publico.ruta_api_en_uso()
+    with pr.mercado_publico.usando_api():
+        assert pr.mercado_publico.api_en_uso()
+    assert not ruta.exists() and not pr.mercado_publico.api_en_uso()
+    ruta.write_text("123", encoding="utf-8")
+    viejo = time.time() - pr.mercado_publico.API_EN_USO_VENCE_SEG - 60
+    os.utime(ruta, (viejo, viejo))
+    assert not pr.mercado_publico.api_en_uso()                     # un proceso que murió no la bloquea para siempre
+
+
+def test_una_vuelta_sin_novedad_no_escribe_nada_en_onedrive(entorno):
+    _vuelta(entorno)
+    _vuelta(entorno)                                               # los detalles pasan a «sin cambios»
+    estado = entorno["raiz"] / "publicado" / "estado.json"
+    for ruta in (estado, entorno["estado"]):
+        os.utime(ruta, (1_000_000, 1_000_000))
+    r = _vuelta(entorno)
+    assert r["estado"] == "" and pr.sin_novedad(r)
+    assert estado.stat().st_mtime == 1_000_000 and entorno["estado"].stat().st_mtime == 1_000_000
+
+
+def test_sin_novedad_el_pulso_se_reescribe_cada_15_minutos(entorno):
+    _vuelta(entorno)
+    _vuelta(entorno)
+    _estado_hace(entorno["raiz"], minutos=16)
+    r = _vuelta(entorno)
+    assert r["estado"] == "latido" and pr.sin_novedad(r)           # el pulso sigue vivo, pero no va al log
+    assert ic.leer_publicacion(entorno["raiz"], "estado")["datos"]["procesador"]["ultimaCorrida"] >= ic.ahora_iso()[:16]
+
+
+def test_la_vuelta_que_atiende_un_pedido_siempre_reescribe_el_pulso(entorno):
+    """El Portal da el pedido por hecho cuando cambia ultimaCorrida: aunque nada más cambie, tiene que escribirse."""
+    _vuelta(entorno)
+    _vuelta(entorno)
+    _estado_hace(entorno["raiz"], minutos=2)
+    antes = ic.leer_publicacion(entorno["raiz"], "estado")["datos"]["procesador"]["ultimaCorrida"]
+    _pedir_vuelta(entorno["raiz"])
+    r = _vuelta(entorno)
+    assert r["estado"] in ("cambios", "latido") and not pr.sin_novedad(r)
+    assert ic.leer_publicacion(entorno["raiz"], "estado")["datos"]["procesador"]["ultimaCorrida"] != antes
+
+
+def test_un_paso_que_cambia_vuelve_a_escribir_el_estado(entorno):
+    _vuelta(entorno)
+    _vuelta(entorno)
+    libro = openpyxl.load_workbook(entorno["planilla"])
+    libro[rq.HOJA].append([281, "Ofertado", "H2 Green", 1000])
+    libro.save(entorno["planilla"])
+    r = _vuelta(entorno)
+    assert r["estado"] == "cambios" and not pr.sin_novedad(r)
+
+
+def test_el_log_no_anota_las_vueltas_sin_novedad(tmp_path, monkeypatch):
+    monkeypatch.setattr(pr, "CARPETA_LOGS", tmp_path)
+    tranquila = {"activo": True, "avisos": [], "pedidos": 0, "estado": "latido", "conTurno": [], "forzada": False,
+                 "pasos": {"esquemas": {"ok": True, "detalle": "", "seg": 0.4}}}
+    pr._registrar(tranquila)
+    assert not list(tmp_path.glob("procesador_*.log"))
+    for cambio in ({"estado": "cambios"}, {"pedidos": 1}, {"conTurno": ["mercado-publico"]}, {"forzada": True},
+                   {"pasos": {"sistema-quempin": {"ok": True, "detalle": "", "seg": 24.0}}}):
+        assert not pr.sin_novedad({**tranquila, **cambio}), cambio
+
+
+def test_forzar_espera_a_que_termine_la_vuelta_en_curso():
+    pr.RUTA_CANDADO.write_text("123")
+    esperas = []
+
+    def _dormir(seg):
+        esperas.append(seg)
+        pr.RUTA_CANDADO.unlink()          # la vuelta en curso termina
+    pr._tomar_candado(esperar_seg=60, dormir=_dormir)
+    assert esperas == [5] and pr.RUTA_CANDADO.exists()
+
+
+def test_el_candado_vencido_se_reemplaza():
+    pr.RUTA_CANDADO.write_text("123")
+    viejo = os.path.getmtime(pr.RUTA_CANDADO) - pr.CANDADO_VENCE_SEG - 60
+    os.utime(pr.RUTA_CANDADO, (viejo, viejo))
+    pr._tomar_candado()
+    assert pr.RUTA_CANDADO.read_text() == str(os.getpid())
+
+
+def test_el_driver_espera_el_mismo_candado():
+    """Oportunidades (Actualizar_Finanzas/driver.py) espera a que el procesador suelte su candado: si cada uno lo
+    buscara en otra ruta, consultarían la API a la vez."""
+    import importlib.util
+    from pathlib import Path
+    ruta = Path(pr.__file__).resolve().parents[1] / ".claude" / "skills" / "Actualizar_Finanzas" / "driver.py"
+    spec = importlib.util.spec_from_file_location("driver_actualizar_finanzas_candado", ruta)
+    driver = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(driver)
+    assert driver.CANDADO_PROCESADOR == pr.carpeta_local() / "procesador.lock"
+    assert "OneDrive" not in str(driver.CANDADO_PROCESADOR)
+
+
+def test_mindicador_caido_se_reintenta_en_media_hora(entorno, monkeypatch):
+    from datetime import datetime, timedelta
+    pedidas = []
+
+    def _correr(comando, cwd=None, limite=600):
+        if comando[-1] == "uf":
+            pedidas.append(1)
+            return False, "[ERROR] HTTP 500"
+        return True, "listo"
+    monkeypatch.setattr(pr, "correr", _correr)
+    r = _vuelta(entorno)
+    assert len(pedidas) == 1 and "se reintenta a las" in r["pasos"]["uf"]["detalle"]
+    r = _vuelta(entorno)
+    assert len(pedidas) == 1 and "se reintenta a las" in r["pasos"]["uf"]["detalle"]
+    firmas = json.loads(entorno["estado"].read_text(encoding="utf-8"))
+    hace = datetime.now().astimezone() - timedelta(minutes=31)
+    firmas["uf"] = pr.INTENTO + hace.isoformat(timespec="seconds")
+    entorno["estado"].write_text(json.dumps(firmas), encoding="utf-8")
+    _vuelta(entorno)
+    assert len(pedidas) == 2

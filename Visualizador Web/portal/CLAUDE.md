@@ -3,7 +3,7 @@
 `index.html`: un solo archivo sin build ni datos, publicado en
 <https://cristobal-monzo.github.io/finanzas-quempin/portal/>. Es la puerta única
 del equipo (el hub redirige aquí; `?indice` muestra el índice antiguo). Una
-ventana: menú ☰, buscador (Ctrl K), proyecto elegido una vez y pestañas con las
+ventana: menú ☰, buscador (Ctrl K) y pestañas con las
 herramientas dentro (iframes del mismo sitio). Sin contraseña propia: cada
 herramienta pide la del equipo, que el navegador recuerda.
 
@@ -15,10 +15,11 @@ Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 
 | Vista (`id` en el registro) | Sección | Funciones y estado | Detalle |
 |---|---|---|---|
+| Inicio, las herramientas por área | `#vistaInicio` | `ini*`, `ini` | [docs/interfaz.md](docs/interfaz.md) |
 | Recorrido (`recorrido`) | `#vistaRecorrido` | `rc*`, `rc` | [docs/recorrido.md](docs/recorrido.md) |
 | Planificación semanal (`planificacion`) | `#vistaPlan` | `pl*`, `planif` | [docs/planificacion.md](docs/planificacion.md) |
 | Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
-| Planilla de Ingreso (`planilla`) | `#vistaPlanilla` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
+| Requerimientos, antes «Planilla de Ingreso» (`planilla`) | `#vistaPlanilla` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
 | Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
 | Clic derecho (menú del portal) y reportar errores y observaciones (`observaciones`) | `#menuCtx`, `#dlgObs`, `#vistaObservaciones` | `ctx*`, `obs*`, `obs` | [docs/observaciones.md](docs/observaciones.md) |
 | Subir documentos (`subir-cc`) | `#vistaSubir` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |
@@ -45,8 +46,9 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   de cada marco con `data-en-portal` y le agrega `ESTILO_INCRUSTADO`. Si cambias
   la cabecera de una herramienta, corre
   `test_lo_que_esconde_el_portal_existe_en_cada_herramienta`.
-- **Sin barras de desplazamiento y sin desplazarse en el Inicio** (clase
-  `sin-barra`; lo miden `test_el_inicio_y_el_menu_caben_sin_barras` y compañía).
+- **Sin barras de desplazamiento y sin desplazarse en el Inicio** en el computador (clase
+  `sin-barra`; lo miden `test_el_inicio_y_el_menu_caben_sin_barras` y
+  `test_las_herramientas_caben_en_el_inicio`).
 - **Lo que no se abre dentro**: el Excel de respaldo de la Planilla (`url` del
   registro), Control de Documentos (aún sin enlace web) y QUEMPIN.exe (`quempin://`).
 - **Datos**: en la página no va ningún dato; todo se arma en el navegador desde la
@@ -59,8 +61,8 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   borrar. Lo que no alcanza a guardarse espera en `quempin_portal_*_pendiente`.
   Formatos en `Sistema Intercambio/esquemas/`. Excepción: la Planilla de Ingreso
   escribe en el buzón, porque su dueño es el Excel ([docs/planilla.md](docs/planilla.md)).
-- **Sin datos reales en el repositorio**: las pruebas usan datos de mentira; las
-  vistas previas con datos reales se arman fuera del repo, en un Chromium aislado.
+- Las pruebas usan datos de mentira; las vistas previas con datos reales se arman
+  en un Chromium aislado.
 
 ## Subir documentos (`sc*`)
 
@@ -76,8 +78,8 @@ siendo `/Registro_Centro_de_Costos`. Solo Chrome y Edge de escritorio
 - `py -3.14 -m pytest "Visualizador Web/tests/test_portal.py"`: el registro, los
   enlaces que leen AF, CC, Formulador y Calculadora, y el portal en Chromium sobre
   un sitio de mentira. Teléfono: `py -3.14 "Visualizador Web/auditoria_movil.py" portal`.
-- **Publicar**: avisa a las otras sesiones, `py -3.14 "Visualizador Web/publicar.py" portal` (copia `index.html` y los archivos
-  de `marca/` que enlaza), commit y push en `.worktrees/gh-pages`. Sin datos, no pasa por el candado.
+- **Publicar**: avisa a las otras sesiones, `py -3.14 "Visualizador Web/publicar.py" portal --subir` (espera el CI, copia `index.html` y los archivos
+  de `marca/` que enlaza, hace commit y push de `gh-pages` y verifica en línea). Sin datos, no pasa por el candado.
 - **Revertir**: `git revert` del commit en `gh-pages`.
 - Pendientes: los contadores de «Pendientes del equipo» leídos de la carpeta y un
   enlace web al Control de Documentos.

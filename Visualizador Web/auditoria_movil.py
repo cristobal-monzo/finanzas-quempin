@@ -128,12 +128,6 @@ def _escenas(page, clave):
             if page.locator("#menu").is_hidden():
                 page.click("#btnMenu")
         yield "menú abierto", menu
-
-        def proyecto():
-            if page.locator("#velo").is_visible():
-                page.keyboard.press("Escape")   # cierra el menú desplegado del teléfono
-            page.click("#btnProyecto")
-        yield "elegir proyecto", proyecto
     if clave in ("cot", "cotpe"):
         def buscar():
             page.fill("#fSearch", "valvula bola 2 pulgadas")

@@ -16,6 +16,8 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   snapshot en `data/oportunidades.json` y la página en `build/index.html`
   (ambos gitignoreados: llevan la historia de la Planilla). Sin respuesta de
   Mercado Público usa la caché y lo avisa. `--sin-red` arma solo la página.
+  Mientras consulta marca la API en uso (`mercado_publico.usando_api`, 2026-11-11):
+  el procesador corre cada 5 minutos y deja su turno de Mercado Público para después.
 - **Publicado** en `oportunidades/` de gh-pages, clave `op` de
   `Visualizador Web/publicar.py`. Se actualiza **a diario** (desde el
   2026-10-14): la tarea «Oportunidades Mercado Publico QUEMPIN», a las 09:00,
@@ -38,8 +40,14 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   el cierre, el criterio plazo y una visita que ya pasó, con las tablas de
   `DATA.reglas` (las mismas de `oportunidades_config.json`). Una licitación que
   ya cerró no se muestra. `categoria()` y `evaluar()` del JS repiten
-  `Evaluador.categoria` y los tramos del plazo:
+  `Evaluador.categoria` (con el `op.tope` que calcula Python: tema, nota del
+  rubro, monto mínimo; 2026-11-13) y los tramos del plazo:
   `tests/test_tablero_oportunidades.py` las compara en Chromium.
+- **«Qué buscamos»** (2026-11-16, variante D1 elegida por el usuario): pestaña con
+  los temas en 4 columnas que se arrastran (o «Mover a»), regiones y montos. La lista
+  se recalcula al tiro con `resolverRubro`, `calcularTope` y `resolverMonto`, gemelas
+  de Python (ver `../docs/oportunidades.md`). Guardar va por el Portal
+  (`quempin-ajustes-oportunidades`): sin Portal, el botón queda apagado y lo dice.
 - **Visita a terreno** (2026-10-15): viene de la ficha de las bases (la API no
   la trae). Con varias fechas, `visitaDelDia` muestra la próxima y la da por
   pasada solo cuando pasaron todas. Sin dato dice «sin confirmar», no «no».

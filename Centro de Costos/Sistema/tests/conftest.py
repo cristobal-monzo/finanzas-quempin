@@ -34,3 +34,12 @@ def _resetear_pais_activo(_sin_ordenes_compra_reales):
     acc.configurar_pais("CL")
     yield
     acc.configurar_pais("CL")
+
+
+@pytest.fixture(autouse=True)
+def _sin_procesador_real(monkeypatch):
+    """main() termina con una vuelta del procesador del Intercambio (PASO
+    12e), que escribe en la carpeta compartida real. Ningun test debe
+    dispararla: un test que la necesite borra la variable."""
+    import auditor_centro_costos as acc
+    monkeypatch.setenv(acc.VARIABLE_SIN_INTERCAMBIO, "1")

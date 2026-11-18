@@ -47,8 +47,8 @@ tabla: dilo en una línea y sigue.
 
    La receta está en
    [`Visualizador Web/CLAUDE.md`](../Visualizador%20Web/CLAUDE.md) § Hosting
-   (el de la **raíz** del repo, no el del módulo): `publicar.py` con la clave
-   del módulo (`cc`, `af` o `cot`), y después commit y push en gh-pages. No se
+   (el de la **raíz** del repo, no el del módulo): `publicar.py --subir` con la clave
+   del módulo (`cc`, `af` o `cot`): hace commit, push y verifica en línea. No se
    copia el `index.html` a mano: el del AF lleva sus reportes PDF cifrados
    aparte.
 

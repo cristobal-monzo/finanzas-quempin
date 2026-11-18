@@ -105,7 +105,8 @@ def elegibles(datos: dict, enviados: set[str], reglas: dict, ahora: datetime) ->
     salida = []
     for o in datos.get("oportunidades") or []:
         horas = horas_para(o.get("cierre"), ahora)
-        if (o.get("puntaje", 0) >= reglas["notaMinima"] and o.get("ficha") and o.get("categoria") != "descartar"
+        # Solo «Prioritaria» (2026-11-13): una con nota alta pero con tope (tema «Rara vez», monto bajo el mínimo) no se avisa.
+        if (o.get("puntaje", 0) >= reglas["notaMinima"] and o.get("ficha") and o.get("categoria") == "prioritaria"
                 and not o.get("descartar") and o.get("codigo") not in enviados
                 and not (reglas.get("omitirSiEstaEnPlanilla", True) and o.get("enPlanilla"))
                 and horas is not None and horas >= minimas["compraAgil" if es_compra_agil(o) else "licitacion"]):

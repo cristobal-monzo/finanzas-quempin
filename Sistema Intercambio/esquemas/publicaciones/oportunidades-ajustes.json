@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "oportunidades-ajustes (lo que el equipo cambió en «Qué buscamos»)",
+  "description": "La versión vigente de «Qué buscamos» del tablero de Oportunidades, encima de oportunidades_config.json (que no se toca): niveles y frases de los temas, palabras que descartan, no confundir, regiones y montos. Con el historial de los últimos 30 cambios (quién, cuándo y qué). La escribe solo oportunidades.py al atender los «ajustes-oportunidades» del buzón.",
+  "dueno": "oportunidades",
+  "type": "object",
+  "properties": {
+    "actualizado": {
+      "type": "string",
+      "minLength": 10
+    },
+    "mensaje": {
+      "type": "string",
+      "minLength": 6
+    },
+    "usuario": {
+      "type": "string"
+    },
+    "ajustes": {
+      "type": "object",
+      "properties": {
+        "temas": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "interes": {
+                "enum": [
+                  "alto",
+                  "medio",
+                  "bajo",
+                  "no"
+                ]
+              },
+              "frases": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 80
+                }
+              }
+            },
+            "required": [
+              "interes"
+            ]
+          }
+        },
+        "excluir": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          }
+        },
+        "noConfundir": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          }
+        },
+        "regiones": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "monto": {
+          "type": "object",
+          "properties": {
+            "minimo": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "minimoCompraAgil": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maximo": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "historial": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 6
+          },
+          "fecha": {
+            "type": "string"
+          },
+          "usuario": {
+            "type": "string"
+          },
+          "cambios": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "cambios"
+        ]
+      }
+    }
+  },
+  "required": [
+    "ajustes",
+    "historial"
+  ]
+}

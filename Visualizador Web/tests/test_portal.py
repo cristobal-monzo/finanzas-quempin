@@ -78,7 +78,8 @@ def test_cabecera_del_portal():
 
 def test_no_carga_nada_de_otro_sitio_ni_lleva_datos():
     html = PORTAL.read_text(encoding="utf-8")
-    assert not re.search(r"<script[^>]+\bsrc=", html), "sin scripts externos"
+    # El único script enlazado es el de las cajas de números, del mismo sitio (2026-11-10): publicar.py lo copia con él.
+    assert re.findall(r"<script[^>]+\bsrc=[^>]*>", html) == ['<script src="../numeros.js">'], "sin scripts externos"
     # La única hoja que enlaza es la de las fuentes, del mismo sitio (2026-10-30): publicar.py la copia con él.
     assert re.findall(r"<link[^>]+stylesheet[^>]*>", html) == ['<link rel="stylesheet" href="../marca/fuentes.css">']
     assert "@import" not in html, "sin hojas de estilo de otro sitio"
@@ -132,10 +133,16 @@ def test_registro_bien_formado():
             assert len(h.get("corto", h["nombre"])) <= 18, h["id"]
 
 
-def test_los_grupos_del_pedido_del_2026_10_16():
-    """Cuatro grupos y la ayuda; la calculadora al final, antes de la ayuda."""
-    assert [g["nombre"] for g in _registro()["grupos"]] == [
-        "Formulación de proyectos", "Control y finanzas", "Cotizar y comprar", "Calculadora", "Ayuda"]
+def test_los_grupos_por_etapa_del_trabajo():
+    """Pedido del 2026-11-10 (el Inicio como centro de trabajo): las herramientas por etapa del trabajo, en el Inicio y en
+    el menú; lo de Sistema QUEMPIN va en la etapa donde se usa. La calculadora al final, antes de la ayuda."""
+    reg = _registro()
+    assert [g["nombre"] for g in reg["grupos"]] == [
+        "Captar y ofertar", "Ejecutar proyectos", "Control financiero", "Calculadora", "Ayuda"]
+    de = lambda g: [h["id"] for h in reg["herramientas"] if h["grupo"] == g]
+    assert de("ofertar") == ["oportunidades", "planilla", "formulador", "proyectos", "cotizador", "cotizacion"]
+    assert de("ejecutar") == ["ejecucion", "planificacion", "gantt", "orden-compra", "subir-cc", "ingresar"]
+    assert de("controlar") == ["centro-costos", "analisis", "flujo-caja"]
 
 
 def test_la_ayuda_sin_indice_anterior_y_con_configuracion():
@@ -167,7 +174,7 @@ def test_conexiones_bien_referenciadas():
     por_id = {h["id"]: h for h in reg["herramientas"]}
     usadas = {u for e in elementos for u in e["usan"]}
     for h in reg["herramientas"]:
-        if h["grupo"] in {"formular", "finanzas", "cotizar"}:
+        if h["grupo"] in {"ofertar", "ejecutar", "controlar"}:
             assert h["id"] in usadas or (h.get("alias") and h["familia"] in usadas), h["id"]
     tareas = [t["nombre"] for t in cx["procesador"]["tareas"]]
     assert tareas == ["Procesar intercambio QUEMPIN", "Registrar en la Planilla QUEMPIN", "Actualizar Finanzas QUEMPIN",
@@ -333,6 +340,7 @@ def _sitio(raiz: Path):
     (raiz / "finanzas-quempin" / "portal").mkdir(parents=True)
     (raiz / "finanzas-quempin" / "portal" / "index.html").write_bytes(PORTAL.read_bytes())
     shutil.copytree(PORTAL.parents[1] / "marca", raiz / "finanzas-quempin" / "marca")
+    shutil.copy2(PORTAL.parents[1] / "numeros.js", raiz / "finanzas-quempin" / "numeros.js")   # como lo deja publicar.py
     pagina("/finanzas-quempin/", "Herramientas QUEMPIN", "indice")
     pagina("/finanzas-quempin/centro-de-costos/", "Centro de Costos", "cc", CABECERA_TABLERO + CANDADO + """
       <a id="aAF" href="../analisis-financiero/#proyecto=DEMO">Ficha en Análisis Financiero</a>
@@ -377,6 +385,10 @@ def _sitio(raiz: Path):
         if js and js.exists():
             (raiz / "formulacion-proyectos-quempin" / "js").mkdir(parents=True, exist_ok=True)
             (raiz / "formulacion-proyectos-quempin" / "js" / nombre).write_bytes(js.read_bytes())
+    # El validador que el Portal carga del Formulador antes de escribir sus archivos (2026-11-06). Su fuente es
+    # Sistema Intercambio/esquemas.js (el Formulador lleva una copia textual): así se prueba también sin el Formulador.
+    (raiz / "formulacion-proyectos-quempin" / "js").mkdir(parents=True, exist_ok=True)
+    (raiz / "formulacion-proyectos-quempin" / "js" / "esquemas.js").write_bytes((RAIZ / "Sistema Intercambio" / "esquemas.js").read_bytes())
     pagina("/calculadora-tecnica-quempin/", "Calculadora Técnica", "calc")
     for ruta, herr in (("DiametroTuberia", "diametro"), ("Hidrogeno", "hidrogeno"),
                        ("GasNatural-GLP", "gas"), ("OtrosGases", "otros")):
@@ -504,17 +516,16 @@ JS_BARRAS = """() => ['.vista-inicio', '.menu-lista', '.pestanas-lista'].map((s)
 def test_inicio_muestra_todas_las_herramientas_por_grupo(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     grupos = pagina.locator("#menu .grupo-cab").all_inner_texts()
-    assert [g.strip() for g in grupos] == ["Formulación de proyectos", "Control y finanzas", "Cotizar y comprar",
+    assert [g.strip() for g in grupos] == ["Captar y ofertar", "Ejecutar proyectos", "Control financiero",
                                            "Calculadora", "Ayuda"]
-    assert pagina.locator("#iniGrupos .ini-grupo h2").all_inner_texts() == [
-        "Formulación de proyectos", "Control y finanzas", "Cotizar y comprar", "Calculadora"]
+    assert pagina.locator("#iniAreas .ini-area h2").all_text_contents() == ["Ofertar", "Ejecutar", "Controlar", "Calcular"]
     reg = _registro()
-    esperadas = [h["id"] for h in reg["herramientas"] if h["grupo"] in {"formular", "finanzas", "cotizar", "calcular"}]
-    assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item')].map(b => b.dataset.herr)") == esperadas
+    esperadas = [h["id"] for h in reg["herramientas"] if h["grupo"] in {"ofertar", "ejecutar", "controlar", "calcular"}]
+    assert pagina.evaluate("[...document.querySelectorAll('#iniAreas .ini-item')].map(b => b.dataset.herr)") == esperadas
     # Lo que se abre fuera del portal (Excel, Sistema QUEMPIN) lleva la flecha ↗; las vistas del portal, no
     fuera = [h["id"] for h in reg["herramientas"] if h["id"] in esperadas and h["tipo"] not in ("marco", "vista")]
     assert fuera == ["cotizacion", "orden-compra"]
-    assert pagina.locator("#iniGrupos .ini-item:has(.ini-fuera)").count() == len(fuera)
+    assert pagina.locator("#iniAreas .ini-item:has(.ini-fuera)").count() == len(fuera)
     assert _pestanas(pagina) == ["Inicio"]
     assert pagina.locator("iframe").count() == 0
     # Una herramienta del Inicio se abre en su pestaña
@@ -530,17 +541,17 @@ def test_el_inicio_y_el_menu_caben_sin_barras(navegador, sitio, ancho, alto):
     """Pedido del 2026-10-16: el Inicio con todas las herramientas sin desplazarse, y ninguna barra vertical."""
     pagina, errores = _abrir_portal(navegador, sitio, ancho=ancho, alto=alto)
     assert pagina.evaluate(JS_BARRAS) == []
-    # Sin menú fijo al lado, las cuatro columnas caben desde 1024 px
-    columnas = "getComputedStyle(document.getElementById('iniGrupos')).gridTemplateColumns.split(' ').length"
-    assert pagina.evaluate(columnas) == 4
+    # Las cuatro áreas, de a dos (2026-11-10)
+    columnas = "getComputedStyle(document.getElementById('iniAreas')).gridTemplateColumns.split(' ').length"
+    assert pagina.evaluate(columnas) == 2
     assert pagina.evaluate("getComputedStyle(document.querySelector('.menu-lista')).scrollbarWidth") == "none"
     # El menú (☰), con su grupo más largo desplegado, tampoco desborda; va encima y no achica el Inicio
     _menu(pagina, "Seguimiento")
     pagina.locator("#pestanas .ir", has_text="Inicio").click()
     pagina.locator("#btnMenu").click()
-    assert pagina.locator('#menu .grupo-cab[aria-expanded="true"]').inner_text().strip() == "Formulación de proyectos"
+    assert pagina.locator('#menu .grupo-cab[aria-expanded="true"]').inner_text().strip() == "Captar y ofertar"
     assert pagina.evaluate(JS_BARRAS) == []
-    assert pagina.evaluate(columnas) == 4
+    assert pagina.evaluate(columnas) == 2
     assert not errores
     pagina.context.close()
 
@@ -549,11 +560,11 @@ def test_el_menu_despliega_un_grupo_a_la_vez(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     pagina.locator("#btnMenu").click()          # el menú con nombres
     abiertos = lambda: pagina.locator('#menu .grupo-cab[aria-expanded="true"]').all_inner_texts()
-    assert [g.strip() for g in abiertos()] == ["Formulación de proyectos"]
-    pagina.locator("#grupo-finanzas").click()
-    assert [g.strip() for g in abiertos()] == ["Control y finanzas"]
-    assert pagina.locator("#items-formular").is_hidden()
-    pagina.locator("#grupo-finanzas").click()
+    assert [g.strip() for g in abiertos()] == ["Captar y ofertar"]
+    pagina.locator("#grupo-ejecutar").click()
+    assert [g.strip() for g in abiertos()] == ["Ejecutar proyectos"]
+    assert pagina.locator("#items-ofertar").is_hidden()
+    pagina.locator("#grupo-ejecutar").click()
     assert abiertos() == []
     # Abrir una herramienta (aquí desde el Inicio) despliega su grupo
     pagina.keyboard.press("Escape")
@@ -695,48 +706,38 @@ def test_la_calculadora_que_cambia_sola_mueve_su_pestana(navegador, sitio):
     pagina.context.close()
 
 
-def test_el_proyecto_elegido_abre_cada_herramienta_en_el(navegador, sitio):
+def test_sin_selector_de_proyecto_cada_herramienta_abre_su_vista_general(navegador, sitio):
+    """2026-11-06, pedido del usuario: el selector de proyecto de la cabecera «no aporta» y se quitó."""
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
-    # La Carta Gantt es una herramienta aparte (2026-10-20): sin proyecto abre su lista, sin pedir uno
+    assert pagina.locator("#btnProyecto").count() == 0 and pagina.locator("#btnCarpeta").count() == 0
+    # Lo que quedó guardado del selector de antes ya no manda
+    pagina.evaluate("localStorage.setItem('quempin_portal_proyecto', JSON.stringify('QMPN-2026-001'))")
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    assert pagina.evaluate("localStorage.getItem('quempin_portal_proyecto')") is None
     _menu(pagina, "Carta Gantt")
-    assert not pagina.locator("#popProyecto").is_visible()
     _marco(pagina, "gantt", "gantt")
     _esperar(pagina, "gantt", "hash", "#/")
-    # Con un proyecto elegido, abre su carta en su propia pestaña, aparte del Formulador
-    pagina.locator("#btnProyecto").click()
-    assert pagina.locator("#listaProyectos .pop-item .t").all_inner_texts() == ["QMPN-2026-001 · Obra de prueba",
-                                                                                "QMPN-2026-002 · Mantención de prueba"]
-    pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-001").click()
-    assert "QMPN-2026-001" in pagina.locator("#proyectoActual").inner_text()
-    _esperar(pagina, "gantt", "hash", "#/proyecto/u2")
-    assert pagina.evaluate("document.getElementById('marco-gantt').contentDocument.documentElement.dataset.enPortal") == "gantt"
     _menu(pagina, "Formulador")
     formulador = _marco(pagina, "formulador", "formulador")
-    _esperar(pagina, "formulador", "hash", "#/req/7")
-    assert _pestanas(pagina) == ["Inicio", "Carta Gantt · QMPN-2026-001", "Formulador · QMPN-2026-001"]
-    pagina.locator("#pestanas .x").first.click()
-    assert _pestanas(pagina) == ["Inicio", "Formulador · QMPN-2026-001"]
-    _menu(pagina, "Centro de Costos")
-    cc = _marco(pagina, "centro-costos", "cc")
-    _esperar(pagina, "centro-costos", "hash", "#tag=DEMO")
-    # Sin proyecto: las abiertas vuelven a su vista general
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Sin proyecto").click()
-    _esperar(pagina, "centro-costos", "hash", "")
     _esperar(pagina, "formulador", "hash", "#/")
+    assert _pestanas(pagina) == ["Inicio", "Carta Gantt", "Formulador"]
+    _menu(pagina, "Centro de Costos")
+    _marco(pagina, "centro-costos", "cc")
+    _esperar(pagina, "centro-costos", "hash", "")
     # Buscar por N° de requerimiento abre el seguimiento de ese proyecto
     pagina.locator("#buscar").fill("7")
     assert pagina.locator("#resultados .res-tit").first.inner_text() == "QMPN-2026-001 · Obra de prueba"
     pagina.keyboard.press("Enter")
     _esperar(pagina, "formulador", "hash", "#/p/u2/seguimiento")
-    # Un proyecto nuevo guardado por el Formulador aparece sin recargar el portal
+    # Un proyecto nuevo guardado por el Formulador aparece en el buscador sin recargar el portal
     formulador.evaluate("""k => {
         const d = JSON.parse(localStorage.getItem(k));
         d.proyectos.push({uid: 'u5', codigo: 'QMPN-2026-004', version: 1, titulo: 'Nuevo', estado: 'Borrador', modificado: '2026-10-05T10:00:00Z'});
         localStorage.setItem(k, JSON.stringify(d));
     }""", LS_PROYECTOS)
-    pagina.locator("#btnProyecto").click()
-    pagina.wait_for_function("() => document.querySelectorAll('#listaProyectos .pop-item').length === 4")   # + «Sin proyecto»
+    pagina.locator("#buscar").fill("QMPN-2026-004")
+    pagina.locator("#resultados .res-tit", has_text="QMPN-2026-004").wait_for()
     assert not errores
     pagina.context.close()
 
@@ -754,18 +755,13 @@ def test_ingresar_datos_y_analisis_son_una_sola_pestana(navegador, sitio):
     pagina.context.close()
 
 
-def test_el_seguimiento_pide_el_proyecto(navegador, sitio):
-    """2026-10-25: sin proyecto, «Seguimiento» abría la misma lista que «Formulador», con otro nombre.
-    Ahora pide elegir el proyecto y abre su seguimiento."""
+def test_el_seguimiento_abre_la_lista_del_formulador(navegador, sitio):
+    """Sin selector de proyecto (2026-11-06), «Seguimiento» abre la lista del Formulador, donde se elige el proyecto."""
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
     _menu(pagina, "Seguimiento")
-    assert pagina.locator("#popProyecto").is_visible()
-    assert pagina.locator("#popNota").inner_text() == "Elige el proyecto para ver su Seguimiento."
-    assert _pestanas(pagina) == ["Inicio"]
-    pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-002").click()
     _marco(pagina, "formulador", "formulador")
-    _esperar(pagina, "formulador", "hash", "#/p/u3/seguimiento")
-    assert _pestanas(pagina) == ["Inicio", "Seguimiento · QMPN-2026-002"]
+    _esperar(pagina, "formulador", "hash", "#/")
+    assert _pestanas(pagina) == ["Inicio", "Seguimiento"]
     assert not errores
     pagina.context.close()
 
@@ -811,14 +807,14 @@ def test_la_contrasena_escrita_en_una_herramienta_abre_las_demas(navegador, siti
 def test_excel_y_programa_no_se_abren_dentro(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     # La Planilla de Ingreso es una vista del portal desde el 2026-10-29; su Excel de respaldo se abre aparte, desde Conexiones
-    _menu(pagina, "Planilla de Ingreso")
+    _menu(pagina, "Requerimientos")
     assert pagina.evaluate("window.__abiertas") == []
     assert pagina.locator("#vistaPlanilla").is_visible() and pagina.locator("iframe").count() == 0
     _menu(pagina, "Configuración y conexiones")
     pagina.locator("#cx-planilla .cx-enlace", has_text="Abrir en Excel para la web").click()
     abiertas = pagina.evaluate("window.__abiertas")
     assert len(abiertas) == 1 and abiertas[0].startswith("https://quempinspa2020.sharepoint.com/")
-    for nombre in ("Conexiones", "Planilla"):
+    for nombre in ("Conexiones", "Requerimientos"):
         pagina.locator("#pestanas .pestana", has_text=nombre).locator(".x").click()
     # Cotizar y comprar abre QUEMPIN.exe en su sección con quempin:// (Sistema QUEMPIN 1.3.8)
     _menu(pagina, "Emitir cotización")
@@ -1040,7 +1036,7 @@ def test_el_inicio_marca_las_herramientas_ya_abiertas(navegador, sitio):
     pagina.locator('.ini-item[data-herr="flujo-caja"]').click()
     _marco(pagina, "flujo-caja", "fc")
     pagina.locator("#pestanas .ir").first.click()
-    assert pagina.evaluate("[...document.querySelectorAll('#iniGrupos .ini-item.abierta')].map(b => b.dataset.herr)") == ["flujo-caja"]
+    assert pagina.evaluate("[...document.querySelectorAll('#iniAreas .ini-item.abierta')].map(b => b.dataset.herr)") == ["flujo-caja"]
     assert not errores
     pagina.context.close()
 
@@ -1090,7 +1086,7 @@ def _estado_cx(pagina, esperar=None):
 
 def test_configuracion_y_conexiones_en_su_pestana(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator("#iniConexiones").click()
+    _menu(pagina, "Configuración y conexiones")
     assert _pestanas(pagina) == ["Inicio", "Conexiones"]
     assert pagina.locator("#vistaConexiones").is_visible() and pagina.locator("#vistaInicio").is_hidden()
     assert pagina.url.endswith("#/conexiones")
@@ -1109,14 +1105,15 @@ def test_configuracion_y_conexiones_en_su_pestana(navegador, sitio):
     filas = pagina.evaluate("""() => [...document.querySelectorAll('#cxNecesita tbody tr')].map(tr =>
         [tr.querySelector('th').textContent, [...tr.querySelectorAll('.cx-chip')].map(c => c.textContent)])""")
     por_nombre = dict(filas)
-    for juntas in ("Formulador y Seguimiento", "Centro de Costos y Análisis Financiero",
-                   "Emitir cotización y Orden de compra"):
+    for juntas in ("Formulador y Seguimiento", "Centro de Costos y Análisis Financiero"):
         assert juntas in por_nombre, juntas
+    # Emitir cotización y Orden de compra necesitan lo mismo, pero desde el 2026-11-10 van en etapas distintas
+    assert por_nombre["Emitir cotización"] == por_nombre["Orden de compra"]
     assert filas[-1] == ["Calculadora (todas)", []]
     assert {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"} <= set(por_nombre["Formulador y Seguimiento"])
     # La Carta Gantt, herramienta aparte (2026-10-20): la carpeta del equipo para compartir sus cartas
     assert set(por_nombre["Carta Gantt"]) == {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"}
-    assert "QUEMPIN.exe" in por_nombre["Emitir cotización y Orden de compra"]
+    assert "QUEMPIN.exe" in por_nombre["Emitir cotización"]
     # Un dato de la tabla lleva a su tarjeta; «Lo usan» abre la herramienta
     pagina.locator("#cxNecesita .cx-chip", has_text="QUEMPIN.exe").first.click()
     pagina.wait_for_function("() => document.getElementById('cx-sistema').classList.contains('resaltada')")
@@ -1342,13 +1339,6 @@ def test_el_usuario_se_elige_una_vez_y_ordena_los_proyectos(navegador, sitio):
     # Se guarda tal cual (no JSON): así lo lee el Formulador
     assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "LC"
     assert "Trabajas como LC" in pagina.locator("#aviso").inner_text()
-    # El selector de proyectos muestra primero los suyos
-    pagina.locator("#btnProyecto").click()
-    assert pagina.locator("#listaProyectos .pop-grupo").all_text_contents() == ["Tus proyectos (LC)", "Del equipo"]
-    titulos = pagina.locator("#listaProyectos li").all_inner_texts()
-    assert titulos[1].startswith("QMPN-2026-001") and titulos[3].startswith("QMPN-2026-002"), titulos
-    assert "a cargo de CM" in titulos[3]
-    pagina.keyboard.press("Escape")
     # El buscador dice cuál es suyo y encuentra por iniciales
     pagina.locator("#buscar").fill("cm")
     assert "a cargo de CM" in pagina.locator("#resultados").inner_text()
@@ -1358,8 +1348,6 @@ def test_el_usuario_se_elige_una_vez_y_ordena_los_proyectos(navegador, sitio):
     pagina.locator("#sinUsuario").click()
     assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == ""
     assert pagina.locator("#usuarioActual").inner_text() == "¿Quién eres?"
-    pagina.locator("#btnProyecto").click()
-    assert pagina.locator("#listaProyectos .pop-grupo").count() == 0
     assert not errores
     pagina.context.close()
 
@@ -1408,63 +1396,7 @@ def test_telefono_con_usuario_y_proyecto_sin_desbordes(navegador, sitio, ancho):
     pagina.context.close()
 
 
-# ---- La carpeta del proyecto en el Explorador (2026-10-19, QUEMPIN.exe 1.3.10) -------------------------
-def _proyectos_con_carpeta():
-    datos = json.loads(json.dumps(PROYECTOS))
-    datos["proyectos"][1]["vinculos"]["carpetaOferta"] = {
-        "nombre": "312. Gimnasio de prueba", "ruta": ["0 OFERTAS PRESENTADAS", "312. Gimnasio de prueba"], "numero": "312"}
-    # Adjudicada y copiada a Gestión de Proyectos: el original quedó en Adjudicadas y se abre la copia
-    datos["proyectos"][2]["vinculos"] = {"carpetaOferta": {
-        "nombre": "250. Obra de prueba", "ruta": ["0 OFERTAS ADJUDICADAS", "250. Obra de prueba"], "numero": "250",
-        "gestion": {"copiada": "2026-10-19T12:00:00.000Z"}}}
-    datos["proyectos"].append({"uid": "u5", "codigo": "QMPN-2026-009", "version": 1, "titulo": "Ruta mala", "estado": "Borrador",
-                               "modificado": "2026-10-01T09:00:00Z", "vinculos": {"carpetaOferta": {"nombre": "x", "ruta": ["..", "x"]}}})
-    return datos
-
-
-def test_la_carpeta_del_proyecto_se_abre_en_el_explorador(navegador, sitio):
-    pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.evaluate("d => localStorage.setItem('qpn.formulacion.proyectos.v1', JSON.stringify(d))", _proyectos_con_carpeta())
-    pagina.reload()
-    pagina.locator("#vistaInicio").wait_for()
-    boton = pagina.locator("#btnCarpeta")
-    assert boton.is_hidden()          # sin proyecto elegido
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Obra de prueba").click()
-    assert boton.is_visible()
-    assert "312. Gimnasio de prueba" in boton.get_attribute("title")
-    boton.click()
-    assert pagina.evaluate("window.__lanzados") == ["quempin://carpeta/formulacion/0%20OFERTAS%20PRESENTADAS/312.%20Gimnasio%20de%20prueba"]
-    assert "Abriendo «312. Gimnasio de prueba» en el Explorador" in pagina.locator("#aviso").inner_text()
-    pagina.locator("#aviso button", has_text="¿No se abrió?").click()
-    texto = pagina.locator("#dlgInfo").inner_text()
-    assert "1.3.10" in texto and "Formulación de proyectos › 0 OFERTAS PRESENTADAS › 312. Gimnasio de prueba" in texto
-    pagina.locator("#dlgInfo button", has_text="Entendido").click()
-    # Uno ya copiado a Gestión de Proyectos abre esa copia
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Mantención de prueba").click()
-    boton.click()
-    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/250.%20Obra%20de%20prueba"
-    # Sin carpeta, o con una ruta que no es de la biblioteca, no hay botón
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="Ruta mala").click()
-    assert boton.is_hidden()
-    assert not errores
-    pagina.context.close()
-
-
-def test_en_el_telefono_no_hay_boton_de_carpeta(navegador, sitio):
-    pagina, errores = _abrir_portal(navegador, sitio, ancho=390, alto=844, movil=True)
-    pagina.evaluate("d => { localStorage.setItem('qpn.formulacion.proyectos.v1', JSON.stringify(d)); localStorage.setItem('quempin_portal_proyecto', JSON.stringify('QMPN-2026-001')); }", _proyectos_con_carpeta())
-    pagina.reload()
-    pagina.locator("#vistaInicio").wait_for()
-    assert pagina.locator("#btnCarpeta").is_hidden()
-    d = pagina.evaluate(JS_DESBORDES)
-    assert d["doc"] <= 390 and not d["fuera"], d
-    assert not errores
-    pagina.context.close()
-
-
+# ---- Las carpetas en el Explorador (2026-10-19, QUEMPIN.exe 1.3.10): hoy desde Proyectos en ejecución -------------------
 def test_sistema_quempin_atiende_las_carpetas_que_pide_el_portal():
     """quempin://carpeta/<formulacion|gestion>/… es lo que lee app/carpetas.py de Sistema QUEMPIN."""
     sistema = _hermano("Sistema QUEMPIN")
@@ -1569,6 +1501,8 @@ def _intercambio_de_prueba():
         "publicado/formulador/fx.json": _formulacion("fx", "QMPN-2026-778", None, "Borrador", "LC", eliminado=True),
         "buzon/b903.json": sobre_msg,
         "buzon/otro.json": {"tipo": "datos-proyecto", "destino": "analisis-financiero"},
+        # El catálogo que deja el procesador: con él, todo lo que el Portal escribe en estas pruebas se valida (2026-11-06)
+        "esquemas.json": _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py").paquete(),
     }
 
 
@@ -1620,7 +1554,7 @@ def _cifras(pagina):
 
 def test_el_recorrido_sin_biblioteca_dice_que_conectar(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator("#iniRecorrido").click()
+    _menu(pagina, "Recorrido de proyectos")
     assert _pestanas(pagina) == ["Inicio", "Recorrido"]
     assert pagina.url.endswith("#/recorrido") and pagina.locator("iframe").count() == 0
     pagina.locator("#rcVacio").wait_for()
@@ -1656,14 +1590,14 @@ def test_el_recorrido_pone_cada_proyecto_en_su_etapa(navegador, sitio):
     accion = lambda c: pagina.locator(f'.rc-tarjeta[data-clave="{c}"] .rc-accion, .rc-tarjeta[data-clave="{c}"] .rc-espera').inner_text().strip()
     assert accion("req-900") == "Formular"
     assert accion("f-fz") == "Escribir el N° de requerimiento"
-    assert accion("req-912") == "Actualizar la Planilla"
+    assert accion("req-912") == "Actualizar Requerimientos"
     assert accion("req-901") == "Seguir formulando"
     assert accion("req-902") == "Preparar la cotización"
     assert accion("req-903") == "Emitir en Sistema QUEMPIN"
     assert accion("req-904") == "Marcar como Enviada"
     assert accion("req-905") == "Esperando respuesta"
     assert accion("req-906") == "Marcar como Adjudicada"
-    assert accion("req-913") == "Avisar a la Planilla"
+    assert accion("req-913") == "Avisar en Requerimientos"
     assert accion("req-907") == "Crear su ficha en el Análisis"
     assert accion("req-908") == "Registrar avance"
     assert accion("req-909") == "Ver su resultado"
@@ -1805,9 +1739,33 @@ def test_un_pedido_de_un_colega_que_lleva_mucho_dice_que_no_responde(navegador, 
     pagina.context.close()
 
 
+def test_sin_la_tarea_de_pedidos_dice_que_espera_la_vuelta_de_cada_2_horas(navegador, sitio):
+    """Auditoría del 2026-11-06: el botón se publicó antes que la tarea «Pedidos al procesador QUEMPIN» y prometía unos
+    5 minutos mientras el pedido esperaba hasta 2 horas. estado.json dice si la tarea está, y el Portal no promete."""
+    from datetime import datetime, timedelta
+    pagina, errores = _portal_con_datos(navegador, sitio)
+    ahora = datetime.now().astimezone()
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {
+        "publicado/estado.json": _sobre("procesador", {"procesador": {"ultimaCorrida": ahora.isoformat(timespec="seconds")},
+                                                       "publicaciones": {}, "buzon": {}, "pedidos": {"tarea": False}}),
+        "buzon/x_portal_pedir-vuelta_abcdef.json": {
+            "esquema": "quempin.intercambio/1", "id": "abcdef", "tipo": "pedir-vuelta", "destino": "procesador",
+            "origen": {"herramienta": "portal", "usuario": "NB",
+                       "enviado": (ahora - timedelta(minutes=40)).isoformat(timespec="seconds")}}})
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Recorrido de proyectos")
+    # 40 minutos con la tarea sería «no responde»; sin ella, todavía es lo esperable
+    pagina.locator("#rcFrescura", has_text="hace 40 min: se atiende en la próxima vuelta (cada 5 minutos)").wait_for()
+    assert "falta la tarea" in pagina.locator("#rcFrescura").get_attribute("title")
+    assert "cada 5 minutos" in pagina.locator("#rcPedirVuelta").get_attribute("title")
+    assert not errores
+    pagina.context.close()
+
+
 def test_sin_la_carpeta_no_se_ofrece_actualizar_datos(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator("#iniRecorrido").click()
+    _menu(pagina, "Recorrido de proyectos")
     pagina.locator("#rcVacio").wait_for()
     assert pagina.locator("#rcPedirVuelta").is_hidden()
     assert not errores
@@ -1902,95 +1860,141 @@ def test_las_cifras_y_el_buscador_filtran_el_recorrido(navegador, sitio):
     pagina.locator("#resultados .res", has_text="N° 908").first.click()
     assert pagina.locator("#dlgRecorrido").is_visible() and pagina.locator("#dlgRcTit").inner_text() == "N° 908 · En obra"
     pagina.keyboard.press("Escape")
-    # El Inicio dice lo que te espera, y lleva al recorrido
-    pagina.locator("#pestanas .ir").first.click()
-    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 5 proyectos"
-    pagina.locator("#iniRcVer").click()
-    assert pagina.locator("#vistaRecorrido").is_visible()
     assert not errores
     pagina.context.close()
 
 
-def _inicio_tarjetas(pagina):
-    return pagina.locator("#iniRcLista .rc-tarjeta").evaluate_all("ts => ts.map((t) => t.dataset.clave)")
-
-
-def test_el_inicio_muestra_lo_que_te_espera(navegador, sitio):
-    """Pedido del 2026-10-20: debajo de las herramientas, una vista previa del recorrido enfocada en el usuario
-    elegido; si no tiene pendientes, un acceso directo al recorrido."""
-    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
-    previa = pagina.locator("#iniRc")
-    previa.locator(".rc-tarjeta").first.wait_for()
-    assert pagina.locator("#iniRecorrido").is_hidden()
-    # Debajo de las herramientas, antes de la línea de ayuda
-    assert pagina.evaluate("[...document.querySelector('.inicio').children].map((e) => e.id || e.className)") == [
-        "tituloInicio", "iniGrupos", "iniRc", "iniRecorrido", "ini-pie"]
-    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 5 proyectos" and pagina.locator("#iniRcTit b").inner_text() == "LC"
-    assert pagina.locator("#iniRcSub").inner_text() == "De tus proyectos, 2 cierran esta semana · 1 en ejecución"
-    # Lo urgente primero (rojo, después ámbar) y, entre iguales, en el orden del recorrido; con más de cuatro, «+N más»
-    assert _inicio_tarjetas(pagina) == ["req-900", "req-904", "f-fz"]
-    etapa = lambda c: pagina.locator(f'#iniRc .rc-tarjeta[data-clave="{c}"] .rc-etapa').inner_text()
-    assert [etapa(c) for c in ("req-900", "req-904", "f-fz")] == ["Requerimiento", "Oferta", "Requerimiento"]
-    assert pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-segs .aqui').count() == 1
-    assert pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-segs .hecha').count() == 3
-    mas = pagina.locator("#iniRcLista .ini-rc-mas")
-    assert mas.inner_text().split("\n") == ["+2", "Ver los 5 que te esperan"]
-    # Cada tarjeta abre su detalle y su botón la herramienta donde se hace
-    pagina.locator('#iniRc .rc-tarjeta[data-clave="req-904"] .rc-abrir').click()
-    assert pagina.locator("#dlgRcTit").inner_text() == "N° 904 · Cotización emitida"
-    pagina.keyboard.press("Escape")
-    pagina.locator('#iniRc .rc-tarjeta[data-clave="req-900"] .rc-accion').click()
-    _esperar(pagina, "formulador", "hash", "#/req/900")
-    # «+2 más» abre el recorrido con solo lo que te espera; «Ver el recorrido», el tablero completo
+def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
+    """Pedido del 2026-11-10: el Inicio con las herramientas de cada área, con sus íconos nuevos; sin la franja «Hoy»,
+    cifras ni gráficos. De la carpeta viene, desde el 2026-11-18, la semana de la Planificación bajo las áreas
+    (test_el_inicio_muestra_la_semana_de_la_planificacion). La alarma de los sin asignar ya no va en su botón
+    (pedido del 2026-11-18): sigue en el menú."""
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", ancho=1366, alto=657)
+    pagina.locator(ALERTA_N).wait_for(state="attached")
+    assert pagina.locator(ALERTA_N).inner_text() == "3"
+    assert pagina.locator("#iniAreas .pl-alerta-n").count() == 0, "sin alarma en el Inicio"
+    assert pagina.locator("#tituloInicio b").inner_text() == "LC" and pagina.locator("#iniQuien").is_hidden()
+    # Cuatro áreas de a dos, cada herramienta con su propio ícono (el mismo de su pestaña)
+    assert pagina.evaluate("getComputedStyle(document.getElementById('iniAreas')).gridTemplateColumns.split(' ').length") == 2
+    reg = _registro()
+    for g in ("ofertar", "ejecutar", "controlar", "calcular"):
+        ids = pagina.locator(f'.ini-area[data-grupo="{g}"] .ini-item').evaluate_all("bs => bs.map((b) => b.dataset.herr)")
+        assert ids == [h["id"] for h in reg["herramientas"] if h["grupo"] == g], g
+    iconos = [h.get("icono") for h in reg["herramientas"] if h["grupo"] in {"ofertar", "ejecutar", "controlar", "calcular"}]
+    assert all(iconos) and len(set(iconos)) == len(iconos), "cada herramienta con su propio ícono"
+    portal = PORTAL.read_text(encoding="utf-8")
+    assert all(f"\n    {i}: '" in portal.replace("\r\n", "\n") for i in iconos), "un ícono del registro que no está en ICONOS"
+    assert pagina.locator("#iniAreas .ini-item .ini-ico svg path, #iniAreas .ini-item .ini-ico svg circle, #iniAreas .ini-item .ini-ico svg rect").count() > 19
+    # Nada de lo de antes: ni «Hoy», ni cifras, ni gráficos
+    assert pagina.locator("#iniHoy, #iniEmbudo, #iniSalud, .ini-cifra, .ini-pri").count() == 0
+    # Un botón abre su herramienta
+    pagina.locator('.ini-item[data-herr="planificacion"]').click()
+    assert pagina.locator("#vistaPlan").is_visible()
+    # Sin usuario: las iniciales para elegirse con un clic
     pagina.locator("#pestanas .ir").first.click()
-    mas.click()
-    assert pagina.locator("#vistaRecorrido").is_visible() and pagina.locator("#rcFoco").inner_text().strip() == "Mostrando: Te esperan"
-    assert sorted(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == ["f-fz", "req-900", "req-903", "req-904", "req-906"]
-    pagina.locator("#pestanas .ir").first.click()
-    pagina.locator("#iniRcVer").click()
-    assert pagina.locator("#rcFoco").is_hidden() and len(sum(pagina.evaluate(JS_COLUMNAS).values(), [])) == 14
-    pagina.locator("#pestanas .ir").first.click()
-    # Otro usuario, elegido arriba: la vista previa cambia sin recargar
-    elegir = lambda u: (pagina.locator("#btnUsuario").click(), pagina.locator(f'#listaUsuarios .usr-op[data-usuario="{u}"]').click())
-    elegir("CM")
-    assert _inicio_tarjetas(pagina) == ["req-901", "req-902"] and pagina.locator("#iniRcLista .ini-rc-mas").count() == 0
-    assert pagina.locator("#iniRcTit span").inner_text() == "Te esperan 2 proyectos"
-    assert pagina.locator("#iniRcSub").inner_text() == "Lo más urgente primero, con el botón para hacerlo"
-    # Nada pendiente: queda el acceso directo, que dice cómo va el equipo
-    elegir("ES")
-    assert previa.is_hidden() and pagina.locator("#iniRecorrido").is_visible()
-    assert pagina.locator("#iniRecorridoSub").inner_text() == (
-        "Nada te espera por ahora. En el equipo, 2 cierran esta semana · 1 espera respuesta · 3 en ejecución")
     pagina.locator("#btnUsuario").click()
     pagina.locator("#sinUsuario").click()
-    assert previa.is_hidden() and pagina.locator("#iniRecorridoSub").inner_text() == (
-        "Elige tu usuario para ver aquí lo que te espera. En el equipo, 10 requieren acción · 2 cierran esta semana"
-        " · 1 espera respuesta · 3 en ejecución")
-    pagina.locator("#iniRecorrido").click()
-    assert pagina.locator("#vistaRecorrido").is_visible()
+    assert pagina.locator("#iniQuien button").all_inner_texts() == ["NB", "ES", "LC", "CM", "MP", "SV"]
+    pagina.locator('#iniQuien button[data-usuario="CM"]').click()
+    assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "CM" and pagina.locator("#tituloInicio b").inner_text() == "CM"
     assert not errores
     pagina.context.close()
 
 
-@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1024, 768), (390, 844)])
-def test_lo_que_te_espera_cabe_en_el_inicio(navegador, sitio, ancho, alto):
-    """Con la vista previa el Inicio sigue sin barras en el escritorio, y en el teléfono no se sale por el lado."""
+def _inicio_con_semana(navegador, sitio, **kw):
+    """El Inicio con la carpeta de prueba y esta semana planificada (lunes: cuatro proyectos; miércoles: uno)."""
+    from datetime import date, timedelta
+    semana, lunes = _semana_de(date.today())
+    d = lambda i: (lunes + timedelta(days=i)).isoformat()
+    asig = lambda i, per, p: {"dia": d(i), "persona": per, "proyecto": p, "activa": True, "t": _instante(-60), "por": "NB"}
+    usos = [(0, "NB", "req:908"), (0, "ES", "req:908"), (0, "LC", "req:908"), (0, "CM", "req:907"), (0, "MP", "tag:SOLO"),
+            (0, "SV", "otra:bodega"), (2, "NB", "req:907"), (2, "ES", "req:907")]
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", **kw)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {f"publicado/planificacion/{semana}/otro0001.json": _sobre_plan(
+        semana, lunes, "otro0001", [asig(*u) for u in usos], proyectos={"otra:bodega": {"titulo": "Bodega"}})})
+    pagina.reload()
+    pagina.locator("#iniSemana .ini-sem-dia").first.wait_for()
+    return pagina, errores
+
+
+def test_el_inicio_muestra_la_semana_de_la_planificacion(navegador, sitio):
+    """2026-11-18, el usuario eligió la maqueta V4: bajo las áreas, la semana de hoy, un día por columna con sus
+    proyectos (los de más gente primero, hasta tres) y cuántas personas tienen algo. Un día abre la Planificación con
+    ese día en grande; «Abrir», la Planificación."""
+    from datetime import date
+    pagina, errores = _inicio_con_semana(navegador, sitio, ancho=1366, alto=657)
+    dias = pagina.locator("#iniSemana .ini-sem-dia")
+    assert dias.count() == 5
+    hoy = date.today().weekday()
+    assert dias.evaluate_all("bs => bs.map((b) => b.classList.contains('hoy'))") == [i == hoy for i in range(5)]
+    lun = dias.nth(0)
+    assert lun.locator(".ini-sem-n").inner_text() == "6 pers."
+    filas = lun.locator(".ini-sem-pr").evaluate_all("fs => fs.map((f) => [f.children[1].textContent, f.children[2].textContent])")
+    assert len(filas) == 3 and filas[0] == ["En obra", "3"], filas
+    # Dos «+N más», uno para tres proyectos y otro para dos (pantallas bajas): se ve solo uno
+    assert lun.locator(".ini-sem-mas:visible").all_inner_texts() == ["+1 más"]
+    assert "6 personas en 4 proyectos" in lun.get_attribute("title") and "Bodega, 1" in lun.get_attribute("title")
+    assert dias.nth(1).locator(".ini-sem-nadie").inner_text() == "Nadie asignado"
+    assert dias.nth(2).locator(".ini-sem-n").inner_text() == "2 pers."
+    # Un día abre la Planificación en General con ese día en grande, aunque la última vista elegida fuera otra
+    pagina.evaluate("localStorage.setItem('quempin_portal_plan', JSON.stringify({ v: 2, vista: 'personal' }))")
+    pagina.reload()
+    dias.first.wait_for()
+    dias.nth(2).click()
+    assert pagina.locator("#vistaPlan").is_visible()
+    pagina.locator("#plGeneral .pl-dia-grande").wait_for()
+    assert pagina.locator("#plGeneral .pl-dia-grande").get_attribute("data-dia") == "2"
+    # «Abrir» va a la Planificación
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
+    pagina.locator("#iniSemAbrir").click()
+    assert pagina.locator("#vistaPlan").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1280, 600), (1024, 640), (390, 844)])
+def test_la_semana_cabe_en_el_inicio(navegador, sitio, ancho, alto):
+    """Con la semana planificada, el Inicio sigue sin barras en el computador; en el teléfono, un día por fila."""
     movil = ancho < 760
-    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", ancho=ancho, alto=alto, movil=movil)
-    pagina.locator("#iniRc .rc-tarjeta").first.wait_for()
+    pagina, errores = _inicio_con_semana(navegador, sitio, ancho=ancho, alto=alto, movil=movil)
+    pagina.wait_for_timeout(200)
     if not movil:
         assert pagina.evaluate(JS_BARRAS) == []
     d = pagina.evaluate(JS_DESBORDES)
     assert d["doc"] <= ancho and not d["fuera"], d
-    derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#iniRc *')]
+    xs = pagina.locator("#iniSemana .ini-sem-dia").evaluate_all("bs => bs.map((b) => Math.round(b.getBoundingClientRect().left))")
+    assert len(set(xs)) == (1 if movil else 5), xs
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1024, 640), (1280, 600), (390, 844)])
+def test_las_herramientas_caben_en_el_inicio(navegador, sitio, ancho, alto):
+    """Sin barras en el computador; en el teléfono, una columna que no se sale por el lado. Ningún texto bajo 12 px, y
+    desde 1280 px los nombres caben enteros (más angosto, los de una palabra larga se cortan en una sílaba)."""
+    movil = ancho < 760
+    pagina, errores = _abrir_portal(navegador, sitio, ancho=ancho, alto=alto, movil=movil)
+    pagina.locator("#iniAreas .ini-item").first.wait_for()
+    pagina.wait_for_timeout(200)
+    if not movil:
+        assert pagina.evaluate(JS_BARRAS) == []
+    columnas = "getComputedStyle(document.getElementById('iniAreas')).gridTemplateColumns.split(' ').length"
+    assert pagina.evaluate(columnas) == (1 if movil else 2)
+    if ancho >= 1280:
+        cortados = pagina.evaluate("""() => [...document.querySelectorAll('#iniAreas .ini-nom')].filter((n) => {
+            const una = !n.textContent.includes(' ');
+            return una && n.getClientRects().length > 0 && n.getBoundingClientRect().height > parseFloat(getComputedStyle(n).lineHeight) * 1.5;
+        }).map((n) => n.textContent)""")
+        assert not cortados, cortados
+    d = pagina.evaluate(JS_DESBORDES)
+    assert d["doc"] <= ancho and not d["fuera"], d
+    derecha = pagina.evaluate("""() => Math.max(...[...document.querySelectorAll('#vistaInicio *')]
         .filter((e) => e.getClientRects().length).map((e) => e.getBoundingClientRect().right))""")
     assert derecha <= ancho + 0.5, derecha
-    chicos = pagina.evaluate("""() => [...document.querySelectorAll('#iniRc *')]
+    chicos = pagina.evaluate("""() => [...document.querySelectorAll('#vistaInicio *')]
         .filter((e) => e.getClientRects().length && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
         .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.className || e.tagName)""")
     assert not chicos, chicos
-    columnas = "getComputedStyle(document.getElementById('iniRcLista')).gridTemplateColumns.split(' ').length"
-    assert pagina.evaluate(columnas) == (1 if movil else 4)
     assert not errores
     pagina.context.close()
 
@@ -2078,7 +2082,7 @@ def _plan_con_datos(navegador, sitio, usuario=None, vista=None, **kw):
     pagina, errores = _portal_con_datos(navegador, sitio, usuario, **kw)
     pagina.evaluate("""([d, v]) => {
         localStorage.setItem('quempin_portal_dispositivo', d);
-        if (v) localStorage.setItem('quempin_portal_plan', JSON.stringify({ vista: v }));
+        if (v) localStorage.setItem('quempin_portal_plan', JSON.stringify({ v: 2, vista: v }));
     }""", [DISPOSITIVO, vista])
     pagina.reload()
     pagina.locator("#vistaInicio").wait_for()
@@ -2097,6 +2101,28 @@ def _esperar_archivo(pagina, ruta, hasta=lambda sobre: True):
             return sobre
         assert time.time() < fin, f"{ruta}: {sobre}"
         pagina.wait_for_timeout(150)
+
+
+def test_el_uso_del_portal_se_cuenta_anonimo_y_llega_a_la_carpeta(navegador, sitio):
+    """2026-11-09: para saber qué herramientas usa el equipo. Cada apertura de una herramienta cuenta una vez por día
+    (volver a la misma pestaña sin pasar por otra no); al dejar la pestaña se guarda en publicado/uso-portal/, sin usuario."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC")       # abre la Planificación semanal
+    for _ in range(2):
+        pagina.locator("#pestanas .ir", has_text="Inicio").click()
+        pagina.locator('.ini-item[data-herr="flujo-caja"]').click()
+        _marco(pagina, "flujo-caja", "fc")
+    pagina.locator("#pestanas .ir", has_text="Flujo de Caja").click()     # la misma pestaña: no cuenta
+    hoy = date.today().isoformat()
+    local = json.loads(pagina.evaluate("localStorage.getItem('quempin_portal_uso')"))
+    assert local[hoy]["flujo-caja"] == 2 and local[hoy]["planificacion"] == 1 and "inicio" not in local[hoy]
+    pagina.evaluate("""() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+        document.dispatchEvent(new Event('visibilitychange')); }""")
+    sobre = _esperar_archivo(pagina, f"publicado/uso-portal/{DISPOSITIVO}.json")
+    assert sobre["herramienta"] == "portal" and "autor" not in sobre and "usuario" not in json.dumps(sobre["datos"])
+    assert {(d["herramienta"], d["aperturas"]) for d in sobre["datos"]["dias"]} >= {("flujo-caja", 2), ("planificacion", 1)}
+    assert not errores
+    pagina.context.close()
 
 
 def _celda_personal(pagina, persona, dia):
@@ -2118,11 +2144,25 @@ def _alarma(pagina):
 
 
 # La cuenta de la alarma, junto a la Planificación en el Inicio (ya no en la cabecera, 2026-10-28)
-ALERTA_N = '.ini-item[data-herr="planificacion"] .pl-alerta-n'
+ALERTA_N = '#menu .menu-item[data-herr="planificacion"] .pl-alerta-n'
 
 
 def _celda_proyecto(pagina, clave, dia):
     return pagina.locator(f'#plProyecto tr[data-clave="{clave}"] td[data-dia="{dia}"] .pl-celda')
+
+
+def test_la_planificacion_acepta_el_n_temporal():
+    """2026-11-09: un proyecto con N° temporal («001t», de Gestión sin N° de la Planilla) no se guardaba en la
+    planificación: «req:001t» no pasaba las claves del portal (ni el esquema). Toda clave «req:» acepta el temporal."""
+    import re
+    portal = PORTAL.read_text(encoding="utf-8")
+    assert "req:\\d{1,6}|" not in portal and "req:\\d{1,6})" not in portal, "una clave req: sin el N° temporal"
+    for nombre in ("PL_CLAVE", "PL_CLAVE_CIERRE", "EJ_CLAVE"):
+        m = re.search(r"const " + nombre + r" = /(.+?)/;", portal)
+        assert m, nombre
+        patron = re.compile(m.group(1).replace("\\d", "[0-9]"))
+        assert patron.fullmatch("req:001t") and patron.fullmatch("req:289"), nombre
+        assert not patron.fullmatch("req:001x") and not patron.fullmatch("req:1t"), nombre
 
 
 def test_la_planificacion_semanal_en_el_registro():
@@ -2130,7 +2170,7 @@ def test_la_planificacion_semanal_en_el_registro():
     por persona en un día. Lee y guarda en la carpeta del equipo, y Configuración y conexiones lo dice."""
     reg = _registro()
     h = {x["id"]: x for x in reg["herramientas"]}["planificacion"]
-    assert h["tipo"] == "vista" and h["vista"] == "vistaPlan" and h["grupo"] == "finanzas"
+    assert h["tipo"] == "vista" and h["vista"] == "vistaPlan" and h["grupo"] == "ejecutar"
     assert reg["personal"] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
     assert set(reg["usuarios"]) <= set(reg["personal"]), "quien usa las herramientas también se planifica"
     usan = {e["id"]: e["usan"] for e in _conexiones()["elementos"]}
@@ -2165,13 +2205,12 @@ def test_la_alarma_muestra_los_proyectos_activos_sin_asignar(navegador, sitio):
     el Inicio (en la cabecera ya no, a pedido del 2026-10-28), y la vista dice cuáles son."""
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
     item = pagina.locator('.ini-item[data-herr="planificacion"]')
-    item.locator(".pl-alerta-n").wait_for()
+    pagina.locator(ALERTA_N).wait_for(state="attached")
     assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
-    assert item.locator(".pl-alerta-n").inner_text() == "3"
-    assert item.locator(".ini-sub").inner_text() == "3 proyectos sin asignar esta semana"
+    assert item.locator(".pl-alerta-n").count() == 0, "en el Inicio ya no (2026-11-18)"
     assert item.locator(".ini-fuera").count() == 0, "se abre dentro del portal"
     pagina.locator("#btnMenu").click()
-    pagina.locator("#grupo-finanzas").click()
+    pagina.locator("#grupo-ejecutar").click()
     assert pagina.locator('#menu .menu-item[data-herr="planificacion"] .pl-alerta-n').inner_text() == "3"
     pagina.keyboard.press("Escape")
     item.click()
@@ -2525,6 +2564,7 @@ def test_asignar_en_el_tablero_general_elige_el_proyecto_y_despues_quienes(naveg
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general")
     _, lunes = _semana_de(date.today())
     pop = pagina.locator("#plPop")
+    _dia_general(pagina, 0)
     pagina.locator(f'#plGeneral [data-ancla="n|{lunes.isoformat()}"]').click()
     assert pagina.locator("#plPopTit").inner_text() == f"Asignar el lunes {lunes.day}"
     assert pop.locator(".pl-grupo h4").all_text_contents() == ["Sin nadie ese día"]
@@ -2537,6 +2577,65 @@ def test_asignar_en_el_tablero_general_elige_el_proyecto_y_despues_quienes(naveg
     pop.locator('[data-op="volver"]').click()
     assert pop.locator(".pl-grupo h4").all_text_contents() == ["Sin nadie esos días", "Ya tienen a alguien"]
     assert "van NB" in pop.locator('[data-op="n|req:908"]').inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_general_muestra_un_dia_en_grande_y_la_semana_al_lado(navegador, sitio):
+    """General (2026-11-16, el usuario eligió «Hoy con la semana al lado»): hoy en grande y, al lado, una línea por día
+    con cuántos tienen algo y una barra con el color de cada proyecto; tocar un día lo muestra en grande. Abajo, los
+    avisos de la semana: los proyectos sin nadie abren su lista."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general")
+    _, lunes = _semana_de(date.today())
+    hoy = date.today().weekday()
+    hoy = hoy if hoy < 5 else 0
+    dias = pagina.locator("#plGeneral .pl-sem-dia")
+    assert dias.evaluate_all("bs => bs.map((b) => b.getAttribute('aria-pressed'))") == ["true" if i == hoy else "false" for i in range(5)]
+    assert pagina.locator("#plGeneral .pl-dia").evaluate_all("ds => ds.map((d) => d.dataset.dia)") == [str(hoy)]
+    aviso = pagina.locator("#plGeneral .pl-sem-aviso", has_text="sin nadie")
+    assert aviso.inner_text() == "3 proyectos sin nadie esta semana"
+    aviso.click()
+    assert pagina.locator("#plAlarma").is_visible()
+    # Asignar dos personas el miércoles: su línea las cuenta y lleva el color del proyecto
+    _dia_general(pagina, 2)
+    assert pagina.evaluate("() => document.activeElement.dataset.dia") == "2"
+    mie = _dias_de(lunes)[2].isoformat()
+    pagina.locator(f'#plGeneral [data-ancla="n|{mie}"]').click()
+    pop = pagina.locator("#plPop")
+    pop.locator('[data-op="n|req:908"]').click()
+    pop.locator('input[data-op="c|NB"]').check()
+    pop.locator('input[data-op="c|ES"]').check()
+    pagina.keyboard.press("Escape")
+    linea = pagina.locator('#plGeneral .pl-sem-dia[data-dia="2"]')
+    assert linea.locator(".pl-sem-n").inner_text() == "2"
+    assert linea.locator(".pl-sem-barra i").count() == 1
+    assert "2 personas en 1 proyecto (En obra)" in linea.get_attribute("title")
+    assert pagina.locator('#plGeneral .pl-sem-dia[data-dia="1"] .pl-sem-barra.vacia').count() == 1
+    assert pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|req:908|{mie}"] .pl-per').all_inner_texts() == ["NB", "ES"]
+    assert pagina.locator("#plGeneral .pl-sem-aviso", has_text="sin nadie").inner_text() == "2 proyectos sin nadie esta semana"
+    assert not errores
+    pagina.context.close()
+
+
+def test_general_avisa_el_vehiculo_en_dos_lugares_y_las_ausencias(navegador, sitio):
+    """En «La semana» de General, el día con un vehículo en dos lugares lleva su ícono y un aviso que lo muestra en
+    grande; las ausencias van en una línea por persona."""
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    _, lunes = _semana_con_vehiculos(pagina)
+    _celda_personal(pagina, "SV", 3).click()
+    pagina.locator('#plPop [data-op="a|vacaciones"]').click()
+    pagina.keyboard.press("Escape")
+    pagina.locator('.pl-vista[data-vista="general"]').click()
+    alertas = pagina.locator("#plGeneral .pl-sem-dia").evaluate_all("bs => bs.map((b) => !!b.querySelector('.pl-sem-alerta svg'))")
+    assert alertas == [False, True, False, False, False]
+    assert "La RAM en 2 lugares a la vez" in pagina.locator('#plGeneral .pl-sem-dia[data-dia="1"]').get_attribute("title")
+    avisos = pagina.locator("#plGeneral .pl-sem-aviso")
+    martes = _dias_de(lunes)[1]
+    assert avisos.all_inner_texts()[-2:] == [f"Mar {martes.day}: RAM en 2 lugares", "SV: vacaciones, 1 día"]
+    avisos.filter(has_text="RAM en 2 lugares").click()
+    assert pagina.locator("#plGeneral .pl-dia-grande").get_attribute("data-dia") == "1"
+    assert pagina.locator('#plGeneral .pl-sem-dia[data-dia="1"]').get_attribute("aria-pressed") == "true"
     assert not errores
     pagina.context.close()
 
@@ -2697,6 +2796,12 @@ def test_las_semanas_cruzan_el_cambio_de_ano(navegador, sitio):
 
 # ---- La vista simple y el arrastre (2026-10-28) ------------------------------------------------------------------
 
+def _dia_general(pagina, i):
+    """General muestra un día en grande (2026-11-16): se elige en «La semana», al lado. Abre en hoy."""
+    pagina.locator(f'#plGeneral .pl-sem-dia[data-dia="{i}"]').click()
+    assert pagina.locator("#plGeneral .pl-dia-grande").get_attribute("data-dia") == str(i)
+
+
 def _dias_de(lunes):
     from datetime import timedelta
     return [lunes + timedelta(days=i) for i in range(5)]
@@ -2708,7 +2813,7 @@ def test_la_vista_simple_sin_alarma_en_la_cabecera(navegador, sitio):
     vez en cuando va en «Más»; los paneles de General van plegados y se recuerda cuál se abrió."""
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general", ancho=1366, alto=768)
     assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
-    assert pagina.locator('.ini-item[data-herr="planificacion"] .pl-alerta-n').inner_text() == "3"
+    assert pagina.locator(ALERTA_N).inner_text() == "3"
     # Las cifras, en una sola línea y bajas
     cajas = pagina.locator("#plResumen .rc-kpi").evaluate_all("bs => bs.map((b) => b.getBoundingClientRect().toJSON())")
     assert len({round(c["y"]) for c in cajas}) == 1 and max(c["height"] for c in cajas) <= 34, cajas
@@ -2746,7 +2851,10 @@ def test_la_vista_simple_sin_alarma_en_la_cabecera(navegador, sitio):
     # El navegador avisa que se abrió un momento después del clic: recargar antes perdería lo que se guarda ahí
     pagina.wait_for_function("(JSON.parse(localStorage.getItem('quempin_portal_plan')).paneles || []).includes('personal')")
     pagina.reload()
-    pagina.locator("#plGeneral details.pl-panel").first.wait_for()
+    # Los paneles se pintan antes de que la vista recupere cuál estaba abierto: se espera ese estado en vez de leerlo
+    # apenas aparece el primero (en el runner de GitHub se leía [False, False, False]).
+    pagina.wait_for_function("""() => [...document.querySelectorAll('#plGeneral details.pl-panel')]
+        .map((d) => d.open).join() === 'false,true,false'""")
     assert pagina.locator("#plGeneral details.pl-panel").evaluate_all("ds => ds.map((d) => d.open)") == [False, True, False]
     assert not errores
     pagina.context.close()
@@ -2828,6 +2936,149 @@ def test_elegir_en_el_panel_y_tocar_las_casillas(navegador, sitio):
     pagina.context.close()
 
 
+def test_arrastrar_un_vehiculo_a_un_proyecto_asignado(navegador, sitio):
+    """Observación del equipo del 2026-11-12, «los vehículos deberían poder arrastrarse»: la Quempineta y la RAM van
+    arriba del panel. Se sueltan sobre un proyecto ya asignado (o se tocan y después el proyecto; otra vez lo quita); en
+    «Por proyecto», sobre la casilla de un proyecto, a todos los que van ese día. Queda en el archivo como en la ventanita."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    lun = _dias_de(lunes)[0]
+    # LC va a dos proyectos el lunes y ES a uno
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:907"]').click()
+    _celda_personal(pagina, "LC", 0).click()
+    _celda_personal(pagina, "ES", 0).click()
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:908"]').click()
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.keyboard.press("Escape")
+    panel = pagina.locator("#plPersonal .pl-arr")
+    assert panel.locator(".pl-arr-veh").evaluate_all("bs => bs.map((b) => b.dataset.vehiculo)") == ["quempineta", "ram"]
+    vehs = lambda celda, proy: celda.locator(".pl-chip", has_text=proy).locator(".pl-veh .n").all_inner_texts()
+    # A la casilla de ES, que ese día tiene un solo proyecto
+    panel.locator('.pl-arr-veh[data-vehiculo="ram"]').drag_to(_celda_personal(pagina, "ES", 0))
+    assert vehs(_celda_personal(pagina, "ES", 0), "Adjudicada sin ficha") == ["RAM"]
+    assert "ES va en la RAM a Adjudicada sin ficha" in pagina.locator("#aviso").inner_text()
+    assert pagina.locator("#plPop").is_hidden(), "soltar no abre la ventanita"
+    # A un proyecto de LC, que tiene dos: solo a ese
+    # (a mano y en pasos: al empezar a arrastrar se esconde el «+» de la casilla y el proyecto se corre de lugar)
+    panel.locator('.pl-arr-veh[data-vehiculo="quempineta"]').hover()
+    pagina.mouse.down()
+    pagina.mouse.move(400, 300, steps=3)
+    caja = _celda_personal(pagina, "LC", 0).locator(".pl-chip", has_text="En obra").bounding_box()
+    pagina.mouse.move(caja["x"] + caja["width"] / 2, caja["y"] + caja["height"] / 2, steps=5)
+    pagina.mouse.up()
+    assert vehs(_celda_personal(pagina, "LC", 0), "En obra") == ["Quempineta"]
+    assert vehs(_celda_personal(pagina, "LC", 0), "Adjudicada sin ficha") == []
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, archivo, lambda s: len([v for v in s["datos"].get("vehiculos", []) if v["vehiculo"]]) == 2)
+    assert sorted((v["dia"], v["persona"], v["proyecto"], v["vehiculo"]) for v in sobre["datos"]["vehiculos"] if v["vehiculo"]) == [
+        (lun.isoformat(), "ES", "req:907", "ram"), (lun.isoformat(), "LC", "req:908", "quempineta")]
+    # Tocando: la RAM y después el proyecto de ES, donde ya va, la quita
+    panel.locator('.pl-arr-veh[data-vehiculo="ram"]').click()
+    assert pagina.locator('#plPersonal .pl-arr-veh[data-vehiculo="ram"]').get_attribute("aria-pressed") == "true"
+    assert "Toca los proyectos donde va la RAM" in pagina.locator("#plPersonal .pl-arr-colocando").inner_text()
+    _celda_personal(pagina, "ES", 0).locator(".pl-chip").click()
+    assert vehs(_celda_personal(pagina, "ES", 0), "Adjudicada sin ficha") == []
+    assert pagina.locator("#plPop").is_hidden()
+    # …y en la casilla de LC, con dos proyectos, pide tocar uno
+    _celda_personal(pagina, "LC", 0).locator(".pl-chip", has_text="Adjudicada sin ficha").click()
+    assert vehs(_celda_personal(pagina, "LC", 0), "Adjudicada sin ficha") == ["RAM"]
+    pagina.keyboard.press("Escape")
+    assert pagina.locator('#plPersonal .pl-arr-veh[aria-pressed="true"]').count() == 0
+    # Por proyecto: sobre la casilla del proyecto, a todos los que van ese día, en un paso que se deshace
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    pagina.locator('#plProyecto .pl-arr-veh[data-vehiculo="quempineta"]').drag_to(_celda_proyecto(pagina, "req:907", 0))
+    assert "van en la Quempineta a Adjudicada sin ficha" in pagina.locator("#aviso").inner_text()
+    pagina.locator('.pl-vista[data-vista="personal"]').click()
+    assert vehs(_celda_personal(pagina, "ES", 0), "Adjudicada sin ficha") == ["Quempineta"]
+    assert vehs(_celda_personal(pagina, "LC", 0), "Adjudicada sin ficha") == ["Quempineta"]
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    assert vehs(_celda_personal(pagina, "ES", 0), "Adjudicada sin ficha") == []
+    assert vehs(_celda_personal(pagina, "LC", 0), "Adjudicada sin ficha") == ["RAM"]
+    assert not errores
+    pagina.context.close()
+
+
+def test_quitar_una_asignacion_con_un_toque(navegador, sitio):
+    """Observación del equipo del 2026-11-06, «acceso rápido para eliminar asignaciones»: cada proyecto de una casilla
+    lleva una ✕ que lo quita sin abrir la ventanita, en un paso que se deshace y queda en el archivo; con el teclado,
+    Supr en la casilla quita lo de ese día y la casilla sigue con el foco. En «Por proyecto» y en General la ✕ va en
+    cada persona. Con el mouse se ve solo sobre la casilla."""
+    import re
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    lun = _dias_de(lunes)[0]
+    # Dos proyectos a LC y uno a ES el lunes, eligiendo en el panel y tocando las casillas
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:907"]').click()
+    _celda_personal(pagina, "LC", 0).click()
+    _celda_personal(pagina, "ES", 0).click()
+    pagina.locator('#plPersonal .pl-arr-item[data-clave="req:908"]').click()
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.keyboard.press("Escape")
+    assert sorted(pagina.evaluate(JS_PERSONAL)["LC"][0]) == ["Adjudicada sin ficha", "En obra"]
+    celda = _celda_personal(pagina, "LC", 0)
+    x = celda.locator(".pl-chip", has_text="En obra").locator(".pl-quitar")
+    assert x.get_attribute("title") == f"Quitar: LC ya no va a En obra el lunes {lun.day}"
+    # Quieta, la ✕ no se ve, tampoco sobre otra parte de la casilla; sobre su proyecto, sí, y el «+» de la esquina se
+    # esconde (quedaba encima de la ✕ del último proyecto)
+    chip = celda.locator(".pl-chip", has_text="En obra")
+    mas = celda.locator(".pl-mas.flota")
+    oculta = "e => getComputedStyle(e).opacity === '0' && getComputedStyle(e).pointerEvents === 'none'"
+    pagina.mouse.move(1, 1)
+    pagina.wait_for_function(oculta, arg=x.element_handle())
+    celda.hover(position={"x": 4, "y": 4})
+    pagina.wait_for_function(oculta, arg=x.element_handle())
+    pagina.wait_for_function("e => getComputedStyle(e).opacity === '1'", arg=mas.element_handle())
+    chip.hover()
+    pagina.wait_for_function("e => getComputedStyle(e).opacity === '1'", arg=x.element_handle())
+    pagina.wait_for_function(oculta, arg=mas.element_handle())
+    x.click()
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == ["Adjudicada sin ficha"]
+    assert pagina.locator("#plPop").is_hidden(), "la ✕ no abre la ventanita"
+    assert f"LC ya no va a En obra el lunes {lun.day}" in pagina.locator("#aviso").inner_text()
+    archivo = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    _esperar_archivo(pagina, archivo, lambda s: any(a["persona"] == "LC" and a["proyecto"] == "req:908" and not a["activa"]
+                                                   for a in s["datos"]["asignaciones"]))
+    # Se deshace como cualquier cambio
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    assert sorted(pagina.evaluate(JS_PERSONAL)["LC"][0]) == ["Adjudicada sin ficha", "En obra"]
+    # Supr en la casilla quita los dos del día, en un solo paso, y la casilla sigue con el foco
+    assert celda.get_attribute("aria-keyshortcuts") == "Delete"
+    celda.focus()
+    pagina.keyboard.press("Delete")
+    assert pagina.evaluate(JS_PERSONAL)["LC"][0] == []
+    assert re.search(rf"LC ya no va a (Adjudicada sin ficha y En obra|En obra y Adjudicada sin ficha) el lunes {lun.day}\.",
+                     pagina.locator("#aviso").inner_text())
+    assert pagina.evaluate("() => document.activeElement.dataset.ancla") == f"p|LC|{lun.isoformat()}"
+    pagina.keyboard.press("Delete")          # vacía: no pasa nada
+    assert pagina.evaluate(JS_PERSONAL)["ES"][0] == ["Adjudicada sin ficha"]
+    # Por proyecto: la ✕ en la persona
+    pagina.locator('.pl-vista[data-vista="proyecto"]').click()
+    c907 = _celda_proyecto(pagina, "req:907", 0)
+    assert c907.locator(".pl-per").all_inner_texts() == ["ES"]
+    c907.locator(".pl-per", has_text="ES").hover()
+    c907.locator(".pl-per", has_text="ES").locator(".pl-quitar").click()
+    assert c907.locator(".pl-per").count() == 0
+    assert pagina.locator("#plPop").is_hidden()
+    assert f"ES ya no va a Adjudicada sin ficha el lunes {lun.day}" in pagina.locator("#aviso").inner_text()
+    pagina.locator("#tituloPlan").click()
+    pagina.keyboard.press("Control+z")
+    # En General, también
+    pagina.locator('.pl-vista[data-vista="general"]').click()
+    _dia_general(pagina, 0)
+    bloque = pagina.locator(f'#plGeneral [data-ancla="j|req:907|{lun.isoformat()}"]')
+    assert bloque.locator(".pl-per").all_inner_texts() == ["ES"]
+    bloque.locator(".pl-per").hover()
+    bloque.locator(".pl-quitar").click()
+    assert pagina.locator(f'#plGeneral [data-ancla="j|req:907|{lun.isoformat()}"]').count() == 0
+    assert pagina.locator("#plPop").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
 def test_arrastrar_personas_por_proyecto_y_en_general(navegador, sitio):
     """«Algo similar para las otras formas»: en «Por proyecto» se arrastra a las personas del panel al proyecto y el día
     (y de un proyecto a otro); en General, a alguien sin proyecto a un proyecto de ese día."""
@@ -2848,6 +3099,7 @@ def test_arrastrar_personas_por_proyecto_y_en_general(navegador, sitio):
     # En General: alguien sin proyecto el miércoles, al proyecto de ese día
     pagina.locator('.pl-vista[data-vista="general"]').click()
     mie = _dias_de(lunes)[2].isoformat()
+    _dia_general(pagina, 2)
     bloque = pagina.locator(f'#plGeneral [data-ancla="j|tag:SOLO|{mie}"]')
     pagina.locator(f'#plGeneral [data-ancla="p|NB|{mie}"]').drag_to(bloque)
     assert bloque.locator(".pl-per").all_inner_texts() == ["NB", "ES"]
@@ -3111,6 +3363,7 @@ def test_asignar_un_vehiculo_a_una_persona_en_un_proyecto(navegador, sitio):
     assert panel[0] == [lun, {"quempineta": "En obra ES", "ram": "En obra LC"}]
     assert all(dia[1] == {"quempineta": "Libre", "ram": "Libre"} for dia in panel[1:]) and len(panel) == 5
     assert pagina.locator("#plVehiculos tfoot td").all_inner_texts() == ["1 de 5 días", "1 de 5 días"]
+    _dia_general(pagina, 0)
     assert _vehs(pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|req:908|{lun}"]')) == [["Quempineta", "ES"], ["RAM", "LC"]]
     # Un uso del panel abre ese proyecto ese día; quitar a LC le quita también la RAM, y deshacer devuelve las dos cosas
     pagina.locator("#plVehiculos .pl-veh-uso", has_text="LC").click()
@@ -3217,6 +3470,7 @@ def test_un_vehiculo_en_dos_lugares_a_la_vez_se_avisa_y_se_comparte(navegador, s
     assert lunes_ram.get_attribute("data-nivel") == "warn" and "En 2 lugares a la vez" in lunes_ram.inner_text()
     assert pagina.evaluate(JS_PANEL_VEHICULOS)[0][1]["ram"] == "En obra ES LC / Obra sin número MP"
     # Si ES también va a Obra sin número en la RAM, viajan juntos: ya no está en dos lugares el lunes
+    _dia_general(pagina, 0)
     pagina.locator(f'#plGeneral .pl-bloque[data-ancla="j|tag:SOLO|{lun}"]').click()
     pop.locator('input[data-op="c|ES"]').check()
     pop.locator('[data-op="v|ES|ram"]').click()
@@ -3309,6 +3563,69 @@ def test_lo_que_cambia_un_colega_llega_solo_y_se_ve_quien_fue(navegador, sitio):
     pagina.context.close()
 
 
+def test_si_un_colega_reemplaza_lo_que_acabas_de_cambiar_se_avisa_y_se_puede_volver(navegador, sitio):
+    """2026-11-10, pedido del usuario: trabajar a la vez sin pisarse sin saberlo. En cada casilla manda el cambio más
+    reciente; si el de un colega reemplaza uno tuyo de hace poco, una franja dice quién y qué, y «Volver a lo mío» lo
+    repone como un cambio nuevo. Lo de un colega que no toca lo tuyo no la muestra."""
+    from datetime import date
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    mio = f"publicado/planificacion/{semana}/{DISPOSITIVO}.json"
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    _esperar_archivo(pagina, mio, lambda s: len(s["datos"]["asignaciones"]) == 1)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _cambio_de_otro(semana, lunes, 1))
+    pagina.locator('#plPersonal tr[data-persona="MP"] td[data-dia="1"] .pl-chip').wait_for(timeout=5000)
+    assert pagina.locator("#plPisado").is_hidden(), "lo de otro que no toca lo tuyo no es un reemplazo"
+    # NB quita lo que LC acababa de asignar
+    otro = _cambio_de_otro(semana, lunes, 0, persona="LC", dispositivo="otro0002")
+    cambio = next(iter(otro.values()))["datos"]["asignaciones"][0]
+    cambio["activa"] = False
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, otro)
+    franja = pagina.locator("#plPisado")
+    franja.wait_for(timeout=6000)
+    txt = franja.inner_text()
+    assert "NB cambió algo que tú acababas de cambiar" in txt and "Asignaste a LC el lunes" in txt and "NB quitó esa asignación" in txt, txt
+    assert pagina.locator('#plPersonal tr[data-persona="LC"] td[data-dia="0"] .pl-chip').count() == 0
+    franja.get_by_role("button", name="Volver a lo mío").click()
+    assert franja.is_hidden()
+    pagina.locator('#plPersonal tr[data-persona="LC"] td[data-dia="0"] .pl-chip').wait_for(timeout=2000)
+    _esperar_aviso(pagina, "Volvió lo tuyo")
+    _esperar_archivo(pagina, mio, lambda s: any(a["persona"] == "LC" and a["activa"] and a["t"] > cambio["t"] for a in s["datos"]["asignaciones"]))
+    assert not errores
+    pagina.context.close()
+
+
+def _presencia(dispositivo, por, vista, donde, segundos=0):
+    return {"esquema": "quempin.intercambio/1", "herramienta": "portal", "generado": _instante(segundos),
+            "datos": {"dispositivo": dispositivo, "por": por, "vista": vista, "donde": donde, "t": _instante(segundos)}}
+
+
+def test_se_ve_quien_mas_esta_en_la_misma_semana(navegador, sitio):
+    """2026-11-10: cada navegador deja en publicado/presencia/ qué semana o proyecto tiene a la vista, y al salir lo
+    vacía. Se nombra solo a quien está en la misma semana y lo renovó hace poco (no a quien cerró sin salir)."""
+    from datetime import date
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, _ = _semana_de(date.today())
+    propia = f"publicado/presencia/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, propia, lambda s: s["datos"]["vista"] == "planificacion")
+    assert sobre["datos"]["donde"] == semana and sobre["datos"]["por"] == "LC"
+    assert esquemas.validar_publicacion("presencia", sobre) == []
+    assert pagina.locator("#plConmigo").is_hidden()
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {
+        "publicado/presencia/otro0001.json": _presencia("otro0001", "NB", "planificacion", semana),
+        "publicado/presencia/otro0002.json": _presencia("otro0002", "ES", "planificacion", "2020-W01"),
+        "publicado/presencia/otro0003.json": _presencia("otro0003", "MP", "planificacion", semana, -600)})
+    pagina.wait_for_function("document.getElementById('plConmigo').textContent === 'NB también está en esta semana'", timeout=20000)
+    assert pagina.locator("#plConmigo").is_visible()
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
+    _esperar_archivo(pagina, propia, lambda s: s["datos"]["vista"] == "" and s["datos"]["donde"] == "")
+    assert not errores
+    pagina.context.close()
+
+
 def test_lo_que_llega_no_interrumpe_el_arrastre_ni_el_foco(navegador, sitio):
     """Con revisiones cada pocos segundos, repintar en cualquier momento botaría lo que se lleva en la mano o el foco."""
     from datetime import date
@@ -3336,6 +3653,34 @@ def test_lo_que_llega_no_interrumpe_el_arrastre_ni_el_foco(navegador, sitio):
     pagina.context.close()
 
 
+def test_lo_que_no_cumple_el_esquema_de_la_carpeta_no_se_escribe(navegador, sitio):
+    """Auditoría 2026-11-06: el Portal valida con el catálogo de la carpeta (esquemas.json) antes de crear el archivo.
+    Aquí el catálogo pide un campo que el Portal no manda: la semana no se escribe y la vista lo dice."""
+    import copy
+    import json
+    from datetime import date
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, _ = _semana_de(date.today())
+    paquete = copy.deepcopy(esquemas.paquete())      # paquete() guarda el suyo: no se toca
+    paquete["publicaciones"]["planificacion-semana"]["required"].append("campoNuevo")
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["esquemas.json", json.dumps(paquete, ensure_ascii=False)])
+    _celda_personal(pagina, "LC", 0).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent.startsWith('No se pudo guardar')")
+    assert "campoNuevo" in pagina.locator("#plFrescura").get_attribute("title")
+    assert pagina.evaluate(JS_LEER_INTERCAMBIO, f"publicado/planificacion/{semana}/{DISPOSITIVO}.json") is None
+    # Con el catálogo de verdad (el que deja el procesador) se guarda
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["esquemas.json", json.dumps(esquemas.paquete(), ensure_ascii=False)])
+    pagina.locator("#plReintentar").click()
+    sobre = _esperar_archivo(pagina, f"publicado/planificacion/{semana}/{DISPOSITIVO}.json")
+    assert esquemas.validar_publicacion("planificacion-semana", sobre) == []
+    pagina.wait_for_function("document.getElementById('plFrescura').textContent === 'Guardado · OneDrive lo lleva al equipo'")
+    assert not errores
+    pagina.context.close()
+
+
 def test_si_la_carpeta_no_responde_la_vista_lo_dice(navegador, sitio):
     """Un aviso que sigue en verde sin estar recibiendo nada es lo que ya pasó en el Formulador (2026-10-27)."""
     from datetime import datetime, timedelta
@@ -3353,6 +3698,8 @@ def test_un_error_al_guardar_se_reintenta_solo_sin_parpadear(navegador, sitio):
     from datetime import date
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
     semana, _ = _semana_de(date.today())
+    # La presencia (2026-11-10) también escribe, una vez al abrir y luego cada 90 s: que no entre en la cuenta
+    _esperar_archivo(pagina, f"publicado/presencia/{DISPOSITIVO}.json")
     pagina.evaluate("""() => { window.__original = FileSystemFileHandle.prototype.createWritable; window.__intentos = 0;
         FileSystemFileHandle.prototype.createWritable = async function () { window.__intentos++; throw new Error('sin permiso'); }; }""")
     _celda_personal(pagina, "LC", 0).click()
@@ -3892,7 +4239,14 @@ def _subir_con_datos(navegador, sitio, **kw):
         "CL": [{"nombre": "280. Obra de ejemplo", "req": "280", "documentos": 12}, {"nombre": "Gastos Generales", "req": None, "documentos": 3}],
         "PE": [{"nombre": "Obra Lima", "req": None, "documentos": 0}]}})})
     _menu(pagina, "Subir documentos")
-    pagina.locator("#scLista .sc-op").first.wait_for()
+    # La lista se pinta dos veces: al abrir la vista y cuando termina de leer las carpetas del Centro de Costos
+    # (scCargar, asíncrono). Esperar solo la primera opción dejaba leerla a medio armar: en el runner de GitHub, más
+    # lento, faltaba «12 documentos» y el CI estuvo rojo del 29-10 al 05-11 (pasaba en el equipo de la oficina).
+    pagina.wait_for_function("""() => {
+        const t = [...document.querySelectorAll('#scLista .sc-op')].map((o) => o.innerText);
+        return t.some((x) => x.includes('280. Obra de ejemplo') && x.includes('12 documentos'))
+            && t.some((x) => x.startsWith('908. En obra'));
+    }""")
     return pagina, errores
 
 
@@ -4049,7 +4403,9 @@ JS_EJ_KPIS = """() => Object.fromEntries([...document.querySelectorAll('#ejProye
     [k.querySelector('.ej-kpi-et').textContent, k.querySelector('.ej-kpi-v').textContent]))"""
 JS_EJ_IND = """() => Object.fromEntries([...document.querySelectorAll('#ejProyecto .ej-ind tbody tr')].map((tr) =>
     [tr.dataset.ind, [...tr.querySelectorAll('td')].map((td) => td.textContent.trim())]))"""
-JS_EJ_MO = """() => document.querySelector('#ejProyecto .ej-cat[aria-label="Mano de obra"] .ej-cat-cab span').textContent"""
+# «Cómo va el proyecto» es una tabla desde el 2026-11-06: lo gastado de la mano de obra
+JS_EJ_MO = """() => document.querySelector('#ejProyecto tr.ej-cat[data-cat="Mano de Obra"] td[data-et="Gastado"]').textContent"""
+JS_EJ_COMO = """(cat) => Object.fromEntries([...document.querySelectorAll('#ejProyecto tr.ej-cat[data-cat="' + cat + '"] td')].map((td) => [td.dataset.et, td.textContent]))"""
 
 
 def _con_formulador_js(*nombres):
@@ -4147,8 +4503,8 @@ def _esperar_aviso(pagina, comienzo):
 def test_proyectos_en_ejecucion_en_el_registro_y_en_el_esquema():
     reg = _registro()
     h = next(x for x in reg["herramientas"] if x["id"] == "ejecucion")
-    assert (h["grupo"], h["tipo"], h["vista"]) == ("finanzas", "vista", "vistaEjecucion")
-    assert [x["id"] for x in reg["herramientas"] if x["grupo"] == "finanzas"][:2] == ["planificacion", "ejecucion"]
+    assert (h["grupo"], h["tipo"], h["vista"]) == ("ejecutar", "vista", "vistaEjecucion")
+    assert [x["id"] for x in reg["herramientas"] if x["grupo"] == "ejecutar"][:2] == ["ejecucion", "planificacion"]
     assert "ejecucion-proyectos" in _esquemas().publicaciones()
     # Lo que carga del Formulador: la ruta que pide el portal y, si el Formulador está en este equipo, el nombre que exporta
     html = PORTAL.read_text(encoding="utf-8")
@@ -4188,19 +4544,213 @@ def test_proyectos_en_ejecucion_lista_y_resumen(navegador, sitio):
     pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').click()
     pagina.locator("#ejProyecto .ej-kpis").wait_for()
     # Venta de su formulación; costo estimado = lo presupuestado (nada se pasa todavía); margen y avance del Análisis
-    assert pagina.evaluate(JS_EJ_KPIS) == {"Venta neta": "$3.750.000", "Costo estimado al cierre": "$2.500.000",
+    assert pagina.evaluate(JS_EJ_KPIS) == {"Venta neta": "$3.750.000", "Gastado a la fecha": "$350.000", "Costo estimado al cierre": "$2.500.000",
                                             "Margen estimado": "33 %", "Avance": "40 %"}
     # Materiales: lo gastado más la OC que el Centro de Costos todavía no trae; la que ya está ahí y la que no se sabe no suman
-    assert pagina.locator('#ejProyecto .ej-cat[aria-label="Materiales"] .ej-cat-cab span').inner_text() == "$420.000 de $1.000.000 · quedan $580.000"
+    assert pagina.evaluate(JS_EJ_COMO, "Materiales") == {"Presupuestado": "$1.000.000", "Gastado": "$300.000", "Comprometido": "$120.000",
+                                                         "Simulado": "—", "Al cierre": "$1.000.000", "Queda": "$580.000"}
     estados = pagina.locator("#ejProyecto .ej-ocs li").evaluate_all("ls => ls.map((l) => [l.dataset.folio, l.querySelector('.rc-chip').textContent])")
     assert estados == [["612902", "Por confirmar"], ["612900", "Comprometida"], ["612901", "En el gasto"]]
     # Su carpeta de Gestión de Proyectos, con QUEMPIN.exe
-    pagina.locator("#ejProyecto .ej-cab .cx-boton", has_text="Gestión de Proyectos").click()
+    # Sin accesos al Centro de Costos, al Análisis Financiero ni a la Carta Gantt (2026-11-06)
+    accesos = pagina.locator("#ejProyecto .ej-cab .cx-acc button").all_inner_texts()
+    assert accesos[0] == "Carpeta del proyecto" and not {"Centro de Costos", "Análisis Financiero", "Carta Gantt"} & set(accesos), accesos
+    pagina.locator("#ejProyecto .ej-cab .cx-boton", has_text="Carpeta del proyecto").click()
     assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/908.%20En%20obra"
     # Quién va esta semana sale de la Planificación semanal
     assert "ES y LC" in pagina.locator("#ejProyecto .ej-equipo").inner_text()
     pagina.locator(".ej-volver").click()
     pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').wait_for()
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_mapa_de_salud_ubica_cada_proyecto_y_filtra_por_estado(navegador, sitio):
+    """Pedido del usuario (2026-11-09): una herramienta para seguir el estado de cada proyecto y una pestaña más visual.
+    El 908 va en línea (40 % de avance, 14 % gastado y comprometido, margen sobre la meta); el que no tiene N° pide atención;
+    el 907, sin presupuesto ni avance, queda fuera del mapa en «Sin datos»."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio)
+    pagina.locator("#ejMapa .punto").first.wait_for()
+    puntos = pagina.locator("#ejMapa .punto").evaluate_all("gs => gs.map((g) => [g.dataset.clave, g.dataset.nivel])")
+    assert ["req-908", "ok"] in puntos and not any(c == "req-907" for c, _ in puntos), puntos
+    cuentas = pagina.locator("#ejMapa .ej-estado-fil").evaluate_all("bs => Object.fromEntries(bs.map((b) => [b.dataset.nivel, b.dataset.cuenta]))")
+    assert cuentas == {"bad": "0", "warn": "1", "ok": "1", "sin": "1"}, cuentas
+    assert "N° 907" in pagina.locator("#ejMapa .ej-mapa-nota").inner_text()
+    # La tarjeta dice su estado con palabra, no solo con color
+    assert "En línea" in pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"] .ej-salud').inner_text()
+    # La leyenda filtra las tarjetas y se vuelve a tocar para ver todas
+    pagina.locator('#ejMapa .ej-estado-fil[data-nivel="sin"]').click()
+    claves = lambda: pagina.locator("#ejTarjetas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    assert claves() == ["req-907"]
+    assert pagina.locator('#ejMapa .ej-estado-fil[data-nivel="sin"]').get_attribute("aria-pressed") == "true"
+    pagina.locator('#ejMapa .ej-estado-fil[data-nivel="sin"]').click()
+    assert "req-908" in claves()
+    # Pasar sobre un punto dice por qué y resalta su tarjeta; tocarlo abre el proyecto
+    pagina.locator('#ejMapa .punto[data-clave="req-908"]').hover()
+    assert "Avance 40 %" in pagina.locator("#ejMapa .ej-mapa-tip").inner_text()
+    assert "resalta" in pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-908"]').get_attribute("class")
+    pagina.locator('#ejMapa .punto[data-clave="req-908"]').click()
+    pagina.locator("#ejProyecto .ej-kpis").wait_for()
+    assert not errores
+    pagina.context.close()
+
+
+def test_por_hacer_dice_lo_que_espera_el_proyecto_y_lo_hace_ahi_mismo(navegador, sitio):
+    """Vuelta 3 del loop de UX (2026-11-09): al abrir un proyecto, primero lo que está esperando de alguien, con su botón."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908)
+    tareas = lambda: pagina.locator("#ejProyecto .ej-porhacer .ej-tarea").evaluate_all("ls => ls.map((l) => l.dataset.tarea)")
+    pagina.wait_for_function("() => document.querySelectorAll('#ejProyecto .ej-porhacer .ej-tarea').length > 0")
+    # Desplegable (2026-11-10): cerrado de entrada, con lo que espera resumido; abierto se queda abierto al repintar
+    assert pagina.locator("#ejProyecto details.ej-porhacer").get_attribute("open") is None
+    assert "facturas sin asociar" in pagina.locator("#ejProyecto .ej-porhacer-res").inner_text()
+    pagina.locator("#ejProyecto .ej-porhacer > summary").click()
+    assert {"facturas", "traer"} <= set(tareas()), tareas()
+    assert "2 facturas sin asociar" in pagina.locator('#ejProyecto .ej-tarea[data-tarea="facturas"]').inner_text()
+    # «Asociar» deja a la vista solo las facturas sin asociar
+    pagina.locator('#ejProyecto .ej-tarea[data-tarea="facturas"] button').click()
+    pagina.wait_for_function("() => [...document.querySelectorAll('#ejProyecto .ej-filtro')].some((b) => b.textContent.startsWith('Sin asociar') && b.getAttribute('aria-pressed') === 'true')")
+    # «Traerlos» anota los días de la Planificación y la tarea se va
+    pagina.locator('#ejProyecto .ej-tarea[data-tarea="traer"] button').click()
+    _esperar_archivo(pagina, EJ, lambda s: sum(1 for x in s["datos"]["items"] if x["tipo"] == "dia" and x.get("origen") == "planificacion") == 2)
+    pagina.wait_for_function("() => !document.querySelector('#ejProyecto .ej-tarea[data-tarea=\"traer\"]')")
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho", [420, 760, 1280])
+def test_la_lista_de_por_hacer_no_se_sale_de_la_columna(navegador, sitio, ancho):
+    """2026-11-12, pedido del usuario: la lista flotante de «Por hacer» se cortaba por la izquierda (medía 460 px y se
+    anclaba al botón, más angosto). Ahora se ancla a la fila de arriba y nunca pasa del ancho de la columna."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908, ancho=ancho)
+    pagina.locator("#ejProyecto .ej-porhacer > summary").click()
+    pagina.locator("#ejProyecto .ej-porhacer > ul").wait_for()
+    caja = pagina.evaluate("""() => {
+        const l = document.querySelector('#ejProyecto .ej-porhacer > ul').getBoundingClientRect();
+        const c = document.querySelector('#ejProyecto .ej-v2-arriba').getBoundingClientRect();
+        return { izq: l.left, der: l.right, cizq: c.left, cder: c.right };
+    }""")
+    assert caja["izq"] >= caja["cizq"] - 1 and caja["der"] <= caja["cder"] + 1, caja
+    assert caja["izq"] >= 0, caja
+    assert not errores
+    pagina.context.close()
+
+
+def test_los_accesos_marcan_la_parte_a_la_vista_y_las_cifras_llevan_su_grafico(navegador, sitio):
+    """Vuelta 5 del loop de UX (2026-11-09)."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908, alto=700)
+    actual = lambda: pagina.evaluate("() => (document.querySelector('#ejProyecto .ej-salto[aria-current=\"true\"]') || {}).dataset?.sec || null")
+    # En la página nueva (2026-11-12) el índice va al costado: arriba de todo marca el resumen
+    assert actual() == "ejSecResumen", "arriba de todo, el resumen"
+    pagina.locator("#ejProyecto .ej-salto", has_text="Facturas").click()
+    pagina.wait_for_function("() => (document.querySelector('#ejProyecto .ej-salto[aria-current=\"true\"]') || {}).dataset?.sec === 'ejSecFacturas'")
+    # Gastado, costo al cierre, margen y avance llevan su barra chica; la venta no
+    con = pagina.locator("#ejProyecto .ej-kpi").evaluate_all("ks => ks.map((k) => [k.querySelector('.ej-kpi-et').textContent, !!k.querySelector('.ej-mini')])")
+    assert dict(con) == {"Venta neta": False, "Gastado a la fecha": True, "Costo estimado al cierre": True, "Margen estimado": True, "Avance": True}, con
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_pagina_del_proyecto_tiene_todos_los_proyectos_arriba_del_indice(navegador, sitio):
+    """2026-11-12, pedido del usuario: un resumen grande, un índice angosto que se pliega, «Por hacer» como un botón chico
+    arriba. Después (mismo día): la página anterior se eliminó y «Todos los proyectos» es lo primero del índice lateral."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908)
+    assert pagina.locator("#ejProyecto.ej-v2 #ejSecResumen .ej-v2-medidor").count() == 1
+    assert pagina.locator("#ejSecResumen .ej-v2-barra").is_visible()
+    assert pagina.locator("#ejSecResumen .ej-v2-raya").inner_text().startswith("Avance")
+    # Las cifras de abajo: la venta y el cierre (las KPI de siempre) más lo comprometido y la mano de obra
+    visibles = pagina.locator("#ejSecResumen .ej-kpis > *").evaluate_all(
+        "ks => ks.filter((k) => k.offsetParent).map((k) => k.querySelector('.ej-kpi-et').textContent)")
+    assert visibles == ["Venta neta", "Costo estimado al cierre", "Comprometido en OC", "Mano de obra real"], visibles
+    # «Por hacer» va en la fila de arriba, cerrado
+    assert pagina.locator("#ejProyecto .ej-v2-arriba details.ej-porhacer").get_attribute("open") is None
+    # Lo que espera se ve como número en el índice
+    assert pagina.locator("#ejProyecto .ej-salto[data-sec='ejSecFacturas'] .ej-hay").count() == 1
+    # El índice se pliega a íconos
+    pagina.locator(".ej-idx-plegar").click()
+    pagina.wait_for_function("() => document.querySelector('#ejProyecto').classList.contains('ej-plegado')")
+    assert not pagina.locator("#ejProyecto .ej-salto[data-sec='ejSecFacturas'] > span").is_visible()
+    # «Todos los proyectos» es el primer elemento del índice (incluso plegado, solo con ícono) y no hay página anterior
+    assert pagina.locator("#ejProyecto .ej-v2-idx > :first-child").evaluate("e => e.classList.contains('ej-volver')")
+    assert pagina.locator("#ejProyecto .ej-v2-idx .ej-volver").is_visible()
+    assert pagina.locator("#ejProyecto .ej-v2-arriba .ej-volver").count() == 0
+    assert pagina.locator(".ej-cambiar-vista").count() == 0
+    assert "vistaAnterior" not in json.loads(pagina.evaluate("() => localStorage.getItem('quempin_portal_ejecucion')"))
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_avance_se_cambia_con_botones_rapidos_y_el_boton_dice_que_guarda(navegador, sitio):
+    """Vuelta 6 del loop de UX (2026-11-09): sin cambios no se guarda; +10 muestra 40 % → 50 % y lo guarda."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    boton = pagina.locator("#ejProyecto .ej-av-form .cx-boton")
+    pagina.wait_for_function("() => document.querySelector('#ejProyecto .ej-av-form .cx-boton').disabled")
+    assert boton.inner_text() == "Sin cambios que guardar"
+    pagina.locator("#ejProyecto .ej-av-chip", has_text="+10").click()
+    assert pagina.locator("#ejAvNum").input_value() == "50"
+    assert pagina.locator("#ejAvCambio").inner_text() == "→ 50 %"
+    assert pagina.locator("#ejAvPrevia").is_visible()
+    assert boton.inner_text() == "Guardar 50 % en el Análisis Financiero" and boton.is_enabled()
+    # «Como estaba» vuelve atrás
+    pagina.locator("#ejProyecto .ej-av-chip", has_text="Como estaba").click()
+    assert pagina.locator("#ejAvNum").input_value() == "40" and boton.is_disabled()
+    pagina.locator("#ejProyecto .ej-av-chip", has_text="+10").click()
+    boton.click()
+    _esperar_aviso(pagina, "Avance 50 %")
+    assert not errores
+    pagina.context.close()
+
+
+def test_la_mano_de_obra_se_ve_en_grafico_y_el_calendario_se_abre_al_anotar(navegador, sitio):
+    """Vuelta 7 del loop de UX (2026-11-09): con días anotados, arriba lo trabajado por persona y el calendario plegado."""
+    from datetime import date, timedelta
+    ayer = (date.today() - timedelta(days=1)).isoformat()
+
+    def con_dias(archivos):
+        archivos["publicado/ejecucion/otronavegador1.json"] = json.loads(_sobre_de_otro(*[
+            {"id": f"dia-{p.lower()}-{ayer}", "proyecto": "req:908", "tipo": "dia", "t": _instante(-60), "por": "LC", "persona": p, "fecha": ayer,
+             "jornada": j, "nivel": 2} for p, j in (("ES", 1), ("LC", 0.5))])[1])
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=con_dias)
+    pagina.locator("#ejProyecto .ej-mo-pers li").first.wait_for()
+    pers = pagina.locator("#ejProyecto .ej-mo-pers li").all_inner_texts()
+    assert pers[0].startswith("ES") and "1 DH" in pers[0] and "0,5 DH" in pers[1], pers
+    assert "1,5 DH" in pagina.locator("#ejProyecto .ej-mo-num").inner_text()
+    assert pagina.locator("#ejCalCaja").is_hidden()
+    pagina.locator("#ejProyecto .ej-cal-abrir").click()
+    pagina.locator("#ejCalCaja").wait_for()
+    assert pagina.locator("#ejProyecto .ej-cal-abrir").get_attribute("aria-expanded") == "true"
+    assert not errores
+    pagina.context.close()
+
+
+def test_las_facturas_y_las_compras_se_resumen_en_barras(navegador, sitio):
+    """Vuelta 8 del loop de UX (2026-11-09): cuánto de lo facturado está asociado y las compras por estado, que filtran."""
+    def con_todo(archivos):
+        _documentos_908(archivos)
+        archivos["publicado/ejecucion/otronavegador1.json"] = json.loads(_sobre_de_otro(
+            _item_de_prueba("cgrupouno00001", "Ferretería Uno", 210000, grupo="cgrupouno00001"),
+            _item_de_prueba("cgrupodos00001", "Aceros Dos", 500000, grupo="cgrupodos00001", estado="comprada"))[1])
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=con_todo)
+    pagina.locator("#ejProyecto .ej-prog").wait_for()
+    assert pagina.locator("#ejProyecto .ej-prog-txt").inner_text().startswith("0 asociadas de 2")
+    et = lambda e: pagina.locator(f'#ejProyecto .ej-embudo-et[data-estado="{e}"]')
+    assert "$210.000" in et("evaluar").inner_text() and "$500.000" in et("comprada").inner_text()
+    assert et("aprobada").is_disabled()
+    et("comprada").click()
+    pagina.wait_for_function("() => [...document.querySelectorAll('#ejSecGastos .ej-filtro')].some((b) => b.textContent.startsWith('Compradas') && b.getAttribute('aria-pressed') === 'true')")
+    assert not errores
+    pagina.context.close()
+
+
+def test_lo_que_espera_al_equipo_se_cuenta_y_filtra_la_lista(navegador, sitio):
+    """Vuelta 11 del loop de UX (2026-11-09): sobre las tarjetas, lo que espera en todos los proyectos; tocarlo filtra."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, cambiar=_documentos_908)
+    pagina.locator('#ejEspera [data-espera="facturas"]').wait_for()
+    assert " ".join(pagina.locator('#ejEspera [data-espera="facturas"]').inner_text().split()) == "2 facturas sin asociar en 1 proyecto"
+    pagina.locator('#ejEspera [data-espera="facturas"]').click()
+    claves = lambda: pagina.locator("#ejTarjetas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    assert claves() == ["req-908"]
+    pagina.locator('#ejEspera [data-espera="facturas"]').click()
+    assert len(claves()) > 1
     assert not errores
     pagina.context.close()
 
@@ -4230,7 +4780,7 @@ def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegad
         pagina.locator("#ejProyecto .ej-cab").wait_for()
 
     def carpeta():
-        pagina.locator("#ejProyecto .ej-cab .cx-boton", has_text="Gestión de Proyectos").click()
+        pagina.locator("#ejProyecto .ej-cab .cx-boton", has_text="Carpeta del proyecto").click()
         return pagina.evaluate("window.__lanzados")[-1]
 
     resumen("req-905")
@@ -4259,6 +4809,61 @@ def test_todos_los_proyectos_de_gestion_de_proyectos_se_ven_en_ejecucion(navegad
     pagina.context.close()
 
 
+def test_ejecucion_solo_lo_de_gestion_y_los_entregados_en_su_pestana(navegador, sitio):
+    """Pedido del usuario (2026-11-09): en «Proyectos en ejecución» solo los proyectos con carpeta en Gestión de
+    Proyectos; los de «0 Proyectos Entregados <año>», en una segunda pestaña; y una casilla para ver solo los que tienen
+    al menos un dato anotado en su resumen."""
+    def carpetas(archivos):
+        datos = archivos["publicado/proyectos.json"]["datos"]
+        datos["gestion"] = [{"carpeta": "908. En obra", "req": "908"}, {"carpeta": "905. Oferta esperando", "req": "905"}]
+        datos["entregados"] = [{"carpeta": "909. Terminada", "req": "909", "grupo": "0 Proyectos Entregados 2026"},
+                               {"carpeta": "AGCID", "req": None, "grupo": "0 Proyectos Entregados 2025"}]
+        # 908 tiene un día anotado en su resumen; 905, 909 y AGCID, nada
+        archivos["publicado/ejecucion/otronavegador1.json"] = json.loads(_sobre_de_otro(
+            {"id": "dia-es-2026-11-02", "proyecto": "req:908", "tipo": "dia", "t": _instante(-60), "por": "LC", "persona": "ES",
+             "fecha": "2026-11-02", "jornada": 1, "nivel": 2})[1])
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, cambiar=carpetas)
+    claves = lambda: pagina.locator("#ejTarjetas .ej-tarjeta, #ejTarjetasAntiguas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    pestana = lambda p: pagina.locator(f'#ejPestanas [data-pestana="{p}"]')
+    # En ejecución: solo lo que tiene carpeta en la raíz (910 está adjudicado, pero sin carpeta en Gestión)
+    assert sorted(claves()) == ["req-905", "req-908"]
+    assert pestana("ejecucion").get_attribute("aria-selected") == "true"
+    assert pestana("ejecucion").locator("b").inner_text() == "2" and pestana("entregados").locator("b").inner_text() == "2"
+    # Solo con datos anotados
+    pagina.locator("#ejConDatos").check()
+    pagina.wait_for_function("document.querySelectorAll('#ejTarjetas .ej-tarjeta').length === 1")
+    assert claves() == ["req-908"] and pestana("ejecucion").locator("b").inner_text() == "1"
+    # Entregados: con N° (se une con su proyecto) y sin N° (va aparte); sin datos anotados no queda ninguno
+    pestana("entregados").click()
+    assert pestana("entregados").get_attribute("aria-selected") == "true"
+    assert claves() == [] and "Quita «Solo con datos anotados»" in pagina.locator("#ejTarjetas").inner_text()
+    pagina.locator("#ejConDatos").uncheck()
+    pagina.wait_for_function("document.querySelectorAll('#ejTarjetas .ej-tarjeta').length === 2")
+    assert sorted(claves()) == ["entregado-AGCID", "req-909"], "lo entregado no se pliega por antiguo"
+    # Se recuerda en este navegador
+    assert pagina.evaluate("JSON.parse(localStorage.getItem('quempin_portal_ejecucion')).pestana") == "entregados"
+    # Su resumen: su carpeta, dentro de la del año; sin N°, cómo unirla. Al volver, sigue en Entregados
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="entregado-AGCID"]').click()
+    pagina.locator("#ejProyecto .ej-cab").wait_for()
+    assert pagina.locator("#ejProyecto .ej-sin-clave").is_visible()
+    assert "«AGCID»" in pagina.locator("#ejProyecto .ej-sin-clave").inner_text()
+    pagina.locator("#ejProyecto .ej-cab .cx-boton", has_text="Carpeta del proyecto").click()
+    assert pagina.evaluate("window.__lanzados")[-1] == "quempin://carpeta/gestion/0%20Proyectos%20Entregados%202025/AGCID"
+    pagina.locator(".ej-volver").click()
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-909"]').wait_for()
+    # Con el teclado: las flechas cambian de pestaña
+    pestana("entregados").focus()
+    pagina.keyboard.press("ArrowLeft")
+    assert pestana("ejecucion").get_attribute("aria-selected") == "true"
+    assert pagina.evaluate("document.activeElement.dataset.pestana") == "ejecucion"
+    # El Recorrido no muestra la carpeta entregada suelta
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    assert not any("entregado-" in c for cs in pagina.evaluate(JS_COLUMNAS).values() for c in cs)
+    assert not errores
+    pagina.context.close()
+
+
 def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
     pagina.locator("#ejProyecto .ej-compras .cx-boton").click()
@@ -4270,7 +4875,7 @@ def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
     assert "materiales se pasa del presupuesto en $370.000" in evaluacion
     if _con_formulador_js("calc.js"):
         # La línea más parecida del presupuesto de su formulación, con su costo unitario
-        assert pagina.locator("#ejCLinea").input_value() == "m1"
+        assert pagina.locator("#ejCLineas .ej-lin").all_inner_texts() == ["M1 (P1) · Estanque inoxidable 100 L $800.000"]
         assert "Presupuestado $800.000 c/u en M1" in evaluacion and "19 % más cara" in evaluacion
     assert pagina.locator("#ejCEval .ej-eval-chip").inner_text() == "No conviene"
     pagina.locator("#ejCGuardar").click()
@@ -4320,6 +4925,138 @@ def test_una_cotizacion_cambia_el_costo_y_el_margen_al_tiro(navegador, sitio):
     pagina.locator("#tituloEjecucion").click()
     pagina.keyboard.press("Control+z")
     _esperar_archivo(pagina, EJ, lambda s: estados(s) == {"Otro Inox": "evaluar", "Inox Demo": "evaluar"})
+    assert not errores
+    pagina.context.close()
+
+
+def test_una_cotizacion_reemplaza_varias_lineas_del_presupuesto(navegador, sitio):
+    """2026-11-10, pedido del usuario: «hay cotizaciones que abordan más de un ítem de lo presupuestado»."""
+    if not _con_formulador_js("calc.js"):
+        pytest.skip("sin el Formulador en este equipo no hay líneas del presupuesto")
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejProyecto .ej-compras .cx-boton").click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    pagina.locator("#ejCDesc").fill("Estanque inoxidable 100 L")
+    _escribir_prov(pagina, 0, "Inox Demo", "950.000")
+    lineas = lambda: pagina.locator("#ejCLineas .ej-lin").all_inner_texts()
+    assert len(lineas()) == 1 and lineas()[0].startswith("M1 ")
+    # La propuesta queda y se agrega otra desde el menú, que ya no ofrece la elegida
+    menu = pagina.locator("#ejCLinea")
+    assert menu.locator("option").first.inner_text() == "+ Agregar otra línea del presupuesto…"
+    assert "m1" not in [o.get_attribute("value") for o in menu.locator("option").all()]
+    menu.select_option("m2")
+    assert [x.split(" ")[0] for x in lineas()] == ["M1", "M2"]
+    assert "Suman $1.000.000 presupuestados." in pagina.locator("#ejCLineas").inner_text()
+    assert menu.locator("option").first.inner_text() == "No quedan más líneas de materiales"
+    evaluacion = pagina.locator("#ejCEval").inner_text()
+    assert "Presupuestado $1.000.000 en total en 2 líneas (M1, M2): esta es 5 % más barata." in evaluacion
+    assert "y sus líneas M1, M2 estaban presupuestadas en $1.000.000" in evaluacion
+    # Cambiar la descripción ya no cambia lo elegido a mano
+    pagina.locator("#ejCDesc").fill("Estanque y cañería")
+    assert [x.split(" ")[0] for x in lineas()] == ["M1", "M2"]
+    pagina.locator("#ejCGuardar").click()
+    pagina.locator("#dlgEjCosto").wait_for(state="hidden")
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(s["datos"]["items"]) == 1)
+    it = sobre["datos"]["items"][0]
+    assert (it["lineas"], it["linea"]) == (["m1", "m2"], "m1")
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    # Al abrirla de nuevo siguen las dos; la ✕ quita una
+    pagina.locator(f'#ejProyecto .ej-tabla tr[data-id="{it["id"]}"] .ej-c-desc').click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    assert [x.split(" ")[0] for x in lineas()] == ["M1", "M2"]
+    pagina.locator("#ejCLineas .ej-lin", has_text="M1").get_by_role("button").click()
+    assert [x.split(" ")[0] for x in lineas()] == ["M2"]
+    assert pagina.evaluate("document.activeElement.id") == "ejCLinea"
+    assert "Presupuestado $200.000 en total en M2" in pagina.locator("#ejCEval").inner_text()
+    pagina.locator("#ejCGuardar").click()
+    _esperar_archivo(pagina, EJ, lambda s: s["datos"]["items"][0].get("lineas") == ["m2"])
+    # Cambiar de categoría deja fuera las líneas de la otra
+    pagina.locator(f'#ejProyecto .ej-tabla tr[data-id="{it["id"]}"] .ej-c-desc').click()
+    pagina.locator("#dlgEjCosto").wait_for()
+    pagina.locator("#ejCCat .pl-vista", has_text="Equipos").click()
+    assert lineas() == [] and pagina.locator("#ejCLinea option").first.inner_text() == "Ninguna: no estaba en el presupuesto"
+    pagina.locator("#ejCostoX").click()
+    assert not errores
+    pagina.context.close()
+
+
+def _pr_kpi(pagina, k):
+    return pagina.locator(f'#dlgEjPres .ej-pr-kpi[data-k="{k}"] > b').inner_text()
+
+
+def _pr_filas(pagina):
+    return pagina.locator("#ejPrTabla tbody tr:not(.ej-pr-vacio)")
+
+
+def test_el_presupuesto_completo_y_un_presupuesto_actualizado(navegador, sitio):
+    """2026-11-13, pedido del usuario: ver el presupuesto original con el desglose completo de sus costos y generar un
+    presupuesto actualizado para evaluar los indicadores al agregar o quitar costos, sin perder el original; en una ventana
+    grande, con buscador y orden por precio como la pestaña de costos del Formulador."""
+    if not _con_formulador_js("calc.js"):
+        pytest.skip("sin el Formulador en este equipo no hay líneas del presupuesto")
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    abrir = pagina.locator("#ejSecComoVa .ej-pr-abrir")
+    assert abrir.inner_text() == "Ver el presupuesto"
+    abrir.click()
+    pagina.locator("#dlgEjPres").wait_for()
+    # El original: las cinco líneas de su formulación y los indicadores del Formulador, sin nada que cambiar
+    assert pagina.locator("#dlgEjPres .ej-pr-ver.on").inner_text().startswith("Original")
+    assert _pr_filas(pagina).count() == 5 and pagina.locator("#ejPrTabla input").count() == 0
+    assert (_pr_kpi(pagina, "costo"), _pr_kpi(pagina, "margen"), _pr_kpi(pagina, "dh"), _pr_kpi(pagina, "uDH")) == ("$2.500.000", "33 %", "10 DH", "$125.000")
+    # Buscador, que dice cuántas filas suma, y orden por costo unitario o, con un clic en su título, por subtotal
+    pagina.locator("#dlgEjPres .ej-pr-q").fill("cobre")
+    assert _pr_filas(pagina).count() == 1 and "filtrado · 1 de 5" in pagina.locator("#ejPrTabla tfoot").inner_text()
+    pagina.locator("#dlgEjPres .ej-pr-q").fill("")
+    pagina.locator('#dlgEjPres select[data-foco="pr-orden"]').select_option("pu-menor")
+    assert _pr_filas(pagina).first.locator("td").nth(1).inner_text() == "Cañería de cobre 1/2"
+    pagina.locator("#ejPrTabla th.ej-pr-ord", has_text="Subtotal").click()
+    assert _pr_filas(pagina).first.locator("td").nth(1).inner_text() == "Estanque inoxidable 100 L"
+    assert pagina.locator('#dlgEjPres select[data-foco="pr-orden"]').input_value() == "mayor"
+    # Una versión actualizada: 50 m más de cañería, sin el andamio y una válvula nueva
+    pagina.locator("#dlgEjPres .ej-pr-vers .cx-enlace", has_text="Crear un presupuesto actualizado").click()
+    assert pagina.locator("#dlgEjPres .ej-pr-ver.on").inner_text().startswith("Actualizado 1")
+    assert pagina.locator('#ejPrTabla input[data-foco="pr-p-m1"]').input_value() == "800.000"
+    pagina.locator('#ejPrTabla input[data-foco="pr-q-m2"]').fill("100")
+    pagina.locator('#ejPrTabla input[data-foco="pr-q-m2"]').press("Tab")
+    assert "ej-pr-cam" in (_pr_filas(pagina).filter(has_text="Cañería").get_attribute("class") or "")
+    pagina.locator('#ejPrTabla button[data-foco="pr-x-e1"]').click()
+    assert "quitado" in _pr_filas(pagina).filter(has_text="andamio").inner_text()
+    pagina.locator('#dlgEjPres button[data-foco="pr-agregar"]').click()
+    nueva = pagina.locator("#ejPrTabla tr.ej-pr-nue")
+    nueva.locator("input.ej-pr-dsc").fill("Válvula de bola")
+    nueva.locator("input.ej-pr-dsc").press("Tab")
+    pagina.locator("#ejPrTabla tr.ej-pr-nue td[data-et='Cantidad'] input").fill("2")
+    pagina.locator("#ejPrTabla tr.ej-pr-nue td[data-et='Cantidad'] input").press("Tab")
+    pagina.locator("#ejPrTabla tr.ej-pr-nue td[data-et='Costo unitario'] input").fill("25.000")
+    pagina.locator("#ejPrTabla tr.ej-pr-nue td[data-et='Costo unitario'] input").press("Tab")
+    # Los indicadores se recalculan contra el original: 2.500.000 + 200.000 − 500.000 + 50.000
+    assert _pr_kpi(pagina, "costo") == "$2.250.000" and _pr_kpi(pagina, "margen") == "40 %"
+    assert "Original $2.500.000" in pagina.locator('#dlgEjPres .ej-pr-kpi[data-k="costo"]').inner_text()
+    assert pagina.locator("#dlgEjPres .ej-pr-tab.on .ej-pr-cnt").inner_text() == "3"
+    pagina.locator('#dlgEjPres input[data-foco="pr-solo"]').check()
+    assert _pr_filas(pagina).count() == 3
+    pagina.locator('#ejPrAcc input[data-foco="pr-seg"]').check()
+    pagina.locator("#ejPrAcc .btn-pri").click()
+    sobre = _esperar_archivo(pagina, EJ, lambda s: any(x["tipo"] == "presupuesto" for x in s["datos"]["items"]))
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    pr = next(x for x in sobre["datos"]["items"] if x["tipo"] == "presupuesto")
+    assert (pr["nombre"], pr["seguimiento"], pr["gg"], pr["venta"]) == ("Actualizado 1", True, None, None)
+    assert sorted(pr["cambios"], key=lambda c: c["uid"]) == [{"uid": "e1", "quitado": True}, {"uid": "m2", "cantidad": 100}]
+    assert [(n["descripcion"], n["categoria"], n["cantidad"], n["unitario"]) for n in pr["nuevos"]] == [("Válvula de bola", "Materiales", 2, 25000)]
+    assert "guardado" in pagina.locator("#ejPrAcc .ej-pr-estado").inner_text()
+    # El original sigue igual
+    pagina.locator("#dlgEjPres .ej-pr-ver", has_text="Original").click()
+    assert _pr_kpi(pagina, "costo") == "$2.500.000" and pagina.locator("#ejPrTabla input").count() == 0
+    pagina.locator("#dlgEjPres .dlg-x").click()
+    pagina.locator("#dlgEjPres").wait_for(state="hidden")
+    # «Cómo va el proyecto» lo usa: materiales 1.000.000 + 200.000 + 50.000 y equipos sin el andamio
+    pagina.wait_for_function("() => document.querySelector('#ejSecComoVa .ej-pr-abrir').textContent === 'Presupuesto · 1 actualizado'")
+    assert "con «Actualizado 1»" in pagina.locator("#ejSecComoVa .ej-panel-cab").inner_text()
+    assert pagina.locator('#ejSecComoVa tr.ej-cat[data-cat="Materiales"] td').first.inner_text() == "$1.250.000"
+    # Al abrirlo de nuevo muestra el que está en uso
+    pagina.locator("#ejSecComoVa .ej-pr-abrir").click()
+    assert pagina.locator("#dlgEjPres .ej-pr-ver.on").inner_text().startswith("Actualizado 1")
+    assert _pr_kpi(pagina, "costo") == "$2.250.000"
     assert not errores
     pagina.context.close()
 
@@ -4488,6 +5225,28 @@ def _sobre_de_otro(*items):
             "generado": _instante(0), "datos": {"dispositivo": "otronavegador1", "items": list(items)}})]
 
 
+def test_en_ejecucion_se_ve_quien_cambio_algo_y_lo_tuyo_que_reemplazo(navegador, sitio):
+    """2026-11-10, trabajar a la vez: como en la Planificación, lo que llega de otro dice quién fue, y si reemplaza una
+    cotización que este navegador acababa de cambiar, la franja lo dice y «Volver a lo mío» la repone."""
+    def con_lo_mio(archivos):
+        archivos[EJ] = {"esquema": "quempin.intercambio/1", "herramienta": "ejecucion", "tipo": "ejecucion-proyectos", "generado": _instante(-60),
+                        "datos": {"dispositivo": DISPOSITIVO, "items": [_item_de_prueba("cgrupoprueba1", "Ferretería Uno", 210000, por="LC")]}}
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=con_lo_mio)
+    suyo = _item_de_prueba("cgrupoprueba1", "Ferretería Uno", 250000, t=0)
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, _sobre_de_otro(suyo))
+    franja = pagina.locator("#ejPisado")
+    franja.wait_for(timeout=20000)
+    assert pagina.locator("#ejFrescura").inner_text() == "NB acaba de cambiar 1 cosa"
+    txt = franja.inner_text()
+    assert "NB cambió algo que tú acababas de cambiar" in txt and "NB cambió la cotización «Estanque inoxidable" in txt and "(N° 908)" in txt, txt
+    franja.get_by_role("button", name="Volver a lo mío").click()
+    assert franja.is_hidden()
+    _esperar_aviso(pagina, "Volvió lo tuyo")
+    _esperar_archivo(pagina, EJ, lambda s: any(i["id"] == "cgrupoprueba1" and i["precio"] == 210000 and i["t"] > suyo["t"] for i in s["datos"]["items"]))
+    assert not errores
+    pagina.context.close()
+
+
 def test_dos_navegadores_que_eligen_a_la_vez_no_cuentan_el_item_dos_veces(navegador, sitio):
     """En cada id manda el cambio más reciente, así que dos elecciones a la vez dejan dos marcados: cuenta solo el más reciente."""
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
@@ -4579,14 +5338,32 @@ def test_el_avance_se_pide_al_analisis_y_lo_ven_las_demas_vistas(navegador, siti
     pagina.context.close()
 
 
+def test_el_nombre_que_se_ve_se_cambia_con_el_lapiz(navegador, sitio):
+    """2026-11-09 (pedido del usuario): el lápiz junto al nombre pide al Análisis Financiero solo el apodo."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    pagina.locator("#ejProyecto .ej-cab .ej-renombrar").click()
+    pagina.locator("#ejNomTexto").fill("  H2   Green ")
+    pagina.locator("#ejNombreForm .btn-pri").click()
+    _esperar_aviso(pagina, "Nombre pedido")
+    (_, m), = [(n, x) for n, x in pagina.evaluate(JS_BUZON).items()
+               if x.get("tipo") == "datos-proyecto" and (x.get("origen") or {}).get("herramienta") == "portal"]
+    assert m["valores"] == {"Apodo": "H2 Green"} and list(m["reemplaza"]) == ["Apodo"]
+    assert _esquemas().validar_mensaje(m) == []
+    assert "H2 Green" in pagina.locator("#ejProyecto .ej-cab h2").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
 def test_los_dias_trabajados_estiman_la_mano_de_obra_real(navegador, sitio):
     from datetime import date
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
     hoy = date.today().isoformat()
-    pagina.locator("#ejDiaFecha").fill(hoy)
+    # El calendario del mes (2026-11-06): se marca el día, se eligen quiénes y se anota de una vez
+    pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{hoy}"]').click()
     for per in ("NB", "SV"):
         pagina.locator(".ej-quienes label", has_text=per).locator("input").check()
-    pagina.locator("#ejProyecto .ej-dias-form .cx-boton").click()
+    assert pagina.locator("#ejDiasAnotar").inner_text() == "Anotar 2 DH"
+    pagina.locator("#ejDiasAnotar").click()
     dias = lambda s: sorted((x["fecha"], x["persona"], x["nivel"], x.get("origen", "")) for x in s["datos"]["items"]
                             if x["tipo"] == "dia" and not x.get("borrado"))
     sobre = _esperar_archivo(pagina, EJ, lambda s: len(dias(s)) == 2)
@@ -4594,7 +5371,7 @@ def test_los_dias_trabajados_estiman_la_mano_de_obra_real(navegador, sitio):
     assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
     # Su costo, a la tarifa del nivel 2 de la formulación, es la mano de obra real del resumen y de los indicadores
     pagina.wait_for_function("(js) => eval(js)().startsWith('$120.000')", arg=JS_EJ_MO)
-    assert pagina.evaluate(JS_EJ_MO) == "$120.000 de $600.000 · quedan $480.000"
+    assert pagina.evaluate(JS_EJ_COMO, "Mano de Obra")["Queda"] == "$480.000"
     ind = pagina.evaluate(JS_EJ_IND)
     assert ind["costoDH"][1] == "$60.000" and ind["dh"][1] == "2"
     if _con_formulador_js("calc.js"):
@@ -4641,6 +5418,100 @@ def test_lo_anotado_en_otro_navegador_aparece_y_manda_lo_mas_reciente(navegador,
     pagina.locator("#ejActualizar").click()
     pagina.locator("#ejProyecto .ej-filtro", has_text="Descartadas").click()
     assert "fuera" in pagina.locator('#ejProyecto .ej-tabla tr[data-id="cotronavegador001"]').get_attribute("class")
+    assert not errores
+    pagina.context.close()
+
+
+def _documentos_908(archivos):
+    """Las facturas del Centro de Costos del 908 (TAG DEMO), como las publica el procesador (2026-11-06)."""
+    archivos["publicado/documentos-proyecto.json"] = {"esquema": "quempin.intercambio/1", "herramienta": "procesador", "generado": _instante(-600),
+        "datos": {"actualizado": "2026-11-06 10:00", "documentos": [
+            {"ref": "DEMO-002", "tag": "DEMO", "proyecto": "908. En obra", "fecha": _dia(-3), "tipo": "Factura", "numero": "5521",
+             "proveedor": "Aceros Demo SpA", "resumen": "Estanque inoxidable", "categoria": "Materiales", "neto": 200000, "estado": "Pagado",
+             "pendiente": False, "enlace": "https://quempinspa2020.sharepoint.com/x/DEMO-002.pdf",
+             "items": [{"nombre": "Estanque inoxidable 100 L", "cantidad": 1, "unitario": 200000, "neto": 200000, "categoria": "Materiales"}]},
+            {"ref": "DEMO-001", "tag": "DEMO", "proyecto": "908. En obra", "fecha": _dia(-10), "tipo": "Boleta", "numero": "88",
+             "proveedor": "Combustibles Demo", "resumen": "Petróleo", "categoria": "Otros", "neto": 30000, "estado": "Pagado",
+             "pendiente": True, "enlace": None, "items": []},
+            {"ref": "OTRO-001", "tag": "OTRO", "fecha": _dia(-1), "tipo": "Factura", "categoria": "Otros", "neto": 999, "items": []}]}}
+    assert _esquemas().validar_publicacion("documentos-proyecto", archivos["publicado/documentos-proyecto.json"]) == []
+
+
+def test_las_facturas_del_centro_de_costos_se_ven_y_se_asocian_a_sus_gastos(navegador, sitio):
+    """Pedido del usuario (2026-11-06): en cada proyecto, los costos registrados en el Centro de Costos, y cada factura
+    asociada a uno o varios gastos proyectados y cotizados. Lo facturado ya está en lo gastado: se simula solo lo que falta."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_documentos_908)
+    filas = lambda: pagina.locator("#ejProyecto .ej-docs tbody tr").evaluate_all("ts => ts.map((t) => t.dataset.ref)")
+    assert filas() == ["DEMO-002", "DEMO-001"], "solo las de su TAG, la más nueva primero"
+    assert pagina.locator('#ejProyecto .ej-docs tr[data-ref="DEMO-002"] a.ej-d-ref').get_attribute("href").endswith("DEMO-002.pdf")
+    assert "Por revisar" in pagina.locator('#ejProyecto .ej-docs tr[data-ref="DEMO-001"]').inner_text()
+    # Lo gastado sale de sus facturas (más nuevas que el Análisis Financiero): materiales $200.000, otros $30.000
+    assert pagina.evaluate(JS_EJ_KPIS)["Gastado a la fecha"] == "$230.000"
+    assert pagina.evaluate(JS_EJ_COMO, "Materiales")["Gastado"] == "$200.000"
+    # Un estanque cotizado y simulado, de otro navegador
+    otro = {"esquema": "quempin.intercambio/1", "herramienta": "ejecucion", "tipo": "ejecucion-proyectos", "generado": _instante(0),
+            "datos": {"dispositivo": "otronavegador1", "items": [
+                {"id": "cestanque000001", "proyecto": "req:908", "tipo": "costo", "t": _instante(-30), "descripcion": "Estanque inoxidable",
+                 "categoria": "Materiales", "cantidad": 1, "precio": 800000, "proveedor": "Aceros Demo SpA", "estado": "evaluar", "simular": True}]}}
+    pagina.evaluate(JS_ESCRIBIR_TEXTO, ["publicado/ejecucion/otronavegador1.json", json.dumps(otro)])
+    pagina.locator("#ejActualizar").click()
+    pagina.locator('#ejProyecto .ej-tabla tr[data-id="cestanque000001"]').wait_for()
+    assert pagina.evaluate(JS_EJ_COMO, "Materiales")["Simulado"] == "$800.000"
+    # Asociar la factura: el estanque se propone primero («Parece»), y también se puede elegir su línea del presupuesto
+    pagina.locator('#ejProyecto .ej-docs tr[data-ref="DEMO-002"] .ej-asociar', has_text="Asociar").click()
+    dlg = pagina.locator("#dlgEjAsociar")
+    dlg.wait_for()
+    primera = dlg.locator(".ej-as-op").first
+    assert "Estanque inoxidable" in primera.inner_text() and "Parece" in primera.inner_text()
+    primera.locator("input").check()
+    pagina.locator("#ejAsComprar").uncheck()
+    pagina.locator("#ejAsGuardar").click()
+    _esperar_aviso(pagina, "DEMO-002 asociada a 1 gasto")
+    sobre = _esperar_archivo(pagina, EJ, lambda s: any(x["tipo"] == "asociacion" for x in s["datos"]["items"]))
+    (a,) = [x for x in sobre["datos"]["items"] if x["tipo"] == "asociacion"]
+    assert (a["ref"], a["destinos"], a["proyecto"]) == ("DEMO-002", ["i:cestanque000001"], "req:908")
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    # Lo facturado se ve en la fila del gasto y ya no se simula: quedan $600.000 por facturar
+    pagina.wait_for_function("(js) => eval(js)('Materiales')['Simulado'] === '$600.000'", arg=JS_EJ_COMO)
+    assert "Facturado $200.000 de $800.000" in pagina.locator('#ejProyecto .ej-tabla tr[data-id="cestanque000001"]').inner_text()
+    assert "Estanque inoxidable" in pagina.locator('#ejProyecto .ej-docs tr[data-ref="DEMO-002"] .ej-d-chips').inner_text()
+    # Filtrar las que faltan por asociar
+    pagina.locator("#ejProyecto .ej-facturas .ej-filtro", has_text="Sin asociar").click()
+    pagina.wait_for_function("() => [...document.querySelectorAll('#ejProyecto .ej-docs tbody tr')].map((t) => t.dataset.ref).join() === 'DEMO-001'")
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_calendario_anota_varios_dias_de_una_vez_y_medio_dia(navegador, sitio):
+    """Pedido del usuario (2026-11-06): la mano de obra en un calendario del mes, marcando los días trabajados con día
+    completo o medio día, en una sola acción."""
+    from datetime import date, timedelta
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    hoy = date.today()
+    dias = [d for d in (hoy - timedelta(days=k) for k in range(3)) if d.month == hoy.month]
+    assert pagina.locator("#ejProyecto .ej-cal-tit b").inner_text().split()[1] == str(hoy.year)
+    assert pagina.locator(f'.ej-cal-dia[data-iso="{(hoy + timedelta(days=1)).isoformat()}"]').count() == 0 or \
+        pagina.locator(f'.ej-cal-dia[data-iso="{(hoy + timedelta(days=1)).isoformat()}"]').is_disabled(), "un día que no llega no se marca"
+    for d in dias:
+        pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{d.isoformat()}"]').click()
+    for per in ("NB", "SV"):
+        pagina.locator(".ej-quienes label", has_text=per).locator("input").check()
+    pagina.locator('#ejProyecto .ej-jornada .pl-vista[data-jornada="0.5"]').click()
+    assert pagina.locator("#ejDiasAnotar").inner_text() == "Anotar " + f"{len(dias) * 2 * 0.5:g}".replace(".", ",") + " DH"
+    pagina.locator("#ejDiasAnotar").click()
+    lista = lambda s: sorted((x["fecha"], x["persona"], x["jornada"]) for x in s["datos"]["items"] if x["tipo"] == "dia" and not x.get("borrado"))
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(lista(s)) == 2 * len(dias))
+    assert lista(sobre) == sorted((d.isoformat(), p, 0.5) for d in dias for p in ("NB", "SV"))
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    celda = pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{hoy.isoformat()}"]')
+    celda.locator(".ej-cal-per", has_text="NB½").wait_for()
+    # Quitar: el día de hoy de NB (SV queda desmarcado: solo se quita lo de los elegidos)
+    pagina.locator(".ej-quienes label", has_text="SV").locator("input").uncheck()
+    celda.click()
+    assert pagina.locator("#ejDiasQuitar").inner_text() == "Quitar 1 día anotado"
+    pagina.locator("#ejDiasQuitar").click()
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(lista(s)) == 2 * len(dias) - 1)
+    assert (hoy.isoformat(), "NB", 0.5) not in lista(sobre) and (hoy.isoformat(), "SV", 0.5) in lista(sobre)
     assert not errores
     pagina.context.close()
 
@@ -4972,7 +5843,7 @@ def _planilla_con_datos(navegador, sitio, usuario=None, extra=None, **kw):
         pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, extra)
         pagina.reload()
         pagina.locator("#vistaInicio").wait_for()
-    _menu(pagina, "Planilla de Ingreso")
+    _menu(pagina, "Requerimientos")
     pagina.locator("#pqFilas tr").first.wait_for()
     return pagina, errores
 
@@ -4996,10 +5867,78 @@ def _pedido(numero, tipo, herramienta="portal", minutos=-5, **cuerpo):
     return nombre, m
 
 
+def test_al_guardar_uno_nuevo_su_n_se_vuelve_a_calcular(navegador, sitio):
+    """2026-11-12: el N° de un requerimiento nuevo se calcula de nuevo al guardar, con lo que llegó al buzón mientras se
+    escribía; el formulario abierto un rato no repite un N° que otro ya tomó."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 914"
+    # Mientras tanto, otra persona ingresó el 914 (llega con OneDrive)
+    nombre, otro = _pedido(914, "nuevo-requerimiento", minutos=-1, requerimiento={"numero": 914, "titulo": "El de otra persona"},
+                           fuente={"herramienta": "portal"}, numeroLibre=True)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"buzon/" + nombre: otro})
+    dlg.locator("#pqTitulo").fill("El mío")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    mio = next(m for m in _pedidos_planilla(pagina, "nuevo-requerimiento") if m["requerimiento"]["titulo"] == "El mío")
+    assert mio["requerimiento"]["numero"] == 915
+    _esperar_aviso(pagina, "El N° 914 lo tomó otro requerimiento mientras escribías")
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_formulador_abre_un_requerimiento_nuevo_con_sus_datos(navegador, sitio):
+    """2026-11-12: el Formulador ya no da N°; «Ingresar en Requerimientos» abre …/portal/#/planilla?nuevo=<JSON> (suelto)
+    o manda un mensaje (dentro del portal), y el portal abre «Nuevo requerimiento» con esos datos y su propio N°."""
+    import urllib.parse
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="ES")
+    datos = {"titulo": "Caldera del Formulador", "ubicacion": "Temuco", "referencia": "1234-5-LE26", "canal": "Mercado Público",
+             "cierre": "2026-12-01T15:00", "presupuesto": 5950000, "estado": "Inventado", "otro": "no se usa"}
+    url = pagina.url.split("#")[0] + "#/planilla?nuevo=" + urllib.parse.quote(json.dumps(datos))
+    pagina.goto(url)
+    pagina.reload()
+    dlg = pagina.locator("#dlgPlanilla")
+    dlg.wait_for(timeout=15000)
+    assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 914"
+    assert dlg.locator("#pqTitulo").input_value() == "Caldera del Formulador"
+    assert (dlg.locator("#pqUbicacion").input_value(), dlg.locator("#pqReferencia").input_value()) == ("Temuco", "1234-5-LE26")
+    assert dlg.locator("#pqCiF").input_value() == "2026-12-01" and dlg.locator("#pqEstado").input_value() == "Evaluación"
+    assert "#/planilla" in pagina.url and "nuevo=" not in pagina.url
+    dlg.locator("#pqCancelar").click()
+    # Desde un marco del portal (el Formulador adentro): el mensaje hace lo mismo; de otro lado, nada
+    pagina.evaluate("""() => window.postMessage({ tipo: 'quempin-nuevo-requerimiento', datos: { titulo: 'Desde la misma ventana' } }, location.origin)""")
+    pagina.wait_for_timeout(500)
+    assert dlg.is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_se_ve_quien_mas_esta_ingresando_un_requerimiento(navegador, sitio):
+    """2026-11-12: con el formulario de uno nuevo abierto, la presencia dice «planilla/nuevo», y se ve a quien más lo
+    tiene abierto: los dos podrían tomar el mismo N°."""
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.evaluate("(d) => localStorage.setItem('quempin_portal_dispositivo', d)", DISPOSITIVO)
+    pagina.reload()
+    _menu(pagina, "Requerimientos")
+    pagina.locator("#pqFilas tr").first.wait_for()
+    pagina.locator("#pqNuevo").click()
+    propia = f"publicado/presencia/{DISPOSITIVO}.json"
+    sobre = _esperar_archivo(pagina, propia, lambda s: s["datos"]["vista"] == "planilla")
+    assert sobre["datos"]["donde"] == "nuevo" and esquemas.validar_publicacion("presencia", sobre) == []
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"publicado/presencia/otro0001.json": _presencia("otro0001", "NB", "planilla", "nuevo")})
+    pagina.wait_for_function("document.getElementById('pqConmigo').textContent === 'NB también está ingresando un requerimiento'", timeout=20000)
+    pagina.locator("#pqCancelar").click()
+    _esperar_archivo(pagina, propia, lambda s: s["datos"]["vista"] == "")
+    assert not errores
+    pagina.context.close()
+
+
 def test_sin_la_carpeta_la_planilla_deja_abrir_el_excel(navegador, sitio):
     """Un teléfono no abre carpetas: la vista dice qué falta y el Excel sigue a mano, como antes del 2026-10-29."""
     pagina, errores = _abrir_portal(navegador, sitio)
-    _menu(pagina, "Planilla de Ingreso")
+    _menu(pagina, "Requerimientos")
     pagina.locator("#pqVacio .cx-enlace", has_text="Abrir el Excel de respaldo").wait_for()
     assert pagina.locator("#pqVacio a.cx-enlace").get_attribute("href").startswith("https://quempinspa2020.sharepoint.com/sites/Licitaciones-Enproceso/")
     assert pagina.locator("#pqContenido").is_hidden()
@@ -5016,7 +5955,11 @@ def test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel():
     cambios = esquema["properties"]["cambios"]["properties"]
     escritor = (RAIZ / "Sistema Intercambio" / "planilla_escritura.py").read_text(encoding="utf-8")
     editables = re.findall(r'"([a-zA-Z]+)"', re.search(r"^EDITABLES = \(([^)]*)\)", escritor, re.M).group(1))
-    assert columnas[0] == "numero" and columnas[1:] == list(cambios) == editables
+    # El esquema lleva además los montos que exporta el Formulador: el Portal no los muestra como columnas
+    solo_formulador = re.findall(r'"([a-zA-Z]+)"', re.search(r"^SOLO_FORMULADOR = \(([^)]*)\)", escritor, re.M).group(1))
+    assert columnas[0] == "numero" and columnas[1:] == [c for c in cambios if c not in solo_formulador] == editables
+    for c in solo_formulador:
+        assert re.search(c + r": '[^']+'", portal), f"el Portal no le da nombre a {c} en la lista de cambios"
     estados = re.search(r"const PQ_ESTADOS = \[([^\]]*)\]", portal).group(1)
     canales = re.search(r"const PQ_CANALES = \[([^\]]*)\]", portal).group(1)
     assert re.findall(r"'([^']+)'", estados) == cambios["estado"]["enum"]
@@ -5027,7 +5970,7 @@ def test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel():
 
 def test_la_planilla_muestra_las_columnas_que_se_usan_del_mas_nuevo_al_mas_antiguo(navegador, sitio):
     pagina, errores = _planilla_con_datos(navegador, sitio)
-    assert _pestanas(pagina) == ["Inicio", "Planilla"]
+    assert _pestanas(pagina) == ["Inicio", "Requerimientos"]
     assert pagina.locator("iframe").count() == 0
     assert pagina.locator("#pqCabeza th").all_inner_texts() == [
         "N°", "Estado", "Canal", "Capt.", "Eval.", "Título", "Cliente", "Ubicación", "ID o referencia", "Apertura", "Cierre"]
@@ -5083,6 +6026,11 @@ def test_un_requerimiento_nuevo_se_ve_al_instante_y_queda_en_el_buzon(navegador,
     assert "pq-nueva" in fila.get_attribute("class") and fila.locator(".pq-nuevo-tag").text_content() == "nuevo"
     assert _ns(pagina)[0] == 914
     assert "1 cambio espera pasar al Excel" in pagina.locator("#pqSinc").inner_text()
+    # Recién ingresado ya se puede formular (2026-11-11): abre el Formulador con el diálogo de nuevo proyecto de ese N°
+    fila.locator(".pq-form", has_text="Formular").click()
+    _esperar(pagina, "formulador", "hash", "#/req/914/crear")
+    _menu(pagina, "Requerimientos")
+    pagina.locator('#pqFilas tr[data-n="914"]').wait_for()
     # El que sigue ya no repite el N°
     pagina.locator("#pqNuevo").click()
     assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 915"
@@ -5093,6 +6041,41 @@ def test_un_requerimiento_nuevo_se_ve_al_instante_y_queda_en_el_buzon(navegador,
     pagina.locator("#pqSinc .pq-retirar").click()
     pagina.locator('#pqFilas tr[data-n="914"]').wait_for(state="detached")
     assert _pedidos_planilla(pagina, "nuevo-requerimiento") == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_presupuesto_del_mandante_se_ingresa_y_se_cambia_en_la_planilla(navegador, sitio):
+    """La caja «Presupuesto del mandante» (2026-11-11): entero en pesos, opcional; viaja en el mismo mensaje."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#pqPresupuesto").input_value() == ""
+    dlg.locator("#pqTitulo").fill("Cambio de quemador")
+    dlg.locator("#pqPresupuesto").fill("12500000")
+    assert dlg.locator("#pqPresupuesto").input_value() == "12.500.000"
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert m["requerimiento"]["presupuesto"] == 12500000
+    assert _esquemas().validar_mensaje(m) == []
+    # Sin presupuesto no se envía la clave
+    pagina.locator("#pqSinc summary").click()
+    pagina.locator("#pqSinc .pq-retirar").click()
+    pagina.locator("#pqNuevo").click()
+    dlg.locator("#pqTitulo").fill("Otro requerimiento")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert "presupuesto" not in m["requerimiento"]
+    # En una fila que ya existe viaja como cambio, con lo que se veía
+    pagina.locator('#pqFilas tr[data-n="900"] .pq-abrir').click()
+    dlg.locator("#pqPresupuesto").fill("8.000.000")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert m["cambios"] == {"presupuesto": 8000000}
+    assert _esquemas().validar_mensaje(m) == []
     assert not errores
     pagina.context.close()
 
@@ -5173,6 +6156,173 @@ def test_cambiar_un_requerimiento_manda_solo_lo_cambiado_y_lo_que_se_veia(navega
     pagina.context.close()
 
 
+# ── «Cerrado» y la carpeta a «0 Proyectos Entregados» (2026-11-09) ──────────
+
+def _con_gestion(*carpetas, estados=None):
+    """La carpeta de prueba con estas carpetas en la raíz de Gestión de Proyectos (proyectos.json, «gestion») y, si se
+    dan, otros estados en la Planilla."""
+    base = _intercambio_de_prueba()
+    sobre = base["publicado/proyectos.json"]
+    sobre["datos"]["gestion"] = [{"carpeta": c, "req": c.split(".")[0]} for c in carpetas]
+    extra = {"publicado/proyectos.json": sobre}
+    if estados:
+        reqs = base["publicado/requerimientos.json"]
+        for r in reqs["datos"]["requerimientos"]:
+            r["estado"] = estados.get(r["numero"], r["estado"])
+        extra["publicado/requerimientos.json"] = reqs
+    return extra
+
+
+def _mover_pedidos(pagina):
+    return [m for m in pagina.evaluate(JS_BUZON).values() if m.get("tipo") == "mover-carpeta"]
+
+
+def test_cerrar_un_requerimiento_ofrece_mover_su_carpeta_a_los_entregados(navegador, sitio):
+    """Pedido del 2026-11-09: al cambiar un proyecto a «Cerrado» desde el Portal, una opción para llevar su carpeta de
+    Gestión de Proyectos a «0 Proyectos Entregados <año>». La mueve el procesador (cierre_entregados.py)."""
+    from datetime import date
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="NB", extra=_con_gestion("908. En obra"))
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-abrir').click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert "Cerrado" in dlg.locator("#pqEstado option").all_inner_texts()
+    # Solo aparece al elegir «Cerrado», ya marcada y diciendo qué carpeta y adónde
+    assert dlg.locator("#pqMoverCampo").is_hidden()
+    dlg.locator("#pqEstado").select_option("Cerrado")
+    assert dlg.locator("#pqMoverCampo").is_visible() and dlg.locator("#pqMover").is_checked()
+    assert dlg.locator("#pqMoverTxt").inner_text() == f"Mover su carpeta a «0 Proyectos Entregados {date.today().year}»"
+    assert "908. En obra" in dlg.locator("#pqMoverDe").inner_text()
+    # Volver a otro estado la esconde
+    dlg.locator("#pqEstado").select_option("Adjudicado")
+    assert dlg.locator("#pqMoverCampo").is_hidden()
+    dlg.locator("#pqEstado").select_option("Cerrado")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (editar,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert editar["cambios"] == {"estado": "Cerrado"} and editar["reemplaza"] == {"estado": "Adjudicado"}
+    (mover,) = _mover_pedidos(pagina)
+    assert mover["destino"] == "carpetas-proyecto" and mover["estado"] == "Cerrado"
+    assert mover["requerimiento"] == {"numero": 908, "titulo": "En obra"} and mover["origen"]["usuario"] == "NB"
+    assert _esquemas().validar_mensaje(editar) == [] and _esquemas().validar_mensaje(mover) == []
+    # Y una vuelta del procesador, para que no espere la de cada 5 minutos
+    assert any(m.get("tipo") == "pedir-vuelta" for m in pagina.evaluate(JS_BUZON).values())
+    assert "Su carpeta pasa a «0 Proyectos Entregados»" in pagina.locator("#aviso").inner_text()
+    assert pagina.locator('#pqFilas tr[data-n="908"] .pq-est').inner_text() == "Cerrado"
+    assert not errores
+    pagina.context.close()
+
+
+def test_cerrar_sin_mover_la_carpeta_o_sin_carpeta_en_gestion(navegador, sitio):
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra=_con_gestion("908. En obra"))
+    dlg = pagina.locator("#dlgPlanilla")
+    # Desmarcada: solo cambia el estado
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-abrir').click()
+    dlg.locator("#pqEstado").select_option("Cerrado")
+    dlg.locator("#pqMover").uncheck()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert len(_pedidos_planilla(pagina, "editar-requerimiento")) == 1 and _mover_pedidos(pagina) == []
+    # Sin carpeta con su N° en Gestión: la opción se ve, pero no se puede marcar
+    pagina.locator('#pqFilas tr[data-n="907"] .pq-abrir').click()
+    dlg.locator("#pqEstado").select_option("Cerrado")
+    assert dlg.locator("#pqMoverCampo").is_visible() and dlg.locator("#pqMover").is_disabled()
+    assert not dlg.locator("#pqMover").is_checked()
+    assert "Sin carpeta con el N° 907" in dlg.locator("#pqMoverTxt").inner_text()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert _mover_pedidos(pagina) == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_requerimiento_ya_cerrado_con_su_carpeta_en_gestion_no_la_mueve_sin_pedirlo(navegador, sitio):
+    """Abrir una fila ya «Cerrado» para cambiar otra cosa no mueve nada; la opción está, sin marcar."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra=_con_gestion("908. En obra", estados={908: "Cerrado"}))
+    dlg = pagina.locator("#dlgPlanilla")
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-abrir').click()
+    assert dlg.locator("#pqMoverCampo").is_visible() and not dlg.locator("#pqMover").is_checked()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert _mover_pedidos(pagina) == [] and "No cambiaste nada" in pagina.locator("#aviso").inner_text()
+    # Marcada sin cambiar nada más: solo el pedido de mover
+    pagina.locator('#pqFilas tr[data-n="908"] .pq-abrir').click()
+    dlg.locator("#pqMover").check()
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert len(_mover_pedidos(pagina)) == 1 and _pedidos_planilla(pagina, "editar-requerimiento") == []
+    assert not errores
+    pagina.context.close()
+
+
+def _gestion_908(archivos, estado=None):
+    archivos["publicado/proyectos.json"]["datos"]["gestion"] = [{"carpeta": "908. En obra", "req": "908"}]
+    if estado:
+        for r in archivos["publicado/requerimientos.json"]["datos"]["requerimientos"]:
+            if r["numero"] == 908:
+                r["estado"] = estado
+
+
+def test_marcar_cerrado_desde_proyectos_en_ejecucion(navegador, sitio):
+    """Pedido del 2026-11-10: en «Proyectos en ejecución» también se cambia el estado a «Cerrado», con la misma opción de
+    llevar su carpeta a «0 Proyectos Entregados» que en Requerimientos."""
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, usuario="NB", proyecto="req-908", cambiar=_gestion_908)
+    pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').click()
+    dlg = pagina.locator("#dlgEjCerrar")
+    assert "a «Cerrado»" in dlg.locator("#ejCerPista").inner_text()
+    assert dlg.locator("#ejCerMover").is_checked() and "908. En obra" in dlg.locator("#ejCerMoverDe").inner_text()
+    dlg.locator("#ejCerGuardar").click()
+    dlg.wait_for(state="hidden")
+    _esperar_aviso(pagina, "N° 908 marcado «Cerrado»")
+    (editar,) = _pedidos_planilla(pagina, "editar-requerimiento")
+    assert editar["requerimiento"]["numero"] == 908 and editar["cambios"] == {"estado": "Cerrado"}
+    assert editar["origen"]["usuario"] == "NB" and _esquemas().validar_mensaje(editar) == []
+    (mover,) = _mover_pedidos(pagina)
+    assert mover["requerimiento"]["numero"] == 908 and _esquemas().validar_mensaje(mover) == []
+    assert any(m.get("tipo") == "pedir-vuelta" for m in pagina.evaluate(JS_BUZON).values())
+    # Ya «Cerrado» (el pedido espera en el buzón): el botón solo ofrece llevar la carpeta
+    assert pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').inner_text() == "Llevar su carpeta a entregados"
+    assert not errores
+    pagina.context.close()
+
+
+def test_marcar_cerrado_sin_mover_y_ya_cerrado_solo_mueve(navegador, sitio):
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=_gestion_908)
+    pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').click()
+    pagina.locator("#ejCerMover").uncheck()
+    pagina.locator("#ejCerGuardar").click()
+    _esperar_aviso(pagina, "N° 908 marcado «Cerrado»")
+    assert len(_pedidos_planilla(pagina, "editar-requerimiento")) == 1 and _mover_pedidos(pagina) == []
+    pagina.context.close()
+    # Ya «Cerrado» en la Planilla con su carpeta en Gestión: solo el pedido de mover
+    pagina, errores2 = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", cambiar=lambda a: _gestion_908(a, "Cerrado"))
+    pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').click()
+    assert pagina.locator("#ejCerMover").is_checked() and pagina.locator("#ejCerMover").is_disabled()
+    pagina.locator("#ejCerGuardar").click()
+    _esperar_aviso(pagina, "N° 908:")
+    assert len(_mover_pedidos(pagina)) == 1 and _pedidos_planilla(pagina, "editar-requerimiento") == []
+    assert not errores and not errores2
+    pagina.context.close()
+
+
+def test_cerrado_en_la_planilla_va_al_cierre_del_recorrido(navegador, sitio):
+    """908 tiene ficha en el Análisis (40 % de avance): «Cerrado» en la Planilla lo lleva al «Cierre», sin el aviso de que
+    corresponde «Adjudicado», y pide dejar el avance en 100 %."""
+    pagina, errores = _portal_con_datos(navegador, sitio)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, _con_gestion(estados={908: "Cerrado"}))
+    pagina.reload()
+    pagina.locator("#vistaInicio").wait_for()
+    _menu(pagina, "Recorrido de proyectos")
+    pagina.locator("#rcTablero .rc-tarjeta").first.wait_for()
+    columnas = pagina.evaluate(JS_COLUMNAS)
+    assert "req-908" in columnas["cierre"] and "req-908" not in columnas["ejecucion"]
+    tarjeta = pagina.locator('#rcTablero .rc-tarjeta[data-clave="req-908"]')
+    tarjeta.click()
+    texto_ficha = pagina.locator("body").inner_text()
+    assert "corresponde «Adjudicado»" not in texto_ficha
+    assert "40 % de avance" in texto_ficha
+    assert not errores
+    pagina.context.close()
+
+
 def test_la_planilla_muestra_lo_que_espera_de_todo_el_equipo_y_lo_que_no_se_pudo(navegador, sitio):
     from datetime import date
     mes = date.today().strftime("%Y-%m")
@@ -5193,6 +6343,8 @@ def test_la_planilla_muestra_lo_que_espera_de_todo_el_equipo_y_lo_que_no_se_pudo
     # Un N° que ya tiene otra fila: las dos se ven, y la nueva dice que tomará el siguiente
     assert pagina.locator('#pqFilas tr[data-n="911"]').count() == 2
     assert "ya es «Descartada»" in pagina.locator('#pqFilas tr[data-n="911"].pq-nueva .pq-choque').inner_text()
+    # Con choque no se ofrece formular: su N° va a cambiar
+    assert pagina.locator('#pqFilas tr[data-n="911"].pq-nueva .pq-form').count() == 0
     assert "3 cambios esperan pasar al Excel" in pagina.locator("#pqSinc").inner_text()
     pagina.locator("#pqSinc .pq-avisos").wait_for()
     avisos = pagina.locator("#pqSinc .pq-avisos").inner_text()
@@ -5230,13 +6382,13 @@ def test_el_recorrido_lleva_a_la_fila_de_la_planilla(navegador, sitio):
     """«Actualizar la Planilla» del Recorrido (antes abría el Excel) abre la fila de ese N° en la Planilla del portal."""
     pagina, errores = _recorrido_con_datos(navegador, sitio)
     tarjeta = pagina.locator('.rc-tarjeta[data-clave="req-912"]')
-    assert tarjeta.locator(".rc-accion").inner_text() == "Actualizar la Planilla"
+    assert tarjeta.locator(".rc-accion").inner_text() == "Actualizar Requerimientos"
     tarjeta.locator(".rc-accion").click()
     dlg = pagina.locator("#dlgPlanilla")
     dlg.wait_for()
     assert dlg.locator("#dlgPqTit").inner_text() == "Requerimiento N° 912"
     assert dlg.locator("#pqTitulo").input_value() == "Cerró sin oferta"
-    assert _pestanas(pagina) == ["Inicio", "Recorrido", "Planilla"]
+    assert _pestanas(pagina) == ["Inicio", "Recorrido", "Requerimientos"]
     dlg.locator("#pqEstado").select_option("Descartado")
     dlg.locator("#pqGuardar").click()
     dlg.wait_for(state="hidden")
@@ -5307,6 +6459,13 @@ def _abrir_reporte(pagina, objetivo):
     pagina.locator("#dlgObs[open]").wait_for()
 
 
+def _reportar_sin_clic_derecho(pagina):
+    """«Reportar» en Errores y observaciones (el Inicio ya no lleva el enlace, 2026-11-10): sin lugar, se elige la herramienta."""
+    if pagina.locator("#vistaObservaciones").is_hidden():
+        _menu(pagina, "Errores y observaciones")
+    pagina.locator("#obsNueva").click()
+
+
 def _esperar_envio(pagina):
     pagina.wait_for_function("() => !document.getElementById('dlgObs').open")
 
@@ -5328,7 +6487,7 @@ def _observacion_unica(pagina):
 def test_el_clic_derecho_abre_el_menu_del_portal_y_no_el_del_navegador(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     pagina.evaluate("window.addEventListener('contextmenu', (e) => { window.__nativo = !e.defaultPrevented; })")
-    pagina.locator(".ini-pie").click(button="right", position={"x": 5, "y": 5})
+    pagina.locator("#tituloInicio").click(button="right", position={"x": 5, "y": 5})
     opciones = _opciones_ctx(pagina)
     assert "Reportar un error u observación…" in opciones
     assert "Buscar" in opciones and "Ver las observaciones" in opciones
@@ -5343,7 +6502,7 @@ def test_el_clic_derecho_abre_el_menu_del_portal_y_no_el_del_navegador(navegador
 def test_shift_clic_derecho_deja_el_menu_del_navegador(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     pagina.evaluate("window.addEventListener('contextmenu', (e) => { window.__nativo = !e.defaultPrevented; })")
-    objetivo = pagina.locator(".ini-pie")
+    objetivo = pagina.locator("#tituloInicio")
     pagina.keyboard.down("Shift")
     objetivo.click(button="right")
     pagina.keyboard.up("Shift")
@@ -5373,22 +6532,22 @@ def test_el_menu_se_abre_donde_se_hizo_clic_y_siempre_cabe(navegador, sitio):
 
 def test_escape_cierra_el_menu_y_no_lo_que_quedo_detras(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#popProyecto").wait_for()
-    pagina.locator("#popProyecto").click(button="right", position={"x": 5, "y": 5})
+    pagina.locator("#btnUsuario").click()
+    pagina.locator("#popUsuario").wait_for()
+    pagina.locator("#popUsuario").click(button="right", position={"x": 5, "y": 5})
     pagina.locator("#menuCtx[open]").wait_for()
     pagina.keyboard.press("Escape")
     assert pagina.locator("#menuCtx").evaluate("(m) => m.open") is False
-    assert pagina.locator("#popProyecto").is_visible()
+    assert pagina.locator("#popUsuario").is_visible()
     pagina.keyboard.press("Escape")
-    assert pagina.locator("#popProyecto").is_hidden()
+    assert pagina.locator("#popUsuario").is_hidden()
     assert not errores
     pagina.context.close()
 
 
 def test_el_menu_se_recorre_con_las_flechas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator(".ini-pie").click(button="right", position={"x": 5, "y": 5})
+    pagina.locator("#tituloInicio").click(button="right", position={"x": 5, "y": 5})
     pagina.locator("#menuCtx[open]").wait_for()
     enfocado = "() => document.activeElement.textContent"
     pagina.keyboard.press("ArrowDown")
@@ -5536,8 +6695,6 @@ def test_reportar_llega_al_buzon_y_se_revisa_con_la_linea_de_comandos(navegador,
     import sys
 
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", proyectos=True)
-    pagina.locator("#btnProyecto").click()
-    pagina.locator("#listaProyectos .pop-item", has_text="QMPN-2026-001").click()
     _menu(pagina, "Análisis Financiero")
     marco = _marco(pagina, "analisis", "af")
     marco.locator('.viz-tab-btn[data-tab="tabProyectos"]').click()
@@ -5579,7 +6736,7 @@ def test_reportar_llega_al_buzon_y_se_revisa_con_la_linea_de_comandos(navegador,
     assert d["elemento"]["selector"] == "#botonRaro"
     assert d["elemento"]["texto"] == "Calcular" and d["elemento"]["titulo"] == "Calcula el margen"
     assert d["elemento"]["atributos"]["data-fila"] == "7"
-    assert d["proyecto"].startswith("QMPN-2026-")
+    assert "proyecto" not in d          # sin selector de proyecto (2026-11-06)
     assert msg["entorno"]["tema"] in ("claro", "oscuro") and msg["entorno"]["navegador"].startswith("Chrome/")
     assert {a["nombre"]: a["origen"] for a in msg["adjuntos"]} == {"captura.png": "captura", "imagen-1.png": "pegada"}
 
@@ -5758,7 +6915,7 @@ def test_flujo_de_caja_no_guarda_imagen_ni_lo_que_muestra_la_pantalla(navegador,
 
 def test_pegar_una_imagen_en_la_ventana_la_agrega(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.evaluate("""(bytes) => {
         const d = new DataTransfer();
@@ -5780,9 +6937,9 @@ def test_pegar_una_imagen_en_la_ventana_la_agrega(navegador, sitio):
     pagina.context.close()
 
 
-def test_desde_el_inicio_se_elige_la_herramienta(navegador, sitio):
+def test_sin_clic_derecho_se_elige_la_herramienta(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="NB")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     assert pagina.locator("#obsHerrCampo").is_visible()
     assert pagina.locator("#obsDonde").is_hidden()
@@ -5807,7 +6964,7 @@ def test_desde_el_inicio_se_elige_la_herramienta(navegador, sitio):
 
 def test_dentro_de_una_ventana_del_portal_dice_cual(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio)
-    pagina.locator("#iniAyuda").click()
+    _menu(pagina, "Cómo usar el portal")
     pagina.locator("#dlgAyuda[open]").wait_for()
     _abrir_reporte(pagina, pagina.locator("#dlgAyuda li").first)
     assert "Cómo usar el portal" in pagina.locator("#obsDonde").inner_text()
@@ -5824,17 +6981,17 @@ def test_dentro_de_una_ventana_del_portal_dice_cual(navegador, sitio):
 
 def test_lo_escrito_sigue_al_cerrar_y_cancelar_lo_borra(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio)
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.locator("#obsNota").fill("Un borrador")
     pagina.locator("#obsBloquea").check()
     pagina.keyboard.press("Escape")
     pagina.wait_for_function("() => !document.getElementById('dlgObs').open")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     assert pagina.locator("#obsNota").input_value() == "Un borrador"
     assert pagina.locator("#obsBloquea").is_checked()
     pagina.locator("#obsCancelar").click()
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     assert pagina.locator("#obsNota").input_value() == ""
     assert not pagina.locator("#obsBloquea").is_checked()
     assert not errores
@@ -5843,7 +7000,7 @@ def test_lo_escrito_sigue_al_cerrar_y_cancelar_lo_borra(navegador, sitio):
 
 def test_una_nota_vacia_no_se_envia(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio)
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     _esperar_acceso(pagina)
     pagina.locator("#obsNota").fill("ok")
@@ -5863,7 +7020,7 @@ def test_sin_biblioteca_pide_conectarla(navegador, sitio):
     if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
         pagina.context.close()
         pytest.skip("este Chromium no conecta carpetas")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.locator("#obsConectar").wait_for()
     assert "conecta una vez la biblioteca" in pagina.locator("#obsAcceso").inner_text()
@@ -5880,7 +7037,7 @@ def test_sin_permiso_lo_pide_al_enviar(navegador, sitio):
         FileSystemDirectoryHandle.prototype.queryPermission = async () => window.__permiso;
         FileSystemDirectoryHandle.prototype.requestPermission = async () => { window.__pidio++; window.__permiso = 'granted'; return 'granted'; };
     }""")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.wait_for_function("() => document.getElementById('obsAcceso').textContent.includes('pedirá permiso')")
     pagina.locator("#obsNota").fill("Una nota con permiso")
@@ -5898,7 +7055,7 @@ def test_si_niegan_el_permiso_lo_escrito_sigue_ahi(navegador, sitio):
         FileSystemDirectoryHandle.prototype.queryPermission = async () => 'prompt';
         FileSystemDirectoryHandle.prototype.requestPermission = async () => 'denied';
     }""")
-    pagina.locator("#iniObs").click()
+    _reportar_sin_clic_derecho(pagina)
     pagina.locator("#dlgObs[open]").wait_for()
     pagina.wait_for_function("() => document.getElementById('obsAcceso').textContent.includes('pedirá permiso')")
     pagina.locator("#obsNota").fill("Una nota sin permiso")
@@ -5997,7 +7154,7 @@ def test_la_vista_sin_biblioteca_dice_que_conectar_y_igual_deja_reportar(navegad
 def test_reportar_en_el_telefono_cabe_y_no_hace_zoom(navegador, sitio, ancho):
     pagina, errores = _portal_con_datos(navegador, sitio, ancho=ancho, alto=740, movil=True)
     # Un teléfono: mantener apretado dispara contextmenu sobre lo tocado
-    pagina.evaluate("""() => document.querySelector('.ini-pie').dispatchEvent(
+    pagina.evaluate("""() => document.querySelector('#tituloInicio').dispatchEvent(
         new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 0, clientX: 300, clientY: 400 }))""")
     pagina.locator("#menuCtx[open]").wait_for()
     caja = pagina.locator("#menuCtx").bounding_box()
@@ -6083,5 +7240,177 @@ def test_el_apodo_del_analisis_financiero_da_nombre_al_proyecto(navegador, sitio
     pagina.locator("#pqOriginal").fill("caldera demo")
     pagina.locator("#pqOriginal").press("Tab")
     assert pagina.locator("#pqOriginal").input_value() == "908. Caldera Demo Valparaíso"
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_proyecto_de_gestion_con_n_temporal_se_ve_como_001t_nombre(navegador, sitio):
+    """2026-11-09 (pedido del usuario): una carpeta de Gestión sin N° con número temporal («001t») sale en «Proyectos en
+    ejecución» con ese N° y su nombre corto, sin los avisos de «falta su N°» ni «no está en la Planilla»."""
+    def en_gestion(archivos):
+        archivos["publicado/proyectos.json"]["datos"]["gestion"] = [
+            {"carpeta": "Rengo Incinerador", "req": "001t", "tag": "001t - Incinerador Rengo"}]
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, cambiar=en_gestion)
+    vivas = pagina.locator("#ejTarjetas .ej-tarjeta").evaluate_all("bs => bs.map((b) => b.dataset.clave)")
+    assert "req-001t" in vivas and "gestion-Rengo Incinerador" not in vivas
+    tarjeta = pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-001t"]').inner_text()
+    assert "Incinerador Rengo" in tarjeta and "no lleva el N°" not in tarjeta
+    pagina.locator('#ejTarjetas .ej-tarjeta[data-clave="req-001t"]').click()
+    pagina.locator("#ejProyecto .ej-cab").wait_for()
+    assert "no está en la Planilla" not in pagina.locator("#ejProyecto").inner_text()
+    assert not errores
+
+
+def test_el_menu_personal_elige_quienes_se_ven_y_agrega_personal_definitivo_o_temporal(navegador, sitio):
+    """Pedido del usuario (2026-11-13): un desplegable con una casilla por persona para elegir quiénes se ven en la
+    planificación, y dos botones: agregar personal definitivo (queda en todas las semanas desde la que se ve) o temporal
+    (solo esta semana). Ocultar es de este navegador y se recuerda; quien tiene algo en la semana sigue con su fila."""
+    from datetime import date, timedelta
+    pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
+    semana, lunes = _semana_de(date.today())
+    filas = lambda: list(pagina.evaluate(JS_PERSONAL))
+    menu, lista = pagina.locator("#plPersonas"), pagina.locator("#plPersonasLista")
+    equipo = filas()
+    assert "SV" in equipo and menu.inner_text().split("\n")[0].strip() == "Personal"
+    menu.click()
+    assert lista.is_visible() and menu.get_attribute("aria-expanded") == "true"
+    assert lista.locator("input[data-per]").evaluate_all("cs => cs.map((c) => c.dataset.per)") == equipo
+    assert lista.locator(".pl-per-cuenta").inner_text() == f"{len(equipo)} de {len(equipo)}"
+    # Desmarcar a SV la saca de la tabla; el botón dice cuántos se ven
+    lista.locator('input[data-per="SV"]').uncheck()
+    assert "SV" not in filas() and lista.is_visible()
+    assert menu.locator(".pl-per-n").inner_text() == f"{len(equipo) - 1} de {len(equipo)}"
+    # Quien tiene algo en la semana sigue con su fila, y el menú lo dice
+    _celda_personal(pagina, "EV", 0).click()
+    pagina.locator('#plPop input[data-op="c|req:908"]').check()
+    pagina.keyboard.press("Escape")
+    menu.click()
+    lista.locator('input[data-per="EV"]').uncheck()
+    assert "EV" in filas()
+    assert "Tiene algo esta semana" in lista.locator('label:has(input[data-per="EV"])').inner_text()
+    # «Todos» los vuelve a mostrar; Escape cierra
+    lista.locator("#plPersonasTodos").click()
+    assert filas() == equipo and menu.locator(".pl-per-n").count() == 0
+    lista.locator('input[data-per="SV"]').uncheck()
+    pagina.keyboard.press("Escape")
+    assert lista.is_hidden()
+    # Se recuerda en este navegador
+    pagina.reload()
+    pagina.locator("#plResumen .rc-kpi").first.wait_for()      # el portal vuelve a la pestaña que estaba abierta
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    assert "SV" not in filas()
+    # Personal definitivo: desde esta semana y también en la siguiente
+    menu.click()
+    lista.locator('[data-agregar-fija="1"]').click()
+    dlg = pagina.locator("#dlgPlAgregar")
+    assert dlg.is_visible() and pagina.locator("#dlgPlAgregarTit").inner_text() == "Agregar personal definitivo"
+    assert pagina.locator('#plAgregarDura [data-fija="1"]').get_attribute("aria-pressed") == "true"
+    pagina.locator("#plAgregarNombre").fill("pedro soto")
+    pagina.locator("#plAgregarOk").click()
+    assert dlg.is_hidden() and "x-pedro-soto" in filas()
+    sobre = _esperar_archivo(pagina, LISTA, lambda s: any(x["id"] == "x-pedro-soto" for x in s["datos"]["personas"]))
+    assert [(x["semana"], x.get("fija"), x["activa"]) for x in sobre["datos"]["personas"] if x["id"] == "x-pedro-soto"] == [(semana, True, True)]
+    assert _esquemas().validar_publicacion("planificacion-lista", sobre) == []
+    # Personal temporal: solo esta semana (el botón del diálogo cambia de uno a otro)
+    menu.click()
+    lista.locator('[data-agregar-fija="0"]').click()
+    assert pagina.locator("#dlgPlAgregarTit").inner_text() == "Agregar personal temporal"
+    pagina.locator('#plAgregarDura [data-fija="1"]').click()
+    assert pagina.locator("#dlgPlAgregarTit").inner_text() == "Agregar personal definitivo"
+    pagina.locator('#plAgregarDura [data-fija="0"]').click()
+    pagina.locator("#plAgregarNombre").fill("ana rojas")
+    pagina.locator("#plAgregarOk").click()
+    assert {"x-pedro-soto", "x-ana-rojas"} <= set(filas())
+    menu.click()
+    subs = lista.locator(".pl-per-txt").evaluate_all("ts => Object.fromEntries(ts.map((t) => [t.firstChild.textContent, (t.querySelector('small') || {}).textContent || '']))")
+    assert subs["Pedro Soto"] == "Definitivo" and subs["Ana Rojas"] == "Solo esta semana"
+    pagina.keyboard.press("Escape")
+    pagina.locator("#plDespues").click()
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    assert "x-pedro-soto" in filas() and "x-ana-rojas" not in filas()
+    # Quitarlo del personal definitivo (en «Agregar») lo saca de todas las semanas
+    pagina.locator("#plAgregar").click()
+    pagina.locator('#plAgregados button[data-k="x-pedro-soto"]').click()
+    pagina.locator("#plAgregarCerrar").click()
+    assert "x-pedro-soto" not in filas()
+    pagina.locator("#plAntes").click()
+    pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
+    assert "x-pedro-soto" not in filas()
+
+
+def test_el_buscador_ofrece_formulador_seguimiento_o_ejecucion_segun_la_etapa(navegador, sitio):
+    """Pedido del 2026-11-12: al buscar un proyecto reconocido, botones a su Formulador, su Seguimiento o «En ejecución»
+    según la etapa en que va. Un botón no va dentro de otro: la fila los lleva al lado del resultado."""
+    pagina, errores = _recorrido_con_datos(navegador, sitio, usuario="LC")
+    botones = lambda: pagina.locator("#resultados .res-fila").first.locator(".res-ir").all_inner_texts()
+    pagina.locator("#buscar").fill("908")                 # en obra
+    assert botones() == ["En ejecución"]
+    pagina.locator("#resultados .res-ir", has_text="En ejecución").click()
+    assert pagina.locator("#vistaEjecucion").is_visible() and pagina.locator("#ejProyecto").is_visible()
+    assert pagina.locator("#resultados").is_hidden()
+    pagina.locator("#buscar").fill("900")                 # requerimiento sin formulación: formularlo
+    assert botones() == ["Formulador"]
+    pagina.locator("#buscar").fill("909")                 # terminada, sin formulación ni obra: solo su detalle
+    assert pagina.locator("#resultados .res-fila").count() == 0 and pagina.locator("#resultados .res").count() == 1
+    pagina.locator("#buscar").fill("902")                 # con formulación, antes de ofertar
+    assert botones() == ["Formulador"]
+    pagina.locator("#resultados .res-ir", has_text="Formulador").click()
+    _esperar(pagina, "formulador", "hash", "#/p/f902/ficha")
+    # El proyecto del Formulador que el Recorrido ya tiene no sale dos veces
+    pagina.locator("#buscar").fill("QMPN-2026-902")
+    assert pagina.locator("#resultados .res").count() <= 1
+    assert not errores
+    pagina.context.close()
+
+
+# ── «Qué buscamos» del tablero de Oportunidades (2026-11-16) ─────────────────
+
+JS_GUARDAR_DESDE_EL_TABLERO = """(ajustes) => new Promise((listo) => {
+    window.addEventListener('message', (e) => {
+        if (e.data && e.data.tipo === 'quempin-ajustes-oportunidades-resultado' && e.data.pedido === 'p-prueba') listo(e.data);
+    });
+    window.parent.postMessage({ tipo: 'quempin-ajustes-oportunidades', pedido: 'p-prueba', ajustes }, location.origin);
+})"""
+
+JS_AJUSTES_EN_EL_BUZON = """async () => {
+    const raiz = await navigator.storage.getDirectory();
+    let d = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+    d = await (await (await d.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio')).getDirectoryHandle('buzon');
+    const salida = [];
+    for await (const [n, h] of d.entries()) if (h.kind === 'file' && n.includes('_ajustes-oportunidades_')) salida.push(JSON.parse(await (await h.getFile()).text()));
+    return salida;
+}"""
+
+
+def test_que_buscamos_del_tablero_de_oportunidades_llega_al_buzon(navegador, sitio):
+    """El tablero de Oportunidades no tiene la carpeta del equipo: manda «Qué buscamos» al Portal, que deja un
+    «ajustes-oportunidades» en el buzón (lo aplica oportunidades.py) y le contesta al tablero."""
+    esquemas = _cargar("esquemas_para_test_portal", RAIZ / "Sistema Intercambio" / "esquemas.py")
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="NB")
+    _menu(pagina, "Oportunidades")
+    marco = _marco(pagina, "oportunidades", "op")
+    ajustes = {"temas": {"climatizacion": {"interes": "no", "frases": ["climatización"]}}, "regiones": {"arica": 0},
+               "monto": {"minimo": 2000000, "minimoCompraAgil": 300000, "maximo": None}}
+    r = marco.evaluate(JS_GUARDAR_DESDE_EL_TABLERO, ajustes)
+    assert r["ok"] and r["id"] and r["enviado"]
+    [msg] = pagina.evaluate(JS_AJUSTES_EN_EL_BUZON)
+    assert msg["id"] == r["id"] and msg["ajustes"] == ajustes and msg["origen"]["usuario"] == "NB"
+    assert (msg["tipo"], msg["destino"]) == ("ajustes-oportunidades", "oportunidades")
+    assert esquemas.validar_mensaje(msg) == []
+    _esperar_aviso(pagina, "«Qué buscamos» guardado")
+    # Desde la ventana del Portal (no desde una pestaña suya) no se atiende.
+    pagina.evaluate("(a) => window.postMessage({ tipo: 'quempin-ajustes-oportunidades', pedido: 'x', ajustes: a }, location.origin)", ajustes)
+    pagina.wait_for_timeout(400)
+    assert len(pagina.evaluate(JS_AJUSTES_EN_EL_BUZON)) == 1
+    assert not errores
+    pagina.context.close()
+
+
+def test_que_buscamos_sin_la_carpeta_dice_que_no_se_guardo(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _menu(pagina, "Oportunidades")
+    marco = _marco(pagina, "oportunidades", "op")
+    r = marco.evaluate(JS_GUARDAR_DESDE_EL_TABLERO, {"regiones": {"arica": 0}})
+    assert r["ok"] is False and "carpeta" in r["error"]
     assert not errores
     pagina.context.close()

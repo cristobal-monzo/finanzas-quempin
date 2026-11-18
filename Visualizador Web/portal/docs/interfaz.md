@@ -2,10 +2,46 @@
 
 Detalle de referencia: léelo solo al tocar esta parte. Las reglas generales están en `../CLAUDE.md`.
 
+## El Inicio: las herramientas por área (2026-11-10)
+
+Pedido del usuario: el Inicio con el saludo y las herramientas de cada área del trabajo, cada una con su ícono, sin
+cifras ni gráficos; desde el 2026-11-18, con la semana de la Planificación abajo. Sección `#vistaInicio`; funciones `ini*` y estado `ini`, después del Recorrido. Reemplaza al
+«Inicio minimalista» del 2026-10-16 (más abajo, como historia).
+
+- **Saludo**: «Buenos días, LC» (la fecha y la semana van en su title); sin usuario, sus iniciales para elegirlo con
+  un clic (`#iniQuien`).
+- **Cuatro áreas** (`#iniAreas`, los grupos del registro en el orden del menú): Ofertar, Ejecutar, Controlar y
+  Calcular, de a dos. Cada herramienta es un botón con su ícono y su nombre (`iniBoton`); ↗ si se abre fuera del
+  portal, un punto naranjo si ya tiene pestaña y, en la Planificación semanal, su alarma (`plPintarAlarmaGlobal`: es
+  lo único que viene de la carpeta, por eso el Inicio sigue pidiendo la lectura del Recorrido). Seis botones por fila,
+  del mismo ancho en las cuatro áreas.
+- **La semana de la Planificación** (2026-11-18; el usuario eligió la maqueta V4 entre 6: «herramientas como hoy +
+  franja de la semana»): `#iniSemana`, bajo las áreas, la arma `iniPintarSemana` con la semana de hoy que ya lee
+  `plCargar` (la misma de la alarma). Un día por columna (`.ini-sem-dia`, hoy en tinte): sus proyectos con su color,
+  los de más gente primero y hasta tres (`INI_SEM_MAX`), «+N más», cuántas personas tienen algo y el detalle en el
+  `title`. Tocar un día abre la Planificación en General con ese día en grande (`iniAbrirDia`); «Abrir», la
+  Planificación. Sin carpeta o sin leerla, la franja no se ve. Con ella a la vista, las áreas se compactan
+  (`.inicio:has(> .ini-semana:not([hidden]))`) y con 520 px de alto o menos cada día muestra dos proyectos
+  (`.p3`/`.m3` se esconden, `.m2` cuenta desde dos). En el teléfono, un día por fila. Pruebas:
+  `test_el_inicio_muestra_la_semana_de_la_planificacion`, `test_la_semana_cabe_en_el_inicio` (el peor caso: tres
+  proyectos y «+1 más»; en 1024×640 quedan ~6 px libres).
+- **Íconos**: uno por herramienta, en `ICONOS` y en el campo `icono` del registro, así su pestaña lleva el mismo
+  (`test_el_inicio_son_las_herramientas_por_area` revisa que ninguno se repita ni falte).
+- **Nombres**: el `corto`, salvo «Análisis Financiero» y «Subir docs.» (`INI_NOMBRE`). Los de una palabra larga
+  llevan guiones suaves entre sílabas (`INI_SILABAS`): desde 1280 px caben enteros y más angosto se cortan en una
+  sílaba, nunca en cualquier letra.
+- **Sin desplazarse en el computador** (1366×657, 1536×730, 1280×600 y 1024×640, `JS_BARRAS`). Hasta 900 px de
+  ancho del Inicio, una columna que se desplaza sin barra; hasta 600 px, los botones de a tres.
+  `test_las_herramientas_caben_en_el_inicio` lo mide.
+- **Historia del mismo día**: antes se probaron un «centro de trabajo» (las seis etapas, «Requiere atención»,
+  «Continuar» y la lista de herramientas: «mucha información y algo confusa») y «Tres áreas» (una franja negra
+  «Hoy» con lo urgente y una tarjeta por área con su acción, su cifra y un gráfico). Lo que cada proyecto espera
+  sigue en el Recorrido de proyectos; Buscar, Ayuda, Conexiones y Reportar, en el menú ☰, Ctrl K y el clic derecho.
+  Maquetas y plan: `docs/plans/2026-11-10-inicio-tres-areas/`.
+
 **Cambios del 2026-10-16** (pedido del usuario):
-- **Cuatro grupos y la ayuda**: Formulación de proyectos, Control y
-  finanzas, Cotizar y comprar, Calculadora (al final, antes de Ayuda).
-  `test_los_grupos_del_pedido_del_2026_10_16` fija el orden.
+- **Cuatro grupos y la ayuda** (desde el 2026-11-10 son los de la etapa del
+  trabajo, arriba; `test_los_grupos_por_etapa_del_trabajo` fija el orden).
 - **Inicio minimalista**: todas las herramientas en cuatro columnas, una por
   grupo, con su línea `breve`; lo que se abre fuera (Excel, QUEMPIN.exe)
   lleva ↗. Cabe sin desplazarse desde 1024×640: con menos ancho van dos
@@ -81,7 +117,8 @@ grupos y herramientas. Cada herramienta lleva:
 - `tipo`: marco, excel, programa, archivo, ayuda, inicio o vista (una sección
   propia del portal, en su pestaña: `vista` es su id).
 - `ruta` y `peru`.
-- `requiereProyecto`: sin proyecto elegido, abre el selector en vez de la
+- **Sin selector de proyecto** (quitado el 2026-11-06, pedido del usuario: «no aporta»;
+  `quempin_portal_proyecto` se borra al abrir). Antes, `requiereProyecto`: sin proyecto elegido, abría el selector en vez de la
   herramienta. Lo lleva Seguimiento desde el 2026-10-25: sin proyecto era la
   misma lista del Formulador con otro nombre.
 - `familia` y `alias`: la misma página va en una sola pestaña. El
@@ -110,7 +147,8 @@ Una herramienta nueva es una entrada ahí. Un tablero nuevo va además en
 - `window.open('')` (los reportes PDF del Análisis) no se toca.
 - Si una herramienta se va a otra por su cuenta (el selector de
   calculadora), la pestaña la sigue.
-- **Proyecto elegido**: lee, nunca escribe, `qpn.formulacion.proyectos.v1` del
+- **Proyecto elegido** (histórico: el selector ya no existe; cada herramienta abre en su vista general y el buscador
+  lleva al Seguimiento de un proyecto): lee, nunca escribe, `qpn.formulacion.proyectos.v1` del
 Formulador, con la última versión de cada código. Se abre así:
 
 | Herramienta | Dirección |
@@ -136,12 +174,12 @@ una herramienta guarda la contraseña, las que esperaban con el candado se
 recargan solas. Se mantienen 8 herramientas cargadas como máximo.
 
 **Usuario** (2026-10-16, pedido del usuario: «un selector de usuario» con
-NB, ES, LC, CM, MP, SV): botón `#btnUsuario` junto a Proyecto. Guarda las
+NB, ES, LC, CM, MP, SV): botón `#btnUsuario` en la cabecera. Guarda las
 iniciales **tal cual, sin JSON**, en `quempin_usuario`, la misma clave del
 Formulador (`js/usuario.js`), que las usa como responsable de lo que se crea,
 autor en el Control de Documentos y «Mis proyectos»; cada uno se entera del
-cambio del otro por el evento `storage`. El selector de proyectos muestra
-primero «Tus proyectos» (el `responsable` del Formulador). Sin elección, adopta
+cambio del otro por el evento `storage`. El buscador marca
+«Tu proyecto» (el `responsable` del Formulador). Sin elección, adopta
 las iniciales que el Formulador tenía antes (`qpn.formulacion.iniciales` o su
 «Responsable por defecto»), solo leyéndolas. La lista va en el registro
 (`"usuarios"`) y debe ser la misma del Formulador y de Sistema QUEMPIN
@@ -167,3 +205,10 @@ explica va en un ícono. Regla para lo que venga: **en la pantalla, el dato y la
   sincronización con el Excel y el pie del diálogo de la Planilla; los envíos recientes de Subir; el usuario de la cabecera.
 - **Lo que no se esconde**: avisos que piden algo (un cambio que lleva mucho sin llegar al Excel, un pedido esperando, lo
   que trae la Planificación), cifras y estados. Las cifras del Recorrido dejan su explicación en el `title` de la tarjeta.
+
+## Uso del Portal (2026-11-09)
+
+`usoAnotar` (llamado desde `activar` y `abrir`) cuenta por día cuántas veces se abre cada herramienta en este
+navegador, en `quempin_portal_uso` (90 días). Volver a la misma pestaña sin pasar por otra no cuenta; el Inicio no
+cuenta. Se guarda en `publicado/uso-portal/<dispositivo>.json` como mucho cada 2 minutos y al ocultar la pestaña,
+**sin usuario**. Lo suma `Sistema Intercambio/uso_portal.py`.

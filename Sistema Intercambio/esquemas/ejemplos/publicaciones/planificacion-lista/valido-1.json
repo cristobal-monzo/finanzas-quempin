@@ -16,6 +16,15 @@
         "por": "NB"
       },
       {
+        "id": "x-pedro-soto",
+        "nombre": "Pedro Soto",
+        "semana": "2026-W46",
+        "fija": true,
+        "activa": true,
+        "t": "2026-11-13T12:00:00.000Z",
+        "por": "NB"
+      },
+      {
         "id": "x-maestro-gasfiter",
         "nombre": "Maestro gásfiter",
         "semana": "2026-W44",

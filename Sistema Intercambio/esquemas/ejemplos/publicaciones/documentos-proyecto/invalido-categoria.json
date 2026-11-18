@@ -1,0 +1,10 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "herramienta": "procesador",
+  "generado": "2026-11-06T16:00:00-03:00",
+  "datos": {
+    "documentos": [
+      { "ref": "950-003", "tag": "950", "categoria": "Mano de Obra", "neto": 150000, "items": [] }
+    ]
+  }
+}

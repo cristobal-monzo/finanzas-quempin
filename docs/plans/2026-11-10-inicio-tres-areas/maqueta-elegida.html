@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Variantes finales de la C4</title>
+<style>
+  :root {
+    --naranjo: #ff5100; --tinta: #b23a00; --tinte: #fff2eb; --tinte-borde: #f3c2a8;
+    --fondo: #f4f2ee; --carta: #ffffff; --texto: #171513; --suave: #6b6a66; --linea: #e4e2dc;
+    --rojo: #d93025; --ambar: #c77700; --verde: #1e8e3e; --gris: #c3c2b7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #ddd; font-family: 'Lato', 'Segoe UI', system-ui, sans-serif; color: var(--texto); }
+  .m { width: 1280px; height: 760px; background: var(--fondo); display: flex; flex-direction: column; margin: 0 0 40px; overflow: hidden; }
+  .bar { height: 56px; flex: 0 0 auto; background: #000; border-bottom: 3px solid var(--naranjo); display: flex; align-items: center; gap: 18px; padding: 0 20px; color: #fff; }
+  .logo { font-weight: 900; font-size: 20px; letter-spacing: .02em; }
+  .logo b { color: var(--naranjo); }
+  .hamb { font-size: 22px; }
+  .busca-mini { margin: 0 auto; width: 420px; height: 34px; border-radius: 9px; border: 1px solid #3a3835; background: #1c1b19; color: #a8a69f; font-size: 14px; display: flex; align-items: center; padding: 0 12px; }
+  .yo { margin-left: auto; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid #3a3835; display: flex; align-items: center; font-weight: 900; font-size: 14px; }
+  .yo span { color: #ff8a4d; font-size: 11px; letter-spacing: .08em; margin-right: 8px; }
+  .cuerpo { flex: 1 1 auto; min-height: 0; padding: 22px 44px; display: flex; flex-direction: column; }
+  h1 { margin: 0; font-size: 27px; font-weight: 900; letter-spacing: -.01em; }
+  h1 b { color: var(--tinta); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--tinte-borde); background: var(--tinte); color: var(--tinta); font-weight: 900; font-size: 13px; white-space: nowrap; }
+  .btn.pri { background: var(--naranjo); border-color: var(--naranjo); color: #000; }
+  .btn.mini { height: 28px; padding: 0 10px; font-size: 12.5px; }
+  .carta { background: var(--carta); border: 1px solid rgba(0,0,0,.08); border-radius: 14px; }
+  .et { font-size: 12.5px; letter-spacing: .1em; color: var(--suave); font-weight: 900; }
+  .num { font-size: 32px; font-weight: 900; color: var(--tinta); line-height: 1; }
+  .suave { color: var(--suave); }
+  .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--rojo); flex: 0 0 auto; display: inline-block; }
+  .punto.a { background: var(--ambar); }
+  .embudo { display: flex; flex-direction: column; gap: 5px; }
+  .embudo div { display: grid; grid-template-columns: 92px 1fr 16px; align-items: center; gap: 8px; font-size: 12.5px; color: var(--suave); }
+  .embudo i { height: 11px; border-radius: 4px; display: block; background: linear-gradient(90deg, var(--naranjo) var(--t), var(--gris) var(--t)); }
+  .embudo b { color: var(--texto); }
+  .salud { display: flex; height: 12px; border-radius: 5px; overflow: hidden; }
+  .salud i { display: block; }
+  .ley { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; color: var(--suave); }
+  .ley span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; background: var(--c); }
+  /* Botones de herramienta con ícono */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px 9px; border-radius: 10px; border: 1px solid var(--linea); background: #fff; font-size: 12px; font-weight: 700; text-align: center; line-height: 1.2; }
+  .tile svg { width: 34px; height: 34px; padding: 7px; border-radius: 10px; background: var(--tinte); color: var(--tinta); }
+  .tile.fuera { position: relative; }
+  .tile.fuera::after { content: "↗"; position: absolute; top: 4px; right: 7px; font-size: 11px; color: var(--suave); }
+  .areas { display: grid; grid-template-columns: 1fr 1fr 1fr 0.62fr; gap: 14px; }
+  .area { padding: 16px 18px; display: flex; flex-direction: column; gap: 11px; }
+  .area .cab { display: flex; justify-content: space-between; align-items: center; }
+  .calc .tiles { grid-template-columns: 1fr 1fr; }
+
+  /* V2: la C4 pulida */
+  .v2 .hoy { margin-top: 14px; padding: 11px 14px 11px 18px; display: flex; align-items: center; gap: 10px; border-radius: 12px; background: #000; color: #fff; }
+  .v2 .hoy > b { font-size: 15px; margin-right: 8px; color: var(--naranjo); letter-spacing: .04em; }
+  .v2 .it { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 999px; background: #1c1b19; border: 1px solid #3a3835; font-size: 13px; font-weight: 700; }
+  .v2 .it small { color: #a8a69f; font-weight: 400; }
+  .v2 .hoy .todo { margin-left: auto; color: #ff8a4d; font-weight: 700; font-size: 13px; }
+  .v2 .areas { margin-top: 14px; }
+
+  /* V3: franja negra con el saludo */
+  .v3 .cuerpo { padding: 0; }
+  .v3 .heroe { background: #000; color: #fff; padding: 22px 44px 24px; }
+  .v3 .heroe h1 { color: #fff; }
+  .v3 .heroe h1 b { color: var(--naranjo); }
+  .v3 .heroe .sub { margin: 4px 0 16px; color: #c3c2b7; font-size: 15px; }
+  .v3 .tareas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .v3 .tarea { padding: 12px 14px; border-radius: 12px; background: #1c1b19; border: 1px solid #3a3835; display: flex; flex-direction: column; gap: 5px; box-shadow: inset 3px 0 0 var(--rojo); }
+  .v3 .tarea.a { box-shadow: inset 3px 0 0 var(--ambar); }
+  .v3 .tarea small { font-size: 11.5px; letter-spacing: .08em; color: #a8a69f; font-weight: 900; }
+  .v3 .tarea b { font-size: 14px; }
+  .v3 .tarea .btn { align-self: flex-start; background: transparent; border-color: var(--naranjo); color: #ff8a4d; margin-top: 3px; }
+  .v3 .abajo { padding: 18px 44px; }
+
+  /* V4: hoy en una columna negra */
+  .v4 .cuerpo { flex-direction: row; padding: 0; }
+  .v4 .col { width: 320px; flex: 0 0 auto; background: #000; color: #fff; padding: 24px 22px; display: flex; flex-direction: column; gap: 10px; }
+  .v4 .col h1 { color: #fff; font-size: 24px; }
+  .v4 .col h1 b { color: var(--naranjo); }
+  .v4 .col .et { color: var(--naranjo); margin-top: 10px; }
+  .v4 .item { padding: 12px 14px; border-radius: 12px; background: #1c1b19; border: 1px solid #3a3835; display: flex; flex-direction: column; gap: 4px; box-shadow: inset 3px 0 0 var(--rojo); }
+  .v4 .item.a { box-shadow: inset 3px 0 0 var(--ambar); }
+  .v4 .item small { color: #a8a69f; font-size: 12.5px; }
+  .v4 .item b { font-size: 14px; }
+  .v4 .item .fila { display: flex; justify-content: space-between; align-items: center; margin-top: 3px; }
+  .v4 .item .btn { background: transparent; border-color: var(--naranjo); color: #ff8a4d; }
+  .v4 .listo { margin-top: auto; color: #a8a69f; font-size: 13px; }
+  .v4 .der { flex: 1; padding: 22px 30px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px; }
+  .v4 .der .area { gap: 10px; }
+  .v4 .lado { display: grid; grid-template-columns: 1fr 1.25fr; gap: 16px; align-items: start; }
+  .v4 .tiles { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .v4 .tile { padding: 7px 3px; font-size: 11.5px; }
+  .v4 .tile svg { width: 28px; height: 28px; padding: 5px; }
+</style>
+</head>
+<body>
+<!-- Íconos de las herramientas: trazos simples, del color del texto -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-oport" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/><path d="M11 8v6M8 11h6"/></symbol>
+    <symbol id="i-req" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-form" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></symbol>
+    <symbol id="i-seg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/></symbol>
+    <symbol id="i-cotiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></symbol>
+    <symbol id="i-emitir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 15h6M12 12v6"/></symbol>
+    <symbol id="i-casco" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h18"/><path d="M5 17v-3a7 7 0 0 1 14 0v3"/><path d="M10 7v4M14 7v4"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-gantt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16"/><path d="M7 8h6M10 12h7M8 16h5"/></symbol>
+    <symbol id="i-oc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l3 12h11l2-8H6.5"/></symbol>
+    <symbol id="i-subir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/><path d="M12 3v12M7 8l5-5 5 5"/></symbol>
+    <symbol id="i-avance" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M7 16v-4M12 16V8M17 16v-7"/></symbol>
+    <symbol id="i-cc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+    <symbol id="i-af" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></symbol>
+    <symbol id="i-fc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
+    <symbol id="i-diam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M6 18L18 6"/></symbol>
+    <symbol id="i-h2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6v12M12 6v12M4 12h8"/><path d="M15 13.5a2.5 2.5 0 0 1 5 0c0 2-5 3-5 5h5"/></symbol>
+    <symbol id="i-gas" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-4 2-7 2 1 3 3 3 5 1-2 1-5 1-9z"/></symbol>
+    <symbol id="i-otros" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><circle cx="16" cy="9" r="3"/><circle cx="17" cy="18" r="2"/></symbol>
+  </defs>
+</svg>
+
+<!-- Las tarjetas de las áreas, compartidas por V2 y V3 (se repiten tal cual) -->
+<template id="t-areas">
+  <div class="area carta"><div class="cab"><span class="et">OFERTAR</span><span class="btn pri mini">+ Requerimiento</span></div>
+    <div><span class="num">10</span> <span class="suave">en curso</span></div>
+    <div class="embudo"><div>Requerimiento<i style="--t:66%;width:75%"></i><b>3</b></div><div>Formulación<i style="--t:100%;width:25%"></i><b>1</b></div><div>Cotización<i style="--t:50%;width:50%"></i><b>2</b></div><div>Oferta<i style="--t:50%;width:100%"></i><b>4</b></div></div>
+    <div class="tiles"><div class="tile"><svg><use href="#i-oport"/></svg>Oportunidades</div><div class="tile"><svg><use href="#i-req"/></svg>Requerimientos</div><div class="tile"><svg><use href="#i-form"/></svg>Formulador</div><div class="tile"><svg><use href="#i-seg"/></svg>Seguimiento</div><div class="tile"><svg><use href="#i-cotiz"/></svg>Cotizador</div><div class="tile fuera"><svg><use href="#i-emitir"/></svg>Emitir cotización</div></div></div>
+  <div class="area carta"><div class="cab"><span class="et">EJECUTAR</span><span class="btn pri mini">Planificar</span></div>
+    <div><span class="num">3</span> <span class="suave">obras</span></div>
+    <div class="salud"><i style="width:66%;background:var(--verde)"></i><i style="width:34%;background:var(--rojo)"></i></div>
+    <div class="ley"><span style="--c:var(--verde)">2 en línea</span><span style="--c:var(--rojo)">1 en riesgo</span><span style="--c:var(--ambar)">3 sin nadie</span></div>
+    <div class="tiles" style="margin-top:auto"><div class="tile"><svg><use href="#i-casco"/></svg>En ejecución</div><div class="tile"><svg><use href="#i-cal"/></svg>Planificación</div><div class="tile"><svg><use href="#i-gantt"/></svg>Carta Gantt</div><div class="tile fuera"><svg><use href="#i-oc"/></svg>Orden de compra</div><div class="tile"><svg><use href="#i-subir"/></svg>Subir docs.</div><div class="tile"><svg><use href="#i-avance"/></svg>Ingresar avance</div></div></div>
+  <div class="area carta"><div class="cab"><span class="et">CONTROLAR</span><span class="btn pri mini">Subir factura</span></div>
+    <div><span class="num">Lun 9</span> <span class="suave">datos</span></div>
+    <div class="ley"><span style="--c:var(--rojo)">5 facturas sin asociar</span><span style="--c:var(--gris)">próxima: lun 16</span></div>
+    <div class="tiles" style="margin-top:auto"><div class="tile"><svg><use href="#i-cc"/></svg>Centro de Costos</div><div class="tile"><svg><use href="#i-af"/></svg>Análisis Financiero</div><div class="tile"><svg><use href="#i-fc"/></svg>Flujo de Caja</div></div></div>
+  <div class="area carta calc"><span class="et">CALCULAR</span><span class="suave" style="font-size:12.5px">Redes, estanques y memorias</span>
+    <div class="tiles" style="margin-top:auto"><div class="tile"><svg><use href="#i-diam"/></svg>Diámetro</div><div class="tile"><svg><use href="#i-h2"/></svg>Hidrógeno</div><div class="tile"><svg><use href="#i-gas"/></svg>Gas / GLP</div><div class="tile"><svg><use href="#i-otros"/></svg>Otros gases</div></div></div>
+</template>
+
+<!-- V2: la C4 pulida -->
+<section class="m v2" id="f2">
+  <div class="bar"><span class="hamb">☰</span><span class="logo">QUEMP<b>IN</b></span><div class="busca-mini">Buscar…</div><div class="yo"><span>USUARIO</span>LC</div></div>
+  <div class="cuerpo">
+    <h1>Buenos días, <b>LC</b></h1>
+    <div class="hoy"><b>HOY · 4</b><span class="it"><span class="punto"></span>N° 900 · Formular <small>2 días</small></span><span class="it"><span class="punto"></span>N° 904 · Enviar <small>mañana</small></span><span class="it"><span class="punto a"></span>Asignar la semana</span><span class="it"><span class="punto a"></span>N° 903 · Emitir <small>5 días</small></span><span class="todo">Ver todo →</span></div>
+    <div class="areas" data-areas></div>
+  </div>
+</section>
+
+<!-- V3: franja negra con el saludo -->
+<section class="m v3" id="f3">
+  <div class="bar"><span class="hamb">☰</span><span class="logo">QUEMP<b>IN</b></span><div class="busca-mini">Buscar…</div><div class="yo"><span>USUARIO</span>LC</div></div>
+  <div class="cuerpo">
+    <div class="heroe">
+      <h1>Buenos días, <b>LC</b></h1>
+      <p class="sub">Hoy te tocan 4 cosas, lo urgente primero.</p>
+      <div class="tareas">
+        <div class="tarea"><small>OFERTAR · CIERRA EN 2 DÍAS</small><b>N° 900 · Liceo de prueba</b><span class="btn mini">Formular →</span></div>
+        <div class="tarea"><small>OFERTAR · CIERRA MAÑANA</small><b>N° 904 · Cotización emitida</b><span class="btn mini">Marcar enviada →</span></div>
+        <div class="tarea a"><small>EJECUTAR · ESTA SEMANA</small><b>3 proyectos sin nadie</b><span class="btn mini">Asignar →</span></div>
+        <div class="tarea a"><small>OFERTAR · CIERRA EN 5 DÍAS</small><b>N° 903 · Borrador en Sistema</b><span class="btn mini">Emitir →</span></div>
+      </div>
+    </div>
+    <div class="abajo"><div class="areas" data-areas></div></div>
+  </div>
+</section>
+
+<!-- V4: hoy en una columna negra -->
+<section class="m v4" id="f4">
+  <div class="bar"><span class="hamb">☰</span><span class="logo">QUEMP<b>IN</b></span><div class="busca-mini">Buscar…</div><div class="yo"><span>USUARIO</span>LC</div></div>
+  <div class="cuerpo">
+    <aside class="col">
+      <h1>Buenos días, <b>LC</b></h1>
+      <span class="et">HOY · 4</span>
+      <div class="item"><small>Ofertar · cierra en 2 días</small><b>N° 900 · Liceo de prueba</b><div class="fila"><span></span><span class="btn mini">Formular →</span></div></div>
+      <div class="item"><small>Ofertar · cierra mañana</small><b>N° 904 · Cotización emitida</b><div class="fila"><span></span><span class="btn mini">Marcar enviada →</span></div></div>
+      <div class="item a"><small>Ejecutar · esta semana</small><b>3 proyectos sin nadie</b><div class="fila"><span></span><span class="btn mini">Asignar →</span></div></div>
+      <div class="item a"><small>Ofertar · cierra en 5 días</small><b>N° 903 · Borrador en Sistema</b><div class="fila"><span></span><span class="btn mini">Emitir →</span></div></div>
+      <span class="listo">Eso es todo por hoy ✓</span>
+    </aside>
+    <div class="der">
+      <div class="area carta"><div class="cab"><span class="et">OFERTAR</span><span class="btn pri mini">+ Requerimiento</span></div>
+        <div class="lado"><div><span class="num">10</span> <span class="suave">en curso</span><div class="embudo" style="margin-top:10px"><div style="grid-template-columns:62px 1fr 12px">Req.<i style="--t:66%;width:75%"></i><b>3</b></div><div style="grid-template-columns:62px 1fr 12px">Form.<i style="--t:100%;width:25%"></i><b>1</b></div><div style="grid-template-columns:62px 1fr 12px">Cot.<i style="--t:50%;width:50%"></i><b>2</b></div><div style="grid-template-columns:62px 1fr 12px">Oferta<i style="--t:50%;width:100%"></i><b>4</b></div></div></div>
+        <div class="tiles"><div class="tile"><svg><use href="#i-oport"/></svg>Oportunidades</div><div class="tile"><svg><use href="#i-req"/></svg>Requerim.</div><div class="tile"><svg><use href="#i-form"/></svg>Formulador</div><div class="tile"><svg><use href="#i-seg"/></svg>Seguimiento</div><div class="tile"><svg><use href="#i-cotiz"/></svg>Cotizador</div><div class="tile fuera"><svg><use href="#i-emitir"/></svg>Cotización</div></div></div></div>
+      <div class="area carta"><div class="cab"><span class="et">EJECUTAR</span><span class="btn pri mini">Planificar</span></div>
+        <div class="lado"><div><span class="num">3</span> <span class="suave">obras</span><div class="salud" style="margin-top:12px"><i style="width:66%;background:var(--verde)"></i><i style="width:34%;background:var(--rojo)"></i></div><div class="ley" style="margin-top:8px;flex-direction:column"><span style="--c:var(--verde)">2 en línea</span><span style="--c:var(--rojo)">1 en riesgo</span></div></div>
+        <div class="tiles"><div class="tile"><svg><use href="#i-casco"/></svg>En ejecución</div><div class="tile"><svg><use href="#i-cal"/></svg>Planificación</div><div class="tile"><svg><use href="#i-gantt"/></svg>Gantt</div><div class="tile fuera"><svg><use href="#i-oc"/></svg>Orden compra</div><div class="tile"><svg><use href="#i-subir"/></svg>Subir docs.</div><div class="tile"><svg><use href="#i-avance"/></svg>Avance</div></div></div></div>
+      <div class="area carta"><div class="cab"><span class="et">CONTROLAR</span><span class="btn pri mini">Subir factura</span></div>
+        <div class="lado"><div><span class="num">Lun 9</span> <span class="suave">datos</span><div class="ley" style="margin-top:10px;flex-direction:column"><span style="--c:var(--rojo)">5 facturas sin asociar</span><span style="--c:var(--gris)">próxima: lun 16</span></div></div>
+        <div class="tiles"><div class="tile"><svg><use href="#i-cc"/></svg>Centro de Costos</div><div class="tile"><svg><use href="#i-af"/></svg>Análisis</div><div class="tile"><svg><use href="#i-fc"/></svg>Flujo de Caja</div></div></div></div>
+      <div class="area carta"><span class="et">CALCULAR</span>
+        <div class="lado"><span class="suave" style="font-size:12.5px">Redes, estanques y memorias de cálculo</span>
+        <div class="tiles" style="grid-template-columns:1fr 1fr"><div class="tile"><svg><use href="#i-diam"/></svg>Diámetro</div><div class="tile"><svg><use href="#i-h2"/></svg>Hidrógeno</div><div class="tile"><svg><use href="#i-gas"/></svg>Gas / GLP</div><div class="tile"><svg><use href="#i-otros"/></svg>Otros gases</div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll('[data-areas]').forEach((c) => c.append(document.getElementById('t-areas').content.cloneNode(true)));
+</script>
+</body>
+</html>

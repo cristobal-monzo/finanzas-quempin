@@ -610,7 +610,7 @@ def derivar_cliente(nombre_proyecto: str) -> str:
     real quedó un cliente "261. FACH 1" heredado del nombre de carpeta, que
     ningún otro proyecto del mismo cliente iba a igualar nunca."""
     candidato = nombre_proyecto.split("(")[0].strip()
-    candidato = re.sub(r"^\d+[.\-_]\s*", "", candidato).strip()
+    candidato = re.sub(r"^\d+t?[.\-_]\s*", "", candidato, flags=re.IGNORECASE).strip()
     return candidato if candidato else nombre_proyecto.strip()
 
 
@@ -730,8 +730,8 @@ def clientes_desde_cotizaciones(ws_proyectos, filas_validas: list[dict], documen
         req = ws_proyectos.cell(row=fila_info["fila"], column=col_req).value
         if isinstance(req, (int, float)) and not isinstance(req, bool) and float(req).is_integer():
             tag_por_req[str(int(req))] = fila_info["tag"]
-        elif isinstance(req, str) and req.strip().isdigit():
-            tag_por_req[req.strip()] = fila_info["tag"]
+        elif isinstance(req, str) and (req.strip().isdigit() or re.fullmatch(r"\d{3,4}t", req.strip(), re.IGNORECASE)):
+            tag_por_req[req.strip().lower()] = fila_info["tag"]
     nombres: dict[str, set] = {}
     for doc in documentos or []:
         if not isinstance(doc, dict) or doc.get("tipo") != "60":
@@ -1072,7 +1072,7 @@ def normalizar_nombre_proyecto_carpeta(nombre_carpeta: str) -> str:
     (Centro de Costos) -- se duplica en vez de importar porque cada modulo
     corre en su propio proceso (ver CLAUDE.md raiz). Debe cambiar en ambos
     lugares a la vez si cambia la regla."""
-    nombre = re.sub(r"^\d+[.\-_]\s*", "", nombre_carpeta).strip()
+    nombre = re.sub(r"^\d+t?[.\-_]\s*", "", nombre_carpeta, flags=re.IGNORECASE).strip()
     nombre = re.sub(r"^(\S.*\S|\S)\s+(\d+)$", r"\1\2", nombre)
     return nombre or nombre_carpeta
 

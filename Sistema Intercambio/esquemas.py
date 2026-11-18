@@ -14,7 +14,7 @@ un JSON Schema por cada uno en ``esquemas/``:
 
 Este módulo implementa solo el subconjunto de JSON Schema que usa el
 catálogo (type, const, enum, required, properties, additionalProperties,
-items, minItems, minLength, pattern, minimum, exclusiveMinimum, maximum,
+items, minItems, minLength, maxLength, pattern, minimum, exclusiveMinimum, maximum,
 anyOf), sin dependencias. ``esquemas.js`` es su gemelo para el navegador:
 mismo algoritmo y mismos textos de error, clavados por
 ``tests/test_esquemas.py`` (corre los dos sobre los mismos ejemplos).
@@ -133,6 +133,8 @@ def _validar(v, s: dict, ruta: str, errores: list[str]) -> None:
     if isinstance(v, str):
         if "minLength" in s and len(v) < s["minLength"]:
             errores.append(f"{ruta}: debe tener al menos {s['minLength']} caracter(es)")
+        if "maxLength" in s and len(v) > s["maxLength"]:
+            errores.append(f"{ruta}: debe tener a lo más {s['maxLength']} caracter(es)")
         if "pattern" in s and not re.search(s["pattern"], v, re.ASCII):
             errores.append(f"{ruta}: no tiene el formato esperado")
     if _es_numero(v):

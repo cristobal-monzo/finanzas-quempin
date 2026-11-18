@@ -31,6 +31,11 @@ from pathlib import Path
 HORARIO = {"dias": (0, 1, 2, 3, 4), "desde": 8.5, "hasta": 19}   # lunes=0 en Python
 DETENIDO_HORAS_HABILES = 4
 
+# Un envio que espera mas de una semana habil sube a 'alto' (2026-11-09): habia
+# 13 sugerencias para la Planilla esperando desde hacia 20 dias, informadas
+# igual que una de hoy.
+ESTANCADO_DIAS_HABILES = 5
+
 # Que hacer con lo que espera en el buzon de cada herramienta.
 ACCION_BUZON = {
     "planilla-requerimientos": ("envio(s) para la Planilla de Ingreso",
@@ -70,6 +75,16 @@ def minutos_habiles(desde: datetime, hasta: datetime, horario=HORARIO) -> int:
                 total += (b - a).total_seconds() / 60
         dia += timedelta(days=1)
     return round(total)
+
+
+def dias_habiles(desde: datetime, hasta: datetime, horario=HORARIO) -> int:
+    """Dias habiles completos entre dos fechas (sin contar el dia de 'desde')."""
+    dia, total = desde.date(), 0
+    while dia < hasta.date():
+        dia += timedelta(days=1)
+        if dia.weekday() in horario["dias"]:
+            total += 1
+    return total
 
 
 def _leer_datos(raiz: Path, nombre: str):
@@ -119,7 +134,11 @@ def desde_estado(estado: dict | None, ahora: datetime) -> list[Pendiente]:
         que, accion = ACCION_BUZON.get(destino, (f"mensaje(s) para {destino}", ""))
         antiguo = _fecha_local((info or {}).get("masAntiguo"))
         desde = f", el mas antiguo del {antiguo:%d-%m}" if antiguo else ""
-        salida.append(Pendiente("medio", f"{n} {que} esperan{desde}.", accion))
+        dias = dias_habiles(antiguo, ahora) if antiguo else 0
+        if dias > ESTANCADO_DIAS_HABILES:
+            salida.append(Pendiente("alto", f"{n} {que} esperan{desde} ({dias} dias habiles: estancado).", accion))
+        else:
+            salida.append(Pendiente("medio", f"{n} {que} esperan{desde}.", accion))
     return salida
 
 

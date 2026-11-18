@@ -95,7 +95,8 @@ RANGO_TIPO_UTM = {
 # UnidadTiempoDuracionContrato -> meses (1 horas, 2 días, 3 semanas, 4 meses, 5 años).
 UNIDAD_A_MESES = {1: 1 / 720, 2: 1 / 30, 3: 7 / 30, 4: 1, 5: 12}
 
-ESTADOS_OFERTADOS = {"adjudicado", "no adjudicado", "ofertado", "evaluacion"}
+ESTADOS_GANADOS = {requerimientos.normalizar_encabezado(e) for e in requerimientos.ESTADOS_GANADOS}   # con «cerrado»
+ESTADOS_OFERTADOS = ESTADOS_GANADOS | {"no adjudicado", "ofertado", "evaluacion"}
 K_PARECIDAS = 7
 SIMILITUD_PARECIDA = 0.25
 SIN_FICHA = "sin ficha todavía (se pide en la próxima vuelta)"
@@ -188,6 +189,262 @@ def coincidencias(raices_texto: list[str], frases: list[str]) -> list[str]:
     return [f for f in frases if contiene(raices_texto, f)]
 
 
+# ── RUBRO: TEMAS CON NIVEL DE INTERÉS (2026-11-13) ──────────────────────────
+# Pedido del usuario: «no está encontrando verdaderas oportunidades [...] que
+# sea mucho más intuitivo de utilizar y también de modificar». Las frases del
+# rubro se agrupan por tema (Calderas, Calefacción, Climatización...) y cada
+# tema tiene un nivel de interés. El nivel pone la categoría máxima: una
+# licitación de un tema «Rara vez» nunca sale «Prioritaria», por buenos que
+# sean el monto o la región. Antes la historia de la Planilla (202 descartes de
+# 305, muchos por capacidad del momento) bajaba la nota de «Mantención de
+# calderas» a 64 y la dejaba bajo «Absorbente de vapor de agua», que no tenía
+# historia.
+ORDEN_INTERES = ("alto", "medio", "bajo")
+NIVELES_INTERES = {
+    "alto": {"nombre": "Lo nuestro", "enNombre": 85, "enDescripcion": 60,
+             "maxEnNombre": None, "maxEnDescripcion": "buena", "prefiltro": 60},
+    "medio": {"nombre": "A veces", "enNombre": 55, "enDescripcion": 35,
+              "maxEnNombre": "buena", "maxEnDescripcion": "baja", "prefiltro": 30},
+    "bajo": {"nombre": "Rara vez", "enNombre": 30, "enDescripcion": 20,
+             "maxEnNombre": "evaluar", "maxEnDescripcion": "baja", "prefiltro": 15},
+}
+SEPARADOR = "·"          # marca dónde se borró una frase: dos palabras a sus lados no forman frase
+_ARTICULOS_ANTES = ("la", "una", "su", "nueva", "antigua")
+
+
+NIVEL_NO = "no"            # «No es lo nuestro» (2026-11-16): el tema en el nombre descarta
+INTERESES = ORDEN_INTERES + (NIVEL_NO,)
+
+
+def temas_de(config: dict) -> list[dict]:
+    """Los temas del rubro, también los de «No es lo nuestro». Una
+    configuración antigua (núcleo y afines) se lee como dos temas: «alto» y «medio»."""
+    r = config["rubro"]
+    if r.get("temas"):
+        return [t for t in r["temas"] if t.get("interes") in INTERESES and t.get("frases")]
+    return [t for t in ({"id": "nucleo", "nombre": "Núcleo", "interes": "alto", "frases": r.get("nucleo") or []},
+                        {"id": "afines", "nombre": "Afines", "interes": "medio", "frases": r.get("afines") or []})
+            if t["frases"]]
+
+
+def niveles_de(config: dict) -> dict:
+    propios = config["rubro"].get("niveles") or {}
+    return {k: dict(NIVELES_INTERES[k], **(propios.get(k) or {})) for k in ORDEN_INTERES}
+
+
+# ── LO QUE EL EQUIPO CAMBIA EN «QUÉ BUSCAMOS» (2026-11-16) ─────────────────
+# Pedido del usuario: la variante D1 («cuatro columnas que se arrastran»). El
+# nivel de cada tema, las regiones y los montos se cambian en el tablero y la
+# lista se reordena al tiro: lo que depende de eso se calcula con las funciones
+# de abajo, que la página repite (`resolverRubro`, `calcularTope`, `pesosTexto`
+# y `acotar` de Visualizador Web/template.html). Si cambias una, cambia la
+# otra: tests/test_tablero_oportunidades.py compara las dos con ajustes.
+
+def resolver_rubro(vivo: dict, interes: dict, niveles: dict, nombres: dict) -> dict:
+    """La nota del rubro, su tema y su tope con los niveles de hoy. `vivo` es
+    lo que no depende de los niveles (qué temas nombra y dónde, cuánto restan
+    las palabras de excluir y la historia). El mejor tema manda; un tema de
+    «No es lo nuestro» en el nombre la descarta si ningún tema bueno está en
+    el nombre («Calderas y climatización» sigue)."""
+    mejor, no_es = None, []
+    for m in vivo["temas"]:
+        nv = interes.get(m["id"])
+        if nv == NIVEL_NO:
+            if m["enNombre"]:
+                no_es.append(nombres.get(m["id"], m["id"]))
+            continue
+        if nv not in niveles:
+            continue
+        p = niveles[nv]["enNombre"] if m["enNombre"] else niveles[nv]["enDescripcion"]
+        if mejor is None or p > mejor[0]:
+            mejor = (p, m, nv)
+    descartar = []
+    if mejor:
+        p, m, nv = mejor
+        caso = ("altoNombre" if m["enNombre"] else "altoDescripcion") if nv == "alto" else "otro"
+        n = niveles[nv]
+        res = {"puntaje": _acotar(p + vivo["ajustes"][caso]), "tema": m["id"], "interes": nv, "enNombre": m["enNombre"],
+               "tope": n["maxEnNombre" if m["enNombre"] else "maxEnDescripcion"],
+               "topeMotivo": f"Tema «{nombres.get(m['id'], m['id'])}» ({n['nombre'].lower()})"
+                             + ("" if m["enNombre"] else ", solo en la descripción")}
+        if no_es and not m["enNombre"]:
+            descartar.append("No es lo nuestro: " + ", ".join(no_es))
+    else:
+        st = vivo["sinTema"]
+        res = {"puntaje": _acotar(min(15 + vivo["ajustes"]["otro"], 45)), "tema": None, "interes": None, "enNombre": False,
+               "tope": st["tope"], "topeMotivo": st["motivo"]}
+        if no_es:
+            descartar.append("No es lo nuestro: " + ", ".join(no_es))
+        elif st.get("descarta"):
+            descartar.append(st["descarta"])
+    res["descartar"] = descartar
+    return res
+
+
+def calcular_tope(orden: list[str], rubro: dict, topes_por_rubro: list[dict], monto: float | None, por_tipo: bool,
+                  minimo, categoria_bajo_minimo: str) -> dict | None:
+    """La categoría más alta que puede alcanzar, con su motivo: la más
+    estricta entre el tema del rubro, la nota del rubro (una palabra de
+    excluir en la descripción, parecidas siempre descartadas) y el monto
+    mínimo. No depende de los pesos."""
+    topes = []
+    if rubro.get("tope"):
+        topes.append((rubro["tope"], rubro["topeMotivo"]))
+    for t in topes_por_rubro:
+        if rubro["puntaje"] < t["rubroMenorA"]:
+            topes.append((t["categoriaMaxima"], f"Rubro con {rubro['puntaje']} puntos (bajo {t['rubroMenorA']})"))
+    if minimo and monto and not por_tipo and monto < minimo:
+        topes.append((categoria_bajo_minimo, f"Muy chica: {_pesos(monto)}, bajo el mínimo de {_pesos(minimo)}"))
+    mejor = None
+    for c, m in topes:
+        if c in orden and (mejor is None or orden.index(c) > orden.index(mejor[0])):
+            mejor = (c, m)
+    return {"categoria": mejor[0], "motivo": mejor[1]} if mejor else None
+
+
+def resolver_monto(vivo: dict, maximo_fijo) -> dict:
+    """El criterio monto según el máximo: el puesto a mano en «Qué buscamos»
+    (descarta lo que lo pasa) o, sin él, 3 veces el percentil 90 de lo
+    ofertado (orienta y no descarta). Una compra ágil usa siempre el suyo
+    (`maximoFijo` de su rango)."""
+    if vivo.get("maximoFijo"):
+        maximo, fijo = vivo["maximo"], True
+    elif maximo_fijo:
+        maximo, fijo = maximo_fijo, True
+    else:
+        maximo, fijo = vivo.get("maximoHistoria"), False
+    sobre = bool(maximo) and vivo["valor"] > maximo
+    return {"puntaje": vivo["sobre"] if sobre else vivo["bajo"], "sobre": sobre, "maximo": maximo,
+            "descarta": f"Monto {_pesos(vivo['valor'])} sobre el máximo de {_pesos(maximo)}" if sobre and fijo else None}
+
+
+def region_clave(region, regiones: dict) -> str | None:
+    reg = normalizar(region)
+    return next((clave for clave in regiones if not clave.startswith("_") and clave in reg), None) if reg else None
+
+
+# Lo que se puede cambiar desde el tablero. Las listas se mandan completas
+# (la última versión gana) y se acotan: nadie escribe 5.000 frases por error.
+MAX_FRASES = 60
+MAX_LARGO_FRASE = 80
+
+
+def _frases(valor, maximo: int = MAX_FRASES) -> list[str] | None:
+    if not isinstance(valor, list):
+        return None
+    vistas, salida = set(), []
+    for f in valor:
+        if isinstance(f, str) and 2 <= len(f.strip()) <= MAX_LARGO_FRASE and normalizar(f) and normalizar(f) not in vistas:
+            vistas.add(normalizar(f))
+            salida.append(f.strip())
+    return salida[:maximo]
+
+
+def limpiar_ajustes(ajustes, config: dict) -> tuple[dict, list[str]]:
+    """Lo válido de un pedido de «Qué buscamos» y lo que se ignoró. Solo temas
+    y regiones que existen; niveles conocidos; montos enteros ≥ 0 o vacíos."""
+    limpio, ignorado = {}, []
+    if not isinstance(ajustes, dict):
+        return limpio, ["no es un objeto"]
+    ids = {t["id"] for t in temas_de(config)}
+    temas = ajustes.get("temas")
+    if isinstance(temas, dict):
+        limpio["temas"] = {}
+        for tid, t in temas.items():
+            if tid not in ids or not isinstance(t, dict) or t.get("interes") not in INTERESES:
+                ignorado.append(f"tema {tid!r}")
+                continue
+            limpio["temas"][tid] = {"interes": t["interes"]}
+            frases = _frases(t.get("frases"))
+            if frases:
+                limpio["temas"][tid]["frases"] = frases
+    for k, maximo in (("excluir", 300), ("noConfundir", MAX_FRASES)):
+        if k in ajustes:
+            frases = _frases(ajustes[k], maximo)
+            if frases is None:
+                ignorado.append(k)
+            else:
+                limpio[k] = frases
+    regiones = ajustes.get("regiones")
+    if isinstance(regiones, dict):
+        conocidas = {k for k in config["regiones"] if not k.startswith("_")}
+        limpio["regiones"] = {k: int(v) for k, v in regiones.items()
+                              if k in conocidas and isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v <= 100}
+        ignorado += [f"región {k!r}" for k in regiones if k not in limpio["regiones"]]
+    monto = ajustes.get("monto")
+    if isinstance(monto, dict):
+        limpio["monto"] = {}
+        for k in ("minimo", "minimoCompraAgil", "maximo"):
+            if k in monto:
+                v = monto[k]
+                if v is None or (isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0):
+                    limpio["monto"][k] = int(v) if v else None
+                else:
+                    ignorado.append(f"monto {k}")
+    return limpio, ignorado
+
+
+def aplicar_ajustes(config: dict, ajustes: dict | None) -> dict:
+    """La configuración con lo que el equipo cambió en «Qué buscamos». El
+    archivo versionado no se toca: es la base, y esto va encima."""
+    if not ajustes:
+        return config
+    c = json.loads(json.dumps(config))
+    rubro = c["rubro"]
+    for t in rubro.get("temas") or []:
+        a = (ajustes.get("temas") or {}).get(t["id"])
+        if a:
+            t["interes"] = a["interes"]
+            if a.get("frases"):
+                t["frases"] = list(a["frases"])
+    if "excluir" in ajustes:
+        rubro["excluir"] = list(ajustes["excluir"])
+    if "noConfundir" in ajustes:
+        rubro.setdefault("noConfundir", {})["frases"] = list(ajustes["noConfundir"])
+    c["regiones"].update(ajustes.get("regiones") or {})
+    m = ajustes.get("monto") or {}
+    if "minimo" in m:
+        c["monto"]["minimo"] = m["minimo"]
+    if "maximo" in m:
+        c["monto"]["maximo"] = m["maximo"]
+    if "minimoCompraAgil" in m:
+        c.setdefault("compraAgil", {}).setdefault("monto", {})["minimo"] = m["minimoCompraAgil"]
+    return c
+
+
+def raices_del_rubro(texto, region, no_confundir: dict | None) -> list[str]:
+    """Las raíces del texto sin lo que se parece al rubro y no lo es
+    («peróxido de hidrógeno», «vapor de agua») ni los lugares con nombre del
+    rubro: en Atacama, «Caldera» es una comuna («Gobernación Marítima de
+    Caldera»), salvo «la caldera», «una caldera» o «calderas»."""
+    nc = no_confundir or {}
+    t = normalizar(texto)
+    reg = normalizar(region)
+    for lugar in nc.get("lugares") or []:
+        clave = normalizar(lugar.get("region"))
+        palabra = normalizar(lugar.get("palabra"))
+        if palabra and clave and clave in reg:
+            antes = "".join(rf"(?<!\b{a} )" for a in _ARTICULOS_ANTES)
+            t = re.sub(rf"\b{antes}{re.escape(palabra)}\b", f" {SEPARADOR} ", t)
+    rs = []
+    for trozo in t.split(SEPARADOR):
+        rs += raices(trozo) + [SEPARADOR]
+    for frase in nc.get("frases") or []:
+        f = raices(frase)
+        if not f:
+            continue
+        n, salida, i = len(f), [], 0
+        while i < len(rs):
+            if rs[i:i + n] == f:
+                salida.append(SEPARADOR)
+                i += n
+            else:
+                salida.append(rs[i])
+                i += 1
+        rs = salida
+    return rs
+
+
 # ── HISTORIA ─────────────────────────────────────────────────────────────────
 
 def unidad_de(codigo) -> str | None:
@@ -218,7 +475,7 @@ class Historia:
             codigo = mp.codigo_de(r.get("referencia"))
             self.items.append({
                 "req": r.get("numero"), "titulo": mp._texto(r.get("titulo"), 120), "estado": r.get("estado") or "",
-                "ofertado": estado in ESTADOS_OFERTADOS, "ganado": estado == "adjudicado",
+                "ofertado": estado in ESTADOS_OFERTADOS, "ganado": estado in ESTADOS_GANADOS,
                 "perdido": estado == "no adjudicado", "codigo": codigo, "unidad": unidad_de(codigo),
                 "compraAgil": mp.es_compra_agil(codigo or ""),
                 "raices": raices(r.get("titulo")),
@@ -402,6 +659,8 @@ def _acotar(x: float) -> int:
 class Evaluador:
     def __init__(self, config: dict, historia: Historia, mercado: list[dict], ahora: datetime, uf: float):
         self.c, self.h, self.ahora, self.uf = config, historia, ahora, uf
+        self.temas, self.niveles = temas_de(config), niveles_de(config)
+        self.no_confundir = config["rubro"].get("noConfundir") or {}
         self.mercado = mercado
         self.mercado_vec = [(m, historia.vector(raices(m.get("nombre")))) for m in mercado]
         # Cada tipo con su propio rango: una compra ágil es de hasta 100 UTM y
@@ -424,30 +683,34 @@ class Evaluador:
         return rango
 
     # Prefiltro: solo con el nombre (antes de gastar una consulta en la ficha).
-    def prefiltro(self, nombre: str) -> float:
-        rs = raices(nombre)
-        r = self.c["rubro"]
-        nucleo, afines = coincidencias(rs, r["nucleo"]), coincidencias(rs, r["afines"])
-        if coincidencias(rs, r["excluir"]):
+    def prefiltro(self, nombre: str, region: str | None = None) -> float:
+        rs = raices_del_rubro(nombre, region, self.no_confundir)
+        if coincidencias(rs, self.c["rubro"]["excluir"]):
             return 0                 # con «combustible» o «producto químico» en el nombre se descartaría igual: no gastar la ficha
-        if not nucleo and not afines:
+        # El mejor tema manda; un segundo tema suma poco («calderas y climatización»).
+        puntos = sorted((self.niveles[t["interes"]]["prefiltro"] for t in self.temas
+                         if t["interes"] in self.niveles and coincidencias(rs, t["frases"])), reverse=True)
+        if not puntos:
             return 60 * self.h.muy_parecida_ofertada(nombre)
         parecidas = self.h.parecidas(nombre, k=3)
         sim_ofertada = max((s for s, it in parecidas if it["ofertado"]), default=0)
-        return (60 if nucleo else 0) + (30 if afines else 0) + 60 * sim_ofertada
+        return puntos[0] + (min(30, puntos[1]) if len(puntos) > 1 else 0) + 60 * sim_ofertada
 
     def evaluar(self, ficha: dict, en_planilla: dict | None = None) -> dict:
         texto = " ".join(x for x in [ficha.get("nombre"), ficha.get("descripcion"), *ficha.get("productos", [])] if x)
-        rs = raices(texto)
+        rs = raices_del_rubro(texto, ficha.get("region"), self.no_confundir)
+        rs_nombre = raices_del_rubro(ficha.get("nombre"), ficha.get("region"), self.no_confundir)
         # La categoría de los ítems no entra: la de climatización junta calefacción con aire acondicionado.
         # Lo parecido se busca por el nombre: la Planilla guarda títulos, no descripciones.
         parecidas = self.h.parecidas(ficha.get("nombre") or "")
         # Los motivos para descartar que dependen de la fecha (plazo, visita ya
         # pasada) van aparte: la página los recalcula con la fecha del día, así
         # una licitación vista días después del build no queda como si nada.
-        criterios, descartar_fijo, descartar_tiempo = {}, [], []
+        # Lo que depende de «Qué buscamos» (niveles, regiones, montos) va en descartar_vivo:
+        # la página lo recalcula cuando alguien mueve un tema.
+        criterios, descartar_fijo, descartar_tiempo, descartar_vivo = {}, [], [], []
 
-        criterios["rubro"] = self._rubro(rs, ficha, parecidas, descartar_fijo)
+        criterios["rubro"] = self._rubro(rs, rs_nombre, ficha, parecidas, descartar_fijo)
         monto, fuente_monto = self._monto_clp(ficha)
         es_ca = bool(ficha.get("compraAgil"))
         criterios["monto"] = self._monto(monto, fuente_monto, descartar_fijo, self.rango_ca if es_ca else self.rango)
@@ -467,8 +730,17 @@ class Evaluador:
         pesos = self.c["pesos"]
         total = sum(pesos[k] for k in pesos) or 1
         puntaje = round(sum(criterios[k]["puntaje"] * pesos[k] for k in pesos) / total, 1)
-        descartar = descartar_fijo + descartar_tiempo
-        categoria = "descartar" if descartar else self.categoria(puntaje, criterios["rubro"]["puntaje"])
+        res_rubro, vivo_rubro = criterios["rubro"].pop("_res"), criterios["rubro"].pop("_vivo")
+        vivo_monto, res_monto = criterios["monto"].pop("_vivo", None), criterios["monto"].pop("_res", None)
+        clave = criterios["ubicacion"].pop("_clave", None)
+        descartar_vivo += res_rubro["descartar"]
+        if clave and criterios["ubicacion"]["puntaje"] == 0:
+            descartar_vivo.append(f"No trabajamos en {region_corta(ficha.get('region'))}")
+        if res_monto and res_monto["descarta"]:
+            descartar_vivo.append(res_monto["descarta"])
+        descartar = descartar_fijo + descartar_vivo + descartar_tiempo
+        tope = self.tope(res_rubro, monto, fuente_monto, es_ca)
+        categoria = "descartar" if descartar else self.categoria(puntaje, tope)
         a_favor, en_contra = self.a_favor_y_en_contra(criterios)
 
         ofertadas = [(s, it) for s, it in parecidas if it["ofertado"]]
@@ -497,8 +769,14 @@ class Evaluador:
             "categorias": ficha.get("categorias") or [],
             "puntaje": puntaje,
             "categoria": categoria,
+            # La categoría máxima (tema del rubro, monto mínimo): no depende de los pesos ni de la fecha.
+            "tope": tope,
+            "tema": criterios["rubro"].get("tema"),
             "descartar": descartar,
             "descartarFijo": descartar_fijo,
+            # Lo que la página necesita para recalcular con otros niveles, regiones o montos.
+            "vivo": {"rubro": vivo_rubro, "region": clave, "monto": vivo_monto,
+                     "montoClp": monto, "porTipo": fuente_monto.startswith("por tipo")},
             "aFavor": a_favor,
             "enContra": en_contra,
             "criterios": criterios,
@@ -522,15 +800,23 @@ class Evaluador:
         contra = sorted((x for x in validos if x[1]["puntaje"] <= 50), key=lambda x: -pesos[x[0]] * (100 - x[1]["puntaje"]))
         return [c["corto"] for _, c in favor[:3]], [c["corto"] for _, c in contra[:2]]
 
-    def categoria(self, puntaje: float, rubro: int) -> str:
-        """La categoría por puntaje, con tope si el rubro no es claro (la
-        misma regla repite la página al mover los pesos)."""
-        orden = [c["id"] for c in sorted(self.c["categorias"], key=lambda c: -c["desde"])]
+    def _orden_categorias(self) -> list[str]:
+        return [c["id"] for c in sorted(self.c["categorias"], key=lambda c: -c["desde"])]
+
+    def categoria(self, puntaje: float, tope: dict | None = None) -> str:
+        """La categoría por puntaje, sin pasar de su tope (la misma regla
+        repite la página al mover los pesos: `categoria()` del tablero)."""
+        orden = self._orden_categorias()
         cat = next((c["id"] for c in sorted(self.c["categorias"], key=lambda c: -c["desde"]) if puntaje >= c["desde"]), orden[-1])
-        for tope in self.c.get("topesPorRubro", []):
-            if rubro < tope["rubroMenorA"] and orden.index(cat) < orden.index(tope["categoriaMaxima"]):
-                cat = tope["categoriaMaxima"]
+        if tope and tope.get("categoria") in orden and orden.index(cat) < orden.index(tope["categoria"]):
+            cat = tope["categoria"]
         return cat
+
+    def tope(self, rubro: dict, monto: float | None, fuente_monto: str, es_ca: bool) -> dict | None:
+        """La categoría más alta que puede alcanzar (`calcular_tope`, que repite la página)."""
+        minimo = (self.c.get("compraAgil", {}).get("monto", {}) if es_ca else self.c["monto"]).get("minimo")
+        return calcular_tope(self._orden_categorias(), rubro, self.c.get("topesPorRubro", []), monto,
+                             fuente_monto.startswith("por tipo"), minimo, self.c["monto"].get("categoriaBajoMinimo", "baja"))
 
     def evaluar_sin_ficha(self, codigo: str, nombre: str, cierre: str | None, en_planilla, extra: dict | None = None) -> dict:
         """Candidata cuya ficha todavía no se pidió (tope de consultas): se
@@ -543,62 +829,87 @@ class Evaluador:
         return r
 
     # ── criterios ──
-    def _rubro(self, rs, ficha, parecidas, descartar) -> dict:
+    def _rubro(self, rs, rs_nombre, ficha, parecidas, descartar) -> dict:
+        """La nota del rubro. Lo que no depende de los niveles de los temas va en
+        `vivo` (qué temas nombra, cuánto restan excluir y la historia); los niveles
+        los aplica `resolver_rubro`, la misma regla que repite la página."""
         r = self.c["rubro"]
-        rs_nombre = raices(ficha.get("nombre"))
-        nucleo, afines, fuera = coincidencias(rs, r["nucleo"]), coincidencias(rs, r["afines"]), coincidencias(rs, r["excluir"])
-        resta = coincidencias(rs, r.get("restar", []))
         # El nombre es la señal fuerte; lo que solo aparece en la descripción pesa
         # menos («guardavidas para la piscina temperada» no es climatizar una piscina).
-        nucleo_nombre, afines_nombre = coincidencias(rs_nombre, r["nucleo"]), coincidencias(rs_nombre, r["afines"])
-        if nucleo:
-            base = 85 if nucleo_nombre else 60
-        elif afines:
-            base = 55 if afines_nombre else 35
-        else:
-            base = 15
-        donde = "" if (nucleo_nombre or (not nucleo and afines_nombre)) else " (solo en la descripción)"
-        motivo = [(f"núcleo: {', '.join(nucleo[:3])}" if nucleo else f"afín: {', '.join(afines[:3])}") + donde
-                  if (nucleo or afines) else "sin palabras del rubro"]
-        en_nombre = coincidencias(rs_nombre, r["excluir"])
-        if fuera:
-            # Con el nombre del núcleo, una palabra de excluir que solo está en la
-            # descripción resta poco: «alimentación» eléctrica, «capacitación» del
-            # personal o «pavimento» de la sala no cambian el trabajo (medido el
-            # 2026-10-14: de 8 así, 4 se ofertaron, más que el promedio).
-            solo_descripcion = bool(nucleo_nombre) and not en_nombre
-            base -= r.get("restaExcluirSoloDescripcion", 35) if solo_descripcion else 35
-            motivo.append(f"{'menciona' if solo_descripcion else 'fuera de rubro:'} {', '.join(fuera[:3])}"
-                          + (" en la descripción" if solo_descripcion else ""))
-        if resta:
-            base -= 10 if nucleo else 25      # «calderas y aire acondicionado» sigue siendo del rubro
-            motivo.append(f"resta: {', '.join(resta[:3])}")
+        temas, frases_de = [], {}
+        for t in self.temas:
+            en_texto = coincidencias(rs, t["frases"])
+            if not en_texto:
+                continue
+            en_nombre = coincidencias(rs_nombre, t["frases"])
+            temas.append({"id": t["id"], "enNombre": bool(en_nombre)})
+            frases_de[t["id"]] = en_nombre or en_texto
+        fuera, en_nombre_fuera = coincidencias(rs, r["excluir"]), coincidencias(rs_nombre, r["excluir"])
+        resta = coincidencias(rs, r.get("restar", []))
+        # Con el nombre de un tema «Lo nuestro», una palabra de excluir que solo está en
+        # la descripción resta poco: «alimentación» eléctrica, «capacitación» del
+        # personal o «pavimento» de la sala no cambian el trabajo (medido el
+        # 2026-10-14: de 8 así, 4 se ofertaron, más que el promedio).
+        resta_fuera_alto_nombre = (r.get("restaExcluirSoloDescripcion", 35) if not en_nombre_fuera else 35) if fuera else 0
+        resta_fuera = 35 if fuera else 0
+        # La historia corrige poco y solo con varias parecidas: muchos descartes de la
+        # Planilla fueron por capacidad, distancia o plazo, no por el trabajo.
+        historia, motivo_historia = 0, None
         ofertadas = sum(s for s, it in parecidas if it["ofertado"])
         todas = sum(s for s, _ in parecidas)
         if todas:
-            p = ofertadas / todas
-            # La historia pesa poco: muchos descartes de la Planilla fueron por distancia o plazo, que ya miden otros criterios.
-            base = 0.75 * base + 0.25 * (100 * p) + (10 if any(it["ganado"] for s, it in parecidas[:3]) else 0)
+            h = r.get("historia") or {}
+            if len(parecidas) >= h.get("minParecidas", 3):
+                historia += h.get("peso", 20) * (ofertadas / todas - 0.5)
+            if any(it["ganado"] for s, it in parecidas[:3]):
+                historia += h.get("bonoGanada", 10)
             ganadas = [it for _, it in parecidas if it["ganado"]]
-            motivo.append(f"{sum(1 for _, it in parecidas if it['ofertado'])} de {len(parecidas)} parecidas se ofertaron"
-                          + (f", {len(ganadas)} ganada(s) (N° {', '.join(str(it['req']) for it in ganadas[:3])})" if ganadas else ""))
-        if en_nombre:
-            descartar.append("Fuera de rubro: " + ", ".join(en_nombre[:3]))
-        if not nucleo and not afines:
-            if fuera and not en_nombre:
-                descartar.append("Fuera de rubro: " + ", ".join(fuera[:3]))
-            elif not fuera and not self.h.muy_parecida_ofertada(ficha.get("nombre") or ""):
-                descartar.append("Sin relación clara con el rubro (ni palabras del rubro ni muy parecida a algo ofertado)")
-            base = min(base, 45)
-        if fuera and not (nucleo_nombre and not en_nombre):
+            motivo_historia = (f"{sum(1 for _, it in parecidas if it['ofertado'])} de {len(parecidas)} parecidas se ofertaron"
+                               + (f", {len(ganadas)} ganada(s) (N° {', '.join(str(it['req']) for it in ganadas[:3])})" if ganadas else ""))
+        # «calderas y aire acondicionado» sigue siendo del rubro: con un tema «Lo nuestro», restar pesa menos.
+        ajustes = {"altoNombre": -resta_fuera_alto_nombre - (10 if resta else 0) + historia,
+                   "altoDescripcion": -resta_fuera - (10 if resta else 0) + historia,
+                   "otro": -resta_fuera - (25 if resta else 0) + historia}
+        if fuera and not en_nombre_fuera:
+            sin_tema = {"descarta": "Fuera de rubro: " + ", ".join(fuera[:3]), "tope": "baja", "motivo": "Sin palabras de ningún tema"}
+        elif not fuera and not self.h.muy_parecida_ofertada(ficha.get("nombre") or ""):
+            sin_tema = {"descarta": "Sin relación clara con el rubro (ni palabras del rubro ni muy parecida a algo ofertado)",
+                        "tope": "baja", "motivo": "Sin palabras de ningún tema"}
+        else:
+            sin_tema = {"descarta": None, "tope": "evaluar", "motivo": "Sin tema, pero muy parecida a algo ya ofertado"}
+        vivo = {"temas": temas, "ajustes": ajustes, "sinTema": sin_tema}
+        res = resolver_rubro(vivo, {t["id"]: t["interes"] for t in self.temas}, self.niveles,
+                             {t["id"]: t["nombre"] for t in self.temas})
+        if en_nombre_fuera:
+            descartar.append("Fuera de rubro: " + ", ".join(en_nombre_fuera[:3]))
+        tema = next((t for t in self.temas if t["id"] == res["tema"]), None)
+        nom = res["enNombre"]
+        alto = res["interes"] == "alto"
+        if tema:
+            nivel = self.niveles[tema["interes"]]
+            motivo = [f"{tema['nombre']} ({nivel['nombre'].lower()}): {', '.join(frases_de[tema['id']][:3])}"
+                      + ("" if nom else " (solo en la descripción)")]
+        else:
+            motivo = ["sin palabras del rubro"]
+        if fuera:
+            solo_descripcion = alto and nom and not en_nombre_fuera
+            motivo.append(f"{'menciona' if solo_descripcion else 'fuera de rubro:'} {', '.join(fuera[:3])}"
+                          + (" en la descripción" if solo_descripcion else ""))
+        if resta:
+            motivo.append(f"resta: {', '.join(resta[:3])}")
+        if motivo_historia:
+            motivo.append(motivo_historia)
+        if fuera and not (alto and nom and not en_nombre_fuera):
             corto = f"Fuera de rubro: {fuera[0]}"
-        elif nucleo:
-            corto = f"Del rubro: {nucleo[0]}" + ("" if nucleo_nombre else " (en la descripción)")
-        elif afines:
-            corto = f"Rubro afín: {afines[0]}" + ("" if afines_nombre else " (en la descripción)")
+        elif tema:
+            corto = ({"alto": "Del rubro", "medio": "Rubro afín", "bajo": "Rara vez se oferta"}[tema["interes"]]
+                     + f": {frases_de[tema['id']][0]}" + ("" if nom else " (en la descripción)"))
         else:
             corto = "Parecida a lo ya ofertado" if parecidas else "Sin palabras del rubro"
-        return {"puntaje": _acotar(base), "motivo": "; ".join(motivo), "corto": corto}
+        return {"puntaje": res["puntaje"], "motivo": "; ".join(motivo), "corto": corto,
+                "tema": ({"id": tema["id"], "nombre": tema["nombre"], "interes": tema["interes"], "enNombre": nom}
+                         if tema else None),
+                "_res": res, "_vivo": vivo}
 
     def _monto_clp(self, ficha) -> tuple[float | None, str]:
         m, moneda = ficha.get("montoEstimado"), (ficha.get("moneda") or "CLP").upper()
@@ -617,10 +928,13 @@ class Evaluador:
         return None, "sin dato"
 
     def _monto(self, monto, fuente, descartar, rango: dict | None = None) -> dict:
+        """El criterio monto. El máximo puede cambiarse en «Qué buscamos»: se
+        publican las dos notas (bajo y sobre el máximo) en `_vivo` y el máximo
+        lo aplica `resolver_monto`, como la página."""
         r = rango or self.rango
         if monto is None or not r["p10"]:
             return {"puntaje": 50, "motivo": "sin monto publicado ni tipo de licitación conocido",
-                    "corto": "Monto no publicado"}
+                    "corto": "Monto no publicado", "_vivo": None}
         if r["p25"] <= monto <= r["p75"]:
             p, txt, corto = 100, "en el rango que QUEMPIN más oferta", "en el rango habitual"
         elif r["p10"] <= monto <= r["p90"]:
@@ -629,18 +943,23 @@ class Evaluador:
             p, txt, corto = max(25, 85 * math.sqrt(monto / r["p10"])), "más chico que lo habitual", "más chico que lo habitual"
         else:
             p, txt, corto = max(20, 85 * (r["p90"] / monto) ** 0.6), "más grande que lo habitual", "más grande que lo habitual"
-        if r["maximo"] and monto > r["maximo"]:
-            p, txt, corto = 10, f"sobre el máximo de {_pesos(r['maximo'])}: revisar garantías y caja", "sobre el máximo: garantías y caja"
-            if r.get("maximoFijo"):                 # solo un tope puesto a mano descarta; el de la historia es orientativo
-                descartar.append(f"Monto {_pesos(monto)} sobre el máximo de {_pesos(r['maximo'])}")
         estimado = fuente.startswith("por tipo")
-        if estimado:
+        confianza = self.c["monto"].get("confianzaEstimadoPorTipo", 0.7)
+
+        def mezcla(x):
             # El monto es una suposición por el tipo de licitación: casi neutro (medido el
             # 2026-10-14: estimado así no separaba lo ofertado de lo descartado, AUC 0,45).
-            confianza = self.c["monto"].get("confianzaEstimadoPorTipo", 0.7)
-            p = confianza * p + (1 - confianza) * 60
-        return {"puntaje": _acotar(p), "motivo": f"{_pesos(monto)} ({fuente}): {txt}",
-                "corto": f"{'~' if estimado else ''}{_pesos(monto)}, {corto}"}
+            return _acotar(confianza * x + (1 - confianza) * 60 if estimado else x)
+        # El máximo de una licitación se cambia en «Qué buscamos» (monto.maximo); el de una compra ágil, solo en la configuración.
+        es_ca = r is self.rango_ca
+        vivo = {"valor": monto, "porTipo": estimado, "bajo": mezcla(p), "sobre": mezcla(10),
+                "maximoHistoria": (r["p90"] or 0) * 3 or None,
+                "maximo": r["maximo"] if es_ca else None, "maximoFijo": bool(es_ca and r.get("maximoFijo"))}
+        res = resolver_monto(vivo, None if es_ca else self.c["monto"].get("maximo"))
+        if res["sobre"]:
+            txt, corto = f"sobre el máximo de {_pesos(res['maximo'])}: revisar garantías y caja", "sobre el máximo: garantías y caja"
+        return {"puntaje": res["puntaje"], "motivo": f"{_pesos(monto)} ({fuente}): {txt}",
+                "corto": f"{'~' if estimado else ''}{_pesos(monto)}, {corto}", "_vivo": vivo, "_res": res}
 
     def _duracion_meses(self, ficha, texto) -> float | None:
         d, u = ficha.get("duracion"), ficha.get("unidadDuracion")
@@ -700,16 +1019,15 @@ class Evaluador:
         return any(f" {normalizar(p)} " in texto for p in self.c["dificultad"]["palabrasVariosRecintos"])
 
     def _ubicacion(self, ficha) -> dict:
-        reg = normalizar(ficha.get("region"))
-        tabla = {k: v for k, v in self.c["regiones"].items() if not k.startswith("_")}
-        pts = next((v for clave, v in tabla.items() if clave in reg), None)
+        clave = region_clave(ficha.get("region"), self.c["regiones"])
+        pts = self.c["regiones"][clave] if clave else None
         if pts is None:
             return {"puntaje": self.c["regiones"].get("_sinRegion", 50),
                     "motivo": ficha.get("region") or "región desconocida", "corto": "Región desconocida"}
         lugar = ", ".join(x for x in (ficha.get("comuna"), ficha.get("region")) if x)
         nombre = ficha.get("comuna") or region_corta(ficha.get("region"))
         corto = f"Cerca: {nombre}" if pts >= 80 else (f"Lejos: {region_corta(ficha.get('region'))}" if pts <= 50 else nombre)
-        return {"puntaje": pts, "motivo": lugar, "corto": corto}
+        return {"puntaje": pts, "motivo": lugar, "corto": corto, "_clave": clave}
 
     @staticmethod
     def _visita_obligatoria(texto) -> bool | None:
@@ -760,19 +1078,21 @@ class Evaluador:
         fecha = v["fecha"]
         if not fecha and v["mencionada"]:
             # Las bases o la descripción la nombran, sin fecha en la ficha (siempre en una compra ágil).
-            p = 40 + 0.5 * region_pts
-            return {"puntaje": _acotar(p), "motivo": ("las bases nombran una visita, sin fecha en la ficha" if v["fuente"] == "bases"
+            a, b = 40, 0.5
+            return {"puntaje": _acotar(a + b * region_pts), "porRegion": [a, b], "motivo": ("las bases nombran una visita, sin fecha en la ficha" if v["fuente"] == "bases"
                                                       else "la descripción menciona una visita (sin fecha en la ficha)"),
                     "corto": "Pide visita (ver fecha en las bases)"}
         if not fecha and v["sinVisita"]:
             return {"puntaje": 100, "motivo": "sin visita a terreno en la ficha de las bases", "corto": "Sin visita a terreno"}
         if not fecha:
             # Lo esperado: sin visita vale 100; con visita, lo que costaría ir a esa región.
-            p = 100 - self.c["visitaSinDato"]["probabilidadVisita"] * (100 - (40 + 0.5 * region_pts))
+            prob = self.c["visitaSinDato"]["probabilidadVisita"]
+            a, b = 100 - prob * 60, prob * 0.5      # = 100 - prob * (100 - (40 + 0,5 · región))
             motivo = ("la ficha no detalla las bases (licitación menor a 100 UTM): ver los adjuntos" if v["fuente"] == "bases"
                       else "la compra ágil no informa visita: revisar la descripción y los adjuntos" if ficha.get("compraAgil")
                       else "todavía no se lee la ficha de las bases (se pide en la próxima vuelta)")
-            return {"puntaje": _acotar(p), "motivo": motivo, "corto": "Visita sin confirmar (ver bases)"}
+            return {"puntaje": _acotar(a + b * region_pts), "porRegion": [a, b], "motivo": motivo,
+                    "corto": "Visita sin confirmar (ver bases)"}
         obligatoria = v["obligatoria"]
         dias = self._dias_para(fecha)
         cuando = mp._fecha_corta(fecha) + (f" {fecha[11:16]}" if len(fecha) > 11 else "")
@@ -788,14 +1108,15 @@ class Evaluador:
             reglas = self.c["visitaPasada"]
             return {"puntaje": reglas["optativa"] if obligatoria is False else reglas["obligatoriaODuda"],
                     "motivo": f"visita {tipo} el {cuando}: ya pasó", "corto": "La visita a terreno ya pasó"}
-        p = 40 + 0.5 * region_pts           # ir cuesta más mientras más lejos
+        a, b = 40, 0.5                       # ir cuesta más mientras más lejos
         if dias is not None and dias < 2:
-            p -= 20
+            a -= 20
         if obligatoria is False:
-            p = (p + 100) / 2
+            a, b = (a + 100) / 2, b / 2
+        p = a + b * region_pts
         corto = ("Visita optativa" if obligatoria is False else "Visita obligatoria" if obligatoria else "Visita a terreno") \
             + f" el {mp._fecha_corta(fecha)[:5]}"
-        return {"puntaje": _acotar(p), "motivo": f"visita {tipo} el {cuando}"
+        return {"puntaje": _acotar(p), "porRegion": [a, b], "motivo": f"visita {tipo} el {cuando}"
                 + (f" (en {dias:.0f} día(s))" if dias is not None else "") + otras
                 + (f": {v['lugar']}" if v.get("lugar") else ""), "corto": corto}
 
@@ -1024,7 +1345,7 @@ def _revisar_compras_agiles(cliente_ca, estado: dict, evaluador: Evaluador, conf
                 activas[codigo] = fila
     est["activas"] = activas
     est["consultado"] = ahora.isoformat(timespec="seconds")
-    candidatas = sorted(((evaluador.prefiltro(v["nombre"] or ""), c) for c, v in activas.items()), reverse=True)
+    candidatas = sorted(((evaluador.prefiltro(v["nombre"] or "", v.get("region")), c) for c, v in activas.items()), reverse=True)
     est["candidatas"] = [c for p, c in candidatas if p > 0][: cfg["maxCandidatas"]]
     for codigo in est["candidatas"]:
         previa = fichas.get(codigo)
@@ -1086,9 +1407,84 @@ def _leer_visitas_bases(fichas: dict, candidatas: list[str], config: dict, abrir
     return []
 
 
+# ── AJUSTES DEL EQUIPO: buzón → publicado/oportunidades-ajustes.json ────────
+
+PUBLICACION_AJUSTES = "oportunidades-ajustes"
+TIPO_AJUSTES = "ajustes-oportunidades"
+MAX_HISTORIAL_AJUSTES = 30
+
+
+def leer_ajustes(raiz: Path | None) -> dict | None:
+    """Lo vigente de «Qué buscamos» (la última versión guardada por el equipo)."""
+    if not raiz:
+        return None
+    sobre = intercambio.leer_publicacion(raiz, PUBLICACION_AJUSTES)
+    return (sobre or {}).get("datos") or None
+
+
+def _resumen_cambios(antes: dict, despues: dict, config: dict) -> list[str]:
+    """Qué cambió, en frases cortas, para el historial."""
+    salida = []
+    nombres = {t["id"]: t["nombre"] for t in temas_de(config)}
+    niv = {**{k: v["nombre"] for k, v in niveles_de(config).items()}, NIVEL_NO: "No es lo nuestro"}
+    previos = {t["id"]: t["interes"] for t in temas_de(aplicar_ajustes(config, antes))}
+    for tid, t in (despues.get("temas") or {}).items():
+        if previos.get(tid) != t["interes"]:
+            salida.append(f"{nombres.get(tid, tid)} → {niv.get(t['interes'], t['interes'])}")
+    for k, txt in (("excluir", "palabras que descartan"), ("noConfundir", "no confundir")):
+        a, d = set((antes or {}).get(k) or []), set(despues.get(k) or [])
+        if k in despues and a != d:
+            salida.append(f"{txt}: " + ", ".join([f"+{x}" for x in sorted(d - a)] + [f"−{x}" for x in sorted(a - d)])[:200])
+    for k, v in (despues.get("regiones") or {}).items():
+        if ((antes or {}).get("regiones") or {}).get(k, config["regiones"].get(k)) != v:
+            salida.append(f"{NOMBRE_REGION.get(k, k)}: {v}")
+    for k, v in (despues.get("monto") or {}).items():
+        if ((antes or {}).get("monto") or {}).get(k, "?") != v:
+            salida.append(f"monto {k}: {_pesos(v) if v else 'sin límite'}")
+    return salida
+
+
+def atender_ajustes(raiz: Path | None, config: dict | None = None) -> list[str]:
+    """Aplica los «ajustes-oportunidades» del buzón, en orden de envío: cada
+    uno trae la versión completa de lo que se puede cambiar, así que gana el
+    último. Publica la versión vigente con su historial y archiva cada
+    mensaje después de publicar (si algo falla, sigue en el buzón)."""
+    if not raiz:
+        return []
+    validos, _ = intercambio.leer_buzon(raiz, destino=HERRAMIENTA, tipo=TIPO_AJUSTES)
+    if not validos:
+        return []
+    config = config or cargar_config()
+    actual = leer_ajustes(raiz) or {}
+    vigentes, historial = actual.get("ajustes") or {}, list(actual.get("historial") or [])
+    avisos, hechos = [], []
+    for msg in validos:
+        limpio, ignorado = limpiar_ajustes(msg.get("ajustes"), config)
+        origen = msg.get("origen") or {}
+        if not any(limpio.values()):            # todo lo que traía era inválido: no borra lo vigente
+            hechos.append((msg, "rechazado", ["no trae ajustes válidos"] + ignorado))
+            continue
+        cambios = _resumen_cambios(vigentes, limpio, config)
+        vigentes = limpio
+        historial.insert(0, {"id": msg["id"], "fecha": origen.get("enviado"), "usuario": origen.get("usuario"),
+                             "cambios": cambios or ["sin cambios"]})
+        hechos.append((msg, "aplicado" if cambios else "sin-cambios", cambios + [f"se ignoró {x}" for x in ignorado]))
+        avisos.append(f"«Qué buscamos»: {origen.get('usuario') or 'alguien'} cambió " + (", ".join(cambios[:4]) or "nada"))
+    ultimo = next((m for m, e, _ in reversed(hechos) if e != "rechazado"), None)
+    if ultimo:
+        datos = {"actualizado": (ultimo.get("origen") or {}).get("enviado"), "mensaje": ultimo["id"],
+                 "usuario": (ultimo.get("origen") or {}).get("usuario"), "ajustes": vigentes,
+                 "historial": [dict((k, v) for k, v in h.items() if v is not None) for h in historial[:MAX_HISTORIAL_AJUSTES]]}
+        datos = {k: v for k, v in datos.items() if v is not None}
+        intercambio.publicar(raiz, PUBLICACION_AJUSTES, HERRAMIENTA, datos)
+    for msg, estado, detalle in hechos:
+        intercambio.archivar(raiz, msg, estado, detalle)
+    return avisos
+
+
 def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: Path | None = None,
             config: dict | None = None, ahora: datetime | None = None, sin_red: bool = False,
-            reqs: list[dict] | None = None, cliente_ca=None, abrir_ficha=None) -> dict:
+            reqs: list[dict] | None = None, cliente_ca=None, abrir_ficha=None, atender: bool = True) -> dict:
     """Una vuelta completa. Devuelve {'datos': publicación, 'llamadas', 'avisos'}.
     Con 'enviar' publica oportunidades.json en la carpeta de intercambio; sin
     él solo consulta (actualiza la caché local). Con 'sin_red' evalúa con lo
@@ -1101,11 +1497,17 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
     con la ficha de las bases (la visita a terreno): se lee en una vuelta
     real o con 'abrir_ficha'."""
     config = config or cargar_config()
+    avisos: list[str] = []
+    # Lo que el equipo cambió en «Qué buscamos» (el tablero, 2026-11-16) va encima de la configuración.
+    # 'atender' archiva los pedidos del buzón; `status` solo los mira.
+    if raiz and atender:
+        avisos += atender_ajustes(raiz, config)
+    ajustes_vigentes = leer_ajustes(raiz)
+    config = aplicar_ajustes(config, (ajustes_vigentes or {}).get("ajustes"))
     ahora = ahora or datetime.now()
     ruta_estado = ruta_estado or RUTA_ESTADO
     estado = _leer_estado(ruta_estado)
     fichas = estado.setdefault("fichas", {})
-    avisos: list[str] = []
     incompleta = False
 
     if reqs is None:
@@ -1215,7 +1617,7 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
     rango_categoria = {c["id"]: i for i, c in enumerate(sorted(config["categorias"], key=lambda c: -c["desde"]))}
     oportunidades.sort(key=lambda o: (rango_categoria.get(o["categoria"], len(rango_categoria)), -o["puntaje"]))
 
-    datos = publicacion(oportunidades, evaluador, historia, config, estado, avisos, incompleta, ahora)
+    datos = publicacion(oportunidades, evaluador, historia, config, estado, avisos, incompleta, ahora, ajustes_vigentes)
     sobre_pub = {"esquema": intercambio.ESQUEMA, "herramienta": HERRAMIENTA, "generado": intercambio.ahora_iso(), "datos": datos}
     errores = esquemas.validar_publicacion(PUBLICACION, sobre_pub)
     if errores:
@@ -1230,7 +1632,8 @@ def _monto_habitual(rango: dict) -> dict:
     return dict({k: (round(v) if v else None) for k, v in rango.items() if k != "maximoFijo"}, maximoFijo=rango["maximoFijo"])
 
 
-def publicacion(oportunidades, evaluador: Evaluador, historia: Historia, config, estado, avisos, incompleta, ahora) -> dict:
+def publicacion(oportunidades, evaluador: Evaluador, historia: Historia, config, estado, avisos, incompleta, ahora,
+                ajustes_vigentes: dict | None = None) -> dict:
     mercado = evaluador.mercado
     fechas = sorted(m["fecha"] for m in mercado if m.get("fecha"))
     pesos = config["pesos"]
@@ -1240,6 +1643,19 @@ def publicacion(oportunidades, evaluador: Evaluador, historia: Historia, config,
         "criterios": [{"id": i, "nombre": n, "peso": pesos[i], "descripcion": d} for i, n, d in CRITERIOS],
         "categorias": config["categorias"],
         "topesPorRubro": config.get("topesPorRubro", []),
+        # «Qué buscamos»: lo que la página muestra y deja cambiar (con lo del equipo ya aplicado).
+        "rubro": {"temas": [{k: t.get(k) for k in ("id", "nombre", "interes", "frases")} for t in evaluador.temas],
+                  "niveles": evaluador.niveles, "noConfundir": evaluador.no_confundir,
+                  "excluir": config["rubro"].get("excluir", []),
+                  "regiones": {k: v for k, v in config["regiones"].items() if not k.startswith("_")},
+                  "nombresRegion": NOMBRE_REGION,
+                  "regionSinDato": config["regiones"].get("_sinRegion", 50),
+                  "montoMinimo": config["monto"].get("minimo"),
+                  "montoMinimoCompraAgil": config.get("compraAgil", {}).get("monto", {}).get("minimo"),
+                  "montoMaximo": config["monto"].get("maximo"),
+                  "categoriaBajoMinimo": config["monto"].get("categoriaBajoMinimo", "baja"),
+                  "ajustes": {k: (ajustes_vigentes or {}).get(k) for k in ("mensaje", "actualizado", "usuario")},
+                  "historial": ((ajustes_vigentes or {}).get("historial") or [])[:10]},
         # Lo que la página recalcula con la fecha del día (una licitación se
         # mira días después de evaluada): misma tabla que usa Evaluador.
         "reglas": {"plazoOferta": config["plazoOferta"]["tramos"], "visitaPasada": config["visitaPasada"],
@@ -1286,7 +1702,8 @@ def main(argv=None) -> int:
         return 2
     raiz = _raiz()
     try:
-        r = revisar(raiz, enviar=orden == "revisar", sin_red="--sin-red" in argv)
+        r = revisar(raiz, enviar=orden == "revisar", sin_red="--sin-red" in argv,
+                    atender=orden == "revisar")
     except mp.ErrorMercadoPublico as error:
         print(f"[ERROR] {error}")
         return 1

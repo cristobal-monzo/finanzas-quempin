@@ -41,7 +41,7 @@ PUBLICACION = "centro-costos-carpetas"
 CARPETA_ADJUNTOS = "adjuntos"
 DIAS_ESPERA = 7
 EXTENSIONES = {".pdf", ".png", ".jpg", ".jpeg", ".heic"}   # las de auditor_centro_costos.EXTENSIONES_VALIDAS
-_CON_NUMERO = re.compile(r"^\s*(\d{1,4})\s*[.\-_)]")
+_CON_NUMERO = re.compile(r"^\s*(\d{1,4}t?)\s*[.\-_)]", re.IGNORECASE)
 
 
 def _clave(nombre: str) -> str:
@@ -210,7 +210,7 @@ def listar(base: Path | None) -> list[dict]:
             documentos = sum(1 for f in h.rglob("*") if f.is_file() and f.suffix.lower() in EXTENSIONES)
         except OSError:
             documentos = 0
-        salida.append({"nombre": h.name, "req": str(int(n.group(1))) if n else None, "documentos": documentos})
+        salida.append({"nombre": h.name, "req": (n.group(1).lower() if n.group(1)[-1:].lower() == "t" else str(int(n.group(1)))) if n else None, "documentos": documentos})
     return salida
 
 
