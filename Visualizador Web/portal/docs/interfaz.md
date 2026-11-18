@@ -212,3 +212,19 @@ explica va en un ícono. Regla para lo que venga: **en la pantalla, el dato y la
 navegador, en `quempin_portal_uso` (90 días). Volver a la misma pestaña sin pasar por otra no cuenta; el Inicio no
 cuenta. Se guarda en `publicado/uso-portal/<dispositivo>.json` como mucho cada 2 minutos y al ocultar la pestaña,
 **sin usuario**. Lo suma `Sistema Intercambio/uso_portal.py`.
+
+## Al día sin F5 (2026-11-18)
+
+Pedido del usuario: el equipo no veía lo publicado porque no recargaba. Sección `ad*` de `index.html`.
+
+- Cada 5 minutos (y al volver a la pestaña, si pasó más de 1 minuto) el Portal pide al sitio su propia página y la de
+  cada herramienta abierta, con sus scripts y hojas de estilo del mismo sitio (`fetch` con `cache: 'no-cache'`).
+- GitHub Pages cambia el ETag y el Last-Modified de **todos** los archivos en cada publicación. Por eso el ETag
+  solo decide si bajar el archivo; lo que cuenta es el SHA-256 del contenido, contra la base tomada al cargar.
+- Lo nuevo se carga solo si no se pierde nada: herramienta escondida o ventana en otra pestaña, al tiro; lo que se
+  ve, después de 10 minutos sin tocarlo. Nunca con un diálogo abierto, un campo con el foco o algo por guardar
+  (`planif`/`ej` y sus `_pendiente`). Mientras tanto, un aviso con «Actualizar».
+- Los datos del equipo ya llegaban solos en Planificación, Ejecución y Requerimientos; el Inicio y el Recorrido se
+  releen cada 2 minutos mientras se miran.
+- Prueba: `test_lo_publicado_de_nuevo_se_carga_sin_f5` (reloj de Playwright con `fast_forward`; `run_for` corre
+  cada temporizador de 100 ms y tarda 100 s).

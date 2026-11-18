@@ -879,6 +879,62 @@ def test_las_pestanas_vuelven_al_recargar_y_solo_carga_la_activa(navegador, siti
     pagina.context.close()
 
 
+def test_lo_publicado_de_nuevo_se_carga_sin_f5(navegador, tmp_path):
+    """Al día sin F5 (2026-11-18): una herramienta escondida que cambió en el sitio se recarga al tiro; la que se ve,
+    tras 10 minutos sin tocarla (antes, un aviso con «Actualizar»); el Portal también. Con el reloj de Playwright."""
+    _sitio(tmp_path)
+    servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(_Silencioso, directory=str(tmp_path)))
+    threading.Thread(target=servidor.serve_forever, daemon=True).start()
+    sitio = f"http://127.0.0.1:{servidor.server_address[1]}"
+    ctx = navegador.new_context(viewport={"width": 1280, "height": 860})
+    ctx.add_init_script("if (window === window.top && !localStorage.getItem('quempin_viz_clave')) localStorage.setItem('quempin_viz_clave', 'clave-de-mentira');")
+    pagina = ctx.new_page()
+    errores = []
+    pagina.on("pageerror", lambda e: errores.append(str(e)))
+    try:
+        pagina.clock.install()
+        pagina.goto(sitio + "/finanzas-quempin/portal/")
+        pagina.locator("#vistaInicio").wait_for()
+        _menu(pagina, "Centro de Costos")
+        _marco(pagina, "centro-costos", "cc")
+        _menu(pagina, "Flujo de Caja")
+        _marco(pagina, "flujo-caja", "fc")
+        pagina.evaluate("window.__sinRecargar = 1")
+        pagina.clock.run_for(2000)
+        pagina.wait_for_timeout(500)                         # las bases se leen con fetch de verdad
+
+        def cambiar(ruta):
+            f = tmp_path / ruta / "index.html"
+            f.write_text(f.read_text(encoding="utf-8") + "\n<!-- otra publicación -->", encoding="utf-8")
+
+        def cargas(familia):
+            return pagina.evaluate(f"document.getElementById('marco-{familia}').contentDocument.body.dataset.cargas")
+
+        # La escondida (Centro de Costos) se recarga en la próxima revisión; la que se ve (Flujo de Caja), recién tocada, avisa
+        cambiar("finanzas-quempin/centro-de-costos")
+        cambiar("finanzas-quempin/flujo-de-caja")
+        pagina.mouse.move(400, 400)
+        pagina.clock.fast_forward(301_000)
+        pagina.wait_for_function("() => document.getElementById('marco-centro-costos').contentDocument.body.dataset.cargas === '2'")
+        _esperar_aviso(pagina, "Hay una versión nueva de «Flujo de Caja»")
+        assert cargas("flujo-caja") == "1"
+        # Diez minutos sin tocarla: se recarga sola
+        pagina.clock.fast_forward(601_000)
+        _esperar(pagina, "flujo-caja", "cargas", "2")
+        # Lo que cambió en las herramientas no recargó el Portal
+        assert pagina.evaluate("window.__sinRecargar") == 1
+        # El Portal nuevo, sin tocar nada: se recarga y vuelven sus pestañas
+        cambiar("finanzas-quempin/portal")
+        pagina.clock.fast_forward(301_000)
+        pagina.wait_for_function("() => window.__sinRecargar === undefined")
+        pagina.locator("#vistaInicio").wait_for(state="attached")
+        assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Flujo de Caja"]
+        assert not errores
+    finally:
+        ctx.close()
+        servidor.shutdown()
+
+
 def test_una_pestana_por_herramienta_y_no_mas_de_ocho_cargadas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     nombres = ["Centro de Costos", "Análisis Financiero", "Ingresar avance", "Flujo de Caja", "Cotizador Histórico",
