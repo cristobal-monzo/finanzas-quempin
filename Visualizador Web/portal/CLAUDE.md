@@ -9,7 +9,8 @@ herramienta pide la del equipo, que el navegador recuerda.
 
 ## Cómo moverse por el archivo
 
-**~12 000 líneas y 850 KB: nunca lo leas entero.** Mapa de secciones:
+**~21 000 líneas y 1,35 MB (2026-11-18): nunca lo leas entero.** Se partirá en archivos por vista (fase B de
+`docs/plans/2026-11-18-mejoras-portal.md`). Mapa de secciones:
 `Grep "^\s*(//|/\*) ---- "` en `index.html`; después `Read` con `offset`/`limit`.
 Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 
@@ -21,7 +22,7 @@ Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 | Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
 | Requerimientos, antes «Planilla de Ingreso» (`planilla`) | `#vistaPlanilla` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
 | Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
-| Clic derecho (menú del portal) y reportar errores y observaciones (`observaciones`) | `#menuCtx`, `#dlgObs`, `#vistaObservaciones` | `ctx*`, `obs*`, `obs` | [docs/observaciones.md](docs/observaciones.md) |
+| Clic derecho (menú del portal) y reportar errores y observaciones (`observaciones`); los errores de JavaScript se envían solos | `#menuCtx`, `#dlgObs`, `#vistaObservaciones` | `ctx*`, `obs*`, `obs`, `er*`, `er` | [docs/observaciones.md](docs/observaciones.md) |
 | Subir documentos (`subir-cc`) | `#vistaSubir` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |
 | Rendiciones (`rendiciones`): fotos de boletas → tabla → PDF y Centro de Costos | `#vistaRendir` | `rd*`, `rd` | [docs/rendiciones.md](docs/rendiciones.md) |
 | Configuración y conexiones (`conexiones`) | `#vistaConexiones` | `portal-conexiones` | [docs/interfaz.md](docs/interfaz.md) |

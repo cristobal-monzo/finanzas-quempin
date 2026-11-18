@@ -18,6 +18,24 @@
       "type": "boolean",
       "description": "true: «me impide seguir trabajando»"
     },
+    "automatico": {
+      "type": "boolean",
+      "description": "true (2026-11-18): no lo escribió una persona; el Portal lo envió solo al ver un error de JavaScript. Lleva 'tecnico' y no lleva imágenes. La nota la arma el Portal."
+    },
+    "tecnico": {
+      "type": "object",
+      "description": "El error de JavaScript que vio el navegador (solo en los automáticos). En una herramienta con datos delicados (Flujo de Caja) no lleva pila.",
+      "properties": {
+        "mensaje": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "archivo": { "type": "string", "maxLength": 300, "description": "La dirección del script, sin ? ni #" },
+        "linea": { "type": "integer", "minimum": 0 },
+        "columna": { "type": "integer", "minimum": 0 },
+        "pila": { "type": "string", "maxLength": 4000 },
+        "tipo": { "enum": ["error", "promesa"], "description": "error: excepción sin atrapar. promesa: una promesa rechazada sin catch." },
+        "firma": { "type": "string", "minLength": 1, "maxLength": 200, "description": "herramienta|mensaje|archivo|línea: agrupa el mismo error visto por varias personas" }
+      },
+      "required": ["mensaje", "firma"]
+    },
     "donde": {
       "type": "object",
       "description": "Dónde estaba la persona. Lo arma el Portal; en una herramienta con datos delicados (Flujo de Caja) no lleva texto del elemento ni selección.",

@@ -132,6 +132,9 @@ def desde_estado(estado: dict | None, ahora: datetime) -> list[Pendiente]:
         if not n:
             continue
         que, accion = ACCION_BUZON.get(destino, (f"mensaje(s) para {destino}", ""))
+        autos = int((info or {}).get("automaticos") or 0)
+        if autos:
+            que += f" ({autos} enviados solos por el Portal al ver un error)"
         antiguo = _fecha_local((info or {}).get("masAntiguo"))
         desde = f", el mas antiguo del {antiguo:%d-%m}" if antiguo else ""
         dias = dias_habiles(antiguo, ahora) if antiguo else 0

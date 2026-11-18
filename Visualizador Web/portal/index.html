@@ -3218,6 +3218,11 @@
   .obs-fila-res { margin: 2px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--page-plane); font-size: 13.5px; line-height: 1.45; color: var(--text-secondary); overflow-wrap: anywhere; }
   .obs-fila-res strong { color: var(--text-primary); }
   .obs-retirar { margin-top: 2px; }
+  /* Errores detectados solos (2026-11-18): plegados, aparte de lo que escribe el equipo */
+  .obs-auto[hidden] { display: none; }
+  .obs-auto > summary { cursor: pointer; padding: 6px 0; font-size: 14px; font-weight: 700; color: var(--text-secondary); }
+  .obs-auto > .obs-lista { margin-top: 8px; }
+  .obs-fila-tec { margin: 0; font: 12.5px/1.45 ui-monospace, Consolas, monospace; color: var(--texto-suave); overflow-wrap: anywhere; }
   @media (max-width: 760px) {
     .obs-campo select, .obs-campo textarea { font-size: 16px; }
   }
@@ -3570,6 +3575,10 @@
                 <span class="rc-cuenta" id="obsCuenta" role="status"></span>
               </div>
               <ul class="obs-lista" id="obsLista"></ul>
+              <details class="obs-auto" id="obsAuto" hidden>
+                <summary id="obsAutoResumen"></summary>
+                <ul class="obs-lista" id="obsAutoLista"></ul>
+              </details>
             </div>
           </div>
         </section>
@@ -4454,6 +4463,43 @@
 </script>
 
 <script>
+/* Errores sin aviso (2026-11-18, plan docs/plans/2026-11-18-mejoras-portal.md, fase A): se escucha desde antes de que
+   arranque el Portal, para no perder un error del arranque. Mientras el Portal no se engancha (oir), cada error queda en
+   quempin_portal_errores_arranque (máx. 5): si el arranque se cae, sale en la próxima visita. La sección «Errores sin
+   aviso» (er*) arma el mensaje y lo envía. leer() también la usa el Portal para los errores de cada herramienta. */
+window.__qpnErrores = (function () {
+  'use strict';
+  const CLAVE = 'quempin_portal_errores_arranque';
+  const MARCO = /\(?((?:https?|file):\/\/[^\s)]+?):(\d+):(\d+)\)?/;
+  function leer(ev) {
+    const promesa = ev.type === 'unhandledrejection';
+    const x = promesa ? ev.reason : ev.error;
+    let mensaje = '';
+    let pila = '';
+    try { mensaje = promesa ? (x && x.message) || String(x) : ev.message || (x && x.message) || ''; } catch (e) { mensaje = 'Error sin texto'; }
+    try { pila = x && x.stack ? String(x.stack) : ''; } catch (e) { pila = ''; }
+    const r = { tipo: promesa ? 'promesa' : 'error', mensaje: String(mensaje), archivo: promesa ? '' : String(ev.filename || ''),
+      linea: promesa ? null : ev.lineno, columna: promesa ? null : ev.colno, pila };
+    const m = !r.archivo && MARCO.exec(pila);
+    if (m) { r.archivo = m[1]; r.linea = Number(m[2]); r.columna = Number(m[3]); }
+    return r;
+  }
+  const q = { leer, oir: null, CLAVE };
+  function tomar(ev) {
+    try {
+      const r = leer(ev);
+      if (q.oir) { q.oir(r); return; }
+      const lista = JSON.parse(localStorage.getItem(CLAVE) || '[]');
+      if (Array.isArray(lista) && lista.length < 5) { lista.push(r); localStorage.setItem(CLAVE, JSON.stringify(lista)); }
+    } catch (e) { /* anotar un error nunca produce otro */ }
+  }
+  window.addEventListener('error', tomar);
+  window.addEventListener('unhandledrejection', tomar);
+  return q;
+})();
+</script>
+
+<script>
 (function () {
   'use strict';
 
@@ -5230,6 +5276,11 @@
     }, true);
     doc.addEventListener('keydown', teclas, true);
     doc.addEventListener('contextmenu', (e) => ctxDesdeEvento(e, p));
+    // Sus errores de JavaScript llegan solos a «Errores y observaciones» (2026-11-18, sección «Errores sin aviso»).
+    // Los de antes de engancharse (mientras carga) no se ven.
+    const alError = (e) => { try { erTomar(window.__qpnErrores.leer(e), p.herr, w); } catch (z) { /* nunca otro error */ } };
+    w.addEventListener('error', alError);
+    w.addEventListener('unhandledrejection', alError);
     // Lo que muestra (la ruta del Formulador, el proyecto de un tablero) se recuerda para la próxima visita.
     w.addEventListener('hashchange', () => {
       try { p.ultima = w.location.pathname + w.location.search + w.location.hash; } catch (e) { return; }
@@ -20178,7 +20229,10 @@
       clase: texto(m.clase), nota: texto(m.nota), bloquea: !!m.bloquea,
       lugar: (Array.isArray(d.ruta) && d.ruta.length ? d.ruta.map(texto) : [texto(d.nombre) || texto(d.herramienta)]).filter(Boolean).join(' › '),
       n: Array.isArray(m.adjuntos) ? m.adjuntos.length : 0,
-      estado: pendiente ? 'pendiente' : texto(r.estado), detalle: Array.isArray(r.detalle) ? r.detalle.map(texto).filter(Boolean) : []
+      estado: pendiente ? 'pendiente' : texto(r.estado), detalle: Array.isArray(r.detalle) ? r.detalle.map(texto).filter(Boolean) : [],
+      automatico: m.automatico === true, firma: texto(m.tecnico && m.tecnico.firma) || texto(m.id),
+      tecnico: m.tecnico && typeof m.tecnico === 'object'
+        ? [texto(m.tecnico.archivo) && erCamino(texto(m.tecnico.archivo)), m.tecnico.linea].filter((x) => x !== '' && x != null).join(':') : ''
     };
   }
   async function obsLeer(dir) {
@@ -20239,8 +20293,10 @@
     $('#obsMiasQuien').hidden = !estado.usuario;
     $('#obsMias').disabled = !estado.usuario;
     $('#obsMias').checked = mias;
-    const lista = obs.lista.filter((o) => !mias || o.usuario === estado.usuario).sort((a, b) =>
-      (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1) || b.enviado.localeCompare(a.enviado));
+    const orden = (a, b) => (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1) || b.enviado.localeCompare(a.enviado);
+    const todas = obs.lista.filter((o) => !mias || o.usuario === estado.usuario);
+    const lista = todas.filter((o) => !o.automatico).sort(orden);
+    obsPintarAutomaticos(todas.filter((o) => o.automatico));
     const por = lista.filter((o) => o.estado === 'pendiente').length;
     $('#obsCuenta').textContent = lista.length ? por + ' por revisar de ' + pl(lista.length, 'observación', 'observaciones') : '';
     const ul = $('#obsLista');
@@ -20250,6 +20306,28 @@
       return;
     }
     lista.forEach((o) => ul.append(obsFila(o)));
+  }
+  // Los errores que el Portal envió solo (2026-11-18): una fila por firma, con cuántas veces y cuántas personas.
+  function obsPintarAutomaticos(autos) {
+    const grupos = new Map();
+    autos.forEach((o) => {
+      const g = grupos.get(o.firma);
+      const pend = o.estado === 'pendiente';
+      if (!g) { grupos.set(o.firma, { o, veces: 1, personas: new Set(o.usuario ? [o.usuario] : []), pend }); return; }
+      g.veces++;
+      if (o.usuario) g.personas.add(o.usuario);
+      g.pend = g.pend || pend;
+      if (o.enviado > g.o.enviado) g.o = o;
+    });
+    const filas = Array.from(grupos.values()).map((g) => Object.assign({}, g.o, {
+      estado: g.pend ? 'pendiente' : g.o.estado, veces: g.veces, personas: g.personas.size
+    })).sort((a, b) => (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1) || b.enviado.localeCompare(a.enviado));
+    $('#obsAuto').hidden = !filas.length;
+    const por = filas.filter((o) => o.estado === 'pendiente').length;
+    $('#obsAutoResumen').textContent = 'Errores detectados solos: ' + pl(filas.length, 'error', 'errores') + (por ? ', ' + por + ' por revisar' : '');
+    const ul = $('#obsAutoLista');
+    ul.textContent = '';
+    filas.forEach((o) => ul.append(obsFila(o)));
   }
   function obsFila(o) {
     const li = crear('li', 'obs-fila');
@@ -20263,13 +20341,15 @@
     li.append(cab, crear('p', 'obs-fila-nota', o.nota));
     const fecha = o.enviado ? new Date(o.enviado) : null;
     const cuando = fecha && !isNaN(fecha) ? fecha.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-    li.append(crear('span', 'sc-env-det', [o.lugar, o.usuario, cuando, o.n ? pl(o.n, 'imagen', 'imágenes') : ''].filter(Boolean).join(' · ')));
+    if (o.automatico && o.tecnico) li.append(crear('p', 'obs-fila-tec', o.tecnico));
+    const veces = o.veces > 1 ? 'visto ' + o.veces + ' veces' + (o.personas > 1 ? ' por ' + o.personas + ' personas' : '') : '';
+    li.append(crear('span', 'sc-env-det', [o.lugar, veces || o.usuario, cuando, o.n ? pl(o.n, 'imagen', 'imágenes') : ''].filter(Boolean).join(' · ')));
     if (o.detalle.length) {
       const res = crear('p', 'obs-fila-res');
       res.append(crear('strong', null, 'Respuesta: '), o.detalle.join(' '));
       li.append(res);
     }
-    if (o.estado === 'pendiente' && estado.usuario && o.usuario === estado.usuario) {
+    if (!o.automatico && o.estado === 'pendiente' && estado.usuario && o.usuario === estado.usuario) {
       const b = crear('button', 'cx-enlace obs-retirar', 'Retirar');
       b.type = 'button';
       b.addEventListener('click', () => obsRetirar(o, b));
@@ -20307,6 +20387,137 @@
   });
   $('#obsMias').addEventListener('change', (e) => { obs.soloMias = e.target.checked; obsPintar(); });
   $('#obsNueva').addEventListener('click', () => obsAbrir(null));
+
+  // ---- Errores sin aviso (2026-11-18) -----------------------------------------------------------------------------------
+  /* Plan docs/plans/2026-11-18-mejoras-portal.md, fase A: un error de JavaScript en el PC de un colega no le llegaba a
+     nadie. Ahora el Portal (y cada herramienta que abre, ver enganchar) lo envía solo como «observacion» con
+     automatico: true y su detalle técnico, sin imagen. Frenos: la misma firma (herramienta, mensaje, archivo, línea) una
+     vez al día por navegador, y a lo más ER_POR_SESION por visita. Sin permiso de escritura en la carpeta (no se pide:
+     no hay un clic), espera en quempin_portal_errores_pendiente y sale en la próxima ocasión. En una herramienta
+     sinCaptura (Flujo de Caja) no va la pila ni la ruta interna (#…). */
+  const ER_POR_SESION = 5;
+  const ER_PENDIENTES_MAX = 20;
+  const ER_PILA_MAX = 4000;
+  const ER_VISTOS = 'quempin_portal_errores_vistos';
+  const ER_PENDIENTE = 'quempin_portal_errores_pendiente';
+  // Ruido conocido: el aviso inofensivo de ResizeObserver y «Script error.» (de otro sitio: no trae nada que sirva)
+  const ER_IGNORAR = /ResizeObserver loop|^(Uncaught )?Script error\.?$/i;
+  const ER_EXTENSION = /^(chrome|moz|safari(-web)?|ms-browser)-extension:/i;
+  const er = { tomados: 0, enviando: false };
+  function erLeer(clave, porDefecto) {
+    try { const v = JSON.parse(localStorage.getItem(clave)); return v == null ? porDefecto : v; } catch (e) { return porDefecto; }
+  }
+  function erGuardar(clave, v) {
+    try { localStorage.setItem(clave, JSON.stringify(v)); } catch (e) { /* sin almacenamiento: se pierde, no molesta */ }
+  }
+  const erSinRutaInterna = (u) => String(u || '').split(/[?#]/)[0];
+  function erCamino(u) { try { return new URL(u).pathname; } catch (e) { return erSinRutaInterna(u); } }
+  const erEntero = (n) => (Number.isInteger(n) && n >= 0 ? n : null);
+  // La herramienta de un error del propio Portal: la vista que se ve, si es del Portal; si no, el Portal en general.
+  function erHerrDelPortal() {
+    const a = pestanaDe(estado.activa);
+    if (!a) return estado.activa === 'inicio' ? 'inicio' : 'portal';
+    return ctxConMarco(a) ? 'portal' : a.herr;
+  }
+  // Lo que se guarda y se envía; null si es ruido.
+  function erArmar(r, herr, w) {
+    const mensaje = obsCorto(r && r.mensaje, 300);
+    if (!mensaje || ER_IGNORAR.test(mensaje) || ER_EXTENSION.test(r.archivo || '')) return null;
+    const h = HERR.get(herr);
+    const sinDatos = !!(h && h.sinCaptura);
+    const archivo = erSinRutaInterna(r.archivo).slice(0, 300);
+    const linea = erEntero(r.linea);
+    const firma = [herr || 'portal', mensaje, erCamino(archivo), linea == null ? '' : linea].join('|').slice(0, 200);
+    const tecnico = { tipo: r.tipo === 'promesa' ? 'promesa' : 'error', mensaje, firma };
+    if (archivo) tecnico.archivo = archivo;
+    if (linea != null) tecnico.linea = linea;
+    if (erEntero(r.columna) != null) tecnico.columna = r.columna;
+    if (!sinDatos && r.pila) tecnico.pila = String(r.pila).slice(0, ER_PILA_MAX);
+    const nombre = h ? h.nombre : 'El portal en general';
+    const donde = { herramienta: herr || 'portal', nombre, ruta: [nombre] };
+    if (h && h.peru) donde.pais = estado.pais === 'pe' ? 'PE' : 'CL';
+    const versiones = {};
+    const sello = document.querySelector('meta[name="quempin-version"]');
+    if (sello && sello.content) versiones.codigo = sello.content;
+    try {
+      donde.direccion = (sinDatos ? erSinRutaInterna(w.location.href) : w.location.href).slice(0, 500);
+      if (w !== window) versiones.herramienta = w.document.lastModified;
+    } catch (e) { /* el marco ya no está */ }
+    let ventana = null;
+    try { ventana = { ancho: w.innerWidth, alto: w.innerHeight }; } catch (e) { ventana = null; }
+    const entorno = { navegador: obsNavegador(), movil: MOVIL.matches, versiones };
+    if (ventana) entorno.ventana = ventana;
+    return { firma, cuando: scAhora(), usuario: estado.usuario || '', donde, entorno, tecnico };
+  }
+  function erTomar(r, herr, w) {
+    let m = null;
+    try { m = erArmar(r, herr, w || window); } catch (e) { m = null; }
+    if (!m || er.tomados >= ER_POR_SESION) return;
+    const hoy = m.cuando.slice(0, 10);
+    const vistos = erLeer(ER_VISTOS, {});
+    if (vistos[m.firma] === hoy) return;
+    er.tomados++;
+    Object.keys(vistos).forEach((k) => { if (vistos[k] !== hoy) delete vistos[k]; });
+    vistos[m.firma] = hoy;
+    erGuardar(ER_VISTOS, vistos);
+    const cola = erLeer(ER_PENDIENTE, []);
+    const lista = Array.isArray(cola) ? cola : [];
+    lista.push(m);
+    erGuardar(ER_PENDIENTE, lista.slice(-ER_PENDIENTES_MAX));
+    erEnviar();
+  }
+  function erMensaje(m, id) {
+    const origen = { herramienta: 'portal', enviado: m.cuando };
+    if (m.usuario) origen.usuario = m.usuario;
+    return {
+      esquema: 'quempin.intercambio/1', id, tipo: 'observacion', destino: 'mejora-continua', origen, clase: 'error',
+      automatico: true, nota: obsCorto('Error automático: ' + m.tecnico.mensaje, 320), donde: m.donde, entorno: m.entorno,
+      tecnico: m.tecnico
+    };
+  }
+  // Envía lo que espera, del más antiguo al más nuevo. Sin permiso ya dado, no hace nada: no se pide sin un clic.
+  async function erEnviar() {
+    if (er.enviando) return;
+    const leida = erLeer(ER_PENDIENTE, []);
+    const cola = (Array.isArray(leida) ? leida : []).filter((m) => m && m.tecnico && typeof m.cuando === 'string' && m.donde);
+    if (cola.length !== (Array.isArray(leida) ? leida.length : -1)) erGuardar(ER_PENDIENTE, cola);   // lo ilegible se bota
+    if (!cola.length) return;
+    er.enviando = true;
+    let completo = false;
+    try {
+      const dir = await intercambioLegible(await leerCarpetas());
+      if (!dir) return;
+      const buzon = await dir.getDirectoryHandle('buzon', { create: true });
+      for (const m of cola) {
+        const id = scId();
+        const nombre = m.cuando.slice(0, 19).replace(/[-:]/g, '').replace('T', '-') + '_portal_observacion_' + id + '.json';
+        const w = await (await buzon.getFileHandle(nombre, { create: true })).createWritable();
+        await w.write(JSON.stringify(erMensaje(m, id), null, 1));
+        await w.close();
+        // Se saca de la cola apenas se escribe: lo que llegó mientras tanto se queda
+        const quedan = erLeer(ER_PENDIENTE, []);
+        erGuardar(ER_PENDIENTE, (Array.isArray(quedan) ? quedan : []).filter((x) => !(x && x.firma === m.firma && x.cuando === m.cuando)));
+      }
+      completo = true;
+    } catch (e) {
+      console.warn('No se pudo enviar un error automático; queda para la próxima.', e);
+    } finally {
+      er.enviando = false;
+    }
+    // Lo que llegó mientras se enviaba sale ahora (solo si esta pasada funcionó: si no, espera otra ocasión)
+    if (completo && (erLeer(ER_PENDIENTE, []) || []).length) setTimeout(erEnviar, 0);
+  }
+  (function erEnganchar() {
+    const q = window.__qpnErrores;
+    if (!q) return;
+    // Lo anotado antes de este punto (el arranque de ahora o uno que se cayó en una visita anterior)
+    const antes = erLeer(q.CLAVE, []);
+    try { localStorage.removeItem(q.CLAVE); } catch (e) { /* nada */ }
+    q.oir = (r) => erTomar(r, erHerrDelPortal(), window);
+    (Array.isArray(antes) ? antes : []).forEach((r) => erTomar(r, 'portal', window));
+    setTimeout(erEnviar, 5000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) erEnviar(); });
+  })();
 
   // ---- Tema ----------------------------------------------------------------------------------------
   function oscuroAhora() {
