@@ -81,7 +81,7 @@ mejor navegación):
 - **Una pestaña por herramienta**: las cuatro calculadoras son la familia
   `calculadora` (páginas hermanas con su propia ruta: elegir otra navega la
   misma pestaña). Con el Formulador (Gantt, Seguimiento) y el Análisis
-  (Ingresar avance) quedan 8 pestañas como máximo.
+  (Ingresar avance, que desde el 2026-11-18 no tiene acceso propio en el Inicio ni en el menú: grupo `oculto`, se llega por la pestaña «Ingresar datos» del Análisis) quedan 8 pestañas como máximo.
 - Pestañas con el ícono de su grupo e Inicio como casita; en el Inicio, un
   punto naranjo marca las herramientas que ya tienen pestaña.
 - **Tercera vuelta del 2026-10-16** (pedido: quitar la franja de íconos, que el
