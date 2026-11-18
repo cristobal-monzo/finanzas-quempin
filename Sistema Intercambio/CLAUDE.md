@@ -87,7 +87,7 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
   de los proyectos (`cierre_entregados.py`); `ajustes-oportunidades` → oportunidades («Qué buscamos» del tablero).
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
-  `oportunidades`, `oportunidades-ajustes`, `proyectos`, `centro-costos-carpetas`, `documentos-proyecto`, `estado`, `planificacion-semana`,
+  `oportunidades`, `oportunidades-ajustes`, `proyectos`, `centro-costos-carpetas`, `rendiciones`, `documentos-proyecto`, `estado`, `planificacion-semana`,
   `planificacion-lista`, `planificacion-cierres`, `ejecucion-proyectos`, `presencia` (quién tiene abierta qué
   semana o proyecto en el Portal, para trabajar a la vez) y `uso-portal` (qué abre el
   equipo en el Portal, anónimo; `py -3.14 uso_portal.py --dias 30` lo suma).

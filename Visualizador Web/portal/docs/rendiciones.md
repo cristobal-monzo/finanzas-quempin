@@ -1,0 +1,62 @@
+# Portal — Rendiciones
+
+Detalle de referencia: léelo solo al tocar esta parte. Las reglas generales están en `../CLAUDE.md`.
+
+Pedido del usuario (2026-11-18): rendir vales, recuperaciones de gastos y caja chica. Se suben las fotos o PDF de las
+boletas y facturas, se leen solas al subirlas, se corrigen en una tabla y el resultado es un PDF: el resumen con la
+estética de los informes QUEMPIN y una página por documento con su foto. Cada documento lleva su proyecto (una rendición
+puede juntar gastos de varios) y la rendición se envía al Centro de Costos.
+
+## Dónde está
+
+- Herramienta `rendiciones` del registro (`tipo: vista`, grupo `controlar`), sección `#vistaRendir`, funciones `rd*`,
+  estado `rd`, diálogos `#dlgRdDoc` (ver la foto, girar, volver a leer) y `#dlgRdLector` (lector con IA).
+- `rdAlMostrar` (desde `abrir`) y `rdAlRecorrido` (desde el `.then` de `rcCargar`) cargan la lista de proyectos.
+- Pruebas: `test_portal.py -k rendiciones`. El lector de texto se prueba solo con `window.QRendiciones.interpretar`.
+
+## Cómo lee
+
+1. **PDF electrónico**: pdf.js saca el texto (no hay OCR). Se guardan hasta `RD_MAX_PAGINAS` páginas como imagen.
+2. **Foto**: con el lector con IA configurado, la foto va al Worker (`lector-rendiciones/`); si falla, avisa una vez y
+   sigue en el navegador. Sin él, Tesseract (`spa`) lee la foto **original** (no la copia achicada que se guarda) con un
+   tope de 6 MP (`area`): una boleta larga y angosta no se achica por su largo. Si la confianza es menor que 45, prueba
+   la foto girada.
+3. `rdInterpretar(texto, {fuente, confianza, hoy})` saca tipo, N°, fecha, proveedor, RUT, detalle y valor. Lo dudoso va a
+   `dudas` y se pinta en naranjo:
+   - RUT con módulo 11; nunca el de QUEMPIN; se prefiere el de una empresa (≥ 50 millones).
+   - Fecha solo dentro de los últimos 400 días; un año imposible se corrige y queda en duda.
+   - Valor: el total que cuadra con neto + IVA (+ exento); si no cuadra, el total más probable, en duda.
+   - Proveedor: una línea con SpA/Ltda./S.A. (al menos 4 letras sin el sufijo) o una marca conocida (`MARCAS`).
+   - Detalle por palabras clave (`REGLAS`), de la lista `RD_DETALLES`.
+4. Las librerías (Tesseract.js 5.1.1, pdf.js 3.11.174, jsPDF 2.5.1) se bajan del CDN solo al usarlas (`rdLib`).
+
+La lectura en el navegador acierta bien con boletas y vouchers nítidos y se equivoca con papel arrugado o fotos oscuras:
+por eso cada dato dudoso queda en naranjo y el envío con datos en naranjo pide un segundo clic.
+
+## Lo que guarda
+
+- El borrador vive en IndexedDB `qpn-rendiciones` (almacén `borrador`, clave `actual`), con los archivos: sigue ahí al
+  volver a abrir el Portal. «Nueva rendición» pide un segundo toque si no se envió ni se descargó.
+- `quempin_portal_rendiciones_lector` (dirección y clave del lector con IA) y `quempin_portal_rendiciones_deudor`.
+- Número de la rendición: `R-AAAAMMDD-HHMM-<usuario>`.
+
+## El PDF
+
+jsPDF, carta, en mm (`rdGenerarPdf`): cabecera con el logo (`../marca/logo.png`, que `publicar.py` copia) y la línea
+naranja; ficha del deudor; tres cifras (total, documentos, saldo); la tabla; totales; «Distribución por proyecto»;
+firmas «Firma Deudor» y «Firma Director Proyecto»; una página por documento con la foto girada y ajustada. Nombre:
+`<Tipo> <deudor> - <período>.pdf`. Se descarga también en el celular, sin la carpeta del equipo.
+
+## Envío al Centro de Costos
+
+- Necesita la carpeta de Intercambio conectada (Chrome o Edge de escritorio), como «Subir documentos».
+- Un mensaje `documento-cc` por carpeta, con `rendicion` (id común, N°, tipo, deudor, total, cantidad y los datos de cada
+  documento). Archivo: `<N° rendición> - <n> <Tipo> <N°><ext>`. Esquema: `Sistema Intercambio/esquemas/mensajes/documento-cc.json`.
+- El procesador (`documentos_cc.py`) copia los archivos a «Facturas y Boletas/<país>/<carpeta>/» y publica
+  `rendiciones.json`. `driver.py status` del Centro de Costos muestra esos datos para el Paso 2, y la skill los usa tal cual.
+- «Rendiciones enviadas» lee lo publicado y lo que espera en el buzón (`rdLeerEnvios`).
+
+## Lector con IA
+
+`lector-rendiciones/`: Cloudflare Worker con el SDK de Anthropic. Instalación, costo y cuidados en su `LEEME.md`. Necesita
+una clave de API de Anthropic y una cuenta de Cloudflare; ninguna clave llega al Portal ni al repositorio.

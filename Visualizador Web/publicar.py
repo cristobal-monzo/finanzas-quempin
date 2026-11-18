@@ -64,7 +64,8 @@ ESTATICOS = {
     "portal": ("portal/index.html", "Visualizador Web/portal/index.html"),
 }
 CARPETA_MARCA = "Visualizador Web/marca"
-ARCHIVOS_MARCA = ("fuentes.css", "favicon.png")
+# logo.png (2026-11-18): el PDF de «Rendiciones» del Portal lo pone en su cabecera (../marca/logo.png)
+ARCHIVOS_MARCA = ("fuentes.css", "favicon.png", "logo.png")
 # Código común que el hub y el Portal enlazan desde la raíz de gh-pages (../numeros.js). Los tableros
 # lo llevan incrustado (candado.incrustar).
 ARCHIVOS_COMUNES = ("numeros.js",)

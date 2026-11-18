@@ -36,7 +36,8 @@ cambio hecho aquí se pierde en la siguiente vuelta.
 | `oportunidades-ajustes.json` | Oportunidades, al actualizar su tablero | lo que el equipo cambió en «Qué buscamos»: qué temas, regiones y montos interesan, con quién lo cambió |
 | `proyectos.json` | el procesador | el cruce N° de requerimiento ↔ TAG ↔ formulaciones ↔ cotizaciones ↔ carpetas |
 | `documentos-proyecto.json` | el procesador, desde el Centro de Costos | las facturas de cada proyecto, en «Proyectos en ejecución» del Portal |
-| `centro-costos-carpetas.json` | el procesador | las carpetas de proyecto de «Facturas y Boletas», para «Subir documentos» del Portal |
+| `centro-costos-carpetas.json` | el procesador | las carpetas de proyecto de «Facturas y Boletas», para «Subir documentos» y «Rendiciones» del Portal |
+| `rendiciones.json` | el procesador, al copiar los documentos de una rendición | cada rendición enviada desde el Portal, con los datos de cada documento ya revisados: el Centro de Costos los usa al registrar |
 | `estado.json` | el procesador, cuando algo cambia (y al menos cada 15 minutos) | el pulso: si el procesador está corriendo |
 
 ## El procesador

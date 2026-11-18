@@ -1,0 +1,15 @@
+{
+  "name": "lector-rendiciones",
+  "private": true,
+  "description": "Lee boletas y facturas con Claude para «Rendiciones» del Portal QUEMPIN",
+  "type": "module",
+  "scripts": {
+    "publicar": "wrangler deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.10.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.164.0"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rendiciones.json (las rendiciones de gastos que llegaron al Centro de Costos)",
+  "description": "Desde el 2026-11-18. Cada rendición del Portal («Rendiciones») cuyos documentos el procesador dejó en las carpetas del Centro de Costos, con lo que una persona revisó de cada documento (tipo, N°, fecha, proveedor, RUT, detalle y valor) y el nombre con que quedó en la carpeta ('archivo'). /Registro_Centro_de_Costos lo usa al registrar esos documentos (driver.py rendiciones). Más reciente primero; se guardan las últimas 300.",
+  "dueno": "procesador",
+  "type": "object",
+  "properties": {
+    "rendiciones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "numero": { "type": "string", "minLength": 1 },
+          "tipo": { "enum": ["vale", "recuperacion", "caja"] },
+          "deudor": { "type": "string" },
+          "periodo": { "type": "string" },
+          "unidad": { "type": "string" },
+          "total": { "type": "integer", "minimum": 0 },
+          "cantidad": { "type": "integer", "minimum": 1 },
+          "usuario": { "type": "string" },
+          "enviado": { "type": "string" },
+          "documentos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pais": { "enum": ["CL", "PE"] },
+                "carpeta": { "type": "string", "minLength": 1 },
+                "archivo": { "type": "string", "minLength": 1, "description": "El nombre con que quedó en la carpeta (puede llevar « (2)» si el nombre estaba ocupado)" },
+                "repetido": { "type": "boolean", "description": "true: ya estaba en la carpeta con ese contenido; no se copió otra vez" },
+                "mensaje": { "type": "string" },
+                "n": { "type": "integer", "minimum": 1 },
+                "tipo": { "type": "string", "minLength": 1 },
+                "numero": { "type": "string", "minLength": 1 },
+                "fecha": { "type": "string", "pattern": "^\\d{2}-\\d{2}-\\d{4}$" },
+                "proveedor": { "type": "string" },
+                "rut": { "type": "string" },
+                "detalle": { "type": "string" },
+                "valor": { "type": "integer", "minimum": 1 }
+              },
+              "required": ["pais", "carpeta", "archivo", "mensaje", "tipo", "numero", "fecha", "valor"]
+            }
+          }
+        },
+        "required": ["id", "numero", "tipo", "total", "cantidad", "documentos"]
+      }
+    }
+  },
+  "required": ["rendiciones"]
+}

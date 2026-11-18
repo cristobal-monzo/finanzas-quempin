@@ -109,6 +109,78 @@ def _imprimir_lista_truncada(items, formatear, limite=15):
         print(f"  ... y {restantes} más.")
 
 
+def rendiciones_publicadas():
+    """Las rendiciones del Portal que el procesador dejó en las carpetas (publicado/rendiciones.json, 2026-11-18),
+    o [] si el intercambio no está sincronizado. Solo lee."""
+    import json
+    try:
+        with acc._modulo_hermano_fresco(acc.RAIZ_MODULO.parent / "Sistema Intercambio", "ubicacion") as ubicacion:
+            raiz = ubicacion.ubicar_intercambio(acc.RAIZ_MODULO)
+        with open(Path(raiz) / "publicado" / "rendiciones.json", encoding="utf-8") as f:
+            return ((json.load(f).get("datos") or {}).get("rendiciones")) or []
+    except (Exception, SystemExit):
+        return []
+
+
+def _clave_nombre(s):
+    import unicodedata
+    return unicodedata.normalize("NFC", str(s or "")).strip().casefold()
+
+
+def dato_de_rendicion(rendiciones, pais, proyecto, archivo):
+    """Lo que una persona revisó en el Portal de un documento pendiente que llegó en una rendición: el documento
+    (tipo, numero, fecha DD-MM-AAAA, proveedor, rut, detalle, valor con impuestos) con 'rendicion' = número, deudor
+    y tipo de la rendición. None si el archivo no vino de una. Se busca por país, carpeta y nombre del archivo."""
+    p, a = _clave_nombre(proyecto), _clave_nombre(archivo)
+    for r in rendiciones or []:
+        for d in r.get("documentos") or []:
+            if d.get("pais") == pais and _clave_nombre(d.get("carpeta")) == p and _clave_nombre(d.get("archivo")) == a:
+                return dict(d, rendicion={c: r.get(c) for c in ("numero", "deudor", "tipo")})
+    return None
+
+
+def describir_dato_rendicion(d):
+    partes = [f"{d.get('tipo')} N° {d.get('numero')}", d.get("fecha"), d.get("detalle"), f"${int(d.get('valor') or 0):,}".replace(",", ".")]
+    if d.get("proveedor") or d.get("rut"):
+        partes.append(" ".join(x for x in (d.get("proveedor"), f"(RUT {d['rut']})" if d.get("rut") else "") if x))
+    r = d.get("rendicion") or {}
+    partes.append(f"rendición {r.get('numero')}" + (f" de {r['deudor']}" if r.get("deudor") else ""))
+    return " · ".join(str(x) for x in partes if x)
+
+
+def mostrar_datos_de_rendiciones(sin_datos, pais):
+    """Status: de los pendientes sin datos, los que llegaron en una rendición del Portal traen lo revisado allá."""
+    rendiciones = rendiciones_publicadas()
+    con_dato = []
+    for info in sin_datos:
+        d = dato_de_rendicion(rendiciones, pais, info["proyecto"], info["archivo"])
+        if d:
+            con_dato.append((info, d))
+    if con_dato:
+        print(f"\nDe esos, llegaron en una rendición del Portal (datos revisados por una persona): {len(con_dato)}")
+        _imprimir_lista_truncada(con_dato, lambda par: f"  - [{par[0]['proyecto']}] {par[0]['archivo']}: {describir_dato_rendicion(par[1])}",
+                                 limite=40)
+        print("  Usa estos datos en el Paso 2 (N°, fecha, tipo, proveedor, RUT, categoría y total); lee la foto solo para los ítems.")
+    return con_dato
+
+
+def cmd_rendiciones(pais="CL"):
+    """SOLO LECTURA: las rendiciones del Portal que llegaron a las carpetas, con sus documentos."""
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    rendiciones = rendiciones_publicadas()
+    if not rendiciones:
+        print("No hay rendiciones publicadas (o la carpeta de intercambio no está sincronizada en este equipo).")
+        return 0
+    for r in rendiciones[:20]:
+        print(f"\nRendición {r.get('numero')} · {r.get('deudor') or 'sin deudor'} · {r.get('cantidad')} documento(s) · "
+              f"${int(r.get('total') or 0):,}".replace(",", ".") + f" · enviada {str(r.get('enviado') or '')[:10]}")
+        for d in r.get("documentos") or []:
+            if d.get("pais") != pais:
+                continue
+            print(f"  - [{d.get('carpeta')}] {d.get('archivo')}: {describir_dato_rendicion(dict(d, rendicion={}))}")
+    return 0
+
+
 def mostrar_preview_renombrados(filas_master, reconciliacion):
     """Preview de status (solo lectura): que archivos se renombrarian/
     convertirian si se corriera 'run', sin tocar disco."""
@@ -232,6 +304,8 @@ def cmd_status(pais="CL"):
 
     print(f"\nPendientes SIN datos (o sin items) en el JSON (bloquean el registro): {len(sin_datos)}")
     _imprimir_lista_truncada(sin_datos, lambda info: f"  - [{info['proyecto']}] {info['archivo']}")
+    if sin_datos:
+        mostrar_datos_de_rendiciones(sin_datos, pais)
 
     mezclados = []
     for info in pendientes:
@@ -485,9 +559,9 @@ def cmd_visualizador(pais="CL"):
 
 def main():
     comandos = ("status", "run", "confirmar", "visualizador", "separar", "eliminar",
-                "separar-registrado")
+                "separar-registrado", "rendiciones")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
-        print("Uso: python driver.py [status|run|confirmar [--todos|N_REF ...]|visualizador|"
+        print("Uso: python driver.py [status|rendiciones|run|confirmar [--todos|N_REF ...]|visualizador|"
               "separar --proyecto P --archivo A --cantidad N|eliminar N_REF ... [--aplicar]|"
               "separar-registrado --plan pedido.json [--aplicar]|run [--sin-intercambio]] [--pais CL|PE]")
         return 2
@@ -507,6 +581,8 @@ def main():
         return cmd_eliminar(resto, pais=pais)
     if comando == "separar-registrado":
         return cmd_separar_registrado(resto, pais=pais)
+    if comando == "rendiciones":
+        return cmd_rendiciones(pais=pais)
     return cmd_run(resto, pais=pais)
 
 

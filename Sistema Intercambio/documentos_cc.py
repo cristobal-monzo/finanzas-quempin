@@ -22,6 +22,14 @@ como «nombre (2).pdf».
 
 También publica ``centro-costos-carpetas.json``: las carpetas de proyecto
 que existen, para que el Portal ofrezca dónde subir.
+
+Rendiciones (2026-11-18): un ``documento-cc`` que trae ``rendicion`` viene de
+«Rendiciones» del Portal, con lo que una persona revisó de cada documento.
+Además de copiar los archivos, el procesador agrega esos datos a
+``rendiciones.json``, con el nombre con que quedó cada archivo en la carpeta,
+para que ``/Registro_Centro_de_Costos`` los use al registrar
+(``driver.py rendiciones``). Un documento de la rendición que no viene en
+``archivos`` rechaza el mensaje.
 """
 
 import hashlib
@@ -38,6 +46,8 @@ import intercambio
 TIPO = "documento-cc"
 DESTINO = "centro-costos"
 PUBLICACION = "centro-costos-carpetas"
+PUBLICACION_RENDICIONES = "rendiciones"
+MAX_RENDICIONES = 300
 CARPETA_ADJUNTOS = "adjuntos"
 DIAS_ESPERA = 7
 EXTENSIONES = {".pdf", ".png", ".jpg", ".jpeg", ".heic"}   # las de auditor_centro_costos.EXTENSIONES_VALIDAS
@@ -140,6 +150,12 @@ def atender(raiz: Path, raices: dict[str, Path], ahora: datetime | None = None) 
         if errores:
             rechazar("mensaje inválido: " + "; ".join(errores[:3]))
             continue
+        if m.get("rendicion"):
+            nombres = {_clave(a["nombre"]) for a in m["archivos"]}
+            ajenos = [d["archivo"] for d in m["rendicion"]["documentos"] if _clave(d["archivo"]) not in nombres]
+            if ajenos:
+                rechazar("la rendición nombra documentos que no vienen en el envío: " + ", ".join(ajenos[:3]))
+                continue
         base = raices.get(m["pais"])
         if base is None or not Path(base).is_dir():
             r["esperan"] += 1      # el sitio del Centro de Costos no está sincronizado en este equipo
@@ -173,6 +189,13 @@ def atender(raiz: Path, raices: dict[str, Path], ahora: datetime | None = None) 
             guardados.append({"nombre": a["nombre"], "guardado": destino.name, "repetido": False})
             detalle.append(f"{a['nombre']} → {carpeta.name}/{destino.name}")
             r["archivos"] += 1
+        if m.get("rendicion"):
+            # Los documentos ya están en su carpeta: si la publicación falla, se archiva igual (quien registra lee la
+            # foto, como con cualquier documento) y el detalle lo dice.
+            try:
+                publicar_rendicion(raiz, m, carpeta.name, guardados)
+            except (OSError, ValueError, intercambio.PublicacionInvalida) as e:
+                detalle.append(f"rendiciones.json no se actualizó: {e}")
         intercambio.archivar(raiz, m, "aplicado", detalle,
                              {"carpeta": f"{Path(base).name}/{carpeta.name}", "archivos": guardados})
         shutil.rmtree(adjuntos, ignore_errors=True)
@@ -180,6 +203,41 @@ def atender(raiz: Path, raices: dict[str, Path], ahora: datetime | None = None) 
 
     _limpiar_huerfanos(raiz, ahora)
     return r
+
+
+# ── LAS RENDICIONES, PARA EL REGISTRO DEL CENTRO DE COSTOS ──────────────────
+
+def publicar_rendicion(raiz: Path, mensaje: dict, carpeta: str, guardados: list[dict]) -> None:
+    """Agrega a rendiciones.json los documentos de un documento-cc con «rendicion», con el nombre con que quedó
+    cada uno en la carpeta. Idempotente: un archivo de la carpeta ya publicado no se repite (un reenvío trae los
+    mismos archivos, que el paso anterior informa como repetidos con su nombre en la carpeta)."""
+    previo = intercambio.leer_publicacion(raiz, PUBLICACION_RENDICIONES)
+    lista = list(((previo or {}).get("datos") or {}).get("rendiciones") or [])
+    ren = mensaje["rendicion"]
+    entrada = next((x for x in lista if x.get("id") == ren["id"]), None)
+    if entrada is None:
+        entrada = {c: ren[c] for c in ("id", "numero", "tipo", "deudor", "periodo", "unidad", "total", "cantidad") if c in ren}
+        origen = mensaje.get("origen") or {}
+        if origen.get("usuario"):
+            entrada["usuario"] = origen["usuario"]
+        if origen.get("enviado"):
+            entrada["enviado"] = origen["enviado"]
+        entrada["documentos"] = []
+        lista.append(entrada)
+    guardado = {_clave(g["nombre"]): g for g in guardados}
+    ya = {(d.get("pais"), _clave(d.get("carpeta", "")), _clave(d.get("archivo", ""))) for d in entrada["documentos"]}
+    for doc in ren["documentos"]:
+        g = guardado.get(_clave(doc["archivo"]))
+        if g is None or (mensaje["pais"], _clave(carpeta), _clave(g["guardado"])) in ya:
+            continue
+        nuevo = {"pais": mensaje["pais"], "carpeta": carpeta, "archivo": g["guardado"], "mensaje": mensaje["id"]}
+        if g.get("repetido"):
+            nuevo["repetido"] = True
+        nuevo.update({c: doc[c] for c in ("n", "tipo", "numero", "fecha", "proveedor", "rut", "detalle", "valor") if c in doc})
+        entrada["documentos"].append(nuevo)
+    entrada["documentos"].sort(key=lambda d: (d.get("n") or 0, d["archivo"]))
+    lista.sort(key=lambda x: x.get("enviado") or "", reverse=True)
+    intercambio.publicar(raiz, PUBLICACION_RENDICIONES, "procesador", {"rendiciones": lista[:MAX_RENDICIONES]})
 
 
 def _limpiar_huerfanos(raiz: Path, ahora: datetime) -> None:

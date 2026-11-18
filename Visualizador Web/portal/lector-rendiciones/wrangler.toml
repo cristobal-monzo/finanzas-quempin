@@ -1,0 +1,11 @@
+# El lector con IA de «Rendiciones» (Portal QUEMPIN). Cómo instalarlo: LEEME.md.
+name = "lector-rendiciones"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Los sitios que pueden usarlo (separados por coma)
+ORIGENES = "https://cristobal-monzo.github.io"
+
+# Secretos (nunca aquí): npx wrangler secret put ANTHROPIC_API_KEY  y  npx wrangler secret put CLAVE_EQUIPO

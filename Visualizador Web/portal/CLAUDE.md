@@ -23,6 +23,7 @@ Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
 | Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
 | Clic derecho (menú del portal) y reportar errores y observaciones (`observaciones`) | `#menuCtx`, `#dlgObs`, `#vistaObservaciones` | `ctx*`, `obs*`, `obs` | [docs/observaciones.md](docs/observaciones.md) |
 | Subir documentos (`subir-cc`) | `#vistaSubir` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |
+| Rendiciones (`rendiciones`): fotos de boletas → tabla → PDF y Centro de Costos | `#vistaRendir` | `rd*`, `rd` | [docs/rendiciones.md](docs/rendiciones.md) |
 | Configuración y conexiones (`conexiones`) | `#vistaConexiones` | `portal-conexiones` | [docs/interfaz.md](docs/interfaz.md) |
 
 Cómo funciona la interfaz (menú, pestañas, registro, enlaces, usuario):

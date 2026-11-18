@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "documento-cc (Portal QUEMPIN → Centro de Costos)",
-  "description": "Facturas, boletas o comprobantes que alguien sube desde el Portal («Subir documentos») para un proyecto. Los archivos viajan aparte, en buzon/adjuntos/<id>/, y se escriben antes que el mensaje. El procesador copia cada uno a «Facturas y Boletas/<país>/<carpeta>/» del sitio del Centro de Costos (la misma carpeta que lee /Registro_Centro_de_Costos) y verifica tamaño y sha256. Si un archivo todavía no llega (OneDrive sincronizando), el mensaje espera; a los 7 días se rechaza. 'nueva' permite crear la carpeta del proyecto si no existe.",
+  "description": "Facturas, boletas o comprobantes que alguien sube desde el Portal («Subir documentos») para un proyecto. Los archivos viajan aparte, en buzon/adjuntos/<id>/, y se escriben antes que el mensaje. El procesador copia cada uno a «Facturas y Boletas/<país>/<carpeta>/» del sitio del Centro de Costos (la misma carpeta que lee /Registro_Centro_de_Costos) y verifica tamaño y sha256. Si un archivo todavía no llega (OneDrive sincronizando), el mensaje espera; a los 7 días se rechaza. 'nueva' permite crear la carpeta del proyecto si no existe. Con 'rendicion' (desde «Rendiciones» del Portal), el procesador además publica rendiciones.json con los datos revisados de cada documento y el nombre con que quedó en la carpeta.",
   "destino": "centro-costos",
   "type": "object",
   "properties": {
@@ -41,7 +41,41 @@
         "required": ["nombre", "bytes", "sha256"]
       }
     },
-    "nota": { "type": "string" }
+    "nota": { "type": "string" },
+    "rendicion": {
+      "type": "object",
+      "description": "Opcional (2026-11-18): los documentos vienen de una rendición de gastos del Portal («Rendiciones»). Trae lo que una persona revisó de cada documento, para que /Registro_Centro_de_Costos lo use al registrarlo. Una rendición con documentos de varios proyectos llega en un mensaje por carpeta, con el mismo 'id'. 'tipo': vale (vale a rendir), recuperacion (recuperación de gastos) o caja (caja chica). 'total' y 'cantidad' son de la rendición completa; 'documentos', solo los de este mensaje, cada uno con el nombre con que viaja en 'archivos'.",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{6,64}$" },
+        "numero": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "tipo": { "enum": ["vale", "recuperacion", "caja"] },
+        "deudor": { "type": "string", "maxLength": 120 },
+        "periodo": { "type": "string", "maxLength": 80 },
+        "unidad": { "type": "string", "maxLength": 120 },
+        "total": { "type": "integer", "minimum": 0 },
+        "cantidad": { "type": "integer", "minimum": 1 },
+        "documentos": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "archivo": { "type": "string", "minLength": 1 },
+              "n": { "type": "integer", "minimum": 1 },
+              "tipo": { "type": "string", "minLength": 1, "maxLength": 40 },
+              "numero": { "type": "string", "minLength": 1, "maxLength": 30 },
+              "fecha": { "type": "string", "pattern": "^\\d{2}-\\d{2}-\\d{4}$", "description": "DD-MM-AAAA, como en el Centro de Costos" },
+              "proveedor": { "type": "string", "maxLength": 120 },
+              "rut": { "type": "string", "maxLength": 14 },
+              "detalle": { "type": "string", "maxLength": 60, "description": "La categoría del gasto (Combustible, Transporte, Colación, Materiales…)" },
+              "valor": { "type": "integer", "minimum": 1, "description": "Total pagado, con impuestos, en pesos" }
+            },
+            "required": ["archivo", "tipo", "numero", "fecha", "valor"]
+          }
+        }
+      },
+      "required": ["id", "numero", "tipo", "total", "cantidad", "documentos"]
+    }
   },
   "required": ["pais", "carpeta", "archivos"]
 }

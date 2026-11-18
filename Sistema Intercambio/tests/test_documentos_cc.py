@@ -126,3 +126,66 @@ def test_publica_las_carpetas(entorno):
     datos = intercambio.leer_publicacion(entorno["raiz"], dc.PUBLICACION)["datos"]
     assert datos["paises"]["CL"] == [{"nombre": "280. Obra de ejemplo", "req": "280", "documentos": 1},
                                      {"nombre": "Gastos Generales", "req": None, "documentos": 0}]
+
+
+# ── Rendiciones (2026-11-18) ─────────────────────────────────────────────────
+
+def _rendicion(archivos, rid="ren0000000000001", **extra):
+    docs = [{"archivo": n, "n": i + 1, "tipo": "Boleta", "numero": str(100 + i), "fecha": "02-11-2026", "detalle": "Colación", "valor": 1000 * (i + 1)}
+            for i, n in enumerate(archivos)]
+    r = {"id": rid, "numero": "R-20261118-1000-NB", "tipo": "recuperacion", "deudor": "Persona de Ejemplo",
+         "total": 9000, "cantidad": 3, "documentos": docs}
+    r.update(extra)
+    return r
+
+
+def test_rendicion_publica_los_datos_revisados_con_el_nombre_en_la_carpeta(entorno):
+    """Una rendición con documentos de dos proyectos llega en dos mensajes con el mismo id: rendiciones.json la junta,
+    con el nombre con que quedó cada archivo (« (2)» si estaba ocupado) y su carpeta."""
+    carpeta = entorno["chile"] / "280. Obra de ejemplo"
+    (carpeta / "R - 1 Boleta 100.jpg").write_bytes(b"otra foto con el mismo nombre")
+    a = {"R - 1 Boleta 100.jpg": b"\xff\xd8 foto 1", "R - 2 Boleta 101.pdf": b"%PDF boleta 2"}
+    b = {"R - 3 Factura 7.jpg": b"\xff\xd8 foto 3"}
+    ra = _rendicion(list(a))
+    rb = _rendicion(list(b))
+    rb["documentos"][0].update(n=3, tipo="Factura", numero="7", proveedor="Ferretería Ejemplo SpA", rut="76.111.111-6", valor=6000)
+    _enviar(entorno["raiz"], archivos=a, rendicion=ra)
+    _enviar(entorno["raiz"], carpeta="Gastos Generales", archivos=b, rendicion=rb)
+    r = dc.atender(entorno["raiz"], entorno["raices"])
+    assert r == {"aplicados": 2, "archivos": 3, "esperan": 0, "rechazados": 0}
+    pub = intercambio.leer_publicacion(entorno["raiz"], dc.PUBLICACION_RENDICIONES)
+    [ren] = pub["datos"]["rendiciones"]
+    assert ren["id"] == "ren0000000000001" and ren["total"] == 9000 and ren["usuario"] == "NB" and ren["deudor"] == "Persona de Ejemplo"
+    docs = {d["n"]: d for d in ren["documentos"]}
+    assert docs[1]["archivo"] == "R - 1 Boleta 100 (2).jpg" and docs[1]["carpeta"] == "280. Obra de ejemplo"
+    assert (carpeta / docs[1]["archivo"]).read_bytes() == b"\xff\xd8 foto 1"
+    assert docs[3]["carpeta"] == "Gastos Generales" and docs[3]["proveedor"] == "Ferretería Ejemplo SpA" and docs[3]["valor"] == 6000
+    assert [d["n"] for d in ren["documentos"]] == [1, 2, 3]
+
+    # Reenviada (el Portal falló a medias y se envió otra vez): los archivos salen repetidos y no se duplica nada
+    _enviar(entorno["raiz"], archivos=a, rendicion=_rendicion(list(a)))
+    assert dc.atender(entorno["raiz"], entorno["raices"])["archivos"] == 0
+    [ren2] = intercambio.leer_publicacion(entorno["raiz"], dc.PUBLICACION_RENDICIONES)["datos"]["rendiciones"]
+    assert len(ren2["documentos"]) == 3
+
+
+def test_rendicion_con_un_documento_que_no_viene_se_rechaza(entorno):
+    _enviar(entorno["raiz"], archivos={"boleta.jpg": b"\xff\xd8 foto"}, rendicion=_rendicion(["otra.jpg"]))
+    r = dc.atender(entorno["raiz"], entorno["raices"])
+    assert r["rechazados"] == 1
+    [hecho] = _procesados(entorno["raiz"])
+    assert "no vienen en el envío" in hecho["resultado"]["detalle"][0]
+    assert intercambio.leer_publicacion(entorno["raiz"], dc.PUBLICACION_RENDICIONES) is None
+
+
+def test_rendicion_que_no_cumple_el_esquema_se_rechaza(entorno):
+    malo = _rendicion(["boleta.jpg"])
+    malo["documentos"][0]["fecha"] = "2026-11-02"           # el Centro de Costos usa DD-MM-AAAA
+    _enviar(entorno["raiz"], archivos={"boleta.jpg": b"\xff\xd8 foto"}, rendicion=malo)
+    assert dc.atender(entorno["raiz"], entorno["raices"])["rechazados"] == 1
+
+
+def test_sin_rendicion_no_se_publica_rendiciones(entorno):
+    _enviar(entorno["raiz"])
+    dc.atender(entorno["raiz"], entorno["raices"])
+    assert intercambio.leer_publicacion(entorno["raiz"], dc.PUBLICACION_RENDICIONES) is None

@@ -1,6 +1,6 @@
 ---
 name: Registro_Centro_de_Costos
-description: Registra facturas y boletas en Centro de Costos.xlsx (status, run, confirmar, visualizador, separar, separar-registrado, eliminar) y publica su tablero salvo «sin publicar». Usar SOLO si el usuario escribe "/Registro_Centro_de_Costos" (antes /Actualizar_CC y /Actualizar_Base_de_Datos). Ante «actualiza el centro de costos» sin la barra, pregunta primero, porque puede querer esta skill o /Actualizar_Finanzas.
+description: Registra facturas y boletas en Centro de Costos.xlsx (status, run, confirmar, visualizador, separar, separar-registrado, eliminar, rendiciones) y publica su tablero salvo «sin publicar». Usar SOLO si el usuario escribe "/Registro_Centro_de_Costos" (antes /Actualizar_CC y /Actualizar_Base_de_Datos). Ante «actualiza el centro de costos» sin la barra, pregunta primero, porque puede querer esta skill o /Actualizar_Finanzas.
 model: sonnet
 ---
 
@@ -44,6 +44,12 @@ al usuario. Agrupa por proyecto las preguntas que se repiten.
    (`TAGS_PROVEEDOR_CURADOS`, columna oculta «Proveedor (Razón Social)») y reusa esa razón social. Si el
    RUT es legible y no está en el libro, consulta los proveedores de Sistema QUEMPIN (solo lee, desde
    la raíz de Finanzas): `py -3.14 "Sistema Intercambio/contrapartes.py" <RUT>`.
+   **Si `status` lo lista como «llegaron en una rendición del Portal»** (2026-11-18), una persona ya
+   revisó en «Rendiciones» el tipo, N°, fecha, proveedor, RUT, detalle y el **valor (total pagado, con
+   impuestos)**: usa esos datos tal cual (detalle → `categoria`; el RUT igual pasa por la búsqueda de
+   proveedor conocido) y lee la foto solo para los ítems y el IVA, que deben cuadrar con ese total. Si la
+   foto contradice un dato, pregunta. Anota en `notas` «Rendición <N°> de <deudor>» y `estado` «Pagado».
+   `driver.py rendiciones` lista las rendiciones que llegaron, con sus documentos.
 2. **Pregunta solo lo que el documento no resuelve**: `tipo_proyecto` si el proyecto es nuevo, `estado`
    (Pagado/Pendiente), lo ilegible o ambiguo, y **si un proveedor se parece a uno registrado sin calzar
    exacto: nunca asumas que es el mismo**. Aplica [MEMORY.md](MEMORY.md) § Criterios de clasificación

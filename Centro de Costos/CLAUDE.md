@@ -27,6 +27,8 @@ el mapa de `main()`.
   tablero al terminar salvo «sin publicar» ([procedimiento común](../docs/actualizar-un-modulo.md)).
   Si `status` muestra documentos sin entrada en el JSON, el agente los completa antes de `run`
   (Paso 2 del `SKILL.md`): **ningún documento queda sin registrar solo porque falte el JSON**.
+  Si el documento vino en una rendición del Portal (2026-11-18), `status` muestra sus datos ya revisados
+  (`publicado/rendiciones.json` del Intercambio; `driver.py rendiciones` las lista): se usan tal cual.
 - **`/Revision_de_Errores`**: recorrido guiado de las celdas rojas de `Master` y de los ítems
   agrupados de `Detalle` (muestra la foto, pregunta y aplica). `corregir` y `desglosar` no reflejan
   al sitio compartido: **al terminar hay que correr `driver.py reflejar`**.
