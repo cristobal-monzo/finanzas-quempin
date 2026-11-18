@@ -975,3 +975,22 @@ def test_la_etiqueta_es_tag_y_apodo():
     assert pf._etiqueta("303", "SERVICIOS DE MANTENIMIENTO", "Incinerador Osorno") == "303 - Incinerador Osorno"
     assert af.etiqueta_proyecto("UMAG", "UMAG", "Línea H2 Punta Arenas") == "UMAG - Línea H2 Punta Arenas"
     assert af.etiqueta_proyecto("", "Sin TAG", "") == "Sin TAG"
+
+
+def test_la_ficha_que_lleva_el_n_manda_sobre_el_tag_que_recuerda_la_formulacion(tmp_path):
+    # Caso real del 2026-11-18: el Formulador unió «314. UA Reactor» con CANT («Calderas Antofagasta») y
+    # «312. Casinos UV» con JUNJ («Junji's Valparaiso»). La ficha 312 lleva el N° solo como TAG.
+    raiz = tmp_path / "intercambio"
+    ic.publicar(raiz, pf.PUBLICACION, "analisis-financiero", {"proyectos": [
+        {"tag": "CANT", "nombre": "Calderas Antofagasta", "req": None, "proyectados": {}},
+        {"tag": "JUNJ", "nombre": "Junji's Valparaiso", "req": None, "proyectados": {}},
+        {"tag": "314", "nombre": "UA Reactor", "req": "314", "proyectados": {}},
+        {"tag": "312", "nombre": "Casinos UV_Sello verde", "req": None, "proyectados": {}},
+    ]}, validar=False)
+    _presupuesto(raiz, uid="ua0000000314", codigo="314. UA Reactor",
+                 vinculos={"requerimiento": {"numero": "314"}, "analisisFinanciero": {"tag": "CANT"}})
+    _presupuesto(raiz, uid="uv0000000312", codigo="312.Casinos UV_Sello verde",
+                 vinculos={"analisisFinanciero": {"tag": "JUNJ"}})
+    filas = {f["item"]["uid"]: f for f in pf.adjudicados_para_af(raiz, tmp_path / "estado.json")}
+    assert filas["ua0000000314"]["tag"] == "314"
+    assert filas["uv0000000312"]["tag"] == "312"
