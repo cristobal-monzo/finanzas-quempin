@@ -972,6 +972,7 @@ function obsFila(o) {
 }
 // El mensaje se borra primero, para que nunca quede uno esperando imágenes que ya no van a llegar.
 async function obsRetirar(o, b) {
+  if (mvNoSe()) return;
   if (b.dataset.seguro !== 'si') {
     b.dataset.seguro = 'si';
     b.textContent = '¿Retirarla? Toca otra vez';

@@ -11,4 +11,12 @@ set "PYTHON=C:\Users\quemp\AppData\Local\Python\pythoncore-3.14-64\python.exe"
 
 cd /d "%PROYECTO%\Sistema Intercambio"
 "%PYTHON%" procesar.py > nul 2>&1
-exit /b %ERRORLEVEL%
+set "CODIGO=%ERRORLEVEL%"
+
+rem El resumen cifrado del Portal en el telefono (resumen_movil.py, 2026-11-18): lo arma y, si toca (cambio algo,
+rem como maximo cada 30 min, o una vez por hora; lunes a sabado de 7 a 20), lo sube a gh-pages. procesar.py nunca
+rem publica en GitHub: va aparte y su falla no cambia el codigo de salida del procesador. Sin preguntas de git.
+rem Anota cada subida y cada falla en logs\resumen_movil_AAAA-MM.log.
+set "GIT_TERMINAL_PROMPT=0"
+"%PYTHON%" resumen_movil.py publicar > nul 2>&1
+exit /b %CODIGO%

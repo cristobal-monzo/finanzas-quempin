@@ -28,6 +28,7 @@ Partido el 2026-11-18 (fase B de `docs/plans/2026-11-18-mejoras-portal.md`; ante
 |---|---|---|---|---|
 | Lo común: utilidades, estado, menú, pestañas y marcos, al día sin F5, usuario, diálogos | — | `base.js` | `ad*`, `estado` | [docs/interfaz.md](docs/interfaz.md) |
 | Configuración y conexiones (`conexiones`) | `#vistaConexiones` | `conexiones.js` | `portal-conexiones` | [docs/interfaz.md](docs/interfaz.md) |
+| Sin la carpeta (el teléfono): el resumen cifrado, solo para leer | `#mvFranja` | `resumen.js` | `mv*`, `mv`, `soloLectura()`, `mvNoSe()` | Abajo, «Datos» |
 | Inicio, las herramientas por área | `#vistaInicio` | `inicio.js` | `ini*`, `ini` | [docs/interfaz.md](docs/interfaz.md) |
 | Recorrido (`recorrido`) | `#vistaRecorrido` | `recorrido.js` | `rc*`, `rc` | [docs/recorrido.md](docs/recorrido.md) |
 | Planificación semanal (`planificacion`) | `#vistaPlan` | `planificacion.js` | `pl*`, `planif` | [docs/planificacion.md](docs/planificacion.md) |
@@ -71,6 +72,16 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   carpeta de Intercambio, con la conexión guardada (IndexedDB `qpn-intercambio`,
   la del Formulador). Nunca crea un Intercambio nuevo. El Recorrido solo lee, salvo el
   pedido de «Actualizar datos» al procesador ([docs/recorrido.md](docs/recorrido.md)).
+- **Sin la carpeta** (2026-11-18, fase C del plan; el usuario eligió la maqueta M3, el mismo Inicio, y pidió que las
+  calculadoras queden): en el teléfono, Safari o Firefox (sin `showDirectoryPicker`), o en Chrome sin la carpeta
+  conectada pero con la contraseña de los tableros recordada, `rcCargar` usa `mvAbrir()`: baja `datos/indice.json` y
+  `datos/<parte>.json` (los sube la tarea del procesador con `Sistema Intercambio/resumen_movil.py`), los abre con
+  `../candado.js` y la clave `quempin_viz_clave`, y arma una carpeta de mentira de solo lectura (`mvCarpeta`) que
+  las vistas leen igual. Franja «Solo lectura · datos de las HH:MM» (ámbar con más de 2 h; sin clave, pide la
+  contraseña). **Todo lo que cambia algo empieza con `if (mvNoSe()) return;`** (o `soloLectura()` en lo que corre
+  solo); lo que solo sirve para cambiar se esconde con `html.solo-lectura` en `portal.css`. Una función nueva que
+  escribe lleva su freno: si no, en el teléfono parecería guardar y se perdería. En el Inicio se apagan Subir,
+  Rendiciones y lo de Sistema QUEMPIN (`iniApagada`). Pruebas: `tests/portal/test_portal_movil.py`.
 - **Escritura en la carpeta**: un archivo por navegador
   (`quempin_portal_dispositivo`), para que OneDrive nunca junte dos versiones; se
   une todo y en cada casilla manda el cambio más reciente (`t`), también si es

@@ -152,7 +152,12 @@ por Outlook de ese PC) → `proyectos.json` → `estado.json`.
   (`%LOCALAPPDATA%\QUEMPIN\procesador.lock`, fuera de OneDrive; vence a los 30 min) evita dos vueltas a la vez. La
   tarea programada además ignora un inicio si la anterior sigue (`IgnoreNew`). `--forzar` espera hasta 10 minutos a
   la vuelta en curso en vez de saltarse la suya.
-- **Nunca escribe la Planilla de Ingreso ni publica en GitHub.**
+- **Nunca escribe la Planilla de Ingreso ni publica en GitHub.** Lo que sí sube a GitHub es aparte: después de cada
+  vuelta, `tarea_procesador.cmd` corre `resumen_movil.py publicar` (2026-11-18), el resumen cifrado que lee el Portal
+  en el teléfono. Lleva copias de publicaciones que ya existen (no es un dato nuevo entre herramientas, por eso no
+  tiene esquema en `esquemas/`): `PARTES` dice cuáles, `NUNCA` lo que no va (precios de referencia, Flujo de Caja,
+  uso y presencia del Portal, `procesado/`). `py -3.14 resumen_movil.py` lo arma y dice cuánto pesa, sin subir;
+  cada subida o falla queda en `logs/resumen_movil_AAAA-MM.log`.
 - **Si deja de correr, las herramientas lo dicen**: `pulso.js` (una sola copia de la regla; el
   Formulador la lleva textual y el tablero AF la inserta en su build) cuenta horas hábiles (lunes
   a viernes, 08:30–19:00) desde la última vuelta. Con más de 4, aviso rojo. Las noches y los fines

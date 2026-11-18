@@ -74,7 +74,7 @@ CARPETA_MARCA = "Visualizador Web/marca"
 ARCHIVOS_MARCA = ("fuentes.css", "favicon.png", "logo.png")
 # Código común que el hub y el Portal enlazan desde la raíz de gh-pages (../numeros.js). Los tableros
 # lo llevan incrustado (candado.incrustar).
-ARCHIVOS_COMUNES = ("numeros.js",)
+ARCHIVOS_COMUNES = ("numeros.js", "candado.js")
 FLUJO_CI = "tests.yml"
 META_VERSION = "quempin-version"
 
@@ -238,17 +238,69 @@ def revisar_codigo(claves, sin_ci: bool = False) -> list[str]:
 
 
 def revisar_gh_pages(raiz_gh_pages: Path = RAIZ_GH_PAGES) -> list[str]:
-    """[] si gh-pages local tiene todo lo de origin/gh-pages (otra sesión pudo publicar después)."""
+    """[] si gh-pages local tiene todo lo de origin/gh-pages (otra sesión pudo publicar después). Si está atrás y
+    sin nada propio a medias, se pone al día solo (pull --ff-only): desde 2026-11-18 el resumen del teléfono sube a
+    origin cada hora sin pasar por esta carpeta (subir_carpeta_aparte), así que quedar atrás es lo normal."""
     try:
         _git("fetch", "--quiet", "origin", "gh-pages", repo=raiz_gh_pages)
     except RuntimeError as error:
         print(f"[AVISO] no se pudo revisar origin/gh-pages ({error}); se sigue con lo local.")
         return []
     atras = _git("rev-list", "--count", "HEAD..origin/gh-pages", repo=raiz_gh_pages)
-    if atras != "0":
-        return [f"gh-pages local está {atras} commit(s) atrás de origin: otra sesión publicó. "
-                f'Primero: git -C "{raiz_gh_pages}" pull --ff-only']
-    return []
+    if atras == "0":
+        return []
+    if not _git("status", "--porcelain", repo=raiz_gh_pages):
+        try:
+            _git("merge", "--ff-only", "--quiet", "origin/gh-pages", repo=raiz_gh_pages)
+            print(f"[OK] gh-pages local se puso al día con origin ({atras} commit(s)).")
+            return []
+        except RuntimeError as error:
+            print(f"[AVISO] no se pudo poner al día gh-pages local ({error}).")
+    return [f"gh-pages local está {atras} commit(s) atrás de origin: otra sesión publicó. "
+            f'Primero: git -C "{raiz_gh_pages}" pull --ff-only']
+
+
+def subir_carpeta_aparte(carpeta: Path, destino: str, mensaje: str, repo: Path = RAIZ, remoto: str = "origin",
+                         intentos: int = 3) -> str | None:
+    """Sube a gh-pages, en destino/, los archivos de carpeta (y borra de destino/ los que ya no están), con un commit
+    sobre origin/gh-pages armado con un índice temporal: no toca ninguna carpeta de trabajo, ni la de gh-pages que usan
+    las sesiones (2026-11-18, el resumen del teléfono: lo sube la tarea del procesador). Si otra sesión empujó entre
+    medio, vuelve a armarlo sobre lo nuevo. Devuelve el commit corto, o None si gh-pages ya tenía exactamente eso."""
+    import os
+    import tempfile
+    rama = f"refs/remotes/{remoto}/gh-pages"
+    archivos = sorted(p for p in Path(carpeta).rglob("*") if p.is_file() and p.suffix == ".json")
+    for intento in range(intentos):
+        _git("fetch", "--quiet", remoto, "gh-pages", repo=repo)
+        base = _git("rev-parse", rama, repo=repo)
+        with tempfile.TemporaryDirectory() as tmp:
+            entorno = dict(os.environ, GIT_INDEX_FILE=str(Path(tmp) / "indice"))
+
+            def git(*args):
+                r = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, encoding="utf-8",
+                                   env=entorno)
+                if r.returncode:
+                    raise RuntimeError(f"git {' '.join(args)}: {(r.stderr or r.stdout).strip()}")
+                return r.stdout.strip()
+            git("read-tree", base)
+            viejos = [l for l in git("ls-files", "--", destino + "/").splitlines() if l]
+            if viejos:
+                git("rm", "--cached", "--quiet", "--", *viejos)
+            for p in archivos:
+                # --no-filters: los bytes tal cual (con core.autocrlf, git les cambiaría los fines de línea)
+                sha = git("hash-object", "-w", "--no-filters", "--", str(p))
+                git("update-index", "--add", "--cacheinfo", f"100644,{sha},{destino}/{p.relative_to(carpeta).as_posix()}")
+            arbol = git("write-tree")
+        if arbol == _git("rev-parse", base + "^{tree}", repo=repo):
+            return None
+        commit = _git("commit-tree", arbol, "-p", base, "-m", mensaje, repo=repo)
+        try:
+            _git("push", "--quiet", remoto, f"{commit}:refs/heads/gh-pages", repo=repo)
+            return commit[:7]
+        except RuntimeError:
+            if intento == intentos - 1:
+                raise
+    return None
 
 
 def _sincronizar_carpeta(origen: Path, destino: Path) -> tuple[int, int]:
