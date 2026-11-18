@@ -4950,6 +4950,7 @@
     }
     f.title = (HERR.get(p.herr) || {}).nombre || f.title;
     enganchar(p, w);
+    adAlCargar(p, w);
     if (p.familia === estado.activa) {
       try { history.replaceState(null, '', '#/' + p.herr); } catch (e) { /* nada */ }
     }
@@ -5007,6 +5008,159 @@
     estado.proyectos = leerProyectos();
     if (estado.activa === 'inicio') pintarInicio();
     pintarPestanas();
+  }
+
+  // ---- Al día sin F5 (2026-11-18) -------------------------------------------------------------------------------------
+  /* Pedido del usuario: que el equipo vea lo nuevo sin apretar F5. Cada AD_REVISAR_SEG, y al volver a la pestaña, el
+     Portal pregunta al sitio si cambió su propia página o la de una herramienta abierta (la página y sus scripts y hojas
+     de estilo del mismo sitio). GitHub Pages cambia el ETag de todos los archivos en cada publicación, así que un ETag
+     distinto solo hace bajar el archivo, y lo que decide es su contenido (SHA-256). Sin ETag (el sitio de las pruebas) se
+     compara siempre el contenido.
+     Lo nuevo se carga solo cuando no se pierde nada: una herramienta escondida o la ventana en otra pestaña, al tiro; lo
+     que está a la vista, después de AD_QUIETO_SEG sin tocarlo. Nunca con un diálogo abierto, un campo con el foco o algo
+     del Portal por guardar. Mientras espera, un aviso con «Actualizar».
+     Los datos del equipo ya llegan solos en Planificación, Ejecución y Requerimientos; el Inicio y el Recorrido se
+     releen cada AD_DATOS_SEG mientras se miran. */
+  const AD_REVISAR_SEG = 300;
+  const AD_QUIETO_SEG = 600;
+  const AD_DATOS_SEG = 120;
+  const ad = { portal: null, toque: Date.now(), revisando: false, revisado: 0, avisado: new Set() };
+  const adTocar = () => { ad.toque = Date.now(); };
+  ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'input'].forEach((t) =>
+    document.addEventListener(t, adTocar, { capture: true, passive: true }));
+  async function adHash(texto) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+    return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  }
+  const adMarca = (r) => r.headers.get('etag') || r.headers.get('last-modified') || '';
+  // La huella de cómo está cada archivo ahora. modo 'force-cache' para la base (la copia que se acaba de cargar).
+  async function adLeer(url, modo, antes) {
+    const r = await fetch(url, { cache: modo, credentials: 'same-origin' });
+    if (!r.ok) throw new Error(url + ': ' + r.status);
+    const marca = adMarca(r);
+    if (antes && marca && marca === antes.marca) { try { r.body && r.body.cancel(); } catch (e) { /* nada */ } return antes; }
+    return { marca, hash: await adHash(await r.text()), lm: r.headers.get('last-modified') || '' };
+  }
+  // Los archivos de una página que valen: ella misma y sus scripts y hojas de estilo del mismo sitio.
+  function adArchivos(doc, url) {
+    const urls = new Set([url.split('#')[0]]);
+    try {
+      doc.querySelectorAll('script[src], link[rel="stylesheet"][href]').forEach((el) => {
+        const u = new URL(el.src || el.href, doc.baseURI);
+        if (u.origin === location.origin) urls.add(u.href.split('#')[0]);
+      });
+    } catch (e) { /* nada */ }
+    return [...urls];
+  }
+  // La base de una página: cómo estaba cada archivo al cargarla. Si el servidor ya tiene otra publicación que la cargada
+  // (Last-Modified distinto al de la página), queda como «nueva» de entrada.
+  async function adBase(doc, url) {
+    const base = { archivos: new Map(), nueva: false };
+    for (const u of adArchivos(doc, url)) {
+      try { base.archivos.set(u, await adLeer(u, 'force-cache')); } catch (e) { /* no se vigila ese */ }
+    }
+    const pag = base.archivos.get(url.split('#')[0]);
+    const cargada = Date.parse(doc.lastModified), servida = pag && pag.lm ? Date.parse(pag.lm) : NaN;
+    if (!isNaN(cargada) && !isNaN(servida) && Math.abs(servida - cargada) > 2000 && servida > cargada) base.nueva = true;
+    return base;
+  }
+  async function adCambio(base) {
+    if (!base) return false;
+    if (base.nueva) return true;
+    for (const [u, antes] of base.archivos) {
+      let ahora;
+      try { ahora = await adLeer(u, 'no-cache', antes); } catch (e) { continue; }
+      if (ahora.hash !== antes.hash) { base.nueva = true; return true; }
+      base.archivos.set(u, ahora);    // otra publicación, el mismo contenido: la próxima vez basta el ETag
+    }
+    return false;
+  }
+  // Algo que se perdería al recargar: un diálogo abierto, un campo con el foco, lo del Portal por guardar.
+  function adOcupado(doc) {
+    try {
+      if ([...doc.querySelectorAll('dialog[open], [role="dialog"]')].some((d) => d.getClientRects().length)) return true;
+      const a = doc.activeElement;
+      if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return true;
+    } catch (e) { return true; }
+    return false;
+  }
+  function adPortalOcupado() {
+    if (adOcupado(document)) return true;
+    if (planif.porGuardar.size || planif.guardando || ej.porGuardar || ej.guardando) return true;
+    try { if (localStorage.getItem(LS_PL_PENDIENTE) || localStorage.getItem(LS_EJ_PENDIENTE)) return true; } catch (e) { /* nada */ }
+    return false;
+  }
+  const adQuieto = () => document.visibilityState === 'hidden' || Date.now() - ad.toque > AD_QUIETO_SEG * 1000;
+  function adAvisar(clave, msg, ir) {
+    if (ad.avisado.has(clave) || document.visibilityState !== 'visible') return;
+    ad.avisado.add(clave);
+    avisar(msg, { texto: 'Actualizar', ir });
+  }
+  function adRecargarMarco(p) {
+    const w = ventanaDe(p);
+    if (!w) return;
+    ad.avisado.delete('marco:' + p.familia);
+    p.ad = null;
+    p.cargando = true;
+    if (p.cargador) p.cargador.hidden = p.familia !== estado.activa;
+    try { w.location.reload(); } catch (e) { p.marco.src = p.ultima || p.url; }
+  }
+  // Al cargar una herramienta (alCargar), su base.
+  function adAlCargar(p, w) {
+    p.ad = null;
+    let doc = null, url = '';
+    try { doc = w.document; url = w.location.href; } catch (e) { return; }
+    if (!doc || !/^https?:/.test(url)) return;
+    ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'input'].forEach((t) =>
+      doc.addEventListener(t, () => { adTocar(); p.adToque = Date.now(); }, { capture: true, passive: true }));
+    p.adToque = Date.now();
+    const marco = p.marco;
+    adBase(doc, url).then((b) => { if (p.marco === marco) p.ad = b; });
+  }
+  async function adRevisar() {
+    if (ad.revisando || !navigator.onLine) return;
+    ad.revisando = true;
+    ad.revisado = Date.now();
+    try {
+      if (!ad.portal) ad.portal = await adBase(document, location.href);
+      else if (await adCambio(ad.portal)) {
+        if (adQuieto() && !adPortalOcupado()) { location.reload(); return; }
+        adAvisar('portal', 'Hay una versión nueva del Portal.', () => { if (!adPortalOcupado() || confirm('Hay algo sin guardar o abierto. ¿Actualizar igual?')) location.reload(); });
+      }
+      for (const p of estado.pestanas.slice()) {
+        if (!p.ad || !p.marco) continue;
+        const marco = p.marco;
+        if (!(await adCambio(p.ad)) || p.marco !== marco) continue;
+        const w = ventanaDe(p);
+        let doc = null;
+        try { doc = w && w.document; } catch (e) { doc = null; }
+        if (!doc) continue;
+        const aLaVista = p.familia === estado.activa && document.visibilityState === 'visible';
+        const quieta = !aLaVista || Date.now() - Math.max(p.adToque || 0, ad.toque) > AD_QUIETO_SEG * 1000;
+        if (quieta && !adOcupado(doc)) adRecargarMarco(p);
+        else if (aLaVista) adAvisar('marco:' + p.familia, 'Hay una versión nueva de «' + etiqueta(p, true) + '».', () => adRecargarMarco(p));
+      }
+    } finally { ad.revisando = false; }
+  }
+  // Los datos del equipo en el Inicio y el Recorrido, mientras se miran
+  function adDatos() {
+    if (document.visibilityState !== 'visible' || rc.leyendo || !rc.dir || !rc.leido) return;
+    if (estado.activa !== 'inicio' && estado.activa !== 'recorrido') return;
+    if (document.querySelector('dialog[open]')) return;
+    if (Date.now() - rc.leido > AD_DATOS_SEG * 1000) rcCargar();
+  }
+  function adIniciar() {
+    adRevisar();
+    setInterval(() => { if (Date.now() - ad.revisado >= AD_REVISAR_SEG * 1000) adRevisar(); }, 30000);
+    setInterval(adDatos, 30000);
+    document.addEventListener('visibilitychange', () => {
+      // Al irse a otra pestaña, lo que ya se sabe nuevo se carga sin que se note; al volver, se pregunta si pasó más de un minuto.
+      if (document.visibilityState === 'hidden') {
+        if (ad.portal && ad.portal.nueva) { setTimeout(() => { if (document.visibilityState === 'hidden' && !adPortalOcupado()) location.reload(); }, 3000); }
+        return;
+      }
+      if (Date.now() - ad.revisado > 60000) adRevisar();
+    });
   }
 
   // ---- Usuario elegido (2026-10-16) ---------------------------------------------------------------
@@ -18856,6 +19010,8 @@
   // Trabajar a la vez: la presencia de este navegador y la de los demás
   setInterval(presVigilar, 3000);
   document.addEventListener('visibilitychange', presVigilar);
+  // Al día sin F5: lo publicado de nuevo (el Portal y las herramientas abiertas) y los datos del Inicio y el Recorrido
+  adIniciar();
   // La cotización del Cotizador Histórico, a un proyecto
   $('#llForm').addEventListener('submit', llLlevar);
   ['#llX', '#llCancelar'].forEach((s) => $(s).addEventListener('click', () => $('#dlgLlevar').close()));
