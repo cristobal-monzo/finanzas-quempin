@@ -76,11 +76,15 @@ def _fecha(texto: str):
 
 
 def _momento(texto: str | None):
+    """Un instante con zona horaria (sin zona = la de este equipo): se compara igual en cualquier equipo."""
     try:
-        m = datetime.fromisoformat(str(texto).replace("Z", "+00:00"))
-        return m.astimezone().replace(tzinfo=None) if m.tzinfo else m
+        return _con_zona(datetime.fromisoformat(str(texto).replace("Z", "+00:00")))
     except (TypeError, ValueError):
         return None
+
+
+def _con_zona(m: datetime) -> datetime:
+    return m if m.tzinfo else m.astimezone()
 
 
 def pesos(n) -> str:
@@ -160,6 +164,7 @@ def armar(ren: dict) -> tuple[str, str]:
 def decidir(lista: list[dict], registro: dict, ahora: datetime) -> dict:
     """Qué rendiciones llevan correo ahora: completas (o que ya esperaron ESPERA_INCOMPLETA), no enviadas antes y
     de los últimos DIAS_MAX días."""
+    ahora = _con_zona(ahora)
     ya = {x.get("id") for x in registro.get("enviados") or []}
     enviar, esperan = [], []
     for ren in lista:
@@ -190,7 +195,7 @@ def ejecutar(raiz: Path, enviar: bool = True, remitente=None, ahora: datetime | 
     Devuelve {enviados: [N°], esperan: [N°], errores: [texto]}."""
     remitente = remitente or remitente_outlook
     ruta_registro = ruta_registro or RUTA_REGISTRO
-    ahora = ahora or datetime.now()
+    ahora = _con_zona(ahora or datetime.now())
     pub = intercambio.leer_publicacion(raiz, PUBLICACION)
     lista = list(((pub or {}).get("datos") or {}).get("rendiciones") or [])
     registro = _leer(ruta_registro)
