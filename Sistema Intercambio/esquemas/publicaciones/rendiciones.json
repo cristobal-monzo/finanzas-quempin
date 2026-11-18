@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "rendiciones.json (las rendiciones de gastos que llegaron al Centro de Costos)",
-  "description": "Desde el 2026-11-18. Cada rendición del Portal («Rendiciones») cuyos documentos el procesador dejó en las carpetas del Centro de Costos, con lo que una persona revisó de cada documento (tipo, N°, fecha, proveedor, RUT, detalle y valor) y el nombre con que quedó en la carpeta ('archivo'). /Registro_Centro_de_Costos lo usa al registrar esos documentos (driver.py rendiciones). Más reciente primero; se guardan las últimas 300.",
+  "description": "Desde el 2026-11-18. Cada rendición del Portal («Rendiciones») cuyos documentos el procesador dejó en las carpetas del Centro de Costos, con lo que una persona revisó de cada documento (tipo, N°, fecha, proveedor, RUT, detalle y valor) y el nombre con que quedó en la carpeta ('archivo'). /Registro_Centro_de_Costos lo usa al registrar esos documentos (driver.py rendiciones). Es también el «Registro de rendiciones» del Portal, con el correo automático de cada una. Más reciente primero; se guardan las últimas 300.",
   "dueno": "procesador",
   "type": "object",
   "properties": {
@@ -20,6 +20,16 @@
           "cantidad": { "type": "integer", "minimum": 1 },
           "usuario": { "type": "string" },
           "enviado": { "type": "string" },
+          "correo": {
+            "type": "object",
+            "description": "Desde el 2026-11-18: el correo automático de la rendición (correo_rendiciones.py). Sin esta clave, aún no sale.",
+            "properties": {
+              "fecha": { "type": "string", "minLength": 1 },
+              "para": { "type": "array", "items": { "type": "string" } },
+              "estado": { "enum": ["enviado", "bandeja-de-salida"] }
+            },
+            "required": ["fecha", "estado"]
+          },
           "documentos": {
             "type": "array",
             "items": {

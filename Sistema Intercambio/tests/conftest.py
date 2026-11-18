@@ -10,6 +10,7 @@ import bases_oportunidades  # noqa: E402
 import compra_agil  # noqa: E402
 import mercado_publico  # noqa: E402
 import oportunidades  # noqa: E402
+import correo_rendiciones  # noqa: E402
 import procesar  # noqa: E402
 
 
@@ -56,6 +57,11 @@ def _sin_mercado_publico_real(tmp_path, monkeypatch):
     monkeypatch.setattr(alertas_oportunidades, "enviar_outlook", _sin_outlook)
     monkeypatch.setattr(alertas_oportunidades, "RUTA_REGISTRO", tmp_path / "oportunidades_estado_correos.json")
     monkeypatch.setattr(alertas_oportunidades, "RUTA_DESTINATARIOS", tmp_path / "sin-destinatarios.json")
+    # El correo de las rendiciones (2026-11-18): tampoco sale ni anota en el registro real.
+    monkeypatch.setattr(alertas_oportunidades, "entregar_outlook", _sin_outlook)
+    monkeypatch.setattr(correo_rendiciones, "remitente_outlook", _sin_outlook)
+    monkeypatch.setattr(correo_rendiciones, "RUTA_REGISTRO", tmp_path / "rendiciones_estado_correos.json")
+    monkeypatch.setattr(correo_rendiciones, "RUTA_DESTINATARIOS", tmp_path / "sin-destinatarios-rendiciones.json")
 
     # La revisión de las bases antes del correo (2026-10-15): ninguna prueba
     # baja una ficha de verdad. Las del correo que no miran las bases pasan

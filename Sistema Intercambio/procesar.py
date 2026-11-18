@@ -90,6 +90,7 @@ if str(AQUI) not in sys.path:
 import carpetas_proyecto  # noqa: E402
 import cierre_entregados  # noqa: E402
 import documentos_cc  # noqa: E402
+import correo_rendiciones  # noqa: E402
 import documentos_proyecto  # noqa: E402
 import esquemas  # noqa: E402
 import formulaciones  # noqa: E402
@@ -462,6 +463,19 @@ def paso_documentos_cc(raiz: Path, previo, forzar):
     return detalle, None
 
 
+def paso_correo_rendiciones(raiz: Path, previo, forzar):
+    """El correo de cada rendición del Portal que llegó al Centro de Costos (correo_rendiciones.py, 2026-11-18)."""
+    r = correo_rendiciones.ejecutar(raiz)
+    partes = []
+    if r["enviados"]:
+        partes.append("correo de " + ", ".join(map(str, r["enviados"])))
+    if r["esperan"]:
+        partes.append(f"{len(r['esperan'])} esperan sus documentos")
+    if r["errores"]:
+        raise RuntimeError("; ".join(r["errores"]))
+    return "; ".join(partes) or "sin correos pendientes", None
+
+
 def paso_proyectos(raiz: Path, previo, forzar):
     carpetas = proyectos.carpetas_de_proyectos(AQUI, RAIZ_FACTURAS_CL if RAIZ_FACTURAS_CL.is_dir() else None)
     # La dirección web de la carpeta del Centro de Costos (2026-10-29), para «Facturas del proyecto» del Portal
@@ -491,6 +505,7 @@ PASOS = (
     ("entregados", paso_entregados),
     ("carpetas-proyecto", paso_carpetas_proyecto),
     ("documentos-cc", paso_documentos_cc),
+    ("correo-rendiciones", paso_correo_rendiciones),
     ("proyectos", paso_proyectos),
     ("respaldo", paso_respaldo),
 )

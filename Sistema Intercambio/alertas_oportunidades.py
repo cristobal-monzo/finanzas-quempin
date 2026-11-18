@@ -373,9 +373,14 @@ def exigir_horario_laboral(ahora: datetime | None = None) -> None:
 
 
 def enviar_outlook(para: list[str], titulo: str, cuerpo: str) -> str:
-    """Entrega el correo a Outlook de este equipo (COM). Devuelve 'enviado' o
+    """Entrega el correo a Outlook de este equipo (COM), solo en horario laboral. Devuelve 'enviado' o
     'bandeja-de-salida' (Outlook lo envía al sincronizar)."""
     exigir_horario_laboral()
+    return entregar_outlook(para, titulo, cuerpo)
+
+
+def entregar_outlook(para: list[str], titulo: str, cuerpo: str) -> str:
+    """Entrega el correo a Outlook de este equipo, sin mirar el horario (lo usa también correo_rendiciones.py)."""
     with tempfile.TemporaryDirectory() as carpeta:
         ruta = Path(carpeta) / "correo.json"
         ruta.write_text(json.dumps({"para": para, "asunto": titulo, "html": cuerpo}, ensure_ascii=True), encoding="ascii")

@@ -2230,6 +2230,8 @@ def test_la_planificacion_semanal_en_el_registro():
     assert h["tipo"] == "vista" and h["vista"] == "vistaPlan" and h["grupo"] == "ejecutar"
     assert reg["personal"] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
     assert set(reg["usuarios"]) <= set(reg["personal"]), "quien usa las herramientas también se planifica"
+    # Nombre y apellido de cada uno (pedido del usuario, 2026-11-18): van en el correo de las rendiciones
+    assert set(reg["nombres"]) <= set(reg["personal"]) and all(len(n.split()) >= 2 for n in reg["nombres"].values())
     usan = {e["id"]: e["usan"] for e in _conexiones()["elementos"]}
     assert "planificacion" in usan["biblioteca"] and "planificacion" in usan["intercambio"]
     portal = PORTAL.read_text(encoding="utf-8")
@@ -4524,6 +4526,9 @@ def test_rendiciones_de_la_foto_al_pdf_y_al_centro_de_costos(navegador, sitio, t
     _menu(pagina, "Rendiciones")
     pagina.wait_for_function("() => document.querySelectorAll('#rdProyectos option').length >= 2")
     assert pagina.locator("#rdPdf").is_disabled() and pagina.locator("#rdEnviar").is_disabled()
+    # La persona: por defecto, el nombre y apellido de quien usa el portal (el registro lleva «nombres»)
+    assert pagina.locator("#rdDeudor").input_value() == "Lucas Contreras"
+    assert pagina.locator("#rdPersonas option").count() == 7
     _rd_subir(pagina, [RD_FACTURA, RD_VOUCHER], ["factura bencina.png", "voucher.png"])
     filas = pagina.evaluate(JS_RD_FILAS)
     assert [f["numero"] for f in filas] == ["296581", "119"] and [f["valor"] for f in filas] == ["70.780", "2.400"]
@@ -4556,7 +4561,7 @@ def test_rendiciones_de_la_foto_al_pdf_y_al_centro_de_costos(navegador, sitio, t
     assert pagina.locator("#rdEnviar").inner_text().startswith("Enviar igual")
     pagina.locator("#rdEnviar").click()
     pagina.locator("#rdEnvios .sc-pill", has_text="En camino").wait_for()
-    assert pagina.locator("#rdEnviar").inner_text() == "Enviada al Centro de Costos" and pagina.locator("#rdEnviar").is_disabled()
+    assert pagina.locator("#rdEnviar").inner_text() == "Rendición enviada" and pagina.locator("#rdEnviar").is_disabled()
     leido = pagina.evaluate(JS_LEER_BUZON)
     mensajes = {json.loads(t)["carpeta"]: (n, json.loads(t)) for n, t in leido["mensajes"].items()}
     assert set(mensajes) == {"280. Obra de ejemplo", "Gastos Generales"}
@@ -4590,6 +4595,25 @@ def test_rendiciones_de_la_foto_al_pdf_y_al_centro_de_costos(navegador, sitio, t
     pub = json.loads((raiz / "publicado" / "rendiciones.json").read_text(encoding="utf-8"))
     [r] = pub["datos"]["rendiciones"]
     assert [(d["carpeta"], d["numero"], d["valor"]) for d in r["documentos"]] == [("280. Obra de ejemplo", "296581", 70780), ("Gastos Generales", "119", 2500)]
+    # El correo automático (con un remitente de prueba): persona, monto total y período del más antiguo al más reciente
+    (tmp_path / "dest.json").write_text(json.dumps({"para": ["a@ejemplo.cl", "b@ejemplo.cl"]}), encoding="utf-8")
+    correo = subprocess.run([sys.executable, "-c", "import json, sys, correo_rendiciones as cr; from pathlib import Path; "
+                             "salida = []; "
+                             "r = cr.ejecutar(Path(sys.argv[1]), remitente=lambda p, a, c: salida.append([p, a, c]) or 'enviado', "
+                             "ruta_registro=Path(sys.argv[2]) / 'reg.json', ruta_destinatarios=Path(sys.argv[2]) / 'dest.json'); "
+                             "print(json.dumps([r, salida]))", str(raiz), str(tmp_path)],
+                            cwd=RAIZ / "Sistema Intercambio", capture_output=True, text=True, check=True).stdout
+    resultado, [[para, asunto, cuerpo]] = json.loads(correo)
+    assert resultado["enviados"] == [r["numero"]] and para == ["a@ejemplo.cl", "b@ejemplo.cl"]
+    assert asunto.endswith("· Persona de Ejemplo · $ 73.280") and "Correo automático generado" in cuerpo
+    assert "período del 11-09-2026 al 14-10-2026" in cuerpo
+    # El registro de rendiciones del Portal la muestra con su correo
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"publicado/rendiciones.json": json.loads((raiz / "publicado" / "rendiciones.json").read_text(encoding="utf-8"))})
+    _menu(pagina, "Rendiciones")                          # volver a mostrarla relee la carpeta
+    pill = pagina.locator("#rdEnvios li").first.locator(".sc-pill")
+    pill.filter(has_text="Correo enviado").wait_for()
+    linea = pagina.locator("#rdEnvios li").first.inner_text()
+    assert "Persona de Ejemplo" in linea and "$ 73.280" in linea and "gastos del 11-09-2026 al 14-10-2026" in linea, linea
     assert (chile / "Gastos Generales" / r["documentos"][1]["archivo"]).exists()
     assert not errores
     pagina.context.close()

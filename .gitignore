@@ -119,6 +119,9 @@ tmp/
 # mercado (datos públicos), regenerable.
 **/oportunidades_estado*.json
 **/oportunidades_destinatarios.json
+# Rendiciones (2026-11-18): a quién va el correo y qué correos ya salieron
+**/rendiciones_destinatarios.json
+**/rendiciones_estado_correos.json
 **/*.ticket
 
 # Flujo de Caja: saldo de caja y ajustes a mano (dato de la empresa)

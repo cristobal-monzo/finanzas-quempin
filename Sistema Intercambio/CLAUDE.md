@@ -125,7 +125,8 @@ cuyo esquema declara `destino: analisis-financiero`; si no, y cambió CC o el li
 `intercambio publicar`) → precios de referencia → Sistema QUEMPIN (`python -m
 app.integraciones.ecosistema procesar`, con su Python 3.11) → Mercado Público (**cada 3 horas**) → la UF del día
 (`Cotizador_Historico/driver.py uf`, una vez al día) → proyectos entregados (`cierre_entregados.py`, cada vuelta) →
-carpetas de facturas → documentos del Portal (`documentos_cc.py`) → `proyectos.json` → `estado.json`.
+carpetas de facturas → documentos del Portal (`documentos_cc.py`) → correo de las rendiciones (`correo_rendiciones.py`,
+por Outlook de ese PC) → `proyectos.json` → `estado.json`.
 
 - **Turnos** (`TURNO_SEG`): Mercado Público y Oportunidades consultan la API cada 3 horas (eran 50–170 s de cada vuelta);
   la última vez queda en `_turnos` de `procesador_estado.json`. Entre turnos, `estado.json` repite su último resultado

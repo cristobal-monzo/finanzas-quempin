@@ -3644,7 +3644,7 @@
             <header class="rc-cab">
               <div>
                 <h1 id="tituloRendir">Rendiciones</h1>
-                <span class="info" data-etiqueta="Cómo funciona Rendiciones">Sube la foto o el PDF de cada boleta o factura: se lee sola y llena su fila. Revisa lo marcado en naranjo, elige el proyecto de cada documento y descarga el PDF para entregarlo. «Enviar al Centro de Costos» deja cada documento en la carpeta de su proyecto. Lo que llevas se guarda en este navegador hasta que empiezas una rendición nueva.</span>
+                <span class="info" data-etiqueta="Cómo funciona Rendiciones">Sube la foto o el PDF de cada boleta o factura: se lee sola y llena su fila. Revisa lo marcado en naranjo, elige el proyecto de cada documento y descarga el PDF para entregarlo. «Enviar rendición» la guarda en el registro de rendiciones, deja cada documento en la carpeta de su proyecto del Centro de Costos y envía un correo automático con la persona, el monto total y el período. Lo que llevas se guarda en este navegador hasta que empiezas una rendición nueva.</span>
               </div>
               <div class="rd-cab-acc">
                 <button class="rd-lector" id="rdLector" type="button"></button>
@@ -3658,7 +3658,7 @@
                     <button type="button" data-tipo="vale">Vale a rendir</button><button type="button" data-tipo="recuperacion">Recuperación de gastos</button><button type="button" data-tipo="caja">Caja chica</button>
                   </div>
                   <div class="rd-campos">
-                    <label class="rd-campo"><span>Nombre del deudor</span><input id="rdDeudor" type="text" maxlength="80" autocomplete="name" placeholder="Nombre y apellidos"></label>
+                    <label class="rd-campo"><span>Nombre del deudor</span><input id="rdDeudor" type="text" maxlength="80" autocomplete="off" list="rdPersonas" placeholder="Nombre y apellido"></label>
                     <label class="rd-campo"><span>Período</span><input id="rdPeriodo" type="text" maxlength="60" autocomplete="off" placeholder="Sale de las fechas"></label>
                     <label class="rd-campo"><span>N° documento</span><input id="rdNumero" type="text" maxlength="40" autocomplete="off"></label>
                     <label class="rd-campo"><span>Unidad presupuestaria</span><input id="rdUnidad" type="text" maxlength="80" autocomplete="off"></label>
@@ -3687,7 +3687,7 @@
                       <tbody id="rdFilas"></tbody>
                     </table>
                   </div>
-                  <datalist id="rdProyectos"></datalist>
+                  <datalist id="rdProyectos"></datalist><datalist id="rdPersonas"></datalist>
                   <datalist id="rdDetalles"></datalist>
                 </section>
               </div>
@@ -3697,11 +3697,11 @@
                   <dl class="rd-saldo" id="rdSaldo" hidden></dl>
                   <p class="rd-estado" id="rdEstado" aria-live="polite"></p>
                   <button class="cx-boton rd-boton" id="rdPdf" type="button" disabled>Descargar PDF</button>
-                  <button class="cx-enlace rd-boton" id="rdEnviar" type="button" disabled>Enviar al Centro de Costos</button>
+                  <button class="cx-enlace rd-boton" id="rdEnviar" type="button" disabled>Enviar rendición</button>
                   <p class="rd-nota" id="rdNotaEnviar"></p>
                 </section>
                 <section class="rd-tarjeta" aria-labelledby="rdTEnvios">
-                  <h2 id="rdTEnvios">Rendiciones enviadas <span class="info" data-etiqueta="Qué son las rendiciones enviadas">Las del equipo, de este mes y el anterior. «En camino» espera la vuelta del procesador (cada 5 minutos); después cada documento queda en la carpeta de su proyecto del Centro de Costos y se registra con <strong>/Registro_Centro_de_Costos</strong>, que usa los datos revisados aquí.</span></h2>
+                  <h2 id="rdTEnvios">Registro de rendiciones <span class="info" data-etiqueta="Qué es el registro de rendiciones">Todas las rendiciones enviadas por el equipo, la más reciente primero. «En camino» espera la vuelta del procesador (cada 5 minutos). Después cada documento queda en la carpeta de su proyecto del Centro de Costos, sale el correo automático y la rendición pasa a «Correo enviado». El Centro de Costos la registra con <strong>/Registro_Centro_de_Costos</strong>, con los datos revisados aquí.</span></h2>
                   <ul class="sc-env-lista" id="rdEnvios"></ul>
                 </section>
               </aside>
@@ -4208,6 +4208,7 @@
 {
   "usuarios": ["NB", "ES", "LC", "CM", "MP", "SV"],
   "personal": ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"],
+  "nombres": {"NB": "Nicolás Becker", "ES": "Enzo Saavedra", "CM": "Cristóbal Monzó", "LC": "Lucas Contreras", "MP": "Matías Pérez", "EV": "Eric Vergara", "RL": "René Loyola"},
   "vehiculos": [{"id": "quempineta", "nombre": "Quempineta", "articulo": "la"}, {"id": "ram", "nombre": "RAM", "articulo": "la"}],
   "grupos": [
     {"id": "ofertar", "nombre": "Captar y ofertar", "corto": "Ofertar", "icono": "portapapeles"},
@@ -9381,6 +9382,10 @@
   const RD_EXT_CC = /\.(pdf|png|jpe?g|heic)$/i;   // las que acepta el Centro de Costos (documentos_cc.EXTENSIONES)
   const RD_CLAVE_LECTOR = 'quempin_portal_rendiciones_lector';
   const RD_CLAVE_DEUDOR = 'quempin_portal_rendiciones_deudor';
+  // Nombre y apellido de cada persona del equipo (pedido del usuario, 2026-11-18): el registro los lleva en «nombres»
+  const RD_NOMBRES = REG.nombres && typeof REG.nombres === 'object' ? REG.nombres : {};
+  const rdNombreUsuario = () => RD_NOMBRES[estado.usuario] || '';
+  const rdConApellido = (s) => texto(s).split(/\s+/).filter(Boolean).length >= 2;
   const RD_MESES = { ENE: 1, FEB: 2, MAR: 3, ABR: 4, MAY: 5, JUN: 6, JUL: 7, AGO: 8, SEP: 9, SET: 9, OCT: 10, NOV: 11, DIC: 12 };
   const RD_NOMBRE_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const rd = {
@@ -9860,7 +9865,7 @@
     const d = new Date();
     const p = (n) => String(n).padStart(2, '0');
     return {
-      tipo: 'recuperacion', deudor: texto(leer(RD_CLAVE_DEUDOR, '')), periodo: '', periodoAMano: false, unidad: RD_UNIDAD,
+      tipo: 'recuperacion', deudor: texto(leer(RD_CLAVE_DEUDOR, '')) || rdNombreUsuario(), periodo: '', periodoAMano: false, unidad: RD_UNIDAD,
       numero: 'R-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + (estado.usuario ? '-' + estado.usuario : ''),
       valeMonto: null, valeFecha: '', ultimoProyecto: '', enviada: null, pdf: false
     };
@@ -10019,7 +10024,8 @@
     rd.leyendoCarpeta = (async () => {
       const pub = await rcJson(await rcSub(dir, 'publicado'), 'centro-costos-carpetas.json');
       rd.carpetas = pub && pub.datos && pub.datos.paises ? pub.datos.paises : null;
-      rd.envios = await rdLeerEnvios(dir);
+      const pubR = await rcJson(await rcSub(dir, 'publicado'), 'rendiciones.json');
+      rd.envios = rdRegistro(pubR && pubR.datos && Array.isArray(pubR.datos.rendiciones) ? pubR.datos.rendiciones : [], await rdLeerEnvios(dir));
       rd.leidoCarpeta = Date.now();
     })().catch((e) => { console.error(e); }).then(() => {
       rd.leyendoCarpeta = null;
@@ -10044,11 +10050,12 @@
           const k = texto(r.id) || texto(m.id);
           if (!grupos.has(k)) {
             grupos.set(k, {
-              numero: texto(r.numero), deudor: texto(r.deudor), total: +r.total || 0, cantidad: +r.cantidad || 0,
-              enviado: texto(m.origen && m.origen.enviado), usuario: texto(m.origen && m.origen.usuario), estados: [], carpetas: [], detalle: []
+              id: k, numero: texto(r.numero), deudor: texto(r.deudor), total: +r.total || 0, cantidad: +r.cantidad || 0,
+              enviado: texto(m.origen && m.origen.enviado), usuario: texto(m.origen && m.origen.usuario), estados: [], carpetas: [], detalle: [], fechas: []
             });
           }
           const g = grupos.get(k);
+          (Array.isArray(r.documentos) ? r.documentos : []).forEach((d) => { if (d && texto(d.fecha)) g.fechas.push(texto(d.fecha)); });
           const res = m.resultado || {};
           g.estados.push(enCamino ? 'camino' : res.estado === 'aplicado' ? 'aplicado' : 'rechazado');
           g.carpetas.push(texto(m.carpeta));
@@ -10064,7 +10071,32 @@
     await leer(await rcSub(dir, 'buzon'), true);
     return [...grupos.values()].map((g) => Object.assign(g, {
       estado: g.estados.includes('rechazado') ? 'rechazado' : g.estados.includes('camino') ? 'camino' : 'aplicado'
-    })).sort((a, b) => b.enviado.localeCompare(a.enviado)).slice(0, 15);
+    })).sort((a, b) => b.enviado.localeCompare(a.enviado));
+  }
+  // El registro de rendiciones (2026-11-18): lo publicado por el procesador (todas, con su correo) y encima lo que aún
+  // espera en el buzón o se rechazó (los mensajes de este mes y el anterior)
+  function rdRegistro(publicadas, mensajes) {
+    const porId = new Map(mensajes.map((g) => [g.id, g]));
+    const lista = publicadas.filter((r) => r && texto(r.id)).map((r) => {
+      const docs = Array.isArray(r.documentos) ? r.documentos : [];
+      const g = porId.get(texto(r.id));
+      porId.delete(texto(r.id));
+      return {
+        id: texto(r.id), numero: texto(r.numero), deudor: texto(r.deudor), total: +r.total || 0, cantidad: +r.cantidad || 0,
+        enviado: texto(r.enviado) || (g ? g.enviado : ''), usuario: texto(r.usuario), carpetas: docs.map((d) => texto(d.carpeta)),
+        fechas: docs.map((d) => texto(d.fecha)).filter(Boolean), detalle: g ? g.detalle : [],
+        correo: r.correo && texto(r.correo.fecha) ? r.correo : null,
+        estado: r.correo && texto(r.correo.fecha) ? 'correo' : g && g.estado === 'camino' ? 'camino' : 'aplicado'
+      };
+    });
+    return lista.concat([...porId.values()]).sort((a, b) => b.enviado.localeCompare(a.enviado)).slice(0, 60);
+  }
+  // Del documento más antiguo al más reciente (fechas dd-mm-aaaa), como en el correo
+  function rdRango(fechas) {
+    const f = fechas.map((t) => { const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(t); return m ? m[3] + m[2] + m[1] : ''; }).filter(Boolean).sort();
+    if (!f.length) return '';
+    const v = (x) => x.slice(6) + '-' + x.slice(4, 6) + '-' + x.slice(0, 4);
+    return f[0] === f[f.length - 1] ? v(f[0]) : v(f[0]) + ' al ' + v(f[f.length - 1]);
   }
 
   // ---- Lo que falta para enviar ---------------------------------------------------------------------------------
@@ -10082,7 +10114,8 @@
   }
   const RD_FALTA_TXT = { valor: 'el valor', numero: 'el N°', fecha: 'la fecha', proyecto: 'el proyecto' };
 
-  // ---- Enviar al Centro de Costos: un documento-cc por proyecto, con los datos revisados en «rendicion» ------------
+  // ---- Enviar rendición: un documento-cc por proyecto, con los datos revisados en «rendicion»; el procesador la publica
+  //      en el registro (rendiciones.json) y envía el correo (correo_rendiciones.py) ------------------------------------
   async function rdArchivoParaCC(d) {
     const m = d.nombre.match(/(\.[^.]+)$/);
     const ext = m ? m[1].toLowerCase() : '';
@@ -10098,6 +10131,11 @@
     if (faltan.length) {
       faltan.forEach(({ d, f }) => { d.marcar = f; rdPintarFila(d); });
       avisar('Antes de enviar falta ' + rdFaltaTexto(faltan) + '.');
+      return;
+    }
+    if (!rdConApellido(rd.cab.deudor)) {
+      avisar('Antes de enviar falta el nombre y apellido de la persona: va en el correo.');
+      $('#rdDeudor').focus();
       return;
     }
     const dudas = rd.docs.reduce((s, d) => s + d.dudas.length, 0);
@@ -10164,8 +10202,9 @@
         g.o.nueva = false;
       }
       cab.enviada = { fecha: scAhora(), id: rid, carpetas: enviados };
-      rd.envios.unshift({ numero: texto(cab.numero), deudor: texto(cab.deudor), total, cantidad: rd.docs.length, enviado: cab.enviada.fecha, usuario: estado.usuario || '', estados: [], carpetas: enviados, detalle: [], estado: 'camino' });
-      avisar(pl(rd.docs.length, 'documento enviado', 'documentos enviados') + ' al Centro de Costos (' + pl(enviados.length, 'proyecto', 'proyectos') + '). Llegan en la próxima vuelta del procesador.');
+      rd.envios.unshift({ id: rid, numero: texto(cab.numero), deudor: texto(cab.deudor), total, cantidad: rd.docs.length, enviado: cab.enviada.fecha, usuario: estado.usuario || '', estados: [], carpetas: enviados, detalle: [], estado: 'camino',
+        fechas: rd.docs.map((d) => /^\d{4}-\d{2}-\d{2}$/.test(d.campos.fecha || '') ? d.campos.fecha.split('-').reverse().join('-') : '').filter(Boolean) });
+      avisar('Rendición enviada: queda en el registro y el correo sale en la próxima vuelta del procesador (unos minutos).');
     } catch (err) {
       console.error(err);
       avisar('No se pudo enviar' + (enviados.length ? ' todo (ya salió lo de ' + enviados.join(', ') + ')' : '') + ': ' +
@@ -10603,26 +10642,27 @@
     nota.classList.remove('mal');
     bEnv.disabled = !docs.length || !!leyendo || rd.enviando || !!rd.cab.enviada || !rc.dir;
     bEnv.classList.toggle('ocupado', rd.enviando);
-    bEnv.textContent = rd.enviando ? 'Enviando…' : rd.cab.enviada ? 'Enviada al Centro de Costos' : rd.confirmarEnvio ? 'Enviar igual, con ' + pl(dudas, 'dato', 'datos') + ' en naranjo' : 'Enviar al Centro de Costos';
+    bEnv.textContent = rd.enviando ? 'Enviando…' : rd.cab.enviada ? 'Rendición enviada' : rd.confirmarEnvio ? 'Enviar igual, con ' + pl(dudas, 'dato', 'datos') + ' en naranjo' : 'Enviar rendición';
     if (rd.cab.enviada) {
       const f = new Date(rd.cab.enviada.fecha);
-      nota.textContent = 'Enviada el ' + (isNaN(f) ? '' : f.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + ' a ' + rd.cab.enviada.carpetas.join(', ') + '.';
+      nota.textContent = 'Enviada el ' + (isNaN(f) ? '' : f.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + ' a ' + rd.cab.enviada.carpetas.join(', ') + '. Queda en el registro; el correo sale cuando el procesador la recibe (unos minutos).';
     } else if (!rc.dir) {
       nota.textContent = rc.leyendo ? 'Leyendo la carpeta del equipo…' : rc.sinDatos === 'navegador'
-        ? 'Para enviarla al Centro de Costos, abre el portal en Chrome o Edge de escritorio. El PDF sí se descarga aquí.'
-        : 'Para enviarla al Centro de Costos, conecta la biblioteca del equipo (Configuración y conexiones). El PDF sí se descarga aquí.';
+        ? 'Para enviar la rendición, abre el portal en Chrome o Edge de escritorio. El PDF sí se descarga aquí.'
+        : 'Para enviar la rendición, conecta la biblioteca del equipo (Configuración y conexiones). El PDF sí se descarga aquí.';
     } else {
       const faltan = docs.length && !leyendo ? rdFaltantes() : [];
       if (faltan.length) { nota.textContent = 'Para enviar falta ' + rdFaltaTexto(faltan) + '.'; nota.classList.add('mal'); }
-      else nota.textContent = docs.length ? 'Cada documento llega a la carpeta de su proyecto en el Centro de Costos.' : '';
+      else if (docs.length && !rdConApellido(rd.cab.deudor)) { nota.textContent = 'Para enviar falta el nombre y apellido de la persona.'; nota.classList.add('mal'); }
+      else nota.textContent = docs.length ? 'Queda en el registro de rendiciones, cada documento llega a la carpeta de su proyecto y sale un correo automático con el total.' : '';
     }
   }
   function rdPintarEnvios() {
     const ul = $('#rdEnvios');
     ul.textContent = '';
     if (!rc.dir) { ul.append(crear('li', 'sc-env-det', 'Se ven con la carpeta del equipo conectada.')); return; }
-    if (!rd.envios.length) { ul.append(crear('li', 'sc-env-det', rd.leyendoCarpeta ? 'Leyendo…' : 'Todavía no hay rendiciones enviadas.')); return; }
-    const NIVEL = { camino: ['warn', 'En camino'], aplicado: ['ok', 'En el Centro de Costos'], rechazado: ['bad', 'No se pudo'] };
+    if (!rd.envios.length) { ul.append(crear('li', 'sc-env-det', rd.leyendoCarpeta ? 'Leyendo…' : 'Todavía no hay rendiciones en el registro.')); return; }
+    const NIVEL = { camino: ['warn', 'En camino'], aplicado: ['warn', 'Correo pendiente'], correo: ['ok', 'Correo enviado'], rechazado: ['bad', 'No se pudo'] };
     rd.envios.forEach((e) => {
       const li = crear('li');
       const cab = crear('div', 'sc-env-cab');
@@ -10632,8 +10672,12 @@
       cab.append(crear('span', 'sc-env-nom', [e.numero, e.deudor].filter(Boolean).join(' · ') || 'Rendición'), pill);
       const f = e.enviado ? new Date(e.enviado) : null;
       const cuando = f && !isNaN(f) ? f.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-      li.append(cab, crear('span', 'sc-env-det', [pl(e.cantidad, 'documento', 'documentos'), rdPesos(e.total), e.usuario, cuando].filter(Boolean).join(' · ')));
+      const rango = rdRango(e.fechas || []);
+      li.append(cab, crear('span', 'sc-env-det', [rdPesos(e.total), pl(e.cantidad, 'documento', 'documentos'), rango && 'gastos del ' + rango].filter(Boolean).join(' · ')));
       li.append(crear('span', 'sc-env-det', [...new Set(e.carpetas)].join(' · ')));
+      const fc = e.correo ? new Date(e.correo.fecha) : null;
+      li.append(crear('span', 'sc-env-det', ['Enviada ' + cuando + (e.usuario ? ' por ' + e.usuario : ''),
+        fc && !isNaN(fc) ? 'correo ' + fc.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')));
       if (e.estado === 'rechazado' && e.detalle.length) li.append(crear('span', 'sc-env-det mal', e.detalle[0]));
       ul.append(li);
     });
@@ -20420,6 +20464,7 @@
   // Rendiciones
   $('#rdZonaIco').append(icono('subir', 26));
   RD_DETALLES.forEach((t) => { const o = crear('option'); o.value = t; $('#rdDetalles').append(o); });
+  Object.values(RD_NOMBRES).forEach((t) => { const o = crear('option'); o.value = t; $('#rdPersonas').append(o); });
   $('#rdArchivo').addEventListener('change', (e) => { rdAgregar(e.target.files); e.target.value = ''; });
   const rdZona = $('#rdZona');
   ['dragenter', 'dragover'].forEach((t) => rdZona.addEventListener(t, (e) => { e.preventDefault(); rdZona.classList.add('encima'); }));

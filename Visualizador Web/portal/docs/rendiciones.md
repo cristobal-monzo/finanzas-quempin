@@ -56,6 +56,20 @@ firmas «Firma Deudor» y «Firma Director Proyecto»; una página por documento
   `rendiciones.json`. `driver.py status` del Centro de Costos muestra esos datos para el Paso 2, y la skill los usa tal cual.
 - «Rendiciones enviadas» lee lo publicado y lo que espera en el buzón (`rdLeerEnvios`).
 
+## Enviar rendición: registro y correo (2026-11-18)
+
+Pedido del usuario: «Enviar rendición» la guarda en un registro de rendiciones y envía un correo automático, muy
+ejecutivo, con el monto total, el período (del documento más antiguo al más reciente) y la persona con nombre y apellido.
+
+- **Persona**: el campo lleva por defecto el nombre de quien usa el portal (`nombres` del registro: NB, ES, CM, LC, MP,
+  EV, RL) y ofrece los demás. Sin nombre y apellido no se envía.
+- **Registro**: `publicado/rendiciones.json` (todas, la más reciente primero). El panel «Registro de rendiciones» lo junta
+  con lo que espera en el buzón (`rdRegistro`): «En camino», «Correo pendiente», «Correo enviado» o «No se pudo».
+- **Correo**: el procesador (`Sistema Intercambio/correo_rendiciones.py`, paso `correo-rendiciones`) lo entrega a Outlook
+  del PC donde corre, a los destinatarios de `rendiciones_destinatarios.json` (gitignoreado, junto al módulo). Sale una
+  vez por rendición, cuando llegaron todos sus documentos (o a las 2 horas, con lo que llegó). Si ese PC está apagado,
+  sale en su primera vuelta al encenderse. `py -3.14 correo_rendiciones.py vista` escribe el próximo como `.html`.
+
 ## Lector con IA
 
 `lector-rendiciones/`: Cloudflare Worker con el SDK de Anthropic. Instalación, costo y cuidados en su `LEEME.md`. Necesita
