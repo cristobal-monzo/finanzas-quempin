@@ -209,6 +209,16 @@ Lo que se encontró y se cambió:
   nota sin separar nada; ejecución incluso iba al revés en todas las épocas.
   Nuevos pesos: rubro 30, monto 10, dificultad 15, visita 5, ubicación 15,
   comprador 15, plazo 5, ejecución 5.
+- **Pesos por orden (2026-11-18, pedido del usuario: «no se entiende bien, ¿qué
+  pasa si le pongo a todo 100?»; eligió la maqueta C)**: la pestaña «Cómo se
+  evalúa» ya no tiene deslizadores. Cada persona ordena los 8 criterios de más
+  a menos importante (arrastrar o ↑ ↓) y cada puesto trae un peso fijo: los
+  del equipo de mayor a menor, que ahora son todos distintos (rubro 30,
+  dificultad 18, ubicación 15, comprador 12, monto 10, visita 7, plazo 5,
+  ejecución 3; AUC 0,791 contra 0,789 de antes). Así el reparto siempre suma
+  100 % y todo cambio de orden se nota. El orden queda en el navegador
+  (`quempin_op_orden`); los pesos de los deslizadores viejos
+  (`quempin_op_pesos`) se pasan a un orden y se borran.
 - **Exclusiones nuevas**: «aditivo» (por «Provisión de sal y aditivos para
   caldera», que tenía 88), «granel» y «petróleo para calderas de
   calefacción» (combustible). También vehículos y muebles («radiador de

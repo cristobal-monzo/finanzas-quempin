@@ -1,18 +1,18 @@
 {
-  "_comentario": "Configuración del buscador de oportunidades de Mercado Público (oportunidades.py). Se puede editar a mano: las palabras se comparan sin tildes ni mayúsculas y en singular (caldera = calderas). Los pesos se pueden mover también en la página, para cada persona.",
+  "_comentario": "Configuración del buscador de oportunidades de Mercado Público (oportunidades.py). Se puede editar a mano: las palabras se comparan sin tildes ni mayúsculas y en singular (caldera = calderas). En la página cada persona puede ordenar los criterios (cada puesto trae uno de estos pesos, de mayor a menor).",
 
   "enProcesador": false,
 
-  "_pesos": "Recalibrados el 2026-10-14 contra 247 licitaciones de la Planilla (calibrar_oportunidades.py medir): rubro, ubicación, comprador y dificultad separan lo ofertado de lo descartado; monto, plazo y ejecución casi no. Visita y plazo no se pueden medir con la historia (la API no guarda la visita de una licitación cerrada), pero sus reglas siguen descartando.",
+  "_pesos": "Recalibrados el 2026-10-14 contra 247 licitaciones de la Planilla (calibrar_oportunidades.py medir): rubro, ubicación, comprador y dificultad separan lo ofertado de lo descartado; monto, plazo y ejecución casi no. Visita y plazo no se pueden medir con la historia (la API no guarda la visita de una licitación cerrada), pero sus reglas siguen descartando. Desde el 2026-11-18 cada puesto pesa distinto (30/18/15/12/10/7/5/3): en la página cada persona ordena los criterios y cada puesto trae su peso, así que un empate dejaría cambios de orden sin efecto (AUC 0,791, igual que antes).",
   "pesos": {
     "rubro": 30,
     "monto": 10,
-    "dificultad": 15,
-    "visita": 5,
+    "dificultad": 18,
+    "visita": 7,
     "ubicacion": 15,
-    "comprador": 15,
+    "comprador": 12,
     "plazoOferta": 5,
-    "ejecucion": 5
+    "ejecucion": 3
   },
 
   "_topesPorRubro": "Además del tope que pone el nivel de interés de cada tema (rubro.niveles), una nota de rubro muy baja (una palabra de excluir en la descripción, parecidas que siempre se descartaron) limita la categoría.",
