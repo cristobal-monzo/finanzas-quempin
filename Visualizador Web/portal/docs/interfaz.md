@@ -138,7 +138,7 @@ grupos y herramientas. Cada herramienta lleva:
   Técnica/assets/gases.js`).
 
 Una herramienta nueva es una entrada ahí. Un tablero nuevo va además en
-`publicar.py`: `test_portal.py` exige que los dos tengan los mismos.
+`publicar.py`: `tests/portal/` exige que los dos tengan los mismos.
 - **Enlaces entre herramientas**: el portal engancha cada marco del mismo sitio.
 - Un clic o un `window.open` hacia otra herramienta abre la pestaña de esa
   herramienta en el portal, no una ventana nueva. Esto vale también para los
@@ -183,7 +183,7 @@ cambio del otro por el evento `storage`. El buscador marca
 las iniciales que el Formulador tenía antes (`qpn.formulacion.iniciales` o su
 «Responsable por defecto»), solo leyéndolas. La lista va en el registro
 (`"usuarios"`) y debe ser la misma del Formulador y de Sistema QUEMPIN
-(`app/config.py`, `USUARIOS`): `test_portal.py` las compara. Dentro del portal
+(`app/config.py`, `USUARIOS`): `tests/portal/` las compara. Dentro del portal
 se oculta el botón de usuario del Formulador (`#usuarioBtn`). En el teléfono el
 botón muestra solo las iniciales (o un ícono sin usuario) y su ventana va fija
 a la pantalla; bajo 380 px la cabecera se junta un poco.
@@ -215,7 +215,7 @@ cuenta. Se guarda en `publicado/uso-portal/<dispositivo>.json` como mucho cada 2
 
 ## Al día sin F5 (2026-11-18)
 
-Pedido del usuario: el equipo no veía lo publicado porque no recargaba. Sección `ad*` de `index.html`.
+Pedido del usuario: el equipo no veía lo publicado porque no recargaba. Sección `ad*` de `js/base.js`.
 
 - Cada 5 minutos (y al volver a la pestaña, si pasó más de 1 minuto) el Portal pide al sitio su propia página y la de
   cada herramienta abierta, con sus scripts y hojas de estilo del mismo sitio (`fetch` con `cache: 'no-cache'`).
@@ -226,5 +226,9 @@ Pedido del usuario: el equipo no veía lo publicado porque no recargaba. Secció
   (`planif`/`ej` y sus `_pendiente`). Mientras tanto, un aviso con «Actualizar».
 - Los datos del equipo ya llegaban solos en Planificación, Ejecución y Requerimientos; el Inicio y el Recorrido se
   releen cada 2 minutos mientras se miran.
-- Prueba: `test_lo_publicado_de_nuevo_se_carga_sin_f5` (reloj de Playwright con `fast_forward`; `run_for` corre
-  cada temporizador de 100 ms y tarda 100 s).
+- El Portal mismo son `index.html`, `portal.css` y cada `js/*.js` (desde la fase B, 2026-11-18): un cambio en
+  cualquiera lo recarga. Publicado, cada parte lleva `?v=<huella>` (`publicar.py`), así un `index.html` nuevo nunca
+  corre con un `.js` viejo del caché del navegador.
+- Pruebas: `test_lo_publicado_de_nuevo_se_carga_sin_f5` (reloj de Playwright con `fast_forward`; `run_for` corre
+  cada temporizador de 100 ms y tarda 100 s) y `test_un_cambio_en_un_solo_js_del_portal_se_carga_sin_f5`. Esperan a
+  que `ad.portal` y el `p.ad` de cada pestaña estén leídos, no un tiempo fijo.

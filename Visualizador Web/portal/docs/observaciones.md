@@ -56,6 +56,6 @@ evaluarlo y aplicarlo después con Claude Code). Funciones `ctx*` (el menú) y `
     veces por M personas»; no se pueden retirar. `observaciones.py status` los agrupa igual y
     `cerrar <id> <estado> "<detalle>" --grupo` cierra todos los de esa firma. `estado.json` los cuenta en
     `buzon.mejora-continua.automaticos` y la bandeja lo dice.
-- **Pruebas**: desde `test_el_clic_derecho_abre_el_menu_del_portal_y_no_el_del_navegador` en `test_portal.py` (datos de
+- **Pruebas**: desde `test_el_clic_derecho_abre_el_menu_del_portal_y_no_el_del_navegador` en `tests/portal/` (datos de
   mentira; la de punta a punta corre el esquema y la línea de comandos reales), desde `test_un_error_del_portal_llega_solo_a_observaciones`
 (los automáticos) y `Sistema Intercambio/tests/test_observaciones.py`.

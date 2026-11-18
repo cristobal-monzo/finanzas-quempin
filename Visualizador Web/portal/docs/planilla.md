@@ -62,5 +62,5 @@ que de verdad se usan).
 - **No se borran filas**: el N° es la clave de carpetas, formulaciones y fichas. Lo que no sigue queda «Descartado».
 - Mientras se mira, relee la carpeta cada 2 minutos, nunca con el diálogo abierto. Con un contenedor de 1240 px o menos, cada
   fila es una tarjeta.
-- **Pruebas**: desde `test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel` en `test_portal.py` (datos de mentira,
+- **Pruebas**: desde `test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel` en `tests/portal/` (datos de mentira,
   sobre `_intercambio_de_prueba`). El escritor tiene las suyas en `Sistema Intercambio/tests/test_planilla_escritura.py`.

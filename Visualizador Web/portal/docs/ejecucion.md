@@ -100,7 +100,7 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   leyenda y las cifras escritas en cada fila: con los grises de la marca el validador de paleta no aprueba el croma, así
   que el color nunca es lo único que distingue.
 - Con siete herramientas en Control y finanzas, el Inicio junta un poco sus filas con poco alto (≤ 640 px de marco).
-- Pruebas: desde `test_proyectos_en_ejecucion_en_el_registro_y_en_el_esquema` en `test_portal.py` (datos de mentira:
+- Pruebas: desde `test_proyectos_en_ejecucion_en_el_registro_y_en_el_esquema` en `tests/portal/` (datos de mentira:
   `_ejecucion_de_prueba`); las que usan `js/calc.js` o `js/pegar.js` del Formulador miran lo de ellos solo si su
   repositorio está en este equipo. La vista previa con datos reales se arma fuera del repositorio.
 
@@ -146,7 +146,7 @@ varios días de una vez; y una revisión de la interfaz.
 - **Accesos a cada parte** (`ejSaltosEl`): una fila fija arriba (Cómo va, Facturas con las sin asociar, Gastos
   proyectados con las por decidir, Mano de obra, OC/equipo/notas) que se envuelve en lo angosto (sin desplazarse de lado).
 - Pruebas: `test_las_facturas_del_centro_de_costos_se_ven_y_se_asocian_a_sus_gastos` y
-  `test_el_calendario_anota_varios_dias_de_una_vez_y_medio_dia` en `test_portal.py`; `Sistema Intercambio/tests/test_documentos_proyecto.py`.
+  `test_el_calendario_anota_varios_dias_de_una_vez_y_medio_dia` en `tests/portal/`; `Sistema Intercambio/tests/test_documentos_proyecto.py`.
 
 ## Revisión de UX/UI del 2026-11-09 (loop de mejoras)
 

@@ -89,6 +89,62 @@ def test_el_hub_y_el_portal_se_copian_con_los_archivos_de_marca_que_enlazan(tmp_
     assert enlaces
     for enlace in enlaces:
         assert ((gh / destino).parent / enlace).resolve().is_file(), enlace
+    # Cada script y hoja del mismo sitio que enlaza queda en gh-pages (el Portal: portal.css y js/, desde 2026-11-18)
+    locales = publicar._enlaces_locales(pagina)
+    assert locales
+    for enlace in locales:
+        assert ((gh / destino).parent / enlace.split("?")[0]).resolve().is_file(), enlace
+
+
+def test_el_portal_se_publica_con_sus_partes_y_cada_una_con_su_huella(tmp_path):
+    gh = tmp_path / "gh-pages"
+    viejo = gh / "portal" / "js" / "ya-no-existe.js"
+    viejo.parent.mkdir(parents=True)
+    viejo.write_text("// de una publicación anterior", encoding="utf-8")
+    publicar.preparar_estatico("portal", raiz_gh_pages=gh)
+    origen = RAIZ / "Visualizador Web" / "portal"
+    pagina = (gh / "portal" / "index.html").read_text(encoding="utf-8")
+    js = sorted(p.name for p in (origen / "js").glob("*.js"))
+    assert js and sorted(p.name for p in (gh / "portal" / "js").glob("*.js")) == js     # el que sobraba se borró
+    assert (gh / "portal" / "portal.css").read_bytes() == (origen / "portal.css").read_bytes()
+    # ?v= con la huella de su contenido: un index.html nuevo nunca corre con un .js viejo del caché
+    huellas = dict(re.findall(r'<script src="js/([^"?]+)\?v=([0-9a-f]{12})"', pagina))
+    assert sorted(huellas) == js
+    assert re.search(r'<link rel="stylesheet" href="portal\.css\?v=[0-9a-f]{12}">', pagina)
+    assert '<script src="../numeros.js">' in pagina and 'href="../marca/fuentes.css"' in pagina   # lo de afuera, igual
+    assert publicar.subrutas_estatico("portal") == ["portal/index.html", "portal/portal.css", "portal/js", "marca", "numeros.js"]
+
+
+def test_con_versiones_cambia_solo_si_cambia_el_archivo(tmp_path):
+    (tmp_path / "js").mkdir()
+    (tmp_path / "js" / "a.js").write_text("uno", encoding="utf-8")
+    html = '<script src="js/a.js"></script><script src="../otro.js"></script><link rel="stylesheet" href="x.css">'
+    una = publicar.con_versiones(html, tmp_path, ("js",))
+    assert re.fullmatch(r'<script src="js/a\.js\?v=[0-9a-f]{12}"></script><script src="\.\./otro\.js"></script>'
+                        r'<link rel="stylesheet" href="x\.css">', una)
+    assert publicar.con_versiones(una, tmp_path, ("js",)) == una            # vuelve a ponerla sin repetir
+    (tmp_path / "js" / "a.js").write_bytes(b"uno\r\n")
+    (tmp_path / "js" / "b.js").write_bytes(b"uno\n")
+    assert publicar.con_versiones(html, tmp_path, ("js",)) != una             # otro contenido, otra huella
+    assert publicar.con_versiones(html.replace("a.js", "b.js"), tmp_path, ("js",)).split("?v=")[1] == \
+        publicar.con_versiones(html, tmp_path, ("js",)).split("?v=")[1], "CRLF o LF da la misma huella"
+
+
+def test_no_publica_un_portal_que_enlaza_un_archivo_que_no_existe(tmp_path, monkeypatch):
+    origen = tmp_path / "Visualizador Web"
+    (origen / "portal" / "js").mkdir(parents=True)
+    (origen / "marca").mkdir()
+    for nombre in publicar.ARCHIVOS_MARCA:
+        (origen / "marca" / nombre).write_bytes(b"x")
+    (origen / "numeros.js").write_text("", encoding="utf-8")
+    (origen / "portal" / "portal.css").write_text("", encoding="utf-8")
+    (origen / "portal" / "js" / "base.js").write_text("", encoding="utf-8")
+    (origen / "portal" / "index.html").write_text(
+        '<html><head></head><body><script src="js/base.js"></script><script src="js/falta.js"></script></body></html>',
+        encoding="utf-8")
+    monkeypatch.setattr(publicar, "RAIZ", tmp_path)
+    with pytest.raises(RuntimeError, match="js/falta.js"):
+        publicar.preparar_estatico("portal", raiz_gh_pages=tmp_path / "gh-pages")
 
 
 # ---- Auditoría del flujo de entrega (2026-11-06): sello, CI y gh-pages al día -------------------------------------
@@ -157,6 +213,14 @@ def test_el_portal_se_publica_solo_commiteado_y_con_el_ci_en_verde(repo_con_port
     ci["corridas"] = []
     assert publicar.revisar_codigo(["portal"], sin_ci=True) == ["hay cambios sin commit en: Visualizador Web/portal/index.html"]
     assert publicar.sello_de_version().startswith("master@")
+    # Sus partes también son código del Portal (2026-11-18)
+    _commit(repo, "Visualizador Web/portal/index.html", "<html><head></head><body>sin commit</body></html>")
+    _commit(repo, "Visualizador Web/portal/js/base.js", "'use strict';")
+    assert publicar.revisar_codigo(["portal"], sin_ci=True) == []
+    (repo / "Visualizador Web" / "portal" / "js" / "base.js").write_text("'use strict'; // cambio", encoding="utf-8")
+    (repo / "Visualizador Web" / "portal" / "portal.css").write_text("body {}", encoding="utf-8")
+    problema = publicar.revisar_codigo(["portal"], sin_ci=True)[0]
+    assert "Visualizador Web/portal/js/base.js" in problema and "Visualizador Web/portal/portal.css" in problema
 
 
 def test_con_subir_espera_el_ci_que_corre_y_no_el_que_fallo(repo_con_portal):

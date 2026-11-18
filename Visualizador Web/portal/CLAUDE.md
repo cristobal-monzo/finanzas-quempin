@@ -1,6 +1,6 @@
 # CLAUDE.md — Portal QUEMPIN
 
-`index.html`: un solo archivo sin build ni datos, publicado en
+`index.html` + `portal.css` + `js/<vista>.js`, sin build ni datos, publicado en
 <https://cristobal-monzo.github.io/finanzas-quempin/portal/>. Es la puerta única
 del equipo (el hub redirige aquí; `?indice` muestra el índice antiguo). Una
 ventana: menú ☰, buscador (Ctrl K) y pestañas con las
@@ -9,23 +9,37 @@ herramienta pide la del equipo, que el navegador recuerda.
 
 ## Cómo moverse por el archivo
 
-**~21 000 líneas y 1,35 MB (2026-11-18): nunca lo leas entero.** Se partirá en archivos por vista (fase B de
-`docs/plans/2026-11-18-mejoras-portal.md`). Mapa de secciones:
-`Grep "^\s*(//|/\*) ---- "` en `index.html`; después `Read` con `offset`/`limit`.
-Orden: CSS, HTML de las vistas, `portal-registro`, `portal-conexiones`, JS.
+Partido el 2026-11-18 (fase B de `docs/plans/2026-11-18-mejoras-portal.md`; antes, un archivo de 21 000 líneas):
 
-| Vista (`id` en el registro) | Sección | Funciones y estado | Detalle |
-|---|---|---|---|
-| Inicio, las herramientas por área | `#vistaInicio` | `ini*`, `ini` | [docs/interfaz.md](docs/interfaz.md) |
-| Recorrido (`recorrido`) | `#vistaRecorrido` | `rc*`, `rc` | [docs/recorrido.md](docs/recorrido.md) |
-| Planificación semanal (`planificacion`) | `#vistaPlan` | `pl*`, `planif` | [docs/planificacion.md](docs/planificacion.md) |
-| Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
-| Requerimientos, antes «Planilla de Ingreso» (`planilla`) | `#vistaPlanilla` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
-| Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
-| Clic derecho (menú del portal) y reportar errores y observaciones (`observaciones`); los errores de JavaScript se envían solos | `#menuCtx`, `#dlgObs`, `#vistaObservaciones` | `ctx*`, `obs*`, `obs`, `er*`, `er` | [docs/observaciones.md](docs/observaciones.md) |
-| Subir documentos (`subir-cc`) | `#vistaSubir` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |
-| Rendiciones (`rendiciones`): fotos de boletas → tabla → PDF y Centro de Costos | `#vistaRendir` | `rd*`, `rd` | [docs/rendiciones.md](docs/rendiciones.md) |
-| Configuración y conexiones (`conexiones`) | `#vistaConexiones` | `portal-conexiones` | [docs/interfaz.md](docs/interfaz.md) |
+- `index.html` (~1 200 líneas): cabecera, HTML de las vistas, `portal-registro`, `portal-conexiones`, el aviso de errores
+  que escucha desde el principio, el freno del portal anidado y los `<script src="js/…">` **en orden**.
+- `portal.css` (~3 300 líneas): todo el estilo.
+- `js/`: un **script clásico por vista, sin función que lo envuelva** (`'use strict'` arriba). Lo de primer nivel
+  es común a todos los archivos: se llaman entre sí sin importar nada, y desde una prueba se puede leer `estado`,
+  `planif`, `ej`... Por eso **un nombre de primer nivel no se repite en dos archivos ni tapa uno del navegador**
+  (`open`, `name`, `status`, `find`...): lo revisa `tests/portal/test_portal_archivos.py`. Lo que corre al cargar un
+  archivo solo puede usar lo de archivos anteriores; lo que corre después (clics, temporizadores), lo de cualquiera.
+  `base.js` va primero y `arranque.js` al final: ahí se engancha todo y se abre la herramienta pedida. Un archivo
+  nuevo = un `<script>` en `index.html` (la prueba exige uno por archivo).
+- Mapa de secciones de un archivo: `Grep "^(//|/\*) ---- "`; los grandes (`ejecucion.js` 5 000 líneas,
+  `planificacion.js` 4 000) se leen con `offset`/`limit`.
+
+| Vista (`id` en el registro) | Sección | Archivo | Funciones y estado | Detalle |
+|---|---|---|---|---|
+| Lo común: utilidades, estado, menú, pestañas y marcos, al día sin F5, usuario, diálogos | — | `base.js` | `ad*`, `estado` | [docs/interfaz.md](docs/interfaz.md) |
+| Configuración y conexiones (`conexiones`) | `#vistaConexiones` | `conexiones.js` | `portal-conexiones` | [docs/interfaz.md](docs/interfaz.md) |
+| Inicio, las herramientas por área | `#vistaInicio` | `inicio.js` | `ini*`, `ini` | [docs/interfaz.md](docs/interfaz.md) |
+| Recorrido (`recorrido`) | `#vistaRecorrido` | `recorrido.js` | `rc*`, `rc` | [docs/recorrido.md](docs/recorrido.md) |
+| Planificación semanal (`planificacion`) | `#vistaPlan` | `planificacion.js` | `pl*`, `planif` | [docs/planificacion.md](docs/planificacion.md) |
+| Subir documentos (`subir-cc`) | `#vistaSubir` | `subir.js` | `sc*`, `sc` | Abajo y `Sistema Intercambio/documentos_cc.py` |
+| Rendiciones (`rendiciones`): fotos de boletas → tabla → PDF y Centro de Costos | `#vistaRendir` | `rendiciones.js` | `rd*`, `rd` | [docs/rendiciones.md](docs/rendiciones.md) |
+| Requerimientos, antes «Planilla de Ingreso» (`planilla`) | `#vistaPlanilla` | `planilla.js` | `pq*`, `pq` | [docs/planilla.md](docs/planilla.md) |
+| Proyectos en ejecución (`ejecucion`) | `#vistaEjecucion` | `ejecucion.js` | `ej*`, `ej` | [docs/ejecucion.md](docs/ejecucion.md) |
+| Llevar la cotización a un proyecto (diálogo, no está en el registro) | `#dlgLlevar` | `llevar.js` | `ll*`, `ll` | [docs/llevar-cotizacion.md](docs/llevar-cotizacion.md) |
+| Buscador (Ctrl K) | `#buscar` | `buscador.js` | `resultados` | [docs/interfaz.md](docs/interfaz.md) |
+| Clic derecho (menú del portal) y reportar errores y observaciones (`observaciones`); los errores de JavaScript se envían solos | `#menuCtx`, `#dlgObs`, `#vistaObservaciones` | `observaciones.js` | `ctx*`, `obs*`, `obs`, `er*`, `er` | [docs/observaciones.md](docs/observaciones.md) |
+| Tema y lo que el Portal esconde de cada herramienta | `#btnTema` | `tema.js` | `ESTILO_INCRUSTADO` | [docs/interfaz.md](docs/interfaz.md) |
+| Arranque y «Qué buscamos» de Oportunidades | — | `arranque.js` | `opGuardarAjustes` | [docs/interfaz.md](docs/interfaz.md) |
 
 Cómo funciona la interfaz (menú, pestañas, registro, enlaces, usuario):
 [docs/interfaz.md](docs/interfaz.md). Lee solo el documento de lo que vayas a
@@ -41,7 +55,7 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
 - **El registro** (`<script type="application/json" id="portal-registro">`) es
   lo único que define grupos, herramientas, `usuarios`, `personal` y `vehiculos`.
   Herramienta nueva = una entrada ahí; tablero nuevo = además en `publicar.py`.
-  `test_portal.py` compara el registro con lo publicado, `usuarios` con el
+  `tests/portal/test_portal_estructura.py` compara el registro con lo publicado, `usuarios` con el
   Formulador y con Sistema QUEMPIN (`app/config.py`, `USUARIOS`) y `vehiculos`
   con su esquema.
 - **Las herramientas no se tocan para adaptarlas**: el portal marca el `<html>`
@@ -77,11 +91,15 @@ siendo `/Registro_Centro_de_Costos`. Solo Chrome y Edge de escritorio
 
 ## Probar, publicar y revertir
 
-- `py -3.14 -m pytest "Visualizador Web/tests/test_portal.py"`: el registro, los
-  enlaces que leen AF, CC, Formulador y Calculadora, y el portal en Chromium sobre
-  un sitio de mentira. Teléfono: `py -3.14 "Visualizador Web/auditoria_movil.py" portal`.
-- **Publicar**: avisa a las otras sesiones, `py -3.14 "Visualizador Web/publicar.py" portal --subir` (espera el CI, copia `index.html` y los archivos
-  de `marca/` que enlaza, hace commit y push de `gh-pages` y verifica en línea). Sin datos, no pasa por el candado.
+- `py -3.14 -m pytest "Visualizador Web/tests/portal"` (~8 min): una prueba por vista
+  (`test_portal_<vista>.py`), lo común (el sitio de mentira, ayudantes, `texto_portal()` = index + css + js juntos)
+  en `portal_comun.py`. Una sola vista: `py -3.14 -m pytest "Visualizador Web/tests/portal/test_portal_planilla.py"`.
+  Teléfono: `py -3.14 "Visualizador Web/auditoria_movil.py" portal`. En las pruebas, espera una condición
+  (`wait_for_function`), no un tiempo fijo: con el CI lento, los tiempos fijos fallaban.
+- **Publicar**: avisa a las otras sesiones, `py -3.14 "Visualizador Web/publicar.py" portal --subir` (espera el CI,
+  copia `index.html`, `portal.css`, `js/` (borra los `.js` que ya no están) y lo de `marca/`, pone `?v=<huella>` en
+  cada parte, no publica si algo enlazado falta, hace commit y push de `gh-pages` y verifica en línea). Sin datos, no
+  pasa por el candado.
 - **Revertir**: `git revert` del commit en `gh-pages`.
 - Pendientes: los contadores de «Pendientes del equipo» leídos de la carpeta y un
   enlace web al Control de Documentos.
