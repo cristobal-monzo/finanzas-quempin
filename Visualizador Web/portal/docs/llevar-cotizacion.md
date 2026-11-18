@@ -13,7 +13,7 @@ sus costos a un proyecto específico en formulación o en ejecución). No es una
   el diálogo está abierto: la cotización no se guarda en el navegador.
 - **El diálogo**: resumen, sus líneas, la categoría de todas (Materiales, Equipos u Otros; se propone la de más plata según
   la categoría del Centro de Costos de cada compra, con la tabla `MAPEO_CATEGORIA_BUCKET` del Análisis Financiero copiada
-  en `LL_BUCKET`, que `test_portal.py` compara), un buscador y los proyectos en dos grupos: **En ejecución** (`ejTarjetas`,
+  en `LL_BUCKET`, que `tests/portal/` compara), un buscador y los proyectos en dos grupos: **En ejecución** (`ejTarjetas`,
   solo si la cotización está en pesos: esa vista lleva sus cuentas en CLP) y **En formulación** (los del Recorrido con
   formulación antes de ofertar, sin los antiguos, en la moneda de la cotización: el Formulador no convierte). Queda elegido
   el proyecto de arriba del portal, o el único posible. Sin la biblioteca conectada dice qué falta (`pintarSinCarpeta`).
@@ -24,5 +24,5 @@ sus costos a un proyecto específico en formulación o en ejecución). No es una
   cotización) y, cuando ya muestra ese proyecto en esa tabla, sin candado ni diálogo encima (`llEntregar`, hasta 3 minutos),
   le manda `quempin-pegar-costos` con las filas en el formato de «Copiar para el Formulador». El Formulador abre su «Pegar
   desde Excel» con ellas: ahí se elige la partida y se agregan (`js/app.js`, `pegarFilas(list, llegada)`).
-- **Pruebas**: desde `test_la_categoria_propuesta_sale_de_la_tabla_del_analisis_financiero` en `test_portal.py` (datos de
+- **Pruebas**: desde `test_la_categoria_propuesta_sale_de_la_tabla_del_analisis_financiero` en `tests/portal/` (datos de
   mentira); la del Formulador es `.prueba/pegar/portal.js` en su repositorio.

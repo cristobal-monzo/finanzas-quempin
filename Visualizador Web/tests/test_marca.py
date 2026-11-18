@@ -33,6 +33,12 @@ PAGINAS = (sorted(RAIZ.glob("*/Visualizador Web/template.html"))
            + [RAIZ / "Visualizador Web" / "index.html", RAIZ / "Visualizador Web" / "portal" / "index.html"])
 
 
+def _texto(ruta):
+    """La página con lo que enlaza junto a ella: el Portal está partido en portal.css y js/ (2026-11-18)."""
+    partes = [ruta, ruta.parent / "portal.css", *sorted((ruta.parent / "js").glob("*.js"))] if ruta.parent.name == "portal" else [ruta]
+    return "\n".join(p.read_text(encoding="utf-8") for p in partes if p.exists())
+
+
 def test_brand_py_trae_los_colores_del_manual():
     assert brand.COLOR_NARANJO == OFICIALES["orange"]
     assert brand.COLOR_NEGRO == OFICIALES["black"]
@@ -47,7 +53,7 @@ def test_estan_todas_las_paginas():
 
 @pytest.mark.parametrize("ruta", PAGINAS, ids=lambda p: str(p.relative_to(RAIZ).parent))
 def test_cada_pagina_usa_los_colores_del_manual(ruta):
-    texto = ruta.read_text(encoding="utf-8")
+    texto = _texto(ruta)
 
     def valores(variable):
         return {v.lower() for v in re.findall(rf"--brand-{variable}:\s*(#[0-9a-fA-F]{{6}})", texto)}
@@ -62,7 +68,7 @@ def test_cada_pagina_usa_los_colores_del_manual(ruta):
 @pytest.mark.parametrize("ruta", PAGINAS, ids=lambda p: str(p.relative_to(RAIZ).parent))
 def test_las_paginas_no_llevan_copias_de_las_fuentes_ni_del_logo(ruta):
     """Una sola copia, en marca/ (2026-10-30): cada plantilla llevaba 161 KB de base64."""
-    assert not re.search(r"base64,[A-Za-z0-9+/=]{200,}", ruta.read_text(encoding="utf-8"))
+    assert not re.search(r"base64,[A-Za-z0-9+/=]{200,}", _texto(ruta))
 
 
 def test_candado_incrustar_pone_fuentes_y_logos():

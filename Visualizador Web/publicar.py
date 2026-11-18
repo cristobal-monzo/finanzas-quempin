@@ -30,6 +30,7 @@ Desde la auditoria del flujo de entrega (2026-11-06), antes de tocar gh-pages:
   quien la escribio. El commit sugerido para gh-pages lleva el mismo sello.
 """
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -63,6 +64,11 @@ ESTATICOS = {
     "hub": ("index.html", "Visualizador Web/index.html"),
     "portal": ("portal/index.html", "Visualizador Web/portal/index.html"),
 }
+# Lo que una página sin datos enlaza junto a ella, en su misma carpeta (2026-11-18, fase B del plan del Portal: el Portal
+# se partió en portal.css y js/<vista>.js). Se copia con ella; un .js que ya no está en el origen se borra de gh-pages.
+PARTES = {
+    "portal": ("portal.css", "js"),
+}
 CARPETA_MARCA = "Visualizador Web/marca"
 # logo.png (2026-11-18): el PDF de «Rendiciones» del Portal lo pone en su cabecera (../marca/logo.png)
 ARCHIVOS_MARCA = ("fuentes.css", "favicon.png", "logo.png")
@@ -93,6 +99,25 @@ def con_sello(html: str, texto: str) -> str:
     if "</head>" not in sin:
         raise RuntimeError("la página no tiene </head> para su sello de versión")
     return sin.replace("</head>", f'<meta name="{META_VERSION}" content="{texto}">\n</head>', 1)
+
+
+def _enlaces_locales(html: str) -> list[str]:
+    """Los src= de <script> y href= de <link rel="stylesheet"> que apuntan a un archivo del mismo sitio, relativos."""
+    enlaces = re.findall(r'<script\b[^>]*\bsrc="([^"]+)"', html)
+    enlaces += [m.group(2) for m in re.finditer(r'<link\b([^>]*)\bhref="([^"]+)"', html) if "stylesheet" in m.group(1)]
+    return [e for e in enlaces if not re.match(r"^(?:[a-z]+:|//|/)", e, re.I)]
+
+
+def con_versiones(html: str, carpeta: Path, partes) -> str:
+    """Cada enlace a una de sus partes (portal.css, js/x.js) con ?v=<huella del archivo>. GitHub Pages deja cada archivo
+    10 minutos en el caché del navegador: sin esto, recién publicado, un index.html nuevo podía correr con un .js viejo."""
+    def poner(m):
+        ruta = m.group(2).split("?")[0]
+        if not any(ruta == p or ruta.startswith(p + "/") for p in partes) or not (carpeta / ruta).is_file():
+            return m.group(0)          # lo que falta lo dice preparar_estatico, con su nombre
+        huella = hashlib.sha256((carpeta / ruta).read_bytes().replace(b"\r\n", b"\n")).hexdigest()[:12]
+        return f'{m.group(1)}{ruta}?v={huella}"'
+    return re.sub(r'((?:<script\b[^>]*\bsrc|<link\b[^>]*\bhref)=")([^"]+)"', poner, html)
 
 
 def esperar_codigo(claves, sin_ci: bool = False, espera_max: float = 1500, paso: float = 20, dormir=None) -> list[str]:
@@ -183,6 +208,8 @@ def subir(subrutas, mensaje: str, raiz_gh_pages: Path = RAIZ_GH_PAGES) -> int:
 def revisar_codigo(claves, sin_ci: bool = False) -> list[str]:
     """Lo que impide publicar el hub o el Portal desde este commit ([] = se puede)."""
     origenes = [ESTATICOS[c][1] for c in claves if c in ESTATICOS]
+    origenes += [str(Path(ESTATICOS[c][1]).parent / p).replace("\\", "/") for c in claves if c in ESTATICOS
+                 for p in PARTES.get(c, ())]
     if not origenes:
         return []
     problemas = []
@@ -265,25 +292,55 @@ def preparar(clave: str, contrasena: str, raiz_gh_pages: Path = RAIZ_GH_PAGES) -
     return subruta
 
 
+def subrutas_estatico(clave: str) -> list[str]:
+    """Lo que preparar_estatico deja en gh-pages para esa página: ella, sus partes, marca/ y el código común."""
+    destino = ESTATICOS[clave][0]
+    partes = [(Path(destino).parent / p).as_posix() for p in PARTES.get(clave, ())]
+    return [destino, *partes, "marca", *ARCHIVOS_COMUNES]
+
+
 def preparar_estatico(clave: str, raiz_gh_pages: Path = RAIZ_GH_PAGES, sello: str | None = None) -> str:
-    """Copia el hub o el Portal con los archivos de marca que enlazan (y su sello de versión). Devuelve su destino."""
+    """Copia el hub o el Portal con sus partes (portal.css, js/) y los archivos de marca que enlazan, con su sello de
+    versión y ?v= en cada parte. Revisa que cada script u hoja enlazada exista en gh-pages. Devuelve su destino."""
     destino, origen = ESTATICOS[clave]
-    if not (RAIZ / origen).exists():
-        raise RuntimeError(f"{clave}: no existe {origen}")
+    origen = RAIZ / origen
+    if not origen.exists():
+        raise RuntimeError(f"{clave}: no existe {origen.relative_to(RAIZ).as_posix()}")
     copia = raiz_gh_pages / destino
     copia.parent.mkdir(parents=True, exist_ok=True)
+    partes = PARTES.get(clave, ())
+    for parte in partes:
+        fuente, meta = origen.parent / parte, copia.parent / parte
+        if fuente.is_dir():
+            meta.mkdir(exist_ok=True)
+            nombres = {p.name for p in fuente.glob("*.js")}
+            for nombre in sorted(nombres):
+                shutil.copy2(fuente / nombre, meta / nombre)
+            for viejo in meta.glob("*.js"):
+                if viejo.name not in nombres:
+                    viejo.unlink()
+        elif fuente.is_file():
+            shutil.copy2(fuente, meta)
+        else:
+            raise RuntimeError(f"{clave}: no existe {fuente.relative_to(RAIZ).as_posix()}")
+    html = origen.read_text(encoding="utf-8")
+    if partes:
+        html = con_versiones(html, origen.parent, partes)
     if sello:
-        with open(copia, "w", encoding="utf-8", newline="") as f:
-            f.write(con_sello((RAIZ / origen).read_text(encoding="utf-8"), sello))
-    else:
-        shutil.copy2(RAIZ / origen, copia)
+        html = con_sello(html, sello)
+    with open(copia, "w", encoding="utf-8", newline="") as f:
+        f.write(html)
     carpeta = raiz_gh_pages / "marca"
     carpeta.mkdir(exist_ok=True)
     for nombre in ARCHIVOS_MARCA:
         shutil.copy2(RAIZ / CARPETA_MARCA / nombre, carpeta / nombre)
     for nombre in ARCHIVOS_COMUNES:
         shutil.copy2(RAIZ / "Visualizador Web" / nombre, raiz_gh_pages / nombre)
-    print(f"[OK] {clave:<6} -> {destino}, marca/ y {', '.join(ARCHIVOS_COMUNES)}")
+    faltan = [e for e in _enlaces_locales(html) if not (copia.parent / e.split("?")[0]).resolve().is_file()]
+    if faltan:
+        raise RuntimeError(f"{clave}: enlaza archivos que no quedan en gh-pages: {', '.join(faltan)}")
+    extra = "".join(f"{p}, " for p in partes)
+    print(f"[OK] {clave:<6} -> {destino}, {extra}marca/ y {', '.join(ARCHIVOS_COMUNES)}")
     return destino
 
 
@@ -317,7 +374,8 @@ def main(argv=None) -> int:
     for clave in claves:
         try:
             if clave in ESTATICOS:
-                subrutas += [preparar_estatico(clave, sello=sello), "marca", *ARCHIVOS_COMUNES]
+                preparar_estatico(clave, sello=sello)
+                subrutas += subrutas_estatico(clave)
             else:
                 subrutas.append(preparar(clave, contrasena))
         except RuntimeError as error:

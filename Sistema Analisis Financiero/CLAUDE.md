@@ -64,7 +64,7 @@ Finanzas QUEMPIN/
 - **Estimado al cierre**: Costo Real + Costo Proyectado × (1 − % Avance). Un proyecto en curso se juzga por esto, no
   por lo gastado a la fecha. Al 100 % nada cambia.
 - **Mapeo de categorías** (`MAPEO_CATEGORIA_BUCKET`): Servicios queda en Otros **a propósito**, porque Mano de Obra
-  Real es manual y podría ya incluirla. El Portal lleva una copia (`LL_BUCKET`, que `test_portal.py` compara).
+  Real es manual y podría ya incluirla. El Portal lleva una copia (`LL_BUCKET`, que `tests/portal/` compara).
 - **`alertas_proyecto()`** solo avisa; no cambia ningún KPI. `sesgo_por_categoria()` y `concentracion_cartera()` viven en
   `analisis_financiero.py`, no en el tablero.
 - **Para verificar un cambio de fórmulas**: corre sobre una **copia** del libro con un país ficticio en `PAISES` (y un

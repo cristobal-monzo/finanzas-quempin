@@ -20,6 +20,11 @@ name: tests
 #   2 reintentos por prueba, porque el runner de GitHub a veces falla por
 #   causas ajenas al codigo (ERR_NO_BUFFER_SPACE). Una prueba que falla tres
 #   veces sigue dejando el CI en rojo.
+# - Desde el 2026-11-18 las pruebas del Portal estan en Visualizador Web/tests/
+#   portal/ (una por vista) y -rR nombra cada prueba reintentada. Las esperas
+#   fijas que fallaban se cambiaron por esperas de una condicion; si en una
+#   semana (2026-11-25) ningun log dice RERUN, se quitan los reintentos (fase B
+#   de Visualizador Web/portal/docs/plans/2026-11-18-mejoras-portal.md).
 # - publicar.py no publica el Portal ni el hub si el CI de ese commit no
 #   quedo verde (Visualizador Web/CLAUDE.md).
 
@@ -51,8 +56,8 @@ jobs:
 
       - name: Modulos (todo menos el Portal)
         if: matrix.parte == 'modulos'
-        run: python -m pytest -q --ignore="Visualizador Web/tests/test_portal.py"
+        run: python -m pytest -q --ignore="Visualizador Web/tests/portal"
 
       - name: Portal (punta a punta, hasta 2 reintentos por prueba)
         if: matrix.parte == 'portal'
-        run: python -m pytest -q "Visualizador Web/tests/test_portal.py" --reruns 2 --reruns-delay 2
+        run: python -m pytest -q -rR "Visualizador Web/tests/portal" --reruns 2 --reruns-delay 2

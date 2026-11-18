@@ -51,7 +51,7 @@ proyecto y en general, con UX profesional):
   se le pueda asignar uno de los dos vehículos de la empresa, Quempineta y RAM;
   la asignación debe ser sencilla y se debe poder ver en el resumen»): bloque
   `"vehiculos"` del registro (`id`, `nombre`, `articulo`; el `id` va en el
-  archivo y el enum del esquema debe ser el mismo, `test_portal.py` los compara).
+  archivo y el enum del esquema debe ser el mismo, `tests/portal/` los compara).
   En la ventanita, bajo cada persona (o proyecto) marcada, «Vehículo» con un
   botón por vehículo (`plVehOps`, `data-op="v|<persona o clave>|<id>"`): un toque
   lo asigna los días elegidos en que va (`plVehiculoDias`, una tanda), otro lo
@@ -176,7 +176,7 @@ proyecto y en general, con UX profesional):
   lo ya visto. Lo que no alcanza a guardarse espera en `quempin_portal_plan_pendiente`
   y se reintenta. La vista relee cada 3 segundos (solo los archivos que
   cambiaron; ver «Trabajar a la vez»). Es la primera vista del portal que escribe en la carpeta.
-- Pruebas: `test_portal.py`, desde `test_la_planificacion_semanal_en_el_registro`
+- Pruebas: `tests/portal/`, desde `test_la_planificacion_semanal_en_el_registro`
   (alarma, máximo, guardado y esquema, unión de dos computadores, ausencias,
   deshacer, semanas y cambio de año, copiar, compartir, imprimir, teléfono; y
   desde el 2026-10-23 varios días, «Cambiar», teclado, alarma → ventanita y

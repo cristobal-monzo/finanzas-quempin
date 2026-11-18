@@ -12,7 +12,7 @@ puede juntar gastos de varios) y la rendición se envía al Centro de Costos.
 - Herramienta `rendiciones` del registro (`tipo: vista`, grupo `controlar`), sección `#vistaRendir`, funciones `rd*`,
   estado `rd`, diálogos `#dlgRdDoc` (ver la foto, girar, volver a leer) y `#dlgRdLector` (lector con IA).
 - `rdAlMostrar` (desde `abrir`) y `rdAlRecorrido` (desde el `.then` de `rcCargar`) cargan la lista de proyectos.
-- Pruebas: `test_portal.py -k rendiciones`. El lector de texto se prueba solo con `window.QRendiciones.interpretar`.
+- Pruebas: `tests/portal/test_portal_rendiciones.py`. El lector de texto se prueba solo con `window.QRendiciones.interpretar`.
 
 ## Cómo lee
 

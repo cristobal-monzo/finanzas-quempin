@@ -93,6 +93,35 @@ IIFE de 16 000 líneas. `test_portal.py` tiene 7 712 líneas y el CI falla a vec
 Hecho cuando: suite completa y auditoría de teléfono pasan, la carga no es más lenta que la línea base, se publica y
 el Portal en línea funciona igual en las 10 vistas.
 
+### Cómo quedó (2026-11-18)
+- **Línea base** (antes de partir): `test_portal.py` 262 pruebas en 454,6 s. Portal en línea, mediana de 7 cargas hasta
+  que el Inicio muestra sus botones: 449 ms con caché vacía (350 KB comprimidos), 140 ms con caché.
+- **Partido** desde master e571165: `index.html` 21 150 → 1 194 líneas, `portal.css` 3 338, y 14 archivos en `js/`
+  (los de B1 más `conexiones.js`, `inicio.js` = la vista Inicio, `llevar.js`, `buscador.js` y `arranque.js` = el
+  arranque, al final). La Planificación estaba cortada por Subir y Rendiciones: sus dos tramos van juntos en
+  `planificacion.js` (el segundo solo declara funciones, así que moverlo no cambia nada al cargar).
+- **Cambios contra B1:** scripts clásicos sin `defer` al final del `<body>` (igual que antes: corren antes de
+  `DOMContentLoaded`). El `return` del portal anidado no pasó a `arrancar()`: va en un `<script>` en línea antes de
+  los `js/` que llama a `window.stop()`, así el portal de adentro no carga ninguno (prueba nueva). Se quitó la
+  sangría del IIFE: no había plantillas de texto de varias líneas, así que ningún texto cambia.
+- **Revisado con acorn** (fuera del repo): ningún nombre de primer nivel se repite ni tapa uno de `window`, y nada que
+  corre al cargar un archivo usa algo de un archivo posterior (4 avisos, los 4 falsos: funciones pasadas a
+  `setInterval`/`addEventListener`).
+- **Scripts de uso único:** `portal/partir_portal.py` (`--desde <ref>` lee el `index.html` de git) y
+  `tests/partir_test_portal.py` quedan en el commit de la fase B y se borran en el siguiente. Para
+  `carpetas-estados` y `cotizador-exportar`: traer los dos scripts de ese commit, correrlos sobre su versión de una
+  pieza y después hacer el merge.
+- **publicar.py:** `PARTES` (`portal.css`, `js/`), `?v=<huella>` en cada parte (sin eso, recién publicado, un
+  `index.html` nuevo podía correr con un `.js` viejo del caché de 10 min de GitHub Pages), borra los `.js` que ya no
+  están, no publica si un script u hoja local enlazado falta, y revisa cambios sin commit también en las partes.
+- **Pruebas:** `tests/portal/test_portal_<vista>.py` (13 archivos + `test_portal_archivos.py`), lo común en
+  `portal_comun.py`, fixtures por archivo en `conftest.py`. Inestables: en 2 semanas, 5 corridas usaron reintento;
+  fallaron más de una vez `test_lo_publicado_de_nuevo_se_carga_sin_f5` (espera fija de 500 ms → espera a que
+  `ad.portal` y cada `p.ad` estén leídos) y `test_subir_documentos_llega_a_la_carpeta_del_centro_de_costos` (fallas
+  del 2026-11-18 en 4 corridas del mismo minuto, junto con otras pruebas: muy probablemente el código de ese momento,
+  no la prueba; no se cambió). El CI sigue con
+  `--reruns 2` y ahora `-rR`, que nombra cada reintento: **el 2026-11-25, si ningún log dice RERUN, se quitan**.
+
 ---
 
 ## Fase C (mejora 4) — El Portal en el teléfono, solo lectura

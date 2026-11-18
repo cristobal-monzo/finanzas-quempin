@@ -125,6 +125,8 @@ Sin `--subir` deja todo en el índice y el commit y el push quedan a mano, como 
   AF cifrado con la contraseña de prueba de los tests y nadie pudo abrirlo.
 - **El hub y el Portal** no llevan datos: `py -3.14 "Visualizador Web/publicar.py" portal hub` los copia con los archivos de
   `marca/` que enlazan. `--todos` no los incluye. Sin `marca/` en `gh-pages` se verían con la letra del sistema.
+  El Portal va además con sus partes (`PARTES`: `portal.css` y `js/`, 2026-11-18), cada una con `?v=<huella>`; si la
+  página enlaza un script u hoja local que no queda en `gh-pages`, no se publica.
 - Antes de publicar, `publicar.py` revisa solo (2026-11-06): que `gh-pages` local tenga todo lo de origin (si
   otra sesión publicó después, primero `pull --ff-only`) y, para el hub y el Portal, que su archivo esté
   commiteado y con el CI de ese commit en verde (`gh run list`; sin push no hay CI). `--sin-ci` se salta lo
@@ -165,5 +167,6 @@ rótulos y código siguen públicos. Nada con datos se publica fuera de un sobre
 
 `.github/workflows/tests.yml` corre pytest completo en cada push y PR, salvo `gh-pages`. Los
 tests usan workbooks sintéticos, nunca datos reales; instala Chromium para los PDF.
-Desde 2026-11-06 en dos partes (`modulos` y `portal`, este con `--reruns 2`) e instala `requirements.lock`:
+Desde 2026-11-06 en dos partes (`modulos` y `portal` = `Visualizador Web/tests/portal/`, este con `--reruns 2` y
+`-rR` hasta el 2026-11-25, ver la fase B del plan del Portal) e instala `requirements.lock`:
 si agregas o subes una librería, `py -3.14 fijar_dependencias.py` y commitea el lock.

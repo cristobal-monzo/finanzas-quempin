@@ -121,7 +121,7 @@ def test_la_cotizacion_se_lleva_a_un_proyecto_por_el_portal():
     """2026-10-29: «Llevar a un proyecto…» manda las líneas del carrito al Portal QUEMPIN, que conoce los proyectos
     en formulación y en ejecución: a la ventana de arriba si el Cotizador está abierto dentro del Portal, o al Portal
     recién abierto cuando él avisa que está listo. Van como mensaje entre ventanas: ni por el almacenamiento del
-    navegador ni en la dirección (el Portal las valida, ver Visualizador Web/tests/test_portal.py)."""
+    navegador ni en la dirección (el Portal las valida, ver Visualizador Web/tests/portal/)."""
     html = _leer(TEMPLATE_CL)
     js = _script_app(html)
     assert 'id="btnLlevarProyecto"' in html
