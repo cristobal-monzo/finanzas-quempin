@@ -265,7 +265,6 @@
     font-size: 12px; font-weight: 900; line-height: 1; white-space: nowrap;
   }
   .menu-item .pl-alerta-n { border-color: #ff6b5e; color: #ffb3aa; }
-  .ini-sub.pl-alerta-sub { color: var(--estado-bad); font-weight: 700; }
 
   /* ---- Cuerpo: menú + herramientas ----
      Menú (2026-10-16, tarde): sin franja fija a la izquierda. Solo aparece al tocar ☰, encima de
@@ -421,7 +420,6 @@
   .ini-item.abierta::before {
     content: ""; position: absolute; top: 7px; left: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand-orange);
   }
-  .ini-item .pl-alerta-n { position: absolute; top: 4px; right: 4px; height: 20px; min-width: 20px; padding: 0 5px; background: var(--surface-card); }
 
   /* La semana de la Planificación (2026-11-18, el usuario eligió la maqueta V4): una franja bajo las áreas, un día por
      columna con sus proyectos (los de más gente primero, hasta tres) y cuántas personas tienen algo. Hoy, en tinte. */
@@ -6849,8 +6847,8 @@
 
   // ---- Inicio: las herramientas por área (2026-11-10) -------------------------------------------------
   /* Pedido del usuario: el saludo y las herramientas de cada área del trabajo como botones con su ícono, sin cifras ni
-     gráficos. Lo único que depende de la carpeta del equipo es la alarma de la Planificación semanal en su botón
-     (plPintarAlarmaGlobal); por eso el Inicio sigue pidiendo la lectura del Recorrido. */
+     gráficos. De la carpeta del equipo depende la semana de la Planificación (iniPintarSemana); por eso el Inicio sigue
+     pidiendo la lectura del Recorrido. La alarma de los sin asignar ya no va en su botón (pedido del 2026-11-18). */
   const ini = { cuadro: 0 };
   const iniVisible = () => !$('#vistaInicio').hidden;
   // El nombre de cada botón: el corto, salvo donde cabe uno más claro. Los de una palabra larga llevan guiones suaves
@@ -6903,7 +6901,7 @@
       if (!si && s) s.remove();
     });
     estado.proyectos = leerProyectos();      // el Formulador pudo cambiarlos mientras tanto (los usa el buscador)
-    plPintarAlarmaGlobal();    // la Planificación semanal lleva su alarma en su botón
+    plPintarAlarmaGlobal();    // la alarma va en el menú
     iniPintarDatos();
     if (!rc.leyendo && (!rc.intentado || (rc.leido && Date.now() - rc.leido > 5 * RC_RELEER_SEG * 1000))) {
       rc.intentado = true;
@@ -8973,14 +8971,9 @@
     const l = plSinAsignarHoy() || [];
     const n = l.length;
     const que = n === 1 ? 'Un proyecto activo sin nadie asignado esta semana' : n + ' proyectos activos sin nadie asignado esta semana';
-    // Junto al nombre de la herramienta, en el menú y en el Inicio (donde además lo dice su línea de abajo)
-    document.querySelectorAll('.menu-item[data-herr="planificacion"], .ini-item[data-herr="planificacion"]').forEach((el) => {
+    // Junto al nombre de la herramienta, en el menú. En el Inicio ya no (pedido del usuario, 2026-11-18).
+    document.querySelectorAll('.menu-item[data-herr="planificacion"]').forEach((el) => {
       let s = el.querySelector('.pl-alerta-n');
-      const sub = el.querySelector('.ini-sub');
-      if (sub) {
-        sub.textContent = n ? pl(n, 'proyecto', 'proyectos') + ' sin asignar esta semana' : HERR.get('planificacion').breve;
-        sub.classList.toggle('pl-alerta-sub', !!n);
-      }
       if (!n) { if (s) s.remove(); return; }
       if (!s) { s = crear('span', 'pl-alerta-n'); el.append(s); }
       s.textContent = String(n);

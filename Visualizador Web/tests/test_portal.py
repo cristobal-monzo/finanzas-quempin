@@ -1866,12 +1866,13 @@ def test_las_cifras_y_el_buscador_filtran_el_recorrido(navegador, sitio):
 
 def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
     """Pedido del 2026-11-10: el Inicio con las herramientas de cada área, con sus íconos nuevos; sin la franja «Hoy»,
-    cifras ni gráficos. De la carpeta vienen la alarma de la Planificación en su botón y, desde el 2026-11-18, su
-    semana bajo las áreas (test_el_inicio_muestra_la_semana_de_la_planificacion)."""
+    cifras ni gráficos. De la carpeta viene, desde el 2026-11-18, la semana de la Planificación bajo las áreas
+    (test_el_inicio_muestra_la_semana_de_la_planificacion). La alarma de los sin asignar ya no va en su botón
+    (pedido del 2026-11-18): sigue en el menú."""
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", ancho=1366, alto=657)
-    alarma = pagina.locator('#iniAreas .ini-item[data-herr="planificacion"] .pl-alerta-n')
-    alarma.wait_for()
-    assert alarma.inner_text() == "3"
+    pagina.locator(ALERTA_N).wait_for(state="attached")
+    assert pagina.locator(ALERTA_N).inner_text() == "3"
+    assert pagina.locator("#iniAreas .pl-alerta-n").count() == 0, "sin alarma en el Inicio"
     assert pagina.locator("#tituloInicio b").inner_text() == "LC" and pagina.locator("#iniQuien").is_hidden()
     # Cuatro áreas de a dos, cada herramienta con su propio ícono (el mismo de su pestaña)
     assert pagina.evaluate("getComputedStyle(document.getElementById('iniAreas')).gridTemplateColumns.split(' ').length") == 2
@@ -2143,7 +2144,7 @@ def _alarma(pagina):
 
 
 # La cuenta de la alarma, junto a la Planificación en el Inicio (ya no en la cabecera, 2026-10-28)
-ALERTA_N = '.ini-item[data-herr="planificacion"] .pl-alerta-n'
+ALERTA_N = '#menu .menu-item[data-herr="planificacion"] .pl-alerta-n'
 
 
 def _celda_proyecto(pagina, clave, dia):
@@ -2204,9 +2205,9 @@ def test_la_alarma_muestra_los_proyectos_activos_sin_asignar(navegador, sitio):
     el Inicio (en la cabecera ya no, a pedido del 2026-10-28), y la vista dice cuáles son."""
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC")
     item = pagina.locator('.ini-item[data-herr="planificacion"]')
-    item.locator(".pl-alerta-n").wait_for()
+    pagina.locator(ALERTA_N).wait_for(state="attached")
     assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
-    assert item.locator(".pl-alerta-n").inner_text() == "3"
+    assert item.locator(".pl-alerta-n").count() == 0, "en el Inicio ya no (2026-11-18)"
     assert item.locator(".ini-fuera").count() == 0, "se abre dentro del portal"
     pagina.locator("#btnMenu").click()
     pagina.locator("#grupo-ejecutar").click()
@@ -2812,7 +2813,7 @@ def test_la_vista_simple_sin_alarma_en_la_cabecera(navegador, sitio):
     vez en cuando va en «Más»; los paneles de General van plegados y se recuerda cuál se abrió."""
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="general", ancho=1366, alto=768)
     assert pagina.locator("#plAlertaCab, .cab-alerta").count() == 0
-    assert pagina.locator('.ini-item[data-herr="planificacion"] .pl-alerta-n').inner_text() == "3"
+    assert pagina.locator(ALERTA_N).inner_text() == "3"
     # Las cifras, en una sola línea y bajas
     cajas = pagina.locator("#plResumen .rc-kpi").evaluate_all("bs => bs.map((b) => b.getBoundingClientRect().toJSON())")
     assert len({round(c["y"]) for c in cajas}) == 1 and max(c["height"] for c in cajas) <= 34, cajas
