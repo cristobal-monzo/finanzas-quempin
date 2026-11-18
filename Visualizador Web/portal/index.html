@@ -382,7 +382,7 @@
      sus herramientas como botones grandes con su ícono, sin cifras ni gráficos. Las áreas de a dos; los botones del
      mismo ancho en las cuatro (seis por fila). Antes, el mismo día, se probaron un «centro de trabajo» con etapas y
      listas («mucha información y algo confusa») y «Tres áreas», con la franja «Hoy» y un gráfico por área. Sin
-     desplazarse en el computador; en el teléfono, una columna. Las medidas son las del marco (container). */
+     desplazarse en el computador; en el teléfono, una columna. Desde el 2026-11-18, la semana de la Planificación abajo (#iniSemana). Las medidas son las del marco (container). */
   .vista-inicio { position: absolute; inset: 0; overflow-y: auto; container: inicio / size; }
   .inicio { max-width: 1340px; margin: 0 auto; padding: 28px 32px 20px; display: flex; flex-direction: column; gap: 18px; }
 
@@ -423,6 +423,48 @@
   }
   .ini-item .pl-alerta-n { position: absolute; top: 4px; right: 4px; height: 20px; min-width: 20px; padding: 0 5px; background: var(--surface-card); }
 
+  /* La semana de la Planificación (2026-11-18, el usuario eligió la maqueta V4): una franja bajo las áreas, un día por
+     columna con sus proyectos (los de más gente primero, hasta tres) y cuántas personas tienen algo. Hoy, en tinte. */
+  .ini-semana {
+    min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 14px;
+    border-radius: 14px; border: 1px solid var(--border-hairline); background: var(--surface-card);
+  }
+  .ini-sem-cab { display: flex; align-items: center; gap: 12px; }
+  .ini-semana h2 { margin: 0 2px; font-size: 13px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--texto-suave); }
+  .ini-sem-abrir {
+    margin-left: auto; padding: 4px 8px; border: 0; border-radius: 8px; background: none; cursor: pointer;
+    color: var(--brand-orange-ink); font-size: 13px; font-weight: 900;
+  }
+  .ini-sem-abrir::after { content: " →"; }
+  .ini-sem-abrir:hover { background: var(--tinte); }
+  .ini-sem-dias { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+  .ini-sem-dias > li { min-width: 0; display: flex; }
+  .ini-sem-dia {
+    flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px 9px;
+    border-radius: 10px; border: 1px solid var(--gridline); background: var(--surface-card);
+    color: var(--text-primary); text-align: left; cursor: pointer; font: inherit;
+  }
+  .ini-sem-dia:hover { border-color: var(--brand-orange); }
+  .ini-sem-dia.hoy { background: var(--tinte); border-color: var(--tinte-borde); }
+  .ini-sem-dia.hoy:hover { border-color: var(--brand-orange); }
+  .ini-sem-et { display: flex; align-items: baseline; gap: 8px; font-size: 13px; font-weight: 900; }
+  .ini-sem-n { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--texto-suave); white-space: nowrap; }
+  .ini-sem-pr { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; line-height: 1.35; }
+  .ini-sem-pr i { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 2px; background: var(--pc); }
+  .ini-sem-pr span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ini-sem-pr b { flex: 0 0 auto; font-weight: 400; color: var(--texto-suave); }
+  .ini-sem-mas, .ini-sem-nadie { font-size: 12px; color: var(--texto-suave); }
+  .ini-sem-mas.m2 { display: none; }      /* «+N más» contando dos proyectos: solo con poco alto (abajo) */
+  /* Con la semana a la vista, las áreas más bajas: el Inicio sigue sin desplazarse en el computador */
+  .inicio:has(> .ini-semana:not([hidden])) { padding-top: 18px; gap: 10px; }
+  .inicio:has(> .ini-semana:not([hidden])) .ini-areas { gap: 12px; }
+  .inicio:has(> .ini-semana:not([hidden])) .ini-area { padding: 12px 12px; gap: 8px; }
+  .inicio:has(> .ini-semana:not([hidden])) .ini-item { padding: 8px 2px 7px; gap: 6px; }
+  .inicio:has(> .ini-semana:not([hidden])) .ini-ico { width: 34px; height: 34px; border-radius: 10px; }
+  .ini-semana { padding: 10px 12px 10px; gap: 6px; }
+  .ini-sem-dia { gap: 3px; }
+  .ini-sem-pr { line-height: 1.25; }
+
   /* Menos ancho: todo más junto (los nombres de una palabra larga se cortan en sílabas: iniNombre) */
   @container inicio (max-width: 1320px) {
     .inicio { padding-left: 16px; padding-right: 16px; }
@@ -441,6 +483,17 @@
     .ini-areas { gap: 12px; }
     .ini-area { padding: 12px 14px 14px; gap: 8px; }
   }
+  /* Con la semana y aún menos alto (1280 × 600): botones más bajos y dos proyectos por día */
+  @container inicio (min-width: 901px) and (max-height: 520px) {
+    .inicio:has(> .ini-semana:not([hidden])) { padding-top: 12px; gap: 10px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-cab h1 { font-size: 22px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-areas { gap: 10px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-area { padding: 10px 12px; gap: 6px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-item { padding: 6px 2px 5px; gap: 4px; }
+    .inicio:has(> .ini-semana:not([hidden])) .ini-ico { width: 30px; height: 30px; border-radius: 9px; }
+    .ini-sem-pr.p3, .ini-sem-mas.m3 { display: none; }
+    .ini-sem-mas.m2 { display: block; }
+  }
   /* Angosto (tableta vertical, teléfono, ventana chica): una columna que se desplaza sin barra */
   @container inicio (max-width: 900px) {
     .inicio { padding: 14px 14px 24px; }
@@ -452,6 +505,7 @@
     .ini-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .ini-area[data-grupo="calcular"] .ini-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .ini-item { min-height: 76px; }
+    .ini-sem-dias { grid-auto-flow: row; }      /* la semana, un día por fila */
   }
 
   /* ---- Configuración y conexiones (2026-10-16): qué necesita cada herramienta y dónde está ---- */
@@ -3260,6 +3314,14 @@
                 <ul class="ini-tiles"></ul>
               </section>
             </div>
+            <!-- La semana de la Planificación (2026-11-18, maqueta V4): lo arma iniPintarSemana() al leer la carpeta -->
+            <section class="ini-semana" id="iniSemana" aria-labelledby="iniTitSemana" hidden>
+              <div class="ini-sem-cab">
+                <h2 id="iniTitSemana">Planificación semanal</h2>
+                <button type="button" class="ini-sem-abrir" id="iniSemAbrir">Abrir</button>
+              </div>
+              <ol class="ini-sem-dias" id="iniSemDias"></ol>
+            </section>
           </div>
         </section>
         <!-- Recorrido de proyectos (2026-10-20): lo arma rcPintar() con lo que publica la carpeta de intercambio -->
@@ -6818,6 +6880,10 @@
     return b;
   }
   function pintarInicio() {
+    if (!ini.semAbrir) {
+      ini.semAbrir = true;
+      $('#iniSemAbrir').addEventListener('click', () => abrir('planificacion'));
+    }
     document.querySelectorAll('#iniAreas .ini-area').forEach((sec) => {
       const ul = sec.querySelector('.ini-tiles');
       if (ul.childElementCount) return;      // no depende de datos: se arma una vez
@@ -6853,6 +6919,58 @@
   function iniPintarDatos() {
     if (!iniVisible()) return;
     iniPintarSaludo();
+    iniPintarSemana();
+  }
+  /* La semana de hoy de la Planificación (2026-11-18, maqueta V4): un día por columna con sus proyectos, los de más gente
+     primero y hasta tres, y cuántas personas tienen algo. Tocar un día abre la Planificación con ese día en grande.
+     Sin carpeta o sin leerla todavía, la franja no se muestra. */
+  const INI_SEM_MAX = 3;
+  function iniPintarSemana() {
+    const sec = $('#iniSemana');
+    const s = rc.leido && rc.dir ? planif.semanas.get(plHoyId()) : null;
+    sec.hidden = !(s && s.leida);
+    if (sec.hidden) return;
+    const m = plModelo(s);
+    const ul = $('#iniSemDias');
+    ul.textContent = '';
+    plDias(s).forEach((d) => {
+      const claves = [...new Set(m.personas.flatMap((per) => m.porPersona.get(d.iso + '|' + per) || []))];
+      const cuantos = (c) => (m.porProyecto.get(d.iso + '|' + c) || []).length;
+      const orden = m.ordenar(claves).sort((a, b) => cuantos(b) - cuantos(a));
+      const van = m.personas.filter((per) => (m.porPersona.get(d.iso + '|' + per) || []).length).length;
+      const b = crear('button', 'ini-sem-dia' + (d.hoy ? ' hoy' : ''));
+      b.type = 'button';
+      b.dataset.dia = String(d.i);
+      const et = crear('span', 'ini-sem-et');
+      et.append(crear('span', null, d.corto + ' ' + d.fecha.getDate()));
+      if (van) et.append(crear('span', 'ini-sem-n', van + ' pers.'));
+      b.append(et);
+      orden.slice(0, INI_SEM_MAX).forEach((c, k) => {
+        const f = crear('span', 'ini-sem-pr p' + (k + 1));
+        const i = crear('i');
+        i.style.setProperty('--pc', m.color(c));
+        f.append(i, crear('span', null, m.titulo(c)), crear('b', null, String(cuantos(c))));
+        b.append(f);
+      });
+      // «+N más»: uno contando tres proyectos y otro contando dos, para las pantallas bajas (el CSS muestra uno)
+      [3, 2].forEach((n) => { if (orden.length > n) b.append(crear('span', 'ini-sem-mas m' + n, '+' + (orden.length - n) + ' más')); });
+      if (!orden.length) b.append(crear('span', 'ini-sem-nadie', 'Nadie asignado'));
+      b.title = plFechaLarga(d) + (d.hoy ? ' (hoy)' : '') + ': '
+        + (van ? pl(van, 'persona', 'personas') + ' en ' + pl(orden.length, 'proyecto', 'proyectos') + ' ('
+          + orden.map((c) => m.titulo(c) + ', ' + cuantos(c)).join('; ') + ')' : 'nadie asignado') + '. Verlo en la Planificación';
+      b.setAttribute('aria-label', b.title);
+      b.addEventListener('click', () => iniAbrirDia(d.i));
+      const li = crear('li');
+      li.append(b);
+      ul.append(li);
+    });
+  }
+  // La Planificación en la semana de hoy, en General con ese día en grande (las otras vistas no muestran un día solo)
+  function iniAbrirDia(i) {
+    planif.lunes = plLunesDe(new Date());
+    planif.diaMovil = i;
+    abrir('planificacion');
+    if (planif.vista !== 'general') plElegirVista('general');
   }
   // El saludo; sin usuario, se elige aquí mismo con un clic (también está arriba, en la cabecera)
   function iniPintarSaludo() {

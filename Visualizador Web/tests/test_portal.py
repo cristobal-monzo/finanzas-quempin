@@ -1865,8 +1865,9 @@ def test_las_cifras_y_el_buscador_filtran_el_recorrido(navegador, sitio):
 
 
 def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
-    """Pedido del 2026-11-10: el Inicio solo con las herramientas de cada área, con sus íconos nuevos; sin la franja
-    «Hoy», cifras ni gráficos. Lo único que viene de la carpeta es la alarma de la Planificación en su botón."""
+    """Pedido del 2026-11-10: el Inicio con las herramientas de cada área, con sus íconos nuevos; sin la franja «Hoy»,
+    cifras ni gráficos. De la carpeta vienen la alarma de la Planificación en su botón y, desde el 2026-11-18, su
+    semana bajo las áreas (test_el_inicio_muestra_la_semana_de_la_planificacion)."""
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", ancho=1366, alto=657)
     alarma = pagina.locator('#iniAreas .ini-item[data-herr="planificacion"] .pl-alerta-n')
     alarma.wait_for()
@@ -1895,6 +1896,73 @@ def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
     assert pagina.locator("#iniQuien button").all_inner_texts() == ["NB", "ES", "LC", "CM", "MP", "SV"]
     pagina.locator('#iniQuien button[data-usuario="CM"]').click()
     assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "CM" and pagina.locator("#tituloInicio b").inner_text() == "CM"
+    assert not errores
+    pagina.context.close()
+
+
+def _inicio_con_semana(navegador, sitio, **kw):
+    """El Inicio con la carpeta de prueba y esta semana planificada (lunes: cuatro proyectos; miércoles: uno)."""
+    from datetime import date, timedelta
+    semana, lunes = _semana_de(date.today())
+    d = lambda i: (lunes + timedelta(days=i)).isoformat()
+    asig = lambda i, per, p: {"dia": d(i), "persona": per, "proyecto": p, "activa": True, "t": _instante(-60), "por": "NB"}
+    usos = [(0, "NB", "req:908"), (0, "ES", "req:908"), (0, "LC", "req:908"), (0, "CM", "req:907"), (0, "MP", "tag:SOLO"),
+            (0, "SV", "otra:bodega"), (2, "NB", "req:907"), (2, "ES", "req:907")]
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", **kw)
+    pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {f"publicado/planificacion/{semana}/otro0001.json": _sobre_plan(
+        semana, lunes, "otro0001", [asig(*u) for u in usos], proyectos={"otra:bodega": {"titulo": "Bodega"}})})
+    pagina.reload()
+    pagina.locator("#iniSemana .ini-sem-dia").first.wait_for()
+    return pagina, errores
+
+
+def test_el_inicio_muestra_la_semana_de_la_planificacion(navegador, sitio):
+    """2026-11-18, el usuario eligió la maqueta V4: bajo las áreas, la semana de hoy, un día por columna con sus
+    proyectos (los de más gente primero, hasta tres) y cuántas personas tienen algo. Un día abre la Planificación con
+    ese día en grande; «Abrir», la Planificación."""
+    from datetime import date
+    pagina, errores = _inicio_con_semana(navegador, sitio, ancho=1366, alto=657)
+    dias = pagina.locator("#iniSemana .ini-sem-dia")
+    assert dias.count() == 5
+    hoy = date.today().weekday()
+    assert dias.evaluate_all("bs => bs.map((b) => b.classList.contains('hoy'))") == [i == hoy for i in range(5)]
+    lun = dias.nth(0)
+    assert lun.locator(".ini-sem-n").inner_text() == "6 pers."
+    filas = lun.locator(".ini-sem-pr").evaluate_all("fs => fs.map((f) => [f.children[1].textContent, f.children[2].textContent])")
+    assert len(filas) == 3 and filas[0] == ["En obra", "3"], filas
+    # Dos «+N más», uno para tres proyectos y otro para dos (pantallas bajas): se ve solo uno
+    assert lun.locator(".ini-sem-mas:visible").all_inner_texts() == ["+1 más"]
+    assert "6 personas en 4 proyectos" in lun.get_attribute("title") and "Bodega, 1" in lun.get_attribute("title")
+    assert dias.nth(1).locator(".ini-sem-nadie").inner_text() == "Nadie asignado"
+    assert dias.nth(2).locator(".ini-sem-n").inner_text() == "2 pers."
+    # Un día abre la Planificación en General con ese día en grande, aunque la última vista elegida fuera otra
+    pagina.evaluate("localStorage.setItem('quempin_portal_plan', JSON.stringify({ v: 2, vista: 'personal' }))")
+    pagina.reload()
+    dias.first.wait_for()
+    dias.nth(2).click()
+    assert pagina.locator("#vistaPlan").is_visible()
+    pagina.locator("#plGeneral .pl-dia-grande").wait_for()
+    assert pagina.locator("#plGeneral .pl-dia-grande").get_attribute("data-dia") == "2"
+    # «Abrir» va a la Planificación
+    pagina.locator("#pestanas .ir", has_text="Inicio").click()
+    pagina.locator("#iniSemAbrir").click()
+    assert pagina.locator("#vistaPlan").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+@pytest.mark.parametrize("ancho, alto", [(1366, 657), (1536, 730), (1280, 600), (1024, 640), (390, 844)])
+def test_la_semana_cabe_en_el_inicio(navegador, sitio, ancho, alto):
+    """Con la semana planificada, el Inicio sigue sin barras en el computador; en el teléfono, un día por fila."""
+    movil = ancho < 760
+    pagina, errores = _inicio_con_semana(navegador, sitio, ancho=ancho, alto=alto, movil=movil)
+    pagina.wait_for_timeout(200)
+    if not movil:
+        assert pagina.evaluate(JS_BARRAS) == []
+    d = pagina.evaluate(JS_DESBORDES)
+    assert d["doc"] <= ancho and not d["fuera"], d
+    xs = pagina.locator("#iniSemana .ini-sem-dia").evaluate_all("bs => bs.map((b) => Math.round(b.getBoundingClientRect().left))")
+    assert len(set(xs)) == (1 if movil else 5), xs
     assert not errores
     pagina.context.close()
 
