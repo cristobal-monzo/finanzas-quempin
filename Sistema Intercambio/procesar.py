@@ -520,6 +520,9 @@ def resumen_buzon(raiz: Path) -> dict:
         d = por_destino.setdefault(m["destino"], {"pendientes": 0, "masAntiguo": None, "tipos": {}})
         d["pendientes"] += 1
         d["tipos"][m["tipo"]] = d["tipos"].get(m["tipo"], 0) + 1
+        # Los errores que el Portal envía solo (2026-11-18) se cuentan aparte: no los escribió una persona
+        if m.get("automatico") is True:
+            d["automaticos"] = d.get("automaticos", 0) + 1
         if d["masAntiguo"] is None or m["origen"]["enviado"] < d["masAntiguo"]:
             d["masAntiguo"] = m["origen"]["enviado"]
     if invalidos:

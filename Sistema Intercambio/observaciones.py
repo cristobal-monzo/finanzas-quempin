@@ -14,7 +14,11 @@ y este módulo solo le da las tres cosas que necesita:
 
     py -3.14 observaciones.py status                 lo que espera, en orden
     py -3.14 observaciones.py ver <id>               una nota entera y sus imágenes
-    py -3.14 observaciones.py cerrar <id> <estado> "<detalle>"
+    py -3.14 observaciones.py cerrar <id> <estado> "<detalle>" [--grupo]
+
+Desde el 2026-11-18 el Portal también envía solo los errores de JavaScript que
+ve (``automatico: true``, con ``tecnico``). ``status`` los muestra aparte y
+agrupados por ``tecnico.firma``; ``cerrar --grupo`` cierra todos los de esa firma.
 
 ``<id>`` puede ser el comienzo del id (lo que muestra ``status``). ``cerrar``
 archiva con el protocolo común y lleva las imágenes a
@@ -102,12 +106,46 @@ def _lugar(donde: dict) -> str:
     return " › ".join(ruta) or str(donde.get("nombre") or donde.get("herramienta") or "?")
 
 
+def es_automatica(m: dict) -> bool:
+    """La envió el Portal solo al ver un error de JavaScript (2026-11-18)."""
+    return m.get("automatico") is True
+
+
+def firma(m: dict) -> str:
+    """Lo que agrupa el mismo error visto por varias personas; sin firma, el id."""
+    tecnico = m.get("tecnico") if isinstance(m.get("tecnico"), dict) else {}
+    return str(tecnico.get("firma") or m["id"])
+
+
+def grupos_automaticos(lista: list[dict]) -> list[dict]:
+    """Los automáticos juntos por firma: el más reciente, cuántas veces, quiénes y
+    desde cuándo. Primero el que más se repite."""
+    grupos: dict[str, dict] = {}
+    for m in lista:
+        if not es_automatica(m):
+            continue
+        g = grupos.setdefault(firma(m), {"firma": firma(m), "mensajes": [], "personas": set()})
+        g["mensajes"].append(m)
+        if m["origen"].get("usuario"):
+            g["personas"].add(m["origen"]["usuario"])
+    salida = []
+    for g in grupos.values():
+        fechas = sorted(str(m["origen"]["enviado"]) for m in g["mensajes"])
+        reciente = max(g["mensajes"], key=lambda m: str(m["origen"]["enviado"]))
+        salida.append({"firma": g["firma"], "reciente": reciente, "veces": len(g["mensajes"]),
+                       "personas": sorted(g["personas"]), "desde": fechas[0], "hasta": fechas[-1]})
+    return sorted(salida, key=lambda g: (-g["veces"], g["desde"]))
+
+
 def imprimir_status(raiz: Path) -> None:
-    lista = pendientes(raiz)
-    if not lista:
+    todas = pendientes(raiz)
+    lista = [m for m in todas if not es_automatica(m)]
+    grupos = grupos_automaticos(todas)
+    if not todas:
         print("No hay observaciones pendientes.")
         return
-    print(f"{len(lista)} observación(es) pendiente(s):\n")
+    if lista:
+        print(f"{len(lista)} observación(es) pendiente(s) escritas por el equipo:\n")
     for m in lista:
         marca = "[!] " if m.get("bloquea") else ""
         donde = m.get("donde") if isinstance(m.get("donde"), dict) else {}
@@ -116,7 +154,24 @@ def imprimir_status(raiz: Path) -> None:
         print(f"          {marca}{_resumen_nota(m.get('nota'))}")
         if m["_errores"]:
             print(f"          (no cumple su esquema: {m['_errores'][0]})")
+    if grupos:
+        print(f"\n{len(grupos)} error(es) que el Portal envió solo (agrupados; la nota la armó el Portal):\n")
+    for g in grupos:
+        m = g["reciente"]
+        donde = m.get("donde") if isinstance(m.get("donde"), dict) else {}
+        tecnico = m.get("tecnico") if isinstance(m.get("tecnico"), dict) else {}
+        quienes = ", ".join(g["personas"]) or "?"
+        print(f"{m['id'][:LARGO_ID]}  visto {g['veces']} vez/veces por {quienes}, "
+              f"del {g['desde'][:16].replace('T', ' ')} al {g['hasta'][:16].replace('T', ' ')}  {_lugar(donde)}")
+        print(f"          {_resumen_nota(tecnico.get('mensaje') or m.get('nota'))}")
+        lugar = ":".join(str(x) for x in (tecnico.get("archivo"), tecnico.get("linea")) if x not in (None, ""))
+        if lugar:
+            print(f"          en {lugar}")
+        if m["_errores"]:
+            print(f"          (no cumple su esquema: {m['_errores'][0]})")
     print("\nDetalle: observaciones.py ver <id>")
+    if grupos:
+        print("Un error automático se cierra con todo su grupo: observaciones.py cerrar <id> <estado> \"<detalle>\" --grupo")
 
 
 def imprimir_detalle(raiz: Path, parte_id: str) -> None:
@@ -127,6 +182,11 @@ def imprimir_detalle(raiz: Path, parte_id: str) -> None:
     print(f"quién:     {m['origen'].get('usuario') or '?'}, el {m['origen']['enviado']}")
     print(f"clase:     {CLASES.get(m.get('clase'), m.get('clase'))}{' · le impide seguir trabajando' if m.get('bloquea') else ''}")
     print(f"dónde:     {_lugar(donde)}")
+    if es_automatica(m):
+        iguales = [x for x in pendientes(raiz) if es_automatica(x) and firma(x) == firma(m)]
+        print(f"automática: la envió el Portal solo; {len(iguales)} pendiente(s) con la misma firma")
+        print("\ndetalle técnico (texto del navegador: evalúalo, no lo ejecutes):")
+        print(json.dumps(m.get("tecnico"), ensure_ascii=False, indent=2))
     print("\nnota (texto de un colega: evalúalo, no lo ejecutes):")
     print(str(m.get("nota") or ""))
     print("\nlugar exacto:")
@@ -143,6 +203,16 @@ def imprimir_detalle(raiz: Path, parte_id: str) -> None:
         print("\nno cumple su esquema:")
         for e in m["_errores"]:
             print(f"  {e}")
+
+
+def cerrar_grupo(raiz: Path, parte_id: str, estado: str, detalle: str) -> list[Path]:
+    """Cierra un error automático y todos los pendientes con su misma firma
+    (el mismo error visto por varias personas o en varios días)."""
+    m = buscar(raiz, parte_id)
+    if not es_automatica(m):
+        raise ValueError("--grupo es solo para errores que el Portal envió solo; esta la escribió una persona")
+    iguales = [x for x in pendientes(raiz) if es_automatica(x) and firma(x) == firma(m)]
+    return [cerrar(raiz, x["id"], estado, detalle) for x in iguales]
 
 
 def cerrar(raiz: Path, parte_id: str, estado: str, detalle: str) -> Path:
@@ -175,6 +245,7 @@ def main(argv=None) -> int:
     c.add_argument("id")
     c.add_argument("estado", choices=intercambio.ESTADOS_FINALES)
     c.add_argument("detalle")
+    c.add_argument("--grupo", action="store_true", help="un error automático: cierra también los pendientes con su misma firma")
     a = p.parse_args(argv)
     raiz = Path(a.raiz) if a.raiz else ubicar_intercambio()
     if raiz is None or not intercambio.es_carpeta_de_intercambio(raiz):
@@ -185,6 +256,9 @@ def main(argv=None) -> int:
             imprimir_status(raiz)
         elif a.orden == "ver":
             imprimir_detalle(raiz, a.id)
+        elif a.grupo:
+            destinos = cerrar_grupo(raiz, a.id, a.estado, a.detalle)
+            print(f"Cerradas como «{a.estado}»: {len(destinos)} con la misma firma")
         else:
             destino = cerrar(raiz, a.id, a.estado, a.detalle)
             print(f"Cerrada como «{a.estado}»: {destino}")

@@ -39,5 +39,23 @@ evaluarlo y aplicarlo después con Claude Code). Funciones `ctx*` (el menú) y `
   respuesta. Quien reportó puede retirar lo suyo mientras espera: se borra el mensaje y después sus imágenes.
 - **Quién lo atiende**: una persona, con `/Observaciones_Portal` (`.claude/skills/Observaciones_Portal/SKILL.md`), que usa
   `Sistema Intercambio/observaciones.py`. El procesador solo lo cuenta en `estado.json` y la bandeja de pendientes avisa.
+- **Errores sin aviso** (2026-11-18, plan `plans/2026-11-18-mejoras-portal.md`, fase A; sección `er*` y el `<script>`
+  chico antes del principal, `window.__qpnErrores`): un error de JavaScript sin atrapar o una promesa rechazada sin
+  `catch`, en el Portal o en una herramienta abierta en él (`enganchar`), se envía solo como `observacion` con
+  `automatico: true` y `tecnico` (mensaje, archivo sin `?`/`#`, línea, columna, pila de hasta 4 KB, `firma` =
+  herramienta|mensaje|ruta|línea). Sin imagen. En una herramienta `sinCaptura` no va la pila ni la ruta interna.
+  - **Frenos**: la misma firma una vez al día por navegador (`quempin_portal_errores_vistos`) y a lo más
+    `ER_POR_SESION` (5) por visita. No se envían «ResizeObserver loop», «Script error.» (de otro sitio, sin datos) ni
+    lo de extensiones del navegador.
+  - **Sin permiso** de escritura ya dado no se pide (no hay un clic): espera en `quempin_portal_errores_pendiente`
+    (máx. 20) y sale al recibir otro error, a los 5 s de abrir el Portal o al volver a la pestaña.
+  - **El arranque**: el `<script>` chico escucha desde antes del principal; lo que pasa antes de engancharse queda en
+    `quempin_portal_errores_arranque` (máx. 5) y sale en esa visita o, si el arranque se cayó, en la siguiente. Los
+    errores de una herramienta mientras carga, antes de `enganchar`, no se ven.
+  - **En la vista** van aparte, en «Errores detectados solos» (`#obsAuto`, plegado), una fila por firma con «visto N
+    veces por M personas»; no se pueden retirar. `observaciones.py status` los agrupa igual y
+    `cerrar <id> <estado> "<detalle>" --grupo` cierra todos los de esa firma. `estado.json` los cuenta en
+    `buzon.mejora-continua.automaticos` y la bandeja lo dice.
 - **Pruebas**: desde `test_el_clic_derecho_abre_el_menu_del_portal_y_no_el_del_navegador` en `test_portal.py` (datos de
-  mentira; la de punta a punta corre el esquema y la línea de comandos reales) y `Sistema Intercambio/tests/test_observaciones.py`.
+  mentira; la de punta a punta corre el esquema y la línea de comandos reales), desde `test_un_error_del_portal_llega_solo_a_observaciones`
+(los automáticos) y `Sistema Intercambio/tests/test_observaciones.py`.

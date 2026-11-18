@@ -174,3 +174,76 @@ def test_la_linea_de_comandos_informa_lo_que_no_encuentra(raiz):
 def test_la_linea_de_comandos_no_acepta_otra_carpeta(tmp_path):
     r = _cli("--raiz", str(tmp_path), "status")
     assert r.returncode == 2
+
+
+# ---- Errores que el Portal envía solo (2026-11-18) ------------------------------------------------------------------
+
+def _automatico(raiz, mensaje="Cannot read properties of undefined (reading 'n')", usuario="NB", enviado=None, linea=812):
+    firma = f"planificacion|{mensaje}|/finanzas-quempin/portal/|{linea}"
+    origen = {"herramienta": "portal", "enviado": enviado or intercambio.ahora_iso(), "usuario": usuario}
+    return _enviar(raiz, nota="Error automático: " + mensaje, automatico=True, origen=origen,
+                   tecnico={"tipo": "error", "mensaje": mensaje, "archivo": "https://x.github.io/finanzas-quempin/portal/",
+                            "linea": linea, "columna": 7, "pila": "TypeError: x\n    at plPintar", "firma": firma})
+
+
+def test_el_esquema_acepta_un_error_automatico(raiz):
+    _automatico(raiz)
+    [leido] = ob.pendientes(raiz)
+    assert leido["_errores"] == []
+    assert ob.es_automatica(leido)
+
+
+def test_un_automatico_sin_firma_no_cumple_el_esquema(raiz):
+    _enviar(raiz, automatico=True, tecnico={"mensaje": "algo"})
+    [leido] = ob.pendientes(raiz)
+    assert any("firma" in e for e in leido["_errores"])
+
+
+def test_los_automaticos_se_agrupan_por_firma(raiz):
+    _automatico(raiz, usuario="NB", enviado="2026-11-18T09:00:00-03:00")
+    _automatico(raiz, usuario="ES", enviado="2026-11-18T10:00:00-03:00")
+    ultimo = _automatico(raiz, usuario="NB", enviado="2026-11-18T11:00:00-03:00")
+    _automatico(raiz, mensaje="otro error", enviado="2026-11-18T12:00:00-03:00")
+    _enviar(raiz, nota="Una nota escrita")
+    grupos = ob.grupos_automaticos(ob.pendientes(raiz))
+    assert [g["veces"] for g in grupos] == [3, 1]
+    assert grupos[0]["personas"] == ["ES", "NB"]
+    assert grupos[0]["reciente"]["id"] == ultimo["id"]
+
+
+def test_cerrar_con_grupo_cierra_todos_los_de_la_misma_firma(raiz):
+    a = _automatico(raiz, enviado="2026-11-18T09:00:00-03:00")
+    _automatico(raiz, enviado="2026-11-18T10:00:00-03:00")
+    otro = _automatico(raiz, mensaje="otro error")
+    escrita = _enviar(raiz, nota="Una nota escrita")
+    assert len(ob.cerrar_grupo(raiz, a["id"], "aplicado", "Corregido")) == 2
+    assert {m["id"] for m in ob.pendientes(raiz)} == {otro["id"], escrita["id"]}
+    with pytest.raises(ValueError):
+        ob.cerrar_grupo(raiz, escrita["id"], "aplicado", "x")
+
+
+def test_la_bandeja_dice_cuantos_son_automaticos(raiz):
+    _enviar(raiz)
+    _automatico(raiz)
+    resumen = procesar.resumen_buzon(raiz)
+    assert resumen[ob.DESTINO]["pendientes"] == 2
+    assert resumen[ob.DESTINO]["automaticos"] == 1
+    salida = bandeja.desde_estado({"procesador": {"ultimaCorrida": intercambio.ahora_iso()}, "buzon": resumen},
+                                  bandeja.datetime.now())
+    [aviso] = [p for p in salida if "Portal" in p.texto]
+    assert "1 enviados solos" in aviso.texto
+
+
+def test_la_linea_de_comandos_muestra_los_automaticos_aparte_y_cierra_el_grupo(raiz):
+    a = _automatico(raiz, usuario="NB")
+    _automatico(raiz, usuario="ES")
+    _enviar(raiz, nota="Una nota escrita")
+    r = _cli("--raiz", str(raiz), "status")
+    assert r.returncode == 0, r.stderr
+    assert "escritas por el equipo" in r.stdout and "envió solo" in r.stdout and "visto 2 vez/veces" in r.stdout
+    r = _cli("--raiz", str(raiz), "ver", a["id"][:8])
+    assert "detalle técnico" in r.stdout and "2 pendiente(s) con la misma firma" in r.stdout
+    r = _cli("--raiz", str(raiz), "cerrar", a["id"][:8], "aplicado", "Corregido", "--grupo")
+    assert r.returncode == 0, r.stderr
+    assert "2 con la misma firma" in r.stdout
+    assert len(ob.pendientes(raiz)) == 1

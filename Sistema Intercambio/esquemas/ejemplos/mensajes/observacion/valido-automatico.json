@@ -1,0 +1,22 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "e1e2f3a4b5c6d1e2f3a4b5c6",
+  "tipo": "observacion",
+  "destino": "mejora-continua",
+  "origen": {"herramienta": "portal", "usuario": "NB", "enviado": "2026-11-18T15:20:00-03:00"},
+  "clase": "error",
+  "automatico": true,
+  "nota": "Error automático: Cannot read properties of undefined (reading 'n')",
+  "donde": {"herramienta": "planificacion", "nombre": "Planificación semanal", "ruta": ["Planificación semanal"],
+            "direccion": "https://cristobal-monzo.github.io/finanzas-quempin/portal/#/planificacion"},
+  "entorno": {"navegador": "Edge/142", "movil": false, "versiones": {"codigo": "master@abc1234 2026-11-18"}},
+  "tecnico": {
+    "tipo": "error",
+    "mensaje": "Cannot read properties of undefined (reading 'n')",
+    "archivo": "https://cristobal-monzo.github.io/finanzas-quempin/portal/",
+    "linea": 8123,
+    "columna": 17,
+    "pila": "TypeError: Cannot read properties of undefined (reading 'n')\n    at plPintar (https://cristobal-monzo.github.io/finanzas-quempin/portal/:8123:17)",
+    "firma": "planificacion|Cannot read properties of undefined (reading 'n')|/finanzas-quempin/portal/|8123"
+  }
+}

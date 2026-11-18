@@ -7490,6 +7490,167 @@ def test_la_vista_de_observaciones_sin_desbordes(navegador, sitio, ancho):
     pagina.context.close()
 
 
+# ---- Errores sin aviso (2026-11-18) ------------------------------------------------------------------------------------
+# Plan docs/plans/2026-11-18-mejoras-portal.md, fase A: un error de JavaScript llega solo a «Errores y observaciones».
+
+def _observaciones_escritas(pagina, n, espera_ms=8000):
+    """Espera a que el buzón tenga n observaciones y las devuelve (dict nombre → mensaje)."""
+    leido = {}
+    for _ in range(espera_ms // 100):
+        try:
+            leido = {k: json.loads(v) for k, v in pagina.evaluate(JS_LEER_OBSERVACIONES)["mensajes"].items()}
+        except Exception:            # leído justo mientras el Portal lo escribe (NotFoundError, JSON a medias)
+            leido = {}
+        if len(leido) >= n:
+            break
+        pagina.wait_for_timeout(100)
+    return leido
+
+
+def _lanzar(objetivo, mensaje, promesa=False):
+    """Un error sin atrapar (o una promesa rechazada sin catch) en esa página o marco."""
+    if promesa:
+        objetivo.evaluate("(m) => { Promise.reject(new Error(m)); }", mensaje)
+    else:
+        objetivo.evaluate("(m) => { setTimeout(() => { throw new Error(m); }); }", mensaje)
+
+
+def test_un_error_del_portal_llega_solo_a_observaciones(navegador, sitio):
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="NB")
+    _lanzar(pagina, "Falla de prueba del Portal")
+    [m] = _observaciones_escritas(pagina, 1).values()
+    assert m["tipo"] == "observacion" and m["destino"] == "mejora-continua" and m["clase"] == "error"
+    assert m["automatico"] is True and "adjuntos" not in m
+    assert m["origen"]["usuario"] == "NB"
+    assert m["nota"].startswith("Error automático:") and "Falla de prueba del Portal" in m["nota"]
+    t = m["tecnico"]
+    assert t["tipo"] == "error" and "Falla de prueba del Portal" in t["mensaje"]
+    assert t["firma"].startswith("inicio|") and "pila" in t and isinstance(t["linea"], int)
+    assert m["donde"]["herramienta"] == "inicio"
+    # Ya enviado: no queda nada esperando
+    assert pagina.evaluate("JSON.parse(localStorage.getItem('quempin_portal_errores_pendiente') || '[]')") == []
+    assert [e for e in errores if "Falla de prueba" not in e] == []
+    pagina.context.close()
+
+
+def test_el_mismo_error_se_envia_una_vez_y_hay_un_tope_por_visita(navegador, sitio):
+    pagina, _ = _portal_con_datos(navegador, sitio)
+    pagina.evaluate("() => { for (let i = 0; i < 3; i++) setTimeout(() => { throw new Error('Siempre el mismo'); }); }")
+    _observaciones_escritas(pagina, 1)
+    pagina.wait_for_timeout(500)
+    assert len(_observaciones_escritas(pagina, 1)) == 1
+    # Una promesa rechazada también llega, como «promesa»
+    _lanzar(pagina, "Promesa de prueba", promesa=True)
+    tipos = sorted(m["tecnico"]["tipo"] for m in _observaciones_escritas(pagina, 2).values())
+    assert tipos == ["error", "promesa"]
+    # A lo más 5 por visita: van 2, se lanzan 6 distintos más
+    for i in range(6):
+        _lanzar(pagina, f"Distinto {i}")
+    pagina.wait_for_timeout(1500)
+    assert len(_observaciones_escritas(pagina, 5)) == 5
+    pagina.context.close()
+
+
+def test_el_ruido_conocido_no_se_envia(navegador, sitio):
+    pagina, _ = _portal_con_datos(navegador, sitio)
+    _lanzar(pagina, "ResizeObserver loop completed with undelivered notifications.")
+    pagina.wait_for_timeout(800)
+    assert _observaciones_escritas(pagina, 1, espera_ms=200) == {}
+    pagina.context.close()
+
+
+def test_sin_permiso_el_error_espera_y_sale_despues(navegador, sitio):
+    pagina, _ = _portal_con_datos(navegador, sitio)
+    pagina.evaluate("""() => {
+        window.__permiso = 'prompt';
+        FileSystemDirectoryHandle.prototype.queryPermission = async () => window.__permiso;
+        FileSystemDirectoryHandle.prototype.requestPermission = async () => { throw new Error('no se pide sin un clic'); };
+    }""")
+    _lanzar(pagina, "Falla sin permiso")
+    pagina.wait_for_function("() => JSON.parse(localStorage.getItem('quempin_portal_errores_pendiente') || '[]').length === 1")
+    pagina.wait_for_timeout(500)
+    assert _observaciones_escritas(pagina, 1, espera_ms=200) == {}
+    # Con permiso, al volver a la pestaña sale
+    pagina.evaluate("() => { window.__permiso = 'granted'; document.dispatchEvent(new Event('visibilitychange')); }")
+    [m] = _observaciones_escritas(pagina, 1).values()
+    assert "Falla sin permiso" in m["tecnico"]["mensaje"]
+    pagina.wait_for_function("() => JSON.parse(localStorage.getItem('quempin_portal_errores_pendiente') || '[]').length === 0")
+    pagina.context.close()
+
+
+def test_un_error_del_arranque_sale_en_la_visita_siguiente(navegador, sitio):
+    pagina, _ = _portal_con_datos(navegador, sitio)
+    pagina.evaluate("""() => localStorage.setItem('quempin_portal_errores_arranque', JSON.stringify([
+        { tipo: 'error', mensaje: 'Uncaught TypeError: falla del arranque', archivo: location.href, linea: 4600, columna: 3, pila: '' }]))""")
+    pagina.reload()
+    [m] = _observaciones_escritas(pagina, 1).values()
+    assert m["donde"]["herramienta"] == "portal" and m["tecnico"]["linea"] == 4600
+    assert "falla del arranque" in m["tecnico"]["mensaje"]
+    assert pagina.evaluate("localStorage.getItem('quempin_portal_errores_arranque')") is None
+    pagina.context.close()
+
+
+def test_un_error_en_una_herramienta_llega_con_su_nombre_y_flujo_de_caja_sin_pila(navegador, sitio):
+    pagina, _ = _portal_con_datos(navegador, sitio)
+    _menu(pagina, "Centro de Costos")
+    _lanzar(_marco(pagina, "centro-costos"), "Falla en el Centro de Costos")
+    [cc] = _observaciones_escritas(pagina, 1).values()
+    assert cc["donde"]["herramienta"] == "centro-costos" and "pila" in cc["tecnico"]
+    assert cc["tecnico"]["firma"].startswith("centro-costos|")
+    _menu(pagina, "Flujo de Caja")
+    _lanzar(_marco(pagina, "flujo-caja", "fc"), "Falla en Flujo de Caja")
+    [fc] = [m for m in _observaciones_escritas(pagina, 2).values() if m["donde"]["herramienta"] == "flujo-caja"]
+    assert "pila" not in fc["tecnico"] and "#" not in fc["donde"].get("direccion", "")
+    pagina.context.close()
+
+
+JS_ESCRIBIR_BUZON = """async (archivos) => {
+    const raiz = await navigator.storage.getDirectory();
+    const bib = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+    const buzon = await (await (await bib.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio')).getDirectoryHandle('buzon', { create: true });
+    for (const [nombre, m] of archivos) {
+        const w = await (await buzon.getFileHandle(nombre, { create: true })).createWritable();
+        await w.write(JSON.stringify(m));
+        await w.close();
+    }
+}"""
+
+
+def _obs_de_prueba(id_, usuario, nota, enviado, automatico=False):
+    m = {"esquema": "quempin.intercambio/1", "id": id_, "tipo": "observacion", "destino": "mejora-continua",
+         "origen": {"herramienta": "portal", "enviado": enviado, "usuario": usuario}, "clase": "error", "nota": nota,
+         "donde": {"herramienta": "planificacion", "nombre": "Planificación semanal", "ruta": ["Planificación semanal"]}}
+    if automatico:
+        m["automatico"] = True
+        m["tecnico"] = {"mensaje": nota, "archivo": "https://x/finanzas-quempin/portal/", "linea": 812,
+                        "firma": "planificacion|" + nota + "|/finanzas-quempin/portal/|812"}
+    return [f"20261118-0900{id_[-2:]}_portal_observacion_{id_}.json", m]
+
+
+def test_la_vista_muestra_los_automaticos_aparte_y_agrupados(navegador, sitio):
+    pagina, errores = _portal_con_datos(navegador, sitio, usuario="NB")
+    pagina.evaluate(JS_ESCRIBIR_BUZON, [
+        _obs_de_prueba("obsauto000001", "NB", "Error automático: x", "2026-11-18T09:00:00-03:00", automatico=True),
+        _obs_de_prueba("obsauto000002", "ES", "Error automático: x", "2026-11-18T10:00:00-03:00", automatico=True),
+        _obs_de_prueba("obsescrita003", "NB", "Una nota escrita por una persona", "2026-11-18T11:00:00-03:00"),
+    ])
+    _menu(pagina, "Errores y observaciones")
+    pagina.locator("#obsLista .obs-fila:not(.obs-fila-vacia)").first.wait_for()
+    assert pagina.locator("#obsLista .obs-fila").count() == 1
+    assert "1 por revisar de 1 observación" in pagina.locator("#obsCuenta").inner_text()
+    assert pagina.locator("#obsAuto").is_visible()
+    assert pagina.locator("#obsAuto").evaluate("(d) => d.open") is False
+    assert "1 error, 1 por revisar" in pagina.locator("#obsAutoResumen").inner_text()
+    pagina.locator("#obsAutoResumen").click()
+    fila = pagina.locator("#obsAutoLista .obs-fila")
+    assert fila.count() == 1
+    assert "visto 2 veces por 2 personas" in fila.inner_text()
+    assert "/finanzas-quempin/portal/:812" in fila.locator(".obs-fila-tec").inner_text()
+    assert fila.locator(".obs-retirar").count() == 0          # un automático no se retira
+    assert not errores
+    pagina.context.close()
+
+
 # ---- Apodo del proyecto y postventas (2026-11-06) -----------------------------------------------------------------------
 # Pedido del usuario: el apodo de la columna «Apodo» del Análisis Financiero se ve como «270 - Caldera Valdivia»; una
 # postventa se asocia a su proyecto original por su N° o su nombre, y queda en «ID o referencia» («164. Talca»).
