@@ -1,6 +1,8 @@
 """El correo automático de cada rendición (2026-11-18): una vez, completa, con persona, monto y período."""
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+CHILE = timezone(timedelta(hours=-3))      # la hora de los envíos de ejemplo: la prueba vale en cualquier equipo (el CI va en UTC)
 
 import correo_rendiciones as cr
 import intercambio
@@ -42,7 +44,7 @@ def test_se_envia_una_sola_vez_y_queda_en_el_registro(tmp_path):
     (tmp_path / "dest.json").write_text(json.dumps({"para": ["a@ejemplo.cl", "no-es-correo", "b@ejemplo.cl"]}), encoding="utf-8")
     enviados = []
     remitente = lambda para, asunto, cuerpo: enviados.append((para, asunto)) or "enviado"
-    kw = dict(remitente=remitente, ahora=datetime(2026, 11, 18, 10, 30), ruta_registro=tmp_path / "reg.json",
+    kw = dict(remitente=remitente, ahora=datetime(2026, 11, 18, 10, 30, tzinfo=CHILE), ruta_registro=tmp_path / "reg.json",
               ruta_destinatarios=tmp_path / "dest.json")
     r = cr.ejecutar(raiz, **kw)
     assert r["enviados"] == ["R-20261118-1000-NB"] and enviados[0][0] == ["a@ejemplo.cl", "b@ejemplo.cl"]
@@ -58,16 +60,16 @@ def test_espera_los_documentos_que_faltan_y_despues_sale_con_lo_que_llego(tmp_pa
     kw = dict(remitente=lambda p, a, c: cuerpos.append(c) or "bandeja-de-salida", ruta_registro=tmp_path / "reg.json",
               ruta_destinatarios=tmp_path / "dest.json")
     raiz = _raiz(tmp_path, [incompleta])
-    r = cr.ejecutar(raiz, ahora=datetime(2026, 11, 18, 10, 30), **kw)
+    r = cr.ejecutar(raiz, ahora=datetime(2026, 11, 18, 10, 30, tzinfo=CHILE), **kw)
     assert r["enviados"] == [] and r["esperan"] == ["R-20261118-1000-NB"]
-    r = cr.ejecutar(raiz, ahora=datetime(2026, 11, 18, 12, 30), **kw)
+    r = cr.ejecutar(raiz, ahora=datetime(2026, 11, 18, 12, 30, tzinfo=CHILE), **kw)
     assert r["enviados"] == ["R-20261118-1000-NB"] and "Llegaron 2 de 3 documentos" in cuerpos[0]
 
 
 def test_lo_antiguo_no_genera_correo_y_un_error_se_reintenta(tmp_path):
     (tmp_path / "dest.json").write_text(json.dumps({"para": ["a@ejemplo.cl"]}), encoding="utf-8")
     raiz = _raiz(tmp_path, [_ren(enviado="2026-10-01T10:00:00-03:00")])
-    kw = dict(ahora=datetime(2026, 11, 18, 10, 30), ruta_registro=tmp_path / "reg.json", ruta_destinatarios=tmp_path / "dest.json")
+    kw = dict(ahora=datetime(2026, 11, 18, 10, 30, tzinfo=CHILE), ruta_registro=tmp_path / "reg.json", ruta_destinatarios=tmp_path / "dest.json")
     assert cr.ejecutar(raiz, remitente=lambda *a: "enviado", **kw)["enviados"] == []
 
     raiz = _raiz(tmp_path / "b", [_ren()])
@@ -81,6 +83,6 @@ def test_lo_antiguo_no_genera_correo_y_un_error_se_reintenta(tmp_path):
 
 def test_sin_destinatarios_no_envia_y_lo_dice(tmp_path):
     raiz = _raiz(tmp_path, [_ren()])
-    r = cr.ejecutar(raiz, remitente=lambda *a: "enviado", ahora=datetime(2026, 11, 18, 10, 30),
+    r = cr.ejecutar(raiz, remitente=lambda *a: "enviado", ahora=datetime(2026, 11, 18, 10, 30, tzinfo=CHILE),
                     ruta_registro=tmp_path / "reg.json", ruta_destinatarios=tmp_path / "no-existe.json")
     assert r["enviados"] == [] and "sin destinatarios" in r["errores"][0]
