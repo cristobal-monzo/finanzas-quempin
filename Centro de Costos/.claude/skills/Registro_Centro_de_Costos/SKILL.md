@@ -28,6 +28,13 @@ en el libro con su factura encontrada o dudosa.
 Si hay «Pendientes SIN datos (o sin items) en el JSON», arma tú cada entrada, sin pedirle el JSON
 al usuario. Agrupa por proyecto las preguntas que se repiten.
 
+**Nombre ya usado** («archivos NUEVOS con el nombre de un documento ya registrado»): es otro archivo
+que llegó con un nombre genérico («Documento (1).pdf») que ya tuvo un documento registrado y
+renombrado. Su entrada vieja no se reusa. Ábrelo: si es una copia del ya registrado, muévelo a
+`<Proyecto>/Duplicados/`; si no, renómbralo a un nombre único (p. ej. `<Proveedor> <N°>.pdf`) y
+agrega su entrada con ese nombre (si se reusara el nombre, sus hallazgos se mezclarían con los del
+documento viejo, porque la clave es `proyecto\archivo`).
+
 0. **¿El archivo trae más de un documento?** Solo si tiene N° de Documento genuinamente distintos.
    Nunca separes un multipágina que es una sola factura (factura + guía del mismo N°, página de
    continuación), y nunca juntes los números en una entrada (`DOCUMENTOS_MEZCLADOS`). Si trae N:

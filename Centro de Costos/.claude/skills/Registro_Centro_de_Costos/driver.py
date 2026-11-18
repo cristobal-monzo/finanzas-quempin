@@ -223,18 +223,35 @@ def cmd_status(pais="CL"):
     print(f"  En el libro o por escribir: {len(entradas_oc)} | nuevas por traer: {len(ocs_por_traer)}")
     datos_json = datos_json + entradas_oc
 
+    # Las entradas cuyo documento ya esta en Master no se le dan a un archivo
+    # nuevo con el mismo nombre (mismo criterio que 'run', PASO 5B).
+    ya_registradas = (acc.entradas_ya_registradas(datos_json, ws_master, wb["Detalle"]
+                                                  if "Detalle" in wb.sheetnames else None)
+                      if ws_master is not None else {})
     sin_datos = []
     for info in pendientes:
-        dato = acc.buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"])
+        dato = acc.buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"],
+                                           ya_registradas)
         if not dato or not dato.get("items"):
             sin_datos.append(info)
 
     print(f"\nPendientes SIN datos (o sin items) en el JSON (bloquean el registro): {len(sin_datos)}")
     _imprimir_lista_truncada(sin_datos, lambda info: f"  - [{info['proyecto']}] {info['archivo']}")
 
+    usados = acc.nombres_ya_usados(pendientes, datos_json, ya_registradas)
+    if usados:
+        print(f"\nDe ellos, archivos NUEVOS con el nombre de un documento ya registrado: {len(usados)}")
+        _imprimir_lista_truncada(
+            usados,
+            lambda par: f"  - [{par[0]['proyecto']}] {par[0]['archivo']}: el nombre ya es de "
+                        f"{', '.join(par[1])}")
+        print("  Sus datos no se reusan. Renombra cada archivo, léelo y agrega su entrada con el "
+              "nombre nuevo (Paso 2); si es una copia del ya registrado, muévelo a Duplicados/.")
+
     mezclados = []
     for info in pendientes:
-        dato = acc.buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"])
+        dato = acc.buscar_dato_por_archivo(datos_json, info["proyecto"], info["archivo"],
+                                           ya_registradas)
         if dato and dato.get("items") and acc.numeros_documento_combinados(dato.get("n_documento")):
             mezclados.append((info, dato))
     if mezclados:
