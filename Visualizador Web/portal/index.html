@@ -1068,7 +1068,7 @@
      "ruta": ["Sitio de comunicación", "Documentos", "Centro de Costos", "Facturas y Boletas", "Chile o Perú", "Carpeta del proyecto"],
      "web": "https://quempinspa2020.sharepoint.com/Documentos compartidos/Centro de Costos/Facturas y Boletas",
      "pasos": ["Sube el documento a la carpeta de su proyecto, o crea una con el nombre del proyecto. No hace falta tenerla en OneDrive: se sube desde SharePoint o desde el teléfono.",
-               "Se registra los lunes a las 10:00, o antes si quien administra las finanzas actualiza."],
+               "Se registra de lunes a viernes a las 10:00, o antes si quien administra las finanzas actualiza."],
      "usan": ["centro-costos", "analisis", "cotizador", "flujo-caja"],
      "falta": "Ese gasto no aparece en el Centro de Costos, el Análisis Financiero ni el Flujo de Caja."},
     {"id": "gestion", "tipo": "Biblioteca de SharePoint", "nombre": "Gestión de Proyectos", "corto": "Biblioteca Gestión de Proyectos",
@@ -1096,9 +1096,9 @@
     "id": "procesador", "nombre": "El computador del procesador", "corto": "El procesador",
     "para": "Un computador de QUEMPIN hace el trabajo automático con cuatro tareas programadas de Windows. Necesita estar encendido, con OneDrive al día y las tres bibliotecas más la carpeta del Centro de Costos. Si está apagado, todo espera y nada se pierde.",
     "tareas": [
-      {"nombre": "Procesar intercambio QUEMPIN", "cuando": "Cada 2 horas", "hace": "Atiende el buzón, renueva lo publicado y deja su pulso."},
+      {"nombre": "Procesar intercambio QUEMPIN", "cuando": "Cada 5 minutos", "hace": "Atiende el buzón, renueva lo publicado y deja su pulso."},
       {"nombre": "Registrar en la Planilla QUEMPIN", "cuando": "Cada minuto (sin pedidos no abre Excel)", "hace": "Pasa al Excel de la Planilla de Ingreso lo que se ingresa o cambia en el portal (y lo del Formulador), y trae al portal lo que se cambió en el Excel."},
-      {"nombre": "Actualizar Finanzas QUEMPIN", "cuando": "Lunes, 10:00", "hace": "Registra facturas, actualiza Análisis Financiero, Cotizador y Flujo de Caja, y publica los tableros."},
+      {"nombre": "Actualizar Finanzas QUEMPIN", "cuando": "Lunes a viernes, 10:00", "hace": "Lee y registra las facturas nuevas, actualiza Análisis Financiero, Cotizador y Flujo de Caja, y publica los tableros."},
       {"nombre": "Oportunidades Mercado Publico QUEMPIN", "cuando": "Todos los días, 09:00", "hace": "Consulta Mercado Público con el ticket de la API, guardado cifrado en ese computador, y publica Oportunidades."}
     ],
     "falta": "Pasadas 4 horas hábiles sin una vuelta del procesador, el Formulador y «Ingresar avance» lo avisan en rojo: avisa a quien administra las herramientas."

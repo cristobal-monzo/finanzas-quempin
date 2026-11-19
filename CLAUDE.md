@@ -75,7 +75,9 @@ agrega solo lo propio.
 empieza por las facturas del Centro de Costos que faltan por registrar** (pedido
 del usuario, 2026-11-05): el agente las completa con el Paso 2 de
 `/Registro_Centro_de_Costos`, y `run` se detiene sin escribir nada (código 3) si
-queda alguna sin datos, salvo `--con-pendientes` (lo usa la tarea de los lunes).
+queda alguna sin datos, salvo `--con-pendientes`. La tarea programada (lunes a viernes,
+10:00, desde el 2026-11-19) abre antes Claude Code sin pantalla para que lea las facturas
+nuevas con las reglas de `corrida_programada.md`, y después corre `run --con-pendientes`.
 Después `run` corre, cada módulo en **su propio proceso** (los `build_visualizador.py` y
 `driver.py` homónimos chocan en `sys.modules`): entregas de presupuestos,
 Centro de Costos (encadena AF y los tableros de CC y AF); en paralelo el
