@@ -1111,7 +1111,6 @@ function rcVerDetalle(clave) {
     li.title = p.e.titulo + ': ' + RC_EST_TXT[p.est];
     ol.append(li);
   });
-  const etapa = RC_ETAPAS.find((e) => e.id === t.etapa);
   cuerpo.append(ol);
   const a = t.accion;
   const sigue = crear('section', 'rc-sigue');

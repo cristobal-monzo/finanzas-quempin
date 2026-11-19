@@ -495,11 +495,18 @@ function pintarPestanas() {
     ir.setAttribute('aria-controls', p.inicio ? 'vistaInicio' : esVista(p) ? HERR.get(p.herr).vista : 'marco-' + p.familia);
     ir.title = p.inicio ? 'Inicio' : etiqueta(p, true);
     ir.addEventListener('click', () => activar(p.familia));
+    w.setAttribute('role', 'presentation');
     w.append(ir);
     if (!p.inicio) {
+      // Una lista de pestañas solo puede tener pestañas (ARIA): la ✕ es para el ratón y con el teclado se
+      // cierra con Supr sobre la pestaña (o con «Cerrar esta pestaña» del clic derecho).
+      ir.setAttribute('aria-keyshortcuts', 'Delete');
+      ir.addEventListener('keydown', (e) => { if (e.key === 'Delete') { e.preventDefault(); cerrar(p.familia); } });
       const x = crear('button', 'x');
       x.type = 'button';
-      x.setAttribute('aria-label', 'Cerrar ' + ir.textContent);
+      x.tabIndex = -1;
+      x.setAttribute('aria-hidden', 'true');
+      x.title = 'Cerrar (Supr)';
       x.append(icono('cerrar', 13));
       x.addEventListener('click', () => cerrar(p.familia));
       w.append(x);
@@ -673,7 +680,6 @@ function abrir(id, op) {
     return;
   }
   const familia = familiaDe(h);
-  const hp = op.url ? '' : hashProyecto(h);
   const url = op.url || urlDe(h, op.pestana);
   let p = pestanaDe(familia);
   const nueva = !p;
