@@ -17,8 +17,8 @@
 <script src="../numeros.js"></script>
 <!-- Abre el resumen cifrado cuando no hay carpeta (js/resumen.js): el mismo candado de los tableros -->
 <script src="../candado.js"></script>
-<link rel="stylesheet" href="portal.css?v=b03a00bae0b0">
-<meta name="quempin-version" content="master@6da4408 2026-11-18">
+<link rel="stylesheet" href="portal.css?v=eb354b8d39de">
+<meta name="quempin-version" content="master@e25bc47 2026-11-19">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -59,6 +59,8 @@
         <p class="pop-nota pop-nota-info">¿Quién eres? <span class="info" data-etiqueta="Para qué sirve elegir tu usuario">En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres; aquí el Recorrido los marca.</span></p>
         <ul class="usuarios" id="listaUsuarios" role="listbox" aria-label="Iniciales del equipo"></ul>
         <button class="pop-item" id="sinUsuario" type="button" role="option"><span class="t">Sin usuario</span><span class="s">Lo que hagas no queda a nombre de nadie</span></button>
+        <!-- Cerrar sesión (2026-11-18): borra la clave de los tableros que recuerda este navegador. -->
+        <button class="pop-item pop-salir" id="cerrarSesion" type="button" hidden><span class="t">Cerrar sesión en este equipo</span><span class="s">Todas las herramientas vuelven a pedir la contraseña</span></button>
       </div>
     </div>
   </header>
@@ -1188,7 +1190,7 @@ if (window.top !== window.self) {
 </script>
 <!-- El código del Portal, una parte por vista (portal/js/). El orden importa: base.js primero y
      arranque.js al final, que engancha todo. Ver portal/CLAUDE.md. -->
-<script src="js/base.js?v=de7f1a14792f"></script>
+<script src="js/base.js?v=b835b021a29c"></script>
 <script src="js/conexiones.js?v=ffdb1957a5fb"></script>
 <script src="js/resumen.js?v=d74a8e743b82"></script>
 <script src="js/recorrido.js?v=6646c29d6917"></script>
@@ -1202,6 +1204,6 @@ if (window.top !== window.self) {
 <script src="js/buscador.js?v=7589b98580e6"></script>
 <script src="js/observaciones.js?v=01c4a088b2fb"></script>
 <script src="js/tema.js?v=9ab1b0afad14"></script>
-<script src="js/arranque.js?v=4514ac2495cb"></script>
+<script src="js/arranque.js?v=bb4bb90938b8"></script>
 </body>
 </html>
