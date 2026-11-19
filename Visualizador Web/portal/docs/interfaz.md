@@ -191,6 +191,13 @@ se oculta el botón de usuario del Formulador (`#usuarioBtn`). En el teléfono e
 botón muestra solo las iniciales (o un ícono sin usuario) y su ventana va fija
 a la pantalla; bajo 380 px la cabecera se junta un poco.
 
+**Cerrar sesión en este equipo** (2026-11-18, pedido del usuario al revisar la seguridad): última opción de la
+ventana del usuario, solo si el navegador recuerda la clave (`quempin_viz_clave`). Pregunta, borra esa clave y
+recarga (`cerrarSesion` en `js/base.js`): los tableros, el Formulador, la Carta Gantt y el resumen del teléfono
+vuelven a pedir la contraseña. El usuario elegido y la carpeta conectada quedan. Otra pestaña del Portal se recarga
+sola por el evento `storage`, salvo que tenga algo sin guardar (`adPortalOcupado`): entonces avisa. Pruebas:
+`test_cerrar_sesion_*` en `tests/portal/test_portal_basico.py`.
+
 ## La explicación en un ícono ⓘ (2026-11-05)
 
 Pedido del usuario: pantallas de gestión de proyectos mucho más limpias, sin texto explicativo a la vista; lo que
