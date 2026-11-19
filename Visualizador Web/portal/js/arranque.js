@@ -47,6 +47,7 @@ pintarUsuario();
 mvPreparar();      // la franja del resumen de solo lectura (js/resumen.js)
 $('#btnUsuario').addEventListener('click', () => { if ($('#popUsuario').hidden) abrirUsuario(); else cerrarUsuario(true); });
 $('#sinUsuario').addEventListener('click', () => elegirUsuario(''));
+$('#cerrarSesion').addEventListener('click', cerrarSesion);
 
 $('#btnMenu').addEventListener('click', () => { cerrarFlotantes(); mostrarMenu(!menuAbierto()); });
 $('#velo').addEventListener('click', () => mostrarMenu(false));
@@ -466,6 +467,11 @@ window.addEventListener('storage', (e) => {
   // La contraseña o el usuario recién escritos en una herramienta marcan su paso en «Preparar este computador»
   if ((e.key === LS_CLAVE_TABLEROS || e.key === LS.usuario || e.key === null) && cxArmada && !$('#vistaConexiones').hidden) pintarEstadoConexiones();
   // Si en una herramienta se acaba de escribir la contraseña, las que esperaban con el candado se abren.
+  // Si en otra pestaña se cerró la sesión, esta también se cierra (salvo que tenga algo sin guardar).
+  if (e.key === LS_CLAVE_TABLEROS && !e.newValue && e.oldValue) {
+    if (!adPortalOcupado()) location.reload();
+    else avisar('Se cerró la sesión en este equipo. Guarda lo que tienes abierto y recarga la página.');
+  }
   if (e.key === LS_CLAVE_TABLEROS && e.newValue) {
     estado.pestanas.forEach((p) => {
       const w = ventanaDe(p);
