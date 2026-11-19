@@ -1768,7 +1768,7 @@ function ejPorHacerEl(m) {
   s.open = !!ej.porHacerAbierto;
   s.addEventListener('toggle', () => { ej.porHacerAbierto = s.open; });
   const sum = crear('summary');
-  const h = crear('h3', null, tareas.length ? 'Por hacer' : 'Todo al día');
+  const h = crear('h2', null, tareas.length ? 'Por hacer' : 'Todo al día');
   h.id = 'ejPorHacerTit';
   if (tareas.length) h.append(crear('small', null, String(tareas.length)));
   sum.append(h);
@@ -4054,7 +4054,7 @@ function ejManoObraEl(m) {
   nav.append(antes, tit, despues);
   box.append(nav);
   const grilla = crear('div', 'ej-cal');
-  grilla.setAttribute('role', 'grid');
+  grilla.setAttribute('role', 'group');   // grid exige filas; son botones sueltos
   grilla.setAttribute('aria-label', 'Días de ' + ejNombreMes(f.mes) + ': marca los trabajados');
   ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach((x, i) => { const c = crear('span', 'ej-cal-sem' + (i > 4 ? ' finde' : ''), x); c.setAttribute('aria-hidden', 'true'); grilla.append(c); });
   const [ano, mes] = f.mes.split('-').map(Number);

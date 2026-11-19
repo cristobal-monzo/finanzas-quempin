@@ -2,7 +2,7 @@
 
 **Estado**: aprobado, listo para plan de implementación.
 **Módulo afectado**: `Centro de Costos/Visualizador Web/` (`template.html` + `build_visualizador.py`).
-Ver [`Centro de Costos/Visualizador Web/CLAUDE.md`](../../../Centro%20de%20Costos/Visualizador%20Web/CLAUDE.md)
+Ver [`Centro de Costos/Visualizador Web/CLAUDE.md`](../../Centro%20de%20Costos/Visualizador%20Web/CLAUDE.md)
 para la arquitectura completa del visualizador antes de tocar estos archivos.
 
 ## Motivación
