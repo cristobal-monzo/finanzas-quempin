@@ -44,6 +44,7 @@ estado.proyectos = leerProyectos();
 try { localStorage.removeItem(LS.proyecto); } catch (e) { /* nada */ }   // el del selector que ya no existe
 estado.usuario = leerUsuario();
 pintarUsuario();
+mvPreparar();      // la franja del resumen de solo lectura (js/resumen.js)
 $('#btnUsuario').addEventListener('click', () => { if ($('#popUsuario').hidden) abrirUsuario(); else cerrarUsuario(true); });
 $('#sinUsuario').addEventListener('click', () => elegirUsuario(''));
 
@@ -366,6 +367,7 @@ async function opGuardarAjustes(m, ventana) {
   const responder = (r) => { try { ventana.postMessage(Object.assign({ tipo: 'quempin-ajustes-oportunidades-resultado', pedido: m.pedido }, r), location.origin); } catch (e) { /* se cerró */ } };
   if (!m.ajustes || typeof m.ajustes !== 'object' || Array.isArray(m.ajustes)) { responder({ ok: false, error: 'los ajustes no vienen bien armados.' }); return; }
   if (!rc.dir) await rcCargar();
+  if (soloLectura()) { responder({ ok: false, error: 'en este navegador el Portal solo lee los datos: guárdalo desde un computador con la carpeta del equipo.' }); return; }
   if (!rc.dir) {
     responder({ ok: false, error: rc.sinDatos === 'navegador' ? 'este navegador no abre carpetas (usa Chrome o Edge de escritorio).'
       : 'el Portal no tiene abierta la carpeta del equipo. Ábrela en el Recorrido y vuelve a guardar.' });

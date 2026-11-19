@@ -647,12 +647,23 @@ async function rcLeer(dir) {
 function rcCargar() {
   if (rc.leyendo) return rc.leyendo;
   rc.leyendo = (async () => {
-    if (typeof window.showDirectoryPicker !== 'function') { rcSinDatos('navegador'); return; }
-    const c = await leerCarpetas();
-    rc.carpetas = c;
-    if (!c.intercambio) { rcSinDatos('conectar'); return; }
-    const dir = await intercambioLegible(c);
-    if (!dir) { rcSinDatos('permiso'); return; }
+    // Sin la carpeta (el teléfono, o un computador que no la conectó), el resumen cifrado de solo lectura (js/resumen.js)
+    let dir = null;
+    if (typeof window.showDirectoryPicker !== 'function') {
+      dir = await mvAbrir('navegador');
+      if (!dir) { rcSinDatos('navegador'); return; }
+    } else {
+      const c = await leerCarpetas();
+      rc.carpetas = c;
+      if (!c.intercambio) {
+        dir = await mvAbrir('conectar');
+        if (!dir) { rcSinDatos('conectar'); return; }
+      } else {
+        dir = await intercambioLegible(c);
+        if (!dir) { mvSoltar(); rcSinDatos('permiso'); return; }
+        mvSoltar();
+      }
+    }
     const datos = await rcLeer(dir);
     await cargarPulso();
     rc.datos = datos;
@@ -743,6 +754,7 @@ async function rcVueltaRevisar() {
   else rcPintarFrescura();
 }
 async function rcPedirVuelta() {
+  if (mvNoSe()) return;
   if (rc.vuelta || !rc.dir) return;
   const enviado = scAhora();
   const id = scId();

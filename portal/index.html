@@ -15,8 +15,10 @@
 <link rel="stylesheet" href="../marca/fuentes.css">
 <!-- Cajas de números: seleccionar todo al entrar y punto de miles al escribir (una sola copia, también en los tableros). -->
 <script src="../numeros.js"></script>
-<link rel="stylesheet" href="portal.css?v=45dc1d9ddfa8">
-<meta name="quempin-version" content="master@04ad701 2026-11-18">
+<!-- Abre el resumen cifrado cuando no hay carpeta (js/resumen.js): el mismo candado de los tableros -->
+<script src="../candado.js"></script>
+<link rel="stylesheet" href="portal.css?v=b903a1712c78">
+<meta name="quempin-version" content="master@ae0e10b 2026-11-18">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -82,6 +84,15 @@
           </button>
           <a class="acc-btn" id="btnAparte" href="#" target="_blank" rel="noopener" hidden title="Abrir aparte, en su propia pestaña del navegador" aria-label="Abrir aparte, en su propia pestaña del navegador"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>
         </div>
+      </div>
+
+      <!-- Sin la carpeta del equipo (el teléfono): el resumen cifrado, solo para leer (2026-11-18, js/resumen.js) -->
+      <div class="mv-franja" id="mvFranja" role="status" hidden>
+        <span class="mv-texto" id="mvTexto"></span>
+        <form class="mv-entrar" id="mvEntrar" hidden>
+          <input type="password" id="mvContrasena" autocomplete="current-password" aria-label="Contraseña del equipo" placeholder="Contraseña" required>
+          <button class="cx-boton" type="submit">Ver</button>
+        </form>
       </div>
 
       <div class="escenario" id="escenario">
@@ -1179,17 +1190,18 @@ if (window.top !== window.self) {
      arranque.js al final, que engancha todo. Ver portal/CLAUDE.md. -->
 <script src="js/base.js?v=03260a217b1c"></script>
 <script src="js/conexiones.js?v=ffdb1957a5fb"></script>
-<script src="js/recorrido.js?v=f94c75659a97"></script>
-<script src="js/inicio.js?v=0087fa8799b3"></script>
-<script src="js/planificacion.js?v=3063772bdbd5"></script>
-<script src="js/subir.js?v=55122d2b28e6"></script>
-<script src="js/rendiciones.js?v=a43a8c9047d5"></script>
-<script src="js/planilla.js?v=80e7135c895a"></script>
-<script src="js/ejecucion.js?v=77f80ce07e2a"></script>
+<script src="js/resumen.js?v=d74a8e743b82"></script>
+<script src="js/recorrido.js?v=6646c29d6917"></script>
+<script src="js/inicio.js?v=90aa4c788827"></script>
+<script src="js/planificacion.js?v=fc6796870c2a"></script>
+<script src="js/subir.js?v=3edac8712d31"></script>
+<script src="js/rendiciones.js?v=bd1623cd28ff"></script>
+<script src="js/planilla.js?v=de4fa86c887e"></script>
+<script src="js/ejecucion.js?v=6e67a9ef40f7"></script>
 <script src="js/llevar.js?v=c2f4163d8659"></script>
 <script src="js/buscador.js?v=7589b98580e6"></script>
-<script src="js/observaciones.js?v=ad307dd55ca0"></script>
+<script src="js/observaciones.js?v=01c4a088b2fb"></script>
 <script src="js/tema.js?v=9ab1b0afad14"></script>
-<script src="js/arranque.js?v=c2585c3bdba0"></script>
+<script src="js/arranque.js?v=4514ac2495cb"></script>
 </body>
 </html>

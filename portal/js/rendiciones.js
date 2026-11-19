@@ -773,6 +773,7 @@ async function rdArchivoParaCC(d) {
   return { datos: await blob.arrayBuffer(), ext: '.jpg' };
 }
 async function rdEnviar() {
+  if (mvNoSe()) return;      // solo lectura (js/resumen.js)
   if (rd.enviando || !rd.docs.length || !rc.dir || rd.cab.enviada) return;
   if (rd.docs.some((d) => d.estado === 'leyendo' || d.estado === 'pendiente')) return;
   const faltan = rdFaltantes();

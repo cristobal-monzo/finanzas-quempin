@@ -143,6 +143,7 @@ function scNombrar() {
 
 // ---- Enviar -------------------------------------------------------------------------------------------------
 async function scEnviar(ev) {
+  if (mvNoSe()) { if (ev) ev.preventDefault(); return; }      // solo lectura (js/resumen.js)
   if (ev) ev.preventDefault();
   const e = sc.eleccion;
   if (sc.enviando || !e || !sc.archivos.length || !rc.dir) return;

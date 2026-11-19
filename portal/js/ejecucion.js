@@ -384,6 +384,7 @@ function ejProgramarGuardado() {
   ejPintarFrescura();
 }
 async function ejGuardar() {
+  if (soloLectura()) return;
   clearTimeout(ej.relojGuardar);
   if (ej.guardando) { ej.otraVez = true; return; }
   if (!ej.porGuardar) return;
@@ -408,6 +409,7 @@ async function ejGuardar() {
 /* Cada cambio: las cosas nuevas o cambiadas, enteras. Quedan como lo de este navegador con su instante, se guardan en la
    carpeta y se pueden deshacer (el aviso o Ctrl Z). */
 function ejPoner(cambios, mensaje) {
+  if (mvNoSe()) return;
   const antes = cambios.map((e) => {
     const a = ej.datos.ef.get(e.id);
     return a ? Object.assign({}, a) : { id: e.id, proyecto: e.proyecto, tipo: e.tipo, creado: e.creado, nuevo: true };
@@ -965,6 +967,7 @@ function ejGanttDe(t) {
 /* Pide valores al Análisis Financiero con un «datos-proyecto» al buzón, como «Ingresar avance» y «Dar por cerrado»:
    cada valor se escribe solo si la celda todavía tiene lo que se vio («reemplaza»). Devuelve el nombre del archivo. */
 async function ejEnviarAF(t, valores, reemplaza, motivo) {
+  if (soloLectura()) throw new Error('Solo lectura: en este navegador no se cambian los datos.');
   const enviado = scAhora();
   const id = scId();
   const origen = { herramienta: 'portal', enviado };
@@ -986,6 +989,7 @@ async function ejEnviarAF(t, valores, reemplaza, motivo) {
 }
 // Retira del buzón un pedido que todavía no se aplica (lo busca por su id, como el Formulador: js/intercambio.js enBuzon)
 async function ejRetirarAF(msg) {
+  if (soloLectura()) throw new Error('Solo lectura: en este navegador no se cambian los datos.');
   const buzon = await rc.dir.getDirectoryHandle('buzon');
   let nombre = null;
   for await (const n of buzon.keys()) if (n.indexOf(msg.id) >= 0 && /\.json$/i.test(n)) { nombre = n; break; }
@@ -1055,7 +1059,7 @@ function ejPintarFrescura() {
   if (!rc.leido) { txt.textContent = rc.leyendo ? 'Leyendo la carpeta del equipo…' : 'Sin datos de la carpeta del equipo'; txt.title = ''; punto.className = 'cx-punto'; return; }
   const l = rc.pulso;
   const aj = ej.ajeno && Date.now() - ej.ajeno.cuando < PL_AJENO_SEG * 1000 ? ej.ajeno : null;
-  const linea = aj ? aj.quien + ' acaba de cambiar ' + pl(aj.n, 'cosa', 'cosas')
+  const linea = soloLectura() ? 'Resumen ' + mvHora() + ', solo para leer' : aj ? aj.quien + ' acaba de cambiar ' + pl(aj.n, 'cosa', 'cosas')
     : Date.now() - ej.guardado < 8000 ? 'Guardado · OneDrive lo lleva al equipo' : l && l.detenido ? 'El procesador está detenido' : 'Al día con la carpeta del equipo';
   if (txt.textContent !== linea) txt.textContent = linea;
   txt.title = 'Las cotizaciones, la venta corregida, las notas y los pendientes se guardan en la carpeta de intercambio (publicado › ejecucion), así todo el equipo ve lo mismo; esta vista revisa cada '
@@ -4373,6 +4377,7 @@ function ejCambiarNivel(m, per, nivel) {
   ejPoner(cambios, ejNomPer(cambios[0]) + ' queda en el nivel ' + nivel + ' en este proyecto (' + pl(cambios.length, 'día', 'días') + '): la mano de obra se recalculó.');
 }
 async function ejLlevarManoObra(m) {
+  if (mvNoSe()) return;
   const t = m.t;
   if (!rc.dir || !t.af || !t.tag || ej.enviando) return;
   ej.enviando = true;
@@ -4876,6 +4881,7 @@ function ejGuardarVenta(e, quitar) {
     quitar ? 'La venta vuelve a ser la calculada.' : 'Venta corregida a ' + ejPesos(monto) + ': el margen y los indicadores se recalcularon.');
 }
 async function ejEnviarAvance(m, pct, fin) {
+  if (mvNoSe()) return;
   const t = m.t;
   if (!rc.dir || !t.af || !t.tag || ej.enviando) return;
   const v = Math.round(Number(pct));
@@ -4928,6 +4934,7 @@ function ejAbrirNombre(m) {
 }
 async function ejGuardarNombre(e) {
   if (e) e.preventDefault();
+  if (mvNoSe()) return;
   const m = ej.modelo;
   if (!m || !rc.dir || !m.t.af || !m.t.tag || ej.enviando) return;
   const t = m.t;
@@ -4978,6 +4985,7 @@ function ejAbrirCerrar(m) {
 }
 async function ejGuardarCerrar(e) {
   if (e) e.preventDefault();
+  if (mvNoSe()) return;
   const m = ej.modelo;
   if (!m || !ej.cerrar || m.t.clave !== ej.cerrar.clave || ej.enviando) return;
   const t = m.t;
@@ -5013,6 +5021,7 @@ async function ejGuardarCerrar(e) {
   pintarInicioRecorrido();
 }
 async function ejUnirFicha(m, af) {
+  if (mvNoSe()) return;
   const t = m.t;
   if (!rc.dir || !t.req || ej.enviando) return;
   ej.enviando = true;
