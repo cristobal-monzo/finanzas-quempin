@@ -495,10 +495,14 @@ function pintarPestanas() {
     ir.setAttribute('aria-controls', p.inicio ? 'vistaInicio' : esVista(p) ? HERR.get(p.herr).vista : 'marco-' + p.familia);
     ir.title = p.inicio ? 'Inicio' : etiqueta(p, true);
     ir.addEventListener('click', () => { if (!pestanaRecienMovida) activar(p.familia); });
+    w.setAttribute('role', 'presentation');
     w.append(ir);
     if (!p.inicio) {
-      ir.setAttribute('aria-keyshortcuts', 'Control+Shift+ArrowLeft Control+Shift+ArrowRight');
+      // Una lista de pestañas solo puede tener pestañas (ARIA): la ✕ es para el ratón y con el teclado se
+      // cierra con Supr sobre la pestaña (o con «Cerrar esta pestaña» del clic derecho).
+      ir.setAttribute('aria-keyshortcuts', 'Delete Control+Shift+ArrowLeft Control+Shift+ArrowRight');
       ir.addEventListener('keydown', (e) => {
+        if (e.key === 'Delete') { e.preventDefault(); cerrar(p.familia); return; }
         if (!e.ctrlKey || !e.shiftKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
         e.preventDefault();
         moverPestana(p.familia, e.key === 'ArrowLeft' ? -1 : 1);
@@ -506,7 +510,9 @@ function pintarPestanas() {
       w.addEventListener('pointerdown', (e) => arrastreEmpezar(e, w));
       const x = crear('button', 'x');
       x.type = 'button';
-      x.setAttribute('aria-label', 'Cerrar ' + ir.textContent);
+      x.tabIndex = -1;
+      x.setAttribute('aria-hidden', 'true');
+      x.title = 'Cerrar (Supr)';
       x.append(icono('cerrar', 13));
       x.addEventListener('click', () => cerrar(p.familia));
       w.append(x);
@@ -730,7 +736,6 @@ function abrir(id, op) {
     return;
   }
   const familia = familiaDe(h);
-  const hp = op.url ? '' : hashProyecto(h);
   const url = op.url || urlDe(h, op.pestana);
   let p = pestanaDe(familia);
   const nueva = !p;
