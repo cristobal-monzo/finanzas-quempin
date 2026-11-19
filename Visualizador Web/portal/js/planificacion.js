@@ -2331,7 +2331,7 @@ function plDiaGrande(m, d) {
    según cuántos van) que lo muestra en grande, y abajo los avisos: proyectos sin nadie, un vehículo en dos lugares y
    las ausencias. */
 function plSemanaLado(s, m, dias, sel) {
-  const lado = crear('aside', 'pl-sem-lado');
+  const lado = crear('section', 'pl-sem-lado');
   lado.setAttribute('aria-label', 'La semana');
   lado.append(crear('h3', null, 'La semana'));
   const lista = crear('div', 'pl-sem-dias');
@@ -2742,7 +2742,7 @@ function plColocar(d) {
 // El panel: los proyectos activos (primero los sin asignar) o las personas, para arrastrar o elegir
 function plPanelArrastre(s, m, dias, tipo) {
   const proy = tipo === 'proyecto';
-  const aside = crear('aside', 'pl-arr');
+  const aside = crear('section', 'pl-arr');
   aside.dataset.tipo = tipo;
   aside.setAttribute('aria-label', proy ? 'Proyectos activos para poner en las casillas' : 'Personal para poner en las casillas');
   const elegido = planif.armado && (planif.armado.tipo === tipo || planif.armado.tipo === 'vehiculo') ? planif.armado : null;

@@ -1120,7 +1120,7 @@ JS_LEER_OBSERVACIONES = """async () => {
     const buzon = await (await (await bib.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio')).getDirectoryHandle('buzon', { create: true });
     const salida = { mensajes: {}, adjuntos: {} };
     for await (const [n, h] of buzon.entries()) {
-        if (h.kind === 'file' && n.includes('_observacion_')) salida.mensajes[n] = await (await h.getFile()).text();
+        if (h.kind === 'file' && n.includes('_observacion_') && n.endsWith('.json')) salida.mensajes[n] = await (await h.getFile()).text();
     }
     const adj = await buzon.getDirectoryHandle('adjuntos', { create: true });
     for await (const [id, d] of adj.entries()) {

@@ -1555,7 +1555,7 @@ function ejRestaurar(raiz, vista, desplazado, foco, t, m) {
 function ejPintarV2(t, m, raiz, sinClave) {
   const cuerpo = crear('div', 'ej-v2-cuerpo');
   const arriba = crear('div', 'ej-v2-arriba');
-  const idx = crear('aside', 'ej-v2-idx');
+  const idx = crear('section', 'ej-v2-idx');
   idx.setAttribute('aria-label', 'Índice del proyecto');
   const volver = ejBoton('Todos los proyectos', 'ej-volver', ejVolver, 'izquierda');
   volver.title = 'Volver a la lista de todos los proyectos';
