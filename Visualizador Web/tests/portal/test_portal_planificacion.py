@@ -47,12 +47,12 @@ def test_la_planificacion_acepta_el_n_temporal():
 
 
 def test_la_planificacion_semanal_en_el_registro():
-    """Pedido del 2026-10-20: planificar la semana con el personal NB, ES, LC, CM, MP, SV y EV, como máximo 3 proyectos
+    """Pedido del 2026-10-20: planificar la semana con el personal NB, ES, LC, CM, MP y EV, como máximo 3 proyectos
     por persona en un día. Lee y guarda en la carpeta del equipo, y Configuración y conexiones lo dice."""
     reg = _registro()
     h = {x["id"]: x for x in reg["herramientas"]}["planificacion"]
     assert h["tipo"] == "vista" and h["vista"] == "vistaPlan" and h["grupo"] == "ejecutar"
-    assert reg["personal"] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
+    assert reg["personal"] == ["NB", "ES", "LC", "CM", "MP", "EV", "RL"]
     assert set(reg["usuarios"]) <= set(reg["personal"]), "quien usa las herramientas también se planifica"
     # Nombre y apellido de cada uno (pedido del usuario, 2026-11-18): van en el correo de las rendiciones
     assert set(reg["nombres"]) <= set(reg["personal"]) and all(len(n.split()) >= 2 for n in reg["nombres"].values())
@@ -121,7 +121,7 @@ def test_asignar_por_personal_queda_en_la_carpeta_del_equipo(navegador, sitio):
     from datetime import date
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
     semana, lunes = _semana_de(date.today())
-    assert list(pagina.evaluate(JS_PERSONAL)) == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
+    assert list(pagina.evaluate(JS_PERSONAL)) == ["NB", "ES", "LC", "CM", "MP", "EV", "RL"]
     assert pagina.locator("#plPersonal tr.tuya").get_attribute("data-persona") == "LC"
     _celda_personal(pagina, "LC", 0).click()
     pop = pagina.locator("#plPop")
@@ -506,7 +506,7 @@ def test_general_avisa_el_vehiculo_en_dos_lugares_y_las_ausencias(navegador, sit
     grande; las ausencias van en una línea por persona."""
     pagina, errores = _plan_con_datos(navegador, sitio, usuario="LC", vista="personal")
     _, lunes = _semana_con_vehiculos(pagina)
-    _celda_personal(pagina, "SV", 3).click()
+    _celda_personal(pagina, "EV", 3).click()
     pagina.locator('#plPop [data-op="a|vacaciones"]').click()
     pagina.keyboard.press("Escape")
     pagina.locator('.pl-vista[data-vista="general"]').click()
@@ -515,7 +515,7 @@ def test_general_avisa_el_vehiculo_en_dos_lugares_y_las_ausencias(navegador, sit
     assert "La RAM en 2 lugares a la vez" in pagina.locator('#plGeneral .pl-sem-dia[data-dia="1"]').get_attribute("title")
     avisos = pagina.locator("#plGeneral .pl-sem-aviso")
     martes = _dias_de(lunes)[1]
-    assert avisos.all_inner_texts()[-2:] == [f"Mar {martes.day}: RAM en 2 lugares", "SV: vacaciones, 1 día"]
+    assert avisos.all_inner_texts()[-2:] == [f"Mar {martes.day}: RAM en 2 lugares", "EV: vacaciones, 1 día"]
     avisos.filter(has_text="RAM en 2 lugares").click()
     assert pagina.locator("#plGeneral .pl-dia-grande").get_attribute("data-dia") == "1"
     assert pagina.locator('#plGeneral .pl-sem-dia[data-dia="1"]').get_attribute("aria-pressed") == "true"
@@ -638,7 +638,7 @@ def test_otras_semanas_copiar_la_anterior_compartir_e_imprimir(navegador, sitio)
     assert pagina.evaluate("window.__titulo").startswith(f"Planificación semana {numero} (")
     assert pagina.evaluate("window.__hojas") == ["pl-doc-tabla:Quién va a qué proyecto", "pl-doc-hoja:LC"]
     tabla = pagina.evaluate("window.__tabla")
-    assert [f[0] for f in tabla] == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
+    assert [f[0] for f in tabla] == ["NB", "ES", "LC", "CM", "MP", "EV", "RL"]
     assert tabla[2][4].startswith("En obra") and tabla[2][1] == "Sin proyecto"
     hoja = pagina.evaluate("window.__hoja")
     assert "En obra" in hoja and "Nadie más" in hoja and "Sin proyecto asignado" in hoja and "tú" not in hoja
@@ -788,9 +788,9 @@ def test_elegir_en_el_panel_y_tocar_las_casillas(navegador, sitio):
     assert "Toca las casillas donde va Obra sin número" in pagina.locator("#plPersonal .pl-arr-colocando").inner_text()
     _celda_personal(pagina, "MP", 0).click()
     _celda_personal(pagina, "MP", 1).click()
-    _celda_personal(pagina, "SV", 1).click()
+    _celda_personal(pagina, "EV", 1).click()
     vista = pagina.evaluate(JS_PERSONAL)
-    assert vista["MP"][:2] == [["Obra sin número"], ["Obra sin número"]] and vista["SV"][1] == ["Obra sin número"]
+    assert vista["MP"][:2] == [["Obra sin número"], ["Obra sin número"]] and vista["EV"][1] == ["Obra sin número"]
     assert pagina.locator("#plPop").is_hidden()
     _celda_personal(pagina, "MP", 1).click()
     assert pagina.evaluate(JS_PERSONAL)["MP"][1] == []
@@ -959,7 +959,7 @@ def test_arrastrar_personas_por_proyecto_y_en_general(navegador, sitio):
     _, lunes = _semana_de(date.today())
     panel = pagina.locator("#plProyecto .pl-arr")
     assert panel.locator("h2").inner_text() == "Personal"
-    assert panel.locator(".pl-arr-item").evaluate_all("bs => bs.map((b) => b.dataset.persona)") == ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"]
+    assert panel.locator(".pl-arr-item").evaluate_all("bs => bs.map((b) => b.dataset.persona)") == ["NB", "ES", "LC", "CM", "MP", "EV", "RL"]
     panel.locator('.pl-arr-item[data-persona="ES"]').drag_to(_celda_proyecto(pagina, "req:908", 2))
     assert _celda_proyecto(pagina, "req:908", 2).locator(".pl-per").all_inner_texts() == ["ES"]
     assert panel.locator('.pl-arr-item[data-persona="ES"] .s').inner_text() == "1 de 5 días"
@@ -1250,12 +1250,12 @@ def test_vehiculo_varios_dias_cambiar_y_copiar_la_semana(navegador, sitio):
     assert pagina.evaluate(JS_PERSONAL)["MP"] == [["En obra"]] * 5
     assert [_vehs(_celda_personal(pagina, "MP", i)) for i in range(5)] == [[["Quempineta", ""]]] * 5
     pagina.keyboard.press("Escape")
-    # Desde el proyecto, SV va en vez de MP el lunes: también se lleva la Quempineta
+    # Desde el proyecto, EV va en vez de MP el lunes: también se lleva la Quempineta
     pagina.locator('.pl-vista[data-vista="proyecto"]').click()
     _celda_proyecto(pagina, "req:908", 0).click()
     pop.locator('[data-op="k|MP"]').click()
-    pop.locator('[data-op="x|SV"]').click()
-    assert pop.locator('[data-op="v|SV|quempineta"]').get_attribute("aria-pressed") == "true"
+    pop.locator('[data-op="x|EV"]').click()
+    assert pop.locator('[data-op="v|EV|quempineta"]').get_attribute("aria-pressed") == "true"
     assert _vehs(_celda_proyecto(pagina, "req:908", 0)) == [["Quempineta", ""]]
     # Un solo Ctrl Z deshace el reemplazo entero, con el vehículo
     pagina.keyboard.press("Escape")
@@ -2079,14 +2079,14 @@ def test_el_menu_personal_elige_quienes_se_ven_y_agrega_personal_definitivo_o_te
     filas = lambda: list(pagina.evaluate(JS_PERSONAL))
     menu, lista = pagina.locator("#plPersonas"), pagina.locator("#plPersonasLista")
     equipo = filas()
-    assert "SV" in equipo and menu.inner_text().split("\n")[0].strip() == "Personal"
+    assert "MP" in equipo and menu.inner_text().split("\n")[0].strip() == "Personal"
     menu.click()
     assert lista.is_visible() and menu.get_attribute("aria-expanded") == "true"
     assert lista.locator("input[data-per]").evaluate_all("cs => cs.map((c) => c.dataset.per)") == equipo
     assert lista.locator(".pl-per-cuenta").inner_text() == f"{len(equipo)} de {len(equipo)}"
-    # Desmarcar a SV la saca de la tabla; el botón dice cuántos se ven
-    lista.locator('input[data-per="SV"]').uncheck()
-    assert "SV" not in filas() and lista.is_visible()
+    # Desmarcar a MP la saca de la tabla; el botón dice cuántos se ven
+    lista.locator('input[data-per="MP"]').uncheck()
+    assert "MP" not in filas() and lista.is_visible()
     assert menu.locator(".pl-per-n").inner_text() == f"{len(equipo) - 1} de {len(equipo)}"
     # Quien tiene algo en la semana sigue con su fila, y el menú lo dice
     _celda_personal(pagina, "EV", 0).click()
@@ -2099,14 +2099,14 @@ def test_el_menu_personal_elige_quienes_se_ven_y_agrega_personal_definitivo_o_te
     # «Todos» los vuelve a mostrar; Escape cierra
     lista.locator("#plPersonasTodos").click()
     assert filas() == equipo and menu.locator(".pl-per-n").count() == 0
-    lista.locator('input[data-per="SV"]').uncheck()
+    lista.locator('input[data-per="MP"]').uncheck()
     pagina.keyboard.press("Escape")
     assert lista.is_hidden()
     # Se recuerda en este navegador
     pagina.reload()
     pagina.locator("#plResumen .rc-kpi").first.wait_for()      # el portal vuelve a la pestaña que estaba abierta
     pagina.locator('#plPersonal tr[data-persona="RL"]').wait_for()
-    assert "SV" not in filas()
+    assert "MP" not in filas()
     # Personal definitivo: desde esta semana y también en la siguiente
     menu.click()
     lista.locator('[data-agregar-fija="1"]').click()
