@@ -27,8 +27,14 @@ todo» ya confirmado, **empieza por el Centro de Costos**. Nunca te lo saltes, a
 
 `run` lo hace cumplir: empieza con ese mismo `status` y, si queda alguna factura sin datos, **se detiene sin escribir nada**
 (código 3) y las lista. Usa `--con-pendientes` solo para las del punto 3 que no se pudieron completar, nunca para
-saltarte la revisión. La corrida programada de los lunes lo usa porque no puede leer facturas: registra las que tienen
-datos y deja las demás en la bandeja.
+saltarte la revisión.
+
+**Corrida programada** (lunes a viernes a las 10:00 desde el 2026-11-19; antes solo los lunes y sin leer facturas):
+`tarea_programada.cmd` abre Claude Code sin pantalla con las reglas de [corrida_programada.md](corrida_programada.md)
+(nadie responde preguntas: solo anota las facturas que cuadran sin dudas; las demás quedan en la bandeja con su motivo)
+y después corre `run --con-pendientes` él mismo. Si Claude Code falla, el `run` corre igual. `tarea_programada.cmd
+prueba` hace solo la lectura, sin escribir. El token de Claude Code va cifrado: `claude setup-token` y
+`py -3.14 token_claude.py guardar`.
 
 ## `status`: siempre antes de `run`
 
@@ -52,7 +58,7 @@ Antes de todo, el `status` del CC del Paso 1 (ver arriba): sin facturas sin dato
 8. **Publica solo los tableros «REGENERADO en esta corrida»** (autorizado por el usuario el 2026-10-13): `publicar.py
    <claves>` verifica con el candado y hace `git add`; luego commit de solo esas subrutas y `git push` en
    `.worktrees/gh-pages`. Si falla, lo demás ya quedó hecho y el driver dice qué correr. `--sin-publicar` lo omite, para
-   acumular corridas. Lo hace también la corrida programada de los lunes a las 10:00.
+   acumular corridas. Lo hace también la corrida programada (lunes a viernes, 10:00).
 
 Desde el paso 5, un fallo no frena nada.
 
