@@ -1602,7 +1602,7 @@ function ejResumenEl(m) {
   const c1 = crear('div', 'ej-v2-av');
   c1.append(ejAnilloEl(av.valor, av.pedido ? 'pedido' : ''),
     crear('span', 'ej-v2-av-sub', av.pedido ? 'Pedido: llega con la próxima vuelta del procesador' : av.fin ? 'Término ' + rcCorta(av.fin, new Date()) : 'Sin fecha de término'));
-  if (rc.dir && m.t.af && m.t.tag) c1.append(ejBoton('Registrar avance', 'cx-enlace', () => ejIrA('ejSecAvance')));
+  if (rcEscribe() && m.t.af && m.t.tag) c1.append(ejBoton('Registrar avance', 'cx-enlace', () => ejIrA('ejSecAvance')));
   // El dinero en una barra
   const c2 = crear('div', 'ej-v2-dinero');
   const cab = crear('div', 'ej-v2-dinero-cab');
@@ -1727,7 +1727,7 @@ function ejTareas(m) {
       det: 'Apruébala, cómprala o descártala en los gastos proyectados', boton: 'Decidir',
       ir: () => { ej.filtro = 'vigentes'; ejGuardarPrefs(); ejPintar(); ejIrA('ejSecGastos'); } });
   }
-  const porTraer = rc.dir ? ejPorTraer(m, ejSemanasAtras(2)) : [];
+  const porTraer = rcEscribe() ? ejPorTraer(m, ejSemanasAtras(2)) : [];
   if (porTraer.length) {
     out.push({ id: 'traer', ico: 'calendario', nivel: '', txt: pl(porTraer.length, 'día-hombre', 'días-hombre') + ' de la Planificación',
       det: 'Asignados en la Planificación semanal y sin anotar como trabajados', boton: 'Traerlos', hace: true, ir: () => ejTraerPlanificacion(m) });
@@ -1768,7 +1768,7 @@ function ejPorHacerEl(m) {
   s.open = !!ej.porHacerAbierto;
   s.addEventListener('toggle', () => { ej.porHacerAbierto = s.open; });
   const sum = crear('summary');
-  const h = crear('h3', null, tareas.length ? 'Por hacer' : 'Todo al día');
+  const h = crear('h2', null, tareas.length ? 'Por hacer' : 'Todo al día');
   h.id = 'ejPorHacerTit';
   if (tareas.length) h.append(crear('small', null, String(tareas.length)));
   sum.append(h);
@@ -1794,7 +1794,7 @@ function ejPorHacerEl(m) {
     const b = crear('button', x.hace ? 'cx-boton' : 'cx-enlace', x.boton);
     b.type = 'button';
     b.dataset.foco = 'tarea-' + x.id;
-    if (x.hace) b.disabled = !rc.dir || ej.enviando;
+    if (x.hace) b.disabled = !rcEscribe() || ej.enviando;
     b.addEventListener('click', x.ir);
     li.append(ico, txt, b);
     ul.append(li);
@@ -1882,7 +1882,7 @@ function ejCabEl(m) {
   if (rcEtiqueta(t)) h.append(crear('span', 'ej-n', rcEtiqueta(t)));
   h.append(crear('span', null, t.titulo));
   // Cambiar el nombre que se ve (2026-11-09, pedido del usuario): solo el apodo del Análisis Financiero
-  if (rc.dir && t.af && t.tag) {
+  if (rcEscribe() && t.af && t.tag) {
     const lapiz = crear('button', 'ej-renombrar', '✎');
     lapiz.type = 'button';
     lapiz.title = 'Cambiar el nombre';
@@ -1949,10 +1949,10 @@ function ejCabEl(m) {
   }
   const ir = (txt, x, ico) => acc.append(ejBoton(txt, 'cx-enlace', () => rcIr(x), ico));
   if (t.formulacion) ir('Seguimiento', RC_IR.seguimiento(t.formulacion.uid), 'ruta');
-  ir('Subir documentos', { herr: 'subir-cc' }, 'subir');
+  if (!soloLectura()) ir('Subir documentos', { herr: 'subir-cc' }, 'subir');
   // «Cerrado» aquí mismo (2026-11-10, pedido del usuario), o solo llevar su carpeta si ya lo está
   const cierre = ejCierreDe(t);
-  if (cierre) {
+  if (cierre && !soloLectura()) {
     const b = ejBoton(cierre.yaCerrado ? 'Llevar su carpeta a entregados' : 'Marcar «Cerrado»', 'cx-enlace', () => ejAbrirCerrar(m), 'bandera');
     b.dataset.foco = 'marcar-cerrado';
     acc.append(b);
@@ -1994,7 +1994,7 @@ function ejKpisEl(m) {
   const corregir = crear('button', 'cx-desmarcar', v ? 'Corregir' : 'Escribir la venta');
   corregir.type = 'button';
   corregir.dataset.foco = 'venta';
-  corregir.disabled = !rc.dir;
+  corregir.disabled = !rcEscribe();
   corregir.addEventListener('click', () => ejAbrirVenta(m));
   kv.append(corregir);
   box.append(kv);
@@ -2193,7 +2193,7 @@ function ejAvanceEl(m) {
     const fin = rcFecha(g.resumen.termino);
     p.append(document.createTextNode('Carta Gantt: '), crear('b', null, Math.round(g.resumen.avance) + ' %'),
       document.createTextNode(' de avance (' + pl(Number(g.resumen.tareas) || 0, 'tarea', 'tareas') + (fin ? ', termina el ' + rcCorta(fin, hoy) : '') + ')'));
-    if (t.af && t.tag && rc.dir && g.resumen.avance > 0 && Math.round(g.resumen.avance) !== Math.round((av.valor || 0) * 100)) {
+    if (t.af && t.tag && rcEscribe() && g.resumen.avance > 0 && Math.round(g.resumen.avance) !== Math.round((av.valor || 0) * 100)) {
       const u = crear('button', 'cx-desmarcar', 'Usar ' + Math.round(g.resumen.avance) + ' %');
       u.type = 'button';
       u.addEventListener('click', () => {
@@ -2300,7 +2300,7 @@ function ejAvanceForm(m) {
     if (cambio) cambio.textContent = cambiaAv && v !== pct ? '→ ' + v + ' %' : '';
     enviar.textContent = cambiaAv && cambiaFin ? 'Guardar ' + v + ' % y la fecha en el Análisis Financiero'
       : cambiaAv ? 'Guardar ' + v + ' % en el Análisis Financiero' : cambiaFin ? 'Guardar la fecha en el Análisis Financiero' : 'Sin cambios que guardar';
-    enviar.disabled = !rc.dir || ej.enviando || !(cambiaAv || cambiaFin);
+    enviar.disabled = !rcEscribe() || ej.enviando || !(cambiaAv || cambiaFin);
     deshacer.hidden = !(cambiaAv && v !== pct) && !cambiaFin;
   }
   r.addEventListener('input', () => { n.value = r.value; ej.sucios.set('ejAvNum', n.value); actualizar(); });
@@ -2341,7 +2341,7 @@ function ejSinFicha(m) {
     out.push(p);
     if (!pedido) {
       const b = ejBoton('Unirla con el N° ' + t.req, 'cx-boton', () => ejUnirFicha(m, mejor));
-      b.disabled = !rc.dir || ej.enviando;
+      b.disabled = !rcEscribe() || ej.enviando;
       b.dataset.foco = 'unir';
       out.push(b);
     }
@@ -2578,7 +2578,7 @@ function ejPrVersionesEl(c) {
   });
   if (pr.b && !pr.b.guardada) w.append(chip(pr.b.id, pr.b.nombre, 'sin guardar', false));
   // Otra versión: del original o copia de una de las actualizadas
-  if (rc.dir) {
+  if (rcEscribe()) {
     if (!c.vs.length && !pr.b) {
       const b = ejBoton('Crear un presupuesto actualizado', 'cx-enlace', () => ejPrNueva('o'), 'mas');
       b.dataset.foco = 'pr-nueva';
@@ -3100,10 +3100,10 @@ function ejComprasEl(m) {
   s.id = 'ejSecGastos';
   const barra = crear('div', 'ej-barra-compras');
   const agregar = ejBoton('Agregar gasto o cotización', 'cx-boton', () => ejAbrirCosto(null), 'mas');
-  agregar.disabled = !rc.dir;
+  agregar.disabled = !rcEscribe();
   agregar.dataset.foco = 'agregar';
   const pegar = ejBoton('Pegar una cotización', 'cx-enlace', ejAbrirPegar, 'copiar');
-  pegar.disabled = !rc.dir;
+  pegar.disabled = !rcEscribe();
   pegar.dataset.foco = 'pegar';
   barra.append(agregar, pegar);
   const filtros = crear('div', 'ej-filtros');
@@ -3164,7 +3164,7 @@ function ejComprasEl(m) {
       const todas = crear('button', 'cx-desmarcar', 'Simular todas las por decidir');
       todas.type = 'button';
       todas.dataset.foco = 'sim-todas';
-      todas.disabled = !rc.dir;
+      todas.disabled = !rcEscribe();
       todas.addEventListener('click', () => ejSimularTodas(m, true));
       p.append(todas);
     }
@@ -3172,7 +3172,7 @@ function ejComprasEl(m) {
       const ninguna = crear('button', 'cx-desmarcar', 'No simular ninguna');
       ninguna.type = 'button';
       ninguna.dataset.foco = 'sim-ninguna';
-      ninguna.disabled = !rc.dir;
+      ninguna.disabled = !rcEscribe();
       ninguna.addEventListener('click', () => ejSimularTodas(m, false));
       p.append(ninguna);
     }
@@ -3225,7 +3225,7 @@ function ejFilaEl(it, xs, m) {
   const cb = crear('input');
   cb.type = 'checkbox';
   cb.checked = como !== '';
-  cb.disabled = !rc.dir || it.estado === 'comprada' || it.estado === 'descartada';
+  cb.disabled = !rcEscribe() || it.estado === 'comprada' || it.estado === 'descartada';
   cb.dataset.foco = 'sim-' + clave;
   cb.setAttribute('aria-label', 'Simular la compra de ' + it.descripcion);
   cb.title = it.estado === 'comprada' ? (como ? 'Comprada: cuenta como comprometida hasta que su OC ' + it.oc + ' aparezca en Sistema QUEMPIN' : 'Comprada: la cuenta su orden de compra o, sin OC, su factura en el Centro de Costos')
@@ -3279,7 +3279,7 @@ function ejFilaEl(it, xs, m) {
   const sel = crear('select', 'ej-estado');
   sel.setAttribute('aria-label', 'Estado de ' + it.descripcion);
   sel.dataset.foco = 'estado-' + clave;
-  sel.disabled = !rc.dir;
+  sel.disabled = !rcEscribe();
   EJ_ESTADOS.forEach((e) => { const o = crear('option', null, e.nombre); o.value = e.id; o.selected = e.id === it.estado; sel.append(o); });
   sel.addEventListener('change', () => { const est = sel.value; sel.value = it.estado; ejCambiarEstado(it, est, m); });
   tdEs.append(sel);
@@ -3291,7 +3291,7 @@ function ejFilaEl(it, xs, m) {
   borrar.append(icono('basurero', 16));
   borrar.title = xs.length > 1 ? 'Eliminar este ítem, con sus ' + xs.length + ' proveedores' : 'Eliminar este ítem';
   borrar.setAttribute('aria-label', 'Eliminar ' + it.descripcion);
-  borrar.disabled = !rc.dir;
+  borrar.disabled = !rcEscribe();
   borrar.addEventListener('click', () => ejBorrarItem(it, xs));
   acc.append(borrar);
   tdA.append(acc);
@@ -3303,7 +3303,7 @@ function ejMenuProveedor(it, xs, clave) {
   const sel = crear('select', 'ej-prov');
   sel.setAttribute('aria-label', 'Proveedor de ' + it.descripcion);
   sel.dataset.foco = 'prov-' + clave;
-  sel.disabled = !rc.dir || it.estado === 'comprada';
+  sel.disabled = !rcEscribe() || it.estado === 'comprada';
   xs.forEach((x) => { const o = crear('option', null, (x.proveedor || 'Sin proveedor') + ' · ' + ejPesos(x.precio)); o.value = x.id; sel.append(o); });
   const otro = crear('option', null, '+ Agregar otro proveedor…');
   otro.value = '';
@@ -3501,7 +3501,7 @@ function ejDocumentosEl(m) {
     // Sin asociar, un botón que se ve (vuelta 8); ya asociada, el enlace discreto para cambiarla
     const b = crear('button', ds.length || (a && !a.destinos.length) ? 'cx-desmarcar' : 'ej-asociar', ds.length || (a && !a.destinos.length) ? 'Cambiar' : 'Asociar');
     b.type = 'button';
-    b.disabled = !rc.dir;
+    b.disabled = !rcEscribe();
     b.dataset.foco = 'asociar-' + d.ref;
     b.setAttribute('aria-label', (ds.length ? 'Cambiar a qué gastos corresponde ' : 'Asociar a sus gastos ') + d.ref);
     b.addEventListener('click', () => ejAbrirAsociar(d));
@@ -3799,7 +3799,7 @@ function ejNotasEl(m) {
   [''].concat(PERSONAL).forEach((p) => { const o = crear('option', null, p || 'Quién'); o.value = p; o.selected = p === estado.usuario; r.append(o); });
   const ok = crear('button', 'cx-enlace', 'Agregar');
   ok.type = 'submit';
-  ok.disabled = !rc.dir;
+  ok.disabled = !rcEscribe();
   f.append(i, r, ok);
   f.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -3818,7 +3818,7 @@ function ejNotasEl(m) {
       const cb = crear('input');
       cb.type = 'checkbox';
       cb.checked = p.listo;
-      cb.disabled = !rc.dir;
+      cb.disabled = !rcEscribe();
       cb.dataset.foco = 'pend-' + p.id;
       cb.setAttribute('aria-label', (p.listo ? 'Hecho: ' : 'Marcar hecho: ') + p.texto);
       cb.addEventListener('change', () => ejPoner([Object.assign({}, p, { listo: cb.checked })]));
@@ -3829,7 +3829,7 @@ function ejNotasEl(m) {
       borrar.append(icono('cerrar', 14));
       borrar.title = 'Quitar este pendiente';
       borrar.setAttribute('aria-label', 'Quitar el pendiente ' + p.texto);
-      borrar.disabled = !rc.dir;
+      borrar.disabled = !rcEscribe();
       borrar.addEventListener('click', () => ejPoner([{ id: p.id, proyecto: p.proyecto, tipo: 'pendiente', creado: p.creado, borrado: true }], 'Se quitó el pendiente.'));
       li.append(cb, txt, borrar);
       ul.append(li);
@@ -3846,7 +3846,7 @@ function ejNotasEl(m) {
   ta.setAttribute('aria-label', 'Nota nueva');
   const okn = crear('button', 'cx-enlace', 'Anotar');
   okn.type = 'submit';
-  okn.disabled = !rc.dir;
+  okn.disabled = !rcEscribe();
   fn.append(ta, okn);
   fn.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -3871,7 +3871,7 @@ function ejNotasEl(m) {
       borrar.append(icono('cerrar', 14));
       borrar.title = 'Borrar esta nota';
       borrar.setAttribute('aria-label', 'Borrar la nota');
-      borrar.disabled = !rc.dir;
+      borrar.disabled = !rcEscribe();
       borrar.addEventListener('click', () => ejPoner([{ id: n.id, proyecto: n.proyecto, tipo: 'nota', creado: n.creado, borrado: true }], 'Se borró la nota.'));
       li.append(txt, borrar);
       ul.append(li);
@@ -4054,7 +4054,7 @@ function ejManoObraEl(m) {
   nav.append(antes, tit, despues);
   box.append(nav);
   const grilla = crear('div', 'ej-cal');
-  grilla.setAttribute('role', 'grid');
+  grilla.setAttribute('role', 'group');   // grid exige filas; son botones sueltos
   grilla.setAttribute('aria-label', 'Días de ' + ejNombreMes(f.mes) + ': marca los trabajados');
   ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach((x, i) => { const c = crear('span', 'ej-cal-sem' + (i > 4 ? ' finde' : ''), x); c.setAttribute('aria-hidden', 'true'); grilla.append(c); });
   const [ano, mes] = f.mes.split('-').map(Number);
@@ -4070,7 +4070,7 @@ function ejManoObraEl(m) {
     b.type = 'button';
     b.dataset.iso = iso;
     b.dataset.foco = 'dia-' + iso;
-    b.disabled = iso > hoy || !rc.dir;
+    b.disabled = iso > hoy || !rcEscribe();
     b.append(crear('span', 'ej-cal-n', String(n)));
     if (ds.length) {
       const marcas = crear('span', 'ej-cal-marcas');
@@ -4148,8 +4148,8 @@ function ejManoObraEl(m) {
     const nd = f.dias.size;
     const np = f.personas.size;
     const borrables = ejDiasPorQuitar(m);
-    ok.disabled = !rc.dir || !nd || !np;
-    quitar.disabled = !rc.dir || !borrables.length;
+    ok.disabled = !rcEscribe() || !nd || !np;
+    quitar.disabled = !rcEscribe() || !borrables.length;
     quitar.textContent = borrables.length ? 'Quitar ' + pl(borrables.length, 'día anotado', 'días anotados') : 'Quitar lo anotado';
     if (!nd) { resumen.textContent = 'Marca los días trabajados en el calendario.'; ok.textContent = 'Anotar'; return; }
     if (!np) { resumen.textContent = pl(nd, 'día marcado', 'días marcados') + ': elige quiénes trabajaron.'; ok.textContent = 'Anotar'; return; }
@@ -4176,7 +4176,7 @@ function ejManoObraEl(m) {
   s.append(box);
   // Lo que la Planificación ya tiene de este proyecto, hasta hoy
   const porTraer = ejPorTraer(m, ejSemanasAtras(2));
-  if (porTraer.length && rc.dir) {
+  if (porTraer.length && rcEscribe()) {
     const p = crear('p', 'ej-linea tinte');
     p.append(document.createTextNode(pl(porTraer.length, 'día-hombre', 'días-hombre') + ' de la Planificación semanal sin anotar aquí.'));
     p.title = 'Lo asignado a este proyecto en la Planificación semanal, hasta hoy, que todavía no está entre los días trabajados';
@@ -4193,7 +4193,7 @@ function ejManoObraEl(m) {
   pt.append(document.createTextNode('Tarifas por día-hombre (' + tar.fuente + '): '), crear('b', null, EJ_NIVELES.map((x) => 'N' + x.n + ' ' + ejPesos(tar['n' + x.n])).join(' · ')));
   const ct = crear('button', 'cx-desmarcar', ej.tarifasAbiertas ? 'Cerrar' : 'Cambiar');
   ct.type = 'button';
-  ct.disabled = !rc.dir;
+  ct.disabled = !rcEscribe();
   ct.dataset.foco = 'tarifas';
   ct.addEventListener('click', () => { ej.tarifasAbiertas = !ej.tarifasAbiertas; ejPintar(); });
   pt.append(ct);
@@ -4210,7 +4210,7 @@ function ejManoObraEl(m) {
       const sel = crear('select');
       sel.setAttribute('aria-label', 'Nivel de ' + ejNomPer(d) + ' en este proyecto');
       sel.dataset.foco = 'nivel-' + per;
-      sel.disabled = !rc.dir;
+      sel.disabled = !rcEscribe();
       EJ_NIVELES.forEach((x) => { const o = crear('option', null, 'N' + x.n); o.value = String(x.n); o.selected = x.n === d.nivel; sel.append(o); });
       sel.addEventListener('change', () => ejCambiarNivel(m, per, Number(sel.value)));
       l.append(sel);
@@ -4241,7 +4241,7 @@ function ejManoObraEl(m) {
         x.type = 'button';
         x.append(icono('cerrar', 12));
         x.setAttribute('aria-label', 'Quitar el día de ' + ejNomPer(d) + ' del ' + rcCorta(dia, new Date()));
-        x.disabled = !rc.dir;
+        x.disabled = !rcEscribe();
         x.addEventListener('click', () => ejPoner([{ id: d.id, proyecto: d.proyecto, tipo: 'dia', creado: d.creado, borrado: true }], 'Se quitó el día de ' + ejNomPer(d) + '.'));
         chip.append(x);
         txt.append(chip);
@@ -4275,7 +4275,7 @@ function ejManoObraEl(m) {
       if (mo.dias.length && Math.round(mo.costo) !== Math.round(mo.af || 0)) {
         const b = crear('button', 'cx-desmarcar', 'Llevarle ' + ejPesos(mo.costo));
         b.type = 'button';
-        b.disabled = !rc.dir || ej.enviando;
+        b.disabled = !rcEscribe() || ej.enviando;
         b.dataset.foco = 'llevar-mo';
         b.addEventListener('click', () => ejLlevarManoObra(m));
         p.append(b);
@@ -4615,10 +4615,11 @@ function ejAbrirCosto(it, op) {
   ejMostrarOC();
   ejDatalists(m);
   $('#ejCBorrar').hidden = !it;
-  $('#ejCBorrar').disabled = !rc.dir;
-  $('#ejCOtroProv').disabled = !rc.dir;
-  $('#ejCGuardar').disabled = !rc.dir;
+  $('#ejCBorrar').disabled = !rcEscribe();
+  $('#ejCOtroProv').disabled = !rcEscribe();
+  $('#ejCGuardar').disabled = !rcEscribe();
   ejPintarEvaluacion();
+  mvSoloVer($('#dlgEjCosto'));
   $('#dlgEjCosto').showModal();
   if (op.otro) ejAgregarProv();
   else (op.estado === 'comprada' ? $('#ejCOC') : it ? provs.querySelector('.ej-p-el:checked').closest('.ej-prov-fila').querySelector('.ej-p-precio input') : $('#ejCDesc')).focus();
@@ -4834,7 +4835,7 @@ function ejPintarPrevia() {
   tabla.append(thead, tbody);
   box.append(tabla, crear('p', null, pl(r.filas.length, 'fila', 'filas') + ' por ' + ejPesos(total) + ' sin IVA' + (r.omitidas ? ' · ' + pl(r.omitidas, 'línea omitida', 'líneas omitidas') + ' (totales o sin precio)' : '') + '.'));
   ok.textContent = 'Agregar ' + pl(r.filas.length, 'fila', 'filas');
-  ok.disabled = !rc.dir;
+  ok.disabled = !rcEscribe();
 }
 function ejAgregarPegadas(e) {
   e.preventDefault();

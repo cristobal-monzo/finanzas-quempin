@@ -1628,7 +1628,7 @@ function plPintarPersonasMenu() {
     b.type = 'button';
     b.dataset.agregarFija = f;
     b.title = titulo;
-    b.disabled = !rc.dir;
+    b.disabled = !rcEscribe();
     const tx = crear('span', 'pl-per-txt');
     tx.append(crear('span', null, txt), crear('small', null, sub));
     b.append(icono('mas', 16), tx);
@@ -1781,8 +1781,8 @@ function plPintarBarra(s, dias) {
   sab.checked = dias.length === 6;
   sab.disabled = dias.length === 6 && !planif.sabado;        // el sábado ya tiene algo: queda a la vista
   sab.parentElement.title = sab.disabled ? 'El sábado tiene asignaciones o ausencias: queda a la vista' : 'Mostrar también el sábado';
-  $('#plCopiar').disabled = !rc.dir;
-  $('#plAgregar').disabled = !rc.dir;
+  $('#plCopiar').disabled = !rcEscribe();
+  $('#plAgregar').disabled = !rcEscribe();
 }
 function plPintarAlarma(s, m) {
   const caja = $('#plAlarma');
@@ -1875,7 +1875,7 @@ function plPintarVacia(s) {
   const caja = $('#plSemanaVacia');
   caja.textContent = '';
   const vacia = ![...s.ef.asig.values()].some((e) => e.activa) && ![...s.ef.aus.values()].some((e) => e.motivo);
-  caja.hidden = !(vacia && rc.dir && s.lunes >= plLunesDe(new Date()));
+  caja.hidden = !(vacia && rcEscribe() && s.lunes >= plLunesDe(new Date()));
   if (caja.hidden) return;
   const b = crear('button', 'btn-pri pl-vacia-copiar', 'Copiar la semana ' + plNum({ id: plSemanaId(plMas(s.lunes, -7)) }));
   b.type = 'button';
@@ -1968,7 +1968,7 @@ function plChip(m, c, veh, d) {
    un botón: la toma plQuitarToque antes que la casilla. Con el teclado, Supr en la casilla (plQuitarCasilla). Sin la
    carpeta conectada no se puede guardar, y no se pone. */
 function plQuitarX(el, per, d, clave, m) {
-  if (!rc.dir) return el;
+  if (!rcEscribe()) return el;
   const x = crear('span', 'pl-quitar');
   Object.assign(x.dataset, { per, iso: d.iso, clave });
   x.title = 'Quitar: ' + plNom(per) + ' ya no va a ' + m.titulo(clave) + ' ' + plElDia(d);
@@ -1989,7 +1989,7 @@ function plQuitarToque(e) {
 /* Supr en una casilla: quita lo que tiene ese día (los proyectos de la persona, o las personas del proyecto), en un
    paso que se deshace. La casilla sigue con el foco. */
 function plQuitarCasilla(c) {
-  if (!rc.dir || !c.dataset.ancla) return false;
+  if (!rcEscribe() || !c.dataset.ancla) return false;
   const [k, x, iso] = c.dataset.ancla.split('|');
   const s = plSemanaVista(), m = plModelo(s), d = plDiaDe(s, iso);
   const pares = k === 'p' ? (m.porPersona.get(iso + '|' + x) || []).map((clave) => ({ per: x, clave }))
@@ -2068,7 +2068,7 @@ function plPintarPersonal(s, m, dias) {
       else if (!a) plAgregar(b, lista.length ? null : 'Asignar');
       b.setAttribute('aria-label', plNom(per) + ', ' + plFechaLarga(d) + ': ' + (a ? plAusencia(a.motivo).nombre.toLowerCase()
         : lista.length ? lista.map((c) => m.titulo(c) + plVehsTexto(m, d.iso, c, [per])).join('; ') : 'sin proyecto') + '. Cambiar');
-      if (lista.length && rc.dir) b.setAttribute('aria-keyshortcuts', 'Delete');      // Supr la deja sin proyectos
+      if (lista.length && rcEscribe()) b.setAttribute('aria-keyshortcuts', 'Delete');      // Supr la deja sin proyectos
       b.addEventListener('click', (e) => plColocar(plDestino(e.target) || { per, iso: d.iso }) || plAbrirPersona(per, d.iso));
       return td;
     });
@@ -2099,7 +2099,7 @@ function plBotonAgregar(modo, txt, titulo) {
   b.type = 'button';
   b.dataset.agregar = modo;
   b.title = titulo;
-  b.disabled = !rc.dir;
+  b.disabled = !rcEscribe();
   b.append(icono('mas', 14), crear('span', null, txt));
   b.addEventListener('click', () => plAbrirAgregar(modo));
   return b;
@@ -2226,7 +2226,7 @@ function plFilaProyecto(s, m, dias, p, alarma) {
       const w = crear('span', 'pl-pers');
       van.forEach((x) => w.append(plQuitarX(plArrastrable(plPersona(x), { tipo: 'persona', per: x, desde: { per: x, iso: d.iso, clave: p.clave } }, plNom(x)), x, d, p.clave, m)));
       c.append(w);
-      if (rc.dir) c.setAttribute('aria-keyshortcuts', 'Delete');      // Supr quita a todos de ese día
+      if (rcEscribe()) c.setAttribute('aria-keyshortcuts', 'Delete');      // Supr quita a todos de ese día
     }
     const vs = van.length ? plVehs(m, d, p.clave, van) : null;
     if (vs) c.append(vs);
@@ -3962,7 +3962,7 @@ function plPintarProyectos() {
       const nota = $('#plCerrarNota');
       if (nota) nota.focus();
     });
-    cerrarB.disabled = !rc.dir;
+    cerrarB.disabled = !rcEscribe();
     cerrarB.setAttribute('aria-expanded', abierto ? 'true' : 'false');
     fila(li, p.titulo, [p.req ? 'N° ' + p.req : '', p.tag && p.tag !== p.titulo ? p.tag : '', p.lugar].filter(Boolean).join(' · '), plFuentes(t), chips,
       [boton('Ver recorrido', 'ver', 'Sus etapas, sus datos y sus enlaces', () => rcVerDetalle(t.clave)), cerrarB]);
@@ -3978,7 +3978,7 @@ function plPintarProyectos() {
         plQuitarProyecto(p.clave);
         plAvisarCierre(p.titulo + ' ya no está en ' + plEsta(s) + '. Lo asignado se sigue viendo.', true);
       });
-      b.disabled = !rc.dir;
+      b.disabled = !rcEscribe();
       fila(li, p.titulo, [p.req ? 'N° ' + p.req : '', p.lugar].filter(Boolean).join(' · '), 'Agregado a mano: vale solo para ' + plEsta(s), [], [b]);
       um.append(li);
     });
@@ -3990,7 +3990,7 @@ function plPintarProyectos() {
       const li = crear('li');
       li.dataset.tarjeta = t.clave;
       const b = boton('Reabrir', 'reabrir', 'Sigue en obra: vuelve a ejecución y a la planificación', () => plReabrir(t));
-      b.disabled = !rc.dir;
+      b.disabled = !rcEscribe();
       fila(li, t.titulo, [t.req ? 'N° ' + t.req : '', t.tag && t.tag !== t.titulo ? t.tag : ''].filter(Boolean).join(' · '),
         'Cerrado' + (e.por ? ' por ' + e.por : '') + ' ' + plCuando(e.t) + (e.nota ? ': «' + e.nota + '»' : ''), [], [b]);
       uc.append(li);

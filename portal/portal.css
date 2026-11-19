@@ -307,12 +307,25 @@ button, input, select { font: inherit; }
 .mv-entrar[hidden] { display: none; }
 .mv-entrar input { width: 12em; min-width: 0; padding: 4px 8px; border: 1px solid var(--tinte-borde); border-radius: 8px; background: var(--surface-card); color: var(--text-primary); font: inherit; font-weight: 400; }
 .mv-entrar .cx-boton { padding: 4px 14px; }
-/* Lo que solo sirve para cambiar algo no se muestra; lo demás que cambia algo lo frena mvNoSe() con un aviso */
-html.solo-lectura :is(#rcPedirVuelta, #plAgregar, #plCopiar, #pqNuevo, #obsNueva, .ej-renombrar, #vistaPlan .pl-mas,
-  #vistaPlan .pl-nuevo, #vistaPlan .pl-arr, #vistaPlan .pl-vacia-copiar) { display: none !important; }
-/* En el Inicio, las que en este navegador no funcionan: sin la carpeta (subir, rendir) o sin Sistema QUEMPIN */
-.ini-item.apagado { opacity: 0.42; }
-.ini-item.apagado:hover { border-color: var(--gridline); }
+/* Solo lectura (pedido del usuario, 2026-11-18): lo que cambia algo ni siquiera se muestra. Los controles que cambian
+   algo se habilitan con rcEscribe(): en solo lectura quedan deshabilitados y aquí se esconden; los menús que muestran un
+   valor (el estado de una compra) se ven como texto. Lo que se toca para cambiar una casilla no responde. Si algo se
+   cuela, mvNoSe() lo frena con un aviso. */
+html.solo-lectura :is(#rcPedirVuelta, #plAgregar, #plCopiar, #plProyectos, #pqNuevo, #obsNueva, .ej-renombrar,
+  #vistaPlan .pl-mas, #vistaPlan .pl-nuevo, #vistaPlan .pl-arr, #vistaPlan .pl-vacia-copiar, #vistaPlan .pl-agregar-pie,
+  #vistaPlan .pl-pausar, #vistaPlan .pl-quitar, #vistaRecorrido .rc-accion, #vistaEjecucion .ej-av-form,
+  #vistaEjecucion .ej-nuevo, #vistaEjecucion .ej-cal-abrir, #vistaEjecucion #ejCalCaja, #vistaEjecucion .ej-c-sim,
+  #vistaEjecucion .ej-c-acc, #vistaObservaciones .obs-retirar) { display: none !important; }
+html.solo-lectura :is(#vistaEjecucion, #vistaPlan, #vistaRecorrido, #vistaPlanilla, #vistaObservaciones, dialog.solo-ver)
+  :is(button, input:not([type="text"]):not([type="date"]):not([type="time"]):not([type="number"])):disabled { display: none !important; }
+html.solo-lectura #vistaPlan :is(.pl-celda, .pl-cuadro, .pl-per, .pl-proy, .pl-chip) { pointer-events: none; }
+html.solo-lectura :is(#vistaEjecucion, dialog.solo-ver) :is(select, input, textarea):disabled {
+  -webkit-appearance: none; appearance: none; opacity: 1; color: var(--text-primary); -webkit-text-fill-color: var(--text-primary);
+  background: none; border-color: transparent; box-shadow: none; pointer-events: none;
+}
+dialog.solo-ver :is(.btn-pri, .ej-borrar, #pqCancelar) { display: none !important; }
+dialog.solo-ver .pl-vista:not(.activa):not([aria-checked="true"]) { display: none; }
+dialog.solo-ver .pl-vista { pointer-events: none; }
 @media (max-width: 640px) { .mv-entrar { margin-left: 0; flex: 1 1 100%; } .mv-entrar input { flex: 1 1 auto; font-size: 16px; } }
 /* Las pestañas se encogen como las de un navegador (nombre corto y puntos suspensivos) en vez
    de desplazarse; el nombre completo queda en el title. */
@@ -1178,7 +1191,7 @@ html.solo-lectura :is(#rcPedirVuelta, #plAgregar, #plCopiar, #pqNuevo, #obsNueva
 .pl-mas {
   align-self: flex-start; min-height: 24px; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px 0 6px;
   border-radius: 6px; border: 1px dashed var(--baseline); color: var(--texto-suave); font-size: 12px; font-weight: 700;
-  opacity: 0.6; transition: opacity 0.12s;
+  opacity: 0.9; transition: opacity 0.12s;   /* 0.6 dejaba el texto en 2,6:1 */
 }
 /* Con algo ya asignado, el «+» aparece en la esquina al pasar el mouse (o con el teclado): las filas quedan bajas */
 .pl-mas.flota {
@@ -2240,9 +2253,9 @@ details.pl-panel[open] { padding-bottom: 10px; }
 /* Por hacer (vuelta 3): lo que el proyecto espera, cada cosa con su botón */
 .ej-porhacer { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--tinte-borde); background: var(--surface-card); }
 .ej-porhacer.al-dia { border-color: var(--border-hairline); }
-.ej-porhacer h3 { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; }
-.ej-porhacer h3 small { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--brand-orange); color: #000000; font-size: 12px; text-align: center; }
-.ej-porhacer.al-dia h3 { margin: 0 0 4px; }
+.ej-porhacer h2 { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; }
+.ej-porhacer h2 small { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: var(--brand-orange); color: #000000; font-size: 12px; text-align: center; }
+.ej-porhacer.al-dia h2 { margin: 0 0 4px; }
 .ej-porhacer.al-dia p { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-secondary); }
 .ej-porhacer ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 8px; }
 .ej-tarea { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 10px; border-radius: 10px; background: var(--page-plane); border: 1px solid var(--gridline); }
@@ -2931,7 +2944,7 @@ a.ej-d-ref:hover { text-decoration: underline; }
 .ej-porhacer > summary::after { content: ""; flex: 0 0 auto; margin-left: auto; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform 0.15s; color: var(--texto-suave); }
 .ej-porhacer[open] > summary::after { transform: rotate(-135deg); }
 .ej-porhacer > summary:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; border-radius: 12px; }
-.ej-porhacer h3, .ej-porhacer.al-dia h3 { margin: 0; flex: 0 0 auto; font-size: 14px; }
+.ej-porhacer h2, .ej-porhacer.al-dia h2 { margin: 0; flex: 0 0 auto; font-size: 14px; }
 .ej-porhacer-res { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--texto-suave); }
 .ej-porhacer[open] .ej-porhacer-res { visibility: hidden; }
 .ej-porhacer > ul, .ej-porhacer > p { padding: 0 14px 12px; }
@@ -3004,8 +3017,8 @@ a.ej-d-ref:hover { text-decoration: underline; }
 /* «Por hacer»: un botón chico arriba a la derecha; al abrirlo, la lista flota sobre la página */
 .ej-v2 .ej-porhacer { position: static; flex: 0 1 auto; min-width: 0; max-width: 440px; border-radius: 10px; }
 .ej-v2 .ej-porhacer > summary { padding: 5px 12px; gap: 8px; }
-.ej-v2 .ej-porhacer h3 { font-size: 13px; }
-.ej-v2 .ej-porhacer h3 small { font-size: 11px; }
+.ej-v2 .ej-porhacer h2 { font-size: 13px; }
+.ej-v2 .ej-porhacer h2 small { font-size: 11px; }
 .ej-v2 .ej-porhacer-res { max-width: 250px; font-size: 12px; }
 .ej-v2 .ej-porhacer > ul, .ej-v2 .ej-porhacer > p {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 6; width: min(460px, 100%); box-sizing: border-box; margin: 0; padding: 10px;

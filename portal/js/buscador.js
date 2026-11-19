@@ -11,7 +11,7 @@ let elegido = -1;
 function indiceBusqueda() {
   const items = [];
   REG.herramientas.forEach((h) => {
-    if (h.grupo === 'oculto' || h.tipo === 'inicio') return;
+    if (h.grupo === 'oculto' || h.tipo === 'inicio' || iniApagada(h)) return;
     const tipo = h.tipo === 'excel' || h.tipo === 'archivo' ? 'Excel' : h.tipo === 'programa' ? 'Programa' : h.grupo === 'calcular' ? 'Cálculo' : '';
     items.push({
       titulo: h.nombre, sub: GRUPO_NOMBRE.get(h.grupo) || 'Portal', tipo, calc: h.grupo === 'calcular',
@@ -81,7 +81,7 @@ function pintarResultados() {
   const q = $('#buscar').value;
   const caja = $('#resultados');
   caja.textContent = '';
-  if (!q.trim()) { caja.hidden = true; $('#buscar').setAttribute('aria-expanded', 'false'); return; }
+  if (!q.trim()) { caja.hidden = true; $('#buscar').setAttribute('aria-expanded', 'false'); $('#buscar').removeAttribute('aria-activedescendant'); return; }
   resultados = buscar(q);
   if (elegido >= resultados.length) elegido = resultados.length - 1;
   resultados.forEach((r, i) => {
@@ -102,6 +102,7 @@ function pintarResultados() {
     const fila = crear('div', 'res-fila');
     fila.setAttribute('role', 'presentation');
     const acc = crear('div', 'res-acc');
+    acc.setAttribute('aria-hidden', 'true');   // atajos del ratón (fuera del Tab): un listbox solo lleva opciones
     r.accesos.forEach((a) => {
       const x = crear('button', 'res-ir', a.nombre);
       x.type = 'button';
