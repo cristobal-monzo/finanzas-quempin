@@ -420,6 +420,23 @@ def test_las_pestanas_vuelven_al_recargar_y_solo_carga_la_activa(navegador, siti
     pagina.context.close()
 
 
+def test_las_pestanas_se_cierran_con_supr_y_la_lista_solo_tiene_pestanas(navegador, sitio):
+    """Revisión 2026-11-18 (axe aria-required-children): dentro del tablist solo hay role=tab; la ✕ queda para el
+    ratón (fuera del Tab y de los lectores de pantalla) y con el teclado se cierra con Supr sobre la pestaña."""
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _menu(pagina, "Centro de Costos")
+    _marco(pagina, "centro-costos", "cc")
+    roles = pagina.evaluate("""() => [...document.querySelectorAll('#pestanas button')]
+        .filter((b) => !b.closest('[aria-hidden="true"]') && b.getAttribute('aria-hidden') !== 'true').map((b) => b.getAttribute('role'))""")
+    assert roles and set(roles) == {"tab"}, roles
+    assert pagina.locator("#pestanas .pestana", has_text="Centro de Costos").locator(".x").get_attribute("tabindex") == "-1"
+    pagina.locator("#pestanas .ir", has_text="Centro de Costos").focus()
+    pagina.keyboard.press("Delete")
+    assert _pestanas(pagina) == ["Inicio"]
+    assert not errores
+    pagina.context.close()
+
+
 def test_lo_publicado_de_nuevo_se_carga_sin_f5(navegador, tmp_path):
     """Al día sin F5 (2026-11-18): una herramienta escondida que cambió en el sitio se recarga al tiro; la que se ve,
     tras 10 minutos sin tocarla (antes, un aviso con «Actualizar»); el Portal también. Con el reloj de Playwright."""
