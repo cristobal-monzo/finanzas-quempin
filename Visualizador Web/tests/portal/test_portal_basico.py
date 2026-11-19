@@ -715,3 +715,43 @@ def test_el_buscador_ofrece_formulador_seguimiento_o_ejecucion_segun_la_etapa(na
     assert pagina.locator("#resultados .res").count() <= 1
     assert not errores
     pagina.context.close()
+
+
+def test_cerrar_sesion_borra_la_clave_y_cierra_las_otras_pestanas(navegador, sitio):
+    # 2026-11-18: «Cerrar sesión en este equipo» borra la clave recordada; todas las herramientas la piden otra vez.
+    # Sin semilla: la del ayudante vuelve a escribir la clave en cada carga
+    pagina, errores = _abrir_portal(navegador, sitio, clave=False)
+    pagina.evaluate("localStorage.setItem('quempin_viz_clave', 'clave-de-mentira')")
+    otra = pagina.context.new_page()
+    otra.goto(sitio + "/finanzas-quempin/portal/")
+    otra.locator("#vistaInicio").wait_for()
+    otra.evaluate("window.__sinRecargar = true")
+    pagina.locator("#btnUsuario").click()
+    assert pagina.locator("#cerrarSesion").is_visible()
+    dialogos = []
+    pagina.on("dialog", lambda d: (dialogos.append(d.message), d.accept()))
+    with pagina.expect_navigation():
+        pagina.locator("#cerrarSesion").click()
+    pagina.locator("#vistaInicio").wait_for()
+    assert pagina.evaluate("localStorage.getItem('quempin_viz_clave')") is None
+    assert len(dialogos) == 1, dialogos      # nada sin guardar: una sola pregunta
+    # La otra pestaña del portal se recarga sola (no tenía nada sin guardar)
+    otra.wait_for_function("!window.__sinRecargar")
+    # Sin clave guardada, el botón no aparece y el tablero pide la contraseña
+    pagina.locator("#btnUsuario").click()
+    assert pagina.locator("#cerrarSesion").is_hidden()
+    pagina.keyboard.press("Escape")
+    _menu(pagina, "Centro de Costos")
+    assert _marco(pagina, "centro-costos", "cc").locator("#pwGate").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+def test_cancelar_cerrar_sesion_no_borra_nada(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.locator("#btnUsuario").click()
+    pagina.once("dialog", lambda d: d.dismiss())
+    pagina.locator("#cerrarSesion").click()
+    assert pagina.evaluate("localStorage.getItem('quempin_viz_clave')") == "clave-de-mentira"
+    assert not errores
+    pagina.context.close()

@@ -3255,6 +3255,7 @@ dialog[open] { max-height: calc(100dvh - 32px); overflow: hidden; display: flex;
 .pop-proyecto { padding: 12px; }
 .pop-proyecto > .pop-nota:first-child { margin: 0 2px 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border-hairline); font-size: 12.5px; }
 .pop-usuario #sinUsuario { margin-top: 4px; }
+.pop-usuario .pop-salir { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--border-hairline); border-radius: 0; }
 .resultados, .pop-proyecto { transform-origin: top right; }
 @media (prefers-reduced-motion: no-preference) {
   .resultados:not([hidden]), .pop-proyecto:not([hidden]), dialog[open] { animation: pop-entra 0.14s ease-out; }

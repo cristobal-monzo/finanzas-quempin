@@ -978,10 +978,25 @@ function abrirUsuario() {
     ul.append(li);
   });
   $('#sinUsuario').setAttribute('aria-selected', estado.usuario ? 'false' : 'true');
+  $('#cerrarSesion').hidden = !claveGuardada();
   $('#popUsuario').hidden = false;
   $('#btnUsuario').setAttribute('aria-expanded', 'true');
   const actual = ul.querySelector('[aria-selected="true"]') || ul.querySelector('.usr-op');
   if (actual) actual.focus();
+}
+// ---- Cerrar sesión en este equipo (2026-11-18) ------------------------------------------------
+// La contraseña del equipo no se guarda: el navegador recuerda la clave derivada (quempin_viz_clave), común a
+// los tableros, el Formulador, la Carta Gantt y el resumen del teléfono. Borrarla los cierra todos. El usuario
+// elegido y la carpeta conectada quedan: sin la clave no abren datos cifrados.
+function claveGuardada() {
+  try { return !!localStorage.getItem(LS_CLAVE_TABLEROS); } catch (e) { return false; }
+}
+function cerrarSesion() {
+  cerrarUsuario(false);      // abierto, el menú de usuario cuenta como «algo abierto» en adPortalOcupado
+  if (!confirm('¿Cerrar sesión en este equipo? Todas las herramientas volverán a pedir la contraseña del equipo.')) return;
+  if (adPortalOcupado() && !confirm('Hay algo sin guardar o abierto. ¿Cerrar la sesión igual?')) return;
+  try { localStorage.removeItem(LS_CLAVE_TABLEROS); } catch (e) { /* nada */ }
+  location.reload();
 }
 function cerrarUsuario(devolverFoco) {
   const pop = $('#popUsuario');

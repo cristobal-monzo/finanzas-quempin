@@ -160,9 +160,13 @@ rótulos y código siguen públicos. Nada con datos se publica fuera de un sobre
 - El navegador recuerda la clave derivada (`quempin_viz_clave`), común a los tableros y al
   Formulador (`<script id="llaveFormulador">` y copia idéntica de `candado.js`, lo exige
   `test_candado.py`).
-- **Cambiar la contraseña**: edita `.contrasena_tableros`, regenera y publica los 8 tableros,
-  regenera el sobre del Formulador (`py -3.14 "Visualizador Web/candado.py" --llave-formulador`)
-  y publícalo, y avisa al equipo. Debe ser larga: lo cifrado es público y atacable sin conexión.
+- **Cambiar la contraseña** (2026-11-18): `py -3.14 "Visualizador Web/cambiar_contrasena.py"` dice qué haría;
+  con `--cambiar` genera una nueva (4 palabras y 4 números), vuelve a cifrar lo publicado en `gh-pages` y los
+  `build/` (sin regenerar: abre cada sobre con la anterior y lo cifra con la nueva), escribe la llave del
+  Formulador, sube los dos repos y rearma el resumen del teléfono. Nunca la imprime: queda en
+  `.contrasena_tableros`. Si se corta, correrlo de nuevo lo termina (`.contrasena_tableros.anterior`). Después,
+  avisa al equipo. Hazlo cuando alguien deja la empresa o pierde un equipo con la sesión abierta.
+- **Cerrar sesión en un equipo**: opción en la ventana del usuario del Portal (`portal/docs/interfaz.md`).
 - **Tablero nuevo**: `<script>__CANDADO_JS__</script>` antes de su `<script id="xx-data-b64"
   type="text/plain">`, `QuempinCandado.abrir('xx-data-b64', initApp)` en vez de un gate propio,
   y `candado.incrustar(...)` como último reemplazo del build. `test_candado.py` lo exige.
