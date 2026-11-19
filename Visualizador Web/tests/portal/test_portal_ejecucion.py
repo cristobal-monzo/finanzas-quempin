@@ -855,14 +855,14 @@ def test_los_dias_trabajados_estiman_la_mano_de_obra_real(navegador, sitio):
     hoy = date.today().isoformat()
     # El calendario del mes (2026-11-06): se marca el día, se eligen quiénes y se anota de una vez
     pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{hoy}"]').click()
-    for per in ("NB", "SV"):
+    for per in ("NB", "MP"):
         pagina.locator(".ej-quienes label", has_text=per).locator("input").check()
     assert pagina.locator("#ejDiasAnotar").inner_text() == "Anotar 2 DH"
     pagina.locator("#ejDiasAnotar").click()
     dias = lambda s: sorted((x["fecha"], x["persona"], x["nivel"], x.get("origen", "")) for x in s["datos"]["items"]
                             if x["tipo"] == "dia" and not x.get("borrado"))
     sobre = _esperar_archivo(pagina, EJ, lambda s: len(dias(s)) == 2)
-    assert dias(sobre) == [(hoy, "NB", 2, ""), (hoy, "SV", 2, "")]
+    assert dias(sobre) == [(hoy, "MP", 2, ""), (hoy, "NB", 2, "")]
     assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
     # Su costo, a la tarifa del nivel 2 de la formulación, es la mano de obra real del resumen y de los indicadores
     pagina.wait_for_function("(js) => eval(js)().startsWith('$120.000')", arg=JS_EJ_MO)
@@ -974,24 +974,24 @@ def test_el_calendario_anota_varios_dias_de_una_vez_y_medio_dia(navegador, sitio
         pagina.locator(f'.ej-cal-dia[data-iso="{(hoy + timedelta(days=1)).isoformat()}"]').is_disabled(), "un día que no llega no se marca"
     for d in dias:
         pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{d.isoformat()}"]').click()
-    for per in ("NB", "SV"):
+    for per in ("NB", "EV"):
         pagina.locator(".ej-quienes label", has_text=per).locator("input").check()
     pagina.locator('#ejProyecto .ej-jornada .pl-vista[data-jornada="0.5"]').click()
     assert pagina.locator("#ejDiasAnotar").inner_text() == "Anotar " + f"{len(dias) * 2 * 0.5:g}".replace(".", ",") + " DH"
     pagina.locator("#ejDiasAnotar").click()
     lista = lambda s: sorted((x["fecha"], x["persona"], x["jornada"]) for x in s["datos"]["items"] if x["tipo"] == "dia" and not x.get("borrado"))
     sobre = _esperar_archivo(pagina, EJ, lambda s: len(lista(s)) == 2 * len(dias))
-    assert lista(sobre) == sorted((d.isoformat(), p, 0.5) for d in dias for p in ("NB", "SV"))
+    assert lista(sobre) == sorted((d.isoformat(), p, 0.5) for d in dias for p in ("NB", "EV"))
     assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
     celda = pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{hoy.isoformat()}"]')
     celda.locator(".ej-cal-per", has_text="NB½").wait_for()
-    # Quitar: el día de hoy de NB (SV queda desmarcado: solo se quita lo de los elegidos)
-    pagina.locator(".ej-quienes label", has_text="SV").locator("input").uncheck()
+    # Quitar: el día de hoy de NB (EV queda desmarcado: solo se quita lo de los elegidos)
+    pagina.locator(".ej-quienes label", has_text="EV").locator("input").uncheck()
     celda.click()
     assert pagina.locator("#ejDiasQuitar").inner_text() == "Quitar 1 día anotado"
     pagina.locator("#ejDiasQuitar").click()
     sobre = _esperar_archivo(pagina, EJ, lambda s: len(lista(s)) == 2 * len(dias) - 1)
-    assert (hoy.isoformat(), "NB", 0.5) not in lista(sobre) and (hoy.isoformat(), "SV", 0.5) in lista(sobre)
+    assert (hoy.isoformat(), "NB", 0.5) not in lista(sobre) and (hoy.isoformat(), "EV", 0.5) in lista(sobre)
     assert not errores
     pagina.context.close()
 

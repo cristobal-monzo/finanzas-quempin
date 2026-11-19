@@ -341,7 +341,7 @@ def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
     pagina.locator("#pestanas .ir").first.click()
     pagina.locator("#btnUsuario").click()
     pagina.locator("#sinUsuario").click()
-    assert pagina.locator("#iniQuien button").all_inner_texts() == ["NB", "ES", "LC", "CM", "MP", "SV"]
+    assert pagina.locator("#iniQuien button").all_inner_texts() == ["NB", "ES", "LC", "CM", "MP"]
     pagina.locator('#iniQuien button[data-usuario="CM"]').click()
     assert pagina.evaluate("localStorage.getItem('quempin_usuario')") == "CM" and pagina.locator("#tituloInicio b").inner_text() == "CM"
     assert not errores
