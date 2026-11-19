@@ -371,7 +371,7 @@ function pqListas() {
     .map((r) => (rcNum(r.numero) + '. ' + (apodoDe(r.numero) || rcLegible(r.titulo))).slice(0, 80)));
 }
 function pqAbrir(fila, pre) {
-  if (!fila && mvNoSe()) return;      // un requerimiento nuevo; uno que ya está se puede mirar
+  if (!fila && mvNoSe()) return;      // un requerimiento nuevo; uno que ya está se abre para mirarlo (mvSoloVer)
   if (!rc.dir || !rc.datos) return;
   const nuevo = !fila;
   const n = nuevo ? pqSiguienteN() : fila.numero;
@@ -410,6 +410,7 @@ function pqAbrir(fila, pre) {
   $('#pqFormular').hidden = nuevo;
   pq.inicial = pqLeerForm();
   const dlg = $('#dlgPlanilla');
+  mvSoloVer(dlg);
   if (!dlg.open) dlg.showModal();
   (nuevo ? $('#pqTitulo') : $('#pqEstado')).focus();
 }

@@ -11,7 +11,7 @@ let elegido = -1;
 function indiceBusqueda() {
   const items = [];
   REG.herramientas.forEach((h) => {
-    if (h.grupo === 'oculto' || h.tipo === 'inicio') return;
+    if (h.grupo === 'oculto' || h.tipo === 'inicio' || iniApagada(h)) return;
     const tipo = h.tipo === 'excel' || h.tipo === 'archivo' ? 'Excel' : h.tipo === 'programa' ? 'Programa' : h.grupo === 'calcular' ? 'Cálculo' : '';
     items.push({
       titulo: h.nombre, sub: GRUPO_NOMBRE.get(h.grupo) || 'Portal', tipo, calc: h.grupo === 'calcular',

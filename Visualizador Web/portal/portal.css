@@ -307,12 +307,25 @@ button, input, select { font: inherit; }
 .mv-entrar[hidden] { display: none; }
 .mv-entrar input { width: 12em; min-width: 0; padding: 4px 8px; border: 1px solid var(--tinte-borde); border-radius: 8px; background: var(--surface-card); color: var(--text-primary); font: inherit; font-weight: 400; }
 .mv-entrar .cx-boton { padding: 4px 14px; }
-/* Lo que solo sirve para cambiar algo no se muestra; lo demás que cambia algo lo frena mvNoSe() con un aviso */
-html.solo-lectura :is(#rcPedirVuelta, #plAgregar, #plCopiar, #pqNuevo, #obsNueva, .ej-renombrar, #vistaPlan .pl-mas,
-  #vistaPlan .pl-nuevo, #vistaPlan .pl-arr, #vistaPlan .pl-vacia-copiar) { display: none !important; }
-/* En el Inicio, las que en este navegador no funcionan: sin la carpeta (subir, rendir) o sin Sistema QUEMPIN */
-.ini-item.apagado { opacity: 0.42; }
-.ini-item.apagado:hover { border-color: var(--gridline); }
+/* Solo lectura (pedido del usuario, 2026-11-18): lo que cambia algo ni siquiera se muestra. Los controles que cambian
+   algo se habilitan con rcEscribe(): en solo lectura quedan deshabilitados y aquí se esconden; los menús que muestran un
+   valor (el estado de una compra) se ven como texto. Lo que se toca para cambiar una casilla no responde. Si algo se
+   cuela, mvNoSe() lo frena con un aviso. */
+html.solo-lectura :is(#rcPedirVuelta, #plAgregar, #plCopiar, #plProyectos, #pqNuevo, #obsNueva, .ej-renombrar,
+  #vistaPlan .pl-mas, #vistaPlan .pl-nuevo, #vistaPlan .pl-arr, #vistaPlan .pl-vacia-copiar, #vistaPlan .pl-agregar-pie,
+  #vistaPlan .pl-pausar, #vistaPlan .pl-quitar, #vistaRecorrido .rc-accion, #vistaEjecucion .ej-av-form,
+  #vistaEjecucion .ej-nuevo, #vistaEjecucion .ej-cal-abrir, #vistaEjecucion #ejCalCaja, #vistaEjecucion .ej-c-sim,
+  #vistaEjecucion .ej-c-acc, #vistaObservaciones .obs-retirar) { display: none !important; }
+html.solo-lectura :is(#vistaEjecucion, #vistaPlan, #vistaRecorrido, #vistaPlanilla, #vistaObservaciones, dialog.solo-ver)
+  :is(button, input:not([type="text"]):not([type="date"]):not([type="time"]):not([type="number"])):disabled { display: none !important; }
+html.solo-lectura #vistaPlan :is(.pl-celda, .pl-cuadro, .pl-per, .pl-proy, .pl-chip) { pointer-events: none; }
+html.solo-lectura :is(#vistaEjecucion, dialog.solo-ver) :is(select, input, textarea):disabled {
+  -webkit-appearance: none; appearance: none; opacity: 1; color: var(--text-primary); -webkit-text-fill-color: var(--text-primary);
+  background: none; border-color: transparent; box-shadow: none; pointer-events: none;
+}
+dialog.solo-ver :is(.btn-pri, .ej-borrar, #pqCancelar) { display: none !important; }
+dialog.solo-ver .pl-vista:not(.activa):not([aria-checked="true"]) { display: none; }
+dialog.solo-ver .pl-vista { pointer-events: none; }
 @media (max-width: 640px) { .mv-entrar { margin-left: 0; flex: 1 1 100%; } .mv-entrar input { flex: 1 1 auto; font-size: 16px; } }
 /* Las pestañas se encogen como las de un navegador (nombre corto y puntos suspensivos) en vez
    de desplazarse; el nombre completo queda en el title. */
