@@ -30,7 +30,7 @@ VISUALIZADOR = AQUI.parent
 RAIZ = VISUALIZADOR.parent
 PORTAL = VISUALIZADOR / "portal" / "index.html"
 BASES = ("/formulacion-proyectos-quempin/", "/finanzas-quempin/", "/calculadora-tecnica-quempin/")
-TIPOS = {"marco", "excel", "programa", "archivo", "ayuda", "inicio", "vista"}
+TIPOS = {"marco", "excel", "programa", "archivo", "inicio", "vista"}
 LS_PROYECTOS = "qpn.formulacion.proyectos.v1"
 # Lo que el portal carga del Formulador (mismo sitio), con el nombre global de cada uno
 FORMULADOR_JS = {"pulso.js": "QPulso", "calc.js": "QCalc", "pegar.js": "QPegar", "busqueda.js": "CHBusqueda"}

@@ -80,7 +80,7 @@ mejor navegación):
   `tema`: `cc_viz_theme`, `quempin_h2_theme`, `quempin_fp_theme`…).
 - **Una pestaña por herramienta**: las cuatro calculadoras son la familia
   `calculadora` (páginas hermanas con su propia ruta: elegir otra navega la
-  misma pestaña). Con el Formulador (Gantt, Seguimiento) y el Análisis
+  misma pestaña). Con el Formulador (Gantt) y el Análisis
   (Ingresar avance, que desde el 2026-11-18 no tiene acceso propio en el Inicio ni en el menú: grupo `oculto`, se llega por la pestaña «Ingresar datos» del Análisis) quedan 8 pestañas como máximo.
 - Pestañas con el ícono de su grupo e Inicio como casita; en el Inicio, un
   punto naranjo marca las herramientas que ya tienen pestaña.
@@ -114,15 +114,18 @@ sección de configuración con todo lo que hay que conectar, bien referenciado):
 
 **El registro** (`<script type="application/json" id="portal-registro">`):
 grupos y herramientas. Cada herramienta lleva:
-- `tipo`: marco, excel, programa, archivo, ayuda, inicio o vista (una sección
+- `tipo`: marco, excel, programa, archivo, inicio o vista (una sección
   propia del portal, en su pestaña: `vista` es su id).
 - `ruta` y `peru`.
 - **Sin selector de proyecto** (quitado el 2026-11-06, pedido del usuario: «no aporta»;
   `quempin_portal_proyecto` se borra al abrir). Antes, `requiereProyecto`: sin proyecto elegido, abría el selector en vez de la
-  herramienta. Lo lleva Seguimiento desde el 2026-10-25: sin proyecto era la
-  misma lista del Formulador con otro nombre.
+  herramienta.
+- **Sin «Seguimiento» ni «Cómo usar el portal» en el menú** (2026-11-18, pedido del usuario): Seguimiento abría la
+  misma lista del Formulador con otro nombre, y la ayuda la dan los ⓘ de cada pantalla. La página de seguimiento de
+  cada proyecto sigue en el Formulador (`#/p/<uid>/seguimiento`): el buscador, el Recorrido y Ejecución la abren en
+  la pestaña del Formulador.
 - `familia` y `alias`: la misma página va en una sola pestaña. El
-  Formulador incluye Seguimiento; el Análisis incluye Ingresar datos. Una
+  Análisis incluye Ingresar datos. Una
   dirección `…/portal/#/<herramienta>` abre esa y no su pareja aunque la
   pestaña de la visita anterior mostrara la otra (2026-10-25: `#/ingresar`
   dejaba el Resumen). La
@@ -148,14 +151,14 @@ Una herramienta nueva es una entrada ahí. Un tablero nuevo va además en
 - Si una herramienta se va a otra por su cuenta (el selector de
   calculadora), la pestaña la sigue.
 - **Proyecto elegido** (histórico: el selector ya no existe; cada herramienta abre en su vista general y el buscador
-  lleva al Seguimiento de un proyecto): lee, nunca escribe, `qpn.formulacion.proyectos.v1` del
+  lleva al seguimiento de un proyecto, en la pestaña del Formulador): lee, nunca escribe, `qpn.formulacion.proyectos.v1` del
 Formulador, con la última versión de cada código. Se abre así:
 
 | Herramienta | Dirección |
 |---|---|
 | Formulador | `#/req/<N°>`, o `#/tag/` o `#/p/<uid>/ficha` |
 | Carta Gantt | `#/p/<uid>/gantt` |
-| Seguimiento | `#/p/<uid>/seguimiento` |
+| Formulador, seguimiento del proyecto | `#/p/<uid>/seguimiento` |
 | Centro de Costos (Chile) | `#tag=` |
 | Análisis Financiero | `#proyecto=` |
 

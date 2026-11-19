@@ -376,10 +376,10 @@ function herramientaDeUrl(u) {
   return null;
 }
 const baseDe = (h) => (estado.pais === 'pe' && h.peru ? h.peru : h.ruta);
-/* Sin selector de proyecto (quitado el 2026-11-06, pedido del usuario: «no aporta»): el Formulador, su Seguimiento y
+/* Sin selector de proyecto (quitado el 2026-11-06, pedido del usuario: «no aporta»): el Formulador y
    la Carta Gantt abren en su lista; los tableros, en su vista general. */
 function hashProyecto(h) {
-  return ['formulador', 'seguimiento', 'gantt'].includes(h.proyecto) ? '#/' : '';
+  return ['formulador', 'gantt'].includes(h.proyecto) ? '#/' : '';
 }
 function urlDe(h, sub) {
   const hp = hashProyecto(h);
@@ -666,7 +666,6 @@ function abrir(id, op) {
   if (h.tipo === 'excel') { usoAnotar(h.id); abrirExcel(h); return; }
   if (h.tipo === 'programa') { usoAnotar(h.id); abrirPrograma(h); return; }
   if (h.tipo === 'archivo') { mostrarInfo(h); return; }
-  if (h.tipo === 'ayuda') { $('#dlgAyuda').showModal(); return; }
   if (h.tipo === 'vista') {
     if (!pestanaDe(h.id)) estado.pestanas.push({ familia: h.id, herr: h.id, url: '', ultima: '', marco: null, cargador: null, cargando: false, usado: 0 });
     activar(h.id);

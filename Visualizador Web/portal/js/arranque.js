@@ -504,7 +504,7 @@ if (nuevoPedido) {
 if (nuevoPedido && !pedida) { /* ya abierta por pqNuevoCon */ }
 else if (pedida && (pedida.tipo === 'marco' || pedida.tipo === 'vista')) {
   // Si la pestaña de la visita anterior mostraba otra herramienta de la misma página (Análisis
-  // Financiero e Ingresar avance, Formulador y Seguimiento), se abre la pedida: antes quedaba la
+  // Financiero e Ingresar avance), se abre la pedida: antes quedaba la
   // anterior con el nombre de la pedida (…/portal/#/ingresar mostraba el Resumen, 2026-10-25).
   const ya = pestanaDe(familiaDe(pedida));
   if (ya && ya.herr === pedida.id) activar(ya.familia); else abrir(pedida.id);
