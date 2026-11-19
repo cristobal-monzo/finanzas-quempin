@@ -78,10 +78,18 @@ tocar. Una vista nueva lleva su documento ahí, no un bloque en este archivo.
   `datos/<parte>.json` (los sube la tarea del procesador con `Sistema Intercambio/resumen_movil.py`), los abre con
   `../candado.js` y la clave `quempin_viz_clave`, y arma una carpeta de mentira de solo lectura (`mvCarpeta`) que
   las vistas leen igual. Franja «Solo lectura · datos de las HH:MM» (ámbar con más de 2 h; sin clave, pide la
-  contraseña). **Todo lo que cambia algo empieza con `if (mvNoSe()) return;`** (o `soloLectura()` en lo que corre
-  solo); lo que solo sirve para cambiar se esconde con `html.solo-lectura` en `portal.css`. Una función nueva que
-  escribe lleva su freno: si no, en el teléfono parecería guardar y se perdería. En el Inicio se apagan Subir,
-  Rendiciones y lo de Sistema QUEMPIN (`iniApagada`). Pruebas: `tests/portal/test_portal_movil.py`.
+  contraseña). **Pedido del usuario (2026-11-18, después de verlo en el iPhone): lo que no se puede hacer ahí ni
+  siquiera aparece; lo que sí funciona en el teléfono queda operativo.** Por eso, al agregar algo que cambia datos:
+  - el control se habilita con `rcEscribe()` (carpeta y no solo lectura), **no con `rc.dir`**: deshabilitado,
+    `html.solo-lectura` lo esconde (un menú que muestra un valor se ve como texto); un botón que se pone solo si se puede
+    escribir, con `if (rcEscribe())`; lo que no tiene otra marca, en la lista de `html.solo-lectura` de `portal.css`;
+  - la función que escribe empieza con `if (mvNoSe()) return;` (o `soloLectura()` si corre sola), por si algo se cuela;
+  - un diálogo con los datos de algo se abre igual para mirarlo: `mvSoloVer(dlg)` antes de `showModal()`.
+  Sin `showDirectoryPicker`, Subir, Rendiciones y lo de Sistema QUEMPIN no están en el Inicio, el menú ni el buscador
+  (`iniApagada`), y `ESTILO_INCRUSTADO` esconde en las herramientas lo que guarda por la carpeta
+  (`html[data-portal-solo-ver]`). Siguen operativos: el usuario, el tema, los filtros, las calculadoras y los tableros. Pruebas: `tests/portal/test_portal_movil.py`, también en Safari
+  de iPhone emulado si está WebKit (`py -3.14 -m playwright install webkit`; el CI no lo instala y esa prueba se salta).
+  Safari necesita iOS 16.4 o más nuevo (`DecompressionStream`); en uno más viejo se ve el aviso de siempre.
 - **Escritura en la carpeta**: un archivo por navegador
   (`quempin_portal_dispositivo`), para que OneDrive nunca junte dos versiones; se
   une todo y en cada casilla manda el cambio más reciente (`t`), también si es

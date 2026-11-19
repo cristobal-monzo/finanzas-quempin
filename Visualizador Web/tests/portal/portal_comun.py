@@ -212,6 +212,7 @@ def navegador():
             nav = p.chromium.launch()
         except Exception as error:   # sin Chromium instalado (py -3.14 -m playwright install chromium)
             pytest.skip(f"no se pudo abrir Chromium: {error}")
+        nav.qpn_playwright = p      # para abrir otro motor en el mismo hilo (WebKit: test_portal_movil.py)
         yield nav
         nav.close()
 

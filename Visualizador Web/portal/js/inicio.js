@@ -33,18 +33,13 @@ function iniBoton(h) {
     f.append(icono('fuera', 12));
     b.append(f, crear('span', 'sr', h.tipo === 'programa' ? ' (abre Sistema QUEMPIN)' : ' (abre Excel)'));
   }
-  const apagada = iniApagada(h);
-  if (apagada) {
-    b.classList.add('apagado');
-    b.setAttribute('aria-disabled', 'true');
-    b.title = apagada;
-  }
-  b.addEventListener('click', () => { if (apagada) avisar(apagada); else abrir(h.id); });
+  b.addEventListener('click', () => abrir(h.id));
   return b;
 }
-/* Maqueta M3 del teléfono (2026-11-18): en un navegador que no abre la carpeta del equipo (el teléfono, Safari,
-   Firefox) se apagan las que solo sirven con ella para escribir y las que abren Sistema QUEMPIN. Las calculadoras, los
-   tableros y lo que se lee del resumen (js/resumen.js) siguen. Devuelve por qué está apagada, o ''. */
+/* El teléfono (2026-11-18): en un navegador que no abre la carpeta del equipo (el teléfono, Safari, Firefox) no se
+   muestran, ni en el Inicio ni en el menú ni en el buscador, las que solo sirven con ella para escribir y las que abren
+   Sistema QUEMPIN (pedido del usuario: lo que no se puede hacer aquí, ni siquiera como opción). Las calculadoras, los
+   tableros y lo que se lee del resumen (js/resumen.js) siguen. Devuelve por qué no va, o ''. */
 const INI_SOLO_CARPETA = new Set(['subir-cc', 'rendiciones']);
 function iniApagada(h) {
   if (typeof window.showDirectoryPicker === 'function') return '';
@@ -60,7 +55,7 @@ function pintarInicio() {
   document.querySelectorAll('#iniAreas .ini-area').forEach((sec) => {
     const ul = sec.querySelector('.ini-tiles');
     if (ul.childElementCount) return;      // no depende de datos: se arma una vez
-    REG.herramientas.filter((h) => h.grupo === sec.dataset.grupo).forEach((h) => {
+    REG.herramientas.filter((h) => h.grupo === sec.dataset.grupo && !iniApagada(h)).forEach((h) => {
       const li = crear('li');
       li.append(iniBoton(h));
       ul.append(li);
