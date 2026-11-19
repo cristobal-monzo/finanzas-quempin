@@ -340,6 +340,8 @@ dialog.solo-ver .pl-vista { pointer-events: none; }
 .pestana:not(.solo) .ir { padding-right: 10px; }
 .pestana.activa:not(.solo) .ir { padding-right: 32px; }
 .pestana.solo { flex-shrink: 0; }
+.pestana.arrastrando { z-index: 2; opacity: .85; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+.pestana.arrastrando, .pestana.arrastrando .ir { cursor: grabbing; }
 .pestana.activa { background: var(--page-plane); border-color: var(--gridline); flex-shrink: 0; }
 .pestana .ir {
   flex: 1 1 auto; min-width: 0;

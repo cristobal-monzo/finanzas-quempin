@@ -94,7 +94,7 @@ proyecto y en general, con UX profesional):
   - Compartir por persona: quien no tiene nada en la semana va en una línea («Sin proyectos esta semana»).
   - Pruebas: desde `test_diez_vueltas_dias_grupos_jornadas_y_compartir`.
 - **El personal** es el bloque `"personal"` del registro (NB, ES, LC, CM, MP,
-  SV, EV y, desde el 2026-10-26, RL): incluye a todos los `"usuarios"` y puede
+  EV y, desde el 2026-10-26, RL): incluye a todos los `"usuarios"` y puede
   tener más (EV y RL se planifican pero no eligen usuario en las herramientas).
   El usuario elegido va en naranjo.
 - **Agregar a mano** (2026-10-26, pedido del usuario: «agregar una persona
@@ -281,7 +281,7 @@ maquetas del resumen general y 5 variantes de «Hoy en grande»):
   uno va a dos lugares ese día. El detalle va en el `title`.
 - **Avisos** (`.pl-sem-avisos`): «N proyectos sin nadie esta semana» (abre la lista de la alarma, como la cifra del
   resumen), un vehículo en dos lugares por día (muestra ese día en grande) y las ausencias, una línea por persona y
-  motivo («SV: vacaciones, 1 día»).
+  motivo («EV: vacaciones, 1 día»).
 - Bajo 900 px de ancho la semana pasa abajo del día; en el teléfono el día se sigue eligiendo también arriba.
 - Pruebas: `test_general_muestra_un_dia_en_grande_y_la_semana_al_lado`,
   `test_general_avisa_el_vehiculo_en_dos_lugares_y_las_ausencias`; las pruebas que tocan un día en General lo eligen

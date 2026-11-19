@@ -167,14 +167,17 @@ Si el proyecto cambia, las pestañas abiertas se van a él.
   enlace web.
 - QUEMPIN.exe (cotización, OC, clientes): se abre por `quempin://`, fuera
   del navegador.
+- **Mover pestañas** (pedido del usuario, 2026-11-18): se arrastran con el mouse
+  (desde 6 px; un clic corto solo activa) o con Ctrl+Shift+← → sobre la pestaña.
+  Inicio queda siempre primera. El orden queda en `quempin_portal_pestanas`.
 - **En el navegador**: guarda `quempin_portal_pestanas` (vuelven sin cargar,
-solo la activa), `quempin_portal_proyecto`, `quempin_portal_menu` y
+solo la activa, en el orden en que se dejaron), `quempin_portal_proyecto`, `quempin_portal_menu` y
 `quempin_portal_pais`. El tema usa `quempin_hub_theme`, el del índice. Cuando
 una herramienta guarda la contraseña, las que esperaban con el candado se
 recargan solas. Se mantienen 8 herramientas cargadas como máximo.
 
 **Usuario** (2026-10-16, pedido del usuario: «un selector de usuario» con
-NB, ES, LC, CM, MP, SV): botón `#btnUsuario` en la cabecera. Guarda las
+NB, ES, LC, CM, MP; SV salió el 2026-11-18): botón `#btnUsuario` en la cabecera. Guarda las
 iniciales **tal cual, sin JSON**, en `quempin_usuario`, la misma clave del
 Formulador (`js/usuario.js`), que las usa como responsable de lo que se crea,
 autor en el Control de Documentos y «Mis proyectos»; cada uno se entera del

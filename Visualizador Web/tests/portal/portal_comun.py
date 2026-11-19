@@ -365,7 +365,7 @@ def _plantilla_tablero(subruta, compilado):
 
 # ---- Usuario (2026-10-16): las iniciales del equipo, elegidas una vez por navegador -------------------
 
-USUARIOS = ["NB", "ES", "LC", "CM", "MP", "SV"]
+USUARIOS = ["NB", "ES", "LC", "CM", "MP"]
 
 
 def _proyectos_con_responsable():
@@ -533,7 +533,7 @@ def _inicio_con_semana(navegador, sitio, **kw):
     d = lambda i: (lunes + timedelta(days=i)).isoformat()
     asig = lambda i, per, p: {"dia": d(i), "persona": per, "proyecto": p, "activa": True, "t": _instante(-60), "por": "NB"}
     usos = [(0, "NB", "req:908"), (0, "ES", "req:908"), (0, "LC", "req:908"), (0, "CM", "req:907"), (0, "MP", "tag:SOLO"),
-            (0, "SV", "otra:bodega"), (2, "NB", "req:907"), (2, "ES", "req:907")]
+            (0, "EV", "otra:bodega"), (2, "NB", "req:907"), (2, "ES", "req:907")]
     pagina, errores = _portal_con_datos(navegador, sitio, usuario="LC", **kw)
     pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {f"publicado/planificacion/{semana}/otro0001.json": _sobre_plan(
         semana, lunes, "otro0001", [asig(*u) for u in usos], proyectos={"otra:bodega": {"titulo": "Bodega"}})})
