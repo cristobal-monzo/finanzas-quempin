@@ -590,6 +590,9 @@ function rcArmar(d, hoy) {
 }
 
 // ---- Leer la carpeta del equipo -------------------------------------------------------------------
+// Si este navegador puede cambiar algo en la carpeta: con el resumen del teléfono (js/resumen.js) se lee, pero no.
+// Un control que cambia algo se habilita con esto, no con rc.dir; en solo lectura, portal.css lo esconde.
+const rcEscribe = () => !!rc.dir && !soloLectura();
 const rcSinBom = (s) => String(s).replace(/^﻿/, '');
 async function rcSub(dir, ...camino) {
   try { let d = dir; for (const n of camino) d = await d.getDirectoryHandle(n); return d; } catch (e) { return null; }
@@ -1119,7 +1122,7 @@ function rcVerDetalle(clave) {
   // La etapa ya se ve en los seis pasos de arriba (2026-11-05: sin repetirla aquí)
   sigue.append(crear('h3', null, a.tipo === 'espera' ? 'En espera' : a.tipo === 'listo' ? 'Terminado' : 'Qué sigue'),
     crear('p', null, a.texto));
-  if (a.ir) {
+  if (a.ir && !(soloLectura() && a.tipo === 'hacer')) {      // en solo lectura, lo que hay que hacer se lee, sin el botón
     const acc = crear('div', 'cx-acc');
     const b = crear('button', a.tipo === 'hacer' ? 'cx-boton' : 'cx-enlace', a.tipo === 'espera' ? 'Ver su seguimiento' : a.corto);
     b.type = 'button';
@@ -1180,7 +1183,7 @@ function rcVerDetalle(clave) {
     const b = crear('button', 'cx-enlace', t.cierrePlan ? 'Reabrir: sigue en obra' : 'Dar por cerrado');
     b.type = 'button';
     b.dataset.op = t.cierrePlan ? 'reabrir' : 'cerrar';
-    b.disabled = !rc.dir;
+    b.disabled = !rcEscribe();
     b.title = t.cierrePlan ? 'Vuelve a ejecución y a la Planificación semanal' : 'Ya terminó y se entregó: pasa al «Cierre» y sale de la Planificación semanal';
     b.addEventListener('click', () => {
       if (t.cierrePlan) { plReabrir(t); rcVerDetalle(t.clave); return; }

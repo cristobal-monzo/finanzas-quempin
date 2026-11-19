@@ -48,7 +48,12 @@ const ESTILO_INCRUSTADO = [
   'html[data-en-portal="formulador"] a.viz-modnav-tab:hover { color: var(--text-primary); background: var(--gridline); }',
   'html[data-en-portal="formulador"] .viz-modnav-tab.is-active { color: var(--text-primary); }',
   'html[data-en-portal="formulador"] .viz-header .viz-theme-toggle { color: var(--text-primary); background: transparent; border-color: var(--gridline); }',
-  'html[data-en-portal="formulador"] .viz-header .viz-theme-toggle:hover { background: var(--gridline); }'
+  'html[data-en-portal="formulador"] .viz-header .viz-theme-toggle:hover { background: var(--gridline); }',
+  // En un navegador que no abre la carpeta del equipo (el teléfono, 2026-11-18, pedido del usuario: lo que no se puede
+  // hacer ahí ni siquiera aparece): lo que guarda a través del Portal o de la carpeta. «Ingresar datos» del Análisis
+  // Financiero, «Qué buscamos» de Oportunidades y «Llevar a un proyecto» del Cotizador.
+  'html[data-portal-solo-ver] #tabBtnIngreso, html[data-portal-solo-ver] [data-tab="tabBuscamos"],' +
+    ' html[data-portal-solo-ver] #btnLlevarProyecto { display: none !important; }'
 ].join('\n');
 function estilarMarco(p) {
   let doc = null;
@@ -63,6 +68,7 @@ function estilarMarco(p) {
   try { d = herramientaDeUrl(new URL(doc.URL)); } catch (e) { d = null; }
   const tipo = (d && d.h && d.h.incrustar) || '';
   raiz.setAttribute('data-en-portal', tipo);
+  if (typeof window.showDirectoryPicker !== 'function') raiz.setAttribute('data-portal-solo-ver', '');      // ESTILO_INCRUSTADO
   if (!tipo) return;
   const s = doc.createElement('style');
   s.id = 'portal-quempin-incrustado';

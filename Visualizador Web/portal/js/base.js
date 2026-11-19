@@ -410,7 +410,7 @@ function construirMenu() {
   const lista = $('#menuLista');
   lista.textContent = '';
   const arriba = crear('div', 'menu-arriba');
-  REG.herramientas.filter((h) => h.grupo === 'arriba').forEach((h) => arriba.append(itemMenu(h)));
+  REG.herramientas.filter((h) => h.grupo === 'arriba' && !iniApagada(h)).forEach((h) => arriba.append(itemMenu(h)));
   lista.append(arriba, crear('div', 'menu-sep'));
   REG.grupos.forEach((g) => {
     const sec = crear('section');
@@ -423,7 +423,7 @@ function construirMenu() {
     cab.append(i, crear('span', 'nom', g.nombre), f);
     const ul = crear('ul', 'grupo-items');
     ul.id = 'items-' + g.id;
-    REG.herramientas.filter((h) => h.grupo === g.id).forEach((h) => { const li = crear('li'); li.append(itemMenu(h)); ul.append(li); });
+    REG.herramientas.filter((h) => h.grupo === g.id && !iniApagada(h)).forEach((h) => { const li = crear('li'); li.append(itemMenu(h)); ul.append(li); });
     cab.addEventListener('click', () => {
       estado.menu.abierto = estado.menu.abierto === g.id ? null : g.id;
       guardar(LS.menu, estado.menu);

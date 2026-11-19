@@ -137,6 +137,17 @@ function mvNoSe() {
   return true;
 }
 
+/* Un diálogo con los datos de algo (un requerimiento, un gasto) se abre igual para mirarlo; en solo lectura sus campos
+   quedan sin poder tocarse y portal.css esconde lo que guarda o borra (dialog.solo-ver). Se llama justo antes de abrirlo. */
+function mvSoloVer(dlg) {
+  const si = soloLectura();
+  dlg.classList.toggle('solo-ver', si);
+  dlg.querySelectorAll('input, select, textarea').forEach((e) => {
+    if (si && !e.disabled) { e.disabled = true; e.dataset.mvApagado = '1'; }
+    else if (!si && e.dataset.mvApagado) { e.disabled = false; delete e.dataset.mvApagado; }
+  });
+}
+
 // ---- La franja «Solo lectura · datos de las HH:MM» ---------------------------------------------------------------
 function mvHora() {
   const d = new Date(mv.revisado);
