@@ -1554,6 +1554,10 @@ def test_los_vehiculos_caben_sin_desbordes(navegador, sitio, ancho):
         pagina.locator(f'.pl-vista[data-vista="{vista}"]').click()
         if movil:
             pagina.locator('#plDiasMovil .pl-dia-tab').first.click()      # el teléfono muestra hoy; los vehículos van el lunes
+        elif vista == "general":
+            # En el computador, General muestra hoy en grande (2026-11-16): de jueves a sábado no había vehículos y la
+            # prueba fallaba según el día (visto el 2026-11-19 en el CI, en hora UTC). Se elige el lunes.
+            pagina.evaluate("() => { planif.diaMovil = 0; plPintar(); }")
         pagina.locator(f"#pl{vista.capitalize()} .pl-veh >> visible=true").first.wait_for()
         d = pagina.evaluate(JS_DESBORDES)
         assert d["doc"] <= ancho and not d["fuera"], (vista, d)
