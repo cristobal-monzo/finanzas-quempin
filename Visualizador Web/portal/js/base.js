@@ -494,9 +494,16 @@ function pintarPestanas() {
     ir.setAttribute('aria-selected', activa ? 'true' : 'false');
     ir.setAttribute('aria-controls', p.inicio ? 'vistaInicio' : esVista(p) ? HERR.get(p.herr).vista : 'marco-' + p.familia);
     ir.title = p.inicio ? 'Inicio' : etiqueta(p, true);
-    ir.addEventListener('click', () => activar(p.familia));
+    ir.addEventListener('click', () => { if (!pestanaRecienMovida) activar(p.familia); });
     w.append(ir);
     if (!p.inicio) {
+      ir.setAttribute('aria-keyshortcuts', 'Control+Shift+ArrowLeft Control+Shift+ArrowRight');
+      ir.addEventListener('keydown', (e) => {
+        if (!e.ctrlKey || !e.shiftKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+        e.preventDefault();
+        moverPestana(p.familia, e.key === 'ArrowLeft' ? -1 : 1);
+      });
+      w.addEventListener('pointerdown', (e) => arrastreEmpezar(e, w));
       const x = crear('button', 'x');
       x.type = 'button';
       x.setAttribute('aria-label', 'Cerrar ' + ir.textContent);
@@ -612,6 +619,56 @@ function cerrar(familia) {
     guardarPestanas();
   }
 }
+// Mover pestañas (pedido del usuario, 2026-11-18): cada uno deja primero las que más usa. Se arrastran con el mouse o
+// con Ctrl+Shift+← →; Inicio queda siempre primera. El orden se guarda con las pestañas (quempin_portal_pestanas).
+let arrastre = null;
+let pestanaRecienMovida = false;
+function moverPestana(familia, paso) {
+  const i = estado.pestanas.findIndex((p) => p.familia === familia);
+  const j = i + paso;
+  if (i < 0 || j < 0 || j >= estado.pestanas.length) return;
+  const [p] = estado.pestanas.splice(i, 1);
+  estado.pestanas.splice(j, 0, p);
+  pintarPestanas();
+  guardarPestanas();
+  const b = $('#pestanas .pestana[data-familia="' + familia + '"] .ir');
+  if (b) b.focus();
+}
+function arrastreEmpezar(e, w) {
+  if (e.button !== 0 || e.pointerType === 'touch' || e.target.closest('.x')) return;
+  arrastre = { w, id: e.pointerId, x0: e.clientX, movido: false };
+}
+function arrastreMover(e) {
+  if (!arrastre || e.pointerId !== arrastre.id) return;
+  const w = arrastre.w;
+  if (!arrastre.movido) {
+    if (Math.abs(e.clientX - arrastre.x0) < 6) return;   // un clic que tiembla no mueve nada
+    arrastre.movido = true;
+    w.classList.add('arrastrando');
+    try { w.setPointerCapture(e.pointerId); } catch (err) { /* nada */ }
+  }
+  // Va delante de la primera pestaña cuyo centro queda a la derecha del puntero
+  const otras = [...$('#pestanas').children].filter((x) => x !== w && !x.classList.contains('solo'));
+  const antes = otras.find((x) => { const r = x.getBoundingClientRect(); return e.clientX < r.left + r.width / 2; }) || null;
+  if (antes ? w.nextElementSibling !== antes : w !== w.parentNode.lastElementChild) w.parentNode.insertBefore(w, antes);
+}
+function arrastreSoltar(e) {
+  if (!arrastre || e.pointerId !== arrastre.id) return;
+  const { w, movido } = arrastre;
+  arrastre = null;
+  if (!movido) return;
+  w.classList.remove('arrastrando');
+  const orden = [...$('#pestanas').children].map((x) => x.dataset.familia);
+  estado.pestanas.sort((a, b) => orden.indexOf(a.familia) - orden.indexOf(b.familia));
+  // El clic que sigue a soltar no activa la pestaña que quedó debajo
+  pestanaRecienMovida = true;
+  setTimeout(() => { pestanaRecienMovida = false; }, 0);
+  pintarPestanas();
+  guardarPestanas();
+}
+document.addEventListener('pointermove', arrastreMover);
+document.addEventListener('pointerup', arrastreSoltar);
+document.addEventListener('pointercancel', arrastreSoltar);
 function navegar(p, url) {
   p.url = url;
   p.ultima = url;
