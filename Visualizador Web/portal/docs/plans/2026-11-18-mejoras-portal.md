@@ -172,6 +172,28 @@ hay carpeta conectada. Solo lectura: escribir desde el teléfono queda fuera de 
 Hecho cuando: suite completa pasa, se publica, y en un teléfono real con la contraseña del equipo se ve la semana
 de la Planificación con la hora del resumen.
 
+### Cómo quedó (2026-11-18)
+- **Maquetas:** 4 ideas (M1 pestañas abajo, M2 todo en una página, M3 el Inicio de siempre, M4 lo mío). El usuario
+  eligió **M3** y pidió que las calculadoras queden. En el Inicio del teléfono se apagan solo Subir, Rendiciones,
+  Emitir cotización y Orden de compra (`iniApagada`); los tableros y las calculadoras siguen, porque ya funcionaban.
+- **Distinto de lo planeado:**
+  - Las vistas no se reescribieron para el resumen: `js/resumen.js` arma una carpeta de mentira de solo lectura con
+    la misma forma que la de verdad, y `rcCargar` se la pasa a todas. Así entran también el Recorrido y la semana del
+    Inicio, y la Ejecución se ve igual que en el computador, con las cotizaciones de las compras: todo va detrás de la
+    contraseña del equipo, igual que el tablero del Centro de Costos, que ya muestra cada factura.
+  - Sin esquema en `esquemas/`: el resumen no viaja por la carpeta de Intercambio; lleva copias de publicaciones que
+    ya tienen el suyo.
+  - En vez de un solo `resumen.json`, una parte cifrada por tema (`base`, `planificacion`, `ejecucion`, `formulador`,
+    `estado`) e `indice.json` sin cifrar con la hora y las huellas: una parte que no cambió conserva su sobre y no
+    agranda el historial de `gh-pages`. Medido: ~300 KB en total (formulador 139, ejecución 84, base 66).
+  - La subida no pasa por `.worktrees/gh-pages`: `publicar.subir_carpeta_aparte` arma el commit sobre
+    `origin/gh-pages` con un índice temporal, para no chocar con una sesión que esté publicando. `revisar_gh_pages`
+    pone al día esa carpeta sola si no tiene nada a medias.
+  - Además de «si cambió, cada 30 min», un latido cada hora: sin él, la franja se pondría ámbar con datos al día.
+- **Frenos:** cada función que cambia algo empieza con `mvNoSe()` (aviso «Solo lectura…»); lo que corre solo
+  (presencia, uso, guardar) con `soloLectura()`; lo que solo sirve para cambiar se esconde con `html.solo-lectura`.
+- **Falta (no se puede desde aquí):** abrirlo en un teléfono real con la contraseña del equipo.
+
 ---
 
 ## Fuera de este plan

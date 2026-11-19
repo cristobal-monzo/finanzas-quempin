@@ -296,6 +296,24 @@ button, input, select { font: inherit; }
   display: flex; align-items: flex-end; gap: 6px; padding: 0 8px 0 6px;
   background: var(--surface-1); border-bottom: 1px solid var(--gridline);
 }
+/* Sin la carpeta del equipo (2026-11-18, js/resumen.js): «Solo lectura · datos de las HH:MM», en tinte; ámbar con más
+   de 2 horas. Sin la contraseña recordada, la pide aquí mismo. */
+.mv-franja {
+  flex: 0 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 6px 14px;
+  background: var(--tinte); border-bottom: 1px solid var(--tinte-borde); color: var(--tinte-texto); font-size: 13px; font-weight: 700;
+}
+.mv-franja.viejo { background: color-mix(in srgb, var(--estado-warn) 16%, var(--surface-card)); border-color: var(--estado-warn); color: var(--text-primary); }
+.mv-entrar { display: flex; gap: 6px; margin-left: auto; }
+.mv-entrar[hidden] { display: none; }
+.mv-entrar input { width: 12em; min-width: 0; padding: 4px 8px; border: 1px solid var(--tinte-borde); border-radius: 8px; background: var(--surface-card); color: var(--text-primary); font: inherit; font-weight: 400; }
+.mv-entrar .cx-boton { padding: 4px 14px; }
+/* Lo que solo sirve para cambiar algo no se muestra; lo demás que cambia algo lo frena mvNoSe() con un aviso */
+html.solo-lectura :is(#rcPedirVuelta, #plAgregar, #plCopiar, #pqNuevo, #obsNueva, .ej-renombrar, #vistaPlan .pl-mas,
+  #vistaPlan .pl-nuevo, #vistaPlan .pl-arr, #vistaPlan .pl-vacia-copiar) { display: none !important; }
+/* En el Inicio, las que en este navegador no funcionan: sin la carpeta (subir, rendir) o sin Sistema QUEMPIN */
+.ini-item.apagado { opacity: 0.42; }
+.ini-item.apagado:hover { border-color: var(--gridline); }
+@media (max-width: 640px) { .mv-entrar { margin-left: 0; flex: 1 1 100%; } .mv-entrar input { flex: 1 1 auto; font-size: 16px; } }
 /* Las pestañas se encogen como las de un navegador (nombre corto y puntos suspensivos) en vez
    de desplazarse; el nombre completo queda en el title. */
 .pestanas-lista { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-end; gap: 2px; overflow-x: auto; overflow-y: hidden; }

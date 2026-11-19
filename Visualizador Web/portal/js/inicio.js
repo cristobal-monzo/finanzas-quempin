@@ -33,8 +33,24 @@ function iniBoton(h) {
     f.append(icono('fuera', 12));
     b.append(f, crear('span', 'sr', h.tipo === 'programa' ? ' (abre Sistema QUEMPIN)' : ' (abre Excel)'));
   }
-  b.addEventListener('click', () => abrir(h.id));
+  const apagada = iniApagada(h);
+  if (apagada) {
+    b.classList.add('apagado');
+    b.setAttribute('aria-disabled', 'true');
+    b.title = apagada;
+  }
+  b.addEventListener('click', () => { if (apagada) avisar(apagada); else abrir(h.id); });
   return b;
+}
+/* Maqueta M3 del teléfono (2026-11-18): en un navegador que no abre la carpeta del equipo (el teléfono, Safari,
+   Firefox) se apagan las que solo sirven con ella para escribir y las que abren Sistema QUEMPIN. Las calculadoras, los
+   tableros y lo que se lee del resumen (js/resumen.js) siguen. Devuelve por qué está apagada, o ''. */
+const INI_SOLO_CARPETA = new Set(['subir-cc', 'rendiciones']);
+function iniApagada(h) {
+  if (typeof window.showDirectoryPicker === 'function') return '';
+  if (h.tipo === 'programa') return h.nombre + ': abre Sistema QUEMPIN, que está en los computadores de la oficina.';
+  if (INI_SOLO_CARPETA.has(h.id)) return h.nombre + ': necesita un computador con Chrome o Edge y la carpeta del equipo conectada.';
+  return '';
 }
 function pintarInicio() {
   if (!ini.semAbrir) {

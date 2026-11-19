@@ -21,17 +21,20 @@ def test_cabecera_del_portal():
 
 def test_no_carga_nada_de_otro_sitio_ni_lleva_datos():
     html = texto_portal()
-    # Los scripts enlazados son el de las cajas de números (2026-11-10) y los del Portal en js/ (2026-11-18), del mismo
-    # sitio: publicar.py los copia con él.
+    # Los scripts enlazados son el de las cajas de números (2026-11-10), el candado que abre el resumen del teléfono y los
+    # del Portal en js/ (2026-11-18), del mismo sitio: publicar.py los copia con él.
     scripts = re.findall(r"<script[^>]+\bsrc=[^>]*>", html)
-    assert scripts == ['<script src="../numeros.js">'] + [f'<script src="js/{a}">' for a in archivos_js()], "sin scripts externos"
+    assert scripts == (['<script src="../numeros.js">', '<script src="../candado.js">']
+                       + [f'<script src="js/{a}">' for a in archivos_js()]), "sin scripts externos"
     # Las hojas que enlaza son la de las fuentes (2026-10-30) y portal.css (2026-11-18), del mismo sitio.
     assert re.findall(r"<link[^>]+stylesheet[^>]*>", html) == ['<link rel="stylesheet" href="../marca/fuentes.css">',
                                                               '<link rel="stylesheet" href="portal.css">']
     assert "@import" not in html, "sin hojas de estilo de otro sitio"
     assert not re.search(r"url\(\s*['\"]?https?:", html), "ninguna fuente de otro sitio"
-    # Solo lee la clave del candado y los proyectos del Formulador: nunca los escribe.
+    # Solo lee la clave del candado y los proyectos del Formulador: nunca los escribe. Excepción (2026-11-18): la franja del
+    # teléfono guarda la clave cuando alguien escribe la contraseña, como hace el candado de cada tablero (mvEntrar).
     assert not re.search(r"setItem\(\s*(LS_CLAVE_TABLEROS|LS_FORMULADOR|'quempin_viz_clave'|'qpn\.formulacion)", html)
+    assert re.findall(r"setItem\(\s*MV_CLAVE\b", html) == ["setItem(MV_CLAVE"]
     assert "innerHTML = ICONOS" in html and html.count("innerHTML") == 1, "los textos se escriben con textContent"
 
 

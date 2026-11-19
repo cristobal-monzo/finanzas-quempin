@@ -131,3 +131,7 @@ tmp/
 # datos (Visualizador Web/candado.py). Si se versiona, el cifrado no protege nada.
 **/.contrasena_tableros*
 **/planilla_escritura_estado*.json
+
+# Resumen cifrado del Portal en el teléfono (resumen_movil.py): se arma y se sube a gh-pages, no se versiona
+**/resumen_movil/
+**/resumen_movil_estado*.json

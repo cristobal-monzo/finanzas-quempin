@@ -126,6 +126,7 @@ def _sitio(raiz: Path):
                     ignore=shutil.ignore_patterns("docs", "*.py", "*.md", "__pycache__"))
     shutil.copytree(PORTAL.parents[1] / "marca", raiz / "finanzas-quempin" / "marca")
     shutil.copy2(PORTAL.parents[1] / "numeros.js", raiz / "finanzas-quempin" / "numeros.js")   # como lo deja publicar.py
+    shutil.copy2(PORTAL.parents[1] / "candado.js", raiz / "finanzas-quempin" / "candado.js")   # abre el resumen del teléfono
     pagina("/finanzas-quempin/", "Herramientas QUEMPIN", "indice")
     pagina("/finanzas-quempin/centro-de-costos/", "Centro de Costos", "cc", CABECERA_TABLERO + CANDADO + """
       <a id="aAF" href="../analisis-financiero/#proyecto=DEMO">Ficha en Análisis Financiero</a>

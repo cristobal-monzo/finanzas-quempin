@@ -112,7 +112,7 @@ def test_el_portal_se_publica_con_sus_partes_y_cada_una_con_su_huella(tmp_path):
     assert sorted(huellas) == js
     assert re.search(r'<link rel="stylesheet" href="portal\.css\?v=[0-9a-f]{12}">', pagina)
     assert '<script src="../numeros.js">' in pagina and 'href="../marca/fuentes.css"' in pagina   # lo de afuera, igual
-    assert publicar.subrutas_estatico("portal") == ["portal/index.html", "portal/portal.css", "portal/js", "marca", "numeros.js"]
+    assert publicar.subrutas_estatico("portal") == ["portal/index.html", "portal/portal.css", "portal/js", "marca", "numeros.js", "candado.js"]
 
 
 def test_con_versiones_cambia_solo_si_cambia_el_archivo(tmp_path):
@@ -137,6 +137,7 @@ def test_no_publica_un_portal_que_enlaza_un_archivo_que_no_existe(tmp_path, monk
     for nombre in publicar.ARCHIVOS_MARCA:
         (origen / "marca" / nombre).write_bytes(b"x")
     (origen / "numeros.js").write_text("", encoding="utf-8")
+    (origen / "candado.js").write_text("", encoding="utf-8")
     (origen / "portal" / "portal.css").write_text("", encoding="utf-8")
     (origen / "portal" / "js" / "base.js").write_text("", encoding="utf-8")
     (origen / "portal" / "index.html").write_text(
@@ -276,8 +277,50 @@ def test_no_se_publica_si_otra_sesion_publico_despues(tmp_path):
     subprocess.run(["git", "-C", str(otra), "config", "user.name", "t"], check=True)
     _commit(otra, "index.html", "2")
     subprocess.run(["git", "-C", str(otra), "push", "-q", "origin", "gh-pages"], check=True)
+    # Con algo propio a medias (copiado y sin commit) no se toca: lo dice
+    (una / "portal.css").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "-C", str(una), "add", "portal.css"], check=True)
     problemas = publicar.revisar_gh_pages(una)
     assert len(problemas) == 1 and "1 commit(s) atrás" in problemas[0] and "pull --ff-only" in problemas[0]
+    # Limpia, se pone al día sola (2026-11-18: el resumen del teléfono sube a origin sin pasar por ella)
+    subprocess.run(["git", "-C", str(una), "rm", "-q", "--cached", "portal.css"], check=True)
+    (una / "portal.css").unlink()
+    assert publicar.revisar_gh_pages(una) == []
+    assert (una / "index.html").read_text(encoding="utf-8") == "2"
+
+
+def test_el_resumen_sube_sin_tocar_la_carpeta_de_gh_pages(tmp_path):
+    """subir_carpeta_aparte arma el commit sobre origin/gh-pages con un índice aparte: la carpeta de gh-pages (con lo
+    que una sesión tenga a medias) no cambia, lo demás de gh-pages queda y lo que ya no está en la carpeta se borra."""
+    import subprocess
+    origen = tmp_path / "origen.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "gh-pages", str(origen)], check=True)
+    gh = _repo(tmp_path / "gh")
+    subprocess.run(["git", "-C", str(gh), "checkout", "-q", "-b", "gh-pages"], check=True)
+    _commit(gh, "index.html", "hub")
+    (gh / "portal" / "datos").mkdir(parents=True)
+    (gh / "portal" / "datos" / "vieja.json").write_text("{}", encoding="utf-8")
+    subprocess.run(["git", "-C", str(gh), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(gh), "commit", "-q", "-m", "vieja"], check=True)
+    subprocess.run(["git", "-C", str(gh), "remote", "add", "origin", str(origen)], check=True)
+    subprocess.run(["git", "-C", str(gh), "push", "-q", "origin", "gh-pages"], check=True)
+    (gh / "a-medias.txt").write_text("de una sesión", encoding="utf-8")
+    repo = _repo(tmp_path / "repo")                       # el repo principal, en master
+    subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(origen)], check=True)
+    carpeta = tmp_path / "resumen"
+    carpeta.mkdir()
+    (carpeta / "indice.json").write_text('{"a": 1}', encoding="utf-8")
+    (carpeta / "base.json").write_text('{"b": 2}', encoding="utf-8")
+
+    commit = publicar.subir_carpeta_aparte(carpeta, "portal/datos", "resumen", repo=repo)
+    assert commit
+    arbol = subprocess.run(["git", "-C", str(origen), "ls-tree", "-r", "--name-only", "gh-pages"],
+                           capture_output=True, text=True, check=True).stdout.split()
+    assert arbol == ["index.html", "portal/datos/base.json", "portal/datos/indice.json"]
+    assert (gh / "a-medias.txt").exists() and (gh / "portal" / "datos" / "vieja.json").exists()
+    assert subprocess.run(["git", "-C", str(repo), "status", "--porcelain"], capture_output=True, text=True).stdout == ""
+    # Igual otra vez: no hay commit nuevo
+    assert publicar.subir_carpeta_aparte(carpeta, "portal/datos", "resumen", repo=repo) is None
 
 
 def test_en_linea_se_compara_con_el_commit_y_no_con_el_disco(tmp_path):

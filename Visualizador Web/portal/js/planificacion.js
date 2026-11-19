@@ -217,7 +217,7 @@ function usoSobre() {
 }
 async function usoGuardar() {
   uso.reloj = null;
-  if (uso.guardando || !rc.dir) return;       // sin la carpeta: queda en este navegador y se guarda la próxima vez
+  if (uso.guardando || !rc.dir || soloLectura()) return;       // sin la carpeta: queda en este navegador y se guarda la próxima vez
   uso.guardando = true;
   try {
     const sobre = usoSobre();
@@ -264,7 +264,7 @@ function presVigilar() {
   else if (!a.vista && pres.otros.length) { pres.otros = []; presPintar(); }
 }
 async function presEscribir(a) {
-  if (pres.escribiendo) return;
+  if (pres.escribiendo || soloLectura()) return;
   pres.escribiendo = true;
   const clave = a.vista + '|' + a.donde;
   try {
@@ -902,6 +902,7 @@ function plProgramarGuardado(id) {
   plPintarFrescura();
 }
 async function plGuardar() {
+  if (soloLectura()) return;
   clearTimeout(planif.relojGuardar);
   if (planif.guardando) { planif.otraVez = true; return; }
   if (!planif.porGuardar.size) return;
@@ -1066,6 +1067,7 @@ function plNombrar(s, m, clave) {
    proyecto. Queda como lo de este navegador, con su instante; se guarda en la carpeta y se puede deshacer (Ctrl Z o
    el aviso). Devuelve si algo cambió. */
 function plCambiar(s, cambios, mensaje) {
+  if (mvNoSe()) return;
   const m = plModelo(s);
   const tanda = [];
   const poner = (tipo, e, antes) => {
@@ -1336,6 +1338,7 @@ function plPonerLista(tipo, e) {
 }
 // Un cambio de la lista con su aviso; se puede deshacer desde el aviso o con Ctrl Z
 function plCambiarLista(tipo, e, mensaje) {
+  if (mvNoSe()) return;
   const antes = plPonerLista(tipo, e);
   plRecalcularLista();
   planif.deshacer.push({ listas: [antes] });
@@ -1424,7 +1427,7 @@ function plQuitarProyecto(clave) {
    una ausencia o un día con 3 proyectos) se salta y se cuenta. Cada asignación copiada lleva su vehículo, y las
    personas y proyectos agregados a mano que van en ella pasan también a esta semana (son temporales: solo así siguen). */
 async function plCopiarAnterior() {
-  if (!rc.dir) return;
+  if (!rc.dir || mvNoSe()) return;
   const s = plSemanaVista();
   const antes = plSemana(plSemanaId(plMas(s.lunes, -7)));
   try { await plLeerSemana(rc.dir, antes.id); } catch (e) { avisar('No se pudo leer la semana anterior: ' + (e.message || e)); return; }
@@ -2602,6 +2605,7 @@ function plConArrastre(tabla, panel) {
   return w;
 }
 function plArrastrable(el, x, nombre) {
+  if (soloLectura()) return el;
   el.draggable = true;
   el.classList.add('pl-arrastrable');
   if (x.desde) el.title = (el.title || nombre) + ' · Arrástralo a otra casilla para moverlo (con Ctrl, se copia)';
@@ -2861,6 +2865,7 @@ function plPanelArrastre(s, m, dias, tipo) {
 let plPopRecien = false;     // el clic que la abrió no la cierra al llegar al documento
 const plAncla = (k) => (k ? document.querySelector('#vistaPlan [data-ancla="' + CSS.escape(k) + '"]') : null);
 function plAbrir(pop) {
+  if (mvNoSe()) return;      // solo lectura (js/resumen.js): la ventanita es para cambiar la casilla
   // Tocar otra vez la casilla de la ventanita abierta la cierra
   if (planif.pop && planif.pop.ancla === pop.ancla && !$('#plPop').hidden) { plCerrarPop(false); return; }
   cerrarUsuario(false);
@@ -3792,6 +3797,7 @@ function plAlCambiarCierres() {
 }
 // Cierra (o reabre) la tarjeta en todas sus claves; devuelve lo que había, para deshacer
 function plPonerCierres(t, cerrado, nota, af) {
+  if (mvNoSe()) return [];
   const c = plCierres();
   const antes = rcClavesCierre(t).map((k) => {
     const previo = c.ef.get(k);
@@ -3849,6 +3855,7 @@ function plReabrir(t) {
       ? 'el Análisis Financiero tiene 100 % de avance (bájalo en «Ingresar avance» si sigue en obra).' : 'otra herramienta lo da por terminado.'), true);
 }
 async function plDeshacerCierre(u) {
+  if (mvNoSe()) return;
   const c = plCierres();
   u.cierres.forEach((e) => c.mias.set(e.clave, Object.assign({}, e, { t: plAhora(), por: estado.usuario || '', de: plDispositivo() })));
   plRecalcularCierres();

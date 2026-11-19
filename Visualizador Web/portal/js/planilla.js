@@ -213,6 +213,7 @@ async function pqLeerCambios(dir) {
 // ---- Enviar y retirar ---------------------------------------------------------------------------------------------
 // Deja el pedido en el buzón con el nombre de siempre (intercambio.nombre_mensaje) y lo suma a la Planilla desde ya.
 async function pqEnviar(tipo, cuerpo) {
+  if (soloLectura()) throw new Error('Solo lectura: en este navegador no se cambian los datos.');
   const enviado = scAhora();
   const id = scId();
   const origen = { herramienta: 'portal', enviado };
@@ -244,6 +245,7 @@ async function pqReleer() {
 }
 // Retira del buzón lo que todavía no llega al Excel (lo busca por su id, como ejRetirarAF)
 async function pqRetirar(c) {
+  if (mvNoSe()) return;
   try {
     const buzon = await rc.dir.getDirectoryHandle('buzon');
     let nombre = null;
@@ -335,6 +337,7 @@ function pqVerMover(alAbrir) {
   $('#pqMoverDe').textContent = carpeta ? 'Gestión de Proyectos › ' + carpeta : 'Si ya está en «' + PQ_ENTREGADOS + '», no hay nada que mover.';
 }
 async function pqEnviarMover(numero, titulo) {
+  if (mvNoSe()) return;
   const enviado = scAhora();
   const id = scId();
   const origen = { herramienta: 'portal', enviado };
@@ -368,6 +371,7 @@ function pqListas() {
     .map((r) => (rcNum(r.numero) + '. ' + (apodoDe(r.numero) || rcLegible(r.titulo))).slice(0, 80)));
 }
 function pqAbrir(fila, pre) {
+  if (!fila && mvNoSe()) return;      // un requerimiento nuevo; uno que ya está se puede mirar
   if (!rc.dir || !rc.datos) return;
   const nuevo = !fila;
   const n = nuevo ? pqSiguienteN() : fila.numero;
@@ -416,6 +420,7 @@ function pqError(msg, campo) {
   if (campo) campo.focus();
 }
 async function pqGuardar(ev) {
+  if (mvNoSe()) { if (ev) ev.preventDefault(); return; }
   if (ev) ev.preventDefault();
   const a = pq.abierta;
   if (!a || pq.guardando || !rc.dir) return;
