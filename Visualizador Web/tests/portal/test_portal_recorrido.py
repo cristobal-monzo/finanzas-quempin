@@ -350,7 +350,7 @@ def test_el_inicio_son_las_herramientas_por_area(navegador, sitio):
 
 def test_el_inicio_muestra_la_semana_de_la_planificacion(navegador, sitio):
     """2026-11-18, el usuario eligió la maqueta V4: bajo las áreas, la semana de hoy, un día por columna con sus
-    proyectos (los de más gente primero, hasta tres) y cuántas personas tienen algo. Un día abre la Planificación con
+    proyectos (los de más gente primero; todos desde el 2026-11-19, sin «+N más») y cuántas personas tienen algo. Un día abre la Planificación con
     ese día en grande; «Abrir», la Planificación."""
     from datetime import date
     pagina, errores = _inicio_con_semana(navegador, sitio, ancho=1366, alto=657)
@@ -361,9 +361,8 @@ def test_el_inicio_muestra_la_semana_de_la_planificacion(navegador, sitio):
     lun = dias.nth(0)
     assert lun.locator(".ini-sem-n").inner_text() == "6 pers."
     filas = lun.locator(".ini-sem-pr").evaluate_all("fs => fs.map((f) => [f.children[1].textContent, f.children[2].textContent])")
-    assert len(filas) == 3 and filas[0] == ["En obra", "3"], filas
-    # Dos «+N más», uno para tres proyectos y otro para dos (pantallas bajas): se ve solo uno
-    assert lun.locator(".ini-sem-mas:visible").all_inner_texts() == ["+1 más"]
+    assert len(filas) == 4 and filas[0] == ["En obra", "3"], filas
+    assert lun.locator(".ini-sem-pr:visible").count() == 4 and "más" not in lun.inner_text()
     assert "6 personas en 4 proyectos" in lun.get_attribute("title") and "Bodega, 1" in lun.get_attribute("title")
     assert dias.nth(1).locator(".ini-sem-nadie").inner_text() == "Nadie asignado"
     assert dias.nth(2).locator(".ini-sem-n").inner_text() == "2 pers."

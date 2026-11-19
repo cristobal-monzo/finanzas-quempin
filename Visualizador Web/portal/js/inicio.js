@@ -90,9 +90,9 @@ function iniPintarDatos() {
   iniPintarSemana();
 }
 /* La semana de hoy de la Planificación (2026-11-18, maqueta V4): un día por columna con sus proyectos, los de más gente
-   primero y hasta tres, y cuántas personas tienen algo. Tocar un día abre la Planificación con ese día en grande.
+   primero, y cuántas personas tienen algo. Desde el 2026-11-19 van todos (pedido del usuario: sin «+N más»); la franja
+   crece hacia abajo. Tocar un día abre la Planificación con ese día en grande.
    Sin carpeta o sin leerla todavía, la franja no se muestra. */
-const INI_SEM_MAX = 3;
 function iniPintarSemana() {
   const sec = $('#iniSemana');
   const s = rc.leido && rc.dir ? planif.semanas.get(plHoyId()) : null;
@@ -113,15 +113,13 @@ function iniPintarSemana() {
     et.append(crear('span', null, d.corto + ' ' + d.fecha.getDate()));
     if (van) et.append(crear('span', 'ini-sem-n', van + ' pers.'));
     b.append(et);
-    orden.slice(0, INI_SEM_MAX).forEach((c, k) => {
-      const f = crear('span', 'ini-sem-pr p' + (k + 1));
+    orden.forEach((c) => {
+      const f = crear('span', 'ini-sem-pr');
       const i = crear('i');
       i.style.setProperty('--pc', m.color(c));
       f.append(i, crear('span', null, m.titulo(c)), crear('b', null, String(cuantos(c))));
       b.append(f);
     });
-    // «+N más»: uno contando tres proyectos y otro contando dos, para las pantallas bajas (el CSS muestra uno)
-    [3, 2].forEach((n) => { if (orden.length > n) b.append(crear('span', 'ini-sem-mas m' + n, '+' + (orden.length - n) + ' más')); });
     if (!orden.length) b.append(crear('span', 'ini-sem-nadie', 'Nadie asignado'));
     b.title = plFechaLarga(d) + (d.hoy ? ' (hoy)' : '') + ': '
       + (van ? pl(van, 'persona', 'personas') + ' en ' + pl(orden.length, 'proyecto', 'proyectos') + ' ('
