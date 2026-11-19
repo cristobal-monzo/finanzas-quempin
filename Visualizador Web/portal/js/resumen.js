@@ -145,6 +145,10 @@ function mvSoloVer(dlg) {
   dlg.querySelectorAll('input, select, textarea').forEach((e) => {
     if (si && !e.disabled) { e.disabled = true; e.dataset.mvApagado = '1'; }
     else if (!si && e.dataset.mvApagado) { e.disabled = false; delete e.dataset.mvApagado; }
+    // El texto de ayuda de un campo vacío («Comuna de los trabajos») parecería un dato: se ve «—»
+    if (!('placeholder' in e)) return;
+    if (si && e.dataset.mvAyuda === undefined) { e.dataset.mvAyuda = e.placeholder || ''; e.placeholder = '—'; }
+    else if (!si && e.dataset.mvAyuda !== undefined) { e.placeholder = e.dataset.mvAyuda; delete e.dataset.mvAyuda; }
   });
 }
 
