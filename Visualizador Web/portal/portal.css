@@ -674,7 +674,8 @@ dialog.solo-ver .pl-vista { pointer-events: none; }
   border: 0; border-radius: 8px; background: transparent; color: var(--text-primary); cursor: pointer; text-align: left;
   font-size: 14px; font-weight: 700;
 }
-.sc-op:hover, .sc-op:focus-visible { background: var(--tinte); outline: none; }
+.sc-op:hover, .sc-op:focus-visible { background: var(--tinte); }
+.sc-op:focus-visible { outline-offset: -2px; }   /* dentro de la lista: el contorno va por dentro para que no se corte */
 .sc-op-meta { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; color: var(--texto-suave); white-space: nowrap; }
 .sc-op.nueva .sc-op-meta { color: var(--brand-orange-ink); }
 .sc-grupo { padding: 8px 10px 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--texto-suave); }
@@ -746,7 +747,7 @@ dialog.solo-ver .pl-vista { pointer-events: none; }
   display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-secondary); font: inherit; font-size: 12.5px; font-weight: 700;
 }
-.rd-lector:hover, .rd-lector:focus-visible { border-color: var(--brand-orange); color: var(--text-primary); outline: none; }
+.rd-lector:hover, .rd-lector:focus-visible { border-color: var(--brand-orange); color: var(--text-primary); }   /* con el contorno de foco común (antes outline: none: igual que el hover) */
 .rd-lector[data-ia="si"] { border-color: var(--estado-ok); color: var(--estado-ok); }
 .rd-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); gap: 16px; align-items: start; }
 .rd-principal, .rd-lado { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -814,7 +815,7 @@ dialog.solo-ver .pl-vista { pointer-events: none; }
   width: 30px; height: 30px; display: grid; place-items: center; margin-top: 2px; border: 0; border-radius: 8px;
   background: transparent; color: var(--texto-suave); cursor: pointer;
 }
-.rd-quitar:hover, .rd-quitar:focus-visible { background: var(--tinte); color: var(--estado-bad); outline: none; }
+.rd-quitar:hover, .rd-quitar:focus-visible { background: var(--tinte); color: var(--estado-bad); }
 .rd-vacia { margin: 0; padding: 4px 0; font-size: 13px; color: var(--texto-suave); }
 .rd-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .rd-total span { font-size: 13px; font-weight: 700; color: var(--text-secondary); }
@@ -1988,6 +1989,8 @@ details.pl-panel[open] { padding-bottom: 10px; }
 .pq-form:hover { background: var(--baseline); }
 .pq-form.fuera { border-color: var(--baseline); color: var(--texto-suave); font-weight: 600; }
 .pq-form.fuera::before { color: var(--texto-suave); }
+/* Con el dedo, cada botón de la fila de al menos 24 px de alto (WCAG 2.2, 2.5.8; medían 19–21 px) */
+@media (hover: none) { .pq-abrir { min-height: 24px; } .pq-form { min-height: 24px; padding: 2px 10px; } }
 .pq-quedan { display: block; font-size: 12px; font-weight: 700; color: var(--texto-suave); }
 .pq-quedan.pronto { color: var(--brand-orange-ink); }
 /* Lo cambiado aquí que el Excel todavía no tiene */
