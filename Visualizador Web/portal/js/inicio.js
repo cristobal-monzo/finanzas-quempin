@@ -40,7 +40,7 @@ function iniBoton(h) {
    muestran, ni en el Inicio ni en el menú ni en el buscador, las que solo sirven con ella para escribir y las que abren
    Sistema QUEMPIN (pedido del usuario: lo que no se puede hacer aquí, ni siquiera como opción). Las calculadoras, los
    tableros y lo que se lee del resumen (js/resumen.js) siguen. Devuelve por qué no va, o ''. */
-const INI_SOLO_CARPETA = new Set(['subir-cc', 'rendiciones']);
+const INI_SOLO_CARPETA = new Set(['subir-cc', 'rendiciones', 'ingresar']);      // ingresar: «Ingresar datos» del AF
 function iniApagada(h) {
   if (typeof window.showDirectoryPicker === 'function') return '';
   if (h.tipo === 'programa') return h.nombre + ': abre Sistema QUEMPIN, que está en los computadores de la oficina.';
