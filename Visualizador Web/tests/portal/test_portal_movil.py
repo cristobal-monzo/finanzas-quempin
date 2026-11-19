@@ -260,7 +260,7 @@ def test_en_el_telefono_las_herramientas_no_muestran_lo_que_guarda_por_la_carpet
         assert "html[data-portal-solo-ver] " + sel in estilo
     pagina.evaluate("abrir('analisis')")
     pagina.wait_for_function("""() => { const p = estado.pestanas.find((x) => x.herr === 'analisis');
-        const d = p && p.marco && p.marco.contentDocument; return d && d.documentElement.hasAttribute('data-portal-solo-ver'); }""")
+        const d = p && p.marco && p.marco.contentDocument; return !!(d && d.documentElement && d.documentElement.hasAttribute('data-portal-solo-ver')); }""")
     assert pagina.evaluate("""() => { const d = estado.pestanas.find((x) => x.herr === 'analisis').marco.contentDocument;
         return d.getElementById('tabBtnIngreso') ? getComputedStyle(d.getElementById('tabBtnIngreso')).display : 'none'; }""") == "none"
     assert errores == []
