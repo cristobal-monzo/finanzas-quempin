@@ -17,7 +17,7 @@ const RC_ETAPAS = [
   { id: 'requerimiento', titulo: 'Requerimiento', corto: 'Requerimiento', herr: 'planilla' },
   { id: 'formulacion', titulo: 'Formulación', corto: 'Formulación', herr: 'formulador' },
   { id: 'cotizacion', titulo: 'Cotización', corto: 'Cotización', herr: 'cotizacion' },
-  { id: 'oferta', titulo: 'Oferta y adjudicación', corto: 'Oferta', herr: 'proyectos' },
+  { id: 'oferta', titulo: 'Oferta y adjudicación', corto: 'Oferta', herr: 'formulador' },
   { id: 'ejecucion', titulo: 'Ejecución', corto: 'Ejecución', herr: 'ejecucion' },
   { id: 'cierre', titulo: 'Cierre', corto: 'Cierre', herr: 'analisis' }
 ];
@@ -96,7 +96,7 @@ function rcLegible(v) {
 const RC_IR = {
   req: (n) => ({ herr: 'formulador', url: HERR.get('formulador').ruta + '#/req/' + encodeURIComponent(n) }),
   ficha: (uid) => ({ herr: 'formulador', url: HERR.get('formulador').ruta + '#/p/' + encodeURIComponent(uid) + '/ficha' }),
-  seguimiento: (uid) => ({ herr: 'proyectos', url: HERR.get('formulador').ruta + '#/p/' + encodeURIComponent(uid) + '/seguimiento' }),
+  seguimiento: (uid) => ({ herr: 'formulador', url: HERR.get('formulador').ruta + '#/p/' + encodeURIComponent(uid) + '/seguimiento' }),
   af: (tag) => ({ herr: 'analisis', url: HERR.get('analisis').ruta + '#proyecto=' + encodeURIComponent(tag) }),
   cc: (tag) => ({ herr: 'centro-costos', url: HERR.get('centro-costos').ruta + '#tag=' + encodeURIComponent(tag) }),
   // El resumen del proyecto en «Proyectos en ejecución» (una vista del portal: clave, la de su tarjeta)

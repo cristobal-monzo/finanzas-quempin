@@ -490,17 +490,19 @@ def test_sin_clic_derecho_se_elige_la_herramienta(navegador, sitio):
 
 def test_dentro_de_una_ventana_del_portal_dice_cual(navegador, sitio):
     pagina, errores = _portal_con_datos(navegador, sitio)
-    _menu(pagina, "Cómo usar el portal")
-    pagina.locator("#dlgAyuda[open]").wait_for()
-    _abrir_reporte(pagina, pagina.locator("#dlgAyuda li").first)
-    assert "Cómo usar el portal" in pagina.locator("#obsDonde").inner_text()
+    _menu(pagina, "Emitir cotización")
+    pagina.locator("#aviso button", has_text="¿No se abrió?").click()
+    pagina.locator("#dlgInfo[open]").wait_for()
+    titulo = pagina.locator("#dlgInfoTit").inner_text()
+    _abrir_reporte(pagina, pagina.locator("#dlgInfoTxt"))
+    assert titulo in pagina.locator("#obsDonde").inner_text()
     _esperar_acceso(pagina)
     pagina.locator("#obsNota").fill("Falta explicar esto")
     pagina.locator("#obsEnviar").click()
     _esperar_envio(pagina)
     _, msg, _ = _observacion_unica(pagina)
-    assert msg["donde"]["dialogo"] == "Cómo usar el portal"
-    assert pagina.locator("#dlgAyuda").evaluate("(d) => d.open") is True      # la ventana de atrás sigue abierta
+    assert msg["donde"]["dialogo"] == titulo
+    assert pagina.locator("#dlgInfo").evaluate("(d) => d.open") is True      # la ventana de atrás sigue abierta
     assert not errores
     pagina.context.close()
 
