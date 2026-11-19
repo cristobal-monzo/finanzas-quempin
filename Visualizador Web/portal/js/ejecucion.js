@@ -2347,6 +2347,7 @@ function ejSinFicha(m) {
     }
     return out;
   }
+  if (soloLectura()) return out;      // en el teléfono «Ingresar datos» del AF no está
   const fila = crear('div', 'cx-acc');
   fila.append(ejBoton('Crear su ficha en «Ingresar avance»', 'cx-enlace', () => abrir('ingresar')),
     info('Para fijar su avance, sus fechas y su venta en el Análisis Financiero, crea su ficha en «Ingresar avance» con su TAG (el mismo prefijo de sus facturas en el Centro de Costos) y su N°.', 'Para qué sirve la ficha'));

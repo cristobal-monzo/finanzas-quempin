@@ -192,7 +192,7 @@ def test_en_el_telefono_no_hay_ni_una_opcion_de_cambiar(navegador, sitio_movil):
     assert pagina.evaluate(visibles, "#vistaEjecucion :is(input:not([type=search]):not(#ejMios):not(#ejConDatos), textarea, form)") == []
     textos = pagina.evaluate(visibles, "#vistaEjecucion button")
     for t in ("Agregar gasto o cotización", "Pegar una cotización", "Subir documentos", "Registrar avance", "Corregir",
-              "Anotar", "Agregar", "Traerlos", "Marcar «Cerrado»"):
+              "Anotar", "Agregar", "Traerlos", "Marcar «Cerrado»", "Crear su ficha en «Ingresar avance»"):
         assert t not in textos, t
     _menu(pagina, "Requerimientos")
     pagina.locator("#vistaPlanilla").get_by_text("En obra").first.click()
