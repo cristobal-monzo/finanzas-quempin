@@ -58,6 +58,8 @@
         <p class="pop-nota pop-nota-info">¿Quién eres? <span class="info" data-etiqueta="Para qué sirve elegir tu usuario">En el Formulador quedas como responsable de los proyectos que crees y como autor de lo que registres; aquí el Recorrido los marca.</span></p>
         <ul class="usuarios" id="listaUsuarios" role="listbox" aria-label="Iniciales del equipo"></ul>
         <button class="pop-item" id="sinUsuario" type="button" role="option"><span class="t">Sin usuario</span><span class="s">Lo que hagas no queda a nombre de nadie</span></button>
+        <!-- Cerrar sesión (2026-11-18): borra la clave de los tableros que recuerda este navegador. -->
+        <button class="pop-item pop-salir" id="cerrarSesion" type="button" hidden><span class="t">Cerrar sesión en este equipo</span><span class="s">Todas las herramientas vuelven a pedir la contraseña</span></button>
       </div>
     </div>
   </header>
@@ -888,8 +890,8 @@
                 «vehiculo» del esquema planificacion-semana (tests/portal/ los compara); articulo: «va en la RAM». -->
 <script type="application/json" id="portal-registro">
 {
-  "usuarios": ["NB", "ES", "LC", "CM", "MP", "SV"],
-  "personal": ["NB", "ES", "LC", "CM", "MP", "SV", "EV", "RL"],
+  "usuarios": ["NB", "ES", "LC", "CM", "MP"],
+  "personal": ["NB", "ES", "LC", "CM", "MP", "EV", "RL"],
   "nombres": {"NB": "Nicolás Becker", "ES": "Enzo Saavedra", "CM": "Cristóbal Monzó", "LC": "Lucas Contreras", "MP": "Matías Pérez", "EV": "Eric Vergara", "RL": "René Loyola"},
   "vehiculos": [{"id": "quempineta", "nombre": "Quempineta", "articulo": "la"}, {"id": "ram", "nombre": "RAM", "articulo": "la"}],
   "grupos": [

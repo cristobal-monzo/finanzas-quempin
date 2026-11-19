@@ -91,6 +91,52 @@ def test_las_pestanas_se_encogen_en_vez_de_desplazarse(navegador, sitio):
     pagina.context.close()
 
 
+def test_las_pestanas_se_mueven_y_el_orden_queda(navegador, sitio):
+    """Pedido del usuario (2026-11-18): dejar primero las herramientas que más usa."""
+    pagina, errores = _abrir_portal(navegador, sitio)
+    for herr in ["oportunidades", "formulador", "centro-costos"]:
+        pagina.locator("#pestanas .ir", has_text="Inicio").click()
+        pagina.locator(f'.ini-item[data-herr="{herr}"]').click()
+    assert _pestanas(pagina) == ["Inicio", "Oportunidades", "Formulador", "Centro de Costos"]
+    activa = pagina.evaluate("estado.activa")
+
+    # Arrastrar Centro de Costos hasta antes de Oportunidades; soltar no cambia la pestaña activa
+    def caja(nombre):
+        return pagina.locator(".pestana", has=pagina.locator(".ir", has_text=nombre)).bounding_box()
+    cc, op = caja("Centro de Costos"), caja("Oportunidades")
+    pagina.mouse.move(cc["x"] + 20, cc["y"] + cc["height"] / 2)
+    pagina.mouse.down()
+    pagina.mouse.move(op["x"] + 10, op["y"] + op["height"] / 2, steps=8)
+    pagina.mouse.up()
+    assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Oportunidades", "Formulador"]
+    assert pagina.evaluate("estado.activa") == activa
+
+    # Arrastrar hasta la casita no pasa delante de Inicio
+    fo, ini = caja("Formulador"), pagina.locator(".pestana.solo").bounding_box()
+    pagina.mouse.move(fo["x"] + 20, fo["y"] + fo["height"] / 2)
+    pagina.mouse.down()
+    pagina.mouse.move(ini["x"] + 2, ini["y"] + ini["height"] / 2, steps=8)
+    pagina.mouse.up()
+    assert _pestanas(pagina) == ["Inicio", "Formulador", "Centro de Costos", "Oportunidades"]
+
+    # Con el teclado: Ctrl+Shift+→ la corre un lugar y deja el foco en ella
+    pagina.locator("#pestanas .ir", has_text="Formulador").focus()
+    pagina.keyboard.press("Control+Shift+ArrowRight")
+    assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Formulador", "Oportunidades"]
+    assert pagina.evaluate("document.activeElement.textContent") == "Formulador"
+
+    # Un clic corto sigue activando la pestaña
+    pagina.locator("#pestanas .ir", has_text="Oportunidades").click()
+    assert pagina.evaluate("estado.activa") == "oportunidades"
+
+    # El orden vuelve al abrir el portal otra vez
+    pagina.reload()
+    pagina.wait_for_function("document.querySelectorAll('#pestanas .ir').length === 4")
+    assert _pestanas(pagina) == ["Inicio", "Centro de Costos", "Formulador", "Oportunidades"]
+    assert not errores
+    pagina.context.close()
+
+
 def test_una_herramienta_se_abre_dentro_del_portal(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     _menu(pagina, "Centro de Costos")
@@ -713,5 +759,45 @@ def test_el_buscador_ofrece_formulador_seguimiento_o_ejecucion_segun_la_etapa(na
     # El proyecto del Formulador que el Recorrido ya tiene no sale dos veces
     pagina.locator("#buscar").fill("QMPN-2026-902")
     assert pagina.locator("#resultados .res").count() <= 1
+    assert not errores
+    pagina.context.close()
+
+
+def test_cerrar_sesion_borra_la_clave_y_cierra_las_otras_pestanas(navegador, sitio):
+    # 2026-11-18: «Cerrar sesión en este equipo» borra la clave recordada; todas las herramientas la piden otra vez.
+    # Sin semilla: la del ayudante vuelve a escribir la clave en cada carga
+    pagina, errores = _abrir_portal(navegador, sitio, clave=False)
+    pagina.evaluate("localStorage.setItem('quempin_viz_clave', 'clave-de-mentira')")
+    otra = pagina.context.new_page()
+    otra.goto(sitio + "/finanzas-quempin/portal/")
+    otra.locator("#vistaInicio").wait_for()
+    otra.evaluate("window.__sinRecargar = true")
+    pagina.locator("#btnUsuario").click()
+    assert pagina.locator("#cerrarSesion").is_visible()
+    dialogos = []
+    pagina.on("dialog", lambda d: (dialogos.append(d.message), d.accept()))
+    with pagina.expect_navigation():
+        pagina.locator("#cerrarSesion").click()
+    pagina.locator("#vistaInicio").wait_for()
+    assert pagina.evaluate("localStorage.getItem('quempin_viz_clave')") is None
+    assert len(dialogos) == 1, dialogos      # nada sin guardar: una sola pregunta
+    # La otra pestaña del portal se recarga sola (no tenía nada sin guardar)
+    otra.wait_for_function("!window.__sinRecargar")
+    # Sin clave guardada, el botón no aparece y el tablero pide la contraseña
+    pagina.locator("#btnUsuario").click()
+    assert pagina.locator("#cerrarSesion").is_hidden()
+    pagina.keyboard.press("Escape")
+    _menu(pagina, "Centro de Costos")
+    assert _marco(pagina, "centro-costos", "cc").locator("#pwGate").is_visible()
+    assert not errores
+    pagina.context.close()
+
+
+def test_cancelar_cerrar_sesion_no_borra_nada(navegador, sitio):
+    pagina, errores = _abrir_portal(navegador, sitio)
+    pagina.locator("#btnUsuario").click()
+    pagina.once("dialog", lambda d: d.dismiss())
+    pagina.locator("#cerrarSesion").click()
+    assert pagina.evaluate("localStorage.getItem('quempin_viz_clave')") == "clave-de-mentira"
     assert not errores
     pagina.context.close()
