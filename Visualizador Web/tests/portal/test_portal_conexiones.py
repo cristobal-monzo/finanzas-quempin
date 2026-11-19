@@ -31,12 +31,12 @@ def test_configuracion_y_conexiones_en_su_pestana(navegador, sitio):
     filas = pagina.evaluate("""() => [...document.querySelectorAll('#cxNecesita tbody tr')].map(tr =>
         [tr.querySelector('th').textContent, [...tr.querySelectorAll('.cx-chip')].map(c => c.textContent)])""")
     por_nombre = dict(filas)
-    for juntas in ("Formulador y Seguimiento", "Centro de Costos y Análisis Financiero"):
+    for juntas in ("Centro de Costos y Análisis Financiero",):
         assert juntas in por_nombre, juntas
     # Emitir cotización y Orden de compra necesitan lo mismo, pero desde el 2026-11-10 van en etapas distintas
     assert por_nombre["Emitir cotización"] == por_nombre["Orden de compra"]
     assert filas[-1] == ["Calculadora (todas)", []]
-    assert {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"} <= set(por_nombre["Formulador y Seguimiento"])
+    assert {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"} <= set(por_nombre["Formulador"])
     # La Carta Gantt, herramienta aparte (2026-10-20): la carpeta del equipo para compartir sus cartas
     assert set(por_nombre["Carta Gantt"]) == {"Biblioteca Formulación", "Carpeta de intercambio", "Contraseña"}
     assert "QUEMPIN.exe" in por_nombre["Emitir cotización"]

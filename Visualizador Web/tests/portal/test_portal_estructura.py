@@ -89,7 +89,7 @@ def test_los_grupos_por_etapa_del_trabajo():
     assert [g["nombre"] for g in reg["grupos"]] == [
         "Captar y ofertar", "Ejecutar proyectos", "Control financiero", "Calculadora", "Ayuda"]
     de = lambda g: [h["id"] for h in reg["herramientas"] if h["grupo"] == g]
-    assert de("ofertar") == ["oportunidades", "planilla", "formulador", "proyectos", "cotizador", "cotizacion"]
+    assert de("ofertar") == ["oportunidades", "planilla", "formulador", "cotizador", "cotizacion"]
     assert de("ejecutar") == ["ejecucion", "planificacion", "gantt", "orden-compra", "subir-cc"]
     # «Ingresar avance» vive dentro del Análisis Financiero (pedido del 2026-11-18): sin acceso propio en el Inicio ni en el menú
     assert sorted(de("oculto")) == ["calculadora", "ingresar"]
@@ -97,9 +97,10 @@ def test_los_grupos_por_etapa_del_trabajo():
 
 
 def test_la_ayuda_sin_indice_anterior_y_con_configuracion():
-    """Pedido del 2026-10-16: fuera el «Índice anterior»; en su lugar, Configuración y conexiones."""
+    """Pedido del 2026-10-16: fuera el «Índice anterior»; en su lugar, Configuración y conexiones.
+    Pedido del 2026-11-18: fuera «Cómo usar el portal» (lo explica cada ⓘ)."""
     ayuda = [h for h in _registro()["herramientas"] if h["grupo"] == "ayuda"]
-    assert [h["nombre"] for h in ayuda] == ["Cómo usar el portal", "Configuración y conexiones", "Errores y observaciones"]
+    assert [h["nombre"] for h in ayuda] == ["Configuración y conexiones", "Errores y observaciones"]
     assert not any(h.get("ruta") == "/finanzas-quempin/" for h in _registro()["herramientas"])
 
 

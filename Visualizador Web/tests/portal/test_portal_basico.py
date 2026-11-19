@@ -43,7 +43,7 @@ def test_el_inicio_y_el_menu_caben_sin_barras(navegador, sitio, ancho, alto):
     assert pagina.evaluate(columnas) == 2
     assert pagina.evaluate("getComputedStyle(document.querySelector('.menu-lista')).scrollbarWidth") == "none"
     # El menú (☰), con su grupo más largo desplegado, tampoco desborda; va encima y no achica el Inicio
-    _menu(pagina, "Seguimiento")
+    _menu(pagina, "Formulador")
     pagina.locator("#pestanas .ir", has_text="Inicio").click()
     pagina.locator("#btnMenu").click()
     assert pagina.locator('#menu .grupo-cab[aria-expanded="true"]').inner_text().strip() == "Captar y ofertar"
@@ -302,13 +302,14 @@ def test_ingresar_datos_vive_dentro_del_analisis(navegador, sitio):
     pagina.context.close()
 
 
-def test_el_seguimiento_abre_la_lista_del_formulador(navegador, sitio):
-    """Sin selector de proyecto (2026-11-06), «Seguimiento» abre la lista del Formulador, donde se elige el proyecto."""
+def test_sin_seguimiento_ni_como_usar_en_el_menu(navegador, sitio):
+    """Pedido del 2026-11-18: fuera «Seguimiento» (abría la misma lista del Formulador) y «Cómo usar el portal».
+    El seguimiento de cada proyecto sigue en el Formulador; el buscador y el Recorrido lo abren en su pestaña."""
     pagina, errores = _abrir_portal(navegador, sitio, proyectos=True)
-    _menu(pagina, "Seguimiento")
-    _marco(pagina, "formulador", "formulador")
-    _esperar(pagina, "formulador", "hash", "#/")
-    assert _pestanas(pagina) == ["Inicio", "Seguimiento"]
+    pagina.locator("#btnMenu").click()
+    menu = pagina.locator("#menu").inner_text()
+    assert "Seguimiento" not in menu and "Cómo usar el portal" not in menu
+    assert pagina.locator("#dlgAyuda").count() == 0
     assert not errores
     pagina.context.close()
 
@@ -371,8 +372,6 @@ def test_excel_y_programa_no_se_abren_dentro(navegador, sitio):
     assert pagina.locator("#dlgInfo").is_visible()
     assert "QUEMPIN.exe" in pagina.locator("#dlgInfo").inner_text()
     pagina.locator("#dlgInfo button", has_text="Entendido").click()
-    _menu(pagina, "Cómo usar el portal")
-    assert pagina.locator("#dlgAyuda").is_visible()
     assert _pestanas(pagina) == ["Inicio"]
     assert not errores
     pagina.context.close()
@@ -498,7 +497,7 @@ def test_lo_publicado_de_nuevo_se_carga_sin_f5(navegador, tmp_path):
 def test_una_pestana_por_herramienta_y_no_mas_de_ocho_cargadas(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio)
     nombres = ["Centro de Costos", "Análisis Financiero", "Flujo de Caja", "Cotizador Histórico",
-               "Oportunidades", "Formulador", "Carta Gantt", "Seguimiento", "Diámetro de tubería", "Hidrógeno",
+               "Oportunidades", "Formulador", "Carta Gantt", "Diámetro de tubería", "Hidrógeno",
                "Gas natural / GLP", "Configuración y conexiones"]
     for nombre in nombres:
         _menu(pagina, nombre)

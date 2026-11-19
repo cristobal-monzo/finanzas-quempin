@@ -43,7 +43,7 @@ function indiceBusqueda() {
     const txt = norm([p.codigo, p.titulo, p.cliente, p.req, p.req ? 'n' + p.req : '', p.tag, p.responsable, 'proyecto'].join(' '));
     const ya = porUid.get(String(p.uid));
     if (ya) { ya.texto += ' ' + txt; return; }
-    const seguimiento = () => abrir('proyectos', { url: baseDe(HERR.get('proyectos')) + '#/p/' + encodeURIComponent(p.uid) + '/seguimiento' });
+    const seguimiento = () => abrir('formulador', { url: baseDe(HERR.get('formulador')) + '#/p/' + encodeURIComponent(p.uid) + '/seguimiento' });
     items.push({
       titulo: nombreProyecto(p), sub: [esMio(p) ? 'Tu proyecto' : 'Proyecto', p.cliente, p.req ? 'N° ' + p.req : '', p.responsable && !esMio(p) ? 'a cargo de ' + p.responsable : ''].filter(Boolean).join(' · '), tipo: 'Proyecto',
       texto: txt, ir: seguimiento,
