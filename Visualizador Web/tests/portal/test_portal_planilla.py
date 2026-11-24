@@ -519,6 +519,50 @@ def test_el_recorrido_lleva_a_la_fila_de_la_planilla(navegador, sitio):
     pagina.context.close()
 
 
+def test_la_planilla_avisa_un_id_repetido_copia_el_id_y_alterna_el_tono_de_las_filas(navegador, sitio):
+    """Observaciones del equipo (2026-11-20 y 2026-11-23): un ID que ya tiene otro requerimiento se avisa una vez antes
+    de guardar (el segundo «Guardar» lo deja pasar: puede ser una licitación que se repostula); el ID se copia con un
+    clic sin abrir la fila; y las filas van en dos tonos."""
+    base = _intercambio_de_prueba()
+    reqs = base["publicado/requerimientos.json"]
+    for r in reqs["datos"]["requerimientos"]:
+        if r["numero"] == 905:
+            r["referencia"] = "1-1-LE26"
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES", extra={"publicado/requerimientos.json": reqs})
+    pagina.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    # Dos tonos: una fila par no tiene el mismo fondo que la impar
+    fondos = pagina.evaluate("""() => [...document.querySelectorAll('#pqFilas > tr')].slice(0, 2)
+        .map((tr) => getComputedStyle(tr).backgroundColor)""")
+    assert fondos[0] != fondos[1], fondos
+    # Copiar el ID: no abre el requerimiento
+    fila = pagina.locator('#pqFilas tr[data-n="905"]')
+    fila.locator(".pq-copiar").click()
+    _esperar_aviso(pagina, "ID 1-1-LE26 copiado")
+    assert not pagina.locator("#dlgPlanilla").is_visible()
+    assert pagina.evaluate("navigator.clipboard.readText()") == "1-1-LE26"
+    # Un requerimiento nuevo con el mismo ID (con otras mayúsculas y espacios): avisa y no guarda
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    dlg.locator("#pqTitulo").fill("La misma licitación")
+    dlg.locator("#pqReferencia").fill(" 1-1-le26 ")
+    dlg.locator("#pqGuardar").click()
+    pista = dlg.locator("#pqPista").inner_text()
+    assert "ya está en el N° 905" in pista and "Oferta esperando" in pista and dlg.is_visible()
+    assert _pedidos_planilla(pagina, "nuevo-requerimiento") == []
+    # El segundo «Guardar» lo deja pasar
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert m["requerimiento"]["referencia"] == "1-1-le26"
+    # Cambiar otro campo de uno que ya tiene ese ID no vuelve a avisar
+    pagina.locator('#pqFilas tr[data-n="905"] .pq-abrir').click()
+    dlg.locator("#pqUbicacion").fill("Temuco")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    assert not errores
+    pagina.context.close()
+
+
 @pytest.mark.parametrize("ancho", [360, 390, 820])
 def test_la_planilla_cabe_sin_desbordes(navegador, sitio, ancho):
     movil = ancho < 760

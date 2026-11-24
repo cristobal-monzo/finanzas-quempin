@@ -76,6 +76,14 @@ ejecutivo, con el monto total, el período (del documento más antiguo al más r
   puede armar, el Portal no envía; si no llega, el correo no sale y a las 2 horas el paso falla en `estado.json`. El
   script de Outlook también se niega si un adjunto falta.
 
+## Datos en naranjo y varias boletas en una foto (2026-11-24)
+
+- **«Están bien»** (`rdConfirmar`): bajo la lectura, si hay datos en naranjo ya escritos, los da por buenos sin cambiarlos.
+  Lo vacío sigue en naranjo: hay que llenarlo.
+- **«+» Otra boleta de esta foto** (`rdOtra`): una fila nueva justo debajo, con la misma imagen y archivo, y tipo, fecha,
+  proveedor, detalle y proyecto copiados; N° y valor quedan por llenar. No se vuelve a leer. Al enviar, cada fila lleva
+  su copia del archivo al Centro de Costos, y el PDF muestra la foto en cada documento.
+
 ## Lector con IA
 
 `lector-rendiciones/`: Cloudflare Worker con el SDK de Anthropic. Instalación, costo y cuidados en su `LEEME.md`. Necesita

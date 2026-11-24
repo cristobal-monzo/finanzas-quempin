@@ -813,6 +813,13 @@ dialog.solo-ver .pl-vista { pointer-events: none; }
   background: transparent; color: var(--texto-suave); cursor: pointer;
 }
 .rd-quitar:hover, .rd-quitar:focus-visible { background: var(--tinte); color: var(--estado-bad); }
+.rd-otra:hover, .rd-otra:focus-visible { color: var(--brand-orange-ink); }
+.rd-bien {
+  padding: 2px 8px; border: 1px solid var(--baseline); border-radius: 999px; background: transparent;
+  font: inherit; font-size: 11.5px; font-weight: 700; color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+}
+.rd-bien:hover, .rd-bien:focus-visible { border-color: var(--estado-ok); color: var(--estado-ok); }
+.rd-bien[hidden] { display: none; }
 .rd-vacia { margin: 0; padding: 4px 0; font-size: 13px; color: var(--texto-suave); }
 .rd-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .rd-total span { font-size: 13px; font-weight: 700; color: var(--text-secondary); }
@@ -1951,7 +1958,14 @@ details.pl-panel[open] { padding-bottom: 10px; }
 .pq-tabla th.c-ap { width: 132px; }
 .pq-tabla th.c-ci { width: 132px; }
 .pq-tabla tbody tr { cursor: pointer; }
+/* Filas en dos tonos (observación de ES, 2026-11-20): se sigue la línea sin perderse */
+.pq-tabla tbody tr:nth-child(even) { background: color-mix(in srgb, var(--page-plane) 60%, transparent); }
 .pq-tabla tbody tr:hover { background: var(--page-plane); }
+.pq-copiar {
+  float: right; width: 24px; height: 22px; margin: -2px 0 0 4px; padding: 0; display: grid; place-items: center;
+  border: 0; border-radius: 6px; background: transparent; color: var(--texto-suave); cursor: pointer;
+}
+.pq-copiar:hover, .pq-copiar:focus-visible { background: var(--tinte); color: var(--brand-orange-ink); }
 .pq-tabla tbody tr.pq-nueva { background: var(--tinte); }
 .pq-tabla tbody tr.resaltada { box-shadow: inset 4px 0 0 var(--brand-orange); }
 .pq-tabla td {

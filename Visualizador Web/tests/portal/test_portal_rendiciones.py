@@ -178,6 +178,39 @@ def test_rendiciones_sin_biblioteca_hace_el_pdf_y_se_guarda_en_el_navegador(nave
     pagina.context.close()
 
 
+def test_rendiciones_datos_en_naranjo_estan_bien_y_otra_boleta_de_la_misma_foto(navegador, sitio):
+    """Observaciones de LC (2026-11-23): un dato en naranjo se da por bueno con «Están bien», sin cambiarlo y volver a
+    ponerlo; y una foto con varias boletas suma filas a mano («+»), debajo de la suya, con la misma imagen y lo que se
+    repite, sin volver a leerla."""
+    pagina, errores = _abrir_portal(navegador, sitio)
+    _rd_librerias(pagina)
+    _menu(pagina, "Rendiciones")
+    _rd_subir(pagina, [RD_FACTURA, RD_VOUCHER], ["factura.png", "voucher.png"])
+    fila = lambda i: pagina.locator("#rdFilas > tr").nth(i)
+    [f, _] = pagina.evaluate(JS_RD_FILAS)
+    assert f["dudas"] == ["fecha"] and f["lectura"] == "1 dato por revisar"
+    fila(0).locator(".rd-bien").click()
+    [f, _] = pagina.evaluate(JS_RD_FILAS)
+    assert f["dudas"] == [] and f["lectura"] == "Leído" and f["fecha"] == "2026-10-14"
+    assert not fila(0).locator(".rd-bien").is_visible()
+    # Otra boleta de la misma foto: queda justo debajo, con N° y valor por llenar (en naranjo, sin «Están bien»)
+    fila(0).locator(".rd-otra").click()
+    pagina.wait_for_function("() => document.querySelectorAll('#rdFilas > tr').length === 3")
+    filas = pagina.evaluate(JS_RD_FILAS)
+    assert [x["numero"] for x in filas] == ["296581", "", "119"]
+    otra = filas[1]
+    assert (otra["tipo"], otra["fecha"], otra["detalle"], otra["valor"]) == ("Factura", "2026-10-14", "Combustible", "")
+    assert sorted(otra["dudas"]) == ["numero", "valor"] and not fila(1).locator(".rd-bien").is_visible()
+    assert pagina.evaluate("document.activeElement.dataset.campo") == "numero"
+    assert fila(1).locator(".rd-mini img").get_attribute("src") == fila(0).locator(".rd-mini img").get_attribute("src")
+    fila(1).locator('[data-campo="numero"]').fill("296582")
+    fila(1).locator('[data-campo="valor"]').fill("10.000")
+    fila(1).locator('[data-campo="valor"]').press("Tab")
+    assert pagina.locator("#rdTotal").inner_text() == "$ 83.180"
+    assert not errores
+    pagina.context.close()
+
+
 @pytest.mark.parametrize("ancho", [390, 1280])
 def test_rendiciones_sin_desbordes(navegador, sitio, ancho):
     pagina, errores = _abrir_portal(navegador, sitio, ancho=ancho, alto=844, movil=ancho < 760)

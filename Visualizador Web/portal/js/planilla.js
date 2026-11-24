@@ -414,6 +414,14 @@ function pqAbrir(fila, pre) {
   if (!dlg.open) dlg.showModal();
   (nuevo ? $('#pqTitulo') : $('#pqEstado')).focus();
 }
+// El requerimiento que ya usa el ID de este (sin contar mayúsculas, espacios ni tildes), o null. Solo si el ID es nuevo o
+// cambió: uno que ya estaba repetido no frena cada vez que se edita otro campo. Una postventa guarda ahí su proyecto original.
+const pqClaveId = (v) => norm(v).replace(/\s+/g, '');
+function pqMismoId(f, a) {
+  const id = pqClaveId(f.referencia);
+  if (!id || f.canal === 'Postventa' || (!a.nuevo && f.referencia === pq.inicial.referencia)) return null;
+  return pqFilas().find((r) => r.numero !== a.numero && texto(r.canal) !== 'Postventa' && pqClaveId(r.referencia) === id) || null;
+}
 function pqError(msg, campo) {
   const p = $('#pqPista');
   p.textContent = msg;
@@ -429,6 +437,15 @@ async function pqGuardar(ev) {
   if (!f.titulo) { pqError('Falta el título: una descripción breve del requerimiento.', $('#pqTitulo')); return; }
   for (const [pre, campo, nombre] of [['Ap', 'apertura', 'apertura'], ['Ci', 'cierre', 'cierre']]) {
     if (!f[campo] && $('#pq' + pre + 'H').value) { pqError('Falta la fecha de ' + nombre + ' de esa hora.', $('#pq' + pre + 'F')); return; }
+  }
+  // Un ID que ya tiene otro requerimiento (observación de ES, 2026-11-20): se avisa una vez; si es otro requerimiento con
+  // el mismo ID (pasa con una licitación que se repostula), el segundo «Guardar» lo deja pasar
+  const otro = pqMismoId(f, a);
+  if (otro && a.avisoId !== norm(f.referencia)) {
+    a.avisoId = norm(f.referencia);
+    pqError('El ID «' + f.referencia + '» ya está en el N° ' + otro.numero + (texto(otro.titulo) ? ' «' + texto(otro.titulo) + '»' : '')
+      + '. Si es el mismo requerimiento, ciérralo y usa ese. Si es otro, vuelve a apretar Guardar.', $('#pqReferencia'));
+    return;
   }
   // El N° de un requerimiento nuevo se vuelve a calcular al guardar (2026-11-12), con lo que llegó mientras se escribía:
   // un formulario abierto un buen rato no debe proponer un N° que otro ya tomó
@@ -748,7 +765,17 @@ function pqFila(r, hoy) {
         if (d !== null && d >= 0 && d <= 14) td.append(crear('span', 'pq-quedan' + (d <= 3 ? ' pronto' : ''), d === 0 ? 'cierra hoy' : d === 1 ? 'cierra mañana' : 'faltan ' + d + ' días'));
       }
     } else {
-      td.textContent = v;
+      if (c.id === 'referencia' && v && texto(r.canal) !== 'Postventa') {
+        // Copiar el ID con un clic (observación de LC, 2026-11-23): para pegarlo en Mercado Público
+        const b = crear('button', 'pq-copiar');
+        b.type = 'button';
+        b.title = 'Copiar el ID ' + v;
+        b.setAttribute('aria-label', 'Copiar el ID ' + v);
+        b.append(icono('copiar', 14));
+        b.addEventListener('click', () => ctxCopiar(v, 'ID ' + v + ' copiado.'));
+        td.append(b);
+      }
+      td.append(v);
       if (v) td.title = v;
     }
     if (!v && c.id !== 'numero') td.classList.add('vacia');

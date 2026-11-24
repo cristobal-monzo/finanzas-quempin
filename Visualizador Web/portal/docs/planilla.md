@@ -59,6 +59,10 @@ que de verdad se usan).
   contra los choques de N°: `Documentación/Planes y análisis/2026-11-11-n-de-requerimiento-sin-choques.md`.
 - **Sin carpeta conectada** (un teléfono, otro computador) la vista dice qué falta y ofrece abrir el Excel, que era lo que
   hacía antes de ser una vista.
+- **ID repetido** (2026-11-24, observación del equipo): al guardar, un ID nuevo o cambiado que ya tiene otro requerimiento
+  (sin contar mayúsculas, espacios ni tildes; las postventas no cuentan) avisa una vez con el N° y el título del otro. El
+  segundo «Guardar» lo deja pasar (una licitación repostulada). `pqMismoId`. Unir o borrar duplicados no: el dueño es el Excel.
+- La columna ID lleva un botón para copiarlo (`.pq-copiar`) y las filas van en dos tonos.
 - **No se borran filas**: el N° es la clave de carpetas, formulaciones y fichas. Lo que no sigue queda «Descartado».
 - Mientras se mira, relee la carpeta cada 2 minutos, nunca con el diálogo abierto. Con un contenedor de 1240 px o menos, cada
   fila es una tarjeta.

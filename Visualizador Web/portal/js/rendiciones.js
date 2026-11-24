@@ -545,6 +545,38 @@ async function rdAgregar(lista) {
   rdPintar();
   if (malos.length) avisar('No se agregó: ' + malos.join('; ') + '.');
 }
+// Otra boleta de la misma foto (observación de LC, 2026-11-23): una fila nueva justo debajo, con la misma imagen y lo que
+// suele repetirse (tipo, fecha, proveedor, detalle, proyecto); el N° y el valor quedan por llenar. No se vuelve a leer.
+function rdOtra(d) {
+  if (rd.docs.length >= RD_MAX_DOCS) { avisar('Una rendición lleva hasta ' + RD_MAX_DOCS + ' documentos.'); return; }
+  const c = d.campos;
+  const n = {
+    id: scId().slice(0, 12), nombre: d.nombre, archivo: d.archivo, esPdf: d.esPdf, rot: d.rot, paginas: d.paginas, paginasTotal: d.paginasTotal,
+    mini: d.mini, fuente: d.fuente, texto: d.texto, error: '', estado: d.estado === 'error' ? 'error' : 'listo',
+    campos: { tipo: c.tipo, numero: '', fecha: c.fecha, proveedor: c.proveedor, rut: c.rut, detalle: c.detalle, proyecto: c.proyecto, valor: null },
+    dudas: ['numero', 'valor'], editado: ['tipo', 'fecha', 'proveedor', 'rut', 'detalle', 'proyecto']
+  };
+  if (n.estado === 'error') n.error = 'Otra boleta de la misma foto: llena sus datos.';
+  // Sin el foco en la tabla, rdPintar la rehace entera y la fila nueva queda en su lugar (no al final)
+  if (document.activeElement && $('#rdFilas').contains(document.activeElement)) document.activeElement.blur();
+  rd.docs.splice(rd.docs.indexOf(d) + 1, 0, n);
+  if (rd.cab.enviada) rd.cab.enviada = null;
+  rd.confirmarEnvio = false;
+  rdGuardar();
+  rdPintar();
+  const casilla = document.querySelector('#rdFilas tr[data-id="' + n.id + '"] [data-campo="numero"]');
+  if (casilla) casilla.focus();
+}
+// «Están bien»: lo que quedó en naranjo se compara con la foto y se da por bueno sin tener que cambiarlo (observación de LC,
+// 2026-11-23: antes había que cambiar el dato y volver a ponerlo)
+function rdConfirmar(d) {
+  if (document.activeElement && $('#rdFilas').contains(document.activeElement)) document.activeElement.blur();
+  d.dudas = d.dudas.filter((c) => c === 'valor' ? !d.campos.valor : !texto(d.campos[c]));
+  rd.confirmarEnvio = false;
+  rdGuardar();
+  rdPintarFila(d);
+  rdPintarResumen();
+}
 function rdQuitar(d) {
   if (document.activeElement && $('#rdFilas').contains(document.activeElement)) document.activeElement.blur();
   rd.docs = rd.docs.filter((x) => x !== d);
@@ -1179,12 +1211,16 @@ function rdTextoLectura(d) {
   if (d.dudas.length) return ['warn', pl(d.dudas.length, 'dato por revisar', 'datos por revisar')];
   return ['ok', d.fuente === 'pdf' ? 'Leído del PDF' : d.fuente === 'ia' ? 'Leído con IA' : 'Leído'];
 }
+// «Están bien» solo con datos en naranjo que ya tienen algo escrito: lo vacío hay que llenarlo
+const rdPorConfirmar = (d) => d.estado === 'listo' && d.dudas.some((c) => c === 'valor' ? !!d.campos.valor : !!texto(d.campos[c]));
 function rdPintarLectura(d) {
   const e = document.querySelector('#rdFilas tr[data-id="' + d.id + '"] .rd-lect');
   if (!e) return;
   const [nivel, txt] = rdTextoLectura(d);
   e.dataset.nivel = nivel;
   e.textContent = txt;
+  const b = e.parentElement.querySelector('.rd-bien');
+  if (b) b.hidden = !rdPorConfirmar(d);
 }
 // Las casillas de un documento (en la fila y en el diálogo): cada cambio se guarda y quita su marca naranja
 function rdCasilla(d, campo) {
@@ -1259,7 +1295,13 @@ function rdFila(d, i) {
   const [nivel, txt] = rdTextoLectura(d);
   const lect = crear('span', 'rd-lect', txt);
   lect.dataset.nivel = nivel;
-  doc.append(mini, lect);
+  const bien = crear('button', 'rd-bien', 'Están bien');
+  bien.type = 'button';
+  bien.title = 'Ya comparé los datos en naranjo con la foto: están bien';
+  bien.setAttribute('aria-label', 'Los datos en naranjo del documento ' + (i + 1) + ' están bien');
+  bien.hidden = !rdPorConfirmar(d);
+  bien.addEventListener('click', () => rdConfirmar(d));
+  doc.append(mini, lect, bien);
   td('rd-doc-td', null, doc);
   td(null, 'Tipo', rdCasilla(d, 'tipo'));
   td(null, 'N°', rdCasilla(d, 'numero'));
@@ -1274,7 +1316,13 @@ function rdFila(d, i) {
   x.setAttribute('aria-label', 'Quitar el documento ' + (i + 1));
   x.append(icono('cerrar', 16));
   x.addEventListener('click', () => rdQuitar(d));
-  td('rd-acc', null, x);
+  const otra = crear('button', 'rd-quitar rd-otra');
+  otra.type = 'button';
+  otra.title = 'Otra boleta de esta misma foto';
+  otra.setAttribute('aria-label', 'Agregar otra boleta de la foto del documento ' + (i + 1));
+  otra.append(icono('mas', 16));
+  otra.addEventListener('click', () => rdOtra(d));
+  td('rd-acc', null, x, otra);
   tr.addEventListener('focusout', () => {
     setTimeout(() => { if (d.repintar && !tr.contains(document.activeElement)) { d.repintar = false; rdPintarFila(d); } }, 0);
   });
