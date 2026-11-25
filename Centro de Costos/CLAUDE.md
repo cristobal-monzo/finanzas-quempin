@@ -100,8 +100,8 @@ Una entrada por documento (precedentes en [docs/datos-extraidos.md](docs/datos-e
 
 - **`items`: cada línea por separado, nunca un ítem resumen.** Si una parte es físicamente ilegible,
   agrupa solo esa parte en un ítem aparte («Materiales varios») por el saldo contra el Neto impreso.
-- **Un archivo = una entrada = un documento.** Varios documentos en una foto se separan con `driver.py
-  separar` (Paso 2). Un `n_documento` que junta varios números levanta `DOCUMENTOS_MEZCLADOS` y `run` no
+- **Un archivo = una entrada = un documento.** Varios documentos en una foto o PDF se separan con `driver.py
+  separar --recorte` (Paso 2): un archivo recortado por factura; la hoja combinada se respalda y se borra. Un `n_documento` que junta varios números levanta `DOCUMENTOS_MEZCLADOS` y `run` no
   lo registra; lo ya registrado así se arregla con `driver.py separar-registrado`. No detecta boletas sin
   número juntas (peajes `S/N`): eso depende del Paso 2.
 - **`nombre_item`**: tipo de producto genérico, sin marca ni adjetivos («Taladro», no «Taladro

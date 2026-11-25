@@ -163,6 +163,13 @@ módulos), no en este archivo.
   en la práctica: nunca separar un documento multipágina que en realidad es 1
   sola factura (páginas de continuación, factura + su guía de despacho del
   mismo N°) — solo cuando hay N° de Documento genuinamente distintos.
+  **Desde el 2026-11-25 se recorta** (pedido del usuario, reemplaza el «sin
+  recortar» del 2026-09-08): `driver.py separar --recorte página:x0,y0,x1,y1`
+  (uno por factura) deja cada factura en su archivo solo con su parte de la
+  hoja (`recortar_documento_combinado()`; PDF con pypdf, el texto sigue siendo
+  texto) y borra la hoja combinada tras respaldarla. `driver.py vista` da la
+  cuadrícula para leer las cajas. `--cantidad N` queda solo para facturas
+  superpuestas que no se pueden encuadrar.
 - **Notas de Crédito SÍ se registran, como documento con montos negativos**
   (confirmado explícitamente por el usuario 2026-08-18, formaliza un
   precedente tácito que ya existía sin documentar — `UMAG-025`, Danus
