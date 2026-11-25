@@ -2879,6 +2879,11 @@ a.ej-d-ref:hover { text-decoration: underline; }
 .ej-cal-arriba { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 14px; }
 .ej-cal-arriba .ej-quienes { flex: 1 1 260px; }
 .ej-cal-jornada { display: flex; flex-direction: column; gap: 4px; }
+.ej-viatico { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.ej-sinfecha { margin: 12px 0 4px; padding-top: 10px; border-top: 1px solid var(--gridline); }
+.ej-sinfecha h4 { margin: 0 0 6px; }
+.ej-sinfecha-form { align-items: center; }
+.ej-sinfecha-form input[type="text"] { flex: 0 1 120px; }
 .ej-jornada .pl-vista[aria-checked="true"] { background: var(--brand-black); color: #ffffff; }
 :root[data-theme="dark"] .ej-jornada .pl-vista[aria-checked="true"] { background: #3a3835; }
 @media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .ej-jornada .pl-vista[aria-checked="true"] { background: #3a3835; } }
@@ -3101,6 +3106,10 @@ a.ej-d-ref:hover { text-decoration: underline; }
 .ej-v2-medidor[data-nivel="warn"] b { color: var(--estado-warn); }
 .ej-v2-medidor[data-nivel="bad"] b { color: var(--estado-bad); }
 .ej-v2-medidor small { display: block; margin-top: 2px; text-align: center; font-size: 11.5px; color: var(--texto-suave); }
+.ej-v2-margen-monto { margin: 8px 0 0; text-align: center; line-height: 1.2; }
+.ej-v2-margen-monto b { display: block; font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.ej-v2-margen-monto b.neg { color: var(--estado-bad); }
+.ej-v2-margen-monto span { font-size: 12px; color: var(--texto-suave); }
 /* Las cifras de abajo: la venta, el cierre, lo comprometido y la mano de obra (gastado, margen y avance ya están arriba) */
 .ej-v2-resumen .ej-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding-top: 14px; border-top: 1px solid var(--gridline); }
 .ej-v2-resumen .ej-kpis > .ej-kpi:is(:nth-child(2), :nth-child(4), :nth-child(5)) { display: none; }

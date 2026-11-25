@@ -48,7 +48,8 @@
           },
           "cantidad": {
             "type": "number",
-            "minimum": 0
+            "minimum": 0,
+            "description": "costo: la cantidad; dia sin fecha (2026-11-25): cuántos días trabajó esa persona"
           },
           "precio": {
             "type": "number",
@@ -68,7 +69,7 @@
           "fecha": {
             "type": "string",
             "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$",
-            "description": "costo: la fecha de la cotización; dia: el día trabajado"
+            "description": "costo: la fecha de la cotización; dia: el día trabajado (vacía: días sin fecha, ver cantidad)"
           },
           "estado": {
             "enum": ["evaluar", "aprobada", "comprada", "descartada"]
@@ -138,6 +139,10 @@
           "origen": {
             "enum": ["", "planificacion"],
             "description": "dia: 'planificacion' si se trajo de la Planificación semanal"
+          },
+          "viatico": {
+            "type": "boolean",
+            "description": "dia (2026-11-25): lleva viático, $50.000 por día"
           },
           "ref": {
             "type": "string",

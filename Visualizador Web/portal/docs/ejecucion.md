@@ -72,6 +72,13 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   duplica entre navegadores), con jornada y nivel; su costo, a las tarifas del proyecto, de su formulación o del
   Formulador. Se traen de la Planificación semanal (las últimas 4 semanas, hasta hoy), y «Llevarle» manda su total al
   Análisis Financiero como «Mano de Obra Real». No es la única forma: esa celda se sigue escribiendo en «Ingresar avance».
+- **Viáticos, días sin fecha y tarifa por defecto** (2026-11-25, pedido del usuario): por defecto cada persona cuesta
+  $75.000 por día (`EJ_TARIFAS`, igual en los tres niveles; las tarifas propias del proyecto siguen mandando, ya no las
+  de su formulación). «Con viático» (`ejViaticoEl`) suma $50.000 por día (`EJ_VIATICO`, `viatico` en el `dia`; en el
+  calendario, la marca lleva «+»). «Días sin fecha» (`ejSinFechaEl`, `ejAnotarSinFecha`): quién, cuántos días (se puede
+  ½) y si llevan viático; es un `dia` con `fecha: ''` y `cantidad`, con id propio (`dsf-…`), fuera del calendario.
+  `ejDH`, `ejViaticos` y `ejCostoDia` calculan cada anotación; `mo.costo` incluye los viáticos y `mo.viaticos` los
+  separa. Prueba: `test_viaticos_dias_sin_fecha_y_margen_en_pesos`.
 - **Indicadores** (`ejIndicadores`): días-hombre, costo por día-hombre, utilidad y venta por día-hombre, incidencia de
   la mano de obra y margen, presupuestados (los `kpis` de `js/calc.js`) y estimados hoy; los días-hombre al cierre son
   los presupuestados o, si ya se pasaron, los trabajados.
@@ -252,7 +259,8 @@ navegación lateral»; y guardar la anterior «por si no se adopta bien». Maque
   pasa, la marca del presupuesto; si gasta de acuerdo con lo que avanza o más; y el margen en un medidor de media
   vuelta con el mínimo y la meta (`ejMedidorMargenEl`, SVG con `createElementNS`). Debajo, las KPI de siempre
   (`ejKpisEl`) mostrando solo la venta y el cierre (gastado, margen y avance ya están arriba) más dos cifras
-  (`.ej-stat`, no cuentan como `.ej-kpi`): comprometido en OC y mano de obra real.
+  (`.ej-stat`, no cuentan como `.ej-kpi`): comprometido en OC y mano de obra real. Bajo el medidor, el margen en pesos (`#ejMargenMonto`, 2026-11-25,
+  pedido del usuario: «cuánto estaría quedando para la empresa»): venta − costo estimado al cierre, en rojo si es pérdida.
 - Debajo, las mismas partes de antes y en el mismo orden. `ejMarcarSalto` mide desde el borde de arriba de la vista
   cuando el índice va al costado; arriba de todo marca «Resumen».
 - **La página anterior se eliminó** (2026-11-12, pedido del usuario: ya no hace falta). Quedó solo la etiqueta de git
