@@ -63,8 +63,13 @@ que de verdad se usan).
   (sin contar mayúsculas, espacios ni tildes; las postventas no cuentan) avisa una vez con el N° y el título del otro. El
   segundo «Guardar» lo deja pasar (una licitación repostulada). `pqMismoId`. Unir o borrar duplicados no: el dueño es el Excel.
 - La columna ID lleva un botón para copiarlo (`.pq-copiar`) y las filas van en dos tonos.
+- **Una sola línea por requerimiento** en la tabla (pedido del usuario, 2026-11-25, después del ⋯: «que cada proyecto utilice
+  1 sola fila»). El título se corta con «…» (entero en su `title` y al abrirlo) y lleva en la misma línea (`.pq-linea`)
+  «nuevo», la formulación (solo su estado tras el ✓) o «Formular →» y el choque de N°. Lo que falta para el cierre va
+  corto junto a la fecha («hoy», «mañana», «5 días»). Lo mide `test_la_planilla_muestra_las_columnas_que_se_usan…`
+  (filas de menos de 44 px). En tarjetas (contenedor de 1240 px o menos) el título sí se parte.
 - **Eliminar un requerimiento mal ingresado** (2026-11-25, pedido del equipo en las observaciones; el usuario eligió «borrar y
-  reusar el N°»): el botón ⋯ de la celda del N° (`.pq-opciones`, solo con `rcEscribe()`) y el clic derecho sobre la fila
+  reusar el N°»): el botón ⋯ de la última columna (`td.c-acc .pq-opciones`, solo con `rcEscribe()`) y el clic derecho sobre la fila
   (`pqOpcionesDe`, que `ctxOpciones` suma; `ctxMostrar` acepta `opciones`) ofrecen «Eliminar requerimiento…». El diálogo
   `#dlgPqEliminar` (`pqPedirEliminar`) dice qué se pierde (formulación, carpeta, cambios que esperan) y pide un motivo
   opcional. Lo que todavía no llega al Excel se retira del buzón; lo demás deja `eliminar-requerimiento`, la fila deja de verse
