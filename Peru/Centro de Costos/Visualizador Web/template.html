@@ -494,6 +494,14 @@
     vertical-align: top;
     font-variant-numeric: tabular-nums;
   }
+  /* Sin desplazamiento horizontal (pedido del usuario 2026-11-25): entre el
+     teléfono y el escritorio, menos relleno y encabezados en dos líneas. */
+  @media (max-width: 1000px) {
+    table.viz-table { min-width: 0; }
+    table.viz-table > thead > tr > th { white-space: normal; padding: 8px 6px; }
+    table.viz-table > tbody > tr > td { padding: 8px 6px; }
+    table.viz-table > tbody > tr.detail-row > td { padding: 0; }
+  }
   table.viz-table tbody tr.doc-row { cursor: pointer; }
   table.viz-table tbody tr.doc-row:hover { background: var(--surface-1); }
   table.viz-table tbody tr.doc-row:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }

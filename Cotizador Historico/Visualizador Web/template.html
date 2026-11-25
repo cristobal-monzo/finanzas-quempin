@@ -641,6 +641,15 @@
   .viz-compras .tc-desc { color: var(--text-secondary); min-width: 200px; line-height: 1.35; }
   .viz-compras .tc-accion { text-align: right; }
   .viz-compras .tc-accion .viz-add { justify-content: flex-end; flex-wrap: nowrap; }
+  /* Sin desplazamiento horizontal (pedido del usuario 2026-11-25): entre el
+     teléfono y el escritorio, el detalle se angosta y «Agregar» se apila. */
+  @media (min-width: 641px) and (max-width: 960px) {
+    .viz-compras th { white-space: normal; padding: 6px 5px; }
+    .viz-compras td { padding: 9px 5px; }
+    .viz-compras .tc-desc { min-width: 120px; }
+    .viz-compras .tc-precio .tc-sub { white-space: normal; }
+    .viz-compras .tc-accion .viz-add { flex-wrap: wrap; }
+  }
 
   /* Por que apareció cada resultado. */
   .rc-whys { display: flex; flex-wrap: wrap; gap: 5px; }

@@ -428,6 +428,34 @@
     vertical-align: top;
     font-variant-numeric: tabular-nums;
   }
+  /* Sin desplazamiento horizontal (pedido del usuario 2026-11-25): entre el
+     teléfono y el escritorio, menos relleno y encabezados en dos líneas. */
+  @media (max-width: 1100px) {
+    table.viz-table { min-width: 0; }
+    table.viz-table > thead > tr > th { white-space: normal; padding: 8px 6px; }
+    table.viz-table > tbody > tr > td { padding: 8px 6px; }
+    table.viz-table > tbody > tr.detail-row > td { padding: 0; }
+    .est-tag { display: block; margin-left: 0; }
+    /* El detalle toma el ancho de la tabla y no la ensancha. */
+    tr.detail-row > td > .detail-panel { contain: inline-size; }
+    /* Subtablas del detalle: sin ancho mínimo, letra y relleno menores. */
+    html table.viz-itemtable, html table.viz-itemtable.tabla-costos-categoria { min-width: 0; }
+    table.viz-table table.viz-itemtable th, table.viz-table table.viz-itemtable td { padding: 6px 4px; white-space: normal; }
+    table.viz-itemtable.tabla-costos-categoria { font-size: 11px; }
+  }
+  /* El cliente de cada proyecto va bajo su nombre (no en su columna) entre
+     641 y 900 px; en el teléfono vuelve a su par etiqueta/valor. */
+  .sub-cliente { display: none; font-size: 12px; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
+  @media (min-width: 641px) and (max-width: 900px) {
+    table.viz-table > thead > tr > th.c-cliente, table.viz-table > tbody > tr > td.c-cliente { display: none; }
+    .sub-cliente { display: block; }
+  }
+  @media (min-width: 641px) and (max-width: 760px) {
+    table.viz-table { font-size: 12px; }
+    table.viz-table > thead > tr > th { font-size: 10.5px; letter-spacing: 0; padding: 8px 4px; }
+    table.viz-table > tbody > tr > td { padding: 8px 4px; }
+    table.viz-table > tbody > tr.detail-row > td { padding: 0; }
+  }
   table.viz-table tbody tr.doc-row { cursor: pointer; }
   table.viz-table tbody tr.doc-row:hover { background: var(--surface-1); }
   table.viz-table tbody tr.doc-row:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
@@ -606,6 +634,13 @@
   table.mapa-calor th.proyecto, table.mapa-calor td.proyecto { text-align: left; white-space: nowrap; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
   table.mapa-calor td { text-align: center; padding: 7px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   table.mapa-calor td.sin-dato { color: var(--text-muted); }
+  /* Sin desplazamiento horizontal (2026-11-25): anchos fijos, el nombre del
+     proyecto se corta con «…» (title = completo) y, si la tarjeta queda
+     angosta, el mapa baja a su propia fila. */
+  .chart-card--mapa { flex-basis: 420px; }
+  table.mapa-calor { table-layout: fixed; }
+  table.mapa-calor th.proyecto { width: 38%; }
+  table.mapa-calor th.proyecto, table.mapa-calor td.proyecto { max-width: none; }
 
   /* Pareto de clientes: barras + acumulado, para leer la dependencia. */
   /* La barra necesita su espacio: con 3 tarjetas en la fila, columnas
@@ -1029,17 +1064,25 @@
   table.ing-rev-tabla .num { text-align: right; }
   table.ing-rev-tabla tr.ing-error td { color: var(--status-bad); }
 
-  @media (max-width: 640px) {
+  /* Bajo 1241 px las 10 columnas no caben sin deslizar (pedido del usuario
+     2026-11-25: ninguna tabla se desliza de lado): cada proyecto es una
+     tarjeta con sus campos en una grilla. */
+  @media (max-width: 1240px) {
     .ing-tablawrap { overflow: visible; max-height: none; }
     table.ing-tabla, table.ing-tabla > tbody { display: block; min-width: 0; }
     table.ing-tabla > thead { display: none; }
-    table.ing-tabla > tbody > tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px;
+    table.ing-tabla > tbody > tr { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px 12px;
       padding: 12px; border-bottom: 1px solid var(--gridline); }
     table.ing-tabla > tbody > tr > td { padding: 0; border: 0; background: none; }
     table.ing-tabla tbody tr:hover td { background: none; }
     table.ing-tabla td.ing-col-proy { grid-column: 1 / -1; position: static; max-width: none; border: 0; padding: 0; }
     table.ing-tabla td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px;
       font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+    .ing-input, .ing-input[type="date"], .ing-sufijo .ing-input { min-width: 0; }
+  }
+
+  @media (max-width: 640px) {
+    table.ing-tabla > tbody > tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .ing-input { font-size: 16px; min-width: 0; }
     .ing-dialogo label input { font-size: 16px; }   /* nombre, TAG y nombre del proyecto nuevo */
     .ing-input[type="date"] { min-width: 0; }
@@ -1246,7 +1289,7 @@
       <table class="viz-table">
         <thead>
           <tr><th class="ordenable" data-orden="nombre">Proyecto<span class="orden"></span></th>
-            <th class="ordenable" data-orden="cliente">Cliente<span class="orden"></span></th>
+            <th class="ordenable c-cliente" data-orden="cliente">Cliente<span class="orden"></span></th>
             <th class="num ordenable" data-orden="avance" title="Porcentaje de avance del proyecto, cargado a mano en la planilla. 100% = ejecución terminada; bajo 100% el margen al cierre es una estimación.">% Avance<span class="orden"></span></th>
             <th class="num ordenable" data-orden="monto_venta">Monto Venta<span class="orden"></span></th>
             <th class="num ordenable" data-orden="margen_estimado_cierre" title="Margen con que termina el proyecto: el real si está al 100 %; si sigue en curso, el estimado al cierre (marcado «est.»): costo real + lo que falta a precio de presupuesto.">Margen al cierre<span class="orden"></span></th>
@@ -1287,7 +1330,7 @@
           <div id="sesgoCategorias"></div>
           <p class="chart-note" id="notaSesgo"></p>
         </div>
-        <div class="chart-card">
+        <div class="chart-card chart-card--mapa">
           <h3 title="Desviación de cada categoría en cada proyecto. Rojo: se gastó más que lo presupuestado; verde: menos.">Desviación por proyecto y categoría</h3>
           <div class="viz-tablescroll" id="mapaCalor"></div>
         </div>
@@ -2432,7 +2475,8 @@
       var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0" aria-expanded="' + expandido + '">' +
         '<td><span class="expand-toggle" aria-hidden="true">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) +
         (p.alertas.length ? '<span class="alerta-badge" title="' + esc(p.alertas.join(' · ')) + '">⚠ ' + p.alertas.length + '</span>' : '') +
-        '</td><td>' + esc(p.cliente || '—') + '</td><td class="num">' + (p.avance == null ? '—' : formatoPct(p.avance)) +
+        '<span class="sub-cliente">' + esc(p.cliente || '—') + '</span>' +
+        '</td><td class="c-cliente">' + esc(p.cliente || '—') + '</td><td class="num">' + (p.avance == null ? '—' : formatoPct(p.avance)) +
         '</td><td class="num">' + formatoCLP(p.monto_venta) + '</td><td class="num">' + formatoCLP(p.margen_estimado_cierre) +
         (p.en_curso ? '<span class="est-tag" title="Estimado al cierre: el proyecto sigue en curso.">est.</span>' : '') +
         '</td><td class="num">' + formatoPct(p.margen_estimado_cierre_pct) + '</td><td class="num">' +

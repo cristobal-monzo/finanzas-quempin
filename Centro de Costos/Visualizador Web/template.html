@@ -656,12 +656,29 @@
 
   /* Tabla: resumen de ítems bajo el proveedor, coincidencias resaltadas,
      montos negativos (notas de crédito) diferenciados. */
-  table.viz-table tbody td.c-ref, table.viz-table tbody td.c-proy, table.viz-table tbody td.c-fecha,
+  /* Sin desplazamiento horizontal (pedido del usuario 2026-11-25): el proyecto
+     y el resumen de ítems se parten en líneas; solo los códigos, fechas y
+     montos quedan en una. El resumen se corta en 2 líneas (title = completo). */
+  table.viz-table tbody td.c-ref, table.viz-table tbody td.c-fecha,
   table.viz-table tbody td.c-total, table.viz-table tbody td.c-estado { white-space: nowrap; }
+  table.viz-table tbody td.c-proy .proj-tag { align-items: baseline; }
+  /* Entre el teléfono y el escritorio: menos relleno y encabezados en dos
+     líneas para que las 8 columnas quepan sin deslizar. */
+  @media (max-width: 1000px) {
+    table.viz-table { min-width: 0; }
+    table.viz-table > thead > tr > th { white-space: normal; padding: 8px 6px; }
+    table.viz-table > tbody > tr > td { padding: 8px 6px; }
+    table.viz-table > tbody > tr.detail-row > td { padding: 0; }
+  }
+  /* Bajo 800 px la categoría sale de la tabla (como en el teléfono): sigue
+     en el detalle de cada documento y en el filtro. */
+  @media (max-width: 800px) {
+    table.viz-table > thead > tr > th[data-key="categoria"], table.viz-table > tbody > tr > td.c-cat { display: none; }
+  }
   .cell-prov .prov { display: block; }
   .row-sub {
-    display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px;
-    max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+    font-size: 12px; color: var(--text-muted); margin-top: 2px; overflow: hidden;
   }
   mark.hl { background: rgba(255,81,0,0.22); color: inherit; border-radius: 2px; padding: 0 1px; }
   td.num.neg, .dv.neg { color: var(--text-secondary); }
@@ -2088,7 +2105,7 @@
         '<td class="c-fecha">' + fmtDate(d.fecha) + '</td>' +
         '<td class="c-prov cell-prov"><span class="prov">' + hl(d.proveedor_tag, terms) + '</span>' +
         (sub ? '<span class="row-sub" title="' + esc(sub) + '">' + hl(sub, terms) + '</span>' : '') + '</td>' +
-        '<td class="c-cat">' + hl(d.categoria, terms) + '</td>' +
+        '<td class="c-cat">' + hl(d.categoria, terms).replace(/([^<])\//g, '$1/<wbr>') + '</td>' +
         '<td class="c-total num' + (neg ? ' neg' : '') + '">' + fmt(d.total_con_iva) + '</td>' +
         '<td class="c-estado">' + statusBadge(d.estado) + '</td>' +
         '</tr>'
