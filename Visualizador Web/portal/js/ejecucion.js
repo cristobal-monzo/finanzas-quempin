@@ -1665,13 +1665,17 @@ function ejResumenEl(m) {
   // El margen
   const c3 = crear('div', 'ej-v2-margen');
   c3.append(crear('span', 'ej-v2-et', m.pres ? 'Margen estimado' : 'Margen con lo anotado'), ejMedidorMargenEl(m));
-  // 2026-11-25, pedido del usuario: el margen también en pesos, lo que le queda a la empresa (venta − costo al cierre)
-  if (m.margen !== null && m.venta) {
-    const util = m.venta.monto - tot.EAC;
+  /* 2026-11-25, pedido del usuario: el margen en pesos, lo que le queda hoy a la empresa = la venta neta − lo gastado a la
+     fecha (costos reales: facturas y mano de obra anotada). Lo estimado al cierre se ve al posar el mouse. */
+  if (m.venta) {
+    const hoyQueda = m.venta.monto - tot.G;
     const mp = crear('p', 'ej-v2-margen-monto');
     mp.id = 'ejMargenMonto';
-    mp.title = 'Venta neta ' + ejPesos(m.venta.monto) + ' − costo estimado al cierre ' + ejPesos(tot.EAC);
-    mp.append(crear('b', util < 0 ? 'neg' : null, ejPesos(util)), crear('span', null, util < 0 ? 'de pérdida estimada' : 'le quedan a QUEMPIN'));
+    mp.tabIndex = 0;
+    mp.title = 'Hoy: venta neta ' + ejPesos(m.venta.monto) + ' − gastado a la fecha ' + ejPesos(tot.G) + ' = ' + ejPesos(hoyQueda)
+      + (m.margen !== null ? '\nAl cierre se estiman ' + ejPesos(m.venta.monto - tot.EAC) + ' (venta − costo estimado al cierre ' + ejPesos(tot.EAC) + ')' : '');
+    mp.dataset.cierre = m.margen !== null ? String(Math.round(m.venta.monto - tot.EAC)) : '';
+    mp.append(crear('b', hoyQueda < 0 ? 'neg' : null, ejPesos(hoyQueda)), crear('span', null, hoyQueda < 0 ? 'de pérdida a la fecha' : 'le quedan hoy a QUEMPIN'));
     c3.append(mp);
   }
   hero.append(c1, c2, c3);

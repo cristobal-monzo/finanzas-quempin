@@ -1019,11 +1019,14 @@ def test_viaticos_dias_sin_fecha_y_margen_en_pesos(navegador, sitio):
     from datetime import date
     pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
     hoy = date.today().isoformat()
-    # El margen en pesos: la venta menos el costo estimado al cierre
+    # El margen en pesos: la venta menos lo gastado a la fecha; lo estimado al cierre, al posar el mouse
     monto = pagina.locator("#ejMargenMonto b")
     monto.wait_for()
-    esperado = pagina.evaluate("Math.round(ej.modelo.venta.monto - ej.modelo.tot.EAC)")
+    esperado = pagina.evaluate("Math.round(ej.modelo.venta.monto - ej.modelo.tot.G)")
     assert int(monto.inner_text().replace("$", "").replace(".", "").replace("−", "-").replace("-", "")) == abs(esperado)
+    cierre = pagina.evaluate("Math.round(ej.modelo.venta.monto - ej.modelo.tot.EAC)")
+    assert pagina.locator("#ejMargenMonto").get_attribute("data-cierre") == str(cierre)
+    assert "Al cierre se estiman" in pagina.locator("#ejMargenMonto").get_attribute("title")
     # Un día con viático
     pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{hoy}"]').click()
     pagina.locator(".ej-quienes label", has_text="NB").locator("input").check()
