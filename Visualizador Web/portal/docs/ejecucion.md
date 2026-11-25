@@ -260,7 +260,8 @@ navegación lateral»; y guardar la anterior «por si no se adopta bien». Maque
   vuelta con el mínimo y la meta (`ejMedidorMargenEl`, SVG con `createElementNS`). Debajo, las KPI de siempre
   (`ejKpisEl`) mostrando solo la venta y el cierre (gastado, margen y avance ya están arriba) más dos cifras
   (`.ej-stat`, no cuentan como `.ej-kpi`): comprometido en OC y mano de obra real. Bajo el medidor, el margen en pesos (`#ejMargenMonto`, 2026-11-25,
-  pedido del usuario: «cuánto estaría quedando para la empresa»): venta − costo estimado al cierre, en rojo si es pérdida.
+  pedido del usuario: «cuánto estaría quedando para la empresa»): venta neta − gastado a la fecha (los costos reales), en rojo si es pérdida; lo estimado al cierre
+  (venta − costo al cierre) va en su `title`, al posar el mouse (pedido del usuario, el mismo día).
 - Debajo, las mismas partes de antes y en el mismo orden. `ejMarcarSalto` mide desde el borde de arriba de la vista
   cuando el índice va al costado; arriba de todo marca «Resumen».
 - **La página anterior se eliminó** (2026-11-12, pedido del usuario: ya no hace falta). Quedó solo la etiqueta de git
