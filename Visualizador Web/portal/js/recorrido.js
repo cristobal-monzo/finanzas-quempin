@@ -631,6 +631,11 @@ async function rcLeer(dir) {
     cruce: lista(cruce, 'proyectos'), af: lista(af, 'proyectos'),
     gestion: lista(cruce, 'gestion'),      // las carpetas de proyecto de la raíz de Gestión de Proyectos (2026-11-03)
     entregados: lista(cruce, 'entregados'),    // ... y las de sus «0 Proyectos Entregados <año>» (2026-11-09)
+    // Las carpetas con N° de Formulación y las que no están donde dice su Estado (2026-11-25, carpetas_oferta.py), y los
+    // pedidos de moverlas que todavía esperan: la casilla «Mover su carpeta» y el aviso de Requerimientos
+    ofertas: lista(cruce, 'ofertas'),
+    fueraDeLugar: lista(cruce, 'fueraDeLugar'),
+    moverPedidos: buzon.filter((m) => m && m.tipo === 'mover-carpeta' && m.destino === 'carpetas-proyecto'),
     // Si el procesador ya publica esas listas: sin ellas, «Proyectos en ejecución» sigue con lo que el Recorrido pone en Ejecución
     hayGestion: !!(cruce && cruce.datos && Array.isArray(cruce.datos.gestion)),
     hayEntregados: !!(cruce && cruce.datos && Array.isArray(cruce.datos.entregados)),

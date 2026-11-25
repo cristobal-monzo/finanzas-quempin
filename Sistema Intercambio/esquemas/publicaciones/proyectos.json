@@ -115,6 +115,59 @@
           "grupo"
         ]
       }
+    },
+    "ofertas": {
+      "type": "array",
+      "description": "Desde el 2026-11-25: las carpetas con N° de «Formulación de proyectos», en su raíz y en sus grupos «0 …» (hasta «0 OFERTAS PRESENTADAS/0 Ofertas Cerradas <año>»); «ruta» es la ruta desde la biblioteca, con «/». El Portal la usa para la casilla «Mover su carpeta» de Requerimientos (carpetas_oferta.py).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "req": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ruta": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "req",
+          "ruta"
+        ]
+      }
+    },
+    "fueraDeLugar": {
+      "type": "array",
+      "description": "Desde el 2026-11-25: las carpetas con N° que no están donde dice el Estado de su fila en la Planilla (carpetas_oferta.fuera_de_lugar), sin las que ya tienen un mover-carpeta en el buzón. El Portal las muestra arriba de la tabla de Requerimientos con su botón «Mover».",
+      "items": {
+        "type": "object",
+        "properties": {
+          "req": {
+            "type": "string",
+            "minLength": 1
+          },
+          "carpeta": {
+            "type": "string",
+            "minLength": 1
+          },
+          "estado": {
+            "type": "string"
+          },
+          "detalle": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "req",
+          "carpeta",
+          "estado",
+          "detalle"
+        ]
+      }
     }
   },
   "required": [

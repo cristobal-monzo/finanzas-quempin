@@ -19,6 +19,8 @@ barato, y solo si algo cambió desde la última vez:
 2. Formulaciones entregadas por archivo -> repositorio del Formulador.
 3. Planilla de Ingreso -> ``requerimientos.json``, y cierra las sugerencias
    que ya están pasadas a la planilla.
+3b. El Estado que cambió en la Planilla pasa al presupuesto del Formulador
+   (``formulaciones.alinear_estados``, paso ``estados-formulador``, 2026-11-25).
 4. Análisis Financiero: si llegaron envíos nuevos, ``run`` (con respaldo); si
    no, pero cambió el Centro de Costos o su libro, solo republica (sin
    escribir el Excel).
@@ -34,9 +36,11 @@ barato, y solo si algo cambió desde la última vez:
    dice ``enProcesador``; el equipo lo ve en su tablero).
 7c. UF del día: una vez al día, para que el tablero del Cotizador tenga una
    UF reciente de respaldo si mindicador.cl no responde (2026-10-19).
-7c2. Proyectos entregados (``cierre_entregados.py``, 2026-11-09): mueve a
-   «0 Proyectos Entregados <año>» la carpeta que pidió el Portal al cerrar un
-   proyecto, y lo que ya está ahí con la Planilla en «Adjudicado» lo pide
+7c1. Carpetas de los requerimientos (``carpetas_oferta.py``, 2026-11-25): crea
+   la de cada fila nueva de la Planilla en «Formulación de proyectos» y mueve
+   las que pidió el Portal (mensaje ``mover-carpeta``) adonde dice su Estado.
+7c2. Proyectos entregados (``cierre_entregados.py``, 2026-11-09): lo que está en
+   «0 Proyectos Entregados <año>» con la Planilla en «Adjudicado» lo pide
    «Cerrado» con un mensaje (la Planilla la escribe planilla_escritura.py).
 7d. Carpetas de facturas de los proyectos (``carpetas_proyecto.py``,
    2026-10-28): crea la del Centro de Costos de lo recién adjudicado y deja
@@ -87,6 +91,7 @@ RAIZ_FINANZAS = AQUI.parent
 if str(AQUI) not in sys.path:
     sys.path.insert(0, str(AQUI))
 
+import carpetas_oferta  # noqa: E402
 import carpetas_proyecto  # noqa: E402
 import cierre_entregados  # noqa: E402
 import documentos_cc  # noqa: E402
@@ -238,6 +243,26 @@ def paso_formulaciones(raiz: Path, previo, forzar):
         return "sin entregas por archivo", None
     resultados = formulaciones.incorporar_buzon(raiz)
     return f"{len(resultados)} entrega(s) incorporada(s)", "ok"
+
+
+def paso_estados_formulador(raiz: Path, previo, forzar):
+    """El Estado que cambió en la Planilla pasa al presupuesto del Formulador (formulaciones.alinear_estados,
+    2026-11-25). Su «firma» es el Estado que vio de cada N°: solo lleva lo que cambió desde la vuelta anterior. Un N° con
+    un cambio de estado del Formulador que espera en el buzón (una sugerencia sin decidir) se mira cuando ya no espera."""
+    datos = (intercambio.leer_publicacion(raiz, requerimientos.PUBLICACION) or {}).get("datos") or {}
+    filas = datos.get("requerimientos") or []
+    if not filas:
+        return "la Planilla todavía no está publicada", previo
+    esperan = set()
+    for tipo in ("actualizar-requerimiento", "editar-requerimiento"):
+        for m in intercambio.leer_buzon(raiz, destino=requerimientos.DESTINO, tipo=tipo)[0]:
+            if (m.get("origen") or {}).get("herramienta") == "formulador" and "estado" in (m.get("cambios") or {}):
+                try:
+                    esperan.add(int((m.get("requerimiento") or {}).get("numero")))
+                except (TypeError, ValueError):
+                    continue
+    vistos, cambiados = formulaciones.alinear_estados(raiz, filas, previo if isinstance(previo, dict) else None, esperan)
+    return ("al Formulador: " + "; ".join(cambiados)) if cambiados else "sin cambios de estado", vistos
 
 
 def paso_requerimientos(raiz: Path, previo, forzar):
@@ -425,10 +450,21 @@ def _raices_facturas() -> dict:
     return {"CL": RAIZ_FACTURAS_CL, "PE": RAIZ_FACTURAS_CL.parent / "Perú"}
 
 
+def paso_carpetas_oferta(raiz: Path, previo, forzar):
+    """La carpeta de cada requerimiento nuevo y las que el Portal pidió mover según su Estado (carpetas_oferta.py,
+    2026-11-25). Corre en cada vuelta; su «firma» es su estado: los N° ya conocidos y los que esperan carpeta."""
+    detalle, estado, avisos = carpetas_oferta.vuelta(raiz, ubicacion.biblioteca(ubicacion.BIBLIOTECA_FORMULACION, AQUI),
+                                                     ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, AQUI),
+                                                     previo if isinstance(previo, dict) else {})
+    if avisos:
+        detalle += "; avisos: " + "; ".join(avisos)
+    return detalle, estado
+
+
 def paso_entregados(raiz: Path, previo, forzar):
-    """Las carpetas que el Portal pidió llevar a «0 Proyectos Entregados», y lo que ya está ahí con la Planilla en
-    «Adjudicado» pasa a «Cerrado» (cierre_entregados.py, 2026-11-09). Corre en cada vuelta: lo que cambia son las
-    carpetas, no un archivo con firma. Su «firma» es lo que ya se pidió cerrar una vez."""
+    """Lo que está en «0 Proyectos Entregados» con la Planilla en «Adjudicado» pasa a «Cerrado» (cierre_entregados.py,
+    2026-11-09). Corre en cada vuelta: lo que cambia son las carpetas, no un archivo con firma. Su «firma» es lo que ya
+    se pidió cerrar una vez."""
     detalle, estado, _ = cierre_entregados.vuelta(raiz, ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, AQUI),
                                                   previo if isinstance(previo, dict) else {})
     return detalle, estado
@@ -485,16 +521,26 @@ def paso_proyectos(raiz: Path, previo, forzar):
     gestion = proyectos.proyectos_en_gestion(raiz_gestion, proyectos.leer_temporales(raiz))
     # ... y las de «0 Proyectos Entregados <año>» (2026-11-09): la pestaña «Entregados» de esa vista
     entregados = proyectos.proyectos_entregados(raiz_gestion)
-    r = proyectos.publicar(raiz, carpetas, gestion=gestion, entregados=entregados)
+    # Dónde está la carpeta de cada requerimiento en Formulación, y las que no están donde dice su Estado (2026-11-25):
+    # el Portal las usa para la casilla «Mover su carpeta» y la lista «fuera de lugar» de Requerimientos
+    raiz_formulacion = ubicacion.biblioteca(ubicacion.BIBLIOTECA_FORMULACION, AQUI)
+    en_f, en_g = carpetas_oferta.indice(raiz_formulacion), carpetas_oferta.indice(raiz_gestion)
+    ofertas = [{"req": str(n), "ruta": "/".join(ruta)} for n, rutas in sorted(en_f.items()) for ruta in rutas]
+    fuera = carpetas_oferta.fuera_de_lugar(carpetas_oferta.leer_planilla(raiz), en_f, en_g, raiz_gestion,
+                                           datetime.now().astimezone(), carpetas_oferta.moviendo(raiz))
+    r = proyectos.publicar(raiz, carpetas, gestion=gestion, entregados=entregados,
+                           ofertas=ofertas if raiz_formulacion is not None else None,
+                           fuera_de_lugar=fuera if raiz_formulacion is not None else None)
     return (f"{r['proyectos']} proyectos; {r['sin_tag_req']} TAG sin N° de requerimiento; "
             f"{r['conflictos']} conflicto(s); {r['gestion']} en Gestión de Proyectos, "
-            f"{r['entregados']} entregados"), "ok"
+            f"{r['entregados']} entregados, {len(fuera)} carpeta(s) fuera de lugar"), "ok"
 
 
 PASOS = (
     ("esquemas", paso_esquemas),
     ("formulaciones", paso_formulaciones),
     ("requerimientos", paso_requerimientos),
+    ("estados-formulador", paso_estados_formulador),
     ("analisis-financiero", paso_analisis_financiero),
     ("precios-referencia", paso_precios),
     ("documentos-proyecto", paso_documentos_proyecto),
@@ -502,6 +548,7 @@ PASOS = (
     ("mercado-publico", paso_mercado_publico),
     ("oportunidades", paso_oportunidades),
     ("uf", paso_uf),
+    ("carpetas-oferta", paso_carpetas_oferta),
     ("entregados", paso_entregados),
     ("carpetas-proyecto", paso_carpetas_proyecto),
     ("documentos-cc", paso_documentos_cc),

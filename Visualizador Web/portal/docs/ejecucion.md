@@ -87,7 +87,7 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
   «Cerrado»): el acceso «Marcar «Cerrado»» de la cabecera (`ejCierreDe`, `ejAbrirCerrar`, `ejGuardarCerrar`, `#dlgEjCerrar`)
   manda el mismo `editar-requerimiento` que Requerimientos (`pqEnviar`, con el N° entero de la Planilla) y, marcada de
   entrada si tiene carpeta con su N° en la raíz de Gestión, el `mover-carpeta` a «0 Proyectos Entregados <año>»
-  (`pqEnviarMover`) más una vuelta del procesador. Si la Planilla ya dice «Cerrado» y la carpeta sigue en Gestión, el
+  (`pqEnviarMover`, estado «Cerrado») más una vuelta del procesador (la mueve `carpetas_oferta.py`). Si la Planilla ya dice «Cerrado» y la carpeta sigue en Gestión, el
   acceso dice «Llevar su carpeta a entregados» y solo pide moverla. Sin N° o sin fila en la Planilla, no aparece. Pruebas:
   `test_marcar_cerrado_desde_proyectos_en_ejecucion`, `test_marcar_cerrado_sin_mover_y_ya_cerrado_solo_mueve`.
 - **El avance** (y la fecha de término) se pide al Análisis Financiero con un `datos-proyecto` al buzón (`ejEnviarAF`, el

@@ -11,6 +11,7 @@ sincronizada por OneDrive con JSON de formato común (`quempin.intercambio/1`).
 | Monitor de resultados (`mercado_publico.py`) | [docs/mercado-publico.md](docs/mercado-publico.md) |
 | Oportunidades, compras ágiles, calibración, correo y bases (`oportunidades.py`, `compra_agil.py`, `calibrar_oportunidades.py`, `alertas_oportunidades.py`, `bases_oportunidades.py`) | [docs/oportunidades.md](docs/oportunidades.md) |
 | Carpetas de facturas de los proyectos (`carpetas_proyecto.py`) | [docs/carpetas-proyecto.md](docs/carpetas-proyecto.md) |
+| La carpeta de cada requerimiento y su Estado; el Estado al Formulador (`carpetas_oferta.py`, `formulaciones.alinear_estados`) | [docs/carpetas-oferta.md](docs/carpetas-oferta.md) |
 | Tablero de Oportunidades | `Visualizador Web/CLAUDE.md` de esta carpeta |
 
 ## Dónde está
@@ -88,7 +89,7 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
   Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento`, `editar-requerimiento` y `eliminar-requerimiento` → Planilla;
   `documento-cc` → Centro de Costos; `observacion` → mejora continua (la atiende una persona con
   `/Observaciones_Portal`, `observaciones.py`); `pedir-vuelta` → procesador; `mover-carpeta` → carpetas
-  de los proyectos (`cierre_entregados.py`); `ajustes-oportunidades` → oportunidades («Qué buscamos» del tablero).
+  de los proyectos (`carpetas_oferta.py`); `ajustes-oportunidades` → oportunidades («Qué buscamos» del tablero).
 - **Publicaciones**: `analisis-financiero`, `formulador-proyecto`, `requerimientos`,
   `precios-referencia`, `documentos-comerciales`, `contrapartes`, `folios`, `licitaciones`,
   `oportunidades`, `oportunidades-ajustes`, `proyectos`, `centro-costos-carpetas`, `rendiciones`, `documentos-proyecto`, `estado`, `planificacion-semana`,
@@ -120,11 +121,12 @@ cada 2 horas) y al final de cada `run` de `/Actualizar_Finanzas` y de cada regis
 En orden y **solo si algo cambió** (firmas en `procesador_estado.json`, gitignoreado):
 
 `esquemas.json` y `LEEME.md` → entregas de formulaciones por archivo → requerimientos y cierre
-de sugerencias → Análisis Financiero (`run` solo si llegaron envíos no intentados, de los tipos
+de sugerencias → el Estado de la Planilla al Formulador (`formulaciones.alinear_estados`) → Análisis Financiero (`run` solo si llegaron envíos no intentados, de los tipos
 cuyo esquema declara `destino: analisis-financiero`; si no, y cambió CC o el libro, solo
 `intercambio publicar`) → precios de referencia → Sistema QUEMPIN (`python -m
 app.integraciones.ecosistema procesar`, con su Python 3.11) → Mercado Público (**cada 3 horas**) → la UF del día
-(`Cotizador_Historico/driver.py uf`, una vez al día) → proyectos entregados (`cierre_entregados.py`, cada vuelta) →
+(`Cotizador_Historico/driver.py uf`, una vez al día) → carpetas de los requerimientos (`carpetas_oferta.py`, cada
+vuelta) → proyectos entregados (`cierre_entregados.py`, cada vuelta) →
 carpetas de facturas → documentos del Portal (`documentos_cc.py`) → correo de las rendiciones (`correo_rendiciones.py`,
 por Outlook de ese PC) → `proyectos.json` → `estado.json`.
 
@@ -235,10 +237,26 @@ su carpeta ahí. Paso `entregados` del procesador (`cierre_entregados.py`; detal
 - **El procesador sigue sin escribir la Planilla**: pide el «Cerrado» con un `editar-requerimiento` y lo escribe
   `planilla_escritura.py`. Solo cierra lo que la Planilla tiene «Adjudicado», una vez por N° (`cerrados` en su estado:
   si alguien lo reabre, se respeta), y como máximo 5 por vuelta (`--confirmar` para más).
-- **Mover** solo lo pedido desde el Portal (`mover-carpeta`), con un cambio de nombre en el mismo disco; nunca pisa.
+- **Mover** solo lo pedido desde el Portal (`mover-carpeta`), con un cambio de nombre en el mismo disco; nunca pisa. Desde
+  el 2026-11-25 lo hace `carpetas_oferta.py`, para todos los estados (sección siguiente).
 - «Cerrado» cuenta como ganado en todo lo que preguntaba por «Adjudicado» (`requerimientos.ESTADOS_GANADOS`: tasa de
   adjudicación, Mercado Público, Oportunidades, Flujo de Caja, carpetas del Centro de Costos, el Portal).
 - `py -3.14 cierre_entregados.py` dice qué cerraría, sin tocar nada.
+
+## La carpeta de cada requerimiento y su Estado (2026-11-25)
+
+Pedido del usuario (2026-11-02, retomado el 2026-11-25). Paso `carpetas-oferta` del procesador (`carpetas_oferta.py`;
+detalle en [docs/carpetas-oferta.md](docs/carpetas-oferta.md)):
+
+- **Carpeta nueva**: cada fila nueva de la Planilla (no «No adjudicado» ni «Descartado») recibe «N°. Título» con
+  ANTECEDENTES, DOCUMENTOS EN TRABAJO, ENTREGABLES y VISITA TÉCNICA en el grupo de Formulación de su estado, 15 minutos
+  después si nadie creó una con su N° en las dos bibliotecas. Lo que estaba la primera vez queda conocido.
+- **Mover** (`mover-carpeta`): `DESTINOS` dice adónde va cada estado; al adjudicarse, además la copia en Gestión.
+  `PQ_CARPETA` del Portal es la misma tabla (la compara `tests/portal/test_portal_planilla.py`).
+- **Fuera de lugar**: `proyectos.json` publica `ofertas` y `fueraDeLugar`; el Portal lo muestra arriba de Requerimientos.
+- **El Estado al Formulador** (paso `estados-formulador`): lo que cambia en la Planilla pasa al presupuesto como versión
+  nueva. `EN_PLANILLA` es la de `js/flujo.js` del Formulador (`test_carpetas_oferta.py` las compara con el repo al lado).
+- `py -3.14 carpetas_oferta.py` dice qué haría y lista lo fuera de lugar, sin tocar nada.
 
 ## Respaldo diario (2026-11-09)
 

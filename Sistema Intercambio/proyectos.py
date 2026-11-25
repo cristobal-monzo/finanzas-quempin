@@ -362,10 +362,13 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
 
 
 def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | None = None,
-             gestion: list[dict] | None = None, entregados: list[dict] | None = None) -> dict:
+             gestion: list[dict] | None = None, entregados: list[dict] | None = None,
+             ofertas: list[dict] | None = None, fuera_de_lugar: list[dict] | None = None) -> dict:
     """Arma el cruce desde lo publicado en 'raiz' y lo publica. gestion: las
     carpetas de la raíz de Gestión (proyectos_en_gestion); entregados: las de sus
-    «0 Proyectos Entregados <año>» (proyectos_entregados). Devuelve un resumen
+    «0 Proyectos Entregados <año>» (proyectos_entregados); ofertas y fuera_de_lugar:
+    dónde está cada carpeta con N° en Formulación y las que no están donde dice su
+    Estado (carpetas_oferta.py, 2026-11-25; sin la biblioteca, no van). Devuelve un resumen
     {'proyectos', 'sin_tag_req', 'conflictos', 'gestion', 'entregados'}."""
     datos = cruzar(
         _datos(raiz, "requerimientos").get("requerimientos") or [],
@@ -380,6 +383,10 @@ def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | 
         ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, raiz), leer_temporales(raiz))
     datos["entregados"] = entregados if entregados is not None else proyectos_entregados(
         ubicacion.biblioteca(ubicacion.BIBLIOTECA_GESTION, raiz))
+    if ofertas is not None:
+        datos["ofertas"] = ofertas
+    if fuera_de_lugar is not None:
+        datos["fueraDeLugar"] = fuera_de_lugar
     intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)
     return {"proyectos": len(datos["proyectos"]), "sin_tag_req": len(datos["sinVincular"]["tags"]),
             "conflictos": len(datos["conflictos"]), "gestion": len(datos["gestion"]),

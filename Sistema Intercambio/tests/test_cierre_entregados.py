@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Lo que está en «0 Proyectos Entregados» pasa a «Cerrado» en la Planilla, y el Portal puede pedir llevar ahí la
-carpeta al cerrar un proyecto (cierre_entregados.py, 2026-11-09). Bibliotecas falsas en una carpeta temporal."""
-import os
-from datetime import datetime, timedelta
+"""Lo que está en «0 Proyectos Entregados» pasa a «Cerrado» en la Planilla (cierre_entregados.py, 2026-11-09). Mover
+la carpeta que pide el Portal está en test_carpetas_oferta.py. Bibliotecas falsas en una carpeta temporal."""
+
+from datetime import datetime
 
 import pytest
 
@@ -42,16 +42,6 @@ def _buzon(raiz, tipo=None):
 
 def _procesados(raiz):
     return [intercambio._leer_json(p) for p in (raiz / intercambio.CARPETA_PROCESADO).rglob("*.json")]
-
-
-def _mover(raiz, n, minutos=-60, titulo=None):
-    enviado = (datetime.now().astimezone() + timedelta(minutes=minutos)).isoformat(timespec="seconds")
-    m = {"esquema": intercambio.ESQUEMA, "id": intercambio.nuevo_id(), "tipo": ce.TIPO_MOVER, "destino": ce.DESTINO,
-         "origen": {"herramienta": "portal", "usuario": "NB", "enviado": enviado},
-         "requerimiento": {"numero": n, **({"titulo": titulo} if titulo else {})}, "estado": "Cerrado"}
-    assert esquemas.validar_mensaje(m) == []
-    intercambio.enviar(raiz, m)
-    return m
 
 
 def _editar_cerrado(raiz, n, herramienta="portal"):
@@ -154,98 +144,7 @@ def test_muchos_de_una_vez_esperan_que_una_persona_confirme(e):
     assert len(resumen["pedidos"]) == ce.MAX_CIERRES + 1 == len(_buzon(e["raiz"], "editar-requerimiento"))
 
 
-# ── mover lo que pidió el Portal ────────────────────────────────────────────
-
-def test_mueve_la_carpeta_cuando_el_cerrado_espera_en_el_buzon(e):
-    _editar_cerrado(e["raiz"], 289)
-    _mover(e["raiz"], 289)
-    detalle, estado, _ = ce.vuelta(e["raiz"], e["gestion"], {})
-    destino = e["gestion"] / f"0 Proyectos Entregados {ANIO}" / "289. Instalación de prueba"
-    assert destino.is_dir() and (destino / "Compras").is_dir() and not (e["gestion"] / "289. Instalación de prueba").exists()
-    (p,) = [x for x in _procesados(e["raiz"]) if x["tipo"] == ce.TIPO_MOVER]
-    assert p["resultado"]["estado"] == "aplicado" and p["resultado"]["carpeta"] == f"0 Proyectos Entregados {ANIO}/289. Instalación de prueba"
-    # Ya en los entregados y con el cambio en camino: no se pide otra vez «Cerrado»
-    del_289 = [m for m in _buzon(e["raiz"], "editar-requerimiento") if m["requerimiento"]["numero"] == 289]
-    assert len(del_289) == 1 and "289" not in estado["cerrados"]
-    assert "pasó a" in detalle
-
-
-def test_mueve_la_carpeta_cuando_la_planilla_ya_dice_cerrado(e):
-    _planilla(e["raiz"], [_req(289, "Cerrado"), _req(296, "Cerrado")])
-    _mover(e["raiz"], 289)
-    ce.vuelta(e["raiz"], e["gestion"], {})
-    assert (e["gestion"] / f"0 Proyectos Entregados {ANIO}" / "289. Instalación de prueba").is_dir()
-
-
-def test_crea_la_carpeta_del_anio_si_no_existe(e, tmp_path):
-    import shutil
-    shutil.rmtree(e["gestion"] / f"0 Proyectos Entregados {ANIO}")
-    _planilla(e["raiz"], [_req(289, "Cerrado")])
-    _mover(e["raiz"], 289)
-    ce.vuelta(e["raiz"], e["gestion"], {})
-    assert (e["gestion"] / f"0 Proyectos Entregados {ANIO}" / "289. Instalación de prueba").is_dir()
-
-
-def test_si_el_cambio_se_retiro_no_mueve_nada(e):
-    m = _mover(e["raiz"], 289, minutos=-5)
-    ce.vuelta(e["raiz"], e["gestion"], {})
-    # Recién llegado: espera, por si OneDrive todavía no trae el cambio de estado
-    assert [x["id"] for x in _buzon(e["raiz"], ce.TIPO_MOVER)] == [m["id"]]
-    for x in _buzon(e["raiz"], ce.TIPO_MOVER):
-        os.remove(x["_archivo"])
-    _mover(e["raiz"], 289, minutos=-45)
-    ce.vuelta(e["raiz"], e["gestion"], {})
-    assert (e["gestion"] / "289. Instalación de prueba").is_dir() and _buzon(e["raiz"], ce.TIPO_MOVER) == []
-    (p,) = [x for x in _procesados(e["raiz"]) if x["tipo"] == ce.TIPO_MOVER]
-    assert p["resultado"]["estado"] == "descartado" and "Adjudicado" in p["resultado"]["detalle"][0]
-
-
-def test_nunca_pisa_una_carpeta_que_ya_esta_en_el_destino(e):
-    (e["gestion"] / f"0 Proyectos Entregados {ANIO}" / "289. Instalación de prueba").mkdir()
-    (e["gestion"] / f"0 Proyectos Entregados {ANIO}" / "289. Instalación de prueba" / "de antes.txt").write_text("x", encoding="utf-8")
-    _planilla(e["raiz"], [_req(289, "Cerrado")])
-    _mover(e["raiz"], 289)
-    ce.vuelta(e["raiz"], e["gestion"], {})
-    assert (e["gestion"] / "289. Instalación de prueba" / "Compras").is_dir()
-    assert (e["gestion"] / f"0 Proyectos Entregados {ANIO}" / "289. Instalación de prueba" / "de antes.txt").exists()
-    (p,) = [x for x in _procesados(e["raiz"]) if x["tipo"] == ce.TIPO_MOVER]
-    assert p["resultado"]["estado"] == "rechazado" and "no se pisa" in p["resultado"]["detalle"][0]
-
-
-def test_dos_carpetas_con_el_mismo_n_no_se_mueven(e):
-    (e["gestion"] / "289. Otra cosa").mkdir()
-    _planilla(e["raiz"], [_req(289, "Cerrado")])
-    _mover(e["raiz"], 289)
-    ce.vuelta(e["raiz"], e["gestion"], {})
-    assert (e["gestion"] / "289. Instalación de prueba").is_dir() and (e["gestion"] / "289. Otra cosa").is_dir()
-    (p,) = [x for x in _procesados(e["raiz"]) if x["tipo"] == ce.TIPO_MOVER]
-    assert p["resultado"]["estado"] == "rechazado" and "lo decide una persona" in p["resultado"]["detalle"][0]
-
-
-def test_si_ya_estaba_en_los_entregados_no_hace_nada(e):
-    _planilla(e["raiz"], [_req(296, "Cerrado")])
-    _mover(e["raiz"], 296)
-    ce.vuelta(e["raiz"], e["gestion"], {})
-    (p,) = [x for x in _procesados(e["raiz"]) if x["tipo"] == ce.TIPO_MOVER]
-    assert p["resultado"]["estado"] == "sin-cambios"
-
-
-def test_con_algo_abierto_reintenta_y_a_los_7_dias_se_rinde(e, monkeypatch):
-    def ocupado(a, b):
-        raise PermissionError(32, "El proceso no tiene acceso al archivo porque está siendo utilizado por otro proceso")
-    monkeypatch.setattr(ce.os, "rename", ocupado)
-    _planilla(e["raiz"], [_req(289, "Cerrado")])
-    _mover(e["raiz"], 289)
-    detalle, _, avisos = ce.vuelta(e["raiz"], e["gestion"], {})
-    assert len(_buzon(e["raiz"], ce.TIPO_MOVER)) == 1 and "se reintenta" in detalle and avisos
-    for x in _buzon(e["raiz"], ce.TIPO_MOVER):
-        os.remove(x["_archivo"])
-    _mover(e["raiz"], 289, minutos=-8 * 24 * 60)
-    ce.vuelta(e["raiz"], e["gestion"], {})
-    assert _buzon(e["raiz"], ce.TIPO_MOVER) == []
-    (p,) = [x for x in _procesados(e["raiz"]) if x["tipo"] == ce.TIPO_MOVER]
-    assert p["resultado"]["estado"] == "rechazado" and "a mano" in p["resultado"]["detalle"][0]
-
+# ── sin la biblioteca ────────────────────────────────────────────────────────
 
 def test_sin_la_biblioteca_de_gestion_no_hace_nada(e):
     detalle, estado, avisos = ce.vuelta(e["raiz"], None, {"cerrados": {"1": "x"}})
@@ -256,7 +155,8 @@ def test_sin_la_biblioteca_de_gestion_no_hace_nada(e):
 
 def test_el_procesador_lo_corre_antes_de_las_carpetas_y_del_cruce(e, monkeypatch):
     nombres = [n for n, _ in procesar.PASOS]
-    assert nombres.index("requerimientos") < nombres.index("entregados") < nombres.index("carpetas-proyecto") < nombres.index("proyectos")
+    assert (nombres.index("requerimientos") < nombres.index("carpetas-oferta") < nombres.index("entregados")
+            < nombres.index("carpetas-proyecto") < nombres.index("proyectos"))
     monkeypatch.setattr(procesar.ubicacion, "biblioteca", lambda nombre, desde=None: e["gestion"])
     detalle, firma = procesar.paso_entregados(e["raiz"], None, False)
     assert firma["cerrados"].keys() == {"296"} and "N° 296" in detalle
