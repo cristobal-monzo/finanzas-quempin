@@ -120,12 +120,18 @@ def test_la_planilla_muestra_las_columnas_que_se_usan_del_mas_nuevo_al_mas_antig
     assert _pestanas(pagina) == ["Inicio", "Requerimientos"]
     assert pagina.locator("iframe").count() == 0
     assert pagina.locator("#pqCabeza th").all_inner_texts() == [
-        "N°", "Estado", "Canal", "Capt.", "Eval.", "Título", "Cliente", "Ubicación", "ID o referencia", "Apertura", "Cierre"]
+        "N°", "Estado", "Canal", "Capt.", "Eval.", "Título", "Cliente", "Ubicación", "ID o referencia", "Apertura", "Cierre", ""]
+    assert pagina.locator("#pqCabeza th.c-acc").get_attribute("aria-label") == "Opciones"
     assert _ns(pagina) == list(range(913, 899, -1))
     fila = pagina.locator('#pqFilas tr[data-n="900"]')
     assert fila.locator("td.c-ubic").inner_text() == "Valparaíso"
     assert fila.locator(".pq-est").inner_text() == "Evaluación"
-    assert "faltan 2 días" in fila.locator("td.c-ci").inner_text()
+    assert fila.locator("td.c-ci .pq-quedan").inner_text() == "2 días"
+    assert fila.locator("td.c-ci .pq-quedan").get_attribute("title") == "Faltan 2 días para el cierre"
+    # Cada requerimiento en una sola línea (pedido del usuario, 2026-11-25), con el ⋯ en su columna al final
+    alturas = pagina.locator("#pqFilas tr").evaluate_all("trs => trs.map((t) => t.getBoundingClientRect().height)")
+    assert max(alturas) < 44, alturas
+    assert fila.locator("td").last.locator(".pq-opciones").count() == 1
     assert "Al día con el Excel" in pagina.locator("#pqSinc").inner_text()
     assert pagina.locator("#pqCuenta").inner_text() == "14 requerimientos"
     # Por estado (con su cuenta) y buscando

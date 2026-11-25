@@ -807,6 +807,10 @@ function pqPintarTabla() {
       if (c.ayuda) th.title = c.ayuda;
       cab.append(th);
     });
+    const th = crear('th', 'c-acc');
+    th.scope = 'col';
+    th.setAttribute('aria-label', 'Opciones');
+    cab.append(th);
   }
   const todas = pqFilas().length;
   const filas = pqFiltradas();
@@ -835,33 +839,27 @@ function pqFila(r, hoy) {
     if (c.tarjeta) td.dataset.et = c.tarjeta;
     if (c.id === 'numero') {
       td.textContent = String(r.numero);
-      if (rcEscribe()) {
-        const b = crear('button', 'pq-opciones');
-        b.type = 'button';
-        b.title = 'Opciones del N° ' + r.numero;
-        b.setAttribute('aria-label', 'Opciones del N° ' + r.numero);
-        b.setAttribute('aria-haspopup', 'menu');
-        b.append(crear('span', null, '⋯'));
-        b.addEventListener('click', (e) => pqMenu(b, r, e));
-        td.append(b);
-      }
-      if (mt && mt.nuevo) td.append(crear('span', 'pq-nuevo-tag', 'nuevo'));
     } else if (c.id === 'estado') {
       if (v) { const p = crear('span', 'pq-est', v); p.dataset.estado = v; td.append(p); }
     } else if (c.id === 'titulo') {
+      // Todo en una línea (pedido del usuario, 2026-11-25: «que cada proyecto utilice 1 sola fila»)
+      const linea = crear('div', 'pq-linea');
+      td.append(linea);
       const b = crear('button', 'pq-abrir', v || '(sin título)');
       b.type = 'button';
       b.title = v ? 'Abrir el N° ' + r.numero + ': ' + v : 'Abrir el N° ' + r.numero;
       b.addEventListener('click', () => pqAbrir(r));
-      td.append(b);
+      linea.append(b);
+      if (mt && mt.nuevo) linea.append(crear('span', 'pq-nuevo-tag', 'nuevo'));
       const fo = pqForm(r);
       if (fo) {
         const fuera = RC_FUERA.includes(fo.estado);
-        const a = crear('button', 'pq-form' + (fuera ? ' fuera' : ''), 'Formulado · ' + fo.estado);
+        // Corto, para que el título tenga espacio en una línea: el ✓ ya dice «formulado»
+        const a = crear('button', 'pq-form' + (fuera ? ' fuera' : ''), fo.estado);
         a.type = 'button';
-        a.title = 'Formulación ' + fo.codigo + ' v' + fo.version + (fo.responsable ? ' (' + fo.responsable + ')' : '') + ': abrirla en el Formulador';
+        a.title = 'Formulado · ' + fo.estado + ': formulación ' + fo.codigo + ' v' + fo.version + (fo.responsable ? ' (' + fo.responsable + ')' : '') + ': abrirla en el Formulador';
         a.addEventListener('click', () => rcIr(RC_IR.ficha(fo.uid)));
-        td.append(a);
+        linea.append(a);
       } else if (!(mt && mt.choque) && ['Evaluación', 'Ofertado', 'Adjudicado'].includes(texto(r.estado))) {
         // Sin formulación: pasa directo al Formulador con el diálogo de nuevo proyecto de este N° (2026-11-11), también
         // recién ingresado (el Formulador lo toma del buzón con N° provisorio). Con choque no: ese N° va a cambiar.
@@ -869,15 +867,23 @@ function pqFila(r, hoy) {
         f.type = 'button';
         f.title = 'Crear la formulación del N° ' + r.numero + ' en el Formulador';
         f.addEventListener('click', () => rcIr({ herr: 'formulador', url: HERR.get('formulador').ruta + '#/req/' + encodeURIComponent(r.numero) + '/crear' }));
-        td.append(f);
+        linea.append(f);
       }
-      if (mt && mt.choque) td.append(crear('span', 'pq-choque', 'El N° ' + r.numero + ' ya es «' + mt.choque + '»: al pasar al Excel queda con el siguiente libre.'));
+      if (mt && mt.choque) {
+        const ch = crear('span', 'pq-choque', 'N° ya es «' + mt.choque + '»');
+        ch.title = 'El N° ' + r.numero + ' ya es «' + mt.choque + '»: al pasar al Excel queda con el siguiente libre.';
+        linea.append(ch);
+      }
     } else if (PQ_FECHAS.includes(c.id)) {
       td.textContent = pqFecha(v);
       if (c.id === 'cierre' && texto(r.estado) === 'Evaluación') {
         const f = rcFecha(v);
         const d = f ? rcDias(f, hoy) : null;
-        if (d !== null && d >= 0 && d <= 14) td.append(crear('span', 'pq-quedan' + (d <= 3 ? ' pronto' : ''), d === 0 ? 'cierra hoy' : d === 1 ? 'cierra mañana' : 'faltan ' + d + ' días'));
+        if (d !== null && d >= 0 && d <= 14) {
+          const q = crear('span', 'pq-quedan' + (d <= 3 ? ' pronto' : ''), d === 0 ? 'hoy' : d === 1 ? 'mañana' : d + ' días');
+          q.title = d === 0 ? 'Cierra hoy' : d === 1 ? 'Cierra mañana' : 'Faltan ' + d + ' días para el cierre';
+          td.append(q);
+        }
       }
     } else {
       if (c.id === 'referencia' && v && texto(r.canal) !== 'Postventa') {
@@ -904,6 +910,18 @@ function pqFila(r, hoy) {
     }
     tr.append(td);
   });
+  const acc = crear('td', 'c-acc');
+  if (rcEscribe()) {
+    const b = crear('button', 'pq-opciones');
+    b.type = 'button';
+    b.title = 'Opciones del N° ' + r.numero;
+    b.setAttribute('aria-label', 'Opciones del N° ' + r.numero);
+    b.setAttribute('aria-haspopup', 'menu');
+    b.append(crear('span', null, '⋯'));
+    b.addEventListener('click', (e) => pqMenu(b, r, e));
+    acc.append(b);
+  }
+  tr.append(acc);
   tr.addEventListener('click', (e) => { if (!e.target.closest('button, a')) pqAbrir(r); });
   pqFilaDe.set(tr, r);
   return tr;
