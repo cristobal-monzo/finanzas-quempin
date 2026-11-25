@@ -842,6 +842,13 @@ dialog.solo-ver .pl-vista { pointer-events: none; }
 .rd-dlg-campos label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 700; color: var(--text-secondary); }
 #dlgRdDoc .dlg { width: min(860px, 94vw); }
 #dlgRdLector .dlg { width: min(520px, 94vw); }
+#dlgRdCorreo .dlg { width: min(720px, 94vw); }
+.rd-correo-cab { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 14px; }
+.rd-correo-cab dt { color: var(--texto-suave); font-weight: 700; }
+.rd-correo-cab dd { margin: 0; overflow-wrap: anywhere; }
+.rd-correo-adj { padding: 0; border: 0; background: none; font: inherit; font-weight: 700; color: var(--brand-orange-ink); text-align: left; text-decoration: underline; overflow-wrap: anywhere; cursor: pointer; }
+/* El cuerpo como lo ve quien lo recibe: fondo blanco también en el tema oscuro */
+.rd-correo-cuerpo { display: block; width: 100%; height: 46vh; border: 1px solid var(--baseline); border-radius: 10px; background: #fff; }
 .rd-lector-campos { display: flex; flex-direction: column; gap: 10px; }
 .rd-lector-campos label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
 .rd-lector-campos input { min-height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--baseline); background: var(--surface-card); color: var(--text-primary); font: inherit; font-size: 14px; }

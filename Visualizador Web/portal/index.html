@@ -572,6 +572,25 @@
   </form>
 </dialog>
 
+<!-- Rendiciones (2026-11-25): el correo tal como saldrá; se envía solo al confirmarlo -->
+<dialog id="dlgRdCorreo" aria-labelledby="dlgRdCorreoTit">
+  <form method="dialog" class="dlg">
+    <h2 id="dlgRdCorreoTit">Revisa el correo antes de enviar</h2>
+    <button class="dlg-x" value="" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <dl class="rd-correo-cab">
+      <dt>Para</dt><dd id="rdCorreoPara"></dd>
+      <dt>Asunto</dt><dd id="rdCorreoAsunto"></dd>
+      <dt>Adjunto</dt><dd><button class="rd-correo-adj" id="rdCorreoPdf" type="button" title="Abrir el PDF"></button></dd>
+    </dl>
+    <div id="rdCorreoMarco"></div>
+    <p class="rd-nota">Sale por Outlook en la próxima vuelta del procesador (unos minutos).</p>
+    <div class="dlg-acc">
+      <button class="cx-enlace" value="">Volver</button>
+      <button class="btn-pri" id="rdCorreoEnviar" value="enviar">Enviar</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Clic derecho: el menú del portal y la ventana para reportar un error u observación (2026-10-30) -->
 <dialog id="menuCtx" aria-label="Opciones" autofocus tabindex="-1">
   <div class="ctx-lista" id="menuCtxLista" role="menu"></div>

@@ -87,9 +87,23 @@ def test_rendiciones_de_la_foto_al_pdf_y_al_centro_de_costos(navegador, sitio, t
     pagina.locator("#rdEnviar").click()
     assert pagina.locator("#rdEnviar").inner_text().startswith("Enviar igual")
     pagina.locator("#rdEnviar").click()
+    # Antes de enviar, el correo tal como saldrá (pedido del usuario, 2026-11-25); «Volver» no envía nada
+    dlg = pagina.locator("#dlgRdCorreo")
+    dlg.wait_for(state="visible")
+    assert pagina.locator("#rdCorreoAsunto").inner_text().endswith("· Persona de Ejemplo · $ 73.280")
+    assert pagina.locator("#rdCorreoPdf").inner_text().endswith(".pdf")
+    cuerpo = pagina.frame_locator("#rdCorreoCuerpo").locator("body").inner_text()
+    assert "período del 11-09-2026 al 14-10-2026" in cuerpo and "280. Obra de ejemplo: $ 70.780 (1 doc.)" in cuerpo, cuerpo
+    dlg.get_by_role("button", name="Volver").click()
+    dlg.wait_for(state="hidden")
+    assert not pagina.locator("#rdEnviar").is_disabled() and pagina.locator("#rdCorreoCuerpo").count() == 0
+    pagina.locator("#rdEnviar").click()
+    dlg.wait_for(state="visible")
+    dlg.get_by_role("button", name="Enviar", exact=True).click()
     pagina.locator("#rdEnvios .sc-pill", has_text="En camino").wait_for()
     assert pagina.locator("#rdEnviar").inner_text() == "Rendición enviada" and pagina.locator("#rdEnviar").is_disabled()
     leido = pagina.evaluate(JS_LEER_BUZON)
+    assert len(leido["mensajes"]) == 2, list(leido["mensajes"])          # uno por proyecto: «Volver» no dejó nada
     mensajes = {json.loads(t)["carpeta"]: (n, json.loads(t)) for n, t in leido["mensajes"].items()}
     assert set(mensajes) == {"280. Obra de ejemplo", "Gastos Generales"}
     m280 = mensajes["280. Obra de ejemplo"][1]
@@ -139,6 +153,12 @@ def test_rendiciones_de_la_foto_al_pdf_y_al_centro_de_costos(navegador, sitio, t
     assert resultado["enviados"] == [r["numero"]] and para == ["a@ejemplo.cl", "b@ejemplo.cl"]
     assert asunto.endswith("· Persona de Ejemplo · $ 73.280") and "Correo automático generado" in cuerpo
     assert "período del 11-09-2026 al 14-10-2026" in cuerpo
+    # La vista previa del Portal arma el mismo correo que el procesador: con esta rendición y con casos de borde
+    otros = [dict(r, unidad="Obras <norte> & \"sur\"", deudor="  Ana   O'Brien "),
+             dict(r, documentos=r["documentos"][:1], cantidad=2),                              # llegó uno de dos
+             dict(r, documentos=[dict(d, fecha="") for d in r["documentos"]], periodo="Octubre 2026"),
+             dict(r, tipo="vale", numero="", documentos=[dict(d, carpeta="A") for d in r["documentos"]])]
+    _rd_correo_igual(pagina, [r] + otros)
     # El registro de rendiciones del Portal la muestra con su correo
     pagina.evaluate(JS_ESCRIBIR_INTERCAMBIO, {"publicado/rendiciones.json": json.loads((raiz / "publicado" / "rendiciones.json").read_text(encoding="utf-8"))})
     _menu(pagina, "Rendiciones")                          # volver a mostrarla relee la carpeta
@@ -149,6 +169,22 @@ def test_rendiciones_de_la_foto_al_pdf_y_al_centro_de_costos(navegador, sitio, t
     assert (chile / "Gastos Generales" / r["documentos"][1]["archivo"]).exists()
     assert not errores
     pagina.context.close()
+
+
+def _rd_correo_igual(pagina, rendiciones):
+    """QRendiciones.correo (la vista previa) y armar() de correo_rendiciones.py: mismo asunto y mismo HTML."""
+    import re
+    import subprocess
+    import sys
+    py = json.loads(subprocess.run([sys.executable, "-c", "import json, sys, correo_rendiciones as cr; "
+                                    "print(json.dumps([cr.armar(r) for r in json.loads(sys.stdin.read())]))"],
+                                   input=json.dumps(rendiciones), cwd=RAIZ / "Sistema Intercambio", capture_output=True,
+                                   text=True, encoding="utf-8", check=True).stdout)
+    js = pagina.evaluate("rs => rs.map((r) => { const c = window.QRendiciones.correo(r); return [c.asunto, c.cuerpo]; })", rendiciones)
+    junta = lambda h: re.sub(r"\s+", " ", h).replace("> <", "><").strip()
+    for (a_py, c_py), (a_js, c_js) in zip(py, js):
+        assert a_js == a_py
+        assert junta(c_js) == junta(c_py)
 
 
 def test_rendiciones_sin_biblioteca_hace_el_pdf_y_se_guarda_en_el_navegador(navegador, sitio):

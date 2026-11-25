@@ -69,6 +69,11 @@ ejecutivo, con el monto total, el período (del documento más antiguo al más r
   del PC donde corre, a los destinatarios de `rendiciones_destinatarios.json` (gitignoreado, junto al módulo). Sale una
   vez por rendición, cuando llegaron todos sus documentos (o a las 2 horas, con lo que llegó). Si ese PC está apagado,
   sale en su primera vuelta al encenderse. `py -3.14 correo_rendiciones.py vista` escribe el próximo como `.html`.
+- **Vista previa y confirmación** (pedido del usuario, 2026-11-25): «Enviar rendición» arma el PDF y abre `#dlgRdCorreo`
+  con el correo tal como saldrá (Para, Asunto, el PDF adjunto, que se abre con un clic, y el cuerpo). Nada llega al
+  buzón hasta «Enviar»; «Volver» o cerrar no envían nada. El cuerpo lo arma `rdCorreoArmar`, copia de `armar()` de
+  `correo_rendiciones.py`: si cambias una, cambia la otra (`_rd_correo_igual` en la prueba compara las dos). «Para» muestra
+  los destinatarios del último correo del registro; el Portal no lee `rendiciones_destinatarios.json`.
 - **Siempre con el PDF adjunto** (pedido del usuario, 2026-11-18: «para la revisión de Nicolás y de Gonzalo»):
   «Enviar rendición» arma el PDF (`rdGenerarPdf({ datos: true })`) y lo manda en `rendicion.pdf` del primer mensaje,
   aparte de los documentos (no se copia a la carpeta del proyecto). El procesador lo deja en
