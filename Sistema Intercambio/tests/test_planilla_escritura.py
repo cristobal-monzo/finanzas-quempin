@@ -271,6 +271,10 @@ def entorno(tmp_path, monkeypatch):
                 resultados.append({"i": i, "ok": True, "fila": 0})
             elif o["op"] == "nueva":
                 fila = max(r for r in range(2, hoja.max_row + 1) if hoja.cell(r, 2).value or r == 2) + 1
+                # Como planilla_excel.ps1: la fila de ese N° (FILA()-1), si quedó vacía al eliminar su requerimiento
+                libre = o["numero"] + 1
+                if 2 <= libre < fila and not hoja.cell(libre, 2).value and not hoja.cell(libre, 6).value:
+                    fila = libre
                 # Como el Excel desde el 2026-11-06: el N° lo da la fórmula =SI(B<>"";FILA()-1;"")
                 real = fila - 1
                 if o.get("exigeNumero") and real != o["numero"]:
@@ -279,6 +283,16 @@ def entorno(tmp_path, monkeypatch):
                 hoja.cell(fila, 1).value = real
                 poner(fila, o)
                 resultados.append({"i": i, "ok": True, "fila": fila, "numero": real})
+            elif o["op"] == "eliminar":
+                col_t = encabezados.index("Título") + 1
+                filas = [r for r in range(2, hoja.max_row + 1) if hoja.cell(r, 1).value == o["numero"] and hoja.cell(r, col_t).value == o["titulo"]]
+                if len(filas) != 1:
+                    resultados.append({"i": i, "ok": False, "fila": 0, "detalle": f"{len(filas)} filas"})
+                    continue
+                # Las casillas sin fórmula; el N° (la fórmula) queda en blanco: aquí, sin fórmula que lo calcule, se vacía
+                for c in range(1, len(encabezados) + 1):
+                    hoja.cell(filas[0], c).value = None
+                resultados.append({"i": i, "ok": True, "fila": filas[0]})
             else:
                 col_t = encabezados.index("Título") + 1
                 filas = [r for r in range(2, hoja.max_row + 1)
@@ -649,3 +663,96 @@ def test_excel_desprotege_solo_con_la_clave_y_deja_la_hoja_entera_protegida():
     assert ps1.index("Proteger-Como $hoja $c $clave") < ps1.index("$wb.Save()")
     # La clave nunca va en el archivo de entrada
     assert "clave" not in json.dumps({"protegerHoja": pe.PROTEGER_HOJA})
+
+
+# ── eliminar un requerimiento mal ingresado (2026-11-25) ─────────────────────
+
+def _eliminar(numero, titulo, enviado=None, id_=None):
+    return {"esquema": ic.ESQUEMA, "id": id_ or f"eliminar{numero:04d}", "tipo": pe.TIPO_ELIMINAR, "destino": rq.DESTINO,
+            "origen": {"herramienta": "portal", "usuario": "NB", "enviado": enviado or _hace(2)},
+            "requerimiento": {"numero": numero, "titulo": titulo}}
+
+
+def test_eliminar_vacia_la_fila_sin_borrarla_y_el_n_queda_libre(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B mal ingresado"), (3, "C")])
+    rq.publicar(raiz, ruta)
+    m = _eliminar(2, "B mal ingresado")
+    assert esquemas.validar_mensaje(m) == []
+    ic.enviar(raiz, m)
+    r = pe.vuelta(raiz, ruta)
+    assert r["detalle"].endswith("1 eliminado(s)")
+    [op] = escritas[0]
+    assert op == {"op": "eliminar", "numero": 2, "titulo": "B mal ingresado"}
+    datos = ic.leer_publicacion(raiz, "requerimientos")["datos"]
+    assert sorted(_publicados(raiz)) == [1, 3]
+    # El N° 3 sigue en su fila: nada se corrió
+    hoja = openpyxl.load_workbook(ruta)[rq.HOJA]
+    assert (hoja["A4"].value, hoja["F4"].value, hoja["F3"].value) == (3, "C", None)
+    assert [(d["numero"], d["titulo"], d["usuario"]) for d in datos["eliminados"]] == [(2, "B mal ingresado", "NB")]
+    assert not datos.get("desaparecidos") and not any("N° 2" in a for a in datos["avisos"])
+    assert _archivados(raiz)[m["id"]]["estado"] == "aplicado"
+    assert json.loads(pe.ESTADO.read_text(encoding="utf-8"))["eliminados"] == []
+    # La vuelta siguiente no abre Excel
+    assert pe.vuelta(raiz, ruta)["detalle"] == "sin cambios"
+
+
+def test_el_n_eliminado_se_reusa_en_su_misma_fila(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B mal ingresado"), (3, "C")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _eliminar(2, "B mal ingresado"))
+    pe.vuelta(raiz, ruta)
+    ic.enviar(raiz, _mensaje(2, herramienta="portal", enviado=_hace(1), titulo="B bien ingresado"))
+    r = pe.vuelta(raiz, ruta)
+    assert r["detalle"].endswith("1 requerimiento(s) registrado(s), 0 cambiado(s)")
+    pub = _publicados(raiz)
+    assert (pub[2]["titulo"], pub[3]["titulo"]) == ("B bien ingresado", "C")
+    assert openpyxl.load_workbook(ruta)[rq.HOJA]["F3"].value == "B bien ingresado"
+    # Ya tiene requerimiento: deja de estar en «eliminados»
+    assert not ic.leer_publicacion(raiz, "requerimientos")["datos"].get("eliminados")
+
+
+def test_eliminar_un_n_que_ahora_es_de_otro_no_toca_nada(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    m = _eliminar(2, "Otro título")
+    ic.enviar(raiz, m)
+    pe.vuelta(raiz, ruta)
+    assert escritas == []
+    assert _archivados(raiz)[m["id"]]["estado"] == "rechazado"
+    assert sorted(_publicados(raiz)) == [1, 2]
+
+
+def test_un_cambio_a_un_n_que_se_elimina_en_la_misma_vuelta_se_rechaza(tmp_path, entorno):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B")])
+    rq.publicar(raiz, ruta)
+    e = _editar(2, {"estado": "Ofertado"}, {"estado": "Evaluación"}, enviado=_hace(3), titulo="B")
+    ic.enviar(raiz, e)
+    ic.enviar(raiz, _eliminar(2, "B"))
+    pe.vuelta(raiz, ruta)
+    assert [o["op"] for o in escritas[0]] == ["eliminar"]
+    assert _archivados(raiz)[e["id"]]["estado"] == "rechazado"
+
+
+def test_si_publicar_falla_el_eliminado_se_recuerda_para_la_vuelta_siguiente(tmp_path, entorno, monkeypatch):
+    raiz, escritas = entorno
+    ruta = _planilla(tmp_path, [(1, "A"), (2, "B"), (3, "C")])
+    rq.publicar(raiz, ruta)
+    ic.enviar(raiz, _eliminar(2, "B"))
+    original = rq.publicar
+    monkeypatch.setattr(rq, "publicar", lambda *a, **k: (_ for _ in ()).throw(OSError("OneDrive ocupado")))
+    pe.vuelta(raiz, ruta)
+    assert [d["numero"] for d in json.loads(pe.ESTADO.read_text(encoding="utf-8"))["eliminados"]] == [2]
+    monkeypatch.setattr(rq, "publicar", original)
+    pe.vuelta(raiz, ruta)
+    datos = ic.leer_publicacion(raiz, "requerimientos")["datos"]
+    assert [d["numero"] for d in datos["eliminados"]] == [2] and not datos.get("desaparecidos")
+
+
+def test_excel_tiene_la_operacion_eliminar_y_no_borra_filas():
+    ps1 = pe.SCRIPT_EXCEL.read_text(encoding="utf-8-sig")
+    assert "$o.op -eq 'eliminar'" in ps1 and "HasFormula" in ps1
+    assert ".Delete()" not in ps1.replace("Validation.Delete()", "")

@@ -63,7 +63,14 @@ que de verdad se usan).
   (sin contar mayúsculas, espacios ni tildes; las postventas no cuentan) avisa una vez con el N° y el título del otro. El
   segundo «Guardar» lo deja pasar (una licitación repostulada). `pqMismoId`. Unir o borrar duplicados no: el dueño es el Excel.
 - La columna ID lleva un botón para copiarlo (`.pq-copiar`) y las filas van en dos tonos.
-- **No se borran filas**: el N° es la clave de carpetas, formulaciones y fichas. Lo que no sigue queda «Descartado».
+- **Eliminar un requerimiento mal ingresado** (2026-11-25, pedido del equipo en las observaciones; el usuario eligió «borrar y
+  reusar el N°»): el botón ⋯ de la celda del N° (`.pq-opciones`, solo con `rcEscribe()`) y el clic derecho sobre la fila
+  (`pqOpcionesDe`, que `ctxOpciones` suma; `ctxMostrar` acepta `opciones`) ofrecen «Eliminar requerimiento…». El diálogo
+  `#dlgPqEliminar` (`pqPedirEliminar`) dice qué se pierde (formulación, carpeta, cambios que esperan) y pide un motivo
+  opcional. Lo que todavía no llega al Excel se retira del buzón; lo demás deja `eliminar-requerimiento`, la fila deja de verse
+  desde ya (`pqMezclar`) y se puede «Retirar» mientras espera. El Excel vacía la fila sin borrarla y el N° queda en
+  `eliminados` de la publicación (`planillaInfo.eliminados`): `pqSiguienteN` da primero el menor de esos que nada usa
+  (`pqTomados`: Planilla, buzón, carpetas, formulaciones). Lo que no sigue, pero existió, igual queda «Descartado».
 - Mientras se mira, relee la carpeta cada 2 minutos, nunca con el diálogo abierto. Con un contenedor de 1240 px o menos, cada
   fila es una tarjeta.
 - **Pruebas**: desde `test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel` en `tests/portal/` (datos de mentira,

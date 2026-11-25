@@ -332,6 +332,18 @@ class PlanillaRenumerada(RuntimeError):
             "a sus N° (o se acepte con aceptar_renumeracion=True).")
 
 
+def eliminados_vigentes(previos: dict, nuevos: list[dict], recientes: list[dict] | None = None) -> list[dict]:
+    """[{numero, titulo, fecha, usuario}] de los N° que alguien eliminó a propósito desde el Portal
+    (``eliminar-requerimiento``, 2026-11-25): los de la publicación anterior más los recién eliminados, mientras su N°
+    siga sin requerimiento. Cuando el Portal le da ese N° a uno nuevo, sale de la lista."""
+    numeros = {r["numero"] for r in nuevos}
+    salida: dict = {}
+    for d in list(previos.get("eliminados") or []) + list(recientes or []):
+        if isinstance(d, dict) and isinstance(d.get("numero"), int) and d["numero"] not in numeros:
+            salida[d["numero"]] = {k: d.get(k) for k in ("numero", "titulo", "fecha", "usuario")}
+    return [salida[n] for n in sorted(salida)]
+
+
 def desaparecidos(previos: dict, nuevos: list[dict], hoy: str) -> list[dict]:
     """[{numero, titulo, desde}] de los N° que estaban publicados y ya no están
     en la Planilla, ni con otro N° (eso es `renumerados`).
@@ -360,7 +372,8 @@ def aviso_desaparecido(d: dict) -> str:
             "el Formulador y el AF. Restáurala o confirma que se eliminó a propósito.")
 
 
-def publicar(raiz_intercambio: Path, ruta_planilla: Path, aceptar_renumeracion: bool = False) -> Path:
+def publicar(raiz_intercambio: Path, ruta_planilla: Path, aceptar_renumeracion: bool = False,
+             eliminados: list[dict] | None = None) -> Path:
     datos = datos_publicacion(ruta_planilla)
     previa = intercambio.leer_publicacion(raiz_intercambio, PUBLICACION)
     previos = (previa or {}).get("datos") or {}
@@ -368,7 +381,12 @@ def publicar(raiz_intercambio: Path, ruta_planilla: Path, aceptar_renumeracion: 
         movidos = renumerados(previos.get("requerimientos") or [], datos["requerimientos"])
         if len(movidos) >= UMBRAL_RENUMERADOS:
             raise PlanillaRenumerada(movidos)
-    faltan = desaparecidos(previos, datos["requerimientos"], datetime.now().date().isoformat())
+    borrados = eliminados_vigentes(previos, datos["requerimientos"], eliminados)
+    if borrados:
+        datos["eliminados"] = borrados
+    # Un N° eliminado a propósito no es una fila perdida
+    adrede = {d["numero"] for d in borrados}
+    faltan = [d for d in desaparecidos(previos, datos["requerimientos"], datetime.now().date().isoformat()) if d["numero"] not in adrede]
     if faltan:
         datos["desaparecidos"] = faltan
         datos["avisos"] = datos["avisos"] + [aviso_desaparecido(d) for d in faltan]

@@ -13,6 +13,13 @@ módulo es el puente, en los dos sentidos:
   `editar-requerimiento` en el buzón; esta vuelta los escribe. Mientras esperan,
   el Portal los muestra a todos los navegadores encima de lo publicado, con un
   punto naranjo, y se pueden retirar.
+- **Eliminar** (2026-11-25, pedido del usuario: un requerimiento mal ingresado se elimina y su N° se reusa): el Portal deja
+  `eliminar-requerimiento`. La operación `eliminar` de `planilla_excel.ps1` busca la fila por N° y título y vacía sus casillas
+  **sin fórmula**: nunca borra la fila, porque todo N° es `FILA()-1` (medido el 2026-11-25: 1 995 filas con la fórmula, ninguna
+  fija) y borrarla correría los de abajo. Con Estado vacío la fórmula deja el N° en blanco. El N° va a `eliminados` de la
+  publicación (`requerimientos.eliminados_vigentes`; no es un «desaparecido») hasta que vuelve con un requerimiento; si la
+  publicación falla, se guarda en `eliminados` de `planilla_escritura_estado.json` y se reintenta. La operación `nueva` escribe
+  un N° en su propia fila (la N°+1) si quedó vacía, y si no, como siempre, después del último N°.
 - **Formulador → Excel** (2026-11-02): «Exportar a la Planilla» muestra qué cambiaría y deja un
   `editar-requerimiento` con lo que la persona marcó. Además de las columnas del Portal, puede llevar
   `SOLO_FORMULADOR`: Presupuesto, Valor ofertado y Valor adjudicado. Un proyecto sin N° va por `nuevo-requerimiento`.

@@ -581,3 +581,88 @@ def test_la_planilla_cabe_sin_desbordes(navegador, sitio, ancho):
         assert chicos == []
     assert not errores
     pagina.context.close()
+
+
+# ---- Eliminar un requerimiento mal ingresado (2026-11-25) -------------------------------------------------------------
+# Pedido del usuario: un botón de opciones en cada fila para eliminar un requerimiento mal ingresado; eligió «borrar y
+# reusar el N°». El Excel vacía la fila (planilla_escritura.py, con sus pruebas) y el N° vuelve en el próximo ingreso.
+
+def test_eliminar_un_requerimiento_desde_su_boton_de_opciones(navegador, sitio):
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="NB")
+    fila = pagina.locator('#pqFilas tr[data-n="911"]')
+    fila.locator(".pq-opciones").click()
+    menu = pagina.locator("#menuCtx")
+    menu.locator(".ctx-item", has_text="Eliminar requerimiento").click()
+    dlg = pagina.locator("#dlgPqEliminar")
+    dlg.wait_for()
+    assert dlg.locator("#dlgPqElimTit").inner_text() == "Eliminar el N° 911"
+    assert "«Descartada»" in dlg.inner_text() and "queda libre" in dlg.inner_text()
+    dlg.locator("#pqElimMotivo").fill("Ingresado dos veces")
+    dlg.locator("#pqElimSi").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "eliminar-requerimiento")
+    assert m["requerimiento"] == {"numero": 911, "titulo": "Descartada"} and m["motivo"] == "Ingresado dos veces"
+    assert m["origen"]["usuario"] == "NB" and _esquemas().validar_mensaje(m) == []
+    # Deja de verse desde ya, y se puede retirar mientras no llegue al Excel
+    fila.wait_for(state="detached")
+    _esperar_aviso(pagina, "N° 911 eliminado")
+    pagina.locator("#pqSinc summary").click()
+    assert "N° 911 · Descartada · eliminado" in pagina.locator("#pqSinc .pq-cambios").inner_text()
+    pagina.locator("#pqSinc .pq-retirar").click()
+    fila.wait_for()
+    assert _pedidos_planilla(pagina, "eliminar-requerimiento") == []
+    # También con el clic derecho sobre la fila; Cancelar no deja nada
+    fila.locator("td.c-ubic").click(button="right")
+    menu.locator(".ctx-item", has_text="Eliminar requerimiento").click()
+    dlg.locator("#pqElimNo").click()
+    assert _pedidos_planilla(pagina, "eliminar-requerimiento") == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_eliminar_avisa_lo_que_se_pierde_y_uno_que_no_llega_al_excel_se_retira(navegador, sitio):
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="ES")
+    # El 900 tiene carpeta de oferta: lo dice antes de eliminar
+    pagina.locator('#pqFilas tr[data-n="900"] .pq-opciones').click()
+    pagina.locator("#menuCtx .ctx-item", has_text="Eliminar requerimiento").click()
+    dlg = pagina.locator("#dlgPqEliminar")
+    assert "carpeta" in dlg.locator("#pqElimPierde").inner_text()
+    dlg.locator("#pqElimX").click()
+    # Uno recién ingresado, que todavía no llega al Excel, se retira del buzón
+    pagina.locator("#pqNuevo").click()
+    nuevo = pagina.locator("#dlgPlanilla")
+    nuevo.locator("#pqTitulo").fill("Mal ingresado")
+    nuevo.locator("#pqGuardar").click()
+    nuevo.wait_for(state="hidden")
+    pagina.locator('#pqFilas tr[data-n="914"] .pq-opciones').click()
+    pagina.locator("#menuCtx .ctx-item", has_text="Eliminar requerimiento").click()
+    assert "Todavía no llega al Excel" in dlg.inner_text() and dlg.locator("#pqElimMotivoCampo").is_hidden()
+    dlg.locator("#pqElimSi").click()
+    dlg.wait_for(state="hidden")
+    pagina.locator('#pqFilas tr[data-n="914"]').wait_for(state="detached")
+    assert _pedidos_planilla(pagina, "nuevo-requerimiento") == [] and _pedidos_planilla(pagina, "eliminar-requerimiento") == []
+    assert not errores
+    pagina.context.close()
+
+
+def test_el_n_eliminado_lo_toma_el_proximo_requerimiento(navegador, sitio):
+    base = _intercambio_de_prueba()
+    reqs = base["publicado/requerimientos.json"]
+    reqs["datos"]["requerimientos"] = [r for r in reqs["datos"]["requerimientos"] if r["numero"] not in (905, 911)]
+    # 905 tiene una licitación pero no carpeta ni formulación: se reusa el menor libre; 900 tiene carpeta y no se reusa
+    reqs["datos"]["eliminados"] = [{"numero": 911, "titulo": "Descartada", "fecha": "2026-11-25"},
+                                   {"numero": 905, "titulo": "Oferta esperando", "fecha": "2026-11-25"},
+                                   {"numero": 900, "titulo": "LICEO", "fecha": "2026-11-25"}]
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra={"publicado/requerimientos.json": reqs})
+    pagina.locator("#pqNuevo").click()
+    dlg = pagina.locator("#dlgPlanilla")
+    assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 905"
+    dlg.locator("#pqTitulo").fill("Bien ingresado")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (m,) = _pedidos_planilla(pagina, "nuevo-requerimiento")
+    assert m["requerimiento"]["numero"] == 905
+    pagina.locator("#pqNuevo").click()
+    assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 911"
+    assert not errores
+    pagina.context.close()
