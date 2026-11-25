@@ -448,6 +448,34 @@
     vertical-align: top;
     font-variant-numeric: tabular-nums;
   }
+  /* Sin desplazamiento horizontal (pedido del usuario 2026-11-25): entre el
+     teléfono y el escritorio, menos relleno y encabezados en dos líneas. */
+  @media (max-width: 1100px) {
+    table.viz-table { min-width: 0; }
+    table.viz-table > thead > tr > th { white-space: normal; padding: 8px 6px; }
+    table.viz-table > tbody > tr > td { padding: 8px 6px; }
+    table.viz-table > tbody > tr.detail-row > td { padding: 0; }
+    .est-tag { display: block; margin-left: 0; }
+    /* El detalle toma el ancho de la tabla y no la ensancha. */
+    tr.detail-row > td > .detail-panel { contain: inline-size; }
+    /* Subtablas del detalle: sin ancho mínimo, letra y relleno menores. */
+    html table.viz-itemtable, html table.viz-itemtable.tabla-costos-categoria { min-width: 0; }
+    table.viz-table table.viz-itemtable th, table.viz-table table.viz-itemtable td { padding: 6px 4px; white-space: normal; }
+    table.viz-itemtable.tabla-costos-categoria { font-size: 11px; }
+  }
+  /* El cliente de cada proyecto va bajo su nombre (no en su columna) entre
+     641 y 900 px; en el teléfono vuelve a su par etiqueta/valor. */
+  .sub-cliente { display: none; font-size: 12px; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
+  @media (min-width: 641px) and (max-width: 900px) {
+    table.viz-table > thead > tr > th.c-cliente, table.viz-table > tbody > tr > td.c-cliente { display: none; }
+    .sub-cliente { display: block; }
+  }
+  @media (min-width: 641px) and (max-width: 760px) {
+    table.viz-table { font-size: 12px; }
+    table.viz-table > thead > tr > th { font-size: 10.5px; letter-spacing: 0; padding: 8px 4px; }
+    table.viz-table > tbody > tr > td { padding: 8px 4px; }
+    table.viz-table > tbody > tr.detail-row > td { padding: 0; }
+  }
   table.viz-table tbody tr.doc-row { cursor: pointer; }
   table.viz-table tbody tr.doc-row:hover { background: var(--surface-1); }
   table.viz-table tbody tr.doc-row:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
@@ -626,6 +654,13 @@
   table.mapa-calor th.proyecto, table.mapa-calor td.proyecto { text-align: left; white-space: nowrap; max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
   table.mapa-calor td { text-align: center; padding: 7px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
   table.mapa-calor td.sin-dato { color: var(--text-muted); }
+  /* Sin desplazamiento horizontal (2026-11-25): anchos fijos, el nombre del
+     proyecto se corta con «…» (title = completo) y, si la tarjeta queda
+     angosta, el mapa baja a su propia fila. */
+  .chart-card--mapa { flex-basis: 420px; }
+  table.mapa-calor { table-layout: fixed; }
+  table.mapa-calor th.proyecto { width: 38%; }
+  table.mapa-calor th.proyecto, table.mapa-calor td.proyecto { max-width: none; }
 
   /* Pareto de clientes: barras + acumulado, para leer la dependencia. */
   /* La barra necesita su espacio: con 3 tarjetas en la fila, columnas
@@ -908,6 +943,25 @@
   .ing-intro > div:first-child { flex: 1 1 420px; min-width: 0; }
   .ing-titulo { font-size: 15px; margin: 0 0 6px; }
   .ing-texto { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; margin: 0; max-width: 72ch; }
+  .ing-como summary { cursor: pointer; font-size: 12.5px; color: var(--text-secondary); padding: 2px 0; width: fit-content; }
+  .ing-como summary:hover { color: var(--text-primary); }
+  .ing-como summary:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; border-radius: 4px; }
+  .ing-como[open] summary { margin-bottom: 6px; }
+  .ing-pasos { margin: 0 0 4px; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .ing-pasos li { margin: 1px 0; padding-left: 2px; }
+  .ing-como .ing-texto { max-width: none; }
+  .ing-pasos strong { color: var(--text-primary); }
+  /* En «Ingresar datos» el aviso rojo de proyectos incompletos se reemplaza por el avance de la carga
+     (renderProgreso): ahí mismo se completan, y el aviso empujaba la tabla bajo el pliegue (2026-10-25). */
+  body[data-pestana="tabIngreso"] .pendientes-banner { display: none !important; }
+  .ing-progreso { display: flex; gap: 8px 16px; align-items: center; flex-wrap: wrap; background: var(--surface-card);
+    border: 1px solid var(--border-hairline); border-radius: 10px; padding: 10px 16px; margin: 0 0 14px; font-size: 13px; }
+  .ing-progreso[hidden] { display: none; }
+  .ing-progreso .cifra { font-weight: 800; color: var(--text-primary); }
+  .ing-progreso .barra { flex: 0 1 220px; height: 8px; border-radius: 999px; background: var(--gridline); overflow: hidden; }
+  .ing-progreso .barra span { display: block; height: 100%; background: var(--status-good); border-radius: inherit; }
+  .ing-progreso .fecha { flex: 1 1 220px; text-align: right; color: var(--text-muted); font-size: 12px; cursor: help; }
+  @media (max-width: 900px) { .ing-progreso .fecha { text-align: left; } }
   .ing-carpeta { flex: 0 1 300px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; font-size: 12.5px; }
   .ing-estado { font-weight: 700; color: var(--text-secondary); }
   .ing-estado.ok { color: var(--status-good); }
@@ -1011,6 +1065,14 @@
   .ing-dialogo label input { font-family: inherit; font-size: 14px; padding: 8px 10px; border-radius: 7px;
     border: 1px solid var(--border-hairline); background: var(--surface-1); color: var(--text-primary); }
   .ing-dialogo .ing-aviso { font-size: 12.5px; color: var(--status-bad); line-height: 1.45; }
+  .ing-dialogo .ing-aviso:empty { display: none; }   /* sin aviso no deja un hueco sobre los botones */
+  .ing-dialogo h3 { padding: 18px 20px 14px; font-size: 16px; font-weight: 900; }
+  .ing-dialogo-cuerpo { padding: 16px 20px; }
+  .ing-dialogo-pie { padding: 14px 20px 18px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ing-dialogo[open] { animation: ing-entra .14s ease-out; }
+    @keyframes ing-entra { from { opacity: 0; transform: translateY(-6px); } }
+  }
   .ing-dialogo .ing-aviso.warn { color: var(--status-warning); }
   .ing-dialogo .ing-nota { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0; }
   .ing-rev-proy { margin-bottom: 14px; }
@@ -1022,17 +1084,25 @@
   table.ing-rev-tabla .num { text-align: right; }
   table.ing-rev-tabla tr.ing-error td { color: var(--status-bad); }
 
-  @media (max-width: 640px) {
+  /* Bajo 1241 px las 10 columnas no caben sin deslizar (pedido del usuario
+     2026-11-25: ninguna tabla se desliza de lado): cada proyecto es una
+     tarjeta con sus campos en una grilla. */
+  @media (max-width: 1240px) {
     .ing-tablawrap { overflow: visible; max-height: none; }
     table.ing-tabla, table.ing-tabla > tbody { display: block; min-width: 0; }
     table.ing-tabla > thead { display: none; }
-    table.ing-tabla > tbody > tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px;
+    table.ing-tabla > tbody > tr { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px 12px;
       padding: 12px; border-bottom: 1px solid var(--gridline); }
     table.ing-tabla > tbody > tr > td { padding: 0; border: 0; background: none; }
     table.ing-tabla tbody tr:hover td { background: none; }
     table.ing-tabla td.ing-col-proy { grid-column: 1 / -1; position: static; max-width: none; border: 0; padding: 0; }
     table.ing-tabla td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px;
       font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+    .ing-input, .ing-input[type="date"], .ing-sufijo .ing-input { min-width: 0; }
+  }
+
+  @media (max-width: 640px) {
+    table.ing-tabla > tbody > tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .ing-input { font-size: 16px; min-width: 0; }
     .ing-dialogo label input { font-size: 16px; }   /* nombre, TAG y nombre del proyecto nuevo */
     .ing-input[type="date"] { min-width: 0; }
@@ -1239,7 +1309,7 @@
       <table class="viz-table">
         <thead>
           <tr><th class="ordenable" data-orden="nombre">Proyecto<span class="orden"></span></th>
-            <th class="ordenable" data-orden="cliente">Cliente<span class="orden"></span></th>
+            <th class="ordenable c-cliente" data-orden="cliente">Cliente<span class="orden"></span></th>
             <th class="num ordenable" data-orden="avance" title="Porcentaje de avance del proyecto, cargado a mano en la planilla. 100% = ejecución terminada; bajo 100% el margen al cierre es una estimación.">% Avance<span class="orden"></span></th>
             <th class="num ordenable" data-orden="monto_venta">Monto Venta<span class="orden"></span></th>
             <th class="num ordenable" data-orden="margen_estimado_cierre" title="Margen con que termina el proyecto: el real si está al 100 %; si sigue en curso, el estimado al cierre (marcado «est.»): costo real + lo que falta a precio de presupuesto.">Margen al cierre<span class="orden"></span></th>
@@ -1280,7 +1350,7 @@
           <div id="sesgoCategorias"></div>
           <p class="chart-note" id="notaSesgo"></p>
         </div>
-        <div class="chart-card">
+        <div class="chart-card chart-card--mapa">
           <h3 title="Desviación de cada categoría en cada proyecto. Rojo: se gastó más que lo presupuestado; verde: menos.">Desviación por proyecto y categoría</h3>
           <div class="viz-tablescroll" id="mapaCalor"></div>
         </div>
@@ -1400,19 +1470,25 @@
       <!-- 2026-10-02: los valores manuales de «Proyectos» se ingresan aquí y
            llegan al Excel por el buzón del Intercambio (ver ingreso.js). La
            arman build_visualizador.datos_para_ingreso y el JS de initApp. -->
+      <!-- 2026-10-25: tres pasos en vez de un párrafo con «buzón», «vuelta» y /Actualizar_Finanzas, y el
+           avance de la carga aquí mismo (el aviso rojo de arriba se esconde en esta pestaña). -->
       <div class="ing-intro">
         <div>
-          <h2 class="ing-titulo">Ingresar datos de los proyectos</h2>
-          <p class="ing-texto">
-            Escribe aquí los valores que hoy se cargan a mano en la planilla. Lo que cambies queda marcado en naranjo y
-            se guarda como borrador en este navegador. Al enviar, cada proyecto queda como un archivo en el buzón de la
-            carpeta de Intercambio y el Análisis Financiero lo pasa al Excel en su próxima vuelta (cada 2 horas, o al
-            correr <strong>/Actualizar_Finanzas</strong>). Nunca reemplaza un valor que alguien cambió en el Excel después de
-            que lo viste aquí: ese envío queda esperando una decisión.
-          </p>
+          <h2 class="ing-titulo">Ingresar avance y datos de los proyectos</h2>
+          <!-- Abierto la primera vez; después queda como lo dejó la persona (iniciarIngreso, af_ingreso_como) -->
+          <details class="ing-como" id="ingComo">
+            <summary>Cómo funciona: escribes, revisas y envías; llega al Excel en la próxima vuelta (cada 5 minutos)</summary>
+            <ol class="ing-pasos">
+              <li><strong>Escribe</strong> lo que cambió: queda en naranjo y se guarda en este navegador hasta que lo envíes.</li>
+              <li><strong>Revisa y envía</strong> con el botón que aparece abajo: antes de enviar se ve qué cambia.</li>
+              <li><strong>Llega al Excel</strong> en la próxima vuelta del procesador (cada 5 minutos) y al tablero en su próxima publicación.</li>
+            </ol>
+            <p class="ing-texto">Si alguien cambió ese valor en el Excel después de que lo viste, tu envío no lo pisa: queda esperando una decisión.</p>
+          </details>
         </div>
         <div class="ing-carpeta" id="ingCarpeta" aria-live="polite"></div>
       </div>
+      <div class="ing-progreso" id="ingProgreso" hidden></div>
       <div class="ing-mensaje" id="ingMensaje" role="status" hidden></div>
       <div class="filtros">
         <div class="filtro crece">
@@ -1422,10 +1498,10 @@
         <div class="filtro">
           <label for="ingFiltro">Mostrar</label>
           <select id="ingFiltro">
-            <option value="">Todos los proyectos</option>
-            <option value="faltan">Les faltan datos</option>
             <option value="curso">En curso</option>
+            <option value="faltan">Les faltan datos</option>
             <option value="cambios">Con cambios sin enviar</option>
+            <option value="">Todos los proyectos</option>
           </select>
         </div>
         <div class="ing-acciones">
@@ -1453,15 +1529,15 @@
           <h3 id="ingDialogoTitulo">Revisar antes de enviar</h3>
           <div class="ing-dialogo-cuerpo" id="ingDialogoCuerpo"></div>
           <div class="ing-dialogo-pie">
-            <label>Tu nombre (queda registrado en el envío)
-              <input type="text" id="ingUsuario" autocomplete="name" maxlength="80" placeholder="Nombre y apellido">
+            <label>Quién envía (queda registrado en el envío)
+              <input type="text" id="ingUsuario" autocomplete="name" maxlength="80" placeholder="Tus iniciales o tu nombre">
             </label>
             <div class="ing-aviso" id="ingDialogoAviso" role="alert"></div>
             <p class="ing-nota" id="ingDialogoNota"></p>
             <div class="ing-dialogo-acciones">
               <button type="button" class="ing-boton" id="ingVolver">Volver</button>
               <button type="button" class="ing-boton" id="ingDescargar">Descargar archivo</button>
-              <button type="button" class="ing-boton ing-primario" id="ingGuardar">Guardar en el buzón</button>
+              <button type="button" class="ing-boton ing-primario" id="ingGuardar">Enviar al Análisis Financiero</button>
             </div>
           </div>
         </form>
@@ -1583,6 +1659,9 @@
       if (s.minLength !== undefined && largo(v) < s.minLength) {
         errores.push(ruta + ': debe tener al menos ' + s.minLength + ' caracter(es)');
       }
+      if (s.maxLength !== undefined && largo(v) > s.maxLength) {
+        errores.push(ruta + ': debe tener a lo más ' + s.maxLength + ' caracter(es)');
+      }
       if (s.pattern !== undefined && !new RegExp(s.pattern).test(v)) {
         errores.push(ruta + ': no tiene el formato esperado');
       }
@@ -1667,6 +1746,9 @@
   // verde hasta 2 h y media, para no marcar «atrasado» entre dos corridas.
   const VERDE_HASTA_MIN = 150;
   const DETENIDO_HORAS_HABILES = 4;
+  // La rama con la que corre el procesador en producción (2026-11-06). estado.json dice qué código corrió cada
+  // vuelta: en otra rama, o con código modificado sin commit, la carpeta la está llenando una versión en prueba.
+  const RAMA_PRODUCCION = 'master';
 
   /* Minutos de horario hábil entre dos fechas (Date). */
   function minutosHabiles(desde, hasta, horario) {
@@ -1692,7 +1774,7 @@
     return `hace ${Math.round(min / 1440)} días`;
   }
 
-  /* { nivel: 'ok'|'warn'|'bad', detenido, texto, minutos, minutosHabiles }, o
+  /* { nivel: 'ok'|'warn'|'bad', detenido, enPrueba, texto, minutos, minutosHabiles }, o
      null si no hay estado. 'ahora' se puede fijar (pruebas). */
   function lectura(estado, ahora) {
     const ultima = estado && estado.procesador && estado.procesador.ultimaCorrida;
@@ -1704,14 +1786,17 @@
     const pasos = estado.procesador.pasos || {};
     const fallas = Object.keys(pasos).filter((k) => pasos[k] && pasos[k].ok === false);
     const detenido = habiles > DETENIDO_HORAS_HABILES * 60;
-    const nivel = detenido ? 'bad' : fallas.length ? 'warn' : min <= VERDE_HASTA_MIN ? 'ok' : 'warn';
+    const codigo = estado.codigo;
+    const enPrueba = !!(codigo && (codigo.rama !== RAMA_PRODUCCION || codigo.sucio === true));
+    const nivel = detenido ? 'bad' : fallas.length || enPrueba ? 'warn' : min <= VERDE_HASTA_MIN ? 'ok' : 'warn';
     const texto = detenido
       ? `El procesador del intercambio no corre desde ${haceCuanto(min)}: lo que se envíe a las demás herramientas queda esperando hasta que vuelva a correr. Avisa a quien administra las herramientas QUEMPIN.`
-      : `Las demás herramientas revisaron la carpeta ${haceCuanto(min)}` + (fallas.length ? ` (con problemas en: ${fallas.join(', ')})` : '') + '.';
-    return { nivel, detenido, texto, minutos: min, minutosHabiles: habiles };
+      : `Las demás herramientas revisaron la carpeta ${haceCuanto(min)}` + (fallas.length ? ` (con problemas en: ${fallas.join(', ')})` : '') + '.' +
+        (enPrueba ? ' El procesador está corriendo una versión en prueba de su código: avisa a quien administra las herramientas QUEMPIN.' : '');
+    return { nivel, detenido, enPrueba, texto, minutos: min, minutosHabiles: habiles };
   }
 
-  root.QPulso = { lectura, minutosHabiles, HORARIO, VERDE_HASTA_MIN, DETENIDO_HORAS_HABILES };
+  root.QPulso = { lectura, minutosHabiles, HORARIO, VERDE_HASTA_MIN, DETENIDO_HORAS_HABILES, RAMA_PRODUCCION };
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script id="af-ingreso-js">/* ingreso.js — Lógica de la pestaña «Ingresar datos» del tablero de Análisis Financiero
@@ -2161,8 +2246,299 @@ var QuempinCandado = (function () {
 
   return { abrir: abrir, derivar: derivar, descifrar: descifrar, descifrarBytes: descifrarBytes, abrirArchivo: abrirArchivo };
 })();
+
+/* numeros.js — cajas de números de las herramientas QUEMPIN (pedido del usuario, 2026-11-10).
+
+   Original: Finanzas QUEMPIN «Visualizador Web/numeros.js» (los tableros la llevan incrustada, como candado.js).
+   Copias idénticas: Formulador «js/numeros.js» y Calculadora Técnica «assets/numeros.js». Un test compara las copias:
+   cámbialas juntas.
+
+   - Al entrar a una caja numérica (clic, toque o Tab) se selecciona todo: lo que se escribe reemplaza al 0 que había.
+   - Mientras se escribe aparece el punto de miles (1.234.567); la coma es la decimal (12,5), como en Chile.
+   - Un punto tecleado se lee como en el resto de QUEMPIN: «1.500» y «1.500.000» son miles, «2.5» es decimal.
+
+   Qué cajas toma:
+   - <input type="number">: pasa a ser de texto, porque el navegador no muestra puntos en una numérica. Su .value y
+     .valueAsNumber siguen dando el número sin formato («1234.5»): el código de cada herramienta no cambia.
+   - <input data-num>: caja de texto cuya herramienta ya lee el formato chileno; se formatea y .value da lo que se ve.
+     Tokens: «entero» (sin decimales), «canonico» (.value da el número sin formato, como las type="number").
+   - <script src="…/numeros.js" data-canonico="selector">: esas cajas se tratan como data-num="canonico".
+   - Una caja con inputmode numeric/decimal y sin data-num (un N° de OC, un año): solo se selecciona todo, sin puntos.
+*/
+(function () {
+  'use strict';
+  if (typeof window === 'undefined' || window.QuempinNumeros) return;
+
+  var VALOR = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  var crudo = function (el) { return VALOR.get.call(el); };
+  var poner = function (el, t) { VALOR.set.call(el, t); };
+  var guion = document.currentScript;
+  var selectorCanonico = (guion && guion.getAttribute('data-canonico')) || '';
+  var CANONICO = /^-?\d+(\.\d+)?(e[+-]?\d+)?$/i;
+
+  /* Texto (tecleado o pegado) -> número sin formato («1234.5»), o null si no es un número.
+     Con coma: los puntos son de miles. Sin coma: puntos en grupos de 3 («1.500») son de miles y un punto
+     suelto («2.5») es decimal, igual que ejNumero del Portal, limpiarNumero de AF y parsear_cantidad_decimal
+     de Sistema QUEMPIN. Si están los dos, el último es el decimal («1,234.56» pegado de un sistema en inglés). */
+  function canonico(texto) {
+    var s = String(texto == null ? '' : texto).replace(/[^\d.,-]/g, '');
+    var neg = s.charAt(0) === '-';
+    s = s.replace(/-/g, '');
+    if (!/\d/.test(s)) return null;
+    var coma = s.lastIndexOf(','), punto = s.lastIndexOf('.');
+    if (coma >= 0 && punto > coma) s = s.replace(/,/g, '');
+    else if (coma >= 0) s = s.replace(/\./g, '').replace(/,(?=.*,)/g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s) || s.split('.').length > 2) s = s.replace(/\./g, '');
+    if (s.charAt(0) === '.') s = '0' + s;
+    s = s.replace(/\.$/, '').replace(/^0+(?=\d)/, '');
+    if (!/^\d+(\.\d+)?$/.test(s)) return null;
+    return (neg && /[1-9]/.test(s) ? '-' : '') + s;
+  }
+
+  var agrupar = function (ent) { return ent.replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+
+  /* Número sin formato (texto o number) -> como se ve: «1.234,5». */
+  function mostrar(c) {
+    if (c === null || c === undefined || c === '') return '';
+    var s = String(c);
+    if (/e/i.test(s)) {
+      var n = Number(s);
+      if (!isFinite(n)) return '';
+      s = Math.abs(n) < 1e21 ? n.toFixed(20).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') : String(n);
+    }
+    var neg = s.charAt(0) === '-';
+    if (neg) s = s.slice(1);
+    var p = s.split('.');
+    return (neg ? '-' : '') + agrupar(p[0] || '0') + (p.length > 1 && p[1] !== '' ? ',' + p[1] : '');
+  }
+
+  /* ---- Configuración de cada caja ---------------------------------------------------------------- */
+  function decimalesDe(paso) {
+    if (!paso || paso === 'any') return -1;   // -1 = sin límite
+    var n = Number(paso);
+    if (!isFinite(n) || n <= 0) return -1;
+    if (Number.isInteger(n)) return 0;
+    var m = /\.(\d+)$/.exec(String(paso));
+    return m ? m[1].length : -1;
+  }
+  function tokens(el) { return ' ' + (el.getAttribute('data-num') || '') + ' '; }
+  function esCanonicaPorSelector(el) {
+    try { return !!selectorCanonico && el.matches(selectorCanonico); } catch (e) { return false; }
+  }
+  function formateable(el) {
+    return !!el && el.tagName === 'INPUT' && !el.readOnly &&
+      (el.type === 'number' || el.hasAttribute('data-num') || esCanonicaPorSelector(el) || !!el._qn);
+  }
+  function soloSeleccion(el) {
+    return !!el && el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'tel' || el.type === '') &&
+      /^(numeric|decimal)$/.test(el.getAttribute('inputmode') || '');
+  }
+
+  /* Deja la caja lista: la de tipo number pasa a texto con su número formateado y un .value sin formato. */
+  function preparar(el) {
+    if (el._qn || !formateable(el)) return el._qn || null;
+    var numero = el.type === 'number';
+    var t = tokens(el);
+    var cfg = {
+      canonico: numero || / canonico /.test(t) || esCanonicaPorSelector(el),
+      decimales: / entero /.test(t) ? 0 : decimalesDe(el.getAttribute('step')),
+      negativos: !(el.hasAttribute('min') && Number(el.getAttribute('min')) >= 0),
+      punto: false
+    };
+    var inicial = crudo(el);
+    el._qn = cfg;
+    if (numero) {
+      el.type = 'text';
+      if (!el.hasAttribute('inputmode')) el.setAttribute('inputmode', cfg.decimales === 0 ? 'numeric' : 'decimal');
+    }
+    el.setAttribute('autocomplete', 'off');
+    el.classList.add('qnum');
+    if (cfg.canonico) {
+      Object.defineProperty(el, 'value', {
+        configurable: true,
+        get: function () { return valorDe(el); },
+        set: function (v) { ponerValor(el, v); }
+      });
+      Object.defineProperty(el, 'valueAsNumber', {
+        configurable: true,
+        get: function () { var v = valorDe(el); return v === '' ? NaN : Number(v); },
+        set: function (n) { ponerValor(el, isFinite(n) ? n : ''); }
+      });
+    }
+    ponerValor(el, inicial);
+    return cfg;
+  }
+
+  /* Lo que la herramienta lee: sin formato en las canónicas (o el texto tal cual si no es un número, para que
+     su validación lo marque), lo que se ve en las demás. */
+  function valorDe(el) {
+    var t = crudo(el);
+    if (!el._qn || !el._qn.canonico) return t;
+    if (t.trim() === '') return '';
+    var c = canonico(t);
+    return c === null ? t : c;
+  }
+  function ponerValor(el, v) {
+    var t = v === null || v === undefined ? '' : String(v);
+    if (el._qn) el._qn.punto = false;
+    if (t.trim() === '') { poner(el, ''); return; }
+    var c = typeof v === 'number' || CANONICO.test(t.trim()) ? t.trim() : canonico(t);
+    poner(el, c === null ? t : mostrar(c));
+  }
+
+  /* ---- Mientras se escribe -------------------------------------------------------------------------- */
+  /* Reescribe la caja con sus puntos de miles sin mover el cursor de entre las cifras. */
+  function formatearEnVivo(el) {
+    var cfg = el._qn, t = crudo(el);
+    var pos = el.selectionStart == null ? t.length : el.selectionStart;
+    var neg = cfg.negativos && /^\s*-/.test(t);
+    var ent = '', dec = '', coma = false, antes = 0;
+    for (var i = 0; i < t.length; i++) {
+      var ch = t.charAt(i), cuenta = false;
+      if (ch >= '0' && ch <= '9') { if (coma) dec += ch; else ent += ch; cuenta = true; }
+      else if (ch === ',' && !coma && cfg.decimales !== 0) { coma = true; cuenta = true; }
+      if (cuenta && i < pos) antes++;
+    }
+    // Ceros a la izquierda: «05» -> «5» (el cursor retrocede los que estaban antes de él)
+    var ceros = /^0+(?=\d)/.exec(ent);
+    if (ceros) { ent = ent.slice(ceros[0].length); antes = Math.max(0, antes - ceros[0].length); }
+    if (coma && ent === '') { ent = '0'; if (antes > 0) antes++; }
+    if (cfg.decimales > 0 && dec.length > cfg.decimales) dec = dec.slice(0, cfg.decimales);
+    var nuevo = (neg ? '-' : '') + agrupar(ent) + (coma ? ',' + dec : '');
+    if (nuevo === t) return;
+    var p = neg ? 1 : 0, vistas = 0;
+    while (p < nuevo.length && vistas < antes) {
+      var c2 = nuevo.charAt(p);
+      if ((c2 >= '0' && c2 <= '9') || c2 === ',') vistas++;
+      p++;
+    }
+    poner(el, nuevo);
+    try { el.setSelectionRange(p, p); } catch (e) { /* caja oculta */ }
+  }
+
+  document.addEventListener('beforeinput', function (e) {
+    var el = e.target, cfg = el && el._qn;
+    if (!cfg || cfg.punto || cfg.decimales === 0 || !e.data || e.data.indexOf('.') < 0) return;
+    // Un punto tecleado en una caja con decimales: ¿miles o decimal? Se decide al salir (o al pegar), con
+    // la regla de canonico(). Mientras tanto la caja queda como se escribe, sin los puntos que puso esta caja.
+    if (crudo(el).indexOf(',') < 0 && /^insert(Text|CompositionText)?$/.test(e.inputType || 'insertText')) cfg.punto = 'nuevo';
+  }, true);
+
+  document.addEventListener('input', function (e) {
+    var el = e.target, cfg = el && el._qn;
+    if (!cfg || e.isComposing) return;
+    var tipo = e.inputType || '';
+    if (/^insertFrom(Paste|Drop)/.test(tipo)) {
+      var c = canonico(crudo(el));
+      cfg.punto = false;
+      if (c !== null) {
+        if (cfg.decimales === 0 && c.indexOf('.') >= 0) c = String(Math.round(Number(c)));
+        poner(el, mostrar(c));
+        try { el.setSelectionRange(crudo(el).length, crudo(el).length); } catch (err) { /* caja oculta */ }
+      }
+      return;
+    }
+    if (cfg.punto === 'nuevo') {
+      // Quita los puntos de miles que había puesto la caja; deja solo el que se tecleó (junto al cursor).
+      var t = crudo(el), pos = el.selectionStart == null ? t.length : el.selectionStart;
+      var limpio = '', nuevoPos = pos;
+      for (var i = 0; i < t.length; i++) {
+        if (t.charAt(i) === '.' && i !== pos - 1) { if (i < pos) nuevoPos--; continue; }
+        limpio += t.charAt(i);
+      }
+      cfg.punto = true;
+      if (limpio !== t) { poner(el, limpio); try { el.setSelectionRange(nuevoPos, nuevoPos); } catch (err) { /* */ } }
+      return;
+    }
+    if (cfg.punto) return;
+    formatearEnVivo(el);
+  }, true);
+
+  // Al salir: el formato definitivo («1.500» tecleado = mil quinientos; «2.5» = dos coma cinco)
+  document.addEventListener('focusout', function (e) {
+    var el = e.target, cfg = el && el._qn;
+    if (el) el._qnPuntero = false;
+    if (!cfg) return;
+    var t = crudo(el);
+    if (t.trim() === '') { cfg.punto = false; return; }
+    var c = canonico(t);
+    if (c !== null && cfg.decimales === 0 && c.indexOf('.') >= 0) c = String(Math.round(Number(c)));
+    cfg.punto = false;
+    if (c !== null && mostrar(c) !== t) poner(el, mostrar(c));
+  }, true);
+
+  // ↑ y ↓ suben y bajan un paso, como en las cajas numéricas del navegador
+  document.addEventListener('keydown', function (e) {
+    var el = e.target, cfg = el && el._qn;
+    if (el && el._qnPuntero) el._qnPuntero = false;
+    if (!cfg || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
+    var c = canonico(crudo(el));
+    var paso = Number(el.getAttribute('step'));
+    if (!isFinite(paso) || paso <= 0) paso = 1;
+    var n = (c === null ? 0 : Number(c)) + (e.key === 'ArrowUp' ? paso : -paso);
+    var min = el.getAttribute('min'), max = el.getAttribute('max');
+    if (min !== null && min !== '' && n < Number(min)) n = Number(min);
+    if (max !== null && max !== '' && n > Number(max)) n = Number(max);
+    n = Math.round(n * 1e9) / 1e9;
+    e.preventDefault();
+    cfg.punto = false;
+    poner(el, mostrar(String(n)));
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }, true);
+
+  /* ---- Seleccionar todo al entrar ------------------------------------------------------------------- */
+  function seleccionar(el) { try { el.select(); } catch (e) { /* caja oculta */ } }
+  document.addEventListener('pointerdown', function (e) {
+    var el = e.target;
+    if (el && el.tagName === 'INPUT' && document.activeElement !== el && (formateable(el) || soloSeleccion(el))) el._qnPuntero = true;
+  }, true);
+  document.addEventListener('focusin', function (e) {
+    var el = e.target;
+    if (!el || el.tagName !== 'INPUT') return;
+    if (!formateable(el) && !soloSeleccion(el)) return;
+    preparar(el);
+    seleccionar(el);
+    // Con el mouse, el clic pone el cursor después del foco: se vuelve a seleccionar al soltar. Solo con el
+    // mouse: si una herramienta devuelve el foco y repone el cursor mientras se escribe, no se le pisa.
+    if (el._qnPuntero) setTimeout(function () { if (el._qnPuntero && document.activeElement === el) seleccionar(el); }, 0);
+  }, true);
+  document.addEventListener('mouseup', function (e) {
+    var el = e.target;
+    if (!el || !el._qnPuntero) return;
+    el._qnPuntero = false;
+    if (document.activeElement === el) { e.preventDefault(); seleccionar(el); }
+  }, true);
+  document.addEventListener('touchend', function (e) {
+    var el = e.target;
+    if (el && el._qnPuntero) setTimeout(function () { el._qnPuntero = false; if (document.activeElement === el) seleccionar(el); }, 0);
+  }, true);
+
+  /* ---- Cajas que aparecen después (las herramientas dibujan con innerHTML) -------------------------- */
+  function prepararEn(raiz) {
+    if (!raiz || !raiz.querySelectorAll) return;
+    if (raiz.tagName === 'INPUT') { preparar(raiz); return; }
+    var sel = 'input[type="number"], input[data-num]' + (selectorCanonico ? ', ' + selectorCanonico : '');
+    var lista;
+    try { lista = raiz.querySelectorAll(sel); } catch (e) { lista = raiz.querySelectorAll('input[type="number"], input[data-num]'); }
+    for (var i = 0; i < lista.length; i++) preparar(lista[i]);
+  }
+  function iniciar() {
+    prepararEn(document);
+    new MutationObserver(function (cambios) {
+      for (var i = 0; i < cambios.length; i++) {
+        var nodos = cambios[i].addedNodes;
+        for (var j = 0; j < nodos.length; j++) if (nodos[j].nodeType === 1) prepararEn(nodos[j]);
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
+  else iniciar();
+
+  window.QuempinNumeros = { canonico: canonico, mostrar: mostrar, preparar: preparar };
+})();
 </script>
-<script id="af-data-b64" type="text/plain">{"v":2,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"djH78ZAbOzJHVnht","comp":"gzip","datos":"Z0+Mo++5CBCvrtHrBifI7AiCntiQFPy1+qDyizK9XGc6csXblO75QgvgkvIBhxI0DbRai7lojt/vSu2bC/fg9wom9af6t6a8/UH6A1dBvOt5Cs0rY92yOpS8kIGbYGEzxCnrBZ3tH/4+EtpUMwVYGOs0/7rXEoKCJpFM1RTKHd2Bt9YECnfptlUs0xwbxMg7h0lz/sxfw2HrQVzmjgLYYpupN0fJiIOVcYveUKOJVRjhBTw8ekn3UyAwJJt1xF8DBQ8xsifJIjuPKkLAGSdPMMxHlML6s2cPLS034Z0dc39vwIvBYNuRsQz2MCwppWNYKYPrtz50WRvSiH2h7waAUG+PR/vcmlEDyua5LE/QexZcrnMMV73JJwbsw43ts/nt6z/qdTjVqWuIccTr6MvZSKwnFxZXYh9O1EKEcTPLMidyBBW3gn8H0OzBqwy5xqyWgQMcTzEJED3gTdW4dr3rcDS72RzQ1wc8q19RI6qGZGmgB7nVGqUtlDVcTA16zf3EB/o8BLZyoD+EkinJDLNqR7fBDHooxVFrnOMmfGNBeZ4CKRj1vM05+ZI1ob9KxbYS9xBisusn42Zaz5LzyqzQRjqfhYC54Lz7cHBForjaVVAuMSrCP2+qnXc4C/hLMWBbmXGquU5RijutEgyKUJgldHQlgYKqJst2E8gjPeOTmW4q3pqYt2nVJmI+u9O+/PHETS0HLR49iWbc0GuuGNp+MBuPdu4NWydguHpXEBys4BCC9hFqN8+P1+q5nZmdB/WPR45Ejbxcbv7Epp9DTgj7wXNND4QmfVaOYYyxLzLcy1YBMtOGDOP4Y+C7ccJKEFsC8twBRNrvtQYgtZmVOp9ly2gbqiKawll2DTcEBMqUqsvha5Z2YXZVjl+LDeSsUOhj+use7iFiaptokwWgsXl3S2cWW3kbGayQim7Y3F/+S1iA905bLbx9PRmYk+tQQIa/xyhFANrBhr56iMmQXrE+ZuRXiV8M+S9t4Uz4Nya+Ypbh3AXfznJJgg9mME3Fwc5pNumMnDSh1A90aWpvS/1583P0D6fLFipxBh+j2JWj7xrCrIPdLV4utXTXK6AMDz7Q8sPdsR9NkpW4Q+sbLvNO5P/7nkT3NZN5ZFmBMUxQuNQe1DsBab+hEg2o/kjUcqxHHE1nrby8vVQKbE3NsYQ4rs/WGQZ4lprR4vND0rONyoFRCeDimPY4MwlpK9FBNAEiP8q1D4GttGHapMG0rSOzy8R4RPX6+eWE3v9stEkyFtAXB7ioSCcNegKlsArRor4Ggzkx9Sausn5RlQIH7tgb0dSB9h3+3Sw2UG360Gfv7TDtoiQXZ9wehk66aaCDYE/L7qOM4oDNtGs+sGF04wM29khtDedHNF0Xmv4+XikTr9YccCLf5RXcNK6cTJQbkgT5KA9cRzjzbhrzL1IsdgH8aopTxkxdTSO5QJw6/dJt4NX7mnJWtohE5+dgGVoTQEAdQD/eD00fUdY9OWo8akmUurfovRH/ZpJ3WU8TjYNY2iMiKjchZDgP8ZzZHdqpiYibSk4zOGB5IAoPBvKDAz+TMozVE853CdIyMqXuZFU3ptV5YKb3TS++aklRoBJE0g=="}</script>
+<script id="af-data-b64" type="text/plain">{"v":2,"kdf":"PBKDF2-SHA256","it":600000,"sal":"cXVlbXBpbi10YWJsZXJvcy0yMDI2","iv":"992KYHzVkLDL40uj","comp":"gzip","datos":"Xvtp+d6ck2h1J8Mj8X4sf53iwZVtQ6L9cyCkMP6V0O6FzjaYisUSGc/SjLMmu5YhA38bZFxa2VfrnQ0qZcTMoGjdqD5ae0JeDq5nVyHIAjyEFIw8E7A7BXRGi0hRwJmrnw2cCxhYxRuAE7fft0YX5MJVT2NWxsrK2PdtRQkATae99LFR6NG8bmjnRm+d07FyB7H/oav0wIMQ80ltsIdEBScDC9x5CNmCsJamgmc9aVeB9fAnPh3/Y7yNH5gUe5PGDiN1zuIYPQqC8hH2KIU2LoXNfsW/dDak+/L6bwf2ZNzM2mBVmL+sTKy0Q0yOsdrbGM453Qf0qjTUuzukFkiUiFwOTwbRAdwRKkhuyzf8NaNZGo3UGmjFOy3Stjeqf9uhSwsuEeXAbDLT7AOAiZldskd132jnipNIahFG5eAdBcc4Ybnr9UX0M9UGvgPgjRQ8AlFJTkpn1dYR57xygYmDtCk81GPGUAvIrQDxi58q4zzneZVRPwevC5F+AyHZMHY0PPlGyDFq2YxAlxdPtFQNx7qdO6T9clPHC04cD5HZh6yh/gg/+HPlXL4qmyPJ0wcCd15DRIs7BWJpU52NSwd+FWk96irfmNWBXl7W4HzIaA3ADQ8dMTdLR1uODHSEkimIAEJK8pRQfvuJ4VivBzKs//GLpWtvbBFQl61oxYy0IJFboXO/yQMGCx1Ed53KhB8Uo+aHQ6yzuDBB97ui81rzqxjriVrigZc8/a/ER680ttoX8jwC+Yp/dmNk2AIm33LgoGPuU+yTWNrHNfmET2eS1Eg8YU4NIX9S8VJwGIT7Q1R6p8ic5q41oqe9jTsJRmVq2Pf4bSMAQEldmgSP79HoWrjo+gMiMQCkY03t8dZ/dA0DwqXW+eKpIQHDsbUrXZiNrGrvQvW7TU6yiIWVMqQUZb0YzHR9yyn2EBRpcUXo/ly9gFr3w2S/s3tSYxefR3r88SQ+/eBeBVRHsDN/hy7Duij3arE1dASBnHSsK6eA/ZqOJfbnN/vAWpipqxUWp/TLnU3qoijqjOZauDsicx6lxaZWF5aM0wd/CTjT/WjYS6uWzjADFF/3TexZOKHtiIgIG30wDDnL9n0keSlgy/7wKKl4myCSbwZ9Ciqk0wkffJNrfbi3qn+sUAKCB7tN1Pc3vsEzWdN09gW2YNab++wU/tLRsqi4q6QaU16FAtp4kpdFoAOE2+Rs3dM3jTwBEE1rYwTl0LthPsqOK9pHLg3Pisgm0qEnQ9xvl/a2/As7Jq7IB06M/hdstUACGzPcvljErvFCBhE3y2sZ7FE5W3LIdVucHKk+JlfiGvPX4SxTb3u4/QuE3WgVX/IOS16e6kVgHl1V1ihCzPqAufYIBXHl30cx9Q+iaBHz0AXYxR0fR1pXBX/lonx1gwL9cMaLEAq/fGLbu85NRwJ5BCWwm4cm90VVL0hAgkFFFCjm/IaDlfFtOU068+QzEnH2s2BYLrzfPtAv4MZAaM6nlrEvbsgYx5uTn4PVJjoMdOb0tfkiD4EAfEYlxyl2oI4VlumZXRBLOjGKtU3ACiBgdEv11tvH8t/cXuX4C4ISWdHtp5wqje9jc4MAy4eCjneTwMB42oBXD3X1xTz4l2mHWLMZdwmFCwZqzS/XKKaRyskhVLYxEGpirdydELXlJhj1TgFa265U80trViAw9cDp"}</script>
 <script>
 (function () {
   // ---------- theme persistence ----------
@@ -2405,6 +2781,7 @@ var QuempinCandado = (function () {
       btn.classList.add('active');
       btn.setAttribute('aria-selected', 'true');
       document.getElementById(btn.getAttribute('data-tab')).classList.add('active');
+      document.body.setAttribute('data-pestana', btn.getAttribute('data-tab'));   // el CSS esconde lo que sobra en cada pestaña
     });
   });
 
@@ -3071,7 +3448,8 @@ var QuempinCandado = (function () {
       var fila = '<tr class="doc-row' + (expandido ? ' is-expanded' : '') + '" data-tag="' + esc(p.tag) + '" tabindex="0" aria-expanded="' + expandido + '">' +
         '<td><span class="expand-toggle" aria-hidden="true">' + (expandido ? '▾' : '▸') + '</span>' + esc(p.nombre) +
         (p.alertas.length ? '<span class="alerta-badge" title="' + esc(p.alertas.join(' · ')) + '">⚠ ' + p.alertas.length + '</span>' : '') +
-        '</td><td>' + esc(p.cliente || '—') + '</td><td class="num">' + (p.avance == null ? '—' : formatoPct(p.avance)) +
+        '<span class="sub-cliente">' + esc(p.cliente || '—') + '</span>' +
+        '</td><td class="c-cliente">' + esc(p.cliente || '—') + '</td><td class="num">' + (p.avance == null ? '—' : formatoPct(p.avance)) +
         '</td><td class="num">' + formatoCLP(p.monto_venta) + '</td><td class="num">' + formatoCLP(p.margen_estimado_cierre) +
         (p.en_curso ? '<span class="est-tag" title="Estimado al cierre: el proyecto sigue en curso.">est.</span>' : '') +
         '</td><td class="num">' + formatoPct(p.margen_estimado_cierre_pct) + '</td><td class="num">' +
@@ -3634,6 +4012,16 @@ var QuempinCandado = (function () {
     var tabla = document.getElementById('ingTabla');
     var filtro = document.getElementById('ingFiltro');
     var buscar = document.getElementById('ingBuscar');
+    // De entrada «En curso» (2026-10-25): lo que se actualiza seguido. Antes eran los 22 proyectos con 52
+    // «falta», casi todos de obras terminadas; esos quedan a un clic en el avance de la carga. Este
+    // navegador recuerda lo último que se eligió.
+    var CLAVE_FILTRO = 'af_ingreso_filtro';
+    var filtroGuardado = leerLS(CLAVE_FILTRO, 'curso');
+    if (Array.prototype.some.call(filtro.options, function (o) { return o.value === filtroGuardado; })) filtro.value = filtroGuardado;
+    // «Cómo funciona»: abierto la primera vez; después, como lo dejó la persona (la tabla queda a la vista)
+    var como = document.getElementById('ingComo');
+    como.open = leerLS('af_ingreso_como', true) !== false;
+    como.addEventListener('toggle', function () { guardarLS('af_ingreso_como', como.open); });
     function enCurso(p) { var a = efectivo(p.tag, '% Avance'); return typeof a !== 'number' || a < 1; }
     function todasLasFilas() {
       var nuevos = Object.keys(borrador).filter(function (t) { return borrador[t].nuevo; }).map(function (t) {
@@ -3703,6 +4091,8 @@ var QuempinCandado = (function () {
       var falta = c.requerido && !p.gastos_generales && efectivo(p.tag, c.clave) == null;
       var input = '<input type="' + (esFecha ? 'date' : 'text') + '" class="' + clasesCampo(p, c) + '"' +
         (c.tipo === 'fecha' ? '' : ' inputmode="' + (c.tipo === 'fraccion' ? 'decimal' : 'numeric') + '"') +
+        // Punto de miles al escribir (numeros.js): montos y avance; el N° de requerimiento ('entero') es un código
+        (c.tipo === 'fraccion' ? ' data-num' : c.tipo === 'fecha' || c.tipo === 'entero' ? '' : ' data-num="entero"') +
         ' data-tag="' + esc(p.tag) + '" data-clave="' + esc(c.clave) + '" value="' + esc(texto) + '"' +
         ' placeholder="' + (falta ? 'falta' : '') + '" autocomplete="off"' +
         ' aria-label="' + esc(c.etiqueta + ' — ' + p.nombre) + '" title="' + esc(tituloCampo(p, c)) + '">';
@@ -3732,6 +4122,36 @@ var QuempinCandado = (function () {
         input.placeholder = c.requerido && !p.gastos_generales && efectivo(p.tag, c.clave) == null ? 'falta' : '';
       });
     }
+    // Cuántos proyectos ya tienen lo necesario para el análisis, en vez del aviso rojo de arriba, y de
+    // cuándo son los valores que se ven (los del último tablero publicado).
+    var cajaProgreso = document.getElementById('ingProgreso');
+    function renderProgreso() {
+      var reales = ING.proyectos.filter(function (p) { return !p.gastos_generales; });
+      if (!reales.length) { cajaProgreso.hidden = true; return; }
+      var completos = reales.filter(function (p) { return !faltanAhora(p).length; }).length;
+      var faltan = reales.length - completos;
+      var conBorrador = Object.keys(borrador).length > 0;
+      var fecha = new Date(generadoMs);
+      cajaProgreso.hidden = false;
+      cajaProgreso.innerHTML =
+        '<span><span class="cifra">' + completos + ' de ' + reales.length + '</span> proyectos tienen todo lo necesario para el análisis' +
+        (conBorrador ? ' (contando tus cambios sin enviar)' : '') + '</span>' +
+        '<span class="barra" aria-hidden="true"><span style="width:' + Math.round(completos / reales.length * 100) + '%"></span></span>' +
+        (faltan ? '<button type="button" class="ing-boton" data-progreso="faltan">Ver ' + (faltan === 1 ? 'el que le faltan' : 'los ' + faltan + ' que les faltan') + ' datos</button>'
+          : '<span class="tone-good">Todos completos</span>') +
+        (isNaN(fecha.getTime()) ? '' : '<span class="fecha" title="Los valores son los del Excel cuando se publicó este tablero. ' +
+          'Lo que enviaste desde este navegador después se muestra en su lugar.">Valores del Excel al ' +
+          esc(fecha.toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })) +
+          '</span>');
+    }
+    cajaProgreso.addEventListener('click', function (evt) {
+      if (!evt.target.closest('[data-progreso="faltan"]')) return;
+      filtro.value = 'faltan';
+      buscar.value = '';
+      renderTabla();
+      tabla.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+
     function renderBarra() {
       var tags = Object.keys(borrador);
       var cambios = 0, malos = 0;
@@ -3751,6 +4171,7 @@ var QuempinCandado = (function () {
       actualizar(tag, input.getAttribute('data-clave'), input.value);
       refrescarFila(tag);
       renderBarra();
+      renderProgreso();
     });
     // Al salir del campo se muestra con el formato del tablero (12.345.678; 35,5).
     tabla.addEventListener('change', function (evt) {
@@ -3771,10 +4192,10 @@ var QuempinCandado = (function () {
       guardarBorrador();
       renderTodo();
     });
-    filtro.addEventListener('change', renderTabla);
+    filtro.addEventListener('change', function () { guardarLS(CLAVE_FILTRO, filtro.value); renderTabla(); });
     buscar.addEventListener('input', debounce(renderTabla, 150));
 
-    function renderTodo() { renderTabla(); renderBarra(); renderEnvios(); }
+    function renderTodo() { renderProgreso(); renderTabla(); renderBarra(); renderEnvios(); }
 
     var mensaje = document.getElementById('ingMensaje');
     function mostrarMensaje(html, nivel) {
@@ -3855,12 +4276,12 @@ var QuempinCandado = (function () {
       if (e.resultado && ESTADOS[e.resultado.estado]) {
         return { nivel: ESTADOS[e.resultado.estado][0], texto: ESTADOS[e.resultado.estado][1], detalle: (e.resultado.detalle || []).join(' ') };
       }
-      if (e.enBuzon) return { nivel: 'warn', texto: 'En el buzón: se aplica en la próxima vuelta' };
+      if (e.enBuzon) return { nivel: 'warn', texto: 'Enviado: llega al Excel en la próxima vuelta' };
       if (Date.parse(e.enviado) <= generadoMs) {
         var p = POR_TAG[e.tag];
         var calza = p && Object.keys(e.valores).every(function (k) { return CAMPO[k] && Q.iguales(CAMPO[k], e.valores[k], p.valores[k]); });
         return calza ? { nivel: 'ok', texto: 'Ya se ve en el tablero' }
-          : { nivel: 'warn', texto: 'No se ve en el tablero', detalle: 'El tablero es posterior al envío pero no muestra estos valores: puede estar esperando una decisión (driver.py intercambio) o no haber llegado al buzón.' };
+          : { nivel: 'warn', texto: 'No se ve en el tablero', detalle: 'El tablero es posterior al envío pero no muestra estos valores: puede estar esperando una decisión o no haber llegado a la carpeta. Avísale a quien administra las herramientas QUEMPIN.' };
       }
       if (e.via === 'descarga') return { nivel: 'warn', texto: 'Descargado', detalle: 'Falta dejar el archivo en el buzón de la carpeta de Intercambio.' };
       return { nivel: 'warn', texto: 'Enviado' };
@@ -3871,7 +4292,7 @@ var QuempinCandado = (function () {
       if (!pulso) return '';
       return pulso.detenido
         ? '<p class="ing-pulso detenido" role="alert">Lo que envías no se está aplicando. ' + esc(pulso.texto) + '</p>'
-        : '<p class="ing-pulso">' + esc(pulso.texto) + ' Lo que está en el buzón se aplica en la próxima vuelta (cada 2 horas).</p>';
+        : '<p class="ing-pulso">' + esc(pulso.texto) + ' Lo enviado llega al Excel en la próxima vuelta (cada 5 minutos).</p>';
     }
     function renderEnvios() {
       var caja = document.getElementById('ingEnvios');
@@ -3896,7 +4317,13 @@ var QuempinCandado = (function () {
     var usuario = document.getElementById('ingUsuario');
     var btnGuardar = document.getElementById('ingGuardar');
     var btnDescargar = document.getElementById('ingDescargar');
-    usuario.value = leerLS(CLAVE_USUARIO, '') || '';
+    // Quién envía: lo último escrito aquí o, si nada, las iniciales elegidas en el Portal o el Formulador
+    // (la misma clave, 'quempin_usuario'): así no se pide dos veces (2026-10-25).
+    function inicialesDelEquipo() {
+      try { var v = String(localStorage.getItem('quempin_usuario') || '').trim().toUpperCase(); return /^[A-ZÑ]{2,3}$/.test(v) ? v : ''; }
+      catch (e) { return ''; }
+    }
+    usuario.value = leerLS(CLAVE_USUARIO, '') || inicialesDelEquipo();
     function nombreDe(tag) { return POR_TAG[tag] ? POR_TAG[tag].nombre : ((borrador[tag] || {}).nuevo || {}).nombre || tag; }
     function problemas() {
       var errores = [], advertencias = [];
@@ -3939,7 +4366,7 @@ var QuempinCandado = (function () {
       btnGuardar.hidden = !estadoCarpeta.disponible;
       btnDescargar.textContent = n === 1 ? 'Descargar archivo' : 'Descargar ' + n + ' archivos';
       document.getElementById('ingDialogoNota').textContent = estadoCarpeta.disponible
-        ? 'Se guarda un archivo por proyecto en el buzón de la carpeta de Intercambio' +
+        ? 'Se envía un archivo por proyecto por la carpeta del equipo (Intercambio)' +
           (estadoCarpeta.conectada ? '.' : ' (la primera vez hay que elegir la biblioteca «Formulación de proyectos - Documentos»).')
         : 'Este navegador no puede escribir en la carpeta: descarga los archivos y déjalos en el buzón de Intercambio.';
       dialogo.showModal();
@@ -3982,10 +4409,11 @@ var QuempinCandado = (function () {
         }, Promise.resolve());
       }).then(function () {
         dialogo.close();
+        como.open = false;   // ya envió una vez: la explicación se pliega (el evento «toggle» lo recuerda)
         var n = listo.mensajes.length;
-        mostrarMensaje('Listo: ' + n + (n === 1 ? ' envío quedó' : ' envíos quedaron') + ' en el buzón de Intercambio. ' +
-          'El Análisis Financiero los pasa al Excel en su próxima vuelta (cada 2 horas, o al correr /Actualizar_Finanzas); ' +
-          'el tablero los muestra cuando se vuelva a publicar. Abajo puedes revisar en qué quedó cada uno.');
+        mostrarMensaje('Listo: ' + (n === 1 ? 'se envió 1 proyecto' : 'se enviaron ' + n + ' proyectos') + '. ' +
+          'Llegan al Excel del Análisis Financiero en la próxima vuelta del procesador (cada 5 minutos, con el computador ' +
+          'de la oficina encendido) y el tablero los muestra en su próxima publicación. Abajo ves en qué quedó cada uno.');
         renderTodo();
         return refrescarEnvios();
       }).catch(function (e) {
@@ -4012,7 +4440,7 @@ var QuempinCandado = (function () {
         var n = listo.mensajes.length;
         mostrarMensaje('Se ' + (n === 1 ? 'descargó 1 archivo' : 'descargaron ' + n + ' archivos') + '. Déjalos tal cual en la carpeta ' +
           '<strong>Formulación de proyectos - Documentos › .Herramientas formulación › Intercambio › buzon</strong>, ' +
-          'o pásaselos a quien corre /Actualizar_Finanzas (<code>driver.py intercambio cargar &lt;archivo&gt;</code>).', 'warn');
+          'o envíaselos a quien administra las herramientas QUEMPIN.', 'warn');
         renderTodo();
       });
     });
@@ -4093,6 +4521,7 @@ var QuempinCandado = (function () {
     });
 
     pintarCarpeta();
+    if (filtro.value && !visibles().length) filtro.value = '';   // sin obras en curso (o sin cambios guardados): todos
     renderTodo();
     leerEstadoCarpeta();
     abrirIngresoDe = function (tag) {
@@ -4124,7 +4553,7 @@ var QuempinCandado = (function () {
     div.className = 'aviso-enlace';
     div.setAttribute('role', 'status');
     div.innerHTML = 'El proyecto <b>' + esc(tag) + '</b> todavía no está en este tablero: aparece cuando se vuelve a publicar ' +
-      '(lo que envió el Formulador se aplica en la carpeta del equipo cada 2 horas).';
+      '(lo que envió el Formulador se aplica en la carpeta del equipo cada 5 minutos).';
     var destino = document.getElementById('tabProyectos');
     destino.insertBefore(div, destino.firstChild);
   }
