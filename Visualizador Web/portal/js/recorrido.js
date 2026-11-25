@@ -647,9 +647,15 @@ async function rcLeer(dir) {
   };
 }
 // Lee la carpeta si este navegador ya tiene la biblioteca conectada y con permiso; si no, dice qué falta.
-function rcCargar() {
-  if (rc.leyendo) return rc.leyendo;
-  rc.leyendo = (async () => {
+// forzar (al elegir otra carpeta): lee aunque haya una lectura en curso, que puede no terminar nunca si la carpeta
+// anterior no contesta; lo que esa traiga después ya no se usa.
+let rcTurno = 0;
+function rcCargar(forzar) {
+  if (rc.leyendo && forzar !== true) return rc.leyendo;
+  const turno = ++rcTurno;
+  const vigente = () => turno === rcTurno;
+  const rcSinDatos = (por) => { if (vigente()) rcSinDatosYa(por); };
+  const lectura = (async () => {
     // Sin la carpeta (el teléfono, o un computador que no la conectó), el resumen cifrado de solo lectura (js/resumen.js)
     let dir = null;
     if (typeof window.showDirectoryPicker !== 'function') {
@@ -663,12 +669,14 @@ function rcCargar() {
         if (!dir) { rcSinDatos('conectar'); return; }
       } else {
         dir = await intercambioLegible(c);
+        if (!vigente()) return;
         if (!dir) { mvSoltar(); rcSinDatos('permiso'); return; }
         mvSoltar();
       }
     }
     const datos = await rcLeer(dir);
     await cargarPulso();
+    if (!vigente()) return;
     rc.datos = datos;
     leerApodos(datos.af);
     rc.pulso = lecturaPulso(datos.estado);
@@ -678,6 +686,7 @@ function rcCargar() {
     rc.sinDatos = null;
     rc.dir = dir;      // la Planificación semanal lee y guarda en la misma carpeta
   })().catch((e) => { console.error(e); rcSinDatos('error'); }).then(() => {
+    if (!vigente()) return;
     rc.leyendo = null;
     rcVueltaAlLeer();
     if (!$('#vistaRecorrido').hidden) rcPintar();
@@ -690,13 +699,14 @@ function rcCargar() {
     llAlRecorrido();
     obsAlRecorrido();
   });
-  return rc.leyendo;
+  rc.leyendo = lectura;
+  return lectura;
 }
 function rcAlMostrar() {
   if (!rc.leido || Date.now() - rc.leido > RC_RELEER_SEG * 1000) rcCargar();
   rcPintar();
 }
-function rcSinDatos(por) {
+function rcSinDatosYa(por) {
   rc.sinDatos = por;
   rc.tarjetas = [];
   rc.leido = 0;

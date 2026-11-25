@@ -31,6 +31,11 @@ const ESTADOS = [
 const LS_CX_MARCAS = 'quempin_portal_conexiones';   // { onedrive: fecha, sistema: fecha }: lo marcado a mano
 const BIBLIOTECA_FORMULACION = 'Formulación de proyectos - Documentos';
 const PLANILLA = 'Planilla de Ingreso de Requerimientos.xlsx';
+// «Elegir otra carpeta» (pedido del usuario, 2026-11-25): siempre a mano en el paso de la biblioteca, también mientras
+// revisa. Si la carpeta guardada no contesta (OneDrive en pausa, o la carpeta salió del computador), Chrome espera sin
+// límite: pasados CX_REVISAR_MAX_SEG se dice que no responde, en vez de quedar en «Revisando…».
+const CX_ELEGIR_OTRA = 'Elegir otra carpeta';
+const CX_REVISAR_MAX_SEG = 15;
 const marcas = () => { const m = leer(LS_CX_MARCAS, {}); return m && typeof m === 'object' ? m : {}; };
 function marcar(id, si) {
   const m = marcas();
@@ -186,7 +191,15 @@ function armarConexiones() {
       nom = crear('span', 'cx-est-nom', s.nombre);
     }
     txt.append(nom, crear('span', 'cx-est-det', 'Revisando…'));
-    li.append(num, txt, crear('div', 'cx-est-acc'));
+    const acc = crear('div', 'cx-est-acc');
+    // Mientras revisa, la carpeta ya se puede elegir de nuevo: si la guardada no responde, la revisión puede tardar.
+    if (s.id === 'biblioteca' && typeof window.showDirectoryPicker === 'function') {
+      const b = crear('button', 'cx-enlace', CX_ELEGIR_OTRA);
+      b.type = 'button';
+      b.addEventListener('click', conectarBiblioteca);
+      acc.append(b);
+    }
+    li.append(num, txt, acc);
     $('#cxEstado').append(li);
   });
   // Una fila por herramienta (o por varias que necesitan lo mismo); las calculadoras no necesitan nada.
@@ -388,7 +401,8 @@ async function conectarBiblioteca() {
     return;
   }
   try { await guardarCarpetas(c); } catch (e) { avisar('No se pudo guardar la conexión en este navegador: ' + (e.message || e)); return; }
-  await pintarEstadoConexiones();
+  rcCargar(true);    // las vistas leen la carpeta nueva, aunque una lectura de la anterior siga sin contestar
+  await pintarEstadoConexiones(true);
   const abiertas = abiertasConCarpeta();
   const msg = c.biblioteca ? 'Biblioteca conectada: el Formulador e «Ingresar avance» ya la usan en este navegador.'
     : 'Quedó conectada solo la carpeta de intercambio. Para el Excel de cada oferta, conecta la biblioteca completa.';
@@ -415,8 +429,8 @@ function probarSistema() {
 }
 
 let carpetasVistas = {};
-async function revisarConexiones() {
-  const r = {};
+// Lo deja en r a medida que avanza: si la carpeta no contesta, pintarEstadoConexiones usa lo que alcanzó a revisar.
+async function revisarConexiones(r) {
   const m = marcas();
   const puede = typeof window.showDirectoryPicker === 'function';
   r.navegador = puede
@@ -446,9 +460,9 @@ async function revisarConexiones() {
   } else {
     dir = await intercambioLegible(c);
     const nombre = (c.biblioteca || c.intercambio).name;
-    if (!dir) r.biblioteca = { nivel: 'warn', corto: 'Falta permiso', texto: 'Conectada («' + nombre + '»), pero el navegador pide permiso otra vez en esta sesión.', acciones: [{ texto: 'Dar permiso', ir: darPermiso, pri: true }] };
+    if (!dir) r.biblioteca = { nivel: 'warn', corto: 'Falta permiso', texto: 'Conectada («' + nombre + '»), pero el navegador pide permiso otra vez en esta sesión.', acciones: [{ texto: 'Dar permiso', ir: darPermiso, pri: true }, conectar(CX_ELEGIR_OTRA, false)] };
     else if (!c.biblioteca) r.biblioteca = { nivel: 'warn', corto: 'Incompleta', texto: 'Está conectada solo «' + c.intercambio.name + '». Para el Excel de cada oferta, conecta la biblioteca completa.', acciones: [conectar('Conectar la biblioteca completa', true)] };
-    else r.biblioteca = { nivel: 'ok', corto: 'Conectada', texto: 'Conectada: «' + nombre + '».', acciones: [conectar('Cambiar', false)] };
+    else r.biblioteca = { nivel: 'ok', corto: 'Conectada', texto: 'Conectada: «' + nombre + '».', acciones: [conectar(CX_ELEGIR_OTRA, false)] };
     if (dir) {
       r.biblioteca.dentro = [
         { texto: 'Carpeta de intercambio', si: await tieneManifiesto(dir) },
@@ -456,8 +470,21 @@ async function revisarConexiones() {
       ];
     }
   }
-  // Lo que el navegador no ve: se marca a mano. Con la biblioteca conectada, «Formulación» ya está en el PC.
-  const bibOk = r.biblioteca.nivel === 'ok';
+  cxMarcadosAMano(r, m);
+  if (dir) {
+    await cargarPulso();
+    const l = lecturaPulso(await leerPulso(dir));
+    r.procesador = l
+      ? { nivel: l.nivel, corto: l.nivel === 'ok' ? 'Al día' : l.detenido ? 'Detenido' : 'Revisar', texto: l.texto }
+      : { nivel: 'warn', corto: 'Sin pulso', texto: 'La carpeta no tiene el pulso del procesador (publicado › estado.json).' };
+  } else {
+    r.procesador = { nivel: '', corto: 'Sin ver', texto: 'Se ve aquí cuando la biblioteca está conectada y con permiso.' };
+  }
+  return r;
+}
+// Lo que el navegador no ve: se marca a mano. Con la biblioteca conectada, «Formulación» ya está en el PC.
+function cxMarcadosAMano(r, m) {
+  const bibOk = !!r.biblioteca && r.biblioteca.nivel === 'ok';
   const sharepoint = (id, texto) => ({ texto, href: encodeURI(CX_POR_ID.get(id).web) });
   r.onedrive = m.onedrive
     ? { nivel: 'ok', corto: 'Listo', texto: 'Marcado como listo: «Formulación de proyectos» y «Cotizaciones y OC» están en OneDrive, una junto a la otra.', marcado: 'onedrive' }
@@ -471,27 +498,36 @@ async function revisarConexiones() {
         acciones: [{ texto: 'Probar', ir: probarSistema }] }
     : { nivel: 'warn', corto: 'Revisar', texto: 'En el Explorador, abre «Cotizaciones y OC - Documentos › QUEMPIN.exe» con doble clic (1.3.10 o más nueva) y completa tu perfil. Luego pruébalo desde aquí.',
         acciones: [{ texto: 'Cómo hacerlo', ir: () => irATarjeta('sistema') }, { texto: 'Probar QUEMPIN.exe', ir: probarSistema, pri: true }] };
-  if (dir) {
-    await cargarPulso();
-    const l = lecturaPulso(await leerPulso(dir));
-    r.procesador = l
-      ? { nivel: l.nivel, corto: l.nivel === 'ok' ? 'Al día' : l.detenido ? 'Detenido' : 'Revisar', texto: l.texto }
-      : { nivel: 'warn', corto: 'Sin pulso', texto: 'La carpeta no tiene el pulso del procesador (publicado › estado.json).' };
-  } else {
-    r.procesador = { nivel: '', corto: 'Sin ver', texto: 'Se ve aquí cuando la biblioteca está conectada y con permiso.' };
-  }
-  return r;
 }
 // Desde el clic y sin esperas antes: el navegador solo pide permiso si viene de uno.
 function darPermiso() {
   const h = carpetasVistas.biblioteca || carpetasVistas.intercambio;
   if (!h) return;
-  h.requestPermission({ mode: 'readwrite' }).catch(() => null).then(pintarEstadoConexiones);
+  h.requestPermission({ mode: 'readwrite' }).catch(() => null).then(() => pintarEstadoConexiones());
+}
+// La carpeta guardada no contestó a tiempo: lo ya revisado queda, y la biblioteca dice qué hacer.
+function cxNoResponde(r) {
+  r.biblioteca = { nivel: 'bad', corto: 'No responde',
+    texto: 'La carpeta guardada no responde. Revisa que OneDrive no esté en pausa y que la carpeta siga en este computador, o elige otra vez la biblioteca «' + BIBLIOTECA_FORMULACION + '».',
+    acciones: [{ texto: CX_ELEGIR_OTRA, ir: conectarBiblioteca, pri: true }, { texto: 'Volver a revisar', ir: () => pintarEstadoConexiones(true) }] };
+  r.procesador = { nivel: '', corto: 'Sin ver', texto: 'Se ve aquí cuando la biblioteca está conectada y responde.' };
+  cxMarcadosAMano(r, marcas());
 }
 let revisando = null;
-function pintarEstadoConexiones() {
-  if (revisando) return revisando;
-  revisando = revisarConexiones().then((r) => {
+let cxTurno = 0;
+// forzar: vuelve a revisar aunque haya una revisión en curso (la de antes, si termina, ya no pinta).
+function pintarEstadoConexiones(forzar) {
+  if (revisando && forzar !== true) return revisando;
+  const turno = ++cxTurno;
+  const r = {};
+  let reloj = null;
+  const tarde = new Promise((listo) => { reloj = setTimeout(() => listo(false), CX_REVISAR_MAX_SEG * 1000); });
+  // Un error al leer la carpeta se trata igual que una carpeta que no contesta: con el botón para elegirla otra vez.
+  const revision = revisarConexiones(r).then(() => true, (e) => { console.error(e); return false; });
+  const prom = Promise.race([revision, tarde]).then((alcanzo) => {
+    clearTimeout(reloj);
+    if (turno !== cxTurno) return;
+    if (!alcanzo) cxNoResponde(r);
     // Solo el primer paso pendiente lleva el botón destacado: el que toca hacer ahora.
     const siguiente = ESTADOS.find((s) => !s.delEquipo && r[s.id] && r[s.id].nivel !== 'ok');
     ESTADOS.forEach((s) => {
@@ -550,8 +586,9 @@ function pintarEstadoConexiones() {
       p.lastChild.textContent = x.corto;
       p.title = x.texto;
     });
-  }).catch((e) => console.error(e)).then(() => { revisando = null; });
-  return revisando;
+  }).catch((e) => console.error(e)).then(() => { if (turno === cxTurno) revisando = null; });
+  revisando = prom;
+  return prom;
 }
 function pintarConexiones() {
   armarConexiones();
