@@ -627,7 +627,7 @@ async function rcLeer(dir) {
   return {
     requerimientos: planilla.filas, requerimientosExcel: lista(req, 'requerimientos'), planillaPedidos, planillaMeta: planilla.meta,
     planillaInfo: req && req.datos ? { actualizado: texto(req.datos.actualizado), generado: texto(req.generado),
-      avisos: Array.isArray(req.datos.avisos) ? req.datos.avisos.map(texto).filter(Boolean) : [] } : null,
+      avisos: Array.isArray(req.datos.avisos) ? req.datos.avisos.map(texto).filter(Boolean) : [], eliminados: pqEliminadosDe(req.datos) } : null,
     cruce: lista(cruce, 'proyectos'), af: lista(af, 'proyectos'),
     gestion: lista(cruce, 'gestion'),      // las carpetas de proyecto de la raíz de Gestión de Proyectos (2026-11-03)
     entregados: lista(cruce, 'entregados'),    // ... y las de sus «0 Proyectos Entregados <año>» (2026-11-09)

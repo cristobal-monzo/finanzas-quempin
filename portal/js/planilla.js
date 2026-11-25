@@ -41,12 +41,14 @@ const PQ_NOMBRE = Object.assign(Object.fromEntries(PQ_COLUMNAS.map((c) => [c.id,
   { presupuesto: 'Presupuesto', valorOfertado: 'Valor ofertado', valorAdjudicado: 'Valor adjudicado' });
 const PQ_FECHAS = ['apertura', 'cierre'];
 const PQ_DESTINO = 'planilla-requerimientos';
-const PQ_TIPOS = ['nuevo-requerimiento', 'editar-requerimiento'];
-const PQ_ARCHIVO = /_portal_(nuevo|editar)-requerimiento_[A-Za-z0-9_-]{6,64}\.json$/;
+// «eliminar-requerimiento» (2026-11-25, pedido del usuario): un requerimiento mal ingresado se elimina desde el botón de
+// opciones de su fila; el Excel vacía su fila (no la borra: el N° es FILA()-1) y el N° queda libre para el próximo
+const PQ_TIPOS = ['nuevo-requerimiento', 'editar-requerimiento', 'eliminar-requerimiento'];
+const PQ_ARCHIVO = /_portal_(nuevo|editar|eliminar)-requerimiento_[A-Za-z0-9_-]{6,64}\.json$/;
 const PQ_PAGINA = 150;               // filas a la vista; el resto con «Mostrar más»
 const PQ_ESPERA_MIN = 30;            // un cambio que espera más que esto: ¿está encendido el computador del procesador?
 const pq = { q: '', estado: '', mostrar: PQ_PAGINA, cambios: [], leyendo: null, leido: 0, abierta: null, inicial: null,
-  guardando: false, irA: null, verCambios: false, conForm: false };
+  guardando: false, irA: null, verCambios: false, conForm: false, eliminar: null };
 
 // Un monto en pesos como número entero positivo; vacío, cero o ilegible, null. Acepta «12.500.000», «$ 12500000» y 12500000.
 function pqMonto(v) {
@@ -66,6 +68,7 @@ function pqMezclar(excel, pedidos) {
     return meta.get(r);
   };
   const valor = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  const fuera = new Set();
   (pedidos || []).slice().sort((a, b) => texto(a.origen && a.origen.enviado).localeCompare(texto(b.origen && b.origen.enviado))).forEach((m) => {
     const r = m.requerimiento;
     if (!r || !Number.isInteger(r.numero) || r.numero < 1) return;
@@ -83,6 +86,12 @@ function pqMezclar(excel, pedidos) {
       if (!ya) porN.set(r.numero, fila);
       return;
     }
+    if (m.tipo === 'eliminar-requerimiento') {
+      // Deja de verse desde ya, si sigue siendo el que se eliminó (mismo título)
+      const ya = porN.get(r.numero);
+      if (ya && norm(ya.titulo).trim() === norm(r.titulo).trim()) { fuera.add(ya); porN.delete(r.numero); }
+      return;
+    }
     if (m.tipo !== 'editar-requerimiento' || !m.cambios || typeof m.cambios !== 'object') return;
     const fila = porN.get(r.numero);
     if (!fila) return;
@@ -94,7 +103,7 @@ function pqMezclar(excel, pedidos) {
     });
     mt.mensajes.push(m);
   });
-  return { filas, meta };
+  return { filas: fuera.size ? filas.filter((r) => !fuera.has(r)) : filas, meta };
 }
 // Después de enviar o retirar algo: todas las vistas (el Recorrido también) ven la Planilla nueva desde ya
 function pqRemezclar() {
@@ -136,16 +145,24 @@ function pqFiltradas() {
 }
 /* El N° de un requerimiento nuevo: el siguiente al mayor que ya se usa en la Planilla, en lo que espera en el buzón, en
    las carpetas de proyecto y en las formulaciones (como el Formulador). Si dos personas lo toman a la vez, el Excel le
-   da al segundo el siguiente libre (numeroLibre) y el resultado lo dice. */
-function pqSiguienteN() {
+   da al segundo el siguiente libre (numeroLibre) y el resultado lo dice.
+   Desde el 2026-11-25 (pedido del usuario: «borrar y reusar el N°»), antes que eso, el menor N° eliminado desde aquí
+   (`eliminados` de la publicación) que nada usa todavía: el Excel lo escribe en la misma fila que quedó vacía. */
+function pqTomados() {
   const d = rc.datos || {};
-  let max = 0;
-  const ver = (v) => { const n = Number(v); if (Number.isInteger(n) && n > max && n < 100000) max = n; };
+  const t = new Set();
+  const ver = (v) => { const n = Number(v); if (Number.isInteger(n) && n > 0 && n < 100000) t.add(n); };
   (d.requerimientosExcel || []).forEach((r) => ver(r.numero));
   (d.planillaPedidos || []).forEach((m) => { if (m.tipo === 'nuevo-requerimiento') ver(m.requerimiento.numero); });
   (d.cruce || []).forEach((p) => ver(p && p.req));
   (d.formulaciones || []).forEach((f) => { const v = f.datos.vinculos && f.datos.vinculos.requerimiento; if (v) ver(v.numero); });
-  return max + 1;
+  return t;
+}
+function pqSiguienteN() {
+  const d = rc.datos || {};
+  const t = pqTomados();
+  const libre = ((d.planillaInfo && d.planillaInfo.eliminados) || []).filter((n) => Number.isInteger(n) && n > 0 && !t.has(n)).sort((a, b) => a - b)[0];
+  return libre || Math.max(0, ...t) + 1;
 }
 // Minutos desde el cambio más antiguo que todavía no llega al Excel, o null
 function pqEsperaMin() {
@@ -241,8 +258,11 @@ async function pqReleer() {
     rcSub(rc.dir, 'publicado').then((p) => (p ? rcJson(p, 'requerimientos.json') : null))]);
   rc.datos.planillaPedidos = buzon.filter(pqEsPedido);
   if (req && req.datos && Array.isArray(req.datos.requerimientos)) rc.datos.requerimientosExcel = req.datos.requerimientos;
+  if (req && req.datos && rc.datos.planillaInfo) rc.datos.planillaInfo.eliminados = pqEliminadosDe(req.datos);
   pqRemezclar();
 }
+// Los N° eliminados desde el portal que la publicación todavía lista como libres
+const pqEliminadosDe = (datos) => (Array.isArray(datos && datos.eliminados) ? datos.eliminados : []).map((x) => x && x.numero).filter(Number.isInteger);
 // Retira del buzón lo que todavía no llega al Excel (lo busca por su id, como ejRetirarAF)
 async function pqRetirar(c) {
   if (mvNoSe()) return;
@@ -261,7 +281,91 @@ async function pqRetirar(c) {
   pq.cambios = pq.cambios.filter((x) => x.id !== c.id);
   pqRemezclar();
   pqPintar();
-  avisar(c.tipo === 'nuevo-requerimiento' ? 'Se retiró el N° ' + c.numero + ': no llega al Excel.' : 'Se retiró el cambio: el Excel queda como estaba.');
+  if (c.callado) return;
+  avisar(c.tipo === 'nuevo-requerimiento' ? 'Se retiró el N° ' + c.numero + ': no llega al Excel.'
+    : c.tipo === 'eliminar-requerimiento' ? 'El N° ' + c.numero + ' no se elimina: queda como estaba.' : 'Se retiró el cambio: el Excel queda como estaba.');
+}
+
+// ---- Eliminar un requerimiento mal ingresado (2026-11-25) ------------------------------------------------------------
+/* Pedido del usuario: un botón de opciones en cada fila para eliminar un requerimiento mal ingresado; eligió «borrar y
+   reusar el N°». Lo que todavía no llega al Excel se retira del buzón. Lo que ya está deja un «eliminar-requerimiento»:
+   planilla_escritura.py vacía su fila y el N° queda libre para el próximo (pqSiguienteN). */
+const pqFilaDe = new WeakMap();      // <tr> → su requerimiento, para el clic derecho
+function pqOpcionesDe(r) {
+  return [{ txt: 'Eliminar requerimiento…', ico: 'basurero', clase: 'ctx-peligro', ir: () => pqPedirEliminar(r) }];
+}
+function pqMenu(b, r, e) {
+  const q = b.getBoundingClientRect();
+  ctxMostrar({ opciones: [pqOpcionesDe(r)], xPortal: q.left, yPortal: q.bottom + 4, teclado: !!e && e.detail === 0 });
+}
+// Lo que se pierde con el requerimiento: su formulación, su carpeta o lo que todavía espera pasar al Excel
+function pqLoQueSePierde(r) {
+  const n = r.numero;
+  const lista = [];
+  const fo = pqForm(r);
+  if (fo) lista.push('Tiene la formulación ' + fo.codigo + ' en el Formulador: queda sin requerimiento.');
+  const carpeta = pqCarpetaGestion(n) || (((rc.datos && rc.datos.cruce) || []).some((p) => p && rcNum(p.req) === rcNum(n)) ? 'una carpeta de proyecto' : '');
+  if (carpeta) lista.push('Hay ' + (carpeta === 'una carpeta de proyecto' ? carpeta : 'una carpeta «' + carpeta + '»') + ' con el N° ' + n + ': el N° no se reusa mientras exista.');
+  const mt = pqMeta(r);
+  if (mt && !mt.nuevo && mt.mensajes.length) lista.push(pl(mt.mensajes.length, 'cambio que espera', 'cambios que esperan') + ' pasar al Excel: no se aplica.');
+  return lista;
+}
+function pqPedirEliminar(r) {
+  if (mvNoSe()) return;
+  const mt = pqMeta(r);
+  const soloAqui = !!(mt && mt.nuevo);
+  pq.eliminar = { r, soloAqui };
+  const titulo = texto(r.titulo) || '(sin título)';
+  $('#dlgPqElimTit').textContent = 'Eliminar el N° ' + r.numero;
+  $('#pqElimQue').textContent = '«' + titulo + '»';
+  $('#pqElimTxt').textContent = soloAqui
+    ? 'Todavía no llega al Excel: se retira y no queda en ninguna parte.'
+    : 'Sale de Requerimientos y su fila del Excel queda vacía. El N° ' + r.numero + ' queda libre para el próximo requerimiento que se ingrese.';
+  const ul = $('#pqElimPierde');
+  ul.textContent = '';
+  (soloAqui ? [] : pqLoQueSePierde(r)).forEach((t) => ul.append(crear('li', null, t)));
+  ul.hidden = !ul.childElementCount;
+  $('#pqElimMotivoCampo').hidden = soloAqui;
+  $('#pqElimMotivo').value = '';
+  $('#pqElimPista').textContent = '';
+  $('#pqElimSi').textContent = 'Eliminar el N° ' + r.numero;
+  $('#pqElimSi').disabled = false;
+  $('#dlgPqEliminar').showModal();
+}
+async function pqEliminar(ev) {
+  if (ev) ev.preventDefault();
+  if (mvNoSe()) return;
+  const x = pq.eliminar;
+  if (!x || pq.guardando || !rc.dir) return;
+  const r = x.r;
+  pq.guardando = true;
+  $('#pqElimSi').disabled = true;
+  try {
+    if (x.soloAqui) {
+      // Primero sus cambios, al final el ingreso: el aviso que queda es el del N°
+      const mt = pqMeta(r);
+      const ms = ((mt && mt.mensajes) || []).slice().sort((a, b) => (a.tipo === 'nuevo-requerimiento') - (b.tipo === 'nuevo-requerimiento'));
+      for (const m of ms) await pqRetirar({ id: m.id, tipo: m.tipo, numero: r.numero, callado: m.tipo !== 'nuevo-requerimiento' });
+    } else {
+      const req = { numero: r.numero, titulo: texto(r.titulo) };
+      const cuerpo = { requerimiento: req };
+      const motivo = $('#pqElimMotivo').value.trim().slice(0, 300);
+      if (motivo) cuerpo.motivo = motivo;
+      await pqEnviar('eliminar-requerimiento', cuerpo);
+    }
+  } catch (err) {
+    console.error(err);
+    $('#pqElimPista').textContent = err && err.name === 'NotAllowedError' ? 'Falta el permiso para escribir en la carpeta del equipo: usa «Volver a leer» arriba y acepta «Ver y editar archivos».'
+      : 'No se pudo eliminar: revisa que OneDrive esté funcionando y vuelve a intentarlo.';
+    $('#pqElimSi').disabled = false;
+    return;
+  } finally {
+    pq.guardando = false;
+  }
+  $('#dlgPqEliminar').close();
+  pq.eliminar = null;
+  pqPintar();
+  if (!x.soloAqui) avisar('N° ' + r.numero + ' eliminado. Su fila del Excel se vacía en un par de minutos y el N° queda libre.');
 }
 
 // ---- El diálogo: un requerimiento nuevo o los datos de uno ---------------------------------------------------------
@@ -454,8 +558,9 @@ async function pqGuardar(ev) {
     pq.guardando = true;
     try { await pqReleer(); } catch (e) { console.warn('Requerimientos: no se releyó antes de guardar', e); }
     pq.guardando = false;
+    // Solo si otro lo tomó: un N° eliminado que se libera mientras se escribe no cambia el que se ve
     const n = pqSiguienteN();
-    if (n > a.numero) { nAntes = a.numero; a.numero = n; }
+    if (n !== a.numero && pqTomados().has(a.numero)) { nAntes = a.numero; a.numero = n; }
   }
   let cuerpo, cambios = null;
   const mover = !a.nuevo && !$('#pqMoverCampo').hidden && $('#pqMover').checked && !$('#pqMover').disabled ? pqCarpetaGestion(a.numero) : null;
@@ -652,7 +757,7 @@ function pqPintarSinc() {
     const [nivel, txt] = NIVEL[c.estado] || ['', c.estado];
     const pill = crear('span', 'sc-pill', txt);
     pill.dataset.nivel = nivel;
-    const que = c.tipo === 'nuevo-requerimiento' ? 'nuevo' : c.campos.map((x) => PQ_NOMBRE[x] || x).join(', ');
+    const que = c.tipo === 'nuevo-requerimiento' ? 'nuevo' : c.tipo === 'eliminar-requerimiento' ? 'eliminado' : c.campos.map((x) => PQ_NOMBRE[x] || x).join(', ');
     cab.append(crear('span', 'sc-env-nom', 'N° ' + c.numero + (c.titulo ? ' · ' + c.titulo : '') + ' · ' + que), pill);
     const f = new Date(c.enviado);
     li.append(cab, crear('span', 'sc-env-det', [c.usuario, isNaN(f) ? '' : pqCuando(f)].filter(Boolean).join(' · ')));
@@ -730,6 +835,16 @@ function pqFila(r, hoy) {
     if (c.tarjeta) td.dataset.et = c.tarjeta;
     if (c.id === 'numero') {
       td.textContent = String(r.numero);
+      if (rcEscribe()) {
+        const b = crear('button', 'pq-opciones');
+        b.type = 'button';
+        b.title = 'Opciones del N° ' + r.numero;
+        b.setAttribute('aria-label', 'Opciones del N° ' + r.numero);
+        b.setAttribute('aria-haspopup', 'menu');
+        b.append(crear('span', null, '⋯'));
+        b.addEventListener('click', (e) => pqMenu(b, r, e));
+        td.append(b);
+      }
       if (mt && mt.nuevo) td.append(crear('span', 'pq-nuevo-tag', 'nuevo'));
     } else if (c.id === 'estado') {
       if (v) { const p = crear('span', 'pq-est', v); p.dataset.estado = v; td.append(p); }
@@ -790,10 +905,11 @@ function pqFila(r, hoy) {
     tr.append(td);
   });
   tr.addEventListener('click', (e) => { if (!e.target.closest('button, a')) pqAbrir(r); });
+  pqFilaDe.set(tr, r);
   return tr;
 }
 // Mientras se mira, lo del equipo y lo del Excel llegan solos (cada 2 minutos, y nunca con el diálogo abierto)
 setInterval(() => {
-  if ($('#vistaPlanilla').hidden || document.visibilityState !== 'visible' || rc.leyendo || !rc.dir || $('#dlgPlanilla').open) return;
+  if ($('#vistaPlanilla').hidden || document.visibilityState !== 'visible' || rc.leyendo || !rc.dir || $('#dlgPlanilla').open || $('#dlgPqEliminar').open) return;
   if (Date.now() - rc.leido > 120000) rcCargar();
 }, 30000);

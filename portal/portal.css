@@ -1973,6 +1973,18 @@ details.pl-panel[open] { padding-bottom: 10px; }
   border: 0; border-radius: 6px; background: transparent; color: var(--texto-suave); cursor: pointer;
 }
 .pq-copiar:hover, .pq-copiar:focus-visible { background: var(--tinte); color: var(--brand-orange-ink); }
+/* El botón de opciones de cada fila (2026-11-25): hoy, «Eliminar requerimiento…» */
+.pq-opciones {
+  float: right; width: 24px; height: 22px; margin: -2px -4px 0 2px; padding: 0; display: grid; place-items: center;
+  border: 0; border-radius: 6px; background: transparent; color: var(--texto-suave); font: inherit; font-size: 16px; font-weight: 900; line-height: 1; cursor: pointer;
+}
+.pq-opciones:hover, .pq-opciones:focus-visible, .pq-opciones[aria-expanded="true"] { background: var(--tinte); color: var(--brand-orange-ink); }
+@media (hover: none) { .pq-opciones { width: 32px; height: 28px; } }
+.ctx-item.ctx-peligro { color: var(--estado-bad); }
+#dlgPqEliminar { width: min(480px, calc(100vw - 24px)); }
+.pq-elim-que { margin: 0; font-weight: 900; color: var(--text-primary); overflow-wrap: anywhere; }
+.btn-pri.btn-peligro { background: var(--estado-bad); color: #ffffff; }
+.btn-pri.btn-peligro:disabled { opacity: 0.6; cursor: default; }
 .pq-tabla tbody tr.pq-nueva { background: var(--tinte); }
 .pq-tabla tbody tr.resaltada { box-shadow: inset 4px 0 0 var(--brand-orange); }
 .pq-tabla td {
@@ -1988,7 +2000,7 @@ details.pl-panel[open] { padding-bottom: 10px; }
   padding: 0; border: 0; background: transparent; color: var(--text-primary); font: inherit; font-weight: 700; text-align: left; cursor: pointer;
 }
 .pq-abrir:hover { color: var(--brand-orange-ink); text-decoration: underline; }
-.pq-nuevo-tag { display: block; margin-top: 2px; font-size: 11px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-orange-ink); }
+.pq-nuevo-tag { display: block; clear: right; margin-top: 2px; font-size: 11px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-orange-ink); }
 .pq-choque { display: block; margin-top: 3px; font-size: 12px; font-weight: 700; color: var(--tinte-texto); }
 .pq-est {
   display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 1px 9px; border-radius: 999px;
@@ -2055,6 +2067,7 @@ details.pl-panel[open] { padding-bottom: 10px; }
   .pq-tabla tbody tr:first-child { border-top: 0; }
   .pq-tabla td { display: block; width: auto; padding: 0; border: 0; overflow: visible; white-space: normal; }
   .pq-tabla td.c-n { order: 0; width: auto; padding: 0; }
+  .pq-tabla td.c-n .pq-opciones { float: none; display: inline-grid; margin: -3px 0 0 4px; vertical-align: middle; }
   .pq-tabla td.c-titulo { order: 1; flex: 1 1 0; min-width: 0; }
   .pq-tabla td.c-estado { order: 2; }
   /* N°, título y estado en la primera línea; lo demás debajo */

@@ -187,6 +187,8 @@ $('#pqOriginal').addEventListener('change', () => { const v = pqOriginal($('#pqO
 $('#pqEstado').addEventListener('change', () => pqVerMover(false));
 $('#pqX').addEventListener('click', () => $('#dlgPlanilla').close());
 $('#pqCancelar').addEventListener('click', () => $('#dlgPlanilla').close());
+$('#pqElimForm').addEventListener('submit', pqEliminar);
+['#pqElimX', '#pqElimNo'].forEach((s) => $(s).addEventListener('click', () => $('#dlgPqEliminar').close()));
 $('#pqFormular').addEventListener('click', () => {
   const a = pq.abierta;
   $('#dlgPlanilla').close();

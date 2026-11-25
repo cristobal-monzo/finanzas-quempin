@@ -17,8 +17,8 @@
 <script src="../numeros.js"></script>
 <!-- Abre el resumen cifrado cuando no hay carpeta (js/resumen.js): el mismo candado de los tableros -->
 <script src="../candado.js"></script>
-<link rel="stylesheet" href="portal.css?v=a4cf4ec7742c">
-<meta name="quempin-version" content="master@c5e2d6c 2026-11-25">
+<link rel="stylesheet" href="portal.css?v=ba114f5e4f24">
+<meta name="quempin-version" content="master@28381de 2026-11-25">
 </head>
 <body>
 <noscript><p style="padding:16px">El portal necesita JavaScript. Las herramientas siguen en sus direcciones de siempre.</p></noscript>
@@ -757,6 +757,20 @@
   </form>
 </dialog>
 
+<!-- Requerimientos: eliminar uno mal ingresado (2026-11-25). Su fila del Excel queda vacía y el N° libre (pqPedirEliminar) -->
+<dialog id="dlgPqEliminar" aria-labelledby="dlgPqElimTit">
+  <form class="dlg" id="pqElimForm" novalidate>
+    <h2 id="dlgPqElimTit">Eliminar requerimiento</h2>
+    <button class="dlg-x" id="pqElimX" type="button" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <p class="pq-elim-que" id="pqElimQue"></p>
+    <p id="pqElimTxt"></p>
+    <ul class="pq-avisos" id="pqElimPierde" hidden></ul>
+    <label class="pl-campo" id="pqElimMotivoCampo"><span>Motivo <i>(opcional)</i></span><input id="pqElimMotivo" type="text" maxlength="300" autocomplete="off" placeholder="Ej.: ingresado dos veces"></label>
+    <p class="ej-dlg-pista error" id="pqElimPista" role="alert"></p>
+    <div class="dlg-acc"><button class="cx-enlace" id="pqElimNo" type="button">Cancelar</button><button class="btn-pri btn-peligro" id="pqElimSi" type="submit">Eliminar</button></div>
+  </form>
+</dialog>
+
 <!-- Proyectos en ejecución: un ítem con la cotización de cada proveedor (agregarlo o cambiarlo), con la evaluación del elegido
      mientras se escribe (ejAbrirCosto, ejPintarEvaluacion) -->
 <dialog id="dlgEjCosto" aria-labelledby="dlgEjCostoTit">
@@ -1180,17 +1194,17 @@ if (window.top !== window.self) {
 <script src="js/base.js?v=28234c5ac65e"></script>
 <script src="js/conexiones.js?v=11a8a53f9ed5"></script>
 <script src="js/resumen.js?v=8e2423f5cdfd"></script>
-<script src="js/recorrido.js?v=093cfdcab6b8"></script>
+<script src="js/recorrido.js?v=4925f67e29fb"></script>
 <script src="js/inicio.js?v=49b6413fac2c"></script>
 <script src="js/planificacion.js?v=4348f0afcf0e"></script>
 <script src="js/subir.js?v=3edac8712d31"></script>
 <script src="js/rendiciones.js?v=13d783f10125"></script>
-<script src="js/planilla.js?v=cdcf73dfb3f3"></script>
+<script src="js/planilla.js?v=d889a936d304"></script>
 <script src="js/ejecucion.js?v=ee7dac695ff0"></script>
 <script src="js/llevar.js?v=c2f4163d8659"></script>
 <script src="js/buscador.js?v=595fa169c9f2"></script>
-<script src="js/observaciones.js?v=01c4a088b2fb"></script>
+<script src="js/observaciones.js?v=345b2c2c555d"></script>
 <script src="js/tema.js?v=fd8f8c7e151e"></script>
-<script src="js/arranque.js?v=882bf3cfeb75"></script>
+<script src="js/arranque.js?v=538822ca3d5a"></script>
 </body>
 </html>
