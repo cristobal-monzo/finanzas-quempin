@@ -16,7 +16,10 @@ Por cada tablero y ancho: pasa la contrasena, recorre las pestanas y una
 interaccion tipica (expandir un documento, buscar, abrir un proyecto), y
 reporta:
 - elementos que se salen de la pantalla (fuera de un contenedor con scroll
-  propio, que es lo unico aceptable: el mapa de calor, las subtablas);
+  propio);
+- tablas que se deslizan de lado dentro de su contenedor: ninguna puede
+  hacerlo, a ningun ancho, salvo que el usuario lo pida (2026-11-25). Para
+  revisar tambien el escritorio: --ancho 700 --ancho 900 --ancho 1280;
 - campos de texto con letra < 16 px en anchos de telefono (Safari de iPhone
   hace zoom al tocarlos). Incluye la contrasena (hasta 2026-10-05 se excluia y
   media 14 px en los 6 tableros); no los selectores de archivo, que no abren
@@ -72,7 +75,14 @@ JS_DESBORDES = r"""
     if (p && p !== document.body && sale(p) && !recortado(p)) continue;
     out.push(nombre(el) + ' (' + Math.round(r.left) + '..' + Math.round(r.right) + ' px)');
   }
-  return { ancho: W, doc: document.documentElement.scrollWidth, fuera: out.slice(0, 10) };
+  // Tablas que se deslizan de lado dentro de su contenedor (2026-11-25: el usuario no las quiere, a ningún ancho).
+  const tablas = [...document.body.querySelectorAll('*')].filter((el) => {
+    if (!['auto', 'scroll'].includes(getComputedStyle(el).overflowX)) return false;
+    if (el.tagName !== 'TABLE' && !el.querySelector('table')) return false;
+    return el.getClientRects().length > 0 && el.scrollWidth > el.clientWidth + 1;
+  }).map((el) => { const t = el.tagName === 'TABLE' ? el : el.querySelector('table');
+    return nombre(t) + ' (' + el.clientWidth + ' < ' + el.scrollWidth + ' px)'; });
+  return { ancho: W, doc: document.documentElement.scrollWidth, fuera: out.slice(0, 10), tablas: tablas.slice(0, 10) };
 }
 """
 
@@ -178,13 +188,15 @@ def main(argv=None):
                     # El zoom al enfocar es de Safari de iPhone; el iPad pide la
                     # version de escritorio. Los templates lo corrigen bajo 640 px.
                     chicos = page.evaluate(JS_CAMPOS_CHICOS) if ancho <= 640 else []
-                    ok = d["ancho"] == ancho and d["doc"] <= ancho and not d["fuera"] and not chicos
+                    ok = d["ancho"] == ancho and d["doc"] <= ancho and not d["fuera"] and not d["tablas"] and not chicos
                     estado = "ok" if ok else "!!"
                     print(f"[{estado}] {ancho} px  {clave:<6} {escena}")
                     if d["ancho"] != ancho:
                         print(f"       se dibuja a {d['ancho']} px en vez de {ancho}: falta <meta name=\"viewport\">")
                     for f in d["fuera"]:
                         print(f"       se sale de la pantalla: {f}")
+                    for t in d["tablas"]:
+                        print(f"       tabla que se desliza de lado: {t}")
                     for c in chicos:
                         print(f"       campo con letra < 16 px (zoom en iPhone): {c}")
                     problemas += not ok

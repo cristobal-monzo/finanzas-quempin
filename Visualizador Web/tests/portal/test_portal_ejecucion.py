@@ -566,6 +566,25 @@ def test_el_presupuesto_completo_y_un_presupuesto_actualizado(navegador, sitio):
     pagina.context.close()
 
 
+@pytest.mark.parametrize("ancho", [700, 900, 1280])
+def test_el_presupuesto_no_se_desliza_de_lado(navegador, sitio, ancho):
+    """2026-11-25, pedido del usuario: ninguna tabla se desliza de lado, salvo que él lo pida. La del presupuesto
+    medía 980 px como mínimo y en el diálogo se deslizaba bajo ~1100 px; ahí pasa a tarjetas."""
+    if not _con_formulador_js("calc.js"):
+        pytest.skip("sin el Formulador en este equipo no hay líneas del presupuesto")
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908", ancho=ancho)
+    pagina.locator("#ejSecComoVa .ej-pr-abrir").click()
+    pagina.locator("#dlgEjPres").wait_for()
+    pagina.locator("#dlgEjPres .ej-pr-vers .cx-enlace", has_text="Crear un presupuesto actualizado").click()
+    assert _pr_filas(pagina).count() == 5
+    desbordes = pagina.evaluate("""() => [...document.querySelectorAll('#dlgEjPres *')]
+        .filter(e => e.offsetParent && e.scrollWidth > e.clientWidth + 1 && ['auto', 'scroll'].includes(getComputedStyle(e).overflowX))
+        .map(e => (e.id || e.className) + ' ' + e.clientWidth + '<' + e.scrollWidth)""")
+    assert desbordes == []
+    assert not errores
+    pagina.context.close()
+
+
 def test_un_item_con_varios_proveedores_se_compara_y_se_elige_en_la_tabla(navegador, sitio):
     """Pedido del usuario (2026-10-30): al agregar un ítem, distintos proveedores; en la tabla, una columna con un menú con el
     nombre y el valor de cada uno, para comparar las cotizaciones y elegir el mejor."""

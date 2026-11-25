@@ -386,6 +386,14 @@ __MARCA_FUENTES__
   /* Separador de mes (2026-10-16): con la tabla ordenada por fecha, cada mes abre con su total. */
   #tMovs > tbody > tr.fc-mes-sep > td { background: var(--surface-1); font-weight: 700; color: var(--text-primary); padding: 9px 8px; border-bottom: 1px solid var(--baseline); }
   #tMovs > tbody > tr.fc-mes-sep > td span { font-weight: 400; color: var(--text-secondary); margin-left: 10px; }
+  /* Sin desplazamiento horizontal (pedido del usuario 2026-11-25): entre el
+     teléfono y el escritorio, encabezados en dos líneas y menos relleno. */
+  @media (min-width: 641px) and (max-width: 900px) {
+    table.viz-table { font-size: 12px; }
+    table.viz-table > thead > tr > th { white-space: normal; padding: 8px 5px; letter-spacing: 0; }
+    table.viz-table > tbody > tr > td { padding-left: 5px; padding-right: 5px; }
+    #tMovs > tbody > tr > td:nth-child(3), #tMovs > tbody > tr > td:nth-child(6) { white-space: normal; }
+  }
   .fc-supuestos > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; min-height: 28px; }
   .fc-supuestos > summary::-webkit-details-marker { display: none; }
   .fc-supuestos > summary::before { content: '▸'; font-size: 12px; color: var(--brand-orange-ink); }

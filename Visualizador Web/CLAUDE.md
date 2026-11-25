@@ -43,8 +43,13 @@ escritorio ni achicando la ventana.
 - **Tablas → tarjetas**, no scroll horizontal: primera celda como título, el resto en
   pares etiqueta/valor (AF: `etiquetarCeldas()`; si se ordena por columna, sus
   encabezados quedan como tira «Ordenar»). **Selectores siempre con `>`**
-  (`table.viz-table > tbody`): el detalle expandido lleva tablas anidadas. Solo una
-  matriz o una subtabla dentro de un detalle se desliza, con la primera columna fija.
+  (`table.viz-table > tbody`): el detalle expandido lleva tablas anidadas.
+- **Ninguna tabla se desliza de lado, a ningún ancho** (pedido del usuario 2026-11-25), salvo que
+  él lo pida. Entre 641 px y el escritorio: encabezados en dos líneas, menos relleno, textos que se
+  parten, una columna secundaria que baja bajo otra o se oculta (si sigue en el detalle), y tarjetas
+  si ni así cabe (AF «Ingresar datos» bajo 1241 px, presupuesto del Portal bajo 1101 px). El detalle
+  expandido de AF lleva `contain: inline-size` para no ensanchar su tabla. `auditoria_movil.py` lo marca
+  («tabla que se desliza»); revisa también `--ancho 700 --ancho 900 --ancho 1280`.
 - **Campos a 16 px en móvil**: con menos, el iPhone hace zoom al tocarlos.
 - **Después de tocar una plantilla**, con los `build/index.html` regenerados:
 
