@@ -157,6 +157,44 @@ def test_preparar_este_computador(navegador, sitio):
     pagina.context.close()
 
 
+def test_elegir_otra_carpeta_si_la_guardada_no_responde(navegador, sitio):
+    """Pedido del 2026-11-25 (a LC se le quedaba en «Revisando…»): el botón para elegir otra carpeta está siempre en
+    el paso de la biblioteca, también mientras revisa; si la carpeta guardada no contesta, se dice a los 15 s."""
+    pagina, errores = _abrir_portal(navegador, sitio)
+    if not pagina.evaluate("typeof showDirectoryPicker === 'function'"):
+        pytest.skip("este Chromium no conecta carpetas")
+    pagina.evaluate(JS_CONECTAR, 30)
+    # La carpeta guardada deja de contestar (como con OneDrive en pausa); la que se elige después, sí contesta
+    pagina.evaluate("""async () => {
+        const raiz = await navigator.storage.getDirectory();
+        const bib = await raiz.getDirectoryHandle('Formulación de proyectos - Documentos');
+        const inter = await (await bib.getDirectoryHandle('.HERRAMIENTAS FORMULACIÓN')).getDirectoryHandle('Intercambio');
+        const w = await (await inter.getFileHandle('intercambio.json', { create: true })).createWritable();
+        await w.write(JSON.stringify({ esquema: 'quempin.intercambio/1' }));
+        await w.close();
+        const proto = FileSystemHandle.prototype;
+        const antes = proto.queryPermission;
+        proto.queryPermission = () => new Promise(() => {});
+        window.showDirectoryPicker = async () => { proto.queryPermission = antes; return bib; };
+    }""")
+    _menu(pagina, "Configuración y conexiones")
+    fila = pagina.locator('#cxEstado li[data-estado="biblioteca"]')
+    assert fila.locator(".cx-est-det").inner_text() == "Revisando…"
+    assert fila.locator("button", has_text="Elegir otra carpeta").is_visible()
+    e = _estado_cx(pagina, {"biblioteca": "bad"})
+    assert "no responde" in e["biblioteca"][1]
+    assert pagina.locator("#cx-biblioteca .cx-pildora").inner_text().strip() == "No responde"
+    assert e["contrasena"][0] == "ok" and e["procesador"][0] == "nada"
+    fila.locator("button", has_text="Elegir otra carpeta").click()
+    e = _estado_cx(pagina, {"biblioteca": "ok", "procesador": "ok"})
+    assert "Formulación de proyectos - Documentos" in e["biblioteca"][1]
+    assert fila.locator("button", has_text="Elegir otra carpeta").count() == 1
+    # Las vistas leen la carpeta nueva, aunque la lectura de la anterior siga sin contestar
+    pagina.wait_for_function("() => rc.leido > 0 && !!rc.dir && rc.dir.name === 'Intercambio'")
+    assert not errores
+    pagina.context.close()
+
+
 def test_conexiones_en_el_telefono(navegador, sitio):
     pagina, errores = _abrir_portal(navegador, sitio, ancho=390, alto=844, movil=True)
     _menu(pagina, "Configuración y conexiones")

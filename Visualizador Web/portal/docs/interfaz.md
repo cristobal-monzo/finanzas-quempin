@@ -106,6 +106,10 @@ sección de configuración con todo lo que hay que conectar, bien referenciado):
   (`publicado/estado.json`, leído con el `js/pulso.js` del Formulador), la
   contraseña y el usuario. «Conectar biblioteca» la conecta aquí mismo y la guarda
   con las mismas claves que `js/intercambio.js` (nunca crea un Intercambio nuevo).
+  «Elegir otra carpeta» (pedido del usuario, 2026-11-25) está siempre en ese paso, también mientras dice
+  «Revisando…»; si la carpeta guardada no contesta en `CX_REVISAR_MAX_SEG` (15 s: OneDrive en pausa, o la carpeta
+  salió del computador), el paso queda «No responde» con ese botón. Al elegirla, `rcCargar(true)` lee la nueva
+  aunque la lectura anterior siga colgada (`rcTurno` descarta lo que esa traiga).
   OneDrive y QUEMPIN.exe no se pueden ver desde el navegador: se marcan a mano
   (`quempin_portal_conexiones`, solo en ese navegador). Las rutas se comprobaron en el disco y en
   SharePoint el 2026-10-16; `test_las_rutas_de_conexiones_son_las_del_intercambio`
