@@ -2634,16 +2634,20 @@ td[data-et="Cantidad"] .ej-pr-in { width: 80px; }
   .ej-pr-nombre { margin-left: 0; }
   .ej-pr-q, .ej-pr-in, .ej-pr-sel, .ej-pr-nueva, .ej-pr-filtro select, .ej-pr-nombre input { font-size: 16px; }
   .ej-pr-acc .ej-pr-usa, .ej-pr-estado { flex-basis: 100%; }
-  /* La tabla en tarjetas: descripción arriba y cada cifra con su nombre */
+}
+@media (max-width: 1100px) {
+  /* La tabla en tarjetas: descripción arriba y cada cifra con su nombre. Hasta
+     1100 px y no solo en el teléfono: con 980 px de mínimo la tabla se deslizaba
+     de lado en el diálogo (el usuario no quiere tablas que se deslicen, 2026-11-25). */
   .ej-pr-tabla { overflow: visible; border: 0; background: none; }
   .ej-pr-tabla .ej-pr-t { min-width: 0; }
   .ej-pr-tabla thead { display: none; }
-  .ej-pr-tabla tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--gridline); border-radius: 10px; background: var(--surface-card); }
+  .ej-pr-tabla tbody tr { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--gridline); border-radius: 10px; background: var(--surface-card); }
   .ej-pr-tabla tbody tr.ej-pr-cam { background: var(--tinte); }
   .ej-pr-tabla tbody tr.ej-pr-nue { background: var(--surface-1); }
   .ej-pr-tabla tbody td, .ej-pr-tabla tbody tr:hover td { padding: 0; border: 0; background: none; box-shadow: none !important; }
   .ej-pr-tabla td.ej-pr-code { grid-row: 1; grid-column: 1; }
-  .ej-pr-tabla td.ej-pr-acc-fila { grid-row: 1; grid-column: 2; justify-self: end; width: auto; }
+  .ej-pr-tabla td.ej-pr-acc-fila { grid-row: 1; grid-column: -2 / -1; justify-self: end; width: auto; }
   .ej-pr-tabla td.ej-pr-desc { grid-column: 1 / -1; font-weight: 700; }
   .ej-pr-tabla td.ej-num { text-align: left !important; }
   .ej-pr-tabla td[data-et]:not(.ej-pr-desc):not([data-et=""])::before { content: attr(data-et); display: block; font-size: 11.5px; font-weight: 700; color: var(--texto-suave); }
@@ -2652,6 +2656,9 @@ td[data-et="Cantidad"] .ej-pr-in { width: 80px; }
   .ej-pr-tabla tfoot tr { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 10px 12px; }
   .ej-pr-tabla tfoot td { padding: 0; border: 0; }
   .ej-pr-tabla tfoot td[data-et]::before { content: attr(data-et) " "; font-weight: 700; color: var(--texto-suave); }
+}
+@media (max-width: 640px) {
+  .ej-pr-tabla tbody tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 #dlgEjCosto .dlg-acc .cx-enlace, #dlgEjPegar .dlg-acc .cx-enlace, #dlgEjVenta .dlg-acc .cx-enlace { min-height: 44px; }
 .ej-borrar { margin-right: auto; color: var(--estado-bad); }
@@ -3106,7 +3113,7 @@ a.ej-d-ref:hover { text-decoration: underline; }
 .ej-v2-medidor[data-nivel="warn"] b { color: var(--estado-warn); }
 .ej-v2-medidor[data-nivel="bad"] b { color: var(--estado-bad); }
 .ej-v2-medidor small { display: block; margin-top: 2px; text-align: center; font-size: 11.5px; color: var(--texto-suave); }
-.ej-v2-margen-monto { margin: 8px 0 0; text-align: center; line-height: 1.2; }
+.ej-v2-margen-monto { margin: 8px 0 0; text-align: center; line-height: 1.2; cursor: help; }
 .ej-v2-margen-monto b { display: block; font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .ej-v2-margen-monto b.neg { color: var(--estado-bad); }
 .ej-v2-margen-monto span { font-size: 12px; color: var(--texto-suave); }
