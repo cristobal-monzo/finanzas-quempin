@@ -864,26 +864,24 @@ def test_los_dias_trabajados_estiman_la_mano_de_obra_real(navegador, sitio):
     sobre = _esperar_archivo(pagina, EJ, lambda s: len(dias(s)) == 2)
     assert dias(sobre) == [(hoy, "MP", 2, ""), (hoy, "NB", 2, "")]
     assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
-    # Su costo, a la tarifa del nivel 2 de la formulación, es la mano de obra real del resumen y de los indicadores
-    pagina.wait_for_function("(js) => eval(js)().startsWith('$120.000')", arg=JS_EJ_MO)
-    assert pagina.evaluate(JS_EJ_COMO, "Mano de Obra")["Queda"] == "$480.000"
+    # Su costo, a $75.000 por día (por defecto, pedido del usuario 2026-11-25), es la mano de obra real del resumen y de
+    # los indicadores
+    pagina.wait_for_function("(js) => eval(js)().startsWith('$150.000')", arg=JS_EJ_MO)
+    assert pagina.evaluate(JS_EJ_COMO, "Mano de Obra")["Queda"] == "$450.000"
     ind = pagina.evaluate(JS_EJ_IND)
-    assert ind["costoDH"][1] == "$60.000" and ind["dh"][1] == "2"
+    assert ind["costoDH"][1] == "$75.000" and ind["dh"][1] == "2"
     if _con_formulador_js("calc.js"):
         assert ind["dh"][0] == "10" and ind["costoDH"][0] == "$60.000"
     # Lo que la Planificación tiene de este proyecto (ES y LC el lunes) se trae de una vez
     pagina.locator("#ejProyecto .ej-linea.tinte .cx-desmarcar", has_text="Traerlos").click()
     sobre = _esperar_archivo(pagina, EJ, lambda s: len(dias(s)) == 4)
     assert {(p, o) for f, p, n, o in dias(sobre)} >= {("ES", "planificacion"), ("LC", "planificacion")}
-    pagina.wait_for_function("(js) => eval(js)().startsWith('$240.000')", arg=JS_EJ_MO)
-    # Subir a ES al nivel 3 recalcula su costo
-    pagina.locator('.ej-nivel select[aria-label^="Nivel de ES"]').select_option("3")
-    pagina.wait_for_function("(js) => eval(js)().startsWith('$255.000')", arg=JS_EJ_MO)
+    pagina.wait_for_function("(js) => eval(js)().startsWith('$300.000')", arg=JS_EJ_MO)
     # Y se lleva al Análisis Financiero como su mano de obra real (no al Centro de Costos)
     pagina.locator("#ejProyecto .cx-desmarcar", has_text="Llevarle").click()
     _esperar_aviso(pagina, "Se pidió dejar")
     (m,) = [x for x in pagina.evaluate(JS_BUZON).values() if x.get("tipo") == "datos-proyecto" and (x.get("origen") or {}).get("herramienta") == "portal"]
-    assert m["valores"] == {"Mano de Obra Real": 255000} and m["reemplaza"] == {"Mano de Obra Real": None}
+    assert m["valores"] == {"Mano de Obra Real": 300000} and m["reemplaza"] == {"Mano de Obra Real": None}
     assert _esquemas().validar_mensaje(m) == []
     assert not errores
     pagina.context.close()
@@ -992,6 +990,43 @@ def test_el_calendario_anota_varios_dias_de_una_vez_y_medio_dia(navegador, sitio
     pagina.locator("#ejDiasQuitar").click()
     sobre = _esperar_archivo(pagina, EJ, lambda s: len(lista(s)) == 2 * len(dias) - 1)
     assert (hoy.isoformat(), "NB", 0.5) not in lista(sobre) and (hoy.isoformat(), "EV", 0.5) in lista(sobre)
+    assert not errores
+    pagina.context.close()
+
+
+def test_viaticos_dias_sin_fecha_y_margen_en_pesos(navegador, sitio):
+    """Pedido del usuario (2026-11-25): el margen también en pesos en el resumen; a los días trabajados se les agrega el
+    viático ($50.000 por día); se anotan días sin fecha («EV trabajó 4 días»); por defecto cada uno cuesta $75.000."""
+    from datetime import date
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, proyecto="req-908")
+    hoy = date.today().isoformat()
+    # El margen en pesos: la venta menos el costo estimado al cierre
+    monto = pagina.locator("#ejMargenMonto b")
+    monto.wait_for()
+    esperado = pagina.evaluate("Math.round(ej.modelo.venta.monto - ej.modelo.tot.EAC)")
+    assert int(monto.inner_text().replace("$", "").replace(".", "").replace("−", "-").replace("-", "")) == abs(esperado)
+    # Un día con viático
+    pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{hoy}"]').click()
+    pagina.locator(".ej-quienes label", has_text="NB").locator("input").check()
+    pagina.locator("#ejDiaViatico").check()
+    assert "con viático" in pagina.locator(".ej-cal-resumen").inner_text() and "$125.000" in pagina.locator(".ej-cal-resumen").inner_text()
+    pagina.locator("#ejDiasAnotar").click()
+    dias = lambda s: [x for x in s["datos"]["items"] if x["tipo"] == "dia" and not x.get("borrado")]
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(dias(s)) == 1)
+    assert dias(sobre)[0]["viatico"] is True and dias(sobre)[0]["fecha"] == hoy
+    # Días sin fecha: EV, 4 días con viático
+    pagina.locator("#ejSfPer").select_option("EV")
+    pagina.locator("#ejSfN").fill("4")
+    pagina.locator("#ejSfViatico").check()
+    pagina.locator("#ejSinFecha button[type=submit]").click()
+    sobre = _esperar_archivo(pagina, EJ, lambda s: len(dias(s)) == 2)
+    sf = next(x for x in dias(sobre) if x["fecha"] == "")
+    assert (sf["persona"], sf["cantidad"], sf["viatico"]) == ("EV", 4, True)
+    assert _esquemas().validar_publicacion("ejecucion-proyectos", sobre) == []
+    pagina.locator("#ejSinFecha li", has_text="EV: 4 días con viático").wait_for()
+    # 5 días-hombre a $75.000 + 5 viáticos a $50.000
+    assert pagina.evaluate("[ej.modelo.mo.dh, ej.modelo.mo.viaticos, ej.modelo.mo.costo]") == [5, 250000, 625000]
+    assert "$625.000" in pagina.locator("#ejSecMO .ej-total").inner_text()
     assert not errores
     pagina.context.close()
 
