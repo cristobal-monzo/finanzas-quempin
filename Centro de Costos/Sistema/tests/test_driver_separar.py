@@ -72,3 +72,31 @@ def test_cmd_separar_reporta_error_si_archivo_no_existe(tmp_path, monkeypatch, c
     salida = capsys.readouterr().out
     assert codigo == 1
     assert "[ERROR]" in salida
+
+
+def test_cmd_separar_con_recortes(tmp_path, monkeypatch, capsys):
+    from PIL import Image
+
+    raiz_docs = tmp_path / "docs"
+    carpeta = raiz_docs / "UMAG"
+    carpeta.mkdir(parents=True)
+    Image.new("RGB", (200, 100), "white").save(carpeta / "IMG_9.png")
+    cl_cfg = dict(acc.PAISES["CL"])
+    cl_cfg["ruta_docs"] = raiz_docs
+    cl_cfg["ruta_backups"] = tmp_path / "backups"
+    monkeypatch.setitem(acc.PAISES, "CL", cl_cfg)
+
+    codigo = driver.cmd_separar(["--proyecto", "UMAG", "--archivo", "IMG_9.png",
+                                 "--recorte", "0,0,0.5,1", "--recorte", "1:0.5,0,1,1"])
+
+    assert codigo == 0
+    assert "recortado" in capsys.readouterr().out
+    assert Image.open(carpeta / "IMG_9_1.png").size == (100, 100)
+    assert not (carpeta / "IMG_9.png").exists()
+
+
+def test_cmd_separar_rechaza_recorte_y_cantidad_juntos(capsys):
+    codigo = driver.cmd_separar(["--proyecto", "UMAG", "--archivo", "a.png",
+                                 "--recorte", "1", "--recorte", "2", "--cantidad", "2"])
+    assert codigo == 2
+    assert "no los dos" in capsys.readouterr().out

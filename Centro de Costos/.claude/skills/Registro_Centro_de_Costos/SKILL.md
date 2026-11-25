@@ -38,12 +38,21 @@ documento viejo, porque la clave es `proyecto\archivo`).
 
 0. **¿El archivo trae más de un documento?** Solo si tiene N° de Documento genuinamente distintos.
    Nunca separes un multipágina que es una sola factura (factura + guía del mismo N°, página de
-   continuación), y nunca juntes los números en una entrada (`DOCUMENTOS_MEZCLADOS`). Si trae N:
+   continuación), y nunca juntes los números en una entrada (`DOCUMENTOS_MEZCLADOS`). Si trae N,
+   **recorta cada factura en su propio archivo** (pedido del usuario, 2026-11-25):
    ```
-   driver.py separar --proyecto "<Proyecto>" --archivo "<archivo>" --cantidad N
+   driver.py vista --proyecto "<Proyecto>" --archivo "<archivo>"
+   driver.py separar --proyecto "<Proyecto>" --archivo "<archivo>" --recorte 1:0,0,1,0.52 --recorte 1:0,0.48,1,1
    ```
-   Genera `<archivo>_1.<ext>`… (copias completas, sin recortar), respalda y borra el original. Trata
-   cada copia como un pendiente aparte, con su propio N° de Documento, proveedor e ítems.
+   `vista` deja un PNG por página con una cuadrícula 0.0–1.0 (imprime las rutas): ábrelo y lee dónde
+   empieza y termina cada factura. Un `--recorte` por factura: `página:x0,y0,x1,y1` en fracciones de la
+   página tal como se ve (origen arriba a la izquierda); `página` sola = la página entera (PDF con una
+   factura por hoja). Deja un margen de ~0,02 para no cortar el borde. Genera `<archivo>_1.<ext>`… (HEIC
+   sale `.jpg`; un PDF sigue siendo PDF con su texto), respalda el original en `Excel/Respaldos/<Mes Año>/`
+   y lo borra de la carpeta. **Abre cada recorte** y confirma que trae una sola factura completa (N°,
+   ítems y total); si no, el original está en el respaldo. Solo si las facturas se encuadran unas sobre
+   otras y no se pueden separar con una caja, usa `--cantidad N` (copias completas). Trata cada archivo
+   como un pendiente aparte, con su propio N° de Documento, proveedor e ítems.
 1. **Abre la foto o PDF** (`Sitio de comunicación - Centro de Costos 1/Facturas y
    Boletas/<País>/<Proyecto>/<archivo>`) y extrae lo legible, según el esquema de `../../CLAUDE.md`
    y [MEMORY.md](MEMORY.md) § Reglas de negocio. Un documento girado se lee igual y se anota `rotacion`.

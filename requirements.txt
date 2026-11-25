@@ -24,6 +24,10 @@ pillow-heif>=1.4.0
 # rotar_pdf en auditor_centro_costos.py). Pura Python, sin binarios externos.
 pypdf>=6.0.0
 
+# Vista con cuadricula de un PDF con varias facturas, para elegir el recorte de
+# cada una (Centro de Costos, vista_con_cuadricula; 'driver.py vista').
+pypdfium2>=4.0.0
+
 # Render de los reportes PDF de Analisis Financiero via Chromium headless
 # (Reportes/motor_reportes.py). Requiere ademas el navegador:
 #     py -3.14 -m playwright install chromium

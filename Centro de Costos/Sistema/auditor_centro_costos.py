@@ -2198,6 +2198,197 @@ def separar_documento_combinado(proyecto_fisico, archivo, cantidad, raiz_docs=No
     return destinos
 
 
+# ── RECORTE DE DOCUMENTOS COMBINADOS (pedido del usuario, 2026-11-25) ────────
+#
+# Reemplaza a las copias completas de separar_documento_combinado() cuando las
+# facturas se pueden encuadrar: cada factura queda en su propio archivo, solo
+# con su parte de la hoja, y la hoja con varias se respalda y se borra. El
+# agente mira la vista con cuadricula (vista_con_cuadricula) y da una caja por
+# factura en fracciones de la pagina (0 = arriba/izquierda, 1 = abajo/derecha).
+
+PATRON_RECORTE = re.compile(
+    r"^\s*(?:(?P<pagina>\d+)\s*(?::\s*|$))?"
+    r"(?P<caja>-?[\d.]+\s*,\s*-?[\d.]+\s*,\s*-?[\d.]+\s*,\s*-?[\d.]+)?\s*$"
+)
+
+
+def interpretar_recorte(texto):
+    """'2:0,0.5,1,1' -> {'pagina': 2, 'caja': (0, 0.5, 1, 1)}. Sin pagina es la
+    1; sin caja es la pagina entera ('3' = toda la pagina 3, para un PDF con
+    una factura por pagina). La caja es x0,y0,x1,y1 en fracciones de la pagina
+    tal como se ve, con el origen arriba a la izquierda."""
+    m = PATRON_RECORTE.match(str(texto))
+    if not m or (m.group("pagina") is None and m.group("caja") is None):
+        raise ValueError(f"Recorte no valido: {texto!r} (formato: 'pagina:x0,y0,x1,y1' o 'pagina')")
+    pagina = int(m.group("pagina")) if m.group("pagina") else 1
+    if pagina < 1:
+        raise ValueError(f"Recorte no valido: {texto!r} (la pagina parte en 1)")
+    caja = (0.0, 0.0, 1.0, 1.0)
+    if m.group("caja"):
+        caja = tuple(float(v) for v in m.group("caja").split(","))
+        x0, y0, x1, y1 = caja
+        if not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
+            raise ValueError(
+                f"Recorte no valido: {texto!r} (cada valor entre 0 y 1, y x0<x1, y0<y1)")
+    return {"pagina": pagina, "caja": caja}
+
+
+def _abrir_imagen(ruta):
+    """Abre una foto (HEIC incluido) ya enderezada segun su EXIF, en RGB."""
+    from PIL import Image, ImageOps
+    if ruta.suffix.lower() == ".heic":
+        import pillow_heif
+        pillow_heif.register_heif_opener()
+    with Image.open(ruta) as img:
+        img.load()
+        return ImageOps.exif_transpose(img).convert("RGB")
+
+
+def _recortar_imagen(ruta_original, recortes, destinos):
+    img = _abrir_imagen(ruta_original)
+    ancho, alto = img.size
+    for recorte, destino in zip(recortes, destinos):
+        if recorte["pagina"] != 1:
+            raise ValueError(f"{ruta_original.name} es una imagen: solo tiene pagina 1")
+        x0, y0, x1, y1 = recorte["caja"]
+        caja = (round(x0 * ancho), round(y0 * alto), round(x1 * ancho), round(y1 * alto))
+        parte = img.crop(caja)
+        if destino.suffix.lower() in (".jpg", ".jpeg"):
+            parte.save(destino, quality=95)
+        else:
+            parte.save(destino)
+
+
+def _recortar_pdf(ruta_original, recortes, destinos):
+    """Cada recorte = un PDF de una pagina con la caja como MediaBox/CropBox:
+    el texto sigue siendo texto (no se rasteriza). Una pagina girada (/Rotate)
+    se endereza antes, para que la caja se lea tal como se ve la pagina."""
+    from pypdf import PdfReader, PdfWriter
+    from pypdf.generic import RectangleObject
+
+    n_paginas = len(PdfReader(str(ruta_original)).pages)
+    for recorte, destino in zip(recortes, destinos):
+        if recorte["pagina"] > n_paginas:
+            raise ValueError(
+                f"{ruta_original.name} tiene {n_paginas} pagina(s); no existe la {recorte['pagina']}")
+    for recorte, destino in zip(recortes, destinos):
+        # Un lector nuevo por recorte: dos recortes de la misma pagina no
+        # deben compartir el objeto pagina (la caja del segundo pisaria al primero).
+        lector = PdfReader(str(ruta_original))
+        escritor = PdfWriter()
+        escritor.add_page(lector.pages[recorte["pagina"] - 1])
+        pagina = escritor.pages[0]
+        if pagina.rotation:
+            pagina.transfer_rotation_to_content()
+        caja_visible = pagina.cropbox
+        izq, abajo = float(caja_visible.left), float(caja_visible.bottom)
+        ancho, alto = float(caja_visible.width), float(caja_visible.height)
+        x0, y0, x1, y1 = recorte["caja"]
+        nueva = RectangleObject([
+            izq + x0 * ancho, abajo + (1 - y1) * alto,
+            izq + x1 * ancho, abajo + (1 - y0) * alto,
+        ])
+        pagina.mediabox = nueva
+        pagina.cropbox = nueva
+        with open(destino, "wb") as f:
+            escritor.write(f)
+
+
+def recortar_documento_combinado(proyecto_fisico, archivo, recortes, raiz_docs=None,
+                                 ruta_backups=None):
+    """Separa un archivo PENDIENTE que trae varias facturas/boletas en un
+    archivo por documento, cada uno con SOLO su recorte: '<nombre>_1.<ext>',
+    '<nombre>_2.<ext>'... (HEIC sale como .jpg). Despues respalda el original
+    en Excel/Respaldos/<Mes Año>/ y lo borra de la carpeta compartida, igual que
+    separar_documento_combinado().
+
+    'recortes': lista de textos ('1:0,0,1,0.5') o de dicts ya interpretados.
+    Valida todo y escribe en una carpeta temporal antes de tocar la carpeta del
+    proyecto: si un recorte falla, no queda nada a medias."""
+    raiz_docs = raiz_docs if raiz_docs is not None else RAIZ_DOCS
+    ruta_backups = ruta_backups if ruta_backups is not None else RUTA_BACKUPS
+    recortes = [r if isinstance(r, dict) else interpretar_recorte(r) for r in recortes]
+    if len(recortes) < 2:
+        raise ValueError(f"Hacen falta 2 recortes o mas (recibido: {len(recortes)})")
+
+    carpeta = raiz_docs / proyecto_fisico
+    ruta_original = carpeta / archivo
+    if not ruta_original.exists():
+        raise FileNotFoundError(f"No existe el documento a separar: {ruta_original}")
+
+    stem = ruta_original.stem
+    ext = ruta_original.suffix
+    ext_lower = ext.lower()
+    if ext_lower not in EXTENSIONES_VALIDAS:
+        raise ValueError(f"Extension no soportada para recortar: {ext}")
+    ext_salida = ".jpg" if ext_lower == ".heic" else ext
+    destinos = [carpeta / f"{stem}_{n}{ext_salida}" for n in range(1, len(recortes) + 1)]
+    ya_existentes = [d for d in destinos if d.exists()]
+    if ya_existentes:
+        nombres = ", ".join(d.name for d in ya_existentes)
+        raise FileExistsError(f"Ya existe(n) archivo(s) destino: {nombres}")
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        temporales = [Path(tmp) / d.name for d in destinos]
+        if ext_lower == ".pdf":
+            _recortar_pdf(ruta_original, recortes, temporales)
+        else:
+            _recortar_imagen(ruta_original, recortes, temporales)
+        for temporal, destino in zip(temporales, destinos):
+            shutil.move(str(temporal), str(destino))
+
+    ahora = datetime.now()
+    carpeta_respaldo = carpeta_mes(ruta_backups, ahora)
+    marca = ahora.strftime("%Y-%m-%d %H%M")
+    respaldo = carpeta_respaldo / f"{stem} - documento combinado - backup {marca}{ext}"
+    shutil.copy2(ruta_original, respaldo)
+    ruta_original.unlink()
+
+    return destinos
+
+
+def _paginas_como_imagenes(ruta, escala=2.0):
+    """Las paginas de un PDF (o la foto) como imagenes PIL, tal como se ven."""
+    if ruta.suffix.lower() != ".pdf":
+        return [_abrir_imagen(ruta)]
+    import pypdfium2 as pdfium
+    doc = pdfium.PdfDocument(str(ruta))
+    try:
+        return [doc[i].render(scale=escala).to_pil().convert("RGB") for i in range(len(doc))]
+    finally:
+        doc.close()
+
+
+def vista_con_cuadricula(ruta, carpeta_salida, divisiones=10):
+    """Guarda un PNG por pagina con una cuadricula rotulada 0.0..1.0, para que
+    el agente lea en que fracciones de la pagina empieza y termina cada
+    factura antes de recortar. Devuelve las rutas de los PNG."""
+    from PIL import ImageDraw
+    ruta = Path(ruta)
+    carpeta_salida = Path(carpeta_salida)
+    carpeta_salida.mkdir(parents=True, exist_ok=True)
+    salidas = []
+    for i, img in enumerate(_paginas_como_imagenes(ruta), start=1):
+        lado = 1600
+        if max(img.size) > lado:
+            img.thumbnail((lado, lado))
+        dibujo = ImageDraw.Draw(img)
+        ancho, alto = img.size
+        for k in range(1, divisiones):
+            f = k / divisiones
+            x, y = round(f * ancho), round(f * alto)
+            dibujo.line([(x, 0), (x, alto)], fill=(220, 0, 0), width=1)
+            dibujo.line([(0, y), (ancho, y)], fill=(220, 0, 0), width=1)
+            rotulo = f"{f:.1f}"
+            dibujo.text((x + 2, 2), rotulo, fill=(220, 0, 0))
+            dibujo.text((2, y + 2), rotulo, fill=(220, 0, 0))
+        salida = carpeta_salida / f"{ruta.stem} - pagina {i}.png"
+        img.save(salida)
+        salidas.append(salida)
+    return salidas
+
+
 def eliminar_documento(n_ref, ws_master, ws_detalle, raiz_docs=None, ruta_backups=None,
                        archivar_fuente=True, motivo="eliminado"):
     """Borra del libro un documento registrado por error (t�picamente el mismo

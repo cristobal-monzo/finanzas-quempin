@@ -32,12 +32,18 @@ del proyecto y expone dos comandos seguros de invocar desde un agente:
             Visualizador Web/template.html (versionado, sin datos). No
             modifica el Excel. Ver Visualizador Web/CLAUDE.md.
 
+  vista     → PNG de cada pagina de un archivo con una cuadricula 0.0-1.0,
+            para leer donde empieza y termina cada factura antes de 'separar'.
+
   separar   → Para un archivo PENDIENTE (sin registrar todavia) que trae mas
-            de 1 documento tributario distinto en el mismo encuadre (ej. 2-3
-            boletas fotografiadas juntas): genera '--cantidad' copias
-            identicas del archivo ('<nombre>_1.<ext>', '<nombre>_2.<ext>',
-            ...), respalda el original en Excel/Respaldos/<Mes Año>/ y lo
-            borra de la carpeta compartida. No toca el Excel ni
+            de 1 documento tributario distinto (ej. 2-3 boletas fotografiadas
+            juntas, o un PDF con varias facturas): con un '--recorte' por
+            factura (pedido del usuario, 2026-11-25) genera
+            '<nombre>_1.<ext>', '<nombre>_2.<ext>', ... cada uno SOLO con su
+            factura ('pagina:x0,y0,x1,y1' en fracciones; 'pagina' sola = la
+            pagina entera). '--cantidad N' queda para lo que no se puede
+            encuadrar: N copias completas. En ambos casos respalda el original
+            en Excel/Respaldos/<Mes Año>/ y lo borra de la carpeta compartida. No toca el Excel ni
             datos_extraidos.json -- despues de correrlo hay que agregar una
             entrada propia al JSON por cada copia nueva (paso 2 del skill),
             tratando cada una como un pendiente independiente.
@@ -69,6 +75,8 @@ Uso:
   python driver.py confirmar --todos
   python driver.py confirmar UMAG-014 CFLI-002
   python driver.py visualizador
+  python driver.py vista --proyecto "UMAG" --archivo "Facturas.pdf"
+  python driver.py separar --proyecto "UMAG" --archivo "Facturas.pdf" --recorte 1:0,0,1,0.5 --recorte 1:0,0.5,1,1
   python driver.py separar --proyecto "UMAG" --archivo "IMG_1234.jpg" --cantidad 3
   python driver.py eliminar UMAG-042
   python driver.py eliminar UMAG-042 --aplicar
@@ -441,29 +449,82 @@ def _extraer_flag(argv, nombre):
     return valor, argv
 
 
+def _extraer_flags_repetidos(argv, nombre):
+    """Todos los valores de '--<nombre> V' (puede repetirse) y argv sin ellos."""
+    argv, valores = list(argv), []
+    while nombre in argv:
+        valor, argv = _extraer_flag(argv, nombre)
+        valores.append(valor)
+    return valores, argv
+
+
+USO_SEPARAR = ("Uso: python driver.py separar --proyecto <Proyecto> --archivo <archivo> "
+               "--recorte 1:x0,y0,x1,y1 --recorte 1:x0,y0,x1,y1 [...]\n"
+               "     (o --cantidad N: copias completas, solo si las facturas no se pueden encuadrar)")
+
+
 def cmd_separar(args, pais="CL"):
     acc.configurar_pais(pais)
     try:
         proyecto, resto = _extraer_flag(args, "--proyecto")
         archivo, resto = _extraer_flag(resto, "--archivo")
-        cantidad_str, resto = _extraer_flag(resto, "--cantidad")
-        cantidad = int(cantidad_str)
+        recortes, resto = _extraer_flags_repetidos(resto, "--recorte")
+        cantidad = None
+        if "--cantidad" in resto:
+            cantidad_str, resto = _extraer_flag(resto, "--cantidad")
+            cantidad = int(cantidad_str)
+        if recortes and cantidad is not None:
+            raise ValueError("Usa --recorte o --cantidad, no los dos")
+        if not recortes and cantidad is None:
+            raise ValueError("Falta --recorte (uno por factura) o --cantidad")
+        recortes = [acc.interpretar_recorte(r) for r in recortes]
     except ValueError as e:
         print(f"[ERROR] {e}")
-        print("Uso: python driver.py separar --proyecto <Proyecto> --archivo <archivo> --cantidad N")
+        print(USO_SEPARAR)
         return 2
 
     try:
-        destinos = acc.separar_documento_combinado(proyecto, archivo, cantidad)
+        if recortes:
+            destinos = acc.recortar_documento_combinado(proyecto, archivo, recortes)
+        else:
+            destinos = acc.separar_documento_combinado(proyecto, archivo, cantidad)
     except (ValueError, FileNotFoundError, FileExistsError) as e:
         print(f"[ERROR] {e}")
         return 1
 
-    print(f"[OK] '{archivo}' separado en {len(destinos)} archivo(s):")
+    modo = "recortado" if recortes else "copiado completo"
+    print(f"[OK] '{archivo}' separado en {len(destinos)} archivo(s) ({modo}); "
+          "el original quedo respaldado y se borro de la carpeta:")
     for destino in destinos:
-        print(f"  - {destino.name}")
-    print("Agrega una entrada propia en datos_extraidos.json por cada archivo de arriba "
-          "(mismo 'proyecto', 'archivo' = nombre nuevo) antes de correr 'run'.")
+        print(f"  - {destino}")
+    print("Abre cada archivo y revisa que traiga una sola factura completa. Despues agrega "
+          "una entrada propia en datos_extraidos.json por cada uno (mismo 'proyecto', "
+          "'archivo' = nombre nuevo) antes de correr 'run'.")
+    return 0
+
+
+def cmd_vista(args, pais="CL"):
+    """PNG con cuadricula 0.0-1.0 de cada pagina, para elegir los recortes."""
+    import tempfile
+    acc.configurar_pais(pais)
+    try:
+        proyecto, resto = _extraer_flag(args, "--proyecto")
+        archivo, resto = _extraer_flag(resto, "--archivo")
+        salida = Path(tempfile.gettempdir()) / "cc-vista-recortes"
+        if "--salida" in resto:
+            salida_str, resto = _extraer_flag(resto, "--salida")
+            salida = Path(salida_str)
+    except ValueError as e:
+        print(f"[ERROR] {e}")
+        print("Uso: python driver.py vista --proyecto <Proyecto> --archivo <archivo> [--salida DIR]")
+        return 2
+
+    ruta = acc.RAIZ_DOCS / proyecto / archivo
+    if not ruta.exists():
+        print(f"[ERROR] No existe: {ruta}")
+        return 1
+    for png in acc.vista_con_cuadricula(ruta, salida):
+        print(png)
     return 0
 
 
@@ -576,10 +637,10 @@ def cmd_visualizador(pais="CL"):
 
 def main():
     comandos = ("status", "run", "confirmar", "visualizador", "separar", "eliminar",
-                "separar-registrado", "rendiciones")
+                "separar-registrado", "rendiciones", "vista")
     if len(sys.argv) < 2 or sys.argv[1] not in comandos:
         print("Uso: python driver.py [status|rendiciones|run|confirmar [--todos|N_REF ...]|visualizador|"
-              "separar --proyecto P --archivo A --cantidad N|eliminar N_REF ... [--aplicar]|"
+              "vista --proyecto P --archivo A|separar --proyecto P --archivo A --recorte R [--recorte R ...]|eliminar N_REF ... [--aplicar]|"
               "separar-registrado --plan pedido.json [--aplicar]|run [--sin-intercambio]] [--pais CL|PE]")
         return 2
 
@@ -594,6 +655,8 @@ def main():
         return cmd_visualizador(pais=pais)
     if comando == "separar":
         return cmd_separar(resto, pais=pais)
+    if comando == "vista":
+        return cmd_vista(resto, pais=pais)
     if comando == "eliminar":
         return cmd_eliminar(resto, pais=pais)
     if comando == "separar-registrado":
