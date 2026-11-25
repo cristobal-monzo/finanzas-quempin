@@ -223,6 +223,23 @@ explica va en un ícono. Regla para lo que venga: **en la pantalla, el dato y la
 - **Lo que no se esconde**: avisos que piden algo (un cambio que lleva mucho sin llegar al Excel, un pedido esperando, lo
   que trae la Planificación), cifras y estados. Las cifras del Recorrido dejan su explicación en el `title` de la tarjeta.
 
+## La ventana de cifras (2026-11-25)
+
+Pedido del usuario: **toda ventana de información con montos o porcentajes, la de hoy y las que vengan, sigue el formato
+del desglose del precio neto del Formulador**: filas etiqueta–valor, montos alineados a la derecha con cifras tabulares,
+subtotales en negrita con una raya encima, indicadores (margen, avance) en negrita al final. Nunca un `title` con montos.
+
+- **Componente único**: `cifras(el, filas, titulo)` en `base.js`. `filas`: `[etiqueta, valor, clase]` con clase `sub`
+  (subtotal), `ind` (indicador), `sep` (raya sin negrita), `neg` (valor en rojo), combinables (`'ind neg'`); un texto
+  suelto es una nota; `null` se salta. Quita el `title` del elemento y deja el texto en `aria-description`.
+- **Cómo se abre**: al pasar el mouse, con el foco (`tabIndex = 0` si debe llegar por teclado) o con un toque en lo que no
+  es botón, enlace ni menú. Una sola ventana (`#cifrasPop`, `popover="manual"`), centrada bajo el elemento o encima si no
+  cabe; Esc la cierra.
+- **Dónde está**: En ejecución: lo que le queda a QUEMPIN, la barra del dinero, la tarjeta de cada proyecto, la barra de
+  cada partida, «a este ritmo», las compras por estado, el precio por proveedor, el detalle de una factura, trabajo y
+  viáticos por persona y el costo de cada día de mano de obra. Lo prueba `test_viaticos_dias_sin_fecha_y_margen_en_pesos`.
+- El ⓘ sigue para explicar con palabras; la ventana de cifras, para desglosar números.
+
 ## Uso del Portal (2026-11-09)
 
 `usoAnotar` (llamado desde `activar` y `abrir`) cuenta por día cuántas veces se abre cada herramienta en este
