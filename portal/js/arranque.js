@@ -136,6 +136,8 @@ $('#rdTodosAplicar').addEventListener('click', rdAplicarTodos);
 $('#rdTodos').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); rdAplicarTodos(); } });
 $('#rdPdf').addEventListener('click', rdGenerarPdf);
 $('#rdEnviar').addEventListener('click', rdEnviar);
+$('#dlgRdCorreo').addEventListener('close', rdCerrarCorreo);
+$('#rdCorreoPdf').addEventListener('click', rdVerPdfCorreo);
 $('#rdNueva').addEventListener('click', rdNueva);
 $('#rdLector').addEventListener('click', rdAbrirLector);
 $('#rdGirarIzq').addEventListener('click', () => rdGirar(-90));

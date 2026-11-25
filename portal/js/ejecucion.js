@@ -49,8 +49,11 @@ const EJ_TIPOS = ['costo', 'nota', 'pendiente', 'venta', 'dia', 'tarifas', 'asoc
 const EJ_DESTINO = /^(i:[a-z0-9-]{6,40}|l:[A-Za-z0-9_-]{1,40})$/;      // un ítem (su grupo o id) o una línea del presupuesto
 const EJ_IVA = 0.19;                                    // Chile: el Análisis Financiero y el Centro de Costos van sin IVA
 const EJ_MARGEN = { objetivo: 30, minimo: 20 };         // los de un proyecto nuevo del Formulador (js/store.js)
-// Lo que cuesta un día-hombre según su nivel, si el proyecto no tiene formulación ni tarifas propias (las del Formulador)
-const EJ_TARIFAS = { n1: 45000, n2: 60000, n3: 75000 };
+// Lo que cuesta un día-hombre si el proyecto no tiene tarifas propias (2026-11-25, pedido del usuario: por defecto
+// cualquiera del personal QUEMPIN cuesta $75.000 por día) y el viático de cada día trabajado con viático ($50.000)
+const EJ_TARIFAS = { n1: 75000, n2: 75000, n3: 75000 };
+const EJ_VIATICO = 50000;
+const EJ_MAX_DIAS_SIN_FECHA = 365;
 const EJ_NIVELES = [{ n: 1, nombre: 'Nivel 1' }, { n: 2, nombre: 'Nivel 2' }, { n: 3, nombre: 'Nivel 3' }];
 const EJ_JORNADAS = [{ j: 1, nombre: 'Día completo' }, { j: 0.5, nombre: 'Medio día' }];
 // Una cotización contra la línea que reemplaza: hasta 3 % más cara está bien, hasta 15 % se revisa, más no conviene.
@@ -182,14 +185,18 @@ function ejValidar(x, tope) {
     const t = ejTxt(x.texto, 200);
     return t ? Object.assign(e, { texto: t, listo: x.listo === true, responsable: /^[A-Z]{2,3}$/.test(texto(x.responsable)) ? texto(x.responsable) : '' }) : null;
   }
-  // Un día trabajado por una persona (del equipo o escrita a mano, «x-juan-perez» con su nombre), con su jornada y su nivel
+  /* Un día trabajado por una persona (del equipo o escrita a mano, «x-juan-perez» con su nombre), con su jornada, su nivel
+     y si lleva viático. Sin fecha (2026-11-25, pedido del usuario: «EV trabajó 4 días en este proyecto»), «cantidad» días. */
   if (x.tipo === 'dia') {
     const j = Number(x.jornada);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(texto(x.fecha)) || !plPerValida(x.persona) || !(j > 0 && j <= 2) || ![1, 2, 3].includes(x.nivel)) return null;
-    return Object.assign(e, { fecha: x.fecha, persona: x.persona, nombre: PL_PER_MANO.test(x.persona) ? ejTxt(x.nombre, 60) : '', jornada: j, nivel: x.nivel,
-      origen: x.origen === 'planificacion' ? 'planificacion' : '', nota: ejTxt(x.nota, 200) });
+    const sinFecha = texto(x.fecha) === '';
+    const n = sinFecha ? Number(x.cantidad) : 1;
+    if ((!sinFecha && !/^\d{4}-\d{2}-\d{2}$/.test(texto(x.fecha))) || !plPerValida(x.persona) || !(j > 0 && j <= 2) || ![1, 2, 3].includes(x.nivel)) return null;
+    if (!(n > 0 && n <= EJ_MAX_DIAS_SIN_FECHA) || Math.round(n * 2) !== n * 2) return null;
+    return Object.assign(e, { fecha: sinFecha ? '' : x.fecha, persona: x.persona, nombre: PL_PER_MANO.test(x.persona) ? ejTxt(x.nombre, 60) : '', jornada: j, nivel: x.nivel,
+      origen: x.origen === 'planificacion' ? 'planificacion' : '', nota: ejTxt(x.nota, 200), viatico: x.viatico === true }, sinFecha ? { cantidad: n } : {});
   }
-  // Lo que cuesta un día-hombre de cada nivel en este proyecto (si no, las tarifas de su formulación)
+  // Lo que cuesta un día-hombre de cada nivel en este proyecto (si no, EJ_TARIFAS)
   if (x.tipo === 'tarifas') {
     const ns = ['n1', 'n2', 'n3'].map((k) => monto(x[k]));
     if (ns.some((n) => !(n > 0))) return null;
@@ -675,34 +682,35 @@ const ejEstadoOtra = (est) => (est === 'evaluar' ? 'evaluar' : 'descartada');
 const ejSlugClave = (k) => k.replace(':', '-').toLowerCase();
 const ejIdDia = (t, fecha, per) => ('dia-' + ejSlugClave(ejClave(t)) + '-' + fecha.replace(/-/g, '') + '-' + per.toLowerCase()).slice(0, 40);
 const ejNomPer = (d) => (PL_PER_MANO.test(d.persona) ? d.nombre || plNom(d.persona) : d.persona);
-// Uno por persona y día (si se anotó con el TAG y con el N°, manda el más reciente), del más nuevo al más antiguo
+// Uno por persona y día (si se anotó con el TAG y con el N°, manda el más reciente), del más nuevo al más antiguo; los sin
+// fecha, cada uno por su id, al final
 function ejDias(t) {
   const por = new Map();
-  ejDe(t, 'dia').forEach((d) => { const k = d.fecha + '|' + d.persona; if (plGana(por.get(k), d)) por.set(k, d); });
-  return [...por.values()].sort((a, b) => b.fecha.localeCompare(a.fecha) || plComparar(ejNomPer(a), ejNomPer(b)));
+  ejDe(t, 'dia').forEach((d) => { const k = d.fecha ? d.fecha + '|' + d.persona : 'sin|' + d.id; if (plGana(por.get(k), d)) por.set(k, d); });
+  return [...por.values()].sort((a, b) => (!a.fecha - !b.fecha) || b.fecha.localeCompare(a.fecha) || plComparar(ejNomPer(a), ejNomPer(b)));
 }
+// Los días-hombre de lo anotado (un día con su jornada, o los días sin fecha), sus viáticos y su costo con ellos
+const ejDH = (d) => d.jornada * (d.fecha ? 1 : d.cantidad || 1);
+const ejViaticos = (d) => (d.viatico ? EJ_VIATICO * (d.fecha ? 1 : d.cantidad || 1) : 0);
+const ejCostoDia = (d, tarifas) => ejDH(d) * tarifas['n' + d.nivel] + ejViaticos(d);
 // El nivel con que se anotó por última vez a esa persona, en cualquier proyecto (2 la primera vez)
 function ejNivelDe(per) {
   let u = null;
   ej.datos.ef.forEach((e) => { if (e.tipo === 'dia' && !e.borrado && e.persona === per && (!u || e.t > u.t)) u = e; });
   return u ? u.nivel : 2;
 }
-// Lo que cuesta un día-hombre de cada nivel: las tarifas de este proyecto, las de su formulación o las del Formulador
+// Lo que cuesta un día-hombre de cada nivel: las tarifas de este proyecto o, si no, $75.000 por día (EJ_TARIFAS)
 function ejTarifas(t, form) {
   const x = ejDe(t, 'tarifas').sort((a, b) => (a.t < b.t ? 1 : -1))[0];
   if (x) return { n1: x.n1, n2: x.n2, n3: x.n3, fuente: 'propias de este proyecto', propias: x };
-  const p = form && form.datos.parametros;
-  if (p && ejMoneda(form) === 'CLP' && ['tarifaN1', 'tarifaN2', 'tarifaN3'].every((k) => Number(p[k]) > 0)) {
-    return { n1: Number(p.tarifaN1), n2: Number(p.tarifaN2), n3: Number(p.tarifaN3), fuente: 'las de su formulación' };
-  }
-  return Object.assign({ fuente: 'las del Formulador' }, EJ_TARIFAS);
+  return Object.assign({ fuente: 'por defecto' }, EJ_TARIFAS);
 }
 function ejManoObra(t, form, calc) {
   const tarifas = ejTarifas(t, form);
   const dias = ejDias(t);
-  let dh = 0, costo = 0;
-  dias.forEach((d) => { dh += d.jornada; costo += d.jornada * tarifas['n' + d.nivel]; });
-  return { dias, dh, costo, tarifas, dhP: calc && calc.totals.dh > 0 ? calc.totals.dh : null, moP: calc ? calc.totals.mo : null };
+  let dh = 0, costo = 0, viaticos = 0;
+  dias.forEach((d) => { dh += ejDH(d); viaticos += ejViaticos(d); costo += ejCostoDia(d, tarifas); });
+  return { dias, dh, costo, viaticos, tarifas, dhP: calc && calc.totals.dh > 0 ? calc.totals.dh : null, moP: calc ? calc.totals.mo : null };
 }
 /* Las facturas del Centro de Costos de un proyecto (2026-11-06): las de su TAG o su N° (el TAG es el N° de la Planilla
    desde el 2026-11-05; los antiguos, siglas). null: el procesador todavía no las publica. */
@@ -1523,7 +1531,7 @@ function ejPintarProyecto(t) {
   const foco = a && raiz.contains(a) && a.dataset ? a.dataset.foco : null;
   const m = ejModelo(t);
   ej.modelo = m;
-  if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, mes: plISO(new Date()).slice(0, 7), jornada: 1, personas: new Set(), nombres: {}, dias: new Set(), abierto: null };
+  if (!ej.diasForm || ej.diasForm.clave !== t.clave) ej.diasForm = { clave: t.clave, mes: plISO(new Date()).slice(0, 7), jornada: 1, viatico: false, personas: new Set(), nombres: {}, dias: new Set(), abierto: null, sfPer: '', sfN: '', sfViatico: false };
   raiz.textContent = '';
   // Una carpeta de Gestión sin N° ni TAG (2026-11-03): se ve, pero no hay a qué anotarle compras, días ni avance
   const sinClave = !ejClave(t);
@@ -1657,6 +1665,15 @@ function ejResumenEl(m) {
   // El margen
   const c3 = crear('div', 'ej-v2-margen');
   c3.append(crear('span', 'ej-v2-et', m.pres ? 'Margen estimado' : 'Margen con lo anotado'), ejMedidorMargenEl(m));
+  // 2026-11-25, pedido del usuario: el margen también en pesos, lo que le queda a la empresa (venta − costo al cierre)
+  if (m.margen !== null && m.venta) {
+    const util = m.venta.monto - tot.EAC;
+    const mp = crear('p', 'ej-v2-margen-monto');
+    mp.id = 'ejMargenMonto';
+    mp.title = 'Venta neta ' + ejPesos(m.venta.monto) + ' − costo estimado al cierre ' + ejPesos(tot.EAC);
+    mp.append(crear('b', util < 0 ? 'neg' : null, ejPesos(util)), crear('span', null, util < 0 ? 'de pérdida estimada' : 'le quedan a QUEMPIN'));
+    c3.append(mp);
+  }
   hero.append(c1, c2, c3);
   // Las cifras de abajo: las KPI de siempre (la venta con «Corregir», el cierre) y lo comprometido y la mano de obra
   const kpis = ejKpisEl(m);
@@ -3893,7 +3910,7 @@ function ejNotasEl(m) {
 function ejPorTraer(m, semanas) {
   const t = m.t;
   const hoy = plISO(new Date());
-  const ya = new Set(m.mo.dias.map((d) => d.fecha + '|' + d.persona));
+  const ya = new Set(m.mo.dias.filter((d) => d.fecha).map((d) => d.fecha + '|' + d.persona));
   const out = [];
   semanas.forEach((id) => {
     const s = plSemana(id);
@@ -3933,7 +3950,8 @@ function ejMoResumenEl(m) {
   }
   const tot = crear('div', 'ej-mo-tot');
   const num = crear('div', 'ej-mo-num');
-  num.append(crear('b', null, ejCantidad(mo.dh) + ' DH'), crear('span', null, (mo.dhP ? 'de ' + ejCantidad(mo.dhP) + ' presupuestados · ' : '') + ejPesos(mo.costo)));
+  num.append(crear('b', null, ejCantidad(mo.dh) + ' DH'), crear('span', null, (mo.dhP ? 'de ' + ejCantidad(mo.dhP) + ' presupuestados · ' : '') + ejPesos(mo.costo)
+    + (mo.viaticos ? ' (' + ejPesos(mo.viaticos) + ' en viáticos)' : '')));
   tot.append(num);
   if (mo.dhP) {
     const esc = Math.max(mo.dhP, mo.dh);
@@ -3949,8 +3967,10 @@ function ejMoResumenEl(m) {
   // Por persona: sus días-hombre y su costo, de más a menos
   const por = new Map();
   mo.dias.forEach((d) => {
-    const x = por.get(d.persona) || { dh: 0, nombre: PL_PER_MANO.test(d.persona) ? d.nombre || plNom(d.persona) : d.persona };
-    x.dh += Number(d.jornada) || 0;
+    const x = por.get(d.persona) || { dh: 0, costo: 0, viaticos: 0, nombre: PL_PER_MANO.test(d.persona) ? d.nombre || plNom(d.persona) : d.persona };
+    x.dh += ejDH(d);
+    x.costo += ejCostoDia(d, mo.tarifas);
+    x.viaticos += ejViaticos(d);
     por.set(d.persona, x);
   });
   const filas = [...por.entries()].sort((a, b) => b[1].dh - a[1].dh);
@@ -3963,7 +3983,8 @@ function ejMoResumenEl(m) {
     const b = crear('span');
     b.style.width = (100 * x.dh / max) + '%';
     barra.append(b);
-    li.append(crear('b', 'ej-mo-quien', x.nombre), barra, crear('span', 'ej-mo-dh', ejCantidad(x.dh) + ' DH · ' + ejPesos(x.dh * mo.tarifas['n' + ejNivelDe(per)])));
+    li.append(crear('b', 'ej-mo-quien', x.nombre), barra, crear('span', 'ej-mo-dh', ejCantidad(x.dh) + ' DH · ' + ejPesos(x.costo)));
+    if (x.viaticos) li.title = x.nombre + ': ' + ejPesos(x.costo - x.viaticos) + ' de trabajo + ' + ejPesos(x.viaticos) + ' de viáticos';
     ul.append(li);
   });
   caja.append(ul);
@@ -3973,11 +3994,12 @@ function ejManoObraEl(m) {
   const t = m.t, mo = m.mo, f = ej.diasForm;
   const { s } = ejPanel('Mano de obra: días trabajados', mo.dh ? ejCantidad(mo.dh) + ' días-hombre · ' + ejPesos(mo.costo) : '',
     'Marca en el calendario los días trabajados (un toque, o arrastrando con el mouse), elige quiénes y si fue día completo o medio día, y «Anotar» los deja todos de una vez. '
+    + 'Un día con viático suma ' + ejPesos(EJ_VIATICO) + '. Los días sin fecha se anotan abajo, en «Días sin fecha». '
     + 'Su costo se estima con la tarifa del nivel de cada uno y pasa a ser la mano de obra real de este resumen y de sus indicadores. También se puede escribir directo en «Ingresar avance»; desde aquí se lleva al Análisis Financiero con un toque.');
   s.id = 'ejSecMO';
   const hoy = plISO(new Date());
   const porDia = new Map();
-  mo.dias.forEach((d) => { if (!porDia.has(d.fecha)) porDia.set(d.fecha, []); porDia.get(d.fecha).push(d); });
+  mo.dias.forEach((d) => { if (!d.fecha) return; if (!porDia.has(d.fecha)) porDia.set(d.fecha, []); porDia.get(d.fecha).push(d); });
   const box = crear('div', 'ej-cal-caja');
   // Quiénes y la jornada
   const quienes = crear('div', 'pl-exp-pers ej-quienes');
@@ -3997,6 +4019,7 @@ function ejManoObraEl(m) {
     l.title = nombre + ': nivel ' + ejNivelDe(per) + ' (' + ejPesos(mo.tarifas['n' + ejNivelDe(per)]) + ' por día)';
     quienes.append(l);
   });
+  const viat = ejViaticoEl('ejDiaViatico', () => f.viatico, (v) => { f.viatico = v; pintar(); });
   const otra = crear('div', 'ej-nuevo ej-cal-otra');
   const oi = crear('input');
   oi.type = 'text'; oi.id = 'ejDiaOtra'; oi.maxLength = 60; oi.autocomplete = 'off';
@@ -4030,7 +4053,7 @@ function ejManoObraEl(m) {
   });
   const arriba = crear('div', 'ej-cal-arriba');
   const jl = crear('div', 'ej-cal-jornada');
-  jl.append(crear('span', 'ej-et', 'Jornada'), jor);
+  jl.append(crear('span', 'ej-et', 'Jornada'), jor, viat);
   arriba.append(quienes, jl);
   box.append(arriba, otra);
   // El mes: navegar, la grilla y lo anotado en cada día
@@ -4051,7 +4074,7 @@ function ejManoObraEl(m) {
   const delMes = mo.dias.filter((d) => ejMesDe(d.fecha) === f.mes);
   const tit = crear('div', 'ej-cal-tit');
   tit.append(crear('b', null, ejNombreMes(f.mes)), crear('span', null, delMes.length
-    ? ejCantidad(delMes.reduce((a, d) => a + d.jornada, 0)) + ' DH · ' + ejPesos(delMes.reduce((a, d) => a + d.jornada * mo.tarifas['n' + d.nivel], 0)) : 'Nada anotado'));
+    ? ejCantidad(delMes.reduce((a, d) => a + d.jornada, 0)) + ' DH · ' + ejPesos(delMes.reduce((a, d) => a + ejCostoDia(d, mo.tarifas), 0)) : 'Nada anotado'));
   nav.append(antes, tit, despues);
   box.append(nav);
   const grilla = crear('div', 'ej-cal');
@@ -4076,13 +4099,13 @@ function ejManoObraEl(m) {
     if (ds.length) {
       const marcas = crear('span', 'ej-cal-marcas');
       const ord = plOrdenPersonas([...new Set(ds.map((d) => d.persona))]).map((p) => ds.find((d) => d.persona === p));
-      ord.slice(0, 3).forEach((d) => marcas.append(crear('span', 'ej-cal-per' + (d.jornada < 1 ? ' medio' : ''), ejIniciales(d) + (d.jornada < 1 ? '½' : ''))));
+      ord.slice(0, 3).forEach((d) => marcas.append(crear('span', 'ej-cal-per' + (d.jornada < 1 ? ' medio' : ''), ejIniciales(d) + (d.jornada < 1 ? '½' : '') + (d.viatico ? '+' : ''))));
       if (ord.length > 3) marcas.append(crear('span', 'ej-cal-per mas', '+' + (ord.length - 3)));
       b.append(marcas);
     }
     const dh = ds.reduce((a, d) => a + d.jornada, 0);
     b.setAttribute('aria-label', n + ' de ' + EJ_MESES[mes - 1] + (ds.length ? ': ' + ejCantidad(dh) + ' días-hombre, ' + unir(ds.map((d) => ejNomPer(d) + (d.jornada < 1 ? ' medio día' : ''))) : ': nada anotado'));
-    b.title = ds.length ? ds.map((d) => ejNomPer(d) + ': ' + (d.jornada === 1 ? 'día completo' : 'medio día') + ', nivel ' + d.nivel).join('\n') : '';
+    b.title = ds.length ? ds.map((d) => ejNomPer(d) + ': ' + (d.jornada === 1 ? 'día completo' : 'medio día') + ', nivel ' + d.nivel + (d.viatico ? ', con viático' : '')).join('\n') : '';
     celdas.push(b);
     grilla.append(b);
   }
@@ -4145,6 +4168,7 @@ function ejManoObraEl(m) {
   const pintar = () => {
     celdas.forEach((b) => b.setAttribute('aria-pressed', f.dias.has(b.dataset.iso) ? 'true' : 'false'));
     jor.querySelectorAll('.pl-vista').forEach((b) => { const si = Number(b.dataset.jornada) === f.jornada; b.setAttribute('aria-checked', si ? 'true' : 'false'); b.classList.toggle('activa', si); });
+    viat.querySelector('input').checked = f.viatico;
     quienes.querySelectorAll('input').forEach((cb) => { cb.checked = f.personas.has(cb.dataset.per); });
     const nd = f.dias.size;
     const np = f.personas.size;
@@ -4155,8 +4179,8 @@ function ejManoObraEl(m) {
     if (!nd) { resumen.textContent = 'Marca los días trabajados en el calendario.'; ok.textContent = 'Anotar'; return; }
     if (!np) { resumen.textContent = pl(nd, 'día marcado', 'días marcados') + ': elige quiénes trabajaron.'; ok.textContent = 'Anotar'; return; }
     const dh = nd * np * f.jornada;
-    const costo = [...f.personas].reduce((a, per) => a + nd * f.jornada * mo.tarifas['n' + ejNivelDe(per)], 0);
-    resumen.textContent = pl(nd, 'día', 'días') + ' × ' + pl(np, 'persona', 'personas') + (f.jornada < 1 ? ', medio día' : '') + ' = ' + ejCantidad(dh) + ' DH · ' + ejPesos(costo);
+    const costo = [...f.personas].reduce((a, per) => a + nd * (f.jornada * mo.tarifas['n' + ejNivelDe(per)] + (f.viatico ? EJ_VIATICO : 0)), 0);
+    resumen.textContent = pl(nd, 'día', 'días') + ' × ' + pl(np, 'persona', 'personas') + (f.jornada < 1 ? ', medio día' : '') + (f.viatico ? ', con viático' : '') + ' = ' + ejCantidad(dh) + ' DH · ' + ejPesos(costo);
     ok.textContent = 'Anotar ' + ejCantidad(dh) + ' DH';
   };
   pintar();
@@ -4175,6 +4199,7 @@ function ejManoObraEl(m) {
   box.id = 'ejCalCaja';
   box.hidden = !f.abierto;
   s.append(box);
+  s.append(ejSinFechaEl(m));
   // Lo que la Planificación ya tiene de este proyecto, hasta hoy
   const porTraer = ejPorTraer(m, ejSemanasAtras(2));
   if (porTraer.length && rcEscribe()) {
@@ -4220,7 +4245,7 @@ function ejManoObraEl(m) {
     s.append(niv);
   }
   // Los días anotados, del más nuevo al más antiguo, plegados (el calendario ya los muestra)
-  if (mo.dias.length) {
+  if (porDia.size) {
     const fechas = [...porDia.keys()];
     const det = crear('details', 'ej-dias-det');
     det.open = ej.diasAbiertos === t.clave;
@@ -4236,8 +4261,8 @@ function ejManoObraEl(m) {
       const txt = crear('span', 'ej-li-txt ej-dia-per');
       ds.forEach((d) => {
         const chip = crear('span', 'ej-per');
-        chip.append(document.createTextNode(ejNomPer(d) + (d.jornada !== 1 ? ' ½' : '')));
-        chip.title = ejNomPer(d) + ': ' + (d.jornada === 1 ? 'día completo' : d.jornada + ' de jornada') + ', nivel ' + d.nivel + ' (' + ejPesos(d.jornada * tar['n' + d.nivel]) + ')' + (d.origen === 'planificacion' ? ', traído de la Planificación' : '') + (d.por ? ', anotado por ' + d.por : '');
+        chip.append(document.createTextNode(ejNomPer(d) + (d.jornada !== 1 ? ' ½' : '') + (d.viatico ? ' + viático' : '')));
+        chip.title = ejNomPer(d) + ': ' + (d.jornada === 1 ? 'día completo' : d.jornada + ' de jornada') + ', nivel ' + d.nivel + (d.viatico ? ', con viático' : '') + ' (' + ejPesos(ejCostoDia(d, tar)) + ')' + (d.origen === 'planificacion' ? ', traído de la Planificación' : '') + (d.por ? ', anotado por ' + d.por : '');
         const x = crear('button', 'ej-per-x');
         x.type = 'button';
         x.append(icono('cerrar', 12));
@@ -4248,7 +4273,7 @@ function ejManoObraEl(m) {
         txt.append(chip);
       });
       const der = crear('span', 'ej-li-der');
-      der.append(crear('b', null, ejPesos(ds.reduce((a, d) => a + d.jornada * tar['n' + d.nivel], 0))));
+      der.append(crear('b', null, ejPesos(ds.reduce((a, d) => a + ejCostoDia(d, tar), 0))));
       li.append(txt, der);
       ul.append(li);
     });
@@ -4266,7 +4291,7 @@ function ejManoObraEl(m) {
   const pedido = pedidos[pedidos.length - 1] || null;
   const tot = crear('div', 'ej-total');
   tot.append(crear('span', null, mo.dias.length ? 'Mano de obra real estimada' : 'Mano de obra real'),
-    crear('b', null, mo.dias.length ? ejPesos(mo.costo) + ' (' + pl(mo.dh, 'día-hombre', 'días-hombre') + ')' : mo.af !== null ? ejPesos(mo.af) + ' del Análisis Financiero' : 'Sin dato'));
+    crear('b', null, mo.dias.length ? ejPesos(mo.costo) + ' (' + pl(mo.dh, 'día-hombre', 'días-hombre') + (mo.viaticos ? ', con ' + ejPesos(mo.viaticos) + ' en viáticos' : '') + ')' : mo.af !== null ? ejPesos(mo.af) + ' del Análisis Financiero' : 'Sin dato'));
   s.append(tot);
   if (t.af && t.tag) {
     const p = crear('p', 'ej-linea');
@@ -4285,6 +4310,89 @@ function ejManoObraEl(m) {
     s.append(p);
   }
   return s;
+}
+// La casilla «Con viático» (un día con viático suma EJ_VIATICO)
+function ejViaticoEl(id, val, cambiar) {
+  const l = crear('label', 'ej-viatico');
+  const cb = crear('input');
+  cb.type = 'checkbox'; cb.id = id; cb.checked = val(); cb.disabled = !rcEscribe();
+  cb.dataset.foco = id;
+  cb.addEventListener('change', () => cambiar(cb.checked));
+  l.append(cb, document.createTextNode('Con viático (' + ejPesos(EJ_VIATICO) + ' por día)'));
+  return l;
+}
+/* Días sin fecha (2026-11-25, pedido del usuario: «agregar días de trabajo sin indicar la fecha, por ejemplo EV trabajó 4
+   días en este proyecto»): quién, cuántos días y si llevan viático. Cada anotación es una cosa del archivo con su id. */
+function ejSinFechaEl(m) {
+  const mo = m.mo, f = ej.diasForm;
+  const caja = crear('div', 'ej-sinfecha');
+  caja.id = 'ejSinFecha';
+  caja.append(crear('h4', 'ej-et', 'Días sin fecha'));
+  const sin = mo.dias.filter((d) => !d.fecha);
+  if (sin.length) {
+    const ul = crear('ul', 'ej-lista ej-sinfecha-lista');
+    sin.forEach((d) => {
+      const li = crear('li', ej.recien.has(d.id) ? 'recien' : '');
+      li.append(crear('span', 'ej-li-txt', ejNomPer(d) + ': ' + pl(d.cantidad, 'día', 'días') + (d.viatico ? ' con viático' : '')));
+      const der = crear('span', 'ej-li-der');
+      der.append(crear('b', null, ejPesos(ejCostoDia(d, mo.tarifas))));
+      if (rcEscribe()) {
+        const x = crear('button', 'ej-per-x');
+        x.type = 'button';
+        x.append(icono('cerrar', 12));
+        x.setAttribute('aria-label', 'Quitar los ' + pl(d.cantidad, 'día', 'días') + ' sin fecha de ' + ejNomPer(d));
+        x.addEventListener('click', () => ejPoner([{ id: d.id, proyecto: d.proyecto, tipo: 'dia', creado: d.creado, borrado: true }], 'Se quitaron los días sin fecha de ' + ejNomPer(d) + '.'));
+        der.append(x);
+      }
+      li.append(der);
+      ul.append(li);
+    });
+    caja.append(ul);
+  }
+  if (!rcEscribe()) { if (!sin.length) caja.hidden = true; return caja; }
+  const form = crear('form', 'ej-nuevo ej-sinfecha-form');
+  form.noValidate = true;
+  const sel = crear('select');
+  sel.id = 'ejSfPer';
+  sel.setAttribute('aria-label', 'Quién trabajó');
+  const o0 = crear('option', null, 'Quién…');
+  o0.value = '';
+  sel.append(o0);
+  const manos = [...new Set(mo.dias.filter((d) => PL_PER_MANO.test(d.persona)).map((d) => d.persona).concat(Object.keys(f.nombres)))];
+  PERSONAL.concat(manos).forEach((per) => {
+    const o = crear('option', null, PL_PER_MANO.test(per) ? f.nombres[per] || (mo.dias.find((d) => d.persona === per) || {}).nombre || plNom(per) : per);
+    o.value = per;
+    o.selected = f.sfPer === per;
+    sel.append(o);
+  });
+  sel.addEventListener('change', () => { f.sfPer = sel.value; });
+  const n = crear('input');
+  n.type = 'text'; n.inputMode = 'decimal'; n.id = 'ejSfN'; n.autocomplete = 'off'; n.placeholder = 'N° de días'; n.value = f.sfN;
+  n.setAttribute('aria-label', 'Cuántos días trabajó');
+  n.addEventListener('input', () => { f.sfN = n.value; });
+  const viat = ejViaticoEl('ejSfViatico', () => f.sfViatico, (v) => { f.sfViatico = v; });
+  const ok = crear('button', 'cx-boton', 'Sumar días');
+  ok.type = 'submit';
+  form.append(sel, n, viat, ok);
+  form.addEventListener('submit', (e) => { e.preventDefault(); ejAnotarSinFecha(m); });
+  caja.append(form);
+  return caja;
+}
+function ejAnotarSinFecha(m) {
+  if (mvNoSe() || !rc.dir) return;
+  const f = ej.diasForm, t = m.t;
+  const per = f.sfPer;
+  const n = Math.round(Number(String(f.sfN).trim().replace(',', '.')) * 2) / 2;
+  if (!per) { avisar('Elige quién trabajó esos días.'); return; }
+  if (!(n > 0 && n <= EJ_MAX_DIAS_SIN_FECHA)) { avisar('Escribe cuántos días trabajó: un número mayor que cero (se puede ½).'); return; }
+  const clave = ejClave(t);
+  const id = ('dsf-' + ejSlugClave(clave) + '-' + per.toLowerCase()).slice(0, 30) + '-' + Date.now().toString(36);
+  const d = { id, proyecto: clave, tipo: 'dia', fecha: '', cantidad: n, persona: per, nombre: PL_PER_MANO.test(per) ? f.nombres[per] || plNom(per) : '',
+    jornada: 1, viatico: f.sfViatico, nivel: ejNivelDe(per), origen: '', nota: '' };
+  f.sfN = '';
+  f.sfViatico = false;
+  ej.sucios.delete('ejSfN');
+  ejPoner([d], 'Se ' + (n === 1 ? 'anotó 1 día' : 'anotaron ' + ejCantidad(n) + ' días') + ' de ' + ejNomPer(d) + (d.viatico ? ' con viático' : '') + ': la mano de obra real y los indicadores se recalcularon.');
 }
 // Lo anotado que «Quitar» borraría: en los días marcados, de las personas elegidas (o de todas, si no se elige a nadie)
 function ejDiasPorQuitar(m) {
@@ -4308,10 +4416,10 @@ function ejTarifasForm(m) {
   const ok = crear('button', 'cx-boton', 'Guardar tarifas');
   ok.type = 'submit';
   acc.append(ok);
-  if (tar.propias) acc.append(ejBoton(m.form ? 'Volver a las de su formulación' : 'Volver a las del Formulador', 'cx-enlace', () => {
+  if (tar.propias) acc.append(ejBoton('Volver a ' + ejPesos(EJ_TARIFAS.n2) + ' por día', 'cx-enlace', () => {
     ej.tarifasAbiertas = false;
     ejPoner([{ id: tar.propias.id, proyecto: tar.propias.proyecto, tipo: 'tarifas', creado: tar.propias.creado, borrado: true }],
-      'Las tarifas vuelven a ser ' + (m.form ? 'las de su formulación' : 'las del Formulador') + ': la mano de obra se recalculó.');
+      'Las tarifas vuelven a ' + ejPesos(EJ_TARIFAS.n2) + ' por día: la mano de obra se recalculó.');
   }));
   f.append(acc);
   f.addEventListener('submit', (e) => {
@@ -4329,7 +4437,7 @@ function ejTarifasForm(m) {
 // Anotar de una vez: cada día marcado (hasta hoy) por cada persona elegida, con la jornada elegida (un día ya anotado cambia)
 function ejAnotarDias(m) {
   const t = m.t, f = ej.diasForm;
-  if (!rc.dir) return;
+  if (mvNoSe() || !rc.dir) return;
   const hoy = plISO(new Date());
   const dias = [...f.dias].filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x) && x <= hoy).sort();
   if (!dias.length) { avisar('Marca en el calendario los días trabajados: hoy o anteriores.'); return; }
@@ -4341,7 +4449,7 @@ function ejAnotarDias(m) {
     const previo = ej.datos.ef.get(id);
     const vivo = previo && !previo.borrado ? previo : null;
     cambios.push({ id, proyecto: clave, tipo: 'dia', fecha, persona: per, nombre: PL_PER_MANO.test(per) ? f.nombres[per] || (vivo && vivo.nombre) || plNom(per) : '',
-      jornada: f.jornada, nivel: vivo ? vivo.nivel : ejNivelDe(per), origen: vivo ? vivo.origen : '', nota: vivo ? vivo.nota : '', creado: previo ? previo.creado : undefined });
+      jornada: f.jornada, viatico: f.viatico, nivel: vivo ? vivo.nivel : ejNivelDe(per), origen: vivo ? vivo.origen : '', nota: vivo ? vivo.nota : '', creado: previo ? previo.creado : undefined });
   }));
   const n = cambios.reduce((a, d) => a + d.jornada, 0);
   f.dias.clear();
@@ -4352,7 +4460,7 @@ function ejQuitarDias(m) {
   if (!xs.length || !rc.dir) return;
   ej.diasForm.dias.clear();
   ejPoner(xs.map((d) => ({ id: d.id, proyecto: d.proyecto, tipo: 'dia', creado: d.creado, borrado: true })),
-    'Se quitaron ' + pl(xs.length, 'día anotado', 'días anotados') + ' (' + ejCantidad(xs.reduce((a, d) => a + d.jornada, 0)) + ' DH).');
+    'Se quitaron ' + pl(xs.length, 'día anotado', 'días anotados') + ' (' + ejCantidad(xs.reduce((a, d) => a + ejDH(d), 0)) + ' DH).');
 }
 // Trae de la Planificación semanal las asignaciones de este proyecto de las últimas 4 semanas, hasta hoy, que faltan aquí
 async function ejTraerPlanificacion(m) {
