@@ -1026,7 +1026,22 @@ def test_viaticos_dias_sin_fecha_y_margen_en_pesos(navegador, sitio):
     assert int(monto.inner_text().replace("$", "").replace(".", "").replace("−", "-").replace("-", "")) == abs(esperado)
     cierre = pagina.evaluate("Math.round(ej.modelo.venta.monto - ej.modelo.tot.EAC)")
     assert pagina.locator("#ejMargenMonto").get_attribute("data-cierre") == str(cierre)
-    assert "Al cierre se estiman" in pagina.locator("#ejMargenMonto").get_attribute("title")
+    # Pedido del usuario (2026-11-25): la ventana al posar el mouse sigue el formato del desglose del Formulador
+    assert pagina.locator("#ejMargenMonto").get_attribute("title") is None
+    pagina.locator("#ejMargenMonto").hover()
+    ventana = pagina.locator("#cifrasPop")
+    ventana.wait_for()
+    filas = ventana.locator(".cf-fila")
+    textos = [filas.nth(i).inner_text() for i in range(filas.count())]
+    assert textos[0].startswith("Venta neta") and any(t.startswith("Gastado a la fecha") for t in textos)
+    assert any(t.startswith("Le quedaría al cierre") for t in textos)
+    assert ventana.locator(".cf-fila.cf-sub").count() >= 2
+    # Cada fila: etiqueta a la izquierda y monto a la derecha, en la misma línea
+    caja = filas.first.bounding_box()
+    izq, der = filas.first.locator("span").first.bounding_box(), filas.first.locator("span").last.bounding_box()
+    assert izq["x"] < der["x"] and abs(izq["y"] - der["y"]) < 4 and der["x"] + der["width"] > caja["x"] + caja["width"] - 2
+    pagina.mouse.move(0, 0)
+    ventana.wait_for(state="hidden")
     # Un día con viático
     pagina.locator(f'#ejProyecto .ej-cal-dia[data-iso="{hoy}"]').click()
     pagina.locator(".ej-quienes label", has_text="NB").locator("input").check()

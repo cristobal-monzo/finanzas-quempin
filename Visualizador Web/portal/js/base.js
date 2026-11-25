@@ -263,6 +263,89 @@ setInterval(() => {
   if (otros.length === 1) infoAbrir(otros[0], fijo);
 }, 300);
 
+// ---- La ventana de cifras (2026-11-25) ----------------------------------------------------------
+/* Pedido del usuario: toda ventana de información con cifras se ve como el desglose del precio en el Formulador
+   (filas etiqueta–valor, montos alineados a la derecha, subtotales en negrita con una raya encima). Se abre al pasar
+   el mouse, con el foco del teclado o con un toque (en lo que no es botón ni menú). Una ventana nueva usa cifras(), no
+   un title. filas: [etiqueta, valor, clase] con clase 'sub' (subtotal), 'ind' (indicador en negrita), 'sep' (raya
+   encima, sin negrita), 'neg' (valor en rojo), varias separadas por espacio; o un texto suelto (una nota). La
+   etiqueta puede ser un nodo. titulo: opcional, arriba. */
+const cifrasDe = new WeakMap();
+function cifras(el, filas, titulo) {
+  filas = filas.filter(Boolean);
+  if (!filas.length) return el;
+  cifrasDe.set(el, { filas, titulo });
+  el.classList.add('con-cifras');
+  el.removeAttribute('title');
+  const txt = (x) => (typeof x === 'string' ? x : x && x.textContent) || '';
+  el.setAttribute('aria-description', [titulo || ''].concat(filas.map((f) => (Array.isArray(f) ? txt(f[0]) + ': ' + txt(f[1]) : f))).filter(Boolean).join('; '));
+  return el;
+}
+const cifrasPop = crear('div', 'cifras-pop');
+cifrasPop.id = 'cifrasPop';
+cifrasPop.setAttribute('popover', 'manual');
+cifrasPop.setAttribute('role', 'tooltip');
+let cifrasEl = null, cifrasReloj = null;
+function cifrasAbrir(el) {
+  clearTimeout(cifrasReloj);
+  const d = cifrasDe.get(el);
+  if (!d || typeof cifrasPop.showPopover !== 'function') return;
+  if (cifrasEl === el && cifrasPop.matches(':popover-open')) return;
+  cifrasCerrar();
+  (el.closest('dialog[open]') || document.body).append(cifrasPop);
+  const hijos = [];
+  if (d.titulo) hijos.push(crear('div', 'cf-titulo', d.titulo));
+  d.filas.forEach((f) => {
+    if (!Array.isArray(f)) { hijos.push(crear('div', 'cf-nota', f)); return; }
+    const fila = crear('div', 'cf-fila' + (f[2] ? ' ' + f[2].split(' ').map((c) => 'cf-' + c).join(' ') : ''));
+    const a = crear('span'), b = crear('span');
+    a.append(f[0]);
+    b.append(f[1] === null || f[1] === undefined ? '' : f[1]);
+    fila.append(a, b);
+    hijos.push(fila);
+  });
+  cifrasPop.replaceChildren(...hijos);
+  cifrasPop.showPopover();
+  cifrasEl = el;
+  cifrasPoner();
+}
+function cifrasCerrar() {
+  clearTimeout(cifrasReloj);
+  cifrasEl = null;
+  if (cifrasPop.matches(':popover-open')) cifrasPop.hidePopover();
+}
+function cifrasPoner() {
+  if (!cifrasEl || !cifrasEl.isConnected) { cifrasCerrar(); return; }
+  const r = cifrasEl.getBoundingClientRect(), w = cifrasPop.offsetWidth, h = cifrasPop.offsetHeight, m = 8;
+  const x = Math.max(m, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - m));
+  let y = r.bottom + 6;
+  if (y + h > innerHeight - m && r.top - 6 - h >= m) y = r.top - 6 - h;
+  cifrasPop.style.left = Math.round(x) + 'px';
+  cifrasPop.style.top = Math.round(y) + 'px';
+}
+const cifrasCerca = (t) => t && t.closest && t.closest('.con-cifras');
+document.addEventListener('pointerover', (e) => {
+  if (e.pointerType !== 'mouse') return;
+  const el = cifrasCerca(e.target);
+  if (el && cifrasDe.has(el)) { clearTimeout(cifrasReloj); cifrasReloj = setTimeout(() => cifrasAbrir(el), 120); return; }
+  if (cifrasEl) { clearTimeout(cifrasReloj); cifrasReloj = setTimeout(cifrasCerrar, 120); }
+  else clearTimeout(cifrasReloj);
+});
+document.addEventListener('focusin', (e) => { const el = cifrasCerca(e.target); if (el && el === e.target && cifrasDe.has(el)) cifrasAbrir(el); });
+document.addEventListener('focusout', (e) => { if (cifrasEl && e.target === cifrasEl) cifrasCerrar(); });
+// Un toque (teléfono): abre o cierra; en un botón, enlace o menú no, porque el toque es para usarlo
+document.addEventListener('click', (e) => {
+  const el = cifrasCerca(e.target);
+  if (el && cifrasDe.has(el) && !e.target.closest('button, a, select, input, label, summary')) {
+    if (cifrasEl === el) cifrasCerrar(); else cifrasAbrir(el);
+    return;
+  }
+  if (cifrasEl) cifrasCerrar();
+}, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && cifrasEl) { cifrasCerrar(); e.stopPropagation(); } }, true);
+addEventListener('scroll', () => { if (cifrasEl) cifrasPoner(); }, true);
+addEventListener('resize', () => { if (cifrasEl) cifrasPoner(); });
+
 // ---- Estado ------------------------------------------------------------------------------------
 const estado = {
   pestanas: [],               // { familia, herr, url (la pedida), ultima (la que muestra), marco, cargador, cargando, usado }

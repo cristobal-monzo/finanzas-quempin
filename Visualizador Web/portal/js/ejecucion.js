@@ -1437,8 +1437,13 @@ function ejTarjetaEl(t, m, salud) {
       if (av.valor !== null) { const r = crear('i', 'ej-raya-avance'); r.style.left = Math.round(av.valor * 100) + '%'; med.append(r); }
       leer.append(crear('span', null, 'Gastado '), crear('b', null, ejPesos(m.tot.G)), crear('span', null, ' de ' + ejPesos(m.tot.P)));
       fp.append(leer, med);
-      fp.title = ejPct(m.tot.G / m.tot.P) + ' del presupuesto gastado' + (m.tot.C > 0.5 ? ', ' + ejPesos(m.tot.C) + ' comprometidos en OC' : '')
-        + (av.valor !== null ? '; la raya naranja es el avance (' + ejPct(av.valor) + ')' : '');
+      cifras(fp, [
+        ['Presupuesto', ejPesos(m.tot.P), 'ind'],
+        ['Gastado', ejPesos(m.tot.G)],
+        m.tot.C > 0.5 ? ['Comprometido en OC', ejPesos(m.tot.C)] : null,
+        ['Usado del presupuesto', ejPct((m.tot.G + m.tot.C) / m.tot.P), 'sub'],
+        av.valor !== null ? ['Avance (la raya naranja)', ejPct(av.valor), 'ind'] : null
+      ]);
     } else if (m.tot.G > 0.5) {
       leer.append(crear('span', null, 'Gastado '), crear('b', null, ejPesos(m.tot.G)), crear('span', null, ' · sin presupuesto'));
       fp.append(leer);
@@ -1632,10 +1637,16 @@ function ejResumenEl(m) {
       if (!(v > 0.5)) return;
       const x = crear('span', 'ej-v2-seg ' + k);
       x.style.width = (100 * v / esc) + '%';
-      x.title = n + ' ' + ejPesos(v);
       bar.append(x);
     });
-    if (tot.EAC > tot.P + 0.5) { const x = crear('i', 'ej-v2-tope'); x.style.left = (100 * tot.P / esc) + '%'; x.title = 'Presupuesto ' + ejPesos(tot.P); bar.append(x); }
+    if (tot.EAC > tot.P + 0.5) { const x = crear('i', 'ej-v2-tope'); x.style.left = (100 * tot.P / esc) + '%'; bar.append(x); }
+    cifras(bar, [
+      ...segs.filter(([, v]) => v > 0.5).map(([, v, n]) => [n, ejPesos(v)]),
+      ['Costo estimado al cierre', ejPesos(tot.EAC), 'sub'],
+      ['Presupuesto', ejPesos(tot.P), tot.EAC > tot.P + 0.5 ? 'ind' : 'sep'],
+      tot.EAC > tot.P + 0.5 ? ['Sobre el presupuesto', ejPesos(tot.EAC - tot.P), 'ind neg'] : null,
+      av.valor !== null ? ['Avance', ejPct(av.valor), 'ind sep'] : null
+    ]);
     if (av.valor !== null) {
       const pos = 100 * Math.min(1, av.valor) * tot.P / esc;
       const r = crear('i', 'ej-v2-raya' + (pos > 75 ? ' izq' : ''));
@@ -1672,10 +1683,20 @@ function ejResumenEl(m) {
     const mp = crear('p', 'ej-v2-margen-monto');
     mp.id = 'ejMargenMonto';
     mp.tabIndex = 0;
-    mp.title = 'Hoy: venta neta ' + ejPesos(m.venta.monto) + ' − gastado a la fecha ' + ejPesos(tot.G) + ' = ' + ejPesos(hoyQueda)
-      + (m.margen !== null ? '\nAl cierre se estiman ' + ejPesos(m.venta.monto - tot.EAC) + ' (venta − costo estimado al cierre ' + ejPesos(tot.EAC) + ')' : '');
     mp.dataset.cierre = m.margen !== null ? String(Math.round(m.venta.monto - tot.EAC)) : '';
     mp.append(crear('b', hoyQueda < 0 ? 'neg' : null, ejPesos(hoyQueda)), crear('span', null, hoyQueda < 0 ? 'de pérdida a la fecha' : 'le quedan hoy a QUEMPIN'));
+    // La ventana, con el formato del desglose del Formulador: lo gastado por partida, el resultado de hoy y el del cierre
+    const V = m.venta.monto, cierre = V - tot.EAC;
+    cifras(mp, [
+      ['Venta neta', ejPesos(V), 'ind'],
+      ...m.cats.filter((c) => c.G > 0.5).map((c) => [c.nombre, ejPesos(c.G)]),
+      ['Gastado a la fecha', ejPesos(tot.G), 'sub'],
+      [hoyQueda < 0 ? 'Pérdida a la fecha' : 'Le queda hoy a QUEMPIN', ejPesos(hoyQueda), 'sub' + (hoyQueda < 0 ? ' neg' : '')],
+      ['Margen hoy (queda / venta)', V ? ejPct(hoyQueda / V) : '—', 'ind'],
+      m.margen !== null ? ['Costo estimado al cierre', ejPesos(tot.EAC), 'sep'] : null,
+      m.margen !== null ? ['Le quedaría al cierre', ejPesos(cierre), 'ind' + (cierre < 0 ? ' neg' : '')] : null,
+      m.margen !== null ? ['Margen estimado al cierre', ejPct(m.margen), 'ind'] : null
+    ], 'Lo que le queda a QUEMPIN');
     c3.append(mp);
   }
   hero.append(c1, c2, c3);
@@ -2122,16 +2143,22 @@ function ejPresupuestoEl(m) {
       if (!(v > 0)) return;
       const x = crear('span', 'ej-seg' + (k ? ' ' + k : ''));
       x.style.width = (100 * v / escala) + '%';
-      x.title = et + ' en ' + c.nombre.toLowerCase() + ': ' + ejPesos(v);
       segs.append(x);
     });
     pista.append(segs);
     if (c.P !== null) {
       const tope = crear('span', 'ej-tope');
       tope.style.left = (100 * c.P / escala) + '%';
-      tope.title = 'Presupuestado en ' + c.nombre.toLowerCase() + ': ' + ejPesos(c.P);
       pista.append(tope);
     }
+    cifras(pista, [
+      c.P !== null ? ['Presupuestado', ejPesos(c.P), 'ind'] : null,
+      ['Gastado', ejPesos(c.G)],
+      c.C > 0.5 ? ['Comprometido', ejPesos(c.C)] : null,
+      c.Q > 0.5 ? ['Simulado', ejPesos(c.Q)] : null,
+      ['Usado', ejPesos(c.usado), 'sub'],
+      c.queda !== null ? [c.queda < 0 ? 'Sobre lo presupuestado' : 'Queda', ejPesos(Math.abs(c.queda)), 'ind' + (c.queda < 0 ? ' neg' : '')] : null
+    ], c.nombre);
     th.append(pista);
     const q = c.queda;
     tr.append(th, celda(c.P !== null ? ejPesos(c.P) : '—', 'Presupuestado'), celda(monto(c.G), 'Gastado', 'fuerte'), celda(monto(c.C), 'Comprometido'),
@@ -2237,7 +2264,13 @@ function ejAvanceEl(m) {
     const p = crear('p', 'ej-linea' + (final > m.tot.P * 1.05 ? ' tinte' : ''));
     p.append(document.createTextNode('A este ritmo de gasto, el costo final sería '), crear('b', null, '~' + ejPesos(final)),
       document.createTextNode(m.venta ? ' (margen ' + ejPct((m.venta.monto - final) / m.venta.monto) + ')' : ''), document.createTextNode(final > m.tot.P * 1.05 ? ': sobre lo presupuestado.' : '.'));
-    p.title = 'Lo gastado y comprometido (' + ejPesos(gasto) + ') dividido por el avance (' + ejPct(av.valor) + ').';
+    cifras(p, [
+      ['Gastado y comprometido', ejPesos(gasto)],
+      ['÷ Avance', ejPct(av.valor)],
+      ['Costo final a este ritmo', ejPesos(final), 'sub'],
+      ['Presupuesto', ejPesos(m.tot.P)],
+      m.venta ? ['Margen a este ritmo', ejPct((m.venta.monto - final) / m.venta.monto), 'ind sep'] : null
+    ]);
     s.append(p);
   }
   if (t.af && t.tag) s.append(ejAvanceForm(m));
@@ -3155,7 +3188,7 @@ function ejComprasEl(m) {
     barraE.setAttribute('aria-hidden', 'true');
     const ley = crear('div', 'ej-embudo-ley');
     grupos.forEach((g) => {
-      if (g.n) { const x = crear('span', 'ej-embudo-seg'); x.dataset.estado = g.id; x.style.flexGrow = String(Math.max(g.monto / total, 0.04)); x.title = g.nombre + ': ' + ejPesos(g.monto); barraE.append(x); }
+      if (g.n) { const x = crear('span', 'ej-embudo-seg'); x.dataset.estado = g.id; x.style.flexGrow = String(Math.max(g.monto / total, 0.04)); barraE.append(x); }
       const b = crear('button', 'ej-embudo-et');
       b.type = 'button';
       b.dataset.estado = g.id;
@@ -3165,6 +3198,9 @@ function ejComprasEl(m) {
       b.addEventListener('click', () => { ej.filtro = g.filtro; ejGuardarPrefs(); ejPintar(); });
       ley.append(b);
     });
+    const conMonto = grupos.filter((g) => g.n);
+    cifras(barraE, [...conMonto.map((g) => [g.nombre + ' (' + g.n + ')', ejPesos(g.monto)]),
+      conMonto.length > 1 ? ['Total', ejPesos(conMonto.reduce((a, g) => a + g.monto, 0)), 'sub'] : null]);
     emb.append(barraE, ley);
     s.append(emb);
   }
@@ -3331,7 +3367,8 @@ function ejMenuProveedor(it, xs, clave) {
   otro.value = '';
   sel.append(otro);
   sel.value = it.id;
-  sel.title = it.estado === 'comprada' ? 'Ya comprada: para elegir otro proveedor, cambia primero su estado' : xs.map((x) => (x.proveedor || 'Sin proveedor') + ': ' + ejPesos(x.precio)).join('\n');
+  if (it.estado === 'comprada') sel.title = 'Ya comprada: para elegir otro proveedor, cambia primero su estado';
+  else cifras(sel, xs.map((x) => [x.proveedor || 'Sin proveedor', ejPesos(x.precio), x.id === it.id ? 'ind' : '']), 'Precio por proveedor');
   sel.addEventListener('change', () => {
     const id = sel.value;
     sel.value = it.id;
@@ -3509,7 +3546,14 @@ function ejDocumentosEl(m) {
     const tdP = crear('td', 'ej-d-prov');
     tdP.append(crear('b', null, d.proveedor || 'Sin proveedor'));
     const det = d.resumen || d.items.map((x) => x.nombre).filter(Boolean).join(', ');
-    if (det) { const sp = crear('span', null, det); sp.title = d.items.map((x) => '• ' + x.nombre + ': ' + ejPesos(x.neto) + ' (' + x.categoria + ')').join('\n') || det; tdP.append(sp); }
+    if (det) {
+      const sp = crear('span', null, det);
+      if (d.items.length) {
+        cifras(sp, [...d.items.map((x) => [(x.nombre || '—') + (x.categoria ? ' · ' + x.categoria : ''), ejPesos(x.neto)]),
+          d.items.length > 1 ? ['Total neto', ejPesos(d.items.reduce((a, x) => a + (Number(x.neto) || 0), 0)), 'sub'] : null]);
+      } else sp.title = det;
+      tdP.append(sp);
+    }
     const tdN = crear('td', 'ej-num ej-d-neto', ejPesos(d.neto));
     tdN.dataset.et = 'Neto';
     const tdA = crear('td', 'ej-d-asoc');
@@ -3988,7 +4032,7 @@ function ejMoResumenEl(m) {
     b.style.width = (100 * x.dh / max) + '%';
     barra.append(b);
     li.append(crear('b', 'ej-mo-quien', x.nombre), barra, crear('span', 'ej-mo-dh', ejCantidad(x.dh) + ' DH · ' + ejPesos(x.costo)));
-    if (x.viaticos) li.title = x.nombre + ': ' + ejPesos(x.costo - x.viaticos) + ' de trabajo + ' + ejPesos(x.viaticos) + ' de viáticos';
+    if (x.viaticos) cifras(li, [['Trabajo', ejPesos(x.costo - x.viaticos)], ['Viáticos', ejPesos(x.viaticos)], ['Total', ejPesos(x.costo), 'sub']], x.nombre);
     ul.append(li);
   });
   caja.append(ul);
@@ -4266,7 +4310,9 @@ function ejManoObraEl(m) {
       ds.forEach((d) => {
         const chip = crear('span', 'ej-per');
         chip.append(document.createTextNode(ejNomPer(d) + (d.jornada !== 1 ? ' ½' : '') + (d.viatico ? ' + viático' : '')));
-        chip.title = ejNomPer(d) + ': ' + (d.jornada === 1 ? 'día completo' : d.jornada + ' de jornada') + ', nivel ' + d.nivel + (d.viatico ? ', con viático' : '') + ' (' + ejPesos(ejCostoDia(d, tar)) + ')' + (d.origen === 'planificacion' ? ', traído de la Planificación' : '') + (d.por ? ', anotado por ' + d.por : '');
+        const notas = [d.origen === 'planificacion' ? 'Traído de la Planificación' : '', d.por ? 'Anotado por ' + d.por : ''].filter(Boolean).join(' · ');
+        cifras(chip, [['Jornada', d.jornada === 1 ? 'Día completo' : d.jornada + ' de jornada'], ['Nivel', String(d.nivel)],
+          d.viatico ? ['Viático', 'Sí'] : null, ['Costo del día', ejPesos(ejCostoDia(d, tar)), 'sub'], notas || null], ejNomPer(d));
         const x = crear('button', 'ej-per-x');
         x.type = 'button';
         x.append(icono('cerrar', 12));

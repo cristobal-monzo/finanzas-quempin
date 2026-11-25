@@ -3340,6 +3340,24 @@ dialog[open] { max-height: calc(100dvh - 32px); overflow: hidden; display: flex;
   white-space: normal; text-transform: none; letter-spacing: normal; overflow-wrap: anywhere; }
 .info-pop:not(:popover-open) { display: none; }
 .info-pop strong, .info-pop b { font-weight: 800; }
+/* La ventana de cifras (cifras() en base.js): el mismo desglose que el precio neto del Formulador */
+.con-cifras { cursor: help; }
+.cifras-pop { position: fixed; inset: auto; margin: 0; box-sizing: border-box; width: max-content; min-width: min(280px, calc(100vw - 24px));
+  max-width: min(420px, calc(100vw - 24px)); padding: 10px 14px; border: 1px solid var(--border-hairline); border-radius: 8px;
+  background: var(--surface-card); color: var(--text-secondary); box-shadow: 0 8px 24px rgba(0,0,0,.35); font-family: inherit;
+  font-size: 12.5px; font-weight: 400; line-height: 1.45; text-align: left; text-transform: none; letter-spacing: normal;
+  font-variant-numeric: tabular-nums; pointer-events: none; }
+.cifras-pop:not(:popover-open) { display: none; }
+.cf-titulo { color: var(--text-primary); font-weight: 800; padding: 0 0 5px; margin-bottom: 3px; border-bottom: 1px solid var(--border-hairline); }
+.cf-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 18px; padding: 2px 0; }
+.cf-fila > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.cf-fila > span:last-child { flex: 0 0 auto; white-space: nowrap; text-align: right; }
+.cf-fila.cf-sub { color: var(--text-primary); font-weight: 800; border-top: 1px solid var(--border-hairline); margin-top: 3px; padding-top: 5px; }
+.cf-fila.cf-ind { color: var(--text-primary); font-weight: 700; }
+.cf-fila.cf-sep { border-top: 1px solid var(--border-hairline); margin-top: 3px; padding-top: 5px; }
+.cf-fila.cf-neg > span:last-child { color: var(--estado-bad); }
+.cf-nota { padding: 5px 0 0; margin-top: 3px; border-top: 1px solid var(--border-hairline); white-space: normal; max-width: 380px; }
+.cf-titulo + .cf-nota, .cf-nota:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
 /* Una línea corta con su ⓘ: el estado en pocas palabras y el porqué a un toque */
 .linea-info { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin: 0; font-size: 13px; line-height: 1.5; color: var(--texto-suave); }
 
