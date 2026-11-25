@@ -1,11 +1,11 @@
 {
  "version": 1,
- "revisado": "2026-11-25T10:40:07-03:00",
+ "revisado": "2026-11-25T11:15:18-03:00",
  "partes": {
-  "base": "5bfe49e8e0d04e13",
+  "base": "907451f4c872b46c",
   "planificacion": "7c315a6af922be98",
   "ejecucion": "ae2cb5b6ee2a05ed",
-  "formulador": "cf558dad4068da38",
-  "estado": "5dab4e4b4cac5048"
+  "formulador": "5051556965d666b3",
+  "estado": "fb3d6302d564e50b"
  }
 }
