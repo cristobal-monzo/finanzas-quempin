@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "eliminar-requerimiento (Portal → Planilla de Ingreso)",
+  "description": "Alguien eliminó un requerimiento mal ingresado desde la vista Requerimientos del Portal QUEMPIN (botón de opciones de la fila, 2026-11-25, pedido del usuario: «borrar y reusar el N°»). planilla_escritura.py vacía esa fila del Excel sin borrarla: el N° es la fórmula FILA()-1 y borrar la fila correría todos los N° de abajo. El N° queda libre y la publicación lo lista en 'eliminados' hasta que el Portal lo da a un requerimiento nuevo. 'requerimiento.titulo' es el título que se veía: si la fila de ese N° ya tiene otro, no se vacía nada.",
+  "destino": "planilla-requerimientos",
+  "type": "object",
+  "properties": {
+    "requerimiento": {
+      "type": "object",
+      "properties": {
+        "numero": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "titulo": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "numero",
+        "titulo"
+      ],
+      "additionalProperties": false
+    },
+    "motivo": {
+      "type": "string",
+      "maxLength": 300
+    }
+  },
+  "required": [
+    "requerimiento"
+  ]
+}

@@ -16,7 +16,7 @@ de respaldo, «actualizándose mutuamente». La vista «Planilla de Ingreso» de
 Portal QUEMPIN lee ``publicado/requerimientos.json`` y escribe en el buzón;
 este módulo es el puente con el Excel, en los dos sentidos.
 
-Hace cuatro cosas, y ninguna borra ni mueve filas:
+Hace cinco cosas, y ninguna borra ni mueve filas:
 
 **Desde el 2026-11-06 el N° lo pone la fórmula del Excel** (decisión del
 usuario: «el número se agrega solo en el Excel, completa el resto de
@@ -43,7 +43,15 @@ fila se deshace y queda rechazada para que lo decida una persona.
    exportar, en la fila de ese N°. Si la misma casilla
    cambió también en el Excel, **manda el cambio más reciente**, como en el
    resto del Portal (``ganador_editar``).
-4. **Republica la Planilla** cuando el Excel cambió (``requerimientos.publicar``):
+4. **Vacía la fila de un requerimiento eliminado en el Portal** (mensaje
+   ``eliminar-requerimiento``, 2026-11-25, pedido del usuario: un requerimiento
+   mal ingresado se elimina y su N° se reusa). La fila no se borra: el N° es la
+   fórmula FILA()-1 y borrar una fila correría todos los N° de abajo. Se vacían
+   sus casillas sin fórmula; la del N° queda en blanco porque Estado queda
+   vacío. El N° va a ``eliminados`` de la publicación, el Portal se lo da al
+   requerimiento nuevo siguiente y la operación ``nueva`` lo escribe en la
+   misma fila (FILA()-1 le da el mismo N°).
+5. **Republica la Planilla** cuando el Excel cambió (``requerimientos.publicar``):
    lo que el equipo escribe en el Excel llega al Portal y a las demás
    herramientas en esta misma vuelta, sin esperar al procesador (cada 5 minutos).
 
@@ -100,6 +108,7 @@ SCRIPT_EXCEL = AQUI / "planilla_excel.ps1"
 TABLA = "Proyectos"
 TIPO_NUEVO = "nuevo-requerimiento"
 TIPO_EDITAR = "editar-requerimiento"
+TIPO_ELIMINAR = "eliminar-requerimiento"
 RESPALDOS = Path(os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()) / "QUEMPIN" / "respaldos-planilla"
 MAX_RESPALDOS = 30
 ESTADO = AQUI / "planilla_escritura_estado.json"   # firma de la planilla ya revisada (gitignoreado)
@@ -408,9 +417,9 @@ def _guardar_estado(firma: str, escritas: dict, lista: dict | None = None) -> No
     ESTADO.write_text(json.dumps(dict(lista or {}, firma=firma, escritas=escritas), ensure_ascii=False), encoding="utf-8")
 
 
-def _publicar(raiz: Path, planilla: Path, avisos: list) -> bool:
+def _publicar(raiz: Path, planilla: Path, avisos: list, eliminados: list | None = None) -> bool:
     try:
-        requerimientos.publicar(raiz, planilla)
+        requerimientos.publicar(raiz, planilla, eliminados=eliminados)
         return True
     except Exception as error:  # noqa: BLE001 -- el procesador lo reintenta; queda el aviso
         avisos.append(f"No se republicó la planilla: {error}")
@@ -425,7 +434,10 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     planilla = Path(planilla)
     nuevos_m, _ = intercambio.leer_buzon(raiz, destino=requerimientos.DESTINO, tipo=TIPO_NUEVO)
     editar_m, _ = intercambio.leer_buzon(raiz, destino=requerimientos.DESTINO, tipo=TIPO_EDITAR)
+    eliminar_m, _ = intercambio.leer_buzon(raiz, destino=requerimientos.DESTINO, tipo=TIPO_ELIMINAR)
     previo = _leer_estado()
+    # Los N° eliminados que todavía no llegan a una publicación (si publicar falló, se reintenta con ellos)
+    por_publicar = list(previo.get("eliminados") or [])
     escritas = dict(previo.get("escritas") or {})
     firma = _firma(planilla)
     # La lista de la columna Estado del Excel: una vez, y a la tercera se deja de intentar (queda en el log)
@@ -433,7 +445,7 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     falta_lista = previo.get("listaEstados") != list(requerimientos.ESTADOS) and int(previo.get("intentosEstados") or 0) < INTENTOS_LISTA
     # La hoja entera protegida con contraseña: una vez (después, cada escritura la deja así)
     falta_proteger = PROTEGER_HOJA and not previo.get("hojaProtegida") and int(previo.get("intentosProteger") or 0) < INTENTOS_LISTA
-    if not nuevos_m and not editar_m and not falta_lista and not falta_proteger and previo.get("firma") == firma:
+    if not nuevos_m and not editar_m and not eliminar_m and not por_publicar and not falta_lista and not falta_proteger and previo.get("firma") == firma:
         return {"activo": True, "detalle": "sin cambios"}
     modificada = datetime.fromtimestamp(planilla.stat().st_mtime).astimezone()
     cambio_excel = previo.get("firma") != firma
@@ -457,6 +469,39 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
     # (N° pedido, título) → operación 'nueva' de esta vuelta: un cambio a esa fila se suma a ella, aunque le haya tocado otro N°
     nuevas: dict = {}
     norma = requerimientos.normalizar_encabezado
+    actuales = None
+    ahora = datetime.now().astimezone()
+
+    # Primero lo eliminado: su N° queda libre para un requerimiento nuevo de esta misma vuelta
+    eliminar_ops: dict = {}     # N° → operación 'eliminar'
+    for m in sorted(eliminar_m, key=lambda m: m["origen"]["enviado"]):
+        errores = esquemas.validar_mensaje(m)
+        if errores:
+            archivar.append((m, "rechazado", errores, {}))
+            continue
+        numero = int(m["requerimiento"]["numero"])
+        if numero in eliminar_ops:
+            archivar.append((m, "sin-cambios", [f"El N° {numero} ya se elimina en esta vuelta."], {"requerimiento": numero}))
+            continue
+        if actuales is None:
+            actuales = requerimientos.por_numero(requerimientos.leer_planilla(planilla))
+        actual = actuales.get(numero)
+        if actual is None:
+            enviado = _instante(m["origen"]["enviado"])
+            if enviado and ahora - enviado < ESPERA_FILA:
+                continue      # su fila puede venir en camino: espera en el buzón
+            archivar.append((m, "sin-cambios", [f"El N° {numero} ya no está en la planilla."], {"requerimiento": numero}))
+            continue
+        if norma(m["requerimiento"].get("titulo")) != norma(actual.get("titulo")):
+            archivar.append((m, "rechazado",
+                             [f"El N° {numero} ahora es «{actual.get('titulo') or ''}», no «{m['requerimiento']['titulo']}»: "
+                              "no se eliminó nada."], {"requerimiento": numero}))
+            continue
+        op = {"op": "eliminar", "numero": numero, "titulo": actual.get("titulo") or ""}
+        eliminar_ops[numero] = op
+        escribir_m.append((m, op, [], {}))
+        ops.append(op)
+    tomados -= set(eliminar_ops)
 
     for m in sorted(nuevos_m, key=lambda m: m["origen"]["enviado"]):
         errores = esquemas.validar_mensaje(m)
@@ -497,8 +542,6 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         escribir_m.append((m, op, detalle, {}))
         ops.append(op)
 
-    actuales = None
-    ahora = datetime.now().astimezone()
     for m in sorted(editar_m, key=lambda m: m["origen"]["enviado"]):
         errores = esquemas.validar_mensaje(m)
         if errores:
@@ -506,6 +549,9 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
             continue
         numero = int(m["requerimiento"]["numero"])
         visto = norma(m["requerimiento"].get("titulo"))
+        if numero in eliminar_ops and (numero, visto) not in nuevas:
+            archivar.append((m, "rechazado", [f"El N° {numero} se eliminó: el cambio ya no corresponde."], {"requerimiento": numero}))
+            continue
         # El cambio a un N° que se crea en esta misma vuelta va en su fila nueva (y se archiva con ella)
         if (numero, visto) in nuevas:
             op_nueva = nuevas[(numero, visto)]
@@ -562,15 +608,15 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
         intercambio.archivar(raiz, m, estado, detalle, extra=extra or None)
 
     if not ops:
-        _guardar_estado(firma, escritas, lista)
-        publicada = _publicar(raiz, planilla, avisos) if cambio_excel else False
+        publicada = _publicar(raiz, planilla, avisos, por_publicar) if cambio_excel or por_publicar else False
+        _guardar_estado(firma, escritas, dict(lista, eliminados=[] if publicada else por_publicar))
         return {"activo": True, "detalle": "N° ya fijos; nada que escribir" + ("; planilla republicada" if publicada else ""),
                 "avisos": avisos}
     resultado = escribir(planilla, ops, columnas)
     if resultado.get("estado") != "ok":
         # Lo que ya está en el Excel sí llega al Portal; lo pedido se reintenta en la vuelta siguiente
         if cambio_excel:
-            _publicar(raiz, planilla, avisos)
+            _publicar(raiz, planilla, avisos, por_publicar)
         return {"activo": True, "detalle": f"planilla {resultado.get('estado')}: {resultado.get('detalle')}", "avisos": avisos}
     por_i = {r["i"]: r for r in resultado.get("resultados") or []}
     fijados = sum(1 for i, o in enumerate(ops) if o["op"] == "fijar" and (por_i.get(i) or {}).get("ok"))
@@ -586,9 +632,20 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
             lista.pop("intentosProteger", None)
         else:
             lista = dict(lista, intentosProteger=int(previo.get("intentosProteger") or 0) + 1)
-    registrados = editados = 0
+    registrados = editados = eliminados = 0
     for m, op, detalle, cambios in escribir_m:
         r = por_i.get(ops.index(op)) or {}
+        if op["op"] == "eliminar":
+            if not r.get("ok"):
+                avisos.append(f"N° {op['numero']}: {r.get('detalle') or 'no se eliminó'} (se reintenta).")
+                continue
+            eliminados += 1
+            por_publicar.append({"numero": op["numero"], "titulo": op["titulo"], "fecha": ahora.date().isoformat(),
+                                 "usuario": (m.get("origen") or {}).get("usuario")})
+            intercambio.archivar(raiz, m, "aplicado", [f"Eliminado de la planilla: N° {op['numero']} «{op['titulo']}», "
+                                                       f"fila {r.get('fila')} vaciada. El N° queda libre para el próximo requerimiento."],
+                                 extra={"requerimiento": op["numero"], "fila": r.get("fila")})
+            continue
         if not r.get("ok") and m["tipo"] == TIPO_NUEVO and "le daba el N°" in str(r.get("detalle") or ""):
             # El N° reservado (carpeta y código) no es el que da la fórmula: reintentar no lo arregla
             intercambio.archivar(raiz, m, "rechazado", [f"No se registró: {r['detalle']}. El proyecto ya lleva el N° "
@@ -616,10 +673,12 @@ def vuelta(raiz: Path | None = None, planilla: Path | None = None, simular: bool
                 escritas[f"{op['numero']}|{campo}"] = {"valor": valor, "enviado": m["origen"]["enviado"]}
         intercambio.archivar(raiz, m, "aplicado", texto, extra={"requerimiento": op["numero"], "fila": r.get("fila")})
     fallidos = [r for r in resultado.get("resultados") or [] if not r.get("ok")]
-    _guardar_estado(_firma(planilla) if not fallidos else previo.get("firma") or "", escritas, lista)
     # Las demás herramientas lo ven ya, sin esperar la vuelta del procesador (cada 5 minutos)
-    _publicar(raiz, planilla, avisos)
-    return {"activo": True, "detalle": f"{fijados} N° fijados, {registrados} requerimiento(s) registrado(s), {editados} cambiado(s)",
+    publicada = _publicar(raiz, planilla, avisos, por_publicar)
+    _guardar_estado(_firma(planilla) if not fallidos else previo.get("firma") or "", escritas,
+                    dict(lista, eliminados=[] if publicada else por_publicar))
+    return {"activo": True, "detalle": f"{fijados} N° fijados, {registrados} requerimiento(s) registrado(s), {editados} cambiado(s)"
+                                       + (f", {eliminados} eliminado(s)" if eliminados else ""),
             "avisos": avisos + [r.get("detalle") for r in fallidos if r.get("detalle")]}
 
 

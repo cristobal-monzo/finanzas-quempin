@@ -125,6 +125,9 @@ function ctxOpciones(l) {
   } else if (l.seleccion) {
     propio.push({ txt: 'Copiar', ico: 'copiar', tecla: 'Ctrl C', ir: () => ctxCopiar(l.seleccion) });
   }
+  // Una fila de Requerimientos: sus opciones, las mismas de su botón ⋯
+  const filaPq = !l.p && rcEscribe() && l.el.closest('#pqFilas tr');
+  if (filaPq && pqFilaDe.has(filaPq)) propio.push(...pqOpcionesDe(pqFilaDe.get(filaPq)));
   if (l.enlace && /^https?:/i.test(l.enlace.href)) {
     propio.push({ txt: 'Abrir el enlace en otra pestaña', ico: 'fuera', ir: () => ctxAparte(l.enlace.href) });
     propio.push({ txt: 'Copiar el enlace', ico: 'enlace', ir: () => ctxCopiar(l.enlace.href, 'Enlace copiado.') });
@@ -147,7 +150,8 @@ function ctxMostrar(l) {
   const menu = $('#menuCtx');
   const lista = $('#menuCtxLista');
   lista.textContent = '';
-  ctxOpciones(l).forEach((grupo, i) => {
+  // l.opciones: las de un botón de opciones (el ⋯ de una fila de Requerimientos), en vez de las del clic derecho
+  (l.opciones || ctxOpciones(l)).forEach((grupo, i) => {
     if (i) { const sep = crear('div', 'ctx-sep'); sep.setAttribute('role', 'separator'); lista.append(sep); }
     grupo.forEach((op) => {
       const b = crear('button', 'ctx-item' + (op.clase ? ' ' + op.clase : ''));

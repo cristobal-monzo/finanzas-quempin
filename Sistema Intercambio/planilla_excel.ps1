@@ -10,10 +10,14 @@
 #       La fila se confirma por su título; si ya no calza (alguien la movió), se busca
 #       ese título en la tabla y se usa solo si aparece una vez.
 #   { op: "nueva", numero, valores: { "B": "...", ... }, fechas: { "J": "AAAA-MM-DD" }, encabezados: { "B": "Estado" } }
-#       una fila al final de la lista (la primera vacía de la tabla, o una nueva), con el N° fijo.
+#       una fila al final de la lista (la primera vacía de la tabla, o una nueva), con el N° fijo. Si la fila de ese
+#       N° (la N°+1, por la fórmula FILA()-1) está vacía porque se eliminó su requerimiento, va ahí: así se reusa el N°.
 #       Si ese N° ya está en la columna A, no se escribe nada.
 #   { op: "editar", numero, titulo, tituloNuevo?, valores, fechas, borrar: ["H"], encabezados }
 #       las casillas cambiadas en el Portal, en la fila de ese N° cuyo título es «titulo» (o ya «tituloNuevo»).
+#   { op: "eliminar", numero, titulo }
+#       vacía las casillas sin fórmula de la fila de ese N° cuyo título es «titulo» (2026-11-25). No borra la fila: el
+#       N° es la fórmula FILA()-1 y borrarla correría todos los N° de abajo. Con Estado vacío, el N° queda en blanco.
 #   { op: "estados", lista: ["Evaluación", ...], letra: "B", encabezados: { "B": "Estado" } }
 #       la lista desplegable de la columna Estado, el color de «Cerrado» y su línea en el Glosario (2026-11-09).
 #       Una sola vez: ya hecha, deja todo igual.
@@ -159,10 +163,16 @@ try {
                     if ($a -is [double] -and $a -ge 1) { $ultimoN = $k }
                 }
                 if ($ocupada) { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = "el N° $($o.numero) ya está en la planilla" }); continue }
-                # La primera fila vacía después del último N° (al fondo de la tabla pueden quedar filas sin N°
-                # de un orden antiguo: el 2026-10-29 había dos de enero en las filas 1995 y 1996)
-                $k = $ultimoN + 1
-                while ($k -le $alto -and ((Texto $datos[$k, 2]) -ne '' -or (Texto $datos[$k, $colT]) -ne '' -or $datos[$k, 1] -is [double])) { $k++ }
+                # La fila que la fórmula FILA()-1 numera con ese N°, si quedó vacía (su requerimiento se eliminó,
+                # 2026-11-25). Si no, la primera fila vacía después del último N° (al fondo de la tabla pueden quedar
+                # filas sin N° de un orden antiguo: el 2026-10-29 había dos de enero en las filas 1995 y 1996)
+                $kLibre = [int]$numero + 1 - $primera + 1
+                $vacia = { param($j) (Texto $datos[$j, 2]) -eq '' -and (Texto $datos[$j, $colT]) -eq '' -and -not ($datos[$j, 1] -is [double]) }
+                if ($kLibre -ge 2 -and $kLibre -le $ultimoN -and (& $vacia $kLibre)) { $k = $kLibre }
+                else {
+                    $k = $ultimoN + 1
+                    while ($k -le $alto -and -not (& $vacia $k)) { $k++ }
+                }
                 if ($k -gt $alto) { [void]$tabla.ListRows.Add(); $ultima++; $fila = $ultima }
                 else {
                     $fila = $primera + $k - 1
@@ -201,6 +211,26 @@ try {
                 # Otro cambio a la misma fila en esta vuelta la busca ya con su título nuevo
                 if ($o.tituloNuevo) { $datos[$hallas[0], $colT] = [string]$o.tituloNuevo }
                 [void]$resultados.Add(@{ i = $i; ok = $true; fila = $fila; detalle = "N° $($o.numero) cambiado en la fila $fila" })
+            }
+            elseif ($o.op -eq 'eliminar') {
+                $numero = [double]$o.numero
+                $hallas = @()
+                for ($k = 2; $k -le $alto; $k++) {
+                    $a = $datos[$k, 1]
+                    if ($a -is [double] -and $a -eq $numero -and (Texto $datos[$k, $colT]) -eq (Texto $o.titulo)) { $hallas += $k }
+                }
+                if ($hallas.Count -ne 1) { [void]$resultados.Add(@{ i = $i; ok = $false; fila = 0; detalle = "el N° $($o.numero) con título «$($o.titulo)» aparece $($hallas.Count) veces" }); continue }
+                $k = $hallas[0]
+                $fila = $primera + $k - 1
+                $col0 = [int]$tabla.Range.Column
+                $ancho = [int]$tabla.ListColumns.Count
+                # Desde la segunda columna de la tabla: la del N° es la fórmula, que queda en blanco sola
+                for ($c = 2; $c -le $ancho; $c++) {
+                    $celda = $hoja.Cells.Item($fila, $col0 + $c - 1)
+                    if (-not [bool]$celda.HasFormula) { [void]$celda.ClearContents(); $datos[$k, $c] = $null }
+                }
+                $datos[$k, 1] = $null            # una fila nueva de esta misma vuelta puede ir aquí
+                [void]$resultados.Add(@{ i = $i; ok = $true; fila = $fila; detalle = "N° $($o.numero) eliminado: fila $fila vaciada" })
             }
             elseif ($o.op -eq 'estados') {
                 Revisar-Encabezados $o

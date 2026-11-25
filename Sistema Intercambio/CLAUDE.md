@@ -85,7 +85,7 @@ y `tests/test_esquemas.py` exige el mismo resultado en ambos.
 
 - **Mensajes**: `presupuesto-proyecto`, `venta-proyecto` y `datos-proyecto` → Análisis
   Financiero; `formulacion` → Formulador; `borrador-cotizacion` y `registro-documento` →
-  Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento` y `editar-requerimiento` → Planilla;
+  Sistema QUEMPIN; `actualizar-requerimiento`, `nuevo-requerimiento`, `editar-requerimiento` y `eliminar-requerimiento` → Planilla;
   `documento-cc` → Centro de Costos; `observacion` → mejora continua (la atiende una persona con
   `/Observaciones_Portal`, `observaciones.py`); `pedir-vuelta` → procesador; `mover-carpeta` → carpetas
   de los proyectos (`cierre_entregados.py`); `ajustes-oportunidades` → oportunidades («Qué buscamos» del tablero).
@@ -186,6 +186,8 @@ Solo abre Excel si hay un pedido o la planilla cambió y tiene un N° en fórmul
   requerimientos (`requerimientos.renumerados`): queda la anterior y el paso falla en `estado.json`.
 - **Fila borrada** (2026-11-09): un N° publicado que ya no está, ni con otro N°, va a `desaparecidos` (con la
   fecha en que faltó) y a `avisos`, que el Portal muestra. Se arrastra de una publicación a otra hasta que vuelva.
+- **Eliminar** (2026-11-25): `eliminar-requerimiento` vacía la fila (nunca la borra: el N° es `FILA()-1`) y el N° queda en
+  `eliminados` de la publicación hasta que el Portal se lo da al próximo requerimiento ([docs/planilla.md](docs/planilla.md)).
 - **Bandeja**: un envío que espera más de 5 días hábiles en el buzón sube a «alto» (`ESTANCADO_DIAS_HABILES`).
 - **Siempre con Excel** (`planilla_excel.ps1`, por COM; **nunca openpyxl**, ver `requerimientos.py`).
   Excel abre el archivo como documento de SharePoint con coautoría; `Workbooks.Open` puede volver

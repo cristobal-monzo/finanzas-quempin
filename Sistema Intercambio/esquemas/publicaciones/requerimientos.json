@@ -129,6 +129,38 @@
           "desde"
         ]
       }
+    },
+    "eliminados": {
+      "description": "N° que alguien eliminó a propósito desde el Portal (eliminar-requerimiento, 2026-11-25): su fila del Excel quedó vacía y el N° libre. No cuentan como desaparecidos; se arrastran hasta que el N° vuelve con un requerimiento nuevo.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "numero": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "titulo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fecha": {
+            "type": "string"
+          },
+          "usuario": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "numero",
+          "fecha"
+        ]
+      }
     }
   },
   "required": [
