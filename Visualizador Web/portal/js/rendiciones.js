@@ -285,7 +285,7 @@ function rdDeIA(j) {
   if (!r.numero && !r.dudas.includes('numero')) r.dudas.push('numero');
   return r;
 }
-window.QRendiciones = { interpretar: rdInterpretar, monto: rdMonto, deIA: rdDeIA };
+window.QRendiciones = { interpretar: rdInterpretar, monto: rdMonto, deIA: rdDeIA, correo: (ren) => rdCorreoArmar(ren) };
 
 // ---- Librerías, imágenes y PDF de entrada ------------------------------------------------------------------
 const rdLibs = {};
@@ -825,6 +825,130 @@ async function rdEnviar() {
     rdPintarResumen();
     return;
   }
+  if (rd.haciendoPdf) return;
+  // El PDF va siempre con la rendición: el correo lo lleva adjunto para la revisión. Sin PDF no se envía.
+  let informe = null;
+  try { informe = await rdGenerarPdf({ datos: true }); } catch (e) { console.error(e); }
+  if (!informe || !informe.datos || !informe.datos.byteLength) {
+    rdPintar();
+    avisar('No se pudo armar el PDF que va en el correo, así que la rendición no se envió. Revisa la conexión y vuelve a intentarlo.');
+    return;
+  }
+  rdMostrarCorreo(informe);
+}
+
+// ---- Vista previa del correo (pedido del usuario, 2026-11-25): antes de enviar se ve el correo tal como sale, con su
+//      PDF, y nada llega al buzón hasta que la persona lo confirma --------------------------------------------------
+// La rendición con la forma que tendrá en rendiciones.json cuando el procesador la publique
+function rdRendicionParaCorreo() {
+  const cab = rd.cab;
+  const ren = {
+    numero: texto(cab.numero), tipo: cab.tipo, deudor: texto(cab.deudor), cantidad: rd.docs.length,
+    total: rd.docs.reduce((s, d) => s + (d.campos.valor || 0), 0),
+    documentos: rd.docs.map((d) => {
+      const o = rdProyectoDe(d.campos.proyecto);
+      return { carpeta: o ? o.carpeta : '', fecha: rdFechaCL(d.campos.fecha), valor: Math.round(d.campos.valor || 0) };
+    })
+  };
+  if (texto(cab.periodo)) ren.periodo = texto(cab.periodo);
+  if (texto(cab.unidad)) ren.unidad = texto(cab.unidad);
+  return ren;
+}
+// Copia de armar() de Sistema Intercambio/correo_rendiciones.py: el mismo asunto y el mismo HTML.
+// test_rendiciones_vista_del_correo_igual_al_del_procesador compara las dos.
+const RD_CORREO_TIPOS = { vale: 'Vale a rendir', recuperacion: 'Recuperación de gastos', caja: 'Caja chica' };
+const rdEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+function rdCorreoArmar(ren) {
+  const e = rdEsc, NAR = '#ff5100', GRIS = '#555555';
+  const pesos = (n) => '$ ' + rdMiles(n);
+  const nombre = String(ren.deudor || '').split(/\s+/).filter(Boolean).join(' ') || '(sin nombre)';
+  const total = pesos(ren.total);
+  const asunto = 'Rendición de gastos ' + (ren.numero || '') + ' · ' + nombre + ' · ' + total;
+  const docs = ren.documentos || [];
+  const llegaron = docs.length, cantidad = Math.trunc(+ren.cantidad || 0);
+  const fechas = docs.map((d) => /^(\d{2})-(\d{2})-(\d{4})$/.exec(d.fecha || '')).filter(Boolean).map((m) => m[3] + m[2] + m[1]).sort();
+  const dmy = (x) => x.slice(6) + '-' + x.slice(4, 6) + '-' + x.slice(0, 4);
+  const periodo = !fechas.length ? (ren.periodo || 'sin fecha')
+    : fechas[0] === fechas[fechas.length - 1] ? 'el ' + dmy(fechas[0]) : 'del ' + dmy(fechas[0]) + ' al ' + dmy(fechas[fechas.length - 1]);
+  const filas = [
+    ['Persona', e(nombre)],
+    ['Monto total', '<b>' + e(total) + '</b>'],
+    ['Período', e(periodo[0].toUpperCase() + periodo.slice(1))],
+    ['Tipo', e(RD_CORREO_TIPOS[ren.tipo] || 'Rendición')],
+    ['N° de rendición', e(String(ren.numero || ''))],
+    ['Documentos', e(String(cantidad || llegaron))]
+  ];
+  if (ren.unidad) filas.push(['Unidad presupuestaria', e(ren.unidad)]);
+  const suma = new Map();
+  docs.forEach((d) => {
+    const c = d.carpeta || '(sin carpeta)';
+    const s = suma.get(c) || [0, 0];
+    s[0] += 1;
+    s[1] += Math.trunc(+d.valor || 0);
+    suma.set(c, s);
+  });
+  const proyectos = [...suma].sort((a, b) => b[1][1] - a[1][1]).map(([c, [n, v]]) => e(c) + ': ' + e(pesos(v)) + ' (' + n + ' doc.)').join('<br>');
+  if (proyectos) filas.push(['Por proyecto', proyectos]);
+  const tabla = filas.map(([k, v]) => '<tr><td style="padding:6px 16px 6px 0;color:' + GRIS + ';vertical-align:top;white-space:nowrap">' + k + '</td>' +
+    '<td style="padding:6px 0;vertical-align:top">' + v + '</td></tr>').join('');
+  const falta = cantidad && llegaron < cantidad
+    ? '<p style="margin:12px 0 0 0;color:' + NAR + '">Llegaron ' + llegaron + ' de ' + cantidad + ' documentos al Centro de Costos; el resto aún no se sincroniza.</p>' : '';
+  const cuerpo = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;max-width:600px">' +
+    ' <div style="border-bottom:3px solid ' + NAR + ';padding-bottom:8px;margin-bottom:16px">' +
+    ' <span style="font-size:18px;font-weight:bold">Rendición de gastos</span>' +
+    ' <span style="color:' + GRIS + ';font-size:12px;margin-left:8px">Correo automático · QUEMPIN</span>' +
+    ' </div>' +
+    ' <p style="margin:0 0 12px 0">Correo automático generado para la rendición de gastos de <b>' + e(nombre) + '</b>' +
+    ' por un monto total de <b>' + e(total) + '</b>. Los gastos corresponden al período ' + e(periodo) +
+    ' (documento más antiguo y más reciente de la rendición).</p>' +
+    ' <table style="border-collapse:collapse;font-size:14px">' + tabla + '</table>' + falta +
+    ' <p style="margin:12px 0 0 0">Se adjunta el PDF de la rendición para su revisión: el resumen y una página con la imagen de' +
+    ' cada documento.</p>' +
+    ' <p style="margin:16px 0 0 0;font-size:12px;color:' + GRIS + '">Los documentos quedaron en la carpeta de cada proyecto del' +
+    ' Centro de Costos. Registro de rendiciones: <a href="https://cristobal-monzo.github.io/finanzas-quempin/portal/#/rendiciones" style="color:' + NAR + '">Portal QUEMPIN</a>.</p>' +
+    '</div>';
+  return { asunto, cuerpo };
+}
+// A quién: los destinatarios del último correo que salió (los fija rendiciones_destinatarios.json en el equipo del procesador)
+function rdCorreoPara() {
+  const e = rd.envios.find((x) => x.correo && Array.isArray(x.correo.para) && x.correo.para.length);
+  return e ? e.correo.para.join(', ') : 'Los destinatarios de rendiciones del equipo';
+}
+function rdMostrarCorreo(informe) {
+  const { asunto, cuerpo } = rdCorreoArmar(rdRendicionParaCorreo());
+  const url = URL.createObjectURL(new Blob([informe.datos], { type: 'application/pdf' }));
+  rd.vistaCorreo = { informe, url };
+  $('#rdCorreoPara').textContent = rdCorreoPara();
+  $('#rdCorreoAsunto').textContent = asunto;
+  $('#rdCorreoPdf').textContent = informe.nombre;
+  // En un marco aislado (sin scripts), como lo muestra un programa de correo; cada dato va escapado (rdEsc). El marco
+  // existe solo mientras el diálogo está abierto: los demás iframe del Portal son las herramientas abiertas.
+  const marco = crear('iframe', 'rd-correo-cuerpo');
+  marco.id = 'rdCorreoCuerpo';
+  marco.title = 'Cuerpo del correo';
+  marco.setAttribute('sandbox', '');
+  $('#rdCorreoMarco').replaceChildren(marco);
+  marco.srcdoc = '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"></head><body style="margin:16px;background:#fff">' + cuerpo + '</body></html>';
+  const dlg = $('#dlgRdCorreo');
+  dlg.returnValue = '';
+  dlg.showModal();
+  $('#rdCorreoEnviar').focus();
+}
+function rdCerrarCorreo() {
+  const v = rd.vistaCorreo;
+  rd.vistaCorreo = null;
+  $('#rdCorreoMarco').replaceChildren();
+  if (!v) return;
+  setTimeout(() => URL.revokeObjectURL(v.url), 60000);
+  if ($('#dlgRdCorreo').returnValue === 'enviar') rdEnviarConfirmado(v.informe);
+}
+function rdVerPdfCorreo() {
+  if (rd.vistaCorreo) window.open(rd.vistaCorreo.url, '_blank');
+}
+
+async function rdEnviarConfirmado(informe) {
+  if (mvNoSe()) return;
+  if (rd.enviando || !rd.docs.length || !rc.dir || rd.cab.enviada) return;
   rd.enviando = true;
   rd.confirmarEnvio = false;
   rdPintarResumen();
@@ -839,17 +963,6 @@ async function rdEnviar() {
   const rid = scId().slice(0, 16);
   const pais = estado.pais === 'pe' ? 'PE' : 'CL';
   const enviados = [];
-  // El PDF va siempre con la rendición: el correo lo lleva adjunto para la revisión. Sin PDF no se envía.
-  let informe = null;
-  try { informe = await rdGenerarPdf({ datos: true }); } catch (e) { console.error(e); }
-  if (!informe || !informe.datos || !informe.datos.byteLength) {
-    rd.enviando = false;
-    rdPintar();
-    avisar('No se pudo armar el PDF que va en el correo, así que la rendición no se envió. Revisa la conexión y vuelve a intentarlo.');
-    return;
-  }
-  rd.enviando = true;
-  rdPintarResumen();
   try {
     const buzon = await rc.dir.getDirectoryHandle('buzon', { create: true });
     const adjuntos = await buzon.getDirectoryHandle('adjuntos', { create: true });
@@ -1361,7 +1474,7 @@ function rdPintarResumen() {
   const bEnv = $('#rdEnviar');
   const nota = $('#rdNotaEnviar');
   nota.classList.remove('mal');
-  bEnv.disabled = !docs.length || !!leyendo || rd.enviando || !!rd.cab.enviada || !rc.dir;
+  bEnv.disabled = !docs.length || !!leyendo || rd.enviando || rd.haciendoPdf || !!rd.cab.enviada || !rc.dir;
   bEnv.classList.toggle('ocupado', rd.enviando);
   bEnv.textContent = rd.enviando ? 'Enviando…' : rd.cab.enviada ? 'Rendición enviada' : rd.confirmarEnvio ? 'Enviar igual, con ' + pl(dudas, 'dato', 'datos') + ' en naranjo' : 'Enviar rendición';
   if (rd.cab.enviada) {
