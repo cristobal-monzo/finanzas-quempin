@@ -62,6 +62,15 @@ HISTORIA = [
 ]
 
 
+# Lo publicado hoy (ficticio), para contar frases en «Qué buscamos» (2026-11-26).
+ACTIVAS = {f"9000-{i}-LE26": {"nombre": n} for i, n in enumerate([
+    "Mantención de calderas del hospital", "Mantto. caldera y calef. del liceo", "Suministro de gas licuado GLP",
+    "Instalación de aire acondicionado en oficinas", "Aire acondicionado sala de servidores", "Mantención de chiller",
+    "Red de gas natural del CESFAM", "Absorbente de vapor de agua", "Generador de vapor para lavandería",
+    "Cambio de válvulas y radiadores", "Proyecto H2 verde", "Agua caliente sanitaria (ACS) del gimnasio",
+    "Compra de bombas de agua", "Gas para cocina del casino", "Servicio de aseo"])}
+
+
 def _en(dias: float) -> str:
     return (AHORA + timedelta(days=dias)).strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -116,6 +125,7 @@ def _datos(extra=(), config=None):
                  "institucion": {"organismo_comprador": "Servicio de ejemplo", "nombre_region": "Región de Valparaíso"}}
         ops.append(ev.evaluar(ca.leer_ficha(crudo, codigo)))
     datos = op.publicacion(ops, ev, historia, config, {"activas": {}, "candidatas": []}, [], False, AHORA)
+    datos["buscar"] = op.para_buscar(config, historia, {"activas": ACTIVAS})
     return datos, config
 
 
@@ -446,4 +456,79 @@ def test_arrastrar_un_tema_cambia_la_lista_al_tiro_y_deshacer_vuelve(navegador, 
     assert pagina.locator("#qbEstado").inner_text().startswith("Así busca el equipo")
     original = {o["codigo"]: o["categoria"] for o in datos["oportunidades"]}
     assert _categorias_en_pagina(pagina)["5000-95-LE26"]["categoria"] != "Descartada" and original["5000-95-LE26"] != "descartar"
+    assert errores == []
+
+
+# ── Contar y proponer frases (2026-11-26) ───────────────────────────────────
+
+def test_las_propuestas_traen_cuantas_publicadas_las_nombran():
+    """Pedido del usuario: proponer frases con un número: cuántas licitaciones publicadas hoy las nombran. No se
+    propone lo que una frase actual ya encuentra, ni lo que hoy no sale en ninguna."""
+    config = op.cargar_config()
+    publicadas = op.raices_publicadas(ACTIVAS, config["rubro"].get("noConfundir"))
+    assert op.cuenta_publicadas("aire acondicionado", publicadas) == 2
+    assert op.cuenta_publicadas("Calderas", publicadas) == 2        # «calderas» y «caldera» son lo mismo
+    assert op.cuenta_publicadas("vapor", publicadas) == 1           # «vapor de agua» no es vapor (no confundir)
+    assert op.cuenta_publicadas("de la", publicadas) == 0           # sin palabras útiles no cuenta nada
+    propuestas = {s["frase"]: s for s in op.sugerencias(config, op.Historia(HISTORIA), publicadas)}
+    assert propuestas["aire acondicionado"]["hoy"] == 2 and propuestas["aire acondicionado"]["tema"] == "climatizacion"
+    assert propuestas["gas"]["hoy"] == 3 and propuestas["chiller"]["hoy"] == 1
+    assert "caldera a pellet" not in propuestas                     # la cubre «caldera»
+    assert "biomasa" not in propuestas                              # hoy no sale en ninguna
+    assert [s["hoy"] for s in propuestas.values()] == sorted((s["hoy"] for s in propuestas.values()), reverse=True)
+
+
+def test_las_propuestas_salen_tambien_de_la_planilla():
+    """Una frase que se repite en lo que QUEMPIN ofertó y es rara en lo publicado se propone, con el tema que más
+    nombran esos títulos. Un trozo de una frase actual no («caliente» de «agua caliente»)."""
+    config = op.cargar_config()
+    config["rubro"]["sugerencias"] = {}
+    historia = op.Historia([{"numero": i, "estado": "Ofertado", "titulo": f"Termocañones y calefacción del gimnasio {i}"}
+                            for i in range(5)] + [{"numero": 9, "estado": "Ofertado", "titulo": "Agua caliente del liceo"}] * 5)
+    publicadas = op.raices_publicadas({"1": {"nombre": "Arriendo de termocañones"}, "2": {"nombre": "Agua caliente"},
+                                       **{str(i + 10): {"nombre": f"Servicio de aseo {i}"} for i in range(200)}}, None)
+    propuestas = op.sugerencias(config, historia, publicadas)
+    assert [(s["frase"], s["tema"], s["origen"], s["hoy"]) for s in propuestas] == [("termocañones", "calefaccion", "planilla", 1)]
+
+
+FRASES_PARIDAD = ["Calderas", "mantto. de calef.", "ACS", "H2", "vapor", "Válvulas", "radiadores", "aire  acondicionado",
+                  "GLP", "gas", "de la", "Ñandú", "bombas"]
+
+
+def test_contar_frases_en_la_pagina_da_lo_mismo_que_python(navegador, tmp_path):
+    """raicesTexto y cuentaPublicadas del tablero repiten raices y cuenta_publicadas: el número que aparece al
+    escribir una frase es el de Python."""
+    pagina, datos, config, errores = _abrir(navegador, tmp_path)
+    publicadas = datos["buscar"]["publicadas"]
+    pagina.locator("[data-tab=tabBuscamos]").click()
+    pagina.locator("[data-tema=calderas] > button").click()
+    caja = pagina.locator("[data-tema=calderas] input.qb-nueva")
+    for frase in FRASES_PARIDAD:
+        caja.fill(frase)
+        n = op.cuenta_publicadas(frase, publicadas)
+        esperado = "" if len(frase.strip()) < 2 else ("1 publicada hoy" if n == 1 else f"{n} publicadas hoy")
+        assert pagina.locator("[data-tema=calderas] .qb-cuenta").inner_text() == esperado, frase
+    assert errores == []
+
+
+def test_agregar_una_propuesta_y_escribir_otra_frase(navegador, tmp_path):
+    pagina, datos, _, errores = _abrir(navegador, tmp_path)
+    pagina.locator("[data-tab=tabBuscamos]").click()
+    caja = pagina.locator("#qbPropuestas")
+    assert caja.locator(".qb-idea").first.inner_text().startswith("+ gas")
+    caja.locator(".qb-idea", has_text="aire acondicionado").click()
+    assert pagina.locator("#qbEstado").inner_text().startswith("1 cambio sin guardar")
+    assert caja.locator(".qb-idea", has_text="aire acondicionado").count() == 0     # ya no se propone
+    pagina.locator("[data-tema=climatizacion] > button").click()
+    chip = pagina.locator("[data-tema=climatizacion] .qb-chip", has_text="aire acondicionado")
+    assert chip.locator(".qb-n").inner_text() == "2"
+    # Escribir y Enter agrega la frase con su número, y el cursor queda para escribir otra.
+    caja_tema = pagina.locator("[data-tema=climatizacion] input.qb-nueva")
+    caja_tema.fill("chiller")
+    caja_tema.press("Enter")
+    assert pagina.locator("[data-tema=climatizacion] .qb-chip", has_text="chiller").locator(".qb-n").inner_text() == "1"
+    assert pagina.evaluate("document.activeElement.dataset.clave") == "climatizacion"
+    # Quitar con ×.
+    pagina.locator("[data-tema=climatizacion] .qb-chip", has_text="chiller").locator("button").click()
+    assert pagina.locator("[data-tema=climatizacion] .qb-chip", has_text="chiller").count() == 0
     assert errores == []
