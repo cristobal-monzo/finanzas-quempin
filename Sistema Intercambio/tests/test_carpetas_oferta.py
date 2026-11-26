@@ -22,8 +22,12 @@ ANIO = datetime.now().year
 AHORA = datetime.now().astimezone()
 
 
+# El título de la fila de cada carpeta del fixture: una carpeta cuyo nombre no se parece a su fila no se mueve sola
+TITULOS = {289: "Instalación de prueba", 296: "Caldera de prueba", 310: "Caldera en evaluación", 120: "Perdida de antes"}
+
+
 def _req(n, estado, titulo=None, cierre=None):
-    fila = {"numero": n, "estado": estado, "titulo": titulo or f"Proyecto {n}"}
+    fila = {"numero": n, "estado": estado, "titulo": titulo or TITULOS.get(n) or f"Proyecto {n}"}
     if cierre:
         fila["cierre"] = cierre
     return fila
@@ -341,7 +345,60 @@ def test_un_mensaje_invalido_se_rechaza(e):
     assert p["id"] == m["id"] and p["resultado"]["estado"] == "rechazado"
 
 
-# ── la lista «fuera de lugar» ────────────────────────────────────────────────
+# ── una carpeta con el N° pero de otro proyecto ─────────────────────────────
+
+def test_coincide_compara_el_nombre_con_la_fila():
+    assert co.coincide("31. Concepción - Hornos crematorios", {"titulo": "Hornos crematorio", "ubicacion": "Concepción"})
+    assert not co.coincide("29. Concepción - Hornos crematorios", {"titulo": "Mantención de Climatización DC 235"})
+    assert co.coincide("310. Hornos crematorios", {"titulo": "Horno crematorio"})            # plural
+    # Todas sus palabras en la fila, aunque sean comunes
+    assert co.coincide("108. Servicio de mantención preventiva", {"titulo": "Servicio de mantención preventiva a caldera"})
+    assert not co.coincide("50. Mantención anual", {"titulo": "Mantención de bombas"})       # solo una palabra común
+    assert not co.coincide("50. Algo", None)
+    # Sin N° hacen falta dos palabras que distinguen: una ciudad sola no basta
+    assert co.coincide("JUNJI VALPARAÍSO CORRECTIVOS", {"titulo": "Correctivos Junji Valparaíso"}, minimo=2)
+    assert not co.coincide("Casino Valparaíso", {"titulo": "Junji Valparaíso"}, minimo=2)
+
+
+def test_una_carpeta_que_no_es_de_su_fila_no_se_mueve_ni_se_lista(e):
+    _planilla(e["raiz"], [_req(310, "Ofertado", "Mantención de bombas"), _req(289, "Adjudicado")])
+    reqs = co.leer_planilla(e["raiz"])
+    assert co.dudosos(reqs, co.indice(e["form"]), co.indice(e["ges"])) == {310}
+    assert "310" not in {x["req"] for x in co.fuera_de_lugar(reqs, co.indice(e["form"]), co.indice(e["ges"]), e["ges"], AHORA)}
+    _mover(e["raiz"], 310, "Ofertado")
+    _vuelta(e)
+    (p,) = _procesados(e["raiz"])
+    assert p["resultado"]["estado"] == "rechazado" and "no parece" in p["resultado"]["detalle"][0]
+    assert (e["form"] / "310. Caldera en evaluación").is_dir()                       # no se movió
+
+
+def test_no_crea_carpeta_a_una_postventa_ni_si_ya_hay_una_sin_n_que_se_le_parece(e):
+    (e["form"] / "0 OFERTAS PRESENTADAS" / "JUNJI VALPARAÍSO CORRECTIVOS").mkdir()
+    _planilla(e["raiz"], [dict(_req(330, "Evaluación", "Revisión de calderas"), canal="Postventa"),
+                          _req(331, "Ofertado", "Correctivos Junji Valparaíso"), _req(332, "Ofertado", "Casino Valparaíso")])
+    ahora = datetime.now().astimezone()
+    _, estado, _ = _vuelta(e, ahora=ahora)
+    _vuelta(e, estado, ahora=ahora + co.ESPERA_CREAR + timedelta(minutes=1))
+    nombres = {h.name for h in e["form"].rglob("*") if h.is_dir()}
+    assert not any(x.startswith(("330.", "331.")) for x in nombres)
+    assert "332. Casino Valparaíso" in nombres                                       # una ciudad sola no basta
+
+
+def test_la_copia_no_lleva_los_temporales_de_office_ni_lo_que_ya_no_esta(e):
+    (e["form"] / "310. Caldera en evaluación" / "ANTECEDENTES" / "~$bases.docx").write_bytes(b"x")
+    a_medias = e["ges"] / "310. Caldera en evaluación" / "Formulación (copiando)"
+    a_medias.mkdir(parents=True)
+    (a_medias / "borrado.pdf").write_bytes(b"ya no esta en el original")
+    (a_medias / "~$viejo.xlsx").write_bytes(b"x")
+    _planilla(e["raiz"], [_req(310, "Adjudicado")])
+    _mover(e["raiz"], 310, "Adjudicado")
+    _vuelta(e)
+    copia = e["ges"] / "310. Caldera en evaluación" / "Formulación"
+    assert sorted(x.relative_to(copia).as_posix() for x in copia.rglob("*") if x.is_file()) == ["ANTECEDENTES/bases.pdf"]
+    (p,) = _procesados(e["raiz"])
+    assert p["resultado"]["estado"] == "aplicado"
+
+
 
 def test_fuera_de_lugar(e):
     _planilla(e["raiz"], [_req(289, "Adjudicado"), _req(296, "Cerrado"), _req(310, "Ofertado"),
@@ -392,7 +449,8 @@ def test_proyectos_json_lleva_las_ofertas_y_lo_fuera_de_lugar(e, monkeypatch, tm
     _bibliotecas(monkeypatch, e)
     monkeypatch.setattr(procesar, "RAIZ_FACTURAS_CL", tmp_path / "sin-centro-de-costos" / "Chile")
     monkeypatch.setattr(procesar.carpetas_proyecto, "enlaces_web", lambda raices, ruta: {})
-    _planilla(e["raiz"], [_req(289, "Adjudicado"), _req(296, "Cerrado"), _req(310, "Ofertado"), _req(120, "No adjudicado")])
+    _planilla(e["raiz"], [_req(289, "Adjudicado"), _req(296, "Cerrado"), _req(310, "Ofertado"),
+                          _req(120, "No adjudicado", "Mantención de bombas")])          # su carpeta es de otro
     detalle, _ = procesar.paso_proyectos(e["raiz"], None, False)
     sobre = intercambio.leer_publicacion(e["raiz"], "proyectos")
     assert esquemas.validar_publicacion("proyectos", sobre) == []
@@ -400,7 +458,7 @@ def test_proyectos_json_lleva_las_ofertas_y_lo_fuera_de_lugar(e, monkeypatch, tm
     assert {"req": "310", "ruta": "310. Caldera en evaluación"} in datos["ofertas"]
     assert {"req": "120", "ruta": "0 OFERTAS PRESENTADAS/0 Ofertas Cerradas 2025/120. Perdida de antes"} in datos["ofertas"]
     assert {x["req"] for x in datos["fueraDeLugar"]} == {"289", "310"}
-    assert "2 carpeta(s) fuera de lugar" in detalle
+    assert "2 carpeta(s) fuera de lugar" in detalle and datos["carpetasDudosas"] == ["120"]
 
 
 # ── el Estado de la Planilla al Formulador ──────────────────────────────────
@@ -429,9 +487,10 @@ def test_un_cambio_en_la_planilla_llega_al_formulador_como_version_nueva(e):
     item = _leer(e["raiz"], "a")
     assert item["datos"]["estado"] == "Adjudicada" and item["datos"]["modificadoPor"] == formulaciones.FIRMA_PLANILLA
     assert item["historia"] == [antes["modificado"]] and item["mod"] > antes["modificado"]
-    assert re.search(r"Z$", item["mod"]) and vistos == {"310": "Adjudicado"} and "Adjudicada" in cambiados[0]
-    # La vuelta siguiente no hace nada
-    assert formulaciones.alinear_estados(e["raiz"], [_req(310, "Adjudicado")], vistos) == (vistos, [])
+    assert re.search(r"Z$", item["mod"]) and vistos["310"] == "Adjudicado" and "Adjudicada" in cambiados[0]
+    assert vistos[formulaciones.ESCRITOS] == {"310": {"sello": item["mod"], "estado": "Adjudicado", "antes": "Evaluación"}}
+    # La vuelta siguiente lo ve escrito y no hace nada más
+    assert formulaciones.alinear_estados(e["raiz"], [_req(310, "Adjudicado")], vistos) == ({"310": "Adjudicado"}, [])
 
 
 @pytest.mark.parametrize("caso", ["igual", "reciente", "otro-n", "sugerencia", "sin-presupuesto"])
@@ -464,6 +523,33 @@ def test_el_paso_del_procesador_no_toca_lo_que_espera_del_formulador(e):
         os.remove(x["_archivo"])
     detalle, vistos = procesar.paso_estados_formulador(e["raiz"], vistos, False)
     assert "Enviada" in detalle and _leer(e["raiz"], "a")["datos"]["estado"] == "Enviada"
+
+
+def test_la_planilla_atrasada_no_hace_retroceder_al_presupuesto(e):
+    """La Planilla se pone al día tarde (pasa de «Ofertado» a «Adjudicado» cuando el presupuesto ya está «Cerrada»)."""
+    _presupuesto(e["raiz"], "a", 310, "Cerrada")
+    vistos, cambiados = formulaciones.alinear_estados(e["raiz"], [_req(310, "Adjudicado")], {"310": "Ofertado"})
+    assert cambiados == [] and vistos == {"310": "Adjudicado"} and _leer(e["raiz"], "a")["datos"]["estado"] == "Cerrada"
+
+
+def test_reabrir_en_la_planilla_si_llega_al_presupuesto(e):
+    """Estaban iguales («Cerrado») y alguien lo reabre en la Planilla: eso sí pasa."""
+    _presupuesto(e["raiz"], "a", 310, "Cerrada")
+    _, cambiados = formulaciones.alinear_estados(e["raiz"], [_req(310, "Adjudicado")], {"310": "Cerrado"})
+    assert cambiados and _leer(e["raiz"], "a")["datos"]["estado"] == "Adjudicada"
+
+
+def test_lo_escrito_que_onedrive_pierde_se_vuelve_a_escribir(e):
+    _presupuesto(e["raiz"], "a", 310, "En revisión")
+    vistos, _ = formulaciones.alinear_estados(e["raiz"], [_req(310, "Ofertado")], {"310": "Evaluación"})
+    assert _leer(e["raiz"], "a")["datos"]["estado"] == "Enviada"
+    _presupuesto(e["raiz"], "a", 310, "En revisión")       # un conflicto de OneDrive deja la versión anterior
+    vistos, cambiados = formulaciones.alinear_estados(e["raiz"], [_req(310, "Ofertado")], vistos)
+    assert cambiados and _leer(e["raiz"], "a")["datos"]["estado"] == "Enviada" and formulaciones.ESCRITOS in vistos
+    # Si alguien lo cambió después de escribirlo, manda esa persona
+    _presupuesto(e["raiz"], "a", 310, "Borrador", minutos=1)
+    vistos, cambiados = formulaciones.alinear_estados(e["raiz"], [_req(310, "Ofertado")], vistos)
+    assert cambiados == [] and vistos == {"310": "Ofertado"} and _leer(e["raiz"], "a")["datos"]["estado"] == "Borrador"
 
 
 def test_las_tablas_de_estados_calzan_con_el_formulador():

@@ -86,10 +86,13 @@ centro de costos solo irán los gastos reales ingresados mediante facturas u OC�
 - **Marcar «Cerrado»** (2026-11-10, pedido del usuario: que en Proyectos en ejecución también se pueda cambiar el estado a
   «Cerrado»): el acceso «Marcar «Cerrado»» de la cabecera (`ejCierreDe`, `ejAbrirCerrar`, `ejGuardarCerrar`, `#dlgEjCerrar`)
   manda el mismo `editar-requerimiento` que Requerimientos (`pqEnviar`, con el N° entero de la Planilla) y, marcada de
-  entrada si tiene carpeta con su N° en la raíz de Gestión, el `mover-carpeta` a «0 Proyectos Entregados <año>»
-  (`pqEnviarMover`, estado «Cerrado») más una vuelta del procesador (la mueve `carpetas_oferta.py`). Si la Planilla ya dice «Cerrado» y la carpeta sigue en Gestión, el
-  acceso dice «Llevar su carpeta a entregados» y solo pide moverla. Sin N° o sin fila en la Planilla, no aparece. Pruebas:
-  `test_marcar_cerrado_desde_proyectos_en_ejecucion`, `test_marcar_cerrado_sin_mover_y_ya_cerrado_solo_mueve`.
+  entrada si hay algo que mover, el `mover-carpeta` con estado «Cerrado» (`pqEnviarMover`) más una vuelta del procesador
+  (la mueve `carpetas_oferta.py`). Desde el 2026-11-25 usa la regla de Requerimientos (`pqCarpetaPara`, `pqDestinoTxt`,
+  `pqDetalleTxt`) y dice todo lo que se mueve: la de Gestión a «0 Proyectos Entregados <año>» y la de Formulación a
+  «0 OFERTAS ADJUDICADAS». Si la Planilla ya dice «Cerrado» y alguna sigue fuera de lugar, el acceso dice «Llevar su
+  carpeta a entregados» (o «Mover su carpeta», si solo falta la de Formulación) y solo pide moverla. Sin N° o sin fila en la Planilla, no aparece. Pruebas:
+  `test_marcar_cerrado_desde_proyectos_en_ejecucion`, `test_marcar_cerrado_sin_mover_y_ya_cerrado_solo_mueve`,
+  `test_marcar_cerrado_desde_ejecucion_dice_todo_lo_que_se_mueve`.
 - **El avance** (y la fecha de término) se pide al Análisis Financiero con un `datos-proyecto` al buzón (`ejEnviarAF`, el
   mismo que usa ahora «Dar por cerrado»); un pedido sobre otro que todavía espera lleva en `reemplaza` el valor del
   anterior (`ejVisto`). `rcLeer` lee esos pedidos del buzón (`datosProyecto`) y lo que dijo el Análisis de cada uno

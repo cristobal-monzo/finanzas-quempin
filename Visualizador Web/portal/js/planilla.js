@@ -163,7 +163,9 @@ function pqTomados() {
 function pqSiguienteN() {
   const d = rc.datos || {};
   const t = pqTomados();
-  const libre = ((d.planillaInfo && d.planillaInfo.eliminados) || []).filter((n) => Number.isInteger(n) && n > 0 && !t.has(n)).sort((a, b) => a - b)[0];
+  // Un N° eliminado que todavía tiene carpeta no se reusa: el requerimiento nuevo heredaría la carpeta del borrado
+  const conCarpeta = (n) => { const c = pqCarpetasDe(n); return c.f.length + c.g.length > 0; };
+  const libre = ((d.planillaInfo && d.planillaInfo.eliminados) || []).filter((n) => Number.isInteger(n) && n > 0 && !t.has(n) && !conCarpeta(n)).sort((a, b) => a - b)[0];
   return libre || Math.max(0, ...t) + 1;
 }
 // Minutos desde el cambio más antiguo que todavía no llega al Excel, o null
@@ -430,7 +432,6 @@ const PQ_CARPETA = {
   'No adjudicado': { formulacion: ['0 OFERTAS PRESENTADAS', '0 Ofertas Cerradas *'] },
   'Descartado': { formulacion: ['0 OFERTAS PRESENTADAS', '0 Ofertas Cerradas *'] }
 };
-const PQ_ENTREGADOS = '0 Proyectos Entregados';
 function pqCarpetaGestion(n) {
   const hay = ((rc.datos && rc.datos.gestion) || []).filter((g) => texto(g && g.carpeta) && rcNum(g.req) === rcNum(n));
   return hay.length === 1 ? texto(hay[0].carpeta) : null;
@@ -467,10 +468,14 @@ function pqPlanCarpeta(est, rutaF, rutaG, anio, anioG) {
   return p;
 }
 // Qué pasaría con la carpeta del N° si su Estado fuera «est»: { sin } sin carpeta, { repetida } con dos, o el plan
+// o { dudosa }: su nombre no parece de esa fila (un N° viejo que hoy es de otro requerimiento; carpetas_oferta.dudosos)
 function pqCarpetaPara(n, fila, est) {
   const c = pqCarpetasDe(n);
   if (!c.f.length && !c.g.length) return { sin: true };
   if (c.f.length > 1 || c.g.length > 1) return { repetida: true };
+  if (((rc.datos && rc.datos.carpetasDudosas) || []).some((d) => rcNum(d) === rcNum(n))) {
+    return { dudosa: true, nombre: (c.f[0] || c.g[0])[(c.f[0] || c.g[0]).length - 1] };
+  }
   const rutaF = c.f[0] || null;
   const rutaG = c.g[0] || null;
   const plan = pqPlanCarpeta(est, rutaF, rutaG, pqAnioCierre(fila), new Date().getFullYear());
@@ -503,7 +508,9 @@ function pqVerMover(alAbrir) {
   const est = $('#pqEstado').value;
   const cambia = !!a && est !== texto(a.fila && a.fila.estado);
   const x = a && !a.nuevo && PQ_CARPETA[est] ? pqCarpetaPara(a.numero, a.fila, est) : null;
-  const visible = !!x && (x.hay || (cambia && (x.sin || x.repetida)));
+  // Sin cambiar el Estado, crear una carpeta en Gestión no se ofrece: eso es de quien adjudica, no de quien corrige otra casilla
+  const soloCrea = !!x && x.hay && !x.plan.formulacion && !(x.plan.gestion && x.plan.gestion.accion === 'mover');
+  const visible = !!x && (x.hay ? cambia || !soloCrea : cambia && (x.sin || x.repetida || x.dudosa));
   const aparece = campo.hidden;
   campo.hidden = !visible;
   const otroEstado = pq.moverPara !== est;
@@ -514,6 +521,7 @@ function pqVerMover(alAbrir) {
   if (alAbrir === true || aparece || otroEstado || !x.hay) caja.checked = x.hay && cambia;
   $('#pqMoverTxt').textContent = x.hay ? 'Mover su carpeta a ' + pqDestinoTxt(x)
     : x.repetida ? 'Hay más de una carpeta con el N° ' + a.numero + ': muévela a mano'
+      : x.dudosa ? 'La carpeta «' + x.nombre + '» no parece de este requerimiento: muévela a mano'
       : 'Sin carpeta con el N° ' + a.numero + ' en Formulación ni en Gestión de Proyectos';
   $('#pqMoverDe').textContent = x.hay ? pqDetalleTxt(x).join(' · ') : '';
   $('#pqMoverDe').hidden = !x.hay;
@@ -777,6 +785,8 @@ function pqPintar() {
 function pqFueraItems() {
   const d = rc.datos || {};
   const pedidos = new Set((d.moverPedidos || []).map((m) => rcNum(m && m.requerimiento && m.requerimiento.numero)));
+  // Lo pedido desde aquí ya se ve en el buzón: desde ahora lo dice el buzón (y, atendido, la lista del procesador)
+  pedidos.forEach((n) => pq.moviendo.delete(n));
   const filas = new Map(pqFilas().map((r) => [rcNum(r.numero), r]));
   return (d.fueraDeLugar || []).filter((x) => {
     const n = rcNum(x && x.req);
@@ -829,7 +839,11 @@ async function pqMoverFuera(items) {
   if (mvNoSe() || pq.guardando || !items.length) return;
   pq.guardando = true;
   $('#pqFueraTodas').disabled = true;
+  // El foco vuelve a la fila que queda en el lugar de la movida (o a la lista): sin eso se pierde al sacarla
+  const lis = [...$('#pqFueraLista').children];
+  const idx = lis.findIndex((li) => li.contains(document.activeElement));
   let n = 0;
+  let fallo = false;
   try {
     for (const x of items) {
       await pqEnviarMover(x.numero, x.titulo, x.estado);
@@ -837,15 +851,21 @@ async function pqMoverFuera(items) {
       n++;
     }
   } catch (err) {
+    fallo = true;
     console.error(err);
     avisar(err && err.name === 'NotAllowedError' ? 'Falta el permiso para escribir en la carpeta del equipo: usa «Volver a leer» arriba y acepta «Ver y editar archivos».'
       : 'No se pudo pedir' + (n ? ' todo (' + n + ' de ' + items.length + ' pedidas)' : '') + ': revisa que OneDrive esté funcionando y vuelve a intentarlo.');
   } finally {
     pq.guardando = false;
   }
-  if (!n) { pqPintarFuera(); return; }
-  rcPedirVuelta().catch((err) => console.error(err));
+  if (n) rcPedirVuelta().catch((err) => console.error(err));
   pqPintarFuera();
+  if ($('#dlgPqFuera').open && idx >= 0) {
+    const resto = $('#pqFueraLista').children;
+    const b = resto.length ? resto[Math.min(idx, resto.length - 1)].querySelector('button') : null;
+    (b || $('#pqFueraX')).focus();
+  }
+  if (!n || fallo) return;
   avisar((n === 1 ? 'La carpeta del N° ' + items[0].numero + ' se mueve' : pl(n, 'carpeta se mueve', 'carpetas se mueven'))
     + (rcSinTareaDePedidos() ? ' en la próxima vuelta del procesador.' : ' en unos minutos.'));
 }

@@ -39,7 +39,9 @@ import intercambio
 RUTA_REPOSITORIO = (intercambio.CARPETA_PUBLICADO, "formulador")
 TIPO_ENTREGA = "formulacion"
 DESTINO = "formulador"
-MAX_HISTORIA = 50
+# La misma del Formulador (js/compartida.js, MAX_HISTORIA): con menos, una versión escrita aquí corta la historia que la
+# fusión automática del Formulador usa para saber de qué versión viene un cambio (2026-11-25; antes 50)
+MAX_HISTORIA = 200
 # Cómo se dice cada estado en el Formulador (js/store.js, ESTADOS) y en la Planilla de Ingreso. EN_PLANILLA es la misma
 # tabla de js/flujo.js del Formulador (tests/test_formulaciones.py la compara si ese repositorio está al lado).
 EN_PLANILLA = {"Borrador": "Evaluación", "En revisión": "Evaluación", "Enviada": "Ofertado", "Adjudicada": "Adjudicado",
@@ -47,6 +49,10 @@ EN_PLANILLA = {"Borrador": "Evaluación", "En revisión": "Evaluación", "Enviad
 AL_FORMULADOR = {"Evaluación": "En revisión", "Ofertado": "Enviada", "Adjudicado": "Adjudicada", "Cerrado": "Cerrada",
                  "No adjudicado": "Perdida", "Descartado": "Descartada"}
 FIRMA_PLANILLA = "Planilla de Ingreso"
+# El orden de los estados: la Planilla que se pone al día tarde (una sugerencia del Formulador que alguien pasó después)
+# no hace retroceder a un presupuesto que ya avanzó solo
+ETAPA = {"Evaluación": 0, "Ofertado": 1, "Adjudicado": 2, "No adjudicado": 2, "Descartado": 2, "Cerrado": 3}
+ESCRITOS = "_escritos"      # en 'vistos': lo escrito en el repositorio que falta confirmar (OneDrive puede perderlo)
 ESPERA_EDICION = timedelta(minutes=10)    # un presupuesto que alguien está editando espera a la vuelta siguiente
 _CON_NUMERO = re.compile(r"^\s*(\d{1,5})\s*\.")
 # Qué revisó el usuario con Claude: {"revisadas": {uid: modificado}, "fecha": iso}.
@@ -254,22 +260,40 @@ def alinear_estados(raiz: Path, requerimientos: list[dict], vistos: dict | None,
     'omitir': los N° con un cambio de estado del Formulador que todavía espera en el buzón (una sugerencia que alguien
     no ha decidido): se vuelven a mirar cuando ya no espera. Un presupuesto editado hace menos de ESPERA_EDICION espera
     a la vuelta siguiente, para no cruzarse con quien lo tiene abierto, y uno cuya carpeta o código dicen otro N° no se
-    toca: ese vínculo está en duda."""
+    toca: ese vínculo está en duda.
+
+    No retrocede (ETAPA): si el presupuesto ya está más adelante que el estado nuevo de la Planilla y la Planilla no
+    estaba con él (se está poniendo al día, por ejemplo con una sugerencia antigua), no se toca. Si estaban iguales y la
+    Planilla vuelve atrás (alguien reabrió el proyecto), sí. Lo escrito queda en vistos['_escritos'] hasta verlo en el
+    repositorio: si OneDrive lo perdió en un conflicto con una versión anterior, se vuelve a escribir."""
     ahora = ahora or datetime.now().astimezone()
     actuales = {str(r["numero"]): r["estado"] for r in requerimientos
                 if isinstance(r.get("numero"), int) and isinstance(r.get("estado"), str) and r.get("estado")}
     if vistos is None:
         return actuales, []
     nuevos, cambiados = dict(vistos), []
-    cambiaron = {n: e for n, e in actuales.items() if vistos.get(n) != e and int(n) not in omitir}
-    if not cambiaron:
-        return nuevos, cambiados
-    vigentes = vigentes_por_req(leer_repositorio(raiz))
+    escritos = dict(nuevos.pop(ESCRITOS, None) or {})
+    vigentes = None
+    if escritos:
+        vigentes = vigentes_por_req(leer_repositorio(raiz))
+        for n, x in list(escritos.items()):
+            item = vigentes.get(int(n))
+            mod, sello = (_instante(item["mod"]) if item else None), _instante(x.get("sello"))
+            if item is None or sello is None or mod is None or mod >= sello:   # instantes: el Formulador escribe en UTC
+                escritos.pop(n)               # quedó, o alguien lo cambió después: manda esa persona
+            else:
+                nuevos[n] = x.get("antes", "")  # se perdió: esta vuelta lo vuelve a mirar, desde lo que había
+                escritos.pop(n)
+    cambiaron = {n: e for n, e in actuales.items() if nuevos.get(n) != e and int(n) not in omitir}
+    if cambiaron:
+        vigentes = vigentes if vigentes is not None else vigentes_por_req(leer_repositorio(raiz))
     for n, estado in cambiaron.items():
         item = vigentes.get(int(n))
         d = item["datos"] if item else {}
-        if (n not in vistos or item is None or estado not in AL_FORMULADOR
-                or EN_PLANILLA.get(d.get("estado") or "Borrador") == estado or _numero_propio(d) not in (None, int(n))):
+        propio = EN_PLANILLA.get(d.get("estado") or "Borrador")
+        atrasada = (estado in ETAPA and propio in ETAPA and ETAPA[estado] < ETAPA[propio] and nuevos.get(n) != propio)
+        if (n not in vistos or item is None or estado not in AL_FORMULADOR or propio == estado or atrasada
+                or _numero_propio(d) not in (None, int(n))):
             nuevos[n] = estado
             continue
         modificado = _instante(item["mod"])
@@ -279,8 +303,11 @@ def alinear_estados(raiz: Path, requerimientos: list[dict], vistos: dict | None,
             sello = ahora.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
             _escribir(raiz, dict(d, estado=AL_FORMULADOR[estado], modificado=sello, modificadoPor=FIRMA_PLANILLA),
                       item["historia"] + [item["mod"]], item["resumen"], FIRMA_PLANILLA)
+            escritos[n] = {"sello": sello, "estado": estado, "antes": nuevos.get(n, "")}
         nuevos[n] = estado
         cambiados.append(f"{titulo_legible(d)} → {AL_FORMULADOR[estado]}")
+    if escritos:
+        nuevos[ESCRITOS] = escritos
     return nuevos, cambiados
 
 

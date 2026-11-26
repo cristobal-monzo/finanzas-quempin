@@ -254,6 +254,7 @@ detalle en [docs/carpetas-oferta.md](docs/carpetas-oferta.md)):
 - **Mover** (`mover-carpeta`): `DESTINOS` dice adónde va cada estado; al adjudicarse, además la copia en Gestión.
   `PQ_CARPETA` del Portal es la misma tabla (la compara `tests/portal/test_portal_planilla.py`).
 - **Fuera de lugar**: `proyectos.json` publica `ofertas` y `fueraDeLugar`; el Portal lo muestra arriba de Requerimientos.
+  Una carpeta con el N° pero cuyo nombre no parece de su fila (un N° viejo) no se mueve sola: `carpetasDudosas`.
 - **El Estado al Formulador** (paso `estados-formulador`): lo que cambia en la Planilla pasa al presupuesto como versión
   nueva. `EN_PLANILLA` es la de `js/flujo.js` del Formulador (`test_carpetas_oferta.py` las compara con el repo al lado).
 - `py -3.14 carpetas_oferta.py` dice qué haría y lista lo fuera de lugar, sin tocar nada.

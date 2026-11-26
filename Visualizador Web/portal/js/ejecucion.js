@@ -1995,7 +1995,7 @@ function ejCabEl(m) {
   // «Cerrado» aquí mismo (2026-11-10, pedido del usuario), o solo llevar su carpeta si ya lo está
   const cierre = ejCierreDe(t);
   if (cierre && !soloLectura()) {
-    const b = ejBoton(cierre.yaCerrado ? 'Llevar su carpeta a entregados' : 'Marcar «Cerrado»', 'cx-enlace', () => ejAbrirCerrar(m), 'bandera');
+    const b = ejBoton(cierre.yaCerrado ? ejCierreTit(cierre) : 'Marcar «Cerrado»', 'cx-enlace', () => ejAbrirCerrar(m), 'bandera');
     b.dataset.foco = 'marcar-cerrado';
     acc.append(b);
   }
@@ -5115,29 +5115,37 @@ async function ejGuardarNombre(e) {
 }
 /* ---- «Cerrado» desde Proyectos en ejecución (2026-11-10) -------------------------------------------------------------
    Pedido del usuario: que aquí también se pueda cambiar el estado a «Cerrado». Es el mismo cambio que hace Requerimientos
-   (un editar-requerimiento al buzón, pqEnviar) y la misma opción de llevar su carpeta de Gestión de Proyectos a
-   «0 Proyectos Entregados <año>» (pqEnviarMover). Si la Planilla ya dice «Cerrado» y su carpeta sigue en la raíz de
-   Gestión, el botón solo ofrece moverla. Sin N° de requerimiento o sin fila en la Planilla, no se ofrece. */
+   (un editar-requerimiento al buzón, pqEnviar) y la misma opción de llevar sus carpetas adonde dice «Cerrado»
+   (pqEnviarMover; desde el 2026-11-25 con la regla de Requerimientos, pqCarpetaPara: la de Gestión a «0 Proyectos
+   Entregados <año>» y la de Formulación a «0 OFERTAS ADJUDICADAS», y el diálogo dice las dos). Si la Planilla ya dice
+   «Cerrado» y alguna sigue fuera de lugar, el botón solo ofrece moverla. Sin N° o sin fila en la Planilla, no se ofrece. */
 function ejCierreDe(t) {
   if (!rc.dir || !t || !t.req || !t.planilla) return null;
   const yaCerrado = texto(t.planilla.estado) === 'Cerrado';
-  const carpeta = pqCarpetaGestion(t.req);
-  if (yaCerrado && !carpeta) return null;
-  return { yaCerrado, carpeta, antes: texto(t.planilla.estado) || null };
+  const x = pqCarpetaPara(t.req, t.planilla, 'Cerrado');
+  if (yaCerrado && !x.hay) return null;
+  return { yaCerrado, x, antes: texto(t.planilla.estado) || null };
 }
+// Ya «Cerrado»: lo que falta mover, dicho corto (botón y título del diálogo)
+const ejCierreTit = (c) => (c.x.plan.gestion && c.x.plan.gestion.accion === 'mover' ? 'Llevar su carpeta a entregados' : 'Mover su carpeta');
 function ejAbrirCerrar(m) {
   const c = ejCierreDe(m.t);
   if (!c) return;
   ej.cerrar = { clave: m.t.clave, yaCerrado: c.yaCerrado };
-  $('#dlgEjCerrarTit').textContent = c.yaCerrado ? 'Llevar su carpeta a entregados' : 'Marcar «Cerrado» · N° ' + m.t.req;
+  $('#dlgEjCerrarTit').textContent = c.yaCerrado ? ejCierreTit(c) : 'Marcar «Cerrado» · N° ' + m.t.req;
   $('#ejCerPista').textContent = c.yaCerrado ? 'Requerimientos ya lo dice «Cerrado».'
     : 'En Requerimientos pasa de «' + (c.antes || 'sin estado') + '» a «Cerrado»: ya se entregó.';
   const caja = $('#ejCerMover');
-  caja.disabled = !c.carpeta || c.yaCerrado;
-  caja.checked = !!c.carpeta;
-  $('#ejCerMoverTxt').textContent = c.carpeta ? 'Mover su carpeta a «' + PQ_ENTREGADOS + ' ' + new Date().getFullYear() + '»'
-    : 'Sin carpeta con el N° ' + m.t.req + ' en Gestión de Proyectos';
-  $('#ejCerMoverDe').textContent = c.carpeta ? 'Gestión de Proyectos › ' + c.carpeta : 'Si ya está en «' + PQ_ENTREGADOS + '», no hay nada que mover.';
+  const x = c.x;
+  caja.disabled = !x.hay || c.yaCerrado;
+  caja.checked = !!x.hay;
+  $('#ejCerMoverTxt').textContent = x.hay ? 'Mover su carpeta a ' + pqDestinoTxt(x)
+    : x.repetida ? 'Hay más de una carpeta con el N° ' + m.t.req + ': muévela a mano'
+      : x.dudosa ? 'La carpeta «' + x.nombre + '» no parece de este requerimiento: muévela a mano'
+        : x.sin ? 'Sin carpeta con el N° ' + m.t.req + ' en Formulación ni en Gestión de Proyectos'
+          : 'Su carpeta ya está donde corresponde';
+  $('#ejCerMoverDe').textContent = x.hay ? pqDetalleTxt(x).join(' · ') : '';
+  $('#ejCerMoverDe').hidden = !x.hay;
   $('#ejCerGuardar').textContent = c.yaCerrado ? 'Mover la carpeta' : 'Marcar «Cerrado»';
   $('#ejCerGuardar').disabled = false;
   $('#dlgEjCerrar').showModal();
@@ -5151,7 +5159,7 @@ async function ejGuardarCerrar(e) {
   const t = m.t;
   const c = ejCierreDe(t);
   if (!c) { $('#dlgEjCerrar').close(); return; }
-  const mover = $('#ejCerMover').checked && c.carpeta ? c.carpeta : null;
+  const mover = $('#ejCerMover').checked && c.x.hay;
   const titulo = texto(t.planilla.titulo);
   const numero = t.planilla.numero;               // el de la Planilla, entero (t.req viene como texto)
   ej.enviando = true;
@@ -5162,7 +5170,7 @@ async function ejGuardarCerrar(e) {
       if (titulo) req.titulo = titulo;
       await pqEnviar('editar-requerimiento', { requerimiento: req, cambios: { estado: 'Cerrado' }, reemplaza: { estado: c.antes } });
     }
-    if (mover) await pqEnviarMover(numero, titulo);
+    if (mover) await pqEnviarMover(numero, titulo, 'Cerrado');
   } catch (err) {
     console.error(err);
     ej.enviando = false;
@@ -5175,7 +5183,7 @@ async function ejGuardarCerrar(e) {
   ej.enviando = false;
   $('#dlgEjCerrar').close();
   if (mover) rcPedirVuelta().catch((err) => console.error(err));
-  const carpeta = mover ? ' Su carpeta pasa a «' + PQ_ENTREGADOS + '» ' + (rcSinTareaDePedidos() ? 'en la próxima vuelta del procesador.' : 'en unos minutos.') : '';
+  const carpeta = mover ? ' Su carpeta pasa a ' + pqDestinoTxt(c.x) + ' ' + (rcSinTareaDePedidos() ? 'en la próxima vuelta del procesador.' : 'en unos minutos.') : '';
   avisar(c.yaCerrado ? 'N° ' + t.req + ':' + carpeta : 'N° ' + t.req + ' marcado «Cerrado». Pasa al Excel en un par de minutos.' + carpeta);
   ejPintar();
   pintarInicioRecorrido();

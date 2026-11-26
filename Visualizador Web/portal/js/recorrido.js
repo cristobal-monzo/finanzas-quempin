@@ -635,6 +635,7 @@ async function rcLeer(dir) {
     // pedidos de moverlas que todavía esperan: la casilla «Mover su carpeta» y el aviso de Requerimientos
     ofertas: lista(cruce, 'ofertas'),
     fueraDeLugar: lista(cruce, 'fueraDeLugar'),
+    carpetasDudosas: lista(cruce, 'carpetasDudosas'),   // N° cuya carpeta no parece de esa fila: no se ofrece moverla
     moverPedidos: buzon.filter((m) => m && m.tipo === 'mover-carpeta' && m.destino === 'carpetas-proyecto'),
     // Si el procesador ya publica esas listas: sin ellas, «Proyectos en ejecución» sigue con lo que el Recorrido pone en Ejecución
     hayGestion: !!(cruce && cruce.datos && Array.isArray(cruce.datos.gestion)),

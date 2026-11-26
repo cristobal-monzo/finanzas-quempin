@@ -125,6 +125,43 @@ def numero_de(nombre: str) -> int | None:
     return int(m.group(1)) if m and m.group(1).isdigit() and int(m.group(1)) > 0 else None
 
 
+# Palabras que no distinguen un proyecto de otro: dos títulos que solo comparten estas no son el mismo
+_GENERICAS = frozenset("""mantencion mantenimiento servicio servicios preventiva preventivo correctiva correctivo caldera calderas
+    sistema sistemas sala salas instalacion reparacion reparaciones suministro adquisicion para del los las con por una uno
+    calefaccion equipo equipos proyecto obra obras prev mant mtto hospital central centrales termica termicas agua
+    convenio licitacion contrato año ano anual""".split())
+
+
+def _palabras(texto) -> set[str]:
+    """Las palabras de 3 letras o más, sin tildes ni mayúsculas, por sus 6 primeras letras («crematorio» y
+    «crematorios», «mantención» y «mantenimiento» cuentan como la misma)."""
+    t = unicodedata.normalize("NFKD", str(texto or "")).encode("ascii", "ignore").decode().casefold().replace("'", "")
+    return {w[:6] for w in re.findall(r"[a-z0-9]{3,}", t)}
+
+
+def coincide(nombre: str, fila: dict | None, minimo: int = 1) -> bool:
+    """Si la carpeta parece ser de esa fila: su nombre (sin el N°) y el título, cliente o ubicación de la fila comparten
+    una palabra que distingue (2026-11-25: 25 de 138 carpetas con N° no calzan, casi todas de antes del corrimiento de N°
+    de octubre; «29. Concepción - Hornos crematorios» es hoy el N° 31, y el 29 es «Mantención de Climatización DC 235»).
+    Ante la duda, no: lo decide una persona. 'minimo': cuántas palabras que distinguen tienen que compartir (2 para una
+    carpeta sin N°, que no tiene otra pista)."""
+    if not fila:
+        return False
+    m = proyectos._CARPETA_CON_NUMERO.match(nombre)
+    propio = _palabras(m.group(2) if m else nombre)
+    de_fila = _palabras(" ".join(str(fila.get(k) or "") for k in ("titulo", "cliente", "ubicacion")))
+    # Todas sus palabras están en la fila, aunque sean comunes («108. Servicio de mantención preventiva a caldera...»)
+    if len(propio) >= 2 and propio <= de_fila:
+        return True
+    return len((propio & de_fila) - {w[:6] for w in _GENERICAS}) >= minimo
+
+
+def dudosos(reqs: dict, en_f: dict, en_g: dict) -> set[int]:
+    """Los N° con alguna carpeta cuyo nombre no se parece a su fila (coincide): nada se mueve solo."""
+    return {n for idx in (en_f, en_g) for n, rutas in idx.items() if n in reqs
+            and any(not coincide(r[-1], reqs[n]) for r in rutas)}
+
+
 # ── DÓNDE ESTÁ ───────────────────────────────────────────────────────────────
 
 def _hijas(carpeta: Path) -> list[Path]:
@@ -153,6 +190,24 @@ def indice(biblioteca: Path | None) -> dict[int, list[list[str]]]:
 
     if biblioteca is not None and Path(biblioteca).is_dir():
         recorrer(Path(biblioteca), [], 1)
+    return salida
+
+
+def sin_numero(biblioteca: Path | None) -> list[str]:
+    """Los nombres de las carpetas sin N° adelante de la raíz y de los grupos «0 …» (hasta tres niveles): el equipo a
+    veces crea la de una oferta sin N° («JUNJI 3° CORRECTIVOS»), y crear otra la duplicaría."""
+    salida: list[str] = []
+
+    def recorrer(carpeta: Path, nivel: int):
+        for h in _hijas(carpeta):
+            if h.name.startswith(proyectos.CARPETAS_AGRUPADORAS):
+                if nivel < 3:
+                    recorrer(h, nivel + 1)
+            elif proyectos._CARPETA_CON_NUMERO.match(h.name) is None:
+                salida.append(h.name)
+
+    if biblioteca is not None and Path(biblioteca).is_dir():
+        recorrer(Path(biblioteca), 1)
     return salida
 
 
@@ -231,12 +286,13 @@ def _con_copia(ges: Path | None, ruta_g: list[str] | None) -> bool:
 
 def fuera_de_lugar(reqs: dict, en_f: dict, en_g: dict, ges: Path | None, ahora: datetime, omitir=()) -> list[dict]:
     """[{'req', 'carpeta', 'estado', 'detalle'}]: las carpetas con N° que no están donde dice el Estado de su fila.
-    Sin las de un N° con dos carpetas (lo decide una persona), las de 'omitir' (un «mover» que ya espera) ni la carpeta
+    Sin las de un N° con dos carpetas o con una que no se parece a su fila (coincide: lo decide una persona), las de 'omitir' (un «mover» que ya espera) ni la carpeta
     de Gestión que falta o le falta la copia de la oferta, si eso es lo único (no está fuera de lugar)."""
     salida = []
+    dudas = dudosos(reqs, en_f, en_g)
     for n in sorted(set(en_f) | set(en_g)):
         fila = reqs.get(n)
-        if fila is None or n in omitir or fila.get("estado") not in DESTINOS:
+        if fila is None or n in omitir or n in dudas or fila.get("estado") not in DESTINOS:
             continue
         rutas_f, rutas_g = en_f.get(n) or [], en_g.get(n) or []
         if len(rutas_f) > 1 or len(rutas_g) > 1:
@@ -284,12 +340,13 @@ def _mover(origen: Path, grupo: Path) -> None:
 
 
 def _archivos(carpeta: Path) -> tuple[list[Path], int]:
-    """(archivos relativos, bytes), sin desktop.ini (lo pone Windows u OneDrive en cada carpeta)."""
+    """(archivos relativos, bytes), sin desktop.ini (lo pone Windows u OneDrive en cada carpeta) ni los «~$» que deja
+    Office con un archivo abierto (aparecen y desaparecen entre dos vueltas)."""
     salida, total = [], 0
     for base, dirs, nombres in os.walk(carpeta):
         dirs.sort()
         for n in sorted(nombres):
-            if n.lower() == "desktop.ini":
+            if n.lower() == "desktop.ini" or n.startswith("~$"):
                 continue
             ruta = Path(base) / n
             salida.append(ruta.relative_to(carpeta))
@@ -317,6 +374,15 @@ def copiar_oferta(origen: Path, carpeta_gestion: Path, segundos: float = SEGUNDO
             raise SigueDespues(f"copiando «{origen.name}» a Gestión de Proyectos: sigue en la próxima vuelta")
         destino.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(origen / rel, destino)
+    # Lo que se copió en una vuelta anterior y ya no está en el original (alguien lo borró o renombró): sale de la copia
+    # a medias, que es nuestra; si no, la copia nunca quedaría igual
+    esperados = set(archivos)
+    for rel in _archivos(temporal)[0]:
+        if rel not in esperados:
+            (temporal / rel).unlink()
+    for resto in temporal.rglob("~$*"):         # uno que alcanzó a copiarse antes del 2026-11-25
+        if resto.is_file():
+            resto.unlink()
     copia, bytes_copia = _archivos(temporal)
     if len(copia) != len(archivos) or bytes_copia != total:
         raise OSError("la copia no quedó igual al original")
@@ -376,9 +442,11 @@ def moviendo(raiz: Path) -> set[int]:
 # ── 1. LAS CARPETAS NUEVAS ───────────────────────────────────────────────────
 
 def crear_nuevas(reqs: dict, form: Path, en_f: dict, en_g: dict, estado: dict, ahora: datetime, r: dict,
-                 simular: bool = False) -> None:
+                 simular: bool = False, sueltas: list[str] | None = None) -> None:
     """La carpeta de cada fila nueva que siga sin una después de ESPERA_CREAR, en el grupo de Formulación de su estado
-    (Gestión no: eso lo pide una persona). La primera vez todo queda conocido."""
+    (Gestión no: eso lo pide una persona). La primera vez todo queda conocido. 'sueltas': los nombres de las carpetas sin
+    N° de las dos bibliotecas (sin_numero); si una se parece a la fila (coincide), el equipo ya la creó: no se duplica.
+    Una postventa no lleva carpeta propia: se trabaja en la del proyecto original (2026-11-06)."""
     primera = "conocidos" not in estado
     conocidos = set(estado.get("conocidos") or [])
     esperan = estado.setdefault("esperanCarpeta", {})
@@ -386,7 +454,8 @@ def crear_nuevas(reqs: dict, form: Path, en_f: dict, en_g: dict, estado: dict, a
         if n in conocidos:
             continue
         fila = reqs[n]
-        if primera or n in en_f or n in en_g or fila.get("estado") in SIN_CARPETA_NUEVA:
+        if (primera or n in en_f or n in en_g or fila.get("estado") in SIN_CARPETA_NUEVA or fila.get("canal") == "Postventa"
+                or any(coincide(x, fila, minimo=2) for x in sueltas or ())):
             conocidos.add(n)
             esperan.pop(str(n), None)
             continue
@@ -478,6 +547,13 @@ def atender_mover(raiz: Path, reqs: dict, form: Path, ges: Path | None, en_f: di
             archivar(m, "rechazado", f"N° {n}: hay más de una carpeta con ese N° ({nombres}); lo decide una persona, "
                                      "no se movió nada.")
             continue
+        # Una carpeta con el N° de antes del corrimiento de octubre es de otro proyecto: moverla la llevaría a otro lugar
+        ajenas = [x[-1] for x in rutas_f + rutas_g if not coincide(x[-1], fila or {"titulo": m["requerimiento"].get("titulo")})]
+        if ajenas:
+            archivar(m, "rechazado", f"N° {n}: la carpeta «{ajenas[0]}» tiene ese N° pero no parece ser de "
+                                     f"«{(fila or {}).get('titulo') or m['requerimiento'].get('titulo') or 'esa fila'}»; "
+                                     "no se movió nada. Muévela a mano o corrige el N° de su nombre.")
+            continue
         ruta_f = rutas_f[0] if rutas_f else None
         ruta_g = rutas_g[0] if rutas_g else None
         if ruta_f is None and ruta_g is None:
@@ -543,7 +619,7 @@ def vuelta(raiz: Path, form: Path | None, ges: Path | None, previo: dict | None,
         return "la Planilla todavía no está publicada", estado, []
     r = {"creadas": [], "movidas": [], "esperan": [], "sinMover": [], "avisos": []}
     en_f, en_g = indice(form), indice(ges)
-    crear_nuevas(reqs, Path(form), en_f, en_g, estado, ahora, r, simular)
+    crear_nuevas(reqs, Path(form), en_f, en_g, estado, ahora, r, simular, sin_numero(form) + sin_numero(ges))
     atender_mover(raiz, reqs, Path(form), ges, en_f, en_g, ahora, r, simular, segundos)
     partes = []
     if r["creadas"]:

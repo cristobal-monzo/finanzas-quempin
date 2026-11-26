@@ -363,12 +363,14 @@ def cruzar(requerimientos: list[dict], proyectos_af: list[dict], repositorio: li
 
 def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | None = None,
              gestion: list[dict] | None = None, entregados: list[dict] | None = None,
-             ofertas: list[dict] | None = None, fuera_de_lugar: list[dict] | None = None) -> dict:
+             ofertas: list[dict] | None = None, fuera_de_lugar: list[dict] | None = None,
+             carpetas_dudosas: list[str] | None = None) -> dict:
     """Arma el cruce desde lo publicado en 'raiz' y lo publica. gestion: las
     carpetas de la raíz de Gestión (proyectos_en_gestion); entregados: las de sus
     «0 Proyectos Entregados <año>» (proyectos_entregados); ofertas y fuera_de_lugar:
     dónde está cada carpeta con N° en Formulación y las que no están donde dice su
-    Estado (carpetas_oferta.py, 2026-11-25; sin la biblioteca, no van). Devuelve un resumen
+    Estado (carpetas_oferta.py, 2026-11-25; sin la biblioteca, no van); carpetas_dudosas: los N° con una
+    carpeta cuyo nombre no parece de su fila (carpetas_oferta.dudosos). Devuelve un resumen
     {'proyectos', 'sin_tag_req', 'conflictos', 'gestion', 'entregados'}."""
     datos = cruzar(
         _datos(raiz, "requerimientos").get("requerimientos") or [],
@@ -387,6 +389,8 @@ def publicar(raiz: Path, carpetas: dict | None = None, rutas_ordenes_cc: dict | 
         datos["ofertas"] = ofertas
     if fuera_de_lugar is not None:
         datos["fueraDeLugar"] = fuera_de_lugar
+    if carpetas_dudosas is not None:
+        datos["carpetasDudosas"] = carpetas_dudosas
     intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)
     return {"proyectos": len(datos["proyectos"]), "sin_tag_req": len(datos["sinVincular"]["tags"]),
             "conflictos": len(datos["conflictos"]), "gestion": len(datos["gestion"]),

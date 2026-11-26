@@ -526,11 +526,15 @@ def paso_proyectos(raiz: Path, previo, forzar):
     raiz_formulacion = ubicacion.biblioteca(ubicacion.BIBLIOTECA_FORMULACION, AQUI)
     en_f, en_g = carpetas_oferta.indice(raiz_formulacion), carpetas_oferta.indice(raiz_gestion)
     ofertas = [{"req": str(n), "ruta": "/".join(ruta)} for n, rutas in sorted(en_f.items()) for ruta in rutas]
-    fuera = carpetas_oferta.fuera_de_lugar(carpetas_oferta.leer_planilla(raiz), en_f, en_g, raiz_gestion,
+    reqs = carpetas_oferta.leer_planilla(raiz)
+    fuera = carpetas_oferta.fuera_de_lugar(reqs, en_f, en_g, raiz_gestion,
                                            datetime.now().astimezone(), carpetas_oferta.moviendo(raiz))
+    # Las de un N° cuya carpeta no parece de esa fila (un N° viejo que hoy es de otro proyecto): el Portal no ofrece moverlas
+    dudosas = [str(n) for n in sorted(carpetas_oferta.dudosos(reqs, en_f, en_g))]
+    con_f = raiz_formulacion is not None
     r = proyectos.publicar(raiz, carpetas, gestion=gestion, entregados=entregados,
-                           ofertas=ofertas if raiz_formulacion is not None else None,
-                           fuera_de_lugar=fuera if raiz_formulacion is not None else None)
+                           ofertas=ofertas if con_f else None, fuera_de_lugar=fuera if con_f else None,
+                           carpetas_dudosas=dudosas if con_f else None)
     return (f"{r['proyectos']} proyectos; {r['sin_tag_req']} TAG sin N° de requerimiento; "
             f"{r['conflictos']} conflicto(s); {r['gestion']} en Gestión de Proyectos, "
             f"{r['entregados']} entregados, {len(fuera)} carpeta(s) fuera de lugar"), "ok"

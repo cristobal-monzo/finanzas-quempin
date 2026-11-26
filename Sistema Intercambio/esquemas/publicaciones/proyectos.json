@@ -168,6 +168,14 @@
           "detalle"
         ]
       }
+    },
+    "carpetasDudosas": {
+      "type": "array",
+      "description": "Desde el 2026-11-25: los N° (texto) con una carpeta que lleva ese N° pero cuyo nombre no parece de su fila en la Planilla (carpetas_oferta.dudosos; por ejemplo un N° viejo que hoy es de otro requerimiento). El Portal no ofrece moverlas: se mueven a mano.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     }
   },
   "required": [

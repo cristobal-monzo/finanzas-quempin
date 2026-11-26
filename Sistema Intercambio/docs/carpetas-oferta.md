@@ -29,6 +29,13 @@ Medido en las carpetas reales de las dos bibliotecas (2026-11-02 y de nuevo el 2
   tabla y el resultado de `pqPlanCarpeta` con `plan()` en 126 casos.
 - Las carpetas se reconocen por el N° adelante (la regla de `proyectos._CARPETA_CON_NUMERO`), en la raíz y en los grupos
   «0 …» hasta tres niveles. Un N° temporal («001t») no es de la Planilla. Las carpetas sin N° no se pueden cruzar.
+- **Una carpeta con el N° pero de otro proyecto no se mueve sola** (`coincide`, `dudosos`): su nombre (sin el N°) y el
+  título, cliente o ubicación de la fila tienen que compartir una palabra que distingue (por sus 6 primeras letras, sin
+  tildes; «mantención», «servicio», «año» y otras comunes no cuentan), o todas sus palabras estar en la fila. Medido el
+  2026-11-25: 24 N° no calzan, casi todos de antes del corrimiento de N° de octubre («29. Concepción - Hornos
+  crematorios» es hoy el N° 31; el 29 es otra cosa). Esos N° no van a la lista «fuera de lugar», `proyectos.json` los
+  publica en `carpetasDudosas` (el Portal deshabilita la casilla: «muévela a mano») y un `mover-carpeta` de uno queda
+  `rechazado` con el nombre de la carpeta. Lo decide una persona: moverla a mano o corregir el N° de su nombre.
 
 ## Lo que hace cada vuelta (paso `carpetas-oferta` del procesador, cada 5 minutos)
 
@@ -36,15 +43,18 @@ Medido en las carpetas reales de las dos bibliotecas (2026-11-02 y de nuevo el 2
   para que un Excel adentro se abra aun en 0 Ofertas Cerradas) con ANTECEDENTES, DOCUMENTOS EN TRABAJO, ENTREGABLES y
   VISITA TÉCNICA, en el grupo de Formulación de su estado, después de `ESPERA_CREAR` (15 minutos: si alguien la creó a
   mano en otro computador, OneDrive la trae entretanto). Gestión no: eso lo pide una persona. La primera vuelta dejó todo
-  lo que había como conocido (`conocidos`, en `procesador_estado.json`); lo que entra «No adjudicado» o «Descartado» y lo
-  que no tiene título no lleva carpeta.
+  lo que había como conocido (`conocidos`, en `procesador_estado.json`); lo que entra «No adjudicado» o «Descartado», lo
+  que no tiene título y una postventa (canal «Postventa»: usa la carpeta de su proyecto original) no llevan carpeta.
+  Tampoco una fila que ya tiene una carpeta **sin N°** que se le parece (`sin_numero`, `coincide` con 2 palabras: el
+  equipo a veces la crea así, «JUNJI 3° CORRECTIVOS»; 6 filas el 2026-11-25).
 - **Mover** (mensaje `mover-carpeta`): se atiende cuando la Planilla dice ese estado o el cambio espera en el buzón. Si
   no, espera 30 minutos (OneDrive puede traer el mover antes que el cambio) o mientras haya otro cambio de esa fila en el
   buzón; después queda `descartado`. Del mismo N° vale el último (`reemplazado`). Dos carpetas con el mismo N° →
   `rechazado`, lo decide una persona. Sin carpeta: con `crear` se crea; si no, `rechazado`. Con algo abierto reintenta
   7 días. Primero Gestión, después el original: si la copia falla, nada se movió. La copia se arma en «Formulación
   (copiando)» y se retoma en la vuelta siguiente si no alcanza (`SEGUNDOS_POR_VUELTA`, 2 minutos). Nunca borra ni pisa:
-  si ya hay otra con ese nombre en el destino, no la mueve (`YaExiste` → `rechazado`).
+  si ya hay otra con ese nombre en el destino, no la mueve (`YaExiste` → `rechazado`). La copia salta los «~$» que deja
+  Office con un archivo abierto, y lo que una vuelta anterior copió y ya no está en el original sale de la copia a medias.
 - Hasta el 2026-11-25 los `mover-carpeta` (solo «Cerrado») los atendía `cierre_entregados.py`; ese módulo quedó solo con
   lo contrario: lo que alguien movió a mano a los entregados pasa a «Cerrado» en la Planilla.
 
@@ -57,7 +67,7 @@ El paso `proyectos` publica en `proyectos.json`:
   dos carpetas, las que ya tienen un `mover-carpeta` en el buzón ni la carpeta de Gestión hecha a mano a la que solo le
   falta la copia de la oferta (eso no es estar fuera de lugar; se completa si alguien la mueve).
 
-Medido el 2026-11-25: 65 fuera de lugar, casi todas ofertas «No adjudicado» o «Descartado» que siguen en «0 OFERTAS
+Medido el 2026-11-25: 52 fuera de lugar (sin los 24 dudosos), casi todas ofertas «No adjudicado» o «Descartado» que siguen en «0 OFERTAS
 PRESENTADAS». El Portal las muestra con «Mover las N».
 
 ## El Estado al Formulador (`formulaciones.alinear_estados`, paso `estados-formulador`)
@@ -72,6 +82,16 @@ No se toca: lo que ya estaba distinto la primera vez (se anota lo que hay), un p
 siguiente), uno cuyo código o carpeta dicen otro N° (2026-11-02: «314. UA Reactor» unido al 313) y un N° con un aviso de
 estado del Formulador que todavía espera en el buzón (una sugerencia sin decidir). Desde el 2026-11-25 el Formulador
 traduce «Cerrada» a «Cerrado» (antes a «Adjudicado»), para que los dos sentidos calcen.
+
+- **No retrocede** (`ETAPA`: Evaluación, Ofertado, Adjudicado/No adjudicado/Descartado, Cerrado): si el presupuesto ya
+  está más adelante que el Estado nuevo de la Planilla y la Planilla no estaba con él (se pone al día tarde, por ejemplo
+  con una sugerencia antigua), no se toca. Si estaban iguales y la Planilla vuelve atrás (alguien reabrió el proyecto),
+  sí pasa.
+- **Lo que OneDrive pierde se vuelve a escribir**: lo escrito queda en `_escritos` (en el estado del paso) hasta verlo en el
+  repositorio. Si la versión que hay es anterior a lo escrito (un conflicto la dejó), se mira de nuevo en esa vuelta; si
+  es posterior, alguien lo cambió después y manda esa persona.
+- La historia de cada versión guarda hasta 200 (`MAX_HISTORIA`, la del Formulador): con menos, la fusión automática del
+  Formulador perdería de qué versión viene un cambio.
 
 ## Probar y revisar
 

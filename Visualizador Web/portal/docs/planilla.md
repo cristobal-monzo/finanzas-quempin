@@ -50,7 +50,9 @@ que de verdad se usan).
   que ya existe aparece `#pqMoverCampo` (`pqVerMover`): «Mover su carpeta a «…»» con el detalle de dónde a dónde. Lo calcula
   `pqCarpetaPara` con `PQ_CARPETA` (la tabla `DESTINOS` de `carpetas_oferta.py`; la prueba compara tabla y plan) y dónde
   está cada carpeta (`rc.datos.ofertas`, `gestion`, `entregados`, de `proyectos.json`). Marcada si cambia el Estado; sin
-  marcar si no cambia y su carpeta está fuera de lugar; deshabilitada sin carpeta o con dos del mismo N°. Al guardar deja,
+  marcar si no cambia y su carpeta está fuera de lugar (salvo que solo falte crear la de Gestión: eso es de quien adjudica);
+  deshabilitada sin carpeta, con dos del mismo N° o con una que no parece de esa fila (`carpetasDudosas` de
+  `proyectos.json`: el N° de su nombre es hoy de otro requerimiento; «muévela a mano»). Al guardar deja,
   además del `editar-requerimiento`, un `mover-carpeta` con el Estado elegido (`pqEnviarMover`) y un `pedir-vuelta`: la
   mueve el procesador (`Sistema Intercambio/carpetas_oferta.py`).
 - **Carpetas fuera de lugar** (2026-11-25, el usuario eligió «Aviso en Requerimientos»): `#pqFueraLugar`, una línea arriba de
@@ -80,7 +82,8 @@ que de verdad se usan).
   opcional. Lo que todavía no llega al Excel se retira del buzón; lo demás deja `eliminar-requerimiento`, la fila deja de verse
   desde ya (`pqMezclar`) y se puede «Retirar» mientras espera. El Excel vacía la fila sin borrarla y el N° queda en
   `eliminados` de la publicación (`planillaInfo.eliminados`): `pqSiguienteN` da primero el menor de esos que nada usa
-  (`pqTomados`: Planilla, buzón, carpetas, formulaciones). Lo que no sigue, pero existió, igual queda «Descartado».
+  (`pqTomados`: Planilla, buzón, carpetas, formulaciones) y que no tiene carpeta en Formulación ni en Gestión
+  (`pqCarpetasDe`; si no, el nuevo heredaría la carpeta del borrado). Lo que no sigue, pero existió, igual queda «Descartado».
 - Mientras se mira, relee la carpeta cada 2 minutos, nunca con el diálogo abierto. Con un contenedor de 1240 px o menos, cada
   fila es una tarjeta.
 - **Pruebas**: desde `test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel` en `tests/portal/` (datos de mentira,
