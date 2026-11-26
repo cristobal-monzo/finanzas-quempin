@@ -445,6 +445,134 @@ def raices_del_rubro(texto, region, no_confundir: dict | None) -> list[str]:
     return rs
 
 
+# ── PROPUESTAS PARA «QUÉ BUSCAMOS» (2026-11-26) ─────────────────────────────
+# Pedido del usuario: agregar y quitar frases, y que el tablero «proponga
+# palabras o conceptos clave, indicando con un número la cantidad de
+# coincidencias con publicaciones en el mercado público». La página recibe las
+# raíces de cada licitación publicada hoy (`raices_publicadas`) y cuenta ahí
+# cualquier frase, también la que se está escribiendo (`raicesTexto` y
+# `cuentaPublicadas` de Visualizador Web/template.html repiten `raices` y
+# `cuenta_publicadas`: la prueba de paridad compara las dos). Las compras ágiles
+# no cuentan: solo se traen las que nombran palabras del rubro, y eso inflaría
+# el número.
+MAX_SUGERENCIAS = 40
+MIN_TITULOS_SUGERENCIA = 4      # la frase está en al menos 4 títulos de la Planilla
+REALCE_SUGERENCIA = 10          # y es 10 veces más común ahí que en lo publicado hoy
+CUBRE_LA_MAS_LARGA = 0.7        # «aire» no se propone si «aire acondicionado» está en el 70 % de sus títulos
+# Abreviaturas de las bases y palabras de trámite (medido el 2026-11-26 con la Planilla).
+_NO_SUGERIR = set("bas tec adm ppta com lic tdr eett etc dependiente administrativo certificacion".split())
+
+
+def _seguidas(corta, larga) -> bool:
+    n = len(corta)
+    return n > 0 and any(tuple(larga[i:i + n]) == tuple(corta) for i in range(len(larga) - n + 1))
+
+
+def raices_publicadas(activas: dict, no_confundir: dict | None) -> list[str]:
+    """Una cadena de raíces por licitación publicada hoy, con «no confundir»
+    ya aplicado (el separador corta la frase: «vapor de agua» no es «vapor»)."""
+    return [" ".join(raices_del_rubro(v.get("nombre") or "", None, no_confundir))
+            for v in (activas or {}).values() if isinstance(v, dict) and v.get("nombre")]
+
+
+def cuenta_publicadas(frase, publicadas: list[str]) -> int:
+    """Cuántas licitaciones publicadas hoy nombran la frase (en el nombre)."""
+    f = " ".join(raices(frase))
+    if not f:
+        return 0
+    aguja = f" {f} "
+    return sum(1 for p in publicadas if aguja in f" {p} ")
+
+
+def _forma_visible(historia: "Historia") -> dict:
+    """Para cada raíz, cómo se escribe más en los títulos («ventilación», no «ventilacion»)."""
+    formas: dict[str, dict[str, int]] = {}
+    for it in historia.items:
+        for palabra in re.findall(r"[^\W\d_]+", str(it["titulo"]).lower()):
+            for r in raices(palabra):
+                c = formas.setdefault(r, {})
+                c[palabra] = c.get(palabra, 0) + 1
+    # Primero la forma que ya es singular (la raíz con tildes), después la más usada.
+    return {r: max(c, key=lambda w: (normalizar(w) == r, c[w])) for r, c in formas.items()}
+
+
+def sugerencias(config: dict, historia: "Historia", publicadas: list[str]) -> list[dict]:
+    """Frases que «Qué buscamos» propone agregar, con cuántas licitaciones
+    publicadas hoy las nombran. Vienen del catálogo (`rubro.sugerencias`) o
+    de los títulos de la Planilla: frases que salen en varios y que son mucho
+    más comunes ahí que en lo publicado (lo propio de QUEMPIN). No se propone
+    lo que una frase actual ya encuentra."""
+    temas = [t for t in temas_de(config) if t.get("id")]
+    ids = {t["id"] for t in temas}
+    conocidas = [tuple(raices(f)) for t in temas for f in t["frases"]]
+    conocidas += [tuple(raices(f)) for f in (config["rubro"].get("excluir") or [])]
+    conocidas += [tuple(raices(f)) for f in ((config["rubro"].get("noConfundir") or {}).get("frases") or [])]
+    conocidas = [k for k in conocidas if k]
+    candidatas: dict[tuple, dict] = {}
+    for tid, frases in (config["rubro"].get("sugerencias") or {}).items():
+        if tid not in ids or not isinstance(frases, list):
+            continue
+        for f in frases:
+            rs = tuple(raices(f)) if isinstance(f, str) else ()
+            if rs:
+                candidatas.setdefault(rs, {"frase": f, "tema": tid, "origen": "catalogo"})
+
+    # De la Planilla: frases de 1 a 3 palabras, sin palabras genéricas en los extremos.
+    titulos = [it["raices"] for it in historia.items]
+    veces: dict[tuple, int] = {}
+    for rs in titulos:
+        vistas = set()
+        for n in (1, 2, 3):
+            for i in range(len(rs) - n + 1):
+                g = tuple(rs[i:i + n])
+                if any(len(p) < 4 or p in _NO_SUGERIR for p in g) or _GENERICA.match(g[0]) or _GENERICA.match(g[-1]):
+                    continue
+                vistas.add(g)
+        for g in vistas:
+            veces[g] = veces.get(g, 0) + 1
+    total_planilla, total_hoy = len(titulos) or 1, len(publicadas) or 1
+    propias = {}
+    for g, v in veces.items():
+        if v < MIN_TITULOS_SUGERENCIA:
+            continue
+        hoy = cuenta_publicadas(" ".join(g), publicadas)
+        if hoy and (v / total_planilla) / ((hoy + 1) / total_hoy) >= REALCE_SUGERENCIA:
+            propias[g] = v
+    formas = _forma_visible(historia) if propias else {}
+    for g, v in propias.items():
+        if any(len(h) > len(g) and _seguidas(g, h) and w >= CUBRE_LA_MAS_LARGA * v for h, w in propias.items()):
+            continue
+        # El tema: el que más nombran los títulos donde sale la frase.
+        votos: dict[str, int] = {}
+        for rs in titulos:
+            if _seguidas(g, rs):
+                for t in temas:
+                    if t["interes"] != NIVEL_NO and any(_seguidas(tuple(raices(f)), rs) for f in t["frases"]):
+                        votos[t["id"]] = votos.get(t["id"], 0) + 1
+        # Un trozo de una frase actual («caliente» de «agua caliente») no es un concepto nuevo.
+        if votos and g not in candidatas and not any(_seguidas(g, k) for k in conocidas):
+            candidatas[g] = {"frase": " ".join(formas.get(p, p) for p in g), "tema": max(votos, key=votos.get),
+                             "origen": "planilla", "planilla": v}
+
+    salida = []
+    for g, c in candidatas.items():
+        if any(_seguidas(k, g) for k in conocidas):
+            continue
+        hoy = cuenta_publicadas(c["frase"], publicadas)
+        if hoy:
+            salida.append(dict(c, hoy=hoy))
+    salida.sort(key=lambda c: (-c["hoy"], c["frase"]))
+    return salida[:MAX_SUGERENCIAS]
+
+
+def para_buscar(config: dict, historia: "Historia", estado: dict) -> dict:
+    """Lo que «Qué buscamos» necesita para contar y proponer frases. Va solo al
+    tablero, no a oportunidades.json: son unas 5.000 líneas."""
+    publicadas = raices_publicadas(estado.get("activas") or {}, config["rubro"].get("noConfundir"))
+    return {"publicadas": publicadas, "sugerencias": sugerencias(config, historia, publicadas),
+            "texto": {"abreviaturas": _ABREVIATURAS, "vacias": sorted(_VACIAS)}}
+
+
 # ── HISTORIA ─────────────────────────────────────────────────────────────────
 
 def unidad_de(codigo) -> str | None:
@@ -1625,7 +1753,7 @@ def revisar(raiz: Path | None, cliente=None, enviar: bool = True, ruta_estado: P
     if enviar and raiz:
         intercambio.publicar(raiz, PUBLICACION, HERRAMIENTA, datos)
     return {"datos": datos, "llamadas": getattr(cliente, "llamadas", 0) + getattr(cliente_ca, "llamadas", 0),
-            "avisos": avisos, "incompleta": incompleta}
+            "avisos": avisos, "incompleta": incompleta, "buscar": para_buscar(config, historia, estado)}
 
 
 def _monto_habitual(rango: dict) -> dict:
