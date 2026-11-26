@@ -528,6 +528,11 @@ __MARCA_FUENTES__
   .qb-idea:hover, .qb-idea:focus-visible { background: color-mix(in srgb, var(--brand-orange) 16%, transparent); outline: none; }
   .qb-idea .qb-tema-de { color: var(--text-muted); font-size: 11px; }
   .qb-propuestas { margin-top: 12px; }
+  .qb-crear { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 6px 9px; border-radius: 8px; cursor: pointer;
+    border: 1px dashed var(--qb-color); color: var(--qb-tinta); font-size: 12.5px; font-weight: 700; text-align: center; }
+  .qb-crear:hover, .qb-crear:focus-visible { background: color-mix(in srgb, var(--qb-color) 14%, transparent); }
+  .qb-tema .qb-eliminar { border-color: var(--status-bad); color: var(--status-bad); }
+  .qb-tema.vacio small { color: var(--status-bad); }
   .qb-propuestas .qb-ideas { gap: 6px; }
   .qb-mover { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11.5px; color: var(--text-muted); align-items: center; }
   .qb-mover button { font: inherit; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--gridline);
@@ -693,7 +698,7 @@ __MARCA_FUENTES__
       <section class="panel">
         <div class="qb-top">
           <h2>Qué buscamos
-            <details class="qb-i"><summary aria-label="Cómo funciona">i</summary><p>Arrastra cada tema a la columna de su interés (o tócalo y elige «Mover a»). «Mucho» puede llegar a Prioritaria; «Algo», a Buena; «Poco», a Evaluar; «No es lo nuestro» descarta lo que lo nombra. La lista cambia al tiro. Al guardar, el cambio vale para todo el equipo desde la próxima actualización del tablero (todos los días a las 09:00).</p></details>
+            <details class="qb-i"><summary aria-label="Cómo funciona">i</summary><p>Arrastra cada tema a la columna de su interés (o tócalo y elige «Mover a»). «Mucho» puede llegar a Prioritaria; «Algo», a Buena; «Poco», a Evaluar; «No es lo nuestro» descarta lo que lo nombra. «+ Nuevo tema» crea uno en esa columna: escribe su nombre y después sus frases (sin frases no se guarda). Los temas creados por el equipo se pueden eliminar. La lista cambia al tiro. Al guardar, el cambio vale para todo el equipo desde la próxima actualización del tablero (todos los días a las 09:00).</p></details>
           </h2>
           <span class="qb-estado" id="qbEstado" role="status"></span>
           <span class="qb-acciones">
@@ -1002,9 +1007,13 @@ __MARCA_FUENTES__
     var NOMBRE_TEMA = {};
     (RB.temas || []).forEach(function (t) { NOMBRE_TEMA[t.id] = t.nombre; });
     function clonar(x) { return JSON.parse(JSON.stringify(x)); }
+    function nombreTema(id) { var t = typeof perfil !== 'undefined' && perfil.temas[id]; return (t && t.nombre) || NOMBRE_TEMA[id] || id; }
     function perfilDelEquipo() {
       var temas = {};
-      (RB.temas || []).forEach(function (t) { temas[t.id] = { interes: t.interes, frases: (t.frases || []).slice() }; });
+      (RB.temas || []).forEach(function (t) {
+        temas[t.id] = { interes: t.interes, frases: (t.frases || []).slice() };
+        if (t.nuevo) { temas[t.id].nombre = t.nombre; temas[t.id].nuevo = true; }   // creado por el equipo (2026-11-26)
+      });
       return { temas: temas, excluir: (RB.excluir || []).slice(), noConfundir: ((RB.noConfundir || {}).frases || []).slice(),
         regiones: clonar(RB.regiones || {}),
         monto: { minimo: RB.montoMinimo || null, minimoCompraAgil: RB.montoMinimoCompraAgil || null, maximo: RB.montoMaximo || null } };
@@ -1715,6 +1724,7 @@ __MARCA_FUENTES__
     function cambios(a, b) {
       var n = 0;
       Object.keys(a.temas).forEach(function (k) { if (!b.temas[k] || JSON.stringify(a.temas[k]) !== JSON.stringify(b.temas[k])) n++; });
+      Object.keys(b.temas).forEach(function (k) { if (!a.temas[k]) n++; });   // un tema eliminado
       if (JSON.stringify(a.excluir) !== JSON.stringify(b.excluir)) n++;
       if (JSON.stringify(a.noConfundir) !== JSON.stringify(b.noConfundir)) n++;
       Object.keys(a.regiones).forEach(function (k) { if (a.regiones[k] !== b.regiones[k]) n++; });
@@ -1783,9 +1793,9 @@ __MARCA_FUENTES__
     }
     function botonPropuesta(s, conTema) {
       var n = cuentaPublicadas(s.frase);
-      var b = el('button', { type: 'button', clase: 'qb-idea', title: textoCuenta(n) + ' · agregar a ' + (NOMBRE_TEMA[s.tema] || s.tema),
-        'aria-label': 'Agregar «' + s.frase + '» a ' + (NOMBRE_TEMA[s.tema] || s.tema) + ' (' + textoCuenta(n) + ')' },
-        ['+ ' + s.frase, el('span', { clase: 'qb-n', texto: miles(n) })].concat(conTema ? [el('span', { clase: 'qb-tema-de', texto: ' · ' + (NOMBRE_TEMA[s.tema] || s.tema) })] : []));
+      var b = el('button', { type: 'button', clase: 'qb-idea', title: textoCuenta(n) + ' · agregar a ' + nombreTema(s.tema),
+        'aria-label': 'Agregar «' + s.frase + '» a ' + nombreTema(s.tema) + ' (' + textoCuenta(n) + ')' },
+        ['+ ' + s.frase, el('span', { clase: 'qb-n', texto: miles(n) })].concat(conTema ? [el('span', { clase: 'qb-tema-de', texto: ' · ' + nombreTema(s.tema) })] : []));
       b.addEventListener('click', function (ev) {
         ev.stopPropagation();
         var t = perfil.temas[s.tema];
@@ -1830,9 +1840,10 @@ __MARCA_FUENTES__
       var abierto = !!abiertos[id];
       var nTemas = USO_TEMA[id] || 0;
       var movido = !base.temas[id] || base.temas[id].interes !== t.interes;
-      var carta = el('div', { clase: 'qb-tema' + (movido ? ' movido' : ''), draggable: 'true', 'data-tema': id });
+      var carta = el('div', { clase: 'qb-tema' + (movido ? ' movido' : '') + (t.frases.length ? '' : ' vacio'), draggable: 'true', 'data-tema': id });
       var boton = el('button', { type: 'button', 'aria-expanded': abierto ? 'true' : 'false' },
-        [NOMBRE_TEMA[id] || id, el('small', { texto: t.frases.length + (t.frases.length === 1 ? ' frase' : ' frases') + (nTemas ? ' · ' + nTemas + ' hoy' : '') })]);
+        [nombreTema(id), el('small', { texto: !t.frases.length ? 'Sin frases: agrega una'
+          : t.frases.length + (t.frases.length === 1 ? ' frase' : ' frases') + (nTemas ? ' · ' + nTemas + ' hoy' : '') })]);
       boton.addEventListener('click', function () { abiertos[id] = !abiertos[id]; pintarBuscamos(); });
       carta.appendChild(boton);
       carta.addEventListener('dragstart', function (ev) { arrastrado = id; carta.classList.add('arrastrando'); ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', id); } catch (e) {} });
@@ -1848,6 +1859,11 @@ __MARCA_FUENTES__
           b.addEventListener('click', function () { t.interes = c[0]; alCambiar(); });
           mover.appendChild(b);
         });
+        if (t.nuevo) {
+          var borrar = el('button', { type: 'button', clase: 'qb-eliminar', texto: 'Eliminar tema' });
+          borrar.addEventListener('click', function () { delete perfil.temas[id]; delete abiertos[id]; alCambiar(); });
+          mover.appendChild(borrar);
+        }
         ed.insertBefore(mover, ed.firstChild);
         carta.appendChild(ed);
       }
@@ -1863,6 +1879,42 @@ __MARCA_FUENTES__
       if (abierto) carta.appendChild(editorFrases(lista, alCambiar, 'frase', clave));
       return carta;
     }
+    // Crear un tema (2026-11-26, pedido del usuario). Su id empieza con «nuevo-» (oportunidades.py lo exige) y no se
+    // guarda sin frases: limpiar_ajustes lo ignoraría.
+    var creandoEn = null;
+    function idTemaNuevo(nombre) {
+      var slug = norm(nombre).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'tema';
+      return 'nuevo-' + slug + '-' + Date.now().toString(36).slice(-6);
+    }
+    function crearTema(nivel) {
+      if (creandoEn !== nivel) {
+        var b = el('button', { type: 'button', clase: 'qb-crear', texto: '+ Nuevo tema', 'aria-label': 'Nuevo tema en ' + nivel });
+        b.addEventListener('click', function () { creandoEn = nivel; focoNueva = '_crear'; pintarBuscamos(); });
+        return b;
+      }
+      var inp = el('input', { clase: 'qb-nueva', type: 'text', maxlength: 60, placeholder: 'Nombre del tema (Enter)',
+        'aria-label': 'Nombre del tema nuevo', 'data-clave': '_crear' });
+      inp.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') { creandoEn = null; pintarBuscamos(); return; }
+        if (ev.key !== 'Enter') return;
+        var nombre = inp.value.trim();
+        if (nombre.length < 2) return;
+        var id = idTemaNuevo(nombre);
+        perfil.temas[id] = { interes: nivel, frases: [], nombre: nombre, nuevo: true };
+        creandoEn = null;
+        abiertos[id] = true;
+        focoNueva = id;
+        alCambiar();
+      });
+      inp.addEventListener('blur', function () { if (!inp.value.trim() && creandoEn === nivel) { creandoEn = null; setTimeout(pintarBuscamos, 0); } });
+      return inp;
+    }
+    // Lo que se guarda: sin los temas nuevos que todavía no tienen frases.
+    function paraGuardar() {
+      var a = clonar(perfil);
+      Object.keys(a.temas).forEach(function (k) { if (a.temas[k].nuevo && !a.temas[k].frases.length) delete a.temas[k]; });
+      return a;
+    }
     function pintarBuscamos() {
       var base = perfilBase();
       var cols = vaciar(document.getElementById('qbCols'));
@@ -1874,6 +1926,7 @@ __MARCA_FUENTES__
           col.appendChild(tarjetaLista('_excluir', 'Palabras que descartan', perfil.excluir));
           col.appendChild(tarjetaLista('_noConfundir', 'No confundir con', perfil.noConfundir));
         }
+        col.appendChild(crearTema(c[0]));
         col.addEventListener('dragover', function (ev) { if (arrastrado) { ev.preventDefault(); col.classList.add('encima'); } });
         col.addEventListener('dragleave', function () { col.classList.remove('encima'); });
         col.addEventListener('drop', function (ev) {
@@ -1948,7 +2001,7 @@ __MARCA_FUENTES__
       esperando = 'qb' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       errorGuardar = '';
       var pedido = esperando;
-      window.parent.postMessage({ tipo: 'quempin-ajustes-oportunidades', pedido: pedido, ajustes: clonar(perfil) }, location.origin);
+      window.parent.postMessage({ tipo: 'quempin-ajustes-oportunidades', pedido: pedido, ajustes: paraGuardar() }, location.origin);
       setTimeout(function () {
         if (esperando !== pedido) return;
         esperando = null;
@@ -1962,7 +2015,7 @@ __MARCA_FUENTES__
       if (ev.origin !== location.origin || ev.source !== window.parent || !m || m.tipo !== 'quempin-ajustes-oportunidades-resultado' || m.pedido !== esperando) return;
       esperando = null;
       if (m.ok) {
-        pendiente = { id: m.id, enviado: m.enviado, ajustes: clonar(perfil) };
+        pendiente = { id: m.id, enviado: m.enviado, ajustes: paraGuardar() };
         try { localStorage.setItem(CLAVE_PENDIENTE, JSON.stringify(pendiente)); } catch (e) {}
       } else errorGuardar = 'No se guardó: ' + (m.error || 'el Portal no pudo escribir en la carpeta del equipo.');
       pintarBuscamos();

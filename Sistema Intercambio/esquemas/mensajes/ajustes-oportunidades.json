@@ -28,6 +28,12 @@
                   "minLength": 2,
                   "maxLength": 80
                 }
+              },
+              "nombre": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60,
+                "description": "Solo en un tema que creó el equipo (id «nuevo-…», 2026-11-26)."
               }
             },
             "required": [

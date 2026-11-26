@@ -547,3 +547,33 @@ def test_status_no_atiende_el_buzon(carpeta, config):
     ic.enviar(carpeta, _ajustes_msg("aj0000000009", "2026-11-16T10:00:00-03:00", {"temas": {"climatizacion": {"interes": "no"}}}))
     op.revisar(carpeta, cliente=_cliente(ApiFalsa()), config=config, ahora=AHORA, enviar=False, atender=False)
     assert len(ic.leer_buzon(carpeta, destino=op.HERRAMIENTA)[0]) == 1
+
+
+# ── Temas nuevos (2026-11-26, pedido del usuario: «agrega la opción de crear temas nuevos») ───────────────────
+
+def test_un_tema_nuevo_se_guarda_con_su_nombre_y_busca_sus_frases(carpeta, config):
+    nuevo = {"interes": "alto", "nombre": "Termocañones", "frases": ["termocañón", "termocañón"]}
+    limpio, ignorado = op.limpiar_ajustes({"temas": {
+        "nuevo-termocanones": nuevo,
+        "nuevo-sin-frases": {"interes": "alto", "nombre": "Vacío", "frases": []},     # sin frases no encuentra nada
+        "otro-id": {"interes": "alto", "nombre": "Id raro", "frases": ["x y"]},        # el id lo pone la página
+        "nuevo-sin-nombre": {"interes": "medio", "frases": ["algo"]}}}, config)
+    assert limpio["temas"] == {"nuevo-termocanones": {"interes": "alto", "nombre": "Termocañones", "frases": ["termocañón"]}}
+    assert len(ignorado) == 3
+    ic.enviar(carpeta, _ajustes_msg("aj0000000021", "2026-11-26T10:00:00-03:00", {"temas": {"nuevo-termocanones": nuevo}}))
+    op.atender_ajustes(carpeta, config)
+    sobre = ic.leer_publicacion(carpeta, op.PUBLICACION_AJUSTES)
+    assert esquemas.validar_publicacion(op.PUBLICACION_AJUSTES, sobre) == []
+    assert sobre["datos"]["historial"][0]["cambios"] == ["tema nuevo «Termocañones» (Lo nuestro)"]
+    r = op.revisar(carpeta, cliente=_cliente(ApiFalsa(fichas=[_ficha("5000-71-LE26", "Arriendo de termocañones para gimnasio")])),
+                   config=config, ahora=AHORA)
+    tema = next(t for t in r["datos"]["rubro"]["temas"] if t["id"] == "nuevo-termocanones")
+    assert tema == {"id": "nuevo-termocanones", "nombre": "Termocañones", "interes": "alto", "frases": ["termocañón"], "nuevo": True}
+    o = r["datos"]["oportunidades"][0]
+    assert o["codigo"] == "5000-71-LE26" and "Termocañones" in o["criterios"]["rubro"]["motivo"]
+    # Eliminarlo: la versión siguiente ya no lo trae.
+    ic.enviar(carpeta, _ajustes_msg("aj0000000022", "2026-11-26T11:00:00-03:00", {"temas": {"calderas": {"interes": "alto"}}}))
+    op.atender_ajustes(carpeta, config)
+    d = ic.leer_publicacion(carpeta, op.PUBLICACION_AJUSTES)["datos"]
+    assert "se eliminó el tema «Termocañones»" in d["historial"][0]["cambios"]
+    assert all(t["id"] != "nuevo-termocanones" for t in op.temas_de(op.aplicar_ajustes(config, d["ajustes"])))

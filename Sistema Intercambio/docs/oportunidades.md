@@ -142,6 +142,14 @@ arrastran»):**
     («caliente») no se propone. Tocar una la agrega a su tema (cambio sin
     guardar, como los demás). El 2026-11-26 la Planilla no aportó ninguna nueva:
     lo que repite ya está en los temas.
+- **Temas nuevos (2026-11-26, pedido del usuario)**: «+ Nuevo tema» al pie de
+  cada columna. Viajan en los mismos ajustes, con `nombre` y un id `nuevo-…`
+  que pone la página; `limpiar_ajustes` exige nombre y al menos una frase (la
+  página no manda los que no tienen), hasta `MAX_TEMAS_NUEVOS`. `aplicar_ajustes`
+  los agrega después de los del archivo con `nuevo: true`, y solo esos se pueden
+  eliminar (la versión siguiente no los trae; el historial dice «se eliminó el
+  tema»). Como una frase nueva, un tema nuevo cambia la lista desde la próxima
+  actualización.
 - Se agregaron a excluir «coffee break», «catering», «banquetería» y
   «cóctel»: un servicio de café en la calle «Benigno Caldera» salía Buena.
 

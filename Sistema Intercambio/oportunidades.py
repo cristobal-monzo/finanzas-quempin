@@ -327,6 +327,11 @@ def region_clave(region, regiones: dict) -> str | None:
 # (la última versión gana) y se acotan: nadie escribe 5.000 frases por error.
 MAX_FRASES = 60
 MAX_LARGO_FRASE = 80
+# Temas que crea el equipo en «Qué buscamos» (2026-11-26, pedido del usuario): van en los ajustes con su nombre y
+# solo valen con al menos una frase. Su id lo pone la página («nuevo-…»): nunca choca con uno del archivo.
+MAX_TEMAS_NUEVOS = 20
+MAX_LARGO_NOMBRE_TEMA = 60
+_ID_TEMA_NUEVO = re.compile(r"^nuevo-[a-z0-9-]{1,40}$")
 
 
 def _frases(valor, maximo: int = MAX_FRASES) -> list[str] | None:
@@ -350,12 +355,23 @@ def limpiar_ajustes(ajustes, config: dict) -> tuple[dict, list[str]]:
     temas = ajustes.get("temas")
     if isinstance(temas, dict):
         limpio["temas"] = {}
+        nuevos = 0
         for tid, t in temas.items():
-            if tid not in ids or not isinstance(t, dict) or t.get("interes") not in INTERESES:
+            if not isinstance(t, dict) or t.get("interes") not in INTERESES:
                 ignorado.append(f"tema {tid!r}")
                 continue
-            limpio["temas"][tid] = {"interes": t["interes"]}
             frases = _frases(t.get("frases"))
+            if tid not in ids:
+                # Un tema nuevo: id «nuevo-…», nombre y al menos una frase (sin frases no encuentra nada).
+                nombre = t.get("nombre").strip() if isinstance(t.get("nombre"), str) else ""
+                if (not _ID_TEMA_NUEVO.match(str(tid)) or not 2 <= len(nombre) <= MAX_LARGO_NOMBRE_TEMA or not frases
+                        or nuevos >= MAX_TEMAS_NUEVOS):
+                    ignorado.append(f"tema {tid!r}")
+                    continue
+                nuevos += 1
+                limpio["temas"][tid] = {"interes": t["interes"], "nombre": nombre, "frases": frases}
+                continue
+            limpio["temas"][tid] = {"interes": t["interes"]}
             if frases:
                 limpio["temas"][tid]["frases"] = frases
     for k, maximo in (("excluir", 300), ("noConfundir", MAX_FRASES)):
@@ -391,12 +407,20 @@ def aplicar_ajustes(config: dict, ajustes: dict | None) -> dict:
         return config
     c = json.loads(json.dumps(config))
     rubro = c["rubro"]
+    if not rubro.get("temas"):                  # configuración antigua (núcleo y afines): pasa a temas
+        rubro["temas"] = temas_de(c)
     for t in rubro.get("temas") or []:
         a = (ajustes.get("temas") or {}).get(t["id"])
         if a:
             t["interes"] = a["interes"]
             if a.get("frases"):
                 t["frases"] = list(a["frases"])
+    # Los temas que creó el equipo van después de los del archivo, marcados para poder eliminarlos.
+    existentes = {t["id"] for t in rubro["temas"]}
+    for tid, a in (ajustes.get("temas") or {}).items():
+        if tid not in existentes and a.get("nombre") and a.get("frases"):
+            rubro["temas"].append({"id": tid, "nombre": a["nombre"], "interes": a["interes"],
+                                   "frases": list(a["frases"]), "nuevo": True})
     if "excluir" in ajustes:
         rubro["excluir"] = list(ajustes["excluir"])
     if "noConfundir" in ajustes:
@@ -1557,8 +1581,14 @@ def _resumen_cambios(antes: dict, despues: dict, config: dict) -> list[str]:
     niv = {**{k: v["nombre"] for k, v in niveles_de(config).items()}, NIVEL_NO: "No es lo nuestro"}
     previos = {t["id"]: t["interes"] for t in temas_de(aplicar_ajustes(config, antes))}
     for tid, t in (despues.get("temas") or {}).items():
+        if t.get("nombre") and tid not in previos:
+            salida.append(f"tema nuevo «{t['nombre']}» ({niv.get(t['interes'], t['interes'])})")
+            continue
         if previos.get(tid) != t["interes"]:
             salida.append(f"{nombres.get(tid, tid)} → {niv.get(t['interes'], t['interes'])}")
+    for tid, t in ((antes or {}).get("temas") or {}).items():
+        if t.get("nombre") and tid not in (despues.get("temas") or {}):
+            salida.append(f"se eliminó el tema «{t['nombre']}»")
     for k, txt in (("excluir", "palabras que descartan"), ("noConfundir", "no confundir")):
         a, d = set((antes or {}).get(k) or []), set(despues.get(k) or [])
         if k in despues and a != d:
@@ -1772,7 +1802,8 @@ def publicacion(oportunidades, evaluador: Evaluador, historia: Historia, config,
         "categorias": config["categorias"],
         "topesPorRubro": config.get("topesPorRubro", []),
         # «Qué buscamos»: lo que la página muestra y deja cambiar (con lo del equipo ya aplicado).
-        "rubro": {"temas": [{k: t.get(k) for k in ("id", "nombre", "interes", "frases")} for t in evaluador.temas],
+        "rubro": {"temas": [dict({k: t.get(k) for k in ("id", "nombre", "interes", "frases")}, **({"nuevo": True} if t.get("nuevo") else {}))
+                            for t in evaluador.temas],
                   "niveles": evaluador.niveles, "noConfundir": evaluador.no_confundir,
                   "excluir": config["rubro"].get("excluir", []),
                   "regiones": {k: v for k, v in config["regiones"].items() if not k.startswith("_")},

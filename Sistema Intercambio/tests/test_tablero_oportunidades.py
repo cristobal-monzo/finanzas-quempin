@@ -532,3 +532,53 @@ def test_agregar_una_propuesta_y_escribir_otra_frase(navegador, tmp_path):
     pagina.locator("[data-tema=climatizacion] .qb-chip", has_text="chiller").locator("button").click()
     assert pagina.locator("[data-tema=climatizacion] .qb-chip", has_text="chiller").count() == 0
     assert errores == []
+
+
+def test_crear_un_tema_agregarle_frases_y_eliminarlo(navegador, tmp_path):
+    """2026-11-26, pedido del usuario: crear temas nuevos. «+ Nuevo tema» en la columna, nombre, frases; uno creado
+    por el equipo se puede eliminar (los del archivo no)."""
+    pagina, _, _, errores = _abrir(navegador, tmp_path)
+    pagina.locator("[data-tab=tabBuscamos]").click()
+    pagina.locator(".qb-col[data-nivel=medio] .qb-crear").click()
+    nombre = pagina.locator(".qb-col[data-nivel=medio] input[data-clave=_crear]")
+    assert pagina.evaluate("document.activeElement.dataset.clave") == "_crear"
+    nombre.fill("Termocañones")
+    nombre.press("Enter")
+    carta = pagina.locator(".qb-col[data-nivel=medio] .qb-tema", has_text="Termocañones")
+    assert carta.locator("small").inner_text() == "Sin frases: agrega una"
+    assert pagina.locator("#qbEstado").inner_text().startswith("1 cambio sin guardar")
+    tid = carta.get_attribute("data-tema")
+    assert re.match(r"^nuevo-termocanones-[a-z0-9]+$", tid)
+    assert pagina.evaluate("document.activeElement.dataset.clave") == tid      # listo para escribir la primera frase
+    caja = carta.locator("input.qb-nueva")
+    caja.fill("aire acondicionado")
+    assert carta.locator(".qb-cuenta").inner_text() == "2 publicadas hoy"
+    caja.press("Enter")
+    assert carta.locator(".qb-chip .qb-n").inner_text() == "2"
+    # Se arrastra como cualquier otro.
+    carta.drag_to(pagina.locator(".qb-col[data-nivel=alto]"))
+    pagina.locator(f".qb-col[data-nivel=alto] [data-tema={tid}]").wait_for()
+    assert pagina.locator("[data-tema=calderas] .qb-eliminar").count() == 0
+    pagina.locator(f"[data-tema={tid}] .qb-eliminar").click()
+    assert pagina.locator(f"[data-tema={tid}]").count() == 0
+    assert pagina.locator("#qbEstado").inner_text().startswith("Así busca el equipo")
+    assert errores == []
+
+
+def test_un_tema_del_equipo_se_ve_y_se_puede_eliminar(navegador, tmp_path, monkeypatch):
+    """Lo que el equipo creó llega en rubro.temas con «nuevo»: la página lo muestra con su nombre y lo deja eliminar."""
+    original = op.cargar_config
+
+    def con_tema():
+        return op.aplicar_ajustes(original(), {"temas": {"nuevo-hornos-pan-x1": {"interes": "bajo", "nombre": "Hornos de pan",
+                                                                                   "frases": ["horno panadero"]}}})
+    monkeypatch.setattr(op, "cargar_config", con_tema)
+    pagina, datos, _, errores = _abrir(navegador, tmp_path)
+    assert any(t.get("nuevo") for t in datos["rubro"]["temas"])
+    pagina.locator("[data-tab=tabBuscamos]").click()
+    carta = pagina.locator(".qb-col[data-nivel=bajo] [data-tema=nuevo-hornos-pan-x1]")
+    assert carta.locator("button").first.inner_text().startswith("Hornos de pan")
+    carta.locator("> button").click()
+    carta.locator(".qb-eliminar").click()
+    assert pagina.locator("#qbEstado").inner_text().startswith("1 cambio sin guardar")
+    assert errores == []
