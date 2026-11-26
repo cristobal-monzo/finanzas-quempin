@@ -517,6 +517,18 @@ __MARCA_FUENTES__
   .qb-chip button:hover, .qb-chip button:focus-visible { color: var(--status-bad); outline: 1px solid currentColor; }
   .qb-nueva { font: inherit; font-size: 12px; padding: 4px 8px; border-radius: 6px; border: 1px dashed var(--baseline);
     background: var(--surface-card); color: var(--text-primary); width: 100%; }
+  .qb-n { font-size: 11px; color: var(--text-muted); margin-left: 5px; font-variant-numeric: tabular-nums; }
+  .qb-escribir { display: flex; align-items: center; gap: 8px; }
+  .qb-escribir .qb-nueva { flex: 1 1 auto; min-width: 0; }
+  .qb-cuenta { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+  .qb-cuenta.cero { color: var(--status-bad); }
+  .qb-ideas { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 11.5px; color: var(--text-muted); }
+  .qb-idea { font: inherit; font-size: 12px; padding: 1px 9px; border-radius: 999px; border: 1px dashed var(--brand-orange);
+    background: transparent; color: var(--text-primary); cursor: pointer; }
+  .qb-idea:hover, .qb-idea:focus-visible { background: color-mix(in srgb, var(--brand-orange) 16%, transparent); outline: none; }
+  .qb-idea .qb-tema-de { color: var(--text-muted); font-size: 11px; }
+  .qb-propuestas { margin-top: 12px; }
+  .qb-propuestas .qb-ideas { gap: 6px; }
   .qb-mover { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11.5px; color: var(--text-muted); align-items: center; }
   .qb-mover button { font: inherit; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--gridline);
     background: var(--surface-1); color: var(--text-primary); cursor: pointer; }
@@ -691,6 +703,10 @@ __MARCA_FUENTES__
         </div>
         <p class="qb-efecto" id="qbEfecto" aria-live="polite"></p>
         <div class="qb-cols" id="qbCols"></div>
+        <div class="qb-caja qb-propuestas" id="qbPropuestasCaja" hidden>
+          <h3>Frases propuestas <details class="qb-i"><summary aria-label="Cómo funciona">i</summary><p>Frases del rubro que ninguna frase actual encuentra. El número es cuántas licitaciones publicadas hoy en Mercado Público las nombran. Toca una para agregarla a su tema; se quita con ×. Para agregar otra, abre un tema y escríbela: el número aparece mientras escribes.</p></details></h3>
+          <div class="qb-ideas" id="qbPropuestas"></div>
+        </div>
         <div class="qb-fila2">
           <div class="qb-caja">
             <h3>Dónde <details class="qb-i"><summary aria-label="Cómo funciona">i</summary><p>Toca una región para cambiarla: Cerca (100 puntos) → Media (70) → Lejos (35) → No vamos (descarta). Pesa en la ubicación y en lo que cuesta ir a una visita a terreno.</p></details></h3>
@@ -1715,24 +1731,98 @@ __MARCA_FUENTES__
       todo();
       pintarBuscamos();
     }
-    function editorFrases(lista, alCambiarLista, etiqueta) {
+    // ── Contar frases en lo publicado hoy y proponer frases (2026-11-26) ──
+    // Pedido del usuario: agregar y quitar frases, y proponer frases «indicando con un número la cantidad
+    // de coincidencias con publicaciones en el mercado público». DATA.buscar trae las raíces de cada
+    // licitación publicada hoy. raicesTexto y cuentaPublicadas repiten raices y cuenta_publicadas de
+    // oportunidades.py (prueba de paridad en tests/test_tablero_oportunidades.py).
+    var BUSCAR = DATA.buscar || {};
+    var ABREV = (BUSCAR.texto || {}).abreviaturas || {}, VACIAS = Object.create(null);
+    ((BUSCAR.texto || {}).vacias || []).forEach(function (w) { VACIAS[w] = 1; });
+    var PUBLICADAS = (BUSCAR.publicadas || []).map(function (p) { return ' ' + p + ' '; });
+    var HAY_PUBLICADAS = PUBLICADAS.length > 0;
+    var CUENTA = Object.create(null);
+    function singularJs(p) {
+      if (p.length > 4 && p.slice(-2) === 'es' && 'lrndzjs'.indexOf(p.charAt(p.length - 3)) >= 0) return p.slice(0, -2);
+      if (p.length > 3 && p.slice(-1) === 's' && 'aeiou'.indexOf(p.charAt(p.length - 2)) >= 0) return p.slice(0, -1);
+      return p;
+    }
+    function raicesTexto(texto) {
+      var t = String(texto == null ? '' : texto).normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ').trim();
+      var salida = [];
+      (t ? t.split(' ') : []).forEach(function (palabra) {
+        var exp = Object.prototype.hasOwnProperty.call(ABREV, palabra) ? ABREV[palabra] : palabra;
+        exp.split(/\s+/).forEach(function (p) {
+          if (!p || VACIAS[p] || /^[0-9]+$/.test(p) || (p.length < 3 && p !== 'h2')) return;
+          salida.push(singularJs(p));
+        });
+      });
+      return salida;
+    }
+    function cuentaPublicadas(frase) {
+      var f = raicesTexto(frase).join(' ');
+      if (!f) return 0;
+      if (f in CUENTA) return CUENTA[f];
+      var aguja = ' ' + f + ' ', n = 0;
+      for (var i = 0; i < PUBLICADAS.length; i++) if (PUBLICADAS[i].indexOf(aguja) >= 0) n++;
+      return (CUENTA[f] = n);
+    }
+    function textoCuenta(n) { return n === 1 ? '1 publicada hoy' : miles(n) + ' publicadas hoy'; }
+    // Una propuesta sobra si una frase actual (de cualquier tema, o de las que descartan) ya la encuentra.
+    function cubierta(frase, pf) {
+      var g = ' ' + raicesTexto(frase).join(' ') + ' ';
+      var todas = pf.excluir.concat(pf.noConfundir);
+      Object.keys(pf.temas).forEach(function (k) { todas = todas.concat(pf.temas[k].frases); });
+      return todas.some(function (k) { var r = raicesTexto(k).join(' '); return r && g.indexOf(' ' + r + ' ') >= 0; });
+    }
+    function propuestas(pf, tema) {
+      return (BUSCAR.sugerencias || []).filter(function (s) {
+        return pf.temas[s.tema] && (!tema || s.tema === tema) && !cubierta(s.frase, pf);
+      });
+    }
+    function botonPropuesta(s, conTema) {
+      var n = cuentaPublicadas(s.frase);
+      var b = el('button', { type: 'button', clase: 'qb-idea', title: textoCuenta(n) + ' · agregar a ' + (NOMBRE_TEMA[s.tema] || s.tema),
+        'aria-label': 'Agregar «' + s.frase + '» a ' + (NOMBRE_TEMA[s.tema] || s.tema) + ' (' + textoCuenta(n) + ')' },
+        ['+ ' + s.frase, el('span', { clase: 'qb-n', texto: miles(n) })].concat(conTema ? [el('span', { clase: 'qb-tema-de', texto: ' · ' + (NOMBRE_TEMA[s.tema] || s.tema) })] : []));
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        var t = perfil.temas[s.tema];
+        if (t && !t.frases.some(function (x) { return norm(x) === norm(s.frase); })) { t.frases.push(s.frase); alCambiar(); }
+      });
+      return b;
+    }
+    var focoNueva = null, verTodasPropuestas = false;
+    var MAX_PROPUESTAS = 15, MAX_PROPUESTAS_TEMA = 8;
+    function editorFrases(lista, alCambiarLista, etiqueta, clave) {
       var caja = el('div', { clase: 'qb-abierto' });
       var chips = el('div', { clase: 'qb-chips' });
       lista.forEach(function (f, i) {
         var quitar = el('button', { type: 'button', 'aria-label': 'Quitar «' + f + '»', texto: '×' });
         quitar.addEventListener('click', function (ev) { ev.stopPropagation(); lista.splice(i, 1); alCambiarLista(); });
-        chips.appendChild(el('span', { clase: 'qb-chip' }, [f, quitar]));
+        var hijos = [f];
+        if (HAY_PUBLICADAS) { var n = cuentaPublicadas(f); hijos.push(el('span', { clase: 'qb-n', title: textoCuenta(n), texto: miles(n) })); }
+        hijos.push(quitar);
+        chips.appendChild(el('span', { clase: 'qb-chip' }, hijos));
       });
       caja.appendChild(chips);
-      var nueva = el('input', { clase: 'qb-nueva', type: 'text', maxlength: 80, placeholder: '+ ' + etiqueta + ' (Enter)', 'aria-label': etiqueta });
+      var nueva = el('input', { clase: 'qb-nueva', type: 'text', maxlength: 80, placeholder: '+ ' + etiqueta + ' (Enter)', 'aria-label': etiqueta, 'data-clave': clave });
+      var cuenta = el('span', { clase: 'qb-cuenta', 'aria-live': 'polite' });
+      nueva.addEventListener('input', function () {
+        var t = nueva.value.trim();
+        if (!HAY_PUBLICADAS || t.length < 2) { cuenta.textContent = ''; cuenta.className = 'qb-cuenta'; return; }
+        var n = cuentaPublicadas(t);
+        cuenta.textContent = textoCuenta(n);
+        cuenta.className = 'qb-cuenta' + (n ? '' : ' cero');
+      });
       nueva.addEventListener('keydown', function (ev) {
         if (ev.key !== 'Enter') return;
         var t = nueva.value.trim();
-        if (t.length >= 2 && !lista.some(function (x) { return norm(x) === norm(t); })) { lista.push(t); alCambiarLista(); }
-        else nueva.value = '';
+        if (t.length >= 2 && !lista.some(function (x) { return norm(x) === norm(t); })) { lista.push(t); focoNueva = clave; alCambiarLista(); }
+        else { nueva.value = ''; cuenta.textContent = ''; }
       });
-      caja.appendChild(nueva);
-      caja.appendChild(el('p', { clase: 'qb-nota', texto: 'Una frase nueva se busca desde la próxima actualización: hoy la lista no cambia por ella.' }));
+      caja.appendChild(el('div', { clase: 'qb-escribir' }, [nueva, cuenta]));
       return caja;
     }
     function tarjetaTema(id, base) {
@@ -1748,7 +1838,9 @@ __MARCA_FUENTES__
       carta.addEventListener('dragstart', function (ev) { arrastrado = id; carta.classList.add('arrastrando'); ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', id); } catch (e) {} });
       carta.addEventListener('dragend', function () { arrastrado = null; carta.classList.remove('arrastrando'); });
       if (abierto) {
-        var ed = editorFrases(t.frases, alCambiar, 'frase');
+        var ed = editorFrases(t.frases, alCambiar, 'frase', id);
+        var ideas = propuestas(perfil, id).slice(0, MAX_PROPUESTAS_TEMA);
+        if (ideas.length) ed.appendChild(el('div', { clase: 'qb-ideas' }, ['Propuestas:'].concat(ideas.map(function (s) { return botonPropuesta(s, false); }))));
         var mover = el('div', { clase: 'qb-mover' }, ['Mover a:']);
         COLUMNAS.forEach(function (c) {
           if (c[0] === t.interes) return;
@@ -1768,7 +1860,7 @@ __MARCA_FUENTES__
         [titulo, el('small', { texto: lista.length + (lista.length === 1 ? ' frase' : ' frases') })]);
       boton.addEventListener('click', function () { abiertos[clave] = !abiertos[clave]; pintarBuscamos(); });
       carta.appendChild(boton);
-      if (abierto) carta.appendChild(editorFrases(lista, alCambiar, 'frase'));
+      if (abierto) carta.appendChild(editorFrases(lista, alCambiar, 'frase', clave));
       return carta;
     }
     function pintarBuscamos() {
@@ -1791,6 +1883,20 @@ __MARCA_FUENTES__
         });
         cols.appendChild(col);
       });
+      var todas = propuestas(perfil);
+      document.getElementById('qbPropuestasCaja').hidden = !todas.length;
+      var cajaIdeas = vaciar(document.getElementById('qbPropuestas'));
+      (verTodasPropuestas ? todas : todas.slice(0, MAX_PROPUESTAS)).forEach(function (s) { cajaIdeas.appendChild(botonPropuesta(s, true)); });
+      if (todas.length > MAX_PROPUESTAS) {
+        var mas = el('button', { type: 'button', clase: 'op-btn-sec', texto: verTodasPropuestas ? 'Ver menos' : 'Ver todas (' + todas.length + ')' });
+        mas.addEventListener('click', function () { verTodasPropuestas = !verTodasPropuestas; pintarBuscamos(); });
+        cajaIdeas.appendChild(mas);
+      }
+      if (focoNueva) {
+        var inp = cols.querySelector('input[data-clave="' + focoNueva.replace(/"/g, '') + '"]');
+        focoNueva = null;
+        if (inp) inp.focus();
+      }
       var reg = vaciar(document.getElementById('qbRegiones'));
       ORDEN_REGIONES.forEach(function (k) {
         var n = nivelRegion(perfil.regiones[k]);

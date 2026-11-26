@@ -48,6 +48,8 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   se recalcula al tiro con `resolverRubro`, `calcularTope` y `resolverMonto`, gemelas
   de Python (ver `../docs/oportunidades.md`). Guardar va por el Portal
   (`quempin-ajustes-oportunidades`): sin Portal, el botón queda apagado y lo dice.
+  Desde el 2026-11-26 cada frase muestra cuántas licitaciones publicadas hoy la nombran
+  (también la que se escribe) y hay «Frases propuestas» con ese número (`DATA.buscar`).
 - **Visita a terreno** (2026-10-15): viene de la ficha de las bases (la API no
   la trae). Con varias fechas, `visitaDelDia` muestra la próxima y la da por
   pasada solo cuando pasaron todas. Sin dato dice «sin confirmar», no «no».

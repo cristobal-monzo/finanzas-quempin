@@ -71,6 +71,8 @@ def evaluar(sin_red: bool = False, raiz=None) -> tuple[dict, int, bool]:
         r = oportunidades.revisar(raiz, enviar=False, sin_red=True)
         r["datos"]["avisos"].insert(0, f"No se pudo consultar Mercado Público ({error}): se muestra la última evaluación guardada.")
         al_dia = False
+    # «Qué buscamos» cuenta y propone frases con lo publicado hoy (2026-11-26): solo va al tablero.
+    r["datos"]["buscar"] = r.get("buscar")
     return r["datos"], r["llamadas"], al_dia
 
 

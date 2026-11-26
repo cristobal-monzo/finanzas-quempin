@@ -123,6 +123,25 @@ arrastran»):**
   esos ajustes encima de `oportunidades_config.json` (`aplicar_ajustes`): el
   archivo versionado no se toca (la carpeta principal queda limpia).
   `publicacion` lleva en `rubro` todo lo editable y los últimos cambios.
+- **Contar y proponer frases (2026-11-26, pedido del usuario: agregar y quitar
+  palabras clave, y que proponga otras «indicando con un número la cantidad de
+  coincidencias con publicaciones en el mercado público»)**: `revisar` devuelve
+  aparte `buscar` (`para_buscar`), que el build pone en el tablero y no en
+  `oportunidades.json`: las raíces de cada licitación publicada hoy
+  (`raices_publicadas`, con «no confundir» aplicado; unas 5.000 líneas, ~100 KB
+  más de tablero) y las propuestas (`sugerencias`). Cada frase de un tema abierto
+  lleva su número, y al escribir una nueva aparece «N publicadas hoy» antes de
+  agregarla. `raicesTexto` y `cuentaPublicadas` de la página repiten `raices` y
+  `cuenta_publicadas` (prueba de paridad en Chromium). Las compras ágiles no
+  cuentan: solo se traen las que nombran el rubro.
+  - Propuestas: el catálogo `rubro.sugerencias` (por tema) y frases de 1 a 3
+    palabras de los títulos de la Planilla que salen en 4 o más y son 10 veces
+    más comunes ahí que en lo publicado (`REALCE_SUGERENCIA`), con el tema que
+    más nombran esos títulos. Se muestran solo las que hoy tienen coincidencias
+    y que ninguna frase actual ya encuentra; un trozo de una frase actual
+    («caliente») no se propone. Tocar una la agrega a su tema (cambio sin
+    guardar, como los demás). El 2026-11-26 la Planilla no aportó ninguna nueva:
+    lo que repite ya está en los temas.
 - Se agregaron a excluir «coffee break», «catering», «banquetería» y
   «cóctel»: un servicio de café en la calle «Benigno Caldera» salía Buena.
 

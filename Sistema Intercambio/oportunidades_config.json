@@ -65,6 +65,21 @@
       "bajo": {"nombre": "Rara vez", "enNombre": 30, "enDescripcion": 20, "maxEnNombre": "evaluar", "maxEnDescripcion": "baja", "prefiltro": 15}
     },
     "_noConfundir": "Frases que se parecen al rubro y no lo son: se borran del texto antes de buscar los temas (el resto del texto sigue contando). lugares: una palabra del rubro que en esa región es un lugar; en Atacama «Caldera» es una comuna, salvo «la caldera», «una caldera» o «calderas». Agregado el 2026-11-13: «Absorbente de vapor de agua», «esterilizador de peróxido de hidrógeno» y «Gobernación Marítima de Caldera» salían Prioritarias.",
+    "_sugerencias": "Pedido del usuario (2026-11-26): que «Qué buscamos» proponga frases con cuántas licitaciones publicadas hoy las nombran. Catálogo de conceptos del rubro por tema; la página muestra solo las que hoy tienen coincidencias y que ninguna frase actual ya cubre. También propone frases frecuentes en los títulos que QUEMPIN ofertó (oportunidades.sugerencias).",
+    "sugerencias": {
+      "calderas": ["biomasa", "pellet", "caldera a pellet", "economizador", "ablandador", "tratamiento de agua", "estanque de petróleo", "cogeneración", "planta térmica", "ducto de gases", "chimenea de caldera"],
+      "calefaccion": ["calefactor", "losa radiante", "piso radiante", "termocañón", "estufa", "radiador", "convector", "calefacción distrital"],
+      "agua-caliente": ["termo", "termotanque", "calentador de agua", "agua temperada", "acumulador", "ducha"],
+      "gas": ["gas", "glp", "gas propano", "estanque de gas", "regulador de gas", "medidor de gas", "artefacto a gas", "cocina a gas", "certificación de gas", "inspección de gas", "hermeticidad", "TC6"],
+      "hidrogeno": ["electrolizador", "celda de combustible", "pila de combustible", "hidrogenera", "electrólisis"],
+      "incineradores": ["crematorio", "cremación", "residuos hospitalarios", "residuos patológicos"],
+      "vapor": ["trampa de vapor", "condensado", "lavandería industrial", "secadora industrial", "calandria"],
+      "solar-bombas": ["aerotermia", "geotermia", "termosolar", "energía solar", "colector", "panel solar"],
+      "piscinas": ["piscina", "deshumidificador", "piscina climatizada"],
+      "cocina": ["cocina industrial", "freidora", "campana extractora", "campana", "anafe", "horno", "horno combinado", "equipamiento de cocina"],
+      "componentes": ["bomba", "vaso de expansión", "estanque de expansión", "aislación térmica", "termostato", "válvula", "circulador", "cañería de cobre"],
+      "climatizacion": ["aire acondicionado", "chiller", "split", "ventilación", "extracción de aire", "VRF", "fan coil", "unidad manejadora", "HVAC", "clima"]
+    },
     "noConfundir": {
       "frases": ["vapor de agua", "peróxido de hidrógeno"],
       "lugares": [{"palabra": "caldera", "region": "atacama"}]
