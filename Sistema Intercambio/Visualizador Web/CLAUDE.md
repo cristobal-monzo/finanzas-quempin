@@ -50,6 +50,7 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   (`quempin-ajustes-oportunidades`): sin Portal, el botón queda apagado y lo dice.
   Desde el 2026-11-26 cada frase muestra cuántas licitaciones publicadas hoy la nombran
   (también la que se escribe) y hay «Frases propuestas» con ese número (`DATA.buscar`).
+  El equipo puede crear temas («+ Nuevo tema») y eliminar los que creó.
 - **Visita a terreno** (2026-10-15): viene de la ficha de las bases (la API no
   la trae). Con varias fechas, `visitaDelDia` muestra la próxima y la da por
   pasada solo cuando pasaron todas. Sin dato dice «sin confirmar», no «no».
