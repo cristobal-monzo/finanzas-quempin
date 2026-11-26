@@ -339,7 +339,7 @@ def test_cerrar_un_requerimiento_ofrece_mover_su_carpeta_a_los_entregados(navega
     assert _esquemas().validar_mensaje(editar) == [] and _esquemas().validar_mensaje(mover) == []
     # Y una vuelta del procesador, para que no espere la de cada 5 minutos
     assert any(m.get("tipo") == "pedir-vuelta" for m in pagina.evaluate(JS_BUZON).values())
-    assert "Su carpeta pasa a «0 Proyectos Entregados»" in pagina.locator("#aviso").inner_text()
+    assert f"Su carpeta pasa a «0 Proyectos Entregados {date.today().year}»" in pagina.locator("#aviso").inner_text()
     assert pagina.locator('#pqFilas tr[data-n="908"] .pq-est').inner_text() == "Cerrado"
     assert not errores
     pagina.context.close()
@@ -670,5 +670,176 @@ def test_el_n_eliminado_lo_toma_el_proximo_requerimiento(navegador, sitio):
     assert m["requerimiento"]["numero"] == 905
     pagina.locator("#pqNuevo").click()
     assert dlg.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 911"
+    assert not errores
+    pagina.context.close()
+
+
+# ── La carpeta de cada requerimiento sigue su Estado (2026-11-25) ───────────
+
+def _con_carpetas(ofertas=(), fuera=(), gestion=()):
+    """La carpeta de prueba con lo que publica proyectos.json de las carpetas: «ofertas» (N°, ruta en Formulación),
+    «fueraDeLugar» y la raíz de Gestión."""
+    base = _intercambio_de_prueba()
+    sobre = base["publicado/proyectos.json"]
+    sobre["datos"]["ofertas"] = [{"req": str(n), "ruta": r} for n, r in ofertas]
+    sobre["datos"]["fueraDeLugar"] = [dict(x) for x in fuera]
+    sobre["datos"]["gestion"] = [{"carpeta": c, "req": c.split(".")[0]} for c in gestion]
+    return {"publicado/proyectos.json": sobre}
+
+
+def _carpetas_oferta():
+    import sys
+    intercambio = str(RAIZ / "Sistema Intercambio")
+    if intercambio not in sys.path:
+        sys.path.insert(0, intercambio)
+    import carpetas_oferta
+    return carpetas_oferta
+
+
+def test_la_tabla_de_carpetas_y_el_plan_son_los_del_procesador(navegador, sitio):
+    """PQ_CARPETA es la tabla DESTINOS de carpetas_oferta.py, y pqPlanCarpeta calcula lo mismo que su plan()."""
+    co = _carpetas_oferta()
+    pagina, errores = _planilla_con_datos(navegador, sitio)
+    assert pagina.evaluate("PQ_CARPETA") == co.DESTINOS
+    casos = []
+    for est in list(co.DESTINOS) + ["Otro"]:
+        for f in (None, ["310. X"], ["0 OFERTAS PRESENTADAS", "310. X"], ["0 OFERTAS PRESENTADAS", "0 Ofertas Cerradas 2024", "310. X"],
+                  ["0 OFERTAS ADJUDICADAS", "310. X"], ["0 ofertas presentadas", "310. X"]):
+            for g in (None, ["310. X"], ["0 Proyectos Entregados 2025", "310. X"]):
+                casos.append([est, f, g])
+    js = pagina.evaluate("(cs) => cs.map(([e, f, g]) => pqPlanCarpeta(e, f, g, 2025, 2026))", casos)
+    for (est, f, g), r in zip(casos, js):
+        py = co.plan(est, f, g, 2025, True, 2026)
+        assert r == {"formulacion": py["formulacion"], "gestion": py["gestion"]}, (est, f, g)
+    assert not errores
+    pagina.context.close()
+
+
+def test_al_cambiar_el_estado_ofrece_llevar_su_carpeta_adonde_corresponde(navegador, sitio):
+    """Pedido del 2026-11-02/25: al cambiar el Estado, una casilla ya marcada dice adónde va su carpeta. Con el mismo
+    Estado y la carpeta fuera de lugar, se ofrece sin marcar."""
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="NB", extra=_con_carpetas(ofertas=[(905, "905. Oferta esperando")]))
+    anio = pagina.evaluate("pqAnioCierre(rc.datos.requerimientos.find((r) => r.numero === 905))")
+    dlg = pagina.locator("#dlgPlanilla")
+    pagina.locator('#pqFilas tr[data-n="905"] .pq-abrir').click()
+    # Ofertado en la raíz de Formulación: fuera de lugar, la casilla está sin marcar
+    assert dlg.locator("#pqMoverCampo").is_visible() and not dlg.locator("#pqMover").is_checked()
+    assert dlg.locator("#pqMoverTxt").inner_text() == "Mover su carpeta a «0 OFERTAS PRESENTADAS»"
+    dlg.locator("#pqEstado").select_option("No adjudicado")
+    assert dlg.locator("#pqMover").is_checked()
+    assert dlg.locator("#pqMoverTxt").inner_text() == f"Mover su carpeta a «0 Ofertas Cerradas {anio}»"
+    assert "Formulación de proyectos › 905. Oferta esperando →" in dlg.locator("#pqMoverDe").inner_text()
+    # Evaluación: ya está en la raíz, no hay nada que mover
+    dlg.locator("#pqEstado").select_option("Evaluación")
+    assert dlg.locator("#pqMoverCampo").is_hidden()
+    # Adjudicado: el original a adjudicadas y la copia en Gestión
+    dlg.locator("#pqEstado").select_option("Adjudicado")
+    assert dlg.locator("#pqMoverTxt").inner_text() == "Mover su carpeta a «0 OFERTAS ADJUDICADAS» y copiarla a «Gestión de Proyectos»"
+    dlg.locator("#pqEstado").select_option("No adjudicado")
+    dlg.locator("#pqGuardar").click()
+    dlg.wait_for(state="hidden")
+    (mover,) = _mover_pedidos(pagina)
+    assert mover["estado"] == "No adjudicado" and mover["requerimiento"] == {"numero": 905, "titulo": "Oferta esperando"}
+    assert _esquemas().validar_mensaje(mover) == []
+    assert f"Su carpeta pasa a «0 Ofertas Cerradas {anio}»" in pagina.locator("#aviso").inner_text()
+    assert not errores
+    pagina.context.close()
+
+
+def test_carpetas_fuera_de_lugar_arriba_de_la_tabla(navegador, sitio):
+    """El usuario eligió «Aviso en Requerimientos»: una línea con cuántas son, «Ver» abre la lista con «Mover» por fila
+    y «Mover las N». No cuenta lo que ya cambió de Estado ni lo que ya se pidió mover."""
+    fuera = [{"req": "905", "carpeta": "905. Oferta esperando", "estado": "Ofertado",
+              "detalle": ["De Formulación de proyectos a Formulación de proyectos › 0 OFERTAS PRESENTADAS."]},
+             {"req": "911", "carpeta": "911. Descartada", "estado": "Descartado", "detalle": ["De A a B."]},
+             {"req": "913", "carpeta": "913. Perdida", "estado": "Ofertado", "detalle": ["De A a B."]},
+             {"req": "906", "carpeta": "906. Ganada", "estado": "Evaluación", "detalle": ["De A a B."]}]   # ya no es Evaluación
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="NB", extra=_con_carpetas(fuera=fuera))
+    caja = pagina.locator("#pqFueraLugar")
+    assert caja.is_visible() and pagina.locator("#pqFueraTxt").inner_text() == "3 carpetas fuera de lugar"
+    pagina.locator("#pqFueraVer").click()
+    dlg = pagina.locator("#dlgPqFuera")
+    dlg.wait_for()
+    assert dlg.locator("#pqFueraLista li").count() == 3
+    assert "0 OFERTAS PRESENTADAS" in dlg.locator("#pqFueraLista li").first.inner_text()
+    dlg.locator("#pqFueraLista li").first.locator(".pq-fuera-mover").click()
+    pagina.wait_for_function("() => document.querySelectorAll('#pqFueraLista li').length === 2")
+    assert pagina.locator("#pqFueraTxt").inner_text() == "2 carpetas fuera de lugar"
+    assert dlg.locator("#pqFueraTodas").inner_text() == "Mover las 2"
+    dlg.locator("#pqFueraTodas").click()
+    dlg.wait_for(state="hidden")
+    assert caja.is_hidden()
+    pedidos = sorted((m["requerimiento"]["numero"], m["estado"]) for m in _mover_pedidos(pagina))
+    assert pedidos == [(905, "Ofertado"), (911, "Descartado"), (913, "Ofertado")]
+    assert all(_esquemas().validar_mensaje(m) == [] for m in _mover_pedidos(pagina))
+    assert any(m.get("tipo") == "pedir-vuelta" for m in pagina.evaluate(JS_BUZON).values())
+    _esperar_aviso(pagina, "2 carpetas se mueven")
+    # Después de volver a leer la carpeta, lo pedido sigue sin contarse (espera en el buzón)
+    pagina.evaluate("pq.moviendo.clear()")
+    pagina.locator("#pqActualizar").click()
+    pagina.wait_for_function("() => !rc.leyendo")
+    assert caja.is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_no_ofrece_mover_una_carpeta_que_no_parece_de_la_fila_ni_crear_la_de_gestion_sin_cambiar_el_estado(navegador, sitio):
+    """carpetasDudosas (el N° de su nombre es hoy de otro requerimiento): se dice que se mueve a mano. Y abrir una fila
+    «Adjudicado» sin carpeta en Gestión no ofrece crearla: eso es de quien adjudica."""
+    extra = _con_carpetas(ofertas=[(905, "905. Otra cosa"), (906, "0 OFERTAS ADJUDICADAS/906. Ganada")])
+    extra["publicado/proyectos.json"]["datos"]["carpetasDudosas"] = ["905"]
+    reqs = _intercambio_de_prueba()["publicado/requerimientos.json"]
+    for r in reqs["datos"]["requerimientos"]:
+        if r["numero"] == 906:
+            r["estado"] = "Adjudicado"
+    extra["publicado/requerimientos.json"] = reqs
+    pagina, errores = _planilla_con_datos(navegador, sitio, usuario="NB", extra=extra)
+    dlg = pagina.locator("#dlgPlanilla")
+    pagina.locator('#pqFilas tr[data-n="905"] .pq-abrir').click()
+    assert dlg.locator("#pqMoverCampo").is_hidden()
+    dlg.locator("#pqEstado").select_option("No adjudicado")
+    assert dlg.locator("#pqMoverCampo").is_visible() and dlg.locator("#pqMover").is_disabled()
+    assert not dlg.locator("#pqMover").is_checked()
+    assert "«905. Otra cosa» no parece de este requerimiento" in dlg.locator("#pqMoverTxt").inner_text()
+    dlg.locator("#pqCancelar").click()
+    dlg.wait_for(state="hidden")
+    pagina.locator('#pqFilas tr[data-n="906"] .pq-abrir').click()
+    assert dlg.locator("#pqMoverCampo").is_hidden()
+    assert not errores
+    pagina.context.close()
+
+
+def test_un_n_eliminado_que_tiene_carpeta_no_se_reusa(navegador, sitio):
+    """El requerimiento nuevo heredaría la carpeta del borrado: se salta ese N°."""
+    extra = _con_carpetas(ofertas=[(905, "905. Oferta esperando")])
+    reqs = _intercambio_de_prueba()["publicado/requerimientos.json"]
+    reqs["datos"]["requerimientos"] = [r for r in reqs["datos"]["requerimientos"] if r["numero"] not in (905, 911)]
+    reqs["datos"]["eliminados"] = [{"numero": 911, "titulo": "Descartada", "fecha": "2026-11-25"},
+                                   {"numero": 905, "titulo": "Oferta esperando", "fecha": "2026-11-25"}]
+    extra["publicado/requerimientos.json"] = reqs
+    pagina, errores = _planilla_con_datos(navegador, sitio, extra=extra)
+    pagina.locator("#pqNuevo").click()
+    assert pagina.locator("#dlgPqTit").inner_text() == "Nuevo requerimiento · N° 911"
+    assert not errores
+    pagina.context.close()
+
+
+def test_marcar_cerrado_desde_ejecucion_dice_todo_lo_que_se_mueve(navegador, sitio):
+    """La misma regla que Requerimientos (pqCarpetaPara): también la carpeta de Formulación va a adjudicadas."""
+    def cambiar(archivos):
+        _gestion_908(archivos)
+        archivos["publicado/proyectos.json"]["datos"]["ofertas"] = [{"req": "908", "ruta": "908. En obra"}]
+    pagina, errores = _ejecucion_con_datos(navegador, sitio, usuario="NB", proyecto="req-908", cambiar=cambiar)
+    pagina.locator('#ejProyecto .ej-cab button[data-foco="marcar-cerrado"]').click()
+    dlg = pagina.locator("#dlgEjCerrar")
+    de = dlg.locator("#ejCerMoverDe").inner_text()
+    assert "Gestión de Proyectos › 908. En obra → Gestión de Proyectos › 0 Proyectos Entregados" in de
+    assert "Formulación de proyectos › 908. En obra → Formulación de proyectos › 0 OFERTAS ADJUDICADAS" in de
+    dlg.locator("#ejCerGuardar").click()
+    dlg.wait_for(state="hidden")
+    _esperar_aviso(pagina, "N° 908 marcado «Cerrado»")
+    assert "Su carpeta pasa a «0 Proyectos Entregados" in pagina.locator("#aviso").inner_text()
+    (mover,) = _mover_pedidos(pagina)
+    assert mover["estado"] == "Cerrado" and _esquemas().validar_mensaje(mover) == []
     assert not errores
     pagina.context.close()

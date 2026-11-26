@@ -44,13 +44,20 @@ que de verdad se usan).
   - lo que no quedó en el Excel esta semana (`rechazado`, `reemplazado`);
   - las filas del Excel que aquí no se ven: N° repetido o sin N°, de `datos.avisos` de la publicación;
   - lo último del portal con su resultado, con «Retirar» para lo que todavía espera.
-- **«Cerrado» y su carpeta** (2026-11-09, pedido del usuario): «Cerrado» es un estado más (adjudicado y ya entregado). Al
-  elegirlo en una fila que ya existe aparece `#pqMoverCampo` (`pqVerMover`): «Mover su carpeta a «0 Proyectos Entregados
-  <año>»», con la carpeta de su N° en la raíz de Gestión (`pqCarpetaGestion`, de `rc.datos.gestion`). Marcada si recién se
-  cierra; sin marcar si la fila ya estaba «Cerrado»; deshabilitada si no hay una sola carpeta con ese N°. Al guardar deja,
-  además del `editar-requerimiento`, un `mover-carpeta` (`pqEnviarMover`) y un `pedir-vuelta` (`rcPedirVuelta`): la mueve el
-  procesador (`Sistema Intercambio/cierre_entregados.py`). Al revés también: una carpeta movida a mano a los entregados pasa
-  la fila a «Cerrado» en la vuelta siguiente del procesador.
+- **«Cerrado» y su carpeta** (2026-11-09, pedido del usuario): «Cerrado» es un estado más (adjudicado y ya entregado). Una
+  carpeta movida a mano a los entregados pasa la fila a «Cerrado» en la vuelta siguiente del procesador.
+- **La carpeta sigue al Estado** (2026-11-25, pedido del usuario; antes solo «Cerrado»): al cambiar el Estado de una fila
+  que ya existe aparece `#pqMoverCampo` (`pqVerMover`): «Mover su carpeta a «…»» con el detalle de dónde a dónde. Lo calcula
+  `pqCarpetaPara` con `PQ_CARPETA` (la tabla `DESTINOS` de `carpetas_oferta.py`; la prueba compara tabla y plan) y dónde
+  está cada carpeta (`rc.datos.ofertas`, `gestion`, `entregados`, de `proyectos.json`). Marcada si cambia el Estado; sin
+  marcar si no cambia y su carpeta está fuera de lugar (salvo que solo falte crear la de Gestión: eso es de quien adjudica);
+  deshabilitada sin carpeta, con dos del mismo N° o con una que no parece de esa fila (`carpetasDudosas` de
+  `proyectos.json`: el N° de su nombre es hoy de otro requerimiento; «muévela a mano»). Al guardar deja,
+  además del `editar-requerimiento`, un `mover-carpeta` con el Estado elegido (`pqEnviarMover`) y un `pedir-vuelta`: la
+  mueve el procesador (`Sistema Intercambio/carpetas_oferta.py`).
+- **Carpetas fuera de lugar** (2026-11-25, el usuario eligió «Aviso en Requerimientos»): `#pqFueraLugar`, una línea arriba de
+  la tabla con cuántas son (`pqPintarFuera`, de `rc.datos.fueraDeLugar` sin lo que ya espera en el buzón, `moverPedidos`,
+  ni lo que cambió de Estado); «Ver» abre `#dlgPqFuera` con «Mover» por fila y «Mover las N» (`pqMoverFuera`).
 - **El Recorrido** abre la fila de un N° con `RC_IR.planilla(n)` → `pqIrA(n)`. Un «Cerrado» va a su «Cierre»
   (`rcCerradoPlanilla`); para los avisos de «corresponde Adjudicado» cuenta como ganado (`RC_GANADOS`).
 - **«Formular →»** (2026-11-11, pedido del usuario: el ingreso de proyectos es solo por aquí): en una fila en Evaluación,
@@ -75,7 +82,8 @@ que de verdad se usan).
   opcional. Lo que todavía no llega al Excel se retira del buzón; lo demás deja `eliminar-requerimiento`, la fila deja de verse
   desde ya (`pqMezclar`) y se puede «Retirar» mientras espera. El Excel vacía la fila sin borrarla y el N° queda en
   `eliminados` de la publicación (`planillaInfo.eliminados`): `pqSiguienteN` da primero el menor de esos que nada usa
-  (`pqTomados`: Planilla, buzón, carpetas, formulaciones). Lo que no sigue, pero existió, igual queda «Descartado».
+  (`pqTomados`: Planilla, buzón, carpetas, formulaciones) y que no tiene carpeta en Formulación ni en Gestión
+  (`pqCarpetasDe`; si no, el nuevo heredaría la carpeta del borrado). Lo que no sigue, pero existió, igual queda «Descartado».
 - Mientras se mira, relee la carpeta cada 2 minutos, nunca con el diálogo abierto. Con un contenedor de 1240 px o menos, cada
   fila es una tarjeta.
 - **Pruebas**: desde `test_las_columnas_de_la_planilla_son_las_del_esquema_y_del_excel` en `tests/portal/` (datos de mentira,

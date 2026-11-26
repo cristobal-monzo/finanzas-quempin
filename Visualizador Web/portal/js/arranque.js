@@ -189,6 +189,12 @@ $('#pqX').addEventListener('click', () => $('#dlgPlanilla').close());
 $('#pqCancelar').addEventListener('click', () => $('#dlgPlanilla').close());
 $('#pqElimForm').addEventListener('submit', pqEliminar);
 ['#pqElimX', '#pqElimNo'].forEach((s) => $(s).addEventListener('click', () => $('#dlgPqEliminar').close()));
+// Las carpetas fuera de lugar (2026-11-25)
+$('#pqFueraVer').addEventListener('click', pqAbrirFuera);
+['#pqFueraX', '#pqFueraNo'].forEach((s) => $(s).addEventListener('click', () => $('#dlgPqFuera').close()));
+$('#pqFueraForm').addEventListener('submit', (e) => e.preventDefault());
+$('#pqFueraTodas').addEventListener('click', () => pqMoverFuera(pqFueraItems()));
+$('#pqFueraLugar .pq-fuera-info').append(info('Su Estado en Requerimientos dice que van en otra parte (por ejemplo, una oferta no adjudicada que sigue en «0 OFERTAS PRESENTADAS»). «Mover» le pide al procesador llevarlas adonde dice su Estado; nunca pisa ni borra otra carpeta.', 'Qué son las carpetas fuera de lugar'));
 $('#pqFormular').addEventListener('click', () => {
   const a = pq.abierta;
   $('#dlgPlanilla').close();

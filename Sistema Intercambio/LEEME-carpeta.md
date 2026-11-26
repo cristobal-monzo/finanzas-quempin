@@ -56,9 +56,18 @@ días, el envío se rechaza y el Portal lo muestra como «No se pudo».
 
 Cuando la carpeta de un proyecto pasa a «0 Proyectos Entregados <año>» en
 «Gestión de Proyectos», el procesador lo marca «Cerrado» en la Planilla de
-Ingreso (si estaba «Adjudicado»). Y al cambiar un proyecto a «Cerrado» desde la
-Planilla del Portal, se puede pedir ahí mismo que su carpeta pase a esa
-carpeta: la mueve el procesador, sin pisar ninguna otra.
+Ingreso (si estaba «Adjudicado»).
+
+Cada requerimiento nuevo de la Planilla recibe su carpeta «N°. Título» en
+«Formulación de proyectos», con ANTECEDENTES, DOCUMENTOS EN TRABAJO, ENTREGABLES
+y VISITA TÉCNICA. Al cambiar el Estado en Requerimientos del Portal, una casilla
+ya marcada lleva su carpeta adonde corresponde: Ofertado a «0 OFERTAS
+PRESENTADAS»; No adjudicado y Descartado a «0 Ofertas Cerradas <año>»;
+Adjudicado a «0 OFERTAS ADJUDICADAS» con su copia en «Gestión de Proyectos»;
+Cerrado, la de Gestión a «0 Proyectos Entregados <año>». La mueve el procesador,
+sin pisar ninguna otra. Arriba de la tabla, el Portal cuenta las carpetas que no
+están donde dice su Estado, con un botón para moverlas. Y el Estado que cambia en
+la Planilla pasa también al proyecto del Formulador.
 
 Cuando un proyecto se adjudica (en el Formulador, la Planilla o el Análisis
 Financiero), el procesador crea su carpeta «N°. Nombre» en «Facturas y

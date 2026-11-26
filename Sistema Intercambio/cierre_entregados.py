@@ -10,22 +10,20 @@ opción para mover su carpeta ahí. Plan:
 ``Documentación/Planes y análisis/2026-11-09-carpeta-entregados-cierra-proyecto.md``.
 
 Corre como un paso del procesador (``procesar.py``, paso ``entregados``), en el
-computador que tiene sincronizada la biblioteca «Gestión de Proyectos». Hace dos
-cosas, en este orden:
+computador que tiene sincronizada la biblioteca «Gestión de Proyectos».
 
-1. **Mueve** las carpetas que pidió el Portal (mensaje ``mover-carpeta``): de la
-   raíz de Gestión a «0 Proyectos Entregados <año>». Solo si la Planilla ya dice
-   «Cerrado» o ese cambio todavía espera en el buzón (si nada de eso aparece en
-   30 minutos, el cambio se retiró y la carpeta no se mueve). Nunca borra ni pisa:
-   si en el destino ya hay una con ese nombre, no la mueve. Si algo de la carpeta
-   está abierto, reintenta en cada vuelta durante 7 días.
-2. **Cierra** lo entregado a mano: cada carpeta con N° dentro de cualquier
-   «0 Proyectos Entregados <año>» cuyo requerimiento la Planilla tiene
-   «Adjudicado» pasa a «Cerrado». El procesador nunca escribe la Planilla: deja
-   un ``editar-requerimiento`` en el buzón y ``planilla_escritura.py`` lo escribe
-   en su vuelta de cada 10 minutos, con sus respaldos.
+**Cierra** lo entregado a mano: cada carpeta con N° dentro de cualquier
+«0 Proyectos Entregados <año>» cuyo requerimiento la Planilla tiene
+«Adjudicado» pasa a «Cerrado». El procesador nunca escribe la Planilla: deja
+un ``editar-requerimiento`` en el buzón y ``planilla_escritura.py`` lo escribe
+en su vuelta, con sus respaldos.
 
-Frenos de la parte 2:
+Mover la carpeta que pidió el Portal al cerrar (mensaje ``mover-carpeta``) lo
+hacía también este módulo hasta el 2026-11-25; desde entonces lo hace
+``carpetas_oferta.py`` (paso ``carpetas-oferta``, justo antes), para todos los
+estados.
+
+Frenos:
 
 - **Una sola vez por N°.** Lo ya pedido queda anotado (``cerrados``, en el estado
   del procesador): si alguien después lo vuelve a «Adjudicado» a mano, se respeta.
@@ -44,31 +42,24 @@ Uso:  py -3.14 cierre_entregados.py              (dice qué haría, sin tocar na
       py -3.14 cierre_entregados.py --confirmar  (pide los cierres aunque pasen el tope)
 """
 
-import os
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
 if str(AQUI) not in sys.path:
     sys.path.insert(0, str(AQUI))
 
-import esquemas  # noqa: E402
 import intercambio  # noqa: E402
 import proyectos  # noqa: E402
 import requerimientos  # noqa: E402
 import ubicacion  # noqa: E402
 
 HERRAMIENTA = "procesador"
-DESTINO = "carpetas-proyecto"
-TIPO_MOVER = "mover-carpeta"
 TIPO_EDITAR = "editar-requerimiento"
 CERRADO = "Cerrado"
 SE_CIERRAN = ("Adjudicado",)                 # lo que pasa solo a «Cerrado» (requerimientos.ESTADOS_GANADOS sin él)
 GRUPO = "0 Proyectos Entregados"             # + « <año>»: así se llaman en Gestión (2025 y 2026, medido el 2026-11-09)
 MAX_CIERRES = 5
-ESPERA_PLANILLA = timedelta(minutes=30)      # OneDrive puede traer el mover-carpeta antes que el cambio de estado
-REINTENTAR_HASTA = timedelta(days=7)         # una carpeta con algo abierto
 
 
 # ── LAS CARPETAS ─────────────────────────────────────────────────────────────
@@ -110,15 +101,6 @@ def en_raiz(gestion: Path) -> dict[int, list[Path]]:
     return salida
 
 
-def grupo_del_anio(gestion: Path, anio: int) -> Path:
-    """La carpeta de entregados de ese año: la que ya existe (sin distinguir mayúsculas) o la que hay que crear."""
-    nombre = f"{GRUPO} {anio}"
-    for g in grupos_entregados(gestion):
-        if g.name.strip().lower() == nombre.lower():
-            return g
-    return Path(gestion) / nombre
-
-
 # ── LA PLANILLA ──────────────────────────────────────────────────────────────
 
 def _planilla(raiz: Path) -> dict[int, dict]:
@@ -145,90 +127,7 @@ def _cierres_en_camino(raiz: Path) -> set[int]:
     return salida
 
 
-def _instante(texto) -> datetime | None:
-    try:
-        t = datetime.fromisoformat(str(texto))
-    except (TypeError, ValueError):
-        return None
-    return t if t.tzinfo else t.astimezone()
-
-
-# ── 1. MOVER LO QUE PIDIÓ EL PORTAL ─────────────────────────────────────────
-
-def mover(raiz: Path, gestion: Path, ahora: datetime | None = None) -> dict:
-    """Atiende los mover-carpeta del buzón. {'movidas', 'esperan', 'rechazadas', 'avisos'} (listas de textos)."""
-    ahora = ahora or datetime.now().astimezone()
-    r = {"movidas": [], "esperan": [], "rechazadas": [], "avisos": []}
-    mensajes, _ = intercambio.leer_buzon(raiz, destino=DESTINO, tipo=TIPO_MOVER)
-    if not mensajes:
-        return r
-    planilla = _planilla(raiz)
-    en_camino = _cierres_en_camino(raiz)
-    raiz_gestion = en_raiz(gestion)
-    ya_entregadas = {}
-    for e in entregadas(gestion):
-        if e["req"] is not None:
-            ya_entregadas.setdefault(e["req"], []).append(e)
-
-    def archivar(m, estado, texto, **extra):
-        intercambio.archivar(raiz, m, estado, [texto], extra=dict(extra, requerimiento=m["requerimiento"]["numero"]))
-        (r["movidas"] if estado == "aplicado" else r["rechazadas"]).append(texto)
-
-    for m in mensajes:
-        errores = esquemas.validar_mensaje(m)
-        if errores:
-            intercambio.archivar(raiz, m, "rechazado", errores)
-            r["rechazadas"].append("; ".join(errores))
-            continue
-        n = int(m["requerimiento"]["numero"])
-        enviado = _instante(m["origen"]["enviado"])
-        reciente = enviado is not None and ahora - enviado < ESPERA_PLANILLA
-        carpetas = raiz_gestion.get(n) or []
-        if not carpetas:
-            if n in ya_entregadas:
-                e = ya_entregadas[n][0]
-                archivar(m, "sin-cambios", f"N° {n}: su carpeta ya está en «{e['grupo']}/{e['carpeta']}».")
-            elif reciente:
-                r["esperan"].append(f"N° {n}: su carpeta no está en Gestión de Proyectos (OneDrive puede estar trayéndola).")
-            else:
-                archivar(m, "rechazado", f"N° {n}: no hay una carpeta con ese N° en la raíz de Gestión de Proyectos; no se movió nada.")
-            continue
-        if len(carpetas) > 1:
-            archivar(m, "rechazado", f"N° {n}: hay {len(carpetas)} carpetas con ese N° en Gestión de Proyectos "
-                                     f"({', '.join(c.name for c in carpetas)}); lo decide una persona.")
-            continue
-        estado = str((planilla.get(n) or {}).get("estado") or "")
-        if estado != CERRADO and n not in en_camino:
-            if reciente:
-                r["esperan"].append(f"N° {n}: espera que la Planilla diga «{CERRADO}».")
-            else:
-                archivar(m, "descartado", f"N° {n}: la Planilla dice «{estado or 'sin estado'}», no «{CERRADO}» "
-                                          "(el cambio se retiró o se reemplazó): la carpeta quedó donde estaba.")
-            continue
-        origen = carpetas[0]
-        grupo = grupo_del_anio(gestion, ahora.year)
-        destino = grupo / origen.name
-        if destino.exists():
-            archivar(m, "rechazado", f"N° {n}: en «{grupo.name}» ya hay una carpeta «{origen.name}»; no se pisa. "
-                                     "Revisa cuál sirve y mueve la otra a mano.")
-            continue
-        try:
-            grupo.mkdir(exist_ok=True)
-            # Mismo disco y misma biblioteca: un cambio de nombre, que OneDrive sube como movimiento (no copia y borra)
-            os.rename(origen, destino)
-        except OSError as error:
-            if enviado is not None and ahora - enviado > REINTENTAR_HASTA:
-                archivar(m, "rechazado", f"N° {n}: no se pudo mover «{origen.name}» en 7 días ({error}). Muévela a mano.")
-            else:
-                r["esperan"].append(f"N° {n}: no se pudo mover «{origen.name}» (¿un archivo abierto?); se reintenta.")
-                r["avisos"].append(f"carpeta del N° {n} sin mover: {str(error)[:150]}")
-            continue
-        archivar(m, "aplicado", f"N° {n}: «{origen.name}» pasó a «{grupo.name}».", carpeta=f"{grupo.name}/{origen.name}")
-        raiz_gestion.pop(n, None)
-    return r
-
-
-# ── 2. CERRAR LO ENTREGADO A MANO ────────────────────────────────────────────
+# ── CERRAR LO ENTREGADO A MANO ────────────────────────────────────────────
 
 def plan_cierres(raiz: Path, gestion: Path, cerrados: dict) -> dict:
     """Qué pedir, sin tocar nada. {'pedir': [(N°, fila, carpeta)], 'avisos': [...], 'sinNumero': n, 'yaCerrados': n,
@@ -314,21 +213,14 @@ def vuelta(raiz: Path, gestion: Path | None, previo: dict | None, confirmar: boo
     """(detalle, estado nuevo, avisos) del paso del procesador."""
     if gestion is None or not Path(gestion).is_dir():
         return "la biblioteca «Gestión de Proyectos» no está sincronizada en este equipo", dict(previo or {}), []
-    movidas = mover(raiz, Path(gestion))
     resumen, estado = pedir_cierres(raiz, Path(gestion), previo, confirmar)
     partes = []
-    if movidas["movidas"]:
-        partes.append("movidas a los entregados: " + "; ".join(movidas["movidas"]))
-    if movidas["esperan"]:
-        partes.append("por mover: " + "; ".join(movidas["esperan"]))
-    if movidas["rechazadas"]:
-        partes.append("sin mover: " + "; ".join(movidas["rechazadas"]))
     if resumen["pedidos"]:
         partes.append("pasan a «Cerrado» en la Planilla: N° " + ", ".join(str(n) for n in resumen["pedidos"]))
     if resumen["avisos"]:
         partes.append("revisar: " + "; ".join(resumen["avisos"]))
     partes.append(f"{resumen['yaCerrados']} ya cerrados; {resumen['sinNumero']} carpeta(s) sin N° en los entregados")
-    avisos = movidas["avisos"] + [f"entregados: {a}" for a in resumen["avisos"]]
+    avisos = [f"entregados: {a}" for a in resumen["avisos"]]
     return "; ".join(partes), estado, avisos
 
 

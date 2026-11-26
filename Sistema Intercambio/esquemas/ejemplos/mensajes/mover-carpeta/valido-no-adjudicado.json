@@ -1,0 +1,17 @@
+{
+  "esquema": "quempin.intercambio/1",
+  "id": "ca7e0000ca7e0000ca7e0004",
+  "tipo": "mover-carpeta",
+  "destino": "carpetas-proyecto",
+  "origen": {
+    "herramienta": "portal",
+    "usuario": "NB",
+    "enviado": "2026-11-09T18:00:00-03:00"
+  },
+  "requerimiento": {
+    "numero": 297,
+    "titulo": "Caldera de prueba"
+  },
+  "estado": "No adjudicado",
+  "crear": true
+}

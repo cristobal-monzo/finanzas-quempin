@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "mover-carpeta (Portal QUEMPIN → carpetas de los proyectos)",
-  "description": "Alguien cambió el Estado de un requerimiento a «Cerrado» en la Planilla del Portal y aceptó mover su carpeta (2026-11-09): de la raíz de Gestión de Proyectos a «0 Proyectos Entregados <año>». El procesador la mueve (cierre_entregados.py) cuando la Planilla dice «Cerrado» o el cambio a «Cerrado» todavía espera en el buzón; si algo de la carpeta está abierto, reintenta hasta 7 días. El mensaje solo dice el N° y el estado: el lugar lo decide ese módulo, nunca quien pide. Nunca borra ni pisa: si en el destino ya hay una carpeta con ese nombre, no la mueve.",
+  "description": "Alguien cambió el Estado de un requerimiento en el Portal y dejó marcada la casilla para mover su carpeta, o apretó «Mover» en la lista «fuera de lugar» de Requerimientos (2026-11-25; antes, desde el 2026-11-09, solo «Cerrado»). El procesador la mueve (carpetas_oferta.py) cuando la Planilla dice ese estado o el cambio todavía espera en el buzón; si algo de la carpeta está abierto, reintenta hasta 7 días. El mensaje solo dice el N° y el estado: adónde va lo decide ese módulo (DESTINOS), nunca quien pide. Nunca borra ni pisa: si en el destino ya hay una carpeta con ese nombre, no la mueve.",
   "destino": "carpetas-proyecto",
   "type": "object",
   "properties": {
@@ -23,8 +23,18 @@
     },
     "estado": {
       "enum": [
-        "Cerrado"
-      ]
+        "Evaluación",
+        "Ofertado",
+        "Adjudicado",
+        "Cerrado",
+        "No adjudicado",
+        "Descartado"
+      ],
+      "description": "El Estado de la Planilla que la carpeta debe reflejar."
+    },
+    "crear": {
+      "type": "boolean",
+      "description": "Si el N° no tiene carpeta, crearla «N°. Título» con las subcarpetas de siempre y después llevarla a su lugar."
     }
   },
   "required": [
