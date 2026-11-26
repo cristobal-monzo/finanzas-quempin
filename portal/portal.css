@@ -1945,6 +1945,14 @@ details.pl-panel[open] { padding-bottom: 10px; }
 .pq-cambios .sc-env-det { grid-column: 1; }
 .pq-cambios .sc-env-cab { grid-column: 1 / -1; }
 .pq-retirar { grid-column: 2; grid-row: 2 / span 2; min-height: 30px; }
+/* Las carpetas fuera de lugar (2026-11-25): la línea arriba de la tabla y su lista */
+.pq-fuera-lugar { align-items: center; padding: 2px 10px; }
+.pq-fuera-lugar .pq-sinc-txt { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 4px 0; }
+.pq-fuera-lugar .cx-enlace { flex: 0 0 auto; min-height: 30px; }
+.pq-fuera-lista { margin-top: 0; }
+.pq-fuera-lista .sc-env-nom { flex: 1 1 auto; min-width: 0; }
+.pq-fuera-lista .pq-est { flex: 0 0 auto; }
+.pq-fuera-lista .pq-fuera-mover { flex: 0 0 auto; min-height: 30px; }
 .pq-avisos { flex: 1 1 100%; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .pq-avisos li { padding-left: 12px; position: relative; color: var(--text-secondary); font-size: 12px; }
 .pq-avisos li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--estado-bad); }
@@ -1984,6 +1992,7 @@ details.pl-panel[open] { padding-bottom: 10px; }
 @media (hover: none) { .pq-opciones { width: 32px; height: 28px; } }
 .ctx-item.ctx-peligro { color: var(--estado-bad); }
 #dlgPqEliminar { width: min(480px, calc(100vw - 24px)); }
+#dlgPqFuera { width: min(640px, calc(100vw - 24px)); }
 .pq-elim-que { margin: 0; font-weight: 900; color: var(--text-primary); overflow-wrap: anywhere; }
 .btn-pri.btn-peligro { background: var(--estado-bad); color: #ffffff; }
 .btn-pri.btn-peligro:disabled { opacity: 0.6; cursor: default; }
