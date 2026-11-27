@@ -149,6 +149,7 @@ def test_el_resumen_de_la_visita_para_el_tablero():
     assert [x["fecha"] for x in r["fechas"]] == ["2026-10-20T10:00", "2026-10-21T12:00"]   # ordenadas, sin la firma
     assert r["fechas"][0]["lugar"] == "Línea N° 1, Recinto Ficticio Uno, Calle Uno 11"
     assert r["nombrada"] and r["daPuntaje"] and r["contenidoBases"]
+    assert r["criterios"] == [{"nombre": "Visita Terreno", "ponderacion": 10}]     # la pauta, para «Cómo adjudica»
     sin = b.resumen_visita(b.leer_ficha(_pagina(fechas=[("Fecha estimada firma de contrato", "02-12-2026 18:00:00")])))
     assert sin["fechas"] == [] and not sin["nombrada"] and sin["contenidoBases"]
     assert not b.resumen_visita(b.leer_ficha(_pagina(corta=True)))["contenidoBases"]   # una L1: no se sabe

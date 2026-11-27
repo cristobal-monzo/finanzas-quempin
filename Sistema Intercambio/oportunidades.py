@@ -782,6 +782,150 @@ def leer_adjudicada(crudo: dict, codigo: str) -> dict | None:
     }
 
 
+# ── QUÉ HAY QUE HACER (resumen por reglas, 2026-11-27) ───────────────────────
+# Pedido del usuario: el detalle del tablero resume la descripción en una frase y
+# tareas cortas, «con reglas» (sin IA). Se buscan en el texto sin tildes: el tipo
+# de servicio, los equipos y los recintos. Si no se reconoce nada, no hay resumen
+# y la página muestra solo la descripción original.
+
+_SERVICIOS = (   # (clave, patrón sobre normalizar(), nombre)
+    ("operacion", r"\boperacion\b", "Operación"),
+    ("preventiva", r"\b(mantencion|mantenimiento|mantenciones|mantenimientos) (\w+ ){0,2}preventiv", "Mantención preventiva"),
+    ("correctiva", r"\bcorrectiv\w*|\breparativ\w*", "Mantención correctiva"),
+    ("mantencion", r"\b(mantencion|mantenimiento|mantenciones|mantenimientos)\b", "Mantención"),
+    ("emergencias", r"\bemergencias?\b|\b24 ?(x ?)?7\b", "Emergencias"),
+    ("suministro", r"\b(suministro|adquisicion|compra|provision)\b", "Suministro"),
+    ("instalacion", r"\binstalacion\b", "Instalación"),
+    ("reposicion", r"\b(reposicion|reemplazo|recambio)\b", "Reposición"),
+    ("reparacion", r"\breparacion(es)?\b", "Reparación"),
+    ("normalizacion", r"\b(normalizacion|regularizacion)\b", "Normalización"),
+    ("inspeccion", r"\binspeccion\b", "Inspección"),
+    ("certificacion", r"\b(certificacion|declaracion de emisiones)\b", "Certificación"),
+    ("mediciones", r"\b(muestreo|mediciones?)\b", "Mediciones"),
+    ("asistencia", r"\b(asistencia tecnica|asesoria)\b", "Asistencia técnica"),
+    ("diseno", r"\b(diseno|ingenieria)\b", "Diseño e ingeniería"),
+)
+_EQUIPOS = (     # (patrón, nombre); se listan en el orden en que aparecen en el texto
+    (r"\bcalderas?\b", "calderas"), (r"\bquemadores?\b", "quemadores"),
+    (r"\bredes? hidraulicas?\b", "redes hidráulicas"), (r"\bcentral(es)? termicas?\b", "central térmica"),
+    (r"\bgases? clinicos?\b", "gases clínicos"), (r"\baire medicinal\b", "aire medicinal"),
+    (r"\bgases? anestesic\w*", "gases anestésicos"), (r"\bartefactos? a gas\b", "artefactos a gas"),
+    (r"\b(instalaciones|redes?|red) de gas\b|\bgas (natural|licuado)\b|\bglp\b", "instalaciones de gas"),
+    (r"\bclimatizacion\b", "climatización"), (r"\bchillers?\b", "chiller"), (r"\baire acondicionado\b", "aire acondicionado"),
+    (r"\bcalefaccion\b", "calefacción"), (r"\bagua caliente\b", "agua caliente"), (r"\bvapor\b", "vapor"),
+    (r"\bestanques?\b", "estanques"), (r"\bgenerador(es)? electric\w*|\bgrupos? electrogen\w*", "generador eléctrico"),
+    (r"\bvalvulas?\b", "válvulas"), (r"\bbombas?\b", "bombas"), (r"\bcalefont\w*|\btermos?\b", "calefont"),
+    (r"\bhidrogeno\b", "hidrógeno"), (r"\bventilacion\b", "ventilación"), (r"\b(canerias?|tuberias?)\b", "cañerías"),
+)
+_RECINTO = re.compile(
+    r"\b(Polideportivo|Estadio|Hospital|Cl[ií]nica|Liceo|Escuela|Colegio|Jard[ií]n Infantil|CESFAM|Cesfam|Edificio|"
+    r"Gimnasio|Piscina|Cuartel|Comisar[ií]a|Universidad|Campus|Recinto|Regimiento|Centro (?:de Salud|Diurno|Comunitario)|"
+    r"POLIDEPORTIVO|ESTADIO|HOSPITAL|CL[IÍ]NICA|LICEO|ESCUELA|COLEGIO|JARD[IÍ]N INFANTIL|EDIFICIO|GIMNASIO|PISCINA|"
+    r"CUARTEL|COMISAR[IÍ]A|UNIVERSIDAD|CAMPUS|REGIMIENTO|CENTRO (?:DE SALUD|DIURNO|COMUNITARIO))"
+    r"((?:\s+(?:de la|de los|de las|del|de|DE LA|DE LOS|DE LAS|DEL|DE|N°|Nº|Dr\.|DR\.)?\s*"
+    r"(?!(?:PARA|EN|CON|POR|QUE|AL|Y|SU|SUS|A|E|O|U|SOL)\b)[A-ZÁÉÍÓÚÑ0-9][\wÁÉÍÓÚÑáéíóúñ°]*){1,5})")
+_CORTE_RECINTO = re.compile(r"\s+(PARA|EN|CON|POR|QUE|A|AL|Y|DE)$|[.,;:]+$")
+_MENORES = {"de", "del", "la", "las", "los", "y", "el"}
+
+
+def _titulo(texto: str) -> str:
+    """«HOSPITAL LUIS CALVO MACKENNA» -> «Hospital Luis Calvo Mackenna»; lo ya escrito en mayúscula y minúscula queda igual."""
+    if texto != texto.upper():
+        return texto
+    return " ".join(p.lower() if i and p.lower() in _MENORES else p.capitalize() for i, p in enumerate(texto.split()))
+
+
+def _recintos(texto: str) -> list[str]:
+    vistos, salida = set(), []
+    for m in _RECINTO.finditer(texto or ""):
+        nombre = (m.group(1) + m.group(2)).strip()
+        anterior = None
+        while anterior != nombre:
+            anterior, nombre = nombre, _CORTE_RECINTO.sub("", nombre).strip()
+        nombre = _titulo(nombre)
+        clave = normalizar(nombre)
+        if len(clave.split()) >= 2 and clave not in vistos:
+            vistos.add(clave)
+            salida.append(nombre)
+    return salida[:4]
+
+
+def _juntar(cosas: list[str]) -> str:
+    return cosas[0] if len(cosas) == 1 else ", ".join(cosas[:-1]) + " y " + cosas[-1]
+
+
+def resumen_tareas(ficha: dict, meses: float | None) -> dict | None:
+    """Una frase y tareas cortas con lo que pide la licitación, solo por reglas.
+    ``{"frase", "tareas": [{"que", "detalle"}]}`` o None si no se reconoce nada."""
+    descripcion, nombre = ficha.get("descripcion") or "", ficha.get("nombre") or ""
+    n = normalizar(nombre + " . " + descripcion)
+    # Los productos (nombres del catálogo de ChileCompra: «Supervisión de instalación, ajuste o mantenimiento de
+    # calderas») solo aportan equipos, no el tipo de servicio.
+    con_productos = n + " . " + normalizar(" ".join(ficha.get("productos") or []))
+    hay = {clave for clave, patron, _ in _SERVICIOS if re.search(patron, n)}
+    if hay & {"preventiva", "correctiva"}:
+        hay.discard("mantencion")
+    if "correctiva" in hay:
+        hay.discard("reparacion")
+    # En un servicio de mantención, «suministro» e «instalación» suelen ser sustantivos («sistema de suministro de
+    # gases», «las instalaciones»): cuentan solo como «suministro e instalación» o «instalación de equipos».
+    if hay & {"preventiva", "correctiva", "mantencion", "operacion"} and \
+            not re.search(r"\b(suministro|provision|adquisicion) (e|y) instalacion\b", n):
+        hay.discard("suministro")
+        if not re.search(r"\binstalacion de (una?|dos|tres|\d+|nuev\w*|equipos?)\b", n):
+            hay.discard("instalacion")
+    equipos = sorted(((m.start(), nom) for patron, nom in _EQUIPOS for m in [re.search(patron, con_productos)] if m))
+    equipos = list(dict.fromkeys(nom for _, nom in equipos))[:4]
+    if not hay and not equipos:
+        return None
+    recintos = _recintos(descripcion) or _recintos(nombre)
+    veinticuatro = bool(re.search(r"\b24 ?(x ?)?7\b|\b24 horas\b", n))
+
+    # La frase: servicio principal + equipos + dónde + cuánto dura.
+    mant = [s for s in ("preventiva", "correctiva", "mantencion") if s in hay]
+    if len(mant) >= 2:
+        principal = "Mantención preventiva y correctiva"
+    elif mant:
+        principal = dict((c, x) for c, _, x in _SERVICIOS)[mant[0]]
+    else:
+        principal = next((x for c, _, x in _SERVICIOS if c in hay and c not in ("emergencias", "operacion")), "")
+    if "operacion" in hay:
+        principal = "Operación" + (" y " + principal[0].lower() + principal[1:] if principal else "")
+    principal = principal or "Trabajo"
+    frase = principal + (" de " + _juntar(equipos[:3]) if equipos else "")
+    if len(recintos) >= 2:
+        frase += f" en {len(recintos)} recintos"
+    elif recintos:
+        frase += " en " + recintos[0]
+    if meses and meses >= 1 and not ficha.get("compraAgil"):
+        frase += f" durante {meses:.0f} {'mes' if round(meses) == 1 else 'meses'}"
+    if "emergencias" in hay:
+        frase += ", con emergencias" + (" 24/7" if veinticuatro else "")
+    frase += "."
+
+    # Las tareas: un renglón por servicio, el primero con los equipos.
+    tareas = []
+    for clave, _, que in _SERVICIOS:
+        if clave not in hay:
+            continue
+        detalle = ""
+        if clave == "emergencias":
+            que, detalle = ("Emergencias 24/7", "turno disponible las 24 horas") if veinticuatro else ("Emergencias", "atención cuando las pidan")
+        elif clave == "correctiva" and re.search(r"\ba requerimiento\b|\bsegun requerimiento\b", n):
+            detalle = "a requerimiento"
+        elif not tareas and equipos:
+            detalle = "de " + _juntar(equipos)
+        tareas.append({"que": que, "detalle": detalle})
+    if re.search(r"\brepuestos?\b", n):
+        tareas.append({"que": "Repuestos", "detalle": "incluidos en el servicio"})
+    if re.search(r"\bcomodato\b", n):
+        tareas.append({"que": "Equipos en comodato", "detalle": "los pone el proveedor"})
+    # Solo el recinto: la comuna y la región de la ficha son las de la unidad que compra, no siempre las del trabajo.
+    if recintos:
+        tareas.append({"que": "Dónde", "detalle": _juntar(recintos)})
+    return {"frase": frase, "tareas": tareas[:6]}
+
+
 # ── EVALUAR ──────────────────────────────────────────────────────────────────
 
 def cargar_config(ruta: Path | None = None) -> dict:
@@ -939,8 +1083,16 @@ class Evaluador:
             "mercado": [{k: m.get(k) for k in ("codigo", "nombre", "organismo", "fecha", "monto", "moneda", "oferentes", "ganadores")}
                         for _, m in parecidas_mercado[:5]],
             "enPlanilla": en_planilla,
+            # Detalle «F4» del tablero (2026-11-27): qué hay que hacer y cómo adjudica el comprador.
+            "resumen": resumen_tareas(ficha, meses),
+            "adjudica": self._pauta(ficha),
             "ficha": True,
         }
+
+    def _pauta(self, ficha: dict) -> dict | None:
+        import bases_oportunidades as bases     # aquí: ese módulo importa este
+        return bases.pauta_adjudicacion((ficha.get("visitaBases") or {}).get("criterios"),
+                                        (self.c.get("alertas") or {}).get("revisionBases") or {})
 
     def a_favor_y_en_contra(self, criterios: dict) -> tuple[list[str], list[str]]:
         """Lo que más empuja la licitación hacia arriba y hacia abajo, en
@@ -1538,7 +1690,9 @@ def _leer_visitas_bases(fichas: dict, candidatas: list[str], config: dict, abrir
     if not cfg.get("activo"):
         return []
     dormir, reloj = dormir or time.sleep, reloj or time.monotonic
-    pendientes = [c for c in candidatas if c in fichas and not ca.es_codigo(c) and "visitaBases" not in fichas[c]
+    # Una visitaBases sin «criterios» es de antes del 2026-11-27: se vuelve a leer una vez para tener la pauta.
+    pendientes = [c for c in candidatas if c in fichas and not ca.es_codigo(c)
+                  and "criterios" not in (fichas[c].get("visitaBases") or {})
                   and fichas[c].get("estadoCodigo") in (None, 5)]
     inicio, fallidas = reloj(), 0
     for i, codigo in enumerate(pendientes):

@@ -115,7 +115,9 @@ def _datos(extra=(), config=None):
                                          (ev_antes, "5000-86-LE26", (-1,), False)):
         ficha = op.leer_ficha(_ficha(codigo, "Mantención de calderas del hospital", cierre=_en(12)), codigo)
         ficha["visitaBases"] = {"fechas": [{"fecha": _en(d)[:16], "obligatoria": obligatoria, "lugar": None} for d in dias],
-                                "nombrada": False, "daPuntaje": False, "contenidoBases": True}
+                                "nombrada": False, "daPuntaje": False, "contenidoBases": True,
+                                "criterios": [{"nombre": "Oferta económica", "ponderacion": 30}, {"nombre": "Experiencia", "ponderacion": 25},
+                                              {"nombre": "Propuesta técnica", "ponderacion": 45}]}
         ops.append(e.evaluar(ficha))
     # Compras ágiles (2026-10-14): se cotizan en horas y tienen sus propios tramos de plazo.
     for codigo, horas in (("100-98-COT26", 10), ("100-99-COT26", 3)):
@@ -286,7 +288,8 @@ def test_las_recomendadas_son_las_mejores_y_un_peso_cambia_el_orden(navegador, t
     # Ver evaluación abre la fila de esa licitación en la tabla.
     tarjetas.first.get_by_role("button", name="Ver evaluación").click()
     assert pagina.locator(f'#tOps tr.op-row[data-codigo="{mejor["codigo"]}"]').get_attribute("aria-expanded") == "true"
-    assert pagina.locator("#tOps tr.detail-row .op-crit").count() == 8
+    # El desglose del puntaje va en la ⓘ de la nota, una fila por criterio.
+    assert pagina.locator("#tOps tr.detail-row .op-cifras .op-crit-fila").count() == 8
     # Con el rubro al último puesto cambia el puntaje en la tabla (el orden es por persona).
     antes = _filas(pagina)
     pagina.click('.viz-tab-btn[data-tab="tabMetodo"]')
@@ -581,4 +584,27 @@ def test_un_tema_del_equipo_se_ve_y_se_puede_eliminar(navegador, tmp_path, monke
     carta.locator("> button").click()
     carta.locator(".qb-eliminar").click()
     assert pagina.locator("#qbEstado").inner_text().startswith("1 cambio sin guardar")
+    assert errores == []
+
+
+def test_el_detalle_muestra_la_linea_de_tiempo_la_pauta_y_las_tareas(navegador, tmp_path):
+    """Detalle F4 (pedido del usuario, 2026-11-27): línea hoy → visita → cierre → contrato, cómo adjudica
+    el comprador (ficha de las bases), para ganar y «Qué hay que hacer» (resumen por reglas)."""
+    pagina, datos, _, errores = _abrir(navegador, tmp_path)
+    pagina.select_option("#fMostrar", "todas")
+    fila = pagina.locator('#tOps tr.op-row[data-codigo="5000-88-LE26"]')
+    fila.click()
+    det = pagina.locator("#tOps tr.detail-row .op-detalle")
+    hitos = det.locator(".op-tl .hito .f").all_inner_texts()
+    assert hitos[0] == "Hoy" and hitos[1].startswith("Visita ") and hitos[2].startswith("Cierre ") and hitos[3] == "Contrato"
+    assert "obligatoria" in det.locator(".op-tl .hito.visita .d").inner_text()
+    assert det.locator(".op-adj span").count() == 3
+    assert det.locator(".op-adj-ley li").first.inner_text().startswith("Propuesta técnica")     # de mayor a menor peso
+    ganar = det.locator(".op-ganar").inner_text()
+    assert "Ir a la visita" in ganar and "El precio pesa solo 30 %" in ganar and "la experiencia pesa 25 %" in ganar
+    o = next(x for x in datos["oportunidades"] if x["codigo"] == "5000-88-LE26")
+    assert det.locator(".op-tareas .frase").inner_text() == o["resumen"]["frase"]
+    # El desglose de la ⓘ suma el puntaje.
+    filas = [float(t.replace(",", ".")) for t in det.locator(".op-cifras .op-crit-fila span:last-child").all_text_contents()]
+    assert abs(sum(filas) - o["puntaje"]) < 0.3
     assert errores == []

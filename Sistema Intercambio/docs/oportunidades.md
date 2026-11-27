@@ -340,7 +340,13 @@ puntos más relevantes, luego de eso envías el correo».
   (`_leer_visitas_bases`, `consultas.fichaBases`: una cada 2 s, como mucho
   4 minutos; las que faltan siguen en la próxima) y guarda `visitaBases`
   (`resumen_visita`) en la ficha de la caché, que se vuelve a leer al
-  refrescarse la de la API. `visitas_de_la_ficha` es la regla única del tablero
+  refrescarse la de la API. Desde el 2026-11-27 guarda también la pauta de
+  evaluación (`criterios`: nombre y ponderación); una `visitaBases` sin ella se
+  vuelve a leer una vez. `bases.pauta_adjudicacion` la ordena y le pone las
+  notas del correo (precio que pesa poco, experiencia que pesa mucho): sale en
+  cada oportunidad como `adjudica`. `resumen_tareas` (solo reglas, sin IA, pedido
+  del usuario) arma `resumen` = una frase y tareas cortas con el servicio, los
+  equipos y los recintos que nombra la descripción; si no reconoce nada, None. `visitas_de_la_ficha` es la regla única del tablero
   y del correo: es visita una fecha del comprador que la nombra, o cualquiera
   que no sea otro hito (firma, adjudicación...) si un criterio o cláusula
   trata de la visita (hay bases con una fecha por recinto). Con varias fechas
