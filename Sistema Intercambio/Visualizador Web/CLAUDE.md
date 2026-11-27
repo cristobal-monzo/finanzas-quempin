@@ -51,6 +51,13 @@ QUEMPIN». Reemplazó a la página suelta que se dejaba junto a la Planilla.
   Desde el 2026-11-26 cada frase muestra cuántas licitaciones publicadas hoy la nombran
   (también la que se escribe) y hay «Frases propuestas» con ese número (`DATA.buscar`).
   El equipo puede crear temas («+ Nuevo tema») y eliminar los que creó.
+- **Detalle de una oportunidad** (2026-11-27, maqueta F4 elegida por el usuario
+  entre 6 + 4): datos en chips y la nota con su desglose en la ⓘ (formato de la
+  ventana de cifras del Formulador); **línea de tiempo** en días (hoy → visita →
+  cierre al 78 % → contrato en trazos; en el teléfono la visita va sobre la
+  línea); «Cómo adjudica el comprador» (`op.adjudica`, de la ficha de las bases)
+  junto a «Para ganar»; abajo «Qué hay que hacer» (`op.resumen`, por reglas) con
+  la descripción original plegada, y «Más datos de la ficha» al final.
 - **Visita a terreno** (2026-10-15): viene de la ficha de las bases (la API no
   la trae). Con varias fechas, `visitaDelDia` muestra la próxima y la da por
   pasada solo cuando pasaron todas. Sin dato dice «sin confirmar», no «no».

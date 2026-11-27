@@ -577,3 +577,49 @@ def test_un_tema_nuevo_se_guarda_con_su_nombre_y_busca_sus_frases(carpeta, confi
     d = ic.leer_publicacion(carpeta, op.PUBLICACION_AJUSTES)["datos"]
     assert "se eliminó el tema «Termocañones»" in d["historial"][0]["cambios"]
     assert all(t["id"] != "nuevo-termocanones" for t in op.temas_de(op.aplicar_ajustes(config, d["ajustes"])))
+
+
+# ── Qué hay que hacer y cómo adjudica (detalle F4 del tablero, 2026-11-27) ──
+
+def test_el_resumen_de_tareas_sale_de_la_descripcion_con_reglas():
+    ficha = {"nombre": "MANTENCIÓN PREVENTIVA CORRECTIVA Y EMERGENCIAS DE CALDERAS – COMPLEJO DEPORTIVO",
+             "descripcion": "E1ORT9 – El servicio requiere efectuar la contratación del servicio integral de mantención preventiva, "
+                            "mantención correctiva a requerimiento y atención de emergencias en modalidad 24/7 para los sistemas de "
+                            "calderas, redes hidráulicas, quemadores y componentes asociados del Polideportivo Ficticio Uno y del "
+                            "Estadio Ficticio Dos, ambos del complejo",
+             "productos": ["Supervisión de instalación, ajuste o mantenimiento de calderas"]}
+    r = op.resumen_tareas(ficha, 12)
+    assert r["frase"] == ("Mantención preventiva y correctiva de calderas, redes hidráulicas y quemadores en 2 recintos "
+                          "durante 12 meses, con emergencias 24/7.")
+    assert [t["que"] for t in r["tareas"]] == ["Mantención preventiva", "Mantención correctiva", "Emergencias 24/7", "Dónde"]
+    assert r["tareas"][1]["detalle"] == "a requerimiento"     # «instalación» del catálogo no es una tarea
+    assert r["tareas"][-1]["detalle"] == "Polideportivo Ficticio Uno y Estadio Ficticio Dos"
+
+
+@pytest.mark.parametrize("nombre,descripcion,frase", [
+    ("SERVICIO INTEGRAL DE OPERACIÓN Y MANTENIMIENTO DE LA CENTRAL TÉRMICA CON SUMINISTRO DE REPUESTOS", "",
+     "Operación y mantención de central térmica."),
+    ("ADQUISICIÓN E INSTALACIÓN DE 2 CALDERAS DE CALEFACCIÓN", "", "Suministro de calderas y calefacción."),
+    ("Mantención preventiva caldera de calefacción", "Servicio de mantención preventiva de la caldera del Hospital de Ejemplo. La "
+     "contratación incluye la reparación de la filtración.", "Mantención preventiva de calderas y calefacción en Hospital de Ejemplo."),
+])
+def test_el_resumen_en_otros_casos(nombre, descripcion, frase):
+    assert op.resumen_tareas({"nombre": nombre, "descripcion": descripcion}, None)["frase"] == frase
+
+
+def test_sin_nada_reconocible_no_hay_resumen():
+    assert op.resumen_tareas({"nombre": "Servicio de aseo", "descripcion": "Limpieza de oficinas"}, 12) is None
+
+
+def test_la_pauta_de_adjudicacion_ordena_y_avisa():
+    import bases_oportunidades as b
+    rb = {"precioPesaPoco": 40, "experienciaPesaMucho": 25}
+    p = b.pauta_adjudicacion([{"nombre": "Oferta económica", "ponderacion": 30}, {"nombre": "Experiencia del oferente", "ponderacion": 25},
+                              {"nombre": "Visita a terreno", "ponderacion": 5}, {"nombre": "Propuesta técnica", "ponderacion": 40},
+                              {"nombre": "Sin peso", "ponderacion": None}], rb)
+    assert [c["nombre"] for c in p["criterios"]] == ["Propuesta técnica", "Oferta económica", "Experiencia del oferente", "Visita a terreno"]
+    assert [c["tipo"] for c in p["criterios"]] == ["otro", "precio", "experiencia", "visita"]
+    assert p["precio"] == 30
+    assert p["notas"] == ["El precio pesa solo 30 %: lo técnico define",
+                          "Certificados de contratos parecidos: la experiencia pesa 25 %", "La visita da puntaje (5 %)"]
+    assert b.pauta_adjudicacion([], rb) is None and b.pauta_adjudicacion(None, rb) is None

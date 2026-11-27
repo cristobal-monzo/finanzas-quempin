@@ -309,9 +309,48 @@ def resumen_visita(f: dict) -> dict:
     """Lo que la evaluación previa guarda de la visita (``visitaBases`` de la
     ficha en la caché de oportunidades.py)."""
     v = visitas_de_la_ficha(f)
+    # Desde el 2026-11-27 guarda también la pauta de evaluación del comprador: el detalle del tablero
+    # muestra «Cómo adjudica el comprador» (pedido del usuario, maqueta F4).
     return {"fechas": sorted(({"fecha": x["fecha"], "obligatoria": x["obligatoria"], "lugar": _lugar_visita(x["texto"])}
                               for x in v["visitas"]), key=lambda x: x["fecha"]),
-            "nombrada": v["nombrada"], "daPuntaje": bool(v["criterios"]), "contenidoBases": bool(f.get("contenidoBases"))}
+            "nombrada": v["nombrada"], "daPuntaje": bool(v["criterios"]), "contenidoBases": bool(f.get("contenidoBases")),
+            "criterios": [{"nombre": c["nombre"], "ponderacion": c["ponderacion"]}
+                          for c in f.get("criterios") or [] if c.get("ponderacion") is not None]}
+
+
+def pauta_adjudicacion(criterios: list[dict] | None, rb: dict) -> dict | None:
+    """«Cómo adjudica el comprador»: los criterios de evaluación de la ficha de
+    las bases, de mayor a menor peso, con su tipo (precio, experiencia, visita
+    u otro) y las notas que ya da la revisión del correo (precio que pesa poco,
+    experiencia que pesa mucho). Sin criterios, None."""
+    lista = []
+    for c in criterios or []:
+        try:
+            peso = float(c.get("ponderacion"))
+        except (TypeError, ValueError):
+            continue
+        nombre = mp._texto(c.get("nombre"), 90)
+        if not nombre or peso <= 0:
+            continue
+        if nombre == nombre.upper():          # «OFERTA ECONÓMICA» -> «Oferta económica»
+            nombre = nombre.capitalize()
+        n = op.normalizar(nombre)
+        tipo = ("visita" if _VISITA.search(n) else "precio" if _PRECIO.search(n)
+                else "experiencia" if _EXPERIENCIA.search(n) else "otro")
+        lista.append({"nombre": nombre, "peso": round(peso, 1), "tipo": tipo})
+    if not lista:
+        return None
+    lista.sort(key=lambda c: -c["peso"])
+    precio = round(sum(c["peso"] for c in lista if c["tipo"] == "precio"), 1)
+    notas = []
+    if precio and precio < rb.get("precioPesaPoco", 40):
+        notas.append(f"El precio pesa solo {precio:g} %: lo técnico define")
+    for c in lista:
+        if c["tipo"] == "experiencia" and c["peso"] >= rb.get("experienciaPesaMucho", 25):
+            notas.append(f"Certificados de contratos parecidos: la experiencia pesa {c['peso']:g} %")
+        elif c["tipo"] == "visita":
+            notas.append(f"La visita da puntaje ({c['peso']:g} %)")
+    return {"criterios": lista, "precio": precio, "notas": notas}
 
 
 def _horas(cierre, ahora: datetime) -> float | None:

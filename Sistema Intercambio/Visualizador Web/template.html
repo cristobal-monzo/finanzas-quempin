@@ -404,24 +404,81 @@ __MARCA_FUENTES__
   .op-mini span { flex: 1 1 auto; height: 4px; border-radius: 2px; background: var(--gridline); position: relative; overflow: hidden; }
   .op-mini span i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--brand-orange); }
   tr.detail-row > td { background: var(--surface-1); padding: 0 !important; }
-  .op-detalle { margin: 0 8px 12px; padding: 14px 16px; border: 1.5px solid var(--brand-orange); border-radius: 10px; background: var(--surface-card);
-    display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; }
+  /* Detalle F4 (2026-11-27): datos y nota, línea de tiempo, cómo adjudica + para ganar, qué hay que hacer. */
+  .op-detalle { margin: 0 8px 12px; padding: 16px 18px; border: 1.5px solid var(--brand-orange); border-radius: 10px; background: var(--surface-card);
+    display: flex; flex-direction: column; gap: 4px; cursor: default; }
   .op-detalle h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 0 0 8px; }
   .op-descarte { background: color-mix(in srgb, var(--status-bad) 10%, transparent); color: var(--status-bad); border-radius: 8px;
     padding: 8px 10px; font-size: 12.5px; margin-bottom: 10px; }
-  .op-tope { font-size: 12px; color: var(--text-secondary); margin: 0 0 10px; }
-  /* Cómo se arma el puntaje: un tramo por criterio, de ancho = su peso, lleno según su puntaje. */
-  .op-composicion { display: flex; gap: 2px; height: 12px; margin: 0 0 4px; }
-  .op-composicion span { position: relative; height: 100%; background: var(--gridline); border-radius: 3px; overflow: hidden; min-width: 2px; }
-  .op-composicion span i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--brand-orange); }
-  .op-composicion-pie { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; }
-  .op-crit { display: grid; grid-template-columns: 150px minmax(0, 1fr) 34px; gap: 2px 10px; align-items: center; font-size: 12.5px; margin-bottom: 8px; }
-  .op-crit .nom { color: var(--text-primary); font-weight: 700; }
-  .op-crit .nom small { font-weight: 400; color: var(--text-muted); }
-  .op-crit .barra { height: 8px; border-radius: 4px; background: var(--gridline); overflow: hidden; }
-  .op-crit .barra i { display: block; height: 100%; background: var(--brand-orange); border-radius: 4px; }
-  .op-crit .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
-  .op-crit .mot { grid-column: 2 / -1; color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
+  .op-det-cab { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .op-codigo { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+  .op-det-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .op-det-chips .chip { white-space: normal; overflow-wrap: anywhere; }
+  .op-det-nota { display: flex; align-items: center; gap: 6px; }
+  .op-det-nota .n { font-size: 28px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .op-det-nota small { color: var(--text-muted); font-size: 13px; margin-right: 4px; }
+  /* ⓘ con el desglose del puntaje, en el formato de la ventana de cifras del Formulador. */
+  .op-nota-info { position: relative; display: inline-flex; }
+  .op-i { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--text-muted); background: transparent; color: var(--text-muted);
+    font: 700 12px/1 inherit; font-style: italic; cursor: pointer; padding: 0; }
+  .op-i:hover, .op-i:focus-visible { border-color: var(--brand-orange); color: var(--brand-orange-ink); outline: none; }
+  .op-cifras { display: none; position: absolute; right: 0; top: 28px; z-index: 50; width: 290px; padding: 10px 14px; border-radius: 8px;
+    background: var(--surface-card); border: 1px solid var(--baseline); box-shadow: 0 10px 30px rgba(0,0,0,.35); font-size: 12.5px; }
+  .op-nota-info:hover .op-cifras, .op-nota-info:focus-within .op-cifras, .op-nota-info.abierta .op-cifras { display: block; }
+  .op-cifras .tt { font-weight: 900; margin-bottom: 6px; color: var(--text-primary); }
+  .op-cifras .ld { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; color: var(--text-secondary); }
+  .op-cifras .ld span:last-child { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .op-cifras .ld.sub { font-weight: 900; border-top: 1px solid var(--baseline); margin-top: 4px; padding-top: 5px; color: var(--text-primary); }
+  .op-cifras .ld.neg span:last-child { color: var(--status-warning); font-weight: 700; }
+  /* Línea de tiempo: en días, hoy → visita → cierre (78 %) → contrato en trazos. */
+  .op-tl { position: relative; height: 4px; margin: 30px 12px 66px; background: var(--gridline); border-radius: 2px; }
+  .op-tl.con-arriba { margin-top: 58px; }
+  .op-tl .tramo { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px;
+    background: linear-gradient(90deg, var(--brand-orange), color-mix(in srgb, var(--brand-orange) 35%, transparent)); }
+  .op-tl .contrato { position: absolute; top: 0; bottom: 0; right: 0;
+    background: repeating-linear-gradient(90deg, var(--text-muted) 0 6px, transparent 6px 11px); }
+  .op-tl .hito { position: absolute; top: -7px; width: 160px; transform: translateX(-50%); text-align: center; }
+  .op-tl .hito.izq { transform: translateX(-9px); text-align: left; }
+  .op-tl .hito.der { transform: translateX(calc(-100% + 9px)); text-align: right; }
+  .op-tl .hito .p { display: block; width: 18px; height: 18px; border-radius: 50%; background: var(--surface-card); border: 3px solid var(--text-muted); margin: 0 auto; }
+  .op-tl .hito.izq .p { margin: 0; }
+  .op-tl .hito.der .p { margin: 0 0 0 auto; }
+  .op-tl .hito.hoy .p { background: var(--brand-orange); border-color: var(--brand-orange); }
+  .op-tl .hito.visita .p { border-color: var(--status-warning); }
+  .op-tl .hito.oblig .p { background: var(--status-warning); }
+  .op-tl .hito.cierre .p { border-color: var(--brand-orange); }
+  .op-tl .hito .f { font-weight: 700; font-size: 12.5px; margin-top: 6px; color: var(--text-primary); }
+  .op-tl .hito .d { font-size: 12px; color: var(--text-muted); }
+  .op-tl .hito.oblig .d { color: var(--status-warning); font-weight: 700; }
+  /* Visita muy cerca de hoy o del cierre: su texto va sobre la línea para no pisarse. */
+  .op-tl .hito.arriba { top: auto; bottom: -7px; }
+  .op-tl .hito.arriba .f { margin-top: 0; }
+  .op-tl .hito.arriba .d { margin-bottom: 6px; }
+  .op-det-dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; margin-bottom: 14px; }
+  .op-sin-dato { font-size: 12.5px; color: var(--text-muted); margin: 0; }
+  .op-adj { display: flex; height: 28px; border-radius: 6px; overflow: hidden; font-size: 12px; font-weight: 700; gap: 2px; }
+  .op-adj span { display: flex; align-items: center; justify-content: center; min-width: 3px; white-space: nowrap; overflow: hidden; }
+  .op-adj .pr, .op-adj-ley i.pr { background: var(--brand-gray-11); color: #fff; }
+  .op-adj .a, .op-adj-ley i.a { background: var(--brand-orange); color: #000; }
+  .op-adj .b, .op-adj-ley i.b { background: color-mix(in srgb, var(--brand-orange) 45%, var(--surface-card)); color: var(--text-primary); }
+  .op-adj-ley { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; color: var(--text-secondary); }
+  .op-adj-ley li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+  .op-adj-ley i { width: 10px; height: 10px; border-radius: 2px; background: var(--gridline); }
+  .op-adj-ley b { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .op-ganar { font-size: 13px; }
+  .op-ganar small { color: var(--text-muted); font-size: 12px; }
+  .op-tareas { padding: 12px 14px; background: var(--surface-1); border-left: 3px solid var(--brand-orange); border-radius: 8px; margin-bottom: 12px; }
+  .op-tareas .frase { margin: 0 0 8px; font-size: 14px; color: var(--text-primary); line-height: 1.45; }
+  .op-tareas ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 5px 22px;
+    font-size: 12.5px; color: var(--text-secondary); }
+  .op-tareas li { display: flex; gap: 7px; overflow-wrap: anywhere; }
+  .op-tareas li b { color: var(--text-primary); }
+  .op-tareas .ico { color: var(--brand-orange-ink); font-weight: 900; flex: none; }
+  .op-original { margin-top: 8px; }
+  .op-original summary, .op-mas-datos summary { cursor: pointer; font-size: 12.5px; color: var(--text-muted); }
+  .op-original .op-texto { margin: 8px 0 0; }
+  .op-mas-datos { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gridline); }
+  .op-mas-datos[open] summary { margin-bottom: 10px; }
   .op-ficha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 0 0 12px; font-size: 12.5px; }
   .op-ficha dt { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
   .op-ficha dd { margin: 1px 0 0; color: var(--text-primary); overflow-wrap: anywhere; }
@@ -472,8 +529,17 @@ __MARCA_FUENTES__
     .viz-tab-btn { flex: 0 0 auto; padding: 9px 10px; }
     .op-filtros input[type=search], .op-filtros select { font-size: 16px; flex: 1 1 100%; }
     .op-filtros .op-cuenta { margin-left: 0; }
-    .op-detalle { grid-template-columns: minmax(0, 1fr); margin: 0 0 10px; padding: 12px; }
-    .op-crit { grid-template-columns: 104px minmax(0, 1fr) 32px; }
+    .op-detalle { margin: 0 0 10px; padding: 12px; }
+    .op-det-dos, .op-tareas ul { grid-template-columns: minmax(0, 1fr); }
+    /* En el teléfono la visita va siempre sobre la línea, para no pisar al cierre. */
+    .op-tl { margin: 72px 4px 82px; }
+    .op-tl .hito { width: 124px; }
+    .op-tl .hito .f { font-size: 12px; }
+    .op-tl .hito.visita:not(.arriba) { display: flex; flex-direction: column; top: auto; bottom: -7px; }
+    .op-tl .hito.visita:not(.arriba) .f { order: 1; margin-top: 0; }
+    .op-tl .hito.visita:not(.arriba) .d { order: 2; margin-bottom: 6px; }
+    .op-tl .hito.visita:not(.arriba) .p { order: 3; }
+    .op-tl .hito.fin { display: none; }
     /* Tablas como tarjetas: primera celda de título, el resto etiqueta/valor (data-label). */
     table.viz-table > thead { display: none; }
     table.viz-table, table.viz-table > tbody, table.viz-table > tbody > tr, table.viz-table > tbody > tr > td { display: block; width: 100%; }
@@ -1304,63 +1370,178 @@ __MARCA_FUENTES__
       return fechaHora(vis.fecha) + (vis.pasada ? ' (ya pasó)' : '') + (v.obligatoria ? ' · obligatoria' : v.obligatoria === false ? ' · optativa' : ' · ver bases si es obligatoria') +
         (vis.mas ? ' · y ' + vis.mas + ' fecha(s) más' : '') + (v.lugar && vis.fecha === v.fecha && !vis.pasada ? ' · ' + v.lugar : '');
     }
-    function detalle(op) {
-      var e = op._e, izq = el('div'), der = el('div');
-      if (e.descartar.length) izq.appendChild(el('div', { clase: 'op-descarte', texto: 'Se descarta: ' + e.descartar.join(' · ') }));
-      if (e.tope) izq.appendChild(el('p', { clase: 'op-tope', texto: e.tope.motivo + ': no pasa de «' + NOMBRE_CAT[e.tope.categoria] + '», aunque el puntaje dé para más.' }));
-      izq.appendChild(el('h4', { texto: 'Cómo se arma el puntaje' }));
-      var comp = el('div', { clase: 'op-composicion', role: 'img', 'aria-label': 'Aporte de cada criterio al puntaje' });
+    // ---------- Detalle de una oportunidad: maqueta F4 (2026-11-27, elegida por el usuario) ----------
+    // Arriba los datos y la nota (su desglose en la ⓘ), la línea de tiempo (hoy → visita → cierre → contrato),
+    // «Cómo adjudica el comprador» (pauta de la ficha de las bases) junto a «Para ganar», y abajo «Qué hay que
+    // hacer»: el resumen por reglas de oportunidades.resumen_tareas, con la descripción original a mano.
+    function decimal1(x) { return x.toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+    function desglosePuntaje(op) {
+      var e = op._e, caja = el('span', { clase: 'op-nota-info' });
+      var boton = el('button', { type: 'button', clase: 'op-i', 'aria-label': 'Cómo llega a ' + Math.round(e.puntaje), 'aria-expanded': 'false', texto: 'i' });
+      var ventana = el('div', { clase: 'op-cifras', role: 'tooltip' }, [el('div', { clase: 'tt', texto: 'Cómo llega a ' + Math.round(e.puntaje) })]);
       CRIT.forEach(function (c) {
         if (!pesos[c.id]) return;
-        var seg = el('span', { title: c.nombre + ': ' + e.p[c.id] + ' de 100 (aporta ' + (e.p[c.id] * pesos[c.id] / e.total).toFixed(1) + ' de ' + (100 * pesos[c.id] / e.total).toFixed(1) + ')' });
-        seg.style.flex = pesos[c.id] + ' 1 0';
-        var lleno = el('i'); lleno.style.width = e.p[c.id] + '%';
-        seg.appendChild(lleno);
-        comp.appendChild(seg);
+        var aporta = e.p[c.id] * pesos[c.id] / e.total, max = 100 * pesos[c.id] / e.total;
+        ventana.appendChild(el('div', { clase: 'ld op-crit-fila' }, [
+          el('span', { texto: c.nombre + ' (de ' + max.toLocaleString('es-CL', { maximumFractionDigits: 1 }) + ')' }),
+          el('span', { texto: decimal1(aporta) })]));
       });
-      izq.appendChild(comp);
-      izq.appendChild(el('p', { clase: 'op-composicion-pie', texto: 'Un tramo por criterio, tan ancho como su peso y lleno según su puntaje: lo vacío es lo que le falta. Total ' + e.puntaje.toLocaleString('es-CL', { maximumFractionDigits: 1 }) + ' de 100.' }));
-      CRIT.forEach(function (c) {
-        var k = (op.criterios || {})[c.id] || {};
-        var v = e.p[c.id];
-        var motivo = k.motivo || '';
-        if (c.id === 'plazoOferta' && e.dias !== null) motivo = textoCierre(e.dias) + ' (' + fechaHora(op.cierre) + ')';
-        var barra = el('div', { clase: 'barra' }); var b = el('i'); b.style.width = v + '%'; barra.appendChild(b);
-        izq.appendChild(el('div', { clase: 'op-crit' }, [
-          el('span', { clase: 'nom' }, [c.nombre + ' ', el('small', { texto: '×' + pesos[c.id] })]),
-          barra,
-          el('span', { clase: 'val', texto: String(Math.round(v)) }),
-          el('span', { clase: 'mot', texto: motivo })
-        ]));
+      ventana.appendChild(el('div', { clase: 'ld sub' }, [el('span', { texto: 'Puntaje' }), el('span', { texto: decimal1(e.puntaje) })]));
+      ventana.appendChild(el('div', { clase: 'ld neg' }, [el('span', { texto: 'Le falta' }), el('span', { texto: decimal1(100 - e.puntaje) })]));
+      boton.addEventListener('click', function (evt) {
+        evt.stopPropagation();
+        var abierta = caja.classList.toggle('abierta');
+        boton.setAttribute('aria-expanded', abierta ? 'true' : 'false');
       });
-      if (op.parecidas && op.parecidas.length) {
-        izq.appendChild(el('h4', { texto: 'Parecidas en la Planilla de Ingreso' }));
-        izq.appendChild(el('ul', { clase: 'op-lista' }, op.parecidas.map(function (p) {
-          return el('li', { texto: 'N° ' + p.req + ' · ' + (p.titulo || '') + ' — ' + p.estado });
+      caja.appendChild(boton);
+      caja.appendChild(ventana);
+      return caja;
+    }
+    function textoEn(dias) {
+      if (dias < 1) return 'en ' + Math.max(1, Math.round(dias * 24)) + ' h';
+      var d = Math.floor(dias);
+      return d === 1 ? 'mañana' : 'en ' + d + ' días';
+    }
+    function horaDe(iso) { return String(iso || '').length > 11 ? String(iso).slice(11, 16) : ''; }
+    // La línea mide en días: hoy en 0 y el cierre al 78 %; el contrato sigue en trazos hasta el final.
+    function lineaTiempo(op) {
+      var e = op._e;
+      if (e.dias === null || e.dias < 0) return null;
+      var CIERRE = 78, total = Math.max(e.dias, 0.01);
+      var x = function (d) { return Math.max(0, Math.min(CIERRE, d / total * CIERRE)); };
+      var linea = el('div', { clase: 'op-tl', role: 'img', 'aria-label': 'Línea de tiempo: hoy, visita, cierre y contrato' });
+      linea.appendChild(el('div', { clase: 'tramo', style: 'width:' + CIERRE + '%' }));
+      var hoy = AHORA.getFullYear() + '-' + ('0' + (AHORA.getMonth() + 1)).slice(-2) + '-' + ('0' + AHORA.getDate()).slice(-2);
+      var hitos = [{ clase: 'hoy izq', pos: 0, f: 'Hoy', d: fechaCorta(hoy).slice(0, 5) }];
+      var vis = visitaDelDia(op), v = op.visita || {};
+      if (vis.fecha && !vis.pasada) {
+        var dv = diasHasta(vis.fecha);
+        if (dv !== null && dv <= e.dias) {
+          var pv = x(dv);
+          hitos.push({ clase: 'visita' + (v.obligatoria ? ' oblig' : '') + (pv < 16 || pv > CIERRE - 16 ? ' arriba' : ''), pos: pv,
+            f: 'Visita ' + fechaCorta(vis.fecha).slice(0, 5) + (horaDe(vis.fecha) ? ' · ' + horaDe(vis.fecha) : ''),
+            d: (v.obligatoria ? 'obligatoria · ' : v.obligatoria === false ? 'optativa · ' : '') + textoEn(dv) });
+        }
+      }
+      hitos.push({ clase: 'cierre', pos: CIERRE, f: 'Cierre ' + fechaCorta(op.cierre).slice(0, 5) + (horaDe(op.cierre) ? ' · ' + horaDe(op.cierre) : ''),
+        d: textoEn(e.dias) });
+      var dur = op.duracionMeses;
+      if (dur) {
+        linea.appendChild(el('div', { clase: 'contrato', style: 'left:' + CIERRE + '%' }));
+        hitos.push({ clase: 'fin der', pos: 100, f: op.compraAgil ? 'Entrega' : 'Contrato',
+          d: op.compraAgil ? Math.round(dur * 30) + ' días' : (dur >= 1 ? Math.round(dur) + ' meses' : Math.round(dur * 30) + ' días') });
+      }
+      if (hitos.some(function (h) { return /arriba/.test(h.clase); })) linea.className += ' con-arriba';
+      hitos.forEach(function (h) {
+        var partes = [el('i', { clase: 'p' }), el('div', { clase: 'f', texto: h.f }), el('div', { clase: 'd', texto: h.d })];
+        if (/arriba/.test(h.clase)) partes.push(partes.shift());   // el punto abajo, sobre la línea
+        linea.appendChild(el('div', { clase: 'hito ' + h.clase, style: 'left:' + h.pos + '%' }, partes));
+      });
+      return linea;
+    }
+    function bloqueAdjudica(op) {
+      var a = op.adjudica, caja = el('div');
+      caja.appendChild(el('h4', { texto: 'Cómo adjudica el comprador' }));
+      if (!a || !a.criterios || !a.criterios.length) {
+        caja.appendChild(el('p', { clase: 'op-sin-dato', texto: op.compraAgil ? 'Compra ágil: la ficha no trae pauta de evaluación.' : 'La ficha no trae la pauta: está en las bases adjuntas.' }));
+        return caja;
+      }
+      var suma = a.criterios.reduce(function (s, c) { return s + c.peso; }, 0);
+      var barra = el('div', { clase: 'op-adj', role: 'img', 'aria-label': a.criterios.map(function (c) { return c.nombre + ' ' + c.peso + ' %'; }).join(', ') });
+      var leyenda = el('ul', { clase: 'op-adj-ley' });
+      var otros = 0;
+      a.criterios.forEach(function (c, i) {
+        // Color por tipo: precio gris, experiencia y visita naranjo (lo que hay que preparar), el resto naranjo tenue.
+        var clase = c.tipo === 'precio' ? 'pr' : c.tipo === 'otro' ? 'b' : 'a';
+        var tramo = el('span', { clase: clase });
+        tramo.style.flex = c.peso + ' 1 0';
+        if (c.peso / Math.max(suma, 100) >= 0.15) tramo.textContent = c.peso.toLocaleString('es-CL') + ' %';
+        barra.appendChild(tramo);
+        if (i < 6) leyenda.appendChild(el('li', null, [el('i', { clase: clase }), el('span', { texto: c.nombre }), el('b', { texto: c.peso.toLocaleString('es-CL') + ' %' })]));
+        else otros += c.peso;
+      });
+      if (otros) leyenda.appendChild(el('li', null, [el('i'), el('span', { texto: 'Otros ' + (a.criterios.length - 6) + ' criterios' }), el('b', { texto: otros.toLocaleString('es-CL') + ' %' })]));
+      caja.appendChild(barra);
+      caja.appendChild(leyenda);
+      return caja;
+    }
+    function bloqueParaGanar(op) {
+      var lista = el('ul', { clase: 'op-razones op-ganar' });
+      var item = function (ok, texto, extra) {
+        lista.appendChild(el('li', { clase: ok ? 'favor' : 'contra' }, [el('span', { clase: 'ico', 'aria-label': ok ? 'A favor' : 'Ojo', texto: ok ? '✓' : '!' }),
+          el('span', null, [texto, extra ? el('small', { texto: ' ' + extra }) : null])]));
+      };
+      var vis = visitaDelDia(op), v = op.visita || {};
+      if (vis.fecha && !vis.pasada) item(false, 'Ir a la visita el ' + fechaCorta(vis.fecha).slice(0, 5) + (horaDe(vis.fecha) ? ' a las ' + horaDe(vis.fecha) : ''),
+        v.obligatoria ? '(obligatoria)' : v.obligatoria === false ? '(optativa)' : '(ver si es obligatoria)');
+      else if (vis.fecha && vis.pasada) item(false, 'La visita fue el ' + fechaCorta(vis.fecha).slice(0, 5), v.obligatoria ? '(era obligatoria)' : '');
+      else if (v.mencionada) item(false, 'Piden visita: buscar la fecha en las bases');
+      ((op.adjudica || {}).notas || []).forEach(function (t) { item(false, t); });
+      (op.enContra || []).forEach(function (t) { if (!/visita/i.test(t)) item(false, t); });
+      if (op._e.tope) item(false, op._e.tope.motivo + ': no pasa de «' + NOMBRE_CAT[op._e.tope.categoria] + '»');
+      (op.aFavor || []).forEach(function (t) { if (!/visita/i.test(t)) item(true, t); });
+      return el('div', null, [el('h4', { texto: 'Para ganar' }), lista]);
+    }
+    function bloqueTareas(op) {
+      var r = op.resumen, caja = el('div', { clase: 'op-tareas' }, [el('h4', { texto: 'Qué hay que hacer' })]);
+      if (r && r.frase) {
+        caja.appendChild(el('p', { clase: 'frase', texto: r.frase }));
+        if (r.tareas && r.tareas.length) caja.appendChild(el('ul', null, r.tareas.map(function (t) {
+          return el('li', null, [el('span', { clase: 'ico', 'aria-hidden': 'true', texto: '›' }),
+            el('span', null, [el('b', { texto: t.que + (t.que === 'Dónde' && t.detalle ? ':' : '') }), t.detalle ? ' ' + t.detalle : null])]);
         })));
       }
+      if (op.descripcion) {
+        if (r && r.frase) {
+          var original = el('details', { clase: 'op-original' }, [el('summary', { texto: 'Ver la descripción original' }), el('p', { clase: 'op-texto', texto: op.descripcion })]);
+          original.addEventListener('click', function (evt) { evt.stopPropagation(); });
+          caja.appendChild(original);
+        } else {
+          caja.appendChild(el('p', { clase: 'op-texto', texto: op.descripcion }));
+        }
+      }
+      return (r && r.frase) || op.descripcion ? caja : null;
+    }
+    function bloqueMasDatos(op) {
+      var e = op._e, hijos = [];
+      var pares = [
+        ['Código', op.codigo], ['Tipo', op.compraAgil ? 'Compra Ágil' : (op.tipo || '—')], ['Organismo', op.organismo || '—'], ['Unidad', op.unidadCompra || '—'],
+        ['Lugar', [op.comuna, op.region].filter(Boolean).join(', ') || '—'], ['Publicada', fechaHora(op.publicada)],
+        ['Cierre', fechaHora(op.cierre) + ' · ' + textoCierre(e.dias)], ['Visita a terreno', textoVisita(op)],
+        ['Probabilidad de ganar', op.probabilidadGanar !== null && op.probabilidadGanar !== undefined ? Math.round(op.probabilidadGanar * 100) + ' % en las parecidas ya resueltas' : 'sin historia suficiente']
+      ];
+      hijos.push(el('dl', { clase: 'op-ficha' }, pares.map(function (p) { return el('div', null, [el('dt', { texto: p[0] }), el('dd', { texto: p[1] })]); })));
+      if (op.parecidas && op.parecidas.length) {
+        hijos.push(el('h4', { texto: 'Parecidas en la Planilla de Ingreso' }));
+        hijos.push(el('ul', { clase: 'op-lista' }, op.parecidas.map(function (p) { return el('li', { texto: 'N° ' + p.req + ' · ' + (p.titulo || '') + ' — ' + p.estado }); })));
+      }
       if (op.mercado && op.mercado.length) {
-        izq.appendChild(el('h4', { texto: 'Precedentes en el mercado' }));
-        izq.appendChild(el('ul', { clase: 'op-lista' }, op.mercado.map(function (m) {
+        hijos.push(el('h4', { texto: 'Precedentes en el mercado' }));
+        hijos.push(el('ul', { clase: 'op-lista' }, op.mercado.map(function (m) {
           return el('li', { texto: (m.fecha ? m.fecha.slice(0, 7) + ' · ' : '') + (m.nombre || m.codigo) + ' — ' + (m.organismo || '') + ': ganó ' + (m.ganadores || []).join(', ') +
             ((m.moneda || 'CLP') === 'CLP' ? ' por ' + clpCorto(m.monto) + ' neto' : '') + (m.oferentes ? ' (' + m.oferentes + ' oferentes)' : '') });
         })));
       }
+      var d = el('details', { clase: 'op-mas-datos' }, [el('summary', { texto: 'Más datos de la ficha' })].concat(hijos));
+      d.addEventListener('click', function (evt) { evt.stopPropagation(); });
+      return d;
+    }
+    function detalle(op) {
+      var e = op._e, caja = el('div', { clase: 'op-detalle' });
+      if (e.descartar.length) caja.appendChild(el('div', { clase: 'op-descarte', texto: 'Se descarta: ' + e.descartar.join(' · ') }));
       var monto = textoMonto(op);
-      var pares = [
-        ['Código', op.codigo], ['Tipo', op.compraAgil ? 'Compra Ágil' : (op.tipo || '—')], ['Organismo', op.organismo || '—'], ['Unidad', op.unidadCompra || '—'],
-        ['Lugar', [op.comuna, op.region].filter(Boolean).join(', ') || '—'], ['Publicada', fechaHora(op.publicada)],
-        ['Cierre', fechaHora(op.cierre) + ' · ' + textoCierre(e.dias)], ['Monto', monto.v + ' (' + monto.s + ')'],
-        [op.compraAgil ? 'Plazo de entrega' : 'Duración', textoDuracion(op)],
-        ['Visita a terreno', textoVisita(op)],
-        ['Probabilidad de ganar', op.probabilidadGanar !== null && op.probabilidadGanar !== undefined ? Math.round(op.probabilidadGanar * 100) + ' % en las parecidas ya resueltas' : 'sin historia suficiente']
-      ];
-      der.appendChild(el('h4', { texto: 'Ficha' }));
-      der.appendChild(el('dl', { clase: 'op-ficha' }, pares.map(function (p) { return el('div', null, [el('dt', { texto: p[0] }), el('dd', { texto: p[1] })]); })));
-      if (op.descripcion) {
-        der.appendChild(el('h4', { texto: 'Descripción' }));
-        der.appendChild(el('p', { clase: 'op-texto', texto: op.descripcion }));
-      }
+      var chips = [monto.v + (monto.s ? ' ' + monto.s.replace(' por el comprador', '') : ''), op.comuna || op.regionCorta, op.unidadCompra || op.organismo, textoDuracion(op)]
+        .filter(Boolean).map(function (t) { return el('span', { clase: 'chip', texto: t }); });
+      caja.appendChild(el('div', { clase: 'op-det-cab' }, [
+        el('div', { style: 'min-width:0' }, [el('div', { clase: 'op-codigo', texto: (op.compraAgil ? 'Compra Ágil' : ('Licitación ' + (op.tipo || '')).trim()) + ' · ' + op.codigo }),
+          el('div', { clase: 'op-det-chips' }, chips)]),
+        el('div', { clase: 'op-det-nota' }, [el('span', { clase: 'n', texto: String(Math.round(e.puntaje)) }), el('small', { texto: '/100' }), etiquetaCategoria(op), desglosePuntaje(op)])
+      ]));
+      var linea = lineaTiempo(op);
+      if (linea) caja.appendChild(linea);
+      caja.appendChild(el('div', { clase: 'op-det-dos' }, [bloqueAdjudica(op), bloqueParaGanar(op)]));
+      var tareas = bloqueTareas(op);
+      if (tareas) caja.appendChild(tareas);
       var acciones = el('div', { clase: 'op-acciones' }, [botonFormulador(op, 'op-btn')]);
       var url = enlaceSeguro(op.url);
       if (url) acciones.appendChild(el('a', { clase: 'op-btn-sec', href: url, target: '_blank', rel: 'noopener noreferrer', texto: 'Ficha en Mercado Público ↗' }));
@@ -1371,8 +1552,9 @@ __MARCA_FUENTES__
         if (navigator.clipboard) navigator.clipboard.writeText(op.codigo).then(listo, function () {}); else listo();
       });
       acciones.appendChild(copiar);
-      der.appendChild(acciones);
-      return el('div', { clase: 'op-detalle' }, [izq, der]);
+      caja.appendChild(acciones);
+      caja.appendChild(bloqueMasDatos(op));
+      return caja;
     }
 
     // ---------- recomendadas ----------
